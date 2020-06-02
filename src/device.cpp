@@ -520,8 +520,8 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
 
         // host -> "host_capture" -> device
         auto stream = g_streams_pc_to_myriad.at("host_capture");
-        g_host_caputure_command = std::unique_ptr<HostCaptureCommand>(new HostCaptureCommand((stream)));
-        g_xlink->observe(*g_host_caputure_command, stream);
+        g_host_capture_command = std::unique_ptr<HostCaptureCommand>(new HostCaptureCommand((stream)));
+        g_xlink->observe(*g_host_capture_command, stream);
 
 
         // read & pass blob file
@@ -729,4 +729,24 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
     }
 
     return gl_result;
+}
+
+
+
+void Device::request_jpeg(){
+if(g_host_capture_command != nullptr){
+        g_host_capture_command->capture();
+    }
+}
+
+void Device::request_af_trigger(){
+    if(g_host_capture_command != nullptr){
+        g_host_capture_command->afTrigger();
+    }
+}
+
+void Device::request_af_mode(CaptureMetadata::AutofocusMode mode){
+    if(g_host_capture_command != nullptr){
+        g_host_capture_command->afMode(mode);
+    }
 }

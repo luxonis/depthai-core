@@ -16,28 +16,6 @@
 #include "host_capture_command.hpp"
 
 
-/*
-#include "device_support_listener.hpp"
-#include "host_data_packet.hpp"
-#include "host_data_reader.hpp"
-#include "nnet/tensor_info.hpp"
-#include "nnet/tensor_info_helper.hpp"
-#include "nnet/tensor_entry.hpp"
-#include "nnet/nnet_packet.hpp"
-#include "nnet/tensor_entry_container.hpp"
-#include "pipeline/host_pipeline.hpp"
-#include "pipeline/host_pipeline_config.hpp"
-#include "pipeline/cnn_host_pipeline.hpp"
-#include "disparity_stream_post_processor.hpp"
-#include "depthai-shared/cnn_info.hpp"
-#include "depthai-shared/depthai_constants.hpp"
-#include "depthai-shared/json_helper.hpp"
-#include "depthai-shared/xlink/xlink_wrapper.hpp"
-*/
-
-
-
-
 // RAII for specific Device device
 class Device{
 
@@ -57,6 +35,11 @@ public:
         const std::string &config_json_str
     );
     std::vector<std::string> get_available_streams();
+
+
+    void request_jpeg();
+    void request_af_trigger();
+    void request_af_mode(CaptureMetadata::AutofocusMode mode);
 
 
 private:
@@ -101,7 +84,7 @@ private:
 
     std::unique_ptr<DisparityStreamPostProcessor> g_disparity_post_proc;
     std::unique_ptr<DeviceSupportListener>        g_device_support_listener;
-    std::unique_ptr<HostCaptureCommand>           g_host_caputure_command;
+    std::unique_ptr<HostCaptureCommand>           g_host_capture_command;
 
     std::map<std::string, int> nn_to_depth_mapping = {
         { "off_x", 0 },

@@ -41,6 +41,11 @@ public:
         return _tensor_entry_container;
     }
 
+    boost::optional<FrameMetadata> getMetadata(){
+        // TODO
+        return _tensors_raw_data[0]->getMetadata();
+    }
+
 protected:
     std::shared_ptr<TensorEntryContainer>              _tensor_entry_container;
 

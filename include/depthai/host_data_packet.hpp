@@ -71,6 +71,13 @@ struct HostDataPacket
         return opt_metadata;
     }
 
+    ObjectTracker getObjectTracker(){
+        ObjectTracker ot_tracklets;
+        assert(data.size() == sizeof(ObjectTracker));
+        memcpy(&ot_tracklets, data.data(), sizeof(ObjectTracker));
+        return ot_tracklets;
+    }
+
     boost::optional<FrameMetadata> opt_metadata;
     std::vector<unsigned char> data;
     std::string stream_name;
