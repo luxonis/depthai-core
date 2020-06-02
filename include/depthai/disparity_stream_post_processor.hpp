@@ -17,10 +17,7 @@ class DisparityStreamPostProcessor
     , public DataObserver<StreamInfo, StreamData>
 {
 public:
-    DisparityStreamPostProcessor(bool produce_d_color, bool produce_d_mm);
-
-    std::vector<uint16_t> getLutDisparityToMillimeters() const;
-
+    DisparityStreamPostProcessor(bool produce_d_color);
 
 protected:
     // class DataObserver
@@ -30,18 +27,8 @@ protected:
 private:
     const std::string c_stream_in        = "disparity";
     const std::string c_stream_out_color = "depth_color_h";
-    const std::string c_stream_out_mm    = "depth_mm_h";
 
     const bool _produce_depth_color = false;
-    const bool _produce_depth_mm = false;
-
-
-    std::vector<uint16_t> _lut_disp_to_depth_mm;
-
-    std::vector<uint16_t> generateDispToDepthMM(
-        unsigned width, float fov, float base_line_dist) const;
-
 
     void prepareDepthColorAndNotifyObservers(const StreamInfo &data_info, const StreamData &data);
-    void prepareDepthMMAndNotifyObservers(const StreamInfo &data_info, const StreamData &data);
 };

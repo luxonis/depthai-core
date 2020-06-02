@@ -44,11 +44,6 @@ bool HostPipelineConfig::initWithJSON(const nlohmann::json &json_obj)
             }
         }
 
-        // if 'meta_d2h' not specified - add it
-        if (!hasStream("meta_d2h"))
-        {
-            streams.emplace_back("meta_d2h");
-        }
 
         // "depth"
         if (json_obj.contains("depth"))
@@ -67,23 +62,30 @@ bool HostPipelineConfig::initWithJSON(const nlohmann::json &json_obj)
                 depth.type = depth_obj.at("type").get<std::string>();
             }
 
-            if (depth.type == "average" && !hasStream("depth_mm_h"))
-            {
-                streams.emplace_back("depth_mm_h");
-            }
-            else if (depth.type == "median" && !hasStream("disparity"))
-            {
-                streams.emplace_back("disparity");
-            }
-
             // "padding_factor"
             if (depth_obj.contains("padding_factor"))
             {
                 depth.padding_factor = depth_obj.at("padding_factor").get<float>();
 
-                if (depth.padding_factor < 0.f || depth.padding_factor >= 0.5)
+                if (depth.padding_factor < 0.f || depth.padding_factor > 1.f)
                 {
-                    std::cout << "padding_factor should be in the range [0 .. 0.5)\n";
+                    std::cout << "padding_factor should be in the range [0 .. 1]\n";
+                    break;
+                }
+            }
+
+            if (depth_obj.contains("depth_limit_m"))
+            {
+                depth.depth_limit_m = depth_obj.at("depth_limit_m").get<float>();
+            }
+
+            if (depth_obj.contains("confidence_threshold"))
+            {
+                depth.confidence_threshold = depth_obj.at("confidence_threshold").get<float>();
+
+                if (depth.confidence_threshold < 0.f || depth.confidence_threshold > 1.f)
+                {
+                    std::cout << "confidence_threshold should be in the range [0 .. 1]\n";
                     break;
                 }
             }
@@ -106,9 +108,19 @@ bool HostPipelineConfig::initWithJSON(const nlohmann::json &json_obj)
                 ai.blob_file_config = ai_obj.at("blob_file_config").get<std::string>();
             }
 
+            if (ai_obj.contains("camera_input"))
+            {
+                ai.camera_input = ai_obj.at("camera_input").get<std::string>();
+            }
+
             if (ai_obj.contains("calc_dist_to_bb"))
             {
                 ai.calc_dist_to_bb = ai_obj.at("calc_dist_to_bb").get<bool>();
+            }
+
+            if (ai_obj.contains("keep_aspect_ratio"))
+            {
+                ai.keep_aspect_ratio = ai_obj.at("keep_aspect_ratio").get<bool>();
             }
         }
 

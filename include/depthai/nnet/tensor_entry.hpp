@@ -3,10 +3,11 @@
 #include <iostream>
 #include <string>
 #include <unordered_map>
+#include <cmath>
+#include <cfloat>
 
 #include "tensor_info.hpp"
 #include "../types.hpp"
-#include "../pipeline/depth_calculation_interface.hpp"
 
 
 struct TensorEntry
@@ -17,7 +18,6 @@ struct TensorEntry
     unsigned             properties_number           = 0;
     int                  nnet_input_width            = 0;
     int                  nnet_input_height           = 0;
-    DepthCalculationInterface* depth_calulator       = nullptr;
 
     const std::unordered_map<std::string, unsigned>*              output_property_key_string_to_index   = nullptr;
     const std::vector<std::unordered_map<std::string, unsigned>>* output_property_value_string_to_index = nullptr;
@@ -47,26 +47,18 @@ struct TensorEntry
         return getFloatByIndex(arr_index);
     }
 
-    float getDistance()
+    bool checkValidTensorEntry() const
     {
-        assert(nullptr != depth_calulator);
-        assert(0 != nnet_input_height);
-        assert(0 != nnet_input_width);
-
-        float result = depth_calulator->c_distance_undefined;
-
-        if (depth_calulator->canCalculateDistance())
+        for(int idx = 0; idx < getPropertiesNumber(); idx++)
         {
-            // TODO: remove hardcode
-            auto rx1 = getFloat("left");
-            auto ry1 = getFloat("top");
-            auto rx2 = getFloat("right");
-            auto ry2 = getFloat("bottom");
-
-            return depth_calulator->getDistanceForRectangle(
-                rx1, ry1, rx2, ry2, nnet_input_width, nnet_input_height);
+            float tensorValue = getFloatByIndex(idx);
+            if(std::isnan(tensorValue) || std::isinf(tensorValue))
+            {
+                printf("invalid tensor packet, discarding \n");
+                return false;
+            }
         }
-
-        return result;
+        return true;
     }
+
 };

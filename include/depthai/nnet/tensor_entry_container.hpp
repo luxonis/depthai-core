@@ -17,12 +17,9 @@ class TensorEntryContainer
 public:
     TensorEntryContainer(
               std::vector<std::shared_ptr<HostDataPacket>> &tensors_raw_data,
-        const std::vector<TensorInfo>                      &tensors_info,
-              DepthCalculationInterface*                    depth_calculation_interface
-    )
+        const std::vector<TensorInfo>                      &tensors_info    )
         : _tensors_raw_data(tensors_raw_data)
         , _tensors_info(&tensors_info)
-        , _depth_calculation_interface(depth_calculation_interface)
     {}
 
     unsigned size() const
@@ -65,7 +62,6 @@ public:
             te.properties_number = entry_byte_size / te.output_properties_type_size;
             te.nnet_input_width  = ti.nnet_input_width;
             te.nnet_input_height = ti.nnet_input_height;
-            te.depth_calulator = _depth_calculation_interface;
 
             if (ti.output_properties_dimensions.size() == 1)
             {
@@ -84,8 +80,10 @@ public:
                 //             &ti.output_property_value_string_to_index[ti.output_properties_dimensions[0]];
                 // }
             }
-
-            entry.push_back(te);
+            if(te.checkValidTensorEntry() == true)
+            {
+                entry.push_back(te);
+            }
         }
 
         return entry;
@@ -100,6 +98,5 @@ public:
 protected:
           std::vector<std::shared_ptr<HostDataPacket>> _tensors_raw_data;
     const std::vector<TensorInfo>*                     _tensors_info     = nullptr;
-          DepthCalculationInterface*                   _depth_calculation_interface = nullptr;
 };
 

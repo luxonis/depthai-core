@@ -13,6 +13,7 @@
 #include "pipeline/host_pipeline.hpp"
 #include "disparity_stream_post_processor.hpp"
 #include "device_support_listener.hpp"
+#include "host_capture_command.hpp"
 
 
 /*
@@ -78,6 +79,8 @@ private:
         g_device_support_listener = nullptr;
     }
 
+    std::map<std::string, int> get_nn_to_depth_bbox_mapping();
+
     std::shared_ptr<CNNHostPipeline> gl_result = nullptr;
 
 
@@ -98,6 +101,14 @@ private:
 
     std::unique_ptr<DisparityStreamPostProcessor> g_disparity_post_proc;
     std::unique_ptr<DeviceSupportListener>        g_device_support_listener;
+    std::unique_ptr<HostCaptureCommand>           g_host_caputure_command;
+
+    std::map<std::string, int> nn_to_depth_mapping = {
+        { "off_x", 0 },
+        { "off_y", 0 },
+        { "max_w", 0 },
+        { "max_h", 0 },
+    };
 
     XLinkHandler_t g_xlink_device_handler = {};
 

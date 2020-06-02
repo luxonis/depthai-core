@@ -167,7 +167,6 @@ extern "C" {
     }
 };
 
-
 bool Device::init_device(
     const std::string &device_cmd_file,
     const std::string &usb_device,
@@ -195,6 +194,7 @@ bool Device::init_device(
 
         g_xlink = std::unique_ptr<XLinkWrapper>(new XLinkWrapper(true));
 
+        
         if(binary != nullptr && binary_size != 0){
             if (!g_xlink->initFromHostSide(
                 &g_xlink_global_handler,
@@ -304,14 +304,6 @@ bool Device::init_device(
                 if (i % 3 == 2) printf("\n");
             }
         }
-
-        // device support listener
-        g_device_support_listener = std::unique_ptr<DeviceSupportListener>(new DeviceSupportListener);
-
-        g_device_support_listener->observe(
-            *g_xlink.get(),
-            c_streams_myriad_to_pc.at("meta_d2h")
-            );
 
 
         result = true;
@@ -429,6 +421,12 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
         }
 
         json json_config_obj;
+
+        // Add video configuration if specified
+        if(config_json.count("video_config") > 0){
+            json_config_obj["video_config"] = config_json["video_config"]; 
+        }
+
         json_config_obj["board"]["clear-eeprom"] = config.board_config.clear_eeprom;
         json_config_obj["board"]["store-to-eeprom"] = config.board_config.store_to_eeprom;
         json_config_obj["board"]["override-eeprom"] = config.board_config.override_eeprom;
@@ -445,6 +443,8 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
             {"_homography_right_to_left", homography_buff}
         };
         json_config_obj["depth"]["padding_factor"] = config.depth.padding_factor;
+        json_config_obj["depth"]["depth_limit_mm"] = (int)(config.depth.depth_limit_m * 1000);
+        json_config_obj["depth"]["confidence_threshold"] = config.depth.confidence_threshold;
 
         json_config_obj["_load_inBlob"] = true;
         json_config_obj["_pipeline"] =
@@ -453,9 +453,12 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
         };
 
         json_config_obj["ai"]["calc_dist_to_bb"] = config.ai.calc_dist_to_bb;
+        json_config_obj["ai"]["keep_aspect_ratio"] = config.ai.keep_aspect_ratio;
+        json_config_obj["ai"]["camera_input"] = config.ai.camera_input;
 
         bool add_disparity_post_processing_color = false;
-        bool add_disparity_post_processing_mm = false;
+        bool temp_measurement = false;
+
         std::vector<std::string> pipeline_device_streams;
 
         for (const auto &stream : config.streams)
@@ -464,16 +467,15 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
             {
                 add_disparity_post_processing_color = true;
                 json obj = { {"name", "disparity"} };
-                json_config_obj["_pipeline"]["_streams"].push_back(obj);
-            }
-            else if (stream.name == "depth_mm_h")
-            {
-                add_disparity_post_processing_mm = true;
-                json obj = { {"name", "disparity"} };
+                if (0.f != stream.max_fps)     { obj["max_fps"]   = stream.max_fps;   };
                 json_config_obj["_pipeline"]["_streams"].push_back(obj);
             }
             else
             {
+                if (stream.name == "meta_d2h")
+                {
+                    temp_measurement = true;
+                }
                 json obj = { {"name" ,stream.name} };
 
                 if (!stream.data_type.empty()) { obj["data_type"] = stream.data_type; };
@@ -515,6 +517,11 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
             std::cout << "depthai: pipelineConfig write error;\n";
             break;
         }
+
+        // host -> "host_capture" -> device
+        auto stream = g_streams_pc_to_myriad.at("host_capture");
+        g_host_caputure_command = std::unique_ptr<HostCaptureCommand>(new HostCaptureCommand((stream)));
+        g_xlink->observe(*g_host_caputure_command, stream);
 
 
         // read & pass blob file
@@ -568,6 +575,15 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
             printf("CNN input width: %d\n", cnn_input_info.cnn_input_width);
             printf("CNN input height: %d\n", cnn_input_info.cnn_input_height);
             printf("CNN input num channels: %d\n", cnn_input_info.cnn_input_num_channels);
+            printf("CNN to depth bounding-box mapping: start(%d, %d), max_size(%d, %d)\n",
+                    cnn_input_info.nn_to_depth.offset_x,
+                    cnn_input_info.nn_to_depth.offset_y,
+                    cnn_input_info.nn_to_depth.max_width,
+                    cnn_input_info.nn_to_depth.max_height);
+            nn_to_depth_mapping["off_x"] = cnn_input_info.nn_to_depth.offset_x;
+            nn_to_depth_mapping["off_y"] = cnn_input_info.nn_to_depth.offset_y;
+            nn_to_depth_mapping["max_w"] = cnn_input_info.nn_to_depth.max_width;
+            nn_to_depth_mapping["max_h"] = cnn_input_info.nn_to_depth.max_height;
 
             // update tensor infos
             assert(!(tensors_info.size() > (sizeof(cnn_input_info.offsets)/sizeof(cnn_input_info.offsets[0]))));
@@ -664,19 +680,14 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
 
 
         // disparity post processor
-        if (add_disparity_post_processing_mm ||
-            add_disparity_post_processing_color
-        )
+        if (add_disparity_post_processing_color)
         {
             g_disparity_post_proc = std::unique_ptr<DisparityStreamPostProcessor>(
                 new DisparityStreamPostProcessor(
-                    add_disparity_post_processing_color,
-                    add_disparity_post_processing_mm
-                ));
+                    add_disparity_post_processing_color));
 
             const std::string stream_in_name = "disparity";
             const std::string stream_out_color_name = "depth_color_h";
-            const std::string stream_out_mm_name = "depth_mm_h";
 
             if (g_xlink->openStreamInThreadAndNotifyObservers(c_streams_myriad_to_pc.at(stream_in_name)))
             {
@@ -687,12 +698,6 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
                     gl_result->makeStreamPublic(stream_out_color_name);
                     gl_result->observe(*g_disparity_post_proc.get(), c_streams_myriad_to_pc.at(stream_out_color_name));
                 }
-
-                if (add_disparity_post_processing_mm)
-                {
-                    gl_result->makeStreamPublic(stream_out_mm_name);
-                    gl_result->observe(*g_disparity_post_proc.get(), c_streams_myriad_to_pc.at(stream_out_mm_name));
-                }
             }
             else
             {
@@ -702,17 +707,16 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
             }
         }
 
-        if (!gl_result->setHostCalcDepthConfigs(
-                config.depth.type,
-                config.depth.padding_factor,
-                config.board_config.left_fov_deg,
-                config.board_config.left_to_right_distance_m
-                ))
+        if(temp_measurement)
         {
-            std::cout << "depthai: Cant set depth;\n";
-            break;
-        }
+            // device support listener
+            g_device_support_listener = std::unique_ptr<DeviceSupportListener>(new DeviceSupportListener);
 
+            g_device_support_listener->observe(
+                *g_xlink.get(),
+                c_streams_myriad_to_pc.at("meta_d2h")
+                );
+        }
 
         init_ok = true;
         std::cout << "depthai: INIT OK!\n";

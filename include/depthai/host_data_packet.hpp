@@ -13,15 +13,7 @@
 #include "depthai-shared/timer.hpp"
 
 #include "depthai-shared/metadata/frame_metadata.hpp"
-
-
-#ifdef HOST_PYTHON_MODULE
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h>
-
-namespace py = pybind11;
-#endif
-
+#include "depthai-shared/object_tracker/object_tracker.hpp"
 
 
 struct HostDataPacket
