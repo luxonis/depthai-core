@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "device.hpp"
+#include "depthai/device.hpp"
 
 int main(){
     using namespace std;

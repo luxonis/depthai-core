@@ -15,7 +15,7 @@ if(WIN32)
     set(HUNTER_BINARY_DIR "${HUNTER_GATE_ROOT}/_hunter_bin" CACHE STRING "Hunter binary directory")
 endif()
 
-set(TARGET_NAME depthai-cpp)
+set(TARGET_NAME depthai-core)
 project(${TARGET_NAME})
 
 
@@ -162,11 +162,10 @@ target_include_directories(${TARGET_NAME}
         "$<INSTALL_INTERFACE:include>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
         "$<BUILD_INTERFACE:${DEPTHAI_SHARED_INCLUDE}>"
-
     #INTERFACE
     #    # ...
     PRIVATE 
-        "${CMAKE_CURRENT_LIST_DIR}/include/bspatch"
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
 )
 
 

@@ -10,7 +10,7 @@
 #include <boost/lockfree/spsc_queue.hpp>
 #include <boost/lockfree/queue.hpp>
 
-#include "host_data_packet.hpp"
+#include "depthai/host_data_packet.hpp"
 
 #include "depthai-shared/stream/stream_info.hpp"
 #include "depthai-shared/general/data_observer.hpp"
