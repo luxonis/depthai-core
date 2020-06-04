@@ -16,7 +16,7 @@ if(WIN32)
 endif()
 
 set(TARGET_NAME depthai-core)
-project(${TARGET_NAME})
+project(${TARGET_NAME} VERSION "0.1.0" LANGUAGES CXX)
 
 
 ### Get and find dependencies
