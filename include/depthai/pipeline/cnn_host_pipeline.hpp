@@ -31,7 +31,8 @@ public:
     std::tuple<
         std::list<std::shared_ptr<NNetPacket>>,
         std::list<std::shared_ptr<HostDataPacket>>
-        >
-        getAvailableNNetAndDataPackets();
+    >
+    getAvailableNNetAndDataPackets(bool blocking = false);
+
 
 };

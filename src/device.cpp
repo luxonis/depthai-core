@@ -750,3 +750,7 @@ void Device::request_af_mode(CaptureMetadata::AutofocusMode mode){
         g_host_capture_command->afMode(mode);
     }
 }
+
+std::map<std::string, int> Device::get_nn_to_depth_bbox_mapping(){
+    return nn_to_depth_mapping;
+}

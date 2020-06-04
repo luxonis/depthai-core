@@ -31,11 +31,11 @@ std::tuple<
     std::list<std::shared_ptr<NNetPacket>>,
     std::list<std::shared_ptr<HostDataPacket>>
     >
-CNNHostPipeline::getAvailableNNetAndDataPackets()
+CNNHostPipeline::getAvailableNNetAndDataPackets(bool blocking)
 {
     Timer consume_dur;
 
-    consumePackets();
+    consumePackets(blocking);
     auto result = std::make_tuple(
         getConsumedNNetPackets(),
         getConsumedDataPackets()

@@ -49,9 +49,9 @@ void HostPipeline::onNewData(
 
     if (!_data_queue_lf.push(host_data))
     {
-        std::unique_lock<std::mutex> guard(q_lock);
-        _data_queue_lf.pop();
-        guard.unlock();
+        std::shared_ptr<HostDataPacket> tmp;
+        _data_queue_lf.tryPop(tmp);
+
         if (!_data_queue_lf.push(host_data))
         {
             std::cerr << "Data queue is full " << info.name << ":\n";
@@ -66,36 +66,40 @@ void HostPipeline::onNewDataSubject(const StreamInfo &info)
     _observing_stream_names.insert(info.name);
 }
 
-std::list<std::shared_ptr<HostDataPacket>> HostPipeline::getAvailableDataPackets()
+std::list<std::shared_ptr<HostDataPacket>> HostPipeline::getAvailableDataPackets(bool blocking)
 {
     std::list<std::shared_ptr<HostDataPacket>> result;
 
-    _data_queue_lf.consume_all(
-        [&result]
-        (std::shared_ptr<HostDataPacket>& data)
-        {
-            result.push_back(data);
-        }
-    );
+    std::function<void(std::shared_ptr<HostDataPacket>&)> functor = [&result] (std::shared_ptr<HostDataPacket>& data)
+    {
+        result.push_back(data);
+    };
+
+    if(blocking){
+        _data_queue_lf.waitAndConsumeAll(functor);
+    } else {
+        _data_queue_lf.consumeAll(functor);
+    }
 
     return result;
 }
 
-void HostPipeline::consumePackets()
+void HostPipeline::consumePackets(bool blocking)
 {
     Timer consume_dur;
     _consumed_packets.clear();
 
-    std::unique_lock<std::mutex> guard(q_lock);
-    _data_queue_lf.consume_all(
-        [this]
-        (std::shared_ptr<HostDataPacket>& data)
-        {
-            // std::cout << "===> c++ wait " << data->constructor_timer.ellapsed_us() << " us\n";            
-            this->_consumed_packets.push_back(data);
-        }
-    );
-    guard.unlock();
+    std::function<void(std::shared_ptr<HostDataPacket>&)> functor = [this] (std::shared_ptr<HostDataPacket>& data) 
+    {
+        // std::cout << "===> c++ wait " << data->constructor_timer.ellapsed_us() << " us\n";            
+        this->_consumed_packets.push_back(data);
+    };
+
+    if(blocking){
+        _data_queue_lf.waitAndConsumeAll(functor);
+    } else {
+        _data_queue_lf.consumeAll(functor);
+    }
 
     if (!this->_consumed_packets.empty())
     {

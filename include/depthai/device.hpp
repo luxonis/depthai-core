@@ -40,6 +40,7 @@ public:
     void request_jpeg();
     void request_af_trigger();
     void request_af_mode(CaptureMetadata::AutofocusMode mode);
+    std::map<std::string, int> get_nn_to_depth_bbox_mapping();
 
 
 private:
@@ -62,7 +63,6 @@ private:
         g_device_support_listener = nullptr;
     }
 
-    std::map<std::string, int> get_nn_to_depth_bbox_mapping();
 
     std::shared_ptr<CNNHostPipeline> gl_result = nullptr;
 
