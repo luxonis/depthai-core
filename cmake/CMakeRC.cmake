@@ -1,7 +1,19 @@
 # This block is executed when generating an intermediate resource file, not when
 # running in CMake configure mode
 if(_CMRC_GENERATE_MODE)
-    if (NOT INCBIN_ENABLED)
+    if (INCBIN_ENABLED)
+
+        string(CONFIGURE [[
+        #include <incbin/incbin.h>
+        namespace cmrc { namespace @NAMESPACE@ { namespace res_chars {
+        INCBIN(@SYMBOL@, "@INPUT_FILE@");
+        extern const char* const @SYMBOL@_begin = (const char*) g@SYMBOL@Data;
+        extern const char* const @SYMBOL@_end = (const char*) (g@SYMBOL@Data + g@SYMBOL@Size);
+        }}}
+        ]] code)
+
+    else()
+        
         # Read in the digits
         file(READ "${INPUT_FILE}" bytes HEX)
         # Format each pair into a character literal. Heuristics seem to favor doing
@@ -28,17 +40,6 @@ if(_CMRC_GENERATE_MODE)
         extern const char* const @SYMBOL@_begin = file_array;
         extern const char* const @SYMBOL@_end = file_array + @n_bytes@;
         }}}
-        ]] code)
-
-    else()
-
-        string(CONFIGURE [[
-            #include <incbin/incbin.h>
-            namespace cmrc { namespace @NAMESPACE@ { namespace res_chars {
-            INCBIN(@SYMBOL@, "@INPUT_FILE@");
-            extern const char* const @SYMBOL@_begin = (const char*) g@SYMBOL@Data;
-            extern const char* const @SYMBOL@_end = (const char*) (g@SYMBOL@Data + g@SYMBOL@Size);
-            }}}
         ]] code)
         
     endif()
@@ -200,14 +201,14 @@ public:
     created_subdirectory add_subdir(std::string name) & {
         _dirs.emplace_back();
         auto& back = _dirs.back();
-        auto& fod = _index.emplace(name, back).first->second;
+        auto& fod = _index.emplace(name, file_or_directory{back}).first->second;
         return created_subdirectory{back, fod};
     }
 
     file_or_directory* add_file(std::string name, const char* begin, const char* end) & {
         assert(_index.find(name) == _index.end());
         _files.emplace_back(begin, end);
-        return &_index.emplace(name, _files.back()).first->second;
+        return &_index.emplace(name, file_or_directory{_files.back()}).first->second;
     }
 
     const file_or_directory* get(const std::string& path) const {
@@ -404,15 +405,26 @@ if(EXISTS "${cmrc_hpp}")
 endif()
 file(GENERATE OUTPUT "${cmrc_hpp}" CONTENT "${hpp_content}" CONDITION ${_generate})
 
+add_library(cmrc-base INTERFACE)
+
+# Add interface include for users of library
+target_include_directories(cmrc-base INTERFACE "$<BUILD_INTERFACE:${CMRC_INCLUDE_DIR}>")
+
+# Signal a basic C++11 feature to require C++11.
+target_compile_features(cmrc-base INTERFACE cxx_nullptr)
+set_property(TARGET cmrc-base PROPERTY INTERFACE_CXX_EXTENSIONS OFF)
+add_library(cmrc::base ALIAS cmrc-base)
 
 
-get_filename_component(_inc_gen_dir "${CMAKE_BINARY_DIR}/_cmrc/gen/include" ABSOLUTE)
-# Lets generate incbin.h file
-file(MAKE_DIRECTORY "${_inc_gen_dir}/incbin")
 
+### Incbin project addition, this enables much quicker compile times on supported compilers
 # https://github.com/graphitemaster/incbin
-# incbin project
-# commit: 8cefe46d5380bf5ae4b4d87832d811f6692aae44
+# Incbin project
+# Commit: 8cefe46d5380bf5ae4b4d87832d811f6692aae44
+
+# Create an option to use it (default on, with try_compile checks to make sure it works)
+option(CMRC_COMPATIBILITY_MODE "If enabled intermediate character array is generated (Supports all compilers)" OFF)
+
 set(incbin_h_content [==[
 /**
  * @file incbin.h
@@ -784,77 +796,79 @@ set(incbin_h_content [==[
 #endif
 ]==])
 
-set(cmrc_incbin_h "${_inc_gen_dir}/incbin/incbin.h" CACHE INTERNAL "")
-set(_generate 1)
-if(EXISTS "${cmrc_incbin_h}")
-    file(READ "${cmrc_incbin_h}" _current)
-    if(_current STREQUAL incbin_h_content)
-        set(_generate 0)
-    endif()
-endif()
-file(WRITE "${cmrc_incbin_h}" "${incbin_h_content}")
-
-add_library(cmrc-base INTERFACE)
-# Add interface include for users of library
-target_include_directories(cmrc-base 
-    INTERFACE
-        $<INSTALL_INTERFACE:include>
-        "$<BUILD_INTERFACE:${CMRC_INCLUDE_DIR}>"
-)
-
-# Signal a basic C++11 feature to require C++11.
-target_compile_features(cmrc-base INTERFACE cxx_nullptr)
-set_property(TARGET cmrc-base PROPERTY INTERFACE_CXX_EXTENSIONS OFF)
-add_library(cmrc::base ALIAS cmrc-base)
-
-# Tests if compatible mode shall be set
-
-# Let's generate the test for incbin.h
-get_filename_component(_tests_gen_dir "${CMAKE_BINARY_DIR}/_cmrc/tests" ABSOLUTE)
-file(MAKE_DIRECTORY "${_tests_gen_dir}/out")
-
-# Create a sample input file
-set(test_txt_content [==[
-Hello World!
-]==])
-file(WRITE "${_tests_gen_dir}/test.txt" "${test_txt_content}")
-string(CONFIGURE [==[
-#define INCBIN_PREFIX g_
-#define INCBIN_STYLE INCBIN_STYLE_SNAKE
-#include <incbin/incbin.h>
-namespace test{
-    INCBIN(test, "@_tests_gen_dir@/test.txt");
-}
-int main(){
-    int sum = 0;
-    for(unsigned int i = 0; i<test::g_test_size; i++){
-        sum += test::g_test_data[i];
-    }
-    return sum;
-}
-]==] test_cpp_content @ONLY)
-file(WRITE "${_tests_gen_dir}/test.cpp" "${test_cpp_content}")
-
-message(STATUS "CMRC | Check for working incbin assembly directive")
-
-# Now try to compile
-try_compile(HAVE_INCBIN_CAPABILITY "${_tests_gen_dir}" "${_tests_gen_dir}/test.cpp"
-    CMAKE_FLAGS "-DINCLUDE_DIRECTORIES=${_inc_gen_dir}"
-)
-
-# Remove tests
-file(REMOVE_RECURSE "${_tests_gen_dir}")
-
-message(STATUS "CMRC | Check for working incbin assembly directive - ${HAVE_INCBIN_CAPABILITY}")
-
-# HAVE_INCBIN_CAPABILITY
-if (HAVE_INCBIN_CAPABILITY)
-    message(STATUS "CMRC | Using Incbin library for faster performance")
+if (CMRC_COMPATIBILITY_MODE)
+    set(HAVE_INCBIN_CAPABILITY FALSE CACHE INTERNAL "")
 else()
-    message(STATUS "CMRC | Compatible mode - creating intermidiate character array files")
+
+    get_filename_component(_inc_gen_dir "${CMAKE_BINARY_DIR}/_cmrc/gen/include" ABSOLUTE)
+    # Lets generate incbin.h file
+    file(MAKE_DIRECTORY "${_inc_gen_dir}/incbin")
+
+
+    # Create in generate stage
+    set(cmrc_incbin_h "${_inc_gen_dir}/incbin/incbin.h" CACHE INTERNAL "")
+    set(_incbin_generate 1)
+    if(EXISTS "${cmrc_incbin_h}")
+        file(READ "${cmrc_incbin_h}" _incbin_current)
+        if(_incbin_current STREQUAL incbin_h_content)
+            set(_incbin_generate 0)
+        endif()
+    endif()
+    file(GENERATE OUTPUT "${cmrc_incbin_h}" CONTENT "${incbin_h_content}" CONDITION ${_incbin_generate})
+
+    # Tests if incbin assembly directive works for current compiler (otherwise fallback to generating character array)
+
+    if(NOT CMRC_INCBIN_TESTS_DONE)
+
+        # Let's generate the test for incbin.h
+        get_filename_component(_tests_gen_dir "${CMAKE_BINARY_DIR}/_cmrc/tests" ABSOLUTE)
+        file(MAKE_DIRECTORY "${_tests_gen_dir}")
+
+        # Create a sample input file
+        set(test_txt_content [==[
+        Hello World!
+        ]==])
+        file(WRITE "${_tests_gen_dir}/test.txt" "${test_txt_content}")
+
+        # Create a test program source
+        string(CONFIGURE [==[
+        #define INCBIN_PREFIX g_
+        #define INCBIN_STYLE INCBIN_STYLE_SNAKE
+        @incbin_h_content@
+        namespace test{
+            INCBIN(test, "@_tests_gen_dir@/test.txt");
+        }
+        int main(){
+            int sum = 0;
+            for(unsigned int i = 0; i<test::g_test_size; i++){
+                sum += test::g_test_data[i];
+            }
+            return sum;
+        }
+        ]==] test_cpp_content @ONLY)
+        file(WRITE "${_tests_gen_dir}/test.cpp" "${test_cpp_content}")
+
+
+        # Now try to compile
+        message(STATUS "Check for working incbin assembly directive")
+        try_compile(HAVE_INCBIN_CAPABILITY "${_tests_gen_dir}" "${_tests_gen_dir}/test.cpp"
+            CMAKE_FLAGS "-DINCLUDE_DIRECTORIES=${_inc_gen_dir}"
+        )
+        if(HAVE_INCBIN_CAPABILITY)
+            message(STATUS "Check for working incbin assembly directive - works")
+        else()
+            message(STATUS "Check for working incbin assembly directive - does not work")
+            message(STATUS "CMRC - Compatibility mode, creating intermediate character array files")
+        endif()
+
+        # Remove tests
+        file(REMOVE_RECURSE "${_tests_gen_dir}")
+
+        set(CMRC_INCBIN_TESTS_DONE TRUE CACHE INTERNAL "")
+
+    endif()
+
 endif()
-
-
 
 function(cmrc_add_resource_library name)
     set(args ALIAS NAMESPACE)

@@ -456,6 +456,9 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
         json_config_obj["ai"]["keep_aspect_ratio"] = config.ai.keep_aspect_ratio;
         json_config_obj["ai"]["camera_input"] = config.ai.camera_input;
 
+        json_config_obj["ot"]["max_tracklets"] = config.ot.max_tracklets;
+        json_config_obj["ot"]["confidence_threshold"] = config.ot.confidence_threshold;
+
         bool add_disparity_post_processing_color = false;
         bool temp_measurement = false;
 
