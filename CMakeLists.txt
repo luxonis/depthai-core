@@ -18,6 +18,9 @@ endif()
 set(TARGET_NAME depthai-core)
 project(${TARGET_NAME} VERSION "0.1.0" LANGUAGES CXX)
 
+### Dependency options
+option(DEPTHAI_BOOST_LOCAL "Use locally installed boost libraries" OFF)
+
 
 ### Get and find dependencies
 
@@ -38,8 +41,10 @@ hunter_add_package(BZip2)
 find_package(BZip2 CONFIG REQUIRED)
 
 # Boost
-hunter_add_package(Boost)
-find_package(Boost CONFIG REQUIRED)
+if(NOT DEPTHAI_BOOST_LOCAL)
+    hunter_add_package(Boost)
+    find_package(Boost CONFIG REQUIRED)
+endif()
 
 # Add depthai-shared, and definitions that it is PC side
 include(${CMAKE_CURRENT_LIST_DIR}/shared/depthai-shared.cmake)
@@ -175,11 +180,17 @@ target_link_libraries(${TARGET_NAME}
         nlohmann_json::nlohmann_json
         nlohmann_json_schema_validator
         XLink
-        Boost::boost
     PRIVATE
         Threads::Threads
         BZip2::bz2
 )
+
+if(NOT DEPTHAI_BOOST_LOCAL)
+    target_link_libraries(${TARGET_NAME}
+        PUBLIC
+            Boost::boost
+    )
+endif()
 
 
 # Add definition that it is PC side
