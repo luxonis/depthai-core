@@ -5,8 +5,8 @@ set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list 
 
 include("cmake/HunterGate.cmake")
 HunterGate(
-    URL "https://github.com/cpp-pm/hunter/archive/v0.23.253.tar.gz"
-    SHA1 "88ea6d37c897a81a080eb9ae0f69d7807bbb3c73"
+    URL "https://github.com/cpp-pm/hunter/archive/v0.23.257.tar.gz"
+    SHA1 "52203b35dfc2f975f4c22fc89f055476726e4288"
     LOCAL # Local config for dependencies
 )
 
