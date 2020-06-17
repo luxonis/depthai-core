@@ -5,8 +5,8 @@ set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list 
 
 include("cmake/HunterGate.cmake")
 HunterGate(
-    URL "https://github.com/cpp-pm/hunter/archive/v0.23.253.tar.gz"
-    SHA1 "88ea6d37c897a81a080eb9ae0f69d7807bbb3c73"
+    URL "https://github.com/cpp-pm/hunter/archive/v0.23.258.tar.gz"
+    SHA1 "062a19ab13ce8dffa9a882b6ce3e43bdabdf75d3"
     LOCAL # Local config for dependencies
 )
 
@@ -193,7 +193,7 @@ if(NOT DEPTHAI_BOOST_LOCAL)
 endif()
 
 
-# Add definition that it is PC side
+# Add definition that it is PC side (XLink)
 target_compile_definitions(${TARGET_NAME} PRIVATE -D__PC__)
 
 # Add patch only mode definition
