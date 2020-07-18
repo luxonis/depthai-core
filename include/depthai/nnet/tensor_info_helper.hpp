@@ -41,8 +41,6 @@ bool parseTensorInfosFromJsonString(const std::string& json_str, std::vector<Ten
     bool result = false;
     do
     {
-        tensor_infos.clear();
-
         auto json_obj = json::parse(json_str);
 
         // trace mappings (optional array)
