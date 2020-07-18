@@ -69,6 +69,7 @@ add_library(${TARGET_NAME}
     src/disparity_stream_post_processor.cpp
     src/host_data_reader.cpp
     src/host_json_helper.cpp
+    src/model_downloader.cpp
     src/types.cpp
     src/device.cpp
     src/bspatch/bspatch.c
@@ -173,6 +174,9 @@ target_include_directories(${TARGET_NAME}
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
 )
 
+set(CURL_LIBRARY "-lcurl") 
+find_package(CURL REQUIRED) 
+include_directories(${CURL_INCLUDE_DIR})
 
 # link libraries
 target_link_libraries(${TARGET_NAME}
@@ -181,6 +185,7 @@ target_link_libraries(${TARGET_NAME}
         nlohmann_json_schema_validator
         XLink
     PRIVATE
+        ${CURL_LIBRARIES}
         Threads::Threads
         BZip2::bz2
 )

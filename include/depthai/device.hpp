@@ -40,6 +40,8 @@ public:
     void request_jpeg();
     void request_af_trigger();
     void request_af_mode(CaptureMetadata::AutofocusMode mode);
+    void send_DisparityConfidenceThreshold(uint8_t confidence);
+
     std::map<std::string, int> get_nn_to_depth_bbox_mapping();
 
 
@@ -58,6 +60,8 @@ private:
         long binary_size = 0
     );
     void deinit_device(){
+        if(g_host_capture_command != nullptr)
+            g_host_capture_command->sendCustomDeviceResetRequest();
         g_xlink = nullptr;
         g_disparity_post_proc = nullptr;
         g_device_support_listener = nullptr;
