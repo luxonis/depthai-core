@@ -44,6 +44,7 @@ public:
 
     std::map<std::string, int> get_nn_to_depth_bbox_mapping();
 
+    static void wdog_keepalive(void);
 
 private:
     
@@ -59,13 +60,20 @@ private:
         uint8_t* binary = nullptr,
         long binary_size = 0
     );
-    void deinit_device(){
+    void soft_deinit_device()
+    {
         if(g_host_capture_command != nullptr)
             g_host_capture_command->sendCustomDeviceResetRequest();
         g_xlink = nullptr;
         g_disparity_post_proc = nullptr;
         g_device_support_listener = nullptr;
-    }
+        g_host_capture_command = nullptr;
+    };
+    void deinit_device(){
+        wdog_stop();
+        soft_deinit_device();
+        gl_result = nullptr;
+    };
 
 
     std::shared_ptr<CNNHostPipeline> gl_result = nullptr;
@@ -77,11 +85,10 @@ private:
     uint8_t* binary_backup;
     long binary_size_backup;
 
-    volatile std::atomic<int> wdog_keep;
     int wdog_thread_alive = 1;
 
     std::thread wd_thread;
-    int wd_timeout_ms = 1000;
+    int wd_timeout_ms = 5000;
 
     std::unique_ptr<XLinkWrapper> g_xlink; // TODO: make sync
     nlohmann::json g_config_d2h;

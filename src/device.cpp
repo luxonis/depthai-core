@@ -30,6 +30,8 @@ constexpr static auto cmrc_depthai_usb2_patch_path = "depthai-usb2-patch.patch";
 // GLOBAL
 static XLinkGlobalHandler_t g_xlink_global_handler = {};
 
+static volatile std::atomic<int> wdog_keep;
+
 
 Device::Device(std::string usb_device, bool usb2_mode){
     
@@ -113,14 +115,23 @@ Device::~Device(){
 void Device::wdog_thread(int& wd_timeout_ms)
 {
     std::cout << "watchdog started " << wd_timeout_ms << std::endl;
+    const int poll_rate = 100;
+    const int sleep_nr = wd_timeout_ms / poll_rate;
     while(wdog_thread_alive)
     {
         wdog_keep = 0;
-        std::this_thread::sleep_for(std::chrono::milliseconds(wd_timeout_ms));
+        for(int i = 0; i < sleep_nr; i++)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(poll_rate));
+            if(wdog_thread_alive == 0)
+            {
+                break;
+            }
+        }
         if(wdog_keep == 0 && wdog_thread_alive == 1)
         {
             std::cout << "watchdog triggered " << std::endl;
-            deinit_device();
+            soft_deinit_device();
             bool init;
             for(int retry = 0; retry < 1; retry++)
             {
@@ -161,13 +172,10 @@ int Device::wdog_stop(void)
     return 0;
 }
 
-//todo
-extern "C" {
-    void wdog_keepalive(void)
-    {
-        //wdog_keep = 1;
-    }
-};
+void Device::wdog_keepalive(void)
+{
+    wdog_keep = 1;
+}
 
 bool Device::init_device(
     const std::string &device_cmd_file,
@@ -224,7 +232,7 @@ bool Device::init_device(
         }
         
 
-        //wdog_start();
+        wdog_start();
 
         // config_d2h
         {
