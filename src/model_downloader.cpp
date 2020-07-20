@@ -1,3 +1,5 @@
+#ifdef ENABLE_LIBCURL
+
 #include <stdio.h>
 #include <curl/curl.h>
 #include <string>
@@ -183,3 +185,13 @@ cleanup:
 //     }
 //     return download_model(model_name, nr_shaves, nr_cmx_slices, nr_NCEs, path.str());
 // }
+
+#else //ENABLE_LIBCURL
+#include <iostream>
+
+int download_model(std::string model_name, int nr_shaves, int nr_cmx_slices, int nr_NCEs, std::string output_folder_path)
+{
+    std::cerr << "Model downloader disabled in cpp backend, use python downloader! " << std::endl;
+    exit(1);
+}
+#endif

@@ -97,6 +97,8 @@ else()
     message(STATUS "Compiling ${TARGET_NAME} depthai and depthai-usb2 resources")
 endif()
 
+option(DEPTHAI_ENABLE_LIBCURL "Enable libcurl for model downloader in cpp" OFF)
+
 # Set constant
 set(DEPTHAI_RESOURCES_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/resources")
 
@@ -174,9 +176,13 @@ target_include_directories(${TARGET_NAME}
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
 )
 
+if(DEPTHAI_ENABLE_LIBCURL)
 set(CURL_LIBRARY "-lcurl") 
 find_package(CURL REQUIRED) 
 include_directories(${CURL_INCLUDE_DIR})
+target_compile_definitions(${TARGET_NAME} PRIVATE -DENABLE_LIBCURL)
+endif()
+
 
 # link libraries
 target_link_libraries(${TARGET_NAME}
