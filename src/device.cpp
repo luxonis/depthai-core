@@ -485,8 +485,8 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
 
         std::string blob_file[] = {config.ai.blob_file, config.ai.blob_file2};
 
-        HostDataReader _blob_reader[num_stages];
-        int size_blob[num_stages];
+        std::vector <HostDataReader> _blob_reader(num_stages);
+        std::vector <int> size_blob(num_stages);
         for (int stage = 0; stage < num_stages; stage++)
         {
             if (!blob_file[stage].empty())
