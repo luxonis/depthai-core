@@ -181,6 +181,9 @@ set(CURL_LIBRARY "-lcurl")
 find_package(CURL REQUIRED) 
 include_directories(${CURL_INCLUDE_DIR})
 target_compile_definitions(${TARGET_NAME} PRIVATE -DENABLE_LIBCURL)
+message(STATUS "libcurl enabled")
+else()
+message(STATUS "libcurl disabled")
 endif()
 
 
