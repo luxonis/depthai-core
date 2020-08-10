@@ -3,8 +3,9 @@
 .vscode/
 .vs/
 build*/*
+
 # Auto-generated
-shared/version.hpp
+include/depthai/build/version.hpp
 
 #pybind11
 build/

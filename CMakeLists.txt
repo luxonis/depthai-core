@@ -161,6 +161,9 @@ else()
 endif()
 
 
+# Configure build information (version, ...)
+configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in" "${CMAKE_CURRENT_LIST_DIR}/include/depthai/build/version.hpp")
+
 # Add include directories
 target_include_directories(${TARGET_NAME}   
     PUBLIC
