@@ -255,6 +255,14 @@ bool Device::init_device(
             }
         }
 
+        bool rgb_connected = g_config_d2h.at("_cams").at("rgb").get<bool>();
+        bool left_connected = g_config_d2h.at("_cams").at("left").get<bool>();
+        bool right_connected = g_config_d2h.at("_cams").at("right").get<bool>();
+        if(!rgb_connected && (left_connected ^ right_connected))
+        {
+            std::cerr << WARNING "FATAL ERROR: No cameras detected on the board. \n" ENDC;
+            break;
+        }
 
         // check version
         {
@@ -393,7 +401,8 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
         }
         else
         {
-            std::cout << "There is no cnn configuration file or error in it\'s parsing: " << config.ai.blob_file_config.c_str() << "\n";
+            std::cerr << WARNING "ERROR: There is no cnn configuration file or error in it\'s parsing: " << config.ai.blob_file_config.c_str() << "\n";
+            break;
         }
 
         if (num_stages > 1)
@@ -441,6 +450,37 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
             {
                 assert(flags_size == 1);
                 calibration_reader.readData(reinterpret_cast<unsigned char*>(&stereo_center_crop), 1);
+            }
+        }
+
+        bool rgb_connected = g_config_d2h.at("_cams").at("rgb").get<bool>();
+        bool left_connected = g_config_d2h.at("_cams").at("left").get<bool>();
+        bool right_connected = g_config_d2h.at("_cams").at("right").get<bool>();
+        if(config.board_config.swap_left_and_right_cameras)
+        {
+            bool temp = left_connected;
+            left_connected = right_connected;
+            right_connected = temp;
+        }
+
+
+        if(!rgb_connected)
+        {
+            std::cout << "RGB camera (IMX378) is not detected on board! \n";
+            if(config.ai.camera_input == "rgb")
+            {
+                std::cerr << WARNING "WARNING: NN inference was requested on RGB camera (IMX378), defaulting to right stereo camera (OV9282)! \n" ENDC;
+                config.ai.camera_input = "right";
+            }
+        }
+        if(left_connected ^ right_connected)
+        {
+            std::string cam_not_connected = (left_connected == false) ? "Left" : "Right";
+            std::cerr << WARNING "WARNING: "<< cam_not_connected << " stereo camera (OV9282) is not detected on board! \n" ENDC;
+            if(config.ai.camera_input != "rgb")
+            {
+                std::cerr << WARNING "WARNING: NN inference was requested on " << config.ai.camera_input << " stereo camera (OV9282), defaulting to RGB camera (IMX378)! \n" ENDC;
+                config.ai.camera_input = "rgb";
             }
         }
 
@@ -513,6 +553,8 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
         json_config_obj["ot"]["max_tracklets"] = config.ot.max_tracklets;
         json_config_obj["ot"]["confidence_threshold"] = config.ot.confidence_threshold;
 
+        json_config_obj["app"]["sync_video_meta_streams"] = config.app_config.sync_video_meta_streams;
+
         bool add_disparity_post_processing_color = false;
         bool temp_measurement = false;
 
@@ -525,7 +567,7 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
                 c_streams_myriad_to_pc[stream.name].dimensions[1] = config.mono_cam_config.resolution_w;
             }
 
-            if (stream.name == "depth_color_h")
+            if (stream.name == "disparity_color")
             {
                 c_streams_myriad_to_pc["disparity"].dimensions[0] = c_streams_myriad_to_pc[stream.name].dimensions[0];
                 c_streams_myriad_to_pc["disparity"].dimensions[1] = c_streams_myriad_to_pc[stream.name].dimensions[1];
@@ -545,7 +587,7 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
                 if (!stream.data_type.empty()) { obj["data_type"] = stream.data_type; };
                 if (0.f != stream.max_fps)     { obj["max_fps"]   = stream.max_fps;   };
 
-                if (stream.name == "depth_sipp"){obj["data_type"] = "uint16"; }
+                if (stream.name == "depth_raw"){obj["data_type"] = "uint16"; }
 
                 json_config_obj["_pipeline"]["_streams"].push_back(obj);
                 pipeline_device_streams.push_back(stream.name);
@@ -741,7 +783,7 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
                     add_disparity_post_processing_color));
 
             const std::string stream_in_name = "disparity";
-            const std::string stream_out_color_name = "depth_color_h";
+            const std::string stream_out_color_name = "disparity_color";
 
             if (g_xlink->openStreamInThreadAndNotifyObservers(c_streams_myriad_to_pc.at(stream_in_name)))
             {
