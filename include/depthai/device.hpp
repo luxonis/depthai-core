@@ -40,14 +40,17 @@ public:
     void request_jpeg();
     void request_af_trigger();
     void request_af_mode(CaptureMetadata::AutofocusMode mode);
-    std::map<std::string, int> get_nn_to_depth_bbox_mapping();
+    void send_disparity_confidence_threshold(uint8_t confidence);
 
+    std::map<std::string, int> get_nn_to_depth_bbox_mapping();
 
 private:
     
     std::vector<uint8_t> patched_cmd;
+    volatile std::atomic<int> wdog_keep;
 
-    void wdog_thread(int& wd_timeout_ms);
+    void wdog_keepalive(void);
+    void wdog_thread(std::chrono::milliseconds& wd_timeout);
     int wdog_start(void);
     int wdog_stop(void);
 
@@ -57,11 +60,20 @@ private:
         uint8_t* binary = nullptr,
         long binary_size = 0
     );
-    void deinit_device(){
+    void soft_deinit_device()
+    {
+        if(g_host_capture_command != nullptr)
+            g_host_capture_command->sendCustomDeviceResetRequest();
         g_xlink = nullptr;
         g_disparity_post_proc = nullptr;
         g_device_support_listener = nullptr;
-    }
+        g_host_capture_command = nullptr;
+    };
+    void deinit_device(){
+        wdog_stop();
+        soft_deinit_device();
+        gl_result = nullptr;
+    };
 
 
     std::shared_ptr<CNNHostPipeline> gl_result = nullptr;
@@ -73,11 +85,10 @@ private:
     uint8_t* binary_backup;
     long binary_size_backup;
 
-    volatile std::atomic<int> wdog_keep;
     int wdog_thread_alive = 1;
 
     std::thread wd_thread;
-    int wd_timeout_ms = 1000;
+    std::chrono::milliseconds wd_timeout = std::chrono::milliseconds(5000);
 
     std::unique_ptr<XLinkWrapper> g_xlink; // TODO: make sync
     nlohmann::json g_config_d2h;
