@@ -7,8 +7,10 @@ set(DEPTHAI_SHARED_SOURCES
     ${DEPTHAI_SHARED_FOLDER}/src/xlink/xlink_wrapper.cpp
     ${DEPTHAI_SHARED_FOLDER}/src/json_helper.cpp
     ${DEPTHAI_SHARED_FOLDER}/src/disparity_luts.cpp
+    ${DEPTHAI_SHARED_FOLDER}/src/datatype/DatatypeEnum.cpp
 )
 
 set(DEPTHAI_SHARED_INCLUDE
     ${DEPTHAI_SHARED_FOLDER}/include
+    ${DEPTHAI_SHARED_FOLDER}/pipeline_builder/generated
 )

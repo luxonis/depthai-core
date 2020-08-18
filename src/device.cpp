@@ -1,5 +1,9 @@
 #include "device.hpp"
 
+
+#include "pipeline/Pipeline.hpp"
+
+
 // shared
 #include "depthai-shared/json_helper.hpp"
 #include "depthai-shared/depthai_constants.hpp"

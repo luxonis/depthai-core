@@ -16,7 +16,7 @@ if(WIN32)
 endif()
 
 set(TARGET_NAME depthai-core)
-project(${TARGET_NAME} VERSION "0.1.0" LANGUAGES CXX)
+project(${TARGET_NAME} VERSION "0.1.0" LANGUAGES CXX C)
 
 ### Dependency options
 option(DEPTHAI_BOOST_LOCAL "Use locally installed boost libraries" OFF)
@@ -61,6 +61,7 @@ add_library(${TARGET_NAME}
     # depthai-shared sources
     "${DEPTHAI_SHARED_SOURCES}"
     # sources
+    src/pipeline/Pipeline.cpp
     src/pipeline/cnn_host_pipeline.cpp
     src/pipeline/host_pipeline_config.cpp
     src/pipeline/host_pipeline.cpp
