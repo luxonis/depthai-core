@@ -69,7 +69,6 @@ add_library(${TARGET_NAME}
     src/disparity_stream_post_processor.cpp
     src/host_data_reader.cpp
     src/host_json_helper.cpp
-    src/model_downloader.cpp
     src/types.cpp
     src/device.cpp
     src/bspatch/bspatch.c
@@ -96,8 +95,6 @@ if(DEPTHAI_USB2_PATCH_ONLY_MODE)
 else()
     message(STATUS "Compiling ${TARGET_NAME} depthai and depthai-usb2 resources")
 endif()
-
-option(DEPTHAI_ENABLE_LIBCURL "Enable libcurl for model downloader in cpp" OFF)
 
 # Set constant
 set(DEPTHAI_RESOURCES_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/resources")
@@ -179,16 +176,6 @@ target_include_directories(${TARGET_NAME}
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
 )
 
-if(DEPTHAI_ENABLE_LIBCURL)
-set(CURL_LIBRARY "-lcurl") 
-find_package(CURL REQUIRED) 
-include_directories(${CURL_INCLUDE_DIR})
-target_compile_definitions(${TARGET_NAME} PRIVATE -DENABLE_LIBCURL)
-message(STATUS "libcurl enabled")
-else()
-message(STATUS "libcurl disabled")
-endif()
-
 
 # link libraries
 target_link_libraries(${TARGET_NAME}
@@ -197,7 +184,6 @@ target_link_libraries(${TARGET_NAME}
         nlohmann_json_schema_validator
         XLink
     PRIVATE
-        ${CURL_LIBRARIES}
         Threads::Threads
         BZip2::bz2
 )

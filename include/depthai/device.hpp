@@ -40,17 +40,17 @@ public:
     void request_jpeg();
     void request_af_trigger();
     void request_af_mode(CaptureMetadata::AutofocusMode mode);
-    void send_DisparityConfidenceThreshold(uint8_t confidence);
+    void send_disparity_confidence_threshold(uint8_t confidence);
 
     std::map<std::string, int> get_nn_to_depth_bbox_mapping();
-
-    static void wdog_keepalive(void);
 
 private:
     
     std::vector<uint8_t> patched_cmd;
+    volatile std::atomic<int> wdog_keep;
 
-    void wdog_thread(int& wd_timeout_ms);
+    void wdog_keepalive(void);
+    void wdog_thread(std::chrono::milliseconds& wd_timeout);
     int wdog_start(void);
     int wdog_stop(void);
 
@@ -88,7 +88,7 @@ private:
     int wdog_thread_alive = 1;
 
     std::thread wd_thread;
-    int wd_timeout_ms = 5000;
+    std::chrono::milliseconds wd_timeout = std::chrono::milliseconds(5000);
 
     std::unique_ptr<XLinkWrapper> g_xlink; // TODO: make sync
     nlohmann::json g_config_d2h;

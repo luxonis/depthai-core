@@ -30,9 +30,6 @@ constexpr static auto cmrc_depthai_usb2_patch_path = "depthai-usb2-patch.patch";
 // GLOBAL
 static XLinkGlobalHandler_t g_xlink_global_handler = {};
 
-static volatile std::atomic<int> wdog_keep;
-
-
 Device::Device(std::string usb_device, bool usb2_mode){
     
     // Binaries are resource compiled
@@ -112,17 +109,17 @@ Device::~Device(){
 
 
 
-void Device::wdog_thread(int& wd_timeout_ms)
+void Device::wdog_thread(std::chrono::milliseconds& wd_timeout)
 {
-    std::cout << "watchdog started " << wd_timeout_ms << std::endl;
-    const int poll_rate = 100;
-    const int sleep_nr = wd_timeout_ms / poll_rate;
+    std::cout << "watchdog started " << std::endl;
+    const std::chrono::milliseconds poll_rate(100);
+    const auto sleep_nr = wd_timeout / poll_rate;
     while(wdog_thread_alive)
     {
         wdog_keep = 0;
         for(int i = 0; i < sleep_nr; i++)
         {
-            std::this_thread::sleep_for(std::chrono::milliseconds(poll_rate));
+            std::this_thread::sleep_for(poll_rate);
             if(wdog_thread_alive == 0)
             {
                 break;
@@ -157,7 +154,7 @@ int Device::wdog_start(void)
     if(once)
     {
         wdog_thread_alive = 1;
-        wd_thread = std::thread(&Device::wdog_thread, this, std::ref(wd_timeout_ms)); 
+        wd_thread = std::thread(&Device::wdog_thread, this, std::ref(wd_timeout)); 
         once = 0;
     }
     return 0;
@@ -230,8 +227,8 @@ bool Device::init_device(
                 break;
             }
         }
-        
 
+        g_xlink->setWatchdogUpdateFunction(std::bind(&Device::wdog_keepalive, this));
         wdog_start();
 
         // config_d2h
@@ -847,7 +844,7 @@ void Device::request_af_mode(CaptureMetadata::AutofocusMode mode){
     }
 }
 
-void Device::send_DisparityConfidenceThreshold(uint8_t confidence){
+void Device::send_disparity_confidence_threshold(uint8_t confidence){
     if(g_host_capture_command != nullptr){
         g_host_capture_command->sendDisparityConfidenceThreshold(confidence);
     }
