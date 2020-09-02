@@ -4,38 +4,58 @@
 #include <string>
 #include <thread>
 
-//shared
-#include "depthai-shared/xlink/xlink_wrapper.hpp"
 
 //project
+#include "xlink/XLinkConnection.hpp"
 #include "nlohmann/json.hpp"
 #include "pipeline/cnn_host_pipeline.hpp"
 #include "pipeline/host_pipeline.hpp"
 #include "disparity_stream_post_processor.hpp"
 #include "device_support_listener.hpp"
 #include "host_capture_command.hpp"
+#include "DataQueue.hpp"
+#include "pipeline/Pipeline.hpp"
+#include "CallbackHandler.hpp"
 
+// libraries
+#include "nanorpc/core/client.h"
+#include "nanorpc/packer/nlohmann_msgpack.h"
+
+
+
+namespace dai {
 
 // RAII for specific Device device
 class Device{
 
 public:
 
+    // static API
+    static std::vector<deviceDesc_t> getAllConnectedDevices();
+    static std::tuple<bool, deviceDesc_t> getFirstAvailableDeviceDesc();
+    /////
+
     Device();
-
-    Device(std::string usb_device, bool usb2_mode = false);
-
-    // Basically init_device but RAII
-    Device(std::string cmd_file, std::string usb_device);
-
-    // Basically deinit_device but RAII
+    Device(const DeviceInfo& deviceDesc, bool usb2Mode = false);
+    Device(const DeviceInfo& deviceDesc, std::string pathToCmd);
     ~Device();
 
-    std::shared_ptr<CNNHostPipeline> create_pipeline(
-        const std::string &config_json_str
-    );
-    std::vector<std::string> get_available_streams();
 
+    bool isPipelineRunning();
+    bool startPipeline(Pipeline pipeline);
+
+
+    // data queues
+    DataOutputQueue& getOutputQueue(std::string name);
+    DataInputQueue& getInputQueue(std::string name);
+
+    // callback
+    void setCallback(std::string name, std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb);
+
+    
+
+
+    std::vector<std::string> get_available_streams();
 
     void request_jpeg();
     void request_af_trigger();
@@ -44,25 +64,27 @@ public:
 
 
 private:
-    
+
+    std::vector<std::uint8_t> getDefaultCmdBinary(bool usb2_mode);
+
+    std::shared_ptr<XLinkConnection> connection;
+    std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> client;
     std::vector<uint8_t> patched_cmd;
+
+    DeviceInfo deviceInfo;
+
+    std::unordered_map<std::string, DataOutputQueue> outputQueueMap;
+    std::unordered_map<std::string, DataInputQueue> inputQueueMap;
+    std::unordered_map<std::string, CallbackHandler> callbackMap;
+
+
 
     void wdog_thread(int& wd_timeout_ms);
     int wdog_start(void);
     int wdog_stop(void);
 
-    bool init_device(
-        const std::string &device_cmd_file,
-        const std::string &usb_device,
-        uint8_t* binary = nullptr,
-        long binary_size = 0
-    );
-    void deinit_device(){
-        g_xlink = nullptr;
-        g_disparity_post_proc = nullptr;
-        g_device_support_listener = nullptr;
-    }
-
+    void init();
+    void deinit();
 
     std::shared_ptr<CNNHostPipeline> gl_result = nullptr;
 
@@ -79,7 +101,7 @@ private:
     std::thread wd_thread;
     int wd_timeout_ms = 1000;
 
-    std::unique_ptr<XLinkWrapper> g_xlink; // TODO: make sync
+    //std::unique_ptr<XLinkWrapper> g_xlink; // TODO: make sync
     nlohmann::json g_config_d2h;
 
     std::unique_ptr<DisparityStreamPostProcessor> g_disparity_post_proc;
@@ -93,6 +115,6 @@ private:
         { "max_h", 0 },
     };
 
-    XLinkHandler_t g_xlink_device_handler = {};
-
 };
+
+}

@@ -76,12 +76,11 @@ int bspatch_mem(uint8_t* oldfile_bin, int64_t oldfile_size, uint8_t* patchfile_b
 	int64_t oldsize = oldfile_size;
 	int64_t newsize;
 	int64_t bzctrllen,bzdatalen;
-	uint8_t header[32],buf[8];
+	uint8_t header[32];
 	uint8_t* old = oldfile_bin;
 	uint8_t* new = newfile_bin;
 	int64_t oldpos,newpos;
 	int64_t ctrl[3];
-	int64_t lenread;
 	int64_t i;
 	int64_t cpOffset, dpOffset, epOffset;
 	int error = 0;
@@ -132,10 +131,8 @@ int bspatch_mem(uint8_t* oldfile_bin, int64_t oldfile_size, uint8_t* patchfile_b
 		unsigned int decompressed_size = newsize * 4;
 		p_decompressed_block_original[i] = malloc(decompressed_size); // reserve enough memory
 
-		uint8_t* p_to_bzip_data = patchfile_bin + sizeof(header);
-		unsigned int bzip_data_size = patchfile_size - sizeof(header);
 		int ret = 0;
-	    if( ( ret = BZ2_bzBuffToBuffDecompress(p_decompressed_block_original[i], &decompressed_size, patchfile_bin + block_offset_bz2[i], block_size_bz2[i], 0, 0)) != BZ_OK){
+	    if( ( ret = BZ2_bzBuffToBuffDecompress( (char*) p_decompressed_block_original[i], &decompressed_size, (char*) patchfile_bin + block_offset_bz2[i], block_size_bz2[i], 0, 0)) != BZ_OK){
 			error = -1;
 			break;
 		}

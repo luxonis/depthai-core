@@ -20,7 +20,10 @@ namespace dai
         std::vector<std::shared_ptr<Node>> nodes;
         int64_t latestId = 0;
         int64_t getNextUniqueId();
-        std::string toJson();
+        nlohmann::json toJson();
+        std::vector<std::uint8_t> serialize();
+        void loadAssets(AssetManager& assetManager);
+
         PipelineImpl();
         PipelineImpl(const PipelineImpl& p);
     };
@@ -35,7 +38,13 @@ namespace dai
 
         gen::GlobalProperties getGlobalProperties() const;
 
-        std::string toJson();
+        nlohmann::json toJson();
+        std::vector<std::uint8_t> serialize();
+        void loadAssets(AssetManager& assetManager);
+
+        std::vector<std::shared_ptr<Node>> getNodes(){
+            return pimpl->nodes;
+        }
 
         template<class N>
         std::shared_ptr<N> create(){

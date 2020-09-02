@@ -22,6 +22,14 @@ project(${TARGET_NAME} VERSION "0.1.0" LANGUAGES CXX C)
 option(DEPTHAI_BOOST_LOCAL "Use locally installed boost libraries" OFF)
 
 
+# If Debug mode, compile with warnings
+if(CMAKE_BUILD_TYPE MATCHES Debug)
+    if (MSVC)
+        add_compile_options(/W3)
+    else()
+        add_compile_options(-Wall -Wextra)
+    endif()
+endif()
 ### Get and find dependencies
 
 # Nlohmann JSON
@@ -62,6 +70,8 @@ add_library(${TARGET_NAME}
     "${DEPTHAI_SHARED_SOURCES}"
     # sources
     src/pipeline/Pipeline.cpp
+    src/xlink/XLinkConnection.cpp
+    src/DataQueue.cpp
     src/pipeline/cnn_host_pipeline.cpp
     src/pipeline/host_pipeline_config.cpp
     src/pipeline/host_pipeline.cpp
@@ -167,11 +177,13 @@ target_include_directories(${TARGET_NAME}
     PUBLIC
         "$<INSTALL_INTERFACE:include>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
-        "$<BUILD_INTERFACE:${DEPTHAI_SHARED_INCLUDE}>"
+        "$<BUILD_INTERFACE:${DEPTHAI_SHARED_PUBLIC_INCLUDE}>"
     #INTERFACE
     #    # ...
     PRIVATE 
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
+        "$<BUILD_INTERFACE:${DEPTHAI_SHARED_INCLUDE}>"
+        
 )
 
 

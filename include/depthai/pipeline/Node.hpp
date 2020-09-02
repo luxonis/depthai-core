@@ -5,6 +5,7 @@
 
 // depthai-shared
 #include "depthai-shared/datatype/DatatypeEnum.hpp"
+#include "depthai-shared/Assets.hpp"
 
 #include "nlohmann/json.hpp"
 
@@ -35,13 +36,13 @@ namespace dai
             enum class Type{
                 MSender, SSender
             };
-            const Type type;
+            Node& parent;
             const std::string name;
+            const Type type;
             // Which types and do descendants count as well?
             const std::vector<DatatypeHierarchy> possibleDatatypes;
-            Node& parent;
             std::vector<Input> conn;
-            Output(Node& par, std::string n, Type t, std::vector< DatatypeHierarchy > types) : parent(par), type(t), name(n), possibleDatatypes(types) {}
+            Output(Node& par, std::string n, Type t, std::vector< DatatypeHierarchy > types) : parent(par), name(n), type(t), possibleDatatypes(types) {}
     
         public:
             bool canConnect(Input in){
@@ -72,13 +73,13 @@ namespace dai
             enum class Type{
                 SReceiver, MReceiver
             };
-            const Type type;
+            Node& parent;
             const std::string name;
+            const Type type;
             friend class Output;
             // Which types and do descendants count as well?
             const std::vector< DatatypeHierarchy > possibleDatatypes;
-            Node& parent;
-            Input(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types) : parent(par), type(t), name(n), possibleDatatypes(types) {}
+            Input(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types) : parent(par), name(n), type(t), possibleDatatypes(types) {}
         };
 
 
@@ -91,10 +92,12 @@ namespace dai
         virtual std::string getName() = 0;
         virtual std::vector<Output> getOutputs() = 0;
         virtual std::vector<Input> getInputs() = 0;
-
         virtual nlohmann::json getProperties() = 0;
-
         virtual std::shared_ptr<Node> clone() = 0; 
+
+        virtual void loadAssets(AssetManager& assetManager){
+            (void) assetManager;
+        }
 
     public:
         Node(const std::shared_ptr<PipelineImpl>& p) : parent(p) {}

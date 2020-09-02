@@ -1,22 +1,24 @@
 #include "device.hpp"
 
-
-#include "pipeline/Pipeline.hpp"
-
-
 // shared
 #include "depthai-shared/json_helper.hpp"
 #include "depthai-shared/depthai_constants.hpp"
 #include "depthai-shared/cnn_info.hpp"
+#include "depthai-shared/xlink/XLinkConstants.hpp"
+#include "depthai-shared/Assets.hpp"
 
 // project
+#include "pipeline/Pipeline.hpp"
 //#include "pipeline/host_pipeline_config.hpp"
 #include "nnet/tensor_info_helper.hpp"
 #include "pipeline/host_pipeline_config.hpp"
 
+
 extern "C" {
     #include "bspatch/bspatch.h"
 }
+
+
 
 // Resource compiled assets (cmds)
 #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
@@ -25,91 +27,72 @@ CMRC_DECLARE(depthai);
 #endif
 
 
+namespace dai
+{
+    
+
+
 constexpr static auto cmrc_depthai_cmd_path = "depthai.cmd";
 constexpr static auto cmrc_depthai_usb2_cmd_path = "depthai-usb2.cmd";
 constexpr static auto cmrc_depthai_usb2_patch_path = "depthai-usb2-patch.patch";
 
-// GLOBAL
-static XLinkGlobalHandler_t g_xlink_global_handler = {};
+
+// static api
+/*
+std::vector<DeviceInfo> Device::getAllConnectedDevices(){
+    return XLinkConnection::getAllConnectedDevices();
+}
+
+std::tuple<bool, DeviceInfo> Device::getFirstAvailableDevice(){
+    return XLinkConnection::getFirstAvailableDevice();
+}
+
+std::vector<DeviceInfo> Device::getAllAvailableDevices(){
+    return XLinkConnection::getAllAvailableDevices();
+}
+
+std::tuple<bool, DeviceInfo> Device::getFirstDevice(){
+    return XLinkConnection::getFirstAvailableDevice();
+}
+*/
 
 
-Device::Device(std::string usb_device, bool usb2_mode){
+Device::Device(const DeviceInfo& deviceInfo, bool usb2Mode){
+   
+    connection = std::make_shared<XLinkConnection>(deviceInfo, getDefaultCmdBinary(usb2Mode));
+    this->deviceInfo = deviceInfo;
+    init();
+
+}
+
+Device::Device(const DeviceInfo& deviceDesc, std::string pathToCmd){
     
-    // Binaries are resource compiled
-    #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
-
-        // Get binaries from internal sources
-        auto fs = cmrc::depthai::get_filesystem();
-
-        if(usb2_mode){
-
-            #ifdef DEPTHAI_PATCH_ONLY_MODE
-            
-                // Get size of original
-                auto depthai_binary = fs.open(cmrc_depthai_cmd_path);
-
-                // Open patch
-                auto depthai_usb2_patch = fs.open(cmrc_depthai_usb2_patch_path);
-
-                // Get new size
-                int64_t patched_size = bspatch_mem_get_newsize( (uint8_t*) depthai_usb2_patch.begin(), depthai_usb2_patch.size());
-
-                // Reserve space for patched binary
-                patched_cmd.resize(patched_size);
-
-                // Patch
-                int error = bspatch_mem( (uint8_t*) depthai_binary.begin(), depthai_binary.size(), (uint8_t*) depthai_usb2_patch.begin(), depthai_usb2_patch.size(), patched_cmd.data());
-
-                // if patch successful
-                if(!error){
-                    // Boot
-                    init_device("", usb_device, patched_cmd.data(), patched_size);
-                } else {
-                    std::cout << "Error while patching..." << std::endl;
-                    // TODO handle error (throw most likely)
-                }
-
-            #else
-                auto depthai_usb2_binary = fs.open(cmrc_depthai_usb2_cmd_path);
-                uint8_t* binary = (uint8_t*) depthai_usb2_binary.begin();
-                long size = depthai_usb2_binary.size();
-                init_device("", usb_device, binary, size);
-
-            #endif
-
-        } else {
-
-            auto depthai_binary = fs.open(cmrc_depthai_cmd_path);
-            uint8_t* binary = (uint8_t*) depthai_binary.begin();
-            long size = depthai_binary.size();
-            init_device("", usb_device, binary, size);
-
-        }
-
-
-    #else
-    // Binaries from default path (TODO)
-
-    #endif
-
+    connection = std::make_shared<XLinkConnection>(deviceDesc, pathToCmd);
+    this->deviceInfo = deviceInfo;
+    init();
 
 }
 
-Device::Device() : Device("", false){
-
+Device::Device(){
+    auto ret = XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
+    if(!std::get<0>(ret)) throw std::runtime_error("No unbooted devices available");
+    connection = std::make_shared<XLinkConnection>(std::get<1>(ret), getDefaultCmdBinary(false));
+    this->deviceInfo = deviceInfo;
+    init();
 }
 
-Device::Device(std::string cmd_file, std::string usb_device){
-        
-    if(!init_device(cmd_file, usb_device)){
-        throw std::runtime_error("Cannot initialize device");
-    }
-}
 
 Device::~Device(){
-    deinit_device();
+    deinit();
 }
 
+
+void Device::deinit(){
+
+}
+
+
+/*
 
 
 void Device::wdog_thread(int& wd_timeout_ms)
@@ -171,156 +154,200 @@ extern "C" {
     }
 };
 
-bool Device::init_device(
-    const std::string &device_cmd_file,
-    const std::string &usb_device,
-    uint8_t* binary,
-    long binary_size
-)
+*/
+
+void Device::init()
 {
-    cmd_backup = device_cmd_file;
-    usb_device_backup = usb_device;
-    binary_backup = binary;
-    binary_size_backup = binary_size;
-    bool result = false;
-    std::string error_msg;
 
+    // prepare rpc for both attached and host controlled mode
+    connection->openStream(dai::XLINK_CHANNEL_MAIN_RPC, dai::XLINK_USB_BUFFER_MAX_SIZE);
 
-    do
-    {
-        // xlink
-        if (nullptr != g_xlink)
-        {
-            error_msg = "Device is already initialized.";
-            std::cout << error_msg << "\n";
-            break;
+    client = std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>(new nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>(
+        [this](nanorpc::core::type::buffer request){
+            // Send request to device
+            connection->writeToStream(dai::XLINK_CHANNEL_MAIN_RPC, request);
+
+            // Receive response back
+            // Send to nanorpc to parse
+            return connection->readFromStream(dai::XLINK_CHANNEL_MAIN_RPC);
         }
-
-        g_xlink = std::unique_ptr<XLinkWrapper>(new XLinkWrapper(true));
-
-        
-        if(binary != nullptr && binary_size != 0){
-            if (!g_xlink->initFromHostSide(
-                &g_xlink_global_handler,
-                &g_xlink_device_handler,
-                binary, binary_size,
-                usb_device,
-                false)
-            )
-            {
-                std::cout << "depthai: Error initializing xlink\n";
-                break;
-            }
-        } else {
-            if (!g_xlink->initFromHostSide(
-                &g_xlink_global_handler,
-                &g_xlink_device_handler,
-                device_cmd_file,
-                usb_device,
-                false)
-            )
-            {
-                std::cout << "depthai: Error initializing xlink\n";
-                break;
-            }
-        }
-        
-
-        //wdog_start();
-
-        // config_d2h
-        {
-            printf("Loading config file\n");
-
-            std::string config_d2h_str;
-            StreamInfo si("config_d2h", 102400);
-
-            int config_file_length = g_xlink->openReadAndCloseStream(
-                    si,
-                    config_d2h_str
-                    );
-            if(config_file_length == -1)
-            {
-                break;
-            }
-            if (!getJSONFromString(config_d2h_str, g_config_d2h))
-            {
-                std::cout << "depthai: error parsing config_d2h\n";
-            }
-        }
+    ));
 
 
-        // check version
-        {
-
-            /* TODO: review in new refactored way
-            std::string device_version = g_config_d2h.at("_version").get<std::string>();
-            if (device_version != c_depthai_version)
-            {
-                printf("Version does not match (%s & %s)\n",
-                    device_version.c_str(), c_depthai_version);
-                break;
-            }
-
-            std::string device_dev_version = g_config_d2h.at("_dev_version").get<std::string>();
-            if (device_dev_version != c_depthai_dev_version)
-            {
-                printf("WARNING: Version (dev) does not match (%s & %s)\n",
-                    device_dev_version.c_str(), c_depthai_dev_version);
-            }
-            */
-        }
-
-        uint32_t version = g_config_d2h.at("eeprom").at("version").get<int>();
-        printf("EEPROM data:");
-        if (version == -1) {
-            printf(" invalid / unprogrammed\n");
-        } else {
-            printf(" valid (v%d)\n", version);
-            std::string board_name;
-            std::string board_rev;
-            float rgb_fov_deg = 0;
-            bool stereo_center_crop = false;
-            if (version >= 2) {
-                board_name = g_config_d2h.at("eeprom").at("board_name").get<std::string>();
-                board_rev  = g_config_d2h.at("eeprom").at("board_rev").get<std::string>();
-                rgb_fov_deg= g_config_d2h.at("eeprom").at("rgb_fov_deg").get<float>();
-            }
-            if (version >= 3) {
-                stereo_center_crop = g_config_d2h.at("eeprom").at("stereo_center_crop").get<bool>();
-            }
-            float left_fov_deg = g_config_d2h.at("eeprom").at("left_fov_deg").get<float>();
-            float left_to_right_distance_m = g_config_d2h.at("eeprom").at("left_to_right_distance_m").get<float>();
-            float left_to_rgb_distance_m = g_config_d2h.at("eeprom").at("left_to_rgb_distance_m").get<float>();
-            bool swap_left_and_right_cameras = g_config_d2h.at("eeprom").at("swap_left_and_right_cameras").get<bool>();
-            std::vector<float> calib = g_config_d2h.at("eeprom").at("calib").get<std::vector<float>>();
-            printf("  Board name     : %s\n", board_name.empty() ? "<NOT-SET>" : board_name.c_str());
-            printf("  Board rev      : %s\n", board_rev.empty()  ? "<NOT-SET>" : board_rev.c_str());
-            printf("  HFOV L/R       : %g deg\n", left_fov_deg);
-            printf("  HFOV RGB       : %g deg\n", rgb_fov_deg);
-            printf("  L-R   distance : %g cm\n", 100 * left_to_right_distance_m);
-            printf("  L-RGB distance : %g cm\n", 100 * left_to_rgb_distance_m);
-            printf("  L/R swapped    : %s\n", swap_left_and_right_cameras ? "yes" : "no");
-            printf("  L/R crop region: %s\n", stereo_center_crop ? "center" : "top");
-            printf("  Calibration homography:\n");
-            for (int i = 0; i < 9; i++) {
-                printf(" %11.6f,", calib.at(i));
-                if (i % 3 == 2) printf("\n");
-            }
-        }
+}
 
 
-        result = true;
-    } while (false);
 
-    if (!result)
-    {
-        g_xlink = nullptr;
-        // TODO: add custom python exception for passing messages
-        // throw std::exception();
+
+DataOutputQueue& Device::getOutputQueue(std::string name){
+
+    // creates a dataqueue if not yet created
+    if(outputQueueMap.count(name) == 0){
+        // inserts (constructs in-place inside map at outputQueueMap[name] = DataQueue(connection, name))
+        outputQueueMap.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(connection, name));
     }
 
-    return result;
+    // else just return the reference to this DataQueue
+    return outputQueueMap.at(name);
+}
+
+DataInputQueue& Device::getInputQueue(std::string name){
+
+    // creates a dataqueue if not yet created
+    if(inputQueueMap.count(name) == 0){
+        // inserts (constructs in-place inside map at outputQueueMap[name] = DataQueue(connection, name))
+        inputQueueMap.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(connection, name));
+    }
+
+    // else just return the reference to this DataQueue
+    return inputQueueMap.at(name);
+}
+
+
+
+void Device::setCallback(std::string name, std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb){
+
+    // creates a CallbackHandler if not yet created
+    if(callbackMap.count(name) == 0){
+        // inserts (constructs in-place inside map at queues[name] = DataQueue(connection, name))
+        callbackMap.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(connection, name, cb));
+    } else {
+        // already exists, replace the callback
+        callbackMap.at(name).setCallback(cb);
+    }
+
+}
+
+
+
+bool Device::isPipelineRunning(){
+    return client->call("isPipelineRunning").as<bool>();
+}
+
+
+bool Device::startPipeline(Pipeline pipeline){
+
+    // first check if pipeline is not already started
+    if(isPipelineRunning()) return false;
+
+
+    // Create an AssetManager which the pipeline will use for assets
+    AssetManager assetManager;
+    pipeline.loadAssets(assetManager);
+
+    // Serialize the pipeline
+    auto pipelineDescription = pipeline.serialize();
+
+    // Serialize the asset storage and assets
+    auto assetStorage = assetManager.serialize();
+    std::vector<std::uint8_t> assets;
+    {
+        nlohmann::json assetsJson;
+        nlohmann::to_json(assetsJson, (Assets) assetManager);
+        assets = nlohmann::json::to_msgpack(assetsJson);
+    }
+
+
+    // Load pipelineDesc, assets, and asset storage
+
+    client->call("parsePipeline", pipelineDescription); 
+    client->call("parseAssets", assets);
+
+    // allocate, returns a pointer to memory on device side
+    auto memHandle = client->call("memAlloc", (std::uint32_t) assetStorage.size()).as<uint32_t>(); 
+
+    // Transfer the whole assetStorage in a separate thread
+    const std::string streamAssetStorage = "__stream_asset_storage";
+    std::thread t1([this, &streamAssetStorage, &assetStorage](){
+        connection->openStream(streamAssetStorage, XLINK_USB_BUFFER_MAX_SIZE);
+        int64_t offset = 0;
+        do{
+            int64_t toTransfer = std::min( (int64_t) XLINK_USB_BUFFER_MAX_SIZE, (int64_t) assetStorage.size() - offset);
+            connection->writeToStream(streamAssetStorage, assetStorage.data() + offset, toTransfer);
+            offset += toTransfer;
+        } while(offset < assetStorage.size());
+    });
+
+    // Open a channel to transfer AssetStorage
+    client->call("readFromXLink", streamAssetStorage, memHandle, assetStorage.size());
+    t1.join();
+
+
+    // After asset storage is transfers, set the asset storage
+    client->call("setAssetStorage", memHandle);
+
+
+    // Build and start the pipeline
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) = client->call("buildPipeline").as<std::tuple<bool, std::string>>();
+    if(success){
+        client->call("startPipeline");
+        return true;
+    } else {
+        throw std::runtime_error(errorMsg);  
+        return false;
+    }
+
+}
+
+
+
+
+std::vector<std::uint8_t> Device::getDefaultCmdBinary(bool usb2Mode){
+     
+    std::vector<std::uint8_t> finalCmd;
+
+    // Binaries are resource compiled
+    #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
+
+        // Get binaries from internal sources
+        auto fs = cmrc::depthai::get_filesystem();
+
+        if(usb2Mode){
+
+            #ifdef DEPTHAI_PATCH_ONLY_MODE
+            
+                // Get size of original
+                auto depthai_binary = fs.open(cmrc_depthai_cmd_path);
+
+                // Open patch
+                auto depthai_usb2_patch = fs.open(cmrc_depthai_usb2_patch_path);
+
+                // Get new size
+                int64_t patched_size = bspatch_mem_get_newsize( (uint8_t*) depthai_usb2_patch.begin(), depthai_usb2_patch.size());
+
+                // Reserve space for patched binary
+                finalCmd.resize(patched_size);
+
+                // Patch
+                int error = bspatch_mem( (uint8_t*) depthai_binary.begin(), depthai_binary.size(), (uint8_t*) depthai_usb2_patch.begin(), depthai_usb2_patch.size(), finalCmd.data());
+
+                // if patch not successful
+                if(error) throw std::runtime_error("Error while patching cmd for usb2 mode");
+
+            #else
+
+                auto depthai_usb2_binary = fs.open(cmrc_depthai_usb2_cmd_path);
+                finalCmd = std::vector<std::uint8_t>(depthai_usb2_binary.begin(), depthai_usb2_binary.end());
+
+            #endif
+
+        } else {
+
+            auto depthai_binary = fs.open(cmrc_depthai_cmd_path);
+            finalCmd = std::vector<std::uint8_t>(depthai_binary.begin(), depthai_binary.end());
+
+        }
+
+
+    #else
+    // Binaries from default path (TODO)
+
+    #endif
+
+    return finalCmd;
+
 }
 
 
@@ -342,6 +369,7 @@ std::vector<std::string> Device::get_available_streams()
     return result;
 }
 
+/*
 
 std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
     const std::string &config_json_str
@@ -354,12 +382,7 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
     bool init_ok = false;
     do
     {
-        // check xlink
-        if (nullptr == g_xlink)
-        {
-            std::cout << "device is not initialized\n";
-            break;
-        }
+        
 
         // str -> json
         json config_json;
@@ -739,6 +762,8 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
 }
 
 
+*/
+
 
 void Device::request_jpeg(){
 if(g_host_capture_command != nullptr){
@@ -761,3 +786,8 @@ void Device::request_af_mode(CaptureMetadata::AutofocusMode mode){
 std::map<std::string, int> Device::get_nn_to_depth_bbox_mapping(){
     return nn_to_depth_mapping;
 }
+
+
+
+
+} // namespace dai

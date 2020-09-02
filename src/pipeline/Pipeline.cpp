@@ -30,15 +30,43 @@ namespace dai
         }
     }
 
-    std::string Pipeline::toJson(){
+    nlohmann::json Pipeline::toJson(){
         return pimpl->toJson();
     }
+
+    std::vector<std::uint8_t> Pipeline::serialize(){
+        return pimpl->serialize();
+    }
+
 
     gen::GlobalProperties Pipeline::getGlobalProperties() const {
         return pimpl->globalProperties;
     }
-    
-    std::string PipelineImpl::toJson(){
+
+    void Pipeline::loadAssets(AssetManager& assetManager) {
+        return pimpl->loadAssets(assetManager);
+    }
+
+
+
+
+    std::vector<std::uint8_t> PipelineImpl::serialize(){
+        return nlohmann::json::to_msgpack(toJson());
+    }
+
+    void PipelineImpl::loadAssets(AssetManager& assetManager) {
+        
+        // Load assets of nodes
+        for(const auto& node : nodes){
+            node->loadAssets(assetManager);
+        }
+
+        // Load assets of pipeline (if any)
+        // ...
+
+    }
+
+    nlohmann::json PipelineImpl::toJson(){
 
         // create internal representation
         gen::PipelineSchema schema;
@@ -72,7 +100,7 @@ namespace dai
 
         nlohmann::json j;
         nlohmann::to_json(j, schema);
-        return j.dump(4);
+        return j;
 
     }
 

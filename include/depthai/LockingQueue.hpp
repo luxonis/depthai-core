@@ -54,6 +54,19 @@ public:
         return queue.empty();
     }
 
+
+    bool front(T& _value)
+    {
+        std::unique_lock<std::mutex> lock(guard);
+        if (queue.empty())
+        {
+            return false;
+        }
+
+        _value = queue.front();
+        return true;
+    }
+
     bool tryPop(T& _value)
     {
         std::lock_guard<std::mutex> lock(guard);
@@ -92,6 +105,18 @@ public:
         queue.pop();
         return true;
     }
+
+
+    void waitEmpty()
+    {
+        std::unique_lock<std::mutex> lock(guard);
+        while (!queue.empty())
+        {
+            signal.wait(lock);
+        }
+    }
+
+
 
 private:
     int maxsize = 0;
