@@ -6,6 +6,10 @@ add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/.. ${CMAKE_CURRENT_BINARY_DIR}/deptha
 set(TARGET_NAME myapp)
 project(${TARGET_NAME})
 
+
+find_package(OpenCV REQUIRED)
+
+
 # Add source files
 add_executable("${TARGET_NAME}" 
     main.cpp
@@ -15,4 +19,5 @@ add_executable("${TARGET_NAME}"
 target_link_libraries(${TARGET_NAME} 
     PUBLIC 
         depthai-core
+        ${OpenCV_LIBS}
 )

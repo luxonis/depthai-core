@@ -72,6 +72,7 @@ add_library(${TARGET_NAME}
     src/pipeline/Pipeline.cpp
     src/xlink/XLinkConnection.cpp
     src/DataQueue.cpp
+    src/CallbackHandler.cpp
     src/pipeline/cnn_host_pipeline.cpp
     src/pipeline/host_pipeline_config.cpp
     src/pipeline/host_pipeline.cpp

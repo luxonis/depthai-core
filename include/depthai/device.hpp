@@ -63,6 +63,8 @@ public:
     std::map<std::string, int> get_nn_to_depth_bbox_mapping();
 
 
+    bool startTestPipeline();
+
 private:
 
     std::vector<std::uint8_t> getDefaultCmdBinary(bool usb2_mode);

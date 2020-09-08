@@ -268,6 +268,9 @@ streamPacketDesc_t* XLinkConnection::readFromStreamRaw(const std::string& stream
     if(streamIdMap.count(streamName) == 0) throw std::logic_error("Stream: " + streamName + " isn't opened.");
     streamPacketDesc_t* pPacket;
     auto status = XLinkReadData(streamIdMap[streamName], &pPacket);
+    if(status != X_LINK_SUCCESS){
+        throw std::runtime_error("Error while reading data from xlink channel: " + streamName);
+    }
     return pPacket;
 }
 

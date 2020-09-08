@@ -251,30 +251,39 @@ bool Device::startPipeline(Pipeline pipeline){
     // Load pipelineDesc, assets, and asset storage
 
     client->call("parsePipeline", pipelineDescription); 
-    client->call("parseAssets", assets);
 
-    // allocate, returns a pointer to memory on device side
-    auto memHandle = client->call("memAlloc", (std::uint32_t) assetStorage.size()).as<uint32_t>(); 
-
-    // Transfer the whole assetStorage in a separate thread
-    const std::string streamAssetStorage = "__stream_asset_storage";
-    std::thread t1([this, &streamAssetStorage, &assetStorage](){
-        connection->openStream(streamAssetStorage, XLINK_USB_BUFFER_MAX_SIZE);
-        int64_t offset = 0;
-        do{
-            int64_t toTransfer = std::min( (int64_t) XLINK_USB_BUFFER_MAX_SIZE, (int64_t) assetStorage.size() - offset);
-            connection->writeToStream(streamAssetStorage, assetStorage.data() + offset, toTransfer);
-            offset += toTransfer;
-        } while(offset < assetStorage.size());
-    });
-
-    // Open a channel to transfer AssetStorage
-    client->call("readFromXLink", streamAssetStorage, memHandle, assetStorage.size());
-    t1.join();
+    // Transfer storage if size > 0
+    if(assetStorage.size() > 0){
+        client->call("parseAssets", assets);
 
 
-    // After asset storage is transfers, set the asset storage
-    client->call("setAssetStorage", memHandle);
+        // allocate, returns a pointer to memory on device side
+        auto memHandle = client->call("memAlloc", (std::uint32_t) assetStorage.size()).as<uint32_t>(); 
+
+        // Transfer the whole assetStorage in a separate thread
+        const std::string streamAssetStorage = "__stream_asset_storage";
+        std::thread t1([this, &streamAssetStorage, &assetStorage](){
+            connection->openStream(streamAssetStorage, XLINK_USB_BUFFER_MAX_SIZE);
+            int64_t offset = 0;
+            do{
+                int64_t toTransfer = std::min( (int64_t) XLINK_USB_BUFFER_MAX_SIZE, (int64_t) assetStorage.size() - offset);
+                connection->writeToStream(streamAssetStorage, assetStorage.data() + offset, toTransfer);
+                offset += toTransfer;
+            } while(offset < assetStorage.size());
+        });
+
+        // Open a channel to transfer AssetStorage
+        client->call("readFromXLink", streamAssetStorage, memHandle, assetStorage.size());
+        t1.join();
+
+
+        // After asset storage is transfers, set the asset storage
+        client->call("setAssetStorage", memHandle);
+
+    }
+
+    // call test
+    //client->call("test");
 
 
     // Build and start the pipeline
@@ -283,11 +292,14 @@ bool Device::startPipeline(Pipeline pipeline){
     std::tie(success, errorMsg) = client->call("buildPipeline").as<std::tuple<bool, std::string>>();
     if(success){
         client->call("startPipeline");
-        return true;
     } else {
         throw std::runtime_error(errorMsg);  
         return false;
     }
+
+    client->call("startCamera");
+
+    return true;
 
 }
 
@@ -786,6 +798,160 @@ void Device::request_af_mode(CaptureMetadata::AutofocusMode mode){
 std::map<std::string, int> Device::get_nn_to_depth_bbox_mapping(){
     return nn_to_depth_mapping;
 }
+
+
+
+
+
+bool Device::startTestPipeline(){
+
+    // first check if pipeline is not already started
+    if(isPipelineRunning()) return false;
+
+    /*
+
+    // Create an AssetManager which the pipeline will use for assets
+    AssetManager assetManager;
+    pipeline.loadAssets(assetManager);
+
+    // Serialize the pipeline
+    auto pipelineDescription = pipeline.serialize();
+
+    // Serialize the asset storage and assets
+    auto assetStorage = assetManager.serialize();
+    std::vector<std::uint8_t> assets;
+    {
+        nlohmann::json assetsJson;
+        nlohmann::to_json(assetsJson, (Assets) assetManager);
+        assets = nlohmann::json::to_msgpack(assetsJson);
+    }
+
+
+    */
+
+    using namespace nlohmann;
+    nlohmann::json pipelineDescJson = R"(
+    {
+        "globalProperties": {
+            "leonOsFrequencyKhz": 600000,
+            "pipelineVersion": "1",
+            "pipelineName": "1",
+            "leonRtFrequencyKhz": 600000
+        },
+        "nodes": [
+            {
+                "id": 1,
+                "name": "MyProducer",
+                "properties": {
+                    "message": "HeiHoi",
+                    "processorPlacement": "LRT"
+                }
+            },
+            {
+                "id": 2,
+                "name": "MyConsumer",
+                "properties": {
+                    "processorPlacement": "LRT"
+                }
+            },
+            {
+                "id": 3,
+                "name": "MyConsumer",
+                "properties": {
+                    "processorPlacement": "LOS"
+                }
+            },
+            {
+                "id": 4,
+                "name": "MyConsumer",
+                "properties": {
+                    "processorPlacement": "LRT"
+                }
+            }
+        ],
+        "connections": [
+            {
+                "node1Id": 1,
+                "node2Id": 2,
+                "node1Output": "out",
+                "node2Input": "in"
+            },
+            {
+                "node1Id": 1,
+                "node2Id": 3,
+                "node1Output": "out",
+                "node2Input": "in"
+            },
+            {
+                "node1Id": 1,
+                "node2Id": 4,
+                "node1Output": "out",
+                "node2Input": "in"
+            }
+        ]
+    }
+    )"_json;
+
+    std::vector<std::uint8_t> assetStorage;
+    Assets assets;
+    auto pipelineDescription = nlohmann::json::to_msgpack(pipelineDescJson);
+
+
+    // Load pipelineDesc, assets, and asset storage
+
+    client->call("parsePipeline", pipelineDescription); 
+
+    // Transfer storage if size > 0
+    if(assetStorage.size() > 0){
+        client->call("parseAssets", assets);
+
+
+        // allocate, returns a pointer to memory on device side
+        auto memHandle = client->call("memAlloc", (std::uint32_t) assetStorage.size()).as<uint32_t>(); 
+
+        // Transfer the whole assetStorage in a separate thread
+        const std::string streamAssetStorage = "__stream_asset_storage";
+        std::thread t1([this, &streamAssetStorage, &assetStorage](){
+            connection->openStream(streamAssetStorage, XLINK_USB_BUFFER_MAX_SIZE);
+            int64_t offset = 0;
+            do{
+                int64_t toTransfer = std::min( (int64_t) XLINK_USB_BUFFER_MAX_SIZE, (int64_t) assetStorage.size() - offset);
+                connection->writeToStream(streamAssetStorage, assetStorage.data() + offset, toTransfer);
+                offset += toTransfer;
+            } while(offset < assetStorage.size());
+        });
+
+        // Open a channel to transfer AssetStorage
+        client->call("readFromXLink", streamAssetStorage, memHandle, assetStorage.size());
+        t1.join();
+
+
+        // After asset storage is transfers, set the asset storage
+        client->call("setAssetStorage", memHandle);
+
+    }
+
+    // call test
+    //client->call("test");
+
+
+    // Build and start the pipeline
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) = client->call("buildPipeline").as<std::tuple<bool, std::string>>();
+    if(success){
+        client->call("startPipeline");
+        return true;
+    } else {
+        throw std::runtime_error(errorMsg);  
+        return false;
+    }
+
+    client->call("startCamera");
+
+}
+
+
 
 
 

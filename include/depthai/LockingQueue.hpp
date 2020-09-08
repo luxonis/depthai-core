@@ -3,6 +3,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <functional>
+#include <limits>
 
 template<typename T>
 class LockingQueue
@@ -119,7 +120,7 @@ public:
 
 
 private:
-    int maxsize = 0;
+    unsigned maxsize = std::numeric_limits<unsigned>::max();
     std::queue<T> queue;
     mutable std::mutex guard;
     std::condition_variable signal;

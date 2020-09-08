@@ -42,6 +42,12 @@ public:
     std::shared_ptr<T> get(){
         std::shared_ptr<RawBuffer> val;
         queue.waitAndPop(val);
+        return std::dynamic_pointer_cast<T>(val);
+    }
+
+    std::shared_ptr<RawBuffer> get(){
+        std::shared_ptr<RawBuffer> val;
+        queue.waitAndPop(val);
         return val;
     }
 

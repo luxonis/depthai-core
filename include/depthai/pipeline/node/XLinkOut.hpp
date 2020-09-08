@@ -37,7 +37,9 @@ namespace dai
             }
         
         public:
-            XLinkOut(const std::shared_ptr<PipelineImpl>& par) : Node(par) {}
+            XLinkOut(const std::shared_ptr<PipelineImpl>& par) : Node(par) {
+                properties.maxFpsLimit = -1;
+            }
 
             Input in{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::RawBuffer, true}} };
 

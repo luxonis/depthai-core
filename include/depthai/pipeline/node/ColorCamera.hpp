@@ -38,7 +38,14 @@ namespace dai
             }
 
         public:
-            ColorCamera(const std::shared_ptr<PipelineImpl>& par) : Node(par) {}
+            ColorCamera(const std::shared_ptr<PipelineImpl>& par) : Node(par) {
+                properties.camId = 0;
+                properties.colorOrder = gen::ColorOrderInsidePixel::BGR;
+                properties.interleaved = true;
+                properties.previewHeight = 300;
+                properties.previewWidth = 300;
+                properties.resolution = gen::CameraSensorResolution::THE_1080_P;
+            }
 
 //            Output(Node& par, std::string n, Type t, std::vector< DatatypeHierarchy > types) : parent(par), type(t), name(n), possibleDatatypes(types) {}
 
