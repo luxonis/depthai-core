@@ -36,6 +36,12 @@ public:
     );
     std::vector<std::string> get_available_streams();
 
+    std::vector<std::vector<float>> get_left_intrinsic();
+    std::vector<std::vector<float>> get_left_homography();
+    std::vector<std::vector<float>> get_right_intrinsic();
+    std::vector<std::vector<float>> get_right_homography();
+    std::vector<std::vector<float>> get_rotation();
+    std::vector<float> get_Translation();
 
     void request_jpeg();
     void request_af_trigger();
@@ -78,6 +84,13 @@ private:
 
     std::shared_ptr<CNNHostPipeline> gl_result = nullptr;
 
+    std::vector<std::vector<float>> H1_l;
+    std::vector<std::vector<float>> M1_l;
+    std::vector<std::vector<float>> H2_r;
+    std::vector<std::vector<float>> M2_r;
+    std::vector<std::vector<float>> R;
+    std::vector<float> T;
+    uint32_t version;
 
     std::string config_backup;
     std::string cmd_backup;

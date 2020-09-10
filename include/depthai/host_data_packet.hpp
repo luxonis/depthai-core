@@ -37,7 +37,10 @@ struct HostDataPacket
         // Check if metadata is valid
         if(metadata.isValid()){
             // copy only frame data
-            frameSize = metadata.frameSize;
+            if (stream_name_ == "disparity_color") // FIXME see if applicable to all streams
+                frameSize -= sizeof(FrameMetadata);
+            else
+                frameSize = metadata.frameSize;
             //printf("Stream: %s (size: %d, frameSize: %d), metadata packet valid: w:%d, h:%d, t:%d, %6.3f\n", stream_name_.c_str(),size, frameSize, metadata.spec.width,metadata.spec.height, metadata.spec.type, metadata.getTimestamp());
             // set opt_metadata
             opt_metadata = metadata;

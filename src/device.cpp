@@ -282,7 +282,7 @@ bool Device::init_device(
             */
         }
 
-        uint32_t version = g_config_d2h.at("eeprom").at("version").get<int>();
+        version = g_config_d2h.at("eeprom").at("version").get<int>();
         printf("EEPROM data:");
         if (version == -1) {
             printf(" invalid / unprogrammed\n");
@@ -304,7 +304,7 @@ bool Device::init_device(
             float left_to_right_distance_m = g_config_d2h.at("eeprom").at("left_to_right_distance_m").get<float>();
             float left_to_rgb_distance_m = g_config_d2h.at("eeprom").at("left_to_rgb_distance_m").get<float>();
             bool swap_left_and_right_cameras = g_config_d2h.at("eeprom").at("swap_left_and_right_cameras").get<bool>();
-            std::vector<float> calib = g_config_d2h.at("eeprom").at("calib").get<std::vector<float>>();
+            std::vector<float> calib;
             printf("  Board name     : %s\n", board_name.empty() ? "<NOT-SET>" : board_name.c_str());
             printf("  Board rev      : %s\n", board_rev.empty()  ? "<NOT-SET>" : board_rev.c_str());
             printf("  HFOV L/R       : %g deg\n", left_fov_deg);
@@ -313,10 +313,84 @@ bool Device::init_device(
             printf("  L-RGB distance : %g cm\n", 100 * left_to_rgb_distance_m);
             printf("  L/R swapped    : %s\n", swap_left_and_right_cameras ? "yes" : "no");
             printf("  L/R crop region: %s\n", stereo_center_crop ? "center" : "top");
-            printf("  Calibration homography:\n");
-            for (int i = 0; i < 9; i++) {
-                printf(" %11.6f,", calib.at(i));
-                if (i % 3 == 2) printf("\n");
+            
+            if (version < 4) {
+                printf("  Calibration homography right to left (legacy, please consider recalibrating):\n");
+                calib = g_config_d2h.at("eeprom").at("calib_old_H").get<std::vector<float>>();
+                for (int i = 0; i < 9; i++) {
+                    printf(" %11.6f,", calib.at(i));
+                    if (i % 3 == 2)
+                        printf("\n");
+                }
+            } else {
+                printf("  Calibration homography H1 (left):\n");
+                calib = g_config_d2h.at("eeprom").at("calib_H1_L").get<std::vector<float>>();
+                std::vector<float> temp;
+                for (int i = 0; i < 9; i++) {
+                    printf(" %11.6f,", calib.at(i));
+                    temp.push_back(calib.at(i));
+                    if (i % 3 == 2) {
+                        printf("\n");
+                        H1_l.push_back(temp);
+                        temp.clear();
+                    }
+                }
+                for (int i = 0; i < 9; ++i) {
+                }
+                printf("  Calibration homography H2 (right):\n");
+                calib = g_config_d2h.at("eeprom").at("calib_H2_R").get<std::vector<float>>();
+                for (int i = 0; i < 9; i++) {
+                    printf(" %11.6f,", calib.at(i));
+                    temp.push_back(calib.at(i));
+                    if (i % 3 == 2) {
+                        printf("\n");
+                        H2_r.push_back(temp);
+                        temp.clear();
+                    }
+                }
+
+                printf("  Calibration intrinsic matrix M1 (left):\n");
+                calib = g_config_d2h.at("eeprom").at("calib_M1_L").get<std::vector<float>>();
+                for (int i = 0; i < 9; i++) {
+                    printf(" %11.6f,", calib.at(i));
+                    temp.push_back(calib.at(i));
+                    if (i % 3 == 2) {
+                        printf("\n");
+                        M1_l.push_back(temp);
+                        temp.clear();
+                    }
+                }
+
+                printf("  Calibration intrinsic matrix M2 (right):\n");
+                calib = g_config_d2h.at("eeprom").at("calib_M2_R").get<std::vector<float>>();
+                for (int i = 0; i < 9; i++) {
+                    printf(" %11.6f,", calib.at(i));
+                    temp.push_back(calib.at(i));
+                    if (i % 3 == 2) {
+                        printf("\n");
+                        M2_r.push_back(temp);
+                        temp.clear();
+                    }
+                }
+
+                printf("  Calibration rotation matrix R:\n");
+                calib = g_config_d2h.at("eeprom").at("calib_R").get<std::vector<float>>();
+                for (int i = 0; i < 9; i++) {
+                    printf(" %11.6f,", calib.at(i));
+                    temp.push_back(calib.at(i));
+                    if (i % 3 == 2) {
+                        printf("\n");
+                        R.push_back(temp);
+                        temp.clear();
+                    }
+                }
+
+                printf("  Calibration translation matrix T:\n");
+                calib = g_config_d2h.at("eeprom").at("calib_T").get<std::vector<float>>();
+                for (int i = 0; i < 3; i++) {
+                    printf(" %11.6f,\n", calib.at(i));
+                }
+                T = calib;
             }
         }
 
@@ -351,6 +425,61 @@ std::vector<std::string> Device::get_available_streams()
     }
 
     return result;
+}
+
+
+std::vector<std::vector<float>> Device::get_left_intrinsic()
+{
+    if (version < 4) {
+        std::cerr << "legacy, get_left_intrinsic() is not available in version " << version << "\n recalibrate and load the new calibration to the device. \n";
+        abort();
+    }
+    return M1_l;
+}
+
+std::vector<std::vector<float>> Device::get_left_homography()
+{
+    if (version < 4) {
+        std::cerr << "legacy, get_left_homography() is not available in version " << version << "\n recalibrate and load the new calibration to the device. \n";
+        abort();
+    }
+    return H1_l;
+}
+
+std::vector<std::vector<float>> Device::get_right_intrinsic()
+{
+    if (version < 4) {
+        std::cerr << "legacy, get_right_intrinsic() is not available in version " << version << "\n recalibrate and load the new calibration to the device. \n";
+        abort();
+    }
+    return M2_r;
+}
+
+std::vector<std::vector<float>> Device::get_right_homography()
+{
+    if (version < 4) {
+        std::cerr << "legacy, get_right_homography() is not available in version " << version << "\n recalibrate and load the new calibration to the device. \n";
+        abort();
+    }
+    return H2_r;
+}
+
+std::vector<std::vector<float>> Device::get_rotation()
+{
+    if (version < 4) {
+        std::cerr << "legacy, get_rotation() is not available in version " << version << "\n recalibrate and load the new calibration to the device. \n";
+        abort();
+    }
+    return R;
+}
+
+std::vector<float> Device::get_Translation()
+{
+    if (version < 4) {
+        std::cerr << "legacy, get_Translation() is not available in version " << version << "\n recalibrate and load the new calibration to the device. \n";
+        abort();
+    }
+    return T;
 }
 
 
@@ -417,12 +546,8 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
 
         // pipeline configurations json
         // homography
-        std::vector<float> homography_buff = {
-            // default for BW0250TG:
-             9.8806816e-01,  2.9474013e-03,  5.0676174e+00,
-            -8.7650679e-03,  9.9214733e-01, -8.7952757e+00,
-            -8.4495878e-06, -3.6034894e-06,  1.0000000e+00
-        };
+        const int homography_count = 9 * 5 + 3; /*H1,H2,M1,M2,R,T*/
+        std::vector<float> homography_buff(homography_count);
         bool stereo_center_crop = false;
 
         if (config.depth.calibration_file.empty())
@@ -438,17 +563,72 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
                 break;
             }
 
-            const int homography_size = sizeof(float) * 9;
+            const int homography_size = sizeof(float) * homography_count;
             int sz = calibration_reader.getSize();
-            assert(sz >= homography_size);
-            calibration_reader.readData(reinterpret_cast<unsigned char*>(homography_buff.data()), homography_size);
-            int flags_size = sz - homography_size;
-            if (flags_size > 0)
-            {
-                assert(flags_size == 1);
-                calibration_reader.readData(reinterpret_cast<unsigned char*>(&stereo_center_crop), 1);
+            if (sz < homography_size) {
+                std::cerr << WARNING "Calibration file size " << sz << ENDC " < smaller than expected, data ignored. May need to recalibrate\n";
+            } else {
+                calibration_reader.readData(reinterpret_cast<unsigned char*>(homography_buff.data()), homography_size);
+                int flags_size = sz - homography_size;
+                if (flags_size > 0) {
+                    assert(flags_size == 1);
+                    calibration_reader.readData(reinterpret_cast<unsigned char*>(&stereo_center_crop), 1);
+                }
             }
         }
+
+        //load mesh file
+        /** rows = 720/16 = 45 + 1 = 46
+         *  cols = 1280/16 = (80 + 1) * 2(y,x) = 162
+         **/
+
+        const int mesh_size = 46 * 162;
+        std::vector<float> left_mesh_buff(mesh_size, 0);
+        std::vector<float> right_mesh_buff(mesh_size, 0);
+
+        if (config.depth.warp.use_mesh) {
+            std::cout << "left Mesh file: " << config.depth.left_mesh_file << std::endl;
+            std::cout << "right Mesh file: " << config.depth.right_mesh_file << std::endl;
+
+            if (config.depth.left_mesh_file.empty() && config.depth.right_mesh_file.empty()) {
+                std::cout << "depthai: mesh file is not specified, will use Homography;\n";
+            } else if (config.depth.left_mesh_file.empty()) {
+                std::cout << "depthai: Only right camera mesh file is specified, Left camera mesh file not specified;\n";
+            } else if (config.depth.right_mesh_file.empty()) {
+                std::cout << "depthai: Only left camera mesh file is specified, Right camera mesh file not specified;\n";
+            } else {
+
+                HostDataReader mesh_reader;
+                const int expectec_mesh_size = sizeof(float) * mesh_size;
+
+                // Reading left mesh into the vector
+                if (!mesh_reader.init(config.depth.left_mesh_file)) {
+                    std::cerr << WARNING "depthai: Error opening left camera mesh file: " ENDC << config.depth.left_mesh_file << std::endl;
+                    //break;
+                } else {
+                    int file_sz = mesh_reader.getSize();
+                    assert(file_sz == expectec_mesh_size);
+                    mesh_reader.readData(reinterpret_cast<unsigned char*>(left_mesh_buff.data()), expectec_mesh_size);
+                    mesh_reader.closeFile();
+                    std::cout << "left mesh loaded with size :" << left_mesh_buff.size() << "  File size: " << file_sz << " expectec_mesh_size ->" << expectec_mesh_size << std::endl;
+                }
+
+                // Reading right mesh into the vector
+                if (!mesh_reader.init(config.depth.right_mesh_file)) {
+                    std::cerr << WARNING "depthai: Error opening right camera mesh file: " ENDC << config.depth.right_mesh_file << std::endl;
+                    //break;
+                } else {
+                    int file_sz = mesh_reader.getSize();
+                    assert(file_sz == expectec_mesh_size);
+                    mesh_reader.readData(reinterpret_cast<unsigned char*>(right_mesh_buff.data()), expectec_mesh_size);
+                    mesh_reader.closeFile();
+                }
+            }
+        } else {
+            left_mesh_buff.resize(1);
+            right_mesh_buff.resize(1);
+        }
+
 
         bool rgb_connected = g_config_d2h.at("_cams").at("rgb").get<bool>();
         bool left_connected = g_config_d2h.at("_cams").at("left").get<bool>();
@@ -499,13 +679,21 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
         json_config_obj["board"]["stereo_center_crop"] = config.board_config.stereo_center_crop || stereo_center_crop;
         json_config_obj["board"]["name"] = config.board_config.name;
         json_config_obj["board"]["revision"] = config.board_config.revision;
-        json_config_obj["_board"] =
-        {
-            {"_homography_right_to_left", homography_buff}
+        json_config_obj["_board"] = {
+            { "calib_data", homography_buff },
+            { "mesh_left", left_mesh_buff },
+            { "mesh_right", right_mesh_buff }
         };
         json_config_obj["depth"]["padding_factor"] = config.depth.padding_factor;
         json_config_obj["depth"]["depth_limit_mm"] = (int)(config.depth.depth_limit_m * 1000);
         json_config_obj["depth"]["confidence_threshold"] = config.depth.confidence_threshold;
+        json_config_obj["depth"]["median_kernel_size"] = config.depth.median_kernel_size;
+        json_config_obj["depth"]["lr_check"] = config.depth.lr_check;
+        json_config_obj["depth"]["warp_rectify"] = {
+            { "use_mesh", config.depth.warp.use_mesh },
+            { "mirror_frame", config.depth.warp.mirror_frame },
+            { "edge_fill_color", config.depth.warp.edge_fill_color },
+        };
 
         json_config_obj["_load_inBlob"] = true;
         json_config_obj["_pipeline"] =
@@ -596,6 +784,10 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
         std::string pipeline_config_str_packed = json_config_obj.dump();
         std::cout << "config_h2d json:\n" << pipeline_config_str_packed << "\n";
         // resize, as xlink expects exact;y the same size for input:
+        std::cout << "size of input string json_config_obj to config_h2d is ->" << pipeline_config_str_packed.size() << std::endl;
+
+        std::cout << "size of json_config_obj that is expected to be sent to config_h2d is ->" << g_streams_pc_to_myriad.at("config_h2d").size << std::endl;
+
         assert(pipeline_config_str_packed.size() < g_streams_pc_to_myriad.at("config_h2d").size);
         pipeline_config_str_packed.resize(g_streams_pc_to_myriad.at("config_h2d").size, 0);
 

@@ -73,6 +73,14 @@ bool HostPipelineConfig::initWithJSON(const nlohmann::json &json_obj)
             {
                 depth.calibration_file = depth_obj.at("calibration_file").get<std::string>();
             }
+            //mesh file for rectification in left camera
+            if(depth_obj.contains("left_mesh_file")){
+                depth.left_mesh_file = depth_obj.at("left_mesh_file").get<std::string>();
+            }
+            //mesh file for rectification in right camera
+            if(depth_obj.contains("right_mesh_file")){
+                depth.right_mesh_file = depth_obj.at("right_mesh_file").get<std::string>();
+            }
 
             // "type"
             if (depth_obj.contains("type"))
@@ -106,6 +114,37 @@ bool HostPipelineConfig::initWithJSON(const nlohmann::json &json_obj)
                     std::cerr << WARNING "confidence_threshold should be in the range [0 .. 1]\n" ENDC;
                     break;
                 }
+            }
+
+            if (depth_obj.contains("median_kernel_size"))
+            {
+                depth.median_kernel_size = depth_obj.at("median_kernel_size").get<uint8_t>();
+                uint8_t opts[] = {0, 3, 5, 7};
+
+                if (std::find(std::begin(opts), std::end(opts), depth.median_kernel_size) == std::end(opts))
+                {
+                    std::cerr << WARNING "median_kernel_size valid options: 0 (disabled), 3, 5, 7\n" ENDC;
+                    break;
+                }
+            }
+
+            if (depth_obj.contains("lr_check"))
+            {
+                depth.lr_check = depth_obj.at("lr_check").get<bool>();
+            }
+
+            if (depth_obj.contains("warp_rectify"))
+            {
+                auto& warp_obj = depth_obj.at("warp_rectify");
+
+                if (warp_obj.contains("use_mesh"))
+                    depth.warp.use_mesh = warp_obj.at("use_mesh").get<bool>();
+
+                if (warp_obj.contains("mirror_frame"))
+                    depth.warp.mirror_frame = warp_obj.at("mirror_frame").get<bool>();
+
+                if (warp_obj.contains("edge_fill_color"))
+                    depth.warp.edge_fill_color = warp_obj.at("edge_fill_color").get<int16_t>();
             }
         }
 
