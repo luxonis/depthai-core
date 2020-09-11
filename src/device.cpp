@@ -313,19 +313,23 @@ bool Device::init_device(
             printf("  L-RGB distance : %g cm\n", 100 * left_to_rgb_distance_m);
             printf("  L/R swapped    : %s\n", swap_left_and_right_cameras ? "yes" : "no");
             printf("  L/R crop region: %s\n", stereo_center_crop ? "center" : "top");
-            
+
+            std::vector<float> temp;
             if (version < 4) {
                 printf("  Calibration homography right to left (legacy, please consider recalibrating):\n");
                 calib = g_config_d2h.at("eeprom").at("calib_old_H").get<std::vector<float>>();
                 for (int i = 0; i < 9; i++) {
                     printf(" %11.6f,", calib.at(i));
-                    if (i % 3 == 2)
+                    temp.push_back(calib.at(i));
+                    if (i % 3 == 2) {
                         printf("\n");
+                        H2_r.push_back(temp);
+                        temp.clear();
+                    }
                 }
             } else {
                 printf("  Calibration homography H1 (left):\n");
                 calib = g_config_d2h.at("eeprom").at("calib_H1_L").get<std::vector<float>>();
-                std::vector<float> temp;
                 for (int i = 0; i < 9; i++) {
                     printf(" %11.6f,", calib.at(i));
                     temp.push_back(calib.at(i));
@@ -457,10 +461,6 @@ std::vector<std::vector<float>> Device::get_right_intrinsic()
 
 std::vector<std::vector<float>> Device::get_right_homography()
 {
-    if (version < 4) {
-        std::cerr << "legacy, get_right_homography() is not available in version " << version << "\n recalibrate and load the new calibration to the device. \n";
-        abort();
-    }
     return H2_r;
 }
 
@@ -473,7 +473,7 @@ std::vector<std::vector<float>> Device::get_rotation()
     return R;
 }
 
-std::vector<float> Device::get_Translation()
+std::vector<float> Device::get_translation()
 {
     if (version < 4) {
         std::cerr << "legacy, get_Translation() is not available in version " << version << "\n recalibrate and load the new calibration to the device. \n";

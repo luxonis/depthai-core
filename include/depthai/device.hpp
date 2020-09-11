@@ -41,7 +41,7 @@ public:
     std::vector<std::vector<float>> get_right_intrinsic();
     std::vector<std::vector<float>> get_right_homography();
     std::vector<std::vector<float>> get_rotation();
-    std::vector<float> get_Translation();
+    std::vector<float> get_translation();
 
     void request_jpeg();
     void request_af_trigger();
