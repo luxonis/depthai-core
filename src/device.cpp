@@ -315,7 +315,7 @@ bool Device::init_device(
             printf("  L/R crop region: %s\n", stereo_center_crop ? "center" : "top");
 
             std::vector<float> temp;
-            if (version < 4) {
+            if (version <= 3) {
                 printf("  Calibration homography right to left (legacy, please consider recalibrating):\n");
                 calib = g_config_d2h.at("eeprom").at("calib_old_H").get<std::vector<float>>();
                 for (int i = 0; i < 9; i++) {
@@ -327,7 +327,7 @@ bool Device::init_device(
                         temp.clear();
                     }
                 }
-            } else {
+            } else if (version == 4) {
                 printf("  Calibration homography H1 (left):\n");
                 calib = g_config_d2h.at("eeprom").at("calib_H1_L").get<std::vector<float>>();
                 for (int i = 0; i < 9; i++) {
@@ -396,8 +396,92 @@ bool Device::init_device(
                 }
                 T = calib;
             }
-        }
+            else{
+                printf("  Rectification Rotation R1 (left):\n");
+                calib = g_config_d2h.at("eeprom").at("calib_H1_L").get<std::vector<float>>();
+                for (int i = 0; i < 9; i++) {
+                    printf(" %11.6f,", calib.at(i));
+                    temp.push_back(calib.at(i));
+                    if (i % 3 == 2) {
+                        printf("\n");
+                        R1_l.push_back(temp);
+                        temp.clear();
+                    }
+                }
+                for (int i = 0; i < 9; ++i) {
+                }
+                printf("  Rectification Rotation R2 (right):\n");
+                calib = g_config_d2h.at("eeprom").at("calib_H2_R").get<std::vector<float>>();
+                for (int i = 0; i < 9; i++) {
+                    printf(" %11.6f,", calib.at(i));
+                    temp.push_back(calib.at(i));
+                    if (i % 3 == 2) {
+                        printf("\n");
+                        R2_l.push_back(temp);
+                        temp.clear();
+                    }
+                }
 
+                printf("  Calibration intrinsic matrix M1 (left):\n");
+                calib = g_config_d2h.at("eeprom").at("calib_M1_L").get<std::vector<float>>();
+                for (int i = 0; i < 9; i++) {
+                    printf(" %11.6f,", calib.at(i));
+                    temp.push_back(calib.at(i));
+                    if (i % 3 == 2) {
+                        printf("\n");
+                        M1_l.push_back(temp);
+                        temp.clear();
+                    }
+                }
+
+                printf("  Calibration intrinsic matrix M2 (right):\n");
+                calib = g_config_d2h.at("eeprom").at("calib_M2_R").get<std::vector<float>>();
+                for (int i = 0; i < 9; i++) {
+                    printf(" %11.6f,", calib.at(i));
+                    temp.push_back(calib.at(i));
+                    if (i % 3 == 2) {
+                        printf("\n");
+                        M2_r.push_back(temp);
+                        temp.clear();
+                    }
+                }
+
+                printf("  Calibration rotation matrix R:\n");
+                calib = g_config_d2h.at("eeprom").at("calib_R").get<std::vector<float>>();
+                for (int i = 0; i < 9; i++) {
+                    printf(" %11.6f,", calib.at(i));
+                    temp.push_back(calib.at(i));
+                    if (i % 3 == 2) {
+                        printf("\n");
+                        R.push_back(temp);
+                        temp.clear();
+                    }
+                }
+
+                printf("  Calibration translation matrix T:\n");
+                calib = g_config_d2h.at("eeprom").at("calib_T").get<std::vector<float>>();
+                for (int i = 0; i < 3; i++) {
+                    printf(" %11.6f,\n", calib.at(i));
+                }
+                T = calib;
+
+                printf("  Calibration Distortion Coeff d1 (Left):\n");
+                calib = g_config_d2h.at("eeprom").at("calib_d1_L").get<std::vector<float>>();
+                for (int i = 0; i < 12; i++) {
+                    printf(" %11.6f,", calib.at(i));
+                }
+                d1_l = calib 
+                
+                printf("  Calibration Distortion Coeff d2 (Right):\n");
+                calib = g_config_d2h.at("eeprom").at("calib_d2_R").get<std::vector<float>>();
+                for (int i = 0; i < 12; i++) {
+                    printf(" %11.6f,", calib.at(i));
+                }
+                d2_r = calib 
+                
+
+            }
+        }
 
         result = true;
     } while (false);
@@ -546,8 +630,8 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
 
         // pipeline configurations json
         // homography
-        const int homography_count = 9 * 5 + 3; /*H1,H2,M1,M2,R,T*/
-        std::vector<float> homography_buff(homography_count);
+        const int homography_count = 9 * 7 + 3 * 2 + 12 * 3; /*R1,R2,M1,M2,R,T,M3,R_rgb,T_rgb,d1,d2,d3*/
+        std::vector<float> calibration_buff(homography_count);
         bool stereo_center_crop = false;
 
         if (config.depth.calibration_file.empty())
@@ -568,7 +652,7 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
             if (sz < homography_size) {
                 std::cerr << WARNING "Calibration file size " << sz << ENDC " < smaller than expected, data ignored. May need to recalibrate\n";
             } else {
-                calibration_reader.readData(reinterpret_cast<unsigned char*>(homography_buff.data()), homography_size);
+                calibration_reader.readData(reinterpret_cast<unsigned char*>(calibration_buff.data()), homography_size);
                 int flags_size = sz - homography_size;
                 if (flags_size > 0) {
                     assert(flags_size == 1);
@@ -680,7 +764,7 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
         json_config_obj["board"]["name"] = config.board_config.name;
         json_config_obj["board"]["revision"] = config.board_config.revision;
         json_config_obj["_board"] = {
-            { "calib_data", homography_buff },
+            { "calib_data", calibration_buff },
             { "mesh_left", left_mesh_buff },
             { "mesh_right", right_mesh_buff }
         };

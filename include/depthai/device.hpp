@@ -83,13 +83,16 @@ private:
 
 
     std::shared_ptr<CNNHostPipeline> gl_result = nullptr;
-
+    std::vector<std::vector<float>> R1_l;
+    std::vector<std::vector<float>> R2_r;
     std::vector<std::vector<float>> H1_l;
-    std::vector<std::vector<float>> M1_l;
     std::vector<std::vector<float>> H2_r;
+    std::vector<std::vector<float>> M1_l;
     std::vector<std::vector<float>> M2_r;
     std::vector<std::vector<float>> R;
     std::vector<float> T;
+    std::vector<float> d1_l;
+    std::vector<float> d2_r;
     uint32_t version;
 
     std::string config_backup;
