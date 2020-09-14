@@ -467,18 +467,22 @@ bool Device::init_device(
 
                 printf("  Calibration Distortion Coeff d1 (Left):\n");
                 calib = g_config_d2h.at("eeprom").at("calib_d1_L").get<std::vector<float>>();
-                for (int i = 0; i < 12; i++) {
+                for (int i = 0; i < 14; i++) {
                     printf(" %11.6f,", calib.at(i));
+                    if (i % 7 == 6)
+                        printf("\n");
                 }
-                d1_l = calib; 
-                
+                d1_l = calib;
+
                 printf("  Calibration Distortion Coeff d2 (Right):\n");
                 calib = g_config_d2h.at("eeprom").at("calib_d2_R").get<std::vector<float>>();
-                for (int i = 0; i < 12; i++) {
+                for (int i = 0; i < 14; i++) {
                     printf(" %11.6f,", calib.at(i));
+                    if (i % 7 == 6)
+                        printf("\n");
                 }
-                d2_r = calib; 
-                
+                d2_r = calib;
+
 
             }
         }
@@ -643,7 +647,7 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
 
         // pipeline configurations json
         // homography
-        const int homography_count = 9 * 7 + 3 * 2 + 12 * 3; /*R1,R2,M1,M2,R,T,M3,R_rgb,T_rgb,d1,d2,d3*/
+        const int homography_count = 9 * 7 + 3 * 2 + 14 * 3; /*R1,R2,M1,M2,R,T,M3,R_rgb,T_rgb,d1,d2,d3*/
         std::vector<float> calibration_buff(homography_count);
         bool stereo_center_crop = false;
 
