@@ -66,6 +66,12 @@ private:
 
     std::vector<std::vector<float>> inv(std::vector<std::vector<float>> mat);
 
+    void LU_decomp(
+                std::vector<std::vector<float>>& input_matrix, 
+                std::vector<std::vector<float>>& l_matrix, 
+                std::vector<std::vector<float>>& u_matrix);
+
+
     bool init_device(
         const std::string &device_cmd_file,
         const std::string &usb_device,

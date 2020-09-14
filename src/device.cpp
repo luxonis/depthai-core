@@ -1165,7 +1165,8 @@ std::vector<std::vector<float>> Device::multiply_matrices(std::vector<std::vecto
     return res;
 }
 
-std::vector<std::vector<float>> Device::inv(std::vector<std::vector<float>> mat){
+std::vector<std::vector<float>> Device::inv(std::vector<std::vector<float>> mat)
+{
     
     float determinant = 0;
     
@@ -1174,13 +1175,51 @@ std::vector<std::vector<float>> Device::inv(std::vector<std::vector<float>> mat)
 
     for(int i = 0; i < 3; i++){
 		for(int j = 0; j < 3; j++){
-			std::cout<<((mat[(j+1)%3][(i+1)%3] * mat[(j+2)%3][(i+2)%3]) - (mat[(j+1)%3][(i+2)%3] * mat[(j+2)%3][(i+1)%3]))/ determinant<<"\t";
-            mat[i][j] = ((mat[(j+1)%3][(i+1)%3] * mat[(j+2)%3][(i+2)%3]) - (mat[(j+1)%3][(i+2)%3] * mat[(j+2)%3][(i+1)%3]))/ determinant;
+			mat[i][j] = ((mat[(j+1)%3][(i+1)%3] * mat[(j+2)%3][(i+2)%3]) - (mat[(j+1)%3][(i+2)%3] * mat[(j+2)%3][(i+1)%3]))/ determinant;
         }
-		std::cout<<"\n";
 	}
 	return mat;
 }
+
+
+void Device::LU_decomp(
+                    std::vector<std::vector<float>>& input_matrix, 
+                    std::vector<std::vector<float>>& l_matrix, 
+                    std::vector<std::vector<float>>& u_matrix)
+{
+        
+    int size = input_matrix.size();
+
+    for (int i = 0; i < size; i++) { 
+        for (int j = 0; j < size; j++) { // j rows i columns
+            if (j < i){
+                l_matrix[j][i] = 0;
+            }
+            else {
+                l_matrix[j][i] = input_matrix[j][i];
+                for (int k = 0; k < i; k++) { 
+                    l_matrix[j][i] = l_matrix[j][i] - l_matrix[j][k] * u_matrix[k][i];
+                }
+            }
+        }
+        for (int j = 0; j < size; j++) { // i rows j columns
+            if (j < i){
+                u_matrix[i][j] = 0;
+            }
+            else if (j == i){
+                u_matrix[i][j] = 1;
+            }
+            else {
+                u_matrix[i][j] = input_matrix[i][j] / l_matrix[i][i];
+                for (int k = 0; k < i; k++) {
+                    u_matrix[i][j] = u_matrix[i][j] - ((l_matrix[i][k] * u_matrix[k][j]) / l_matrix[i][i]);
+                }
+            }
+        }
+    }
+    
+}
+
 
 // -40 for 
 // create_mesh(std::vector<float>& x_map_buff, std::vector<float>& y_map_buff, std::vector<float>& mesh, int32_t res){
