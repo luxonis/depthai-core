@@ -398,7 +398,7 @@ bool Device::init_device(
             }
             else{
                 printf("  Rectification Rotation R1 (left):\n");
-                calib = g_config_d2h.at("eeprom").at("calib_H1_L").get<std::vector<float>>();
+                calib = g_config_d2h.at("eeprom").at("calib_R1_L").get<std::vector<float>>();
                 for (int i = 0; i < 9; i++) {
                     printf(" %11.6f,", calib.at(i));
                     temp.push_back(calib.at(i));
@@ -411,7 +411,7 @@ bool Device::init_device(
                 for (int i = 0; i < 9; ++i) {
                 }
                 printf("  Rectification Rotation R2 (right):\n");
-                calib = g_config_d2h.at("eeprom").at("calib_H2_R").get<std::vector<float>>();
+                calib = g_config_d2h.at("eeprom").at("calib_R2_R").get<std::vector<float>>();
                 for (int i = 0; i < 9; i++) {
                     printf(" %11.6f,", calib.at(i));
                     temp.push_back(calib.at(i));
