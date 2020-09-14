@@ -417,7 +417,7 @@ bool Device::init_device(
                     temp.push_back(calib.at(i));
                     if (i % 3 == 2) {
                         printf("\n");
-                        R2_l.push_back(temp);
+                        R2_r.push_back(temp);
                         temp.clear();
                     }
                 }
@@ -470,14 +470,14 @@ bool Device::init_device(
                 for (int i = 0; i < 12; i++) {
                     printf(" %11.6f,", calib.at(i));
                 }
-                d1_l = calib 
+                d1_l = calib; 
                 
                 printf("  Calibration Distortion Coeff d2 (Right):\n");
                 calib = g_config_d2h.at("eeprom").at("calib_d2_R").get<std::vector<float>>();
                 for (int i = 0; i < 12; i++) {
                     printf(" %11.6f,", calib.at(i));
                 }
-                d2_r = calib 
+                d2_r = calib; 
                 
 
             }
@@ -531,7 +531,14 @@ std::vector<std::vector<float>> Device::get_left_homography()
         std::cerr << "legacy, get_left_homography() is not available in version " << version << "\n recalibrate and load the new calibration to the device. \n";
         abort();
     }
-    return H1_l;
+    else if(version == 4){
+        return H1_l;
+    }
+    else{
+        std::vector<std::vector<float>> left_matrix = this->multiply_matrices(M2_r, R1_l); // M2 * R1
+        return this->multiply_matrices(left_matrix, this->inv(M1_l)); // M2 * R1 * inv(M1)
+    }
+    
 }
 
 std::vector<std::vector<float>> Device::get_right_intrinsic()
@@ -545,7 +552,13 @@ std::vector<std::vector<float>> Device::get_right_intrinsic()
 
 std::vector<std::vector<float>> Device::get_right_homography()
 {
-    return H2_r;
+    if(version <= 4){
+        return H2_r;
+    }
+    else{
+        std::vector<std::vector<float>> left_matrix = this->multiply_matrices(M2_r, R2_r); // M2 * R2
+        return this->multiply_matrices(left_matrix, this->inv(M2_r)); // M2 * R2 * inv(M2)      
+    }
 }
 
 std::vector<std::vector<float>> Device::get_rotation()
@@ -650,7 +663,13 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
             const int homography_size = sizeof(float) * homography_count;
             int sz = calibration_reader.getSize();
             if (sz < homography_size) {
-                std::cerr << WARNING "Calibration file size " << sz << ENDC " < smaller than expected, data ignored. May need to recalibrate\n";
+                if(version < 5 && config.board_config.store_to_eeprom){
+                    std::cerr << WARNING "Calibration file is outdated. Recalibration required before writing to EEPROM." << std::endl << "To continue using old calibration disable('-e') write to EEPROM.";
+                    abort();
+                }
+                else{
+                    std::cerr << WARNING "Calibration file size " << sz << ENDC " < smaller than expected, data ignored. May need to recalibrate\n";
+                }
             } else {
                 calibration_reader.readData(reinterpret_cast<unsigned char*>(calibration_buff.data()), homography_size);
                 int flags_size = sz - homography_size;
@@ -666,13 +685,20 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
          *  cols = 1280/16 = (80 + 1) * 2(y,x) = 162
          **/
 
-        const int mesh_size = 46 * 162;
-        std::vector<float> left_mesh_buff(mesh_size, 0);
-        std::vector<float> right_mesh_buff(mesh_size, 0);
 
+        std::vector<float> left_mesh_buff(1,0);
+        std::vector<float> right_mesh_buff(1,0);
+        config.depth.warp.use_mesh = false;
         if (config.depth.warp.use_mesh) {
-            std::cout << "left Mesh file: " << config.depth.left_mesh_file << std::endl;
-            std::cout << "right Mesh file: " << config.depth.right_mesh_file << std::endl;
+
+            const int map_size = 1280 * 800;
+            std::vector<float> left_x_map_buff(map_size, 0);
+            std::vector<float> right_x_map_buff(map_size, 0);
+            std::vector<float> left_y_map_buff(map_size, 0);
+            std::vector<float> right_y_map_buff(map_size, 0);
+
+            std::cout << "left map file: " << config.depth.left_mesh_file << std::endl;
+            std::cout << "right map file: " << config.depth.right_mesh_file << std::endl;
 
             if (config.depth.left_mesh_file.empty() && config.depth.right_mesh_file.empty()) {
                 std::cout << "depthai: mesh file is not specified, will use Homography;\n";
@@ -683,7 +709,7 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
             } else {
 
                 HostDataReader mesh_reader;
-                const int expectec_mesh_size = sizeof(float) * mesh_size;
+                const int expectec_mesh_size = sizeof(float) * map_size * 2;
 
                 // Reading left mesh into the vector
                 if (!mesh_reader.init(config.depth.left_mesh_file)) {
@@ -692,9 +718,12 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
                 } else {
                     int file_sz = mesh_reader.getSize();
                     assert(file_sz == expectec_mesh_size);
-                    mesh_reader.readData(reinterpret_cast<unsigned char*>(left_mesh_buff.data()), expectec_mesh_size);
+                    mesh_reader.readData(reinterpret_cast<unsigned char*>(left_x_map_buff.data()), expectec_mesh_size);
+                    mesh_reader.readData(reinterpret_cast<unsigned char*>(left_y_map_buff.data()), expectec_mesh_size);
                     mesh_reader.closeFile();
-                    std::cout << "left mesh loaded with size :" << left_mesh_buff.size() << "  File size: " << file_sz << " expectec_mesh_size ->" << expectec_mesh_size << std::endl;
+                    int32_t res = config.mono_cam_config.resolution_h;
+                    // create_mesh(left_x_map_buff, left_y_map_buff, left_mesh_buff, res);
+                    // std::cout << "left mesh loaded with size :" << left_map_buff.size() << "  File size: " << file_sz << " expectec_mesh_size ->" << expectec_mesh_size << std::endl;
                 }
 
                 // Reading right mesh into the vector
@@ -704,14 +733,18 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
                 } else {
                     int file_sz = mesh_reader.getSize();
                     assert(file_sz == expectec_mesh_size);
-                    mesh_reader.readData(reinterpret_cast<unsigned char*>(right_mesh_buff.data()), expectec_mesh_size);
+                    mesh_reader.readData(reinterpret_cast<unsigned char*>(right_x_map_buff.data()), expectec_mesh_size);
+                    mesh_reader.readData(reinterpret_cast<unsigned char*>(right_y_map_buff.data()), expectec_mesh_size);
                     mesh_reader.closeFile();
+
+
                 }
             }
-        } else {
-            left_mesh_buff.resize(1);
-            right_mesh_buff.resize(1);
-        }
+        } 
+        // else {
+        //     left_mesh_buff.resize(1);
+        //     right_mesh_buff.resize(1);
+        //     }
 
 
         bool rgb_connected = g_config_d2h.at("_cams").at("rgb").get<bool>();
@@ -1101,6 +1134,58 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
 }
 
 
+std::vector<std::vector<float>> Device::multiply_matrices(std::vector<std::vector<float>> firstMatrix, std::vector<std::vector<float>> secondMatrix)
+{
+	// int i, j, k;
+    std::vector<std::vector<float>> res;
+
+    if(firstMatrix[0].size() != secondMatrix.size()){
+        std::cerr << "Number of column of the first matrix should match with the number of rows of the second matrix " << std::endl;
+        abort();
+    }
+        
+	// Initializing elements of matrix mult to 0.
+	for(int i = 0; i < firstMatrix.size(); ++i)
+	{   std::vector<float> col_vec(secondMatrix[0].size(), 0);
+        res.push_back(col_vec);
+	}
+
+	// Multiplying matrix firstMatrix and secondMatrix and storing in array mult.
+	for(int i = 0; i < firstMatrix.size(); ++i)
+	{
+		for(int j = 0; j < secondMatrix[0].size(); ++j)
+		{
+			for(int k=0; k<firstMatrix[0].size(); ++k)
+			{
+				res[i][j] += firstMatrix[i][k] * secondMatrix[k][j];
+			}
+		}
+	}
+
+    return res;
+}
+
+std::vector<std::vector<float>> Device::inv(std::vector<std::vector<float>> mat){
+    
+    float determinant = 0;
+    
+    for(int i = 0; i < 3; i++)
+		determinant = determinant + (mat[0][i] * (mat[1][(i+1)%3] * mat[2][(i+2)%3] - mat[1][(i+2)%3] * mat[2][(i+1)%3]));
+
+    for(int i = 0; i < 3; i++){
+		for(int j = 0; j < 3; j++){
+			std::cout<<((mat[(j+1)%3][(i+1)%3] * mat[(j+2)%3][(i+2)%3]) - (mat[(j+1)%3][(i+2)%3] * mat[(j+2)%3][(i+1)%3]))/ determinant<<"\t";
+            mat[i][j] = ((mat[(j+1)%3][(i+1)%3] * mat[(j+2)%3][(i+2)%3]) - (mat[(j+1)%3][(i+2)%3] * mat[(j+2)%3][(i+1)%3]))/ determinant;
+        }
+		std::cout<<"\n";
+	}
+	return mat;
+}
+
+// -40 for 
+// create_mesh(std::vector<float>& x_map_buff, std::vector<float>& y_map_buff, std::vector<float>& mesh, int32_t res){
+// 
+// }
 
 void Device::request_jpeg(){
 if(g_host_capture_command != nullptr){
