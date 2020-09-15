@@ -2,7 +2,6 @@
 
 #include <vector>
 
-
 std::vector<std::vector<float>> mat_mul(std::vector<std::vector<float>>& firstMatrix, 
                                         std::vector<std::vector<float>>& secondMatrix);
 

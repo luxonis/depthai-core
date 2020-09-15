@@ -6,12 +6,10 @@
 // https://www.geeksforgeeks.org/c-program-multiply-two-matrices/
 // https://www.geeksforgeeks.org/adjoint-inverse-matrix/
 
-//using namespace std;
-// #define N MATRIX_N
 
 // This function multiplies
-// mat1[][] and mat2[][], and
-// stores the result in res[][]
+// firstMatrix and secondMatrix, and
+// stores the result in res=
 
 std::vector<std::vector<float>> mat_mul(std::vector<std::vector<float>>& firstMatrix, 
                                         std::vector<std::vector<float>>& secondMatrix)
@@ -44,8 +42,10 @@ std::vector<std::vector<float>> mat_mul(std::vector<std::vector<float>>& firstMa
     return res;
 }
 
-// Function to get cofactor of A[p][q] in temp[][]. n is current
-// dimension of A[][]
+/* 
+ * Function to get cofactor of A[p][q] in temp. n is current
+ * dimension of part of A that we are calculating cofactor for.
+ */
 static void getCofactor(std::vector<std::vector<float>>& A,
                         std::vector<std::vector<float>>&  temp, 
                         int p, 
@@ -89,7 +89,6 @@ static float determinant(std::vector<std::vector<float>>& A, int n)
     if (n == 1)
         return A[0][0];
 
-    // float temp[N][N]; 
     std::vector<std::vector<float>> temp(n, std::vector<float>(n, 0)); // To store cofactors
     int sign = 1;  // To store sign multiplier
 
@@ -107,7 +106,7 @@ static float determinant(std::vector<std::vector<float>>& A, int n)
     return D;
 }
 
-// Function to get adjoint of A[N][N] in adj[N][N].
+// Function to get adjoint of A in adj.
 static void adjoint(std::vector<std::vector<float>>& A, std::vector<std::vector<float>>& adj)
 {
     if (A.size() == 1)
@@ -116,7 +115,7 @@ static void adjoint(std::vector<std::vector<float>>& A, std::vector<std::vector<
         return;
     }
 
-    // temp is used to store cofactors of A[][]
+    // temp is used to store the final cofactors of A
     int sign = 1;
     std::vector<std::vector<float>> temp(A.size(), std::vector<float>(A.size(), 0));
 

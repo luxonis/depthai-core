@@ -708,17 +708,19 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
 
 
         if(config.mono_cam_config.resolution_h == 800){
-            std::cout << "Reducing Resolution ---> 800 " << config.mono_cam_config.resolution_h <<  std::endl;
             // create_mesh()
         }
         else if(config.mono_cam_config.resolution_h == 720){
-            std::cout << "Reducing Resolution ---> 720 " << config.mono_cam_config.resolution_h <<  std::endl;
-            M1_l[1][2] -= 40;
+            // adjusting y axis of the image center since it was cancluated for width of 800.
+            M1_l[1][2] -= 40;  
             M2_r[1][2] -= 40;
         }
         else if(config.mono_cam_config.resolution_h == 400){
-            std::cout << "Reducing Resolution ---> 400 " << config.mono_cam_config.resolution_h <<  std::endl;
-            M1_l[0][0] *= 0.5;
+            /* adjusting intrinsic matrix by multiplying everything by multiplying all the intrinisc 
+             *parameters by 0.5 except the right bottom corner which is a scale.
+             */
+
+            M1_l[0][0] *= 0.5; 
             M1_l[0][2] *= 0.5;
             M1_l[1][1] *= 0.5;
             M1_l[1][2] *= 0.5;
