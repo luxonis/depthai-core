@@ -1,5 +1,5 @@
 #include "device.hpp"
-
+#include "matrix_ops.hpp"
 // shared
 #include "depthai-shared/json_helper.hpp"
 #include "depthai-shared/depthai_constants.hpp"
@@ -284,6 +284,8 @@ bool Device::init_device(
 
         version = g_config_d2h.at("eeprom").at("version").get<int>();
         printf("EEPROM data:");
+
+    
         if (version == -1) {
             printf(" invalid / unprogrammed\n");
         } else {
@@ -313,6 +315,7 @@ bool Device::init_device(
             printf("  L-RGB distance : %g cm\n", 100 * left_to_rgb_distance_m);
             printf("  L/R swapped    : %s\n", swap_left_and_right_cameras ? "yes" : "no");
             printf("  L/R crop region: %s\n", stereo_center_crop ? "center" : "top");
+            std::cout << "H2 matrix of right came----------------> " << H2_r.size() <<  std::endl;
 
             std::vector<float> temp;
             if (version <= 3) {
@@ -327,32 +330,44 @@ bool Device::init_device(
                         temp.clear();
                     }
                 }
+                            std::cout << "H2 matrix of right came----------------> " << H2_r.size() <<  std::endl;
+
             } else if (version == 4) {
-                printf("  Calibration homography H1 (left):\n");
+
+                std::vector<std::vector<float>> temp_inv;
+                
+                printf("  Calibration inverse homography H1 (left):\n");
                 calib = g_config_d2h.at("eeprom").at("calib_H1_L").get<std::vector<float>>();
                 for (int i = 0; i < 9; i++) {
                     printf(" %11.6f,", calib.at(i));
                     temp.push_back(calib.at(i));
                     if (i % 3 == 2) {
                         printf("\n");
-                        H1_l.push_back(temp);
+                        temp_inv.push_back(temp);
                         temp.clear();
                     }
                 }
+
+                mat_inv(temp_inv, H1_l);
+                temp_inv.clear();
+
                 for (int i = 0; i < 9; ++i) {
                 }
-                printf("  Calibration homography H2 (right):\n");
+                printf("  Calibration inverse homography H2 (right):\n");
                 calib = g_config_d2h.at("eeprom").at("calib_H2_R").get<std::vector<float>>();
                 for (int i = 0; i < 9; i++) {
                     printf(" %11.6f,", calib.at(i));
                     temp.push_back(calib.at(i));
                     if (i % 3 == 2) {
                         printf("\n");
-                        H2_r.push_back(temp);
+                        temp_inv.push_back(temp);
                         temp.clear();
                     }
                 }
 
+                mat_inv(temp_inv, H2_r);
+                temp_inv.clear();
+                
                 printf("  Calibration intrinsic matrix M1 (left):\n");
                 calib = g_config_d2h.at("eeprom").at("calib_M1_L").get<std::vector<float>>();
                 for (int i = 0; i < 9; i++) {
@@ -395,6 +410,9 @@ bool Device::init_device(
                     printf(" %11.6f,\n", calib.at(i));
                 }
                 T = calib;
+
+            std::cout << "H2 matrix of right came----------------> " << H2_r.size() <<  std::endl;
+
             }
             else{
                 printf("  Rectification Rotation R1 (left):\n");
@@ -483,8 +501,18 @@ bool Device::init_device(
                 }
                 d2_r = calib;
 
+                std::vector<std::vector<float>> M2_r_inv;
+                std::vector<std::vector<float>> M1_l_inv;
+                std::vector<std::vector<float>> left_matrix = mat_mul(M2_r, R2_r);     
 
+                mat_inv(M2_r, M2_r_inv);
+                H2_r = mat_mul(left_matrix, M2_r_inv);
+
+                left_matrix = mat_mul(M2_r, R1_l);
+                mat_inv(M1_l, M1_l_inv);
+                H1_l = mat_mul(left_matrix, M1_l_inv);
             }
+
         }
 
         result = true;
@@ -535,12 +563,8 @@ std::vector<std::vector<float>> Device::get_left_homography()
         std::cerr << "legacy, get_left_homography() is not available in version " << version << "\n recalibrate and load the new calibration to the device. \n";
         abort();
     }
-    else if(version == 4){
+    else {
         return H1_l;
-    }
-    else{
-        std::vector<std::vector<float>> left_matrix = this->multiply_matrices(M2_r, R1_l); // M2 * R1
-        return this->multiply_matrices(left_matrix, this->inv(M1_l)); // M2 * R1 * inv(M1)
     }
     
 }
@@ -556,13 +580,8 @@ std::vector<std::vector<float>> Device::get_right_intrinsic()
 
 std::vector<std::vector<float>> Device::get_right_homography()
 {
-    if(version <= 4){
         return H2_r;
-    }
-    else{
-        std::vector<std::vector<float>> left_matrix = this->multiply_matrices(M2_r, R2_r); // M2 * R2
-        return this->multiply_matrices(left_matrix, this->inv(M2_r)); // M2 * R2 * inv(M2)      
-    }
+    
 }
 
 std::vector<std::vector<float>> Device::get_rotation()
@@ -666,6 +685,9 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
 
             const int homography_size = sizeof(float) * homography_count;
             int sz = calibration_reader.getSize();
+            std::cout << homography_size << std::endl;
+            std::cout << sz << std::endl;
+            
             if (sz < homography_size) {
                 if(version < 5 && config.board_config.store_to_eeprom){
                     std::cerr << WARNING "Calibration file is outdated. Recalibration required before writing to EEPROM." << std::endl << "To continue using old calibration disable('-e') write to EEPROM.";
@@ -684,11 +706,40 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
             }
         }
 
-        //load mesh file
-        /** rows = 720/16 = 45 + 1 = 46
-         *  cols = 1280/16 = (80 + 1) * 2(y,x) = 162
-         **/
 
+        if(config.mono_cam_config.resolution_h == 800){
+            std::cout << "Reducing Resolution ---> 800 " << config.mono_cam_config.resolution_h <<  std::endl;
+            // create_mesh()
+        }
+        else if(config.mono_cam_config.resolution_h == 720){
+            std::cout << "Reducing Resolution ---> 720 " << config.mono_cam_config.resolution_h <<  std::endl;
+            M1_l[1][2] -= 40;
+            M2_r[1][2] -= 40;
+        }
+        else if(config.mono_cam_config.resolution_h == 400){
+            std::cout << "Reducing Resolution ---> 400 " << config.mono_cam_config.resolution_h <<  std::endl;
+            M1_l[0][0] *= 0.5;
+            M1_l[0][2] *= 0.5;
+            M1_l[1][1] *= 0.5;
+            M1_l[1][2] *= 0.5;
+
+            M2_r[0][0] *= 0.5;
+            M2_r[0][2] *= 0.5;
+            M2_r[1][1] *= 0.5;
+            M2_r[1][2] *= 0.5;
+        }
+
+
+        std::vector<std::vector<float>> M2_r_inv;
+        std::vector<std::vector<float>> M1_l_inv;
+        std::vector<std::vector<float>> left_matrix = mat_mul(M2_r, R2_r);     
+
+        mat_inv(M2_r, M2_r_inv);
+        H2_r = mat_mul(left_matrix, M2_r_inv);
+
+        left_matrix = mat_mul(M2_r, R1_l);
+        mat_inv(M1_l, M1_l_inv);
+        H1_l = mat_mul(left_matrix, M1_l_inv);
 
         std::vector<float> left_mesh_buff(1,0);
         std::vector<float> right_mesh_buff(1,0);
@@ -1138,91 +1189,32 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
 }
 
 
-std::vector<std::vector<float>> Device::multiply_matrices(std::vector<std::vector<float>> firstMatrix, std::vector<std::vector<float>> secondMatrix)
-{
-	// int i, j, k;
-    std::vector<std::vector<float>> res;
+// create_mesh(std::vector<std::vector<float>>& M, std::vector<std::vector<float>>& R, std::vector<float>d, int bin_size){
+//     float fx = M[0][0], fy = M[1][1], u0 = M[0][2], v0 = M[1][2];
+//     float k1 = d[0], k2 = d[1] , p1 = d[2] , p2 = d[3] , k3 = d[4];
+//     float s4 = d[11], k4 = d[5], k5 = d[6], k6 = d[7], s1 = d[8];
+//     float s2 = d[9] , s3 = d[10], tauX = d[12] , tauY = d[13];
 
-    if(firstMatrix[0].size() != secondMatrix.size()){
-        std::cerr << "Number of column of the first matrix should match with the number of rows of the second matrix " << std::endl;
-        abort();
-    }
-        
-	// Initializing elements of matrix mult to 0.
-	for(int i = 0; i < firstMatrix.size(); ++i)
-	{   std::vector<float> col_vec(secondMatrix[0].size(), 0);
-        res.push_back(col_vec);
-	}
+//     std::vector<std::vector<float>> matTilt{{1,0,0},
+//                                             {0,1,0},
+//                                             {0,0,1}};
 
-	// Multiplying matrix firstMatrix and secondMatrix and storing in array mult.
-	for(int i = 0; i < firstMatrix.size(); ++i)
-	{
-		for(int j = 0; j < secondMatrix[0].size(); ++j)
-		{
-			for(int k=0; k<firstMatrix[0].size(); ++k)
-			{
-				res[i][j] += firstMatrix[i][k] * secondMatrix[k][j];
-			}
-		}
-	}
+//     std::vector<std::vector<float>> _x = 0, _y = 0, _w = 0, ir; // _x, _y, _w are 2D coordinates in homogeneous coordinates
+//     mat_inv(mat_mul(self.M2, R), ir); // TODO: Change it to using LU later to reduce the computation load if necessary
+//     std::cout << "Printing Res for creating mesh " << width << " Height: " << height << "  " << std::endl;
 
-    return res;
-}
-
-std::vector<std::vector<float>> Device::inv(std::vector<std::vector<float>> mat)
-{
-    
-    float determinant = 0;
-    
-    for(int i = 0; i < 3; i++)
-		determinant = determinant + (mat[0][i] * (mat[1][(i+1)%3] * mat[2][(i+2)%3] - mat[1][(i+2)%3] * mat[2][(i+1)%3]));
-
-    for(int i = 0; i < 3; i++){
-		for(int j = 0; j < 3; j++){
-			mat[i][j] = ((mat[(j+1)%3][(i+1)%3] * mat[(j+2)%3][(i+2)%3]) - (mat[(j+1)%3][(i+2)%3] * mat[(j+2)%3][(i+1)%3]))/ determinant;
-        }
-	}
-	return mat;
-}
+//     for(int i = 0; i < height; ++i){
 
 
-void Device::LU_decomp(
-                    std::vector<std::vector<float>>& input_matrix, 
-                    std::vector<std::vector<float>>& l_matrix, 
-                    std::vector<std::vector<float>>& u_matrix)
-{
-        
-    int size = input_matrix.size();
+//         for(int j = 0; j < width; ++j){
 
-    for (int i = 0; i < size; i++) { 
-        for (int j = 0; j < size; j++) { // j rows i columns
-            if (j < i){
-                l_matrix[j][i] = 0;
-            }
-            else {
-                l_matrix[j][i] = input_matrix[j][i];
-                for (int k = 0; k < i; k++) { 
-                    l_matrix[j][i] = l_matrix[j][i] - l_matrix[j][k] * u_matrix[k][i];
-                }
-            }
-        }
-        for (int j = 0; j < size; j++) { // i rows j columns
-            if (j < i){
-                u_matrix[i][j] = 0;
-            }
-            else if (j == i){
-                u_matrix[i][j] = 1;
-            }
-            else {
-                u_matrix[i][j] = input_matrix[i][j] / l_matrix[i][i];
-                for (int k = 0; k < i; k++) {
-                    u_matrix[i][j] = u_matrix[i][j] - ((l_matrix[i][k] * u_matrix[k][j]) / l_matrix[i][i]);
-                }
-            }
-        }
-    }
-    
-}
+//         }
+
+//     }
+
+
+// }
+
 
 
 // -40 for 

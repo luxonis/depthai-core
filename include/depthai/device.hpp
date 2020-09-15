@@ -60,17 +60,6 @@ private:
     int wdog_start(void);
     int wdog_stop(void);
 
-    std::vector<std::vector<float>> multiply_matrices(
-                                                    std::vector<std::vector<float>> firstMatrix, 
-                                                    std::vector<std::vector<float>> secondMatrix);
-
-    std::vector<std::vector<float>> inv(std::vector<std::vector<float>> mat);
-
-    void LU_decomp(
-                std::vector<std::vector<float>>& input_matrix, 
-                std::vector<std::vector<float>>& l_matrix, 
-                std::vector<std::vector<float>>& u_matrix);
-
 
     bool init_device(
         const std::string &device_cmd_file,

@@ -71,6 +71,7 @@ add_library(${TARGET_NAME}
     src/host_json_helper.cpp
     src/types.cpp
     src/device.cpp
+    src/matrix_ops.cpp
     src/bspatch/bspatch.c
 )
 
