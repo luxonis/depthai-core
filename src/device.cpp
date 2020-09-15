@@ -731,19 +731,19 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
                 M2_r[1][1] *= 0.5;
                 M2_r[1][2] *= 0.5;
             }
+        
+
+            std::vector<std::vector<float>> M2_r_inv;
+            std::vector<std::vector<float>> M1_l_inv;
+            std::vector<std::vector<float>> left_matrix = mat_mul(M2_r, R2_r);     
+
+            mat_inv(M2_r, M2_r_inv);
+            H2_r = mat_mul(left_matrix, M2_r_inv);
+
+            left_matrix = mat_mul(M2_r, R1_l);
+            mat_inv(M1_l, M1_l_inv);
+            H1_l = mat_mul(left_matrix, M1_l_inv);
         }
-
-        std::vector<std::vector<float>> M2_r_inv;
-        std::vector<std::vector<float>> M1_l_inv;
-        std::vector<std::vector<float>> left_matrix = mat_mul(M2_r, R2_r);     
-
-        mat_inv(M2_r, M2_r_inv);
-        H2_r = mat_mul(left_matrix, M2_r_inv);
-
-        left_matrix = mat_mul(M2_r, R1_l);
-        mat_inv(M1_l, M1_l_inv);
-        H1_l = mat_mul(left_matrix, M1_l_inv);
-
         std::vector<float> left_mesh_buff(1,0);
         std::vector<float> right_mesh_buff(1,0);
         config.depth.warp.use_mesh = false;
