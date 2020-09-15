@@ -36,6 +36,12 @@ public:
     );
     std::vector<std::string> get_available_streams();
 
+    std::vector<std::vector<float>> get_left_intrinsic();
+    std::vector<std::vector<float>> get_left_homography();
+    std::vector<std::vector<float>> get_right_intrinsic();
+    std::vector<std::vector<float>> get_right_homography();
+    std::vector<std::vector<float>> get_rotation();
+    std::vector<float> get_translation();
 
     void request_jpeg();
     void request_af_trigger();
@@ -53,6 +59,7 @@ private:
     void wdog_thread(std::chrono::milliseconds& wd_timeout);
     int wdog_start(void);
     int wdog_stop(void);
+
 
     bool init_device(
         const std::string &device_cmd_file,
@@ -77,7 +84,17 @@ private:
 
 
     std::shared_ptr<CNNHostPipeline> gl_result = nullptr;
-
+    std::vector<std::vector<float>> R1_l;
+    std::vector<std::vector<float>> R2_r;
+    std::vector<std::vector<float>> H1_l;
+    std::vector<std::vector<float>> H2_r;
+    std::vector<std::vector<float>> M1_l;
+    std::vector<std::vector<float>> M2_r;
+    std::vector<std::vector<float>> R;
+    std::vector<float> T;
+    std::vector<float> d1_l;
+    std::vector<float> d2_r;
+    uint32_t version;
 
     std::string config_backup;
     std::string cmd_backup;
