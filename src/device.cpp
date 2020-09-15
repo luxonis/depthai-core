@@ -706,31 +706,32 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
             }
         }
 
+        if(version > 4){
+            if(config.mono_cam_config.resolution_h == 800){
+                // create_mesh()
+            }
+            else if(config.mono_cam_config.resolution_h == 720){
+                // adjusting y axis of the image center since it was cancluated for width of 800.
+                
+                M1_l[1][2] -= 40;  
+                M2_r[1][2] -= 40;
+            }
+            else if(config.mono_cam_config.resolution_h == 400){
+                /* adjusting intrinsic matrix by multiplying everything by multiplying all the intrinisc 
+                *parameters by 0.5 except the right bottom corner which is a scale.
+                */
 
-        if(config.mono_cam_config.resolution_h == 800){
-            // create_mesh()
+                M1_l[0][0] *= 0.5; 
+                M1_l[0][2] *= 0.5;
+                M1_l[1][1] *= 0.5;
+                M1_l[1][2] *= 0.5;
+
+                M2_r[0][0] *= 0.5;
+                M2_r[0][2] *= 0.5;
+                M2_r[1][1] *= 0.5;
+                M2_r[1][2] *= 0.5;
+            }
         }
-        else if(config.mono_cam_config.resolution_h == 720){
-            // adjusting y axis of the image center since it was cancluated for width of 800.
-            M1_l[1][2] -= 40;  
-            M2_r[1][2] -= 40;
-        }
-        else if(config.mono_cam_config.resolution_h == 400){
-            /* adjusting intrinsic matrix by multiplying everything by multiplying all the intrinisc 
-             *parameters by 0.5 except the right bottom corner which is a scale.
-             */
-
-            M1_l[0][0] *= 0.5; 
-            M1_l[0][2] *= 0.5;
-            M1_l[1][1] *= 0.5;
-            M1_l[1][2] *= 0.5;
-
-            M2_r[0][0] *= 0.5;
-            M2_r[0][2] *= 0.5;
-            M2_r[1][1] *= 0.5;
-            M2_r[1][2] *= 0.5;
-        }
-
 
         std::vector<std::vector<float>> M2_r_inv;
         std::vector<std::vector<float>> M1_l_inv;
