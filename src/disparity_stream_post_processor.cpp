@@ -48,7 +48,7 @@ void DisparityStreamPostProcessor::prepareDepthColorAndNotifyObservers(
         depth[j+1] = c_disp_to_color[disp][1];
         depth[j+2] = c_disp_to_color[disp][2];
     }
-    FrameMetadata *m = (FrameMetadata *)(depth_raw.data() + depth_raw.size() - sizeof(FrameMetadata));
+    FrameMetadata *m = (FrameMetadata *)(depth.data() + depth.size() - sizeof(FrameMetadata));
     memcpy(m, disp_uc + data.size - sizeof(FrameMetadata), sizeof(FrameMetadata));
     m->frameSize = 3 * (data.size - sizeof(FrameMetadata));
 
