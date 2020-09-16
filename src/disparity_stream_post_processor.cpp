@@ -38,15 +38,15 @@ void DisparityStreamPostProcessor::prepareDepthColorAndNotifyObservers(
             data_info.dimensions[0] * data_info.dimensions[1] * 3 + sizeof(FrameMetadata),
             {data_info.dimensions[0], data_info.dimensions[1], 3});
 
-    std::vector<unsigned char> depth_raw(depth_si.size);
+    std::vector<unsigned char> depth(depth_si.size);
     const unsigned char* disp_uc = (const unsigned char*) data.data;
 
     for (int i = 0, j = 0; i < data.size - sizeof(FrameMetadata); ++i, j+=3)
     {
         const unsigned char &disp = *(disp_uc + i);
-        depth_raw[j  ] = c_disp_to_color[disp][0];
-        depth_raw[j+1] = c_disp_to_color[disp][1];
-        depth_raw[j+2] = c_disp_to_color[disp][2];
+        depth[j  ] = c_disp_to_color[disp][0];
+        depth[j+1] = c_disp_to_color[disp][1];
+        depth[j+2] = c_disp_to_color[disp][2];
     }
     FrameMetadata *m = (FrameMetadata *)(depth_raw.data() + depth_raw.size() - sizeof(FrameMetadata));
     memcpy(m, disp_uc + data.size - sizeof(FrameMetadata), sizeof(FrameMetadata));
@@ -54,8 +54,8 @@ void DisparityStreamPostProcessor::prepareDepthColorAndNotifyObservers(
 
     StreamData depth_d;
     depth_d.packet_number = data.packet_number;
-    depth_d.data = depth_raw.data();
-    depth_d.size = depth_raw.size();
+    depth_d.data = depth.data();
+    depth_d.size = depth.size();
 
     notifyObservers(depth_si, depth_d);
 }
