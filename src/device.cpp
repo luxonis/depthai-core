@@ -947,7 +947,7 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
                 if (!stream.data_type.empty()) { obj["data_type"] = stream.data_type; };
                 if (0.f != stream.max_fps)     { obj["max_fps"]   = stream.max_fps;   };
 
-                if (stream.name == "depth_raw"){obj["data_type"] = "uint16"; }
+                if (stream.name == "depth"){obj["data_type"] = "uint16"; }
 
                 json_config_obj["_pipeline"]["_streams"].push_back(obj);
                 pipeline_device_streams.push_back(stream.name);
