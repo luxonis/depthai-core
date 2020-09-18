@@ -282,10 +282,20 @@ bool Device::init_device(
             */
         }
 
-        version = g_config_d2h.at("eeprom").at("version").get<int>();
+        version = g_config_d2h.at("eeprom").at("version").get<decltype(version)>();
         printf("EEPROM data:");
+        H1_l.clear();
+        H2_r.clear();
+        R1_l.clear();
+        R2_r.clear();
+        M1_l.clear();
+        M2_r.clear();
+        R.clear();
+        T.clear();
+        d1_l.clear();
+        d2_r.clear();
+        std::vector<float> temp;
 
-    
         if (version == -1) {
             printf(" invalid / unprogrammed\n");
         } else {
@@ -315,9 +325,8 @@ bool Device::init_device(
             printf("  L-RGB distance : %g cm\n", 100 * left_to_rgb_distance_m);
             printf("  L/R swapped    : %s\n", swap_left_and_right_cameras ? "yes" : "no");
             printf("  L/R crop region: %s\n", stereo_center_crop ? "center" : "top");
-            std::cout << "H2 matrix of right came----------------> " << H2_r.size() <<  std::endl;
+            // std::cout << "H2 matrix of right came----------------> " << H2_r.size() <<  std::endl;
 
-            std::vector<float> temp;
             if (version <= 3) {
                 printf("  Calibration homography right to left (legacy, please consider recalibrating):\n");
                 calib = g_config_d2h.at("eeprom").at("calib_old_H").get<std::vector<float>>();
@@ -330,7 +339,7 @@ bool Device::init_device(
                         temp.clear();
                     }
                 }
-                            std::cout << "H2 matrix of right came----------------> " << H2_r.size() <<  std::endl;
+                            // std::cout << "H2 matrix of right came----------------> " << H2_r.size() <<  std::endl;
 
             } else if (version == 4) {
 
@@ -414,7 +423,7 @@ bool Device::init_device(
             std::cout << "H2 matrix of right came----------------> " << H2_r.size() <<  std::endl;
 
             }
-            else{
+            else if (version == 5){
                 printf("  Rectification Rotation R1 (left):\n");
                 calib = g_config_d2h.at("eeprom").at("calib_R1_L").get<std::vector<float>>();
                 for (int i = 0; i < 9; i++) {
