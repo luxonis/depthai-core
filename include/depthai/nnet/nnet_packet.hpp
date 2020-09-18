@@ -6,9 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include "tensor_entry.hpp"
 #include "tensor_info.hpp"
-#include "tensor_entry_container.hpp"
 #include "../host_data_packet.hpp"
 
 
@@ -16,17 +14,15 @@ class NNetPacket
 {
 public:
     NNetPacket(
-              std::vector<std::shared_ptr<HostDataPacket>> &tensors_raw_data,
-        const std::vector<TensorInfo>                      &tensors_info
+              std::shared_ptr<HostDataPacket> &tensors_raw_data,
+        const std::vector<TensorInfo>         &tensors_info
     )
         : _tensors_raw_data(tensors_raw_data)
-        , _tensors_info(&tensors_info)
-        , _tensor_entry_container(new TensorEntryContainer(
-                tensors_raw_data, tensors_info))
+        , _tensors_info(tensors_info)
     {
         for (size_t i = 0; i < tensors_info.size(); ++i)
         {
-            _tensor_name_to_index[ tensors_info.at(i).output_tensor_name ] = i;
+            _tensor_name_to_index[ tensors_info[i].tensor_name ] = i;
         }
 
         if (_tensor_name_to_index.size() != tensors_info.size())
@@ -36,21 +32,34 @@ public:
     }
 
 
-    std::shared_ptr<TensorEntryContainer> getTensorEntryContainer()
+
+    int getTensorsSize()
     {
-        return _tensor_entry_container;
+        return _tensors_info.size();
+    }
+
+    int getDetectionCount()
+    {
+        unsigned char * data = _tensors_raw_data->data.data();
+        detection_out_t * detections = (detection_out_t *)data;
+        return detections->detection_count;
     }
 
     boost::optional<FrameMetadata> getMetadata(){
         // TODO
-        return _tensors_raw_data[0]->getMetadata();
+        return _tensors_raw_data->getMetadata();
     }
 
-protected:
-    std::shared_ptr<TensorEntryContainer>              _tensor_entry_container;
 
-    std::vector<std::shared_ptr<HostDataPacket>> _tensors_raw_data;
-    const std::vector<TensorInfo>*                     _tensors_info                = nullptr;
+protected: 
+    std::string getTensorName(int index)
+    {
+        return _tensors_info[index].tensor_name;
+    }
+
+
+          std::shared_ptr<HostDataPacket> _tensors_raw_data;
+    const std::vector<TensorInfo>                     _tensors_info;
 
     std::unordered_map<std::string, unsigned> _tensor_name_to_index;
 };

@@ -5,7 +5,8 @@
 #include <string>
 #include <unordered_map>
 #include <vector>
-
+#include "depthai-shared/cnn_info.hpp"
+#include "depthai-shared/json_helper.hpp"
 #include "../types.hpp"
 
 
@@ -13,62 +14,26 @@
 
 struct TensorInfo
 {
-    std::string output_tensor_name;
+    TensorInfo() = delete;
 
-    std::vector<int> output_dimensions;
-    int output_entry_iteration_index = -1;
-    int nnet_input_width  = 0;
-    int nnet_input_height = 0;
-
-    uint32_t offset = 0;
-
-    std::vector<int> output_properties_dimensions;
-
-    std::vector<std::vector<std::string>>                               output_property_key_index_to_string;
-    std::vector<std::unordered_map<std::string, unsigned>>              output_property_key_string_to_index;
-    std::vector<std::vector<std::vector<std::string>>>                  output_property_value_index_to_string;
-    std::vector<std::vector<std::unordered_map<std::string, unsigned>>> output_property_value_string_to_index;
-
-    std::string output_postprocess_filtration; // "softmax", ...
-
-    Type output_properties_type = Type::UNDEFINED;
-
-
-    int getEntriesNumber() const
+    TensorInfo(nlohmann::json tensor_info)
     {
-        if (-1 == output_entry_iteration_index)
-        {
-            return 1;
-        }
-        else
-        {
-            assert(output_entry_iteration_index < output_dimensions.size());
-            return output_dimensions[output_entry_iteration_index];
-        }
+        tensor_name = tensor_info["name"];
+
+        tensor_data_type = tensor_info["shape"]["data_type"];
+        tensor_offset = tensor_info["offset"];
+        tensor_idx = tensor_info["idx"];
+        tensor_size = size_of_type(tensor_data_type);
+        tensor_dimensions = tensor_info["shape"]["dimensions"].get<std::vector<int32_t>>();
+        tensor_strides    = tensor_info["shape"]["strides"].get<std::vector<int32_t>>();;
     }
 
-    int getTensorSize() const
-    {
-        unsigned sz = size_of_type(output_properties_type);
-        for (auto dim : output_dimensions)
-        {
-            sz *= dim;
-        }
-        return sz;
-    }
+    std::string tensor_name;
+    std::vector<int32_t> tensor_dimensions;
+    std::vector<int32_t> tensor_strides;
 
-    int getEntryByteSize() const
-    {
-        if (-1 == output_entry_iteration_index)
-        {
-            return getTensorSize();
-        }
-        else
-        {
-            assert(output_entry_iteration_index < output_dimensions.size());
-            //assert(false); // TODO: correct ?
-            assert(output_dimensions[output_entry_iteration_index] != 0);
-            return getTensorSize() / output_dimensions[output_entry_iteration_index];
-        }
-    }
+    TensorDataType tensor_data_type;
+    size_t tensor_offset;
+    size_t tensor_size;
+    size_t tensor_idx;
 };

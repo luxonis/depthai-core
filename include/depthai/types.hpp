@@ -5,37 +5,29 @@
 #include <string>
 #include <unordered_map>
 #include <map>
+#include "depthai-shared/cnn_info.hpp"
+
+#include "half.hpp"
+
+using float16 = half_float::half;
 
 
-
-
-// TODO: make the same as numpy types ('f16', 'f<16', 'i64', ...)
-
-enum class Type {
-    UNDEFINED,
-    U8,
-    F16
+const std::map<TensorDataType, unsigned int> c_type_size = {
+    {TensorDataType::_fp16,     sizeof(float16)},
+    {TensorDataType::_u8f,      sizeof(std::uint8_t)},
+    {TensorDataType::_int,      sizeof(std::int32_t)},
+    {TensorDataType::_fp32,     sizeof(float)},
+    {TensorDataType::_i8,       sizeof(std::int8_t)},
 };
 
 
-const std::map<Type, unsigned int> c_type_size = {
-    {Type::UNDEFINED, 1},
-    {Type::U8,        1},
-    {Type::F16,       2}
+const std::map<TensorDataType, std::string> type_to_string = {
+    {TensorDataType::_fp16,     "float16"},
+    {TensorDataType::_u8f,      "uint8"},
+    {TensorDataType::_int,      "int32"},
+    {TensorDataType::_fp32,     "float32"},
+    {TensorDataType::_i8,       "int8"},
 };
 
-/*
-
-const std::unordered_map<Type, unsigned int> c_type_size =
-{
-    {Type::UNDEFINED, 1},
-    {Type::U8,        1},
-    {Type::F16,       2}
-};
-*/
-
-Type     string_to_type (const std::string& str);
-unsigned int size_of_type   (const Type& type);
-
-
-float float16to32(uint16_t x);
+unsigned int size_of_type   (const TensorDataType& type);
+// std::string type_to_npy_format_descriptor(const TensorDataType& type);
