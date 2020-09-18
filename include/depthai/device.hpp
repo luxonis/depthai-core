@@ -94,7 +94,7 @@ private:
     std::vector<float> T;
     std::vector<float> d1_l;
     std::vector<float> d2_r;
-    uint32_t version;
+    int32_t version;
 
     std::string config_backup;
     std::string cmd_backup;

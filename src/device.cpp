@@ -282,7 +282,7 @@ bool Device::init_device(
             */
         }
 
-        version = g_config_d2h.at("eeprom").at("version").get<int>();
+        version = g_config_d2h.at("eeprom").at("version").get<decltype(version)>();
         printf("EEPROM data:");
 
     
@@ -414,7 +414,7 @@ bool Device::init_device(
             std::cout << "H2 matrix of right came----------------> " << H2_r.size() <<  std::endl;
 
             }
-            else{
+            else if (version == 5){
                 printf("  Rectification Rotation R1 (left):\n");
                 calib = g_config_d2h.at("eeprom").at("calib_R1_L").get<std::vector<float>>();
                 for (int i = 0; i < 9; i++) {
