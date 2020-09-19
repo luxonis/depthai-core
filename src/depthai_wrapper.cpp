@@ -93,7 +93,7 @@ void DepthAI::create_frame_holders()
                 const auto& name = it.at("name").get<std::string>();
                 // streams.emplace_back(name);
                 // auto &stream = streams.back();
-                std::cout << name << " -streams" << std::endl;
+                // std::cout << name << " -streams" << std::endl;
                 stream_names_.push_back(name);
                 if (name == "previewout")
                 {
@@ -101,7 +101,7 @@ void DepthAI::create_frame_holders()
                         std::make_shared<cv::Mat>(rgb_height_, rgb_width_, CV_8UC3);
                     image_streams_.push_back(img);
                 }
-                else if (name == "depth_raw")
+                else if (name == "depth")
                 {
                     std::shared_ptr<cv::Mat> img =
                         std::make_shared<cv::Mat>(mono_height_, mono_width_, CV_16UC1);
@@ -128,6 +128,7 @@ DepthAI::~DepthAI() = default;
 
 void DepthAI::get_frames(std::unordered_map<std::string, CV_mat_ptr>& output_streams)
 {
+    // std::cout << "mono it-----" << mono_height_ << " ~~ " << mono_width_ << std::endl;
 
     int count = stream_names_.size();
     std::vector<std::string>::iterator it;
@@ -141,6 +142,8 @@ void DepthAI::get_frames(std::unordered_map<std::string, CV_mat_ptr>& output_str
             it = std::find(stream_names_.begin(), stream_names_.end(), sub_packet->stream_name);
             if (it != stream_names_.end())
             {
+                // std::cout << "foubd it-----" << sub_packet->size() << " ~~ " <<
+                // sub_packet->stream_name << std::endl;
                 int index = it - stream_names_.begin();
                 unsigned char* img_ptr =
                     reinterpret_cast<unsigned char*>(image_streams_[index]->data);
