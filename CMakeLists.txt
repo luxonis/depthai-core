@@ -85,6 +85,7 @@ add_library(${TARGET_NAME}
     src/types.cpp
     src/device.cpp
     src/bspatch/bspatch.c
+    src/matrix_ops.cpp
 )
 
 # Set compiler features (c++11)
