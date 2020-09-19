@@ -7,45 +7,53 @@
 #include "nlohmann/json.hpp"
 #include <vector>
 
-
-
 namespace DepthAI
 {
 
-using CV_mat_ptr = std::shared_ptr<cv::Mat>;
+using CV_mat_ptr = std::shared_ptr<cv::Mat>; // shared ptr for cv::Mat 
 
 class DepthAI: public Device{
 
 
 public:
+    /**  Constructor:
+     *   initializing OAK device and creating pipeline 
+     *   to capture camera streams and AI outputs.
+     */
     DepthAI(
             std::string usb_device,
             std::string config_file, 
-            bool usb2_mode = false);
+            bool usb2_mode = false); 
 
-void get_frames(std::unordered_map<std::string, CV_mat_ptr>& output_streams);
+    /* API to stream output frames from OAK.
+     * AI data and metadata is WIP
+     */
 
-~DepthAI();
+    void get_frames(
+                    std::unordered_map<std::string, 
+                    CV_mat_ptr>& output_streams);
+
+    /* Destructor */
+    ~DepthAI();
 
 private:
     using PacketsTuple = std::tuple<
         std::list<std::shared_ptr<NNetPacket>>,
-        std::list<std::shared_ptr<HostDataPacket>>>;
+        std::list<std::shared_ptr<HostDataPacket>>>; // tuple of data packets on which Depthai is publishing the streams
 
-    std::shared_ptr<CNNHostPipeline> _pipeline;
+    std::shared_ptr<CNNHostPipeline> pipeline_; // Depthai's pipeline object.
 
-    PacketsTuple _packets;
-    std::string _config_str;
-    nlohmann::json _config_json;
+    PacketsTuple packets_;
+    nlohmann::json config_json_;
 
-    int _rgb_width;
-    int _rgb_height;
-    int _mono_width;
-    int _mono_height; 
+    int rgb_width_;
+    int rgb_height_;
+    int mono_width_;
+    int mono_height_; 
 
-    std::vector<std::string> stream_names;
-    std::vector<CV_mat_ptr> _image_streams;
-
+    std::vector<std::string> stream_names_;
+    std::vector<CV_mat_ptr> image_streams_;
+     std::unordered_map<int, int> width_map_;
     void set_resolution();
     void create_frame_holders();
 };
