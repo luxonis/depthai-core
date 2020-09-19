@@ -13,8 +13,8 @@ cmake_minimum_required(VERSION 3.2) # For Hunter
 # )
 
 # To here ----------->
-## Move this to src/CMakelists.txt while using it with catkin make ROS
 
+## Move this to src/CMakelists.txt while using it with catkin make ROS
 
 # Move binary dir if windows, to shorten the path
 if(WIN32)
