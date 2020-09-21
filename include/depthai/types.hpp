@@ -29,5 +29,3 @@ const std::map<TensorDataType, std::string> type_to_string = {
     {TensorDataType::_i8,       "int8"},
 };
 
-unsigned int size_of_type   (const TensorDataType& type);
-// std::string type_to_npy_format_descriptor(const TensorDataType& type);

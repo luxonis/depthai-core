@@ -61,6 +61,7 @@ add_library(${TARGET_NAME}
     # depthai-shared sources
     "${DEPTHAI_SHARED_SOURCES}"
     # sources
+    src/nnet/tensor_info.cpp
     src/pipeline/cnn_host_pipeline.cpp
     src/pipeline/host_pipeline_config.cpp
     src/pipeline/host_pipeline.cpp
@@ -69,7 +70,6 @@ add_library(${TARGET_NAME}
     src/disparity_stream_post_processor.cpp
     src/host_data_reader.cpp
     src/host_json_helper.cpp
-    src/types.cpp
     src/device.cpp
     src/matrix_ops.cpp
     src/bspatch/bspatch.c

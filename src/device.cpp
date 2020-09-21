@@ -1026,15 +1026,19 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
 
                 for(auto input_json : input_layers)
                 {
-                    std::cout << input_json << std::endl;
                     TensorInfo _tensors_info_input(input_json);
+                    std::cout << "Input layer : " << std::endl;
+                    std::cout << _tensors_info_input << std::endl;
+
                     tensors_info_input.push_back(_tensors_info_input);
                 }
 
                 for(auto output_json : output_layers)
                 {
-                    std::cout << output_json << std::endl;
                     TensorInfo _tensors_info_output(output_json);
+                    std::cout << "Output layer : " << std::endl;
+                    std::cout << _tensors_info_output << std::endl;
+                    
                     tensors_info_output.push_back(_tensors_info_output);
                 }
 
