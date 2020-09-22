@@ -643,11 +643,16 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
         std::vector<TensorInfo>       tensors_info_output, tensors_info_input;
         std::cout << config.ai.blob_file_config << std::endl;
         std::ifstream jsonFile(config.ai.blob_file_config);
-        nlohmann::json json_NN_ = nlohmann::json::parse(jsonFile);
 
         nlohmann::json json_NN_meta;
+        nlohmann::json json_NN_;
+        if (jsonFile.is_open()) {
+            json_NN_ = nlohmann::json::parse(jsonFile);
+        }
+
         if(!json_NN_.contains("NN_config"))
         {
+            std::cout << "No NN config provided, defaulting to \"raw\" output format!" << std::endl;
             json_NN_meta["NN_config"]["output_format"] = "raw";
         }
         else
