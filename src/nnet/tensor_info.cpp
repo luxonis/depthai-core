@@ -11,7 +11,7 @@ std::ostream &operator<<(std::ostream &os, TensorInfo const &t_info)
     os << "Name: " << t_info.tensor_name << std::endl;
     os << "Index: " << t_info.tensor_idx << std::endl;
     os << "Element type: " << type_to_string.at(t_info.tensor_data_type) << std::endl;
-    os << "Element size: " << t_info.tensor_element_size << ((t_info.tensor_element_size == 1) ? "byte" : " bytes") << std::endl;
+    os << "Element size: " << " " << t_info.tensor_element_size << ((t_info.tensor_element_size == 1) ? "byte" : " bytes") << std::endl;
     os << "Offset: " << t_info.tensor_offset << " " << ((t_info.tensor_offset <= 1) ? "byte" : " bytes") << std::endl;
     os << "Dimensions: ";
     os << "[";

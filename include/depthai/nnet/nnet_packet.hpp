@@ -33,24 +33,22 @@ public:
         }
     }
 
-    detection_t getDetectedObject(int detected_nr)
+    std::shared_ptr<detection_out_t> getDetectedObjects()
     {
-        unsigned char * data = _tensors_raw_data->data.data();
-        detection_out_t * detections = (detection_out_t *)data;
-        assert(detected_nr < detections->detection_count);
-        return detections->detections[detected_nr];
+        std::shared_ptr<std::vector<unsigned char>> data = _tensors_raw_data->data;
+        //copy-less return, wrapped in shared_ptr
+        std::shared_ptr<detection_out_t> detections;
+        detections = std::shared_ptr<detection_out_t>(data, reinterpret_cast<detection_out_t *>(data->data()));
+        return detections;
+
+        // std::shared_ptr<detection_out_t> a = std::shared_ptr<detection_out_t>(new detection_out_t);
+        // memcpy(a.get(), data.get()->data(), data.get()->size());
+        // return a;
     }
 
     int getTensorsSize()
     {
         return _tensors_info.size();
-    }
-
-    int getDetectionCount()
-    {
-        unsigned char * data = _tensors_raw_data->data.data();
-        detection_out_t * detections = (detection_out_t *)data;
-        return detections->detection_count;
     }
 
     boost::optional<FrameMetadata> getMetadata(){
