@@ -61,7 +61,6 @@ add_library(${TARGET_NAME}
     # depthai-shared sources
     "${DEPTHAI_SHARED_SOURCES}"
     # sources
-    src/nnet/tensor_info.cpp
     src/pipeline/cnn_host_pipeline.cpp
     src/pipeline/host_pipeline_config.cpp
     src/pipeline/host_pipeline.cpp

@@ -4,7 +4,7 @@
 #include <vector>
 
 #include "host_pipeline.hpp"
-#include "../nnet/tensor_info.hpp"
+#include "depthai-shared/tensor_info.hpp"
 #include "../nnet/nnet_packet.hpp"
 
 

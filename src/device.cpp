@@ -1067,9 +1067,9 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
                 if (stage == 0) {
      
                     c_streams_myriad_to_pc["previewout"].dimensions = {
-                                                                       tensors_info_input[0].tensor_dimensions[tensors_info_input[0].tensor_dimensions.size()-3],
-                                                                       tensors_info_input[0].tensor_dimensions[tensors_info_input[0].tensor_dimensions.size()-2],
-                                                                       tensors_info_input[0].tensor_dimensions[tensors_info_input[0].tensor_dimensions.size()-1],
+                                                                       (int)tensors_info_input[0].tensor_dimensions[tensors_info_input[0].tensor_dimensions.size()-3],
+                                                                       (int)tensors_info_input[0].tensor_dimensions[tensors_info_input[0].tensor_dimensions.size()-2],
+                                                                       (int)tensors_info_input[0].tensor_dimensions[tensors_info_input[0].tensor_dimensions.size()-1],
                                                                        };
                 }
                 // check CMX slices & used shaves

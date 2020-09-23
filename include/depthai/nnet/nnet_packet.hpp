@@ -6,7 +6,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "tensor_info.hpp"
+#include "depthai-shared/tensor_info.hpp"
+#include "depthai-shared/cnn_info.hpp"
 #include "../host_data_packet.hpp"
 
 
