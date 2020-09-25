@@ -7,10 +7,9 @@ namespace dai
 {
     
 
-
 void CallbackHandler::setCallback(std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb){
-        callback = cb;
-    }
+    callback = cb;
+}
 
 CallbackHandler::CallbackHandler(std::shared_ptr<XLinkConnection> conn, std::string streamName, std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb) : connection(conn), callback(cb) {
 

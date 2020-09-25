@@ -29,7 +29,7 @@ void XLinkConnection::initXLinkGlobal() {
 }
 
 std::atomic<bool> XLinkConnection::xlinkGlobalInitialized{false};
-XLinkGlobalHandler_t XLinkConnection::xlinkGlobalHandler{0};
+XLinkGlobalHandler_t XLinkConnection::xlinkGlobalHandler = {};
 std::mutex XLinkConnection::xlinkStreamOperationMutex;
 
 
@@ -52,7 +52,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(){
         auto status = XLinkFindAllSuitableDevices(state, suitableDevice, deviceDescAll, MAX_DEVICES, &numdev);
         if(status != X_LINK_SUCCESS) throw std::runtime_error("Couldn't retrieve all connected devices");
 
-        for (int i = 0; i < numdev; i++) {
+        for (unsigned int i = 0; i < numdev; i++) {
             DeviceInfo info;
             info.desc = deviceDescAll[i];
             info.state = state;
@@ -151,7 +151,7 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit) {
             bootAvailableDevice(deviceToInit.desc, mvcmd);
         }
     } else {
-        printf("Device boot is skipped");
+        printf("Device boot is skipped\n");
     }
     
     // Search for booted device

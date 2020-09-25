@@ -5,9 +5,10 @@
 
 // depthai-shared
 #include "depthai-shared/datatype/DatatypeEnum.hpp"
-#include "depthai-shared/Assets.hpp"
+#include "depthai/pipeline/AssetManager.hpp"
 
 #include "nlohmann/json.hpp"
+
 
 namespace dai
 {
@@ -45,27 +46,8 @@ namespace dai
             Output(Node& par, std::string n, Type t, std::vector< DatatypeHierarchy > types) : parent(par), name(n), type(t), possibleDatatypes(types) {}
     
         public:
-            bool canConnect(Input in){
-                if(type == Type::MSender && in.type == Input::Type::MReceiver) return false;
-                if(type == Type::SSender && in.type == Input::Type::SReceiver) return false;
-                for(const auto& outHierarchy : possibleDatatypes){
-                    for(const auto& inHierarchy : in.possibleDatatypes){
-                        if(outHierarchy.datatype == inHierarchy.datatype) return true;
-                        if(inHierarchy.descendants && isDatatypeSubclassOf(inHierarchy.datatype, outHierarchy.datatype)) return true;
-                    }
-                }
-                return false;
-            }
-
-            void link(Input in) {
-                if(!canConnect(in)){
-                    std::string msg = "Cannot link '" + parent.getName() + "." + name + "' to '" + in.parent.getName() + in.name + "'";
-                    throw std::runtime_error(msg);
-                }
-
-                conn.push_back(in);
-            }        
-
+            bool canConnect(Input in);
+            void link(Input in);
 
         };
 
@@ -94,10 +76,10 @@ namespace dai
         virtual std::vector<Input> getInputs() = 0;
         virtual nlohmann::json getProperties() = 0;
         virtual std::shared_ptr<Node> clone() = 0; 
+        virtual void loadAssets(AssetManager& assetManager);
 
-        virtual void loadAssets(AssetManager& assetManager){
-            (void) assetManager;
-        }
+        // access
+        Pipeline getParentPipeline();
 
     public:
         Node(const std::shared_ptr<PipelineImpl>& p) : parent(p) {}

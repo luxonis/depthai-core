@@ -5,9 +5,11 @@
 
 // project
 #include "Node.hpp"
+#include "AssetManager.hpp"
 
 //shared
-#include "depthai-shared/generated/GlobalProperties.hpp"
+#include "depthai-shared/pb/properties/GlobalProperties.hpp"
+#include "depthai-shared/pb/PipelineSchema.hpp"
 
 
 namespace dai
@@ -16,13 +18,17 @@ namespace dai
     class PipelineImpl {        
         friend class Pipeline;
 
-        gen::GlobalProperties globalProperties;
+        AssetManager assetManager;
+
+        GlobalProperties globalProperties;
         std::vector<std::shared_ptr<Node>> nodes;
         int64_t latestId = 0;
         int64_t getNextUniqueId();
-        nlohmann::json toJson();
-        std::vector<std::uint8_t> serialize();
-        void loadAssets(AssetManager& assetManager);
+        PipelineSchema getPipelineSchema();
+        //void loadAssets(AssetManager& assetManager);
+        void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage);
+
+        AssetManager& getAssetManager();
 
         PipelineImpl();
         PipelineImpl(const PipelineImpl& p);
@@ -30,17 +36,22 @@ namespace dai
 
 
     class Pipeline {
+
         std::shared_ptr<PipelineImpl> pimpl;
 
     public:
         Pipeline();
         Pipeline(const Pipeline& p);
+        Pipeline(std::shared_ptr<PipelineImpl> pimpl);
 
-        gen::GlobalProperties getGlobalProperties() const;
 
-        nlohmann::json toJson();
-        std::vector<std::uint8_t> serialize();
-        void loadAssets(AssetManager& assetManager);
+        GlobalProperties getGlobalProperties() const;
+
+        PipelineSchema getPipelineSchema();
+        //void loadAssets(AssetManager& assetManager);
+        void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage){
+            pimpl->serialize(schema, assets, assetStorage);
+        }
 
         std::vector<std::shared_ptr<Node>> getNodes(){
             return pimpl->nodes;
@@ -53,6 +64,10 @@ namespace dai
             node->id = pimpl->getNextUniqueId();
             pimpl->nodes.push_back(node);
             return node;
+        }
+
+        AssetManager& getAssetManager(){
+            return pimpl->getAssetManager();
         }
 
     };

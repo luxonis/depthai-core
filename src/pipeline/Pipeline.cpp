@@ -1,8 +1,5 @@
 #include "depthai/pipeline/Pipeline.hpp"
 
-#include "depthai-shared/generated/PipelineBuilderGenerated.hpp"
-#include "depthai-shared/generated/Generators.hpp"
-
 
 namespace dai
 {
@@ -30,31 +27,24 @@ namespace dai
         }
     }
 
-    nlohmann::json Pipeline::toJson(){
-        return pimpl->toJson();
+
+    Pipeline::Pipeline(std::shared_ptr<PipelineImpl> pimpl){
+        this->pimpl = pimpl; 
     }
 
-    std::vector<std::uint8_t> Pipeline::serialize(){
-        return pimpl->serialize();
-    }
-
-
-    gen::GlobalProperties Pipeline::getGlobalProperties() const {
+    GlobalProperties Pipeline::getGlobalProperties() const {
         return pimpl->globalProperties;
     }
 
+    /*
     void Pipeline::loadAssets(AssetManager& assetManager) {
         return pimpl->loadAssets(assetManager);
     }
+    */
 
 
-
-
-    std::vector<std::uint8_t> PipelineImpl::serialize(){
-        return nlohmann::json::to_msgpack(toJson());
-    }
-
-    void PipelineImpl::loadAssets(AssetManager& assetManager) {
+    /*
+    void PipelineImpl::loadAssets() {
         
         // Load assets of nodes
         for(const auto& node : nodes){
@@ -65,17 +55,27 @@ namespace dai
         // ...
 
     }
+    */
 
-    nlohmann::json PipelineImpl::toJson(){
+    void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage){
+        schema = getPipelineSchema();
+        assetManager.serialize(assets, assetStorage);
+    }
+
+    AssetManager& PipelineImpl::getAssetManager(){
+        return assetManager;
+    }
+
+    PipelineSchema PipelineImpl::getPipelineSchema(){
 
         // create internal representation
-        gen::PipelineSchema schema;
+        PipelineSchema schema;
         schema.globalProperties = globalProperties;
         
         for(const auto& node : nodes){
 
             // Create 'node' info
-            gen::NodeObjInfo info;
+            NodeObjInfo info;
             info.id = node->id;
             info.name = node->getName();
             info.properties = node->getProperties();
@@ -84,7 +84,7 @@ namespace dai
             // Create 'connections' info
             // Loop through connections (output -> input)
             for(const auto& output : node->getOutputs() ){
-                gen::NodeConnectionSchema connection;
+                NodeConnectionSchema connection;
                 connection.node1Id = node->id;
                 connection.node1Output = output.name;
 
@@ -96,11 +96,8 @@ namespace dai
             }
         }
 
+        return schema;
         // end of internal representation
-
-        nlohmann::json j;
-        nlohmann::to_json(j, schema);
-        return j;
 
     }
 

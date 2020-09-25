@@ -3,15 +3,14 @@
 #include <depthai/pipeline/Node.hpp>
 
 // shared
-#include <depthai-shared/generated/XLinkOutProperties.hpp>
-#include <depthai-shared/generated/Generators.hpp>
+#include <depthai-shared/pb/properties/XLinkOutProperties.hpp>
 
 namespace dai
 {
     namespace node
     {
         class XLinkOut : public Node {
-            dai::gen::XLinkOutProperties properties;
+            dai::XLinkOutProperties properties;
         
             std::string getName(){
                 return "XLinkOut";

@@ -42,12 +42,12 @@ public:
 
 
     bool isPipelineRunning();
-    bool startPipeline(Pipeline pipeline);
+    bool startPipeline(Pipeline& pipeline);
 
 
     // data queues
-    DataOutputQueue& getOutputQueue(std::string name);
-    DataInputQueue& getInputQueue(std::string name);
+    std::shared_ptr<DataOutputQueue> getOutputQueue(std::string name);
+    std::shared_ptr<DataInputQueue> getInputQueue(std::string name);
 
     // callback
     void setCallback(std::string name, std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb);
@@ -75,8 +75,8 @@ private:
 
     DeviceInfo deviceInfo;
 
-    std::unordered_map<std::string, DataOutputQueue> outputQueueMap;
-    std::unordered_map<std::string, DataInputQueue> inputQueueMap;
+    std::unordered_map<std::string, std::shared_ptr<DataOutputQueue>> outputQueueMap;
+    std::unordered_map<std::string, std::shared_ptr<DataInputQueue>> inputQueueMap;
     std::unordered_map<std::string, CallbackHandler> callbackMap;
 
 

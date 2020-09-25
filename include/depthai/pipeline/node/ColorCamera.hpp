@@ -3,9 +3,7 @@
 #include "depthai/pipeline/Node.hpp"
 
 // shared
-#include <depthai-shared/generated/ColorCameraProperties.hpp>
-#include <depthai-shared/generated/Generators.hpp>
-
+#include <depthai-shared/pb/properties/ColorCameraProperties.hpp>
 
 
 namespace dai
@@ -13,7 +11,7 @@ namespace dai
     namespace node
     {
         class ColorCamera : public Node{
-            dai::gen::ColorCameraProperties properties;
+            dai::ColorCameraProperties properties;
         
             std::string getName(){
                 return "ColorCamera";
@@ -40,11 +38,11 @@ namespace dai
         public:
             ColorCamera(const std::shared_ptr<PipelineImpl>& par) : Node(par) {
                 properties.camId = 0;
-                properties.colorOrder = gen::ColorOrderInsidePixel::BGR;
+                properties.colorOrder = ColorCameraProperties::ColorOrder::BGR;
                 properties.interleaved = true;
                 properties.previewHeight = 300;
                 properties.previewWidth = 300;
-                properties.resolution = gen::CameraSensorResolution::THE_1080_P;
+                properties.resolution = ColorCameraProperties::SensorResolution::THE_1080_P;
             }
 
 //            Output(Node& par, std::string n, Type t, std::vector< DatatypeHierarchy > types) : parent(par), type(t), name(n), possibleDatatypes(types) {}
@@ -64,18 +62,18 @@ namespace dai
 
 
             // setColorOrder - RGB or BGR
-            void setColorOrder(gen::ColorOrderInsidePixel colorOrder){
+            void setColorOrder(ColorCameraProperties::ColorOrder colorOrder){
                 properties.colorOrder = colorOrder;
             }
             
             // getColorOrder - returns color order 
-            gen::ColorOrderInsidePixel getColorOrder(){
+            ColorCameraProperties::ColorOrder getColorOrder(){
                 return properties.colorOrder;
             }
 
             // setInterleaved
             void setInterleaved(bool interleaved){
-                properties.interleaved = true;
+                properties.interleaved = interleaved;
             }
 
             // set preview output size
@@ -84,7 +82,7 @@ namespace dai
                 properties.previewHeight = height;
             }
 
-            void setResolution(gen::CameraSensorResolution resolution){
+            void setResolution(ColorCameraProperties::SensorResolution resolution){
                 properties.resolution = resolution;
             }      
 

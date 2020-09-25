@@ -179,24 +179,22 @@ void Device::init()
 
 
 
-DataOutputQueue& Device::getOutputQueue(std::string name){
+std::shared_ptr<DataOutputQueue> Device::getOutputQueue(std::string name){
 
     // creates a dataqueue if not yet created
     if(outputQueueMap.count(name) == 0){
-        // inserts (constructs in-place inside map at outputQueueMap[name] = DataQueue(connection, name))
-        outputQueueMap.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(connection, name));
+        outputQueueMap[name] = std::make_shared<DataOutputQueue>(connection, name);
     }
 
-    // else just return the reference to this DataQueue
+    // else just return the shared ptr to this DataQueue
     return outputQueueMap.at(name);
 }
 
-DataInputQueue& Device::getInputQueue(std::string name){
+std::shared_ptr<DataInputQueue> Device::getInputQueue(std::string name){
 
     // creates a dataqueue if not yet created
     if(inputQueueMap.count(name) == 0){
-        // inserts (constructs in-place inside map at outputQueueMap[name] = DataQueue(connection, name))
-        inputQueueMap.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(connection, name));
+        inputQueueMap[name] = std::make_shared<DataInputQueue>(connection, name);
     }
 
     // else just return the reference to this DataQueue
@@ -225,36 +223,24 @@ bool Device::isPipelineRunning(){
 }
 
 
-bool Device::startPipeline(Pipeline pipeline){
+bool Device::startPipeline(Pipeline& pipeline){
 
     // first check if pipeline is not already started
     if(isPipelineRunning()) return false;
 
 
-    // Create an AssetManager which the pipeline will use for assets
-    AssetManager assetManager;
-    pipeline.loadAssets(assetManager);
-
     // Serialize the pipeline
-    auto pipelineDescription = pipeline.serialize();
-
-    // Serialize the asset storage and assets
-    auto assetStorage = assetManager.serialize();
-    std::vector<std::uint8_t> assets;
-    {
-        nlohmann::json assetsJson;
-        nlohmann::to_json(assetsJson, (Assets) assetManager);
-        assets = nlohmann::json::to_msgpack(assetsJson);
-    }
-
+    PipelineSchema schema;
+    Assets assets;
+    std::vector<std::uint8_t> assetStorage;
+    pipeline.serialize(schema, assets, assetStorage);
 
     // Load pipelineDesc, assets, and asset storage
-
-    client->call("parsePipeline", pipelineDescription); 
+    client->call("setPipelineSchema", schema);
 
     // Transfer storage if size > 0
     if(assetStorage.size() > 0){
-        client->call("parseAssets", assets);
+        client->call("setAssets", assets);
 
 
         // allocate, returns a pointer to memory on device side
@@ -277,14 +263,13 @@ bool Device::startPipeline(Pipeline pipeline){
         t1.join();
 
 
-        // After asset storage is transfers, set the asset storage
-        client->call("setAssetStorage", memHandle);
+        // After asset storage is transfers, set the asset storage        
+        client->call("setAssetStorage", memHandle, assetStorage.size());
 
     }
 
-    // call test
-    //client->call("test");
-
+    // print assets on device side for test
+    client->call("printAssets");
 
     // Build and start the pipeline
     bool success;
@@ -927,7 +912,7 @@ bool Device::startTestPipeline(){
 
 
         // After asset storage is transfers, set the asset storage
-        client->call("setAssetStorage", memHandle);
+        client->call("setAssetStorage", memHandle, assetStorage.size());
 
     }
 

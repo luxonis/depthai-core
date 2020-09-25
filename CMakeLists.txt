@@ -76,6 +76,8 @@ add_library(${TARGET_NAME}
     src/pipeline/cnn_host_pipeline.cpp
     src/pipeline/host_pipeline_config.cpp
     src/pipeline/host_pipeline.cpp
+    src/pipeline/AssetManager.cpp
+    src/pipeline/Node.cpp
     src/host_capture_command.cpp
     src/device_support_listener.cpp
     src/disparity_stream_post_processor.cpp

@@ -6,10 +6,7 @@
 #include <fstream>
 
 // shared
-#include <depthai-shared/generated/ColorCameraProperties.hpp>
-#include <depthai-shared/generated/Generators.hpp>
-
-
+#include <depthai-shared/pb/properties/NeuralNetworkProperties.hpp>
 
 
 namespace dai
@@ -17,7 +14,7 @@ namespace dai
     namespace node
     {
         class NeuralNetwork : public Node {
-            dai::gen::NeuralNetworkProperties properties;
+            dai::NeuralNetworkProperties properties;
         
             std::string getName(){
                 return "NeuralNetwork";
@@ -41,42 +38,46 @@ namespace dai
                 return std::make_shared<NeuralNetwork>(*this);
             }
 
-            // Assets
-            void loadAssets(AssetManager& assetManager){
+            void loadBlob(std::string path){
+                // Get pipelines asset manager
+                AssetManager& assetManager = getParentPipeline().getAssetManager();
+
                 // Load blob in blobPath into asset
                 // And mark in properties where to look for it
 
-                std::ifstream blobStream(blobPath, std::ios::binary);
+                std::ifstream blobStream(blobPath, std::ios::in | std::ios::binary);
                 if(!blobStream.is_open()) throw std::runtime_error("NeuralNetwork node | Blob at path: " + blobPath + " doesn't exist");
 
-                std::vector<std::uint8_t> blob;
-                            
-                // get its size
-                std::streampos fileSize;
+                std::vector<std::uint8_t> blob(std::istreambuf_iterator<char>(blobStream), {});
 
+                /*
+                // Get file size
+                std::streampos fileSize;
                 blobStream.seekg(0, std::ios::end);
                 fileSize = blobStream.tellg();
                 blobStream.seekg(0, std::ios::beg);
 
-                // reserve
-                blob.reserve(fileSize);
-
-                // copy data
-                blob.insert(blob.begin(), std::istream_iterator<std::uint8_t>(blobStream), std::istream_iterator<std::uint8_t>());
+                // Read to vector
+                std::vector<std::uint8_t> blob(fileSize);
+                blobStream.read()
+                */
 
                 // Create an asset (alignment 64)
-                Asset blobAsset(blob.data(), blob.size(), 64);
+                Asset blobAsset;
+                blobAsset.alignment = 64;
+                blobAsset.data = std::move(blob);
 
                 // Create asset key
                 std::string assetKey = std::to_string(id)+"/blob";
 
-                // Add asset
-                assetManager.add(assetKey, blobAsset);
+                // set asset (replaces previous asset without throwing)
+                assetManager.set(assetKey, blobAsset);
 
                 // Set properties URI to asset:id/blob 
                 properties.blobUri = std::string("asset:") + assetKey;
-                properties.blobSize = std::make_shared<int64_t>(blob.size());
+                properties.blobSize = blob.size();
             }
+
 
             std::string blobPath;
 
@@ -90,10 +91,11 @@ namespace dai
             // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
             void setBlobPath(std::string path){
                 blobPath = path;
+                loadBlob(path);
             }
 
             void setNumPoolFrames(int numFrames){
-                properties.numFrames = std::make_shared<int64_t>(numFrames);
+                properties.numFrames = numFrames;
             }
 
         };
