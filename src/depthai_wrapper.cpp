@@ -128,7 +128,6 @@ DepthAI::~DepthAI() = default;
 
 void DepthAI::get_frames(std::unordered_map<std::string, CV_mat_ptr>& output_streams)
 {
-    // std::cout << "mono it-----" << mono_height_ << " ~~ " << mono_width_ << std::endl;
 
     int count = stream_names_.size();
     std::vector<std::string>::iterator it;
