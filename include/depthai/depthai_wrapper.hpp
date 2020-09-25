@@ -20,7 +20,7 @@ public:
      *   initializing OAK device and creating pipeline
      *   to capture camera streams and AI outputs.
      */
-    DepthAI(std::string usb_device, std::string config_file, bool usb2_mode = false);
+    DepthAI(const std::string& usb_device, const std::string& config_file, bool usb2_mode = false);
 
     /* API to stream output frames from OAK.
      * AI data and metadata is WIP
