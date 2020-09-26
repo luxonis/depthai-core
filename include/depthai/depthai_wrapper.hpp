@@ -7,11 +7,13 @@
 
 namespace DepthAI {
 
-using CV_mat_ptr = std::shared_ptr<cv::Mat>; // shared ptr for cv::Mat
+// shared ptr for cv::Mat
+using CV_mat_ptr = std::shared_ptr<cv::Mat>;
+// tuple of data packets on which Depthai is publishing the streams
+
 using PacketsTuple = std::tuple<
     std::list<std::shared_ptr<NNetPacket>>,
-    std::list<std::shared_ptr<HostDataPacket>>>; // tuple of data packets on which Depthai is
-// publishing the streams
+    std::list<std::shared_ptr<HostDataPacket>>>;
 
 /**  DepthAI:
  *   This is a wrapper on the host side of the device which 
