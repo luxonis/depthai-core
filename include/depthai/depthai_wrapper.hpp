@@ -79,7 +79,7 @@ private:
      */
     void set_resolution();
 
-    /* sets the shape of the placeholders of image streams */
+    /* Sets the shape of the placeholders of image streams */
     void create_frame_holders();
 };
 
