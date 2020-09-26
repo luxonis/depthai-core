@@ -19,7 +19,6 @@ using PacketsTuple = std::tuple<
  *   helps in initializing device, creating pipeline
  *   and fetching the frames as cv::Mat. 
  */
-
 class DepthAI : public Device {
 
 public:
@@ -34,13 +33,16 @@ public:
     DepthAI(const std::string& usb_device, const std::string& config_file, bool usb2_mode = false);
 
     /* API to stream output frames from device.
-     * AI data and metadata is WIP
+     * AI models results and metadata is WIP
+     * @param output_streams (std::unordered_map<std::string, CV_mat_ptr>): output_streams is a placeholder 
+     * to extract all the streams being sent by the device. 
      */
     void get_frames(std::unordered_map<std::string, CV_mat_ptr>& output_streams);
 
     /* Destructor */
     ~DepthAI() = default;
-    static const std::unordered_map<int, int> width_map_; // mapping of width with height
+
+    static const std::unordered_map<int, int> width_to_height_map_; // mapping of width with height
 
 private:
     std::shared_ptr<CNNHostPipeline> pipeline_; // Depthai's pipeline object.
@@ -53,12 +55,16 @@ private:
     int mono_width_; //  represents the width and height of the stereo camera frame
     int mono_height_; //  represents the width and height of the stereo camera frame
 
-    std::vector<std::string> stream_names_; // camera streams enabled using config file
-    std::vector<CV_mat_ptr> image_streams_; // place holders for image stream
     std::unordered_map<std::string, CV_mat_ptr> image_stream_holder;
 
-    void set_resolution(); // fetches the width and height of the color and stereo frames from thr config
-    void create_frame_holders(); // sets the spare of the placeholders of image streams
+    /* 
+     * fetches the width and height of the color and stereo 
+     * frames from thr config.
+     */
+    void set_resolution();
+
+    /* sets the shape of the placeholders of image streams */
+    void create_frame_holders();
 };
 
 } // namespace DepthAI
