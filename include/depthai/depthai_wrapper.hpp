@@ -55,7 +55,7 @@ private:
 
     std::vector<std::string> stream_names_; // camera streams enabled using config file
     std::vector<CV_mat_ptr> image_streams_; // place holders for image stream
-    // std::unordered_map<std::string, CV_mat_ptr> image_stream_holder;
+    std::unordered_map<std::string, CV_mat_ptr> image_stream_holder;
 
     void set_resolution(); // fetches the width and height of the color and stereo frames from thr config
     void create_frame_holders(); // sets the spare of the placeholders of image streams

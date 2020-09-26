@@ -83,6 +83,7 @@ void DepthAI::create_frame_holders()
                 if (it.get<std::string>() == "previewout") {
                     CV_mat_ptr img = std::make_shared<cv::Mat>(rgb_height_, rgb_width_, CV_8UC3);
                     image_streams_.push_back(img);
+                    image_stream_holder["previewout"] = img;
                 }
             } else {
                 const auto& name = it.at("name").get<std::string>();
@@ -90,12 +91,15 @@ void DepthAI::create_frame_holders()
                 if (name == "previewout") {
                     CV_mat_ptr img = std::make_shared<cv::Mat>(rgb_height_, rgb_width_, CV_8UC3);
                     image_streams_.push_back(img);
+                    image_stream_holder["previewout"] = img;
                 } else if (name == "depth") {
                     CV_mat_ptr img = std::make_shared<cv::Mat>(mono_height_, mono_width_, CV_16UC1);
                     image_streams_.push_back(img);
+                    image_stream_holder["depth"] = img;
                 } else if (name == "disparity_color") {
                     CV_mat_ptr img = std::make_shared<cv::Mat>(mono_height_, mono_width_, CV_16UC3);
                     image_streams_.push_back(img);
+                    image_stream_holder["disparity_color"] = img;
                 }
             }
         }
@@ -105,36 +109,32 @@ void DepthAI::create_frame_holders()
 // How about creating streams for everything in the vector in constructor and then updating them
 // each time get frames is called ? How will it receive if it is not called for a small span of time ?
 
-// TODO: Crash on size mismatch. DO this later.
-// TODO: save config as json and check if the streams are in the config and crash if they aren't
+// TODO(sachin): Crash on size mismatch. DO this later.
+// TODO(sachin): modify it using a struct to include time stamps and not loose frames. 
 
 void DepthAI::get_frames(std::unordered_map<std::string, CV_mat_ptr>& output_streams)
 {
-    int count = stream_names_.size();
-    std::vector<std::string>::iterator it;
-    std::vector<bool> dirty_check(stream_names_.size(), false);
-    while (count) {
+    int count = image_stream_holder.size();
+    std::set<std::string> dirty_check;
+    while (count) { // count and dirty check is used incase same stream appears twice before other streams. 
         packets_ = pipeline_->getAvailableNNetAndDataPackets(true);
 
         for (const auto& sub_packet : std::get<1>(packets_)) {
-            it = std::find(stream_names_.begin(), stream_names_.end(), sub_packet->stream_name);
-            if (it != stream_names_.end()) {
-                int index = it - stream_names_.begin();
-                unsigned char* img_ptr = reinterpret_cast<unsigned char*>(image_streams_[index]->data);
+        std::unordered_map<std::string, CV_mat_ptr>::iterator it = image_stream_holder.find(sub_packet->stream_name);
+            if (it != image_stream_holder.end()) {
+                unsigned char* img_ptr = reinterpret_cast<unsigned char*>((it->second)->data);
                 const auto& received_data = sub_packet->getData();
 
                 memcpy(img_ptr, received_data, sub_packet->size());
-                if (!dirty_check[index]) {
-                    dirty_check[index] = true;
+                if (dirty_check.find(sub_packet->stream_name) == dirty_check.end()) {
+                    dirty_check.insert(sub_packet->stream_name);
                     count--;
                 }
             }
         }
     }
 
-    for (int i = 0; i < stream_names_.size(); ++i) {
-        output_streams[stream_names_[i]] = image_streams_[i];
-    }
+    output_streams = image_stream_holder;
 }
 
 } // namespace DepthAI
