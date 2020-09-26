@@ -2,12 +2,9 @@
 #include <fstream>
 #include <sstream>
 
-#define WARNING "\033[1;5;31m" // Adds color to error statements
-#define ENDC "\033[0m"
-
 namespace DepthAI {
 
-const std::unordered_map<int, int> DepthAI::width_to_height_map_ = { { 720, 1280 }, { 800, 1280 }, { 400, 640 } };
+const std::unordered_map<int, int> DepthAI::height_to_width_map_ = { { 720, 1280 }, { 800, 1280 }, { 400, 640 } };
 
 DepthAI::DepthAI(const std::string& usb_device, const std::string& config_file, bool usb2_mode)
     : Device(usb_device, usb2_mode)
@@ -18,8 +15,7 @@ DepthAI::DepthAI(const std::string& usb_device, const std::string& config_file, 
     if (file) {
         file_stream << file.rdbuf();
     } else {
-        std::cerr << WARNING + config_file + " file  is not found" ENDC << std::endl;
-        abort();
+        throw std::runtime_error("Config file could not be found at " + config_file);
     }
     std::string config_str = file_stream.str();
     // creating pipeline using config and saving the json of config.
@@ -43,10 +39,10 @@ void DepthAI::set_resolution()
         if (camera_conf_obj.contains("rgb")) {
             auto& rgb_camera_conf_obj = camera_conf_obj.at("rgb");
             rgb_height_ = rgb_camera_conf_obj.at("resolution_h").get<int32_t>();
-            // _rgb_width = width_to_height_map_[_rgb_height];
+            // _rgb_width = height_to_width_map_[_rgb_height];
         } else {
-            rgb_height_ = 3040;
-            rgb_width_ = 4056;
+            rgb_height_ = default_rgb_height_;
+            rgb_width_ = default_rgb_width_;
         }
         /*
          * if stereo camera res is set in config_json_ fetch it to set 
@@ -55,17 +51,18 @@ void DepthAI::set_resolution()
         if (camera_conf_obj.contains("mono")) {
             auto& mono_camera_conf_obj = camera_conf_obj.at("mono");
             mono_height_ = mono_camera_conf_obj.at("resolution_h").get<int32_t>();
-            auto it = width_to_height_map_.find(mono_height_);
-            mono_width_ = it->second;
+            // auto it = height_to_width_map_.find(mono_height_);
+            // mono_width_ = it->second;
+            mono_width_ = height_to_width_map_.at(mono_height_);
         } else {
-            mono_height_ = 720;
-            mono_width_ = 1280;
+            mono_height_ = default_mono_height_;
+            mono_width_ = default_mono_width_;
         }
     } else {
-        rgb_height_ = 3040;
-        rgb_width_ = 4056;
-        mono_height_ = 720;
-        mono_width_ = 1280;
+        rgb_height_ = default_rgb_height_;
+        rgb_width_ = default_rgb_width_;
+        mono_height_ = default_mono_height_;
+        mono_width_ = default_mono_width_;
     }
 }
 
@@ -109,12 +106,12 @@ void DepthAI::get_frames(std::unordered_map<std::string, CV_mat_ptr>& output_str
     int count = image_stream_holder.size();
     std::set<std::string> dirty_check;
     while (count) { // count and dirty check is used incase same stream appears twice before other streams.
-        packets_ = pipeline_->getAvailableNNetAndDataPackets(true);
+        PacketsTuple packets = pipeline_->getAvailableNNetAndDataPackets(true);
 
         // iterating over the packets to extract all the image streams specified in the config
-        for (const auto& sub_packet : std::get<1>(packets_)) {
-            std::unordered_map<std::string, CV_mat_ptr>::iterator it = image_stream_holder.find(sub_packet->stream_name);
-            if (it != image_stream_holder.end()) {
+        for (const auto& sub_packet : std::get<1>(packets)) {
+            std::unordered_map<std::string, CV_mat_ptr>::iterator it = image_stream_holder_.find(sub_packet->stream_name);
+            if (it != image_stream_holder_.end()) {
                 unsigned char* img_ptr = reinterpret_cast<unsigned char*>((it->second)->data);
                 const auto& received_data = sub_packet->getData();
 
@@ -127,7 +124,7 @@ void DepthAI::get_frames(std::unordered_map<std::string, CV_mat_ptr>& output_str
         }
     }
 
-    output_streams = image_stream_holder;
+    output_streams = image_stream_holder_;
 }
 
 } // namespace DepthAI

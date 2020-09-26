@@ -4,7 +4,6 @@
 #include <opencv2/opencv.hpp>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 namespace DepthAI {
 
@@ -42,18 +41,33 @@ public:
     /* Destructor */
     ~DepthAI() = default;
 
-    static const std::unordered_map<int, int> width_to_height_map_; // mapping of width with height
-
 private:
-    std::shared_ptr<CNNHostPipeline> pipeline_; // Depthai's pipeline object.
+    // Depthai's pipeline object.
+    std::shared_ptr<CNNHostPipeline> pipeline_;
 
-    PacketsTuple packets_;
-    nlohmann::json config_json_; // Config file's json holder
+    // Config file's json holder
+    nlohmann::json config_json_;
 
-    int rgb_width_; //  represents the width and height of the rgb frame
-    int rgb_height_; //  represents the width and height of the rgb frame
-    int mono_width_; //  represents the width and height of the stereo camera frame
-    int mono_height_; //  represents the width and height of the stereo camera frame
+    // setting default rgb frames height
+    static const int default_rgb_height_ = 3040;
+    // setting default rgb frames width
+    static const int default_rgb_width_ = 4056;
+    // setting default mono frames height
+    static const int default_mono_height_ = 720;
+    // setting default mono frames height
+    static const int default_mono_width_ = 1280;
+
+    // mapping of width with height
+    static const std::unordered_map<int, int> height_to_width_map_;
+
+    // represents the width of the rgb frame
+    int rgb_width_;
+    // represents the height of the rgb frame
+    int rgb_height_;
+    // represents the width of the stereo camera frame
+    int mono_width_;
+    // represents the height of the stereo camera frame
+    int mono_height_;
 
     std::unordered_map<std::string, CV_mat_ptr> image_stream_holder;
 
