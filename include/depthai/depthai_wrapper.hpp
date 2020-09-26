@@ -58,8 +58,8 @@ private:
     std::unordered_map<std::string, CV_mat_ptr> image_stream_holder;
 
     /* 
-     * fetches the width and height of the color and stereo 
-     * frames from thr config.
+     * Fetches the width and height of the color and stereo 
+     * frames from the config.
      */
     void set_resolution();
 
