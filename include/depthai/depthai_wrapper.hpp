@@ -69,11 +69,11 @@ private:
     // represents the height of the stereo camera frame
     int mono_height_;
 
-    std::unordered_map<std::string, CV_mat_ptr> image_stream_holder;
+    std::unordered_map<std::string, CV_mat_ptr> image_stream_holder_;
 
     /* 
-     * fetches the width and height of the color and stereo 
-     * frames from thr config.
+     * Fetches the width and height of the color and stereo 
+     * frames from the config.
      */
     void set_resolution();
 
