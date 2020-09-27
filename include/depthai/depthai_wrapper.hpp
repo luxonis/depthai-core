@@ -9,8 +9,8 @@ namespace DepthAI {
 
 // shared ptr for cv::Mat
 using CV_mat_ptr = std::shared_ptr<cv::Mat>;
-// tuple of data packets on which Depthai is publishing the streams
 
+// tuple of data packets on which DepthAI is publishing the streams
 using PacketsTuple = std::tuple<
     std::list<std::shared_ptr<NNetPacket>>,
     std::list<std::shared_ptr<HostDataPacket>>>;
