@@ -51,13 +51,13 @@ private:
     nlohmann::json config_json_;
 
     // setting default rgb frames height
-    static const int default_rgb_height_ = 3040;
+    static const int DefaultRGBHeight = 3040;
     // setting default rgb frames width
-    static const int default_rgb_width_ = 4056;
+    static const int DefaultRGBWidth = 4056;
     // setting default mono frames height
-    static const int default_mono_height_ = 720;
+    static const int DefaultMonoHeight = 720;
     // setting default mono frames height
-    static const int default_mono_width_ = 1280;
+    static const int DefaultMonoWidth = 1280;
 
     // mapping of width with height
     static const std::unordered_map<int, int> height_to_width_map_;
