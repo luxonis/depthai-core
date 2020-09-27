@@ -15,7 +15,8 @@ DepthAI::DepthAI(const std::string& usb_device, const std::string& config_file, 
     if (file) 
     {
         file_stream << file.rdbuf();
-    } else 
+    } 
+    else 
     {
         throw std::runtime_error("Config file could not be found at " + config_file);
     }
