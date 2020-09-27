@@ -42,13 +42,6 @@ public:
     /* Destructor */
     ~DepthAI() = default;
 
-private:
-    // Depthai's pipeline object.
-    std::shared_ptr<CNNHostPipeline> pipeline_;
-
-    // Config file's json holder
-    nlohmann::json config_json_;
-
     // setting default rgb frames height
     static const int DefaultRGBHeight = 3040;
     // setting default rgb frames width
@@ -57,6 +50,13 @@ private:
     static const int DefaultMonoHeight = 720;
     // setting default mono frames height
     static const int DefaultMonoWidth = 1280;
+    
+private:
+    // Depthai's pipeline object.
+    std::shared_ptr<CNNHostPipeline> pipeline_;
+
+    // Config file's json holder
+    nlohmann::json config_json_;
 
     // mapping of width with height
     static const std::unordered_map<int, int> height_to_width_map_;

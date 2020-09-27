@@ -52,8 +52,8 @@ void DepthAI::set_resolution()
         } 
         else 
         {
-            rgb_height_ = default_rgb_height_;
-            rgb_width_ = default_rgb_width_;
+            rgb_height_ = DefaultRGBHeight;
+            rgb_width_ = DefaultRGBWidth;
         }
         /*
          * if stereo camera res is set in config_json_ fetch it to set 
@@ -67,16 +67,16 @@ void DepthAI::set_resolution()
         } 
         else 
         {
-            mono_height_ = default_mono_height_;
-            mono_width_ = default_mono_width_;
+            mono_height_ = DefaultMonoHeight;
+            mono_width_ = DefaultMonoWidth;
         }
     } 
     else 
     {
-        rgb_height_ = default_rgb_height_;
-        rgb_width_ = default_rgb_width_;
-        mono_height_ = default_mono_height_;
-        mono_width_ = default_mono_width_;
+        rgb_height_ = DefaultRGBHeight;
+        rgb_width_ = DefaultRGBWidth;
+        mono_height_ = DefaultMonoHeight;
+        mono_width_ = DefaultMonoWidth;
     }
 }
 
