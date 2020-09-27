@@ -29,6 +29,9 @@ DepthAI::DepthAI(const std::string& usb_device, const std::string& config_file, 
     // extract resolution of the frames and create cv::Mat placeholders
     set_resolution();
     create_frame_holders();
+
+    std::cout << "RGB Camera resolution : " << rgb_width_ << "x" << rgb_height_ << std::endl;
+    std::cout << "Mono Camera resolution : " << mono_width_ << "x" << mono_height_ << std::endl; 
 }
 
 void DepthAI::set_resolution()
