@@ -46,7 +46,8 @@ void DepthAI::set_resolution()
             auto& rgb_camera_conf_obj = camera_conf_obj.at("rgb");
             rgb_height_ = rgb_camera_conf_obj.at("resolution_h").get<int32_t>();
             // _rgb_width = height_to_width_map_[_rgb_height];
-        } else 
+        } 
+        else 
         {
             rgb_height_ = default_rgb_height_;
             rgb_width_ = default_rgb_width_;
@@ -62,12 +63,14 @@ void DepthAI::set_resolution()
             // auto it = height_to_width_map_.find(mono_height_);
             // mono_width_ = it->second;
             mono_width_ = height_to_width_map_.at(mono_height_);
-        } else 
+        } 
+        else 
         {
             mono_height_ = default_mono_height_;
             mono_width_ = default_mono_width_;
         }
-    } else 
+    } 
+    else 
     {
         rgb_height_ = default_rgb_height_;
         rgb_width_ = default_rgb_width_;
@@ -92,14 +95,16 @@ void DepthAI::create_frame_holders()
                     CV_mat_ptr img = std::make_shared<cv::Mat>(rgb_height_, rgb_width_, CV_8UC3);
                     image_stream_holder["previewout"] = img;
                 }
-            } else 
+            } 
+            else 
             {
                 const auto& name = it.at("name").get<std::string>();
                 if (name == "previewout") 
                 {
                     CV_mat_ptr img = std::make_shared<cv::Mat>(rgb_height_, rgb_width_, CV_8UC3);
                     image_stream_holder["previewout"] = img;
-                } else if (name == "depth") 
+                } 
+                else if (name == "depth") 
                 {
                     CV_mat_ptr img = std::make_shared<cv::Mat>(mono_height_, mono_width_, CV_16UC1);
                     image_stream_holder["depth"] = img;
