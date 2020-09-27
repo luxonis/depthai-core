@@ -63,8 +63,6 @@ void DepthAI::set_resolution()
         {
             auto& mono_camera_conf_obj = camera_conf_obj.at("mono");
             mono_height_ = mono_camera_conf_obj.at("resolution_h").get<int32_t>();
-            // auto it = height_to_width_map_.find(mono_height_);
-            // mono_width_ = it->second;
             mono_width_ = height_to_width_map_.at(mono_height_);
         } 
         else 
@@ -96,7 +94,7 @@ void DepthAI::create_frame_holders()
                 if (it.get<std::string>() == "previewout") 
                 {
                     CV_mat_ptr img = std::make_shared<cv::Mat>(rgb_height_, rgb_width_, CV_8UC3);
-                    image_stream_holder["previewout"] = img;
+                    image_stream_holder_["previewout"] = img;
                 }
             } 
             else 
@@ -105,17 +103,17 @@ void DepthAI::create_frame_holders()
                 if (name == "previewout") 
                 {
                     CV_mat_ptr img = std::make_shared<cv::Mat>(rgb_height_, rgb_width_, CV_8UC3);
-                    image_stream_holder["previewout"] = img;
+                    image_stream_holder_["previewout"] = img;
                 } 
                 else if (name == "depth") 
                 {
                     CV_mat_ptr img = std::make_shared<cv::Mat>(mono_height_, mono_width_, CV_16UC1);
-                    image_stream_holder["depth"] = img;
+                    image_stream_holder_["depth"] = img;
                 } 
                 else if (name == "disparity_color") 
                 {
                     CV_mat_ptr img = std::make_shared<cv::Mat>(mono_height_, mono_width_, CV_16UC3);
-                    image_stream_holder["disparity_color"] = img;
+                    image_stream_holder_["disparity_color"] = img;
                 }
             }
         }
@@ -128,9 +126,9 @@ void DepthAI::create_frame_holders()
 // TODO(sachin): Crash on size mismatch. DO this later.
 // TODO(sachin): modify it using a struct to include time stamps and not loose frames.
 
-void DepthAI::get_frames(std::unordered_map<std::string, CV_mat_ptr>& output_streams)
+void DepthAI::get_streams(std::unordered_map<std::string, CV_mat_ptr>& output_streams)
 {
-    int count = image_stream_holder.size();
+    int count = image_stream_holder_.size();
     std::unordered_set<std::string> dirty_check;
     while (count) 
     { // count and dirty check is used incase same stream appears twice before other streams.
