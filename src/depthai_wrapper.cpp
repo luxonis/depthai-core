@@ -102,7 +102,8 @@ void DepthAI::create_frame_holders()
                 {
                     CV_mat_ptr img = std::make_shared<cv::Mat>(mono_height_, mono_width_, CV_16UC1);
                     image_stream_holder["depth"] = img;
-                } else if (name == "disparity_color") 
+                } 
+                else if (name == "disparity_color") 
                 {
                     CV_mat_ptr img = std::make_shared<cv::Mat>(mono_height_, mono_width_, CV_16UC3);
                     image_stream_holder["disparity_color"] = img;
