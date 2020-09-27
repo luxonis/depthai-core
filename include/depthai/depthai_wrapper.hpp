@@ -38,7 +38,7 @@ public:
      * @param output_streams (std::unordered_map<std::string, CV_mat_ptr>): output_streams is a placeholder 
      * to extract all the streams being sent by the device. 
      */
-    void get_frames(std::unordered_map<std::string, CV_mat_ptr>& output_streams);
+    void get_streams(std::unordered_map<std::string, CV_mat_ptr>& output_streams);
 
     /* Destructor */
     ~DepthAI() = default;
