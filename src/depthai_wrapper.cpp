@@ -1,6 +1,7 @@
 #include "depthai/depthai_wrapper.hpp"
 #include <fstream>
 #include <sstream>
+#include <unordered_set>
 
 namespace DepthAI {
 
@@ -122,7 +123,7 @@ void DepthAI::create_frame_holders()
 void DepthAI::get_frames(std::unordered_map<std::string, CV_mat_ptr>& output_streams)
 {
     int count = image_stream_holder.size();
-    std::set<std::string> dirty_check;
+    std::unordered_set<std::string> dirty_check;
     while (count) 
     { // count and dirty check is used incase same stream appears twice before other streams.
         PacketsTuple packets = pipeline_->getAvailableNNetAndDataPackets(true);
