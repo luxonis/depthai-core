@@ -13,8 +13,8 @@ HunterGate(
 )
 
 # To here ----------->
-## Move this to src/CMakelists.txt while using it with catkin make ROS
 
+## Move this to src/CMakelists.txt while using it with catkin make ROS
 
 # Move binary dir if windows, to shorten the path
 if(WIN32)
@@ -85,7 +85,6 @@ add_library(${TARGET_NAME}
     src/types.cpp
     src/device.cpp
     src/bspatch/bspatch.c
-    src/matrix_ops.cpp
 )
 
 # Set compiler features (c++11)
