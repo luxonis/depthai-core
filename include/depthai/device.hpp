@@ -6,6 +6,7 @@
 
 //shared
 #include "depthai-shared/xlink/xlink_wrapper.hpp"
+#include "depthai-shared/metadata/camera_control.hpp"
 
 //project
 #include "nlohmann/json.hpp"
@@ -47,6 +48,8 @@ public:
     void request_af_trigger();
     void request_af_mode(CaptureMetadata::AutofocusMode mode);
     void send_disparity_confidence_threshold(uint8_t confidence);
+    void send_camera_control(Isp3A_CamId camera_id, Isp3A_Commands command_id,
+                             const std::string &extra_args);
 
     std::map<std::string, int> get_nn_to_depth_bbox_mapping();
 

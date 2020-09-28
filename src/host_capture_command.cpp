@@ -27,6 +27,16 @@ void HostCaptureCommand::sendCustomDeviceResetRequest(void){
     notifyObservers(stream, custom_reset);
 }
 
+void HostCaptureCommand::sendIsp3A(int camera_id, int command_id, const char *extra_args) {
+    StreamData cmd_data;
+    char cmdfull[256];
+    snprintf(cmdfull, sizeof cmdfull, "3A %d %d %s", command_id, camera_id, extra_args);
+    cmd_data.packet_number = 0;
+    cmd_data.data = cmdfull;
+    cmd_data.size = strlen(cmdfull) + 1;
+    notifyObservers(stream, cmd_data);
+}
+
 void HostCaptureCommand::capture(){
     sendCaptureMetadata(CaptureMetadata::createStillCapture());
 }

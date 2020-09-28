@@ -15,6 +15,7 @@ public:
     void afTrigger();
     void sendDisparityConfidenceThreshold(uint8_t confidence_thr);
     void sendCustomDeviceResetRequest(void);
+    void sendIsp3A(int camera_id, int command_id, const char *extra_args);
 
 private:
     StreamInfo stream;
