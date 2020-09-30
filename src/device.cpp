@@ -235,6 +235,15 @@ bool Device::startPipeline(Pipeline& pipeline){
     std::vector<std::uint8_t> assetStorage;
     pipeline.serialize(schema, assets, assetStorage);
 
+    // if debug
+    if(0){
+        nlohmann::json jSchema = schema;
+        std::cout << std::endl << jSchema.dump(4) << std::endl;
+
+        nlohmann::json jAssets = assets;
+        std::cout << std::endl << jAssets.dump(4) << std::endl;
+    }
+
     // Load pipelineDesc, assets, and asset storage
     client->call("setPipelineSchema", schema);
 
@@ -282,7 +291,7 @@ bool Device::startPipeline(Pipeline& pipeline){
         return false;
     }
 
-    client->call("startCamera");
+    //client->call("startCamera");
 
     return true;
 
@@ -788,7 +797,7 @@ std::map<std::string, int> Device::get_nn_to_depth_bbox_mapping(){
 
 
 
-bool Device::startTestPipeline(){
+bool Device::startTestPipeline(int testId){
 
     // first check if pipeline is not already started
     if(isPipelineRunning()) return false;
@@ -815,80 +824,162 @@ bool Device::startTestPipeline(){
     */
 
     using namespace nlohmann;
-    nlohmann::json pipelineDescJson = R"(
-    {
-        "globalProperties": {
-            "leonOsFrequencyKhz": 600000,
-            "pipelineVersion": "1",
-            "pipelineName": "1",
-            "leonRtFrequencyKhz": 600000
-        },
-        "nodes": [
+    nlohmann::json pipelineDescJson;
+    
+    if(testId == 0){
+        pipelineDescJson = R"(
             {
-                "id": 1,
-                "name": "MyProducer",
-                "properties": {
-                    "message": "HeiHoi",
-                    "processorPlacement": "LRT"
-                }
-            },
-            {
-                "id": 2,
-                "name": "MyConsumer",
-                "properties": {
-                    "processorPlacement": "LRT"
-                }
-            },
-            {
-                "id": 3,
-                "name": "MyConsumer",
-                "properties": {
-                    "processorPlacement": "LOS"
-                }
-            },
-            {
-                "id": 4,
-                "name": "MyConsumer",
-                "properties": {
-                    "processorPlacement": "LRT"
-                }
+                "globalProperties": {
+                    "leonOsFrequencyHz": 600000000,
+                    "pipelineVersion": "1",
+                    "pipelineName": "1",
+                    "leonRtFrequencyHz": 600000000
+                },
+                "nodes": [
+                    {
+                        "id": 1,
+                        "name": "MyProducer",
+                        "properties": {
+                            "message": "HeiHoi",
+                            "processorPlacement": 0
+                        }
+                    },
+                    {
+                        "id": 2,
+                        "name": "MyConsumer",
+                        "properties": {
+                            "processorPlacement": 1
+                        }
+                    },
+                    {
+                        "id": 3,
+                        "name": "MyConsumer",
+                        "properties": {
+                            "processorPlacement": 0
+                        }
+                    },
+                    {
+                        "id": 4,
+                        "name": "MyConsumer",
+                        "properties": {
+                            "processorPlacement": 1
+                        }
+                    }
+                ],
+                "connections": [
+                    {
+                        "node1Id": 1,
+                        "node2Id": 2,
+                        "node1Output": "out",
+                        "node2Input": "in"
+                    },
+                    {
+                        "node1Id": 1,
+                        "node2Id": 3,
+                        "node1Output": "out",
+                        "node2Input": "in"
+                    },
+                    {
+                        "node1Id": 1,
+                        "node2Id": 4,
+                        "node1Output": "out",
+                        "node2Input": "in"
+                    }
+                ]
             }
-        ],
-        "connections": [
-            {
-                "node1Id": 1,
-                "node2Id": 2,
-                "node1Output": "out",
-                "node2Input": "in"
+            )"_json;
+    } else if(testId == 1){
+        pipelineDescJson = R"(
+        {
+            "globalProperties": {
+                "leonOsFrequencyHz": 600000000,
+                "pipelineVersion": "1",
+                "pipelineName": "1",
+                "leonRtFrequencyHz": 600000000
             },
-            {
-                "node1Id": 1,
-                "node2Id": 3,
-                "node1Output": "out",
-                "node2Input": "in"
+            "nodes": [
+                {
+                    "id": 1,
+                    "name": "MyProducer",
+                    "properties": {
+                        "message": "HeiHoi",
+                        "processorPlacement": 0
+                    }
+                },
+                {
+                    "id": 2,
+                    "name": "MyConsumer",
+                    "properties": {
+                        "processorPlacement": 1
+                    }
+                }
+            ],
+            "connections": [
+                {
+                    "node1Id": 1,
+                    "node2Id": 2,
+                    "node1Output": "out",
+                    "node2Input": "in"
+                }
+            ]
+        }
+        )"_json;
+
+    } else if(testId == 2) {
+        pipelineDescJson = R"({
+            "connections": [
+                {
+                    "node1Id": 0,
+                    "node1Output": "out",
+                    "node2Id": 1,
+                    "node2Input": "in"
+                }
+            ],
+            "globalProperties": {
+                "leonOsFrequencyHz": 600000000.0,
+                "leonRtFrequencyHz": 600000000.0,
+                "pipelineName": null,
+                "pipelineVersion": null
             },
-            {
-                "node1Id": 1,
-                "node2Id": 4,
-                "node1Output": "out",
-                "node2Input": "in"
-            }
-        ]
+            "nodes": [
+                {
+                    "id": 0,
+                    "name": "XLinkIn",
+                    "properties": {
+                        "streamName": "nn_in"
+                    }
+                },
+                {
+                    "id": 1,
+                    "name": "MyConsumer",
+                    "properties": {
+                        "processorPlacement": 1
+                    }
+                },
+                {
+                    "id": 2,
+                    "name": "XLinkOut",
+                    "properties": {
+                        "maxFpsLimit": -1.0,
+                        "streamName": "nn_out"
+                    }
+                }
+            ]
+        })"_json;
     }
-    )"_json;
 
     std::vector<std::uint8_t> assetStorage;
     Assets assets;
-    auto pipelineDescription = nlohmann::json::to_msgpack(pipelineDescJson);
-
+    PipelineSchema pipelineSchema = pipelineDescJson;
+    
 
     // Load pipelineDesc, assets, and asset storage
 
-    client->call("parsePipeline", pipelineDescription); 
+    client->call("setPipelineSchema", pipelineSchema); 
 
     // Transfer storage if size > 0
     if(assetStorage.size() > 0){
-        client->call("parseAssets", assets);
+        client->call("setAssets", assets);
 
 
         // allocate, returns a pointer to memory on device side
@@ -932,7 +1023,7 @@ bool Device::startTestPipeline(){
         return false;
     }
 
-    client->call("startCamera");
+    //client->call("startCamera");
 
 }
 

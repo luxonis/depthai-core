@@ -42,30 +42,17 @@ namespace dai
                 // Get pipelines asset manager
                 AssetManager& assetManager = getParentPipeline().getAssetManager();
 
+
                 // Load blob in blobPath into asset
                 // And mark in properties where to look for it
-
                 std::ifstream blobStream(blobPath, std::ios::in | std::ios::binary);
                 if(!blobStream.is_open()) throw std::runtime_error("NeuralNetwork node | Blob at path: " + blobPath + " doesn't exist");
-
-                std::vector<std::uint8_t> blob(std::istreambuf_iterator<char>(blobStream), {});
-
-                /*
-                // Get file size
-                std::streampos fileSize;
-                blobStream.seekg(0, std::ios::end);
-                fileSize = blobStream.tellg();
-                blobStream.seekg(0, std::ios::beg);
-
-                // Read to vector
-                std::vector<std::uint8_t> blob(fileSize);
-                blobStream.read()
-                */
 
                 // Create an asset (alignment 64)
                 Asset blobAsset;
                 blobAsset.alignment = 64;
-                blobAsset.data = std::move(blob);
+                blobAsset.data = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(blobStream), {});
+                
 
                 // Create asset key
                 std::string assetKey = std::to_string(id)+"/blob";
@@ -75,7 +62,7 @@ namespace dai
 
                 // Set properties URI to asset:id/blob 
                 properties.blobUri = std::string("asset:") + assetKey;
-                properties.blobSize = blob.size();
+                properties.blobSize = blobAsset.data.size();
             }
 
 

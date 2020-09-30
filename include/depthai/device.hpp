@@ -63,7 +63,7 @@ public:
     std::map<std::string, int> get_nn_to_depth_bbox_mapping();
 
 
-    bool startTestPipeline();
+    bool startTestPipeline(int testId);
 
 private:
 

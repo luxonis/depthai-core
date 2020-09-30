@@ -12,6 +12,8 @@ DataOutputQueue::DataOutputQueue(std::shared_ptr<XLinkConnection> conn, std::str
     // creates a thread which reads from connection into the queue
     readingThread = std::thread([this, streamName](){
 
+        std::uint64_t numPacketsRead = 0;
+
         try {
             
             // open stream with 1B write size (no writing will happen here)
@@ -25,7 +27,9 @@ DataOutputQueue::DataOutputQueue(std::shared_ptr<XLinkConnection> conn, std::str
                 // release packet
                 connection->readFromStreamRawRelease(streamName);
                 // Add 'data' to queue
-                queue.push(data);       
+                queue.push(data);
+                // Increment numPacketsRead
+                numPacketsRead++;
             }
 
             connection->closeStream(streamName);
@@ -54,6 +58,8 @@ DataInputQueue::DataInputQueue(std::shared_ptr<XLinkConnection> conn, std::strin
     // creates a thread which reads from connection into the queue
     writingThread = std::thread([this, streamName](){
 
+        std::uint64_t numPacketsSent = 0;
+
         try {
             
             // open stream with 1B write size (no writing will happen here)
@@ -69,6 +75,9 @@ DataInputQueue::DataInputQueue(std::shared_ptr<XLinkConnection> conn, std::strin
 
                 // Write packet to device
                 connection->writeToStream(streamName, serialized);
+
+                // Increment num packets sent
+                numPacketsSent++;
             }
 
             connection->closeStream(streamName);

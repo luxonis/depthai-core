@@ -24,7 +24,7 @@ void AssetManager::set(std::string key, const Asset& asset){
     a.data = std::move(asset.data);
     a.alignment = std::move(asset.alignment);
 
-    assetMap[asset.key] = std::make_shared<Asset>(std::move(a));
+    assetMap[key] = std::make_shared<Asset>(std::move(a));
 }
 
 std::shared_ptr<Asset> AssetManager::get(std::string key){
