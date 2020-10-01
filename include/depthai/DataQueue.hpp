@@ -38,6 +38,25 @@ public:
         return false;
     }
 
+    bool has(){
+        return !queue.empty();
+    }
+
+    template<class T>
+    std::shared_ptr<T> tryGet(){
+        std::shared_ptr<RawBuffer> val;
+        if(!queue.tryPop(val)) return nullptr;
+        return std::dynamic_pointer_cast<T>(val);
+    }
+
+    std::shared_ptr<RawBuffer> tryGet(){
+        std::shared_ptr<RawBuffer> p;
+        if(!queue.tryPop(p)){
+            return nullptr;
+        }
+        return p;
+    }
+
     template<class T>
     std::shared_ptr<T> get(){
         std::shared_ptr<RawBuffer> val;

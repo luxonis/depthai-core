@@ -8,86 +8,44 @@
 
 namespace dai
 {
-    namespace node
-    {
-        class ColorCamera : public Node{
-            dai::ColorCameraProperties properties;
+namespace node
+{
+    class ColorCamera : public Node{
+        dai::ColorCameraProperties properties;
+    
+        std::string getName() override;
+        std::vector<Output> getOutputs() override;
+        std::vector<Input> getInputs() override;
+        nlohmann::json getProperties() override;
+        std::shared_ptr<Node> clone() override;
+
+    public:
+        ColorCamera(const std::shared_ptr<PipelineImpl>& par);
+
+        Output video{*this, "video", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}} };
+        Output preview{*this, "preview", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}} };
+        Output still{*this, "still", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}} };
         
-            std::string getName(){
-                return "ColorCamera";
-            }
+        // Set which color camera to use
+        void setCamId(int64_t id);
 
-            std::vector<Output> getOutputs(){
-                return {video, preview, still};
-            }
+        // Get which color camera to use
+        int64_t getCamId();
 
-            std::vector<Input> getInputs(){
-                return {};
-            }
+        // setColorOrder - RGB or BGR
+        void setColorOrder(ColorCameraProperties::ColorOrder colorOrder);
+        
+        // getColorOrder - returns color order 
+        ColorCameraProperties::ColorOrder getColorOrder();
 
-            nlohmann::json getProperties(){
-                nlohmann::json j;
-                nlohmann::to_json(j, properties);
-                return j;
-            }
+        // setInterleaved
+        void setInterleaved(bool interleaved);
 
-            std::shared_ptr<Node> clone(){
-                return std::make_shared<ColorCamera>(*this);
-            }
+        // set preview output size
+        void setPreviewSize(int width, int height);
 
-        public:
-            ColorCamera(const std::shared_ptr<PipelineImpl>& par) : Node(par) {
-                properties.camId = 0;
-                properties.colorOrder = ColorCameraProperties::ColorOrder::BGR;
-                properties.interleaved = true;
-                properties.previewHeight = 300;
-                properties.previewWidth = 300;
-                properties.resolution = ColorCameraProperties::SensorResolution::THE_1080_P;
-            }
+        void setResolution(ColorCameraProperties::SensorResolution resolution);
+    };
 
-//            Output(Node& par, std::string n, Type t, std::vector< DatatypeHierarchy > types) : parent(par), type(t), name(n), possibleDatatypes(types) {}
-
-            Output video{*this, "video", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}} };
-            Output preview{*this, "preview", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}} };
-            Output still{*this, "still", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}} };
-            
-            // Set which color camera to use
-            void setCamId(int64_t id){
-                properties.camId = id;
-            }
-            // Get which color camera to use
-            int64_t getCamId(){
-                return properties.camId;
-            }
-
-
-            // setColorOrder - RGB or BGR
-            void setColorOrder(ColorCameraProperties::ColorOrder colorOrder){
-                properties.colorOrder = colorOrder;
-            }
-            
-            // getColorOrder - returns color order 
-            ColorCameraProperties::ColorOrder getColorOrder(){
-                return properties.colorOrder;
-            }
-
-            // setInterleaved
-            void setInterleaved(bool interleaved){
-                properties.interleaved = interleaved;
-            }
-
-            // set preview output size
-            void setPreviewSize(int width, int height){
-                properties.previewWidth = width;
-                properties.previewHeight = height;
-            }
-
-            void setResolution(ColorCameraProperties::SensorResolution resolution){
-                properties.resolution = resolution;
-            }      
-
-
-        };
-
-    } // namespace node
+} // namespace node
 } // namespace dai

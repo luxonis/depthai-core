@@ -78,6 +78,11 @@ add_library(${TARGET_NAME}
     src/pipeline/host_pipeline.cpp
     src/pipeline/AssetManager.cpp
     src/pipeline/Node.cpp
+    src/pipeline/node/XLinkIn.cpp
+    src/pipeline/node/XLinkOut.cpp
+    src/pipeline/node/ColorCamera.cpp
+    src/pipeline/node/NeuralNetwork.cpp
+    src/pipeline/node/MyProducer.cpp
     src/host_capture_command.cpp
     src/device_support_listener.cpp
     src/disparity_stream_post_processor.cpp
