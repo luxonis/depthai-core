@@ -155,10 +155,21 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit) {
     }
     
     // Search for booted device
-    {
+    {   
+
+        // Create description of device to look for
+        deviceDesc_t bootedDeviceDesc = {};
+        bootedDeviceDesc.protocol = deviceToInit.desc.protocol;
+        bootedDeviceDesc.platform = X_LINK_ANY_PLATFORM;
+        for(unsigned int i = 0; i<sizeof(deviceToInit.desc.name); i++){
+            bootedDeviceDesc.name[i] = deviceToInit.desc.name[i];
+            if(deviceToInit.desc.name[i] == '-') break;
+        }
+
+        // Find booted device
         auto tstart = steady_clock::now();
         do {
-            rc = XLinkFindFirstSuitableDevice(X_LINK_BOOTED, deviceToInit.desc, &deviceDesc);
+            rc = XLinkFindFirstSuitableDevice(X_LINK_BOOTED, bootedDeviceDesc, &deviceDesc);
             if (rc == X_LINK_SUCCESS) break;
         } while ( steady_clock::now() - tstart < WAIT_FOR_BOOTUP_TIMEOUT);
 

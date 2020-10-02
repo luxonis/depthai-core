@@ -428,7 +428,7 @@ void startWebcam(int camId, std::string nnPath){
 
     bool found;
     dai::DeviceInfo deviceInfo;
-    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_BOOTED);
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
 
     if(found) {
         dai::Device d(deviceInfo);

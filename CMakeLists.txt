@@ -16,7 +16,7 @@ if(WIN32)
 endif()
 
 set(TARGET_NAME depthai-core)
-project(${TARGET_NAME} VERSION "0.1.0" LANGUAGES CXX C)
+project(${TARGET_NAME} VERSION "0.0.2" LANGUAGES CXX C)
 
 # Set to export compile commands for tools like clang-tidy and format
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
