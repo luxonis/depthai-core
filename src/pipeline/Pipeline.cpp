@@ -8,14 +8,13 @@ namespace dai
         return latestId++;
     }
 
-    PipelineImpl::PipelineImpl(){}
-
     Pipeline::Pipeline(){
-        pimpl = std::shared_ptr<PipelineImpl>(new PipelineImpl());
+        pimpl = std::make_shared<PipelineImpl>();
     }
 
+    /*
     Pipeline::Pipeline(const Pipeline& p){
-        pimpl = std::shared_ptr<PipelineImpl>(new PipelineImpl());
+        pimpl = std::make_shared<PipelineImpl>();
         
         // Copy all nodes
         pimpl->globalProperties = p.getGlobalProperties();
@@ -26,9 +25,10 @@ namespace dai
             pimpl->nodes.push_back(clone);
         }
     }
+    */
 
 
-    Pipeline::Pipeline(std::shared_ptr<PipelineImpl> pimpl){
+    Pipeline::Pipeline(const std::shared_ptr<PipelineImpl>& pimpl){
         this->pimpl = pimpl; 
     }
 

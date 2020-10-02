@@ -37,7 +37,7 @@ public:
 
     Device();
     Device(const DeviceInfo& deviceDesc, bool usb2Mode = false);
-    Device(const DeviceInfo& deviceDesc, std::string pathToCmd);
+    Device(const DeviceInfo& deviceDesc, const std::string& pathToCmd);
     ~Device();
 
 
@@ -71,9 +71,9 @@ private:
 
     std::shared_ptr<XLinkConnection> connection;
     std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> client;
-    std::vector<uint8_t> patched_cmd;
+    std::vector<uint8_t> patchedCmd;
 
-    DeviceInfo deviceInfo;
+    DeviceInfo deviceInfo = {};
 
     std::unordered_map<std::string, std::shared_ptr<DataOutputQueue>> outputQueueMap;
     std::unordered_map<std::string, std::shared_ptr<DataInputQueue>> inputQueueMap;

@@ -31,7 +31,7 @@ namespace dai
         };
         
         //fwd declare Input class
-        class Input;
+        struct Input;
 
         struct Output{
             enum class Type{
@@ -43,10 +43,10 @@ namespace dai
             // Which types and do descendants count as well?
             const std::vector<DatatypeHierarchy> possibleDatatypes;
             std::vector<Input> conn;
-            Output(Node& par, std::string n, Type t, std::vector< DatatypeHierarchy > types) : parent(par), name(n), type(t), possibleDatatypes(types) {}
+            Output(Node& par, std::string n, Type t, std::vector< DatatypeHierarchy > types) : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {}
     
         public:
-            bool canConnect(Input in);
+            bool canConnect(const Input& in);
             void link(Input in);
 
         };
@@ -58,19 +58,18 @@ namespace dai
             Node& parent;
             const std::string name;
             const Type type;
-            friend class Output;
+            friend struct Output;
             // Which types and do descendants count as well?
             const std::vector< DatatypeHierarchy > possibleDatatypes;
-            Input(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types) : parent(par), name(n), type(t), possibleDatatypes(types) {}
+            Input(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types) : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {}
         };
 
 
         // when Pipeline tries to serialize and construct on remote, it will check if all connected nodes are on same pipeline
         std::weak_ptr<PipelineImpl> parent;
         std::vector<Output> outputs;
+        const int64_t id;
 
-
-        int64_t id;
         virtual std::string getName() = 0;
         virtual std::vector<Output> getOutputs() = 0;
         virtual std::vector<Input> getInputs() = 0;
@@ -82,8 +81,9 @@ namespace dai
         Pipeline getParentPipeline();
 
     public:
-        Node(const std::shared_ptr<PipelineImpl>& p) : parent(p) {}
-        virtual ~Node(){};
+        Node(const std::shared_ptr<PipelineImpl>& p, int64_t nodeId);
+
+        virtual ~Node() = default;
 
 
 

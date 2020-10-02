@@ -8,6 +8,9 @@ namespace node
 {
 
 
+NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
+
+
 std::string NeuralNetwork::getName(){
     return "NeuralNetwork";
 }
@@ -30,7 +33,7 @@ std::shared_ptr<Node> NeuralNetwork::clone(){
     return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
-void NeuralNetwork::loadBlob(std::string path){
+void NeuralNetwork::loadBlob(const std::string& path){
     // Get pipelines asset manager
     AssetManager& assetManager = getParentPipeline().getAssetManager();
 
@@ -57,12 +60,8 @@ void NeuralNetwork::loadBlob(std::string path){
 }
 
 
-
-NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par) : Node(par) {}
-
-
 // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
-void NeuralNetwork::setBlobPath(std::string path){
+void NeuralNetwork::setBlobPath(const std::string& path){
     blobPath = path;
     loadBlob(path);
 }

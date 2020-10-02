@@ -5,6 +5,8 @@ namespace dai
 namespace node
 {
 
+MyProducer::MyProducer(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
+
 
 std::string MyProducer::getName(){
     return "MyProducer";
@@ -30,9 +32,7 @@ std::shared_ptr<Node> MyProducer::clone(){
 }
 
 
-MyProducer::MyProducer(const std::shared_ptr<PipelineImpl>& par) : Node(par) {}
-
-void MyProducer::setMessage(std::string m){
+void MyProducer::setMessage(const std::string& m){
     properties.message = m;
 }
 

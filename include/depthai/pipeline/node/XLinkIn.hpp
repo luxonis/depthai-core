@@ -19,11 +19,11 @@ namespace node
         std::shared_ptr<Node> clone() override;
     
     public:
-        XLinkIn(const std::shared_ptr<PipelineImpl>& par);
+        XLinkIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
         
         Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::RawBuffer, true}} };
 
-        void setStreamName(std::string name);
+        void setStreamName(const std::string& name);
         void setMaxDataSize(std::uint32_t maxDataSize);
         void setNumFrames(std::uint32_t numFrames);
 

@@ -19,11 +19,11 @@ namespace node
         std::shared_ptr<Node> clone() override;
     
     public:
-        MyProducer(const std::shared_ptr<PipelineImpl>& par);
+        MyProducer(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
         
         Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::RawBuffer, true}} };
 
-        void setMessage(std::string m);
+        void setMessage(const std::string& m);
         void setProcessor(ProcessorType proc);
 
     };

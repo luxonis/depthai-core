@@ -29,12 +29,11 @@ CMRC_DECLARE(depthai);
 
 namespace dai
 {
-    
 
 
-constexpr static auto cmrc_depthai_cmd_path = "depthai.cmd";
-constexpr static auto cmrc_depthai_usb2_cmd_path = "depthai-usb2.cmd";
-constexpr static auto cmrc_depthai_usb2_patch_path = "depthai-usb2-patch.patch";
+constexpr static auto CMRC_DEPTHAI_CMD_PATH = "depthai.cmd";
+constexpr static auto CMRC_DEPTHAI_USB2_CMD_PATH = "depthai-usb2.cmd";
+constexpr static auto CMRC_DEPTHAI_USB2_PATCH_PATH = "depthai-usb2-patch.patch";
 
 
 // static api
@@ -65,7 +64,7 @@ Device::Device(const DeviceInfo& deviceInfo, bool usb2Mode){
 
 }
 
-Device::Device(const DeviceInfo& deviceDesc, std::string pathToCmd){
+Device::Device(const DeviceInfo& deviceDesc, const std::string& pathToCmd){
     
     connection = std::make_shared<XLinkConnection>(deviceDesc, pathToCmd);
     this->deviceInfo = deviceInfo;
@@ -315,10 +314,10 @@ std::vector<std::uint8_t> Device::getDefaultCmdBinary(bool usb2Mode){
             #ifdef DEPTHAI_PATCH_ONLY_MODE
             
                 // Get size of original
-                auto depthai_binary = fs.open(cmrc_depthai_cmd_path);
+                auto depthai_binary = fs.open(CMRC_DEPTHAI_CMD_PATH);
 
                 // Open patch
-                auto depthai_usb2_patch = fs.open(cmrc_depthai_usb2_patch_path);
+                auto depthai_usb2_patch = fs.open(CMRC_DEPTHAI_USB2_PATCH_PATH);
 
                 // Get new size
                 int64_t patched_size = bspatch_mem_get_newsize( (uint8_t*) depthai_usb2_patch.begin(), depthai_usb2_patch.size());
@@ -334,14 +333,14 @@ std::vector<std::uint8_t> Device::getDefaultCmdBinary(bool usb2Mode){
 
             #else
 
-                auto depthai_usb2_binary = fs.open(cmrc_depthai_usb2_cmd_path);
+                auto depthai_usb2_binary = fs.open(CMRC_DEPTHAI_USB2_CMD_PATH);
                 finalCmd = std::vector<std::uint8_t>(depthai_usb2_binary.begin(), depthai_usb2_binary.end());
 
             #endif
 
         } else {
 
-            auto depthai_binary = fs.open(cmrc_depthai_cmd_path);
+            auto depthai_binary = fs.open(CMRC_DEPTHAI_CMD_PATH);
             finalCmd = std::vector<std::uint8_t>(depthai_binary.begin(), depthai_binary.end());
 
         }

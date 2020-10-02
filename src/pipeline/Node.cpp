@@ -5,6 +5,8 @@
 namespace dai
 {
 
+    Node::Node(const std::shared_ptr<PipelineImpl>& p, int64_t nodeId) : parent(p), id(nodeId) {}
+
 
     void Node::loadAssets(AssetManager& assetManager){
         (void) assetManager;
@@ -17,7 +19,7 @@ namespace dai
     }
 
 
-    bool Node::Output::canConnect(Input in){
+    bool Node::Output::canConnect(const Input& in){
         if(type == Type::MSender && in.type == Input::Type::MReceiver) return false;
         if(type == Type::SSender && in.type == Input::Type::SReceiver) return false;
         for(const auto& outHierarchy : possibleDatatypes){

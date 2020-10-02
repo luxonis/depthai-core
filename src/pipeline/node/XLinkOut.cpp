@@ -5,6 +5,11 @@ namespace dai
 namespace node
 {
 
+
+XLinkOut::XLinkOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
+    properties.maxFpsLimit = -1;
+}
+
 std::string XLinkOut::getName(){
     return "XLinkOut";
 }
@@ -27,9 +32,6 @@ std::shared_ptr<Node> XLinkOut::clone(){
     return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
-XLinkOut::XLinkOut(const std::shared_ptr<PipelineImpl>& par) : Node(par) {
-    properties.maxFpsLimit = -1;
-}
 
 void XLinkOut::setStreamName(std::string name){
     properties.streamName = name;

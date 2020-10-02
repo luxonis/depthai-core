@@ -30,8 +30,6 @@ namespace dai
 
         AssetManager& getAssetManager();
 
-        PipelineImpl();
-        PipelineImpl(const PipelineImpl& p);
     };
 
 
@@ -41,8 +39,7 @@ namespace dai
 
     public:
         Pipeline();
-        Pipeline(const Pipeline& p);
-        Pipeline(std::shared_ptr<PipelineImpl> pimpl);
+        explicit Pipeline(const std::shared_ptr<PipelineImpl>& pimpl);
 
 
         GlobalProperties getGlobalProperties() const;
@@ -60,8 +57,7 @@ namespace dai
         template<class N>
         std::shared_ptr<N> create(){
             static_assert(std::is_base_of<Node, N>::value, "Specified class is not a subclass of Node");
-            auto node = std::make_shared<N>(pimpl);
-            node->id = pimpl->getNextUniqueId();
+            auto node = std::make_shared<N>(pimpl, pimpl->getNextUniqueId());
             pimpl->nodes.push_back(node);
             return node;
         }

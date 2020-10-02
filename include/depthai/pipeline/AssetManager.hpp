@@ -12,10 +12,10 @@ namespace dai
 
 struct Asset{
     Asset() = default;
-    Asset(std::string k) : key(k){} 
+    explicit Asset(std::string k) : key(std::move(k)){} 
     const std::string key;
     std::vector<std::uint8_t> data;
-    std::uint32_t alignment;
+    std::uint32_t alignment = 1;
 };
 
 // Subclass which has its own storage

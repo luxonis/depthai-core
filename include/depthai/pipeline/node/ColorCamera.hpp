@@ -20,7 +20,7 @@ namespace node
         std::shared_ptr<Node> clone() override;
 
     public:
-        ColorCamera(const std::shared_ptr<PipelineImpl>& par);
+        ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
         Output video{*this, "video", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}} };
         Output preview{*this, "preview", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}} };
@@ -30,13 +30,13 @@ namespace node
         void setCamId(int64_t id);
 
         // Get which color camera to use
-        int64_t getCamId();
+        int64_t getCamId() const;
 
         // setColorOrder - RGB or BGR
         void setColorOrder(ColorCameraProperties::ColorOrder colorOrder);
         
         // getColorOrder - returns color order 
-        ColorCameraProperties::ColorOrder getColorOrder();
+        ColorCameraProperties::ColorOrder getColorOrder() const;
 
         // setInterleaved
         void setInterleaved(bool interleaved);

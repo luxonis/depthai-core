@@ -19,7 +19,7 @@ namespace node
         std::shared_ptr<Node> clone() override;
 
     public:
-        XLinkOut(const std::shared_ptr<PipelineImpl>& par);
+        XLinkOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
         Input in{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::RawBuffer, true}} };
 

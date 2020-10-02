@@ -4,7 +4,8 @@ namespace dai
 {
 namespace node
 {
-        
+
+XLinkIn::XLinkIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}    
 
 std::string XLinkIn::getName(){
     return "XLinkIn";
@@ -29,9 +30,8 @@ std::shared_ptr<Node> XLinkIn::clone(){
     return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
-XLinkIn::XLinkIn(const std::shared_ptr<PipelineImpl>& par) : Node(par) {}
 
-void XLinkIn::setStreamName(std::string name){
+void XLinkIn::setStreamName(const std::string& name){
     properties.streamName = name;
 }
 
