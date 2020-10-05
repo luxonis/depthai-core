@@ -25,7 +25,7 @@ public:
     {
         for (size_t i = 0; i < tensors_info.size(); ++i)
         {
-            _tensor_name_to_index[ tensors_info[i].tensor_name ] = i;
+            _tensor_name_to_index[ tensors_info[i].name ] = i;
         }
 
         if (_tensor_name_to_index.size() != tensors_info.size())
@@ -66,7 +66,7 @@ public:
 protected: 
     std::string getTensorName(int index)
     {
-        return _tensors_info[index].tensor_name;
+        return _tensors_info[index].name;
     }
 
 
