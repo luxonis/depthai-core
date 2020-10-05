@@ -649,7 +649,7 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
         int num_stages = config.ai.blob_file2.empty() ? 1 : 2;
 
         // read tensor info
-        std::vector<TensorInfo>       tensors_info_output, tensors_info_input;
+        std::vector<dai::TensorInfo>       tensors_info_output, tensors_info_input;
         std::cout << config.ai.blob_file_config << std::endl;
         std::ifstream jsonFile(config.ai.blob_file_config);
 
@@ -1040,7 +1040,7 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
 
                 for(auto input_json : input_layers)
                 {
-                    TensorInfo _tensors_info_input(input_json);
+                    dai::TensorInfo _tensors_info_input(input_json);
                     std::cout << "Input layer : " << std::endl;
                     std::cout << _tensors_info_input << std::endl;
 
@@ -1049,7 +1049,7 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
 
                 for(auto output_json : output_layers)
                 {
-                    TensorInfo _tensors_info_output(output_json);
+                    dai::TensorInfo _tensors_info_output(output_json);
                     std::cout << "Output layer : " << std::endl;
                     std::cout << _tensors_info_output << std::endl;
                     
@@ -1076,9 +1076,9 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
                 if (stage == 0) {
      
                     c_streams_myriad_to_pc["previewout"].dimensions = {
-                                                                       (int)tensors_info_input[0].get_dimension(C),
-                                                                       (int)tensors_info_input[0].get_dimension(H),
-                                                                       (int)tensors_info_input[0].get_dimension(W),
+                                                                       (int)tensors_info_input[0].get_dimension(dai::TensorInfo::Dimension::C),
+                                                                       (int)tensors_info_input[0].get_dimension(dai::TensorInfo::Dimension::H),
+                                                                       (int)tensors_info_input[0].get_dimension(dai::TensorInfo::Dimension::W),
                                                                        };
                 }
                 // check CMX slices & used shaves

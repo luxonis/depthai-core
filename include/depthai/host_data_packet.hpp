@@ -57,7 +57,7 @@ struct HostDataPacket
         std::uint8_t* pData = (std::uint8_t*) in_data;
 
         // Regular copy (1 allocation only)
-        data = std::shared_ptr<std::vector<unsigned char>>(new std::vector<std::uint8_t>(pData, pData + frameSize));
+        data = std::make_shared<std::vector<std::uint8_t>>(pData, pData + frameSize);
 
         constructor_timer = Timer();
     }

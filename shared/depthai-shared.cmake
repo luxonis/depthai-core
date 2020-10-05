@@ -7,6 +7,7 @@ set(DEPTHAI_SHARED_SOURCES
     ${DEPTHAI_SHARED_FOLDER}/src/xlink/xlink_wrapper.cpp
     ${DEPTHAI_SHARED_FOLDER}/src/json_helper.cpp
     ${DEPTHAI_SHARED_FOLDER}/src/disparity_luts.cpp
+    ${DEPTHAI_SHARED_FOLDER}/src/tensor_info.cpp
 )
 
 set(DEPTHAI_SHARED_INCLUDE

@@ -16,8 +16,8 @@ class NNetPacket
 public:
     NNetPacket(
               std::shared_ptr<HostDataPacket> &tensors_raw_data,
-        const std::vector<TensorInfo>         &input_info,
-        const std::vector<TensorInfo>         &tensors_info
+        const std::vector<dai::TensorInfo>         &input_info,
+        const std::vector<dai::TensorInfo>         &tensors_info
     )
         : _tensors_raw_data(tensors_raw_data)
         , _input_info(input_info)
@@ -34,17 +34,13 @@ public:
         }
     }
 
-    std::shared_ptr<detection_out_t> getDetectedObjects()
+    std::shared_ptr<dai::Detections> getDetectedObjects()
     {
         std::shared_ptr<std::vector<unsigned char>> data = _tensors_raw_data->data;
         //copy-less return, wrapped in shared_ptr
-        std::shared_ptr<detection_out_t> detections;
-        detections = std::shared_ptr<detection_out_t>(data, reinterpret_cast<detection_out_t *>(data->data()));
+        std::shared_ptr<dai::Detections> detections;
+        detections = std::shared_ptr<dai::Detections>(data, reinterpret_cast<dai::Detections *>(data->data()));
         return detections;
-
-        // std::shared_ptr<detection_out_t> a = std::shared_ptr<detection_out_t>(new detection_out_t);
-        // memcpy(a.get(), data.get()->data(), data.get()->size());
-        // return a;
     }
 
     int getTensorsSize()
@@ -57,12 +53,12 @@ public:
         return _tensors_raw_data->getMetadata();
     }
 
-    const std::vector<TensorInfo> getInputLayersInfo()
+    const std::vector<dai::TensorInfo> getInputLayersInfo()
     {
         return _input_info;
     }
 
-    const std::vector<TensorInfo> getOutputLayersInfo()
+    const std::vector<dai::TensorInfo> getOutputLayersInfo()
     {
         return _tensors_info;
     }
@@ -75,7 +71,7 @@ protected:
 
 
           std::shared_ptr<HostDataPacket> _tensors_raw_data;
-    const std::vector<TensorInfo>         _input_info, _tensors_info;
+    const std::vector<dai::TensorInfo>         _input_info, _tensors_info;
 
     std::unordered_map<std::string, unsigned> _tensor_name_to_index;
 };

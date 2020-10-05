@@ -15,14 +15,14 @@ private:
 
     const std::string               cnn_result_stream_name = "metaout";
 
-    const std::vector<TensorInfo>   _input_tensors_info;
-    const std::vector<TensorInfo>   _output_tensors_info;
+    const std::vector<dai::TensorInfo>   _input_tensors_info;
+    const std::vector<dai::TensorInfo>   _output_tensors_info;
 
 
     std::list<std::shared_ptr<NNetPacket>> getConsumedNNetPackets();
 
 public:
-    CNNHostPipeline(const std::vector<TensorInfo>& input_tensors_info, const std::vector<TensorInfo>& output_tensors_info)
+    CNNHostPipeline(const std::vector<dai::TensorInfo>& input_tensors_info, const std::vector<dai::TensorInfo>& output_tensors_info)
         : _input_tensors_info(input_tensors_info)
         , _output_tensors_info(output_tensors_info)
     {}
