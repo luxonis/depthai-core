@@ -4,6 +4,7 @@
 #include "depthai-shared/general/data_subject.hpp"
 #include "depthai-shared/stream/stream_data.hpp"
 #include "depthai-shared/metadata/capture_metadata.hpp"
+#include "depthai-shared/metadata/camera_control.hpp"
 
 class HostCaptureCommand
     : public DataSubject<StreamInfo, StreamData>
@@ -15,7 +16,9 @@ public:
     void afTrigger();
     void sendDisparityConfidenceThreshold(uint8_t confidence_thr);
     void sendCustomDeviceResetRequest(void);
-    void sendIsp3A(int camera_id, int command_id, const char *extra_args);
+    void sendCameraControl(CameraControl::CamId camera_id,
+            CameraControl::Command command_id,
+            std::string extra_args = "");
 
 private:
     StreamInfo stream;

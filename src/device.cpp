@@ -1258,10 +1258,11 @@ void Device::send_disparity_confidence_threshold(uint8_t confidence){
     }
 }
 
-void Device::send_camera_control(Isp3A_CamId camera_id, Isp3A_Commands command_id,
-                                const std::string &extra_args) {
+void Device::send_camera_control(CameraControl::CamId camera_id,
+        CameraControl::Command command_id,
+        const std::string &extra_args) {
     if(g_host_capture_command != nullptr) {
-        g_host_capture_command->sendIsp3A(camera_id, command_id, extra_args.c_str());
+        g_host_capture_command->sendCameraControl(camera_id, command_id, extra_args.c_str());
     }
 }
 
