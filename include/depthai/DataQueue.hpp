@@ -26,7 +26,7 @@ class DataOutputQueue {
 
 public:
 
-    DataOutputQueue(std::shared_ptr<XLinkConnection> conn, std::string streamName);
+    DataOutputQueue(std::shared_ptr<XLinkConnection> conn, std::string streamName, unsigned int maxSize = 60, bool overwrite = false);
     ~DataOutputQueue();
 
     template<class T>
@@ -83,8 +83,7 @@ class DataInputQueue {
     std::string name;
 
 public:
-
-    DataInputQueue(std::shared_ptr<XLinkConnection> conn, std::string streamName);
+    DataInputQueue(std::shared_ptr<XLinkConnection> conn, std::string streamName, unsigned int maxSize = 60, bool overwrite = false);
     ~DataInputQueue();
 
     void send(std::shared_ptr<RawBuffer> val);

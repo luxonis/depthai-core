@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "depthai/device.hpp"
+#include "depthai/Device.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
 #include "depthai-shared/Assets.hpp"
@@ -11,6 +11,7 @@
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/MyProducer.hpp"
+#include "depthai/pipeline/node/VideoEncoder.hpp"
 
 
 #include "depthai-shared/datatype/NNTensor.hpp"
@@ -151,9 +152,9 @@ dai::Pipeline createNNPipeline(std::string nnPath){
     colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
 
     // Link plugins CAM -> NN -> XLINK
-    colorCam->preview.link(nn1->in);
-    colorCam->preview.link(xlinkOut->in);
-    nn1->out.link(nnOut->in);
+    colorCam->preview.link(nn1->input);
+    colorCam->preview.link(xlinkOut->input);
+    nn1->out.link(nnOut->input);
 
     return p;
 
@@ -175,7 +176,7 @@ dai::Pipeline createCameraPipeline(){
     colorCam->setCamId(0);
 
     // Link plugins CAM -> XLINK
-    colorCam->preview.link(xlinkOut->in);
+    colorCam->preview.link(xlinkOut->input);
     
     return p;
 
@@ -198,7 +199,7 @@ dai::Pipeline createCameraFullPipeline(){
     colorCam->setCamId(0);
 
     // Link plugins CAM -> XLINK
-    colorCam->video.link(xlinkOut->in);
+    colorCam->video.link(xlinkOut->input);
     
     return p;
 
@@ -417,10 +418,10 @@ void startWebcam(int camId, std::string nnPath){
     xout->setStreamName("nn_out");
 
     // Link plugins XLINK -> NN -> XLINK
-    xin->out.link(nn->in);
-    //producer->out.link(nn->in);
+    xin->out.link(nn->input);
+    //producer->out.link(nn->input);
 
-    nn->out.link(xout->in);
+    nn->out.link(xout->input);
 
 
 
@@ -540,26 +541,109 @@ void startTest(int id){
 }
 
 
+
+void startMjpegCam(){
+
+    using namespace std;
+
+
+    dai::Pipeline p;
+
+    auto colorCam = p.create<dai::node::ColorCamera>();
+    auto xout = p.create<dai::node::XLinkOut>();
+    auto xout2 = p.create<dai::node::XLinkOut>();
+    auto videnc = p.create<dai::node::VideoEncoder>();
+
+
+    // XLinkOut
+    xout->setStreamName("mjpeg");
+    xout2->setStreamName("preview");
+
+    // ColorCamera    
+    colorCam->setPreviewSize(300, 300);
+    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    colorCam->setInterleaved(true);
+    colorCam->setCamId(0);
+
+    // VideoEncoder
+    videnc->setDefaultProfilePreset(1920, 1080, dai::VideoEncoderProperties::Profile::MJPEG);
+
+    // Link plugins CAM -> XLINK
+    colorCam->video.link(videnc->input);
+    colorCam->preview.link(xout2->input);
+    videnc->bitstream.link(xout->input);
+
+
+    // CONNECT TO DEVICE
+
+    bool found;
+    dai::DeviceInfo deviceInfo;
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
+
+    if(found) {
+        dai::Device d(deviceInfo);
+
+        d.startPipeline(p);
+    
+        auto mjpegQueue = d.getOutputQueue("mjpeg", 8, true);
+        auto previewQueue = d.getOutputQueue("preview", 8, true);
+
+        while(1){
+
+            auto t1 = std::chrono::steady_clock::now();            
+            auto preview = previewQueue->get<dai::ImgFrame>();
+            auto t2 = std::chrono::steady_clock::now();
+            cv::imshow("preview", cv::Mat(preview->fb.height, preview->fb.width, CV_8UC3, preview->data.data()));
+            auto t3 = std::chrono::steady_clock::now();
+            auto mjpeg = mjpegQueue->get();
+            auto t4 = std::chrono::steady_clock::now();
+            cv::Mat decodedFrame = cv::imdecode( cv::Mat(mjpeg->data), cv::IMREAD_COLOR);
+            auto t5 = std::chrono::steady_clock::now();
+            cv::imshow("mjpeg", decodedFrame);
+
+
+            //for(int i = 0; i < 100; i++) cv::waitKey(1);
+
+            int ms1 = std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count();
+            int ms2 = std::chrono::duration_cast<std::chrono::milliseconds>(t3-t2).count();
+            int ms3 = std::chrono::duration_cast<std::chrono::milliseconds>(t4-t3).count();
+            int ms4 = std::chrono::duration_cast<std::chrono::milliseconds>(t5-t4).count();
+            int loop = std::chrono::duration_cast<std::chrono::milliseconds>(t5-t1).count();
+
+            std::cout << ms1 << " " << ms2 << " " << ms3 << " " << ms4 << " loop: " << loop << std::endl;
+            cv::waitKey(1);
+
+
+        }
+
+    } else {
+        cout << "No booted (debugger) devices found..." << endl;
+    }
+
+
+}
+
+
 int main(int argc, char** argv){
     using namespace std;
     cout << "Hello World!" << endl;
 
     if(argc <= 1){
-        std::cout << "Pass path to NN blob";
-        return 0;
-    }
-    std::string nnPath(argv[1]);
- 
-    if(nnPath == "test0"){
-        startTest(0);
-    } else if(nnPath == "test1"){
-        startTest(1);
-    } else if(nnPath == "test2"){
-        startTest(2);
+        startMjpegCam();
     } else {
-        startWebcam(0, nnPath);
+         std::string nnPath(argv[1]);
+ 
+        if(nnPath == "test0"){
+            startTest(0);
+        } else if(nnPath == "test1"){
+            startTest(1);
+        } else if(nnPath == "test2"){
+            startTest(2);
+        } else {
+            startWebcam(0, nnPath);
+        }
+        
     }
-
 
     return 0;
 }

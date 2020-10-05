@@ -29,7 +29,7 @@ namespace node
     public:
         NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
-        Input in{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::RawBuffer, true}} };
+        Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::RawBuffer, true}} };
         Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::NNTensor, false}} };
 
         // Specify local filesystem path to load the blob (which gets loaded at loadAssets)

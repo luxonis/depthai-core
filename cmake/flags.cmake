@@ -5,10 +5,13 @@ include(CheckCXXCompilerFlag)
 function(add_flag flag)
   check_cxx_compiler_flag(${flag} FLAG_${flag})
   if (FLAG_${flag} EQUAL 1)
-    add_compile_options(${flag})
+    target_compile_options(${TARGET_NAME} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:${flag}>)
   endif ()
 endfunction()
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "^(AppleClang|Clang|GNU)$")
+  # Add pedantic flag
+  target_compile_options(${TARGET_NAME} PRIVATE -pedantic-errors)
+
   # enable those flags
   add_flag(-Wall)
   add_flag(-Wextra)

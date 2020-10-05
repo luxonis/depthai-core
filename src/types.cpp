@@ -15,14 +15,14 @@ Type string_to_type(const std::string& str)
     }
 
     return Type::UNDEFINED;
-};
+}
 
 unsigned size_of_type(const Type& type)
 {
     auto it = c_type_size.find(type);
     assert(it != c_type_size.end());
     return it->second;
-};
+}
 
 
 

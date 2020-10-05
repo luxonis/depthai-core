@@ -15,7 +15,7 @@ std::string XLinkOut::getName(){
 }
         
 std::vector<Node::Input> XLinkOut::getInputs(){
-    return {in};
+    return {input};
 }
 
 std::vector<Node::Output> XLinkOut::getOutputs(){
@@ -33,11 +33,11 @@ std::shared_ptr<Node> XLinkOut::clone(){
 }
 
 
-void XLinkOut::setStreamName(std::string name){
+void XLinkOut::setStreamName(const std::string& name){
     properties.streamName = name;
 }
 
-void XLinkOut::setFpsLimit(double fps){
+void XLinkOut::setFpsLimit(float fps){
     properties.maxFpsLimit = fps;
 }
 

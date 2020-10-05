@@ -3,31 +3,31 @@
 namespace dai
 {
  
-void AssetManager::add(const Asset& asset){
+void AssetManager::add(Asset asset){
     // make sure that key doesn't exist already
     if(assetMap.count(asset.key) > 0) throw std::logic_error("An Asset with the key: " + asset.key + " already exists.");
-    assetMap[asset.key] = std::make_shared<Asset>(std::move(asset));
+    std::string key = asset.key;
+    assetMap[key] = std::make_shared<Asset>(std::move(asset));
 }
 
-void AssetManager::add(std::string key, const Asset& asset){
+void AssetManager::add(const std::string& key, Asset asset){
     // Rename the asset with supplied key and store
     Asset a(key);
     a.data = std::move(asset.data);
-    a.alignment = std::move(asset.alignment);
+    a.alignment = asset.alignment;
     add(std::move(a));
 }
 
-void AssetManager::set(std::string key, const Asset& asset){
+void AssetManager::set(const std::string& key, Asset asset){
 
     // Rename the asset with supplied key and store
     Asset a(key);
     a.data = std::move(asset.data);
-    a.alignment = std::move(asset.alignment);
-
+    a.alignment = asset.alignment;
     assetMap[key] = std::make_shared<Asset>(std::move(a));
 }
 
-std::shared_ptr<Asset> AssetManager::get(std::string key){
+std::shared_ptr<Asset> AssetManager::get(const std::string& key){
     return assetMap[key];
 }
 
@@ -43,7 +43,7 @@ std::size_t AssetManager::size(){
     return assetMap.size();
 }
 
-void AssetManager::remove(std::string key){
+void AssetManager::remove(const std::string& key){
     assetMap.erase(key);
 }
 
@@ -70,7 +70,7 @@ void AssetManager::serialize(Assets& serAssets, std::vector<std::uint8_t>& asset
         storage.insert(storage.end(), a.data.begin(), a.data.end());
 
         // Add to map the currently added asset
-        AssetInternal internal;
+        AssetInternal internal = {};
         internal.offset = offset;
         internal.size = a.data.size();
         internal.alignment = a.alignment;
@@ -80,7 +80,7 @@ void AssetManager::serialize(Assets& serAssets, std::vector<std::uint8_t>& asset
 
     
     assetStorage = std::move(storage);
-    serAssets = (Assets) *this;
+    serAssets = Assets(*this);
 }
 
 } // namespace dai

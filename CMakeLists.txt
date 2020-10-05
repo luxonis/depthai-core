@@ -28,16 +28,6 @@ option(DEPTHAI_BOOST_LOCAL "Use locally installed boost libraries" OFF)
 option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON )
 option(DEPTHAI_CLANG_TIDY   "Enable clang-tidy checks during compilation" OFF)
 
-include(cmake/flags.cmake)
-
-if(DEPTHAI_CLANG_TIDY)
-    include(cmake/clang-tidy.cmake)
-endif()
-if(DEPTHAI_CLANG_FORMAT)
-    include(cmake/clang-format.cmake)
-endif()
-
-
 ### Get and find dependencies
 
 # Nlohmann JSON
@@ -91,15 +81,29 @@ add_library(${TARGET_NAME}
     src/pipeline/node/ColorCamera.cpp
     src/pipeline/node/NeuralNetwork.cpp
     src/pipeline/node/MyProducer.cpp
+    src/pipeline/node/VideoEncoder.cpp
     src/host_capture_command.cpp
     src/device_support_listener.cpp
     src/disparity_stream_post_processor.cpp
     src/host_data_reader.cpp
     src/host_json_helper.cpp
     src/types.cpp
-    src/device.cpp
+    src/Device.cpp
     src/bspatch/bspatch.c
 )
+
+# Add aditional flags
+include(cmake/flags.cmake)
+
+# And clang-tidy and format
+if(DEPTHAI_CLANG_TIDY)
+    include(cmake/clang-tidy.cmake)
+endif()
+if(DEPTHAI_CLANG_FORMAT)
+    include(cmake/clang-format.cmake)
+    target_clangformat_setup(${TARGET_NAME})
+endif()
+
 
 # Set compiler features (c++11)
 set_property(TARGET ${TARGET_NAME} PROPERTY CXX_STANDARD 11)
@@ -208,8 +212,10 @@ target_include_directories(${TARGET_NAME}
     PRIVATE 
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
         "$<BUILD_INTERFACE:${DEPTHAI_SHARED_INCLUDE}>"
-        
 )
+
+target_include_directories(${TARGET_NAME} SYSTEM PUBLIC "$<BUILD_INTERFACE:${DEPTHAI_SHARED_3RDPARTY_INCLUDE}>")
+
 
 
 # link libraries

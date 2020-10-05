@@ -42,19 +42,18 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(){
     // Get all available devices (unbooted & booted)
     for(const auto& state : {X_LINK_UNBOOTED, X_LINK_BOOTED}){
         
-        const int MAX_DEVICES = 32;
         unsigned int numdev = 0;
-        deviceDesc_t deviceDescAll[MAX_DEVICES] = {};
+        std::array<deviceDesc_t, 32> deviceDescAll = {};
         deviceDesc_t suitableDevice = {};
         suitableDevice.protocol = X_LINK_ANY_PROTOCOL;
         suitableDevice.platform = X_LINK_ANY_PLATFORM;
 
-        auto status = XLinkFindAllSuitableDevices(state, suitableDevice, deviceDescAll, MAX_DEVICES, &numdev);
+        auto status = XLinkFindAllSuitableDevices(state, suitableDevice, deviceDescAll.data(), deviceDescAll.size(), &numdev);
         if(status != X_LINK_SUCCESS) throw std::runtime_error("Couldn't retrieve all connected devices");
 
-        for (unsigned int i = 0; i < numdev; i++) {
-            DeviceInfo info;
-            info.desc = deviceDescAll[i];
+        for (const auto& dev : deviceDescAll) {
+            DeviceInfo info = {};
+            info.desc = dev;
             info.state = state;
             devices.push_back(info);
         }
@@ -81,14 +80,14 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getFirstDevice(XLinkDeviceState_t 
 XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary){
     bootDevice = true;
     bootWithPath = false;
-    this->mvcmd = mvcmdBinary;
+    this->mvcmd = std::move(mvcmdBinary);
     initDevice(deviceDesc);
 }
 
 XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::string pathToMvcmd){
     bootDevice = true;
     bootWithPath = true;
-    this->pathToMvcmd = pathToMvcmd;
+    this->pathToMvcmd = std::move(pathToMvcmd);
     initDevice(deviceDesc);
 }
 
@@ -109,21 +108,21 @@ void XLinkConnection::setRebootOnDestruction(bool reboot){
     rebootOnDestruction = reboot;
 }
 
-bool XLinkConnection::getRebootOnDestruction(){
+bool XLinkConnection::getRebootOnDestruction() const {
     return rebootOnDestruction;
 }
 
 
-bool XLinkConnection::bootAvailableDevice(const deviceDesc_t& deviceToBoot, std::string pathToMvcmd){
-    auto status = XLinkBoot( const_cast<deviceDesc_t*>(&deviceToBoot) , pathToMvcmd.c_str());
-    if (status != X_LINK_SUCCESS) return false;
-    return true;
+bool XLinkConnection::bootAvailableDevice(const deviceDesc_t& deviceToBoot, const std::string& pathToMvcmd){
+    deviceDesc_t toBoot(deviceToBoot);
+    auto status = XLinkBoot(&toBoot, pathToMvcmd.c_str());
+    return status == X_LINK_SUCCESS;
 }
 
-bool XLinkConnection::bootAvailableDevice(const deviceDesc_t& deviceToBoot, std::vector<std::uint8_t> mvcmd){
-    auto status = XLinkBootMemory( const_cast<deviceDesc_t*>(&deviceToBoot) , mvcmd.data(), mvcmd.size());
-    if (status != X_LINK_SUCCESS) return false;
-    return true;
+bool XLinkConnection::bootAvailableDevice(const deviceDesc_t& deviceToBoot, std::vector<std::uint8_t>& mvcmd){
+    deviceDesc_t toBoot(deviceToBoot);
+    auto status = XLinkBootMemory(&toBoot, mvcmd.data(), mvcmd.size());
+    return status == X_LINK_SUCCESS;
 }
 
 
@@ -131,17 +130,13 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit) {
     initXLinkGlobal();
     assert(deviceLinkId == -1);
   
-    XLinkError_t rc;
+    XLinkError_t rc = X_LINK_ERROR;
     deviceDesc_t deviceDesc = {};
     
     using namespace std::chrono;
 
     // if device in booted state, then don't boot, just connect
-    if(deviceToInit.state == X_LINK_BOOTED){
-        bootDevice = false;
-    } else {
-        bootDevice = true;
-    }
+    bootDevice = deviceToInit.state != X_LINK_BOOTED;
 
     // boot device
     if(bootDevice){
@@ -151,7 +146,7 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit) {
             bootAvailableDevice(deviceToInit.desc, mvcmd);
         }
     } else {
-        printf("Device boot is skipped\n");
+        std::cout << "Device boot is skipped" << std::endl;
     }
     
     // Search for booted device
@@ -178,20 +173,23 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit) {
         }
     }
 
-    connectionHandler.devicePath = deviceDesc.name;
-    connectionHandler.protocol = deviceDesc.protocol;
 
     // Try to connect to device
     {
+        XLinkHandler_t connectionHandler = {};
+        connectionHandler.devicePath = deviceDesc.name;
+        connectionHandler.protocol = deviceDesc.protocol;
+
         auto tstart = steady_clock::now();
         do {
             if( ( rc = XLinkConnect(&connectionHandler) ) == X_LINK_SUCCESS) break;
         } while (steady_clock::now() - tstart < WAIT_FOR_CONNECT_TIMEOUT);
 
         if (rc != X_LINK_SUCCESS) throw std::runtime_error("Failed to connect to device, error message: " + convertErrorCodeToString(rc));
+    
+        deviceLinkId = connectionHandler.linkId;
     }
 
-    deviceLinkId = connectionHandler.linkId;
 }
 
 
@@ -241,11 +239,10 @@ void XLinkConnection::writeToStream(const std::string& streamName, std::uint8_t*
     if(streamName.empty()) throw std::invalid_argument("streamName is empty");
     if(streamIdMap.count(streamName) == 0) throw std::logic_error("Stream: " + streamName + " isn't opened.");
 
-    auto status = XLinkWriteData(streamIdMap[streamName], const_cast<const std::uint8_t*>(data), size);
+    auto status = XLinkWriteData(streamIdMap[streamName], data, size);
     if (status != X_LINK_SUCCESS) throw std::runtime_error("XLink write error, error message: " + convertErrorCodeToString(status));
    
-    // TODO
-    // WDOG REIMPLEMENT
+    // TODO(themarpe): WDOG REIMPLEMENT
     //wdog_keepalive();
 
 }
@@ -277,7 +274,7 @@ std::vector<std::uint8_t> XLinkConnection::readFromStream(const std::string& str
 streamPacketDesc_t* XLinkConnection::readFromStreamRaw(const std::string& streamName){
     if(streamName.empty()) throw std::invalid_argument("streamName is empty");
     if(streamIdMap.count(streamName) == 0) throw std::logic_error("Stream: " + streamName + " isn't opened.");
-    streamPacketDesc_t* pPacket;
+    streamPacketDesc_t* pPacket = nullptr;
     auto status = XLinkReadData(streamIdMap[streamName], &pPacket);
     if(status != X_LINK_SUCCESS){
         throw std::runtime_error("Error while reading data from xlink channel: " + streamName);
@@ -294,12 +291,12 @@ void XLinkConnection::readFromStreamRawRelease(const std::string& streamName){
 
 
 
+int XLinkConnection::getLinkId() const {
+    return deviceLinkId;
+}
 
 
-
-
-
-std::string XLinkConnection::convertErrorCodeToString(XLinkError_t error_code) const {
+std::string XLinkConnection::convertErrorCodeToString(XLinkError_t error_code) {
     switch(error_code)
     {
         case X_LINK_SUCCESS:                     return "X_LINK_SUCCESS";

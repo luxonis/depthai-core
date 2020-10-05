@@ -36,7 +36,7 @@ public:
     /////
 
     Device();
-    Device(const DeviceInfo& deviceDesc, bool usb2Mode = false);
+    explicit Device(const DeviceInfo& deviceDesc, bool usb2Mode = false);
     Device(const DeviceInfo& deviceDesc, const std::string& pathToCmd);
     ~Device();
 
@@ -46,11 +46,11 @@ public:
 
 
     // data queues
-    std::shared_ptr<DataOutputQueue> getOutputQueue(std::string name);
-    std::shared_ptr<DataInputQueue> getInputQueue(std::string name);
+    std::shared_ptr<DataOutputQueue> getOutputQueue(const std::string& name, unsigned int maxSize = 120, bool overwrite = false);
+    std::shared_ptr<DataInputQueue> getInputQueue(const std::string& name, unsigned int maxSize = 120, bool overwrite = false);
 
     // callback
-    void setCallback(std::string name, std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb);
+    void setCallback(const std::string& name, std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb);
 
     
 
@@ -67,7 +67,7 @@ public:
 
 private:
 
-    std::vector<std::uint8_t> getDefaultCmdBinary(bool usb2_mode);
+    static std::vector<std::uint8_t> getDefaultCmdBinary(bool usb2_mode);
 
     std::shared_ptr<XLinkConnection> connection;
     std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> client;

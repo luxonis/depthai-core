@@ -20,7 +20,7 @@ std::vector<Node::Output> NeuralNetwork::getOutputs(){
 }
 
 std::vector<Node::Input> NeuralNetwork::getInputs(){
-    return {in};
+    return {input};
 }
 
 nlohmann::json NeuralNetwork::getProperties(){

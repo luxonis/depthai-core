@@ -37,7 +37,7 @@ enum block_type {
 	NUM_BLOCKS
 };
 
-static int64_t offtin(uint8_t* buf)
+static int64_t offtin(const uint8_t* buf)
 {
 	int64_t y;
 
@@ -55,7 +55,7 @@ static int64_t offtin(uint8_t* buf)
 	return y;
 }
 
-int64_t bspatch_mem_get_newsize(uint8_t* patchfile_bin, int64_t patchfile_size){
+int64_t bspatch_mem_get_newsize(const uint8_t* patchfile_bin, const int64_t patchfile_size){
 
 	uint8_t header[32];
 
@@ -71,13 +71,13 @@ int64_t bspatch_mem_get_newsize(uint8_t* patchfile_bin, int64_t patchfile_size){
 	return newsize;
 }
 
-int bspatch_mem(uint8_t* oldfile_bin, int64_t oldfile_size, uint8_t* patchfile_bin, int64_t patchfile_size, uint8_t* newfile_bin){
+int bspatch_mem(const uint8_t* oldfile_bin, const int64_t oldfile_size, const uint8_t* patchfile_bin, const int64_t patchfile_size, uint8_t* newfile_bin){
 	
 	int64_t oldsize = oldfile_size;
 	int64_t newsize;
 	int64_t bzctrllen,bzdatalen;
 	uint8_t header[32];
-	uint8_t* old = oldfile_bin;
+	const uint8_t* old = oldfile_bin;
 	uint8_t* new = newfile_bin;
 	int64_t oldpos,newpos;
 	int64_t ctrl[3];

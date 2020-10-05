@@ -46,12 +46,12 @@ public:
 
     XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary);
     XLinkConnection(const DeviceInfo& deviceDesc, std::string pathToMvcmd);
-    XLinkConnection(const DeviceInfo& deviceDesc);
+    explicit XLinkConnection(const DeviceInfo& deviceDesc);
 
     ~XLinkConnection();
 
     void setRebootOnDestruction(bool reboot);
-    bool getRebootOnDestruction();
+    bool getRebootOnDestruction() const;
 
     void openStream(const std::string& streamName, std::size_t maxWriteSize);
     void closeStream(const std::string& streamName);
@@ -66,15 +66,17 @@ public:
     void readFromStreamRawRelease(const std::string& streamName);
     
 
-    int getLinkId(){
-        return deviceLinkId;
-    }
+    int getLinkId() const;
 
 private:
+    // static
+    static bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, const std::string& pathToMvcmd);
+    static bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, std::vector<std::uint8_t>& mvcmd);
+    static std::string convertErrorCodeToString(XLinkError_t error_code);
+
+
+
     void initDevice(const DeviceInfo& deviceToInit);
-    bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, std::string pathToMvcmd);
-    bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, std::vector<std::uint8_t> mvcmd);
-    std::string convertErrorCodeToString(XLinkError_t error_code) const;
 
     std::unordered_map<std::string, streamId_t> streamIdMap;
 
@@ -87,8 +89,6 @@ private:
 
 
     int deviceLinkId = -1;
-
-    XLinkHandler_t connectionHandler;
 
 
     const std::chrono::milliseconds WAIT_FOR_BOOTUP_TIMEOUT{1000};

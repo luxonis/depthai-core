@@ -1,4 +1,4 @@
-#include "device.hpp"
+#include "Device.hpp"
 
 // shared
 #include "depthai-shared/json_helper.hpp"
@@ -164,7 +164,7 @@ void Device::init()
     client = std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>(new nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>(
         [this](nanorpc::core::type::buffer request){
             // Send request to device
-            connection->writeToStream(dai::XLINK_CHANNEL_MAIN_RPC, request);
+            connection->writeToStream(dai::XLINK_CHANNEL_MAIN_RPC, std::move(request));
 
             // Receive response back
             // Send to nanorpc to parse
@@ -178,22 +178,22 @@ void Device::init()
 
 
 
-std::shared_ptr<DataOutputQueue> Device::getOutputQueue(std::string name){
+std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name, unsigned int maxSize, bool overwrite){
 
     // creates a dataqueue if not yet created
     if(outputQueueMap.count(name) == 0){
-        outputQueueMap[name] = std::make_shared<DataOutputQueue>(connection, name);
+        outputQueueMap[name] = std::make_shared<DataOutputQueue>(connection, name, maxSize, overwrite);
     }
 
     // else just return the shared ptr to this DataQueue
     return outputQueueMap.at(name);
 }
 
-std::shared_ptr<DataInputQueue> Device::getInputQueue(std::string name){
+std::shared_ptr<DataInputQueue> Device::getInputQueue(const std::string& name, unsigned int maxSize, bool overwrite){
 
     // creates a dataqueue if not yet created
     if(inputQueueMap.count(name) == 0){
-        inputQueueMap[name] = std::make_shared<DataInputQueue>(connection, name);
+        inputQueueMap[name] = std::make_shared<DataInputQueue>(connection, name, maxSize, overwrite);
     }
 
     // else just return the reference to this DataQueue
@@ -202,7 +202,7 @@ std::shared_ptr<DataInputQueue> Device::getInputQueue(std::string name){
 
 
 
-void Device::setCallback(std::string name, std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb){
+void Device::setCallback(const std::string& name, std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb){
 
     // creates a CallbackHandler if not yet created
     if(callbackMap.count(name) == 0){
@@ -235,7 +235,7 @@ bool Device::startPipeline(Pipeline& pipeline){
     pipeline.serialize(schema, assets, assetStorage);
 
     // if debug
-    if(0){
+    if(false){
         nlohmann::json jSchema = schema;
         std::cout << std::endl << jSchema.dump(4) << std::endl;
 
@@ -246,13 +246,13 @@ bool Device::startPipeline(Pipeline& pipeline){
     // Load pipelineDesc, assets, and asset storage
     client->call("setPipelineSchema", schema);
 
-    // Transfer storage if size > 0
-    if(assetStorage.size() > 0){
+    // Transfer storage != empty
+    if(!assetStorage.empty()){
         client->call("setAssets", assets);
 
 
         // allocate, returns a pointer to memory on device side
-        auto memHandle = client->call("memAlloc", (std::uint32_t) assetStorage.size()).as<uint32_t>(); 
+        auto memHandle = client->call("memAlloc", static_cast<std::uint32_t>(assetStorage.size())).as<uint32_t>(); 
 
         // Transfer the whole assetStorage in a separate thread
         const std::string streamAssetStorage = "__stream_asset_storage";
@@ -260,10 +260,10 @@ bool Device::startPipeline(Pipeline& pipeline){
             connection->openStream(streamAssetStorage, XLINK_USB_BUFFER_MAX_SIZE);
             int64_t offset = 0;
             do{
-                int64_t toTransfer = std::min( (int64_t) XLINK_USB_BUFFER_MAX_SIZE, (int64_t) assetStorage.size() - offset);
-                connection->writeToStream(streamAssetStorage, assetStorage.data() + offset, toTransfer);
+                int64_t toTransfer = std::min( static_cast<int64_t>(XLINK_USB_BUFFER_MAX_SIZE), static_cast<int64_t>(assetStorage.size() - offset));
+                connection->writeToStream(streamAssetStorage, &assetStorage[offset], toTransfer);
                 offset += toTransfer;
-            } while(offset < assetStorage.size());
+            } while(offset < static_cast<int64_t>(assetStorage.size()));
         });
 
         // Open a channel to transfer AssetStorage
@@ -280,7 +280,7 @@ bool Device::startPipeline(Pipeline& pipeline){
     client->call("printAssets");
 
     // Build and start the pipeline
-    bool success;
+    bool success = false;
     std::string errorMsg;
     std::tie(success, errorMsg) = client->call("buildPipeline").as<std::tuple<bool, std::string>>();
     if(success){
@@ -320,16 +320,16 @@ std::vector<std::uint8_t> Device::getDefaultCmdBinary(bool usb2Mode){
                 auto depthai_usb2_patch = fs.open(CMRC_DEPTHAI_USB2_PATCH_PATH);
 
                 // Get new size
-                int64_t patched_size = bspatch_mem_get_newsize( (uint8_t*) depthai_usb2_patch.begin(), depthai_usb2_patch.size());
+                int64_t patched_size = bspatch_mem_get_newsize( reinterpret_cast<const uint8_t*>(depthai_usb2_patch.begin()), depthai_usb2_patch.size());
 
                 // Reserve space for patched binary
                 finalCmd.resize(patched_size);
 
                 // Patch
-                int error = bspatch_mem( (uint8_t*) depthai_binary.begin(), depthai_binary.size(), (uint8_t*) depthai_usb2_patch.begin(), depthai_usb2_patch.size(), finalCmd.data());
+                int error = bspatch_mem( reinterpret_cast<const uint8_t*>(depthai_binary.begin()), depthai_binary.size(), reinterpret_cast<const uint8_t*>(depthai_usb2_patch.begin()), depthai_usb2_patch.size(), finalCmd.data());
 
                 // if patch not successful
-                if(error) throw std::runtime_error("Error while patching cmd for usb2 mode");
+                if(error > 0) throw std::runtime_error("Error while patching cmd for usb2 mode");
 
             #else
 
@@ -977,12 +977,12 @@ bool Device::startTestPipeline(int testId){
     client->call("setPipelineSchema", pipelineSchema); 
 
     // Transfer storage if size > 0
-    if(assetStorage.size() > 0){
+    if(!assetStorage.empty()){
         client->call("setAssets", assets);
 
 
         // allocate, returns a pointer to memory on device side
-        auto memHandle = client->call("memAlloc", (std::uint32_t) assetStorage.size()).as<uint32_t>(); 
+        auto memHandle = client->call("memAlloc", static_cast<std::uint32_t>(assetStorage.size())).as<uint32_t>(); 
 
         // Transfer the whole assetStorage in a separate thread
         const std::string streamAssetStorage = "__stream_asset_storage";
@@ -1011,7 +1011,7 @@ bool Device::startTestPipeline(int testId){
 
 
     // Build and start the pipeline
-    bool success;
+    bool success = false;
     std::string errorMsg;
     std::tie(success, errorMsg) = client->call("buildPipeline").as<std::tuple<bool, std::string>>();
     if(success){

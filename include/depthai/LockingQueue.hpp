@@ -10,8 +10,9 @@ class LockingQueue
 {
 public:
     LockingQueue() = default;
-    LockingQueue(int maxsize){
-        this->maxsize = maxsize;
+    explicit LockingQueue(int maxSize, bool overwrite = false){
+        this->maxSize = maxSize;
+        this->overwrite = overwrite;
     }
 
 
@@ -55,10 +56,17 @@ public:
     bool push(T const& _data)
     {
         {
-            std::lock_guard<std::mutex> lock(guard);
-            if(queue.size() >= maxsize){
-                return false;
+            std::unique_lock<std::mutex> lock(guard);
+            if(overwrite){
+                if(queue.size() >= maxSize){
+                    queue.pop();
+                } 
+            } else {
+                while(queue.size() >= maxSize){
+                    signalPop.wait(lock);
+                }    
             }
+
             queue.push(_data);
         }
         signalPush.notify_all();
@@ -144,7 +152,8 @@ public:
 
 
 private:
-    unsigned maxsize = std::numeric_limits<unsigned>::max();
+    unsigned maxSize = std::numeric_limits<unsigned>::max();
+    bool overwrite = false;
     std::queue<T> queue;
     mutable std::mutex guard;
     std::condition_variable signalPop;

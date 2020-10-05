@@ -5,9 +5,9 @@
 
 namespace dai
 {
-    
 
-DataOutputQueue::DataOutputQueue(std::shared_ptr<XLinkConnection> conn, std::string streamName) : connection(conn) {
+
+DataOutputQueue::DataOutputQueue(std::shared_ptr<XLinkConnection> conn, std::string streamName, unsigned int maxSize, bool overwrite) : connection(conn), queue(maxSize, overwrite) {
 
     // creates a thread which reads from connection into the queue
     readingThread = std::thread([this, streamName](){
@@ -53,7 +53,7 @@ DataOutputQueue::~DataOutputQueue(){
 
 
 
-DataInputQueue::DataInputQueue(std::shared_ptr<XLinkConnection> conn, std::string streamName) : connection(conn) {
+DataInputQueue::DataInputQueue(std::shared_ptr<XLinkConnection> conn, std::string streamName, unsigned int maxSize, bool overwrite) : connection(conn), queue(maxSize, overwrite) {
 
     // creates a thread which reads from connection into the queue
     writingThread = std::thread([this, streamName](){
