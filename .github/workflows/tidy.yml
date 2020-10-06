@@ -18,6 +18,11 @@ jobs:
       with:
         submodules: 'recursive'
     
+    - name: Install dependencies
+      run: |
+        apt install libusb-1.0-0-dev
+        apt install libusb-1.0-0
+
     - name: configure
       run: cmake . -Bbuild -DDEPTHAI_CLANG_TIDY=ON
 

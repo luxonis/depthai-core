@@ -19,9 +19,9 @@ jobs:
         submodules: 'recursive'
     
     - name: Install dependencies
-        run: |
-          apt install libusb-1.0-0-dev
-          apt install libusb-1.0-0
+      run: |
+        apt install libusb-1.0-0-dev
+        apt install libusb-1.0-0
 
     - name: configure
       run: cmake . -Bbuild
