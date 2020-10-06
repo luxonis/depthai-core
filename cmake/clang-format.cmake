@@ -42,7 +42,24 @@ function(clangformat_setup)
   endif()
 endfunction()
 
-function(target_clangformat_setup target)
+
+macro(header_directories header_dirs return_list)
+  
+  foreach(header_dir ${header_dirs})
+    file(GLOB_RECURSE new_list "${header_dir}/*.hpp")
+    set(file_list "")
+    foreach(file_path ${new_list})
+      set(file_list "${file_list}" ${file_path})
+    endforeach()
+    list(REMOVE_DUPLICATES file_list)
+    set(${return_list} "${${return_list}}" "${file_list}")
+  endforeach()
+
+endmacro()
+
+function(target_clangformat_setup target header_dirs)
   get_target_property(target_sources ${target} SOURCES)
-  clangformat_setup(${target_sources})
+  header_directories("${header_dirs}" header_files)
+  set(target_files_to_format "${target_sources};${header_files}")
+  clangformat_setup(${target_files_to_format})
 endfunction()

@@ -3,25 +3,21 @@
 #include "datatype/StreamPacketParser.hpp"
 #include "depthai-shared/xlink/XLinkConstants.hpp"
 
-namespace dai
-{
+namespace dai {
 
-
-DataOutputQueue::DataOutputQueue(std::shared_ptr<XLinkConnection> conn, std::string streamName, unsigned int maxSize, bool overwrite) : connection(conn), queue(maxSize, overwrite) {
-
+DataOutputQueue::DataOutputQueue(std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize, bool overwrite)
+    : connection(std::move(conn)), queue(maxSize, overwrite) {
     // creates a thread which reads from connection into the queue
-    readingThread = std::thread([this, streamName](){
-
+    readingThread = std::thread([this, streamName]() {
         std::uint64_t numPacketsRead = 0;
 
         try {
-            
             // open stream with 1B write size (no writing will happen here)
             connection->openStream(streamName, 1);
 
-            while(running){
+            while(running) {
                 // read packet
-                auto packet = connection->readFromStreamRaw(streamName);
+                auto* packet = connection->readFromStreamRaw(streamName);
                 // parse packet
                 auto data = parsePacket(packet);
                 // release packet
@@ -34,43 +30,35 @@ DataOutputQueue::DataOutputQueue(std::shared_ptr<XLinkConnection> conn, std::str
 
             connection->closeStream(streamName);
 
-        } catch (const std::exception& ex){
-            // TODO
+        } catch(const std::exception& ex) {
+            // TODO(themarpe)
             assert(0 && "TODO");
         }
-       
-
     });
-
 }
 
-
-DataOutputQueue::~DataOutputQueue(){
+DataOutputQueue::~DataOutputQueue() {
     // detach from thread, because currently no way to unblock underlying XLinkReadData
     running = false;
     readingThread.detach();
 }
 
-
-
-DataInputQueue::DataInputQueue(std::shared_ptr<XLinkConnection> conn, std::string streamName, unsigned int maxSize, bool overwrite) : connection(conn), queue(maxSize, overwrite) {
-
+DataInputQueue::DataInputQueue(std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize, bool overwrite)
+    : connection(std::move(conn)), queue(maxSize, overwrite) {
     // creates a thread which reads from connection into the queue
-    writingThread = std::thread([this, streamName](){
-
+    writingThread = std::thread([this, streamName]() {
         std::uint64_t numPacketsSent = 0;
 
         try {
-            
             // open stream with 1B write size (no writing will happen here)
             connection->openStream(streamName, XLINK_USB_BUFFER_MAX_SIZE);
 
-            while(running){
+            while(running) {
                 // get data from queue
                 std::shared_ptr<RawBuffer> data;
                 queue.waitAndPop(data);
 
-                // serialize 
+                // serialize
                 auto serialized = serializeData(data);
 
                 // Write packet to device
@@ -82,35 +70,26 @@ DataInputQueue::DataInputQueue(std::shared_ptr<XLinkConnection> conn, std::strin
 
             connection->closeStream(streamName);
 
-        } catch (const std::exception& ex){
-            // TODO
+        } catch(const std::exception& ex) {
+            // TODO(themarpe)
             assert(0 && "TODO");
         }
-       
-
     });
 }
 
-DataInputQueue::~DataInputQueue(){
+DataInputQueue::~DataInputQueue() {
     // detach from thread, because currently no way to unblock underlying XLinkWriteData
     running = false;
     writingThread.detach();
 }
 
-
-void DataInputQueue::send(std::shared_ptr<RawBuffer> val){
+void DataInputQueue::send(const std::shared_ptr<RawBuffer>& val) {
     queue.push(val);
     queue.waitEmpty();
 }
 
-void DataInputQueue::sendAsync(std::shared_ptr<RawBuffer> val){
+void DataInputQueue::sendAsync(const std::shared_ptr<RawBuffer>& val) {
     queue.push(val);
 }
 
-
-
-
-
-
-
-} // namespace dai
+}  // namespace dai

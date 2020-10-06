@@ -1,70 +1,63 @@
 #pragma once
-#include <queue>
-#include <mutex>
 #include <condition_variable>
 #include <functional>
 #include <limits>
+#include <mutex>
+#include <queue>
 
-template<typename T>
-class LockingQueue
-{
-public:
+template <typename T>
+class LockingQueue {
+   public:
     LockingQueue() = default;
-    explicit LockingQueue(int maxSize, bool overwrite = false){
+    explicit LockingQueue(int maxSize, bool overwrite = false) {
         this->maxSize = maxSize;
         this->overwrite = overwrite;
     }
 
-
-    void waitAndConsumeAll(std::function<void(T&)> callback){
-        
+    void waitAndConsumeAll(std::function<void(T&)> callback) {
         {
             std::unique_lock<std::mutex> lock(guard);
-            while (queue.empty())
-            {
+            while(queue.empty()) {
                 signalPush.wait(lock);
             }
 
-            if (queue.empty()) return;
-            
-            while(!queue.empty()){
+            if(queue.empty()) return;
+
+            while(!queue.empty()) {
                 callback(queue.front());
                 queue.pop();
             }
         }
 
         signalPop.notify_all();
-
     }
 
-    void consumeAll(std::function<void(T&)> callback){
+    void consumeAll(std::function<void(T&)> callback) {
         {
             std::lock_guard<std::mutex> lock(guard);
 
-            if (queue.empty()) return;
+            if(queue.empty()) return;
 
-            while(!queue.empty()){
+            while(!queue.empty()) {
                 callback(queue.front());
                 queue.pop();
             }
         }
 
         signalPop.notify_all();
-        
     }
 
-    bool push(T const& _data)
-    {
+    bool push(T const& _data) {
         {
             std::unique_lock<std::mutex> lock(guard);
-            if(overwrite){
-                if(queue.size() >= maxSize){
+            if(overwrite) {
+                if(queue.size() >= maxSize) {
                     queue.pop();
-                } 
+                }
             } else {
-                while(queue.size() >= maxSize){
+                while(queue.size() >= maxSize) {
                     signalPop.wait(lock);
-                }    
+                }
             }
 
             queue.push(_data);
@@ -73,17 +66,14 @@ public:
         return true;
     }
 
-    bool empty() const
-    {
+    bool empty() const {
         std::lock_guard<std::mutex> lock(guard);
         return queue.empty();
     }
 
-
-    bool front(T& _value)
-    {
+    bool front(T& _value) {
         std::unique_lock<std::mutex> lock(guard);
-        if (queue.empty()){
+        if(queue.empty()) {
             return false;
         }
 
@@ -91,12 +81,10 @@ public:
         return true;
     }
 
-    bool tryPop(T& _value)
-    {
+    bool tryPop(T& _value) {
         {
             std::lock_guard<std::mutex> lock(guard);
-            if (queue.empty())
-            {
+            if(queue.empty()) {
                 return false;
             }
 
@@ -107,12 +95,10 @@ public:
         return true;
     }
 
-    void waitAndPop(T& _value)
-    {
+    void waitAndPop(T& _value) {
         {
             std::unique_lock<std::mutex> lock(guard);
-            while (queue.empty())
-            {
+            while(queue.empty()) {
                 signalPush.wait(lock);
             }
 
@@ -122,12 +108,10 @@ public:
         signalPop.notify_all();
     }
 
-    bool tryWaitAndPop(T& _value, int _milli)
-    {
+    bool tryWaitAndPop(T& _value, int _milli) {
         {
             std::unique_lock<std::mutex> lock(guard);
-            while (queue.empty())
-            {
+            while(queue.empty()) {
                 signalPush.wait_for(lock, std::chrono::milliseconds(_milli));
                 return false;
             }
@@ -139,19 +123,14 @@ public:
         return true;
     }
 
-
-    void waitEmpty()
-    {
+    void waitEmpty() {
         std::unique_lock<std::mutex> lock(guard);
-        while (!queue.empty())
-        {
+        while(!queue.empty()) {
             signalPop.wait(lock);
         }
     }
 
-
-
-private:
+   private:
     unsigned maxSize = std::numeric_limits<unsigned>::max();
     bool overwrite = false;
     std::queue<T> queue;

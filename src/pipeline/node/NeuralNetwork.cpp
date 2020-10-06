@@ -2,75 +2,67 @@
 
 #include "depthai/pipeline/Pipeline.hpp"
 
-namespace dai
-{
-namespace node
-{
+namespace dai {
+namespace node {
 
+    NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
 
-NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
+    std::string NeuralNetwork::getName() {
+        return "NeuralNetwork";
+    }
 
+    std::vector<Node::Output> NeuralNetwork::getOutputs() {
+        return {out};
+    }
 
-std::string NeuralNetwork::getName(){
-    return "NeuralNetwork";
-}
+    std::vector<Node::Input> NeuralNetwork::getInputs() {
+        return {input};
+    }
 
-std::vector<Node::Output> NeuralNetwork::getOutputs(){
-    return {out};
-}
+    nlohmann::json NeuralNetwork::getProperties() {
+        nlohmann::json j;
+        nlohmann::to_json(j, properties);
+        return j;
+    }
 
-std::vector<Node::Input> NeuralNetwork::getInputs(){
-    return {input};
-}
+    std::shared_ptr<Node> NeuralNetwork::clone() {
+        return std::make_shared<std::decay<decltype(*this)>::type>(*this);
+    }
 
-nlohmann::json NeuralNetwork::getProperties(){
-    nlohmann::json j;
-    nlohmann::to_json(j, properties);
-    return j;
-}
+    void NeuralNetwork::loadBlob(const std::string& path) {
+        // Get pipelines asset manager
+        AssetManager& assetManager = getParentPipeline().getAssetManager();
 
-std::shared_ptr<Node> NeuralNetwork::clone(){
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
-}
+        // Load blob in blobPath into asset
+        // And mark in properties where to look for it
+        std::ifstream blobStream(blobPath, std::ios::in | std::ios::binary);
+        if(!blobStream.is_open()) throw std::runtime_error("NeuralNetwork node | Blob at path: " + blobPath + " doesn't exist");
 
-void NeuralNetwork::loadBlob(const std::string& path){
-    // Get pipelines asset manager
-    AssetManager& assetManager = getParentPipeline().getAssetManager();
+        // Create an asset (alignment 64)
+        Asset blobAsset;
+        blobAsset.alignment = 64;
+        blobAsset.data = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(blobStream), {});
 
-    // Load blob in blobPath into asset
-    // And mark in properties where to look for it
-    std::ifstream blobStream(blobPath, std::ios::in | std::ios::binary);
-    if(!blobStream.is_open()) throw std::runtime_error("NeuralNetwork node | Blob at path: " + blobPath + " doesn't exist");
+        // Create asset key
+        std::string assetKey = std::to_string(id) + "/blob";
 
-    // Create an asset (alignment 64)
-    Asset blobAsset;
-    blobAsset.alignment = 64;
-    blobAsset.data = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(blobStream), {});
-    
+        // set asset (replaces previous asset without throwing)
+        assetManager.set(assetKey, blobAsset);
 
-    // Create asset key
-    std::string assetKey = std::to_string(id)+"/blob";
+        // Set properties URI to asset:id/blob
+        properties.blobUri = std::string("asset:") + assetKey;
+        properties.blobSize = blobAsset.data.size();
+    }
 
-    // set asset (replaces previous asset without throwing)
-    assetManager.set(assetKey, blobAsset);
+    // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
+    void NeuralNetwork::setBlobPath(const std::string& path) {
+        blobPath = path;
+        loadBlob(path);
+    }
 
-    // Set properties URI to asset:id/blob 
-    properties.blobUri = std::string("asset:") + assetKey;
-    properties.blobSize = blobAsset.data.size();
-}
+    void NeuralNetwork::setNumPoolFrames(int numFrames) {
+        properties.numFrames = numFrames;
+    }
 
-
-// Specify local filesystem path to load the blob (which gets loaded at loadAssets)
-void NeuralNetwork::setBlobPath(const std::string& path){
-    blobPath = path;
-    loadBlob(path);
-}
-
-void NeuralNetwork::setNumPoolFrames(int numFrames){
-    properties.numFrames = numFrames;
-}
-
-
-
-} // namespace node
-} // namespace dai
+}  // namespace node
+}  // namespace dai

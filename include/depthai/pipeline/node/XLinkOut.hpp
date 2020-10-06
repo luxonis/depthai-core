@@ -5,28 +5,25 @@
 // shared
 #include <depthai-shared/pb/properties/XLinkOutProperties.hpp>
 
-namespace dai
-{
-namespace node
-{
+namespace dai {
+namespace node {
     class XLinkOut : public Node {
         dai::XLinkOutProperties properties;
-    
+
         std::string getName() override;
         std::vector<Input> getInputs() override;
         std::vector<Output> getOutputs() override;
         nlohmann::json getProperties() override;
         std::shared_ptr<Node> clone() override;
 
-    public:
+       public:
         XLinkOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
-        Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::RawBuffer, true}} };
+        Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::RawBuffer, true}}};
 
         void setStreamName(const std::string& name);
         void setFpsLimit(float fps);
-
     };
 
-} // namespace node
-} // namespace dai
+}  // namespace node
+}  // namespace dai

@@ -1,78 +1,72 @@
 #include "depthai/pipeline/node/ColorCamera.hpp"
 
-namespace dai
-{
-namespace node
-{
- 
+namespace dai {
+namespace node {
 
-ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
-    properties.camId = 0;
-    properties.colorOrder = ColorCameraProperties::ColorOrder::BGR;
-    properties.interleaved = true;
-    properties.previewHeight = 300;
-    properties.previewWidth = 300;
-    properties.resolution = ColorCameraProperties::SensorResolution::THE_1080_P;
-}
+    ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
+        properties.camId = 0;
+        properties.colorOrder = ColorCameraProperties::ColorOrder::BGR;
+        properties.interleaved = true;
+        properties.previewHeight = 300;
+        properties.previewWidth = 300;
+        properties.resolution = ColorCameraProperties::SensorResolution::THE_1080_P;
+    }
 
-std::string ColorCamera::getName(){
-    return "ColorCamera";
-}
+    std::string ColorCamera::getName() {
+        return "ColorCamera";
+    }
 
-std::vector<Node::Output> ColorCamera::getOutputs(){
-    return {video, preview, still};
-}
+    std::vector<Node::Output> ColorCamera::getOutputs() {
+        return {video, preview, still};
+    }
 
-std::vector<Node::Input> ColorCamera::getInputs(){
-    return {};
-}
+    std::vector<Node::Input> ColorCamera::getInputs() {
+        return {};
+    }
 
-nlohmann::json ColorCamera::getProperties(){
-    nlohmann::json j;
-    nlohmann::to_json(j, properties);
-    return j;
-}
+    nlohmann::json ColorCamera::getProperties() {
+        nlohmann::json j;
+        nlohmann::to_json(j, properties);
+        return j;
+    }
 
-std::shared_ptr<Node> ColorCamera::clone(){
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
-}
+    std::shared_ptr<Node> ColorCamera::clone() {
+        return std::make_shared<std::decay<decltype(*this)>::type>(*this);
+    }
 
+    // Set which color camera to use
+    void ColorCamera::setCamId(int64_t id) {
+        properties.camId = id;
+    }
+    // Get which color camera to use
+    int64_t ColorCamera::getCamId() const {
+        return properties.camId;
+    }
 
-// Set which color camera to use
-void ColorCamera::setCamId(int64_t id){
-    properties.camId = id;
-}
-// Get which color camera to use
-int64_t ColorCamera::getCamId() const {
-    return properties.camId;
-}
+    // setColorOrder - RGB or BGR
+    void ColorCamera::setColorOrder(ColorCameraProperties::ColorOrder colorOrder) {
+        properties.colorOrder = colorOrder;
+    }
 
+    // getColorOrder - returns color order
+    ColorCameraProperties::ColorOrder ColorCamera::getColorOrder() const {
+        return properties.colorOrder;
+    }
 
-// setColorOrder - RGB or BGR
-void ColorCamera::setColorOrder(ColorCameraProperties::ColorOrder colorOrder){
-    properties.colorOrder = colorOrder;
-}
+    // setInterleaved
+    void ColorCamera::setInterleaved(bool interleaved) {
+        properties.interleaved = interleaved;
+    }
 
-// getColorOrder - returns color order 
-ColorCameraProperties::ColorOrder ColorCamera::getColorOrder() const {
-    return properties.colorOrder;
-}
+    // set preview output size
+    void ColorCamera::setPreviewSize(int width, int height) {
+        properties.previewWidth = width;
+        properties.previewHeight = height;
+    }
 
-// setInterleaved
-void ColorCamera::setInterleaved(bool interleaved){
-    properties.interleaved = interleaved;
-}
+    void ColorCamera::setResolution(ColorCameraProperties::SensorResolution resolution) {
+        properties.resolution = resolution;
+    }
 
-// set preview output size
-void ColorCamera::setPreviewSize(int width, int height){
-    properties.previewWidth = width;
-    properties.previewHeight = height;
-}
-
-void ColorCamera::setResolution(ColorCameraProperties::SensorResolution resolution){
-    properties.resolution = resolution;
-}      
-
-
-} // namespace node
-} // namespace dai
+}  // namespace node
+}  // namespace dai

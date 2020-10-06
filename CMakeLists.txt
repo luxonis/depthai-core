@@ -99,11 +99,6 @@ include(cmake/flags.cmake)
 if(DEPTHAI_CLANG_TIDY)
     include(cmake/clang-tidy.cmake)
 endif()
-if(DEPTHAI_CLANG_FORMAT)
-    include(cmake/clang-format.cmake)
-    target_clangformat_setup(${TARGET_NAME})
-endif()
-
 
 # Set compiler features (c++11)
 set_property(TARGET ${TARGET_NAME} PROPERTY CXX_STANDARD 11)
@@ -215,6 +210,15 @@ target_include_directories(${TARGET_NAME}
 )
 
 target_include_directories(${TARGET_NAME} SYSTEM PUBLIC "$<BUILD_INTERFACE:${DEPTHAI_SHARED_3RDPARTY_INCLUDE}>")
+
+
+# Add clang format after specifying include directories
+if(DEPTHAI_CLANG_FORMAT)
+    # HEADER DIRECTORIES
+    set(header_dirs "${CMAKE_CURRENT_LIST_DIR}/include;${DEPTHAI_SHARED_PUBLIC_INCLUDE};${DEPTHAI_SHARED_INCLUDE}")
+    include(cmake/clang-format.cmake)
+    target_clangformat_setup(${TARGET_NAME} "${header_dirs}")
+endif()
 
 
 

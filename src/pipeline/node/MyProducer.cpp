@@ -1,46 +1,39 @@
 #include "depthai/pipeline/node/MyProducer.hpp"
 
-namespace dai
-{
-namespace node
-{
+namespace dai {
+namespace node {
 
-MyProducer::MyProducer(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
+    MyProducer::MyProducer(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
 
+    std::string MyProducer::getName() {
+        return "MyProducer";
+    }
 
-std::string MyProducer::getName(){
-    return "MyProducer";
-}
+    std::vector<Node::Input> MyProducer::getInputs() {
+        return {};
+    }
 
+    std::vector<Node::Output> MyProducer::getOutputs() {
+        return {out};
+    }
 
-std::vector<Node::Input> MyProducer::getInputs(){
-    return {};
-}
+    nlohmann::json MyProducer::getProperties() {
+        nlohmann::json j;
+        nlohmann::to_json(j, properties);
+        return j;
+    }
 
-std::vector<Node::Output> MyProducer::getOutputs(){
-    return {out};
-}
+    std::shared_ptr<Node> MyProducer::clone() {
+        return std::make_shared<std::decay<decltype(*this)>::type>(*this);
+    }
 
-nlohmann::json MyProducer::getProperties(){
-    nlohmann::json j;
-    nlohmann::to_json(j, properties);
-    return j;
-}
+    void MyProducer::setMessage(const std::string& m) {
+        properties.message = m;
+    }
 
-std::shared_ptr<Node> MyProducer::clone(){
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
-}
+    void MyProducer::setProcessor(ProcessorType proc) {
+        properties.processorPlacement = proc;
+    }
 
-
-void MyProducer::setMessage(const std::string& m){
-    properties.message = m;
-}
-
-void MyProducer::setProcessor(ProcessorType proc){
-    properties.processorPlacement = proc;
-}
-
-
-
-} // namespace node
-} // namespace dai
+}  // namespace node
+}  // namespace dai

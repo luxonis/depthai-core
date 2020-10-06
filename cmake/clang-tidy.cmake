@@ -8,4 +8,6 @@ else()
   message(STATUS "clang-tidy has been found: ${CLANG_TIDY_BIN}")
 endif()
 
-set_target_properties(${TARGET_NAME} PROPERTIES C_CLANG_TIDY ${CLANG_TIDY_BIN} CXX_CLANG_TIDY ${CLANG_TIDY_BIN})
+# Disable for C compiler for now
+#set_target_properties(${TARGET_NAME} PROPERTIES C_CLANG_TIDY ${CLANG_TIDY_BIN} CXX_CLANG_TIDY ${CLANG_TIDY_BIN})
+set_target_properties(${TARGET_NAME} PROPERTIES CXX_CLANG_TIDY ${CLANG_TIDY_BIN})

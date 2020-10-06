@@ -1,18 +1,16 @@
 #pragma once
 
 #include <map>
-#include <vector>
 #include <memory>
+#include <vector>
 
 #include "depthai-shared/Assets.hpp"
 
-namespace dai
-{
-    
+namespace dai {
 
-struct Asset{
+struct Asset {
     Asset() = default;
-    explicit Asset(std::string k) : key(std::move(k)){} 
+    explicit Asset(std::string k) : key(std::move(k)) {}
     const std::string key;
     std::vector<std::uint8_t> data;
     std::uint32_t alignment = 1;
@@ -22,8 +20,7 @@ struct Asset{
 class AssetManager : public Assets {
     std::map<std::string, std::shared_ptr<Asset>> assetMap;
 
-public:
-
+   public:
     void add(Asset asset);
     void add(const std::string& key, Asset asset);
     void set(const std::string& key, Asset asset);
@@ -32,11 +29,6 @@ public:
     std::size_t size();
     void remove(const std::string& key);
     void serialize(Assets& serAssets, std::vector<std::uint8_t>& assetStorage);
-
 };
 
-
-
-
-} // namespace dai
-
+}  // namespace dai

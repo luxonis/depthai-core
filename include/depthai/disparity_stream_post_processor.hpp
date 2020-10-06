@@ -8,27 +8,22 @@
 // Shared
 #include "depthai-shared/general/data_observer.hpp"
 #include "depthai-shared/general/data_subject.hpp"
-#include "depthai-shared/stream/stream_info.hpp"
 #include "depthai-shared/stream/stream_data.hpp"
+#include "depthai-shared/stream/stream_info.hpp"
 
-
-class DisparityStreamPostProcessor
-    : public DataSubject<StreamInfo, StreamData>
-    , public DataObserver<StreamInfo, StreamData>
-{
-public:
+class DisparityStreamPostProcessor : public DataSubject<StreamInfo, StreamData>, public DataObserver<StreamInfo, StreamData> {
+   public:
     DisparityStreamPostProcessor(bool produce_d_color);
 
-protected:
+   protected:
     // class DataObserver
-    virtual void onNewData(const StreamInfo &data_info, const StreamData &data);
+    virtual void onNewData(const StreamInfo& data_info, const StreamData& data);
 
-
-private:
-    const std::string c_stream_in        = "disparity";
+   private:
+    const std::string c_stream_in = "disparity";
     const std::string c_stream_out_color = "depth_color_h";
 
     const bool _produce_depth_color = false;
 
-    void prepareDepthColorAndNotifyObservers(const StreamInfo &data_info, const StreamData &data);
+    void prepareDepthColorAndNotifyObservers(const StreamInfo& data_info, const StreamData& data);
 };
