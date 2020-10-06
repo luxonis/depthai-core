@@ -345,13 +345,6 @@ bool HostPipelineConfig::initWithJSON(const nlohmann::json &json_obj)
                     break;
                 }
             }
-            // Defaults if the resolution width is not specified
-            if (rgb_cam_config.resolution_w == 0) {
-                if (rgb_cam_config.resolution_h == 1080)
-                    rgb_cam_config.resolution_w =  1920;
-                if (rgb_cam_config.resolution_h == 2160)
-                    rgb_cam_config.resolution_w =  3840;
-            }
 
             if (camera_conf_obj.contains("mono"))
             {
@@ -374,13 +367,23 @@ bool HostPipelineConfig::initWithJSON(const nlohmann::json &json_obj)
                     break;
                 }
             }
-            // Defaults if the resolution width is not specified
-            if (mono_cam_config.resolution_w == 0) {
-                if (mono_cam_config.resolution_h == 400)
-                    mono_cam_config.resolution_w =  640;
-                if (mono_cam_config.resolution_h == 720 || mono_cam_config.resolution_h == 800)
-                    mono_cam_config.resolution_w = 1280;
-            }
+
+        }
+
+        // Defaults if the resolution width is not specified
+        if (rgb_cam_config.resolution_w == 0) {
+            if (rgb_cam_config.resolution_h == 1080)
+                rgb_cam_config.resolution_w =  1920;
+            if (rgb_cam_config.resolution_h == 2160)
+                rgb_cam_config.resolution_w =  3840;
+        }
+
+        // Defaults if the resolution width is not specified
+        if (mono_cam_config.resolution_w == 0) {
+            if (mono_cam_config.resolution_h == 400)
+                mono_cam_config.resolution_w =  640;
+            if (mono_cam_config.resolution_h == 720 || mono_cam_config.resolution_h == 800)
+                mono_cam_config.resolution_w = 1280;
         }
 
         if (json_obj.contains("app"))
