@@ -1,0 +1,27 @@
+name: Style
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v1
+    
+    - name: Install format dependencies
+      run: |
+        brew install clang-format
+
+    - name: configure
+      run: cmake . -Bbuild
+
+    - name: check style
+      run: ci/check_format.sh

@@ -1,0 +1,24 @@
+name: Windows
+
+on:
+  push:
+    branches:
+      - gen2
+  pull_request:
+    branches:
+      - gen2
+
+jobs:
+  build:
+
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v1
+    
+    - name: configure
+      run: cmake . -Bbuild
+
+    - name: build
+      run: cmake --build build --parallel
+
