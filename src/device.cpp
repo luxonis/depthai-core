@@ -177,8 +177,8 @@ void Device::init()
 }
 
 
-
-
+// asdfasdf
+// Do we need a version of this that'll receive from SPI rather than XLINK?
 std::shared_ptr<DataOutputQueue> Device::getOutputQueue(std::string name){
 
     // creates a dataqueue if not yet created

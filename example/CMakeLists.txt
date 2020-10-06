@@ -1,5 +1,6 @@
 cmake_minimum_required(VERSION 3.2)
 
+set(CMAKE_BUILD_TYPE Debug)
 
 include("${CMAKE_CURRENT_LIST_DIR}/../cmake/HunterGate.cmake")
 HunterGate(

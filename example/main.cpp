@@ -9,6 +9,7 @@
 #include "depthai/pipeline/node/ColorCamera.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
+#include "depthai/pipeline/node/SPIOut.hpp"
 
 #include "depthai-shared/datatype/NNTensor.hpp"
 #include "depthai-shared/datatype/ImgFrame.hpp"
@@ -73,41 +74,13 @@ cv::Mat toMat(const std::vector<uint8_t>& data, int w, int h , int numPlanes, in
 }
 
 
-dai::Pipeline createNNPipeline(std::string nnPath){
 
 
-    dai::Pipeline p;
-
-    auto colorCam = p.create<dai::node::ColorCamera>();
-    auto xlinkOut = p.create<dai::node::XLinkOut>();
-    auto nn1 = p.create<dai::node::NeuralNetwork>();
-    auto nnOut = p.create<dai::node::XLinkOut>();
 
 
-    nn1->setBlobPath(nnPath);
 
-    xlinkOut->setStreamName("preview");
-    nnOut->setStreamName("detections");    
-
-    colorCam->setPreviewSize(300, 300);
-    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    colorCam->setInterleaved(false);
-    colorCam->setCamId(0);
-    colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
-
-    // Link plugins CAM -> NN -> XLINK
-    colorCam->preview.link(nn1->in);
-    colorCam->preview.link(xlinkOut->in);
-    nn1->out.link(nnOut->in);
-
-    return p;
-
-}
 
 dai::Pipeline createCameraPipeline(){
-
-
-
     dai::Pipeline p;
 
     auto colorCam = p.create<dai::node::ColorCamera>();
@@ -243,6 +216,48 @@ void startVideo(){
 }
 
 
+
+
+
+
+
+
+dai::Pipeline createNNPipeline(std::string nnPath){
+
+
+    dai::Pipeline p;
+
+    auto colorCam = p.create<dai::node::ColorCamera>();
+    auto xlinkOut = p.create<dai::node::XLinkOut>();
+    auto nn1 = p.create<dai::node::NeuralNetwork>();
+    auto nnOut = p.create<dai::node::XLinkOut>();
+
+    nn1->setBlobPath(nnPath);
+
+    xlinkOut->setStreamName("preview");
+    nnOut->setStreamName("detections");
+    
+
+    colorCam->setPreviewSize(300, 300);
+    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    colorCam->setInterleaved(false);
+    colorCam->setCamId(0);
+    colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
+
+    // Link plugins CAM -> NN -> XLINK
+    colorCam->preview.link(nn1->in);
+    colorCam->preview.link(xlinkOut->in);
+    nn1->out.link(nnOut->in);
+
+    // Testing out SPI output... It currently just goes out xlink. We'll replace the xlink logic once we get the flow working.
+    auto spiOut = p.create<dai::node::SPIOut>();
+    spiOut->setStreamName("spimetadata");
+    nn1->out.link(spiOut->in);
+
+    return p;
+
+}
+
 void startNN(std::string nnPath){
     using namespace std;
 
@@ -261,6 +276,9 @@ void startNN(std::string nnPath){
         cv::Mat frame;
         auto preview = d.getOutputQueue("preview");
         auto detections = d.getOutputQueue("detections");
+
+        auto spimeta = d.getOutputQueue("spimetadata");
+
 
         while(1){
 
@@ -282,8 +300,29 @@ void startNN(std::string nnPath){
             };
 
             vector<Detection> dets;
-
             auto det = detections->get<dai::NNTensor>();
+            
+            vector<Detection> spiMetaDets;
+            auto spiMetaDet = spimeta->get<dai::NNTensor>();
+            if(spiMetaDet){
+                auto result = reinterpret_cast<std::uint16_t*>(spiMetaDet->data.data());
+
+                int i = 0;
+                while (/*valid*/fp16_ieee_to_fp32_value(result[i*7]) != -1.0f)
+                {
+                    Detection d;
+                    d.label = fp16_ieee_to_fp32_value(result[i*7 + 1]);
+                    d.score = fp16_ieee_to_fp32_value(result[i*7 + 2]);
+                    d.x_min = fp16_ieee_to_fp32_value(result[i*7 + 3]);
+                    d.y_min = fp16_ieee_to_fp32_value(result[i*7 + 4]);
+                    d.x_max = fp16_ieee_to_fp32_value(result[i*7 + 5]);
+                    d.y_max = fp16_ieee_to_fp32_value(result[i*7 + 6]);
+                    i++;
+                    printf("Gottem: %d\n", d.label);
+                    spiMetaDets.push_back(d);
+                }
+            }
+            
             if(det){
 
                 auto result = reinterpret_cast<std::uint16_t*>(det->data.data());
@@ -323,6 +362,17 @@ void startNN(std::string nnPath){
                         dets[det].x_max,
                         dets[det].y_max);
             }
+/*
+            for (unsigned det = 0; det < spiMetaDets.size(); ++det) {
+                printf("%5d | %6.4f | %7.4f | %7.4f | %7.4f | %7.4f\n",
+                        spiMetaDets[det].label,
+                        spiMetaDets[det].score,
+                        spiMetaDets[det].x_min,
+                        spiMetaDets[det].y_min,
+                        spiMetaDets[det].x_max,
+                        spiMetaDets[det].y_max);
+            }
+*/
 
 
             cv::imshow("preview", frame);

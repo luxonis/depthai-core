@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.2) # For Hunter
 
+set(CMAKE_BUILD_TYPE Debug)
+
 # Set defaults
 set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
 
