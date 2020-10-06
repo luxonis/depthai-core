@@ -20,7 +20,7 @@ jobs:
     
     - name: Install format dependencies
       run: |
-        pip3 install clang-format
+        sudo apt-get install clang-format-10
         sudo apt-get install libusb-1.0-0-dev
         sudo apt-get install libusb-1.0-0
 
@@ -41,6 +41,7 @@ jobs:
     
     - name: Install dependencies
       run: |
+        sudo apt-get install clang-tidy-10
         sudo apt-get install libusb-1.0-0-dev
         sudo apt-get install libusb-1.0-0
 
