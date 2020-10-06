@@ -11,6 +11,11 @@
 namespace dai {
 
 // STATIC
+constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT;
+constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_CONNECT_TIMEOUT;
+constexpr int XLinkConnection::STREAM_OPEN_RETRIES;
+constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_STREAM_RETRY;
+
 
 void XLinkConnection::initXLinkGlobal() {
     if(xlinkGlobalInitialized) return;

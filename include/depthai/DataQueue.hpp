@@ -26,7 +26,7 @@ class DataOutputQueue {
 
     template <class T>
     bool has() {
-        std::shared_ptr<RawBuffer> val;
+        std::shared_ptr<RawBuffer> val = nullptr;
         if(queue.front(val) && dynamic_cast<T*>(val.get())) {
             return true;
         }
@@ -39,13 +39,13 @@ class DataOutputQueue {
 
     template <class T>
     std::shared_ptr<T> tryGet() {
-        std::shared_ptr<RawBuffer> val;
+        std::shared_ptr<RawBuffer> val = nullptr;
         if(!queue.tryPop(val)) return nullptr;
         return std::dynamic_pointer_cast<T>(val);
     }
 
     std::shared_ptr<RawBuffer> tryGet() {
-        std::shared_ptr<RawBuffer> p;
+        std::shared_ptr<RawBuffer> p = nullptr;
         if(!queue.tryPop(p)) {
             return nullptr;
         }
@@ -54,14 +54,30 @@ class DataOutputQueue {
 
     template <class T>
     std::shared_ptr<T> get() {
-        std::shared_ptr<RawBuffer> val;
+        std::shared_ptr<RawBuffer> val = nullptr;
         queue.waitAndPop(val);
         return std::dynamic_pointer_cast<T>(val);
     }
 
     std::shared_ptr<RawBuffer> get() {
-        std::shared_ptr<RawBuffer> val;
+        std::shared_ptr<RawBuffer> val = nullptr;
         queue.waitAndPop(val);
+        return val;
+    }
+
+    template <class T, typename Rep, typename Period>
+    std::shared_ptr<T> get(std::chrono::duration<Rep, Period> timeout) {
+        std::shared_ptr<RawBuffer> val = nullptr;
+        if(!queue.tryWaitAndPop(val, timeout)){
+            return nullptr;
+        }
+        return std::dynamic_pointer_cast<T>(val);
+    }
+
+    template <typename Rep, typename Period>
+    std::shared_ptr<RawBuffer> get(std::chrono::duration<Rep, Period> timeout) {
+        std::shared_ptr<RawBuffer> val = nullptr;
+        queue.tryWaitAndPop(val, timeout);
         return val;
     }
 };
@@ -79,7 +95,13 @@ class DataInputQueue {
     ~DataInputQueue();
 
     void send(const std::shared_ptr<RawBuffer>& val);
-    void sendAsync(const std::shared_ptr<RawBuffer>& val);
+    void sendSync(const std::shared_ptr<RawBuffer>& val);
+
+    template <typename Rep, typename Period>
+    bool send(const std::shared_ptr<RawBuffer>& val, std::chrono::duration<Rep, Period> timeout) {
+        return queue.tryWaitAndPush(val, timeout);
+    }
+
 };
 
 }  // namespace dai

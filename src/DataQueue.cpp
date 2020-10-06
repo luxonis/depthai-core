@@ -85,11 +85,12 @@ DataInputQueue::~DataInputQueue() {
 
 void DataInputQueue::send(const std::shared_ptr<RawBuffer>& val) {
     queue.push(val);
-    queue.waitEmpty();
 }
 
-void DataInputQueue::sendAsync(const std::shared_ptr<RawBuffer>& val) {
+void DataInputQueue::sendSync(const std::shared_ptr<RawBuffer>& val) {
+    queue.waitEmpty();
     queue.push(val);
 }
+
 
 }  // namespace dai
