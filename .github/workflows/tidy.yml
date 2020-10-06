@@ -14,11 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
     
     - name: configure
       run: cmake . -Bbuild -DDEPTHAI_CLANG_TIDY=ON
 
     - name: Run clang-tidy
       run: cmake --build . --parallel
-      
