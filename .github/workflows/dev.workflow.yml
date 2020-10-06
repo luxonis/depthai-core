@@ -25,10 +25,10 @@ jobs:
         sudo apt-get install libusb-1.0-0
 
     - name: configure
-      run: cmake . -Bbuild -DDEPTHAI_CLANG_FORMAT=ON
+      run: cmake . -Bbuild -DDEPTHAI_CLANG_FORMAT=ON -DCLANG_FORMAT_BIN=clang-format-10
 
     - name: check style
-      run: ci/check_format.sh
+      run: ci/check_format.sh build
 
 
   tidy:
@@ -46,7 +46,7 @@ jobs:
         sudo apt-get install libusb-1.0-0
 
     - name: configure
-      run: cmake . -Bbuild -DDEPTHAI_CLANG_TIDY=ON
+      run: cmake . -Bbuild -DDEPTHAI_CLANG_TIDY=ON -DCLANG_TIDY_BIN=clang-tidy-10
 
     - name: Run clang-tidy
       run: cmake --build . --parallel

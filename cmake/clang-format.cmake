@@ -4,17 +4,17 @@
 # http://www.boost.org/LICENSE_1_0.txt)
 
 function(clangformat_setup)
-  if(NOT CLANGFORMAT_EXECUTABLE)
-    set(CLANGFORMAT_EXECUTABLE clang-format)
+  if(NOT CLANG_FORMAT_BIN)
+    set(CLANG_FORMAT_BIN clang-format)
   endif()
 
-  if(NOT EXISTS ${CLANGFORMAT_EXECUTABLE})
-    find_program(clangformat_executable_tmp ${CLANGFORMAT_EXECUTABLE})
-    if(clangformat_executable_tmp)
-      set(CLANGFORMAT_EXECUTABLE ${clangformat_executable_tmp})
-      unset(clangformat_executable_tmp)
+  if(NOT EXISTS ${CLANG_FORMAT_BIN})
+    find_program(CLANG_FORMAT_BIN_tmp ${CLANG_FORMAT_BIN})
+    if(CLANG_FORMAT_BIN_tmp)
+      set(CLANG_FORMAT_BIN ${CLANG_FORMAT_BIN_tmp})
+      unset(CLANG_FORMAT_BIN_tmp)
     else()
-      message(STATUS "ClangFormat: ${CLANGFORMAT_EXECUTABLE} not found! Target 'clangformat' not available...")
+      message(STATUS "ClangFormat: ${CLANG_FORMAT_BIN} not found! Target 'clangformat' not available...")
       return()
     endif()
   endif()
@@ -26,14 +26,14 @@ function(clangformat_setup)
 
   add_custom_target(${PROJECT_NAME}_clangformat
     COMMAND
-      ${CLANGFORMAT_EXECUTABLE}
+      ${CLANG_FORMAT_BIN}
       -style=file
       -i
       ${clangformat_sources}
     WORKING_DIRECTORY
       ${CMAKE_SOURCE_DIR}
     COMMENT
-      "Formating with ${CLANGFORMAT_EXECUTABLE} ..."
+      "Formating with ${CLANG_FORMAT_BIN} ..."
   )
 
   if(TARGET clangformat)

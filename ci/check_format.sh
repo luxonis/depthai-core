@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Perform code format (cmake target)
-cmake --build . --target clangformat
+cmake --build "$1" --target clangformat
 
 # Display diff
 git --no-pager diff
