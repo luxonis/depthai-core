@@ -1,11 +1,12 @@
 #pragma once
 
-#include <assert.h>
-#include <inttypes.h>
 #include <string.h>
 
+#include <cassert>
+#include <cstdint>
 #include <memory>
 #include <numeric>
+#include <string>
 #include <vector>
 
 #include "boost/optional.hpp"

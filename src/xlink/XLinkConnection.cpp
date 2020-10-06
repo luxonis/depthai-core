@@ -2,11 +2,11 @@
 
 #include <XLink.h>
 
+#include <array>
 #include <chrono>
 #include <iostream>
 #include <thread>
 #include <vector>
-#include <array>
 
 namespace dai {
 

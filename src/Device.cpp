@@ -48,23 +48,25 @@ std::tuple<bool, DeviceInfo> Device::getFirstDevice(){
 }
 */
 
-Device::Device(const DeviceInfo& deviceInfo, bool usb2Mode) {
-    connection = std::make_shared<XLinkConnection>(deviceInfo, getDefaultCmdBinary(usb2Mode));
-    this->deviceInfo = deviceInfo;
+Device::Device(const DeviceInfo& devInfo, bool usb2Mode) {
+    connection = std::make_shared<XLinkConnection>(devInfo, getDefaultCmdBinary(usb2Mode));
+    this->deviceInfo = devInfo;
     init();
 }
 
-Device::Device(const DeviceInfo& deviceDesc, const std::string& pathToCmd) {
-    connection = std::make_shared<XLinkConnection>(deviceDesc, pathToCmd);
-    this->deviceInfo = deviceInfo;
+Device::Device(const DeviceInfo& devInfo, const std::string& pathToCmd) {
+    connection = std::make_shared<XLinkConnection>(devInfo, pathToCmd);
+    this->deviceInfo = devInfo;
     init();
 }
 
 Device::Device() {
-    auto ret = XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
-    if(!std::get<0>(ret)) throw std::runtime_error("No unbooted devices available");
-    connection = std::make_shared<XLinkConnection>(std::get<1>(ret), getDefaultCmdBinary(false));
-    this->deviceInfo = deviceInfo;
+    bool found = false;
+    DeviceInfo devInfo;
+    std::tie(found, devInfo) = XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
+    if(!found) throw std::runtime_error("No unbooted devices available");
+    connection = std::make_shared<XLinkConnection>(devInfo, getDefaultCmdBinary(false));
+    this->deviceInfo = devInfo;
     init();
 }
 

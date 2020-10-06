@@ -49,7 +49,7 @@ jobs:
       run: cmake . -Bbuild -DDEPTHAI_CLANG_TIDY=ON -DCLANG_TIDY_BIN=clang-tidy-10
 
     - name: Run clang-tidy
-      run: cmake --build . --parallel
+      run: cmake --build build --parallel
 
 
   build:

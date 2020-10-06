@@ -31,8 +31,8 @@ class Device {
     /////
 
     Device();
-    explicit Device(const DeviceInfo& deviceDesc, bool usb2Mode = false);
-    Device(const DeviceInfo& deviceDesc, const std::string& pathToCmd);
+    explicit Device(const DeviceInfo& devInfo, bool usb2Mode = false);
+    Device(const DeviceInfo& devInfo, const std::string& pathToCmd);
     ~Device();
 
     bool isPipelineRunning();
