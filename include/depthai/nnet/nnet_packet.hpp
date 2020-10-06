@@ -34,10 +34,8 @@ class NNetPacket {
     }
 
    protected:
-    std::shared_ptr<TensorEntryContainer> _tensor_entry_container;
-
     std::vector<std::shared_ptr<HostDataPacket>> _tensors_raw_data;
     const std::vector<TensorInfo>* _tensors_info = nullptr;
-
+    std::shared_ptr<TensorEntryContainer> _tensor_entry_container;
     std::unordered_map<std::string, unsigned> _tensor_name_to_index;
 };

@@ -6,6 +6,7 @@
 #include <iostream>
 #include <thread>
 #include <vector>
+#include <array>
 
 namespace dai {
 

@@ -8,6 +8,7 @@ function(add_flag flag)
     target_compile_options(${TARGET_NAME} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:${flag}>)
   endif ()
 endfunction()
+
 if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "^(AppleClang|Clang|GNU)$")
   # Add pedantic flag
   target_compile_options(${TARGET_NAME} PRIVATE -pedantic-errors)
@@ -35,7 +36,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "^(AppleClang|Clang|GNU)$")
   add_flag(-Werror-unused-lambda-capture)  # error if lambda capture is unused
   add_flag(-Werror-return-type)      # warning: control reaches end of non-void function [-Wreturn-type]
   add_flag(-Werror-non-virtual-dtor) # warn the user if a class with virtual functions has a non-virtual destructor. This helps catch hard to track down memory errors
-  add_flag(-Werror-sign-compare)     # warn the user if they compare a signed and unsigned numbers
+  #add_flag(-Werror-sign-compare)     # warn the user if they compare a signed and unsigned numbers
   add_flag(-Werror-reorder)          # field '$1' will be initialized after field '$2'
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   # using Visual Studio C++

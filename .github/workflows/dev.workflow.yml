@@ -1,0 +1,80 @@
+name: Dev Workflow
+
+on:
+  push:
+    branches:
+      - gen2
+  pull_request:
+    branches:
+      - gen2
+
+jobs:
+
+  style:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+    
+    - name: Install format dependencies
+      run: |
+        pip3 install clang-format
+        sudo apt-get install libusb-1.0-0-dev
+        sudo apt-get install libusb-1.0-0
+
+    - name: configure
+      run: cmake . -Bbuild -DDEPTHAI_CLANG_FORMAT=ON
+
+    - name: check style
+      run: ci/check_format.sh
+
+
+  tidy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get install libusb-1.0-0-dev
+        sudo apt-get install libusb-1.0-0
+
+    - name: configure
+      run: cmake . -Bbuild -DDEPTHAI_CLANG_TIDY=ON
+
+    - name: Run clang-tidy
+      run: cmake --build . --parallel
+
+
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+    
+    - name: Install dependencies
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install libusb
+
+    - name: Install dependencies
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get install libusb-1.0-0-dev
+        sudo apt-get install libusb-1.0-0
+
+    - name: configure
+      run: cmake . -Bbuild
+
+    - name: build
+      run: cmake --build build --parallel
