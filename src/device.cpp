@@ -1275,6 +1275,14 @@ void Device::send_disparity_confidence_threshold(uint8_t confidence){
     }
 }
 
+void Device::send_camera_control(CameraControl::CamId camera_id,
+        CameraControl::Command command_id,
+        const std::string &extra_args) {
+    if(g_host_capture_command != nullptr) {
+        g_host_capture_command->sendCameraControl(camera_id, command_id, extra_args.c_str());
+    }
+}
+
 std::map<std::string, int> Device::get_nn_to_depth_bbox_mapping(){
     return nn_to_depth_mapping;
 }
