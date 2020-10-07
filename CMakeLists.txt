@@ -69,7 +69,6 @@ add_library(${TARGET_NAME}
     src/disparity_stream_post_processor.cpp
     src/host_data_reader.cpp
     src/host_json_helper.cpp
-    src/types.cpp
     src/device.cpp
     src/matrix_ops.cpp
     src/bspatch/bspatch.c

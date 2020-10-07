@@ -57,24 +57,25 @@ struct HostDataPacket
         std::uint8_t* pData = (std::uint8_t*) in_data;
 
         // Regular copy (1 allocation only)
-        data = std::vector<std::uint8_t>(pData, pData + frameSize);
+        data = std::make_shared<std::vector<std::uint8_t>>(pData, pData + frameSize);
 
         constructor_timer = Timer();
     }
 
     unsigned size()
     {
-        return data.size();
+        return data->size();
     }
 
     const unsigned char* getData() const
     {
-        return data.data();
+        return data->data();
     }
 
     std::string getDataAsString()
     {
-        assert(data[data.size() - 1] == 0); // checking '\0'
+        const unsigned char* data = getData();
+        assert(data[size() - 1] == 0); // checking '\0'
         return reinterpret_cast<const char*>(&data[0]);
     }
 
@@ -84,13 +85,13 @@ struct HostDataPacket
 
     ObjectTracker getObjectTracker(){
         ObjectTracker ot_tracklets;
-        assert(data.size() == sizeof(ObjectTracker));
-        memcpy(&ot_tracklets, data.data(), sizeof(ObjectTracker));
+        assert(size() == sizeof(ObjectTracker));
+        memcpy(&ot_tracklets, getData(), sizeof(ObjectTracker));
         return ot_tracklets;
     }
 
     boost::optional<FrameMetadata> opt_metadata;
-    std::vector<unsigned char> data;
+    std::shared_ptr<std::vector<unsigned char>> data;
     std::string stream_name;
     std::vector<int> dimensions;
     int elem_size;
