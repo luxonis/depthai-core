@@ -206,6 +206,7 @@ bool Device::init_device(
             if (!g_xlink->initFromHostSide(
                 &g_xlink_global_handler,
                 &g_xlink_device_handler,
+                usb_speed,
                 binary, binary_size,
                 usb_device,
                 true)
@@ -218,6 +219,7 @@ bool Device::init_device(
             if (!g_xlink->initFromHostSide(
                 &g_xlink_global_handler,
                 &g_xlink_device_handler,
+                usb_speed,
                 device_cmd_file,
                 usb_device,
                 true)
@@ -227,6 +229,8 @@ bool Device::init_device(
                 break;
             }
         }
+
+        std::cout <<"Here is usb speed as string in device.cpp: " << usb_speed << std::endl;
 
         g_xlink->setWatchdogUpdateFunction(std::bind(&Device::wdog_keepalive, this));
         wdog_start();
