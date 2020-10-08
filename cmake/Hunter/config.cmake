@@ -13,13 +13,14 @@ hunter_config(
 
 hunter_config(
     XLink
-    VERSION "luxonis-2020.2-test_usb_info"
-    URL "https://github.com/luxonis/XLink/archive/test_usb_info.zip"
-    SHA1 "1ce5d55a3b0a0b9df85837afe5024986c857c57c"
+    VERSION "luxonis-2020.2"
+    URL  "https://github.com/luxonis/XLink/archive/test_usb_info.zip"
+    SHA1 "1af32e324a18cd0caebba7d768b1b068e24d5709"
     CMAKE_ARGS
         CMAKE_POSITION_INDEPENDENT_CODE=ON
 )
 
+# "https://github.com/luxonis/XLink/archive/test_usb_info.zip"
 hunter_config(
     BZip2
     VERSION "1.0.8-p0"
