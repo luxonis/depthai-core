@@ -68,7 +68,7 @@ class DataOutputQueue {
     template <class T, typename Rep, typename Period>
     std::shared_ptr<T> get(std::chrono::duration<Rep, Period> timeout) {
         std::shared_ptr<RawBuffer> val = nullptr;
-        if(!queue.tryWaitAndPop(val, timeout)){
+        if(!queue.tryWaitAndPop(val, timeout)) {
             return nullptr;
         }
         return std::dynamic_pointer_cast<T>(val);
@@ -101,7 +101,6 @@ class DataInputQueue {
     bool send(const std::shared_ptr<RawBuffer>& val, std::chrono::duration<Rep, Period> timeout) {
         return queue.tryWaitAndPush(val, timeout);
     }
-
 };
 
 }  // namespace dai

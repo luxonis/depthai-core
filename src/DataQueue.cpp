@@ -92,5 +92,4 @@ void DataInputQueue::sendSync(const std::shared_ptr<RawBuffer>& val) {
     queue.push(val);
 }
 
-
 }  // namespace dai

@@ -14,7 +14,6 @@ add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/.. ${CMAKE_CURRENT_BINARY_DIR}/deptha
 set(TARGET_NAME myapp)
 project(${TARGET_NAME})
 
-
 # Dependencies
 find_package(OpenCV REQUIRED)
 
@@ -24,6 +23,7 @@ find_package(FP16 REQUIRED)
 # Add source files
 add_executable("${TARGET_NAME}" 
     main.cpp
+    #main_gaze.cpp
 )
 
 # Link with libraries
@@ -33,3 +33,6 @@ target_link_libraries(${TARGET_NAME}
         ${OpenCV_LIBS}
         FP16::fp16
 )
+
+target_compile_options(${TARGET_NAME} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:-Werror=return-type>)
+
