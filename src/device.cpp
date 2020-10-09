@@ -597,6 +597,14 @@ std::vector<std::vector<float>> Device::get_right_homography()
     
 }
 
+bool Device::is_usb3()
+{
+        if(usb_speed.find("Super") != std::string::npos)
+            return true;
+        else
+            return false;
+}
+
 std::vector<std::vector<float>> Device::get_rotation()
 {
     if (version < 4) {

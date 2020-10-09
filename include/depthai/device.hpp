@@ -43,6 +43,7 @@ public:
     std::vector<std::vector<float>> get_rotation();
     std::vector<float> get_translation();
 
+    bool is_usb3();
     void request_jpeg();
     void request_af_trigger();
     void request_af_mode(CaptureMetadata::AutofocusMode mode);
