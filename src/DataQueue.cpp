@@ -3,6 +3,8 @@
 #include "datatype/StreamPacketParser.hpp"
 #include "depthai-shared/xlink/XLinkConstants.hpp"
 
+#include <iostream>
+
 namespace dai {
 
 DataOutputQueue::DataOutputQueue(std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize, bool overwrite)
@@ -31,9 +33,12 @@ DataOutputQueue::DataOutputQueue(std::shared_ptr<XLinkConnection> conn, const st
             connection->closeStream(streamName);
 
         } catch(const std::exception& ex) {
-            // TODO(themarpe)
-            assert(0 && "TODO");
+            // TODO(themarpe)  
+            std::cout << "Exception: " << ex.what() << std::endl;
+            exceptionMessage = std::string(ex.what());
         }
+
+        running = false;
     });
 }
 
@@ -71,9 +76,12 @@ DataInputQueue::DataInputQueue(std::shared_ptr<XLinkConnection> conn, const std:
             connection->closeStream(streamName);
 
         } catch(const std::exception& ex) {
-            // TODO(themarpe)
-            assert(0 && "TODO");
+            // TODO(themarpe)  
+            std::cout << "Exception: " << ex.what() << std::endl;
+            exceptionMessage = std::string(ex.what());
         }
+
+        running = false;
     });
 }
 
@@ -84,10 +92,12 @@ DataInputQueue::~DataInputQueue() {
 }
 
 void DataInputQueue::send(const std::shared_ptr<RawBuffer>& val) {
+    if(!running) throw std::runtime_error(exceptionMessage.c_str());
     queue.push(val);
 }
 
 void DataInputQueue::sendSync(const std::shared_ptr<RawBuffer>& val) {
+    if(!running) throw std::runtime_error(exceptionMessage.c_str());
     queue.waitEmpty();
     queue.push(val);
 }

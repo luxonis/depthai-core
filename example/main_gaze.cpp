@@ -247,8 +247,11 @@ std::vector<Detection> parseDetectionsFp16(const std::vector<std::uint8_t>& data
 
 std::tuple<cv::Mat, cv::Rect> runFace(cv::Mat frame, cv::Mat debugFrame){
     
-    auto buff = std::make_shared<dai::RawBuffer>();
-    
+    auto buff = std::make_shared<dai::NNTensor>();
+    dai::TensorInfo info;
+    info.offset = 0;
+    buff->tensors = {info};
+
     cv::Mat detectorFrame;
     cv::resize(frame, detectorFrame, cv::Size(300,300));
     toPlanar(detectorFrame, buff->data);
