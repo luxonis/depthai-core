@@ -563,6 +563,11 @@ std::vector<std::string> Device::get_available_streams()
     return result;
 }
 
+bool Device::is_eeprom_loaded(){
+    if(M1_l.empty() && M2_r.empty()) return false;
+    else return true;
+}
+
 
 std::vector<std::vector<float>> Device::get_left_intrinsic()
 {

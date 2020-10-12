@@ -46,6 +46,7 @@ public:
     std::string get_mx_id();
 
     bool is_usb3();
+    bool is_eeprom_loaded();
     void request_jpeg();
     void request_af_trigger();
     void request_af_mode(CaptureMetadata::AutofocusMode mode);
