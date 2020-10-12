@@ -207,6 +207,7 @@ bool Device::init_device(
                 &g_xlink_global_handler,
                 &g_xlink_device_handler,
                 usb_speed,
+                mx_serial,
                 binary, binary_size,
                 usb_device,
                 true)
@@ -220,6 +221,7 @@ bool Device::init_device(
                 &g_xlink_global_handler,
                 &g_xlink_device_handler,
                 usb_speed,
+                mx_serial,
                 device_cmd_file,
                 usb_device,
                 true)
@@ -231,6 +233,7 @@ bool Device::init_device(
         }
 
         std::cout <<"Here is usb speed as string in device.cpp: " << usb_speed << std::endl;
+        std::cout <<"Here is Mx serial id as string in device.cpp: " << mx_serial << std::endl;
 
         g_xlink->setWatchdogUpdateFunction(std::bind(&Device::wdog_keepalive, this));
         wdog_start();
@@ -1267,6 +1270,14 @@ void Device::request_jpeg(){
 if(g_host_capture_command != nullptr){
         g_host_capture_command->capture();
     }
+}
+
+std::string Device::get_mx_id(){
+    if(mx_serial.empty()){
+        std::cerr << "Serial id Not found!" << std::endl;
+        return "Not Found";
+    }
+    return mx_serial;
 }
 
 void Device::request_af_trigger(){
