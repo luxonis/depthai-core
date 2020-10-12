@@ -1,9 +1,9 @@
 #include "depthai/DataQueue.hpp"
 
+#include <iostream>
+
 #include "datatype/StreamPacketParser.hpp"
 #include "depthai-shared/xlink/XLinkConstants.hpp"
-
-#include <iostream>
 
 namespace dai {
 
@@ -33,7 +33,7 @@ DataOutputQueue::DataOutputQueue(std::shared_ptr<XLinkConnection> conn, const st
             connection->closeStream(streamName);
 
         } catch(const std::exception& ex) {
-            // TODO(themarpe)  
+            // TODO(themarpe)
             std::cout << "Exception: " << ex.what() << std::endl;
             exceptionMessage = std::string(ex.what());
         }
@@ -76,7 +76,7 @@ DataInputQueue::DataInputQueue(std::shared_ptr<XLinkConnection> conn, const std:
             connection->closeStream(streamName);
 
         } catch(const std::exception& ex) {
-            // TODO(themarpe)  
+            // TODO(themarpe)
             std::cout << "Exception: " << ex.what() << std::endl;
             exceptionMessage = std::string(ex.what());
         }

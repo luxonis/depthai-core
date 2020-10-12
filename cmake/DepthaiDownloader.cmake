@@ -14,8 +14,8 @@ function(DepthaiDownload)
     set(DEPTHAI_ARTIFACT_PREFIX "depthai-device-side")
 
     # Errors and retry count
-    set(DEPTHAI_TIMEOUT_S 120)
-    set(DEPTHAI_INACTIVE_TIMEOUT_S 30)
+    set(DEPTHAI_TIMEOUT_S 300)
+    set(DEPTHAI_INACTIVE_TIMEOUT_S 60)
     set(DEPTHAI_DOWNLOAD_RETRY_NUM 5)
     ### END VARIABLES
 
@@ -95,6 +95,8 @@ function(DepthaiDownload)
             message(STATUS "Resource not found, check if commit hash is correctly specified.\n")
         elseif(${status} EQUAL 28)
             message(STATUS "Timeout.\n")
+        elseif(${status} EQUAL 99)
+            message(STATUS "Couldn't retrieve files correctly, checksum mismatch.")
         else()
             message(STATUS "Unknown error.\n")
         endif()
@@ -128,13 +130,23 @@ function(DepthaiDownload)
 
 
             # Download file and validate checksum
-            file(DOWNLOAD "${url}" "${output}" INACTIVITY_TIMEOUT ${DEPTHAI_INACTIVE_TIMEOUT_S} STATUS _status TIMEOUT ${DEPTHAI_TIMEOUT_S} SHOW_PROGRESS EXPECTED_HASH "SHA256=${_file_checksum}" )
+            file(DOWNLOAD "${url}" "${output}" INACTIVITY_TIMEOUT ${DEPTHAI_INACTIVE_TIMEOUT_S} STATUS _status TIMEOUT ${DEPTHAI_TIMEOUT_S} SHOW_PROGRESS)
 
             #CHECKS
             list(GET _status 0 _status_num)
             if(${_status_num})
                 message(STATUS "Status error: ${_status}")
                 set("${status_var}" "${_status_num}" PARENT_SCOPE)
+                continue()
+            endif()
+
+            # Now check if hash matches (if both files were downloaded without timeouts)
+            file(SHA256 ${output} _downloaded_checksum)
+
+            # if hashes don't match
+            if(NOT (_downloaded_checksum STREQUAL _file_checksum))
+                message(STATUS "Downloaded file checksum mismatch: ${_downloaded_checksum} != {_file_checksum}")
+                set("${status_var}" "99" PARENT_SCOPE)
                 continue()
             endif()
 
