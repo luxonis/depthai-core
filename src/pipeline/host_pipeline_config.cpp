@@ -105,6 +105,11 @@ bool HostPipelineConfig::initWithJSON(const nlohmann::json &json_obj)
                 depth.depth_limit_m = depth_obj.at("depth_limit_m").get<float>();
             }
 
+            if (depth_obj.contains("confidence_threshold"))
+            {
+                throw std::runtime_error("Field \"confidence_threshold\" for depth has been moved to network config. See https://docs.luxonis.com/api/#creating-blob-configuration-file");
+            }
+
             if (depth_obj.contains("median_kernel_size"))
             {
                 depth.median_kernel_size = depth_obj.at("median_kernel_size").get<uint8_t>();
