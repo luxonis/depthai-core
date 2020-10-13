@@ -105,17 +105,6 @@ bool HostPipelineConfig::initWithJSON(const nlohmann::json &json_obj)
                 depth.depth_limit_m = depth_obj.at("depth_limit_m").get<float>();
             }
 
-            if (depth_obj.contains("confidence_threshold"))
-            {
-                depth.confidence_threshold = depth_obj.at("confidence_threshold").get<float>();
-
-                if (depth.confidence_threshold < 0.f || depth.confidence_threshold > 1.f)
-                {
-                    std::cerr << WARNING "confidence_threshold should be in the range [0 .. 1]\n" ENDC;
-                    break;
-                }
-            }
-
             if (depth_obj.contains("median_kernel_size"))
             {
                 depth.median_kernel_size = depth_obj.at("median_kernel_size").get<uint8_t>();
