@@ -18,7 +18,7 @@
 #include "depthai/pipeline/node/VideoEncoder.hpp"
 
 
-#include "depthai-shared/datatype/NNTensor.hpp"
+#include "depthai-shared/datatype/NNData.hpp"
 #include "depthai-shared/datatype/ImgFrame.hpp"
 
 #include "opencv2/opencv.hpp"
@@ -247,7 +247,7 @@ std::vector<Detection> parseDetectionsFp16(const std::vector<std::uint8_t>& data
 
 std::tuple<cv::Mat, cv::Rect> runFace(cv::Mat frame, cv::Mat debugFrame){
     
-    auto buff = std::make_shared<dai::NNTensor>();
+    auto buff = std::make_shared<dai::NNData>();
     dai::TensorInfo info;
     info.offset = 0;
     buff->tensors = {info};

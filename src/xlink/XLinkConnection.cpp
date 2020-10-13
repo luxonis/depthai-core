@@ -48,9 +48,9 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices() {
         auto status = XLinkFindAllSuitableDevices(state, suitableDevice, deviceDescAll.data(), deviceDescAll.size(), &numdev);
         if(status != X_LINK_SUCCESS) throw std::runtime_error("Couldn't retrieve all connected devices");
 
-        for(const auto& dev : deviceDescAll) {
+        for(unsigned i = 0; i < numdev; i++) {
             DeviceInfo info = {};
-            info.desc = dev;
+            info.desc = deviceDescAll.at(i);
             info.state = state;
             devices.push_back(info);
         }
@@ -140,8 +140,6 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit) {
     {
         // Create description of device to look for
         deviceDesc_t bootedDeviceDesc = {};
-        bootedDeviceDesc.protocol = deviceToInit.desc.protocol;
-        bootedDeviceDesc.platform = X_LINK_ANY_PLATFORM;
         for(unsigned int i = 0; i < sizeof(deviceToInit.desc.name); i++) {
             bootedDeviceDesc.name[i] = deviceToInit.desc.name[i];
             if(deviceToInit.desc.name[i] == '-') break;

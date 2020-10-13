@@ -14,7 +14,7 @@
 #include "depthai/pipeline/node/VideoEncoder.hpp"
 
 
-#include "depthai-shared/datatype/NNTensor.hpp"
+#include "depthai-shared/datatype/NNData.hpp"
 #include "depthai-shared/datatype/ImgFrame.hpp"
 
 #include "opencv2/opencv.hpp"
@@ -339,7 +339,7 @@ void startNN(std::string nnPath){
 
             vector<Detection> dets;
 
-            auto det = detections->get<dai::NNTensor>();
+            auto det = detections->get<dai::NNData>();
             if(det){
 
                 auto result = reinterpret_cast<std::uint16_t*>(det->data.data());
@@ -471,7 +471,7 @@ void startWebcam(int camId, std::string nnPath){
 
             vector<Detection> dets;
 
-            auto det = detections->get<dai::NNTensor>();
+            auto det = detections->get<dai::NNData>();
             if(det){
 
                 auto result = reinterpret_cast<std::uint16_t*>(det->data.data());
