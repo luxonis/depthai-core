@@ -82,8 +82,8 @@ class XLinkConnection {
 
     int deviceLinkId = -1;
 
-    constexpr static std::chrono::milliseconds WAIT_FOR_BOOTUP_TIMEOUT{1000};
-    constexpr static std::chrono::milliseconds WAIT_FOR_CONNECT_TIMEOUT{1000};
+    constexpr static std::chrono::milliseconds WAIT_FOR_BOOTUP_TIMEOUT{5000};
+    constexpr static std::chrono::milliseconds WAIT_FOR_CONNECT_TIMEOUT{5000};
     constexpr static int STREAM_OPEN_RETRIES = 5;
     constexpr static std::chrono::milliseconds WAIT_FOR_STREAM_RETRY{50};
 };
