@@ -7,6 +7,7 @@
 
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/ColorCamera.hpp"
+#include "depthai/pipeline/node/MonoCamera.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
 #include "depthai/pipeline/node/XLinkIn.hpp"
@@ -620,6 +621,69 @@ void startMjpegCam(){
 
 }
 
+void startMonoCam() {
+    using namespace std;
+
+    dai::Pipeline p;
+
+    auto monoLeft  = p.create<dai::node::MonoCamera>();
+    auto monoRight = p.create<dai::node::MonoCamera>();
+    auto xoutLeft  = p.create<dai::node::XLinkOut>();
+    auto xoutRight = p.create<dai::node::XLinkOut>();
+
+    // XLinkOut
+    xoutLeft->setStreamName("left");
+    xoutRight->setStreamName("right");
+
+    // MonoCamera
+    monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
+    monoLeft->setCamId(1);
+    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
+    monoRight->setCamId(2);
+
+    // Link plugins CAM -> XLINK
+    monoLeft->out.link(xoutLeft->input);
+    monoRight->out.link(xoutRight->input);
+
+    // CONNECT TO DEVICE
+
+    bool found;
+    dai::DeviceInfo deviceInfo;
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
+
+    if (found) {
+        dai::Device d(deviceInfo);
+
+        d.startPipeline(p);
+
+        auto leftQueue = d.getOutputQueue("left", 8, true);
+        auto rightQueue = d.getOutputQueue("right", 8, true);
+
+        while (1) {
+            auto t1 = std::chrono::steady_clock::now();
+            auto left = leftQueue->get<dai::ImgFrame>();
+            auto t2 = std::chrono::steady_clock::now();
+            cv::imshow("left", cv::Mat(left->fb.height, left->fb.width, CV_8UC1, left->data.data()));
+            auto t3 = std::chrono::steady_clock::now();
+            auto right = rightQueue->get<dai::ImgFrame>();
+            auto t4 = std::chrono::steady_clock::now();
+            cv::imshow("right", cv::Mat(right->fb.height, right->fb.width, CV_8UC1, right->data.data()));
+            auto t5 = std::chrono::steady_clock::now();
+
+            int ms1 = std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count();
+            int ms2 = std::chrono::duration_cast<std::chrono::milliseconds>(t3-t2).count();
+            int ms3 = std::chrono::duration_cast<std::chrono::milliseconds>(t4-t3).count();
+            int ms4 = std::chrono::duration_cast<std::chrono::milliseconds>(t5-t4).count();
+            int loop = std::chrono::duration_cast<std::chrono::milliseconds>(t5-t1).count();
+
+            std::cout << ms1 << " " << ms2 << " " << ms3 << " " << ms4 << " loop: " << loop << std::endl;
+            cv::waitKey(1);
+        }
+    } else {
+        cout << "No booted (debugger) devices found..." << endl;
+    }
+}
+
 
 int main(int argc, char** argv){
     using namespace std;
@@ -636,6 +700,8 @@ int main(int argc, char** argv){
             startTest(1);
         } else if(nnPath == "test2"){
             startTest(2);
+        } else if(nnPath == "mono"){
+            startMonoCam();
         } else {
             startWebcam(0, nnPath);
         }
