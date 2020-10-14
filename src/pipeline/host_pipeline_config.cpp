@@ -107,13 +107,7 @@ bool HostPipelineConfig::initWithJSON(const nlohmann::json &json_obj)
 
             if (depth_obj.contains("confidence_threshold"))
             {
-                depth.confidence_threshold = depth_obj.at("confidence_threshold").get<float>();
-
-                if (depth.confidence_threshold < 0.f || depth.confidence_threshold > 1.f)
-                {
-                    std::cerr << WARNING "confidence_threshold should be in the range [0 .. 1]\n" ENDC;
-                    break;
-                }
+                throw std::runtime_error("Field \"confidence_threshold\" for depth has been moved to network config. See https://docs.luxonis.com/api/#creating-blob-configuration-file");
             }
 
             if (depth_obj.contains("median_kernel_size"))
