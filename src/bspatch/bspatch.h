@@ -31,8 +31,8 @@
 
 #include <stdint.h>
 
-int64_t bspatch_mem_get_newsize(uint8_t* patchfile_bin, int64_t patchfile_size);
-int bspatch_mem(uint8_t* oldfile_bin, int64_t oldfile_size, uint8_t* patchfile_bin, int64_t patchfile_size, uint8_t* newfile_bin);
+int64_t bspatch_mem_get_newsize(const uint8_t* patchfile_bin, const int64_t patchfile_size);
+int bspatch_mem(const uint8_t* oldfile_bin, const int64_t oldfile_size, const uint8_t* patchfile_bin, const int64_t patchfile_size, uint8_t* newfile_bin);
 
 #endif
 

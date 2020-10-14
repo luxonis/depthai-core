@@ -408,7 +408,7 @@ file(GENERATE OUTPUT "${cmrc_hpp}" CONTENT "${hpp_content}" CONDITION ${_generat
 add_library(cmrc-base INTERFACE)
 
 # Add interface include for users of library
-target_include_directories(cmrc-base INTERFACE "$<BUILD_INTERFACE:${CMRC_INCLUDE_DIR}>")
+target_include_directories(cmrc-base SYSTEM INTERFACE "$<BUILD_INTERFACE:${CMRC_INCLUDE_DIR}>")
 
 # Signal a basic C++11 feature to require C++11.
 target_compile_features(cmrc-base INTERFACE cxx_nullptr)

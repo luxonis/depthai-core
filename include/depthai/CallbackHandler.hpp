@@ -12,8 +12,7 @@
 #include "DataQueue.hpp"
 #include "xlink/XLinkConnection.hpp"
 
-namespace dai
-{
+namespace dai {
 
 class CallbackHandler {
     std::thread t;
@@ -21,11 +20,12 @@ class CallbackHandler {
     std::shared_ptr<XLinkConnection> connection;
     std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> callback;
 
-public:
+   public:
     void setCallback(std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb);
-    CallbackHandler(std::shared_ptr<XLinkConnection> conn, std::string streamName, std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb);
+    CallbackHandler(std::shared_ptr<XLinkConnection> conn,
+                    const std::string& streamName,
+                    std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb);
     ~CallbackHandler();
 };
 
-    
-} // namespace dai
+}  // namespace dai

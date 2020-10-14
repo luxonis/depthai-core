@@ -5,52 +5,25 @@
 // shared
 #include <depthai-shared/pb/properties/XLinkOutProperties.hpp>
 
-namespace dai
-{
-    namespace node
-    {
-        class XLinkOut : public Node {
-            dai::XLinkOutProperties properties;
-        
-            std::string getName(){
-                return "XLinkOut";
-            }
+namespace dai {
+namespace node {
+    class XLinkOut : public Node {
+        dai::XLinkOutProperties properties;
 
-        
-            std::vector<Input> getInputs(){
-                return {in};
-            }
-            
-            std::vector<Output> getOutputs(){
-                return {};
-            }
+        std::string getName() override;
+        std::vector<Input> getInputs() override;
+        std::vector<Output> getOutputs() override;
+        nlohmann::json getProperties() override;
+        std::shared_ptr<Node> clone() override;
 
-            nlohmann::json getProperties(){
-                nlohmann::json j;
-                nlohmann::to_json(j, properties);
-                return j;
-            }
+       public:
+        XLinkOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
-            std::shared_ptr<Node> clone(){
-                return std::make_shared<XLinkOut>(*this);
-            }
-        
-        public:
-            XLinkOut(const std::shared_ptr<PipelineImpl>& par) : Node(par) {
-                properties.maxFpsLimit = -1;
-            }
+        Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::RawBuffer, true}}};
 
-            Input in{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::RawBuffer, true}} };
+        void setStreamName(const std::string& name);
+        void setFpsLimit(float fps);
+    };
 
-            void setStreamName(std::string name){
-                properties.streamName = name;
-            }
-
-            void setFpsLimit(double fps){
-                properties.maxFpsLimit = fps;
-            }
-
-        };
-
-    } // namespace node
-} // namespace dai
+}  // namespace node
+}  // namespace dai

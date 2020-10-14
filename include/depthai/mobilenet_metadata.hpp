@@ -9,7 +9,7 @@ typedef struct {
     uint16_t left;
     uint16_t top;
     uint16_t right;
-    uint16_t bottom;    
+    uint16_t bottom;
 } mobilenet_out_struct;
 
 typedef struct {
@@ -19,10 +19,9 @@ typedef struct {
     float left, top, right, bottom;
 } mobilenet_detection;
 
-static mobilenet_detection parseMobilenetMetadata(const void* data)
-{
-    const uint16_t* d = (const uint16_t*) data;
-    
+static mobilenet_detection parseMobilenetMetadata(const void* data) {
+    const uint16_t* d = (const uint16_t*)data;
+
     mobilenet_detection det;
 
     // det.id = std::max(0.f, f16tof32(d[0])); // TODO: check id max is needed

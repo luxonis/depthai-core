@@ -14,8 +14,8 @@ function(DepthaiDownload)
     set(DEPTHAI_ARTIFACT_PREFIX "depthai-device-side")
 
     # Errors and retry count
-    set(DEPTHAI_TIMEOUT_S 120)
-    set(DEPTHAI_INACTIVE_TIMEOUT_S 30)
+    set(DEPTHAI_TIMEOUT_S 300)
+    set(DEPTHAI_INACTIVE_TIMEOUT_S 60)
     set(DEPTHAI_DOWNLOAD_RETRY_NUM 5)
     ### END VARIABLES
 
@@ -24,18 +24,21 @@ function(DepthaiDownload)
     set(_download_patch_only OFF)
 
     #if first argument PATCH_ONLY, second must be either ON/OFF
-    if("${ARGV0}" STREQUAL "PATCH_ONLY")
-        if( ${ARGV1} )
+    if("${ARGV2}" STREQUAL "PATCH_ONLY")
+        set(_depthai_shared_commit ${ARGV0})
+        set(_enforce_depthai_shared_commit ${ARGV1})
+            
+        if( ${ARGV3} )
             set(_download_patch_only ON)
         else()
             set(_download_patch_only OFF)
         endif()
 
-        set(folder "${ARGV2}")
-        set(output_list_var "${ARGV3}")
-        set(maturity "${ARGV4}")
-        set(commit "${ARGV5}")
-        set(version "${ARGV6}") #optional
+        set(folder "${ARGV4}")
+        set(output_list_var "${ARGV5}")
+        set(maturity "${ARGV6}")
+        set(commit "${ARGV7}")
+        set(version "${ARGV8}") #optional
 
     else()
         
@@ -45,7 +48,7 @@ function(DepthaiDownload)
         set(commit "${ARGV3}")
         set(version "${ARGV4}") #optional
 
-    endif("${ARGV0}" STREQUAL "PATCH_ONLY")
+    endif("${ARGV2}" STREQUAL "PATCH_ONLY")
 
     if(_download_patch_only)
         message(STATUS "Downloading depthai and patch")
@@ -61,10 +64,10 @@ function(DepthaiDownload)
     #message(STATUS "commit ${commit}")
     #message(STATUS "version ${version}") #optional
 
-    string(TOLOWER "${maturity}" matority_lower)
+    string(TOLOWER "${maturity}" maturity_lower)
 
     # Switch between maturity
-    if(${matority_lower} STREQUAL "snapshot")
+    if(${maturity_lower} STREQUAL "snapshot")
         set(_selected_repo "${DEPTHAI_REPO_SNAPSHOT}")
 
         # Create download directory string
@@ -73,7 +76,7 @@ function(DepthaiDownload)
         # Create _version_commit_identifier
         set(_version_commit_identifier "${commit}")
 
-    elseif(${matority_lower} STREQUAL "release")
+    elseif(${maturity_lower} STREQUAL "release")
         set(_selected_repo "${DEPTHAI_REPO_RELEASE}")
 
         # TODO
@@ -82,9 +85,9 @@ function(DepthaiDownload)
         
     else()
         # Not a recognized maturity level
-        message(FATAL_ERROR "Cannot download DepthAI Device Side binaries. Maturity level not recognized")
+        message(FATAL_ERROR "Cannot download DepthAI Device Side binaries. Maturity level not recognized (${maturity_lower})")
         return()        
-    endif(${matority_lower} STREQUAL "snapshot")
+    endif()
     
     # Prints error message
     macro(PrintErrorMessage status)
@@ -92,6 +95,8 @@ function(DepthaiDownload)
             message(STATUS "Resource not found, check if commit hash is correctly specified.\n")
         elseif(${status} EQUAL 28)
             message(STATUS "Timeout.\n")
+        elseif(${status} EQUAL 99)
+            message(STATUS "Couldn't retrieve files correctly, checksum mismatch.")
         else()
             message(STATUS "Unknown error.\n")
         endif()
@@ -125,13 +130,23 @@ function(DepthaiDownload)
 
 
             # Download file and validate checksum
-            file(DOWNLOAD "${url}" "${output}" INACTIVITY_TIMEOUT ${DEPTHAI_INACTIVE_TIMEOUT_S} STATUS _status TIMEOUT ${DEPTHAI_TIMEOUT_S} SHOW_PROGRESS EXPECTED_HASH "SHA256=${_file_checksum}" )
+            file(DOWNLOAD "${url}" "${output}" INACTIVITY_TIMEOUT ${DEPTHAI_INACTIVE_TIMEOUT_S} STATUS _status TIMEOUT ${DEPTHAI_TIMEOUT_S} SHOW_PROGRESS)
 
             #CHECKS
             list(GET _status 0 _status_num)
             if(${_status_num})
                 message(STATUS "Status error: ${_status}")
                 set("${status_var}" "${_status_num}" PARENT_SCOPE)
+                continue()
+            endif()
+
+            # Now check if hash matches (if both files were downloaded without timeouts)
+            file(SHA256 ${output} _downloaded_checksum)
+
+            # if hashes don't match
+            if(NOT (_downloaded_checksum STREQUAL _file_checksum))
+                message(STATUS "Downloaded file checksum mismatch: ${_downloaded_checksum} != {_file_checksum}")
+                set("${status_var}" "99" PARENT_SCOPE)
                 continue()
             endif()
 
@@ -143,6 +158,48 @@ function(DepthaiDownload)
         endwhile()
 
     endfunction()
+
+
+    # Check if depthai-shared matches
+    message(STATUS "commit: ${_depthai_shared_commit}")
+    if(_depthai_shared_commit)
+        DownloadAndChecksum(
+            "${_download_directory_url}/depthai-shared-commit-hash-${_version_commit_identifier}.txt" # File
+            "${_download_directory_url}/depthai-shared-commit-hash-${_version_commit_identifier}.sha256.checksum" # File checksum
+            "${folder}/depthai-shared-commit-hash.txt"
+            status
+        )
+        if(${status})
+            message(STATUS "Couldn't check if depthai-shared codebase matches between device and host")
+            if(${_enforce_depthai_shared_commit})
+                message(FATAL_ERROR "Aborting.\n")
+            endif()
+            
+        else()
+
+            set(_message_mode WARNING)
+            if(${_enforce_depthai_shared_commit})
+                set(_message_mode FATAL_ERROR)
+            endif()
+
+            # Read commit hash file
+            file(READ "${folder}/depthai-shared-commit-hash.txt" _device_depthai_shared_commit_hash)
+            string(REGEX REPLACE "\n$" "" _device_depthai_shared_commit_hash "${_device_depthai_shared_commit_hash}")
+            string(REGEX REPLACE "\n$" "" _depthai_shared_commit "${_depthai_shared_commit}")
+            string(COMPARE EQUAL "${_device_depthai_shared_commit_hash}" "${_depthai_shared_commit}" _is_same)
+
+            # If commits dont match
+            if(NOT ${_is_same})
+                message(${_message_mode} "depthai-shared codebases differ between device and host. Enforce (CI): ${_enforce_depthai_shared_commit} (device: ${_device_depthai_shared_commit_hash}, host: ${_depthai_shared_commit}")
+            else()
+                message(STATUS "depthai-shared between device and host MATCH!. (device: ${_device_depthai_shared_commit_hash}, host: ${_depthai_shared_commit}")
+            endif()
+            
+        endif()
+
+
+    endif()
+
 
 
     # depthai.cmd

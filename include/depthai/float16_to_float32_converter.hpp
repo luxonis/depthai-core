@@ -1,10 +1,9 @@
 #pragma once
 
 #define EXP_MASK_F32 0x7F800000U
-#define EXP_MASK_F16     0x7C00U
+#define EXP_MASK_F16 0x7C00U
 
-static float f16tof32(uint16_t x) 
-{
+static float f16tof32(uint16_t x) {
     // this is storage for output result
     uint32_t u = x;
 
@@ -12,19 +11,19 @@ static float f16tof32(uint16_t x)
     uint32_t s = ((u & 0x8000) << 16);
 
     // check for NAN and INF
-    if ((u & EXP_MASK_F16) == EXP_MASK_F16) {
+    if((u & EXP_MASK_F16) == EXP_MASK_F16) {
         // keep mantissa only
         u &= 0x03FF;
 
         // check if it is NAN and raise 10 bit to be align with intrin
-        if (u) {
+        if(u) {
             u |= 0x0200;
         }
 
         u <<= (23 - 10);
         u |= EXP_MASK_F32;
         u |= s;
-    } else if ((x & EXP_MASK_F16) == 0) { // check for zero and denormals. both are converted to zero
+    } else if((x & EXP_MASK_F16) == 0) {  // check for zero and denormals. both are converted to zero
         u = s;
     } else {
         // abs
@@ -41,5 +40,5 @@ static float f16tof32(uint16_t x)
     }
 
     // finaly represent result as float and return
-    return *reinterpret_cast<float *>(&u);
+    return *reinterpret_cast<float*>(&u);
 }

@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "depthai/device.hpp"
+#include "depthai/Device.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
 #include "depthai-shared/Assets.hpp"
@@ -10,8 +10,12 @@
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
 #include "depthai/pipeline/node/SPIOut.hpp"
+#include "depthai/pipeline/node/XLinkIn.hpp"
+#include "depthai/pipeline/node/MyProducer.hpp"
+#include "depthai/pipeline/node/VideoEncoder.hpp"
 
-#include "depthai-shared/datatype/NNTensor.hpp"
+
+#include "depthai-shared/datatype/NNData.hpp"
 #include "depthai-shared/datatype/ImgFrame.hpp"
 
 #include "opencv2/opencv.hpp"
@@ -74,10 +78,55 @@ cv::Mat toMat(const std::vector<uint8_t>& data, int w, int h , int numPlanes, in
 }
 
 
+void toPlanar(cv::Mat& bgr, std::vector<std::uint8_t>& data){
+
+    data.resize(bgr.cols * bgr.rows * 3);
+    for(int y = 0; y < bgr.rows; y++){
+        for(int x = 0; x < bgr.cols; x++){
+            auto p = bgr.at<cv::Vec3b>(y,x);
+            data[x + y*bgr.cols + 0 * bgr.rows*bgr.cols] = p[0];
+            data[x + y*bgr.cols + 1 * bgr.rows*bgr.cols] = p[1];
+            data[x + y*bgr.cols + 2 * bgr.rows*bgr.cols] = p[2];
+        }
+    }
 
 
+/*
+    std::vector<cv::Mat> planes(3);
+    for(unsigned int i = 0; planes.size(); i++){ 
+        cv::extractChannel(bgr, planes[i], i);
+    }
+
+    cv::Mat planarBgr;
+    cv::vconcat(planes, planarBgr);
+
+    data.clear();
+    data.assign(planarBgr.data, planarBgr.data + planarBgr.total()*planarBgr.channels());
+*/
+}
 
 
+cv::Mat resizeKeepAspectRatio(const cv::Mat &input, const cv::Size &dstSize, const cv::Scalar &bgcolor)
+{
+    cv::Mat output;
+
+    double h1 = dstSize.width * (input.rows/(double)input.cols);
+    double w2 = dstSize.height * (input.cols/(double)input.rows);
+    if( h1 <= dstSize.height) {
+        cv::resize( input, output, cv::Size(dstSize.width, h1));
+    } else {
+        cv::resize( input, output, cv::Size(w2, dstSize.height));
+    }
+
+    int top = (dstSize.height-output.rows) / 2;
+    int down = (dstSize.height-output.rows+1) / 2;
+    int left = (dstSize.width - output.cols) / 2;
+    int right = (dstSize.width - output.cols+1) / 2;
+
+    cv::copyMakeBorder(output, output, top, down, left, right, cv::BORDER_CONSTANT, bgcolor );
+
+    return output;
+}
 
 
 dai::Pipeline createCameraPipeline(){
@@ -93,7 +142,7 @@ dai::Pipeline createCameraPipeline(){
     colorCam->setCamId(0);
 
     // Link plugins CAM -> XLINK
-    colorCam->preview.link(xlinkOut->in);
+    colorCam->preview.link(xlinkOut->input);
     
     return p;
 
@@ -116,7 +165,7 @@ dai::Pipeline createCameraFullPipeline(){
     colorCam->setCamId(0);
 
     // Link plugins CAM -> XLINK
-    colorCam->video.link(xlinkOut->in);
+    colorCam->video.link(xlinkOut->input);
     
     return p;
 
@@ -300,29 +349,8 @@ void startNN(std::string nnPath){
             };
 
             vector<Detection> dets;
-            auto det = detections->get<dai::NNTensor>();
-            
-            vector<Detection> spiMetaDets;
-            auto spiMetaDet = spimeta->get<dai::NNTensor>();
-            if(spiMetaDet){
-                auto result = reinterpret_cast<std::uint16_t*>(spiMetaDet->data.data());
 
-                int i = 0;
-                while (/*valid*/fp16_ieee_to_fp32_value(result[i*7]) != -1.0f)
-                {
-                    Detection d;
-                    d.label = fp16_ieee_to_fp32_value(result[i*7 + 1]);
-                    d.score = fp16_ieee_to_fp32_value(result[i*7 + 2]);
-                    d.x_min = fp16_ieee_to_fp32_value(result[i*7 + 3]);
-                    d.y_min = fp16_ieee_to_fp32_value(result[i*7 + 4]);
-                    d.x_max = fp16_ieee_to_fp32_value(result[i*7 + 5]);
-                    d.y_max = fp16_ieee_to_fp32_value(result[i*7 + 6]);
-                    i++;
-                    printf("Gottem: %d\n", d.label);
-                    spiMetaDets.push_back(d);
-                }
-            }
-            
+            auto det = detections->get<dai::NNData>();
             if(det){
 
                 auto result = reinterpret_cast<std::uint16_t*>(det->data.data());
@@ -387,17 +415,257 @@ void startNN(std::string nnPath){
 }
 
 
+
+void startWebcam(int camId, std::string nnPath){
+
+    using namespace std;
+
+
+    // CREATE PIPELINE
+    dai::Pipeline p;
+
+    auto xin = p.create<dai::node::XLinkIn>();
+    //auto producer = p.create<dai::node::MyProducer>();
+    auto nn = p.create<dai::node::NeuralNetwork>();
+    auto xout = p.create<dai::node::XLinkOut>();
+
+
+    //producer->setProcessor(dai::ProcessorType::LOS);
+    nn->setBlobPath(nnPath);
+    
+    xin->setStreamName("nn_in");
+    xin->setMaxDataSize(300*300*3);
+    xin->setNumFrames(4);
+
+    xout->setStreamName("nn_out");
+
+    // Link plugins XLINK -> NN -> XLINK
+    xin->out.link(nn->input);
+    //producer->out.link(nn->input);
+
+    nn->out.link(xout->input);
+
+
+
+    // CONNECT TO DEVICE
+
+    bool found;
+    dai::DeviceInfo deviceInfo;
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
+
+    if(found) {
+        dai::Device d(deviceInfo);
+
+        d.startPipeline(p);
+
+        
+        cv::VideoCapture webcam(camId);
+    
+        cv::Mat frame;
+        auto in = d.getInputQueue("nn_in");
+        auto detections = d.getOutputQueue("nn_out");
+
+        while(1){
+            
+            // data to send further
+            auto tensor = std::make_shared<dai::RawBuffer>();
+
+            // Read frame from webcam
+            webcam >> frame;
+
+            // crop and resize
+            frame = resizeKeepAspectRatio(frame, cv::Size(300,300), cv::Scalar(0));
+
+            // transform to BGR planar 300x300
+            toPlanar(frame, tensor->data);
+
+            //tensor->data = std::vector<std::uint8_t>(frame.data, frame.data + frame.total());
+            in->send(tensor);
+
+            struct Detection {
+                unsigned int label;
+                float score;
+                float x_min;
+                float y_min;
+                float x_max;
+                float y_max;
+            };
+
+            vector<Detection> dets;
+
+            auto det = detections->get<dai::NNData>();
+            if(det){
+
+                auto result = reinterpret_cast<std::uint16_t*>(det->data.data());
+
+                int i = 0;
+                while (/*valid*/fp16_ieee_to_fp32_value(result[i*7]) != -1.0f)
+                {
+                    Detection d;
+                    d.label = fp16_ieee_to_fp32_value(result[i*7 + 1]);
+                    d.score = fp16_ieee_to_fp32_value(result[i*7 + 2]);
+                    d.x_min = fp16_ieee_to_fp32_value(result[i*7 + 3]);
+                    d.y_min = fp16_ieee_to_fp32_value(result[i*7 + 4]);
+                    d.x_max = fp16_ieee_to_fp32_value(result[i*7 + 5]);
+                    d.y_max = fp16_ieee_to_fp32_value(result[i*7 + 6]);
+                    i++;
+                    dets.push_back(d);
+                }
+                
+            }
+
+            for(const auto& d : dets){
+                int x1 = d.x_min * frame.cols;
+                int y1 = d.y_min * frame.rows;
+                int x2 = d.x_max * frame.cols;
+                int y2 = d.y_max * frame.rows;
+
+                cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), cv::Scalar(255,255,255));
+            }
+
+            printf("===================== %lu detection(s) =======================\n", dets.size());
+            for (unsigned det = 0; det < dets.size(); ++det) {
+                printf("%5d | %6.4f | %7.4f | %7.4f | %7.4f | %7.4f\n",
+                        dets[det].label,
+                        dets[det].score,
+                        dets[det].x_min,
+                        dets[det].y_min,
+                        dets[det].x_max,
+                        dets[det].y_max);
+            }
+
+            cv::imshow("preview", frame);
+            cv::waitKey(1);
+
+        }
+
+    } else {
+        cout << "No booted (debugger) devices found..." << endl;
+    }
+
+}
+
+
+void startTest(int id){
+
+    using namespace std;
+
+    // CONNECT TO DEVICE
+    bool found;
+    dai::DeviceInfo deviceInfo;
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_BOOTED);
+
+    if(found) {
+        dai::Device d(deviceInfo);
+        d.startTestPipeline(id);
+    }
+
+}
+
+
+
+void startMjpegCam(){
+
+    using namespace std;
+
+
+    dai::Pipeline p;
+
+    auto colorCam = p.create<dai::node::ColorCamera>();
+    auto xout = p.create<dai::node::XLinkOut>();
+    auto xout2 = p.create<dai::node::XLinkOut>();
+    auto videnc = p.create<dai::node::VideoEncoder>();
+
+
+    // XLinkOut
+    xout->setStreamName("mjpeg");
+    xout2->setStreamName("preview");
+
+    // ColorCamera    
+    colorCam->setPreviewSize(300, 300);
+    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    colorCam->setInterleaved(true);
+    colorCam->setCamId(0);
+
+    // VideoEncoder
+    videnc->setDefaultProfilePreset(1920, 1080, dai::VideoEncoderProperties::Profile::MJPEG);
+
+    // Link plugins CAM -> XLINK
+    colorCam->video.link(videnc->input);
+    colorCam->preview.link(xout2->input);
+    videnc->bitstream.link(xout->input);
+
+
+    // CONNECT TO DEVICE
+
+    bool found;
+    dai::DeviceInfo deviceInfo;
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
+
+    if(found) {
+        dai::Device d(deviceInfo);
+
+        d.startPipeline(p);
+    
+        auto mjpegQueue = d.getOutputQueue("mjpeg", 8, true);
+        auto previewQueue = d.getOutputQueue("preview", 8, true);
+
+        while(1){
+
+            auto t1 = std::chrono::steady_clock::now();            
+            auto preview = previewQueue->get<dai::ImgFrame>();
+            auto t2 = std::chrono::steady_clock::now();
+            cv::imshow("preview", cv::Mat(preview->fb.height, preview->fb.width, CV_8UC3, preview->data.data()));
+            auto t3 = std::chrono::steady_clock::now();
+            auto mjpeg = mjpegQueue->get();
+            auto t4 = std::chrono::steady_clock::now();
+            cv::Mat decodedFrame = cv::imdecode( cv::Mat(mjpeg->data), cv::IMREAD_COLOR);
+            auto t5 = std::chrono::steady_clock::now();
+            cv::imshow("mjpeg", decodedFrame);
+
+
+            //for(int i = 0; i < 100; i++) cv::waitKey(1);
+
+            int ms1 = std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count();
+            int ms2 = std::chrono::duration_cast<std::chrono::milliseconds>(t3-t2).count();
+            int ms3 = std::chrono::duration_cast<std::chrono::milliseconds>(t4-t3).count();
+            int ms4 = std::chrono::duration_cast<std::chrono::milliseconds>(t5-t4).count();
+            int loop = std::chrono::duration_cast<std::chrono::milliseconds>(t5-t1).count();
+
+            std::cout << ms1 << " " << ms2 << " " << ms3 << " " << ms4 << " loop: " << loop << std::endl;
+            cv::waitKey(1);
+
+
+        }
+
+    } else {
+        cout << "No booted (debugger) devices found..." << endl;
+    }
+
+
+}
+
+
 int main(int argc, char** argv){
     using namespace std;
     cout << "Hello World!" << endl;
 
     if(argc <= 1){
-        std::cout << "Pass path to NN blob";
-        return 0;
-    }
-    std::string nnPath(argv[1]);
+        startMjpegCam();
+    } else {
+         std::string nnPath(argv[1]);
  
-    startNN(nnPath);
+        if(nnPath == "test0"){
+            startTest(0);
+        } else if(nnPath == "test1"){
+            startTest(1);
+        } else if(nnPath == "test2"){
+            startTest(2);
+        } else {
+            startWebcam(0, nnPath);
+        }
+        
+    }
 
     return 0;
 }

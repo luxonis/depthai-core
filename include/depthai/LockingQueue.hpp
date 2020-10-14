@@ -1,127 +1,153 @@
 #pragma once
-#include <queue>
-#include <mutex>
 #include <condition_variable>
 #include <functional>
 #include <limits>
+#include <mutex>
+#include <queue>
 
-template<typename T>
-class LockingQueue
-{
-public:
+template <typename T>
+class LockingQueue {
+   public:
     LockingQueue() = default;
-    LockingQueue(int maxsize){
-        this->maxsize = maxsize;
+    explicit LockingQueue(int maxSize, bool overwrite = false) {
+        this->maxSize = maxSize;
+        this->overwrite = overwrite;
     }
 
-
-    void waitAndConsumeAll(std::function<void(T&)> callback){
-        std::unique_lock<std::mutex> lock(guard);
-        while (queue.empty())
+    void waitAndConsumeAll(std::function<void(T&)> callback) {
         {
-            signal.wait(lock);
+            std::unique_lock<std::mutex> lock(guard);
+
+            signalPush.wait(lock, [this]() { return !queue.empty(); });
+
+            if(queue.empty()) return;
+
+            while(!queue.empty()) {
+                callback(queue.front());
+                queue.pop();
+            }
         }
-        
-        while(!queue.empty()){
-            callback(queue.front());
-            queue.pop();
-        }
+
+        signalPop.notify_all();
     }
 
-    void consumeAll(std::function<void(T&)> callback){
-        std::lock_guard<std::mutex> lock(guard);
-        while(!queue.empty()){
-            callback(queue.front());
-            queue.pop();
-        }
-    }
-
-    bool push(T const& _data)
-    {
+    void consumeAll(std::function<void(T&)> callback) {
         {
             std::lock_guard<std::mutex> lock(guard);
-            if(queue.size() >= maxsize){
-                return false;
+
+            if(queue.empty()) return;
+
+            while(!queue.empty()) {
+                callback(queue.front());
+                queue.pop();
             }
-            queue.push(_data);
         }
-        signal.notify_one();
+
+        signalPop.notify_all();
+    }
+
+    bool push(T const& data) {
+        {
+            std::unique_lock<std::mutex> lock(guard);
+            if(overwrite) {
+                if(queue.size() >= maxSize) {
+                    queue.pop();
+                }
+            } else {
+                signalPop.wait(lock, [this]() { return queue.size() < maxSize; });
+            }
+
+            queue.push(data);
+        }
+        signalPush.notify_all();
         return true;
     }
 
-    bool empty() const
-    {
+    template <typename Rep, typename Period>
+    bool tryWaitAndPush(T const& data, std::chrono::duration<Rep, Period> timeout) {
+        {
+            std::unique_lock<std::mutex> lock(guard);
+            if(overwrite) {
+                if(queue.size() >= maxSize) {
+                    queue.pop();
+                }
+            } else {
+                bool pred = signalPop.wait_for(lock, timeout, [this]() { return queue.size() < maxSize; });
+                if(!pred) return false;
+            }
+
+            queue.push(data);
+        }
+        signalPush.notify_all();
+        return true;
+    }
+
+    bool empty() const {
         std::lock_guard<std::mutex> lock(guard);
         return queue.empty();
     }
 
-
-    bool front(T& _value)
-    {
+    bool front(T& value) {
         std::unique_lock<std::mutex> lock(guard);
-        if (queue.empty())
-        {
+        if(queue.empty()) {
             return false;
         }
 
-        _value = queue.front();
+        value = queue.front();
         return true;
     }
 
-    bool tryPop(T& _value)
-    {
-        std::lock_guard<std::mutex> lock(guard);
-        if (queue.empty())
+    bool tryPop(T& value) {
         {
-            return false;
-        }
+            std::lock_guard<std::mutex> lock(guard);
+            if(queue.empty()) {
+                return false;
+            }
 
-        _value = queue.front();
-        queue.pop();
+            value = queue.front();
+            queue.pop();
+        }
+        signalPop.notify_all();
         return true;
     }
 
-    void waitAndPop(T& _value)
-    {
-        std::unique_lock<std::mutex> lock(guard);
-        while (queue.empty())
+    void waitAndPop(T& value) {
         {
-            signal.wait(lock);
-        }
+            std::unique_lock<std::mutex> lock(guard);
 
-        _value = queue.front();
-        queue.pop();
+            signalPush.wait(lock, [this]() { return !queue.empty(); });
+
+            value = queue.front();
+            queue.pop();
+        }
+        signalPop.notify_all();
     }
 
-    bool tryWaitAndPop(T& _value, int _milli)
-    {
-        std::unique_lock<std::mutex> lock(guard);
-        while (queue.empty())
+    template <typename Rep, typename Period>
+    bool tryWaitAndPop(T& value, std::chrono::duration<Rep, Period> timeout) {
         {
-            signal.wait_for(lock, std::chrono::milliseconds(_milli));
-            return false;
-        }
+            std::unique_lock<std::mutex> lock(guard);
 
-        _value = queue.front();
-        queue.pop();
+            bool pred = signalPush.wait_for(lock, timeout, [this]() { return !queue.empty(); });
+            if(!pred) return false;
+
+            value = queue.front();
+            queue.pop();
+        }
+        signalPop.notify_all();
         return true;
     }
 
-
-    void waitEmpty()
-    {
+    void waitEmpty() {
         std::unique_lock<std::mutex> lock(guard);
-        while (!queue.empty())
-        {
-            signal.wait(lock);
-        }
+        signalPop.wait(lock, [this]() { return queue.empty(); });
     }
 
-
-
-private:
-    unsigned maxsize = std::numeric_limits<unsigned>::max();
+   private:
+    unsigned maxSize = std::numeric_limits<unsigned>::max();
+    bool overwrite = false;
     std::queue<T> queue;
     mutable std::mutex guard;
-    std::condition_variable signal;
+    std::condition_variable signalPop;
+    std::condition_variable signalPush;
 };

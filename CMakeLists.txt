@@ -18,20 +18,18 @@ if(WIN32)
 endif()
 
 set(TARGET_NAME depthai-core)
-project(${TARGET_NAME} VERSION "0.1.0" LANGUAGES CXX C)
+project(${TARGET_NAME} VERSION "0.0.2" LANGUAGES CXX C)
+
+# Set to export compile commands for tools like clang-tidy and format
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 ### Dependency options
 option(DEPTHAI_BOOST_LOCAL "Use locally installed boost libraries" OFF)
 
+# Additional options
+option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON )
+option(DEPTHAI_CLANG_TIDY   "Enable clang-tidy checks during compilation" OFF)
 
-# If Debug mode, compile with warnings
-if(CMAKE_BUILD_TYPE MATCHES Debug)
-    if (MSVC)
-        add_compile_options(/W3)
-    else()
-        add_compile_options(-Wall -Wextra)
-    endif()
-endif()
 ### Get and find dependencies
 
 # Nlohmann JSON
@@ -80,15 +78,29 @@ add_library(${TARGET_NAME}
     src/pipeline/host_pipeline.cpp
     src/pipeline/AssetManager.cpp
     src/pipeline/Node.cpp
+    src/pipeline/node/XLinkIn.cpp
+    src/pipeline/node/XLinkOut.cpp
+    src/pipeline/node/ColorCamera.cpp
+    src/pipeline/node/NeuralNetwork.cpp
+    src/pipeline/node/MyProducer.cpp
+    src/pipeline/node/VideoEncoder.cpp
     src/host_capture_command.cpp
     src/device_support_listener.cpp
     src/disparity_stream_post_processor.cpp
     src/host_data_reader.cpp
     src/host_json_helper.cpp
     src/types.cpp
-    src/device.cpp
+    src/Device.cpp
     src/bspatch/bspatch.c
 )
+
+# Add aditional flags
+include(cmake/flags.cmake)
+
+# And clang-tidy and format
+if(DEPTHAI_CLANG_TIDY)
+    include(cmake/clang-tidy.cmake)
+endif()
 
 # Set compiler features (c++11)
 set_property(TARGET ${TARGET_NAME} PROPERTY CXX_STANDARD 11)
@@ -121,6 +133,11 @@ include(Depthai/DepthaiDeviceSideConfig)
 # Download libraries
 include(DepthaiDownloader)
 
+# depthai-shared enforce commit hash match if CI
+if($ENV{CI})
+    set(DEPTHAI_SHARED_COMMIT_HASH_ENFORCE ON)
+endif()
+
 # Then get the Depthai device side binaries (local or download)
 if(DEPTHAI_CMD_PATH OR DEPTHAI_USB2_CMD_PATH OR DEPTHAI_USB2_PATCH_PATH)
     # Atleast one of the paths is set. include binaries locally
@@ -140,6 +157,7 @@ else()
     message(STATUS "Downloading Depthai device side binaries from server...")
     
     DepthaiDownload(
+        "${DEPTHAI_SHARED_COMMIT_HASH}" "${DEPTHAI_SHARED_COMMIT_HASH_ENFORCE}"
         PATCH_ONLY ${DEPTHAI_USB2_PATCH_ONLY_MODE}
         "${DEPTHAI_RESOURCES_OUTPUT_DIR}"            # Output folder 
         DEPTHAI_RESOURCE_LIST                       # List of output resources
@@ -177,6 +195,9 @@ else()
 endif()
 
 
+# Configure build information (version, ...)
+configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in" "${CMAKE_CURRENT_LIST_DIR}/include/depthai/build/version.hpp")
+
 # Add include directories
 target_include_directories(${TARGET_NAME}   
     PUBLIC
@@ -188,8 +209,19 @@ target_include_directories(${TARGET_NAME}
     PRIVATE 
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
         "$<BUILD_INTERFACE:${DEPTHAI_SHARED_INCLUDE}>"
-        
 )
+
+target_include_directories(${TARGET_NAME} SYSTEM PUBLIC "$<BUILD_INTERFACE:${DEPTHAI_SHARED_3RDPARTY_INCLUDE}>")
+
+
+# Add clang format after specifying include directories
+if(DEPTHAI_CLANG_FORMAT)
+    # HEADER DIRECTORIES
+    set(header_dirs "${CMAKE_CURRENT_LIST_DIR}/include;${DEPTHAI_SHARED_PUBLIC_INCLUDE};${DEPTHAI_SHARED_INCLUDE}")
+    include(cmake/clang-format.cmake)
+    target_clangformat_setup(${TARGET_NAME} "${header_dirs}")
+endif()
+
 
 
 # link libraries
