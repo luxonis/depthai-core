@@ -16,9 +16,11 @@ namespace dai {
 // DataQueue presents a way to access data coming from MyriadX
 class DataOutputQueue {
     std::shared_ptr<XLinkConnection> connection;
-    LockingQueue<std::shared_ptr<RawBuffer>> queue;
+    std::unique_ptr<LockingQueue<std::shared_ptr<RawBuffer>>> pQueue;
+    LockingQueue<std::shared_ptr<RawBuffer>>& queue;
     std::thread readingThread;
-    std::atomic<bool> running{true};
+    std::shared_ptr<std::atomic<bool>> pRunning;
+    std::atomic<bool>& running;
     std::string exceptionMessage;
 
    public:
@@ -94,10 +96,11 @@ class DataOutputQueue {
 // DataInputQueue presents a way to write to MyriadX
 class DataInputQueue {
     std::shared_ptr<XLinkConnection> connection;
-    LockingQueue<std::shared_ptr<RawBuffer>> queue;
+    std::unique_ptr<LockingQueue<std::shared_ptr<RawBuffer>>> pQueue;
+    LockingQueue<std::shared_ptr<RawBuffer>>& queue;
     std::thread writingThread;
-    std::atomic<bool> running{true};
-    std::string name;
+    std::shared_ptr<std::atomic<bool>> pRunning;
+    std::atomic<bool>& running;
     std::string exceptionMessage;
 
    public:

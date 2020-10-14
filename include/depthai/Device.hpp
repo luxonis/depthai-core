@@ -67,6 +67,10 @@ class Device {
     std::unordered_map<std::string, std::shared_ptr<DataInputQueue>> inputQueueMap;
     std::unordered_map<std::string, CallbackHandler> callbackMap;
 
+    // Watchdog thread
+    std::thread watchdogThread;
+
+
     void wdog_thread(int& wd_timeout_ms);
     int wdog_start(void);
     int wdog_stop(void);
@@ -85,7 +89,6 @@ class Device {
     volatile std::atomic<int> wdog_keep;
     int wdog_thread_alive = 1;
 
-    std::thread wd_thread;
     int wd_timeout_ms = 1000;
 
     // std::unique_ptr<XLinkWrapper> g_xlink; // TODO: make sync

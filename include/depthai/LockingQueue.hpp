@@ -14,11 +14,18 @@ class LockingQueue {
         this->overwrite = overwrite;
     }
 
+    ~LockingQueue(){
+        destructed = true;
+        signalPop.notify_all();
+        signalPush.notify_all();
+    }
+
     void waitAndConsumeAll(std::function<void(T&)> callback) {
         {
             std::unique_lock<std::mutex> lock(guard);
 
-            signalPush.wait(lock, [this]() { return !queue.empty(); });
+            signalPush.wait(lock, [this]() { return !queue.empty() || destructed; });
+            if(destructed) return;
 
             if(queue.empty()) return;
 
@@ -54,7 +61,8 @@ class LockingQueue {
                     queue.pop();
                 }
             } else {
-                signalPop.wait(lock, [this]() { return queue.size() < maxSize; });
+                signalPop.wait(lock, [this]() { return queue.size() < maxSize || destructed; });
+                if(destructed) false;
             }
 
             queue.push(data);
@@ -72,8 +80,9 @@ class LockingQueue {
                     queue.pop();
                 }
             } else {
-                bool pred = signalPop.wait_for(lock, timeout, [this]() { return queue.size() < maxSize; });
+                bool pred = signalPop.wait_for(lock, timeout, [this]() { return queue.size() < maxSize || destructed; });
                 if(!pred) return false;
+                if(destructed) return false;
             }
 
             queue.push(data);
@@ -111,16 +120,19 @@ class LockingQueue {
         return true;
     }
 
-    void waitAndPop(T& value) {
+    bool waitAndPop(T& value) {
         {
             std::unique_lock<std::mutex> lock(guard);
 
-            signalPush.wait(lock, [this]() { return !queue.empty(); });
+            signalPush.wait(lock, [this]() { return (!queue.empty() || destructed); });
+            if(destructed) return false;
+            if(queue.empty()) return false;
 
             value = queue.front();
             queue.pop();
         }
         signalPop.notify_all();
+        return true;
     }
 
     template <typename Rep, typename Period>
@@ -128,7 +140,8 @@ class LockingQueue {
         {
             std::unique_lock<std::mutex> lock(guard);
 
-            bool pred = signalPush.wait_for(lock, timeout, [this]() { return !queue.empty(); });
+            bool pred = signalPush.wait_for(lock, timeout, [this]() { return !queue.empty() || destructed; });
+            if(destructed) return false;
             if(!pred) return false;
 
             value = queue.front();
@@ -140,7 +153,7 @@ class LockingQueue {
 
     void waitEmpty() {
         std::unique_lock<std::mutex> lock(guard);
-        signalPop.wait(lock, [this]() { return queue.empty(); });
+        signalPop.wait(lock, [this]() { return queue.empty() || destructed; });
     }
 
    private:
@@ -148,6 +161,7 @@ class LockingQueue {
     bool overwrite = false;
     std::queue<T> queue;
     mutable std::mutex guard;
+    std::atomic<bool> destructed{false};
     std::condition_variable signalPop;
     std::condition_variable signalPush;
 };

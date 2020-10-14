@@ -60,6 +60,7 @@ class XLinkConnection {
     // USE ONLY WHEN COPYING DATA AT LATER STAGES
     void readFromStreamRawRelease(const std::string& streamName);
 
+    streamId_t getStreamId(const std::string& name) const;
     int getLinkId() const;
 
    private:

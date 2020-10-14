@@ -153,6 +153,19 @@ void Device::init() {
             // Send to nanorpc to parse
             return connection->readFromStream(dai::XLINK_CHANNEL_MAIN_RPC);
         }));
+
+    // prepare watchdog thread, which will keep device alive 
+    watchdogThread = std::thread([this](){
+        std::shared_ptr<XLinkConnection> conn = this->connection;
+        while(true){
+            try{ 
+                client->call("watchdogKeepalive");
+            } catch(const std::exception& ex){
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        }
+    });
 }
 
 std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name, unsigned int maxSize, bool overwrite) {

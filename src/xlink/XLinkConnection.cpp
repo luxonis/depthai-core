@@ -260,6 +260,10 @@ void XLinkConnection::readFromStreamRawRelease(const std::string& streamName) {
     XLinkReleaseData(streamIdMap[streamName]);
 }
 
+streamId_t XLinkConnection::getStreamId(const std::string& name) const {
+    return streamIdMap.at(name); 
+}
+
 int XLinkConnection::getLinkId() const {
     return deviceLinkId;
 }
