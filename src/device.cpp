@@ -920,6 +920,7 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
         json_config_obj["ot"]["confidence_threshold"] = config.ot.confidence_threshold;
 
         json_config_obj["app"]["sync_video_meta_streams"] = config.app_config.sync_video_meta_streams;
+        json_config_obj["app"]["sync_sequence_numbers"] = config.app_config.sync_sequence_numbers;
 
         bool add_disparity_post_processing_color = false;
         bool temp_measurement = false;

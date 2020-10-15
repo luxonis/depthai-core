@@ -87,6 +87,7 @@ struct HostPipelineConfig
     struct AppConfig
     {
         bool sync_video_meta_streams = false;
+        bool sync_sequence_numbers = false;
     } app_config;
 
     bool initWithJSON(const nlohmann::json &json_obj);
