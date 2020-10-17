@@ -3,6 +3,7 @@
 // std
 #include <string>
 #include <thread>
+#include <type_traits>
 
 // project
 #include "CallbackHandler.hpp"
@@ -22,7 +23,7 @@
 
 namespace dai {
 
-// RAII for specific Device device
+// Device (RAII), connects to device and maintains watchdog, timesync, ...
 class Device {
    public:
     // static API
@@ -32,6 +33,7 @@ class Device {
 
     Device();
     explicit Device(const DeviceInfo& devInfo, bool usb2Mode = false);
+    Device(const DeviceInfo& devInfo, const char* pathToCmd);
     Device(const DeviceInfo& devInfo, const std::string& pathToCmd);
     ~Device();
 
@@ -55,10 +57,14 @@ class Device {
     bool startTestPipeline(int testId);
 
    private:
+    // private static
     static std::vector<std::uint8_t> getDefaultCmdBinary(bool usb2_mode);
+
+    void init();
 
     std::shared_ptr<XLinkConnection> connection;
     std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> client;
+    std::mutex rpcMutex;
     std::vector<uint8_t> patchedCmd;
 
     DeviceInfo deviceInfo = {};
@@ -67,43 +73,16 @@ class Device {
     std::unordered_map<std::string, std::shared_ptr<DataInputQueue>> inputQueueMap;
     std::unordered_map<std::string, CallbackHandler> callbackMap;
 
+    // XLink timeouts
+    const std::chrono::milliseconds READ_WRITE_TIMEOUT{500};
+
     // Watchdog thread
     std::thread watchdogThread;
+    std::atomic<bool> watchdogRunning{true};
 
-
-    void wdog_thread(int& wd_timeout_ms);
-    int wdog_start(void);
-    int wdog_stop(void);
-
-    void init();
-    void deinit();
-
-    std::shared_ptr<CNNHostPipeline> gl_result = nullptr;
-
-    std::string config_backup;
-    std::string cmd_backup;
-    std::string usb_device_backup;
-    uint8_t* binary_backup;
-    long binary_size_backup;
-
-    volatile std::atomic<int> wdog_keep;
-    int wdog_thread_alive = 1;
-
-    int wd_timeout_ms = 1000;
-
-    // std::unique_ptr<XLinkWrapper> g_xlink; // TODO: make sync
-    nlohmann::json g_config_d2h;
-
-    std::unique_ptr<DisparityStreamPostProcessor> g_disparity_post_proc;
-    std::unique_ptr<DeviceSupportListener> g_device_support_listener;
-    std::unique_ptr<HostCaptureCommand> g_host_capture_command;
-
-    std::map<std::string, int> nn_to_depth_mapping = {
-        {"off_x", 0},
-        {"off_y", 0},
-        {"max_w", 0},
-        {"max_h", 0},
-    };
+    // Timesync thread
+    std::thread timesyncThread;
+    std::atomic<bool> timesyncRunning{true};
 };
 
 }  // namespace dai

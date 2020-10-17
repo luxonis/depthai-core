@@ -595,12 +595,15 @@ void startMjpegCam(){
             auto t2 = std::chrono::steady_clock::now();
             cv::imshow("preview", cv::Mat(preview->fb.height, preview->fb.width, CV_8UC3, preview->data.data()));
             auto t3 = std::chrono::steady_clock::now();
-            auto mjpeg = mjpegQueue->get();
+            auto mjpeg = mjpegQueue->get<dai::ImgFrame>();
             auto t4 = std::chrono::steady_clock::now();
             cv::Mat decodedFrame = cv::imdecode( cv::Mat(mjpeg->data), cv::IMREAD_COLOR);
             auto t5 = std::chrono::steady_clock::now();
             cv::imshow("mjpeg", decodedFrame);
 
+
+            double tsPreview = preview->ts.sec + preview->ts.nsec / 1000000000.0;
+            double tsMjpeg = mjpeg->ts.sec + mjpeg->ts.nsec / 1000000000.0;
 
             //for(int i = 0; i < 100; i++) cv::waitKey(1);
 
@@ -610,7 +613,7 @@ void startMjpegCam(){
             int ms4 = std::chrono::duration_cast<std::chrono::milliseconds>(t5-t4).count();
             int loop = std::chrono::duration_cast<std::chrono::milliseconds>(t5-t1).count();
 
-            std::cout << ms1 << " " << ms2 << " " << ms3 << " " << ms4 << " loop: " << loop << std::endl;
+            std::cout << ms1 << " " << ms2 << " " << ms3 << " " << ms4 << " loop: " << loop << "sync offset: " << tsPreview << " sync mjpeg " << tsMjpeg << std::endl;
             cv::waitKey(1);
 
 

@@ -193,23 +193,12 @@ dai::Pipeline createPipeline(std::string nnFolder){
 }
 
 
-void startPipeline(dai::Pipeline p){
-
-    
-    // CONNECT TO DEVICE
-    bool found;
-    dai::DeviceInfo deviceInfo;
-    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_BOOTED);
-
-    dai::Device device(deviceInfo);
-
-    device.startPipeline(p);
-    frame_in = device.getInputQueue("frame_in", 1);
-    face_nn = device.getOutputQueue("face_nn", 1);
-    land_in = device.getInputQueue("landmark_in", 1);
-    land_nn = device.getOutputQueue("landmark_nn", 1);
-
-
+void startPipeline(dai::Device& d, dai::Pipeline p){
+    d.startPipeline(p);
+    frame_in = d.getInputQueue("frame_in", 1);
+    face_nn = d.getOutputQueue("face_nn", 1);
+    land_in = d.getInputQueue("landmark_in", 1);
+    land_nn = d.getOutputQueue("landmark_nn", 1);
 }
 
 
@@ -326,6 +315,7 @@ std::tuple<cv::Mat, cv::Mat, cv::Point> runLandmark(cv::Mat faceFrame, cv::Rect 
 
 
 int main(int argc, char** argv){
+    using namespace std::chrono_literals;
 
     if(argc <= 1){
         std::cout << "Pass path to project folder..." << std::endl;
@@ -334,13 +324,20 @@ int main(int argc, char** argv){
         cv::VideoCapture vid(nnPath + "/demo.mp4");
         cv::Mat frame, debugFrame;
 
+        // CONNECT TO DEVICE
+        bool found;
+        dai::DeviceInfo deviceInfo;
+        std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
+        dai::Device device(deviceInfo, std::string("/home/themarpe/Documents/luxonis/depthai/gen2/depthai_device/depthai/device_cnn/output/depthai.mvcmd"));
+        
+        
+        //std::this_thread::sleep_for(20s);
+
         auto pipeline = createPipeline(nnPath);
-        startPipeline(pipeline);
+        startPipeline(device, pipeline);
 
-        while(true){
-            vid >> frame;
-            if(frame.empty()) break;
-
+        while(vid.read(frame)){
+            
             frame.copyTo(debugFrame);
             
             cv::Mat faceFrame;
@@ -354,8 +351,9 @@ int main(int argc, char** argv){
 
 
         }
-     
-        
+
+        std::cout << "Exited, looks like we are out if frames" << std::endl;
+
     }
 
 

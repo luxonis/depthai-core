@@ -50,13 +50,22 @@ class XLinkConnection {
 
     void openStream(const std::string& streamName, std::size_t maxWriteSize);
     void closeStream(const std::string& streamName);
-    void writeToStream(const std::string& streamName, std::uint8_t* data, std::size_t size);
-    void writeToStream(const std::string& streamName, std::vector<std::uint8_t> data);
+    void writeToStream(const std::string& streamName, const void* data, std::size_t size);
+    void writeToStream(const std::string& streamName, const std::uint8_t* data, std::size_t size);
+    void writeToStream(const std::string& streamName, const std::vector<std::uint8_t>& data);
     std::vector<std::uint8_t> readFromStream(const std::string& streamName);
     void readFromStream(const std::string& streamName, std::vector<std::uint8_t>& data);
 
+    // timeout versions
+    // bool writeToStream(const std::string& streamName, const void* data, std::size_t size, std::chrono::milliseconds timeout);
+    // bool writeToStream(const std::string& streamName, const std::uint8_t* data, std::size_t size, std::chrono::milliseconds timeout);
+    // bool writeToStream(const std::string& streamName, const std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout);
+    // bool readFromStream(const std::string& streamName, std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout);
+    // bool readFromStreamRaw(streamPacketDesc_t*& pPacket, const std::string& streamName, std::chrono::milliseconds timeout);
+
     // USE ONLY WHEN COPYING DATA AT LATER STAGES
     streamPacketDesc_t* readFromStreamRaw(const std::string& streamName);
+
     // USE ONLY WHEN COPYING DATA AT LATER STAGES
     void readFromStreamRawRelease(const std::string& streamName);
 
@@ -78,7 +87,7 @@ class XLinkConnection {
     std::string pathToMvcmd;
     std::vector<std::uint8_t> mvcmd;
 
-    bool rebootOnDestruction{false};
+    bool rebootOnDestruction{true};
 
     int deviceLinkId = -1;
 

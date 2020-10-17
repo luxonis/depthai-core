@@ -14,11 +14,12 @@ class LockingQueue {
         this->overwrite = overwrite;
     }
 
-    ~LockingQueue(){
+    void destruct() {
         destructed = true;
         signalPop.notify_all();
         signalPush.notify_all();
     }
+    ~LockingQueue() = default;
 
     void waitAndConsumeAll(std::function<void(T&)> callback) {
         {
@@ -62,7 +63,7 @@ class LockingQueue {
                 }
             } else {
                 signalPop.wait(lock, [this]() { return queue.size() < maxSize || destructed; });
-                if(destructed) false;
+                if(destructed) return false;
             }
 
             queue.push(data);

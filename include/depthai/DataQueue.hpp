@@ -15,13 +15,15 @@ namespace dai {
 
 // DataQueue presents a way to access data coming from MyriadX
 class DataOutputQueue {
-    std::shared_ptr<XLinkConnection> connection;
-    std::unique_ptr<LockingQueue<std::shared_ptr<RawBuffer>>> pQueue;
+    std::shared_ptr<LockingQueue<std::shared_ptr<RawBuffer>>> pQueue;
     LockingQueue<std::shared_ptr<RawBuffer>>& queue;
     std::thread readingThread;
     std::shared_ptr<std::atomic<bool>> pRunning;
     std::atomic<bool>& running;
-    std::string exceptionMessage;
+    std::shared_ptr<std::string> pExceptionMessage;
+    std::string& exceptionMessage;
+
+    // const std::chrono::milliseconds READ_TIMEOUT{500};
 
    public:
     DataOutputQueue(std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize = 60, bool overwrite = false);
@@ -63,14 +65,20 @@ class DataOutputQueue {
     std::shared_ptr<T> get() {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
         std::shared_ptr<RawBuffer> val = nullptr;
-        queue.waitAndPop(val);
+        if(!queue.waitAndPop(val)) {
+            throw std::runtime_error(exceptionMessage.c_str());
+            return nullptr;
+        }
         return std::dynamic_pointer_cast<T>(val);
     }
 
     std::shared_ptr<RawBuffer> get() {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
         std::shared_ptr<RawBuffer> val = nullptr;
-        queue.waitAndPop(val);
+        if(!queue.waitAndPop(val)) {
+            throw std::runtime_error(exceptionMessage.c_str());
+            return nullptr;
+        }
         return val;
     }
 
@@ -79,6 +87,7 @@ class DataOutputQueue {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
         std::shared_ptr<RawBuffer> val = nullptr;
         if(!queue.tryWaitAndPop(val, timeout)) {
+            if(queue.destructed) throw std::runtime_error(exceptionMessage.c_str());
             return nullptr;
         }
         return std::dynamic_pointer_cast<T>(val);
@@ -88,20 +97,23 @@ class DataOutputQueue {
     std::shared_ptr<RawBuffer> get(std::chrono::duration<Rep, Period> timeout) {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
         std::shared_ptr<RawBuffer> val = nullptr;
-        queue.tryWaitAndPop(val, timeout);
+        if(!queue.tryWaitAndPop(val, timeout)) {
+            if(queue.destructed) throw std::runtime_error(exceptionMessage.c_str());
+            return nullptr;
+        }
         return val;
     }
 };
 
 // DataInputQueue presents a way to write to MyriadX
 class DataInputQueue {
-    std::shared_ptr<XLinkConnection> connection;
-    std::unique_ptr<LockingQueue<std::shared_ptr<RawBuffer>>> pQueue;
+    std::shared_ptr<LockingQueue<std::shared_ptr<RawBuffer>>> pQueue;
     LockingQueue<std::shared_ptr<RawBuffer>>& queue;
     std::thread writingThread;
     std::shared_ptr<std::atomic<bool>> pRunning;
     std::atomic<bool>& running;
-    std::string exceptionMessage;
+    std::shared_ptr<std::string> pExceptionMessage;
+    std::string& exceptionMessage;
 
    public:
     DataInputQueue(std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize = 60, bool overwrite = false);
