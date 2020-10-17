@@ -87,7 +87,6 @@ class DataOutputQueue {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
         std::shared_ptr<RawBuffer> val = nullptr;
         if(!queue.tryWaitAndPop(val, timeout)) {
-            if(queue.destructed) throw std::runtime_error(exceptionMessage.c_str());
             return nullptr;
         }
         return std::dynamic_pointer_cast<T>(val);
@@ -98,7 +97,6 @@ class DataOutputQueue {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
         std::shared_ptr<RawBuffer> val = nullptr;
         if(!queue.tryWaitAndPop(val, timeout)) {
-            if(queue.destructed) throw std::runtime_error(exceptionMessage.c_str());
             return nullptr;
         }
         return val;
