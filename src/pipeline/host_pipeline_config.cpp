@@ -388,6 +388,16 @@ bool HostPipelineConfig::initWithJSON(const nlohmann::json &json_obj)
             {
                 app_config.sync_video_meta_streams = app_conf_obj.at("sync_video_meta_streams").get<bool>();
             }
+
+            if (app_conf_obj.contains("sync_sequence_numbers"))
+            {
+                app_config.sync_sequence_numbers = app_conf_obj.at("sync_sequence_numbers").get<bool>();
+            }
+
+            if (app_conf_obj.contains("usb_chunk_KiB"))
+            {
+                app_config.usb_chunk_KiB = app_conf_obj.at("usb_chunk_KiB").get<uint32_t>();
+            }
         }
 
 

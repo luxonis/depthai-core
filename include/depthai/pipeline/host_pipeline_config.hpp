@@ -87,6 +87,8 @@ struct HostPipelineConfig
     struct AppConfig
     {
         bool sync_video_meta_streams = false;
+        bool sync_sequence_numbers = false;
+        uint32_t usb_chunk_KiB = 64; // Increase to improve throughput, 0 to disable chunking
     } app_config;
 
     bool initWithJSON(const nlohmann::json &json_obj);
