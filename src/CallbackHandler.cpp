@@ -1,6 +1,6 @@
 #include "depthai/CallbackHandler.hpp"
 
-#include "datatype/StreamPacketParser.hpp"
+#include "pipeline/datatype/StreamPacketParser.hpp"
 
 namespace dai {
 

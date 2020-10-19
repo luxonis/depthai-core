@@ -19,7 +19,7 @@ namespace node {
        public:
         XLinkIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
-        Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::RawBuffer, true}}};
+        Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
 
         void setStreamName(const std::string& name);
         void setMaxDataSize(std::uint32_t maxDataSize);

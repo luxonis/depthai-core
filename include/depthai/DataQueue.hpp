@@ -6,6 +6,7 @@
 
 // project
 #include "LockingQueue.hpp"
+#include "pipeline/datatype/ADatatype.hpp"
 #include "xlink/XLinkConnection.hpp"
 
 // shared
@@ -15,8 +16,8 @@ namespace dai {
 
 // DataQueue presents a way to access data coming from MyriadX
 class DataOutputQueue {
-    std::shared_ptr<LockingQueue<std::shared_ptr<RawBuffer>>> pQueue;
-    LockingQueue<std::shared_ptr<RawBuffer>>& queue;
+    std::shared_ptr<LockingQueue<std::shared_ptr<ADatatype>>> pQueue;
+    LockingQueue<std::shared_ptr<ADatatype>>& queue;
     std::thread readingThread;
     std::shared_ptr<std::atomic<bool>> pRunning;
     std::atomic<bool>& running;
@@ -32,7 +33,7 @@ class DataOutputQueue {
     template <class T>
     bool has() {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
-        std::shared_ptr<RawBuffer> val = nullptr;
+        std::shared_ptr<ADatatype> val = nullptr;
         if(queue.front(val) && dynamic_cast<T*>(val.get())) {
             return true;
         }
@@ -47,14 +48,14 @@ class DataOutputQueue {
     template <class T>
     std::shared_ptr<T> tryGet() {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
-        std::shared_ptr<RawBuffer> val = nullptr;
+        std::shared_ptr<ADatatype> val = nullptr;
         if(!queue.tryPop(val)) return nullptr;
         return std::dynamic_pointer_cast<T>(val);
     }
 
-    std::shared_ptr<RawBuffer> tryGet() {
+    std::shared_ptr<ADatatype> tryGet() {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
-        std::shared_ptr<RawBuffer> p = nullptr;
+        std::shared_ptr<ADatatype> p = nullptr;
         if(!queue.tryPop(p)) {
             return nullptr;
         }
@@ -64,7 +65,7 @@ class DataOutputQueue {
     template <class T>
     std::shared_ptr<T> get() {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
-        std::shared_ptr<RawBuffer> val = nullptr;
+        std::shared_ptr<ADatatype> val = nullptr;
         if(!queue.waitAndPop(val)) {
             throw std::runtime_error(exceptionMessage.c_str());
             return nullptr;
@@ -72,9 +73,9 @@ class DataOutputQueue {
         return std::dynamic_pointer_cast<T>(val);
     }
 
-    std::shared_ptr<RawBuffer> get() {
+    std::shared_ptr<ADatatype> get() {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
-        std::shared_ptr<RawBuffer> val = nullptr;
+        std::shared_ptr<ADatatype> val = nullptr;
         if(!queue.waitAndPop(val)) {
             throw std::runtime_error(exceptionMessage.c_str());
             return nullptr;
@@ -85,7 +86,7 @@ class DataOutputQueue {
     template <class T, typename Rep, typename Period>
     std::shared_ptr<T> get(std::chrono::duration<Rep, Period> timeout) {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
-        std::shared_ptr<RawBuffer> val = nullptr;
+        std::shared_ptr<ADatatype> val = nullptr;
         if(!queue.tryWaitAndPop(val, timeout)) {
             return nullptr;
         }
@@ -93,9 +94,9 @@ class DataOutputQueue {
     }
 
     template <typename Rep, typename Period>
-    std::shared_ptr<RawBuffer> get(std::chrono::duration<Rep, Period> timeout) {
+    std::shared_ptr<ADatatype> get(std::chrono::duration<Rep, Period> timeout) {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
-        std::shared_ptr<RawBuffer> val = nullptr;
+        std::shared_ptr<ADatatype> val = nullptr;
         if(!queue.tryWaitAndPop(val, timeout)) {
             return nullptr;
         }
@@ -118,12 +119,22 @@ class DataInputQueue {
     ~DataInputQueue();
 
     void send(const std::shared_ptr<RawBuffer>& val);
+    void send(const std::shared_ptr<ADatatype>& val);
+    void send(const ADatatype& val);
+
     void sendSync(const std::shared_ptr<RawBuffer>& val);
+    void sendSync(const std::shared_ptr<ADatatype>& val);
+    void sendSync(const ADatatype& val);
 
     template <typename Rep, typename Period>
     bool send(const std::shared_ptr<RawBuffer>& val, std::chrono::duration<Rep, Period> timeout) {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
         return queue.tryWaitAndPush(val, timeout);
+    }
+    template <typename Rep, typename Period>
+    bool send(const std::shared_ptr<ADatatype>& val, std::chrono::duration<Rep, Period> timeout) {
+        if(!running) throw std::runtime_error(exceptionMessage.c_str());
+        return queue.tryWaitAndPush(val->serialize(), timeout);
     }
 };
 

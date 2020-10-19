@@ -19,7 +19,7 @@ namespace node {
        public:
         MyProducer(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
-        Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::RawBuffer, true}}};
+        Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
 
         void setMessage(const std::string& m);
         void setProcessor(ProcessorType proc);

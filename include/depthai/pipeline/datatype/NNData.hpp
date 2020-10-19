@@ -1,51 +1,51 @@
 #pragma once
 
+#include <limits>
 #include <unordered_map>
 #include <vector>
 
-#include "depthai-shared/datatype/NNData.hpp"
+#include "Buffer.hpp"
+#include "depthai-shared/datatype/RawNNData.hpp"
 
 namespace dai {
-namespace tmp {
 
-    struct NNInput : protected dai::NNData {
-        // store the data
+class NNData : public Buffer {
+    static constexpr int DATA_ALIGNMENT = 64;
+    std::shared_ptr<RawBuffer> serialize() const;
+    RawNNData& rawNn;
 
-        // uint8_t
-        std::unordered_map<std::string, std::vector<std::uint8_t>> u8Data;
-        // FP16
-        std::unordered_map<std::string, std::vector<std::uint16_t>> fp16Data;
+   public:
+    NNData();
+    NNData(std::shared_ptr<RawNNData> ptr);
+    ~NNData() = default;
 
-        // Expose
-        void setLayer(const std::string& name, std::vector<std::uint8_t> data) {
-            u8Data[name] = std::move(data);
-        }
-        void setLayer(const std::string& name, const std::vector<int>& data) {
-            u8Data[name] = std::vector<std::uint8_t>(data.size());
-            for(unsigned i = 0; i < data.size(); i++) {
-                u8Data[name][i] = static_cast<std::uint8_t>(data[i]);
-            }
-        }
+    // store the data
+    // uint8_t
+    std::unordered_map<std::string, std::vector<std::uint8_t>> u8Data;
+    // FP16
+    std::unordered_map<std::string, std::vector<std::uint16_t>> fp16Data;
 
-        void setLayer(const std::string& name, std::vector<float> data) {
-            fp16Data[name] = std::vector<std::uint8_t>(data.size());
-            for(unsigned i = 0; i < data.size(); i++) {
-                // fp16Data[name][i] = fp16_cast(data[i]);
-            }
-        }
-        void setLayer(const std::string& name, std::vector<double> data) {
-            fp16Data[name] = std::vector<std::uint8_t>(data.size());
-            for(unsigned i = 0; i < data.size(); i++) {
-                // fp16Data[name][i] = fp16_cast(data[i]);
-            }
-        }
+    // Expose
+    // uint8_t
+    void setLayer(const std::string& name, std::vector<std::uint8_t> data);
+    void setLayer(const std::string& name, const std::vector<int>& data);
 
-    }
+    // fp16
+    void setLayer(const std::string& name, std::vector<float> data);
+    void setLayer(const std::string& name, std::vector<double> data);
 
-    struct NNOutput : protected dai::NNData {
-        // add convinience functions
-    }
+    // getters
+    bool getLayer(const std::string& name, TensorInfo& tensor);
+    bool hasLayer(const std::string& name);
+    bool getLayerDatatype(const std::string& name, TensorInfo::DataType& datatype);
+    // uint8
+    std::vector<std::uint8_t> getLayerUInt8(const std::string& name);
+    // fp16
+    std::vector<float> getLayerFp16(const std::string& name);
 
-}  // namespace tmp
+    // first layer
+    std::vector<std::uint8_t> getFirstLayerUInt8();
+    std::vector<float> getFirstLayerFp16();
+};
 
 }  // namespace dai

@@ -19,7 +19,7 @@ namespace node {
        public:
         XLinkOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
-        Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::RawBuffer, true}}};
+        Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}}};
 
         void setStreamName(const std::string& name);
         void setFpsLimit(float fps);

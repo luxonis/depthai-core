@@ -2,13 +2,14 @@
 
 #include <iostream>
 
-#include "datatype/StreamPacketParser.hpp"
 #include "depthai-shared/xlink/XLinkConstants.hpp"
+#include "depthai/pipeline/datatype/ADatatype.hpp"
+#include "pipeline/datatype/StreamPacketParser.hpp"
 
 namespace dai {
 
 DataOutputQueue::DataOutputQueue(std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize, bool overwrite)
-    : pQueue(std::make_shared<LockingQueue<std::shared_ptr<RawBuffer>>>(maxSize, overwrite)),
+    : pQueue(std::make_shared<LockingQueue<std::shared_ptr<ADatatype>>>(maxSize, overwrite)),
       queue(*pQueue),
       pRunning(std::make_shared<std::atomic<bool>>(true)),
       running(*pRunning),
@@ -22,7 +23,7 @@ DataOutputQueue::DataOutputQueue(std::shared_ptr<XLinkConnection> conn, const st
     // creates a thread which reads from connection into the queue
     readingThread = std::thread([streamName, pRunningCopy, conn, pExceptionMessageCopy, pQueueCopy]() {
         std::atomic<bool>& running = *pRunningCopy;
-        LockingQueue<std::shared_ptr<RawBuffer>>& queue = *pQueueCopy;
+        LockingQueue<std::shared_ptr<ADatatype>>& queue = *pQueueCopy;
 
         std::uint64_t numPacketsRead = 0;
         try {
@@ -35,7 +36,7 @@ DataOutputQueue::DataOutputQueue(std::shared_ptr<XLinkConnection> conn, const st
                 if(!running) break;
 
                 // parse packet
-                auto data = parsePacket(packet);
+                auto data = parsePacketToADatatype(packet);
 
                 // release packet
                 conn->readFromStreamRawRelease(streamName);
@@ -139,11 +140,29 @@ void DataInputQueue::send(const std::shared_ptr<RawBuffer>& val) {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
     queue.push(val);
 }
+void DataInputQueue::send(const std::shared_ptr<ADatatype>& val) {
+    if(!running) throw std::runtime_error(exceptionMessage.c_str());
+    queue.push(val->serialize());
+}
+void DataInputQueue::send(const ADatatype& val) {
+    if(!running) throw std::runtime_error(exceptionMessage.c_str());
+    queue.push(val.serialize());
+}
 
 void DataInputQueue::sendSync(const std::shared_ptr<RawBuffer>& val) {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
     queue.waitEmpty();
     queue.push(val);
+}
+void DataInputQueue::sendSync(const std::shared_ptr<ADatatype>& val) {
+    if(!running) throw std::runtime_error(exceptionMessage.c_str());
+    queue.waitEmpty();
+    queue.push(val->serialize());
+}
+void DataInputQueue::sendSync(const ADatatype& val) {
+    if(!running) throw std::runtime_error(exceptionMessage.c_str());
+    queue.waitEmpty();
+    queue.push(val.serialize());
 }
 
 }  // namespace dai

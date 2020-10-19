@@ -52,6 +52,10 @@ if(NOT DEPTHAI_BOOST_LOCAL)
     find_package(Boost CONFIG REQUIRED)
 endif()
 
+# FP16 for conversions
+hunter_add_package(FP16)
+find_package(FP16 REQUIRED)
+
 # Add depthai-shared, and definitions that it is PC side
 include(${CMAKE_CURRENT_LIST_DIR}/shared/depthai-shared.cmake)
 
@@ -82,6 +86,10 @@ add_library(${TARGET_NAME}
     src/pipeline/node/NeuralNetwork.cpp
     src/pipeline/node/MyProducer.cpp
     src/pipeline/node/VideoEncoder.cpp
+    src/pipeline/datatype/Buffer.cpp
+    src/pipeline/datatype/ImgFrame.cpp
+    src/pipeline/datatype/NNData.cpp
+    src/pipeline/datatype/StreamPacketParser.cpp
     src/host_capture_command.cpp
     src/device_support_listener.cpp
     src/disparity_stream_post_processor.cpp
@@ -231,6 +239,7 @@ target_link_libraries(${TARGET_NAME}
     PRIVATE
         Threads::Threads
         BZip2::bz2
+        FP16::fp16
 )
 
 if(NOT DEPTHAI_BOOST_LOCAL)
