@@ -677,6 +677,14 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
 
         nlohmann::json NN_config_stage[2] = {json_NN_meta, json_NN_meta_stage2};
 
+        if(num_stages == 2)
+        {
+            if(NN_config_stage[0]["output_format"] != std::string("detection"))
+            {
+                throw std::runtime_error("In case of 2 stage inference the first stage network must have [\"NN_config\"][\"output_format\"] set to detection!");
+            }
+        }
+
         // pipeline configurations json
         // homography
         const int homography_count = 9 * 7 + 3 * 2 + 14 * 3; /*R1,R2,M1,M2,R,T,M3,R_rgb,T_rgb,d1,d2,d3*/

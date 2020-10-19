@@ -42,7 +42,7 @@ public:
         {
             if(_NN_config[0]["output_format"] != std::string("detection"))
             {
-                assert(0 && "getDetectedObjects should be used only when [\"NN_config\"][\"output_format\"] is set to detection! https://docs.luxonis.com/api/#creating-blob-configuration-file");
+                throw std::runtime_error("getDetectedObjects should be used only when [\"NN_config\"][\"output_format\"] is set to detection! https://docs.luxonis.com/api/#creating-blob-configuration-file");
             }
         }
         std::shared_ptr<std::vector<unsigned char>> data = _tensors_raw_data->data;
