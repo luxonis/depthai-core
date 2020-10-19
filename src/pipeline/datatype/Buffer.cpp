@@ -7,7 +7,7 @@ std::shared_ptr<dai::RawBuffer> Buffer::serialize() const {
 }
 
 Buffer::Buffer() : ADatatype(std::make_shared<dai::RawBuffer>()) {}
-Buffer::Buffer(std::shared_ptr<dai::RawBuffer> ptr) : ADatatype(ptr) {}
+Buffer::Buffer(std::shared_ptr<dai::RawBuffer> ptr) : ADatatype(std::move(ptr)) {}
 
 // helpers
 std::vector<std::uint8_t>& Buffer::getData() {

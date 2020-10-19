@@ -27,7 +27,7 @@ class DataOutputQueue {
     // const std::chrono::milliseconds READ_TIMEOUT{500};
 
    public:
-    DataOutputQueue(std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize = 60, bool overwrite = false);
+    DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize = 60, bool overwrite = false);
     ~DataOutputQueue();
 
     template <class T>
@@ -115,7 +115,7 @@ class DataInputQueue {
     std::string& exceptionMessage;
 
    public:
-    DataInputQueue(std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize = 60, bool overwrite = false);
+    DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize = 60, bool overwrite = false);
     ~DataInputQueue();
 
     void send(const std::shared_ptr<RawBuffer>& val);

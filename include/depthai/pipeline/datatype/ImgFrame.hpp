@@ -10,22 +10,22 @@ namespace dai {
 
 // protected inheritance, so serialize isn't visible to users
 class ImgFrame : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const;
+    std::shared_ptr<RawBuffer> serialize() const override;
     RawImgFrame& img;
 
    public:
     ImgFrame();
-    ImgFrame(std::shared_ptr<RawImgFrame> ptr);
-    ~ImgFrame() = default;
+    explicit ImgFrame(std::shared_ptr<RawImgFrame> ptr);
+    virtual ~ImgFrame() = default;
 
     // getters
-    Timestamp getTimestamp();
-    unsigned int getInstanceNum();
-    unsigned int getCategory();
-    unsigned int getSequenceNum();
-    unsigned int getWidth();
-    unsigned int getHeight();
-    RawImgFrame::Type getType();
+    Timestamp getTimestamp() const;
+    unsigned int getInstanceNum() const;
+    unsigned int getCategory() const;
+    unsigned int getSequenceNum() const;
+    unsigned int getWidth() const;
+    unsigned int getHeight() const;
+    RawImgFrame::Type getType() const;
 
     // setters
     void setTimestamp(Timestamp ts);

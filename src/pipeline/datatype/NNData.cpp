@@ -15,60 +15,62 @@ NNData::NNData(std::shared_ptr<RawNNData> ptr) : Buffer(ptr), rawNn(*ptr.get()) 
 
 std::shared_ptr<RawBuffer> NNData::serialize() const {
     // get data from u8Data and fp16Data and place properly into the underlying raw buffer
+    rawNn.tensors = {};
 
-    // Get smallest size to put last
-    size_t smallestSize = std::numeric_limits<size_t>::max();
-    const std::uint8_t* pSmallest = nullptr;
+    // offset
+
+    // Add to data and align to 64 bytes and create an entry in tensor describing its content
     for(const auto& kv : u8Data) {
-        if(kv.second.size() < smallestSize) {
-            smallestSize = kv.second.size() * sizeof(std::uint8_t);
-            pSmallest = kv.second.data();
+        // Get offset first
+        size_t offset = rawNn.data.end() - rawNn.data.begin();
+
+        const auto* data = kv.second.data();
+        rawNn.data.insert(rawNn.data.end(), data, data + kv.second.size() * sizeof(std::uint8_t));
+        // insert alignment bytes (64B alignment)
+
+        // calculate how many bytes to add
+        size_t remainder = kv.second.size() % DATA_ALIGNMENT;
+        size_t toAdd = 0;
+        if(remainder > 0) {
+            toAdd = DATA_ALIGNMENT - remainder;
         }
+
+        // add padding bytes
+        rawNn.data.insert(rawNn.data.end(), toAdd, 0);
+
+        // Add entry in tensors
+        TensorInfo info;
+        info.dataType = TensorInfo::DataType::U8F;
+        info.numDimensions = 0;
+        info.name = kv.first;
+        info.offset = offset;
+        rawNn.tensors.push_back(info);
     }
     for(const auto& kv : fp16Data) {
-        if(kv.second.size() < smallestSize) {
-            smallestSize = kv.second.size() * sizeof(std::uint16_t);
-            pSmallest = reinterpret_cast<const std::uint8_t*>(kv.second.data());
+        // Get offset first
+        size_t offset = rawNn.data.end() - rawNn.data.begin();
+
+        const auto* data = reinterpret_cast<const std::uint8_t*>(kv.second.data());
+        rawNn.data.insert(rawNn.data.end(), data, data + kv.second.size() * sizeof(std::uint16_t));
+
+        // calculate how many bytes to add
+        size_t remainder = kv.second.size() % DATA_ALIGNMENT;
+        size_t toAdd = 0;
+        if(remainder > 0) {
+            toAdd = DATA_ALIGNMENT - remainder;
         }
+
+        // add padding bytes
+        rawNn.data.insert(rawNn.data.end(), toAdd, 0);
+
+        // Add entry in tensors
+        TensorInfo info;
+        info.dataType = TensorInfo::DataType::U8F;
+        info.numDimensions = 0;
+        info.name = kv.first;
+        info.offset = offset;
+        rawNn.tensors.push_back(info);
     }
-
-    // Add to data, but skip smallest (and align to 64 bytes)
-    for(const auto& kv : u8Data) {
-        if(kv.second.data() != pSmallest) {
-            auto* data = kv.second.data();
-            rawNn.data.insert(rawNn.data.end(), data, data + kv.second.size() * sizeof(std::uint8_t));
-            // insert alignment bytes (64B alignment)
-
-            // calculate how many bytes to add
-            size_t remainder = kv.second.size() % DATA_ALIGNMENT;
-            size_t toAdd = 0;
-            if(remainder > 0) {
-                toAdd = DATA_ALIGNMENT - remainder;
-            }
-
-            // add padding bytes
-            rawNn.data.insert(rawNn.data.end(), toAdd, 0);
-        }
-    }
-    for(const auto& kv : fp16Data) {
-        if(reinterpret_cast<const uint8_t*>(kv.second.data()) != pSmallest) {
-            auto* data = reinterpret_cast<const std::uint8_t*>(kv.second.data());
-            rawNn.data.insert(rawNn.data.end(), data, data + kv.second.size() * sizeof(std::uint16_t));
-
-            // calculate how many bytes to add
-            size_t remainder = kv.second.size() % DATA_ALIGNMENT;
-            size_t toAdd = 0;
-            if(remainder > 0) {
-                toAdd = DATA_ALIGNMENT - remainder;
-            }
-
-            // add padding bytes
-            rawNn.data.insert(rawNn.data.end(), toAdd, 0);
-        }
-    }
-
-    // Add last remaining data without padding
-    rawNn.data.insert(rawNn.data.end(), pSmallest, pSmallest + smallestSize);
 
     return raw;
 }
@@ -100,7 +102,19 @@ void NNData::setLayer(const std::string& name, std::vector<double> data) {
 }
 
 // getters
-bool NNData::getLayer(const std::string& name, TensorInfo& tensor) {
+std::vector<std::string> NNData::getAllLayerNames() const {
+    std::vector<std::string> names;
+    for(const auto& t : rawNn.tensors) {
+        names.push_back(t.name);
+    }
+    return names;
+}
+
+std::vector<TensorInfo> NNData::getAllLayers() const {
+    return rawNn.tensors;
+}
+
+bool NNData::getLayer(const std::string& name, TensorInfo& tensor) const {
     for(const auto& t : rawNn.tensors) {
         if(t.name == name) {
             tensor = t;
@@ -110,14 +124,14 @@ bool NNData::getLayer(const std::string& name, TensorInfo& tensor) {
     return false;
 }
 
-bool NNData::hasLayer(const std::string& name) {
+bool NNData::hasLayer(const std::string& name) const {
     for(const auto& tensor : rawNn.tensors) {
         if(tensor.name == name) return true;
     }
     return false;
 }
 
-bool NNData::getLayerDatatype(const std::string& name, TensorInfo::DataType& datatype) {
+bool NNData::getLayerDatatype(const std::string& name, TensorInfo::DataType& datatype) const {
     TensorInfo tensor;
     if(getLayer(name, tensor)) {
         datatype = tensor.dataType;
@@ -127,7 +141,7 @@ bool NNData::getLayerDatatype(const std::string& name, TensorInfo::DataType& dat
 }
 
 // uint8
-std::vector<std::uint8_t> NNData::getLayerUInt8(const std::string& name) {
+std::vector<std::uint8_t> NNData::getLayerUInt8(const std::string& name) const {
     // std::vector<std::uint8_t> data;
     // find layer name and its offset
     TensorInfo tensor;
@@ -146,7 +160,7 @@ std::vector<std::uint8_t> NNData::getLayerUInt8(const std::string& name) {
 }
 
 // fp16
-std::vector<float> NNData::getLayerFp16(const std::string& name) {
+std::vector<float> NNData::getLayerFp16(const std::string& name) const {
     // find layer name and its offset
     TensorInfo tensor;
     if(getLayer(name, tensor)) {
@@ -168,9 +182,9 @@ std::vector<float> NNData::getLayerFp16(const std::string& name) {
 }
 
 // uint8
-std::vector<std::uint8_t> NNData::getFirstLayerUInt8() {
+std::vector<std::uint8_t> NNData::getFirstLayerUInt8() const {
     // find layer name and its offset
-    if(rawNn.tensors.size() > 0) {
+    if(!rawNn.tensors.empty()) {
         TensorInfo tensor = rawNn.tensors[0];
         if(tensor.dataType == TensorInfo::DataType::FP16) {
             // Total data size = last dimension * last stride
@@ -190,9 +204,9 @@ std::vector<std::uint8_t> NNData::getFirstLayerUInt8() {
 }
 
 // fp16
-std::vector<float> NNData::getFirstLayerFp16() {
+std::vector<float> NNData::getFirstLayerFp16() const {
     // find layer name and its offset
-    if(rawNn.tensors.size() > 0) {
+    if(!rawNn.tensors.empty()) {
         TensorInfo tensor = rawNn.tensors[0];
         if(tensor.dataType == TensorInfo::DataType::FP16) {
             // Total data size = last dimension * last stride

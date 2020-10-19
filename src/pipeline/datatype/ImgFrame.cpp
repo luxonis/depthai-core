@@ -7,30 +7,30 @@ std::shared_ptr<RawBuffer> ImgFrame::serialize() const {
 }
 
 ImgFrame::ImgFrame() : Buffer(std::make_shared<RawImgFrame>()), img(*dynamic_cast<RawImgFrame*>(raw.get())) {}
-ImgFrame::ImgFrame(std::shared_ptr<RawImgFrame> ptr) : Buffer(ptr), img(*dynamic_cast<RawImgFrame*>(raw.get())) {}
+ImgFrame::ImgFrame(std::shared_ptr<RawImgFrame> ptr) : Buffer(std::move(ptr)), img(*dynamic_cast<RawImgFrame*>(raw.get())) {}
 
 // helpers
 
 // getters
-Timestamp ImgFrame::getTimestamp() {
+Timestamp ImgFrame::getTimestamp() const {
     return img.ts;
 }
-unsigned int ImgFrame::getInstanceNum() {
+unsigned int ImgFrame::getInstanceNum() const {
     return img.instanceNum;
 }
-unsigned int ImgFrame::getCategory() {
+unsigned int ImgFrame::getCategory() const {
     return img.category;
 }
-unsigned int ImgFrame::getSequenceNum() {
+unsigned int ImgFrame::getSequenceNum() const {
     return img.sequenceNum;
 }
-unsigned int ImgFrame::getWidth() {
+unsigned int ImgFrame::getWidth() const {
     return img.fb.width;
 }
-unsigned int ImgFrame::getHeight() {
+unsigned int ImgFrame::getHeight() const {
     return img.fb.height;
 }
-RawImgFrame::Type ImgFrame::getType() {
+RawImgFrame::Type ImgFrame::getType() const {
     return img.fb.type;
 }
 

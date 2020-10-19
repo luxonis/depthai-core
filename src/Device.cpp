@@ -2,17 +2,11 @@
 
 // shared
 #include "depthai-shared/Assets.hpp"
-#include "depthai-shared/cnn_info.hpp"
-#include "depthai-shared/depthai_constants.hpp"
-#include "depthai-shared/json_helper.hpp"
+#include "depthai-shared/datatype/RawImgFrame.hpp"
 #include "depthai-shared/xlink/XLinkConstants.hpp"
 
 // project
 #include "pipeline/Pipeline.hpp"
-//#include "pipeline/host_pipeline_config.hpp"
-#include "nnet/tensor_info_helper.hpp"
-#include "pipeline/host_pipeline_config.hpp"
-
 extern "C" {
 #include "bspatch/bspatch.h"
 }
@@ -25,11 +19,8 @@ CMRC_DECLARE(depthai);
 
 namespace dai {
 
-constexpr static auto CMRC_DEPTHAI_CMD_PATH = "depthai.cmd";
-constexpr static auto CMRC_DEPTHAI_USB2_CMD_PATH = "depthai-usb2.cmd";
-constexpr static auto CMRC_DEPTHAI_USB2_PATCH_PATH = "depthai-usb2-patch.patch";
-
 // static api
+
 /*
 std::vector<DeviceInfo> Device::getAllConnectedDevices(){
     return XLinkConnection::getAllConnectedDevices();
@@ -68,7 +59,7 @@ Device::Device(const DeviceInfo& devInfo, const std::string& pathToCmd) {
 
 Device::Device() {
     bool found = false;
-    DeviceInfo devInfo;
+    DeviceInfo devInfo = {};
     std::tie(found, devInfo) = XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
     if(!found) throw std::runtime_error("No unbooted devices available");
     connection = std::make_shared<XLinkConnection>(devInfo, getDefaultCmdBinary(false));
@@ -123,9 +114,7 @@ void Device::init() {
 
         try {
             conn->openStream(streamName, 128);
-            struct ts {
-                int64_t sec, nsec;
-            } timestamp;
+            Timestamp timestamp = {};
             while(timesyncRunning) {
                 // Block
                 conn->readFromStream(streamName);
@@ -256,29 +245,33 @@ std::vector<std::uint8_t> Device::getDefaultCmdBinary(bool usb2Mode) {
 // Binaries are resource compiled
 #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
 
+    constexpr static auto CMRC_DEPTHAI_CMD_PATH = "depthai.cmd";
+
     // Get binaries from internal sources
     auto fs = cmrc::depthai::get_filesystem();
 
     if(usb2Mode) {
     #ifdef DEPTHAI_PATCH_ONLY_MODE
 
+        constexpr static auto CMRC_DEPTHAI_USB2_PATCH_PATH = "depthai-usb2-patch.patch";
+
         // Get size of original
-        auto depthai_binary = fs.open(CMRC_DEPTHAI_CMD_PATH);
+        auto depthaiBinary = fs.open(CMRC_DEPTHAI_CMD_PATH);
 
         // Open patch
-        auto depthai_usb2_patch = fs.open(CMRC_DEPTHAI_USB2_PATCH_PATH);
+        auto depthaiUsb2Patch = fs.open(CMRC_DEPTHAI_USB2_PATCH_PATH);
 
         // Get new size
-        int64_t patched_size = bspatch_mem_get_newsize(reinterpret_cast<const uint8_t*>(depthai_usb2_patch.begin()), depthai_usb2_patch.size());
+        int64_t patchedSize = bspatch_mem_get_newsize(reinterpret_cast<const uint8_t*>(depthaiUsb2Patch.begin()), depthaiUsb2Patch.size());
 
         // Reserve space for patched binary
-        finalCmd.resize(patched_size);
+        finalCmd.resize(patchedSize);
 
         // Patch
-        int error = bspatch_mem(reinterpret_cast<const uint8_t*>(depthai_binary.begin()),
-                                depthai_binary.size(),
-                                reinterpret_cast<const uint8_t*>(depthai_usb2_patch.begin()),
-                                depthai_usb2_patch.size(),
+        int error = bspatch_mem(reinterpret_cast<const uint8_t*>(depthaiBinary.begin()),
+                                depthaiBinary.size(),
+                                reinterpret_cast<const uint8_t*>(depthaiUsb2Patch.begin()),
+                                depthaiUsb2Patch.size(),
                                 finalCmd.data());
 
         // if patch not successful
@@ -286,14 +279,15 @@ std::vector<std::uint8_t> Device::getDefaultCmdBinary(bool usb2Mode) {
 
     #else
 
-        auto depthai_usb2_binary = fs.open(CMRC_DEPTHAI_USB2_CMD_PATH);
-        finalCmd = std::vector<std::uint8_t>(depthai_usb2_binary.begin(), depthai_usb2_binary.end());
+        constexpr static auto CMRC_DEPTHAI_USB2_CMD_PATH = "depthai-usb2.cmd";
+        auto depthaiUsb2Binary = fs.open(CMRC_DEPTHAI_USB2_CMD_PATH);
+        finalCmd = std::vector<std::uint8_t>(depthaiUsb2Binary.begin(), depthaiUsb2Binary.end());
 
     #endif
 
     } else {
-        auto depthai_binary = fs.open(CMRC_DEPTHAI_CMD_PATH);
-        finalCmd = std::vector<std::uint8_t>(depthai_binary.begin(), depthai_binary.end());
+        auto depthaiBinary = fs.open(CMRC_DEPTHAI_CMD_PATH);
+        finalCmd = std::vector<std::uint8_t>(depthaiBinary.begin(), depthaiBinary.end());
     }
 
 #else

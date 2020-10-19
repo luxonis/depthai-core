@@ -14,7 +14,8 @@ class ADatatype {
     std::shared_ptr<RawBuffer> raw;
 
    public:
-    ADatatype(std::shared_ptr<RawBuffer> r) : raw(r) {}
+    explicit ADatatype(std::shared_ptr<RawBuffer> r) : raw(std::move(r)) {}
+    virtual ~ADatatype() = default;
     std::shared_ptr<RawBuffer> getRaw() {
         return raw;
     }

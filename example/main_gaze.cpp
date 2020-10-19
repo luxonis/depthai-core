@@ -412,6 +412,7 @@ cv::Vec3d runGaze(cv::Mat leftEye, cv::Mat rightEye, cv::Vec3d pose, cv::Mat deb
     cv::arrowedLine(debugFrame, {origin_x_le, origin_y_le}, {origin_x_le + x, origin_y_le - y}, (255, 0, 255), 3);
     cv::arrowedLine(debugFrame, {origin_x_re, origin_y_re}, {origin_x_re + x, origin_y_re - y}, (255, 0, 255), 3);
     
+    std::cout << "[" << gaze[0] << ", " << gaze[1] << ", " << gaze[2] << "]" << std::endl;
 
     return g;
 
@@ -431,7 +432,7 @@ int main(int argc, char** argv){
         // CONNECT TO DEVICE
         bool found;
         dai::DeviceInfo deviceInfo;
-        std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_BOOTED);
+        std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
         dai::Device device(deviceInfo);
         
         

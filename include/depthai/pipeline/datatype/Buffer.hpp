@@ -13,8 +13,8 @@ class Buffer : public ADatatype {
 
    public:
     Buffer();
-    Buffer(std::shared_ptr<dai::RawBuffer> ptr);
-    ~Buffer() = default;
+    explicit Buffer(std::shared_ptr<dai::RawBuffer> ptr);
+    virtual ~Buffer() = default;
 
     // helpers
     std::vector<std::uint8_t>& getData();

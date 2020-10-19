@@ -16,10 +16,10 @@
 #include <XLinkPublicDefines.h>
 
 // Shared
-#include "depthai-shared/general/data_observer.hpp"
-#include "depthai-shared/general/data_subject.hpp"
-#include "depthai-shared/stream/stream_data.hpp"
-#include "depthai-shared/stream/stream_info.hpp"
+//#include "depthai-shared/general/data_observer.hpp"
+//#include "depthai-shared/general/data_subject.hpp"
+//#include "depthai-shared/stream/stream_data.hpp"
+//#include "depthai-shared/stream/stream_info.hpp"
 
 namespace dai {
 

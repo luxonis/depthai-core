@@ -16,8 +16,8 @@ class NNData : public Buffer {
 
    public:
     NNData();
-    NNData(std::shared_ptr<RawNNData> ptr);
-    ~NNData() = default;
+    explicit NNData(std::shared_ptr<RawNNData> ptr);
+    virtual ~NNData() = default;
 
     // store the data
     // uint8_t
@@ -35,17 +35,19 @@ class NNData : public Buffer {
     void setLayer(const std::string& name, std::vector<double> data);
 
     // getters
-    bool getLayer(const std::string& name, TensorInfo& tensor);
-    bool hasLayer(const std::string& name);
-    bool getLayerDatatype(const std::string& name, TensorInfo::DataType& datatype);
+    std::vector<std::string> getAllLayerNames() const;
+    std::vector<TensorInfo> getAllLayers() const;
+    bool getLayer(const std::string& name, TensorInfo& tensor) const;
+    bool hasLayer(const std::string& name) const;
+    bool getLayerDatatype(const std::string& name, TensorInfo::DataType& datatype) const;
     // uint8
-    std::vector<std::uint8_t> getLayerUInt8(const std::string& name);
+    std::vector<std::uint8_t> getLayerUInt8(const std::string& name) const;
     // fp16
-    std::vector<float> getLayerFp16(const std::string& name);
+    std::vector<float> getLayerFp16(const std::string& name) const;
 
     // first layer
-    std::vector<std::uint8_t> getFirstLayerUInt8();
-    std::vector<float> getFirstLayerFp16();
+    std::vector<std::uint8_t> getFirstLayerUInt8() const;
+    std::vector<float> getFirstLayerFp16() const;
 };
 
 }  // namespace dai

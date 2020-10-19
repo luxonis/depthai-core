@@ -3,6 +3,7 @@
 #include <XLink.h>
 
 #include <array>
+#include <cassert>
 #include <chrono>
 #include <iostream>
 #include <thread>

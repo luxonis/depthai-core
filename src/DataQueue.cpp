@@ -8,7 +8,7 @@
 
 namespace dai {
 
-DataOutputQueue::DataOutputQueue(std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize, bool overwrite)
+DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize, bool overwrite)
     : pQueue(std::make_shared<LockingQueue<std::shared_ptr<ADatatype>>>(maxSize, overwrite)),
       queue(*pQueue),
       pRunning(std::make_shared<std::atomic<bool>>(true)),
@@ -72,7 +72,7 @@ DataOutputQueue::~DataOutputQueue() {
     readingThread.detach();
 }
 
-DataInputQueue::DataInputQueue(std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize, bool overwrite)
+DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize, bool overwrite)
     : pQueue(std::make_shared<LockingQueue<std::shared_ptr<RawBuffer>>>(maxSize, overwrite)),
       queue(*pQueue),
       pRunning(std::make_shared<std::atomic<bool>>(true)),

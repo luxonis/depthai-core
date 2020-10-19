@@ -75,9 +75,6 @@ add_library(${TARGET_NAME}
     src/xlink/XLinkConnection.cpp
     src/DataQueue.cpp
     src/CallbackHandler.cpp
-    src/pipeline/cnn_host_pipeline.cpp
-    src/pipeline/host_pipeline_config.cpp
-    src/pipeline/host_pipeline.cpp
     src/pipeline/AssetManager.cpp
     src/pipeline/Node.cpp
     src/pipeline/node/XLinkIn.cpp
@@ -90,14 +87,19 @@ add_library(${TARGET_NAME}
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/NNData.cpp
     src/pipeline/datatype/StreamPacketParser.cpp
-    src/host_capture_command.cpp
-    src/device_support_listener.cpp
-    src/disparity_stream_post_processor.cpp
-    src/host_data_reader.cpp
-    src/host_json_helper.cpp
-    src/types.cpp
     src/Device.cpp
     src/bspatch/bspatch.c
+    
+
+    #src/pipeline/cnn_host_pipeline.cpp
+    #src/pipeline/host_pipeline_config.cpp
+    #src/pipeline/host_pipeline.cpp
+    #src/host_capture_command.cpp
+    #src/device_support_listener.cpp
+    #src/disparity_stream_post_processor.cpp
+    #src/host_data_reader.cpp
+    #src/host_json_helper.cpp
+    #src/types.cpp
 )
 
 # Add aditional flags

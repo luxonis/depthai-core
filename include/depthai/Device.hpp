@@ -8,13 +8,7 @@
 // project
 #include "CallbackHandler.hpp"
 #include "DataQueue.hpp"
-#include "device_support_listener.hpp"
-#include "disparity_stream_post_processor.hpp"
-#include "host_capture_command.hpp"
-#include "nlohmann/json.hpp"
 #include "pipeline/Pipeline.hpp"
-#include "pipeline/cnn_host_pipeline.hpp"
-#include "pipeline/host_pipeline.hpp"
 #include "xlink/XLinkConnection.hpp"
 
 // libraries
@@ -47,18 +41,17 @@ class Device {
     // callback
     void setCallback(const std::string& name, std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb);
 
-    std::vector<std::string> get_available_streams();
-
-    void request_jpeg();
-    void request_af_trigger();
-    void request_af_mode(CaptureMetadata::AutofocusMode mode);
-    std::map<std::string, int> get_nn_to_depth_bbox_mapping();
-
     bool startTestPipeline(int testId);
+
+    // std::vector<std::string> get_available_streams();
+    // void request_jpeg();
+    // void request_af_trigger();
+    // void request_af_mode(CaptureMetadata::AutofocusMode mode);
+    // std::map<std::string, int> get_nn_to_depth_bbox_mapping();
 
    private:
     // private static
-    static std::vector<std::uint8_t> getDefaultCmdBinary(bool usb2_mode);
+    static std::vector<std::uint8_t> getDefaultCmdBinary(bool usb2Mode);
 
     void init();
 
@@ -72,9 +65,6 @@ class Device {
     std::unordered_map<std::string, std::shared_ptr<DataOutputQueue>> outputQueueMap;
     std::unordered_map<std::string, std::shared_ptr<DataInputQueue>> inputQueueMap;
     std::unordered_map<std::string, CallbackHandler> callbackMap;
-
-    // XLink timeouts
-    const std::chrono::milliseconds READ_WRITE_TIMEOUT{500};
 
     // Watchdog thread
     std::thread watchdogThread;
