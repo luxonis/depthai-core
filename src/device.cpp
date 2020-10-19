@@ -201,13 +201,10 @@ bool Device::init_device(
 
         g_xlink = std::unique_ptr<XLinkWrapper>(new XLinkWrapper(true));
 
-        
         if(binary != nullptr && binary_size != 0){
             if (!g_xlink->initFromHostSide(
                 &g_xlink_global_handler,
                 &g_xlink_device_handler,
-                usb_speed,
-                mx_serial,
                 binary, binary_size,
                 usb_device,
                 true)
@@ -220,8 +217,6 @@ bool Device::init_device(
             if (!g_xlink->initFromHostSide(
                 &g_xlink_global_handler,
                 &g_xlink_device_handler,
-                usb_speed,
-                mx_serial,
                 device_cmd_file,
                 usb_device,
                 true)
@@ -232,9 +227,11 @@ bool Device::init_device(
             }
         }
 
-        std::cout <<"Here is usb speed as string in device.cpp: " << usb_speed << std::endl;
-        std::cout <<"Here is Mx serial id as string in device.cpp: " << mx_serial << std::endl;
-
+        usb_speed = g_xlink->getUSBSpeed();
+        mx_serial = g_xlink->getMxSerial();
+        std::cout <<"Usb speed : " << usb_speed << std::endl;
+        std::cout <<"Mx serial id : " << mx_serial << std::endl;
+        
         g_xlink->setWatchdogUpdateFunction(std::bind(&Device::wdog_keepalive, this));
         wdog_start();
 
