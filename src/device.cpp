@@ -650,6 +650,8 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
 
         // read tensor info
         std::vector<dai::TensorInfo>       tensors_info_output, tensors_info_input;
+        std::vector<nlohmann::json>        NN_config;
+
         std::cout << config.ai.blob_file_config << std::endl;
         std::ifstream jsonFile(config.ai.blob_file_config);
 
@@ -662,13 +664,26 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
         if(!json_NN_.contains("NN_config"))
         {
             std::cout << "No NN config provided, defaulting to \"raw\" output format!" << std::endl;
-            json_NN_meta["NN_config"]["output_format"] = "raw";
+            json_NN_meta["output_format"] = "raw";
         }
         else
         {
             json_NN_meta = json_NN_["NN_config"];
         }
 
+        //stage 2 is always "raw"
+        nlohmann::json json_NN_meta_stage2;
+        json_NN_meta_stage2["output_format"] = "raw";
+
+        nlohmann::json NN_config_stage[2] = {json_NN_meta, json_NN_meta_stage2};
+
+        if(num_stages == 2)
+        {
+            if(NN_config_stage[0]["output_format"] != std::string("detection"))
+            {
+                throw std::runtime_error("In case of 2 stage inference the first stage network must have [\"NN_config\"][\"output_format\"] set to detection!");
+            }
+        }
 
         // pipeline configurations json
         // homography
@@ -1055,6 +1070,8 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
                     std::cout << _tensors_info_output << std::endl;
                     
                     tensors_info_output.push_back(_tensors_info_output);
+
+                    NN_config.push_back(NN_config_stage[stage]);
                 }
 
                 int satisfied_resources = blob_info["metadata"]["satisfied_resources"];
@@ -1146,7 +1163,7 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
 
         // pipeline
         if(gl_result == nullptr)
-            gl_result = std::shared_ptr<CNNHostPipeline>(new CNNHostPipeline(tensors_info_input, tensors_info_output));
+            gl_result = std::shared_ptr<CNNHostPipeline>(new CNNHostPipeline(tensors_info_input, tensors_info_output, NN_config));
 
         for (const std::string &stream_name : pipeline_device_streams)
         {

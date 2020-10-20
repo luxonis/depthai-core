@@ -14,7 +14,7 @@ std::list<std::shared_ptr<NNetPacket>> CNNHostPipeline::getConsumedNNetPackets()
     {
         if ((packet->size() > 0) && (packet->stream_name == cnn_result_stream_name))
         {
-            std::shared_ptr<NNetPacket> tensor_result = std::make_shared<NNetPacket>(packet, _input_tensors_info, _output_tensors_info);
+            std::shared_ptr<NNetPacket> tensor_result = std::make_shared<NNetPacket>(packet, _input_tensors_info, _output_tensors_info, _NN_config);
             result.push_back(tensor_result);
         }
     }
