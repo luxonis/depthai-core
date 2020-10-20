@@ -227,10 +227,10 @@ bool Device::init_device(
             }
         }
 
-        usb_speed = g_xlink->getUSBSpeed();
-        mx_serial = g_xlink->getMxSerial();
-        std::cout <<"Usb speed : " << usb_speed << std::endl;
-        std::cout <<"Mx serial id : " << mx_serial << std::endl;
+        // usb_speed = 
+        // mx_serial =
+        std::cout <<"Usb speed : " << g_xlink->getUSBSpeed() << std::endl;
+        std::cout <<"Mx serial id : " << g_xlink->getMxSerial() << std::endl;
         
         g_xlink->setWatchdogUpdateFunction(std::bind(&Device::wdog_keepalive, this));
         wdog_start();
@@ -604,7 +604,8 @@ std::vector<std::vector<float>> Device::get_right_homography()
 
 bool Device::is_usb3()
 {
-        if(usb_speed.find("Super") != std::string::npos)
+        // if(usb_speed.find("Super") != std::string::npos)
+        if(g_xlink->getUSBSpeed().find("Super") != std::string::npos)    
             return true;
         else
             return false;
@@ -1275,11 +1276,13 @@ if(g_host_capture_command != nullptr){
 }
 
 std::string Device::get_mx_id(){
-    if(mx_serial.empty()){
+    // if(mx_serial.empty()){
+    std::string val =  g_xlink->getMxSerial();
+    if(val.empty()){
         std::cerr << "Serial id Not found!" << std::endl;
-        return "Not Found";
+        return "";
     }
-    return mx_serial;
+    return val;
 }
 
 void Device::request_af_trigger(){

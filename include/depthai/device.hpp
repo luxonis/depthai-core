@@ -108,8 +108,8 @@ private:
     std::string usb_device_backup;
     uint8_t* binary_backup;
     long binary_size_backup;
-    std::string usb_speed;
-    std::string mx_serial;
+    // std::string usb_speed;
+    // std::string mx_serial;
     
     int wdog_thread_alive = 1;
 
