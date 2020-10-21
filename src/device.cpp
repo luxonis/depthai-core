@@ -701,6 +701,7 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
         else
         {
             HostDataReader calibration_reader;
+            std::cout << "Calibration file path is ->" << config.depth.calibration_file << std::endl;
             if (!calibration_reader.init(config.depth.calibration_file))
             {
                 std::cerr << WARNING "depthai: Error opening calibration file: " << config.depth.calibration_file << "\n" ENDC;
