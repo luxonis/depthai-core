@@ -43,7 +43,10 @@ public:
     std::vector<std::vector<float>> get_right_homography();
     std::vector<std::vector<float>> get_rotation();
     std::vector<float> get_translation();
+    std::string get_mx_id();
 
+    bool is_usb3();
+    bool is_eeprom_loaded();
     void request_jpeg();
     void request_af_trigger();
     void request_af_mode(CaptureMetadata::AutofocusMode mode);
@@ -105,7 +108,8 @@ private:
     std::string usb_device_backup;
     uint8_t* binary_backup;
     long binary_size_backup;
-    std::string usb_speed;
+    // std::string usb_speed;
+    // std::string mx_serial;
     
     int wdog_thread_alive = 1;
 

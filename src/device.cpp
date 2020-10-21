@@ -201,7 +201,6 @@ bool Device::init_device(
 
         g_xlink = std::unique_ptr<XLinkWrapper>(new XLinkWrapper(true));
 
-        
         if(binary != nullptr && binary_size != 0){
             if (!g_xlink->initFromHostSide(
                 &g_xlink_global_handler,
@@ -230,8 +229,11 @@ bool Device::init_device(
             }
         }
 
-        std::cout <<"Here is usb speed as string in device.cpp: " << usb_speed << std::endl;
-
+        // usb_speed = 
+        // mx_serial =
+        std::cout <<"Usb speed : " << g_xlink->getUSBSpeed() << std::endl;
+        std::cout <<"Mx serial id : " << g_xlink->getMxSerial() << std::endl;
+        
         g_xlink->setWatchdogUpdateFunction(std::bind(&Device::wdog_keepalive, this));
         wdog_start();
 
@@ -560,6 +562,11 @@ std::vector<std::string> Device::get_available_streams()
     return result;
 }
 
+bool Device::is_eeprom_loaded(){
+    if(M1_l.empty() && M2_r.empty()) return false;
+    else return true;
+}
+
 
 std::vector<std::vector<float>> Device::get_left_intrinsic()
 {
@@ -595,6 +602,15 @@ std::vector<std::vector<float>> Device::get_right_homography()
 {
         return H2_r;
     
+}
+
+bool Device::is_usb3()
+{
+        // if(usb_speed.find("Super") != std::string::npos)
+        if(g_xlink->getUSBSpeed().find("Super") != std::string::npos)    
+            return true;
+        else
+            return false;
 }
 
 std::vector<std::vector<float>> Device::get_rotation()
@@ -687,6 +703,7 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
         else
         {
             HostDataReader calibration_reader;
+            std::cout << "Calibration file path is ->" << config.depth.calibration_file << std::endl;
             if (!calibration_reader.init(config.depth.calibration_file))
             {
                 std::cerr << WARNING "depthai: Error opening calibration file: " << config.depth.calibration_file << "\n" ENDC;
@@ -1260,6 +1277,16 @@ void Device::request_jpeg(){
 if(g_host_capture_command != nullptr){
         g_host_capture_command->capture();
     }
+}
+
+std::string Device::get_mx_id(){
+    // if(mx_serial.empty()){
+    std::string val =  g_xlink->getMxSerial();
+    if(val.empty()){
+        std::cerr << "Serial id Not found!" << std::endl;
+        return "";
+    }
+    return val;
 }
 
 void Device::request_af_trigger(){
