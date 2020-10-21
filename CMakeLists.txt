@@ -21,9 +21,6 @@ project(${TARGET_NAME} VERSION "0.0.2" LANGUAGES CXX C)
 # Set to export compile commands for tools like clang-tidy and format
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-### Dependency options
-option(DEPTHAI_BOOST_LOCAL "Use locally installed boost libraries" OFF)
-
 # Additional options
 option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON )
 option(DEPTHAI_CLANG_TIDY   "Enable clang-tidy checks during compilation" OFF)
@@ -35,8 +32,8 @@ hunter_add_package(nlohmann_json)
 find_package(nlohmann_json CONFIG REQUIRED)
 
 # json schema validator
-hunter_add_package(nlohmann_json_schema_validator)
-find_package(nlohmann_json_schema_validator CONFIG REQUIRED)
+# hunter_add_package(nlohmann_json_schema_validator)
+# find_package(nlohmann_json_schema_validator CONFIG REQUIRED)
 
 # XLink
 hunter_add_package(XLink)
@@ -46,11 +43,6 @@ find_package(XLink CONFIG REQUIRED)
 hunter_add_package(BZip2)
 find_package(BZip2 CONFIG REQUIRED)
 
-# Boost
-if(NOT DEPTHAI_BOOST_LOCAL)
-    hunter_add_package(Boost)
-    find_package(Boost CONFIG REQUIRED)
-endif()
 
 # FP16 for conversions
 hunter_add_package(FP16)
@@ -236,20 +228,12 @@ endif()
 target_link_libraries(${TARGET_NAME}
     PUBLIC
         nlohmann_json::nlohmann_json
-        nlohmann_json_schema_validator
         XLink
     PRIVATE
         Threads::Threads
         BZip2::bz2
         FP16::fp16
 )
-
-if(NOT DEPTHAI_BOOST_LOCAL)
-    target_link_libraries(${TARGET_NAME}
-        PUBLIC
-            Boost::boost
-    )
-endif()
 
 
 # Add definition that it is PC side (XLink)

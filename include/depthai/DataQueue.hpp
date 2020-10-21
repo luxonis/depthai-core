@@ -23,12 +23,15 @@ class DataOutputQueue {
     std::atomic<bool>& running;
     std::shared_ptr<std::string> pExceptionMessage;
     std::string& exceptionMessage;
+    std::string streamName;
 
     // const std::chrono::milliseconds READ_TIMEOUT{500};
 
    public:
     DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize = 60, bool overwrite = false);
     ~DataOutputQueue();
+
+    std::string getName() const;
 
     template <class T>
     bool has() {
@@ -113,10 +116,13 @@ class DataInputQueue {
     std::atomic<bool>& running;
     std::shared_ptr<std::string> pExceptionMessage;
     std::string& exceptionMessage;
+    std::string streamName;
 
    public:
     DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize = 60, bool overwrite = false);
     ~DataInputQueue();
+
+    std::string getName() const;
 
     void send(const std::shared_ptr<RawBuffer>& val);
     void send(const std::shared_ptr<ADatatype>& val);

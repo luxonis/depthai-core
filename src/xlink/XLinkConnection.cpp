@@ -9,8 +9,6 @@
 #include <thread>
 #include <vector>
 
-#include "XLinkLog.h"
-
 namespace dai {
 
 // STATIC
@@ -29,7 +27,13 @@ void XLinkConnection::initXLinkGlobal() {
     }
 
     // Suppress XLink related errors
-    mvLogDefaultLevelSet(MVLOG_FATAL);
+    // TODO(themarpe) - XLinkLog.h for Windows caueses issues
+    // FUNCATTR_WEAK static, causes log level symbols to not be accessible
+    // Closest alternative for weak linking in MSVC is: __declspec(selectany)
+
+    // mvLogDefaultLevelSet(MVLOG_FATAL);
+    // extern int mvLogLevel_default;
+    // mvLogLevel_default = 4; // MVLOG_FATAL
 
     xlinkGlobalInitialized = true;
 }
@@ -259,7 +263,7 @@ streamPacketDesc_t* XLinkConnection::readFromStreamRaw(const std::string& stream
     streamPacketDesc_t* pPacket = nullptr;
     auto status = XLinkReadData(streamIdMap[streamName], &pPacket);
     if(status != X_LINK_SUCCESS) {
-        throw std::runtime_error("Error while reading data from xlink channel: " + streamName);
+        throw std::runtime_error("Error while reading data from xlink channel: " + streamName + " (" + XLinkErrorToStr(status) + ")");
     }
     return pPacket;
 }
