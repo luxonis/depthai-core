@@ -17,14 +17,15 @@ private:
 
     const std::vector<dai::TensorInfo>   _input_tensors_info;
     const std::vector<dai::TensorInfo>   _output_tensors_info;
-
+    const std::vector<nlohmann::json>    _NN_config;
 
     std::list<std::shared_ptr<NNetPacket>> getConsumedNNetPackets();
 
 public:
-    CNNHostPipeline(const std::vector<dai::TensorInfo>& input_tensors_info, const std::vector<dai::TensorInfo>& output_tensors_info)
+    CNNHostPipeline(const std::vector<dai::TensorInfo>& input_tensors_info, const std::vector<dai::TensorInfo>& output_tensors_info, const std::vector<nlohmann::json>& NN_config)
         : _input_tensors_info(input_tensors_info)
         , _output_tensors_info(output_tensors_info)
+        , _NN_config(NN_config)
     {}
     virtual ~CNNHostPipeline() {}
 
