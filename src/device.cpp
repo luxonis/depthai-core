@@ -107,7 +107,13 @@ Device::~Device(){
     deinit_device();
 }
 
+bool Device::is_device_changed(){
+    return device_changed;
+}
 
+void Device::reset_device_changed(){
+    device_changed = false;
+}
 
 void Device::wdog_thread(std::chrono::milliseconds& wd_timeout)
 {
@@ -128,6 +134,7 @@ void Device::wdog_thread(std::chrono::milliseconds& wd_timeout)
         if(wdog_keep == 0 && wdog_thread_alive == 1)
         {
             std::cout << "watchdog triggered " << std::endl;
+            device_changed = true;
             soft_deinit_device();
             bool init;
             for(int retry = 0; retry < 1; retry++)

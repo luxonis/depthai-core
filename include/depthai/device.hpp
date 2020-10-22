@@ -54,7 +54,8 @@ public:
     void send_camera_control(CameraControl::CamId camera_id,
             CameraControl::Command command_id,
             const std::string &extra_args);
-
+    bool is_device_changed();
+    void reset_device_changed();
     std::map<std::string, int> get_nn_to_depth_bbox_mapping();
 
 private:
@@ -102,7 +103,7 @@ private:
     std::vector<float> d1_l;
     std::vector<float> d2_r;
     int32_t version;
-
+    bool device_changed = false;
     std::string config_backup;
     std::string cmd_backup;
     std::string usb_device_backup;
