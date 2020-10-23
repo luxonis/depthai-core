@@ -47,6 +47,12 @@ public:
 
     bool is_usb3();
     bool is_eeprom_loaded();
+    bool is_rgb_connected();
+    bool is_left_connected();
+    bool is_right_connected();
+    bool is_device_changed();
+
+    void reset_device_changed();
     void request_jpeg();
     void request_af_trigger();
     void request_af_mode(CaptureMetadata::AutofocusMode mode);
@@ -54,8 +60,7 @@ public:
     void send_camera_control(CameraControl::CamId camera_id,
             CameraControl::Command command_id,
             const std::string &extra_args);
-    bool is_device_changed();
-    void reset_device_changed();
+
     std::map<std::string, int> get_nn_to_depth_bbox_mapping();
 
 private:
@@ -103,7 +108,7 @@ private:
     std::vector<float> d1_l;
     std::vector<float> d2_r;
     int32_t version;
-    bool device_changed = false;
+    bool device_changed = true;
     std::string config_backup;
     std::string cmd_backup;
     std::string usb_device_backup;

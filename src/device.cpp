@@ -115,6 +115,19 @@ void Device::reset_device_changed(){
     device_changed = false;
 }
 
+bool Device::is_rgb_connected(){
+    return g_config_d2h.at("_cams").at("rgb").get<bool>();
+}
+
+bool Device::is_left_connected(){
+    return g_config_d2h.at("_cams").at("left").get<bool>();
+}
+
+bool Device::is_right_connected(){
+    return g_config_d2h.at("_cams").at("right").get<bool>();
+}
+
+
 void Device::wdog_thread(std::chrono::milliseconds& wd_timeout)
 {
     std::cout << "watchdog started " << std::endl;
