@@ -42,9 +42,7 @@ void HostPipeline::onNewData(
         new HostDataPacket(
             data.size,
             data.data,
-            info.name,
-            info.getDimensionsForSize(data.size),
-            info.elem_size
+            info
             ));
 
     if (!_data_queue_lf.push(host_data))

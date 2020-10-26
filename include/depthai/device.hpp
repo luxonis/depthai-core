@@ -6,6 +6,7 @@
 
 //shared
 #include "depthai-shared/xlink/xlink_wrapper.hpp"
+#include "depthai-shared/metadata/camera_control.hpp"
 
 //project
 #include "nlohmann/json.hpp"
@@ -36,11 +37,20 @@ public:
     );
     std::vector<std::string> get_available_streams();
 
+    std::vector<std::vector<float>> get_left_intrinsic();
+    std::vector<std::vector<float>> get_left_homography();
+    std::vector<std::vector<float>> get_right_intrinsic();
+    std::vector<std::vector<float>> get_right_homography();
+    std::vector<std::vector<float>> get_rotation();
+    std::vector<float> get_translation();
 
     void request_jpeg();
     void request_af_trigger();
     void request_af_mode(CaptureMetadata::AutofocusMode mode);
     void send_disparity_confidence_threshold(uint8_t confidence);
+    void send_camera_control(CameraControl::CamId camera_id,
+            CameraControl::Command command_id,
+            const std::string &extra_args);
 
     std::map<std::string, int> get_nn_to_depth_bbox_mapping();
 
@@ -53,6 +63,7 @@ private:
     void wdog_thread(std::chrono::milliseconds& wd_timeout);
     int wdog_start(void);
     int wdog_stop(void);
+
 
     bool init_device(
         const std::string &device_cmd_file,
@@ -77,7 +88,17 @@ private:
 
 
     std::shared_ptr<CNNHostPipeline> gl_result = nullptr;
-
+    std::vector<std::vector<float>> R1_l;
+    std::vector<std::vector<float>> R2_r;
+    std::vector<std::vector<float>> H1_l;
+    std::vector<std::vector<float>> H2_r;
+    std::vector<std::vector<float>> M1_l;
+    std::vector<std::vector<float>> M2_r;
+    std::vector<std::vector<float>> R;
+    std::vector<float> T;
+    std::vector<float> d1_l;
+    std::vector<float> d2_r;
+    int32_t version;
 
     std::string config_backup;
     std::string cmd_backup;

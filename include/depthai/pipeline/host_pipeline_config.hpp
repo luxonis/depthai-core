@@ -21,10 +21,18 @@ struct HostPipelineConfig
 
     struct Depth {
         std::string calibration_file;
+        std::string left_mesh_file;
+        std::string right_mesh_file;
         std::string type;
         float       padding_factor = 0.3f;
         float       depth_limit_m = 10.0f;
-        float       confidence_threshold = 0.5f;
+        uint8_t     median_kernel_size = 7;
+        bool        lr_check = false;
+        struct WarpRectify {
+            bool use_mesh = false;
+            bool mirror_frame = true;
+            int16_t edge_fill_color = -1; // 0..255, or -1 to replicate pixels
+        } warp;
     } depth;
 
     struct AI
@@ -79,6 +87,8 @@ struct HostPipelineConfig
     struct AppConfig
     {
         bool sync_video_meta_streams = false;
+        bool sync_sequence_numbers = false;
+        uint32_t usb_chunk_KiB = 64; // Increase to improve throughput, 0 to disable chunking
     } app_config;
 
     bool initWithJSON(const nlohmann::json &json_obj);
