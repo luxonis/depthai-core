@@ -13,4 +13,5 @@ public:
     bool     init     (const std::string& file_path);
     unsigned getSize  ();
     unsigned readData (unsigned char* buffer, unsigned read_size);
+    void     closeFile();
 };

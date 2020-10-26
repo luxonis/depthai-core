@@ -28,3 +28,7 @@ unsigned HostDataReader::readData(unsigned char* buffer, unsigned read_size)
     _file.read(reinterpret_cast<char *>(buffer), read_size);
     return _file.gcount();
 }
+
+void HostDataReader::closeFile(){
+    _file.close();
+}

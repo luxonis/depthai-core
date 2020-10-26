@@ -73,6 +73,14 @@ bool HostPipelineConfig::initWithJSON(const nlohmann::json &json_obj)
             {
                 depth.calibration_file = depth_obj.at("calibration_file").get<std::string>();
             }
+            //mesh file for rectification in left camera
+            if(depth_obj.contains("left_mesh_file")){
+                depth.left_mesh_file = depth_obj.at("left_mesh_file").get<std::string>();
+            }
+            //mesh file for rectification in right camera
+            if(depth_obj.contains("right_mesh_file")){
+                depth.right_mesh_file = depth_obj.at("right_mesh_file").get<std::string>();
+            }
 
             // "type"
             if (depth_obj.contains("type"))
@@ -99,13 +107,38 @@ bool HostPipelineConfig::initWithJSON(const nlohmann::json &json_obj)
 
             if (depth_obj.contains("confidence_threshold"))
             {
-                depth.confidence_threshold = depth_obj.at("confidence_threshold").get<float>();
+                throw std::runtime_error("Field \"confidence_threshold\" for depth has been moved to network config. See https://docs.luxonis.com/api/#creating-blob-configuration-file");
+            }
 
-                if (depth.confidence_threshold < 0.f || depth.confidence_threshold > 1.f)
+            if (depth_obj.contains("median_kernel_size"))
+            {
+                depth.median_kernel_size = depth_obj.at("median_kernel_size").get<uint8_t>();
+                uint8_t opts[] = {0, 3, 5, 7};
+
+                if (std::find(std::begin(opts), std::end(opts), depth.median_kernel_size) == std::end(opts))
                 {
-                    std::cerr << WARNING "confidence_threshold should be in the range [0 .. 1]\n" ENDC;
+                    std::cerr << WARNING "median_kernel_size valid options: 0 (disabled), 3, 5, 7\n" ENDC;
                     break;
                 }
+            }
+
+            if (depth_obj.contains("lr_check"))
+            {
+                depth.lr_check = depth_obj.at("lr_check").get<bool>();
+            }
+
+            if (depth_obj.contains("warp_rectify"))
+            {
+                auto& warp_obj = depth_obj.at("warp_rectify");
+
+                if (warp_obj.contains("use_mesh"))
+                    depth.warp.use_mesh = warp_obj.at("use_mesh").get<bool>();
+
+                if (warp_obj.contains("mirror_frame"))
+                    depth.warp.mirror_frame = warp_obj.at("mirror_frame").get<bool>();
+
+                if (warp_obj.contains("edge_fill_color"))
+                    depth.warp.edge_fill_color = warp_obj.at("edge_fill_color").get<int16_t>();
             }
         }
 
@@ -306,13 +339,6 @@ bool HostPipelineConfig::initWithJSON(const nlohmann::json &json_obj)
                     break;
                 }
             }
-            // Defaults if the resolution width is not specified
-            if (rgb_cam_config.resolution_w == 0) {
-                if (rgb_cam_config.resolution_h == 1080)
-                    rgb_cam_config.resolution_w =  1920;
-                if (rgb_cam_config.resolution_h == 2160)
-                    rgb_cam_config.resolution_w =  3840;
-            }
 
             if (camera_conf_obj.contains("mono"))
             {
@@ -335,13 +361,23 @@ bool HostPipelineConfig::initWithJSON(const nlohmann::json &json_obj)
                     break;
                 }
             }
-            // Defaults if the resolution width is not specified
-            if (mono_cam_config.resolution_w == 0) {
-                if (mono_cam_config.resolution_h == 400)
-                    mono_cam_config.resolution_w =  640;
-                if (mono_cam_config.resolution_h == 720 || mono_cam_config.resolution_h == 800)
-                    mono_cam_config.resolution_w = 1280;
-            }
+
+        }
+
+        // Defaults if the resolution width is not specified
+        if (rgb_cam_config.resolution_w == 0) {
+            if (rgb_cam_config.resolution_h == 1080)
+                rgb_cam_config.resolution_w =  1920;
+            if (rgb_cam_config.resolution_h == 2160)
+                rgb_cam_config.resolution_w =  3840;
+        }
+
+        // Defaults if the resolution width is not specified
+        if (mono_cam_config.resolution_w == 0) {
+            if (mono_cam_config.resolution_h == 400)
+                mono_cam_config.resolution_w =  640;
+            if (mono_cam_config.resolution_h == 720 || mono_cam_config.resolution_h == 800)
+                mono_cam_config.resolution_w = 1280;
         }
 
         if (json_obj.contains("app"))
@@ -351,6 +387,16 @@ bool HostPipelineConfig::initWithJSON(const nlohmann::json &json_obj)
             if (app_conf_obj.contains("sync_video_meta_streams"))
             {
                 app_config.sync_video_meta_streams = app_conf_obj.at("sync_video_meta_streams").get<bool>();
+            }
+
+            if (app_conf_obj.contains("sync_sequence_numbers"))
+            {
+                app_config.sync_sequence_numbers = app_conf_obj.at("sync_sequence_numbers").get<bool>();
+            }
+
+            if (app_conf_obj.contains("usb_chunk_KiB"))
+            {
+                app_config.usb_chunk_KiB = app_conf_obj.at("usb_chunk_KiB").get<uint32_t>();
             }
         }
 
