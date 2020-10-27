@@ -976,6 +976,7 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
         json_config_obj["app"]["sync_video_meta_streams"] = config.app_config.sync_video_meta_streams;
         json_config_obj["app"]["sync_sequence_numbers"] = config.app_config.sync_sequence_numbers;
         json_config_obj["app"]["usb_chunk_KiB"] = config.app_config.usb_chunk_KiB;
+        json_config_obj["app"]["enable_reconfig"] = config.app_config.enable_reconfig;
 
         bool add_disparity_post_processing_color = false;
         bool temp_measurement = false;
