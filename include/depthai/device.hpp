@@ -94,6 +94,7 @@ private:
         soft_deinit_device();
         gl_result = nullptr;
     };
+    int read_and_parse_config_d2h(void);
 
 
     std::shared_ptr<CNNHostPipeline> gl_result = nullptr;

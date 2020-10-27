@@ -194,6 +194,302 @@ void Device::wdog_keepalive(void)
     wdog_keep = 1;
 }
 
+int Device::read_and_parse_config_d2h(void)
+{
+    // config_d2h
+    {
+        printf("Loading config file\n");
+
+        std::string config_d2h_str;
+        StreamInfo si("config_d2h", 102400);
+
+        int config_file_length = g_xlink->openReadAndCloseStream(
+                si,
+                config_d2h_str
+                );
+        if(config_file_length == -1)
+        {
+            return -1;
+        }
+        if (!getJSONFromString(config_d2h_str, g_config_d2h))
+        {
+            std::cout << "depthai: error parsing config_d2h\n";
+        }
+    }
+
+    bool rgb_connected = g_config_d2h.at("_cams").at("rgb").get<bool>();
+    bool left_connected = g_config_d2h.at("_cams").at("left").get<bool>();
+    bool right_connected = g_config_d2h.at("_cams").at("right").get<bool>();
+    if(!rgb_connected && (left_connected ^ right_connected))
+    {
+        std::cerr << WARNING "ERROR: No cameras detected on the board. \n" ENDC;
+        //break;
+    }
+
+    // check version
+    {
+
+        /* TODO: review in new refactored way
+        std::string device_version = g_config_d2h.at("_version").get<std::string>();
+        if (device_version != c_depthai_version)
+        {
+            printf("Version does not match (%s & %s)\n",
+                device_version.c_str(), c_depthai_version);
+            break;
+        }
+
+        std::string device_dev_version = g_config_d2h.at("_dev_version").get<std::string>();
+        if (device_dev_version != c_depthai_dev_version)
+        {
+            printf("WARNING: Version (dev) does not match (%s & %s)\n",
+                device_dev_version.c_str(), c_depthai_dev_version);
+        }
+        */
+    }
+
+    version = g_config_d2h.at("eeprom").at("version").get<decltype(version)>();
+    printf("EEPROM data:");
+    H1_l.clear();
+    H2_r.clear();
+    R1_l.clear();
+    R2_r.clear();
+    M1_l.clear();
+    M2_r.clear();
+    R.clear();
+    T.clear();
+    d1_l.clear();
+    d2_r.clear();
+    std::vector<float> temp;
+
+    if (version == -1) {
+        printf(" invalid / unprogrammed\n");
+    } else {
+        printf(" valid (v%d)\n", version);
+        std::string board_name;
+        std::string board_rev;
+        float rgb_fov_deg = 0;
+        bool stereo_center_crop = false;
+        if (version >= 2) {
+            board_name = g_config_d2h.at("eeprom").at("board_name").get<std::string>();
+            board_rev  = g_config_d2h.at("eeprom").at("board_rev").get<std::string>();
+            rgb_fov_deg= g_config_d2h.at("eeprom").at("rgb_fov_deg").get<float>();
+        }
+        if (version >= 3) {
+            stereo_center_crop = g_config_d2h.at("eeprom").at("stereo_center_crop").get<bool>();
+        }
+        float left_fov_deg = g_config_d2h.at("eeprom").at("left_fov_deg").get<float>();
+        float left_to_right_distance_m = g_config_d2h.at("eeprom").at("left_to_right_distance_m").get<float>();
+        float left_to_rgb_distance_m = g_config_d2h.at("eeprom").at("left_to_rgb_distance_m").get<float>();
+        bool swap_left_and_right_cameras = g_config_d2h.at("eeprom").at("swap_left_and_right_cameras").get<bool>();
+        std::vector<float> calib;
+        printf("  Board name     : %s\n", board_name.empty() ? "<NOT-SET>" : board_name.c_str());
+        printf("  Board rev      : %s\n", board_rev.empty()  ? "<NOT-SET>" : board_rev.c_str());
+        printf("  HFOV L/R       : %g deg\n", left_fov_deg);
+        printf("  HFOV RGB       : %g deg\n", rgb_fov_deg);
+        printf("  L-R   distance : %g cm\n", 100 * left_to_right_distance_m);
+        printf("  L-RGB distance : %g cm\n", 100 * left_to_rgb_distance_m);
+        printf("  L/R swapped    : %s\n", swap_left_and_right_cameras ? "yes" : "no");
+        printf("  L/R crop region: %s\n", stereo_center_crop ? "center" : "top");
+        // std::cout << "H2 matrix of right came----------------> " << H2_r.size() <<  std::endl;
+
+        if (version <= 3) {
+            printf("  Calibration homography right to left (legacy, please consider recalibrating):\n");
+            calib = g_config_d2h.at("eeprom").at("calib_old_H").get<std::vector<float>>();
+            for (int i = 0; i < 9; i++) {
+                printf(" %11.6f,", calib.at(i));
+                temp.push_back(calib.at(i));
+                if (i % 3 == 2) {
+                    printf("\n");
+                    H2_r.push_back(temp);
+                    temp.clear();
+                }
+            }
+                        // std::cout << "H2 matrix of right came----------------> " << H2_r.size() <<  std::endl;
+
+        } else if (version == 4) {
+
+            std::vector<std::vector<float>> temp_inv;
+
+            printf("  Calibration inverse homography H1 (left):\n");
+            calib = g_config_d2h.at("eeprom").at("calib_H1_L").get<std::vector<float>>();
+            for (int i = 0; i < 9; i++) {
+                printf(" %11.6f,", calib.at(i));
+                temp.push_back(calib.at(i));
+                if (i % 3 == 2) {
+                    printf("\n");
+                    temp_inv.push_back(temp);
+                    temp.clear();
+                }
+            }
+
+            mat_inv(temp_inv, H1_l);
+            temp_inv.clear();
+
+            for (int i = 0; i < 9; ++i) {
+            }
+            printf("  Calibration inverse homography H2 (right):\n");
+            calib = g_config_d2h.at("eeprom").at("calib_H2_R").get<std::vector<float>>();
+            for (int i = 0; i < 9; i++) {
+                printf(" %11.6f,", calib.at(i));
+                temp.push_back(calib.at(i));
+                if (i % 3 == 2) {
+                    printf("\n");
+                    temp_inv.push_back(temp);
+                    temp.clear();
+                }
+            }
+
+            mat_inv(temp_inv, H2_r);
+            temp_inv.clear();
+
+            printf("  Calibration intrinsic matrix M1 (left):\n");
+            calib = g_config_d2h.at("eeprom").at("calib_M1_L").get<std::vector<float>>();
+            for (int i = 0; i < 9; i++) {
+                printf(" %11.6f,", calib.at(i));
+                temp.push_back(calib.at(i));
+                if (i % 3 == 2) {
+                    printf("\n");
+                    M1_l.push_back(temp);
+                    temp.clear();
+                }
+            }
+
+            printf("  Calibration intrinsic matrix M2 (right):\n");
+            calib = g_config_d2h.at("eeprom").at("calib_M2_R").get<std::vector<float>>();
+            for (int i = 0; i < 9; i++) {
+                printf(" %11.6f,", calib.at(i));
+                temp.push_back(calib.at(i));
+                if (i % 3 == 2) {
+                    printf("\n");
+                    M2_r.push_back(temp);
+                    temp.clear();
+                }
+            }
+
+            printf("  Calibration rotation matrix R:\n");
+            calib = g_config_d2h.at("eeprom").at("calib_R").get<std::vector<float>>();
+            for (int i = 0; i < 9; i++) {
+                printf(" %11.6f,", calib.at(i));
+                temp.push_back(calib.at(i));
+                if (i % 3 == 2) {
+                    printf("\n");
+                    R.push_back(temp);
+                    temp.clear();
+                }
+            }
+
+            printf("  Calibration translation matrix T:\n");
+            calib = g_config_d2h.at("eeprom").at("calib_T").get<std::vector<float>>();
+            for (int i = 0; i < 3; i++) {
+                printf(" %11.6f,\n", calib.at(i));
+            }
+            T = calib;
+
+        std::cout << "H2 matrix of right came----------------> " << H2_r.size() <<  std::endl;
+
+        }
+        else if (version == 5){
+            printf("  Rectification Rotation R1 (left):\n");
+            calib = g_config_d2h.at("eeprom").at("calib_R1_L").get<std::vector<float>>();
+            for (int i = 0; i < 9; i++) {
+                printf(" %11.6f,", calib.at(i));
+                temp.push_back(calib.at(i));
+                if (i % 3 == 2) {
+                    printf("\n");
+                    R1_l.push_back(temp);
+                    temp.clear();
+                }
+            }
+            for (int i = 0; i < 9; ++i) {
+            }
+            printf("  Rectification Rotation R2 (right):\n");
+            calib = g_config_d2h.at("eeprom").at("calib_R2_R").get<std::vector<float>>();
+            for (int i = 0; i < 9; i++) {
+                printf(" %11.6f,", calib.at(i));
+                temp.push_back(calib.at(i));
+                if (i % 3 == 2) {
+                    printf("\n");
+                    R2_r.push_back(temp);
+                    temp.clear();
+                }
+            }
+
+            printf("  Calibration intrinsic matrix M1 (left):\n");
+            calib = g_config_d2h.at("eeprom").at("calib_M1_L").get<std::vector<float>>();
+            for (int i = 0; i < 9; i++) {
+                printf(" %11.6f,", calib.at(i));
+                temp.push_back(calib.at(i));
+                if (i % 3 == 2) {
+                    printf("\n");
+                    M1_l.push_back(temp);
+                    temp.clear();
+                }
+            }
+
+            printf("  Calibration intrinsic matrix M2 (right):\n");
+            calib = g_config_d2h.at("eeprom").at("calib_M2_R").get<std::vector<float>>();
+            for (int i = 0; i < 9; i++) {
+                printf(" %11.6f,", calib.at(i));
+                temp.push_back(calib.at(i));
+                if (i % 3 == 2) {
+                    printf("\n");
+                    M2_r.push_back(temp);
+                    temp.clear();
+                }
+            }
+
+            printf("  Calibration rotation matrix R:\n");
+            calib = g_config_d2h.at("eeprom").at("calib_R").get<std::vector<float>>();
+            for (int i = 0; i < 9; i++) {
+                printf(" %11.6f,", calib.at(i));
+                temp.push_back(calib.at(i));
+                if (i % 3 == 2) {
+                    printf("\n");
+                    R.push_back(temp);
+                    temp.clear();
+                }
+            }
+
+            printf("  Calibration translation matrix T:\n");
+            calib = g_config_d2h.at("eeprom").at("calib_T").get<std::vector<float>>();
+            for (int i = 0; i < 3; i++) {
+                printf(" %11.6f,\n", calib.at(i));
+            }
+            T = calib;
+
+            printf("  Calibration Distortion Coeff d1 (Left):\n");
+            calib = g_config_d2h.at("eeprom").at("calib_d1_L").get<std::vector<float>>();
+            for (int i = 0; i < 14; i++) {
+                printf(" %11.6f,", calib.at(i));
+                if (i % 7 == 6)
+                    printf("\n");
+            }
+            d1_l = calib;
+
+            printf("  Calibration Distortion Coeff d2 (Right):\n");
+            calib = g_config_d2h.at("eeprom").at("calib_d2_R").get<std::vector<float>>();
+            for (int i = 0; i < 14; i++) {
+                printf(" %11.6f,", calib.at(i));
+                if (i % 7 == 6)
+                    printf("\n");
+            }
+            d2_r = calib;
+
+            std::vector<std::vector<float>> M2_r_inv;
+            std::vector<std::vector<float>> M1_l_inv;
+            std::vector<std::vector<float>> left_matrix = mat_mul(M2_r, R2_r);
+
+            mat_inv(M2_r, M2_r_inv);
+            H2_r = mat_mul(left_matrix, M2_r_inv);
+
+            left_matrix = mat_mul(M2_r, R1_l);
+            mat_inv(M1_l, M1_l_inv);
+            H1_l = mat_mul(left_matrix, M1_l_inv);
+        }
+    }
+    return 0;
+}
+
 bool Device::init_device(
     const std::string &device_cmd_file,
     const std::string &usb_device,
@@ -255,298 +551,8 @@ bool Device::init_device(
         g_xlink->setWatchdogUpdateFunction(std::bind(&Device::wdog_keepalive, this));
         wdog_start();
 
-        // config_d2h
-        {
-            printf("Loading config file\n");
-
-            std::string config_d2h_str;
-            StreamInfo si("config_d2h", 102400);
-
-            int config_file_length = g_xlink->openReadAndCloseStream(
-                    si,
-                    config_d2h_str
-                    );
-            if(config_file_length == -1)
-            {
-                break;
-            }
-            if (!getJSONFromString(config_d2h_str, g_config_d2h))
-            {
-                std::cout << "depthai: error parsing config_d2h\n";
-            }
-        }
-
-        bool rgb_connected = g_config_d2h.at("_cams").at("rgb").get<bool>();
-        bool left_connected = g_config_d2h.at("_cams").at("left").get<bool>();
-        bool right_connected = g_config_d2h.at("_cams").at("right").get<bool>();
-        if(!rgb_connected && (left_connected ^ right_connected))
-        {
-            std::cerr << WARNING "FATAL ERROR: No cameras detected on the board. \n" ENDC;
+        if (read_and_parse_config_d2h() != 0)
             break;
-        }
-
-        // check version
-        {
-
-            /* TODO: review in new refactored way
-            std::string device_version = g_config_d2h.at("_version").get<std::string>();
-            if (device_version != c_depthai_version)
-            {
-                printf("Version does not match (%s & %s)\n",
-                    device_version.c_str(), c_depthai_version);
-                break;
-            }
-
-            std::string device_dev_version = g_config_d2h.at("_dev_version").get<std::string>();
-            if (device_dev_version != c_depthai_dev_version)
-            {
-                printf("WARNING: Version (dev) does not match (%s & %s)\n",
-                    device_dev_version.c_str(), c_depthai_dev_version);
-            }
-            */
-        }
-
-        version = g_config_d2h.at("eeprom").at("version").get<decltype(version)>();
-        printf("EEPROM data:");
-        H1_l.clear();
-        H2_r.clear();
-        R1_l.clear();
-        R2_r.clear();
-        M1_l.clear();
-        M2_r.clear();
-        R.clear();
-        T.clear();
-        d1_l.clear();
-        d2_r.clear();
-        std::vector<float> temp;
-
-        if (version == -1) {
-            printf(" invalid / unprogrammed\n");
-        } else {
-            printf(" valid (v%d)\n", version);
-            std::string board_name;
-            std::string board_rev;
-            float rgb_fov_deg = 0;
-            bool stereo_center_crop = false;
-            if (version >= 2) {
-                board_name = g_config_d2h.at("eeprom").at("board_name").get<std::string>();
-                board_rev  = g_config_d2h.at("eeprom").at("board_rev").get<std::string>();
-                rgb_fov_deg= g_config_d2h.at("eeprom").at("rgb_fov_deg").get<float>();
-            }
-            if (version >= 3) {
-                stereo_center_crop = g_config_d2h.at("eeprom").at("stereo_center_crop").get<bool>();
-            }
-            float left_fov_deg = g_config_d2h.at("eeprom").at("left_fov_deg").get<float>();
-            float left_to_right_distance_m = g_config_d2h.at("eeprom").at("left_to_right_distance_m").get<float>();
-            float left_to_rgb_distance_m = g_config_d2h.at("eeprom").at("left_to_rgb_distance_m").get<float>();
-            bool swap_left_and_right_cameras = g_config_d2h.at("eeprom").at("swap_left_and_right_cameras").get<bool>();
-            std::vector<float> calib;
-            printf("  Board name     : %s\n", board_name.empty() ? "<NOT-SET>" : board_name.c_str());
-            printf("  Board rev      : %s\n", board_rev.empty()  ? "<NOT-SET>" : board_rev.c_str());
-            printf("  HFOV L/R       : %g deg\n", left_fov_deg);
-            printf("  HFOV RGB       : %g deg\n", rgb_fov_deg);
-            printf("  L-R   distance : %g cm\n", 100 * left_to_right_distance_m);
-            printf("  L-RGB distance : %g cm\n", 100 * left_to_rgb_distance_m);
-            printf("  L/R swapped    : %s\n", swap_left_and_right_cameras ? "yes" : "no");
-            printf("  L/R crop region: %s\n", stereo_center_crop ? "center" : "top");
-            // std::cout << "H2 matrix of right came----------------> " << H2_r.size() <<  std::endl;
-
-            if (version <= 3) {
-                printf("  Calibration homography right to left (legacy, please consider recalibrating):\n");
-                calib = g_config_d2h.at("eeprom").at("calib_old_H").get<std::vector<float>>();
-                for (int i = 0; i < 9; i++) {
-                    printf(" %11.6f,", calib.at(i));
-                    temp.push_back(calib.at(i));
-                    if (i % 3 == 2) {
-                        printf("\n");
-                        H2_r.push_back(temp);
-                        temp.clear();
-                    }
-                }
-                            // std::cout << "H2 matrix of right came----------------> " << H2_r.size() <<  std::endl;
-
-            } else if (version == 4) {
-
-                std::vector<std::vector<float>> temp_inv;
-                
-                printf("  Calibration inverse homography H1 (left):\n");
-                calib = g_config_d2h.at("eeprom").at("calib_H1_L").get<std::vector<float>>();
-                for (int i = 0; i < 9; i++) {
-                    printf(" %11.6f,", calib.at(i));
-                    temp.push_back(calib.at(i));
-                    if (i % 3 == 2) {
-                        printf("\n");
-                        temp_inv.push_back(temp);
-                        temp.clear();
-                    }
-                }
-
-                mat_inv(temp_inv, H1_l);
-                temp_inv.clear();
-
-                for (int i = 0; i < 9; ++i) {
-                }
-                printf("  Calibration inverse homography H2 (right):\n");
-                calib = g_config_d2h.at("eeprom").at("calib_H2_R").get<std::vector<float>>();
-                for (int i = 0; i < 9; i++) {
-                    printf(" %11.6f,", calib.at(i));
-                    temp.push_back(calib.at(i));
-                    if (i % 3 == 2) {
-                        printf("\n");
-                        temp_inv.push_back(temp);
-                        temp.clear();
-                    }
-                }
-
-                mat_inv(temp_inv, H2_r);
-                temp_inv.clear();
-                
-                printf("  Calibration intrinsic matrix M1 (left):\n");
-                calib = g_config_d2h.at("eeprom").at("calib_M1_L").get<std::vector<float>>();
-                for (int i = 0; i < 9; i++) {
-                    printf(" %11.6f,", calib.at(i));
-                    temp.push_back(calib.at(i));
-                    if (i % 3 == 2) {
-                        printf("\n");
-                        M1_l.push_back(temp);
-                        temp.clear();
-                    }
-                }
-
-                printf("  Calibration intrinsic matrix M2 (right):\n");
-                calib = g_config_d2h.at("eeprom").at("calib_M2_R").get<std::vector<float>>();
-                for (int i = 0; i < 9; i++) {
-                    printf(" %11.6f,", calib.at(i));
-                    temp.push_back(calib.at(i));
-                    if (i % 3 == 2) {
-                        printf("\n");
-                        M2_r.push_back(temp);
-                        temp.clear();
-                    }
-                }
-
-                printf("  Calibration rotation matrix R:\n");
-                calib = g_config_d2h.at("eeprom").at("calib_R").get<std::vector<float>>();
-                for (int i = 0; i < 9; i++) {
-                    printf(" %11.6f,", calib.at(i));
-                    temp.push_back(calib.at(i));
-                    if (i % 3 == 2) {
-                        printf("\n");
-                        R.push_back(temp);
-                        temp.clear();
-                    }
-                }
-
-                printf("  Calibration translation matrix T:\n");
-                calib = g_config_d2h.at("eeprom").at("calib_T").get<std::vector<float>>();
-                for (int i = 0; i < 3; i++) {
-                    printf(" %11.6f,\n", calib.at(i));
-                }
-                T = calib;
-
-            std::cout << "H2 matrix of right came----------------> " << H2_r.size() <<  std::endl;
-
-            }
-            else if (version == 5){
-                printf("  Rectification Rotation R1 (left):\n");
-                calib = g_config_d2h.at("eeprom").at("calib_R1_L").get<std::vector<float>>();
-                for (int i = 0; i < 9; i++) {
-                    printf(" %11.6f,", calib.at(i));
-                    temp.push_back(calib.at(i));
-                    if (i % 3 == 2) {
-                        printf("\n");
-                        R1_l.push_back(temp);
-                        temp.clear();
-                    }
-                }
-                for (int i = 0; i < 9; ++i) {
-                }
-                printf("  Rectification Rotation R2 (right):\n");
-                calib = g_config_d2h.at("eeprom").at("calib_R2_R").get<std::vector<float>>();
-                for (int i = 0; i < 9; i++) {
-                    printf(" %11.6f,", calib.at(i));
-                    temp.push_back(calib.at(i));
-                    if (i % 3 == 2) {
-                        printf("\n");
-                        R2_r.push_back(temp);
-                        temp.clear();
-                    }
-                }
-
-                printf("  Calibration intrinsic matrix M1 (left):\n");
-                calib = g_config_d2h.at("eeprom").at("calib_M1_L").get<std::vector<float>>();
-                for (int i = 0; i < 9; i++) {
-                    printf(" %11.6f,", calib.at(i));
-                    temp.push_back(calib.at(i));
-                    if (i % 3 == 2) {
-                        printf("\n");
-                        M1_l.push_back(temp);
-                        temp.clear();
-                    }
-                }
-
-                printf("  Calibration intrinsic matrix M2 (right):\n");
-                calib = g_config_d2h.at("eeprom").at("calib_M2_R").get<std::vector<float>>();
-                for (int i = 0; i < 9; i++) {
-                    printf(" %11.6f,", calib.at(i));
-                    temp.push_back(calib.at(i));
-                    if (i % 3 == 2) {
-                        printf("\n");
-                        M2_r.push_back(temp);
-                        temp.clear();
-                    }
-                }
-
-                printf("  Calibration rotation matrix R:\n");
-                calib = g_config_d2h.at("eeprom").at("calib_R").get<std::vector<float>>();
-                for (int i = 0; i < 9; i++) {
-                    printf(" %11.6f,", calib.at(i));
-                    temp.push_back(calib.at(i));
-                    if (i % 3 == 2) {
-                        printf("\n");
-                        R.push_back(temp);
-                        temp.clear();
-                    }
-                }
-
-                printf("  Calibration translation matrix T:\n");
-                calib = g_config_d2h.at("eeprom").at("calib_T").get<std::vector<float>>();
-                for (int i = 0; i < 3; i++) {
-                    printf(" %11.6f,\n", calib.at(i));
-                }
-                T = calib;
-
-                printf("  Calibration Distortion Coeff d1 (Left):\n");
-                calib = g_config_d2h.at("eeprom").at("calib_d1_L").get<std::vector<float>>();
-                for (int i = 0; i < 14; i++) {
-                    printf(" %11.6f,", calib.at(i));
-                    if (i % 7 == 6)
-                        printf("\n");
-                }
-                d1_l = calib;
-
-                printf("  Calibration Distortion Coeff d2 (Right):\n");
-                calib = g_config_d2h.at("eeprom").at("calib_d2_R").get<std::vector<float>>();
-                for (int i = 0; i < 14; i++) {
-                    printf(" %11.6f,", calib.at(i));
-                    if (i % 7 == 6)
-                        printf("\n");
-                }
-                d2_r = calib;
-
-                std::vector<std::vector<float>> M2_r_inv;
-                std::vector<std::vector<float>> M1_l_inv;
-                std::vector<std::vector<float>> left_matrix = mat_mul(M2_r, R2_r);     
-
-                mat_inv(M2_r, M2_r_inv);
-                H2_r = mat_mul(left_matrix, M2_r_inv);
-
-                left_matrix = mat_mul(M2_r, R1_l);
-                mat_inv(M1_l, M1_l_inv);
-                H1_l = mat_mul(left_matrix, M1_l_inv);
-            }
-
-        }
 
         result = true;
     } while (false);
@@ -1260,6 +1266,26 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
                 *g_xlink.get(),
                 c_streams_myriad_to_pc.at("meta_d2h")
                 );
+        }
+
+        if (config.app_config.enable_reconfig) {
+            // Read again the device config, after an eventual EEPROM write
+            printf("Reading again device config\n");
+            if (read_and_parse_config_d2h() != 0)
+                break;
+
+            // At this point it's possible to send again config_h2d.
+            // Simple test for now, TODO create some API to rewrite calib.
+            // Only "board"/"_board" entries will be processed by the device.
+            if (!g_xlink->openWriteAndCloseStream(
+                    g_streams_pc_to_myriad.at("config_h2d"),
+                    pipeline_config_str_packed.data())
+                )
+            {
+                std::cerr << WARNING "depthai: pipelineConfig write error\n" ENDC;
+                break;
+            }
+
         }
 
         init_ok = true;
