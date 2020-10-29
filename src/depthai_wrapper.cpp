@@ -115,6 +115,10 @@ void DepthAI::create_frame_holders()
                     CV_mat_ptr img = std::make_shared<cv::Mat>(mono_height_, mono_width_, CV_16UC3);
                     image_stream_holder_["disparity_color"] = img;
                 }
+                else{
+                    CV_mat_ptr img = std::make_shared<cv::Mat>(mono_height_, mono_width_, CV_8U);
+                    image_stream_holder_[name] = img;
+                }
             }
         }
     }
@@ -142,7 +146,9 @@ void DepthAI::get_streams(std::unordered_map<std::string, CV_mat_ptr>& output_st
             {
                 unsigned char* img_ptr = reinterpret_cast<unsigned char*>((it->second)->data);
                 const auto& received_data = sub_packet->getData();
-
+                // std::cout << "Stream name :" << sub_packet->stream_name << std::endl;
+                // std::cout << "Stream size :" << sub_packet->size() << std::endl;
+                
                 memcpy(img_ptr, received_data, sub_packet->size());
                 if (dirty_check.find(sub_packet->stream_name) == dirty_check.end()) 
                 {
