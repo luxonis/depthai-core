@@ -663,11 +663,11 @@ void startMonoCam() {
             auto t1 = std::chrono::steady_clock::now();
             auto left = leftQueue->get<dai::ImgFrame>();
             auto t2 = std::chrono::steady_clock::now();
-            cv::imshow("left", cv::Mat(left->fb.height, left->fb.width, CV_8UC1, left->data.data()));
+            cv::imshow("left", cv::Mat(left->getHeight(), left->getWidth(), CV_8UC1, left->getData().data()));
             auto t3 = std::chrono::steady_clock::now();
             auto right = rightQueue->get<dai::ImgFrame>();
             auto t4 = std::chrono::steady_clock::now();
-            cv::imshow("right", cv::Mat(right->fb.height, right->fb.width, CV_8UC1, right->data.data()));
+            cv::imshow("right", cv::Mat(right->getHeight(), right->getWidth(), CV_8UC1, right->getData().data()));
             auto t5 = std::chrono::steady_clock::now();
 
             int ms1 = std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count();
