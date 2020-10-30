@@ -23,9 +23,6 @@ project(${TARGET_NAME} VERSION "0.0.2" LANGUAGES CXX C)
 # Set to export compile commands for tools like clang-tidy and format
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-### Dependency options
-option(DEPTHAI_BOOST_LOCAL "Use locally installed boost libraries" OFF)
-
 # Additional options
 option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON )
 option(DEPTHAI_CLANG_TIDY   "Enable clang-tidy checks during compilation" OFF)
@@ -37,8 +34,8 @@ hunter_add_package(nlohmann_json)
 find_package(nlohmann_json CONFIG REQUIRED)
 
 # json schema validator
-hunter_add_package(nlohmann_json_schema_validator)
-find_package(nlohmann_json_schema_validator CONFIG REQUIRED)
+# hunter_add_package(nlohmann_json_schema_validator)
+# find_package(nlohmann_json_schema_validator CONFIG REQUIRED)
 
 # XLink
 hunter_add_package(XLink)
@@ -48,11 +45,10 @@ find_package(XLink CONFIG REQUIRED)
 hunter_add_package(BZip2)
 find_package(BZip2 CONFIG REQUIRED)
 
-# Boost
-if(NOT DEPTHAI_BOOST_LOCAL)
-    hunter_add_package(Boost)
-    find_package(Boost CONFIG REQUIRED)
-endif()
+
+# FP16 for conversions
+hunter_add_package(FP16)
+find_package(FP16 REQUIRED)
 
 # Add depthai-shared, and definitions that it is PC side
 include(${CMAKE_CURRENT_LIST_DIR}/shared/depthai-shared.cmake)
@@ -73,9 +69,6 @@ add_library(${TARGET_NAME}
     src/xlink/XLinkConnection.cpp
     src/DataQueue.cpp
     src/CallbackHandler.cpp
-    src/pipeline/cnn_host_pipeline.cpp
-    src/pipeline/host_pipeline_config.cpp
-    src/pipeline/host_pipeline.cpp
     src/pipeline/AssetManager.cpp
     src/pipeline/Node.cpp
     src/pipeline/node/XLinkIn.cpp
@@ -84,14 +77,23 @@ add_library(${TARGET_NAME}
     src/pipeline/node/NeuralNetwork.cpp
     src/pipeline/node/MyProducer.cpp
     src/pipeline/node/VideoEncoder.cpp
-    src/host_capture_command.cpp
-    src/device_support_listener.cpp
-    src/disparity_stream_post_processor.cpp
-    src/host_data_reader.cpp
-    src/host_json_helper.cpp
-    src/types.cpp
+    src/pipeline/datatype/Buffer.cpp
+    src/pipeline/datatype/ImgFrame.cpp
+    src/pipeline/datatype/NNData.cpp
+    src/pipeline/datatype/StreamPacketParser.cpp
     src/Device.cpp
     src/bspatch/bspatch.c
+    
+
+    #src/pipeline/cnn_host_pipeline.cpp
+    #src/pipeline/host_pipeline_config.cpp
+    #src/pipeline/host_pipeline.cpp
+    #src/host_capture_command.cpp
+    #src/device_support_listener.cpp
+    #src/disparity_stream_post_processor.cpp
+    #src/host_data_reader.cpp
+    #src/host_json_helper.cpp
+    #src/types.cpp
 )
 
 # Add aditional flags
@@ -228,19 +230,12 @@ endif()
 target_link_libraries(${TARGET_NAME}
     PUBLIC
         nlohmann_json::nlohmann_json
-        nlohmann_json_schema_validator
         XLink
     PRIVATE
         Threads::Threads
         BZip2::bz2
+        FP16::fp16
 )
-
-if(NOT DEPTHAI_BOOST_LOCAL)
-    target_link_libraries(${TARGET_NAME}
-        PUBLIC
-            Boost::boost
-    )
-endif()
 
 
 # Add definition that it is PC side (XLink)

@@ -17,7 +17,7 @@ namespace dai
             }
         
             std::vector<Input> getInputs(){
-                return {in};
+                return {input};
             }
             
             std::vector<Output> getOutputs(){
@@ -35,10 +35,10 @@ namespace dai
             }
         
         public:
-            SPIOut(const std::shared_ptr<PipelineImpl>& par) : Node(par) {
+            SPIOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
             }
 
-            Input in{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::RawBuffer, true}} };
+            Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}} };
 
             void setStreamName(std::string name){
                 properties.streamName = name;

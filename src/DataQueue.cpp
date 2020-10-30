@@ -2,104 +2,179 @@
 
 #include <iostream>
 
-#include "datatype/StreamPacketParser.hpp"
 #include "depthai-shared/xlink/XLinkConstants.hpp"
+#include "depthai/pipeline/datatype/ADatatype.hpp"
+#include "pipeline/datatype/StreamPacketParser.hpp"
 
 namespace dai {
 
-DataOutputQueue::DataOutputQueue(std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize, bool overwrite)
-    : connection(std::move(conn)), queue(maxSize, overwrite) {
-    // creates a thread which reads from connection into the queue
-    readingThread = std::thread([this, streamName]() {
-        std::uint64_t numPacketsRead = 0;
+// DATA OUTPUT QUEUE
+DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& name, unsigned int maxSize, bool overwrite)
+    : pQueue(std::make_shared<LockingQueue<std::shared_ptr<ADatatype>>>(maxSize, overwrite)),
+      queue(*pQueue),
+      pRunning(std::make_shared<std::atomic<bool>>(true)),
+      running(*pRunning),
+      pExceptionMessage(std::make_shared<std::string>("")),
+      exceptionMessage(*pExceptionMessage),
+      streamName(name) {
+    // Copies of variables for the detached thread
+    std::shared_ptr<std::atomic<bool>> pRunningCopy{pRunning};
+    std::shared_ptr<std::string> pExceptionMessageCopy{pExceptionMessage};
+    auto pQueueCopy = pQueue;
 
+    // creates a thread which reads from connection into the queue
+    readingThread = std::thread([name, pRunningCopy, conn, pExceptionMessageCopy, pQueueCopy]() {
+        std::atomic<bool>& running = *pRunningCopy;
+        LockingQueue<std::shared_ptr<ADatatype>>& queue = *pQueueCopy;
+
+        std::uint64_t numPacketsRead = 0;
         try {
             // open stream with 1B write size (no writing will happen here)
-            connection->openStream(streamName, 1);
+            conn->openStream(name, 1);
 
             while(running) {
                 // read packet
-                auto* packet = connection->readFromStreamRaw(streamName);
+                auto* packet = conn->readFromStreamRaw(name);
+                if(!running) break;
+
                 // parse packet
-                auto data = parsePacket(packet);
+                auto data = parsePacketToADatatype(packet);
+
                 // release packet
-                connection->readFromStreamRawRelease(streamName);
+                conn->readFromStreamRawRelease(name);
+
                 // Add 'data' to queue
                 queue.push(data);
+
                 // Increment numPacketsRead
                 numPacketsRead++;
             }
 
-            connection->closeStream(streamName);
+            conn->closeStream(name);
 
         } catch(const std::exception& ex) {
-            // TODO(themarpe)
-            std::cout << "Exception: " << ex.what() << std::endl;
-            exceptionMessage = std::string(ex.what());
+            *pExceptionMessageCopy = std::string(ex.what());
         }
 
+        queue.destruct();
         running = false;
     });
 }
 
 DataOutputQueue::~DataOutputQueue() {
-    // detach from thread, because currently no way to unblock underlying XLinkReadData
+    // Set reading thread to stop
     running = false;
+
+    // Destroy queue
+    pQueue->destruct();
+    pQueue = nullptr;
+
+    // detach from thread, because currently no way to unblock underlying XLinkReadData
+    // Make sure to not access DataOutputQueue fields from that thread anymore
     readingThread.detach();
 }
 
-DataInputQueue::DataInputQueue(std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize, bool overwrite)
-    : connection(std::move(conn)), queue(maxSize, overwrite) {
+std::string DataOutputQueue::getName() const {
+    return streamName;
+}
+
+// DATA INPUT QUEUE
+DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& name, unsigned int maxSize, bool overwrite)
+    : pQueue(std::make_shared<LockingQueue<std::shared_ptr<RawBuffer>>>(maxSize, overwrite)),
+      queue(*pQueue),
+      pRunning(std::make_shared<std::atomic<bool>>(true)),
+      running(*pRunning),
+      pExceptionMessage(std::make_shared<std::string>("")),
+      exceptionMessage(*pExceptionMessage),
+      streamName(name) {
     // creates a thread which reads from connection into the queue
-    writingThread = std::thread([this, streamName]() {
+    std::shared_ptr<std::atomic<bool>> pRunningCopy{pRunning};
+    std::shared_ptr<std::string> pExceptionMessageCopy{pExceptionMessage};
+    auto pQueueCopy = pQueue;
+
+    // do not capture 'this' as it this thread will outlive the parent object
+    writingThread = std::thread([name, pRunningCopy, conn, pExceptionMessageCopy, pQueueCopy]() {
+        std::atomic<bool>& running = *pRunningCopy;
         std::uint64_t numPacketsSent = 0;
+        LockingQueue<std::shared_ptr<RawBuffer>>& queue = *pQueueCopy;
 
         try {
             // open stream with 1B write size (no writing will happen here)
-            connection->openStream(streamName, XLINK_USB_BUFFER_MAX_SIZE);
+            conn->openStream(name, dai::XLINK_USB_BUFFER_MAX_SIZE);
 
             while(running) {
                 // get data from queue
                 std::shared_ptr<RawBuffer> data;
-                queue.waitAndPop(data);
+                if(!queue.waitAndPop(data)) {
+                    continue;
+                }
 
                 // serialize
                 auto serialized = serializeData(data);
 
                 // Write packet to device
-                connection->writeToStream(streamName, serialized);
+                conn->writeToStream(name, serialized);
+                if(!running) return;
 
                 // Increment num packets sent
                 numPacketsSent++;
             }
 
-            connection->closeStream(streamName);
+            conn->closeStream(name);
 
         } catch(const std::exception& ex) {
-            // TODO(themarpe)
-            std::cout << "Exception: " << ex.what() << std::endl;
-            exceptionMessage = std::string(ex.what());
+            *pExceptionMessageCopy = std::string(ex.what());
         }
 
+        queue.destruct();
         running = false;
     });
 }
 
 DataInputQueue::~DataInputQueue() {
-    // detach from thread, because currently no way to unblock underlying XLinkWriteData
+    // Set writing thread to stop
     running = false;
+
+    // Destroy queue
+    pQueue->destruct();
+    pQueue = nullptr;
+
+    // detach thread to not block user space code
+    // Make sure to not access DataInputQueue fields from that thread anymore
     writingThread.detach();
+}
+
+std::string DataInputQueue::getName() const {
+    return streamName;
 }
 
 void DataInputQueue::send(const std::shared_ptr<RawBuffer>& val) {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
     queue.push(val);
 }
+void DataInputQueue::send(const std::shared_ptr<ADatatype>& val) {
+    if(!running) throw std::runtime_error(exceptionMessage.c_str());
+    queue.push(val->serialize());
+}
+void DataInputQueue::send(const ADatatype& val) {
+    if(!running) throw std::runtime_error(exceptionMessage.c_str());
+    queue.push(val.serialize());
+}
 
 void DataInputQueue::sendSync(const std::shared_ptr<RawBuffer>& val) {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
     queue.waitEmpty();
     queue.push(val);
+}
+void DataInputQueue::sendSync(const std::shared_ptr<ADatatype>& val) {
+    if(!running) throw std::runtime_error(exceptionMessage.c_str());
+    queue.waitEmpty();
+    queue.push(val->serialize());
+}
+void DataInputQueue::sendSync(const ADatatype& val) {
+    if(!running) throw std::runtime_error(exceptionMessage.c_str());
+    queue.waitEmpty();
+    queue.push(val.serialize());
 }
 
 }  // namespace dai

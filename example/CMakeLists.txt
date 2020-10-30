@@ -25,6 +25,7 @@ find_package(FP16 REQUIRED)
 add_executable("${TARGET_NAME}" 
     main.cpp
     #main_gaze.cpp
+    #main_device_test.cpp
 )
 
 # Link with libraries

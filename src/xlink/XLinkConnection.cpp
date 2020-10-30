@@ -3,6 +3,7 @@
 #include <XLink.h>
 
 #include <array>
+#include <cassert>
 #include <chrono>
 #include <iostream>
 #include <thread>
@@ -13,8 +14,8 @@ namespace dai {
 // STATIC
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT;
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_CONNECT_TIMEOUT;
-constexpr int XLinkConnection::STREAM_OPEN_RETRIES;
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_STREAM_RETRY;
+constexpr int XLinkConnection::STREAM_OPEN_RETRIES;
 
 void XLinkConnection::initXLinkGlobal() {
     if(xlinkGlobalInitialized) return;
@@ -24,6 +25,15 @@ void XLinkConnection::initXLinkGlobal() {
     if(X_LINK_SUCCESS != status) {
         throw std::runtime_error("Couldn't initialize XLink");
     }
+
+    // Suppress XLink related errors
+    // TODO(themarpe) - XLinkLog.h for Windows caueses issues
+    // FUNCATTR_WEAK static, causes log level symbols to not be accessible
+    // Closest alternative for weak linking in MSVC is: __declspec(selectany)
+
+    // mvLogDefaultLevelSet(MVLOG_FATAL);
+    // extern int mvLogLevel_default;
+    // mvLogLevel_default = 4; // MVLOG_FATAL
 
     xlinkGlobalInitialized = true;
 }
@@ -133,6 +143,7 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit) {
             bootAvailableDevice(deviceToInit.desc, mvcmd);
         }
     } else {
+        // TODO(themarpe) - Add logging library
         std::cout << "Device boot is skipped" << std::endl;
     }
 
@@ -209,18 +220,22 @@ void XLinkConnection::closeStream(const std::string& streamName) {
     streamIdMap.erase(streamName);
 }
 
-void XLinkConnection::writeToStream(const std::string& streamName, std::uint8_t* data, std::size_t size) {
+////////////////////
+// BLOCKING VERSIONS
+////////////////////
+
+void XLinkConnection::writeToStream(const std::string& streamName, const std::uint8_t* data, std::size_t size) {
     if(streamName.empty()) throw std::invalid_argument("streamName is empty");
     if(streamIdMap.count(streamName) == 0) throw std::logic_error("Stream: " + streamName + " isn't opened.");
 
     auto status = XLinkWriteData(streamIdMap[streamName], data, size);
     if(status != X_LINK_SUCCESS) throw std::runtime_error("XLink write error, error message: " + convertErrorCodeToString(status));
-
-    // TODO(themarpe): WDOG REIMPLEMENT
-    // wdog_keepalive();
+}
+void XLinkConnection::writeToStream(const std::string& streamName, const void* data, std::size_t size) {
+    writeToStream(streamName, reinterpret_cast<const uint8_t*>(data), size);
 }
 
-void XLinkConnection::writeToStream(const std::string& streamName, std::vector<std::uint8_t> data) {
+void XLinkConnection::writeToStream(const std::string& streamName, const std::vector<std::uint8_t>& data) {
     writeToStream(streamName, data.data(), data.size());
 }
 
@@ -248,7 +263,7 @@ streamPacketDesc_t* XLinkConnection::readFromStreamRaw(const std::string& stream
     streamPacketDesc_t* pPacket = nullptr;
     auto status = XLinkReadData(streamIdMap[streamName], &pPacket);
     if(status != X_LINK_SUCCESS) {
-        throw std::runtime_error("Error while reading data from xlink channel: " + streamName);
+        throw std::runtime_error("Error while reading data from xlink channel: " + streamName + " (" + XLinkErrorToStr(status) + ")");
     }
     return pPacket;
 }
@@ -258,6 +273,60 @@ void XLinkConnection::readFromStreamRawRelease(const std::string& streamName) {
     if(streamName.empty()) throw std::invalid_argument("streamName is empty");
     if(streamIdMap.count(streamName) == 0) throw std::logic_error("Stream: " + streamName + " isn't opened.");
     XLinkReleaseData(streamIdMap[streamName]);
+}
+
+///////////////////////
+// Timeout versions //
+//////////////////////
+
+// bool XLinkConnection::writeToStream(const std::string& streamName, const std::uint8_t* data, std::size_t size, std::chrono::milliseconds timeout) {
+//     if(streamName.empty()) throw std::invalid_argument("streamName is empty");
+//     if(streamIdMap.count(streamName) == 0) throw std::logic_error("Stream: " + streamName + " isn't opened.");
+//     auto status = XLinkWriteDataWithTimeout(streamIdMap[streamName], data, size, timeout.count());
+//     if(status == X_LINK_SUCCESS) return true;
+//     else if(status == X_LINK_TIMEOUT) return false;
+//     else throw std::runtime_error("XLink write error, error message: " + convertErrorCodeToString(status));
+// }
+//
+// bool XLinkConnection::writeToStream(const std::string& streamName, const void* data, std::size_t size, std::chrono::milliseconds timeout) {
+//     return writeToStream(streamName, reinterpret_cast<const std::uint8_t*>(data), size, timeout);
+// }
+//
+// bool XLinkConnection::writeToStream(const std::string& streamName, const std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout) {
+//     return writeToStream(streamName, data.data(), data.size(), timeout);
+// }
+//
+// bool XLinkConnection::readFromStream(const std::string& streamName, std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout) {
+//     if(streamName.empty()) throw std::invalid_argument("streamName is empty");
+//     if(streamIdMap.count(streamName) == 0) throw std::logic_error("Stream: " + streamName + " isn't opened.");
+//
+//     streamPacketDesc_t* pPacket = nullptr;
+//     auto status = XLinkReadDataWithTimeout(streamIdMap[streamName], &pPacket, timeout.count());
+//
+//     if(status == X_LINK_SUCCESS){
+//         data = std::vector<std::uint8_t>(pPacket->data, pPacket->data + pPacket->length);
+//         XLinkReleaseData(streamIdMap[streamName]);
+//         return true;
+//     } else if(status == X_LINK_TIMEOUT){
+//         return false;
+//     } else {
+//         throw std::runtime_error("XLink write error, error message: " + convertErrorCodeToString(status));
+//     }
+//
+//     return false;
+// }
+//
+// bool XLinkConnection::readFromStreamRaw(streamPacketDesc_t*& pPacket, const std::string& streamName, std::chrono::milliseconds timeout) {
+//     if(streamName.empty()) throw std::invalid_argument("streamName is empty");
+//     if(streamIdMap.count(streamName) == 0) throw std::logic_error("Stream: " + streamName + " isn't opened.");
+//     auto status = XLinkReadDataWithTimeout(streamIdMap[streamName], &pPacket, timeout.count());
+//     if(status == X_LINK_SUCCESS) return true;
+//     else if(status == X_LINK_TIMEOUT) return false;
+//     else throw std::runtime_error("XLink write error, error message: " + convertErrorCodeToString(status));
+// }
+
+streamId_t XLinkConnection::getStreamId(const std::string& name) const {
+    return streamIdMap.at(name);
 }
 
 int XLinkConnection::getLinkId() const {

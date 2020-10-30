@@ -18,8 +18,10 @@
 #include "depthai/pipeline/node/VideoEncoder.hpp"
 
 
-#include "depthai-shared/datatype/NNData.hpp"
-#include "depthai-shared/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/NNData.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/Buffer.hpp"
+
 
 #include "opencv2/opencv.hpp"
 #include "fp16/fp16.h"
@@ -29,7 +31,10 @@ std::shared_ptr<dai::DataInputQueue> frame_in = nullptr;
 std::shared_ptr<dai::DataOutputQueue> face_nn = nullptr;
 std::shared_ptr<dai::DataInputQueue> land_in = nullptr;
 std::shared_ptr<dai::DataOutputQueue> land_nn = nullptr;
-
+std::shared_ptr<dai::DataInputQueue> pose_in = nullptr;
+std::shared_ptr<dai::DataOutputQueue> pose_nn = nullptr;
+std::shared_ptr<dai::DataInputQueue> gaze_in = nullptr;
+std::shared_ptr<dai::DataOutputQueue> gaze_nn = nullptr;
 
 cv::Mat toMat(const std::vector<uint8_t>& data, int w, int h , int numPlanes, int bpp){
     
@@ -189,27 +194,43 @@ dai::Pipeline createPipeline(std::string nnFolder){
     land_nn_xin->out.link(land_nn->input);
     land_nn->out.link(land_nn_xout->input);
 
+
+    // NeuralNetwork
+    auto pose_nn = pipeline.create<dai::node::NeuralNetwork>();
+    pose_nn->setBlobPath(nnFolder + "/models/head-pose-estimation-adas-0001/head-pose-estimation-adas-0001.blob");
+    auto pose_nn_xin = pipeline.create<dai::node::XLinkIn>();
+    pose_nn_xin->setStreamName("pose_in");
+    pose_nn_xin->out.link(pose_nn->input);
+    auto pose_nn_xout = pipeline.create<dai::node::XLinkOut>();
+    pose_nn_xout->setStreamName("pose_nn");
+    pose_nn->out.link(pose_nn_xout->input);
+
+
+    // NeuralNetwork - gaze
+    auto gaze_nn = pipeline.create<dai::node::NeuralNetwork>();
+    gaze_nn->setBlobPath(nnFolder + "/models/gaze-estimation-adas-0002/gaze-estimation-adas-0002.blob");
+    auto gaze_nn_xin = pipeline.create<dai::node::XLinkIn>();
+    gaze_nn_xin->setStreamName("gaze_in");
+    gaze_nn_xin->out.link(gaze_nn->input);
+    auto gaze_nn_xout = pipeline.create<dai::node::XLinkOut>();
+    gaze_nn_xout->setStreamName("gaze_nn");
+    gaze_nn->out.link(gaze_nn_xout->input);
+
+
     return pipeline;
 }
 
 
-void startPipeline(dai::Pipeline p){
-
-    
-    // CONNECT TO DEVICE
-    bool found;
-    dai::DeviceInfo deviceInfo;
-    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_BOOTED);
-
-    dai::Device device(deviceInfo);
-
-    device.startPipeline(p);
-    frame_in = device.getInputQueue("frame_in", 1);
-    face_nn = device.getOutputQueue("face_nn", 1);
-    land_in = device.getInputQueue("landmark_in", 1);
-    land_nn = device.getOutputQueue("landmark_nn", 1);
-
-
+void startPipeline(dai::Device& d, dai::Pipeline p){
+    d.startPipeline(p);
+    frame_in = d.getInputQueue("frame_in", 1);
+    face_nn = d.getOutputQueue("face_nn", 1);
+    land_in = d.getInputQueue("landmark_in", 1);
+    land_nn = d.getOutputQueue("landmark_nn", 1);
+    pose_in = d.getInputQueue("pose_in", 1);
+    pose_nn = d.getOutputQueue("pose_nn", 1);
+    gaze_in = d.getInputQueue("gaze_in", 1);
+    gaze_nn = d.getOutputQueue("gaze_nn", 1);
 }
 
 
@@ -243,23 +264,37 @@ std::vector<Detection> parseDetectionsFp16(const std::vector<std::uint8_t>& data
     return dets;
 }
 
+std::vector<Detection> parseDetections(const std::vector<float>& result){
+    std::vector<Detection> dets;
+
+    int i = 0;
+    while (result[i*7] != -1.0f && i < 100) {
+        Detection d;
+        d.label = result[i*7 + 1];
+        d.score = result[i*7 + 2];
+        d.x_min = result[i*7 + 3];
+        d.y_min = result[i*7 + 4];
+        d.x_max = result[i*7 + 5];
+        d.y_max = result[i*7 + 6];
+        i++;
+        dets.push_back(d);
+    }
+    return dets;
+}
 
 
 std::tuple<cv::Mat, cv::Rect> runFace(cv::Mat frame, cv::Mat debugFrame){
     
-    auto buff = std::make_shared<dai::NNData>();
-    dai::TensorInfo info;
-    info.offset = 0;
-    buff->tensors = {info};
-
+    dai::Buffer buff;
+    
     cv::Mat detectorFrame;
     cv::resize(frame, detectorFrame, cv::Size(300,300));
-    toPlanar(detectorFrame, buff->data);
+    toPlanar(detectorFrame, buff.getData());
 
     frame_in->send(buff);
-    auto nnData = face_nn->get();
+    auto nnData = face_nn->get<dai::NNData>();
 
-    auto dets = parseDetectionsFp16(nnData->data);
+    auto dets = parseDetections(nnData->getFirstLayerFp16());
     int width = frame.cols;
     int height = frame.rows;
     
@@ -294,12 +329,11 @@ std::tuple<cv::Mat, cv::Mat, cv::Point> runLandmark(cv::Mat faceFrame, cv::Rect 
     toPlanar(nnFaceFrame, buff->data);
 
     land_in->send(buff);
-    auto landData = land_nn->get();
-
+    auto landData = land_nn->get<dai::Buffer>();
 
     // parse landmarks
     std::array<float, 10> landmarks;
-    auto resultFp16 = reinterpret_cast<const std::uint16_t*>(landData->data.data());
+    auto resultFp16 = reinterpret_cast<const std::uint16_t*>(landData->getData().data());
     for(unsigned int i = 0; i < landmarks.size(); i++) {
         landmarks[i] = fp16_ieee_to_fp32_value(resultFp16[i]);
     }
@@ -324,8 +358,69 @@ std::tuple<cv::Mat, cv::Mat, cv::Point> runLandmark(cv::Mat faceFrame, cv::Rect 
 
 }
 
+cv::Vec3d runPose(cv::Mat faceFrame, cv::Mat debugFrame){
+    dai::Buffer buff;
+    cv::Mat poseFrame;
+    cv::resize(faceFrame, poseFrame, cv::Size(60,60));
+    toPlanar(poseFrame, buff.getData());
+    pose_in->send(buff);
+    auto nn = pose_nn->get<dai::NNData>();
+    
+
+    float angleY = nn->getLayerFp16("angle_y_fc")[0];
+    float angleP = nn->getLayerFp16("angle_p_fc")[0];
+    float angleR = nn->getLayerFp16("angle_r_fc")[0];
+
+    std::string str = "Pose y: ";
+    str += std::to_string(angleY) + " p: " + std::to_string(angleP) + " r: " + std::to_string(angleR);
+    cv::putText(debugFrame, str, cv::Point(0,50), cv::HersheyFonts::FONT_HERSHEY_COMPLEX_SMALL, 2, cv::Scalar(255,255,255));
+
+    return {angleY, angleP, angleR};
+}
+
+cv::Vec3d runGaze(cv::Mat leftEye, cv::Mat rightEye, cv::Vec3d pose, cv::Mat debugFrame){
+
+    cv::Mat lEye, rEye;
+    cv::resize(leftEye, lEye, cv::Size(60,60));
+    cv::resize(rightEye, rEye, cv::Size(60,60));
+
+    std::vector<uint8_t> l, r;
+    toPlanar(lEye, l);
+    toPlanar(rEye, r);
+
+    dai::NNData nnInput;
+    
+    nnInput.setLayer("left_eye_image", l);
+    nnInput.setLayer("right_eye_image", r);
+    std::vector<double> angles = {pose[0], pose[1], pose[2]};
+    nnInput.setLayer("head_pose_angles", angles);
+
+    gaze_in->send(nnInput);
+    auto nnOutput = gaze_nn->get<dai::NNData>();
+
+    auto gaze = nnOutput->getFirstLayerFp16();
+
+    cv::Vec3d g = {gaze[0], gaze[1], gaze[2]};
+
+    auto origin_x_re = rightEye.cols; // 2
+    auto origin_y_re = rightEye.rows; // 2
+    auto origin_x_le = leftEye.cols; // 2
+    auto origin_y_le = leftEye.rows; // 2
+
+    int x = gaze[0] * 100;
+    int y = gaze[1] * 100;
+    cv::arrowedLine(debugFrame, {origin_x_le, origin_y_le}, {origin_x_le + x, origin_y_le - y}, (255, 0, 255), 3);
+    cv::arrowedLine(debugFrame, {origin_x_re, origin_y_re}, {origin_x_re + x, origin_y_re - y}, (255, 0, 255), 3);
+    
+    std::cout << "[" << gaze[0] << ", " << gaze[1] << ", " << gaze[2] << "]" << std::endl;
+
+    return g;
+
+}
+
 
 int main(int argc, char** argv){
+    using namespace std::chrono_literals;
 
     if(argc <= 1){
         std::cout << "Pass path to project folder..." << std::endl;
@@ -334,28 +429,42 @@ int main(int argc, char** argv){
         cv::VideoCapture vid(nnPath + "/demo.mp4");
         cv::Mat frame, debugFrame;
 
+        // CONNECT TO DEVICE
+        bool found;
+        dai::DeviceInfo deviceInfo;
+        std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
+        dai::Device device(deviceInfo);
+        
+        
+        //std::this_thread::sleep_for(20s);
+
         auto pipeline = createPipeline(nnPath);
-        startPipeline(pipeline);
+        startPipeline(device, pipeline);
 
-        while(true){
-            vid >> frame;
-            if(frame.empty()) break;
-
+        while(vid.read(frame)){
+            
             frame.copyTo(debugFrame);
             
             cv::Mat faceFrame;
             cv::Rect frameRect;
 
             std::tie(faceFrame, frameRect) = runFace(frame, debugFrame);
-            if(!frameRect.empty()) runLandmark(faceFrame, frameRect, debugFrame);
+            if(!frameRect.empty()){
+                cv::Mat leftEye, rightEye;
+                cv::Point nose;
+                std::tie(leftEye, rightEye, nose) = runLandmark(faceFrame, frameRect, debugFrame);
+                
+                auto pose = runPose(faceFrame, debugFrame);
+                runGaze(leftEye, rightEye, pose, debugFrame);
+            } 
+
 
             cv::imshow("debug", debugFrame);
             for(int i = 0; i < 10; i++) cv::waitKey(1);
-
-
         }
-     
-        
+
+        std::cout << "Exited, looks like we are out if frames" << std::endl;
+
     }
 
 

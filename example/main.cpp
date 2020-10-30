@@ -15,8 +15,8 @@
 #include "depthai/pipeline/node/VideoEncoder.hpp"
 
 
-#include "depthai-shared/datatype/NNData.hpp"
-#include "depthai-shared/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/NNData.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
 
 #include "opencv2/opencv.hpp"
 #include "fp16/fp16.h"
@@ -195,9 +195,9 @@ void startPreview(){
             auto imgFrame = preview->get<dai::ImgFrame>();
             if(imgFrame){
 
-                printf("Frame - w: %d, h: %d\n", imgFrame->fb.width, imgFrame->fb.height);
+                printf("Frame - w: %d, h: %d\n", imgFrame->getWidth(), imgFrame->getHeight());
 
-                frame = cv::Mat(imgFrame->fb.height, imgFrame->fb.width, CV_8UC3, imgFrame->data.data());
+                frame = cv::Mat(imgFrame->getHeight(), imgFrame->getWidth(), CV_8UC3, imgFrame->getData().data());
                            
                 cv::imshow("preview", frame);
                 cv::waitKey(1);
@@ -241,11 +241,11 @@ void startVideo(){
             auto imgFrame = preview->get<dai::ImgFrame>();
             if(imgFrame){
 
-                printf("Frame - w: %d, h: %d\n", imgFrame->fb.width, imgFrame->fb.height);
+                printf("Frame - w: %d, h: %d\n", imgFrame->getWidth(), imgFrame->getHeight());
 
-                frame = cv::Mat(imgFrame->fb.height * 3 / 2, imgFrame->fb.width, CV_8UC1, imgFrame->data.data());
+                frame = cv::Mat(imgFrame->getHeight() * 3 / 2, imgFrame->getWidth(), CV_8UC1, imgFrame->getData().data());
                 
-                cv::Mat rgb(imgFrame->fb.height, imgFrame->fb.width, CV_8UC3);
+                cv::Mat rgb(imgFrame->getHeight(), imgFrame->getWidth(), CV_8UC3);
 
                 cv::cvtColor(frame, rgb, cv::COLOR_YUV2BGR_NV12);
                 
@@ -334,8 +334,8 @@ void startNN(std::string nnPath){
             auto imgFrame = preview->get<dai::ImgFrame>();
             if(imgFrame){
 
-                printf("Frame - w: %d, h: %d\n", imgFrame->fb.width, imgFrame->fb.height);
-                frame = toMat(imgFrame->data, imgFrame->fb.width, imgFrame->fb.height, 3, 1);
+                printf("Frame - w: %d, h: %d\n", imgFrame->getWidth(), imgFrame->getHeight());
+                frame = toMat(imgFrame->getData(), imgFrame->getWidth(), imgFrame->getHeight(), 3, 1);
 
             }
 
@@ -351,24 +351,20 @@ void startNN(std::string nnPath){
             vector<Detection> dets;
 
             auto det = detections->get<dai::NNData>();
-            if(det){
-
-                auto result = reinterpret_cast<std::uint16_t*>(det->data.data());
-
+            std::vector<float> detData = det->getFirstLayerFp16();
+            if(detData.size() > 0){
                 int i = 0;
-                while (/*valid*/fp16_ieee_to_fp32_value(result[i*7]) != -1.0f)
-                {
+                while (detData[i*7] != -1.0f) {
                     Detection d;
-                    d.label = fp16_ieee_to_fp32_value(result[i*7 + 1]);
-                    d.score = fp16_ieee_to_fp32_value(result[i*7 + 2]);
-                    d.x_min = fp16_ieee_to_fp32_value(result[i*7 + 3]);
-                    d.y_min = fp16_ieee_to_fp32_value(result[i*7 + 4]);
-                    d.x_max = fp16_ieee_to_fp32_value(result[i*7 + 5]);
-                    d.y_max = fp16_ieee_to_fp32_value(result[i*7 + 6]);
+                    d.label = detData[i*7 + 1];
+                    d.score = detData[i*7 + 2];
+                    d.x_min = detData[i*7 + 3];
+                    d.y_min = detData[i*7 + 4];
+                    d.x_max = detData[i*7 + 5];
+                    d.y_max = detData[i*7 + 6];
                     i++;
                     dets.push_back(d);
                 }
-                
             }
 
             for(const auto& d : dets){
@@ -494,24 +490,20 @@ void startWebcam(int camId, std::string nnPath){
             vector<Detection> dets;
 
             auto det = detections->get<dai::NNData>();
-            if(det){
-
-                auto result = reinterpret_cast<std::uint16_t*>(det->data.data());
-
+            std::vector<float> detData = det->getFirstLayerFp16();
+            if(detData.size() > 0){
                 int i = 0;
-                while (/*valid*/fp16_ieee_to_fp32_value(result[i*7]) != -1.0f)
-                {
+                while (detData[i*7] != -1.0f) {
                     Detection d;
-                    d.label = fp16_ieee_to_fp32_value(result[i*7 + 1]);
-                    d.score = fp16_ieee_to_fp32_value(result[i*7 + 2]);
-                    d.x_min = fp16_ieee_to_fp32_value(result[i*7 + 3]);
-                    d.y_min = fp16_ieee_to_fp32_value(result[i*7 + 4]);
-                    d.x_max = fp16_ieee_to_fp32_value(result[i*7 + 5]);
-                    d.y_max = fp16_ieee_to_fp32_value(result[i*7 + 6]);
+                    d.label = detData[i*7 + 1];
+                    d.score = detData[i*7 + 2];
+                    d.x_min = detData[i*7 + 3];
+                    d.y_min = detData[i*7 + 4];
+                    d.x_max = detData[i*7 + 5];
+                    d.y_max = detData[i*7 + 6];
                     i++;
                     dets.push_back(d);
                 }
-                
             }
 
             for(const auto& d : dets){
@@ -613,16 +605,21 @@ void startMjpegCam(){
         while(1){
 
             auto t1 = std::chrono::steady_clock::now();            
+            
             auto preview = previewQueue->get<dai::ImgFrame>();
+
             auto t2 = std::chrono::steady_clock::now();
-            cv::imshow("preview", cv::Mat(preview->fb.height, preview->fb.width, CV_8UC3, preview->data.data()));
+            cv::imshow("preview", cv::Mat(preview->getHeight(), preview->getWidth(), CV_8UC3, preview->getData().data()));
             auto t3 = std::chrono::steady_clock::now();
-            auto mjpeg = mjpegQueue->get();
+            auto mjpeg = mjpegQueue->get<dai::ImgFrame>();
             auto t4 = std::chrono::steady_clock::now();
-            cv::Mat decodedFrame = cv::imdecode( cv::Mat(mjpeg->data), cv::IMREAD_COLOR);
+            cv::Mat decodedFrame = cv::imdecode( cv::Mat(mjpeg->getData()), cv::IMREAD_COLOR);
             auto t5 = std::chrono::steady_clock::now();
             cv::imshow("mjpeg", decodedFrame);
 
+
+            double tsPreview = preview->getTimestamp().sec + preview->getTimestamp().nsec / 1000000000.0;
+            double tsMjpeg = mjpeg->getTimestamp().sec + mjpeg->getTimestamp().nsec / 1000000000.0;
 
             //for(int i = 0; i < 100; i++) cv::waitKey(1);
 
@@ -632,7 +629,7 @@ void startMjpegCam(){
             int ms4 = std::chrono::duration_cast<std::chrono::milliseconds>(t5-t4).count();
             int loop = std::chrono::duration_cast<std::chrono::milliseconds>(t5-t1).count();
 
-            std::cout << ms1 << " " << ms2 << " " << ms3 << " " << ms4 << " loop: " << loop << std::endl;
+            std::cout << ms1 << " " << ms2 << " " << ms3 << " " << ms4 << " loop: " << loop << "sync offset: " << tsPreview << " sync mjpeg " << tsMjpeg << std::endl;
             cv::waitKey(1);
 
 
