@@ -1316,7 +1316,7 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
     return gl_result;
 }
 
-void Device::set_eeprom(const std::string &board_config){
+void Device::write_eeprom_data(const std::string &board_config){
     std::string board_config_str_packed;
 
     board_config_str_packed = board_config;

@@ -61,7 +61,7 @@ public:
     void send_camera_control(CameraControl::CamId camera_id,
             CameraControl::Command command_id,
             const std::string &extra_args);
-    void set_eeprom(const std::string &board_config);
+    void write_eeprom_data(const std::string &board_config);
     
     std::map<std::string, int> get_nn_to_depth_bbox_mapping();
 
