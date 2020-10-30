@@ -35,6 +35,7 @@ public:
     std::shared_ptr<CNNHostPipeline> create_pipeline(
         const std::string &config_json_str
     );
+    std::shared_ptr<CNNHostPipeline> get_pipeline();
     std::vector<std::string> get_available_streams();
 
     std::vector<std::vector<float>> get_left_intrinsic();
@@ -60,7 +61,8 @@ public:
     void send_camera_control(CameraControl::CamId camera_id,
             CameraControl::Command command_id,
             const std::string &extra_args);
-
+    void set_eeprom(const std::string &board_config);
+    
     std::map<std::string, int> get_nn_to_depth_bbox_mapping();
 
 private:
@@ -95,6 +97,7 @@ private:
         gl_result = nullptr;
     };
     int read_and_parse_config_d2h(void);
+    void load_and_print_config_d2h(void);
 
 
     std::shared_ptr<CNNHostPipeline> gl_result = nullptr;
@@ -113,6 +116,7 @@ private:
     std::string config_backup;
     std::string cmd_backup;
     std::string usb_device_backup;
+    std::string pipeline_config_backup;
     uint8_t* binary_backup;
     long binary_size_backup;
     // std::string usb_speed;

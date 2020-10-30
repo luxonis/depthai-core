@@ -216,6 +216,11 @@ int Device::read_and_parse_config_d2h(void)
             std::cout << "depthai: error parsing config_d2h\n";
         }
     }
+    return 0;
+}
+
+void Device::load_and_print_config_d2h(void)
+{
 
     bool rgb_connected = g_config_d2h.at("_cams").at("rgb").get<bool>();
     bool left_connected = g_config_d2h.at("_cams").at("left").get<bool>();
@@ -487,7 +492,7 @@ int Device::read_and_parse_config_d2h(void)
             H1_l = mat_mul(left_matrix, M1_l_inv);
         }
     }
-    return 0;
+    return;
 }
 
 bool Device::init_device(
@@ -553,6 +558,7 @@ bool Device::init_device(
 
         if (read_and_parse_config_d2h() != 0)
             break;
+        load_and_print_config_d2h();
 
         result = true;
     } while (false);
@@ -653,6 +659,15 @@ std::vector<float> Device::get_translation()
         abort();
     }
     return T;
+}
+
+
+std::shared_ptr<CNNHostPipeline> Device::get_pipeline(){
+    if(gl_result == nullptr)
+        throw std::runtime_error("Create pipeline using create_pipeline() before fetching an existing one!");
+
+    return gl_result;
+
 }
 
 
@@ -1268,25 +1283,25 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
                 );
         }
 
-        if (config.app_config.enable_reconfig) {
-            // Read again the device config, after an eventual EEPROM write
-            printf("Reading again device config\n");
-            if (read_and_parse_config_d2h() != 0)
-                break;
+        // if (config.app_config.enable_reconfig) {
+        //     // Read again the device config, after an eventual EEPROM write
+        //     printf("Reading again device config\n");
+        //     if (read_and_parse_config_d2h() != 0)
+        //         break;
 
-            // At this point it's possible to send again config_h2d.
-            // Simple test for now, TODO create some API to rewrite calib.
-            // Only "board"/"_board" entries will be processed by the device.
-            if (!g_xlink->openWriteAndCloseStream(
-                    g_streams_pc_to_myriad.at("config_h2d"),
-                    pipeline_config_str_packed.data())
-                )
-            {
-                std::cerr << WARNING "depthai: pipelineConfig write error\n" ENDC;
-                break;
-            }
+        //     // At this point it's possible to send again config_h2d.
+        //     // Simple test for now, TODO create some API to rewrite calib.
+        //     // Only "board"/"_board" entries will be processed by the device.
+        //     if (!g_xlink->openWriteAndCloseStream(
+        //             g_streams_pc_to_myriad.at("config_h2d"),
+        //             pipeline_config_str_packed.data())
+        //         )
+        //     {
+        //         std::cerr << WARNING "depthai: pipelineConfig write error\n" ENDC;
+        //         break;
+        //     }
 
-        }
+        // }
 
         init_ok = true;
         std::cout << "depthai: INIT OK!\n";
@@ -1301,6 +1316,26 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
     return gl_result;
 }
 
+void Device::set_eeprom(const std::string &board_config){
+    std::string board_config_str_packed;
+
+    board_config_str_packed = board_config;
+    std::cout << board_config_str_packed <<std::endl;
+    board_config_str_packed.resize(g_streams_pc_to_myriad.at("config_h2d").size, 0);
+
+    if (read_and_parse_config_d2h() != 0)
+            return;
+
+    if (!g_xlink->openWriteAndCloseStream(
+        g_streams_pc_to_myriad.at("config_h2d"),
+        board_config_str_packed.data()))
+    {
+        throw std::runtime_error("EEPROM write error...!");
+    }
+
+    return;
+
+}
 
 // create_mesh(std::vector<std::vector<float>>& M, std::vector<std::vector<float>>& R, std::vector<float>d, int bin_size){
 //     float fx = M[0][0], fy = M[1][1], u0 = M[0][2], v0 = M[1][2];
