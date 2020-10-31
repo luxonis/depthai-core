@@ -7,8 +7,8 @@
 
 // project
 //#include "pipeline/host_pipeline_config.hpp"
-#include "nnet/tensor_info_helper.hpp"
 #include "pipeline/host_pipeline_config.hpp"
+#include "host_data_reader.hpp"
 
 extern "C"
 {
@@ -675,30 +675,39 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(const std::string& conf
         int num_stages = config.ai.blob_file2.empty() ? 1 : 2;
 
         // read tensor info
-        std::vector<TensorInfo> tensors_info;
-        if (parseTensorInfosFromJsonFile(config.ai.blob_file_config, tensors_info))
+        std::vector<dai::TensorInfo>       tensors_info_output, tensors_info_input;
+        std::vector<nlohmann::json>        NN_config;
+
+        std::cout << config.ai.blob_file_config << std::endl;
+        std::ifstream jsonFile(config.ai.blob_file_config);
+
+        nlohmann::json json_NN_meta;
+        nlohmann::json json_NN_;
+        if (jsonFile.is_open()) {
+            json_NN_ = nlohmann::json::parse(jsonFile);
+        }
+
+        if(!json_NN_.contains("NN_config"))
         {
-            std::cout << "CNN configurations read: " << config.ai.blob_file_config.c_str() << "\n";
+            std::cout << "No NN config provided, defaulting to \"raw\" output format!" << std::endl;
+            json_NN_meta["output_format"] = "raw";
         }
         else
         {
-            std::cerr << WARNING
-                "ERROR: There is no cnn configuration file or error in it\'s parsing: "
-                      << config.ai.blob_file_config.c_str() << "\n";
-            break;
+            json_NN_meta = json_NN_["NN_config"];
         }
 
-        if (num_stages > 1)
+        //stage 2 is always "raw"
+        nlohmann::json json_NN_meta_stage2;
+        json_NN_meta_stage2["output_format"] = "raw";
+
+        nlohmann::json NN_config_stage[2] = {json_NN_meta, json_NN_meta_stage2};
+
+        if(num_stages == 2)
         {
-            if (parseTensorInfosFromJsonFile(config.ai.blob_file_config2, tensors_info))
+            if(NN_config_stage[0]["output_format"] != std::string("detection"))
             {
-                std::cout << "CNN configurations read: " << config.ai.blob_file_config2.c_str()
-                          << "\n";
-            }
-            else
-            {
-                std::cout << "There is no cnn configuration file or error in it\'s parsing: "
-                          << config.ai.blob_file_config2.c_str() << "\n";
+                throw std::runtime_error("In case of 2 stage inference the first stage network must have [\"NN_config\"][\"output_format\"] set to detection!");
             }
         }
 
@@ -948,7 +957,6 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(const std::string& conf
                                      {"mesh_right", right_mesh_buff}};
         json_config_obj["depth"]["padding_factor"] = config.depth.padding_factor;
         json_config_obj["depth"]["depth_limit_mm"] = (int)(config.depth.depth_limit_m * 1000);
-        json_config_obj["depth"]["confidence_threshold"] = config.depth.confidence_threshold;
         json_config_obj["depth"]["median_kernel_size"] = config.depth.median_kernel_size;
         json_config_obj["depth"]["lr_check"] = config.depth.lr_check;
         json_config_obj["depth"]["warp_rectify"] = {
@@ -995,11 +1003,13 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(const std::string& conf
         json_config_obj["ai"]["camera_input"] = config.ai.camera_input;
         json_config_obj["ai"]["num_stages"] = num_stages;
 
+        json_config_obj["ai"]["NN_config"] = json_NN_meta;
         json_config_obj["ot"]["max_tracklets"] = config.ot.max_tracklets;
         json_config_obj["ot"]["confidence_threshold"] = config.ot.confidence_threshold;
 
-        json_config_obj["app"]["sync_video_meta_streams"] =
-            config.app_config.sync_video_meta_streams;
+        json_config_obj["app"]["sync_video_meta_streams"] = config.app_config.sync_video_meta_streams;
+        json_config_obj["app"]["sync_sequence_numbers"] = config.app_config.sync_sequence_numbers;
+        json_config_obj["app"]["usb_chunk_KiB"] = config.app_config.usb_chunk_KiB;
 
         bool add_disparity_post_processing_color = false;
         bool temp_measurement = false;
@@ -1112,75 +1122,94 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(const std::string& conf
                 printf("depthai: done sending Blob file %s\n", blob_file[stage].c_str());
 
                 // outBlob
-                StreamInfo outBlob;
-                outBlob.name = "outBlob";
-                // TODO: remove asserts considering StreamInfo size
-                outBlob.size = 1;
+                StreamInfo outBlob("outBlob", 102400);
+                                
+               
+                std::string blob_info_str;
 
-                cnn_info cnn_input_info;
-
-                static char cnn_info_arr[sizeof(cnn_info)];
-                g_xlink->openReadAndCloseStream(outBlob, (void*)cnn_info_arr, sizeof(cnn_info));
-
-                memcpy(&cnn_input_info, &cnn_info_arr, sizeof(cnn_input_info));
-
-                printf("CNN input width: %d\n", cnn_input_info.cnn_input_width);
-                printf("CNN input height: %d\n", cnn_input_info.cnn_input_height);
-                printf("CNN input num channels: %d\n", cnn_input_info.cnn_input_num_channels);
-                if (stage == 0)
+                int out_blob_length = g_xlink->openReadAndCloseStream(
+                    outBlob,
+                    blob_info_str
+                    );
+                if(out_blob_length == -1)
                 {
-                    printf(
-                        "CNN to depth bounding-box mapping: start(%d, %d), max_size(%d, %d)\n",
-                        cnn_input_info.nn_to_depth.offset_x, cnn_input_info.nn_to_depth.offset_y,
-                        cnn_input_info.nn_to_depth.max_width,
-                        cnn_input_info.nn_to_depth.max_height);
-                    nn_to_depth_mapping["off_x"] = cnn_input_info.nn_to_depth.offset_x;
-                    nn_to_depth_mapping["off_y"] = cnn_input_info.nn_to_depth.offset_y;
-                    nn_to_depth_mapping["max_w"] = cnn_input_info.nn_to_depth.max_width;
-                    nn_to_depth_mapping["max_h"] = cnn_input_info.nn_to_depth.max_height;
+                    break;
                 }
-                // update tensor infos
-                assert(
-                    !(tensors_info.size() >
-                      (sizeof(cnn_input_info.offsets) / sizeof(cnn_input_info.offsets[0]))));
+                nlohmann::json blob_info;
+                if (!getJSONFromString(blob_info_str, blob_info))
+                {
+                    std::cout << "depthai: error parsing blob_info\n";
+                    break;
+                }
+                // std::cout << blob_info << std::endl;
+
+                std::vector<nlohmann::json> input_layers = blob_info["input_layers"].get<std::vector<nlohmann::json>>();
+                std::vector<nlohmann::json> output_layers = blob_info["output_layers"].get<std::vector<nlohmann::json>>();
+
+                for(auto input_json : input_layers)
+                {
+                    dai::TensorInfo _tensors_info_input(input_json);
+                    std::cout << "Input layer : " << std::endl;
+                    std::cout << _tensors_info_input << std::endl;
+
+                    tensors_info_input.push_back(_tensors_info_input);
+                }
+
+                for(auto output_json : output_layers)
+                {
+                    dai::TensorInfo _tensors_info_output(output_json);
+                    std::cout << "Output layer : " << std::endl;
+                    std::cout << _tensors_info_output << std::endl;
+                    
+                    tensors_info_output.push_back(_tensors_info_output);
+
+                    NN_config.push_back(NN_config_stage[stage]);
+                }
+
+                int satisfied_resources = blob_info["metadata"]["satisfied_resources"];
+                int number_of_shaves = blob_info["metadata"]["number_of_shaves"];
+                int number_of_cmx_slices = blob_info["metadata"]["number_of_cmx_slices"];
 
                 if (stage == 0)
                 {
-                    for (int i = 0; i < tensors_info.size(); i++)
-                    {
-                        tensors_info[i].nnet_input_width = cnn_input_info.cnn_input_width;
-                        tensors_info[i].nnet_input_height = cnn_input_info.cnn_input_height;
-                        tensors_info[i].offset = cnn_input_info.offsets[i];
-                    }
+                    nn_to_depth_mapping["off_x"] = blob_info["metadata"]["nn_to_depth"]["offset_x"];
+                    nn_to_depth_mapping["off_y"] = blob_info["metadata"]["nn_to_depth"]["offset_y"];
+                    nn_to_depth_mapping["max_w"] = blob_info["metadata"]["nn_to_depth"]["max_width"];
+                    nn_to_depth_mapping["max_h"] = blob_info["metadata"]["nn_to_depth"]["max_height"];
+                    printf("CNN to depth bounding-box mapping: start(%d, %d), max_size(%d, %d)\n",
+                            nn_to_depth_mapping["off_x"],
+                            nn_to_depth_mapping["off_y"],
+                            nn_to_depth_mapping["max_w"],
+                            nn_to_depth_mapping["max_h"]);
+                }
 
+                if (stage == 0) {
+     
                     c_streams_myriad_to_pc["previewout"].dimensions = {
-                        cnn_input_info.cnn_input_num_channels, cnn_input_info.cnn_input_height,
-                        cnn_input_info.cnn_input_width};
+                                                                       (int)tensors_info_input[0].get_dimension(dai::TensorInfo::Dimension::C),
+                                                                       (int)tensors_info_input[0].get_dimension(dai::TensorInfo::Dimension::H),
+                                                                       (int)tensors_info_input[0].get_dimension(dai::TensorInfo::Dimension::W),
+                                                                       };
                 }
                 // check CMX slices & used shaves
-                if (cnn_input_info.number_of_cmx_slices > config.ai.cmx_slices)
+                if (number_of_cmx_slices > config.ai.cmx_slices)
                 {
-                    std::cerr << WARNING "Error: Blob is compiled for "
-                              << cnn_input_info.number_of_cmx_slices
-                              << " cmx slices but device is configured to calculate on "
-                              << config.ai.cmx_slices << "\n" ENDC;
+                    std::cerr << WARNING "Error: Blob is compiled for " << number_of_cmx_slices
+                              << " cmx slices but device is configured to calculate on " << config.ai.cmx_slices << "\n" ENDC;
                     break;
                 }
 
-                if (cnn_input_info.number_of_shaves > config.ai.shaves)
+                if (number_of_shaves > config.ai.shaves)
                 {
-                    std::cerr << WARNING "Error: Blob is compiled for "
-                              << cnn_input_info.number_of_shaves
-                              << " shaves but device is configured to calculate on "
-                              << config.ai.shaves << "\n" ENDC;
+                    std::cerr << WARNING "Error: Blob is compiled for " << number_of_shaves
+                              << " shaves but device is configured to calculate on " << config.ai.shaves << "\n" ENDC;
                     break;
                 }
 
-                if (!cnn_input_info.satisfied_resources)
+                if(!satisfied_resources)
                 {
-                    std::cerr << WARNING
-                        "ERROR: requested CNN resources overlaps with RGB camera \n" ENDC;
-                    break;
+                    std::cerr << WARNING "ERROR: requested CNN resources overlaps with RGB camera \n" ENDC;
+                    return nullptr;
                 }
             }
         }
@@ -1220,8 +1249,8 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(const std::string& conf
         }
 
         // pipeline
-        if (gl_result == nullptr)
-            gl_result = std::shared_ptr<CNNHostPipeline>(new CNNHostPipeline(tensors_info));
+        if(gl_result == nullptr)
+            gl_result = std::shared_ptr<CNNHostPipeline>(new CNNHostPipeline(tensors_info_input, tensors_info_output, NN_config));
 
         for (const std::string& stream_name : pipeline_device_streams)
         {
@@ -1358,4 +1387,14 @@ void Device::send_disparity_confidence_threshold(uint8_t confidence)
     }
 }
 
-std::map<std::string, int> Device::get_nn_to_depth_bbox_mapping() { return nn_to_depth_mapping; }
+void Device::send_camera_control(CameraControl::CamId camera_id,
+        CameraControl::Command command_id,
+        const std::string &extra_args) {
+    if(g_host_capture_command != nullptr) {
+        g_host_capture_command->sendCameraControl(camera_id, command_id, extra_args.c_str());
+    }
+}
+
+std::map<std::string, int> Device::get_nn_to_depth_bbox_mapping(){
+    return nn_to_depth_mapping;
+}

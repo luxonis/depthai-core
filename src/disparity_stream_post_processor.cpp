@@ -51,6 +51,7 @@ void DisparityStreamPostProcessor::prepareDepthColorAndNotifyObservers(
     FrameMetadata *m = (FrameMetadata *)(depth.data() + depth.size() - sizeof(FrameMetadata));
     memcpy(m, disp_uc + data.size - sizeof(FrameMetadata), sizeof(FrameMetadata));
     m->frameSize = 3 * (data.size - sizeof(FrameMetadata));
+    m->spec.bytesPP = 3;
 
     StreamData depth_d;
     depth_d.packet_number = data.packet_number;

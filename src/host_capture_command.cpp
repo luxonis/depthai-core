@@ -27,6 +27,17 @@ void HostCaptureCommand::sendCustomDeviceResetRequest(void){
     notifyObservers(stream, custom_reset);
 }
 
+void HostCaptureCommand::sendCameraControl(CameraControl::CamId camera_id,
+        CameraControl::Command command_id,
+        std::string extra_args) {
+    std::string cmdfull = CameraControl::createCommandStr(camera_id, command_id, extra_args);
+    StreamData cmd_data;
+    cmd_data.packet_number = 0;
+    cmd_data.data = (void*)cmdfull.c_str();
+    cmd_data.size = cmdfull.size() + 1 /*NULL terminator*/;
+    notifyObservers(stream, cmd_data);
+}
+
 void HostCaptureCommand::capture(){
     sendCaptureMetadata(CaptureMetadata::createStillCapture());
 }
