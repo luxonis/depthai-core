@@ -106,7 +106,7 @@ private:
     uint8_t* binary_backup;
     long binary_size_backup;
 
-    int wdog_thread_alive = 1;
+    int wdog_thread_alive = 0;
 
     std::thread wd_thread;
     std::chrono::milliseconds wd_timeout = std::chrono::milliseconds(5000);
