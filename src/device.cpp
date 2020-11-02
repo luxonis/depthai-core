@@ -150,12 +150,10 @@ void Device::wdog_thread(std::chrono::milliseconds& wd_timeout)
 
 int Device::wdog_start(void)
 {
-    static int once = 1;
-    if(once)
+    if(!wdog_thread_alive)
     {
         wdog_thread_alive = 1;
         wd_thread = std::thread(&Device::wdog_thread, this, std::ref(wd_timeout)); 
-        once = 0;
     }
     return 0;
 }
