@@ -87,26 +87,21 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getFirstDevice(XLinkDeviceState_t 
     return {false, DeviceInfo()};
 }
 
-XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary) {
+XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary, XLinkDeviceState_t expectedState) {
     bootDevice = true;
     bootWithPath = false;
     this->mvcmd = std::move(mvcmdBinary);
-    initDevice(deviceDesc);
+    initDevice(deviceDesc, expectedState);
 }
 
-XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::string pathToMvcmd) {
+XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::string pathToMvcmd, XLinkDeviceState_t expectedState) {
     bootDevice = true;
     bootWithPath = true;
     this->pathToMvcmd = std::move(pathToMvcmd);
-    initDevice(deviceDesc);
+    initDevice(deviceDesc, expectedState);
 }
 
 // Skip boot
-XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc) {
-    bootDevice = false;
-    initDevice(deviceDesc);
-}
-
 XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, XLinkDeviceState_t expectedState) {
     bootDevice = false;
     initDevice(deviceDesc, expectedState);
@@ -297,6 +292,30 @@ void XLinkConnection::readFromStreamRawRelease(const std::string& streamName) {
     if(streamIdMap.count(streamName) == 0) throw std::logic_error("Stream: " + streamName + " isn't opened.");
     XLinkReleaseData(streamIdMap[streamName]);
 }
+
+
+// SPLIT HELPER
+void XLinkConnection::writeToStreamSplit(const std::string& streamName, const void* d, std::size_t size, std::size_t split) {
+    const uint8_t* data = (const uint8_t*) d;
+    std::size_t currentOffset = 0;
+    std::size_t remaining = size;
+    std::size_t sizeToTransmit = 0;
+    XLinkError_t ret = X_LINK_SUCCESS;
+    streamId_t streamId = getStreamId(streamName);
+    while(remaining > 0) {
+        sizeToTransmit = remaining > split ? split : remaining;
+        ret = XLinkWriteData(streamId, data + currentOffset, sizeToTransmit);
+        if(ret != X_LINK_SUCCESS) throw std::runtime_error("XLink write error, error message: " + convertErrorCodeToString(ret));
+        currentOffset += sizeToTransmit;
+        remaining = size - currentOffset;
+    }
+}
+
+void XLinkConnection::writeToStreamSplit(const std::string& streamName, const std::vector<uint8_t>& data, std::size_t split) {
+    writeToStreamSplit(streamName, data.data(), data.size(), split);
+}
+
+
 
 ///////////////////////
 // Timeout versions //

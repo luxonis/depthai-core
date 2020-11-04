@@ -39,10 +39,9 @@ class XLinkConnection {
     static std::vector<DeviceInfo> getAllConnectedDevices(XLinkDeviceState_t state = X_LINK_ANY_STATE);
     static std::tuple<bool, DeviceInfo> getFirstDevice(XLinkDeviceState_t state);
 
-    XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary);
-    XLinkConnection(const DeviceInfo& deviceDesc, std::string pathToMvcmd);
-    explicit XLinkConnection(const DeviceInfo& deviceDesc);
-    XLinkConnection(const DeviceInfo& deviceDesc, XLinkDeviceState_t expectedState);
+    XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
+    XLinkConnection(const DeviceInfo& deviceDesc, std::string pathToMvcmd, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
+    explicit XLinkConnection(const DeviceInfo& deviceDesc, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
 
     ~XLinkConnection();
 
@@ -56,6 +55,10 @@ class XLinkConnection {
     void writeToStream(const std::string& streamName, const std::vector<std::uint8_t>& data);
     std::vector<std::uint8_t> readFromStream(const std::string& streamName);
     void readFromStream(const std::string& streamName, std::vector<std::uint8_t>& data);
+
+    // split write helper
+    void writeToStreamSplit(const std::string& streamName, const void* data, std::size_t size, std::size_t split);
+    void writeToStreamSplit(const std::string& streamName, const std::vector<uint8_t>& data, std::size_t split);
 
     // timeout versions
     // bool writeToStream(const std::string& streamName, const void* data, std::size_t size, std::chrono::milliseconds timeout);
