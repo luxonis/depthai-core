@@ -1,4 +1,5 @@
 #include <iostream>
+#include <unistd.h>
 
 #include "depthai/Device.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
@@ -504,19 +505,7 @@ void startMjpegCam(){
 
 
 
-
-
-
-
-
-
-
-
-
-
-dai::Pipeline createNNPipeline(std::string nnPath){
-
-
+dai::Pipeline createNNPipelineSPI(std::string nnPath){
     dai::Pipeline p;
 
     auto colorCam = p.create<dai::node::ColorCamera>();
@@ -541,119 +530,39 @@ dai::Pipeline createNNPipeline(std::string nnPath){
     //colorCam->preview.link(xlinkOut->input);
     //nn1->out.link(nnOut->input);
 
-    // Testing out SPI output... It currently just goes out xlink. We'll replace the xlink logic once we get the flow working.
+    // Testing out SPI output...
     auto spiOut = p.create<dai::node::SPIOut>();
     spiOut->setStreamName("spimetaout");
     spiOut->setBusId(0);
     nn1->out.link(spiOut->input);
 
-    auto spiOut2 = p.create<dai::node::SPIOut>();
-    spiOut2->setStreamName("spipreview");
-    spiOut2->setBusId(0);
-    colorCam->preview.link(spiOut2->input);
+    // Watch out for memory usage on the target SPI device. It turns out ESP32 often doesn't have enough contiguous memory to hold a full 300x300 RGB preview image.
+//    auto spiOut2 = p.create<dai::node::SPIOut>();
+//    spiOut2->setStreamName("spipreview");
+//    spiOut2->setBusId(0);
+//    colorCam->preview.link(spiOut2->input);
 
 
     return p;
 
 }
 
-void startNN(std::string nnPath){
+void startNNSPI(std::string nnPath){
     using namespace std;
 
-    dai::Pipeline p = createNNPipeline(nnPath);
+    dai::Pipeline p = createNNPipelineSPI(nnPath);
 
     bool found;
     dai::DeviceInfo deviceInfo;
-    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_BOOTED);
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
 
     if(found) {
         dai::Device d(deviceInfo);
 
-        d.startPipeline(p);
-
-        
-        cv::Mat frame;
-        //auto preview = d.getOutputQueue("preview");
-        //auto detections = d.getOutputQueue("detections");
-
-        //auto spimeta = d.getOutputQueue("spiout");
-
+        bool pipelineStarted = d.startPipeline(p);
 
         while(1){
-            /*
-            auto imgFrame = preview->get<dai::ImgFrame>();
-
-            if(imgFrame){
-
-                printf("Frame - w: %d, h: %d\n", imgFrame->fb.width, imgFrame->fb.height);
-                frame = toMat(imgFrame->data, imgFrame->fb.width, imgFrame->fb.height, 3, 1);
-
-            }
-
-            struct Detection {
-                unsigned int label;
-                float score;
-                float x_min;
-                float y_min;
-                float x_max;
-                float y_max;
-            };
-
-            vector<Detection> dets;
-
-            auto det = detections->get<dai::NNData>();
-            if(det){
-
-                printf("asdfasdfx");
-                for(int i =0 ; i<1400; i++){
-                    printf("%02x", (uint8_t) det->data.data()[i]);
-                }
-                printf("\n");
-
-                
-
-                auto result = reinterpret_cast<std::uint16_t*>(det->data.data());
-
-                int i = 0;
-                while (fp16_ieee_to_fp32_value(result[i*7]) != -1.0f)
-                {
-                    Detection d;
-                    d.label = fp16_ieee_to_fp32_value(result[i*7 + 1]);
-                    d.score = fp16_ieee_to_fp32_value(result[i*7 + 2]);
-                    d.x_min = fp16_ieee_to_fp32_value(result[i*7 + 3]);
-                    d.y_min = fp16_ieee_to_fp32_value(result[i*7 + 4]);
-                    d.x_max = fp16_ieee_to_fp32_value(result[i*7 + 5]);
-                    d.y_max = fp16_ieee_to_fp32_value(result[i*7 + 6]);
-                    i++;
-                    dets.push_back(d);
-                }
-                
-            }
-
-            for(const auto& d : dets){
-                int x1 = d.x_min * frame.cols;
-                int y1 = d.y_min * frame.rows;
-                int x2 = d.x_max * frame.cols;
-                int y2 = d.y_max * frame.rows;
-
-                cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), cv::Scalar(255,255,255));
-            }
-
-            printf("===================== %lu detection(s) =======================\n", dets.size());
-            for (unsigned det = 0; det < dets.size(); ++det) {
-                printf("%5d | %6.4f | %7.4f | %7.4f | %7.4f | %7.4f\n",
-                        dets[det].label,
-                        dets[det].score,
-                        dets[det].x_min,
-                        dets[det].y_min,
-                        dets[det].x_max,
-                        dets[det].y_max);
-            }
-
-
-            cv::imshow("preview", frame);
-            cv::waitKey(1);
-*/
+            usleep(1000000);
         }
 
     } else {
@@ -692,7 +601,7 @@ int main(int argc, char** argv){
 */
 
     std::string nnPath(argv[1]);
-    startNN(nnPath);
+    startNNSPI(nnPath);
 
     return 0;
 }
