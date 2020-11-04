@@ -21,8 +21,10 @@ namespace dai {
 class Device {
    public:
     // static API
-    static std::vector<deviceDesc_t> getAllConnectedDevices();
-    static std::tuple<bool, deviceDesc_t> getFirstAvailableDeviceDesc();
+    static std::tuple<bool, DeviceInfo> getFirstAvailableDevice();
+    static std::vector<DeviceInfo> getAllAvailableDevices();
+    //static std::vector<deviceDesc_t> getAllConnectedDevices();
+    //static std::tuple<bool, deviceDesc_t> getFirstAvailableDeviceDesc();
     /////
 
     Device();
@@ -52,8 +54,7 @@ class Device {
    private:
     // private static
     static std::vector<std::uint8_t> getDefaultCmdBinary(bool usb2Mode);
-
-    void init();
+    void init(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
 
     std::shared_ptr<XLinkConnection> connection;
     std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> client;

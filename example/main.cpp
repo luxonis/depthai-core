@@ -625,6 +625,9 @@ int main(int argc, char** argv){
     using namespace std;
     cout << "Hello World!" << endl;
 
+    dai::Device dev;
+    std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+
     if(argc <= 1){
         startMjpegCam();
     } else {

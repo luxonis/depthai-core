@@ -36,12 +36,13 @@ class XLinkConnection {
 
    public:
     // static API
-    static std::vector<DeviceInfo> getAllConnectedDevices();
+    static std::vector<DeviceInfo> getAllConnectedDevices(XLinkDeviceState_t state = X_LINK_ANY_STATE);
     static std::tuple<bool, DeviceInfo> getFirstDevice(XLinkDeviceState_t state);
 
     XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary);
     XLinkConnection(const DeviceInfo& deviceDesc, std::string pathToMvcmd);
     explicit XLinkConnection(const DeviceInfo& deviceDesc);
+    XLinkConnection(const DeviceInfo& deviceDesc, XLinkDeviceState_t expectedState);
 
     ~XLinkConnection();
 
@@ -78,7 +79,7 @@ class XLinkConnection {
     static bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, std::vector<std::uint8_t>& mvcmd);
     static std::string convertErrorCodeToString(XLinkError_t errorCode);
 
-    void initDevice(const DeviceInfo& deviceToInit);
+    void initDevice(const DeviceInfo& deviceToInit, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
 
     std::unordered_map<std::string, streamId_t> streamIdMap;
 

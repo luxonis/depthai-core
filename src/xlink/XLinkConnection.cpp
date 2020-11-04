@@ -8,8 +8,11 @@
 #include <iostream>
 #include <thread>
 #include <vector>
+#include <cstring>
 
 namespace dai {
+
+static DeviceInfo deviceInfoFix(const DeviceInfo& d, XLinkDeviceState_t state);
 
 // STATIC
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT;
@@ -42,13 +45,20 @@ std::atomic<bool> XLinkConnection::xlinkGlobalInitialized{false};
 XLinkGlobalHandler_t XLinkConnection::xlinkGlobalHandler = {};
 std::mutex XLinkConnection::xlinkStreamOperationMutex;
 
-std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices() {
+std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState_t state) {
     initXLinkGlobal();
 
     std::vector<DeviceInfo> devices;
 
+    std::vector<XLinkDeviceState_t> states;
+    if(state == X_LINK_ANY_STATE){
+        states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_BOOTED};
+    } else {
+        states = {state};
+    }
+
     // Get all available devices (unbooted & booted)
-    for(const auto& state : {X_LINK_UNBOOTED, X_LINK_BOOTED}) {
+    for(const auto& state : states) {
         unsigned int numdev = 0;
         std::array<deviceDesc_t, 32> deviceDescAll = {};
         deviceDesc_t suitableDevice = {};
@@ -97,6 +107,11 @@ XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc) {
     initDevice(deviceDesc);
 }
 
+XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, XLinkDeviceState_t expectedState) {
+    bootDevice = false;
+    initDevice(deviceDesc, expectedState);
+}
+
 XLinkConnection::~XLinkConnection() {
     if(deviceLinkId != -1) {
         if(rebootOnDestruction) XLinkResetRemote(deviceLinkId);
@@ -123,7 +138,7 @@ bool XLinkConnection::bootAvailableDevice(const deviceDesc_t& deviceToBoot, std:
     return status == X_LINK_SUCCESS;
 }
 
-void XLinkConnection::initDevice(const DeviceInfo& deviceToInit) {
+void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceState_t expectedState) {
     initXLinkGlobal();
     assert(deviceLinkId == -1);
 
@@ -132,15 +147,26 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit) {
 
     using namespace std::chrono;
 
-    // if device in booted state, then don't boot, just connect
-    bootDevice = deviceToInit.state != X_LINK_BOOTED;
+    // if device is in UNBOOTED then boot
+    bootDevice = deviceToInit.state == X_LINK_UNBOOTED;
 
     // boot device
     if(bootDevice) {
+
+        DeviceInfo deviceToBoot = deviceInfoFix(deviceToInit, X_LINK_UNBOOTED);
+        deviceDesc_t foundDeviceDesc = {};
+
+        // Wait for the device to be available
+        auto tstart = steady_clock::now();
+        do {
+            rc = XLinkFindFirstSuitableDevice(X_LINK_UNBOOTED, deviceToBoot.desc, &foundDeviceDesc);
+            if(rc == X_LINK_SUCCESS) break;
+        } while(steady_clock::now() - tstart < WAIT_FOR_BOOTUP_TIMEOUT);
+
         if(bootWithPath) {
-            bootAvailableDevice(deviceToInit.desc, pathToMvcmd);
+            bootAvailableDevice(foundDeviceDesc, pathToMvcmd);
         } else {
-            bootAvailableDevice(deviceToInit.desc, mvcmd);
+            bootAvailableDevice(foundDeviceDesc, mvcmd);
         }
     } else {
         // TODO(themarpe) - Add logging library
@@ -149,17 +175,14 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit) {
 
     // Search for booted device
     {
-        // Create description of device to look for
-        deviceDesc_t bootedDeviceDesc = {};
-        for(unsigned int i = 0; i < sizeof(deviceToInit.desc.name); i++) {
-            bootedDeviceDesc.name[i] = deviceToInit.desc.name[i];
-            if(deviceToInit.desc.name[i] == '-') break;
-        }
 
+        // Create description of device to look for
+        DeviceInfo bootedDeviceInfo = deviceInfoFix(deviceToInit, expectedState);
+        
         // Find booted device
         auto tstart = steady_clock::now();
         do {
-            rc = XLinkFindFirstSuitableDevice(X_LINK_BOOTED, bootedDeviceDesc, &deviceDesc);
+            rc = XLinkFindFirstSuitableDevice(expectedState, bootedDeviceInfo.desc, &deviceDesc);
             if(rc == X_LINK_SUCCESS) break;
         } while(steady_clock::now() - tstart < WAIT_FOR_BOOTUP_TIMEOUT);
 
@@ -357,5 +380,39 @@ std::string XLinkConnection::convertErrorCodeToString(XLinkError_t errorCode) {
             return "<UNKNOWN ERROR>";
     }
 }
+
+
+DeviceInfo deviceInfoFix(const DeviceInfo& dev, XLinkDeviceState_t state){
+    DeviceInfo fixed(dev);
+
+    // Remove everything after dash
+    for(int i = sizeof(fixed.desc.name) - 1; i >= 0; i--){
+        if(fixed.desc.name[i] != '-') fixed.desc.name[i] = 0;
+        else break;
+    }
+    
+    // If bootloader state add "bootloader"
+    if(state == X_LINK_BOOTLOADER){
+        std::strncat(fixed.desc.name, "bootloader", sizeof(fixed.desc.name) - std::strlen(fixed.desc.name));
+        // set platform to any
+        fixed.desc.platform = X_LINK_ANY_PLATFORM;
+    } else if(state == X_LINK_UNBOOTED){
+        // if unbooted add ending ("ma2480" or "ma2450")
+        if(fixed.desc.platform == X_LINK_MYRIAD_2){
+            std::strncat(fixed.desc.name, "ma2450", sizeof(fixed.desc.name) - std::strlen(fixed.desc.name));
+        } else {
+            std::strncat(fixed.desc.name, "ma2480", sizeof(fixed.desc.name) - std::strlen(fixed.desc.name));
+        }
+    } else if(state == X_LINK_BOOTED) {        
+        // set platform to any
+        fixed.desc.platform = X_LINK_ANY_PLATFORM;
+    }
+
+    return fixed;
+}
+
+
+
+
 
 }  // namespace dai
