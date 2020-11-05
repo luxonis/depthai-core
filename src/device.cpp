@@ -550,7 +550,8 @@ bool Device::init_device(
 
         // usb_speed = 
         // mx_serial =
-        std::cout <<"Usb speed : " << g_xlink->getUSBSpeed() << std::endl;
+        std::vector<std::string> speed_str = {"Unknown", "Low/1.5Mbps", "Full/12Mbps", "High/480Mbps", "Super/5000Mbps", "Super+/10000Mbps"};
+        std::cout <<"Usb speed : " << speed_str[g_xlink->getUSBSpeed()] << std::endl;
         std::cout <<"Mx serial id : " << g_xlink->getMxSerial() << std::endl;
         
         g_xlink->setWatchdogUpdateFunction(std::bind(&Device::wdog_keepalive, this));
@@ -630,17 +631,15 @@ std::vector<std::vector<float>> Device::get_right_intrinsic()
 
 std::vector<std::vector<float>> Device::get_right_homography()
 {
-        return H2_r;
-    
+    return H2_r;
 }
 
 bool Device::is_usb3()
 {
-        // if(usb_speed.find("Super") != std::string::npos)
-        if(g_xlink->getUSBSpeed().find("Super") != std::string::npos)    
-            return true;
-        else
-            return false;
+    if(g_xlink->getUSBSpeed() == X_LINK_USB_SPEED_SUPER || g_xlink->getUSBSpeed() == X_LINK_USB_SPEED_SUPER_PLUS){
+        return true;
+    }
+    return false;
 }
 
 std::vector<std::vector<float>> Device::get_rotation()
