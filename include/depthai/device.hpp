@@ -119,10 +119,8 @@ private:
     std::string pipeline_config_backup;
     uint8_t* binary_backup;
     long binary_size_backup;
-    // std::string usb_speed;
-    // std::string mx_serial;
-    
-    int wdog_thread_alive = 1;
+
+    int wdog_thread_alive = 0;
 
     std::thread wd_thread;
     std::chrono::milliseconds wd_timeout = std::chrono::milliseconds(5000);
