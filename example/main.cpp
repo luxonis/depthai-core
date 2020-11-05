@@ -501,11 +501,7 @@ void startMjpegCam(){
 
 
 
-
-
-
-
-dai::Pipeline createNNPipelineSPI(std::string nnPath){
+dai::Pipeline createNNPipeline(std::string nnPath){
     dai::Pipeline p;
 
     auto colorCam = p.create<dai::node::ColorCamera>();
@@ -544,7 +540,40 @@ dai::Pipeline createNNPipelineSPI(std::string nnPath){
 
 
     return p;
+}
 
+
+
+
+dai::Pipeline createNNPipelineSPI(std::string nnPath){
+    dai::Pipeline p;
+
+    // set up NN node
+    auto nn1 = p.create<dai::node::NeuralNetwork>();
+    nn1->setBlobPath(nnPath);
+
+    // set up color camera and link to NN node
+    auto colorCam = p.create<dai::node::ColorCamera>();
+    colorCam->setPreviewSize(300, 300);
+    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    colorCam->setInterleaved(false);
+    colorCam->setCamId(0);
+    colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
+    colorCam->preview.link(nn1->input);
+
+    // set up SPI out node and link to nn1
+    auto spiOut = p.create<dai::node::SPIOut>();
+    spiOut->setStreamName("spimetaout");
+    spiOut->setBusId(0);
+    nn1->out.link(spiOut->input);
+
+    // Watch out for memory usage on the target SPI device. It turns out ESP32 often doesn't have enough contiguous memory to hold a full 300x300 RGB preview image.
+//    auto spiOut2 = p.create<dai::node::SPIOut>();
+//    spiOut2->setStreamName("spipreview");
+//    spiOut2->setBusId(0);
+//    colorCam->preview.link(spiOut2->input);
+
+    return p;
 }
 
 void startNNSPI(std::string nnPath){
@@ -571,34 +600,9 @@ void startNNSPI(std::string nnPath){
 
 }
 
-
-
-
-
-
-
 int main(int argc, char** argv){
     using namespace std;
     cout << "Hello World!" << endl;
-
-/*
-    if(argc <= 1){
-        startMjpegCam();
-    } else {
-         std::string nnPath(argv[1]);
- 
-        if(nnPath == "test0"){
-            startTest(0);
-        } else if(nnPath == "test1"){
-            startTest(1);
-        } else if(nnPath == "test2"){
-            startTest(2);
-        } else {
-            startWebcam(0, nnPath);
-        }
-
-    }
-*/
 
     std::string nnPath(argv[1]);
     startNNSPI(nnPath);
