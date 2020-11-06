@@ -1,6 +1,7 @@
 #include <iostream>
 
 #include "depthai/Device.hpp"
+#include "depthai/DeviceBootloader.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
 #include "depthai-shared/Assets.hpp"
@@ -528,6 +529,7 @@ void startTest(int id){
     if(found) {
         dai::Device d(deviceInfo);
         d.startTestPipeline(id);
+        while(1);
     }
 
 }
@@ -625,8 +627,8 @@ int main(int argc, char** argv){
     using namespace std;
     cout << "Hello World!" << endl;
 
-    dai::Device dev;
-    std::this_thread::sleep_for(std::chrono::milliseconds(10000));
+
+
 
     if(argc <= 1){
         startMjpegCam();

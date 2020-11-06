@@ -23,11 +23,15 @@ class Device {
     // static API
     static std::tuple<bool, DeviceInfo> getFirstAvailableDevice();
     static std::vector<DeviceInfo> getAllAvailableDevices();
+    static std::vector<std::uint8_t> getEmbeddedDeviceBinary(bool usb2Mode);
     //static std::vector<deviceDesc_t> getAllConnectedDevices();
     //static std::tuple<bool, deviceDesc_t> getFirstAvailableDeviceDesc();
     /////
 
     Device();
+    Device(bool usb2Mode);
+    Device(const char* pathToCmd);
+    Device(const std::string& pathToCmd);
     explicit Device(const DeviceInfo& devInfo, bool usb2Mode = false);
     Device(const DeviceInfo& devInfo, const char* pathToCmd);
     Device(const DeviceInfo& devInfo, const std::string& pathToCmd);
@@ -53,7 +57,6 @@ class Device {
 
    private:
     // private static
-    static std::vector<std::uint8_t> getDefaultCmdBinary(bool usb2Mode);
     void init(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
 
     std::shared_ptr<XLinkConnection> connection;

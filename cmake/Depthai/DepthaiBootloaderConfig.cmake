@@ -2,4 +2,4 @@
 set(DEPTHAI_BOOTLOADER_MATURITY "release")  
 
 # "version if applicable"
-set(DEPTHAI_BOOTLOADER_VERSION "0.0.3")
+set(DEPTHAI_BOOTLOADER_VERSION "0.0.5")

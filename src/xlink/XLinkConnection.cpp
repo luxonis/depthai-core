@@ -10,6 +10,10 @@
 #include <vector>
 #include <cstring>
 
+extern "C" {
+    #include "XLinkLog.h"
+}
+
 namespace dai {
 
 static DeviceInfo deviceInfoFix(const DeviceInfo& d, XLinkDeviceState_t state);
@@ -34,7 +38,7 @@ void XLinkConnection::initXLinkGlobal() {
     // FUNCATTR_WEAK static, causes log level symbols to not be accessible
     // Closest alternative for weak linking in MSVC is: __declspec(selectany)
 
-    // mvLogDefaultLevelSet(MVLOG_FATAL);
+    mvLogDefaultLevelSet(MVLOG_FATAL);
     // extern int mvLogLevel_default;
     // mvLogLevel_default = 4; // MVLOG_FATAL
 
@@ -163,9 +167,6 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
         } else {
             bootAvailableDevice(foundDeviceDesc, mvcmd);
         }
-    } else {
-        // TODO(themarpe) - Add logging library
-        std::cout << "Device boot is skipped" << std::endl;
     }
 
     // Search for booted device

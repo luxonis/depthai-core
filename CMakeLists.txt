@@ -79,7 +79,7 @@ add_library(${TARGET_NAME}
     src/pipeline/datatype/NNData.cpp
     src/pipeline/datatype/StreamPacketParser.cpp
     src/Device.cpp
-    src/DeviceFlasher.cpp
+    src/DeviceBootloader.cpp
     src/bspatch/bspatch.c
 )
 
