@@ -126,14 +126,12 @@ bool XLinkConnection::getRebootOnDestruction() const {
 }
 
 bool XLinkConnection::bootAvailableDevice(const deviceDesc_t& deviceToBoot, const std::string& pathToMvcmd) {
-    deviceDesc_t toBoot(deviceToBoot);
-    auto status = XLinkBoot(&toBoot, pathToMvcmd.c_str());
+    auto status = XLinkBoot(&deviceToBoot, pathToMvcmd.c_str());
     return status == X_LINK_SUCCESS;
 }
 
 bool XLinkConnection::bootAvailableDevice(const deviceDesc_t& deviceToBoot, std::vector<std::uint8_t>& mvcmd) {
-    deviceDesc_t toBoot(deviceToBoot);
-    auto status = XLinkBootMemory(&toBoot, mvcmd.data(), mvcmd.size());
+    auto status = XLinkBootMemory(&deviceToBoot, mvcmd.data(), mvcmd.size());
     return status == X_LINK_SUCCESS;
 }
 
