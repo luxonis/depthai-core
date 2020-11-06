@@ -1,47 +1,45 @@
 #include "Device.hpp"
 
 // shared
+#include "depthai-bootloader-shared/Bootloader.hpp"
+#include "depthai-bootloader-shared/XLinkConstants.hpp"
 #include "depthai-shared/Assets.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
 #include "depthai-shared/xlink/XLinkConstants.hpp"
-#include "depthai-bootloader-shared/XLinkConstants.hpp"
-#include "depthai-bootloader-shared/Bootloader.hpp"
-
 
 // project
-#include "pipeline/Pipeline.hpp"
 #include "BootloaderHelper.hpp"
+#include "pipeline/Pipeline.hpp"
 extern "C" {
 #include "bspatch/bspatch.h"
 }
 
 // Resource compiled assets (cmds)
 #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
-    #include "cmrc/cmrc.hpp"
+#include "cmrc/cmrc.hpp"
 CMRC_DECLARE(depthai);
 #endif
 
 namespace dai {
 
-
 // static api
 
 // First tries to find UNBOOTED device, then BOOTLOADER device
-std::tuple<bool, DeviceInfo> Device::getFirstAvailableDevice(){
+std::tuple<bool, DeviceInfo> Device::getFirstAvailableDevice() {
     bool found;
     DeviceInfo dev;
     std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
-    if(!found){
+    if(!found) {
         std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_BOOTLOADER);
     }
     return {found, dev};
 }
 
 // Returns all devices which aren't already booted
-std::vector<DeviceInfo> Device::getAllAvailableDevices(){
+std::vector<DeviceInfo> Device::getAllAvailableDevices() {
     std::vector<DeviceInfo> availableDevices;
     auto connectedDevices = XLinkConnection::getAllConnectedDevices();
-    for(const auto& d : connectedDevices){
+    for(const auto& d : connectedDevices) {
         if(d.state != X_LINK_BOOTED) availableDevices.push_back(d);
     }
     return availableDevices;
@@ -74,12 +72,12 @@ Device::Device() {
     // Default constructor, gets first unconnected device
     // First looks for UNBOOTED, then BOOTLOADER then BOOTED
     bool found = false;
-    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_BOOTED}){
+    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_BOOTED}) {
         std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(searchState);
         if(found) break;
     }
 
-    // If no device found, throw    
+    // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
     init(true, false, "");
 }
@@ -88,12 +86,12 @@ Device::Device(const char* pathToCmd) {
     // Default constructor, gets first unconnected device
     // First looks for UNBOOTED, then BOOTLOADER then BOOTED
     bool found = false;
-    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_BOOTED}){
+    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_BOOTED}) {
         std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(searchState);
         if(found) break;
     }
 
-    // If no device found, throw    
+    // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
     init(false, false, std::string(pathToCmd));
 }
@@ -102,30 +100,29 @@ Device::Device(const std::string& pathToCmd) {
     // Default constructor, gets first unconnected device
     // First looks for UNBOOTED, then BOOTLOADER then BOOTED
     bool found = false;
-    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_BOOTED}){
+    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_BOOTED}) {
         std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(searchState);
         if(found) break;
     }
 
-    // If no device found, throw    
+    // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
     init(false, false, pathToCmd);
 }
 
-Device::Device(bool usb2Mode){
+Device::Device(bool usb2Mode) {
     // Default constructor, gets first unconnected device
     // First looks for UNBOOTED, then BOOTLOADER then BOOTED
     bool found = false;
-    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_BOOTED}){
+    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_BOOTED}) {
         std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(searchState);
         if(found) break;
     }
 
-    // If no device found, throw    
+    // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
     init(true, usb2Mode, "");
 }
-
 
 Device::~Device() {
     watchdogRunning = false;
@@ -138,39 +135,36 @@ Device::~Device() {
 }
 
 void Device::init(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
-
     // Init device (if bootloader, handle correctly - issue USB boot command)
-    if(deviceInfo.state == X_LINK_UNBOOTED){
+    if(deviceInfo.state == X_LINK_UNBOOTED) {
         // Unbooted device found, boot and connect with XLinkConnection constructor
-        if(embeddedMvcmd){
+        if(embeddedMvcmd) {
             connection = std::make_shared<XLinkConnection>(deviceInfo, getEmbeddedDeviceBinary(usb2Mode));
-        } else{
+        } else {
             connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd);
         }
 
-    } else if(deviceInfo.state == X_LINK_BOOTLOADER){
-
+    } else if(deviceInfo.state == X_LINK_BOOTLOADER) {
         // Scope so bootloaderConnection is desctructed and XLink cleans its state
         {
-
             // Bootloader state, proceed by issuing a command to bootloader
             XLinkConnection bootloaderConnection(deviceInfo, X_LINK_BOOTLOADER);
-            
+
             // Open stream
             bootloaderConnection.openStream(bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
             streamId_t streamId = bootloaderConnection.getStreamId(bootloader::XLINK_CHANNEL_BOOTLOADER);
-            
+
             // // Send request for bootloader version
             // if(!sendBootloaderRequest(streamId, bootloader::request::GetBootloaderVersion{})){
             //     throw std::runtime_error("Error trying to connect to device");
             // }
             // // Receive response
             // dai::bootloader::response::BootloaderVersion ver;
-            // if(!receiveBootloaderResponse(streamId, ver)) throw std::runtime_error("Error trying to connect to device");  
+            // if(!receiveBootloaderResponse(streamId, ver)) throw std::runtime_error("Error trying to connect to device");
 
             // Send request to jump to USB bootloader
             // Boot into USB ROM BOOTLOADER NOW
-            if(!sendBootloaderRequest(streamId, dai::bootloader::request::UsbRomBoot{})){
+            if(!sendBootloaderRequest(streamId, dai::bootloader::request::UsbRomBoot{})) {
                 throw std::runtime_error("Error trying to connect to device");
             }
 
@@ -183,17 +177,17 @@ void Device::init(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMv
         deviceInfo.state = X_LINK_UNBOOTED;
 
         // Boot and connect with XLinkConnection constructor
-        if(embeddedMvcmd){
+        if(embeddedMvcmd) {
             connection = std::make_shared<XLinkConnection>(deviceInfo, getEmbeddedDeviceBinary(usb2Mode));
-        } else{
+        } else {
             connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd);
         }
 
-    } else if(deviceInfo.state == X_LINK_BOOTED){
+    } else if(deviceInfo.state == X_LINK_BOOTED) {
         // Connect without booting
-        if(embeddedMvcmd){
+        if(embeddedMvcmd) {
             connection = std::make_shared<XLinkConnection>(deviceInfo, getEmbeddedDeviceBinary(usb2Mode));
-        } else{
+        } else {
             connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd);
         }
     } else {
@@ -231,15 +225,14 @@ void Device::init(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMv
 
         // reset device
         // wait till link falls down
-        try{
+        try {
             client->call("reset");
-        } catch (const std::runtime_error& err){
-            //ignore
+        } catch(const std::runtime_error& err) {
+            // ignore
         }
 
         // Sleep a bit, so device isn't available anymore
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
     });
 
     // prepare timesync thread, which will keep device synchronized

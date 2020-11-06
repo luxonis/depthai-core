@@ -5,13 +5,13 @@
 #include <array>
 #include <cassert>
 #include <chrono>
+#include <cstring>
 #include <iostream>
 #include <thread>
 #include <vector>
-#include <cstring>
 
 extern "C" {
-    #include "XLinkLog.h"
+#include "XLinkLog.h"
 }
 
 namespace dai {
@@ -55,7 +55,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
     std::vector<DeviceInfo> devices;
 
     std::vector<XLinkDeviceState_t> states;
-    if(state == X_LINK_ANY_STATE){
+    if(state == X_LINK_ANY_STATE) {
         states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_BOOTED};
     } else {
         states = {state};
@@ -151,7 +151,6 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
 
     // boot device
     if(bootDevice) {
-
         DeviceInfo deviceToBoot = deviceInfoFix(deviceToInit, X_LINK_UNBOOTED);
         deviceDesc_t foundDeviceDesc = {};
 
@@ -171,10 +170,9 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
 
     // Search for booted device
     {
-
         // Create description of device to look for
         DeviceInfo bootedDeviceInfo = deviceInfoFix(deviceToInit, expectedState);
-        
+
         // Find booted device
         auto tstart = steady_clock::now();
         do {
@@ -294,10 +292,9 @@ void XLinkConnection::readFromStreamRawRelease(const std::string& streamName) {
     XLinkReleaseData(streamIdMap[streamName]);
 }
 
-
 // SPLIT HELPER
 void XLinkConnection::writeToStreamSplit(const std::string& streamName, const void* d, std::size_t size, std::size_t split) {
-    const uint8_t* data = (const uint8_t*) d;
+    const uint8_t* data = (const uint8_t*)d;
     std::size_t currentOffset = 0;
     std::size_t remaining = size;
     std::size_t sizeToTransmit = 0;
@@ -315,8 +312,6 @@ void XLinkConnection::writeToStreamSplit(const std::string& streamName, const vo
 void XLinkConnection::writeToStreamSplit(const std::string& streamName, const std::vector<uint8_t>& data, std::size_t split) {
     writeToStreamSplit(streamName, data.data(), data.size(), split);
 }
-
-
 
 ///////////////////////
 // Timeout versions //
@@ -401,38 +396,35 @@ std::string XLinkConnection::convertErrorCodeToString(XLinkError_t errorCode) {
     }
 }
 
-
-DeviceInfo deviceInfoFix(const DeviceInfo& dev, XLinkDeviceState_t state){
+DeviceInfo deviceInfoFix(const DeviceInfo& dev, XLinkDeviceState_t state) {
     DeviceInfo fixed(dev);
 
     // Remove everything after dash
-    for(int i = sizeof(fixed.desc.name) - 1; i >= 0; i--){
-        if(fixed.desc.name[i] != '-') fixed.desc.name[i] = 0;
-        else break;
+    for(int i = sizeof(fixed.desc.name) - 1; i >= 0; i--) {
+        if(fixed.desc.name[i] != '-')
+            fixed.desc.name[i] = 0;
+        else
+            break;
     }
-    
+
     // If bootloader state add "bootloader"
-    if(state == X_LINK_BOOTLOADER){
+    if(state == X_LINK_BOOTLOADER) {
         std::strncat(fixed.desc.name, "bootloader", sizeof(fixed.desc.name) - std::strlen(fixed.desc.name));
         // set platform to any
         fixed.desc.platform = X_LINK_ANY_PLATFORM;
-    } else if(state == X_LINK_UNBOOTED){
+    } else if(state == X_LINK_UNBOOTED) {
         // if unbooted add ending ("ma2480" or "ma2450")
-        if(fixed.desc.platform == X_LINK_MYRIAD_2){
+        if(fixed.desc.platform == X_LINK_MYRIAD_2) {
             std::strncat(fixed.desc.name, "ma2450", sizeof(fixed.desc.name) - std::strlen(fixed.desc.name));
         } else {
             std::strncat(fixed.desc.name, "ma2480", sizeof(fixed.desc.name) - std::strlen(fixed.desc.name));
         }
-    } else if(state == X_LINK_BOOTED) {        
+    } else if(state == X_LINK_BOOTED) {
         // set platform to any
         fixed.desc.platform = X_LINK_ANY_PLATFORM;
     }
 
     return fixed;
 }
-
-
-
-
 
 }  // namespace dai
