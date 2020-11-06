@@ -348,30 +348,30 @@ bool DeviceBootloader::isEmbeddedVersion() {
     return isEmbedded;
 }
 
-DeviceBootloader::Version::Version(const std::string& v) : major(0), minor(0), patch(0) {
+DeviceBootloader::Version::Version(const std::string& v) : versionMajor(0), versionMinor(0), versionPatch(0) {
     // Parse string
-    if(std::sscanf(v.c_str(), "%u.%u.%u", &major, &minor, &patch) != 3) throw std::runtime_error("Cannot parse version: " + v);
+    if(std::sscanf(v.c_str(), "%u.%u.%u", &versionMajor, &versionMinor, &versionPatch) != 3) throw std::runtime_error("Cannot parse version: " + v);
 }
 
-DeviceBootloader::Version::Version(unsigned major, unsigned minor, unsigned patch) {
-    this->major = major;
-    this->minor = minor;
-    this->patch = patch;
+DeviceBootloader::Version::Version(unsigned vmajor, unsigned vminor, unsigned vpatch) {
+    this->versionMajor = vmajor;
+    this->versionMinor = vminor;
+    this->versionPatch = vpatch;
 }
 
 bool DeviceBootloader::Version::operator==(const Version& other) const {
-    if(major == other.major && minor == other.minor && patch == other.patch) return true;
+    if(versionMajor == other.versionMajor && versionMinor == other.versionMinor && versionPatch == other.versionPatch) return true;
     return false;
 }
 
 bool DeviceBootloader::Version::operator>(const Version& other) const {
-    if(major > other.major) {
+    if(versionMajor > other.versionMajor) {
         return true;
     } else {
-        if(minor > other.minor) {
+        if(versionMinor > other.versionMinor) {
             return true;
         } else {
-            if(patch > other.patch) {
+            if(versionPatch > other.versionPatch) {
                 return true;
             }
         }
@@ -380,13 +380,13 @@ bool DeviceBootloader::Version::operator>(const Version& other) const {
 }
 
 bool DeviceBootloader::Version::operator<(const Version& other) const {
-    if(major < other.major) {
+    if(versionMajor < other.versionMajor) {
         return true;
     } else {
-        if(minor < other.minor) {
+        if(versionMinor < other.versionMinor) {
             return true;
         } else {
-            if(patch < other.patch) {
+            if(versionPatch < other.versionPatch) {
                 return true;
             }
         }
@@ -395,7 +395,7 @@ bool DeviceBootloader::Version::operator<(const Version& other) const {
 }
 
 std::string DeviceBootloader::Version::toString() const {
-    return std::to_string(major) + "." + std::to_string(minor) + "." + std::to_string(patch);
+    return std::to_string(versionMajor) + "." + std::to_string(versionMinor) + "." + std::to_string(versionPatch);
 }
 
 }  // namespace dai

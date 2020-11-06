@@ -30,7 +30,7 @@ class DeviceBootloader {
         std::string toString() const;
 
        private:
-        unsigned major, minor, patch;
+        unsigned versionMajor, versionMinor, versionPatch;
     };
 
     //// static API
