@@ -116,7 +116,6 @@ private:
     std::string config_backup;
     std::string cmd_backup;
     std::string usb_device_backup;
-    std::string pipeline_config_backup;
     uint8_t* binary_backup;
     long binary_size_backup;
 
