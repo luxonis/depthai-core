@@ -16,7 +16,7 @@ extern "C" {
 
 // Resource compiled assets (cmds)
 #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
-#include "cmrc/cmrc.hpp"
+    #include "cmrc/cmrc.hpp"
 CMRC_DECLARE(depthai);
 #endif
 

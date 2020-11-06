@@ -18,7 +18,7 @@
 
 // Resource compiled assets (cmds)
 #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
-#include "cmrc/cmrc.hpp"
+    #include "cmrc/cmrc.hpp"
 CMRC_DECLARE(depthai);
 #endif
 
@@ -85,8 +85,10 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(Pipeline&
     SBR_SECTION* lastSection = assetStorageSection;
 
     // Alignup for easier updating
-    const long SECTION_ALIGNMENT_SIZE = 1 * 1024 * 1024;  // 1MiB for easier updating
-    auto getSectionAlignedOffset = [SECTION_ALIGNMENT_SIZE](long S) { return ((((S) + (SECTION_ALIGNMENT_SIZE)-1)) & ~((SECTION_ALIGNMENT_SIZE)-1)); };
+    auto getSectionAlignedOffset = [](long S) {
+        constexpr long SECTION_ALIGNMENT_SIZE = 1 * 1024 * 1024;  // 1MiB for easier updating
+        return ((((S) + (SECTION_ALIGNMENT_SIZE)-1)) & ~((SECTION_ALIGNMENT_SIZE)-1));
+    };
 
     // First section, MVCMD, name '__firmware'
     sbr_section_set_name(fwSection, "__firmware");
