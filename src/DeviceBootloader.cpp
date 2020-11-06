@@ -85,8 +85,8 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(Pipeline&
     SBR_SECTION* lastSection = assetStorageSection;
 
     // Alignup for easier updating
-    constexpr long SECTION_ALIGNMENT_SIZE = 1 * 1024 * 1024;  // 1MiB for easier updating
-    auto getSectionAlignedOffset = [](long S) { return ((((S) + (SECTION_ALIGNMENT_SIZE)-1)) & ~((SECTION_ALIGNMENT_SIZE)-1)); };
+    const long SECTION_ALIGNMENT_SIZE = 1 * 1024 * 1024;  // 1MiB for easier updating
+    auto getSectionAlignedOffset = [SECTION_ALIGNMENT_SIZE](long S) { return ((((S) + (SECTION_ALIGNMENT_SIZE)-1)) & ~((SECTION_ALIGNMENT_SIZE)-1)); };
 
     // First section, MVCMD, name '__firmware'
     sbr_section_set_name(fwSection, "__firmware");
