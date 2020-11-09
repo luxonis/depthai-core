@@ -657,10 +657,12 @@ void startMonoCam(bool withDepth) {
     //monoRight->setFps(5.0);
 
     bool outputDepth = false;
-    bool outputRectified = false;
+    bool outputRectified = true;
     bool lrcheck  = true;
     bool extended = false;
     bool subpixel = true;
+
+    if (extended || subpixel) outputRectified = false; // TODO
 
     int maxDisp = 96;
     if (extended) maxDisp *= 2;
@@ -674,7 +676,8 @@ void startMonoCam(bool withDepth) {
         stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
         //stereo->loadCalibrationFile("../../../../depthai/resources/depthai.calib");
         //stereo->setInputResolution(1280, 720);
-        stereo->setMedianFilter(dai::StereoDepthProperties::MedianFilter::MEDIAN_OFF);
+        // TODO: median filtering is disabled on device with (lrcheck || extended || subpixel)
+        //stereo->setMedianFilter(dai::StereoDepthProperties::MedianFilter::MEDIAN_OFF);
         stereo->setLeftRightCheck(lrcheck);
         stereo->setExtendedDisparity(extended);
         stereo->setSubpixel(subpixel);
