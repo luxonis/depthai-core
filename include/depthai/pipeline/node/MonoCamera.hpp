@@ -28,6 +28,7 @@ namespace node {
         int64_t getCamId() const;
 
         void setResolution(MonoCameraProperties::SensorResolution resolution);
+        void setFps(float fps);
     };
 
 }  // namespace node

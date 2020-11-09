@@ -555,6 +555,7 @@ void startMjpegCam(){
     // ColorCamera    
     colorCam->setPreviewSize(300, 300);
     colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    //colorCam->setFps(5.0);
     colorCam->setInterleaved(true);
     colorCam->setCamId(0);
 
@@ -638,8 +639,10 @@ void startMonoCam() {
     // MonoCamera
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
     monoLeft->setCamId(1);
+    //monoLeft->setFps(5.0);
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
     monoRight->setCamId(2);
+    //monoRight->setFps(5.0);
 
     // Link plugins CAM -> XLINK
     monoLeft->out.link(xoutLeft->input);

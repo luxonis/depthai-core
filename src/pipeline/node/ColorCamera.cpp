@@ -10,6 +10,7 @@ namespace node {
         properties.previewHeight = 300;
         properties.previewWidth = 300;
         properties.resolution = ColorCameraProperties::SensorResolution::THE_1080_P;
+        properties.fps = 30.0;
     }
 
     std::string ColorCamera::getName() {
@@ -66,6 +67,10 @@ namespace node {
 
     void ColorCamera::setResolution(ColorCameraProperties::SensorResolution resolution) {
         properties.resolution = resolution;
+    }
+
+    void ColorCamera::setFps(float fps) {
+        properties.fps = fps;
     }
 
 }  // namespace node

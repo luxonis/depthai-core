@@ -6,6 +6,7 @@ namespace node {
     MonoCamera::MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
         properties.camId = 1;
         properties.resolution = MonoCameraProperties::SensorResolution::THE_720_P;
+        properties.fps = 30.0;
     }
 
     std::string MonoCamera::getName() {
@@ -42,6 +43,10 @@ namespace node {
 
     void MonoCamera::setResolution(MonoCameraProperties::SensorResolution resolution) {
         properties.resolution = resolution;
+    }
+
+    void MonoCamera::setFps(float fps) {
+        properties.fps = fps;
     }
 
 }  // namespace node
