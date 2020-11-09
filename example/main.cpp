@@ -1,4 +1,5 @@
 #include <iostream>
+#include <csignal>
 
 #include "depthai/Device.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
@@ -680,7 +681,9 @@ void startMonoCam() {
             int loop = std::chrono::duration_cast<std::chrono::milliseconds>(t5-t1).count();
 
             std::cout << ms1 << " " << ms2 << " " << ms3 << " " << ms4 << " loop: " << loop << std::endl;
-            cv::waitKey(1);
+            int key = cv::waitKey(1);
+            if (key == 'q')
+                raise(SIGINT);
         }
     } else {
         cout << "No booted (debugger) devices found..." << endl;
