@@ -73,6 +73,7 @@ add_library(${TARGET_NAME}
     src/pipeline/node/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
     src/pipeline/node/MonoCamera.cpp
+    src/pipeline/node/StereoDepth.cpp
     src/pipeline/node/NeuralNetwork.cpp
     src/pipeline/node/MyProducer.cpp
     src/pipeline/node/VideoEncoder.cpp
