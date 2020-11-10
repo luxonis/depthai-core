@@ -34,13 +34,7 @@ void XLinkConnection::initXLinkGlobal() {
     }
 
     // Suppress XLink related errors
-    // TODO(themarpe) - XLinkLog.h for Windows caueses issues
-    // FUNCATTR_WEAK static, causes log level symbols to not be accessible
-    // Closest alternative for weak linking in MSVC is: __declspec(selectany)
-
-    mvLogDefaultLevelSet(MVLOG_FATAL);
-    // extern int mvLogLevel_default;
-    // mvLogLevel_default = 4; // MVLOG_FATAL
+    mvLogDefaultLevelSet(MVLOG_LAST);
 
     xlinkGlobalInitialized = true;
 }
