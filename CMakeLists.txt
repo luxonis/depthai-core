@@ -25,6 +25,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON )
 option(DEPTHAI_CLANG_TIDY   "Enable clang-tidy checks during compilation" OFF)
 
+# Debug option
+set(DEPTHAI_XLINK_LOCAL "" CACHE STRING "Path to local XLink source to use instead of Hunter")
+
 ### Get and find dependencies
 
 # Nlohmann JSON
@@ -32,8 +35,12 @@ hunter_add_package(nlohmann_json)
 find_package(nlohmann_json CONFIG REQUIRED)
 
 # XLink
-hunter_add_package(XLink)
-find_package(XLink CONFIG REQUIRED)
+if(DEPTHAI_XLINK_LOCAL)
+    add_subdirectory("${DEPTHAI_XLINK_LOCAL}" ${CMAKE_CURRENT_BINARY_DIR}/XLink EXCLUDE_FROM_ALL)
+else()
+    hunter_add_package(XLink)
+    find_package(XLink CONFIG REQUIRED)
+endif()
 
 # BZip2 (for bspatch)
 hunter_add_package(BZip2)
