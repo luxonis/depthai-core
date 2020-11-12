@@ -662,8 +662,6 @@ void startMonoCam(bool withDepth) {
     bool extended = false;
     bool subpixel = true;
 
-    if (extended || subpixel) outputRectified = false; // TODO
-
     int maxDisp = 96;
     if (extended) maxDisp *= 2;
     if (subpixel) maxDisp *= 32; // 5 bits fractional disparity
