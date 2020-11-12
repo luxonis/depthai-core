@@ -24,8 +24,11 @@
 namespace dai {
 
 struct DeviceInfo {
-    deviceDesc_t desc;
-    XLinkDeviceState_t state;
+    DeviceInfo() = default;
+    DeviceInfo(const char*);
+    DeviceInfo(std::string);
+    deviceDesc_t desc = {};
+    XLinkDeviceState_t state = X_LINK_ANY_STATE;
 };
 
 class XLinkConnection {

@@ -16,6 +16,28 @@ extern "C" {
 
 namespace dai {
 
+// DeviceInfo
+DeviceInfo::DeviceInfo(std::string mxId){
+    // Add dash at the end of mxId ([mxId]-[xlinkDevName] format)
+    mxId += "-";
+    // Construct device info which will points to device with specific mxId
+    std::strncpy(desc.name, mxId.c_str(), sizeof(desc.name));
+
+    // set protocol to any
+    desc.protocol = X_LINK_ANY_PROTOCOL;
+
+    // set platform to any
+    desc.platform = X_LINK_ANY_PLATFORM;
+
+    // set state to any
+    state = X_LINK_ANY_STATE;
+}
+DeviceInfo::DeviceInfo(const char* mxId) : DeviceInfo(std::string(mxId)) {}
+
+
+
+
+
 static DeviceInfo deviceInfoFix(const DeviceInfo& d, XLinkDeviceState_t state);
 
 // STATIC
@@ -150,8 +172,16 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
         auto tstart = steady_clock::now();
         do {
             rc = XLinkFindFirstSuitableDevice(X_LINK_UNBOOTED, deviceToBoot.desc, &foundDeviceDesc);
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            //TMP
+            printf("Looped while waiting for device: %s\n", deviceToBoot.desc.name);
             if(rc == X_LINK_SUCCESS) break;
         } while(steady_clock::now() - tstart < WAIT_FOR_BOOTUP_TIMEOUT);
+
+        // If device not found 
+        if(rc != X_LINK_SUCCESS) {
+            throw std::runtime_error("Failed to find device specified device (" + std::string(deviceToBoot.desc.name) + "), error message: " + convertErrorCodeToString(rc));
+        }
 
         if(bootWithPath) {
             bootAvailableDevice(foundDeviceDesc, pathToMvcmd);
