@@ -45,6 +45,19 @@ std::vector<DeviceInfo> Device::getAllAvailableDevices() {
     return availableDevices;
 }
 
+// First tries to find UNBOOTED device with mxId, then BOOTLOADER device with mxId
+std::tuple<bool, DeviceInfo> Device::getDeviceByMxId(std::string mxId) {
+    std::vector<DeviceInfo> availableDevices;
+    auto states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER};
+    bool found;
+    DeviceInfo dev;
+    for(const auto& state : states) {
+        std::tie(found, dev) = XLinkConnection::getDeviceByMxId(mxId, state);
+        if(found) return {true, dev};
+    }
+    return {false, DeviceInfo()};
+}
+
 /*
 std::vector<DeviceInfo> Device::getAllConnectedDevices(){
     return XLinkConnection::getAllConnectedDevices();

@@ -17,7 +17,7 @@ extern "C" {
 namespace dai {
 
 // DeviceInfo
-DeviceInfo::DeviceInfo(std::string mxId){
+DeviceInfo::DeviceInfo(std::string mxId) {
     // Add dash at the end of mxId ([mxId]-[xlinkDevName] format)
     mxId += "-";
     // Construct device info which will points to device with specific mxId
@@ -34,9 +34,15 @@ DeviceInfo::DeviceInfo(std::string mxId){
 }
 DeviceInfo::DeviceInfo(const char* mxId) : DeviceInfo(std::string(mxId)) {}
 
-
-
-
+std::string DeviceInfo::getMxId() const {
+    std::string mxId = "";
+    int len = std::strlen(desc.name);
+    for(int i = 0; i < len; i++) {
+        if(desc.name[i] == '-') break;
+        mxId += desc.name[i];
+    }
+    return mxId;
+}
 
 static DeviceInfo deviceInfoFix(const DeviceInfo& d, XLinkDeviceState_t state);
 
@@ -102,7 +108,19 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
 std::tuple<bool, DeviceInfo> XLinkConnection::getFirstDevice(XLinkDeviceState_t state) {
     auto devices = getAllConnectedDevices();
     for(const auto& d : devices) {
-        if(d.state == state) return {true, d};
+        if(d.state == state || state == X_LINK_ANY_STATE) return {true, d};
+    }
+    return {false, DeviceInfo()};
+}
+
+std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceByMxId(std::string mxId, XLinkDeviceState_t state) {
+    auto devices = getAllConnectedDevices();
+    for(const auto& d : devices) {
+        if(d.state == state || state == X_LINK_ANY_STATE) {
+            if(d.getMxId() == mxId) {
+                return {true, d};
+            }
+        }
     }
     return {false, DeviceInfo()};
 }
@@ -173,14 +191,13 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
         do {
             rc = XLinkFindFirstSuitableDevice(X_LINK_UNBOOTED, deviceToBoot.desc, &foundDeviceDesc);
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
-            //TMP
-            printf("Looped while waiting for device: %s\n", deviceToBoot.desc.name);
             if(rc == X_LINK_SUCCESS) break;
         } while(steady_clock::now() - tstart < WAIT_FOR_BOOTUP_TIMEOUT);
 
-        // If device not found 
+        // If device not found
         if(rc != X_LINK_SUCCESS) {
-            throw std::runtime_error("Failed to find device specified device (" + std::string(deviceToBoot.desc.name) + "), error message: " + convertErrorCodeToString(rc));
+            throw std::runtime_error("Failed to find device specified device (" + std::string(deviceToBoot.desc.name)
+                                     + "), error message: " + convertErrorCodeToString(rc));
         }
 
         if(bootWithPath) {

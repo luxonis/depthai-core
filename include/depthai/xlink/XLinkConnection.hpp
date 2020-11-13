@@ -29,6 +29,7 @@ struct DeviceInfo {
     DeviceInfo(std::string);
     deviceDesc_t desc = {};
     XLinkDeviceState_t state = X_LINK_ANY_STATE;
+    std::string getMxId() const;
 };
 
 class XLinkConnection {
@@ -40,7 +41,8 @@ class XLinkConnection {
    public:
     // static API
     static std::vector<DeviceInfo> getAllConnectedDevices(XLinkDeviceState_t state = X_LINK_ANY_STATE);
-    static std::tuple<bool, DeviceInfo> getFirstDevice(XLinkDeviceState_t state);
+    static std::tuple<bool, DeviceInfo> getFirstDevice(XLinkDeviceState_t state = X_LINK_ANY_STATE);
+    static std::tuple<bool, DeviceInfo> getDeviceByMxId(std::string, XLinkDeviceState_t state = X_LINK_ANY_STATE);
 
     XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
     XLinkConnection(const DeviceInfo& deviceDesc, std::string pathToMvcmd, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
