@@ -53,6 +53,11 @@ void StereoDepth::loadCalibrationFile(const std::string& path) {
     loadCalibrationData(data);
 }
 
+void StereoDepth::setEmptyCalibration(void) {
+    const std::vector<std::uint8_t> empty = {};
+    properties.calibration = empty;
+}
+
 void StereoDepth::setInputResolution(int width, int height) {
     properties.width = width;
     properties.height = height;

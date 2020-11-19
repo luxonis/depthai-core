@@ -33,6 +33,9 @@ class StereoDepth : public Node {
     void loadCalibrationFile(const std::string& path);
     // Specify calibration data as a vector of bytes. Empty vector to use EEPROM
     void loadCalibrationData(const std::vector<std::uint8_t>& data);
+    // Specify that a passthrough/dummy calibration should be used, when input frames
+    // are already rectified (e.g. sourced from recordings on the host)
+    void setEmptyCalibration(void);
     // Optional (taken from MonoCamera nodes if they exist)
     void setInputResolution(int width, int height);
 
