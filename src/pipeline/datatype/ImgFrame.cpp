@@ -49,6 +49,7 @@ void ImgFrame::setSequenceNum(unsigned int sequenceNum) {
 }
 void ImgFrame::setWidth(unsigned int width) {
     img.fb.width = width;
+    img.fb.stride = width;
 }
 void ImgFrame::setHeight(unsigned int height) {
     img.fb.height = height;
