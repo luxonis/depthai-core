@@ -627,6 +627,24 @@ void startNN(std::string nnPath){
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 dai::Pipeline createNNPipelineSPI(std::string nnPath){
     dai::Pipeline p;
 
@@ -643,6 +661,13 @@ dai::Pipeline createNNPipelineSPI(std::string nnPath){
     colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
     colorCam->preview.link(nn1->input);
 
+    // add a video encoder
+    auto videnc = p.create<dai::node::VideoEncoder>();
+//    videnc->setDefaultProfilePreset(300, 300, dai::VideoEncoderProperties::Profile::MJPEG);
+//    colorCam->preview.link(videnc->input);
+    videnc->setDefaultProfilePreset(1920, 1080, dai::VideoEncoderProperties::Profile::MJPEG);
+    colorCam->video.link(videnc->input);
+
     // set up SPI out node and link to nn1
     auto spiOut = p.create<dai::node::SPIOut>();
     spiOut->setStreamName("spimetaout");
@@ -650,10 +675,11 @@ dai::Pipeline createNNPipelineSPI(std::string nnPath){
     nn1->out.link(spiOut->input);
 
     // Watch out for memory usage on the target SPI device. It turns out ESP32 often doesn't have enough contiguous memory to hold a full 300x300 RGB preview image.
-//    auto spiOut2 = p.create<dai::node::SPIOut>();
-//    spiOut2->setStreamName("spipreview");
-//    spiOut2->setBusId(0);
+    auto spiOut2 = p.create<dai::node::SPIOut>();
+    spiOut2->setStreamName("spipreview");
+    spiOut2->setBusId(0);
 //    colorCam->preview.link(spiOut2->input);
+    videnc->bitstream.link(spiOut2->input);
 
     return p;
 }
@@ -688,6 +714,7 @@ int main(int argc, char** argv){
 
     std::string nnPath(argv[1]);
     startNNSPI(nnPath);
+//    startMjpegCam();
 
     return 0;
 }
