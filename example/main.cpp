@@ -2,6 +2,7 @@
 #include <csignal>
 
 #include "depthai/Device.hpp"
+#include "depthai/DeviceBootloader.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
 #include "depthai-shared/Assets.hpp"
@@ -23,6 +24,45 @@
 #include "fp16/fp16.h"
 
 
+#include "XLinkLog.h"
+
+
+
+std::string protocolToString(XLinkProtocol_t p){
+    
+    switch (p)
+    {
+    case X_LINK_USB_VSC : return {"X_LINK_USB_VSC"}; break;
+    case X_LINK_USB_CDC : return {"X_LINK_USB_CDC"}; break;
+    case X_LINK_PCIE : return {"X_LINK_PCIE"}; break;
+    case X_LINK_IPC : return {"X_LINK_IPC"}; break;
+    case X_LINK_NMB_OF_PROTOCOLS : return {"X_LINK_NMB_OF_PROTOCOLS"}; break;
+    case X_LINK_ANY_PROTOCOL : return {"X_LINK_ANY_PROTOCOL"}; break;
+    }    
+    return {"UNDEFINED"};
+}
+
+std::string platformToString(XLinkPlatform_t p){
+    
+    switch (p)
+    {
+    case X_LINK_ANY_PLATFORM : return {"X_LINK_ANY_PLATFORM"}; break;
+    case X_LINK_MYRIAD_2 : return {"X_LINK_MYRIAD_2"}; break;
+    case X_LINK_MYRIAD_X : return {"X_LINK_MYRIAD_X"}; break;
+    }
+    return {"UNDEFINED"};
+}
+
+std::string stateToString(XLinkDeviceState_t p){
+    
+    switch (p)
+    {
+    case X_LINK_ANY_STATE : return {"X_LINK_ANY_STATE"}; break;
+    case X_LINK_BOOTED : return {"X_LINK_BOOTED"}; break;
+    case X_LINK_UNBOOTED : return {"X_LINK_UNBOOTED"}; break;
+    }    
+    return {"UNDEFINED"};
+}
 
 cv::Mat toMat(const std::vector<uint8_t>& data, int w, int h , int numPlanes, int bpp){
     
@@ -530,6 +570,7 @@ void startTest(int id){
     if(found) {
         dai::Device d(deviceInfo);
         d.startTestPipeline(id);
+        while(1);
     }
 
 }
@@ -569,11 +610,11 @@ void startMjpegCam(){
     videnc->bitstream.link(xout->input);
 
 
-    // CONNECT TO DEVICE
-
     bool found;
     dai::DeviceInfo deviceInfo;
     std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
+
+    std::cout << "Device info desc name: " << deviceInfo.desc.name << "\n";
 
     if(found) {
         dai::Device d(deviceInfo);
@@ -775,6 +816,25 @@ void startMonoCam(bool withDepth) {
 int main(int argc, char** argv){
     using namespace std;
     cout << "Hello World!" << endl;
+
+    mvLogDefaultLevelSet(MVLOG_DEBUG);
+
+    // List all devices
+    while(argc > 1){
+        auto devices = dai::Device::getAllAvailableDevices();
+        for(const auto& dev : devices){
+            std::cout << "name: " << std::string(dev.desc.name);
+            std::cout << ", state: " << stateToString(dev.state);
+            std::cout << ", protocol: " << protocolToString(dev.desc.protocol);
+            std::cout << ", platform: " << platformToString(dev.desc.platform);
+            std::cout << std::endl;
+        }
+
+        std::this_thread::sleep_for(100ms);
+    }
+
+    mvLogDefaultLevelSet(MVLOG_LAST);
+
 
     if(argc <= 1){
         startMjpegCam();
