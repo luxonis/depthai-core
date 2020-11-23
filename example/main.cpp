@@ -26,7 +26,7 @@
 
 #include "XLinkLog.h"
 
-
+static XLinkDeviceState_t xlinkState = X_LINK_UNBOOTED;
 
 std::string protocolToString(XLinkProtocol_t p){
     
@@ -255,7 +255,7 @@ void startPreview(){
 
     bool found;
     dai::DeviceInfo deviceInfo;
-    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_BOOTED);
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(xlinkState);
 
     if(found) {
         dai::Device d(deviceInfo);
@@ -284,7 +284,7 @@ void startPreview(){
         }
 
     } else {
-        cout << "No booted (debugger) devices found..." << endl;
+        cout << "No devices with state " << stateToString(xlinkState) << " found..." << endl;
     }
 
     
@@ -298,7 +298,7 @@ void startVideo(){
 
     bool found;
     dai::DeviceInfo deviceInfo;
-    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_BOOTED);
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(xlinkState);
 
     if(found) {
         dai::Device d(deviceInfo);
@@ -334,7 +334,7 @@ void startVideo(){
         }
 
     } else {
-        cout << "No booted (debugger) devices found..." << endl;
+        cout << "No devices with state " << stateToString(xlinkState) << " found..." << endl;
     }
 
 
@@ -348,7 +348,7 @@ void startNN(std::string nnPath){
 
     bool found;
     dai::DeviceInfo deviceInfo;
-    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_BOOTED);
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(xlinkState);
 
     if(found) {
         dai::Device d(deviceInfo);
@@ -425,7 +425,7 @@ void startNN(std::string nnPath){
         }
 
     } else {
-        cout << "No booted (debugger) devices found..." << endl;
+        cout << "No devices with state " << stateToString(xlinkState) << " found..." << endl;
     }
 
 }
@@ -467,7 +467,7 @@ void startWebcam(int camId, std::string nnPath){
 
     bool found;
     dai::DeviceInfo deviceInfo;
-    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(xlinkState);
 
     if(found) {
         dai::Device d(deviceInfo);
@@ -552,7 +552,7 @@ void startWebcam(int camId, std::string nnPath){
         }
 
     } else {
-        cout << "No booted (debugger) devices found..." << endl;
+        cout << "No devices with state " << stateToString(xlinkState) << " found..." << endl;
     }
 
 }
@@ -565,7 +565,7 @@ void startTest(int id){
     // CONNECT TO DEVICE
     bool found;
     dai::DeviceInfo deviceInfo;
-    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_BOOTED);
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(xlinkState);
 
     if(found) {
         dai::Device d(deviceInfo);
@@ -612,7 +612,7 @@ void startMjpegCam(){
 
     bool found;
     dai::DeviceInfo deviceInfo;
-    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(xlinkState);
 
     std::cout << "Device info desc name: " << deviceInfo.desc.name << "\n";
 
@@ -652,13 +652,14 @@ void startMjpegCam(){
             int loop = std::chrono::duration_cast<std::chrono::milliseconds>(t5-t1).count();
 
             std::cout << ms1 << " " << ms2 << " " << ms3 << " " << ms4 << " loop: " << loop << "sync offset: " << tsPreview << " sync mjpeg " << tsMjpeg << std::endl;
-            cv::waitKey(1);
+            int key = cv::waitKey(1);
+            if (key == 'q') raise(SIGINT);
 
 
         }
 
     } else {
-        cout << "No booted (debugger) devices found..." << endl;
+        cout << "No devices with state " << stateToString(xlinkState) << " found..." << endl;
     }
 
 
@@ -744,7 +745,7 @@ void startMonoCam(bool withDepth) {
 
     bool found;
     dai::DeviceInfo deviceInfo;
-    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(xlinkState);
 
     if (found) {
         dai::Device d(deviceInfo);
@@ -808,7 +809,7 @@ void startMonoCam(bool withDepth) {
                 raise(SIGINT);
         }
     } else {
-        cout << "No booted (debugger) devices found..." << endl;
+        cout << "No devices with state " << stateToString(xlinkState) << " found..." << endl;
     }
 }
 
@@ -817,10 +818,28 @@ int main(int argc, char** argv){
     using namespace std;
     cout << "Hello World!" << endl;
 
+    bool mono = false;
+    bool depth = false;
+    bool debug = false;
+    bool listdev = false;
+    std::string nnPath;
+
+    // Very basic argument parsing
+    for (int i = 1; i < argc; i++) {
+        std::string s = argv[i];
+        if      (s == "mono")                mono    = true;
+        else if (s == "depth")               depth   = true;
+        else if (s == "debug"   || s == "d") debug   = true;
+        else if (s == "listdev" || s == "l") listdev = true;
+        else                                 nnPath  = s;
+    }
+
+    xlinkState = debug ? X_LINK_BOOTED : X_LINK_UNBOOTED;
+
     mvLogDefaultLevelSet(MVLOG_DEBUG);
 
     // List all devices
-    while(argc > 1){
+    while(listdev){
         auto devices = dai::Device::getAllAvailableDevices();
         for(const auto& dev : devices){
             std::cout << "name: " << std::string(dev.desc.name);
@@ -835,22 +854,21 @@ int main(int argc, char** argv){
 
     mvLogDefaultLevelSet(MVLOG_LAST);
 
-
-    if(argc <= 1){
-        startMjpegCam();
+    if (nnPath.empty()) {
+        if (mono) {
+            startMonoCam(false);
+        } else if (depth) {
+            startMonoCam(true);
+        } else {
+            startMjpegCam();
+        }
     } else {
-         std::string nnPath(argv[1]);
- 
         if(nnPath == "test0"){
             startTest(0);
         } else if(nnPath == "test1"){
             startTest(1);
         } else if(nnPath == "test2"){
             startTest(2);
-        } else if(nnPath == "mono"){
-            startMonoCam(false);
-        } else if(nnPath == "depth"){
-            startMonoCam(true);
         } else {
             startWebcam(0, nnPath);
         }
