@@ -105,6 +105,14 @@ function(DepthaiDownload)
     # Download files 
     function(DownloadAndChecksum url url_checksum output status_var)
 
+        # Check if file already downloaded (in resources)
+        if(EXISTS "${output}")
+            get_filename_component(_filename "${output}" NAME)
+            message(STATUS "File already downloaded (resources): ${_filename}")
+            set("${status_var}" "0" PARENT_SCOPE)
+            return()
+        endif()
+
         # Retry again if failed
         set(_num_retries_left ${DEPTHAI_DOWNLOAD_RETRY_NUM})
         # Set error by default
@@ -166,7 +174,7 @@ function(DepthaiDownload)
         DownloadAndChecksum(
             "${_download_directory_url}/depthai-shared-commit-hash-${_version_commit_identifier}.txt" # File
             "${_download_directory_url}/depthai-shared-commit-hash-${_version_commit_identifier}.sha256.checksum" # File checksum
-            "${folder}/depthai-shared-commit-hash.txt"
+            "${folder}/depthai-shared-commit-hash-${_version_commit_identifier}.txt"
             status
         )
         if(${status})
@@ -183,7 +191,7 @@ function(DepthaiDownload)
             endif()
 
             # Read commit hash file
-            file(READ "${folder}/depthai-shared-commit-hash.txt" _device_depthai_shared_commit_hash)
+            file(READ "${folder}/depthai-shared-commit-hash-${_version_commit_identifier}.txt" _device_depthai_shared_commit_hash)
             string(REGEX REPLACE "\n$" "" _device_depthai_shared_commit_hash "${_device_depthai_shared_commit_hash}")
             string(REGEX REPLACE "\n$" "" _depthai_shared_commit "${_depthai_shared_commit}")
             string(COMPARE EQUAL "${_device_depthai_shared_commit_hash}" "${_depthai_shared_commit}" _is_same)
@@ -207,7 +215,7 @@ function(DepthaiDownload)
     DownloadAndChecksum(
         "${_download_directory_url}/depthai-${_version_commit_identifier}.cmd" # File
         "${_download_directory_url}/depthai-${_version_commit_identifier}.sha256.checksum" # File checksum
-        "${folder}/depthai.cmd"
+        "${folder}/depthai-${_version_commit_identifier}.cmd"
         status
     )
     if(${status})
@@ -216,7 +224,7 @@ function(DepthaiDownload)
         message(FATAL_ERROR "Aborting.\n")
     endif()
     # add depthai.cmd to list
-    list(APPEND "${output_list_var}" "${folder}/depthai.cmd")
+    list(APPEND "${output_list_var}" "${folder}/depthai-${_version_commit_identifier}.cmd")
     
 
     if(NOT _download_patch_only)
@@ -225,7 +233,7 @@ function(DepthaiDownload)
         DownloadAndChecksum(
             "${_download_directory_url}/depthai-usb2-${_version_commit_identifier}.cmd" # File
             "${_download_directory_url}/depthai-usb2-${_version_commit_identifier}.sha256.checksum" # File checksum
-            "${folder}/depthai-usb2.cmd"
+            "${folder}/depthai-usb2-${_version_commit_identifier}.cmd"
             status
         )
 
@@ -236,7 +244,7 @@ function(DepthaiDownload)
         endif()
 
         # add depthai-usb2.cmd to list
-        list(APPEND "${output_list_var}" "${folder}/depthai-usb2.cmd")
+        list(APPEND "${output_list_var}" "${folder}/depthai-usb2-${_version_commit_identifier}.cmd")
 
     endif(NOT _download_patch_only)
 
@@ -245,7 +253,7 @@ function(DepthaiDownload)
     DownloadAndChecksum(
         "${_download_directory_url}/depthai-usb2-patch-${_version_commit_identifier}.patch" # File
         "${_download_directory_url}/depthai-usb2-patch-${_version_commit_identifier}.sha256.checksum" # File checksum
-        "${folder}/depthai-usb2-patch.patch"
+        "${folder}/depthai-usb2-patch-${_version_commit_identifier}.patch"
         status
     )
     if(${status})
@@ -255,11 +263,10 @@ function(DepthaiDownload)
     endif()    
 
     # add depthai-usb2.cmd to list
-    list(APPEND "${output_list_var}" "${folder}/depthai-usb2-patch.patch")
+    list(APPEND "${output_list_var}" "${folder}/depthai-usb2-patch-${_version_commit_identifier}.patch")
     set("${output_list_var}" "${${output_list_var}}" PARENT_SCOPE)
 
 endfunction()
-
 
 function(DepthaiLocal patch_only patch_only_on_off output_dir output_list_var path1 path2 path3)
 

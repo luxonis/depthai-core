@@ -26,6 +26,7 @@ add_executable("${TARGET_NAME}"
     main.cpp
     #main_gaze.cpp
     #main_device_test.cpp
+    #main_flash.cpp
 )
 
 # Link with libraries

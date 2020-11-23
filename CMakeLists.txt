@@ -27,24 +27,26 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON )
 option(DEPTHAI_CLANG_TIDY   "Enable clang-tidy checks during compilation" OFF)
 
+# Debug option
+set(DEPTHAI_XLINK_LOCAL "" CACHE STRING "Path to local XLink source to use instead of Hunter")
+
 ### Get and find dependencies
 
 # Nlohmann JSON
 hunter_add_package(nlohmann_json)
 find_package(nlohmann_json CONFIG REQUIRED)
 
-# json schema validator
-# hunter_add_package(nlohmann_json_schema_validator)
-# find_package(nlohmann_json_schema_validator CONFIG REQUIRED)
-
 # XLink
-hunter_add_package(XLink)
-find_package(XLink CONFIG REQUIRED)
+if(DEPTHAI_XLINK_LOCAL)
+    add_subdirectory("${DEPTHAI_XLINK_LOCAL}" ${CMAKE_CURRENT_BINARY_DIR}/XLink EXCLUDE_FROM_ALL)
+else()
+    hunter_add_package(XLink)
+    find_package(XLink CONFIG REQUIRED)
+endif()
 
 # BZip2 (for bspatch)
 hunter_add_package(BZip2)
 find_package(BZip2 CONFIG REQUIRED)
-
 
 # FP16 for conversions
 hunter_add_package(FP16)
@@ -53,17 +55,21 @@ find_package(FP16 REQUIRED)
 # Add depthai-shared, and definitions that it is PC side
 include(${CMAKE_CURRENT_LIST_DIR}/shared/depthai-shared.cmake)
 
+# Add depthai-bootloader-shared
+include(${CMAKE_CURRENT_LIST_DIR}/shared/depthai-bootloader-shared.cmake)
+
 # Add threads (c++)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 ### End of dependencies
 
-
 # Create library
 add_library(${TARGET_NAME}
     # depthai-shared sources
     "${DEPTHAI_SHARED_SOURCES}"
+    # depthai-bootloader-shared sources
+    "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
     # sources
     src/pipeline/Pipeline.cpp
     src/xlink/XLinkConnection.cpp
@@ -82,18 +88,8 @@ add_library(${TARGET_NAME}
     src/pipeline/datatype/NNData.cpp
     src/pipeline/datatype/StreamPacketParser.cpp
     src/Device.cpp
+    src/DeviceBootloader.cpp
     src/bspatch/bspatch.c
-    
-
-    #src/pipeline/cnn_host_pipeline.cpp
-    #src/pipeline/host_pipeline_config.cpp
-    #src/pipeline/host_pipeline.cpp
-    #src/host_capture_command.cpp
-    #src/device_support_listener.cpp
-    #src/disparity_stream_post_processor.cpp
-    #src/host_data_reader.cpp
-    #src/host_json_helper.cpp
-    #src/types.cpp
 )
 
 # Add aditional flags
@@ -130,15 +126,20 @@ endif()
 set(DEPTHAI_RESOURCES_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/resources")
 
 # Include configuration
-include(Depthai/DepthaiDeviceSideConfig)
+include(Depthai/DepthaiDeviceSideConfig)    # Depthai device binary commit/version configuration    
+include(Depthai/DepthaiBootloaderConfig)    # Depthai bootloader binary commit/version configuration
 
-# Download libraries
-include(DepthaiDownloader)
+# Include downloaders
+include(DepthaiDownloader)                  # Depthai device binary downloader
+include(DepthaiBootloaderDownloader)        # Depthai bootloader binary downloader
+
 
 # depthai-shared enforce commit hash match if CI
 if($ENV{CI})
     set(DEPTHAI_SHARED_COMMIT_HASH_ENFORCE ON)
+    set(DEPTHAI_BOOTLOADER_SHARED_COMMIT_HASH_ENFORCE ON)
 endif()
+
 
 # Then get the Depthai device side binaries (local or download)
 if(DEPTHAI_CMD_PATH OR DEPTHAI_USB2_CMD_PATH OR DEPTHAI_USB2_PATCH_PATH)
@@ -168,9 +169,19 @@ else()
         "${DEPTHAI_DEVICE_SIDE_VERSION}"            # Optional version
     )
 endif()
+list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_RESOURCE_LIST})
 
+# Add bootloader
+DepthaiBootloaderDownload(
+    "${DEPTHAI_BOOTLOADER_SHARED_COMMIT_HASH}" "${DEPTHAI_BOOTLOADER_SHARED_COMMIT_HASH_ENFORCE}"
+    "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder 
+    DEPTHAI_BOOTLOADER_RESOURCE_LIST                # List of output resources
+    "${DEPTHAI_BOOTLOADER_MATURITY}"                # Maturity
+    "${DEPTHAI_BOOTLOADER_VERSION}"                 # if maturity == snapshot -> hash else version                  
+)
+list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_BOOTLOADER_RESOURCE_LIST})
 
-message(STATUS "LIST OF RESOURCES: ${DEPTHAI_RESOURCE_LIST}")
+message(STATUS "LIST OF RESOURCE COMPILED FILES: ${RESOURCE_COMPILED_FILES}")
 
 if(DEPTHAI_BINARIES_RESOURCE_COMPILE)
     # Add RC and resource compile the binares
@@ -181,7 +192,7 @@ if(DEPTHAI_BINARIES_RESOURCE_COMPILE)
     # Add resource library
     cmrc_add_resource_library("${DEPTHAI_RESOURCE_LIBRARY_NAME}" NAMESPACE depthai
         WHENCE "${DEPTHAI_RESOURCES_OUTPUT_DIR}"
-        "${DEPTHAI_RESOURCE_LIST}"
+        "${RESOURCE_COMPILED_FILES}"
     )    
 
     # Link to resource library
@@ -206,14 +217,20 @@ target_include_directories(${TARGET_NAME}
         "$<INSTALL_INTERFACE:include>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
         "$<BUILD_INTERFACE:${DEPTHAI_SHARED_PUBLIC_INCLUDE}>"
+        "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}>"
     #INTERFACE
     #    # ...
     PRIVATE 
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
         "$<BUILD_INTERFACE:${DEPTHAI_SHARED_INCLUDE}>"
+        "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_INCLUDE}>"
 )
 
-target_include_directories(${TARGET_NAME} SYSTEM PUBLIC "$<BUILD_INTERFACE:${DEPTHAI_SHARED_3RDPARTY_INCLUDE}>")
+target_include_directories(${TARGET_NAME} SYSTEM 
+    PUBLIC
+        "$<BUILD_INTERFACE:${DEPTHAI_SHARED_3RDPARTY_INCLUDE}>"
+        "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_3RDPARTY_INCLUDE}>"
+)
 
 
 # Add clang format after specifying include directories
@@ -238,8 +255,16 @@ target_link_libraries(${TARGET_NAME}
 )
 
 
-# Add definition that it is PC side (XLink)
-target_compile_definitions(${TARGET_NAME} PRIVATE -D__PC__)
+# Add compile definitions
+target_compile_definitions(${TARGET_NAME} 
+    PRIVATE 
+        # XLink required define
+        __PC__
+        # Add depthai-device version
+        DEPTHAI_DEVICE_VERSION="${DEPTHAI_DEVICE_SIDE_COMMIT}"
+        # Add depthai-bootloader version
+        DEPTHAI_BOOTLOADER_VERSION="${DEPTHAI_BOOTLOADER_VERSION}"
+)
 
 # Add patch only mode definition
 if(DEPTHAI_USB2_PATCH_ONLY_MODE)
