@@ -24,8 +24,12 @@
 namespace dai {
 
 struct DeviceInfo {
-    deviceDesc_t desc;
-    XLinkDeviceState_t state;
+    DeviceInfo() = default;
+    DeviceInfo(const char*);
+    DeviceInfo(std::string);
+    deviceDesc_t desc = {};
+    XLinkDeviceState_t state = X_LINK_ANY_STATE;
+    std::string getMxId() const;
 };
 
 class XLinkConnection {
@@ -36,12 +40,13 @@ class XLinkConnection {
 
    public:
     // static API
-    static std::vector<DeviceInfo> getAllConnectedDevices();
-    static std::tuple<bool, DeviceInfo> getFirstDevice(XLinkDeviceState_t state);
+    static std::vector<DeviceInfo> getAllConnectedDevices(XLinkDeviceState_t state = X_LINK_ANY_STATE);
+    static std::tuple<bool, DeviceInfo> getFirstDevice(XLinkDeviceState_t state = X_LINK_ANY_STATE);
+    static std::tuple<bool, DeviceInfo> getDeviceByMxId(std::string, XLinkDeviceState_t state = X_LINK_ANY_STATE);
 
-    XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary);
-    XLinkConnection(const DeviceInfo& deviceDesc, std::string pathToMvcmd);
-    explicit XLinkConnection(const DeviceInfo& deviceDesc);
+    XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
+    XLinkConnection(const DeviceInfo& deviceDesc, std::string pathToMvcmd, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
+    explicit XLinkConnection(const DeviceInfo& deviceDesc, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
 
     ~XLinkConnection();
 
@@ -55,6 +60,10 @@ class XLinkConnection {
     void writeToStream(const std::string& streamName, const std::vector<std::uint8_t>& data);
     std::vector<std::uint8_t> readFromStream(const std::string& streamName);
     void readFromStream(const std::string& streamName, std::vector<std::uint8_t>& data);
+
+    // split write helper
+    void writeToStreamSplit(const std::string& streamName, const void* data, std::size_t size, std::size_t split);
+    void writeToStreamSplit(const std::string& streamName, const std::vector<uint8_t>& data, std::size_t split);
 
     // timeout versions
     // bool writeToStream(const std::string& streamName, const void* data, std::size_t size, std::chrono::milliseconds timeout);
@@ -78,7 +87,7 @@ class XLinkConnection {
     static bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, std::vector<std::uint8_t>& mvcmd);
     static std::string convertErrorCodeToString(XLinkError_t errorCode);
 
-    void initDevice(const DeviceInfo& deviceToInit);
+    void initDevice(const DeviceInfo& deviceToInit, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
 
     std::unordered_map<std::string, streamId_t> streamIdMap;
 

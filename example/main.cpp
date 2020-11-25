@@ -1,7 +1,9 @@
 #include <iostream>
 #include <unistd.h>
 
+
 #include "depthai/Device.hpp"
+#include "depthai/DeviceBootloader.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
 #include "depthai-shared/Assets.hpp"
@@ -23,6 +25,43 @@
 #include "fp16/fp16.h"
 
 
+#include "XLinkLog.h"
+
+std::string protocolToString(XLinkProtocol_t p){
+    
+    switch (p)
+    {
+    case X_LINK_USB_VSC : return {"X_LINK_USB_VSC"}; break;
+    case X_LINK_USB_CDC : return {"X_LINK_USB_CDC"}; break;
+    case X_LINK_PCIE : return {"X_LINK_PCIE"}; break;
+    case X_LINK_IPC : return {"X_LINK_IPC"}; break;
+    case X_LINK_NMB_OF_PROTOCOLS : return {"X_LINK_NMB_OF_PROTOCOLS"}; break;
+    case X_LINK_ANY_PROTOCOL : return {"X_LINK_ANY_PROTOCOL"}; break;
+    }    
+    return {"UNDEFINED"};
+}
+
+std::string platformToString(XLinkPlatform_t p){
+    
+    switch (p)
+    {
+    case X_LINK_ANY_PLATFORM : return {"X_LINK_ANY_PLATFORM"}; break;
+    case X_LINK_MYRIAD_2 : return {"X_LINK_MYRIAD_2"}; break;
+    case X_LINK_MYRIAD_X : return {"X_LINK_MYRIAD_X"}; break;
+    }
+    return {"UNDEFINED"};
+}
+
+std::string stateToString(XLinkDeviceState_t p){
+    
+    switch (p)
+    {
+    case X_LINK_ANY_STATE : return {"X_LINK_ANY_STATE"}; break;
+    case X_LINK_BOOTED : return {"X_LINK_BOOTED"}; break;
+    case X_LINK_UNBOOTED : return {"X_LINK_UNBOOTED"}; break;
+    }    
+    return {"UNDEFINED"};
+}
 
 cv::Mat toMat(const std::vector<uint8_t>& data, int w, int h , int numPlanes, int bpp){
     
@@ -130,7 +169,42 @@ cv::Mat resizeKeepAspectRatio(const cv::Mat &input, const cv::Size &dstSize, con
 }
 
 
+
+dai::Pipeline createNNPipeline(std::string nnPath){
+
+
+    dai::Pipeline p;
+
+    auto colorCam = p.create<dai::node::ColorCamera>();
+    auto xlinkOut = p.create<dai::node::XLinkOut>();
+    auto nn1 = p.create<dai::node::NeuralNetwork>();
+    auto nnOut = p.create<dai::node::XLinkOut>();
+
+
+    nn1->setBlobPath(nnPath);
+
+    xlinkOut->setStreamName("preview");
+    nnOut->setStreamName("detections");    
+
+    colorCam->setPreviewSize(300, 300);
+    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    colorCam->setInterleaved(false);
+    colorCam->setCamId(0);
+    colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
+
+    // Link plugins CAM -> NN -> XLINK
+    colorCam->preview.link(nn1->input);
+    colorCam->preview.link(xlinkOut->input);
+    nn1->out.link(nnOut->input);
+
+    return p;
+
+}
+
 dai::Pipeline createCameraPipeline(){
+
+
+
     dai::Pipeline p;
 
     auto colorCam = p.create<dai::node::ColorCamera>();
@@ -264,6 +338,97 @@ void startVideo(){
 
 
 }
+
+
+void startNN(std::string nnPath){
+    using namespace std;
+
+    dai::Pipeline p = createNNPipeline(nnPath);
+
+    bool found;
+    dai::DeviceInfo deviceInfo;
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_BOOTED);
+
+    if(found) {
+        dai::Device d(deviceInfo);
+
+        d.startPipeline(p);
+
+        
+        cv::Mat frame;
+        auto preview = d.getOutputQueue("preview");
+        auto detections = d.getOutputQueue("detections");
+
+        while(1){
+
+            auto imgFrame = preview->get<dai::ImgFrame>();
+            if(imgFrame){
+
+                printf("Frame - w: %d, h: %d\n", imgFrame->getWidth(), imgFrame->getHeight());
+                frame = toMat(imgFrame->getData(), imgFrame->getWidth(), imgFrame->getHeight(), 3, 1);
+
+            }
+
+            struct Detection {
+                unsigned int label;
+                float score;
+                float x_min;
+                float y_min;
+                float x_max;
+                float y_max;
+            };
+
+            vector<Detection> dets;
+
+            auto det = detections->get<dai::NNData>();
+            std::vector<float> detData = det->getFirstLayerFp16();
+            if(detData.size() > 0){
+                int i = 0;
+                while (detData[i*7] != -1.0f) {
+                    Detection d;
+                    d.label = detData[i*7 + 1];
+                    d.score = detData[i*7 + 2];
+                    d.x_min = detData[i*7 + 3];
+                    d.y_min = detData[i*7 + 4];
+                    d.x_max = detData[i*7 + 5];
+                    d.y_max = detData[i*7 + 6];
+                    i++;
+                    dets.push_back(d);
+                }
+            }
+
+            for(const auto& d : dets){
+                int x1 = d.x_min * frame.cols;
+                int y1 = d.y_min * frame.rows;
+                int x2 = d.x_max * frame.cols;
+                int y2 = d.y_max * frame.rows;
+
+                cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), cv::Scalar(255,255,255));
+            }
+
+            printf("===================== %lu detection(s) =======================\n", dets.size());
+            for (unsigned det = 0; det < dets.size(); ++det) {
+                printf("%5d | %6.4f | %7.4f | %7.4f | %7.4f | %7.4f\n",
+                        dets[det].label,
+                        dets[det].score,
+                        dets[det].x_min,
+                        dets[det].y_min,
+                        dets[det].x_max,
+                        dets[det].y_max);
+            }
+
+
+            cv::imshow("preview", frame);
+            cv::waitKey(1);
+
+        }
+
+    } else {
+        cout << "No booted (debugger) devices found..." << endl;
+    }
+
+}
+
 
 
 void startWebcam(int camId, std::string nnPath){
@@ -404,6 +569,7 @@ void startTest(int id){
     if(found) {
         dai::Device d(deviceInfo);
         d.startTestPipeline(id);
+        while(1);
     }
 
 }
@@ -442,11 +608,11 @@ void startMjpegCam(){
     videnc->bitstream.link(xout->input);
 
 
-    // CONNECT TO DEVICE
-
     bool found;
     dai::DeviceInfo deviceInfo;
     std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
+
+    std::cout << "Device info desc name: " << deviceInfo.desc.name << "\n";
 
     if(found) {
         dai::Device d(deviceInfo);
@@ -497,154 +663,6 @@ void startMjpegCam(){
 }
 
 
-
-
-
-
-dai::Pipeline createNNPipeline(std::string nnPath){
-    dai::Pipeline p;
-
-    auto colorCam = p.create<dai::node::ColorCamera>();
-    auto xlinkOut = p.create<dai::node::XLinkOut>();
-    auto nn1 = p.create<dai::node::NeuralNetwork>();
-    auto nnOut = p.create<dai::node::XLinkOut>();
-
-
-    nn1->setBlobPath(nnPath);
-
-    xlinkOut->setStreamName("preview");
-    nnOut->setStreamName("detections");    
-
-    colorCam->setPreviewSize(300, 300);
-    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    colorCam->setInterleaved(false);
-    colorCam->setCamId(0);
-    colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
-
-    // Link plugins CAM -> NN -> XLINK
-    colorCam->preview.link(nn1->input);
-    colorCam->preview.link(xlinkOut->input);
-    nn1->out.link(nnOut->input);
-
-    // set up SPI out node and link to nn1
-    auto spiOut = p.create<dai::node::SPIOut>();
-    spiOut->setStreamName("spimetaout");
-    spiOut->setBusId(0);
-    nn1->out.link(spiOut->input);
-
-    return p;
-
-}
-
-void startNN(std::string nnPath){
-    using namespace std;
-
-    dai::Pipeline p = createNNPipeline(nnPath);
-
-    bool found;
-    dai::DeviceInfo deviceInfo;
-    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
-
-    if(found) {
-        dai::Device d(deviceInfo);
-
-        d.startPipeline(p);
-
-        
-        cv::Mat frame;
-        auto preview = d.getOutputQueue("preview");
-        auto detections = d.getOutputQueue("detections");
-
-        while(1){
-
-            auto imgFrame = preview->get<dai::ImgFrame>();
-            if(imgFrame){
-
-                printf("Frame - w: %d, h: %d\n", imgFrame->getWidth(), imgFrame->getHeight());
-                frame = toMat(imgFrame->getData(), imgFrame->getWidth(), imgFrame->getHeight(), 3, 1);
-
-            }
-
-            struct Detection {
-                unsigned int label;
-                float score;
-                float x_min;
-                float y_min;
-                float x_max;
-                float y_max;
-            };
-
-            vector<Detection> dets;
-
-            auto det = detections->get<dai::NNData>();
-            std::vector<float> detData = det->getFirstLayerFp16();
-            if(detData.size() > 0){
-                int i = 0;
-                while (detData[i*7] != -1.0f) {
-                    Detection d;
-                    d.label = detData[i*7 + 1];
-                    d.score = detData[i*7 + 2];
-                    d.x_min = detData[i*7 + 3];
-                    d.y_min = detData[i*7 + 4];
-                    d.x_max = detData[i*7 + 5];
-                    d.y_max = detData[i*7 + 6];
-                    i++;
-                    dets.push_back(d);
-                }
-            }
-
-            for(const auto& d : dets){
-                int x1 = d.x_min * frame.cols;
-                int y1 = d.y_min * frame.rows;
-                int x2 = d.x_max * frame.cols;
-                int y2 = d.y_max * frame.rows;
-
-                cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), cv::Scalar(255,255,255));
-            }
-
-            printf("===================== %lu detection(s) =======================\n", dets.size());
-            for (unsigned det = 0; det < dets.size(); ++det) {
-                printf("%5d | %6.4f | %7.4f | %7.4f | %7.4f | %7.4f\n",
-                        dets[det].label,
-                        dets[det].score,
-                        dets[det].x_min,
-                        dets[det].y_min,
-                        dets[det].x_max,
-                        dets[det].y_max);
-            }
-
-
-            cv::imshow("preview", frame);
-            cv::waitKey(1);
-
-        }
-
-    } else {
-        cout << "No booted (debugger) devices found..." << endl;
-    }
-
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 dai::Pipeline createNNPipelineSPI(std::string nnPath){
     dai::Pipeline p;
 
@@ -661,11 +679,6 @@ dai::Pipeline createNNPipelineSPI(std::string nnPath){
     colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
     colorCam->preview.link(nn1->input);
 
-    // add a video encoder
-    auto videnc = p.create<dai::node::VideoEncoder>();
-    videnc->setDefaultProfilePreset(1920, 1080, dai::VideoEncoderProperties::Profile::MJPEG);
-    colorCam->video.link(videnc->input);
-
     // set up SPI out node and link to nn1
     auto spiOut = p.create<dai::node::SPIOut>();
     spiOut->setStreamName("spimetaout");
@@ -673,11 +686,10 @@ dai::Pipeline createNNPipelineSPI(std::string nnPath){
     nn1->out.link(spiOut->input);
 
     // Watch out for memory usage on the target SPI device. It turns out ESP32 often doesn't have enough contiguous memory to hold a full 300x300 RGB preview image.
-    auto spiOut2 = p.create<dai::node::SPIOut>();
-    spiOut2->setStreamName("spipreview");
-    spiOut2->setBusId(0);
+//    auto spiOut2 = p.create<dai::node::SPIOut>();
+//    spiOut2->setStreamName("spipreview");
+//    spiOut2->setBusId(0);
 //    colorCam->preview.link(spiOut2->input);
-    videnc->bitstream.link(spiOut2->input);
 
     return p;
 }
@@ -706,13 +718,52 @@ void startNNSPI(std::string nnPath){
 
 }
 
+void listDevices(){
+    mvLogDefaultLevelSet(MVLOG_DEBUG);
+
+    // List all devices
+    while(1){
+        auto devices = dai::Device::getAllAvailableDevices();
+        for(const auto& dev : devices){
+            std::cout << "name: " << std::string(dev.desc.name);
+            std::cout << ", state: " << stateToString(dev.state);
+            std::cout << ", protocol: " << protocolToString(dev.desc.protocol);
+            std::cout << ", platform: " << platformToString(dev.desc.platform);
+            std::cout << std::endl;
+        }
+
+        usleep(100000);
+    }
+}
+
 int main(int argc, char** argv){
     using namespace std;
     cout << "Hello World!" << endl;
 
-    std::string nnPath(argv[1]);
-    startNNSPI(nnPath);
-//    startMjpegCam();
+    // List all devices
+    mvLogDefaultLevelSet(MVLOG_LAST);
+
+    if(argc <= 1){
+        startMjpegCam();
+    } else {
+         std::string testcmd(argv[1]);
+ 
+        if(testcmd == "test0"){
+            startTest(0);
+        } else if(testcmd == "test1"){
+            startTest(1);
+        } else if(testcmd == "test2"){
+            startTest(2);
+        } else if(testcmd == "list"){
+            listDevices();
+        } else if(testcmd == "spidemo"){
+            std::string nnPath(argv[2]);
+            startNNSPI(nnPath);
+        } else {
+            startWebcam(0, testcmd);
+        }
+        
+    }
 
     return 0;
 }
