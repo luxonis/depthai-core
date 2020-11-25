@@ -663,8 +663,6 @@ dai::Pipeline createNNPipelineSPI(std::string nnPath){
 
     // add a video encoder
     auto videnc = p.create<dai::node::VideoEncoder>();
-//    videnc->setDefaultProfilePreset(300, 300, dai::VideoEncoderProperties::Profile::MJPEG);
-//    colorCam->preview.link(videnc->input);
     videnc->setDefaultProfilePreset(1920, 1080, dai::VideoEncoderProperties::Profile::MJPEG);
     colorCam->video.link(videnc->input);
 
