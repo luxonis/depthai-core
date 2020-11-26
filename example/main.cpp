@@ -663,6 +663,159 @@ void startMjpegCam(){
 }
 
 
+
+
+
+
+dai::Pipeline createNNPipeline(std::string nnPath){
+    dai::Pipeline p;
+
+    auto colorCam = p.create<dai::node::ColorCamera>();
+    auto xlinkOut = p.create<dai::node::XLinkOut>();
+    auto nn1 = p.create<dai::node::NeuralNetwork>();
+    auto nnOut = p.create<dai::node::XLinkOut>();
+
+
+    nn1->setBlobPath(nnPath);
+
+    xlinkOut->setStreamName("preview");
+    nnOut->setStreamName("detections");    
+
+    colorCam->setPreviewSize(300, 300);
+    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    colorCam->setInterleaved(false);
+    colorCam->setCamId(0);
+    colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
+
+    // Link plugins CAM -> NN -> XLINK
+    colorCam->preview.link(nn1->input);
+    colorCam->preview.link(xlinkOut->input);
+    nn1->out.link(nnOut->input);
+
+    // set up SPI out node and link to nn1
+    auto spiOut = p.create<dai::node::SPIOut>();
+    spiOut->setStreamName("spimetaout");
+    spiOut->setBusId(0);
+    nn1->out.link(spiOut->input);
+
+    return p;
+
+}
+
+void startNN(std::string nnPath){
+    using namespace std;
+
+    dai::Pipeline p = createNNPipeline(nnPath);
+
+    bool found;
+    dai::DeviceInfo deviceInfo;
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
+
+    if(found) {
+        dai::Device d(deviceInfo);
+
+        d.startPipeline(p);
+
+        
+        cv::Mat frame;
+        auto preview = d.getOutputQueue("preview");
+        auto detections = d.getOutputQueue("detections");
+
+        while(1){
+
+            auto imgFrame = preview->get<dai::ImgFrame>();
+            if(imgFrame){
+
+                printf("Frame - w: %d, h: %d\n", imgFrame->getWidth(), imgFrame->getHeight());
+                frame = toMat(imgFrame->getData(), imgFrame->getWidth(), imgFrame->getHeight(), 3, 1);
+
+            }
+
+            struct Detection {
+                unsigned int label;
+                float score;
+                float x_min;
+                float y_min;
+                float x_max;
+                float y_max;
+            };
+
+            vector<Detection> dets;
+
+            auto det = detections->get<dai::NNData>();
+            std::vector<float> detData = det->getFirstLayerFp16();
+            if(detData.size() > 0){
+                int i = 0;
+                while (detData[i*7] != -1.0f) {
+                    Detection d;
+                    d.label = detData[i*7 + 1];
+                    d.score = detData[i*7 + 2];
+                    d.x_min = detData[i*7 + 3];
+                    d.y_min = detData[i*7 + 4];
+                    d.x_max = detData[i*7 + 5];
+                    d.y_max = detData[i*7 + 6];
+                    i++;
+                    dets.push_back(d);
+                }
+            }
+
+            for(const auto& d : dets){
+                int x1 = d.x_min * frame.cols;
+                int y1 = d.y_min * frame.rows;
+                int x2 = d.x_max * frame.cols;
+                int y2 = d.y_max * frame.rows;
+
+                cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), cv::Scalar(255,255,255));
+            }
+
+            printf("===================== %lu detection(s) =======================\n", dets.size());
+            for (unsigned det = 0; det < dets.size(); ++det) {
+                printf("%5d | %6.4f | %7.4f | %7.4f | %7.4f | %7.4f\n",
+                        dets[det].label,
+                        dets[det].score,
+                        dets[det].x_min,
+                        dets[det].y_min,
+                        dets[det].x_max,
+                        dets[det].y_max);
+            }
+
+
+            cv::imshow("preview", frame);
+            cv::waitKey(1);
+
+        }
+
+/*
+    mvLogDefaultLevelSet(MVLOG_DEBUG);
+
+    // List all devices
+    while(argc > 1){
+        auto devices = dai::Device::getAllAvailableDevices();
+        for(const auto& dev : devices){
+            std::cout << "name: " << std::string(dev.desc.name);
+            std::cout << ", state: " << stateToString(dev.state);
+            std::cout << ", protocol: " << protocolToString(dev.desc.protocol);
+            std::cout << ", platform: " << platformToString(dev.desc.platform);
+            std::cout << std::endl;
+        }
+
+        std::this_thread::sleep_for(100ms);
+    }
+
+    mvLogDefaultLevelSet(MVLOG_LAST);
+
+
+    if(argc <= 1){
+        startMjpegCam();
+*/
+    } else {
+        cout << "No booted (debugger) devices found..." << endl;
+    }
+
+}
+
+
+
 dai::Pipeline createNNPipelineSPI(std::string nnPath){
     dai::Pipeline p;
 
