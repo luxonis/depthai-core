@@ -33,7 +33,9 @@ namespace node {
         }
 
        public:
-        SPIOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
+        SPIOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
+            properties.busId = 0;
+        }
 
         Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}}};
 
