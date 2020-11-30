@@ -20,7 +20,13 @@ bool Node::Output::canConnect(const Input& in) {
     if(type == Type::SSender && in.type == Input::Type::SReceiver) return false;
     for(const auto& outHierarchy : possibleDatatypes) {
         for(const auto& inHierarchy : in.possibleDatatypes) {
+            // Check if datatypes match for current datatype
             if(outHierarchy.datatype == inHierarchy.datatype) return true;
+
+            // If output can produce descendants
+            if(outHierarchy.descendants && isDatatypeSubclassOf(outHierarchy.datatype, inHierarchy.datatype)) return true;
+
+            // If input allows descendants
             if(inHierarchy.descendants && isDatatypeSubclassOf(inHierarchy.datatype, outHierarchy.datatype)) return true;
         }
     }
@@ -29,7 +35,7 @@ bool Node::Output::canConnect(const Input& in) {
 
 void Node::Output::link(Input in) {
     if(!canConnect(in)) {
-        std::string msg = "Cannot link '" + parent.getName() + "." + name + "' to '" + in.parent.getName() + in.name + "'";
+        std::string msg = "Cannot link '" + parent.getName() + "." + name + "' to '" + in.parent.getName() + "." + in.name + "'";
         throw std::runtime_error(msg);
     }
 
