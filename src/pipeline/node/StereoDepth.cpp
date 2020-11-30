@@ -35,7 +35,7 @@ std::shared_ptr<Node> StereoDepth::clone() {
 void StereoDepth::loadCalibrationData(const std::vector<std::uint8_t>& data) {
     if (data.empty()) {
         // Will use EEPROM data
-        properties.calibration.reset();
+        properties.calibration.clear();
     } else {
         properties.calibration = data;
     }
@@ -54,7 +54,8 @@ void StereoDepth::loadCalibrationFile(const std::string& path) {
 }
 
 void StereoDepth::setEmptyCalibration(void) {
-    const std::vector<std::uint8_t> empty = {};
+    // Special case: a single element
+    const std::vector<std::uint8_t> empty = {0};
     properties.calibration = empty;
 }
 
