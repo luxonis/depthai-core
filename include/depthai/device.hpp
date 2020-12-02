@@ -35,6 +35,7 @@ public:
     std::shared_ptr<CNNHostPipeline> create_pipeline(
         const std::string &config_json_str
     );
+    std::shared_ptr<CNNHostPipeline> get_pipeline();
     std::vector<std::string> get_available_streams();
 
     std::vector<std::vector<float>> get_left_intrinsic();
@@ -43,7 +44,16 @@ public:
     std::vector<std::vector<float>> get_right_homography();
     std::vector<std::vector<float>> get_rotation();
     std::vector<float> get_translation();
+    std::string get_mx_id();
 
+    bool is_usb3();
+    bool is_eeprom_loaded();
+    bool is_rgb_connected();
+    bool is_left_connected();
+    bool is_right_connected();
+    bool is_device_changed();
+
+    void reset_device_changed();
     void request_jpeg();
     void request_af_trigger();
     void request_af_mode(CaptureMetadata::AutofocusMode mode);
@@ -51,7 +61,8 @@ public:
     void send_camera_control(CameraControl::CamId camera_id,
             CameraControl::Command command_id,
             const std::string &extra_args);
-
+    void write_eeprom_data(const std::string &board_config);
+    
     std::map<std::string, int> get_nn_to_depth_bbox_mapping();
 
 private:
@@ -85,6 +96,8 @@ private:
         soft_deinit_device();
         gl_result = nullptr;
     };
+    int read_and_parse_config_d2h(void);
+    void load_and_print_config_d2h(void);
 
 
     std::shared_ptr<CNNHostPipeline> gl_result = nullptr;
@@ -99,14 +112,14 @@ private:
     std::vector<float> d1_l;
     std::vector<float> d2_r;
     int32_t version;
-
+    bool device_changed = true;
     std::string config_backup;
     std::string cmd_backup;
     std::string usb_device_backup;
     uint8_t* binary_backup;
     long binary_size_backup;
 
-    int wdog_thread_alive = 1;
+    int wdog_thread_alive = 0;
 
     std::thread wd_thread;
     std::chrono::milliseconds wd_timeout = std::chrono::milliseconds(5000);

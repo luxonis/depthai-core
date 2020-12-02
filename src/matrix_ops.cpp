@@ -18,7 +18,8 @@ std::vector<std::vector<float>> mat_mul(std::vector<std::vector<float>>& firstMa
 
     if(firstMatrix[0].size() != secondMatrix.size()){
         std::cerr << "Number of column of the first matrix should match with the number of rows of the second matrix " << std::endl;
-        abort();
+        // Return an empty vector
+        return res;
     }
         
 	// Initializing elements of matrix mult to 0.
