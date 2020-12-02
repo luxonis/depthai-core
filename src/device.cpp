@@ -147,7 +147,6 @@ void Device::wdog_thread(std::chrono::milliseconds& wd_timeout)
         if(wdog_keep == 0 && wdog_thread_alive == 1)
         {
             std::cout << "watchdog triggered " << std::endl;
-            device_changed = true;
             soft_deinit_device();
             bool init;
             for(int retry = 0; retry < 1; retry++)
@@ -163,6 +162,7 @@ void Device::wdog_thread(std::chrono::milliseconds& wd_timeout)
                 exit(9);
             }
             create_pipeline(config_backup);
+            device_changed = true;
         }
     }
 
