@@ -1,4 +1,6 @@
 #include <iostream>
+#include <unistd.h>
+
 
 #include "depthai/Device.hpp"
 #include "depthai/DeviceBootloader.hpp"
@@ -10,6 +12,7 @@
 #include "depthai/pipeline/node/ColorCamera.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
+#include "depthai/pipeline/node/SPIOut.hpp"
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/MyProducer.hpp"
 #include "depthai/pipeline/node/VideoEncoder.hpp"
@@ -23,8 +26,6 @@
 
 
 #include "XLinkLog.h"
-
-
 
 std::string protocolToString(XLinkProtocol_t p){
     
@@ -662,14 +663,68 @@ void startMjpegCam(){
 }
 
 
-int main(int argc, char** argv){
-    using namespace std;
-    cout << "Hello World!" << endl;
 
+
+dai::Pipeline createNNPipelineSPI(std::string nnPath){
+    dai::Pipeline p;
+
+    // set up NN node
+    auto nn1 = p.create<dai::node::NeuralNetwork>();
+    nn1->setBlobPath(nnPath);
+
+    // set up color camera and link to NN node
+    auto colorCam = p.create<dai::node::ColorCamera>();
+    colorCam->setPreviewSize(300, 300);
+    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    colorCam->setInterleaved(false);
+    colorCam->setCamId(0);
+    colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
+    colorCam->preview.link(nn1->input);
+
+    // set up SPI out node and link to nn1
+    auto spiOut = p.create<dai::node::SPIOut>();
+    spiOut->setStreamName("spimetaout");
+    spiOut->setBusId(0);
+    nn1->out.link(spiOut->input);
+
+    // Watch out for memory usage on the target SPI device. It turns out ESP32 often doesn't have enough contiguous memory to hold a full 300x300 RGB preview image.
+//    auto spiOut2 = p.create<dai::node::SPIOut>();
+//    spiOut2->setStreamName("spipreview");
+//    spiOut2->setBusId(0);
+//    colorCam->preview.link(spiOut2->input);
+
+    return p;
+}
+
+void startNNSPI(std::string nnPath){
+    using namespace std;
+
+    dai::Pipeline p = createNNPipelineSPI(nnPath);
+
+    bool found;
+    dai::DeviceInfo deviceInfo;
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
+
+    if(found) {
+        dai::Device d(deviceInfo);
+
+        bool pipelineStarted = d.startPipeline(p);
+
+        while(1){
+            usleep(1000000);
+        }
+
+    } else {
+        cout << "No booted (debugger) devices found..." << endl;
+    }
+
+}
+
+void listDevices(){
     mvLogDefaultLevelSet(MVLOG_DEBUG);
 
     // List all devices
-    while(argc > 1){
+    while(1){
         auto devices = dai::Device::getAllAvailableDevices();
         for(const auto& dev : devices){
             std::cout << "name: " << std::string(dev.desc.name);
@@ -679,25 +734,35 @@ int main(int argc, char** argv){
             std::cout << std::endl;
         }
 
-        std::this_thread::sleep_for(100ms);
+        usleep(100000);
     }
+}
 
+int main(int argc, char** argv){
+    using namespace std;
+    cout << "Hello World!" << endl;
+
+    // List all devices
     mvLogDefaultLevelSet(MVLOG_LAST);
-
 
     if(argc <= 1){
         startMjpegCam();
     } else {
-         std::string nnPath(argv[1]);
+         std::string testcmd(argv[1]);
  
-        if(nnPath == "test0"){
+        if(testcmd == "test0"){
             startTest(0);
-        } else if(nnPath == "test1"){
+        } else if(testcmd == "test1"){
             startTest(1);
-        } else if(nnPath == "test2"){
+        } else if(testcmd == "test2"){
             startTest(2);
+        } else if(testcmd == "list"){
+            listDevices();
+        } else if(testcmd == "spidemo"){
+            std::string nnPath(argv[2]);
+            startNNSPI(nnPath);
         } else {
-            startWebcam(0, nnPath);
+            startWebcam(0, testcmd);
         }
         
     }
