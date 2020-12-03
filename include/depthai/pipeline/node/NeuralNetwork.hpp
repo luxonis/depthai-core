@@ -1,7 +1,7 @@
 #pragma once
 
-#include "depthai/pipeline/Node.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
+#include "depthai/pipeline/Node.hpp"
 
 // standard
 #include <fstream>
@@ -20,8 +20,7 @@ namespace node {
         nlohmann::json getProperties() override;
         std::shared_ptr<Node> clone() override;
         tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion() override;
-        //void loadAssets(AssetManager& assetManager) override;
-
+        // void loadAssets(AssetManager& assetManager) override;
 
         void loadBlob(const std::string& path);
 

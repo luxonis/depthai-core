@@ -1,9 +1,9 @@
 #pragma once
 
-#include <string>
-#include <tuple>
 #include <algorithm>
 #include <set>
+#include <string>
+#include <tuple>
 
 // project
 #include "depthai/openvino/OpenVINO.hpp"
@@ -13,9 +13,8 @@
 #include "depthai-shared/datatype/DatatypeEnum.hpp"
 
 // libraries
-#include "tl/optional.hpp"
 #include "nlohmann/json.hpp"
-
+#include "tl/optional.hpp"
 
 namespace dai {
 // fwd declare Pipeline
@@ -27,10 +26,9 @@ class Node {
     friend class PipelineImpl;
 
    public:
-
     using Id = std::int64_t;
     struct Connection;
-    
+
    protected:
     struct DatatypeHierarchy {
         DatatypeHierarchy(DatatypeEnum d, bool c) : datatype(d), descendants(c) {}
@@ -51,6 +49,7 @@ class Node {
         Output(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types)
             : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {}
         bool isSamePipeline(const Input& in);
+
        public:
         bool canConnect(const Input& in);
         std::vector<Connection> getConnections();
@@ -87,8 +86,7 @@ class Node {
     Pipeline getParentPipeline();
 
    public:
-
-   struct Connection {
+    struct Connection {
         friend struct std::hash<Connection>;
         Connection(Output out, Input in);
         Id outputId;
@@ -105,22 +103,20 @@ class Node {
 
 }  // namespace dai
 
-
 // Specialization of std::hash for Node::Connection
 namespace std {
-template<>
-struct hash<dai::Node::Connection>
-{
+template <>
+struct hash<dai::Node::Connection> {
     size_t operator()(const dai::Node::Connection& obj) const {
         size_t seed = 0;
         std::hash<dai::Node::Id> hId;
         std::hash<std::string> hStr;
-        seed ^= hId(obj.outputId) + 0x9e3779b9 + (seed<<6) + (seed>>2);
-        seed ^= hStr(obj.outputName) + 0x9e3779b9 + (seed<<6) + (seed>>2);
-        seed ^= hId(obj.inputId) + 0x9e3779b9 + (seed<<6) + (seed>>2);
-        seed ^= hStr(obj.outputName) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+        seed ^= hId(obj.outputId) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        seed ^= hStr(obj.outputName) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        seed ^= hId(obj.inputId) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        seed ^= hStr(obj.outputName) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
         return seed;
     }
 };
 
-} 
+}  // namespace std

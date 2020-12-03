@@ -15,7 +15,6 @@
 // Include Node
 #include "pipeline/Node.hpp"
 
-
 // namespace dai {
 // namespace{
 // bool initializeForce = [](){initialize();};

@@ -8,10 +8,10 @@
 #include "depthai-shared/xlink/XLinkConstants.hpp"
 
 // project
-#include "utility/BootloaderHelper.hpp"
 #include "pipeline/Pipeline.hpp"
-#include "utility/Resources.hpp"
+#include "utility/BootloaderHelper.hpp"
 #include "utility/Initialization.hpp"
+#include "utility/Resources.hpp"
 
 // libraries
 #include "spdlog/spdlog.h"
@@ -144,7 +144,6 @@ Device::~Device() {
 }
 
 void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
-
     // Initalize depthai library if not already
     initialize();
 
@@ -154,7 +153,7 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
     spdlog::debug("Device - pipeline serialized, OpenVINO version: {}", OpenVINO::getVersionName(version));
 
     // Get embedded mvcmd
-    std::vector<std::uint8_t> embeddedFw = Resources::getInstance().getDeviceFirmware(usb2Mode); 
+    std::vector<std::uint8_t> embeddedFw = Resources::getInstance().getDeviceFirmware(usb2Mode);
 
     // Init device (if bootloader, handle correctly - issue USB boot command)
     if(deviceInfo.state == X_LINK_UNBOOTED) {
@@ -380,20 +379,19 @@ bool Device::startPipeline() {
     return true;
 }
 
-
 // bool Device::startTestPipeline(int testId) {
 //     // first check if pipeline is not already started
 //     if(isPipelineRunning()) return false;
-// 
+//
 //     /*
-// 
+//
 //     // Create an AssetManager which the pipeline will use for assets
 //     AssetManager assetManager;
 //     pipeline.loadAssets(assetManager);
-// 
+//
 //     // Serialize the pipeline
 //     auto pipelineDescription = pipeline.serialize();
-// 
+//
 //     // Serialize the asset storage and assets
 //     auto assetStorage = assetManager.serialize();
 //     std::vector<std::uint8_t> assets;
@@ -402,13 +400,13 @@ bool Device::startPipeline() {
 //         nlohmann::to_json(assetsJson, (Assets) assetManager);
 //         assets = nlohmann::json::to_msgpack(assetsJson);
 //     }
-// 
-// 
+//
+//
 //     */
-// 
+//
 //     using namespace nlohmann;
 //     nlohmann::json pipelineDescJson;
-// 
+//
 //     if(testId == 0) {
 //         pipelineDescJson = R"(
 //             {
@@ -507,7 +505,7 @@ bool Device::startPipeline() {
 //             ]
 //         }
 //         )"_json;
-// 
+//
 //     } else if(testId == 2) {
 //         pipelineDescJson = R"({
 //             "connections": [
@@ -550,22 +548,22 @@ bool Device::startPipeline() {
 //             ]
 //         })"_json;
 //     }
-// 
+//
 //     std::vector<std::uint8_t> assetStorage;
 //     Assets assets;
 //     PipelineSchema pipelineSchema = pipelineDescJson;
-// 
+//
 //     // Load pipelineDesc, assets, and asset storage
-// 
+//
 //     client->call("setPipelineSchema", pipelineSchema);
-// 
+//
 //     // Transfer storage if size > 0
 //     if(!assetStorage.empty()) {
 //         client->call("setAssets", assets);
-// 
+//
 //         // allocate, returns a pointer to memory on device side
 //         auto memHandle = client->call("memAlloc", static_cast<std::uint32_t>(assetStorage.size())).as<uint32_t>();
-// 
+//
 //         // Transfer the whole assetStorage in a separate thread
 //         const std::string streamAssetStorage = "__stream_asset_storage";
 //         std::thread t1([this, &streamAssetStorage, &assetStorage]() {
@@ -577,18 +575,18 @@ bool Device::startPipeline() {
 //                 offset += toTransfer;
 //             } while(offset < assetStorage.size());
 //         });
-// 
+//
 //         // Open a channel to transfer AssetStorage
 //         client->call("readFromXLink", streamAssetStorage, memHandle, assetStorage.size());
 //         t1.join();
-// 
+//
 //         // After asset storage is transfers, set the asset storage
 //         client->call("setAssetStorage", memHandle, assetStorage.size());
 //     }
-// 
+//
 //     // call test
 //     // client->call("test");
-// 
+//
 //     // Build and start the pipeline
 //     bool success = false;
 //     std::string errorMsg;
@@ -600,7 +598,7 @@ bool Device::startPipeline() {
 //         throw std::runtime_error(errorMsg);
 //         return false;
 //     }
-// 
+//
 //     // client->call("startCamera");
 // }
 

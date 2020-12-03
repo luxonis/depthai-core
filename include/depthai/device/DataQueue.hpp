@@ -5,8 +5,8 @@
 #include <memory>
 
 // project
-#include "depthai/utility/LockingQueue.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
+#include "depthai/utility/LockingQueue.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
 // shared

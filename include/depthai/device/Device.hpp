@@ -47,7 +47,7 @@ class Device {
     // callback
     void setCallback(const std::string& name, std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb);
 
-    //bool startTestPipeline(int testId);
+    // bool startTestPipeline(int testId);
 
     // std::vector<std::string> get_available_streams();
     // void request_jpeg();
@@ -70,7 +70,6 @@ class Device {
     std::unordered_map<std::string, std::shared_ptr<DataInputQueue>> inputQueueMap;
     std::unordered_map<std::string, CallbackHandler> callbackMap;
 
-
     // Watchdog thread
     std::thread watchdogThread;
     std::atomic<bool> watchdogRunning{true};
@@ -84,7 +83,6 @@ class Device {
     Assets assets;
     std::vector<std::uint8_t> assetStorage;
     OpenVINO::Version version;
-    
 };
 
 }  // namespace dai

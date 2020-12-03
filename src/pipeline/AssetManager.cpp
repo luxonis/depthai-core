@@ -35,7 +35,7 @@ std::shared_ptr<Asset> AssetManager::get(const std::string& key) {
 
 void AssetManager::addExisting(std::vector<std::shared_ptr<Asset>> assets) {
     // make sure that key doesn't exist already
-    for(const auto& asset : assets){
+    for(const auto& asset : assets) {
         if(assetMap.count(asset->key) > 0) throw std::logic_error("An Asset with the key: " + asset->key + " already exists.");
         std::string key = asset->key;
         assetMap[key] = asset;
@@ -57,7 +57,6 @@ std::vector<std::shared_ptr<Asset>> AssetManager::getAll() {
     }
     return a;
 }
-
 
 std::size_t AssetManager::size() const {
     return assetMap.size();
@@ -98,13 +97,12 @@ void AssetManager::serialize(Assets& serAssets, std::vector<std::uint8_t>& asset
     serAssets = Assets(mutableAssets);
 }
 
-void AssetsMutable::set(std::string key, std::uint32_t offset, std::uint32_t size, std::uint32_t alignment){
+void AssetsMutable::set(std::string key, std::uint32_t offset, std::uint32_t size, std::uint32_t alignment) {
     AssetInternal internal = {};
     internal.offset = offset;
     internal.size = size;
     internal.alignment = alignment;
     map[key] = internal;
 }
-
 
 }  // namespace dai

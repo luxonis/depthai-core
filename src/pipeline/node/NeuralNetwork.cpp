@@ -1,7 +1,6 @@
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
 
 #include "depthai/pipeline/Pipeline.hpp"
-
 #include "openvino/BlobReader.hpp"
 
 namespace dai {
@@ -52,7 +51,7 @@ namespace node {
         BlobReader reader;
         reader.parse(blobAsset.data);
         networkOpenvinoVersion = OpenVINO::getBlobLatestSupportedVersion(reader.getVersionMajor(), reader.getVersionMinor());
-        
+
         // Create asset key
         std::string assetKey = std::to_string(id) + "/blob";
 

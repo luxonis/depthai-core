@@ -1,8 +1,8 @@
 #pragma once
 
 // standard
-#include <memory>
 #include <map>
+#include <memory>
 #include <unordered_set>
 #include <vector>
 
@@ -52,13 +52,12 @@ class PipelineImpl {
     constexpr static auto DEFAULT_OPENVINO_VERSION = OpenVINO::Version::VERSION_2020_1;
     // Optionally forced version
     tl::optional<OpenVINO::Version> forceRequiredOpenVINOVersion;
-    // Global pipeline properties 
+    // Global pipeline properties
     GlobalProperties globalProperties;
     // Optimized for adding, searching and removing connections
     std::unordered_map<Node::Id, std::shared_ptr<Node>> nodeMap;
     // Connection map, NodeId represents id of node connected TO (input)
     std::unordered_map<Node::Id, std::unordered_set<Node::Connection>> nodeConnectionMap;
-
 
     // Template create function
     template <class N>
@@ -73,13 +72,11 @@ class PipelineImpl {
         // Return shared pointer to this node
         return node;
     }
-
-
 };
 
 class Pipeline {
     std::shared_ptr<PipelineImpl> pimpl;
-    PipelineImpl* impl(){
+    PipelineImpl* impl() {
         return pimpl.get();
     }
     const PipelineImpl* impl() const {
@@ -98,7 +95,6 @@ class Pipeline {
         impl()->serialize(schema, assets, assetStorage, version);
     }
 
-
     template <class N>
     std::shared_ptr<N> create() {
         return impl()->create<N>(pimpl);
@@ -108,7 +104,6 @@ class Pipeline {
     void remove(std::shared_ptr<Node> node) {
         impl()->remove(node);
     }
-
 
     // getAllNodes
     std::vector<std::shared_ptr<const Node>> getAllNodes() const {
@@ -138,13 +133,10 @@ class Pipeline {
         impl()->unlink(out, in);
     }
 
-
-
     // TODO(themarpe) - get nodes assets
     // AssetManager& getAssetManager() {
     //     return pimpl->getAssetManager();
     // }
-
 };
 
 }  // namespace dai

@@ -27,36 +27,142 @@ namespace node {
         return std::make_shared<std::decay<decltype(*this)>::type>(*this);
     }
 
-    void VideoEncoder::setDefaultProfilePreset(int width, int height, VideoEncoderProperties::Profile profile) {
+    void VideoEncoder::setDefaultProfilePreset(int width, int height, float fps, VideoEncoderProperties::Profile profile) {
         properties.width = width;
         properties.height = height;
+        properties.frameRate = fps;
         properties.profile = profile;
 
-        // TODO(themarpe) - add some meaningful defaults for each preset
         switch(profile) {
             case VideoEncoderProperties::Profile::MJPEG:
                 properties.quality = 95;
                 break;
 
             case VideoEncoderProperties::Profile::H264_BASELINE:
-
-                break;
-
             case VideoEncoderProperties::Profile::H264_HIGH:
-
-                break;
-
             case VideoEncoderProperties::Profile::H264_MAIN:
+            case VideoEncoderProperties::Profile::H265_MAIN: {
+                // By default set keyframe frequency to equal fps
+                properties.keyframeFrequency = fps;
 
-                break;
+                // Approximate bitrate on input w/h and fps
+                constexpr float ESTIMATION_FPS = 30.0f;
+                constexpr float AREA_MUL = 1.1f;
 
-            case VideoEncoderProperties::Profile::H265_MAIN:
-
-                break;
+                // calculate pixel area
+                const int pixelArea = width * height;
+                if(pixelArea <= 1280 * 720 * AREA_MUL) {
+                    // 720p
+                    properties.bitrate = (4000 / ESTIMATION_FPS) * fps;
+                    properties.maxBitrate = (8500 / ESTIMATION_FPS) * fps;
+                } else if(pixelArea <= 1920 * 1080 * AREA_MUL) {
+                    // 1080p
+                    properties.bitrate = (8500 / ESTIMATION_FPS) * fps;
+                    properties.maxBitrate = (10000 / ESTIMATION_FPS) * fps;
+                } else if(pixelArea <= 2560 * 1440 * AREA_MUL) {
+                    // 1440p
+                    properties.bitrate = (14000 / ESTIMATION_FPS) * fps;
+                    properties.maxBitrate = (18000 / ESTIMATION_FPS) * fps;
+                } else {
+                    // 4K
+                    properties.bitrate = (20000 / ESTIMATION_FPS) * fps;
+                    properties.maxBitrate = (25000 / ESTIMATION_FPS) * fps;
+                }
+            } break;
 
             default:
                 break;
         }
+    }
+
+    // node properties
+    void VideoEncoder::setNumFramesPool(int frames) {
+        properties.numFramesPool = frames;
+    }
+
+    int VideoEncoder::getNumFramesPool() const {
+        return properties.numFramesPool;
+    }
+
+    // encoder properties
+    void VideoEncoder::setRateControlMode(VideoEncoderProperties::RateControlMode mode) {
+        properties.rateCtrlMode = mode;
+    }
+
+    void VideoEncoder::setProfile(VideoEncoderProperties::Profile profile) {
+        properties.profile = profile;
+    }
+
+    void VideoEncoder::setBitrate(int bitrateKbps) {
+        properties.bitrate = bitrateKbps;
+    }
+
+    void VideoEncoder::setKeyframeFrequency(int freq) {
+        properties.keyframeFrequency = freq;
+    }
+
+    void VideoEncoder::setMaxBitrate(int maxBitrateKbps) {
+        properties.maxBitrate = maxBitrateKbps;
+    }
+
+    void VideoEncoder::setNumBFrames(int numBFrames) {
+        properties.numBFrames = numBFrames;
+    }
+
+    void VideoEncoder::setQuality(int quality) {
+        properties.quality = quality;
+    }
+
+    void VideoEncoder::setWidth(int width) {
+        properties.width = width;
+    }
+
+    void VideoEncoder::setHeight(int height) {
+        properties.height = height;
+    }
+
+    void VideoEncoder::setFrameRate(int frameRate) {
+        properties.frameRate = frameRate;
+    }
+
+    VideoEncoderProperties::RateControlMode VideoEncoder::getRateControlMode() const {
+        return properties.rateCtrlMode;
+    }
+
+    VideoEncoderProperties::Profile VideoEncoder::getProfile() const {
+        return properties.profile;
+    }
+
+    int VideoEncoder::getBitrate() const {
+        return properties.bitrate;
+    }
+
+    int VideoEncoder::getKeyframeFrequency() const {
+        return properties.keyframeFrequency;
+    }
+
+    int VideoEncoder::getMaxBitrate() const {
+        return properties.maxBitrate;
+    }
+
+    int VideoEncoder::getNumBFrames() const {
+        return properties.numBFrames;
+    }
+
+    int VideoEncoder::getQuality() const {
+        return properties.quality;
+    }
+
+    int VideoEncoder::getWidth() const {
+        return properties.width;
+    }
+
+    int VideoEncoder::getHeight() const {
+        return properties.height;
+    }
+
+    int VideoEncoder::getFrameRate() const {
+        return properties.frameRate;
     }
 
 }  // namespace node

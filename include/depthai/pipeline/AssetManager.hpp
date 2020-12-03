@@ -17,7 +17,7 @@ struct Asset {
 };
 
 class AssetsMutable : public Assets {
-public: 
+   public:
     void set(std::string, std::uint32_t offset, std::uint32_t size, std::uint32_t alignment);
 };
 

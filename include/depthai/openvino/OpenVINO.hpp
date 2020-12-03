@@ -1,19 +1,17 @@
 #pragma once
 
-#include <string>
-#include <vector>
-#include <exception>
 #include <algorithm>
+#include <exception>
 #include <map>
+#include <string>
 #include <utility>
+#include <vector>
 
-namespace dai
-{
-    
-// This class supports basic OpenVINO related actions like version identification of neural network blobs,... 
+namespace dai {
+
+// This class supports basic OpenVINO related actions like version identification of neural network blobs,...
 class OpenVINO {
-
-public:
+   public:
     // OpenVINOVersion holds supported version information
     enum Version {
         VERSION_2020_1,
@@ -30,12 +28,9 @@ public:
     static Version getBlobLatestSupportedVersion(std::uint32_t majorVersion, std::uint32_t minorVersion);
     static bool areVersionsBlobCompatible(Version v1, Version v2);
 
-private:
-   
+   private:
     static const std::map<std::pair<std::uint32_t, std::uint32_t>, Version> blobVersionToLatestOpenvinoMapping;
     static const std::map<std::pair<std::uint32_t, std::uint32_t>, std::vector<Version>> blobVersionToOpenvinoMapping;
-
 };
 
-
-} // namespace dai
+}  // namespace dai

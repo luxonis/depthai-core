@@ -12,11 +12,10 @@
 #include "depthai-shared/xlink/XLinkConstants.hpp"
 
 // project
-#include "utility/BootloaderHelper.hpp"
-#include "utility/Resources.hpp"
 #include "device/Device.hpp"
 #include "pipeline/Pipeline.hpp"
-
+#include "utility/BootloaderHelper.hpp"
+#include "utility/Resources.hpp"
 
 // Resource compiled assets (cmds)
 #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
@@ -50,14 +49,13 @@ std::vector<DeviceInfo> DeviceBootloader::getAllAvailableDevices() {
 }
 
 std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(Pipeline& pipeline, std::string pathToCmd) {
-
     // Serialize the pipeline
     PipelineSchema schema;
     Assets assets;
     std::vector<std::uint8_t> assetStorage;
     OpenVINO::Version version;
     pipeline.serialize(schema, assets, assetStorage, version);
-    
+
     // Prepare device firmware
     std::vector<uint8_t> deviceFirmware;
     if(pathToCmd != "") {
@@ -68,7 +66,6 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(Pipeline&
         // TODO(themarpe) - specify OpenVINO version
         deviceFirmware = Resources::getInstance().getDeviceFirmware(false, version);
     }
-
 
     // Create msgpacks
     std::vector<uint8_t> pipelineBinary, assetsBinary;
@@ -330,7 +327,6 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(std::function<vo
     // Return if flashing was successful
     return {result.success, result.errorMsg};
 }
-
 
 bool DeviceBootloader::isEmbeddedVersion() {
     return isEmbedded;

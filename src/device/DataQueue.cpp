@@ -3,7 +3,7 @@
 // std
 #include <iostream>
 
-// project 
+// project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "pipeline/datatype/StreamPacketParser.hpp"
 
