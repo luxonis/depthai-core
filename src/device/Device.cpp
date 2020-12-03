@@ -1,4 +1,4 @@
-#include "Device.hpp"
+#include "depthai/device/Device.hpp"
 
 // shared
 #include "depthai-bootloader-shared/Bootloader.hpp"
@@ -8,17 +8,13 @@
 #include "depthai-shared/xlink/XLinkConstants.hpp"
 
 // project
-#include "BootloaderHelper.hpp"
+#include "utility/BootloaderHelper.hpp"
 #include "pipeline/Pipeline.hpp"
-extern "C" {
-#include "bspatch/bspatch.h"
-}
+#include "utility/Resources.hpp"
+#include "utility/Initialization.hpp"
 
-// Resource compiled assets (cmds)
-#ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
-    #include "cmrc/cmrc.hpp"
-CMRC_DECLARE(depthai);
-#endif
+// libraries
+#include "spdlog/spdlog.h"
 
 namespace dai {
 
@@ -69,19 +65,19 @@ std::tuple<bool, DeviceInfo> Device::getFirstDevice(){
 }
 */
 
-Device::Device(const DeviceInfo& devInfo, bool usb2Mode) : deviceInfo(devInfo) {
-    init(true, usb2Mode, "");
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode) : deviceInfo(devInfo) {
+    init(pipeline, true, usb2Mode, "");
 }
 
-Device::Device(const DeviceInfo& devInfo, const char* pathToCmd) : deviceInfo(devInfo) {
-    init(false, false, std::string(pathToCmd));
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd) : deviceInfo(devInfo) {
+    init(pipeline, false, false, std::string(pathToCmd));
 }
 
-Device::Device(const DeviceInfo& devInfo, const std::string& pathToCmd) : deviceInfo(devInfo) {
-    init(false, false, pathToCmd);
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd) : deviceInfo(devInfo) {
+    init(pipeline, false, false, pathToCmd);
 }
 
-Device::Device() {
+Device::Device(const Pipeline& pipeline) {
     // Default constructor, gets first unconnected device
     // First looks for UNBOOTED, then BOOTLOADER then BOOTED
     bool found = false;
@@ -92,10 +88,10 @@ Device::Device() {
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
-    init(true, false, "");
+    init(pipeline, true, false, "");
 }
 
-Device::Device(const char* pathToCmd) {
+Device::Device(const Pipeline& pipeline, const char* pathToCmd) {
     // Default constructor, gets first unconnected device
     // First looks for UNBOOTED, then BOOTLOADER then BOOTED
     bool found = false;
@@ -106,10 +102,10 @@ Device::Device(const char* pathToCmd) {
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
-    init(false, false, std::string(pathToCmd));
+    init(pipeline, false, false, std::string(pathToCmd));
 }
 
-Device::Device(const std::string& pathToCmd) {
+Device::Device(const Pipeline& pipeline, const std::string& pathToCmd) {
     // Default constructor, gets first unconnected device
     // First looks for UNBOOTED, then BOOTLOADER then BOOTED
     bool found = false;
@@ -120,10 +116,10 @@ Device::Device(const std::string& pathToCmd) {
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
-    init(false, false, pathToCmd);
+    init(pipeline, false, false, pathToCmd);
 }
 
-Device::Device(bool usb2Mode) {
+Device::Device(const Pipeline& pipeline, bool usb2Mode) {
     // Default constructor, gets first unconnected device
     // First looks for UNBOOTED, then BOOTLOADER then BOOTED
     bool found = false;
@@ -134,7 +130,7 @@ Device::Device(bool usb2Mode) {
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
-    init(true, usb2Mode, "");
+    init(pipeline, true, usb2Mode, "");
 }
 
 Device::~Device() {
@@ -147,12 +143,24 @@ Device::~Device() {
     if(timesyncThread.joinable()) timesyncThread.join();
 }
 
-void Device::init(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
+void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
+
+    // Initalize depthai library if not already
+    initialize();
+
+    // Mark the OpenVINO version and serialize the pipeline
+    pipeline.serialize(schema, assets, assetStorage, version);
+
+    spdlog::debug("Device - pipeline serialized, OpenVINO version: {}", OpenVINO::getVersionName(version));
+
+    // Get embedded mvcmd
+    std::vector<std::uint8_t> embeddedFw = Resources::getInstance().getDeviceFirmware(usb2Mode); 
+
     // Init device (if bootloader, handle correctly - issue USB boot command)
     if(deviceInfo.state == X_LINK_UNBOOTED) {
         // Unbooted device found, boot and connect with XLinkConnection constructor
         if(embeddedMvcmd) {
-            connection = std::make_shared<XLinkConnection>(deviceInfo, getEmbeddedDeviceBinary(usb2Mode));
+            connection = std::make_shared<XLinkConnection>(deviceInfo, embeddedFw);
         } else {
             connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd);
         }
@@ -191,7 +199,7 @@ void Device::init(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMv
 
         // Boot and connect with XLinkConnection constructor
         if(embeddedMvcmd) {
-            connection = std::make_shared<XLinkConnection>(deviceInfo, getEmbeddedDeviceBinary(usb2Mode));
+            connection = std::make_shared<XLinkConnection>(deviceInfo, embeddedFw);
         } else {
             connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd);
         }
@@ -199,7 +207,7 @@ void Device::init(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMv
     } else if(deviceInfo.state == X_LINK_BOOTED) {
         // Connect without booting
         if(embeddedMvcmd) {
-            connection = std::make_shared<XLinkConnection>(deviceInfo, getEmbeddedDeviceBinary(usb2Mode));
+            connection = std::make_shared<XLinkConnection>(deviceInfo, embeddedFw);
         } else {
             connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd);
         }
@@ -313,23 +321,16 @@ bool Device::isPipelineRunning() {
     return client->call("isPipelineRunning").as<bool>();
 }
 
-bool Device::startPipeline(Pipeline& pipeline) {
+bool Device::startPipeline() {
     // first check if pipeline is not already started
     if(isPipelineRunning()) return false;
 
-    // Serialize the pipeline
-    PipelineSchema schema;
-    Assets assets;
-    std::vector<std::uint8_t> assetStorage;
-    pipeline.serialize(schema, assets, assetStorage);
-
     // if debug
-    if(false) {
+    if(spdlog::get_level() == spdlog::level::debug) {
         nlohmann::json jSchema = schema;
-        std::cout << std::endl << jSchema.dump(4) << std::endl;
-
+        spdlog::debug("Schema dump: {}", jSchema.dump());
         nlohmann::json jAssets = assets;
-        std::cout << std::endl << jAssets.dump(4) << std::endl;
+        spdlog::debug("Asset map dump: {}", jAssets.dump());
     }
 
     // Load pipelineDesc, assets, and asset storage
@@ -344,7 +345,7 @@ bool Device::startPipeline(Pipeline& pipeline) {
 
         // Transfer the whole assetStorage in a separate thread
         const std::string streamAssetStorage = "__stream_asset_storage";
-        std::thread t1([this, &streamAssetStorage, &assetStorage]() {
+        std::thread t1([this, &streamAssetStorage]() {
             connection->openStream(streamAssetStorage, XLINK_USB_BUFFER_MAX_SIZE);
             int64_t offset = 0;
             do {
@@ -376,291 +377,231 @@ bool Device::startPipeline(Pipeline& pipeline) {
         return false;
     }
 
-    // client->call("startCamera");
-
     return true;
 }
 
-std::vector<std::uint8_t> Device::getEmbeddedDeviceBinary(bool usb2Mode) {
-    std::vector<std::uint8_t> finalCmd;
 
-// Binaries are resource compiled
-#ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
-
-    constexpr static auto CMRC_DEPTHAI_CMD_PATH = "depthai-" DEPTHAI_DEVICE_VERSION ".cmd";
-
-    // Get binaries from internal sources
-    auto fs = cmrc::depthai::get_filesystem();
-
-    if(usb2Mode) {
-    #ifdef DEPTHAI_PATCH_ONLY_MODE
-
-        constexpr static auto CMRC_DEPTHAI_USB2_PATCH_PATH = "depthai-usb2-patch-" DEPTHAI_DEVICE_VERSION ".patch";
-
-        // Get size of original
-        auto depthaiBinary = fs.open(CMRC_DEPTHAI_CMD_PATH);
-
-        // Open patch
-        auto depthaiUsb2Patch = fs.open(CMRC_DEPTHAI_USB2_PATCH_PATH);
-
-        // Get new size
-        int64_t patchedSize = bspatch_mem_get_newsize(reinterpret_cast<const uint8_t*>(depthaiUsb2Patch.begin()), depthaiUsb2Patch.size());
-
-        // Reserve space for patched binary
-        finalCmd.resize(patchedSize);
-
-        // Patch
-        int error = bspatch_mem(reinterpret_cast<const uint8_t*>(depthaiBinary.begin()),
-                                depthaiBinary.size(),
-                                reinterpret_cast<const uint8_t*>(depthaiUsb2Patch.begin()),
-                                depthaiUsb2Patch.size(),
-                                finalCmd.data());
-
-        // if patch not successful
-        if(error > 0) throw std::runtime_error("Error while patching cmd for usb2 mode");
-
-    #else
-
-        constexpr static auto CMRC_DEPTHAI_USB2_CMD_PATH = "depthai-usb2-" DEPTHAI_DEVICE_VERSION ".cmd";
-        auto depthaiUsb2Binary = fs.open(CMRC_DEPTHAI_USB2_CMD_PATH);
-        finalCmd = std::vector<std::uint8_t>(depthaiUsb2Binary.begin(), depthaiUsb2Binary.end());
-
-    #endif
-
-    } else {
-        auto depthaiBinary = fs.open(CMRC_DEPTHAI_CMD_PATH);
-        finalCmd = std::vector<std::uint8_t>(depthaiBinary.begin(), depthaiBinary.end());
-    }
-
-#else
-    // Binaries from default path (TODO)
-
-#endif
-
-    return finalCmd;
-}
-
-bool Device::startTestPipeline(int testId) {
-    // first check if pipeline is not already started
-    if(isPipelineRunning()) return false;
-
-    /*
-
-    // Create an AssetManager which the pipeline will use for assets
-    AssetManager assetManager;
-    pipeline.loadAssets(assetManager);
-
-    // Serialize the pipeline
-    auto pipelineDescription = pipeline.serialize();
-
-    // Serialize the asset storage and assets
-    auto assetStorage = assetManager.serialize();
-    std::vector<std::uint8_t> assets;
-    {
-        nlohmann::json assetsJson;
-        nlohmann::to_json(assetsJson, (Assets) assetManager);
-        assets = nlohmann::json::to_msgpack(assetsJson);
-    }
-
-
-    */
-
-    using namespace nlohmann;
-    nlohmann::json pipelineDescJson;
-
-    if(testId == 0) {
-        pipelineDescJson = R"(
-            {
-                "globalProperties": {
-                    "leonOsFrequencyHz": 600000000,
-                    "pipelineVersion": "1",
-                    "pipelineName": "1",
-                    "leonRtFrequencyHz": 600000000
-                },
-                "nodes": [
-                    {
-                        "id": 1,
-                        "name": "MyProducer",
-                        "properties": {
-                            "message": "HeiHoi",
-                            "processorPlacement": 0
-                        }
-                    },
-                    {
-                        "id": 2,
-                        "name": "MyConsumer",
-                        "properties": {
-                            "processorPlacement": 1
-                        }
-                    },
-                    {
-                        "id": 3,
-                        "name": "MyConsumer",
-                        "properties": {
-                            "processorPlacement": 0
-                        }
-                    },
-                    {
-                        "id": 4,
-                        "name": "MyConsumer",
-                        "properties": {
-                            "processorPlacement": 1
-                        }
-                    }
-                ],
-                "connections": [
-                    {
-                        "node1Id": 1,
-                        "node2Id": 2,
-                        "node1Output": "out",
-                        "node2Input": "in"
-                    },
-                    {
-                        "node1Id": 1,
-                        "node2Id": 3,
-                        "node1Output": "out",
-                        "node2Input": "in"
-                    },
-                    {
-                        "node1Id": 1,
-                        "node2Id": 4,
-                        "node1Output": "out",
-                        "node2Input": "in"
-                    }
-                ]
-            }
-            )"_json;
-    } else if(testId == 1) {
-        pipelineDescJson = R"(
-        {
-            "globalProperties": {
-                "leonOsFrequencyHz": 600000000,
-                "pipelineVersion": "1",
-                "pipelineName": "1",
-                "leonRtFrequencyHz": 600000000
-            },
-            "nodes": [
-                {
-                    "id": 1,
-                    "name": "MyProducer",
-                    "properties": {
-                        "message": "HeiHoi",
-                        "processorPlacement": 0
-                    }
-                },
-                {
-                    "id": 2,
-                    "name": "MyConsumer",
-                    "properties": {
-                        "processorPlacement": 1
-                    }
-                }
-            ],
-            "connections": [
-                {
-                    "node1Id": 1,
-                    "node2Id": 2,
-                    "node1Output": "out",
-                    "node2Input": "in"
-                }
-            ]
-        }
-        )"_json;
-
-    } else if(testId == 2) {
-        pipelineDescJson = R"({
-            "connections": [
-                {
-                    "node1Id": 0,
-                    "node1Output": "out",
-                    "node2Id": 1,
-                    "node2Input": "in"
-                }
-            ],
-            "globalProperties": {
-                "leonOsFrequencyHz": 600000000.0,
-                "leonRtFrequencyHz": 600000000.0,
-                "pipelineName": null,
-                "pipelineVersion": null
-            },
-            "nodes": [
-                {
-                    "id": 0,
-                    "name": "XLinkIn",
-                    "properties": {
-                        "streamName": "nn_in"
-                    }
-                },
-                {
-                    "id": 1,
-                    "name": "MyConsumer",
-                    "properties": {
-                        "processorPlacement": 1
-                    }
-                },
-                {
-                    "id": 2,
-                    "name": "XLinkOut",
-                    "properties": {
-                        "maxFpsLimit": -1.0,
-                        "streamName": "nn_out"
-                    }
-                }
-            ]
-        })"_json;
-    }
-
-    std::vector<std::uint8_t> assetStorage;
-    Assets assets;
-    PipelineSchema pipelineSchema = pipelineDescJson;
-
-    // Load pipelineDesc, assets, and asset storage
-
-    client->call("setPipelineSchema", pipelineSchema);
-
-    // Transfer storage if size > 0
-    if(!assetStorage.empty()) {
-        client->call("setAssets", assets);
-
-        // allocate, returns a pointer to memory on device side
-        auto memHandle = client->call("memAlloc", static_cast<std::uint32_t>(assetStorage.size())).as<uint32_t>();
-
-        // Transfer the whole assetStorage in a separate thread
-        const std::string streamAssetStorage = "__stream_asset_storage";
-        std::thread t1([this, &streamAssetStorage, &assetStorage]() {
-            connection->openStream(streamAssetStorage, XLINK_USB_BUFFER_MAX_SIZE);
-            uint64_t offset = 0;
-            do {
-                uint64_t toTransfer = std::min((uint64_t)XLINK_USB_BUFFER_MAX_SIZE, assetStorage.size() - offset);
-                connection->writeToStream(streamAssetStorage, assetStorage.data() + offset, toTransfer);
-                offset += toTransfer;
-            } while(offset < assetStorage.size());
-        });
-
-        // Open a channel to transfer AssetStorage
-        client->call("readFromXLink", streamAssetStorage, memHandle, assetStorage.size());
-        t1.join();
-
-        // After asset storage is transfers, set the asset storage
-        client->call("setAssetStorage", memHandle, assetStorage.size());
-    }
-
-    // call test
-    // client->call("test");
-
-    // Build and start the pipeline
-    bool success = false;
-    std::string errorMsg;
-    std::tie(success, errorMsg) = client->call("buildPipeline").as<std::tuple<bool, std::string>>();
-    if(success) {
-        client->call("startPipeline");
-        return true;
-    } else {
-        throw std::runtime_error(errorMsg);
-        return false;
-    }
-
-    // client->call("startCamera");
-}
+// bool Device::startTestPipeline(int testId) {
+//     // first check if pipeline is not already started
+//     if(isPipelineRunning()) return false;
+// 
+//     /*
+// 
+//     // Create an AssetManager which the pipeline will use for assets
+//     AssetManager assetManager;
+//     pipeline.loadAssets(assetManager);
+// 
+//     // Serialize the pipeline
+//     auto pipelineDescription = pipeline.serialize();
+// 
+//     // Serialize the asset storage and assets
+//     auto assetStorage = assetManager.serialize();
+//     std::vector<std::uint8_t> assets;
+//     {
+//         nlohmann::json assetsJson;
+//         nlohmann::to_json(assetsJson, (Assets) assetManager);
+//         assets = nlohmann::json::to_msgpack(assetsJson);
+//     }
+// 
+// 
+//     */
+// 
+//     using namespace nlohmann;
+//     nlohmann::json pipelineDescJson;
+// 
+//     if(testId == 0) {
+//         pipelineDescJson = R"(
+//             {
+//                 "globalProperties": {
+//                     "leonOsFrequencyHz": 600000000,
+//                     "pipelineVersion": "1",
+//                     "pipelineName": "1",
+//                     "leonRtFrequencyHz": 600000000
+//                 },
+//                 "nodes": [
+//                     {
+//                         "id": 1,
+//                         "name": "MyProducer",
+//                         "properties": {
+//                             "message": "HeiHoi",
+//                             "processorPlacement": 0
+//                         }
+//                     },
+//                     {
+//                         "id": 2,
+//                         "name": "MyConsumer",
+//                         "properties": {
+//                             "processorPlacement": 1
+//                         }
+//                     },
+//                     {
+//                         "id": 3,
+//                         "name": "MyConsumer",
+//                         "properties": {
+//                             "processorPlacement": 0
+//                         }
+//                     },
+//                     {
+//                         "id": 4,
+//                         "name": "MyConsumer",
+//                         "properties": {
+//                             "processorPlacement": 1
+//                         }
+//                     }
+//                 ],
+//                 "connections": [
+//                     {
+//                         "node1Id": 1,
+//                         "node2Id": 2,
+//                         "node1Output": "out",
+//                         "node2Input": "in"
+//                     },
+//                     {
+//                         "node1Id": 1,
+//                         "node2Id": 3,
+//                         "node1Output": "out",
+//                         "node2Input": "in"
+//                     },
+//                     {
+//                         "node1Id": 1,
+//                         "node2Id": 4,
+//                         "node1Output": "out",
+//                         "node2Input": "in"
+//                     }
+//                 ]
+//             }
+//             )"_json;
+//     } else if(testId == 1) {
+//         pipelineDescJson = R"(
+//         {
+//             "globalProperties": {
+//                 "leonOsFrequencyHz": 600000000,
+//                 "pipelineVersion": "1",
+//                 "pipelineName": "1",
+//                 "leonRtFrequencyHz": 600000000
+//             },
+//             "nodes": [
+//                 {
+//                     "id": 1,
+//                     "name": "MyProducer",
+//                     "properties": {
+//                         "message": "HeiHoi",
+//                         "processorPlacement": 0
+//                     }
+//                 },
+//                 {
+//                     "id": 2,
+//                     "name": "MyConsumer",
+//                     "properties": {
+//                         "processorPlacement": 1
+//                     }
+//                 }
+//             ],
+//             "connections": [
+//                 {
+//                     "node1Id": 1,
+//                     "node2Id": 2,
+//                     "node1Output": "out",
+//                     "node2Input": "in"
+//                 }
+//             ]
+//         }
+//         )"_json;
+// 
+//     } else if(testId == 2) {
+//         pipelineDescJson = R"({
+//             "connections": [
+//                 {
+//                     "node1Id": 0,
+//                     "node1Output": "out",
+//                     "node2Id": 1,
+//                     "node2Input": "in"
+//                 }
+//             ],
+//             "globalProperties": {
+//                 "leonOsFrequencyHz": 600000000.0,
+//                 "leonRtFrequencyHz": 600000000.0,
+//                 "pipelineName": null,
+//                 "pipelineVersion": null
+//             },
+//             "nodes": [
+//                 {
+//                     "id": 0,
+//                     "name": "XLinkIn",
+//                     "properties": {
+//                         "streamName": "nn_in"
+//                     }
+//                 },
+//                 {
+//                     "id": 1,
+//                     "name": "MyConsumer",
+//                     "properties": {
+//                         "processorPlacement": 1
+//                     }
+//                 },
+//                 {
+//                     "id": 2,
+//                     "name": "XLinkOut",
+//                     "properties": {
+//                         "maxFpsLimit": -1.0,
+//                         "streamName": "nn_out"
+//                     }
+//                 }
+//             ]
+//         })"_json;
+//     }
+// 
+//     std::vector<std::uint8_t> assetStorage;
+//     Assets assets;
+//     PipelineSchema pipelineSchema = pipelineDescJson;
+// 
+//     // Load pipelineDesc, assets, and asset storage
+// 
+//     client->call("setPipelineSchema", pipelineSchema);
+// 
+//     // Transfer storage if size > 0
+//     if(!assetStorage.empty()) {
+//         client->call("setAssets", assets);
+// 
+//         // allocate, returns a pointer to memory on device side
+//         auto memHandle = client->call("memAlloc", static_cast<std::uint32_t>(assetStorage.size())).as<uint32_t>();
+// 
+//         // Transfer the whole assetStorage in a separate thread
+//         const std::string streamAssetStorage = "__stream_asset_storage";
+//         std::thread t1([this, &streamAssetStorage, &assetStorage]() {
+//             connection->openStream(streamAssetStorage, XLINK_USB_BUFFER_MAX_SIZE);
+//             uint64_t offset = 0;
+//             do {
+//                 uint64_t toTransfer = std::min((uint64_t)XLINK_USB_BUFFER_MAX_SIZE, assetStorage.size() - offset);
+//                 connection->writeToStream(streamAssetStorage, assetStorage.data() + offset, toTransfer);
+//                 offset += toTransfer;
+//             } while(offset < assetStorage.size());
+//         });
+// 
+//         // Open a channel to transfer AssetStorage
+//         client->call("readFromXLink", streamAssetStorage, memHandle, assetStorage.size());
+//         t1.join();
+// 
+//         // After asset storage is transfers, set the asset storage
+//         client->call("setAssetStorage", memHandle, assetStorage.size());
+//     }
+// 
+//     // call test
+//     // client->call("test");
+// 
+//     // Build and start the pipeline
+//     bool success = false;
+//     std::string errorMsg;
+//     std::tie(success, errorMsg) = client->call("buildPipeline").as<std::tuple<bool, std::string>>();
+//     if(success) {
+//         client->call("startPipeline");
+//         return true;
+//     } else {
+//         throw std::runtime_error(errorMsg);
+//         return false;
+//     }
+// 
+//     // client->call("startCamera");
+// }
 
 }  // namespace dai

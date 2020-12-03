@@ -2,11 +2,20 @@
 
 #include <string>
 #include <tuple>
+#include <algorithm>
+#include <set>
+
+// project
+#include "depthai/openvino/OpenVINO.hpp"
+#include "depthai/pipeline/AssetManager.hpp"
 
 // depthai-shared
 #include "depthai-shared/datatype/DatatypeEnum.hpp"
-#include "depthai/pipeline/AssetManager.hpp"
+
+// libraries
+#include "tl/optional.hpp"
 #include "nlohmann/json.hpp"
+
 
 namespace dai {
 // fwd declare Pipeline
@@ -17,6 +26,11 @@ class Node {
     friend class Pipeline;
     friend class PipelineImpl;
 
+   public:
+
+    using Id = std::int64_t;
+    struct Connection;
+    
    protected:
     struct DatatypeHierarchy {
         DatatypeHierarchy(DatatypeEnum d, bool c) : datatype(d), descendants(c) {}
@@ -34,13 +48,14 @@ class Node {
         const Type type;
         // Which types and do descendants count as well?
         const std::vector<DatatypeHierarchy> possibleDatatypes;
-        std::vector<Input> conn;
         Output(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types)
             : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {}
-
+        bool isSamePipeline(const Input& in);
        public:
         bool canConnect(const Input& in);
-        void link(Input in);
+        std::vector<Connection> getConnections();
+        void link(const Input& in);
+        void unlink(const Input& in);
     };
 
     struct Input {
@@ -57,23 +72,55 @@ class Node {
 
     // when Pipeline tries to serialize and construct on remote, it will check if all connected nodes are on same pipeline
     std::weak_ptr<PipelineImpl> parent;
-    std::vector<Output> outputs;
-    const int64_t id;
+    const Id id;
+    AssetManager assetManager;
 
     virtual std::string getName() = 0;
     virtual std::vector<Output> getOutputs() = 0;
     virtual std::vector<Input> getInputs() = 0;
     virtual nlohmann::json getProperties() = 0;
+    virtual std::vector<std::shared_ptr<Asset>> getAssets();
+    virtual tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion();
     virtual std::shared_ptr<Node> clone() = 0;
-    virtual void loadAssets(AssetManager& assetManager);
 
     // access
     Pipeline getParentPipeline();
 
    public:
-    Node(const std::shared_ptr<PipelineImpl>& p, int64_t nodeId);
+
+   struct Connection {
+        friend struct std::hash<Connection>;
+        Connection(Output out, Input in);
+        Id outputId;
+        std::string outputName;
+        Id inputId;
+        std::string inputName;
+        bool operator==(const Connection& rhs) const;
+    };
+
+    Node(const std::shared_ptr<PipelineImpl>& p, Id nodeId);
 
     virtual ~Node() = default;
 };
 
 }  // namespace dai
+
+
+// Specialization of std::hash for Node::Connection
+namespace std {
+template<>
+struct hash<dai::Node::Connection>
+{
+    size_t operator()(const dai::Node::Connection& obj) const {
+        size_t seed = 0;
+        std::hash<dai::Node::Id> hId;
+        std::hash<std::string> hStr;
+        seed ^= hId(obj.outputId) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+        seed ^= hStr(obj.outputName) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+        seed ^= hId(obj.inputId) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+        seed ^= hStr(obj.outputName) + 0x9e3779b9 + (seed<<6) + (seed>>2);
+        return seed;
+    }
+};
+
+} 

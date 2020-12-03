@@ -8,8 +8,8 @@
 // project
 #include "CallbackHandler.hpp"
 #include "DataQueue.hpp"
-#include "pipeline/Pipeline.hpp"
-#include "xlink/XLinkConnection.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/xlink/XLinkConnection.hpp"
 
 // libraries
 #include "nanorpc/core/client.h"

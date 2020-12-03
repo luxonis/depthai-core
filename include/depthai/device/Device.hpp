@@ -8,8 +8,8 @@
 // project
 #include "CallbackHandler.hpp"
 #include "DataQueue.hpp"
-#include "pipeline/Pipeline.hpp"
-#include "xlink/XLinkConnection.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/xlink/XLinkConnection.hpp"
 
 // libraries
 #include "nanorpc/core/client.h"
@@ -24,22 +24,21 @@ class Device {
     static std::tuple<bool, DeviceInfo> getFirstAvailableDevice();
     static std::tuple<bool, DeviceInfo> getDeviceByMxId(std::string mxId);
     static std::vector<DeviceInfo> getAllAvailableDevices();
-    static std::vector<std::uint8_t> getEmbeddedDeviceBinary(bool usb2Mode);
     // static std::vector<deviceDesc_t> getAllConnectedDevices();
     // static std::tuple<bool, deviceDesc_t> getFirstAvailableDeviceDesc();
     /////
 
-    Device();
-    Device(bool usb2Mode);
-    Device(const char* pathToCmd);
-    Device(const std::string& pathToCmd);
-    explicit Device(const DeviceInfo& devInfo, bool usb2Mode = false);
-    Device(const DeviceInfo& devInfo, const char* pathToCmd);
-    Device(const DeviceInfo& devInfo, const std::string& pathToCmd);
+    explicit Device(const Pipeline& pipeline);
+    Device(const Pipeline& pipeline, bool usb2Mode);
+    Device(const Pipeline& pipeline, const char* pathToCmd);
+    Device(const Pipeline& pipeline, const std::string& pathToCmd);
+    Device(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode = false);
+    Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd);
+    Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd);
     ~Device();
 
     bool isPipelineRunning();
-    bool startPipeline(Pipeline& pipeline);
+    bool startPipeline();
 
     // data queues
     std::shared_ptr<DataOutputQueue> getOutputQueue(const std::string& name, unsigned int maxSize = 120, bool overwrite = false);
@@ -48,7 +47,7 @@ class Device {
     // callback
     void setCallback(const std::string& name, std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb);
 
-    bool startTestPipeline(int testId);
+    //bool startTestPipeline(int testId);
 
     // std::vector<std::string> get_available_streams();
     // void request_jpeg();
@@ -58,7 +57,7 @@ class Device {
 
    private:
     // private static
-    void init(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
+    void init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
 
     std::shared_ptr<XLinkConnection> connection;
     std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> client;
@@ -71,6 +70,7 @@ class Device {
     std::unordered_map<std::string, std::shared_ptr<DataInputQueue>> inputQueueMap;
     std::unordered_map<std::string, CallbackHandler> callbackMap;
 
+
     // Watchdog thread
     std::thread watchdogThread;
     std::atomic<bool> watchdogRunning{true};
@@ -78,6 +78,13 @@ class Device {
     // Timesync thread
     std::thread timesyncThread;
     std::atomic<bool> timesyncRunning{true};
+
+    // Serialized pipeline
+    PipelineSchema schema;
+    Assets assets;
+    std::vector<std::uint8_t> assetStorage;
+    OpenVINO::Version version;
+    
 };
 
 }  // namespace dai

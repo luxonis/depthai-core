@@ -1,10 +1,14 @@
-#include "depthai/DataQueue.hpp"
+#include "depthai/device/DataQueue.hpp"
 
+// std
 #include <iostream>
 
-#include "depthai-shared/xlink/XLinkConstants.hpp"
+// project 
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "pipeline/datatype/StreamPacketParser.hpp"
+
+// shared
+#include "depthai-shared/xlink/XLinkConstants.hpp"
 
 namespace dai {
 

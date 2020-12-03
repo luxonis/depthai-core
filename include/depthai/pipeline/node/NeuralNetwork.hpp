@@ -1,6 +1,7 @@
 #pragma once
 
 #include "depthai/pipeline/Node.hpp"
+#include "depthai/openvino/OpenVINO.hpp"
 
 // standard
 #include <fstream>
@@ -18,10 +19,14 @@ namespace node {
         std::vector<Input> getInputs() override;
         nlohmann::json getProperties() override;
         std::shared_ptr<Node> clone() override;
+        tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion() override;
+        //void loadAssets(AssetManager& assetManager) override;
+
 
         void loadBlob(const std::string& path);
 
         std::string blobPath;
+        OpenVINO::Version networkOpenvinoVersion;
 
        public:
         NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);

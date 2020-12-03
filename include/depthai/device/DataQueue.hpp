@@ -5,9 +5,9 @@
 #include <memory>
 
 // project
-#include "LockingQueue.hpp"
-#include "pipeline/datatype/ADatatype.hpp"
-#include "xlink/XLinkConnection.hpp"
+#include "depthai/utility/LockingQueue.hpp"
+#include "depthai/pipeline/datatype/ADatatype.hpp"
+#include "depthai/xlink/XLinkConnection.hpp"
 
 // shared
 #include "depthai-shared/datatype/RawBuffer.hpp"

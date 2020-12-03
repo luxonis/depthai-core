@@ -1,19 +1,13 @@
 #include <iostream>
 
-#include "depthai/Device.hpp"
-#include "depthai/DeviceBootloader.hpp"
-#include "depthai/xlink/XLinkConnection.hpp"
+#include "depthai/depthai.hpp"
 
-#include "depthai-shared/Assets.hpp"
-
-#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/ColorCamera.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/MyProducer.hpp"
 #include "depthai/pipeline/node/VideoEncoder.hpp"
-
 
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
@@ -256,9 +250,9 @@ void startPreview(){
     std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_BOOTED);
 
     if(found) {
-        dai::Device d(deviceInfo);
+        dai::Device d(p, deviceInfo);
 
-        d.startPipeline(p);
+        d.startPipeline();
 
         
         cv::Mat frame;
@@ -299,9 +293,9 @@ void startVideo(){
     std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_BOOTED);
 
     if(found) {
-        dai::Device d(deviceInfo);
+        dai::Device d(p, deviceInfo);
 
-        d.startPipeline(p);
+        d.startPipeline();
 
         
         cv::Mat frame;
@@ -349,9 +343,9 @@ void startNN(std::string nnPath){
     std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_BOOTED);
 
     if(found) {
-        dai::Device d(deviceInfo);
+        dai::Device d(p, deviceInfo);
 
-        d.startPipeline(p);
+        d.startPipeline();
 
         
         cv::Mat frame;
@@ -468,9 +462,9 @@ void startWebcam(int camId, std::string nnPath){
     std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
 
     if(found) {
-        dai::Device d(deviceInfo);
+        dai::Device d(p, deviceInfo);
 
-        d.startPipeline(p);
+        d.startPipeline();
 
         
         cv::VideoCapture webcam(camId);
@@ -556,7 +550,9 @@ void startWebcam(int camId, std::string nnPath){
 }
 
 
+/*
 void startTest(int id){
+
 
     using namespace std;
 
@@ -566,12 +562,13 @@ void startTest(int id){
     std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_BOOTED);
 
     if(found) {
-        dai::Device d(deviceInfo);
+        dai::Device d(p, deviceInfo);
         d.startTestPipeline(id);
         while(1);
     }
 
 }
+*/
 
 
 
@@ -614,9 +611,9 @@ void startMjpegCam(){
     std::cout << "Device info desc name: " << deviceInfo.desc.name << "\n";
 
     if(found) {
-        dai::Device d(deviceInfo);
+        dai::Device d(p, deviceInfo);
 
-        d.startPipeline(p);
+        d.startPipeline();
     
         auto mjpegQueue = d.getOutputQueue("mjpeg", 8, true);
         auto previewQueue = d.getOutputQueue("preview", 8, true);
@@ -666,6 +663,7 @@ int main(int argc, char** argv){
     using namespace std;
     cout << "Hello World!" << endl;
 
+/*
     mvLogDefaultLevelSet(MVLOG_DEBUG);
 
     // List all devices
@@ -682,14 +680,16 @@ int main(int argc, char** argv){
         std::this_thread::sleep_for(100ms);
     }
 
+*/
     mvLogDefaultLevelSet(MVLOG_LAST);
 
 
     if(argc <= 1){
         startMjpegCam();
     } else {
-         std::string nnPath(argv[1]);
- 
+        std::string nnPath(argv[1]);
+        startWebcam(0, nnPath);
+        /*
         if(nnPath == "test0"){
             startTest(0);
         } else if(nnPath == "test1"){
@@ -699,6 +699,7 @@ int main(int argc, char** argv){
         } else {
             startWebcam(0, nnPath);
         }
+        */
         
     }
 

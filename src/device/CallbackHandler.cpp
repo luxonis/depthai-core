@@ -1,4 +1,4 @@
-#include "depthai/CallbackHandler.hpp"
+#include "depthai/device/CallbackHandler.hpp"
 
 #include "pipeline/datatype/StreamPacketParser.hpp"
 

@@ -2,6 +2,8 @@
 
 #include "depthai/pipeline/Pipeline.hpp"
 
+#include "openvino/BlobReader.hpp"
+
 namespace dai {
 namespace node {
 
@@ -29,9 +31,12 @@ namespace node {
         return std::make_shared<std::decay<decltype(*this)>::type>(*this);
     }
 
+    tl::optional<OpenVINO::Version> NeuralNetwork::getRequiredOpenVINOVersion() {
+        return networkOpenvinoVersion;
+    }
+
     void NeuralNetwork::loadBlob(const std::string& path) {
-        // Get pipelines asset manager
-        AssetManager& assetManager = getParentPipeline().getAssetManager();
+        // Each Node has its own asset manager
 
         // Load blob in blobPath into asset
         // And mark in properties where to look for it
@@ -43,6 +48,11 @@ namespace node {
         blobAsset.alignment = 64;
         blobAsset.data = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(blobStream), {});
 
+        // Read blobs header to determine openvino version
+        BlobReader reader;
+        reader.parse(blobAsset.data);
+        networkOpenvinoVersion = OpenVINO::getBlobLatestSupportedVersion(reader.getVersionMajor(), reader.getVersionMinor());
+        
         // Create asset key
         std::string assetKey = std::to_string(id) + "/blob";
 

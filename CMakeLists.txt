@@ -18,6 +18,10 @@ endif()
 set(TARGET_NAME depthai-core)
 project(${TARGET_NAME} VERSION "0.0.2" LANGUAGES CXX C)
 
+# Set policies
+# CMP0074 dictates that find_package searches environment variable "[packageName]_ROOT" along with regular variable [packageName]_ROOT
+cmake_policy(SET CMP0074 NEW)
+
 # Set to export compile commands for tools like clang-tidy and format
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -50,6 +54,15 @@ find_package(BZip2 CONFIG REQUIRED)
 hunter_add_package(FP16)
 find_package(FP16 REQUIRED)
 
+# libarchive for firmware packages
+hunter_add_package(libarchive)
+find_package(archive_static REQUIRED)
+find_package(lzma REQUIRED)
+
+# spdlog for library and device logging
+hunter_add_package(spdlog)
+find_package(spdlog CONFIG REQUIRED)
+
 # Add depthai-shared, and definitions that it is PC side
 include(${CMAKE_CURRENT_LIST_DIR}/shared/depthai-shared.cmake)
 
@@ -69,10 +82,11 @@ add_library(${TARGET_NAME}
     # depthai-bootloader-shared sources
     "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
     # sources
+    src/device/Device.cpp
+    src/device/DeviceBootloader.cpp
+    src/device/DataQueue.cpp
+    src/device/CallbackHandler.cpp
     src/pipeline/Pipeline.cpp
-    src/xlink/XLinkConnection.cpp
-    src/DataQueue.cpp
-    src/CallbackHandler.cpp
     src/pipeline/AssetManager.cpp
     src/pipeline/Node.cpp
     src/pipeline/node/XLinkIn.cpp
@@ -85,8 +99,11 @@ add_library(${TARGET_NAME}
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/NNData.cpp
     src/pipeline/datatype/StreamPacketParser.cpp
-    src/Device.cpp
-    src/DeviceBootloader.cpp
+    src/utility/Initialization.cpp
+    src/utility/Resources.cpp
+    src/xlink/XLinkConnection.cpp
+    src/openvino/OpenVINO.cpp
+    src/openvino/BlobReader.cpp
     src/bspatch/bspatch.c
 )
 
@@ -220,6 +237,7 @@ target_include_directories(${TARGET_NAME}
     #    # ...
     PRIVATE 
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>"
         "$<BUILD_INTERFACE:${DEPTHAI_SHARED_INCLUDE}>"
         "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_INCLUDE}>"
 )
@@ -246,12 +264,13 @@ target_link_libraries(${TARGET_NAME}
     PUBLIC
         nlohmann_json::nlohmann_json
         XLink
+        spdlog::spdlog
     PRIVATE
         Threads::Threads
         BZip2::bz2
         FP16::fp16
+        archive_static
 )
-
 
 # Add compile definitions
 target_compile_definitions(${TARGET_NAME} 

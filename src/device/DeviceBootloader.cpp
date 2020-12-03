@@ -1,4 +1,4 @@
-#include "DeviceBootloader.hpp"
+#include "device/DeviceBootloader.hpp"
 
 // std
 #include <fstream>
@@ -12,9 +12,11 @@
 #include "depthai-shared/xlink/XLinkConstants.hpp"
 
 // project
-#include "BootloaderHelper.hpp"
-#include "Device.hpp"
+#include "utility/BootloaderHelper.hpp"
+#include "utility/Resources.hpp"
+#include "device/Device.hpp"
 #include "pipeline/Pipeline.hpp"
+
 
 // Resource compiled assets (cmds)
 #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
@@ -48,6 +50,14 @@ std::vector<DeviceInfo> DeviceBootloader::getAllAvailableDevices() {
 }
 
 std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(Pipeline& pipeline, std::string pathToCmd) {
+
+    // Serialize the pipeline
+    PipelineSchema schema;
+    Assets assets;
+    std::vector<std::uint8_t> assetStorage;
+    OpenVINO::Version version;
+    pipeline.serialize(schema, assets, assetStorage, version);
+    
     // Prepare device firmware
     std::vector<uint8_t> deviceFirmware;
     if(pathToCmd != "") {
@@ -55,18 +65,13 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(Pipeline&
         if(!fwStream.is_open()) throw std::runtime_error("Cannot create application package, device firmware at path: " + pathToCmd + " doesn't exist");
         deviceFirmware = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
     } else {
-        deviceFirmware = Device::getEmbeddedDeviceBinary(false);
+        // TODO(themarpe) - specify OpenVINO version
+        deviceFirmware = Resources::getInstance().getDeviceFirmware(false, version);
     }
 
-    // Serialize the pipeline
-    PipelineSchema schema;
-    Assets assets;
-    std::vector<std::uint8_t> assetStorage;
-    pipeline.serialize(schema, assets, assetStorage);
-
-    std::vector<uint8_t> pipelineBinary, assetsBinary;
 
     // Create msgpacks
+    std::vector<uint8_t> pipelineBinary, assetsBinary;
     {
         nlohmann::json j = schema;
         pipelineBinary = nlohmann::json::to_msgpack(j);
@@ -326,23 +331,6 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(std::function<vo
     return {result.success, result.errorMsg};
 }
 
-std::vector<std::uint8_t> DeviceBootloader::getEmbeddedBootloaderBinary() {
-// Binaries are resource compiled
-#ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
-
-    constexpr static auto CMRC_DEPTHAI_BOOTLOADER_PATH = "depthai-bootloader-" DEPTHAI_BOOTLOADER_VERSION ".cmd";
-
-    // Get binaries from internal sources
-    auto fs = cmrc::depthai::get_filesystem();
-
-    auto bootloaderBinary = fs.open(CMRC_DEPTHAI_BOOTLOADER_PATH);
-    return std::vector<std::uint8_t>(bootloaderBinary.begin(), bootloaderBinary.end());
-
-#else
-    assert(0 && "Unsupported");
-    return {};
-#endif
-}
 
 bool DeviceBootloader::isEmbeddedVersion() {
     return isEmbedded;

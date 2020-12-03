@@ -1,13 +1,17 @@
 #include "depthai/pipeline/Node.hpp"
-
 #include "depthai/pipeline/Pipeline.hpp"
+#include "spdlog/fmt/fmt.h"
 
 namespace dai {
 
-Node::Node(const std::shared_ptr<PipelineImpl>& p, int64_t nodeId) : parent(p), id(nodeId) {}
+Node::Node(const std::shared_ptr<PipelineImpl>& p, Id nodeId) : parent(p), id(nodeId) {}
 
-void Node::loadAssets(AssetManager& assetManager) {
-    (void)assetManager;
+std::vector<std::shared_ptr<Asset>> Node::getAssets(){
+    return assetManager.getAll();
+}
+
+tl::optional<OpenVINO::Version> Node::getRequiredOpenVINOVersion(){
+    return tl::nullopt;
 }
 
 Pipeline Node::getParentPipeline() {
@@ -15,25 +19,56 @@ Pipeline Node::getParentPipeline() {
     return pipeline;
 }
 
-bool Node::Output::canConnect(const Input& in) {
-    if(type == Type::MSender && in.type == Input::Type::MReceiver) return false;
-    if(type == Type::SSender && in.type == Input::Type::SReceiver) return false;
-    for(const auto& outHierarchy : possibleDatatypes) {
-        for(const auto& inHierarchy : in.possibleDatatypes) {
-            if(outHierarchy.datatype == inHierarchy.datatype) return true;
-            if(inHierarchy.descendants && isDatatypeSubclassOf(inHierarchy.datatype, outHierarchy.datatype)) return true;
+Node::Connection::Connection(Output out, Input in){
+    outputId = out.parent.id;
+    outputName = out.name;
+    inputId = in.parent.id;
+    inputName = in.name;
+}
+
+bool Node::Connection::operator==(const Node::Connection& rhs) const {
+    return (outputId == rhs.outputId && outputName == rhs.outputName && inputId == rhs.inputId && inputName == rhs.inputName);
+}
+
+
+std::vector<Node::Connection> Node::Output::getConnections(){
+    std::vector<Node::Connection> myConnections;
+    auto allConnections = parent.getParentPipeline().getConnections();
+    for(const auto& conn : allConnections){
+        if(conn.outputId == parent.id && conn.outputName == name){
+            myConnections.push_back(conn);
         }
+    }
+    return myConnections;
+}
+
+bool Node::Output::isSamePipeline(const Input& in){
+    // Check whether current output and 'in' are on same pipeline.
+    // By checking parent of node
+    auto outputPipeline = parent.parent.lock();
+    if(outputPipeline != nullptr){
+        return (outputPipeline == in.parent.parent.lock()); 
     }
     return false;
 }
 
-void Node::Output::link(Input in) {
-    if(!canConnect(in)) {
-        std::string msg = "Cannot link '" + parent.getName() + "." + name + "' to '" + in.parent.getName() + in.name + "'";
-        throw std::runtime_error(msg);
-    }
-
-    conn.push_back(in);
+bool Node::Output::canConnect(const Input& in) {
+    return PipelineImpl::canConnect(*this, in);
 }
+
+void Node::Output::link(const Input& in) {
+
+    // Call link of pipeline
+    parent.getParentPipeline().link(*this, in);
+
+}
+
+void Node::Output::unlink(const Input& in) {
+
+    // Call unlink of pipeline parents pipeline
+    parent.getParentPipeline().unlink(*this, in);
+
+}
+
 
 }  // namespace dai

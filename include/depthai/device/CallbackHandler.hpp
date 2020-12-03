@@ -10,7 +10,7 @@
 
 // project
 #include "DataQueue.hpp"
-#include "xlink/XLinkConnection.hpp"
+#include "depthai/xlink/XLinkConnection.hpp"
 
 namespace dai {
 

@@ -25,8 +25,29 @@ void AssetManager::set(const std::string& key, Asset asset) {
     assetMap[key] = std::make_shared<Asset>(std::move(a));
 }
 
+std::shared_ptr<const Asset> AssetManager::get(const std::string& key) const {
+    return assetMap.at(key);
+}
+
 std::shared_ptr<Asset> AssetManager::get(const std::string& key) {
     return assetMap[key];
+}
+
+void AssetManager::addExisting(std::vector<std::shared_ptr<Asset>> assets) {
+    // make sure that key doesn't exist already
+    for(const auto& asset : assets){
+        if(assetMap.count(asset->key) > 0) throw std::logic_error("An Asset with the key: " + asset->key + " already exists.");
+        std::string key = asset->key;
+        assetMap[key] = asset;
+    }
+}
+
+std::vector<std::shared_ptr<const Asset>> AssetManager::getAll() const {
+    std::vector<std::shared_ptr<const Asset>> a;
+    for(const auto& kv : assetMap) {
+        a.push_back(kv.second);
+    }
+    return a;
 }
 
 std::vector<std::shared_ptr<Asset>> AssetManager::getAll() {
@@ -37,7 +58,8 @@ std::vector<std::shared_ptr<Asset>> AssetManager::getAll() {
     return a;
 }
 
-std::size_t AssetManager::size() {
+
+std::size_t AssetManager::size() const {
     return assetMap.size();
 }
 
@@ -45,9 +67,10 @@ void AssetManager::remove(const std::string& key) {
     assetMap.erase(key);
 }
 
-void AssetManager::serialize(Assets& serAssets, std::vector<std::uint8_t>& assetStorage) {
+void AssetManager::serialize(Assets& serAssets, std::vector<std::uint8_t>& assetStorage) const {
     using namespace std;
     vector<uint8_t> storage;
+    AssetsMutable mutableAssets;
 
     for(auto& kv : assetMap) {
         auto& a = *kv.second;
@@ -68,15 +91,20 @@ void AssetManager::serialize(Assets& serAssets, std::vector<std::uint8_t>& asset
         storage.insert(storage.end(), a.data.begin(), a.data.end());
 
         // Add to map the currently added asset
-        AssetInternal internal = {};
-        internal.offset = offset;
-        internal.size = a.data.size();
-        internal.alignment = a.alignment;
-        map[a.key] = internal;
+        mutableAssets.set(a.key, offset, a.data.size(), a.alignment);
     }
 
     assetStorage = std::move(storage);
-    serAssets = Assets(*this);
+    serAssets = Assets(mutableAssets);
 }
+
+void AssetsMutable::set(std::string key, std::uint32_t offset, std::uint32_t size, std::uint32_t alignment){
+    AssetInternal internal = {};
+    internal.offset = offset;
+    internal.size = size;
+    internal.alignment = alignment;
+    map[key] = internal;
+}
+
 
 }  // namespace dai
