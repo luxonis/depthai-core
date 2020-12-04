@@ -10,6 +10,9 @@
 
 namespace dai {
 
+constexpr OpenVINO::Version PipelineImpl::DEFAULT_OPENVINO_VERSION;
+constexpr OpenVINO::Version Pipeline::DEFAULT_OPENVINO_VERSION;
+
 Node::Id PipelineImpl::getNextUniqueId() {
     return latestId++;
 }

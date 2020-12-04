@@ -332,6 +332,12 @@ bool DeviceBootloader::isEmbeddedVersion() {
     return isEmbedded;
 }
 
+
+std::vector<std::uint8_t> DeviceBootloader::getEmbeddedBootloaderBinary() {
+    return Resources::getInstance().getBootloaderFirmware();
+}
+
+
 DeviceBootloader::Version::Version(const std::string& v) : versionMajor(0), versionMinor(0), versionPatch(0) {
     // Parse string
     if(std::sscanf(v.c_str(), "%u.%u.%u", &versionMajor, &versionMinor, &versionPatch) != 3) throw std::runtime_error("Cannot parse version: " + v);

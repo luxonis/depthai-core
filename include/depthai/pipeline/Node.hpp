@@ -74,11 +74,7 @@ class Node {
     const Id id;
     AssetManager assetManager;
 
-    virtual std::string getName() = 0;
-    virtual std::vector<Output> getOutputs() = 0;
-    virtual std::vector<Input> getInputs() = 0;
     virtual nlohmann::json getProperties() = 0;
-    virtual std::vector<std::shared_ptr<Asset>> getAssets();
     virtual tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion();
     virtual std::shared_ptr<Node> clone() = 0;
 
@@ -86,6 +82,11 @@ class Node {
     Pipeline getParentPipeline();
 
    public:
+
+    virtual std::string getName() = 0;
+    virtual std::vector<Output> getOutputs() = 0;
+    virtual std::vector<Input> getInputs() = 0;
+    virtual std::vector<std::shared_ptr<Asset>> getAssets();
     struct Connection {
         friend struct std::hash<Connection>;
         Connection(Output out, Input in);

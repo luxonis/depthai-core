@@ -597,7 +597,7 @@ void startMjpegCam(){
     colorCam->setCamId(0);
 
     // VideoEncoder
-    videnc->setDefaultProfilePreset(1920, 1080, dai::VideoEncoderProperties::Profile::MJPEG);
+    videnc->setDefaultProfilePreset(1920, 1080, 30, dai::VideoEncoderProperties::Profile::MJPEG);
 
     // Link plugins CAM -> XLINK
     colorCam->video.link(videnc->input);

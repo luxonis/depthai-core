@@ -53,20 +53,16 @@ namespace node {
                 const int pixelArea = width * height;
                 if(pixelArea <= 1280 * 720 * AREA_MUL) {
                     // 720p
-                    properties.bitrate = (4000 / ESTIMATION_FPS) * fps;
-                    properties.maxBitrate = (8500 / ESTIMATION_FPS) * fps;
+                    setBitrate((4000*1000 / ESTIMATION_FPS) * fps);
                 } else if(pixelArea <= 1920 * 1080 * AREA_MUL) {
                     // 1080p
-                    properties.bitrate = (8500 / ESTIMATION_FPS) * fps;
-                    properties.maxBitrate = (10000 / ESTIMATION_FPS) * fps;
+                    setBitrate((8500*1000 / ESTIMATION_FPS) * fps);
                 } else if(pixelArea <= 2560 * 1440 * AREA_MUL) {
                     // 1440p
-                    properties.bitrate = (14000 / ESTIMATION_FPS) * fps;
-                    properties.maxBitrate = (18000 / ESTIMATION_FPS) * fps;
+                    setBitrate((14000*1000 / ESTIMATION_FPS) * fps);
                 } else {
                     // 4K
-                    properties.bitrate = (20000 / ESTIMATION_FPS) * fps;
-                    properties.maxBitrate = (25000 / ESTIMATION_FPS) * fps;
+                    setBitrate((20000*1000 / ESTIMATION_FPS) * fps);
                 }
             } break;
 
@@ -93,17 +89,19 @@ namespace node {
         properties.profile = profile;
     }
 
-    void VideoEncoder::setBitrate(int bitrateKbps) {
-        properties.bitrate = bitrateKbps;
+    void VideoEncoder::setBitrate(int bitrate) {
+        properties.bitrate = bitrate;
+        properties.maxBitrate = bitrate;
     }
 
     void VideoEncoder::setKeyframeFrequency(int freq) {
         properties.keyframeFrequency = freq;
     }
 
-    void VideoEncoder::setMaxBitrate(int maxBitrateKbps) {
-        properties.maxBitrate = maxBitrateKbps;
-    }
+    // Max bitrate and bitrate must match
+    //void VideoEncoder::setMaxBitrate(int maxBitrateKbps) {
+    //    properties.maxBitrate = maxBitrateKbps;
+    //}
 
     void VideoEncoder::setNumBFrames(int numBFrames) {
         properties.numBFrames = numBFrames;
@@ -141,9 +139,9 @@ namespace node {
         return properties.keyframeFrequency;
     }
 
-    int VideoEncoder::getMaxBitrate() const {
-        return properties.maxBitrate;
-    }
+    //int VideoEncoder::getMaxBitrate() const {
+    //    return properties.maxBitrate;
+    //}
 
     int VideoEncoder::getNumBFrames() const {
         return properties.numBFrames;

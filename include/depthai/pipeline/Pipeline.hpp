@@ -87,6 +87,9 @@ class Pipeline {
     Pipeline();
     explicit Pipeline(const std::shared_ptr<PipelineImpl>& pimpl);
 
+    // Default Pipeline openvino version
+    constexpr static auto DEFAULT_OPENVINO_VERSION = PipelineImpl::DEFAULT_OPENVINO_VERSION;
+    
     GlobalProperties getGlobalProperties() const;
 
     PipelineSchema getPipelineSchema();
@@ -133,10 +136,18 @@ class Pipeline {
         impl()->unlink(out, in);
     }
 
-    // TODO(themarpe) - get nodes assets
-    // AssetManager& getAssetManager() {
-    //     return pimpl->getAssetManager();
-    // }
+    AssetManager getAllAssets() const {
+        return impl()->getAllAssets();
+    }
+    
+    AssetManager& getAssetManager() {
+        return impl()->assetManager;
+    }
+
+    const AssetManager& getAssetManager() const {
+        return impl()->assetManager;
+    }
+
 };
 
 }  // namespace dai

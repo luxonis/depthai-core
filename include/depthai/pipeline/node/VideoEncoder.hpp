@@ -33,7 +33,7 @@ namespace node {
         void setProfile(VideoEncoderProperties::Profile profile);
         void setBitrate(int bitrateKbps);
         void setKeyframeFrequency(int freq);
-        void setMaxBitrate(int maxBitrateKbps);
+        //void setMaxBitrate(int maxBitrateKbps);
         void setNumBFrames(int numBFrames);
         void setQuality(int quality);
         void setWidth(int width);
@@ -44,7 +44,7 @@ namespace node {
         VideoEncoderProperties::Profile getProfile() const;
         int getBitrate() const;
         int getKeyframeFrequency() const;
-        int getMaxBitrate() const;
+        //int getMaxBitrate() const;
         int getNumBFrames() const;
         int getQuality() const;
         int getWidth() const;

@@ -24,6 +24,8 @@ class Device {
     static std::tuple<bool, DeviceInfo> getFirstAvailableDevice();
     static std::tuple<bool, DeviceInfo> getDeviceByMxId(std::string mxId);
     static std::vector<DeviceInfo> getAllAvailableDevices();
+    static std::vector<std::uint8_t> getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version = Pipeline::DEFAULT_OPENVINO_VERSION);
+
     // static std::vector<deviceDesc_t> getAllConnectedDevices();
     // static std::tuple<bool, deviceDesc_t> getFirstAvailableDeviceDesc();
     /////
