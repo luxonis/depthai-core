@@ -38,8 +38,8 @@ hunter_config(
 hunter_config(
     libarchive
     VERSION "3.4.2-p0"    
-    URL "https://github.com/luxonis/libarchive/archive/03dd2a24eb1ea2ef26cd5175c93e3191c48d2e2b.tar.gz"
-    SHA1 "7740889ee44028fac28e5a592870fabd65b70dff"
+    URL "https://github.com/luxonis/libarchive/archive/ace98b6abd6790eb43f043aaa261e468a3f44cd2.tar.gz"
+    SHA1 "8996d316f21b88b38cec026eef56aa0fd1fd5008"
     CMAKE_ARGS
         CMAKE_POSITION_INDEPENDENT_CODE=ON
         ENABLE_ACL=OFF                                           
