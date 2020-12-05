@@ -956,6 +956,8 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
         json_config_obj["camera"]["rgb"]["resolution_w"]  = config.rgb_cam_config.resolution_w;
         json_config_obj["camera"]["rgb"]["resolution_h"]  = config.rgb_cam_config.resolution_h;
         json_config_obj["camera"]["rgb"]["fps"]           = config.rgb_cam_config.fps;
+        json_config_obj["camera"]["rgb"]["initial_focus"] = config.rgb_cam_config.initial_focus;
+        json_config_obj["camera"]["rgb"]["enable_autofocus"] = config.rgb_cam_config.enable_autofocus;
         json_config_obj["camera"]["mono"]["resolution_w"] = config.mono_cam_config.resolution_w;
         json_config_obj["camera"]["mono"]["resolution_h"] = config.mono_cam_config.resolution_h;
         json_config_obj["camera"]["mono"]["fps"]          = config.mono_cam_config.fps;
@@ -995,6 +997,7 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
         json_config_obj["app"]["sync_sequence_numbers"] = config.app_config.sync_sequence_numbers;
         json_config_obj["app"]["usb_chunk_KiB"] = config.app_config.usb_chunk_KiB;
         json_config_obj["app"]["enable_reconfig"] = config.app_config.enable_reconfig;
+        json_config_obj["app"]["enable_imu"] = config.app_config.enable_imu;
 
         bool add_disparity_post_processing_color = false;
         bool temp_measurement = false;

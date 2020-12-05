@@ -75,6 +75,8 @@ struct HostPipelineConfig
         int32_t resolution_w = 0; //auto
         int32_t resolution_h = 1080;
         float fps = 30.f;
+        uint8_t initial_focus = 0; // 0..255
+        bool enable_autofocus = true;
     } rgb_cam_config;
 
     struct MonoCamConfig
@@ -89,6 +91,7 @@ struct HostPipelineConfig
         bool sync_video_meta_streams = false;
         bool sync_sequence_numbers = false;
         bool enable_reconfig = true; // Allow reopening config_d2h and config_h2d after the initial setup
+        bool enable_imu = false;
         uint32_t usb_chunk_KiB = 64; // Increase to improve throughput, 0 to disable chunking
     } app_config;
 

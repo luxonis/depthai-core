@@ -338,6 +338,14 @@ bool HostPipelineConfig::initWithJSON(const nlohmann::json &json_obj)
                     }
                     break;
                 }
+
+                if (rgb_camera_conf_obj.contains("initial_focus")) {
+                    rgb_cam_config.initial_focus = rgb_camera_conf_obj.at("initial_focus").get<uint8_t>();
+                }
+
+                if (rgb_camera_conf_obj.contains("enable_autofocus")) {
+                    rgb_cam_config.enable_autofocus = rgb_camera_conf_obj.at("enable_autofocus").get<bool>();
+                }
             }
 
             if (camera_conf_obj.contains("mono"))
@@ -397,6 +405,11 @@ bool HostPipelineConfig::initWithJSON(const nlohmann::json &json_obj)
             if (app_conf_obj.contains("enable_reconfig"))
             {
                 app_config.enable_reconfig = app_conf_obj.at("enable_reconfig").get<bool>();
+            }
+
+            if (app_conf_obj.contains("enable_imu"))
+            {
+                app_config.enable_imu = app_conf_obj.at("enable_imu").get<bool>();
             }
 
             if (app_conf_obj.contains("usb_chunk_KiB"))
