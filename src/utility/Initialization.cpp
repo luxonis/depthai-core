@@ -26,21 +26,13 @@ namespace {
     //     }
     // } preloader;
 
-    bool initialized = false;
-
 }  // namespace
 
-std::mutex initMutex;
 bool initialize() {
-    // To protect from multiple initializations at the same time
-    std::lock_guard<std::mutex> lock(initMutex);
-
-    // Initialize only once
-    if(!initialized) {
-        initialized = true;
-    } else {
-        return true;
-    }
+    // atomic bool for checking whether depthai was already initialized
+    static std::atomic<bool> initialized{false};
+    
+    if(initialized.exchange(true)) return true;
 
     // Set global logging level from ENV variable 'DEPTHAI_LEVEL'
     // Taken from spdlog, to replace with DEPTHAI_LEVEL instead of SPDLOG_LEVEL

@@ -53,6 +53,7 @@ std::string stateToString(XLinkDeviceState_t p){
     case X_LINK_ANY_STATE : return {"X_LINK_ANY_STATE"}; break;
     case X_LINK_BOOTED : return {"X_LINK_BOOTED"}; break;
     case X_LINK_UNBOOTED : return {"X_LINK_UNBOOTED"}; break;
+    case X_LINK_BOOTLOADER : return {"X_LINK_BOOTLOADER"}; break;
     }    
     return {"UNDEFINED"};
 }
