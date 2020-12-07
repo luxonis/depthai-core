@@ -388,7 +388,7 @@ void Device::load_and_print_config_d2h(void)
             }
             T = calib;
 
-        std::cout << "H2 matrix of right came----------------> " << H2_r.size() <<  std::endl;
+            std::cout << "H2 matrix of right came----------------> " << H2_r.size() <<  std::endl;
 
         }
         else if (version == 5){
@@ -477,6 +477,48 @@ void Device::load_and_print_config_d2h(void)
                     printf("\n");
             }
             d2_r = calib;
+
+            T_rgb = g_config_d2h.at("eeprom").at("calib_T_rgb").get<std::vector<float>>();
+            if (T_rgb[0] != 0){
+            
+                printf("  Calibration intrinsic matrix M3 (rgb):\n");
+                calib = g_config_d2h.at("eeprom").at("calib_M3_rgb").get<std::vector<float>>();
+                for (int i = 0; i < 9; i++) {
+                    printf(" %11.6f,", calib.at(i));
+                    temp.push_back(calib.at(i));
+                    if (i % 3 == 2) {
+                        printf("\n");
+                        M3_rgb.push_back(temp);
+                        temp.clear();
+                    }
+                }
+
+                printf("  RGB-Right rotation matrix R (rgb):\n");
+                calib = g_config_d2h.at("eeprom").at("calib_R_rgb").get<std::vector<float>>();
+                for (int i = 0; i < 9; i++) {
+                    printf(" %11.6f,", calib.at(i));
+                    temp.push_back(calib.at(i));
+                    
+                        printf("\n");
+                        R_rgb.push_back(temp);
+                        temp.clear();
+                    }
+                }
+
+                printf(" Calibration Distortion Coeff d3 (rgb):\n");
+                calib = g_config_d2h.at("eeprom").at("calib_d3_rgb").get<std::vector<float>>();
+                for (int i = 0; i < 14; i++) {
+                    printf(" %11.6f,", calib.at(i));
+                    if (i % 7 == 6)
+                        printf("\n");
+                }
+                d3_rgb = calib;
+
+                printf(" Calibration translation vector T (rgb):\n");
+                for(int i = 0; i < 3; ++i){
+                     printf(" %11.6f,\n", T_rgb.at(i));
+                }
+
 
             std::vector<std::vector<float>> M2_r_inv;
             std::vector<std::vector<float>> M1_l_inv;
@@ -618,6 +660,53 @@ std::vector<std::vector<float>> Device::get_left_homography()
     
 }
 
+std::vector<std::vector<float>> Device::get_intrinsic(CameraControl::CamId cam){
+
+    if (cam == CameraControl::CamId::RGB){
+        return M3_rgb;
+    }
+    else if(cam == CameraControl::CamId::RIGHT){
+        return M2_r;
+    }
+    else if(cam == CameraControl::CamId::LEFT){
+        return M1_l;
+    }
+    else {         
+        throw std::runtime_error("Invalid camera ID sent!");
+    }
+}
+
+std::vector<float> Device::get_distortion_coeffs(CameraControl::CamId cam){
+    if (cam == CameraControl::CamId::RGB){
+        return d3_rgb;
+    }
+    else if(cam == CameraControl::CamId::RIGHT){
+        return d2_r;
+    }
+    else if(cam == CameraControl::CamId::LEFT){
+        return d1_l;
+    }
+    else {         
+        throw std::runtime_error("Invalid camera ID sent!");
+    }
+}
+
+std::vector<std::vector<float>> Device::get_rgb_rotation(){
+    if (version < 5) {
+        std::cerr << "legacy, get_rgb_rotation() is not available in version " << version << "\n recalibrate and load the new calibration to the device. \n";
+        abort();
+    }
+    return R_rgb;
+}
+
+std::vector<float> Device::get_rgb_translation(){
+    if (version < 5) {
+        std::cerr << "legacy, get_rgb_translation() is not available in version " << version << "\n recalibrate and load the new calibration to the device. \n";
+        abort();
+    }
+    return T_rgb;
+}
+
 std::vector<std::vector<float>> Device::get_right_intrinsic()
 {
     if (version < 4) {
@@ -648,6 +737,8 @@ std::vector<std::vector<float>> Device::get_rotation()
     }
     return R;
 }
+
+
 
 std::vector<float> Device::get_translation()
 {

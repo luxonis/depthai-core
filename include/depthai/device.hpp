@@ -42,10 +42,16 @@ public:
     std::vector<std::vector<float>> get_left_homography();
     std::vector<std::vector<float>> get_right_intrinsic();
     std::vector<std::vector<float>> get_right_homography();
+
+    std::vector<float> get_distortion_coeffs(CameraControl::CamId cam);
+    std::vector<std::vector<float>> get_intrinsic(CameraControl::CamId cam);
+
     std::vector<std::vector<float>> get_rotation();
     std::vector<float> get_translation();
-    std::string get_mx_id();
+    std::vector<std::vector<float>> get_rgb_rotation();
+    std::vector<float> get_rgb_translation();
 
+    std::string get_mx_id();
     bool is_usb3();
     bool is_eeprom_loaded();
     bool is_rgb_connected();
@@ -101,16 +107,29 @@ private:
 
 
     std::shared_ptr<CNNHostPipeline> gl_result = nullptr;
+ 
+    // place holders for Stereo rectification parameters
     std::vector<std::vector<float>> R1_l;
     std::vector<std::vector<float>> R2_r;
     std::vector<std::vector<float>> H1_l;
     std::vector<std::vector<float>> H2_r;
+ 
+    // place holders for Intrinics calibration
     std::vector<std::vector<float>> M1_l;
     std::vector<std::vector<float>> M2_r;
-    std::vector<std::vector<float>> R;
-    std::vector<float> T;
+    std::vector<std::vector<float>> M3_rgb;
+
+    // place holders for distortion coefficients of the camera   
     std::vector<float> d1_l;
     std::vector<float> d2_r;
+    std::vector<float> d3_rgb;
+
+    // extrinsic calibration parameters between left-right and rgb-right 
+    std::vector<std::vector<float>> R;
+    std::vector<float> T;
+    std::vector<std::vector<float>> R_rgb; // RGB -> R
+    std::vector<float> T_rgb; // RGB -> R or R -> RGB TODO(sachin): Second check )
+    
     int32_t version;
     bool device_changed = true;
     std::string config_backup;
