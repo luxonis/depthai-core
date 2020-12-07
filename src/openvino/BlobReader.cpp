@@ -22,15 +22,15 @@ namespace dai {
 
 namespace {
 
-    template <typename T>
-    T readFromBlob(const std::vector<std::uint8_t>& blob, uint32_t& offset) {
-        assert(offset + sizeof(T) <= blob.size());
+template <typename T>
+T readFromBlob(const std::vector<std::uint8_t>& blob, uint32_t& offset) {
+    assert(offset + sizeof(T) <= blob.size());
 
-        auto srcPtr = blob.data() + offset;
-        offset += sizeof(T);
+    auto srcPtr = blob.data() + offset;
+    offset += sizeof(T);
 
-        return *reinterpret_cast<const T*>(srcPtr);
-    }
+    return *reinterpret_cast<const T*>(srcPtr);
+}
 
 }  // namespace
 

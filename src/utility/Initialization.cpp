@@ -15,23 +15,23 @@ namespace dai {
 // Anonymous namespace to hide 'Preloader' symbol and variable as its not needed to be visible to other compilation units
 namespace {
 
-    // Doing early static initialization hits this stage faster than some libraries initialize their global static members
+// Doing early static initialization hits this stage faster than some libraries initialize their global static members
 
-    // Preloader uses static global object constructor (works only for shared libraries)
-    // to execute some code upon final executable launch  or library import
-    // Preloader
-    // struct Preloader {
-    //     Preloader(){
-    //         initialize();
-    //     }
-    // } preloader;
+// Preloader uses static global object constructor (works only for shared libraries)
+// to execute some code upon final executable launch  or library import
+// Preloader
+// struct Preloader {
+//     Preloader(){
+//         initialize();
+//     }
+// } preloader;
 
 }  // namespace
 
 bool initialize() {
     // atomic bool for checking whether depthai was already initialized
     static std::atomic<bool> initialized{false};
-    
+
     if(initialized.exchange(true)) return true;
 
     // Set global logging level from ENV variable 'DEPTHAI_LEVEL'

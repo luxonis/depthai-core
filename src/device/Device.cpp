@@ -54,11 +54,9 @@ std::tuple<bool, DeviceInfo> Device::getDeviceByMxId(std::string mxId) {
     return {false, DeviceInfo()};
 }
 
-
-std::vector<std::uint8_t> Device::getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version){
+std::vector<std::uint8_t> Device::getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version) {
     return Resources::getInstance().getDeviceFirmware(usb2Mode, version);
 }
-
 
 /*
 std::vector<DeviceInfo> Device::getAllConnectedDevices(){

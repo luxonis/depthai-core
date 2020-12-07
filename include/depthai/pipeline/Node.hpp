@@ -82,7 +82,6 @@ class Node {
     Pipeline getParentPipeline();
 
    public:
-
     virtual std::string getName() = 0;
     virtual std::vector<Output> getOutputs() = 0;
     virtual std::vector<Input> getInputs() = 0;

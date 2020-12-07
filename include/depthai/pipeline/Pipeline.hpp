@@ -89,7 +89,7 @@ class Pipeline {
 
     // Default Pipeline openvino version
     constexpr static auto DEFAULT_OPENVINO_VERSION = PipelineImpl::DEFAULT_OPENVINO_VERSION;
-    
+
     GlobalProperties getGlobalProperties() const;
 
     PipelineSchema getPipelineSchema();
@@ -139,7 +139,7 @@ class Pipeline {
     AssetManager getAllAssets() const {
         return impl()->getAllAssets();
     }
-    
+
     AssetManager& getAssetManager() {
         return impl()->assetManager;
     }
@@ -147,7 +147,6 @@ class Pipeline {
     const AssetManager& getAssetManager() const {
         return impl()->assetManager;
     }
-
 };
 
 }  // namespace dai
