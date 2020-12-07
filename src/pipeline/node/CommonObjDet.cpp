@@ -40,7 +40,6 @@ namespace node {
         std::stringstream configBuffer;
         configBuffer << configStream.rdbuf();
         properties.nnConfig = configBuffer.str();
-        printf("setNNConfigPath: %s\n", properties.nnConfig.c_str());
     }
 
 }  // namespace node
