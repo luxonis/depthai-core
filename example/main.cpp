@@ -11,9 +11,11 @@
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/MyProducer.hpp"
 #include "depthai/pipeline/node/VideoEncoder.hpp"
+#include "depthai/pipeline/node/ImageManip.hpp"
 
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 
 #include "opencv2/opencv.hpp"
 #include "fp16/fp16.h"
@@ -23,37 +25,34 @@
 
 std::string protocolToString(XLinkProtocol_t p){
     
-    switch (p)
-    {
-    case X_LINK_USB_VSC : return {"X_LINK_USB_VSC"}; break;
-    case X_LINK_USB_CDC : return {"X_LINK_USB_CDC"}; break;
-    case X_LINK_PCIE : return {"X_LINK_PCIE"}; break;
-    case X_LINK_IPC : return {"X_LINK_IPC"}; break;
-    case X_LINK_NMB_OF_PROTOCOLS : return {"X_LINK_NMB_OF_PROTOCOLS"}; break;
-    case X_LINK_ANY_PROTOCOL : return {"X_LINK_ANY_PROTOCOL"}; break;
+    switch (p){
+        case X_LINK_USB_VSC : return {"X_LINK_USB_VSC"}; break;
+        case X_LINK_USB_CDC : return {"X_LINK_USB_CDC"}; break;
+        case X_LINK_PCIE : return {"X_LINK_PCIE"}; break;
+        case X_LINK_IPC : return {"X_LINK_IPC"}; break;
+        case X_LINK_NMB_OF_PROTOCOLS : return {"X_LINK_NMB_OF_PROTOCOLS"}; break;
+        case X_LINK_ANY_PROTOCOL : return {"X_LINK_ANY_PROTOCOL"}; break;
     }    
     return {"UNDEFINED"};
 }
 
 std::string platformToString(XLinkPlatform_t p){
     
-    switch (p)
-    {
-    case X_LINK_ANY_PLATFORM : return {"X_LINK_ANY_PLATFORM"}; break;
-    case X_LINK_MYRIAD_2 : return {"X_LINK_MYRIAD_2"}; break;
-    case X_LINK_MYRIAD_X : return {"X_LINK_MYRIAD_X"}; break;
+    switch (p) {
+        case X_LINK_ANY_PLATFORM : return {"X_LINK_ANY_PLATFORM"}; break;
+        case X_LINK_MYRIAD_2 : return {"X_LINK_MYRIAD_2"}; break;
+        case X_LINK_MYRIAD_X : return {"X_LINK_MYRIAD_X"}; break;
     }
     return {"UNDEFINED"};
 }
 
 std::string stateToString(XLinkDeviceState_t p){
     
-    switch (p)
-    {
-    case X_LINK_ANY_STATE : return {"X_LINK_ANY_STATE"}; break;
-    case X_LINK_BOOTED : return {"X_LINK_BOOTED"}; break;
-    case X_LINK_UNBOOTED : return {"X_LINK_UNBOOTED"}; break;
-    case X_LINK_BOOTLOADER : return {"X_LINK_BOOTLOADER"}; break;
+    switch (p) {
+        case X_LINK_ANY_STATE : return {"X_LINK_ANY_STATE"}; break;
+        case X_LINK_BOOTED : return {"X_LINK_BOOTED"}; break;
+        case X_LINK_UNBOOTED : return {"X_LINK_UNBOOTED"}; break;
+        case X_LINK_BOOTLOADER : return {"X_LINK_BOOTLOADER"}; break;
     }    
     return {"UNDEFINED"};
 }
@@ -663,6 +662,122 @@ void startMjpegCam(){
 
 
 
+void startCamManip(){
+
+    using namespace std;
+    try{
+
+
+
+        dai::Pipeline pipeline;
+
+        auto colorCam = pipeline.create<dai::node::ColorCamera>();
+        auto imageManip = pipeline.create<dai::node::ImageManip>();
+        auto imageManip2 = pipeline.create<dai::node::ImageManip>();
+        auto camOut = pipeline.create<dai::node::XLinkOut>();
+        auto manipOut = pipeline.create<dai::node::XLinkOut>();
+        auto manipOut2 = pipeline.create<dai::node::XLinkOut>();
+        auto manip2In = pipeline.create<dai::node::XLinkIn>();
+
+
+        camOut->setStreamName("preview");
+        manipOut->setStreamName("manip");
+        manipOut2->setStreamName("manip2");
+        manip2In->setStreamName("manip2In");
+
+        
+        colorCam->setPreviewSize(304, 304);
+        colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+        colorCam->setInterleaved(false);
+        colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
+        colorCam->setCamId(0);
+
+        // Create a center crop image manipulation
+        imageManip->setCenterCrop(0.7f);
+        imageManip->setResizeThumbnail(300, 400);
+
+        
+        // Second image manipulator - Create a off center crop
+        imageManip2->setCropRect(0.1, 0.1, 0.3, 0.3);
+        imageManip2->setWaitForConfigInput(true);
+
+
+
+        // Link nodes CAM -> XLINK
+        colorCam->preview.link(camOut->input);
+
+        // Link nodes CAM -> imageManip -> XLINK
+        colorCam->preview.link(imageManip->inputImage);
+        imageManip->out.link(manipOut->input);
+
+        // ImageManip -> ImageManip 2
+        imageManip->out.link(imageManip2->inputImage);
+
+        // ImageManip2 -> XLinkOut
+        imageManip2->out.link(manipOut2->input);
+
+        // Host config -> image manip 2
+        manip2In->out.link(imageManip2->inputConfig);
+
+        dai::Device device(pipeline);
+        device.startPipeline();
+
+
+        auto previewQueue = device.getOutputQueue("preview", 8, true);
+        auto manipQueue = device.getOutputQueue("manip", 8, true);
+        auto manipQueue2 = device.getOutputQueue("manip2", 8, true);
+        auto manip2InQueue = device.getInputQueue("manip2In");
+
+        
+
+        // keep processing data
+        int frameCounter = 0;
+        float xmin = 0.1f;
+        float xmax = 0.3f;
+        while(true){
+
+            xmin += 0.003f;
+            xmax += 0.003f;
+            if(xmax >= 1.0f){
+                xmin = 0.0f;
+                xmax = 0.2f;
+            }
+
+            dai::ImageManipConfig cfg;
+            cfg.setCropRect(xmin, 0.1f, xmax, 0.3f);
+            manip2InQueue->send(cfg);
+
+
+            // Gets both image frames
+            auto preview = previewQueue->get<dai::ImgFrame>();
+            auto manip = manipQueue->get<dai::ImgFrame>();
+            auto manip2 = manipQueue2->get<dai::ImgFrame>();
+
+            auto matPreview = toMat(preview->getData(), preview->getWidth(), preview->getHeight(), 3, 1);
+            auto matManip = toMat(manip->getData(), manip->getWidth(), manip->getHeight(), 3, 1);
+            auto matManip2 = toMat(manip2->getData(), manip2->getWidth(), manip2->getHeight(), 3, 1);
+            
+            // Display both 
+            cv::imshow("preview", matPreview);
+            cv::imshow("manip", matManip);
+            cv::imshow("manip2", matManip2);
+
+
+            cv::waitKey(1);
+
+            frameCounter++;
+
+        }
+
+        
+    } catch(const std::exception& ex){
+        std::cout << "Error: " << ex.what() << "\nExiting...\n";
+    }  
+
+}
+
+
+
 dai::Pipeline createNNPipelineSPI(std::string nnPath){
     dai::Pipeline p;
 
@@ -718,6 +833,8 @@ void startNNSPI(std::string nnPath){
 
 }
 
+
+
 void listDevices(){
     mvLogDefaultLevelSet(MVLOG_DEBUG);
 
@@ -744,7 +861,7 @@ int main(int argc, char** argv){
     mvLogDefaultLevelSet(MVLOG_LAST);
 
     if(argc <= 1){
-        startMjpegCam();
+        startCamManip();
     } else {
         std::string test(argv[1]);
  
