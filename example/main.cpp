@@ -673,7 +673,7 @@ dai::Pipeline createNNPipelineYOLO(std::string nnPath, std::string nnConfigPath)
 
     // set up color camera and link to NN node
     auto colorCam = p.create<dai::node::ColorCamera>();
-    colorCam->setPreviewSize(300, 300);
+    colorCam->setPreviewSize(416, 416);
     colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     colorCam->setInterleaved(false);
     colorCam->setCamId(0);
