@@ -3,6 +3,11 @@ cmake_minimum_required(VERSION 3.2) # For Hunter
 # Set defaults
 set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
 
+# Read the BUILD_SHARED_LIBS option and select PIC toolchain
+if(BUILD_SHARED_LIBS)
+    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_LIST_DIR}/cmake/toolchain/pic.cmake" CACHE STRING "")
+endif()
+
 include("cmake/HunterGate.cmake")
 HunterGate(
     URL "https://github.com/cpp-pm/hunter/archive/v0.23.258.tar.gz"
