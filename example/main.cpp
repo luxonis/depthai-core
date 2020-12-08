@@ -1,10 +1,11 @@
 #include <iostream>
-#include <unistd.h>
+#include <csignal>
 
 
 #include "depthai/depthai.hpp"
 
 #include "depthai/pipeline/node/ColorCamera.hpp"
+#include "depthai/pipeline/node/MonoCamera.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
 #include "depthai/pipeline/node/SPIOut.hpp"
@@ -12,6 +13,7 @@
 #include "depthai/pipeline/node/MyProducer.hpp"
 #include "depthai/pipeline/node/VideoEncoder.hpp"
 #include "depthai/pipeline/node/ImageManip.hpp"
+#include "depthai/pipeline/node/StereoDepth.hpp"
 
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
@@ -22,6 +24,8 @@
 
 
 #include "XLinkLog.h"
+
+static XLinkDeviceState_t xlinkState = X_LINK_UNBOOTED;
 
 std::string protocolToString(XLinkProtocol_t p){
     
@@ -248,7 +252,7 @@ void startPreview(){
 
     bool found;
     dai::DeviceInfo deviceInfo;
-    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_BOOTED);
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(xlinkState);
 
     if(found) {
         dai::Device d(p, deviceInfo);
@@ -277,7 +281,7 @@ void startPreview(){
         }
 
     } else {
-        cout << "No booted (debugger) devices found..." << endl;
+        cout << "No devices with state " << stateToString(xlinkState) << " found..." << endl;
     }
 
     
@@ -291,7 +295,7 @@ void startVideo(){
 
     bool found;
     dai::DeviceInfo deviceInfo;
-    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_BOOTED);
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(xlinkState);
 
     if(found) {
         dai::Device d(p, deviceInfo);
@@ -327,7 +331,7 @@ void startVideo(){
         }
 
     } else {
-        cout << "No booted (debugger) devices found..." << endl;
+        cout << "No devices with state " << stateToString(xlinkState) << " found..." << endl;
     }
 
 
@@ -341,7 +345,7 @@ void startNN(std::string nnPath){
 
     bool found;
     dai::DeviceInfo deviceInfo;
-    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_BOOTED);
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(xlinkState);
 
     if(found) {
         dai::Device d(p, deviceInfo);
@@ -418,7 +422,7 @@ void startNN(std::string nnPath){
         }
 
     } else {
-        cout << "No booted (debugger) devices found..." << endl;
+        cout << "No devices with state " << stateToString(xlinkState) << " found..." << endl;
     }
 
 }
@@ -460,7 +464,7 @@ void startWebcam(int camId, std::string nnPath){
 
     bool found;
     dai::DeviceInfo deviceInfo;
-    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(xlinkState);
 
     if(found) {
         dai::Device d(p, deviceInfo);
@@ -545,7 +549,7 @@ void startWebcam(int camId, std::string nnPath){
         }
 
     } else {
-        cout << "No booted (debugger) devices found..." << endl;
+        cout << "No devices with state " << stateToString(xlinkState) << " found..." << endl;
     }
 
 }
@@ -560,7 +564,7 @@ void startTest(int id){
     // CONNECT TO DEVICE
     bool found;
     dai::DeviceInfo deviceInfo;
-    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_BOOTED);
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(xlinkState);
 
     if(found) {
         dai::Device d(p, deviceInfo);
@@ -593,6 +597,7 @@ void startMjpegCam(){
     // ColorCamera    
     colorCam->setPreviewSize(300, 300);
     colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    //colorCam->setFps(5.0);
     colorCam->setInterleaved(true);
     colorCam->setCamId(0);
 
@@ -607,7 +612,7 @@ void startMjpegCam(){
 
     bool found;
     dai::DeviceInfo deviceInfo;
-    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(xlinkState);
 
     std::cout << "Device info desc name: " << deviceInfo.desc.name << "\n";
 
@@ -647,16 +652,165 @@ void startMjpegCam(){
             int loop = std::chrono::duration_cast<std::chrono::milliseconds>(t5-t1).count();
 
             std::cout << ms1 << " " << ms2 << " " << ms3 << " " << ms4 << " loop: " << loop << "sync offset: " << tsPreview << " sync mjpeg " << tsMjpeg << std::endl;
-            cv::waitKey(1);
+            int key = cv::waitKey(1);
+            if (key == 'q') raise(SIGINT);
 
 
         }
 
     } else {
-        cout << "No booted (debugger) devices found..." << endl;
+        cout << "No devices with state " << stateToString(xlinkState) << " found..." << endl;
     }
 
 
+}
+
+void startMonoCam(bool withDepth) {
+    using namespace std;
+
+    dai::Pipeline p;
+
+    auto monoLeft  = p.create<dai::node::MonoCamera>();
+    auto monoRight = p.create<dai::node::MonoCamera>();
+    auto xoutLeft  = p.create<dai::node::XLinkOut>();
+    auto xoutRight = p.create<dai::node::XLinkOut>();
+    auto stereo    = withDepth ? p.create<dai::node::StereoDepth>() : nullptr;
+    auto xoutDisp  = p.create<dai::node::XLinkOut>();
+    auto xoutDepth = p.create<dai::node::XLinkOut>();
+    auto xoutRectifL = p.create<dai::node::XLinkOut>();
+    auto xoutRectifR = p.create<dai::node::XLinkOut>();
+
+    // XLinkOut
+    xoutLeft->setStreamName("left");
+    xoutRight->setStreamName("right");
+    if (withDepth) {
+        xoutDisp->setStreamName("disparity");
+        xoutDepth->setStreamName("depth");
+        xoutRectifL->setStreamName("rectified_left");
+        xoutRectifR->setStreamName("rectified_right");
+    }
+
+    // MonoCamera
+    monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
+    monoLeft->setCamId(1);
+    //monoLeft->setFps(5.0);
+    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
+    monoRight->setCamId(2);
+    //monoRight->setFps(5.0);
+
+    bool outputDepth = false;
+    bool outputRectified = true;
+    bool lrcheck  = true;
+    bool extended = false;
+    bool subpixel = true;
+
+    int maxDisp = 96;
+    if (extended) maxDisp *= 2;
+    if (subpixel) maxDisp *= 32; // 5 bits fractional disparity
+
+    if (withDepth) {
+        // StereoDepth
+        stereo->setOutputDepth(outputDepth);
+        stereo->setOutputRectified(outputRectified);
+        stereo->setConfidenceThreshold(200);
+        stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
+        //stereo->loadCalibrationFile("../../../../depthai/resources/depthai.calib");
+        //stereo->setInputResolution(1280, 720);
+        // TODO: median filtering is disabled on device with (lrcheck || extended || subpixel)
+        //stereo->setMedianFilter(dai::StereoDepthProperties::MedianFilter::MEDIAN_OFF);
+        stereo->setLeftRightCheck(lrcheck);
+        stereo->setExtendedDisparity(extended);
+        stereo->setSubpixel(subpixel);
+
+        // Link plugins CAM -> STEREO -> XLINK
+        monoLeft->out.link(stereo->left);
+        monoRight->out.link(stereo->right);
+
+        stereo->syncedLeft.link(xoutLeft->input);
+        stereo->syncedRight.link(xoutRight->input);
+        stereo->rectifiedLeft.link(xoutRectifL->input);
+        stereo->rectifiedRight.link(xoutRectifR->input);
+
+        stereo->disparity.link(xoutDisp->input);
+        stereo->depth.link(xoutDepth->input);
+
+    } else {
+        // Link plugins CAM -> XLINK
+        monoLeft->out.link(xoutLeft->input);
+        monoRight->out.link(xoutRight->input);
+    }
+
+
+    // CONNECT TO DEVICE
+
+    bool found;
+    dai::DeviceInfo deviceInfo;
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(xlinkState);
+
+    if (found) {
+        dai::Device d(p, deviceInfo);
+
+        d.startPipeline();
+
+        auto leftQueue = d.getOutputQueue("left", 8, true);
+        auto rightQueue = d.getOutputQueue("right", 8, true);
+        auto dispQueue = withDepth ? d.getOutputQueue("disparity", 8, true) : nullptr;
+        auto depthQueue = withDepth ? d.getOutputQueue("depth", 8, true) : nullptr;
+        auto rectifLeftQueue = withDepth ? d.getOutputQueue("rectified_left", 8, true) : nullptr;
+        auto rectifRightQueue = withDepth ? d.getOutputQueue("rectified_right", 8, true) : nullptr;
+
+        while (1) {
+            auto t1 = std::chrono::steady_clock::now();
+            auto left = leftQueue->get<dai::ImgFrame>();
+            auto t2 = std::chrono::steady_clock::now();
+            cv::imshow("left", cv::Mat(left->getHeight(), left->getWidth(), CV_8UC1, left->getData().data()));
+            auto t3 = std::chrono::steady_clock::now();
+            auto right = rightQueue->get<dai::ImgFrame>();
+            auto t4 = std::chrono::steady_clock::now();
+            cv::imshow("right", cv::Mat(right->getHeight(), right->getWidth(), CV_8UC1, right->getData().data()));
+            auto t5 = std::chrono::steady_clock::now();
+
+            if (withDepth) {
+                // Note: in some configurations (if depth is enabled), disparity may output garbage data
+                auto disparity = dispQueue->get<dai::ImgFrame>();
+                cv::Mat disp(disparity->getHeight(), disparity->getWidth(),
+                        subpixel ? CV_16UC1 : CV_8UC1, disparity->getData().data());
+                disp.convertTo(disp, CV_8UC1, 255.0 / maxDisp); // Extend disparity range
+                cv::imshow("disparity", disp);
+                cv::Mat disp_color;
+                cv::applyColorMap(disp, disp_color, cv::COLORMAP_JET);
+                cv::imshow("disparity_color", disp_color);
+
+                if (outputDepth) {
+                    auto depth = depthQueue->get<dai::ImgFrame>();
+                    cv::imshow("depth", cv::Mat(depth->getHeight(), depth->getWidth(),
+                            CV_16UC1, depth->getData().data()));
+                }
+
+                if (outputRectified) {
+                    auto rectifL = rectifLeftQueue->get<dai::ImgFrame>();
+                    cv::imshow("rectified_left", cv::Mat(rectifL->getHeight(), rectifL->getWidth(),
+                            CV_8UC1, rectifL->getData().data()));
+                    auto rectifR = rectifRightQueue->get<dai::ImgFrame>();
+                    cv::imshow("rectified_right", cv::Mat(rectifR->getHeight(), rectifR->getWidth(),
+                            CV_8UC1, rectifR->getData().data()));
+                }
+            }
+
+            int ms1 = std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count();
+            int ms2 = std::chrono::duration_cast<std::chrono::milliseconds>(t3-t2).count();
+            int ms3 = std::chrono::duration_cast<std::chrono::milliseconds>(t4-t3).count();
+            int ms4 = std::chrono::duration_cast<std::chrono::milliseconds>(t5-t4).count();
+            int loop = std::chrono::duration_cast<std::chrono::milliseconds>(t5-t1).count();
+
+            std::cout << ms1 << " " << ms2 << " " << ms3 << " " << ms4 << " loop: " << loop << std::endl;
+            int key = cv::waitKey(1);
+            if (key == 'q')
+                raise(SIGINT);
+        }
+    } else {
+        cout << "No devices with state " << stateToString(xlinkState) << " found..." << endl;
+    }
 }
 
 
@@ -824,7 +978,8 @@ void startNNSPI(std::string nnPath){
         bool pipelineStarted = d.startPipeline();
 
         while(1){
-            usleep(1000000);
+            using namespace std::chrono_literals;
+            std::this_thread::sleep_for(1s);
         }
 
     } else {
@@ -849,29 +1004,65 @@ void listDevices(){
             std::cout << std::endl;
         }
 
-        usleep(100000);
+
+        using namespace std::chrono_literals;
+        std::this_thread::sleep_for(500ms);
     }
 }
+
+
+
 
 int main(int argc, char** argv){
     using namespace std;
     cout << "Hello World!" << endl;
 
+    bool mono = false;
+    bool depth = false;
+    bool debug = false;
+    bool listdev = false;
+    std::string nnPath;
+
+    // Very basic argument parsing
+    for (int i = 1; i < argc; i++) {
+        std::string s = argv[i];
+        if      (s == "mono")                mono    = true;
+        else if (s == "depth")               depth   = true;
+        else if (s == "debug"   || s == "d") debug   = true;
+        else if (s == "listdev" || s == "l") listdev = true;
+        else                                 nnPath  = s;
+    }
+
+    xlinkState = debug ? X_LINK_BOOTED : X_LINK_UNBOOTED;
+
+    mvLogDefaultLevelSet(MVLOG_DEBUG);
+
     // List all devices
+    while(listdev){
+        auto devices = dai::Device::getAllAvailableDevices();
+        for(const auto& dev : devices){
+            std::cout << "name: " << std::string(dev.desc.name);
+            std::cout << ", state: " << stateToString(dev.state);
+            std::cout << ", protocol: " << protocolToString(dev.desc.protocol);
+            std::cout << ", platform: " << platformToString(dev.desc.platform);
+            std::cout << std::endl;
+        }
+
+        std::this_thread::sleep_for(100ms);
+    }
+
     mvLogDefaultLevelSet(MVLOG_LAST);
 
-    if(argc <= 1){
-        startCamManip();
-    } else {
-        std::string test(argv[1]);
- 
-        if(test == "spidemo"){
-            std::string nnPath(argv[2]);
-            startNNSPI(nnPath);
+    if (nnPath.empty()) {
+        if (mono) {
+            startMonoCam(false);
+        } else if (depth) {
+            startMonoCam(true);
         } else {
-            startWebcam(0, test);
+            startMjpegCam();
         }
-        
+    } else {
+        startWebcam(0, nnPath);        
     }
 
     return 0;

@@ -42,6 +42,8 @@ class ColorCamera : public Node {
     void setPreviewSize(int width, int height);
 
     void setResolution(ColorCameraProperties::SensorResolution resolution);
+
+    void setFps(float fps);
 };
 
 }  // namespace node

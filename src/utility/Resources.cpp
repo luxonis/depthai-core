@@ -42,8 +42,11 @@ constexpr static std::array<const char*, 5> resourcesListTarXz = {
 // TODO - DEPRECATE
 
 constexpr static auto CMRC_DEPTHAI_CMD_PATH = "depthai-" DEPTHAI_DEVICE_VERSION ".cmd";
+    #ifdef DEPTHAI_PATCH_ONLY_MODE
 constexpr static auto CMRC_DEPTHAI_USB2_PATCH_PATH = "depthai-usb2-patch-" DEPTHAI_DEVICE_VERSION ".patch";
+    #else
 constexpr static auto CMRC_DEPTHAI_USB2_CMD_PATH = "depthai-usb2-" DEPTHAI_DEVICE_VERSION ".cmd";
+    #endif
 
 static std::vector<std::uint8_t> getEmbeddedDeviceBinary(bool usb2Mode) {
     std::vector<std::uint8_t> finalCmd;
@@ -51,15 +54,11 @@ static std::vector<std::uint8_t> getEmbeddedDeviceBinary(bool usb2Mode) {
     // Binaries are resource compiled
     #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
 
-    constexpr static auto CMRC_DEPTHAI_CMD_PATH = "depthai-" DEPTHAI_DEVICE_VERSION ".cmd";
-
     // Get binaries from internal sources
     auto fs = cmrc::depthai::get_filesystem();
 
     if(usb2Mode) {
         #ifdef DEPTHAI_PATCH_ONLY_MODE
-
-        constexpr static auto CMRC_DEPTHAI_USB2_PATCH_PATH = "depthai-usb2-patch-" DEPTHAI_DEVICE_VERSION ".patch";
 
         // Get size of original
         auto depthaiBinary = fs.open(CMRC_DEPTHAI_CMD_PATH);
@@ -85,7 +84,6 @@ static std::vector<std::uint8_t> getEmbeddedDeviceBinary(bool usb2Mode) {
 
         #else
 
-        constexpr static auto CMRC_DEPTHAI_USB2_CMD_PATH = "depthai-usb2-" DEPTHAI_DEVICE_VERSION ".cmd";
         auto depthaiUsb2Binary = fs.open(CMRC_DEPTHAI_USB2_CMD_PATH);
         finalCmd = std::vector<std::uint8_t>(depthaiUsb2Binary.begin(), depthaiUsb2Binary.end());
 
