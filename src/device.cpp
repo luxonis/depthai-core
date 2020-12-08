@@ -498,10 +498,11 @@ void Device::load_and_print_config_d2h(void)
                 for (int i = 0; i < 9; i++) {
                     printf(" %11.6f,", calib.at(i));
                     temp.push_back(calib.at(i));
-                    
+                    if (i % 3 == 2) {
                         printf("\n");
                         R_rgb.push_back(temp);
                         temp.clear();
+
                     }
                 }
 
@@ -518,7 +519,7 @@ void Device::load_and_print_config_d2h(void)
                 for(int i = 0; i < 3; ++i){
                      printf(" %11.6f,\n", T_rgb.at(i));
                 }
-
+            }
 
             std::vector<std::vector<float>> M2_r_inv;
             std::vector<std::vector<float>> M1_l_inv;
