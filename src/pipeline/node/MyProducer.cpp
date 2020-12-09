@@ -5,7 +5,7 @@ namespace node {
 
 MyProducer::MyProducer(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
 
-std::string MyProducer::getName() {
+std::string MyProducer::getName() const {
     return "MyProducer";
 }
 

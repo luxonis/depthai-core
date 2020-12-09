@@ -41,7 +41,7 @@ class Node {
 
     struct Output {
         enum class Type { MSender, SSender };
-        Node& parent;
+        const Node& parent;
         const std::string name;
         const Type type;
         // Which types and do descendants count as well?
@@ -59,14 +59,19 @@ class Node {
 
     struct Input {
         enum class Type { SReceiver, MReceiver };
-        Node& parent;
+        const Node& parent;
         const std::string name;
         const Type type;
+        bool blocking{true};
         friend struct Output;
         // Which types and do descendants count as well?
         const std::vector<DatatypeHierarchy> possibleDatatypes;
         Input(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types)
             : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {}
+
+       public:
+        void setBlocking(bool blocking);
+        bool getBlocking() const;
     };
 
     // when Pipeline tries to serialize and construct on remote, it will check if all connected nodes are on same pipeline
@@ -79,10 +84,10 @@ class Node {
     virtual std::shared_ptr<Node> clone() = 0;
 
     // access
-    Pipeline getParentPipeline();
+    Pipeline getParentPipeline() const;
 
    public:
-    virtual std::string getName() = 0;
+    virtual std::string getName() const = 0;
     virtual std::vector<Output> getOutputs() = 0;
     virtual std::vector<Input> getInputs() = 0;
     virtual std::vector<std::shared_ptr<Asset>> getAssets();

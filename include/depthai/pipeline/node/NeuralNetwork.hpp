@@ -14,7 +14,7 @@ namespace node {
 class NeuralNetwork : public Node {
     dai::NeuralNetworkProperties properties;
 
-    std::string getName() override;
+    std::string getName() const override;
     std::vector<Output> getOutputs() override;
     std::vector<Input> getInputs() override;
     nlohmann::json getProperties() override;
@@ -32,6 +32,7 @@ class NeuralNetwork : public Node {
 
     Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}}};
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::NNData, false}}};
+    Output passthrough{*this, "passthrough", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
 
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     void setBlobPath(const std::string& path);

@@ -9,7 +9,7 @@ MonoCamera::MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     properties.fps = 30.0;
 }
 
-std::string MonoCamera::getName() {
+std::string MonoCamera::getName() const {
     return "MonoCamera";
 }
 

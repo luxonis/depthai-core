@@ -10,7 +10,7 @@ namespace node {
 class ColorCamera : public Node {
     dai::ColorCameraProperties properties;
 
-    std::string getName() override;
+    std::string getName() const override;
     std::vector<Output> getOutputs() override;
     std::vector<Input> getInputs() override;
     nlohmann::json getProperties() override;

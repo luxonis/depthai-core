@@ -10,7 +10,7 @@ namespace node {
 class MyProducer : public Node {
     dai::MyProducerProperties properties;
 
-    std::string getName() override;
+    std::string getName() const override;
     std::vector<Input> getInputs() override;
     std::vector<Output> getOutputs() override;
     nlohmann::json getProperties() override;

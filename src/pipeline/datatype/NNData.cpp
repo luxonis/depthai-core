@@ -168,7 +168,7 @@ std::vector<float> NNData::getLayerFp16(const std::string& name) const {
             // Total data size = last dimension * last stride
             if(tensor.numDimensions > 0) {
                 std::size_t size = tensor.dims[tensor.numDimensions - 1] * tensor.strides[tensor.numDimensions - 1];
-                std::size_t numElements = size / 2; // FP16
+                std::size_t numElements = size / 2;  // FP16
 
                 std::vector<float> data;
                 auto* pFp16Data = reinterpret_cast<std::uint16_t*>(&rawNn.data[tensor.offset]);

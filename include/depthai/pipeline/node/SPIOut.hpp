@@ -10,7 +10,7 @@ namespace node {
 class SPIOut : public Node {
     dai::SPIOutProperties properties;
 
-    std::string getName() {
+    std::string getName() const {
         return "SPIOut";
     }
 

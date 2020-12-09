@@ -10,7 +10,7 @@ StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
     // 'properties' defaults already set
 }
 
-std::string StereoDepth::getName() {
+std::string StereoDepth::getName() const {
     return "StereoDepth";
 }
 

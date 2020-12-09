@@ -7,7 +7,7 @@ XLinkOut::XLinkOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : N
     properties.maxFpsLimit = -1;
 }
 
-std::string XLinkOut::getName() {
+std::string XLinkOut::getName() const {
     return "XLinkOut";
 }
 

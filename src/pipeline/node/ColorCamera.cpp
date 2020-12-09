@@ -13,7 +13,7 @@ ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
     properties.fps = 30.0;
 }
 
-std::string ColorCamera::getName() {
+std::string ColorCamera::getName() const {
     return "ColorCamera";
 }
 

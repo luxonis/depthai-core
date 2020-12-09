@@ -8,7 +8,7 @@ namespace node {
 
 NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
 
-std::string NeuralNetwork::getName() {
+std::string NeuralNetwork::getName() const {
     return "NeuralNetwork";
 }
 

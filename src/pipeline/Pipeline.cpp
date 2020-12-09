@@ -128,6 +128,44 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
         info.id = node->id;
         info.name = node->getName();
         info.properties = node->getProperties();
+
+        // Create Io information
+        auto inputs = node->getInputs();
+        auto outputs = node->getOutputs();
+
+        info.ioInfo.reserve(inputs.size() + outputs.size());
+
+        // Add inputs
+        for(const auto& input : inputs) {
+            NodeIoInfo io;
+            io.blocking = input.getBlocking();
+            io.name = input.name;
+            switch(input.type) {
+                case Node::Input::Type::MReceiver:
+                    io.type = NodeIoInfo::Type::MReceiver;
+                case Node::Input::Type::SReceiver:
+                    io.type = NodeIoInfo::Type::SReceiver;
+            }
+
+            info.ioInfo.push_back(io);
+        }
+
+        // Add outputs
+        for(const auto& output : outputs) {
+            NodeIoInfo io;
+            io.blocking = false;
+            io.name = output.name;
+            switch(output.type) {
+                case Node::Output::Type::MSender:
+                    io.type = NodeIoInfo::Type::MSender;
+                case Node::Output::Type::SSender:
+                    io.type = NodeIoInfo::Type::SSender;
+            }
+
+            info.ioInfo.push_back(io);
+        }
+
+        // At the end, add the constructed node information to the schema
         schema.nodes.push_back(info);
     }
 

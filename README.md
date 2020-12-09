@@ -20,10 +20,16 @@ See [example/CMakeLists.txt](example/CMakeLists.txt)
 
 ## Building
 
-To build the library from source perform the following:
+To build the static version of the library from source perform the following:
 ```
 mkdir build && cd build
 cmake ..
+cmake --build . --parallel
+```
+And for the dynamic version of the library:
+```
+mkdir build && cd build
+cmake .. -DBUILD_SHARED_LIBS=ON
 cmake --build . --parallel
 ```
 

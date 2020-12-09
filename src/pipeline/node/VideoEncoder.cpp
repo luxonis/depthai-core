@@ -5,7 +5,7 @@ namespace node {
 
 VideoEncoder::VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
 
-std::string VideoEncoder::getName() {
+std::string VideoEncoder::getName() const {
     return "VideoEncoder";
 }
 
