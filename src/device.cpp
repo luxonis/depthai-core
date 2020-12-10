@@ -115,6 +115,10 @@ void Device::reset_device_changed(){
     device_changed = false;
 }
 
+void Device::override_device_changed(){
+    device_changed = true;
+}
+
 bool Device::is_rgb_connected(){
     return g_config_d2h.at("_cams").at("rgb").get<bool>();
 }

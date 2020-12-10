@@ -59,6 +59,7 @@ public:
     bool is_right_connected();
     bool is_device_changed();
 
+    void override_device_changed();
     void reset_device_changed();
     void request_jpeg();
     void request_af_trigger();
