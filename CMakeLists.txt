@@ -37,6 +37,9 @@ option(DEPTHAI_CLANG_TIDY   "Enable clang-tidy checks during compilation" OFF)
 # Debug option
 set(DEPTHAI_XLINK_LOCAL "" CACHE STRING "Path to local XLink source to use instead of Hunter")
 
+# Variable to installed 3rdparty headers
+set(3RDPARTY_HEADERS_PATH "depthai/3rdparty")
+
 ### Get and find dependencies
 
 # Nlohmann JSON
@@ -239,6 +242,7 @@ configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in" "${CMAKE_CURRENT
 target_include_directories(${TARGET_NAME}   
     PUBLIC
         "$<INSTALL_INTERFACE:include>"
+        "$<INSTALL_INTERFACE:include/${3RDPARTY_HEADERS_PATH}>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
         "$<BUILD_INTERFACE:${DEPTHAI_SHARED_PUBLIC_INCLUDE}>"
         "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}>"
@@ -273,12 +277,12 @@ target_link_libraries(${TARGET_NAME}
     PUBLIC
         nlohmann_json::nlohmann_json
         XLink
-        spdlog::spdlog
     PRIVATE
         Threads::Threads
         BZip2::bz2
         FP16::fp16
         archive_static
+        spdlog::spdlog
 )
 
 # Add compile definitions
@@ -308,11 +312,27 @@ install(
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
 )
 
+# Install depthai public headers
+install(DIRECTORY include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+# Install depthai-shared public headers
+install(DIRECTORY "${DEPTHAI_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 
-install(DIRECTORY include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/depthai")
+# # Install public 3rdparty dependency header (Hunter) to include/${depthai/3rdparty
+# XLink
+get_target_property(XLINK_INCLUDE_DIRS XLink INTERFACE_INCLUDE_DIRECTORIES)
+if(XLINK_INCLUDE_DIRS)
+    file(GLOB XLINK_HEADERS ${XLINK_INCLUDE_DIRS}/XLink*.h)
+    install(FILES ${XLINK_HEADERS} DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${3RDPARTY_HEADERS_PATH}")
+endif()
+# nlohmann json
+get_target_property(NLOHMANN_JSON_INCLUDE_DIRS nlohmann_json::nlohmann_json INTERFACE_INCLUDE_DIRECTORIES)
+if(NLOHMANN_JSON_INCLUDE_DIRS)
+    list(GET NLOHMANN_JSON_INCLUDE_DIRS 0 JSON_DIR)
+    install(FILES ${JSON_DIR}/nlohmann/json.hpp DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${3RDPARTY_HEADERS_PATH}/nlohmann")
+endif()
 
 # Add resource installation if not RC'd
-if(DEPTHAI_BINARIES_RESOURCE_COMPILE)
+if(NOT DEPTHAI_BINARIES_RESOURCE_COMPILE)
     install(DIRECTORY "${DEPTHAI_RESOURCES_OUTPUT_DIR}/" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/depthai")
 endif()
 
