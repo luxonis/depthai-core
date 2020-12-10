@@ -728,9 +728,11 @@ void startMonoCam(bool withDepth) {
 
         stereo->syncedLeft.link(xoutLeft->input);
         stereo->syncedRight.link(xoutRight->input);
-        stereo->rectifiedLeft.link(xoutRectifL->input);
-        stereo->rectifiedRight.link(xoutRectifR->input);
-
+        if(outputRectified)
+        {
+            stereo->rectifiedLeft.link(xoutRectifL->input);
+            stereo->rectifiedRight.link(xoutRectifR->input);
+        }
         stereo->disparity.link(xoutDisp->input);
         stereo->depth.link(xoutDepth->input);
 
@@ -970,7 +972,7 @@ void startNNSPI(std::string nnPath){
 
     bool found;
     dai::DeviceInfo deviceInfo;
-    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
+    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(xlinkState);
 
     if(found) {
         dai::Device d(p, deviceInfo);
@@ -1020,6 +1022,7 @@ int main(int argc, char** argv){
     bool mono = false;
     bool depth = false;
     bool debug = false;
+    bool manip = false;
     bool listdev = false;
     std::string nnPath;
 
@@ -1028,6 +1031,7 @@ int main(int argc, char** argv){
         std::string s = argv[i];
         if      (s == "mono")                mono    = true;
         else if (s == "depth")               depth   = true;
+        else if (s == "manip")               manip   = true;
         else if (s == "debug"   || s == "d") debug   = true;
         else if (s == "listdev" || s == "l") listdev = true;
         else                                 nnPath  = s;
@@ -1058,6 +1062,8 @@ int main(int argc, char** argv){
             startMonoCam(false);
         } else if (depth) {
             startMonoCam(true);
+        } else if (manip) {
+            startCamManip();
         } else {
             startMjpegCam();
         }
