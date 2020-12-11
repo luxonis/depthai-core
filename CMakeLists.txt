@@ -38,7 +38,7 @@ option(DEPTHAI_CLANG_TIDY   "Enable clang-tidy checks during compilation" OFF)
 set(DEPTHAI_XLINK_LOCAL "" CACHE STRING "Path to local XLink source to use instead of Hunter")
 
 # Variable to installed 3rdparty headers
-set(3RDPARTY_HEADERS_PATH "depthai/3rdparty")
+set(DEPTHAI_3RDPARTY_HEADERS_PATH "depthai/3rdparty")
 
 ### Get and find dependencies
 
@@ -241,8 +241,12 @@ configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in" "${CMAKE_CURRENT
 # Add include directories
 target_include_directories(${TARGET_NAME}   
     PUBLIC
+        # Relative path to include directories after installed
         "$<INSTALL_INTERFACE:include>"
-        "$<INSTALL_INTERFACE:include/${3RDPARTY_HEADERS_PATH}>"
+        "$<INSTALL_INTERFACE:include/${DEPTHAI_3RDPARTY_HEADERS_PATH}>"
+        "$<INSTALL_INTERFACE:include/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}>"
+
+        # Build time path to include directories
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
         "$<BUILD_INTERFACE:${DEPTHAI_SHARED_PUBLIC_INCLUDE}>"
         "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}>"
@@ -301,7 +305,11 @@ if(DEPTHAI_USB2_PATCH_ONLY_MODE)
     target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_PATCH_ONLY_MODE)
 endif()
 
-# INSTALLATION steps
+########################
+########################
+# INSTALL steps
+########################
+########################
 include(GNUInstallDirs)
 install(
     TARGETS 
@@ -316,19 +324,25 @@ install(
 install(DIRECTORY include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 # Install depthai-shared public headers
 install(DIRECTORY "${DEPTHAI_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+# Install depthai-shared 3rdparty headers
+install(DIRECTORY "${DEPTHAI_SHARED_3RDPARTY_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}")
+# Install depthai-bootloader-shared public headers
+install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+# Install depthai-bootloader-shared 3rdparty headers (Currently no 3rdparty)
+#install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_3RDPARTY_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/depthai-bootloader-shared/3rdparty")
 
 # # Install public 3rdparty dependency header (Hunter) to include/${depthai/3rdparty
 # XLink
 get_target_property(XLINK_INCLUDE_DIRS XLink INTERFACE_INCLUDE_DIRECTORIES)
 if(XLINK_INCLUDE_DIRS)
     file(GLOB XLINK_HEADERS ${XLINK_INCLUDE_DIRS}/XLink*.h)
-    install(FILES ${XLINK_HEADERS} DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${3RDPARTY_HEADERS_PATH}")
+    install(FILES ${XLINK_HEADERS} DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${DEPTHAI_3RDPARTY_HEADERS_PATH}")
 endif()
 # nlohmann json
 get_target_property(NLOHMANN_JSON_INCLUDE_DIRS nlohmann_json::nlohmann_json INTERFACE_INCLUDE_DIRECTORIES)
 if(NLOHMANN_JSON_INCLUDE_DIRS)
     list(GET NLOHMANN_JSON_INCLUDE_DIRS 0 JSON_DIR)
-    install(FILES ${JSON_DIR}/nlohmann/json.hpp DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${3RDPARTY_HEADERS_PATH}/nlohmann")
+    install(FILES ${JSON_DIR}/nlohmann/json.hpp DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${DEPTHAI_3RDPARTY_HEADERS_PATH}/nlohmann")
 endif()
 
 # Add resource installation if not RC'd
