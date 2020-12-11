@@ -59,6 +59,11 @@ void ColorCamera::setInterleaved(bool interleaved) {
     properties.interleaved = interleaved;
 }
 
+// setFp16
+void ColorCamera::setFp16(bool fp16) {
+    properties.fp16 = fp16;
+}
+
 // set preview output size
 void ColorCamera::setPreviewSize(int width, int height) {
     properties.previewWidth = width;

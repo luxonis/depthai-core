@@ -38,6 +38,9 @@ class ColorCamera : public Node {
     // setInterleaved
     void setInterleaved(bool interleaved);
 
+    // setFp16 mode (resultig output is FP16 0..255)
+    void setFp16(bool fp16);
+
     // set preview output size
     void setPreviewSize(int width, int height);
 
