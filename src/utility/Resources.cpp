@@ -3,6 +3,7 @@
 #include <cassert>
 #include <thread>
 #include <condition_variable>
+#include <array>
 
 // libarchive
 #include "archive.h"

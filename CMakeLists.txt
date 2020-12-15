@@ -127,8 +127,10 @@ if(DEPTHAI_CLANG_TIDY)
     include(cmake/clang-tidy.cmake)
 endif()
 
-# Set compiler features (c++11)
+# Set compiler features (c++11), and disables extensions (g++11)
 set_property(TARGET ${TARGET_NAME} PROPERTY CXX_STANDARD 11)
+set_property(TARGET ${TARGET_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
+set_property(TARGET ${TARGET_NAME} PROPERTY CXX_EXTENSIONS OFF)
 
 # Add cmake folder to modules path
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake")
