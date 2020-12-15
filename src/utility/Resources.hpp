@@ -15,10 +15,13 @@ namespace dai
 class Resources {
     // private constructor
     Resources();
+    ~Resources();
 
     std::mutex mtx;
     std::thread lazyThread;
     std::unordered_map<std::string, std::vector<std::uint8_t>> resourceMap;
+
+    std::vector<std::uint8_t> getDeviceBinary(OpenVINO::Version version, bool usb2Mode);
 
 public:
     static Resources& getInstance();

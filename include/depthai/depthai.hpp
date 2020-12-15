@@ -12,8 +12,23 @@
 // Include Pipeline
 #include "pipeline/Pipeline.hpp"
 
-// Include Node
-#include "pipeline/Node.hpp"
+// Include common nodes
+#include "pipeline/node/ColorCamera.hpp"
+#include "pipeline/node/ImageManip.hpp"
+#include "pipeline/node/MonoCamera.hpp"
+#include "pipeline/node/NeuralNetwork.hpp"
+#include "pipeline/node/SPIOut.hpp"
+#include "pipeline/node/StereoDepth.hpp"
+#include "pipeline/node/VideoEncoder.hpp"
+#include "pipeline/node/XLinkIn.hpp"
+#include "pipeline/node/XLinkOut.hpp"
+
+// Include common datatypes
+#include "pipeline/datatype/Buffer.hpp"
+#include "pipeline/datatype/ImageManipConfig.hpp"
+#include "pipeline/datatype/ImgFrame.hpp"
+#include "pipeline/datatype/NNData.hpp"
+
 
 // namespace dai {
 // namespace{

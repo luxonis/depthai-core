@@ -3,6 +3,7 @@
 
 
 #include "depthai/depthai.hpp"
+#include "../src/utility/Resources.hpp"
 
 #include "depthai/pipeline/node/ColorCamera.hpp"
 #include "depthai/pipeline/node/MonoCamera.hpp"
@@ -1017,6 +1018,8 @@ void listDevices(){
 
 int main(int argc, char** argv){
     using namespace std;
+    using namespace std::chrono;
+    using namespace std::chrono_literals;
     cout << "Hello World!" << endl;
 
     bool mono = false;

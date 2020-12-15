@@ -209,61 +209,81 @@ function(DepthaiDownload)
     endif()
 
 
-
-    # depthai.cmd
-    message(STATUS "Downloading and checking depthai.cmd")
+    # Download depthai-device firmware package
+    message(STATUS "Downloading and checking depthai-device-fwp.tar.xz")
     DownloadAndChecksum(
-        "${_download_directory_url}/depthai-${_version_commit_identifier}.cmd" # File
-        "${_download_directory_url}/depthai-${_version_commit_identifier}.sha256.checksum" # File checksum
-        "${folder}/depthai-${_version_commit_identifier}.cmd"
+        "${_download_directory_url}/depthai-device-fwp-${_version_commit_identifier}.tar.xz" # File
+        "${_download_directory_url}/depthai-device-fwp-${_version_commit_identifier}.tar.xz.sha256" # File checksum
+        "${folder}/depthai-device-fwp-${_version_commit_identifier}.tar.xz"
         status
     )
     if(${status})
-        message(STATUS "\nCouldn't download depthai.cmd\n")
+        message(STATUS "\nCouldn't download depthai-device-fwp.tar.xz\n")
         PrintErrorMessage(${status})
         message(FATAL_ERROR "Aborting.\n")
     endif()
-    # add depthai.cmd to list
-    list(APPEND "${output_list_var}" "${folder}/depthai-${_version_commit_identifier}.cmd")
+    # add depthai-device-fwp.tar.xz to list
+    list(APPEND "${output_list_var}" "${folder}/depthai-device-fwp-${_version_commit_identifier}.tar.xz")
     
 
-    if(NOT _download_patch_only)
-        # depthai-usb2.cmd
-        message(STATUS "Downloading and checking depthai-usb2.cmd")
-        DownloadAndChecksum(
-            "${_download_directory_url}/depthai-usb2-${_version_commit_identifier}.cmd" # File
-            "${_download_directory_url}/depthai-usb2-${_version_commit_identifier}.sha256.checksum" # File checksum
-            "${folder}/depthai-usb2-${_version_commit_identifier}.cmd"
-            status
-        )
 
-        if(${status})
-            message(STATUS "\nCouldn't download depthai-usb2.cmd.\n")
-            PrintErrorMessage(${status})
-            message(FATAL_ERROR "Aborting.\n")
-        endif()
+    ## # depthai.cmd
+    ## message(STATUS "Downloading and checking depthai.cmd")
+    ## DownloadAndChecksum(
+    ##     "${_download_directory_url}/depthai-${_version_commit_identifier}.cmd" # File
+    ##     "${_download_directory_url}/depthai-${_version_commit_identifier}.sha256.checksum" # File checksum
+    ##     "${folder}/depthai-${_version_commit_identifier}.cmd"
+    ##     status
+    ## )
+    ## if(${status})
+    ##     message(STATUS "\nCouldn't download depthai.cmd\n")
+    ##     PrintErrorMessage(${status})
+    ##     message(FATAL_ERROR "Aborting.\n")
+    ## endif()
+    ## # add depthai.cmd to list
+    ## list(APPEND "${output_list_var}" "${folder}/depthai-${_version_commit_identifier}.cmd")
+    ## 
 
-        # add depthai-usb2.cmd to list
-        list(APPEND "${output_list_var}" "${folder}/depthai-usb2-${_version_commit_identifier}.cmd")
+    ## if(NOT _download_patch_only)
+    ##     # depthai-usb2.cmd
+    ##     message(STATUS "Downloading and checking depthai-usb2.cmd")
+    ##     DownloadAndChecksum(
+    ##         "${_download_directory_url}/depthai-usb2-${_version_commit_identifier}.cmd" # File
+    ##         "${_download_directory_url}/depthai-usb2-${_version_commit_identifier}.sha256.checksum" # File checksum
+    ##         "${folder}/depthai-usb2-${_version_commit_identifier}.cmd"
+    ##         status
+    ##     )
 
-    endif(NOT _download_patch_only)
+    ##     if(${status})
+    ##         message(STATUS "\nCouldn't download depthai-usb2.cmd.\n")
+    ##         PrintErrorMessage(${status})
+    ##         message(FATAL_ERROR "Aborting.\n")
+    ##     endif()
 
-    # depthai-usb2-patch.patch
-    message(STATUS "Downloading and checking depthai-usb2-patch.patch")
-    DownloadAndChecksum(
-        "${_download_directory_url}/depthai-usb2-patch-${_version_commit_identifier}.patch" # File
-        "${_download_directory_url}/depthai-usb2-patch-${_version_commit_identifier}.sha256.checksum" # File checksum
-        "${folder}/depthai-usb2-patch-${_version_commit_identifier}.patch"
-        status
-    )
-    if(${status})
-        message(STATUS "\nCouldn't download depthai-usb2-patch.patch.\n")
-        PrintErrorMessage(${status})
-        message(FATAL_ERROR "Aborting.\n")
-    endif()    
+    ##     # add depthai-usb2.cmd to list
+    ##     list(APPEND "${output_list_var}" "${folder}/depthai-usb2-${_version_commit_identifier}.cmd")
 
-    # add depthai-usb2.cmd to list
-    list(APPEND "${output_list_var}" "${folder}/depthai-usb2-patch-${_version_commit_identifier}.patch")
+    ## endif(NOT _download_patch_only)
+
+    ## # depthai-usb2-patch.patch
+    ## message(STATUS "Downloading and checking depthai-usb2-patch.patch")
+    ## DownloadAndChecksum(
+    ##     "${_download_directory_url}/depthai-usb2-patch-${_version_commit_identifier}.patch" # File
+    ##     "${_download_directory_url}/depthai-usb2-patch-${_version_commit_identifier}.sha256.checksum" # File checksum
+    ##     "${folder}/depthai-usb2-patch-${_version_commit_identifier}.patch"
+    ##     status
+    ## )
+    ## if(${status})
+    ##     message(STATUS "\nCouldn't download depthai-usb2-patch.patch.\n")
+    ##     PrintErrorMessage(${status})
+    ##     message(FATAL_ERROR "Aborting.\n")
+    ## endif()    
+
+    ## # add depthai-usb2.cmd to list
+    ## list(APPEND "${output_list_var}" "${folder}/depthai-usb2-patch-${_version_commit_identifier}.patch")
+    
+    
+    # Propagate the variable to parent
     set("${output_list_var}" "${${output_list_var}}" PARENT_SCOPE)
 
 endfunction()

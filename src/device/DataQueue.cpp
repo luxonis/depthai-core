@@ -10,6 +10,8 @@
 // shared
 #include "depthai-shared/xlink/XLinkConstants.hpp"
 
+// libraries
+#include "spdlog/spdlog.h"
 namespace dai {
 
 // DATA OUTPUT QUEUE
@@ -111,6 +113,14 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
                 std::shared_ptr<RawBuffer> data;
                 if(!queue.waitAndPop(data)) {
                     continue;
+                }
+
+                // Trace level debugging
+                if(spdlog::get_level() == spdlog::level::trace){
+                    std::vector<std::uint8_t> metadata;
+                    DatatypeEnum type;
+                    data->serialize(metadata, type);
+                    spdlog::trace("Sending message to device: {} - {}", type, nlohmann::json::from_msgpack(metadata).dump());
                 }
 
                 // serialize

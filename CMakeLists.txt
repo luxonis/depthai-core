@@ -134,6 +134,10 @@ set_property(TARGET ${TARGET_NAME} PROPERTY CXX_STANDARD 11)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 # First specify options
+option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
+option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
+option(DEPTHAI_TEST_EXAMPLES "Test examples - examples will be ran as a part of test suite" OFF)
+
 option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries into library" ON)
 option(DEPTHAI_USB2_PATCH_ONLY_MODE "Use patch file and full depthai.cmd binary for usb2 mode" ON)
 option(DEPTHAI_CMD_PATH "Use local path for depthai.cmd instead of downloading" OFF)
@@ -296,6 +300,8 @@ target_compile_definitions(${TARGET_NAME}
         __PC__
         # Add depthai-device version
         DEPTHAI_DEVICE_VERSION="${DEPTHAI_DEVICE_SIDE_COMMIT}"
+        # Add if using depthai device FWP
+        DEPTHAI_RESOURCES_TAR_XZ
         # Add depthai-bootloader version
         DEPTHAI_BOOTLOADER_VERSION="${DEPTHAI_BOOTLOADER_VERSION}"
 )
@@ -305,10 +311,33 @@ if(DEPTHAI_USB2_PATCH_ONLY_MODE)
     target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_PATCH_ONLY_MODE)
 endif()
 
+
 ########################
+# Testing
+########################
+if(DEPTHAI_BUILD_TESTS OR DEPTHAI_TEST_EXAMPLES)
+    include(CTest)
+    enable_testing()
+endif()
+
+
+########################
+# Tests
+########################
+if (DEPTHAI_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
+
+########################
+# Examples (can also act as tests)
+########################
+if (DEPTHAI_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif()
+
+
 ########################
 # INSTALL steps
-########################
 ########################
 include(GNUInstallDirs)
 install(

@@ -157,7 +157,7 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
     spdlog::debug("Device - pipeline serialized, OpenVINO version: {}", OpenVINO::getVersionName(version));
 
     // Get embedded mvcmd
-    std::vector<std::uint8_t> embeddedFw = Resources::getInstance().getDeviceFirmware(usb2Mode);
+    std::vector<std::uint8_t> embeddedFw = Resources::getInstance().getDeviceFirmware(usb2Mode, version);
 
     // Init device (if bootloader, handle correctly - issue USB boot command)
     if(deviceInfo.state == X_LINK_UNBOOTED) {

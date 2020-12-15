@@ -42,6 +42,11 @@ bool initialize() {
         spdlog::cfg::helpers::load_levels(env_val);
     }
 
+    //auto debugger_val = spdlog::details::os::getenv("DEPTHAI_DEBUGGER");
+    //if(!debugger_val.empty()){
+    //    // TODO(themarpe) - instruct Device class that first available device is also a booted device 
+    //}
+
     // Executed at library load time
 
     // Preload Resources (getting instance causes some internal lazy loading to start)

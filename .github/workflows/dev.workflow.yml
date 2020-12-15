@@ -3,10 +3,10 @@ name: Dev Workflow
 on:
   push:
     branches:
-      - gen2
+      - 'gen2*'
   pull_request:
     branches:
-      - gen2
+      - 'gen2*'
 
 jobs:
 
