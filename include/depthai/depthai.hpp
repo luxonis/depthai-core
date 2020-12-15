@@ -29,7 +29,6 @@
 #include "pipeline/datatype/ImgFrame.hpp"
 #include "pipeline/datatype/NNData.hpp"
 
-
 // namespace dai {
 // namespace{
 // bool initializeForce = [](){initialize();};

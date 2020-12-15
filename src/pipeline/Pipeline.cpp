@@ -143,10 +143,10 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
             switch(input.type) {
                 case Node::Input::Type::MReceiver:
                     io.type = NodeIoInfo::Type::MReceiver;
-                break;
+                    break;
                 case Node::Input::Type::SReceiver:
                     io.type = NodeIoInfo::Type::SReceiver;
-                break;
+                    break;
             }
 
             info.ioInfo.push_back(io);
@@ -160,10 +160,10 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
             switch(output.type) {
                 case Node::Output::Type::MSender:
                     io.type = NodeIoInfo::Type::MSender;
-                break;
+                    break;
                 case Node::Output::Type::SSender:
                     io.type = NodeIoInfo::Type::SSender;
-                break;
+                    break;
             }
 
             info.ioInfo.push_back(io);

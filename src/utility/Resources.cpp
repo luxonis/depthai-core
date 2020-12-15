@@ -1,18 +1,17 @@
 #include "Resources.hpp"
 
-#include <cassert>
-#include <thread>
-#include <condition_variable>
 #include <array>
+#include <cassert>
+#include <condition_variable>
+#include <thread>
 
 // libarchive
 #include "archive.h"
 #include "archive_entry.h"
 
 // spdlog
-#include "spdlog/spdlog.h"
 #include "spdlog/fmt/chrono.h"
-
+#include "spdlog/spdlog.h"
 
 extern "C" {
 #include "bspatch/bspatch.h"
@@ -63,35 +62,34 @@ std::vector<std::uint8_t> Resources::getDeviceBinary(OpenVINO::Version version, 
     std::vector<std::uint8_t>& depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2020_1_PATH];
     std::vector<std::uint8_t>& depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_1_USB2_PATCH_PATH];
 
-    switch (version) {
-    case OpenVINO::VERSION_2020_1:
-        depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2020_1_PATH];
-        depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_1_USB2_PATCH_PATH];
-    break;
+    switch(version) {
+        case OpenVINO::VERSION_2020_1:
+            depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2020_1_PATH];
+            depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_1_USB2_PATCH_PATH];
+            break;
 
-    case OpenVINO::VERSION_2020_2:
-        depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2020_2_PATH];
-        depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_2_USB2_PATCH_PATH];
-    break;
+        case OpenVINO::VERSION_2020_2:
+            depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2020_2_PATH];
+            depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_2_USB2_PATCH_PATH];
+            break;
 
-    case OpenVINO::VERSION_2020_3:
-        depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2020_3_PATH];
-        depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_3_USB2_PATCH_PATH];
-    break;
+        case OpenVINO::VERSION_2020_3:
+            depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2020_3_PATH];
+            depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_3_USB2_PATCH_PATH];
+            break;
 
-    case OpenVINO::VERSION_2020_4:
-        depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2020_4_PATH];
-        depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_4_USB2_PATCH_PATH];
-    break;
+        case OpenVINO::VERSION_2020_4:
+            depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2020_4_PATH];
+            depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_4_USB2_PATCH_PATH];
+            break;
 
-    case OpenVINO::VERSION_2021_1:
-        depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2021_1_PATH];
-        depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2021_1_USB2_PATCH_PATH];
-    break;
+        case OpenVINO::VERSION_2021_1:
+            depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2021_1_PATH];
+            depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2021_1_USB2_PATCH_PATH];
+            break;
     }
 
     if(usb2Mode) {
-
         #ifdef DEPTHAI_PATCH_ONLY_MODE
 
         // Get new size
@@ -101,11 +99,7 @@ std::vector<std::uint8_t> Resources::getDeviceBinary(OpenVINO::Version version, 
         finalCmd.resize(patchedSize);
 
         // Patch
-        int error = bspatch_mem(depthaiBinary.data(),
-                                depthaiBinary.size(),
-                                depthaiUsb2Patch.data(),
-                                depthaiUsb2Patch.size(),
-                                finalCmd.data());
+        int error = bspatch_mem(depthaiBinary.data(), depthaiBinary.size(), depthaiUsb2Patch.data(), depthaiUsb2Patch.size(), finalCmd.data());
 
         // if patch not successful
         if(error > 0) throw std::runtime_error("Error while patching cmd for usb2 mode");
@@ -127,7 +121,6 @@ std::vector<std::uint8_t> Resources::getDeviceBinary(OpenVINO::Version version, 
 
     return finalCmd;
 }
-
 
 #else
 // TODO - DEPRECATE
@@ -292,12 +285,12 @@ Resources::Resources() {
 
     // Wait for 'cv' to signal
     std::unique_lock<std::mutex> l(mtxCv);
-    cv.wait(l, [&mutexAcquired](){ return mutexAcquired; });
+    cv.wait(l, [&mutexAcquired]() { return mutexAcquired; });
 
 #endif
 }
 
-Resources::~Resources(){
+Resources::~Resources() {
     // join the lazy thread
     if(lazyThread.joinable()) lazyThread.join();
 }

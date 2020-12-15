@@ -116,7 +116,7 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
                 }
 
                 // Trace level debugging
-                if(spdlog::get_level() == spdlog::level::trace){
+                if(spdlog::get_level() == spdlog::level::trace) {
                     std::vector<std::uint8_t> metadata;
                     DatatypeEnum type;
                     data->serialize(metadata, type);
