@@ -31,8 +31,8 @@ hunter_config(
 hunter_config(
     libarchive
     VERSION "3.4.2-p0"    
-    URL "https://github.com/luxonis/libarchive/archive/ace98b6abd6790eb43f043aaa261e468a3f44cd2.tar.gz"
-    SHA1 "8996d316f21b88b38cec026eef56aa0fd1fd5008"
+    URL "https://github.com/luxonis/libarchive/archive/e6c4150eb4f08e98e2629aa51f52d2d0c5b0f8d4.tar.gz"
+    SHA1 "AEA3E76511A7BECD2173B14AC1322626E23A1B9B"
     CMAKE_ARGS
         ENABLE_ACL=OFF                                           
         ENABLE_BZip2=OFF                                          
