@@ -199,7 +199,7 @@ Resources::Resources() {
     // condition variable to let this thread know when the mutex was acquired
     std::mutex mtxCv;
     std::condition_variable cv;
-    bool mutexAcquired;
+    bool mutexAcquired = false;
 
     // Create a thread which lazy-loads firmware resources package
     lazyThread = std::thread([this, &cv, &mutexAcquired, &mtxCv]() {
