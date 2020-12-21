@@ -1,19 +1,27 @@
 #include "depthai/device/Device.hpp"
 
+// std
+#include <iostream>
+
 // shared
 #include "depthai-bootloader-shared/Bootloader.hpp"
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
 #include "depthai-shared/Assets.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
+#include "depthai-shared/log/LogLevel.hpp"
+#include "depthai-shared/log/LogMessage.hpp"
 #include "depthai-shared/xlink/XLinkConstants.hpp"
 
 // project
+#include "DeviceLogger.hpp"
 #include "pipeline/Pipeline.hpp"
 #include "utility/BootloaderHelper.hpp"
 #include "utility/Initialization.hpp"
+#include "utility/PimplImpl.hpp"
 #include "utility/Resources.hpp"
 
 // libraries
+#include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
 
 namespace dai {
@@ -68,6 +76,56 @@ std::tuple<bool, DeviceInfo> Device::getFirstDevice(){
     return XLinkConnection::getFirstAvailableDevice();
 }
 */
+
+///////////////////////////////////////////////
+// Impl section - use this to hide dependencies
+///////////////////////////////////////////////
+class Device::Impl {
+   public:
+    Impl() = default;
+
+    // Default sink
+    std::shared_ptr<spdlog::sinks::stdout_color_sink_mt> stdoutColorSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+    // Device Logger
+    DeviceLogger logger{"", stdoutColorSink};
+
+    void setLogLevel(LogLevel level);
+};
+
+void Device::Impl::setLogLevel(LogLevel level) {
+    // Converts LogLevel to spdlog and reconfigures logger level
+    spdlog::level::level_enum spdlogLevel = spdlog::level::warn;
+    switch(level) {
+        case dai::LogLevel::TRACE:
+            spdlogLevel = spdlog::level::trace;
+            break;
+        case dai::LogLevel::DEBUG:
+            spdlogLevel = spdlog::level::debug;
+            break;
+        case dai::LogLevel::INFO:
+            spdlogLevel = spdlog::level::info;
+            break;
+        case dai::LogLevel::WARN:
+            spdlogLevel = spdlog::level::warn;
+            break;
+        case dai::LogLevel::ERR:
+            spdlogLevel = spdlog::level::err;
+            break;
+        case dai::LogLevel::CRITICAL:
+            spdlogLevel = spdlog::level::critical;
+            break;
+        case dai::LogLevel::OFF:
+            spdlogLevel = spdlog::level::off;
+            break;
+    }
+
+    // Set level for all configured sinks
+    logger.set_level(spdlogLevel);
+}
+
+///////////////////////////////////////////////
+// END OF Impl section
+///////////////////////////////////////////////
 
 Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode) : deviceInfo(devInfo) {
     init(pipeline, true, usb2Mode, "");
@@ -140,11 +198,14 @@ Device::Device(const Pipeline& pipeline, bool usb2Mode) {
 Device::~Device() {
     watchdogRunning = false;
     timesyncRunning = false;
+    loggingRunning = false;
 
     // Stop watchdog first (this resets and waits for link to fall down)
     if(watchdogThread.joinable()) watchdogThread.join();
     // Then stop timesync
     if(timesyncThread.joinable()) timesyncThread.join();
+    // And at the end stop logging thread
+    if(loggingThread.joinable()) loggingThread.join();
 }
 
 void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
@@ -253,6 +314,7 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
             client->call("reset");
         } catch(const std::runtime_error& err) {
             // ignore
+            spdlog::debug("Watchdog thread exception caught: {}", err.what());
         }
 
         // Sleep a bit, so device isn't available anymore
@@ -283,9 +345,43 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
             conn->closeStream(streamName);
         } catch(const std::exception& ex) {
             // ignore
+            spdlog::debug("Timesync thread exception caught: {}", ex.what());
         }
 
         timesyncRunning = false;
+    });
+
+    // prepare logging thread, which will log device messages
+    loggingThread = std::thread([this]() {
+        using namespace std::chrono;
+        std::shared_ptr<XLinkConnection> conn = this->connection;
+
+        std::string streamName = XLINK_CHANNEL_LOG;
+
+        std::vector<LogMessage> messages;
+        try {
+            conn->openStream(streamName, 128);
+            while(loggingRunning) {
+                // Block
+                auto log = conn->readFromStream(streamName);
+
+                // parse packet as msgpack
+                auto j = nlohmann::json::from_msgpack(log);
+                // create pipeline schema from retrieved data
+                nlohmann::from_json(j, messages);
+
+                // log the messages in incremental order (0 -> size-1)
+                for(const auto& msg : messages) {
+                    pimpl->logger.logMessage(msg);
+                }
+            }
+            conn->closeStream(streamName);
+        } catch(const std::exception& ex) {
+            // ignore exception from logging
+            spdlog::debug("Log thread exception caught: {}", ex.what());
+        }
+
+        loggingRunning = false;
     });
 }
 
@@ -322,6 +418,14 @@ void Device::setCallback(const std::string& name, std::function<std::shared_ptr<
 
 bool Device::isPipelineRunning() {
     return client->call("isPipelineRunning").as<bool>();
+}
+
+void Device::setLogLevel(LogLevel level) {
+    client->call("setLogLevel", level);
+}
+
+LogLevel Device::getLogLevel() {
+    return client->call("getLogLevel").as<LogLevel>();
 }
 
 bool Device::startPipeline() {
