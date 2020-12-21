@@ -65,3 +65,29 @@ cmake . -DHUNTER_KEEP_PACKAGE_SOURCES=ON
 ```
 
 This retains the libraries source code, so that debugger can step through it (the paths are already set up correctly)
+
+
+## Troubleshooting
+
+### Hunter
+Hunter is a CMake-only dependency manager for C/C++ projects. 
+
+If you are stuck with error message which mentions external libraries (subdirectory of `.hunter`) like the following:
+```
+/usr/bin/ld: /home/[user]/.hunter/_Base/062a19a/ccfed35/a84a713/Install/lib/liblzma.a(stream_flags_decoder.c.o): warning: relocation against `lzma_footer_magic' in read-only section `.text'
+```
+
+Try erasing the **Hunter** cache folder.
+
+Linux/MacOS:
+```
+rm -r ~/.hunter
+```
+Windows:
+```
+del C:/.hunter
+```
+or
+```
+del C:/[user]/.hunter
+```

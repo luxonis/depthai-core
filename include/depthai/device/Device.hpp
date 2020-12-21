@@ -9,7 +9,11 @@
 #include "CallbackHandler.hpp"
 #include "DataQueue.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/utility/Pimpl.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
+
+// shared
+#include "depthai-shared/log/LogLevel.hpp"
 
 // libraries
 #include "nanorpc/core/client.h"
@@ -41,6 +45,9 @@ class Device {
 
     bool isPipelineRunning();
     bool startPipeline();
+
+    void setLogLevel(LogLevel level);
+    LogLevel getLogLevel();
 
     // data queues
     std::shared_ptr<DataOutputQueue> getOutputQueue(const std::string& name, unsigned int maxSize = 120, bool overwrite = false);
@@ -79,6 +86,14 @@ class Device {
     // Timesync thread
     std::thread timesyncThread;
     std::atomic<bool> timesyncRunning{true};
+
+    // Logging thread
+    std::thread loggingThread;
+    std::atomic<bool> loggingRunning{true};
+
+    // pimpl
+    class Impl;
+    Pimpl<Impl> pimpl;
 
     // Serialized pipeline
     PipelineSchema schema;
