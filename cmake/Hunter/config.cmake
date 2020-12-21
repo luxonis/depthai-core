@@ -30,9 +30,9 @@ hunter_config(
 # libarchive, luxonis fork
 hunter_config(
     libarchive
-    VERSION "3.4.2-p1"
-    URL "https://github.com/luxonis/libarchive/archive/28db49513446c442fb9a97776c71f97456052eaa.tar.gz"
-    SHA1 "eeabd2153101698e63387e4537d88bcb4e1a44eb"
+    VERSION "3.4.2-p2"
+    URL "https://github.com/luxonis/libarchive/archive/cf2caf0588fc5e2af22cae37027d3ff6902e096f.tar.gz"
+    SHA1 "e99477d32ce14292fe652dc5f4f460d3af8fbc93"
     CMAKE_ARGS
         ENABLE_ACL=OFF                                           
         ENABLE_BZip2=OFF                                          
