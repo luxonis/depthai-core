@@ -17,7 +17,7 @@
 
 # -- Project information -----------------------------------------------------
 
-project = 'DepthAI GUI Docs'
+project = 'DepthAI API Docs'
 copyright = '2020, Luxonis'
 author = 'Luxonis'
 
