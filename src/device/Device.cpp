@@ -377,22 +377,20 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
                 auto log = conn->readFromStream(streamName);
 
                 // parse packet as msgpack
-                try{
+                try {
                     auto j = nlohmann::json::from_msgpack(log);
                     // create pipeline schema from retrieved data
                     nlohmann::from_json(j, messages);
-                     
+
                     spdlog::trace("Log vector decoded, size: {}", messages.size());
 
                     // log the messages in incremental order (0 -> size-1)
                     for(const auto& msg : messages) {
                         pimpl->logger.logMessage(msg);
                     }
-                } catch (const nlohmann::json::exception& ex){
+                } catch(const nlohmann::json::exception& ex) {
                     spdlog::error("Exception while parsing log message from device: {}", ex.what());
                 }
-
-               
             }
             conn->closeStream(streamName);
         } catch(const std::exception& ex) {
