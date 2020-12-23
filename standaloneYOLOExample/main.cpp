@@ -1,15 +1,13 @@
 #include <iostream>
 #include <unistd.h>
 
+#include <csignal>
 
-#include "depthai/Device.hpp"
-#include "depthai/DeviceBootloader.hpp"
-#include "depthai/xlink/XLinkConnection.hpp"
+#include "depthai/depthai.hpp"
+#include "../src/utility/Resources.hpp"
 
-#include "depthai-shared/Assets.hpp"
-
-#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/ColorCamera.hpp"
+#include "depthai/pipeline/node/MonoCamera.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "depthai/pipeline/node/NeuralNetwork.hpp"
 #include "depthai/pipeline/node/SPIOut.hpp"
@@ -17,10 +15,12 @@
 #include "depthai/pipeline/node/MyProducer.hpp"
 #include "depthai/pipeline/node/VideoEncoder.hpp"
 #include "depthai/pipeline/node/CommonObjDet.hpp"
-
+#include "depthai/pipeline/node/ImageManip.hpp"
+#include "depthai/pipeline/node/StereoDepth.hpp"
 
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 
 #include "opencv2/opencv.hpp"
 #include "fp16/fp16.h"
@@ -91,23 +91,12 @@ void startNNYOLO(std::string nnPath, std::string nnConfigPath){
 
     dai::Pipeline p = createNNPipelineYOLO(nnPath, nnConfigPath);
 
-    bool found;
-    dai::DeviceInfo deviceInfo;
-    std::tie(found, deviceInfo) = dai::XLinkConnection::getFirstDevice(X_LINK_BOOTED);
+    dai::Device d(p);
+    d.startPipeline();
 
-    if(found) {
-        dai::Device d(deviceInfo);
-
-        bool pipelineStarted = d.startPipeline(p);
-
-        while(1){
-            usleep(1000000);
-        }
-
-    } else {
-        cout << "No booted (debugger) devices found..." << endl;
+    while(1){
+        usleep(1000000);
     }
-
 }
 
 
@@ -117,8 +106,8 @@ int main(int argc, char** argv){
 
     std::string nnPath(argv[1]);
     std::string configPath(argv[2]);
-//    startNNYOLO(nnPath, configPath);
-    flashNNYOLO(nnPath, configPath);
+    startNNYOLO(nnPath, configPath);
+//    flashNNYOLO(nnPath, configPath);
 
     return 0;
 }

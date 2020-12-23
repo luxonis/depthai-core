@@ -16,7 +16,7 @@ set(DEPTHAI_BOOTLOADER_SHARED_INCLUDE
     ${DEPTHAI_BOOTLOADER_SHARED_FOLDER}/src
 )
 
-# Try retriving depthai-shared commit hash
+# Try retriving depthai-bootloader-shared commit hash
 find_package(Git)
 if(GIT_FOUND)
     execute_process(

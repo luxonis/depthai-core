@@ -1,5 +1,5 @@
 BasedOnStyle: Google
-NamespaceIndentation: Inner
+NamespaceIndentation: None
 BreakBeforeBinaryOperators: NonAssignment
 SpaceBeforeParens: Never
 IndentPPDirectives: BeforeHash

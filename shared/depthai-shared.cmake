@@ -1,5 +1,7 @@
 set(DEPTHAI_SHARED_FOLDER ${CMAKE_CURRENT_LIST_DIR}/depthai-shared)
 
+set(DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH "depthai-shared/3rdparty")
+
 set(DEPTHAI_SHARED_SOURCES 
     #${DEPTHAI_SHARED_FOLDER}/src/general/data_writer.cpp
     #${DEPTHAI_SHARED_FOLDER}/src/logger/logs_writer.cpp

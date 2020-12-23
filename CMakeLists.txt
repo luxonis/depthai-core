@@ -3,6 +3,11 @@ cmake_minimum_required(VERSION 3.2) # For Hunter
 # Set defaults
 set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
 
+# Read the BUILD_SHARED_LIBS option and select PIC toolchain
+if(BUILD_SHARED_LIBS)
+    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_LIST_DIR}/cmake/toolchain/pic.cmake" CACHE STRING "")
+endif()
+
 include("cmake/HunterGate.cmake")
 HunterGate(
     URL "https://github.com/cpp-pm/hunter/archive/v0.23.258.tar.gz"
@@ -18,6 +23,12 @@ endif()
 set(TARGET_NAME depthai-core)
 project(${TARGET_NAME} VERSION "0.0.2" LANGUAGES CXX C)
 
+# Set policies
+# CMP0074 dictates that find_package searches environment variable "[packageName]_ROOT" along with regular variable [packageName]_ROOT
+if(POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW) # Only introduced in 3.12
+endif()
+
 # Set to export compile commands for tools like clang-tidy and format
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
@@ -27,6 +38,9 @@ option(DEPTHAI_CLANG_TIDY   "Enable clang-tidy checks during compilation" OFF)
 
 # Debug option
 set(DEPTHAI_XLINK_LOCAL "" CACHE STRING "Path to local XLink source to use instead of Hunter")
+
+# Variable to installed 3rdparty headers
+set(DEPTHAI_3RDPARTY_HEADERS_PATH "depthai/3rdparty")
 
 ### Get and find dependencies
 
@@ -50,6 +64,15 @@ find_package(BZip2 CONFIG REQUIRED)
 hunter_add_package(FP16)
 find_package(FP16 REQUIRED)
 
+# libarchive for firmware packages
+hunter_add_package(libarchive)
+find_package(archive_static REQUIRED)
+find_package(lzma REQUIRED)
+
+# spdlog for library and device logging
+hunter_add_package(spdlog)
+find_package(spdlog CONFIG REQUIRED)
+
 # Add depthai-shared, and definitions that it is PC side
 include(${CMAKE_CURRENT_LIST_DIR}/shared/depthai-shared.cmake)
 
@@ -69,25 +92,33 @@ add_library(${TARGET_NAME}
     # depthai-bootloader-shared sources
     "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
     # sources
+    src/device/Device.cpp
+    src/device/DeviceBootloader.cpp
+    src/device/DataQueue.cpp
+    src/device/CallbackHandler.cpp
     src/pipeline/Pipeline.cpp
-    src/xlink/XLinkConnection.cpp
-    src/DataQueue.cpp
-    src/CallbackHandler.cpp
     src/pipeline/AssetManager.cpp
     src/pipeline/Node.cpp
     src/pipeline/node/XLinkIn.cpp
     src/pipeline/node/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
+    src/pipeline/node/MonoCamera.cpp
+    src/pipeline/node/StereoDepth.cpp
     src/pipeline/node/NeuralNetwork.cpp
+    src/pipeline/node/ImageManip.cpp
     src/pipeline/node/MyProducer.cpp
     src/pipeline/node/VideoEncoder.cpp
     src/pipeline/node/CommonObjDet.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
+    src/pipeline/datatype/ImageManipConfig.cpp
     src/pipeline/datatype/NNData.cpp
     src/pipeline/datatype/StreamPacketParser.cpp
-    src/Device.cpp
-    src/DeviceBootloader.cpp
+    src/utility/Initialization.cpp
+    src/utility/Resources.cpp
+    src/xlink/XLinkConnection.cpp
+    src/openvino/OpenVINO.cpp
+    src/openvino/BlobReader.cpp
     src/bspatch/bspatch.c
 )
 
@@ -99,13 +130,19 @@ if(DEPTHAI_CLANG_TIDY)
     include(cmake/clang-tidy.cmake)
 endif()
 
-# Set compiler features (c++11)
+# Set compiler features (c++11), and disables extensions (g++11)
 set_property(TARGET ${TARGET_NAME} PROPERTY CXX_STANDARD 11)
+set_property(TARGET ${TARGET_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
+set_property(TARGET ${TARGET_NAME} PROPERTY CXX_EXTENSIONS OFF)
 
 # Add cmake folder to modules path
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake")
 
 # First specify options
+option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
+option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
+option(DEPTHAI_TEST_EXAMPLES "Test examples - examples will be ran as a part of test suite" OFF)
+
 option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries into library" ON)
 option(DEPTHAI_USB2_PATCH_ONLY_MODE "Use patch file and full depthai.cmd binary for usb2 mode" ON)
 option(DEPTHAI_CMD_PATH "Use local path for depthai.cmd instead of downloading" OFF)
@@ -213,7 +250,12 @@ configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in" "${CMAKE_CURRENT
 # Add include directories
 target_include_directories(${TARGET_NAME}   
     PUBLIC
+        # Relative path to include directories after installed
         "$<INSTALL_INTERFACE:include>"
+        "$<INSTALL_INTERFACE:include/${DEPTHAI_3RDPARTY_HEADERS_PATH}>"
+        "$<INSTALL_INTERFACE:include/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}>"
+
+        # Build time path to include directories
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
         "$<BUILD_INTERFACE:${DEPTHAI_SHARED_PUBLIC_INCLUDE}>"
         "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}>"
@@ -221,6 +263,7 @@ target_include_directories(${TARGET_NAME}
     #    # ...
     PRIVATE 
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
+        "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>"
         "$<BUILD_INTERFACE:${DEPTHAI_SHARED_INCLUDE}>"
         "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_INCLUDE}>"
 )
@@ -251,8 +294,9 @@ target_link_libraries(${TARGET_NAME}
         Threads::Threads
         BZip2::bz2
         FP16::fp16
+        archive_static
+        spdlog::spdlog
 )
-
 
 # Add compile definitions
 target_compile_definitions(${TARGET_NAME} 
@@ -261,6 +305,8 @@ target_compile_definitions(${TARGET_NAME}
         __PC__
         # Add depthai-device version
         DEPTHAI_DEVICE_VERSION="${DEPTHAI_DEVICE_SIDE_COMMIT}"
+        # Add if using depthai device FWP
+        DEPTHAI_RESOURCES_TAR_XZ
         # Add depthai-bootloader version
         DEPTHAI_BOOTLOADER_VERSION="${DEPTHAI_BOOTLOADER_VERSION}"
 )
@@ -270,7 +316,34 @@ if(DEPTHAI_USB2_PATCH_ONLY_MODE)
     target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_PATCH_ONLY_MODE)
 endif()
 
-# INSTALLATION steps
+
+########################
+# Testing
+########################
+if(DEPTHAI_BUILD_TESTS OR DEPTHAI_TEST_EXAMPLES)
+    include(CTest)
+    enable_testing()
+endif()
+
+
+########################
+# Tests
+########################
+if (DEPTHAI_BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
+
+########################
+# Examples (can also act as tests)
+########################
+if (DEPTHAI_BUILD_EXAMPLES)
+    add_subdirectory(examples)
+endif()
+
+
+########################
+# INSTALL steps
+########################
 include(GNUInstallDirs)
 install(
     TARGETS 
@@ -281,11 +354,33 @@ install(
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
 )
 
+# Install depthai public headers
+install(DIRECTORY include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+# Install depthai-shared public headers
+install(DIRECTORY "${DEPTHAI_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+# Install depthai-shared 3rdparty headers
+install(DIRECTORY "${DEPTHAI_SHARED_3RDPARTY_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}")
+# Install depthai-bootloader-shared public headers
+install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+# Install depthai-bootloader-shared 3rdparty headers (Currently no 3rdparty)
+#install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_3RDPARTY_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/depthai-bootloader-shared/3rdparty")
 
-install(DIRECTORY include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/depthai")
+# # Install public 3rdparty dependency header (Hunter) to include/${depthai/3rdparty
+# XLink
+get_target_property(XLINK_INCLUDE_DIRS XLink INTERFACE_INCLUDE_DIRECTORIES)
+if(XLINK_INCLUDE_DIRS)
+    file(GLOB XLINK_HEADERS ${XLINK_INCLUDE_DIRS}/XLink*.h)
+    install(FILES ${XLINK_HEADERS} DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${DEPTHAI_3RDPARTY_HEADERS_PATH}")
+endif()
+# nlohmann json
+get_target_property(NLOHMANN_JSON_INCLUDE_DIRS nlohmann_json::nlohmann_json INTERFACE_INCLUDE_DIRECTORIES)
+if(NLOHMANN_JSON_INCLUDE_DIRS)
+    list(GET NLOHMANN_JSON_INCLUDE_DIRS 0 JSON_DIR)
+    install(FILES ${JSON_DIR}/nlohmann/json.hpp DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${DEPTHAI_3RDPARTY_HEADERS_PATH}/nlohmann")
+endif()
 
 # Add resource installation if not RC'd
-if(DEPTHAI_BINARIES_RESOURCE_COMPILE)
+if(NOT DEPTHAI_BINARIES_RESOURCE_COMPILE)
     install(DIRECTORY "${DEPTHAI_RESOURCES_OUTPUT_DIR}/" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/depthai")
 endif()
 

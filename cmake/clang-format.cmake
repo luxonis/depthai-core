@@ -4,12 +4,13 @@
 # http://www.boost.org/LICENSE_1_0.txt)
 
 function(clangformat_setup)
+
   if(NOT CLANG_FORMAT_BIN)
     set(CLANG_FORMAT_BIN clang-format)
   endif()
 
   if(NOT EXISTS ${CLANG_FORMAT_BIN})
-    find_program(CLANG_FORMAT_BIN_tmp ${CLANG_FORMAT_BIN})
+    find_program(CLANG_FORMAT_BIN_tmp NAMES clang-format clang-format-10)
     if(CLANG_FORMAT_BIN_tmp)
       set(CLANG_FORMAT_BIN ${CLANG_FORMAT_BIN_tmp})
       unset(CLANG_FORMAT_BIN_tmp)

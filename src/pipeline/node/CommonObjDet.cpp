@@ -8,7 +8,7 @@ namespace node {
     CommonObjDet::CommonObjDet(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
     }
 
-    std::string CommonObjDet::getName() {
+    std::string CommonObjDet::getName() const {
         return "CommonObjDet";
     }
 

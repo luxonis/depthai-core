@@ -167,11 +167,12 @@ std::vector<float> NNData::getLayerFp16(const std::string& name) const {
         if(tensor.dataType == TensorInfo::DataType::FP16) {
             // Total data size = last dimension * last stride
             if(tensor.numDimensions > 0) {
-                size_t size = tensor.dims[tensor.numDimensions - 1] * tensor.strides[tensor.numDimensions - 1];
+                std::size_t size = tensor.dims[tensor.numDimensions - 1] * tensor.strides[tensor.numDimensions - 1];
+                std::size_t numElements = size / 2;  // FP16
 
                 std::vector<float> data;
                 auto* pFp16Data = reinterpret_cast<std::uint16_t*>(&rawNn.data[tensor.offset]);
-                for(unsigned int i = 0; i < size; i++) {
+                for(std::size_t i = 0; i < numElements; i++) {
                     data.push_back(fp16_ieee_to_fp32_value(pFp16Data[i]));
                 }
                 return data;
@@ -185,19 +186,7 @@ std::vector<float> NNData::getLayerFp16(const std::string& name) const {
 std::vector<std::uint8_t> NNData::getFirstLayerUInt8() const {
     // find layer name and its offset
     if(!rawNn.tensors.empty()) {
-        TensorInfo tensor = rawNn.tensors[0];
-        if(tensor.dataType == TensorInfo::DataType::FP16) {
-            // Total data size = last dimension * last stride
-            if(tensor.dataType == TensorInfo::DataType::U8F) {
-                // Total data size = last dimension * last stride
-                if(tensor.numDimensions > 0) {
-                    size_t size = tensor.dims[tensor.numDimensions - 1] * tensor.strides[tensor.numDimensions - 1];
-                    auto beg = rawNn.data.begin() + tensor.offset;
-                    auto end = beg + size;
-                    return {beg, end};
-                }
-            }
-        }
+        return getLayerUInt8(rawNn.tensors[0].name);
     }
 
     return {};
@@ -207,21 +196,7 @@ std::vector<std::uint8_t> NNData::getFirstLayerUInt8() const {
 std::vector<float> NNData::getFirstLayerFp16() const {
     // find layer name and its offset
     if(!rawNn.tensors.empty()) {
-        TensorInfo tensor = rawNn.tensors[0];
-        if(tensor.dataType == TensorInfo::DataType::FP16) {
-            // Total data size = last dimension * last stride
-            if(tensor.numDimensions > 0) {
-                size_t size = tensor.dims[tensor.numDimensions - 1] * tensor.strides[tensor.numDimensions - 1];
-                size /= sizeof(std::uint16_t);  // divide by size of fp16
-
-                std::vector<float> data;
-                auto* pFp16Data = reinterpret_cast<std::uint16_t*>(&rawNn.data[tensor.offset]);
-                for(unsigned int i = 0; i < size; i++) {
-                    data.push_back(fp16_ieee_to_fp32_value(pFp16Data[i]));
-                }
-                return data;
-            }
-        }
+        return getLayerFp16(rawNn.tensors[0].name);
     }
     return {};
 }
