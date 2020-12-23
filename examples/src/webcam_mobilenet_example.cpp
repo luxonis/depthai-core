@@ -21,7 +21,7 @@ int main(int argc, char** argv){
         
         camId = std::stoi(argv[1]);
         if(argc > 2){
-            std::string nnPath(argv[2]);
+            nnPath = std::string(argv[2]);
         }
     }
 
