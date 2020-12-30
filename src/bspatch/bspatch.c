@@ -174,8 +174,7 @@ int bspatch_mem(const uint8_t* oldfile_bin, const int64_t oldfile_size, const ui
         if(error) break;
 
         /* Sanity-check */
-        if(newpos + ctrl[0] > newsize) 
-        {
+        if(newpos + ctrl[0] > newsize) {
             for(int i = 0; i < NUM_BLOCKS; i++) {
                 free(p_decompressed_block_original[i]);
             }
@@ -208,8 +207,7 @@ int bspatch_mem(const uint8_t* oldfile_bin, const int64_t oldfile_size, const ui
         }
 
         /* Read extra string */
-        if(p_decompressed_block[EXTRA_BLOCK] + ctrl[1] > p_decompressed_block_end[EXTRA_BLOCK]) 
-        {
+        if(p_decompressed_block[EXTRA_BLOCK] + ctrl[1] > p_decompressed_block_end[EXTRA_BLOCK]) {
             for(int i = 0; i < NUM_BLOCKS; i++) {
                 free(p_decompressed_block_original[i]);
             }
