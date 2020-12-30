@@ -35,15 +35,32 @@ public:
     std::shared_ptr<CNNHostPipeline> create_pipeline(
         const std::string &config_json_str
     );
+    std::shared_ptr<CNNHostPipeline> get_pipeline();
     std::vector<std::string> get_available_streams();
 
     std::vector<std::vector<float>> get_left_intrinsic();
     std::vector<std::vector<float>> get_left_homography();
     std::vector<std::vector<float>> get_right_intrinsic();
     std::vector<std::vector<float>> get_right_homography();
+
+    std::vector<float> get_distortion_coeffs(CameraControl::CamId cam);
+    std::vector<std::vector<float>> get_intrinsic(CameraControl::CamId cam);
+
     std::vector<std::vector<float>> get_rotation();
     std::vector<float> get_translation();
+    std::vector<std::vector<float>> get_rgb_rotation();
+    std::vector<float> get_rgb_translation();
 
+    std::string get_mx_id();
+    bool is_usb3();
+    bool is_eeprom_loaded();
+    bool is_rgb_connected();
+    bool is_left_connected();
+    bool is_right_connected();
+    bool is_device_changed();
+
+    void override_device_changed();
+    void reset_device_changed();
     void request_jpeg();
     void request_af_trigger();
     void request_af_mode(CaptureMetadata::AutofocusMode mode);
@@ -51,7 +68,8 @@ public:
     void send_camera_control(CameraControl::CamId camera_id,
             CameraControl::Command command_id,
             const std::string &extra_args);
-
+    void write_eeprom_data(const std::string &board_config);
+    
     std::map<std::string, int> get_nn_to_depth_bbox_mapping();
 
 private:
@@ -85,28 +103,43 @@ private:
         soft_deinit_device();
         gl_result = nullptr;
     };
+    int read_and_parse_config_d2h(void);
+    void load_and_print_config_d2h(void);
 
 
     std::shared_ptr<CNNHostPipeline> gl_result = nullptr;
+ 
+    // place holders for Stereo rectification parameters
     std::vector<std::vector<float>> R1_l;
     std::vector<std::vector<float>> R2_r;
     std::vector<std::vector<float>> H1_l;
     std::vector<std::vector<float>> H2_r;
+ 
+    // place holders for Intrinics calibration
     std::vector<std::vector<float>> M1_l;
     std::vector<std::vector<float>> M2_r;
-    std::vector<std::vector<float>> R;
-    std::vector<float> T;
+    std::vector<std::vector<float>> M3_rgb;
+
+    // place holders for distortion coefficients of the camera   
     std::vector<float> d1_l;
     std::vector<float> d2_r;
-    int32_t version;
+    std::vector<float> d3_rgb;
 
+    // extrinsic calibration parameters between left-right and rgb-right 
+    std::vector<std::vector<float>> R;
+    std::vector<float> T;
+    std::vector<std::vector<float>> R_rgb; // RGB -> R
+    std::vector<float> T_rgb; // RGB -> R or R -> RGB TODO(sachin): Second check )
+    
+    int32_t version;
+    bool device_changed = true;
     std::string config_backup;
     std::string cmd_backup;
     std::string usb_device_backup;
     uint8_t* binary_backup;
     long binary_size_backup;
 
-    int wdog_thread_alive = 1;
+    int wdog_thread_alive = 0;
 
     std::thread wd_thread;
     std::chrono::milliseconds wd_timeout = std::chrono::milliseconds(5000);
