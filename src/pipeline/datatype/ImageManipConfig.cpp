@@ -25,6 +25,25 @@ void ImageManipConfig::setCropRect(float xmin, float ymin, float xmax, float yma
     cfg.cropConfig.cropRect.ymax = ymax;
 }
 
+void ImageManipConfig::setCropRotatedRect(RawImageManipConfig::RotatedRect rr, bool normalizedCoords) {
+    // Enable crop stage and extended flags
+    cfg.enableCrop = true;
+    cfg.cropConfig.enableRotatedRect = true;
+
+    cfg.cropConfig.cropRotatedRect = rr;
+    cfg.cropConfig.normalizedCoords = normalizedCoords;
+}
+
+void ImageManipConfig::setCropQuadrilateral(std::vector<RawImageManipConfig::Point2f> pt, RawImageManipConfig::Size2f outSize, bool normalizedCoords) {
+    // Enable crop stage and extended flags
+    cfg.enableCrop = true;
+    cfg.cropConfig.enableCropQuadrilateral = true;
+
+    cfg.cropConfig.cropQuadrilateral.pt = pt;
+    cfg.cropConfig.cropQuadrilateral.outSize = outSize;
+    cfg.cropConfig.normalizedCoords = normalizedCoords;
+}
+
 void ImageManipConfig::setCenterCrop(float ratio, float whRatio) {
     // Enable crop stage
     cfg.enableCrop = true;

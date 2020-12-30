@@ -33,6 +33,16 @@ void ImageManip::setCropRect(float xmin, float ymin, float xmax, float ymax) {
     properties.initialConfig = *rawConfig;
 }
 
+void ImageManip::setCropRotatedRect(RawImageManipConfig::RotatedRect rr, bool normalizedCoords) {
+    config.setCropRotatedRect(rr, normalizedCoords);
+    properties.initialConfig = *rawConfig;
+}
+
+void ImageManip::setCropQuadrilateral(std::vector<RawImageManipConfig::Point2f> pt, RawImageManipConfig::Size2f outSize, bool normalizedCoords) {
+    config.setCropQuadrilateral(pt, outSize, normalizedCoords);
+    properties.initialConfig = *rawConfig;
+}
+
 void ImageManip::setCenterCrop(float ratio, float whRatio) {
     config.setCenterCrop(ratio, whRatio);
     properties.initialConfig = *rawConfig;
