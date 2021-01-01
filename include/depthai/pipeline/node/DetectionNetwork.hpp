@@ -1,6 +1,7 @@
 #pragma once
 
 #include <depthai/pipeline/Node.hpp>
+
 #include "depthai/openvino/OpenVINO.hpp"
 
 // standard
@@ -26,7 +27,6 @@ class DetectionNetwork : public Node {
     dai::DetectionNetworkProperties properties;
 
    public:
-
     Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}}};
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, false}}};
 
@@ -36,12 +36,10 @@ class DetectionNetwork : public Node {
     void setNumPoolFrames(int numFrames);
 };
 
-
 class MobileNetDetectionNetwork : public DetectionNetwork {
    public:
     MobileNetDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 };
-
 
 class YoloDetectionNetwork : public DetectionNetwork {
    public:
@@ -49,7 +47,7 @@ class YoloDetectionNetwork : public DetectionNetwork {
     void setNumClasses(const int numClasses);
     void setCoordinateSize(const int coordinates);
     void setAnchors(std::vector<float> anchors);
-    void setAnchorMasks(std::map<std::string,std::vector<int>> anchorMasks);
+    void setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks);
     void setIouThreshold(float thresh);
 };
 

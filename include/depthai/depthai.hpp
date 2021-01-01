@@ -14,6 +14,7 @@
 
 // Include common nodes
 #include "pipeline/node/ColorCamera.hpp"
+#include "pipeline/node/CommonObjDet.hpp"
 #include "pipeline/node/ImageManip.hpp"
 #include "pipeline/node/MonoCamera.hpp"
 #include "pipeline/node/NeuralNetwork.hpp"
@@ -22,8 +23,6 @@
 #include "pipeline/node/VideoEncoder.hpp"
 #include "pipeline/node/XLinkIn.hpp"
 #include "pipeline/node/XLinkOut.hpp"
-#include "pipeline/node/CommonObjDet.hpp"
-
 
 // Include common datatypes
 #include "pipeline/datatype/Buffer.hpp"
