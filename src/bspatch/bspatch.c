@@ -133,6 +133,7 @@ int bspatch_mem(const uint8_t* oldfile_bin, const int64_t oldfile_size, const ui
         if((ret = BZ2_bzBuffToBuffDecompress(
                 (char*)p_decompressed_block_original[i], &decompressed_size, (char*)patchfile_bin + block_offset_bz2[i], block_size_bz2[i], 0, 0))
            != BZ_OK) {
+            (void)ret;
             error = -1;
             break;
         }
@@ -173,7 +174,12 @@ int bspatch_mem(const uint8_t* oldfile_bin, const int64_t oldfile_size, const ui
         if(error) break;
 
         /* Sanity-check */
-        if(newpos + ctrl[0] > newsize) return -1;
+        if(newpos + ctrl[0] > newsize) {
+            for(int i = 0; i < NUM_BLOCKS; i++) {
+                free(p_decompressed_block_original[i]);
+            }
+            return -1;
+        }
 
         /* Read diff string */
         if(p_decompressed_block[DIFF_BLOCK] + ctrl[0] > p_decompressed_block_end[DIFF_BLOCK]) {
@@ -201,7 +207,12 @@ int bspatch_mem(const uint8_t* oldfile_bin, const int64_t oldfile_size, const ui
         }
 
         /* Read extra string */
-        if(p_decompressed_block[EXTRA_BLOCK] + ctrl[1] > p_decompressed_block_end[EXTRA_BLOCK]) return -1;
+        if(p_decompressed_block[EXTRA_BLOCK] + ctrl[1] > p_decompressed_block_end[EXTRA_BLOCK]) {
+            for(int i = 0; i < NUM_BLOCKS; i++) {
+                free(p_decompressed_block_original[i]);
+            }
+            return -1;
+        }
         memcpy(new + newpos, p_decompressed_block[EXTRA_BLOCK], ctrl[1]);
         p_decompressed_block[EXTRA_BLOCK] += ctrl[1];
 
