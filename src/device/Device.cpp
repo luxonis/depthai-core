@@ -8,6 +8,7 @@
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
 #include "depthai-shared/Assets.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
+#include "depthai-shared/log/LogConstants.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
 #include "depthai-shared/xlink/XLinkConstants.hpp"
@@ -90,7 +91,12 @@ class Device::Impl {
     DeviceLogger logger{"", stdoutColorSink};
 
     void setLogLevel(LogLevel level);
+    void setPattern(const std::string& pattern);
 };
+
+void Device::Impl::setPattern(const std::string& pattern) {
+    logger.set_pattern(pattern);
+}
 
 void Device::Impl::setLogLevel(LogLevel level) {
     // Converts LogLevel to spdlog and reconfigures logger level
@@ -216,6 +222,11 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
     pipeline.serialize(schema, assets, assetStorage, version);
 
     spdlog::debug("Device - pipeline serialized, OpenVINO version: {}", OpenVINO::getVersionName(version));
+
+    // Set logging pattern of device (device id + shared pattern)
+    pimpl->setPattern(fmt::format("[{}] {}", deviceInfo.getMxId(), LOG_DEFAULT_PATTERN));
+    // Set default level (warning)
+    pimpl->setLogLevel(LogLevel::WARN);
 
     // Get embedded mvcmd
     std::vector<std::uint8_t> embeddedFw = Resources::getInstance().getDeviceFirmware(usb2Mode, version);
@@ -366,13 +377,19 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
                 auto log = conn->readFromStream(streamName);
 
                 // parse packet as msgpack
-                auto j = nlohmann::json::from_msgpack(log);
-                // create pipeline schema from retrieved data
-                nlohmann::from_json(j, messages);
+                try {
+                    auto j = nlohmann::json::from_msgpack(log);
+                    // create pipeline schema from retrieved data
+                    nlohmann::from_json(j, messages);
 
-                // log the messages in incremental order (0 -> size-1)
-                for(const auto& msg : messages) {
-                    pimpl->logger.logMessage(msg);
+                    spdlog::trace("Log vector decoded, size: {}", messages.size());
+
+                    // log the messages in incremental order (0 -> size-1)
+                    for(const auto& msg : messages) {
+                        pimpl->logger.logMessage(msg);
+                    }
+                } catch(const nlohmann::json::exception& ex) {
+                    spdlog::error("Exception while parsing log message from device: {}", ex.what());
                 }
             }
             conn->closeStream(streamName);
@@ -421,6 +438,7 @@ bool Device::isPipelineRunning() {
 }
 
 void Device::setLogLevel(LogLevel level) {
+    pimpl->setLogLevel(level);
     client->call("setLogLevel", level);
 }
 

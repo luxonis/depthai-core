@@ -54,7 +54,7 @@ int main(){
                 inFrame.getData().resize(originalWidth * originalHeight * 3);
                 inFrame.setWidth(originalWidth);
                 inFrame.setHeight(originalHeight);
-                inFrame.setType(dai::RawImgFrame::Type::RGB888i);
+                inFrame.setType(dai::RawImgFrame::Type::RGB888p);
                 
                 // Send the frame
                 in->send(inFrame);

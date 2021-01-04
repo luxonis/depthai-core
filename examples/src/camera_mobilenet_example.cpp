@@ -49,7 +49,7 @@ int main(int argc, char** argv){
     
     // If path to blob specified, use that
     if(argc > 1){
-        std::string nnPath(argv[1]);
+        nnPath = std::string(argv[1]);
     }
 
     // Print which blob we are using
