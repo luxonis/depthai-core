@@ -191,7 +191,7 @@ std::tuple<int, int> ColorCamera::getStillSize() const {
             maxStillHeight = 2160;
         }
         if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_12_MP) {
-            maxStillWidth = 4032; // Note not 4056 as full sensor resolution
+            maxStillWidth = 4032;  // Note not 4056 as full sensor resolution
             maxStillHeight = 3040;
         }
         return {maxStillWidth, maxStillHeight};
