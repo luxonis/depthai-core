@@ -1,3 +1,7 @@
+# Add catch2 for writing tests
+hunter_add_package(Catch)
+find_package(Catch2 CONFIG REQUIRED)
+
 option(DEPTHAI_SANITIZER "Build tests with Clang sanitizer" OFF)
 
 if(DEPTHAI_SANITIZER)
@@ -24,7 +28,7 @@ endif()
 # Macro for adding new tests
 macro(dai_add_test test_name test_src)
     add_executable("${test_name}" "${test_src}")
-    target_link_libraries("${test_name}" PRIVATE depthai-core)
+    target_link_libraries("${test_name}" PRIVATE depthai-core Catch2::Catch2)
     add_test("${test_name}" "${test_name}")
 endmacro() 
 
@@ -42,4 +46,5 @@ endmacro()
 # Add tests
 dai_add_test(color_camera_node_test src/color_camera_node_test.cpp)
 dai_add_test(image_manip_node_test src/image_manip_node_test.cpp)
+dai_add_test(pipeline_test src/pipeline_test.cpp)
 

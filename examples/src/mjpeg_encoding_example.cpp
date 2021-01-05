@@ -28,7 +28,6 @@ int main(int argc, char** argv){
     colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     //colorCam->setFps(5.0);
     colorCam->setInterleaved(true);
-    colorCam->setCamId(0);
 
     // VideoEncoder
     videnc->setDefaultProfilePreset(1920, 1080, 30, dai::VideoEncoderProperties::Profile::MJPEG);

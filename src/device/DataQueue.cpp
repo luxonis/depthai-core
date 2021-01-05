@@ -15,8 +15,8 @@
 namespace dai {
 
 // DATA OUTPUT QUEUE
-DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& name, unsigned int maxSize, bool overwrite)
-    : pQueue(std::make_shared<LockingQueue<std::shared_ptr<ADatatype>>>(maxSize, overwrite)),
+DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& name, unsigned int maxSize, bool blocking)
+    : pQueue(std::make_shared<LockingQueue<std::shared_ptr<ADatatype>>>(maxSize, blocking)),
       queue(*pQueue),
       pRunning(std::make_shared<std::atomic<bool>>(true)),
       running(*pRunning),
@@ -85,8 +85,8 @@ std::string DataOutputQueue::getName() const {
 }
 
 // DATA INPUT QUEUE
-DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& name, unsigned int maxSize, bool overwrite)
-    : pQueue(std::make_shared<LockingQueue<std::shared_ptr<RawBuffer>>>(maxSize, overwrite)),
+DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& name, unsigned int maxSize, bool blocking)
+    : pQueue(std::make_shared<LockingQueue<std::shared_ptr<RawBuffer>>>(maxSize, blocking)),
       queue(*pQueue),
       pRunning(std::make_shared<std::atomic<bool>>(true)),
       running(*pRunning),

@@ -27,6 +27,7 @@ std::shared_ptr<Node> VideoEncoder::clone() {
     return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
+
 void VideoEncoder::setDefaultProfilePreset(int width, int height, float fps, VideoEncoderProperties::Profile profile) {
     properties.width = width;
     properties.height = height;
@@ -69,6 +70,10 @@ void VideoEncoder::setDefaultProfilePreset(int width, int height, float fps, Vid
         default:
             break;
     }
+}
+
+void VideoEncoder::setDefaultProfilePreset(std::tuple<int, int> size, float fps, VideoEncoderProperties::Profile profile) {
+    setDefaultProfilePreset(std::get<0>(size), std::get<1>(size), fps, profile);
 }
 
 // node properties

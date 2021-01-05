@@ -39,10 +39,10 @@ int main(){
 
     // MonoCamera
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    monoLeft->setCamId(1);
+    monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
     //monoLeft->setFps(5.0);
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    monoRight->setCamId(2);
+    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
     //monoRight->setFps(5.0);
 
     bool outputDepth = false;

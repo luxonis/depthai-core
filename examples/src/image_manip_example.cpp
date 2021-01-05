@@ -31,7 +31,6 @@ int main(){
     colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     colorCam->setInterleaved(false);
     colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
-    colorCam->setCamId(0);
 
     // Create a center crop image manipulation
     imageManip->setCenterCrop(0.7f);

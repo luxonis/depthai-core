@@ -225,8 +225,6 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
 
     // Set logging pattern of device (device id + shared pattern)
     pimpl->setPattern(fmt::format("[{}] {}", deviceInfo.getMxId(), LOG_DEFAULT_PATTERN));
-    // Set default level (warning)
-    pimpl->setLogLevel(LogLevel::WARN);
 
     // Get embedded mvcmd
     std::vector<std::uint8_t> embeddedFw = Resources::getInstance().getDeviceFirmware(usb2Mode, version);
@@ -400,22 +398,42 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
 
         loggingRunning = false;
     });
+
+    // Set logging level
+    if(spdlog::get_level() < spdlog::level::warn) {
+        switch(spdlog::get_level()) {
+            case spdlog::level::trace:
+                setLogLevel(LogLevel::TRACE);
+                break;
+            case spdlog::level::debug:
+                setLogLevel(LogLevel::DEBUG);
+                break;
+            case spdlog::level::info:
+                setLogLevel(LogLevel::INFO);
+                break;
+            default:
+                setLogLevel(LogLevel::WARN);
+                break;
+        }
+    } else {
+        setLogLevel(LogLevel::WARN);
+    }
 }
 
-std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name, unsigned int maxSize, bool overwrite) {
+std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name, unsigned int maxSize, bool blocking) {
     // creates a dataqueue if not yet created
     if(outputQueueMap.count(name) == 0) {
-        outputQueueMap[name] = std::make_shared<DataOutputQueue>(connection, name, maxSize, overwrite);
+        outputQueueMap[name] = std::make_shared<DataOutputQueue>(connection, name, maxSize, blocking);
     }
 
     // else just return the shared ptr to this DataQueue
     return outputQueueMap.at(name);
 }
 
-std::shared_ptr<DataInputQueue> Device::getInputQueue(const std::string& name, unsigned int maxSize, bool overwrite) {
+std::shared_ptr<DataInputQueue> Device::getInputQueue(const std::string& name, unsigned int maxSize, bool blocking) {
     // creates a dataqueue if not yet created
     if(inputQueueMap.count(name) == 0) {
-        inputQueueMap[name] = std::make_shared<DataInputQueue>(connection, name, maxSize, overwrite);
+        inputQueueMap[name] = std::make_shared<DataInputQueue>(connection, name, maxSize, blocking);
     }
 
     // else just return the reference to this DataQueue

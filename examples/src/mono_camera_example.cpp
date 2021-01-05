@@ -8,20 +8,19 @@
 #include "depthai/depthai.hpp"
 
 
-dai::Pipeline createCameraFullPipeline(){
+dai::Pipeline createMonoPipeline(){
 
     dai::Pipeline p;
 
-    auto colorCam = p.create<dai::node::ColorCamera>();
+    auto monoCam = p.create<dai::node::MonoCamera>();
     auto xlinkOut = p.create<dai::node::XLinkOut>();
-    xlinkOut->setStreamName("video");
+    xlinkOut->setStreamName("mono");
     
-    colorCam->setPreviewSize(300, 300);
-    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    colorCam->setInterleaved(true);
+    // Set camera socket
+    monoCam->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
     // Link plugins CAM -> XLINK
-    colorCam->video.link(xlinkOut->input);
+    monoCam->out.link(xlinkOut->input);
     
     return p;
 
@@ -32,7 +31,7 @@ int main(){
     using namespace std;
 
     // Create pipeline
-    dai::Pipeline p = createCameraFullPipeline();
+    dai::Pipeline p = createMonoPipeline();
 
     // Connect to device with above created pipeline
     dai::Device d(p);
@@ -40,22 +39,18 @@ int main(){
     d.startPipeline();
 
     cv::Mat frame;
-    auto video = d.getOutputQueue("video");
+    auto monoQueue = d.getOutputQueue("mono");
 
     while(1){
 
-        auto imgFrame = video->get<dai::ImgFrame>();
+        auto imgFrame = monoQueue->get<dai::ImgFrame>();
         if(imgFrame){
 
             printf("Frame - w: %d, h: %d\n", imgFrame->getWidth(), imgFrame->getHeight());
 
-            frame = cv::Mat(imgFrame->getHeight() * 3 / 2, imgFrame->getWidth(), CV_8UC1, imgFrame->getData().data());
+            frame = cv::Mat(imgFrame->getHeight(), imgFrame->getWidth(), CV_8UC1, imgFrame->getData().data());
             
-            cv::Mat rgb(imgFrame->getHeight(), imgFrame->getWidth(), CV_8UC3);
-
-            cv::cvtColor(frame, rgb, cv::COLOR_YUV2BGR_NV12);
-            
-            cv::imshow("video", rgb);
+            cv::imshow("video", frame);
             int key = cv::waitKey(1);
             if (key == 'q'){
                 return 0;

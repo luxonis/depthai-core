@@ -22,7 +22,9 @@ class VideoEncoder : public Node {
     Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, true}}};
     Output bitstream{*this, "bitstream", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
+    // Sets default options for a specified size and profile
     void setDefaultProfilePreset(int width, int height, float fps, VideoEncoderProperties::Profile profile);
+    void setDefaultProfilePreset(std::tuple<int, int> size, float fps, VideoEncoderProperties::Profile profile);
 
     // node properties
     void setNumFramesPool(int frames);

@@ -3,6 +3,7 @@
 // std
 #include <atomic>
 #include <memory>
+#include <vector>
 
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
@@ -28,7 +29,7 @@ class DataOutputQueue {
     // const std::chrono::milliseconds READ_TIMEOUT{500};
 
    public:
-    DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize = 60, bool overwrite = false);
+    DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize = 16, bool blocking = true);
     ~DataOutputQueue();
 
     std::string getName() const;
@@ -57,12 +58,7 @@ class DataOutputQueue {
     }
 
     std::shared_ptr<ADatatype> tryGet() {
-        if(!running) throw std::runtime_error(exceptionMessage.c_str());
-        std::shared_ptr<ADatatype> p = nullptr;
-        if(!queue.tryPop(p)) {
-            return nullptr;
-        }
-        return p;
+        return tryGet<ADatatype>();
     }
 
     template <class T>
@@ -77,33 +73,82 @@ class DataOutputQueue {
     }
 
     std::shared_ptr<ADatatype> get() {
-        if(!running) throw std::runtime_error(exceptionMessage.c_str());
-        std::shared_ptr<ADatatype> val = nullptr;
-        if(!queue.waitAndPop(val)) {
-            throw std::runtime_error(exceptionMessage.c_str());
-            return nullptr;
-        }
-        return val;
+        return get<ADatatype>();
     }
 
     template <class T, typename Rep, typename Period>
-    std::shared_ptr<T> get(std::chrono::duration<Rep, Period> timeout) {
+    std::shared_ptr<T> get(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
         std::shared_ptr<ADatatype> val = nullptr;
         if(!queue.tryWaitAndPop(val, timeout)) {
+            hasTimedout = true;
             return nullptr;
         }
+        hasTimedout = false;
         return std::dynamic_pointer_cast<T>(val);
     }
 
     template <typename Rep, typename Period>
-    std::shared_ptr<ADatatype> get(std::chrono::duration<Rep, Period> timeout) {
+    std::shared_ptr<ADatatype> get(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
+        return get<ADatatype>(timeout, hasTimedout);
+    }
+
+    // Methods to retrieve multiple messages at once
+    template <class T>
+    std::vector<std::shared_ptr<T>> tryGetAll() {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
-        std::shared_ptr<ADatatype> val = nullptr;
-        if(!queue.tryWaitAndPop(val, timeout)) {
-            return nullptr;
-        }
-        return val;
+
+        std::vector<std::shared_ptr<T>> messages;
+        queue.consumeAll([&messages](std::shared_ptr<ADatatype>& msg) {
+            // dynamic pointer cast may return nullptr
+            // in which case that message in vector will be nullptr
+            messages.push_back(std::dynamic_pointer_cast<T>(std::move(msg)));
+        });
+
+        return messages;
+    }
+
+    std::vector<std::shared_ptr<ADatatype>> tryGetAll() {
+        return tryGetAll<ADatatype>();
+    }
+
+    template <class T>
+    std::vector<std::shared_ptr<T>> getAll() {
+        if(!running) throw std::runtime_error(exceptionMessage.c_str());
+
+        std::vector<std::shared_ptr<T>> messages;
+        queue.waitAndConsumeAll([&messages](std::shared_ptr<ADatatype>& msg) {
+            // dynamic pointer cast may return nullptr
+            // in which case that message in vector will be nullptr
+            messages.push_back(std::dynamic_pointer_cast<T>(std::move(msg)));
+        });
+
+        return messages;
+    }
+
+    std::vector<std::shared_ptr<ADatatype>> getAll() {
+        return getAll<ADatatype>();
+    }
+
+    template <class T, typename Rep, typename Period>
+    std::vector<std::shared_ptr<T>> getAll(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
+        if(!running) throw std::runtime_error(exceptionMessage.c_str());
+
+        std::vector<std::shared_ptr<T>> messages;
+        hasTimedout = !queue.waitAndConsumeAll(
+            [&messages](std::shared_ptr<ADatatype>& msg) {
+                // dynamic pointer cast may return nullptr
+                // in which case that message in vector will be nullptr
+                messages.push_back(std::dynamic_pointer_cast<T>(std::move(msg)));
+            },
+            timeout);
+
+        return messages;
+    }
+
+    template <typename Rep, typename Period>
+    std::vector<std::shared_ptr<ADatatype>> getAll(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
+        return getAll<ADatatype>(timeout, hasTimedout);
     }
 };
 
@@ -119,7 +164,7 @@ class DataInputQueue {
     std::string streamName;
 
    public:
-    DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize = 60, bool overwrite = false);
+    DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize = 16, bool blocking = true);
     ~DataInputQueue();
 
     std::string getName() const;
