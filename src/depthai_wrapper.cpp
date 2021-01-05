@@ -5,7 +5,7 @@
 
 namespace DepthAI {
 
-const std::unordered_map<int, int> DepthAI::height_to_width_map_ = { { 720, 1280 }, { 800, 1280 }, { 400, 640 } };
+const std::unordered_map<int, int> DepthAI::height_to_width_map_ = { { 720, 1280 }, { 800, 1280 }, { 400, 640 }, {2160, 3840}, {1080, 1920}};
 
 DepthAI::DepthAI(const std::string& usb_device, const std::string& config_file, bool usb2_mode)
     : Device(usb_device, usb2_mode)
@@ -48,7 +48,7 @@ void DepthAI::set_resolution()
         {
             auto& rgb_camera_conf_obj = camera_conf_obj.at("rgb");
             rgb_height_ = rgb_camera_conf_obj.at("resolution_h").get<int32_t>();
-            // _rgb_width = height_to_width_map_[_rgb_height];
+            rgb_width_ = height_to_width_map_.at(rgb_height_);
         } 
         else 
         {
@@ -105,6 +105,11 @@ void DepthAI::create_frame_holders()
                     CV_mat_ptr img = std::make_shared<cv::Mat>(rgb_height_, rgb_width_, CV_8UC3);
                     image_stream_holder_["previewout"] = img;
                 } 
+                if (name == "color") 
+                {   std::cout << "alloc failed ->" << rgb_height_ << " " << rgb_width_ <<std::endl;
+                    CV_mat_ptr img = std::make_shared<cv::Mat>(rgb_height_, rgb_width_, CV_8UC3);
+                    image_stream_holder_["color"] = img;
+                } 
                 else if (name == "depth") 
                 {
                     CV_mat_ptr img = std::make_shared<cv::Mat>(mono_height_, mono_width_, CV_16UC1);
@@ -140,16 +145,35 @@ void DepthAI::get_streams(std::unordered_map<std::string, CV_mat_ptr>& output_st
 
         // iterating over the packets to extract all the image streams specified in the config
         for (const auto& sub_packet : std::get<1>(packets)) 
-        {
+        {   
+            // std::cout << "Stream name :" << sub_packet->stream_name << std::endl;
             std::unordered_map<std::string, CV_mat_ptr>::iterator it = image_stream_holder_.find(sub_packet->stream_name);
             if (it != image_stream_holder_.end()) 
-            {
-                unsigned char* img_ptr = reinterpret_cast<unsigned char*>((it->second)->data);
+            {   
+                
                 const auto& received_data = sub_packet->getData();
-                // std::cout << "Stream name :" << sub_packet->stream_name << std::endl;
+                
                 // std::cout << "Stream size :" << sub_packet->size() << std::endl;
                 
-                memcpy(img_ptr, received_data, sub_packet->size());
+                if(sub_packet->stream_name == "color") {
+                    // auto meta = sub_packet->getMetadata();
+                    std::cout << "hhihii " << rgb_height_ << "x" << rgb_width_ << std::endl;
+                    cv::Mat yuv(rgb_height_ * 3/2, rgb_width_, CV_8UC1);
+                    std::cout << sub_packet->size() << "~~~~~~~~~~~~~" << yuv.total() * yuv.elemSize() << std::endl;
+                    // std::cout << "~~~~~~~~" << std::endl;
+                    unsigned char* img_ptr = reinterpret_cast<unsigned char*>(yuv.data);
+                    // std::cout << sub_packet->size() << "~~~~~~~~~~~~~" << sizeof(yuv.data) << std::endl;
+                    std::cout << "hhihii------------- " << rgb_height_ << "x" << rgb_width_ << std::endl;
+                    memcpy(img_ptr, received_data, sub_packet->size());
+                    std::cout << "hhihii Copy gasilfr " << rgb_height_ << "x" << rgb_width_ << std::endl;
+                    std::cout << sub_packet->size() << "xxxxxxx" << sizeof(yuv.data) << std::endl;
+                    // cv::cvtColor(yuv, *(it->second), cv::COLOR_YUV2BGR_IYUV);
+                }
+                else {
+                    unsigned char* img_ptr = reinterpret_cast<unsigned char*>((it->second)->data);
+                    memcpy(img_ptr, received_data, sub_packet->size());
+                }
+                
                 if (dirty_check.find(sub_packet->stream_name) == dirty_check.end()) 
                 {
                     dirty_check.insert(sub_packet->stream_name);

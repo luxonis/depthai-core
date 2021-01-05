@@ -1,0 +1,40 @@
+{
+    "streams": [
+        {
+            "name": "depth"
+        },
+        {
+            "name": "color"
+        },
+        {
+            "name": "left"
+        },
+        {
+            "name": "right"
+        },
+        "metaout"
+    ],
+    "ai": {
+        "blob_file": "/home/sachin/Desktop/luxonis/depthai/resources/nn/mobilenet-ssd/mobilenet-ssd.blob.sh14cmx14NCE1",
+        "blob_file_config": "/home/sachin/Desktop/luxonis/depthai/resources/nn/mobilenet-ssd/mobilenet-ssd.json",
+        "blob_file2": "",
+        "blob_file_config2": "",
+        "calc_dist_to_bb": true,
+        "keep_aspect_ratio": true,
+        "camera_input": "right",
+        "shaves": 14,
+        "cmx_slices": 14,
+        "NN_engines": 1
+    },
+
+    "camera": {
+        "mono": {
+            "resolution_h": 720,
+            "fps": 30
+        },
+        "rgb": {
+            "resolution_h": 1080,
+            "fps": 30
+        }
+    }
+}
