@@ -3,6 +3,7 @@
 #include <sstream>
 
 #include "openvino/BlobReader.hpp"
+#include "depthai-shared/datatype/DetectionNetworkTypeEnum.hpp"
 
 namespace dai {
 namespace node {
@@ -81,14 +82,14 @@ void DetectionNetwork::setNumPoolFrames(int numFrames) {
 // MobileNet
 //--------------------------------------------------------------------
 MobileNetDetectionNetwork::MobileNetDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : DetectionNetwork(par, nodeId) {
-    properties.nnFamily = "mobilenet";
+    properties.nnFamily = dntype_mobilenet;
 }
 
 //--------------------------------------------------------------------
 // YOLO
 //--------------------------------------------------------------------
 YoloDetectionNetwork::YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : DetectionNetwork(par, nodeId) {
-    properties.nnFamily = "yolo";
+    properties.nnFamily = dntype_yolo;
 }
 
 void YoloDetectionNetwork::setNumClasses(const int numClasses) {
