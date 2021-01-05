@@ -72,6 +72,11 @@ void DetectionNetwork::setNNBlobPath(const std::string& path) {
     properties.blobSize = blobAsset.data.size();
 }
 
+
+void DetectionNetwork::setNumPoolFrames(int numFrames) {
+    properties.numFrames = numFrames;
+}
+
 //--------------------------------------------------------------------
 // MobileNet
 //--------------------------------------------------------------------
