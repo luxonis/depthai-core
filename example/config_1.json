@@ -1,0 +1,26 @@
+{
+    "streams": [
+        {
+            "name": "depth"
+        },
+        {
+            "name": "left"
+        },
+        {
+            "name": "right"
+        }
+    ],
+    "ai": {
+        "blob_file": "/home/sachin/Desktop/luxonis/depthai/resources/nn/mobilenet-ssd/mobilenet-ssd.blob.sh14cmx14NCE1"
+    },
+    "camera": {
+        "mono": {
+            "resolution_h": 720,
+            "fps": 30
+        },
+        "rgb": {
+            "resolution_h": 1080,
+            "fps": 30
+        }
+    }
+}
