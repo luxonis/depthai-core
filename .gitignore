@@ -21,3 +21,6 @@ depthai-cpp/build/
 
 #ci
 wheelhouse/
+
+#git
+*.orig
