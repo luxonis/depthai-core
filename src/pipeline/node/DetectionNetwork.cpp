@@ -2,8 +2,8 @@
 
 #include <sstream>
 
-#include "openvino/BlobReader.hpp"
 #include "depthai-shared/datatype/DetectionNetworkTypeEnum.hpp"
+#include "openvino/BlobReader.hpp"
 
 namespace dai {
 namespace node {
@@ -72,7 +72,6 @@ void DetectionNetwork::setNNBlobPath(const std::string& path) {
     properties.blobUri = std::string("asset:") + assetKey;
     properties.blobSize = blobAsset.data.size();
 }
-
 
 void DetectionNetwork::setNumPoolFrames(int numFrames) {
     properties.numFrames = numFrames;
