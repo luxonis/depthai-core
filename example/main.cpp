@@ -190,14 +190,19 @@ main()
             }
         }
         depth_rgb.convertTo(depth_rgb, CV_8UC1);
-        cv::Mat im_color;
+        cv::Mat im_color, resized_op;
         cv::applyColorMap(depth_rgb, im_color, cv::COLORMAP_HOT);
-        
+        float scale = 720.0/1080.0;
+        cv::resize(*output_streams_["color"], resized_op, cv::Size(), scale, scale);
+        std::cout << "Size of input output color stream " << output_streams_["color"]->size() << std::endl;
+
+        std::cout << "Size of resized output color stream " << resized_op.size() << std::endl;
+
         cv::Mat overlay_dest;
-        // cv::addWeighted(*output_streams_["color"], 0.6, im_color, 0.3, 0.0, overlay_dest);
+        cv::addWeighted(resized_op, 0.6, im_color, 0.3, 0.0, overlay_dest);
         
-        cv::imshow("colored overlap view", im_color);
-        cv::imshow("right view", *output_streams_["right"]);
+        cv::imshow("colored overlap view", overlay_dest);
+        // cv::imshow("right view", *output_streams_["right"]);
         cv::imshow("depth view", *output_streams_["depth"]);
         // cv::imshow("color view", *output_streams_["color"]);
 
