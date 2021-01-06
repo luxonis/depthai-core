@@ -71,7 +71,7 @@ private:
     int mono_height_;
 
     std::unordered_map<std::string, CV_mat_ptr> image_stream_holder_;
-
+    CV_mat_ptr yuv_;
     /* 
      * Fetches the width and height of the color and stereo 
      * frames from the config.

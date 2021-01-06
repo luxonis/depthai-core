@@ -88,8 +88,8 @@ void DepthAI::create_frame_holders()
                     image_stream_holder_["previewout"] = img;
                 }
                 if (name == "color") {
-                    std::cout << "alloc failed ->" << rgb_height_ << " " << rgb_width_ << std::endl;
                     CV_mat_ptr img = std::make_shared<cv::Mat>(rgb_height_, rgb_width_, CV_8UC3);
+                    yuv_ = std::make_shared<cv::Mat>(rgb_height_ * 3 / 2, rgb_width_, CV_8UC1);
                     image_stream_holder_["color"] = img;
                 } else if (name == "depth") {
                     CV_mat_ptr img = std::make_shared<cv::Mat>(mono_height_, mono_width_, CV_16UC1);
@@ -127,10 +127,9 @@ void DepthAI::get_streams(std::unordered_map<std::string, CV_mat_ptr>& output_st
                 const auto& received_data = sub_packet->getData();
                 if (sub_packet->stream_name == "color") {
 
-                    cv::Mat yuv(rgb_height_ * 3 / 2, rgb_width_, CV_8UC1);
-                    unsigned char* img_ptr = reinterpret_cast<unsigned char*>(yuv.data);
+                    unsigned char* img_ptr = reinterpret_cast<unsigned char*>(yuv_->data);
                     memcpy(img_ptr, received_data, sub_packet->size());
-                    cv::cvtColor(yuv, *(it->second), cv::COLOR_YUV2BGR_IYUV);
+                    cv::cvtColor(*yuv_, *(it->second), cv::COLOR_YUV2BGR_IYUV);
 
                 } else {
                     unsigned char* img_ptr = reinterpret_cast<unsigned char*>((it->second)->data);
@@ -143,10 +142,8 @@ void DepthAI::get_streams(std::unordered_map<std::string, CV_mat_ptr>& output_st
             }
         }
     }
-    std::cout << "hhihii 222-->>" << std::endl;
 
     output_streams = image_stream_holder_;
-    std::cout << "hhihii finished" << std::endl;
 }
 
 } // namespace DepthAI
