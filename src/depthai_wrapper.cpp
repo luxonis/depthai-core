@@ -2,6 +2,7 @@
 #include <fstream>
 #include <sstream>
 #include <unordered_set>
+#include <chrono>
 
 namespace DepthAI {
 
@@ -113,7 +114,7 @@ void DepthAI::create_frame_holders()
 // TODO(sachin): modify it using a struct to include time stamps and not loose frames.
 
 void DepthAI::get_streams(std::unordered_map<std::string, CV_mat_ptr>& output_streams)
-{
+{   int rte = 0;
     int count = image_stream_holder_.size();
     std::unordered_set<std::string> dirty_check;
     while (count) { // count and dirty check is used incase same stream appears twice before other streams.
@@ -126,11 +127,11 @@ void DepthAI::get_streams(std::unordered_map<std::string, CV_mat_ptr>& output_st
 
                 const auto& received_data = sub_packet->getData();
                 if (sub_packet->stream_name == "color") {
-
+                    rte += 1;
                     unsigned char* img_ptr = reinterpret_cast<unsigned char*>(yuv_->data);
                     memcpy(img_ptr, received_data, sub_packet->size());
                     cv::cvtColor(*yuv_, *(it->second), cv::COLOR_YUV2BGR_IYUV);
-
+                    
                 } else {
                     unsigned char* img_ptr = reinterpret_cast<unsigned char*>((it->second)->data);
                     memcpy(img_ptr, received_data, sub_packet->size());
