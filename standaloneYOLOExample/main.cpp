@@ -14,7 +14,6 @@
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/MyProducer.hpp"
 #include "depthai/pipeline/node/VideoEncoder.hpp"
-#include "depthai/pipeline/node/CommonObjDet.hpp"
 #include "depthai/pipeline/node/ImageManip.hpp"
 #include "depthai/pipeline/node/StereoDepth.hpp"
 #include "depthai/pipeline/node/DetectionNetwork.hpp"
@@ -80,64 +79,11 @@ dai::Pipeline createDetectionNetwork(std::string nnPath){
     return p;
 }
 
-void startDetectionNetwork(std::string nnPath){
+
+void flashNNYOLO(std::string nnPath){
     using namespace std;
 
     dai::Pipeline p = createDetectionNetwork(nnPath);
-
-    dai::Device d(p);
-    d.startPipeline();
-
-    while(1){
-        usleep(1000000);
-    }
-}
-
-
-
-
-dai::Pipeline createNNPipelineYOLO(std::string nnPath, std::string nnConfigPath){
-    dai::Pipeline p;
-
-    // set up NN node
-    auto nn1 = p.create<dai::node::NeuralNetwork>();
-    nn1->setBlobPath(nnPath);
-
-    // set up color camera and link to NN node
-    auto colorCam = p.create<dai::node::ColorCamera>();
-    colorCam->setPreviewSize(416, 416);
-    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    colorCam->setInterleaved(false);
-    colorCam->setCamId(0);
-    colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
-    colorCam->preview.link(nn1->input);
-
-    // testing CommonObjDet 
-    auto commonObjDet = p.create<dai::node::CommonObjDet>();
-    commonObjDet->setStreamName("yolo");
-    commonObjDet->setNNConfigPath(nnConfigPath);
-    nn1->out.link(commonObjDet->input);
-
-    // set up SPI out node and link to nn1
-    auto spiOut = p.create<dai::node::SPIOut>();
-    spiOut->setStreamName("spimetaout");
-    spiOut->setBusId(0);
-    commonObjDet->out.link(spiOut->input);
-//    nn1->out.link(spiOut->input);
-
-    // Watch out for memory usage on the target SPI device. It turns out ESP32 often doesn't have enough contiguous memory to hold a full 300x300 RGB preview image.
-//    auto spiOut2 = p.create<dai::node::SPIOut>();
-//    spiOut2->setStreamName("spipreview");
-//    spiOut2->setBusId(0);
-//    colorCam->preview.link(spiOut2->input);
-
-    return p;
-}
-
-void flashNNYOLO(std::string nnPath, std::string nnConfigPath){
-    using namespace std;
-
-    dai::Pipeline p = createNNPipelineYOLO(nnPath, nnConfigPath);
 
     bool found;
     dai::DeviceInfo devInfo;
@@ -148,16 +94,15 @@ void flashNNYOLO(std::string nnPath, std::string nnConfigPath){
 
         auto progress = [](float p){ printf("Flashing progress: %f\n", 100*p); };
         bootloader.flash(progress, p);
-
     } else {
         cout << "No booted (bootloader) devices found..." << endl;
     }
 }
 
-void startNNYOLO(std::string nnPath, std::string nnConfigPath){
+void startNNYOLO(std::string nnPath){
     using namespace std;
 
-    dai::Pipeline p = createNNPipelineYOLO(nnPath, nnConfigPath);
+    dai::Pipeline p = createDetectionNetwork(nnPath);
 
     dai::Device d(p);
     d.startPipeline();
@@ -173,9 +118,8 @@ int main(int argc, char** argv){
     cout << "Hello Flashing Example!" << endl;
 
     std::string nnPath(argv[1]);
-    std::string configPath(argv[2]);
-//    startNNYOLO(nnPath, configPath);
-//    flashNNYOLO(nnPath, configPath);
-    startDetectionNetwork(nnPath);
+    startNNYOLO(nnPath);
+//    flashNNYOLO(nnPath);
+
     return 0;
 }

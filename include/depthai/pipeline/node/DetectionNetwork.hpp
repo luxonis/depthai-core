@@ -27,7 +27,7 @@ class DetectionNetwork : public Node {
     dai::DetectionNetworkProperties properties;
 
    public:
-    Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}}};
+    Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, true}}};
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, false}}};
 
     void setStreamName(const std::string& name);
