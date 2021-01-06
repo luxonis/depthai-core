@@ -4,6 +4,9 @@
             "name": "depth"
         },
         {
+            "name": "color"
+        },
+        {
             "name": "left"
         },
         {

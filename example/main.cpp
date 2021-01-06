@@ -173,14 +173,13 @@ main()
         // std::cout << "neext -> pcl to depth map" << std::endl;
         Eigen::Matrix3Xf depth_pts = rgb_align.PointCloudToDepthmap(pcl_rgb);
 
-        std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
-        std::cout << "Time difference PointCloudToDepthmap= " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
         // std::chrono::high_resolution_clock::time_point begin = std::chrono::high_resolution_clock::now();
         std::cout << "Size of pcl" << pcl_rgb.rows() << " x " << pcl_rgb.cols() <<   std::endl;
 
         cv::Mat depth_rgb = rgb_align.DepthmapPtsToCVImage(depth_pts);
         // std::cout << "Time difference = " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
-
+        
+        
         std::cout << "Converting to color map " << depth_rgb.rows << " x " << depth_rgb.cols << std::endl;
         for (int i = 0; i < depth_rgb.rows; i++)
         {
@@ -203,6 +202,9 @@ main()
         // cv::imshow("color view", *output_streams_["color"]);
 
         cv::waitKey(1);
+        std::chrono::high_resolution_clock::time_point end = std::chrono::high_resolution_clock::now();
+        std::cout << "Time difference PointCloudToDepthmap= " << std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() << "[µs]" << std::endl;
+      
     }
 
 

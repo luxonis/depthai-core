@@ -146,17 +146,19 @@ void DepthAI::get_streams(std::unordered_map<std::string, CV_mat_ptr>& output_st
         // iterating over the packets to extract all the image streams specified in the config
         for (const auto& sub_packet : std::get<1>(packets)) 
         {   
-            // std::cout << "Stream name :" << sub_packet->stream_name << std::endl;
+            std::cout << "Stream name : " << sub_packet->stream_name << std::endl;
             std::unordered_map<std::string, CV_mat_ptr>::iterator it = image_stream_holder_.find(sub_packet->stream_name);
             if (it != image_stream_holder_.end()) 
             {   
                 
-                const auto& received_data = sub_packet->getData();
+                
                 
                 // std::cout << "Stream size :" << sub_packet->size() << std::endl;
                 
                 if(sub_packet->stream_name == "color") {
+                    std::cout << "hhihii " << rgb_height_ << "x" << rgb_width_ << std::endl;
                     // auto meta = sub_packet->getMetadata();
+                    /*
                     std::cout << "hhihii " << rgb_height_ << "x" << rgb_width_ << std::endl;
                     cv::Mat yuv(rgb_height_ * 3/2, rgb_width_, CV_8UC1);
                     std::cout << sub_packet->size() << "~~~~~~~~~~~~~" << yuv.total() * yuv.elemSize() << std::endl;
@@ -168,22 +170,28 @@ void DepthAI::get_streams(std::unordered_map<std::string, CV_mat_ptr>& output_st
                     std::cout << "hhihii Copy gasilfr " << rgb_height_ << "x" << rgb_width_ << std::endl;
                     std::cout << sub_packet->size() << "xxxxxxx" << sizeof(yuv.data) << std::endl;
                     // cv::cvtColor(yuv, *(it->second), cv::COLOR_YUV2BGR_IYUV);
+                    */
                 }
                 else {
+                    const auto& received_data = sub_packet->getData();
                     unsigned char* img_ptr = reinterpret_cast<unsigned char*>((it->second)->data);
                     memcpy(img_ptr, received_data, sub_packet->size());
                 }
-                
+                 std::cout << "hhihii2222 " << rgb_height_ << "x" << rgb_width_ << std::endl;
                 if (dirty_check.find(sub_packet->stream_name) == dirty_check.end()) 
                 {
+                     std::cout << "hhihii 333333" << rgb_height_ << "x" << rgb_width_ << std::endl;
                     dirty_check.insert(sub_packet->stream_name);
                     count--;
                 }
+                
             }
         }
     }
+    std::cout << "hhihii 222-->>" << std::endl;
 
     output_streams = image_stream_holder_;
+    std::cout << "hhihii finished" << std::endl;
 }
 
 } // namespace DepthAI
