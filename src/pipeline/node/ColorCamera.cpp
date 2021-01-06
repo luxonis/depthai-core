@@ -13,6 +13,7 @@ ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
     properties.previewWidth = 300;
     properties.resolution = ColorCameraProperties::SensorResolution::THE_1080_P;
     properties.fps = 30.0;
+    properties.previewKeepAspectRatio = true;
 }
 
 std::string ColorCamera::getName() const {
@@ -277,6 +278,14 @@ void ColorCamera::setWaitForConfigInput(bool wait) {
 
 bool ColorCamera::getWaitForConfigInput() {
     return properties.inputConfigSync;
+}
+
+void ColorCamera::setPreviewKeepAspectRatio(bool keep) {
+    properties.previewKeepAspectRatio = keep;
+}
+
+bool ColorCamera::getPreviewKeepAspectRatio() {
+    return properties.previewKeepAspectRatio;
 }
 
 }  // namespace node

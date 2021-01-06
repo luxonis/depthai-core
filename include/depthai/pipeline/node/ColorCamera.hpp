@@ -103,6 +103,9 @@ class ColorCamera : public Node {
     // Node properties configuration
     void setWaitForConfigInput(bool wait);
     bool getWaitForConfigInput();
+
+    void setPreviewKeepAspectRatio(bool keep);
+    bool getPreviewKeepAspectRatio();
 };
 
 }  // namespace node
