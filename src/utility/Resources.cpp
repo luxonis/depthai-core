@@ -226,9 +226,7 @@ Resources::Resources() {
         archive_read_support_filter_xz(a);
         archive_read_support_format_tar(a);
         int r = archive_read_open_memory(a, deviceTarXz.begin(), deviceTarXz.size());
-        if(r != ARCHIVE_OK) {
-            // TODO(themarpe) - error handling on libarchive errors
-        }
+        assert(r == ARCHIVE_OK);
 
         auto t2 = steady_clock::now();
 
@@ -248,6 +246,9 @@ Resources::Resources() {
                         readSize = archive_entry_size(entry);
                     }
 
+                    // Record number of bytes actually read
+                    long long finalSize = 0;
+
                     while(true) {
                         // Current size, as a offset to write next data to
                         auto currentSize = resourceMap[resPath].size();
@@ -259,12 +260,19 @@ Resources::Resources() {
                         // Assert that no errors occured
                         assert(size >= 0);
 
+                        // Append number of bytes actually read to finalSize
+                        finalSize += size;
+
                         // All bytes were read
                         if(size == 0) {
                             break;
                         }
                     }
 
+                    // Resize vector to actual read size
+                    resourceMap[resPath].resize(finalSize);
+
+                    // Entry found - go to next required resource
                     break;
                 }
             }
