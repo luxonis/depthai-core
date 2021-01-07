@@ -42,8 +42,8 @@ int main(int argc, char** argv){
     // Start the pipeline
     d.startPipeline();
 
-    auto mjpegQueue = d.getOutputQueue("mjpeg", 8, true);
-    auto previewQueue = d.getOutputQueue("preview", 8, true);
+    auto mjpegQueue = d.getOutputQueue("mjpeg", 8, false);
+    auto previewQueue = d.getOutputQueue("preview", 8, false);
     while(1){
 
         auto t1 = std::chrono::steady_clock::now();            

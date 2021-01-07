@@ -93,12 +93,12 @@ int main(){
     dai::Device d(p);
     d.startPipeline();
 
-    auto leftQueue = d.getOutputQueue("left", 8, true);
-    auto rightQueue = d.getOutputQueue("right", 8, true);
-    auto dispQueue = withDepth ? d.getOutputQueue("disparity", 8, true) : nullptr;
-    auto depthQueue = withDepth ? d.getOutputQueue("depth", 8, true) : nullptr;
-    auto rectifLeftQueue = withDepth ? d.getOutputQueue("rectified_left", 8, true) : nullptr;
-    auto rectifRightQueue = withDepth ? d.getOutputQueue("rectified_right", 8, true) : nullptr;
+    auto leftQueue = d.getOutputQueue("left", 8, false);
+    auto rightQueue = d.getOutputQueue("right", 8, false);
+    auto dispQueue = withDepth ? d.getOutputQueue("disparity", 8, false) : nullptr;
+    auto depthQueue = withDepth ? d.getOutputQueue("depth", 8, false) : nullptr;
+    auto rectifLeftQueue = withDepth ? d.getOutputQueue("rectified_left", 8, false) : nullptr;
+    auto rectifRightQueue = withDepth ? d.getOutputQueue("rectified_right", 8, false) : nullptr;
 
     while (1) {
         auto t1 = std::chrono::steady_clock::now();
