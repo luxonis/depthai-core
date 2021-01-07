@@ -25,6 +25,8 @@ class ColorCamera : public Node {
     Output video{*this, "video", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
     Output preview{*this, "preview", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
     Output still{*this, "still", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output isp{*this, "isp", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output raw{*this, "raw", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     // Set which board socket to use
     void setBoardSocket(CameraBoardSocket boardSocket);
@@ -112,6 +114,8 @@ class ColorCamera : public Node {
 
     void setPreviewKeepAspectRatio(bool keep);
     bool getPreviewKeepAspectRatio();
+
+    void setEnablePreviewStillVideoStreams(bool enable);
 };
 
 }  // namespace node
