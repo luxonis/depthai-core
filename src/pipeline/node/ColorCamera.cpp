@@ -133,7 +133,7 @@ void ColorCamera::setFps(float fps) {
 
 float ColorCamera::getFps() const {
     // if AUTO
-    if(properties.fps == -1 || properties.fps == 0) {
+    if(properties.fps == ColorCameraProperties::AUTO || properties.fps == 0) {
         return 30.0f;
     }
 
@@ -156,7 +156,7 @@ int ColorCamera::getPreviewHeight() const {
 
 // Returns video size
 std::tuple<int, int> ColorCamera::getVideoSize() const {
-    if(properties.videoWidth == -1 || properties.videoHeight == -1) {
+    if(properties.videoWidth == ColorCameraProperties::AUTO || properties.videoHeight == ColorCameraProperties::AUTO) {
         // calculate based on auto
         int maxVideoWidth = 1920;
         int maxVideoHeight = 1080;
@@ -184,7 +184,7 @@ int ColorCamera::getVideoHeight() const {
 // Returns still size
 std::tuple<int, int> ColorCamera::getStillSize() const {
     // Calculate from AUTO
-    if(properties.stillWidth == -1 || properties.stillHeight == -1) {
+    if(properties.stillWidth == ColorCameraProperties::AUTO || properties.stillHeight == ColorCameraProperties::AUTO) {
         int maxStillWidth = 1920;
         int maxStillHeight = 1080;
         if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_4_K) {
@@ -224,10 +224,9 @@ std::tuple<int, int> ColorCamera::getResolutionSize() const {
         case ColorCameraProperties::SensorResolution::THE_12_MP:
             return {4056, 3040};
             break;
-
-        default:
-            break;
     }
+
+    return {1920, 1080};
 }
 
 int ColorCamera::getResolutionWidth() const {
@@ -239,16 +238,16 @@ int ColorCamera::getResolutionHeight() const {
 }
 
 void ColorCamera::sensorCenterCrop() {
-    properties.sensorCropX = -1;
-    properties.sensorCropY = -1;
+    properties.sensorCropX = ColorCameraProperties::AUTO;
+    properties.sensorCropY = ColorCameraProperties::AUTO;
 }
 
 void ColorCamera::setSensorCrop(float x, float y) {
     if(x < 0 || x >= 1) {
-        throw std::invalid_argument("Sensor crop must be specified as normalized value [0:1)");
+        throw std::invalid_argument("Sensor crop x must be specified as normalized value [0:1)");
     }
     if(y < 0 || y >= 1) {
-        throw std::invalid_argument("Sensor crop must be specified as normalized value [0:1)");
+        throw std::invalid_argument("Sensor crop y must be specified as normalized value [0:1)");
     }
     properties.sensorCropX = x;
     properties.sensorCropY = y;
@@ -256,7 +255,7 @@ void ColorCamera::setSensorCrop(float x, float y) {
 
 std::tuple<float, float> ColorCamera::getSensorCrop() const {
     // AUTO - center crop by default
-    if(properties.sensorCropX == -1 || properties.sensorCropY == -1) {
+    if(properties.sensorCropX == ColorCameraProperties::AUTO || properties.sensorCropY == ColorCameraProperties::AUTO) {
         float x = ((getResolutionWidth() - getVideoWidth()) / 2) / getResolutionWidth();
         float y = ((getResolutionHeight() - getVideoHeight()) / 2) / getResolutionHeight();
         return {x, y};

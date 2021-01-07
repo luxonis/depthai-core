@@ -27,11 +27,120 @@ std::shared_ptr<Node> VideoEncoder::clone() {
     return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
-void VideoEncoder::setDefaultProfilePreset(int width, int height, float fps, VideoEncoderProperties::Profile profile) {
+// node properties
+void VideoEncoder::setNumFramesPool(int frames) {
+    properties.numFramesPool = frames;
+}
+
+int VideoEncoder::getNumFramesPool() const {
+    return properties.numFramesPool;
+}
+
+// encoder properties
+void VideoEncoder::setRateControlMode(VideoEncoderProperties::RateControlMode mode) {
+    properties.rateCtrlMode = mode;
+}
+
+void VideoEncoder::setProfile(int width, int height, VideoEncoderProperties::Profile profile) {
+    // Width & height H26x limitations
+    if(profile != VideoEncoderProperties::Profile::MJPEG) {
+        if(width % 8 != 0 || height % 8 != 0) {
+            throw std::invalid_argument("VideoEncoder - Width and height must be multiple of 8 for H26x encoder profile");
+        }
+        if(width > 4096 || height > 4096) {
+            throw std::invalid_argument("VideoEncoder - Width and height must be smaller than 4096 for H26x encoder profile");
+        }
+    } else {
+        // width & height MJPEG limitations
+        if(width % 16 != 0 || height % 2 != 0) {
+            throw std::invalid_argument("VideoEncoder - Width must be multiple of 16 and height multiple of 2 for MJPEG encoder profile");
+        }
+        if(width > 16384 || height > 8192) {
+            throw std::invalid_argument("VideoEncoder - Width must be smaller or to 16384 and height to 8192");
+        }
+    }
+
     properties.width = width;
     properties.height = height;
-    properties.frameRate = fps;
     properties.profile = profile;
+}
+
+void VideoEncoder::setBitrate(int bitrate) {
+    properties.bitrate = bitrate;
+    properties.maxBitrate = bitrate;
+}
+
+void VideoEncoder::setKeyframeFrequency(int freq) {
+    properties.keyframeFrequency = freq;
+}
+
+// Max bitrate and bitrate must match
+// void VideoEncoder::setMaxBitrate(int maxBitrateKbps) {
+//    properties.maxBitrate = maxBitrateKbps;
+//}
+
+void VideoEncoder::setNumBFrames(int numBFrames) {
+    properties.numBFrames = numBFrames;
+}
+
+void VideoEncoder::setQuality(int quality) {
+    properties.quality = quality;
+}
+
+void VideoEncoder::setFrameRate(int frameRate) {
+    properties.frameRate = frameRate;
+}
+
+VideoEncoderProperties::RateControlMode VideoEncoder::getRateControlMode() const {
+    return properties.rateCtrlMode;
+}
+
+VideoEncoderProperties::Profile VideoEncoder::getProfile() const {
+    return properties.profile;
+}
+
+int VideoEncoder::getBitrate() const {
+    return properties.bitrate;
+}
+
+int VideoEncoder::getKeyframeFrequency() const {
+    return properties.keyframeFrequency;
+}
+
+// int VideoEncoder::getMaxBitrate() const {
+//    return properties.maxBitrate;
+//}
+
+int VideoEncoder::getNumBFrames() const {
+    return properties.numBFrames;
+}
+
+int VideoEncoder::getQuality() const {
+    return properties.quality;
+}
+
+std::tuple<int, int> VideoEncoder::getSize() const {
+    return {properties.width, properties.height};
+}
+
+int VideoEncoder::getWidth() const {
+    return std::get<0>(getSize());
+}
+
+int VideoEncoder::getHeight() const {
+    return std::get<1>(getSize());
+}
+
+int VideoEncoder::getFrameRate() const {
+    return properties.frameRate;
+}
+
+void VideoEncoder::setDefaultProfilePreset(int width, int height, float fps, VideoEncoderProperties::Profile profile) {
+    // Checks
+
+    // Set properties
+    setProfile(width, height, profile);
+    setFrameRate(fps);
 
     switch(profile) {
         case VideoEncoderProperties::Profile::MJPEG:
@@ -73,98 +182,6 @@ void VideoEncoder::setDefaultProfilePreset(int width, int height, float fps, Vid
 
 void VideoEncoder::setDefaultProfilePreset(std::tuple<int, int> size, float fps, VideoEncoderProperties::Profile profile) {
     setDefaultProfilePreset(std::get<0>(size), std::get<1>(size), fps, profile);
-}
-
-// node properties
-void VideoEncoder::setNumFramesPool(int frames) {
-    properties.numFramesPool = frames;
-}
-
-int VideoEncoder::getNumFramesPool() const {
-    return properties.numFramesPool;
-}
-
-// encoder properties
-void VideoEncoder::setRateControlMode(VideoEncoderProperties::RateControlMode mode) {
-    properties.rateCtrlMode = mode;
-}
-
-void VideoEncoder::setProfile(VideoEncoderProperties::Profile profile) {
-    properties.profile = profile;
-}
-
-void VideoEncoder::setBitrate(int bitrate) {
-    properties.bitrate = bitrate;
-    properties.maxBitrate = bitrate;
-}
-
-void VideoEncoder::setKeyframeFrequency(int freq) {
-    properties.keyframeFrequency = freq;
-}
-
-// Max bitrate and bitrate must match
-// void VideoEncoder::setMaxBitrate(int maxBitrateKbps) {
-//    properties.maxBitrate = maxBitrateKbps;
-//}
-
-void VideoEncoder::setNumBFrames(int numBFrames) {
-    properties.numBFrames = numBFrames;
-}
-
-void VideoEncoder::setQuality(int quality) {
-    properties.quality = quality;
-}
-
-void VideoEncoder::setWidth(int width) {
-    properties.width = width;
-}
-
-void VideoEncoder::setHeight(int height) {
-    properties.height = height;
-}
-
-void VideoEncoder::setFrameRate(int frameRate) {
-    properties.frameRate = frameRate;
-}
-
-VideoEncoderProperties::RateControlMode VideoEncoder::getRateControlMode() const {
-    return properties.rateCtrlMode;
-}
-
-VideoEncoderProperties::Profile VideoEncoder::getProfile() const {
-    return properties.profile;
-}
-
-int VideoEncoder::getBitrate() const {
-    return properties.bitrate;
-}
-
-int VideoEncoder::getKeyframeFrequency() const {
-    return properties.keyframeFrequency;
-}
-
-// int VideoEncoder::getMaxBitrate() const {
-//    return properties.maxBitrate;
-//}
-
-int VideoEncoder::getNumBFrames() const {
-    return properties.numBFrames;
-}
-
-int VideoEncoder::getQuality() const {
-    return properties.quality;
-}
-
-int VideoEncoder::getWidth() const {
-    return properties.width;
-}
-
-int VideoEncoder::getHeight() const {
-    return properties.height;
-}
-
-int VideoEncoder::getFrameRate() const {
-    return properties.frameRate;
 }
 
 }  // namespace node
