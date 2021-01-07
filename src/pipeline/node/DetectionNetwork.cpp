@@ -81,14 +81,14 @@ void DetectionNetwork::setNumPoolFrames(int numFrames) {
 // MobileNet
 //--------------------------------------------------------------------
 MobileNetDetectionNetwork::MobileNetDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : DetectionNetwork(par, nodeId) {
-    properties.nnFamily = (int)DetectionNetworkType::MOBILENET;
+    properties.nnFamily = (uint32_t)DetectionNetworkType::MOBILENET;
 }
 
 //--------------------------------------------------------------------
 // YOLO
 //--------------------------------------------------------------------
 YoloDetectionNetwork::YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : DetectionNetwork(par, nodeId) {
-    properties.nnFamily = (int)DetectionNetworkType::YOLO;
+    properties.nnFamily = (uint32_t)DetectionNetworkType::YOLO;
 }
 
 void YoloDetectionNetwork::setNumClasses(const int numClasses) {
