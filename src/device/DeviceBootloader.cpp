@@ -239,6 +239,12 @@ std::tuple<bool, std::string> DeviceBootloader::flash(std::function<void(float)>
     return flashDepthaiApplicationPackage(progressCb, createDepthaiApplicationPackage(pipeline));
 }
 
+void DeviceBootloader::saveDepthaiApplicationPackage(std::string path, Pipeline& pipeline, std::string pathToCmd) {
+    auto dap = createDepthaiApplicationPackage(pipeline, pathToCmd);
+    std::ofstream outfile(path, std::ios::out | std::ios::binary);
+    outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
+}
+
 std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(std::function<void(float)> progressCb, std::vector<uint8_t> package) {
     streamId_t streamId = connection->getStreamId(bootloader::XLINK_CHANNEL_BOOTLOADER);
 

@@ -76,7 +76,6 @@ class Node {
 
     // when Pipeline tries to serialize and construct on remote, it will check if all connected nodes are on same pipeline
     std::weak_ptr<PipelineImpl> parent;
-    const Id id;
     AssetManager assetManager;
 
     virtual nlohmann::json getProperties() = 0;
@@ -87,6 +86,7 @@ class Node {
     Pipeline getParentPipeline() const;
 
    public:
+    const Id id;
     virtual std::string getName() const = 0;
     virtual std::vector<Output> getOutputs() = 0;
     virtual std::vector<Input> getInputs() = 0;

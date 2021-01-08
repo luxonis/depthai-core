@@ -37,6 +37,7 @@ class DeviceBootloader {
     static std::tuple<bool, DeviceInfo> getFirstAvailableDevice();
     static std::vector<DeviceInfo> getAllAvailableDevices();
     static std::vector<uint8_t> createDepthaiApplicationPackage(Pipeline& pipeline, std::string pathToCmd = "");
+    static void saveDepthaiApplicationPackage(std::string path, Pipeline& pipeline, std::string pathToCmd = "");
     static Version getEmbeddedBootloaderVersion();
     static std::vector<std::uint8_t> getEmbeddedBootloaderBinary();
     ////

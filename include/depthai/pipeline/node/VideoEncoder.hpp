@@ -22,7 +22,9 @@ class VideoEncoder : public Node {
     Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, true}}};
     Output bitstream{*this, "bitstream", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
+    // Sets default options for a specified size and profile
     void setDefaultProfilePreset(int width, int height, float fps, VideoEncoderProperties::Profile profile);
+    void setDefaultProfilePreset(std::tuple<int, int> size, float fps, VideoEncoderProperties::Profile profile);
 
     // node properties
     void setNumFramesPool(int frames);
@@ -30,14 +32,12 @@ class VideoEncoder : public Node {
 
     // encoder properties
     void setRateControlMode(VideoEncoderProperties::RateControlMode mode);
-    void setProfile(VideoEncoderProperties::Profile profile);
+    void setProfile(int width, int height, VideoEncoderProperties::Profile profile);
     void setBitrate(int bitrateKbps);
     void setKeyframeFrequency(int freq);
     // void setMaxBitrate(int maxBitrateKbps);
     void setNumBFrames(int numBFrames);
     void setQuality(int quality);
-    void setWidth(int width);
-    void setHeight(int height);
     void setFrameRate(int frameRate);
 
     VideoEncoderProperties::RateControlMode getRateControlMode() const;
@@ -47,6 +47,7 @@ class VideoEncoder : public Node {
     // int getMaxBitrate() const;
     int getNumBFrames() const;
     int getQuality() const;
+    std::tuple<int, int> getSize() const;
     int getWidth() const;
     int getHeight() const;
     int getFrameRate() const;

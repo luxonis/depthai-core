@@ -31,7 +31,6 @@ int main(){
     colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     colorCam->setInterleaved(false);
     colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
-    colorCam->setCamId(0);
 
     // Create a center crop image manipulation
     imageManip->setCenterCrop(0.7f);
@@ -64,9 +63,9 @@ int main(){
     device.startPipeline();
 
     // Create input & output queues
-    auto previewQueue = device.getOutputQueue("preview", 8, true);
-    auto manipQueue = device.getOutputQueue("manip", 8, true);
-    auto manipQueue2 = device.getOutputQueue("manip2", 8, true);
+    auto previewQueue = device.getOutputQueue("preview", 8, false);
+    auto manipQueue = device.getOutputQueue("manip", 8, false);
+    auto manipQueue2 = device.getOutputQueue("manip2", 8, false);
     auto manip2InQueue = device.getInputQueue("manip2In");
 
     // keep processing data

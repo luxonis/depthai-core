@@ -111,6 +111,7 @@ add_library(${TARGET_NAME}
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
+    src/pipeline/datatype/CameraControl.cpp
     src/pipeline/datatype/NNData.cpp
     src/pipeline/datatype/StreamPacketParser.cpp
     src/utility/Initialization.cpp

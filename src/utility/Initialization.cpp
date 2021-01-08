@@ -40,6 +40,9 @@ bool initialize() {
     auto env_val = spdlog::details::os::getenv("DEPTHAI_LEVEL");
     if(!env_val.empty()) {
         spdlog::cfg::helpers::load_levels(env_val);
+    } else {
+        // Otherwise set default level to WARN
+        spdlog::set_level(spdlog::level::warn);
     }
 
     // auto debugger_val = spdlog::details::os::getenv("DEPTHAI_DEBUGGER");
