@@ -22,16 +22,27 @@ int main(){
     auto xoutLeft  = p.create<dai::node::XLinkOut>();
     auto xoutRight = p.create<dai::node::XLinkOut>();
     auto stereo    = withDepth ? p.create<dai::node::StereoDepth>() : nullptr;
-    auto xoutDisp  = p.create<dai::node::XLinkOut>();
+    // auto xoutDisp  = p.create<dai::node::XLinkOut>();
     auto xoutDepth = p.create<dai::node::XLinkOut>();
     auto xoutRectifL = p.create<dai::node::XLinkOut>();
     auto xoutRectifR = p.create<dai::node::XLinkOut>();
+
+    auto colorCam = p.create<dai::node::ColorCamera>();
+    auto xlinkColorOut = p.create<dai::node::XLinkOut>();
+    xlinkColorOut->setStreamName("video");
+
+    colorCam->setPreviewSize(300, 300);
+    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    colorCam->setInterleaved(true);
+    colorCam->setCamId(0);
+    // Link plugins CAM -> XLINK
+    colorCam->video.link(xlinkColorOut->input);
 
     // XLinkOut
     xoutLeft->setStreamName("left");
     xoutRight->setStreamName("right");
     if (withDepth) {
-        xoutDisp->setStreamName("disparity");
+        // xoutDisp->setStreamName("disparity");
         xoutDepth->setStreamName("depth");
         xoutRectifL->setStreamName("rectified_left");
         xoutRectifR->setStreamName("rectified_right");
@@ -45,11 +56,11 @@ int main(){
     monoRight->setCamId(2);
     //monoRight->setFps(5.0);
 
-    bool outputDepth = false;
-    bool outputRectified = true;
-    bool lrcheck  = true;
+    bool outputDepth = true;
+    bool outputRectified = false;
+    bool lrcheck  = false;
     bool extended = false;
-    bool subpixel = true;
+    bool subpixel = false;
 
     int maxDisp = 96;
     if (extended) maxDisp *= 2;
@@ -80,7 +91,7 @@ int main(){
             stereo->rectifiedLeft.link(xoutRectifL->input);
             stereo->rectifiedRight.link(xoutRectifR->input);
         }
-        stereo->disparity.link(xoutDisp->input);
+        // stereo->disparity.link(xoutDisp->input);
         stereo->depth.link(xoutDepth->input);
 
     } else {
@@ -95,12 +106,15 @@ int main(){
 
     auto leftQueue = d.getOutputQueue("left", 8, true);
     auto rightQueue = d.getOutputQueue("right", 8, true);
-    auto dispQueue = withDepth ? d.getOutputQueue("disparity", 8, true) : nullptr;
+    // auto dispQueue = withDepth ? d.getOutputQueue("disparity", 8, true) : nullptr;
     auto depthQueue = withDepth ? d.getOutputQueue("depth", 8, true) : nullptr;
     auto rectifLeftQueue = withDepth ? d.getOutputQueue("rectified_left", 8, true) : nullptr;
     auto rectifRightQueue = withDepth ? d.getOutputQueue("rectified_right", 8, true) : nullptr;
-
+    auto videoQueue = d.getOutputQueue("video");
+    cv::Mat frame;
+    
     while (1) {
+        
         auto t1 = std::chrono::steady_clock::now();
         auto left = leftQueue->get<dai::ImgFrame>();
         auto t2 = std::chrono::steady_clock::now();
@@ -110,17 +124,18 @@ int main(){
         auto t4 = std::chrono::steady_clock::now();
         cv::imshow("right", cv::Mat(right->getHeight(), right->getWidth(), CV_8UC1, right->getData().data()));
         auto t5 = std::chrono::steady_clock::now();
+        auto imgFrame = videoQueue->get<dai::ImgFrame>();
 
         if (withDepth) {
             // Note: in some configurations (if depth is enabled), disparity may output garbage data
-            auto disparity = dispQueue->get<dai::ImgFrame>();
-            cv::Mat disp(disparity->getHeight(), disparity->getWidth(),
-                    subpixel ? CV_16UC1 : CV_8UC1, disparity->getData().data());
-            disp.convertTo(disp, CV_8UC1, 255.0 / maxDisp); // Extend disparity range
-            cv::imshow("disparity", disp);
-            cv::Mat disp_color;
-            cv::applyColorMap(disp, disp_color, cv::COLORMAP_JET);
-            cv::imshow("disparity_color", disp_color);
+            // auto disparity = dispQueue->get<dai::ImgFrame>();
+            // cv::Mat disp(disparity->getHeight(), disparity->getWidth(),
+            //         subpixel ? CV_16UC1 : CV_8UC1, disparity->getData().data());
+            // disp.convertTo(disp, CV_8UC1, 255.0 / maxDisp); // Extend disparity range
+            // cv::imshow("disparity", disp);
+            // cv::Mat disp_color;
+            // cv::applyColorMap(disp, disp_color, cv::COLORMAP_JET);
+            // cv::imshow("disparity_color", disp_color);
 
             if (outputDepth) {
                 auto depth = depthQueue->get<dai::ImgFrame>();
@@ -136,6 +151,15 @@ int main(){
                 cv::imshow("rectified_right", cv::Mat(rectifR->getHeight(), rectifR->getWidth(),
                         CV_8UC1, rectifR->getData().data()));
             }
+        }
+
+        if(imgFrame){
+            frame = cv::Mat(imgFrame->getHeight() * 3 / 2, imgFrame->getWidth(), CV_8UC1, imgFrame->getData().data());
+            cv::Mat rgb(imgFrame->getHeight(), imgFrame->getWidth(), CV_8UC3);
+            cv::cvtColor(frame, rgb, cv::COLOR_YUV2BGR_NV12);
+            
+            cv::imshow("video", rgb);
+
         }
 
         int ms1 = std::chrono::duration_cast<std::chrono::milliseconds>(t2-t1).count();
