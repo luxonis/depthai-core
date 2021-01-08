@@ -71,3 +71,7 @@ dai_add_example(stereo src/stereo_example.cpp)
 # Image Manip node example
 dai_add_example(image_manip src/image_manip_example.cpp)
 
+# Color Camera config example
+dai_add_example(color_camera_control src/color_camera_control_example.cpp)
+
+

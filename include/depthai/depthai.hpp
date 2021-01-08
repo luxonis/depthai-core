@@ -25,6 +25,7 @@
 
 // Include common datatypes
 #include "pipeline/datatype/Buffer.hpp"
+#include "pipeline/datatype/CameraControl.hpp"
 #include "pipeline/datatype/ImageManipConfig.hpp"
 #include "pipeline/datatype/ImgFrame.hpp"
 #include "pipeline/datatype/NNData.hpp"
