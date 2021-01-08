@@ -26,7 +26,6 @@ dai::Pipeline createNNPipeline(std::string nnPath){
     colorCam->setPreviewSize(300, 300);
     colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     colorCam->setInterleaved(false);
-    colorCam->setCamId(0);
     colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
 
     // Link plugins CAM -> NN -> XLINK

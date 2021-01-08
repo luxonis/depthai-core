@@ -45,6 +45,9 @@ dai_add_example(camera_preview src/camera_preview_example.cpp)
 # Color camera video output example
 dai_add_example(camera_video src/camera_video_example.cpp)
 
+# Mono camera video output example
+dai_add_example(mono_camera src/mono_camera_example.cpp)
+
 # NeuralNetwork node, mobilenet example
 hunter_private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet.blob"
@@ -67,4 +70,8 @@ dai_add_example(stereo src/stereo_example.cpp)
 
 # Image Manip node example
 dai_add_example(image_manip src/image_manip_example.cpp)
+
+# Color Camera config example
+dai_add_example(color_camera_control src/color_camera_control_example.cpp)
+
 

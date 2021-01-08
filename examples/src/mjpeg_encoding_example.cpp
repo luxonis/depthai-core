@@ -28,7 +28,6 @@ int main(int argc, char** argv){
     colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     //colorCam->setFps(5.0);
     colorCam->setInterleaved(true);
-    colorCam->setCamId(0);
 
     // VideoEncoder
     videnc->setDefaultProfilePreset(1920, 1080, 30, dai::VideoEncoderProperties::Profile::MJPEG);
@@ -43,8 +42,8 @@ int main(int argc, char** argv){
     // Start the pipeline
     d.startPipeline();
 
-    auto mjpegQueue = d.getOutputQueue("mjpeg", 8, true);
-    auto previewQueue = d.getOutputQueue("preview", 8, true);
+    auto mjpegQueue = d.getOutputQueue("mjpeg", 8, false);
+    auto previewQueue = d.getOutputQueue("preview", 8, false);
     while(1){
 
         auto t1 = std::chrono::steady_clock::now();            

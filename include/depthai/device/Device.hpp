@@ -50,8 +50,8 @@ class Device {
     LogLevel getLogLevel();
 
     // data queues
-    std::shared_ptr<DataOutputQueue> getOutputQueue(const std::string& name, unsigned int maxSize = 120, bool overwrite = false);
-    std::shared_ptr<DataInputQueue> getInputQueue(const std::string& name, unsigned int maxSize = 120, bool overwrite = false);
+    std::shared_ptr<DataOutputQueue> getOutputQueue(const std::string& name, unsigned int maxSize = 16, bool blocking = true);
+    std::shared_ptr<DataInputQueue> getInputQueue(const std::string& name, unsigned int maxSize = 16, bool blocking = true);
 
     // callback
     void setCallback(const std::string& name, std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb);
