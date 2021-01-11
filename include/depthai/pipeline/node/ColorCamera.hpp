@@ -38,6 +38,12 @@ class ColorCamera : public Node {
     // Get which color camera to use
     [[deprecated("Use 'setBoardSocket()' instead")]] int64_t getCamId() const;
 
+    // Set camera image orientation
+    void setImageOrientation(CameraImageOrientation imageOrientation);
+
+    // Get camera image orientation
+    CameraImageOrientation getImageOrientation() const;
+
     // setColorOrder - RGB or BGR
     void setColorOrder(ColorCameraProperties::ColorOrder colorOrder);
 

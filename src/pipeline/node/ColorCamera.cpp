@@ -7,6 +7,7 @@ namespace node {
 
 ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
     properties.boardSocket = CameraBoardSocket::AUTO;
+    properties.imageOrientation = CameraImageOrientation::AUTO;
     properties.colorOrder = ColorCameraProperties::ColorOrder::BGR;
     properties.interleaved = true;
     properties.previewHeight = 300;
@@ -70,6 +71,17 @@ void ColorCamera::setCamId(int64_t id) {
 // Get which color camera to use
 int64_t ColorCamera::getCamId() const {
     return (int64_t)properties.boardSocket;
+}
+
+// Set camera image orientation
+void ColorCamera::setImageOrientation(CameraImageOrientation imageOrientation) {
+    properties.imageOrientation = imageOrientation;
+}
+
+// Get camera image orientation
+CameraImageOrientation ColorCamera::getImageOrientation() const {
+    // TODO: in case of AUTO, see if possible to return actual value determined by device?
+    return properties.imageOrientation;
 }
 
 // setColorOrder - RGB or BGR
