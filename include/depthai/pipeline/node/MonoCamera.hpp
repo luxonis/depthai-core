@@ -34,6 +34,12 @@ class MonoCamera : public Node {
     // Get which mono camera to use
     [[deprecated("Use 'getBoardSocket()' instead.")]] int64_t getCamId() const;
 
+    // Set camera image orientation
+    void setImageOrientation(CameraImageOrientation imageOrientation);
+
+    // Get camera image orientation
+    CameraImageOrientation getImageOrientation() const;
+
     void setResolution(MonoCameraProperties::SensorResolution resolution);
     MonoCameraProperties::SensorResolution getResolution() const;
 
