@@ -1,6 +1,7 @@
 #pragma once
 
 #include <depthai/pipeline/Node.hpp>
+#include <depthai/pipeline/node/NeuralNetwork.hpp>
 
 #include "depthai/openvino/OpenVINO.hpp"
 
@@ -12,15 +13,11 @@
 
 namespace dai {
 namespace node {
-
-class DetectionNetwork : public Node {
+class DetectionNetwork : public NeuralNetwork {
     std::string getName() const override;
     std::vector<Input> getInputs() override;
     std::vector<Output> getOutputs() override;
     nlohmann::json getProperties() override;
-    std::shared_ptr<Node> clone() override;
-
-    OpenVINO::Version networkOpenvinoVersion;
 
    protected:
     DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
@@ -30,10 +27,11 @@ class DetectionNetwork : public Node {
     Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, true}}};
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, false}}};
 
+    // overridden
+    void setBlobPath(const std::string& path);
+
     void setStreamName(const std::string& name);
     void setConfidenceThreshold(float thresh);
-    void setNNBlobPath(const std::string& path);
-    void setNumPoolFrames(int numFrames);
 };
 
 class MobileNetDetectionNetwork : public DetectionNetwork {

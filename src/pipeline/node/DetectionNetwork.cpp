@@ -11,7 +11,7 @@ namespace node {
 //--------------------------------------------------------------------
 // Base Detection Network Class
 //--------------------------------------------------------------------
-DetectionNetwork::DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
+DetectionNetwork::DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : NeuralNetwork(par, nodeId) {}
 
 std::string DetectionNetwork::getName() const {
     return "DetectionNetwork";
@@ -31,10 +31,6 @@ nlohmann::json DetectionNetwork::getProperties() {
     return j;
 }
 
-std::shared_ptr<Node> DetectionNetwork::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
-}
-
 void DetectionNetwork::setStreamName(const std::string& name) {
     properties.streamName = name;
 }
@@ -43,38 +39,13 @@ void DetectionNetwork::setConfidenceThreshold(float thresh) {
     properties.confidenceThreshold = thresh;
 }
 
+
 // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
-void DetectionNetwork::setNNBlobPath(const std::string& path) {
-    // Each Node has its own asset manager
-
-    // Load blob in blobPath into asset
-    // And mark in properties where to look for it
-    std::ifstream blobStream(path, std::ios::in | std::ios::binary);
-    if(!blobStream.is_open()) throw std::runtime_error("DetectionNetwork node | Blob at path: " + path + " doesn't exist");
-
-    // Create an asset (alignment 64)
-    Asset blobAsset;
-    blobAsset.alignment = 64;
-    blobAsset.data = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(blobStream), {});
-
-    // Read blobs header to determine openvino version
-    BlobReader reader;
-    reader.parse(blobAsset.data);
-    networkOpenvinoVersion = OpenVINO::getBlobLatestSupportedVersion(reader.getVersionMajor(), reader.getVersionMinor());
-
-    // Create asset key
-    std::string assetKey = std::to_string(id) + "/blob";
-
-    // set asset (replaces previous asset without throwing)
-    assetManager.set(assetKey, blobAsset);
-
-    // Set properties URI to asset:id/blob
-    properties.blobUri = std::string("asset:") + assetKey;
-    properties.blobSize = blobAsset.data.size();
-}
-
-void DetectionNetwork::setNumPoolFrames(int numFrames) {
-    properties.numFrames = numFrames;
+void DetectionNetwork::setBlobPath(const std::string& path) {
+    blobPath = path;
+    BlobAssetInfo blobInfo = loadBlob(path);
+    properties.blobUri = blobInfo.uri;
+    properties.blobSize = blobInfo.size;
 }
 
 //--------------------------------------------------------------------

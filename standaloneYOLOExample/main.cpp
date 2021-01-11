@@ -39,7 +39,7 @@ dai::Pipeline createDetectionNetwork(std::string nnPath){
     auto detectionNetwork = p.create<dai::node::YoloDetectionNetwork>();
     detectionNetwork->setStreamName("yolo");
     detectionNetwork->setConfidenceThreshold(0.5f);
-    detectionNetwork->setNNBlobPath(nnPath);
+    detectionNetwork->setBlobPath(nnPath);
     detectionNetwork->setNumClasses(80);
     detectionNetwork->setCoordinateSize(4);
     std::vector<float> anchors{ 10,14, 23,27, 37,58, 81,82, 135,169, 344,319 };
@@ -57,7 +57,7 @@ dai::Pipeline createDetectionNetwork(std::string nnPath){
     auto detectionNetwork = p.create<dai::node::MobileNetDetectionNetwork>();
     detectionNetwork->setStreamName("mobilenet");
     detectionNetwork->setConfidenceThreshold(0.5f);
-    detectionNetwork->setNNBlobPath(nnPath);
+    detectionNetwork->setBlobPath(nnPath);
 */
 
     // set up color camera and link to NN node
