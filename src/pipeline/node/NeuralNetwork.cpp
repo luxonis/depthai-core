@@ -66,7 +66,6 @@ BlobAssetInfo NeuralNetwork::loadBlob(const std::string& path) {
     return blobInfo;
 }
 
-
 // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
 void NeuralNetwork::setBlobPath(const std::string& path) {
     blobPath = path;

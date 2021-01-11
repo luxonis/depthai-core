@@ -39,7 +39,6 @@ void DetectionNetwork::setConfidenceThreshold(float thresh) {
     properties.confidenceThreshold = thresh;
 }
 
-
 // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
 void DetectionNetwork::setBlobPath(const std::string& path) {
     blobPath = path;
