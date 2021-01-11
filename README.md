@@ -21,6 +21,7 @@ See [example/CMakeLists.txt](example/CMakeLists.txt)
 ## Building
 
 To build the static version of the library from source perform the following:
+
 `git submodule update --init --recursive`
 
 ```
