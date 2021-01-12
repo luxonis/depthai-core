@@ -29,6 +29,7 @@ dai::Pipeline createMonoPipeline(){
 
 int main(){
     using namespace std;
+    using namespace std::chrono;
 
     // Create pipeline
     dai::Pipeline p = createMonoPipeline();
@@ -46,7 +47,8 @@ int main(){
         auto imgFrame = monoQueue->get<dai::ImgFrame>();
         if(imgFrame){
 
-            printf("Frame - w: %d, h: %d\n", imgFrame->getWidth(), imgFrame->getHeight());
+            int latencyMs = duration_cast<milliseconds>(steady_clock::now() - imgFrame->getTimestamp()).count();
+            printf("Frame - w: %d, h: %d, latency %dms\n", imgFrame->getWidth(), imgFrame->getHeight(), latencyMs);
 
             frame = cv::Mat(imgFrame->getHeight(), imgFrame->getWidth(), CV_8UC1, imgFrame->getData().data());
             

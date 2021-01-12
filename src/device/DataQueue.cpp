@@ -46,6 +46,14 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
                 // parse packet
                 auto data = parsePacketToADatatype(packet);
 
+                // Trace level debugging
+                if(spdlog::get_level() == spdlog::level::trace) {
+                    std::vector<std::uint8_t> metadata;
+                    DatatypeEnum type;
+                    data->getRaw()->serialize(metadata, type);
+                    spdlog::trace("Received message from device - data size: {}, data type: {} data: {}", data->getRaw()->data.size(), type, nlohmann::json::from_msgpack(metadata).dump());
+                }
+
                 // release packet
                 conn->readFromStreamRawRelease(name);
 
@@ -105,7 +113,7 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
         LockingQueue<std::shared_ptr<RawBuffer>>& queue = *pQueueCopy;
 
         try {
-            // open stream with 1B write size (no writing will happen here)
+            // open stream with default XLINK_USB_BUFFER_MAX_SIZE write size
             conn->openStream(name, dai::XLINK_USB_BUFFER_MAX_SIZE);
 
             while(running) {
@@ -120,7 +128,7 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
                     std::vector<std::uint8_t> metadata;
                     DatatypeEnum type;
                     data->serialize(metadata, type);
-                    spdlog::trace("Sending message to device: {} - {}", type, nlohmann::json::from_msgpack(metadata).dump());
+                    spdlog::trace("Sending message to device - data size: {}, data type: {} data: {}", data->data.size(), type, nlohmann::json::from_msgpack(metadata).dump());
                 }
 
                 // serialize
