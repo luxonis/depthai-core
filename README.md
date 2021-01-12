@@ -13,17 +13,30 @@ Linux: `sudo apt install libusb-1.0-0-dev`
 
 ## Using as library
 
-To use this library in your own project you can use cmake add_subdirectory pointing to the root of this repository
- - CMake: add_subdirectory(depthai-core)
-
-See [example/CMakeLists.txt](example/CMakeLists.txt)
+To use this library in your own project you can use CMake `add_subdirectory` pointing to the root of this repository
+Optionally append `EXCLUDE_FROM_ALL` to hide depthai-core related targets, etc...
+```
+add_subdirectory(depthai-core)
+```
+or
+```
+add_subdirectory(depthai-core EXCLUDE_FROM_ALL)
+```
+And at the end link to your target (PUBLIC or PRIVATE depending on your needs)
+```
+target_link_libraries(my-app PUBLIC depthai-core)
+```
 
 ## Building
 
 To build the static version of the library from source perform the following:
 
-`git submodule update --init --recursive`
+Make sure submodules are updated 
+```
+git submodule update --init --recursive
+```
 
+Configure and build
 ```
 mkdir build && cd build
 cmake ..
