@@ -34,7 +34,7 @@ tl::optional<OpenVINO::Version> NeuralNetwork::getRequiredOpenVINOVersion() {
     return networkOpenvinoVersion;
 }
 
-void NeuralNetwork::loadBlob(const std::string& path) {
+BlobAssetInfo NeuralNetwork::loadBlob(const std::string& path) {
     // Each Node has its own asset manager
 
     // Load blob in blobPath into asset
@@ -59,14 +59,19 @@ void NeuralNetwork::loadBlob(const std::string& path) {
     assetManager.set(assetKey, blobAsset);
 
     // Set properties URI to asset:id/blob
-    properties.blobUri = std::string("asset:") + assetKey;
-    properties.blobSize = blobAsset.data.size();
+    BlobAssetInfo blobInfo;
+    blobInfo.uri = std::string("asset:") + assetKey;
+    blobInfo.size = blobAsset.data.size();
+
+    return blobInfo;
 }
 
 // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
 void NeuralNetwork::setBlobPath(const std::string& path) {
     blobPath = path;
-    loadBlob(path);
+    BlobAssetInfo blobInfo = loadBlob(path);
+    properties.blobUri = blobInfo.uri;
+    properties.blobSize = blobInfo.size;
 }
 
 void NeuralNetwork::setNumPoolFrames(int numFrames) {

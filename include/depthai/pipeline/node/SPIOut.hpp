@@ -7,6 +7,7 @@
 
 namespace dai {
 namespace node {
+
 class SPIOut : public Node {
     dai::SPIOutProperties properties;
 

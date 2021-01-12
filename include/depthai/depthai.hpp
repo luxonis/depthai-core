@@ -14,6 +14,7 @@
 
 // Include common nodes
 #include "pipeline/node/ColorCamera.hpp"
+#include "pipeline/node/DetectionNetwork.hpp"
 #include "pipeline/node/ImageManip.hpp"
 #include "pipeline/node/MonoCamera.hpp"
 #include "pipeline/node/NeuralNetwork.hpp"
