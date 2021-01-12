@@ -67,6 +67,17 @@ int64_t MonoCamera::getCamId() const {
     return (int64_t)properties.boardSocket;
 }
 
+// Set camera image orientation
+void MonoCamera::setImageOrientation(CameraImageOrientation imageOrientation) {
+    properties.imageOrientation = imageOrientation;
+}
+
+// Get camera image orientation
+CameraImageOrientation MonoCamera::getImageOrientation() const {
+    // TODO: in case of AUTO, see if possible to return actual value determined by device?
+    return properties.imageOrientation;
+}
+
 void MonoCamera::setResolution(MonoCameraProperties::SensorResolution resolution) {
     properties.resolution = resolution;
 }

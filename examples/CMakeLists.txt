@@ -10,12 +10,16 @@ macro(dai_add_example example_name example_src)
     add_executable("${example_name}" "${example_src}")
     target_link_libraries("${example_name}" PRIVATE utility depthai-core ${OpenCV_LIBS})
 
+    # parse the rest of the arguments
+    set(arguments ${ARGV})
+    list(REMOVE_AT arguments 0 1)
+    message(STATUS "arguments are: ${arguments}")
+    
     # If 'DEPTHAI_TEST_EXAMPLES' is ON, then examples will be part of the test suite
     if(DEPTHAI_TEST_EXAMPLES)
-        add_test(NAME ${example_name} COMMAND ${CMAKE_COMMAND} --trace-expand
-            -DPATH_TO_TEST_EXECUTABLE=$<TARGET_FILE:${example_name}> 
+        add_test(NAME ${example_name} COMMAND ${CMAKE_COMMAND}
             -DTIMEOUT_SECONDS=5
-            -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake
+            -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake $<TARGET_FILE:${example_name}> ${arguments}
         )
         #add_test(NAME ${example_name} COMMAND timeout -s SIGINT -k 10 5 $<TARGET_FILE:${example_name}>)
     endif()
