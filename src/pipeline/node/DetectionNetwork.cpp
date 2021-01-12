@@ -31,10 +31,6 @@ nlohmann::json DetectionNetwork::getProperties() {
     return j;
 }
 
-void DetectionNetwork::setStreamName(const std::string& name) {
-    properties.streamName = name;
-}
-
 void DetectionNetwork::setConfidenceThreshold(float thresh) {
     properties.confidenceThreshold = thresh;
 }

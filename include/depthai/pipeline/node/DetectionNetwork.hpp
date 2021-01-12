@@ -29,8 +29,6 @@ class DetectionNetwork : public NeuralNetwork {
 
     // overridden
     void setBlobPath(const std::string& path);
-
-    void setStreamName(const std::string& name);
     void setConfidenceThreshold(float thresh);
 };
 
