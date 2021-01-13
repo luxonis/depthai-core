@@ -34,7 +34,7 @@ tl::optional<OpenVINO::Version> NeuralNetwork::getRequiredOpenVINOVersion() {
     return networkOpenvinoVersion;
 }
 
-BlobAssetInfo NeuralNetwork::loadBlob(const std::string& path) {
+NeuralNetwork::BlobAssetInfo NeuralNetwork::loadBlob(const std::string& path) {
     // Each Node has its own asset manager
 
     // Load blob in blobPath into asset
