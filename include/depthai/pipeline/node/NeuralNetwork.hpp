@@ -13,7 +13,6 @@ namespace dai {
 namespace node {
 
 class NeuralNetwork : public Node {
-
     dai::NeuralNetworkProperties properties;
 
     std::string getName() const override;
