@@ -67,7 +67,7 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
             conn->closeStream(name);
 
         } catch(const std::exception& ex) {
-            *pExceptionMessageCopy = std::string(ex.what());
+            *pExceptionMessageCopy = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
         }
 
         queue.destruct();
@@ -145,7 +145,7 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
             conn->closeStream(name);
 
         } catch(const std::exception& ex) {
-            *pExceptionMessageCopy = std::string(ex.what());
+            *pExceptionMessageCopy = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
         }
 
         queue.destruct();

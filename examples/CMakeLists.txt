@@ -13,7 +13,6 @@ macro(dai_add_example example_name example_src)
     # parse the rest of the arguments
     set(arguments ${ARGV})
     list(REMOVE_AT arguments 0 1)
-    message(STATUS "arguments are: ${arguments}")
     
     # If 'DEPTHAI_TEST_EXAMPLES' is ON, then examples will be part of the test suite
     if(DEPTHAI_TEST_EXAMPLES)

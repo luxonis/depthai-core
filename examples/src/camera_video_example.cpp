@@ -50,7 +50,7 @@ int main(){
 
             auto dur = steady_clock::now() - imgFrame->getTimestamp();
             
-            printf("Frame - w: %d, h: %d, latency: %dms\n", imgFrame->getWidth(), imgFrame->getHeight(), duration_cast<milliseconds>(dur).count());
+            printf("Frame - w: %d, h: %d, latency: %ldms\n", imgFrame->getWidth(), imgFrame->getHeight(), duration_cast<milliseconds>(dur).count());
 
             frame = cv::Mat(imgFrame->getHeight() * 3 / 2, imgFrame->getWidth(), CV_8UC1, imgFrame->getData().data());
             
