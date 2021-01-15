@@ -27,6 +27,53 @@
 
 namespace dai {
 
+// local static function
+static LogLevel spdlogLevelToLogLevel(spdlog::level::level_enum level, LogLevel defaultValue = LogLevel::OFF) {
+    switch(level) {
+        case spdlog::level::trace:
+            return LogLevel::TRACE;
+        case spdlog::level::debug:
+            return LogLevel::DEBUG;
+        case spdlog::level::info:
+            return LogLevel::INFO;
+        case spdlog::level::warn:
+            return LogLevel::WARN;
+        case spdlog::level::err:
+            return LogLevel::ERR;
+        case spdlog::level::critical:
+            return LogLevel::CRITICAL;
+        case spdlog::level::off:
+            return LogLevel::OFF;
+        // Default
+        case spdlog::level::n_levels:
+        default:
+            return defaultValue;
+            break;
+    }
+    // Default
+    return defaultValue;
+}
+static spdlog::level::level_enum logLevelToSpdlogLevel(LogLevel level, spdlog::level::level_enum defaultValue = spdlog::level::off) {
+    switch(level) {
+        case LogLevel::TRACE:
+            return spdlog::level::trace;
+        case LogLevel::DEBUG:
+            return spdlog::level::debug;
+        case LogLevel::INFO:
+            return spdlog::level::info;
+        case LogLevel::WARN:
+            return spdlog::level::warn;
+        case LogLevel::ERR:
+            return spdlog::level::err;
+        case LogLevel::CRITICAL:
+            return spdlog::level::critical;
+        case LogLevel::OFF:
+            return spdlog::level::off;
+    }
+    // Default
+    return defaultValue;
+}
+
 // static api
 
 // First tries to find UNBOOTED device, then BOOTLOADER device
@@ -100,31 +147,7 @@ void Device::Impl::setPattern(const std::string& pattern) {
 
 void Device::Impl::setLogLevel(LogLevel level) {
     // Converts LogLevel to spdlog and reconfigures logger level
-    spdlog::level::level_enum spdlogLevel = spdlog::level::warn;
-    switch(level) {
-        case dai::LogLevel::TRACE:
-            spdlogLevel = spdlog::level::trace;
-            break;
-        case dai::LogLevel::DEBUG:
-            spdlogLevel = spdlog::level::debug;
-            break;
-        case dai::LogLevel::INFO:
-            spdlogLevel = spdlog::level::info;
-            break;
-        case dai::LogLevel::WARN:
-            spdlogLevel = spdlog::level::warn;
-            break;
-        case dai::LogLevel::ERR:
-            spdlogLevel = spdlog::level::err;
-            break;
-        case dai::LogLevel::CRITICAL:
-            spdlogLevel = spdlog::level::critical;
-            break;
-        case dai::LogLevel::OFF:
-            spdlogLevel = spdlog::level::off;
-            break;
-    }
-
+    auto spdlogLevel = logLevelToSpdlogLevel(level, spdlog::level::warn);
     // Set level for all configured sinks
     logger.set_level(spdlogLevel);
 }
@@ -405,22 +428,10 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
         loggingRunning = false;
     });
 
-    // Set logging level
+    // Set logging level (if DEPTHAI_LEVEL lower than warning, then device is configured accordingly as well)
     if(spdlog::get_level() < spdlog::level::warn) {
-        switch(spdlog::get_level()) {
-            case spdlog::level::trace:
-                setLogLevel(LogLevel::TRACE);
-                break;
-            case spdlog::level::debug:
-                setLogLevel(LogLevel::DEBUG);
-                break;
-            case spdlog::level::info:
-                setLogLevel(LogLevel::INFO);
-                break;
-            default:
-                setLogLevel(LogLevel::WARN);
-                break;
-        }
+        auto level = spdlogLevelToLogLevel(spdlog::get_level());
+        setLogLevel(level);
     } else {
         setLogLevel(LogLevel::WARN);
     }
@@ -455,6 +466,23 @@ void Device::setCallback(const std::string& name, std::function<std::shared_ptr<
         // already exists, replace the callback
         callbackMap.at(name).setCallback(cb);
     }
+}
+
+// Convinience functions for querying current system information
+MemoryInfo Device::getDdrMemoryUsage() {
+    return client->call("getDdrUsage").as<MemoryInfo>();
+}
+
+MemoryInfo Device::getLeonOsHeapUsage() {
+    return client->call("getLeonOsHeapUsage").as<MemoryInfo>();
+}
+
+MemoryInfo Device::getLeonRtHeapUsage() {
+    return client->call("getLeonRtHeapUsage").as<MemoryInfo>();
+}
+
+ChipTemperature Device::getChipTemperature() {
+    return client->call("getChipTemperature").as<ChipTemperature>();
 }
 
 bool Device::isPipelineRunning() {

@@ -2,23 +2,33 @@
 
 // standard
 #include <memory>
+#include <sstream>
 
 // libraries
 #include <XLinkPublicDefines.h>
+#include <spdlog/spdlog.h>
 
 #include <nlohmann/json.hpp>
 
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/pipeline/datatype/CameraControl.hpp"
+#include "depthai/pipeline/datatype/ImageManipConfig.hpp"
+#include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
+#include "depthai/pipeline/datatype/SystemInformation.hpp"
 
 // shared
 #include "depthai-shared/datatype/DatatypeEnum.hpp"
 #include "depthai-shared/datatype/RawBuffer.hpp"
+#include "depthai-shared/datatype/RawCameraControl.hpp"
+#include "depthai-shared/datatype/RawImageManipConfig.hpp"
+#include "depthai-shared/datatype/RawImgDetections.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
 #include "depthai-shared/datatype/RawNNData.hpp"
+#include "depthai-shared/datatype/RawSystemInformation.hpp"
 
 // StreamPacket structure ->  || imgframepixels... , serialized_object, object_type, serialized_object_size ||
 // object_type -> DataType(int), serialized_object_size -> int
@@ -61,12 +71,35 @@ std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
     }
 
     switch(objectType) {
+        case DatatypeEnum::Buffer: {
+            // RawBuffer is special case, no metadata is actually serialized
+            auto pBuf = std::make_shared<RawBuffer>();
+            pBuf->data = std::move(data);
+            return pBuf;
+        } break;
+
         case DatatypeEnum::ImgFrame:
             return parseDatatype<RawImgFrame>(jser, data);
             break;
 
         case DatatypeEnum::NNData:
             return parseDatatype<RawNNData>(jser, data);
+            break;
+
+        case DatatypeEnum::ImageManipConfig:
+            return parseDatatype<RawImageManipConfig>(jser, data);
+            break;
+
+        case DatatypeEnum::CameraControl:
+            return parseDatatype<RawCameraControl>(jser, data);
+            break;
+
+        case DatatypeEnum::ImgDetections:
+            return parseDatatype<RawImgDetections>(jser, data);
+            break;
+
+        case DatatypeEnum::SystemInformation:
+            return parseDatatype<RawSystemInformation>(jser, data);
             break;
 
         default:
@@ -90,15 +123,14 @@ std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
     // copy data part
     std::vector<uint8_t> data(packet->data, packet->data + bufferLength);
 
-    // RawBuffer is special case, no metadata is actually serialized
-    if(objectType == DatatypeEnum::Buffer) {
-        auto pBuf = std::make_shared<RawBuffer>();
-        pBuf->data = std::move(data);
-
-        return std::make_shared<Buffer>(pBuf);
-    }
-
     switch(objectType) {
+        case DatatypeEnum::Buffer: {
+            // RawBuffer is special case, no metadata is actually serialized
+            auto pBuf = std::make_shared<RawBuffer>();
+            pBuf->data = std::move(data);
+            return std::make_shared<Buffer>(pBuf);
+        } break;
+
         case DatatypeEnum::ImgFrame:
             return std::make_shared<ImgFrame>(parseDatatype<RawImgFrame>(jser, data));
             break;
@@ -107,6 +139,22 @@ std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
             return std::make_shared<NNData>(parseDatatype<RawNNData>(jser, data));
             break;
 
+        case DatatypeEnum::ImageManipConfig:
+            return std::make_shared<ImageManipConfig>(parseDatatype<RawImageManipConfig>(jser, data));
+            break;
+
+        case DatatypeEnum::CameraControl:
+            return std::make_shared<CameraControl>(parseDatatype<RawCameraControl>(jser, data));
+            break;
+
+        case DatatypeEnum::ImgDetections:
+            return std::make_shared<ImgDetections>(parseDatatype<RawImgDetections>(jser, data));
+            break;
+
+        case DatatypeEnum::SystemInformation:
+            return std::make_shared<SystemInformation>(parseDatatype<RawSystemInformation>(jser, data));
+            break;
+            
         default:
             throw std::runtime_error("Bad packet, couldn't parse");
             break;

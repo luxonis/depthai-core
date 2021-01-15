@@ -2,7 +2,6 @@
 
 #include "spdlog/fmt/fmt.h"
 
-
 namespace dai {
 
 std::shared_ptr<RawBuffer> ImgFrame::serialize() const {

@@ -430,6 +430,8 @@ std::string XLinkConnection::convertErrorCodeToString(XLinkError_t errorCode) {
             return "X_LINK_ERROR";
         case X_LINK_OUT_OF_MEMORY:
             return "X_LINK_OUT_OF_MEMORY";
+        case X_LINK_NOT_IMPLEMENTED:
+            return "X_LINK_NOT_IMPLEMENTED";
         default:
             return "<UNKNOWN ERROR>";
     }

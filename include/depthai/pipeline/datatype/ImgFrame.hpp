@@ -35,7 +35,6 @@ class ImgFrame : public Buffer {
     void setWidth(unsigned int);
     void setHeight(unsigned int);
     void setType(RawImgFrame::Type);
-
 };
 
 }  // namespace dai

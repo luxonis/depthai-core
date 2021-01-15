@@ -14,6 +14,8 @@
 
 // shared
 #include "depthai-shared/log/LogLevel.hpp"
+#include "depthai-shared/pb/common/ChipTemperature.hpp"
+#include "depthai-shared/pb/common/MemoryInfo.hpp"
 
 // libraries
 #include "nanorpc/core/client.h"
@@ -56,13 +58,11 @@ class Device {
     // callback
     void setCallback(const std::string& name, std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb);
 
-    // bool startTestPipeline(int testId);
-
-    // std::vector<std::string> get_available_streams();
-    // void request_jpeg();
-    // void request_af_trigger();
-    // void request_af_mode(CaptureMetadata::AutofocusMode mode);
-    // std::map<std::string, int> get_nn_to_depth_bbox_mapping();
+    // Convinience functions for querying current system information
+    MemoryInfo getDdrMemoryUsage();
+    MemoryInfo getLeonOsHeapUsage();
+    MemoryInfo getLeonRtHeapUsage();
+    ChipTemperature getChipTemperature();
 
    private:
     // private static
