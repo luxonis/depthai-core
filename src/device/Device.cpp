@@ -296,6 +296,12 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
     client = std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>(
         new nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>([this](nanorpc::core::type::buffer request) {
             std::unique_lock<std::mutex>(this->rpcMutex);
+
+            // Log the request data
+            if(spdlog::get_level() == spdlog::level::trace) {
+                spdlog::trace("RPC: {}", nlohmann::json::from_msgpack(request).dump());
+            }
+
             // Send request to device
             connection->writeToStream(dai::XLINK_CHANNEL_MAIN_RPC, std::move(request));
 

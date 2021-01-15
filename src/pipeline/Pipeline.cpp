@@ -261,7 +261,7 @@ void PipelineImpl::remove(std::shared_ptr<Node> toRemove) {
 
             // 1. Iterate and remove this nodes output connections
             for(auto& kv : nodeConnectionMap) {
-                for (auto it = kv.second.begin(); it != kv.second.end();) { 
+                for(auto it = kv.second.begin(); it != kv.second.end();) {
                     // check if output belongs to 'toRemove' node
                     if(it->outputId == toRemove->id) {
                         // remove this connection from set
