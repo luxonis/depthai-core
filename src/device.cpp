@@ -747,42 +747,54 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
         std::vector<float> calibration_buff(homography_count);
         bool stereo_center_crop = false;
 
-        if (config.depth.calibration_file.empty())
+        
+        if(config.board_config.store_to_eeprom || config.board_config.override_eeprom)
         {
-            std::cout << "depthai: Calibration file is not specified, will use default setting;\n";
+
+            if (config.depth.calibration_file.empty())
+            {   
+                std::cout << "depthai: Calibration file is not specified, Falling back to using calibration from EEPROM.\n" << std::endl;
+                config.board_config.store_to_eeprom = false;
+                config.board_config.override_eeprom = false;
+            }
+            else
+            {
+                HostDataReader calibration_reader;
+                if (!calibration_reader.init(config.depth.calibration_file))
+                {
+                    std::cerr << WARNING "depthai: Error opening calibration file: " << config.depth.calibration_file << "\n" ENDC;
+                    break;
+                }
+
+                const int homography_size = sizeof(float) * homography_count;
+                int sz = calibration_reader.getSize();
+                std::cout << homography_size << std::endl;
+                std::cout << sz << std::endl;
+                
+                if (sz < homography_size) {
+                    if(version < 5 && config.board_config.store_to_eeprom){
+                        std::cerr << WARNING "Calibration file is outdated. Recalibration required before writing to EEPROM." << std::endl << "To continue using old calibration disable('-e') write to EEPROM.";
+                        abort();
+                    }
+                    else{
+                        std::cerr << WARNING "Calibration file size " << sz << ENDC " < smaller than expected, data ignored. May need to recalibrate\n";
+                    }
+                } else {
+                    calibration_reader.readData(reinterpret_cast<unsigned char*>(calibration_buff.data()), homography_size);
+                    int flags_size = sz - homography_size;
+                    if (flags_size > 0) {
+                        assert(flags_size == 1);
+                        calibration_reader.readData(reinterpret_cast<unsigned char*>(&stereo_center_crop), 1);
+                    }
+                }
+            }
         }
         else
         {
-            HostDataReader calibration_reader;
-            std::cout << "Calibration file path is ->" << config.depth.calibration_file << std::endl;
-            if (!calibration_reader.init(config.depth.calibration_file))
-            {
-                std::cerr << WARNING "depthai: Error opening calibration file: " << config.depth.calibration_file << "\n" ENDC;
-                break;
-            }
-
-            const int homography_size = sizeof(float) * homography_count;
-            int sz = calibration_reader.getSize();
-            std::cout << homography_size << std::endl;
-            std::cout << sz << std::endl;
-            
-            if (sz < homography_size) {
-                if(version < 5 && config.board_config.store_to_eeprom){
-                    std::cerr << WARNING "Calibration file is outdated. Recalibration required before writing to EEPROM." << std::endl << "To continue using old calibration disable('-e') write to EEPROM.";
-                    abort();
-                }
-                else{
-                    std::cerr << WARNING "Calibration file size " << sz << ENDC " < smaller than expected, data ignored. May need to recalibrate\n";
-                }
-            } else {
-                calibration_reader.readData(reinterpret_cast<unsigned char*>(calibration_buff.data()), homography_size);
-                int flags_size = sz - homography_size;
-                if (flags_size > 0) {
-                    assert(flags_size == 1);
-                    calibration_reader.readData(reinterpret_cast<unsigned char*>(&stereo_center_crop), 1);
-                }
-            }
+            std::cout << "depthai: Using calibration from stored in EEPROM\n";
         }
+    
+
 
         if(version > 4){
             if(config.mono_cam_config.resolution_h == 800){
