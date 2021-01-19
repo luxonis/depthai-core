@@ -30,7 +30,7 @@ class Device {
    public:
     // constants
     static constexpr std::chrono::seconds DEFAULT_SEARCH_TIME{3};
-    static constexpr std::size_t EVENT_QUEUE_MAXIMUM_SIZE{32768};
+    static constexpr std::size_t EVENT_QUEUE_MAXIMUM_SIZE{2048};
 
     // static API
     template <typename Rep, typename Period>
