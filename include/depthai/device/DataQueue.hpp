@@ -25,6 +25,11 @@ class DataOutputQueue {
     std::shared_ptr<std::string> pExceptionMessage;
     std::string& exceptionMessage;
     std::string streamName;
+    std::shared_ptr<std::mutex> pCallbacksMtx;
+    std::mutex& callbacksMtx;
+    std::shared_ptr<std::unordered_map<int, std::function<void(std::string, std::shared_ptr<ADatatype>)>>> pCallbacks;
+    std::unordered_map<int, std::function<void(std::string, std::shared_ptr<ADatatype>)>>& callbacks;
+    int uniqueCallbackId{0};
 
     // const std::chrono::milliseconds READ_TIMEOUT{500};
 
@@ -32,13 +37,72 @@ class DataOutputQueue {
     DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize = 16, bool blocking = true);
     ~DataOutputQueue();
 
+    /**
+     * Sets queue behaviour when full (maxSize)
+     *
+     * @param blocking Specifies if block or overwrite the oldest message in the queue
+     */
     void setBlocking(bool blocking);
+
+    /**
+     * Gets current queue behaviour when full (maxSize)
+     *
+     * @return true if blocking, false otherwise
+     */
     bool getBlocking() const;
 
+    /**
+     * Sets queue maximum size
+     *
+     * @param maxSize Specifies maximum number of messages in the queue
+     */
     void setMaxSize(unsigned int maxSize);
+
+    /**
+     * Gets queue maximum size
+     *
+     * @return Maximum queue size
+     */
     unsigned int getMaxSize(unsigned int maxSize) const;
 
+    /**
+     * Gets queues name
+     *
+     * @return Queue name
+     */
     std::string getName() const;
+
+    /**
+     * Adds a callback on message received
+     *
+     * @param callback Callback function with queue name and message pointer
+     * @return Callback id
+     */
+    int addCallback(std::function<void(std::string, std::shared_ptr<ADatatype>)>);
+
+    /**
+     * Adds a callback on message received
+     *
+     * @param callback Callback function with message pointer
+     * @return Callback id
+     */
+    int addCallback(std::function<void(std::shared_ptr<ADatatype>)>);
+
+    /**
+     * Adds a callback on message received
+     *
+     * @param callback Callback function without any parameters
+     * @return Callback id
+     */
+    int addCallback(std::function<void()> callback);
+
+    /**
+     * Removes a callback
+     *
+     * @param callbackId Id of callback to be removed
+     * @return true if callback was removed, false otherwise
+     */
+    bool removeCallback(int callbackId);
 
     template <class T>
     bool has() {
@@ -174,14 +238,53 @@ class DataInputQueue {
     DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize = 16, bool blocking = true);
     ~DataInputQueue();
 
+    /**
+     * Sets maximum message size. If message is larger than specified, then an exception is issued.
+     *
+     * @param maxSize Maximum message size to add to queue
+     */
     void setMaxDataSize(std::size_t maxSize);
 
+    /**
+     * Gets maximum queue size.
+     *
+     * @return Maximum message size
+     */
+    std::size_t getMaxDataSize();
+
+    /**
+     * Sets queue behaviour when full (maxSize)
+     *
+     * @param blocking Specifies if block or overwrite the oldest message in the queue
+     */
     void setBlocking(bool blocking);
+
+    /**
+     * Gets current queue behaviour when full (maxSize)
+     *
+     * @return true if blocking, false otherwise
+     */
     bool getBlocking() const;
 
+    /**
+     * Sets queue maximum size
+     *
+     * @param maxSize Specifies maximum number of messages in the queue
+     */
     void setMaxSize(unsigned int maxSize);
+
+    /**
+     * Gets queue maximum size
+     *
+     * @return Maximum queue size
+     */
     unsigned int getMaxSize(unsigned int maxSize) const;
 
+    /**
+     * Gets queues name
+     *
+     * @return Queue name
+     */
     std::string getName() const;
 
     void send(const std::shared_ptr<RawBuffer>& val);

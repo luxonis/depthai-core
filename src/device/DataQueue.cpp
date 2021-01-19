@@ -22,16 +22,24 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
       running(*pRunning),
       pExceptionMessage(std::make_shared<std::string>("")),
       exceptionMessage(*pExceptionMessage),
-      streamName(name) {
+      streamName(name),
+      pCallbacksMtx(std::make_shared<std::mutex>()),
+      callbacksMtx(*pCallbacksMtx),
+      pCallbacks(std::make_shared<std::unordered_map<int, std::function<void(std::string, std::shared_ptr<ADatatype>)>>>()),
+      callbacks(*pCallbacks) {
     // Copies of variables for the detached thread
     std::shared_ptr<std::atomic<bool>> pRunningCopy{pRunning};
     std::shared_ptr<std::string> pExceptionMessageCopy{pExceptionMessage};
     auto pQueueCopy = pQueue;
+    auto pCallbacksMtxCopy = pCallbacksMtx;
+    auto pCallbacksCopy = pCallbacks;
 
     // creates a thread which reads from connection into the queue
-    readingThread = std::thread([name, pRunningCopy, conn, pExceptionMessageCopy, pQueueCopy]() {
-        std::atomic<bool>& running = *pRunningCopy;
-        LockingQueue<std::shared_ptr<ADatatype>>& queue = *pQueueCopy;
+    readingThread = std::thread([name, pRunningCopy, conn, pExceptionMessageCopy, pQueueCopy, pCallbacksMtxCopy, pCallbacksCopy]() {
+        auto& running = *pRunningCopy;
+        auto& queue = *pQueueCopy;
+        auto& callbacksMtx = *pCallbacksMtxCopy;
+        auto& callbacks = *pCallbacksCopy;
 
         std::uint64_t numPacketsRead = 0;
         try {
@@ -65,6 +73,17 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
 
                 // Increment numPacketsRead
                 numPacketsRead++;
+
+                // First check if if not destructed already
+                if(!running) return;
+                // Call callbacks
+                {
+                    std::unique_lock<std::mutex> l(callbacksMtx);
+                    for(const auto& kv : callbacks) {
+                        const auto& callback = kv.second;
+                        callback(name, data);
+                    }
+                }
             }
 
             conn->closeStream(name);
@@ -113,6 +132,42 @@ unsigned int DataOutputQueue::getMaxSize(unsigned int maxSize) const {
 
 std::string DataOutputQueue::getName() const {
     return streamName;
+}
+
+int DataOutputQueue::addCallback(std::function<void(std::string, std::shared_ptr<ADatatype>)> callback) {
+    // Lock first
+    std::unique_lock<std::mutex> l(callbacksMtx);
+
+    // Get unique id
+    int id = uniqueCallbackId++;
+
+    // assign callback
+    callbacks[id] = callback;
+
+    // return id assigned to the callback
+    return id;
+}
+
+int DataOutputQueue::addCallback(std::function<void(std::shared_ptr<ADatatype>)> callback) {
+    // Create a wrapper
+    return addCallback([callback](std::string, std::shared_ptr<ADatatype> message) { callback(message); });
+}
+
+int DataOutputQueue::addCallback(std::function<void()> callback) {
+    // Create a wrapper
+    return addCallback([callback](std::string, std::shared_ptr<ADatatype>) { callback(); });
+}
+
+bool DataOutputQueue::removeCallback(int callbackId) {
+    // Lock first
+    std::unique_lock<std::mutex> l(callbacksMtx);
+
+    // If callback with id 'callbackId' doesn't exists, return false
+    if(callbacks.count(callbackId) == 0) return false;
+
+    // Otherwise erase and return true
+    callbacks.erase(callbackId);
+    return true;
 }
 
 // DATA INPUT QUEUE
@@ -214,6 +269,10 @@ unsigned int DataInputQueue::getMaxSize(unsigned int maxSize) const {
 
 void DataInputQueue::setMaxDataSize(std::size_t maxSize) {
     maxDataSize = maxSize;
+}
+
+std::size_t DataInputQueue::getMaxDataSize() {
+    return maxDataSize;
 }
 
 std::string DataInputQueue::getName() const {

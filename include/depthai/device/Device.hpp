@@ -1,6 +1,8 @@
 #pragma once
 
 // std
+#include <condition_variable>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <type_traits>
@@ -28,6 +30,7 @@ class Device {
    public:
     // constants
     static constexpr std::chrono::seconds DEFAULT_SEARCH_TIME{3};
+    static constexpr std::size_t EVENT_QUEUE_MAXIMUM_SIZE{32768};
 
     // static API
     template <typename Rep, typename Period>
@@ -53,12 +56,100 @@ class Device {
     void setLogLevel(LogLevel level);
     LogLevel getLogLevel();
 
-    // data queues
-    std::shared_ptr<DataOutputQueue> getOutputQueue(const std::string& name, unsigned int maxSize = 16, bool blocking = true);
-    std::shared_ptr<DataInputQueue> getInputQueue(const std::string& name, unsigned int maxSize = 16, bool blocking = true);
+    /**
+     * Gets an output queue corresponding to stream name. If it doesn't exist it throws
+     *
+     * @param name Queue/stream name, created by XLinkOut node
+     * @return Smart pointer to DataOutputQueue
+     */
+    std::shared_ptr<DataOutputQueue> getOutputQueue(const std::string& name);
+
+    /**
+     * Gets a queue corresponding to stream name, if it exists, otherwise it throws. Also sets queue options
+     *
+     * @param name Queue/stream name, set in XLinkOut node
+     * @param maxSize Maximum number of messages in queue
+     * @param blocking Queue behavior once full. True specifies blocking and false overwriting of oldest messages. Default: true
+     * @return Smart pointer to DataOutputQueue
+     */
+    std::shared_ptr<DataOutputQueue> getOutputQueue(const std::string& name, unsigned int maxSize, bool blocking = true);
+
+    /**
+     * Gets an input queue corresponding to stream name. If it doesn't exist it throws
+     *
+     * @param name Queue/stream name, set in XLinkIn node
+     * @return Smart pointer to DataInputQueue
+     */
+    std::shared_ptr<DataInputQueue> getInputQueue(const std::string& name);
+
+    /**
+     * Gets an input queue corresponding to stream name. If it doesn't exist it throws. Also sets queue options
+     *
+     * @param name Queue/stream name, set in XLinkOut node
+     * @param maxSize Maximum number of messages in queue
+     * @param blocking Queue behavior once full. True: blocking, false: overwriting of oldest messages. Default: true
+     * @return Smart pointer to DataInputQueue
+     */
+    std::shared_ptr<DataInputQueue> getInputQueue(const std::string& name, unsigned int maxSize, bool blocking = true);
 
     // callback
     void setCallback(const std::string& name, std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb);
+
+    /**
+     * Gets or waits until any of specified queues has received a message
+     *
+     * @param queueNames Names of queues for which to block
+     * @param maxNumEvents Maximum number of events to remove from queue - Default is unlimited
+     * @param timeout Timeout after which return regardless. If negative then wait is indefinite - Default is -1
+     * @return Names of queues which received messages first
+     */
+    std::vector<std::string> getQueueEvents(const std::vector<std::string>& queueNames,
+                                            std::size_t maxNumEvents = std::numeric_limits<std::size_t>::max(),
+                                            std::chrono::microseconds timeout = std::chrono::microseconds(-1));
+    std::vector<std::string> getQueueEvents(const std::initializer_list<std::string>& queueNames,
+                                            std::size_t maxNumEvents = std::numeric_limits<std::size_t>::max(),
+                                            std::chrono::microseconds timeout = std::chrono::microseconds(-1));
+
+    /**
+     * Gets or waits until specified queue has received a message
+     *
+     * @overload
+     */
+    std::vector<std::string> getQueueEvents(std::string queueName,
+                                            std::size_t maxNumEvents = std::numeric_limits<std::size_t>::max(),
+                                            std::chrono::microseconds timeout = std::chrono::microseconds(-1));
+
+    /**
+     * Gets or waits until any any queue has received a message
+     *
+     * @overload
+     */
+    std::vector<std::string> getQueueEvents(std::size_t maxNumEvents = std::numeric_limits<std::size_t>::max(),
+                                            std::chrono::microseconds timeout = std::chrono::microseconds(-1));
+
+    /**
+     * Gets or waits until any of specified queues has received a message
+     *
+     * @param queueNames Names of queues for which to block
+     * @param timeout Timeout after which return regardless. If negative then wait is indefinite - Default is -1
+     * @return Queue name which received a message first
+     */
+    std::string getQueueEvent(const std::vector<std::string>& queueNames, std::chrono::microseconds timeout = std::chrono::microseconds(-1));
+    std::string getQueueEvent(const std::initializer_list<std::string>& queueNames, std::chrono::microseconds timeout = std::chrono::microseconds(-1));
+
+    /**
+     * Gets or waits until specified queue has received a message
+     *
+     * @overload
+     */
+    std::string getQueueEvent(std::string queueName, std::chrono::microseconds timeout = std::chrono::microseconds(-1));
+
+    /**
+     * Gets or waits until any queue has received a message
+     *
+     * @overload
+     */
+    std::string getQueueEvent(std::chrono::microseconds timeout = std::chrono::microseconds(-1));
 
     // Convinience functions for querying current system information
     MemoryInfo getDdrMemoryUsage();
@@ -80,6 +171,12 @@ class Device {
     std::unordered_map<std::string, std::shared_ptr<DataOutputQueue>> outputQueueMap;
     std::unordered_map<std::string, std::shared_ptr<DataInputQueue>> inputQueueMap;
     std::unordered_map<std::string, CallbackHandler> callbackMap;
+
+    // Event queue
+    std::mutex eventMtx;
+    std::condition_variable eventCv;
+    std::deque<std::string> eventQueue;
+    std::vector<std::string> allQueueNames;
 
     // Watchdog thread
     std::thread watchdogThread;

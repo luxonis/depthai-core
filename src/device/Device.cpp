@@ -82,6 +82,7 @@ template std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono:
 template std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono::milliseconds);
 template std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono::seconds);
 constexpr std::chrono::seconds Device::DEFAULT_SEARCH_TIME;
+constexpr std::size_t Device::EVENT_QUEUE_MAXIMUM_SIZE;
 
 template <typename Rep, typename Period>
 std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono::duration<Rep, Period> timeout) {
@@ -485,8 +486,39 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
         if(xlinkOut != nullptr) {
             // Create DataOutputQueue's
             outputQueueMap[xlinkOut->getStreamName()] = std::make_shared<DataOutputQueue>(connection, xlinkOut->getStreamName());
+
+            // Add callback for events
+            outputQueueMap[xlinkOut->getStreamName()]->addCallback([this](std::string queueName, std::shared_ptr<ADatatype>) {
+                // Lock first
+                std::unique_lock<std::mutex> lock(eventMtx);
+
+                // Check if size is equal or greater than EVENT_QUEUE_MAXIMUM_SIZE
+                if(eventQueue.size() >= EVENT_QUEUE_MAXIMUM_SIZE) {
+                    auto numToRemove = eventQueue.size() - EVENT_QUEUE_MAXIMUM_SIZE + 1;
+                    eventQueue.erase(eventQueue.begin(), eventQueue.begin() + numToRemove);
+                }
+
+                // Add to the end of event queue
+                eventQueue.push_back(queueName);
+
+                // notify the rest
+                eventCv.notify_all();
+            });
+
+            // Add this queue to list
+            allQueueNames.push_back(xlinkOut->getStreamName());
         }
     }
+}
+
+std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name) {
+    // Throw if queue not created
+    // all queues for xlink streams are created upfront
+    if(outputQueueMap.count(name) == 0) {
+        throw std::runtime_error(fmt::format("Queue for stream name '{}' doesn't exist", name));
+    }
+    // Return pointer to this DataQueue
+    return outputQueueMap.at(name);
 }
 
 std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name, unsigned int maxSize, bool blocking) {
@@ -502,6 +534,16 @@ std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name,
 
     // Return pointer to this DataQueue
     return outputQueueMap.at(name);
+}
+
+std::shared_ptr<DataInputQueue> Device::getInputQueue(const std::string& name) {
+    // Throw if queue not created
+    // all queues for xlink streams are created upfront
+    if(inputQueueMap.count(name) == 0) {
+        throw std::runtime_error(fmt::format("Queue for stream name '{}' doesn't exist", name));
+    }
+    // Return pointer to this DataQueue
+    return inputQueueMap.at(name);
 }
 
 std::shared_ptr<DataInputQueue> Device::getInputQueue(const std::string& name, unsigned int maxSize, bool blocking) {
@@ -527,6 +569,81 @@ void Device::setCallback(const std::string& name, std::function<std::shared_ptr<
         // already exists, replace the callback
         callbackMap.at(name).setCallback(cb);
     }
+}
+
+std::vector<std::string> Device::getQueueEvents(const std::vector<std::string>& queueNames, std::size_t maxNumEvents, std::chrono::microseconds timeout) {
+    // Blocking part
+    // lock eventMtx
+    std::unique_lock<std::mutex> lock(eventMtx);
+
+    // Create temporary string which predicate will fill when it finds the event
+    std::vector<std::string> eventsFromQueue;
+    // wait until predicate
+    auto predicate = [this, &queueNames, &eventsFromQueue, &maxNumEvents]() {
+        for(auto it = eventQueue.begin(); it != eventQueue.end();) {
+            bool wasRemoved = false;
+            for(const auto& name : queueNames) {
+                if(name == *it) {
+                    // found one of the events we have specified to wait for
+                    eventsFromQueue.push_back(name);
+                    // remove element from queue
+                    it = eventQueue.erase(it);
+                    wasRemoved = true;
+                    // return and acknowledge the wait prematurelly, if reached maxnumevents
+                    if(eventsFromQueue.size() >= maxNumEvents) {
+                        return true;
+                    }
+                    // breaks as other queue names won't be same as this one
+                    break;
+                }
+            }
+            // If element wasn't removed, move iterator forward, else it was already moved by erase call
+            if(!wasRemoved) ++it;
+        }
+        // After search, if no events were found, return false
+        if(eventsFromQueue.empty()) return false;
+        // Otherwise acknowledge the wait and exit
+        return true;
+    };
+    // If timeout < 0, inifinite, else timeout
+    if(timeout < std::chrono::microseconds(0))
+        eventCv.wait(lock, predicate);
+    else
+        eventCv.wait_for(lock, timeout, predicate);
+
+    // eventFromQueue should now contain the event name
+    return eventsFromQueue;
+}
+
+std::vector<std::string> Device::getQueueEvents(const std::initializer_list<std::string>& queueNames,
+                                                std::size_t maxNumEvents,
+                                                std::chrono::microseconds timeout) {
+    return getQueueEvents(std::vector<std::string>(queueNames), maxNumEvents, timeout);
+}
+
+std::vector<std::string> Device::getQueueEvents(std::string queueName, std::size_t maxNumEvents, std::chrono::microseconds timeout) {
+    return getQueueEvents(std::vector<std::string>{queueName}, maxNumEvents, timeout);
+}
+
+std::vector<std::string> Device::getQueueEvents(std::size_t maxNumEvents, std::chrono::microseconds timeout) {
+    return getQueueEvents(allQueueNames, maxNumEvents, timeout);
+}
+
+std::string Device::getQueueEvent(const std::vector<std::string>& queueNames, std::chrono::microseconds timeout) {
+    auto events = getQueueEvents(queueNames, 1, timeout);
+    if(events.empty()) return "";
+    return events[0];
+}
+std::string Device::getQueueEvent(const std::initializer_list<std::string>& queueNames, std::chrono::microseconds timeout) {
+    return getQueueEvent(std::vector<std::string>{queueNames}, timeout);
+}
+
+std::string Device::getQueueEvent(std::string queueName, std::chrono::microseconds timeout) {
+    return getQueueEvent(std::vector<std::string>{queueName}, timeout);
+}
+
+std::string Device::getQueueEvent(std::chrono::microseconds timeout) {
+    return getQueueEvent(allQueueNames, timeout);
 }
 
 // Convinience functions for querying current system information
