@@ -587,6 +587,19 @@ void Device::setCallback(const std::string& name, std::function<std::shared_ptr<
 }
 
 std::vector<std::string> Device::getQueueEvents(const std::vector<std::string>& queueNames, std::size_t maxNumEvents, std::chrono::microseconds timeout) {
+    // First check if specified queues names are actually opened
+    auto availableQueueNames = getOutputQueueNames();
+    for(const auto& outputQueue : queueNames) {
+        bool found = false;
+        for(const auto& availableQueueName : availableQueueNames) {
+            if(outputQueue == availableQueueName) {
+                found = true;
+                break;
+            }
+        }
+        if(!found) throw std::runtime_error(fmt::format("Queue with name '{}' doesn't exist", outputQueue));
+    }
+
     // Blocking part
     // lock eventMtx
     std::unique_lock<std::mutex> lock(eventMtx);
