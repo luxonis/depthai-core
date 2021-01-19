@@ -777,7 +777,7 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
                         abort();
                     }
                     else{
-                        std::cerr << WARNING "Calibration file size " << sz << ENDC " < smaller than expected, data ignored. May need to recalibrate\n";
+                        std::cerr << WARNING "Calibration file size " << sz << ENDC " < smaller than expected, data ignored. Verify if calibration file is complete and correct or recalibrate\n";
                     }
                 } else {
                     calibration_reader.readData(reinterpret_cast<unsigned char*>(calibration_buff.data()), homography_size);
