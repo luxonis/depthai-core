@@ -633,11 +633,14 @@ std::vector<std::string> Device::getQueueEvents(const std::vector<std::string>& 
         // Otherwise acknowledge the wait and exit
         return true;
     };
-    // If timeout < 0, inifinite, else timeout
-    if(timeout < std::chrono::microseconds(0))
+
+    if(timeout < std::chrono::microseconds(0)){
+        // if timeout < 0, infinite wait time (no timeout)
         eventCv.wait(lock, predicate);
-    else
+    } else {
+        // otherwise respect timeout
         eventCv.wait_for(lock, timeout, predicate);
+    }
 
     // eventFromQueue should now contain the event name
     return eventsFromQueue;
