@@ -75,6 +75,13 @@ class Device {
     std::shared_ptr<DataOutputQueue> getOutputQueue(const std::string& name, unsigned int maxSize, bool blocking = true);
 
     /**
+     * Get all available output queue names
+     *
+     * @return Array of output queue names
+     */
+    std::vector<std::string> getOutputQueueNames() const;
+
+    /**
      * Gets an input queue corresponding to stream name. If it doesn't exist it throws
      *
      * @param name Queue/stream name, set in XLinkIn node
@@ -92,7 +99,13 @@ class Device {
      */
     std::shared_ptr<DataInputQueue> getInputQueue(const std::string& name, unsigned int maxSize, bool blocking = true);
 
-    // callback
+    /**
+     * Get all available input queue names
+     *
+     * @return Array of output queue names
+     */
+    std::vector<std::string> getInputQueueNames() const;
+
     void setCallback(const std::string& name, std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb);
 
     /**
@@ -176,7 +189,6 @@ class Device {
     std::mutex eventMtx;
     std::condition_variable eventCv;
     std::deque<std::string> eventQueue;
-    std::vector<std::string> allQueueNames;
 
     // Watchdog thread
     std::thread watchdogThread;

@@ -504,9 +504,6 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
                 // notify the rest
                 eventCv.notify_all();
             });
-
-            // Add this queue to list
-            allQueueNames.push_back(xlinkOut->getStreamName());
         }
     }
 }
@@ -536,6 +533,15 @@ std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name,
     return outputQueueMap.at(name);
 }
 
+std::vector<std::string> Device::getOutputQueueNames() const {
+    std::vector<std::string> names;
+    names.reserve(outputQueueMap.size());
+    for(const auto& kv : outputQueueMap) {
+        names.push_back(kv.first);
+    }
+    return names;
+}
+
 std::shared_ptr<DataInputQueue> Device::getInputQueue(const std::string& name) {
     // Throw if queue not created
     // all queues for xlink streams are created upfront
@@ -559,6 +565,15 @@ std::shared_ptr<DataInputQueue> Device::getInputQueue(const std::string& name, u
 
     // Return pointer to this DataQueue
     return inputQueueMap.at(name);
+}
+
+std::vector<std::string> Device::getInputQueueNames() const {
+    std::vector<std::string> names;
+    names.reserve(inputQueueMap.size());
+    for(const auto& kv : inputQueueMap) {
+        names.push_back(kv.first);
+    }
+    return names;
 }
 
 void Device::setCallback(const std::string& name, std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb) {
@@ -626,7 +641,7 @@ std::vector<std::string> Device::getQueueEvents(std::string queueName, std::size
 }
 
 std::vector<std::string> Device::getQueueEvents(std::size_t maxNumEvents, std::chrono::microseconds timeout) {
-    return getQueueEvents(allQueueNames, maxNumEvents, timeout);
+    return getQueueEvents(getOutputQueueNames(), maxNumEvents, timeout);
 }
 
 std::string Device::getQueueEvent(const std::vector<std::string>& queueNames, std::chrono::microseconds timeout) {
@@ -643,7 +658,7 @@ std::string Device::getQueueEvent(std::string queueName, std::chrono::microsecon
 }
 
 std::string Device::getQueueEvent(std::chrono::microseconds timeout) {
-    return getQueueEvent(allQueueNames, timeout);
+    return getQueueEvent(getOutputQueueNames(), timeout);
 }
 
 // Convinience functions for querying current system information
