@@ -91,6 +91,26 @@ DataOutputQueue::~DataOutputQueue() {
     readingThread.detach();
 }
 
+void DataOutputQueue::setBlocking(bool blocking) {
+    if(!running) throw std::runtime_error(exceptionMessage.c_str());
+    queue.setBlocking(blocking);
+}
+
+bool DataOutputQueue::getBlocking() const {
+    if(!running) throw std::runtime_error(exceptionMessage.c_str());
+    return queue.getBlocking();
+}
+
+void DataOutputQueue::setMaxSize(unsigned int maxSize) {
+    if(!running) throw std::runtime_error(exceptionMessage.c_str());
+    queue.setMaxSize(maxSize);
+}
+
+unsigned int DataOutputQueue::getMaxSize(unsigned int maxSize) const {
+    if(!running) throw std::runtime_error(exceptionMessage.c_str());
+    return queue.getMaxSize();
+}
+
 std::string DataOutputQueue::getName() const {
     return streamName;
 }
@@ -172,37 +192,68 @@ DataInputQueue::~DataInputQueue() {
     writingThread.detach();
 }
 
+void DataInputQueue::setBlocking(bool blocking) {
+    if(!running) throw std::runtime_error(exceptionMessage.c_str());
+    queue.setBlocking(blocking);
+}
+
+bool DataInputQueue::getBlocking() const {
+    if(!running) throw std::runtime_error(exceptionMessage.c_str());
+    return queue.getBlocking();
+}
+
+void DataInputQueue::setMaxSize(unsigned int maxSize) {
+    if(!running) throw std::runtime_error(exceptionMessage.c_str());
+    queue.setMaxSize(maxSize);
+}
+
+unsigned int DataInputQueue::getMaxSize(unsigned int maxSize) const {
+    if(!running) throw std::runtime_error(exceptionMessage.c_str());
+    return queue.getMaxSize();
+}
+
+void DataInputQueue::setMaxDataSize(std::size_t maxSize) {
+    maxDataSize = maxSize;
+}
+
 std::string DataInputQueue::getName() const {
     return streamName;
 }
 
 void DataInputQueue::send(const std::shared_ptr<RawBuffer>& val) {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
+
+    // Check if stream receiver has enough space for this message
+    if(val->data.size() > maxDataSize) {
+        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", val->data.size(), maxDataSize));
+    }
+
     queue.push(val);
 }
 void DataInputQueue::send(const std::shared_ptr<ADatatype>& val) {
-    if(!running) throw std::runtime_error(exceptionMessage.c_str());
-    queue.push(val->serialize());
+    send(val->serialize());
 }
+
 void DataInputQueue::send(const ADatatype& val) {
-    if(!running) throw std::runtime_error(exceptionMessage.c_str());
-    queue.push(val.serialize());
+    send(val.serialize());
 }
 
 void DataInputQueue::sendSync(const std::shared_ptr<RawBuffer>& val) {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
+
+    // Check if stream receiver has enough space for this message
+    if(val->data.size() > maxDataSize) {
+        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", val->data.size(), maxDataSize));
+    }
+
     queue.waitEmpty();
     queue.push(val);
 }
 void DataInputQueue::sendSync(const std::shared_ptr<ADatatype>& val) {
-    if(!running) throw std::runtime_error(exceptionMessage.c_str());
-    queue.waitEmpty();
-    queue.push(val->serialize());
+    sendSync(val->serialize());
 }
 void DataInputQueue::sendSync(const ADatatype& val) {
-    if(!running) throw std::runtime_error(exceptionMessage.c_str());
-    queue.waitEmpty();
-    queue.push(val.serialize());
+    sendSync(val.serialize());
 }
 
 }  // namespace dai

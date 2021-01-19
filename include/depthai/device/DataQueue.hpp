@@ -32,6 +32,12 @@ class DataOutputQueue {
     DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize = 16, bool blocking = true);
     ~DataOutputQueue();
 
+    void setBlocking(bool blocking);
+    bool getBlocking() const;
+
+    void setMaxSize(unsigned int maxSize);
+    unsigned int getMaxSize(unsigned int maxSize) const;
+
     std::string getName() const;
 
     template <class T>
@@ -162,10 +168,19 @@ class DataInputQueue {
     std::shared_ptr<std::string> pExceptionMessage;
     std::string& exceptionMessage;
     std::string streamName;
+    std::size_t maxDataSize;
 
    public:
     DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize = 16, bool blocking = true);
     ~DataInputQueue();
+
+    void setMaxDataSize(std::size_t maxSize);
+
+    void setBlocking(bool blocking);
+    bool getBlocking() const;
+
+    void setMaxSize(unsigned int maxSize);
+    unsigned int getMaxSize(unsigned int maxSize) const;
 
     std::string getName() const;
 

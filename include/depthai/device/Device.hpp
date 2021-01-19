@@ -26,15 +26,17 @@ namespace dai {
 // Device (RAII), connects to device and maintains watchdog, timesync, ...
 class Device {
    public:
+    // constants
+    static constexpr std::chrono::seconds DEFAULT_SEARCH_TIME{3};
+
     // static API
+    template <typename Rep, typename Period>
+    static std::tuple<bool, DeviceInfo> getAnyAvailableDevice(std::chrono::duration<Rep, Period> timeout);
+    static std::tuple<bool, DeviceInfo> getAnyAvailableDevice();
     static std::tuple<bool, DeviceInfo> getFirstAvailableDevice();
     static std::tuple<bool, DeviceInfo> getDeviceByMxId(std::string mxId);
     static std::vector<DeviceInfo> getAllAvailableDevices();
     static std::vector<std::uint8_t> getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version = Pipeline::DEFAULT_OPENVINO_VERSION);
-
-    // static std::vector<deviceDesc_t> getAllConnectedDevices();
-    // static std::tuple<bool, deviceDesc_t> getFirstAvailableDeviceDesc();
-    /////
 
     explicit Device(const Pipeline& pipeline);
     Device(const Pipeline& pipeline, bool usb2Mode);

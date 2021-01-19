@@ -154,7 +154,7 @@ std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
         case DatatypeEnum::SystemInformation:
             return std::make_shared<SystemInformation>(parseDatatype<RawSystemInformation>(jser, data));
             break;
-            
+
         default:
             throw std::runtime_error("Bad packet, couldn't parse");
             break;

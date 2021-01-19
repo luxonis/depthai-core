@@ -15,6 +15,8 @@
 
 // project
 #include "DeviceLogger.hpp"
+#include "depthai/pipeline/node/XLinkIn.hpp"
+#include "depthai/pipeline/node/XLinkOut.hpp"
 #include "pipeline/Pipeline.hpp"
 #include "utility/BootloaderHelper.hpp"
 #include "utility/Initialization.hpp"
@@ -72,6 +74,50 @@ static spdlog::level::level_enum logLevelToSpdlogLevel(LogLevel level, spdlog::l
     }
     // Default
     return defaultValue;
+}
+
+// Common explicit instantiation, to remove the need to define in header
+template std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono::nanoseconds);
+template std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono::microseconds);
+template std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono::milliseconds);
+template std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono::seconds);
+constexpr std::chrono::seconds Device::DEFAULT_SEARCH_TIME;
+
+template <typename Rep, typename Period>
+std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono::duration<Rep, Period> timeout) {
+    using namespace std::chrono;
+    constexpr auto POOL_SLEEP_TIME = milliseconds(100);
+
+    // First looks for UNBOOTED, then BOOTLOADER, for 'timeout' time
+    auto searchStartTime = steady_clock::now();
+    bool found = false;
+    DeviceInfo deviceInfo;
+    do {
+        for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER}) {
+            std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(searchState);
+            if(found) break;
+        }
+        if(found) break;
+
+        // If 'timeout' < 'POOL_SLEEP_TIME', use 'timeout' as sleep time and then break
+        if(timeout < POOL_SLEEP_TIME) {
+            // sleep for 'timeout'
+            std::this_thread::sleep_for(timeout);
+            break;
+        } else {
+            std::this_thread::sleep_for(POOL_SLEEP_TIME);  // default pool rate
+        }
+    } while(steady_clock::now() - searchStartTime < timeout);
+
+    // If none were found, try BOOTED
+    if(!found) std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(X_LINK_BOOTED);
+
+    return {found, deviceInfo};
+}
+
+// Default overload ('DEFAULT_SEARCH_TIME' timeout)
+std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice() {
+    return getAnyAvailableDevice(DEFAULT_SEARCH_TIME);
 }
 
 // static api
@@ -169,13 +215,10 @@ Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::s
 }
 
 Device::Device(const Pipeline& pipeline) {
-    // Default constructor, gets first unconnected device
-    // First looks for UNBOOTED, then BOOTLOADER then BOOTED
+    // Searches for any available device for 'default' timeout
+
     bool found = false;
-    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_BOOTED}) {
-        std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(searchState);
-        if(found) break;
-    }
+    std::tie(found, deviceInfo) = getAnyAvailableDevice();
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
@@ -183,13 +226,10 @@ Device::Device(const Pipeline& pipeline) {
 }
 
 Device::Device(const Pipeline& pipeline, const char* pathToCmd) {
-    // Default constructor, gets first unconnected device
-    // First looks for UNBOOTED, then BOOTLOADER then BOOTED
+    // Searches for any available device for 'default' timeout
+
     bool found = false;
-    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_BOOTED}) {
-        std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(searchState);
-        if(found) break;
-    }
+    std::tie(found, deviceInfo) = getAnyAvailableDevice();
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
@@ -197,13 +237,9 @@ Device::Device(const Pipeline& pipeline, const char* pathToCmd) {
 }
 
 Device::Device(const Pipeline& pipeline, const std::string& pathToCmd) {
-    // Default constructor, gets first unconnected device
-    // First looks for UNBOOTED, then BOOTLOADER then BOOTED
+    // Searches for any available device for 'default' timeout
     bool found = false;
-    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_BOOTED}) {
-        std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(searchState);
-        if(found) break;
-    }
+    std::tie(found, deviceInfo) = getAnyAvailableDevice();
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
@@ -211,13 +247,9 @@ Device::Device(const Pipeline& pipeline, const std::string& pathToCmd) {
 }
 
 Device::Device(const Pipeline& pipeline, bool usb2Mode) {
-    // Default constructor, gets first unconnected device
-    // First looks for UNBOOTED, then BOOTLOADER then BOOTED
+    // Searches for any available device for 'default' timeout
     bool found = false;
-    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_BOOTED}) {
-        std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(searchState);
-        if(found) break;
-    }
+    std::tie(found, deviceInfo) = getAnyAvailableDevice();
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
@@ -435,33 +467,62 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
     } else {
         setLogLevel(LogLevel::WARN);
     }
+
+    // Open queues upfront, let queues know about data sizes (input queues)
+    // Go through Pipeline and check for 'XLinkIn' and 'XLinkOut' nodes
+    // and create corresponding default queues for them
+    for(const auto& node : pipeline.getAllNodes()) {
+        auto xlinkIn = std::dynamic_pointer_cast<const node::XLinkIn>(node);
+        if(xlinkIn != nullptr) {
+            // Create DataInputQueue's
+            inputQueueMap[xlinkIn->getStreamName()] = std::make_shared<DataInputQueue>(connection, xlinkIn->getStreamName());
+            // set max data size, for more verbosity
+            inputQueueMap[xlinkIn->getStreamName()]->setMaxDataSize(xlinkIn->getMaxDataSize());
+        }
+    }
+    for(const auto& node : pipeline.getAllNodes()) {
+        auto xlinkOut = std::dynamic_pointer_cast<const node::XLinkOut>(node);
+        if(xlinkOut != nullptr) {
+            // Create DataOutputQueue's
+            outputQueueMap[xlinkOut->getStreamName()] = std::make_shared<DataOutputQueue>(connection, xlinkOut->getStreamName());
+        }
+    }
 }
 
 std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name, unsigned int maxSize, bool blocking) {
-    // creates a dataqueue if not yet created
+    // Throw if queue not created
+    // all queues for xlink streams are created upfront
     if(outputQueueMap.count(name) == 0) {
-        outputQueueMap[name] = std::make_shared<DataOutputQueue>(connection, name, maxSize, blocking);
+        throw std::runtime_error(fmt::format("Queue for stream name '{}' doesn't exist", name));
     }
 
-    // else just return the shared ptr to this DataQueue
+    // Modify max size and blocking
+    outputQueueMap.at(name)->setMaxSize(maxSize);
+    outputQueueMap.at(name)->setBlocking(blocking);
+
+    // Return pointer to this DataQueue
     return outputQueueMap.at(name);
 }
 
 std::shared_ptr<DataInputQueue> Device::getInputQueue(const std::string& name, unsigned int maxSize, bool blocking) {
-    // creates a dataqueue if not yet created
+    // Throw if queue not created
+    // all queues for xlink streams are created upfront
     if(inputQueueMap.count(name) == 0) {
-        inputQueueMap[name] = std::make_shared<DataInputQueue>(connection, name, maxSize, blocking);
+        throw std::runtime_error(fmt::format("Queue for stream name '{}' doesn't exist", name));
     }
 
-    // else just return the reference to this DataQueue
+    // Modify max size and blocking
+    inputQueueMap.at(name)->setMaxSize(maxSize);
+    inputQueueMap.at(name)->setBlocking(blocking);
+
+    // Return pointer to this DataQueue
     return inputQueueMap.at(name);
 }
 
 void Device::setCallback(const std::string& name, std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb) {
     // creates a CallbackHandler if not yet created
     if(callbackMap.count(name) == 0) {
-        // inserts (constructs in-place inside map at queues[name] = DataQueue(connection, name))
-        callbackMap.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(connection, name, cb));
+        throw std::runtime_error(fmt::format("Queue for stream name '{}' doesn't exist", name));
     } else {
         // already exists, replace the callback
         callbackMap.at(name).setCallback(cb);
