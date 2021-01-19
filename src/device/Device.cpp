@@ -634,7 +634,7 @@ std::vector<std::string> Device::getQueueEvents(const std::vector<std::string>& 
         return true;
     };
 
-    if(timeout < std::chrono::microseconds(0)){
+    if(timeout < std::chrono::microseconds(0)) {
         // if timeout < 0, infinite wait time (no timeout)
         eventCv.wait(lock, predicate);
     } else {
