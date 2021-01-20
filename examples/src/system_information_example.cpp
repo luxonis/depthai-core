@@ -52,4 +52,6 @@ void printSystemInformation(dai::SystemInformation info){
     const auto& t = info.chipTemperature;
     printf("Chip temperature - average: %.2f, css: %.2f, mss: %.2f, upa0: %.2f, upa1: %.2f\n", t.average, t.css, t.mss, t.upa0, t.upa1);
 
+
+    printf("Cpu usage - Leon OS: %.2f %%, Leon RT: %.2f %%\n", info.cpuLeonOsUsage.average * 100, info.cpuLeonRtUsage.average * 100);
 }

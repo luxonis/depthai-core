@@ -83,6 +83,7 @@ template std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono:
 template std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono::seconds);
 constexpr std::chrono::seconds Device::DEFAULT_SEARCH_TIME;
 constexpr std::size_t Device::EVENT_QUEUE_MAXIMUM_SIZE;
+constexpr float Device::DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ;
 
 template <typename Rep, typename Period>
 std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono::duration<Rep, Period> timeout) {
@@ -469,6 +470,9 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
         setLogLevel(LogLevel::WARN);
     }
 
+    // Sets system inforation logging rate. By default 1s
+    setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
+
     // Open queues upfront, let queues know about data sizes (input queues)
     // Go through Pipeline and check for 'XLinkIn' and 'XLinkOut' nodes
     // and create corresponding default queues for them
@@ -694,6 +698,14 @@ ChipTemperature Device::getChipTemperature() {
     return client->call("getChipTemperature").as<ChipTemperature>();
 }
 
+CpuUsage Device::getLeonOsCpuUsage() {
+    return client->call("getLeonOsCpuUsage").as<CpuUsage>();
+}
+
+CpuUsage Device::getLeonRtCpuUsage() {
+    return client->call("getLeonRtCpuUsage").as<CpuUsage>();
+}
+
 bool Device::isPipelineRunning() {
     return client->call("isPipelineRunning").as<bool>();
 }
@@ -705,6 +717,14 @@ void Device::setLogLevel(LogLevel level) {
 
 LogLevel Device::getLogLevel() {
     return client->call("getLogLevel").as<LogLevel>();
+}
+
+void Device::setSystemInformationLoggingRate(float rateHz) {
+    client->call("setSystemInformationLoggingRate", rateHz);
+}
+
+float Device::getSystemInformationLoggingRate() {
+    return client->call("getSystemInformationLoggingrate").as<float>();
 }
 
 bool Device::startPipeline() {

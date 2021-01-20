@@ -17,6 +17,7 @@
 // shared
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/pb/common/ChipTemperature.hpp"
+#include "depthai-shared/pb/common/CpuUsage.hpp"
 #include "depthai-shared/pb/common/MemoryInfo.hpp"
 
 // libraries
@@ -31,6 +32,7 @@ class Device {
     // constants
     static constexpr std::chrono::seconds DEFAULT_SEARCH_TIME{3};
     static constexpr std::size_t EVENT_QUEUE_MAXIMUM_SIZE{2048};
+    static constexpr float DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ{1.0f};
 
     // static API
     template <typename Rep, typename Period>
@@ -53,8 +55,34 @@ class Device {
     bool isPipelineRunning();
     bool startPipeline();
 
+    /**
+     * Sets the devices logging severity level. By default logs are printed to standard output
+     *
+     * @param level Logging severity level
+     */
     void setLogLevel(LogLevel level);
+
+    /**
+     * Gets current logging severity level of the device.
+     *
+     * @return Logging severity level
+     */
     LogLevel getLogLevel();
+
+    /**
+     * Sets rate of system information logging ("info" severity). Default 1Hz
+     * If parameter is less or equal to zero, then system information logging will be disabled
+     *
+     * @param rateHz Logging rate in Hz
+     */
+    void setSystemInformationLoggingRate(float rateHz);
+
+    /**
+     * Gets current rate of system information logging ("info" severity) in Hz.
+     *
+     * @return Logging rate in Hz
+     */
+    float getSystemInformationLoggingRate();
 
     /**
      * Gets an output queue corresponding to stream name. If it doesn't exist it throws
@@ -164,11 +192,47 @@ class Device {
      */
     std::string getQueueEvent(std::chrono::microseconds timeout = std::chrono::microseconds(-1));
 
-    // Convinience functions for querying current system information
+    /**
+     * Retrieves current DDR memory information from device
+     *
+     * @return Used, remaining and total ddr memory
+     */
     MemoryInfo getDdrMemoryUsage();
+
+    /**
+     * Retrieves current LeonOS heap information from device
+     *
+     * @return Used, remaining and total heap memory
+     */
     MemoryInfo getLeonOsHeapUsage();
+
+    /**
+     * Retrieves current LeonRT heap information from device
+     *
+     * @return Used, remaining and total heap memory
+     */
     MemoryInfo getLeonRtHeapUsage();
+
+    /**
+     * Retrieves current chip temperature as measured by device
+     *
+     * @return Temperature of various onboard sensors
+     */
     ChipTemperature getChipTemperature();
+
+    /**
+     * Retrieves average LeonOS cpu usage
+     *
+     * @return Average CPU usage and sampling duration
+     */
+    CpuUsage getLeonOsCpuUsage();
+
+    /**
+     * Retrieves average LeonRt cpu usage
+     *
+     * @return Average CPU usage and sampling duration
+     */
+    CpuUsage getLeonRtCpuUsage();
 
    private:
     // private static
