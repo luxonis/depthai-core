@@ -686,24 +686,24 @@ MemoryInfo Device::getDdrMemoryUsage() {
     return client->call("getDdrUsage").as<MemoryInfo>();
 }
 
-MemoryInfo Device::getLeonOsHeapUsage() {
-    return client->call("getLeonOsHeapUsage").as<MemoryInfo>();
+MemoryInfo Device::getLeonCssHeapUsage() {
+    return client->call("getLeonCssHeapUsage").as<MemoryInfo>();
 }
 
-MemoryInfo Device::getLeonRtHeapUsage() {
-    return client->call("getLeonRtHeapUsage").as<MemoryInfo>();
+MemoryInfo Device::getLeonMssHeapUsage() {
+    return client->call("getLeonMssHeapUsage").as<MemoryInfo>();
 }
 
 ChipTemperature Device::getChipTemperature() {
     return client->call("getChipTemperature").as<ChipTemperature>();
 }
 
-CpuUsage Device::getLeonOsCpuUsage() {
-    return client->call("getLeonOsCpuUsage").as<CpuUsage>();
+CpuUsage Device::getLeonCssCpuUsage() {
+    return client->call("getLeonCssCpuUsage").as<CpuUsage>();
 }
 
-CpuUsage Device::getLeonRtCpuUsage() {
-    return client->call("getLeonRtCpuUsage").as<CpuUsage>();
+CpuUsage Device::getLeonMssCpuUsage() {
+    return client->call("getLeonMssCpuUsage").as<CpuUsage>();
 }
 
 bool Device::isPipelineRunning() {

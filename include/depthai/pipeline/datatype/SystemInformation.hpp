@@ -18,11 +18,11 @@ class SystemInformation : public Buffer {
     explicit SystemInformation(std::shared_ptr<RawSystemInformation> ptr);
     virtual ~SystemInformation() = default;
 
-    MemoryInfo& memoryDdrUsage;
-    MemoryInfo& memoryLeonOsUsage;
-    MemoryInfo& memoryLeonRtUsage;
-    CpuUsage& cpuLeonOsUsage;
-    CpuUsage& cpuLeonRtUsage;
+    MemoryInfo& ddrMemoryUsage;
+    MemoryInfo& leonCssMemoryUsage;
+    MemoryInfo& leonMssMemoryUsage;
+    CpuUsage& leonCssCpuUsage;
+    CpuUsage& leonMssCpuUsage;
     ChipTemperature& chipTemperature;
 };
 

@@ -200,18 +200,18 @@ class Device {
     MemoryInfo getDdrMemoryUsage();
 
     /**
-     * Retrieves current LeonOS heap information from device
+     * Retrieves current CSS Leon CPU heap information from device
      *
      * @return Used, remaining and total heap memory
      */
-    MemoryInfo getLeonOsHeapUsage();
+    MemoryInfo getLeonCssHeapUsage();
 
     /**
-     * Retrieves current LeonRT heap information from device
+     * Retrieves current MSS Leon CPU heap information from device
      *
      * @return Used, remaining and total heap memory
      */
-    MemoryInfo getLeonRtHeapUsage();
+    MemoryInfo getLeonMssHeapUsage();
 
     /**
      * Retrieves current chip temperature as measured by device
@@ -221,18 +221,18 @@ class Device {
     ChipTemperature getChipTemperature();
 
     /**
-     * Retrieves average LeonOS cpu usage
+     * Retrieves average CSS Leon CPU usage
      *
      * @return Average CPU usage and sampling duration
      */
-    CpuUsage getLeonOsCpuUsage();
+    CpuUsage getLeonCssCpuUsage();
 
     /**
-     * Retrieves average LeonRt cpu usage
+     * Retrieves average MSS Leon CPU usage
      *
      * @return Average CPU usage and sampling duration
      */
-    CpuUsage getLeonRtCpuUsage();
+    CpuUsage getLeonMssCpuUsage();
 
    private:
     // private static
