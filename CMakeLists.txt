@@ -109,11 +109,14 @@ add_library(${TARGET_NAME}
     src/pipeline/node/MyProducer.cpp
     src/pipeline/node/VideoEncoder.cpp
     src/pipeline/node/DetectionNetwork.cpp
+    src/pipeline/node/SystemLogger.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
     src/pipeline/datatype/CameraControl.cpp
     src/pipeline/datatype/NNData.cpp
+    src/pipeline/datatype/ImgDetections.cpp
+    src/pipeline/datatype/SystemInformation.cpp
     src/pipeline/datatype/StreamPacketParser.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp

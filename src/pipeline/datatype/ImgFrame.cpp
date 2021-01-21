@@ -1,19 +1,25 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
+#include "spdlog/fmt/fmt.h"
+
 namespace dai {
 
 std::shared_ptr<RawBuffer> ImgFrame::serialize() const {
     return raw;
 }
 
-ImgFrame::ImgFrame() : Buffer(std::make_shared<RawImgFrame>()), img(*dynamic_cast<RawImgFrame*>(raw.get())) {}
+ImgFrame::ImgFrame() : Buffer(std::make_shared<RawImgFrame>()), img(*dynamic_cast<RawImgFrame*>(raw.get())) {
+    // set timestamp to now
+    setTimestamp(std::chrono::steady_clock::now());
+}
 ImgFrame::ImgFrame(std::shared_ptr<RawImgFrame> ptr) : Buffer(std::move(ptr)), img(*dynamic_cast<RawImgFrame*>(raw.get())) {}
 
 // helpers
 
 // getters
-Timestamp ImgFrame::getTimestamp() const {
-    return img.ts;
+std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> ImgFrame::getTimestamp() const {
+    using namespace std::chrono;
+    return std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration>{seconds(img.ts.sec) + nanoseconds(img.ts.nsec)};
 }
 unsigned int ImgFrame::getInstanceNum() const {
     return img.instanceNum;
@@ -35,8 +41,12 @@ RawImgFrame::Type ImgFrame::getType() const {
 }
 
 // setters
-void ImgFrame::setTimestamp(Timestamp ts) {
-    img.ts = ts;
+void ImgFrame::setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
+    // Set timestamp from timepoint
+    using namespace std::chrono;
+    auto ts = tp.time_since_epoch();
+    img.ts.sec = duration_cast<seconds>(ts).count();
+    img.ts.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
 }
 void ImgFrame::setInstanceNum(unsigned int instanceNum) {
     img.instanceNum = instanceNum;

@@ -23,6 +23,9 @@ class XLinkOut : public Node {
 
     void setStreamName(const std::string& name);
     void setFpsLimit(float fps);
+
+    std::string getStreamName() const;
+    float getFpsLimit() const;
 };
 
 }  // namespace node
