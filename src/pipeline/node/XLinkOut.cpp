@@ -37,5 +37,13 @@ void XLinkOut::setFpsLimit(float fps) {
     properties.maxFpsLimit = fps;
 }
 
+std::string XLinkOut::getStreamName() const {
+    return properties.streamName;
+}
+
+float XLinkOut::getFpsLimit() const {
+    return properties.maxFpsLimit;
+}
+
 }  // namespace node
 }  // namespace dai

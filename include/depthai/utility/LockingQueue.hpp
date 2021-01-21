@@ -9,9 +9,33 @@ template <typename T>
 class LockingQueue {
    public:
     LockingQueue() = default;
-    explicit LockingQueue(int maxSize, bool blocking = true) {
+    explicit LockingQueue(unsigned maxSize, bool blocking = true) {
         this->maxSize = maxSize;
         this->blocking = blocking;
+    }
+
+    void setMaxSize(unsigned sz) {
+        // Lock first
+        std::unique_lock<std::mutex> lock(guard);
+        maxSize = sz;
+    }
+
+    void setBlocking(bool bl) {
+        // Lock first
+        std::unique_lock<std::mutex> lock(guard);
+        blocking = bl;
+    }
+
+    unsigned getMaxSize() const {
+        // Lock first
+        std::unique_lock<std::mutex> lock(guard);
+        return maxSize;
+    }
+
+    bool getBlocking() const {
+        // Lock first
+        std::unique_lock<std::mutex> lock(guard);
+        return blocking;
     }
 
     void destruct() {
@@ -80,7 +104,9 @@ class LockingQueue {
         {
             std::unique_lock<std::mutex> lock(guard);
             if(!blocking) {
-                if(queue.size() >= maxSize) {
+                // if non blocking, remove as many oldest elements as necessary, so next one will fit
+                // necessary if maxSize was changed
+                while(queue.size() >= maxSize) {
                     queue.pop();
                 }
             } else {
@@ -99,7 +125,9 @@ class LockingQueue {
         {
             std::unique_lock<std::mutex> lock(guard);
             if(!blocking) {
-                if(queue.size() >= maxSize) {
+                // if non blocking, remove as many oldest elements as necessary, so next one will fit
+                // necessary if maxSize was changed
+                while(queue.size() >= maxSize) {
                     queue.pop();
                 }
             } else {

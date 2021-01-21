@@ -24,6 +24,10 @@ class XLinkIn : public Node {
     void setStreamName(const std::string& name);
     void setMaxDataSize(std::uint32_t maxDataSize);
     void setNumFrames(std::uint32_t numFrames);
+
+    std::string getStreamName() const;
+    std::uint32_t getMaxDataSize() const;
+    std::uint32_t getNumFrames() const;
 };
 
 }  // namespace node

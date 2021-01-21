@@ -15,6 +15,8 @@
 
 // project
 #include "DeviceLogger.hpp"
+#include "depthai/pipeline/node/XLinkIn.hpp"
+#include "depthai/pipeline/node/XLinkOut.hpp"
 #include "pipeline/Pipeline.hpp"
 #include "utility/BootloaderHelper.hpp"
 #include "utility/Initialization.hpp"
@@ -26,6 +28,99 @@
 #include "spdlog/spdlog.h"
 
 namespace dai {
+
+// local static function
+static LogLevel spdlogLevelToLogLevel(spdlog::level::level_enum level, LogLevel defaultValue = LogLevel::OFF) {
+    switch(level) {
+        case spdlog::level::trace:
+            return LogLevel::TRACE;
+        case spdlog::level::debug:
+            return LogLevel::DEBUG;
+        case spdlog::level::info:
+            return LogLevel::INFO;
+        case spdlog::level::warn:
+            return LogLevel::WARN;
+        case spdlog::level::err:
+            return LogLevel::ERR;
+        case spdlog::level::critical:
+            return LogLevel::CRITICAL;
+        case spdlog::level::off:
+            return LogLevel::OFF;
+        // Default
+        case spdlog::level::n_levels:
+        default:
+            return defaultValue;
+            break;
+    }
+    // Default
+    return defaultValue;
+}
+static spdlog::level::level_enum logLevelToSpdlogLevel(LogLevel level, spdlog::level::level_enum defaultValue = spdlog::level::off) {
+    switch(level) {
+        case LogLevel::TRACE:
+            return spdlog::level::trace;
+        case LogLevel::DEBUG:
+            return spdlog::level::debug;
+        case LogLevel::INFO:
+            return spdlog::level::info;
+        case LogLevel::WARN:
+            return spdlog::level::warn;
+        case LogLevel::ERR:
+            return spdlog::level::err;
+        case LogLevel::CRITICAL:
+            return spdlog::level::critical;
+        case LogLevel::OFF:
+            return spdlog::level::off;
+    }
+    // Default
+    return defaultValue;
+}
+
+// Common explicit instantiation, to remove the need to define in header
+template std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono::nanoseconds);
+template std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono::microseconds);
+template std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono::milliseconds);
+template std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono::seconds);
+constexpr std::chrono::seconds Device::DEFAULT_SEARCH_TIME;
+constexpr std::size_t Device::EVENT_QUEUE_MAXIMUM_SIZE;
+constexpr float Device::DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ;
+
+template <typename Rep, typename Period>
+std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono::duration<Rep, Period> timeout) {
+    using namespace std::chrono;
+    constexpr auto POOL_SLEEP_TIME = milliseconds(100);
+
+    // First looks for UNBOOTED, then BOOTLOADER, for 'timeout' time
+    auto searchStartTime = steady_clock::now();
+    bool found = false;
+    DeviceInfo deviceInfo;
+    do {
+        for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER}) {
+            std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(searchState);
+            if(found) break;
+        }
+        if(found) break;
+
+        // If 'timeout' < 'POOL_SLEEP_TIME', use 'timeout' as sleep time and then break
+        if(timeout < POOL_SLEEP_TIME) {
+            // sleep for 'timeout'
+            std::this_thread::sleep_for(timeout);
+            break;
+        } else {
+            std::this_thread::sleep_for(POOL_SLEEP_TIME);  // default pool rate
+        }
+    } while(steady_clock::now() - searchStartTime < timeout);
+
+    // If none were found, try BOOTED
+    if(!found) std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(X_LINK_BOOTED);
+
+    return {found, deviceInfo};
+}
+
+// Default overload ('DEFAULT_SEARCH_TIME' timeout)
+std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice() {
+    return getAnyAvailableDevice(DEFAULT_SEARCH_TIME);
+}
 
 // static api
 
@@ -100,31 +195,7 @@ void Device::Impl::setPattern(const std::string& pattern) {
 
 void Device::Impl::setLogLevel(LogLevel level) {
     // Converts LogLevel to spdlog and reconfigures logger level
-    spdlog::level::level_enum spdlogLevel = spdlog::level::warn;
-    switch(level) {
-        case dai::LogLevel::TRACE:
-            spdlogLevel = spdlog::level::trace;
-            break;
-        case dai::LogLevel::DEBUG:
-            spdlogLevel = spdlog::level::debug;
-            break;
-        case dai::LogLevel::INFO:
-            spdlogLevel = spdlog::level::info;
-            break;
-        case dai::LogLevel::WARN:
-            spdlogLevel = spdlog::level::warn;
-            break;
-        case dai::LogLevel::ERR:
-            spdlogLevel = spdlog::level::err;
-            break;
-        case dai::LogLevel::CRITICAL:
-            spdlogLevel = spdlog::level::critical;
-            break;
-        case dai::LogLevel::OFF:
-            spdlogLevel = spdlog::level::off;
-            break;
-    }
-
+    auto spdlogLevel = logLevelToSpdlogLevel(level, spdlog::level::warn);
     // Set level for all configured sinks
     logger.set_level(spdlogLevel);
 }
@@ -146,13 +217,10 @@ Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::s
 }
 
 Device::Device(const Pipeline& pipeline) {
-    // Default constructor, gets first unconnected device
-    // First looks for UNBOOTED, then BOOTLOADER then BOOTED
+    // Searches for any available device for 'default' timeout
+
     bool found = false;
-    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_BOOTED}) {
-        std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(searchState);
-        if(found) break;
-    }
+    std::tie(found, deviceInfo) = getAnyAvailableDevice();
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
@@ -160,13 +228,10 @@ Device::Device(const Pipeline& pipeline) {
 }
 
 Device::Device(const Pipeline& pipeline, const char* pathToCmd) {
-    // Default constructor, gets first unconnected device
-    // First looks for UNBOOTED, then BOOTLOADER then BOOTED
+    // Searches for any available device for 'default' timeout
+
     bool found = false;
-    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_BOOTED}) {
-        std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(searchState);
-        if(found) break;
-    }
+    std::tie(found, deviceInfo) = getAnyAvailableDevice();
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
@@ -174,13 +239,9 @@ Device::Device(const Pipeline& pipeline, const char* pathToCmd) {
 }
 
 Device::Device(const Pipeline& pipeline, const std::string& pathToCmd) {
-    // Default constructor, gets first unconnected device
-    // First looks for UNBOOTED, then BOOTLOADER then BOOTED
+    // Searches for any available device for 'default' timeout
     bool found = false;
-    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_BOOTED}) {
-        std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(searchState);
-        if(found) break;
-    }
+    std::tie(found, deviceInfo) = getAnyAvailableDevice();
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
@@ -188,13 +249,9 @@ Device::Device(const Pipeline& pipeline, const std::string& pathToCmd) {
 }
 
 Device::Device(const Pipeline& pipeline, bool usb2Mode) {
-    // Default constructor, gets first unconnected device
-    // First looks for UNBOOTED, then BOOTLOADER then BOOTED
+    // Searches for any available device for 'default' timeout
     bool found = false;
-    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_BOOTED}) {
-        std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(searchState);
-        if(found) break;
-    }
+    std::tie(found, deviceInfo) = getAnyAvailableDevice();
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
@@ -405,56 +462,248 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
         loggingRunning = false;
     });
 
-    // Set logging level
+    // Set logging level (if DEPTHAI_LEVEL lower than warning, then device is configured accordingly as well)
     if(spdlog::get_level() < spdlog::level::warn) {
-        switch(spdlog::get_level()) {
-            case spdlog::level::trace:
-                setLogLevel(LogLevel::TRACE);
-                break;
-            case spdlog::level::debug:
-                setLogLevel(LogLevel::DEBUG);
-                break;
-            case spdlog::level::info:
-                setLogLevel(LogLevel::INFO);
-                break;
-            default:
-                setLogLevel(LogLevel::WARN);
-                break;
-        }
+        auto level = spdlogLevelToLogLevel(spdlog::get_level());
+        setLogLevel(level);
     } else {
         setLogLevel(LogLevel::WARN);
     }
+
+    // Sets system inforation logging rate. By default 1s
+    setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
+
+    // Open queues upfront, let queues know about data sizes (input queues)
+    // Go through Pipeline and check for 'XLinkIn' and 'XLinkOut' nodes
+    // and create corresponding default queues for them
+    for(const auto& node : pipeline.getAllNodes()) {
+        auto xlinkIn = std::dynamic_pointer_cast<const node::XLinkIn>(node);
+        if(xlinkIn != nullptr) {
+            // Create DataInputQueue's
+            inputQueueMap[xlinkIn->getStreamName()] = std::make_shared<DataInputQueue>(connection, xlinkIn->getStreamName());
+            // set max data size, for more verbosity
+            inputQueueMap[xlinkIn->getStreamName()]->setMaxDataSize(xlinkIn->getMaxDataSize());
+        }
+    }
+    for(const auto& node : pipeline.getAllNodes()) {
+        auto xlinkOut = std::dynamic_pointer_cast<const node::XLinkOut>(node);
+        if(xlinkOut != nullptr) {
+            // Create DataOutputQueue's
+            outputQueueMap[xlinkOut->getStreamName()] = std::make_shared<DataOutputQueue>(connection, xlinkOut->getStreamName());
+
+            // Add callback for events
+            outputQueueMap[xlinkOut->getStreamName()]->addCallback([this](std::string queueName, std::shared_ptr<ADatatype>) {
+                // Lock first
+                std::unique_lock<std::mutex> lock(eventMtx);
+
+                // Check if size is equal or greater than EVENT_QUEUE_MAXIMUM_SIZE
+                if(eventQueue.size() >= EVENT_QUEUE_MAXIMUM_SIZE) {
+                    auto numToRemove = eventQueue.size() - EVENT_QUEUE_MAXIMUM_SIZE + 1;
+                    eventQueue.erase(eventQueue.begin(), eventQueue.begin() + numToRemove);
+                }
+
+                // Add to the end of event queue
+                eventQueue.push_back(queueName);
+
+                // notify the rest
+                eventCv.notify_all();
+            });
+        }
+    }
 }
 
-std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name, unsigned int maxSize, bool blocking) {
-    // creates a dataqueue if not yet created
+std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name) {
+    // Throw if queue not created
+    // all queues for xlink streams are created upfront
     if(outputQueueMap.count(name) == 0) {
-        outputQueueMap[name] = std::make_shared<DataOutputQueue>(connection, name, maxSize, blocking);
+        throw std::runtime_error(fmt::format("Queue for stream name '{}' doesn't exist", name));
     }
-
-    // else just return the shared ptr to this DataQueue
+    // Return pointer to this DataQueue
     return outputQueueMap.at(name);
 }
 
-std::shared_ptr<DataInputQueue> Device::getInputQueue(const std::string& name, unsigned int maxSize, bool blocking) {
-    // creates a dataqueue if not yet created
-    if(inputQueueMap.count(name) == 0) {
-        inputQueueMap[name] = std::make_shared<DataInputQueue>(connection, name, maxSize, blocking);
+std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name, unsigned int maxSize, bool blocking) {
+    // Throw if queue not created
+    // all queues for xlink streams are created upfront
+    if(outputQueueMap.count(name) == 0) {
+        throw std::runtime_error(fmt::format("Queue for stream name '{}' doesn't exist", name));
     }
 
-    // else just return the reference to this DataQueue
+    // Modify max size and blocking
+    outputQueueMap.at(name)->setMaxSize(maxSize);
+    outputQueueMap.at(name)->setBlocking(blocking);
+
+    // Return pointer to this DataQueue
+    return outputQueueMap.at(name);
+}
+
+std::vector<std::string> Device::getOutputQueueNames() const {
+    std::vector<std::string> names;
+    names.reserve(outputQueueMap.size());
+    for(const auto& kv : outputQueueMap) {
+        names.push_back(kv.first);
+    }
+    return names;
+}
+
+std::shared_ptr<DataInputQueue> Device::getInputQueue(const std::string& name) {
+    // Throw if queue not created
+    // all queues for xlink streams are created upfront
+    if(inputQueueMap.count(name) == 0) {
+        throw std::runtime_error(fmt::format("Queue for stream name '{}' doesn't exist", name));
+    }
+    // Return pointer to this DataQueue
     return inputQueueMap.at(name);
+}
+
+std::shared_ptr<DataInputQueue> Device::getInputQueue(const std::string& name, unsigned int maxSize, bool blocking) {
+    // Throw if queue not created
+    // all queues for xlink streams are created upfront
+    if(inputQueueMap.count(name) == 0) {
+        throw std::runtime_error(fmt::format("Queue for stream name '{}' doesn't exist", name));
+    }
+
+    // Modify max size and blocking
+    inputQueueMap.at(name)->setMaxSize(maxSize);
+    inputQueueMap.at(name)->setBlocking(blocking);
+
+    // Return pointer to this DataQueue
+    return inputQueueMap.at(name);
+}
+
+std::vector<std::string> Device::getInputQueueNames() const {
+    std::vector<std::string> names;
+    names.reserve(inputQueueMap.size());
+    for(const auto& kv : inputQueueMap) {
+        names.push_back(kv.first);
+    }
+    return names;
 }
 
 void Device::setCallback(const std::string& name, std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb) {
     // creates a CallbackHandler if not yet created
     if(callbackMap.count(name) == 0) {
-        // inserts (constructs in-place inside map at queues[name] = DataQueue(connection, name))
-        callbackMap.emplace(std::piecewise_construct, std::forward_as_tuple(name), std::forward_as_tuple(connection, name, cb));
+        throw std::runtime_error(fmt::format("Queue for stream name '{}' doesn't exist", name));
     } else {
         // already exists, replace the callback
         callbackMap.at(name).setCallback(cb);
     }
+}
+
+std::vector<std::string> Device::getQueueEvents(const std::vector<std::string>& queueNames, std::size_t maxNumEvents, std::chrono::microseconds timeout) {
+    // First check if specified queues names are actually opened
+    auto availableQueueNames = getOutputQueueNames();
+    for(const auto& outputQueue : queueNames) {
+        bool found = false;
+        for(const auto& availableQueueName : availableQueueNames) {
+            if(outputQueue == availableQueueName) {
+                found = true;
+                break;
+            }
+        }
+        if(!found) throw std::runtime_error(fmt::format("Queue with name '{}' doesn't exist", outputQueue));
+    }
+
+    // Blocking part
+    // lock eventMtx
+    std::unique_lock<std::mutex> lock(eventMtx);
+
+    // Create temporary string which predicate will fill when it finds the event
+    std::vector<std::string> eventsFromQueue;
+    // wait until predicate
+    auto predicate = [this, &queueNames, &eventsFromQueue, &maxNumEvents]() {
+        for(auto it = eventQueue.begin(); it != eventQueue.end();) {
+            bool wasRemoved = false;
+            for(const auto& name : queueNames) {
+                if(name == *it) {
+                    // found one of the events we have specified to wait for
+                    eventsFromQueue.push_back(name);
+                    // remove element from queue
+                    it = eventQueue.erase(it);
+                    wasRemoved = true;
+                    // return and acknowledge the wait prematurelly, if reached maxnumevents
+                    if(eventsFromQueue.size() >= maxNumEvents) {
+                        return true;
+                    }
+                    // breaks as other queue names won't be same as this one
+                    break;
+                }
+            }
+            // If element wasn't removed, move iterator forward, else it was already moved by erase call
+            if(!wasRemoved) ++it;
+        }
+        // After search, if no events were found, return false
+        if(eventsFromQueue.empty()) return false;
+        // Otherwise acknowledge the wait and exit
+        return true;
+    };
+
+    if(timeout < std::chrono::microseconds(0)) {
+        // if timeout < 0, infinite wait time (no timeout)
+        eventCv.wait(lock, predicate);
+    } else {
+        // otherwise respect timeout
+        eventCv.wait_for(lock, timeout, predicate);
+    }
+
+    // eventFromQueue should now contain the event name
+    return eventsFromQueue;
+}
+
+std::vector<std::string> Device::getQueueEvents(const std::initializer_list<std::string>& queueNames,
+                                                std::size_t maxNumEvents,
+                                                std::chrono::microseconds timeout) {
+    return getQueueEvents(std::vector<std::string>(queueNames), maxNumEvents, timeout);
+}
+
+std::vector<std::string> Device::getQueueEvents(std::string queueName, std::size_t maxNumEvents, std::chrono::microseconds timeout) {
+    return getQueueEvents(std::vector<std::string>{queueName}, maxNumEvents, timeout);
+}
+
+std::vector<std::string> Device::getQueueEvents(std::size_t maxNumEvents, std::chrono::microseconds timeout) {
+    return getQueueEvents(getOutputQueueNames(), maxNumEvents, timeout);
+}
+
+std::string Device::getQueueEvent(const std::vector<std::string>& queueNames, std::chrono::microseconds timeout) {
+    auto events = getQueueEvents(queueNames, 1, timeout);
+    if(events.empty()) return "";
+    return events[0];
+}
+std::string Device::getQueueEvent(const std::initializer_list<std::string>& queueNames, std::chrono::microseconds timeout) {
+    return getQueueEvent(std::vector<std::string>{queueNames}, timeout);
+}
+
+std::string Device::getQueueEvent(std::string queueName, std::chrono::microseconds timeout) {
+    return getQueueEvent(std::vector<std::string>{queueName}, timeout);
+}
+
+std::string Device::getQueueEvent(std::chrono::microseconds timeout) {
+    return getQueueEvent(getOutputQueueNames(), timeout);
+}
+
+// Convinience functions for querying current system information
+MemoryInfo Device::getDdrMemoryUsage() {
+    return client->call("getDdrUsage").as<MemoryInfo>();
+}
+
+MemoryInfo Device::getLeonCssHeapUsage() {
+    return client->call("getLeonCssHeapUsage").as<MemoryInfo>();
+}
+
+MemoryInfo Device::getLeonMssHeapUsage() {
+    return client->call("getLeonMssHeapUsage").as<MemoryInfo>();
+}
+
+ChipTemperature Device::getChipTemperature() {
+    return client->call("getChipTemperature").as<ChipTemperature>();
+}
+
+CpuUsage Device::getLeonCssCpuUsage() {
+    return client->call("getLeonCssCpuUsage").as<CpuUsage>();
+}
+
+CpuUsage Device::getLeonMssCpuUsage() {
+    return client->call("getLeonMssCpuUsage").as<CpuUsage>();
 }
 
 bool Device::isPipelineRunning() {
@@ -468,6 +717,14 @@ void Device::setLogLevel(LogLevel level) {
 
 LogLevel Device::getLogLevel() {
     return client->call("getLogLevel").as<LogLevel>();
+}
+
+void Device::setSystemInformationLoggingRate(float rateHz) {
+    client->call("setSystemInformationLoggingRate", rateHz);
+}
+
+float Device::getSystemInformationLoggingRate() {
+    return client->call("getSystemInformationLoggingrate").as<float>();
 }
 
 bool Device::startPipeline() {

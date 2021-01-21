@@ -30,6 +30,7 @@ dai::Pipeline createCameraFullPipeline(){
 
 int main(){
     using namespace std;
+    using namespace std::chrono;
 
     // Create pipeline
     dai::Pipeline p = createCameraFullPipeline();
@@ -47,7 +48,9 @@ int main(){
         auto imgFrame = video->get<dai::ImgFrame>();
         if(imgFrame){
 
-            printf("Frame - w: %d, h: %d\n", imgFrame->getWidth(), imgFrame->getHeight());
+            auto dur = steady_clock::now() - imgFrame->getTimestamp();
+            
+            printf("Frame - w: %d, h: %d, latency: %ldms\n", imgFrame->getWidth(), imgFrame->getHeight(), duration_cast<milliseconds>(dur).count());
 
             frame = cv::Mat(imgFrame->getHeight() * 3 / 2, imgFrame->getWidth(), CV_8UC1, imgFrame->getData().data());
             
