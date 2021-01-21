@@ -31,13 +31,13 @@ if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "^(AppleClang|Clang|GNU)$")
   add_flag(-Wno-gnu-zero-variadic-macro-arguments)   # https://stackoverflow.com/questions/21266380/is-the-gnu-zero-variadic-macro-arguments-safe-to-ignore
 
   # promote to errors
-  add_flag(-Wself-assign-field)  # error if self assign - bugprone
-  add_flag(-Werror-unused-lambda-capture)  # error if lambda capture is unused
-  add_flag(-Werror-return-type)      # warning: control reaches end of non-void function [-Wreturn-type]
-  add_flag(-Werror-non-virtual-dtor) # warn the user if a class with virtual functions has a non-virtual destructor. This helps catch hard to track down memory errors
-  add_flag(-Werror-sign-compare)     # warn the user if they compare a signed and unsigned numbers
-  add_flag(-Werror-reorder)          # field '$1' will be initialized after field '$2'
-  add_flag(-Werror-switch-enum)      # if switch case is missing - error
+  add_flag(-Werror=self-assign-field)  # error if self assign - bugprone
+  add_flag(-Werror=unused-lambda-capture)  # error if lambda capture is unused
+  add_flag(-Werror=return-type)      # warning: control reaches end of non-void function [-Wreturn-type]
+  add_flag(-Werror=non-virtual-dtor) # warn the user if a class with virtual functions has a non-virtual destructor. This helps catch hard to track down memory errors
+  add_flag(-Werror=sign-compare)     # warn the user if they compare a signed and unsigned numbers
+  add_flag(-Werror=reorder)          # field '$1' will be initialized after field '$2'
+  add_flag(-Werror=switch-enum)      # if switch case is missing - error
 
 elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
   # using Visual Studio C++

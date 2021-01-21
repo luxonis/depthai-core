@@ -63,14 +63,9 @@ std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
     // copy data part
     std::vector<uint8_t> data(packet->data, packet->data + bufferLength);
 
-    // RawBuffer is special case, no metadata is actually serialized
-    if(objectType == DatatypeEnum::Buffer) {
-        auto pBuf = std::make_shared<RawBuffer>();
-        pBuf->data = std::move(data);
-        return pBuf;
-    }
-
+    // Create corresponding object
     switch(objectType) {
+        // RawBuffer is special case, no metadata is actually serialized
         case DatatypeEnum::Buffer: {
             // RawBuffer is special case, no metadata is actually serialized
             auto pBuf = std::make_shared<RawBuffer>();
@@ -101,11 +96,9 @@ std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
         case DatatypeEnum::SystemInformation:
             return parseDatatype<RawSystemInformation>(jser, data);
             break;
-
-        default:
-            throw std::runtime_error("Bad packet, couldn't parse");
-            break;
     }
+
+    throw std::runtime_error("Bad packet, couldn't parse");
 }
 
 std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
@@ -154,11 +147,9 @@ std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
         case DatatypeEnum::SystemInformation:
             return std::make_shared<SystemInformation>(parseDatatype<RawSystemInformation>(jser, data));
             break;
-
-        default:
-            throw std::runtime_error("Bad packet, couldn't parse");
-            break;
     }
+
+    throw std::runtime_error("Bad packet, couldn't parse");
 }
 
 std::vector<std::uint8_t> serializeData(const std::shared_ptr<RawBuffer>& data) {
