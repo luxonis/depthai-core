@@ -78,5 +78,9 @@ void NeuralNetwork::setNumPoolFrames(int numFrames) {
     properties.numFrames = numFrames;
 }
 
+void NeuralNetwork::setNumInferenceThreads(int numThreads) {
+    properties.numThreads = numThreads;
+}
+
 }  // namespace node
 }  // namespace dai

@@ -112,6 +112,9 @@ class ColorCamera : public Node {
 
     void setPreviewKeepAspectRatio(bool keep);
     bool getPreviewKeepAspectRatio();
+
+    // Camera Controls
+    void setAutoFocusMode(RawCameraControl::AutoFocusMode mode);
 };
 
 }  // namespace node

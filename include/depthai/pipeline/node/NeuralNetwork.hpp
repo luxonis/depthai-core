@@ -42,6 +42,7 @@ class NeuralNetwork : public Node {
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     void setBlobPath(const std::string& path);
     void setNumPoolFrames(int numFrames);
+    void setNumInferenceThreads(int numThreads);
 };
 
 }  // namespace node

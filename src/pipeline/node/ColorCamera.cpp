@@ -299,5 +299,10 @@ bool ColorCamera::getPreviewKeepAspectRatio() {
     return properties.previewKeepAspectRatio;
 }
 
+// Camera Controls
+void ColorCamera::setAutoFocusMode(RawCameraControl::AutoFocusMode mode) {
+    properties.initialConfig.autoFocusMode = mode;
+}
+
 }  // namespace node
 }  // namespace dai

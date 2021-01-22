@@ -101,6 +101,10 @@ void ImageManipConfig::setHorizontalFlip(bool flip) {
     cfg.formatConfig.flipHorizontal = flip;
 }
 
+void ImageManipConfig::setReusePreviousImage(bool reuse) {
+    cfg.reusePreviousImage = reuse;
+}
+
 // Functions to retrieve properties
 float ImageManipConfig::getCropXMin() const {
     return cfg.cropConfig.cropRect.xmin;

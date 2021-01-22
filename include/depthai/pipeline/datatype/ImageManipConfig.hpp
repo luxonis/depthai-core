@@ -27,6 +27,7 @@ class ImageManipConfig : public Buffer {
     void setResizeThumbnail(int w, int h, int bgRed = 0, int bgGreen = 0, int bgBlue = 0);
     void setFrameType(dai::RawImgFrame::Type name);
     void setHorizontalFlip(bool flip);
+    void setReusePreviousImage(bool reuse);
 
     // Functions to retrieve properties
     float getCropXMin() const;
