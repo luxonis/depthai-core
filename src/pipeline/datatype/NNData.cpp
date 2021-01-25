@@ -1,5 +1,6 @@
 #include "depthai/pipeline/datatype/NNData.hpp"
 
+#include <cassert>
 #include <limits>
 #include <unordered_map>
 #include <vector>
@@ -25,6 +26,9 @@ static std::size_t sizeofTensorInfoDataType(TensorInfo::DataType type) {
             return sizeof(int32_t);
         case TensorInfo::DataType::U8F:
             return sizeof(uint8_t);
+        default:
+            // invalid type, shouldn't happen
+            assert(0);
     }
 }
 
