@@ -2,6 +2,9 @@
 
 Core C++ library
 
+## Alpha Disclaimer
+DepthAI library is currently in alpha for version 0.x.y. We are still making breaking API changes and expect to get to stable API by version 1.0.0.
+
 ## Dependencies
 - cmake >= 3.2
 - libusb1 development package
