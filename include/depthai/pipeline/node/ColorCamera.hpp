@@ -115,6 +115,7 @@ class ColorCamera : public Node {
 
     // Camera Controls
     void setAutoFocusMode(RawCameraControl::AutoFocusMode mode);
+    void setInitialLensPosition(uint8_t position);
 };
 
 }  // namespace node

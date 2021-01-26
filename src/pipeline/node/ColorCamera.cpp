@@ -303,6 +303,9 @@ bool ColorCamera::getPreviewKeepAspectRatio() {
 void ColorCamera::setAutoFocusMode(RawCameraControl::AutoFocusMode mode) {
     properties.initialConfig.autoFocusMode = mode;
 }
+void ColorCamera::setInitialLensPosition(uint8_t position) {
+    properties.initialConfig.lensPosition = position;
+}
 
 }  // namespace node
 }  // namespace dai
