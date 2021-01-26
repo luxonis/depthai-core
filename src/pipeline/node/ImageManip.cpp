@@ -38,8 +38,8 @@ void ImageManip::setCropRotatedRect(RawImageManipConfig::RotatedRect rr, bool no
     properties.initialConfig = *rawConfig;
 }
 
-void ImageManip::setCropQuadrilateral(std::vector<RawImageManipConfig::Point2f> pt, RawImageManipConfig::Size2f outSize, bool normalizedCoords) {
-    config.setCropQuadrilateral(pt, outSize, normalizedCoords);
+void ImageManip::setCropQuadrilateral(std::vector<RawImageManipConfig::Point2f> pt, bool normalizedCoords) {
+    config.setCropQuadrilateral(pt, normalizedCoords);
     properties.initialConfig = *rawConfig;
 }
 

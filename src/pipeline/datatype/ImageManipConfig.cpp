@@ -34,13 +34,12 @@ void ImageManipConfig::setCropRotatedRect(RawImageManipConfig::RotatedRect rr, b
     cfg.cropConfig.normalizedCoords = normalizedCoords;
 }
 
-void ImageManipConfig::setCropQuadrilateral(std::vector<RawImageManipConfig::Point2f> pt, RawImageManipConfig::Size2f outSize, bool normalizedCoords) {
+void ImageManipConfig::setCropQuadrilateral(std::vector<RawImageManipConfig::Point2f> pt, bool normalizedCoords) {
     // Enable crop stage and extended flags
     cfg.enableCrop = true;
     cfg.cropConfig.enableCropQuadrilateral = true;
 
     cfg.cropConfig.cropQuadrilateral.pt = pt;
-    cfg.cropConfig.cropQuadrilateral.outSize = outSize;
     cfg.cropConfig.normalizedCoords = normalizedCoords;
 }
 

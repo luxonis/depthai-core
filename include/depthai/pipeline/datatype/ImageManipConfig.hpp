@@ -21,7 +21,7 @@ class ImageManipConfig : public Buffer {
     // Functions to set properties
     void setCropRect(float xmin, float ymin, float xmax, float ymax);
     void setCropRotatedRect(RawImageManipConfig::RotatedRect rr, bool normalizedCoords = true);
-    void setCropQuadrilateral(std::vector<RawImageManipConfig::Point2f> pt, RawImageManipConfig::Size2f outSize, bool normalizedCoords = true);
+    void setCropQuadrilateral(std::vector<RawImageManipConfig::Point2f> pt, bool normalizedCoords = true);
     void setCenterCrop(float ratio, float whRatio = 1.0f);
     void setResize(int w, int h);
     void setResizeThumbnail(int w, int h, int bgRed = 0, int bgGreen = 0, int bgBlue = 0);
