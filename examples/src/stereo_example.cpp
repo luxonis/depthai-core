@@ -31,7 +31,7 @@ int main(){
     auto xlinkColorOut = p.create<dai::node::XLinkOut>();
     xlinkColorOut->setStreamName("video");
 
-    colorCam->setPreviewSize(300, 300);
+    // colorCam->setPreviewSize(300, 300);
     colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     colorCam->setInterleaved(true);
     colorCam->setCamId(0);
