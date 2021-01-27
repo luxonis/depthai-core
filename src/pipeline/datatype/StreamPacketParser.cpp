@@ -19,6 +19,7 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/SystemInformation.hpp"
+#include "depthai/pipeline/datatype/DepthCalculatorData.hpp"
 
 // shared
 #include "depthai-shared/datatype/DatatypeEnum.hpp"
@@ -29,6 +30,7 @@
 #include "depthai-shared/datatype/RawImgFrame.hpp"
 #include "depthai-shared/datatype/RawNNData.hpp"
 #include "depthai-shared/datatype/RawSystemInformation.hpp"
+#include "depthai-shared/datatype/RawDepthCalculatorData.hpp"
 
 // StreamPacket structure ->  || imgframepixels... , serialized_object, object_type, serialized_object_size ||
 // object_type -> DataType(int), serialized_object_size -> int
@@ -96,6 +98,9 @@ std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
         case DatatypeEnum::SystemInformation:
             return parseDatatype<RawSystemInformation>(jser, data);
             break;
+        case DatatypeEnum::DepthCalculatorData:
+            return parseDatatype<RawDepthCalculatorData>(jser, data);
+            break;
     }
 
     throw std::runtime_error("Bad packet, couldn't parse");
@@ -146,6 +151,9 @@ std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
 
         case DatatypeEnum::SystemInformation:
             return std::make_shared<SystemInformation>(parseDatatype<RawSystemInformation>(jser, data));
+            break;
+        case DatatypeEnum::DepthCalculatorData:
+            return std::make_shared<DepthCalculatorData>(parseDatatype<RawDepthCalculatorData>(jser, data));
             break;
     }
 

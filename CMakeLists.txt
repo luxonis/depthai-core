@@ -110,6 +110,7 @@ add_library(${TARGET_NAME}
     src/pipeline/node/VideoEncoder.cpp
     src/pipeline/node/DetectionNetwork.cpp
     src/pipeline/node/SystemLogger.cpp
+    src/pipeline/node/DepthCalculator.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
@@ -118,6 +119,7 @@ add_library(${TARGET_NAME}
     src/pipeline/datatype/ImgDetections.cpp
     src/pipeline/datatype/SystemInformation.cpp
     src/pipeline/datatype/StreamPacketParser.cpp
+    src/pipeline/datatype/DepthCalculatorData.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/xlink/XLinkConnection.cpp

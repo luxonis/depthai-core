@@ -24,6 +24,8 @@
 #include "pipeline/node/VideoEncoder.hpp"
 #include "pipeline/node/XLinkIn.hpp"
 #include "pipeline/node/XLinkOut.hpp"
+#include "pipeline/node/DepthCalculator.hpp"
+
 
 // Include common datatypes
 #include "pipeline/datatype/Buffer.hpp"
@@ -33,6 +35,7 @@
 #include "pipeline/datatype/ImgFrame.hpp"
 #include "pipeline/datatype/NNData.hpp"
 #include "pipeline/datatype/SystemInformation.hpp"
+#include "pipeline/datatype/DepthCalculatorData.hpp"
 
 // namespace dai {
 // namespace{
