@@ -196,8 +196,7 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
 
         // If device not found
         if(rc != X_LINK_SUCCESS) {
-            throw std::runtime_error("Failed to find device specified device (" + std::string(deviceToBoot.desc.name)
-                                     + "), error message: " + convertErrorCodeToString(rc));
+            throw std::runtime_error("Failed to find device (" + std::string(deviceToBoot.desc.name) + "), error message: " + convertErrorCodeToString(rc));
         }
 
         if(bootWithPath) {
