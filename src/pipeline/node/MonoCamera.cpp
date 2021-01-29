@@ -20,7 +20,7 @@ std::vector<Node::Output> MonoCamera::getOutputs() {
 }
 
 std::vector<Node::Input> MonoCamera::getInputs() {
-    return {};
+    return {inputControl};
 }
 
 nlohmann::json MonoCamera::getProperties() {

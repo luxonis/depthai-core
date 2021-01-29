@@ -20,6 +20,8 @@ class MonoCamera : public Node {
    public:
     MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
+    Input inputControl{*this, "inputControl", Input::Type::SReceiver, {{DatatypeEnum::CameraControl, false}}};
+
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     // Set which board socket to use
