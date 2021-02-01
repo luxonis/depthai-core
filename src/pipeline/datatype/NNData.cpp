@@ -1,5 +1,6 @@
 #include "depthai/pipeline/datatype/NNData.hpp"
 
+#include <cassert>
 #include <limits>
 #include <unordered_map>
 #include <vector>
@@ -13,59 +14,76 @@ namespace dai {
 NNData::NNData() : Buffer(std::make_shared<RawNNData>()), rawNn(*dynamic_cast<RawNNData*>(raw.get())) {}
 NNData::NNData(std::shared_ptr<RawNNData> ptr) : Buffer(ptr), rawNn(*ptr.get()) {}
 
+static std::size_t sizeofTensorInfoDataType(TensorInfo::DataType type) {
+    switch(type) {
+        case TensorInfo::DataType::FP16:
+            return sizeof(uint16_t);
+        case TensorInfo::DataType::FP32:
+            return sizeof(float);
+        case TensorInfo::DataType::I8:
+            return sizeof(int8_t);
+        case TensorInfo::DataType::INT:
+            return sizeof(int32_t);
+        case TensorInfo::DataType::U8F:
+            return sizeof(uint8_t);
+        default:
+            // invalid type, shouldn't happen
+            assert(0);
+    }
+}
+
 std::shared_ptr<RawBuffer> NNData::serialize() const {
     // get data from u8Data and fp16Data and place properly into the underlying raw buffer
     rawNn.tensors = {};
 
-    // offset
-
-    // Add to data and align to 64 bytes and create an entry in tensor describing its content
+    // U8 tensors
     for(const auto& kv : u8Data) {
-        // Get offset first
-        size_t offset = rawNn.data.end() - rawNn.data.begin();
+        const auto dataType = TensorInfo::DataType::U8F;
+        const auto dataSize = kv.second.size() * sizeofTensorInfoDataType(dataType);
 
-        const auto* data = kv.second.data();
-        rawNn.data.insert(rawNn.data.end(), data, data + kv.second.size() * sizeof(std::uint8_t));
-        // insert alignment bytes (64B alignment)
-
-        // calculate how many bytes to add
-        size_t remainder = kv.second.size() % DATA_ALIGNMENT;
-        size_t toAdd = 0;
+        // First add any required padding bytes
+        // calculate how many alignment bytes to add for next tensor
+        size_t remainder = (rawNn.data.end() - rawNn.data.begin()) % DATA_ALIGNMENT;
         if(remainder > 0) {
-            toAdd = DATA_ALIGNMENT - remainder;
+            rawNn.data.insert(rawNn.data.end(), DATA_ALIGNMENT - remainder, 0);
         }
 
-        // add padding bytes
-        rawNn.data.insert(rawNn.data.end(), toAdd, 0);
+        // Then get offset to beginning of data
+        size_t offset = rawNn.data.end() - rawNn.data.begin();
+
+        const auto* data = reinterpret_cast<const std::uint8_t*>(kv.second.data());
+        rawNn.data.insert(rawNn.data.end(), data, data + dataSize);
 
         // Add entry in tensors
         TensorInfo info;
-        info.dataType = TensorInfo::DataType::U8F;
+        info.dataType = dataType;
         info.numDimensions = 0;
         info.name = kv.first;
         info.offset = offset;
         rawNn.tensors.push_back(info);
     }
+
+    // FP16 tensors
     for(const auto& kv : fp16Data) {
-        // Get offset first
+        const auto dataType = TensorInfo::DataType::FP16;
+        const auto dataSize = kv.second.size() * sizeofTensorInfoDataType(dataType);
+
+        // First add any required padding bytes
+        // calculate how many alignment bytes to add for next tensor
+        size_t remainder = (rawNn.data.end() - rawNn.data.begin()) % DATA_ALIGNMENT;
+        if(remainder > 0) {
+            rawNn.data.insert(rawNn.data.end(), DATA_ALIGNMENT - remainder, 0);
+        }
+
+        // Then get offset to beginning of data
         size_t offset = rawNn.data.end() - rawNn.data.begin();
 
         const auto* data = reinterpret_cast<const std::uint8_t*>(kv.second.data());
-        rawNn.data.insert(rawNn.data.end(), data, data + kv.second.size() * sizeof(std::uint16_t));
-
-        // calculate how many bytes to add
-        size_t remainder = kv.second.size() % DATA_ALIGNMENT;
-        size_t toAdd = 0;
-        if(remainder > 0) {
-            toAdd = DATA_ALIGNMENT - remainder;
-        }
-
-        // add padding bytes
-        rawNn.data.insert(rawNn.data.end(), toAdd, 0);
+        rawNn.data.insert(rawNn.data.end(), data, data + dataSize);
 
         // Add entry in tensors
         TensorInfo info;
-        info.dataType = TensorInfo::DataType::U8F;
+        info.dataType = dataType;
         info.numDimensions = 0;
         info.name = kv.first;
         info.offset = offset;
