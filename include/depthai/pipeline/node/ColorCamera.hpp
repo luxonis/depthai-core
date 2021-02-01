@@ -3,7 +3,7 @@
 #include "depthai/pipeline/Node.hpp"
 
 // shared
-#include <depthai-shared/pb/properties/ColorCameraProperties.hpp>
+#include <depthai-shared/properties/ColorCameraProperties.hpp>
 
 namespace dai {
 namespace node {

@@ -3,7 +3,7 @@
 #include <depthai/pipeline/Node.hpp>
 
 // shared
-#include <depthai-shared/pb/properties/XLinkOutProperties.hpp>
+#include <depthai-shared/properties/XLinkOutProperties.hpp>
 
 namespace dai {
 namespace node {

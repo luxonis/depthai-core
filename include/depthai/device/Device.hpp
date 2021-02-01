@@ -15,10 +15,10 @@
 #include "depthai/xlink/XLinkConnection.hpp"
 
 // shared
+#include "depthai-shared/common/ChipTemperature.hpp"
+#include "depthai-shared/common/CpuUsage.hpp"
+#include "depthai-shared/common/MemoryInfo.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
-#include "depthai-shared/pb/common/ChipTemperature.hpp"
-#include "depthai-shared/pb/common/CpuUsage.hpp"
-#include "depthai-shared/pb/common/MemoryInfo.hpp"
 
 // libraries
 #include "nanorpc/core/client.h"

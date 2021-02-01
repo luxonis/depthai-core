@@ -3,7 +3,7 @@
 #include <depthai/pipeline/Node.hpp>
 
 // shared
-#include <depthai-shared/pb/properties/MyProducerProperties.hpp>
+#include <depthai-shared/properties/MyProducerProperties.hpp>
 
 namespace dai {
 namespace node {
