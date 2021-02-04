@@ -110,6 +110,7 @@ add_library(${TARGET_NAME}
     src/pipeline/node/VideoEncoder.cpp
     src/pipeline/node/DetectionNetwork.cpp
     src/pipeline/node/SystemLogger.cpp
+    src/pipeline/node/UVC.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
