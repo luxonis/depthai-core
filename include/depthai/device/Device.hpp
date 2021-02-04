@@ -19,6 +19,7 @@
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
+#include "depthai-shared/log/LogMessage.hpp"
 
 // libraries
 #include "nanorpc/core/client.h"
@@ -154,9 +155,9 @@ class Device {
     bool startPipeline();
 
     /**
-     * Sets the devices logging severity level. By default logs are printed to standard output
+     * Sets the devices logging severity level. This level affects which logs are transfered from device to host.
      *
-     * @param level Logging severity level
+     * @param level Logging severity
      */
     void setLogLevel(LogLevel level);
 
@@ -166,6 +167,37 @@ class Device {
      * @return Logging severity level
      */
     LogLevel getLogLevel();
+
+    /**
+     * Sets logging level which decides printing level to standard output.
+     * If lower than setLogLevel, no messages will be printed
+     *
+     * @param level - Standard output printing severity
+     */
+    void setLogOutputLevel(LogLevel level);
+
+    /**
+     * Gets logging level which decides printing level to standard output.
+     *
+     * @return Standard output printing severity
+     */
+    LogLevel getLogOutputLevel();
+
+    /**
+     * Add a callback for device logging. The callback will be called from a separate thread with the LogMessage being passed.
+     *
+     * @param callback - Callback to call whenever a log message arrives
+     * @return Id which can be used to later remove the callback
+     */
+    int addLogCallback(std::function<void(LogMessage)> callback);
+
+    /**
+     * Removes a callback
+     *
+     * @param callbackId Id of callback to be removed
+     * @return true if callback was removed, false otherwise
+     */
+    bool removeLogCallback(int callbackId);
 
     /**
      * Sets rate of system information logging ("info" severity). Default 1Hz
@@ -354,6 +386,11 @@ class Device {
     std::unordered_map<std::string, std::shared_ptr<DataOutputQueue>> outputQueueMap;
     std::unordered_map<std::string, std::shared_ptr<DataInputQueue>> inputQueueMap;
     std::unordered_map<std::string, CallbackHandler> callbackMap;
+
+    // Log callback
+    int uniqueCallbackId = 0;
+    std::mutex logCallbackMapMtx;
+    std::unordered_map<int, std::function<void(LogMessage)>> logCallbackMap;
 
     // Event queue
     std::mutex eventMtx;

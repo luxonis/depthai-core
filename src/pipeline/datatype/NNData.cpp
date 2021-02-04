@@ -36,6 +36,7 @@ static std::size_t sizeofTensorInfoDataType(TensorInfo::DataType type) {
 std::shared_ptr<RawBuffer> NNData::serialize() const {
     // get data from u8Data and fp16Data and place properly into the underlying raw buffer
     rawNn.tensors = {};
+    rawNn.data.clear();
 
     // U8 tensors
     for(const auto& kv : u8Data) {

@@ -59,10 +59,9 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
                     std::vector<std::uint8_t> metadata;
                     DatatypeEnum type;
                     data->getRaw()->serialize(metadata, type);
-                    spdlog::trace("Received message from device - data size: {}, data type: {} data: {}",
-                                  data->getRaw()->data.size(),
-                                  type,
-                                  nlohmann::json::from_msgpack(metadata).dump());
+                    std::string objData = "/";
+                    if(!metadata.empty()) objData = nlohmann::json::from_msgpack(metadata).dump();
+                    spdlog::trace("Received message from device - data size: {}, object type: {} object data: {}", data->getRaw()->data.size(), type, objData);
                 }
 
                 // release packet
@@ -206,10 +205,9 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
                     std::vector<std::uint8_t> metadata;
                     DatatypeEnum type;
                     data->serialize(metadata, type);
-                    spdlog::trace("Sending message to device - data size: {}, data type: {} data: {}",
-                                  data->data.size(),
-                                  type,
-                                  nlohmann::json::from_msgpack(metadata).dump());
+                    std::string objData = "/";
+                    if(!metadata.empty()) objData = nlohmann::json::from_msgpack(metadata).dump();
+                    spdlog::trace("Sending message to device - data size: {}, object type: {} object data: {}", data->data.size(), type, objData);
                 }
 
                 // serialize
