@@ -15,10 +15,10 @@
 #include "depthai/xlink/XLinkConnection.hpp"
 
 // shared
+#include "depthai-shared/common/ChipTemperature.hpp"
+#include "depthai-shared/common/CpuUsage.hpp"
+#include "depthai-shared/common/MemoryInfo.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
-#include "depthai-shared/pb/common/ChipTemperature.hpp"
-#include "depthai-shared/pb/common/CpuUsage.hpp"
-#include "depthai-shared/pb/common/MemoryInfo.hpp"
 
 // libraries
 #include "nanorpc/core/client.h"
@@ -30,29 +30,127 @@ namespace dai {
 class Device {
    public:
     // constants
+
+    /// Default search time for constructors which discover devices
     static constexpr std::chrono::seconds DEFAULT_SEARCH_TIME{3};
+    /// Maximum number of elements in event queue
     static constexpr std::size_t EVENT_QUEUE_MAXIMUM_SIZE{2048};
+    /// Default rate at which system information is logged
     static constexpr float DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ{1.0f};
 
     // static API
+
+    /**
+     * Waits for any available device with a timeout
+     *
+     * @param timeout - duration of time to wait for the any device
+     * @return a tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
+     */
     template <typename Rep, typename Period>
     static std::tuple<bool, DeviceInfo> getAnyAvailableDevice(std::chrono::duration<Rep, Period> timeout);
+
+    /**
+     * Gets any available device
+     *
+     * @return a tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
+     */
     static std::tuple<bool, DeviceInfo> getAnyAvailableDevice();
+
+    /**
+     * Gets first available device. Device can be either in XLINK_UNBOOTED or XLINK_BOOTLOADER state
+     * @return a tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
+     */
     static std::tuple<bool, DeviceInfo> getFirstAvailableDevice();
+
+    /**
+     * Finds a device by MX ID. Example: 14442C10D13EABCE00
+     * @param mxId - MyraidX ID which uniquely specifies a device
+     * @return a tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
+     */
     static std::tuple<bool, DeviceInfo> getDeviceByMxId(std::string mxId);
+
+    /**
+     * Returns all connected devices
+     * @return vector of connected devices
+     */
     static std::vector<DeviceInfo> getAllAvailableDevices();
+
+    /**
+     * Gets device firmware binary for a specific OpenVINO version
+     * @param usb2Mode - USB2 mode firmware
+     * @param version - Version of OpenVINO which firmware will support
+     * @return firmware binary
+     */
     static std::vector<std::uint8_t> getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version = Pipeline::DEFAULT_OPENVINO_VERSION);
 
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param pipeline - Pipeline to be executed on the device
+     */
     explicit Device(const Pipeline& pipeline);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param pipeline - Pipeline to be executed on the device
+     * @param usb2Mode - Boot device using USB2 mode firmware
+     */
     Device(const Pipeline& pipeline, bool usb2Mode);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param pipeline - Pipeline to be executed on the device
+     * @param pathToCmd - Path to custom device firmware
+     */
     Device(const Pipeline& pipeline, const char* pathToCmd);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param pipeline - Pipeline to be executed on the device
+     * @param pathToCmd - Path to custom device firmware
+     */
     Device(const Pipeline& pipeline, const std::string& pathToCmd);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param pipeline - Pipeline to be executed on the device
+     * @param devInfo - DeviceInfo which specifies which device to connect to
+     * @param usb2Mode - Boot device using USB2 mode firmware
+     */
     Device(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode = false);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param pipeline - Pipeline to be executed on the device
+     * @param devInfo - DeviceInfo which specifies which device to connect to
+     * @param pathToCmd - Path to custom device firmware
+     */
     Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param pipeline - Pipeline to be executed on the device
+     * @param devInfo - DeviceInfo which specifies which device to connect to
+     * @param usb2Mode - Path to custom device firmware
+     */
     Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd);
+
+    /**
+     * Device destructor. Closes the connection and the data queues.
+     */
     ~Device();
 
+    /**
+     * Checks if devices pipeline is already running
+     *
+     * @return true if running, false otherwise
+     */
     bool isPipelineRunning();
+
+    /**
+     * Starts the execution of the devices pipeline
+     *
+     * @return true if pipeline started, false otherwise
+     */
     bool startPipeline();
 
     /**
@@ -105,7 +203,7 @@ class Device {
     /**
      * Get all available output queue names
      *
-     * @return Array of output queue names
+     * @return Vector of output queue names
      */
     std::vector<std::string> getOutputQueueNames() const;
 
@@ -130,7 +228,7 @@ class Device {
     /**
      * Get all available input queue names
      *
-     * @return Array of output queue names
+     * @return Vector of input queue names
      */
     std::vector<std::string> getInputQueueNames() const;
 
@@ -154,7 +252,10 @@ class Device {
     /**
      * Gets or waits until specified queue has received a message
      *
-     * @overload
+     * @param queueName Name of queues for which to wait for
+     * @param maxNumEvents Maximum number of events to remove from queue. Default is unlimited
+     * @param timeout Timeout after which return regardless. If negative then wait is indefinite. Default is -1
+     * @return Names of queues which received messages first
      */
     std::vector<std::string> getQueueEvents(std::string queueName,
                                             std::size_t maxNumEvents = std::numeric_limits<std::size_t>::max(),
@@ -163,7 +264,9 @@ class Device {
     /**
      * Gets or waits until any any queue has received a message
      *
-     * @overload
+     * @param maxNumEvents Maximum number of events to remove from queue. Default is unlimited
+     * @param timeout Timeout after which return regardless. If negative then wait is indefinite. Default is -1
+     * @return Names of queues which received messages first
      */
     std::vector<std::string> getQueueEvents(std::size_t maxNumEvents = std::numeric_limits<std::size_t>::max(),
                                             std::chrono::microseconds timeout = std::chrono::microseconds(-1));
@@ -171,8 +274,8 @@ class Device {
     /**
      * Gets or waits until any of specified queues has received a message
      *
-     * @param queueNames Names of queues for which to block
-     * @param timeout Timeout after which return regardless. If negative then wait is indefinite - Default is -1
+     * @param queueNames Names of queues for which to wait for
+     * @param timeout Timeout after which return regardless. If negative then wait is indefinite. Default is -1
      * @return Queue name which received a message first
      */
     std::string getQueueEvent(const std::vector<std::string>& queueNames, std::chrono::microseconds timeout = std::chrono::microseconds(-1));
@@ -181,14 +284,17 @@ class Device {
     /**
      * Gets or waits until specified queue has received a message
      *
-     * @overload
+     * @param queueNames Name of queues for which to wait for
+     * @param timeout Timeout after which return regardless. If negative then wait is indefinite. Default is -1
+     * @return Queue name which received a message
      */
     std::string getQueueEvent(std::string queueName, std::chrono::microseconds timeout = std::chrono::microseconds(-1));
 
     /**
      * Gets or waits until any queue has received a message
      *
-     * @overload
+     * @param timeout Timeout after which return regardless. If negative then wait is indefinite. Default is -1
+     * @return Queue name which received a message
      */
     std::string getQueueEvent(std::chrono::microseconds timeout = std::chrono::microseconds(-1));
 

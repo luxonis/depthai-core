@@ -7,8 +7,8 @@
 #include "depthai-bootloader-shared/Bootloader.hpp"
 #include "depthai-bootloader-shared/SBR.h"
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
-#include "depthai-shared/Assets.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
+#include "depthai-shared/pipeline/Assets.hpp"
 #include "depthai-shared/xlink/XLinkConstants.hpp"
 
 // project

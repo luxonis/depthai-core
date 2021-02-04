@@ -4,7 +4,7 @@
 #include <depthai/pipeline/datatype/ImageManipConfig.hpp>
 
 // shared
-#include <depthai-shared/pb/properties/ImageManipProperties.hpp>
+#include <depthai-shared/properties/ImageManipProperties.hpp>
 
 namespace dai {
 namespace node {
