@@ -29,6 +29,7 @@ static std::size_t sizeofTensorInfoDataType(TensorInfo::DataType type) {
         default:
             // invalid type, shouldn't happen
             assert(0);
+            return 0;
     }
 }
 
