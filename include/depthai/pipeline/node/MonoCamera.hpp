@@ -3,8 +3,8 @@
 #include "depthai/pipeline/Node.hpp"
 
 // shared
-#include <depthai-shared/pb/common/CameraBoardSocket.hpp>
-#include <depthai-shared/pb/properties/MonoCameraProperties.hpp>
+#include <depthai-shared/common/CameraBoardSocket.hpp>
+#include <depthai-shared/properties/MonoCameraProperties.hpp>
 
 namespace dai {
 namespace node {

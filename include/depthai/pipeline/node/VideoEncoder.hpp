@@ -3,7 +3,7 @@
 #include <depthai/pipeline/Node.hpp>
 
 // shared
-#include <depthai-shared/pb/properties/VideoEncoderProperties.hpp>
+#include <depthai-shared/properties/VideoEncoderProperties.hpp>
 
 namespace dai {
 namespace node {
