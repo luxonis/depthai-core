@@ -42,16 +42,16 @@ class Device {
 
     /**
      * Waits for any available device with a timeout
-     * 
+     *
      * @param timeout - duration of time to wait for the any device
      * @return a tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
     template <typename Rep, typename Period>
     static std::tuple<bool, DeviceInfo> getAnyAvailableDevice(std::chrono::duration<Rep, Period> timeout);
-    
+
     /**
      * Gets any available device
-     * 
+     *
      * @return a tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
     static std::tuple<bool, DeviceInfo> getAnyAvailableDevice();
@@ -61,24 +61,24 @@ class Device {
      * @return a tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
     static std::tuple<bool, DeviceInfo> getFirstAvailableDevice();
-    
+
     /**
      * Finds a device by MX ID. Example: 14442C10D13EABCE00
      * @param mxId - MyraidX ID which uniquely specifies a device
      * @return a tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
     static std::tuple<bool, DeviceInfo> getDeviceByMxId(std::string mxId);
-    
+
     /**
      * Returns all connected devices
      * @return vector of connected devices
      */
     static std::vector<DeviceInfo> getAllAvailableDevices();
-    
+
     /**
      * Gets device firmware binary for a specific OpenVINO version
      * @param usb2Mode - USB2 mode firmware
-     * @param version - Version of OpenVINO which firmware will support  
+     * @param version - Version of OpenVINO which firmware will support
      * @return firmware binary
      */
     static std::vector<std::uint8_t> getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version = Pipeline::DEFAULT_OPENVINO_VERSION);
@@ -102,7 +102,7 @@ class Device {
      * @param pathToCmd - Path to custom device firmware
      */
     Device(const Pipeline& pipeline, const char* pathToCmd);
-    
+
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * @param pipeline - Pipeline to be executed on the device
@@ -134,21 +134,21 @@ class Device {
      */
     Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd);
 
-    /** 
+    /**
      * Device destructor. Closes the connection and the data queues.
      */
     ~Device();
 
     /**
      * Checks if devices pipeline is already running
-     * 
+     *
      * @return true if running, false otherwise
      */
     bool isPipelineRunning();
 
     /**
      * Starts the execution of the devices pipeline
-     * 
+     *
      * @return true if pipeline started, false otherwise
      */
     bool startPipeline();
