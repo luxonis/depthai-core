@@ -7,7 +7,7 @@
 #include <fstream>
 
 // shared
-#include <depthai-shared/pb/properties/NeuralNetworkProperties.hpp>
+#include <depthai-shared/properties/NeuralNetworkProperties.hpp>
 
 namespace dai {
 namespace node {
