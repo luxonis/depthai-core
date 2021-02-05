@@ -7,7 +7,7 @@ DepthAI library is currently in alpha for version 0.x.y. We are still making bre
 
 ## Dependencies
 - cmake >= 3.2
-- libusb1 development package
+- libusb1 development package (MacOS & Linux only)
 - C/C++11 compiler
  
 MacOS: `brew install libusb`
@@ -66,6 +66,12 @@ And to apply formatting
 ```
 cmake --build [build/dir] --target clangformat
 ```
+
+## Documentation generation
+
+Doxygen is used to generate documentation. Follow [doxygen download](https://www.doxygen.nl/download.html#srcbin) and install the required binaries for your platform.
+
+After that specify CMake define `-DDEPTHAI_BUILD_DOCS=ON` and build the target `doxygen`
 
 ## Debugging tips
 
