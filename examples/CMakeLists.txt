@@ -5,9 +5,11 @@ if(DEPTHAI_TEST_EXAMPLES)
     include(CTest)
     enable_testing()
 
-    # Enable sanitizers when testing is enabled
-    set(SANITIZE_ADDRESS ON CACHE BOOL "Enable AddressSanitizer for sanitized targets." FORCE)
-    set(SANITIZE_UNDEFINED ON CACHE BOOL "Enable UndefinedBehaviorSanitizer for sanitized targets." FORCE)
+    # Enable sanitizers automatically if DEPTHAI_SANITIZE_TESTS is on
+    if(DEPTHAI_SANITIZE_TESTS)
+        set(SANITIZE_ADDRESS ON CACHE BOOL "Enable AddressSanitizer for sanitized targets." FORCE)
+        set(SANITIZE_UNDEFINED ON CACHE BOOL "Enable UndefinedBehaviorSanitizer for sanitized targets." FORCE)
+    endif()
 
     # Enable sanitizer for library
     find_package(Sanitizers)
@@ -43,6 +45,9 @@ macro(dai_add_example example_name example_src)
             
         # Add sanitizers for tests as well
         add_sanitizers(${example_name})
+
+        # Add ubsan halt on error
+        set_tests_properties(${example_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1")
 
     endif()
 endmacro() 

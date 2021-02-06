@@ -38,8 +38,8 @@ list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/sanitizers")
 
 # Additional options
 option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON )
-option(DEPTHAI_CLANG_TIDY   "Enable clang-tidy checks during compilation" OFF)
-option(DEPTHAI_SANITIZER "Compile library with sanitizers" OFF)
+option(DEPTHAI_CLANG_TIDY "Enable clang-tidy checks during compilation" OFF)
+option(DEPTHAI_SANITIZE_TESTS "If tests are enabled, compile them with Address and Undefined sanitizers" ON)
 
 # Debug option
 set(DEPTHAI_XLINK_LOCAL "" CACHE STRING "Path to local XLink source to use instead of Hunter")
