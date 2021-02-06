@@ -34,10 +34,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Add module path
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/")
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/sanitizers")
 
 # Additional options
 option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON )
 option(DEPTHAI_CLANG_TIDY   "Enable clang-tidy checks during compilation" OFF)
+option(DEPTHAI_SANITIZER "Compile library with sanitizers" OFF)
 
 # Debug option
 set(DEPTHAI_XLINK_LOCAL "" CACHE STRING "Path to local XLink source to use instead of Hunter")
@@ -148,7 +150,6 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake")
 # First specify options
 option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
 option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
-option(DEPTHAI_TEST_EXAMPLES "Test examples - examples will be ran as a part of test suite" OFF)
 option(DEPTHAI_BUILD_DOCS "Build documentation - requires doxygen to be installed" OFF)
 
 option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries into library" ON)
@@ -324,14 +325,9 @@ if(DEPTHAI_USB2_PATCH_ONLY_MODE)
     target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_PATCH_ONLY_MODE)
 endif()
 
-
-########################
-# Testing
-########################
-if(DEPTHAI_BUILD_TESTS OR DEPTHAI_TEST_EXAMPLES)
-    include(CTest)
-    enable_testing()
-endif()
+# Add CMake testing infrastructure
+include(CTest)
+enable_testing()
 
 ########################
 # Tests

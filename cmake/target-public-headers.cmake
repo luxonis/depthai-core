@@ -19,6 +19,17 @@ function(get_target_public_headers target output_variable_name)
 
 endfunction()
 
+
+function(get_header_files include_directories output_variable_name)
+    
+    # Get all header files
+    header_directories("${include_directories}" header_files)
+
+    # Set to parent
+    set(${output_variable_name} ${header_files} PARENT_SCOPE)
+
+endfunction()
+
 # Internal helper, converts header directory list to list of .hpp files
 macro(header_directories header_dirs return_list)
 

@@ -1,3 +1,20 @@
+# Add an option to test examples
+option(DEPTHAI_TEST_EXAMPLES "Test examples - examples will be ran as a part of test suite" OFF)
+if(DEPTHAI_TEST_EXAMPLES)
+    # Add CMake testing infrastructure
+    include(CTest)
+    enable_testing()
+
+    # Enable sanitizers when testing is enabled
+    set(SANITIZE_ADDRESS ON CACHE BOOL "Enable AddressSanitizer for sanitized targets." FORCE)
+    set(SANITIZE_UNDEFINED ON CACHE BOOL "Enable UndefinedBehaviorSanitizer for sanitized targets." FORCE)
+
+    # Enable sanitizer for library
+    find_package(Sanitizers)
+    add_sanitizers(${TARGET_NAME})
+
+endif()
+
 # Dependencies
 find_package(OpenCV REQUIRED)
 
@@ -23,7 +40,10 @@ macro(dai_add_example example_name example_src)
 
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
         set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]") 
-        
+            
+        # Add sanitizers for tests as well
+        add_sanitizers(${example_name})
+
     endif()
 endmacro() 
 
