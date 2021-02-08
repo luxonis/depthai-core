@@ -43,7 +43,7 @@ class CameraControl : public Buffer {
     void setAutoWhiteBalanceLock(bool lock);
 
     // Other image controls
-    void setBrightness(uint16_t value); // TODO move to AE?
+    void setBrightness(uint16_t value);  // TODO move to AE?
     void setContrast(uint16_t value);
     void setSaturation(uint16_t value);
     void setSharpness(uint16_t value);

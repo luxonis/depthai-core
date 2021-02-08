@@ -16,7 +16,6 @@ void CameraControl::setCaptureStill(bool capture) {
     cfg.setCommand(RawCameraControl::Command::STILL_CAPTURE, capture);
 }
 
-
 void CameraControl::setStartStreaming() {
     cfg.setCommand(RawCameraControl::Command::START_STREAM);
 }
@@ -38,7 +37,7 @@ void CameraControl::setAutoFocusRegion(uint16_t startX, uint16_t startY, uint16_
     cfg.afRegion.y = startY;
     cfg.afRegion.width = width;
     cfg.afRegion.height = height;
-    cfg.afRegion.priority = 1; // TODO
+    cfg.afRegion.priority = 1;  // TODO
 }
 void CameraControl::setManualFocus(uint8_t lensPosition) {
     cfg.setCommand(RawCameraControl::Command::MOVE_LENS);
@@ -59,7 +58,7 @@ void CameraControl::setAutoExposureRegion(uint16_t startX, uint16_t startY, uint
     cfg.aeRegion.y = startY;
     cfg.aeRegion.width = width;
     cfg.aeRegion.height = height;
-    cfg.aeRegion.priority = 1; // TODO
+    cfg.aeRegion.priority = 1;  // TODO
 }
 void CameraControl::setAutoExposureCompensation(int8_t compensation) {
     cfg.setCommand(RawCameraControl::Command::EXPOSURE_COMPENSATION);
@@ -73,7 +72,7 @@ void CameraControl::setManualExposure(uint32_t exposureTimeUs, uint32_t sensitiv
     cfg.setCommand(RawCameraControl::Command::AE_MANUAL);
     cfg.expManual.exposureTimeUs = exposureTimeUs;
     cfg.expManual.sensitivityIso = sensitivityIso;
-    cfg.expManual.frameDurationUs = 0; // TODO
+    cfg.expManual.frameDurationUs = 0;  // TODO
 }
 
 // White Balance
@@ -123,7 +122,6 @@ void CameraControl::setEffectMode(RawCameraControl::EffectMode mode) {
     cfg.setCommand(RawCameraControl::Command::EFFECT_MODE);
     cfg.effectMode = mode;
 }
-
 
 bool CameraControl::getCaptureStill() const {
     return cfg.getCommand(RawCameraControl::Command::STILL_CAPTURE);
