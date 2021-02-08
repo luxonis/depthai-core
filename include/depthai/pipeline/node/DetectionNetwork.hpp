@@ -26,6 +26,7 @@ class DetectionNetwork : public NeuralNetwork {
    public:
     Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, true}}};
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, false}}};
+    Output passthrough{*this, "passthrough", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
 
     // overridden
     void setBlobPath(const std::string& path);

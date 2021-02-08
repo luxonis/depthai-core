@@ -5,6 +5,8 @@
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
+static bool syncNN = true;
+
 dai::Pipeline createNNPipeline(std::string nnPath) {
     dai::Pipeline p;
 
@@ -27,7 +29,10 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
 
     // Link plugins CAM -> NN -> XLINK
     colorCam->preview.link(detectionNetwork->input);
-    colorCam->preview.link(xlinkOut->input);
+    if(syncNN)
+        detectionNetwork->passthrough.link(xlinkOut->input);
+    else
+        colorCam->preview.link(xlinkOut->input);
 
     detectionNetwork->out.link(nnOut->input);
 

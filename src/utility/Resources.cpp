@@ -31,13 +31,13 @@ static std::vector<std::uint8_t> getEmbeddedBootloaderBinary();
 
 constexpr static auto CMRC_DEPTHAI_DEVICE_TAR_XZ = "depthai-device-fwp-" DEPTHAI_DEVICE_VERSION ".tar.xz";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_1_PATH = "depthai-device-openvino-2020.1-" DEPTHAI_DEVICE_VERSION ".cmd";
-constexpr static auto DEPTHAI_CMD_OPENVINO_2020_2_PATH = "depthai-device-openvino-2020.2-" DEPTHAI_DEVICE_VERSION ".cmd";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_3_PATH = "depthai-device-openvino-2020.3-" DEPTHAI_DEVICE_VERSION ".cmd";
+constexpr static auto DEPTHAI_CMD_OPENVINO_2020_2_PATH = DEPTHAI_CMD_OPENVINO_2020_3_PATH;
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_4_PATH = "depthai-device-openvino-2020.4-" DEPTHAI_DEVICE_VERSION ".cmd";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2021_1_PATH = "depthai-device-openvino-2021.1-" DEPTHAI_DEVICE_VERSION ".cmd";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_1_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2020.1-" DEPTHAI_DEVICE_VERSION ".patch";
-constexpr static auto DEPTHAI_CMD_OPENVINO_2020_2_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2020.2-" DEPTHAI_DEVICE_VERSION ".patch";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_3_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2020.3-" DEPTHAI_DEVICE_VERSION ".patch";
+constexpr static auto DEPTHAI_CMD_OPENVINO_2020_2_USB2_PATCH_PATH = DEPTHAI_CMD_OPENVINO_2020_3_USB2_PATCH_PATH;
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_4_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2020.4-" DEPTHAI_DEVICE_VERSION ".patch";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2021_1_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2021.1-" DEPTHAI_DEVICE_VERSION ".patch";
 constexpr static std::array<const char*, 10> resourcesListTarXz = {
