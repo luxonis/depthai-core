@@ -183,7 +183,6 @@ std::vector<std::uint8_t> NNData::getLayerUInt8(const std::string& name) const {
 
 // int32_t
 std::vector<std::int32_t> NNData::getLayerInt32(const std::string& name) const {
-
     // find layer name and its offset
     TensorInfo tensor;
     if(getLayer(name, tensor)) {
