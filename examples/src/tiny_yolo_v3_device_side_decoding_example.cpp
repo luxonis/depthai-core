@@ -6,8 +6,16 @@
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-static std::string label_map[] = {"background",  "aeroplane", "bicycle", "bird",      "boat",   "bottle",      "bus",   "car",  "cat",   "chair",    "cow",
-                                  "diningtable", "dog",       "horse",   "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"};
+static std::string label_map[] = {
+    "person",        "bicycle",      "car",           "motorbike",     "aeroplane",   "bus",         "train",       "truck",        "boat",
+    "traffic light", "fire hydrant", "stop sign",     "parking meter", "bench",       "bird",        "cat",         "dog",          "horse",
+    "sheep",         "cow",          "elephant",      "bear",          "zebra",       "giraffe",     "backpack",    "umbrella",     "handbag",
+    "tie",           "suitcase",     "frisbee",       "skis",          "snowboard",   "sports ball", "kite",        "baseball bat", "baseball glove",
+    "skateboard",    "surfboard",    "tennis racket", "bottle",        "wine glass",  "cup",         "fork",        "knife",        "spoon",
+    "bowl",          "banana",       "apple",         "sandwich",      "orange",      "broccoli",    "carrot",      "hot dog",      "pizza",
+    "donut",         "cake",         "chair",         "sofa",          "pottedplant", "bed",         "diningtable", "toilet",       "tvmonitor",
+    "laptop",        "mouse",        "remote",        "keyboard",      "cell phone",  "microwave",   "oven",        "toaster",      "sink",
+    "refrigerator",  "book",         "clock",         "vase",          "scissors",    "teddy bear",  "hair drier",  "toothbrush"};
 
 static bool syncNN = true;
 
@@ -16,19 +24,32 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
 
     auto colorCam = p.create<dai::node::ColorCamera>();
     auto xlinkOut = p.create<dai::node::XLinkOut>();
-    auto detectionNetwork = p.create<dai::node::MobileNetDetectionNetwork>();
     auto nnOut = p.create<dai::node::XLinkOut>();
 
     xlinkOut->setStreamName("preview");
     nnOut->setStreamName("detections");
 
-    colorCam->setPreviewSize(300, 300);
+    colorCam->setPreviewSize(416, 416);
     colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     colorCam->setInterleaved(false);
     colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
 
-    // testing MobileNet DetectionNetwork
+    auto detectionNetwork = p.create<dai::node::YoloDetectionNetwork>();
+
+    // network specific!!
     detectionNetwork->setConfidenceThreshold(0.5f);
+    detectionNetwork->setNumClasses(80);
+    detectionNetwork->setCoordinateSize(4);
+    std::vector<float> anchors{10, 14, 23, 27, 37, 58, 81, 82, 135, 169, 344, 319};
+    detectionNetwork->setAnchors(anchors);
+    std::vector<int> anchorMasks26{1, 2, 3};
+    std::vector<int> anchorMasks13{3, 4, 5};
+    std::map<std::string, std::vector<int>> anchorMasks;
+    anchorMasks.insert(std::make_pair("side26", anchorMasks26));
+    anchorMasks.insert(std::make_pair("side13", anchorMasks13));
+    detectionNetwork->setAnchorMasks(anchorMasks);
+    detectionNetwork->setIouThreshold(0.5f);
+
     detectionNetwork->setBlobPath(nnPath);
 
     // Link plugins CAM -> NN -> XLINK
@@ -81,7 +102,7 @@ int main(int argc, char** argv) {
             int y1 = d.ymin * frame.rows;
             int x2 = d.xmax * frame.cols;
             int y2 = d.ymax * frame.rows;
-            
+
             int label_index = d.label;
             std::string label_str = to_string(label_index);
             if(label_index < sizeof(label_map) / sizeof(label_map[0])) {

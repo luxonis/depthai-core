@@ -61,6 +61,14 @@ hunter_private_data(
     FILE "mobilenet.blob"
     LOCATION mobilenet_blob
 )
+
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/tiny_yolo_v3_6shaves.blob"
+    SHA1 "7c87d89ab3bc1d58de7f61c0bbd4844a200ddeb5"
+    FILE "tiny_yolo_v3_6shaves.blob"
+    LOCATION tiny_yolo_v3_blob
+)
+
 dai_add_example(camera_mobilenet src/camera_mobilenet_example.cpp)
 target_compile_definitions(camera_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}")
 
@@ -89,3 +97,7 @@ dai_add_example(device_queue_event src/device_queue_event_example.cpp)
 # Device side decoding example for mobilenet-ssd
 dai_add_example(mobilenet_device_side_decoding src/mobilenet_device_side_decoding_example.cpp)
 target_compile_definitions(mobilenet_device_side_decoding PRIVATE BLOB_PATH="${mobilenet_blob}")
+
+# Device side decoding example for tiny-yolo-v3
+dai_add_example(tiny_yolo_v3_device_side_decoding src/tiny_yolo_v3_device_side_decoding_example.cpp)
+target_compile_definitions(tiny_yolo_v3_device_side_decoding PRIVATE BLOB_PATH="${tiny_yolo_v3_blob}")
