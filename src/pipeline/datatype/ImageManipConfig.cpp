@@ -34,13 +34,19 @@ void ImageManipConfig::setCropRotatedRect(RawImageManipConfig::RotatedRect rr, b
     cfg.cropConfig.normalizedCoords = normalizedCoords;
 }
 
-void ImageManipConfig::setCropQuadrilateral(std::vector<RawImageManipConfig::Point2f> pt, bool normalizedCoords) {
-    // Enable crop stage and extended flags
-    cfg.enableCrop = true;
-    cfg.cropConfig.enableCropQuadrilateral = true;
+void ImageManipConfig::setWarpTransformFourPoints(std::vector<RawImageManipConfig::Point2f> pt, bool normalizedCoords) {
+    // Enable resize stage and extended flags
+    cfg.enableResize = true;
+    cfg.resizeConfig.enableWarp4pt = true;
+    cfg.resizeConfig.warpFourPoints = pt;
+    cfg.resizeConfig.normalizedCoords = normalizedCoords;
+}
 
-    cfg.cropConfig.cropQuadrilateral.pt = pt;
-    cfg.cropConfig.normalizedCoords = normalizedCoords;
+void ImageManipConfig::setWarpTransformMatrix3x3(std::vector<float> mat) {
+    // Enable resize stage and extended flags
+    cfg.enableResize = true;
+    cfg.resizeConfig.enableWarpMatrix = true;
+    cfg.resizeConfig.warpMatrix3x3 = mat;
 }
 
 void ImageManipConfig::setCenterCrop(float ratio, float whRatio) {
@@ -53,6 +59,20 @@ void ImageManipConfig::setCenterCrop(float ratio, float whRatio) {
     // Set crop center crop config
     cfg.cropConfig.cropRatio = ratio;
     cfg.cropConfig.widthHeightAspectRatio = whRatio;
+}
+
+void ImageManipConfig::setRotationDegrees(float deg) {
+    cfg.enableResize = true;
+    cfg.resizeConfig.rotationAngle = deg;
+    cfg.resizeConfig.angleInRadians = false;
+    cfg.resizeConfig.enableRotation = true;
+}
+
+void ImageManipConfig::setRotationRadians(float rad) {
+    cfg.enableResize = true;
+    cfg.resizeConfig.rotationAngle = rad;
+    cfg.resizeConfig.angleInRadians = true;
+    cfg.resizeConfig.enableRotation = true;
 }
 
 void ImageManipConfig::setResize(int w, int h) {
@@ -102,6 +122,10 @@ void ImageManipConfig::setHorizontalFlip(bool flip) {
 
 void ImageManipConfig::setReusePreviousImage(bool reuse) {
     cfg.reusePreviousImage = reuse;
+}
+
+void ImageManipConfig::setSkipCurrentImage(bool skip) {
+    cfg.skipCurrentImage = skip;
 }
 
 // Functions to retrieve properties

@@ -34,6 +34,10 @@ class ImageManip : public Node {
     void setCropRotatedRect(RawImageManipConfig::RotatedRect rr, bool normalizedCoords = true);
     void setCropQuadrilateral(std::vector<RawImageManipConfig::Point2f> pt, bool normalizedCoords = true);
     void setCenterCrop(float ratio, float whRatio = 1.0f);
+    void setWarpTransformFourPoints(std::vector<RawImageManipConfig::Point2f> pt, bool normalizedCoords);
+    void setWarpTransformMatrix3x3(std::vector<float> mat);
+    void setRotationDegrees(float deg);
+    void setRotationRadians(float rad);
     void setResize(int w, int h);
     void setResizeThumbnail(int w, int h, int bgRed = 0, int bgGreen = 0, int bgBlue = 0);
     void setFrameType(dai::RawImgFrame::Type name);

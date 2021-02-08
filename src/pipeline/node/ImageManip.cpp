@@ -38,13 +38,28 @@ void ImageManip::setCropRotatedRect(RawImageManipConfig::RotatedRect rr, bool no
     properties.initialConfig = *rawConfig;
 }
 
-void ImageManip::setCropQuadrilateral(std::vector<RawImageManipConfig::Point2f> pt, bool normalizedCoords) {
-    config.setCropQuadrilateral(pt, normalizedCoords);
+void ImageManip::setCenterCrop(float ratio, float whRatio) {
+    config.setCenterCrop(ratio, whRatio);
     properties.initialConfig = *rawConfig;
 }
 
-void ImageManip::setCenterCrop(float ratio, float whRatio) {
-    config.setCenterCrop(ratio, whRatio);
+void ImageManip::setWarpTransformFourPoints(std::vector<RawImageManipConfig::Point2f> pt, bool normalizedCoords) {
+    config.setWarpTransformFourPoints(pt, normalizedCoords);
+    properties.initialConfig = *rawConfig;
+}
+
+void ImageManip::setWarpTransformMatrix3x3(std::vector<float> mat) {
+    config.setWarpTransformMatrix3x3(mat);
+    properties.initialConfig = *rawConfig;
+}
+
+void ImageManip::setRotationDegrees(float deg) {
+    config.setRotationDegrees(deg);
+    properties.initialConfig = *rawConfig;
+}
+
+void ImageManip::setRotationRadians(float rad) {
+    config.setRotationRadians(rad);
     properties.initialConfig = *rawConfig;
 }
 
