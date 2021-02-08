@@ -24,6 +24,7 @@ endif()
 
 set(TARGET_NAME depthai-core)
 project(${TARGET_NAME} VERSION "0.0.2" LANGUAGES CXX C)
+set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
 
 # Set policies
 # CMP0074 dictates that find_package searches environment variable "[packageName]_ROOT" along with regular variable [packageName]_ROOT
