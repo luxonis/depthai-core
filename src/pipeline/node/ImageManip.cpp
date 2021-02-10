@@ -58,6 +58,11 @@ void ImageManip::setHorizontalFlip(bool flip) {
     properties.initialConfig = *rawConfig;
 }
 
+void ImageManip::setKeepAspectRatio(bool keep) {
+    config.setKeepAspectRatio(keep);
+    properties.initialConfig = *rawConfig;
+}
+
 // Node properties configuration
 void ImageManip::setWaitForConfigInput(bool wait) {
     properties.inputConfigSync = wait;

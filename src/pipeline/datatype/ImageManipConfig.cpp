@@ -70,7 +70,7 @@ void ImageManipConfig::setFrameType(dai::RawImgFrame::Type type) {
     // Enable format stage
     cfg.enableFormat = true;
 
-    // Set pixel format
+    // Set type format
     cfg.formatConfig.type = type;
 }
 
@@ -81,6 +81,13 @@ void ImageManipConfig::setHorizontalFlip(bool flip) {
     // Set pixel format
     cfg.formatConfig.flipHorizontal = flip;
 }
+
+void ImageManipConfig::setKeepAspectRatio(bool keep) {
+
+    // Set whether to keep aspect ratio or not
+    cfg.resizeConfig.keepAspectRatio = keep;
+}
+
 
 // Functions to retrieve properties
 float ImageManipConfig::getCropXMin() const {
