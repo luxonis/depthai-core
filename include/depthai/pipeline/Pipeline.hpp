@@ -56,8 +56,9 @@ class PipelineImpl {
     GlobalProperties globalProperties;
     // Optimized for adding, searching and removing connections
     std::unordered_map<Node::Id, std::shared_ptr<Node>> nodeMap;
+    using NodeConnectionMap = std::unordered_map<Node::Id, std::unordered_set<Node::Connection>>;
     // Connection map, NodeId represents id of node connected TO (input)
-    std::unordered_map<Node::Id, std::unordered_set<Node::Connection>> nodeConnectionMap;
+    NodeConnectionMap nodeConnectionMap;
 
     // Template create function
     template <class N>
@@ -126,6 +127,10 @@ class Pipeline {
 
     std::vector<Node::Connection> getConnections() const {
         return impl()->getConnections();
+    }
+
+    const PipelineImpl::NodeConnectionMap& getConnectionMap() const {
+        return impl()->nodeConnectionMap;
     }
 
     void link(const Node::Output& out, const Node::Input& in) {
