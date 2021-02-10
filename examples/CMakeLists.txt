@@ -85,3 +85,7 @@ dai_add_example(system_information src/system_information_example.cpp)
 
 # Device getQueueEvent example
 dai_add_example(device_queue_event src/device_queue_event_example.cpp)
+
+# OpenCV support example
+dai_add_example(opencv_support src/opencv_support_example.cpp)
+

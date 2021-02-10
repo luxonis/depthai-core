@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.2) # For Hunter
+cmake_minimum_required(VERSION 3.4) # For Hunter
 
 # Build dependencies as 'Release' only by default (if not MSVC, as it requires same debug level for libraries to be linked against)
 if(NOT MSVC)
@@ -131,6 +131,11 @@ add_library(${TARGET_NAME}
 # Add aditional flags
 include(cmake/flags.cmake)
 
+# Remove switch-enum flag for ImgFrame
+if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "^(AppleClang|Clang|GNU)$")
+    set_source_files_properties(src/pipeline/datatype/ImgFrame.cpp PROPERTIES COMPILE_FLAGS -Wno-error=switch-enum )
+endif()
+
 # And clang-tidy and format
 if(DEPTHAI_CLANG_TIDY)
     include(cmake/clang-tidy.cmake)
@@ -148,6 +153,8 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake")
 option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
 option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
 option(DEPTHAI_TEST_EXAMPLES "Test examples - examples will be ran as a part of test suite" OFF)
+option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
+
 
 option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries into library" ON)
 option(DEPTHAI_USB2_PATCH_ONLY_MODE "Use patch file and full depthai.cmd binary for usb2 mode" ON)
@@ -322,6 +329,22 @@ if(DEPTHAI_USB2_PATCH_ONLY_MODE)
     target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_PATCH_ONLY_MODE)
 endif()
 
+
+########################
+# OpenCV Support
+########################
+if(DEPTHAI_OPENCV_SUPPORT)
+    find_package(OpenCV)
+    if(OpenCV_FOUND AND "opencv_core" IN_LIST OpenCV_LIBS)        
+        # Link to OpenCV (publically)
+        target_link_libraries(${TARGET_NAME} PUBLIC opencv_core)
+        
+        # Add public compile definition indicating that OpenCV support is available
+        target_compile_definitions(${TARGET_NAME} PUBLIC DEPTHAI_OPENCV_SUPPORT)
+    else()
+        message(STATUS "OpenCV and required libraries not found. OpenCV Support disabled")
+    endif()
+endif()
 
 ########################
 # Testing

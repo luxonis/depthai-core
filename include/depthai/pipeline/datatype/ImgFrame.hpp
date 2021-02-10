@@ -6,6 +6,12 @@
 
 #include "depthai-shared/datatype/RawImgFrame.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
+
+// optional
+#ifdef DEPTHAI_OPENCV_SUPPORT
+    #include <opencv2/opencv.hpp>
+#endif
+
 namespace dai {
 
 // protected inheritance, so serialize isn't visible to users
@@ -14,6 +20,10 @@ class ImgFrame : public Buffer {
     RawImgFrame& img;
 
    public:
+    // Raw* mirror
+    using Type = RawImgFrame::Type;
+    using Specs = RawImgFrame::Specs;
+
     ImgFrame();
     explicit ImgFrame(std::shared_ptr<RawImgFrame> ptr);
     virtual ~ImgFrame() = default;
@@ -35,6 +45,13 @@ class ImgFrame : public Buffer {
     void setWidth(unsigned int);
     void setHeight(unsigned int);
     void setType(RawImgFrame::Type);
+
+// Optional - OpenCV support
+#ifdef DEPTHAI_OPENCV_SUPPORT
+    void setFrame(cv::Mat frame);
+    cv::Mat getFrame(bool deepCopy = false);
+    cv::Mat getBgrFrame();
+#endif
 };
 
 }  // namespace dai
