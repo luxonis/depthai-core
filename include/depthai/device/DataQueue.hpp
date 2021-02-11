@@ -17,18 +17,13 @@ namespace dai {
 
 // DataQueue presents a way to access data coming from MyriadX
 class DataOutputQueue {
-    std::shared_ptr<LockingQueue<std::shared_ptr<ADatatype>>> pQueue;
-    LockingQueue<std::shared_ptr<ADatatype>>& queue;
+    LockingQueue<std::shared_ptr<ADatatype>> queue;
     std::thread readingThread;
-    std::shared_ptr<std::atomic<bool>> pRunning;
-    std::atomic<bool>& running;
-    std::shared_ptr<std::string> pExceptionMessage;
-    std::string& exceptionMessage;
-    std::string streamName;
-    std::shared_ptr<std::mutex> pCallbacksMtx;
-    std::mutex& callbacksMtx;
-    std::shared_ptr<std::unordered_map<int, std::function<void(std::string, std::shared_ptr<ADatatype>)>>> pCallbacks;
-    std::unordered_map<int, std::function<void(std::string, std::shared_ptr<ADatatype>)>>& callbacks;
+    std::atomic<bool> running{true};
+    std::string exceptionMessage{""};
+    const std::string name{""};
+    std::mutex callbacksMtx;
+    std::unordered_map<int, std::function<void(std::string, std::shared_ptr<ADatatype>)>> callbacks;
     int uniqueCallbackId{0};
 
     // const std::chrono::milliseconds READ_TIMEOUT{500};
@@ -224,14 +219,11 @@ class DataOutputQueue {
 
 // DataInputQueue presents a way to write to MyriadX
 class DataInputQueue {
-    std::shared_ptr<LockingQueue<std::shared_ptr<RawBuffer>>> pQueue;
-    LockingQueue<std::shared_ptr<RawBuffer>>& queue;
+    LockingQueue<std::shared_ptr<RawBuffer>> queue;
     std::thread writingThread;
-    std::shared_ptr<std::atomic<bool>> pRunning;
-    std::atomic<bool>& running;
-    std::shared_ptr<std::string> pExceptionMessage;
-    std::string& exceptionMessage;
-    std::string streamName;
+    std::atomic<bool> running;
+    std::string exceptionMessage;
+    const std::string name;
     std::size_t maxDataSize;
 
    public:

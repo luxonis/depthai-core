@@ -1,5 +1,5 @@
-#include "depthai/device/DataQueue.hpp"
 
+#include "depthai/device/DataQueue.hpp"
 // std
 #include <iostream>
 
@@ -15,34 +15,13 @@
 namespace dai {
 
 // DATA OUTPUT QUEUE
-DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& name, unsigned int maxSize, bool blocking)
-    : pQueue(std::make_shared<LockingQueue<std::shared_ptr<ADatatype>>>(maxSize, blocking)),
-      queue(*pQueue),
-      pRunning(std::make_shared<std::atomic<bool>>(true)),
-      running(*pRunning),
-      pExceptionMessage(std::make_shared<std::string>("")),
-      exceptionMessage(*pExceptionMessage),
-      streamName(name),
-      pCallbacksMtx(std::make_shared<std::mutex>()),
-      callbacksMtx(*pCallbacksMtx),
-      pCallbacks(std::make_shared<std::unordered_map<int, std::function<void(std::string, std::shared_ptr<ADatatype>)>>>()),
-      callbacks(*pCallbacks) {
-    // Copies of variables for the detached thread
-    std::shared_ptr<std::atomic<bool>> pRunningCopy{pRunning};
-    std::shared_ptr<std::string> pExceptionMessageCopy{pExceptionMessage};
-    auto pQueueCopy = pQueue;
-    auto pCallbacksMtxCopy = pCallbacksMtx;
-    auto pCallbacksCopy = pCallbacks;
+DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize, bool blocking)
+    : queue(maxSize, blocking), name(streamName) {
 
-    // creates a thread which reads from connection into the queue
-    readingThread = std::thread([name, pRunningCopy, conn, pExceptionMessageCopy, pQueueCopy, pCallbacksMtxCopy, pCallbacksCopy]() {
-        auto& running = *pRunningCopy;
-        auto& queue = *pQueueCopy;
-        auto& callbacksMtx = *pCallbacksMtxCopy;
-        auto& callbacks = *pCallbacksCopy;
+    // Creates a thread which reads from connection into the queue
+    readingThread = std::thread([this, conn]() {
 
         constexpr auto READ_TIMEOUT = std::chrono::milliseconds(100);
-
         std::uint64_t numPacketsRead = 0;
         try {
             // open stream with 1B write size (no writing will happen here)
@@ -90,7 +69,7 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
             conn->closeStream(name);
 
         } catch(const std::exception& ex) {
-            *pExceptionMessageCopy = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
+            exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
         }
 
         queue.destruct();
@@ -99,16 +78,16 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
 }
 
 DataOutputQueue::~DataOutputQueue() {
+    spdlog::debug("DataOutputQueue ({}) about to be desctructed...", name);
     // Set reading thread to stop
     running = false;
 
     // Destroy queue
-    pQueue->destruct();
-    pQueue = nullptr;
+    queue.destruct();
 
     // join thread
     if(readingThread.joinable()) readingThread.join();
-    spdlog::debug("DataOutputQueue ({}) destructed", streamName);
+    spdlog::debug("DataOutputQueue ({}) destructed", name);
 }
 
 void DataOutputQueue::setBlocking(bool blocking) {
@@ -132,7 +111,7 @@ unsigned int DataOutputQueue::getMaxSize(unsigned int maxSize) const {
 }
 
 std::string DataOutputQueue::getName() const {
-    return streamName;
+    return name;
 }
 
 int DataOutputQueue::addCallback(std::function<void(std::string, std::shared_ptr<ADatatype>)> callback) {
@@ -172,27 +151,13 @@ bool DataOutputQueue::removeCallback(int callbackId) {
 }
 
 // DATA INPUT QUEUE
-DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& name, unsigned int maxSize, bool blocking)
-    : pQueue(std::make_shared<LockingQueue<std::shared_ptr<RawBuffer>>>(maxSize, blocking)),
-      queue(*pQueue),
-      pRunning(std::make_shared<std::atomic<bool>>(true)),
-      running(*pRunning),
-      pExceptionMessage(std::make_shared<std::string>("")),
-      exceptionMessage(*pExceptionMessage),
-      streamName(name) {
-    // creates a thread which reads from connection into the queue
-    std::shared_ptr<std::atomic<bool>> pRunningCopy{pRunning};
-    std::shared_ptr<std::string> pExceptionMessageCopy{pExceptionMessage};
-    auto pQueueCopy = pQueue;
-
-    // do not capture 'this' as it this thread will outlive the parent object
-    writingThread = std::thread([name, pRunningCopy, conn, pExceptionMessageCopy, pQueueCopy]() {
-        std::atomic<bool>& running = *pRunningCopy;
+DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize, bool blocking)
+    : queue(maxSize, blocking), name(streamName) {
+    
+    writingThread = std::thread([this, conn]() {
         std::uint64_t numPacketsSent = 0;
-        LockingQueue<std::shared_ptr<RawBuffer>>& queue = *pQueueCopy;
 
         constexpr auto WRITE_TIMEOUT = std::chrono::milliseconds(100);
-
         try {
             // open stream with default XLINK_USB_BUFFER_MAX_SIZE write size
             conn->openStream(name, dai::XLINK_USB_BUFFER_MAX_SIZE);
@@ -229,7 +194,7 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
             conn->closeStream(name);
 
         } catch(const std::exception& ex) {
-            *pExceptionMessageCopy = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
+            exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
         }
 
         queue.destruct();
@@ -238,15 +203,15 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
 }
 
 DataInputQueue::~DataInputQueue() {
+    spdlog::debug("DataInputQueue ({}) about to be desctructed...", name);
     // Set writing thread to stop
     running = false;
 
     // Destroy queue
-    pQueue->destruct();
-    pQueue = nullptr;
-
+    queue.destruct();
+    
     if(writingThread.joinable()) writingThread.join();
-    spdlog::debug("DataInputQueue ({}) destructed", streamName);
+    spdlog::debug("DataInputQueue ({}) destructed", name);
 }
 
 void DataInputQueue::setBlocking(bool blocking) {
@@ -278,7 +243,7 @@ std::size_t DataInputQueue::getMaxDataSize() {
 }
 
 std::string DataInputQueue::getName() const {
-    return streamName;
+    return name;
 }
 
 void DataInputQueue::send(const std::shared_ptr<RawBuffer>& val) {
