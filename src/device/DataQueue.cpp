@@ -41,6 +41,8 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
         auto& callbacksMtx = *pCallbacksMtxCopy;
         auto& callbacks = *pCallbacksCopy;
 
+        constexpr auto READ_TIMEOUT = std::chrono::milliseconds(100);
+
         std::uint64_t numPacketsRead = 0;
         try {
             // open stream with 1B write size (no writing will happen here)
@@ -48,8 +50,10 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
 
             while(running) {
                 // read packet
-                auto* packet = conn->readFromStreamRaw(name);
-                if(!running) break;
+                streamPacketDesc_t* packet;
+                bool success = conn->readFromStreamRaw(packet, name, READ_TIMEOUT);
+                // if timeout, continue
+                if(!success) continue;
 
                 // parse packet
                 auto data = parsePacketToADatatype(packet);
@@ -73,8 +77,6 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
                 // Increment numPacketsRead
                 numPacketsRead++;
 
-                // First check if if not destructed already
-                if(!running) return;
                 // Call callbacks
                 {
                     std::unique_lock<std::mutex> l(callbacksMtx);
@@ -104,9 +106,9 @@ DataOutputQueue::~DataOutputQueue() {
     pQueue->destruct();
     pQueue = nullptr;
 
-    // detach from thread, because currently no way to unblock underlying XLinkReadData
-    // Make sure to not access DataOutputQueue fields from that thread anymore
-    readingThread.detach();
+    // join thread
+    if(readingThread.joinable()) readingThread.join();
+    spdlog::debug("DataOutputQueue ({}) destructed", streamName);
 }
 
 void DataOutputQueue::setBlocking(bool blocking) {
@@ -189,6 +191,8 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
         std::uint64_t numPacketsSent = 0;
         LockingQueue<std::shared_ptr<RawBuffer>>& queue = *pQueueCopy;
 
+        constexpr auto WRITE_TIMEOUT = std::chrono::milliseconds(100);
+
         try {
             // open stream with default XLINK_USB_BUFFER_MAX_SIZE write size
             conn->openStream(name, dai::XLINK_USB_BUFFER_MAX_SIZE);
@@ -214,8 +218,9 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
                 auto serialized = serializeData(data);
 
                 // Write packet to device
-                conn->writeToStream(name, serialized);
-                if(!running) return;
+                bool success = conn->writeToStream(name, serialized, WRITE_TIMEOUT);
+                // if not success, timeout happened
+                if(!success) continue;
 
                 // Increment num packets sent
                 numPacketsSent++;
@@ -240,9 +245,8 @@ DataInputQueue::~DataInputQueue() {
     pQueue->destruct();
     pQueue = nullptr;
 
-    // detach thread to not block user space code
-    // Make sure to not access DataInputQueue fields from that thread anymore
-    writingThread.detach();
+    if(writingThread.joinable()) writingThread.join();
+    spdlog::debug("DataInputQueue ({}) destructed", streamName);
 }
 
 void DataInputQueue::setBlocking(bool blocking) {

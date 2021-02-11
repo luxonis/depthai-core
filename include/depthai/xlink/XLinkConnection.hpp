@@ -13,7 +13,7 @@
 #include <vector>
 
 // Libraries
-#include <XLinkPublicDefines.h>
+#include <XLink/XLinkPublicDefines.h>
 
 // Shared
 //#include "depthai-shared/general/data_observer.hpp"
@@ -66,11 +66,11 @@ class XLinkConnection {
     void writeToStreamSplit(const std::string& streamName, const std::vector<uint8_t>& data, std::size_t split);
 
     // timeout versions
-    // bool writeToStream(const std::string& streamName, const void* data, std::size_t size, std::chrono::milliseconds timeout);
-    // bool writeToStream(const std::string& streamName, const std::uint8_t* data, std::size_t size, std::chrono::milliseconds timeout);
-    // bool writeToStream(const std::string& streamName, const std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout);
-    // bool readFromStream(const std::string& streamName, std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout);
-    // bool readFromStreamRaw(streamPacketDesc_t*& pPacket, const std::string& streamName, std::chrono::milliseconds timeout);
+    bool writeToStream(const std::string& streamName, const void* data, std::size_t size, std::chrono::milliseconds timeout);
+    bool writeToStream(const std::string& streamName, const std::uint8_t* data, std::size_t size, std::chrono::milliseconds timeout);
+    bool writeToStream(const std::string& streamName, const std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout);
+    bool readFromStream(const std::string& streamName, std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout);
+    bool readFromStreamRaw(streamPacketDesc_t*& pPacket, const std::string& streamName, std::chrono::milliseconds timeout);
 
     // USE ONLY WHEN COPYING DATA AT LATER STAGES
     streamPacketDesc_t* readFromStreamRaw(const std::string& streamName);

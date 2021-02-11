@@ -5,7 +5,7 @@
 #include <sstream>
 
 // libraries
-#include <XLinkPublicDefines.h>
+#include <XLink/XLinkPublicDefines.h>
 #include <spdlog/spdlog.h>
 
 #include <nlohmann/json.hpp>
