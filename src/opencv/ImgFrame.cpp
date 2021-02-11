@@ -35,6 +35,16 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
             type = CV_8UC1;
             break;
 
+        case Type::GRAYF16:
+            size = cv::Size(getWidth(), getHeight());
+            type = CV_16FC1;
+            break;
+
+        case Type::RAW16:
+            size = cv::Size(getWidth(), getHeight());
+            type = CV_16UC1;
+            break;
+
         case Type::RGBF16F16F16i:
         case Type::BGRF16F16F16i:
         case Type::RGBF16F16F16p:
@@ -64,6 +74,22 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
     return mat;
 }
 
+
+void chw_to_hwc(cv::InputArray src, cv::OutputArray dst) {                      
+    const auto& src_size = src.getMat().size;      
+
+    const int src_h = src.rows();
+    const int src_w = src.cols();
+    const int src_c = src.channels();                                            
+
+    auto c_hw = src.getMat().reshape(0, {src_c, src_h * src_w});                  
+
+    dst.create(src_h, src_w, CV_8UC3);                    
+    cv::Mat dst_1d = dst.getMat().reshape(src_c, {src_h, src_w});                 
+
+    cv::transpose(c_hw, dst_1d);                                                  
+}
+
 cv::Mat ImgFrame::getBgrFrame() {
     cv::Mat frame = getFrame();
     cv::Mat output;
@@ -75,6 +101,30 @@ cv::Mat ImgFrame::getBgrFrame() {
 
         case Type::BGR888i:
             output = frame.clone();
+            break;
+
+        case Type::RGB888p:
+            {
+                cv::Size s(getWidth(), getHeight());
+                std::vector<cv::Mat> channels;
+                // RGB
+                channels.push_back(cv::Mat(s, CV_8UC1, getData().data() + s.area()*2));
+                channels.push_back(cv::Mat(s, CV_8UC1, getData().data() + s.area()*1));
+                channels.push_back(cv::Mat(s, CV_8UC1, getData().data() + s.area()*0));
+                cv::merge(channels, output);
+            }
+            break;
+
+        case Type::BGR888p:
+            {
+                cv::Size s(getWidth(), getHeight());
+                std::vector<cv::Mat> channels;
+                // BGR
+                channels.push_back(cv::Mat(s, CV_8UC1, getData().data() + s.area()*0));
+                channels.push_back(cv::Mat(s, CV_8UC1, getData().data() + s.area()*1));
+                channels.push_back(cv::Mat(s, CV_8UC1, getData().data() + s.area()*2));
+                cv::merge(channels, output);
+            }
             break;
 
         case Type::YUV420p:
@@ -90,7 +140,9 @@ cv::Mat ImgFrame::getBgrFrame() {
             break;
 
         case Type::RAW8:
+        case Type::RAW16:
         case Type::GRAY8:
+        case Type::GRAYF16:
             output = frame.clone();
             break;
 
