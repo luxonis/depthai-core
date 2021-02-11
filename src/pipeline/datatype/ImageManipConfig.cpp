@@ -1,8 +1,8 @@
 // First, as other headers may include <cmath>
 #define _USE_MATH_DEFINES
-#include <cmath>
-
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
+
+#include <cmath>
 
 namespace dai {
 
