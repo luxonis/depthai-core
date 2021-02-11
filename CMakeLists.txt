@@ -133,11 +133,6 @@ add_library(${TARGET_ALIAS} ALIAS ${TARGET_NAME})
 # Add aditional flags
 include(cmake/flags.cmake)
 
-# Remove switch-enum flag for ImgFrame
-if ("${CMAKE_CXX_COMPILER_ID}" MATCHES "^(AppleClang|Clang|GNU)$")
-    set_source_files_properties(src/pipeline/datatype/ImgFrame.cpp PROPERTIES COMPILE_FLAGS -Wno-error=switch-enum )
-endif()
-
 # And clang-tidy and format
 if(DEPTHAI_CLANG_TIDY)
     include(cmake/clang-tidy.cmake)
