@@ -24,7 +24,7 @@ void CameraControl::setStopStreaming() {
 }
 
 // Focus
-void CameraControl::setAutoFocusMode(RawCameraControl::AutoFocusMode mode) {
+void CameraControl::setAutoFocusMode(AutoFocusMode mode) {
     cfg.setCommand(RawCameraControl::Command::AF_MODE);
     cfg.autoFocusMode = mode;
 }
@@ -65,7 +65,7 @@ void CameraControl::setAutoExposureCompensation(int8_t compensation) {
     cfg.setCommand(RawCameraControl::Command::EXPOSURE_COMPENSATION);
     cfg.expCompensation = compensation;
 }
-void CameraControl::setAntiBandingMode(RawCameraControl::AntiBandingMode mode) {
+void CameraControl::setAntiBandingMode(AntiBandingMode mode) {
     cfg.setCommand(RawCameraControl::Command::ANTIBANDING_MODE);
     cfg.antiBandingMode = mode;
 }
@@ -77,7 +77,7 @@ void CameraControl::setManualExposure(uint32_t exposureTimeUs, uint32_t sensitiv
 }
 
 // White Balance
-void CameraControl::setAutoWhiteBalanceMode(RawCameraControl::AutoWhiteBalanceMode mode) {
+void CameraControl::setAutoWhiteBalanceMode(AutoWhiteBalanceMode mode) {
     cfg.setCommand(RawCameraControl::Command::AWB_MODE);
     cfg.awbMode = mode;
 }
@@ -115,11 +115,11 @@ void CameraControl::setChromaDenoise(uint16_t value) {
     cfg.setCommand(RawCameraControl::Command::CHROMA_DENOISE);
     cfg.chromaDenoise = value;
 }
-void CameraControl::setSceneMode(RawCameraControl::SceneMode mode) {
+void CameraControl::setSceneMode(SceneMode mode) {
     cfg.setCommand(RawCameraControl::Command::SCENE_MODE);
     cfg.sceneMode = mode;
 }
-void CameraControl::setEffectMode(RawCameraControl::EffectMode mode) {
+void CameraControl::setEffectMode(EffectMode mode) {
     cfg.setCommand(RawCameraControl::Command::EFFECT_MODE);
     cfg.effectMode = mode;
 }
