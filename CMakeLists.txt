@@ -330,17 +330,23 @@ endif()
 ########################
 if(DEPTHAI_OPENCV_SUPPORT)
     find_package(OpenCV)
-    if(OpenCV_FOUND AND "opencv_core" IN_LIST OpenCV_LIBS)   
-        # Add ${TARGET_NAME}-opencv library
-        add_library(${TARGET_NAME}-opencv src/opencv/ImgFrame.cpp)
-        add_library(${TARGET_ALIAS}::opencv ALIAS ${TARGET_NAME}-opencv)
-        target_link_libraries(${TARGET_NAME}-opencv PUBLIC ${TARGET_NAME})
+    if(OpenCV_FOUND AND "opencv_core" IN_LIST OpenCV_LIBS)
+        set(TARGET_CORE_OPENCV_NAME ${TARGET_NAME}-opencv)   
+        set(TARGET_CORE_OPENCV_ALIAS ${TARGET_ALIAS}::opencv)
+
+        # Add depthai-core-opencv library and depthai::core::opencv alias
+        add_library(${TARGET_CORE_OPENCV_NAME} src/opencv/ImgFrame.cpp)
+        add_library(${TARGET_CORE_OPENCV_ALIAS} ALIAS ${TARGET_CORE_OPENCV_NAME})
     
         # Link to OpenCV (publically)
-        target_link_libraries(${TARGET_NAME} PUBLIC opencv_core)
-        
+        target_link_libraries(${TARGET_CORE_OPENCV_NAME} PUBLIC opencv_core)
+    
         # Add public compile definition indicating that OpenCV support is available
-        target_compile_definitions(${TARGET_NAME} PUBLIC DEPTHAI_OPENCV_SUPPORT)
+        target_compile_definitions(${TARGET_CORE_OPENCV_NAME} PUBLIC DEPTHAI_OPENCV_SUPPORT)
+
+        # Add public dependency to depthai::core library
+        target_link_libraries(${TARGET_CORE_OPENCV_NAME} PUBLIC ${TARGET_NAME})
+    
     else()
         message(STATUS "OpenCV and required libraries not found. OpenCV Support disabled")
     endif()
