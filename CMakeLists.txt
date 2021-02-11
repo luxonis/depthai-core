@@ -23,7 +23,8 @@ if(WIN32)
 endif()
 
 set(TARGET_NAME depthai-core)
-project(${TARGET_NAME} VERSION "0.0.2" LANGUAGES CXX C)
+project(depthai VERSION "0.0.2" LANGUAGES CXX C)
+set(TARGET_ALIAS ${PROJECT_NAME}::core)
 
 # Set policies
 # CMP0074 dictates that find_package searches environment variable "[packageName]_ROOT" along with regular variable [packageName]_ROOT
@@ -127,6 +128,7 @@ add_library(${TARGET_NAME}
     src/openvino/BlobReader.cpp
     src/bspatch/bspatch.c
 )
+add_library(${TARGET_ALIAS} ALIAS ${TARGET_NAME})
 
 # Add aditional flags
 include(cmake/flags.cmake)
@@ -296,8 +298,6 @@ if(DEPTHAI_CLANG_FORMAT)
     target_clangformat_setup(${TARGET_NAME} "${header_dirs}")
 endif()
 
-
-
 # link libraries
 target_link_libraries(${TARGET_NAME}
     PUBLIC
@@ -335,7 +335,12 @@ endif()
 ########################
 if(DEPTHAI_OPENCV_SUPPORT)
     find_package(OpenCV)
-    if(OpenCV_FOUND AND "opencv_core" IN_LIST OpenCV_LIBS)        
+    if(OpenCV_FOUND AND "opencv_core" IN_LIST OpenCV_LIBS)   
+        # Add ${TARGET_NAME}-opencv library
+        add_library(${TARGET_NAME}-opencv src/opencv/ImgFrame.cpp)
+        add_library(${TARGET_ALIAS}::opencv ALIAS ${TARGET_NAME}-opencv)
+        target_link_libraries(${TARGET_NAME}-opencv PUBLIC ${TARGET_NAME})
+    
         # Link to OpenCV (publically)
         target_link_libraries(${TARGET_NAME} PUBLIC opencv_core)
         
@@ -414,11 +419,13 @@ if(NOT DEPTHAI_BINARIES_RESOURCE_COMPILE)
 endif()
 
 set(config_install_dir "${CMAKE_INSTALL_LIBDIR}/cmake/${TARGET_NAME}")
-export(TARGETS
+export(TARGETS 
     ${TARGET_NAME} "${DEPTHAI_RESOURCE_LIBRARY_NAME}" cmrc-base
+    NAMESPACE ${PROJECT_NAME}::
     FILE "${config_install_dir}/${TARGET_NAME}Config.cmake"
 )
 install(EXPORT
     "${TARGET_NAME}Config"
+    NAMESPACE ${PROJECT_NAME}::
     DESTINATION "${config_install_dir}"
 )
