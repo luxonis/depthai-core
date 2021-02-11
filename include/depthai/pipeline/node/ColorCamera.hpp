@@ -79,6 +79,10 @@ class ColorCamera : public Node {
     // set 'still' output size
     void setStillSize(int width, int height);
 
+    // set 'isp' output scaling
+    void setIspScale(int numerator, int denominator);
+    void setIspScaleFull(int horizNum, int horizDenom, int vertNum, int vertDenom);
+
     // set sensor resolution
     void setResolution(ColorCameraProperties::SensorResolution resolution);
     // get sensor resolution
