@@ -6,7 +6,7 @@
 #include "depthai/depthai.hpp"
 
 struct warpFourPointTest {
-    std::vector<dai::RawImageManipConfig::Point2f> points;
+    std::vector<dai::Point2f> points;
     bool normalizedCoords;
     const char *description;
 };
@@ -146,7 +146,7 @@ int main(){
                                                warpList[warpIdx].normalizedCoords);
             } else {
                 angleDeg += rotateRate;
-                dai::RawImageManipConfig::RotatedRect rr = {
+                dai::RotatedRect rr = {
                         {320, 240}, // center
                         {640, 480}, //{400, 400}, // size
                         angleDeg
@@ -157,6 +157,8 @@ int main(){
             if (resizeFactor > 0) {
                 cfg.setResize(resizeX, resizeY);
             }
+            //cfg.setWarpBorderFillColor(255, 0, 0);
+            //cfg.setWarpBorderReplicatePixels();
             manipInQueue->send(cfg);
         }
 
