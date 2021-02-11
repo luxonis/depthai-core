@@ -30,17 +30,15 @@ class ImageManip : public Node {
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
 
     // Functions to set ImageManipConfig
+    // TODO deprecate these in favor of?
     void setCropRect(float xmin, float ymin, float xmax, float ymax);
-    void setCropRotatedRect(RawImageManipConfig::RotatedRect rr, bool normalizedCoords = true);
     void setCenterCrop(float ratio, float whRatio = 1.0f);
-    void setWarpTransformFourPoints(std::vector<RawImageManipConfig::Point2f> pt, bool normalizedCoords);
-    void setWarpTransformMatrix3x3(std::vector<float> mat);
-    void setRotationDegrees(float deg);
-    void setRotationRadians(float rad);
     void setResize(int w, int h);
     void setResizeThumbnail(int w, int h, int bgRed = 0, int bgGreen = 0, int bgBlue = 0);
     void setFrameType(dai::RawImgFrame::Type name);
     void setHorizontalFlip(bool flip);
+
+    // TODO add API to set/get an initial config
 
     // Functions to set properties
     void setWaitForConfigInput(bool wait);

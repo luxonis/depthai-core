@@ -13,6 +13,12 @@ class CameraControl : public Buffer {
     std::shared_ptr<RawBuffer> serialize() const override;
     RawCameraControl& cfg;
 
+    using AutoFocusMode = RawCameraControl::AutoFocusMode;
+    using AntiBandingMode = RawCameraControl::AntiBandingMode;
+    using AutoWhiteBalanceMode = RawCameraControl::AutoWhiteBalanceMode;
+    using SceneMode = RawCameraControl::SceneMode;
+    using EffectMode = RawCameraControl::EffectMode;
+
    public:
     CameraControl();
     explicit CameraControl(std::shared_ptr<RawCameraControl> ptr);
@@ -25,7 +31,7 @@ class CameraControl : public Buffer {
     void setStopStreaming();
 
     // Focus
-    void setAutoFocusMode(RawCameraControl::AutoFocusMode mode);
+    void setAutoFocusMode(AutoFocusMode mode);
     void setAutoFocusTrigger();
     void setAutoFocusRegion(uint16_t startX, uint16_t startY, uint16_t width, uint16_t height);
     void setManualFocus(uint8_t lensPosition);
@@ -35,11 +41,11 @@ class CameraControl : public Buffer {
     void setAutoExposureLock(bool lock);
     void setAutoExposureRegion(uint16_t startX, uint16_t startY, uint16_t width, uint16_t height);
     void setAutoExposureCompensation(int8_t compensation);
-    void setAntiBandingMode(RawCameraControl::AntiBandingMode mode);
+    void setAntiBandingMode(AntiBandingMode mode);
     void setManualExposure(uint32_t exposureTimeUs, uint32_t sensitivityIso);
 
     // White Balance
-    void setAutoWhiteBalanceMode(RawCameraControl::AutoWhiteBalanceMode mode);
+    void setAutoWhiteBalanceMode(AutoWhiteBalanceMode mode);
     void setAutoWhiteBalanceLock(bool lock);
 
     // Other image controls
@@ -50,8 +56,8 @@ class CameraControl : public Buffer {
     void setNoiseReductionStrength(uint16_t value);
     void setLumaDenoise(uint16_t value);
     void setChromaDenoise(uint16_t value);
-    void setSceneMode(RawCameraControl::SceneMode mode);
-    void setEffectMode(RawCameraControl::EffectMode mode);
+    void setSceneMode(SceneMode mode);
+    void setEffectMode(EffectMode mode);
 
     // Functions to retrieve properties
     bool getCaptureStill() const;

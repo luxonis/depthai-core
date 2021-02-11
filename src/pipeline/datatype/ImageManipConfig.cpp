@@ -25,7 +25,7 @@ void ImageManipConfig::setCropRect(float xmin, float ymin, float xmax, float yma
     cfg.cropConfig.cropRect.ymax = ymax;
 }
 
-void ImageManipConfig::setCropRotatedRect(RawImageManipConfig::RotatedRect rr, bool normalizedCoords) {
+void ImageManipConfig::setCropRotatedRect(RotatedRect rr, bool normalizedCoords) {
     // Enable crop stage and extended flags
     cfg.enableCrop = true;
     cfg.cropConfig.enableRotatedRect = true;
@@ -34,7 +34,7 @@ void ImageManipConfig::setCropRotatedRect(RawImageManipConfig::RotatedRect rr, b
     cfg.cropConfig.normalizedCoords = normalizedCoords;
 }
 
-void ImageManipConfig::setWarpTransformFourPoints(std::vector<RawImageManipConfig::Point2f> pt, bool normalizedCoords) {
+void ImageManipConfig::setWarpTransformFourPoints(std::vector<Point2f> pt, bool normalizedCoords) {
     // Enable resize stage and extended flags
     cfg.enableResize = true;
     cfg.resizeConfig.enableWarp4pt = true;
@@ -63,16 +63,13 @@ void ImageManipConfig::setCenterCrop(float ratio, float whRatio) {
 
 void ImageManipConfig::setRotationDegrees(float deg) {
     cfg.enableResize = true;
-    cfg.resizeConfig.rotationAngle = deg;
-    cfg.resizeConfig.angleInRadians = false;
+    cfg.resizeConfig.rotationAngleDeg = deg;
     cfg.resizeConfig.enableRotation = true;
 }
 
 void ImageManipConfig::setRotationRadians(float rad) {
-    cfg.enableResize = true;
-    cfg.resizeConfig.rotationAngle = rad;
-    cfg.resizeConfig.angleInRadians = true;
-    cfg.resizeConfig.enableRotation = true;
+    static constexpr float rad2degFactor = 180 / M_PI;
+    setRotationDegrees(rad * rad2degFactor);
 }
 
 void ImageManipConfig::setResize(int w, int h) {

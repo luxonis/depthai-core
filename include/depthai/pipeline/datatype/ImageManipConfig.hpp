@@ -20,9 +20,9 @@ class ImageManipConfig : public Buffer {
 
     // Functions to set properties
     void setCropRect(float xmin, float ymin, float xmax, float ymax);
-    void setCropRotatedRect(RawImageManipConfig::RotatedRect rr, bool normalizedCoords = true);
+    void setCropRotatedRect(RotatedRect rr, bool normalizedCoords = true);
     void setCenterCrop(float ratio, float whRatio = 1.0f);
-    void setWarpTransformFourPoints(std::vector<RawImageManipConfig::Point2f> pt, bool normalizedCoords);
+    void setWarpTransformFourPoints(std::vector<Point2f> pt, bool normalizedCoords);
     void setWarpTransformMatrix3x3(std::vector<float> mat);
     void setRotationDegrees(float deg);
     void setRotationRadians(float rad);
