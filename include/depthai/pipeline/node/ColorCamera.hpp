@@ -1,7 +1,8 @@
 #pragma once
 
-#include "depthai/pipeline/Node.hpp"
 #include <depthai/pipeline/datatype/CameraControl.hpp>
+
+#include "depthai/pipeline/Node.hpp"
 
 // shared
 #include <depthai-shared/properties/ColorCameraProperties.hpp>
@@ -117,7 +118,6 @@ class ColorCamera : public Node {
 
     void setPreviewKeepAspectRatio(bool keep);
     bool getPreviewKeepAspectRatio();
-
 };
 
 }  // namespace node

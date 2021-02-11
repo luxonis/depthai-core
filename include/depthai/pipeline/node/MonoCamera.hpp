@@ -1,7 +1,8 @@
 #pragma once
 
-#include "depthai/pipeline/Node.hpp"
 #include <depthai/pipeline/datatype/CameraControl.hpp>
+
+#include "depthai/pipeline/Node.hpp"
 
 // shared
 #include <depthai-shared/common/CameraBoardSocket.hpp>

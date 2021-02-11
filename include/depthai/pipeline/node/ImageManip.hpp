@@ -31,18 +31,12 @@ class ImageManip : public Node {
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
 
     // Functions to set ImageManipConfig - deprecated
-    [[deprecated("Use 'initialConfig.setCropRect()' instead")]]
-    void setCropRect(float xmin, float ymin, float xmax, float ymax);
-    [[deprecated("Use 'initialConfig.setCenterCrop()' instead")]]
-    void setCenterCrop(float ratio, float whRatio = 1.0f);
-    [[deprecated("Use 'initialConfig.setResize()' instead")]]
-    void setResize(int w, int h);
-    [[deprecated("Use 'initialConfig.setResizeThumbnail()' instead")]]
-    void setResizeThumbnail(int w, int h, int bgRed = 0, int bgGreen = 0, int bgBlue = 0);
-    [[deprecated("Use 'initialConfig.setFrameType()' instead")]]
-    void setFrameType(dai::RawImgFrame::Type name);
-    [[deprecated("Use 'initialConfig.setHorizontalFlip()' instead")]]
-    void setHorizontalFlip(bool flip);
+    [[deprecated("Use 'initialConfig.setCropRect()' instead")]] void setCropRect(float xmin, float ymin, float xmax, float ymax);
+    [[deprecated("Use 'initialConfig.setCenterCrop()' instead")]] void setCenterCrop(float ratio, float whRatio = 1.0f);
+    [[deprecated("Use 'initialConfig.setResize()' instead")]] void setResize(int w, int h);
+    [[deprecated("Use 'initialConfig.setResizeThumbnail()' instead")]] void setResizeThumbnail(int w, int h, int bgRed = 0, int bgGreen = 0, int bgBlue = 0);
+    [[deprecated("Use 'initialConfig.setFrameType()' instead")]] void setFrameType(dai::RawImgFrame::Type name);
+    [[deprecated("Use 'initialConfig.setHorizontalFlip()' instead")]] void setHorizontalFlip(bool flip);
 
     // Functions to set properties
     void setWaitForConfigInput(bool wait);

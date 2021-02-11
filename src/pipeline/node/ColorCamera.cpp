@@ -6,7 +6,7 @@ namespace dai {
 namespace node {
 
 ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-        : Node(par, nodeId), rawControl(std::make_shared<RawCameraControl>()), initialControl(rawControl) {
+    : Node(par, nodeId), rawControl(std::make_shared<RawCameraControl>()), initialControl(rawControl) {
     properties.boardSocket = CameraBoardSocket::AUTO;
     properties.imageOrientation = CameraImageOrientation::AUTO;
     properties.colorOrder = ColorCameraProperties::ColorOrder::BGR;
@@ -300,7 +300,6 @@ void ColorCamera::setPreviewKeepAspectRatio(bool keep) {
 bool ColorCamera::getPreviewKeepAspectRatio() {
     return properties.previewKeepAspectRatio;
 }
-
 
 }  // namespace node
 }  // namespace dai
