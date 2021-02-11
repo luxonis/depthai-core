@@ -1,6 +1,7 @@
 #pragma once
 
 #include "depthai/pipeline/Node.hpp"
+#include <depthai/pipeline/datatype/CameraControl.hpp>
 
 // shared
 #include <depthai-shared/properties/ColorCameraProperties.hpp>
@@ -16,8 +17,12 @@ class ColorCamera : public Node {
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
 
+    std::shared_ptr<RawCameraControl> rawControl;
+
    public:
     ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+
+    CameraControl initialControl;
 
     Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, {{DatatypeEnum::ImageManipConfig, false}}};
     Input inputControl{*this, "inputControl", Input::Type::SReceiver, {{DatatypeEnum::CameraControl, false}}};
@@ -113,9 +118,6 @@ class ColorCamera : public Node {
     void setPreviewKeepAspectRatio(bool keep);
     bool getPreviewKeepAspectRatio();
 
-    // Camera Controls
-    void setAutoFocusMode(RawCameraControl::AutoFocusMode mode);
-    void setInitialLensPosition(uint8_t position);
 };
 
 }  // namespace node

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "depthai/pipeline/Node.hpp"
+#include <depthai/pipeline/datatype/CameraControl.hpp>
 
 // shared
 #include <depthai-shared/common/CameraBoardSocket.hpp>
@@ -17,8 +18,12 @@ class MonoCamera : public Node {
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
 
+    std::shared_ptr<RawCameraControl> rawControl;
+
    public:
     MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+
+    CameraControl initialControl;
 
     Input inputControl{*this, "inputControl", Input::Type::SReceiver, {{DatatypeEnum::CameraControl, false}}};
 
