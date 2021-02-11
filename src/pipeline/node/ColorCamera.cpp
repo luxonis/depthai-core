@@ -134,6 +134,21 @@ void ColorCamera::setStillSize(int width, int height) {
     properties.stillHeight = height;
 }
 
+void ColorCamera::setIspScale(int numerator, int denominator) {
+    properties.ispScale.horizNumerator = numerator;
+    properties.ispScale.horizDenominator = denominator;
+    properties.ispScale.vertNumerator = numerator;
+    properties.ispScale.vertDenominator = denominator;
+}
+
+void ColorCamera::setIspScaleFull(int horizNum, int horizDenom, int vertNum, int vertDenom) {
+    properties.ispScale.horizNumerator = horizNum;
+    properties.ispScale.horizDenominator = horizDenom;
+    properties.ispScale.vertNumerator = vertNum;
+    properties.ispScale.vertDenominator = vertDenom;
+}
+
+
 void ColorCamera::setResolution(ColorCameraProperties::SensorResolution resolution) {
     properties.resolution = resolution;
 }

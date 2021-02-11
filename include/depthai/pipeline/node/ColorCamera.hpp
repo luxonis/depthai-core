@@ -130,6 +130,10 @@ class ColorCamera : public Node {
     /// Get sensor resolution
     Properties::SensorResolution getResolution() const;
 
+    // set 'isp' output scaling
+    void setIspScale(int numerator, int denominator);
+    void setIspScaleFull(int horizNum, int horizDenom, int vertNum, int vertDenom);
+
     /**
      * Set rate at which camera should produce frames
      * @param fps Rate in frames per second
