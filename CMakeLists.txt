@@ -1,7 +1,9 @@
 cmake_minimum_required(VERSION 3.2) # For Hunter
 
-# Set defaults
-set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
+# Build dependencies as 'Release' only by default (if not MSVC, as it requires same debug level for libraries to be linked against)
+if(NOT MSVC)
+    set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
+endif()
 
 # Read the BUILD_SHARED_LIBS option and select PIC toolchain
 if(BUILD_SHARED_LIBS)

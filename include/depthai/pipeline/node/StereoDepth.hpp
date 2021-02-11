@@ -3,7 +3,7 @@
 #include "depthai/pipeline/Node.hpp"
 
 // shared
-#include "depthai-shared/pb/properties/StereoDepthProperties.hpp"
+#include "depthai-shared/properties/StereoDepthProperties.hpp"
 
 namespace dai {
 namespace node {

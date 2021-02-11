@@ -2,7 +2,7 @@
 
 #include <sstream>
 
-#include "depthai-shared/datatype/DetectionNetworkType.hpp"
+#include "depthai-shared/common/DetectionNetworkType.hpp"
 #include "openvino/BlobReader.hpp"
 
 namespace dai {
@@ -47,14 +47,14 @@ void DetectionNetwork::setBlobPath(const std::string& path) {
 // MobileNet
 //--------------------------------------------------------------------
 MobileNetDetectionNetwork::MobileNetDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : DetectionNetwork(par, nodeId) {
-    properties.nnFamily = (uint32_t)DetectionNetworkType::MOBILENET;
+    properties.nnFamily = DetectionNetworkType::MOBILENET;
 }
 
 //--------------------------------------------------------------------
 // YOLO
 //--------------------------------------------------------------------
 YoloDetectionNetwork::YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : DetectionNetwork(par, nodeId) {
-    properties.nnFamily = (uint32_t)DetectionNetworkType::YOLO;
+    properties.nnFamily = DetectionNetworkType::YOLO;
 }
 
 void YoloDetectionNetwork::setNumClasses(const int numClasses) {

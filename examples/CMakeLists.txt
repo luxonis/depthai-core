@@ -20,7 +20,10 @@ macro(dai_add_example example_name example_src)
             -DTIMEOUT_SECONDS=5
             -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake $<TARGET_FILE:${example_name}> ${arguments}
         )
-        #add_test(NAME ${example_name} COMMAND timeout -s SIGINT -k 10 5 $<TARGET_FILE:${example_name}>)
+
+        # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
+        set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]") 
+        
     endif()
 endmacro() 
 
@@ -71,8 +74,9 @@ dai_add_example(mjpeg_encoding src/mjpeg_encoding_example.cpp)
 # StereoDepth example
 dai_add_example(stereo src/stereo_example.cpp)
 
-# Image Manip node example
+# Image Manip node examples
 dai_add_example(image_manip src/image_manip_example.cpp)
+dai_add_example(image_manip_warp src/image_manip_warp_example.cpp)
 
 # Color Camera config example
 dai_add_example(color_camera_control src/color_camera_control_example.cpp)
