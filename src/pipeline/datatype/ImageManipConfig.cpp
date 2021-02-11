@@ -1,3 +1,7 @@
+// First, as other headers may include <cmath>
+#define _USE_MATH_DEFINES
+#include <cmath>
+
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 
 namespace dai {
@@ -47,6 +51,21 @@ void ImageManipConfig::setWarpTransformMatrix3x3(std::vector<float> mat) {
     cfg.enableResize = true;
     cfg.resizeConfig.enableWarpMatrix = true;
     cfg.resizeConfig.warpMatrix3x3 = mat;
+}
+
+void ImageManipConfig::setWarpBorderReplicatePixels() {
+    // Enable resize stage and extended flags
+    cfg.enableResize = true;
+    cfg.resizeConfig.warpBorderReplicate = true;
+}
+
+void ImageManipConfig::setWarpBorderFillColor(int red, int green, int blue) {
+    // Enable resize stage and extended flags
+    cfg.enableResize = true;
+    cfg.resizeConfig.warpBorderReplicate = false;
+    cfg.resizeConfig.bgRed = red;
+    cfg.resizeConfig.bgGreen = green;
+    cfg.resizeConfig.bgBlue = blue;
 }
 
 void ImageManipConfig::setCenterCrop(float ratio, float whRatio) {

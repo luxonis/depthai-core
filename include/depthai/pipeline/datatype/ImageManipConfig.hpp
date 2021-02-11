@@ -24,6 +24,8 @@ class ImageManipConfig : public Buffer {
     void setCenterCrop(float ratio, float whRatio = 1.0f);
     void setWarpTransformFourPoints(std::vector<Point2f> pt, bool normalizedCoords);
     void setWarpTransformMatrix3x3(std::vector<float> mat);
+    void setWarpBorderReplicatePixels();
+    void setWarpBorderFillColor(int red, int green, int blue);
     void setRotationDegrees(float deg);
     void setRotationRadians(float rad);
     void setResize(int w, int h);
