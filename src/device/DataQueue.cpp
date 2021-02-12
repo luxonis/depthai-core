@@ -17,10 +17,8 @@ namespace dai {
 // DATA OUTPUT QUEUE
 DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize, bool blocking)
     : queue(maxSize, blocking), name(streamName) {
-
     // Creates a thread which reads from connection into the queue
     readingThread = std::thread([this, conn]() {
-
         constexpr auto READ_TIMEOUT = std::chrono::milliseconds(100);
         std::uint64_t numPacketsRead = 0;
         try {
@@ -30,9 +28,12 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
             while(running) {
                 // read packet
                 streamPacketDesc_t* packet;
-                bool success = conn->readFromStreamRaw(packet, name, READ_TIMEOUT);
-                // if timeout, continue
-                if(!success) continue;
+
+                bool success;
+                do {
+                    success = conn->readFromStreamRaw(packet, name, READ_TIMEOUT);
+                } while(!success && running);
+                if(!running) break;
 
                 // parse packet
                 auto data = parsePacketToADatatype(packet);
@@ -153,7 +154,6 @@ bool DataOutputQueue::removeCallback(int callbackId) {
 // DATA INPUT QUEUE
 DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize, bool blocking)
     : queue(maxSize, blocking), name(streamName) {
-    
     writingThread = std::thread([this, conn]() {
         std::uint64_t numPacketsSent = 0;
 
@@ -182,10 +182,11 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
                 // serialize
                 auto serialized = serializeData(data);
 
-                // Write packet to device
-                bool success = conn->writeToStream(name, serialized, WRITE_TIMEOUT);
-                // if not success, timeout happened
-                if(!success) continue;
+                bool success;
+                do {
+                    success = conn->writeToStream(name, serialized, WRITE_TIMEOUT);
+                } while(!success && running);
+                if(!running) break;
 
                 // Increment num packets sent
                 numPacketsSent++;
@@ -209,7 +210,7 @@ DataInputQueue::~DataInputQueue() {
 
     // Destroy queue
     queue.destruct();
-    
+
     if(writingThread.joinable()) writingThread.join();
     spdlog::debug("DataInputQueue ({}) destructed", name);
 }
