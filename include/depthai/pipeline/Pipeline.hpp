@@ -129,7 +129,8 @@ class Pipeline {
         return impl()->getConnections();
     }
 
-    const PipelineImpl::NodeConnectionMap& getConnectionMap() const {
+    using NodeConnectionMap = PipelineImpl::NodeConnectionMap;
+    const NodeConnectionMap& getConnectionMap() const {
         return impl()->nodeConnectionMap;
     }
 
