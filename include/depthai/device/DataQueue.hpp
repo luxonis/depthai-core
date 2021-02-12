@@ -221,7 +221,7 @@ class DataOutputQueue {
 class DataInputQueue {
     LockingQueue<std::shared_ptr<RawBuffer>> queue;
     std::thread writingThread;
-    std::atomic<bool> running;
+    std::atomic<bool> running{true};
     std::string exceptionMessage;
     const std::string name;
     std::size_t maxDataSize;
