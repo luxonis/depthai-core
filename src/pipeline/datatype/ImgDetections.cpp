@@ -10,5 +10,4 @@ ImgDetections::ImgDetections() : Buffer(std::make_shared<RawImgDetections>()), d
 ImgDetections::ImgDetections(std::shared_ptr<RawImgDetections> ptr)
     : Buffer(std::move(ptr)), dets(*dynamic_cast<RawImgDetections*>(raw.get())), detections(dets.detections) {}
 
-
 }  // namespace dai

@@ -17,7 +17,7 @@ class ImgDetections : public Buffer {
     ImgDetections();
     explicit ImgDetections(std::shared_ptr<RawImgDetections> ptr);
     virtual ~ImgDetections() = default;
-    
+
     // reference
     std::vector<ImgDetection>& detections;
 };
