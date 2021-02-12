@@ -145,7 +145,7 @@ int main(){
         int loop = std::chrono::duration_cast<std::chrono::milliseconds>(t5-t1).count();
 
         std::cout << ms1 << " " << ms2 << " " << ms3 << " " << ms4 << " loop: " << loop << std::endl;
-        int key = cv::waitKey(1);
+        char key = cv::waitKey(1);
         if (key == 'q'){
             return 0;
         }

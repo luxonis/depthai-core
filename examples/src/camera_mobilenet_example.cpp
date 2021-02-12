@@ -126,7 +126,7 @@ int main(int argc, char** argv){
         }
 
         cv::imshow("preview", frame);
-        int key = cv::waitKey(1);
+        char key = cv::waitKey(1);
         if (key == 'q'){
             return 0;
         } 

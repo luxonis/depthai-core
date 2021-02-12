@@ -59,7 +59,7 @@ int main(){
             cv::cvtColor(frame, rgb, cv::COLOR_YUV2BGR_NV12);
             
             cv::imshow("video", rgb);
-            int key = cv::waitKey(1);
+            char key = cv::waitKey(1);
             if (key == 'q'){
                 return 0;
             } 

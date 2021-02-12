@@ -42,7 +42,7 @@ int main(){
             printf("Frame - w: %d, h: %d\n", imgFrame->getWidth(), imgFrame->getHeight());
             frame = cv::Mat(imgFrame->getHeight(), imgFrame->getWidth(), CV_8UC3, imgFrame->getData().data());
             cv::imshow("preview", frame);
-            int key = cv::waitKey(1);
+            char key = cv::waitKey(1);
             if (key == 'q'){
                 return 0;
             } 

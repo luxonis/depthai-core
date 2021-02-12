@@ -99,7 +99,7 @@ int main(){
         cv::imshow("manip", matManip);
         cv::imshow("manip2", matManip2);
 
-        int key = cv::waitKey(1);
+        char key = cv::waitKey(1);
         if (key == 'q'){
             return 0;
         } 

@@ -69,7 +69,7 @@ int main(int argc, char** argv){
         int loop = duration_cast<milliseconds>(t5-t1).count();
 
         std::cout << ms1 << " " << ms2 << " " << ms3 << " " << ms4 << " loop: " << loop << " | Latencies - preview : " << previewLatency << " mjpeg: " << mjpegLatency << std::endl;
-        int key = cv::waitKey(1);
+        char key = cv::waitKey(1);
         if (key == 'q'){
             return 0;
         } 
