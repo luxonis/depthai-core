@@ -54,10 +54,8 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
 
     // Link plugins CAM -> NN -> XLINK
     colorCam->preview.link(detectionNetwork->input);
-    if(syncNN)
-        detectionNetwork->passthrough.link(xlinkOut->input);
-    else
-        colorCam->preview.link(xlinkOut->input);
+    if(syncNN) detectionNetwork->passthrough.link(xlinkOut->input);
+    else colorCam->preview.link(xlinkOut->input);
 
     detectionNetwork->out.link(nnOut->input);
 
@@ -96,7 +94,7 @@ int main(int argc, char** argv) {
             frame = toMat(imgFrame->getData(), imgFrame->getWidth(), imgFrame->getHeight(), 3, 1);
         }
 
-        auto dets = det->getDetections();
+        auto dets = det->detections;
         for(const auto& d : dets) {
             int x1 = d.xmin * frame.cols;
             int y1 = d.ymin * frame.rows;
@@ -110,7 +108,9 @@ int main(int argc, char** argv) {
             }
             auto color = cv::Scalar(255, 0, 0);
             cv::putText(frame, label_str, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-            cv::putText(frame, label_str, cv::Point(x1 + 10, y1 + 40), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            char conf_str[10];
+            snprintf(conf_str, sizeof conf_str, "%.2f", d.confidence*100);
+            cv::putText(frame, conf_str, cv::Point(x1 + 10, y1 + 40), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
 
             cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
         }

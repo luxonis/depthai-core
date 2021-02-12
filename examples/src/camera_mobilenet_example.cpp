@@ -31,10 +31,8 @@ dai::Pipeline createNNPipeline(std::string nnPath){
 
     // Link plugins CAM -> NN -> XLINK
     colorCam->preview.link(nn1->input);
-    if (syncNN)
-        nn1->passthrough.link(xlinkOut->input);
-    else
-        colorCam->preview.link(xlinkOut->input);
+    if (syncNN) nn1->passthrough.link(xlinkOut->input);
+    else colorCam->preview.link(xlinkOut->input);
 
     nn1->out.link(nnOut->input);
 

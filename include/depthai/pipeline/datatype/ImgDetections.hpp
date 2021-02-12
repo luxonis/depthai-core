@@ -17,8 +17,9 @@ class ImgDetections : public Buffer {
     ImgDetections();
     explicit ImgDetections(std::shared_ptr<RawImgDetections> ptr);
     virtual ~ImgDetections() = default;
-
-    std::vector<ImgDetection> getDetections(void) const;
+    
+    // reference
+    std::vector<ImgDetection>& detections;
 };
 
 }  // namespace dai

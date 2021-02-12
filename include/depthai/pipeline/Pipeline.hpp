@@ -148,7 +148,7 @@ class Pipeline {
         return impl()->assetManager;
     }
 
-    void setPipelineOpenVINOVersion(OpenVINO::Version version) {
+    void setOpenVINOVersion(OpenVINO::Version version) {
         impl()->forceRequiredOpenVINOVersion = version;
     }
 };
