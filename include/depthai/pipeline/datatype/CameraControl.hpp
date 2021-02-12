@@ -13,13 +13,13 @@ class CameraControl : public Buffer {
     std::shared_ptr<RawBuffer> serialize() const override;
     RawCameraControl& cfg;
 
+   public:
     using AutoFocusMode = RawCameraControl::AutoFocusMode;
     using AntiBandingMode = RawCameraControl::AntiBandingMode;
     using AutoWhiteBalanceMode = RawCameraControl::AutoWhiteBalanceMode;
     using SceneMode = RawCameraControl::SceneMode;
     using EffectMode = RawCameraControl::EffectMode;
 
-   public:
     CameraControl();
     explicit CameraControl(std::shared_ptr<RawCameraControl> ptr);
     virtual ~CameraControl() = default;
