@@ -82,5 +82,9 @@ void NeuralNetwork::setNumInferenceThreads(int numThreads) {
     properties.numThreads = numThreads;
 }
 
+int NeuralNetwork::getNumInferenceThreads() {
+    return properties.numThreads;
+}
+
 }  // namespace node
 }  // namespace dai

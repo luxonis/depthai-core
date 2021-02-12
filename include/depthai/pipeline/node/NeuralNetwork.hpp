@@ -43,6 +43,9 @@ class NeuralNetwork : public Node {
     void setBlobPath(const std::string& path);
     void setNumPoolFrames(int numFrames);
     void setNumInferenceThreads(int numThreads);
+    // Zero means AUTO. TODO add AUTO in NeuralNetworkProperties
+    int getNumInferenceThreads();
+    // TODO add getters for other API
 };
 
 }  // namespace node
