@@ -50,6 +50,17 @@ set(DEPTHAI_XLINK_LOCAL "" CACHE STRING "Path to local XLink source to use inste
 # Variable to installed 3rdparty headers
 set(DEPTHAI_3RDPARTY_HEADERS_PATH "depthai/3rdparty")
 
+# Check if cloned or sources
+find_package(Git)
+if(GIT_FOUND)
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} rev-parse --is-inside-work-tree
+        WORKING_DIRECTORY "${DEPTHAI_SHARED_FOLDER}"
+        RESULT_VARIABLE DEPTHAI_DOWNLOADED_SOURCES
+        OUTPUT_QUIET ERROR_QUIET
+    )
+endif()
+
 ### Get and find dependencies
 
 # Nlohmann JSON
