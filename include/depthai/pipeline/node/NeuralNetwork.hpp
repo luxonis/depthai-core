@@ -14,6 +14,7 @@ namespace node {
 
 class NeuralNetwork : public Node {
     dai::NeuralNetworkProperties properties;
+    virtual dai::NeuralNetworkProperties& getPropertiesRef();
 
     std::string getName() const override;
     std::vector<Output> getOutputs() override;

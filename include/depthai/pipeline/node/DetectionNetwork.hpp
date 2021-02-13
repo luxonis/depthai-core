@@ -18,19 +18,16 @@ class DetectionNetwork : public NeuralNetwork {
     std::vector<Input> getInputs() override;
     std::vector<Output> getOutputs() override;
     nlohmann::json getProperties() override;
+    dai::NeuralNetworkProperties& getPropertiesRef() override;
 
    protected:
     DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     dai::DetectionNetworkProperties properties;
 
    public:
-    Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, true}}};
+    Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}}};
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgDetections, false}}};
-    Output passthrough{*this, "passthrough", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
-
-    // overridden
-    void setBlobPath(const std::string& path);
-    void setNumPoolFrames(int numFrames);
+    Output passthrough{*this, "passthrough", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
 
     void setConfidenceThreshold(float thresh);
 };
