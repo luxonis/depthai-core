@@ -82,8 +82,9 @@ dai_add_example(mjpeg_encoding src/mjpeg_encoding_example.cpp)
 # StereoDepth example
 dai_add_example(stereo src/stereo_example.cpp)
 
-# Image Manip node example
+# Image Manip node examples
 dai_add_example(image_manip src/image_manip_example.cpp)
+dai_add_example(image_manip_warp src/image_manip_warp_example.cpp)
 
 # Color Camera config example
 dai_add_example(color_camera_control src/color_camera_control_example.cpp)

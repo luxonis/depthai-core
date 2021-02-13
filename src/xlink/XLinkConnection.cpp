@@ -199,10 +199,14 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
             throw std::runtime_error("Failed to find device (" + std::string(deviceToBoot.desc.name) + "), error message: " + convertErrorCodeToString(rc));
         }
 
+        bool bootStatus;
         if(bootWithPath) {
-            bootAvailableDevice(foundDeviceDesc, pathToMvcmd);
+            bootStatus = bootAvailableDevice(foundDeviceDesc, pathToMvcmd);
         } else {
-            bootAvailableDevice(foundDeviceDesc, mvcmd);
+            bootStatus = bootAvailableDevice(foundDeviceDesc, mvcmd);
+        }
+        if(!bootStatus) {
+            throw std::runtime_error("Failed to boot device!");
         }
     }
 

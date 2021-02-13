@@ -33,11 +33,11 @@ int main(){
     colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
 
     // Create a center crop image manipulation
-    imageManip->setCenterCrop(0.7f);
-    imageManip->setResizeThumbnail(300, 400);
+    imageManip->initialConfig.setCenterCrop(0.7f);
+    imageManip->initialConfig.setResizeThumbnail(300, 400);
     
     // Second image manipulator - Create a off center crop
-    imageManip2->setCropRect(0.1, 0.1, 0.3, 0.3);
+    imageManip2->initialConfig.setCropRect(0.1, 0.1, 0.3, 0.3);
     imageManip2->setWaitForConfigInput(true);
 
 
@@ -99,7 +99,7 @@ int main(){
         cv::imshow("manip", matManip);
         cv::imshow("manip2", matManip2);
 
-        char key = cv::waitKey(1);
+        int key = cv::waitKey(1);
         if (key == 'q'){
             return 0;
         } 

@@ -20,11 +20,20 @@ class ImageManipConfig : public Buffer {
 
     // Functions to set properties
     void setCropRect(float xmin, float ymin, float xmax, float ymax);
+    void setCropRotatedRect(RotatedRect rr, bool normalizedCoords = true);
     void setCenterCrop(float ratio, float whRatio = 1.0f);
+    void setWarpTransformFourPoints(std::vector<Point2f> pt, bool normalizedCoords);
+    void setWarpTransformMatrix3x3(std::vector<float> mat);
+    void setWarpBorderReplicatePixels();
+    void setWarpBorderFillColor(int red, int green, int blue);
+    void setRotationDegrees(float deg);
+    void setRotationRadians(float rad);
     void setResize(int w, int h);
     void setResizeThumbnail(int w, int h, int bgRed = 0, int bgGreen = 0, int bgBlue = 0);
     void setFrameType(dai::RawImgFrame::Type name);
     void setHorizontalFlip(bool flip);
+    void setReusePreviousImage(bool reuse);
+    void setSkipCurrentImage(bool skip);
 
     // Functions to retrieve properties
     float getCropXMin() const;

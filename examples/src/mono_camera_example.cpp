@@ -53,7 +53,7 @@ int main(){
             frame = cv::Mat(imgFrame->getHeight(), imgFrame->getWidth(), CV_8UC1, imgFrame->getData().data());
             
             cv::imshow("video", frame);
-            char key = cv::waitKey(1);
+            int key = cv::waitKey(1);
             if (key == 'q'){
                 return 0;
             } 
