@@ -159,6 +159,10 @@ class Pipeline {
     const AssetManager& getAssetManager() const {
         return impl()->assetManager;
     }
+
+    void setOpenVINOVersion(OpenVINO::Version version) {
+        impl()->forceRequiredOpenVINOVersion = version;
+    }
 };
 
 }  // namespace dai
