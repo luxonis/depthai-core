@@ -14,6 +14,7 @@ namespace node {
 
 class NeuralNetwork : public Node {
     dai::NeuralNetworkProperties properties;
+    virtual dai::NeuralNetworkProperties& getPropertiesRef();
 
     std::string getName() const override;
     std::vector<Output> getOutputs() override;
@@ -42,6 +43,10 @@ class NeuralNetwork : public Node {
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     void setBlobPath(const std::string& path);
     void setNumPoolFrames(int numFrames);
+    void setNumInferenceThreads(int numThreads);
+    // Zero means AUTO. TODO add AUTO in NeuralNetworkProperties
+    int getNumInferenceThreads();
+    // TODO add getters for other API
 };
 
 }  // namespace node

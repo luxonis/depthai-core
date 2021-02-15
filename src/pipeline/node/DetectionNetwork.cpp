@@ -25,6 +25,10 @@ std::vector<Node::Output> DetectionNetwork::getOutputs() {
     return {out};
 }
 
+dai::NeuralNetworkProperties& DetectionNetwork::getPropertiesRef() {
+    return properties;
+}
+
 nlohmann::json DetectionNetwork::getProperties() {
     nlohmann::json j;
     nlohmann::to_json(j, properties);
@@ -33,14 +37,6 @@ nlohmann::json DetectionNetwork::getProperties() {
 
 void DetectionNetwork::setConfidenceThreshold(float thresh) {
     properties.confidenceThreshold = thresh;
-}
-
-// Specify local filesystem path to load the blob (which gets loaded at loadAssets)
-void DetectionNetwork::setBlobPath(const std::string& path) {
-    blobPath = path;
-    BlobAssetInfo blobInfo = loadBlob(path);
-    properties.blobUri = blobInfo.uri;
-    properties.blobSize = blobInfo.size;
 }
 
 //--------------------------------------------------------------------

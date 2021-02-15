@@ -44,10 +44,13 @@ class NNData : public Buffer {
     std::vector<std::uint8_t> getLayerUInt8(const std::string& name) const;
     // fp16
     std::vector<float> getLayerFp16(const std::string& name) const;
+    // int32
+    std::vector<std::int32_t> getLayerInt32(const std::string& name) const;
 
     // first layer
     std::vector<std::uint8_t> getFirstLayerUInt8() const;
     std::vector<float> getFirstLayerFp16() const;
+    std::vector<std::int32_t> getFirstLayerInt32() const;
 };
 
 }  // namespace dai
