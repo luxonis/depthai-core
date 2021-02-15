@@ -90,6 +90,11 @@ void NeuralNetwork::setNumInferenceThreads(int numThreads) {
     properties.numThreads = numThreads;
 }
 
+void NeuralNetwork::setNumNCEPerInferenceThread(int numNCEPerThread) {
+    NeuralNetworkProperties& properties = getPropertiesRef();
+    properties.numNCEPerThread = numNCEPerThread;
+}
+
 int NeuralNetwork::getNumInferenceThreads() {
     NeuralNetworkProperties& properties = getPropertiesRef();
     return properties.numThreads;
