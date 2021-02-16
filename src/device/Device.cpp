@@ -1,6 +1,7 @@
 #include "depthai/device/Device.hpp"
 
 // std
+#include <fstream>
 #include <iostream>
 
 // shared
@@ -278,6 +279,9 @@ Device::~Device() {
 }
 
 void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
+    std::ifstream f(pathToMvcmd.c_str());
+    if(!f.good()) throw std::runtime_error("Error path doesn't exist. Note: Environment variables in path are not expanded. (E.g. '~', '$PATH').");
+
     // Initalize depthai library if not already
     initialize();
 
