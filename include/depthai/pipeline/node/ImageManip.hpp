@@ -25,8 +25,17 @@ class ImageManip : public Node {
 
     ImageManipConfig initialConfig;
 
-    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, {{DatatypeEnum::ImageManipConfig, true}}};
-    Input inputImage{*this, "inputImage", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, true}}};
+    /**
+     * Input ImageManipConfig message with ability to modify parameters in runtime
+     * Default queue is blocking with size 8
+     */
+    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImageManipConfig, true}}};
+
+    /**
+     * Input image to be modified
+     * Default queue is blocking with size 8
+     */
+    Input inputImage{*this, "inputImage", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImgFrame, true}}};
 
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
 

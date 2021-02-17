@@ -146,6 +146,18 @@ class DataOutputQueue {
         return get<ADatatype>();
     }
 
+    template <class T>
+    std::shared_ptr<T> front() {
+        if(!running) throw std::runtime_error(exceptionMessage.c_str());
+        std::shared_ptr<ADatatype> val = nullptr;
+        if(!queue.front(val)) return nullptr;
+        return std::dynamic_pointer_cast<T>(val);
+    }
+
+    std::shared_ptr<ADatatype> front() {
+        return front<ADatatype>();
+    }
+
     template <class T, typename Rep, typename Period>
     std::shared_ptr<T> get(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
