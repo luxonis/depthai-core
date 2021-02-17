@@ -16,16 +16,21 @@ namespace dai {
 // major and minor represent openvino NN blob version information
 const std::map<std::pair<std::uint32_t, std::uint32_t>, OpenVINO::Version> OpenVINO::blobVersionToLatestOpenvinoMapping = {
     {{5, 0}, OpenVINO::VERSION_2020_3},
-    {{6, 0}, OpenVINO::VERSION_2021_1},
+    {{6, 0}, OpenVINO::VERSION_2021_2},
 };
 
 const std::map<std::pair<std::uint32_t, std::uint32_t>, std::vector<OpenVINO::Version>> OpenVINO::blobVersionToOpenvinoMapping = {
     {{5, 0}, {OpenVINO::VERSION_2020_1, OpenVINO::VERSION_2020_2, OpenVINO::VERSION_2020_3}},
-    {{6, 0}, {OpenVINO::VERSION_2020_4, OpenVINO::VERSION_2021_1}},
+    {{6, 0}, {OpenVINO::VERSION_2020_4, OpenVINO::VERSION_2021_1, OpenVINO::VERSION_2021_2}},
 };
 
 std::vector<OpenVINO::Version> OpenVINO::getVersions() {
-    return {OpenVINO::VERSION_2020_1, OpenVINO::VERSION_2020_2, OpenVINO::VERSION_2020_3, OpenVINO::VERSION_2020_4, OpenVINO::VERSION_2021_1};
+    return {OpenVINO::VERSION_2020_1,
+            OpenVINO::VERSION_2020_2,
+            OpenVINO::VERSION_2020_3,
+            OpenVINO::VERSION_2020_4,
+            OpenVINO::VERSION_2021_1,
+            OpenVINO::VERSION_2021_2};
 }
 
 std::string OpenVINO::getVersionName(OpenVINO::Version version) {
@@ -40,6 +45,8 @@ std::string OpenVINO::getVersionName(OpenVINO::Version version) {
             return "2020.4";
         case OpenVINO::VERSION_2021_1:
             return "2021.1";
+        case OpenVINO::VERSION_2021_2:
+            return "2021.2";
     }
     throw std::logic_error("OpenVINO - Unknown version enum specified");
 }
