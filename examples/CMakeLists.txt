@@ -56,16 +56,16 @@ dai_add_example(mono_camera src/mono_camera_example.cpp)
 
 # NeuralNetwork node, mobilenet example
 hunter_private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet-ssd_6_shaves.blob"
-    SHA1 "c72a4902416be329fb0b455d0dcf8fb4f680aff7"
-    FILE "mobilenet-ssd_6_shaves.blob"
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet-ssd_openvino_2021.2_6shave.blob"
+    SHA1 "f0e14978b3f77a4f93b9f969cd39e58bb7aef490"
+    FILE "mobilenet-ssd_openvino_2021.2_6shave.blob"
     LOCATION mobilenet_blob
 )
 
 hunter_private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/tiny_yolo_v3_6shaves.blob"
-    SHA1 "7c87d89ab3bc1d58de7f61c0bbd4844a200ddeb5"
-    FILE "tiny_yolo_v3_6shaves.blob"
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/tiny-yolo-v3_openvino_2021.2_6shave.blob"
+    SHA1 "f0ac263a0d55c374e1892eea21c9b7d1170bde46"
+    FILE "tiny-yolo-v3_openvino_2021.2_6shave.blob"
     LOCATION tiny_yolo_v3_blob
 )
 
