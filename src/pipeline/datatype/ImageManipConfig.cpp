@@ -1,4 +1,8 @@
+// First, as other headers may include <cmath>
+#define _USE_MATH_DEFINES
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
+
+#include <cmath>
 
 namespace dai {
 
@@ -25,6 +29,45 @@ void ImageManipConfig::setCropRect(float xmin, float ymin, float xmax, float yma
     cfg.cropConfig.cropRect.ymax = ymax;
 }
 
+void ImageManipConfig::setCropRotatedRect(RotatedRect rr, bool normalizedCoords) {
+    // Enable crop stage and extended flags
+    cfg.enableCrop = true;
+    cfg.cropConfig.enableRotatedRect = true;
+
+    cfg.cropConfig.cropRotatedRect = rr;
+    cfg.cropConfig.normalizedCoords = normalizedCoords;
+}
+
+void ImageManipConfig::setWarpTransformFourPoints(std::vector<Point2f> pt, bool normalizedCoords) {
+    // Enable resize stage and extended flags
+    cfg.enableResize = true;
+    cfg.resizeConfig.enableWarp4pt = true;
+    cfg.resizeConfig.warpFourPoints = pt;
+    cfg.resizeConfig.normalizedCoords = normalizedCoords;
+}
+
+void ImageManipConfig::setWarpTransformMatrix3x3(std::vector<float> mat) {
+    // Enable resize stage and extended flags
+    cfg.enableResize = true;
+    cfg.resizeConfig.enableWarpMatrix = true;
+    cfg.resizeConfig.warpMatrix3x3 = mat;
+}
+
+void ImageManipConfig::setWarpBorderReplicatePixels() {
+    // Enable resize stage and extended flags
+    cfg.enableResize = true;
+    cfg.resizeConfig.warpBorderReplicate = true;
+}
+
+void ImageManipConfig::setWarpBorderFillColor(int red, int green, int blue) {
+    // Enable resize stage and extended flags
+    cfg.enableResize = true;
+    cfg.resizeConfig.warpBorderReplicate = false;
+    cfg.resizeConfig.bgRed = red;
+    cfg.resizeConfig.bgGreen = green;
+    cfg.resizeConfig.bgBlue = blue;
+}
+
 void ImageManipConfig::setCenterCrop(float ratio, float whRatio) {
     // Enable crop stage
     cfg.enableCrop = true;
@@ -35,6 +78,17 @@ void ImageManipConfig::setCenterCrop(float ratio, float whRatio) {
     // Set crop center crop config
     cfg.cropConfig.cropRatio = ratio;
     cfg.cropConfig.widthHeightAspectRatio = whRatio;
+}
+
+void ImageManipConfig::setRotationDegrees(float deg) {
+    cfg.enableResize = true;
+    cfg.resizeConfig.rotationAngleDeg = deg;
+    cfg.resizeConfig.enableRotation = true;
+}
+
+void ImageManipConfig::setRotationRadians(float rad) {
+    static constexpr float rad2degFactor = 180 / M_PI;
+    setRotationDegrees(rad * rad2degFactor);
 }
 
 void ImageManipConfig::setResize(int w, int h) {
@@ -82,12 +136,19 @@ void ImageManipConfig::setHorizontalFlip(bool flip) {
     cfg.formatConfig.flipHorizontal = flip;
 }
 
+void ImageManipConfig::setReusePreviousImage(bool reuse) {
+    cfg.reusePreviousImage = reuse;
+}
+
+void ImageManipConfig::setSkipCurrentImage(bool skip) {
+    cfg.skipCurrentImage = skip;
+}
+
 void ImageManipConfig::setKeepAspectRatio(bool keep) {
 
     // Set whether to keep aspect ratio or not
     cfg.resizeConfig.keepAspectRatio = keep;
 }
-
 
 // Functions to retrieve properties
 float ImageManipConfig::getCropXMin() const {

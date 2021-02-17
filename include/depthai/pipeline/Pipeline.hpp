@@ -55,9 +55,11 @@ class PipelineImpl {
     // Global pipeline properties
     GlobalProperties globalProperties;
     // Optimized for adding, searching and removing connections
-    std::unordered_map<Node::Id, std::shared_ptr<Node>> nodeMap;
+    using NodeMap = std::unordered_map<Node::Id, std::shared_ptr<Node>>;
+    NodeMap nodeMap;
+    using NodeConnectionMap = std::unordered_map<Node::Id, std::unordered_set<Node::Connection>>;
     // Connection map, NodeId represents id of node connected TO (input)
-    std::unordered_map<Node::Id, std::unordered_set<Node::Connection>> nodeConnectionMap;
+    NodeConnectionMap nodeConnectionMap;
 
     // Template create function
     template <class N>
@@ -128,6 +130,16 @@ class Pipeline {
         return impl()->getConnections();
     }
 
+    using NodeConnectionMap = PipelineImpl::NodeConnectionMap;
+    const NodeConnectionMap& getConnectionMap() const {
+        return impl()->nodeConnectionMap;
+    }
+
+    using NodeMap = PipelineImpl::NodeMap;
+    const NodeMap& getNodeMap() const {
+        return impl()->nodeMap;
+    }
+
     void link(const Node::Output& out, const Node::Input& in) {
         impl()->link(out, in);
     }
@@ -148,7 +160,7 @@ class Pipeline {
         return impl()->assetManager;
     }
 
-    void setPipelineOpenVINOVersion(OpenVINO::Version version) {
+    void setOpenVINOVersion(OpenVINO::Version version) {
         impl()->forceRequiredOpenVINOVersion = version;
     }
 };

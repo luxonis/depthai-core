@@ -56,16 +56,16 @@ dai_add_example(mono_camera src/mono_camera_example.cpp)
 
 # NeuralNetwork node, mobilenet example
 hunter_private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet.blob"
-    SHA1 "e89d3ee9f26d80397e44f89c6b375990064a4a42"
-    FILE "mobilenet.blob"
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet-ssd_openvino_2021.2_6shave.blob"
+    SHA1 "f0e14978b3f77a4f93b9f969cd39e58bb7aef490"
+    FILE "mobilenet-ssd_openvino_2021.2_6shave.blob"
     LOCATION mobilenet_blob
 )
 
 hunter_private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/tiny_yolo_v3_6shaves.blob"
-    SHA1 "7c87d89ab3bc1d58de7f61c0bbd4844a200ddeb5"
-    FILE "tiny_yolo_v3_6shaves.blob"
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/tiny-yolo-v3_openvino_2021.2_6shave.blob"
+    SHA1 "f0ac263a0d55c374e1892eea21c9b7d1170bde46"
+    FILE "tiny-yolo-v3_openvino_2021.2_6shave.blob"
     LOCATION tiny_yolo_v3_blob
 )
 
@@ -82,8 +82,9 @@ dai_add_example(mjpeg_encoding src/mjpeg_encoding_example.cpp)
 # StereoDepth example
 dai_add_example(stereo src/stereo_example.cpp)
 
-# Image Manip node example
+# Image Manip node examples
 dai_add_example(image_manip src/image_manip_example.cpp)
+dai_add_example(image_manip_warp src/image_manip_warp_example.cpp)
 
 # Color Camera config example
 dai_add_example(color_camera_control src/color_camera_control_example.cpp)

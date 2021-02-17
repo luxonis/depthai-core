@@ -1,5 +1,7 @@
 #pragma once
 
+#include <depthai/pipeline/datatype/CameraControl.hpp>
+
 #include "depthai/pipeline/Node.hpp"
 
 // shared
@@ -16,8 +18,12 @@ class ColorCamera : public Node {
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
 
+    std::shared_ptr<RawCameraControl> rawControl;
+
    public:
     ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+
+    CameraControl initialControl;
 
     Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, {{DatatypeEnum::ImageManipConfig, false}}};
     Input inputControl{*this, "inputControl", Input::Type::SReceiver, {{DatatypeEnum::CameraControl, false}}};
