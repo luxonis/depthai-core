@@ -103,6 +103,6 @@ target_compile_definitions(mobilenet_device_side_decoding PRIVATE BLOB_PATH="${m
 dai_add_example(tiny_yolo_v3_device_side_decoding src/tiny_yolo_v3_device_side_decoding_example.cpp)
 target_compile_definitions(tiny_yolo_v3_device_side_decoding PRIVATE BLOB_PATH="${tiny_yolo_v3_blob}")
 
-# NN sync example
+# Sync example between NN and camera frames
 dai_add_example(camera_mobilenet_sync src/camera_mobilenet_sync_example.cpp)
 target_compile_definitions(camera_mobilenet_sync PRIVATE BLOB_PATH="${mobilenet_blob}")
