@@ -38,14 +38,14 @@ class DataOutputQueue {
     ~DataOutputQueue();
 
     /**
-     * Sets queue behaviour when full (maxSize)
+     * Sets queue behavior when full (maxSize)
      *
      * @param blocking Specifies if block or overwrite the oldest message in the queue
      */
     void setBlocking(bool blocking);
 
     /**
-     * Gets current queue behaviour when full (maxSize)
+     * Gets current queue behavior when full (maxSize)
      *
      * @return true if blocking, false otherwise
      */
@@ -265,14 +265,14 @@ class DataInputQueue {
     std::size_t getMaxDataSize();
 
     /**
-     * Sets queue behaviour when full (maxSize)
+     * Sets queue behavior when full (maxSize)
      *
      * @param blocking Specifies if block or overwrite the oldest message in the queue
      */
     void setBlocking(bool blocking);
 
     /**
-     * Gets current queue behaviour when full (maxSize)
+     * Gets current queue behavior when full (maxSize)
      *
      * @return true if blocking, false otherwise
      */

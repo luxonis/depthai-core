@@ -79,7 +79,7 @@ class Node {
 
        public:
         /**
-         * Overrides default input queue behvairor.
+         * Overrides default input queue behavior.
          * @param blocking True blocking, false overwriting
          */
         void setBlocking(bool blocking);
