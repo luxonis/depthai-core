@@ -25,7 +25,11 @@ class DetectionNetwork : public NeuralNetwork {
     dai::DetectionNetworkProperties properties;
 
    public:
-    Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}}};
+    /**
+     * Input message with data to be infered upon
+     * Default queue is blocking with size 5
+     */
+    Input input{*this, "in", Input::Type::SReceiver, true, 5, {{DatatypeEnum::Buffer, true}}};
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgDetections, false}}};
     Output passthrough{*this, "passthrough", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
 

@@ -41,7 +41,7 @@ class Node {
 
     struct Output {
         enum class Type { MSender, SSender };
-        const Node& parent;
+        Node& parent;
         const std::string name;
         const Type type;
         // Which types and do descendants count as well?
@@ -59,19 +59,49 @@ class Node {
 
     struct Input {
         enum class Type { SReceiver, MReceiver };
-        const Node& parent;
+        Node& parent;
         const std::string name;
         const Type type;
-        bool blocking{true};
+        bool defaultBlocking{true};
+        int defaultQueueSize{8};
+        tl::optional<bool> blocking;
+        tl::optional<int> queueSize;
         friend struct Output;
-        // Which types and do descendants count as well?
         const std::vector<DatatypeHierarchy> possibleDatatypes;
+
+        /// Constructs Input with default blocking and queueSize options
         Input(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types)
             : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {}
 
+        /// Constructs Input with specified blocking and queueSize options
+        Input(Node& par, std::string n, Type t, bool blocking, int queueSize, std::vector<DatatypeHierarchy> types)
+            : parent(par), name(std::move(n)), type(t), defaultBlocking(blocking), defaultQueueSize(queueSize), possibleDatatypes(std::move(types)) {}
+
        public:
+        /**
+         * Overrides default input queue behavior.
+         * @param blocking True blocking, false overwriting
+         */
         void setBlocking(bool blocking);
+
+        /**
+         * Get input queue behavior
+         * @return True blocking, false overwriting
+         */
         bool getBlocking() const;
+
+        /**
+         * Overrides default input queue size.
+         * If queue size fills up, behavior depends on `blocking` attribute
+         * @param size Maximum input queue size
+         */
+        void setQueueSize(int size);
+
+        /**
+         * Get input queue size.
+         * @return Maximum input queue size
+         */
+        int getQueueSize() const;
     };
 
     // when Pipeline tries to serialize and construct on remote, it will check if all connected nodes are on same pipeline
@@ -83,7 +113,8 @@ class Node {
     virtual std::shared_ptr<Node> clone() = 0;
 
     // access
-    Pipeline getParentPipeline() const;
+    Pipeline getParentPipeline();
+    const Pipeline getParentPipeline() const;
 
    public:
     const Id id;
