@@ -28,6 +28,10 @@
 namespace dai {
 
 // Device (RAII), connects to device and maintains watchdog, timesync, ...
+
+/**
+ * Represents the DepthAI device with the methods to interact with it.
+ */
 class Device {
    public:
     // constants
