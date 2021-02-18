@@ -32,12 +32,12 @@ class ImgFrame : public Buffer {
     void setInstanceNum(unsigned int);
     void setCategory(unsigned int);
     void setSequenceNum(unsigned int);
-    
+
     /**
      * Specifies frame width
      *
      * @param width frame width
-     */ 
+     */
     void setWidth(unsigned int width);
     void setHeight(unsigned int);
     void setType(RawImgFrame::Type);
