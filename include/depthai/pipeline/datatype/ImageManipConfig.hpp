@@ -35,7 +35,7 @@ class ImageManipConfig : public Buffer {
     void setReusePreviousImage(bool reuse);
     void setSkipCurrentImage(bool skip);
     void setKeepAspectRatio(bool keep);
-   
+
     // Functions to retrieve properties
     float getCropXMin() const;
     float getCropYMin() const;

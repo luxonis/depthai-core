@@ -145,7 +145,6 @@ void ImageManipConfig::setSkipCurrentImage(bool skip) {
 }
 
 void ImageManipConfig::setKeepAspectRatio(bool keep) {
-
     // Set whether to keep aspect ratio or not
     cfg.resizeConfig.keepAspectRatio = keep;
 }
