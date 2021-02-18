@@ -1,5 +1,7 @@
 #pragma once
 
+#include <depthai/pipeline/datatype/CameraControl.hpp>
+
 #include "depthai/pipeline/Node.hpp"
 
 // shared
@@ -17,8 +19,18 @@ class MonoCamera : public Node {
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
 
+    std::shared_ptr<RawCameraControl> rawControl;
+
    public:
     MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+
+    CameraControl initialControl;
+
+    /**
+     * Input for CameraControl message, which can modify camera parameters in runtime
+     * Default queue is blocking with size 8
+     */
+    Input inputControl{*this, "inputControl", Input::Type::SReceiver, true, 8, {{DatatypeEnum::CameraControl, false}}};
 
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 

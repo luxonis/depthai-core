@@ -30,9 +30,9 @@ endmacro()
 
 # Mobilenet network
 hunter_private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet.blob"
-    SHA1 "e89d3ee9f26d80397e44f89c6b375990064a4a42"
-    FILE "mobilenet.blob"
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet-ssd_openvino_2021.2_6shave.blob"
+    SHA1 "f0e14978b3f77a4f93b9f969cd39e58bb7aef490"
+    FILE "mobilenet-ssd_openvino_2021.2_6shave.blob"
     LOCATION mobilenet_blob
 )
 

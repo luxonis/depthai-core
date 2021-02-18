@@ -13,13 +13,7 @@ namespace dai {
 class OpenVINO {
    public:
     // OpenVINOVersion holds supported version information
-    enum Version {
-        VERSION_2020_1,
-        VERSION_2020_2,
-        VERSION_2020_3,
-        VERSION_2020_4,
-        VERSION_2021_1,
-    };
+    enum Version { VERSION_2020_1, VERSION_2020_2, VERSION_2020_3, VERSION_2020_4, VERSION_2021_1, VERSION_2021_2 };
 
     static std::vector<Version> getVersions();
     static std::string getVersionName(Version version);

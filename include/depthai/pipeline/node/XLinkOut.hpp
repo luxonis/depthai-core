@@ -19,13 +19,27 @@ class XLinkOut : public Node {
    public:
     XLinkOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
-    Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}}};
+    /**
+     * Input for any type of messages to be transfered over XLink stream
+     * Default queue is blocking with size 8
+     */
+    Input input{*this, "in", Input::Type::SReceiver, true, 8, {{DatatypeEnum::Buffer, true}}};
 
     void setStreamName(const std::string& name);
     void setFpsLimit(float fps);
 
+    /**
+     * Specify whether transfer data or only object attributes (metadata)
+     */
+    void setMetadataOnly(bool metadataOnly);
+
     std::string getStreamName() const;
     float getFpsLimit() const;
+
+    /**
+     * Get whether transfer data or only object attributes (metadata)
+     */
+    bool getMetadataOnly() const;
 };
 
 }  // namespace node

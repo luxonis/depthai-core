@@ -179,6 +179,32 @@ std::vector<std::uint8_t> NNData::getLayerUInt8(const std::string& name) const {
     return {};
 }
 
+#include <cstdio>
+
+// int32_t
+std::vector<std::int32_t> NNData::getLayerInt32(const std::string& name) const {
+    // find layer name and its offset
+    TensorInfo tensor;
+    if(getLayer(name, tensor)) {
+        if(tensor.dataType == TensorInfo::DataType::INT) {
+            // Total data size = last dimension * last stride
+            if(tensor.numDimensions > 0) {
+                size_t size = tensor.dims[tensor.numDimensions - 1] * tensor.strides[tensor.numDimensions - 1];
+                std::size_t numElements = size / sizeof(std::int32_t);  // FP16
+
+                std::vector<std::int32_t> data;
+                data.reserve(numElements);
+                auto* pInt32Data = reinterpret_cast<std::int32_t*>(&rawNn.data[tensor.offset]);
+                for(std::size_t i = 0; i < numElements; i++) {
+                    data.push_back(pInt32Data[i]);
+                }
+                return data;
+            }
+        }
+    }
+    return {};
+}
+
 // fp16
 std::vector<float> NNData::getLayerFp16(const std::string& name) const {
     // find layer name and its offset
@@ -191,6 +217,7 @@ std::vector<float> NNData::getLayerFp16(const std::string& name) const {
                 std::size_t numElements = size / 2;  // FP16
 
                 std::vector<float> data;
+                data.reserve(numElements);
                 auto* pFp16Data = reinterpret_cast<std::uint16_t*>(&rawNn.data[tensor.offset]);
                 for(std::size_t i = 0; i < numElements; i++) {
                     data.push_back(fp16_ieee_to_fp32_value(pFp16Data[i]));
@@ -217,6 +244,15 @@ std::vector<float> NNData::getFirstLayerFp16() const {
     // find layer name and its offset
     if(!rawNn.tensors.empty()) {
         return getLayerFp16(rawNn.tensors[0].name);
+    }
+    return {};
+}
+
+// int32
+std::vector<std::int32_t> NNData::getFirstLayerInt32() const {
+    // find layer name and its offset
+    if(!rawNn.tensors.empty()) {
+        return getLayerInt32(rawNn.tensors[0].name);
     }
     return {};
 }

@@ -38,14 +38,14 @@ class DataOutputQueue {
     ~DataOutputQueue();
 
     /**
-     * Sets queue behaviour when full (maxSize)
+     * Sets queue behavior when full (maxSize)
      *
      * @param blocking Specifies if block or overwrite the oldest message in the queue
      */
     void setBlocking(bool blocking);
 
     /**
-     * Gets current queue behaviour when full (maxSize)
+     * Gets current queue behavior when full (maxSize)
      *
      * @return true if blocking, false otherwise
      */
@@ -144,6 +144,18 @@ class DataOutputQueue {
 
     std::shared_ptr<ADatatype> get() {
         return get<ADatatype>();
+    }
+
+    template <class T>
+    std::shared_ptr<T> front() {
+        if(!running) throw std::runtime_error(exceptionMessage.c_str());
+        std::shared_ptr<ADatatype> val = nullptr;
+        if(!queue.front(val)) return nullptr;
+        return std::dynamic_pointer_cast<T>(val);
+    }
+
+    std::shared_ptr<ADatatype> front() {
+        return front<ADatatype>();
     }
 
     template <class T, typename Rep, typename Period>
@@ -253,14 +265,14 @@ class DataInputQueue {
     std::size_t getMaxDataSize();
 
     /**
-     * Sets queue behaviour when full (maxSize)
+     * Sets queue behavior when full (maxSize)
      *
      * @param blocking Specifies if block or overwrite the oldest message in the queue
      */
     void setBlocking(bool blocking);
 
     /**
-     * Gets current queue behaviour when full (maxSize)
+     * Gets current queue behavior when full (maxSize)
      *
      * @return true if blocking, false otherwise
      */
