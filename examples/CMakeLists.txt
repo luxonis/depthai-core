@@ -79,6 +79,9 @@ target_compile_definitions(webcam_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}
 # MJPEG encoding
 dai_add_example(mjpeg_encoding src/mjpeg_encoding_example.cpp)
 
+# h264 encoding
+dai_add_example(h264_encoding src/h264_encoding_example.cpp)
+
 # StereoDepth example
 dai_add_example(stereo src/stereo_example.cpp)
 
