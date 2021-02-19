@@ -19,6 +19,7 @@ class SystemInformation : public Buffer {
     virtual ~SystemInformation() = default;
 
     MemoryInfo& ddrMemoryUsage;
+    MemoryInfo& cmxMemoryUsage;
     MemoryInfo& leonCssMemoryUsage;
     MemoryInfo& leonMssMemoryUsage;
     CpuUsage& leonCssCpuUsage;
