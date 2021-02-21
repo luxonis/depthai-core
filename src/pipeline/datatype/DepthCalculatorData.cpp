@@ -11,8 +11,7 @@ DepthCalculatorData::DepthCalculatorData()
 DepthCalculatorData::DepthCalculatorData(std::shared_ptr<RawDepthCalculatorData> ptr)
     : Buffer(std::move(ptr)), rawdata(*dynamic_cast<RawDepthCalculatorData*>(raw.get())), depth(rawdata.depth) {}
 
-std::vector<DepthCalculatorDataOut> DepthCalculatorData::getDepthData() const
-{
+std::vector<DepthCalculatorDataOut> DepthCalculatorData::getDepthData() const {
     return rawdata.depth;
 }
 

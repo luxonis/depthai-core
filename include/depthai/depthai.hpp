@@ -14,6 +14,7 @@
 
 // Include common nodes
 #include "pipeline/node/ColorCamera.hpp"
+#include "pipeline/node/DepthCalculator.hpp"
 #include "pipeline/node/DetectionNetwork.hpp"
 #include "pipeline/node/ImageManip.hpp"
 #include "pipeline/node/MonoCamera.hpp"
@@ -24,18 +25,16 @@
 #include "pipeline/node/VideoEncoder.hpp"
 #include "pipeline/node/XLinkIn.hpp"
 #include "pipeline/node/XLinkOut.hpp"
-#include "pipeline/node/DepthCalculator.hpp"
-
 
 // Include common datatypes
 #include "pipeline/datatype/Buffer.hpp"
 #include "pipeline/datatype/CameraControl.hpp"
+#include "pipeline/datatype/DepthCalculatorData.hpp"
 #include "pipeline/datatype/ImageManipConfig.hpp"
 #include "pipeline/datatype/ImgDetections.hpp"
 #include "pipeline/datatype/ImgFrame.hpp"
 #include "pipeline/datatype/NNData.hpp"
 #include "pipeline/datatype/SystemInformation.hpp"
-#include "pipeline/datatype/DepthCalculatorData.hpp"
 
 // namespace dai {
 // namespace{

@@ -2,7 +2,6 @@
 
 #include <depthai/pipeline/Node.hpp>
 
-
 // standard
 #include <fstream>
 
@@ -23,13 +22,12 @@ class DepthCalculator : public Node {
     dai::DepthCalculatorProperties properties;
 
     void setROIs(std::vector<DepthCalculatorConfig> rois);
-    void addROI(DepthCalculatorConfig &roi);
+    void addROI(DepthCalculatorConfig& roi);
 
     Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}}};
     Input depthInput{*this, "inDepth", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, false}}};
 
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::DepthCalculatorData, false}}};
-
 };
 
 }  // namespace node

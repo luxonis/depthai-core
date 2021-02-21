@@ -21,7 +21,6 @@ class DepthCalculatorData : public Buffer {
     std::vector<DepthCalculatorDataOut> getDepthData() const;
 
     std::vector<DepthCalculatorDataOut>& depth;
-
 };
 
 }  // namespace dai

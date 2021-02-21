@@ -5,9 +5,7 @@
 namespace dai {
 namespace node {
 
-DepthCalculator::DepthCalculator(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
-
-}
+DepthCalculator::DepthCalculator(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
 
 std::string DepthCalculator::getName() const {
     return "DepthCalculator";
@@ -31,10 +29,9 @@ void DepthCalculator::setROIs(std::vector<DepthCalculatorConfig> rois) {
     properties.roiConfig = rois;
 }
 
-void DepthCalculator::addROI(DepthCalculatorConfig &roi) {
+void DepthCalculator::addROI(DepthCalculatorConfig& roi) {
     properties.roiConfig.push_back(roi);
 }
-
 
 std::shared_ptr<Node> DepthCalculator::clone() {
     return std::make_shared<std::decay<decltype(*this)>::type>(*this);
