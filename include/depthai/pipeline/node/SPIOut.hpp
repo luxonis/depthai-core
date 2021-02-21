@@ -3,7 +3,7 @@
 #include <depthai/pipeline/Node.hpp>
 
 // shared
-#include <depthai-shared/pb/properties/SPIOutProperties.hpp>
+#include <depthai-shared/properties/SPIOutProperties.hpp>
 
 namespace dai {
 namespace node {
@@ -38,7 +38,11 @@ class SPIOut : public Node {
         properties.busId = 0;
     }
 
-    Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}}};
+    /**
+     * Input for any type of messages to be transfered over SPI stream
+     * Default queue is blocking with size 8
+     */
+    Input input{*this, "in", Input::Type::SReceiver, true, 8, {{DatatypeEnum::Buffer, true}}};
 
     void setStreamName(std::string name) {
         properties.streamName = name;

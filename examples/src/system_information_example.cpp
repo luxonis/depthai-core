@@ -34,6 +34,9 @@ int main(){
     dai::MemoryInfo ddr = device.getDdrMemoryUsage();
     printf("Ddr used / total - %.2f / %.2f MiB\n", ddr.used / (1024.0f*1024.0f), ddr.total / (1024.0f*1024.0f));
 
+    dai::MemoryInfo cmx = device.getCmxMemoryUsage();
+    printf("Cmx used / total - %.2f / %.2f MiB\n", cmx.used / (1024.0f*1024.0f), cmx.total / (1024.0f*1024.0f));
+
     // Start pipeline 
     device.startPipeline();
 
@@ -46,6 +49,8 @@ int main(){
 void printSystemInformation(dai::SystemInformation info){
 
     printf("Ddr used / total - %.2f / %.2f MiB\n", info.ddrMemoryUsage.used / (1024.0f*1024.0f), info.ddrMemoryUsage.total / (1024.0f*1024.0f));
+    printf("Cmx used / total - %.2f / %.2f MiB\n", info.cmxMemoryUsage.used / (1024.0f*1024.0f), info.cmxMemoryUsage.total / (1024.0f*1024.0f));
+
     printf("LeonCss heap used / total - %.2f / %.2f MiB\n", info.leonCssMemoryUsage.used / (1024.0f*1024.0f), info.leonCssMemoryUsage.total / (1024.0f*1024.0f));
     printf("LeonMss heap used / total - %.2f / %.2f MiB\n", info.leonMssMemoryUsage.used / (1024.0f*1024.0f), info.leonMssMemoryUsage.total / (1024.0f*1024.0f));
     const auto& t = info.chipTemperature;

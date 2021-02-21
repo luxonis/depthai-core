@@ -5,7 +5,8 @@
 namespace dai {
 namespace node {
 
-ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
+ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
+    : Node(par, nodeId), rawControl(std::make_shared<RawCameraControl>()), initialControl(rawControl) {
     properties.boardSocket = CameraBoardSocket::AUTO;
     properties.imageOrientation = CameraImageOrientation::AUTO;
     properties.colorOrder = ColorCameraProperties::ColorOrder::BGR;
@@ -31,6 +32,7 @@ std::vector<Node::Input> ColorCamera::getInputs() {
 
 nlohmann::json ColorCamera::getProperties() {
     nlohmann::json j;
+    properties.initialControl = *rawControl;
     nlohmann::to_json(j, properties);
     return j;
 }

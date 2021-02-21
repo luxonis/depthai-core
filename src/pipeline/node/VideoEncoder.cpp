@@ -30,6 +30,8 @@ std::shared_ptr<Node> VideoEncoder::clone() {
 // node properties
 void VideoEncoder::setNumFramesPool(int frames) {
     properties.numFramesPool = frames;
+    // Set default input queue size as well
+    input.defaultQueueSize = frames;
 }
 
 int VideoEncoder::getNumFramesPool() const {

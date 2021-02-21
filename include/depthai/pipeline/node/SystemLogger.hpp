@@ -3,7 +3,7 @@
 #include <depthai/pipeline/Node.hpp>
 
 // shared
-#include <depthai-shared/pb/properties/SystemLoggerProperties.hpp>
+#include <depthai-shared/properties/SystemLoggerProperties.hpp>
 
 namespace dai {
 namespace node {

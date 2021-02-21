@@ -1,9 +1,11 @@
 #pragma once
 
+#include <depthai/pipeline/datatype/CameraControl.hpp>
+
 #include "depthai/pipeline/Node.hpp"
 
 // shared
-#include <depthai-shared/pb/properties/ColorCameraProperties.hpp>
+#include <depthai-shared/properties/ColorCameraProperties.hpp>
 
 namespace dai {
 namespace node {
@@ -16,11 +18,24 @@ class ColorCamera : public Node {
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
 
+    std::shared_ptr<RawCameraControl> rawControl;
+
    public:
     ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
-    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, {{DatatypeEnum::ImageManipConfig, false}}};
-    Input inputControl{*this, "inputControl", Input::Type::SReceiver, {{DatatypeEnum::CameraControl, false}}};
+    CameraControl initialControl;
+
+    /**
+     * Input for ImageManipConfig message, which can modify crop paremeters in runtime
+     * Default queue is non-blocking with size 8
+     */
+    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 8, {{DatatypeEnum::ImageManipConfig, false}}};
+
+    /**
+     * Input for CameraControl message, which can modify camera parameters in runtime
+     * Default queue is blocking with size 8
+     */
+    Input inputControl{*this, "inputControl", Input::Type::SReceiver, true, 8, {{DatatypeEnum::CameraControl, false}}};
 
     Output video{*this, "video", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
     Output preview{*this, "preview", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};

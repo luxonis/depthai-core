@@ -19,7 +19,7 @@ ImgFrame::ImgFrame(std::shared_ptr<RawImgFrame> ptr) : Buffer(std::move(ptr)), i
 // getters
 std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> ImgFrame::getTimestamp() const {
     using namespace std::chrono;
-    return std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration>{seconds(img.ts.sec) + nanoseconds(img.ts.nsec)};
+    return time_point<steady_clock, steady_clock::duration>{seconds(img.ts.sec) + nanoseconds(img.ts.nsec)};
 }
 unsigned int ImgFrame::getInstanceNum() const {
     return img.instanceNum;
