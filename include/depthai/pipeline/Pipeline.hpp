@@ -12,8 +12,8 @@
 #include "depthai/openvino/OpenVINO.hpp"
 
 // shared
-#include "depthai-shared/pb/PipelineSchema.hpp"
-#include "depthai-shared/pb/properties/GlobalProperties.hpp"
+#include "depthai-shared/pipeline/PipelineSchema.hpp"
+#include "depthai-shared/properties/GlobalProperties.hpp"
 
 namespace dai {
 
@@ -55,9 +55,11 @@ class PipelineImpl {
     // Global pipeline properties
     GlobalProperties globalProperties;
     // Optimized for adding, searching and removing connections
-    std::unordered_map<Node::Id, std::shared_ptr<Node>> nodeMap;
+    using NodeMap = std::unordered_map<Node::Id, std::shared_ptr<Node>>;
+    NodeMap nodeMap;
+    using NodeConnectionMap = std::unordered_map<Node::Id, std::unordered_set<Node::Connection>>;
     // Connection map, NodeId represents id of node connected TO (input)
-    std::unordered_map<Node::Id, std::unordered_set<Node::Connection>> nodeConnectionMap;
+    NodeConnectionMap nodeConnectionMap;
 
     // Template create function
     template <class N>
@@ -128,6 +130,16 @@ class Pipeline {
         return impl()->getConnections();
     }
 
+    using NodeConnectionMap = PipelineImpl::NodeConnectionMap;
+    const NodeConnectionMap& getConnectionMap() const {
+        return impl()->nodeConnectionMap;
+    }
+
+    using NodeMap = PipelineImpl::NodeMap;
+    const NodeMap& getNodeMap() const {
+        return impl()->nodeMap;
+    }
+
     void link(const Node::Output& out, const Node::Input& in) {
         impl()->link(out, in);
     }
@@ -146,6 +158,10 @@ class Pipeline {
 
     const AssetManager& getAssetManager() const {
         return impl()->assetManager;
+    }
+
+    void setOpenVINOVersion(OpenVINO::Version version) {
+        impl()->forceRequiredOpenVINOVersion = version;
     }
 };
 

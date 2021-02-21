@@ -139,6 +139,7 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
         for(const auto& input : inputs) {
             NodeIoInfo io;
             io.blocking = input.getBlocking();
+            io.queueSize = input.getQueueSize();
             io.name = input.name;
             switch(input.type) {
                 case Node::Input::Type::MReceiver:
@@ -149,7 +150,7 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
                     break;
             }
 
-            info.ioInfo.push_back(io);
+            info.ioInfo[io.name] = io;
         }
 
         // Add outputs
@@ -166,11 +167,11 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
                     break;
             }
 
-            info.ioInfo.push_back(io);
+            info.ioInfo[io.name] = io;
         }
 
         // At the end, add the constructed node information to the schema
-        schema.nodes.push_back(info);
+        schema.nodes[info.id] = info;
     }
 
     // Create 'connections' info

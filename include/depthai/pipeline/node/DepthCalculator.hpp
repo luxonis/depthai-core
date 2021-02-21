@@ -7,7 +7,7 @@
 #include <fstream>
 
 // shared
-#include <depthai-shared/pb/properties/DepthCalculatorProperties.hpp>
+#include <depthai-shared/properties/DepthCalculatorProperties.hpp>
 
 namespace dai {
 namespace node {

@@ -6,11 +6,11 @@
 // shared
 #include "depthai-bootloader-shared/Bootloader.hpp"
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
-#include "depthai-shared/Assets.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
 #include "depthai-shared/log/LogConstants.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
+#include "depthai-shared/pipeline/Assets.hpp"
 #include "depthai-shared/xlink/XLinkConstants.hpp"
 
 // project
@@ -186,6 +186,7 @@ class Device::Impl {
     DeviceLogger logger{"", stdoutColorSink};
 
     void setLogLevel(LogLevel level);
+    LogLevel getLogLevel();
     void setPattern(const std::string& pattern);
 };
 
@@ -198,6 +199,11 @@ void Device::Impl::setLogLevel(LogLevel level) {
     auto spdlogLevel = logLevelToSpdlogLevel(level, spdlog::level::warn);
     // Set level for all configured sinks
     logger.set_level(spdlogLevel);
+}
+
+LogLevel Device::Impl::getLogLevel() {
+    // Converts spdlog to LogLevel
+    return spdlogLevelToLogLevel(logger.level(), LogLevel::WARN);
 }
 
 ///////////////////////////////////////////////
@@ -449,6 +455,20 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
                     for(const auto& msg : messages) {
                         pimpl->logger.logMessage(msg);
                     }
+
+                    // Log to callbacks
+                    {
+                        // lock mtx to callback map (shared)
+                        std::unique_lock<std::mutex> l(logCallbackMapMtx);
+                        for(const auto& msg : messages) {
+                            for(const auto& kv : logCallbackMap) {
+                                const auto& cb = kv.second;
+                                // If available, callback with msg
+                                if(cb) cb(msg);
+                            }
+                        }
+                    }
+
                 } catch(const nlohmann::json::exception& ex) {
                     spdlog::error("Exception while parsing log message from device: {}", ex.what());
                 }
@@ -466,8 +486,10 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
     if(spdlog::get_level() < spdlog::level::warn) {
         auto level = spdlogLevelToLogLevel(spdlog::get_level());
         setLogLevel(level);
+        setLogOutputLevel(level);
     } else {
         setLogLevel(LogLevel::WARN);
+        setLogOutputLevel(LogLevel::WARN);
     }
 
     // Sets system inforation logging rate. By default 1s
@@ -476,39 +498,43 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
     // Open queues upfront, let queues know about data sizes (input queues)
     // Go through Pipeline and check for 'XLinkIn' and 'XLinkOut' nodes
     // and create corresponding default queues for them
-    for(const auto& node : pipeline.getAllNodes()) {
-        auto xlinkIn = std::dynamic_pointer_cast<const node::XLinkIn>(node);
-        if(xlinkIn != nullptr) {
-            // Create DataInputQueue's
-            inputQueueMap[xlinkIn->getStreamName()] = std::make_shared<DataInputQueue>(connection, xlinkIn->getStreamName());
-            // set max data size, for more verbosity
-            inputQueueMap[xlinkIn->getStreamName()]->setMaxDataSize(xlinkIn->getMaxDataSize());
+    for(const auto& kv : pipeline.getNodeMap()) {
+        const auto& node = kv.second;
+        const auto& xlinkIn = std::dynamic_pointer_cast<const node::XLinkIn>(node);
+        if(xlinkIn == nullptr) {
+            continue;
         }
+        // Create DataInputQueue's
+        inputQueueMap[xlinkIn->getStreamName()] = std::make_shared<DataInputQueue>(connection, xlinkIn->getStreamName());
+        // set max data size, for more verbosity
+        inputQueueMap[xlinkIn->getStreamName()]->setMaxDataSize(xlinkIn->getMaxDataSize());
     }
-    for(const auto& node : pipeline.getAllNodes()) {
-        auto xlinkOut = std::dynamic_pointer_cast<const node::XLinkOut>(node);
-        if(xlinkOut != nullptr) {
-            // Create DataOutputQueue's
-            outputQueueMap[xlinkOut->getStreamName()] = std::make_shared<DataOutputQueue>(connection, xlinkOut->getStreamName());
-
-            // Add callback for events
-            outputQueueMap[xlinkOut->getStreamName()]->addCallback([this](std::string queueName, std::shared_ptr<ADatatype>) {
-                // Lock first
-                std::unique_lock<std::mutex> lock(eventMtx);
-
-                // Check if size is equal or greater than EVENT_QUEUE_MAXIMUM_SIZE
-                if(eventQueue.size() >= EVENT_QUEUE_MAXIMUM_SIZE) {
-                    auto numToRemove = eventQueue.size() - EVENT_QUEUE_MAXIMUM_SIZE + 1;
-                    eventQueue.erase(eventQueue.begin(), eventQueue.begin() + numToRemove);
-                }
-
-                // Add to the end of event queue
-                eventQueue.push_back(queueName);
-
-                // notify the rest
-                eventCv.notify_all();
-            });
+    for(const auto& kv : pipeline.getNodeMap()) {
+        const auto& node = kv.second;
+        const auto& xlinkOut = std::dynamic_pointer_cast<const node::XLinkOut>(node);
+        if(xlinkOut == nullptr) {
+            continue;
         }
+        // Create DataOutputQueue's
+        outputQueueMap[xlinkOut->getStreamName()] = std::make_shared<DataOutputQueue>(connection, xlinkOut->getStreamName());
+
+        // Add callback for events
+        outputQueueMap[xlinkOut->getStreamName()]->addCallback([this](std::string queueName, std::shared_ptr<ADatatype>) {
+            // Lock first
+            std::unique_lock<std::mutex> lock(eventMtx);
+
+            // Check if size is equal or greater than EVENT_QUEUE_MAXIMUM_SIZE
+            if(eventQueue.size() >= EVENT_QUEUE_MAXIMUM_SIZE) {
+                auto numToRemove = eventQueue.size() - EVENT_QUEUE_MAXIMUM_SIZE + 1;
+                eventQueue.erase(eventQueue.begin(), eventQueue.begin() + numToRemove);
+            }
+
+            // Add to the end of event queue
+            eventQueue.push_back(queueName);
+
+            // notify the rest
+            eventCv.notify_all();
+        });
     }
 }
 
@@ -686,6 +712,10 @@ MemoryInfo Device::getDdrMemoryUsage() {
     return client->call("getDdrUsage").as<MemoryInfo>();
 }
 
+MemoryInfo Device::getCmxMemoryUsage() {
+    return client->call("getCmxUsage").as<MemoryInfo>();
+}
+
 MemoryInfo Device::getLeonCssHeapUsage() {
     return client->call("getLeonCssHeapUsage").as<MemoryInfo>();
 }
@@ -711,12 +741,45 @@ bool Device::isPipelineRunning() {
 }
 
 void Device::setLogLevel(LogLevel level) {
-    pimpl->setLogLevel(level);
     client->call("setLogLevel", level);
 }
 
 LogLevel Device::getLogLevel() {
     return client->call("getLogLevel").as<LogLevel>();
+}
+
+void Device::setLogOutputLevel(LogLevel level) {
+    pimpl->setLogLevel(level);
+}
+
+LogLevel Device::getLogOutputLevel() {
+    return pimpl->getLogLevel();
+}
+
+int Device::addLogCallback(std::function<void(LogMessage)> callback) {
+    // Lock first
+    std::unique_lock<std::mutex> l(logCallbackMapMtx);
+
+    // Get unique id
+    int id = uniqueCallbackId++;
+
+    // assign callback
+    logCallbackMap[id] = callback;
+
+    // return id assigned to the callback
+    return id;
+}
+
+bool Device::removeLogCallback(int callbackId) {
+    // Lock first
+    std::unique_lock<std::mutex> l(logCallbackMapMtx);
+
+    // If callback with id 'callbackId' doesn't exists, return false
+    if(logCallbackMap.count(callbackId) == 0) return false;
+
+    // Otherwise erase and return true
+    logCallbackMap.erase(callbackId);
+    return true;
 }
 
 void Device::setSystemInformationLoggingRate(float rateHz) {
