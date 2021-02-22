@@ -150,6 +150,9 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
                     break;
             }
 
+            if(info.ioInfo.count(io.name) > 0) {
+                throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
+            }
             info.ioInfo[io.name] = io;
         }
 
@@ -167,6 +170,9 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
                     break;
             }
 
+            if(info.ioInfo.count(io.name) > 0) {
+                throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
+            }
             info.ioInfo[io.name] = io;
         }
 

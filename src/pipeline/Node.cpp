@@ -102,4 +102,26 @@ std::shared_ptr<Asset> Node::loadAsset(const std::string& name, const std::strin
     return assetManager.get(assetKey);
 }
 
+Node::OutputMap::OutputMap(Node::Output defaultOutput) : defaultOutput(defaultOutput) {}
+Node::Output& Node::OutputMap::operator[](const std::string& key) {
+    if(count(key) == 0) {
+        // Create using default and rename with key
+        auto& d = defaultOutput;
+        insert(std::make_pair(key, Output(d.parent, key, d.type, d.possibleDatatypes)));
+    }
+    // otherwise just return reference to existing
+    return at(key);
+}
+
+Node::InputMap::InputMap(Node::Input defaultInput) : defaultInput(defaultInput) {}
+Node::Input& Node::InputMap::operator[](const std::string& key) {
+    if(count(key) == 0) {
+        // Create using default and rename with key
+        auto& d = defaultInput;
+        insert(std::make_pair(key, Input(d.parent, key, d.type, d.defaultBlocking, d.defaultQueueSize, d.possibleDatatypes)));
+    }
+    // otherwise just return reference to existing
+    return at(key);
+}
+
 }  // namespace dai

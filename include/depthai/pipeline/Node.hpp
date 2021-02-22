@@ -57,6 +57,19 @@ class Node {
         void unlink(const Input& in);
     };
 
+    /**
+     * Output map which keeps track of extra outputs assigned to Node
+     * Extends std::unordered_map<std::string, dai::Node::Output>
+     */
+    class OutputMap : public std::unordered_map<std::string, Output> {
+        Output defaultOutput;
+
+       public:
+        OutputMap(Output defaultOutput);
+        /// Create or modify an input
+        Output& operator[](const std::string& key);
+    };
+
     struct Input {
         enum class Type { SReceiver, MReceiver };
         Node& parent;
@@ -102,6 +115,19 @@ class Node {
          * @return Maximum input queue size
          */
         int getQueueSize() const;
+    };
+
+    /**
+     * Input map which keeps track of inputs assigned to MicroPython node
+     * Extends std::unordered_map<std::string, dai::Node::Input>
+     */
+    class InputMap : public std::unordered_map<std::string, Input> {
+        Input defaultInput;
+
+       public:
+        InputMap(Input defaultInput);
+        /// Create or modify an input
+        Input& operator[](const std::string& key);
     };
 
     // when Pipeline tries to serialize and construct on remote, it will check if all connected nodes are on same pipeline

@@ -6,18 +6,33 @@
 namespace dai {
 namespace node {
 
-MicroPython::MicroPython(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
+MicroPython::MicroPython(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
+    : Node(par, nodeId),
+      inputs(Input(*this, "", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}})),
+      outputs(Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}})) {
+    properties.scriptSize = tl::nullopt;
+    properties.scriptUri = "";
+    properties.processor = ProcessorType::LEON_MSS;
+}
 
 std::string MicroPython::getName() const {
     return "MicroPython";
 }
 
 std::vector<Node::Output> MicroPython::getOutputs() {
-    return {};
+    std::vector<Node::Output> vecOutputs;
+    for(const auto& kv : outputs) {
+        vecOutputs.push_back(kv.second);
+    }
+    return vecOutputs;
 }
 
 std::vector<Node::Input> MicroPython::getInputs() {
-    return {input};
+    std::vector<Node::Input> vecInputs;
+    for(const auto& kv : inputs) {
+        vecInputs.push_back(kv.second);
+    }
+    return vecInputs;
 }
 
 nlohmann::json MicroPython::getProperties() {
@@ -34,6 +49,19 @@ void MicroPython::setScriptPath(const std::string& path) {
     auto asset = loadAsset("blob", path);
     properties.scriptUri = asset->getUri();
     properties.scriptSize = asset->data.size();
+    scriptPath = path;
+}
+
+void MicroPython::setProcessor(ProcessorType proc) {
+    properties.processor = proc;
+}
+
+std::string MicroPython::getScriptPath() const {
+    return scriptPath;
+}
+
+ProcessorType MicroPython::getProcessor() const {
+    return properties.processor;
 }
 
 }  // namespace node

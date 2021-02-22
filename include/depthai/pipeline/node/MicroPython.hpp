@@ -22,15 +22,41 @@ class MicroPython : public Node {
     std::shared_ptr<Node> clone() override;
     // void loadAssets(AssetManager& assetManager) override;
 
+    std::string scriptPath = "";
+
    public:
     MicroPython(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
-    Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}}};
-    //    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::NNData, false}}};
-    //    Output passthrough{*this, "passthrough", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
+    /**
+     *  Inputs to MicroPython node. Can be added or removed
+     *  By default inputs are set to blocking with queue size 8
+     */
+    InputMap inputs;
 
-    // Specify local filesystem path to load the script
+    /**
+     * Outputs from MicroPython node. Can be added or removed
+     */
+    OutputMap outputs;
+
+    /**
+     *  Specify local filesystem path to load the script
+     */
     void setScriptPath(const std::string& path);
+
+    /**
+     *  Get filesystem path from where script was loaded
+     */
+    std::string getScriptPath() const;
+
+    /**
+     * Set which processor should script run on Leon CSS or Leon MSS
+     */
+    void setProcessor(ProcessorType type);
+
+    /**
+     * Get which processor should script run on Leon CSS or Leon MSS
+     */
+    ProcessorType getProcessor() const;
 };
 
 }  // namespace node
