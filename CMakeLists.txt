@@ -349,7 +349,10 @@ if(DEPTHAI_OPENCV_SUPPORT)
 
         # Add public dependency to depthai::core library
         target_link_libraries(${TARGET_CORE_OPENCV_NAME} PUBLIC ${TARGET_NAME})
-    
+
+        # Add to clangformat target
+        target_clangformat_setup(${TARGET_CORE_OPENCV_NAME} "")
+
     else()
         message(STATUS "OpenCV and required libraries not found. OpenCV Support disabled")
     endif()

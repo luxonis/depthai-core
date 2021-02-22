@@ -3,7 +3,7 @@
 # (See accompanying file LICENSE_1_0.txt or copy at
 # http://www.boost.org/LICENSE_1_0.txt)
 
-function(clangformat_setup)
+function(clangformat_setup files target)
 
   if(NOT CLANG_FORMAT_BIN)
     set(CLANG_FORMAT_BIN clang-format)
@@ -20,12 +20,12 @@ function(clangformat_setup)
     endif()
   endif()
 
-  foreach(clangformat_source ${ARGV})
+  foreach(clangformat_source ${files})
     get_filename_component(clangformat_source ${clangformat_source} ABSOLUTE)
     list(APPEND clangformat_sources ${clangformat_source})
   endforeach()
 
-  add_custom_target(${PROJECT_NAME}_clangformat
+  add_custom_target(${target}_clangformat
     COMMAND
       ${CLANG_FORMAT_BIN}
       -style=file
@@ -38,9 +38,9 @@ function(clangformat_setup)
   )
 
   if(TARGET clangformat)
-    add_dependencies(clangformat ${PROJECT_NAME}_clangformat)
+    add_dependencies(clangformat ${target}_clangformat)
   else()
-    add_custom_target(clangformat DEPENDS ${PROJECT_NAME}_clangformat)
+    add_custom_target(clangformat DEPENDS ${target}_clangformat)
   endif()
 endfunction()
 
@@ -63,5 +63,5 @@ function(target_clangformat_setup target header_dirs)
   get_target_property(target_sources ${target} SOURCES)
   header_directories("${header_dirs}" header_files)
   set(target_files_to_format "${target_sources};${header_files}")
-  clangformat_setup(${target_files_to_format})
+  clangformat_setup("${target_files_to_format}" ${target})
 endfunction()
