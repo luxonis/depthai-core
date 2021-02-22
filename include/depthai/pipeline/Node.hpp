@@ -116,6 +116,15 @@ class Node {
     Pipeline getParentPipeline();
     const Pipeline getParentPipeline() const;
 
+    /**
+     *  Reads and stores asset into AssetManager
+     * @param name Name of asset - will be prepended with node id to create final asset key
+     * @param path Path of file to load
+     * @param alignment Asset alignment
+     * @returns Shared pointer to asset in AssetManager
+     */
+    std::shared_ptr<Asset> loadAsset(const std::string& name, const std::string& path, int alignment = 64);
+
    public:
     const Id id;
     virtual std::string getName() const = 0;

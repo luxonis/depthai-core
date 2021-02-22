@@ -25,12 +25,6 @@ class NeuralNetwork : public Node {
     // void loadAssets(AssetManager& assetManager) override;
 
    protected:
-    struct BlobAssetInfo {
-        std::string uri;
-        uint32_t size;
-    };
-    std::string blobPath;
-    BlobAssetInfo loadBlob(const std::string& path);
     OpenVINO::Version networkOpenvinoVersion;
 
    public:

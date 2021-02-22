@@ -14,6 +14,7 @@ struct Asset {
     const std::string key;
     std::vector<std::uint8_t> data;
     std::uint32_t alignment = 1;
+    std::string getUri();
 };
 
 class AssetsMutable : public Assets {
@@ -30,6 +31,7 @@ class AssetManager /*: public Assets*/ {
     void add(Asset asset);
     void add(const std::string& key, Asset asset);
     void set(const std::string& key, Asset asset);
+    void load(const std::string& key, const std::string& path, int alignment = 64);
     std::shared_ptr<const Asset> get(const std::string& key) const;
     std::shared_ptr<Asset> get(const std::string& key);
     std::vector<std::shared_ptr<const Asset>> getAll() const;

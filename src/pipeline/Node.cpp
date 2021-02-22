@@ -93,4 +93,13 @@ int Node::Input::getQueueSize() const {
     return defaultQueueSize;
 }
 
+std::shared_ptr<Asset> Node::loadAsset(const std::string& name, const std::string& path, int alignment) {
+    // Create asset key
+    std::string assetKey = fmt::format("{}/{}", id, name);
+
+    // Load and return pointer to asset
+    assetManager.load(assetKey, path, alignment);
+    return assetManager.get(assetKey);
+}
+
 }  // namespace dai

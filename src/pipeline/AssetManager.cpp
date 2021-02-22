@@ -1,6 +1,15 @@
 #include "depthai/pipeline/AssetManager.hpp"
 
+#include "spdlog/fmt/fmt.h"
+
+// std
+#include <fstream>
+
 namespace dai {
+
+std::string Asset::getUri() {
+    return fmt::format("{}:{}", "asset", key);
+}
 
 void AssetManager::add(Asset asset) {
     // make sure that key doesn't exist already
@@ -25,12 +34,36 @@ void AssetManager::set(const std::string& key, Asset asset) {
     assetMap[key] = std::make_shared<Asset>(std::move(a));
 }
 
+void AssetManager::load(const std::string& key, const std::string& path, int alignment) {
+    // Load binary file at path
+    // And mark in properties where to look for it
+    std::ifstream stream(path, std::ios::in | std::ios::binary);
+    if(!stream.is_open()) {
+        // Throw an error
+        // TODO(themarpe) - Unify exceptions into meaningful groups
+        throw std::runtime_error(fmt::format("Cannot load asset, file at path {} doesn\'t exist.", path));
+    }
+
+    // Create an asset
+    Asset binaryAsset;
+    binaryAsset.alignment = alignment;
+    binaryAsset.data = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
+    // Store asset
+    set(key, std::move(binaryAsset));
+}
+
 std::shared_ptr<const Asset> AssetManager::get(const std::string& key) const {
+    if(assetMap.count(key) == 0) {
+        return nullptr;
+    }
     return assetMap.at(key);
 }
 
 std::shared_ptr<Asset> AssetManager::get(const std::string& key) {
-    return assetMap[key];
+    if(assetMap.count(key) == 0) {
+        return nullptr;
+    }
+    return assetMap.at(key);
 }
 
 void AssetManager::addExisting(std::vector<std::shared_ptr<Asset>> assets) {
