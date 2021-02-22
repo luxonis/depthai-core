@@ -20,8 +20,13 @@ std::vector<Node::Input> NeuralNetwork::getInputs() {
     return {input};
 }
 
+dai::NeuralNetworkProperties& NeuralNetwork::getPropertiesRef() {
+    return properties;
+}
+
 nlohmann::json NeuralNetwork::getProperties() {
     nlohmann::json j;
+    NeuralNetworkProperties& properties = getPropertiesRef();
     nlohmann::to_json(j, properties);
     return j;
 }
@@ -70,12 +75,29 @@ NeuralNetwork::BlobAssetInfo NeuralNetwork::loadBlob(const std::string& path) {
 void NeuralNetwork::setBlobPath(const std::string& path) {
     blobPath = path;
     BlobAssetInfo blobInfo = loadBlob(path);
+    NeuralNetworkProperties& properties = getPropertiesRef();
     properties.blobUri = blobInfo.uri;
     properties.blobSize = blobInfo.size;
 }
 
 void NeuralNetwork::setNumPoolFrames(int numFrames) {
+    NeuralNetworkProperties& properties = getPropertiesRef();
     properties.numFrames = numFrames;
+}
+
+void NeuralNetwork::setNumInferenceThreads(int numThreads) {
+    NeuralNetworkProperties& properties = getPropertiesRef();
+    properties.numThreads = numThreads;
+}
+
+void NeuralNetwork::setNumNCEPerInferenceThread(int numNCEPerThread) {
+    NeuralNetworkProperties& properties = getPropertiesRef();
+    properties.numNCEPerThread = numNCEPerThread;
+}
+
+int NeuralNetwork::getNumInferenceThreads() {
+    NeuralNetworkProperties& properties = getPropertiesRef();
+    return properties.numThreads;
 }
 
 }  // namespace node

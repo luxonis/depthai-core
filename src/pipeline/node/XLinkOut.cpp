@@ -37,12 +37,20 @@ void XLinkOut::setFpsLimit(float fps) {
     properties.maxFpsLimit = fps;
 }
 
+void XLinkOut::setMetadataOnly(bool metadataOnly) {
+    properties.metadataOnly = metadataOnly;
+}
+
 std::string XLinkOut::getStreamName() const {
     return properties.streamName;
 }
 
 float XLinkOut::getFpsLimit() const {
     return properties.maxFpsLimit;
+}
+
+bool XLinkOut::getMetadataOnly() const {
+    return properties.metadataOnly;
 }
 
 }  // namespace node

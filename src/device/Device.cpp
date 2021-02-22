@@ -498,39 +498,43 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
     // Open queues upfront, let queues know about data sizes (input queues)
     // Go through Pipeline and check for 'XLinkIn' and 'XLinkOut' nodes
     // and create corresponding default queues for them
-    for(const auto& node : pipeline.getAllNodes()) {
-        auto xlinkIn = std::dynamic_pointer_cast<const node::XLinkIn>(node);
-        if(xlinkIn != nullptr) {
-            // Create DataInputQueue's
-            inputQueueMap[xlinkIn->getStreamName()] = std::make_shared<DataInputQueue>(connection, xlinkIn->getStreamName());
-            // set max data size, for more verbosity
-            inputQueueMap[xlinkIn->getStreamName()]->setMaxDataSize(xlinkIn->getMaxDataSize());
+    for(const auto& kv : pipeline.getNodeMap()) {
+        const auto& node = kv.second;
+        const auto& xlinkIn = std::dynamic_pointer_cast<const node::XLinkIn>(node);
+        if(xlinkIn == nullptr) {
+            continue;
         }
+        // Create DataInputQueue's
+        inputQueueMap[xlinkIn->getStreamName()] = std::make_shared<DataInputQueue>(connection, xlinkIn->getStreamName());
+        // set max data size, for more verbosity
+        inputQueueMap[xlinkIn->getStreamName()]->setMaxDataSize(xlinkIn->getMaxDataSize());
     }
-    for(const auto& node : pipeline.getAllNodes()) {
-        auto xlinkOut = std::dynamic_pointer_cast<const node::XLinkOut>(node);
-        if(xlinkOut != nullptr) {
-            // Create DataOutputQueue's
-            outputQueueMap[xlinkOut->getStreamName()] = std::make_shared<DataOutputQueue>(connection, xlinkOut->getStreamName());
-
-            // Add callback for events
-            outputQueueMap[xlinkOut->getStreamName()]->addCallback([this](std::string queueName, std::shared_ptr<ADatatype>) {
-                // Lock first
-                std::unique_lock<std::mutex> lock(eventMtx);
-
-                // Check if size is equal or greater than EVENT_QUEUE_MAXIMUM_SIZE
-                if(eventQueue.size() >= EVENT_QUEUE_MAXIMUM_SIZE) {
-                    auto numToRemove = eventQueue.size() - EVENT_QUEUE_MAXIMUM_SIZE + 1;
-                    eventQueue.erase(eventQueue.begin(), eventQueue.begin() + numToRemove);
-                }
-
-                // Add to the end of event queue
-                eventQueue.push_back(queueName);
-
-                // notify the rest
-                eventCv.notify_all();
-            });
+    for(const auto& kv : pipeline.getNodeMap()) {
+        const auto& node = kv.second;
+        const auto& xlinkOut = std::dynamic_pointer_cast<const node::XLinkOut>(node);
+        if(xlinkOut == nullptr) {
+            continue;
         }
+        // Create DataOutputQueue's
+        outputQueueMap[xlinkOut->getStreamName()] = std::make_shared<DataOutputQueue>(connection, xlinkOut->getStreamName());
+
+        // Add callback for events
+        outputQueueMap[xlinkOut->getStreamName()]->addCallback([this](std::string queueName, std::shared_ptr<ADatatype>) {
+            // Lock first
+            std::unique_lock<std::mutex> lock(eventMtx);
+
+            // Check if size is equal or greater than EVENT_QUEUE_MAXIMUM_SIZE
+            if(eventQueue.size() >= EVENT_QUEUE_MAXIMUM_SIZE) {
+                auto numToRemove = eventQueue.size() - EVENT_QUEUE_MAXIMUM_SIZE + 1;
+                eventQueue.erase(eventQueue.begin(), eventQueue.begin() + numToRemove);
+            }
+
+            // Add to the end of event queue
+            eventQueue.push_back(queueName);
+
+            // notify the rest
+            eventCv.notify_all();
+        });
     }
 }
 
@@ -706,6 +710,10 @@ std::string Device::getQueueEvent(std::chrono::microseconds timeout) {
 // Convinience functions for querying current system information
 MemoryInfo Device::getDdrMemoryUsage() {
     return client->call("getDdrUsage").as<MemoryInfo>();
+}
+
+MemoryInfo Device::getCmxMemoryUsage() {
+    return client->call("getCmxUsage").as<MemoryInfo>();
 }
 
 MemoryInfo Device::getLeonCssHeapUsage() {

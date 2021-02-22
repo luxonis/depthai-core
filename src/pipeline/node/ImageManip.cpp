@@ -3,7 +3,7 @@ namespace dai {
 namespace node {
 
 ImageManip::ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : Node(par, nodeId), rawConfig(std::make_shared<RawImageManipConfig>()), config(rawConfig) {}
+    : Node(par, nodeId), rawConfig(std::make_shared<RawImageManipConfig>()), initialConfig(rawConfig) {}
 
 std::string ImageManip::getName() const {
     return "ImageManip";
@@ -19,6 +19,7 @@ std::vector<Node::Output> ImageManip::getOutputs() {
 
 nlohmann::json ImageManip::getProperties() {
     nlohmann::json j;
+    properties.initialConfig = *rawConfig;
     nlohmann::to_json(j, properties);
     return j;
 }
@@ -29,32 +30,37 @@ std::shared_ptr<Node> ImageManip::clone() {
 
 // Initial ImageManipConfig
 void ImageManip::setCropRect(float xmin, float ymin, float xmax, float ymax) {
-    config.setCropRect(xmin, ymin, xmax, ymax);
+    initialConfig.setCropRect(xmin, ymin, xmax, ymax);
     properties.initialConfig = *rawConfig;
 }
 
 void ImageManip::setCenterCrop(float ratio, float whRatio) {
-    config.setCenterCrop(ratio, whRatio);
+    initialConfig.setCenterCrop(ratio, whRatio);
     properties.initialConfig = *rawConfig;
 }
 
 void ImageManip::setResize(int w, int h) {
-    config.setResize(w, h);
+    initialConfig.setResize(w, h);
     properties.initialConfig = *rawConfig;
 }
 
 void ImageManip::setResizeThumbnail(int w, int h, int bgRed, int bgGreen, int bgBlue) {
-    config.setResizeThumbnail(w, h, bgRed, bgGreen, bgBlue);
+    initialConfig.setResizeThumbnail(w, h, bgRed, bgGreen, bgBlue);
     properties.initialConfig = *rawConfig;
 }
 
 void ImageManip::setFrameType(dai::RawImgFrame::Type type) {
-    config.setFrameType(type);
+    initialConfig.setFrameType(type);
     properties.initialConfig = *rawConfig;
 }
 
 void ImageManip::setHorizontalFlip(bool flip) {
-    config.setHorizontalFlip(flip);
+    initialConfig.setHorizontalFlip(flip);
+    properties.initialConfig = *rawConfig;
+}
+
+void ImageManip::setKeepAspectRatio(bool keep) {
+    initialConfig.setKeepAspectRatio(keep);
     properties.initialConfig = *rawConfig;
 }
 

@@ -1,13 +1,16 @@
 cmake_minimum_required(VERSION 3.4) # For Hunter
 
-# Build dependencies as 'Release' only by default (if not MSVC, as it requires same debug level for libraries to be linked against)
-if(NOT MSVC)
+# MSVC variable isn't available before 'project' call
+# Generalize to Win32 platform for now 
+if(NOT WIN32)
     set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
 endif()
 
 # Read the BUILD_SHARED_LIBS option and select PIC toolchain
 if(BUILD_SHARED_LIBS)
     set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_LIST_DIR}/cmake/toolchain/pic.cmake" CACHE STRING "")
+    # Specify exporting all symbols on Windows
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON CACHE BOOL "")
 endif()
 
 include("cmake/HunterGate.cmake")
@@ -385,6 +388,7 @@ install(
         ${TARGET_NAME} "${DEPTHAI_RESOURCE_LIBRARY_NAME}" cmrc-base
     EXPORT 
         "${TARGET_NAME}Config"
+    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
 )
@@ -421,7 +425,7 @@ endif()
 
 set(config_install_dir "${CMAKE_INSTALL_LIBDIR}/cmake/${TARGET_NAME}")
 export(TARGETS 
-    ${TARGET_NAME} "${DEPTHAI_RESOURCE_LIBRARY_NAME}" cmrc-base
+    ${TARGET_NAME} ${DEPTHAI_RESOURCE_LIBRARY_NAME} cmrc-base
     NAMESPACE ${PROJECT_NAME}::
     FILE "${config_install_dir}/${TARGET_NAME}Config.cmake"
 )

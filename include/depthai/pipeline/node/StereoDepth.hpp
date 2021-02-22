@@ -20,8 +20,17 @@ class StereoDepth : public Node {
    public:
     StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
-    Input left{*this, "left", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, true}}};
-    Input right{*this, "right", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, true}}};
+    /**
+     * Input for left ImgFrame of left-right pair
+     * Default queue is non-blocking with size 8
+     */
+    Input left{*this, "left", Input::Type::SReceiver, false, 8, {{DatatypeEnum::ImgFrame, true}}};
+    /**
+     * Input for right ImgFrame of left-right pair
+     * Default queue is non-blocking with size 8
+     */
+    Input right{*this, "right", Input::Type::SReceiver, false, 8, {{DatatypeEnum::ImgFrame, true}}};
+
     Output depth{*this, "depth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
     Output disparity{*this, "disparity", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
     Output syncedLeft{*this, "syncedLeft", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
