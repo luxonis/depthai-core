@@ -25,8 +25,17 @@ class ImageManip : public Node {
 
     ImageManipConfig initialConfig;
 
-    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, {{DatatypeEnum::ImageManipConfig, true}}};
-    Input inputImage{*this, "inputImage", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, true}}};
+    /**
+     * Input ImageManipConfig message with ability to modify parameters in runtime
+     * Default queue is blocking with size 8
+     */
+    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImageManipConfig, true}}};
+
+    /**
+     * Input image to be modified
+     * Default queue is blocking with size 8
+     */
+    Input inputImage{*this, "inputImage", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImgFrame, true}}};
 
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
 
@@ -37,6 +46,7 @@ class ImageManip : public Node {
     [[deprecated("Use 'initialConfig.setResizeThumbnail()' instead")]] void setResizeThumbnail(int w, int h, int bgRed = 0, int bgGreen = 0, int bgBlue = 0);
     [[deprecated("Use 'initialConfig.setFrameType()' instead")]] void setFrameType(dai::RawImgFrame::Type name);
     [[deprecated("Use 'initialConfig.setHorizontalFlip()' instead")]] void setHorizontalFlip(bool flip);
+    void setKeepAspectRatio(bool keep);
 
     // Functions to set properties
     void setWaitForConfigInput(bool wait);

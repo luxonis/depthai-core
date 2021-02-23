@@ -36,7 +36,11 @@ class NeuralNetwork : public Node {
    public:
     NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
-    Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}}};
+    /**
+     * Input message with data to be infered upon
+     * Default queue is blocking with size 5
+     */
+    Input input{*this, "in", Input::Type::SReceiver, true, 5, {{DatatypeEnum::Buffer, true}}};
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::NNData, false}}};
     Output passthrough{*this, "passthrough", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
 
@@ -44,6 +48,7 @@ class NeuralNetwork : public Node {
     void setBlobPath(const std::string& path);
     void setNumPoolFrames(int numFrames);
     void setNumInferenceThreads(int numThreads);
+    void setNumNCEPerInferenceThread(int numNCEPerThread);
     // Zero means AUTO. TODO add AUTO in NeuralNetworkProperties
     int getNumInferenceThreads();
     // TODO add getters for other API

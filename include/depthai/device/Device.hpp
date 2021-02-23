@@ -338,6 +338,13 @@ class Device {
     MemoryInfo getDdrMemoryUsage();
 
     /**
+     * Retrieves current CMX memory information from device
+     *
+     * @return Used, remaining and total cmx memory
+     */
+    MemoryInfo getCmxMemoryUsage();
+
+    /**
      * Retrieves current CSS Leon CPU heap information from device
      *
      * @return Used, remaining and total heap memory
