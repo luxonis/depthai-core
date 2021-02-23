@@ -84,7 +84,7 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
     return mat;
 }
 
-cv::Mat ImgFrame::getBgrFrame() {
+cv::Mat ImgFrame::getCvFrame() {
     cv::Mat frame = getFrame();
     cv::Mat output;
 

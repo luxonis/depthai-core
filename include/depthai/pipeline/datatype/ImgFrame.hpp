@@ -48,9 +48,26 @@ class ImgFrame : public Buffer {
 
 // Optional - OpenCV support
 #ifdef DEPTHAI_OPENCV_SUPPORT
+    /**
+     * Copies cv::Mat data to ImgFrame
+     * @param frame Input cv::Mat frame from which to copy the data
+     */
     void setFrame(cv::Mat frame);
-    cv::Mat getFrame(bool deepCopy = false);
-    cv::Mat getBgrFrame();
+
+    /**
+     * Retrieves data as cv::Mat with specified width, height and type
+     * @param copy If false only a reference to data is made, otherwise a copy
+     * @returns cv::Mat with corresponding to ImgFrame parameters
+     */
+    cv::Mat getFrame(bool copy = false);
+
+    /**
+     * Retrieves cv::Mat suitable for use in common opencv functions.
+     * ImgFrame is converted to BGR or left as grayscale depending on type.
+     * A copy is always made
+     * @returns cv::Mat for use in opencv functions
+     */
+    cv::Mat getCvFrame();
 #endif
 };
 

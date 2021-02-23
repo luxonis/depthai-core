@@ -50,7 +50,7 @@ int main(){
 
         // Retrieves video ImgFrame and converts a cv::Mat copy in BGR format (suitable for opencv usage)
         auto videoFrame = video->get<dai::ImgFrame>();
-        cv::imshow("video", videoFrame->getBgrFrame());
+        cv::imshow("video", videoFrame->getCvFrame());
 
         // Retrieves preview ImgFrame and returns (without copying deepCopy = false) cv::Mat
         auto previewFrame = preview->get<dai::ImgFrame>();
