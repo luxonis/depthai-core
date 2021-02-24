@@ -265,6 +265,11 @@ Device::Device(const Pipeline& pipeline, bool usb2Mode) {
 }
 
 Device::~Device() {
+    // Remove callbacks from queues
+    for(const auto& kv : callbackIdMap) {
+        outputQueueMap[kv.first]->removeCallback(kv.second);
+    }
+
     watchdogRunning = false;
     timesyncRunning = false;
     loggingRunning = false;
@@ -308,8 +313,8 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
             XLinkConnection bootloaderConnection(deviceInfo, X_LINK_BOOTLOADER);
 
             // Open stream
-            bootloaderConnection.openStream(bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
-            streamId_t streamId = bootloaderConnection.getStreamId(bootloader::XLINK_CHANNEL_BOOTLOADER);
+            XLinkStream stream(bootloaderConnection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
+            streamId_t streamId = stream.getStreamId();
 
             // // Send request for bootloader version
             // if(!sendBootloaderRequest(streamId, bootloader::request::GetBootloaderVersion{})){
@@ -354,7 +359,7 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
     deviceInfo.state = X_LINK_BOOTED;
 
     // prepare rpc for both attached and host controlled mode
-    connection->openStream(dai::XLINK_CHANNEL_MAIN_RPC, dai::XLINK_USB_BUFFER_MAX_SIZE);
+    rpcStream = std::unique_ptr<XLinkStream>(new XLinkStream(*connection, dai::XLINK_CHANNEL_MAIN_RPC, dai::XLINK_USB_BUFFER_MAX_SIZE));
 
     client = std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>(
         new nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>([this](nanorpc::core::type::buffer request) {
@@ -366,11 +371,11 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
             }
 
             // Send request to device
-            connection->writeToStream(dai::XLINK_CHANNEL_MAIN_RPC, std::move(request));
+            rpcStream->write(std::move(request));
 
             // Receive response back
             // Send to nanorpc to parse
-            return connection->readFromStream(dai::XLINK_CHANNEL_MAIN_RPC);
+            return rpcStream->read();
         }));
 
     // prepare watchdog thread, which will keep device alive
@@ -402,15 +407,13 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
     // prepare timesync thread, which will keep device synchronized
     timesyncThread = std::thread([this]() {
         using namespace std::chrono;
-        std::shared_ptr<XLinkConnection> conn = this->connection;
-        std::string streamName = XLINK_CHANNEL_TIMESYNC;
 
         try {
-            conn->openStream(streamName, 128);
+            XLinkStream stream(*this->connection, XLINK_CHANNEL_TIMESYNC, 128);
             Timestamp timestamp = {};
             while(timesyncRunning) {
                 // Block
-                conn->readFromStream(streamName);
+                stream.read();
 
                 // Timestamp
                 auto d = std::chrono::steady_clock::now().time_since_epoch();
@@ -418,9 +421,8 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
                 timestamp.nsec = duration_cast<nanoseconds>(d).count() % 1000000000;
 
                 // Write timestamp back
-                conn->writeToStream(streamName, &timestamp, sizeof(timestamp));
+                stream.write(&timestamp, sizeof(timestamp));
             }
-            conn->closeStream(streamName);
         } catch(const std::exception& ex) {
             // ignore
             spdlog::debug("Timesync thread exception caught: {}", ex.what());
@@ -432,16 +434,12 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
     // prepare logging thread, which will log device messages
     loggingThread = std::thread([this]() {
         using namespace std::chrono;
-        std::shared_ptr<XLinkConnection> conn = this->connection;
-
-        std::string streamName = XLINK_CHANNEL_LOG;
-
         std::vector<LogMessage> messages;
         try {
-            conn->openStream(streamName, 128);
+            XLinkStream stream(*this->connection, XLINK_CHANNEL_LOG, 128);
             while(loggingRunning) {
                 // Block
-                auto log = conn->readFromStream(streamName);
+                auto log = stream.read();
 
                 // parse packet as msgpack
                 try {
@@ -470,10 +468,9 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
                     }
 
                 } catch(const nlohmann::json::exception& ex) {
-                    spdlog::error("Exception while parsing log message from device: {}", ex.what());
+                    spdlog::error("Exception while parsing or calling callbacks for log message from device: {}", ex.what());
                 }
             }
-            conn->closeStream(streamName);
         } catch(const std::exception& ex) {
             // ignore exception from logging
             spdlog::debug("Log thread exception caught: {}", ex.what());
@@ -482,18 +479,35 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
         loggingRunning = false;
     });
 
-    // Set logging level (if DEPTHAI_LEVEL lower than warning, then device is configured accordingly as well)
-    if(spdlog::get_level() < spdlog::level::warn) {
-        auto level = spdlogLevelToLogLevel(spdlog::get_level());
-        setLogLevel(level);
-        setLogOutputLevel(level);
-    } else {
-        setLogLevel(LogLevel::WARN);
-        setLogOutputLevel(LogLevel::WARN);
-    }
+    // Below can throw - make sure to gracefully exit threads
+    try {
+        // Set logging level (if DEPTHAI_LEVEL lower than warning, then device is configured accordingly as well)
+        if(spdlog::get_level() < spdlog::level::warn) {
+            auto level = spdlogLevelToLogLevel(spdlog::get_level());
+            setLogLevel(level);
+            setLogOutputLevel(level);
+        } else {
+            setLogLevel(LogLevel::WARN);
+            setLogOutputLevel(LogLevel::WARN);
+        }
 
-    // Sets system inforation logging rate. By default 1s
-    setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
+        // Sets system inforation logging rate. By default 1s
+        setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
+
+    } catch(const std::exception& ex) {
+        // Close all threads in this case
+        watchdogRunning = false;
+        timesyncRunning = false;
+        loggingRunning = false;
+        // Stop watchdog first (this resets and waits for link to fall down)
+        if(watchdogThread.joinable()) watchdogThread.join();
+        // Then stop timesync
+        if(timesyncThread.joinable()) timesyncThread.join();
+        // And at the end stop logging thread
+        if(loggingThread.joinable()) loggingThread.join();
+        // Rethrow original exception
+        throw;
+    }
 
     // Open queues upfront, let queues know about data sizes (input queues)
     // Go through Pipeline and check for 'XLinkIn' and 'XLinkOut' nodes
@@ -515,11 +529,13 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
         if(xlinkOut == nullptr) {
             continue;
         }
+
+        auto streamName = xlinkOut->getStreamName();
         // Create DataOutputQueue's
-        outputQueueMap[xlinkOut->getStreamName()] = std::make_shared<DataOutputQueue>(connection, xlinkOut->getStreamName());
+        outputQueueMap[streamName] = std::make_shared<DataOutputQueue>(connection, streamName);
 
         // Add callback for events
-        outputQueueMap[xlinkOut->getStreamName()]->addCallback([this](std::string queueName, std::shared_ptr<ADatatype>) {
+        callbackIdMap[streamName] = outputQueueMap[streamName]->addCallback([this](std::string queueName, std::shared_ptr<ADatatype>) {
             // Lock first
             std::unique_lock<std::mutex> lock(eventMtx);
 
@@ -606,15 +622,15 @@ std::vector<std::string> Device::getInputQueueNames() const {
     return names;
 }
 
-void Device::setCallback(const std::string& name, std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb) {
-    // creates a CallbackHandler if not yet created
-    if(callbackMap.count(name) == 0) {
-        throw std::runtime_error(fmt::format("Queue for stream name '{}' doesn't exist", name));
-    } else {
-        // already exists, replace the callback
-        callbackMap.at(name).setCallback(cb);
-    }
-}
+// void Device::setCallback(const std::string& name, std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb) {
+//     // creates a CallbackHandler if not yet created
+//     if(callbackMap.count(name) == 0) {
+//         throw std::runtime_error(fmt::format("Queue for stream name '{}' doesn't exist", name));
+//     } else {
+//         // already exists, replace the callback
+//         callbackMap.at(name).setCallback(cb);
+//     }
+// }
 
 std::vector<std::string> Device::getQueueEvents(const std::vector<std::string>& queueNames, std::size_t maxNumEvents, std::chrono::microseconds timeout) {
     // First check if specified queues names are actually opened
@@ -815,11 +831,11 @@ bool Device::startPipeline() {
         // Transfer the whole assetStorage in a separate thread
         const std::string streamAssetStorage = "__stream_asset_storage";
         std::thread t1([this, &streamAssetStorage]() {
-            connection->openStream(streamAssetStorage, XLINK_USB_BUFFER_MAX_SIZE);
+            XLinkStream stream(*connection, streamAssetStorage, XLINK_USB_BUFFER_MAX_SIZE);
             int64_t offset = 0;
             do {
                 int64_t toTransfer = std::min(static_cast<int64_t>(XLINK_USB_BUFFER_MAX_SIZE), static_cast<int64_t>(assetStorage.size() - offset));
-                connection->writeToStream(streamAssetStorage, &assetStorage[offset], toTransfer);
+                stream.write(&assetStorage[offset], toTransfer);
                 offset += toTransfer;
             } while(offset < static_cast<int64_t>(assetStorage.size()));
         });

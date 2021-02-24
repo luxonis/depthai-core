@@ -19,9 +19,9 @@ hunter_config(
 
 hunter_config(
     spdlog
-    VERSION "1.8.1"
-    URL "https://github.com/gabime/spdlog/archive/v1.8.1.tar.gz"
-    SHA1 "a0fe45cfb77cb4201e9a0e40325c1792dd434a28"
+    VERSION "1.8.2"
+    URL "https://github.com/gabime/spdlog/archive/v1.8.2.tar.gz"
+    SHA1 "4437f350ca7fa89a0cd8faca1198afb36823f775"
     CMAKE_ARGS
         SPDLOG_BUILD_EXAMPLE=OFF
         SPDLOG_FMT_EXTERNAL=OFF

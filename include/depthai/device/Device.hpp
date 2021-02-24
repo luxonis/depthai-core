@@ -13,6 +13,7 @@
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
+#include "depthai/xlink/XLinkStream.hpp"
 
 // shared
 #include "depthai-shared/common/ChipTemperature.hpp"
@@ -264,7 +265,7 @@ class Device {
      */
     std::vector<std::string> getInputQueueNames() const;
 
-    void setCallback(const std::string& name, std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb);
+    // void setCallback(const std::string& name, std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb);
 
     /**
      * Gets or waits until any of specified queues has received a message
@@ -392,7 +393,8 @@ class Device {
 
     std::unordered_map<std::string, std::shared_ptr<DataOutputQueue>> outputQueueMap;
     std::unordered_map<std::string, std::shared_ptr<DataInputQueue>> inputQueueMap;
-    std::unordered_map<std::string, CallbackHandler> callbackMap;
+    std::unordered_map<std::string, DataOutputQueue::CallbackId> callbackIdMap;
+    // std::unordered_map<std::string, CallbackHandler> callbackMap;
 
     // Log callback
     int uniqueCallbackId = 0;
@@ -415,6 +417,9 @@ class Device {
     // Logging thread
     std::thread loggingThread;
     std::atomic<bool> loggingRunning{true};
+
+    // RPC stream
+    std::unique_ptr<XLinkStream> rpcStream;
 
     // pimpl
     class Impl;

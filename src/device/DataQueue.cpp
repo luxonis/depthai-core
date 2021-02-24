@@ -5,6 +5,7 @@
 
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
+#include "depthai/xlink/XLinkStream.hpp"
 #include "pipeline/datatype/StreamPacketParser.hpp"
 
 // shared
@@ -12,6 +13,7 @@
 
 // libraries
 #include "spdlog/spdlog.h"
+
 namespace dai {
 
 // DATA OUTPUT QUEUE
@@ -23,7 +25,7 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
         std::uint64_t numPacketsRead = 0;
         try {
             // open stream with 1B write size (no writing will happen here)
-            conn->openStream(name, 1);
+            XLinkStream stream(*conn, name, 1);
 
             while(running) {
                 // read packet
@@ -31,7 +33,7 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
 
                 bool success;
                 do {
-                    success = conn->readFromStreamRaw(packet, name, READ_TIMEOUT);
+                    success = stream.readRaw(packet, READ_TIMEOUT);
                 } while(!success && running);
                 if(!running) break;
 
@@ -49,7 +51,7 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
                 }
 
                 // release packet
-                conn->readFromStreamRawRelease(name);
+                stream.readRawRelease();
 
                 // Add 'data' to queue
                 queue.push(data);
@@ -66,8 +68,6 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
                     }
                 }
             }
-
-            conn->closeStream(name);
 
         } catch(const std::exception& ex) {
             exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
@@ -160,7 +160,7 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
         constexpr auto WRITE_TIMEOUT = std::chrono::milliseconds(100);
         try {
             // open stream with default XLINK_USB_BUFFER_MAX_SIZE write size
-            conn->openStream(name, dai::XLINK_USB_BUFFER_MAX_SIZE);
+            XLinkStream stream(*conn, name, dai::XLINK_USB_BUFFER_MAX_SIZE);
 
             while(running) {
                 // get data from queue
@@ -184,15 +184,13 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
 
                 bool success;
                 do {
-                    success = conn->writeToStream(name, serialized, WRITE_TIMEOUT);
+                    success = stream.write(serialized, WRITE_TIMEOUT);
                 } while(!success && running);
                 if(!running) break;
 
                 // Increment num packets sent
                 numPacketsSent++;
             }
-
-            conn->closeStream(name);
 
         } catch(const std::exception& ex) {
             exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());

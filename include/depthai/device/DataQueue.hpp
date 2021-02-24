@@ -17,18 +17,24 @@ namespace dai {
 
 // DataQueue presents a way to access data coming from MyriadX
 class DataOutputQueue {
+   public:
+    /// Alias for callback id
+    using CallbackId = int;
+
+   private:
     LockingQueue<std::shared_ptr<ADatatype>> queue;
     std::thread readingThread;
     std::atomic<bool> running{true};
     std::string exceptionMessage{""};
     const std::string name{""};
     std::mutex callbacksMtx;
-    std::unordered_map<int, std::function<void(std::string, std::shared_ptr<ADatatype>)>> callbacks;
-    int uniqueCallbackId{0};
+    std::unordered_map<CallbackId, std::function<void(std::string, std::shared_ptr<ADatatype>)>> callbacks;
+    CallbackId uniqueCallbackId{0};
 
     // const std::chrono::milliseconds READ_TIMEOUT{500};
 
    public:
+    // DataOutputQueue constructor
     DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize = 16, bool blocking = true);
     ~DataOutputQueue();
 
@@ -73,7 +79,7 @@ class DataOutputQueue {
      * @param callback Callback function with queue name and message pointer
      * @return Callback id
      */
-    int addCallback(std::function<void(std::string, std::shared_ptr<ADatatype>)>);
+    CallbackId addCallback(std::function<void(std::string, std::shared_ptr<ADatatype>)>);
 
     /**
      * Adds a callback on message received
@@ -81,7 +87,7 @@ class DataOutputQueue {
      * @param callback Callback function with message pointer
      * @return Callback id
      */
-    int addCallback(std::function<void(std::shared_ptr<ADatatype>)>);
+    CallbackId addCallback(std::function<void(std::shared_ptr<ADatatype>)>);
 
     /**
      * Adds a callback on message received
@@ -89,7 +95,7 @@ class DataOutputQueue {
      * @param callback Callback function without any parameters
      * @return Callback id
      */
-    int addCallback(std::function<void()> callback);
+    CallbackId addCallback(std::function<void()> callback);
 
     /**
      * Removes a callback
@@ -97,7 +103,7 @@ class DataOutputQueue {
      * @param callbackId Id of callback to be removed
      * @return true if callback was removed, false otherwise
      */
-    bool removeCallback(int callbackId);
+    bool removeCallback(CallbackId callbackId);
 
     template <class T>
     bool has() {

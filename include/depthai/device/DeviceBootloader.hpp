@@ -10,6 +10,7 @@
 #include "DataQueue.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
+#include "depthai/xlink/XLinkStream.hpp"
 
 // libraries
 #include "nanorpc/core/client.h"
@@ -67,6 +68,9 @@ class DeviceBootloader {
     // Watchdog thread
     std::thread watchdogThread;
     std::atomic<bool> watchdogRunning{true};
+
+    // bootloader stream
+    std::unique_ptr<XLinkStream> stream;
 };
 
 }  // namespace dai

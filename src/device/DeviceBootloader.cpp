@@ -182,14 +182,14 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd) 
     // prepare watchdog thread, which will keep device alive
     watchdogThread = std::thread([this]() {
         // prepare watchdog thread
-        connection->openStream(bootloader::XLINK_CHANNEL_WATCHDOG, 64);
+        XLinkStream stream(*connection, bootloader::XLINK_CHANNEL_WATCHDOG, 64);
 
         std::shared_ptr<XLinkConnection> conn = this->connection;
         std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
         std::vector<uint8_t> reset = {1, 0, 0, 0};
         while(watchdogRunning) {
             try {
-                connection->writeToStream(bootloader::XLINK_CHANNEL_WATCHDOG, watchdogKeepalive);
+                stream.write(watchdogKeepalive);
             } catch(const std::exception& ex) {
                 break;
             }
@@ -199,9 +199,9 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd) 
 
         try {
             // Send reset request
-            connection->writeToStream(bootloader::XLINK_CHANNEL_WATCHDOG, reset);
+            stream.write(reset);
             // Dummy read (wait till link falls down)
-            connection->readFromStreamRaw(bootloader::XLINK_CHANNEL_WATCHDOG);
+            stream.readRaw();
         } catch(const std::exception& error) {
         }  // ignore
 
@@ -210,7 +210,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd) 
     });
 
     // prepare bootloader stream
-    connection->openStream(bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
+    stream = std::unique_ptr<XLinkStream>(new XLinkStream(*connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE));
 }
 
 DeviceBootloader::Version DeviceBootloader::getEmbeddedBootloaderVersion() {
@@ -218,7 +218,7 @@ DeviceBootloader::Version DeviceBootloader::getEmbeddedBootloaderVersion() {
 }
 
 DeviceBootloader::Version DeviceBootloader::getVersion() {
-    streamId_t streamId = connection->getStreamId(bootloader::XLINK_CHANNEL_BOOTLOADER);
+    streamId_t streamId = stream->getStreamId();
 
     // Send request to jump to USB bootloader
     if(!sendBootloaderRequest(streamId, bootloader::request::GetBootloaderVersion{})) {
@@ -246,7 +246,7 @@ void DeviceBootloader::saveDepthaiApplicationPackage(std::string path, Pipeline&
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(std::function<void(float)> progressCb, std::vector<uint8_t> package) {
-    streamId_t streamId = connection->getStreamId(bootloader::XLINK_CHANNEL_BOOTLOADER);
+    streamId_t streamId = stream->getStreamId();
 
     // send request to FLASH BOOTLOADER
     dai::bootloader::request::UpdateFlash updateFlash;
@@ -256,7 +256,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
     if(!sendBootloaderRequest(streamId, updateFlash)) return {false, "Couldn't send bootloader flash request"};
 
     // After that send numPackets of data
-    connection->writeToStreamSplit(bootloader::XLINK_CHANNEL_BOOTLOADER, package.data(), package.size(), bootloader::XLINK_STREAM_MAX_SIZE);
+    stream->writeSplit(package.data(), package.size(), bootloader::XLINK_STREAM_MAX_SIZE);
 
     // Then wait for response by bootloader
     // Wait till FLASH_COMPLETE response
@@ -295,7 +295,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(std::function<vo
     }
 
     // get streamId
-    streamId_t streamId = connection->getStreamId(bootloader::XLINK_CHANNEL_BOOTLOADER);
+    streamId_t streamId = stream->getStreamId();
 
     // send request to FLASH BOOTLOADER
     dai::bootloader::request::UpdateFlash updateFlash;
@@ -305,7 +305,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(std::function<vo
     if(!sendBootloaderRequest(streamId, updateFlash)) return {false, "Couldn't send bootloader flash request"};
 
     // After that send numPackets of data
-    connection->writeToStreamSplit(bootloader::XLINK_CHANNEL_BOOTLOADER, package.data(), package.size(), bootloader::XLINK_STREAM_MAX_SIZE);
+    stream->writeSplit(package.data(), package.size(), bootloader::XLINK_STREAM_MAX_SIZE);
 
     // Then wait for response by bootloader
     // Wait till FLASH_COMPLETE response
