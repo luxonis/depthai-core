@@ -79,7 +79,7 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
 }
 
 DataOutputQueue::~DataOutputQueue() {
-    spdlog::debug("DataOutputQueue ({}) about to be desctructed...", name);
+    spdlog::debug("DataOutputQueue ({}) about to be destructed...", name);
     // Set reading thread to stop
     running = false;
 
@@ -204,7 +204,7 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
 }
 
 DataInputQueue::~DataInputQueue() {
-    spdlog::debug("DataInputQueue ({}) about to be desctructed...", name);
+    spdlog::debug("DataInputQueue ({}) about to be destructed...", name);
     // Set writing thread to stop
     running = false;
 
