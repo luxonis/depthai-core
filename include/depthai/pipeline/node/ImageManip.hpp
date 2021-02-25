@@ -46,6 +46,7 @@ class ImageManip : public Node {
     [[deprecated("Use 'initialConfig.setResizeThumbnail()' instead")]] void setResizeThumbnail(int w, int h, int bgRed = 0, int bgGreen = 0, int bgBlue = 0);
     [[deprecated("Use 'initialConfig.setFrameType()' instead")]] void setFrameType(dai::RawImgFrame::Type name);
     [[deprecated("Use 'initialConfig.setHorizontalFlip()' instead")]] void setHorizontalFlip(bool flip);
+    void setKeepAspectRatio(bool keep);
 
     // Functions to set properties
     void setWaitForConfigInput(bool wait);

@@ -27,7 +27,7 @@ target_link_libraries(utility FP16::fp16 ${OpenCV_LIBS})
 # Macro for adding new examples
 macro(dai_add_example example_name example_src)
     add_executable("${example_name}" "${example_src}")
-    target_link_libraries("${example_name}" PRIVATE utility depthai-core ${OpenCV_LIBS})
+    target_link_libraries("${example_name}" PRIVATE utility depthai::core::opencv ${OpenCV_LIBS})
 
     # parse the rest of the arguments
     set(arguments ${ARGV})
@@ -104,6 +104,9 @@ target_compile_definitions(webcam_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}
 # MJPEG encoding
 dai_add_example(mjpeg_encoding src/mjpeg_encoding_example.cpp)
 
+# h264 encoding
+dai_add_example(h264_encoding src/h264_encoding_example.cpp)
+
 # StereoDepth example
 dai_add_example(stereo src/stereo_example.cpp)
 
@@ -119,6 +122,9 @@ dai_add_example(system_information src/system_information_example.cpp)
 
 # Device getQueueEvent example
 dai_add_example(device_queue_event src/device_queue_event_example.cpp)
+
+# OpenCV support example
+dai_add_example(opencv_support src/opencv_support_example.cpp)
 
 # Device side decoding example for mobilenet-ssd
 dai_add_example(mobilenet_device_side_decoding src/mobilenet_device_side_decoding_example.cpp)

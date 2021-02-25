@@ -712,6 +712,10 @@ MemoryInfo Device::getDdrMemoryUsage() {
     return client->call("getDdrUsage").as<MemoryInfo>();
 }
 
+MemoryInfo Device::getCmxMemoryUsage() {
+    return client->call("getCmxUsage").as<MemoryInfo>();
+}
+
 MemoryInfo Device::getLeonCssHeapUsage() {
     return client->call("getLeonCssHeapUsage").as<MemoryInfo>();
 }

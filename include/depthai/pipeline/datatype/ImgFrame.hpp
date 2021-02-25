@@ -6,6 +6,12 @@
 
 #include "depthai-shared/datatype/RawImgFrame.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
+
+// optional
+#ifdef DEPTHAI_OPENCV_SUPPORT
+    #include <opencv2/opencv.hpp>
+#endif
+
 namespace dai {
 
 // protected inheritance, so serialize isn't visible to users
@@ -14,6 +20,10 @@ class ImgFrame : public Buffer {
     RawImgFrame& img;
 
    public:
+    // Raw* mirror
+    using Type = RawImgFrame::Type;
+    using Specs = RawImgFrame::Specs;
+
     ImgFrame();
     explicit ImgFrame(std::shared_ptr<RawImgFrame> ptr);
     virtual ~ImgFrame() = default;
@@ -41,6 +51,30 @@ class ImgFrame : public Buffer {
     void setWidth(unsigned int width);
     void setHeight(unsigned int);
     void setType(RawImgFrame::Type);
+
+// Optional - OpenCV support
+#ifdef DEPTHAI_OPENCV_SUPPORT
+    /**
+     * Copies cv::Mat data to ImgFrame
+     * @param frame Input cv::Mat frame from which to copy the data
+     */
+    void setFrame(cv::Mat frame);
+
+    /**
+     * Retrieves data as cv::Mat with specified width, height and type
+     * @param copy If false only a reference to data is made, otherwise a copy
+     * @returns cv::Mat with corresponding to ImgFrame parameters
+     */
+    cv::Mat getFrame(bool copy = false);
+
+    /**
+     * Retrieves cv::Mat suitable for use in common opencv functions.
+     * ImgFrame is converted to BGR or left as grayscale depending on type.
+     * A copy is always made
+     * @returns cv::Mat for use in opencv functions
+     */
+    cv::Mat getCvFrame();
+#endif
 };
 
 }  // namespace dai
