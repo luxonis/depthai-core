@@ -9,7 +9,8 @@ DepthAI library is currently in alpha for version 0.x.y. We are still making bre
 - cmake >= 3.2
 - libusb1 development package
 - C/C++11 compiler
- 
+- [optional] OpenCV 
+
 MacOS: `brew install libusb`
 
 Linux: `sudo apt install libusb-1.0-0-dev`
