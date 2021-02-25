@@ -71,11 +71,20 @@ hunter_private_data(
     LOCATION mobilenet_blob
 )
 
+# YoloV3 resource
 hunter_private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/tiny-yolo-v3_openvino_2021.2_6shave.blob"
     SHA1 "f0ac263a0d55c374e1892eea21c9b7d1170bde46"
     FILE "tiny-yolo-v3_openvino_2021.2_6shave.blob"
     LOCATION tiny_yolo_v3_blob
+)
+
+# YoloV4 resource
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/tiny-yolo-v4_openvino_2021.2_6shave.blob"
+    SHA1 "219d949610a5760e62a8458941e1300b81c3fe4a"
+    FILE "tiny-yolo-v4_openvino_2021.2_6shave.blob"
+    LOCATION tiny_yolo_v4_blob
 )
 
 dai_add_example(camera_mobilenet src/camera_mobilenet_example.cpp)
@@ -117,6 +126,10 @@ target_compile_definitions(mobilenet_device_side_decoding PRIVATE BLOB_PATH="${m
 # Device side decoding example for tiny-yolo-v3
 dai_add_example(tiny_yolo_v3_device_side_decoding src/tiny_yolo_v3_device_side_decoding_example.cpp)
 target_compile_definitions(tiny_yolo_v3_device_side_decoding PRIVATE BLOB_PATH="${tiny_yolo_v3_blob}")
+
+# Device side decoding example for tiny-yolo-v4
+dai_add_example(tiny_yolo_v4_device_side_decoding src/tiny_yolo_v4_device_side_decoding_example.cpp)
+target_compile_definitions(tiny_yolo_v4_device_side_decoding PRIVATE BLOB_PATH="${tiny_yolo_v4_blob}")
 
 # Sync example between NN and camera frames
 dai_add_example(camera_mobilenet_sync src/camera_mobilenet_sync_example.cpp)
