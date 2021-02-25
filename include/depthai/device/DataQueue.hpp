@@ -15,7 +15,9 @@
 
 namespace dai {
 
-// DataQueue presents a way to access data coming from MyriadX
+/**
+ * Access to receive messages coming from XLink stream
+ */
 class DataOutputQueue {
     std::shared_ptr<LockingQueue<std::shared_ptr<ADatatype>>> pQueue;
     LockingQueue<std::shared_ptr<ADatatype>>& queue;
@@ -104,6 +106,10 @@ class DataOutputQueue {
      */
     bool removeCallback(int callbackId);
 
+    /**
+     * Check whether front of the queue has message of type T
+     * @returns true if queue isn't empty and the first element is of type T, false otherwise
+     */
     template <class T>
     bool has() {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
@@ -114,11 +120,20 @@ class DataOutputQueue {
         return false;
     }
 
+    /**
+     * Check whether front of the queue has a message (isn't empty)
+     * @returns true if queue isn't empty, false otherwise
+     */
     bool has() {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
         return !queue.empty();
     }
 
+    /**
+     * Try to retrieve message T from queue. If message isn't of type T it returns nullptr
+     * 
+     * @returns Message of type T or nullptr if no message available
+     */
     template <class T>
     std::shared_ptr<T> tryGet() {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
@@ -127,10 +142,20 @@ class DataOutputQueue {
         return std::dynamic_pointer_cast<T>(val);
     }
 
+    /**
+     * Try to retrieve message from queue. If no message available, return immidiately with nullptr
+     * 
+     * @returns Message or nullptr if no message available
+     */
     std::shared_ptr<ADatatype> tryGet() {
         return tryGet<ADatatype>();
     }
 
+    /**
+     * Block until a message is available.
+     * 
+     * @returns Message of type T or nullptr if no message available
+     */
     template <class T>
     std::shared_ptr<T> get() {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
@@ -142,10 +167,20 @@ class DataOutputQueue {
         return std::dynamic_pointer_cast<T>(val);
     }
 
+    /**
+     * Block until a message is available.
+     * 
+     * @returns Message or nullptr if no message available
+     */
     std::shared_ptr<ADatatype> get() {
         return get<ADatatype>();
     }
 
+    /**
+     * Gets first message in the queue.
+     * 
+     * @returns Message of type T or nullptr if no message available
+     */
     template <class T>
     std::shared_ptr<T> front() {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
@@ -153,11 +188,23 @@ class DataOutputQueue {
         if(!queue.front(val)) return nullptr;
         return std::dynamic_pointer_cast<T>(val);
     }
-
+    
+    /**
+     * Gets first message in the queue.
+     * 
+     * @returns Message or nullptr if no message available
+     */
     std::shared_ptr<ADatatype> front() {
         return front<ADatatype>();
     }
 
+    /**
+     * Block until a message is available with a timeout.
+     * 
+     * @param timeout Duration for which the function should block
+     * @param[out] hasTimedout Outputs true if timeout occured, false otherwise
+     * @returns Message of type T otherwise nullptr if message isn't type T or timeout occured
+     */
     template <class T, typename Rep, typename Period>
     std::shared_ptr<T> get(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
@@ -170,12 +217,23 @@ class DataOutputQueue {
         return std::dynamic_pointer_cast<T>(val);
     }
 
+    /**
+     * Block until a message is available with a timeout.
+     * 
+     * @param timeout Duration for which the function should block
+     * @param[out] hasTimedout Outputs true if timeout occured, false otherwise
+     * @returns Message of type T otherwise nullptr if message isn't type T or timeout occured
+     */
     template <typename Rep, typename Period>
     std::shared_ptr<ADatatype> get(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
         return get<ADatatype>(timeout, hasTimedout);
     }
 
-    // Methods to retrieve multiple messages at once
+    /**
+     * Try to retrieve all messages in the queue.
+     * 
+     * @returns Vector of messages which can either be of type T or nullptr
+     */
     template <class T>
     std::vector<std::shared_ptr<T>> tryGetAll() {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
@@ -190,10 +248,21 @@ class DataOutputQueue {
         return messages;
     }
 
+    /**
+     * Try to retrieve all messages in the queue.
+     * 
+     * @returns Vector of messages
+     */
     std::vector<std::shared_ptr<ADatatype>> tryGetAll() {
         return tryGetAll<ADatatype>();
     }
 
+    /**
+     * Block until at least one message in the queue.
+     * Then return all messages from the queue.
+     *   
+     * @returns Vector of messages which can either be of type T or nullptr
+     */
     template <class T>
     std::vector<std::shared_ptr<T>> getAll() {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
@@ -208,10 +277,23 @@ class DataOutputQueue {
         return messages;
     }
 
+    /**
+     * Block until at least one message in the queue.
+     * Then return all messages from the queue.
+     *   
+     * @returns Vector of messages
+     */
     std::vector<std::shared_ptr<ADatatype>> getAll() {
         return getAll<ADatatype>();
     }
 
+    /**
+     * Block for maximum timeout duration.
+     * Then return all messages from the queue.
+     * @param timeout Maximum duration to block
+     * @param[out] hasTimedout Outputs true if timeout occured, false otherwise
+     * @returns Vector of messages which can either be of type T or nullptr
+     */
     template <class T, typename Rep, typename Period>
     std::vector<std::shared_ptr<T>> getAll(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
@@ -228,13 +310,22 @@ class DataOutputQueue {
         return messages;
     }
 
+    /**
+     * Block for maximum timeout duration.
+     * Then return all messages from the queue.
+     * @param timeout Maximum duration to block
+     * @param[out] hasTimedout Outputs true if timeout occured, false otherwise
+     * @returns Vector of messages
+     */
     template <typename Rep, typename Period>
     std::vector<std::shared_ptr<ADatatype>> getAll(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
         return getAll<ADatatype>(timeout, hasTimedout);
     }
 };
 
-// DataInputQueue presents a way to write to MyriadX
+/**
+ * Access to send messages through XLink stream
+ */
 class DataInputQueue {
     std::shared_ptr<LockingQueue<std::shared_ptr<RawBuffer>>> pQueue;
     LockingQueue<std::shared_ptr<RawBuffer>>& queue;
@@ -299,23 +390,51 @@ class DataInputQueue {
      */
     std::string getName() const;
 
-    void send(const std::shared_ptr<RawBuffer>& val);
-    void send(const std::shared_ptr<ADatatype>& val);
-    void send(const ADatatype& val);
+    /**
+     * Adds a raw message to the queue, which will be picked up and sent to the device.
+     * Can either block if 'blocking' behavior is true or overwrite oldest
+     * @param rawMsg Message to add to the queue
+     */ 
+    void send(const std::shared_ptr<RawBuffer>& rawMsg);
 
-    void sendSync(const std::shared_ptr<RawBuffer>& val);
-    void sendSync(const std::shared_ptr<ADatatype>& val);
-    void sendSync(const ADatatype& val);
+    /**     
+     * Adds a message to the queue, which will be picked up and sent to the device.
+     * Can either block if 'blocking' behavior is true or overwrite oldest
+     * @param val Message to add to the queue
+     */
+    void send(const std::shared_ptr<ADatatype>& msg);
 
+    /**
+     * Adds a message to the queue, which will be picked up and sent to the device.
+     * Can either block if 'blocking' behavior is true or overwrite oldest
+        * @param val Message to add to the queue
+    */
+    void send(const ADatatype& msg);
+
+    /**
+     * Adds message to the queue, which will be picked up and sent to the device.
+     * Can either block until timeout if 'blocking' behavior is true or overwrite oldest
+     *
+     * @param msg Message to add to the queue
+     * @param timeout Maximum duration to block
+     */
     template <typename Rep, typename Period>
-    bool send(const std::shared_ptr<RawBuffer>& val, std::chrono::duration<Rep, Period> timeout) {
+    bool send(const std::shared_ptr<RawBuffer>& msg, std::chrono::duration<Rep, Period> timeout) {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
-        return queue.tryWaitAndPush(val, timeout);
+        return queue.tryWaitAndPush(msg, timeout);
     }
+
+    /**
+     * Adds message to the queue, which will be picked up and sent to the device.
+     * Can either block until timeout if 'blocking' behavior is true or overwrite oldest
+     *
+     * @param msg Message to add to the queue
+     * @param timeout Maximum duration to block
+     */
     template <typename Rep, typename Period>
-    bool send(const std::shared_ptr<ADatatype>& val, std::chrono::duration<Rep, Period> timeout) {
+    bool send(const std::shared_ptr<ADatatype>& msg, std::chrono::duration<Rep, Period> timeout) {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
-        return queue.tryWaitAndPush(val->serialize(), timeout);
+        return queue.tryWaitAndPush(msg->serialize(), timeout);
     }
 };
 
