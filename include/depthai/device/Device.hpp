@@ -140,7 +140,7 @@ class Device {
     Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd);
 
     /**
-     * Device destructor. Closes the connection and the data queues.
+     * Device destructor. Closes the connection and data queues.
      */
     ~Device();
 

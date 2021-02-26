@@ -131,7 +131,7 @@ class DataOutputQueue {
 
     /**
      * Try to retrieve message T from queue. If message isn't of type T it returns nullptr
-     * 
+     *
      * @returns Message of type T or nullptr if no message available
      */
     template <class T>
@@ -144,7 +144,7 @@ class DataOutputQueue {
 
     /**
      * Try to retrieve message from queue. If no message available, return immidiately with nullptr
-     * 
+     *
      * @returns Message or nullptr if no message available
      */
     std::shared_ptr<ADatatype> tryGet() {
@@ -153,7 +153,7 @@ class DataOutputQueue {
 
     /**
      * Block until a message is available.
-     * 
+     *
      * @returns Message of type T or nullptr if no message available
      */
     template <class T>
@@ -169,7 +169,7 @@ class DataOutputQueue {
 
     /**
      * Block until a message is available.
-     * 
+     *
      * @returns Message or nullptr if no message available
      */
     std::shared_ptr<ADatatype> get() {
@@ -178,7 +178,7 @@ class DataOutputQueue {
 
     /**
      * Gets first message in the queue.
-     * 
+     *
      * @returns Message of type T or nullptr if no message available
      */
     template <class T>
@@ -188,10 +188,10 @@ class DataOutputQueue {
         if(!queue.front(val)) return nullptr;
         return std::dynamic_pointer_cast<T>(val);
     }
-    
+
     /**
      * Gets first message in the queue.
-     * 
+     *
      * @returns Message or nullptr if no message available
      */
     std::shared_ptr<ADatatype> front() {
@@ -200,7 +200,7 @@ class DataOutputQueue {
 
     /**
      * Block until a message is available with a timeout.
-     * 
+     *
      * @param timeout Duration for which the function should block
      * @param[out] hasTimedout Outputs true if timeout occured, false otherwise
      * @returns Message of type T otherwise nullptr if message isn't type T or timeout occured
@@ -219,7 +219,7 @@ class DataOutputQueue {
 
     /**
      * Block until a message is available with a timeout.
-     * 
+     *
      * @param timeout Duration for which the function should block
      * @param[out] hasTimedout Outputs true if timeout occured, false otherwise
      * @returns Message of type T otherwise nullptr if message isn't type T or timeout occured
@@ -231,7 +231,7 @@ class DataOutputQueue {
 
     /**
      * Try to retrieve all messages in the queue.
-     * 
+     *
      * @returns Vector of messages which can either be of type T or nullptr
      */
     template <class T>
@@ -250,7 +250,7 @@ class DataOutputQueue {
 
     /**
      * Try to retrieve all messages in the queue.
-     * 
+     *
      * @returns Vector of messages
      */
     std::vector<std::shared_ptr<ADatatype>> tryGetAll() {
@@ -260,7 +260,7 @@ class DataOutputQueue {
     /**
      * Block until at least one message in the queue.
      * Then return all messages from the queue.
-     *   
+     *
      * @returns Vector of messages which can either be of type T or nullptr
      */
     template <class T>
@@ -280,7 +280,7 @@ class DataOutputQueue {
     /**
      * Block until at least one message in the queue.
      * Then return all messages from the queue.
-     *   
+     *
      * @returns Vector of messages
      */
     std::vector<std::shared_ptr<ADatatype>> getAll() {
@@ -394,10 +394,10 @@ class DataInputQueue {
      * Adds a raw message to the queue, which will be picked up and sent to the device.
      * Can either block if 'blocking' behavior is true or overwrite oldest
      * @param rawMsg Message to add to the queue
-     */ 
+     */
     void send(const std::shared_ptr<RawBuffer>& rawMsg);
 
-    /**     
+    /**
      * Adds a message to the queue, which will be picked up and sent to the device.
      * Can either block if 'blocking' behavior is true or overwrite oldest
      * @param val Message to add to the queue
@@ -407,8 +407,8 @@ class DataInputQueue {
     /**
      * Adds a message to the queue, which will be picked up and sent to the device.
      * Can either block if 'blocking' behavior is true or overwrite oldest
-        * @param val Message to add to the queue
-    */
+     * @param val Message to add to the queue
+     */
     void send(const ADatatype& msg);
 
     /**
