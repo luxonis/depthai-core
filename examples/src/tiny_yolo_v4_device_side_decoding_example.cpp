@@ -47,16 +47,9 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     detectionNetwork->setConfidenceThreshold(0.5f);
     detectionNetwork->setNumClasses(80);
     detectionNetwork->setCoordinateSize(4);
-    std::vector<float> anchors{10, 14, 23, 27, 37, 58, 81, 82, 135, 169, 344, 319};
-    detectionNetwork->setAnchors(anchors);
-    std::vector<int> anchorMasks26{1, 2, 3};
-    std::vector<int> anchorMasks13{3, 4, 5};
-    std::map<std::string, std::vector<int>> anchorMasks;
-    anchorMasks.insert(std::make_pair("side26", anchorMasks26));
-    anchorMasks.insert(std::make_pair("side13", anchorMasks13));
-    detectionNetwork->setAnchorMasks(anchorMasks);
+    detectionNetwork->setAnchors({10, 14, 23, 27, 37, 58, 81, 82, 135, 169, 344, 319});
+    detectionNetwork->setAnchorMasks({{"side13", {3,4,5}}, {"side26", {1,2,3}});
     detectionNetwork->setIouThreshold(0.5f);
-
     detectionNetwork->setBlobPath(nnPath);
 
     // Link plugins CAM -> NN -> XLINK
@@ -71,6 +64,7 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
 
 int main(int argc, char** argv) {
     using namespace std;
+    using namespace std::chrono;
     std::string nnPath(BLOB_PATH);
 
     // If path to blob specified, use that
@@ -93,7 +87,7 @@ int main(int argc, char** argv) {
     auto preview = d.getOutputQueue("preview", 4, false);
     auto detections = d.getOutputQueue("detections", 4, false);
     
-    auto start_time = std::chrono::steady_clock::now();
+    auto startTime = std::chrono::steady_clock::now();
     int counter = 0;
     float fps = 0;
     while(1) {
@@ -101,12 +95,12 @@ int main(int argc, char** argv) {
         auto det = detections->get<dai::ImgDetections>();
 
         counter++;
-        auto current_time = std::chrono::steady_clock::now();
-        float elapsed_s = std::chrono::duration_cast<std::chrono::milliseconds>(current_time-start_time).count() / 1000.;
-        if (elapsed_s > 1) {
-            fps = counter / elapsed_s;
+        auto currentTime = std::chrono::steady_clock::now();
+        auto elapsed = duration_cast<duration<float>>(current_time - start_time);
+        if(elapsed > seconds(1)) {
+            fps = counter / elapsed;
             counter = 0;
-            start_time = current_time;
+            startTime = currentTime;
         }
 
         if(imgFrame) {
@@ -121,22 +115,23 @@ int main(int argc, char** argv) {
             int x2 = d.xmax * frame.cols;
             int y2 = d.ymax * frame.rows;
 
-            int label_index = d.label;
-            std::string label_str = to_string(label_index);
-            if(label_index < sizeof(label_map) / sizeof(label_map[0])) {
-                label_str = label_map[label_index];
+            int labelIndex = d.label;
+            std::string labelStr = to_string(labelIndex);
+            if(labelIndex < sizeof(label_map) / sizeof(label_map[0])) {
+                labelStr = label_map[labelIndex];
             }
-            cv::putText(frame, label_str, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-            char conf_str[10];
-            snprintf(conf_str, sizeof conf_str, "%.2f", d.confidence*100);
-            cv::putText(frame, conf_str, cv::Point(x1 + 10, y1 + 40), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(frame, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            
+            std::stringstream confStr;
+            confStr << std::fixed << std::setprecision(2) << d.confidence*100;
+            cv::putText(frame, confStr.str(), cv::Point(x1 + 10, y1 + 40), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
 
             cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
         }
 
-        char fps_str[15];
-        snprintf(fps_str, sizeof fps_str, "NN fps: %.2f", fps);
-        cv::putText(frame, fps_str, cv::Point(2, imgFrame->getHeight()-4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
+        std::stringstream fpsStr;
+        fpsStr << std::fixed << std::setprecision(2) << fps;
+        cv::putText(frame, fpsStr.str(), cv::Point(2, imgFrame->getHeight()-4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
 
         cv::imshow("preview", frame);
         int key = cv::waitKey(1);
