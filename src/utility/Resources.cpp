@@ -40,16 +40,16 @@ constexpr static auto DEPTHAI_CMD_OPENVINO_2020_2_USB2_PATCH_PATH = "depthai-dev
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_3_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2020.3-" DEPTHAI_DEVICE_VERSION ".patch";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_4_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2020.4-" DEPTHAI_DEVICE_VERSION ".patch";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2021_1_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2021.1-" DEPTHAI_DEVICE_VERSION ".patch";
-constexpr static std::array<const char*, 4> resourcesListTarXz = {
+constexpr static std::array<const char*, 10> resourcesListTarXz = {
     DEPTHAI_CMD_OPENVINO_2020_1_PATH,
-    //DEPTHAI_CMD_OPENVINO_2020_2_PATH,
-    //DEPTHAI_CMD_OPENVINO_2020_3_PATH,
-    //DEPTHAI_CMD_OPENVINO_2020_4_PATH,
+    DEPTHAI_CMD_OPENVINO_2020_2_PATH,
+    DEPTHAI_CMD_OPENVINO_2020_3_PATH,
+    DEPTHAI_CMD_OPENVINO_2020_4_PATH,
     DEPTHAI_CMD_OPENVINO_2021_1_PATH,
     DEPTHAI_CMD_OPENVINO_2020_1_USB2_PATCH_PATH,
-    //DEPTHAI_CMD_OPENVINO_2020_2_USB2_PATCH_PATH,
-    //DEPTHAI_CMD_OPENVINO_2020_3_USB2_PATCH_PATH,
-    //DEPTHAI_CMD_OPENVINO_2020_4_USB2_PATCH_PATH,
+    DEPTHAI_CMD_OPENVINO_2020_2_USB2_PATCH_PATH,
+    DEPTHAI_CMD_OPENVINO_2020_3_USB2_PATCH_PATH,
+    DEPTHAI_CMD_OPENVINO_2020_4_USB2_PATCH_PATH,
     DEPTHAI_CMD_OPENVINO_2021_1_USB2_PATCH_PATH,
 };
 
@@ -67,7 +67,7 @@ std::vector<std::uint8_t> Resources::getDeviceBinary(OpenVINO::Version version, 
             depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2020_1_PATH];
             depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_1_USB2_PATCH_PATH];
             break;
-#if 0
+
         case OpenVINO::VERSION_2020_2:
             depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2020_2_PATH];
             depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_2_USB2_PATCH_PATH];
@@ -82,7 +82,7 @@ std::vector<std::uint8_t> Resources::getDeviceBinary(OpenVINO::Version version, 
             depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2020_4_PATH];
             depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_4_USB2_PATCH_PATH];
             break;
-#endif
+
         case OpenVINO::VERSION_2021_1:
             depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2021_1_PATH];
             depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2021_1_USB2_PATCH_PATH];
