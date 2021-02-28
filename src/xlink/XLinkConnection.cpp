@@ -6,6 +6,7 @@
 #include <cassert>
 #include <chrono>
 #include <cstring>
+#include <fstream>
 #include <iostream>
 #include <thread>
 #include <vector>
@@ -133,6 +134,10 @@ XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::
 }
 
 XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::string pathToMvcmd, XLinkDeviceState_t expectedState) {
+    if(!pathToMvcmd.empty()) {
+        std::ifstream f(pathToMvcmd.c_str());
+        if(!f.good()) throw std::runtime_error("Error path doesn't exist. Note: Environment variables in path are not expanded. (E.g. '~', '$PATH').");
+    }
     bootDevice = true;
     bootWithPath = true;
     this->pathToMvcmd = std::move(pathToMvcmd);
@@ -199,10 +204,14 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
             throw std::runtime_error("Failed to find device (" + std::string(deviceToBoot.desc.name) + "), error message: " + convertErrorCodeToString(rc));
         }
 
+        bool bootStatus;
         if(bootWithPath) {
-            bootAvailableDevice(foundDeviceDesc, pathToMvcmd);
+            bootStatus = bootAvailableDevice(foundDeviceDesc, pathToMvcmd);
         } else {
-            bootAvailableDevice(foundDeviceDesc, mvcmd);
+            bootStatus = bootAvailableDevice(foundDeviceDesc, mvcmd);
+        }
+        if(!bootStatus) {
+            throw std::runtime_error("Failed to boot device!");
         }
     }
 

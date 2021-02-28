@@ -25,8 +25,17 @@ class ColorCamera : public Node {
 
     CameraControl initialControl;
 
-    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, {{DatatypeEnum::ImageManipConfig, false}}};
-    Input inputControl{*this, "inputControl", Input::Type::SReceiver, {{DatatypeEnum::CameraControl, false}}};
+    /**
+     * Input for ImageManipConfig message, which can modify crop paremeters in runtime
+     * Default queue is non-blocking with size 8
+     */
+    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 8, {{DatatypeEnum::ImageManipConfig, false}}};
+
+    /**
+     * Input for CameraControl message, which can modify camera parameters in runtime
+     * Default queue is blocking with size 8
+     */
+    Input inputControl{*this, "inputControl", Input::Type::SReceiver, true, 8, {{DatatypeEnum::CameraControl, false}}};
 
     Output video{*this, "video", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
     Output preview{*this, "preview", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};

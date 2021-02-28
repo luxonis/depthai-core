@@ -1,13 +1,16 @@
-cmake_minimum_required(VERSION 3.2) # For Hunter
+cmake_minimum_required(VERSION 3.4) # For Hunter
 
-# Build dependencies as 'Release' only by default (if not MSVC, as it requires same debug level for libraries to be linked against)
-if(NOT MSVC)
+# MSVC variable isn't available before 'project' call
+# Generalize to Win32 platform for now 
+if(NOT WIN32)
     set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
 endif()
 
 # Read the BUILD_SHARED_LIBS option and select PIC toolchain
 if(BUILD_SHARED_LIBS)
     set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_LIST_DIR}/cmake/toolchain/pic.cmake" CACHE STRING "")
+    # Specify exporting all symbols on Windows
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON CACHE BOOL "")
 endif()
 
 include("cmake/HunterGate.cmake")
@@ -23,7 +26,8 @@ if(WIN32)
 endif()
 
 set(TARGET_NAME depthai-core)
-project(${TARGET_NAME} VERSION "0.0.2" LANGUAGES CXX C)
+project(depthai VERSION "0.0.2" LANGUAGES CXX C)
+set(TARGET_ALIAS ${PROJECT_NAME}::core)
 
 # Set policies
 # CMP0074 dictates that find_package searches environment variable "[packageName]_ROOT" along with regular variable [packageName]_ROOT
@@ -128,6 +132,7 @@ add_library(${TARGET_NAME}
     src/openvino/BlobReader.cpp
     src/bspatch/bspatch.c
 )
+add_library(${TARGET_ALIAS} ALIAS ${TARGET_NAME})
 
 # Add aditional flags
 include(cmake/flags.cmake)
@@ -149,6 +154,8 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake")
 option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
 option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
 option(DEPTHAI_TEST_EXAMPLES "Test examples - examples will be ran as a part of test suite" OFF)
+option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
+
 
 option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries into library" ON)
 option(DEPTHAI_USB2_PATCH_ONLY_MODE "Use patch file and full depthai.cmd binary for usb2 mode" ON)
@@ -290,8 +297,6 @@ if(DEPTHAI_CLANG_FORMAT)
     target_clangformat_setup(${TARGET_NAME} "${header_dirs}")
 endif()
 
-
-
 # link libraries
 target_link_libraries(${TARGET_NAME}
     PUBLIC
@@ -323,6 +328,36 @@ if(DEPTHAI_USB2_PATCH_ONLY_MODE)
     target_compile_definitions(${TARGET_NAME} PRIVATE DEPTHAI_PATCH_ONLY_MODE)
 endif()
 
+
+########################
+# OpenCV Support
+########################
+if(DEPTHAI_OPENCV_SUPPORT)
+    find_package(OpenCV)
+    if(OpenCV_FOUND AND "opencv_core" IN_LIST OpenCV_LIBS)
+        set(TARGET_CORE_OPENCV_NAME ${TARGET_NAME}-opencv)   
+        set(TARGET_CORE_OPENCV_ALIAS ${TARGET_ALIAS}::opencv)
+
+        # Add depthai-core-opencv library and depthai::core::opencv alias
+        add_library(${TARGET_CORE_OPENCV_NAME} src/opencv/ImgFrame.cpp)
+        add_library(${TARGET_CORE_OPENCV_ALIAS} ALIAS ${TARGET_CORE_OPENCV_NAME})
+    
+        # Link to OpenCV (publically)
+        target_link_libraries(${TARGET_CORE_OPENCV_NAME} PUBLIC opencv_core)
+    
+        # Add public compile definition indicating that OpenCV support is available
+        target_compile_definitions(${TARGET_CORE_OPENCV_NAME} PUBLIC DEPTHAI_OPENCV_SUPPORT)
+
+        # Add public dependency to depthai::core library
+        target_link_libraries(${TARGET_CORE_OPENCV_NAME} PUBLIC ${TARGET_NAME})
+
+        # Add to clangformat target
+        target_clangformat_setup(${TARGET_CORE_OPENCV_NAME} "")
+
+    else()
+        message(STATUS "OpenCV and required libraries not found. OpenCV Support disabled")
+    endif()
+endif()
 
 ########################
 # Testing
@@ -357,6 +392,7 @@ install(
         ${TARGET_NAME} "${DEPTHAI_RESOURCE_LIBRARY_NAME}" cmrc-base
     EXPORT 
         "${TARGET_NAME}Config"
+    RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
     LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
 )
@@ -392,11 +428,13 @@ if(NOT DEPTHAI_BINARIES_RESOURCE_COMPILE)
 endif()
 
 set(config_install_dir "${CMAKE_INSTALL_LIBDIR}/cmake/${TARGET_NAME}")
-export(TARGETS
-    ${TARGET_NAME} "${DEPTHAI_RESOURCE_LIBRARY_NAME}" cmrc-base
+export(TARGETS 
+    ${TARGET_NAME} ${DEPTHAI_RESOURCE_LIBRARY_NAME} cmrc-base
+    NAMESPACE ${PROJECT_NAME}::
     FILE "${config_install_dir}/${TARGET_NAME}Config.cmake"
 )
 install(EXPORT
     "${TARGET_NAME}Config"
+    NAMESPACE ${PROJECT_NAME}::
     DESTINATION "${config_install_dir}"
 )

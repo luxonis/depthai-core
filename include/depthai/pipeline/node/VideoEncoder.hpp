@@ -19,7 +19,11 @@ class VideoEncoder : public Node {
    public:
     VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
-    Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, true}}};
+    /**
+     * Input for NV12 ImgFrame to be encoded
+     * Default queue is blocking with size set by 'setNumFramesPool' (4).
+     */
+    Input input{*this, "in", Input::Type::SReceiver, true, 4, {{DatatypeEnum::ImgFrame, true}}};
     Output bitstream{*this, "bitstream", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     // Sets default options for a specified size and profile
