@@ -8,6 +8,8 @@
 // shared
 #include <depthai-shared/properties/DepthCalculatorProperties.hpp>
 
+#include "depthai/pipeline/datatype/DepthCalculatorConfig.hpp"
+
 namespace dai {
 namespace node {
 class DepthCalculator : public Node {
@@ -17,14 +19,24 @@ class DepthCalculator : public Node {
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
 
+    std::shared_ptr<RawDepthCalculatorConfig> rawConfig;
+
    public:
     DepthCalculator(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+
+    DepthCalculatorConfig initialConfig;
+
     dai::DepthCalculatorProperties properties;
 
-    void setROIs(std::vector<DepthCalculatorConfig> rois);
-    void addROI(DepthCalculatorConfig& roi);
+    void setWaitForConfigInput(bool wait);
 
-    Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}}};
+    Input input{*this, "in", Input::Type::SReceiver, true, 8, {{DatatypeEnum::Buffer, true}}};
+
+    /**
+     * Input DepthCalculator message with ability to modify parameters in runtime
+     * Default queue is blocking with size 8
+     */
+    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 8, {{DatatypeEnum::DepthCalculatorConfig, false}}};
     Input depthInput{*this, "inDepth", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, false}}};
 
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::DepthCalculatorData, false}}};

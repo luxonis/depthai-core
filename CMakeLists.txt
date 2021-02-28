@@ -125,6 +125,7 @@ add_library(${TARGET_NAME}
     src/pipeline/datatype/SystemInformation.cpp
     src/pipeline/datatype/StreamPacketParser.cpp
     src/pipeline/datatype/DepthCalculatorData.cpp
+    src/pipeline/datatype/DepthCalculatorConfig.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/xlink/XLinkConnection.cpp

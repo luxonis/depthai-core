@@ -109,3 +109,5 @@ target_compile_definitions(tiny_yolo_v3_device_side_decoding PRIVATE BLOB_PATH="
 # Sync example between NN and camera frames
 dai_add_example(camera_mobilenet_sync src/camera_mobilenet_sync_example.cpp)
 target_compile_definitions(camera_mobilenet_sync PRIVATE BLOB_PATH="${mobilenet_blob}")
+
+dai_add_example(depth_calculator src/depth_calculator_example.cpp)

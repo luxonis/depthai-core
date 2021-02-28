@@ -14,6 +14,7 @@
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
+#include "depthai/pipeline/datatype/DepthCalculatorConfig.hpp"
 #include "depthai/pipeline/datatype/DepthCalculatorData.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
@@ -25,6 +26,7 @@
 #include "depthai-shared/datatype/DatatypeEnum.hpp"
 #include "depthai-shared/datatype/RawBuffer.hpp"
 #include "depthai-shared/datatype/RawCameraControl.hpp"
+#include "depthai-shared/datatype/RawDepthCalculatorConfig.hpp"
 #include "depthai-shared/datatype/RawDepthCalculatorData.hpp"
 #include "depthai-shared/datatype/RawImageManipConfig.hpp"
 #include "depthai-shared/datatype/RawImgDetections.hpp"
@@ -98,7 +100,12 @@ std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
         case DatatypeEnum::SystemInformation:
             return parseDatatype<RawSystemInformation>(jser, data);
             break;
+
         case DatatypeEnum::DepthCalculatorData:
+            return parseDatatype<RawDepthCalculatorData>(jser, data);
+            break;
+
+        case DatatypeEnum::DepthCalculatorConfig:
             return parseDatatype<RawDepthCalculatorData>(jser, data);
             break;
     }
@@ -152,8 +159,13 @@ std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
         case DatatypeEnum::SystemInformation:
             return std::make_shared<SystemInformation>(parseDatatype<RawSystemInformation>(jser, data));
             break;
+
         case DatatypeEnum::DepthCalculatorData:
             return std::make_shared<DepthCalculatorData>(parseDatatype<RawDepthCalculatorData>(jser, data));
+            break;
+
+        case DatatypeEnum::DepthCalculatorConfig:
+            return std::make_shared<DepthCalculatorConfig>(parseDatatype<RawDepthCalculatorConfig>(jser, data));
             break;
     }
 

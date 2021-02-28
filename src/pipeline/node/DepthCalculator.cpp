@@ -5,7 +5,8 @@
 namespace dai {
 namespace node {
 
-DepthCalculator::DepthCalculator(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
+DepthCalculator::DepthCalculator(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
+    : Node(par, nodeId), rawConfig(std::make_shared<RawDepthCalculatorConfig>()), initialConfig(rawConfig) {}
 
 std::string DepthCalculator::getName() const {
     return "DepthCalculator";
@@ -16,21 +17,19 @@ std::vector<Node::Output> DepthCalculator::getOutputs() {
 }
 
 std::vector<Node::Input> DepthCalculator::getInputs() {
-    return {input, depthInput};
+    return {input, inputConfig, depthInput};
 }
 
 nlohmann::json DepthCalculator::getProperties() {
     nlohmann::json j;
+    properties.roiConfig = *rawConfig;
     nlohmann::to_json(j, properties);
     return j;
 }
 
-void DepthCalculator::setROIs(std::vector<DepthCalculatorConfig> rois) {
-    properties.roiConfig = rois;
-}
-
-void DepthCalculator::addROI(DepthCalculatorConfig& roi) {
-    properties.roiConfig.push_back(roi);
+// Node properties configuration
+void DepthCalculator::setWaitForConfigInput(bool wait) {
+    properties.inputConfigSync = wait;
 }
 
 std::shared_ptr<Node> DepthCalculator::clone() {
