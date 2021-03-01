@@ -1,5 +1,7 @@
 #include "depthai/device/CallbackHandler.hpp"
 
+// project
+#include "depthai/xlink/XLinkStream.hpp"
 #include "pipeline/datatype/StreamPacketParser.hpp"
 
 namespace dai {
@@ -16,15 +18,15 @@ CallbackHandler::CallbackHandler(std::shared_ptr<XLinkConnection> conn,
     t = std::thread([this, streamName]() {
         try {
             // open stream with 1B write size (no writing will happen here)
-            connection->openStream(streamName, XLINK_USB_BUFFER_MAX_SIZE);
+            XLinkStream stream(*connection, streamName, XLINK_USB_BUFFER_MAX_SIZE);
 
             while(running) {
                 // read packet
-                auto* packet = connection->readFromStreamRaw(streamName);
+                auto* packet = stream.readRaw();
                 // parse packet
                 auto data = parsePacket(packet);
                 // release packet
-                connection->readFromStreamRawRelease(streamName);
+                stream.readRawRelease();
 
                 // CALLBACK
                 auto toSend = callback(data);
@@ -32,10 +34,8 @@ CallbackHandler::CallbackHandler(std::shared_ptr<XLinkConnection> conn,
                 auto serialized = serializeData(toSend);
 
                 // Write packet back
-                connection->writeToStream(streamName, serialized);
+                stream.write(serialized);
             }
-
-            connection->closeStream(streamName);
 
         } catch(const std::exception& ex) {
             // TODO(themarpe) - throw an exception

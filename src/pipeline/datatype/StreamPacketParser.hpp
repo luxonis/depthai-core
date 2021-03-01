@@ -4,8 +4,7 @@
 #include <memory>
 
 // libraries
-#include <XLinkPublicDefines.h>
-
+#include <XLink/XLinkPublicDefines.h>
 
 //project
 #include "depthai/pipeline/datatype/ADatatype.hpp"

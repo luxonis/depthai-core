@@ -17,23 +17,24 @@ namespace dai {
 
 // DataQueue presents a way to access data coming from MyriadX
 class DataOutputQueue {
-    std::shared_ptr<LockingQueue<std::shared_ptr<ADatatype>>> pQueue;
-    LockingQueue<std::shared_ptr<ADatatype>>& queue;
+   public:
+    /// Alias for callback id
+    using CallbackId = int;
+
+   private:
+    LockingQueue<std::shared_ptr<ADatatype>> queue;
     std::thread readingThread;
-    std::shared_ptr<std::atomic<bool>> pRunning;
-    std::atomic<bool>& running;
-    std::shared_ptr<std::string> pExceptionMessage;
-    std::string& exceptionMessage;
-    std::string streamName;
-    std::shared_ptr<std::mutex> pCallbacksMtx;
-    std::mutex& callbacksMtx;
-    std::shared_ptr<std::unordered_map<int, std::function<void(std::string, std::shared_ptr<ADatatype>)>>> pCallbacks;
-    std::unordered_map<int, std::function<void(std::string, std::shared_ptr<ADatatype>)>>& callbacks;
-    int uniqueCallbackId{0};
+    std::atomic<bool> running{true};
+    std::string exceptionMessage{""};
+    const std::string name{""};
+    std::mutex callbacksMtx;
+    std::unordered_map<CallbackId, std::function<void(std::string, std::shared_ptr<ADatatype>)>> callbacks;
+    CallbackId uniqueCallbackId{0};
 
     // const std::chrono::milliseconds READ_TIMEOUT{500};
 
    public:
+    // DataOutputQueue constructor
     DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize = 16, bool blocking = true);
     ~DataOutputQueue();
 
@@ -78,7 +79,7 @@ class DataOutputQueue {
      * @param callback Callback function with queue name and message pointer
      * @return Callback id
      */
-    int addCallback(std::function<void(std::string, std::shared_ptr<ADatatype>)>);
+    CallbackId addCallback(std::function<void(std::string, std::shared_ptr<ADatatype>)>);
 
     /**
      * Adds a callback on message received
@@ -86,7 +87,7 @@ class DataOutputQueue {
      * @param callback Callback function with message pointer
      * @return Callback id
      */
-    int addCallback(std::function<void(std::shared_ptr<ADatatype>)>);
+    CallbackId addCallback(std::function<void(std::shared_ptr<ADatatype>)>);
 
     /**
      * Adds a callback on message received
@@ -94,7 +95,7 @@ class DataOutputQueue {
      * @param callback Callback function without any parameters
      * @return Callback id
      */
-    int addCallback(std::function<void()> callback);
+    CallbackId addCallback(std::function<void()> callback);
 
     /**
      * Removes a callback
@@ -102,7 +103,7 @@ class DataOutputQueue {
      * @param callbackId Id of callback to be removed
      * @return true if callback was removed, false otherwise
      */
-    bool removeCallback(int callbackId);
+    bool removeCallback(CallbackId callbackId);
 
     template <class T>
     bool has() {
@@ -236,14 +237,11 @@ class DataOutputQueue {
 
 // DataInputQueue presents a way to write to MyriadX
 class DataInputQueue {
-    std::shared_ptr<LockingQueue<std::shared_ptr<RawBuffer>>> pQueue;
-    LockingQueue<std::shared_ptr<RawBuffer>>& queue;
+    LockingQueue<std::shared_ptr<RawBuffer>> queue;
     std::thread writingThread;
-    std::shared_ptr<std::atomic<bool>> pRunning;
-    std::atomic<bool>& running;
-    std::shared_ptr<std::string> pExceptionMessage;
-    std::string& exceptionMessage;
-    std::string streamName;
+    std::atomic<bool> running{true};
+    std::string exceptionMessage;
+    const std::string name;
     std::size_t maxDataSize;
 
    public:
@@ -302,21 +300,13 @@ class DataInputQueue {
     void send(const std::shared_ptr<RawBuffer>& val);
     void send(const std::shared_ptr<ADatatype>& val);
     void send(const ADatatype& val);
+    bool send(const std::shared_ptr<RawBuffer>& val, std::chrono::milliseconds timeout);
+    bool send(const std::shared_ptr<ADatatype>& val, std::chrono::milliseconds timeout);
+    bool send(const ADatatype& val, std::chrono::milliseconds timeout);
 
     void sendSync(const std::shared_ptr<RawBuffer>& val);
     void sendSync(const std::shared_ptr<ADatatype>& val);
     void sendSync(const ADatatype& val);
-
-    template <typename Rep, typename Period>
-    bool send(const std::shared_ptr<RawBuffer>& val, std::chrono::duration<Rep, Period> timeout) {
-        if(!running) throw std::runtime_error(exceptionMessage.c_str());
-        return queue.tryWaitAndPush(val, timeout);
-    }
-    template <typename Rep, typename Period>
-    bool send(const std::shared_ptr<ADatatype>& val, std::chrono::duration<Rep, Period> timeout) {
-        if(!running) throw std::runtime_error(exceptionMessage.c_str());
-        return queue.tryWaitAndPush(val->serialize(), timeout);
-    }
 };
 
 }  // namespace dai

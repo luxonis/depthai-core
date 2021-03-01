@@ -127,6 +127,7 @@ add_library(${TARGET_NAME}
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/xlink/XLinkConnection.cpp
+    src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp
     src/openvino/BlobReader.cpp
     src/bspatch/bspatch.c
