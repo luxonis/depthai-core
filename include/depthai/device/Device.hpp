@@ -29,6 +29,10 @@
 namespace dai {
 
 // Device (RAII), connects to device and maintains watchdog, timesync, ...
+
+/**
+ * Represents the DepthAI device with the methods to interact with it.
+ */
 class Device {
    public:
     // constants
@@ -137,7 +141,7 @@ class Device {
     Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd);
 
     /**
-     * Device destructor. Closes the connection and the data queues.
+     * Device destructor. Closes the connection and data queues.
      */
     ~Device();
 

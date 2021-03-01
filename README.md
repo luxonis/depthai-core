@@ -13,7 +13,7 @@ DepthAI library doesn't yet provide API stability guarantees. While we take care
 
 ## Dependencies
 - cmake >= 3.4
-- libusb1 development package
+- libusb1 development package (MacOS & Linux only)
 - C/C++11 compiler
 - [optional] OpenCV 
 
@@ -80,6 +80,12 @@ And to apply formatting
 ```
 cmake --build [build/dir] --target clangformat
 ```
+
+## Documentation generation
+
+Doxygen is used to generate documentation. Follow [doxygen download](https://www.doxygen.nl/download.html#srcbin) and install the required binaries for your platform.
+
+After that specify CMake define `-DDEPTHAI_BUILD_DOCS=ON` and build the target `doxygen`
 
 ## Debugging tips
 

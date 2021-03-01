@@ -246,59 +246,41 @@ std::string DataInputQueue::getName() const {
     return name;
 }
 
-void DataInputQueue::send(const std::shared_ptr<RawBuffer>& val) {
+void DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg) {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
 
     // Check if stream receiver has enough space for this message
-    if(val->data.size() > maxDataSize) {
-        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", val->data.size(), maxDataSize));
+    if(rawMsg->data.size() > maxDataSize) {
+        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize));
     }
 
-    queue.push(val);
+    queue.push(rawMsg);
 }
-void DataInputQueue::send(const std::shared_ptr<ADatatype>& val) {
-    send(val->serialize());
-}
-
-void DataInputQueue::send(const ADatatype& val) {
-    send(val.serialize());
+void DataInputQueue::send(const std::shared_ptr<ADatatype>& msg) {
+    send(msg->serialize());
 }
 
-bool DataInputQueue::send(const std::shared_ptr<RawBuffer>& val, std::chrono::milliseconds timeout) {
+void DataInputQueue::send(const ADatatype& msg) {
+    send(msg.serialize());
+}
+
+bool DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg, std::chrono::milliseconds timeout) {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
 
     // Check if stream receiver has enough space for this message
-    if(val->data.size() > maxDataSize) {
-        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", val->data.size(), maxDataSize));
+    if(rawMsg->data.size() > maxDataSize) {
+        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize));
     }
 
-    return queue.tryWaitAndPush(val, timeout);
+    return queue.tryWaitAndPush(rawMsg, timeout);
 }
 
-bool DataInputQueue::send(const std::shared_ptr<ADatatype>& val, std::chrono::milliseconds timeout) {
-    return send(val->serialize(), timeout);
+bool DataInputQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::milliseconds timeout) {
+    return send(msg->serialize(), timeout);
 }
 
-bool DataInputQueue::send(const ADatatype& val, std::chrono::milliseconds timeout) {
-    return send(val.serialize(), timeout);
-}
-
-void DataInputQueue::sendSync(const std::shared_ptr<RawBuffer>& val) {
-    if(!running) throw std::runtime_error(exceptionMessage.c_str());
-
-    // Check if stream receiver has enough space for this message
-    if(val->data.size() > maxDataSize) {
-        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", val->data.size(), maxDataSize));
-    }
-
-    queue.waitEmpty();
-    queue.push(val);
-}
-void DataInputQueue::sendSync(const std::shared_ptr<ADatatype>& val) {
-    sendSync(val->serialize());
-}
-void DataInputQueue::sendSync(const ADatatype& val) {
-    sendSync(val.serialize());
+bool DataInputQueue::send(const ADatatype& msg, std::chrono::milliseconds timeout) {
+    return send(msg.serialize(), timeout);
 }
 
 }  // namespace dai

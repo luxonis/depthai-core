@@ -5,6 +5,8 @@
 #include <mutex>
 #include <queue>
 
+namespace dai {
+
 template <typename T>
 class LockingQueue {
    public:
@@ -218,3 +220,5 @@ class LockingQueue {
     std::condition_variable signalPop;
     std::condition_variable signalPush;
 };
+
+}  // namespace dai

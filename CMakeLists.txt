@@ -27,6 +27,7 @@ endif()
 
 set(TARGET_NAME depthai-core)
 project(depthai VERSION "0.0.2" LANGUAGES CXX C)
+set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
 set(TARGET_ALIAS ${PROJECT_NAME}::core)
 
 # Set policies
@@ -38,15 +39,31 @@ endif()
 # Set to export compile commands for tools like clang-tidy and format
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Add module path
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/")
+list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/sanitizers")
+
 # Additional options
 option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON )
-option(DEPTHAI_CLANG_TIDY   "Enable clang-tidy checks during compilation" OFF)
+option(DEPTHAI_CLANG_TIDY "Enable clang-tidy checks during compilation" OFF)
+option(DEPTHAI_SANITIZE_TESTS "If tests are enabled, compile them with Address and Undefined sanitizers" ON)
 
 # Debug option
 set(DEPTHAI_XLINK_LOCAL "" CACHE STRING "Path to local XLink source to use instead of Hunter")
 
 # Variable to installed 3rdparty headers
 set(DEPTHAI_3RDPARTY_HEADERS_PATH "depthai/3rdparty")
+
+# Check if cloned or sources
+find_package(Git)
+if(GIT_FOUND)
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} rev-parse --is-inside-work-tree
+        WORKING_DIRECTORY "${DEPTHAI_SHARED_FOLDER}"
+        RESULT_VARIABLE DEPTHAI_DOWNLOADED_SOURCES
+        OUTPUT_QUIET ERROR_QUIET
+    )
+endif()
 
 ### Get and find dependencies
 
@@ -135,11 +152,11 @@ add_library(${TARGET_NAME}
 add_library(${TARGET_ALIAS} ALIAS ${TARGET_NAME})
 
 # Add aditional flags
-include(cmake/flags.cmake)
+include(flags)
 
 # And clang-tidy and format
 if(DEPTHAI_CLANG_TIDY)
-    include(cmake/clang-tidy.cmake)
+    include(clang-tidy)
 endif()
 
 # Set compiler features (c++11), and disables extensions (g++11)
@@ -153,7 +170,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake")
 # First specify options
 option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
 option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
-option(DEPTHAI_TEST_EXAMPLES "Test examples - examples will be ran as a part of test suite" OFF)
+option(DEPTHAI_BUILD_DOCS "Build documentation - requires doxygen to be installed" OFF)
 option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
 
 
@@ -293,7 +310,7 @@ target_include_directories(${TARGET_NAME} SYSTEM
 if(DEPTHAI_CLANG_FORMAT)
     # HEADER DIRECTORIES
     set(header_dirs "${CMAKE_CURRENT_LIST_DIR}/include;${DEPTHAI_SHARED_PUBLIC_INCLUDE};${DEPTHAI_SHARED_INCLUDE}")
-    include(cmake/clang-format.cmake)
+    include(clang-format)
     target_clangformat_setup(${TARGET_NAME} "${header_dirs}")
 endif()
 
@@ -330,6 +347,14 @@ endif()
 
 
 ########################
+# Testing
+########################
+# Add CMake testing infrastructure
+include(CTest)
+enable_testing()
+
+
+########################
 # OpenCV Support
 ########################
 if(DEPTHAI_OPENCV_SUPPORT)
@@ -360,15 +385,6 @@ if(DEPTHAI_OPENCV_SUPPORT)
 endif()
 
 ########################
-# Testing
-########################
-if(DEPTHAI_BUILD_TESTS OR DEPTHAI_TEST_EXAMPLES)
-    include(CTest)
-    enable_testing()
-endif()
-
-
-########################
 # Tests
 ########################
 if (DEPTHAI_BUILD_TESTS)
@@ -380,6 +396,13 @@ endif()
 ########################
 if (DEPTHAI_BUILD_EXAMPLES)
     add_subdirectory(examples)
+endif()
+
+########################
+# Documentation
+########################
+if (DEPTHAI_BUILD_DOCS)
+    add_subdirectory(docs)
 endif()
 
 
