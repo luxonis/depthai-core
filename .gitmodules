@@ -1,3 +1,6 @@
-[submodule "depthai-cpp/shared/depthai-shared"]
+[submodule "shared/depthai-shared"]
 	path = shared/depthai-shared
-	url = ../depthai-shared.git
+	url = ../../luxonis/depthai-shared.git
+[submodule "shared/depthai-bootloader-shared"]
+	path = shared/depthai-bootloader-shared
+	url = ../../luxonis/depthai-bootloader-shared.git
