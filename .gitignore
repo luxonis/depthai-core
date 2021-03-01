@@ -3,9 +3,8 @@
 .vscode/
 .vs/
 build*/*
-
 # Auto-generated
-include/depthai/build/version.hpp
+shared/version.hpp
 
 #pybind11
 build/
@@ -22,3 +21,6 @@ depthai-cpp/build/
 
 #ci
 wheelhouse/
+
+#git
+*.orig

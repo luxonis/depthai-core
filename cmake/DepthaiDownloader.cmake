@@ -14,8 +14,8 @@ function(DepthaiDownload)
     set(DEPTHAI_ARTIFACT_PREFIX "depthai-device-side")
 
     # Errors and retry count
-    set(DEPTHAI_TIMEOUT_S 120)
-    set(DEPTHAI_INACTIVE_TIMEOUT_S 30)
+    set(DEPTHAI_TIMEOUT_S 300)
+    set(DEPTHAI_INACTIVE_TIMEOUT_S 60)
     set(DEPTHAI_DOWNLOAD_RETRY_NUM 5)
     ### END VARIABLES
 
@@ -95,6 +95,8 @@ function(DepthaiDownload)
             message(STATUS "Resource not found, check if commit hash is correctly specified.\n")
         elseif(${status} EQUAL 28)
             message(STATUS "Timeout.\n")
+        elseif(${status} EQUAL 99)
+            message(STATUS "Couldn't retrieve files correctly, checksum mismatch.")
         else()
             message(STATUS "Unknown error.\n")
         endif()
@@ -102,6 +104,14 @@ function(DepthaiDownload)
 
     # Download files 
     function(DownloadAndChecksum url url_checksum output status_var)
+
+        # Check if file already downloaded (in resources)
+        if(EXISTS "${output}")
+            get_filename_component(_filename "${output}" NAME)
+            message(STATUS "File already downloaded (resources): ${_filename}")
+            set("${status_var}" "0" PARENT_SCOPE)
+            return()
+        endif()
 
         # Retry again if failed
         set(_num_retries_left ${DEPTHAI_DOWNLOAD_RETRY_NUM})
@@ -128,13 +138,23 @@ function(DepthaiDownload)
 
 
             # Download file and validate checksum
-            file(DOWNLOAD "${url}" "${output}" INACTIVITY_TIMEOUT ${DEPTHAI_INACTIVE_TIMEOUT_S} STATUS _status TIMEOUT ${DEPTHAI_TIMEOUT_S} SHOW_PROGRESS EXPECTED_HASH "SHA256=${_file_checksum}" )
+            file(DOWNLOAD "${url}" "${output}" INACTIVITY_TIMEOUT ${DEPTHAI_INACTIVE_TIMEOUT_S} STATUS _status TIMEOUT ${DEPTHAI_TIMEOUT_S} SHOW_PROGRESS)
 
             #CHECKS
             list(GET _status 0 _status_num)
             if(${_status_num})
                 message(STATUS "Status error: ${_status}")
                 set("${status_var}" "${_status_num}" PARENT_SCOPE)
+                continue()
+            endif()
+
+            # Now check if hash matches (if both files were downloaded without timeouts)
+            file(SHA256 ${output} _downloaded_checksum)
+
+            # if hashes don't match
+            if(NOT (_downloaded_checksum STREQUAL _file_checksum))
+                message(STATUS "Downloaded file checksum mismatch: ${_downloaded_checksum} != {_file_checksum}")
+                set("${status_var}" "99" PARENT_SCOPE)
                 continue()
             endif()
 
@@ -154,7 +174,7 @@ function(DepthaiDownload)
         DownloadAndChecksum(
             "${_download_directory_url}/depthai-shared-commit-hash-${_version_commit_identifier}.txt" # File
             "${_download_directory_url}/depthai-shared-commit-hash-${_version_commit_identifier}.sha256.checksum" # File checksum
-            "${folder}/depthai-shared-commit-hash.txt"
+            "${folder}/depthai-shared-commit-hash-${_version_commit_identifier}.txt"
             status
         )
         if(${status})
@@ -171,7 +191,7 @@ function(DepthaiDownload)
             endif()
 
             # Read commit hash file
-            file(READ "${folder}/depthai-shared-commit-hash.txt" _device_depthai_shared_commit_hash)
+            file(READ "${folder}/depthai-shared-commit-hash-${_version_commit_identifier}.txt" _device_depthai_shared_commit_hash)
             string(REGEX REPLACE "\n$" "" _device_depthai_shared_commit_hash "${_device_depthai_shared_commit_hash}")
             string(REGEX REPLACE "\n$" "" _depthai_shared_commit "${_depthai_shared_commit}")
             string(COMPARE EQUAL "${_device_depthai_shared_commit_hash}" "${_depthai_shared_commit}" _is_same)
@@ -189,65 +209,84 @@ function(DepthaiDownload)
     endif()
 
 
-
-    # depthai.cmd
-    message(STATUS "Downloading and checking depthai.cmd")
+    # Download depthai-device firmware package
+    message(STATUS "Downloading and checking depthai-device-fwp.tar.xz")
     DownloadAndChecksum(
-        "${_download_directory_url}/depthai-${_version_commit_identifier}.cmd" # File
-        "${_download_directory_url}/depthai-${_version_commit_identifier}.sha256.checksum" # File checksum
-        "${folder}/depthai.cmd"
+        "${_download_directory_url}/depthai-device-fwp-${_version_commit_identifier}.tar.xz" # File
+        "${_download_directory_url}/depthai-device-fwp-${_version_commit_identifier}.tar.xz.sha256" # File checksum
+        "${folder}/depthai-device-fwp-${_version_commit_identifier}.tar.xz"
         status
     )
     if(${status})
-        message(STATUS "\nCouldn't download depthai.cmd\n")
+        message(STATUS "\nCouldn't download depthai-device-fwp.tar.xz\n")
         PrintErrorMessage(${status})
         message(FATAL_ERROR "Aborting.\n")
     endif()
-    # add depthai.cmd to list
-    list(APPEND "${output_list_var}" "${folder}/depthai.cmd")
+    # add depthai-device-fwp.tar.xz to list
+    list(APPEND "${output_list_var}" "${folder}/depthai-device-fwp-${_version_commit_identifier}.tar.xz")
     
 
-    if(NOT _download_patch_only)
-        # depthai-usb2.cmd
-        message(STATUS "Downloading and checking depthai-usb2.cmd")
-        DownloadAndChecksum(
-            "${_download_directory_url}/depthai-usb2-${_version_commit_identifier}.cmd" # File
-            "${_download_directory_url}/depthai-usb2-${_version_commit_identifier}.sha256.checksum" # File checksum
-            "${folder}/depthai-usb2.cmd"
-            status
-        )
 
-        if(${status})
-            message(STATUS "\nCouldn't download depthai-usb2.cmd.\n")
-            PrintErrorMessage(${status})
-            message(FATAL_ERROR "Aborting.\n")
-        endif()
+    ## # depthai.cmd
+    ## message(STATUS "Downloading and checking depthai.cmd")
+    ## DownloadAndChecksum(
+    ##     "${_download_directory_url}/depthai-${_version_commit_identifier}.cmd" # File
+    ##     "${_download_directory_url}/depthai-${_version_commit_identifier}.sha256.checksum" # File checksum
+    ##     "${folder}/depthai-${_version_commit_identifier}.cmd"
+    ##     status
+    ## )
+    ## if(${status})
+    ##     message(STATUS "\nCouldn't download depthai.cmd\n")
+    ##     PrintErrorMessage(${status})
+    ##     message(FATAL_ERROR "Aborting.\n")
+    ## endif()
+    ## # add depthai.cmd to list
+    ## list(APPEND "${output_list_var}" "${folder}/depthai-${_version_commit_identifier}.cmd")
+    ## 
 
-        # add depthai-usb2.cmd to list
-        list(APPEND "${output_list_var}" "${folder}/depthai-usb2.cmd")
+    ## if(NOT _download_patch_only)
+    ##     # depthai-usb2.cmd
+    ##     message(STATUS "Downloading and checking depthai-usb2.cmd")
+    ##     DownloadAndChecksum(
+    ##         "${_download_directory_url}/depthai-usb2-${_version_commit_identifier}.cmd" # File
+    ##         "${_download_directory_url}/depthai-usb2-${_version_commit_identifier}.sha256.checksum" # File checksum
+    ##         "${folder}/depthai-usb2-${_version_commit_identifier}.cmd"
+    ##         status
+    ##     )
 
-    endif(NOT _download_patch_only)
+    ##     if(${status})
+    ##         message(STATUS "\nCouldn't download depthai-usb2.cmd.\n")
+    ##         PrintErrorMessage(${status})
+    ##         message(FATAL_ERROR "Aborting.\n")
+    ##     endif()
 
-    # depthai-usb2-patch.patch
-    message(STATUS "Downloading and checking depthai-usb2-patch.patch")
-    DownloadAndChecksum(
-        "${_download_directory_url}/depthai-usb2-patch-${_version_commit_identifier}.patch" # File
-        "${_download_directory_url}/depthai-usb2-patch-${_version_commit_identifier}.sha256.checksum" # File checksum
-        "${folder}/depthai-usb2-patch.patch"
-        status
-    )
-    if(${status})
-        message(STATUS "\nCouldn't download depthai-usb2-patch.patch.\n")
-        PrintErrorMessage(${status})
-        message(FATAL_ERROR "Aborting.\n")
-    endif()    
+    ##     # add depthai-usb2.cmd to list
+    ##     list(APPEND "${output_list_var}" "${folder}/depthai-usb2-${_version_commit_identifier}.cmd")
 
-    # add depthai-usb2.cmd to list
-    list(APPEND "${output_list_var}" "${folder}/depthai-usb2-patch.patch")
+    ## endif(NOT _download_patch_only)
+
+    ## # depthai-usb2-patch.patch
+    ## message(STATUS "Downloading and checking depthai-usb2-patch.patch")
+    ## DownloadAndChecksum(
+    ##     "${_download_directory_url}/depthai-usb2-patch-${_version_commit_identifier}.patch" # File
+    ##     "${_download_directory_url}/depthai-usb2-patch-${_version_commit_identifier}.sha256.checksum" # File checksum
+    ##     "${folder}/depthai-usb2-patch-${_version_commit_identifier}.patch"
+    ##     status
+    ## )
+    ## if(${status})
+    ##     message(STATUS "\nCouldn't download depthai-usb2-patch.patch.\n")
+    ##     PrintErrorMessage(${status})
+    ##     message(FATAL_ERROR "Aborting.\n")
+    ## endif()    
+
+    ## # add depthai-usb2.cmd to list
+    ## list(APPEND "${output_list_var}" "${folder}/depthai-usb2-patch-${_version_commit_identifier}.patch")
+    
+    
+    # Propagate the variable to parent
     set("${output_list_var}" "${${output_list_var}}" PARENT_SCOPE)
 
 endfunction()
-
 
 function(DepthaiLocal patch_only patch_only_on_off output_dir output_list_var path1 path2 path3)
 
