@@ -26,7 +26,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "0.0.2" LANGUAGES CXX C)
+project(depthai VERSION "2.0.0" LANGUAGES CXX C)
 set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
 
 # Set default installation directory
@@ -421,6 +421,7 @@ endif()
 # INSTALL steps
 ########################
 if(DEPTHAI_INSTALL)
+    include(GNUInstallDirs)
 
     # Export targets to export group
     if(BUILD_SHARED_LIBS)
