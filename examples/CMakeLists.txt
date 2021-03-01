@@ -1,21 +1,5 @@
 # Add an option to test examples
 option(DEPTHAI_TEST_EXAMPLES "Test examples - examples will be ran as a part of test suite" OFF)
-if(DEPTHAI_TEST_EXAMPLES)
-    # Add CMake testing infrastructure
-    include(CTest)
-    enable_testing()
-
-    # Enable sanitizers automatically if DEPTHAI_SANITIZE_TESTS is on
-    if(DEPTHAI_SANITIZE_TESTS)
-        set(SANITIZE_ADDRESS ON CACHE BOOL "Enable AddressSanitizer for sanitized targets." FORCE)
-        set(SANITIZE_UNDEFINED ON CACHE BOOL "Enable UndefinedBehaviorSanitizer for sanitized targets." FORCE)
-    endif()
-
-    # Enable sanitizer for library
-    find_package(Sanitizers)
-    add_sanitizers(${TARGET_NAME})
-
-endif()
 
 # Dependencies
 find_package(OpenCV REQUIRED)

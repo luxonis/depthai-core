@@ -2,16 +2,6 @@
 include(CTest)
 enable_testing()
 
-# Enable sanitizers automatically if DEPTHAI_SANITIZE_TESTS is on
-if(DEPTHAI_SANITIZE_TESTS)
-    set(SANITIZE_ADDRESS ON CACHE BOOL "Enable AddressSanitizer for sanitized targets." FORCE)
-    set(SANITIZE_UNDEFINED ON CACHE BOOL "Enable UndefinedBehaviorSanitizer for sanitized targets." FORCE)
-endif()
-
-# Enable sanitizer for library
-find_package(Sanitizers)
-add_sanitizers(${TARGET_NAME})
-
 # Add catch2 for writing tests
 hunter_add_package(Catch)
 find_package(Catch2 CONFIG REQUIRED)

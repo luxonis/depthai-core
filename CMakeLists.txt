@@ -54,7 +54,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/sanitizers")
 # Additional options
 option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON )
 option(DEPTHAI_CLANG_TIDY "Enable clang-tidy checks during compilation" OFF)
-option(DEPTHAI_SANITIZE_TESTS "If tests are enabled, compile them with Address and Undefined sanitizers" ON)
+option(DEPTHAI_SANITIZE "Enable Address and Undefined sanitizers for library, examples and tests" OFF)
 
 # Should install depthai core libraries
 option(DEPTHAI_INSTALL   "Enable install target for depthai-core targets" ON)
@@ -331,15 +331,6 @@ if(DEPTHAI_USB2_PATCH_ONLY_MODE)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_PATCH_ONLY_MODE)
 endif()
 
-
-########################
-# Testing
-########################
-# Add CMake testing infrastructure
-include(CTest)
-enable_testing()
-
-
 ########################
 # OpenCV Support
 ########################
@@ -390,6 +381,22 @@ if(DEPTHAI_OPENCV_SUPPORT)
 endif()
 
 ########################
+# Sanitizers
+########################
+if(DEPTHAI_SANITIZE)
+    set(SANITIZE_ADDRESS ON CACHE BOOL "Enable AddressSanitizer for sanitized targets." FORCE)
+    set(SANITIZE_UNDEFINED ON CACHE BOOL "Enable UndefinedBehaviorSanitizer for sanitized targets." FORCE)
+endif()
+find_package(Sanitizers)
+add_sanitizers(${TARGET_CORE_NAME} ${TARGET_OPENCV_NAME})
+
+########################
+# Testing infrastructure
+########################
+include(CTest)
+enable_testing()
+
+########################
 # Tests
 ########################
 if (DEPTHAI_BUILD_TESTS)
@@ -409,7 +416,6 @@ endif()
 if (DEPTHAI_BUILD_DOCS)
     add_subdirectory(docs)
 endif()
-
 
 ########################
 # INSTALL steps
