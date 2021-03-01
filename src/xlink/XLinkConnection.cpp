@@ -170,7 +170,7 @@ void XLinkConnection::close() {
         // Only in case if device was booted to begin with
         if(bootDevice) {
             auto t1 = steady_clock::now();
-            bool found;
+            bool found = false;
             do {
                 DeviceInfo tmp;
                 for(const auto& state : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER}) {
