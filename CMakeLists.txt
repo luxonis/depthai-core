@@ -53,8 +53,12 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_LIST_DIR}/cmake")
 option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON )
 option(DEPTHAI_CLANG_TIDY   "Enable clang-tidy checks during compilation" OFF)
 
+# Should install depthai core libraries
+option(DEPTHAI_INSTALL   "Enable install target for depthai-core targets" ON)
+
 # Debug option
 set(DEPTHAI_XLINK_LOCAL "" CACHE STRING "Path to local XLink source to use instead of Hunter")
+
 
 ### Constants
 set(PROJECT_EXPORT_GROUP "${PROJECT_NAME}Targets")
@@ -79,7 +83,7 @@ include(Flags)
 ### End of dependencies
 
 set(TARGET_CORE_NAME ${PROJECT_NAME}-core)
-set(TARGET_CORE_ALIAS ${PROJECT_NAME}::core)
+set(TARGET_CORE_ALIAS core)
 
 # Create core library
 add_library(${TARGET_CORE_NAME}
@@ -121,7 +125,7 @@ add_library(${TARGET_CORE_NAME}
     src/openvino/BlobReader.cpp
     src/bspatch/bspatch.c
 )
-add_library(${TARGET_CORE_ALIAS} ALIAS ${TARGET_CORE_NAME})
+add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
 
 # Add default flags to core
 add_default_flags(${TARGET_CORE_NAME})
@@ -317,6 +321,8 @@ endif()
 ########################
 # OpenCV Support
 ########################
+set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)   
+set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
     # Check if required libraries are available
     set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc")
@@ -328,12 +334,10 @@ if(DEPTHAI_OPENCV_SUPPORT)
     endforeach()
 
     if(OPENCV_SUPPORT_AVAILABLE)
-        set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)   
-        set(TARGET_OPENCV_ALIAS ${TARGET_ALIAS}::opencv)
 
         # Add depthai-core-opencv library and depthai::core::opencv alias
         add_library(${TARGET_OPENCV_NAME} src/opencv/ImgFrame.cpp)
-        add_library(${TARGET_OPENCV_ALIAS} ALIAS ${TARGET_OPENCV_NAME})
+        add_library("${PROJECT_NAME}::${TARGET_OPENCV_ALIAS}" ALIAS ${TARGET_OPENCV_NAME})
 
         # Add default flags
         add_default_flags(${TARGET_OPENCV_NAME})
@@ -390,74 +394,76 @@ endif()
 ########################
 # INSTALL steps
 ########################
+if(DEPTHAI_INSTALL)
 
-# Export targets to export group
-if(BUILD_SHARED_LIBS)
-    set(targets_to_install ${TARGET_CORE_NAME})
-else()
-    set(targets_to_install ${TARGET_CORE_NAME} ${DEPTHAI_RESOURCE_LIBRARY_NAME} cmrc-base)
+    # Export targets to export group
+    if(BUILD_SHARED_LIBS)
+        set(targets_to_install ${TARGET_CORE_NAME})
+    else()
+        set(targets_to_install ${TARGET_CORE_NAME} ${DEPTHAI_RESOURCE_LIBRARY_NAME} cmrc-base)
+    endif()
+    install(
+        TARGETS ${targets_to_install}
+        EXPORT ${PROJECT_EXPORT_GROUP}
+        RUNTIME LIBRARY ARCHIVE
+    )
+
+    # Install depthai public headers
+    install(DIRECTORY include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+    # Install depthai-shared public headers
+    install(DIRECTORY "${DEPTHAI_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+    # Install depthai-shared 3rdparty headers
+    install(DIRECTORY "${DEPTHAI_SHARED_3RDPARTY_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}")
+    # Install depthai-bootloader-shared public headers
+    install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+    # Install depthai-bootloader-shared 3rdparty headers (Currently no 3rdparty)
+    #install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_3RDPARTY_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/depthai-bootloader-shared/3rdparty")
+
+    # Install Hunter dependencies
+    if(BUILD_SHARED_LIBS)
+        # Install only PUBLIC dependencies
+        install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/include/XLink" DESTINATION include/XLink)
+        install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/include/nlohmann" DESTINATION include/nlohmann)
+        install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/lib/cmake/XLink" DESTINATION lib/cmake/XLink)
+        install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/lib/cmake/nlohmann_json" DESTINATION lib/cmake/nlohmann_json)
+    else()
+        # Install all dependencies
+        install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/" DESTINATION .)
+    endif()
+
+    # Add resource installation if not RC'd
+    if(NOT DEPTHAI_BINARIES_RESOURCE_COMPILE)
+        install(DIRECTORY "${DEPTHAI_RESOURCES_OUTPUT_DIR}/" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/depthai")
+    endif()
+
+    # Write project version
+    include(CMakePackageConfigHelpers)
+    write_basic_package_version_file(
+        ${PROJECT_NAME}ConfigVersion.cmake
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY AnyNewerVersion
+    )
+
+    # Install export group (targets)
+    install(EXPORT ${PROJECT_EXPORT_GROUP}
+        NAMESPACE ${PROJECT_NAME}::
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
+    )
+
+    # Dependencies file
+    install(FILES 
+        "cmake/${PROJECT_NAME}Dependencies.cmake"
+        DESTINATION lib/cmake/${PROJECT_NAME}
+    )
+
+    # Configure config file
+    set(INSTALL_LIB_CMAKE_DIR "lib/cmake/${PROJECT_NAME}")
+    file(RELATIVE_PATH RELATIVE_INSTALLTION_PATH "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_PREFIX}/${INSTALL_LIB_CMAKE_DIR}" "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_PREFIX}")
+    configure_file(cmake/${PROJECT_NAME}Config.cmake.in ${PROJECT_NAME}Config.cmake @ONLY)
+    install(FILES 
+        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+        DESTINATION ${INSTALL_LIB_CMAKE_DIR}
+    )
+
 endif()
-install(
-    TARGETS ${targets_to_install}
-    EXPORT ${PROJECT_EXPORT_GROUP}
-    RUNTIME LIBRARY ARCHIVE
-)
-
-# Install depthai public headers
-install(DIRECTORY include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
-# Install depthai-shared public headers
-install(DIRECTORY "${DEPTHAI_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
-# Install depthai-shared 3rdparty headers
-install(DIRECTORY "${DEPTHAI_SHARED_3RDPARTY_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}")
-# Install depthai-bootloader-shared public headers
-install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
-# Install depthai-bootloader-shared 3rdparty headers (Currently no 3rdparty)
-#install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_3RDPARTY_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/depthai-bootloader-shared/3rdparty")
-
-# Install Hunter dependencies
-if(BUILD_SHARED_LIBS)
-    # Install only PUBLIC dependencies
-    install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/include/XLink" DESTINATION include/XLink)
-    install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/include/nlohmann" DESTINATION include/nlohmann)
-    install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/lib/cmake/XLink" DESTINATION lib/cmake/XLink)
-    install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/lib/cmake/nlohmann_json" DESTINATION lib/cmake/nlohmann_json)
-else()
-    # Install all dependencies
-    install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/" DESTINATION .)
-endif()
-
-# Add resource installation if not RC'd
-if(NOT DEPTHAI_BINARIES_RESOURCE_COMPILE)
-    install(DIRECTORY "${DEPTHAI_RESOURCES_OUTPUT_DIR}/" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/depthai")
-endif()
-
-# Write project version
-include(CMakePackageConfigHelpers)
-write_basic_package_version_file(
-    ${PROJECT_NAME}ConfigVersion.cmake
-    VERSION ${PROJECT_VERSION}
-    COMPATIBILITY AnyNewerVersion
-)
-
-# Install export group (targets)
-install(EXPORT ${PROJECT_EXPORT_GROUP}
-    NAMESPACE ${PROJECT_NAME}::
-    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
-)
-
-# Dependencies file
-install(FILES 
-    "cmake/${PROJECT_NAME}Dependencies.cmake"
-    DESTINATION lib/cmake/${PROJECT_NAME}
-)
-
-# Configure config file
-set(INSTALL_LIB_CMAKE_DIR "lib/cmake/${PROJECT_NAME}")
-file(RELATIVE_PATH RELATIVE_INSTALLTION_PATH "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_PREFIX}/${INSTALL_LIB_CMAKE_DIR}" "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_PREFIX}")
-configure_file(cmake/${PROJECT_NAME}Config.cmake.in ${PROJECT_NAME}Config.cmake @ONLY)
-install(FILES 
-    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
-    DESTINATION ${INSTALL_LIB_CMAKE_DIR}
-)
-
