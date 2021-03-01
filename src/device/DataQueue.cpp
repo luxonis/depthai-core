@@ -26,7 +26,6 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
     // Creates a thread which reads from connection into the queue
     readingThread = std::thread(std::bind(
         [this, conn](XLinkStream& stream) mutable {
-            constexpr auto READ_TIMEOUT = std::chrono::milliseconds(100);
             std::uint64_t numPacketsRead = 0;
             try {
                 while(running) {
@@ -35,13 +34,6 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
 
                     // Blocking
                     packet = stream.readRaw();
-
-                    // Timeout (unsafe)
-                    // bool success;
-                    // do {
-                    //     success = stream.readRaw(packet, READ_TIMEOUT);
-                    // } while(!success && running);
-                    // if(!running) break;
 
                     // parse packet
                     auto data = parsePacketToADatatype(packet);
@@ -171,8 +163,6 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
     writingThread = std::thread(std::bind(
         [this, conn](XLinkStream& stream) {
             std::uint64_t numPacketsSent = 0;
-
-            constexpr auto WRITE_TIMEOUT = std::chrono::milliseconds(100);
             try {
                 while(running) {
                     // get data from queue
@@ -197,13 +187,6 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
 
                     // Blocking
                     stream.write(serialized);
-
-                    // Timeout (unsafe)
-                    // bool success;
-                    // do {
-                    //     success = stream.write(serialized, WRITE_TIMEOUT);
-                    // } while(!success && running);
-                    // if(!running) break;
 
                     // Increment num packets sent
                     numPacketsSent++;
