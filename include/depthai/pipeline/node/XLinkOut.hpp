@@ -40,7 +40,7 @@ class XLinkOut : public Node {
     void setStreamName(const std::string& name);
 
     /**
-     * Specifies a message sending limit. Its approximated from specified rate.
+     * Specifies a message sending limit. It's approximated from specified rate.
      *
      * @param fps Approximate rate limit in messages per second
      */
