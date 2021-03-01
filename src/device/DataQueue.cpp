@@ -283,5 +283,4 @@ bool DataInputQueue::send(const ADatatype& msg, std::chrono::milliseconds timeou
     return send(msg.serialize(), timeout);
 }
 
-
 }  // namespace dai

@@ -424,7 +424,7 @@ class DataInputQueue {
      *
      * @param msg Message to add to the queue
      * @param timeout Maximum duration to block in milliseconds
-     */    
+     */
     bool send(const std::shared_ptr<ADatatype>& msg, std::chrono::milliseconds timeout);
 
     /**
@@ -435,7 +435,6 @@ class DataInputQueue {
      * @param timeout Maximum duration to block in milliseconds
      */
     bool send(const ADatatype& msg, std::chrono::milliseconds timeout);
-
 };
 
 }  // namespace dai
