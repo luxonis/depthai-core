@@ -40,7 +40,6 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
                     // bool success;
                     // do {
                     //     success = stream.readRaw(packet, READ_TIMEOUT);
-                    //     spdlog::warn("spinning ({})...", name);
                     // } while(!success && running);
                     // if(!running) break;
 

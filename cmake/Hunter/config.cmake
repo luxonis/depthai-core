@@ -7,9 +7,9 @@ hunter_config(
 
 hunter_config(
     XLink
-    VERSION "luxonis-2021.2-timeout_api"
-    URL "https://github.com/luxonis/XLink/archive/264631b4e6006f4c681d92fc746fb8dfcdc67bc6.tar.gz"
-    SHA1 "675ed3b6a78142a4a1519099fcfbd95056079272"
+    VERSION "luxonis-2021.2-develop"
+    URL "https://github.com/luxonis/XLink/archive/ee361ecba950335390ad539e509f8ab96313b6b4.tar.gz"
+    SHA1 "72108319bf2289d91157a3933663ed5fb2b6eb18"
 )
 
 hunter_config(

@@ -17,6 +17,9 @@
 #include "utility/BootloaderHelper.hpp"
 #include "utility/Resources.hpp"
 
+// libraries
+#include "spdlog/spdlog.h"
+
 // Resource compiled assets (cmds)
 #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
     #include "cmrc/cmrc.hpp"
@@ -147,12 +150,6 @@ DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, const std::string&
     init(false, pathToBootloader);
 }
 
-DeviceBootloader::~DeviceBootloader() {
-    // Stop watchdog first
-    watchdogRunning = false;
-    if(watchdogThread.joinable()) watchdogThread.join();
-}
-
 void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd) {
     // Init device (if bootloader, handle correctly - issue USB boot command)
     if(deviceInfo.state == X_LINK_UNBOOTED) {
@@ -211,6 +208,42 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd) 
 
     // prepare bootloader stream
     stream = std::unique_ptr<XLinkStream>(new XLinkStream(*connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE));
+}
+
+void DeviceBootloader::close() {
+    // Only allow to close once
+    if(closed.exchange(true)) return;
+
+    using namespace std::chrono;
+    auto t1 = steady_clock::now();
+    spdlog::debug("DeviceBootloader about to be closed...");
+
+    // Close connection first (so queues unblock)
+    connection->close();
+    connection = nullptr;
+
+    // Stop watchdog
+    watchdogRunning = false;
+
+    // Stop watchdog first (this resets and waits for link to fall down)
+    if(watchdogThread.joinable()) watchdogThread.join();
+
+    // Close stream
+    stream = nullptr;
+
+    spdlog::debug("DeviceBootloader closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
+}
+
+bool DeviceBootloader::isClosed() const {
+    return closed || !watchdogRunning;
+}
+
+void DeviceBootloader::checkClosed() const {
+    if(isClosed()) throw std::invalid_argument("DeviceBootloader already closed or disconnected");
+}
+
+DeviceBootloader::~DeviceBootloader() {
+    close();
 }
 
 DeviceBootloader::Version DeviceBootloader::getEmbeddedBootloaderVersion() {

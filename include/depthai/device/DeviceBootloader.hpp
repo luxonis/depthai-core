@@ -55,15 +55,32 @@ class DeviceBootloader {
     Version getVersion();
     bool isEmbeddedVersion();
 
+    /**
+     * Explicitly closes connection to device.
+     * @note This function does not need to be explicitly called
+     * as destructor closes the device automatically
+     */
+    void close();
+
+    /**
+     * Is the device already closed (or disconnected)
+     */
+    bool isClosed() const;
+
    private:
     // private static
 
     // private variables
     void init(bool embeddedMvcmd, const std::string& pathToMvcmd);
+    void checkClosed() const;
+
     std::shared_ptr<XLinkConnection> connection;
     DeviceInfo deviceInfo = {};
 
     bool isEmbedded = false;
+
+    // closed
+    std::atomic<bool> closed{false};
 
     // Watchdog thread
     std::thread watchdogThread;

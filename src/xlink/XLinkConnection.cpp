@@ -180,7 +180,7 @@ void XLinkConnection::close() {
             } while(!found && steady_clock::now() - t1 < BOOTUP_SEARCH);
         }
 
-        spdlog::warn("XLinkResetRemote of linkId: ({})", tmp);
+        spdlog::debug("XLinkResetRemote of linkId: ({})", tmp);
     }
 }
 
