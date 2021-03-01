@@ -25,7 +25,7 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
 
     // Creates a thread which reads from connection into the queue
     readingThread = std::thread(std::bind(
-        [this, conn](XLinkStream& stream) mutable {
+        [this, conn](XLinkStream& stream) {
             std::uint64_t numPacketsRead = 0;
             try {
                 while(running) {

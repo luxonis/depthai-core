@@ -428,18 +428,6 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
 
         // Watchdog ended. Useful for checking disconnects
         watchdogRunning = false;
-
-        // // reset device
-        // // wait till link falls down
-        // try {
-        //     client->call("reset");
-        // } catch(const std::runtime_error& err) {
-        //     // ignore
-        //     spdlog::debug("Watchdog thread exception caught: {}", err.what());
-        // }
-
-        // // Sleep a bit, so device isn't available anymore
-        // std::this_thread::sleep_for(std::chrono::milliseconds(500));
     });
 
     // prepare timesync thread, which will keep device synchronized
