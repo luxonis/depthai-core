@@ -1,12 +1,18 @@
 # DepthAI C++ Library
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+
 Core C++ library
 
-## Alpha Disclaimer
-DepthAI library is currently in alpha for version 0.x.y. We are still making breaking API changes and expect to get to stable API by version 1.0.0.
+## Documentation
+
+Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.com/projects/api/en/latest/)
+
+## Disclaimer
+DepthAI library doesn't yet provide API stability guarantees. While we take care to properly deprecate old functions, some changes might still be breaking. We expect to provide API stability from version 3.0.0 onwards.
 
 ## Dependencies
-- cmake >= 3.2
+- cmake >= 3.4
 - libusb1 development package (MacOS & Linux only)
 - C/C++11 compiler
 - [optional] OpenCV 
@@ -33,24 +39,31 @@ target_link_libraries(my-app PUBLIC depthai-core)
 
 ## Building
 
-To build the static version of the library from source perform the following:
-
 Make sure submodules are updated 
 ```
 git submodule update --init --recursive
 ```
 
-Configure and build
+**Static library** 
 ```
 mkdir build && cd build
 cmake ..
 cmake --build . --parallel
 ```
-And for the dynamic version of the library:
+
+**Dynamic library**
 ```
 mkdir build && cd build
-cmake .. -DBUILD_SHARED_LIBS=ON
+cmake .. -D BUILD_SHARED_LIBS=ON
 cmake --build . --parallel
+```
+## Installing
+
+To install specify optional prefix and build target install
+```
+cmake .. -D CMAKE_INSTALL_PREFIX=[path/to/install/dir]
+cmake --build . --parallel
+cmake --build . --parallel --target install
 ```
 
 ## Style check

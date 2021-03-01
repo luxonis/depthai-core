@@ -19,23 +19,24 @@ namespace dai {
  * Access to receive messages coming from XLink stream
  */
 class DataOutputQueue {
-    std::shared_ptr<LockingQueue<std::shared_ptr<ADatatype>>> pQueue;
-    LockingQueue<std::shared_ptr<ADatatype>>& queue;
+   public:
+    /// Alias for callback id
+    using CallbackId = int;
+
+   private:
+    LockingQueue<std::shared_ptr<ADatatype>> queue;
     std::thread readingThread;
-    std::shared_ptr<std::atomic<bool>> pRunning;
-    std::atomic<bool>& running;
-    std::shared_ptr<std::string> pExceptionMessage;
-    std::string& exceptionMessage;
-    std::string streamName;
-    std::shared_ptr<std::mutex> pCallbacksMtx;
-    std::mutex& callbacksMtx;
-    std::shared_ptr<std::unordered_map<int, std::function<void(std::string, std::shared_ptr<ADatatype>)>>> pCallbacks;
-    std::unordered_map<int, std::function<void(std::string, std::shared_ptr<ADatatype>)>>& callbacks;
-    int uniqueCallbackId{0};
+    std::atomic<bool> running{true};
+    std::string exceptionMessage{""};
+    const std::string name{""};
+    std::mutex callbacksMtx;
+    std::unordered_map<CallbackId, std::function<void(std::string, std::shared_ptr<ADatatype>)>> callbacks;
+    CallbackId uniqueCallbackId{0};
 
     // const std::chrono::milliseconds READ_TIMEOUT{500};
 
    public:
+    // DataOutputQueue constructor
     DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize = 16, bool blocking = true);
     ~DataOutputQueue();
 
@@ -80,7 +81,7 @@ class DataOutputQueue {
      * @param callback Callback function with queue name and message pointer
      * @return Callback id
      */
-    int addCallback(std::function<void(std::string, std::shared_ptr<ADatatype>)>);
+    CallbackId addCallback(std::function<void(std::string, std::shared_ptr<ADatatype>)>);
 
     /**
      * Adds a callback on message received
@@ -88,7 +89,7 @@ class DataOutputQueue {
      * @param callback Callback function with message pointer
      * @return Callback id
      */
-    int addCallback(std::function<void(std::shared_ptr<ADatatype>)>);
+    CallbackId addCallback(std::function<void(std::shared_ptr<ADatatype>)>);
 
     /**
      * Adds a callback on message received
@@ -96,7 +97,7 @@ class DataOutputQueue {
      * @param callback Callback function without any parameters
      * @return Callback id
      */
-    int addCallback(std::function<void()> callback);
+    CallbackId addCallback(std::function<void()> callback);
 
     /**
      * Removes a callback
@@ -104,7 +105,7 @@ class DataOutputQueue {
      * @param callbackId Id of callback to be removed
      * @return true if callback was removed, false otherwise
      */
-    bool removeCallback(int callbackId);
+    bool removeCallback(CallbackId callbackId);
 
     /**
      * Check whether front of the queue has message of type T
@@ -327,14 +328,11 @@ class DataOutputQueue {
  * Access to send messages through XLink stream
  */
 class DataInputQueue {
-    std::shared_ptr<LockingQueue<std::shared_ptr<RawBuffer>>> pQueue;
-    LockingQueue<std::shared_ptr<RawBuffer>>& queue;
+    LockingQueue<std::shared_ptr<RawBuffer>> queue;
     std::thread writingThread;
-    std::shared_ptr<std::atomic<bool>> pRunning;
-    std::atomic<bool>& running;
-    std::shared_ptr<std::string> pExceptionMessage;
-    std::string& exceptionMessage;
-    std::string streamName;
+    std::atomic<bool> running{true};
+    std::string exceptionMessage;
+    const std::string name;
     std::size_t maxDataSize;
 
    public:
@@ -400,14 +398,14 @@ class DataInputQueue {
     /**
      * Adds a message to the queue, which will be picked up and sent to the device.
      * Can either block if 'blocking' behavior is true or overwrite oldest
-     * @param val Message to add to the queue
+     * @param msg Message to add to the queue
      */
     void send(const std::shared_ptr<ADatatype>& msg);
 
     /**
      * Adds a message to the queue, which will be picked up and sent to the device.
      * Can either block if 'blocking' behavior is true or overwrite oldest
-     * @param val Message to add to the queue
+     * @param msg Message to add to the queue
      */
     void send(const ADatatype& msg);
 
@@ -415,27 +413,29 @@ class DataInputQueue {
      * Adds message to the queue, which will be picked up and sent to the device.
      * Can either block until timeout if 'blocking' behavior is true or overwrite oldest
      *
-     * @param msg Message to add to the queue
-     * @param timeout Maximum duration to block
+     * @param rawMsg Message to add to the queue
+     * @param timeout Maximum duration to block in milliseconds
      */
-    template <typename Rep, typename Period>
-    bool send(const std::shared_ptr<RawBuffer>& msg, std::chrono::duration<Rep, Period> timeout) {
-        if(!running) throw std::runtime_error(exceptionMessage.c_str());
-        return queue.tryWaitAndPush(msg, timeout);
-    }
+    bool send(const std::shared_ptr<RawBuffer>& rawMsg, std::chrono::milliseconds timeout);
 
     /**
      * Adds message to the queue, which will be picked up and sent to the device.
      * Can either block until timeout if 'blocking' behavior is true or overwrite oldest
      *
      * @param msg Message to add to the queue
-     * @param timeout Maximum duration to block
+     * @param timeout Maximum duration to block in milliseconds
+     */    
+    bool send(const std::shared_ptr<ADatatype>& msg, std::chrono::milliseconds timeout);
+
+    /**
+     * Adds message to the queue, which will be picked up and sent to the device.
+     * Can either block until timeout if 'blocking' behavior is true or overwrite oldest
+     *
+     * @param msg Message to add to the queue
+     * @param timeout Maximum duration to block in milliseconds
      */
-    template <typename Rep, typename Period>
-    bool send(const std::shared_ptr<ADatatype>& msg, std::chrono::duration<Rep, Period> timeout) {
-        if(!running) throw std::runtime_error(exceptionMessage.c_str());
-        return queue.tryWaitAndPush(msg->serialize(), timeout);
-    }
+    bool send(const ADatatype& msg, std::chrono::milliseconds timeout);
+
 };
 
 }  // namespace dai

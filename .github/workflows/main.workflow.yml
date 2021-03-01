@@ -1,0 +1,159 @@
+name: DepthAI Core CI/CD
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - develop
+      - gen2
+      - gen2_develop
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - develop
+      - gen2
+      - gen2_develop
+
+
+jobs:
+
+  style:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+    
+    - name: Install format dependencies
+      run: |
+        sudo apt-get install clang-format-10
+        sudo apt-get install libusb-1.0-0-dev
+
+    - name: configure
+      run: cmake . -Bbuild -DDEPTHAI_CLANG_FORMAT=ON -DCLANG_FORMAT_BIN=clang-format-10
+
+    - name: check style
+      run: ci/check_format.sh build
+
+
+  tidy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get install clang-tidy-10
+        sudo apt-get install libusb-1.0-0-dev
+
+    - name: configure
+      run: cmake . -Bbuild -DDEPTHAI_CLANG_TIDY=ON -DCLANG_TIDY_BIN=clang-tidy-10
+
+    - name: Run clang-tidy
+      run: cmake --build build --parallel
+
+
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+    
+    - name: Install dependencies
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew install libusb
+
+    - name: Install dependencies
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt-get install libusb-1.0-0-dev
+
+    - name: configure
+      run: cmake . -Bbuild
+
+    - name: build
+      run: cmake --build build --parallel
+
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [build, style]
+    runs-on: ubuntu-latest
+    
+    # Clone repository
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+    
+    # Get tag version
+    - name: Get latest release version number
+      id: tag
+      uses: battila7/get-version-action@v2
+
+    # Check if version matches (TODO)
+    #- name: Check if version matches
+    #   run: |  
+
+    - uses: actions/setup-python@v2
+      with:
+        python-version: '3.8'
+    - name: Install dependencies
+      run: python3.8 -m pip install git-archive-all
+
+    - name: Create release assets
+      run: |
+        git-archive-all depthai-core-${{ steps.tag.outputs.version }}.tar.gz
+        git-archive-all depthai-core-${{ steps.tag.outputs.version }}.zip
+
+    # Create GitHub release
+    - uses: actions/create-release@master
+      id: createRelease
+      name: Create ${{ steps.releaseNote.outputs.version }} depthai-core release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref }}
+        release_name: Release ${{ github.ref }}
+        body: |
+          ## Features
+
+          ## Bugs
+
+          ## Misc
+
+        draft: true
+
+    # Upload release assets
+    - name: Upload source package (zip)
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}.zip
+        asset_name: depthai-core-${{ steps.tag.outputs.version }}.zip
+        asset_content_type: application/octet-stream
+
+    - name: Upload source package (tar.gz)
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}.tar.gz
+        asset_name: depthai-core-${{ steps.tag.outputs.version }}.tar.gz
+        asset_content_type: application/octet-stream
