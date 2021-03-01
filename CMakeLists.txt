@@ -370,9 +370,12 @@ if(DEPTHAI_OPENCV_SUPPORT)
 
         # Install
         # Export targets to export group
+        include(GNUInstallDirs)
         install(
             TARGETS ${TARGET_OPENCV_NAME} EXPORT ${PROJECT_EXPORT_GROUP}
-            RUNTIME LIBRARY ARCHIVE 
+            RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" 
+            LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}" 
+            ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         )
 
     else()
@@ -432,7 +435,9 @@ if(DEPTHAI_INSTALL)
     install(
         TARGETS ${targets_to_install}
         EXPORT ${PROJECT_EXPORT_GROUP}
-        RUNTIME LIBRARY ARCHIVE
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" 
+        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}" 
+        ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     )
 
     # Install depthai public headers
