@@ -380,9 +380,22 @@ class Device {
      */
     CpuUsage getLeonMssCpuUsage();
 
+    /**
+     * Explicitly closes connection to device.
+     * @note This function does not need to be explicitly called
+     * as destructor closes the device automatically
+     */
+    void close();
+
+    /**
+     * Is the device already closed (or disconnected)
+     */
+    bool isClosed() const;
+
    private:
     // private static
     void init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
+    void checkClosed() const;
 
     std::shared_ptr<XLinkConnection> connection;
     std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> client;
@@ -420,6 +433,9 @@ class Device {
 
     // RPC stream
     std::unique_ptr<XLinkStream> rpcStream;
+
+    // closed
+    std::atomic<bool> closed{false};
 
     // pimpl
     class Impl;

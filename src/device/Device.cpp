@@ -264,12 +264,30 @@ Device::Device(const Pipeline& pipeline, bool usb2Mode) {
     init(pipeline, true, usb2Mode, "");
 }
 
-Device::~Device() {
-    // Remove callbacks from queues
+void Device::close() {
+    // Only allow to close once
+    if(closed.exchange(true)) return;
+
+    using namespace std::chrono;
+    auto t1 = steady_clock::now();
+    spdlog::debug("Device about to be closed...");
+
+    // Remove callbacks to this from queues
     for(const auto& kv : callbackIdMap) {
         outputQueueMap[kv.first]->removeCallback(kv.second);
     }
+    // Clear map
+    callbackIdMap.clear();
 
+    // Close connection first (so queues unblock)
+    connection->close();
+    connection = nullptr;
+
+    // Clear queues
+    outputQueueMap.clear();
+    inputQueueMap.clear();
+
+    // Stop watchdog
     watchdogRunning = false;
     timesyncRunning = false;
     loggingRunning = false;
@@ -280,6 +298,23 @@ Device::~Device() {
     if(timesyncThread.joinable()) timesyncThread.join();
     // And at the end stop logging thread
     if(loggingThread.joinable()) loggingThread.join();
+
+    // Close rpcStream
+    rpcStream = nullptr;
+
+    spdlog::debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
+}
+
+bool Device::isClosed() const {
+    return closed || !watchdogRunning;
+}
+
+void Device::checkClosed() const {
+    if(isClosed()) throw std::invalid_argument("Device already closed or disconnected");
+}
+
+Device::~Device() {
+    close();
 }
 
 void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
@@ -391,17 +426,20 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
             std::this_thread::sleep_for(XLINK_WATCHDOG_TIMEOUT / 2);
         }
 
-        // reset device
-        // wait till link falls down
-        try {
-            client->call("reset");
-        } catch(const std::runtime_error& err) {
-            // ignore
-            spdlog::debug("Watchdog thread exception caught: {}", err.what());
-        }
+        // Watchdog ended. Useful for checking disconnects
+        watchdogRunning = false;
 
-        // Sleep a bit, so device isn't available anymore
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        // // reset device
+        // // wait till link falls down
+        // try {
+        //     client->call("reset");
+        // } catch(const std::runtime_error& err) {
+        //     // ignore
+        //     spdlog::debug("Watchdog thread exception caught: {}", err.what());
+        // }
+
+        // // Sleep a bit, so device isn't available anymore
+        // std::this_thread::sleep_for(std::chrono::milliseconds(500));
     });
 
     // prepare timesync thread, which will keep device synchronized
@@ -494,67 +532,61 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
         // Sets system inforation logging rate. By default 1s
         setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
 
-    } catch(const std::exception& ex) {
-        // Close all threads in this case
-        watchdogRunning = false;
-        timesyncRunning = false;
-        loggingRunning = false;
-        // Stop watchdog first (this resets and waits for link to fall down)
-        if(watchdogThread.joinable()) watchdogThread.join();
-        // Then stop timesync
-        if(timesyncThread.joinable()) timesyncThread.join();
-        // And at the end stop logging thread
-        if(loggingThread.joinable()) loggingThread.join();
-        // Rethrow original exception
-        throw;
-    }
-
-    // Open queues upfront, let queues know about data sizes (input queues)
-    // Go through Pipeline and check for 'XLinkIn' and 'XLinkOut' nodes
-    // and create corresponding default queues for them
-    for(const auto& kv : pipeline.getNodeMap()) {
-        const auto& node = kv.second;
-        const auto& xlinkIn = std::dynamic_pointer_cast<const node::XLinkIn>(node);
-        if(xlinkIn == nullptr) {
-            continue;
+        // Open queues upfront, let queues know about data sizes (input queues)
+        // Go through Pipeline and check for 'XLinkIn' and 'XLinkOut' nodes
+        // and create corresponding default queues for them
+        for(const auto& kv : pipeline.getNodeMap()) {
+            const auto& node = kv.second;
+            const auto& xlinkIn = std::dynamic_pointer_cast<const node::XLinkIn>(node);
+            if(xlinkIn == nullptr) {
+                continue;
+            }
+            // Create DataInputQueue's
+            inputQueueMap[xlinkIn->getStreamName()] = std::make_shared<DataInputQueue>(connection, xlinkIn->getStreamName());
+            // set max data size, for more verbosity
+            inputQueueMap[xlinkIn->getStreamName()]->setMaxDataSize(xlinkIn->getMaxDataSize());
         }
-        // Create DataInputQueue's
-        inputQueueMap[xlinkIn->getStreamName()] = std::make_shared<DataInputQueue>(connection, xlinkIn->getStreamName());
-        // set max data size, for more verbosity
-        inputQueueMap[xlinkIn->getStreamName()]->setMaxDataSize(xlinkIn->getMaxDataSize());
-    }
-    for(const auto& kv : pipeline.getNodeMap()) {
-        const auto& node = kv.second;
-        const auto& xlinkOut = std::dynamic_pointer_cast<const node::XLinkOut>(node);
-        if(xlinkOut == nullptr) {
-            continue;
-        }
-
-        auto streamName = xlinkOut->getStreamName();
-        // Create DataOutputQueue's
-        outputQueueMap[streamName] = std::make_shared<DataOutputQueue>(connection, streamName);
-
-        // Add callback for events
-        callbackIdMap[streamName] = outputQueueMap[streamName]->addCallback([this](std::string queueName, std::shared_ptr<ADatatype>) {
-            // Lock first
-            std::unique_lock<std::mutex> lock(eventMtx);
-
-            // Check if size is equal or greater than EVENT_QUEUE_MAXIMUM_SIZE
-            if(eventQueue.size() >= EVENT_QUEUE_MAXIMUM_SIZE) {
-                auto numToRemove = eventQueue.size() - EVENT_QUEUE_MAXIMUM_SIZE + 1;
-                eventQueue.erase(eventQueue.begin(), eventQueue.begin() + numToRemove);
+        for(const auto& kv : pipeline.getNodeMap()) {
+            const auto& node = kv.second;
+            const auto& xlinkOut = std::dynamic_pointer_cast<const node::XLinkOut>(node);
+            if(xlinkOut == nullptr) {
+                continue;
             }
 
-            // Add to the end of event queue
-            eventQueue.push_back(queueName);
+            auto streamName = xlinkOut->getStreamName();
+            // Create DataOutputQueue's
+            outputQueueMap[streamName] = std::make_shared<DataOutputQueue>(connection, streamName);
 
-            // notify the rest
-            eventCv.notify_all();
-        });
+            // Add callback for events
+            callbackIdMap[streamName] = outputQueueMap[streamName]->addCallback([this](std::string queueName, std::shared_ptr<ADatatype>) {
+                // Lock first
+                std::unique_lock<std::mutex> lock(eventMtx);
+
+                // Check if size is equal or greater than EVENT_QUEUE_MAXIMUM_SIZE
+                if(eventQueue.size() >= EVENT_QUEUE_MAXIMUM_SIZE) {
+                    auto numToRemove = eventQueue.size() - EVENT_QUEUE_MAXIMUM_SIZE + 1;
+                    eventQueue.erase(eventQueue.begin(), eventQueue.begin() + numToRemove);
+                }
+
+                // Add to the end of event queue
+                eventQueue.push_back(queueName);
+
+                // notify the rest
+                eventCv.notify_all();
+            });
+        }
+
+    } catch(const std::exception& ex) {
+        // close device (cleanup)
+        close();
+        // Rethrow original exception
+        throw;
     }
 }
 
 std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name) {
+    checkClosed();
+
     // Throw if queue not created
     // all queues for xlink streams are created upfront
     if(outputQueueMap.count(name) == 0) {
@@ -565,6 +597,8 @@ std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name)
 }
 
 std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name, unsigned int maxSize, bool blocking) {
+    checkClosed();
+
     // Throw if queue not created
     // all queues for xlink streams are created upfront
     if(outputQueueMap.count(name) == 0) {
@@ -580,6 +614,8 @@ std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name,
 }
 
 std::vector<std::string> Device::getOutputQueueNames() const {
+    checkClosed();
+
     std::vector<std::string> names;
     names.reserve(outputQueueMap.size());
     for(const auto& kv : outputQueueMap) {
@@ -589,6 +625,8 @@ std::vector<std::string> Device::getOutputQueueNames() const {
 }
 
 std::shared_ptr<DataInputQueue> Device::getInputQueue(const std::string& name) {
+    checkClosed();
+
     // Throw if queue not created
     // all queues for xlink streams are created upfront
     if(inputQueueMap.count(name) == 0) {
@@ -599,6 +637,8 @@ std::shared_ptr<DataInputQueue> Device::getInputQueue(const std::string& name) {
 }
 
 std::shared_ptr<DataInputQueue> Device::getInputQueue(const std::string& name, unsigned int maxSize, bool blocking) {
+    checkClosed();
+
     // Throw if queue not created
     // all queues for xlink streams are created upfront
     if(inputQueueMap.count(name) == 0) {
@@ -614,6 +654,8 @@ std::shared_ptr<DataInputQueue> Device::getInputQueue(const std::string& name, u
 }
 
 std::vector<std::string> Device::getInputQueueNames() const {
+    checkClosed();
+
     std::vector<std::string> names;
     names.reserve(inputQueueMap.size());
     for(const auto& kv : inputQueueMap) {
@@ -633,6 +675,8 @@ std::vector<std::string> Device::getInputQueueNames() const {
 // }
 
 std::vector<std::string> Device::getQueueEvents(const std::vector<std::string>& queueNames, std::size_t maxNumEvents, std::chrono::microseconds timeout) {
+    checkClosed();
+
     // First check if specified queues names are actually opened
     auto availableQueueNames = getOutputQueueNames();
     for(const auto& outputQueue : queueNames) {
@@ -725,54 +769,80 @@ std::string Device::getQueueEvent(std::chrono::microseconds timeout) {
 
 // Convinience functions for querying current system information
 MemoryInfo Device::getDdrMemoryUsage() {
+    checkClosed();
+
     return client->call("getDdrUsage").as<MemoryInfo>();
 }
 
 MemoryInfo Device::getCmxMemoryUsage() {
+    checkClosed();
+
     return client->call("getCmxUsage").as<MemoryInfo>();
 }
 
 MemoryInfo Device::getLeonCssHeapUsage() {
+    checkClosed();
+
     return client->call("getLeonCssHeapUsage").as<MemoryInfo>();
 }
 
 MemoryInfo Device::getLeonMssHeapUsage() {
+    checkClosed();
+
     return client->call("getLeonMssHeapUsage").as<MemoryInfo>();
 }
 
 ChipTemperature Device::getChipTemperature() {
+    checkClosed();
+
     return client->call("getChipTemperature").as<ChipTemperature>();
 }
 
 CpuUsage Device::getLeonCssCpuUsage() {
+    checkClosed();
+
     return client->call("getLeonCssCpuUsage").as<CpuUsage>();
 }
 
 CpuUsage Device::getLeonMssCpuUsage() {
+    checkClosed();
+
     return client->call("getLeonMssCpuUsage").as<CpuUsage>();
 }
 
 bool Device::isPipelineRunning() {
+    checkClosed();
+
     return client->call("isPipelineRunning").as<bool>();
 }
 
 void Device::setLogLevel(LogLevel level) {
+    checkClosed();
+
     client->call("setLogLevel", level);
 }
 
 LogLevel Device::getLogLevel() {
+    checkClosed();
+
     return client->call("getLogLevel").as<LogLevel>();
 }
 
 void Device::setLogOutputLevel(LogLevel level) {
+    checkClosed();
+
     pimpl->setLogLevel(level);
 }
 
 LogLevel Device::getLogOutputLevel() {
+    checkClosed();
+
     return pimpl->getLogLevel();
 }
 
 int Device::addLogCallback(std::function<void(LogMessage)> callback) {
+    checkClosed();
+
     // Lock first
     std::unique_lock<std::mutex> l(logCallbackMapMtx);
 
@@ -787,6 +857,8 @@ int Device::addLogCallback(std::function<void(LogMessage)> callback) {
 }
 
 bool Device::removeLogCallback(int callbackId) {
+    checkClosed();
+
     // Lock first
     std::unique_lock<std::mutex> l(logCallbackMapMtx);
 
@@ -799,14 +871,20 @@ bool Device::removeLogCallback(int callbackId) {
 }
 
 void Device::setSystemInformationLoggingRate(float rateHz) {
+    checkClosed();
+
     client->call("setSystemInformationLoggingRate", rateHz);
 }
 
 float Device::getSystemInformationLoggingRate() {
+    checkClosed();
+
     return client->call("getSystemInformationLoggingrate").as<float>();
 }
 
 bool Device::startPipeline() {
+    checkClosed();
+
     // first check if pipeline is not already started
     if(isPipelineRunning()) return false;
 
@@ -864,228 +942,5 @@ bool Device::startPipeline() {
 
     return true;
 }
-
-// bool Device::startTestPipeline(int testId) {
-//     // first check if pipeline is not already started
-//     if(isPipelineRunning()) return false;
-//
-//     /*
-//
-//     // Create an AssetManager which the pipeline will use for assets
-//     AssetManager assetManager;
-//     pipeline.loadAssets(assetManager);
-//
-//     // Serialize the pipeline
-//     auto pipelineDescription = pipeline.serialize();
-//
-//     // Serialize the asset storage and assets
-//     auto assetStorage = assetManager.serialize();
-//     std::vector<std::uint8_t> assets;
-//     {
-//         nlohmann::json assetsJson;
-//         nlohmann::to_json(assetsJson, (Assets) assetManager);
-//         assets = nlohmann::json::to_msgpack(assetsJson);
-//     }
-//
-//
-//     */
-//
-//     using namespace nlohmann;
-//     nlohmann::json pipelineDescJson;
-//
-//     if(testId == 0) {
-//         pipelineDescJson = R"(
-//             {
-//                 "globalProperties": {
-//                     "leonOsFrequencyHz": 600000000,
-//                     "pipelineVersion": "1",
-//                     "pipelineName": "1",
-//                     "leonRtFrequencyHz": 600000000
-//                 },
-//                 "nodes": [
-//                     {
-//                         "id": 1,
-//                         "name": "MyProducer",
-//                         "properties": {
-//                             "message": "HeiHoi",
-//                             "processorPlacement": 0
-//                         }
-//                     },
-//                     {
-//                         "id": 2,
-//                         "name": "MyConsumer",
-//                         "properties": {
-//                             "processorPlacement": 1
-//                         }
-//                     },
-//                     {
-//                         "id": 3,
-//                         "name": "MyConsumer",
-//                         "properties": {
-//                             "processorPlacement": 0
-//                         }
-//                     },
-//                     {
-//                         "id": 4,
-//                         "name": "MyConsumer",
-//                         "properties": {
-//                             "processorPlacement": 1
-//                         }
-//                     }
-//                 ],
-//                 "connections": [
-//                     {
-//                         "node1Id": 1,
-//                         "node2Id": 2,
-//                         "node1Output": "out",
-//                         "node2Input": "in"
-//                     },
-//                     {
-//                         "node1Id": 1,
-//                         "node2Id": 3,
-//                         "node1Output": "out",
-//                         "node2Input": "in"
-//                     },
-//                     {
-//                         "node1Id": 1,
-//                         "node2Id": 4,
-//                         "node1Output": "out",
-//                         "node2Input": "in"
-//                     }
-//                 ]
-//             }
-//             )"_json;
-//     } else if(testId == 1) {
-//         pipelineDescJson = R"(
-//         {
-//             "globalProperties": {
-//                 "leonOsFrequencyHz": 600000000,
-//                 "pipelineVersion": "1",
-//                 "pipelineName": "1",
-//                 "leonRtFrequencyHz": 600000000
-//             },
-//             "nodes": [
-//                 {
-//                     "id": 1,
-//                     "name": "MyProducer",
-//                     "properties": {
-//                         "message": "HeiHoi",
-//                         "processorPlacement": 0
-//                     }
-//                 },
-//                 {
-//                     "id": 2,
-//                     "name": "MyConsumer",
-//                     "properties": {
-//                         "processorPlacement": 1
-//                     }
-//                 }
-//             ],
-//             "connections": [
-//                 {
-//                     "node1Id": 1,
-//                     "node2Id": 2,
-//                     "node1Output": "out",
-//                     "node2Input": "in"
-//                 }
-//             ]
-//         }
-//         )"_json;
-//
-//     } else if(testId == 2) {
-//         pipelineDescJson = R"({
-//             "connections": [
-//                 {
-//                     "node1Id": 0,
-//                     "node1Output": "out",
-//                     "node2Id": 1,
-//                     "node2Input": "in"
-//                 }
-//             ],
-//             "globalProperties": {
-//                 "leonOsFrequencyHz": 600000000.0,
-//                 "leonRtFrequencyHz": 600000000.0,
-//                 "pipelineName": null,
-//                 "pipelineVersion": null
-//             },
-//             "nodes": [
-//                 {
-//                     "id": 0,
-//                     "name": "XLinkIn",
-//                     "properties": {
-//                         "streamName": "nn_in"
-//                     }
-//                 },
-//                 {
-//                     "id": 1,
-//                     "name": "MyConsumer",
-//                     "properties": {
-//                         "processorPlacement": 1
-//                     }
-//                 },
-//                 {
-//                     "id": 2,
-//                     "name": "XLinkOut",
-//                     "properties": {
-//                         "maxFpsLimit": -1.0,
-//                         "streamName": "nn_out"
-//                     }
-//                 }
-//             ]
-//         })"_json;
-//     }
-//
-//     std::vector<std::uint8_t> assetStorage;
-//     Assets assets;
-//     PipelineSchema pipelineSchema = pipelineDescJson;
-//
-//     // Load pipelineDesc, assets, and asset storage
-//
-//     client->call("setPipelineSchema", pipelineSchema);
-//
-//     // Transfer storage if size > 0
-//     if(!assetStorage.empty()) {
-//         client->call("setAssets", assets);
-//
-//         // allocate, returns a pointer to memory on device side
-//         auto memHandle = client->call("memAlloc", static_cast<std::uint32_t>(assetStorage.size())).as<uint32_t>();
-//
-//         // Transfer the whole assetStorage in a separate thread
-//         const std::string streamAssetStorage = "__stream_asset_storage";
-//         std::thread t1([this, &streamAssetStorage, &assetStorage]() {
-//             connection->openStream(streamAssetStorage, XLINK_USB_BUFFER_MAX_SIZE);
-//             uint64_t offset = 0;
-//             do {
-//                 uint64_t toTransfer = std::min((uint64_t)XLINK_USB_BUFFER_MAX_SIZE, assetStorage.size() - offset);
-//                 connection->writeToStream(streamAssetStorage, assetStorage.data() + offset, toTransfer);
-//                 offset += toTransfer;
-//             } while(offset < assetStorage.size());
-//         });
-//
-//         // Open a channel to transfer AssetStorage
-//         client->call("readFromXLink", streamAssetStorage, memHandle, assetStorage.size());
-//         t1.join();
-//
-//         // After asset storage is transfers, set the asset storage
-//         client->call("setAssetStorage", memHandle, assetStorage.size());
-//     }
-//
-//     // call test
-//     // client->call("test");
-//
-//     // Build and start the pipeline
-//     bool success = false;
-//     std::string errorMsg;
-//     std::tie(success, errorMsg) = client->call("buildPipeline").as<std::tuple<bool, std::string>>();
-//     if(success) {
-//         client->call("startPipeline");
-//         return true;
-//     } else {
-//         throw std::runtime_error(errorMsg);
-//         return false;
-//     }
-//
-//     // client->call("startCamera");
-// }
 
 }  // namespace dai

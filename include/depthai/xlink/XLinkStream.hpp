@@ -31,6 +31,8 @@ class XLinkStream {
 
    public:
     XLinkStream(const XLinkConnection& conn, const std::string& name, std::size_t maxWriteSize);
+    XLinkStream(const XLinkStream&) = delete;
+    XLinkStream(XLinkStream&& stream);
     ~XLinkStream();
 
     // Blocking

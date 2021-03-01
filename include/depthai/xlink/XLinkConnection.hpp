@@ -49,6 +49,18 @@ class XLinkConnection {
 
     int getLinkId() const;
 
+    /**
+     * Explicitly closes xlink connection.
+     * @note This function does not need to be explicitly called
+     * as destructor closes the connection automatically
+     */
+    void close();
+
+    /**
+     * Is the connection already closed (or disconnected)
+     */
+    bool isClosed() const;
+
    private:
     friend class XLinkStream;
     // static
@@ -57,6 +69,7 @@ class XLinkConnection {
     static std::string convertErrorCodeToString(XLinkError_t errorCode);
 
     void initDevice(const DeviceInfo& deviceToInit, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
+    void checkClosed() const;
 
     bool bootDevice = true;
     bool bootWithPath = true;
@@ -66,6 +79,11 @@ class XLinkConnection {
     bool rebootOnDestruction{true};
 
     int deviceLinkId = -1;
+
+    DeviceInfo deviceInfo;
+
+    // closed
+    std::atomic<bool> closed{false};
 
     constexpr static std::chrono::milliseconds WAIT_FOR_BOOTUP_TIMEOUT{5000};
     constexpr static std::chrono::milliseconds WAIT_FOR_CONNECT_TIMEOUT{5000};

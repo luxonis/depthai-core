@@ -300,21 +300,13 @@ class DataInputQueue {
     void send(const std::shared_ptr<RawBuffer>& val);
     void send(const std::shared_ptr<ADatatype>& val);
     void send(const ADatatype& val);
+    bool send(const std::shared_ptr<RawBuffer>& val, std::chrono::milliseconds timeout);
+    bool send(const std::shared_ptr<ADatatype>& val, std::chrono::milliseconds timeout);
+    bool send(const ADatatype& val, std::chrono::milliseconds timeout);
 
     void sendSync(const std::shared_ptr<RawBuffer>& val);
     void sendSync(const std::shared_ptr<ADatatype>& val);
     void sendSync(const ADatatype& val);
-
-    template <typename Rep, typename Period>
-    bool send(const std::shared_ptr<RawBuffer>& val, std::chrono::duration<Rep, Period> timeout) {
-        if(!running) throw std::runtime_error(exceptionMessage.c_str());
-        return queue.tryWaitAndPush(val, timeout);
-    }
-    template <typename Rep, typename Period>
-    bool send(const std::shared_ptr<ADatatype>& val, std::chrono::duration<Rep, Period> timeout) {
-        if(!running) throw std::runtime_error(exceptionMessage.c_str());
-        return queue.tryWaitAndPush(val->serialize(), timeout);
-    }
 };
 
 }  // namespace dai

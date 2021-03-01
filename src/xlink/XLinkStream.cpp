@@ -24,20 +24,34 @@ XLinkStream::XLinkStream(const XLinkConnection& conn, const std::string& name, s
     for(int retryCount = 0; retryCount < STREAM_OPEN_RETRIES; retryCount++) {
         streamId = XLinkOpenStream(conn.getLinkId(), streamName.c_str(), maxWriteSize);
 
+        // Give some time before continuing
+        std::this_thread::sleep_for(WAIT_FOR_STREAM_RETRY);
+
         if(streamId != INVALID_STREAM_ID) {
             break;
         }
-
-        // Give some time before retrying
-        std::this_thread::sleep_for(WAIT_FOR_STREAM_RETRY);
     }
 
     if(streamId == INVALID_STREAM_ID) throw std::runtime_error("Couldn't open stream");
 }
 
+// Move constructor
+XLinkStream::XLinkStream(XLinkStream&& stream) : streamName(std::move(stream.streamName)) {
+    // Construct from 'stream' into current
+    // Just copy its streamId
+    streamId = stream.streamId;
+
+    // Set 'stream's streamId to INVALID_STREAM_ID to prevent closing
+    stream.streamId = INVALID_STREAM_ID;
+}
+
 XLinkStream::~XLinkStream() {
-    std::unique_lock<std::mutex> lock(xlinkStreamOperationMutex);
-    XLinkCloseStream(streamId);
+    // If streamId != invalid (eg. wasn't moved to another XLinkStream)
+    if(streamId != INVALID_STREAM_ID) {
+        std::unique_lock<std::mutex> lock(xlinkStreamOperationMutex);
+        XLinkCloseStream(streamId);
+        std::this_thread::sleep_for(WAIT_FOR_STREAM_RETRY);
+    }
 }
 
 ////////////////////

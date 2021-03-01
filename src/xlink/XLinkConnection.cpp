@@ -15,6 +15,8 @@ extern "C" {
 #include <XLink/XLinkLog.h>
 }
 
+#include <spdlog/spdlog.h>
+
 namespace dai {
 
 // DeviceInfo
@@ -145,10 +147,45 @@ XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, XLinkDeviceState_
     initDevice(deviceDesc, expectedState);
 }
 
-XLinkConnection::~XLinkConnection() {
-    if(deviceLinkId != -1) {
-        if(rebootOnDestruction) XLinkResetRemote(deviceLinkId);
+bool XLinkConnection::isClosed() const {
+    return closed;
+}
+
+void XLinkConnection::checkClosed() const {
+    if(isClosed()) throw std::invalid_argument("XLinkConnection already closed or disconnected");
+}
+
+void XLinkConnection::close() {
+    if(closed.exchange(true)) return;
+
+    if(deviceLinkId != -1 && rebootOnDestruction) {
+        auto tmp = deviceLinkId;
+        XLinkResetRemote(deviceLinkId);
+        deviceLinkId = -1;
+
+        using namespace std::chrono;
+        const auto BOOTUP_SEARCH = std::chrono::seconds(5);
+
+        // Wait till same device reappears (is rebooted).
+        // Only in case if device was booted to begin with
+        if(bootDevice) {
+            auto t1 = steady_clock::now();
+            bool found;
+            do {
+                DeviceInfo tmp;
+                for(const auto& state : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER}) {
+                    std::tie(found, tmp) = XLinkConnection::getDeviceByMxId(deviceInfo.getMxId(), state);
+                    if(found) break;
+                }
+            } while(!found && steady_clock::now() - t1 < BOOTUP_SEARCH);
+        }
+
+        spdlog::warn("XLinkResetRemote of linkId: ({})", tmp);
     }
+}
+
+XLinkConnection::~XLinkConnection() {
+    close();
 }
 
 void XLinkConnection::setRebootOnDestruction(bool reboot) {
@@ -241,6 +278,8 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
         if(rc != X_LINK_SUCCESS) throw std::runtime_error("Failed to connect to device, error message: " + convertErrorCodeToString(rc));
 
         deviceLinkId = connectionHandler.linkId;
+        deviceInfo.desc = deviceDesc;
+        deviceInfo.state = X_LINK_BOOTED;
     }
 }
 
