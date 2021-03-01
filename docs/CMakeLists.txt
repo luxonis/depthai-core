@@ -6,7 +6,7 @@ set(DEPTHAI_DOXYGEN_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/" CACHE STRING "Outp
 
 # Retrieves all public header files for specified target
 include(target-public-headers)
-get_target_public_headers(${TARGET_NAME} header_files)
+get_target_public_headers(${TARGET_CORE_NAME} header_files)
 
 # Creates a space separated list of files
 set(DOXYGEN_INPUT_FILES "")

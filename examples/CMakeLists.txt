@@ -27,7 +27,7 @@ target_link_libraries(utility FP16::fp16 ${OpenCV_LIBS})
 # Macro for adding new examples
 macro(dai_add_example example_name example_src)
     add_executable("${example_name}" "${example_src}")
-    target_link_libraries("${example_name}" PRIVATE utility depthai::core::opencv ${OpenCV_LIBS})
+    target_link_libraries("${example_name}" PRIVATE utility depthai::opencv ${OpenCV_LIBS})
 
     # parse the rest of the arguments
     set(arguments ${ARGV})
