@@ -70,7 +70,7 @@ find_package(Git)
 if(GIT_FOUND)
     execute_process(
         COMMAND ${GIT_EXECUTABLE} rev-parse --is-inside-work-tree
-        WORKING_DIRECTORY "${DEPTHAI_SHARED_FOLDER}"
+        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
         RESULT_VARIABLE DEPTHAI_DOWNLOADED_SOURCES
         OUTPUT_QUIET ERROR_QUIET
     )
