@@ -12,7 +12,7 @@ The code is the same as for Tiny-yolo-V3, the only difference is the blob file.
 The blob was compiled following this tutorial: https://github.com/TNTWEN/OpenVINO-YOLOV4
 */
 
-static std::string label_map[] = {
+static const auto labelMap = {
     "person",        "bicycle",      "car",           "motorbike",     "aeroplane",   "bus",         "train",       "truck",        "boat",
     "traffic light", "fire hydrant", "stop sign",     "parking meter", "bench",       "bird",        "cat",         "dog",          "horse",
     "sheep",         "cow",          "elephant",      "bear",          "zebra",       "giraffe",     "backpack",    "umbrella",     "handbag",
@@ -117,8 +117,8 @@ int main(int argc, char** argv) {
 
             int labelIndex = d.label;
             std::string labelStr = to_string(labelIndex);
-            if(labelIndex < sizeof(label_map) / sizeof(label_map[0])) {
-                labelStr = label_map[labelIndex];
+            if(labelIndex < labelMap.size()) {
+                labelStr = labelMap[labelIndex];
             }
             cv::putText(frame, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             
