@@ -45,6 +45,7 @@ if(POLICY CMP0028)
 endif()
 
 # Set to export compile commands for tools like clang-tidy and format
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Add module path
