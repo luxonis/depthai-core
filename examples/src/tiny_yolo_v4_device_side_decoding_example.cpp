@@ -7,6 +7,11 @@
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
+/*
+The code is the same as for Tiny-yolo-V3, the only difference is the blob file.
+The blob was compiled following this tutorial: https://github.com/TNTWEN/OpenVINO-YOLOV4
+*/
+
 static const auto labelMap = {
     "person",        "bicycle",      "car",           "motorbike",     "aeroplane",   "bus",         "train",       "truck",        "boat",
     "traffic light", "fire hydrant", "stop sign",     "parking meter", "bench",       "bird",        "cat",         "dog",          "horse",
