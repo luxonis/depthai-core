@@ -64,7 +64,12 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
 
     // testing MobileNet DetectionNetwork
     detectionNetwork->setConfidenceThreshold(0.5f);
+    detectionNetwork->setBoundingBoxScaleFactor(0.5);
+    detectionNetwork->setDepthLowerThresholdLimit(100);
+    detectionNetwork->setDepthUpperThresholdLimit(5000);
+
     detectionNetwork->setBlobPath(nnPath);
+    detectionNetwork->setNumInferenceThreads(1);
 
     // Link plugins CAM -> NN -> XLINK
     colorCam->preview.link(detectionNetwork->input);
@@ -125,7 +130,7 @@ int main(int argc, char** argv) {
         cv::Mat depthFramePretty = cv::Mat(depth->getHeight(), depth->getWidth(), CV_8UC1);
         cv::normalize(depthFrame, depthFramePretty, 0, 255, cv::NORM_MINMAX, CV_8UC1);
         cv::equalizeHist(depthFramePretty, depthFramePretty);
-        cv::applyColorMap(depthFramePretty, depthFramePretty, cv::COLORMAP_OCEAN);
+        cv::applyColorMap(depthFramePretty, depthFramePretty, cv::COLORMAP_HOT);
 
         if(!dets.empty()) {
             auto passthroughRoi = depthRoiMap->get<dai::DepthCalculatorConfig>();

@@ -102,6 +102,10 @@ dai_add_example(device_queue_event src/device_queue_event_example.cpp)
 dai_add_example(mobilenet_device_side_decoding src/mobilenet_device_side_decoding_example.cpp)
 target_compile_definitions(mobilenet_device_side_decoding PRIVATE BLOB_PATH="${mobilenet_blob}")
 
+# Device side decoding example for mobilenet-ssd with 3d coordinates
+dai_add_example(mobilenet_3d src/mobilenet_3d_example.cpp)
+target_compile_definitions(mobilenet_3d PRIVATE BLOB_PATH="${mobilenet_blob}")
+
 # Device side decoding example for tiny-yolo-v3
 dai_add_example(tiny_yolo_v3_device_side_decoding src/tiny_yolo_v3_device_side_decoding_example.cpp)
 target_compile_definitions(tiny_yolo_v3_device_side_decoding PRIVATE BLOB_PATH="${tiny_yolo_v3_blob}")

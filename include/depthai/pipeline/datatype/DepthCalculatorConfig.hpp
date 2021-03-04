@@ -20,6 +20,8 @@ class DepthCalculatorConfig : public Buffer {
 
     void setROIs(std::vector<DepthCalculatorConfigData> rois);
     void addROI(DepthCalculatorConfigData& roi);
+
+    std::vector<DepthCalculatorConfigData> getConfigData() const;
 };
 
 }  // namespace dai

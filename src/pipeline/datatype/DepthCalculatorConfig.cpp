@@ -19,4 +19,8 @@ void DepthCalculatorConfig::addROI(DepthCalculatorConfigData& roi) {
     cfg.config.push_back(roi);
 }
 
+std::vector<DepthCalculatorConfigData> DepthCalculatorConfig::getConfigData() const {
+    return cfg.config;
+}
+
 }  // namespace dai

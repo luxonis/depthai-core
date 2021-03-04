@@ -114,6 +114,7 @@ add_library(${TARGET_NAME}
     src/pipeline/node/MyProducer.cpp
     src/pipeline/node/VideoEncoder.cpp
     src/pipeline/node/DetectionNetwork.cpp
+    src/pipeline/node/DetectionNetworkDepth.cpp
     src/pipeline/node/SystemLogger.cpp
     src/pipeline/node/DepthCalculator.cpp
     src/pipeline/datatype/Buffer.cpp

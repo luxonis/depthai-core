@@ -19,12 +19,12 @@ int main() {
     auto xoutDepth = p.create<dai::node::XLinkOut>();
     auto depthCalculator = p.create<dai::node::DepthCalculator>();
     auto xoutDepthCalc = p.create<dai::node::XLinkOut>();
-    auto xinDepthCalcConfig = p.create<dai::node::XLinkIn>();
+    // auto xinDepthCalcConfig = p.create<dai::node::XLinkIn>();
 
     // XLinkOut
     xoutDepth->setStreamName("depth");
     xoutDepthCalc->setStreamName("depthCalcAvg");
-    xinDepthCalcConfig->setStreamName("depthCalcConfig");
+    // xinDepthCalcConfig->setStreamName("depthCalcConfig");
 
     // MonoCamera
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
@@ -62,7 +62,7 @@ int main() {
     config.roi = dai::Rect(0.4, 0.4, 0.45, 0.45);
     depthCalculator->initialConfig.addROI(config);
     depthCalculator->out.link(xoutDepthCalc->input);
-    xinDepthCalcConfig->out.link(depthCalculator->inputConfig);
+    // xinDepthCalcConfig->out.link(depthCalculator->inputConfig);
 
     // CONNECT TO DEVICE
     dai::Device d(p);
@@ -70,22 +70,22 @@ int main() {
 
     auto depthQueue = d.getOutputQueue("depth", 8, false);
     auto depthCalcQueue = d.getOutputQueue("depthCalcAvg", 8, false);
-    auto depthCalcConfigInQueue = d.getInputQueue("depthCalcConfig");
+    // auto depthCalcConfigInQueue = d.getInputQueue("depthCalcConfig");
 
     cv::Mat frame;
     auto color = cv::Scalar(255, 255, 255);
     int iteration = 0;
     while(1) {
 
-        dai::DepthCalculatorConfigData config;
-        config.lower_threshold = 100;
-        config.upper_threshold = 5000;
-        float pt = (iteration % 10)/10.f;
-        config.roi = dai::Rect(pt, pt, 1, 1);
-        iteration++;
-        dai::DepthCalculatorConfig cfg;
-        cfg.addROI(config);
-        depthCalcConfigInQueue->send(cfg);
+        // dai::DepthCalculatorConfigData config;
+        // config.lower_threshold = 100;
+        // config.upper_threshold = 5000;
+        // float pt = (iteration % 10)/10.f;
+        // config.roi = dai::Rect(pt, pt, 1, 1);
+        // iteration++;
+        // dai::DepthCalculatorConfig cfg;
+        // cfg.addROI(config);
+        // depthCalcConfigInQueue->send(cfg);
 
         auto depth = depthQueue->get<dai::ImgFrame>();
         frame = cv::Mat(depth->getHeight(), depth->getWidth(), CV_16UC1, depth->getData().data());
