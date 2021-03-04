@@ -8,17 +8,20 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 namespace dai {
 
-// protected inheritance, so serialize isn't visible to users
+/**
+ * ImgDetections message. Carries normalized detection results
+ */
 class ImgDetections : public Buffer {
     std::shared_ptr<RawBuffer> serialize() const override;
     RawImgDetections& dets;
 
    public:
+    /// Construct ImgDetections message
     ImgDetections();
     explicit ImgDetections(std::shared_ptr<RawImgDetections> ptr);
     virtual ~ImgDetections() = default;
 
-    // reference
+    /// Detections
     std::vector<ImgDetection>& detections;
 };
 
