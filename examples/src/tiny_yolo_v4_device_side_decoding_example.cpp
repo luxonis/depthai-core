@@ -12,7 +12,7 @@ The code is the same as for Tiny-yolo-V3, the only difference is the blob file.
 The blob was compiled following this tutorial: https://github.com/TNTWEN/OpenVINO-YOLOV4
 */
 
-static const auto labelMap = {
+static const std::vector<std::string> labelMap = {
     "person",        "bicycle",      "car",           "motorbike",     "aeroplane",   "bus",         "train",       "truck",        "boat",
     "traffic light", "fire hydrant", "stop sign",     "parking meter", "bench",       "bird",        "cat",         "dog",          "horse",
     "sheep",         "cow",          "elephant",      "bear",          "zebra",       "giraffe",     "backpack",    "umbrella",     "handbag",
@@ -48,7 +48,7 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     detectionNetwork->setNumClasses(80);
     detectionNetwork->setCoordinateSize(4);
     detectionNetwork->setAnchors({10, 14, 23, 27, 37, 58, 81, 82, 135, 169, 344, 319});
-    detectionNetwork->setAnchorMasks({{"side13", {3,4,5}}, {"side26", {1,2,3}});
+    detectionNetwork->setAnchorMasks({{"side13", {3,4,5}}, {"side26", {1,2,3}}});
     detectionNetwork->setIouThreshold(0.5f);
     detectionNetwork->setBlobPath(nnPath);
 
@@ -96,9 +96,9 @@ int main(int argc, char** argv) {
 
         counter++;
         auto currentTime = std::chrono::steady_clock::now();
-        auto elapsed = duration_cast<duration<float>>(current_time - start_time);
+        auto elapsed = duration_cast<duration<float>>(currentTime - startTime);
         if(elapsed > seconds(1)) {
-            fps = counter / elapsed;
+            fps = (float)counter / elapsed.count();
             counter = 0;
             startTime = currentTime;
         }
