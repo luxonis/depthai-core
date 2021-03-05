@@ -31,7 +31,6 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     colorCam->setInterleaved(false);
     colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
-    colorCam->setFps(30);
 
     auto monoLeft = p.create<dai::node::MonoCamera>();
     auto monoRight = p.create<dai::node::MonoCamera>();
@@ -40,8 +39,7 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
-    monoLeft->setFps(30);
-    monoRight->setFps(30);
+
     bool outputDepth = true;
     bool outputRectified = false;
     bool lrcheck = false;
@@ -69,7 +67,6 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     detectionNetwork->setDepthUpperThresholdLimit(5000);
 
     detectionNetwork->setBlobPath(nnPath);
-    detectionNetwork->setNumInferenceThreads(1);
 
     // Link plugins CAM -> NN -> XLINK
     colorCam->preview.link(detectionNetwork->input);
@@ -127,23 +124,23 @@ int main(int argc, char** argv) {
 
         cv::Mat depthFrame = cv::Mat(depth->getHeight(), depth->getWidth(), CV_16UC1, depth->getData().data());
 
-        cv::Mat depthFramePretty = cv::Mat(depth->getHeight(), depth->getWidth(), CV_8UC1);
-        cv::normalize(depthFrame, depthFramePretty, 0, 255, cv::NORM_MINMAX, CV_8UC1);
-        cv::equalizeHist(depthFramePretty, depthFramePretty);
-        cv::applyColorMap(depthFramePretty, depthFramePretty, cv::COLORMAP_HOT);
+        cv::Mat depthFrameColor = cv::Mat(depth->getHeight(), depth->getWidth(), CV_8UC1);
+        cv::normalize(depthFrame, depthFrameColor, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+        cv::equalizeHist(depthFrameColor, depthFrameColor);
+        cv::applyColorMap(depthFrameColor, depthFrameColor, cv::COLORMAP_HOT);
 
         if(!dets.empty()) {
             auto passthroughRoi = depthRoiMap->get<dai::DepthCalculatorConfig>();
-            auto roiData = passthroughRoi->getConfigData();
+            auto roiDatas = passthroughRoi->getConfigData();
 
-            for(auto roiData : roiData) {
+            for(auto roiData : roiDatas) {
                 auto roi = roiData.roi;
                 auto xmin = (int)(roi.xmin * depth->getWidth());
                 auto ymin = (int)(roi.ymin * depth->getHeight());
                 auto xmax = (int)(roi.xmax * depth->getWidth());
                 auto ymax = (int)(roi.ymax * depth->getHeight());
 
-                cv::rectangle(depthFramePretty, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
+                cv::rectangle(depthFrameColor, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
                 // std::stringstream s;
                 // s << std::fixed << std::setprecision(2) << depthData.depth_avg;
                 // cv::putText(frame, s.str(), cv::Point(xmin + 10, ymin + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
@@ -195,7 +192,7 @@ int main(int argc, char** argv) {
         snprintf(fps_str, sizeof fps_str, "NN fps: %.2f", fps);
         cv::putText(frame, fps_str, cv::Point(2, imgFrame->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
 
-        cv::imshow("depth", depthFramePretty);
+        cv::imshow("depth", depthFrameColor);
         cv::imshow("preview", frame);
         int key = cv::waitKey(1);
         if(key == 'q') {
