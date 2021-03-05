@@ -17,7 +17,7 @@ std::vector<Node::Output> DepthCalculator::getOutputs() {
 }
 
 std::vector<Node::Input> DepthCalculator::getInputs() {
-    return {input, inputConfig, depthInput};
+    return {inputConfig, inputDepth};
 }
 
 nlohmann::json DepthCalculator::getProperties() {

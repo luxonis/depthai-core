@@ -30,7 +30,7 @@ class DetectionNetworkDepth : public DetectionNetwork {
      * Default queue is blocking with size 5
      */
     using DetectionNetwork::input;
-    Input depthInput{*this, "inDepth", Input::Type::SReceiver, true, 5, {{DatatypeEnum::Buffer, true}}};
+    Input inputDepth{*this, "inputDepth", Input::Type::SReceiver, true, 5, {{DatatypeEnum::Buffer, true}}};
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgDetections, false}}};
     Output passthroughRoi{*this, "passthroughRoi", Output::Type::MSender, {{DatatypeEnum::DepthCalculatorConfig, false}}};
 

@@ -30,14 +30,12 @@ class DepthCalculator : public Node {
 
     void setWaitForConfigInput(bool wait);
 
-    Input input{*this, "in", Input::Type::SReceiver, true, 8, {{DatatypeEnum::Buffer, true}}};
-
     /**
      * Input DepthCalculator message with ability to modify parameters in runtime
      * Default queue is blocking with size 8
      */
     Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 8, {{DatatypeEnum::DepthCalculatorConfig, false}}};
-    Input depthInput{*this, "inDepth", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputDepth{*this, "inputDepth", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, false}}};
 
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::DepthCalculatorData, false}}};
 };

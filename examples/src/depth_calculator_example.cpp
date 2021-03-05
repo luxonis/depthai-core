@@ -56,7 +56,7 @@ int main() {
     monoRight->out.link(stereo->right);
 
     stereo->depth.link(xoutDepth->input);
-    stereo->depth.link(depthCalculator->depthInput);
+    stereo->depth.link(depthCalculator->inputDepth);
 
     float bbXmin = 0.4f;
     float bbXmax = 0.6f;

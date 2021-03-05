@@ -76,7 +76,7 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     detectionNetwork->out.link(nnOut->input);
     detectionNetwork->passthroughRoi.link(depthRoiMap->input);
 
-    stereo->depth.link(detectionNetwork->depthInput);
+    stereo->depth.link(detectionNetwork->inputDepth);
     stereo->depth.link(xoutDepth->input);
 
     return p;

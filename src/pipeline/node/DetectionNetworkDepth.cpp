@@ -18,7 +18,7 @@ std::string DetectionNetworkDepth::getName() const {
 }
 
 std::vector<Node::Input> DetectionNetworkDepth::getInputs() {
-    return {input, depthInput};
+    return {input, inputDepth};
 }
 
 std::vector<Node::Output> DetectionNetworkDepth::getOutputs() {
