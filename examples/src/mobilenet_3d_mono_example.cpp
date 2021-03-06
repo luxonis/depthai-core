@@ -15,9 +15,9 @@ static bool syncNN = true;
 dai::Pipeline createNNPipeline(std::string nnPath) {
     dai::Pipeline p;
 
-    auto colorCam = p.create<dai::node::ColorCamera>();
     auto xlinkOut = p.create<dai::node::XLinkOut>();
     auto detectionNetwork = p.create<dai::node::MobileNetDetectionNetworkDepth>();
+    auto imageManip = p.create<dai::node::ImageManip>();
     auto nnOut = p.create<dai::node::XLinkOut>();
     auto depthRoiMap = p.create<dai::node::XLinkOut>();
     auto xoutDepth = p.create<dai::node::XLinkOut>();
@@ -27,10 +27,10 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     depthRoiMap->setStreamName("depthRoiMap");
     xoutDepth->setStreamName("depth");
 
-    colorCam->setPreviewSize(300, 300);
-    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    colorCam->setInterleaved(false);
-    colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
+
+    imageManip->initialConfig.setResize(300, 300);
+    //The NN model expects BGR input. By default ImageManip output type would be same as input (gray in this case)
+    imageManip->initialConfig.setFrameType(dai::RawImgFrame::Type::BGR888p);
 
     auto monoLeft = p.create<dai::node::MonoCamera>();
     auto monoRight = p.create<dai::node::MonoCamera>();
@@ -39,6 +39,8 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+
+
 
     bool outputDepth = true;
     bool outputRectified = false;
@@ -60,20 +62,22 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     monoLeft->out.link(stereo->left);
     monoRight->out.link(stereo->right);
 
+    monoRight->out.link(imageManip->inputImage);
+
     // testing MobileNet DetectionNetwork
     detectionNetwork->setConfidenceThreshold(0.5f);
-    detectionNetwork->setBoundingBoxScaleFactor(0.5);
+    detectionNetwork->setBoundingBoxScaleFactor(0.7);
     detectionNetwork->setDepthLowerThresholdLimit(100);
     detectionNetwork->setDepthUpperThresholdLimit(5000);
 
     detectionNetwork->setBlobPath(nnPath);
 
     // Link plugins CAM -> NN -> XLINK
-    colorCam->preview.link(detectionNetwork->input);
+    imageManip->out.link(detectionNetwork->input);
     if(syncNN)
         detectionNetwork->passthrough.link(xlinkOut->input);
     else
-        colorCam->preview.link(xlinkOut->input);
+        imageManip->out.link(xlinkOut->input);
 
     detectionNetwork->out.link(nnOut->input);
     detectionNetwork->passthroughRoi.link(depthRoiMap->input);
@@ -142,9 +146,6 @@ int main(int argc, char** argv) {
                 auto ymax = (int)(roi.ymax * depth->getHeight());
 
                 cv::rectangle(depthFrameColor, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
-                // std::stringstream s;
-                // s << std::fixed << std::setprecision(2) << depthData.depth_avg;
-                // cv::putText(frame, s.str(), cv::Point(xmin + 10, ymin + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             }
         }
         counter++;

@@ -123,9 +123,13 @@ dai_add_example(opencv_support src/opencv_support_example.cpp)
 dai_add_example(mobilenet_device_side_decoding src/mobilenet_device_side_decoding_example.cpp)
 target_compile_definitions(mobilenet_device_side_decoding PRIVATE BLOB_PATH="${mobilenet_blob}")
 
-# Device side decoding example for mobilenet-ssd with 3d coordinates
+# Device side decoding example for mobilenet-ssd with 3d coordinates on RGB camera
 dai_add_example(mobilenet_3d src/mobilenet_3d_example.cpp)
 target_compile_definitions(mobilenet_3d PRIVATE BLOB_PATH="${mobilenet_blob}")
+
+# Device side decoding example for mobilenet-ssd with 3d coordinates on right camera
+dai_add_example(mobilenet_3d_mono src/mobilenet_3d_mono_example.cpp)
+target_compile_definitions(mobilenet_3d_mono PRIVATE BLOB_PATH="${mobilenet_blob}")
 
 # Device side decoding example for tiny-yolo-v3
 dai_add_example(tiny_yolo_v3_device_side_decoding src/tiny_yolo_v3_device_side_decoding_example.cpp)
