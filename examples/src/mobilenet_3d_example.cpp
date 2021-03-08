@@ -17,7 +17,7 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
 
     auto colorCam = p.create<dai::node::ColorCamera>();
     auto xlinkOut = p.create<dai::node::XLinkOut>();
-    auto detectionNetwork = p.create<dai::node::MobileNetDetectionNetworkDepth>();
+    auto detectionNetwork = p.create<dai::node::MobileNetSpatialDetectionNetwork>();
     auto nnOut = p.create<dai::node::XLinkOut>();
     auto depthRoiMap = p.create<dai::node::XLinkOut>();
     auto xoutDepth = p.create<dai::node::XLinkOut>();
