@@ -25,7 +25,7 @@ std::vector<Node::Output> DetectionNetwork::getOutputs() {
     return {out};
 }
 
-dai::NeuralNetworkProperties& DetectionNetwork::getPropertiesRef() {
+dai::DetectionNetworkProperties& DetectionNetwork::getPropertiesRef() {
     return properties;
 }
 
@@ -36,41 +36,41 @@ nlohmann::json DetectionNetwork::getProperties() {
 }
 
 void DetectionNetwork::setConfidenceThreshold(float thresh) {
-    properties.confidenceThreshold = thresh;
+    getPropertiesRef().confidenceThreshold = thresh;
 }
 
 //--------------------------------------------------------------------
 // MobileNet
 //--------------------------------------------------------------------
 MobileNetDetectionNetwork::MobileNetDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : DetectionNetwork(par, nodeId) {
-    properties.nnFamily = DetectionNetworkType::MOBILENET;
+    getPropertiesRef().nnFamily = DetectionNetworkType::MOBILENET;
 }
 
 //--------------------------------------------------------------------
 // YOLO
 //--------------------------------------------------------------------
 YoloDetectionNetwork::YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : DetectionNetwork(par, nodeId) {
-    properties.nnFamily = DetectionNetworkType::YOLO;
+    getPropertiesRef().nnFamily = DetectionNetworkType::YOLO;
 }
 
 void YoloDetectionNetwork::setNumClasses(const int numClasses) {
-    properties.classes = numClasses;
+    getPropertiesRef().classes = numClasses;
 }
 
 void YoloDetectionNetwork::setCoordinateSize(const int coordinates) {
-    properties.coordinates = coordinates;
+    getPropertiesRef().coordinates = coordinates;
 }
 
 void YoloDetectionNetwork::setAnchors(std::vector<float> anchors) {
-    properties.anchors = anchors;
+    getPropertiesRef().anchors = anchors;
 }
 
 void YoloDetectionNetwork::setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks) {
-    properties.anchorMasks = anchorMasks;
+    getPropertiesRef().anchorMasks = anchorMasks;
 }
 
 void YoloDetectionNetwork::setIouThreshold(float thresh) {
-    properties.iouThreshold = thresh;
+    getPropertiesRef().iouThreshold = thresh;
 }
 
 }  // namespace node

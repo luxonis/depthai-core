@@ -18,11 +18,11 @@ class SpatialDetectionNetwork : public DetectionNetwork {
     std::vector<Input> getInputs() override;
     std::vector<Output> getOutputs() override;
     nlohmann::json getProperties() override;
-    dai::NeuralNetworkProperties& getPropertiesRef() override;
 
    protected:
     SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     dai::SpatialDetectionNetworkProperties properties;
+    dai::SpatialDetectionNetworkProperties& getPropertiesRef() override;
 
    public:
     /**
@@ -56,8 +56,6 @@ class SpatialDetectionNetwork : public DetectionNetwork {
      */
     using DetectionNetwork::passthrough;
 
-    void setConfidenceThreshold(float thresh);
-
     /**
      * Specifies scale factor for detected bounding boxes.
      * @param scaleFactor Scale factor must be in the interval (0,1].
@@ -85,11 +83,6 @@ class MobileNetSpatialDetectionNetwork : public SpatialDetectionNetwork {
 class YoloSpatialDetectionNetwork : public SpatialDetectionNetwork {
    public:
     YoloSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    void setNumClasses(const int numClasses);
-    void setCoordinateSize(const int coordinates);
-    void setAnchors(std::vector<float> anchors);
-    void setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks);
-    void setIouThreshold(float thresh);
 };
 
 }  // namespace node

@@ -17,7 +17,6 @@ namespace node {
  */
 class NeuralNetwork : public Node {
     dai::NeuralNetworkProperties properties;
-    virtual dai::NeuralNetworkProperties& getPropertiesRef();
 
     std::string getName() const override;
     std::vector<Output> getOutputs() override;
@@ -35,6 +34,7 @@ class NeuralNetwork : public Node {
     std::string blobPath;
     BlobAssetInfo loadBlob(const std::string& path);
     OpenVINO::Version networkOpenvinoVersion;
+    virtual dai::NeuralNetworkProperties& getPropertiesRef();
 
    public:
     NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);

@@ -22,11 +22,12 @@ class DetectionNetwork : public NeuralNetwork {
     std::vector<Input> getInputs() override;
     std::vector<Output> getOutputs() override;
     nlohmann::json getProperties() override;
-    dai::NeuralNetworkProperties& getPropertiesRef() override;
+    
 
    protected:
     DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     dai::DetectionNetworkProperties properties;
+    dai::DetectionNetworkProperties& getPropertiesRef() override;
 
    public:
     /**
