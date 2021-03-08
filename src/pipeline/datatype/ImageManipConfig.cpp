@@ -87,7 +87,7 @@ void ImageManipConfig::setRotationDegrees(float deg) {
 }
 
 void ImageManipConfig::setRotationRadians(float rad) {
-    static constexpr float rad2degFactor = 180 / M_PI;
+    static constexpr float rad2degFactor = static_cast<float>(180 / M_PI);
     setRotationDegrees(rad * rad2degFactor);
 }
 

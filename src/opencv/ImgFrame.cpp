@@ -57,14 +57,14 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
 
         case dai::RawImgFrame::Type::BITSTREAM:
         default:
-            size = cv::Size(getData().size(), 1);
+            size = cv::Size(static_cast<int>(getData().size()), 1);
             type = CV_8UC1;
             break;
     }
 
     // Check if enough data
     long requiredSize = CV_ELEM_SIZE(type) * size.area();
-    if((long) img.data.size() < requiredSize) {
+    if((long)img.data.size() < requiredSize) {
         throw std::runtime_error("ImgFrame doesn't have enough data to encode specified frame. Maybe metadataOnly transfer was made?");
     }
     if(getWidth() <= 0 || getHeight() <= 0) {

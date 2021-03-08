@@ -37,7 +37,7 @@ CallbackHandler::CallbackHandler(std::shared_ptr<XLinkConnection> conn,
                 stream.write(serialized);
             }
 
-        } catch(const std::exception& ex) {
+        } catch(const std::exception&) {
             // TODO(themarpe) - throw an exception
             assert(0 && "TODO");
         }

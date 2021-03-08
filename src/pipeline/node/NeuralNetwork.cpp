@@ -66,7 +66,7 @@ NeuralNetwork::BlobAssetInfo NeuralNetwork::loadBlob(const std::string& path) {
     // Set properties URI to asset:id/blob
     BlobAssetInfo blobInfo;
     blobInfo.uri = std::string("asset:") + assetKey;
-    blobInfo.size = blobAsset.data.size();
+    blobInfo.size = static_cast<uint32_t>(blobAsset.data.size());
 
     return blobInfo;
 }
