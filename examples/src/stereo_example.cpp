@@ -8,6 +8,14 @@
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
+void daiCallback(std::string name, std::shared_ptr<dai::ADatatype> data){
+  std::cout << "In callback " << name << std::endl;
+  auto depth = std::dynamic_pointer_cast<dai::ImgFrame>(data);
+cv::imshow("depth", cv::Mat(depth->getHeight(), depth->getWidth(),
+                        CV_16UC1, depth->getData().data()));
+      
+}
+
 
 int main(){
     using namespace std;
@@ -45,11 +53,11 @@ int main(){
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
     //monoRight->setFps(5.0);
 
-    bool outputDepth = false;
+    bool outputDepth = true;
     bool outputRectified = true;
-    bool lrcheck  = true;
+    bool lrcheck  = false;
     bool extended = false;
-    bool subpixel = true;
+    bool subpixel = false;
 
     int maxDisp = 96;
     if (extended) maxDisp *= 2;
@@ -99,6 +107,7 @@ int main(){
     auto depthQueue = withDepth ? d.getOutputQueue("depth", 8, false) : nullptr;
     auto rectifLeftQueue = withDepth ? d.getOutputQueue("rectified_left", 8, false) : nullptr;
     auto rectifRightQueue = withDepth ? d.getOutputQueue("rectified_right", 8, false) : nullptr;
+    depthQueue->addCallback(&daiCallback);
 
     while (1) {
         auto t1 = std::chrono::steady_clock::now();
@@ -122,12 +131,7 @@ int main(){
             cv::applyColorMap(disp, disp_color, cv::COLORMAP_JET);
             cv::imshow("disparity_color", disp_color);
 
-            if (outputDepth) {
-                auto depth = depthQueue->get<dai::ImgFrame>();
-                cv::imshow("depth", cv::Mat(depth->getHeight(), depth->getWidth(),
-                        CV_16UC1, depth->getData().data()));
-            }
-
+    
             if (outputRectified) {
                 auto rectifL = rectifLeftQueue->get<dai::ImgFrame>();
                 cv::imshow("rectified_left", cv::Mat(rectifL->getHeight(), rectifL->getWidth(),

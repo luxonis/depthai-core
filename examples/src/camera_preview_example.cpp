@@ -25,6 +25,23 @@ dai::Pipeline createCameraPipeline(){
     return p;
 }
 
+cv::Mat frame;
+void daiCallback(std::string name, std::shared_ptr<dai::ADatatype> data){
+  // std::cout << "In callback " << name << std::endl;
+  auto imgFrame = std::dynamic_pointer_cast<dai::ImgFrame>(data);
+    if(imgFrame){
+        printf("Frame - w: %d, h: %zu\n", imgFrame->getWidth(), imgFrame->getData().size());
+        frame = cv::Mat(imgFrame->getHeight(), imgFrame->getWidth(), CV_8UC3, imgFrame->getData().data());
+        cv::imshow("preview", frame);
+        int key = cv::waitKey(1);
+        if (key == 'q'){
+            return;
+        } 
+    } else {
+        std::cout << "Not ImgFrame" << std::endl;
+    }
+      
+}
 
 int main(){
     using namespace std;
@@ -33,23 +50,28 @@ int main(){
     dai::Device d(p);
     d.startPipeline();
 
-    cv::Mat frame;
+    
     auto preview = d.getOutputQueue("preview");
 
-    while(1){
-        auto imgFrame = preview->get<dai::ImgFrame>();
-        if(imgFrame){
-            printf("Frame - w: %d, h: %d\n", imgFrame->getWidth(), imgFrame->getHeight());
-            frame = cv::Mat(imgFrame->getHeight(), imgFrame->getWidth(), CV_8UC3, imgFrame->getData().data());
-            cv::imshow("preview", frame);
-            int key = cv::waitKey(1);
-            if (key == 'q'){
-                return 0;
-            } 
-        } else {
-            std::cout << "Not ImgFrame" << std::endl;
-        }
-    }
+    preview->addCallback(&daiCallback);
+
+    while (1);
+
+    // while(1){
+    //     // auto imgFrame = preview->get<dai::ImgFrame>();
+    //     auto imgFrame = preview->tryGet<dai::ImgFrame>();
+    //     if(imgFrame){
+    //         printf("Frame - w: %d, h: %d\n", imgFrame->getWidth(), imgFrame->getHeight());
+    //         frame = cv::Mat(imgFrame->getHeight(), imgFrame->getWidth(), CV_8UC3, imgFrame->getData().data());
+    //         cv::imshow("preview", frame);
+    //         int key = cv::waitKey(1);
+    //         if (key == 'q'){
+    //             return 0;
+    //         } 
+    //     } else {
+    //         std::cout << "Not ImgFrame" << std::endl;
+    //     }
+    // }
 
     return 0;
 }
