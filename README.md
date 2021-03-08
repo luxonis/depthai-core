@@ -66,6 +66,16 @@ cmake --build . --parallel
 cmake --build . --parallel --target install
 ```
 
+## Running tests
+
+To run the tests build the library with the following options
+```
+mkdir build_tests && cd build_tests
+cmake .. -D DEPTHAI_TEST_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_BUILD_EXAMPLES=ON
+cmake --build . --parallel
+ctest
+```
+
 ## Style check
 
 The library uses clang format to enforce a certain style. 
