@@ -65,8 +65,8 @@ int main() {
 
     depthCalculator->setWaitForConfigInput(false);
     dai::DepthCalculatorConfigData config;
-    config.lower_threshold = 100;
-    config.upper_threshold = 10000;
+    config.depthThresholds.lowerThreshold = 100;
+    config.depthThresholds.upperThreshold = 10000;
     config.roi = dai::Rect(bbXmin, bbYmin, bbXmax, bbYmax);
     depthCalculator->initialConfig.addROI(config);
     depthCalculator->out.link(xoutDepthData->input);
@@ -100,16 +100,16 @@ int main() {
 
             cv::rectangle(depthFrameColor, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
             std::stringstream s;
-            s << "Avg: " << (int)depthData.depth_avg << " mm";
+            s << "Avg: " << (int)depthData.depthAverage << " mm";
             cv::putText(depthFrameColor, s.str(), cv::Point(xmin + 10, ymin + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             std::stringstream depthX;
-            depthX << "X: " << (int)depthData.depth_x << " mm";
+            depthX << "X: " << (int)depthData.depthCoordinates.x << " mm";
             cv::putText(depthFrameColor, depthX.str(), cv::Point(xmin + 10, ymin + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             std::stringstream depthY;
-            depthY << "Y: " << (int)depthData.depth_y << " mm";
+            depthY << "Y: " << (int)depthData.depthCoordinates.y << " mm";
             cv::putText(depthFrameColor, depthY.str(), cv::Point(xmin + 10, ymin + 50), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             std::stringstream depthZ;
-            depthZ << "Z: " << (int)depthData.depth_z << " mm";
+            depthZ << "Z: " << (int)depthData.depthCoordinates.z << " mm";
             cv::putText(depthFrameColor, depthZ.str(), cv::Point(xmin + 10, ymin + 65), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
         }
 

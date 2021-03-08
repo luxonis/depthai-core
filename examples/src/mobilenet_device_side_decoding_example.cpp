@@ -7,7 +7,7 @@
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-static std::string label_map[] = {"background",  "aeroplane", "bicycle", "bird",      "boat",   "bottle",      "bus",   "car",  "cat",   "chair",    "cow",
+static std::vector<std::string> labelMap = {"background",  "aeroplane", "bicycle", "bird",      "boat",   "bottle",      "bus",   "car",  "cat",   "chair",    "cow",
                                   "diningtable", "dog",       "horse",   "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"};
 
 static bool syncNN = true;
@@ -84,6 +84,7 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
 
 int main(int argc, char** argv) {
     using namespace std;
+    using namespace std::chrono;
     std::string nnPath(BLOB_PATH);
 
     // If path to blob specified, use that
@@ -108,7 +109,7 @@ int main(int argc, char** argv) {
     auto depthRoiMap = d.getOutputQueue("depthRoiMap", 4, false);
     auto depthQueue = d.getOutputQueue("depth", 4, false);
 
-    auto start_time = std::chrono::steady_clock::now();
+    auto startTime = std::chrono::steady_clock::now();
     int counter = 0;
     float fps = 0;
     auto color = cv::Scalar(255, 255, 255);
@@ -117,6 +118,15 @@ int main(int argc, char** argv) {
         auto imgFrame = preview->get<dai::ImgFrame>();
         auto det = detections->get<dai::ImgDetections>();
         auto depth = depthQueue->get<dai::ImgFrame>();
+
+        counter++;
+        auto currentTime = std::chrono::steady_clock::now();
+        auto elapsed = duration_cast<duration<float>>(currentTime - startTime);
+        if(elapsed > seconds(1)) {
+            fps = (float)counter / elapsed.count();
+            counter = 0;
+            startTime = currentTime;
+        }
 
         auto dets = det->detections;
 
@@ -140,18 +150,11 @@ int main(int argc, char** argv) {
 
                 cv::rectangle(depthFrameColor, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
                 // std::stringstream s;
-                // s << std::fixed << std::setprecision(2) << depthData.depth_avg;
+                // s << std::fixed << std::setprecision(2) << depthData.depthAverage;
                 // cv::putText(frame, s.str(), cv::Point(xmin + 10, ymin + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             }
         }
-        counter++;
-        auto current_time = std::chrono::steady_clock::now();
-        float elapsed_s = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - start_time).count() / 1000.;
-        if(elapsed_s > 1) {
-            fps = counter / elapsed_s;
-            counter = 0;
-            start_time = current_time;
-        }
+
 
         if(imgFrame) {
             frame = toMat(imgFrame->getData(), imgFrame->getWidth(), imgFrame->getHeight(), 3, 1);
@@ -163,32 +166,33 @@ int main(int argc, char** argv) {
             int x2 = d.xmax * frame.cols;
             int y2 = d.ymax * frame.rows;
 
-            int label_index = d.label;
-            std::string label_str = to_string(label_index);
-            if(label_index < sizeof(label_map) / sizeof(label_map[0])) {
-                label_str = label_map[label_index];
+            int labelIndex = d.label;
+            std::string labelStr = to_string(labelIndex);
+            if(labelIndex < labelMap.size()) {
+                labelStr = labelMap[labelIndex];
             }
-            cv::putText(frame, label_str, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-            char conf_str[10];
-            snprintf(conf_str, sizeof conf_str, "%.2f", d.confidence * 100);
-            cv::putText(frame, conf_str, cv::Point(x1 + 10, y1 + 40), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(frame, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            
+            std::stringstream confStr;
+            confStr << std::fixed << std::setprecision(2) << d.confidence*100;
+            cv::putText(frame, confStr.str(), cv::Point(x1 + 10, y1 + 40), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
 
-            std::stringstream depth_x;
-            depth_x << std::fixed << std::setprecision(2) << d.xdepth;
-            cv::putText(frame, depth_x.str(), cv::Point(x1 + 10, y1 + 60), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-            std::stringstream depth_y;
-            depth_y << std::fixed << std::setprecision(2) << d.ydepth;
-            cv::putText(frame, depth_y.str(), cv::Point(x1 + 10, y1 + 80), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-            std::stringstream depth_z;
-            depth_z << std::fixed << std::setprecision(2) << d.zdepth;
-            cv::putText(frame, depth_z.str(), cv::Point(x1 + 10, y1 + 100), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            std::stringstream depthX;
+            depthX << std::fixed << std::setprecision(2) << d.xdepth;
+            cv::putText(frame, depthX.str(), cv::Point(x1 + 10, y1 + 60), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            std::stringstream depthY;
+            depthY << std::fixed << std::setprecision(2) << d.ydepth;
+            cv::putText(frame, depthY.str(), cv::Point(x1 + 10, y1 + 80), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            std::stringstream depthZ;
+            depthZ << std::fixed << std::setprecision(2) << d.zdepth;
+            cv::putText(frame, depthZ.str(), cv::Point(x1 + 10, y1 + 100), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
 
             cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
         }
 
-        char fps_str[15];
-        snprintf(fps_str, sizeof fps_str, "NN fps: %.2f", fps);
-        cv::putText(frame, fps_str, cv::Point(2, imgFrame->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
+        std::stringstream fpsStr;
+        fpsStr << std::fixed << std::setprecision(2) << fps;
+        cv::putText(frame, fpsStr.str(), cv::Point(2, imgFrame->getHeight()-4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
 
         cv::imshow("depth", depthFrameColor);
         cv::imshow("preview", frame);

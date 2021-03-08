@@ -63,8 +63,8 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     // testing MobileNet DetectionNetwork
     detectionNetwork->setConfidenceThreshold(0.5f);
     detectionNetwork->setBoundingBoxScaleFactor(0.5);
-    detectionNetwork->setDepthLowerThresholdLimit(100);
-    detectionNetwork->setDepthUpperThresholdLimit(5000);
+    detectionNetwork->setDepthLowerThreshold(100);
+    detectionNetwork->setDepthUpperThreshold(5000);
 
     detectionNetwork->setBlobPath(nnPath);
 
@@ -143,7 +143,7 @@ int main(int argc, char** argv) {
 
                 cv::rectangle(depthFrameColor, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
                 // std::stringstream s;
-                // s << std::fixed << std::setprecision(2) << depthData.depth_avg;
+                // s << std::fixed << std::setprecision(2) << depthData.depthAverage;
                 // cv::putText(frame, s.str(), cv::Point(xmin + 10, ymin + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             }
         }

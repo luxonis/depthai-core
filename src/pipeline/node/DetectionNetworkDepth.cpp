@@ -35,20 +35,20 @@ nlohmann::json DetectionNetworkDepth::getProperties() {
     return j;
 }
 
-void DetectionNetworkDepth::setConfidenceThreshold(float thresh) {
-    properties.confidenceThreshold = thresh;
+void DetectionNetworkDepth::setConfidenceThreshold(float threshold) {
+    properties.confidenceThreshold = threshold;
 }
 
 void DetectionNetworkDepth::setBoundingBoxScaleFactor(float factor) {
     properties.detectedBBScaleFactor = factor;
 }
 
-void DetectionNetworkDepth::setDepthLowerThresholdLimit(uint32_t lower_threshold) {
-    properties.lower_threshold = lower_threshold;
+void DetectionNetworkDepth::setDepthLowerThreshold(uint32_t lowerThreshold) {
+    properties.depthThresholds.lowerThreshold = lowerThreshold;
 }
 
-void DetectionNetworkDepth::setDepthUpperThresholdLimit(uint32_t upper_threshold) {
-    properties.upper_threshold = upper_threshold;
+void DetectionNetworkDepth::setDepthUpperThreshold(uint32_t upperThreshold) {
+    properties.depthThresholds.upperThreshold = upperThreshold;
 }
 
 //--------------------------------------------------------------------

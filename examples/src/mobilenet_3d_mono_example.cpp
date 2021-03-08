@@ -67,8 +67,8 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     // testing MobileNet DetectionNetwork
     detectionNetwork->setConfidenceThreshold(0.5f);
     detectionNetwork->setBoundingBoxScaleFactor(0.7);
-    detectionNetwork->setDepthLowerThresholdLimit(100);
-    detectionNetwork->setDepthUpperThresholdLimit(5000);
+    detectionNetwork->setDepthLowerThreshold(100);
+    detectionNetwork->setDepthUpperThreshold(5000);
 
     detectionNetwork->setBlobPath(nnPath);
 

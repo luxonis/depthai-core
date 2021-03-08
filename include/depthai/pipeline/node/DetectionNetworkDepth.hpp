@@ -38,8 +38,8 @@ class DetectionNetworkDepth : public DetectionNetwork {
 
     void setConfidenceThreshold(float thresh);
     void setBoundingBoxScaleFactor(float factor);
-    void setDepthLowerThresholdLimit(uint32_t lower_threshold);
-    void setDepthUpperThresholdLimit(uint32_t upper_threshold);
+    void setDepthLowerThreshold(uint32_t lowerThreshold);
+    void setDepthUpperThreshold(uint32_t upperThreshold);
 };
 
 class MobileNetDetectionNetworkDepth : public DetectionNetworkDepth {
