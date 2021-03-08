@@ -50,7 +50,8 @@ void SpatialDetectionNetwork::setDepthUpperThreshold(uint32_t upperThreshold) {
 //--------------------------------------------------------------------
 // MobileNet
 //--------------------------------------------------------------------
-MobileNetSpatialDetectionNetwork::MobileNetSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : SpatialDetectionNetwork(par, nodeId) {
+MobileNetSpatialDetectionNetwork::MobileNetSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
+    : SpatialDetectionNetwork(par, nodeId) {
     getPropertiesRef().nnFamily = DetectionNetworkType::MOBILENET;
 }
 
@@ -60,7 +61,6 @@ MobileNetSpatialDetectionNetwork::MobileNetSpatialDetectionNetwork(const std::sh
 YoloSpatialDetectionNetwork::YoloSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : SpatialDetectionNetwork(par, nodeId) {
     getPropertiesRef().nnFamily = DetectionNetworkType::YOLO;
 }
-
 
 }  // namespace node
 }  // namespace dai

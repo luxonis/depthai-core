@@ -22,7 +22,6 @@ class DetectionNetwork : public NeuralNetwork {
     std::vector<Input> getInputs() override;
     std::vector<Output> getOutputs() override;
     nlohmann::json getProperties() override;
-    
 
    protected:
     DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);

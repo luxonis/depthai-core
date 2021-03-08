@@ -20,6 +20,7 @@
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
+#include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "depthai/pipeline/datatype/SystemInformation.hpp"
 
 // shared
@@ -32,6 +33,7 @@
 #include "depthai-shared/datatype/RawImgDetections.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
 #include "depthai-shared/datatype/RawNNData.hpp"
+#include "depthai-shared/datatype/RawSpatialImgDetections.hpp"
 #include "depthai-shared/datatype/RawSystemInformation.hpp"
 
 // StreamPacket structure ->  || imgframepixels... , serialized_object, object_type, serialized_object_size ||
@@ -97,6 +99,10 @@ std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
             return parseDatatype<RawImgDetections>(jser, data);
             break;
 
+        case DatatypeEnum::SpatialImgDetections:
+            return parseDatatype<RawSpatialImgDetections>(jser, data);
+            break;
+
         case DatatypeEnum::SystemInformation:
             return parseDatatype<RawSystemInformation>(jser, data);
             break;
@@ -154,6 +160,10 @@ std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
 
         case DatatypeEnum::ImgDetections:
             return std::make_shared<ImgDetections>(parseDatatype<RawImgDetections>(jser, data));
+            break;
+
+        case DatatypeEnum::SpatialImgDetections:
+            return std::make_shared<SpatialImgDetections>(parseDatatype<RawSpatialImgDetections>(jser, data));
             break;
 
         case DatatypeEnum::SystemInformation:

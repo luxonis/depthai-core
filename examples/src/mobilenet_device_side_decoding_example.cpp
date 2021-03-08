@@ -116,7 +116,7 @@ int main(int argc, char** argv) {
 
     while(1) {
         auto imgFrame = preview->get<dai::ImgFrame>();
-        auto det = detections->get<dai::ImgDetections>();
+        auto det = detections->get<dai::SpatialImgDetections>();
         auto depth = depthQueue->get<dai::ImgFrame>();
 
         counter++;
@@ -178,13 +178,13 @@ int main(int argc, char** argv) {
             cv::putText(frame, confStr.str(), cv::Point(x1 + 10, y1 + 40), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
 
             std::stringstream depthX;
-            depthX << std::fixed << std::setprecision(2) << d.xdepth;
+            depthX << std::fixed << std::setprecision(2) << d.spatialCoordinates.x;
             cv::putText(frame, depthX.str(), cv::Point(x1 + 10, y1 + 60), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             std::stringstream depthY;
-            depthY << std::fixed << std::setprecision(2) << d.ydepth;
+            depthY << std::fixed << std::setprecision(2) << d.spatialCoordinates.y;
             cv::putText(frame, depthY.str(), cv::Point(x1 + 10, y1 + 80), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             std::stringstream depthZ;
-            depthZ << std::fixed << std::setprecision(2) << d.zdepth;
+            depthZ << std::fixed << std::setprecision(2) << d.spatialCoordinates.z;
             cv::putText(frame, depthZ.str(), cv::Point(x1 + 10, y1 + 100), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
 
             cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);

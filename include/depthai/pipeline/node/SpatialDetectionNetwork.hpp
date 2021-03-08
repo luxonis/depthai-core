@@ -40,7 +40,7 @@ class SpatialDetectionNetwork : public DetectionNetwork {
     /**
      * Outputs ImgDetections message that carries parsed detection results.
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgDetections, false}}};
+    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::SpatialImgDetections, false}}};
 
     /**
      * Passthrough message of depth calculator config for detected bounbing boxes
