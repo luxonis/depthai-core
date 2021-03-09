@@ -87,6 +87,20 @@ class StereoDepth : public Node {
     void setEmptyCalibration();
 
     /**
+     * Override the baseline (left-to-right camera distance) used for depth calculation.
+     * Could be useful in conjunction with 'setEmptyCalibration()'
+     * @param baseline Baseline in centimeters. Default: 0 (don't override)
+     */
+    void setBaselineOverrideCm(float baseline);
+
+    /**
+     * Override the camera horizontal FOV (field of view) used for depth calculation.
+     * Could be useful in conjunction with 'setEmptyCalibration()'
+     * @param fov Horizontal FOV in degrees. Default: 0 (don't override)
+     */
+    void setFovOverrideDegrees(float fov);
+
+    /**
      * Specify input resolution size
      *
      * Optional if MonoCamera exists, otherwise necessary
@@ -138,15 +152,17 @@ class StereoDepth : public Node {
     void setRectifyMirrorFrame(bool enable);
 
     /**
-     * Enable outputting rectified frames. Optimizes computation on device side when disabled
+     * Enable outputting rectified frames. Optimizes computation on device side when disabled.
+     * DEPRECATED. The outputs are auto-enabled if used
      */
-    void setOutputRectified(bool enable);
+    [[deprecated("Function call should be removed")]] void setOutputRectified(bool enable);
 
     /**
      * Enable outputting 'depth' stream (converted from disparity).
-     * In certain configurations, this will disable 'disparity' stream
+     * In certain configurations, this will disable 'disparity' stream.
+     * DEPRECATED. The output is auto-enabled if used
      */
-    void setOutputDepth(bool enable);
+    [[deprecated("Function call should be removed")]] void setOutputDepth(bool enable);
 };
 
 }  // namespace node

@@ -3,6 +3,8 @@
 // standard
 #include <fstream>
 
+#include "spdlog/spdlog.h"
+
 namespace dai {
 namespace node {
 
@@ -59,6 +61,12 @@ void StereoDepth::setEmptyCalibration(void) {
     properties.calibration = empty;
 }
 
+void StereoDepth::setBaselineOverrideCm(float baseline) {
+    properties.baselineOverrideCm = baseline;
+}
+void StereoDepth::setFovOverrideDegrees(float fov) {
+    properties.fovOverrideDegrees = fov;
+}
 void StereoDepth::setInputResolution(int width, int height) {
     properties.width = width;
     properties.height = height;
@@ -85,10 +93,12 @@ void StereoDepth::setRectifyMirrorFrame(bool enable) {
     properties.rectifyMirrorFrame = enable;
 }
 void StereoDepth::setOutputRectified(bool enable) {
-    properties.enableOutputRectified = enable;
+    (void)enable;
+    spdlog::warn("{} is deprecated. The output is auto-enabled if used", __func__);
 }
 void StereoDepth::setOutputDepth(bool enable) {
-    properties.enableOutputDepth = enable;
+    (void)enable;
+    spdlog::warn("{} is deprecated. The output is auto-enabled if used", __func__);
 }
 
 }  // namespace node
