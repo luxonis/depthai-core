@@ -25,6 +25,8 @@ class ColorCamera : public Node {
 
     std::shared_ptr<RawCameraControl> rawControl;
 
+    int getScaledSize(int input, int num, int denom) const;
+
    public:
     /**
      * Constructs ColorCamera node.
@@ -130,8 +132,10 @@ class ColorCamera : public Node {
     /// Get sensor resolution
     Properties::SensorResolution getResolution() const;
 
-    // set 'isp' output scaling
+    /// Set 'isp' output scaling, keeping the aspect ratio
     void setIspScale(int numerator, int denominator);
+
+    /// Set 'isp' output scaling, per direction (horizontal and vertical)
     void setIspScaleFull(int horizNum, int horizDenom, int vertNum, int vertDenom);
 
     /**
@@ -173,6 +177,13 @@ class ColorCamera : public Node {
     int getResolutionWidth() const;
     /// Get sensor resolution height
     int getResolutionHeight() const;
+
+    /// Get 'isp' output resolution as size, after scaling
+    std::tuple<int, int> getIspSize() const;
+    /// Get 'isp' output width
+    int getIspWidth() const;
+    /// Get 'isp' output height
+    int getIspHeight() const;
 
     /**
      * Specify sensor center crop.
@@ -224,8 +235,6 @@ class ColorCamera : public Node {
      * @returns Preview keep aspect ratio option
      */
     bool getPreviewKeepAspectRatio();
-
-    void setEnablePreviewStillVideoStreams(bool enable);
 };
 
 }  // namespace node
