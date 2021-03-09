@@ -148,7 +148,6 @@ void ColorCamera::setIspScaleFull(int horizNum, int horizDenom, int vertNum, int
     properties.ispScale.vertDenominator = vertDenom;
 }
 
-
 void ColorCamera::setResolution(ColorCameraProperties::SensorResolution resolution) {
     properties.resolution = resolution;
 }
@@ -274,7 +273,7 @@ int ColorCamera::getIspWidth() const {
     int inW = getResolutionWidth();
     int num = properties.ispScale.horizNumerator;
     int den = properties.ispScale.horizDenominator;
-    if (num > 0 && den > 0) {
+    if(num > 0 && den > 0) {
         return getScaledSize(inW, num, den);
     }
     return inW;
@@ -284,7 +283,7 @@ int ColorCamera::getIspHeight() const {
     int inH = getResolutionHeight();
     int num = properties.ispScale.vertNumerator;
     int den = properties.ispScale.vertDenominator;
-    if (num > 0 && den > 0) {
+    if(num > 0 && den > 0) {
         return getScaledSize(inH, num, den);
     }
     return inH;
