@@ -18,16 +18,16 @@ int main() {
     auto monoLeft = p.create<dai::node::MonoCamera>();
     auto monoRight = p.create<dai::node::MonoCamera>();
     auto stereo = p.create<dai::node::StereoDepth>();
-    auto depthCalculator = p.create<dai::node::DepthCalculator>();
+    auto spatialDataCalculator = p.create<dai::node::SpatialLocationCalculator>();
 
     auto xoutDepth = p.create<dai::node::XLinkOut>();
-    auto xoutDepthData = p.create<dai::node::XLinkOut>();
-    auto xinDepthCalcConfig = p.create<dai::node::XLinkIn>();
+    auto xoutSpatialData = p.create<dai::node::XLinkOut>();
+    auto xinSpatialCalcConfig = p.create<dai::node::XLinkIn>();
 
     // XLinkOut
     xoutDepth->setStreamName("depth");
-    xoutDepthData->setStreamName("depthCalcData");
-    xinDepthCalcConfig->setStreamName("depthCalcConfig");
+    xoutSpatialData->setStreamName("spatialData");
+    xinSpatialCalcConfig->setStreamName("spatialCalcConfig");
 
     // MonoCamera
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
@@ -38,7 +38,6 @@ int main() {
     bool outputDepth = true;
     bool outputRectified = false;
     bool lrcheck = false;
-    bool extended = false;
     bool subpixel = false;
 
     // StereoDepth
@@ -48,7 +47,6 @@ int main() {
 
     // stereo->setMedianFilter(dai::StereoDepthProperties::MedianFilter::MEDIAN_OFF);
     stereo->setLeftRightCheck(lrcheck);
-    stereo->setExtendedDisparity(extended);
     stereo->setSubpixel(subpixel);
 
     // Link plugins CAM -> STEREO -> XLINK
@@ -56,32 +54,34 @@ int main() {
     monoRight->out.link(stereo->right);
 
     stereo->depth.link(xoutDepth->input);
-    stereo->depth.link(depthCalculator->inputDepth);
+    stereo->depth.link(spatialDataCalculator->inputDepth);
 
     float bbXmin = 0.4f;
     float bbXmax = 0.6f;
     float bbYmin = 0.4f;
     float bbYmax = 0.6f;
 
-    depthCalculator->setWaitForConfigInput(false);
-    dai::DepthCalculatorConfigData config;
+    spatialDataCalculator->setWaitForConfigInput(false);
+    dai::SpatialLocationCalculatorConfigData config;
     config.depthThresholds.lowerThreshold = 100;
     config.depthThresholds.upperThreshold = 10000;
     config.roi = dai::Rect(bbXmin, bbYmin, bbXmax, bbYmax);
-    depthCalculator->initialConfig.addROI(config);
-    depthCalculator->out.link(xoutDepthData->input);
-    xinDepthCalcConfig->out.link(depthCalculator->inputConfig);
+    spatialDataCalculator->initialConfig.addROI(config);
+    spatialDataCalculator->out.link(xoutSpatialData->input);
+    xinSpatialCalcConfig->out.link(spatialDataCalculator->inputConfig);
 
     // CONNECT TO DEVICE
     dai::Device d(p);
     d.startPipeline();
 
     auto depthQueue = d.getOutputQueue("depth", 8, false);
-    auto depthCalcQueue = d.getOutputQueue("depthCalcData", 8, false);
-    auto depthCalcConfigInQueue = d.getInputQueue("depthCalcConfig");
+    auto spatialCalcQueue = d.getOutputQueue("spatialData", 8, false);
+    auto spatialCalcConfigInQueue = d.getInputQueue("spatialCalcConfig");
 
     cv::Mat depthFrame;
     auto color = cv::Scalar(255, 255, 255);
+    std::cout << "Use WASD keys to move ROI!" << std::endl;
+
     while(1) {
         auto depth = depthQueue->get<dai::ImgFrame>();
         depthFrame = cv::Mat(depth->getHeight(), depth->getWidth(), CV_16UC1, depth->getData().data());
@@ -90,8 +90,8 @@ int main() {
         cv::equalizeHist(depthFrameColor, depthFrameColor);
         cv::applyColorMap(depthFrameColor, depthFrameColor, cv::COLORMAP_HOT);
 
-        auto depthCalcData = depthCalcQueue->get<dai::DepthCalculatorData>()->getDepthData();
-        for(auto depthData : depthCalcData) {
+        auto spatialData = spatialCalcQueue->get<dai::SpatialLocationCalculatorData>()->getDepthData();
+        for(auto depthData : spatialData) {
             auto roi = depthData.config.roi;
             auto xmin = (int)(roi.xmin * depth->getWidth());
             auto ymin = (int)(roi.ymin * depth->getHeight());
@@ -154,9 +154,9 @@ int main() {
         }
         if(newConfig) {
             config.roi = dai::Rect(bbXmin, bbYmin, bbXmax, bbYmax);
-            dai::DepthCalculatorConfig cfg;
+            dai::SpatialLocationCalculatorConfig cfg;
             cfg.addROI(config);
-            depthCalcConfigInQueue->send(cfg);
+            spatialCalcConfigInQueue->send(cfg);
         }
     }
 }

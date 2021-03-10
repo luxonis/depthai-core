@@ -47,7 +47,7 @@ class SpatialDetectionNetwork : public DetectionNetwork {
      *
      * Suitable for when displaying remapped bounding boxes on depth frame
      */
-    Output passthroughRoi{*this, "passthroughRoi", Output::Type::MSender, {{DatatypeEnum::DepthCalculatorConfig, false}}};
+    Output passthroughRoi{*this, "passthroughRoi", Output::Type::MSender, {{DatatypeEnum::SpatialLocationCalculatorConfig, false}}};
 
     /**
      * Passthrough message on which the inference was performed.

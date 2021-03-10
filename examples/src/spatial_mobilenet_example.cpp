@@ -15,16 +15,22 @@ static bool syncNN = true;
 dai::Pipeline createNNPipeline(std::string nnPath) {
     dai::Pipeline p;
 
+    //create nodes
     auto colorCam = p.create<dai::node::ColorCamera>();
-    auto xlinkOut = p.create<dai::node::XLinkOut>();
-    auto detectionNetwork = p.create<dai::node::MobileNetSpatialDetectionNetwork>();
-    auto nnOut = p.create<dai::node::XLinkOut>();
-    auto depthRoiMap = p.create<dai::node::XLinkOut>();
+    auto spatialDetectionNetwork = p.create<dai::node::MobileNetSpatialDetectionNetwork>();
+    auto monoLeft = p.create<dai::node::MonoCamera>();
+    auto monoRight = p.create<dai::node::MonoCamera>();
+    auto stereo = p.create<dai::node::StereoDepth>();
+
+    //create xlink connections
+    auto xoutRgb = p.create<dai::node::XLinkOut>();
+    auto xoutNN = p.create<dai::node::XLinkOut>();
+    auto xoutDepthRoiMap = p.create<dai::node::XLinkOut>();
     auto xoutDepth = p.create<dai::node::XLinkOut>();
 
-    xlinkOut->setStreamName("preview");
-    nnOut->setStreamName("detections");
-    depthRoiMap->setStreamName("depthRoiMap");
+    xoutRgb->setStreamName("preview");
+    xoutNN->setStreamName("detections");
+    xoutDepthRoiMap->setStreamName("depthRoiMap");
     xoutDepth->setStreamName("depth");
 
     colorCam->setPreviewSize(300, 300);
@@ -32,53 +38,39 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     colorCam->setInterleaved(false);
     colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
 
-    auto monoLeft = p.create<dai::node::MonoCamera>();
-    auto monoRight = p.create<dai::node::MonoCamera>();
-    auto stereo = p.create<dai::node::StereoDepth>();
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
-    bool outputDepth = true;
-    bool outputRectified = false;
-    bool lrcheck = false;
-    bool extended = false;
-    bool subpixel = false;
 
-    // StereoDepth
-    stereo->setOutputDepth(outputDepth);
-    stereo->setOutputRectified(outputRectified);
+    /// setting node configs
+    stereo->setOutputDepth(true);
     stereo->setConfidenceThreshold(255);
 
-    // stereo->setMedianFilter(dai::StereoDepthProperties::MedianFilter::MEDIAN_OFF);
-    stereo->setLeftRightCheck(lrcheck);
-    stereo->setExtendedDisparity(extended);
-    stereo->setSubpixel(subpixel);
+    spatialDetectionNetwork->setBlobPath(nnPath);
+    spatialDetectionNetwork->setConfidenceThreshold(0.5f);
+    spatialDetectionNetwork->input.setBlocking(false);
+    spatialDetectionNetwork->setBoundingBoxScaleFactor(0.5);
+    spatialDetectionNetwork->setDepthLowerThreshold(100);
+    spatialDetectionNetwork->setDepthUpperThreshold(5000);
+
 
     // Link plugins CAM -> STEREO -> XLINK
     monoLeft->out.link(stereo->left);
     monoRight->out.link(stereo->right);
 
-    // testing MobileNet DetectionNetwork
-    detectionNetwork->setConfidenceThreshold(0.5f);
-    detectionNetwork->setBoundingBoxScaleFactor(0.5);
-    detectionNetwork->setDepthLowerThreshold(100);
-    detectionNetwork->setDepthUpperThreshold(5000);
-
-    detectionNetwork->setBlobPath(nnPath);
-
     // Link plugins CAM -> NN -> XLINK
-    colorCam->preview.link(detectionNetwork->input);
+    colorCam->preview.link(spatialDetectionNetwork->input);
     if(syncNN)
-        detectionNetwork->passthrough.link(xlinkOut->input);
+        spatialDetectionNetwork->passthrough.link(xoutRgb->input);
     else
-        colorCam->preview.link(xlinkOut->input);
+        colorCam->preview.link(xoutRgb->input);
 
-    detectionNetwork->out.link(nnOut->input);
-    detectionNetwork->passthroughRoi.link(depthRoiMap->input);
+    spatialDetectionNetwork->out.link(xoutNN->input);
+    spatialDetectionNetwork->passthroughRoi.link(xoutDepthRoiMap->input);
 
-    stereo->depth.link(detectionNetwork->inputDepth);
+    stereo->depth.link(spatialDetectionNetwork->inputDepth);
     stereo->depth.link(xoutDepth->input);
 
     return p;
@@ -108,7 +100,7 @@ int main(int argc, char** argv) {
     cv::Mat frame;
     auto preview = d.getOutputQueue("preview", 4, false);
     auto detections = d.getOutputQueue("detections", 4, false);
-    auto depthRoiMap = d.getOutputQueue("depthRoiMap", 4, false);
+    auto xoutDepthRoiMap = d.getOutputQueue("depthRoiMap", 4, false);
     auto depthQueue = d.getOutputQueue("depth", 4, false);
 
     auto startTime = std::chrono::steady_clock::now();
@@ -131,7 +123,7 @@ int main(int argc, char** argv) {
         cv::applyColorMap(depthFrameColor, depthFrameColor, cv::COLORMAP_HOT);
 
         if(!dets.empty()) {
-            auto passthroughRoi = depthRoiMap->get<dai::DepthCalculatorConfig>();
+            auto passthroughRoi = xoutDepthRoiMap->get<dai::SpatialLocationCalculatorConfig>();
             auto roiDatas = passthroughRoi->getConfigData();
 
             for(auto roiData : roiDatas) {

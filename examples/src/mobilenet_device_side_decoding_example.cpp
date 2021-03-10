@@ -138,7 +138,7 @@ int main(int argc, char** argv) {
         cv::applyColorMap(depthFrameColor, depthFrameColor, cv::COLORMAP_OCEAN);
 
         if(!dets.empty()) {
-            auto passthroughRoi = depthRoiMap->get<dai::DepthCalculatorConfig>();
+            auto passthroughRoi = depthRoiMap->get<dai::SpatialLocationCalculatorConfig>();
             auto roiData = passthroughRoi->getConfigData();
 
             for(auto roiData : roiData) {

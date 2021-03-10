@@ -124,7 +124,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/DetectionNetwork.cpp
     src/pipeline/node/SpatialDetectionNetwork.cpp
     src/pipeline/node/SystemLogger.cpp
-    src/pipeline/node/DepthCalculator.cpp
+    src/pipeline/node/SpatialLocationCalculator.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
@@ -134,8 +134,8 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/SpatialImgDetections.cpp
     src/pipeline/datatype/SystemInformation.cpp
     src/pipeline/datatype/StreamPacketParser.cpp
-    src/pipeline/datatype/DepthCalculatorData.cpp
-    src/pipeline/datatype/DepthCalculatorConfig.cpp
+    src/pipeline/datatype/SpatialLocationCalculatorData.cpp
+    src/pipeline/datatype/SpatialLocationCalculatorConfig.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/xlink/XLinkConnection.cpp

@@ -11,13 +11,15 @@ static const std::vector<std::string> labelMap = {"background",  "aeroplane", "b
                                   "diningtable", "dog",       "horse",   "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"};
 
 static bool syncNN = true;
+static bool flipRectified = true;
 
 dai::Pipeline createNNPipeline(std::string nnPath) {
     dai::Pipeline p;
 
     auto xlinkOut = p.create<dai::node::XLinkOut>();
-    auto detectionNetwork = p.create<dai::node::MobileNetSpatialDetectionNetwork>();
+    auto spatialDetectionNetwork = p.create<dai::node::MobileNetSpatialDetectionNetwork>();
     auto imageManip = p.create<dai::node::ImageManip>();
+
     auto nnOut = p.create<dai::node::XLinkOut>();
     auto depthRoiMap = p.create<dai::node::XLinkOut>();
     auto xoutDepth = p.create<dai::node::XLinkOut>();
@@ -40,49 +42,37 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
-
-
-    bool outputDepth = true;
-    bool outputRectified = false;
-    bool lrcheck = false;
-    bool extended = false;
-    bool subpixel = false;
-
     // StereoDepth
-    stereo->setOutputDepth(outputDepth);
-    stereo->setOutputRectified(outputRectified);
+    stereo->setOutputDepth(true);
+    stereo->setOutputRectified(true);
     stereo->setConfidenceThreshold(255);
 
-    // stereo->setMedianFilter(dai::StereoDepthProperties::MedianFilter::MEDIAN_OFF);
-    stereo->setLeftRightCheck(lrcheck);
-    stereo->setExtendedDisparity(extended);
-    stereo->setSubpixel(subpixel);
 
     // Link plugins CAM -> STEREO -> XLINK
     monoLeft->out.link(stereo->left);
     monoRight->out.link(stereo->right);
 
-    monoRight->out.link(imageManip->inputImage);
+    stereo->rectifiedRight.link(imageManip->inputImage);
 
     // testing MobileNet DetectionNetwork
-    detectionNetwork->setConfidenceThreshold(0.5f);
-    detectionNetwork->setBoundingBoxScaleFactor(0.7);
-    detectionNetwork->setDepthLowerThreshold(100);
-    detectionNetwork->setDepthUpperThreshold(5000);
+    spatialDetectionNetwork->setConfidenceThreshold(0.5f);
+    spatialDetectionNetwork->setBoundingBoxScaleFactor(0.7);
+    spatialDetectionNetwork->setDepthLowerThreshold(100);
+    spatialDetectionNetwork->setDepthUpperThreshold(5000);
 
-    detectionNetwork->setBlobPath(nnPath);
+    spatialDetectionNetwork->setBlobPath(nnPath);
 
     // Link plugins CAM -> NN -> XLINK
-    imageManip->out.link(detectionNetwork->input);
+    imageManip->out.link(spatialDetectionNetwork->input);
     if(syncNN)
-        detectionNetwork->passthrough.link(xlinkOut->input);
+        spatialDetectionNetwork->passthrough.link(xlinkOut->input);
     else
         imageManip->out.link(xlinkOut->input);
 
-    detectionNetwork->out.link(nnOut->input);
-    detectionNetwork->passthroughRoi.link(depthRoiMap->input);
+    spatialDetectionNetwork->out.link(nnOut->input);
+    spatialDetectionNetwork->passthroughRoi.link(depthRoiMap->input);
 
-    stereo->depth.link(detectionNetwork->inputDepth);
+    stereo->depth.link(spatialDetectionNetwork->inputDepth);
     stereo->depth.link(xoutDepth->input);
 
     return p;
@@ -109,7 +99,7 @@ int main(int argc, char** argv) {
     // Start the pipeline
     d.startPipeline();
 
-    cv::Mat frame;
+    
     auto preview = d.getOutputQueue("preview", 4, false);
     auto detections = d.getOutputQueue("detections", 4, false);
     auto depthRoiMap = d.getOutputQueue("depthRoiMap", 4, false);
@@ -121,9 +111,18 @@ int main(int argc, char** argv) {
     auto color = cv::Scalar(255, 255, 255);
 
     while(1) {
-        auto imgFrame = preview->get<dai::ImgFrame>();
+        auto inRectifiedRight = preview->get<dai::ImgFrame>();
         auto det = detections->get<dai::SpatialImgDetections>();
         auto depth = depthQueue->get<dai::ImgFrame>();
+
+        counter++;
+        auto currentTime = std::chrono::steady_clock::now();
+        auto elapsed = duration_cast<duration<float>>(currentTime - startTime);
+        if(elapsed > seconds(1)) {
+            fps = (float)counter / elapsed.count();
+            counter = 0;
+            startTime = currentTime;
+        }
 
         auto dets = det->detections;
 
@@ -135,7 +134,7 @@ int main(int argc, char** argv) {
         cv::applyColorMap(depthFrameColor, depthFrameColor, cv::COLORMAP_HOT);
 
         if(!dets.empty()) {
-            auto passthroughRoi = depthRoiMap->get<dai::DepthCalculatorConfig>();
+            auto passthroughRoi = depthRoiMap->get<dai::SpatialLocationCalculatorConfig>();
             auto roiDatas = passthroughRoi->getConfigData();
 
             for(auto roiData : roiDatas) {
@@ -148,54 +147,53 @@ int main(int argc, char** argv) {
                 cv::rectangle(depthFrameColor, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
             }
         }
-        counter++;
-        auto currentTime = std::chrono::steady_clock::now();
-        auto elapsed = duration_cast<duration<float>>(currentTime - startTime);
-        if(elapsed > seconds(1)) {
-            fps = (float)counter / elapsed.count();
-            counter = 0;
-            startTime = currentTime;
-        }
 
-        if(imgFrame) {
-            frame = toMat(imgFrame->getData(), imgFrame->getWidth(), imgFrame->getHeight(), 3, 1);
-        }
+        cv::Mat rectifiedRight = inRectifiedRight->getCvFrame();
 
-        for(const auto& d : dets) {
-            int x1 = d.xmin * frame.cols;
-            int y1 = d.ymin * frame.rows;
-            int x2 = d.xmax * frame.cols;
-            int y2 = d.ymax * frame.rows;
+        if (flipRectified)
+            cv::flip(rectifiedRight, rectifiedRight, 1);
+
+
+        for(auto& d : dets) {
+            if (flipRectified) {
+                auto swap = d.xmin;
+                d.xmin = 1 - d.xmax;
+                d.xmax = 1 - swap;
+            }
+            int x1 = d.xmin * rectifiedRight.cols;
+            int y1 = d.ymin * rectifiedRight.rows;
+            int x2 = d.xmax * rectifiedRight.cols;
+            int y2 = d.ymax * rectifiedRight.rows;
 
             int labelIndex = d.label;
             std::string labelStr = to_string(labelIndex);
             if(labelIndex < labelMap.size()) {
                 labelStr = labelMap[labelIndex];
             }
-            cv::putText(frame, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(rectifiedRight, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             std::stringstream confStr;
             confStr << std::fixed << std::setprecision(2) << d.confidence*100;
-            cv::putText(frame, confStr.str(), cv::Point(x1 + 10, y1 + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(rectifiedRight, confStr.str(), cv::Point(x1 + 10, y1 + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
 
             std::stringstream depthX;
             depthX << "X: " << (int)d.spatialCoordinates.x << " mm";
-            cv::putText(frame, depthX.str(), cv::Point(x1 + 10, y1 + 50), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(rectifiedRight, depthX.str(), cv::Point(x1 + 10, y1 + 50), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             std::stringstream depthY;
             depthY << "Y: " << (int)d.spatialCoordinates.y << " mm";
-            cv::putText(frame, depthY.str(), cv::Point(x1 + 10, y1 + 65), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(rectifiedRight, depthY.str(), cv::Point(x1 + 10, y1 + 65), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             std::stringstream depthZ;
             depthZ << "Z: " << (int)d.spatialCoordinates.z << " mm";
-            cv::putText(frame, depthZ.str(), cv::Point(x1 + 10, y1 + 80), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(rectifiedRight, depthZ.str(), cv::Point(x1 + 10, y1 + 80), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             
-            cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
+            cv::rectangle(rectifiedRight, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
         }
 
         std::stringstream fpsStr;
         fpsStr << std::fixed << std::setprecision(2) << fps;
-        cv::putText(frame, fpsStr.str(), cv::Point(2, imgFrame->getHeight()-4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
+        cv::putText(rectifiedRight, fpsStr.str(), cv::Point(2, rectifiedRight.rows-4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
 
         cv::imshow("depth", depthFrameColor);
-        cv::imshow("preview", frame);
+        cv::imshow("rectified right", rectifiedRight);
         int key = cv::waitKey(1);
         if(key == 'q') {
             return 0;

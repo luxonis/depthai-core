@@ -14,26 +14,26 @@
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
-#include "depthai/pipeline/datatype/DepthCalculatorConfig.hpp"
-#include "depthai/pipeline/datatype/DepthCalculatorData.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
+#include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
+#include "depthai/pipeline/datatype/SpatialLocationCalculatorData.hpp"
 #include "depthai/pipeline/datatype/SystemInformation.hpp"
 
 // shared
 #include "depthai-shared/datatype/DatatypeEnum.hpp"
 #include "depthai-shared/datatype/RawBuffer.hpp"
 #include "depthai-shared/datatype/RawCameraControl.hpp"
-#include "depthai-shared/datatype/RawDepthCalculatorConfig.hpp"
-#include "depthai-shared/datatype/RawDepthCalculatorData.hpp"
 #include "depthai-shared/datatype/RawImageManipConfig.hpp"
 #include "depthai-shared/datatype/RawImgDetections.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
 #include "depthai-shared/datatype/RawNNData.hpp"
 #include "depthai-shared/datatype/RawSpatialImgDetections.hpp"
+#include "depthai-shared/datatype/RawSpatialLocationCalculatorConfig.hpp"
+#include "depthai-shared/datatype/RawSpatialLocationCalculatorData.hpp"
 #include "depthai-shared/datatype/RawSystemInformation.hpp"
 
 // StreamPacket structure ->  || imgframepixels... , serialized_object, object_type, serialized_object_size ||
@@ -107,12 +107,12 @@ std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
             return parseDatatype<RawSystemInformation>(jser, data);
             break;
 
-        case DatatypeEnum::DepthCalculatorData:
-            return parseDatatype<RawDepthCalculatorData>(jser, data);
+        case DatatypeEnum::SpatialLocationCalculatorData:
+            return parseDatatype<RawSpatialLocationCalculatorData>(jser, data);
             break;
 
-        case DatatypeEnum::DepthCalculatorConfig:
-            return parseDatatype<RawDepthCalculatorData>(jser, data);
+        case DatatypeEnum::SpatialLocationCalculatorConfig:
+            return parseDatatype<RawSpatialLocationCalculatorData>(jser, data);
             break;
     }
 
@@ -170,12 +170,12 @@ std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
             return std::make_shared<SystemInformation>(parseDatatype<RawSystemInformation>(jser, data));
             break;
 
-        case DatatypeEnum::DepthCalculatorData:
-            return std::make_shared<DepthCalculatorData>(parseDatatype<RawDepthCalculatorData>(jser, data));
+        case DatatypeEnum::SpatialLocationCalculatorData:
+            return std::make_shared<SpatialLocationCalculatorData>(parseDatatype<RawSpatialLocationCalculatorData>(jser, data));
             break;
 
-        case DatatypeEnum::DepthCalculatorConfig:
-            return std::make_shared<DepthCalculatorConfig>(parseDatatype<RawDepthCalculatorConfig>(jser, data));
+        case DatatypeEnum::SpatialLocationCalculatorConfig:
+            return std::make_shared<SpatialLocationCalculatorConfig>(parseDatatype<RawSpatialLocationCalculatorConfig>(jser, data));
             break;
     }
 
