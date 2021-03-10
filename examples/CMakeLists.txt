@@ -87,12 +87,20 @@ hunter_private_data(
     LOCATION tiny_yolo_v4_blob
 )
 
+# NeuralNetwork node, mobilenet example, 8 shaves
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet-ssd_openvino_2021.2_8shave.blob"
+    SHA1 "3329bb8f3a9c881ef9756d232055f9d6f38aa07b"
+    FILE "mobilenet-ssd_openvino_2021.2_8shave.blob"
+    LOCATION mobilenet_8shaves_blob
+)
+
 dai_add_example(camera_mobilenet src/camera_mobilenet_example.cpp)
 target_compile_definitions(camera_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}")
 
 # NeuralNetwork node, webcam input (from host)
 dai_add_example(webcam_mobilenet src/webcam_mobilenet_example.cpp)
-target_compile_definitions(webcam_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}")
+target_compile_definitions(webcam_mobilenet PRIVATE BLOB_PATH="${mobilenet_8shaves_blob}")
 
 # MJPEG encoding
 dai_add_example(mjpeg_encoding src/mjpeg_encoding_example.cpp)
