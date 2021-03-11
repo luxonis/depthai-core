@@ -25,14 +25,14 @@ class SpatialLocationCalculatorConfig : public Buffer {
 
     /**
      * Set a vector of ROIs as configuration data.
-     * @param rois Vector of configuration parameters for ROIs (region of interests)
+     * @param ROIs Vector of configuration parameters for ROIs (region of interests)
      */
-    void setROIs(std::vector<SpatialLocationCalculatorConfigData> rois);
+    void setROIs(std::vector<SpatialLocationCalculatorConfigData> ROIs);
     /**
      * Add a new ROI to configuration data.
      * @param roi Configuration parameters for ROI (region of interest)
      */
-    void addROI(SpatialLocationCalculatorConfigData& roi);
+    void addROI(SpatialLocationCalculatorConfigData& ROI);
 
     /**
      * Retrieve configuration data for SpatialLocationCalculator
