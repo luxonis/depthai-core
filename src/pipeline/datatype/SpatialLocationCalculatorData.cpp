@@ -7,14 +7,12 @@ std::shared_ptr<RawBuffer> SpatialLocationCalculatorData::serialize() const {
 }
 
 SpatialLocationCalculatorData::SpatialLocationCalculatorData()
-    : Buffer(std::make_shared<RawSpatialLocationCalculatorData>()),
-      rawdata(*dynamic_cast<RawSpatialLocationCalculatorData*>(raw.get())),
-      depth(rawdata.depth) {}
-SpatialLocationCalculatorData::SpatialLocationCalculatorData(std::shared_ptr<RawSpatialLocationCalculatorData> ptr)
-    : Buffer(std::move(ptr)), rawdata(*dynamic_cast<RawSpatialLocationCalculatorData*>(raw.get())), depth(rawdata.depth) {}
+    : Buffer(std::make_shared<RawSpatialLocations>()), rawdata(*dynamic_cast<RawSpatialLocations*>(raw.get())), spatialLocations(rawdata.spatialLocations) {}
+SpatialLocationCalculatorData::SpatialLocationCalculatorData(std::shared_ptr<RawSpatialLocations> ptr)
+    : Buffer(std::move(ptr)), rawdata(*dynamic_cast<RawSpatialLocations*>(raw.get())), spatialLocations(rawdata.spatialLocations) {}
 
-std::vector<SpatialLocationCalculatorDataOut> SpatialLocationCalculatorData::getDepthData() const {
-    return rawdata.depth;
+std::vector<SpatialLocations>& SpatialLocationCalculatorData::getSpatialLocations() const {
+    return rawdata.spatialLocations;
 }
 
 }  // namespace dai

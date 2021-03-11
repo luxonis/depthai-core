@@ -3,24 +3,33 @@
 #include <unordered_map>
 #include <vector>
 
-#include "depthai-shared/datatype/RawSpatialLocationCalculatorData.hpp"
+#include "depthai-shared/datatype/RawSpatialLocations.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {
 
-// protected inheritance, so serialize isn't visible to users
+/**
+ * SpatialLocationCalculatorData message. Carries spatial information (X,Y,Z) and their configuration parameters
+ */
 class SpatialLocationCalculatorData : public Buffer {
     std::shared_ptr<RawBuffer> serialize() const override;
-    RawSpatialLocationCalculatorData& rawdata;
+    RawSpatialLocations& rawdata;
 
    public:
+    /**
+     * Construct SpatialLocationCalculatorData message.
+     */
     SpatialLocationCalculatorData();
-    explicit SpatialLocationCalculatorData(std::shared_ptr<RawSpatialLocationCalculatorData> ptr);
+    explicit SpatialLocationCalculatorData(std::shared_ptr<RawSpatialLocations> ptr);
     virtual ~SpatialLocationCalculatorData() = default;
 
-    std::vector<SpatialLocationCalculatorDataOut> getDepthData() const;
+    /**
+     * Retrieve configuration data for SpatialLocationCalculatorData.
+     * @returns Vector of spatial location data, carrying spatial information (X,Y,Z)
+     */
+    std::vector<SpatialLocations>& getSpatialLocations() const;
 
-    std::vector<SpatialLocationCalculatorDataOut>& depth;
+    std::vector<SpatialLocations>& spatialLocations;
 };
 
 }  // namespace dai

@@ -13,6 +13,10 @@
 
 namespace dai {
 namespace node {
+
+/**
+ * @brief SpatialDetectionNetwork node. Runs a neural inference on input image and calculates spatial location data.
+ */
 class SpatialDetectionNetwork : public DetectionNetwork {
     std::string getName() const override;
     std::vector<Input> getInputs() override;
@@ -29,13 +33,13 @@ class SpatialDetectionNetwork : public DetectionNetwork {
      * Input message with data to be infered upon
      * Default queue is blocking with size 5
      */
-    using DetectionNetwork::input;
+    Input input{*this, "in", Input::Type::SReceiver, true, 5, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
-     * nput message with depth data used to retrieve spatial information about detected object
+     * Input message with depth data used to retrieve spatial information about detected object
      * Default queue is non-blocking with size 4
      */
-    Input inputDepth{*this, "inputDepth", Input::Type::SReceiver, false, 4, {{DatatypeEnum::Buffer, true}}};
+    Input inputDepth{*this, "inputDepth", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
      * Outputs ImgDetections message that carries parsed detection results.
@@ -54,7 +58,7 @@ class SpatialDetectionNetwork : public DetectionNetwork {
      *
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    using DetectionNetwork::passthrough;
+    Output passthrough{*this, "passthrough", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
      * Specifies scale factor for detected bounding boxes.
@@ -75,11 +79,17 @@ class SpatialDetectionNetwork : public DetectionNetwork {
     void setDepthUpperThreshold(uint32_t upperThreshold);
 };
 
+/**
+ * MobileNetSpatialDetectionNetwork. Mobilenet-SSD based network with spatial location data.
+ */
 class MobileNetSpatialDetectionNetwork : public SpatialDetectionNetwork {
    public:
     MobileNetSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 };
 
+/**
+ * YoloSpatialDetectionNetwork. (tiny)Yolov3/v4 based network with spatial location data.
+ */
 class YoloSpatialDetectionNetwork : public SpatialDetectionNetwork {
    public:
     YoloSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);

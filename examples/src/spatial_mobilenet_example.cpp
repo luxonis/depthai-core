@@ -62,10 +62,8 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
 
     // Link plugins CAM -> NN -> XLINK
     colorCam->preview.link(spatialDetectionNetwork->input);
-    if(syncNN)
-        spatialDetectionNetwork->passthrough.link(xoutRgb->input);
-    else
-        colorCam->preview.link(xoutRgb->input);
+    if(syncNN) spatialDetectionNetwork->passthrough.link(xoutRgb->input);
+    else colorCam->preview.link(xoutRgb->input);
 
     spatialDetectionNetwork->out.link(xoutNN->input);
     spatialDetectionNetwork->passthroughRoi.link(xoutDepthRoiMap->input);
@@ -115,10 +113,9 @@ int main(int argc, char** argv) {
 
         auto dets = det->detections;
 
-        cv::Mat depthFrame = cv::Mat(depth->getHeight(), depth->getWidth(), CV_16UC1, depth->getData().data());
-
-        cv::Mat depthFrameColor = cv::Mat(depth->getHeight(), depth->getWidth(), CV_8UC1);
-        cv::normalize(depthFrame, depthFrameColor, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+        cv::Mat depthFrame = depth->getFrame();
+        cv::Mat depthFrameColor;
+        cv::normalize(depthFrame, depthFrameColor, 255, 0, cv::NORM_INF, CV_8UC1);
         cv::equalizeHist(depthFrameColor, depthFrameColor);
         cv::applyColorMap(depthFrameColor, depthFrameColor, cv::COLORMAP_HOT);
 
@@ -134,9 +131,6 @@ int main(int argc, char** argv) {
                 auto ymax = (int)(roi.ymax * depth->getHeight());
 
                 cv::rectangle(depthFrameColor, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
-                // std::stringstream s;
-                // s << std::fixed << std::setprecision(2) << depthData.depthAverage;
-                // cv::putText(frame, s.str(), cv::Point(xmin + 10, ymin + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             }
         }
         counter++;

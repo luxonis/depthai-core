@@ -12,6 +12,10 @@
 
 namespace dai {
 namespace node {
+
+/**
+ * @brief SpatialLocationCalculator node. Calculates spatial location data on a set of ROIs on depth map.
+ */
 class SpatialLocationCalculator : public Node {
     std::string getName() const override;
     std::vector<Input> getInputs() override;
@@ -20,24 +24,38 @@ class SpatialLocationCalculator : public Node {
     std::shared_ptr<Node> clone() override;
 
     std::shared_ptr<RawSpatialLocationCalculatorConfig> rawConfig;
+    dai::SpatialLocationCalculatorProperties properties;
 
    public:
     SpatialLocationCalculator(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
+    /**
+     * Initial config to use when calculating spatial location data.
+     */
     SpatialLocationCalculatorConfig initialConfig;
 
-    dai::SpatialLocationCalculatorProperties properties;
-
-    void setWaitForConfigInput(bool wait);
+    /**
+     * Input SpatialLocationCalculatorConfig message with ability to modify parameters in runtime.
+     * Default queue is non-blocking with size 4.
+     */
+    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::SpatialLocationCalculatorConfig, false}}};
+    /**
+     * Input message with depth data used to retrieve spatial information about detected object.
+     * Default queue is non-blocking with size 4.
+     */
+    Input inputDepth{*this, "inputDepth", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
-     * Input SpatialLocationCalculator message with ability to modify parameters in runtime
-     * Default queue is blocking with size 8
+     * Outputs SpatialLocationCalculatorData message that carries spatial location results.
      */
-    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 8, {{DatatypeEnum::SpatialLocationCalculatorConfig, false}}};
-    Input inputDepth{*this, "inputDepth", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, false}}};
-
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::SpatialLocationCalculatorData, false}}};
+
+    // Functions to set properties
+    /**
+     * Specify whether or not wait until configuration message arrives to inputConfig Input.
+     * @param wait True to wait for configuration message, false otherwise.
+     */
+    void setWaitForConfigInput(bool wait);
 };
 
 }  // namespace node

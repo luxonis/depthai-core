@@ -10,19 +10,23 @@
 namespace dai {
 
 /**
- * SpatialImgDetections message. Carries normalized detection results together with spatial coordinates
+ * SpatialImgDetections message. Carries detection results together with spatial location data
  */
 class SpatialImgDetections : public Buffer {
     std::shared_ptr<RawBuffer> serialize() const override;
     RawSpatialImgDetections& dets;
 
    public:
-    /// Construct SpatialImgDetections message
+    /**
+     * Construct SpatialImgDetections message.
+     */
     SpatialImgDetections();
     explicit SpatialImgDetections(std::shared_ptr<RawSpatialImgDetections> ptr);
     virtual ~SpatialImgDetections() = default;
 
-    /// Detections
+    /**
+     * Detection results.
+     */
     std::vector<SpatialImgDetection>& detections;
 };
 

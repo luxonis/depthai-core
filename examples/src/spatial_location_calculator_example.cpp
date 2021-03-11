@@ -84,13 +84,14 @@ int main() {
 
     while(1) {
         auto depth = depthQueue->get<dai::ImgFrame>();
-        depthFrame = cv::Mat(depth->getHeight(), depth->getWidth(), CV_16UC1, depth->getData().data());
-        cv::Mat depthFrameColor = cv::Mat(depth->getHeight(), depth->getWidth(), CV_8UC1);
-        cv::normalize(depthFrame, depthFrameColor, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+
+        cv::Mat depthFrame = depth->getFrame();
+        cv::Mat depthFrameColor;
+        cv::normalize(depthFrame, depthFrameColor, 255, 0, cv::NORM_INF, CV_8UC1);
         cv::equalizeHist(depthFrameColor, depthFrameColor);
         cv::applyColorMap(depthFrameColor, depthFrameColor, cv::COLORMAP_HOT);
 
-        auto spatialData = spatialCalcQueue->get<dai::SpatialLocationCalculatorData>()->getDepthData();
+        auto spatialData = spatialCalcQueue->get<dai::SpatialLocationCalculatorData>()->getSpatialLocations();
         for(auto depthData : spatialData) {
             auto roi = depthData.config.roi;
             auto xmin = (int)(roi.xmin * depth->getWidth());

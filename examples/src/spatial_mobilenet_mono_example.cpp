@@ -64,10 +64,8 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
 
     // Link plugins CAM -> NN -> XLINK
     imageManip->out.link(spatialDetectionNetwork->input);
-    if(syncNN)
-        spatialDetectionNetwork->passthrough.link(xlinkOut->input);
-    else
-        imageManip->out.link(xlinkOut->input);
+    if(syncNN) spatialDetectionNetwork->passthrough.link(xlinkOut->input);
+    else imageManip->out.link(xlinkOut->input);
 
     spatialDetectionNetwork->out.link(nnOut->input);
     spatialDetectionNetwork->passthroughRoi.link(depthRoiMap->input);
@@ -126,10 +124,9 @@ int main(int argc, char** argv) {
 
         auto dets = det->detections;
 
-        cv::Mat depthFrame = cv::Mat(depth->getHeight(), depth->getWidth(), CV_16UC1, depth->getData().data());
-
-        cv::Mat depthFrameColor = cv::Mat(depth->getHeight(), depth->getWidth(), CV_8UC1);
-        cv::normalize(depthFrame, depthFrameColor, 0, 255, cv::NORM_MINMAX, CV_8UC1);
+        cv::Mat depthFrame = depth->getFrame();
+        cv::Mat depthFrameColor;
+        cv::normalize(depthFrame, depthFrameColor, 255, 0, cv::NORM_INF, CV_8UC1);
         cv::equalizeHist(depthFrameColor, depthFrameColor);
         cv::applyColorMap(depthFrameColor, depthFrameColor, cv::COLORMAP_HOT);
 
@@ -150,8 +147,7 @@ int main(int argc, char** argv) {
 
         cv::Mat rectifiedRight = inRectifiedRight->getCvFrame();
 
-        if (flipRectified)
-            cv::flip(rectifiedRight, rectifiedRight, 1);
+        if (flipRectified) cv::flip(rectifiedRight, rectifiedRight, 1);
 
 
         for(auto& d : dets) {
