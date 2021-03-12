@@ -33,13 +33,13 @@ class SpatialDetectionNetwork : public DetectionNetwork {
      * Input message with data to be infered upon
      * Default queue is blocking with size 5
      */
-    Input input{*this, "in", Input::Type::SReceiver, true, 5, {{DatatypeEnum::ImgFrame, true}}};
+    Input input{*this, "in", Input::Type::SReceiver, true, 5, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Input message with depth data used to retrieve spatial information about detected object
      * Default queue is non-blocking with size 4
      */
-    Input inputDepth{*this, "inputDepth", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImgFrame, true}}};
+    Input inputDepth{*this, "inputDepth", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs ImgDetections message that carries parsed detection results.
@@ -47,18 +47,25 @@ class SpatialDetectionNetwork : public DetectionNetwork {
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::SpatialImgDetections, false}}};
 
     /**
-     * Passthrough message of depth calculator config for detected bounbing boxes
+     * Outputs mapping of detected bounding boxes relative to depth map
      *
      * Suitable for when displaying remapped bounding boxes on depth frame
      */
-    Output passthroughRoi{*this, "passthroughRoi", Output::Type::MSender, {{DatatypeEnum::SpatialLocationCalculatorConfig, false}}};
+    Output boundingBoxMapping{*this, "boundingBoxMapping", Output::Type::MSender, {{DatatypeEnum::SpatialLocationCalculatorConfig, false}}};
 
     /**
      * Passthrough message on which the inference was performed.
      *
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthrough{*this, "passthrough", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
+    Output passthrough{*this, "passthrough", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
+     * Passthrough message for depth frame on which the spatial location calculation was performed.
+     *
+     * Suitable for when input queue is set to non-blocking behavior.
+     */
+    Output passthroughDepth{*this, "passthroughDepth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Specifies scale factor for detected bounding boxes.

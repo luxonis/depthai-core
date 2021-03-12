@@ -22,7 +22,7 @@ std::vector<Node::Input> SpatialDetectionNetwork::getInputs() {
 }
 
 std::vector<Node::Output> SpatialDetectionNetwork::getOutputs() {
-    return {out, passthroughRoi};
+    return {out, boundingBoxMapping, passthrough, passthroughDepth};
 }
 
 dai::SpatialDetectionNetworkProperties& SpatialDetectionNetwork::getPropertiesRef() {

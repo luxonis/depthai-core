@@ -26,7 +26,7 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
 
     xlinkOut->setStreamName("preview");
     nnOut->setStreamName("detections");
-    depthRoiMap->setStreamName("depthRoiMap");
+    depthRoiMap->setStreamName("boundingBoxDepthMapping");
     xoutDepth->setStreamName("depth");
 
 
@@ -68,10 +68,10 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     else imageManip->out.link(xlinkOut->input);
 
     spatialDetectionNetwork->out.link(nnOut->input);
-    spatialDetectionNetwork->passthroughRoi.link(depthRoiMap->input);
+    spatialDetectionNetwork->boundingBoxMapping.link(depthRoiMap->input);
 
     stereo->depth.link(spatialDetectionNetwork->inputDepth);
-    stereo->depth.link(xoutDepth->input);
+    spatialDetectionNetwork->passthroughDepth.link(xoutDepth->input);
 
     return p;
 }
@@ -100,7 +100,7 @@ int main(int argc, char** argv) {
     
     auto preview = d.getOutputQueue("preview", 4, false);
     auto detections = d.getOutputQueue("detections", 4, false);
-    auto depthRoiMap = d.getOutputQueue("depthRoiMap", 4, false);
+    auto depthRoiMap = d.getOutputQueue("boundingBoxDepthMapping", 4, false);
     auto depthQueue = d.getOutputQueue("depth", 4, false);
 
     auto startTime = std::chrono::steady_clock::now();
@@ -131,8 +131,8 @@ int main(int argc, char** argv) {
         cv::applyColorMap(depthFrameColor, depthFrameColor, cv::COLORMAP_HOT);
 
         if(!dets.empty()) {
-            auto passthroughRoi = depthRoiMap->get<dai::SpatialLocationCalculatorConfig>();
-            auto roiDatas = passthroughRoi->getConfigData();
+            auto boundingBoxMapping = depthRoiMap->get<dai::SpatialLocationCalculatorConfig>();
+            auto roiDatas = boundingBoxMapping->getConfigData();
 
             for(auto roiData : roiDatas) {
                 auto roi = roiData.roi;

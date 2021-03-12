@@ -50,6 +50,12 @@ class SpatialLocationCalculator : public Node {
      */
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::SpatialLocationCalculatorData, false}}};
 
+    /**
+     * Passthrough message on which the calculation was performed.
+     * Suitable for when input queue is set to non-blocking behavior.
+     */
+    Output passthroughDepth{*this, "passthroughDepth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
     // Functions to set properties
     /**
      * Specify whether or not wait until configuration message arrives to inputConfig Input.

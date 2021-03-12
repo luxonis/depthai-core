@@ -53,7 +53,7 @@ int main() {
     monoLeft->out.link(stereo->left);
     monoRight->out.link(stereo->right);
 
-    stereo->depth.link(xoutDepth->input);
+    spatialDataCalculator->passthroughDepth.link(xoutDepth->input);
     stereo->depth.link(spatialDataCalculator->inputDepth);
 
     float bbXmin = 0.4f;

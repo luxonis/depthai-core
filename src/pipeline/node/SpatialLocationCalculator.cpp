@@ -13,7 +13,7 @@ std::string SpatialLocationCalculator::getName() const {
 }
 
 std::vector<Node::Output> SpatialLocationCalculator::getOutputs() {
-    return {out};
+    return {out, passthroughDepth};
 }
 
 std::vector<Node::Input> SpatialLocationCalculator::getInputs() {

@@ -25,12 +25,12 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     //create xlink connections
     auto xoutRgb = p.create<dai::node::XLinkOut>();
     auto xoutNN = p.create<dai::node::XLinkOut>();
-    auto xoutDepthRoiMap = p.create<dai::node::XLinkOut>();
+    auto xoutBoundingBoxDepthMapping = p.create<dai::node::XLinkOut>();
     auto xoutDepth = p.create<dai::node::XLinkOut>();
 
     xoutRgb->setStreamName("preview");
     xoutNN->setStreamName("detections");
-    xoutDepthRoiMap->setStreamName("depthRoiMap");
+    xoutBoundingBoxDepthMapping->setStreamName("boundingBoxDepthMapping");
     xoutDepth->setStreamName("depth");
 
     colorCam->setPreviewSize(300, 300);
@@ -66,10 +66,10 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     else colorCam->preview.link(xoutRgb->input);
 
     spatialDetectionNetwork->out.link(xoutNN->input);
-    spatialDetectionNetwork->passthroughRoi.link(xoutDepthRoiMap->input);
+    spatialDetectionNetwork->boundingBoxMapping.link(xoutBoundingBoxDepthMapping->input);
 
     stereo->depth.link(spatialDetectionNetwork->inputDepth);
-    stereo->depth.link(xoutDepth->input);
+    spatialDetectionNetwork->passthroughDepth.link(xoutDepth->input);
 
     return p;
 }
@@ -98,7 +98,7 @@ int main(int argc, char** argv) {
     cv::Mat frame;
     auto preview = d.getOutputQueue("preview", 4, false);
     auto detections = d.getOutputQueue("detections", 4, false);
-    auto xoutDepthRoiMap = d.getOutputQueue("depthRoiMap", 4, false);
+    auto xoutBoundingBoxDepthMapping = d.getOutputQueue("boundingBoxDepthMapping", 4, false);
     auto depthQueue = d.getOutputQueue("depth", 4, false);
 
     auto startTime = std::chrono::steady_clock::now();
@@ -120,8 +120,8 @@ int main(int argc, char** argv) {
         cv::applyColorMap(depthFrameColor, depthFrameColor, cv::COLORMAP_HOT);
 
         if(!dets.empty()) {
-            auto passthroughRoi = xoutDepthRoiMap->get<dai::SpatialLocationCalculatorConfig>();
-            auto roiDatas = passthroughRoi->getConfigData();
+            auto boundingBoxMapping = xoutBoundingBoxDepthMapping->get<dai::SpatialLocationCalculatorConfig>();
+            auto roiDatas = boundingBoxMapping->getConfigData();
 
             for(auto roiData : roiDatas) {
                 auto roi = roiData.roi;

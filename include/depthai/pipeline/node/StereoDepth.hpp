@@ -39,7 +39,7 @@ class StereoDepth : public Node {
     Input right{*this, "right", Input::Type::SReceiver, false, 8, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
-     * Outputs ImgFrame message that carries RAW16 encoded (FP16) depth data.
+     * Outputs ImgFrame message that carries RAW16 encoded (0..65535) depth data in millimeters.
      */
     Output depth{*this, "depth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 

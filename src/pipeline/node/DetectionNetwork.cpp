@@ -22,7 +22,7 @@ std::vector<Node::Input> DetectionNetwork::getInputs() {
 }
 
 std::vector<Node::Output> DetectionNetwork::getOutputs() {
-    return {out};
+    return {out, passthrough};
 }
 
 dai::DetectionNetworkProperties& DetectionNetwork::getPropertiesRef() {

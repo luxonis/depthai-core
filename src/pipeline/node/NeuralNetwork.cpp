@@ -13,7 +13,7 @@ std::string NeuralNetwork::getName() const {
 }
 
 std::vector<Node::Output> NeuralNetwork::getOutputs() {
-    return {out};
+    return {out, passthrough};
 }
 
 std::vector<Node::Input> NeuralNetwork::getInputs() {
