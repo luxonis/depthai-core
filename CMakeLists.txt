@@ -457,11 +457,12 @@ if(DEPTHAI_INSTALL)
     # Install Hunter dependencies
     if(BUILD_SHARED_LIBS)
         # Install only PUBLIC dependencies
-        install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/include/XLink" DESTINATION include/XLink)
-        install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/include/nlohmann" DESTINATION include/nlohmann)
-        install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/lib/cmake/XLink" DESTINATION lib/cmake/XLink)
-        install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/lib/cmake/nlohmann_json" DESTINATION lib/cmake/nlohmann_json)
-    else()
+        install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/include/XLink" DESTINATION include)
+        install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/include/nlohmann" DESTINATION include)
+        install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/lib/cmake/XLink" DESTINATION lib/cmake)
+        install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/lib/cmake/nlohmann_json" DESTINATION lib/cmake)
+        install(FILES "${HUNTER_INSTALL_PREFIX}/lib/libXLink.a" DESTINATION lib)
+      else()
         # Install all dependencies
         install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/" DESTINATION .)
     endif()
