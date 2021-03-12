@@ -27,7 +27,10 @@ endif()
 
 # Create depthai project
 project(depthai VERSION "2.0.0" LANGUAGES CXX C)
-set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
+get_directory_property(has_parent PARENT_DIRECTORY)
+if(has_parent)
+    set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
+endif()
 
 # Set default installation directory
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
