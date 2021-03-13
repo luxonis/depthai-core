@@ -381,6 +381,8 @@ if(DEPTHAI_OPENCV_SUPPORT)
             ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         )
 
+        message(STATUS "OpenCV and required libraries (${REQUIRED_OPENCV_LIBRARIES}) found. OpenCV Support enabled")
+        
     else()
         message(STATUS "OpenCV or required libraries (${REQUIRED_OPENCV_LIBRARIES}) not found. OpenCV Support disabled")
     endif()
