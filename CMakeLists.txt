@@ -455,21 +455,11 @@ if(DEPTHAI_INSTALL)
     #install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_3RDPARTY_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/depthai-bootloader-shared/3rdparty")
 
     # Install Hunter dependencies
-    if(BUILD_SHARED_LIBS)
-        # Install only PUBLIC dependencies
-        install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/include/XLink" DESTINATION include)
-        install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/include/nlohmann" DESTINATION include)
-        install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/lib/cmake/XLink" DESTINATION lib/cmake)
-        install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/lib/cmake/nlohmann_json" DESTINATION lib/cmake)
-        install(FILES "${HUNTER_INSTALL_PREFIX}/lib/libXLink.a" DESTINATION lib)
-      else()
-        # Install all dependencies
-        install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/" DESTINATION .)
-    endif()
+    install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}/dependencies")
 
     # Add resource installation if not RC'd
     if(NOT DEPTHAI_BINARIES_RESOURCE_COMPILE)
-        install(DIRECTORY "${DEPTHAI_RESOURCES_OUTPUT_DIR}/" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/depthai")
+        install(DIRECTORY "${DEPTHAI_RESOURCES_OUTPUT_DIR}/" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}")
     endif()
 
     # Write project version
@@ -494,7 +484,7 @@ if(DEPTHAI_INSTALL)
 
     # Configure config file
     set(INSTALL_LIB_CMAKE_DIR "lib/cmake/${PROJECT_NAME}")
-    file(RELATIVE_PATH RELATIVE_INSTALLTION_PATH "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_PREFIX}/${INSTALL_LIB_CMAKE_DIR}" "${CMAKE_BINARY_DIR}/${CMAKE_INSTALL_PREFIX}")
+    set(DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL "./dependencies")
     configure_file(cmake/${PROJECT_NAME}Config.cmake.in ${PROJECT_NAME}Config.cmake @ONLY)
     install(FILES 
         "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"

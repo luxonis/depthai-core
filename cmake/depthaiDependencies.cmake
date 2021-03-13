@@ -25,11 +25,11 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT BUILD_SHARED_LIBS))
 
     # spdlog for library and device logging
     find_package(spdlog ${QUIET} CONFIG REQUIRED)
-
-    # Add threads (c++)
-    find_package(Threads ${QUIET} REQUIRED)
         
 endif()
+
+# Add threads (c++)
+find_package(Threads ${QUIET} REQUIRED)
 
 # Nlohmann JSON
 find_package(nlohmann_json ${QUIET} CONFIG REQUIRED)
