@@ -71,8 +71,11 @@ void StereoDepth::setInputResolution(int width, int height) {
     properties.width = width;
     properties.height = height;
 }
-void StereoDepth::setMedianFilter(StereoDepthProperties::MedianFilter median) {
+void StereoDepth::setMedianFilter(Properties::MedianFilter median) {
     properties.median = median;
+}
+void StereoDepth::setDepthAlign(Properties::DepthAlign align) {
+    properties.depthAlign = align;
 }
 void StereoDepth::setConfidenceThreshold(int confThr) {
     properties.confidenceThreshold = confThr;

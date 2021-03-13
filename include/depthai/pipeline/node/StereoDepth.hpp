@@ -113,6 +113,11 @@ class StereoDepth : public Node {
     void setMedianFilter(Properties::MedianFilter median);
 
     /**
+     * @param align Set the disparity/depth alignment to the perspective of one camera
+     */
+    void setDepthAlign(Properties::DepthAlign align);
+
+    /**
      * Confidence threshold for disparity calculation
      * @param confThr Confidence threshold value 0..255
      */
