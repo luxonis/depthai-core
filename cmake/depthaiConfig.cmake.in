@@ -1,5 +1,5 @@
 # Get whether library was build as shared or not
-set(BUILD_SHARED_LIBS @BUILD_SHARED_LIBS@)
+set(depthai_SHARED_LIBS @BUILD_SHARED_LIBS@)
 
 # Specify that this is config mode (Called by find_package)
 set(CONFIG_MODE TRUE)
@@ -12,6 +12,9 @@ include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Dependencies.cmake")
 
 # Add the targets file
 include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_EXPORT_GROUP@.cmake")
+
+# Cleanup
+set(_IMPORT_PREFIX)
 
 # Add aliases
 if(TARGET @PROJECT_NAME@::@TARGET_CORE_NAME@)
