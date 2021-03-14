@@ -481,11 +481,11 @@ if(DEPTHAI_INSTALL)
     # Dependencies file
     install(FILES 
         "cmake/${PROJECT_NAME}Dependencies.cmake"
-        DESTINATION lib/cmake/${PROJECT_NAME}
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
     )
 
     # Configure config file
-    set(INSTALL_LIB_CMAKE_DIR "lib/cmake/${PROJECT_NAME}")
+    set(INSTALL_LIB_CMAKE_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
     set(DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL "./dependencies")
     configure_file(cmake/${PROJECT_NAME}Config.cmake.in ${PROJECT_NAME}Config.cmake @ONLY)
     install(FILES 
