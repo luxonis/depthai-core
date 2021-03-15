@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.4) # For Hunter
+cmake_minimum_required(VERSION 3.5.0) # For Hunter
 
 # MSVC variable isn't available before 'project' call
 # Generalize to Win32 platform for now 
@@ -292,7 +292,6 @@ target_include_directories(${TARGET_CORE_NAME}
 target_include_directories(${TARGET_CORE_NAME} SYSTEM 
     PUBLIC
         "$<BUILD_INTERFACE:${DEPTHAI_SHARED_3RDPARTY_INCLUDE}>"
-        "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_3RDPARTY_INCLUDE}>"
 )
 
 # Add clang format after specifying include directories
@@ -426,17 +425,40 @@ if (DEPTHAI_BUILD_DOCS)
 endif()
 
 ########################
-# INSTALL steps
+# Export and install
 ########################
-if(DEPTHAI_INSTALL)
-    include(GNUInstallDirs)
+include(GNUInstallDirs)
+include(CMakePackageConfigHelpers)
 
-    # Export targets to export group
-    if(BUILD_SHARED_LIBS)
-        set(targets_to_install ${TARGET_CORE_NAME})
-    else()
-        set(targets_to_install ${TARGET_CORE_NAME} ${DEPTHAI_RESOURCE_LIBRARY_NAME} cmrc-base)
-    endif()
+# Export targets to export group
+if(BUILD_SHARED_LIBS)
+    set(targets_to_install ${TARGET_CORE_NAME})
+else()
+    set(targets_to_install ${TARGET_CORE_NAME} ${DEPTHAI_RESOURCE_LIBRARY_NAME} cmrc-base)
+endif()
+
+# Export (capability to import current build directory)
+export(EXPORT ${PROJECT_EXPORT_GROUP} NAMESPACE ${PROJECT_NAME}:: FILE "${PROJECT_NAME}Targets.cmake")
+
+# Dependencies file
+configure_file("cmake/${PROJECT_NAME}Dependencies.cmake" ${PROJECT_NAME}Dependencies.cmake COPYONLY)
+# Write project version
+write_basic_package_version_file(${PROJECT_NAME}ConfigVersion.cmake VERSION ${PROJECT_VERSION} COMPATIBILITY AnyNewerVersion)
+# Configure config file (one for exporting build directory, one for installation)
+file(RELATIVE_PATH DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL "${CMAKE_CURRENT_BINARY_DIR}" "${HUNTER_INSTALL_PREFIX}")
+configure_file(cmake/${PROJECT_NAME}Config.cmake.in ${PROJECT_NAME}Config.cmake @ONLY)
+# Config for installation
+set(DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL "./dependencies")
+configure_file(cmake/${PROJECT_NAME}Config.cmake.in _install/${PROJECT_NAME}Config.cmake @ONLY)
+
+# Export to CMake registry if specified
+if(CMAKE_EXPORT_PACKAGE_REGISTRY)
+    export(PACKAGE depthai)
+endif()
+
+if(DEPTHAI_INSTALL)
+
+    # Install (capability to install to a custom directory)
     install(
         TARGETS ${targets_to_install}
         EXPORT ${PROJECT_EXPORT_GROUP}
@@ -444,7 +466,6 @@ if(DEPTHAI_INSTALL)
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}" 
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     )
-
     # Install depthai public headers
     install(DIRECTORY include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
     # Install depthai-shared public headers
@@ -453,45 +474,23 @@ if(DEPTHAI_INSTALL)
     install(DIRECTORY "${DEPTHAI_SHARED_3RDPARTY_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/${DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH}")
     # Install depthai-bootloader-shared public headers
     install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
-    # Install depthai-bootloader-shared 3rdparty headers (Currently no 3rdparty)
-    #install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_3RDPARTY_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/depthai-bootloader-shared/3rdparty")
-
     # Install Hunter dependencies
     install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}/dependencies")
-
-    # Add resource installation if not RC'd
+    # Install resources if not RC'd
     if(NOT DEPTHAI_BINARIES_RESOURCE_COMPILE)
         install(DIRECTORY "${DEPTHAI_RESOURCES_OUTPUT_DIR}/" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}")
     endif()
-
-    # Write project version
-    include(CMakePackageConfigHelpers)
-    write_basic_package_version_file(
-        ${PROJECT_NAME}ConfigVersion.cmake
-        VERSION ${PROJECT_VERSION}
-        COMPATIBILITY AnyNewerVersion
-    )
-
     # Install export group (targets)
     install(EXPORT ${PROJECT_EXPORT_GROUP}
         NAMESPACE ${PROJECT_NAME}::
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
     )
-
-    # Dependencies file
+    # Specify installation of cmake files
     install(FILES 
-        "cmake/${PROJECT_NAME}Dependencies.cmake"
-        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
-    )
-
-    # Configure config file
-    set(INSTALL_LIB_CMAKE_DIR "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}")
-    set(DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL "./dependencies")
-    configure_file(cmake/${PROJECT_NAME}Config.cmake.in ${PROJECT_NAME}Config.cmake @ONLY)
-    install(FILES 
-        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/_install/${PROJECT_NAME}Config.cmake"
         "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
-        DESTINATION ${INSTALL_LIB_CMAKE_DIR}
+        "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Dependencies.cmake"
+        DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
     )
 
 endif()

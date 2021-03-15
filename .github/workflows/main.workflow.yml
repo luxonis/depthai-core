@@ -171,11 +171,18 @@ jobs:
         cd tests/integration/build_add_subdirectory
         ctest -C ${{ matrix.build-type }}
      
-    - name: Build and test find_package
+    - name: Build and test find_package (installed)
       run: |
         cmake -S tests/integration/ -B tests/integration/build_find_package -D TEST_FIND_PACKAGE=ON -D depthai_DIR=$GITHUB_WORKSPACE/depthai_install/lib/cmake/depthai
         cmake --build tests/integration/build_find_package --parallel --config ${{ matrix.build-type }}
         cd tests/integration/build_find_package
+        ctest -C ${{ matrix.build-type }}
+
+    - name: Build and test find_package (build directory)
+      run: |
+        cmake -S tests/integration/ -B tests/integration/build_find_package_2 -D TEST_FIND_PACKAGE=ON -D depthai_DIR=$GITHUB_WORKSPACE/build
+        cmake --build tests/integration/build_find_package_2 --parallel --config ${{ matrix.build-type }}
+        cd tests/integration/build_find_package_2
         ctest -C ${{ matrix.build-type }}
     
 
