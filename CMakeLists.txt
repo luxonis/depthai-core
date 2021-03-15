@@ -143,6 +143,10 @@ add_library(${TARGET_CORE_NAME}
     src/bspatch/bspatch.c
 )
 add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
+# Specifies name of generated IMPORTED target (set to alias)
+set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_ALIAS})
+# Add to list of targets to export and install
+list(APPEND targets_to_export ${TARGET_CORE_NAME})
 
 # Add default flags to core
 add_default_flags(${TARGET_CORE_NAME})
@@ -353,6 +357,8 @@ if(DEPTHAI_OPENCV_SUPPORT)
         # Add depthai-core-opencv library and depthai::core::opencv alias
         add_library(${TARGET_OPENCV_NAME} src/opencv/ImgFrame.cpp)
         add_library("${PROJECT_NAME}::${TARGET_OPENCV_ALIAS}" ALIAS ${TARGET_OPENCV_NAME})
+        # Specifies name of generated IMPORTED target (set to alias)
+        set_target_properties(${TARGET_OPENCV_NAME} PROPERTIES EXPORT_NAME ${TARGET_OPENCV_ALIAS})
 
         # Add default flags
         add_default_flags(${TARGET_OPENCV_NAME})
@@ -370,15 +376,8 @@ if(DEPTHAI_OPENCV_SUPPORT)
         # Add to clangformat target
         target_clangformat_setup(${TARGET_OPENCV_NAME} "")
 
-        # Install
-        # Export targets to export group
-        include(GNUInstallDirs)
-        install(
-            TARGETS ${TARGET_OPENCV_NAME} EXPORT ${PROJECT_EXPORT_GROUP}
-            RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" 
-            LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}" 
-            ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
-        )
+        # Add to list of targets to export and install
+        list(APPEND targets_to_export ${TARGET_OPENCV_NAME})
 
         message(STATUS "OpenCV and required libraries (${REQUIRED_OPENCV_LIBRARIES}) found. OpenCV Support enabled")
         
@@ -430,23 +429,24 @@ endif()
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
-# Export targets to export group
-if(BUILD_SHARED_LIBS)
-    set(targets_to_install ${TARGET_CORE_NAME})
-else()
-    set(targets_to_install ${TARGET_CORE_NAME} ${DEPTHAI_RESOURCE_LIBRARY_NAME} cmrc-base)
+# Add additional targets to export group
+if(NOT BUILD_SHARED_LIBS)
+    list(APPEND targets_to_export ${DEPTHAI_RESOURCE_LIBRARY_NAME} cmrc-base)
 endif()
 
-# Export (capability to import current build directory)
-export(EXPORT ${PROJECT_EXPORT_GROUP} NAMESPACE ${PROJECT_NAME}:: FILE "${PROJECT_NAME}Targets.cmake")
+# Export targets (capability to import current build directory)
+export(TARGETS ${targets_to_export} NAMESPACE ${PROJECT_NAME}:: FILE "${PROJECT_NAME}Targets.cmake")
 
 # Dependencies file
 configure_file("cmake/${PROJECT_NAME}Dependencies.cmake" ${PROJECT_NAME}Dependencies.cmake COPYONLY)
+
 # Write project version
 write_basic_package_version_file(${PROJECT_NAME}ConfigVersion.cmake VERSION ${PROJECT_VERSION} COMPATIBILITY AnyNewerVersion)
+
 # Configure config file (one for exporting build directory, one for installation)
 file(RELATIVE_PATH DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL "${CMAKE_CURRENT_BINARY_DIR}" "${HUNTER_INSTALL_PREFIX}")
 configure_file(cmake/${PROJECT_NAME}Config.cmake.in ${PROJECT_NAME}Config.cmake @ONLY)
+
 # Config for installation
 set(DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL "./dependencies")
 configure_file(cmake/${PROJECT_NAME}Config.cmake.in _install/${PROJECT_NAME}Config.cmake @ONLY)
@@ -458,14 +458,15 @@ endif()
 
 if(DEPTHAI_INSTALL)
 
-    # Install (capability to install to a custom directory)
+    # Install targets
     install(
-        TARGETS ${targets_to_install}
+        TARGETS ${targets_to_export}
         EXPORT ${PROJECT_EXPORT_GROUP}
         RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" 
         LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}" 
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     )
+
     # Install depthai public headers
     install(DIRECTORY include/ DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
     # Install depthai-shared public headers
@@ -480,12 +481,14 @@ if(DEPTHAI_INSTALL)
     if(NOT DEPTHAI_BINARIES_RESOURCE_COMPILE)
         install(DIRECTORY "${DEPTHAI_RESOURCES_OUTPUT_DIR}/" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}")
     endif()
-    # Install export group (targets)
+
+    # Install export group (information about targets)
     install(EXPORT ${PROJECT_EXPORT_GROUP}
         NAMESPACE ${PROJECT_NAME}::
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
     )
-    # Specify installation of cmake files
+
+    # Install CMake specific files
     install(FILES 
         "${CMAKE_CURRENT_BINARY_DIR}/_install/${PROJECT_NAME}Config.cmake"
         "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
