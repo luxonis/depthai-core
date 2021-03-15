@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5.0) # For Hunter
+cmake_minimum_required(VERSION 3.4) # For Hunter
 
 # MSVC variable isn't available before 'project' call
 # Generalize to Win32 platform for now 
