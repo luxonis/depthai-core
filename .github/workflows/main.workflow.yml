@@ -102,7 +102,7 @@ jobs:
         echo "C:\tools\opencv\build\x64\vc15\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
         
     - name: configure
-      run: cmake . -Bbuild
+      run: cmake -S . -B build -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON
 
     - name: build
       run: cmake --build build --parallel
