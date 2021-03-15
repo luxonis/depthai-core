@@ -13,6 +13,9 @@ macro(dai_add_example example_name example_src)
     add_executable("${example_name}" "${example_src}")
     target_link_libraries("${example_name}" PRIVATE utility depthai::opencv ${OpenCV_LIBS})
 
+    # Add to clangformat target
+    target_clangformat_setup(${example_name} "")
+
     # parse the rest of the arguments
     set(arguments ${ARGV})
     list(REMOVE_AT arguments 0 1)

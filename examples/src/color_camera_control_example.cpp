@@ -10,14 +10,13 @@
  *   'E' - autoexposure
  *   'F' - autofocus (continuous)
  */
-#include <iostream>
 #include <cstdio>
+#include <iostream>
 
 #include "utility.hpp"
 
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
-
 
 // Step size ('W','A','S','D' controls)
 static constexpr int STEP_SIZE = 16;
@@ -31,8 +30,7 @@ static int clamp(int num, int v0, int v1) {
     return std::max(v0, std::min(num, v1));
 }
 
-int main(){
-
+int main() {
     dai::Pipeline pipeline;
 
     // Nodes
@@ -67,7 +65,7 @@ int main(){
 
     // Connect to device
     dai::Device dev(pipeline);
-    
+
     // Create data queues
     auto controlQueue = dev.getInputQueue("control");
     auto configQueue = dev.getInputQueue("config");
@@ -79,8 +77,8 @@ int main(){
     dev.startPipeline();
 
     // Max crop_x & crop_y
-    float max_crop_x = (colorCam->getResolutionWidth() - colorCam->getVideoWidth()) / (float) colorCam->getResolutionWidth();
-    float max_crop_y = (colorCam->getResolutionHeight() - colorCam->getVideoHeight()) / (float) colorCam->getResolutionHeight();
+    float max_crop_x = (colorCam->getResolutionWidth() - colorCam->getVideoWidth()) / (float)colorCam->getResolutionWidth();
+    float max_crop_y = (colorCam->getResolutionHeight() - colorCam->getVideoHeight()) / (float)colorCam->getResolutionHeight();
 
     // Default crop
     float crop_x = 0;
@@ -99,89 +97,85 @@ int main(){
     int sens_min = 100;
     int sens_max = 1600;
 
-    while(true){
-
+    while(true) {
         auto previewFrames = previewQueue->tryGetAll<dai::ImgFrame>();
-        for(const auto& previewFrame : previewFrames){
+        for(const auto& previewFrame : previewFrames) {
             cv::Mat frame(previewFrame->getHeight(), previewFrame->getWidth(), CV_8UC3, previewFrame->getData().data());
             cv::imshow("preview", frame);
         }
-        
-        auto videoFrames = videoQueue->tryGetAll<dai::ImgFrame>();
-        for(const auto& videoFrame : videoFrames){
 
+        auto videoFrames = videoQueue->tryGetAll<dai::ImgFrame>();
+        for(const auto& videoFrame : videoFrames) {
             // Decode JPEG
             auto frame = cv::imdecode(videoFrame->getData(), cv::IMREAD_UNCHANGED);
             // Display
             cv::imshow("video", frame);
-
         }
 
         auto stillFrames = stillQueue->tryGetAll<dai::ImgFrame>();
-        for(const auto& stillFrame : stillFrames){
+        for(const auto& stillFrame : stillFrames) {
             // Decode JPEG
             auto frame = cv::imdecode(stillFrame->getData(), cv::IMREAD_UNCHANGED);
             // Display
             cv::imshow("still", frame);
         }
 
-
         // Update screen (10ms pooling rate)
         int key = cv::waitKey(10);
-        if (key == 'q') {
+        if(key == 'q') {
             break;
-        } else if(key == 'c'){
+        } else if(key == 'c') {
             dai::CameraControl ctrl;
             ctrl.setCaptureStill(true);
             controlQueue->send(ctrl);
-        } else if (key == 't') {
+        } else if(key == 't') {
             printf("Autofocus trigger (and disable continuous)\n");
             dai::CameraControl ctrl;
             ctrl.setAutoFocusMode(dai::CameraControl::AutoFocusMode::AUTO);
             ctrl.setAutoFocusTrigger();
             controlQueue->send(ctrl);
-        } else if (key == 'f') {
+        } else if(key == 'f') {
             printf("Autofocus enable, continuous\n");
             dai::CameraControl ctrl;
             ctrl.setAutoFocusMode(dai::CameraControl::AutoFocusMode::CONTINUOUS_VIDEO);
             controlQueue->send(ctrl);
-        } else if (key == 'e') {
+        } else if(key == 'e') {
             printf("Autoexposure enable\n");
             dai::CameraControl ctrl;
             ctrl.setAutoExposureEnable();
             controlQueue->send(ctrl);
-        } else if (key == ',' || key == '.') {
-            if (key == ',') lens_pos -= LENS_STEP;
-            if (key == '.') lens_pos += LENS_STEP;
+        } else if(key == ',' || key == '.') {
+            if(key == ',') lens_pos -= LENS_STEP;
+            if(key == '.') lens_pos += LENS_STEP;
             lens_pos = clamp(lens_pos, lens_min, lens_max);
             printf("Setting manual focus, lens position: %d\n", lens_pos);
             dai::CameraControl ctrl;
             ctrl.setManualFocus(lens_pos);
             controlQueue->send(ctrl);
-        } else if (key == 'i' || key == 'o' || key == 'k' || key == 'l') {
-            if (key == 'i') exp_time -= EXP_STEP;
-            if (key == 'o') exp_time += EXP_STEP;
-            if (key == 'k') sens_iso -= ISO_STEP;
-            if (key == 'l') sens_iso += ISO_STEP;
+        } else if(key == 'i' || key == 'o' || key == 'k' || key == 'l') {
+            if(key == 'i') exp_time -= EXP_STEP;
+            if(key == 'o') exp_time += EXP_STEP;
+            if(key == 'k') sens_iso -= ISO_STEP;
+            if(key == 'l') sens_iso += ISO_STEP;
             exp_time = clamp(exp_time, exp_min, exp_max);
             sens_iso = clamp(sens_iso, sens_min, sens_max);
             printf("Setting manual exposure, time %d us, iso %d\n", exp_time, sens_iso);
             dai::CameraControl ctrl;
             ctrl.setManualExposure(exp_time, sens_iso);
             controlQueue->send(ctrl);
-        } else if (key == 'w' || key == 'a' || key == 's' || key == 'd') {
-            if(key == 'a'){
+        } else if(key == 'w' || key == 'a' || key == 's' || key == 'd') {
+            if(key == 'a') {
                 crop_x -= (max_crop_x / colorCam->getResolutionWidth()) * STEP_SIZE;
-                if (crop_x < 0) crop_x = max_crop_x;
-            } else if(key == 'd'){
+                if(crop_x < 0) crop_x = max_crop_x;
+            } else if(key == 'd') {
                 crop_x += (max_crop_x / colorCam->getResolutionWidth()) * STEP_SIZE;
-                if (crop_x > max_crop_x) crop_x = 0.0f;
-            } else if(key == 'w'){
+                if(crop_x > max_crop_x) crop_x = 0.0f;
+            } else if(key == 'w') {
                 crop_y -= (max_crop_y / colorCam->getResolutionHeight()) * STEP_SIZE;
-                if (crop_y < 0) crop_y = max_crop_y;
-            } else if(key == 's'){
+                if(crop_y < 0) crop_y = max_crop_y;
+            } else if(key == 's') {
                 crop_y += (max_crop_y / colorCam->getResolutionHeight()) * STEP_SIZE;
-                if (crop_y > max_crop_y) crop_y = 0.0f;
+                if(crop_y > max_crop_y) crop_y = 0.0f;
             }
 
             // Send new cfg to camera
@@ -190,8 +184,5 @@ int main(){
             configQueue->send(cfg);
             printf("Sending new crop - x: %f, y: %f\n", crop_x, crop_y);
         }
-
     }
-
-
 }

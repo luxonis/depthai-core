@@ -1,6 +1,6 @@
+#include <chrono>
 #include <cstdio>
 #include <iostream>
-#include <chrono>
 
 #include "utility.hpp"
 
@@ -35,9 +35,12 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
 
     // Link plugins CAM -> NN -> XLINK
     colorCam->preview.link(detectionNetwork->input);
-    if(syncNN) detectionNetwork->passthrough.link(xlinkOut->input);
-    else colorCam->preview.link(xlinkOut->input);
-
+    if(syncNN) {
+        detectionNetwork->passthrough.link(xlinkOut->input);
+    } else {
+        colorCam->preview.link(xlinkOut->input);
+    }
+    
     detectionNetwork->out.link(nnOut->input);
 
     return p;
@@ -76,8 +79,8 @@ int main(int argc, char** argv) {
 
         counter++;
         auto current_time = std::chrono::steady_clock::now();
-        float elapsed_s = std::chrono::duration_cast<std::chrono::milliseconds>(current_time-start_time).count() / 1000.;
-        if (elapsed_s > 1) {
+        float elapsed_s = std::chrono::duration_cast<std::chrono::milliseconds>(current_time - start_time).count() / 1000.;
+        if(elapsed_s > 1) {
             fps = counter / elapsed_s;
             counter = 0;
             start_time = current_time;
@@ -102,7 +105,7 @@ int main(int argc, char** argv) {
             }
             cv::putText(frame, label_str, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             char conf_str[10];
-            snprintf(conf_str, sizeof conf_str, "%.2f", d.confidence*100);
+            snprintf(conf_str, sizeof conf_str, "%.2f", d.confidence * 100);
             cv::putText(frame, conf_str, cv::Point(x1 + 10, y1 + 40), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
 
             cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
@@ -110,7 +113,7 @@ int main(int argc, char** argv) {
 
         char fps_str[15];
         snprintf(fps_str, sizeof fps_str, "NN fps: %.2f", fps);
-        cv::putText(frame, fps_str, cv::Point(2, imgFrame->getHeight()-4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
+        cv::putText(frame, fps_str, cv::Point(2, imgFrame->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
 
         cv::imshow("preview", frame);
         int key = cv::waitKey(1);
