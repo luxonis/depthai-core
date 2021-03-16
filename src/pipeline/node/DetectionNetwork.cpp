@@ -25,7 +25,7 @@ std::vector<Node::Output> DetectionNetwork::getOutputs() {
     return {out, passthrough};
 }
 
-dai::DetectionNetworkProperties& DetectionNetwork::getPropertiesRef() {
+DetectionNetwork::Properties& DetectionNetwork::getPropertiesRef() {
     return properties;
 }
 

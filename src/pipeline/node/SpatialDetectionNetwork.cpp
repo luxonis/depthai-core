@@ -25,7 +25,7 @@ std::vector<Node::Output> SpatialDetectionNetwork::getOutputs() {
     return {out, boundingBoxMapping, passthrough, passthroughDepth};
 }
 
-dai::SpatialDetectionNetworkProperties& SpatialDetectionNetwork::getPropertiesRef() {
+SpatialDetectionNetwork::Properties& SpatialDetectionNetwork::getPropertiesRef() {
     return properties;
 }
 

@@ -18,6 +18,8 @@ namespace node {
  * @brief SpatialDetectionNetwork node. Runs a neural inference on input image and calculates spatial location data.
  */
 class SpatialDetectionNetwork : public DetectionNetwork {
+    using Properties = dai::SpatialDetectionNetworkProperties;
+
     std::string getName() const override;
     std::vector<Input> getInputs() override;
     std::vector<Output> getOutputs() override;
@@ -25,8 +27,8 @@ class SpatialDetectionNetwork : public DetectionNetwork {
 
    protected:
     SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    dai::SpatialDetectionNetworkProperties properties;
-    dai::SpatialDetectionNetworkProperties& getPropertiesRef() override;
+    Properties properties;
+    Properties& getPropertiesRef() override;
 
    public:
     /**

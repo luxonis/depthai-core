@@ -18,6 +18,7 @@ namespace node {
  * @brief DetectionNetwork. Base for different network specializations
  */
 class DetectionNetwork : public NeuralNetwork {
+    using Properties = dai::DetectionNetworkProperties;
     std::string getName() const override;
     std::vector<Input> getInputs() override;
     std::vector<Output> getOutputs() override;
@@ -25,8 +26,8 @@ class DetectionNetwork : public NeuralNetwork {
 
    protected:
     DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    dai::DetectionNetworkProperties properties;
-    dai::DetectionNetworkProperties& getPropertiesRef() override;
+    Properties properties;
+    virtual Properties& getPropertiesRef() override;
 
    public:
     /**
