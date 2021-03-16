@@ -1,6 +1,6 @@
+#include <chrono>
 #include <cstdio>
 #include <iostream>
-#include <chrono>
 
 #include "utility.hpp"
 
@@ -43,14 +43,17 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     detectionNetwork->setNumClasses(80);
     detectionNetwork->setCoordinateSize(4);
     detectionNetwork->setAnchors({10, 14, 23, 27, 37, 58, 81, 82, 135, 169, 344, 319});
-    detectionNetwork->setAnchorMasks({{"side13", {3,4,5}}, {"side26", {1,2,3}}});
+    detectionNetwork->setAnchorMasks({{"side13", {3, 4, 5}}, {"side26", {1, 2, 3}}});
     detectionNetwork->setIouThreshold(0.5f);
     detectionNetwork->setBlobPath(nnPath);
 
     // Link plugins CAM -> NN -> XLINK
     colorCam->preview.link(detectionNetwork->input);
-    if(syncNN) detectionNetwork->passthrough.link(xlinkOut->input);
-    else colorCam->preview.link(xlinkOut->input);
+    if(syncNN) {
+        detectionNetwork->passthrough.link(xlinkOut->input);
+    } else {
+        colorCam->preview.link(xlinkOut->input);
+    }
 
     detectionNetwork->out.link(nnOut->input);
 
@@ -81,7 +84,7 @@ int main(int argc, char** argv) {
     cv::Mat frame;
     auto preview = d.getOutputQueue("preview", 4, false);
     auto detections = d.getOutputQueue("detections", 4, false);
-    
+
     auto startTime = std::chrono::steady_clock::now();
     int counter = 0;
     float fps = 0;
@@ -116,9 +119,9 @@ int main(int argc, char** argv) {
                 labelStr = labelMap[labelIndex];
             }
             cv::putText(frame, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-            
+
             std::stringstream confStr;
-            confStr << std::fixed << std::setprecision(2) << d.confidence*100;
+            confStr << std::fixed << std::setprecision(2) << d.confidence * 100;
             cv::putText(frame, confStr.str(), cv::Point(x1 + 10, y1 + 40), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
 
             cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
@@ -126,7 +129,7 @@ int main(int argc, char** argv) {
 
         std::stringstream fpsStr;
         fpsStr << std::fixed << std::setprecision(2) << fps;
-        cv::putText(frame, fpsStr.str(), cv::Point(2, imgFrame->getHeight()-4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
+        cv::putText(frame, fpsStr.str(), cv::Point(2, imgFrame->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
 
         cv::imshow("preview", frame);
         int key = cv::waitKey(1);

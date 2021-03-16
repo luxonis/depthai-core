@@ -7,22 +7,23 @@
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-static const std::vector<std::string> labelMap = {"background",  "aeroplane", "bicycle", "bird",      "boat",   "bottle",      "bus",   "car",  "cat",   "chair",    "cow",
-                                  "diningtable", "dog",       "horse",   "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"};
+static const std::vector<std::string> labelMap = {"background", "aeroplane", "bicycle",     "bird",  "boat",        "bottle", "bus",
+                                                  "car",        "cat",       "chair",       "cow",   "diningtable", "dog",    "horse",
+                                                  "motorbike",  "person",    "pottedplant", "sheep", "sofa",        "train",  "tvmonitor"};
 
 static bool syncNN = true;
 
 dai::Pipeline createNNPipeline(std::string nnPath) {
     dai::Pipeline p;
 
-    //create nodes
+    // create nodes
     auto colorCam = p.create<dai::node::ColorCamera>();
     auto spatialDetectionNetwork = p.create<dai::node::MobileNetSpatialDetectionNetwork>();
     auto monoLeft = p.create<dai::node::MonoCamera>();
     auto monoRight = p.create<dai::node::MonoCamera>();
     auto stereo = p.create<dai::node::StereoDepth>();
 
-    //create xlink connections
+    // create xlink connections
     auto xoutRgb = p.create<dai::node::XLinkOut>();
     auto xoutNN = p.create<dai::node::XLinkOut>();
     auto xoutBoundingBoxDepthMapping = p.create<dai::node::XLinkOut>();
@@ -43,7 +44,6 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
-
     /// setting node configs
     stereo->setOutputDepth(true);
     stereo->setConfidenceThreshold(255);
@@ -55,15 +55,16 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     spatialDetectionNetwork->setDepthLowerThreshold(100);
     spatialDetectionNetwork->setDepthUpperThreshold(5000);
 
-
     // Link plugins CAM -> STEREO -> XLINK
     monoLeft->out.link(stereo->left);
     monoRight->out.link(stereo->right);
 
     // Link plugins CAM -> NN -> XLINK
     colorCam->preview.link(spatialDetectionNetwork->input);
-    if(syncNN) spatialDetectionNetwork->passthrough.link(xoutRgb->input);
-    else colorCam->preview.link(xoutRgb->input);
+    if(syncNN)
+        spatialDetectionNetwork->passthrough.link(xoutRgb->input);
+    else
+        colorCam->preview.link(xoutRgb->input);
 
     spatialDetectionNetwork->out.link(xoutNN->input);
     spatialDetectionNetwork->boundingBoxMapping.link(xoutBoundingBoxDepthMapping->input);
@@ -162,7 +163,7 @@ int main(int argc, char** argv) {
             }
             cv::putText(frame, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             std::stringstream confStr;
-            confStr << std::fixed << std::setprecision(2) << d.confidence*100;
+            confStr << std::fixed << std::setprecision(2) << d.confidence * 100;
             cv::putText(frame, confStr.str(), cv::Point(x1 + 10, y1 + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
 
             std::stringstream depthX;
@@ -174,13 +175,13 @@ int main(int argc, char** argv) {
             std::stringstream depthZ;
             depthZ << "Z: " << (int)d.spatialCoordinates.z << " mm";
             cv::putText(frame, depthZ.str(), cv::Point(x1 + 10, y1 + 80), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-            
+
             cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
         }
 
         std::stringstream fpsStr;
         fpsStr << std::fixed << std::setprecision(2) << fps;
-        cv::putText(frame, fpsStr.str(), cv::Point(2, imgFrame->getHeight()-4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
+        cv::putText(frame, fpsStr.str(), cv::Point(2, imgFrame->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
 
         cv::imshow("depth", depthFrameColor);
         cv::imshow("preview", frame);

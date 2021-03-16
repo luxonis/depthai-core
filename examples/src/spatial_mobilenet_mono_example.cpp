@@ -7,8 +7,9 @@
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-static const std::vector<std::string> labelMap = {"background",  "aeroplane", "bicycle", "bird",      "boat",   "bottle",      "bus",   "car",  "cat",   "chair",    "cow",
-                                  "diningtable", "dog",       "horse",   "motorbike", "person", "pottedplant", "sheep", "sofa", "train", "tvmonitor"};
+static const std::vector<std::string> labelMap = {"background", "aeroplane", "bicycle",     "bird",  "boat",        "bottle", "bus",
+                                                  "car",        "cat",       "chair",       "cow",   "diningtable", "dog",    "horse",
+                                                  "motorbike",  "person",    "pottedplant", "sheep", "sofa",        "train",  "tvmonitor"};
 
 static bool syncNN = true;
 static bool flipRectified = true;
@@ -29,9 +30,8 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     depthRoiMap->setStreamName("boundingBoxDepthMapping");
     xoutDepth->setStreamName("depth");
 
-
     imageManip->initialConfig.setResize(300, 300);
-    //The NN model expects BGR input. By default ImageManip output type would be same as input (gray in this case)
+    // The NN model expects BGR input. By default ImageManip output type would be same as input (gray in this case)
     imageManip->initialConfig.setFrameType(dai::RawImgFrame::Type::BGR888p);
 
     auto monoLeft = p.create<dai::node::MonoCamera>();
@@ -46,7 +46,6 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     stereo->setOutputDepth(true);
     stereo->setOutputRectified(true);
     stereo->setConfidenceThreshold(255);
-
 
     // Link plugins CAM -> STEREO -> XLINK
     monoLeft->out.link(stereo->left);
@@ -64,8 +63,10 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
 
     // Link plugins CAM -> NN -> XLINK
     imageManip->out.link(spatialDetectionNetwork->input);
-    if(syncNN) spatialDetectionNetwork->passthrough.link(xlinkOut->input);
-    else imageManip->out.link(xlinkOut->input);
+    if(syncNN)
+        spatialDetectionNetwork->passthrough.link(xlinkOut->input);
+    else
+        imageManip->out.link(xlinkOut->input);
 
     spatialDetectionNetwork->out.link(nnOut->input);
     spatialDetectionNetwork->boundingBoxMapping.link(depthRoiMap->input);
@@ -97,7 +98,6 @@ int main(int argc, char** argv) {
     // Start the pipeline
     d.startPipeline();
 
-    
     auto preview = d.getOutputQueue("preview", 4, false);
     auto detections = d.getOutputQueue("detections", 4, false);
     auto depthRoiMap = d.getOutputQueue("boundingBoxDepthMapping", 4, false);
@@ -150,11 +150,10 @@ int main(int argc, char** argv) {
 
         cv::Mat rectifiedRight = inRectifiedRight->getCvFrame();
 
-        if (flipRectified) cv::flip(rectifiedRight, rectifiedRight, 1);
-
+        if(flipRectified) cv::flip(rectifiedRight, rectifiedRight, 1);
 
         for(auto& d : dets) {
-            if (flipRectified) {
+            if(flipRectified) {
                 auto swap = d.xmin;
                 d.xmin = 1 - d.xmax;
                 d.xmax = 1 - swap;
@@ -171,7 +170,7 @@ int main(int argc, char** argv) {
             }
             cv::putText(rectifiedRight, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             std::stringstream confStr;
-            confStr << std::fixed << std::setprecision(2) << d.confidence*100;
+            confStr << std::fixed << std::setprecision(2) << d.confidence * 100;
             cv::putText(rectifiedRight, confStr.str(), cv::Point(x1 + 10, y1 + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
 
             std::stringstream depthX;
@@ -183,13 +182,13 @@ int main(int argc, char** argv) {
             std::stringstream depthZ;
             depthZ << "Z: " << (int)d.spatialCoordinates.z << " mm";
             cv::putText(rectifiedRight, depthZ.str(), cv::Point(x1 + 10, y1 + 80), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-            
+
             cv::rectangle(rectifiedRight, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
         }
 
         std::stringstream fpsStr;
         fpsStr << std::fixed << std::setprecision(2) << fps;
-        cv::putText(rectifiedRight, fpsStr.str(), cv::Point(2, rectifiedRight.rows-4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
+        cv::putText(rectifiedRight, fpsStr.str(), cv::Point(2, rectifiedRight.rows - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
 
         cv::imshow("depth", depthFrameColor);
         cv::imshow("rectified right", rectifiedRight);
