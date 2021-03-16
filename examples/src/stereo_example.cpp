@@ -130,11 +130,15 @@ int main(){
 
             if (outputRectified) {
                 auto rectifL = rectifLeftQueue->get<dai::ImgFrame>();
-                cv::imshow("rectified_left", cv::Mat(rectifL->getHeight(), rectifL->getWidth(),
-                        CV_8UC1, rectifL->getData().data()));
+                cv::Mat rectifiedLeftFrame = rectifL->getFrame();
+                cv::flip(rectifiedLeftFrame, rectifiedLeftFrame, 1);
+                cv::imshow("rectified_left", rectifiedLeftFrame);
+
                 auto rectifR = rectifRightQueue->get<dai::ImgFrame>();
-                cv::imshow("rectified_right", cv::Mat(rectifR->getHeight(), rectifR->getWidth(),
-                        CV_8UC1, rectifR->getData().data()));
+                cv::Mat rectifiedRightFrame = rectifR->getFrame();
+
+                cv::flip(rectifiedRightFrame, rectifiedRightFrame, 1);
+                cv::imshow("rectified_right", rectifiedRightFrame);
             }
         }
 

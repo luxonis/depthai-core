@@ -93,7 +93,7 @@ int main(){
         auto matPreview = toMat(preview->getData(), preview->getWidth(), preview->getHeight(), 3, 1);
         auto matManip = toMat(manip->getData(), manip->getWidth(), manip->getHeight(), 3, 1);
         auto matManip2 = toMat(manip2->getData(), manip2->getWidth(), manip2->getHeight(), 3, 1);
-        
+
         // Display both 
         cv::imshow("preview", matPreview);
         cv::imshow("manip", matManip);
