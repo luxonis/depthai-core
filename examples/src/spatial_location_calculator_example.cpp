@@ -56,16 +56,14 @@ int main() {
     spatialDataCalculator->passthroughDepth.link(xoutDepth->input);
     stereo->depth.link(spatialDataCalculator->inputDepth);
 
-    float bbXmin = 0.4f;
-    float bbXmax = 0.6f;
-    float bbYmin = 0.4f;
-    float bbYmax = 0.6f;
+    dai::Point2f topLeft (0.4f, 0.4f);
+    dai::Point2f bottomRight (0.6f, 0.6f);
 
     spatialDataCalculator->setWaitForConfigInput(false);
     dai::SpatialLocationCalculatorConfigData config;
     config.depthThresholds.lowerThreshold = 100;
     config.depthThresholds.upperThreshold = 10000;
-    config.roi = dai::Rect(bbXmin, bbYmin, bbXmax, bbYmax);
+    config.roi = dai::Rect(topLeft, bottomRight);
     spatialDataCalculator->initialConfig.addROI(config);
     spatialDataCalculator->out.link(xoutSpatialData->input);
     xinSpatialCalcConfig->out.link(spatialDataCalculator->inputConfig);
@@ -94,10 +92,11 @@ int main() {
         auto spatialData = spatialCalcQueue->get<dai::SpatialLocationCalculatorData>()->getSpatialLocations();
         for(auto depthData : spatialData) {
             auto roi = depthData.config.roi;
-            auto xmin = (int)(roi.xmin * depth->getWidth());
-            auto ymin = (int)(roi.ymin * depth->getHeight());
-            auto xmax = (int)(roi.xmax * depth->getWidth());
-            auto ymax = (int)(roi.ymax * depth->getHeight());
+            roi = roi.denormalize(depthFrameColor.cols, depthFrameColor.rows);
+            auto xmin = (int)roi.topLeft().x;
+            auto ymin = (int)roi.topLeft().y;
+            auto xmax = (int)roi.bottomRight().x;
+            auto ymax = (int)roi.bottomRight().y;
 
             cv::rectangle(depthFrameColor, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
             std::stringstream s;
@@ -123,30 +122,30 @@ int main() {
                 return 0;
                 break;
             case 'w':
-                if(bbYmin - stepSize >= 0) {
-                    bbYmin -= stepSize;
-                    bbYmax -= stepSize;
+                if(topLeft.y - stepSize >= 0) {
+                    topLeft.y -= stepSize;
+                    bottomRight.y -= stepSize;
                     newConfig = true;
                 }
                 break;
             case 'a':
-                if(bbXmin - stepSize >= 0) {
-                    bbXmin -= stepSize;
-                    bbXmax -= stepSize;
+                if(topLeft.x - stepSize >= 0) {
+                    topLeft.x -= stepSize;
+                    bottomRight.x -= stepSize;
                     newConfig = true;
                 }
                 break;
             case 's':
-                if(bbYmax + stepSize <= 1) {
-                    bbYmin += stepSize;
-                    bbYmax += stepSize;
+                if(bottomRight.y + stepSize <= 1) {
+                    topLeft.y += stepSize;
+                    bottomRight.y += stepSize;
                     newConfig = true;
                 }
                 break;
             case 'd':
-                if(bbXmax + stepSize <= 1) {
-                    bbXmin += stepSize;
-                    bbXmax += stepSize;
+                if(bottomRight.x + stepSize <= 1) {
+                    topLeft.x += stepSize;
+                    bottomRight.x += stepSize;
                     newConfig = true;
                 }
                 break;
@@ -154,7 +153,7 @@ int main() {
                 break;
         }
         if(newConfig) {
-            config.roi = dai::Rect(bbXmin, bbYmin, bbXmax, bbYmax);
+            config.roi = dai::Rect(topLeft, bottomRight);
             dai::SpatialLocationCalculatorConfig cfg;
             cfg.addROI(config);
             spatialCalcConfigInQueue->send(cfg);

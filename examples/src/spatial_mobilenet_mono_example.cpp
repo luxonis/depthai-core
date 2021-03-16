@@ -136,10 +136,13 @@ int main(int argc, char** argv) {
 
             for(auto roiData : roiDatas) {
                 auto roi = roiData.roi;
-                auto xmin = (int)(roi.xmin * depth->getWidth());
-                auto ymin = (int)(roi.ymin * depth->getHeight());
-                auto xmax = (int)(roi.xmax * depth->getWidth());
-                auto ymax = (int)(roi.ymax * depth->getHeight());
+                roi = roi.denormalize(depthFrameColor.cols, depthFrameColor.rows);
+                auto topLeft = roi.topLeft();
+                auto bottomRight = roi.bottomRight();
+                auto xmin = (int)topLeft.x;
+                auto ymin = (int)topLeft.y;
+                auto xmax = (int)bottomRight.x;
+                auto ymax = (int)bottomRight.y;
 
                 cv::rectangle(depthFrameColor, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
             }
