@@ -99,18 +99,15 @@ int main() {
             auto ymax = (int)roi.bottomRight().y;
 
             cv::rectangle(depthFrameColor, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
-            std::stringstream s;
-            s << "Avg: " << (int)depthData.depthAverage << " mm";
-            cv::putText(depthFrameColor, s.str(), cv::Point(xmin + 10, ymin + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             std::stringstream depthX;
             depthX << "X: " << (int)depthData.spatialCoordinates.x << " mm";
-            cv::putText(depthFrameColor, depthX.str(), cv::Point(xmin + 10, ymin + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(depthFrameColor, depthX.str(), cv::Point(xmin + 10, ymin + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             std::stringstream depthY;
             depthY << "Y: " << (int)depthData.spatialCoordinates.y << " mm";
-            cv::putText(depthFrameColor, depthY.str(), cv::Point(xmin + 10, ymin + 50), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(depthFrameColor, depthY.str(), cv::Point(xmin + 10, ymin + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             std::stringstream depthZ;
             depthZ << "Z: " << (int)depthData.spatialCoordinates.z << " mm";
-            cv::putText(depthFrameColor, depthZ.str(), cv::Point(xmin + 10, ymin + 65), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(depthFrameColor, depthZ.str(), cv::Point(xmin + 10, ymin + 50), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
         }
 
         cv::imshow("depth", depthFrameColor);
