@@ -86,7 +86,6 @@ int main(int argc, char** argv) {
     // Start the pipeline
     d.startPipeline();
 
-    cv::Mat frame;
     auto preview = d.getOutputQueue("preview", 4, false);
     auto detections = d.getOutputQueue("detections", 4, false);
 
@@ -106,9 +105,7 @@ int main(int argc, char** argv) {
             startTime = currentTime;
         }
 
-        if(imgFrame) {
-            frame = toMat(imgFrame->getData(), imgFrame->getWidth(), imgFrame->getHeight(), 3, 1);
-        }
+        cv::Mat frame = imgFrame->getCvFrame();
 
         auto color = cv::Scalar(255, 255, 255);
         auto dets = det->detections;
