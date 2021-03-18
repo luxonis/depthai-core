@@ -28,7 +28,7 @@ class SpatialDetectionNetwork : public DetectionNetwork {
    protected:
     SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     Properties properties;
-    Properties& getPropertiesRef() override;
+    virtual Properties& getPropertiesRef() override;
 
    public:
     /**
@@ -102,6 +102,16 @@ class MobileNetSpatialDetectionNetwork : public SpatialDetectionNetwork {
 class YoloSpatialDetectionNetwork : public SpatialDetectionNetwork {
    public:
     YoloSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    /// Set num classes
+    void setNumClasses(const int numClasses);
+    /// Set coordianate size
+    void setCoordinateSize(const int coordinates);
+    /// Set anchors
+    void setAnchors(std::vector<float> anchors);
+    /// Set anchor masks
+    void setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks);
+    /// Set Iou threshold
+    void setIouThreshold(float thresh);
 };
 
 }  // namespace node
