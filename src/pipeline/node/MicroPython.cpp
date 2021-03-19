@@ -10,7 +10,6 @@ MicroPython::MicroPython(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
     : Node(par, nodeId),
       inputs(Input(*this, "", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}})),
       outputs(Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}})) {
-    properties.scriptSize = tl::nullopt;
     properties.scriptUri = "";
     properties.processor = ProcessorType::LEON_MSS;
 }
@@ -48,7 +47,6 @@ std::shared_ptr<Node> MicroPython::clone() {
 void MicroPython::setScriptPath(const std::string& path) {
     auto asset = loadAsset("blob", path);
     properties.scriptUri = asset->getUri();
-    properties.scriptSize = asset->data.size();
     scriptPath = path;
 }
 
