@@ -7,9 +7,16 @@
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-static const std::vector<std::string> labelMap = {"background", "aeroplane", "bicycle",     "bird",  "boat",        "bottle", "bus",
-                                                  "car",        "cat",       "chair",       "cow",   "diningtable", "dog",    "horse",
-                                                  "motorbike",  "person",    "pottedplant", "sheep", "sofa",        "train",  "tvmonitor"};
+static const std::vector<std::string> labelMap = {
+    "person",        "bicycle",      "car",           "motorbike",     "aeroplane",   "bus",         "train",       "truck",        "boat",
+    "traffic light", "fire hydrant", "stop sign",     "parking meter", "bench",       "bird",        "cat",         "dog",          "horse",
+    "sheep",         "cow",          "elephant",      "bear",          "zebra",       "giraffe",     "backpack",    "umbrella",     "handbag",
+    "tie",           "suitcase",     "frisbee",       "skis",          "snowboard",   "sports ball", "kite",        "baseball bat", "baseball glove",
+    "skateboard",    "surfboard",    "tennis racket", "bottle",        "wine glass",  "cup",         "fork",        "knife",        "spoon",
+    "bowl",          "banana",       "apple",         "sandwich",      "orange",      "broccoli",    "carrot",      "hot dog",      "pizza",
+    "donut",         "cake",         "chair",         "sofa",          "pottedplant", "bed",         "diningtable", "toilet",       "tvmonitor",
+    "laptop",        "mouse",        "remote",        "keyboard",      "cell phone",  "microwave",   "oven",        "toaster",      "sink",
+    "refrigerator",  "book",         "clock",         "vase",          "scissors",    "teddy bear",  "hair drier",  "toothbrush"};
 
 static bool syncNN = true;
 
@@ -18,7 +25,7 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
 
     // create nodes
     auto colorCam = p.create<dai::node::ColorCamera>();
-    auto spatialDetectionNetwork = p.create<dai::node::MobileNetSpatialDetectionNetwork>();
+    auto spatialDetectionNetwork = p.create<dai::node::YoloSpatialDetectionNetwork>();
     auto monoLeft = p.create<dai::node::MonoCamera>();
     auto monoRight = p.create<dai::node::MonoCamera>();
     auto stereo = p.create<dai::node::StereoDepth>();
@@ -34,7 +41,7 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     xoutBoundingBoxDepthMapping->setStreamName("boundingBoxDepthMapping");
     xoutDepth->setStreamName("depth");
 
-    colorCam->setPreviewSize(300, 300);
+    colorCam->setPreviewSize(416, 416);
     colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     colorCam->setInterleaved(false);
     colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
@@ -54,6 +61,13 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     spatialDetectionNetwork->setBoundingBoxScaleFactor(0.5);
     spatialDetectionNetwork->setDepthLowerThreshold(100);
     spatialDetectionNetwork->setDepthUpperThreshold(5000);
+
+    // yolo specific parameters
+    spatialDetectionNetwork->setNumClasses(80);
+    spatialDetectionNetwork->setCoordinateSize(4);
+    spatialDetectionNetwork->setAnchors({10, 14, 23, 27, 37, 58, 81, 82, 135, 169, 344, 319});
+    spatialDetectionNetwork->setAnchorMasks({{"side13", {3, 4, 5}}, {"side26", {1, 2, 3}}});
+    spatialDetectionNetwork->setIouThreshold(0.5f);
 
     // Link plugins CAM -> STEREO -> XLINK
     monoLeft->out.link(stereo->left);

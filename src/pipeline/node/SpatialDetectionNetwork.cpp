@@ -62,5 +62,25 @@ YoloSpatialDetectionNetwork::YoloSpatialDetectionNetwork(const std::shared_ptr<P
     getPropertiesRef().nnFamily = DetectionNetworkType::YOLO;
 }
 
+void YoloSpatialDetectionNetwork::setNumClasses(const int numClasses) {
+    getPropertiesRef().classes = numClasses;
+}
+
+void YoloSpatialDetectionNetwork::setCoordinateSize(const int coordinates) {
+    getPropertiesRef().coordinates = coordinates;
+}
+
+void YoloSpatialDetectionNetwork::setAnchors(std::vector<float> anchors) {
+    getPropertiesRef().anchors = anchors;
+}
+
+void YoloSpatialDetectionNetwork::setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks) {
+    getPropertiesRef().anchorMasks = anchorMasks;
+}
+
+void YoloSpatialDetectionNetwork::setIouThreshold(float thresh) {
+    getPropertiesRef().iouThreshold = thresh;
+}
+
 }  // namespace node
 }  // namespace dai

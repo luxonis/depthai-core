@@ -155,3 +155,11 @@ dai_add_example(camera_mobilenet_sync src/camera_mobilenet_sync_example.cpp)
 target_compile_definitions(camera_mobilenet_sync PRIVATE BLOB_PATH="${mobilenet_blob}")
 
 dai_add_example(spatial_location_calculator src/spatial_location_calculator_example.cpp)
+
+# Device side decoding example for tiny-yolo-v3 with 3d coordinates on RGB camera
+dai_add_example(spatial_tiny_yolo_v3 src/spatial_tiny_yolo_example.cpp)
+target_compile_definitions(spatial_tiny_yolo_v3 PRIVATE BLOB_PATH="${tiny_yolo_v3_blob}")
+
+# Device side decoding example for tiny-yolo-v4 with 3d coordinates on RGB camera
+dai_add_example(spatial_tiny_yolo_v4 src/spatial_tiny_yolo_example.cpp)
+target_compile_definitions(spatial_tiny_yolo_v4 PRIVATE BLOB_PATH="${tiny_yolo_v4_blob}")
