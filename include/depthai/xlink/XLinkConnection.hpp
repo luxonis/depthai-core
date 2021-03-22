@@ -17,6 +17,9 @@
 
 namespace dai {
 
+/**
+ * Describes a connected device
+ */
 struct DeviceInfo {
     DeviceInfo() = default;
     DeviceInfo(const char*);
@@ -26,6 +29,9 @@ struct DeviceInfo {
     std::string getMxId() const;
 };
 
+/**
+ * Represents connection between host and device over XLink protocol
+ */
 class XLinkConnection {
     static std::atomic<bool> xlinkGlobalInitialized;
     static XLinkGlobalHandler_t xlinkGlobalHandler;

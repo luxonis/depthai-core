@@ -25,7 +25,7 @@ int main() {
     // Properties
     xin->setStreamName("in");
     xout->setStreamName("out");
-    imageManip->setResize(width, height);
+    imageManip->initialConfig.setResize(width, height);
 
     // Link plugins CAM -> XLINK
     xin->out.link(imageManip->inputImage);
