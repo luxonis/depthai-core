@@ -19,6 +19,8 @@
 #include "pipeline/node/MonoCamera.hpp"
 #include "pipeline/node/NeuralNetwork.hpp"
 #include "pipeline/node/SPIOut.hpp"
+#include "pipeline/node/SpatialDetectionNetwork.hpp"
+#include "pipeline/node/SpatialLocationCalculator.hpp"
 #include "pipeline/node/StereoDepth.hpp"
 #include "pipeline/node/SystemLogger.hpp"
 #include "pipeline/node/VideoEncoder.hpp"
@@ -32,6 +34,8 @@
 #include "pipeline/datatype/ImgDetections.hpp"
 #include "pipeline/datatype/ImgFrame.hpp"
 #include "pipeline/datatype/NNData.hpp"
+#include "pipeline/datatype/SpatialImgDetections.hpp"
+#include "pipeline/datatype/SpatialLocationCalculatorData.hpp"
 #include "pipeline/datatype/SystemInformation.hpp"
 
 // namespace dai {

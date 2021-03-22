@@ -1,17 +1,14 @@
 
 
-
-
-#include <iostream>
 #include <cstdio>
+#include <iostream>
 
 #include "utility.hpp"
 
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-
-int main(){
+int main() {
     dai::Pipeline pipeline;
 
     auto colorCam = pipeline.create<dai::node::ColorCamera>();
@@ -26,7 +23,7 @@ int main(){
     manipOut->setStreamName("manip");
     manipOut2->setStreamName("manip2");
     manip2In->setStreamName("manip2In");
-    
+
     colorCam->setPreviewSize(304, 304);
     colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     colorCam->setInterleaved(false);
@@ -35,11 +32,10 @@ int main(){
     // Create a center crop image manipulation
     imageManip->initialConfig.setCenterCrop(0.7f);
     imageManip->initialConfig.setResizeThumbnail(300, 400);
-    
+
     // Second image manipulator - Create a off center crop
     imageManip2->initialConfig.setCropRect(0.1, 0.1, 0.3, 0.3);
     imageManip2->setWaitForConfigInput(true);
-
 
     // Link nodes CAM -> XLINK
     colorCam->preview.link(camOut->input);
@@ -57,7 +53,6 @@ int main(){
     // Host config -> image manip 2
     manip2In->out.link(imageManip2->inputConfig);
 
-
     // Connect to device and start pipeline
     dai::Device device(pipeline);
     device.startPipeline();
@@ -72,11 +67,10 @@ int main(){
     int frameCounter = 0;
     float xmin = 0.1f;
     float xmax = 0.3f;
-    while(true){
-
+    while(true) {
         xmin += 0.003f;
         xmax += 0.003f;
-        if(xmax >= 1.0f){
+        if(xmax >= 1.0f) {
             xmin = 0.0f;
             xmax = 0.2f;
         }
@@ -93,19 +87,17 @@ int main(){
         auto matPreview = toMat(preview->getData(), preview->getWidth(), preview->getHeight(), 3, 1);
         auto matManip = toMat(manip->getData(), manip->getWidth(), manip->getHeight(), 3, 1);
         auto matManip2 = toMat(manip2->getData(), manip2->getWidth(), manip2->getHeight(), 3, 1);
-        
-        // Display both 
+
+        // Display both
         cv::imshow("preview", matPreview);
         cv::imshow("manip", matManip);
         cv::imshow("manip2", matManip2);
 
         int key = cv::waitKey(1);
-        if (key == 'q'){
+        if(key == 'q') {
             return 0;
-        } 
+        }
 
         frameCounter++;
-
     }
-
 }

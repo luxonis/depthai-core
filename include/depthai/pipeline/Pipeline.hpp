@@ -114,7 +114,7 @@ class Pipeline {
     }
 
     /**
-     * Adds a note to pipeline.
+     * Adds a node to pipeline.
      *
      * Node is specified by template argument N
      */

@@ -1,22 +1,20 @@
 
-#include <iostream>
 #include <cstdio>
+#include <iostream>
 
 #include "utility.hpp"
 
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-
-int main(int argc, char** argv){
-
+int main(int argc, char** argv) {
     using namespace std;
     using namespace std::chrono;
 
     std::string h264Path("video.h264");
-    
+
     // If path specified, use that
-    if(argc > 1){
+    if(argc > 1) {
         h264Path = std::string(argv[1]);
     }
 
@@ -31,10 +29,10 @@ int main(int argc, char** argv){
     xout->setStreamName("h264");
     xout2->setStreamName("preview");
 
-    // ColorCamera    
+    // ColorCamera
     colorCam->setPreviewSize(300, 300);
     colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    //colorCam->setFps(5.0);
+    // colorCam->setFps(5.0);
     colorCam->setInterleaved(true);
 
     // VideoEncoder
@@ -52,20 +50,18 @@ int main(int argc, char** argv){
 
     auto myfile = std::fstream(h264Path, std::ios::out | std::ios::binary);
 
-
     auto h264Queue = d.getOutputQueue("h264", 8, false);
     auto previewQueue = d.getOutputQueue("preview", 8, false);
-    while(1){
-
+    while(1) {
         auto preview = previewQueue->get<dai::ImgFrame>();
         cv::imshow("preview", cv::Mat(preview->getHeight(), preview->getWidth(), CV_8UC3, preview->getData().data()));
         auto h264 = h264Queue->get<dai::ImgFrame>();
         myfile.write((char*)h264->getData().data(), h264->getData().size());
 
         int key = cv::waitKey(1);
-        if (key == 'q'){
+        if(key == 'q') {
             break;
-        } 
+        }
     }
     myfile.close();
 
