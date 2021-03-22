@@ -95,7 +95,7 @@ cmake --build [build/dir] --target clangformat
 
 Doxygen is used to generate documentation. Follow [doxygen download](https://www.doxygen.nl/download.html#srcbin) and install the required binaries for your platform.
 
-After that specify CMake define `-DDEPTHAI_BUILD_DOCS=ON` and build the target `doxygen`
+After that specify CMake define `-D DEPTHAI_BUILD_DOCS=ON` and build the target `doxygen`
 
 ## Debugging tips
 
