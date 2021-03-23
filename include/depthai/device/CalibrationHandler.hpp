@@ -1,6 +1,6 @@
 #include "depthai-shared/common/EepromData.hpp"
 #include "depthai-shared/common/CameraBoardSocket.hpp"
-
+#include <string>
 
 
 namespace dai {
@@ -41,8 +41,8 @@ class CalibrationHandler{
      * fails We can provide an appropriate error that connection doesn't exist between the requested camera id's..
      * And other option is making sure the connection exists all the time by validating the links. 
      */
-    bool isCameraArrayConnected; 
-    EepromData eepromData;
+    // bool isCameraArrayConnected; 
+    dai::EepromData eepromData;
     // bool validateCameraArray();
     // void createSrcLinks();
 };

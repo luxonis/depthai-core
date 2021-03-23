@@ -8,6 +8,7 @@
 // Include some common device classes
 #include "device/Device.hpp"
 #include "device/DeviceBootloader.hpp"
+#include "device/CalibrationHandler.hpp"
 
 // Include Pipeline
 #include "pipeline/Pipeline.hpp"

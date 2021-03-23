@@ -1,0 +1,142 @@
+{
+
+    "version": 6,
+    "swapLeftRightCam": true,
+    "boardName" : "BW1098OBC",
+    "boardRev"  : "REV0",
+    "cameraData":{
+        "0": {
+             "intrinsicMatrix": [[], [], []], 
+             "width": 1280,
+             "height": 800,
+             "distortionCoeff": [], 
+             "extrinsics": {
+                 "rotationMatrix": [[], [], []], 
+                 "translation": {
+                             "x": 7.5,
+                             "y": 0.0,
+                             "z": 0.0
+                             }, 
+                 "measuredTranslation":  {
+                             "x": 7.5,
+                             "y": 0.0,
+                             "z": 0.0
+                             }, 
+                 "toCameraSocket": 1, 
+                 "fromCameraSockets": null
+             }, 
+             "measuredFovDeg": 68.4
+        },
+        "1": {
+             "intrinsicMatrix": [[], [], []], 
+             "width": 1280,
+             "height": 800,
+             "distortionCoeff": [], 
+             "extrinsics": {
+                 "rotationMatrix": [[], [], []], 
+                 "translation": {
+                             "x": 7.5,
+                             "y": 0.0,
+                             "z": 0.0
+                             }, 
+                 "measuredTranslation":  {
+                             "x": 7.5,
+                             "y": 0.0,
+                             "z": 0.0
+                             }, 
+                 "toCameraSocket": 1, 
+                 "fromCameraSockets": null
+             }, 
+             "measuredFovDeg": 68.4
+        },
+        "2": {
+             "intrinsicMatrix": [[], [], []], 
+             "width": 1280,
+             "height": 800,
+             "distortionCoeff": [], 
+             "extrinsics": {
+                 "rotationMatrix": [[], [], []], 
+                 "translation": {
+                             "x": 7.5,
+                             "y": 0.0,
+                             "z": 0.0
+                             }, 
+                 "measuredTranslation": {
+                             "x": 7.5,
+                             "y": 0.0,
+                             "z": 0.0
+                             }, 
+                 "toCameraSocket": 1, 
+                 "fromCameraSockets": null
+             }, 
+             "measuredFovDeg": 68.4
+        }
+    },
+    "stereoRectificationData": {
+        "rectifiedRotationLeft": [[], [], []], 
+        "rectifiedRotationRight": [[], [], []], 
+        "leftCameraSocket": 1, 
+        "rightCameraSocket": 2 },
+    "imuExtrinsics": {
+        "rotationMatrix": [[], [], []], 
+        "translation": {
+                    "x": 7.5,
+                    "y": 0.0,
+                    "z": 0.0
+                    }, 
+        "measuredTranslation":  {
+                    "x": 7.5,
+                    "y": 0.0,
+                    "z": 0.0
+                    }, 
+        "toCameraSocket": 1, 
+        "fromCameraSockets": null
+                }
+}
+
+
+Rectification Rotation R1 (left):
+    0.999954,   -0.001489,   -0.009451,
+    0.001514,    0.999995,    0.002682,
+    0.009447,   -0.002697,    0.999952,
+  Rectification Rotation R2 (right):
+    0.999763,   -0.012779,   -0.017639,
+    0.012732,    0.999915,   -0.002802,
+    0.017673,    0.002577,    0.999840,
+  Calibration intrinsic matrix M1 (left):
+  855.849548,    0.000000,  632.435974,
+    0.000000,  856.289001,  399.700226,
+    0.000000,    0.000000,    1.000000,
+  Calibration intrinsic matrix M2 (right):
+  855.000122,    0.000000,  644.814514,
+    0.000000,  855.263794,  407.305450,
+    0.000000,    0.000000,    1.000000,
+  Calibration rotation matrix R:
+    0.999903,    0.011196,    0.008257,
+   -0.011240,    0.999922,    0.005380,
+   -0.008196,   -0.005472,    0.999951,
+  Calibration translation matrix T:
+   -7.494308,
+    0.095795,
+    0.132222,
+  Calibration Distortion Coeff d1 (Left):
+   -4.481964,   14.138410,    0.002012,    0.000149,  -13.193083,   -4.541109,   14.358990,
+  -13.394559,    0.000000,    0.000000,    0.000000,    0.000000,    0.000000,    0.000000,
+  Calibration Distortion Coeff d2 (Right):
+   -5.598158,   19.114412,    0.000495,    0.000686,  -20.956785,   -5.645601,   19.298323,
+  -21.132698,    0.000000,    0.000000,    0.000000,    0.000000,    0.000000,    0.000000,
+  Calibration intrinsic matrix M3 (rgb):
+ 1479.458984,    0.000000,  950.694458,
+    0.000000, 1477.587158,  530.697632,
+    0.000000,    0.000000,    1.000000,
+  RGB-Right rotation matrix R (rgb):
+    0.999986,    0.004985,    0.001887,
+   -0.004995,    0.999974,    0.005245,
+   -0.001861,   -0.005254,    0.999984,
+ Calibration Distortion Coeff d3 (rgb):
+   -1.872860,   16.683033,    0.001053,   -0.002063,   61.878521,   -2.158907,   18.424637,
+   57.682858,    0.000000,    0.000000,    0.000000,    0.000000,    0.000000,    0.000000,
+ Calibration translation vector T (rgb):
+   -3.782213,
+    0.002144,
+    0.122242,

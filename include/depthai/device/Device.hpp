@@ -21,6 +21,7 @@
 #include "depthai-shared/common/MemoryInfo.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
+#include "depthai/device/CalibrationHandler.hpp"
 
 // libraries
 #include "nanorpc/core/client.h"
@@ -383,6 +384,13 @@ class Device {
      * @return Average CPU usage and sampling duration
      */
     CpuUsage getLeonMssCpuUsage();
+
+    /**
+     * Stores the Calibration and Device information to the Device EEPROM
+     *
+     * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
+     */
+    bool storeCalibrations(dai::CalibrationHandler calibrationDataHandler);
 
     /**
      * Explicitly closes connection to device.
