@@ -148,7 +148,6 @@ void ColorCamera::setIspScaleFull(int horizNum, int horizDenom, int vertNum, int
     properties.ispScale.vertDenominator = vertDenom;
 }
 
-
 void ColorCamera::setResolution(ColorCameraProperties::SensorResolution resolution) {
     properties.resolution = resolution;
 }

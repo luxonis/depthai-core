@@ -8,7 +8,7 @@
 namespace dai {
 namespace node {
 class UVC : public Node {
-    //dai::XLinkOutProperties properties;
+    // dai::XLinkOutProperties properties;
 
     std::string getName() const override;
     std::vector<Input> getInputs() override;
@@ -20,7 +20,6 @@ class UVC : public Node {
     UVC(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
     Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}}};
-
 };
 
 }  // namespace node

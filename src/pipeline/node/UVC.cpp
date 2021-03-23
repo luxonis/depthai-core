@@ -3,8 +3,7 @@
 namespace dai {
 namespace node {
 
-UVC::UVC(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
-}
+UVC::UVC(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
 
 std::string UVC::getName() const {
     return "UVC";
@@ -20,7 +19,7 @@ std::vector<Node::Output> UVC::getOutputs() {
 
 nlohmann::json UVC::getProperties() {
     nlohmann::json j;
-// TODO    nlohmann::to_json(j, properties);
+    // TODO    nlohmann::to_json(j, properties);
     return j;
 }
 
