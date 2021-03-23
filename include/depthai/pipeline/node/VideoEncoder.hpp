@@ -71,8 +71,10 @@ class VideoEncoder : public Node {
     void setRateControlMode(Properties::RateControlMode mode);
     /// Set encoding profile
     void setProfile(int width, int height, Properties::Profile profile);
+    /// Set output bitrate in bps. Final bitrate depends on rate control mode
+    void setBitrate(int bitrate);
     /// Set output bitrate in kbps. Final bitrate depends on rate control mode
-    void setBitrate(int bitrateKbps);
+    void setBitrateKbps(int bitrateKbps);
 
     /**
      * Set keyframe frequency. Every Nth frame a keyframe is inserted.
@@ -107,8 +109,10 @@ class VideoEncoder : public Node {
     Properties::RateControlMode getRateControlMode() const;
     /// Get profile
     Properties::Profile getProfile() const;
-    /// Get bitrate
+    /// Get bitrate in bps
     int getBitrate() const;
+    /// Get bitrate in kbps
+    int getBitrateKbps() const;
     /// Get keyframe frequency
     int getKeyframeFrequency() const;
     // int getMaxBitrate() const;
