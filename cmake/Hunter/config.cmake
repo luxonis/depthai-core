@@ -7,9 +7,9 @@ hunter_config(
 
 hunter_config(
     XLink
-    VERSION "luxonis-2020.2-mx_id_compatible"
-    URL "https://github.com/luxonis/XLink/archive/a37981fc345894292b71a60c337a28b2acf6d572.tar.gz"
-    SHA1 "c285f578174b9dcf35bdc159d4f9f8c05a635629"
+    VERSION "luxonis-2021.2-develop"
+    URL "https://github.com/luxonis/XLink/archive/ee361ecba950335390ad539e509f8ab96313b6b4.tar.gz"
+    SHA1 "72108319bf2289d91157a3933663ed5fb2b6eb18"
 )
 
 hunter_config(
@@ -19,9 +19,9 @@ hunter_config(
 
 hunter_config(
     spdlog
-    VERSION "1.8.1"
-    URL "https://github.com/gabime/spdlog/archive/v1.8.1.tar.gz"
-    SHA1 "a0fe45cfb77cb4201e9a0e40325c1792dd434a28"
+    VERSION "1.8.2"
+    URL "https://github.com/gabime/spdlog/archive/v1.8.2.tar.gz"
+    SHA1 "4437f350ca7fa89a0cd8faca1198afb36823f775"
     CMAKE_ARGS
         SPDLOG_BUILD_EXAMPLE=OFF
         SPDLOG_FMT_EXTERNAL=OFF
