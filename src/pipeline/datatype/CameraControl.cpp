@@ -61,7 +61,7 @@ void CameraControl::setAutoExposureRegion(uint16_t startX, uint16_t startY, uint
     cfg.aeRegion.height = height;
     cfg.aeRegion.priority = 1;  // TODO
 }
-void CameraControl::setAutoExposureCompensation(int8_t compensation) {
+void CameraControl::setAutoExposureCompensation(int compensation) {
     cfg.setCommand(RawCameraControl::Command::EXPOSURE_COMPENSATION);
     cfg.expCompensation = compensation;
 }
@@ -87,31 +87,27 @@ void CameraControl::setAutoWhiteBalanceLock(bool lock) {
 }
 
 // Other image controls
-void CameraControl::setBrightness(uint16_t value) {
+void CameraControl::setBrightness(int value) {
     cfg.setCommand(RawCameraControl::Command::BRIGHTNESS);
     cfg.brightness = value;
 }
-void CameraControl::setContrast(uint16_t value) {
+void CameraControl::setContrast(int value) {
     cfg.setCommand(RawCameraControl::Command::CONTRAST);
     cfg.contrast = value;
 }
-void CameraControl::setSaturation(uint16_t value) {
+void CameraControl::setSaturation(int value) {
     cfg.setCommand(RawCameraControl::Command::SATURATION);
     cfg.saturation = value;
 }
-void CameraControl::setSharpness(uint16_t value) {
+void CameraControl::setSharpness(int value) {
     cfg.setCommand(RawCameraControl::Command::SHARPNESS);
     cfg.sharpness = value;
 }
-void CameraControl::setNoiseReductionStrength(uint16_t value) {
-    cfg.setCommand(RawCameraControl::Command::NOISE_REDUCTION_STRENGTH);
-    cfg.noiseReductionStrength = value;
-}
-void CameraControl::setLumaDenoise(uint16_t value) {
+void CameraControl::setLumaDenoise(int value) {
     cfg.setCommand(RawCameraControl::Command::LUMA_DENOISE);
     cfg.lumaDenoise = value;
 }
-void CameraControl::setChromaDenoise(uint16_t value) {
+void CameraControl::setChromaDenoise(int value) {
     cfg.setCommand(RawCameraControl::Command::CHROMA_DENOISE);
     cfg.chromaDenoise = value;
 }
