@@ -25,15 +25,15 @@ class CalibrationHandler{
     // How to check if IMU exists ? set everthing in IMU extrinsics to ZERO ???
     // std::vector<std::vector<float>> getImuToCameraExtrinsics(CameraBoardSocket cameraId, enableMeasuredTranslation = true);
     // TODO(sachin): Add Q matrix. Since Q matrix is specific to the stereo. may be better to have this over there!!
-    // void eepromToJsonFile(std::string destPath);
+    bool eepromToJsonFile(std::string destPath);
 
     void setBoardInfo(uint32_t version, bool swapLeftRightCam, std::string boardName, std::string boardRev);
-    void setCameraIntrinsics(CameraBoardSocket cameraId, std::vector<std::vector<float> intrinsics, int width, int height);
+    void setCameraIntrinsics(CameraBoardSocket cameraId, std::vector<std::vector<float>> intrinsics, int width, int height);
+    void setdistortionCoefficients(CameraBoardSocket cameraId, std::vector<float> distortionCoefficients);
+    void setFov(CameraBoardSocket cameraId, double hfov);
     // should I allow setting of measured translation 
     void setCameraExtrinsics(CameraBoardSocket srcCameraID, CameraBoardSocket destCameraID, std::vector<std::vector<float>> rotationMatrix, std::vector<float> translation);
-    void setdistortionCoefficients(CameraBoardSocket cameraId, std::vector<float> distortionCoefficients);
     void setImuExtrinsics(CameraBoardSocket destCameraID, std::vector<std::vector<float>> rotationMatrix, std::vector<float> translation);
-    void setFov(CameraBoardSocket cameraId, double hfov);
 
     void setStereoLeft(CameraBoardSocket cameraId, std::vector<std::vector<float>> rectifiedRotation);
     void setStereoRight(CameraBoardSocket cameraId, std::vector<std::vector<float>> rectifiedRotation);

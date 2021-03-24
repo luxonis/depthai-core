@@ -390,7 +390,7 @@ class Device {
      *
      * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
      */
-    bool storeCalibrations(dai::CalibrationHandler calibrationDataHandler);
+    bool storeCalibration(dai::CalibrationHandler calibrationDataHandler);
 
     /**
      * Explicitly closes connection to device.

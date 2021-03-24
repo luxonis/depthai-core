@@ -7,22 +7,6 @@
 #include "depthai/depthai.hpp"
 #include "depthai-shared/common/CameraBoardSocket.hpp"
 
-dai::Pipeline createCameraPipeline(){
-    dai::Pipeline p;
-
-    auto colorCam = p.create<dai::node::ColorCamera>();
-    auto xlinkOut = p.create<dai::node::XLinkOut>();
-    xlinkOut->setStreamName("preview");
-    
-    colorCam->setPreviewSize(300, 300);
-    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    colorCam->setInterleaved(true);
-
-    // Link plugins CAM -> XLINK
-    colorCam->preview.link(xlinkOut->input);
-    
-    return p;
-}
 
 int main(){
     std::string filename("/home/sachin/Desktop/luxonis/depthai-core/examples/calib_data2.json");
@@ -84,29 +68,6 @@ int main(){
                 {0.017673,    0.002577,    0.999840}};
     calibData.setStereoRight(dai::CameraBoardSocket::RIGHT, inMatrix);
     calibData.eepromToJsonFile(filename);
-
-    dai::Pipeline p = createCameraPipeline();
-    dai::Device d(p);
-    std::cout << "status ->" << d.storeCalibration(calibData) << std::endl;
-    
-    d.startPipeline();
-    auto preview = d.getOutputQueue("preview");
-        cv::Mat frame;
-
-    while(1){
-        auto imgFrame = preview->get<dai::ImgFrame>();
-        if(imgFrame){
-            frame = cv::Mat(imgFrame->getHeight(), imgFrame->getWidth(), CV_8UC3, imgFrame->getData().data());
-            cv::imshow("preview", frame);
-            int key = cv::waitKey(1);
-            if (key == 'q'){
-                return 0;
-            } 
-        } else {
-            std::cout << "Not ImgFrame" << std::endl;
-        }
-    }
-
     return 0;
     
 }
