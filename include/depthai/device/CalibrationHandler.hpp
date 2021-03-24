@@ -1,3 +1,4 @@
+#pragma once
 #include "depthai-shared/common/EepromData.hpp"
 #include "depthai-shared/common/CameraBoardSocket.hpp"
 #include <string>
@@ -8,6 +9,7 @@ namespace dai {
 class CalibrationHandler{
 
     public:
+    CalibrationHandler() = default;
     explicit CalibrationHandler(std::string eepromDataPath);
     CalibrationHandler(std::string calibrationDataPath, std::string boardConfigPath);
     explicit CalibrationHandler(EepromData eepromData); // should I allow this? Yes needed to load it from device 
@@ -22,14 +24,20 @@ class CalibrationHandler{
     // std::vector<std::vector<float>> getCameraToImuExtrinsics(CameraBoardSocket cameraId, enableMeasuredTranslation = true);
     // How to check if IMU exists ? set everthing in IMU extrinsics to ZERO ???
     // std::vector<std::vector<float>> getImuToCameraExtrinsics(CameraBoardSocket cameraId, enableMeasuredTranslation = true);
-
+    // TODO(sachin): Add Q matrix. Since Q matrix is specific to the stereo. may be better to have this over there!!
     // void eepromToJsonFile(std::string destPath);
 
+    void setBoardInfo(uint32_t version, bool swapLeftRightCam, std::string boardName, std::string boardRev);
+    void setCameraIntrinsics(CameraBoardSocket cameraId, std::vector<std::vector<float> intrinsics, int width, int height);
     // should I allow setting of measured translation 
-    // void setCameraExtrinsics(CameraBoardSocket srcCameraID, CameraBoardSocket destCameraID, std::vector<std::vector<float>> rotationMatrix, std::vector<float> translation);
-    // void setCameraIntrinsics(CameraBoardSocket cameraId, std::vector<std::vector<float> intrinsics);
-    // void setdistortionCoefficients(CameraBoardSocket cameraId, std::vector<float> distortionCoefficients);
-    // void setFov(CameraBoardSocket cameraId, std::vector<float> distortionCoefficients);
+    void setCameraExtrinsics(CameraBoardSocket srcCameraID, CameraBoardSocket destCameraID, std::vector<std::vector<float>> rotationMatrix, std::vector<float> translation);
+    void setdistortionCoefficients(CameraBoardSocket cameraId, std::vector<float> distortionCoefficients);
+    void setImuExtrinsics(CameraBoardSocket destCameraID, std::vector<std::vector<float>> rotationMatrix, std::vector<float> translation);
+    void setFov(CameraBoardSocket cameraId, double hfov);
+
+    void setStereoLeft(CameraBoardSocket cameraId, std::vector<std::vector<float>> rectifiedRotation);
+    void setStereoRight(CameraBoardSocket cameraId, std::vector<std::vector<float>> rectifiedRotation);
+    
     
 
 
