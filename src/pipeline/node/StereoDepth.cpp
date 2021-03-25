@@ -76,6 +76,11 @@ void StereoDepth::setMedianFilter(Properties::MedianFilter median) {
 }
 void StereoDepth::setDepthAlign(Properties::DepthAlign align) {
     properties.depthAlign = align;
+    // Unset 'depthAlignCamera', that would take precedence otherwise
+    properties.depthAlignCamera = CameraBoardSocket::AUTO;
+}
+void StereoDepth::setDepthAlign(CameraBoardSocket camera) {
+    properties.depthAlignCamera = camera;
 }
 void StereoDepth::setConfidenceThreshold(int confThr) {
     properties.confidenceThreshold = confThr;
