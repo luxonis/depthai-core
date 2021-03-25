@@ -101,6 +101,15 @@ include(Flags)
 set(TARGET_CORE_NAME ${PROJECT_NAME}-core)
 set(TARGET_CORE_ALIAS core)
 
+# Set up sources
+file(GLOB_RECURSE PIPELINE_SOURCES RELATIVE ${CMAKE_CURRENT_LIST_DIR} "src/pipeline/*.cpp")
+file(GLOB_RECURSE DEVICE_SOURCES   RELATIVE ${CMAKE_CURRENT_LIST_DIR} "src/device/*.cpp")
+file(GLOB_RECURSE UTILITY_SOURCES  RELATIVE ${CMAKE_CURRENT_LIST_DIR} "src/utility/*.cpp")
+file(GLOB_RECURSE UTILITY_SOURCES  RELATIVE ${CMAKE_CURRENT_LIST_DIR} "src/utility/*.cpp")
+file(GLOB_RECURSE XLINK_SOURCES    RELATIVE ${CMAKE_CURRENT_LIST_DIR} "src/xlink/*.cpp")
+file(GLOB_RECURSE OPENVINO_SOURCES RELATIVE ${CMAKE_CURRENT_LIST_DIR} "src/openvino/*.cpp")
+file(GLOB_RECURSE BSPPATCH_SOURCES RELATIVE ${CMAKE_CURRENT_LIST_DIR} "src/bspatch/*.c*")
+
 # Create core library
 add_library(${TARGET_CORE_NAME}
     # depthai-shared sources
@@ -108,44 +117,12 @@ add_library(${TARGET_CORE_NAME}
     # depthai-bootloader-shared sources
     "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
     # sources
-    src/device/Device.cpp
-    src/device/DeviceBootloader.cpp
-    src/device/DataQueue.cpp
-    src/device/CallbackHandler.cpp
-    src/pipeline/Pipeline.cpp
-    src/pipeline/AssetManager.cpp
-    src/pipeline/Node.cpp
-    src/pipeline/node/XLinkIn.cpp
-    src/pipeline/node/XLinkOut.cpp
-    src/pipeline/node/ColorCamera.cpp
-    src/pipeline/node/MonoCamera.cpp
-    src/pipeline/node/StereoDepth.cpp
-    src/pipeline/node/NeuralNetwork.cpp
-    src/pipeline/node/ImageManip.cpp
-    src/pipeline/node/MyProducer.cpp
-    src/pipeline/node/VideoEncoder.cpp
-    src/pipeline/node/DetectionNetwork.cpp
-    src/pipeline/node/SpatialDetectionNetwork.cpp
-    src/pipeline/node/SystemLogger.cpp
-    src/pipeline/node/SpatialLocationCalculator.cpp
-    src/pipeline/datatype/Buffer.cpp
-    src/pipeline/datatype/ImgFrame.cpp
-    src/pipeline/datatype/ImageManipConfig.cpp
-    src/pipeline/datatype/CameraControl.cpp
-    src/pipeline/datatype/NNData.cpp
-    src/pipeline/datatype/ImgDetections.cpp
-    src/pipeline/datatype/SpatialImgDetections.cpp
-    src/pipeline/datatype/SystemInformation.cpp
-    src/pipeline/datatype/StreamPacketParser.cpp
-    src/pipeline/datatype/SpatialLocationCalculatorData.cpp
-    src/pipeline/datatype/SpatialLocationCalculatorConfig.cpp
-    src/utility/Initialization.cpp
-    src/utility/Resources.cpp
-    src/xlink/XLinkConnection.cpp
-    src/xlink/XLinkStream.cpp
-    src/openvino/OpenVINO.cpp
-    src/openvino/BlobReader.cpp
-    src/bspatch/bspatch.c
+    ${DEVICE_SOURCES}
+    ${PIPELINE_SOURCES}
+    ${UTILITY_SOURCES}
+    ${XLINK_SOURCES}
+    ${OPENVINO_SOURCES}
+    ${BSPPATCH_SOURCES}
 )
 add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
 # Specifies name of generated IMPORTED target (set to alias)
