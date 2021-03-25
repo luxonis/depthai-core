@@ -388,7 +388,7 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
             connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd);
         }
     } else {
-        assert(0 && "Unknown device state");
+        throw std::runtime_error("Cannot find any device with given deviceInfo");
     }
 
     deviceInfo.state = X_LINK_BOOTED;

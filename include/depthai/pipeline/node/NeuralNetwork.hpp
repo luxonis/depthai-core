@@ -16,8 +16,9 @@ namespace node {
  * @brief NeuralNetwork node. Runs a neural inference on input data.
  */
 class NeuralNetwork : public Node {
-    dai::NeuralNetworkProperties properties;
-    virtual dai::NeuralNetworkProperties& getPropertiesRef();
+    using Properties = dai::NeuralNetworkProperties;
+
+    Properties properties;
 
     std::string getName() const override;
     std::vector<Output> getOutputs() override;
@@ -35,6 +36,7 @@ class NeuralNetwork : public Node {
     std::string blobPath;
     BlobAssetInfo loadBlob(const std::string& path);
     OpenVINO::Version networkOpenvinoVersion;
+    virtual Properties& getPropertiesRef();
 
    public:
     NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);

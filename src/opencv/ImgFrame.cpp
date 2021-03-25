@@ -64,7 +64,7 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
 
     // Check if enough data
     long requiredSize = CV_ELEM_SIZE(type) * size.area();
-    if((long)img.data.size() < requiredSize) {
+    if(static_cast<long>(img.data.size()) < requiredSize) {
         throw std::runtime_error("ImgFrame doesn't have enough data to encode specified frame. Maybe metadataOnly transfer was made?");
     }
     if(getWidth() <= 0 || getHeight() <= 0) {
