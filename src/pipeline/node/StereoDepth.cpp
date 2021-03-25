@@ -61,12 +61,6 @@ void StereoDepth::setEmptyCalibration(void) {
     properties.calibration = empty;
 }
 
-void StereoDepth::setBaselineOverrideCm(float baseline) {
-    properties.baselineOverrideCm = baseline;
-}
-void StereoDepth::setFovOverrideDegrees(float fov) {
-    properties.fovOverrideDegrees = fov;
-}
 void StereoDepth::setInputResolution(int width, int height) {
     properties.width = width;
     properties.height = height;

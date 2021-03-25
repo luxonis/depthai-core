@@ -87,20 +87,6 @@ class StereoDepth : public Node {
     void setEmptyCalibration();
 
     /**
-     * Override the baseline (left-to-right camera distance) used for depth calculation.
-     * Could be useful in conjunction with 'setEmptyCalibration()'
-     * @param baseline Baseline in centimeters. Default: 0 (don't override)
-     */
-    void setBaselineOverrideCm(float baseline);
-
-    /**
-     * Override the camera horizontal FOV (field of view) used for depth calculation.
-     * Could be useful in conjunction with 'setEmptyCalibration()'
-     * @param fov Horizontal FOV in degrees. Default: 0 (don't override)
-     */
-    void setFovOverrideDegrees(float fov);
-
-    /**
      * Specify input resolution size
      *
      * Optional if MonoCamera exists, otherwise necessary
