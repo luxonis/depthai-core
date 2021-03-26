@@ -65,6 +65,9 @@ dai_add_example(mono_camera src/mono_camera_example.cpp)
 
 dai_add_example(calibration_storer src/calibration_storer.cpp)
 
+dai_add_example(calibration_reader src/calibration_reader.cpp)
+
+
 # NeuralNetwork node, mobilenet example
 hunter_private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet-ssd_openvino_2021.2_6shave.blob"

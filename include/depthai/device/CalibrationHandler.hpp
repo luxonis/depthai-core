@@ -2,6 +2,7 @@
 #include "depthai-shared/common/EepromData.hpp"
 #include "depthai-shared/common/CameraBoardSocket.hpp"
 #include <string>
+#include <tuple>
 
 
 namespace dai {
@@ -16,8 +17,8 @@ class CalibrationHandler{
 
     dai::EepromData getEepromData() const;
     // std::vector<std::vector<float>> getCameraIntrinsics(CameraBoardSocket cameraID, int width, int height);
-    // std::vector<std::vector<float>> getCameraIntrinsics(CameraBoardSocket cameraID);
-    // std::vector<float> getDistortionCoefficients(CameraBoardSocket cameraID);
+    std::tuple<std::vector<std::vector<float>>, int, int> getDefaultIntrinsics(CameraBoardSocket cameraId);
+    std::vector<float> getDistortionCoefficients(CameraBoardSocket cameraId);
 
     // std::vector<std::vector<float>> getCameraExtrinsics(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera);    
 
@@ -32,8 +33,8 @@ class CalibrationHandler{
     void setdistortionCoefficients(CameraBoardSocket cameraId, std::vector<float> distortionCoefficients);
     void setFov(CameraBoardSocket cameraId, double hfov);
     // should I allow setting of measured translation 
-    void setCameraExtrinsics(CameraBoardSocket srcCameraID, CameraBoardSocket destCameraID, std::vector<std::vector<float>> rotationMatrix, std::vector<float> translation);
-    void setImuExtrinsics(CameraBoardSocket destCameraID, std::vector<std::vector<float>> rotationMatrix, std::vector<float> translation);
+    void setCameraExtrinsics(CameraBoardSocket srcCameraId, CameraBoardSocket destCameraId, std::vector<std::vector<float>> rotationMatrix, std::vector<float> translation);
+    void setImuExtrinsics(CameraBoardSocket destCameraId, std::vector<std::vector<float>> rotationMatrix, std::vector<float> translation);
 
     void setStereoLeft(CameraBoardSocket cameraId, std::vector<std::vector<float>> rectifiedRotation);
     void setStereoRight(CameraBoardSocket cameraId, std::vector<std::vector<float>> rectifiedRotation);

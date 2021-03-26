@@ -870,13 +870,20 @@ float Device::getSystemInformationLoggingRate() {
     return client->call("getSystemInformationLoggingrate").as<float>();
 }
 
-bool Device::storeCalibration(dai::CalibrationHandler calibrationDataHandler) {
+bool Device::storeCalibration(CalibrationHandler calibrationDataHandler) {
     int res = client->call("storeToEeprom", calibrationDataHandler.getEepromData());
     if(res == 0)
         return true;
     else
         return false;
 }
+
+CalibrationHandler Device::getCalibration(){
+    dai::EepromData eepromData = client->call("readFromEeprom");
+    return CalibrationHandler(eepromData);
+}
+
+
 
 bool Device::startPipeline() {
     checkClosed();

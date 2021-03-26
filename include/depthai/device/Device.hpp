@@ -390,7 +390,14 @@ class Device {
      *
      * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
      */
-    bool storeCalibration(dai::CalibrationHandler calibrationDataHandler);
+    bool storeCalibration(CalibrationHandler calibrationDataHandler);
+
+    /**
+     * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
+     *
+     * @return returns the calibration handler object which contains the EEPROM data loaded from the device
+     */
+    CalibrationHandler getCalibration();
 
     /**
      * Explicitly closes connection to device.

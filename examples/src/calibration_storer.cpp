@@ -6,6 +6,7 @@
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 #include "depthai-shared/common/CameraBoardSocket.hpp"
+#include "depthai-shared/common/EepromData.hpp"
 
 dai::Pipeline createCameraPipeline(){
     dai::Pipeline p;
@@ -83,6 +84,10 @@ int main(){
                 {0.012732,    0.999915,   -0.002802},
                 {0.017673,    0.002577,    0.999840}};
     calibData.setStereoRight(dai::CameraBoardSocket::RIGHT, inMatrix);
+    calibData.setFov(dai::CameraBoardSocket::RIGHT, 63.55);
+    calibData.setFov(dai::CameraBoardSocket::LEFT, 80.55);
+    calibData.setFov(dai::CameraBoardSocket::RGB, 70.55);
+
     calibData.eepromToJsonFile(filename);
 
     dai::Pipeline p = createCameraPipeline();

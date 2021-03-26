@@ -70,7 +70,7 @@
                         1.0
                     ]
                 ],
-                "measuredFovDeg": 0.0,
+                "measuredFovDeg": 63.55,
                 "width": 1920
             }
         ],
@@ -142,7 +142,7 @@
                         1.0
                     ]
                 ],
-                "measuredFovDeg": 0.0,
+                "measuredFovDeg": 80.55,
                 "width": 1920
             }
         ],
@@ -198,7 +198,7 @@
                         1.0
                     ]
                 ],
-                "measuredFovDeg": 0.0,
+                "measuredFovDeg": 70.55,
                 "width": 1920
             }
         ]
