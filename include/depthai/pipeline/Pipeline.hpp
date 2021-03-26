@@ -49,7 +49,7 @@ class PipelineImpl {
     // Pipeline asset manager
     AssetManager assetManager;
     // Default version
-    constexpr static auto DEFAULT_OPENVINO_VERSION = OpenVINO::Version::VERSION_2020_1;
+    constexpr static auto DEFAULT_OPENVINO_VERSION = OpenVINO::Version::VERSION_2020_3;
     // Optionally forced version
     tl::optional<OpenVINO::Version> forceRequiredOpenVINOVersion;
     // Global pipeline properties
