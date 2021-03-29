@@ -265,6 +265,34 @@ int ColorCamera::getResolutionHeight() const {
     return std::get<1>(getResolutionSize());
 }
 
+int ColorCamera::getScaledSize(int input, int num, int denom) const {
+    return (input * num - 1) / denom + 1;
+}
+
+int ColorCamera::getIspWidth() const {
+    int inW = getResolutionWidth();
+    int num = properties.ispScale.horizNumerator;
+    int den = properties.ispScale.horizDenominator;
+    if(num > 0 && den > 0) {
+        return getScaledSize(inW, num, den);
+    }
+    return inW;
+}
+
+int ColorCamera::getIspHeight() const {
+    int inH = getResolutionHeight();
+    int num = properties.ispScale.vertNumerator;
+    int den = properties.ispScale.vertDenominator;
+    if(num > 0 && den > 0) {
+        return getScaledSize(inH, num, den);
+    }
+    return inH;
+}
+
+std::tuple<int, int> ColorCamera::getIspSize() const {
+    return {getIspWidth(), getIspHeight()};
+}
+
 void ColorCamera::sensorCenterCrop() {
     properties.sensorCropX = ColorCameraProperties::AUTO;
     properties.sensorCropY = ColorCameraProperties::AUTO;

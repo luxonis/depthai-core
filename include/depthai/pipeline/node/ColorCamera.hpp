@@ -25,6 +25,8 @@ class ColorCamera : public Node {
 
     std::shared_ptr<RawCameraControl> rawControl;
 
+    int getScaledSize(int input, int num, int denom) const;
+
    public:
     /**
      * Constructs ColorCamera node.
@@ -175,6 +177,13 @@ class ColorCamera : public Node {
     int getResolutionWidth() const;
     /// Get sensor resolution height
     int getResolutionHeight() const;
+
+    /// Get 'isp' output resolution as size, after scaling
+    std::tuple<int, int> getIspSize() const;
+    /// Get 'isp' output width
+    int getIspWidth() const;
+    /// Get 'isp' output height
+    int getIspHeight() const;
 
     /**
      * Specify sensor center crop.
