@@ -2,13 +2,13 @@
 
 #include <depthai/pipeline/Node.hpp>
 
+#include "depthai/pipeline/datatype/Tracklets.hpp"
+
 // standard
 #include <fstream>
 
 // shared
 #include <depthai-shared/properties/ObjectTrackerProperties.hpp>
-
-#include "depthai/pipeline/datatype/Tracklets.hpp"
 
 namespace dai {
 namespace node {
@@ -35,6 +35,7 @@ class ObjectTracker : public Node {
      * Default queue is non-blocking with size 4.
      */
     Input inputFrame{*this, "inputFrame", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImgFrame, false}}};
+
     /**
      * Input message with image detection from neural network.
      * Default queue is non-blocking with size 4.
@@ -56,7 +57,7 @@ class ObjectTracker : public Node {
      * Passthrough image detections message from neural nework output.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughDetections{*this, "passthroughDetections", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output passthroughDetections{*this, "passthroughDetections", Output::Type::MSender, {{DatatypeEnum::ImgDetections, true}}};
 
     /**
      * Specify tracker threshold.

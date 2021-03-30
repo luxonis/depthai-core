@@ -58,10 +58,11 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
 
     // Link plugins CAM -> NN -> XLINK
     colorCam->preview.link(spatialDetectionNetwork->input);
-    if(syncNN)
+    if(syncNN) {
         objectTracker->passthroughFrame.link(xoutRgb->input);
-    else
+    } else {
         colorCam->preview.link(xoutRgb->input);
+    }
 
     objectTracker->setDetectionLabelsToTrack({15});  // track only person
     objectTracker->setTrackerType(dai::TrackType::ZERO_TERM_COLOR_HISTOGRAM);
@@ -99,7 +100,7 @@ int main(int argc, char** argv) {
     auto preview = d.getOutputQueue("preview", 4, false);
     auto tracklets = d.getOutputQueue("tracklets", 4, false);
 
-    auto startTime = std::chrono::steady_clock::now();
+    auto startTime = steady_clock::now();
     int counter = 0;
     float fps = 0;
     auto color = cv::Scalar(255, 255, 255);
@@ -108,7 +109,15 @@ int main(int argc, char** argv) {
         auto imgFrame = preview->get<dai::ImgFrame>();
         auto track = tracklets->get<dai::Tracklets>();
 
-        auto color = cv::Scalar(255, 255, 255);
+        counter++;
+        auto currentTime = steady_clock::now();
+        auto elapsed = duration_cast<duration<float>>(currentTime - startTime);
+        if(elapsed > seconds(1)) {
+            fps = counter / elapsed.count();
+            counter = 0;
+            startTime = currentTime;
+        }
+
         cv::Mat frame = imgFrame->getCvFrame();
         auto trackletsData = track->tracklets;
         for(auto& t : trackletsData) {
@@ -144,6 +153,10 @@ int main(int argc, char** argv) {
 
             cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
         }
+
+        std::stringstream fpsStr;
+        fpsStr << std::fixed << std::setprecision(2) << fps;
+        cv::putText(frame, fpsStr.str(), cv::Point(2, imgFrame->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
 
         cv::imshow("tracker", frame);
         int key = cv::waitKey(1);

@@ -77,7 +77,7 @@ int main(int argc, char** argv) {
     auto preview = d.getOutputQueue("preview", 4, false);
     auto tracklets = d.getOutputQueue("tracklets", 4, false);
 
-    auto startTime = std::chrono::steady_clock::now();
+    auto startTime = steady_clock::now();
     int counter = 0;
     float fps = 0;
     while(1) {
@@ -85,10 +85,10 @@ int main(int argc, char** argv) {
         auto track = tracklets->get<dai::Tracklets>();
 
         counter++;
-        auto currentTime = std::chrono::steady_clock::now();
+        auto currentTime = steady_clock::now();
         auto elapsed = duration_cast<duration<float>>(currentTime - startTime);
         if(elapsed > seconds(1)) {
-            fps = (float)counter / elapsed.count();
+            fps = counter / elapsed.count();
             counter = 0;
             startTime = currentTime;
         }
@@ -119,6 +119,10 @@ int main(int argc, char** argv) {
 
             cv::rectangle(trackletFrame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
         }
+
+        std::stringstream fpsStr;
+        fpsStr << std::fixed << std::setprecision(2) << fps;
+        cv::putText(trackletFrame, fpsStr.str(), cv::Point(2, imgFrame->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
 
         cv::imshow("tracker", trackletFrame);
 

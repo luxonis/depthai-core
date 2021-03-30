@@ -24,11 +24,9 @@ class Tracklets : public Buffer {
     virtual ~Tracklets() = default;
 
     /**
-     * Retrieve configuration data for Tracklets.
+     * Retrieve data for Tracklets.
      * @returns Vector of object tracker data, carrying tracking information.
      */
-    std::vector<Tracklet>& getTracklets() const;
-
     std::vector<Tracklet>& tracklets;
 };
 

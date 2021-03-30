@@ -10,8 +10,4 @@ Tracklets::Tracklets() : Buffer(std::make_shared<RawTracklets>()), rawdata(*dyna
 Tracklets::Tracklets(std::shared_ptr<RawTracklets> ptr)
     : Buffer(std::move(ptr)), rawdata(*dynamic_cast<RawTracklets*>(raw.get())), tracklets(rawdata.tracklets) {}
 
-std::vector<Tracklet>& Tracklets::getTracklets() const {
-    return rawdata.tracklets;
-}
-
 }  // namespace dai
