@@ -39,6 +39,11 @@ class MicroPython : public Node {
     OutputMap outputs;
 
     /**
+     *  Set the node name. Used in micropython to access this nodes IO and assets
+     */
+    void setName(const std::string& name);
+
+    /**
      *  Specify local filesystem path to load the script
      */
     void setScriptPath(const std::string& path);
@@ -47,6 +52,11 @@ class MicroPython : public Node {
      *  Get filesystem path from where script was loaded
      */
     std::string getScriptPath() const;
+
+    /**
+     * Add binary assets that will be accessable on the MX
+     */
+    void addAsset(const std::string& name, const std::string& path);
 
     /**
      * Set which processor should script run on Leon CSS or Leon MSS

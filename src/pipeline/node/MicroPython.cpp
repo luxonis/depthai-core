@@ -44,10 +44,19 @@ std::shared_ptr<Node> MicroPython::clone() {
     return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
+void MicroPython::setName(const std::string& name){
+    properties.nodeName = name;
+}
+
 void MicroPython::setScriptPath(const std::string& path) {
     auto asset = loadAsset("blob", path);
     properties.scriptUri = asset->getUri();
     scriptPath = path;
+}
+
+void MicroPython::addAsset(const std::string& name, const std::string& path) {
+    auto asset = loadAsset(name, path);
+    properties.assetUriMap[name] = asset->getUri();
 }
 
 void MicroPython::setProcessor(ProcessorType proc) {
