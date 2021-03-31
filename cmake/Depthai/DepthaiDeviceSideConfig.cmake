@@ -1,8 +1,8 @@
 # Maturity level "snapshot" / "release"
-set(DEPTHAI_DEVICE_SIDE_MATURITY "snapshot")  
+set(DEPTHAI_DEVICE_SIDE_MATURITY "snapshot")
 
 # "full commit hash of device side binary"
-set(DEPTHAI_DEVICE_SIDE_COMMIT "2de241129fa88e30af67ba5d25d7d67b556b2d3c")          
+set(DEPTHAI_DEVICE_SIDE_COMMIT "74415ad9838e90b23d87bf906e7d768c24fe1dff")
 
 # "version if applicable"
 set(DEPTHAI_DEVICE_SIDE_VERSION "")

@@ -30,4 +30,19 @@ class Tracklets : public Buffer {
     std::vector<Tracklet>& tracklets;
 };
 
+inline std::ostream& operator<<(std::ostream& out, const Tracklet::TrackingStatus& status) {
+    switch(status) {
+        case Tracklet::TrackingStatus::NEW:
+            out << "NEW";
+            break;
+        case Tracklet::TrackingStatus::TRACKED:
+            out << "TRACKED";
+            break;
+        case Tracklet::TrackingStatus::LOST:
+            out << "LOST";
+            break;
+    }
+    return out;
+}
+
 }  // namespace dai

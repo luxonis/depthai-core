@@ -81,7 +81,13 @@ class ObjectTracker : public Node {
      * Specify tracker type algorithm.
      * @param type Tracker type.
      */
-    void setTrackerType(TrackType type);
+    void setTrackerType(TrackerType type);
+
+    /**
+     * Specify tracker ID assigment policy.
+     * @param type Tracker ID assigment policy.
+     */
+    void setTrackerIdAssigmentPolicy(TrackerIdAssigmentPolicy type);
 };
 
 }  // namespace node

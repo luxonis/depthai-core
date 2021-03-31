@@ -41,8 +41,12 @@ void ObjectTracker::setDetectionLabelsToTrack(std::vector<std::uint32_t> labels)
     properties.detectionLabelsToTrack = labels;
 }
 
-void ObjectTracker::setTrackerType(TrackType type) {
-    properties.trackType = type;
+void ObjectTracker::setTrackerType(TrackerType type) {
+    properties.trackerType = type;
+}
+
+void ObjectTracker::setTrackerIdAssigmentPolicy(TrackerIdAssigmentPolicy type) {
+    properties.trackerIdAssigmentPolicy = type;
 }
 
 }  // namespace node
