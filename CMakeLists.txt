@@ -114,7 +114,7 @@ add_library(${TARGET_NAME}
     src/pipeline/node/MyProducer.cpp
     src/pipeline/node/VideoEncoder.cpp
     src/pipeline/node/DetectionNetwork.cpp
-    src/pipeline/node/MicroPython.cpp
+    src/pipeline/node/LxScript.cpp
     src/pipeline/node/SystemLogger.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp

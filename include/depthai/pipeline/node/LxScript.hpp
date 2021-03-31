@@ -7,13 +7,13 @@
 #include <fstream>
 
 // shared
-#include <depthai-shared/properties/MicroPythonProperties.hpp>
+#include <depthai-shared/properties/LxScriptProperties.hpp>
 
 namespace dai {
 namespace node {
 
-class MicroPython : public Node {
-    dai::MicroPythonProperties properties;
+class LxScript : public Node {
+    dai::LxScriptProperties properties;
 
     std::string getName() const override;
     std::vector<Output> getOutputs() override;
@@ -25,21 +25,21 @@ class MicroPython : public Node {
     std::string scriptPath = "";
 
    public:
-    MicroPython(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    LxScript(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
     /**
-     *  Inputs to MicroPython node. Can be added or removed
+     *  Inputs to LxScript node. Can be added or removed
      *  By default inputs are set to blocking with queue size 8
      */
     InputMap inputs;
 
     /**
-     * Outputs from MicroPython node. Can be added or removed
+     * Outputs from LxScript node. Can be added or removed
      */
     OutputMap outputs;
 
     /**
-     *  Set the node name. Used in micropython to access this nodes IO and assets
+     *  Set the node name. Used in LxScript to access this nodes IO and assets
      */
     void setName(const std::string& name);
 

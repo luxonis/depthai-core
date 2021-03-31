@@ -1,4 +1,4 @@
-#include "depthai/pipeline/node/MicroPython.hpp"
+#include "depthai/pipeline/node/LxScript.hpp"
 
 #include "depthai/pipeline/Pipeline.hpp"
 #include "openvino/BlobReader.hpp"
@@ -6,7 +6,7 @@
 namespace dai {
 namespace node {
 
-MicroPython::MicroPython(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
+LxScript::LxScript(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     : Node(par, nodeId),
       inputs(Input(*this, "", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}})),
       outputs(Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}})) {
@@ -14,11 +14,11 @@ MicroPython::MicroPython(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
     properties.processor = ProcessorType::LEON_MSS;
 }
 
-std::string MicroPython::getName() const {
-    return "MicroPython";
+std::string LxScript::getName() const {
+    return "LxScript";
 }
 
-std::vector<Node::Output> MicroPython::getOutputs() {
+std::vector<Node::Output> LxScript::getOutputs() {
     std::vector<Node::Output> vecOutputs;
     for(const auto& kv : outputs) {
         vecOutputs.push_back(kv.second);
@@ -26,7 +26,7 @@ std::vector<Node::Output> MicroPython::getOutputs() {
     return vecOutputs;
 }
 
-std::vector<Node::Input> MicroPython::getInputs() {
+std::vector<Node::Input> LxScript::getInputs() {
     std::vector<Node::Input> vecInputs;
     for(const auto& kv : inputs) {
         vecInputs.push_back(kv.second);
@@ -34,40 +34,40 @@ std::vector<Node::Input> MicroPython::getInputs() {
     return vecInputs;
 }
 
-nlohmann::json MicroPython::getProperties() {
+nlohmann::json LxScript::getProperties() {
     nlohmann::json j;
     nlohmann::to_json(j, properties);
     return j;
 }
 
-std::shared_ptr<Node> MicroPython::clone() {
+std::shared_ptr<Node> LxScript::clone() {
     return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
-void MicroPython::setName(const std::string& name){
+void LxScript::setName(const std::string& name){
     properties.nodeName = name;
 }
 
-void MicroPython::setScriptPath(const std::string& path) {
+void LxScript::setScriptPath(const std::string& path) {
     auto asset = loadAsset("blob", path);
     properties.scriptUri = asset->getUri();
     scriptPath = path;
 }
 
-void MicroPython::addAsset(const std::string& name, const std::string& path) {
+void LxScript::addAsset(const std::string& name, const std::string& path) {
     auto asset = loadAsset(name, path);
     properties.assetUriMap[name] = asset->getUri();
 }
 
-void MicroPython::setProcessor(ProcessorType proc) {
+void LxScript::setProcessor(ProcessorType proc) {
     properties.processor = proc;
 }
 
-std::string MicroPython::getScriptPath() const {
+std::string LxScript::getScriptPath() const {
     return scriptPath;
 }
 
-ProcessorType MicroPython::getProcessor() const {
+ProcessorType LxScript::getProcessor() const {
     return properties.processor;
 }
 
