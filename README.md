@@ -63,7 +63,7 @@ To install specify optional prefix and build target install
 ```
 cmake .. -D CMAKE_INSTALL_PREFIX=[path/to/install/dir]
 cmake --build . --parallel
-cmake --build . --parallel --target install
+cmake --build . --target install --parallel
 ```
 
 ## Running tests
