@@ -15,7 +15,7 @@ DepthAI library doesn't yet provide API stability guarantees. While we take care
 - cmake >= 3.4
 - libusb1 development package (MacOS & Linux only)
 - C/C++11 compiler
-- [optional] OpenCV 
+- [optional] OpenCV 4
 
 MacOS: `brew install libusb`
 
