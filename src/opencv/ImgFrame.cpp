@@ -118,7 +118,7 @@ cv::Mat ImgFrame::getCvFrame() {
         } break;
 
         case Type::YUV420p:
-            cv::cvtColor(frame, output, cv::ColorConversionCodes::COLOR_YUV420p2BGR);
+            cv::cvtColor(frame, output, cv::ColorConversionCodes::COLOR_YUV2BGR_IYUV);
             break;
 
         case Type::NV12:
