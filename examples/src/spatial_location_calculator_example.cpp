@@ -41,8 +41,6 @@ int main() {
     bool subpixel = false;
 
     // StereoDepth
-    stereo->setOutputDepth(outputDepth);
-    stereo->setOutputRectified(outputRectified);
     stereo->setConfidenceThreshold(255);
 
     // stereo->setMedianFilter(dai::StereoDepthProperties::MedianFilter::MEDIAN_OFF);
