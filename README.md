@@ -48,22 +48,22 @@ git submodule update --init --recursive
 ```
 mkdir build && cd build
 cmake ..
-cmake --build . --parallel
+cmake --build . --parallel 8
 ```
 
 **Dynamic library**
 ```
 mkdir build && cd build
 cmake .. -D BUILD_SHARED_LIBS=ON
-cmake --build . --parallel
+cmake --build . --parallel 8
 ```
 ## Installing
 
 To install specify optional prefix and build target install
 ```
 cmake .. -D CMAKE_INSTALL_PREFIX=[path/to/install/dir]
-cmake --build . --parallel
-cmake --build . --target install --parallel
+cmake --build . --parallel 8
+cmake --build . --target install --parallel 8
 ```
 
 ## Running tests
@@ -72,7 +72,7 @@ To run the tests build the library with the following options
 ```
 mkdir build_tests && cd build_tests
 cmake .. -D DEPTHAI_TEST_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_BUILD_EXAMPLES=ON
-cmake --build . --parallel
+cmake --build . --parallel 8
 ctest
 ```
 
