@@ -26,27 +26,16 @@ dai::Pipeline createCameraPipeline(){
 }
 
 int main(){
-    // std::string filename("/home/sachin/Desktop/luxonis/depthai-core/examples/calib_data2.json");
+    std::string calibBinaryFile("/home/sachin/Desktop/bw1098obc_14442C10A14391D000.calib");
+    std::string boardConfigFile("/home/sachin/Desktop/luxonis/depthai/resources/boards/BW1098OBC.json");
+    dai::CalibrationHandler calibData(calibBinaryFile, boardConfigFile);
+    std::string destFilename("/home/sachin/Desktop/luxonis/depthai-core/examples/calib_data_v53.json");
     
+    calibData.eepromToJsonFile(destFilename);
+
     dai::Pipeline p = createCameraPipeline();
     dai::Device d(p);
-
-    dai::CalibrationHandler calibData = d.getCalibration();
-    std::string filename("/home/sachin/Desktop/luxonis/depthai-core/examples/calib_data2_return.json");
-
-    calibData.eepromToJsonFile(filename);
-    std::vector<std::vector<float>> intrinsics;
-    int width, height;
-    std::tie(intrinsics, width, height) = calibData.getDefaultIntrinsics(dai::CameraBoardSocket::RIGHT);
-
-    for(auto row : intrinsics){
-        for(auto val : row)
-        std::cout << val << "  ";
-        std::cout << std::endl;
-    }
-
-    std::cout << "Width -> " << width << std::endl;
-    std::cout << "Height -> " << height << std::endl;
+    std::cout << "status ->" << d.storeCalibration(calibData) << std::endl;
     
     d.startPipeline();
     auto preview = d.getOutputQueue("preview");
@@ -65,7 +54,6 @@ int main(){
             std::cout << "Not ImgFrame" << std::endl;
         }
     }
-
     return 0;
     
 }

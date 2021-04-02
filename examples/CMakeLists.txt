@@ -64,6 +64,7 @@ dai_add_example(camera_video src/camera_video_example.cpp)
 dai_add_example(mono_camera src/mono_camera_example.cpp)
 
 dai_add_example(calibration_storer src/calibration_storer.cpp)
+dai_add_example(calibration_version_5 src/calibration_storer_ver_5.cpp)
 
 dai_add_example(calibration_reader src/calibration_reader.cpp)
 
