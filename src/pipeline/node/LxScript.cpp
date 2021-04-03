@@ -49,14 +49,19 @@ void LxScript::setName(const std::string& name){
 }
 
 void LxScript::setScriptPath(const std::string& path) {
-    auto asset = loadAsset("blob", path);
-    properties.scriptUri = asset->getUri();
+    properties.scriptUri = assetManager.add("__script", path)->getRelativeUri();
     scriptPath = path;
 }
 
-void LxScript::addAsset(const std::string& name, const std::string& path) {
-    auto asset = loadAsset(name, path);
-    properties.assetUriMap[name] = asset->getUri();
+void LxScript::setScriptData(const std::string& script) {
+    std::vector<std::uint8_t> data{script.begin(), script.end()};
+    properties.scriptUri = assetManager.add("__script", std::move(data))->getRelativeUri();
+    scriptPath = "";
+}
+
+void LxScript::setScriptData(const std::vector<std::uint8_t>& data){
+    properties.scriptUri = assetManager.add("__script", std::move(data))->getRelativeUri();
+    scriptPath = "";
 }
 
 void LxScript::setProcessor(ProcessorType proc) {

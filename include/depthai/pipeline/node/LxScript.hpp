@@ -49,14 +49,21 @@ class LxScript : public Node {
     void setScriptPath(const std::string& path);
 
     /**
+     * Sets script data to be interpreted
+     * @param script Script string to be interpreted
+     */
+    void setScriptData(const std::string& script);
+    
+    /**
+     * Sets script data to be interpreted
+     * @param data Binary data that represents the script to be interpreted
+     */
+    void setScriptData(const std::vector<std::uint8_t>& data);
+
+    /**
      *  Get filesystem path from where script was loaded
      */
     std::string getScriptPath() const;
-
-    /**
-     * Add binary assets that will be accessable on the MX
-     */
-    void addAsset(const std::string& name, const std::string& path);
 
     /**
      * Set which processor should script run on Leon CSS or Leon MSS

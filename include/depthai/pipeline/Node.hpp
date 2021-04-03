@@ -173,15 +173,6 @@ class Node {
     Pipeline getParentPipeline();
     const Pipeline getParentPipeline() const;
 
-    /**
-     *  Reads and stores asset into AssetManager
-     * @param name Name of asset - will be prepended with node id to create final asset key
-     * @param path Path of file to load
-     * @param alignment Asset alignment
-     * @returns Shared pointer to asset in AssetManager
-     */
-    std::shared_ptr<Asset> loadAsset(const std::string& name, const std::string& path, int alignment = 64);
-
    public:
     /// Id of node
     const Id id;
@@ -191,8 +182,6 @@ class Node {
     virtual std::vector<Output> getOutputs() = 0;
     /// Retrieves all nodes inputs
     virtual std::vector<Input> getInputs() = 0;
-    /// Retrieves all nodes assets
-    virtual std::vector<std::shared_ptr<Asset>> getAssets();
 
     /// Connection between an Input and Output
     struct Connection {
@@ -206,8 +195,14 @@ class Node {
     };
 
     Node(const std::shared_ptr<PipelineImpl>& p, Id nodeId);
-
     virtual ~Node() = default;
+
+    /// Get node AssetManager as a const reference
+    const AssetManager& getAssetManager() const;
+
+    /// Get node AssetManager as a reference
+    AssetManager& getAssetManager();
+
 };
 
 }  // namespace dai

@@ -7,10 +7,6 @@ namespace dai {
 
 Node::Node(const std::shared_ptr<PipelineImpl>& p, Id nodeId) : parent(p), id(nodeId) {}
 
-std::vector<std::shared_ptr<Asset>> Node::getAssets() {
-    return assetManager.getAll();
-}
-
 tl::optional<OpenVINO::Version> Node::getRequiredOpenVINOVersion() {
     return tl::nullopt;
 }
@@ -93,13 +89,13 @@ int Node::Input::getQueueSize() const {
     return defaultQueueSize;
 }
 
-std::shared_ptr<Asset> Node::loadAsset(const std::string& name, const std::string& path, int alignment) {
-    // Create asset key
-    std::string assetKey = fmt::format("{}/{}", id, name);
 
-    // Load and return pointer to asset
-    assetManager.load(assetKey, path, alignment);
-    return assetManager.get(assetKey);
+const AssetManager& Node::getAssetManager() const {
+    return assetManager;
+}
+
+AssetManager& Node::getAssetManager() {
+    return assetManager;
 }
 
 Node::OutputMap::OutputMap(Node::Output defaultOutput) : defaultOutput(defaultOutput) {}
