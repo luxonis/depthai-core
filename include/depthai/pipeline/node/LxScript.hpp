@@ -53,7 +53,7 @@ class LxScript : public Node {
      * @param script Script string to be interpreted
      */
     void setScriptData(const std::string& script);
-    
+
     /**
      * Sets script data to be interpreted
      * @param data Binary data that represents the script to be interpreted
@@ -61,17 +61,20 @@ class LxScript : public Node {
     void setScriptData(const std::vector<std::uint8_t>& data);
 
     /**
-     *  Get filesystem path from where script was loaded
+     * Get filesystem path from where script was loaded.
+     * If script wasn't set by path, function returns empty string
      */
     std::string getScriptPath() const;
 
     /**
-     * Set which processor should script run on Leon CSS or Leon MSS
+     * Set on which processor the script should run
+     * @param type Processor type - Leon CSS or Leon MSS
      */
     void setProcessor(ProcessorType type);
 
     /**
-     * Get which processor should script run on Leon CSS or Leon MSS
+     * Get on which processor the script should run
+     * @returns Processor type - Leon CSS or Leon MSS
      */
     ProcessorType getProcessor() const;
 };

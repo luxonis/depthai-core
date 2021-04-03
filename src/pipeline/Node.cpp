@@ -89,7 +89,6 @@ int Node::Input::getQueueSize() const {
     return defaultQueueSize;
 }
 
-
 const AssetManager& Node::getAssetManager() const {
     return assetManager;
 }

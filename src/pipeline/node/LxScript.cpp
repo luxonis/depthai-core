@@ -44,7 +44,7 @@ std::shared_ptr<Node> LxScript::clone() {
     return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
-void LxScript::setName(const std::string& name){
+void LxScript::setName(const std::string& name) {
     properties.nodeName = name;
 }
 
@@ -59,7 +59,7 @@ void LxScript::setScriptData(const std::string& script) {
     scriptPath = "";
 }
 
-void LxScript::setScriptData(const std::vector<std::uint8_t>& data){
+void LxScript::setScriptData(const std::vector<std::uint8_t>& data) {
     properties.scriptUri = assetManager.add("__script", std::move(data))->getRelativeUri();
     scriptPath = "";
 }

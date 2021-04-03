@@ -202,7 +202,6 @@ class Node {
 
     /// Get node AssetManager as a reference
     AssetManager& getAssetManager();
-
 };
 
 }  // namespace dai

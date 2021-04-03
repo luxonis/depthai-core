@@ -44,7 +44,6 @@ std::shared_ptr<dai::Asset> AssetManager::add(const std::string& key, const std:
     return add(std::move(binaryAsset));
 }
 
-
 std::shared_ptr<dai::Asset> AssetManager::add(const std::string& key, const std::vector<std::uint8_t>& data, int alignment) {
     // Create an asset
     Asset binaryAsset(key);
@@ -134,7 +133,6 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
         // Add to map the currently added asset
         mutableAssets.set(prefix + a.key, offset, a.data.size(), a.alignment);
     }
-
 }
 
 void AssetsMutable::set(std::string key, std::uint32_t offset, std::uint32_t size, std::uint32_t alignment) {

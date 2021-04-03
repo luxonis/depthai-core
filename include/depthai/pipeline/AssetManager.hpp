@@ -60,21 +60,21 @@ class AssetManager /*: public Assets*/ {
 
     /**
      * Loads file into asset manager under specified key.
-     * 
+     *
      * @param key Key under which the asset should be stored
      * @param path Path to file which to load as asset
      * @param alignment [Optional] alignment of asset data in asset storage. Default is 64B
-     */ 
+     */
     std::shared_ptr<dai::Asset> add(const std::string& key, const std::string& path, int alignment = 64);
 
     /**
      * Loads file into asset manager under specified key.
-     * 
+     *
      * @param key Key under which the asset should be stored
      * @param data Asset data
      * @param alignment [Optional] alignment of asset data in asset storage. Default is 64B
      * @returns Shared pointer to asset
-     */ 
+     */
     std::shared_ptr<dai::Asset> add(const std::string& key, const std::vector<std::uint8_t>& data, int alignment = 64);
 
     /**
