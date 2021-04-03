@@ -5,6 +5,8 @@
 #include <mutex>
 #include <queue>
 
+namespace dai {
+
 template <typename T>
 class LockingQueue {
    public:
@@ -16,6 +18,7 @@ class LockingQueue {
 
     void setMaxSize(unsigned sz) {
         // Lock first
+        if(sz == 0) throw std::invalid_argument("Queue size can't be 0!");
         std::unique_lock<std::mutex> lock(guard);
         maxSize = sz;
     }
@@ -218,3 +221,5 @@ class LockingQueue {
     std::condition_variable signalPop;
     std::condition_variable signalPush;
 };
+
+}  // namespace dai

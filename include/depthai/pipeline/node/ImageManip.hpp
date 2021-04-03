@@ -9,8 +9,12 @@
 namespace dai {
 namespace node {
 
+/**
+ * @brief ImageManip node. Capability to crop, resize, warp, ... incoming image frames
+ */
 class ImageManip : public Node {
-    dai::ImageManipProperties properties;
+    using Properties = dai::ImageManipProperties;
+    Properties properties;
 
     std::string getName() const override;
     std::vector<Input> getInputs() override;
@@ -23,6 +27,9 @@ class ImageManip : public Node {
    public:
     ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
+    /**
+     * Initial config to use when manipulating frames
+     */
     ImageManipConfig initialConfig;
 
     /**
@@ -37,6 +44,9 @@ class ImageManip : public Node {
      */
     Input inputImage{*this, "inputImage", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImgFrame, true}}};
 
+    /**
+     * Outputs ImgFrame message that carries modified image.
+     */
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
 
     // Functions to set ImageManipConfig - deprecated
@@ -49,8 +59,22 @@ class ImageManip : public Node {
     void setKeepAspectRatio(bool keep);
 
     // Functions to set properties
+    /**
+     * Specify whether or not wait until configuration message arrives to inputConfig Input.
+     * @param wait True to wait for configuration message, false otherwise
+     */
     void setWaitForConfigInput(bool wait);
+
+    /**
+     * Specify number of frames in pool.
+     * @param numFramesPool How many frames should the pool have
+     */
     void setNumFramesPool(int numFramesPool);
+
+    /**
+     * Specify maximum size of output image.
+     * @param maxFrameSize Maximum frame size in bytes
+     */
     void setMaxOutputFrameSize(int maxFrameSize);
 };
 

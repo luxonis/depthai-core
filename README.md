@@ -1,15 +1,22 @@
 # DepthAI C++ Library
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
+
 Core C++ library
 
-## Alpha Disclaimer
-DepthAI library is currently in alpha for version 0.x.y. We are still making breaking API changes and expect to get to stable API by version 1.0.0.
+## Documentation
+
+Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.com/projects/api/en/latest/)
+
+## Disclaimer
+DepthAI library doesn't yet provide API stability guarantees. While we take care to properly deprecate old functions, some changes might still be breaking. We expect to provide API stability from version 3.0.0 onwards.
 
 ## Dependencies
-- cmake >= 3.2
-- libusb1 development package
+- cmake >= 3.4
+- libusb1 development package (MacOS & Linux only)
 - C/C++11 compiler
- 
+- [optional] OpenCV 4
+
 MacOS: `brew install libusb`
 
 Linux: `sudo apt install libusb-1.0-0-dev`
@@ -32,24 +39,41 @@ target_link_libraries(my-app PUBLIC depthai-core)
 
 ## Building
 
-To build the static version of the library from source perform the following:
-
 Make sure submodules are updated 
 ```
 git submodule update --init --recursive
 ```
 
-Configure and build
+**Static library** 
 ```
 mkdir build && cd build
 cmake ..
 cmake --build . --parallel
 ```
-And for the dynamic version of the library:
+
+**Dynamic library**
 ```
 mkdir build && cd build
-cmake .. -DBUILD_SHARED_LIBS=ON
+cmake .. -D BUILD_SHARED_LIBS=ON
 cmake --build . --parallel
+```
+## Installing
+
+To install specify optional prefix and build target install
+```
+cmake .. -D CMAKE_INSTALL_PREFIX=[path/to/install/dir]
+cmake --build . --parallel
+cmake --build . --target install --parallel
+```
+
+## Running tests
+
+To run the tests build the library with the following options
+```
+mkdir build_tests && cd build_tests
+cmake .. -D DEPTHAI_TEST_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_BUILD_EXAMPLES=ON
+cmake --build . --parallel
+ctest
 ```
 
 ## Style check
@@ -67,6 +91,12 @@ And to apply formatting
 cmake --build [build/dir] --target clangformat
 ```
 
+## Documentation generation
+
+Doxygen is used to generate documentation. Follow [doxygen download](https://www.doxygen.nl/download.html#srcbin) and install the required binaries for your platform.
+
+After that specify CMake define `-D DEPTHAI_BUILD_DOCS=ON` and build the target `doxygen`
+
 ## Debugging tips
 
 Debugging can be done using **Visual Studio Code** and either **GDB** or **LLDB** (extension 'CodeLLDB').
@@ -80,7 +110,7 @@ rm -r ~/.hunter
 
 And configuring the project with the following CMake option set to `ON`
 ```
-cmake . -DHUNTER_KEEP_PACKAGE_SOURCES=ON
+cmake . -D HUNTER_KEEP_PACKAGE_SOURCES=ON
 ```
 
 This retains the libraries source code, so that debugger can step through it (the paths are already set up correctly)

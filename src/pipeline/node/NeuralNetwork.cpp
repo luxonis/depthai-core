@@ -13,20 +13,20 @@ std::string NeuralNetwork::getName() const {
 }
 
 std::vector<Node::Output> NeuralNetwork::getOutputs() {
-    return {out};
+    return {out, passthrough};
 }
 
 std::vector<Node::Input> NeuralNetwork::getInputs() {
     return {input};
 }
 
-dai::NeuralNetworkProperties& NeuralNetwork::getPropertiesRef() {
+NeuralNetwork::Properties& NeuralNetwork::getPropertiesRef() {
     return properties;
 }
 
 nlohmann::json NeuralNetwork::getProperties() {
     nlohmann::json j;
-    NeuralNetworkProperties& properties = getPropertiesRef();
+    Properties& properties = getPropertiesRef();
     nlohmann::to_json(j, properties);
     return j;
 }
@@ -54,22 +54,22 @@ void NeuralNetwork::setBlobPath(const std::string& path) {
 }
 
 void NeuralNetwork::setNumPoolFrames(int numFrames) {
-    NeuralNetworkProperties& properties = getPropertiesRef();
+    Properties& properties = getPropertiesRef();
     properties.numFrames = numFrames;
 }
 
 void NeuralNetwork::setNumInferenceThreads(int numThreads) {
-    NeuralNetworkProperties& properties = getPropertiesRef();
+    Properties& properties = getPropertiesRef();
     properties.numThreads = numThreads;
 }
 
 void NeuralNetwork::setNumNCEPerInferenceThread(int numNCEPerThread) {
-    NeuralNetworkProperties& properties = getPropertiesRef();
+    Properties& properties = getPropertiesRef();
     properties.numNCEPerThread = numNCEPerThread;
 }
 
 int NeuralNetwork::getNumInferenceThreads() {
-    NeuralNetworkProperties& properties = getPropertiesRef();
+    Properties& properties = getPropertiesRef();
     return properties.numThreads;
 }
 

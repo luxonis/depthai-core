@@ -4,11 +4,11 @@
 #include <cstdint>
 #include <vector>
 
+// libraries
+#include <XLink/XLink.h>
+
 // shared
 #include "depthai-bootloader-shared/Bootloader.hpp"
-
-// 3rdparty
-#include "XLink.h"
 
 namespace dai
 {

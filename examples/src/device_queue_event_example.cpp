@@ -1,15 +1,13 @@
 
-#include <iostream>
 #include <cstdio>
+#include <iostream>
 
 #include "utility.hpp"
 
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-
-int main(int argc, char** argv){
-
+int main(int argc, char** argv) {
     using namespace std;
     using namespace std::chrono;
 
@@ -24,10 +22,10 @@ int main(int argc, char** argv){
     xout->setStreamName("mjpeg");
     xout2->setStreamName("preview");
 
-    // ColorCamera    
+    // ColorCamera
     colorCam->setPreviewSize(300, 300);
     colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    //colorCam->setFps(5.0);
+    // colorCam->setFps(5.0);
     colorCam->setInterleaved(true);
 
     // VideoEncoder
@@ -46,23 +44,22 @@ int main(int argc, char** argv){
     // Sets queues size and behaviour
     d.getOutputQueue("mjpeg", 8, false);
     d.getOutputQueue("preview", 8, false);
-    
-    while(1){
 
+    while(1) {
         auto ev = d.getQueueEvent();
-        if(ev == "preview"){
+        if(ev == "preview") {
             auto preview = d.getOutputQueue(ev)->get<dai::ImgFrame>();
             cv::imshow("preview", cv::Mat(preview->getHeight(), preview->getWidth(), CV_8UC3, preview->getData().data()));
-        } else if(ev == "mjpeg"){
+        } else if(ev == "mjpeg") {
             auto mjpeg = d.getOutputQueue(ev)->get<dai::ImgFrame>();
             cv::Mat decodedFrame = cv::imdecode(cv::Mat(mjpeg->getData()), cv::IMREAD_COLOR);
             cv::imshow("mjpeg", decodedFrame);
         }
-        
+
         int key = cv::waitKey(1);
-        if (key == 'q'){
+        if(key == 'q') {
             return 0;
-        } 
+        }
     }
 
     return 0;
