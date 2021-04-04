@@ -31,14 +31,19 @@ static std::vector<std::uint8_t> getEmbeddedBootloaderBinary();
 #ifdef DEPTHAI_RESOURCES_TAR_XZ
 
 constexpr static auto CMRC_DEPTHAI_DEVICE_TAR_XZ = "depthai-device-fwp-" DEPTHAI_DEVICE_VERSION ".tar.xz";
-constexpr static auto DEPTHAI_CMD_OPENVINO_2020_1_PATH = "depthai-device-openvino-2020.1-" DEPTHAI_DEVICE_VERSION ".cmd";
-constexpr static auto DEPTHAI_CMD_OPENVINO_2020_3_PATH = "depthai-device-openvino-2020.3-" DEPTHAI_DEVICE_VERSION ".cmd";
-constexpr static auto DEPTHAI_CMD_OPENVINO_2020_2_PATH = DEPTHAI_CMD_OPENVINO_2020_3_PATH;
-constexpr static auto DEPTHAI_CMD_OPENVINO_2020_4_PATH = "depthai-device-openvino-2020.4-" DEPTHAI_DEVICE_VERSION ".cmd";
-constexpr static auto DEPTHAI_CMD_OPENVINO_2021_1_PATH = "depthai-device-openvino-2021.1-" DEPTHAI_DEVICE_VERSION ".cmd";
-constexpr static auto DEPTHAI_CMD_OPENVINO_2021_2_PATH = "depthai-device-openvino-2021.2-" DEPTHAI_DEVICE_VERSION ".cmd";
+
+// Main FW
 constexpr static auto DEPTHAI_CMD_OPENVINO_2021_3_PATH = "depthai-device-openvino-2021.3-" DEPTHAI_DEVICE_VERSION ".cmd";
 
+// Patches from Main FW
+constexpr static auto DEPTHAI_CMD_OPENVINO_2020_1_PATCH_PATH = "depthai-device-openvino-2020.1-" DEPTHAI_DEVICE_VERSION ".patch";
+constexpr static auto DEPTHAI_CMD_OPENVINO_2020_3_PATCH_PATH = "depthai-device-openvino-2020.3-" DEPTHAI_DEVICE_VERSION ".patch";
+constexpr static auto DEPTHAI_CMD_OPENVINO_2020_2_PATCH_PATH = DEPTHAI_CMD_OPENVINO_2020_3_PATCH_PATH;
+constexpr static auto DEPTHAI_CMD_OPENVINO_2020_4_PATCH_PATH = "depthai-device-openvino-2020.4-" DEPTHAI_DEVICE_VERSION ".patch";
+constexpr static auto DEPTHAI_CMD_OPENVINO_2021_1_PATCH_PATH = "depthai-device-openvino-2021.1-" DEPTHAI_DEVICE_VERSION ".patch";
+constexpr static auto DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH = "depthai-device-openvino-2021.2-" DEPTHAI_DEVICE_VERSION ".patch";
+
+// Usb2 patches
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_1_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2020.1-" DEPTHAI_DEVICE_VERSION ".patch";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_3_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2020.3-" DEPTHAI_DEVICE_VERSION ".patch";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_2_USB2_PATCH_PATH = DEPTHAI_CMD_OPENVINO_2020_3_USB2_PATCH_PATH;
@@ -48,13 +53,13 @@ constexpr static auto DEPTHAI_CMD_OPENVINO_2021_2_USB2_PATCH_PATH = "depthai-dev
 constexpr static auto DEPTHAI_CMD_OPENVINO_2021_3_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2021.3-" DEPTHAI_DEVICE_VERSION ".patch";
 
 constexpr static std::array<const char*, 14> resourcesListTarXz = {
-    DEPTHAI_CMD_OPENVINO_2020_1_PATH,
-    DEPTHAI_CMD_OPENVINO_2020_2_PATH,
-    DEPTHAI_CMD_OPENVINO_2020_3_PATH,
-    DEPTHAI_CMD_OPENVINO_2020_4_PATH,
-    DEPTHAI_CMD_OPENVINO_2021_1_PATH,
-    DEPTHAI_CMD_OPENVINO_2021_2_PATH,
     DEPTHAI_CMD_OPENVINO_2021_3_PATH,
+    DEPTHAI_CMD_OPENVINO_2020_1_PATCH_PATH,
+    DEPTHAI_CMD_OPENVINO_2020_3_PATCH_PATH,
+    DEPTHAI_CMD_OPENVINO_2020_2_PATCH_PATH,
+    DEPTHAI_CMD_OPENVINO_2020_4_PATCH_PATH,
+    DEPTHAI_CMD_OPENVINO_2021_1_PATCH_PATH,
+    DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH,
     DEPTHAI_CMD_OPENVINO_2020_1_USB2_PATCH_PATH,
     DEPTHAI_CMD_OPENVINO_2020_2_USB2_PATCH_PATH,
     DEPTHAI_CMD_OPENVINO_2020_3_USB2_PATCH_PATH,
@@ -70,48 +75,78 @@ std::vector<std::uint8_t> Resources::getDeviceBinary(OpenVINO::Version version, 
     // Binaries are resource compiled
     #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
 
+    // Temporary binary
+    std::vector<std::uint8_t> tmpDepthaiBinary;
+    // Main FW
     std::vector<std::uint8_t>& depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2021_3_PATH];
+    // Patch from main to specified
+    std::vector<std::uint8_t>& depthaiPatch = resourceMap[DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH];
+    // Patch from specified to usb2 specified
     std::vector<std::uint8_t>& depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2021_3_USB2_PATCH_PATH];
 
     switch(version) {
         case OpenVINO::VERSION_2020_1:
             spdlog::warn("OpenVino version 2020.1 is deprecated and will be removed in the next release!");
-            depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2020_1_PATH];
+            depthaiPatch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_1_PATCH_PATH];
             depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_1_USB2_PATCH_PATH];
             break;
 
         case OpenVINO::VERSION_2020_2:
             spdlog::warn("OpenVino version 2020.2 is deprecated and will be removed in the next release!");
-            depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2020_2_PATH];
+            depthaiPatch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_2_PATCH_PATH];
             depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_2_USB2_PATCH_PATH];
             break;
 
         case OpenVINO::VERSION_2020_3:
-            depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2020_3_PATH];
+            depthaiPatch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_3_PATCH_PATH];
             depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_3_USB2_PATCH_PATH];
             break;
 
         case OpenVINO::VERSION_2020_4:
-            depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2020_4_PATH];
+            depthaiPatch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_4_PATCH_PATH];
             depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_4_USB2_PATCH_PATH];
             break;
 
         case OpenVINO::VERSION_2021_1:
-            depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2021_1_PATH];
+            depthaiPatch = resourceMap[DEPTHAI_CMD_OPENVINO_2021_1_PATCH_PATH];
             depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2021_1_USB2_PATCH_PATH];
             break;
         case OpenVINO::VERSION_2021_2:
-            depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2021_2_PATH];
+            depthaiPatch = resourceMap[DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH];
             depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2021_2_USB2_PATCH_PATH];
             break;
+
         case OpenVINO::VERSION_2021_3:
             depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2021_3_PATH];
             depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2021_3_USB2_PATCH_PATH];
             break;
     }
 
+    // is patching required?
+    if(version != OpenVINO::VERSION_2021_3){
+        spdlog::debug("Patching OpenVINO FW version from {} to {}", OpenVINO::getVersionName(OpenVINO::VERSION_2021_3), OpenVINO::getVersionName(version));
+    
+        // Get new size
+        int64_t patchedSize = bspatch_mem_get_newsize(depthaiPatch.data(), depthaiPatch.size());
+
+        // Reserve space for patched binary
+        tmpDepthaiBinary.resize(patchedSize);
+
+        // Patch
+        int error = bspatch_mem(depthaiBinary.data(), depthaiBinary.size(), depthaiPatch.data(), depthaiPatch.size(), tmpDepthaiBinary.data());
+
+        // if patch not successful
+        if(error > 0) throw std::runtime_error("Error while patching cmd for usb2 mode");
+
+        // Change depthaiBinary to tmpDepthaiBinary
+        depthaiBinary = tmpDepthaiBinary;
+
+    }
+
     if(usb2Mode) {
         #ifdef DEPTHAI_PATCH_ONLY_MODE
+
+        spdlog::debug("Patching FW version {} to USB2 mode", OpenVINO::getVersionName(version));
 
         // Get new size
         int64_t patchedSize = bspatch_mem_get_newsize(depthaiUsb2Patch.data(), depthaiUsb2Patch.size());
