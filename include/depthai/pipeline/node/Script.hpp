@@ -7,41 +7,35 @@
 #include <fstream>
 
 // shared
-#include <depthai-shared/properties/LxScriptProperties.hpp>
+#include <depthai-shared/properties/ScriptProperties.hpp>
 
 namespace dai {
 namespace node {
 
-class LxScript : public Node {
-    dai::LxScriptProperties properties;
+class Script : public Node {
+    dai::ScriptProperties properties;
 
     std::string getName() const override;
     std::vector<Output> getOutputs() override;
     std::vector<Input> getInputs() override;
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
-    // void loadAssets(AssetManager& assetManager) override;
 
     std::string scriptPath = "";
 
    public:
-    LxScript(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    Script(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
     /**
-     *  Inputs to LxScript node. Can be added or removed
+     *  Inputs to Script node. Can be accessed using subscript operator (Eg: inputs['in1'])
      *  By default inputs are set to blocking with queue size 8
      */
     InputMap inputs;
 
     /**
-     * Outputs from LxScript node. Can be added or removed
+     * Outputs from Script node. Can be accessed subscript operator (Eg: outputs['out1'])
      */
     OutputMap outputs;
-
-    /**
-     *  Set the node name. Used in LxScript to access this nodes IO and assets
-     */
-    void setName(const std::string& name);
 
     /**
      *  Specify local filesystem path to load the script
@@ -52,19 +46,25 @@ class LxScript : public Node {
      * Sets script data to be interpreted
      * @param script Script string to be interpreted
      */
-    void setScriptData(const std::string& script);
+    void setScriptData(const std::string& script, const std::string& name = "");
 
     /**
      * Sets script data to be interpreted
      * @param data Binary data that represents the script to be interpreted
      */
-    void setScriptData(const std::vector<std::uint8_t>& data);
+    void setScriptData(const std::vector<std::uint8_t>& data, const std::string& name = "");
 
     /**
      * Get filesystem path from where script was loaded.
      * If script wasn't set by path, function returns empty string
      */
     std::string getScriptPath() const;
+
+    /**
+     * Get filesystem path from where script was loaded.
+     * If script wasn't set by path, function returns empty string
+     */
+    std::string getScriptName() const;
 
     /**
      * Set on which processor the script should run
