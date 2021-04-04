@@ -123,9 +123,9 @@ std::vector<std::uint8_t> Resources::getDeviceBinary(OpenVINO::Version version, 
     }
 
     // is patching required?
-    if(version != OpenVINO::VERSION_2021_3){
+    if(version != OpenVINO::VERSION_2021_3) {
         spdlog::debug("Patching OpenVINO FW version from {} to {}", OpenVINO::getVersionName(OpenVINO::VERSION_2021_3), OpenVINO::getVersionName(version));
-    
+
         // Get new size
         int64_t patchedSize = bspatch_mem_get_newsize(depthaiPatch.data(), depthaiPatch.size());
 
@@ -140,7 +140,6 @@ std::vector<std::uint8_t> Resources::getDeviceBinary(OpenVINO::Version version, 
 
         // Change depthaiBinary to tmpDepthaiBinary
         depthaiBinary = tmpDepthaiBinary;
-
     }
 
     if(usb2Mode) {
