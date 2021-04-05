@@ -14,7 +14,7 @@ namespace dai {
 namespace node {
 
 /**
- * @brief ObjectTracker node. Perform object tracking.
+ * @brief ObjectTracker node. Performs object tracking using Kalman filter and hungarian algorithm.
  */
 class ObjectTracker : public Node {
     using Properties = dai::ObjectTrackerProperties;
