@@ -44,7 +44,7 @@ int main(){
     inOneD = {-4.481964,   14.138410,    0.002012,    0.000149,  -13.193083,   -4.541109,   14.358990,
                 -13.394559,    0.000000,    0.000000,    0.000000,    0.000000,    0.000000,    0.000000};
     
-    calibData.setCameraIntrinsics(dai::CameraBoardSocket::LEFT, inMatrix, 1920, 1080);
+    calibData.setCameraIntrinsics(dai::CameraBoardSocket::LEFT, inMatrix, 1280, 800);
     calibData.setdistortionCoefficients(dai::CameraBoardSocket::LEFT, inOneD);
     
     inMatrix = {{855.000122,  0.000000,  644.814514},
@@ -53,7 +53,7 @@ int main(){
     inOneD = {-5.598158,   19.114412,    0.000495,    0.000686,  -20.956785,   -5.645601,   19.298323,
                 -21.132698,    0.000000,    0.000000,    0.000000,    0.000000,    0.000000,    0.000000};
     
-    calibData.setCameraIntrinsics(dai::CameraBoardSocket::RIGHT, inMatrix, 1920, 1080);
+    calibData.setCameraIntrinsics(dai::CameraBoardSocket::RIGHT, inMatrix, 1280, 800);
     calibData.setdistortionCoefficients(dai::CameraBoardSocket::RIGHT, inOneD);
     
     inMatrix = {{ 0.999903,    0.011196,    0.008257},

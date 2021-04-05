@@ -185,6 +185,15 @@ class CalibrationHandler {
      * @param hfov - Horizontal fov of the camera from Camera Datasheet
      */
     void setFov(CameraBoardSocket cameraId, double hfov);
+
+    // /**
+    //  * @brief Set the Camera Type object
+    //  * 
+    //  * @param cameraId - CameraId of the camera for which cameraModel Type is being updated.
+    //  * @param cameraModel - Type of the model the camera represents
+    //  */
+    // void setCameraType(CameraBoardSocket cameraId, CameraModel cameraModel);
+
     // TODO(sachin): should I allow setting of measured translation ?
 
     /**

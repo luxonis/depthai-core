@@ -1,5 +1,4 @@
 #include "depthai/device/CalibrationHandler.hpp"
-#include "depthai/utility/matrixOps.hpp"
 
 #include <fstream>
 #include <iomanip>
@@ -10,6 +9,7 @@
 #include "depthai-shared/common/CameraInfo.hpp"
 #include "depthai-shared/common/Extrinsics.hpp"
 #include "depthai-shared/common/Point3f.hpp"
+#include "depthai/utility/matrixOps.hpp"
 #include "nlohmann/json.hpp"
 
 namespace dai {
@@ -96,6 +96,10 @@ CalibrationHandler::CalibrationHandler(std::string calibrationDataPath, std::str
         eepromData.cameraData[CameraBoardSocket::LEFT].intrinsicMatrix = matrix_conv(calibration_buff, 18);
         eepromData.cameraData[CameraBoardSocket::RIGHT].intrinsicMatrix = matrix_conv(calibration_buff, 27);
         eepromData.cameraData[CameraBoardSocket::RGB].intrinsicMatrix = matrix_conv(calibration_buff, 48);  // 9*5 + 3
+
+        eepromData.cameraData[CameraBoardSocket::LEFT].cameraType = CameraModel::Perspective;
+        eepromData.cameraData[CameraBoardSocket::RIGHT].cameraType = CameraModel::Perspective;
+        eepromData.cameraData[CameraBoardSocket::RGB].cameraType = CameraModel::Perspective;  // 9*5 + 3
 
         eepromData.cameraData[CameraBoardSocket::LEFT].width = 1280;
         eepromData.cameraData[CameraBoardSocket::LEFT].height = 800;
@@ -198,10 +202,17 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(
         }
     }
 
-    if(topLeftPixelId.x > bottomRightPixelId.x || topLeftPixelId.y < bottomRightPixelId.y){
+    if(topLeftPixelId.x > bottomRightPixelId.x || topLeftPixelId.y < bottomRightPixelId.y) {
         std::runtime_error("Invalid Crop ratio.");
     }
 
+    std::cout << "Test here ------------" << std::endl;
+    for(auto row : intrinsicMatrix){
+        for(auto val : row)
+        std::cout << val << "  ";
+        std::cout << std::endl;
+    }
+     std::cout <<topLeftPixelId.x << " - " << bottomRightPixelId.y << std::endl;
     intrinsicMatrix[0][2] -= topLeftPixelId.x;
     intrinsicMatrix[1][2] -= bottomRightPixelId.y;
 
@@ -235,7 +246,7 @@ std::vector<std::vector<float>> CalibrationHandler::getImuToCameraExtrinsics(Cam
     }
     std::vector<std::vector<float>> transformationMatrix = eepromData.imuExtrinsics.rotationMatrix;
     if(useMeasuredTranslation) {
-        // TODO(sachin): What if measured translation is (0,0,0) ??? Should I throw an error ? 
+        // TODO(sachin): What if measured translation is (0,0,0) ??? Should I throw an error ?
         transformationMatrix[0].push_back(eepromData.cameraData[cameraId].extrinsics.measuredTranslation.x);
         transformationMatrix[1].push_back(eepromData.cameraData[cameraId].extrinsics.measuredTranslation.y);
         transformationMatrix[2].push_back(eepromData.cameraData[cameraId].extrinsics.measuredTranslation.z);
@@ -250,7 +261,8 @@ std::vector<std::vector<float>> CalibrationHandler::getImuToCameraExtrinsics(Cam
     if(eepromData.imuExtrinsics.toCameraSocket == cameraId) {
         return transformationMatrix;
     } else {
-        std::vector<std::vector<float>> localTransformationMatrix = getCameraExtrinsics(eepromData.imuExtrinsics.toCameraSocket, cameraId, useMeasuredTranslation);
+        std::vector<std::vector<float>> localTransformationMatrix =
+            getCameraExtrinsics(eepromData.imuExtrinsics.toCameraSocket, cameraId, useMeasuredTranslation);
         return matMul(transformationMatrix, localTransformationMatrix);
     }
 }
@@ -304,14 +316,16 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBo
     return extrinsics;
 }
 
-std::vector<std::vector<float>> CalibrationHandler::computeExtrinsicMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useMeasuredTranslation) {
+std::vector<std::vector<float>> CalibrationHandler::computeExtrinsicMatrix(CameraBoardSocket srcCamera,
+                                                                           CameraBoardSocket dstCamera,
+                                                                           bool useMeasuredTranslation) {
     if(srcCamera == CameraBoardSocket::AUTO || dstCamera == CameraBoardSocket::AUTO) {
         std::runtime_error("Invalid cameraId input..");
     }
     if(eepromData.cameraData[srcCamera].extrinsics.toCameraSocket == dstCamera) {
         std::vector<std::vector<float>> transformationMatrix = eepromData.cameraData[srcCamera].extrinsics.rotationMatrix;
         if(useMeasuredTranslation) {
-            // TODO(sachin): What if measured translation is (0,0,0) ??? Should I throw an error ? 
+            // TODO(sachin): What if measured translation is (0,0,0) ??? Should I throw an error ?
             transformationMatrix[0].push_back(eepromData.cameraData[srcCamera].extrinsics.measuredTranslation.x);
             transformationMatrix[1].push_back(eepromData.cameraData[srcCamera].extrinsics.measuredTranslation.y);
             transformationMatrix[2].push_back(eepromData.cameraData[srcCamera].extrinsics.measuredTranslation.z);
@@ -328,7 +342,7 @@ std::vector<std::vector<float>> CalibrationHandler::computeExtrinsicMatrix(Camer
             computeExtrinsicMatrix(eepromData.cameraData[srcCamera].extrinsics.toCameraSocket, dstCamera, useMeasuredTranslation);
         std::vector<std::vector<float>> currTransformationMatrix = eepromData.cameraData[srcCamera].extrinsics.rotationMatrix;
         if(useMeasuredTranslation) {
-            // TODO(sachin): What if measured translation is (0,0,0) ??? Should I throw an error ? 
+            // TODO(sachin): What if measured translation is (0,0,0) ??? Should I throw an error ?
             currTransformationMatrix[0].push_back(eepromData.cameraData[srcCamera].extrinsics.measuredTranslation.x);
             currTransformationMatrix[1].push_back(eepromData.cameraData[srcCamera].extrinsics.measuredTranslation.y);
             currTransformationMatrix[2].push_back(eepromData.cameraData[srcCamera].extrinsics.measuredTranslation.z);
