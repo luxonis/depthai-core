@@ -19,11 +19,11 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT depthai_SHARED_LIBS))
     find_package(BZip2 ${_QUIET} CONFIG REQUIRED)
 
     # FP16 for conversions
-    find_package(FP16 ${_QUIET} REQUIRED)
+    find_package(FP16 ${_QUIET} CONFIG REQUIRED)
 
     # libarchive for firmware packages
-    find_package(archive_static ${_QUIET} REQUIRED)
-    find_package(lzma ${_QUIET} REQUIRED)
+    find_package(archive_static ${_QUIET} CONFIG REQUIRED)
+    find_package(lzma ${_QUIET} CONFIG REQUIRED)
 
     # spdlog for library and device logging
     find_package(spdlog ${_QUIET} CONFIG REQUIRED)
@@ -43,8 +43,8 @@ else()
     find_package(XLink ${_QUIET} CONFIG REQUIRED)
 endif()
 
-# OpenCV - (optional, quiet always)
-find_package(OpenCV QUIET)
+# OpenCV 4 - (optional, quiet always)
+find_package(OpenCV 4 QUIET CONFIG)
 
 # Cleanup
 if(CONFIG_MODE)
