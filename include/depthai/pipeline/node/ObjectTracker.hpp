@@ -31,10 +31,16 @@ class ObjectTracker : public Node {
     ObjectTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
     /**
+     * Input ImgFrame message on which tracking will be performed. RGBp, BGRp, NV12, YUV420p types are supported.
+     * Default queue is non-blocking with size 4.
+     */
+    Input inputTrackerFrame{*this, "inputTrackerFrame", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
      * Input ImgFrame message on which object detection was performed.
      * Default queue is non-blocking with size 4.
      */
-    Input inputFrame{*this, "inputFrame", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputDetectionFrame{*this, "inputDetectionFrame", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Input message with image detection from neural network.
@@ -48,10 +54,16 @@ class ObjectTracker : public Node {
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Tracklets, false}}};
 
     /**
-     * Passthrough ImgFrame message on which the calculation was performed.
+     * Passthrough ImgFrame message on which tracking was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughFrame{*this, "passthroughFrame", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output passthroughTrackerFrame{*this, "passthroughTrackerFrame", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
+     * Passthrough ImgFrame message on which object detection was performed.
+     * Suitable for when input queue is set to non-blocking behavior.
+     */
+    Output passthroughDetectionFrame{*this, "passthroughDetectionFrame", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Passthrough image detections message from neural nework output.

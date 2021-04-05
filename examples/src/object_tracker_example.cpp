@@ -38,7 +38,7 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     // Link plugins CAM -> NN -> XLINK
     colorCam->preview.link(detectionNetwork->input);
     if(syncNN) {
-        objectTracker->passthroughFrame.link(xlinkOut->input);
+        objectTracker->passthroughTrackerFrame.link(xlinkOut->input);
     } else {
         colorCam->preview.link(xlinkOut->input);
     }
@@ -47,7 +47,8 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     objectTracker->setTrackerType(dai::TrackerType::ZERO_TERM_COLOR_HISTOGRAM);
     objectTracker->setTrackerIdAssigmentPolicy(dai::TrackerIdAssigmentPolicy::SMALLEST_ID);
 
-    detectionNetwork->passthrough.link(objectTracker->inputFrame);
+    detectionNetwork->passthrough.link(objectTracker->inputTrackerFrame);
+    detectionNetwork->passthrough.link(objectTracker->inputDetectionFrame);
     detectionNetwork->out.link(objectTracker->inputDetections);
     objectTracker->out.link(trackerOut->input);
 
@@ -94,7 +95,7 @@ int main(int argc, char** argv) {
             startTime = currentTime;
         }
 
-        auto color = cv::Scalar(255, 255, 255);
+        auto color = cv::Scalar(255, 0, 0);
         cv::Mat trackletFrame = imgFrame->getCvFrame();
         auto trackletsData = track->tracklets;
         for(auto& t : trackletsData) {

@@ -59,7 +59,7 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     // Link plugins CAM -> NN -> XLINK
     colorCam->preview.link(spatialDetectionNetwork->input);
     if(syncNN) {
-        objectTracker->passthroughFrame.link(xoutRgb->input);
+        objectTracker->passthroughTrackerFrame.link(xoutRgb->input);
     } else {
         colorCam->preview.link(xoutRgb->input);
     }
@@ -69,7 +69,8 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     objectTracker->setTrackerIdAssigmentPolicy(dai::TrackerIdAssigmentPolicy::SMALLEST_ID);
     objectTracker->out.link(trackerOut->input);
 
-    spatialDetectionNetwork->passthrough.link(objectTracker->inputFrame);
+    spatialDetectionNetwork->passthrough.link(objectTracker->inputTrackerFrame);
+    spatialDetectionNetwork->passthrough.link(objectTracker->inputDetectionFrame);
     spatialDetectionNetwork->out.link(objectTracker->inputDetections);
 
     stereo->depth.link(spatialDetectionNetwork->inputDepth);
@@ -104,7 +105,7 @@ int main(int argc, char** argv) {
     auto startTime = steady_clock::now();
     int counter = 0;
     float fps = 0;
-    auto color = cv::Scalar(255, 255, 255);
+    auto color = cv::Scalar(255, 0, 0);
 
     while(1) {
         auto imgFrame = preview->get<dai::ImgFrame>();

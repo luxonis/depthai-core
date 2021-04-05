@@ -12,11 +12,11 @@ std::string ObjectTracker::getName() const {
 }
 
 std::vector<Node::Output> ObjectTracker::getOutputs() {
-    return {out, passthroughFrame, passthroughDetections};
+    return {out, passthroughTrackerFrame, passthroughDetectionFrame, passthroughDetections};
 }
 
 std::vector<Node::Input> ObjectTracker::getInputs() {
-    return {inputFrame, inputDetections};
+    return {inputTrackerFrame, inputDetectionFrame, inputDetections};
 }
 
 nlohmann::json ObjectTracker::getProperties() {
