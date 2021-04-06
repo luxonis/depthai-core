@@ -867,7 +867,7 @@ void Device::setSystemInformationLoggingRate(float rateHz) {
 float Device::getSystemInformationLoggingRate() {
     checkClosed();
 
-    return client->call("getSystemInformationLoggingrate").as<float>();
+    return client->call("getSystemInformationLoggingRate").as<float>();
 }
 
 bool Device::startPipeline() {
