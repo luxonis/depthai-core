@@ -17,8 +17,10 @@ namespace node {
  * @brief ObjectTracker node. Performs object tracking using Kalman filter and hungarian algorithm.
  */
 class ObjectTracker : public Node {
+   public:
     using Properties = dai::ObjectTrackerProperties;
 
+   private:
     std::string getName() const override;
     std::vector<Input> getInputs() override;
     std::vector<Output> getOutputs() override;

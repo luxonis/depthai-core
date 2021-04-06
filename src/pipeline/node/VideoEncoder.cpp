@@ -43,6 +43,10 @@ void VideoEncoder::setRateControlMode(VideoEncoderProperties::RateControlMode mo
     properties.rateCtrlMode = mode;
 }
 
+void VideoEncoder::setProfile(std::tuple<int, int> size, VideoEncoderProperties::Profile profile) {
+    setProfile(std::get<0>(size), std::get<1>(size), profile);
+}
+
 void VideoEncoder::setProfile(int width, int height, VideoEncoderProperties::Profile profile) {
     // Width & height H26x limitations
     if(profile != VideoEncoderProperties::Profile::MJPEG) {
@@ -87,6 +91,10 @@ void VideoEncoder::setNumBFrames(int numBFrames) {
 
 void VideoEncoder::setQuality(int quality) {
     properties.quality = quality;
+}
+
+void VideoEncoder::setLossless(bool lossless) {
+    properties.lossless = lossless;
 }
 
 void VideoEncoder::setFrameRate(int frameRate) {
@@ -188,6 +196,10 @@ void VideoEncoder::setDefaultProfilePreset(int width, int height, float fps, Vid
 
 void VideoEncoder::setDefaultProfilePreset(std::tuple<int, int> size, float fps, VideoEncoderProperties::Profile profile) {
     setDefaultProfilePreset(std::get<0>(size), std::get<1>(size), fps, profile);
+}
+
+bool VideoEncoder::getLossless() const {
+    return properties.lossless;
 }
 
 }  // namespace node
