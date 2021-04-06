@@ -16,8 +16,10 @@ namespace node {
  * @brief NeuralNetwork node. Runs a neural inference on input data.
  */
 class NeuralNetwork : public Node {
+   public:
     using Properties = dai::NeuralNetworkProperties;
 
+   private:
     Properties properties;
 
     std::string getName() const override;
