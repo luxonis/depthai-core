@@ -5,6 +5,7 @@
 #include <condition_variable>
 #include <iostream>
 #include <thread>
+#include <fstream>
 
 // libarchive
 #include "archive.h"
@@ -13,6 +14,8 @@
 // spdlog
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/spdlog.h"
+#include "spdlog/details/os.h"
+
 
 extern "C" {
 #include "bspatch/bspatch.h"
@@ -71,6 +74,20 @@ constexpr static std::array<const char*, 14> resourcesListTarXz = {
 
 std::vector<std::uint8_t> Resources::getDeviceBinary(OpenVINO::Version version, bool usb2Mode) {
     std::vector<std::uint8_t> finalCmd;
+
+    // Check if env variable DEPTHAI_FW_OVERRIDE is set
+    auto fwBinaryPath = spdlog::details::os::getenv("DEPTHAI_FW_BINARY_PATH");
+    if(!fwBinaryPath.empty()) {
+         // Load binary file at path
+        std::ifstream stream(fwBinaryPath, std::ios::in | std::ios::binary);
+        if(!stream.is_open()) {
+            // Throw an error
+            // TODO(themarpe) - Unify exceptions into meaningful groups
+            throw std::runtime_error(fmt::format("File at path {} pointed to by DEPTHAI_FW_BINARY_PATH doesn't exist.", fwBinaryPath));
+        }
+
+        return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
+    }
 
     // Binaries are resource compiled
     #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
