@@ -64,7 +64,10 @@ std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
     std::uint32_t bufferLength = packet->length - 8 - serializedObjectSize;
     auto* msgpackStart = packet->data + bufferLength;
 
-    nlohmann::json jser = nlohmann::json::from_msgpack(msgpackStart, msgpackStart + serializedObjectSize);
+    nlohmann::json jser;
+    if(serializedObjectSize > 0) {
+        jser = nlohmann::json::from_msgpack(msgpackStart, msgpackStart + serializedObjectSize);
+    }
 
     // copy data part
     std::vector<uint8_t> data(packet->data, packet->data + bufferLength);
@@ -129,11 +132,13 @@ std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
     std::uint32_t bufferLength = packet->length - 8 - serializedObjectSize;
     auto* msgpackStart = packet->data + bufferLength;
 
-    nlohmann::json jser = nlohmann::json::from_msgpack(msgpackStart, msgpackStart + serializedObjectSize);
+    nlohmann::json jser;
+    if(serializedObjectSize > 0) {
+        jser = nlohmann::json::from_msgpack(msgpackStart, msgpackStart + serializedObjectSize);
+    }
 
     // copy data part
     std::vector<uint8_t> data(packet->data, packet->data + bufferLength);
-
     switch(objectType) {
         case DatatypeEnum::Buffer: {
             // RawBuffer is special case, no metadata is actually serialized
