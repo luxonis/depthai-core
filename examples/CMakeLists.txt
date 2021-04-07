@@ -130,6 +130,9 @@ dai_add_example(device_queue_event src/device_queue_event_example.cpp)
 # OpenCV support example
 dai_add_example(opencv_support src/opencv_support_example.cpp)
 
+# RGB-depth alignment example
+dai_add_example(rgb_depth_aligned src/rgb_depth_aligned_example.cpp)
+
 # Device side decoding example for mobilenet-ssd
 dai_add_example(mobilenet_device_side_decoding src/mobilenet_device_side_decoding_example.cpp)
 target_compile_definitions(mobilenet_device_side_decoding PRIVATE BLOB_PATH="${mobilenet_blob}")

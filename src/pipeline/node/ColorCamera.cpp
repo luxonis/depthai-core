@@ -23,7 +23,7 @@ std::string ColorCamera::getName() const {
 }
 
 std::vector<Node::Output> ColorCamera::getOutputs() {
-    return {video, preview, still};
+    return {raw, isp, video, preview, still};
 }
 
 std::vector<Node::Input> ColorCamera::getInputs() {
@@ -122,10 +122,18 @@ void ColorCamera::setPreviewSize(int width, int height) {
     properties.previewHeight = height;
 }
 
+void ColorCamera::setPreviewSize(std::tuple<int, int> size) {
+    setPreviewSize(std::get<0>(size), std::get<1>(size));
+}
+
 // set video output size
 void ColorCamera::setVideoSize(int width, int height) {
     properties.videoWidth = width;
     properties.videoHeight = height;
+}
+
+void ColorCamera::setVideoSize(std::tuple<int, int> size) {
+    setVideoSize(std::get<0>(size), std::get<1>(size));
 }
 
 // set still output size
@@ -134,18 +142,27 @@ void ColorCamera::setStillSize(int width, int height) {
     properties.stillHeight = height;
 }
 
-void ColorCamera::setIspScale(int numerator, int denominator) {
-    properties.ispScale.horizNumerator = numerator;
-    properties.ispScale.horizDenominator = denominator;
-    properties.ispScale.vertNumerator = numerator;
-    properties.ispScale.vertDenominator = denominator;
+void ColorCamera::setStillSize(std::tuple<int, int> size) {
+    setStillSize(std::get<0>(size), std::get<1>(size));
 }
 
-void ColorCamera::setIspScaleFull(int horizNum, int horizDenom, int vertNum, int vertDenom) {
+void ColorCamera::setIspScale(int horizNum, int horizDenom, int vertNum, int vertDenom) {
     properties.ispScale.horizNumerator = horizNum;
     properties.ispScale.horizDenominator = horizDenom;
     properties.ispScale.vertNumerator = vertNum;
     properties.ispScale.vertDenominator = vertDenom;
+}
+
+void ColorCamera::setIspScale(int numerator, int denominator) {
+    setIspScale(numerator, denominator, numerator, denominator);
+}
+
+void ColorCamera::setIspScale(std::tuple<int, int> scale) {
+    setIspScale(std::get<0>(scale), std::get<1>(scale));
+}
+
+void ColorCamera::setIspScale(std::tuple<int, int> horizScale, std::tuple<int, int> vertScale) {
+    setIspScale(std::get<0>(horizScale), std::get<1>(horizScale), std::get<0>(vertScale), std::get<1>(vertScale));
 }
 
 void ColorCamera::setResolution(ColorCameraProperties::SensorResolution resolution) {

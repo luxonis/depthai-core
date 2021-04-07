@@ -43,8 +43,6 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
     // StereoDepth
-    stereo->setOutputDepth(true);
-    stereo->setOutputRectified(true);
     stereo->setConfidenceThreshold(255);
 
     // Link plugins CAM -> STEREO -> XLINK
