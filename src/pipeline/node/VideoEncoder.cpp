@@ -72,14 +72,14 @@ void VideoEncoder::setBitrate(int bitrate) {
     properties.maxBitrate = bitrate;
 }
 
+void VideoEncoder::setBitrateKbps(int bitrateKbps) {
+    properties.bitrate = bitrateKbps * 1000;
+    properties.maxBitrate = bitrateKbps * 1000;
+}
+
 void VideoEncoder::setKeyframeFrequency(int freq) {
     properties.keyframeFrequency = freq;
 }
-
-// Max bitrate and bitrate must match
-// void VideoEncoder::setMaxBitrate(int maxBitrateKbps) {
-//    properties.maxBitrate = maxBitrateKbps;
-//}
 
 void VideoEncoder::setNumBFrames(int numBFrames) {
     properties.numBFrames = numBFrames;
@@ -103,6 +103,10 @@ VideoEncoderProperties::Profile VideoEncoder::getProfile() const {
 
 int VideoEncoder::getBitrate() const {
     return properties.bitrate;
+}
+
+int VideoEncoder::getBitrateKbps() const {
+    return properties.bitrate / 1000;
 }
 
 int VideoEncoder::getKeyframeFrequency() const {
@@ -164,16 +168,16 @@ void VideoEncoder::setDefaultProfilePreset(int width, int height, float fps, Vid
             const int pixelArea = width * height;
             if(pixelArea <= 1280 * 720 * AREA_MUL) {
                 // 720p
-                setBitrate((4000 * 1000 / ESTIMATION_FPS) * fps);
+                setBitrateKbps((4000 / ESTIMATION_FPS) * fps);
             } else if(pixelArea <= 1920 * 1080 * AREA_MUL) {
                 // 1080p
-                setBitrate((8500 * 1000 / ESTIMATION_FPS) * fps);
+                setBitrateKbps((8500 / ESTIMATION_FPS) * fps);
             } else if(pixelArea <= 2560 * 1440 * AREA_MUL) {
                 // 1440p
-                setBitrate((14000 * 1000 / ESTIMATION_FPS) * fps);
+                setBitrateKbps((14000 / ESTIMATION_FPS) * fps);
             } else {
                 // 4K
-                setBitrate((20000 * 1000 / ESTIMATION_FPS) * fps);
+                setBitrateKbps((20000 / ESTIMATION_FPS) * fps);
             }
         } break;
 

@@ -12,12 +12,11 @@
     #include <opencv2/opencv.hpp>
 #endif
 
-/**
- * ImgFrame message. Carries images and their metadata
- */
 namespace dai {
 
-// protected inheritance, so serialize isn't visible to users
+/**
+ * ImgFrame message. Carries image data and metadata.
+ */
 class ImgFrame : public Buffer {
     std::shared_ptr<RawBuffer> serialize() const override;
     RawImgFrame& img;

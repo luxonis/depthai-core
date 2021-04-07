@@ -15,7 +15,7 @@ DepthAI library doesn't yet provide API stability guarantees. While we take care
 - cmake >= 3.4
 - libusb1 development package (MacOS & Linux only)
 - C/C++11 compiler
-- [optional] OpenCV 
+- [optional] OpenCV 4
 
 MacOS: `brew install libusb`
 
@@ -63,7 +63,17 @@ To install specify optional prefix and build target install
 ```
 cmake .. -D CMAKE_INSTALL_PREFIX=[path/to/install/dir]
 cmake --build . --parallel
-cmake --build . --parallel --target install
+cmake --build . --target install --parallel
+```
+
+## Running tests
+
+To run the tests build the library with the following options
+```
+mkdir build_tests && cd build_tests
+cmake .. -D DEPTHAI_TEST_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_BUILD_EXAMPLES=ON
+cmake --build . --parallel
+ctest
 ```
 
 ## Style check
@@ -85,7 +95,7 @@ cmake --build [build/dir] --target clangformat
 
 Doxygen is used to generate documentation. Follow [doxygen download](https://www.doxygen.nl/download.html#srcbin) and install the required binaries for your platform.
 
-After that specify CMake define `-DDEPTHAI_BUILD_DOCS=ON` and build the target `doxygen`
+After that specify CMake define `-D DEPTHAI_BUILD_DOCS=ON` and build the target `doxygen`
 
 ## Debugging tips
 
@@ -100,7 +110,7 @@ rm -r ~/.hunter
 
 And configuring the project with the following CMake option set to `ON`
 ```
-cmake . -DHUNTER_KEEP_PACKAGE_SOURCES=ON
+cmake . -D HUNTER_KEEP_PACKAGE_SOURCES=ON
 ```
 
 This retains the libraries source code, so that debugger can step through it (the paths are already set up correctly)

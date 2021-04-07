@@ -8,10 +8,6 @@ set(DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE
     ${DEPTHAI_BOOTLOADER_SHARED_FOLDER}/include
 )
 
-set(DEPTHAI_BOOTLOADER_SHARED_3RDPARTY_INCLUDE
-    ${DEPTHAI_BOOTLOADER_SHARED_FOLDER}/3rdparty
-)
-
 set(DEPTHAI_BOOTLOADER_SHARED_INCLUDE
     ${DEPTHAI_BOOTLOADER_SHARED_FOLDER}/src
 )
@@ -29,7 +25,7 @@ if(GIT_FOUND AND NOT DEPTHAI_DOWNLOADED_SOURCES)
     )
     string(SUBSTRING ${statusCommit} 0 1 status)
     if(${status} STREQUAL "-")
-        message(FATAL_ERROR "Submodule 'depthai-shared' not initialized/updated. Run 'git submodule update --init --recursive' first")
+        message(FATAL_ERROR "Submodule 'depthai-bootloader-shared' not initialized/updated. Run 'git submodule update --init --recursive' first")
     endif()   
     
     # Get depthai-bootloader-shared current commit
