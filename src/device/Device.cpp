@@ -878,12 +878,10 @@ bool Device::storeCalibration(CalibrationHandler calibrationDataHandler) {
         return false;
 }
 
-CalibrationHandler Device::getCalibration(){
+CalibrationHandler Device::getCalibration() {
     dai::EepromData eepromData = client->call("readFromEeprom");
     return CalibrationHandler(eepromData);
 }
-
-
 
 bool Device::startPipeline() {
     checkClosed();

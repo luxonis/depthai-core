@@ -109,7 +109,7 @@ class CalibrationHandler {
      */
     std::vector<std::vector<float>> getCameraToImuExtrinsics(CameraBoardSocket cameraId, bool useMeasuredTranslation = false);
     // TODO(Sachin): How to check if IMU exists ? set everthing in IMU extrinsics to ZERO ???
-    
+
     /**
      * @brief Get the Imu To Camera Extrinsics object
      * From the data loaded if there is a linked connection between IMU and the given camera then there relative rotation and translation from the IMU to Camera
@@ -125,7 +125,7 @@ class CalibrationHandler {
      *                          \end{bmatrix}
      */
     std::vector<std::vector<float>> getImuToCameraExtrinsics(CameraBoardSocket cameraId, bool useMeasuredTranslation = false);
-    
+
     // getStereoRightRectificationRotation();
     // getStereoLeftRectificationRotation();
     // getStereoLeftCameraId();
@@ -138,15 +138,15 @@ class CalibrationHandler {
 
     /**
      * @brief Write raw calibration/board data to json file.
-     * 
+     *
      * @param destPath -  Full path to the json file in which raw calibration data will be stored
      * @return true - returs true on success
      */
     bool eepromToJsonFile(std::string destPath);
-    
+
     /**
      * @brief Set the Board Info object
-     * 
+     *
      * @param version - Sets the version of the Calibration data(Current version is 6)
      * @param swapLeftRightCam - This bool swaps the connection of left and right camera
      * @param boardName - Sets your board name.
@@ -156,12 +156,12 @@ class CalibrationHandler {
 
     /**
      * @brief Set the Camera Intrinsics object
-     * 
+     *
      * @param cameraId - CameraId of the camera for which Camera intrinsics are being loaded
      * @param intrinsics - 3x3 intrinsics matrix in the form of std::vector<std::vector<float>>
      * @param width - repesents the width of the image at which intrinsics are calculated.
      * @param height - repesents the height of the image at which intrinsics are calculated.
-     * 
+     *
      * intrinsic matrix = \begin{bmatrix}
      *                              f_x &  0  & c_x \\
      *                              0   & f_y & c_y \\
@@ -172,7 +172,7 @@ class CalibrationHandler {
 
     /**
      * @brief Sets the distortion Coefficients obtained from camera calibration
-     * 
+     *
      * @param cameraId - Camera Id of the camera for which distoriton coefficients are computed
      * @param distortionCoefficients - Distortion Coefficients of the respective Camera.
      */
@@ -180,7 +180,7 @@ class CalibrationHandler {
 
     /**
      * @brief Set the Fov of the Camera
-     * 
+     *
      * @param cameraId - Camera Id of the camera
      * @param hfov - Horizontal fov of the camera from Camera Datasheet
      */
@@ -188,7 +188,7 @@ class CalibrationHandler {
 
     // /**
     //  * @brief Set the Camera Type object
-    //  * 
+    //  *
     //  * @param cameraId - CameraId of the camera for which cameraModel Type is being updated.
     //  * @param cameraModel - Type of the model the camera represents
     //  */
@@ -198,7 +198,7 @@ class CalibrationHandler {
 
     /**
      * @brief Set the Camera Extrinsics object
-     * 
+     *
      * @param srcCameraId - Camera Id of the camera which will be considerd as relative origin.
      * @param destCameraId - Camera Id of the camera which will be considerd as destination from srcCameraId.
      * @param rotationMatrix - Rotation between srcCameraId and destCameraId origins.
@@ -211,7 +211,7 @@ class CalibrationHandler {
 
     /**
      * @brief Set the Imu to Camera Extrinsics object
-     * 
+     *
      * @param destCameraId - Camera Id of the camera which will be considerd as destination from IMU.
      * @param rotationMatrix - Rotation between srcCameraId and destCameraId origins.
      * @param translation - Translation between srcCameraId and destCameraId origins.
@@ -220,20 +220,20 @@ class CalibrationHandler {
 
     /**
      * @brief Set the Stereo Left Rectification object
-     * 
-     * @param cameraId - CameraId of the camera which will be used as left Camera of stereo Setup 
+     *
+     * @param cameraId - CameraId of the camera which will be used as left Camera of stereo Setup
      * @param rectifiedRotation - Rectification rotation of the left camera required for feature matching
-     * 
+     *
      * Homography of the Left Rectification = Intrinsics_right * rectifiedRotation * inv(Intrinsics_left)
      */
     void setStereoLeft(CameraBoardSocket cameraId, std::vector<std::vector<float>> rectifiedRotation);
 
     /**
      * @brief Set the Stereo Right Rectification object
-     * 
-      * @param cameraId - CameraId of the camera which will be used as left Camera of stereo Setup 
+     *
+     * @param cameraId - CameraId of the camera which will be used as left Camera of stereo Setup
      * @param rectifiedRotation - Rectification rotation of the left camera required for feature matching
-     * 
+     *
      * Homography of the Right Rectification = Intrinsics_right * rectifiedRotation * inv(Intrinsics_right)
      */
     void setStereoRight(CameraBoardSocket cameraId, std::vector<std::vector<float>> rectifiedRotation);

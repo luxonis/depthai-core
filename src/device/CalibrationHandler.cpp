@@ -207,12 +207,11 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(
     }
 
     std::cout << "Test here ------------" << std::endl;
-    for(auto row : intrinsicMatrix){
-        for(auto val : row)
-        std::cout << val << "  ";
+    for(auto row : intrinsicMatrix) {
+        for(auto val : row) std::cout << val << "  ";
         std::cout << std::endl;
     }
-     std::cout <<topLeftPixelId.x << " - " << bottomRightPixelId.y << std::endl;
+    std::cout << topLeftPixelId.x << " - " << bottomRightPixelId.y << std::endl;
     intrinsicMatrix[0][2] -= topLeftPixelId.x;
     intrinsicMatrix[1][2] -= bottomRightPixelId.y;
 
