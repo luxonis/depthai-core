@@ -5,9 +5,7 @@
 
 namespace dai {
 
-std::vector<std::vector<float>> matMul(std::vector<std::vector<float>>& firstMatrix,
-                                       std::vector<std::vector<float>>& secondMatrix)
-{
+std::vector<std::vector<float>> matMul(std::vector<std::vector<float>>& firstMatrix, std::vector<std::vector<float>>& secondMatrix) {
     std::vector<std::vector<float>> res;
 
     if(firstMatrix[0].size() != secondMatrix.size()) {
