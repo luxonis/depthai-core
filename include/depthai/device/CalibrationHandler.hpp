@@ -121,7 +121,8 @@ class CalibrationHandler {
      * transformation matrix = \begin{bmatrix}
      *                              r_00 & r_01 & r_02 & T_x \\
      *                              r_10 & r_11 & r_12 & T_y \\
-     *                              r_20 & r_21 & r_22 & T_z
+     *                              r_20 & r_21 & r_22 & T_z \\
+     *                               0   &  0   &  0   & 1
      *                          \end{bmatrix}
      */
     std::vector<std::vector<float>> getImuToCameraExtrinsics(CameraBoardSocket cameraId, bool useMeasuredTranslation = false);
@@ -194,8 +195,6 @@ class CalibrationHandler {
     //  */
     // void setCameraType(CameraBoardSocket cameraId, CameraModel cameraModel);
 
-    // TODO(sachin): should I allow setting of measured translation ?
-
     /**
      * @brief Set the Camera Extrinsics object
      *
@@ -203,20 +202,26 @@ class CalibrationHandler {
      * @param destCameraId - Camera Id of the camera which will be considerd as destination from srcCameraId.
      * @param rotationMatrix - Rotation between srcCameraId and destCameraId origins.
      * @param translation - Translation between srcCameraId and destCameraId origins.
+     * @param measuredTranslation - Translation between srcCameraId and destCameraId origins from the design.
      */
     void setCameraExtrinsics(CameraBoardSocket srcCameraId,
                              CameraBoardSocket destCameraId,
                              std::vector<std::vector<float>> rotationMatrix,
-                             std::vector<float> translation);
+                             std::vector<float> translation,
+                             std::vector<float> measuredTranslation = {0, 0, 0});
 
     /**
      * @brief Set the Imu to Camera Extrinsics object
      *
      * @param destCameraId - Camera Id of the camera which will be considerd as destination from IMU.
      * @param rotationMatrix - Rotation between srcCameraId and destCameraId origins.
-     * @param translation - Translation between srcCameraId and destCameraId origins.
+     * @param translation - Translation between IMU and destCameraId origins.
+     * @param measuredTranslation - Translation between IMU and destCameraId origins from the design.
      */
-    void setImuExtrinsics(CameraBoardSocket destCameraId, std::vector<std::vector<float>> rotationMatrix, std::vector<float> translation);
+    void setImuExtrinsics(CameraBoardSocket destCameraId,
+                          std::vector<std::vector<float>> rotationMatrix,
+                          std::vector<float> translation,
+                          std::vector<float> measuredTranslation = {0, 0, 0});
 
     /**
      * @brief Set the Stereo Left Rectification object

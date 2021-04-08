@@ -419,7 +419,8 @@ void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, std::ve
 void CalibrationHandler::setCameraExtrinsics(CameraBoardSocket srcCameraId,
                                              CameraBoardSocket destCameraId,
                                              std::vector<std::vector<float>> rotationMatrix,
-                                             std::vector<float> translation) {
+                                             std::vector<float> translation,
+                                             std::vector<float> measuredTranslation) {
     if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3) {
         std::runtime_error("Rotation Matrix size should always be 3x3 ");
     }
@@ -427,10 +428,14 @@ void CalibrationHandler::setCameraExtrinsics(CameraBoardSocket srcCameraId,
     if(translation.size() != 3) {
         std::runtime_error("Translation vector size should always be 3x1");
     }
+    if(measuredTranslation.size() != 3) {
+        std::runtime_error("measuredTranslation vector size should always be 3x1");
+    }
 
     dai::Extrinsics extrinsics;
     extrinsics.rotationMatrix = rotationMatrix;
     extrinsics.translation = dai::Point3f(translation[0], translation[1], translation[2]);
+    extrinsics.measuredTranslation = dai::Point3f(measuredTranslation[0], measuredTranslation[1], measuredTranslation[2]);
     extrinsics.toCameraSocket = destCameraId;
 
     if(eepromData.cameraData.find(srcCameraId) == eepromData.cameraData.end()) {
@@ -440,6 +445,30 @@ void CalibrationHandler::setCameraExtrinsics(CameraBoardSocket srcCameraId,
     } else {
         eepromData.cameraData[srcCameraId].extrinsics = extrinsics;
     }
+    return;
+}
+
+void CalibrationHandler::setImuExtrinsics(CameraBoardSocket destCameraId,
+                                          std::vector<std::vector<float>> rotationMatrix,
+                                          std::vector<float> translation,
+                                          std::vector<float> measuredTranslation) {
+    if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3) {
+        std::runtime_error("Rotation Matrix size should always be 3x3 ");
+    }
+    //  TODO(sachin): Add measuredTranslation also as optional argumnet ?
+    if(translation.size() != 3) {
+        std::runtime_error("Translation vector size should always be 3x1");
+    }
+    if(measuredTranslation.size() != 3) {
+        std::runtime_error("measuredTranslation vector size should always be 3x1");
+    }
+
+    dai::Extrinsics extrinsics;
+    extrinsics.rotationMatrix = rotationMatrix;
+    extrinsics.translation = dai::Point3f(translation[0], translation[1], translation[2]);
+    extrinsics.measuredTranslation = dai::Point3f(measuredTranslation[0], measuredTranslation[1], measuredTranslation[2]);
+    extrinsics.toCameraSocket = destCameraId;
+    eepromData.imuExtrinsics = extrinsics;
     return;
 }
 
@@ -467,9 +496,6 @@ void CalibrationHandler::setBoardInfo(uint32_t version, bool swapLeftRightCam, s
 }
 
 void CalibrationHandler::setStereoLeft(CameraBoardSocket cameraId, std::vector<std::vector<float>> rectifiedRotation) {
-    // if(eepromData.cameraData.find(srcCameraID) == eepromData.cameraData.end()){
-    //     std::runtime_error("Initialize left cameraID along with it's intrinsics and extrinsics before adding stereo rectification");
-    // }
     if(rectifiedRotation.size() != 3 || rectifiedRotation[0].size() != 3) {
         std::runtime_error("Rotation Matrix size should always be 3x3 ");
     }
@@ -479,31 +505,11 @@ void CalibrationHandler::setStereoLeft(CameraBoardSocket cameraId, std::vector<s
 }
 
 void CalibrationHandler::setStereoRight(CameraBoardSocket cameraId, std::vector<std::vector<float>> rectifiedRotation) {
-    // if(eepromData.cameraData.find(srcCameraID) == eepromData.cameraData.end()){
-    //     std::runtime_error("Initialize right cameraID along with it's intrinsics and extrinsics before adding stereo rectification");
-    // }
     if(rectifiedRotation.size() != 3 || rectifiedRotation[0].size() != 3) {
         std::runtime_error("Rotation Matrix size should always be 3x3 ");
     }
     eepromData.stereoRectificationData.rectifiedRotationRight = rectifiedRotation;
     eepromData.stereoRectificationData.rightCameraSocket = cameraId;
-    return;
-}
-
-void CalibrationHandler::setImuExtrinsics(CameraBoardSocket destCameraId, std::vector<std::vector<float>> rotationMatrix, std::vector<float> translation) {
-    if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3) {
-        std::runtime_error("Rotation Matrix size should always be 3x3 ");
-    }
-    //  TODO(sachin): Add measuredTranslation also as optional argumnet ?
-    if(translation.size() != 3) {
-        std::runtime_error("Translation vector size should always be 3x1");
-    }
-
-    dai::Extrinsics extrinsics;
-    extrinsics.rotationMatrix = rotationMatrix;
-    extrinsics.translation = dai::Point3f(translation[0], translation[1], translation[2]);
-    extrinsics.toCameraSocket = destCameraId;
-    eepromData.imuExtrinsics = extrinsics;
     return;
 }
 
