@@ -15,7 +15,10 @@ namespace node {
  * @brief MonoCamera node. For use with grayscale sensors.
  */
 class MonoCamera : public Node {
+   public:
     using Properties = dai::MonoCameraProperties;
+
+   private:
     Properties properties;
 
     std::string getName() const override;

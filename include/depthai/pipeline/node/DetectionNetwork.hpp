@@ -18,7 +18,10 @@ namespace node {
  * @brief DetectionNetwork. Base for different network specializations
  */
 class DetectionNetwork : public NeuralNetwork {
+   public:
     using Properties = dai::DetectionNetworkProperties;
+
+   private:
     std::string getName() const override;
     std::vector<Input> getInputs() override;
     std::vector<Output> getOutputs() override;

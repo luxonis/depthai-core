@@ -13,7 +13,10 @@ namespace node {
  * @brief ImageManip node. Capability to crop, resize, warp, ... incoming image frames
  */
 class ImageManip : public Node {
+   public:
     using Properties = dai::ImageManipProperties;
+
+   private:
     Properties properties;
 
     std::string getName() const override;
