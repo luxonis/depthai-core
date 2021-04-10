@@ -59,6 +59,7 @@ endmacro()
 
 # Color camera preview output example
 dai_add_example(camera_preview src/camera_preview_example.cpp)
+dai_add_example(bootloader_example src/bootloader_example.cpp)
 
 # Color camera video output example
 dai_add_example(camera_video src/camera_video_example.cpp)

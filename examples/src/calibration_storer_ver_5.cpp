@@ -35,7 +35,7 @@ int main() {
 
     dai::Pipeline p = createCameraPipeline();
     dai::Device d(p);
-    std::cout << "status ->" << d.storeCalibration(calibData) << std::endl;
+    std::cout << "status ->" << d.flashCalibration(calibData) << std::endl;
 
     d.startPipeline();
     auto preview = d.getOutputQueue("preview");

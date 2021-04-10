@@ -390,7 +390,7 @@ class Device {
      *
      * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
      */
-    bool storeCalibration(CalibrationHandler calibrationDataHandler);
+    bool flashCalibration(CalibrationHandler calibrationDataHandler);
 
     /**
      * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
