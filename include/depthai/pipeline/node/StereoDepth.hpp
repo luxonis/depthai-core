@@ -122,7 +122,7 @@ class StereoDepth : public Node {
     void setSubpixel(bool enable);
 
     /**
-     * Disparity range increased from 96 to 192, combined from full resolution and downscaled images.
+     * Disparity range increased from 0-95 to 0-190, combined from full resolution and downscaled images.
      *
      * Suitable for short range objects
      */
