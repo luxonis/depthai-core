@@ -22,6 +22,7 @@
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorData.hpp"
 #include "depthai/pipeline/datatype/SystemInformation.hpp"
+#include "depthai/pipeline/datatype/Tracklets.hpp"
 
 // shared
 #include "depthai-shared/datatype/DatatypeEnum.hpp"
@@ -35,6 +36,7 @@
 #include "depthai-shared/datatype/RawSpatialLocationCalculatorConfig.hpp"
 #include "depthai-shared/datatype/RawSpatialLocations.hpp"
 #include "depthai-shared/datatype/RawSystemInformation.hpp"
+#include "depthai-shared/datatype/RawTracklets.hpp"
 
 // StreamPacket structure ->  || imgframepixels... , serialized_object, object_type, serialized_object_size ||
 // object_type -> DataType(int), serialized_object_size -> int
@@ -114,6 +116,10 @@ std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
         case DatatypeEnum::SpatialLocationCalculatorConfig:
             return parseDatatype<RawSpatialLocations>(jser, data);
             break;
+
+        case DatatypeEnum::Tracklets:
+            return parseDatatype<RawTracklets>(jser, data);
+            break;
     }
 
     throw std::runtime_error("Bad packet, couldn't parse");
@@ -176,6 +182,10 @@ std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
 
         case DatatypeEnum::SpatialLocationCalculatorConfig:
             return std::make_shared<SpatialLocationCalculatorConfig>(parseDatatype<RawSpatialLocationCalculatorConfig>(jser, data));
+            break;
+
+        case DatatypeEnum::Tracklets:
+            return std::make_shared<Tracklets>(parseDatatype<RawTracklets>(jser, data));
             break;
     }
 

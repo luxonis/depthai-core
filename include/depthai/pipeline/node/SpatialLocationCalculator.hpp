@@ -17,8 +17,10 @@ namespace node {
  * @brief SpatialLocationCalculator node. Calculates spatial location data on a set of ROIs on depth map.
  */
 class SpatialLocationCalculator : public Node {
+   public:
     using Properties = dai::SpatialLocationCalculatorProperties;
 
+   private:
     std::string getName() const override;
     std::vector<Input> getInputs() override;
     std::vector<Output> getOutputs() override;

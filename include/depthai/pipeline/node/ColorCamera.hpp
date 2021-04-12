@@ -14,7 +14,10 @@ namespace node {
  * @brief ColorCamera node. For use with color sensors.
  */
 class ColorCamera : public Node {
+   public:
     using Properties = dai::ColorCameraProperties;
+
+   private:
     Properties properties;
 
     std::string getName() const override;
