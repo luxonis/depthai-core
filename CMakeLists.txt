@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.4) # For Hunter
 
 # MSVC variable isn't available before 'project' call
-# Generalize to Win32 platform for now 
+# Generalize to Win32 platform for now
 if(NOT WIN32)
     set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
 endif()
@@ -26,7 +26,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.1.0" LANGUAGES CXX C)
+project(depthai VERSION "2.2.0" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -195,7 +195,7 @@ endif()
 set(DEPTHAI_RESOURCES_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/resources")
 
 # Include configuration
-include(Depthai/DepthaiDeviceSideConfig)    # Depthai device binary commit/version configuration    
+include(Depthai/DepthaiDeviceSideConfig)    # Depthai device binary commit/version configuration
 include(Depthai/DepthaiBootloaderConfig)    # Depthai bootloader binary commit/version configuration
 
 # Include downloaders
@@ -227,11 +227,11 @@ if(DEPTHAI_CMD_PATH OR DEPTHAI_USB2_CMD_PATH OR DEPTHAI_USB2_PATCH_PATH)
 else()
     # No user specified paths, download from server
     message(STATUS "Downloading Depthai device side binaries from server...")
-    
+
     DepthaiDownload(
         "${DEPTHAI_SHARED_COMMIT_HASH}" "${DEPTHAI_SHARED_COMMIT_HASH_ENFORCE}"
         PATCH_ONLY ${DEPTHAI_USB2_PATCH_ONLY_MODE}
-        "${DEPTHAI_RESOURCES_OUTPUT_DIR}"            # Output folder 
+        "${DEPTHAI_RESOURCES_OUTPUT_DIR}"            # Output folder
         DEPTHAI_RESOURCE_LIST                       # List of output resources
         "${DEPTHAI_DEVICE_SIDE_MATURITY}"           # Maturity
         "${DEPTHAI_DEVICE_SIDE_COMMIT}"             # commit hash
@@ -243,10 +243,10 @@ list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_RESOURCE_LIST})
 # Add bootloader
 DepthaiBootloaderDownload(
     "${DEPTHAI_BOOTLOADER_SHARED_COMMIT_HASH}" "${DEPTHAI_BOOTLOADER_SHARED_COMMIT_HASH_ENFORCE}"
-    "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder 
+    "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
     DEPTHAI_BOOTLOADER_RESOURCE_LIST                # List of output resources
     "${DEPTHAI_BOOTLOADER_MATURITY}"                # Maturity
-    "${DEPTHAI_BOOTLOADER_VERSION}"                 # if maturity == snapshot -> hash else version                  
+    "${DEPTHAI_BOOTLOADER_VERSION}"                 # if maturity == snapshot -> hash else version
 )
 list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_BOOTLOADER_RESOURCE_LIST})
 
@@ -262,7 +262,7 @@ if(DEPTHAI_BINARIES_RESOURCE_COMPILE)
     cmrc_add_resource_library("${DEPTHAI_RESOURCE_LIBRARY_NAME}" NAMESPACE depthai
         WHENCE "${DEPTHAI_RESOURCES_OUTPUT_DIR}"
         "${RESOURCE_COMPILED_FILES}"
-    )    
+    )
 
     # Link to resource library
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE "${DEPTHAI_RESOURCE_LIBRARY_NAME}")
@@ -281,7 +281,7 @@ endif()
 configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in" "${CMAKE_CURRENT_LIST_DIR}/include/depthai/build/version.hpp")
 
 # Add include directories
-target_include_directories(${TARGET_CORE_NAME}   
+target_include_directories(${TARGET_CORE_NAME}
     PUBLIC
         # Relative path to include directories after installed
         "$<INSTALL_INTERFACE:include>"
@@ -293,14 +293,14 @@ target_include_directories(${TARGET_CORE_NAME}
         "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}>"
     #INTERFACE
     #    # ...
-    PRIVATE 
+    PRIVATE
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include/depthai>"
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/src>"
         "$<BUILD_INTERFACE:${DEPTHAI_SHARED_INCLUDE}>"
         "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_INCLUDE}>"
 )
 
-target_include_directories(${TARGET_CORE_NAME} SYSTEM 
+target_include_directories(${TARGET_CORE_NAME} SYSTEM
     PUBLIC
         "$<BUILD_INTERFACE:${DEPTHAI_SHARED_3RDPARTY_INCLUDE}>"
 )
@@ -327,8 +327,8 @@ target_link_libraries(${TARGET_CORE_NAME}
 )
 
 # Add compile definitions
-target_compile_definitions(${TARGET_CORE_NAME} 
-    PRIVATE 
+target_compile_definitions(${TARGET_CORE_NAME}
+    PRIVATE
         # XLink required define
         __PC__
         # Add depthai-device version
@@ -347,7 +347,7 @@ endif()
 ########################
 # OpenCV Support
 ########################
-set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)   
+set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
     # Check if required libraries are available
@@ -369,11 +369,11 @@ if(DEPTHAI_OPENCV_SUPPORT)
 
         # Add default flags
         add_default_flags(${TARGET_OPENCV_NAME})
-        add_flag(${TARGET_OPENCV_NAME} -Wno-switch-enum) 
-        
+        add_flag(${TARGET_OPENCV_NAME} -Wno-switch-enum)
+
         # Link to OpenCV (publically)
         target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES})
-    
+
         # Add public compile definition indicating that OpenCV support is available
         target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_OPENCV_SUPPORT)
 
@@ -387,7 +387,7 @@ if(DEPTHAI_OPENCV_SUPPORT)
         list(APPEND targets_to_export ${TARGET_OPENCV_NAME})
 
         message(STATUS "OpenCV and required libraries (${REQUIRED_OPENCV_LIBRARIES}) found. OpenCV Support enabled")
-        
+
     else()
         message(STATUS "OpenCV or required libraries (${REQUIRED_OPENCV_LIBRARIES}) not found. OpenCV Support disabled")
     endif()
@@ -469,8 +469,8 @@ if(DEPTHAI_INSTALL)
     install(
         TARGETS ${targets_to_export}
         EXPORT ${PROJECT_EXPORT_GROUP}
-        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}" 
-        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}" 
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
         ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
     )
 
@@ -496,7 +496,7 @@ if(DEPTHAI_INSTALL)
     )
 
     # Install CMake specific files
-    install(FILES 
+    install(FILES
         "${CMAKE_CURRENT_BINARY_DIR}/_install/${PROJECT_NAME}Config.cmake"
         "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
         "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Dependencies.cmake"
