@@ -5,6 +5,13 @@
 
 namespace dai {
 
+/**
+ * @brief Matrix multiplication between two matrixs of shape (m x n) and (n x p) of type float. -> firstMatrix * secondMatrix
+ * 
+ * @param firstMatrix - vector of vector of float of shape (m x n) 
+ * @param secondMatrix - vector of vector of float of shape (n x p)
+ * @return std::vector<std::vector<float>> - product of firstMatrix * secondMatrix, a vector of vector of float of shape (m x p)
+ */
 std::vector<std::vector<float>> matMul(std::vector<std::vector<float>>& firstMatrix, std::vector<std::vector<float>>& secondMatrix) {
     std::vector<std::vector<float>> res;
 

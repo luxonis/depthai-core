@@ -26,16 +26,16 @@ dai::Pipeline createCameraPipeline() {
 }
 
 int main() {
-    std::string calibBinaryFile("/home/sachin/Desktop/bw1098obc_14442C10A14391D000.calib");
+    std::string calibBinaryFile("/home/sachin/Desktop/calib_files/dm1092_14442C1021F556D700.calib");
     std::string boardConfigFile("/home/sachin/Desktop/luxonis/depthai/resources/boards/BW1098OBC.json");
     dai::CalibrationHandler calibData(calibBinaryFile, boardConfigFile);
-    std::string destFilename("/home/sachin/Desktop/luxonis/depthai-core/examples/calib_data_v53.json");
+    std::string destFilename("/home/sachin/Desktop/luxonis/depthai-core/examples/calib_data_v58.json");
 
     calibData.eepromToJsonFile(destFilename);
 
     dai::Pipeline p = createCameraPipeline();
     dai::Device d(p);
-    std::cout << "status ->" << d.flashCalibration(calibData) << std::endl;
+    // std::cout << "status ->" << d.flashCalibration(calibData) << std::endl;
 
     d.startPipeline();
     auto preview = d.getOutputQueue("preview");
