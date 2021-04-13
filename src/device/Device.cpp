@@ -816,6 +816,10 @@ LogLevel Device::getLogLevel() {
     return client->call("getLogLevel").as<LogLevel>();
 }
 
+DeviceInfo Device::getCurrentDeviceInfo(){
+    return deviceInfo;
+}
+
 void Device::setLogOutputLevel(LogLevel level) {
     checkClosed();
 
