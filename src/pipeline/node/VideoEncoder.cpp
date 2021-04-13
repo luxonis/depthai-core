@@ -176,16 +176,16 @@ void VideoEncoder::setDefaultProfilePreset(int width, int height, float fps, Vid
             const int pixelArea = width * height;
             if(pixelArea <= 1280 * 720 * AREA_MUL) {
                 // 720p
-                setBitrateKbps(static_cast<int>((4000 * 1000 / ESTIMATION_FPS) * fps));
+                setBitrateKbps(static_cast<int>((4000 / ESTIMATION_FPS) * fps));
             } else if(pixelArea <= 1920 * 1080 * AREA_MUL) {
                 // 1080p
-                setBitrateKbps(static_cast<int>((8500 * 1000 / ESTIMATION_FPS) * fps));
+                setBitrateKbps(static_cast<int>((8500 / ESTIMATION_FPS) * fps));
             } else if(pixelArea <= 2560 * 1440 * AREA_MUL) {
                 // 1440p
-                setBitrateKbps(static_cast<int>((14000 * 1000 / ESTIMATION_FPS) * fps));
+                setBitrateKbps(static_cast<int>((14000 / ESTIMATION_FPS) * fps));
             } else {
                 // 4K
-                setBitrateKbps(static_cast<int>((20000 * 1000 / ESTIMATION_FPS) * fps));
+                setBitrateKbps(static_cast<int>((20000 / ESTIMATION_FPS) * fps));
             }
         } break;
 
