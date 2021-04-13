@@ -205,7 +205,7 @@ std::vector<std::uint8_t> serializeData(const std::shared_ptr<RawBuffer>& data) 
     std::vector<std::uint8_t> metadata;
     DatatypeEnum datatype;
     data->serialize(metadata, datatype);
-    uint32_t metadataSize = metadata.size();
+    uint32_t metadataSize = static_cast<uint32_t>(metadata.size());
 
     // 4B datatype & 4B metadata size
     std::uint8_t leDatatype[4];
