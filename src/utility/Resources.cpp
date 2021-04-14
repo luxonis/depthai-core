@@ -3,19 +3,18 @@
 #include <array>
 #include <cassert>
 #include <condition_variable>
+#include <fstream>
 #include <iostream>
 #include <thread>
-#include <fstream>
 
 // libarchive
 #include "archive.h"
 #include "archive_entry.h"
 
 // spdlog
+#include "spdlog/details/os.h"
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/spdlog.h"
-#include "spdlog/details/os.h"
-
 
 extern "C" {
 #include "bspatch/bspatch.h"
@@ -78,7 +77,7 @@ std::vector<std::uint8_t> Resources::getDeviceBinary(OpenVINO::Version version, 
     // Check if env variable DEPTHAI_FW_OVERRIDE is set
     auto fwBinaryPath = spdlog::details::os::getenv("DEPTHAI_FW_BINARY_PATH");
     if(!fwBinaryPath.empty()) {
-         // Load binary file at path
+        // Load binary file at path
         std::ifstream stream(fwBinaryPath, std::ios::in | std::ios::binary);
         if(!stream.is_open()) {
             // Throw an error
