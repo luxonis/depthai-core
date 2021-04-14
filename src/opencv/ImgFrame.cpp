@@ -57,7 +57,7 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
 
         case dai::RawImgFrame::Type::BITSTREAM:
         default:
-            size = cv::Size(getData().size(), 1);
+            size = cv::Size(static_cast<int>(getData().size()), 1);
             type = CV_8UC1;
             break;
     }

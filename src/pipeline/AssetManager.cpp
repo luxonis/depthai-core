@@ -81,7 +81,7 @@ void AssetManager::serialize(Assets& serAssets, std::vector<std::uint8_t>& asset
         }
 
         // calculate offset
-        std::uint32_t offset = storage.size() + toAdd;
+        std::uint32_t offset = static_cast<uint32_t>(storage.size()) + toAdd;
 
         // Add alignment bytes
         storage.resize(storage.size() + toAdd);
@@ -90,7 +90,7 @@ void AssetManager::serialize(Assets& serAssets, std::vector<std::uint8_t>& asset
         storage.insert(storage.end(), a.data.begin(), a.data.end());
 
         // Add to map the currently added asset
-        mutableAssets.set(a.key, offset, a.data.size(), a.alignment);
+        mutableAssets.set(a.key, offset, static_cast<uint32_t>(a.data.size()), a.alignment);
     }
 
     assetStorage = std::move(storage);
