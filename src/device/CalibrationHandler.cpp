@@ -503,8 +503,7 @@ void CalibrationHandler::setdistortionCoefficients(CameraBoardSocket cameraId, s
     return;
 }
 
-void CalibrationHandler::setBoardInfo(uint32_t version, bool swapLeftRightCam, std::string boardName, std::string boardRev) {
-    eepromData.version = version;
+void CalibrationHandler::setBoardInfo(bool swapLeftRightCam, std::string boardName, std::string boardRev) {
     eepromData.swapLeftRightCam = swapLeftRightCam;
     eepromData.boardName = boardName;
     eepromData.boardRev = boardRev;

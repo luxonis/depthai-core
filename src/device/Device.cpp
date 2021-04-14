@@ -883,6 +883,7 @@ bool Device::flashCalibration(CalibrationHandler calibrationDataHandler) {
 }
 
 CalibrationHandler Device::getCalibration() {
+    std::unique_lock<std::mutex> lock(this->rpcMutex);
     dai::EepromData eepromData = client->call("readFromEeprom");
     return CalibrationHandler(eepromData);
 }

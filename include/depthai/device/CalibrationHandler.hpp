@@ -166,7 +166,7 @@ class CalibrationHandler {
      * @param boardName - Sets your board name.
      * @param boardRev - set your board revision id.
      */
-    void setBoardInfo(uint32_t version, bool swapLeftRightCam, std::string boardName, std::string boardRev);
+    void setBoardInfo(bool swapLeftRightCam, std::string boardName, std::string boardRev);
 
     /**
      * @brief Set the Camera Intrinsics object
