@@ -12,20 +12,23 @@ dai::Pipeline createPipeline() {
 
     auto camLeft = p.create<dai::node::MonoCamera>();
     auto camRight = p.create<dai::node::MonoCamera>();
-    auto xoutLeft = p.create<dai::node::XLinkOut>();
-    auto xoutRight = p.create<dai::node::XLinkOut>();
+    auto xout = p.create<dai::node::XLinkOut>();
+    auto depth = p.create<dai::node::StereoDepth>();
 
     camLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
     camLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
     camRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
     camRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
-    xoutLeft->setStreamName("left");
-    xoutRight->setStreamName("right");
+    depth->setConfidenceThreshold(200);
+    //depth->setMedianFilter(median);
 
     // Link plugins CAM -> XLINK
-    camLeft->out.link(xoutLeft->input);
-    camRight->out.link(xoutRight->input);
+    camLeft->out.link(depth->left);
+    camRight->out.link(depth->right);
+
+    xout->setStreamName("disparity");
+    depth->disparity.link(xout->input);
 
     return p;
 }
@@ -37,17 +40,16 @@ int main() {
     dai::Device d(p);
     d.startPipeline();
 
-    cv::Mat frame;
-    auto leftQueue = d.getOutputQueue("left");
-    auto rightQueue = d.getOutputQueue("right");
+    auto dispQueue = d.getOutputQueue("disparity", 4, false);
 
     while(1) {
-        auto left = leftQueue->get<dai::ImgFrame>();
-        cv::Mat LeftFrame = left->getFrame();
-        cv::imshow("left", LeftFrame);
-        auto right = rightQueue->get<dai::ImgFrame>();
-        cv::Mat RightFrame = right->getFrame();
-        cv::imshow("right", RightFrame);
+        auto disparity = dispQueue->get<dai::ImgFrame>();
+        cv::Mat disp(disparity->getHeight(), disparity->getWidth(), CV_8UC1, disparity->getData().data());
+        disp.convertTo(disp, CV_8UC1, 3.0);
+        cv::imshow("disparity", disp);
+        cv::Mat disp_color;
+        cv::applyColorMap(disp, disp_color, cv::COLORMAP_JET);
+        cv::imshow("disparity_color", disp_color);
 
         int key = cv::waitKey(1);
         if(key == 'q') {

@@ -63,6 +63,9 @@ dai_add_example(01_rgb_preview src/01_rgb_preview.cpp)
 # Mono camera preview output example
 dai_add_example(02_mono_preview src/02_mono_preview.cpp)
 
+# Depth preview output example
+dai_add_example(03_depth_preview src/03_depth_preview.cpp)
+
 # Color camera video output example
 dai_add_example(28_1_rgb_camera_video src/28_1_rgb_camera_video.cpp)
 
