@@ -13,44 +13,67 @@ static const std::vector<std::string> labelMap = {"background", "aeroplane", "bi
 
 static bool syncNN = true;
 
-dai::Pipeline createNNPipeline(std::string nnPath) {
+dai::Pipeline createPipeline(std::string nnPath) {
     dai::Pipeline p;
 
+    // create nodes
     auto colorCam = p.create<dai::node::ColorCamera>();
-    auto xlinkOut = p.create<dai::node::XLinkOut>();
-    auto detectionNetwork = p.create<dai::node::MobileNetDetectionNetwork>();
+    auto spatialDetectionNetwork = p.create<dai::node::MobileNetSpatialDetectionNetwork>();
+    auto monoLeft = p.create<dai::node::MonoCamera>();
+    auto monoRight = p.create<dai::node::MonoCamera>();
+    auto stereo = p.create<dai::node::StereoDepth>();
     auto objectTracker = p.create<dai::node::ObjectTracker>();
+
+    // create xlink connections
+    auto xoutRgb = p.create<dai::node::XLinkOut>();
     auto trackerOut = p.create<dai::node::XLinkOut>();
 
-    xlinkOut->setStreamName("preview");
+    xoutRgb->setStreamName("preview");
     trackerOut->setStreamName("tracklets");
 
     colorCam->setPreviewSize(300, 300);
     colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     colorCam->setInterleaved(false);
     colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
-    colorCam->setFps(40);
 
-    // testing MobileNet DetectionNetwork
-    detectionNetwork->setConfidenceThreshold(0.5f);
-    detectionNetwork->setBlobPath(nnPath);
+    monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+
+    /// setting node configs
+    stereo->setOutputDepth(true);
+    stereo->setConfidenceThreshold(255);
+
+    spatialDetectionNetwork->setBlobPath(nnPath);
+    spatialDetectionNetwork->setConfidenceThreshold(0.5f);
+    spatialDetectionNetwork->input.setBlocking(false);
+    spatialDetectionNetwork->setBoundingBoxScaleFactor(0.5);
+    spatialDetectionNetwork->setDepthLowerThreshold(100);
+    spatialDetectionNetwork->setDepthUpperThreshold(5000);
+
+    // Link plugins CAM -> STEREO -> XLINK
+    monoLeft->out.link(stereo->left);
+    monoRight->out.link(stereo->right);
 
     // Link plugins CAM -> NN -> XLINK
-    colorCam->preview.link(detectionNetwork->input);
+    colorCam->preview.link(spatialDetectionNetwork->input);
     if(syncNN) {
-        objectTracker->passthroughTrackerFrame.link(xlinkOut->input);
+        objectTracker->passthroughTrackerFrame.link(xoutRgb->input);
     } else {
-        colorCam->preview.link(xlinkOut->input);
+        colorCam->preview.link(xoutRgb->input);
     }
 
     objectTracker->setDetectionLabelsToTrack({15});  // track only person
     objectTracker->setTrackerType(dai::TrackerType::ZERO_TERM_COLOR_HISTOGRAM);
     objectTracker->setTrackerIdAssigmentPolicy(dai::TrackerIdAssigmentPolicy::SMALLEST_ID);
-
-    detectionNetwork->passthrough.link(objectTracker->inputTrackerFrame);
-    detectionNetwork->passthrough.link(objectTracker->inputDetectionFrame);
-    detectionNetwork->out.link(objectTracker->inputDetections);
     objectTracker->out.link(trackerOut->input);
+
+    spatialDetectionNetwork->passthrough.link(objectTracker->inputTrackerFrame);
+    spatialDetectionNetwork->passthrough.link(objectTracker->inputDetectionFrame);
+    spatialDetectionNetwork->out.link(objectTracker->inputDetections);
+
+    stereo->depth.link(spatialDetectionNetwork->inputDepth);
 
     return p;
 }
@@ -69,7 +92,7 @@ int main(int argc, char** argv) {
     printf("Using blob at path: %s\n", nnPath.c_str());
 
     // Create pipeline
-    dai::Pipeline p = createNNPipeline(nnPath);
+    dai::Pipeline p = createPipeline(nnPath);
 
     // Connect to device with above created pipeline
     dai::Device d(p);
@@ -82,6 +105,8 @@ int main(int argc, char** argv) {
     auto startTime = steady_clock::now();
     int counter = 0;
     float fps = 0;
+    auto color = cv::Scalar(255, 0, 0);
+
     while(1) {
         auto imgFrame = preview->get<dai::ImgFrame>();
         auto track = tracklets->get<dai::Tracklets>();
@@ -95,11 +120,10 @@ int main(int argc, char** argv) {
             startTime = currentTime;
         }
 
-        auto color = cv::Scalar(255, 0, 0);
-        cv::Mat trackletFrame = imgFrame->getCvFrame();
+        cv::Mat frame = imgFrame->getCvFrame();
         auto trackletsData = track->tracklets;
         for(auto& t : trackletsData) {
-            auto roi = t.roi.denormalize(trackletFrame.cols, trackletFrame.rows);
+            auto roi = t.roi.denormalize(frame.cols, frame.rows);
             int x1 = roi.topLeft().x;
             int y1 = roi.topLeft().y;
             int x2 = roi.bottomRight().x;
@@ -110,24 +134,33 @@ int main(int argc, char** argv) {
             if(labelIndex < labelMap.size()) {
                 labelStr = labelMap[labelIndex];
             }
-            cv::putText(trackletFrame, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(frame, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
 
             std::stringstream idStr;
             idStr << "ID: " << t.id;
-            cv::putText(trackletFrame, idStr.str(), cv::Point(x1 + 10, y1 + 40), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(frame, idStr.str(), cv::Point(x1 + 10, y1 + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             std::stringstream statusStr;
             statusStr << "Status: " << t.status;
-            cv::putText(trackletFrame, statusStr.str(), cv::Point(x1 + 10, y1 + 60), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(frame, statusStr.str(), cv::Point(x1 + 10, y1 + 50), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
 
-            cv::rectangle(trackletFrame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
+            std::stringstream depthX;
+            depthX << "X: " << (int)t.spatialCoordinates.x << " mm";
+            cv::putText(frame, depthX.str(), cv::Point(x1 + 10, y1 + 65), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            std::stringstream depthY;
+            depthY << "Y: " << (int)t.spatialCoordinates.y << " mm";
+            cv::putText(frame, depthY.str(), cv::Point(x1 + 10, y1 + 80), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            std::stringstream depthZ;
+            depthZ << "Z: " << (int)t.spatialCoordinates.z << " mm";
+            cv::putText(frame, depthZ.str(), cv::Point(x1 + 10, y1 + 95), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+
+            cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
         }
 
         std::stringstream fpsStr;
         fpsStr << std::fixed << std::setprecision(2) << fps;
-        cv::putText(trackletFrame, fpsStr.str(), cv::Point(2, imgFrame->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
+        cv::putText(frame, fpsStr.str(), cv::Point(2, imgFrame->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
 
-        cv::imshow("tracker", trackletFrame);
-
+        cv::imshow("tracker", frame);
         int key = cv::waitKey(1);
         if(key == 'q') {
             return 0;

@@ -20,21 +20,21 @@ static const std::vector<std::string> labelMap = {
 
 static bool syncNN = true;
 
-dai::Pipeline createNNPipeline(std::string nnPath) {
+dai::Pipeline createPipeline(std::string nnPath) {
     dai::Pipeline p;
 
-    auto colorCam = p.create<dai::node::ColorCamera>();
+    auto camRgb = p.create<dai::node::ColorCamera>();
     auto xlinkOut = p.create<dai::node::XLinkOut>();
     auto nnOut = p.create<dai::node::XLinkOut>();
 
     xlinkOut->setStreamName("preview");
     nnOut->setStreamName("detections");
 
-    colorCam->setPreviewSize(416, 416);
-    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    colorCam->setInterleaved(false);
-    colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
-    colorCam->setFps(40);
+    camRgb->setPreviewSize(416, 416);
+    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    camRgb->setInterleaved(false);
+    camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
+    camRgb->setFps(40);
 
     auto detectionNetwork = p.create<dai::node::YoloDetectionNetwork>();
 
@@ -48,11 +48,11 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     detectionNetwork->setBlobPath(nnPath);
 
     // Link plugins CAM -> NN -> XLINK
-    colorCam->preview.link(detectionNetwork->input);
+    camRgb->preview.link(detectionNetwork->input);
     if(syncNN) {
         detectionNetwork->passthrough.link(xlinkOut->input);
     } else {
-        colorCam->preview.link(xlinkOut->input);
+        camRgb->preview.link(xlinkOut->input);
     }
 
     detectionNetwork->out.link(nnOut->input);
@@ -74,7 +74,7 @@ int main(int argc, char** argv) {
     printf("Using blob at path: %s\n", nnPath.c_str());
 
     // Create pipeline
-    dai::Pipeline p = createNNPipeline(nnPath);
+    dai::Pipeline p = createPipeline(nnPath);
 
     // Connect to device with above created pipeline
     dai::Device d(p);

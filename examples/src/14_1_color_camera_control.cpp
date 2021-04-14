@@ -159,7 +159,7 @@ int main() {
             if(key == 'l') sens_iso += ISO_STEP;
             exp_time = clamp(exp_time, exp_min, exp_max);
             sens_iso = clamp(sens_iso, sens_min, sens_max);
-            printf("Setting manual exposure, time %d us, iso %d\n", exp_time, sens_iso);
+            printf("Setting manual exposure, time: %d, iso: %d\n", exp_time, sens_iso);
             dai::CameraControl ctrl;
             ctrl.setManualExposure(exp_time, sens_iso);
             controlQueue->send(ctrl);

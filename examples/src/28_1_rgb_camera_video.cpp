@@ -7,17 +7,17 @@
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-dai::Pipeline createCameraFullPipeline() {
+dai::Pipeline createPipeline() {
     dai::Pipeline p;
 
     auto colorCam = p.create<dai::node::ColorCamera>();
-    auto xlinkOut = p.create<dai::node::XLinkOut>();
-    xlinkOut->setStreamName("video");
 
     colorCam->setPreviewSize(300, 300);
     colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     colorCam->setInterleaved(true);
 
+    auto xlinkOut = p.create<dai::node::XLinkOut>();
+    xlinkOut->setStreamName("video");
     // Link plugins CAM -> XLINK
     colorCam->video.link(xlinkOut->input);
 
@@ -29,7 +29,7 @@ int main() {
     using namespace std::chrono;
 
     // Create pipeline
-    dai::Pipeline p = createCameraFullPipeline();
+    dai::Pipeline p = createPipeline();
 
     // Connect to device with above created pipeline
     dai::Device d(p);

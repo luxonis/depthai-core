@@ -19,7 +19,7 @@ macro(dai_add_example example_name example_src)
     # parse the rest of the arguments
     set(arguments ${ARGV})
     list(REMOVE_AT arguments 0 1)
-    
+
     # If 'DEPTHAI_TEST_EXAMPLES' is ON, then examples will be part of the test suite
     if(DEPTHAI_TEST_EXAMPLES)
         add_test(NAME ${example_name} COMMAND ${CMAKE_COMMAND}
@@ -28,8 +28,8 @@ macro(dai_add_example example_name example_src)
         )
 
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
-        set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]") 
-            
+        set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]")
+
         # Add sanitizers for tests as well
         add_sanitizers(${example_name})
 
@@ -37,7 +37,7 @@ macro(dai_add_example example_name example_src)
         set_tests_properties(${example_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1")
 
     endif()
-endmacro() 
+endmacro()
 
 # Create a custom target which runs all examples for 10 seconds max, and check if they executed without errors
 
@@ -58,13 +58,16 @@ endmacro()
 ## message(STATUS "Location of test1.data: ${test1_data}")
 
 # Color camera preview output example
-dai_add_example(camera_preview src/camera_preview_example.cpp)
+dai_add_example(01_rgb_preview src/01_rgb_preview.cpp)
+
+# Mono camera preview output example
+dai_add_example(02_mono_preview src/02_mono_preview.cpp)
 
 # Color camera video output example
-dai_add_example(camera_video src/camera_video_example.cpp)
+dai_add_example(28_1_rgb_camera_video src/28_1_rgb_camera_video.cpp)
 
 # Mono camera video output example
-dai_add_example(mono_camera src/mono_camera_example.cpp)
+dai_add_example(28_2_mono_camera_video src/28_2_mono_camera_video.cpp)
 
 # NeuralNetwork node, mobilenet example
 hunter_private_data(
@@ -98,8 +101,8 @@ hunter_private_data(
     LOCATION mobilenet_8shaves_blob
 )
 
-dai_add_example(camera_mobilenet src/camera_mobilenet_example.cpp)
-target_compile_definitions(camera_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_add_example(08_rgb_mobilenet src/08_rgb_mobilenet.cpp)
+target_compile_definitions(08_rgb_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}")
 
 # NeuralNetwork node, webcam input (from host)
 dai_add_example(webcam_mobilenet src/webcam_mobilenet_example.cpp)
@@ -109,66 +112,66 @@ target_compile_definitions(webcam_mobilenet PRIVATE BLOB_PATH="${mobilenet_8shav
 dai_add_example(mjpeg_encoding src/mjpeg_encoding_example.cpp)
 
 # h264 encoding
-dai_add_example(h264_encoding src/h264_encoding_example.cpp)
+dai_add_example(04_h264_encoding src/04_h264_encoding.cpp)
 
-# StereoDepth example
-dai_add_example(stereo src/stereo_example.cpp)
+# Stereo Depth example
+dai_add_example(30_2_stereo_depth_video src/30_2_stereo_depth_video.cpp)
 
 # Image Manip node examples
 dai_add_example(image_manip src/image_manip_example.cpp)
-dai_add_example(image_manip_warp src/image_manip_warp_example.cpp)
+dai_add_example(20_image_manip_warp src/20_image_manip_warp.cpp)
 
 # Color Camera config example
-dai_add_example(color_camera_control src/color_camera_control_example.cpp)
+dai_add_example(14_1_color_camera_control src/14_1_color_camera_control.cpp)
 
 # System information example
-dai_add_example(system_information src/system_information_example.cpp)
+dai_add_example(25_system_information src/25_system_information.cpp)
 
 # Device getQueueEvent example
-dai_add_example(device_queue_event src/device_queue_event_example.cpp)
+dai_add_example(16_device_queue_event src/16_device_queue_event.cpp)
 
 # OpenCV support example
-dai_add_example(opencv_support src/opencv_support_example.cpp)
+dai_add_example(24_opencv_support src/24_opencv_support.cpp)
 
 # Device side decoding example for mobilenet-ssd
-dai_add_example(mobilenet_device_side_decoding src/mobilenet_device_side_decoding_example.cpp)
-target_compile_definitions(mobilenet_device_side_decoding PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_add_example(21_mobilenet_device_side_decoding src/21_mobilenet_device_side_decoding.cpp)
+target_compile_definitions(21_mobilenet_device_side_decoding PRIVATE BLOB_PATH="${mobilenet_blob}")
 
 # Device side decoding example for mobilenet-ssd with 3d coordinates on RGB camera
-dai_add_example(spatial_mobilenet src/spatial_mobilenet_example.cpp)
-target_compile_definitions(spatial_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_add_example(26_1_spatial_mobilenet src/26_1_spatial_mobilenet.cpp)
+target_compile_definitions(26_1_spatial_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}")
 
 # Device side decoding example for mobilenet-ssd with 3d coordinates on right camera
-dai_add_example(spatial_mobilenet_mono src/spatial_mobilenet_mono_example.cpp)
-target_compile_definitions(spatial_mobilenet_mono PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_add_example(26_2_spatial_mobilenet_mono src/26_2_spatial_mobilenet_mono.cpp)
+target_compile_definitions(26_2_spatial_mobilenet_mono PRIVATE BLOB_PATH="${mobilenet_blob}")
 
 # Device side decoding example for tiny-yolo-v3
-dai_add_example(tiny_yolo_v3_device_side_decoding src/tiny_yolo_v3_device_side_decoding_example.cpp)
-target_compile_definitions(tiny_yolo_v3_device_side_decoding PRIVATE BLOB_PATH="${tiny_yolo_v3_blob}")
+dai_add_example(22_1_tiny_yolo_v3_device_side_decoding src/22_1_tiny_yolo_v3_device_side_decoding.cpp)
+target_compile_definitions(22_1_tiny_yolo_v3_device_side_decoding PRIVATE BLOB_PATH="${tiny_yolo_v3_blob}")
 
 # Device side decoding example for tiny-yolo-v4
-dai_add_example(tiny_yolo_v4_device_side_decoding src/tiny_yolo_v4_device_side_decoding_example.cpp)
-target_compile_definitions(tiny_yolo_v4_device_side_decoding PRIVATE BLOB_PATH="${tiny_yolo_v4_blob}")
+dai_add_example(22_2_tiny_yolo_v4_device_side_decoding src/22_2_tiny_yolo_v4_device_side_decoding.cpp)
+target_compile_definitions(22_2_tiny_yolo_v4_device_side_decoding PRIVATE BLOB_PATH="${tiny_yolo_v4_blob}")
 
 # Sync example between NN and camera frames
 dai_add_example(camera_mobilenet_sync src/camera_mobilenet_sync_example.cpp)
 target_compile_definitions(camera_mobilenet_sync PRIVATE BLOB_PATH="${mobilenet_blob}")
 
-dai_add_example(spatial_location_calculator src/spatial_location_calculator_example.cpp)
+dai_add_example(27_spatial_location_calculator src/27_spatial_location_calculator.cpp)
 
 # Device side decoding example for tiny-yolo-v3 with 3d coordinates on RGB camera
-dai_add_example(spatial_tiny_yolo_v3 src/spatial_tiny_yolo_example.cpp)
-target_compile_definitions(spatial_tiny_yolo_v3 PRIVATE BLOB_PATH="${tiny_yolo_v3_blob}")
+dai_add_example(26_3_spatial_tiny_yolo_v3 src/26_3_spatial_tiny_yolo.cpp)
+target_compile_definitions(26_3_spatial_tiny_yolo_v3 PRIVATE BLOB_PATH="${tiny_yolo_v3_blob}")
 
 # Device side decoding example for tiny-yolo-v4 with 3d coordinates on RGB camera
-dai_add_example(spatial_tiny_yolo_v4 src/spatial_tiny_yolo_example.cpp)
-target_compile_definitions(spatial_tiny_yolo_v4 PRIVATE BLOB_PATH="${tiny_yolo_v4_blob}")
+dai_add_example(26_4_spatial_tiny_yolo_v4 src/26_3_spatial_tiny_yolo.cpp)
+target_compile_definitions(26_4_spatial_tiny_yolo_v4 PRIVATE BLOB_PATH="${tiny_yolo_v4_blob}")
 
 # Object tracker example on mobilenet SSD output
-dai_add_example(object_tracker_example src/object_tracker_example.cpp)
-target_compile_definitions(object_tracker_example PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_add_example(29_1_object_tracker src/29_1_object_tracker.cpp)
+target_compile_definitions(29_1_object_tracker PRIVATE BLOB_PATH="${mobilenet_blob}")
 
 # Spatial Object tracker example on mobilenet SSD output
-dai_add_example(spatial_object_tracker_example src/spatial_object_tracker_example.cpp)
-target_compile_definitions(spatial_object_tracker_example PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_add_example(29_2_spatial_object_tracker src/29_2_spatial_object_tracker.cpp)
+target_compile_definitions(29_2_spatial_object_tracker PRIVATE BLOB_PATH="${mobilenet_blob}")
 

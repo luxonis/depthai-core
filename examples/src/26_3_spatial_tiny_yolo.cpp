@@ -20,7 +20,7 @@ static const std::vector<std::string> labelMap = {
 
 static bool syncNN = true;
 
-dai::Pipeline createNNPipeline(std::string nnPath) {
+dai::Pipeline createPipeline(std::string nnPath) {
     dai::Pipeline p;
 
     // create nodes
@@ -103,7 +103,7 @@ int main(int argc, char** argv) {
     printf("Using blob at path: %s\n", nnPath.c_str());
 
     // Create pipeline
-    dai::Pipeline p = createNNPipeline(nnPath);
+    dai::Pipeline p = createPipeline(nnPath);
 
     // Connect to device with above created pipeline
     dai::Device d(p);

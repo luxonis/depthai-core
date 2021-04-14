@@ -13,7 +13,7 @@ static const std::vector<std::string> labelMap = {"background", "aeroplane", "bi
 
 static bool syncNN = true;
 
-dai::Pipeline createNNPipeline(std::string nnPath) {
+dai::Pipeline createPipeline(std::string nnPath) {
     dai::Pipeline p;
 
     // create nodes
@@ -22,14 +22,17 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     auto monoLeft = p.create<dai::node::MonoCamera>();
     auto monoRight = p.create<dai::node::MonoCamera>();
     auto stereo = p.create<dai::node::StereoDepth>();
-    auto objectTracker = p.create<dai::node::ObjectTracker>();
 
     // create xlink connections
     auto xoutRgb = p.create<dai::node::XLinkOut>();
-    auto trackerOut = p.create<dai::node::XLinkOut>();
+    auto xoutNN = p.create<dai::node::XLinkOut>();
+    auto xoutBoundingBoxDepthMapping = p.create<dai::node::XLinkOut>();
+    auto xoutDepth = p.create<dai::node::XLinkOut>();
 
     xoutRgb->setStreamName("preview");
-    trackerOut->setStreamName("tracklets");
+    xoutNN->setStreamName("detections");
+    xoutBoundingBoxDepthMapping->setStreamName("boundingBoxDepthMapping");
+    xoutDepth->setStreamName("depth");
 
     colorCam->setPreviewSize(300, 300);
     colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
@@ -58,22 +61,16 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
 
     // Link plugins CAM -> NN -> XLINK
     colorCam->preview.link(spatialDetectionNetwork->input);
-    if(syncNN) {
-        objectTracker->passthroughTrackerFrame.link(xoutRgb->input);
-    } else {
+    if(syncNN)
+        spatialDetectionNetwork->passthrough.link(xoutRgb->input);
+    else
         colorCam->preview.link(xoutRgb->input);
-    }
 
-    objectTracker->setDetectionLabelsToTrack({15});  // track only person
-    objectTracker->setTrackerType(dai::TrackerType::ZERO_TERM_COLOR_HISTOGRAM);
-    objectTracker->setTrackerIdAssigmentPolicy(dai::TrackerIdAssigmentPolicy::SMALLEST_ID);
-    objectTracker->out.link(trackerOut->input);
-
-    spatialDetectionNetwork->passthrough.link(objectTracker->inputTrackerFrame);
-    spatialDetectionNetwork->passthrough.link(objectTracker->inputDetectionFrame);
-    spatialDetectionNetwork->out.link(objectTracker->inputDetections);
+    spatialDetectionNetwork->out.link(xoutNN->input);
+    spatialDetectionNetwork->boundingBoxMapping.link(xoutBoundingBoxDepthMapping->input);
 
     stereo->depth.link(spatialDetectionNetwork->inputDepth);
+    spatialDetectionNetwork->passthroughDepth.link(xoutDepth->input);
 
     return p;
 }
@@ -92,7 +89,7 @@ int main(int argc, char** argv) {
     printf("Using blob at path: %s\n", nnPath.c_str());
 
     // Create pipeline
-    dai::Pipeline p = createNNPipeline(nnPath);
+    dai::Pipeline p = createPipeline(nnPath);
 
     // Connect to device with above created pipeline
     dai::Device d(p);
@@ -100,17 +97,45 @@ int main(int argc, char** argv) {
     d.startPipeline();
 
     auto preview = d.getOutputQueue("preview", 4, false);
-    auto tracklets = d.getOutputQueue("tracklets", 4, false);
+    auto detections = d.getOutputQueue("detections", 4, false);
+    auto xoutBoundingBoxDepthMapping = d.getOutputQueue("boundingBoxDepthMapping", 4, false);
+    auto depthQueue = d.getOutputQueue("depth", 4, false);
 
     auto startTime = steady_clock::now();
     int counter = 0;
     float fps = 0;
-    auto color = cv::Scalar(255, 0, 0);
+    auto color = cv::Scalar(255, 255, 255);
 
     while(1) {
         auto imgFrame = preview->get<dai::ImgFrame>();
-        auto track = tracklets->get<dai::Tracklets>();
+        auto det = detections->get<dai::SpatialImgDetections>();
+        auto depth = depthQueue->get<dai::ImgFrame>();
 
+        auto dets = det->detections;
+
+        cv::Mat depthFrame = depth->getFrame();
+        cv::Mat depthFrameColor;
+        cv::normalize(depthFrame, depthFrameColor, 255, 0, cv::NORM_INF, CV_8UC1);
+        cv::equalizeHist(depthFrameColor, depthFrameColor);
+        cv::applyColorMap(depthFrameColor, depthFrameColor, cv::COLORMAP_HOT);
+
+        if(!dets.empty()) {
+            auto boundingBoxMapping = xoutBoundingBoxDepthMapping->get<dai::SpatialLocationCalculatorConfig>();
+            auto roiDatas = boundingBoxMapping->getConfigData();
+
+            for(auto roiData : roiDatas) {
+                auto roi = roiData.roi;
+                roi = roi.denormalize(depthFrameColor.cols, depthFrameColor.rows);
+                auto topLeft = roi.topLeft();
+                auto bottomRight = roi.bottomRight();
+                auto xmin = (int)topLeft.x;
+                auto ymin = (int)topLeft.y;
+                auto xmax = (int)bottomRight.x;
+                auto ymax = (int)bottomRight.y;
+
+                cv::rectangle(depthFrameColor, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
+            }
+        }
         counter++;
         auto currentTime = steady_clock::now();
         auto elapsed = duration_cast<duration<float>>(currentTime - startTime);
@@ -121,37 +146,32 @@ int main(int argc, char** argv) {
         }
 
         cv::Mat frame = imgFrame->getCvFrame();
-        auto trackletsData = track->tracklets;
-        for(auto& t : trackletsData) {
-            auto roi = t.roi.denormalize(frame.cols, frame.rows);
-            int x1 = roi.topLeft().x;
-            int y1 = roi.topLeft().y;
-            int x2 = roi.bottomRight().x;
-            int y2 = roi.bottomRight().y;
 
-            int labelIndex = t.label;
+        for(const auto& d : dets) {
+            int x1 = d.xmin * frame.cols;
+            int y1 = d.ymin * frame.rows;
+            int x2 = d.xmax * frame.cols;
+            int y2 = d.ymax * frame.rows;
+
+            int labelIndex = d.label;
             std::string labelStr = to_string(labelIndex);
             if(labelIndex < labelMap.size()) {
                 labelStr = labelMap[labelIndex];
             }
             cv::putText(frame, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-
-            std::stringstream idStr;
-            idStr << "ID: " << t.id;
-            cv::putText(frame, idStr.str(), cv::Point(x1 + 10, y1 + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-            std::stringstream statusStr;
-            statusStr << "Status: " << t.status;
-            cv::putText(frame, statusStr.str(), cv::Point(x1 + 10, y1 + 50), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            std::stringstream confStr;
+            confStr << std::fixed << std::setprecision(2) << d.confidence * 100;
+            cv::putText(frame, confStr.str(), cv::Point(x1 + 10, y1 + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
 
             std::stringstream depthX;
-            depthX << "X: " << (int)t.spatialCoordinates.x << " mm";
-            cv::putText(frame, depthX.str(), cv::Point(x1 + 10, y1 + 65), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            depthX << "X: " << (int)d.spatialCoordinates.x << " mm";
+            cv::putText(frame, depthX.str(), cv::Point(x1 + 10, y1 + 50), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             std::stringstream depthY;
-            depthY << "Y: " << (int)t.spatialCoordinates.y << " mm";
-            cv::putText(frame, depthY.str(), cv::Point(x1 + 10, y1 + 80), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            depthY << "Y: " << (int)d.spatialCoordinates.y << " mm";
+            cv::putText(frame, depthY.str(), cv::Point(x1 + 10, y1 + 65), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             std::stringstream depthZ;
-            depthZ << "Z: " << (int)t.spatialCoordinates.z << " mm";
-            cv::putText(frame, depthZ.str(), cv::Point(x1 + 10, y1 + 95), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            depthZ << "Z: " << (int)d.spatialCoordinates.z << " mm";
+            cv::putText(frame, depthZ.str(), cv::Point(x1 + 10, y1 + 80), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
 
             cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
         }
@@ -160,7 +180,8 @@ int main(int argc, char** argv) {
         fpsStr << std::fixed << std::setprecision(2) << fps;
         cv::putText(frame, fpsStr.str(), cv::Point(2, imgFrame->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
 
-        cv::imshow("tracker", frame);
+        cv::imshow("depth", depthFrameColor);
+        cv::imshow("preview", frame);
         int key = cv::waitKey(1);
         if(key == 'q') {
             return 0;
