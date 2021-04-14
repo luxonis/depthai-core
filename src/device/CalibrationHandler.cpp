@@ -393,6 +393,22 @@ std::vector<float> CalibrationHandler::getDistortionCoefficients(CameraBoardSock
     return eepromData.cameraData[cameraId].distortionCoeff;
 }
 
+std::vector<std::vector<float>> CalibrationHandler::getStereoLeftRectificationRotation(){;
+    std::vector<std::vector<float>> rotationMatrix = eepromData.stereoRectificationData.rectifiedRotationLeft;
+    if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3) {
+        std::runtime_error("Rectified Rotation Matrix Doesn't exist ");
+    }
+    return rotationMatrix;
+}
+
+std::vector<std::vector<float>> CalibrationHandler::getStereoRightRectificationRotation(){
+    std::vector<std::vector<float>> rotationMatrix = eepromData.stereoRectificationData.rectifiedRotationRight;
+    if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3) {
+        std::runtime_error("Rectified Rotation Matrix Doesn't exist ");
+    }
+    return rotationMatrix;
+}
+
 void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, std::vector<std::vector<float>> intrinsics, int width, int height) {
     if(intrinsics.size() != 3 || intrinsics[0].size() != 3) {
         std::runtime_error("Intrinsic Matrix size should always be 3x3 ");

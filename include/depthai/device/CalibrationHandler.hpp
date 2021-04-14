@@ -127,8 +127,21 @@ class CalibrationHandler {
      */
     std::vector<std::vector<float>> getImuToCameraExtrinsics(CameraBoardSocket cameraId, bool useMeasuredTranslation = false);
 
-    // getStereoRightRectificationRotation();
-    // getStereoLeftRectificationRotation();
+    // TODO (Sachin) : Fill therse docstrings
+    /**
+     * 
+     * @brief Get the Stereo Right Rectification Rotation object
+     * 
+     * @return std::vector<std::vector<float>> 
+     */
+    std::vector<std::vector<float>> getStereoRightRectificationRotation();
+
+    /**
+     * @brief Get the Stereo Left Rectification Rotation object
+     * 
+     * @return std::vector<std::vector<float>> 
+     */
+    std::vector<std::vector<float>> getStereoLeftRectificationRotation();
     // getStereoLeftCameraId();
     // getStereoRightCameraId();
     // setCameraExtrinsicsRotation(...)
