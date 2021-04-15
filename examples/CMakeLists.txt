@@ -114,8 +114,8 @@ target_compile_definitions(webcam_mobilenet PRIVATE BLOB_PATH="${mobilenet_8shav
 # MJPEG encoding
 dai_add_example(mjpeg_encoding src/mjpeg_encoding_example.cpp)
 
-# h264 encoding
-dai_add_example(04_h264_encoding src/04_h264_encoding.cpp)
+# rgb encoding
+dai_add_example(04_rgb_encoding src/04_rgb_encoding.cpp)
 
 # Stereo Depth example
 dai_add_example(30_2_stereo_depth_video src/30_2_stereo_depth_video.cpp)
