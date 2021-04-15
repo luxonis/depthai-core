@@ -3,12 +3,12 @@
 #include <depthai/pipeline/Node.hpp>
 
 // shared
-// TODO #include <depthai-shared/pb/properties/XLinkOutProperties.hpp>
+#include <depthai-shared/properties/UACProperties.hpp>
 
 namespace dai {
 namespace node {
 class UAC : public Node {
-    // dai::XLinkOutProperties properties;
+    dai::UACProperties properties;
 
     std::string getName() const override;
     std::vector<Input> getInputs() override;
@@ -19,6 +19,8 @@ class UAC : public Node {
    public:
     UAC(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
+    /// Enable streaming back microphone instead of the front ones (L/R)
+    void setStreamBackMic(bool enable);
 };
 
 }  // namespace node

@@ -19,12 +19,16 @@ std::vector<Node::Output> UAC::getOutputs() {
 
 nlohmann::json UAC::getProperties() {
     nlohmann::json j;
-    // TODO    nlohmann::to_json(j, properties);
+    nlohmann::to_json(j, properties);
     return j;
 }
 
 std::shared_ptr<Node> UAC::clone() {
     return std::make_shared<std::decay<decltype(*this)>::type>(*this);
+}
+
+void UAC::setStreamBackMic(bool enable) {
+    properties.streamBackMic = enable;
 }
 
 }  // namespace node
