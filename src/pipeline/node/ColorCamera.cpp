@@ -2,6 +2,8 @@
 
 #include "spdlog/fmt/fmt.h"
 
+#include <fstream>
+
 namespace dai {
 namespace node {
 
@@ -358,6 +360,25 @@ void ColorCamera::setPreviewKeepAspectRatio(bool keep) {
 
 bool ColorCamera::getPreviewKeepAspectRatio() {
     return properties.previewKeepAspectRatio;
+}
+
+void ColorCamera::setCameraTuningBlobPath(const std::string& path) {
+
+    std::ifstream blobStream(path, std::ios::in | std::ios::binary);
+    if(!blobStream.is_open()) {
+        throw std::runtime_error("ColorCamera | Camera tuning blob at path: " + path + " doesn't exist");
+    }
+
+    Asset blobAsset;
+    blobAsset.alignment = 64;
+    blobAsset.data = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(blobStream), {});
+
+    std::string assetKey = "camTuning";
+
+    assetManager.set(assetKey, blobAsset);
+
+    properties.cameraTuningBlobUri = std::string("asset:") + assetKey;
+    properties.cameraTuningBlobSize = blobAsset.data.size();
 }
 
 }  // namespace node
