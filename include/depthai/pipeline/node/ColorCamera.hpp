@@ -273,6 +273,10 @@ class ColorCamera : public Node {
      * @returns Preview keep aspect ratio option
      */
     bool getPreviewKeepAspectRatio();
+
+    /// Set a custom camera image quality tuning blob, used for all cameras in the system.
+    /// Note: this function will be moved at pipeline level in the future
+    void setCameraTuningBlobPath(const std::string& path);
 };
 
 }  // namespace node

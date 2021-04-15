@@ -19,6 +19,7 @@
 
 // libraries
 #include "spdlog/spdlog.h"
+#include "spdlog/details/os.h"
 
 // Resource compiled assets (cmds)
 #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
@@ -58,6 +59,14 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(Pipeline&
     std::vector<std::uint8_t> assetStorage;
     OpenVINO::Version version;
     pipeline.serialize(schema, assets, assetStorage, version);
+
+    if(pathToCmd == "") {
+        auto envFw = spdlog::details::os::getenv("DEPTHAI_FW");
+        if(!envFw.empty()) {
+            pathToCmd = envFw;
+            spdlog::warn("DEPTHAI_FW env var set, overriding DAP firmware: {}", envFw);
+        }
+    }
 
     // Prepare device firmware
     std::vector<uint8_t> deviceFirmware;
