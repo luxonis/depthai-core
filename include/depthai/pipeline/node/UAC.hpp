@@ -21,6 +21,15 @@ class UAC : public Node {
 
     /// Enable streaming back microphone instead of the front ones (L/R)
     void setStreamBackMic(bool enable);
+
+    /// Enable experimental digital AGC
+    void setMicAutoGain(bool enable);
+
+    /// Set a fixed microphone gain, in multiplication times
+    void setMicGainTimes(float times);
+
+    /// Set a fixed microphone gain, in dB
+    void setMicGainDecibels(float dB);
 };
 
 }  // namespace node

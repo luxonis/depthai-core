@@ -1,5 +1,7 @@
 #include "depthai/pipeline/node/UAC.hpp"
 
+#include <cmath>
+
 namespace dai {
 namespace node {
 
@@ -29,6 +31,19 @@ std::shared_ptr<Node> UAC::clone() {
 
 void UAC::setStreamBackMic(bool enable) {
     properties.streamBackMic = enable;
+}
+
+void UAC::setMicAutoGain(bool enable) {
+    properties.enableAgc = enable;
+}
+
+void UAC::setMicGainTimes(float times) {
+    properties.micGain = times;
+}
+
+void UAC::setMicGainDecibels(float dB) {
+    float times = pow(10, dB / 20);
+    setMicGainTimes(times);
 }
 
 }  // namespace node
