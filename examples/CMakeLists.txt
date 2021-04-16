@@ -66,6 +66,12 @@ dai_add_example(02_mono_preview src/02_mono_preview.cpp)
 # Depth preview output example
 dai_add_example(03_depth_preview src/03_depth_preview.cpp)
 
+# rgb encoding
+dai_add_example(04_rgb_encoding src/04_rgb_encoding.cpp)
+
+# rgb+mono encoding
+dai_add_example(05_rgb_mono_encoding src/05_rgb_mono_encoding.cpp)
+
 # Color camera video output example
 dai_add_example(28_1_rgb_camera_video src/28_1_rgb_camera_video.cpp)
 
@@ -113,9 +119,6 @@ target_compile_definitions(webcam_mobilenet PRIVATE BLOB_PATH="${mobilenet_8shav
 
 # MJPEG encoding
 dai_add_example(mjpeg_encoding src/mjpeg_encoding_example.cpp)
-
-# rgb encoding
-dai_add_example(04_rgb_encoding src/04_rgb_encoding.cpp)
 
 # Stereo Depth example
 dai_add_example(30_2_stereo_depth_video src/30_2_stereo_depth_video.cpp)

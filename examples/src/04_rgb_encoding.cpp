@@ -19,13 +19,6 @@ int main(int argc, char** argv) {
     using namespace std::chrono;
     signal(SIGINT, &sigintHandler);
 
-    std::string h265Path("video.h265");
-
-    // If path specified, use that
-    if(argc > 1) {
-        h265Path = std::string(argv[1]);
-    }
-
     dai::Pipeline p;
 
     // Define a source - color camera
@@ -52,7 +45,7 @@ int main(int argc, char** argv) {
     auto q = d.getOutputQueue("h265", 30, true);
 
     // The .h265 file is a raw stream file (not playable yet)
-    auto videoFile = std::fstream(h265Path, std::ios::out | std::ios::binary);
+    auto videoFile = std::fstream("video.h265", std::ios::out | std::ios::binary);
     std::cout << "Press Ctrl+C to stop encoding..." << std::endl;
 
     while(alive) {
@@ -61,8 +54,8 @@ int main(int argc, char** argv) {
     }
     videoFile.close();
 
-    std::cout << "To view the encoded data, convert the stream file " << h265Path << " into a video file (.mp4) using a command below:" << std::endl;
-    std::cout << "ffmpeg -framerate " << colorCam->getFps() << " -i " << h265Path << " -c copy video.mp4" << std::endl;
+    std::cout << "To view the encoded data, convert the stream file (.h265) into a video file (.mp4) using a command below:" << std::endl;
+    std::cout << "ffmpeg -framerate 30 -i video.h265 -c copy video.mp4" << std::endl;
 
     return 0;
 }
