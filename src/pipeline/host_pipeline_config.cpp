@@ -412,6 +412,11 @@ bool HostPipelineConfig::initWithJSON(const nlohmann::json &json_obj)
                 app_config.enable_imu = app_conf_obj.at("enable_imu").get<bool>();
             }
 
+            if (app_conf_obj.contains("enable_flash_test"))
+            {
+                app_config.enable_flash_test = app_conf_obj.at("enable_flash_test").get<bool>();
+            }
+
             if (app_conf_obj.contains("usb_chunk_KiB"))
             {
                 app_config.usb_chunk_KiB = app_conf_obj.at("usb_chunk_KiB").get<uint32_t>();

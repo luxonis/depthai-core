@@ -92,6 +92,7 @@ struct HostPipelineConfig
         bool sync_sequence_numbers = false;
         bool enable_reconfig = true; // Allow reopening config_d2h and config_h2d after the initial setup
         bool enable_imu = false;
+        bool enable_flash_test = false;
         uint32_t usb_chunk_KiB = 64; // Increase to improve throughput, 0 to disable chunking
     } app_config;
 
