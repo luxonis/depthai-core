@@ -166,3 +166,12 @@ target_compile_definitions(spatial_tiny_yolo_v3 PRIVATE BLOB_PATH="${tiny_yolo_v
 # Device side decoding example for tiny-yolo-v4 with 3d coordinates on RGB camera
 dai_add_example(spatial_tiny_yolo_v4 src/spatial_tiny_yolo_example.cpp)
 target_compile_definitions(spatial_tiny_yolo_v4 PRIVATE BLOB_PATH="${tiny_yolo_v4_blob}")
+
+# Object tracker example on mobilenet SSD output
+dai_add_example(object_tracker_example src/object_tracker_example.cpp)
+target_compile_definitions(object_tracker_example PRIVATE BLOB_PATH="${mobilenet_blob}")
+
+# Spatial Object tracker example on mobilenet SSD output
+dai_add_example(spatial_object_tracker_example src/spatial_object_tracker_example.cpp)
+target_compile_definitions(spatial_object_tracker_example PRIVATE BLOB_PATH="${mobilenet_blob}")
+

@@ -12,7 +12,10 @@ namespace node {
  * @brief VideoEncoder node. Encodes frames into MJPEG, H264 or H265.
  */
 class VideoEncoder : public Node {
+   public:
     using Properties = dai::VideoEncoderProperties;
+
+   private:
     Properties properties;
 
     std::string getName() const override;
@@ -70,6 +73,8 @@ class VideoEncoder : public Node {
     /// Set rate control mode
     void setRateControlMode(Properties::RateControlMode mode);
     /// Set encoding profile
+    void setProfile(std::tuple<int, int> size, Properties::Profile profile);
+    /// Set encoding profile
     void setProfile(int width, int height, Properties::Profile profile);
     /// Set output bitrate in bps. Final bitrate depends on rate control mode
     void setBitrate(int bitrate);
@@ -100,10 +105,16 @@ class VideoEncoder : public Node {
     void setQuality(int quality);
 
     /**
+     * Set lossless mode. Applies only to [M]JPEG profile
+     * @param lossless True to enable lossless jpeg encoding, false otherwise
+     */
+    void setLossless(bool lossless);
+
+    /**
      * Sets expected frame rate
      * @param frameRate Frame rate in frames per second
      */
-    void setFrameRate(int frameRate);
+    void setFrameRate(float frameRate);
 
     /// Get rate control mode
     Properties::RateControlMode getRateControlMode() const;
@@ -127,7 +138,9 @@ class VideoEncoder : public Node {
     /// Get input height
     int getHeight() const;
     /// Get frame rate
-    int getFrameRate() const;
+    float getFrameRate() const;
+    /// Get lossless mode. Applies only when using [M]JPEG profile.
+    bool getLossless() const;
 };
 
 }  // namespace node

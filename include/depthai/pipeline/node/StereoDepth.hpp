@@ -12,7 +12,10 @@ namespace node {
  * @brief StereoDepth node. Compute stereo disparity and depth from left-right image pair.
  */
 class StereoDepth : public Node {
+   public:
     using Properties = dai::StereoDepthProperties;
+
+   private:
     Properties properties;
 
     std::string getName() const override;

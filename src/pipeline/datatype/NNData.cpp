@@ -61,7 +61,7 @@ std::shared_ptr<RawBuffer> NNData::serialize() const {
         info.dataType = dataType;
         info.numDimensions = 0;
         info.name = kv.first;
-        info.offset = offset;
+        info.offset = static_cast<unsigned int>(offset);
         rawNn.tensors.push_back(info);
     }
 
@@ -88,7 +88,7 @@ std::shared_ptr<RawBuffer> NNData::serialize() const {
         info.dataType = dataType;
         info.numDimensions = 0;
         info.name = kv.first;
-        info.offset = offset;
+        info.offset = static_cast<unsigned int>(offset);
         rawNn.tensors.push_back(info);
     }
 
@@ -117,7 +117,7 @@ void NNData::setLayer(const std::string& name, std::vector<float> data) {
 void NNData::setLayer(const std::string& name, std::vector<double> data) {
     fp16Data[name] = std::vector<std::uint16_t>(data.size());
     for(unsigned i = 0; i < data.size(); i++) {
-        fp16Data[name][i] = fp16_ieee_from_fp32_value(data[i]);
+        fp16Data[name][i] = fp16_ieee_from_fp32_value(static_cast<float>(data[i]));
     }
 }
 
