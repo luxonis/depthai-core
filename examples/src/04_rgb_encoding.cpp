@@ -1,23 +1,19 @@
-
 #include <csignal>
 #include <cstdio>
 #include <iostream>
 
-#include "utility.hpp"
-
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
     // Keyboard interrupt (Ctrl + C) detected
-static bool alive = true;
+static std::atomic<bool> alive{true};
 static void sigintHandler(int signum) {
     alive = false;
 }
 
 int main(int argc, char** argv) {
-    using namespace std;
-    using namespace std::chrono;
-    signal(SIGINT, &sigintHandler);
+    // Detect signal interrupts (Ctrl + C)
+    std::signal(SIGINT, &sigintHandler);
 
     dai::Pipeline p;
 
@@ -45,14 +41,13 @@ int main(int argc, char** argv) {
     auto q = d.getOutputQueue("h265", 30, true);
 
     // The .h265 file is a raw stream file (not playable yet)
-    auto videoFile = std::fstream("video.h265", std::ios::out | std::ios::binary);
+    auto videoFile = std::ofstream("video.h265", std::ios::binary);
     std::cout << "Press Ctrl+C to stop encoding..." << std::endl;
 
     while(alive) {
-        auto h264Packet = q->get<dai::ImgFrame>();
-        videoFile.write((char*)h264Packet->getData().data(), h264Packet->getData().size());
+        auto h265Packet = q->get<dai::ImgFrame>();
+        videoFile.write((char*)(h265Packet->getData().data()), h265Packet->getData().size());
     }
-    videoFile.close();
 
     std::cout << "To view the encoded data, convert the stream file (.h265) into a video file (.mp4) using a command below:" << std::endl;
     std::cout << "ffmpeg -framerate 30 -i video.h265 -c copy video.mp4" << std::endl;
