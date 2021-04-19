@@ -4,11 +4,11 @@
 #include <vector>
 
 namespace dai {
-
+namespace matrix {
 /**
  * @brief Matrix multiplication between two matrixs of shape (m x n) and (n x p) of type float. -> firstMatrix * secondMatrix
- * 
- * @param firstMatrix - vector of vector of float of shape (m x n) 
+ *
+ * @param firstMatrix - vector of vector of float of shape (m x n)
  * @param secondMatrix - vector of vector of float of shape (n x p)
  * @return std::vector<std::vector<float>> - product of firstMatrix * secondMatrix, a vector of vector of float of shape (m x p)
  */
@@ -149,4 +149,5 @@ bool matInv(std::vector<std::vector<float>>& A, std::vector<std::vector<float>>&
     return true;
 }
 
+}  // namespace matrix
 }  // namespace dai

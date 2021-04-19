@@ -25,11 +25,17 @@ dai::Pipeline createCameraPipeline() {
     return p;
 }
 
-int main() {
-    std::string calibBinaryFile("/home/sachin/Desktop/calib_files/dm1092_14442C1021F556D700.calib");
-    std::string boardConfigFile("/home/sachin/Desktop/luxonis/depthai/resources/boards/BW1098OBC.json");
+int main(int argc, char** argv) {
+    std::string calibBinaryFile, boardConfigFile, destFilename;
+
+    if(argc == 4) {
+        calibBinaryFile = std::string(argv[1]);
+        boardConfigFile = std::string(argv[2]);
+        destFilename = std::string(argv[3]);
+    } else {
+        std::runtime_error("Required .calib file, board.json file path and destination file path argumnents in the same order");
+    }
     dai::CalibrationHandler calibData(calibBinaryFile, boardConfigFile);
-    std::string destFilename("/home/sachin/Desktop/luxonis/depthai-core/examples/calib_data_v58.json");
 
     calibData.eepromToJsonFile(destFilename);
 

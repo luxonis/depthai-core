@@ -25,15 +25,17 @@ dai::Pipeline createCameraPipeline() {
     return p;
 }
 
-int main() {
-    // std::string filename("/home/sachin/Desktop/luxonis/depthai-core/examples/calib_data2.json");
-
+int main(int argc, char** argv) {
     dai::Pipeline p = createCameraPipeline();
     dai::Device d(p);
 
     dai::CalibrationHandler calibData = d.getCalibration();
-    std::string filename("/home/sachin/Desktop/luxonis/depthai-core/examples/calib_data2_return.json");
-
+    std::string filename;
+    if(argc == 2) {
+        filename = std::string(argv[1]);
+    } else {
+        std::runtime_error("Required destination json path file");
+    }
     calibData.eepromToJsonFile(filename);
     std::vector<std::vector<float>> intrinsics;
     int width, height;

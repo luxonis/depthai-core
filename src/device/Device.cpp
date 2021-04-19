@@ -816,7 +816,7 @@ LogLevel Device::getLogLevel() {
     return client->call("getLogLevel").as<LogLevel>();
 }
 
-DeviceInfo Device::getCurrentDeviceInfo(){
+DeviceInfo Device::getCurrentDeviceInfo() {
     return deviceInfo;
 }
 
@@ -876,10 +876,11 @@ float Device::getSystemInformationLoggingRate() {
 
 bool Device::flashCalibration(CalibrationHandler calibrationDataHandler) {
     int res = client->call("storeToEeprom", calibrationDataHandler.getEepromData());
-    if(res == 0)
+    if(res == 0) {
         return true;
-    else
+    } else {
         return false;
+    }
 }
 
 CalibrationHandler Device::getCalibration() {

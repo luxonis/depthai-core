@@ -5,6 +5,7 @@
 #include "depthai-shared/common/CameraBoardSocket.hpp"
 #include "depthai-shared/common/EepromData.hpp"
 #include "depthai-shared/common/Point2f.hpp"
+#include "depthai-shared/common/Size2f.hpp"
 
 namespace dai {
 /**
@@ -49,8 +50,8 @@ class CalibrationHandler {
      * @brief Get the Camera Intrinsics object
      *
      * @param cameraId - Uses the cameraId to identify which camera intrinsics to return
-     * @param resizeHeight - resized height of the image for which intrinsics is requested.  resizeHeight = -1 represents height is same as default intrinsics
      * @param resizewidth - resized width of the image for which intrinsics is requested.  resizewidth = -1 represents width is same as default intrinsics
+     * @param resizeHeight - resized height of the image for which intrinsics is requested.  resizeHeight = -1 represents height is same as default intrinsics
      * @param topLeftPixelId - (x, y) point represents the top left corner coordinates of the cropped image which is used to modify the intrinsics for the
      * respective cropped image
      * @param bottomRightPixelId - (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
@@ -58,7 +59,22 @@ class CalibrationHandler {
      * @return std::vector<std::vector<float>> - repesents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      */
     std::vector<std::vector<float>> getCameraIntrinsics(
-        CameraBoardSocket cameraId, int resizeHeight = -1, int resizewidth = -1, Point2f topLeftPixelId = Point2f(), Point2f bottomRightPixelId = Point2f());
+        CameraBoardSocket cameraId, int resizewidth = -1, int resizeHeight = -1, Point2f topLeftPixelId = Point2f(), Point2f bottomRightPixelId = Point2f());
+
+    /**
+     * @brief Get the Camera Intrinsics object
+     *
+     * @param cameraId - Uses the cameraId to identify which camera intrinsics to return
+     * @param destShape - resized width and height of the image for which intrinsics is requested.
+     * @param topLeftPixelId - (x, y) point represents the top left corner coordinates of the cropped image which is used to modify the intrinsics for the
+     * respective cropped image
+     * @param bottomRightPixelId - (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
+     * the respective cropped image
+     * @return std::vector<std::vector<float>> - repesents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
+     */
+    std::vector<std::vector<float>> getCameraIntrinsics(
+        CameraBoardSocket cameraId, Size2f destShape, Point2f topLeftPixelId = Point2f(), Point2f bottomRightPixelId = Point2f());
+
 
     /**
      * @brief Get the Default Intrinsics object
@@ -154,7 +170,7 @@ class CalibrationHandler {
      * @brief Write raw calibration/board data to json file.
      *
      * @param destPath -  Full path to the json file in which raw calibration data will be stored
-     * @return true - returs true on success
+     * @return bool - True on success, false otherwise
      */
     bool eepromToJsonFile(std::string destPath);
 
@@ -167,6 +183,21 @@ class CalibrationHandler {
      * @param boardRev - set your board revision id.
      */
     void setBoardInfo(bool swapLeftRightCam, std::string boardName, std::string boardRev);
+
+    /**
+     * @brief Set the Camera Intrinsics object
+     *
+     * @param cameraId - CameraId of the camera for which Camera intrinsics are being loaded
+     * @param intrinsics - 3x3 intrinsics matrix in the form of std::vector<std::vector<float>>
+     * @param frameSize - repesents the width and height of the image at which intrinsics are calculated.
+     *
+     * intrinsic matrix = \begin{bmatrix}
+     *                              f_x &  0  & c_x \\
+     *                              0   & f_y & c_y \\
+     *                              0   &  0  &  1
+     *                          \end{bmatrix}
+     */
+    void setCameraIntrinsics(CameraBoardSocket cameraId, std::vector<std::vector<float>> intrinsics, Size2f frameSize);
 
     /**
      * @brief Set the Camera Intrinsics object

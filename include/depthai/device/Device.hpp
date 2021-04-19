@@ -402,7 +402,7 @@ class Device {
     /**
      * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
      *
-     * @return returns the calibration handler object which contains the EEPROM data loaded from the device
+     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
      */
     CalibrationHandler getCalibration();
 

@@ -367,4 +367,8 @@ void PipelineImpl::unlink(const Node::Output& out, const Node::Input& in) {
     nodeConnectionMap[in.parent.id].erase(connection);
 }
 
+void PipelineImpl::setCalibrationData(CalibrationHandler calib) {
+    globalProperties.calibData = calib.getEepromData();
+}
+
 }  // namespace dai

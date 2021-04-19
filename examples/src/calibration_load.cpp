@@ -9,28 +9,36 @@
 #include "depthai/depthai.hpp"
 
 dai::Pipeline createCameraPipeline() {
-    dai::Pipeline p;
+   dai::Pipeline p;
 
-    auto colorCam = p.create<dai::node::ColorCamera>();
-    auto xlinkOut = p.create<dai::node::XLinkOut>();
-    xlinkOut->setStreamName("preview");
+    auto monoLeft = p.create<dai::node::MonoCamera>();
+    auto monoRight = p.create<dai::node::MonoCamera>();
+    auto stereo = p.create<dai::node::StereoDepth>();
+    auto xoutDepth = p.create<dai::node::XLinkOut>();
+    xoutDepth->setStreamName("depth");
 
-    colorCam->setPreviewSize(300, 300);
-    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    colorCam->setInterleaved(true);
 
-    // Link plugins CAM -> XLINK
-    colorCam->preview.link(xlinkOut->input);
+    // MonoCamera
+    monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
+    monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    // monoLeft->setFps(5.0);
+    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
+    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    // monoRight->setFps(5.0);
+
+    monoLeft->out.link(stereo->left);
+    monoRight->out.link(stereo->right);
+    stereo->setOutputDepth(true);
+    stereo->depth.link(xoutDepth->input);
 
     return p;
 }
 
 int main() {
-    std::string filename("/home/sachin/Desktop/luxonis/depthai-core/examples/calib_data2.json");
     dai::CalibrationHandler calibData;
 
-    calibData.setBoardInfo(6, true, "bw1098obc", "Rev");
-    std::vector<std::vector<float>> inMatrix = {{1479.458984, 0.000000, 950.694458}, {0.000000, 1477.587158, 530.697632}, {0.000000, 0.000000, 1.000000}};
+    calibData.setBoardInfo(true, "bw1098zzz", "Rev");
+    std::vector<std::vector<float>> inMatrix = {{1500.458984, 0.000000, 950.694458}, {0.000000, 1477.587158, 530.697632}, {0.000000, 0.000000, 1.000000}};
     std::vector<float> inOneD = {
         -1.872860, 16.683033, 0.001053, -0.002063, 61.878521, -2.158907, 18.424637, 57.682858, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000};
     calibData.setCameraIntrinsics(dai::CameraBoardSocket::RGB, inMatrix, 1920, 1080);
@@ -71,21 +79,23 @@ int main() {
     calibData.setFov(dai::CameraBoardSocket::LEFT, 80.55);
     calibData.setFov(dai::CameraBoardSocket::RGB, 70.55);
 
-    calibData.eepromToJsonFile(filename);
+    // calibData.eepromToJsonFile(filename);
 
     dai::Pipeline p = createCameraPipeline();
+    p.setCalibrationData(calibData);
+
     dai::Device d(p);
-    std::cout << "status ->" << d.flashCalibration(calibData) << std::endl;
+    // std::cout << "status ->" << d.flashCalibration(calibData) << std::endl;
 
     d.startPipeline();
-    auto preview = d.getOutputQueue("preview");
+    auto preview = d.getOutputQueue("depth");
     cv::Mat frame;
 
     while(1) {
         auto imgFrame = preview->get<dai::ImgFrame>();
         if(imgFrame) {
-            frame = cv::Mat(imgFrame->getHeight(), imgFrame->getWidth(), CV_8UC3, imgFrame->getData().data());
-            cv::imshow("preview", frame);
+            frame = cv::Mat(imgFrame->getHeight(), imgFrame->getWidth(), CV_16UC1, imgFrame->getData().data());
+            cv::imshow("depth", frame);
             int key = cv::waitKey(1);
             if(key == 'q') {
                 return 0;

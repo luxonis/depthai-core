@@ -10,6 +10,7 @@
 #include "AssetManager.hpp"
 #include "Node.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
+#include "depthai/device/CalibrationHandler.hpp"
 
 // shared
 #include "depthai-shared/pipeline/PipelineSchema.hpp"
@@ -43,7 +44,7 @@ class PipelineImpl {
     std::vector<Node::Connection> getConnections() const;
     void link(const Node::Output& out, const Node::Input& in);
     void unlink(const Node::Output& out, const Node::Input& in);
-
+    void setCalibrationData(CalibrationHandler calib);
     // Must be incremented and unique for each node
     Node::Id latestId = 0;
     // Pipeline asset manager
@@ -205,6 +206,10 @@ class Pipeline {
     /// Set a specific OpenVINO version to use with this pipeline
     void setOpenVINOVersion(OpenVINO::Version version) {
         impl()->forceRequiredOpenVINOVersion = version;
+    }
+
+    void setCalibrationData(CalibrationHandler calib){
+        impl()->setCalibrationData(calib);
     }
 };
 
