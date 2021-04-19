@@ -1,0 +1,111 @@
+/**
+ * This example shows usage of depth camera in crop mode with the possibility to move the crop.
+ * Use 'WASD' in order to do it.
+ */
+#include <cstdio>
+#include <iostream>
+
+// Includes common necessary includes for development using depthai library
+#include "depthai/depthai.hpp"
+
+// Step size ('W','A','S','D' controls)
+static constexpr float stepSize = 0.02;
+
+static std::atomic<bool> sendCamConfig{false};
+
+int main() {
+    // Start defining a pipeline
+    dai::Pipeline pipeline;
+
+    // Nodes
+    auto camRight = pipeline.create<dai::node::MonoCamera>();
+    auto camLeft = pipeline.create<dai::node::MonoCamera>();
+    auto manip = pipeline.create<dai::node::ImageManip>();
+    auto stereo = pipeline.create<dai::node::StereoDepth>();
+    auto configIn = pipeline.create<dai::node::XLinkIn>();
+    auto xout = pipeline.create<dai::node::XLinkOut>();
+
+    // Crop range
+    dai::Point2f topLeft(0.2, 0.2);
+    dai::Point2f bottomRight(0.8, 0.8);
+
+    // Properties
+    camRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    camLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    camRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    camLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    configIn->setStreamName("config");
+    xout->setStreamName("depth");
+    manip->initialConfig.setCropRect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
+    manip->setMaxOutputFrameSize(camRight->getResolutionHeight() * camRight->getResolutionWidth() * 3);
+    stereo->setConfidenceThreshold(200);
+    stereo->setOutputDepth(true);
+
+    // Link nodes
+    configIn->out.link(manip->inputConfig);
+    stereo->depth.link(manip->inputImage);
+    manip->out.link(xout->input);
+    camRight->out.link(stereo->left);
+    camLeft->out.link(stereo->right);
+
+    // Connect to device
+    dai::Device dev(pipeline);
+
+    // Start pipeline
+    dev.startPipeline();
+
+    // Queues
+    auto q = dev.getOutputQueue(xout->getStreamName(), 4, false);
+    auto configQueue = dev.getInputQueue(configIn->getStreamName());
+
+    while(true) {
+        auto inDepth = q->get<dai::ImgFrame>();
+        cv::Mat depthFrame = inDepth ->getFrame();
+        // Frame is transformed, the color map will be applied to highlight the depth info
+        cv::Mat depthFrameColor;
+        cv::normalize(depthFrame, depthFrameColor, 255, 0, cv::NORM_INF, CV_8UC1);
+        cv::equalizeHist(depthFrameColor, depthFrameColor);
+        cv::applyColorMap(depthFrameColor, depthFrameColor, cv::COLORMAP_HOT);
+
+        // Frame is ready to be shown
+        cv::imshow("depth", depthFrameColor);
+
+        // Update screen (10ms pooling rate)
+        int key = cv::waitKey(10);
+        if(key == 'q') {
+            break;
+        } else if(key == 'w') {
+            if (topLeft.y - stepSize >= 0) {
+                topLeft.y -= stepSize;
+                bottomRight.y -= stepSize;
+                sendCamConfig = true;
+            }
+        } else if(key == 'a') {
+            if (topLeft.x - stepSize >= 0) {
+                topLeft.x -= stepSize;
+                bottomRight.x -= stepSize;
+                sendCamConfig = true;
+            }
+        } else if(key == 's') {
+            if (bottomRight.y + stepSize <= 1) {
+                topLeft.y += stepSize;
+                bottomRight.y += stepSize;
+                sendCamConfig = true;
+            }
+        } else if(key == 'd') {
+            if (bottomRight.x + stepSize <= 1) {
+                topLeft.x += stepSize;
+                bottomRight.x +=stepSize;
+                sendCamConfig = true;
+            }
+        }
+
+        // Send new config to camera
+        if (sendCamConfig) {
+            dai::ImageManipConfig cfg;
+            cfg.setCropRect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
+            configQueue->send(cfg);
+            sendCamConfig = false;
+        }
+    }
+}

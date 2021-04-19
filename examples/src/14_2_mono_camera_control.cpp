@@ -41,8 +41,8 @@ int main() {
     auto manipOutLeft = pipeline.create<dai::node::XLinkOut>();
 
     // Crop range
-    dai::Point2f topLeft(0.4f, 0.4f);
-    dai::Point2f bottomRight(0.6f, 0.6f);
+    dai::Point2f topLeft(0.2, 0.2);
+    dai::Point2f bottomRight(0.8, 0.8);
 
     // Properties
     camRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
@@ -90,8 +90,8 @@ int main() {
     while(true) {
         auto inRight = qRight->get<dai::ImgFrame>();
         auto inLeft = qLeft->get<dai::ImgFrame>();
-        auto frameRight = inRight->getCvFrame();
-        auto frameLeft = inLeft->getCvFrame();
+        cv::Mat frameRight = inRight->getCvFrame();
+        cv::Mat frameLeft = inLeft->getCvFrame();
         cv::imshow("right", frameRight);
         cv::imshow("left", frameLeft);
 
