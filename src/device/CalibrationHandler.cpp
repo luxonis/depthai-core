@@ -178,18 +178,17 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(
 
     if(resizewidth != -1 || resizeHeight != -1) {
         if(resizewidth == -1) {
-            resizewidth = eepromData.cameraData[cameraId].width * resizeHeight / eepromData.cameraData[cameraId].height;
+            resizewidth = eepromData.cameraData[cameraId].width * resizeHeight / static_cast<float>(eepromData.cameraData[cameraId].height);
         }
         if(resizeHeight == -1) {
-            resizeHeight = eepromData.cameraData[cameraId].height * resizewidth / eepromData.cameraData[cameraId].width;
+            resizeHeight = eepromData.cameraData[cameraId].height * resizewidth / static_cast<float>(eepromData.cameraData[cameraId].width);
         }
 
-        float scale = resizeHeight / eepromData.cameraData[cameraId].height;
+        float scale = resizeHeight / static_cast<float>(eepromData.cameraData[cameraId].height);
         if(scale * eepromData.cameraData[cameraId].width < resizewidth) {
-            scale = resizewidth / eepromData.cameraData[cameraId].width;
+            scale = resizewidth / static_cast<float>(eepromData.cameraData[cameraId].width);
         }
         std::vector<std::vector<float>> scaleMat = {{scale, 0, 0}, {0, scale, 0}, {0, 0, 1}};
-
         intrinsicMatrix = matMul(intrinsicMatrix, scaleMat);
 
         if(scale * eepromData.cameraData[cameraId].height > resizeHeight) {
@@ -200,16 +199,16 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(
     }
     if(resizewidth != -1 || resizeHeight != -1) {
         if(topLeftPixelId.y > resizeHeight || bottomRightPixelId.x > resizewidth) {
-            std::runtime_error("Invalid Crop size. Crop width or height is more than the original resized height and width");
+            throw std::runtime_error("Invalid Crop size. Crop width or height is more than the original resized height and width");
         }
     } else {
         if(topLeftPixelId.y > eepromData.cameraData[cameraId].height || bottomRightPixelId.x > eepromData.cameraData[cameraId].width) {
-            std::runtime_error("Invalid Crop size. Crop width or height is more than the original resized height and width");
+            throw std::runtime_error("Invalid Crop size. Crop width or height is more than the original resized height and width");
         }
     }
 
     if(topLeftPixelId.x > bottomRightPixelId.x || topLeftPixelId.y < bottomRightPixelId.y) {
-        std::runtime_error("Invalid Crop ratio.");
+        throw std::runtime_error("Invalid Crop ratio.");
     }
 
     std::cout << topLeftPixelId.x << " - " << bottomRightPixelId.y << std::endl;

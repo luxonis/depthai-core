@@ -26,16 +26,20 @@ dai::Pipeline createCameraPipeline() {
 }
 
 int main(int argc, char** argv) {
+    std::string filename;
+
+    std::cout << "Number of args" << argc << std::endl;
+    if(argc == 2) {
+        filename = std::string(argv[1]);
+    } else {
+        std::cout << "I else" << std::endl;
+        // throw std::runtime_error("Required destination json path file");
+    }
+
     dai::Pipeline p = createCameraPipeline();
     dai::Device d(p);
 
     dai::CalibrationHandler calibData = d.getCalibration();
-    std::string filename;
-    if(argc == 2) {
-        filename = std::string(argv[1]);
-    } else {
-        std::runtime_error("Required destination json path file");
-    }
     calibData.eepromToJsonFile(filename);
     std::vector<std::vector<float>> intrinsics;
     int width, height;
