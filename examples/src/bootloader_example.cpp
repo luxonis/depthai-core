@@ -10,7 +10,7 @@ int main(int argc, char** argv) {
     if(argc = 2) {
         path = std::string(argv[1]);
     } else {
-        std::runtime_error("No path specified for boot config file");
+        throw std::runtime_error("No path specified for boot config file");
     }
 
     dai::DeviceBootloader bl(info, path);

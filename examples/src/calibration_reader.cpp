@@ -32,8 +32,7 @@ int main(int argc, char** argv) {
     if(argc == 2) {
         filename = std::string(argv[1]);
     } else {
-        std::cout << "I else" << std::endl;
-        // throw std::runtime_error("Required destination json path file");
+        throw std::runtime_error("Required destination json path file");
     }
 
     dai::Pipeline p = createCameraPipeline();
