@@ -73,7 +73,7 @@ class CalibrationHandler {
      * @return std::vector<std::vector<float>> - repesents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      */
     std::vector<std::vector<float>> getCameraIntrinsics(CameraBoardSocket cameraId,
-                                                        Size2f destShape = Size2f(-1, -1),
+                                                        Size2f destShape,
                                                         Point2f topLeftPixelId = Point2f(),
                                                         Point2f bottomRightPixelId = Point2f());
 
