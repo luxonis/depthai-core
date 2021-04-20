@@ -231,6 +231,14 @@ class CalibrationHandler {
      */
     void setFov(CameraBoardSocket cameraId, double hfov);
 
+    /**
+     * @brief Sets the distortion Coefficients obtained from camera calibration
+     *
+     * @param cameraId - Camera Id of the camera
+     * @param lensPosition - lens posiotion value of the camera at the time of calibration
+     */
+    void setlensPosition(CameraBoardSocket cameraId, uint8_t lensPosition);
+
     // /**
     //  * @brief Set the Camera Type object
     //  *
