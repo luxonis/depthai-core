@@ -9,14 +9,13 @@
 #include "depthai/depthai.hpp"
 
 dai::Pipeline createCameraPipeline() {
-   dai::Pipeline p;
+    dai::Pipeline p;
 
     auto monoLeft = p.create<dai::node::MonoCamera>();
     auto monoRight = p.create<dai::node::MonoCamera>();
     auto stereo = p.create<dai::node::StereoDepth>();
     auto xoutDepth = p.create<dai::node::XLinkOut>();
     xoutDepth->setStreamName("depth");
-
 
     // MonoCamera
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);

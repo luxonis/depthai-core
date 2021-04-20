@@ -9,8 +9,8 @@
 // project
 #include "AssetManager.hpp"
 #include "Node.hpp"
-#include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
+#include "depthai/openvino/OpenVINO.hpp"
 
 // shared
 #include "depthai-shared/pipeline/PipelineSchema.hpp"
@@ -208,7 +208,7 @@ class Pipeline {
         impl()->forceRequiredOpenVINOVersion = version;
     }
 
-    void setCalibrationData(CalibrationHandler calib){
+    void setCalibrationData(CalibrationHandler calib) {
         impl()->setCalibrationData(calib);
     }
 };

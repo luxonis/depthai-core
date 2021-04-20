@@ -72,9 +72,10 @@ class CalibrationHandler {
      * the respective cropped image
      * @return std::vector<std::vector<float>> - repesents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      */
-    std::vector<std::vector<float>> getCameraIntrinsics(
-        CameraBoardSocket cameraId, Size2f destShape, Point2f topLeftPixelId = Point2f(), Point2f bottomRightPixelId = Point2f());
-
+    std::vector<std::vector<float>> getCameraIntrinsics(CameraBoardSocket cameraId,
+                                                        Size2f destShape,
+                                                        Point2f topLeftPixelId = Point2f(),
+                                                        Point2f bottomRightPixelId = Point2f());
 
     /**
      * @brief Get the Default Intrinsics object
@@ -145,17 +146,17 @@ class CalibrationHandler {
 
     // TODO (Sachin) : Fill therse docstrings
     /**
-     * 
+     *
      * @brief Get the Stereo Right Rectification Rotation object
-     * 
-     * @return std::vector<std::vector<float>> 
+     *
+     * @return std::vector<std::vector<float>>
      */
     std::vector<std::vector<float>> getStereoRightRectificationRotation();
 
     /**
      * @brief Get the Stereo Left Rectification Rotation object
-     * 
-     * @return std::vector<std::vector<float>> 
+     *
+     * @return std::vector<std::vector<float>>
      */
     std::vector<std::vector<float>> getStereoLeftRectificationRotation();
     // getStereoLeftCameraId();

@@ -552,7 +552,7 @@ void CalibrationHandler::setFov(CameraBoardSocket cameraId, double hfov) {
     return;
 }
 
-void CalibrationHandler::setlensPosition(CameraBoardSocket cameraId, uint8_t lensPosition){
+void CalibrationHandler::setlensPosition(CameraBoardSocket cameraId, uint8_t lensPosition) {
     if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end()) {
         dai::CameraInfo camera_info;
         camera_info.lensPosition = lensPosition;
@@ -562,7 +562,6 @@ void CalibrationHandler::setlensPosition(CameraBoardSocket cameraId, uint8_t len
     }
     return;
 }
-
 
 bool CalibrationHandler::eepromToJsonFile(std::string destPath) {
     nlohmann::json j = eepromData;

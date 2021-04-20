@@ -176,11 +176,11 @@ class Device {
 
     /**
      * Get the Device Info object o the device which is currently running
-     * 
+     *
      * @return DeviceInfo - DeviceInfo of the current device in execution
      */
     DeviceInfo getCurrentDeviceInfo();
-    
+
     /**
      * Sets logging level which decides printing level to standard output.
      * If lower than setLogLevel, no messages will be printed
