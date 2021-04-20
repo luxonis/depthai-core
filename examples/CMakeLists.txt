@@ -19,7 +19,7 @@ macro(dai_add_example example_name example_src)
     # parse the rest of the arguments
     set(arguments ${ARGV})
     list(REMOVE_AT arguments 0 1)
-    
+
     # If 'DEPTHAI_TEST_EXAMPLES' is ON, then examples will be part of the test suite
     if(DEPTHAI_TEST_EXAMPLES)
         add_test(NAME ${example_name} COMMAND ${CMAKE_COMMAND}
@@ -28,8 +28,8 @@ macro(dai_add_example example_name example_src)
         )
 
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
-        set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]") 
-            
+        set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]")
+
         # Add sanitizers for tests as well
         add_sanitizers(${example_name})
 
@@ -37,7 +37,7 @@ macro(dai_add_example example_name example_src)
         set_tests_properties(${example_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1")
 
     endif()
-endmacro() 
+endmacro()
 
 # Create a custom target which runs all examples for 10 seconds max, and check if they executed without errors
 
@@ -172,3 +172,5 @@ target_compile_definitions(object_tracker_example PRIVATE BLOB_PATH="${mobilenet
 dai_add_example(spatial_object_tracker_example src/spatial_object_tracker_example.cpp)
 target_compile_definitions(spatial_object_tracker_example PRIVATE BLOB_PATH="${mobilenet_blob}")
 
+# IMU example
+dai_add_example(imu src/imu_example.cpp)
