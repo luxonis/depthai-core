@@ -167,7 +167,7 @@ dai::EepromData CalibrationHandler::getEepromData() const {
 
 // FIXME(sachin): Returns wrong value when resizing from 1080 to 720 with only height passed
 std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(
-    CameraBoardSocket cameraId, int resizewidth, int resizeHeight, Point2f topLeftPixelId, Point2f bottomRightPixelId) {
+    CameraBoardSocket cameraId, int resizeWidth, int resizeHeight, Point2f topLeftPixelId, Point2f bottomRightPixelId) {
     if(eepromData.version < 4) {
         std::runtime_error("Your device contains old calibration which doesn't include Intrinsic data. Please recalibrate your device");
     }
@@ -176,29 +176,29 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(
     }
     std::vector<std::vector<float>> intrinsicMatrix = eepromData.cameraData[cameraId].intrinsicMatrix;
 
-    if(resizewidth != -1 || resizeHeight != -1) {
-        if(resizewidth == -1) {
-            resizewidth = eepromData.cameraData[cameraId].width * resizeHeight / static_cast<float>(eepromData.cameraData[cameraId].height);
+    if(resizeWidth != -1 || resizeHeight != -1) {
+        if(resizeWidth == -1) {
+            resizeWidth = eepromData.cameraData[cameraId].width * resizeHeight / static_cast<float>(eepromData.cameraData[cameraId].height);
         }
         if(resizeHeight == -1) {
-            resizeHeight = eepromData.cameraData[cameraId].height * resizewidth / static_cast<float>(eepromData.cameraData[cameraId].width);
+            resizeHeight = eepromData.cameraData[cameraId].height * resizeWidth / static_cast<float>(eepromData.cameraData[cameraId].width);
         }
 
         float scale = resizeHeight / static_cast<float>(eepromData.cameraData[cameraId].height);
-        if(scale * eepromData.cameraData[cameraId].width < resizewidth) {
-            scale = resizewidth / static_cast<float>(eepromData.cameraData[cameraId].width);
+        if(scale * eepromData.cameraData[cameraId].width < resizeWidth) {
+            scale = resizeWidth / static_cast<float>(eepromData.cameraData[cameraId].width);
         }
         std::vector<std::vector<float>> scaleMat = {{scale, 0, 0}, {0, scale, 0}, {0, 0, 1}};
         intrinsicMatrix = matMul(intrinsicMatrix, scaleMat);
 
         if(scale * eepromData.cameraData[cameraId].height > resizeHeight) {
             intrinsicMatrix[1][2] -= (eepromData.cameraData[cameraId].height * scale - resizeHeight) / 2;
-        } else if(scale * eepromData.cameraData[cameraId].width > resizewidth) {
-            intrinsicMatrix[0][2] -= (eepromData.cameraData[cameraId].width * scale - resizewidth) / 2;
+        } else if(scale * eepromData.cameraData[cameraId].width > resizeWidth) {
+            intrinsicMatrix[0][2] -= (eepromData.cameraData[cameraId].width * scale - resizeWidth) / 2;
         }
     }
-    if(resizewidth != -1 || resizeHeight != -1) {
-        if(topLeftPixelId.y > resizeHeight || bottomRightPixelId.x > resizewidth) {
+    if(resizeWidth != -1 || resizeHeight != -1) {
+        if(topLeftPixelId.y > resizeHeight || bottomRightPixelId.x > resizeWidth) {
             throw std::runtime_error("Invalid Crop size. Crop width or height is more than the original resized height and width");
         }
     } else {
