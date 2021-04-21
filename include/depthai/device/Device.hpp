@@ -21,6 +21,7 @@
 #include "depthai-shared/common/MemoryInfo.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
+#include "depthai/device/CalibrationHandler.hpp"
 
 // libraries
 #include "nanorpc/core/client.h"
@@ -172,6 +173,13 @@ class Device {
      * @return Logging severity level
      */
     LogLevel getLogLevel();
+
+    /**
+     * Get the Device Info object o the device which is currently running
+     *
+     * @return DeviceInfo - DeviceInfo of the current device in execution
+     */
+    DeviceInfo getCurrentDeviceInfo();
 
     /**
      * Sets logging level which decides printing level to standard output.
@@ -383,6 +391,20 @@ class Device {
      * @return Average CPU usage and sampling duration
      */
     CpuUsage getLeonMssCpuUsage();
+
+    /**
+     * Stores the Calibration and Device information to the Device EEPROM
+     *
+     * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
+     */
+    bool flashCalibration(CalibrationHandler calibrationDataHandler);
+
+    /**
+     * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
+     *
+     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
+     */
+    CalibrationHandler getCalibration();
 
     /**
      * Explicitly closes connection to device.

@@ -59,12 +59,20 @@ endmacro()
 
 # Color camera preview output example
 dai_add_example(camera_preview src/camera_preview_example.cpp)
+dai_add_example(bootloader_example src/bootloader_example.cpp)
 
 # Color camera video output example
 dai_add_example(camera_video src/camera_video_example.cpp)
 
 # Mono camera video output example
 dai_add_example(mono_camera src/mono_camera_example.cpp)
+
+dai_add_example(calibration_flash src/calibration_flash.cpp)
+dai_add_example(calibration_flash_version5 src/calibration_flash_v5.cpp)
+dai_add_example(calibration_load src/calibration_load.cpp)
+
+dai_add_example(calibration_reader src/calibration_reader.cpp)
+
 
 # NeuralNetwork node, mobilenet example
 hunter_private_data(

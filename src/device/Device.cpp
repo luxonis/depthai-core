@@ -827,6 +827,10 @@ LogLevel Device::getLogLevel() {
     return client->call("getLogLevel").as<LogLevel>();
 }
 
+DeviceInfo Device::getCurrentDeviceInfo() {
+    return deviceInfo;
+}
+
 void Device::setLogOutputLevel(LogLevel level) {
     checkClosed();
 
@@ -879,6 +883,21 @@ float Device::getSystemInformationLoggingRate() {
     checkClosed();
 
     return client->call("getSystemInformationLoggingrate").as<float>();
+}
+
+bool Device::flashCalibration(CalibrationHandler calibrationDataHandler) {
+    // std::unique_lock<std::mutex> lock(this->rpcMutex);
+    int res = client->call("storeToEeprom", calibrationDataHandler.getEepromData());
+    if(res == 0) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+CalibrationHandler Device::getCalibration() {
+    dai::EepromData eepromData = client->call("readFromEeprom");
+    return CalibrationHandler(eepromData);
 }
 
 bool Device::startPipeline() {
