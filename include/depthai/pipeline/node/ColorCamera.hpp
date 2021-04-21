@@ -158,8 +158,9 @@ class ColorCamera : public Node {
 
     /**
      * Set 'isp' output scaling (numerator/denominator), preserving the aspect ratio.
-     * @param numerator Range 1..16
-     * @param denominator Range 1..63
+     * The fraction numerator/denominator is simplified first to a irreducible form,
+     * then a set of hardware scaler constraints applies:
+     * max numerator = 16, max denominator = 63
      */
     void setIspScale(int numerator, int denominator);
 
