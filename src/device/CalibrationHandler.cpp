@@ -66,7 +66,7 @@ CalibrationHandler::CalibrationHandler(std::string calibrationDataPath, std::str
                 eepromData.boardName = boardConfigData.at("board_config").at("name").get<std::string>();
                 eepromData.boardRev = boardConfigData.at("board_config").at("revision").get<std::string>();
                 eepromData.swapLeftRightCam = boardConfigData.at("board_config").at("swap_left_and_right_cameras").get<bool>();
-                eepromData.version = 5;
+                eepromData.version = 6;
 
                 eepromData.cameraData[CameraBoardSocket::RIGHT].measuredFovDeg = boardConfigData.at("board_config").at("left_fov_deg").get<float>();
                 eepromData.cameraData[CameraBoardSocket::LEFT].measuredFovDeg = boardConfigData.at("board_config").at("left_fov_deg").get<float>();
@@ -76,6 +76,11 @@ CalibrationHandler::CalibrationHandler(std::string calibrationDataPath, std::str
                     boardConfigData.at("board_config").at("left_to_right_distance_cm").get<float>();
                 eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.measuredTranslation.y = 0;
                 eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.measuredTranslation.z = 0;
+
+                eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.measuredTranslation.x =
+                    -boardConfigData.at("board_config").at("left_to_rgb_distance_cm").get<float>();
+                eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.measuredTranslation.y = 0;
+                eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.measuredTranslation.z = 0;
             }
         } else {
             throw std::runtime_error("Failed to open the board config file");
@@ -211,7 +216,6 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(
         throw std::runtime_error("Invalid Crop ratio.");
     }
 
-    std::cout << topLeftPixelId.x << " - " << bottomRightPixelId.y << std::endl;
     intrinsicMatrix[0][2] -= topLeftPixelId.x;
     intrinsicMatrix[1][2] -= bottomRightPixelId.y;
 
@@ -223,6 +227,13 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(CameraBo
                                                                         Point2f topLeftPixelId,
                                                                         Point2f bottomRightPixelId) {
     return getCameraIntrinsics(cameraId, destShape.width, destShape.height, topLeftPixelId, bottomRightPixelId);
+}
+
+std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(CameraBoardSocket cameraId,
+                                                                        std::tuple<int, int> destShape,
+                                                                        Point2f topLeftPixelId,
+                                                                        Point2f bottomRightPixelId) {
+    return getCameraIntrinsics(cameraId, std::get<0>(destShape), std::get<1>(destShape), topLeftPixelId, bottomRightPixelId);
 }
 
 std::vector<std::vector<float>> CalibrationHandler::getCameraToImuExtrinsics(CameraBoardSocket cameraId, bool useMeasuredTranslation) {
@@ -444,6 +455,11 @@ void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, std::ve
 
 void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, std::vector<std::vector<float>> intrinsics, Size2f frameSize) {
     setCameraIntrinsics(cameraId, intrinsics, frameSize.width, frameSize.height);
+    return;
+}
+
+void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, std::vector<std::vector<float>> intrinsics, std::tuple<int, int> frameSize) {
+    setCameraIntrinsics(cameraId, intrinsics, std::get<0>(frameSize), std::get<1>(frameSize));
     return;
 }
 

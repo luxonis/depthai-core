@@ -50,11 +50,11 @@ int main() {
     calibData.setdistortionCoefficients(dai::CameraBoardSocket::RIGHT, inOneD);
 
     inMatrix = {{0.999903, 0.011196, 0.008257}, {-0.011240, 0.999922, 0.005380}, {-0.008196, -0.005472, 0.999951}};
-    inOneD = {-7.494308, 0.095795, 0.132222};
+    inOneD = {7.494308, 0.095795, 0.132222};
     calibData.setCameraExtrinsics(dai::CameraBoardSocket::LEFT, dai::CameraBoardSocket::RIGHT, inMatrix, inOneD);
 
     inMatrix = {{0.999986, 0.004985, 0.001887}, {-0.004995, 0.999974, 0.005245}, {-0.001861, -0.005254, 0.999984}};
-    inOneD = {3.782213, 0.002144, 0.122242};
+    inOneD = {-3.782213, -0.002144, -0.122242};
     calibData.setCameraExtrinsics(dai::CameraBoardSocket::RIGHT, dai::CameraBoardSocket::RGB, inMatrix, inOneD);
 
     inMatrix = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};

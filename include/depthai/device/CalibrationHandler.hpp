@@ -78,6 +78,22 @@ class CalibrationHandler {
                                                         Point2f bottomRightPixelId = Point2f());
 
     /**
+     * @brief Get the Camera Intrinsics object
+     *
+     * @param cameraId - Uses the cameraId to identify which camera intrinsics to return
+     * @param destShape - resized width and height of the image for which intrinsics is requested.
+     * @param topLeftPixelId - (x, y) point represents the top left corner coordinates of the cropped image which is used to modify the intrinsics for the
+     * respective cropped image
+     * @param bottomRightPixelId - (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
+     * the respective cropped image
+     * @return std::vector<std::vector<float>> - repesents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
+     */
+    std::vector<std::vector<float>> getCameraIntrinsics(CameraBoardSocket cameraId,
+                                                                            std::tuple<int, int> destShape,
+                                                                            Point2f topLeftPixelId = Point2f(),
+                                                                            Point2f bottomRightPixelId = Point2f());
+
+    /**
      * @brief Get the Default Intrinsics object
      *
      * @param cameraId
@@ -215,6 +231,21 @@ class CalibrationHandler {
      *                          \end{bmatrix}
      */
     void setCameraIntrinsics(CameraBoardSocket cameraId, std::vector<std::vector<float>> intrinsics, int width, int height);
+
+    /**
+     * @brief Set the Camera Intrinsics object
+     *
+     * @param cameraId - CameraId of the camera for which Camera intrinsics are being loaded
+     * @param intrinsics - 3x3 intrinsics matrix in the form of std::vector<std::vector<float>>
+     * @param frameSize - repesents the width and height of the image at which intrinsics are calculated.
+     *
+     * intrinsic matrix = \begin{bmatrix}
+     *                              f_x &  0  & c_x \\
+     *                              0   & f_y & c_y \\
+     *                              0   &  0  &  1
+     *                          \end{bmatrix}
+     */
+    void setCameraIntrinsics(CameraBoardSocket cameraId, std::vector<std::vector<float>> intrinsics, std::tuple<int, int> frameSize);
 
     /**
      * @brief Sets the distortion Coefficients obtained from camera calibration
