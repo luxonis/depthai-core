@@ -26,14 +26,14 @@ int main(int argc, char** argv) {
     printf("Using blob at path: %s\n", nnPath.c_str());
 
     // Create pipeline
-    dai::Pipeline p;
+    dai::Pipeline pipeline;
 
     // Define source
-    auto camRight = p.create<dai::node::MonoCamera>();
-    auto manip = p.create<dai::node::ImageManip>();
-    auto manipOut = p.create<dai::node::XLinkOut>();
-    auto detectionNetwork = p.create<dai::node::MobileNetDetectionNetwork>();
-    auto nnOut = p.create<dai::node::XLinkOut>();
+    auto camRight = pipeline.create<dai::node::MonoCamera>();
+    auto manip = pipeline.create<dai::node::ImageManip>();
+    auto manipOut = pipeline.create<dai::node::XLinkOut>();
+    auto detectionNetwork = pipeline.create<dai::node::MobileNetDetectionNetwork>();
+    auto nnOut = pipeline.create<dai::node::XLinkOut>();
 
     // Properties
     camRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
@@ -53,12 +53,13 @@ int main(int argc, char** argv) {
     detectionNetwork->out.link(nnOut->input);
 
     // Connect to device with above created pipeline
-    dai::Device d(p);
+    dai::Device device(pipeline);
     // Start the pipeline
-    d.startPipeline();
+    device.startPipeline();
 
-    auto qRight = d.getOutputQueue("right", 4, false);
-    auto detections = d.getOutputQueue("detections", 4, false);
+    // Queues
+    auto qRight = device.getOutputQueue("right", 4, false);
+    auto detections = device.getOutputQueue("detections", 4, false);
 
     // Add bounding boxes and text to the frame and show it to the user
     auto displayFrame = [](std::string name, auto frame, auto detections) {

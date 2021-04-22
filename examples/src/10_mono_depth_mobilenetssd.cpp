@@ -28,17 +28,17 @@ int main(int argc, char** argv) {
     printf("Using blob at path: %s\n", nnPath.c_str());
 
     // Create pipeline
-    dai::Pipeline p;
+    dai::Pipeline pipeline;
 
     // Define source
-    auto camRight = p.create<dai::node::MonoCamera>();
-    auto camLeft = p.create<dai::node::MonoCamera>();
-    auto stereo = p.create<dai::node::StereoDepth>();
-    auto manip = p.create<dai::node::ImageManip>();
-    auto nn = p.create<dai::node::MobileNetDetectionNetwork>();
-    auto nnOut = p.create<dai::node::XLinkOut>();
-    auto disparityOut = p.create<dai::node::XLinkOut>();
-    auto xoutRight = p.create<dai::node::XLinkOut>();
+    auto camRight = pipeline.create<dai::node::MonoCamera>();
+    auto camLeft = pipeline.create<dai::node::MonoCamera>();
+    auto stereo = pipeline.create<dai::node::StereoDepth>();
+    auto manip = pipeline.create<dai::node::ImageManip>();
+    auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
+    auto nnOut = pipeline.create<dai::node::XLinkOut>();
+    auto disparityOut = pipeline.create<dai::node::XLinkOut>();
+    auto xoutRight = pipeline.create<dai::node::XLinkOut>();
 
     // Properties
     camRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
@@ -53,7 +53,6 @@ int main(int argc, char** argv) {
     nn->setConfidenceThreshold(0.5);
     nn->setBlobPath(nnPath);
     nn->setNumInferenceThreads(2);
-    nn->input.setBlocking(false);
     disparityOut->setStreamName("disparity");
     xoutRight->setStreamName("rectifiedRight");
     nnOut->setStreamName("nn");
@@ -68,14 +67,14 @@ int main(int argc, char** argv) {
     nn->out.link(nnOut->input);
 
     // Connect to device with above created pipeline
-    dai::Device d(p);
+    dai::Device device(pipeline);
     // Start the pipeline
-    d.startPipeline();
+    device.startPipeline();
 
-    // Queuess
-    auto qRight = d.getOutputQueue("rectifiedRight", 4, false);
-    auto qDisparity = d.getOutputQueue("disparity", 4, false);
-    auto qDet = d.getOutputQueue("nn", 4, false);
+    // Queues
+    auto qRight = device.getOutputQueue("rectifiedRight", 4, false);
+    auto qDisparity = device.getOutputQueue("disparity", 4, false);
+    auto qDet = device.getOutputQueue("nn", 4, false);
 
     // Add bounding boxes and text to the frame and show it to the user
     auto show = [](std::string name, auto frame, auto detections) {
