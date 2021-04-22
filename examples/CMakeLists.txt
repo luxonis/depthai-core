@@ -122,6 +122,10 @@ dai_add_example(h264_encoding src/h264_encoding_example.cpp)
 # StereoDepth example
 dai_add_example(stereo src/stereo_example.cpp)
 
+# StereoDepth rgb example
+dai_add_example(stereo_rgb src/stereo_rgb_example.cpp)
+
+
 # Image Manip node examples
 dai_add_example(image_manip src/image_manip_example.cpp)
 dai_add_example(image_manip_warp src/image_manip_warp_example.cpp)

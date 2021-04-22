@@ -17,7 +17,10 @@ int main() {
     dai::Pipeline p;
 
     auto monoLeft = p.create<dai::node::MonoCamera>();
-    auto monoRight = p.create<dai::node::MonoCamera>();
+    auto cam = p.create<dai::node::ColorCamera>();
+
+
+    // auto monoRight = p.create<dai::node::MonoCamera>();
     auto xoutLeft = p.create<dai::node::XLinkOut>();
     auto xoutRight = p.create<dai::node::XLinkOut>();
     auto stereo = withDepth ? p.create<dai::node::StereoDepth>() : nullptr;
@@ -39,9 +42,16 @@ int main() {
     // MonoCamera
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
     monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    monoLeft->setImageOrientation(dai::CameraImageOrientation::ROTATE_180_DEG);
+
+    cam->setBoardSocket(dai::CameraBoardSocket::RGB);
+    cam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    cam->setIspScale(2, 3);
+    cam->setImageOrientation(dai::CameraImageOrientation::ROTATE_180_DEG);
+
     // monoLeft->setFps(5.0);
-    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    // monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::1080);
+    // monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
     // monoRight->setFps(5.0);
 
     bool outputDepth = false;
@@ -68,7 +78,7 @@ int main() {
 
         // Link plugins CAM -> STEREO -> XLINK
         monoLeft->out.link(stereo->left);
-        monoRight->out.link(stereo->right);
+        cam->isp.link(stereo->right);
 
         stereo->syncedLeft.link(xoutLeft->input);
         stereo->syncedRight.link(xoutRight->input);
@@ -82,7 +92,7 @@ int main() {
     } else {
         // Link plugins CAM -> XLINK
         monoLeft->out.link(xoutLeft->input);
-        monoRight->out.link(xoutRight->input);
+        cam->isp.link(xoutRight->input);
     }
 
     // CONNECT TO DEVICE
@@ -104,7 +114,7 @@ int main() {
         auto t3 = steady_clock::now();
         auto right = rightQueue->get<dai::ImgFrame>();
         auto t4 = steady_clock::now();
-        cv::imshow("right", cv::Mat(right->getHeight(), right->getWidth(), CV_8UC1, right->getData().data()));
+        cv::imshow("right", right->getCvFrame());
         auto t5 = steady_clock::now();
 
         if(withDepth) {
