@@ -11,6 +11,8 @@ static const std::vector<std::string> labelMap = {"background", "aeroplane", "bi
                                                   "car",        "cat",       "chair",       "cow",   "diningtable", "dog",    "horse",
                                                   "motorbike",  "person",    "pottedplant", "sheep", "sofa",        "train",  "tvmonitor"};
 
+static std::atomic<bool> flipRectified{true};
+
 int main(int argc, char** argv) {
     using namespace std;
     // Default blob path provided by Hunter private data download
@@ -30,38 +32,53 @@ int main(int argc, char** argv) {
 
     // Define source
     auto camRight = p.create<dai::node::MonoCamera>();
+    auto camLeft = p.create<dai::node::MonoCamera>();
+    auto stereo = p.create<dai::node::StereoDepth>();
     auto manip = p.create<dai::node::ImageManip>();
-    auto manipOut = p.create<dai::node::XLinkOut>();
-    auto detectionNetwork = p.create<dai::node::MobileNetDetectionNetwork>();
+    auto nn = p.create<dai::node::MobileNetDetectionNetwork>();
     auto nnOut = p.create<dai::node::XLinkOut>();
+    auto disparityOut = p.create<dai::node::XLinkOut>();
+    auto xoutRight = p.create<dai::node::XLinkOut>();
 
     // Properties
     camRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
-    camRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    detectionNetwork->setConfidenceThreshold(0.5);
-    detectionNetwork->setBlobPath(nnPath);
-    detectionNetwork->setNumInferenceThreads(2);
+    camRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    camLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    camLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    stereo->setOutputRectified(true);
+    stereo->setConfidenceThreshold(255);
+    stereo->setRectifyEdgeFillColor(0);
     manip->initialConfig.setResize(300, 300);
     manip->initialConfig.setFrameType(dai::RawImgFrame::Type::BGR888p);
-    manipOut->setStreamName("right");
-    nnOut->setStreamName("detections");
+    nn->setConfidenceThreshold(0.5);
+    nn->setBlobPath(nnPath);
+    nn->setNumInferenceThreads(2);
+    nn->input.setBlocking(false);
+    disparityOut->setStreamName("disparity");
+    xoutRight->setStreamName("rectifiedRight");
+    nnOut->setStreamName("nn");
 
     // Create outputs
-    camRight->out.link(manip->inputImage);
-    manip->out.link(detectionNetwork->input);
-    manip->out.link(manipOut->input);
-    detectionNetwork->out.link(nnOut->input);
+    camRight->out.link(stereo->right);
+    camLeft->out.link(stereo->left);
+    stereo->rectifiedRight.link(manip->inputImage);
+    stereo->disparity.link(disparityOut->input);
+    manip->out.link(nn->input);
+    manip->out.link(xoutRight->input);
+    nn->out.link(nnOut->input);
 
     // Connect to device with above created pipeline
     dai::Device d(p);
     // Start the pipeline
     d.startPipeline();
 
-    auto qRight = d.getOutputQueue("right", 4, false);
-    auto detections = d.getOutputQueue("detections", 4, false);
+    // Queuess
+    auto qRight = d.getOutputQueue("rectifiedRight", 4, false);
+    auto qDisparity = d.getOutputQueue("disparity", 4, false);
+    auto qDet = d.getOutputQueue("nn", 4, false);
 
     // Add bounding boxes and text to the frame and show it to the user
-    auto displayFrame = [](std::string name, auto frame, auto detections) {
+    auto show = [](std::string name, auto frame, auto detections) {
         auto color = cv::Scalar(255, 0, 0);
         // nn data, being the bounding box locations, are in <0..1> range - they need to be normalized with frame width/height
         for(auto& detection : detections) {
@@ -85,13 +102,29 @@ int main(int argc, char** argv) {
         cv::imshow(name, frame);
     };
 
+    float disparity_multiplier = 255 / 95;
     while(true) {
         auto inRight = qRight->get<dai::ImgFrame>();
-        auto inDet = detections->get<dai::ImgDetections>();
+        auto inDet = qDet->get<dai::ImgDetections>();
+        auto inDisparity = qDisparity->get<dai::ImgFrame>();
         auto detections = inDet->detections;
-        cv::Mat frame = inRight->getCvFrame();
+        cv::Mat rightFrame = inRight->getCvFrame();
+        cv::Mat disparityFrame = inDisparity->getCvFrame();
 
-        displayFrame("right", frame, detections);
+        if (flipRectified){
+            cv::flip(rightFrame, rightFrame, 1);
+
+            for(auto& detection : detections) {
+                auto swap = detection.xmin;
+                detection.xmin = 1 - detection.xmax;
+                detection.xmax = 1 - swap;
+            }
+        }
+        disparityFrame.convertTo(disparityFrame, CV_8UC1, disparity_multiplier);
+        //Available color maps: https://docs.opencv.org/3.4/d3/d50/group__imgproc__colormap.html
+        cv::applyColorMap(disparityFrame, disparityFrame, cv::COLORMAP_JET);
+        show("disparity", disparityFrame, detections);
+        show("rectified right", rightFrame, detections);
 
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q')
