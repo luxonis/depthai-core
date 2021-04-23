@@ -31,14 +31,15 @@ int main(int argc, char** argv) {
     auto ve3Out = p.create<dai::node::XLinkOut>();
 
     colorCam->setBoardSocket(dai::CameraBoardSocket::RGB);
+    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_4_K);
     monoCam->setBoardSocket(dai::CameraBoardSocket::LEFT);
     monoCam2->setBoardSocket(dai::CameraBoardSocket::RIGHT);
     ve1Out->setStreamName("ve1Out");
     ve2Out->setStreamName("ve2Out");
     ve3Out->setStreamName("ve3Out");
-    ve1->setDefaultProfilePreset(1280, 720, 30, dai::VideoEncoderProperties::Profile::H264_MAIN);
-    ve2->setDefaultProfilePreset(1920, 1080, 30, dai::VideoEncoderProperties::Profile::H265_MAIN);
-    ve3->setDefaultProfilePreset(1280, 720, 30, dai::VideoEncoderProperties::Profile::H264_MAIN);
+    ve1->setDefaultProfilePreset(1280, 720, 25, dai::VideoEncoderProperties::Profile::H264_MAIN);
+    ve2->setDefaultProfilePreset(3840, 2160, 25, dai::VideoEncoderProperties::Profile::H265_MAIN);
+    ve3->setDefaultProfilePreset(1280, 720, 25, dai::VideoEncoderProperties::Profile::H264_MAIN);
 
     // Create outputs
     monoCam->out.link(ve1->input);
@@ -75,9 +76,9 @@ int main(int argc, char** argv) {
     }
 
     std::cout << "To view the encoded data, convert the stream file (.h264/.h265) into a video file (.mp4), using a command below:" << std::endl;
-    std::cout << "ffmpeg -framerate 30 -i mono1.h264 -c copy mono1.mp4" << std::endl;
-    std::cout << "ffmpeg -framerate 30 -i mono2.h264 -c copy mono2.mp4" << std::endl;
-    std::cout << "ffmpeg -framerate 30 -i color.h265 -c copy color.mp4" << std::endl;
+    std::cout << "ffmpeg -framerate 25 -i mono1.h264 -c copy mono1.mp4" << std::endl;
+    std::cout << "ffmpeg -framerate 25 -i mono2.h264 -c copy mono2.mp4" << std::endl;
+    std::cout << "ffmpeg -framerate 25 -i color.h265 -c copy color.mp4" << std::endl;
 
     return 0;
 }
