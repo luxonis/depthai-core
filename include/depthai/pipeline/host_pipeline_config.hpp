@@ -92,7 +92,9 @@ struct HostPipelineConfig
         bool sync_sequence_numbers = false;
         bool enable_reconfig = true; // Allow reopening config_d2h and config_h2d after the initial setup
         bool enable_imu = false;
+        int imu_fw_upgrade = 0; // 0 - don't upgrade, 85 or 86. Depends on `enable_imu`
         bool enable_flash_test = false;
+        bool flash_usb_boot = false; // false - flash SoM LED blinker. Depends on `enable_flash_test`
         uint32_t usb_chunk_KiB = 64; // Increase to improve throughput, 0 to disable chunking
     } app_config;
 

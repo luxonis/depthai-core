@@ -1094,7 +1094,9 @@ std::shared_ptr<CNNHostPipeline> Device::create_pipeline(
         json_config_obj["app"]["usb_chunk_KiB"] = config.app_config.usb_chunk_KiB;
         json_config_obj["app"]["enable_reconfig"] = config.app_config.enable_reconfig;
         json_config_obj["app"]["enable_imu"] = config.app_config.enable_imu;
+        json_config_obj["app"]["imu_fw_upgrade"] = config.app_config.imu_fw_upgrade;
         json_config_obj["app"]["enable_flash_test"] = config.app_config.enable_flash_test;
+        json_config_obj["app"]["flash_usb_boot"] = config.app_config.flash_usb_boot;
 
         bool add_disparity_post_processing_color = false;
         bool temp_measurement = false;

@@ -412,9 +412,22 @@ bool HostPipelineConfig::initWithJSON(const nlohmann::json &json_obj)
                 app_config.enable_imu = app_conf_obj.at("enable_imu").get<bool>();
             }
 
+            if (app_conf_obj.contains("imu_fw_upgrade"))
+            {
+                app_config.imu_fw_upgrade = app_conf_obj.at("imu_fw_upgrade").get<int>();
+                if (!(app_config.imu_fw_upgrade == 0 || app_config.imu_fw_upgrade == 85 || app_config.imu_fw_upgrade == 86)) {
+                    throw std::runtime_error("app.imu_fw_upgrade expected to be 85 or 86");
+                }
+            }
+
             if (app_conf_obj.contains("enable_flash_test"))
             {
                 app_config.enable_flash_test = app_conf_obj.at("enable_flash_test").get<bool>();
+            }
+
+            if (app_conf_obj.contains("flash_usb_boot"))
+            {
+                app_config.flash_usb_boot = app_conf_obj.at("flash_usb_boot").get<bool>();
             }
 
             if (app_conf_obj.contains("usb_chunk_KiB"))
