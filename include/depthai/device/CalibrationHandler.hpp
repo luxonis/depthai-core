@@ -253,7 +253,7 @@ class CalibrationHandler {
      * @param cameraId - Camera Id of the camera for which distoriton coefficients are computed
      * @param distortionCoefficients - Distortion Coefficients of the respective Camera.
      */
-    void setdistortionCoefficients(CameraBoardSocket cameraId, std::vector<float> distortionCoefficients);
+    void setDistortionCoefficients(CameraBoardSocket cameraId, std::vector<float> distortionCoefficients);
 
     /**
      * @brief Set the Fov of the Camera
@@ -269,7 +269,7 @@ class CalibrationHandler {
      * @param cameraId - Camera Id of the camera
      * @param lensPosition - lens posiotion value of the camera at the time of calibration
      */
-    void setlensPosition(CameraBoardSocket cameraId, uint8_t lensPosition);
+    void setLensPosition(CameraBoardSocket cameraId, uint8_t lensPosition);
 
     // /**
     //  * @brief Set the Camera Type object

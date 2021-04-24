@@ -520,7 +520,7 @@ void CalibrationHandler::setImuExtrinsics(CameraBoardSocket destCameraId,
     return;
 }
 
-void CalibrationHandler::setdistortionCoefficients(CameraBoardSocket cameraId, std::vector<float> distortionCoefficients) {
+void CalibrationHandler::setDistortionCoefficients(CameraBoardSocket cameraId, std::vector<float> distortionCoefficients) {
     if(distortionCoefficients.size() != 14) {
         throw std::runtime_error("distortionCoefficients size should always be 14");  // should it be ??
     }
@@ -571,7 +571,7 @@ void CalibrationHandler::setFov(CameraBoardSocket cameraId, double hfov) {
     return;
 }
 
-void CalibrationHandler::setlensPosition(CameraBoardSocket cameraId, uint8_t lensPosition) {
+void CalibrationHandler::setLensPosition(CameraBoardSocket cameraId, uint8_t lensPosition) {
     if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end()) {
         dai::CameraInfo camera_info;
         camera_info.lensPosition = lensPosition;
