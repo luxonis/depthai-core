@@ -45,26 +45,6 @@ GlobalProperties Pipeline::getGlobalProperties() const {
     return pimpl->globalProperties;
 }
 
-/*
-void Pipeline::loadAssets(AssetManager& assetManager) {
-    return pimpl->loadAssets(assetManager);
-}
-*/
-
-/*
-void PipelineImpl::loadAssets() {
-
-    // Load assets of nodes
-    for(const auto& node : nodes){
-        node->loadAssets(assetManager);
-    }
-
-    // Load assets of pipeline (if any)
-    // ...
-
-}
-*/
-
 std::shared_ptr<const Node> PipelineImpl::getNode(Node::Id id) const {
     if(nodeMap.count(id) > 0) {
         return nodeMap.at(id);
@@ -97,23 +77,19 @@ void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector
     // Set schema
     schema = getPipelineSchema();
 
-    // set assets and generate asset storage
-    getAllAssets().serialize(assets, assetStorage);
+    // Serialize all asset managers into asset storage
+    assetStorage.clear();
+    AssetsMutable mutableAssets;
+    // Pipeline assets
+    assetManager.serialize(mutableAssets, assetStorage, "/pipeline/");
+    // Node assets
+    for(const auto& kv : nodeMap) {
+        kv.second->getAssetManager().serialize(mutableAssets, assetStorage, fmt::format("/node/{}/", kv.second->id));
+    }
+    assets = mutableAssets;
 
     // detect and set openvino version
     version = getPipelineOpenVINOVersion();
-}
-
-AssetManager PipelineImpl::getAllAssets() const {
-    AssetManager am = assetManager;
-
-    for(const auto& kv : nodeMap) {
-        const auto& node = kv.second;
-        // Loop over all nodes and add any assets they have
-        am.addExisting(node->getAssets());
-    }
-
-    return am;
 }
 
 PipelineSchema PipelineImpl::getPipelineSchema() const {
@@ -150,6 +126,9 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
                     break;
             }
 
+            if(info.ioInfo.count(io.name) > 0) {
+                throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
+            }
             info.ioInfo[io.name] = io;
         }
 
@@ -167,6 +146,9 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
                     break;
             }
 
+            if(info.ioInfo.count(io.name) > 0) {
+                throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
+            }
             info.ioInfo[io.name] = io;
         }
 
