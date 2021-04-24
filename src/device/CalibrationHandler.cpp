@@ -78,7 +78,8 @@ CalibrationHandler::CalibrationHandler(std::string calibrationDataPath, std::str
                 eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.measuredTranslation.z = 0;
 
                 eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.measuredTranslation.x =
-                    -boardConfigData.at("board_config").at("left_to_rgb_distance_cm").get<float>();
+                    boardConfigData.at("board_config").at("left_to_rgb_distance_cm").get<float>()
+                    - boardConfigData.at("board_config").at("left_to_right_distance_cm").get<float>();
                 eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.measuredTranslation.y = 0;
                 eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.measuredTranslation.z = 0;
             }
