@@ -44,11 +44,16 @@ int main() {
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
     // monoRight->setFps(5.0);
 
-    bool outputDepth = false;
+    bool outputDepth = true;
     bool outputRectified = true;
     bool lrcheck = true;
     bool extended = false;
     bool subpixel = true;
+//  bool outputDepth = true;
+//     bool outputRectified = true;
+//     bool lrcheck = true;
+//     bool extended = false;
+//     bool subpixel = true;
 
     int maxDisp = 96;
     if(extended) maxDisp *= 2;
