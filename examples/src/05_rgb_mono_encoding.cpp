@@ -30,6 +30,7 @@ int main(int argc, char** argv) {
     auto ve2Out = p.create<dai::node::XLinkOut>();
     auto ve3Out = p.create<dai::node::XLinkOut>();
 
+    // Properties
     colorCam->setBoardSocket(dai::CameraBoardSocket::RGB);
     monoCam->setBoardSocket(dai::CameraBoardSocket::LEFT);
     monoCam2->setBoardSocket(dai::CameraBoardSocket::RIGHT);
