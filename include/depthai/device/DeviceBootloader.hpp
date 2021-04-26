@@ -124,6 +124,17 @@ class DeviceBootloader {
     std::tuple<bool, std::string> flashBootloader(std::function<void(float)> progressCallback, std::string path = "");
 
     /**
+     * Flashes a boot header that does USB boot (as if setting the boot switches to 0x16). Currently this overwrites the bootloader
+     * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
+     */
+    std::tuple<bool, std::string> flashUsbBoot(std::function<void(float)> progressCallback);
+
+    /**
+     * Sends a command to switch to USB boot. Cleared by a hard-reset/power-cycle
+     */
+    std::tuple<bool, std::string> switchToUsbBoot();
+
+    /**
      * @returns Version of current running bootloader
      */
     Version getVersion();

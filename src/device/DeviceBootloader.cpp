@@ -367,6 +367,65 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(std::function<vo
     return {result.success, result.errorMsg};
 }
 
+// TODO reduce some code duplication (with the above functions flashBootloader, flashDepthaiApplicationPackage)
+std::tuple<bool, std::string> DeviceBootloader::flashUsbBoot(std::function<void(float)> progressCb) {
+    // get streamId
+    streamId_t streamId = stream->getStreamId();
+
+    // send request to flash BOOT_HEADER with USB boot
+    dai::bootloader::request::UpdateFlash updateFlash;
+    updateFlash.storage = dai::bootloader::request::UpdateFlash::BOOT_HEADER;
+    updateFlash.bootHeader = dai::bootloader::request::UpdateFlash::BootHeader::USB;
+    updateFlash.totalSize = 0;
+    updateFlash.numPackets = 0;
+    if(!sendBootloaderRequest(streamId, updateFlash)) return {false, "Couldn't send bootloader flash request"};
+
+    // Then wait for response by bootloader
+    // Wait till FLASH_COMPLETE response
+    dai::bootloader::response::FlashComplete result;
+    do {
+        std::vector<uint8_t> data;
+        if(!receiveBootloaderResponseData(streamId, data)) return {false, "Couldn't receive bootloader response"};
+
+        dai::bootloader::response::FlashStatusUpdate update;
+        if(parseBootloaderResponse(data, update)) {
+            // if progress callback is set
+            if(progressCb != nullptr) {
+                progressCb(update.progress);
+            }
+            // if flash complete response arrived, break from while loop
+        } else if(parseBootloaderResponse(data, result)) {
+            break;
+        } else {
+            // Unknown response, shouldn't happen
+            return {false, "Unknown response from bootloader while flashing"};
+        }
+
+    } while(true);
+
+    // Return if flashing was successful
+    return {result.success, result.errorMsg};
+}
+
+std::tuple<bool, std::string> DeviceBootloader::switchToUsbBoot() {
+    // get streamId
+    streamId_t streamId = stream->getStreamId();
+
+    // send request to switch to USB boot, and don't let app reset again to bootloader
+    dai::bootloader::request::UsbRomBoot usbBootRequest;
+    usbBootRequest.keepUsbBootAfterAppRestart = true;
+
+    if(!sendBootloaderRequest(streamId, usbBootRequest)) {
+        return {false, "Couldn't send bootloader USB boot request"};
+    }
+
+    // Dummy read, until link falls down and it returns an error
+    streamPacketDesc_t* pPacket;
+    XLinkReadData(streamId, &pPacket);
+
+    return {true, ""};
+}
+
 bool DeviceBootloader::isEmbeddedVersion() {
     return isEmbedded;
 }
