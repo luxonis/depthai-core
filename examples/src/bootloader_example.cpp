@@ -7,7 +7,7 @@ int main(int argc, char** argv) {
     dai::DeviceInfo info;
     std::tie(res, info) = dai::DeviceBootloader::getFirstAvailableDevice();
     std::string path;
-    if(argc = 2) {
+    if(argc == 2) {
         path = std::string(argv[1]);
     } else {
         throw std::runtime_error("No path specified for boot config file");

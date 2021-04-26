@@ -49,11 +49,11 @@ int main() {
     bool lrcheck = true;
     bool extended = false;
     bool subpixel = true;
-//  bool outputDepth = true;
-//     bool outputRectified = true;
-//     bool lrcheck = true;
-//     bool extended = false;
-//     bool subpixel = true;
+    //  bool outputDepth = true;
+    //     bool outputRectified = true;
+    //     bool lrcheck = true;
+    //     bool extended = false;
+    //     bool subpixel = true;
 
     int maxDisp = 96;
     if(extended) maxDisp *= 2;

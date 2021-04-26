@@ -1,8 +1,8 @@
 #include "depthai/pipeline/node/ColorCamera.hpp"
 
-#include "spdlog/fmt/fmt.h"
-
 #include <fstream>
+
+#include "spdlog/fmt/fmt.h"
 
 namespace dai {
 namespace node {
@@ -363,7 +363,6 @@ bool ColorCamera::getPreviewKeepAspectRatio() {
 }
 
 void ColorCamera::setCameraTuningBlobPath(const std::string& path) {
-
     std::ifstream blobStream(path, std::ios::in | std::ios::binary);
     if(!blobStream.is_open()) {
         throw std::runtime_error("ColorCamera | Camera tuning blob at path: " + path + " doesn't exist");
