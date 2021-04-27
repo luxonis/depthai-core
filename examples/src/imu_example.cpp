@@ -22,11 +22,12 @@ dai::Pipeline createCameraPipeline() {
     imu->enableIMUSensor(sensorConfig);
     sensorConfig.sensorId = dai::IMUSensorId::IMU_GYROSCOPE_CALIBRATED;
     imu->enableIMUSensor(sensorConfig);
-    // above this threshold packets will be sent in batch of 10, if the host is not blocked
-    imu->setBatchReportThreshold(10);
+    // above this threshold packets will be sent in batch of X, if the host is not blocked
+    imu->setBatchReportThreshold(5);
     // maximum number of IMU packets in a batch, if it's reached device will block sending until host can receive it
     // if lower or equal to batchReportThreshold then the sending is always blocking on device
-    imu->setMaxBatchReports(50);
+    imu->setMaxBatchReports(5);
+    // WARNING, temporarily 6 is the max
 
     // Link plugins CAM -> XLINK
     imu->out.link(xlinkOut->input);
@@ -71,12 +72,13 @@ int main() {
         if(imuPacket) {
             auto imuDatas = imuPacket->imuDatas;
             for(auto& imuData : imuDatas) {
-                auto dur = imuData.ts.getTimestamp() - baseTs;
+                auto acceleroTs = imuData.acceleroMeter.timestamp.getTimestamp() - baseTs;
+                auto gyroTs = imuData.gyroscope.timestamp.getTimestamp() - baseTs;
 
-                printf("Timestamp: %ld ms\n", duration_cast<milliseconds>(dur).count());
-
-                printf("Accelero: %.3f %.3f %.3f \n", imuData.accelerometer.x, imuData.accelerometer.y, imuData.accelerometer.z);
-                printf("Gyro: %.3f %.3f %.3f \n", imuData.gyro.x, imuData.gyro.y, imuData.gyro.z);
+                printf("Accelero timestamp: %ld ms\n", duration_cast<milliseconds>(acceleroTs).count());
+                printf("Accelero: x: %.3f y: %.3f z: %.3f \n", imuData.acceleroMeter.x, imuData.acceleroMeter.y, imuData.acceleroMeter.z);
+                printf("Gyro timestamp: %ld ms\n", duration_cast<milliseconds>(gyroTs).count());
+                printf("Gyro: x: %.3f y: %.3f z: %.3f \n", imuData.gyroscope.x, imuData.gyroscope.y, imuData.gyroscope.z);
             }
         }
         int key = cv::waitKey(1);

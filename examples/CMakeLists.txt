@@ -173,4 +173,5 @@ dai_add_example(spatial_object_tracker_example src/spatial_object_tracker_exampl
 target_compile_definitions(spatial_object_tracker_example PRIVATE BLOB_PATH="${mobilenet_blob}")
 
 # IMU example
-dai_add_example(imu src/imu_example.cpp)
+dai_add_example(imu_example src/imu_example.cpp)
+dai_add_example(imu_rotation_vector_example src/imu_rotation_vector_example.cpp)
