@@ -41,7 +41,7 @@ void IMU::setBatchReportThreshold(std::int32_t batchReportThreshold) {
     properties.batchReportThreshold = batchReportThreshold;
 }
 
-std::int32_t IMU::getBatchReportThreshold(std::int32_t batchReportThreshold) const {
+std::int32_t IMU::getBatchReportThreshold() const {
     return properties.batchReportThreshold;
 }
 
@@ -49,7 +49,7 @@ void IMU::setMaxBatchReports(std::int32_t maxBatchReports) {
     properties.maxBatchReports = maxBatchReports;
 }
 
-std::int32_t IMU::getMaxBatchReports(std::int32_t maxBatchReports) const {
+std::int32_t IMU::getMaxBatchReports() const {
     return properties.maxBatchReports;
 }
 

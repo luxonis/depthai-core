@@ -52,7 +52,7 @@ class IMU : public Node {
     /**
      * Above this packet threshold data will be sent to host, if queue is not blocked
      */
-    std::int32_t getBatchReportThreshold(std::int32_t batchReportThreshold) const;
+    std::int32_t getBatchReportThreshold() const;
 
     /**
      * Maximum number of IMU packets in a batch report
@@ -62,7 +62,7 @@ class IMU : public Node {
     /**
      * Maximum number of IMU packets in a batch report
      */
-    std::int32_t getMaxBatchReports(std::int32_t maxBatchReports) const;
+    std::int32_t getMaxBatchReports() const;
 };
 
 }  // namespace node
