@@ -29,5 +29,29 @@ std::shared_ptr<Node> IMU::clone() {
     return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
+void IMU::enableIMUSensor(IMUSensorConfig imuSensor) {
+    properties.imuSensors.push_back(imuSensor);
+}
+
+void IMU::enableIMUSensors(std::vector<IMUSensorConfig> imuSensors) {
+    properties.imuSensors = imuSensors;
+}
+
+void IMU::setBatchReportThreshold(std::int32_t batchReportThreshold) {
+    properties.batchReportThreshold = batchReportThreshold;
+}
+
+std::int32_t IMU::getBatchReportThreshold(std::int32_t batchReportThreshold) const {
+    return properties.batchReportThreshold;
+}
+
+void IMU::setMaxBatchReports(std::int32_t maxBatchReports) {
+    properties.maxBatchReports = maxBatchReports;
+}
+
+std::int32_t IMU::getMaxBatchReports(std::int32_t maxBatchReports) const {
+    return properties.maxBatchReports;
+}
+
 }  // namespace node
 }  // namespace dai

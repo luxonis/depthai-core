@@ -36,6 +36,33 @@ class IMU : public Node {
      * Suitable for use with NeuralNetwork node
      */
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::IMUDatas, false}}};
+
+    /**
+     * Enable a new IMU sensor
+     */
+    void enableIMUSensor(IMUSensorConfig imuSensor);
+    /**
+     * Enable a list of IMU sensors
+     */
+    void enableIMUSensors(std::vector<IMUSensorConfig> imuSensors);
+    /**
+     * Above this packet threshold data will be sent to host, if queue is not blocked
+     */
+    void setBatchReportThreshold(std::int32_t batchReportThreshold);
+    /**
+     * Above this packet threshold data will be sent to host, if queue is not blocked
+     */
+    std::int32_t getBatchReportThreshold(std::int32_t batchReportThreshold) const;
+
+    /**
+     * Maximum number of IMU packets in a batch report
+     */
+    void setMaxBatchReports(std::int32_t maxBatchReports);
+
+    /**
+     * Maximum number of IMU packets in a batch report
+     */
+    std::int32_t getMaxBatchReports(std::int32_t maxBatchReports) const;
 };
 
 }  // namespace node
