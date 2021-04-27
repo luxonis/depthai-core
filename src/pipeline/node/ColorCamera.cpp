@@ -218,13 +218,13 @@ std::tuple<int, int> ColorCamera::getVideoSize() const {
         int numW = properties.ispScale.horizNumerator;
         int denW = properties.ispScale.horizDenominator;
         if(numW > 0 && denW > 0) {
-            maxVideoWidth =  getScaledSize(maxVideoWidth, numW, denW);
+            maxVideoWidth = getScaledSize(maxVideoWidth, numW, denW);
         }
 
         int numH = properties.ispScale.vertNumerator;
         int denH = properties.ispScale.vertDenominator;
         if(numH > 0 && denH > 0) {
-            maxVideoHeight =  getScaledSize(maxVideoHeight, numH, denH);
+            maxVideoHeight = getScaledSize(maxVideoHeight, numH, denH);
         }
 
         return {maxVideoWidth, maxVideoHeight};
@@ -260,13 +260,13 @@ std::tuple<int, int> ColorCamera::getStillSize() const {
         int numW = properties.ispScale.horizNumerator;
         int denW = properties.ispScale.horizDenominator;
         if(numW > 0 && denW > 0) {
-            maxStillWidth =  getScaledSize(maxStillWidth, numW, denW);
+            maxStillWidth = getScaledSize(maxStillWidth, numW, denW);
         }
 
         int numH = properties.ispScale.vertNumerator;
         int denH = properties.ispScale.vertDenominator;
         if(numH > 0 && denH > 0) {
-            maxStillHeight =  getScaledSize(maxStillHeight, numH, denH);
+            maxStillHeight = getScaledSize(maxStillHeight, numH, denH);
         }
 
         return {maxStillWidth, maxStillHeight};
