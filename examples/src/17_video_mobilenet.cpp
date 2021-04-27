@@ -1,4 +1,3 @@
-#include <chrono>
 #include <cstdio>
 #include <iostream>
 
@@ -12,53 +11,42 @@ static const std::vector<std::string> labelMap = {"background", "aeroplane", "bi
                                                   "car",        "cat",       "chair",       "cow",   "diningtable", "dog",    "horse",
                                                   "motorbike",  "person",    "pottedplant", "sheep", "sofa",        "train",  "tvmonitor"};
 
-static std::atomic<bool> syncNN{true};
-
 int main(int argc, char** argv) {
     using namespace std;
-    using namespace std::chrono;
     // Default blob path provided by Hunter private data download
     // Applicable for easier example usage only
     std::string nnPath(BLOB_PATH);
+    std::string videoPath(VIDEO_PATH);
 
     // If path to blob specified, use that
-    if(argc > 1) {
+    if(argc > 2) {
         nnPath = std::string(argv[1]);
+        videoPath = std::string(argv[2]);
     }
 
     // Print which blob we are using
     printf("Using blob at path: %s\n", nnPath.c_str());
+    printf("Using video at path: %s\n", videoPath.c_str());
 
     // Create pipeline
     dai::Pipeline pipeline;
 
-    // Define source and outputs
-    auto camRgb = pipeline.create<dai::node::ColorCamera>();
+    // Define source
+    auto xinFrame = pipeline.create<dai::node::XLinkIn>();
     auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
-    auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
     auto nnOut = pipeline.create<dai::node::XLinkOut>();
 
-    xoutRgb->setStreamName("rgb");
-    nnOut->setStreamName("nn");
-
     // Properties
-    camRgb->setPreviewSize(300, 300);    // NN input
-    camRgb->setInterleaved(false);
-    camRgb->setFps(40);
-    // Define a neural network that will make predictions based on the source frames
     nn->setConfidenceThreshold(0.5);
     nn->setBlobPath(nnPath);
     nn->setNumInferenceThreads(2);
     nn->input.setBlocking(false);
 
-    // Linking
-    if (syncNN) {
-        nn->passthrough.link(xoutRgb->input);
-    } else {
-        camRgb->preview.link(xoutRgb->input);
-    }
+    xinFrame->setStreamName("inFrame");
+    nnOut->setStreamName("nn");
 
-    camRgb->preview.link(nn->input);
+    // Create outputs
+    xinFrame->out.link(nn->input);
     nn->out.link(nnOut->input);
 
     // Connect to device with above created pipeline
@@ -66,9 +54,15 @@ int main(int argc, char** argv) {
     // Start the pipeline
     device.startPipeline();
 
-    // Output queues will be used to get the rgb frames and nn data from the outputs defined above
-    auto qRgb = device.getOutputQueue("rgb", 4, false);
+    // Queues
+    auto qIn = device.getInputQueue("inFrame");
     auto qDet = device.getOutputQueue("nn", 4, false);
+
+
+    // auto to_planar = [](auto frame, auto size1) {
+    //     cv::resize(frame, frame, cv::Size(size1, size1));
+    //     cv::
+    // };
 
     // Add bounding boxes and text to the frame and show it to the user
     auto displayFrame = [](std::string name, auto frame, auto detections) {
@@ -95,30 +89,28 @@ int main(int argc, char** argv) {
         cv::imshow(name, frame);
     };
 
-    auto startTime = steady_clock::now();
-    int counter = 0;
-    float fps = 0;
+    cv::Mat frame;
+    cv::VideoCapture cap(videoPath);
 
-    while(true) {
-        auto inRgb = qRgb->get<dai::ImgFrame>();
+    cv::namedWindow("inFrame", cv::WINDOW_NORMAL);
+    cv::resizeWindow("inFrame", 1280, 720);
+    std::cout << "Resize video window with mouse drag!" << std::endl;
+
+    while(cap.isOpened()) {
+        // Read frame from video
+        cap >> frame;
+        auto tensor = std::make_shared<dai::RawBuffer>();
+
+        frame = resizeKeepAspectRatio(frame, cv::Size(300, 300), cv::Scalar(0));
+
+        toPlanar(frame, tensor->data);
+
+        qIn->send(tensor);
+
         auto inDet = qDet->get<dai::ImgDetections>();
         auto detections = inDet->detections;
-        cv::Mat frame = inRgb->getCvFrame();
 
-        counter++;
-        auto currentTime = steady_clock::now();
-        auto elapsed = duration_cast<duration<float>>(currentTime - startTime);
-        if(elapsed > seconds(1)) {
-            fps = counter / elapsed.count();
-            counter = 0;
-            startTime = currentTime;
-        }
-
-        std::stringstream fpsStr;
-        fpsStr << "NN fps: " <<std::fixed << std::setprecision(2) << fps;
-        cv::putText(frame, fpsStr.str(), cv::Point(2, inRgb->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, 255, 0, 0);
-
-        displayFrame("video", frame, detections);
+        displayFrame("inFrame", frame, detections);
 
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q')

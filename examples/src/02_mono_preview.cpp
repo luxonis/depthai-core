@@ -1,59 +1,51 @@
-
 #include <cstdio>
 #include <iostream>
-
-#include "utility.hpp"
 
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-dai::Pipeline createPipeline() {
-    dai::Pipeline p;
+int main() {
+    using namespace std;
+    // Start defining a pipeline
+    dai::Pipeline pipeline;
 
-    auto camLeft = p.create<dai::node::MonoCamera>();
-    auto camRight = p.create<dai::node::MonoCamera>();
-    auto xoutLeft = p.create<dai::node::XLinkOut>();
-    auto xoutRight = p.create<dai::node::XLinkOut>();
-
-    camLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    camLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
-    camRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    camRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    // Define sources and outputs
+    auto camLeft = pipeline.create<dai::node::MonoCamera>();
+    auto camRight = pipeline.create<dai::node::MonoCamera>();
+    auto xoutLeft = pipeline.create<dai::node::XLinkOut>();
+    auto xoutRight = pipeline.create<dai::node::XLinkOut>();
 
     xoutLeft->setStreamName("left");
     xoutRight->setStreamName("right");
 
-    // Link plugins CAM -> XLINK
-    camLeft->out.link(xoutLeft->input);
+    // Properties
+    camLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    camLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
+    camRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    camRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
+
+    // Linking
     camRight->out.link(xoutRight->input);
+    camLeft->out.link(xoutLeft->input);
 
-    return p;
-}
+    dai::Device device(pipeline);
+    device.startPipeline();
 
-int main() {
-    using namespace std;
+    // Output queues will be used to get the grayscale frames from the outputs defined above
+    auto qLeft = device.getOutputQueue("left", 4, false);
+    auto qRight = device.getOutputQueue("right", 4, false);
 
-    dai::Pipeline p = createPipeline();
-    dai::Device d(p);
-    d.startPipeline();
+    while(true) {
+        auto inLeft = qLeft->get<dai::ImgFrame>();
+        auto inRight = qRight->get<dai::ImgFrame>();
 
-    cv::Mat frame;
-    auto leftQueue = d.getOutputQueue("left");
-    auto rightQueue = d.getOutputQueue("right");
-
-    while(1) {
-        auto left = leftQueue->get<dai::ImgFrame>();
-        cv::Mat LeftFrame = left->getFrame();
-        cv::imshow("left", LeftFrame);
-        auto right = rightQueue->get<dai::ImgFrame>();
-        cv::Mat RightFrame = right->getFrame();
-        cv::imshow("right", RightFrame);
+        cv::imshow("left", inLeft->getCvFrame());
+        cv::imshow("right", inRight->getCvFrame());
 
         int key = cv::waitKey(1);
-        if(key == 'q') {
+        if(key == 'q' || key == 'Q') {
             return 0;
         }
     }
-
     return 0;
 }

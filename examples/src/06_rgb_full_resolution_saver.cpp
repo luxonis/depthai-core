@@ -1,7 +1,6 @@
 #include <cstdio>
 #include <iostream>
 #include <sys/stat.h>
-#include "utility.hpp"
 #include <chrono>
 
 // Inludes common necessary includes for development using depthai library
@@ -11,41 +10,42 @@ int main(int argc, char** argv)
 {
     using namespace std::chrono;
 
-    dai::Pipeline p;
+    dai::Pipeline pipeline;
 
-    // Define a source - color camera
-    auto colorCam = p.create<dai::node::ColorCamera>();
-    auto xoutJpeg = p.create<dai::node::XLinkOut>();
-    auto xoutRgb = p.create<dai::node::XLinkOut>();
-    auto videoEnc = p.create<dai::node::VideoEncoder>();
+    // Define source and outputs
+    auto camRgb = pipeline.create<dai::node::ColorCamera>();
+    auto xoutJpeg = pipeline.create<dai::node::XLinkOut>();
+    auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
+    auto videoEnc = pipeline.create<dai::node::VideoEncoder>();
 
-    colorCam->setBoardSocket(dai::CameraBoardSocket::RGB);
-    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_4_K);
     xoutJpeg->setStreamName("jpeg");
     xoutRgb->setStreamName("rgb");
+
+    // Properties
+    camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
+    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_4_K);
     videoEnc->setDefaultProfilePreset(3840, 2160, 30, dai::VideoEncoderProperties::Profile::MJPEG);
 
-    // Create outputs
-    colorCam->video.link(xoutRgb->input);
-    colorCam->video.link(videoEnc->input);
+    // Linking
+    camRgb->video.link(xoutRgb->input);
+    camRgb->video.link(videoEnc->input);
     videoEnc->bitstream.link(xoutJpeg->input);
 
     // Pipeline is defined, now we can connect to the device
-    dai::Device d(p);
+    dai::Device device(pipeline);
     // Start pipeline
-    d.startPipeline();
+    device.startPipeline();
 
     // Queues
-    auto qRgb = d.getOutputQueue("rgb", 30, false);
-    auto qJpeg = d.getOutputQueue("jpeg", 30, true);
+    auto qRgb = device.getOutputQueue("rgb", 30, false);
+    auto qJpeg = device.getOutputQueue("jpeg", 30, true);
 
     mkdir("06_data", 0777);
 
     while(true) {
         auto inRgb = qRgb->tryGet<dai::ImgFrame>();
         if (inRgb != NULL){
-            cv::Mat frame = inRgb->getCvFrame();
-            cv::imshow("rgb", frame);
+            cv::imshow("rgb", inRgb->getCvFrame());
         }
 
         auto encFrames = qJpeg->tryGetAll<dai::ImgFrame>();
@@ -58,9 +58,8 @@ int main(int argc, char** argv)
         }
 
         int key = cv::waitKey(1);
-        if(key == 'q')
+        if(key == 'q' || key == 'Q')
             return 0;
     }
-
     return 0;
 }

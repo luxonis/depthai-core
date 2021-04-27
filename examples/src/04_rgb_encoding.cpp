@@ -15,30 +15,31 @@ int main(int argc, char** argv) {
     // Detect signal interrupts (Ctrl + C)
     std::signal(SIGINT, &sigintHandler);
 
-    dai::Pipeline p;
+    dai::Pipeline pipeline;
 
-    // Define a source - color camera
-    auto colorCam = p.create<dai::node::ColorCamera>();
-    auto xout = p.create<dai::node::XLinkOut>();
-    auto videnc = p.create<dai::node::VideoEncoder>();
+    // Define sources and outputs
+    auto camRgb = pipeline.create<dai::node::ColorCamera>();
+    auto videoEnc = pipeline.create<dai::node::VideoEncoder>();
+    auto xout = pipeline.create<dai::node::XLinkOut>();
 
     xout->setStreamName("h265");
-    colorCam->setBoardSocket(dai::CameraBoardSocket::RGB);
-    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_4_K);
+    // Properties
+    camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
+    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_4_K);
 
-    videnc->setDefaultProfilePreset(3840, 2160, 30, dai::VideoEncoderProperties::Profile::H265_MAIN);
+    videoEnc->setDefaultProfilePreset(3840, 2160, 30, dai::VideoEncoderProperties::Profile::H265_MAIN);
 
     // Create outputs
-    colorCam->video.link(videnc->input);
-    videnc->bitstream.link(xout->input);
+    camRgb->video.link(videoEnc->input);
+    videoEnc->bitstream.link(xout->input);
 
     // Pipeline is defined, now we can connect to the device
-    dai::Device d(p);
+    dai::Device device(pipeline);
     // Start pipeline
-    d.startPipeline();
+    device.startPipeline();
 
     // Output queue will be used to get the encoded data from the output defined above
-    auto q = d.getOutputQueue("h265", 30, true);
+    auto q = device.getOutputQueue("h265", 30, true);
 
     // The .h265 file is a raw stream file (not playable yet)
     auto videoFile = std::ofstream("video.h265", std::ios::binary);
