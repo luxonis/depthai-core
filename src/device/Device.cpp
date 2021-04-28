@@ -816,7 +816,7 @@ LogLevel Device::getLogLevel() {
     return client->call("getLogLevel").as<LogLevel>();
 }
 
-DeviceInfo Device::getCurrentDeviceInfo() {
+DeviceInfo Device::getDeviceInfo() {
     return deviceInfo;
 }
 

@@ -56,7 +56,7 @@ class CalibrationHandler {
      * respective cropped image
      * @param bottomRightPixelId - (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
      * the respective cropped image
-     * @return std::vector<std::vector<float>> - repesents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
+     * @return Repesents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      */
     std::vector<std::vector<float>> getCameraIntrinsics(
         CameraBoardSocket cameraId, int resizeWidth = -1, int resizeHeight = -1, Point2f topLeftPixelId = Point2f(), Point2f bottomRightPixelId = Point2f());
@@ -70,7 +70,7 @@ class CalibrationHandler {
      * respective cropped image
      * @param bottomRightPixelId - (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
      * the respective cropped image
-     * @return std::vector<std::vector<float>> - repesents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
+     * @return Repesents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      */
     std::vector<std::vector<float>> getCameraIntrinsics(CameraBoardSocket cameraId,
                                                         Size2f destShape,
@@ -86,7 +86,7 @@ class CalibrationHandler {
      * respective cropped image
      * @param bottomRightPixelId - (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
      * the respective cropped image
-     * @return std::vector<std::vector<float>> - repesents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
+     * @return Repesents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      */
     std::vector<std::vector<float>> getCameraIntrinsics(CameraBoardSocket cameraId,
                                                         std::tuple<int, int> destShape,
@@ -96,8 +96,8 @@ class CalibrationHandler {
     /**
      * @brief Get the Default Intrinsics object
      *
-     * @param cameraId
-     * @return std::tuple<std::vector<std::vector<float>>, int, int>
+     * @param cameraId - Uses the cameraId to identify which camera intrinsics to return
+     * @return Repesents the 3x3 intrinsics matrix of the respective camera along with width and height at which it was calibrated.
      */
     std::tuple<std::vector<std::vector<float>>, int, int> getDefaultIntrinsics(CameraBoardSocket cameraId);
 
@@ -115,7 +115,7 @@ class CalibrationHandler {
      * @param srcCamera - Camera Id of the camera which will be considerd as origin.
      * @param dstCamera -  Camera Id of the destination camera to which we are fetching the rotation and translation from the SrcCamera
      * @param useMeasuredTranslation - Enabling this bool uses the translation information from the board design data
-     * @return std::vector<std::vector<float>> - returns a transformationMatrix which is 4x4 in homogenious coordinate system
+     * @return Returns a transformationMatrix which is 4x4 in homogenious coordinate system
      *
      * Matrix representation of transformation matrix
      * transformation matrix = \begin{bmatrix}
@@ -132,7 +132,7 @@ class CalibrationHandler {
      * is returned.
      * @param cameraId - Camera Id of the camera which will be considerd as origin. from which Transformation matrix to the IMU will be found
      * @param useMeasuredTranslation - Enabling this bool uses the translation information from the board design data
-     * @return std::vector<std::vector<float>> - returns a transformationMatrix which is 4x4 in homogenious coordinate system
+     * @return Returns a transformationMatrix which is 4x4 in homogenious coordinate system
      * Matrix representation of transformation matrix
      * transformation matrix = \begin{bmatrix}
      *                              r_00 & r_01 & r_02 & T_x \\
@@ -141,7 +141,6 @@ class CalibrationHandler {
      *                          \end{bmatrix}
      */
     std::vector<std::vector<float>> getCameraToImuExtrinsics(CameraBoardSocket cameraId, bool useMeasuredTranslation = false);
-    // TODO(Sachin): How to check if IMU exists ? set everthing in IMU extrinsics to ZERO ???
 
     /**
      * @brief Get the Imu To Camera Extrinsics object
@@ -149,7 +148,7 @@ class CalibrationHandler {
      * is returned.
      * @param cameraId - Camera Id of the camera which will be considerd as destination. To which Transformation matrix from the IMU will be found.
      * @param useMeasuredTranslation - Enabling this bool uses the translation information from the board design data
-     * @return std::vector<std::vector<float>> - returns a transformationMatrix which is 4x4 in homogenious coordinate system
+     * @return Returns a transformationMatrix which is 4x4 in homogenious coordinate system
      * Matrix representation of transformation matrix
      * transformation matrix = \begin{bmatrix}
      *                              r_00 & r_01 & r_02 & T_x \\
@@ -187,7 +186,7 @@ class CalibrationHandler {
      * @brief Write raw calibration/board data to json file.
      *
      * @param destPath -  Full path to the json file in which raw calibration data will be stored
-     * @return bool - True on success, false otherwise
+     * @return True on success, false otherwise
      */
     bool eepromToJsonFile(std::string destPath);
 
