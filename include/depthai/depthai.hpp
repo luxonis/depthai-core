@@ -20,6 +20,7 @@
 #include "pipeline/node/NeuralNetwork.hpp"
 #include "pipeline/node/ObjectTracker.hpp"
 #include "pipeline/node/SPIOut.hpp"
+#include "pipeline/node/SPIIn.hpp"
 #include "pipeline/node/SpatialDetectionNetwork.hpp"
 #include "pipeline/node/SpatialLocationCalculator.hpp"
 #include "pipeline/node/StereoDepth.hpp"
