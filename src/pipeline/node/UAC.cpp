@@ -16,7 +16,7 @@ std::vector<Node::Input> UAC::getInputs() {
 }
 
 std::vector<Node::Output> UAC::getOutputs() {
-    return {};
+    return {out};
 }
 
 nlohmann::json UAC::getProperties() {

@@ -19,6 +19,11 @@ class UAC : public Node {
    public:
     UAC(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
+    /**
+     * Outputs audio data from onboard microphones. Reusing ImgFrame for now
+     */
+    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
     /// Enable streaming back microphone instead of the front ones (L/R)
     void setStreamBackMic(bool enable);
 
