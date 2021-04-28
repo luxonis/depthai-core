@@ -105,10 +105,10 @@ class CameraControl : public Buffer {
     void setAutoExposureRegion(uint16_t startX, uint16_t startY, uint16_t width, uint16_t height);
 
     /**
-     * Set a command to specify auto exposure compenstaion
-     * @param compensation Compensation value between -128..127
+     * Set a command to specify auto exposure compensation
+     * @param compensation Compensation value between -9..9
      */
-    void setAutoExposureCompensation(int8_t compensation);
+    void setAutoExposureCompensation(int compensation);
 
     /**
      * Set a command to specify auto banding mode
@@ -119,7 +119,7 @@ class CameraControl : public Buffer {
     /**
      * Set a command to manually specify exposure
      * @param exposureTimeUs Exposure time in microseconds
-     * @param sensitivityIso Sensitivity as ISO value
+     * @param sensitivityIso Sensitivity as ISO value, usual range 100..1600
      */
     void setManualExposure(uint32_t exposureTimeUs, uint32_t sensitivityIso);
 
@@ -138,46 +138,40 @@ class CameraControl : public Buffer {
 
     // Other image controls
     /**
-     * Set a command to specify auto white balance lock
-     * @param lock Auto white balance lock mode enabled or disabled
+     * Set a command to adjust image brightness
+     * @param value Brightness, range -10..10
      */
-    void setBrightness(uint16_t value);  // TODO move to AE?
+    void setBrightness(int value);
 
     /**
-     * Set a command to specify auto white balance lock
-     * @param lock Auto white balance lock mode enabled or disabled
+     * Set a command to adjust image contrast
+     * @param value Contrast, range -10..10
      */
-    void setContrast(uint16_t value);
+    void setContrast(int value);
 
     /**
-     * Set a command to specify saturation value
-     * @param value Saturation
+     * Set a command to adjust image saturation
+     * @param value Saturation, range -10..10
      */
-    void setSaturation(uint16_t value);
+    void setSaturation(int value);
 
     /**
-     * Set a command to specify sharpness value
-     * @param value Sharpness
+     * Set a command to adjust image sharpness
+     * @param value Sharpness, range 0..4
      */
-    void setSharpness(uint16_t value);
+    void setSharpness(int value);
 
     /**
-     * Set a command to specify noise reduction strength
-     * @param value Noise reduction strength
+     * Set a command to adjust luma denoise amount
+     * @param value Luma denoise amount, range 0..4
      */
-    void setNoiseReductionStrength(uint16_t value);
+    void setLumaDenoise(int value);
 
     /**
-     * Set a command to specify luma denoise value
-     * @param value Luma denoise
+     * Set a command to adjust chroma denoise amount
+     * @param value Chroma denoise amount, range 0..4
      */
-    void setLumaDenoise(uint16_t value);
-
-    /**
-     * Set a command to specify chroma denoise value
-     * @param value Chroma denoise
-     */
-    void setChromaDenoise(uint16_t value);
+    void setChromaDenoise(int value);
 
     /**
      * Set a command to specify scene mode

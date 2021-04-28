@@ -3,6 +3,8 @@
 // standard
 #include <fstream>
 
+#include "spdlog/spdlog.h"
+
 namespace dai {
 namespace node {
 
@@ -63,8 +65,16 @@ void StereoDepth::setInputResolution(int width, int height) {
     properties.width = width;
     properties.height = height;
 }
-void StereoDepth::setMedianFilter(StereoDepthProperties::MedianFilter median) {
+void StereoDepth::setMedianFilter(Properties::MedianFilter median) {
     properties.median = median;
+}
+void StereoDepth::setDepthAlign(Properties::DepthAlign align) {
+    properties.depthAlign = align;
+    // Unset 'depthAlignCamera', that would take precedence otherwise
+    properties.depthAlignCamera = CameraBoardSocket::AUTO;
+}
+void StereoDepth::setDepthAlign(CameraBoardSocket camera) {
+    properties.depthAlignCamera = camera;
 }
 void StereoDepth::setConfidenceThreshold(int confThr) {
     properties.confidenceThreshold = confThr;
@@ -85,10 +95,12 @@ void StereoDepth::setRectifyMirrorFrame(bool enable) {
     properties.rectifyMirrorFrame = enable;
 }
 void StereoDepth::setOutputRectified(bool enable) {
-    properties.enableOutputRectified = enable;
+    (void)enable;
+    spdlog::warn("{} is deprecated. The output is auto-enabled if used", __func__);
 }
 void StereoDepth::setOutputDepth(bool enable) {
-    properties.enableOutputDepth = enable;
+    (void)enable;
+    spdlog::warn("{} is deprecated. The output is auto-enabled if used", __func__);
 }
 
 }  // namespace node

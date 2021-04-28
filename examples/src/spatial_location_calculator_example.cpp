@@ -35,14 +35,10 @@ int main() {
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
-    bool outputDepth = true;
-    bool outputRectified = false;
     bool lrcheck = false;
     bool subpixel = false;
 
     // StereoDepth
-    stereo->setOutputDepth(outputDepth);
-    stereo->setOutputRectified(outputRectified);
     stereo->setConfidenceThreshold(255);
 
     // stereo->setMedianFilter(dai::StereoDepthProperties::MedianFilter::MEDIAN_OFF);
