@@ -66,7 +66,11 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
                         std::unique_lock<std::mutex> l(callbacksMtx);
                         for(const auto& kv : callbacks) {
                             const auto& callback = kv.second;
-                            callback(name, data);
+                            try {
+                                callback(name, data);
+                            } catch(const std::exception& ex) {
+                                spdlog::error("Callback with id: {} throwed an exception: {}", kv.first, ex.what());
+                            }
                         }
                     }
                 }

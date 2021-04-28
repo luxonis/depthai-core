@@ -3,6 +3,7 @@
 #include <array>
 #include <cassert>
 #include <condition_variable>
+#include <fstream>
 #include <iostream>
 #include <thread>
 
@@ -11,6 +12,7 @@
 #include "archive_entry.h"
 
 // spdlog
+#include "spdlog/details/os.h"
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/spdlog.h"
 
@@ -66,6 +68,20 @@ constexpr static std::array<const char*, 14> resourcesListTarXz = {
 
 std::vector<std::uint8_t> Resources::getDeviceBinary(OpenVINO::Version version, bool usb2Mode) {
     std::vector<std::uint8_t> finalCmd;
+
+    // Check if env variable DEPTHAI_DEVICE_BINARY is set
+    auto fwBinaryPath = spdlog::details::os::getenv("DEPTHAI_DEVICE_BINARY");
+    if(!fwBinaryPath.empty()) {
+        // Load binary file at path
+        std::ifstream stream(fwBinaryPath, std::ios::in | std::ios::binary);
+        if(!stream.is_open()) {
+            // Throw an error
+            // TODO(themarpe) - Unify exceptions into meaningful groups
+            throw std::runtime_error(fmt::format("File at path {} pointed to by DEPTHAI_DEVICE_BINARY doesn't exist.", fwBinaryPath));
+        }
+
+        return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
+    }
 
     // Binaries are resource compiled
     #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
@@ -299,6 +315,9 @@ Resources::Resources() {
             }
         }
         r = archive_read_free(a);  // Note 3
+        assert(r == ARCHIVE_OK);
+        // Ignore 'r' variable when in Release build
+        (void)r;
 
         // Check that all resources were read
         for(const auto& cpath : resourcesListTarXz) {
