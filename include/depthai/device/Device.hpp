@@ -209,7 +209,7 @@ class Device {
      *
      * @return true if pipeline started, false otherwise
      */
-    bool startPipeline();
+    [[deprecated("Device(pipeline) starts the pipeline automatically. See Device() and startPipeline(pipeline) otherwise")]] bool startPipeline();
 
     /**
      * Starts the execution of a given pipeline
@@ -467,7 +467,7 @@ class Device {
     // private static
     void init(OpenVINO::Version version, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
     void init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
-    void init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
+    void init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline);
     void checkClosed() const;
 
     std::shared_ptr<XLinkConnection> connection;
@@ -514,9 +514,7 @@ class Device {
     class Impl;
     Pimpl<Impl> pimpl;
 
-    // Serialized pipeline
-    bool hasPipeline = false;
-    Pipeline pipeline;
+    // OpenVINO version device was booted with
     OpenVINO::Version openvinoVersion;
 };
 

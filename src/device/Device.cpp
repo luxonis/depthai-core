@@ -377,28 +377,25 @@ void Device::init(OpenVINO::Version version, bool embeddedMvcmd, bool usb2Mode, 
 
     // Specify the OpenVINO version
     openvinoVersion = version;
-    hasPipeline = false;
 
     spdlog::debug("Device - OpenVINO version: {}", OpenVINO::getVersionName(openvinoVersion));
 
-    init2(embeddedMvcmd, usb2Mode, pathToMvcmd);
+    init2(embeddedMvcmd, usb2Mode, pathToMvcmd, tl::nullopt);
 }
 
 void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
     // Initalize depthai library if not already
     initialize();
 
-    // Mark the OpenVINO version and make a copy of the pipeline
-    this->pipeline = pipeline.clone();
-    openvinoVersion = this->pipeline.getOpenVINOVersion();
-    hasPipeline = true;
+    // Mark the OpenVINO version
+    openvinoVersion = pipeline.getOpenVINOVersion();
 
     spdlog::debug("Device - pipeline serialized, OpenVINO version: {}", OpenVINO::getVersionName(openvinoVersion));
 
-    init2(embeddedMvcmd, usb2Mode, pathToMvcmd);
+    init2(embeddedMvcmd, usb2Mode, pathToMvcmd, pipeline);
 }
 
-void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
+void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline) {
     // Set logging pattern of device (device id + shared pattern)
     pimpl->setPattern(fmt::format("[{}] {}", deviceInfo.getMxId(), LOG_DEFAULT_PATTERN));
 
@@ -593,6 +590,11 @@ void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToM
 
         // Sets system inforation logging rate. By default 1s
         setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
+
+        // Starts pipeline if given
+        if(pipeline) {
+            startPipeline(*pipeline);
+        }
 
     } catch(const std::exception&) {
         // close device (cleanup)
@@ -907,26 +909,14 @@ float Device::getSystemInformationLoggingRate() {
 }
 
 bool Device::startPipeline() {
-    // Check if has serialized pipeline
-    if(!hasPipeline) {
-        throw std::runtime_error("No pipeline given");
-    }
-
-    // Start the pipeline
-    bool ret = startPipeline(pipeline);
-    if(ret) {
-        // Remove the copy of the pipeline now as its not needed anymore
-        pipeline = Pipeline(nullptr);
-    }
-
-    // Return result of starting the pipeline
-    return ret;
+    // Deprecated
+    return true;
 }
 
 bool Device::startPipeline(const Pipeline& pipeline) {
     checkClosed();
 
-    // first check if pipeline is not already started
+    // first check if pipeline is not already running
     if(isPipelineRunning()) {
         throw std::runtime_error("Pipeline is already running");
     }
