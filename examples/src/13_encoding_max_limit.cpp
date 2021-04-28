@@ -30,14 +30,17 @@ int main(int argc, char** argv) {
     auto ve2Out = p.create<dai::node::XLinkOut>();
     auto ve3Out = p.create<dai::node::XLinkOut>();
 
+    ve1Out->setStreamName("ve1Out");
+    ve2Out->setStreamName("ve2Out");
+    ve3Out->setStreamName("ve3Out");
+
     // Properties
     colorCam->setBoardSocket(dai::CameraBoardSocket::RGB);
     colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_4_K);
     monoCam->setBoardSocket(dai::CameraBoardSocket::LEFT);
     monoCam2->setBoardSocket(dai::CameraBoardSocket::RIGHT);
-    ve1Out->setStreamName("ve1Out");
-    ve2Out->setStreamName("ve2Out");
-    ve3Out->setStreamName("ve3Out");
+
+    // Setting to 26fps will trigger error
     ve1->setDefaultProfilePreset(1280, 720, 25, dai::VideoEncoderProperties::Profile::H264_MAIN);
     ve2->setDefaultProfilePreset(3840, 2160, 25, dai::VideoEncoderProperties::Profile::H265_MAIN);
     ve3->setDefaultProfilePreset(1280, 720, 25, dai::VideoEncoderProperties::Profile::H264_MAIN);

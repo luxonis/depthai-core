@@ -32,12 +32,12 @@ int main(int argc, char** argv)
     device.startPipeline();
 
     // Queue
-    auto q = device.getOutputQueue("right", 4, false);
+    auto qRight = device.getOutputQueue("right", 4, false);
 
     mkdir("07_data", 0777);
 
     while(true) {
-        auto inRight = q->get<dai::ImgFrame>();
+        auto inRight = qRight->get<dai::ImgFrame>();
         // Frame is transformed and ready to be shown
         cv::imshow("right", inRight->getCvFrame());
 
@@ -51,6 +51,5 @@ int main(int argc, char** argv)
         if(key == 'q' || key == 'Q')
             return 0;
     }
-
     return 0;
 }

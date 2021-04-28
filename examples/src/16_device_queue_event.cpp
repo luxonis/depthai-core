@@ -1,7 +1,6 @@
 
 #include <cstdio>
 #include <iostream>
-
 #include "utility.hpp"
 
 // Inludes common necessary includes for development using depthai library
@@ -9,58 +8,50 @@
 
 int main(int argc, char** argv) {
     using namespace std;
-    using namespace std::chrono;
 
-    dai::Pipeline p;
+    // Create pipeline
+    dai::Pipeline pipeline;
 
-    auto colorCam = p.create<dai::node::ColorCamera>();
-    auto xout = p.create<dai::node::XLinkOut>();
-    auto xout2 = p.create<dai::node::XLinkOut>();
-    auto videnc = p.create<dai::node::VideoEncoder>();
+    // Define sources and outputs
+    auto camRgb = pipeline.create<dai::node::ColorCamera>();
+    auto camMono = pipeline.create<dai::node::MonoCamera>();
+    auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
+    auto xoutMono = pipeline.create<dai::node::XLinkOut>();
 
-    // XLinkOut
-    xout->setStreamName("mjpeg");
-    xout2->setStreamName("preview");
+    xoutRgb->setStreamName("rgb");
+    xoutMono->setStreamName("mono");
 
-    // ColorCamera
-    colorCam->setPreviewSize(300, 300);
-    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    // colorCam->setFps(5.0);
-    colorCam->setInterleaved(true);
+    // Properties
+    camRgb->setInterleaved(true);
+    camRgb->setPreviewSize(300, 300);
 
-    // VideoEncoder
-    videnc->setDefaultProfilePreset(1920, 1080, 30, dai::VideoEncoderProperties::Profile::MJPEG);
-
-    // Link plugins CAM -> XLINK
-    colorCam->video.link(videnc->input);
-    colorCam->preview.link(xout2->input);
-    videnc->bitstream.link(xout->input);
+    // Linking
+    camRgb->preview.link(xoutRgb->input);
+    camMono->out.link(xoutMono->input);
 
     // Connect to device with above created pipeline
-    dai::Device d(p);
+    dai::Device device(pipeline);
     // Start the pipeline
-    d.startPipeline();
+    device.startPipeline();
 
-    // Sets queues size and behaviour
-    d.getOutputQueue("mjpeg", 8, false);
-    d.getOutputQueue("preview", 8, false);
+    // Clear queue events
+    device.getQueueEvents();
 
-    while(1) {
-        auto ev = d.getQueueEvent();
-        if(ev == "preview") {
-            auto preview = d.getOutputQueue(ev)->get<dai::ImgFrame>();
-            cv::imshow("preview", cv::Mat(preview->getHeight(), preview->getWidth(), CV_8UC3, preview->getData().data()));
-        } else if(ev == "mjpeg") {
-            auto mjpeg = d.getOutputQueue(ev)->get<dai::ImgFrame>();
-            cv::Mat decodedFrame = cv::imdecode(cv::Mat(mjpeg->getData()), cv::IMREAD_COLOR);
-            cv::imshow("mjpeg", decodedFrame);
+    while(true) {
+        auto ev = device.getQueueEvent();
+
+        if(ev == "rgb") {
+            auto rgb = device.getOutputQueue(ev)->get<dai::ImgFrame>();
+            cv::imshow("rgb", rgb->getFrame());
+        } else if(ev == "mono") {
+            auto mono = device.getOutputQueue(ev)->get<dai::ImgFrame>();
+            cv::imshow("mono", mono->getFrame());
         }
 
         int key = cv::waitKey(1);
-        if(key == 'q') {
+        if(key == 'q' || key == 'Q') {
             return 0;
         }
     }
-
     return 0;
 }

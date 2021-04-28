@@ -28,18 +28,22 @@ int main(int argc, char** argv) {
     // Create pipeline
     dai::Pipeline pipeline;
 
-    // Define source
+    // Define sources and outputs
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto camRight = pipeline.create<dai::node::MonoCamera>();
     auto videoEncoder = pipeline.create<dai::node::VideoEncoder>();
     auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
     auto manip = pipeline.create<dai::node::ImageManip>();
 
+    auto videoOut = pipeline.create<dai::node::XLinkOut>();
     auto xoutRight = pipeline.create<dai::node::XLinkOut>();
     auto manipOut = pipeline.create<dai::node::XLinkOut>();
     auto nnOut = pipeline.create<dai::node::XLinkOut>();
-    auto videoOut = pipeline.create<dai::node::XLinkOut>();
 
+    videoOut->setStreamName("h265");
+    xoutRight->setStreamName("right");
+    manipOut->setStreamName("manip");
+    nnOut->setStreamName("nn");
 
     // Properties
     camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
@@ -51,17 +55,13 @@ int main(int argc, char** argv) {
     nn->setConfidenceThreshold(0.5);
     nn->setBlobPath(nnPath);
     nn->setNumInferenceThreads(2);
+    nn->input.setBlocking(false);
 
     // The NN model expects BGR input. By default ImageManip output type would be same as input (gray in this case)
     manip->initialConfig.setFrameType(dai::RawImgFrame::Type::BGR888p);
     manip->initialConfig.setResize(300, 300);
 
-    videoOut->setStreamName("h265");
-    xoutRight->setStreamName("right");
-    manipOut->setStreamName("manip");
-    nnOut->setStreamName("nn");
-
-    // Create outputs
+    // Linking
     camRgb->video.link(videoEncoder->input);
     videoEncoder->bitstream.link(videoOut->input);
     camRight->out.link(manip->inputImage);

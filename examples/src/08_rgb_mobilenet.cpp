@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
     // Create pipeline
     dai::Pipeline pipeline;
 
-    // Define source and outputs
+    // Define sources and outputs
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
     auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
@@ -71,7 +71,7 @@ int main(int argc, char** argv) {
     auto qDet = device.getOutputQueue("nn", 4, false);
 
     // Add bounding boxes and text to the frame and show it to the user
-    auto displayFrame = [](std::string name, auto frame, auto detections) {
+    auto displayFrame = [](std::string name, cv::Mat frame, std::vector<dai::ImgDetection>& detections) {
         auto color = cv::Scalar(255, 0, 0);
         // nn data, being the bounding box locations, are in <0..1> range - they need to be normalized with frame width/height
         for(auto& detection : detections) {

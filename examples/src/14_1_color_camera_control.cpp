@@ -12,14 +12,13 @@
  */
 #include <cstdio>
 #include <iostream>
-
 #include "utility.hpp"
 
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 // Step size ('W','A','S','D' controls)
-static constexpr int STEP_SIZE = 16;
+static constexpr int STEP_SIZE = 8;
 
 // Manual exposure/focus set step
 static constexpr int EXP_STEP = 500;  // us
@@ -33,52 +32,54 @@ static int clamp(int num, int v0, int v1) {
 int main() {
     dai::Pipeline pipeline;
 
-    // Nodes
-    auto colorCam = pipeline.create<dai::node::ColorCamera>();
-    auto controlIn = pipeline.create<dai::node::XLinkIn>();
-    auto configIn = pipeline.create<dai::node::XLinkIn>();
+    // Define sources and outputs
+    auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto videoEncoder = pipeline.create<dai::node::VideoEncoder>();
     auto stillEncoder = pipeline.create<dai::node::VideoEncoder>();
+
+    auto controlIn = pipeline.create<dai::node::XLinkIn>();
+    auto configIn = pipeline.create<dai::node::XLinkIn>();
     auto videoMjpegOut = pipeline.create<dai::node::XLinkOut>();
     auto stillMjpegOut = pipeline.create<dai::node::XLinkOut>();
     auto previewOut = pipeline.create<dai::node::XLinkOut>();
 
-    // Properties
-    colorCam->setVideoSize(640, 360);
-    colorCam->setPreviewSize(300, 300);
     controlIn->setStreamName("control");
     configIn->setStreamName("config");
-    videoEncoder->setDefaultProfilePreset(colorCam->getVideoSize(), colorCam->getFps(), dai::VideoEncoderProperties::Profile::MJPEG);
-    stillEncoder->setDefaultProfilePreset(colorCam->getStillSize(), 1, dai::VideoEncoderProperties::Profile::MJPEG);
     videoMjpegOut->setStreamName("video");
     stillMjpegOut->setStreamName("still");
     previewOut->setStreamName("preview");
 
-    // Link nodes
-    colorCam->video.link(videoEncoder->input);
-    colorCam->still.link(stillEncoder->input);
-    colorCam->preview.link(previewOut->input);
-    controlIn->out.link(colorCam->inputControl);
-    configIn->out.link(colorCam->inputConfig);
+    // Properties
+    camRgb->setVideoSize(640, 360);
+    camRgb->setPreviewSize(300, 300);
+    videoEncoder->setDefaultProfilePreset(camRgb->getVideoSize(), camRgb->getFps(), dai::VideoEncoderProperties::Profile::MJPEG);
+    stillEncoder->setDefaultProfilePreset(camRgb->getStillSize(), 1, dai::VideoEncoderProperties::Profile::MJPEG);
+
+    // Linking
+    camRgb->video.link(videoEncoder->input);
+    camRgb->still.link(stillEncoder->input);
+    camRgb->preview.link(previewOut->input);
+    controlIn->out.link(camRgb->inputControl);
+    configIn->out.link(camRgb->inputConfig);
     videoEncoder->bitstream.link(videoMjpegOut->input);
     stillEncoder->bitstream.link(stillMjpegOut->input);
 
     // Connect to device
-    dai::Device dev(pipeline);
+    dai::Device device(pipeline);
 
     // Create data queues
-    auto controlQueue = dev.getInputQueue("control");
-    auto configQueue = dev.getInputQueue("config");
-    auto previewQueue = dev.getOutputQueue("preview");
-    auto videoQueue = dev.getOutputQueue("video");
-    auto stillQueue = dev.getOutputQueue("still");
+    auto controlQueue = device.getInputQueue("control");
+    auto configQueue = device.getInputQueue("config");
+    auto previewQueue = device.getOutputQueue("preview");
+    auto videoQueue = device.getOutputQueue("video");
+    auto stillQueue = device.getOutputQueue("still");
 
     // Start pipeline
-    dev.startPipeline();
+    device.startPipeline();
 
     // Max crop_x & crop_y
-    float max_crop_x = (colorCam->getResolutionWidth() - colorCam->getVideoWidth()) / (float)colorCam->getResolutionWidth();
-    float max_crop_y = (colorCam->getResolutionHeight() - colorCam->getVideoHeight()) / (float)colorCam->getResolutionHeight();
+    float max_crop_x = (camRgb->getResolutionWidth() - camRgb->getVideoWidth()) / (float)camRgb->getResolutionWidth();
+    float max_crop_y = (camRgb->getResolutionHeight() - camRgb->getVideoHeight()) / (float)camRgb->getResolutionHeight();
 
     // Default crop
     float crop_x = 0;
@@ -120,10 +121,10 @@ int main() {
             cv::imshow("still", frame);
         }
 
-        // Update screen (10ms pooling rate)
-        int key = cv::waitKey(10);
+        // Update screen (1ms pooling rate)
+        int key = cv::waitKey(1);
         if(key == 'q') {
-            break;
+            return 0;
         } else if(key == 'c') {
             dai::CameraControl ctrl;
             ctrl.setCaptureStill(true);
@@ -165,16 +166,16 @@ int main() {
             controlQueue->send(ctrl);
         } else if(key == 'w' || key == 'a' || key == 's' || key == 'd') {
             if(key == 'a') {
-                crop_x -= (max_crop_x / colorCam->getResolutionWidth()) * STEP_SIZE;
+                crop_x -= (max_crop_x / camRgb->getResolutionWidth()) * STEP_SIZE;
                 if(crop_x < 0) crop_x = max_crop_x;
             } else if(key == 'd') {
-                crop_x += (max_crop_x / colorCam->getResolutionWidth()) * STEP_SIZE;
+                crop_x += (max_crop_x / camRgb->getResolutionWidth()) * STEP_SIZE;
                 if(crop_x > max_crop_x) crop_x = 0.0f;
             } else if(key == 'w') {
-                crop_y -= (max_crop_y / colorCam->getResolutionHeight()) * STEP_SIZE;
+                crop_y -= (max_crop_y / camRgb->getResolutionHeight()) * STEP_SIZE;
                 if(crop_y < 0) crop_y = max_crop_y;
             } else if(key == 's') {
-                crop_y += (max_crop_y / colorCam->getResolutionHeight()) * STEP_SIZE;
+                crop_y += (max_crop_y / camRgb->getResolutionHeight()) * STEP_SIZE;
                 if(crop_y > max_crop_y) crop_y = 0.0f;
             }
 
@@ -185,4 +186,5 @@ int main() {
             printf("Sending new crop - x: %f, y: %f\n", crop_x, crop_y);
         }
     }
+    return 0;
 }

@@ -17,13 +17,17 @@ int main() {
     // Start defining a pipeline
     dai::Pipeline pipeline;
 
-    // Nodes
+    // Define sources and outputs
     auto camRight = pipeline.create<dai::node::MonoCamera>();
     auto camLeft = pipeline.create<dai::node::MonoCamera>();
     auto manip = pipeline.create<dai::node::ImageManip>();
     auto stereo = pipeline.create<dai::node::StereoDepth>();
+
     auto configIn = pipeline.create<dai::node::XLinkIn>();
     auto xout = pipeline.create<dai::node::XLinkOut>();
+
+    configIn->setStreamName("config");
+    xout->setStreamName("depth");
 
     // Crop range
     dai::Point2f topLeft(0.2, 0.2);
@@ -34,14 +38,13 @@ int main() {
     camLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
     camRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     camLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-    configIn->setStreamName("config");
-    xout->setStreamName("depth");
+
     manip->initialConfig.setCropRect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
     manip->setMaxOutputFrameSize(camRight->getResolutionHeight() * camRight->getResolutionWidth() * 3);
     stereo->setConfidenceThreshold(200);
     stereo->setOutputDepth(true);
 
-    // Link nodes
+    // Linking
     configIn->out.link(manip->inputConfig);
     stereo->depth.link(manip->inputImage);
     manip->out.link(xout->input);
@@ -49,14 +52,14 @@ int main() {
     camLeft->out.link(stereo->right);
 
     // Connect to device
-    dai::Device dev(pipeline);
+    dai::Device device(pipeline);
 
     // Start pipeline
-    dev.startPipeline();
+    device.startPipeline();
 
     // Queues
-    auto q = dev.getOutputQueue(xout->getStreamName(), 4, false);
-    auto configQueue = dev.getInputQueue(configIn->getStreamName());
+    auto q = device.getOutputQueue(xout->getStreamName(), 4, false);
+    auto configQueue = device.getInputQueue(configIn->getStreamName());
 
     while(true) {
         auto inDepth = q->get<dai::ImgFrame>();
@@ -108,4 +111,5 @@ int main() {
             sendCamConfig = false;
         }
     }
+    return 0;
 }

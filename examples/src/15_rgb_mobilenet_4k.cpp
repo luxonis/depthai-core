@@ -28,12 +28,17 @@ int main(int argc, char** argv) {
     // Create pipeline
     dai::Pipeline pipeline;
 
-    // Define source
+    // Define sources and outputs
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
-    auto nnOut = pipeline.create<dai::node::XLinkOut>();
+
     auto xoutVideo = pipeline.create<dai::node::XLinkOut>();
     auto xoutPreview = pipeline.create<dai::node::XLinkOut>();
+    auto nnOut = pipeline.create<dai::node::XLinkOut>();
+
+    xoutVideo->setStreamName("video");
+    xoutPreview->setStreamName("preview");
+    nnOut->setStreamName("nn");
 
     // Properties
     camRgb->setPreviewSize(300, 300);    // NN input
@@ -46,11 +51,7 @@ int main(int argc, char** argv) {
     nn->setNumInferenceThreads(2);
     nn->input.setBlocking(false);
 
-    xoutVideo->setStreamName("video");
-    xoutPreview->setStreamName("preview");
-    nnOut->setStreamName("nn");
-
-    // Create outputs
+    // Linking
     camRgb->video.link(xoutVideo->input);
     camRgb->preview.link(xoutPreview->input);
     camRgb->preview.link(nn->input);

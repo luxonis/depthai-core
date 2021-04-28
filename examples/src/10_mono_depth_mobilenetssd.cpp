@@ -30,34 +30,41 @@ int main(int argc, char** argv) {
     // Create pipeline
     dai::Pipeline pipeline;
 
-    // Define source
+    // Define sources and outputs
     auto camRight = pipeline.create<dai::node::MonoCamera>();
     auto camLeft = pipeline.create<dai::node::MonoCamera>();
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto manip = pipeline.create<dai::node::ImageManip>();
     auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
-    auto nnOut = pipeline.create<dai::node::XLinkOut>();
+
     auto disparityOut = pipeline.create<dai::node::XLinkOut>();
     auto xoutRight = pipeline.create<dai::node::XLinkOut>();
+    auto nnOut = pipeline.create<dai::node::XLinkOut>();
+
+    disparityOut->setStreamName("disparity");
+    xoutRight->setStreamName("rectifiedRight");
+    nnOut->setStreamName("nn");
 
     // Properties
     camRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
     camRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     camLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
     camLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-    stereo->setOutputRectified(true);
+    // Produce the depth map (using disparity output as it's easier to visualize depth this way)
+    stereo->setOutputRectified(true);  // The rectified streams are horizontally mirrored by default
     stereo->setConfidenceThreshold(255);
-    stereo->setRectifyEdgeFillColor(0);
+    stereo->setRectifyEdgeFillColor(0);  // Black, to better see the cutout from rectification (black stripe on the edges)
+    // Convert the grayscale frame into the nn-acceptable form
     manip->initialConfig.setResize(300, 300);
+    // The NN model expects BGR input. By default ImageManip output type would be same as input (gray in this case)
     manip->initialConfig.setFrameType(dai::RawImgFrame::Type::BGR888p);
+    // Define a neural network that will make predictions based on the source frames
     nn->setConfidenceThreshold(0.5);
     nn->setBlobPath(nnPath);
     nn->setNumInferenceThreads(2);
-    disparityOut->setStreamName("disparity");
-    xoutRight->setStreamName("rectifiedRight");
-    nnOut->setStreamName("nn");
+    nn->input.setBlocking(false);
 
-    // Create outputs
+    // Linking
     camRight->out.link(stereo->right);
     camLeft->out.link(stereo->left);
     stereo->rectifiedRight.link(manip->inputImage);
@@ -71,13 +78,13 @@ int main(int argc, char** argv) {
     // Start the pipeline
     device.startPipeline();
 
-    // Queues
+    // Output queues will be used to get the grayscale / depth frames and nn data from the outputs defined above
     auto qRight = device.getOutputQueue("rectifiedRight", 4, false);
     auto qDisparity = device.getOutputQueue("disparity", 4, false);
     auto qDet = device.getOutputQueue("nn", 4, false);
 
     // Add bounding boxes and text to the frame and show it to the user
-    auto show = [](std::string name, auto frame, auto detections) {
+    auto show = [](std::string name, cv::Mat frame, std::vector<dai::ImgDetection>& detections) {
         auto color = cv::Scalar(255, 0, 0);
         // nn data, being the bounding box locations, are in <0..1> range - they need to be normalized with frame width/height
         for(auto& detection : detections) {
@@ -102,6 +109,7 @@ int main(int argc, char** argv) {
     };
 
     float disparity_multiplier = 255 / 95;
+
     while(true) {
         auto inRight = qRight->get<dai::ImgFrame>();
         auto inDet = qDet->get<dai::ImgDetections>();

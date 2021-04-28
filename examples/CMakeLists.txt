@@ -55,29 +55,6 @@ endmacro()
 
 # Hunter test data download
 
-## message(STATUS "Location of test1.data: ${test1_data}")
-
-# Color camera preview output example
-dai_add_example(01_rgb_preview src/01_rgb_preview.cpp)
-
-# Mono camera preview output example
-dai_add_example(02_mono_preview src/02_mono_preview.cpp)
-
-# Depth preview output example
-dai_add_example(03_depth_preview src/03_depth_preview.cpp)
-
-# rgb encoding
-dai_add_example(04_rgb_encoding src/04_rgb_encoding.cpp)
-
-# rgb+mono encoding
-dai_add_example(05_rgb_mono_encoding src/05_rgb_mono_encoding.cpp)
-
-# Color camera video output example
-dai_add_example(28_1_rgb_camera_video src/28_1_rgb_camera_video.cpp)
-
-# Mono camera video output example
-dai_add_example(28_2_mono_camera_video src/28_2_mono_camera_video.cpp)
-
 # NeuralNetwork node, mobilenet example
 hunter_private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet-ssd_openvino_2021.2_6shave.blob"
@@ -109,6 +86,66 @@ hunter_private_data(
     FILE "mobilenet-ssd_openvino_2021.2_8shave.blob"
     LOCATION mobilenet_8shaves_blob
 )
+
+# Video file with objects to detect
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/construction_vest.mp4"
+    SHA1 "271d8d0b702e683ce02957db7c100843de5ceaec"
+    FILE "construction_vest.mp4"
+    LOCATION construction_vest
+)
+
+## message(STATUS "Location of test1.data: ${test1_data}")
+
+# Color camera preview output example
+dai_add_example(01_rgb_preview src/01_rgb_preview.cpp)
+
+# Mono camera preview output example
+dai_add_example(02_mono_preview src/02_mono_preview.cpp)
+
+# Depth preview output example
+dai_add_example(03_depth_preview src/03_depth_preview.cpp)
+
+# rgb encoding
+dai_add_example(04_rgb_encoding src/04_rgb_encoding.cpp)
+
+# rgb+mono encoding
+dai_add_example(05_rgb_mono_encoding src/05_rgb_mono_encoding.cpp)
+
+dai_add_example(06_rgb_full_resolution_saver src/06_rgb_full_resolution_saver.cpp)
+
+dai_add_example(07_mono_full_resolution_saver src/07_mono_full_resolution_saver.cpp)
+
+dai_add_example(09_mono_mobilenet src/09_mono_mobilenet.cpp)
+target_compile_definitions(09_mono_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}")
+
+dai_add_example(10_mono_depth_mobilenetssd src/10_mono_depth_mobilenetssd.cpp)
+target_compile_definitions(10_mono_depth_mobilenetssd PRIVATE BLOB_PATH="${mobilenet_blob}")
+
+dai_add_example(11_rgb_encoding_mono_mobilenet src/11_rgb_encoding_mono_mobilenet.cpp)
+target_compile_definitions(11_rgb_encoding_mono_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}")
+
+dai_add_example(12_rgb_encoding_mono_mobilenet_depth src/12_rgb_encoding_mono_mobilenet_depth.cpp)
+target_compile_definitions(12_rgb_encoding_mono_mobilenet_depth PRIVATE BLOB_PATH="${mobilenet_blob}")
+
+dai_add_example(13_encoding_max_limit src/13_encoding_max_limit.cpp)
+
+dai_add_example(14_2_mono_camera_control src/14_2_mono_camera_control.cpp)
+
+dai_add_example(14_3_depth_crop_control src/14_3_depth_crop_control.cpp)
+
+dai_add_example(15_rgb_mobilenet_4k src/15_rgb_mobilenet_4k.cpp)
+target_compile_definitions(15_rgb_mobilenet_4k PRIVATE BLOB_PATH="${mobilenet_blob}")
+
+dai_add_example(18_rgb_encoding_mobilenet src/18_rgb_encoding_mobilenet.cpp)
+target_compile_definitions(18_rgb_encoding_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}")
+
+
+# Color camera video output example
+dai_add_example(28_1_rgb_camera_video src/28_1_rgb_camera_video.cpp)
+
+# Mono camera video output example
+dai_add_example(28_2_mono_camera_video src/28_2_mono_camera_video.cpp)
 
 dai_add_example(08_rgb_mobilenet src/08_rgb_mobilenet.cpp)
 target_compile_definitions(08_rgb_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}")
@@ -180,4 +217,7 @@ target_compile_definitions(29_1_object_tracker PRIVATE BLOB_PATH="${mobilenet_bl
 # Spatial Object tracker example on mobilenet SSD output
 dai_add_example(29_2_spatial_object_tracker src/29_2_spatial_object_tracker.cpp)
 target_compile_definitions(29_2_spatial_object_tracker PRIVATE BLOB_PATH="${mobilenet_blob}")
+
+dai_add_example(17_video_mobilenet src/17_video_mobilenet.cpp)
+target_compile_definitions(17_video_mobilenet PRIVATE BLOB_PATH="${mobilenet_8shaves_blob}" VIDEO_PATH="${construction_vest}")
 

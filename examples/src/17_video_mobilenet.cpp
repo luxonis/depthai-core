@@ -31,19 +31,20 @@ int main(int argc, char** argv) {
     // Create pipeline
     dai::Pipeline pipeline;
 
-    // Define source
-    auto xinFrame = pipeline.create<dai::node::XLinkIn>();
+    // Define source and outputs
     auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
+
+    auto xinFrame = pipeline.create<dai::node::XLinkIn>();
     auto nnOut = pipeline.create<dai::node::XLinkOut>();
+
+    xinFrame->setStreamName("inFrame");
+    nnOut->setStreamName("nn");
 
     // Properties
     nn->setConfidenceThreshold(0.5);
     nn->setBlobPath(nnPath);
     nn->setNumInferenceThreads(2);
     nn->input.setBlocking(false);
-
-    xinFrame->setStreamName("inFrame");
-    nnOut->setStreamName("nn");
 
     // Create outputs
     xinFrame->out.link(nn->input);
@@ -54,18 +55,13 @@ int main(int argc, char** argv) {
     // Start the pipeline
     device.startPipeline();
 
-    // Queues
+    // Input queue will be used to send video frames to the device.
     auto qIn = device.getInputQueue("inFrame");
+    // Output queue will be used to get nn data from the video frames.
     auto qDet = device.getOutputQueue("nn", 4, false);
 
-
-    // auto to_planar = [](auto frame, auto size1) {
-    //     cv::resize(frame, frame, cv::Size(size1, size1));
-    //     cv::
-    // };
-
     // Add bounding boxes and text to the frame and show it to the user
-    auto displayFrame = [](std::string name, auto frame, auto detections) {
+    auto displayFrame = [](std::string name, cv::Mat frame, std::vector<dai::ImgDetection>& detections) {
         auto color = cv::Scalar(255, 0, 0);
         // nn data, being the bounding box locations, are in <0..1> range - they need to be normalized with frame width/height
         for(auto& detection : detections) {

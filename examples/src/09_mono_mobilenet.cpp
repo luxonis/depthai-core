@@ -28,41 +28,45 @@ int main(int argc, char** argv) {
     // Create pipeline
     dai::Pipeline pipeline;
 
-    // Define source
+    // Define sources and outputs
     auto camRight = pipeline.create<dai::node::MonoCamera>();
     auto manip = pipeline.create<dai::node::ImageManip>();
+    auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
     auto manipOut = pipeline.create<dai::node::XLinkOut>();
-    auto detectionNetwork = pipeline.create<dai::node::MobileNetDetectionNetwork>();
     auto nnOut = pipeline.create<dai::node::XLinkOut>();
+
+    manipOut->setStreamName("right");
+    nnOut->setStreamName("detections");
 
     // Properties
     camRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
     camRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    detectionNetwork->setConfidenceThreshold(0.5);
-    detectionNetwork->setBlobPath(nnPath);
-    detectionNetwork->setNumInferenceThreads(2);
+    nn->setConfidenceThreshold(0.5);
+    nn->setBlobPath(nnPath);
+    nn->setNumInferenceThreads(2);
+    nn->input.setBlocking(false);
+    // Convert the grayscale frame into the nn-acceptable form
     manip->initialConfig.setResize(300, 300);
+    // The NN model expects BGR input. By default ImageManip output type would be same as input (gray in this case)
     manip->initialConfig.setFrameType(dai::RawImgFrame::Type::BGR888p);
-    manipOut->setStreamName("right");
-    nnOut->setStreamName("detections");
 
-    // Create outputs
+    // Linking
     camRight->out.link(manip->inputImage);
-    manip->out.link(detectionNetwork->input);
+    manip->out.link(nn->input);
     manip->out.link(manipOut->input);
-    detectionNetwork->out.link(nnOut->input);
+    nn->out.link(nnOut->input);
 
     // Connect to device with above created pipeline
     dai::Device device(pipeline);
     // Start the pipeline
     device.startPipeline();
 
-    // Queues
+    // Output queues will be used to get the grayscale frames and nn data from the outputs defined above
     auto qRight = device.getOutputQueue("right", 4, false);
-    auto detections = device.getOutputQueue("detections", 4, false);
+    auto qDet = device.getOutputQueue("nn", 4, false);
 
     // Add bounding boxes and text to the frame and show it to the user
-    auto displayFrame = [](std::string name, auto frame, auto detections) {
+    auto displayFrame = [](std::string name, cv::Mat frame, std::vector<dai::ImgDetection>& detections) {
         auto color = cv::Scalar(255, 0, 0);
         // nn data, being the bounding box locations, are in <0..1> range - they need to be normalized with frame width/height
         for(auto& detection : detections) {
@@ -88,7 +92,7 @@ int main(int argc, char** argv) {
 
     while(true) {
         auto inRight = qRight->get<dai::ImgFrame>();
-        auto inDet = detections->get<dai::ImgDetections>();
+        auto inDet = qDet->get<dai::ImgDetections>();
         auto detections = inDet->detections;
         cv::Mat frame = inRight->getCvFrame();
 

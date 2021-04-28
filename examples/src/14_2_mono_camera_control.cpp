@@ -30,15 +30,21 @@ int main() {
     // Start defining a pipeline
     dai::Pipeline pipeline;
 
-    // Nodes
+    // Define sources and outputs
     auto camRight = pipeline.create<dai::node::MonoCamera>();
     auto camLeft = pipeline.create<dai::node::MonoCamera>();
     auto manipRight = pipeline.create<dai::node::ImageManip>();
     auto manipLeft = pipeline.create<dai::node::ImageManip>();
+
     auto controlIn = pipeline.create<dai::node::XLinkIn>();
     auto configIn = pipeline.create<dai::node::XLinkIn>();
     auto manipOutRight = pipeline.create<dai::node::XLinkOut>();
     auto manipOutLeft = pipeline.create<dai::node::XLinkOut>();
+
+    controlIn->setStreamName("control");
+    configIn->setStreamName("config");
+    manipOutRight->setStreamName("right");
+    manipOutLeft->setStreamName("left");
 
     // Crop range
     dai::Point2f topLeft(0.2, 0.2);
@@ -49,14 +55,10 @@ int main() {
     camLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
     camRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
     camLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    controlIn->setStreamName("control");
-    configIn->setStreamName("config");
-    manipOutRight->setStreamName("right");
-    manipOutLeft->setStreamName("left");
     manipRight->initialConfig.setCropRect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
     manipLeft->initialConfig.setCropRect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
 
-    // Link nodes
+    // Linking
     camRight->out.link(manipRight->inputImage);
     camLeft->out.link(manipLeft->inputImage);
     controlIn->out.link(camRight->inputControl);
@@ -67,16 +69,16 @@ int main() {
     manipLeft->out.link(manipOutLeft->input);
 
     // Connect to device
-    dai::Device dev(pipeline);
+    dai::Device device(pipeline);
 
     // Start pipeline
-    dev.startPipeline();
+    device.startPipeline();
 
-    // Queues
-    auto qRight = dev.getOutputQueue(manipOutRight->getStreamName(), 4, false);
-    auto qLeft = dev.getOutputQueue(manipOutLeft->getStreamName(), 4, false);
-    auto controlQueue = dev.getInputQueue(controlIn->getStreamName());
-    auto configQueue = dev.getInputQueue(configIn->getStreamName());
+    // Output queues will be used to get the grayscale frames
+    auto qRight = device.getOutputQueue(manipOutRight->getStreamName(), 4, false);
+    auto qLeft = device.getOutputQueue(manipOutLeft->getStreamName(), 4, false);
+    auto controlQueue = device.getInputQueue(controlIn->getStreamName());
+    auto configQueue = device.getInputQueue(configIn->getStreamName());
 
     // Defaults and limits for manual focus/exposure controls
     int exp_time = 20000;
@@ -90,13 +92,11 @@ int main() {
     while(true) {
         auto inRight = qRight->get<dai::ImgFrame>();
         auto inLeft = qLeft->get<dai::ImgFrame>();
-        cv::Mat frameRight = inRight->getCvFrame();
-        cv::Mat frameLeft = inLeft->getCvFrame();
-        cv::imshow("right", frameRight);
-        cv::imshow("left", frameLeft);
+        cv::imshow("right", inRight->getCvFrame());
+        cv::imshow("left", inLeft->getCvFrame());
 
-        // Update screen (10ms pooling rate)
-        int key = cv::waitKey(10);
+        // Update screen (1ms pooling rate)
+        int key = cv::waitKey(1);
         if(key == 'q') {
             break;
         } else if(key == 'e') {
@@ -149,4 +149,5 @@ int main() {
             sendCamConfig = false;
         }
     }
+    return 0;
 }

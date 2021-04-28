@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
     // Create pipeline
     dai::Pipeline pipeline;
 
-    // Define source
+    // Define sources and outputs
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto videoEncoder = pipeline.create<dai::node::VideoEncoder>();
     auto camLeft = pipeline.create<dai::node::MonoCamera>();
@@ -45,6 +45,12 @@ int main(int argc, char** argv) {
     auto manipOut = pipeline.create<dai::node::XLinkOut>();
     auto nnOut = pipeline.create<dai::node::XLinkOut>();
 
+    videoOut->setStreamName("h265");
+    xoutRight->setStreamName("right");
+    disparityOut->setStreamName("disparity");
+    manipOut->setStreamName("manip");
+    nnOut->setStreamName("nn");
+
     // Properties
     camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
@@ -54,26 +60,22 @@ int main(int argc, char** argv) {
     camLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
     camLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
 
-    depth->setConfidenceThreshold(255);
+    // Note: the rectified streams are horizontally mirrored by default
     depth->setOutputRectified(true);
+    depth->setConfidenceThreshold(255);
     depth->setRectifyMirrorFrame(false);
-    depth->setRectifyEdgeFillColor(0);
+    depth->setRectifyEdgeFillColor(0); // Black, to better see the cutout
 
     nn->setConfidenceThreshold(0.5);
     nn->setBlobPath(nnPath);
     nn->setNumInferenceThreads(2);
+    nn->input.setBlocking(false);
 
     // The NN model expects BGR input-> By default ImageManip output type would be same as input (gray in this case)
     manip->initialConfig.setFrameType(dai::RawImgFrame::Type::BGR888p);
     manip->initialConfig.setResize(300, 300);
 
-    videoOut->setStreamName("h265");
-    disparityOut->setStreamName("disparity");
-    xoutRight->setStreamName("right");
-    manipOut->setStreamName("manip");
-    nnOut->setStreamName("nn");
-
-    // Create outputs
+    // Linking
     camRgb->video.link(videoEncoder->input);
     videoEncoder->bitstream.link(videoOut->input);
     camRight->out.link(xoutRight->input);
