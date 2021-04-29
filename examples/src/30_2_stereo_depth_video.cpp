@@ -56,8 +56,6 @@ int main() {
 
     if(withDepth) {
         // StereoDepth
-        stereo->setOutputDepth(outputDepth);
-        stereo->setOutputRectified(outputRectified);
         stereo->setConfidenceThreshold(200);
         stereo->setRectifyEdgeFillColor(0);  // black, to better see the cutout
         // stereo->loadCalibrationFile("../../../../depthai/resources/depthai.calib");
@@ -79,7 +77,9 @@ int main() {
             stereo->rectifiedRight.link(xoutRectifR->input);
         }
         stereo->disparity.link(xoutDisp->input);
-        stereo->depth.link(xoutDepth->input);
+        if (outputDepth) {
+            stereo->depth.link(xoutDepth->input);
+        }
 
     } else {
         // Link plugins CAM -> XLINK
@@ -99,15 +99,10 @@ int main() {
     auto rectifRightQueue = withDepth ? d.getOutputQueue("rectified_right", 8, false) : nullptr;
 
     while(1) {
-        auto t1 = steady_clock::now();
         auto left = leftQueue->get<dai::ImgFrame>();
-        auto t2 = steady_clock::now();
         cv::imshow("left", cv::Mat(left->getHeight(), left->getWidth(), CV_8UC1, left->getData().data()));
-        auto t3 = steady_clock::now();
         auto right = rightQueue->get<dai::ImgFrame>();
-        auto t4 = steady_clock::now();
         cv::imshow("right", cv::Mat(right->getHeight(), right->getWidth(), CV_8UC1, right->getData().data()));
-        auto t5 = steady_clock::now();
 
         if(withDepth) {
             // Note: in some configurations (if depth is enabled), disparity may output garbage data
@@ -127,24 +122,17 @@ int main() {
             if(outputRectified) {
                 auto rectifL = rectifLeftQueue->get<dai::ImgFrame>();
                 cv::Mat rectifiedLeftFrame = rectifL->getFrame();
-                cv::flip(rectifiedLeftFrame, rectifiedLeftFrame, 1);
+                //cv::flip(rectifiedLeftFrame, rectifiedLeftFrame, 1);
                 cv::imshow("rectified_left", rectifiedLeftFrame);
 
                 auto rectifR = rectifRightQueue->get<dai::ImgFrame>();
                 cv::Mat rectifiedRightFrame = rectifR->getFrame();
 
-                cv::flip(rectifiedRightFrame, rectifiedRightFrame, 1);
+                //cv::flip(rectifiedRightFrame, rectifiedRightFrame, 1);
                 cv::imshow("rectified_right", rectifiedRightFrame);
             }
         }
 
-        int ms1 = std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
-        int ms2 = std::chrono::duration_cast<std::chrono::milliseconds>(t3 - t2).count();
-        int ms3 = std::chrono::duration_cast<std::chrono::milliseconds>(t4 - t3).count();
-        int ms4 = std::chrono::duration_cast<std::chrono::milliseconds>(t5 - t4).count();
-        int loop = std::chrono::duration_cast<std::chrono::milliseconds>(t5 - t1).count();
-
-        std::cout << ms1 << " " << ms2 << " " << ms3 << " " << ms4 << " loop: " << loop << std::endl;
         int key = cv::waitKey(1);
         if(key == 'q') {
             return 0;
