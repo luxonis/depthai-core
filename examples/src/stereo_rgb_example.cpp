@@ -42,13 +42,13 @@ int main() {
     // MonoCamera
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
     monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
-    // monoLeft->setImageOrientation(dai::CameraImageOrientation::ROTATE_180_DEG);
+    monoLeft->setImageOrientation(dai::CameraImageOrientation::ROTATE_180_DEG);
 
     cam->setBoardSocket(dai::CameraBoardSocket::RGB);
     cam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_4_K);
     cam->setIspScale(1, 3);
     cam->initialControl.setManualFocus(135);
-    // cam->setImageOrientation(dai::CameraImageOrientation::ROTATE_180_DEG);
+    cam->setImageOrientation(dai::CameraImageOrientation::ROTATE_180_DEG);
 
     // monoLeft->setFps(5.0);
     // monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::1080);
