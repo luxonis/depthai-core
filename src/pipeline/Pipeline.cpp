@@ -4,6 +4,7 @@
 
 // std
 #include <cassert>
+#include <fstream>
 
 // libraries
 #include "spdlog/fmt/fmt.h"
@@ -243,6 +244,24 @@ OpenVINO::Version PipelineImpl::getPipelineOpenVINOVersion() const {
     }
 
     return openvinoVersion;
+}
+
+void PipelineImpl::setCameraTuningBlobPath(const std::string& path) {
+    std::string assetKey = "camTuning";
+
+    std::ifstream blobStream(path, std::ios::in | std::ios::binary);
+    if(!blobStream.is_open()) {
+        throw std::runtime_error("Pipeline | Couldn't open camera tuning blob at path: " + path);
+    }
+
+    Asset blobAsset;
+    blobAsset.alignment = 64;
+    blobAsset.data = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(blobStream), {});
+
+    assetManager.set(assetKey, blobAsset);
+
+    globalProperties.cameraTuningBlobUri = std::string("asset:") + assetKey;
+    globalProperties.cameraTuningBlobSize = blobAsset.data.size();
 }
 
 // Remove node capability
