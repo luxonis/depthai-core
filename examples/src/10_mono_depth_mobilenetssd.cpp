@@ -51,7 +51,6 @@ int main(int argc, char** argv) {
     monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     // Produce the depth map (using disparity output as it's easier to visualize depth this way)
-    stereo->setOutputRectified(true);  // The rectified streams are horizontally mirrored by default
     stereo->setConfidenceThreshold(255);
     stereo->setRectifyEdgeFillColor(0);  // Black, to better see the cutout from rectification (black stripe on the edges)
     // Convert the grayscale frame into the nn-acceptable form
@@ -85,7 +84,7 @@ int main(int argc, char** argv) {
 
     // Add bounding boxes and text to the frame and show it to the user
     auto show = [](std::string name, cv::Mat frame, std::vector<dai::ImgDetection>& detections) {
-        auto color = cv::Scalar(255, 0, 0);
+        auto color = cv::Scalar(255, 192, 203);
         // nn data, being the bounding box locations, are in <0..1> range - they need to be normalized with frame width/height
         for(auto& detection : detections) {
             int x1 = detection.xmin * frame.cols;

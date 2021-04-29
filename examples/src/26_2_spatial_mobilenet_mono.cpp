@@ -32,7 +32,7 @@ dai::Pipeline createPipeline(std::string nnPath) {
 
     imageManip->initialConfig.setResize(300, 300);
     // The NN model expects BGR input. By default ImageManip output type would be same as input (gray in this case)
-    imageManip->initialConfig.setFrameType(dai::RawImgFrame::Type::BGR888p);
+    imageManip->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
 
     auto monoLeft = p.create<dai::node::MonoCamera>();
     auto monoRight = p.create<dai::node::MonoCamera>();

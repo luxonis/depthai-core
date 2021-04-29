@@ -48,7 +48,7 @@ int main() {
     bool outputRectified = true;
     bool lrcheck = true;
     bool extended = false;
-    bool subpixel = true;
+    bool subpixel = false;
 
     int maxDisp = 96;
     if(extended) maxDisp *= 2;

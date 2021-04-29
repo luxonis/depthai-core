@@ -58,7 +58,6 @@ int main(int argc, char** argv) {
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
     // Setting node configs
-    stereo->setOutputDepth(true);
     stereo->setConfidenceThreshold(255);
 
     spatialDetectionNetwork->setBlobPath(nnPath);
