@@ -3,6 +3,7 @@ option(DEPTHAI_TEST_EXAMPLES "Test examples - examples will be ran as a part of 
 
 # Dependencies
 find_package(OpenCV REQUIRED)
+find_package(Sanitizers)
 
 # Create utility library
 add_library(utility src/utility.cpp)
@@ -13,13 +14,16 @@ macro(dai_add_example example_name example_src)
     add_executable("${example_name}" "${example_src}")
     target_link_libraries("${example_name}" PRIVATE utility depthai::opencv ${OpenCV_LIBS})
 
+    # Add sanitizers for example
+    add_sanitizers(${example_name})
+
     # Add to clangformat target
     target_clangformat_setup(${example_name} "")
 
     # parse the rest of the arguments
     set(arguments ${ARGV})
     list(REMOVE_AT arguments 0 1)
-    
+
     # If 'DEPTHAI_TEST_EXAMPLES' is ON, then examples will be part of the test suite
     if(DEPTHAI_TEST_EXAMPLES)
         add_test(NAME ${example_name} COMMAND ${CMAKE_COMMAND}
@@ -28,16 +32,13 @@ macro(dai_add_example example_name example_src)
         )
 
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
-        set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]") 
-            
-        # Add sanitizers for tests as well
-        add_sanitizers(${example_name})
+        set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]")
 
         # Add ubsan halt on error
         set_tests_properties(${example_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1")
 
     endif()
-endmacro() 
+endmacro()
 
 # Create a custom target which runs all examples for 10 seconds max, and check if they executed without errors
 
