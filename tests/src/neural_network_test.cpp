@@ -72,7 +72,7 @@ TEST_CASE("Neural network node data checks") {
         dai::ImgFrame frame;
         frame.setWidth(MOBILENET_WIDTH);
         frame.setHeight(MOBILENET_HEIGHT);
-        frame.setType(dai::RawImgFrame::Type::BGR888p);
+        frame.setType(dai::ImgFrame::Type::BGR888p);
         frame.setData(std::vector<uint8_t>(MOBILENET_DATA_SIZE + i * 1024 * 10));
 
         int msgIndex = 0;
