@@ -19,7 +19,6 @@ int main() {
     auto monoLeft = p.create<dai::node::MonoCamera>();
     auto cam = p.create<dai::node::ColorCamera>();
 
-
     // auto monoRight = p.create<dai::node::MonoCamera>();
     auto xoutLeft = p.create<dai::node::XLinkOut>();
     // auto xoutRight = p.create<dai::node::XLinkOut>();
@@ -106,50 +105,35 @@ int main() {
     auto depthQueue = withDepth ? d.getOutputQueue("depth", 8, false) : nullptr;
     auto rectifLeftQueue = withDepth ? d.getOutputQueue("rectified_left", 8, false) : nullptr;
     auto rectifRightQueue = withDepth ? d.getOutputQueue("rectified_right", 8, false) : nullptr;
-    
-    cout << "Queses ready " <<  std::endl;
+
     while(1) {
         auto t1 = steady_clock::now();
-        cout << "leftQueue ready " <<  std::endl;
 
         auto left = leftQueue->get<dai::ImgFrame>();
 
         auto t2 = steady_clock::now();
         cv::imshow("left", cv::Mat(left->getHeight(), left->getWidth(), CV_8UC1, left->getData().data()));
         auto t3 = steady_clock::now();
-        cout << "rightQueue ready " <<  std::endl;
 
-        // auto right = rightQueue->get<dai::ImgFrame>();
-    // cout << "rightQueue ready " << right->getWidth() << " " << right->getHeight() << " " << right->getData().size() << std::endl;
-
-        
         auto t4 = steady_clock::now();
-        // cv::imshow("right", right->getCvFrame());
-        // cv::imshow("right", cv::Mat(right->getHeight(), right->getWidth(), CV_8UC1, right->getData().data()));
+
 
         auto t5 = steady_clock::now();
 
         if(withDepth) {
             // Note: in some configurations (if depth is enabled), disparity may output garbage data
             auto disparity = dispQueue->get<dai::ImgFrame>();
-            cout << "dispQueue ready " << disparity->getHeight() << disparity->getWidth() << " " << disparity->getData().size() << std::endl;
-
             cv::Mat disp(disparity->getHeight(), disparity->getWidth(), subpixel ? CV_16UC1 : CV_8UC1, disparity->getData().data());
-            cout << "leftQueue ready " <<  std::endl;
 
             disp.convertTo(disp, CV_8UC1, 255.0 / maxDisp);  // Extend disparity range
-            cout << "leftQueue ready " <<  std::endl;
 
             cv::imshow("disparity", disp);
-            cout << "leftQueue ready " <<  std::endl;
 
             cv::Mat disp_color;
             cv::applyColorMap(disp, disp_color, cv::COLORMAP_JET);
             cv::imshow("disparity_color", disp_color);
 
             if(outputDepth) {
-                cout << "depth ready " <<  std::endl;
-
                 auto depth = depthQueue->get<dai::ImgFrame>();
                 cv::imshow("depth", cv::Mat(depth->getHeight(), depth->getWidth(), CV_16UC1, depth->getData().data()));
             }

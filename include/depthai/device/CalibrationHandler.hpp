@@ -13,6 +13,11 @@ namespace dai {
  */
 class CalibrationHandler {
    public:
+   /**
+     * @brief Construct a new Calibration Handler object using the
+     * eeprom json file created from calibration procedure.
+     *
+     */
     CalibrationHandler() = default;
 
     /**

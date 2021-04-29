@@ -18,8 +18,8 @@
 #include "utility/Resources.hpp"
 
 // libraries
-#include "spdlog/spdlog.h"
 #include "spdlog/details/os.h"
+#include "spdlog/spdlog.h"
 
 // Resource compiled assets (cmds)
 #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES

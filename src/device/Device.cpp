@@ -24,9 +24,9 @@
 #include "utility/Resources.hpp"
 
 // libraries
+#include "spdlog/details/os.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
-#include "spdlog/details/os.h"
 
 namespace dai {
 
@@ -327,7 +327,7 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
             spdlog::warn("DEPTHAI_FW env var set, overriding firmware to load: {}", envFw);
         }
     }
-    if (fwPath != "") embeddedMvcmd = false;
+    if(fwPath != "") embeddedMvcmd = false;
 
     // Initalize depthai library if not already
     initialize();
