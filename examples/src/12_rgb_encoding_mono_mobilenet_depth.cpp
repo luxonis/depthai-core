@@ -33,8 +33,8 @@ int main(int argc, char** argv) {
     // Define sources and outputs
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto videoEncoder = pipeline.create<dai::node::VideoEncoder>();
-    auto camLeft = pipeline.create<dai::node::MonoCamera>();
-    auto camRight = pipeline.create<dai::node::MonoCamera>();
+    auto monoLeft = pipeline.create<dai::node::MonoCamera>();
+    auto monoRight = pipeline.create<dai::node::MonoCamera>();
     auto depth = pipeline.create<dai::node::StereoDepth>();
     auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
     auto manip = pipeline.create<dai::node::ImageManip>();
@@ -55,10 +55,10 @@ int main(int argc, char** argv) {
     camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     videoEncoder->setDefaultProfilePreset(1920, 1080, 30, dai::VideoEncoderProperties::Profile::H265_MAIN);
-    camRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
-    camRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-    camLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
-    camLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
 
     // Note: the rectified streams are horizontally mirrored by default
     depth->setOutputRectified(true);
@@ -72,15 +72,15 @@ int main(int argc, char** argv) {
     nn->input.setBlocking(false);
 
     // The NN model expects BGR input-> By default ImageManip output type would be same as input (gray in this case)
-    manip->initialConfig.setFrameType(dai::RawImgFrame::Type::BGR888p);
+    manip->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
     manip->initialConfig.setResize(300, 300);
 
     // Linking
     camRgb->video.link(videoEncoder->input);
     videoEncoder->bitstream.link(videoOut->input);
-    camRight->out.link(xoutRight->input);
-    camRight->out.link(depth->right);
-    camLeft->out.link(depth->left);
+    monoRight->out.link(xoutRight->input);
+    monoRight->out.link(depth->right);
+    monoLeft->out.link(depth->left);
     depth->disparity.link(disparityOut->input);
     depth->rectifiedRight.link(manip->inputImage);
     manip->out.link(nn->input);
@@ -127,13 +127,13 @@ int main(int argc, char** argv) {
         frameDisparity.convertTo(frameDisparity, CV_8UC1, disparity_multiplier);
         cv::applyColorMap(frameDisparity, frameDisparity, cv::COLORMAP_JET);
 
-        int offsetX = (camRight->getResolutionWidth() - camRight->getResolutionHeight()) / 2;
+        int offsetX = (monoRight->getResolutionWidth() - monoRight->getResolutionHeight()) / 2;
         auto color = cv::Scalar(255, 0, 0);
         for(auto& detection : detections) {
-            int x1 = detection.xmin * camRight->getResolutionHeight() + offsetX;
-            int y1 = detection.ymin * camRight->getResolutionHeight();
-            int x2 = detection.xmax * camRight->getResolutionHeight() + offsetX;
-            int y2 = detection.ymax * camRight->getResolutionHeight();
+            int x1 = detection.xmin * monoRight->getResolutionHeight() + offsetX;
+            int y1 = detection.ymin * monoRight->getResolutionHeight();
+            int x2 = detection.xmax * monoRight->getResolutionHeight() + offsetX;
+            int y2 = detection.ymax * monoRight->getResolutionHeight();
 
             int labelIndex = detection.label;
             std::string labelStr = to_string(labelIndex);
@@ -150,10 +150,10 @@ int main(int argc, char** argv) {
         cv::imshow("right", frame);
 
         for(auto& detection : detections) {
-            int x1 = detection.xmin * camRight->getResolutionHeight() + offsetX;
-            int y1 = detection.ymin * camRight->getResolutionHeight();
-            int x2 = detection.xmax * camRight->getResolutionHeight() + offsetX;
-            int y2 = detection.ymax * camRight->getResolutionHeight();
+            int x1 = detection.xmin * monoRight->getResolutionHeight() + offsetX;
+            int y1 = detection.ymin * monoRight->getResolutionHeight();
+            int x2 = detection.xmax * monoRight->getResolutionHeight() + offsetX;
+            int y2 = detection.ymax * monoRight->getResolutionHeight();
 
             int labelIndex = detection.label;
             std::string labelStr = to_string(labelIndex);

@@ -29,18 +29,18 @@ int main(int argc, char** argv) {
     dai::Pipeline pipeline;
 
     // Define sources and outputs
-    auto camRight = pipeline.create<dai::node::MonoCamera>();
+    auto monoRight = pipeline.create<dai::node::MonoCamera>();
     auto manip = pipeline.create<dai::node::ImageManip>();
     auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
     auto manipOut = pipeline.create<dai::node::XLinkOut>();
     auto nnOut = pipeline.create<dai::node::XLinkOut>();
 
     manipOut->setStreamName("right");
-    nnOut->setStreamName("detections");
+    nnOut->setStreamName("nn");
 
     // Properties
-    camRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
-    camRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
+    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
     nn->setConfidenceThreshold(0.5);
     nn->setBlobPath(nnPath);
     nn->setNumInferenceThreads(2);
@@ -48,10 +48,10 @@ int main(int argc, char** argv) {
     // Convert the grayscale frame into the nn-acceptable form
     manip->initialConfig.setResize(300, 300);
     // The NN model expects BGR input. By default ImageManip output type would be same as input (gray in this case)
-    manip->initialConfig.setFrameType(dai::RawImgFrame::Type::BGR888p);
+    manip->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
 
     // Linking
-    camRight->out.link(manip->inputImage);
+    monoRight->out.link(manip->inputImage);
     manip->out.link(nn->input);
     manip->out.link(manipOut->input);
     nn->out.link(nnOut->input);

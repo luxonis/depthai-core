@@ -20,8 +20,8 @@ int main(int argc, char** argv) {
 
     // Define sources and outputs
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
-    auto camLeft = pipeline.create<dai::node::MonoCamera>();
-    auto camRight = pipeline.create<dai::node::MonoCamera>();
+    auto monoLeft = pipeline.create<dai::node::MonoCamera>();
+    auto monoRight = pipeline.create<dai::node::MonoCamera>();
     auto ve1 = pipeline.create<dai::node::VideoEncoder>();
     auto ve2 = pipeline.create<dai::node::VideoEncoder>();
     auto ve3 = pipeline.create<dai::node::VideoEncoder>();
@@ -36,17 +36,17 @@ int main(int argc, char** argv) {
 
     // Properties
     camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
-    camLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
-    camRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
     // Create encoders, one for each camera, consuming the frames and encoding them using H.264 / H.265 encoding
     ve1->setDefaultProfilePreset(1280, 720, 30, dai::VideoEncoderProperties::Profile::H264_MAIN);
     ve2->setDefaultProfilePreset(1920, 1080, 30, dai::VideoEncoderProperties::Profile::H265_MAIN);
     ve3->setDefaultProfilePreset(1280, 720, 30, dai::VideoEncoderProperties::Profile::H264_MAIN);
 
     // Linking
-    camLeft->out.link(ve1->input);
+    monoLeft->out.link(ve1->input);
     camRgb->video.link(ve2->input);
-    camRight->out.link(ve3->input);
+    monoRight->out.link(ve3->input);
     ve1->bitstream.link(ve1Out->input);
     ve2->bitstream.link(ve2Out->input);
     ve3->bitstream.link(ve3Out->input);

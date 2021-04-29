@@ -29,13 +29,18 @@ int main(int argc, char** argv) {
     // Create pipeline
     dai::Pipeline pipeline;
 
-    // Define source
+    // Define sources and outputs
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
-    auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
     auto videoEncoder = pipeline.create<dai::node::VideoEncoder>();
-    auto videoOut = pipeline.create<dai::node::XLinkOut>();
     auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
+
+    auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
+    auto videoOut = pipeline.create<dai::node::XLinkOut>();
     auto nnOut = pipeline.create<dai::node::XLinkOut>();
+
+    xoutRgb->setStreamName("rgb");
+    videoOut->setStreamName("h265");
+    nnOut->setStreamName("nn");
 
     // Properties
     camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
@@ -50,11 +55,7 @@ int main(int argc, char** argv) {
     nn->setNumInferenceThreads(2);
     nn->input.setBlocking(false);
 
-    videoOut->setStreamName("h265");
-    xoutRgb->setStreamName("rgb");
-    nnOut->setStreamName("nn");
-
-    // Create outputs
+    // Linking
     camRgb->video.link(videoEncoder->input);
     camRgb->preview.link(xoutRgb->input);
     camRgb->preview.link(nn->input);
@@ -73,7 +74,7 @@ int main(int argc, char** argv) {
     auto qRgbEnc = device.getOutputQueue("h265", 30, true);
 
     // Add bounding boxes and text to the frame and show it to the user
-    auto displayFrame = [](std::string name, auto frame, auto detections) {
+    auto displayFrame = [](std::string name, cv::Mat frame, std::vector<dai::ImgDetection>& detections) {
         auto color = cv::Scalar(255, 0, 0);
         // nn data, being the bounding box locations, are in <0..1> range - they need to be normalized with frame width/height
         for(auto& detection : detections) {

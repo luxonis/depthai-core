@@ -16,17 +16,17 @@ int main() {
 
     dai::Pipeline pipeline;
 
-    auto camLeft = pipeline.create<dai::node::MonoCamera>();
-    auto camRight = pipeline.create<dai::node::MonoCamera>();
+    auto monoLeft = pipeline.create<dai::node::MonoCamera>();
+    auto monoRight = pipeline.create<dai::node::MonoCamera>();
     auto depth = pipeline.create<dai::node::StereoDepth>();
     auto xout = pipeline.create<dai::node::XLinkOut>();
 
     xout->setStreamName("disparity");
 
-    camLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-    camLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
-    camRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-    camRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
     // Create a node that will produce the depth map (using disparity output as it's easier to visualize depth this way)
     depth->setConfidenceThreshold(200);
@@ -49,8 +49,8 @@ int main() {
     float multiplier = 255 / max_disparity;
 
     // Linking
-    camLeft->out.link(depth->left);
-    camRight->out.link(depth->right);
+    monoLeft->out.link(depth->left);
+    monoRight->out.link(depth->right);
     depth->disparity.link(xout->input);
 
     // Pipeline is defined, now we can connect to the device

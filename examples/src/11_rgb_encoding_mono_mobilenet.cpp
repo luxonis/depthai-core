@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
 
     // Define sources and outputs
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
-    auto camRight = pipeline.create<dai::node::MonoCamera>();
+    auto monoRight = pipeline.create<dai::node::MonoCamera>();
     auto videoEncoder = pipeline.create<dai::node::VideoEncoder>();
     auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
     auto manip = pipeline.create<dai::node::ImageManip>();
@@ -48,8 +48,8 @@ int main(int argc, char** argv) {
     // Properties
     camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    camRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
-    camRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
+    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
     videoEncoder->setDefaultProfilePreset(1920, 1080, 30, dai::VideoEncoderProperties::Profile::H265_MAIN);
 
     nn->setConfidenceThreshold(0.5);
@@ -58,15 +58,15 @@ int main(int argc, char** argv) {
     nn->input.setBlocking(false);
 
     // The NN model expects BGR input. By default ImageManip output type would be same as input (gray in this case)
-    manip->initialConfig.setFrameType(dai::RawImgFrame::Type::BGR888p);
+    manip->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
     manip->initialConfig.setResize(300, 300);
 
     // Linking
     camRgb->video.link(videoEncoder->input);
     videoEncoder->bitstream.link(videoOut->input);
-    camRight->out.link(manip->inputImage);
+    monoRight->out.link(manip->inputImage);
     manip->out.link(nn->input);
-    camRight->out.link(xoutRight->input);
+    monoRight->out.link(xoutRight->input);
     manip->out.link(manipOut->input);
     nn->out.link(nnOut->input);
 
@@ -97,13 +97,13 @@ int main(int argc, char** argv) {
         auto out1 = qRgbEnc->get<dai::ImgFrame>();
         videoFile.write((char*)out1->getData().data(), out1->getData().size());
 
-        int offsetX = (camRight->getResolutionWidth() - camRight->getResolutionHeight()) / 2;
+        int offsetX = (monoRight->getResolutionWidth() - monoRight->getResolutionHeight()) / 2;
         auto color = cv::Scalar(255, 0, 0);
         for(auto& detection : detections) {
-            int x1 = detection.xmin * camRight->getResolutionHeight() + offsetX;
-            int y1 = detection.ymin * camRight->getResolutionHeight();
-            int x2 = detection.xmax * camRight->getResolutionHeight() + offsetX;
-            int y2 = detection.ymax * camRight->getResolutionHeight();
+            int x1 = detection.xmin * monoRight->getResolutionHeight() + offsetX;
+            int y1 = detection.ymin * monoRight->getResolutionHeight();
+            int x2 = detection.xmax * monoRight->getResolutionHeight() + offsetX;
+            int y2 = detection.ymax * monoRight->getResolutionHeight();
 
             int labelIndex = detection.label;
             std::string labelStr = to_string(labelIndex);

@@ -176,10 +176,6 @@ dai_add_example(16_device_queue_event src/16_device_queue_event.cpp)
 # OpenCV support example
 dai_add_example(24_opencv_support src/24_opencv_support.cpp)
 
-# Device side decoding example for mobilenet-ssd
-dai_add_example(21_mobilenet_device_side_decoding src/21_mobilenet_device_side_decoding.cpp)
-target_compile_definitions(21_mobilenet_device_side_decoding PRIVATE BLOB_PATH="${mobilenet_blob}")
-
 # Device side decoding example for mobilenet-ssd with 3d coordinates on RGB camera
 dai_add_example(26_1_spatial_mobilenet src/26_1_spatial_mobilenet.cpp)
 target_compile_definitions(26_1_spatial_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}")

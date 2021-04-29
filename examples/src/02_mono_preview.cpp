@@ -10,8 +10,8 @@ int main() {
     dai::Pipeline pipeline;
 
     // Define sources and outputs
-    auto camLeft = pipeline.create<dai::node::MonoCamera>();
-    auto camRight = pipeline.create<dai::node::MonoCamera>();
+    auto monoLeft = pipeline.create<dai::node::MonoCamera>();
+    auto monoRight = pipeline.create<dai::node::MonoCamera>();
     auto xoutLeft = pipeline.create<dai::node::XLinkOut>();
     auto xoutRight = pipeline.create<dai::node::XLinkOut>();
 
@@ -19,14 +19,14 @@ int main() {
     xoutRight->setStreamName("right");
 
     // Properties
-    camLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
-    camLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    camRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
-    camRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
+    monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
+    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
 
     // Linking
-    camRight->out.link(xoutRight->input);
-    camLeft->out.link(xoutLeft->input);
+    monoRight->out.link(xoutRight->input);
+    monoLeft->out.link(xoutLeft->input);
 
     dai::Device device(pipeline);
     device.startPipeline();

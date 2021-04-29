@@ -14,17 +14,17 @@ int main(int argc, char** argv)
     dai::Pipeline pipeline;
 
     // Define sources and outputs
-    auto camRight = pipeline.create<dai::node::MonoCamera>();
+    auto monoRight = pipeline.create<dai::node::MonoCamera>();
     auto xoutRight = pipeline.create<dai::node::XLinkOut>();
 
     xoutRight->setStreamName("right");
 
     // Properties
-    camRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
-    camRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
+    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
 
     // Linking
-    camRight->out.link(xoutRight->input);
+    monoRight->out.link(xoutRight->input);
 
     // Pipeline is defined, now we can connect to the device
     dai::Device device(pipeline);

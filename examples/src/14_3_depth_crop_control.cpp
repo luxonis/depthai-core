@@ -18,8 +18,8 @@ int main() {
     dai::Pipeline pipeline;
 
     // Define sources and outputs
-    auto camRight = pipeline.create<dai::node::MonoCamera>();
-    auto camLeft = pipeline.create<dai::node::MonoCamera>();
+    auto monoRight = pipeline.create<dai::node::MonoCamera>();
+    auto monoLeft = pipeline.create<dai::node::MonoCamera>();
     auto manip = pipeline.create<dai::node::ImageManip>();
     auto stereo = pipeline.create<dai::node::StereoDepth>();
 
@@ -34,13 +34,13 @@ int main() {
     dai::Point2f bottomRight(0.8, 0.8);
 
     // Properties
-    camRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
-    camLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
-    camRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-    camLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
 
     manip->initialConfig.setCropRect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
-    manip->setMaxOutputFrameSize(camRight->getResolutionHeight() * camRight->getResolutionWidth() * 3);
+    manip->setMaxOutputFrameSize(monoRight->getResolutionHeight() * monoRight->getResolutionWidth() * 3);
     stereo->setConfidenceThreshold(200);
     stereo->setOutputDepth(true);
 
@@ -48,8 +48,8 @@ int main() {
     configIn->out.link(manip->inputConfig);
     stereo->depth.link(manip->inputImage);
     manip->out.link(xout->input);
-    camRight->out.link(stereo->left);
-    camLeft->out.link(stereo->right);
+    monoRight->out.link(stereo->left);
+    monoLeft->out.link(stereo->right);
 
     // Connect to device
     dai::Device device(pipeline);

@@ -7,53 +7,54 @@
 // Include OpenCV
 #include <opencv2/opencv.hpp>
 
-dai::Pipeline createCameraFullPipeline() {
-    dai::Pipeline p;
-
-    auto colorCam = p.create<dai::node::ColorCamera>();
-    auto xlinkOut = p.create<dai::node::XLinkOut>();
-    auto xlinkOut2 = p.create<dai::node::XLinkOut>();
-    xlinkOut->setStreamName("video");
-    xlinkOut2->setStreamName("preview");
-
-    colorCam->setPreviewSize(320, 180);
-    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    colorCam->setInterleaved(true);
-
-    // Link plugins CAM -> XLINK
-    colorCam->video.link(xlinkOut->input);
-    colorCam->preview.link(xlinkOut2->input);
-
-    return p;
-}
-
 int main() {
     using namespace std;
     using namespace std::chrono;
 
     // Create pipeline
-    dai::Pipeline p = createCameraFullPipeline();
+    dai::Pipeline pipeline;
+
+    // Define source and outputs
+    auto camRgb = pipeline.create<dai::node::ColorCamera>();
+    auto xoutVideo = pipeline.create<dai::node::XLinkOut>();
+    auto xoutPreview = pipeline.create<dai::node::XLinkOut>();
+
+    xoutVideo->setStreamName("video");
+    xoutPreview->setStreamName("preview");
+
+    // Properties
+    camRgb->setPreviewSize(300, 300);
+    camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
+    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    camRgb->setInterleaved(true);
+    camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
+
+    // Linking
+    camRgb->video.link(xoutVideo->input);
+    camRgb->preview.link(xoutPreview->input);
 
     // Connect to device with above created pipeline
-    dai::Device d(p);
+    dai::Device device(pipeline);
 
     // Start the pipeline
-    d.startPipeline();
+    device.startPipeline();
 
-    auto video = d.getOutputQueue("video");
-    auto preview = d.getOutputQueue("preview");
+    auto video = device.getOutputQueue("video");
+    auto preview = device.getOutputQueue("preview");
 
-    while(1) {
-        // Retrieves video ImgFrame and converts a cv::Mat copy in BGR format (suitable for opencv usage)
+    while(true) {
         auto videoFrame = video->get<dai::ImgFrame>();
+        auto previewFrame = preview->get<dai::ImgFrame>();
+
+        // Get BGR frame from NV12 encoded video frame to show with opencv
         cv::imshow("video", videoFrame->getCvFrame());
 
-        // Retrieves preview ImgFrame and returns (without copying deepCopy = false) cv::Mat
-        auto previewFrame = preview->get<dai::ImgFrame>();
+        // Show 'preview' frame as is (already in correct format, no copy is made)
         cv::imshow("preview", previewFrame->getFrame());
 
-        // Waits a bit and updates windows
-        if(cv::waitKey(1) == 'q') break;
+        int key = cv::waitKey(1);
+        if(key == 'q' || key == 'Q')
+            return 0;
     }
     return 0;
 }

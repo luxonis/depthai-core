@@ -31,8 +31,8 @@ int main() {
     dai::Pipeline pipeline;
 
     // Define sources and outputs
-    auto camRight = pipeline.create<dai::node::MonoCamera>();
-    auto camLeft = pipeline.create<dai::node::MonoCamera>();
+    auto monoRight = pipeline.create<dai::node::MonoCamera>();
+    auto monoLeft = pipeline.create<dai::node::MonoCamera>();
     auto manipRight = pipeline.create<dai::node::ImageManip>();
     auto manipLeft = pipeline.create<dai::node::ImageManip>();
 
@@ -51,18 +51,18 @@ int main() {
     dai::Point2f bottomRight(0.8, 0.8);
 
     // Properties
-    camRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
-    camLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
-    camRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    camLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
+    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
+    monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
     manipRight->initialConfig.setCropRect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
     manipLeft->initialConfig.setCropRect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
 
     // Linking
-    camRight->out.link(manipRight->inputImage);
-    camLeft->out.link(manipLeft->inputImage);
-    controlIn->out.link(camRight->inputControl);
-    controlIn->out.link(camLeft->inputControl);
+    monoRight->out.link(manipRight->inputImage);
+    monoLeft->out.link(manipLeft->inputImage);
+    controlIn->out.link(monoRight->inputControl);
+    controlIn->out.link(monoLeft->inputControl);
     configIn->out.link(manipRight->inputConfig);
     configIn->out.link(manipLeft->inputConfig);
     manipRight->out.link(manipOutRight->input);

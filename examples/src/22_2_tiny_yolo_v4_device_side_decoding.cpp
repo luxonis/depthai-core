@@ -23,47 +23,7 @@ static const std::vector<std::string> labelMap = {
     "laptop",        "mouse",        "remote",        "keyboard",      "cell phone",  "microwave",   "oven",        "toaster",      "sink",
     "refrigerator",  "book",         "clock",         "vase",          "scissors",    "teddy bear",  "hair drier",  "toothbrush"};
 
-static bool syncNN = true;
-
-dai::Pipeline createPipeline(std::string nnPath) {
-    dai::Pipeline p;
-
-    auto camRgb = p.create<dai::node::ColorCamera>();
-    auto xlinkOut = p.create<dai::node::XLinkOut>();
-    auto nnOut = p.create<dai::node::XLinkOut>();
-
-    xlinkOut->setStreamName("preview");
-    nnOut->setStreamName("detections");
-
-    camRgb->setPreviewSize(416, 416);
-    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    camRgb->setInterleaved(false);
-    camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
-    camRgb->setFps(40);
-
-    auto detectionNetwork = p.create<dai::node::YoloDetectionNetwork>();
-
-    // network specific!!
-    detectionNetwork->setConfidenceThreshold(0.5f);
-    detectionNetwork->setNumClasses(80);
-    detectionNetwork->setCoordinateSize(4);
-    detectionNetwork->setAnchors({10, 14, 23, 27, 37, 58, 81, 82, 135, 169, 344, 319});
-    detectionNetwork->setAnchorMasks({{"side13", {3, 4, 5}}, {"side26", {1, 2, 3}}});
-    detectionNetwork->setIouThreshold(0.5f);
-    detectionNetwork->setBlobPath(nnPath);
-
-    // Link plugins CAM -> NN -> XLINK
-    camRgb->preview.link(detectionNetwork->input);
-    if(syncNN) {
-        detectionNetwork->passthrough.link(xlinkOut->input);
-    } else {
-        camRgb->preview.link(xlinkOut->input);
-    }
-
-    detectionNetwork->out.link(nnOut->input);
-
-    return p;
-}
+static std::atomic<bool> syncNN{true};
 
 int main(int argc, char** argv) {
     using namespace std;
@@ -79,22 +39,88 @@ int main(int argc, char** argv) {
     printf("Using blob at path: %s\n", nnPath.c_str());
 
     // Create pipeline
-    dai::Pipeline p = createPipeline(nnPath);
+    dai::Pipeline pipeline;
+
+    // Define sources and outputs
+    auto camRgb = pipeline.create<dai::node::ColorCamera>();
+    auto detectionNetwork = pipeline.create<dai::node::YoloDetectionNetwork>();
+    auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
+    auto nnOut = pipeline.create<dai::node::XLinkOut>();
+
+    xoutRgb->setStreamName("rgb");
+    nnOut->setStreamName("detections");
+
+    // Properties
+    camRgb->setPreviewSize(416, 416);
+    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    camRgb->setInterleaved(false);
+    camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
+    camRgb->setFps(40);
+
+    // Network specific settings
+    detectionNetwork->setConfidenceThreshold(0.5f);
+    detectionNetwork->setNumClasses(80);
+    detectionNetwork->setCoordinateSize(4);
+    detectionNetwork->setAnchors({10,14, 23,27, 37,58, 81,82, 135,169, 344,319});
+    detectionNetwork->setAnchorMasks({{"side26", {1, 2, 3}},{"side13", {3, 4, 5}}});
+    detectionNetwork->setIouThreshold(0.5f);
+    detectionNetwork->setBlobPath(nnPath);
+    detectionNetwork->setNumInferenceThreads(2);
+    detectionNetwork->input.setBlocking(false);
+
+    // Linking
+    camRgb->preview.link(detectionNetwork->input);
+    if(syncNN) {
+        detectionNetwork->passthrough.link(xoutRgb->input);
+    } else {
+        camRgb->preview.link(xoutRgb->input);
+    }
+
+    detectionNetwork->out.link(nnOut->input);
 
     // Connect to device with above created pipeline
-    dai::Device d(p);
+    dai::Device device(pipeline);
     // Start the pipeline
-    d.startPipeline();
+    device.startPipeline();
 
-    auto preview = d.getOutputQueue("preview", 4, false);
-    auto detections = d.getOutputQueue("detections", 4, false);
+    //Output queues will be used to get the rgb frames and nn data from the outputs defined above
+    auto qRgb = device.getOutputQueue("rgb", 4, false);
+    auto qDet = device.getOutputQueue("detections", 4, false);
+
+    // Add bounding boxes and text to the frame and show it to the user
+    auto displayFrame = [](std::string name, cv::Mat frame, std::vector<dai::ImgDetection>& detections) {
+        auto color = cv::Scalar(255, 0, 0);
+        // nn data, being the bounding box locations, are in <0..1> range - they need to be normalized with frame width/height
+        for(auto& detection : detections) {
+            int x1 = detection.xmin * frame.cols;
+            int y1 = detection.ymin * frame.rows;
+            int x2 = detection.xmax * frame.cols;
+            int y2 = detection.ymax * frame.rows;
+
+            int labelIndex = detection.label;
+            std::string labelStr = to_string(labelIndex);
+            if(labelIndex < labelMap.size()) {
+                labelStr = labelMap[labelIndex];
+            }
+            cv::putText(frame, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            std::stringstream confStr;
+            confStr << std::fixed << std::setprecision(2) << detection.confidence * 100;
+            cv::putText(frame, confStr.str(), cv::Point(x1 + 10, y1 + 40), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
+        }
+        // Show the frame
+        cv::imshow(name, frame);
+    };
 
     auto startTime = steady_clock::now();
     int counter = 0;
     float fps = 0;
-    while(1) {
-        auto imgFrame = preview->get<dai::ImgFrame>();
-        auto det = detections->get<dai::ImgDetections>();
+
+    while(true) {
+        auto inRgb = qRgb->get<dai::ImgFrame>();
+        auto inDet = qDet->get<dai::ImgDetections>();
+        auto detections = inDet->detections;
+        cv::Mat frame = inRgb->getCvFrame();
 
         counter++;
         auto currentTime = steady_clock::now();
@@ -105,40 +131,16 @@ int main(int argc, char** argv) {
             startTime = currentTime;
         }
 
-        cv::Mat frame = imgFrame->getCvFrame();
-
-        auto color = cv::Scalar(255, 255, 255);
-        auto dets = det->detections;
-        for(const auto& d : dets) {
-            int x1 = d.xmin * frame.cols;
-            int y1 = d.ymin * frame.rows;
-            int x2 = d.xmax * frame.cols;
-            int y2 = d.ymax * frame.rows;
-
-            int labelIndex = d.label;
-            std::string labelStr = to_string(labelIndex);
-            if(labelIndex < labelMap.size()) {
-                labelStr = labelMap[labelIndex];
-            }
-            cv::putText(frame, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-
-            std::stringstream confStr;
-            confStr << std::fixed << std::setprecision(2) << d.confidence * 100;
-            cv::putText(frame, confStr.str(), cv::Point(x1 + 10, y1 + 40), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-
-            cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
-        }
-
         std::stringstream fpsStr;
-        fpsStr << std::fixed << std::setprecision(2) << fps;
-        cv::putText(frame, fpsStr.str(), cv::Point(2, imgFrame->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
+        fpsStr << "NN fps: "<< std::fixed << std::setprecision(2) << fps;
+        cv::putText(frame, fpsStr.str(), cv::Point(2, inRgb->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, 255, 0, 0);
 
-        cv::imshow("preview", frame);
+        displayFrame("video", frame, detections);
+
         int key = cv::waitKey(1);
-        if(key == 'q') {
+        if(key == 'q' || key == 'Q') {
             return 0;
         }
     }
-
     return 0;
 }

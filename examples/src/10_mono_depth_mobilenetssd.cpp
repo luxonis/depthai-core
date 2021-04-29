@@ -31,8 +31,8 @@ int main(int argc, char** argv) {
     dai::Pipeline pipeline;
 
     // Define sources and outputs
-    auto camRight = pipeline.create<dai::node::MonoCamera>();
-    auto camLeft = pipeline.create<dai::node::MonoCamera>();
+    auto monoRight = pipeline.create<dai::node::MonoCamera>();
+    auto monoLeft = pipeline.create<dai::node::MonoCamera>();
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto manip = pipeline.create<dai::node::ImageManip>();
     auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
@@ -46,10 +46,10 @@ int main(int argc, char** argv) {
     nnOut->setStreamName("nn");
 
     // Properties
-    camRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
-    camRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-    camLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
-    camLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     // Produce the depth map (using disparity output as it's easier to visualize depth this way)
     stereo->setOutputRectified(true);  // The rectified streams are horizontally mirrored by default
     stereo->setConfidenceThreshold(255);
@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
     // Convert the grayscale frame into the nn-acceptable form
     manip->initialConfig.setResize(300, 300);
     // The NN model expects BGR input. By default ImageManip output type would be same as input (gray in this case)
-    manip->initialConfig.setFrameType(dai::RawImgFrame::Type::BGR888p);
+    manip->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
     // Define a neural network that will make predictions based on the source frames
     nn->setConfidenceThreshold(0.5);
     nn->setBlobPath(nnPath);
@@ -65,8 +65,8 @@ int main(int argc, char** argv) {
     nn->input.setBlocking(false);
 
     // Linking
-    camRight->out.link(stereo->right);
-    camLeft->out.link(stereo->left);
+    monoRight->out.link(stereo->right);
+    monoLeft->out.link(stereo->left);
     stereo->rectifiedRight.link(manip->inputImage);
     stereo->disparity.link(disparityOut->input);
     manip->out.link(nn->input);
