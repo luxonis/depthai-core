@@ -66,7 +66,11 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
                         std::unique_lock<std::mutex> l(callbacksMtx);
                         for(const auto& kv : callbacks) {
                             const auto& callback = kv.second;
-                            callback(name, data);
+                            try {
+                                callback(name, data);
+                            } catch(const std::exception& ex) {
+                                spdlog::error("Callback with id: {} throwed an exception: {}", kv.first, ex.what());
+                            }
                         }
                     }
                 }
@@ -248,6 +252,7 @@ std::string DataInputQueue::getName() const {
 
 void DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg) {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
+    if(!rawMsg) throw std::invalid_argument("Message passed is not valid (nullptr)");
 
     // Check if stream receiver has enough space for this message
     if(rawMsg->data.size() > maxDataSize) {
@@ -257,6 +262,7 @@ void DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg) {
     queue.push(rawMsg);
 }
 void DataInputQueue::send(const std::shared_ptr<ADatatype>& msg) {
+    if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
     send(msg->serialize());
 }
 
@@ -266,6 +272,7 @@ void DataInputQueue::send(const ADatatype& msg) {
 
 bool DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg, std::chrono::milliseconds timeout) {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
+    if(!rawMsg) throw std::invalid_argument("Message passed is not valid (nullptr)");
 
     // Check if stream receiver has enough space for this message
     if(rawMsg->data.size() > maxDataSize) {
@@ -276,6 +283,7 @@ bool DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg, std::chrono:
 }
 
 bool DataInputQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::milliseconds timeout) {
+    if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
     return send(msg->serialize(), timeout);
 }
 
