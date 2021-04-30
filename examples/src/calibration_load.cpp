@@ -81,7 +81,7 @@ int main() {
     // calibData.eepromToJsonFile(filename);
 
     dai::Pipeline p = createCameraPipeline();
-    p.setCalibrationData(calibData);
+    // p.setCalibrationData(calibData);
 
     dai::Device d(p);
     // std::cout << "status ->" << d.flashCalibration(calibData) << std::endl;
