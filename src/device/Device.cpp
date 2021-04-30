@@ -593,7 +593,7 @@ void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToM
 
         // Starts pipeline if given
         if(pipeline) {
-            if(!startPipeline(*pipeline)){
+            if(!startPipeline(*pipeline)) {
                 throw std::runtime_error("Couldn't start the pipeline");
             }
         }
