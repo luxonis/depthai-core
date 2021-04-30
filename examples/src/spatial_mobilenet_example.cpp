@@ -45,7 +45,6 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
     /// setting node configs
-    stereo->setOutputDepth(true);
     stereo->setConfidenceThreshold(255);
 
     spatialDetectionNetwork->setBlobPath(nnPath);

@@ -102,6 +102,17 @@ class StereoDepth : public Node {
     void setMedianFilter(Properties::MedianFilter median);
 
     /**
+     * @param align Set the disparity/depth alignment: centered (between the 'left' and 'right' inputs),
+     * or from the perspective of a rectified output stream
+     */
+    void setDepthAlign(Properties::DepthAlign align);
+
+    /**
+     * @param camera Set the camera from whose perspective the disparity/depth will be aligned
+     */
+    void setDepthAlign(CameraBoardSocket camera);
+
+    /**
      * Confidence threshold for disparity calculation
      * @param confThr Confidence threshold value 0..255
      */
@@ -141,15 +152,17 @@ class StereoDepth : public Node {
     void setRectifyMirrorFrame(bool enable);
 
     /**
-     * Enable outputting rectified frames. Optimizes computation on device side when disabled
+     * Enable outputting rectified frames. Optimizes computation on device side when disabled.
+     * DEPRECATED. The outputs are auto-enabled if used
      */
-    void setOutputRectified(bool enable);
+    [[deprecated("Function call should be removed")]] void setOutputRectified(bool enable);
 
     /**
      * Enable outputting 'depth' stream (converted from disparity).
-     * In certain configurations, this will disable 'disparity' stream
+     * In certain configurations, this will disable 'disparity' stream.
+     * DEPRECATED. The output is auto-enabled if used
      */
-    void setOutputDepth(bool enable);
+    [[deprecated("Function call should be removed")]] void setOutputDepth(bool enable);
 };
 
 }  // namespace node
