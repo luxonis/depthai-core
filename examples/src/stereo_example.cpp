@@ -87,9 +87,8 @@ int main() {
         monoRight->out.link(xoutRight->input);
     }
 
-    // CONNECT TO DEVICE
+    // Connect and start the pipeline
     dai::Device d(p);
-    d.startPipeline();
 
     auto leftQueue = d.getOutputQueue("left", 8, false);
     auto rightQueue = d.getOutputQueue("right", 8, false);

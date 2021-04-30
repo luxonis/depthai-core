@@ -36,10 +36,8 @@ int main(int argc, char** argv) {
     colorCam->preview.link(xout2->input);
     videnc->bitstream.link(xout->input);
 
-    // Connect to device with above created pipeline
+    // Connect and start the pipeline
     dai::Device d(p);
-    // Start the pipeline
-    d.startPipeline();
 
     auto mjpegQueue = d.getOutputQueue("mjpeg", 8, false);
     auto previewQueue = d.getOutputQueue("preview", 8, false);
