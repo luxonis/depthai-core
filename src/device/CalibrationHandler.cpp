@@ -181,7 +181,6 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(
         throw std::runtime_error("There is no Intrinsic matrix available for the the requested cameraID");
     }
     std::vector<std::vector<float>> intrinsicMatrix = eepromData.cameraData[cameraId].intrinsicMatrix;
-
     if(resizeWidth != -1 || resizeHeight != -1) {
         if(resizeWidth == -1) {
             resizeWidth = eepromData.cameraData[cameraId].width * resizeHeight / static_cast<float>(eepromData.cameraData[cameraId].height);
@@ -189,13 +188,12 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(
         if(resizeHeight == -1) {
             resizeHeight = eepromData.cameraData[cameraId].height * resizeWidth / static_cast<float>(eepromData.cameraData[cameraId].width);
         }
-
         float scale = resizeHeight / static_cast<float>(eepromData.cameraData[cameraId].height);
         if(scale * eepromData.cameraData[cameraId].width < resizeWidth) {
             scale = resizeWidth / static_cast<float>(eepromData.cameraData[cameraId].width);
         }
         std::vector<std::vector<float>> scaleMat = {{scale, 0, 0}, {0, scale, 0}, {0, 0, 1}};
-        intrinsicMatrix = matMul(intrinsicMatrix, scaleMat);
+        intrinsicMatrix = matMul(scaleMat, intrinsicMatrix);
 
         if(scale * eepromData.cameraData[cameraId].height > resizeHeight) {
             intrinsicMatrix[1][2] -= (eepromData.cameraData[cameraId].height * scale - resizeHeight) / 2;
@@ -219,7 +217,6 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(
 
     intrinsicMatrix[0][2] -= topLeftPixelId.x;
     intrinsicMatrix[1][2] -= bottomRightPixelId.y;
-
     return intrinsicMatrix;
 }
 

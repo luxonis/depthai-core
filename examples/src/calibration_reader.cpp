@@ -62,7 +62,15 @@ int main(int argc, char** argv) {
         std::cout << std::endl;
     }
 
-    std::cout << "Intrinsics from getCameraIntrinsics function 720 x 1280 ->" << std::endl;
+    std::cout << "Intrinsics from getCameraIntrinsics function 1280 x 720  ->" << std::endl;
+    intrinsics = calibData.getCameraIntrinsics(dai::CameraBoardSocket::RIGHT, 1280, 720);
+
+    for(auto row : intrinsics) {
+        for(auto val : row) std::cout << val << "  ";
+        std::cout << std::endl;
+    }
+
+    std::cout << "Intrinsics from getCameraIntrinsics function 720 x 450 ->" << std::endl;
     intrinsics = calibData.getCameraIntrinsics(dai::CameraBoardSocket::RIGHT, 720);
 
     for(auto row : intrinsics) {
@@ -70,7 +78,7 @@ int main(int argc, char** argv) {
         std::cout << std::endl;
     }
 
-    std::cout << "Intrinsics from getCameraIntrinsics function 600 x 1280 2 test ->" << std::endl;
+    std::cout << "Intrinsics from getCameraIntrinsics function 600 x 1280 ->" << std::endl;
     intrinsics = calibData.getCameraIntrinsics(dai::CameraBoardSocket::RIGHT, 600, 1280);
 
     for(auto row : intrinsics) {

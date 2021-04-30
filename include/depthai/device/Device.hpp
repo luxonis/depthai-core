@@ -396,7 +396,7 @@ class Device {
      * Stores the Calibration and Device information to the Device EEPROM
      *
      * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
-     * 
+     *
      * @return Returns true on successful flash, false on failure
      */
     bool flashCalibration(CalibrationHandler calibrationDataHandler);
