@@ -46,5 +46,16 @@ void UAC::setMicGainDecibels(float dB) {
     setMicGainTimes(times);
 }
 
+void UAC::setXlinkApplyMicGain(bool enable) {
+    properties.xLinkApplyMicGain = enable;
+}
+
+void UAC::setXlinkSampleSizeBytes(int size) {
+    if (size < 2 || size > 4) {
+        throw std::runtime_error("UAC | sample size must be: 2, 3 or 4");
+    }
+    properties.xlinkSampleSizeBytes = size;
+}
+
 }  // namespace node
 }  // namespace dai

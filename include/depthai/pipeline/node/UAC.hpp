@@ -35,6 +35,12 @@ class UAC : public Node {
 
     /// Set a fixed microphone gain, in dB
     void setMicGainDecibels(float dB);
+
+    /// Apply mic gain to XLink output as well. Enabled by default
+    void setXlinkApplyMicGain(bool enable);
+
+    /// XLink sample size in bytes. Default 3, other options: 2 or 4
+    void setXlinkSampleSizeBytes(int size);
 };
 
 }  // namespace node
