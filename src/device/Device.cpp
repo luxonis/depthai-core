@@ -24,7 +24,6 @@
 #include "utility/Resources.hpp"
 
 // libraries
-#include "spdlog/details/os.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
 
@@ -385,16 +384,6 @@ void Device::init(OpenVINO::Version version, bool embeddedMvcmd, bool usb2Mode, 
 }
 
 void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
-    std::string fwPath = pathToMvcmd;
-    if(fwPath == "") {
-        const std::string envFw = spdlog::details::os::getenv("DEPTHAI_FW");
-        if(!envFw.empty()) {
-            fwPath = envFw;
-            spdlog::warn("DEPTHAI_FW env var set, overriding firmware to load: {}", envFw);
-        }
-    }
-    if(fwPath != "") embeddedMvcmd = false;
-
     // Initalize depthai library if not already
     initialize();
 
@@ -419,7 +408,7 @@ void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToM
         if(embeddedMvcmd) {
             connection = std::make_shared<XLinkConnection>(deviceInfo, embeddedFw);
         } else {
-            connection = std::make_shared<XLinkConnection>(deviceInfo, fwPath);
+            connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd);
         }
 
     } else if(deviceInfo.state == X_LINK_BOOTLOADER) {
@@ -458,7 +447,7 @@ void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToM
         if(embeddedMvcmd) {
             connection = std::make_shared<XLinkConnection>(deviceInfo, embeddedFw);
         } else {
-            connection = std::make_shared<XLinkConnection>(deviceInfo, fwPath);
+            connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd);
         }
 
     } else if(deviceInfo.state == X_LINK_BOOTED) {
@@ -466,7 +455,7 @@ void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToM
         if(embeddedMvcmd) {
             connection = std::make_shared<XLinkConnection>(deviceInfo, embeddedFw);
         } else {
-            connection = std::make_shared<XLinkConnection>(deviceInfo, fwPath);
+            connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd);
         }
     } else {
         throw std::runtime_error("Cannot find any device with given deviceInfo");
