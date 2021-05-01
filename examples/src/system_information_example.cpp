@@ -26,6 +26,8 @@ int main() {
 
     // Connect to device
     dai::Device device;
+    // Start pipeline
+    device.startPipeline(pipeline);
 
     // Create 'sysinfo' queue
     auto queue = device.getOutputQueue("sysinfo");
@@ -36,9 +38,6 @@ int main() {
 
     dai::MemoryInfo cmx = device.getCmxMemoryUsage();
     printf("Cmx used / total - %.2f / %.2f MiB\n", cmx.used / (1024.0f * 1024.0f), cmx.total / (1024.0f * 1024.0f));
-
-    // Start pipeline
-    device.startPipeline(pipeline);
 
     while(1) {
         auto sysInfo = queue->get<dai::SystemInformation>();
