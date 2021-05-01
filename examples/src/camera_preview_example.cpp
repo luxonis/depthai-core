@@ -33,7 +33,7 @@ int main() {
     dai::Device d;
 
     cout << "Connected cameras: ";
-    for(const auto& cam : d.getConnectedCameras()){
+    for(const auto& cam : d.getConnectedCameras()) {
         cout << static_cast<int>(cam) << " ";
     }
     cout << endl;

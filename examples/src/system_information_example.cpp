@@ -27,9 +27,6 @@ int main() {
     // Connect to device
     dai::Device device;
 
-    // Create 'sysinfo' queue
-    auto queue = device.getOutputQueue("sysinfo");
-
     // Query device (before pipeline starts)
     dai::MemoryInfo ddr = device.getDdrMemoryUsage();
     printf("Ddr used / total - %.2f / %.2f MiB\n", ddr.used / (1024.0f * 1024.0f), ddr.total / (1024.0f * 1024.0f));
@@ -39,6 +36,9 @@ int main() {
 
     // Start pipeline
     device.startPipeline(pipeline);
+
+    // Create 'sysinfo' queue
+    auto queue = device.getOutputQueue("sysinfo");
 
     while(1) {
         auto sysInfo = queue->get<dai::SystemInformation>();
