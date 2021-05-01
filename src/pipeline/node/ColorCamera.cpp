@@ -1,8 +1,9 @@
 #include "depthai/pipeline/node/ColorCamera.hpp"
 
-#include "spdlog/fmt/fmt.h"
-
+#include <cmath>
 #include <fstream>
+
+#include "spdlog/fmt/fmt.h"
 
 namespace dai {
 namespace node {
@@ -214,6 +215,19 @@ std::tuple<int, int> ColorCamera::getVideoSize() const {
             maxVideoHeight = 2160;
         }
 
+        // Take into the account the ISP scaling
+        int numW = properties.ispScale.horizNumerator;
+        int denW = properties.ispScale.horizDenominator;
+        if(numW > 0 && denW > 0) {
+            maxVideoWidth = getScaledSize(maxVideoWidth, numW, denW);
+        }
+
+        int numH = properties.ispScale.vertNumerator;
+        int denH = properties.ispScale.vertDenominator;
+        if(numH > 0 && denH > 0) {
+            maxVideoHeight = getScaledSize(maxVideoHeight, numH, denH);
+        }
+
         return {maxVideoWidth, maxVideoHeight};
     }
 
@@ -242,6 +256,20 @@ std::tuple<int, int> ColorCamera::getStillSize() const {
             maxStillWidth = 4032;  // Note not 4056 as full sensor resolution
             maxStillHeight = 3040;
         }
+
+        // Take into the account the ISP scaling
+        int numW = properties.ispScale.horizNumerator;
+        int denW = properties.ispScale.horizDenominator;
+        if(numW > 0 && denW > 0) {
+            maxStillWidth = getScaledSize(maxStillWidth, numW, denW);
+        }
+
+        int numH = properties.ispScale.vertNumerator;
+        int denH = properties.ispScale.vertDenominator;
+        if(numH > 0 && denH > 0) {
+            maxStillHeight = getScaledSize(maxStillHeight, numH, denH);
+        }
+
         return {maxStillWidth, maxStillHeight};
     }
 
@@ -331,8 +359,8 @@ void ColorCamera::setSensorCrop(float x, float y) {
 std::tuple<float, float> ColorCamera::getSensorCrop() const {
     // AUTO - center crop by default
     if(properties.sensorCropX == ColorCameraProperties::AUTO || properties.sensorCropY == ColorCameraProperties::AUTO) {
-        float x = ((getResolutionWidth() - getVideoWidth()) / 2) / getResolutionWidth();
-        float y = ((getResolutionHeight() - getVideoHeight()) / 2) / getResolutionHeight();
+        float x = std::floor(((getResolutionWidth() - getVideoWidth()) / 2.0f) / getResolutionWidth());
+        float y = std::floor(((getResolutionHeight() - getVideoHeight()) / 2.0f) / getResolutionHeight());
         return {x, y};
     }
     return {properties.sensorCropX, properties.sensorCropY};
@@ -363,7 +391,6 @@ bool ColorCamera::getPreviewKeepAspectRatio() {
 }
 
 void ColorCamera::setCameraTuningBlobPath(const std::string& path) {
-
     std::ifstream blobStream(path, std::ios::in | std::ios::binary);
     if(!blobStream.is_open()) {
         throw std::runtime_error("ColorCamera | Camera tuning blob at path: " + path + " doesn't exist");

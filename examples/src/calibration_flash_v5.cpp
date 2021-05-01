@@ -1,10 +1,11 @@
 
 #include <cstdio>
 #include <iostream>
-
-#include "utility.hpp"
+#include <string>
 
 // Inludes common necessary includes for development using depthai library
+#include "depthai-shared/common/CameraBoardSocket.hpp"
+#include "depthai-shared/common/EepromData.hpp"
 #include "depthai/depthai.hpp"
 
 dai::Pipeline createCameraPipeline() {
@@ -24,30 +25,31 @@ dai::Pipeline createCameraPipeline() {
     return p;
 }
 
-int main() {
-    using namespace std;
+int main(int argc, char** argv) {
+    std::string calibBinaryFile, boardConfigFile, destFilename;
+
+    if(argc == 4) {
+        calibBinaryFile = std::string(argv[1]);
+        boardConfigFile = std::string(argv[2]);
+        destFilename = std::string(argv[3]);
+    } else {
+        std::runtime_error("Required .calib file, board.json file path and destination file path argumnents in the same order");
+    }
+    dai::CalibrationHandler calibData(calibBinaryFile, boardConfigFile);
+
+    calibData.eepromToJsonFile(destFilename);
 
     dai::Pipeline p = createCameraPipeline();
+    dai::Device d(p);
+    // std::cout << "status ->" << d.flashCalibration(calibData) << std::endl;
 
-    // Start the pipeline
-    dai::Device d;
-
-    cout << "Connected cameras: ";
-    for(const auto& cam : d.getConnectedCameras()){
-        cout << static_cast<int>(cam) << " ";
-    }
-    cout << endl;
-
-    // Start the pipeline
-    d.startPipeline(p);
-
-    cv::Mat frame;
+    d.startPipeline();
     auto preview = d.getOutputQueue("preview");
+    cv::Mat frame;
 
     while(1) {
         auto imgFrame = preview->get<dai::ImgFrame>();
         if(imgFrame) {
-            printf("Frame - w: %d, h: %d\n", imgFrame->getWidth(), imgFrame->getHeight());
             frame = cv::Mat(imgFrame->getHeight(), imgFrame->getWidth(), CV_8UC3, imgFrame->getData().data());
             cv::imshow("preview", frame);
             int key = cv::waitKey(1);
@@ -58,6 +60,5 @@ int main() {
             std::cout << "Not ImgFrame" << std::endl;
         }
     }
-
     return 0;
 }

@@ -29,6 +29,10 @@ DetectionNetwork::Properties& DetectionNetwork::getPropertiesRef() {
     return properties;
 }
 
+std::shared_ptr<Node> DetectionNetwork::clone() {
+    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
+}
+
 nlohmann::json DetectionNetwork::getProperties() {
     nlohmann::json j;
     nlohmann::to_json(j, properties);
@@ -44,6 +48,10 @@ void DetectionNetwork::setConfidenceThreshold(float thresh) {
 //--------------------------------------------------------------------
 MobileNetDetectionNetwork::MobileNetDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : DetectionNetwork(par, nodeId) {
     getPropertiesRef().nnFamily = DetectionNetworkType::MOBILENET;
+}
+
+std::shared_ptr<Node> MobileNetDetectionNetwork::clone() {
+    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
 //--------------------------------------------------------------------
@@ -71,6 +79,10 @@ void YoloDetectionNetwork::setAnchorMasks(std::map<std::string, std::vector<int>
 
 void YoloDetectionNetwork::setIouThreshold(float thresh) {
     getPropertiesRef().iouThreshold = thresh;
+}
+
+std::shared_ptr<Node> YoloDetectionNetwork::clone() {
+    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
 }  // namespace node

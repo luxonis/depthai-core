@@ -3,6 +3,7 @@ option(DEPTHAI_TEST_EXAMPLES "Test examples - examples will be ran as a part of 
 
 # Dependencies
 find_package(OpenCV REQUIRED)
+find_package(Sanitizers)
 
 # Create utility library
 add_library(utility src/utility.cpp)
@@ -13,13 +14,16 @@ macro(dai_add_example example_name example_src)
     add_executable("${example_name}" "${example_src}")
     target_link_libraries("${example_name}" PRIVATE utility depthai::opencv ${OpenCV_LIBS})
 
+    # Add sanitizers for example
+    add_sanitizers(${example_name})
+
     # Add to clangformat target
     target_clangformat_setup(${example_name} "")
 
     # parse the rest of the arguments
     set(arguments ${ARGV})
     list(REMOVE_AT arguments 0 1)
-    
+
     # If 'DEPTHAI_TEST_EXAMPLES' is ON, then examples will be part of the test suite
     if(DEPTHAI_TEST_EXAMPLES)
         add_test(NAME ${example_name} COMMAND ${CMAKE_COMMAND}
@@ -28,16 +32,13 @@ macro(dai_add_example example_name example_src)
         )
 
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
-        set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]") 
-            
-        # Add sanitizers for tests as well
-        add_sanitizers(${example_name})
+        set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]")
 
         # Add ubsan halt on error
         set_tests_properties(${example_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1")
 
     endif()
-endmacro() 
+endmacro()
 
 # Create a custom target which runs all examples for 10 seconds max, and check if they executed without errors
 
@@ -59,12 +60,20 @@ endmacro()
 
 # Color camera preview output example
 dai_add_example(camera_preview src/camera_preview_example.cpp)
+dai_add_example(bootloader_example src/bootloader_example.cpp)
 
 # Color camera video output example
 dai_add_example(camera_video src/camera_video_example.cpp)
 
 # Mono camera video output example
 dai_add_example(mono_camera src/mono_camera_example.cpp)
+
+dai_add_example(calibration_flash src/calibration_flash.cpp)
+dai_add_example(calibration_flash_version5 src/calibration_flash_v5.cpp)
+dai_add_example(calibration_load src/calibration_load.cpp)
+
+dai_add_example(calibration_reader src/calibration_reader.cpp)
+
 
 # NeuralNetwork node, mobilenet example
 hunter_private_data(
@@ -113,6 +122,10 @@ dai_add_example(h264_encoding src/h264_encoding_example.cpp)
 
 # StereoDepth example
 dai_add_example(stereo src/stereo_example.cpp)
+
+# StereoDepth rgb example
+dai_add_example(stereo_rgb src/stereo_rgb_example.cpp)
+
 
 # Image Manip node examples
 dai_add_example(image_manip src/image_manip_example.cpp)

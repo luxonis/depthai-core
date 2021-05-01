@@ -55,7 +55,6 @@ int main() {
 
     // Connect to device and start pipeline
     dai::Device device(pipeline);
-    device.startPipeline();
 
     // Create input & output queues
     auto previewQueue = device.getOutputQueue("preview", 8, false);

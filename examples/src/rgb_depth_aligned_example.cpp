@@ -51,9 +51,8 @@ int main() {
     // Currently we use the 'disparity' output. TODO 'depth'
     stereo->disparity.link(depthOut->input);
 
-    // Connect to device
+    // Connect to device and start pipeline
     dai::Device d(p);
-    d.startPipeline();
 
     // Sets queues size and behavior
     for(const auto& name : queueNames) {
