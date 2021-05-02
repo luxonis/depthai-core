@@ -9,8 +9,15 @@
 namespace dai {
 namespace node {
 
+/**
+ * @brief ImageManip node. Capability to crop, resize, warp, ... incoming image frames
+ */
 class ImageManip : public Node {
-    dai::ImageManipProperties properties;
+   public:
+    using Properties = dai::ImageManipProperties;
+
+   private:
+    Properties properties;
 
     std::string getName() const override;
     std::vector<Input> getInputs() override;
@@ -23,11 +30,26 @@ class ImageManip : public Node {
    public:
     ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
+    /**
+     * Initial config to use when manipulating frames
+     */
     ImageManipConfig initialConfig;
 
-    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, {{DatatypeEnum::ImageManipConfig, true}}};
-    Input inputImage{*this, "inputImage", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, true}}};
+    /**
+     * Input ImageManipConfig message with ability to modify parameters in runtime
+     * Default queue is blocking with size 8
+     */
+    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImageManipConfig, true}}};
 
+    /**
+     * Input image to be modified
+     * Default queue is blocking with size 8
+     */
+    Input inputImage{*this, "inputImage", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImgFrame, true}}};
+
+    /**
+     * Outputs ImgFrame message that carries modified image.
+     */
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
 
     // Functions to set ImageManipConfig - deprecated
@@ -37,10 +59,25 @@ class ImageManip : public Node {
     [[deprecated("Use 'initialConfig.setResizeThumbnail()' instead")]] void setResizeThumbnail(int w, int h, int bgRed = 0, int bgGreen = 0, int bgBlue = 0);
     [[deprecated("Use 'initialConfig.setFrameType()' instead")]] void setFrameType(dai::RawImgFrame::Type name);
     [[deprecated("Use 'initialConfig.setHorizontalFlip()' instead")]] void setHorizontalFlip(bool flip);
+    void setKeepAspectRatio(bool keep);
 
     // Functions to set properties
+    /**
+     * Specify whether or not wait until configuration message arrives to inputConfig Input.
+     * @param wait True to wait for configuration message, false otherwise
+     */
     void setWaitForConfigInput(bool wait);
+
+    /**
+     * Specify number of frames in pool.
+     * @param numFramesPool How many frames should the pool have
+     */
     void setNumFramesPool(int numFramesPool);
+
+    /**
+     * Specify maximum size of output image.
+     * @param maxFrameSize Maximum frame size in bytes
+     */
     void setMaxOutputFrameSize(int maxFrameSize);
 };
 

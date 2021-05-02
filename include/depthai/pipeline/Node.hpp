@@ -21,11 +21,15 @@ namespace dai {
 class Pipeline;
 class PipelineImpl;
 
+/**
+ * @brief Abstract Node
+ */
 class Node {
     friend class Pipeline;
     friend class PipelineImpl;
 
    public:
+    /// Node identificator. Unique for every node on a single Pipeline
     using Id = std::int64_t;
     struct Connection;
 
@@ -41,7 +45,7 @@ class Node {
 
     struct Output {
         enum class Type { MSender, SSender };
-        const Node& parent;
+        Node& parent;
         const std::string name;
         const Type type;
         // Which types and do descendants count as well?
@@ -51,27 +55,84 @@ class Node {
         bool isSamePipeline(const Input& in);
 
        public:
+        /**
+         * Check if connection is possible
+         * @param in Input to connect to
+         * @returns True if connection is possible, false otherwise
+         */
         bool canConnect(const Input& in);
+
+        /**
+         * Retrieve all connections from this output
+         * @returns Vector of connections
+         */
         std::vector<Connection> getConnections();
+
+        /**
+         * Link current output to input.
+         *
+         * Throws an error if this output cannot be linked to given input,
+         * or if they are already linked
+         *
+         * @param in Input to link to
+         */
         void link(const Input& in);
+
+        /**
+         * Unlink a previously linked connection
+         *
+         * Throws an error if not linked.
+         *
+         * @param in Input from which to unlink from
+         */
         void unlink(const Input& in);
     };
 
     struct Input {
         enum class Type { SReceiver, MReceiver };
-        const Node& parent;
+        Node& parent;
         const std::string name;
         const Type type;
-        bool blocking{true};
+        bool defaultBlocking{true};
+        int defaultQueueSize{8};
+        tl::optional<bool> blocking;
+        tl::optional<int> queueSize;
         friend struct Output;
-        // Which types and do descendants count as well?
         const std::vector<DatatypeHierarchy> possibleDatatypes;
+
+        /// Constructs Input with default blocking and queueSize options
         Input(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types)
             : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {}
 
+        /// Constructs Input with specified blocking and queueSize options
+        Input(Node& par, std::string n, Type t, bool blocking, int queueSize, std::vector<DatatypeHierarchy> types)
+            : parent(par), name(std::move(n)), type(t), defaultBlocking(blocking), defaultQueueSize(queueSize), possibleDatatypes(std::move(types)) {}
+
        public:
+        /**
+         * Overrides default input queue behavior.
+         * @param blocking True blocking, false overwriting
+         */
         void setBlocking(bool blocking);
+
+        /**
+         * Get input queue behavior
+         * @return True blocking, false overwriting
+         */
         bool getBlocking() const;
+
+        /**
+         * Overrides default input queue size.
+         * If queue size fills up, behavior depends on `blocking` attribute
+         * @param size Maximum input queue size
+         */
+        void setQueueSize(int size);
+
+        /**
+         * Get input queue size.
+         * @return Maximum input queue size
+         */
+        int getQueueSize() const;
     };
 
     // when Pipeline tries to serialize and construct on remote, it will check if all connected nodes are on same pipeline
@@ -83,14 +144,22 @@ class Node {
     virtual std::shared_ptr<Node> clone() = 0;
 
     // access
-    Pipeline getParentPipeline() const;
+    Pipeline getParentPipeline();
+    const Pipeline getParentPipeline() const;
 
    public:
+    /// Id of node
     const Id id;
+    /// Retrieves nodes name
     virtual std::string getName() const = 0;
+    /// Retrieves all nodes outputs
     virtual std::vector<Output> getOutputs() = 0;
+    /// Retrieves all nodes inputs
     virtual std::vector<Input> getInputs() = 0;
+    /// Retrieves all nodes assets
     virtual std::vector<std::shared_ptr<Asset>> getAssets();
+
+    /// Connection between an Input and Output
     struct Connection {
         friend struct std::hash<Connection>;
         Connection(Output out, Input in);

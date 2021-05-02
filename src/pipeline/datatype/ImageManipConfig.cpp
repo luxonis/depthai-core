@@ -87,7 +87,7 @@ void ImageManipConfig::setRotationDegrees(float deg) {
 }
 
 void ImageManipConfig::setRotationRadians(float rad) {
-    static constexpr float rad2degFactor = 180 / M_PI;
+    static constexpr float rad2degFactor = static_cast<float>(180 / M_PI);
     setRotationDegrees(rad * rad2degFactor);
 }
 
@@ -124,7 +124,7 @@ void ImageManipConfig::setFrameType(dai::RawImgFrame::Type type) {
     // Enable format stage
     cfg.enableFormat = true;
 
-    // Set pixel format
+    // Set type format
     cfg.formatConfig.type = type;
 }
 
@@ -142,6 +142,11 @@ void ImageManipConfig::setReusePreviousImage(bool reuse) {
 
 void ImageManipConfig::setSkipCurrentImage(bool skip) {
     cfg.skipCurrentImage = skip;
+}
+
+void ImageManipConfig::setKeepAspectRatio(bool keep) {
+    // Set whether to keep aspect ratio or not
+    cfg.resizeConfig.keepAspectRatio = keep;
 }
 
 // Functions to retrieve properties

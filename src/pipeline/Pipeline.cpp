@@ -22,20 +22,27 @@ Pipeline::Pipeline() : pimpl(std::make_shared<PipelineImpl>()) {
     initialize();
 }
 
-/*
-Pipeline::Pipeline(const Pipeline& p){
-    pimpl = std::make_shared<PipelineImpl>();
+Pipeline Pipeline::clone() const {
+    // TODO(themarpe) - Copy assets
 
+    Pipeline clone;
+
+    // Make a copy of PipelineImpl
+    clone.pimpl = std::make_shared<PipelineImpl>(*impl());
+
+    // All IDs remain the same, just switch out the actual nodes with copies
     // Copy all nodes
-    pimpl->globalProperties = p.getGlobalProperties();
-    pimpl->nodes.reserve(p.pimpl->nodes.size());
-    for(const auto& n : p.pimpl->nodes){
-        auto clone = n->clone();
-        clone->parent = std::weak_ptr<PipelineImpl>(pimpl);
-        pimpl->nodes.push_back(clone);
+    for(const auto& kv : impl()->nodeMap) {
+        const auto& id = kv.first;
+
+        // Swap out with a copy
+        clone.pimpl->nodeMap[id] = impl()->nodeMap.at(id)->clone();
+        // Set parent to be the new pipeline
+        clone.pimpl->nodeMap[id]->parent = std::weak_ptr<PipelineImpl>(clone.pimpl);
     }
+
+    return clone;
 }
-*/
 
 Pipeline::Pipeline(const std::shared_ptr<PipelineImpl>& pimpl) {
     this->pimpl = pimpl;
@@ -139,6 +146,7 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
         for(const auto& input : inputs) {
             NodeIoInfo io;
             io.blocking = input.getBlocking();
+            io.queueSize = input.getQueueSize();
             io.name = input.name;
             switch(input.type) {
                 case Node::Input::Type::MReceiver:
@@ -149,7 +157,7 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
                     break;
             }
 
-            info.ioInfo.push_back(io);
+            info.ioInfo[io.name] = io;
         }
 
         // Add outputs
@@ -166,11 +174,11 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
                     break;
             }
 
-            info.ioInfo.push_back(io);
+            info.ioInfo[io.name] = io;
         }
 
         // At the end, add the constructed node information to the schema
-        schema.nodes.push_back(info);
+        schema.nodes[info.id] = info;
     }
 
     // Create 'connections' info

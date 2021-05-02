@@ -10,8 +10,16 @@
 
 namespace dai {
 namespace node {
+
+/**
+ * @brief MonoCamera node. For use with grayscale sensors.
+ */
 class MonoCamera : public Node {
-    dai::MonoCameraProperties properties;
+   public:
+    using Properties = dai::MonoCameraProperties;
+
+   private:
+    Properties properties;
 
     std::string getName() const override;
     std::vector<Output> getOutputs() override;
@@ -24,16 +32,34 @@ class MonoCamera : public Node {
    public:
     MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
+    /**
+     * Initial control options to apply to sensor
+     */
     CameraControl initialControl;
 
-    Input inputControl{*this, "inputControl", Input::Type::SReceiver, {{DatatypeEnum::CameraControl, false}}};
+    /**
+     * Input for CameraControl message, which can modify camera parameters in runtime
+     * Default queue is blocking with size 8
+     */
+    Input inputControl{*this, "inputControl", Input::Type::SReceiver, true, 8, {{DatatypeEnum::CameraControl, false}}};
 
+    /**
+     * Outputs ImgFrame message that carries RAW8 encoded (grayscale) frame data.
+     *
+     * Suitable for use StereoDepth node
+     */
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
-    // Set which board socket to use
+    /**
+     * Specify which board socket to use
+     * @param boardSocket Board socket to use
+     */
     void setBoardSocket(CameraBoardSocket boardSocket);
 
-    // Get board socket
+    /**
+     * Retrieves which board socket to use
+     * @returns Board socket to use
+     */
     CameraBoardSocket getBoardSocket() const;
 
     // Set which mono camera to use
@@ -42,20 +68,35 @@ class MonoCamera : public Node {
     // Get which mono camera to use
     [[deprecated("Use 'getBoardSocket()' instead.")]] int64_t getCamId() const;
 
-    // Set camera image orientation
+    /// Set camera image orientation
     void setImageOrientation(CameraImageOrientation imageOrientation);
 
-    // Get camera image orientation
+    /// Get camera image orientation
     CameraImageOrientation getImageOrientation() const;
 
-    void setResolution(MonoCameraProperties::SensorResolution resolution);
-    MonoCameraProperties::SensorResolution getResolution() const;
+    /// Set sensor resolution
+    void setResolution(Properties::SensorResolution resolution);
 
+    /// Get sensor resolution
+    Properties::SensorResolution getResolution() const;
+
+    /**
+     * Set rate at which camera should produce frames
+     * @param fps Rate in frames per second
+     */
     void setFps(float fps);
+
+    /**
+     * Get rate at which camera should produce frames
+     * @returns Rate in frames per second
+     */
     float getFps() const;
 
+    /// Get sensor resolution as size
     std::tuple<int, int> getResolutionSize() const;
+    /// Get sensor resolution width
     int getResolutionWidth() const;
+    /// Get sensor resolution height
     int getResolutionHeight() const;
 };
 

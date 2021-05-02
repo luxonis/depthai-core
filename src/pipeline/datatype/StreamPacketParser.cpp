@@ -5,7 +5,7 @@
 #include <sstream>
 
 // libraries
-#include <XLinkPublicDefines.h>
+#include <XLink/XLinkPublicDefines.h>
 #include <spdlog/spdlog.h>
 
 #include <nlohmann/json.hpp>
@@ -18,7 +18,11 @@
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
+#include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
+#include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
+#include "depthai/pipeline/datatype/SpatialLocationCalculatorData.hpp"
 #include "depthai/pipeline/datatype/SystemInformation.hpp"
+#include "depthai/pipeline/datatype/Tracklets.hpp"
 
 // shared
 #include "depthai-shared/datatype/DatatypeEnum.hpp"
@@ -28,7 +32,11 @@
 #include "depthai-shared/datatype/RawImgDetections.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
 #include "depthai-shared/datatype/RawNNData.hpp"
+#include "depthai-shared/datatype/RawSpatialImgDetections.hpp"
+#include "depthai-shared/datatype/RawSpatialLocationCalculatorConfig.hpp"
+#include "depthai-shared/datatype/RawSpatialLocations.hpp"
 #include "depthai-shared/datatype/RawSystemInformation.hpp"
+#include "depthai-shared/datatype/RawTracklets.hpp"
 
 // StreamPacket structure ->  || imgframepixels... , serialized_object, object_type, serialized_object_size ||
 // object_type -> DataType(int), serialized_object_size -> int
@@ -93,8 +101,24 @@ std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
             return parseDatatype<RawImgDetections>(jser, data);
             break;
 
+        case DatatypeEnum::SpatialImgDetections:
+            return parseDatatype<RawSpatialImgDetections>(jser, data);
+            break;
+
         case DatatypeEnum::SystemInformation:
             return parseDatatype<RawSystemInformation>(jser, data);
+            break;
+
+        case DatatypeEnum::SpatialLocationCalculatorData:
+            return parseDatatype<RawSpatialLocations>(jser, data);
+            break;
+
+        case DatatypeEnum::SpatialLocationCalculatorConfig:
+            return parseDatatype<RawSpatialLocations>(jser, data);
+            break;
+
+        case DatatypeEnum::Tracklets:
+            return parseDatatype<RawTracklets>(jser, data);
             break;
     }
 
@@ -144,8 +168,24 @@ std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
             return std::make_shared<ImgDetections>(parseDatatype<RawImgDetections>(jser, data));
             break;
 
+        case DatatypeEnum::SpatialImgDetections:
+            return std::make_shared<SpatialImgDetections>(parseDatatype<RawSpatialImgDetections>(jser, data));
+            break;
+
         case DatatypeEnum::SystemInformation:
             return std::make_shared<SystemInformation>(parseDatatype<RawSystemInformation>(jser, data));
+            break;
+
+        case DatatypeEnum::SpatialLocationCalculatorData:
+            return std::make_shared<SpatialLocationCalculatorData>(parseDatatype<RawSpatialLocations>(jser, data));
+            break;
+
+        case DatatypeEnum::SpatialLocationCalculatorConfig:
+            return std::make_shared<SpatialLocationCalculatorConfig>(parseDatatype<RawSpatialLocationCalculatorConfig>(jser, data));
+            break;
+
+        case DatatypeEnum::Tracklets:
+            return std::make_shared<Tracklets>(parseDatatype<RawTracklets>(jser, data));
             break;
     }
 
@@ -165,7 +205,7 @@ std::vector<std::uint8_t> serializeData(const std::shared_ptr<RawBuffer>& data) 
     std::vector<std::uint8_t> metadata;
     DatatypeEnum datatype;
     data->serialize(metadata, datatype);
-    uint32_t metadataSize = metadata.size();
+    uint32_t metadataSize = static_cast<uint32_t>(metadata.size());
 
     // 4B datatype & 4B metadata size
     std::uint8_t leDatatype[4];

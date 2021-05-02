@@ -1,5 +1,7 @@
 #include "depthai/pipeline/node/ColorCamera.hpp"
 
+#include <cmath>
+
 #include "spdlog/fmt/fmt.h"
 
 namespace dai {
@@ -23,7 +25,7 @@ std::string ColorCamera::getName() const {
 }
 
 std::vector<Node::Output> ColorCamera::getOutputs() {
-    return {video, preview, still};
+    return {raw, isp, video, preview, still};
 }
 
 std::vector<Node::Input> ColorCamera::getInputs() {
@@ -122,10 +124,18 @@ void ColorCamera::setPreviewSize(int width, int height) {
     properties.previewHeight = height;
 }
 
+void ColorCamera::setPreviewSize(std::tuple<int, int> size) {
+    setPreviewSize(std::get<0>(size), std::get<1>(size));
+}
+
 // set video output size
 void ColorCamera::setVideoSize(int width, int height) {
     properties.videoWidth = width;
     properties.videoHeight = height;
+}
+
+void ColorCamera::setVideoSize(std::tuple<int, int> size) {
+    setVideoSize(std::get<0>(size), std::get<1>(size));
 }
 
 // set still output size
@@ -134,20 +144,28 @@ void ColorCamera::setStillSize(int width, int height) {
     properties.stillHeight = height;
 }
 
-void ColorCamera::setIspScale(int numerator, int denominator) {
-    properties.ispScale.horizNumerator = numerator;
-    properties.ispScale.horizDenominator = denominator;
-    properties.ispScale.vertNumerator = numerator;
-    properties.ispScale.vertDenominator = denominator;
+void ColorCamera::setStillSize(std::tuple<int, int> size) {
+    setStillSize(std::get<0>(size), std::get<1>(size));
 }
 
-void ColorCamera::setIspScaleFull(int horizNum, int horizDenom, int vertNum, int vertDenom) {
+void ColorCamera::setIspScale(int horizNum, int horizDenom, int vertNum, int vertDenom) {
     properties.ispScale.horizNumerator = horizNum;
     properties.ispScale.horizDenominator = horizDenom;
     properties.ispScale.vertNumerator = vertNum;
     properties.ispScale.vertDenominator = vertDenom;
 }
 
+void ColorCamera::setIspScale(int numerator, int denominator) {
+    setIspScale(numerator, denominator, numerator, denominator);
+}
+
+void ColorCamera::setIspScale(std::tuple<int, int> scale) {
+    setIspScale(std::get<0>(scale), std::get<1>(scale));
+}
+
+void ColorCamera::setIspScale(std::tuple<int, int> horizScale, std::tuple<int, int> vertScale) {
+    setIspScale(std::get<0>(horizScale), std::get<1>(horizScale), std::get<0>(vertScale), std::get<1>(vertScale));
+}
 
 void ColorCamera::setResolution(ColorCameraProperties::SensorResolution resolution) {
     properties.resolution = resolution;
@@ -196,6 +214,19 @@ std::tuple<int, int> ColorCamera::getVideoSize() const {
             maxVideoHeight = 2160;
         }
 
+        // Take into the account the ISP scaling
+        int numW = properties.ispScale.horizNumerator;
+        int denW = properties.ispScale.horizDenominator;
+        if(numW > 0 && denW > 0) {
+            maxVideoWidth = getScaledSize(maxVideoWidth, numW, denW);
+        }
+
+        int numH = properties.ispScale.vertNumerator;
+        int denH = properties.ispScale.vertDenominator;
+        if(numH > 0 && denH > 0) {
+            maxVideoHeight = getScaledSize(maxVideoHeight, numH, denH);
+        }
+
         return {maxVideoWidth, maxVideoHeight};
     }
 
@@ -224,6 +255,20 @@ std::tuple<int, int> ColorCamera::getStillSize() const {
             maxStillWidth = 4032;  // Note not 4056 as full sensor resolution
             maxStillHeight = 3040;
         }
+
+        // Take into the account the ISP scaling
+        int numW = properties.ispScale.horizNumerator;
+        int denW = properties.ispScale.horizDenominator;
+        if(numW > 0 && denW > 0) {
+            maxStillWidth = getScaledSize(maxStillWidth, numW, denW);
+        }
+
+        int numH = properties.ispScale.vertNumerator;
+        int denH = properties.ispScale.vertDenominator;
+        if(numH > 0 && denH > 0) {
+            maxStillHeight = getScaledSize(maxStillHeight, numH, denH);
+        }
+
         return {maxStillWidth, maxStillHeight};
     }
 
@@ -266,6 +311,34 @@ int ColorCamera::getResolutionHeight() const {
     return std::get<1>(getResolutionSize());
 }
 
+int ColorCamera::getScaledSize(int input, int num, int denom) const {
+    return (input * num - 1) / denom + 1;
+}
+
+int ColorCamera::getIspWidth() const {
+    int inW = getResolutionWidth();
+    int num = properties.ispScale.horizNumerator;
+    int den = properties.ispScale.horizDenominator;
+    if(num > 0 && den > 0) {
+        return getScaledSize(inW, num, den);
+    }
+    return inW;
+}
+
+int ColorCamera::getIspHeight() const {
+    int inH = getResolutionHeight();
+    int num = properties.ispScale.vertNumerator;
+    int den = properties.ispScale.vertDenominator;
+    if(num > 0 && den > 0) {
+        return getScaledSize(inH, num, den);
+    }
+    return inH;
+}
+
+std::tuple<int, int> ColorCamera::getIspSize() const {
+    return {getIspWidth(), getIspHeight()};
+}
+
 void ColorCamera::sensorCenterCrop() {
     properties.sensorCropX = ColorCameraProperties::AUTO;
     properties.sensorCropY = ColorCameraProperties::AUTO;
@@ -285,8 +358,8 @@ void ColorCamera::setSensorCrop(float x, float y) {
 std::tuple<float, float> ColorCamera::getSensorCrop() const {
     // AUTO - center crop by default
     if(properties.sensorCropX == ColorCameraProperties::AUTO || properties.sensorCropY == ColorCameraProperties::AUTO) {
-        float x = ((getResolutionWidth() - getVideoWidth()) / 2) / getResolutionWidth();
-        float y = ((getResolutionHeight() - getVideoHeight()) / 2) / getResolutionHeight();
+        float x = std::floor(((getResolutionWidth() - getVideoWidth()) / 2.0f) / getResolutionWidth());
+        float y = std::floor(((getResolutionHeight() - getVideoHeight()) / 2.0f) / getResolutionHeight());
         return {x, y};
     }
     return {properties.sensorCropX, properties.sensorCropY};

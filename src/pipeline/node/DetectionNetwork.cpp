@@ -22,7 +22,15 @@ std::vector<Node::Input> DetectionNetwork::getInputs() {
 }
 
 std::vector<Node::Output> DetectionNetwork::getOutputs() {
-    return {out};
+    return {out, passthrough};
+}
+
+DetectionNetwork::Properties& DetectionNetwork::getPropertiesRef() {
+    return properties;
+}
+
+std::shared_ptr<Node> DetectionNetwork::clone() {
+    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
 nlohmann::json DetectionNetwork::getProperties() {
@@ -32,49 +40,49 @@ nlohmann::json DetectionNetwork::getProperties() {
 }
 
 void DetectionNetwork::setConfidenceThreshold(float thresh) {
-    properties.confidenceThreshold = thresh;
-}
-
-// Specify local filesystem path to load the blob (which gets loaded at loadAssets)
-void DetectionNetwork::setBlobPath(const std::string& path) {
-    blobPath = path;
-    BlobAssetInfo blobInfo = loadBlob(path);
-    properties.blobUri = blobInfo.uri;
-    properties.blobSize = blobInfo.size;
+    getPropertiesRef().confidenceThreshold = thresh;
 }
 
 //--------------------------------------------------------------------
 // MobileNet
 //--------------------------------------------------------------------
 MobileNetDetectionNetwork::MobileNetDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : DetectionNetwork(par, nodeId) {
-    properties.nnFamily = DetectionNetworkType::MOBILENET;
+    getPropertiesRef().nnFamily = DetectionNetworkType::MOBILENET;
+}
+
+std::shared_ptr<Node> MobileNetDetectionNetwork::clone() {
+    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
 //--------------------------------------------------------------------
 // YOLO
 //--------------------------------------------------------------------
 YoloDetectionNetwork::YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : DetectionNetwork(par, nodeId) {
-    properties.nnFamily = DetectionNetworkType::YOLO;
+    getPropertiesRef().nnFamily = DetectionNetworkType::YOLO;
 }
 
 void YoloDetectionNetwork::setNumClasses(const int numClasses) {
-    properties.classes = numClasses;
+    getPropertiesRef().classes = numClasses;
 }
 
 void YoloDetectionNetwork::setCoordinateSize(const int coordinates) {
-    properties.coordinates = coordinates;
+    getPropertiesRef().coordinates = coordinates;
 }
 
 void YoloDetectionNetwork::setAnchors(std::vector<float> anchors) {
-    properties.anchors = anchors;
+    getPropertiesRef().anchors = anchors;
 }
 
 void YoloDetectionNetwork::setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks) {
-    properties.anchorMasks = anchorMasks;
+    getPropertiesRef().anchorMasks = anchorMasks;
 }
 
 void YoloDetectionNetwork::setIouThreshold(float thresh) {
-    properties.iouThreshold = thresh;
+    getPropertiesRef().iouThreshold = thresh;
+}
+
+std::shared_ptr<Node> YoloDetectionNetwork::clone() {
+    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
 }  // namespace node

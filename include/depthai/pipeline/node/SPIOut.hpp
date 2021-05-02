@@ -8,6 +8,9 @@
 namespace dai {
 namespace node {
 
+/**
+ * @brief SPIOut node. Sends messages over SPI.
+ */
 class SPIOut : public Node {
     dai::SPIOutProperties properties;
 
@@ -38,12 +41,26 @@ class SPIOut : public Node {
         properties.busId = 0;
     }
 
-    Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}}};
+    /**
+     * Input for any type of messages to be transfered over SPI stream
+     *
+     * Default queue is blocking with size 8
+     */
+    Input input{*this, "in", Input::Type::SReceiver, true, 8, {{DatatypeEnum::Buffer, true}}};
 
+    /**
+     * Specifies stream name over which the node will send data
+     *
+     * @param name Stream name
+     */
     void setStreamName(std::string name) {
         properties.streamName = name;
     }
 
+    /**
+     * Specifies SPI Bus number to use
+     * @param id SPI Bus id
+     */
     void setBusId(int id) {
         properties.busId = id;
     }

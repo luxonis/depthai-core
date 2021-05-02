@@ -1,10 +1,11 @@
-#include "depthai/device/DataQueue.hpp"
 
+#include "depthai/device/DataQueue.hpp"
 // std
 #include <iostream>
 
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
+#include "depthai/xlink/XLinkStream.hpp"
 #include "pipeline/datatype/StreamPacketParser.hpp"
 
 // shared
@@ -12,101 +13,89 @@
 
 // libraries
 #include "spdlog/spdlog.h"
+
 namespace dai {
 
 // DATA OUTPUT QUEUE
-DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& name, unsigned int maxSize, bool blocking)
-    : pQueue(std::make_shared<LockingQueue<std::shared_ptr<ADatatype>>>(maxSize, blocking)),
-      queue(*pQueue),
-      pRunning(std::make_shared<std::atomic<bool>>(true)),
-      running(*pRunning),
-      pExceptionMessage(std::make_shared<std::string>("")),
-      exceptionMessage(*pExceptionMessage),
-      streamName(name),
-      pCallbacksMtx(std::make_shared<std::mutex>()),
-      callbacksMtx(*pCallbacksMtx),
-      pCallbacks(std::make_shared<std::unordered_map<int, std::function<void(std::string, std::shared_ptr<ADatatype>)>>>()),
-      callbacks(*pCallbacks) {
-    // Copies of variables for the detached thread
-    std::shared_ptr<std::atomic<bool>> pRunningCopy{pRunning};
-    std::shared_ptr<std::string> pExceptionMessageCopy{pExceptionMessage};
-    auto pQueueCopy = pQueue;
-    auto pCallbacksMtxCopy = pCallbacksMtx;
-    auto pCallbacksCopy = pCallbacks;
+DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize, bool blocking)
+    : queue(maxSize, blocking), name(streamName) {
+    // Create stream first and then pass to thread
+    // Open stream with 1B write size (no writing will happen here)
+    XLinkStream stream(*conn, name, 1);
 
-    // creates a thread which reads from connection into the queue
-    readingThread = std::thread([name, pRunningCopy, conn, pExceptionMessageCopy, pQueueCopy, pCallbacksMtxCopy, pCallbacksCopy]() {
-        auto& running = *pRunningCopy;
-        auto& queue = *pQueueCopy;
-        auto& callbacksMtx = *pCallbacksMtxCopy;
-        auto& callbacks = *pCallbacksCopy;
+    // Creates a thread which reads from connection into the queue
+    readingThread = std::thread(std::bind(
+        [this, conn](XLinkStream& stream) {
+            std::uint64_t numPacketsRead = 0;
+            try {
+                while(running) {
+                    // read packet
+                    streamPacketDesc_t* packet;
 
-        std::uint64_t numPacketsRead = 0;
-        try {
-            // open stream with 1B write size (no writing will happen here)
-            conn->openStream(name, 1);
+                    // Blocking
+                    packet = stream.readRaw();
 
-            while(running) {
-                // read packet
-                auto* packet = conn->readFromStreamRaw(name);
-                if(!running) break;
+                    // parse packet
+                    auto data = parsePacketToADatatype(packet);
 
-                // parse packet
-                auto data = parsePacketToADatatype(packet);
+                    // Trace level debugging
+                    if(spdlog::get_level() == spdlog::level::trace) {
+                        std::vector<std::uint8_t> metadata;
+                        DatatypeEnum type;
+                        data->getRaw()->serialize(metadata, type);
+                        std::string objData = "/";
+                        if(!metadata.empty()) objData = nlohmann::json::from_msgpack(metadata).dump();
+                        spdlog::trace("Received message from device ({}) - data size: {}, object type: {} object data: {}",
+                                      name,
+                                      data->getRaw()->data.size(),
+                                      type,
+                                      objData);
+                    }
 
-                // Trace level debugging
-                if(spdlog::get_level() == spdlog::level::trace) {
-                    std::vector<std::uint8_t> metadata;
-                    DatatypeEnum type;
-                    data->getRaw()->serialize(metadata, type);
-                    std::string objData = "/";
-                    if(!metadata.empty()) objData = nlohmann::json::from_msgpack(metadata).dump();
-                    spdlog::trace("Received message from device - data size: {}, object type: {} object data: {}", data->getRaw()->data.size(), type, objData);
-                }
+                    // release packet
+                    stream.readRawRelease();
 
-                // release packet
-                conn->readFromStreamRawRelease(name);
+                    // Add 'data' to queue
+                    queue.push(data);
 
-                // Add 'data' to queue
-                queue.push(data);
+                    // Increment numPacketsRead
+                    numPacketsRead++;
 
-                // Increment numPacketsRead
-                numPacketsRead++;
-
-                // First check if if not destructed already
-                if(!running) return;
-                // Call callbacks
-                {
-                    std::unique_lock<std::mutex> l(callbacksMtx);
-                    for(const auto& kv : callbacks) {
-                        const auto& callback = kv.second;
-                        callback(name, data);
+                    // Call callbacks
+                    {
+                        std::unique_lock<std::mutex> l(callbacksMtx);
+                        for(const auto& kv : callbacks) {
+                            const auto& callback = kv.second;
+                            try {
+                                callback(name, data);
+                            } catch(const std::exception& ex) {
+                                spdlog::error("Callback with id: {} throwed an exception: {}", kv.first, ex.what());
+                            }
+                        }
                     }
                 }
+
+            } catch(const std::exception& ex) {
+                exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
             }
 
-            conn->closeStream(name);
-
-        } catch(const std::exception& ex) {
-            *pExceptionMessageCopy = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
-        }
-
-        queue.destruct();
-        running = false;
-    });
+            queue.destruct();
+            running = false;
+        },
+        std::move(stream)));
 }
 
 DataOutputQueue::~DataOutputQueue() {
+    spdlog::debug("DataOutputQueue ({}) about to be destructed...", name);
     // Set reading thread to stop
     running = false;
 
     // Destroy queue
-    pQueue->destruct();
-    pQueue = nullptr;
+    queue.destruct();
 
-    // detach from thread, because currently no way to unblock underlying XLinkReadData
-    // Make sure to not access DataOutputQueue fields from that thread anymore
-    readingThread.detach();
+    // join thread
+    if(readingThread.joinable()) readingThread.join();
+    spdlog::debug("DataOutputQueue ({}) destructed", name);
 }
 
 void DataOutputQueue::setBlocking(bool blocking) {
@@ -130,7 +119,7 @@ unsigned int DataOutputQueue::getMaxSize(unsigned int maxSize) const {
 }
 
 std::string DataOutputQueue::getName() const {
-    return streamName;
+    return name;
 }
 
 int DataOutputQueue::addCallback(std::function<void(std::string, std::shared_ptr<ADatatype>)> callback) {
@@ -170,79 +159,63 @@ bool DataOutputQueue::removeCallback(int callbackId) {
 }
 
 // DATA INPUT QUEUE
-DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& name, unsigned int maxSize, bool blocking)
-    : pQueue(std::make_shared<LockingQueue<std::shared_ptr<RawBuffer>>>(maxSize, blocking)),
-      queue(*pQueue),
-      pRunning(std::make_shared<std::atomic<bool>>(true)),
-      running(*pRunning),
-      pExceptionMessage(std::make_shared<std::string>("")),
-      exceptionMessage(*pExceptionMessage),
-      streamName(name) {
-    // creates a thread which reads from connection into the queue
-    std::shared_ptr<std::atomic<bool>> pRunningCopy{pRunning};
-    std::shared_ptr<std::string> pExceptionMessageCopy{pExceptionMessage};
-    auto pQueueCopy = pQueue;
+DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize, bool blocking)
+    : queue(maxSize, blocking), name(streamName) {
+    // open stream with default XLINK_USB_BUFFER_MAX_SIZE write size
+    XLinkStream stream(*conn, name, dai::XLINK_USB_BUFFER_MAX_SIZE);
 
-    // do not capture 'this' as it this thread will outlive the parent object
-    writingThread = std::thread([name, pRunningCopy, conn, pExceptionMessageCopy, pQueueCopy]() {
-        std::atomic<bool>& running = *pRunningCopy;
-        std::uint64_t numPacketsSent = 0;
-        LockingQueue<std::shared_ptr<RawBuffer>>& queue = *pQueueCopy;
+    writingThread = std::thread(std::bind(
+        [this, conn](XLinkStream& stream) {
+            std::uint64_t numPacketsSent = 0;
+            try {
+                while(running) {
+                    // get data from queue
+                    std::shared_ptr<RawBuffer> data;
+                    if(!queue.waitAndPop(data)) {
+                        continue;
+                    }
 
-        try {
-            // open stream with default XLINK_USB_BUFFER_MAX_SIZE write size
-            conn->openStream(name, dai::XLINK_USB_BUFFER_MAX_SIZE);
+                    // Trace level debugging
+                    if(spdlog::get_level() == spdlog::level::trace) {
+                        std::vector<std::uint8_t> metadata;
+                        DatatypeEnum type;
+                        data->serialize(metadata, type);
+                        std::string objData = "/";
+                        if(!metadata.empty()) objData = nlohmann::json::from_msgpack(metadata).dump();
+                        spdlog::trace(
+                            "Sending message to device ({}) - data size: {}, object type: {} object data: {}", name, data->data.size(), type, objData);
+                    }
 
-            while(running) {
-                // get data from queue
-                std::shared_ptr<RawBuffer> data;
-                if(!queue.waitAndPop(data)) {
-                    continue;
+                    // serialize
+                    auto serialized = serializeData(data);
+
+                    // Blocking
+                    stream.write(serialized);
+
+                    // Increment num packets sent
+                    numPacketsSent++;
                 }
 
-                // Trace level debugging
-                if(spdlog::get_level() == spdlog::level::trace) {
-                    std::vector<std::uint8_t> metadata;
-                    DatatypeEnum type;
-                    data->serialize(metadata, type);
-                    std::string objData = "/";
-                    if(!metadata.empty()) objData = nlohmann::json::from_msgpack(metadata).dump();
-                    spdlog::trace("Sending message to device - data size: {}, object type: {} object data: {}", data->data.size(), type, objData);
-                }
-
-                // serialize
-                auto serialized = serializeData(data);
-
-                // Write packet to device
-                conn->writeToStream(name, serialized);
-                if(!running) return;
-
-                // Increment num packets sent
-                numPacketsSent++;
+            } catch(const std::exception& ex) {
+                exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
             }
 
-            conn->closeStream(name);
-
-        } catch(const std::exception& ex) {
-            *pExceptionMessageCopy = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
-        }
-
-        queue.destruct();
-        running = false;
-    });
+            queue.destruct();
+            running = false;
+        },
+        std::move(stream)));
 }
 
 DataInputQueue::~DataInputQueue() {
+    spdlog::debug("DataInputQueue ({}) about to be destructed...", name);
     // Set writing thread to stop
     running = false;
 
     // Destroy queue
-    pQueue->destruct();
-    pQueue = nullptr;
+    queue.destruct();
 
-    // detach thread to not block user space code
-    // Make sure to not access DataInputQueue fields from that thread anymore
-    writingThread.detach();
+    if(writingThread.joinable()) writingThread.join();
+    spdlog::debug("DataInputQueue ({}) destructed", name);
 }
 
 void DataInputQueue::setBlocking(bool blocking) {
@@ -274,43 +247,48 @@ std::size_t DataInputQueue::getMaxDataSize() {
 }
 
 std::string DataInputQueue::getName() const {
-    return streamName;
+    return name;
 }
 
-void DataInputQueue::send(const std::shared_ptr<RawBuffer>& val) {
+void DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg) {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
+    if(!rawMsg) throw std::invalid_argument("Message passed is not valid (nullptr)");
 
     // Check if stream receiver has enough space for this message
-    if(val->data.size() > maxDataSize) {
-        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", val->data.size(), maxDataSize));
+    if(rawMsg->data.size() > maxDataSize) {
+        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize));
     }
 
-    queue.push(val);
+    queue.push(rawMsg);
 }
-void DataInputQueue::send(const std::shared_ptr<ADatatype>& val) {
-    send(val->serialize());
-}
-
-void DataInputQueue::send(const ADatatype& val) {
-    send(val.serialize());
+void DataInputQueue::send(const std::shared_ptr<ADatatype>& msg) {
+    if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
+    send(msg->serialize());
 }
 
-void DataInputQueue::sendSync(const std::shared_ptr<RawBuffer>& val) {
+void DataInputQueue::send(const ADatatype& msg) {
+    send(msg.serialize());
+}
+
+bool DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg, std::chrono::milliseconds timeout) {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
+    if(!rawMsg) throw std::invalid_argument("Message passed is not valid (nullptr)");
 
     // Check if stream receiver has enough space for this message
-    if(val->data.size() > maxDataSize) {
-        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", val->data.size(), maxDataSize));
+    if(rawMsg->data.size() > maxDataSize) {
+        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize));
     }
 
-    queue.waitEmpty();
-    queue.push(val);
+    return queue.tryWaitAndPush(rawMsg, timeout);
 }
-void DataInputQueue::sendSync(const std::shared_ptr<ADatatype>& val) {
-    sendSync(val->serialize());
+
+bool DataInputQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::milliseconds timeout) {
+    if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
+    return send(msg->serialize(), timeout);
 }
-void DataInputQueue::sendSync(const ADatatype& val) {
-    sendSync(val.serialize());
+
+bool DataInputQueue::send(const ADatatype& msg, std::chrono::milliseconds timeout) {
+    return send(msg.serialize(), timeout);
 }
 
 }  // namespace dai

@@ -1,33 +1,29 @@
 
-#include <iostream>
 #include <cstdio>
+#include <iostream>
 
 #include "utility.hpp"
 
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-
-int main(int argc, char** argv){
+int main(int argc, char** argv) {
     using namespace std;
 
     // Default blob path provided by Hunter private data download
     // Applicable for easier example usage only
     std::string nnPath(BLOB_PATH);
-    
+
     // If path to blob specified, use that
     int camId = 0;
-    if(argc > 1){
-        
+    if(argc > 1) {
         camId = std::stoi(argv[1]);
-        if(argc > 2){
+        if(argc > 2) {
             nnPath = std::string(argv[2]);
         }
     }
 
-
     using namespace std;
-
 
     // CREATE PIPELINE
     dai::Pipeline p;
@@ -40,7 +36,7 @@ int main(int argc, char** argv){
     nn->setBlobPath(nnPath);
 
     xin->setStreamName("nn_in");
-    xin->setMaxDataSize(300*300*3);
+    xin->setMaxDataSize(300 * 300 * 3);
     xin->setNumFrames(4);
 
     xout->setStreamName("nn_out");
@@ -54,15 +50,12 @@ int main(int argc, char** argv){
 
     // Connect to device with above created pipeline
     dai::Device d(p);
-    // Start the pipeline
-    d.startPipeline();
 
     cv::Mat frame;
     auto in = d.getInputQueue("nn_in");
     auto detections = d.getOutputQueue("nn_out");
 
-    while(1){
-        
+    while(1) {
         // data to send further
         auto tensor = std::make_shared<dai::RawBuffer>();
 
@@ -70,12 +63,12 @@ int main(int argc, char** argv){
         webcam >> frame;
 
         // crop and resize
-        frame = resizeKeepAspectRatio(frame, cv::Size(300,300), cv::Scalar(0));
+        frame = resizeKeepAspectRatio(frame, cv::Size(300, 300), cv::Scalar(0));
 
         // transform to BGR planar 300x300
         toPlanar(frame, tensor->data);
 
-        //tensor->data = std::vector<std::uint8_t>(frame.data, frame.data + frame.total());
+        // tensor->data = std::vector<std::uint8_t>(frame.data, frame.data + frame.total());
         in->send(tensor);
 
         struct Detection {
@@ -91,47 +84,46 @@ int main(int argc, char** argv){
 
         auto det = detections->get<dai::NNData>();
         std::vector<float> detData = det->getFirstLayerFp16();
-        if(detData.size() > 0){
+        if(detData.size() > 0) {
             int i = 0;
-            while (detData[i*7] != -1.0f) {
+            while(detData[i * 7] != -1.0f) {
                 Detection d;
-                d.label = detData[i*7 + 1];
-                d.score = detData[i*7 + 2];
-                d.x_min = detData[i*7 + 3];
-                d.y_min = detData[i*7 + 4];
-                d.x_max = detData[i*7 + 5];
-                d.y_max = detData[i*7 + 6];
+                d.label = detData[i * 7 + 1];
+                d.score = detData[i * 7 + 2];
+                d.x_min = detData[i * 7 + 3];
+                d.y_min = detData[i * 7 + 4];
+                d.x_max = detData[i * 7 + 5];
+                d.y_max = detData[i * 7 + 6];
                 i++;
                 dets.push_back(d);
             }
         }
 
-        for(const auto& d : dets){
+        for(const auto& d : dets) {
             int x1 = d.x_min * frame.cols;
             int y1 = d.y_min * frame.rows;
             int x2 = d.x_max * frame.cols;
             int y2 = d.y_max * frame.rows;
 
-            cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), cv::Scalar(255,255,255));
+            cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), cv::Scalar(255, 255, 255));
         }
 
         printf("===================== %lu detection(s) =======================\n", dets.size());
-        for (unsigned det = 0; det < dets.size(); ++det) {
+        for(unsigned det = 0; det < dets.size(); ++det) {
             printf("%5d | %6.4f | %7.4f | %7.4f | %7.4f | %7.4f\n",
-                    dets[det].label,
-                    dets[det].score,
-                    dets[det].x_min,
-                    dets[det].y_min,
-                    dets[det].x_max,
-                    dets[det].y_max);
+                   dets[det].label,
+                   dets[det].score,
+                   dets[det].x_min,
+                   dets[det].y_min,
+                   dets[det].x_max,
+                   dets[det].y_max);
         }
 
         cv::imshow("preview", frame);
         int key = cv::waitKey(1);
-        if (key == 'q'){
+        if(key == 'q') {
             return 0;
-        } 
-
+        }
     }
 
     return 0;

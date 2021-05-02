@@ -3,6 +3,8 @@
 #include <array>
 #include <cassert>
 #include <condition_variable>
+#include <fstream>
+#include <iostream>
 #include <thread>
 
 // libarchive
@@ -10,6 +12,7 @@
 #include "archive_entry.h"
 
 // spdlog
+#include "spdlog/details/os.h"
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/spdlog.h"
 
@@ -31,44 +34,70 @@ static std::vector<std::uint8_t> getEmbeddedBootloaderBinary();
 
 constexpr static auto CMRC_DEPTHAI_DEVICE_TAR_XZ = "depthai-device-fwp-" DEPTHAI_DEVICE_VERSION ".tar.xz";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_1_PATH = "depthai-device-openvino-2020.1-" DEPTHAI_DEVICE_VERSION ".cmd";
-constexpr static auto DEPTHAI_CMD_OPENVINO_2020_2_PATH = "depthai-device-openvino-2020.2-" DEPTHAI_DEVICE_VERSION ".cmd";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_3_PATH = "depthai-device-openvino-2020.3-" DEPTHAI_DEVICE_VERSION ".cmd";
+constexpr static auto DEPTHAI_CMD_OPENVINO_2020_2_PATH = DEPTHAI_CMD_OPENVINO_2020_3_PATH;
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_4_PATH = "depthai-device-openvino-2020.4-" DEPTHAI_DEVICE_VERSION ".cmd";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2021_1_PATH = "depthai-device-openvino-2021.1-" DEPTHAI_DEVICE_VERSION ".cmd";
+constexpr static auto DEPTHAI_CMD_OPENVINO_2021_2_PATH = "depthai-device-openvino-2021.2-" DEPTHAI_DEVICE_VERSION ".cmd";
+constexpr static auto DEPTHAI_CMD_OPENVINO_2021_3_PATH = "depthai-device-openvino-2021.3-" DEPTHAI_DEVICE_VERSION ".cmd";
+
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_1_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2020.1-" DEPTHAI_DEVICE_VERSION ".patch";
-constexpr static auto DEPTHAI_CMD_OPENVINO_2020_2_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2020.2-" DEPTHAI_DEVICE_VERSION ".patch";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_3_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2020.3-" DEPTHAI_DEVICE_VERSION ".patch";
+constexpr static auto DEPTHAI_CMD_OPENVINO_2020_2_USB2_PATCH_PATH = DEPTHAI_CMD_OPENVINO_2020_3_USB2_PATCH_PATH;
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_4_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2020.4-" DEPTHAI_DEVICE_VERSION ".patch";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2021_1_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2021.1-" DEPTHAI_DEVICE_VERSION ".patch";
-constexpr static std::array<const char*, 10> resourcesListTarXz = {
+constexpr static auto DEPTHAI_CMD_OPENVINO_2021_2_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2021.2-" DEPTHAI_DEVICE_VERSION ".patch";
+constexpr static auto DEPTHAI_CMD_OPENVINO_2021_3_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2021.3-" DEPTHAI_DEVICE_VERSION ".patch";
+
+constexpr static std::array<const char*, 14> resourcesListTarXz = {
     DEPTHAI_CMD_OPENVINO_2020_1_PATH,
     DEPTHAI_CMD_OPENVINO_2020_2_PATH,
     DEPTHAI_CMD_OPENVINO_2020_3_PATH,
     DEPTHAI_CMD_OPENVINO_2020_4_PATH,
     DEPTHAI_CMD_OPENVINO_2021_1_PATH,
+    DEPTHAI_CMD_OPENVINO_2021_2_PATH,
+    DEPTHAI_CMD_OPENVINO_2021_3_PATH,
     DEPTHAI_CMD_OPENVINO_2020_1_USB2_PATCH_PATH,
     DEPTHAI_CMD_OPENVINO_2020_2_USB2_PATCH_PATH,
     DEPTHAI_CMD_OPENVINO_2020_3_USB2_PATCH_PATH,
     DEPTHAI_CMD_OPENVINO_2020_4_USB2_PATCH_PATH,
     DEPTHAI_CMD_OPENVINO_2021_1_USB2_PATCH_PATH,
+    DEPTHAI_CMD_OPENVINO_2021_2_USB2_PATCH_PATH,
+    DEPTHAI_CMD_OPENVINO_2021_3_USB2_PATCH_PATH,
 };
 
 std::vector<std::uint8_t> Resources::getDeviceBinary(OpenVINO::Version version, bool usb2Mode) {
     std::vector<std::uint8_t> finalCmd;
 
+    // Check if env variable DEPTHAI_DEVICE_BINARY is set
+    auto fwBinaryPath = spdlog::details::os::getenv("DEPTHAI_DEVICE_BINARY");
+    if(!fwBinaryPath.empty()) {
+        // Load binary file at path
+        std::ifstream stream(fwBinaryPath, std::ios::in | std::ios::binary);
+        if(!stream.is_open()) {
+            // Throw an error
+            // TODO(themarpe) - Unify exceptions into meaningful groups
+            throw std::runtime_error(fmt::format("File at path {} pointed to by DEPTHAI_DEVICE_BINARY doesn't exist.", fwBinaryPath));
+        }
+
+        return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
+    }
+
     // Binaries are resource compiled
     #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
 
-    std::vector<std::uint8_t>& depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2020_1_PATH];
-    std::vector<std::uint8_t>& depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_1_USB2_PATCH_PATH];
+    std::vector<std::uint8_t>& depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2021_3_PATH];
+    std::vector<std::uint8_t>& depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2021_3_USB2_PATCH_PATH];
 
     switch(version) {
         case OpenVINO::VERSION_2020_1:
+            spdlog::warn("OpenVino version 2020.1 is deprecated and will be removed in the next release!");
             depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2020_1_PATH];
             depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_1_USB2_PATCH_PATH];
             break;
 
         case OpenVINO::VERSION_2020_2:
+            spdlog::warn("OpenVino version 2020.2 is deprecated and will be removed in the next release!");
             depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2020_2_PATH];
             depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_2_USB2_PATCH_PATH];
             break;
@@ -86,6 +115,14 @@ std::vector<std::uint8_t> Resources::getDeviceBinary(OpenVINO::Version version, 
         case OpenVINO::VERSION_2021_1:
             depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2021_1_PATH];
             depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2021_1_USB2_PATCH_PATH];
+            break;
+        case OpenVINO::VERSION_2021_2:
+            depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2021_2_PATH];
+            depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2021_2_USB2_PATCH_PATH];
+            break;
+        case OpenVINO::VERSION_2021_3:
+            depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2021_3_PATH];
+            depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2021_3_USB2_PATCH_PATH];
             break;
     }
 
@@ -278,6 +315,9 @@ Resources::Resources() {
             }
         }
         r = archive_read_free(a);  // Note 3
+        assert(r == ARCHIVE_OK);
+        // Ignore 'r' variable when in Release build
+        (void)r;
 
         // Check that all resources were read
         for(const auto& cpath : resourcesListTarXz) {

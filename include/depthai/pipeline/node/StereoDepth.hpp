@@ -8,8 +8,15 @@
 namespace dai {
 namespace node {
 
+/**
+ * @brief StereoDepth node. Compute stereo disparity and depth from left-right image pair.
+ */
 class StereoDepth : public Node {
-    dai::StereoDepthProperties properties;
+   public:
+    using Properties = dai::StereoDepthProperties;
+
+   private:
+    Properties properties;
 
     std::string getName() const override;
     std::vector<Output> getOutputs() override;
@@ -20,34 +27,142 @@ class StereoDepth : public Node {
    public:
     StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
-    Input left{*this, "left", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, true}}};
-    Input right{*this, "right", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, true}}};
+    /**
+     * Input for left ImgFrame of left-right pair
+     *
+     * Default queue is non-blocking with size 8
+     */
+    Input left{*this, "left", Input::Type::SReceiver, false, 8, {{DatatypeEnum::ImgFrame, true}}};
+
+    /**
+     * Input for right ImgFrame of left-right pair
+     *
+     * Default queue is non-blocking with size 8
+     */
+    Input right{*this, "right", Input::Type::SReceiver, false, 8, {{DatatypeEnum::ImgFrame, true}}};
+
+    /**
+     * Outputs ImgFrame message that carries RAW16 encoded (0..65535) depth data in millimeters.
+     */
     Output depth{*this, "depth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
+     * Outputs ImgFrame message that carries RAW8 encoded (0..96 or 0..192 for Extended mode) disparity data.
+     */
     Output disparity{*this, "disparity", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
+     * Passthrough ImgFrame message from 'left' Input.
+     */
     Output syncedLeft{*this, "syncedLeft", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
+     * Passthrough ImgFrame message from 'right' Input.
+     */
     Output syncedRight{*this, "syncedRight", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
+     * Outputs ImgFrame message that carries RAW8 encoded (grayscale) rectified frame data.
+     */
     Output rectifiedLeft{*this, "rectifiedLeft", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
+     * Outputs ImgFrame message that carries RAW8 encoded (grayscale) rectified frame data.
+     */
     Output rectifiedRight{*this, "rectifiedRight", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
-    // Specify local filesystem path to the calibration file. Empty string to use EEPROM
+    /**
+     * Specify local filesystem path to the calibration file
+     * @param path Path to calibration file. If empty use EEPROM
+     */
     void loadCalibrationFile(const std::string& path);
-    // Specify calibration data as a vector of bytes. Empty vector to use EEPROM
+
+    /**
+     * Specify calibration data as a vector of bytes
+     * @param path Calibration data. If empty use EEPROM
+     */
     void loadCalibrationData(const std::vector<std::uint8_t>& data);
-    // Specify that a passthrough/dummy calibration should be used, when input frames
-    // are already rectified (e.g. sourced from recordings on the host)
-    void setEmptyCalibration(void);
-    // Optional (taken from MonoCamera nodes if they exist)
+
+    /**
+     * Specify that a passthrough/dummy calibration should be used,
+     * when input frames are already rectified (e.g. sourced from recordings on the host)
+     */
+    void setEmptyCalibration();
+
+    /**
+     * Specify input resolution size
+     *
+     * Optional if MonoCamera exists, otherwise necessary
+     */
     void setInputResolution(int width, int height);
 
-    void setMedianFilter(StereoDepthProperties::MedianFilter median);
+    /**
+     * @param median Set kernel size for disparity/depth median filtering, or disable
+     */
+    void setMedianFilter(Properties::MedianFilter median);
+
+    /**
+     * @param align Set the disparity/depth alignment: centered (between the 'left' and 'right' inputs),
+     * or from the perspective of a rectified output stream
+     */
+    void setDepthAlign(Properties::DepthAlign align);
+
+    /**
+     * @param camera Set the camera from whose perspective the disparity/depth will be aligned
+     */
+    void setDepthAlign(CameraBoardSocket camera);
+
+    /**
+     * Confidence threshold for disparity calculation
+     * @param confThr Confidence threshold value 0..255
+     */
     void setConfidenceThreshold(int confThr);
+
+    /**
+     * Computes and combines disparities in both L-R and R-L directions, and combine them.
+     *
+     * For better occlusion handling
+     */
     void setLeftRightCheck(bool enable);
+
+    /**
+     * Computes disparity with sub-pixel interpolation (5 fractional bits).
+     *
+     * Suitable for long range
+     */
     void setSubpixel(bool enable);
+
+    /**
+     * Disparity range increased from 0-95 to 0-190, combined from full resolution and downscaled images.
+     *
+     * Suitable for short range objects
+     */
     void setExtendedDisparity(bool enable);
+
+    /**
+     * Fill color for missing data at frame edges
+     * @param color Grayscale 0..255, or -1 to replicate pixels
+     */
     void setRectifyEdgeFillColor(int color);
+
+    /**
+     * Mirror rectified frames
+     * @param enable True for normal disparity/depth, otherwise mirrored
+     */
     void setRectifyMirrorFrame(bool enable);
-    void setOutputRectified(bool enable);
-    void setOutputDepth(bool enable);
+
+    /**
+     * Enable outputting rectified frames. Optimizes computation on device side when disabled.
+     * DEPRECATED. The outputs are auto-enabled if used
+     */
+    [[deprecated("Function call should be removed")]] void setOutputRectified(bool enable);
+
+    /**
+     * Enable outputting 'depth' stream (converted from disparity).
+     * In certain configurations, this will disable 'disparity' stream.
+     * DEPRECATED. The output is auto-enabled if used
+     */
+    [[deprecated("Function call should be removed")]] void setOutputDepth(bool enable);
 };
 
 }  // namespace node
