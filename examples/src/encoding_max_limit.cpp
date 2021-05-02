@@ -19,7 +19,7 @@ int main(int argc, char** argv) {
     dai::Pipeline p;
 
     // Define a source - color camera and 2 mono camera
-    auto colorCam = p.create<dai::node::ColorCamera>();
+    auto camRgb = p.create<dai::node::ColorCamera>();
     auto monoCam = p.create<dai::node::MonoCamera>();
     auto monoCam2 = p.create<dai::node::MonoCamera>();
     auto ve1 = p.create<dai::node::VideoEncoder>();
@@ -35,8 +35,8 @@ int main(int argc, char** argv) {
     ve3Out->setStreamName("ve3Out");
 
     // Properties
-    colorCam->setBoardSocket(dai::CameraBoardSocket::RGB);
-    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_4_K);
+    camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
+    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_4_K);
     monoCam->setBoardSocket(dai::CameraBoardSocket::LEFT);
     monoCam2->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
 
     // Create outputs
     monoCam->out.link(ve1->input);
-    colorCam->video.link(ve2->input);
+    camRgb->video.link(ve2->input);
     monoCam2->out.link(ve3->input);
 
     ve1->bitstream.link(ve1Out->input);

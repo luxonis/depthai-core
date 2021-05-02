@@ -17,7 +17,7 @@ dai::Pipeline createPipeline(std::string nnPath) {
     dai::Pipeline p;
 
     // create nodes
-    auto colorCam = p.create<dai::node::ColorCamera>();
+    auto camRgb = p.create<dai::node::ColorCamera>();
     auto spatialDetectionNetwork = p.create<dai::node::MobileNetSpatialDetectionNetwork>();
     auto monoLeft = p.create<dai::node::MonoCamera>();
     auto monoRight = p.create<dai::node::MonoCamera>();
@@ -31,10 +31,10 @@ dai::Pipeline createPipeline(std::string nnPath) {
     xoutRgb->setStreamName("preview");
     trackerOut->setStreamName("tracklets");
 
-    colorCam->setPreviewSize(300, 300);
-    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    colorCam->setInterleaved(false);
-    colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
+    camRgb->setPreviewSize(300, 300);
+    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    camRgb->setInterleaved(false);
+    camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
 
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
@@ -56,11 +56,11 @@ dai::Pipeline createPipeline(std::string nnPath) {
     monoRight->out.link(stereo->right);
 
     // Link plugins CAM -> NN -> XLINK
-    colorCam->preview.link(spatialDetectionNetwork->input);
+    camRgb->preview.link(spatialDetectionNetwork->input);
     if(syncNN) {
         objectTracker->passthroughTrackerFrame.link(xoutRgb->input);
     } else {
-        colorCam->preview.link(xoutRgb->input);
+        camRgb->preview.link(xoutRgb->input);
     }
 
     objectTracker->setDetectionLabelsToTrack({15});  // track only person

@@ -1,5 +1,3 @@
-
-
 #include <cstdio>
 #include <iostream>
 
@@ -10,26 +8,29 @@
 
 static constexpr float stepSize = 0.05;
 
+static std::atomic<bool> newConfig{false};
+
 int main() {
     using namespace std;
 
-    dai::Pipeline p;
+    // Start defining a pipeline
+    dai::Pipeline pipeline;
 
-    auto monoLeft = p.create<dai::node::MonoCamera>();
-    auto monoRight = p.create<dai::node::MonoCamera>();
-    auto stereo = p.create<dai::node::StereoDepth>();
-    auto spatialDataCalculator = p.create<dai::node::SpatialLocationCalculator>();
+    // Define sources and outputs
+    auto monoLeft = pipeline.create<dai::node::MonoCamera>();
+    auto monoRight = pipeline.create<dai::node::MonoCamera>();
+    auto stereo = pipeline.create<dai::node::StereoDepth>();
+    auto spatialDataCalculator = pipeline.create<dai::node::SpatialLocationCalculator>();
 
-    auto xoutDepth = p.create<dai::node::XLinkOut>();
-    auto xoutSpatialData = p.create<dai::node::XLinkOut>();
-    auto xinSpatialCalcConfig = p.create<dai::node::XLinkIn>();
+    auto xoutDepth = pipeline.create<dai::node::XLinkOut>();
+    auto xoutSpatialData = pipeline.create<dai::node::XLinkOut>();
+    auto xinSpatialCalcConfig = pipeline.create<dai::node::XLinkIn>();
 
-    // XLinkOut
     xoutDepth->setStreamName("depth");
     xoutSpatialData->setStreamName("spatialData");
     xinSpatialCalcConfig->setStreamName("spatialCalcConfig");
 
-    // MonoCamera
+    // Properties
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
@@ -38,34 +39,34 @@ int main() {
     bool lrcheck = false;
     bool subpixel = false;
 
-    // StereoDepth
     stereo->setConfidenceThreshold(255);
-
-    // stereo->setMedianFilter(dai::StereoDepthProperties::MedianFilter::MEDIAN_OFF);
     stereo->setLeftRightCheck(lrcheck);
     stereo->setSubpixel(subpixel);
 
-    // Link plugins CAM -> STEREO -> XLINK
+    // Config
+    dai::Point2f topLeft(0.4f, 0.4f);
+    dai::Point2f bottomRight(0.6f, 0.6f);
+
+    dai::SpatialLocationCalculatorConfigData config;
+    config.depthThresholds.lowerThreshold = 100;
+    config.depthThresholds.upperThreshold = 10000;
+    config.roi = dai::Rect(topLeft, bottomRight);
+
+    spatialDataCalculator->setWaitForConfigInput(false);
+    spatialDataCalculator->initialConfig.addROI(config);
+
+    // Linking
     monoLeft->out.link(stereo->left);
     monoRight->out.link(stereo->right);
 
     spatialDataCalculator->passthroughDepth.link(xoutDepth->input);
     stereo->depth.link(spatialDataCalculator->inputDepth);
 
-    dai::Point2f topLeft(0.4f, 0.4f);
-    dai::Point2f bottomRight(0.6f, 0.6f);
-
-    spatialDataCalculator->setWaitForConfigInput(false);
-    dai::SpatialLocationCalculatorConfigData config;
-    config.depthThresholds.lowerThreshold = 100;
-    config.depthThresholds.upperThreshold = 10000;
-    config.roi = dai::Rect(topLeft, bottomRight);
-    spatialDataCalculator->initialConfig.addROI(config);
     spatialDataCalculator->out.link(xoutSpatialData->input);
     xinSpatialCalcConfig->out.link(spatialDataCalculator->inputConfig);
 
     // CONNECT TO DEVICE
-    dai::Device d(p);
+    dai::Device d(pipeline);
     d.startPipeline();
 
     auto depthQueue = d.getOutputQueue("depth", 8, false);
@@ -76,10 +77,10 @@ int main() {
     auto color = cv::Scalar(255, 255, 255);
     std::cout << "Use WASD keys to move ROI!" << std::endl;
 
-    while(1) {
-        auto depth = depthQueue->get<dai::ImgFrame>();
+    while(true) {
+        auto inDepth = depthQueue->get<dai::ImgFrame>();
 
-        cv::Mat depthFrame = depth->getFrame();
+        cv::Mat depthFrame = inDepth->getFrame();
         cv::Mat depthFrameColor;
         cv::normalize(depthFrame, depthFrameColor, 255, 0, cv::NORM_INF, CV_8UC1);
         cv::equalizeHist(depthFrameColor, depthFrameColor);
@@ -108,7 +109,6 @@ int main() {
 
         cv::imshow("depth", depthFrameColor);
 
-        bool newConfig = false;
         int key = cv::waitKey(1);
         switch(key) {
             case 'q':
@@ -145,11 +145,14 @@ int main() {
             default:
                 break;
         }
+
         if(newConfig) {
             config.roi = dai::Rect(topLeft, bottomRight);
             dai::SpatialLocationCalculatorConfig cfg;
             cfg.addROI(config);
             spatialCalcConfigInQueue->send(cfg);
+            newConfig = false;
         }
     }
+    return 0;
 }

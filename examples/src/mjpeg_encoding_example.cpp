@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
 
     dai::Pipeline p;
 
-    auto colorCam = p.create<dai::node::ColorCamera>();
+    auto camRgb = p.create<dai::node::ColorCamera>();
     auto xout = p.create<dai::node::XLinkOut>();
     auto xout2 = p.create<dai::node::XLinkOut>();
     auto videnc = p.create<dai::node::VideoEncoder>();
@@ -23,17 +23,17 @@ int main(int argc, char** argv) {
     xout2->setStreamName("preview");
 
     // ColorCamera
-    colorCam->setPreviewSize(300, 300);
-    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    // colorCam->setFps(5.0);
-    colorCam->setInterleaved(true);
+    camRgb->setPreviewSize(300, 300);
+    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    // camRgb->setFps(5.0);
+    camRgb->setInterleaved(true);
 
     // VideoEncoder
     videnc->setDefaultProfilePreset(1920, 1080, 30, dai::VideoEncoderProperties::Profile::MJPEG);
 
     // Link plugins CAM -> XLINK
-    colorCam->video.link(videnc->input);
-    colorCam->preview.link(xout2->input);
+    camRgb->video.link(videnc->input);
+    camRgb->preview.link(xout2->input);
     videnc->bitstream.link(xout->input);
 
     // Connect to device with above created pipeline
