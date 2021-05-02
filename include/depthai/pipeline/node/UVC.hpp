@@ -7,6 +7,10 @@
 
 namespace dai {
 namespace node {
+
+/**
+ * @brief UVC (USB Video Class) node
+ */
 class UVC : public Node {
     //dai::XLinkOutProperties properties;
 
@@ -19,6 +23,9 @@ class UVC : public Node {
    public:
     UVC(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
+    /**
+     * Input for UVC node. Limited for now to 1920x1080, NV12 frame types
+     */
     Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}}};
 
 };
