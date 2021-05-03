@@ -43,11 +43,16 @@ class StereoDepth : public Node {
 
     /**
      * Outputs ImgFrame message that carries RAW16 encoded (0..65535) depth data in millimeters.
+     *
+     * Non-determined / invalid depth values are set to 0
      */
     Output depth{*this, "depth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
-     * Outputs ImgFrame message that carries RAW8 encoded (0..96 or 0..192 for Extended mode) disparity data.
+     * Outputs ImgFrame message that carries RAW8 / RAW16 encoded disparity data:
+     * RAW8 encoded (0..95) for standard mode;
+     * RAW8 encoded (0..190) for extended disparity mode;
+     * RAW16 encoded (0..3040) for subpixel disparity mode (32 subpixel levels on top of standard mode).
      */
     Output disparity{*this, "disparity", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
@@ -121,21 +126,21 @@ class StereoDepth : public Node {
     /**
      * Computes and combines disparities in both L-R and R-L directions, and combine them.
      *
-     * For better occlusion handling
+     * For better occlusion handling, discarding invalid disparity values
      */
     void setLeftRightCheck(bool enable);
 
     /**
      * Computes disparity with sub-pixel interpolation (5 fractional bits).
      *
-     * Suitable for long range
+     * Suitable for long range. Currently incompatible with extended disparity
      */
     void setSubpixel(bool enable);
 
     /**
      * Disparity range increased from 0-95 to 0-190, combined from full resolution and downscaled images.
      *
-     * Suitable for short range objects
+     * Suitable for short range objects. Currently incompatible with sub-pixel disparity
      */
     void setExtendedDisparity(bool enable);
 
@@ -146,7 +151,13 @@ class StereoDepth : public Node {
     void setRectifyEdgeFillColor(int color);
 
     /**
-     * Mirror rectified frames
+     * Mirror rectified frames, only when LR-check mode is disabled. Default `true`.
+     * The mirroring is required to have a normal non-mirrored disparity/depth output.
+     *
+     * A side effect of this option is disparity alignment to the perspective of left or right input:
+     * - LR-check disabled: `false`: mapped to left and mirrored, `true`: mapped to right;
+     * - LR-check enabled: `false`: mapped to right, `true`: mapped to left, never mirrored.
+     *
      * @param enable True for normal disparity/depth, otherwise mirrored
      */
     void setRectifyMirrorFrame(bool enable);
