@@ -59,7 +59,7 @@ int main() {
         // stereo->loadCalibrationFile("../../../../depthai/resources/depthai.calib");
         // stereo->setInputResolution(1280, 720);
         // TODO: median filtering is disabled on device with (lrcheck || extended || subpixel)
-        // stereo->setMedianFilter(dai::StereoDepthProperties::MedianFilter::MEDIAN_OFF);
+        stereo->setMedianFilter(dai::StereoDepthProperties::MedianFilter::MEDIAN_OFF);
         stereo->setLeftRightCheck(lrcheck);
         stereo->setExtendedDisparity(extended);
         stereo->setSubpixel(subpixel);
