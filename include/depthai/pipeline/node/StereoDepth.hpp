@@ -50,10 +50,9 @@ class StereoDepth : public Node {
 
     /**
      * Outputs ImgFrame message that carries RAW8 / RAW16 encoded disparity data:
-     * - RAW8 encoded (0..95) for standard mode
-     * - RAW8 encoded (0..190) for extended disparity mode
-     * - RAW16 encoded (0..3040) for subpixel disparity mode (32 subpixel levels on top of standard mode)
-     *
+     * RAW8 encoded (0..95) for standard mode;
+     * RAW8 encoded (0..190) for extended disparity mode;
+     * RAW16 encoded (0..3040) for subpixel disparity mode (32 subpixel levels on top of standard mode).
      */
     Output disparity{*this, "disparity", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
