@@ -63,7 +63,7 @@ int main() {
     videoEncoder->bitstream.link(videoMjpegOut->input);
     stillEncoder->bitstream.link(stillMjpegOut->input);
 
-    // Connect to device
+    // Connect and start the pipeline
     dai::Device dev(pipeline);
 
     // Create data queues
@@ -72,9 +72,6 @@ int main() {
     auto previewQueue = dev.getOutputQueue("preview");
     auto videoQueue = dev.getOutputQueue("video");
     auto stillQueue = dev.getOutputQueue("still");
-
-    // Start pipeline
-    dev.startPipeline();
 
     // Max crop_x & crop_y
     float max_crop_x = (colorCam->getResolutionWidth() - colorCam->getVideoWidth()) / (float)colorCam->getResolutionWidth();

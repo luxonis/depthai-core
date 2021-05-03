@@ -43,27 +43,28 @@ Make sure submodules are updated
 ```
 git submodule update --init --recursive
 ```
+ℹ️ For the `--parallel` argument of the commands below, specify a value `[num CPU cores]` or less, to reduce memory consumption during build. E.g.: `--parallel 8`
 
 **Static library** 
 ```
 mkdir build && cd build
 cmake ..
-cmake --build . --parallel 8
+cmake --build . --parallel
 ```
 
 **Dynamic library**
 ```
 mkdir build && cd build
 cmake .. -D BUILD_SHARED_LIBS=ON
-cmake --build . --parallel 8
+cmake --build . --parallel
 ```
 ## Installing
 
 To install specify optional prefix and build target install
 ```
 cmake .. -D CMAKE_INSTALL_PREFIX=[path/to/install/dir]
-cmake --build . --parallel 8
-cmake --build . --target install --parallel 8
+cmake --build . --parallel
+cmake --build . --target install --parallel
 ```
 
 ## Running tests
@@ -72,7 +73,7 @@ To run the tests build the library with the following options
 ```
 mkdir build_tests && cd build_tests
 cmake .. -D DEPTHAI_TEST_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_BUILD_EXAMPLES=ON
-cmake --build . --parallel 8
+cmake --build . --parallel
 ctest
 ```
 

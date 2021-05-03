@@ -16,6 +16,7 @@
 #include "depthai/xlink/XLinkStream.hpp"
 
 // shared
+#include "depthai-shared/common/CameraBoardSocket.hpp"
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
@@ -141,6 +142,57 @@ class Device {
     Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd);
 
     /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param version - OpenVINO version which the device will be booted with. Default is Pipeline::DEFAULT_OPENVINO_VERSION
+     */
+    explicit Device(OpenVINO::Version version = Pipeline::DEFAULT_OPENVINO_VERSION);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param version - OpenVINO version which the device will be booted with
+     * @param usb2Mode - Boot device using USB2 mode firmware
+     */
+    Device(OpenVINO::Version version, bool usb2Mode);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param version - OpenVINO version which the device will be booted with
+     * @param pathToCmd - Path to custom device firmware
+     */
+    Device(OpenVINO::Version version, const char* pathToCmd);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param version - OpenVINO version which the device will be booted with
+     * @param pathToCmd - Path to custom device firmware
+     */
+    Device(OpenVINO::Version version, const std::string& pathToCmd);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param version - OpenVINO version which the device will be booted with
+     * @param devInfo - DeviceInfo which specifies which device to connect to
+     * @param usb2Mode - Boot device using USB2 mode firmware
+     */
+    Device(OpenVINO::Version version, const DeviceInfo& devInfo, bool usb2Mode = false);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param version - OpenVINO version which the device will be booted with
+     * @param devInfo - DeviceInfo which specifies which device to connect to
+     * @param pathToCmd - Path to custom device firmware
+     */
+    Device(OpenVINO::Version version, const DeviceInfo& devInfo, const char* pathToCmd);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param version - OpenVINO version which the device will be booted with
+     * @param devInfo - DeviceInfo which specifies which device to connect to
+     * @param usb2Mode - Path to custom device firmware
+     */
+    Device(OpenVINO::Version version, const DeviceInfo& devInfo, const std::string& pathToCmd);
+
+    /**
      * Device destructor. Closes the connection and data queues.
      */
     ~Device();
@@ -157,7 +209,15 @@ class Device {
      *
      * @return true if pipeline started, false otherwise
      */
-    bool startPipeline();
+    [[deprecated("Device(pipeline) starts the pipeline automatically. See Device() and startPipeline(pipeline) otherwise")]] bool startPipeline();
+
+    /**
+     * Starts the execution of a given pipeline
+     * @param pipeline OpenVINO version of the pipeline must match the one which the device was booted with.
+     *
+     * @return true if pipeline started, false otherwise
+     */
+    bool startPipeline(const Pipeline& pipeline);
 
     /**
      * Sets the devices logging severity level. This level affects which logs are transfered from device to host.
@@ -336,6 +396,13 @@ class Device {
     std::string getQueueEvent(std::chrono::microseconds timeout = std::chrono::microseconds(-1));
 
     /**
+     * Get cameras that are connected to the device
+     *
+     * @return Vector of connected cameras
+     */
+    std::vector<CameraBoardSocket> getConnectedCameras();
+
+    /**
      * Retrieves current DDR memory information from device
      *
      * @return Used, remaining and total ddr memory
@@ -398,7 +465,9 @@ class Device {
 
    private:
     // private static
+    void init(OpenVINO::Version version, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
     void init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
+    void init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline);
     void checkClosed() const;
 
     std::shared_ptr<XLinkConnection> connection;
@@ -445,11 +514,8 @@ class Device {
     class Impl;
     Pimpl<Impl> pimpl;
 
-    // Serialized pipeline
-    PipelineSchema schema;
-    Assets assets;
-    std::vector<std::uint8_t> assetStorage;
-    OpenVINO::Version version;
+    // OpenVINO version device was booted with
+    OpenVINO::Version openvinoVersion;
 };
 
 }  // namespace dai
