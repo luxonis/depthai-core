@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
     dai::Pipeline p = createCameraPipeline();
     dai::Device d(p);
 
-    dai::CalibrationHandler calibData = d.getCalibration();
+    dai::CalibrationHandler calibData = d.readCalibration();
     calibData.eepromToJsonFile(filename);
     std::vector<std::vector<float>> intrinsics;
     int width, height;

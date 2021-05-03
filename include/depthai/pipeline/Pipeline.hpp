@@ -45,6 +45,8 @@ class PipelineImpl {
     void link(const Node::Output& out, const Node::Input& in);
     void unlink(const Node::Output& out, const Node::Input& in);
     void setCalibrationData(CalibrationHandler calib);
+    CalibrationHandler getCalibrationData() const;
+
     // Must be incremented and unique for each node
     Node::Id latestId = 0;
     // Pipeline asset manager
@@ -208,8 +210,22 @@ class Pipeline {
         impl()->forceRequiredOpenVINOVersion = version;
     }
 
+    /**
+     * Sets the calibration in pipeline which overrides the calibration data in eeprom
+     *
+     * @param calib CalibrationHandler object which is loaded with calibration information.
+     */
     void setCalibrationData(CalibrationHandler calib) {
         impl()->setCalibrationData(calib);
+    }
+
+    /**
+     * gets the calibration data which is set through pipeline
+     *
+     * @return the calibrationHandler with calib data in the pipeline
+     */
+    CalibrationHandler getCalibrationData() const {
+        return impl()->getCalibrationData();
     }
 };
 

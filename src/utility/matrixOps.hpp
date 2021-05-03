@@ -16,7 +16,7 @@ std::vector<std::vector<float>> matMul(std::vector<std::vector<float>>& firstMat
     std::vector<std::vector<float>> res;
 
     if(firstMatrix[0].size() != secondMatrix.size()) {
-        std::cerr << "Number of column of the first matrix should match with the number of rows of the second matrix " << std::endl;
+        throw std::runtime_error("Number of column of the first matrix should match with the number of rows of the second matrix ");
         // Return an empty vector
         return res;
     }
@@ -67,9 +67,7 @@ static void getCofactor(std::vector<std::vector<float>>& A, std::vector<std::vec
 
 /* Recursive function for finding determinant of matrix.
    n is current dimension of A[][]. */
-static float determinant(std::vector<std::vector<float>>& A, int n)
-
-{
+static float determinant(std::vector<std::vector<float>>& A, int n) {
     float D = 0;  // Initialize result
 
     //  Base case : if matrix contains single element

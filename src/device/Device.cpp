@@ -884,7 +884,7 @@ bool Device::flashCalibration(CalibrationHandler calibrationDataHandler) {
     }
 }
 
-CalibrationHandler Device::getCalibration() {
+CalibrationHandler Device::readCalibration() {
     dai::EepromData eepromData = client->call("readFromEeprom");
     return CalibrationHandler(eepromData);
 }

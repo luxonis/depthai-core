@@ -397,7 +397,7 @@ class Device {
      *
      * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
      *
-     * @return Returns true on successful flash, false on failure
+     * @return true on successful flash, false on failure
      */
     bool flashCalibration(CalibrationHandler calibrationDataHandler);
 
@@ -406,7 +406,7 @@ class Device {
      *
      * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
      */
-    CalibrationHandler getCalibration();
+    CalibrationHandler readCalibration();
 
     /**
      * Explicitly closes connection to device.

@@ -371,4 +371,11 @@ void PipelineImpl::setCalibrationData(CalibrationHandler calib) {
     globalProperties.calibData = calib.getEepromData();
 }
 
+CalibrationHandler PipelineImpl::getCalibrationData() const {
+    if(globalProperties.calibData) {
+        return CalibrationHandler(globalProperties.calibData.value());
+    } else {
+        return CalibrationHandler();
+    }
+}
 }  // namespace dai
