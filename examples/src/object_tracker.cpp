@@ -2,8 +2,6 @@
 #include <cstdio>
 #include <iostream>
 
-#include "utility.hpp"
-
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
@@ -74,13 +72,13 @@ int main(int argc, char** argv) {
     // Connect to device with above created pipeline
     dai::Device device(pipeline);
 
-
     auto preview = device.getOutputQueue("preview", 4, false);
     auto tracklets = device.getOutputQueue("tracklets", 4, false);
 
     auto startTime = steady_clock::now();
     int counter = 0;
     float fps = 0;
+
     while(true) {
         auto imgFrame = preview->get<dai::ImgFrame>();
         auto track = tracklets->get<dai::Tracklets>();

@@ -12,17 +12,17 @@ int main() {
     // TODO - split this example into two separate examples
     bool withDepth = true;
 
-    dai::Pipeline p;
+    dai::Pipeline pipeline;
 
-    auto monoLeft = p.create<dai::node::MonoCamera>();
-    auto monoRight = p.create<dai::node::MonoCamera>();
-    auto xoutLeft = p.create<dai::node::XLinkOut>();
-    auto xoutRight = p.create<dai::node::XLinkOut>();
-    auto stereo = withDepth ? p.create<dai::node::StereoDepth>() : nullptr;
-    auto xoutDisp = p.create<dai::node::XLinkOut>();
-    auto xoutDepth = p.create<dai::node::XLinkOut>();
-    auto xoutRectifL = p.create<dai::node::XLinkOut>();
-    auto xoutRectifR = p.create<dai::node::XLinkOut>();
+    auto monoLeft = pipeline.create<dai::node::MonoCamera>();
+    auto monoRight = pipeline.create<dai::node::MonoCamera>();
+    auto xoutLeft = pipeline.create<dai::node::XLinkOut>();
+    auto xoutRight = pipeline.create<dai::node::XLinkOut>();
+    auto stereo = withDepth ? pipeline.create<dai::node::StereoDepth>() : nullptr;
+    auto xoutDisp = pipeline.create<dai::node::XLinkOut>();
+    auto xoutDepth = pipeline.create<dai::node::XLinkOut>();
+    auto xoutRectifL = pipeline.create<dai::node::XLinkOut>();
+    auto xoutRectifR = pipeline.create<dai::node::XLinkOut>();
 
     // XLinkOut
     xoutLeft->setStreamName("left");
@@ -86,14 +86,14 @@ int main() {
     }
 
     // Connect and start the pipeline
-    dai::Device d(p);
+    dai::Device device(pipeline);
 
-    auto leftQueue = d.getOutputQueue("left", 8, false);
-    auto rightQueue = d.getOutputQueue("right", 8, false);
-    auto dispQueue = withDepth ? d.getOutputQueue("disparity", 8, false) : nullptr;
-    auto depthQueue = withDepth ? d.getOutputQueue("depth", 8, false) : nullptr;
-    auto rectifLeftQueue = withDepth ? d.getOutputQueue("rectified_left", 8, false) : nullptr;
-    auto rectifRightQueue = withDepth ? d.getOutputQueue("rectified_right", 8, false) : nullptr;
+    auto leftQueue = device.getOutputQueue("left", 8, false);
+    auto rightQueue = device.getOutputQueue("right", 8, false);
+    auto dispQueue = withDepth ? device.getOutputQueue("disparity", 8, false) : nullptr;
+    auto depthQueue = withDepth ? device.getOutputQueue("depth", 8, false) : nullptr;
+    auto rectifLeftQueue = withDepth ? device.getOutputQueue("rectified_left", 8, false) : nullptr;
+    auto rectifRightQueue = withDepth ? device.getOutputQueue("rectified_right", 8, false) : nullptr;
 
     while(1) {
         auto left = leftQueue->get<dai::ImgFrame>();
@@ -131,8 +131,9 @@ int main() {
         }
 
         int key = cv::waitKey(1);
-        if(key == 'q') {
+        if(key == 'q' || key == 'Q') {
             return 0;
         }
     }
+    return 0;
 }

@@ -60,7 +60,6 @@ int main(int argc, char** argv) {
     // Connect to device with above created pipeline
     dai::Device device(pipeline);
 
-
     // Queues
     auto qVideo = device.getOutputQueue("video", 4, false);
     auto qPreview = device.getOutputQueue("preview", 4, false);

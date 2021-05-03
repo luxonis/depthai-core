@@ -64,7 +64,7 @@ int main() {
 
     std::unordered_map<std::string, cv::Mat> frame;
 
-    while(1) {
+    while(true) {
         std::unordered_map<std::string, std::shared_ptr<dai::ImgFrame>> latestPacket;
 
         auto queueEvents = device.getQueueEvents(queueNames);

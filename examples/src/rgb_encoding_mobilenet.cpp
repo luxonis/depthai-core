@@ -11,7 +11,6 @@ static const std::vector<std::string> labelMap = {"background", "aeroplane", "bi
                                                   "car",        "cat",       "chair",       "cow",   "diningtable", "dog",    "horse",
                                                   "motorbike",  "person",    "pottedplant", "sheep", "sofa",        "train",  "tvmonitor"};
 
-
 int main(int argc, char** argv) {
     using namespace std;
     // Default blob path provided by Hunter private data download
@@ -64,7 +63,6 @@ int main(int argc, char** argv) {
 
     // Connect to device with above created pipeline
     dai::Device device(pipeline);
-
 
     // Queues
     int queueSize = 8;

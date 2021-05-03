@@ -53,7 +53,6 @@ int main(int argc, char** argv) {
     // Connect to device with above created pipeline
     dai::Device device(pipeline);
 
-
     // Input queue will be used to send video frames to the device.
     auto qIn = device.getInputQueue("inFrame");
     // Output queue will be used to get nn data from the video frames.

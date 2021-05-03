@@ -1,4 +1,3 @@
-
 #include <cstdio>
 #include <iostream>
 
@@ -11,12 +10,12 @@ int main(int argc, char** argv) {
     using namespace std;
     using namespace std::chrono;
 
-    dai::Pipeline p;
+    dai::Pipeline pipeline;
 
-    auto camRgb = p.create<dai::node::ColorCamera>();
-    auto xout = p.create<dai::node::XLinkOut>();
-    auto xout2 = p.create<dai::node::XLinkOut>();
-    auto videnc = p.create<dai::node::VideoEncoder>();
+    auto camRgb = pipeline.create<dai::node::ColorCamera>();
+    auto xout = pipeline.create<dai::node::XLinkOut>();
+    auto xout2 = pipeline.create<dai::node::XLinkOut>();
+    auto videnc = pipeline.create<dai::node::VideoEncoder>();
 
     // XLinkOut
     xout->setStreamName("mjpeg");
@@ -37,10 +36,10 @@ int main(int argc, char** argv) {
     videnc->bitstream.link(xout->input);
 
     // Connect and start the pipeline
-    dai::Device d(p);
+    dai::Device device(pipeline);
 
-    auto mjpegQueue = d.getOutputQueue("mjpeg", 8, false);
-    auto previewQueue = d.getOutputQueue("preview", 8, false);
+    auto mjpegQueue = device.getOutputQueue("mjpeg", 8, false);
+    auto previewQueue = device.getOutputQueue("preview", 8, false);
     while(1) {
         auto t1 = steady_clock::now();
         auto preview = previewQueue->get<dai::ImgFrame>();

@@ -21,8 +21,10 @@ int main(int argc, char** argv) {
         nnPath = std::string(argv[1]);
     }
 
+    // Create pipeline
     dai::Pipeline pipeline;
 
+    // Define sources and outputs
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
     auto camOut = pipeline.create<dai::node::XLinkOut>();

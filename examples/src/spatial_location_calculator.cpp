@@ -66,11 +66,11 @@ int main() {
     xinSpatialCalcConfig->out.link(spatialDataCalculator->inputConfig);
 
     // CONNECT TO DEVICE
-    dai::Device d(pipeline);
+    dai::Device device(pipeline);
 
-    auto depthQueue = d.getOutputQueue("depth", 8, false);
-    auto spatialCalcQueue = d.getOutputQueue("spatialData", 8, false);
-    auto spatialCalcConfigInQueue = d.getInputQueue("spatialCalcConfig");
+    auto depthQueue = device.getOutputQueue("depth", 8, false);
+    auto spatialCalcQueue = device.getOutputQueue("spatialData", 8, false);
+    auto spatialCalcConfigInQueue = device.getInputQueue("spatialCalcConfig");
 
     cv::Mat depthFrame;
     auto color = cv::Scalar(255, 255, 255);
@@ -134,7 +134,7 @@ int main() {
                     newConfig = true;
                 }
                 break;
-            case 'd':
+            case 'device':
                 if(bottomRight.x + stepSize <= 1) {
                     topLeft.x += stepSize;
                     bottomRight.x += stepSize;

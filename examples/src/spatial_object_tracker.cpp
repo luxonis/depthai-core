@@ -13,24 +13,37 @@ static const std::vector<std::string> labelMap = {"background", "aeroplane", "bi
 
 static bool syncNN = true;
 
-dai::Pipeline createPipeline(std::string nnPath) {
-    dai::Pipeline p;
+int main(int argc, char** argv) {
+    using namespace std;
+    using namespace std::chrono;
+    std::string nnPath(BLOB_PATH);
 
-    // create nodes
-    auto camRgb = p.create<dai::node::ColorCamera>();
-    auto spatialDetectionNetwork = p.create<dai::node::MobileNetSpatialDetectionNetwork>();
-    auto monoLeft = p.create<dai::node::MonoCamera>();
-    auto monoRight = p.create<dai::node::MonoCamera>();
-    auto stereo = p.create<dai::node::StereoDepth>();
-    auto objectTracker = p.create<dai::node::ObjectTracker>();
+    // If path to blob specified, use that
+    if(argc > 1) {
+        nnPath = std::string(argv[1]);
+    }
 
-    // create xlink connections
-    auto xoutRgb = p.create<dai::node::XLinkOut>();
-    auto trackerOut = p.create<dai::node::XLinkOut>();
+    // Print which blob we are using
+    printf("Using blob at path: %s\n", nnPath.c_str());
+
+    // Create pipeline
+    dai::Pipeline pipeline;
+
+    // Define sources and outputs
+    auto camRgb = pipeline.create<dai::node::ColorCamera>();
+    auto spatialDetectionNetwork = pipeline.create<dai::node::MobileNetSpatialDetectionNetwork>();
+    auto monoLeft = pipeline.create<dai::node::MonoCamera>();
+    auto monoRight = pipeline.create<dai::node::MonoCamera>();
+    auto stereo = pipeline.create<dai::node::StereoDepth>();
+    auto objectTracker = pipeline.create<dai::node::ObjectTracker>();
+
+    auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
+    auto trackerOut = pipeline.create<dai::node::XLinkOut>();
 
     xoutRgb->setStreamName("preview");
     trackerOut->setStreamName("tracklets");
 
+    // Properties
     camRgb->setPreviewSize(300, 300);
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     camRgb->setInterleaved(false);
@@ -51,11 +64,14 @@ dai::Pipeline createPipeline(std::string nnPath) {
     spatialDetectionNetwork->setDepthLowerThreshold(100);
     spatialDetectionNetwork->setDepthUpperThreshold(5000);
 
-    // Link plugins CAM -> STEREO -> XLINK
+    objectTracker->setDetectionLabelsToTrack({15});  // track only person
+    objectTracker->setTrackerType(dai::TrackerType::ZERO_TERM_COLOR_HISTOGRAM);
+    objectTracker->setTrackerIdAssigmentPolicy(dai::TrackerIdAssigmentPolicy::SMALLEST_ID);
+
+    // Linking
     monoLeft->out.link(stereo->left);
     monoRight->out.link(stereo->right);
 
-    // Link plugins CAM -> NN -> XLINK
     camRgb->preview.link(spatialDetectionNetwork->input);
     if(syncNN) {
         objectTracker->passthroughTrackerFrame.link(xoutRgb->input);
@@ -63,9 +79,6 @@ dai::Pipeline createPipeline(std::string nnPath) {
         camRgb->preview.link(xoutRgb->input);
     }
 
-    objectTracker->setDetectionLabelsToTrack({15});  // track only person
-    objectTracker->setTrackerType(dai::TrackerType::ZERO_TERM_COLOR_HISTOGRAM);
-    objectTracker->setTrackerIdAssigmentPolicy(dai::TrackerIdAssigmentPolicy::SMALLEST_ID);
     objectTracker->out.link(trackerOut->input);
 
     spatialDetectionNetwork->passthrough.link(objectTracker->inputTrackerFrame);
@@ -74,37 +87,19 @@ dai::Pipeline createPipeline(std::string nnPath) {
 
     stereo->depth.link(spatialDetectionNetwork->inputDepth);
 
-    return p;
-}
-
-int main(int argc, char** argv) {
-    using namespace std;
-    using namespace std::chrono;
-    std::string nnPath(BLOB_PATH);
-
-    // If path to blob specified, use that
-    if(argc > 1) {
-        nnPath = std::string(argv[1]);
-    }
-
-    // Print which blob we are using
-    printf("Using blob at path: %s\n", nnPath.c_str());
-
-    // Create pipeline
-    dai::Pipeline p = createPipeline(nnPath);
 
     // Connect and start the pipeline
-    dai::Device d(p);
+    dai::Device device(pipeline);
 
-    auto preview = d.getOutputQueue("preview", 4, false);
-    auto tracklets = d.getOutputQueue("tracklets", 4, false);
+    auto preview = device.getOutputQueue("preview", 4, false);
+    auto tracklets = device.getOutputQueue("tracklets", 4, false);
 
     auto startTime = steady_clock::now();
     int counter = 0;
     float fps = 0;
     auto color = cv::Scalar(255, 0, 0);
 
-    while(1) {
+    while(true) {
         auto imgFrame = preview->get<dai::ImgFrame>();
         auto track = tracklets->get<dai::Tracklets>();
 
@@ -158,11 +153,11 @@ int main(int argc, char** argv) {
         cv::putText(frame, fpsStr.str(), cv::Point(2, imgFrame->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
 
         cv::imshow("tracker", frame);
+
         int key = cv::waitKey(1);
         if(key == 'q') {
             return 0;
         }
     }
-
     return 0;
 }

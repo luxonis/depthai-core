@@ -1,5 +1,3 @@
-
-
 #include <cstdio>
 #include <iostream>
 
@@ -66,6 +64,7 @@ int main() {
     int frameCounter = 0;
     float xmin = 0.1f;
     float xmax = 0.3f;
+
     while(true) {
         xmin += 0.003f;
         xmax += 0.003f;
@@ -99,4 +98,5 @@ int main() {
 
         frameCounter++;
     }
+    return 0;
 }

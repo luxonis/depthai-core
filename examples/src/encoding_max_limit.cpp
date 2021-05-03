@@ -16,19 +16,19 @@ int main(int argc, char** argv) {
     using namespace std::chrono;
     std::signal(SIGINT, &sigintHandler);
 
-    dai::Pipeline p;
+    dai::Pipeline pipeline;
 
     // Define a source - color camera and 2 mono camera
-    auto camRgb = p.create<dai::node::ColorCamera>();
-    auto monoCam = p.create<dai::node::MonoCamera>();
-    auto monoCam2 = p.create<dai::node::MonoCamera>();
-    auto ve1 = p.create<dai::node::VideoEncoder>();
-    auto ve2 = p.create<dai::node::VideoEncoder>();
-    auto ve3 = p.create<dai::node::VideoEncoder>();
+    auto camRgb = pipeline.create<dai::node::ColorCamera>();
+    auto monoCam = pipeline.create<dai::node::MonoCamera>();
+    auto monoCam2 = pipeline.create<dai::node::MonoCamera>();
+    auto ve1 = pipeline.create<dai::node::VideoEncoder>();
+    auto ve2 = pipeline.create<dai::node::VideoEncoder>();
+    auto ve3 = pipeline.create<dai::node::VideoEncoder>();
 
-    auto ve1Out = p.create<dai::node::XLinkOut>();
-    auto ve2Out = p.create<dai::node::XLinkOut>();
-    auto ve3Out = p.create<dai::node::XLinkOut>();
+    auto ve1Out = pipeline.create<dai::node::XLinkOut>();
+    auto ve2Out = pipeline.create<dai::node::XLinkOut>();
+    auto ve3Out = pipeline.create<dai::node::XLinkOut>();
 
     ve1Out->setStreamName("ve1Out");
     ve2Out->setStreamName("ve2Out");
@@ -55,14 +55,14 @@ int main(int argc, char** argv) {
     ve3->bitstream.link(ve3Out->input);
 
     // Pipeline is defined, now we can connect to the device
-    dai::Device d(p);
+    dai::Device device(pipeline);
     // Start pipeline
-    d.startPipeline();
+    device.startPipeline();
 
     // Output queues will be used to get the encoded data from the output defined above
-    auto outQ1 = d.getOutputQueue("ve1Out", 30, true);
-    auto outQ2 = d.getOutputQueue("ve2Out", 30, true);
-    auto outQ3 = d.getOutputQueue("ve3Out", 30, true);
+    auto outQ1 = device.getOutputQueue("ve1Out", 30, true);
+    auto outQ2 = device.getOutputQueue("ve2Out", 30, true);
+    auto outQ3 = device.getOutputQueue("ve3Out", 30, true);
 
     // The .h264 / .h265 files are raw stream files (not playable yet)
     auto videoFile1 = std::ofstream("mono1.h264", std::ios::binary);

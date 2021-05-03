@@ -89,7 +89,6 @@ int main(int argc, char** argv) {
     // Connect to device with above created pipeline
     dai::Device device(pipeline);
 
-
     // Queues
     int queueSize = 8;
     auto qRight = device.getOutputQueue("right", queueSize);

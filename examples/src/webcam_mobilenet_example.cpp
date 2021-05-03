@@ -26,11 +26,11 @@ int main(int argc, char** argv) {
     using namespace std;
 
     // CREATE PIPELINE
-    dai::Pipeline p;
+    dai::Pipeline pipeline;
 
-    auto xin = p.create<dai::node::XLinkIn>();
-    auto nn = p.create<dai::node::NeuralNetwork>();
-    auto xout = p.create<dai::node::XLinkOut>();
+    auto xin = pipeline.create<dai::node::XLinkIn>();
+    auto nn = pipeline.create<dai::node::NeuralNetwork>();
+    auto xout = pipeline.create<dai::node::XLinkOut>();
 
     // Properties
     nn->setBlobPath(nnPath);
@@ -49,11 +49,11 @@ int main(int argc, char** argv) {
     cv::VideoCapture webcam(camId);
 
     // Connect to device with above created pipeline
-    dai::Device d(p);
+    dai::Device device(pipeline);
 
     cv::Mat frame;
-    auto in = d.getInputQueue("nn_in");
-    auto detections = d.getOutputQueue("nn_out");
+    auto in = device.getInputQueue("nn_in");
+    auto detections = device.getOutputQueue("nn_out");
 
     while(1) {
         // data to send further
@@ -120,11 +120,11 @@ int main(int argc, char** argv) {
         }
 
         cv::imshow("preview", frame);
+
         int key = cv::waitKey(1);
         if(key == 'q') {
             return 0;
         }
     }
-
     return 0;
 }
