@@ -29,7 +29,6 @@ int main() {
     monoLeft->out.link(xoutLeft->input);
 
     dai::Device device(pipeline);
-    device.startPipeline();
 
     // Output queues will be used to get the grayscale frames from the outputs defined above
     auto qLeft = device.getOutputQueue("left", 4, false);

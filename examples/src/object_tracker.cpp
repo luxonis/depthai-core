@@ -73,8 +73,7 @@ int main(int argc, char** argv) {
 
     // Connect to device with above created pipeline
     dai::Device device(pipeline);
-    // Start the pipeline
-    device.startPipeline();
+
 
     auto preview = device.getOutputQueue("preview", 4, false);
     auto tracklets = device.getOutputQueue("tracklets", 4, false);

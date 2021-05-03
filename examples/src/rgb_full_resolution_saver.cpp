@@ -33,8 +33,6 @@ int main(int argc, char** argv)
 
     // Pipeline is defined, now we can connect to the device
     dai::Device device(pipeline);
-    // Start pipeline
-    device.startPipeline();
 
     // Queues
     auto qRgb = device.getOutputQueue("rgb", 30, false);

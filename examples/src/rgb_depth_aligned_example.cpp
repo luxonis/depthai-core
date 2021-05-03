@@ -56,7 +56,6 @@ int main() {
 
     // Connect to device
     dai::Device device(pipeline);
-    device.startPipeline();
 
     // Sets queues size and behavior
     for(const auto& name : queueNames) {

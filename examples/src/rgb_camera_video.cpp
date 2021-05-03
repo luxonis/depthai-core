@@ -29,8 +29,7 @@ int main() {
 
     // Connect to device with above created pipeline
     dai::Device device(pipeline);
-    // Start the pipeline
-    device.startPipeline();
+
 
     auto video = device.getOutputQueue("video");
 

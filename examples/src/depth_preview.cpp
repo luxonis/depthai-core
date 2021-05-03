@@ -54,8 +54,6 @@ int main() {
 
     // Pipeline is defined, now we can connect to the device
     dai::Device device(pipeline);
-    // Start pipeline
-    device.startPipeline();
 
     // Output queue will be used to get the disparity frames from the outputs defined above
     auto q = device.getOutputQueue("disparity", 4, false);

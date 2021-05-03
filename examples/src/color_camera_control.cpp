@@ -74,9 +74,6 @@ int main() {
     auto videoQueue = device.getOutputQueue("video");
     auto stillQueue = device.getOutputQueue("still");
 
-    // Start pipeline
-    device.startPipeline();
-
     // Max crop_x & crop_y
     float max_crop_x = (camRgb->getResolutionWidth() - camRgb->getVideoWidth()) / (float)camRgb->getResolutionWidth();
     float max_crop_y = (camRgb->getResolutionHeight() - camRgb->getVideoHeight()) / (float)camRgb->getResolutionHeight();

@@ -21,16 +21,16 @@ class DetectionNetwork : public NeuralNetwork {
    public:
     using Properties = dai::DetectionNetworkProperties;
 
-   private:
     std::string getName() const override;
-    std::vector<Input> getInputs() override;
     std::vector<Output> getOutputs() override;
-    nlohmann::json getProperties() override;
+    std::vector<Input> getInputs() override;
 
    protected:
     DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     Properties properties;
     virtual Properties& getPropertiesRef() override;
+    nlohmann::json getProperties() override;
+    std::shared_ptr<Node> clone() override;
 
    public:
     /**
@@ -62,6 +62,9 @@ class DetectionNetwork : public NeuralNetwork {
  * @brief MobileNetDetectionNetwork node. Parses MobileNet results
  */
 class MobileNetDetectionNetwork : public DetectionNetwork {
+   protected:
+    std::shared_ptr<Node> clone() override;
+
    public:
     MobileNetDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 };
@@ -70,6 +73,9 @@ class MobileNetDetectionNetwork : public DetectionNetwork {
  * @brief YoloDetectionNetwork node. Parses Yolo results
  */
 class YoloDetectionNetwork : public DetectionNetwork {
+   protected:
+    std::shared_ptr<Node> clone() override;
+
    public:
     YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 

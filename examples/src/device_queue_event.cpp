@@ -31,8 +31,6 @@ int main(int argc, char** argv) {
 
     // Connect to device with above created pipeline
     dai::Device device(pipeline);
-    // Start the pipeline
-    device.startPipeline();
 
     // Clear queue events
     device.getQueueEvents();

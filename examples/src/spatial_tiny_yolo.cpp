@@ -86,10 +86,11 @@ int main(int argc, char** argv) {
     monoRight->out.link(stereo->right);
 
     camRgb->preview.link(spatialDetectionNetwork->input);
-    if(syncNN)
+    if(syncNN) {
         spatialDetectionNetwork->passthrough.link(xoutRgb->input);
-    else
+    } else {
         camRgb->preview.link(xoutRgb->input);
+    }
 
     spatialDetectionNetwork->out.link(xoutNN->input);
     spatialDetectionNetwork->boundingBoxMapping.link(xoutBoundingBoxDepthMapping->input);
@@ -97,10 +98,8 @@ int main(int argc, char** argv) {
     stereo->depth.link(spatialDetectionNetwork->inputDepth);
     spatialDetectionNetwork->passthroughDepth.link(xoutDepth->input);
 
-    // Connect to device with above created pipeline
+    // Connect and start the pipeline
     dai::Device device(pipeline);
-    // Start the pipeline
-    device.startPipeline();
 
     auto previewQueue = device.getOutputQueue("rgb", 4, false);
     auto detectionNNQueue = device.getOutputQueue("detections", 4, false);

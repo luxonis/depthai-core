@@ -41,7 +41,6 @@ int main() {
 
         if(found) {
             dai::Device d(p, deviceInfo);
-            d.startPipeline();
 
             auto in = d.getInputQueue("in");
             auto out = d.getOutputQueue("out");

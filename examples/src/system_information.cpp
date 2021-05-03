@@ -3,7 +3,6 @@
 
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
-
 void printSystemInformation(dai::SystemInformation info) {
     printf("Ddr used / total - %.2f / %.2f MiB\n", info.ddrMemoryUsage.used / (1024.0f * 1024.0f), info.ddrMemoryUsage.total / (1024.0f * 1024.0f));
     printf("Cmx used / total - %.2f / %.2f MiB\n", info.cmxMemoryUsage.used / (1024.0f * 1024.0f), info.cmxMemoryUsage.total / (1024.0f * 1024.0f));
@@ -37,9 +36,17 @@ int main() {
     sysLog->out.link(xout->input);
 
     // Connect to device
-    dai::Device device(pipeline);
+    dai::Device device;
+
+    // Query device (before pipeline starts)
+    dai::MemoryInfo ddr = device.getDdrMemoryUsage();
+    printf("Ddr used / total - %.2f / %.2f MiB\n", ddr.used / (1024.0f * 1024.0f), ddr.total / (1024.0f * 1024.0f));
+
+    dai::MemoryInfo cmx = device.getCmxMemoryUsage();
+    printf("Cmx used / total - %.2f / %.2f MiB\n", cmx.used / (1024.0f * 1024.0f), cmx.total / (1024.0f * 1024.0f));
+
     // Start pipeline
-    device.startPipeline();
+    device.startPipeline(pipeline);
 
     // Output queue will be used to get the system info
     auto qSysInfo = device.getOutputQueue("sysinfo", 4, false);
@@ -48,4 +55,5 @@ int main() {
         auto sysInfo = qSysInfo->get<dai::SystemInformation>();
         printSystemInformation(*sysInfo);
     }
+    return 0;
 }

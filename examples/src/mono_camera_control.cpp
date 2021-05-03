@@ -71,9 +71,6 @@ int main() {
     // Connect to device
     dai::Device device(pipeline);
 
-    // Start pipeline
-    device.startPipeline();
-
     // Output queues will be used to get the grayscale frames
     auto qRight = device.getOutputQueue(manipOutRight->getStreamName(), 4, false);
     auto qLeft = device.getOutputQueue(manipOutLeft->getStreamName(), 4, false);

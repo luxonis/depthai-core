@@ -35,8 +35,6 @@ int main(int argc, char** argv) {
 
     // Pipeline is defined, now we can connect to the device
     dai::Device device(pipeline);
-    // Start pipeline
-    device.startPipeline();
 
     // Output queue will be used to get the encoded data from the output defined above
     auto q = device.getOutputQueue("h265", 30, true);

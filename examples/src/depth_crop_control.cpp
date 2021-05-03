@@ -53,9 +53,6 @@ int main() {
     // Connect to device
     dai::Device device(pipeline);
 
-    // Start pipeline
-    device.startPipeline();
-
     // Queues
     auto q = device.getOutputQueue(xout->getStreamName(), 4, false);
     auto configQueue = device.getInputQueue(configIn->getStreamName());

@@ -72,8 +72,7 @@ int main(int argc, char** argv) {
 
     // Connect to device with above created pipeline
     dai::Device device(pipeline);
-    // Start the pipeline
-    device.startPipeline();
+
 
     // Queues
     int queueSize = 8;

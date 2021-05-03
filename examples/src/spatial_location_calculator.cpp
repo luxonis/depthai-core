@@ -67,7 +67,6 @@ int main() {
 
     // CONNECT TO DEVICE
     dai::Device d(pipeline);
-    d.startPipeline();
 
     auto depthQueue = d.getOutputQueue("depth", 8, false);
     auto spatialCalcQueue = d.getOutputQueue("spatialData", 8, false);

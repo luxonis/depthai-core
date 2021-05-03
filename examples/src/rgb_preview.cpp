@@ -27,8 +27,6 @@ int main() {
 
     // Pipeline is defined, now we can connect to the device
     dai::Device device(pipeline);
-    // Start pipeline
-    device.startPipeline();
 
     // Output queue will be used to get the rgb frames from the output defined above
     auto qRgb = device.getOutputQueue("rgb", 4, false);
