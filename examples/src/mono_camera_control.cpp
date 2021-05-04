@@ -68,7 +68,7 @@ int main() {
     manipRight->out.link(manipOutRight->input);
     manipLeft->out.link(manipOutLeft->input);
 
-    // Connect to device
+    // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     // Output queues will be used to get the grayscale frames

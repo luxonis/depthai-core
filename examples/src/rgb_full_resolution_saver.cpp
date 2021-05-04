@@ -31,7 +31,7 @@ int main(int argc, char** argv)
     camRgb->video.link(videoEnc->input);
     videoEnc->bitstream.link(xoutJpeg->input);
 
-    // Pipeline is defined, now we can connect to the device
+    // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     // Queues

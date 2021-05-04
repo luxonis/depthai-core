@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
     camRgb->video.link(videoEnc->input);
     videoEnc->bitstream.link(xout->input);
 
-    // Pipeline is defined, now we can connect to the device
+    // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     // Output queue will be used to get the encoded data from the output defined above

@@ -28,6 +28,7 @@ int main() {
     monoRight->out.link(xoutRight->input);
     monoLeft->out.link(xoutLeft->input);
 
+    // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     // Output queues will be used to get the grayscale frames from the outputs defined above

@@ -72,7 +72,7 @@ int main(int argc, char** argv) {
     manip->out.link(xoutRight->input);
     nn->out.link(nnOut->input);
 
-    // Connect to device with above created pipeline
+    // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     // Output queues will be used to get the grayscale / depth frames and nn data from the outputs defined above

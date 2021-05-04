@@ -26,7 +26,7 @@ int main(int argc, char** argv)
     // Linking
     monoRight->out.link(xoutRight->input);
 
-    // Pipeline is defined, now we can connect to the device
+    // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     // Queue

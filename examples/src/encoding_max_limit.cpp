@@ -54,10 +54,8 @@ int main(int argc, char** argv) {
     ve2->bitstream.link(ve2Out->input);
     ve3->bitstream.link(ve3Out->input);
 
-    // Pipeline is defined, now we can connect to the device
+    // Connect to device and start pipeline
     dai::Device device(pipeline);
-    // Start pipeline
-    device.startPipeline();
 
     // Output queues will be used to get the encoded data from the output defined above
     auto outQ1 = device.getOutputQueue("ve1Out", 30, true);

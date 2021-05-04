@@ -45,7 +45,7 @@ int main() {
     dai::MemoryInfo cmx = device.getCmxMemoryUsage();
     printf("Cmx used / total - %.2f / %.2f MiB\n", cmx.used / (1024.0f * 1024.0f), cmx.total / (1024.0f * 1024.0f));
 
-    // Start pipeline
+    // Connect to device and start pipeline
     device.startPipeline(pipeline);
 
     // Output queue will be used to get the system info

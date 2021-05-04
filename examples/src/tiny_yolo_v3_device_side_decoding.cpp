@@ -73,7 +73,7 @@ int main(int argc, char** argv) {
 
     detectionNetwork->out.link(nnOut->input);
 
-    // Connect and start the pipeline
+    // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     auto qRgb = device.getOutputQueue("rgb", 4, false);

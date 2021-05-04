@@ -52,7 +52,7 @@ int main() {
     monoRight->out.link(depth->right);
     depth->disparity.link(xout->input);
 
-    // Pipeline is defined, now we can connect to the device
+    // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     // Output queue will be used to get the disparity frames from the outputs defined above

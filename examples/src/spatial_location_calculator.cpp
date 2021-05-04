@@ -65,7 +65,7 @@ int main() {
     spatialDataCalculator->out.link(xoutSpatialData->input);
     xinSpatialCalcConfig->out.link(spatialDataCalculator->inputConfig);
 
-    // CONNECT TO DEVICE
+    // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     auto depthQueue = device.getOutputQueue("depth", 8, false);

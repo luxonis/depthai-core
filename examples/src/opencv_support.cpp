@@ -33,7 +33,7 @@ int main() {
     camRgb->video.link(xoutVideo->input);
     camRgb->preview.link(xoutPreview->input);
 
-    // Connect to device with above created pipeline
+    // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     auto video = device.getOutputQueue("video");

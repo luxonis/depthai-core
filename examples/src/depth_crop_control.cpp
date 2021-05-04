@@ -50,7 +50,7 @@ int main() {
     monoRight->out.link(stereo->left);
     monoLeft->out.link(stereo->right);
 
-    // Connect to device
+    // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     // Queues

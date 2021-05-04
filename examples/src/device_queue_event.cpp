@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
     camRgb->preview.link(xoutRgb->input);
     camMono->out.link(xoutMono->input);
 
-    // Connect to device with above created pipeline
+    // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     // Clear queue events

@@ -54,7 +54,7 @@ int main() {
     right->out.link(stereo->right);
     stereo->disparity.link(depthOut->input);
 
-    // Connect to device
+    // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     // Sets queues size and behavior

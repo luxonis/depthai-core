@@ -85,7 +85,7 @@ int main(int argc, char** argv) {
     stereo->depth.link(spatialDetectionNetwork->inputDepth);
     spatialDetectionNetwork->passthroughDepth.link(xoutDepth->input);
 
-    // Connect and start the pipeline
+    // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     // Output queues will be used to get the rgb frames and nn data from the outputs defined above

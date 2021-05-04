@@ -46,11 +46,11 @@ int main(int argc, char** argv) {
     nn->setNumInferenceThreads(2);
     nn->input.setBlocking(false);
 
-    // Create outputs
+    // Linking
     xinFrame->out.link(nn->input);
     nn->out.link(nnOut->input);
 
-    // Connect to device with above created pipeline
+    // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     // Input queue will be used to send video frames to the device.

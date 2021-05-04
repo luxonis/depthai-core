@@ -70,7 +70,7 @@ int main(int argc, char** argv) {
     manip->out.link(manipOut->input);
     nn->out.link(nnOut->input);
 
-    // Connect to device with above created pipeline
+    // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     // Queues

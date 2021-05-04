@@ -35,12 +35,12 @@ int main(int argc, char** argv) {
     camRgb->preview.link(xout2->input);
     videnc->bitstream.link(xout->input);
 
-    // Connect and start the pipeline
+    // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     auto mjpegQueue = device.getOutputQueue("mjpeg", 8, false);
     auto previewQueue = device.getOutputQueue("preview", 8, false);
-    while(1) {
+    while(true) {
         auto t1 = steady_clock::now();
         auto preview = previewQueue->get<dai::ImgFrame>();
         auto t2 = steady_clock::now();

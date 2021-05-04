@@ -25,37 +25,38 @@ int main(int argc, char** argv) {
 
     using namespace std;
 
-    // CREATE PIPELINE
+    // Create pipeline
     dai::Pipeline pipeline;
 
-    auto xin = pipeline.create<dai::node::XLinkIn>();
+    // Define sources and outputs
     auto nn = pipeline.create<dai::node::NeuralNetwork>();
+    auto xin = pipeline.create<dai::node::XLinkIn>();
     auto xout = pipeline.create<dai::node::XLinkOut>();
+
+    xin->setStreamName("nn_in");
+    xout->setStreamName("nn_out");
 
     // Properties
     nn->setBlobPath(nnPath);
 
-    xin->setStreamName("nn_in");
     xin->setMaxDataSize(300 * 300 * 3);
     xin->setNumFrames(4);
 
-    xout->setStreamName("nn_out");
-
-    // Link plugins XLINK -> NN -> XLINK
+    // Linking
     xin->out.link(nn->input);
     nn->out.link(xout->input);
 
     // Open Webcam
     cv::VideoCapture webcam(camId);
 
-    // Connect to device with above created pipeline
+    // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     cv::Mat frame;
     auto in = device.getInputQueue("nn_in");
     auto detections = device.getOutputQueue("nn_out");
 
-    while(1) {
+    while(true) {
         // data to send further
         auto tensor = std::make_shared<dai::RawBuffer>();
 

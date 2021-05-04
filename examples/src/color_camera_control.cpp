@@ -64,7 +64,7 @@ int main() {
     videoEncoder->bitstream.link(videoMjpegOut->input);
     stillEncoder->bitstream.link(stillMjpegOut->input);
 
-    // Connect to device
+    // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     // Create data queues

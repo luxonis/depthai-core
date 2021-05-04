@@ -69,7 +69,7 @@ int main(int argc, char** argv) {
     detectionNetwork->out.link(objectTracker->inputDetections);
     objectTracker->out.link(trackerOut->input);
 
-    // Connect to device with above created pipeline
+    // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     auto preview = device.getOutputQueue("preview", 4, false);

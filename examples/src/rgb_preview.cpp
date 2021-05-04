@@ -25,7 +25,7 @@ int main() {
     // Linking
     camRgb->preview.link(xoutRgb->input);
 
-    // Pipeline is defined, now we can connect to the device
+    // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     // Output queue will be used to get the rgb frames from the output defined above

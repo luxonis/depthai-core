@@ -85,7 +85,7 @@ int main() {
         monoRight->out.link(xoutRight->input);
     }
 
-    // Connect and start the pipeline
+    // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     auto leftQueue = device.getOutputQueue("left", 8, false);
@@ -95,7 +95,7 @@ int main() {
     auto rectifLeftQueue = withDepth ? device.getOutputQueue("rectified_left", 8, false) : nullptr;
     auto rectifRightQueue = withDepth ? device.getOutputQueue("rectified_right", 8, false) : nullptr;
 
-    while(1) {
+    while(true) {
         auto left = leftQueue->get<dai::ImgFrame>();
         cv::imshow("left", cv::Mat(left->getHeight(), left->getWidth(), CV_8UC1, left->getData().data()));
         auto right = rightQueue->get<dai::ImgFrame>();
