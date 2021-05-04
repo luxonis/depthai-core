@@ -114,7 +114,7 @@ class VideoEncoder : public Node {
      * Sets expected frame rate
      * @param frameRate Frame rate in frames per second
      */
-    void setFrameRate(int frameRate);
+    void setFrameRate(float frameRate);
 
     /// Get rate control mode
     Properties::RateControlMode getRateControlMode() const;
@@ -138,7 +138,7 @@ class VideoEncoder : public Node {
     /// Get input height
     int getHeight() const;
     /// Get frame rate
-    int getFrameRate() const;
+    float getFrameRate() const;
     /// Get lossless mode. Applies only when using [M]JPEG profile.
     bool getLossless() const;
 };

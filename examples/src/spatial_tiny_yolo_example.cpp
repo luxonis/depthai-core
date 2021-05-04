@@ -52,7 +52,6 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
     /// setting node configs
-    stereo->setOutputDepth(true);
     stereo->setConfidenceThreshold(255);
 
     spatialDetectionNetwork->setBlobPath(nnPath);
@@ -75,10 +74,11 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
 
     // Link plugins CAM -> NN -> XLINK
     colorCam->preview.link(spatialDetectionNetwork->input);
-    if(syncNN)
+    if(syncNN) {
         spatialDetectionNetwork->passthrough.link(xoutRgb->input);
-    else
+    } else {
         colorCam->preview.link(xoutRgb->input);
+    }
 
     spatialDetectionNetwork->out.link(xoutNN->input);
     spatialDetectionNetwork->boundingBoxMapping.link(xoutBoundingBoxDepthMapping->input);
@@ -105,10 +105,8 @@ int main(int argc, char** argv) {
     // Create pipeline
     dai::Pipeline p = createNNPipeline(nnPath);
 
-    // Connect to device with above created pipeline
+    // Connect and start the pipeline
     dai::Device d(p);
-    // Start the pipeline
-    d.startPipeline();
 
     auto preview = d.getOutputQueue("preview", 4, false);
     auto detections = d.getOutputQueue("detections", 4, false);

@@ -26,10 +26,22 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.2.1" LANGUAGES CXX C)
+project(depthai VERSION "2.3.0" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
+endif()
+
+# Set default build type depending on context
+set(default_build_type "Release")
+if(EXISTS "${CMAKE_SOURCE_DIR}/.git" AND NOT DEFINED ENV{CI})
+    set(default_build_type "Debug")
+endif()
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
+    set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE STRING "Choose the type of build." FORCE)
+    # Set the possible values of build type for cmake-gui
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
 # Set default installation directory
@@ -76,6 +88,20 @@ if(GIT_FOUND)
         WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
         RESULT_VARIABLE DEPTHAI_DOWNLOADED_SOURCES
         OUTPUT_QUIET ERROR_QUIET
+    )
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
+        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+        OUTPUT_VARIABLE BUILD_COMMIT
+        ERROR_QUIET
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} show -s --format=%ci ${BUILD_COMMIT}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+        OUTPUT_VARIABLE BUILD_COMMIT_DATETIME
+        ERROR_QUIET
+        OUTPUT_STRIP_TRAILING_WHITESPACE
     )
 endif()
 
@@ -150,6 +176,8 @@ add_library(${TARGET_CORE_NAME}
     src/bspatch/bspatch.c
 )
 add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
+# Specify that we are building core
+target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_CORE)
 # Specifies name of generated IMPORTED target (set to alias)
 set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_ALIAS})
 # Add to list of targets to export and install
@@ -276,10 +304,6 @@ else()
 
 endif()
 
-
-# Configure build information (version, ...)
-configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in" "${CMAKE_CURRENT_LIST_DIR}/include/depthai/build/version.hpp")
-
 # Add include directories
 target_include_directories(${TARGET_CORE_NAME}
     PUBLIC
@@ -375,7 +399,10 @@ if(DEPTHAI_OPENCV_SUPPORT)
         target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES})
 
         # Add public compile definition indicating that OpenCV support is available
-        target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_OPENCV_SUPPORT)
+        set(DEPTHAI_HAVE_OPENCV_SUPPORT ON)
+
+        # Specify that we are building target opencv
+        target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
 
         # Add public dependency to depthai::core library
         target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${TARGET_CORE_NAME})
@@ -429,6 +456,17 @@ endif()
 if (DEPTHAI_BUILD_DOCS)
     add_subdirectory(docs)
 endif()
+
+########################
+# Build configuration
+########################
+# Add year information
+string(TIMESTAMP BUILD_DATETIME "%Y-%m-%d %H:%M:%S +0000" UTC)
+message(STATUS "BUILD_DATETIME: ${BUILD_DATETIME}, BUILD_COMMIT: ${BUILD_COMMIT}, BUILD_COMMIT_DATETIME: ${BUILD_COMMIT_DATETIME}")
+
+# Configure build information (version, opencv support)
+configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in" "${CMAKE_CURRENT_LIST_DIR}/include/depthai/build/version.hpp")
+configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/config.hpp.in" "${CMAKE_CURRENT_LIST_DIR}/include/depthai/build/config.hpp")
 
 ########################
 # Export and install

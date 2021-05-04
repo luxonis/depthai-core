@@ -41,6 +41,9 @@ inline std::ostream& operator<<(std::ostream& out, const Tracklet::TrackingStatu
         case Tracklet::TrackingStatus::LOST:
             out << "LOST";
             break;
+        case Tracklet::TrackingStatus::REMOVED:
+            out << "REMOVED";
+            break;
     }
     return out;
 }

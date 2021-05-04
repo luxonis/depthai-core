@@ -126,12 +126,12 @@ int bspatch_mem(const uint8_t* oldfile_bin, const int64_t oldfile_size, const ui
     uint8_t* p_decompressed_block_end[NUM_BLOCKS] = {NULL, NULL, NULL};
 
     for(int i = 0; i < NUM_BLOCKS; i++) {
-        unsigned int decompressed_size = newsize * 4;
+        unsigned int decompressed_size = (unsigned int)newsize * 4;
         p_decompressed_block_original[i] = malloc(decompressed_size);  // reserve enough memory
 
         int ret = 0;
         if((ret = BZ2_bzBuffToBuffDecompress(
-                (char*)p_decompressed_block_original[i], &decompressed_size, (char*)patchfile_bin + block_offset_bz2[i], block_size_bz2[i], 0, 0))
+                (char*)p_decompressed_block_original[i], &decompressed_size, (char*)patchfile_bin + block_offset_bz2[i], (unsigned int)block_size_bz2[i], 0, 0))
            != BZ_OK) {
             (void)ret;
             error = -1;
