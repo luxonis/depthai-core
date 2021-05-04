@@ -18,10 +18,10 @@ dai::Pipeline createCameraPipeline() {
 
     dai::IMUSensorConfig sensorConfig;
     sensorConfig.reportIntervalUs = 2500;  // 400hz
-    sensorConfig.sensorId = dai::IMUSensorId::IMU_ROTATION_VECTOR;
+    sensorConfig.sensorId = dai::IMUSensorId::ROTATION_VECTOR;
     imu->enableIMUSensor(sensorConfig);
     // above this threshold packets will be sent in batch of X, if the host is not blocked
-    imu->setBatchReportThreshold(5);
+    imu->setBatchReportThreshold(1);
     // maximum number of IMU packets in a batch, if it's reached device will block sending until host can receive it
     // if lower or equal to batchReportThreshold then the sending is always blocking on device
     imu->setMaxBatchReports(5);

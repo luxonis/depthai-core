@@ -7,8 +7,6 @@
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-static bool testCamera = true;
-
 dai::Pipeline createCameraPipeline() {
     dai::Pipeline p;
 
@@ -18,12 +16,12 @@ dai::Pipeline createCameraPipeline() {
 
     dai::IMUSensorConfig sensorConfig;
     sensorConfig.reportIntervalUs = 2500;  // 400hz
-    sensorConfig.sensorId = dai::IMUSensorId::IMU_ACCELEROMETER;
+    sensorConfig.sensorId = dai::IMUSensorId::RAW_ACCELEROMETER;
     imu->enableIMUSensor(sensorConfig);
-    sensorConfig.sensorId = dai::IMUSensorId::IMU_GYROSCOPE_CALIBRATED;
+    sensorConfig.sensorId = dai::IMUSensorId::RAW_GYROSCOPE;
     imu->enableIMUSensor(sensorConfig);
     // above this threshold packets will be sent in batch of X, if the host is not blocked
-    imu->setBatchReportThreshold(5);
+    imu->setBatchReportThreshold(1);
     // maximum number of IMU packets in a batch, if it's reached device will block sending until host can receive it
     // if lower or equal to batchReportThreshold then the sending is always blocking on device
     imu->setMaxBatchReports(5);
@@ -32,17 +30,6 @@ dai::Pipeline createCameraPipeline() {
     // Link plugins CAM -> XLINK
     imu->out.link(xlinkOut->input);
 
-    if(testCamera) {
-        auto monoCam = p.create<dai::node::MonoCamera>();
-        auto xlinkOut2 = p.create<dai::node::XLinkOut>();
-        xlinkOut2->setStreamName("mono");
-
-        // Set camera socket
-        monoCam->setBoardSocket(dai::CameraBoardSocket::RIGHT);
-
-        // Link plugins CAM -> XLINK
-        monoCam->out.link(xlinkOut2->input);
-    }
     return p;
 }
 
@@ -50,35 +37,34 @@ int main() {
     using namespace std;
     using namespace std::chrono;
 
-    auto baseTs = steady_clock::now();
+    auto baseTs = std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration>();
     dai::Pipeline p = createCameraPipeline();
     dai::Device d(p);
     d.startPipeline();
 
+    int firstTs = false;
+
     auto imuQueue = d.getOutputQueue("imu", 50, false);
-
+    int cnt = 0;
     while(1) {
-        if(testCamera) {
-            auto monoQueue = d.getOutputQueue("mono", 4, false);
-            auto imgFrame = monoQueue->tryGet<dai::ImgFrame>();
-
-            if(imgFrame) {
-                auto latencyMs = imgFrame->getTimestamp() - baseTs;
-                printf("=== Frame - Timestamp %ld ms\n", duration_cast<milliseconds>(latencyMs).count());
-            }
-        }
         auto imuPacket = imuQueue->tryGet<dai::IMUData>();
 
         if(imuPacket) {
             auto imuDatas = imuPacket->imuDatas;
             for(auto& imuData : imuDatas) {
-                auto acceleroTs = imuData.acceleroMeter.timestamp.getTimestamp() - baseTs;
-                auto gyroTs = imuData.gyroscope.timestamp.getTimestamp() - baseTs;
+                auto acceleroTs1 = imuData.rawAcceleroMeter.timestamp.getTimestamp();
+                auto gyroTs1 = imuData.rawGyroscope.timestamp.getTimestamp();
+                if(!firstTs) {
+                    baseTs = std::min(acceleroTs1, gyroTs1);
+                    firstTs = true;
+                }
+                auto acceleroTs = acceleroTs1 - baseTs;
+                auto gyroTs = gyroTs1 - baseTs;
 
-                printf("Accelero timestamp: %ld ms\n", duration_cast<milliseconds>(acceleroTs).count());
-                printf("Accelero: x: %.3f y: %.3f z: %.3f \n", imuData.acceleroMeter.x, imuData.acceleroMeter.y, imuData.acceleroMeter.z);
-                printf("Gyro timestamp: %ld ms\n", duration_cast<milliseconds>(gyroTs).count());
-                printf("Gyro: x: %.3f y: %.3f z: %.3f \n", imuData.gyroscope.x, imuData.gyroscope.y, imuData.gyroscope.z);
+                printf("Accelerometer timestamp: %ld ms\n", duration_cast<milliseconds>(acceleroTs).count());
+                printf("Accelerometer [m/s^2]: x: %.3f y: %.3f z: %.3f \n", imuData.rawAcceleroMeter.x, imuData.rawAcceleroMeter.y, imuData.rawAcceleroMeter.z);
+                printf("Gyroscope timestamp: %ld ms\n", duration_cast<milliseconds>(gyroTs).count());
+                printf("Gyroscope [rad/s]: x: %.3f y: %.3f z: %.3f \n", imuData.rawGyroscope.x, imuData.rawGyroscope.y, imuData.rawGyroscope.z);
             }
         }
         int key = cv::waitKey(1);
