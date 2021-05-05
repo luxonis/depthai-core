@@ -105,17 +105,34 @@ class CalibrationHandler {
      * Get the Distortion Coefficients object
      *
      * @param cameraId - Uses the cameraId to identify which distortion Coefficients to return.
-     * @return std::vector<float> - repesents the distortion coefficients of the requested camera.
+     * @return repesents the distortion coefficients of the requested camera.
      */
     std::vector<float> getDistortionCoefficients(CameraBoardSocket cameraId);
 
     /**
-     * Get the Camera Extrinsics object between two cameras
-     * From the data loaded if there is a linked connection between any two cameras then there relative rotation and translation is returned by this function.
+     *  Get the Fov of the camera
+     *
+     * @param cameraId of the camera of which we are fetching fov.
+     * @return field of view of the camera with given cameraId.
+     */
+    double getFov(CameraBoardSocket cameraId);
+
+    /**
+     *  Get the lens position of the given camera
+     *
+     * @param cameraId of the camera with lens position is requested.
+     * @return lens postion of the camera with given cameraId at which it was calibrated.
+     */
+    uint8_t getLensPosition(CameraBoardSocket cameraId);
+
+    /**
+     * Get the Camera Extrinsics object between two cameras from the data loaded if there is a linked connection
+     *  between any two cameras then there relative rotation and translation is returned by this function.
+     *
      * @param srcCamera - Camera Id of the camera which will be considerd as origin.
      * @param dstCamera -  Camera Id of the destination camera to which we are fetching the rotation and translation from the SrcCamera
      * @param useMeasuredTranslation - Enabling this bool uses the translation information from the board design data
-     * @return Returns a transformationMatrix which is 4x4 in homogenious coordinate system
+     * @return a transformationMatrix which is 4x4 in homogenious coordinate system
      *
      * Matrix representation of transformation matrix
      * transformation matrix = \begin{bmatrix}
@@ -130,6 +147,7 @@ class CalibrationHandler {
      * Get the Camera To Imu Extrinsics object
      * From the data loaded if there is a linked connection between IMU and the given camera then there relative rotation and translation from the camera to IMU
      * is returned.
+     *
      * @param cameraId - Camera Id of the camera which will be considerd as origin. from which Transformation matrix to the IMU will be found
      * @param useMeasuredTranslation - Enabling this bool uses the translation information from the board design data
      * @return Returns a transformationMatrix which is 4x4 in homogenious coordinate system
@@ -143,9 +161,10 @@ class CalibrationHandler {
     std::vector<std::vector<float>> getCameraToImuExtrinsics(CameraBoardSocket cameraId, bool useMeasuredTranslation = false);
 
     /**
-     * Get the Imu To Camera Extrinsics object
-     * From the data loaded if there is a linked connection between IMU and the given camera then there relative rotation and translation from the IMU to Camera
+     * Get the Imu To Camera Extrinsics object from the data loaded if there is a linked connection 
+     * between IMU and the given camera then there relative rotation and translation from the IMU to Camera
      * is returned.
+     * 
      * @param cameraId - Camera Id of the camera which will be considerd as destination. To which Transformation matrix from the IMU will be found.
      * @param useMeasuredTranslation - Enabling this bool uses the translation information from the board design data
      * @return Returns a transformationMatrix which is 4x4 in homogenious coordinate system
@@ -164,22 +183,31 @@ class CalibrationHandler {
      *
      * Get the Stereo Right Rectification Rotation object
      *
-     * @return std::vector<std::vector<float>>
+     * @return returns a 3x3 rectification rotation matrix
      */
     std::vector<std::vector<float>> getStereoRightRectificationRotation();
 
     /**
      * Get the Stereo Left Rectification Rotation object
      *
-     * @return std::vector<std::vector<float>>
+     * @return returns a 3x3 rectification rotation matrix
      */
     std::vector<std::vector<float>> getStereoLeftRectificationRotation();
-    // getStereoLeftCameraId();
-    // getStereoRightCameraId();
-    // setCameraExtrinsicsRotation(...)
-    // setCameraExtrinsicstranslation(..., setMeasuredTranslation)`
-    // setIMUExtrinsicsRotation(...)
-    // setIMUExtrinsicstranslation(..., setMeasuredTranslation)`
+
+    /**
+     * Get the camera id of the camera which is used as left camera of the stereo setup
+     *
+     * @return cameraID of the camera used as left camera
+     */
+    dai::CameraBoardSocket getStereoLeftCameraId();
+
+    /**
+     * Get the camera id of the camera which is used as right camera of the stereo setup
+     *
+     * @return cameraID of the camera used as right camera
+     */
+    dai::CameraBoardSocket getStereoRightCameraId();
+
     // TODO(sachin): Add Q matrix. Since Q matrix is specific to the stereo. may be better to have this over there!!
 
     /**
