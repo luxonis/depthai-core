@@ -42,7 +42,7 @@ class CalibrationHandler {
     /**
      * Get the Eeprom Data object
      *
-     * @return dai::EepromData - return the EepromData object which contains the raw calibration data
+     * @return EepromData object which contains the raw calibration data
      */
     dai::EepromData getEepromData() const;
 
@@ -161,10 +161,10 @@ class CalibrationHandler {
     std::vector<std::vector<float>> getCameraToImuExtrinsics(CameraBoardSocket cameraId, bool useMeasuredTranslation = false);
 
     /**
-     * Get the Imu To Camera Extrinsics object from the data loaded if there is a linked connection 
+     * Get the Imu To Camera Extrinsics object from the data loaded if there is a linked connection
      * between IMU and the given camera then there relative rotation and translation from the IMU to Camera
      * is returned.
-     * 
+     *
      * @param cameraId - Camera Id of the camera which will be considerd as destination. To which Transformation matrix from the IMU will be found.
      * @param useMeasuredTranslation - Enabling this bool uses the translation information from the board design data
      * @return Returns a transformationMatrix which is 4x4 in homogenious coordinate system
@@ -207,8 +207,6 @@ class CalibrationHandler {
      * @return cameraID of the camera used as right camera
      */
     dai::CameraBoardSocket getStereoRightCameraId();
-
-    // TODO(sachin): Add Q matrix. Since Q matrix is specific to the stereo. may be better to have this over there!!
 
     /**
      * Write raw calibration/board data to json file.
