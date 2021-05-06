@@ -46,7 +46,7 @@ void StereoDepth::loadCalibrationData(const std::vector<std::uint8_t>& data) {
 void StereoDepth::loadCalibrationFile(const std::string& path) {
     std::vector<std::uint8_t> data;
     if(!path.empty()) {
-        std::ifstream calib(path, std::ios::in | std::ios::binary);
+        std::ifstream calib(path, std::ios::binary);
         if(!calib.is_open()) {
             throw std::runtime_error("StereoDepth node | Unable to open calibration file: " + path);
         }

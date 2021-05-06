@@ -256,7 +256,7 @@ OpenVINO::Version PipelineImpl::getPipelineOpenVINOVersion() const {
 void PipelineImpl::setCameraTuningBlobPath(const std::string& path) {
     std::string assetKey = "camTuning";
 
-    std::ifstream blobStream(path, std::ios::in | std::ios::binary);
+    std::ifstream blobStream(path, std::ios::binary);
     if(!blobStream.is_open()) {
         throw std::runtime_error("Pipeline | Couldn't open camera tuning blob at path: " + path);
     }
