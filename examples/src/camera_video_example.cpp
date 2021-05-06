@@ -31,10 +31,8 @@ int main() {
     // Create pipeline
     dai::Pipeline p = createCameraFullPipeline();
 
-    // Connect to device with above created pipeline
+    // Connect and start the pipeline
     dai::Device d(p);
-    // Start the pipeline
-    d.startPipeline();
 
     cv::Mat frame;
     auto video = d.getOutputQueue("video");
