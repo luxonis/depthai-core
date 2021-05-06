@@ -106,7 +106,7 @@ hunter_private_data(
 
 ## message(STATUS "Location of test1.data: ${test1_data}")
 
-# Color camera preview output example
+# RGB camera preview output example
 dai_add_example(rgb_preview src/rgb_preview.cpp)
 
 # Mono camera preview output example
@@ -142,8 +142,8 @@ target_compile_definitions(rgb_encoding_mono_mobilenet_depth PRIVATE BLOB_PATH="
 
 dai_add_example(encoding_max_limit src/encoding_max_limit.cpp)
 
-# Color Camera config example
-dai_add_example(color_camera_control src/color_camera_control.cpp)
+# RGB Camera config example
+dai_add_example(rgb_camera_control src/rgb_camera_control.cpp)
 
 dai_add_example(mono_camera_control src/mono_camera_control.cpp)
 
@@ -164,6 +164,7 @@ target_compile_definitions(rgb_encoding_mobilenet PRIVATE BLOB_PATH="${mobilenet
 # Image Manip node examples
 dai_add_example(image_manip src/image_manip_example.cpp)
 
+# Imagae manip node exapmle with warping
 dai_add_example(image_manip_warp src/image_manip_warp.cpp)
 
 # Device side decoding example for tiny-yolo-v3
@@ -198,11 +199,11 @@ target_compile_definitions(spatial_tiny_yolo_v4 PRIVATE BLOB_PATH="${tiny_yolo_v
 
 dai_add_example(spatial_location_calculator src/spatial_location_calculator.cpp)
 
-# Color camera video output example
-dai_add_example(rgb_camera_video src/rgb_camera_video.cpp)
+# RGB camera video output example
+dai_add_example(rgb_video src/rgb_video.cpp)
 
 # Mono camera video output example
-dai_add_example(mono_camera_video src/mono_camera_video.cpp)
+dai_add_example(mono_video src/mono_video.cpp)
 
 # Object tracker example on mobilenet SSD output
 dai_add_example(object_tracker src/object_tracker.cpp)
