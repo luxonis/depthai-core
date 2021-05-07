@@ -202,9 +202,6 @@ dai_add_example(spatial_location_calculator src/spatial_location_calculator.cpp)
 # RGB camera video output example
 dai_add_example(rgb_video src/rgb_video.cpp)
 
-# Mono camera video output example
-dai_add_example(mono_video src/mono_video.cpp)
-
 # Object tracker example on mobilenet SSD output
 dai_add_example(object_tracker src/object_tracker.cpp)
 target_compile_definitions(object_tracker PRIVATE BLOB_PATH="${mobilenet_blob}")
