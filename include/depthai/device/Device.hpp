@@ -16,6 +16,7 @@
 #include "depthai/xlink/XLinkStream.hpp"
 
 // shared
+#include "depthai-shared/common/CameraBoardSocket.hpp"
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
@@ -50,8 +51,8 @@ class Device {
     /**
      * Waits for any available device with a timeout
      *
-     * @param timeout - duration of time to wait for the any device
-     * @return a tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
+     * @param timeout duration of time to wait for the any device
+     * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
     template <typename Rep, typename Period>
     static std::tuple<bool, DeviceInfo> getAnyAvailableDevice(std::chrono::duration<Rep, Period> timeout);
@@ -59,87 +60,138 @@ class Device {
     /**
      * Gets any available device
      *
-     * @return a tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
+     * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
     static std::tuple<bool, DeviceInfo> getAnyAvailableDevice();
 
     /**
      * Gets first available device. Device can be either in XLINK_UNBOOTED or XLINK_BOOTLOADER state
-     * @return a tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
+     * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
     static std::tuple<bool, DeviceInfo> getFirstAvailableDevice();
 
     /**
      * Finds a device by MX ID. Example: 14442C10D13EABCE00
-     * @param mxId - MyraidX ID which uniquely specifies a device
-     * @return a tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
+     * @param mxId MyraidX ID which uniquely specifies a device
+     * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
     static std::tuple<bool, DeviceInfo> getDeviceByMxId(std::string mxId);
 
     /**
      * Returns all connected devices
-     * @return vector of connected devices
+     * @returns Vector of connected devices
      */
     static std::vector<DeviceInfo> getAllAvailableDevices();
 
     /**
      * Gets device firmware binary for a specific OpenVINO version
-     * @param usb2Mode - USB2 mode firmware
-     * @param version - Version of OpenVINO which firmware will support
-     * @return firmware binary
+     * @param usb2Mode USB2 mode firmware
+     * @param version Version of OpenVINO which firmware will support
+     * @returns Firmware binary
      */
     static std::vector<std::uint8_t> getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version = Pipeline::DEFAULT_OPENVINO_VERSION);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * @param pipeline - Pipeline to be executed on the device
+     * @param pipeline Pipeline to be executed on the device
      */
     explicit Device(const Pipeline& pipeline);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * @param pipeline - Pipeline to be executed on the device
-     * @param usb2Mode - Boot device using USB2 mode firmware
+     * @param pipeline Pipeline to be executed on the device
+     * @param usb2Mode Boot device using USB2 mode firmware
      */
     Device(const Pipeline& pipeline, bool usb2Mode);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * @param pipeline - Pipeline to be executed on the device
-     * @param pathToCmd - Path to custom device firmware
+     * @param pipeline Pipeline to be executed on the device
+     * @param pathToCmd Path to custom device firmware
      */
     Device(const Pipeline& pipeline, const char* pathToCmd);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * @param pipeline - Pipeline to be executed on the device
-     * @param pathToCmd - Path to custom device firmware
+     * @param pipeline Pipeline to be executed on the device
+     * @param pathToCmd Path to custom device firmware
      */
     Device(const Pipeline& pipeline, const std::string& pathToCmd);
 
     /**
      * Connects to device specified by devInfo.
-     * @param pipeline - Pipeline to be executed on the device
-     * @param devInfo - DeviceInfo which specifies which device to connect to
-     * @param usb2Mode - Boot device using USB2 mode firmware
+     * @param pipeline Pipeline to be executed on the device
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param usb2Mode Boot device using USB2 mode firmware
      */
     Device(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode = false);
 
     /**
      * Connects to device specified by devInfo.
-     * @param pipeline - Pipeline to be executed on the device
-     * @param devInfo - DeviceInfo which specifies which device to connect to
-     * @param pathToCmd - Path to custom device firmware
+     * @param pipeline Pipeline to be executed on the device
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param pathToCmd Path to custom device firmware
      */
     Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd);
 
     /**
      * Connects to device specified by devInfo.
-     * @param pipeline - Pipeline to be executed on the device
-     * @param devInfo - DeviceInfo which specifies which device to connect to
-     * @param usb2Mode - Path to custom device firmware
+     * @param pipeline Pipeline to be executed on the device
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param usb2Mode Path to custom device firmware
      */
     Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param version OpenVINO version which the device will be booted with. Default is Pipeline::DEFAULT_OPENVINO_VERSION
+     */
+    explicit Device(OpenVINO::Version version = Pipeline::DEFAULT_OPENVINO_VERSION);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param version OpenVINO version which the device will be booted with
+     * @param usb2Mode Boot device using USB2 mode firmware
+     */
+    Device(OpenVINO::Version version, bool usb2Mode);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param version OpenVINO version which the device will be booted with
+     * @param pathToCmd Path to custom device firmware
+     */
+    Device(OpenVINO::Version version, const char* pathToCmd);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param version OpenVINO version which the device will be booted with
+     * @param pathToCmd Path to custom device firmware
+     */
+    Device(OpenVINO::Version version, const std::string& pathToCmd);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param version OpenVINO version which the device will be booted with
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param usb2Mode Boot device using USB2 mode firmware
+     */
+    Device(OpenVINO::Version version, const DeviceInfo& devInfo, bool usb2Mode = false);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param version OpenVINO version which the device will be booted with
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param pathToCmd Path to custom device firmware
+     */
+    Device(OpenVINO::Version version, const DeviceInfo& devInfo, const char* pathToCmd);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param version OpenVINO version which the device will be booted with
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param usb2Mode Path to custom device firmware
+     */
+    Device(OpenVINO::Version version, const DeviceInfo& devInfo, const std::string& pathToCmd);
 
     /**
      * Device destructor. Closes the connection and data queues.
@@ -149,16 +201,24 @@ class Device {
     /**
      * Checks if devices pipeline is already running
      *
-     * @return true if running, false otherwise
+     * @returns True if running, false otherwise
      */
     bool isPipelineRunning();
 
     /**
      * Starts the execution of the devices pipeline
      *
-     * @return true if pipeline started, false otherwise
+     * @returns True if pipeline started, false otherwise
      */
-    bool startPipeline();
+    [[deprecated("Device(pipeline) starts the pipeline automatically. See Device() and startPipeline(pipeline) otherwise")]] bool startPipeline();
+
+    /**
+     * Starts the execution of a given pipeline
+     * @param pipeline OpenVINO version of the pipeline must match the one which the device was booted with.
+     *
+     * @returns True if pipeline started, false otherwise
+     */
+    bool startPipeline(const Pipeline& pipeline);
 
     /**
      * Sets the devices logging severity level. This level affects which logs are transfered from device to host.
@@ -170,7 +230,7 @@ class Device {
     /**
      * Gets current logging severity level of the device.
      *
-     * @return Logging severity level
+     * @returns Logging severity level
      */
     LogLevel getLogLevel();
 
@@ -185,22 +245,22 @@ class Device {
      * Sets logging level which decides printing level to standard output.
      * If lower than setLogLevel, no messages will be printed
      *
-     * @param level - Standard output printing severity
+     * @param level Standard output printing severity
      */
     void setLogOutputLevel(LogLevel level);
 
     /**
      * Gets logging level which decides printing level to standard output.
      *
-     * @return Standard output printing severity
+     * @returns Standard output printing severity
      */
     LogLevel getLogOutputLevel();
 
     /**
      * Add a callback for device logging. The callback will be called from a separate thread with the LogMessage being passed.
      *
-     * @param callback - Callback to call whenever a log message arrives
-     * @return Id which can be used to later remove the callback
+     * @param callback Callback to call whenever a log message arrives
+     * @returns Id which can be used to later remove the callback
      */
     int addLogCallback(std::function<void(LogMessage)> callback);
 
@@ -208,7 +268,7 @@ class Device {
      * Removes a callback
      *
      * @param callbackId Id of callback to be removed
-     * @return true if callback was removed, false otherwise
+     * @returns True if callback was removed, false otherwise
      */
     bool removeLogCallback(int callbackId);
 
@@ -223,7 +283,7 @@ class Device {
     /**
      * Gets current rate of system information logging ("info" severity) in Hz.
      *
-     * @return Logging rate in Hz
+     * @returns Logging rate in Hz
      */
     float getSystemInformationLoggingRate();
 
@@ -231,7 +291,7 @@ class Device {
      * Gets an output queue corresponding to stream name. If it doesn't exist it throws
      *
      * @param name Queue/stream name, created by XLinkOut node
-     * @return Smart pointer to DataOutputQueue
+     * @returns Smart pointer to DataOutputQueue
      */
     std::shared_ptr<DataOutputQueue> getOutputQueue(const std::string& name);
 
@@ -241,14 +301,14 @@ class Device {
      * @param name Queue/stream name, set in XLinkOut node
      * @param maxSize Maximum number of messages in queue
      * @param blocking Queue behavior once full. True specifies blocking and false overwriting of oldest messages. Default: true
-     * @return Smart pointer to DataOutputQueue
+     * @returns Smart pointer to DataOutputQueue
      */
     std::shared_ptr<DataOutputQueue> getOutputQueue(const std::string& name, unsigned int maxSize, bool blocking = true);
 
     /**
      * Get all available output queue names
      *
-     * @return Vector of output queue names
+     * @returns Vector of output queue names
      */
     std::vector<std::string> getOutputQueueNames() const;
 
@@ -256,7 +316,7 @@ class Device {
      * Gets an input queue corresponding to stream name. If it doesn't exist it throws
      *
      * @param name Queue/stream name, set in XLinkIn node
-     * @return Smart pointer to DataInputQueue
+     * @returns Smart pointer to DataInputQueue
      */
     std::shared_ptr<DataInputQueue> getInputQueue(const std::string& name);
 
@@ -266,14 +326,14 @@ class Device {
      * @param name Queue/stream name, set in XLinkOut node
      * @param maxSize Maximum number of messages in queue
      * @param blocking Queue behavior once full. True: blocking, false: overwriting of oldest messages. Default: true
-     * @return Smart pointer to DataInputQueue
+     * @returns Smart pointer to DataInputQueue
      */
     std::shared_ptr<DataInputQueue> getInputQueue(const std::string& name, unsigned int maxSize, bool blocking = true);
 
     /**
      * Get all available input queue names
      *
-     * @return Vector of input queue names
+     * @returns Vector of input queue names
      */
     std::vector<std::string> getInputQueueNames() const;
 
@@ -285,7 +345,7 @@ class Device {
      * @param queueNames Names of queues for which to block
      * @param maxNumEvents Maximum number of events to remove from queue - Default is unlimited
      * @param timeout Timeout after which return regardless. If negative then wait is indefinite - Default is -1
-     * @return Names of queues which received messages first
+     * @returns Names of queues which received messages first
      */
     std::vector<std::string> getQueueEvents(const std::vector<std::string>& queueNames,
                                             std::size_t maxNumEvents = std::numeric_limits<std::size_t>::max(),
@@ -300,7 +360,7 @@ class Device {
      * @param queueName Name of queues for which to wait for
      * @param maxNumEvents Maximum number of events to remove from queue. Default is unlimited
      * @param timeout Timeout after which return regardless. If negative then wait is indefinite. Default is -1
-     * @return Names of queues which received messages first
+     * @returns Names of queues which received messages first
      */
     std::vector<std::string> getQueueEvents(std::string queueName,
                                             std::size_t maxNumEvents = std::numeric_limits<std::size_t>::max(),
@@ -311,7 +371,7 @@ class Device {
      *
      * @param maxNumEvents Maximum number of events to remove from queue. Default is unlimited
      * @param timeout Timeout after which return regardless. If negative then wait is indefinite. Default is -1
-     * @return Names of queues which received messages first
+     * @returns Names of queues which received messages first
      */
     std::vector<std::string> getQueueEvents(std::size_t maxNumEvents = std::numeric_limits<std::size_t>::max(),
                                             std::chrono::microseconds timeout = std::chrono::microseconds(-1));
@@ -321,7 +381,7 @@ class Device {
      *
      * @param queueNames Names of queues for which to wait for
      * @param timeout Timeout after which return regardless. If negative then wait is indefinite. Default is -1
-     * @return Queue name which received a message first
+     * @returns Queue name which received a message first
      */
     std::string getQueueEvent(const std::vector<std::string>& queueNames, std::chrono::microseconds timeout = std::chrono::microseconds(-1));
     std::string getQueueEvent(const std::initializer_list<std::string>& queueNames, std::chrono::microseconds timeout = std::chrono::microseconds(-1));
@@ -331,7 +391,7 @@ class Device {
      *
      * @param queueNames Name of queues for which to wait for
      * @param timeout Timeout after which return regardless. If negative then wait is indefinite. Default is -1
-     * @return Queue name which received a message
+     * @returns Queue name which received a message
      */
     std::string getQueueEvent(std::string queueName, std::chrono::microseconds timeout = std::chrono::microseconds(-1));
 
@@ -339,56 +399,63 @@ class Device {
      * Gets or waits until any queue has received a message
      *
      * @param timeout Timeout after which return regardless. If negative then wait is indefinite. Default is -1
-     * @return Queue name which received a message
+     * @returns Queue name which received a message
      */
     std::string getQueueEvent(std::chrono::microseconds timeout = std::chrono::microseconds(-1));
 
     /**
+     * Get cameras that are connected to the device
+     *
+     * @returns Vector of connected cameras
+     */
+    std::vector<CameraBoardSocket> getConnectedCameras();
+
+    /**
      * Retrieves current DDR memory information from device
      *
-     * @return Used, remaining and total ddr memory
+     * @returns Used, remaining and total ddr memory
      */
     MemoryInfo getDdrMemoryUsage();
 
     /**
      * Retrieves current CMX memory information from device
      *
-     * @return Used, remaining and total cmx memory
+     * @returns Used, remaining and total cmx memory
      */
     MemoryInfo getCmxMemoryUsage();
 
     /**
      * Retrieves current CSS Leon CPU heap information from device
      *
-     * @return Used, remaining and total heap memory
+     * @returns Used, remaining and total heap memory
      */
     MemoryInfo getLeonCssHeapUsage();
 
     /**
      * Retrieves current MSS Leon CPU heap information from device
      *
-     * @return Used, remaining and total heap memory
+     * @returns Used, remaining and total heap memory
      */
     MemoryInfo getLeonMssHeapUsage();
 
     /**
      * Retrieves current chip temperature as measured by device
      *
-     * @return Temperature of various onboard sensors
+     * @returns Temperature of various onboard sensors
      */
     ChipTemperature getChipTemperature();
 
     /**
      * Retrieves average CSS Leon CPU usage
      *
-     * @return Average CPU usage and sampling duration
+     * @returns Average CPU usage and sampling duration
      */
     CpuUsage getLeonCssCpuUsage();
 
     /**
      * Retrieves average MSS Leon CPU usage
      *
-     * @return Average CPU usage and sampling duration
+     * @returns Average CPU usage and sampling duration
      */
     CpuUsage getLeonMssCpuUsage();
 
@@ -422,7 +489,9 @@ class Device {
 
    private:
     // private static
+    void init(OpenVINO::Version version, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
     void init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
+    void init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline);
     void checkClosed() const;
 
     std::shared_ptr<XLinkConnection> connection;
@@ -469,11 +538,8 @@ class Device {
     class Impl;
     Pimpl<Impl> pimpl;
 
-    // Serialized pipeline
-    PipelineSchema schema;
-    Assets assets;
-    std::vector<std::uint8_t> assetStorage;
-    OpenVINO::Version version;
+    // OpenVINO version device was booted with
+    OpenVINO::Version openvinoVersion;
 };
 
 }  // namespace dai

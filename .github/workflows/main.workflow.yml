@@ -22,12 +22,12 @@ jobs:
 
   style:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v2
       with:
         submodules: 'recursive'
-    
+
     - name: Install format dependencies
       run: |
         sudo apt-get install clang-format-10
@@ -42,12 +42,12 @@ jobs:
 
   tidy:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v2
       with:
         submodules: 'recursive'
-    
+
     - name: Install dependencies
       run: |
         sudo apt-get update
@@ -57,7 +57,7 @@ jobs:
       run: cmake . -Bbuild -DDEPTHAI_CLANG_TIDY=ON -DCLANG_TIDY_BIN=clang-tidy-10
 
     - name: Run clang-tidy
-      run: cmake --build build --parallel
+      run: cmake --build build --parallel 8
 
 
   build:
@@ -65,7 +65,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
-    
+
     steps:
     - name: Cache .hunter folder
       if: matrix.os != 'windows-latest'
@@ -82,10 +82,11 @@ jobs:
     - uses: actions/checkout@v2
       with:
         submodules: 'recursive'
-    
+
     - name: Install dependencies
       if: matrix.os == 'macos-latest'
       run: |
+        brew update
         brew install libusb opencv
 
     - name: Install dependencies
@@ -100,14 +101,14 @@ jobs:
         choco install opencv
         echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
         echo "C:\tools\opencv\build\x64\vc15\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        
+
     - name: configure
       run: cmake -S . -B build -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON
 
     - name: build
-      run: cmake --build build --parallel
+      run: cmake --build build --parallel 8
 
-  integration: 
+  integration:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -131,10 +132,11 @@ jobs:
     - uses: actions/checkout@v2
       with:
         submodules: 'recursive'
-    
+
     - name: Install dependencies
       if: matrix.os == 'macos-latest'
       run: |
+        brew update
         brew install libusb opencv
 
     - name: Install dependencies
@@ -162,41 +164,41 @@ jobs:
       run: echo "$GITHUB_WORKSPACE/depthai_install/bin/" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: Build and install
-      run: cmake --build build --config ${{ matrix.build-type }} --target install --parallel
+      run: cmake --build build --config ${{ matrix.build-type }} --target install --parallel 8
 
     - name: Build and test add_subdirectory
       run: |
         cmake -S tests/integration/ -B tests/integration/build_add_subdirectory -D TEST_FIND_PACKAGE=OFF
-        cmake --build tests/integration/build_add_subdirectory --config ${{ matrix.build-type }} --parallel
+        cmake --build tests/integration/build_add_subdirectory --config ${{ matrix.build-type }} --parallel 8
         cd tests/integration/build_add_subdirectory
         ctest -C ${{ matrix.build-type }}
-     
+
     - name: Build and test find_package (installed)
       run: |
         cmake -S tests/integration/ -B tests/integration/build_find_package -D TEST_FIND_PACKAGE=ON -D depthai_DIR=$GITHUB_WORKSPACE/depthai_install/lib/cmake/depthai
-        cmake --build tests/integration/build_find_package --config ${{ matrix.build-type }} --parallel
+        cmake --build tests/integration/build_find_package --config ${{ matrix.build-type }} --parallel 8
         cd tests/integration/build_find_package
         ctest -C ${{ matrix.build-type }}
 
     - name: Build and test find_package (build directory)
       run: |
         cmake -S tests/integration/ -B tests/integration/build_find_package_2 -D TEST_FIND_PACKAGE=ON -D depthai_DIR=$GITHUB_WORKSPACE/build
-        cmake --build tests/integration/build_find_package_2 --config ${{ matrix.build-type }} --parallel
+        cmake --build tests/integration/build_find_package_2 --config ${{ matrix.build-type }} --parallel 8
         cd tests/integration/build_find_package_2
         ctest -C ${{ matrix.build-type }}
-    
+
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [build, style, integration]
     runs-on: ubuntu-latest
-    
+
     # Clone repository
     steps:
     - uses: actions/checkout@v2
       with:
         submodules: 'recursive'
-    
+
     # Get tag version
     - name: Get latest release version number
       id: tag
@@ -204,7 +206,7 @@ jobs:
 
     # Check if version matches (TODO)
     #- name: Check if version matches
-    #   run: |  
+    #   run: |
 
     - uses: actions/setup-python@v2
       with:

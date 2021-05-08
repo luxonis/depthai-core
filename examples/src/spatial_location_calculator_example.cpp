@@ -35,14 +35,10 @@ int main() {
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
-    bool outputDepth = true;
-    bool outputRectified = false;
     bool lrcheck = false;
     bool subpixel = false;
 
     // StereoDepth
-    stereo->setOutputDepth(outputDepth);
-    stereo->setOutputRectified(outputRectified);
     stereo->setConfidenceThreshold(255);
 
     // stereo->setMedianFilter(dai::StereoDepthProperties::MedianFilter::MEDIAN_OFF);
@@ -68,9 +64,8 @@ int main() {
     spatialDataCalculator->out.link(xoutSpatialData->input);
     xinSpatialCalcConfig->out.link(spatialDataCalculator->inputConfig);
 
-    // CONNECT TO DEVICE
+    // Connect and start the pipeline
     dai::Device d(p);
-    d.startPipeline();
 
     auto depthQueue = d.getOutputQueue("depth", 8, false);
     auto spatialCalcQueue = d.getOutputQueue("spatialData", 8, false);

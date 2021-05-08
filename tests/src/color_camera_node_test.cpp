@@ -39,7 +39,6 @@ int main() {
 
         if(found) {
             dai::Device d(p, deviceInfo);
-            d.startPipeline();
 
             auto previewQueue = d.getOutputQueue("preview", 8, true);
 

@@ -58,10 +58,8 @@ int main(int argc, char** argv) {
     // Create pipeline
     dai::Pipeline p = createNNPipeline(nnPath);
 
-    // Connect to device with above created pipeline
+    // Connect and start the pipeline
     dai::Device d(p);
-    // Start the pipeline
-    d.startPipeline();
 
     cv::Mat frame;
     auto preview = d.getOutputQueue("preview");
