@@ -37,10 +37,10 @@ int main() {
     // Normal disparity values range from 0..95, will be used for normalization
     int max_disparity = 95;
 
-    if (extended_disparity) max_disparity *= 2; // Double the range
+    if(extended_disparity) max_disparity *= 2;  // Double the range
     depth->setExtendedDisparity(extended_disparity);
 
-    if (subpixel) max_disparity *= 32; // 5 fractional bits, x32
+    if(subpixel) max_disparity *= 32;  // 5 fractional bits, x32
     depth->setSubpixel(subpixel);
 
     // When we get disparity to the host, we will multiply all values with the multiplier

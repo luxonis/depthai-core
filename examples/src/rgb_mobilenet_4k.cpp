@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
     nnOut->setStreamName("nn");
 
     // Properties
-    camRgb->setPreviewSize(300, 300);    // NN input
+    camRgb->setPreviewSize(300, 300);  // NN input
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_4_K);
     camRgb->setInterleaved(false);
     camRgb->setPreviewKeepAspectRatio(false);
@@ -106,8 +106,7 @@ int main(int argc, char** argv) {
         displayFrame("preview", previewFrame, detections);
 
         int key = cv::waitKey(1);
-        if(key == 'q' || key == 'Q')
-            return 0;
+        if(key == 'q' || key == 'Q') return 0;
     }
     return 0;
 }

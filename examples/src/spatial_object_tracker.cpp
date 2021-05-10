@@ -87,7 +87,6 @@ int main(int argc, char** argv) {
 
     stereo->depth.link(spatialDetectionNetwork->inputDepth);
 
-
     // Connect to device and start pipeline
     dai::Device device(pipeline);
 

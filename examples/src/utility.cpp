@@ -3,6 +3,28 @@
 // libraries
 #include "fp16/fp16.h"
 
+#include "errno.h"
+
+#if (defined(_WIN32) || defined(_WIN64))
+#include <Windows.h>
+#include <direct.h>
+#else
+#include <sys/stat.h>
+#endif
+
+int createDirectory(std::string directory)
+{
+    int ret = 0;
+#if (defined(_WIN32) || defined(_WIN64))
+    ret =  _mkdir(directory.c_str());
+#else
+    ret = mkdir(directory.c_str(), 0777);
+#endif
+    if (ret == EEXIST) ret = 0;
+    return ret;
+}
+
+
 cv::Mat toMat(const std::vector<uint8_t>& data, int w, int h , int numPlanes, int bpp){
 
     cv::Mat frame;

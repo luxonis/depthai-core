@@ -5,7 +5,7 @@
 // Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-    // Keyboard interrupt (Ctrl + C) detected
+// Keyboard interrupt (Ctrl + C) detected
 static std::atomic<bool> alive{true};
 static void sigintHandler(int signum) {
     alive = false;

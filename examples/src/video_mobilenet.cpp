@@ -107,8 +107,7 @@ int main(int argc, char** argv) {
         displayFrame("inFrame", frame, detections);
 
         int key = cv::waitKey(1);
-        if(key == 'q' || key == 'Q')
-            return 0;
+        if(key == 'q' || key == 'Q') return 0;
     }
     return 0;
 }

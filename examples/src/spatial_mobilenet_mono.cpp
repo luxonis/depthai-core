@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
     // StereoDepth
     stereo->setConfidenceThreshold(255);
 
-    //Define a neural network that will make predictions based on the source frames
+    // Define a neural network that will make predictions based on the source frames
     spatialDetectionNetwork->setConfidenceThreshold(0.5f);
     spatialDetectionNetwork->setBlobPath(nnPath);
     spatialDetectionNetwork->input.setBlocking(false);
@@ -183,7 +183,7 @@ int main(int argc, char** argv) {
         cv::imshow("rectified right", rectifiedRight);
 
         int key = cv::waitKey(1);
-        if(key == 'q' || key =='Q') {
+        if(key == 'q' || key == 'Q') {
             return 0;
         }
     }

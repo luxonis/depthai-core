@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
     nnOut->setStreamName("nn");
 
     // Properties
-    camRgb->setPreviewSize(300, 300);    // NN input
+    camRgb->setPreviewSize(300, 300);  // NN input
     camRgb->setInterleaved(false);
     camRgb->setFps(40);
     // Define a neural network that will make predictions based on the source frames
@@ -52,7 +52,7 @@ int main(int argc, char** argv) {
     nn->input.setBlocking(false);
 
     // Linking
-    if (syncNN) {
+    if(syncNN) {
         nn->passthrough.link(xoutRgb->input);
     } else {
         camRgb->preview.link(xoutRgb->input);
@@ -113,14 +113,13 @@ int main(int argc, char** argv) {
         }
 
         std::stringstream fpsStr;
-        fpsStr << "NN fps: " <<std::fixed << std::setprecision(2) << fps;
+        fpsStr << "NN fps: " << std::fixed << std::setprecision(2) << fps;
         cv::putText(frame, fpsStr.str(), cv::Point(2, inRgb->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, 255, 0, 0);
 
         displayFrame("video", frame, detections);
 
         int key = cv::waitKey(1);
-        if(key == 'q' || key == 'Q')
-            return 0;
+        if(key == 'q' || key == 'Q') return 0;
     }
     return 0;
 }

@@ -1,13 +1,14 @@
+#include <chrono>
 #include <cstdio>
 #include <iostream>
-#include <sys/stat.h>
-#include <chrono>
+
+#include "errno.h"
 
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
+#include "utility.hpp"
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
     using namespace std;
     using namespace std::chrono;
 
@@ -32,7 +33,8 @@ int main(int argc, char** argv)
     // Queue
     auto qRight = device.getOutputQueue("right", 4, false);
 
-    mkdir("07_data", 0777);
+    std::string dirName = "mono_data";
+    createDirectory(dirName);
 
     while(true) {
         auto inRight = qRight->get<dai::ImgFrame>();
@@ -41,13 +43,12 @@ int main(int argc, char** argv)
 
         uint64_t time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         std::stringstream videoStr;
-        videoStr << "07_data/" << time << ".png";
+        videoStr << dirName << "/" << time << ".png";
         // After showing the frame, it's being stored inside a target directory as a PNG image
         cv::imwrite(videoStr.str(), inRight->getCvFrame());
 
         int key = cv::waitKey(1);
-        if(key == 'q' || key == 'Q')
-            return 0;
+        if(key == 'q' || key == 'Q') return 0;
     }
     return 0;
 }

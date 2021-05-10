@@ -113,33 +113,33 @@ int main() {
             ctrl.setManualExposure(exp_time, sens_iso);
             controlQueue->send(ctrl);
         } else if(key == 'w') {
-            if (topLeft.y - stepSize >= 0) {
+            if(topLeft.y - stepSize >= 0) {
                 topLeft.y -= stepSize;
                 bottomRight.y -= stepSize;
                 sendCamConfig = true;
             }
         } else if(key == 'a') {
-            if (topLeft.x - stepSize >= 0) {
+            if(topLeft.x - stepSize >= 0) {
                 topLeft.x -= stepSize;
                 bottomRight.x -= stepSize;
                 sendCamConfig = true;
             }
         } else if(key == 's') {
-            if (bottomRight.y + stepSize <= 1) {
+            if(bottomRight.y + stepSize <= 1) {
                 topLeft.y += stepSize;
                 bottomRight.y += stepSize;
                 sendCamConfig = true;
             }
         } else if(key == 'd') {
-            if (bottomRight.x + stepSize <= 1) {
+            if(bottomRight.x + stepSize <= 1) {
                 topLeft.x += stepSize;
-                bottomRight.x +=stepSize;
+                bottomRight.x += stepSize;
                 sendCamConfig = true;
             }
         }
 
         // Send new config to camera
-        if (sendCamConfig) {
+        if(sendCamConfig) {
             dai::ImageManipConfig cfg;
             cfg.setCropRect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
             configQueue->send(cfg);

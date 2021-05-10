@@ -63,7 +63,7 @@ int main(int argc, char** argv) {
     // Note: the rectified streams are horizontally mirrored by default
     depth->setConfidenceThreshold(255);
     depth->setRectifyMirrorFrame(false);
-    depth->setRectifyEdgeFillColor(0); // Black, to better see the cutout
+    depth->setRectifyEdgeFillColor(0);  // Black, to better see the cutout
 
     nn->setConfidenceThreshold(0.5);
     nn->setBlobPath(nnPath);
@@ -118,7 +118,7 @@ int main(int argc, char** argv) {
         auto out1 = qRgbEnc->get<dai::ImgFrame>();
         videoFile.write((char*)out1->getData().data(), out1->getData().size());
 
-        if (flipRectified){
+        if(flipRectified) {
             cv::flip(frameDisparity, frameDisparity, 1);
         }
         frameDisparity.convertTo(frameDisparity, CV_8UC1, disparity_multiplier);
@@ -187,7 +187,7 @@ int main(int argc, char** argv) {
         cv::imshow("manip", frameManip);
 
         int key = cv::waitKey(1);
-        if(key == 'q' || key == 'Q'){
+        if(key == 'q' || key == 'Q') {
             std::cout << "To view the encoded data, convert the stream file (.h265) into a video file (.mp4), using a command below:" << std::endl;
             std::cout << "ffmpeg -framerate 30 -i video.h265 -c copy video.mp4" << std::endl;
             return 0;

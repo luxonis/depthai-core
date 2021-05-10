@@ -61,8 +61,8 @@ int main(int argc, char** argv) {
     detectionNetwork->setConfidenceThreshold(0.5f);
     detectionNetwork->setNumClasses(80);
     detectionNetwork->setCoordinateSize(4);
-    detectionNetwork->setAnchors({10,14, 23,27, 37,58, 81,82, 135,169, 344,319});
-    detectionNetwork->setAnchorMasks({{"side26", {1, 2, 3}},{"side13", {3, 4, 5}}});
+    detectionNetwork->setAnchors({10, 14, 23, 27, 37, 58, 81, 82, 135, 169, 344, 319});
+    detectionNetwork->setAnchorMasks({{"side26", {1, 2, 3}}, {"side13", {3, 4, 5}}});
     detectionNetwork->setIouThreshold(0.5f);
     detectionNetwork->setBlobPath(nnPath);
     detectionNetwork->setNumInferenceThreads(2);
@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
     // Connect to device and start pipeline
     dai::Device device(pipeline);
 
-    //Output queues will be used to get the rgb frames and nn data from the outputs defined above
+    // Output queues will be used to get the rgb frames and nn data from the outputs defined above
     auto qRgb = device.getOutputQueue("rgb", 4, false);
     auto qDet = device.getOutputQueue("detections", 4, false);
 
@@ -130,7 +130,7 @@ int main(int argc, char** argv) {
         }
 
         std::stringstream fpsStr;
-        fpsStr << "NN fps: "<< std::fixed << std::setprecision(2) << fps;
+        fpsStr << "NN fps: " << std::fixed << std::setprecision(2) << fps;
         cv::putText(frame, fpsStr.str(), cv::Point(2, inRgb->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, 255, 0, 0);
 
         displayFrame("video", frame, detections);

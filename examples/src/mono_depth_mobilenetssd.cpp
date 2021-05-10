@@ -115,7 +115,7 @@ int main(int argc, char** argv) {
         cv::Mat rightFrame = inRight->getCvFrame();
         cv::Mat disparityFrame = inDisparity->getCvFrame();
 
-        if (flipRectified){
+        if(flipRectified) {
             cv::flip(rightFrame, rightFrame, 1);
 
             for(auto& detection : detections) {
@@ -125,14 +125,13 @@ int main(int argc, char** argv) {
             }
         }
         disparityFrame.convertTo(disparityFrame, CV_8UC1, disparity_multiplier);
-        //Available color maps: https://docs.opencv.org/3.4/d3/d50/group__imgproc__colormap.html
+        // Available color maps: https://docs.opencv.org/3.4/d3/d50/group__imgproc__colormap.html
         cv::applyColorMap(disparityFrame, disparityFrame, cv::COLORMAP_JET);
         show("disparity", disparityFrame, detections);
         show("rectified right", rightFrame, detections);
 
         int key = cv::waitKey(1);
-        if(key == 'q' || key == 'Q')
-            return 0;
+        if(key == 'q' || key == 'Q') return 0;
     }
     return 0;
 }

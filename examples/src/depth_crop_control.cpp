@@ -59,7 +59,7 @@ int main() {
 
     while(true) {
         auto inDepth = q->get<dai::ImgFrame>();
-        cv::Mat depthFrame = inDepth ->getFrame();
+        cv::Mat depthFrame = inDepth->getFrame();
         // Frame is transformed, the color map will be applied to highlight the depth info
         cv::Mat depthFrameColor;
         cv::normalize(depthFrame, depthFrameColor, 255, 0, cv::NORM_INF, CV_8UC1);
@@ -74,33 +74,33 @@ int main() {
         if(key == 'q') {
             break;
         } else if(key == 'w') {
-            if (topLeft.y - stepSize >= 0) {
+            if(topLeft.y - stepSize >= 0) {
                 topLeft.y -= stepSize;
                 bottomRight.y -= stepSize;
                 sendCamConfig = true;
             }
         } else if(key == 'a') {
-            if (topLeft.x - stepSize >= 0) {
+            if(topLeft.x - stepSize >= 0) {
                 topLeft.x -= stepSize;
                 bottomRight.x -= stepSize;
                 sendCamConfig = true;
             }
         } else if(key == 's') {
-            if (bottomRight.y + stepSize <= 1) {
+            if(bottomRight.y + stepSize <= 1) {
                 topLeft.y += stepSize;
                 bottomRight.y += stepSize;
                 sendCamConfig = true;
             }
         } else if(key == 'd') {
-            if (bottomRight.x + stepSize <= 1) {
+            if(bottomRight.x + stepSize <= 1) {
                 topLeft.x += stepSize;
-                bottomRight.x +=stepSize;
+                bottomRight.x += stepSize;
                 sendCamConfig = true;
             }
         }
 
         // Send new config to camera
-        if (sendCamConfig) {
+        if(sendCamConfig) {
             dai::ImageManipConfig cfg;
             cfg.setCropRect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
             configQueue->send(cfg);

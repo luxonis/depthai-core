@@ -109,7 +109,7 @@ int main(int argc, char** argv) {
         displayFrame("rgb", frame, detections);
 
         int key = cv::waitKey(1);
-        if(key == 'q' || key == 'Q'){
+        if(key == 'q' || key == 'Q') {
             std::cout << "To view the encoded data, convert the stream file (.h265) into a video file (.mp4), using a command below:" << std::endl;
             std::cout << "ffmpeg -framerate 30 -i video.h264 -c copy video.mp4" << std::endl;
             return 0;

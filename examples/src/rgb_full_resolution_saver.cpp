@@ -1,13 +1,12 @@
+#include <chrono>
 #include <cstdio>
 #include <iostream>
-#include <sys/stat.h>
-#include <chrono>
 
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
+#include "utility.hpp"
 
-int main(int argc, char** argv)
-{
+int main(int argc, char** argv) {
     using namespace std::chrono;
 
     dai::Pipeline pipeline;
@@ -38,26 +37,26 @@ int main(int argc, char** argv)
     auto qRgb = device.getOutputQueue("rgb", 30, false);
     auto qJpeg = device.getOutputQueue("jpeg", 30, true);
 
-    mkdir("06_data", 0777);
+    std::string dirName = "rgb_data";
+    createDirectory(dirName);
 
     while(true) {
         auto inRgb = qRgb->tryGet<dai::ImgFrame>();
-        if (inRgb != NULL){
+        if(inRgb != NULL) {
             cv::imshow("rgb", inRgb->getCvFrame());
         }
 
         auto encFrames = qJpeg->tryGetAll<dai::ImgFrame>();
-        for(const auto& encFrame : encFrames){
+        for(const auto& encFrame : encFrames) {
             uint64_t time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
             std::stringstream videoStr;
-            videoStr << "06_data/" << time << ".jpeg";
+            videoStr << dirName << "/" << time << ".jpeg";
             auto videoFile = std::ofstream(videoStr.str(), std::ios::binary);
             videoFile.write((char*)encFrame->getData().data(), encFrame->getData().size());
         }
 
         int key = cv::waitKey(1);
-        if(key == 'q' || key == 'Q')
-            return 0;
+        if(key == 'q' || key == 'Q') return 0;
     }
     return 0;
 }
