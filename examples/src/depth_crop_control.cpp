@@ -14,7 +14,7 @@ static constexpr float stepSize = 0.02;
 static std::atomic<bool> sendCamConfig{false};
 
 int main() {
-    // Start defining a pipeline
+    // Create pipeline
     dai::Pipeline pipeline;
 
     // Define sources and outputs

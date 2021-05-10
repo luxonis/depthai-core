@@ -27,7 +27,7 @@ static int clamp(int num, int v0, int v1) {
 static std::atomic<bool> sendCamConfig{false};
 
 int main() {
-    // Start defining a pipeline
+    // Create pipeline
     dai::Pipeline pipeline;
 
     // Define sources and outputs

@@ -7,8 +7,10 @@
 #include "depthai/depthai.hpp"
 
 int main() {
+    // Create pipeline
     dai::Pipeline pipeline;
 
+    // Define sources and outputs
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto imageManip = pipeline.create<dai::node::ImageManip>();
     auto imageManip2 = pipeline.create<dai::node::ImageManip>();
@@ -22,6 +24,7 @@ int main() {
     manipOut2->setStreamName("manip2");
     manip2In->setStreamName("manip2In");
 
+    // Properties
     camRgb->setPreviewSize(304, 304);
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     camRgb->setInterleaved(false);
@@ -35,20 +38,12 @@ int main() {
     imageManip2->initialConfig.setCropRect(0.1, 0.1, 0.3, 0.3);
     imageManip2->setWaitForConfigInput(true);
 
-    // Link nodes CAM -> XLINK
+    // Linking
     camRgb->preview.link(camOut->input);
-
-    // Link nodes CAM -> imageManip -> XLINK
     camRgb->preview.link(imageManip->inputImage);
     imageManip->out.link(manipOut->input);
-
-    // ImageManip -> ImageManip 2
     imageManip->out.link(imageManip2->inputImage);
-
-    // ImageManip2 -> XLinkOut
     imageManip2->out.link(manipOut2->input);
-
-    // Host config -> image manip 2
     manip2In->out.link(imageManip2->inputConfig);
 
     // Connect to device and start pipeline

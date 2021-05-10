@@ -10,14 +10,15 @@ int main(int argc, char** argv) {
     using namespace std;
     using namespace std::chrono;
 
+    // Create pipeline
     dai::Pipeline pipeline;
 
+    // Define sources and outputs
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto xout = pipeline.create<dai::node::XLinkOut>();
     auto xout2 = pipeline.create<dai::node::XLinkOut>();
     auto videnc = pipeline.create<dai::node::VideoEncoder>();
 
-    // XLinkOut
     xout->setStreamName("mjpeg");
     xout2->setStreamName("preview");
 
@@ -30,7 +31,7 @@ int main(int argc, char** argv) {
     // VideoEncoder
     videnc->setDefaultProfilePreset(1920, 1080, 30, dai::VideoEncoderProperties::Profile::MJPEG);
 
-    // Link plugins CAM -> XLINK
+    // Linking
     camRgb->video.link(videnc->input);
     camRgb->preview.link(xout2->input);
     videnc->bitstream.link(xout->input);

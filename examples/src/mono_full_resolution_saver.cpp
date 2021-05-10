@@ -12,9 +12,10 @@ int main(int argc, char** argv) {
     using namespace std;
     using namespace std::chrono;
 
+    // Create pipeline
     dai::Pipeline pipeline;
 
-    // Define sources and outputs
+    // Define source and output
     auto monoRight = pipeline.create<dai::node::MonoCamera>();
     auto xoutRight = pipeline.create<dai::node::XLinkOut>();
 

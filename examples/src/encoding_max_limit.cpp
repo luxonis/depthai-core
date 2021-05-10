@@ -16,6 +16,7 @@ int main(int argc, char** argv) {
     using namespace std::chrono;
     std::signal(SIGINT, &sigintHandler);
 
+    // Create pipeline
     dai::Pipeline pipeline;
 
     // Define a source - color camera and 2 mono camera

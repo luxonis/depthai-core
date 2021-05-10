@@ -31,6 +31,7 @@ static int clamp(int num, int v0, int v1) {
 }
 
 int main() {
+    // Create pipeline
     dai::Pipeline pipeline;
 
     // Define sources and outputs

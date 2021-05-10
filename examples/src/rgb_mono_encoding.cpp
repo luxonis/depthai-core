@@ -16,6 +16,7 @@ int main(int argc, char** argv) {
     using namespace std::chrono;
     std::signal(SIGINT, &sigintHandler);
 
+    // Create pipeline
     dai::Pipeline pipeline;
 
     // Define sources and outputs

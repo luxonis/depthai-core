@@ -14,8 +14,10 @@ static std::atomic<bool> lr_check{false};
 int main() {
     using namespace std;
 
+    // Create pipeline
     dai::Pipeline pipeline;
 
+    // Define sources and outputs
     auto monoLeft = pipeline.create<dai::node::MonoCamera>();
     auto monoRight = pipeline.create<dai::node::MonoCamera>();
     auto depth = pipeline.create<dai::node::StereoDepth>();
@@ -23,6 +25,7 @@ int main() {
 
     xout->setStreamName("disparity");
 
+    // Properties
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);

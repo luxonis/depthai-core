@@ -9,13 +9,14 @@
 int main(int argc, char** argv) {
     using namespace std::chrono;
 
+    // Create pipeline
     dai::Pipeline pipeline;
 
     // Define source and outputs
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
+    auto videoEnc = pipeline.create<dai::node::VideoEncoder>();
     auto xoutJpeg = pipeline.create<dai::node::XLinkOut>();
     auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
-    auto videoEnc = pipeline.create<dai::node::VideoEncoder>();
 
     xoutJpeg->setStreamName("jpeg");
     xoutRgb->setStreamName("rgb");

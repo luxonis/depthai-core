@@ -12,13 +12,16 @@ int main() {
     // TODO - split this example into two separate examples
     bool withDepth = true;
 
+    // Create pipeline
     dai::Pipeline pipeline;
 
+    // Define sources and outputs
     auto monoLeft = pipeline.create<dai::node::MonoCamera>();
     auto monoRight = pipeline.create<dai::node::MonoCamera>();
+    auto stereo = withDepth ? pipeline.create<dai::node::StereoDepth>() : nullptr;
+
     auto xoutLeft = pipeline.create<dai::node::XLinkOut>();
     auto xoutRight = pipeline.create<dai::node::XLinkOut>();
-    auto stereo = withDepth ? pipeline.create<dai::node::StereoDepth>() : nullptr;
     auto xoutDisp = pipeline.create<dai::node::XLinkOut>();
     auto xoutDepth = pipeline.create<dai::node::XLinkOut>();
     auto xoutRectifL = pipeline.create<dai::node::XLinkOut>();
@@ -64,7 +67,7 @@ int main() {
         stereo->setExtendedDisparity(extended);
         stereo->setSubpixel(subpixel);
 
-        // Link plugins CAM -> STEREO -> XLINK
+        // Linking
         monoLeft->out.link(stereo->left);
         monoRight->out.link(stereo->right);
 

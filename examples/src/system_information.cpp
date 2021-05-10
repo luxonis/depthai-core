@@ -21,9 +21,10 @@ void printSystemInformation(dai::SystemInformation info) {
 int main() {
     using namespace std;
 
-    // Start defining a pipeline
+    // Create pipeline
     dai::Pipeline pipeline;
 
+    // Define source and output
     auto sysLog = pipeline.create<dai::node::SystemLogger>();
     auto xout = pipeline.create<dai::node::XLinkOut>();
 
@@ -37,13 +38,6 @@ int main() {
 
     // Connect to device
     dai::Device device;
-
-    // Query device (before pipeline starts)
-    dai::MemoryInfo ddr = device.getDdrMemoryUsage();
-    printf("Ddr used / total - %.2f / %.2f MiB\n", ddr.used / (1024.0f * 1024.0f), ddr.total / (1024.0f * 1024.0f));
-
-    dai::MemoryInfo cmx = device.getCmxMemoryUsage();
-    printf("Cmx used / total - %.2f / %.2f MiB\n", cmx.used / (1024.0f * 1024.0f), cmx.total / (1024.0f * 1024.0f));
 
     // Connect to device and start pipeline
     device.startPipeline(pipeline);

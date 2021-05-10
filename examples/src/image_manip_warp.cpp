@@ -56,6 +56,7 @@ std::vector<warpFourPointTest> warpList = {
 };
 
 int main() {
+    // Create pipeline
     dai::Pipeline pipeline;
 
     // Define sources and outputs

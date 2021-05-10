@@ -7,6 +7,7 @@
 int main() {
     using namespace std;
 
+    // Create pipeline
     dai::Pipeline pipeline;
 
     // Define source and output

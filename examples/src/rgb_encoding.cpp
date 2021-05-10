@@ -12,9 +12,9 @@ static void sigintHandler(int signum) {
 }
 
 int main(int argc, char** argv) {
-    // Detect signal interrupts (Ctrl + C)
     std::signal(SIGINT, &sigintHandler);
 
+    // Create pipeline
     dai::Pipeline pipeline;
 
     // Define sources and outputs
@@ -23,13 +23,14 @@ int main(int argc, char** argv) {
     auto xout = pipeline.create<dai::node::XLinkOut>();
 
     xout->setStreamName("h265");
+
     // Properties
     camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_4_K);
 
     videoEnc->setDefaultProfilePreset(3840, 2160, 30, dai::VideoEncoderProperties::Profile::H265_MAIN);
 
-    // Create outputs
+    // Linking
     camRgb->video.link(videoEnc->input);
     videoEnc->bitstream.link(xout->input);
 

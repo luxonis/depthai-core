@@ -13,6 +13,7 @@ static constexpr bool downscaleColor = true;
 int main() {
     using namespace std;
 
+    // Create pipeline
     dai::Pipeline pipeline;
     std::vector<std::string> queueNames;
 
