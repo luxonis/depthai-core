@@ -16,7 +16,6 @@ macro(dai_add_example example_name example_src enable_test)
 
     # Add sanitizers for example
     add_sanitizers(${example_name})
-
     # Add to clangformat target
     target_clangformat_setup(${example_name} "")
 
@@ -25,7 +24,7 @@ macro(dai_add_example example_name example_src enable_test)
     list(REMOVE_AT arguments 0 1)
 
     # If 'DEPTHAI_TEST_EXAMPLES' is ON, then examples will be part of the test suite
-    if(enable_test AND DEPTHAI_TEST_EXAMPLES)
+    if(${enable_test} AND DEPTHAI_TEST_EXAMPLES)
         add_test(NAME ${example_name} COMMAND ${CMAKE_COMMAND}
             -DTIMEOUT_SECONDS=5
             -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake $<TARGET_FILE:${example_name}> ${arguments}
