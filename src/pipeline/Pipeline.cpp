@@ -374,11 +374,11 @@ void PipelineImpl::unlink(const Node::Output& out, const Node::Input& in) {
     nodeConnectionMap[in.parent.id].erase(connection);
 }
 
-void PipelineImpl::setCalibrationData(CalibrationHandler calib) {
+void PipelineImpl::setCalibrationData(CalibrationHandler calibrationDataHandler) {
     if(!calibrationDataHandler.validateCameraArray()){
         throw std::runtime_error("Failed to validate the extrinscis connection. Enable debug mode for more info.");
     }
-    globalProperties.calibData = calib.getEepromData();
+    globalProperties.calibData = calibrationDataHandler.getEepromData();
 }
 
 CalibrationHandler PipelineImpl::getCalibrationData() const {

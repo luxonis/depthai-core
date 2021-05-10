@@ -49,7 +49,7 @@ class PipelineImpl {
     std::vector<Node::Connection> getConnections() const;
     void link(const Node::Output& out, const Node::Input& in);
     void unlink(const Node::Output& out, const Node::Input& in);
-    void setCalibrationData(CalibrationHandler calib);
+    void setCalibrationData(CalibrationHandler calibrationDataHandler);
     CalibrationHandler getCalibrationData() const;
 
     // Must be incremented and unique for each node
@@ -221,10 +221,10 @@ class Pipeline {
     /**
      * Sets the calibration in pipeline which overrides the calibration data in eeprom
      *
-     * @param calib CalibrationHandler object which is loaded with calibration information.
+     * @param calibrationDataHandler CalibrationHandler object which is loaded with calibration information.
      */
-    void setCalibrationData(CalibrationHandler calib) {
-        impl()->setCalibrationData(calib);
+    void setCalibrationData(CalibrationHandler calibrationDataHandler) {
+        impl()->setCalibrationData(calibrationDataHandler);
     }
 
     /**
