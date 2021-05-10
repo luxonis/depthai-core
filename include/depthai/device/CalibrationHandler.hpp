@@ -352,6 +352,14 @@ class CalibrationHandler {
      */
     void setStereoRight(CameraBoardSocket cameraId, std::vector<std::vector<float>> rectifiedRotation);
 
+    /**
+     * Using left camera as the head it iterates over the camera extrinsics connection 
+     * to check if all the camera extrinsics are connected and no loop exists.
+     * 
+     * @return true on proper connection with no loops. 
+     */
+    bool validateCameraArray();
+
    private:
     /** when the user is writing extrinsics do we validate if
      * the connection between all the cameras exists ?
@@ -365,7 +373,6 @@ class CalibrationHandler {
     std::vector<std::vector<float>> computeExtrinsicMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useMeasuredTranslation = false);
     bool checkExtrinsicsLink(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera);
 
-    // bool validateCameraArray();
     // void createSrcLinks();
 };
 

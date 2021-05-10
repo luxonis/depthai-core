@@ -5,11 +5,13 @@
 #include <iostream>
 #include <string>
 #include <tuple>
+#include <unordered_set>
 
 #include "depthai-shared/common/CameraInfo.hpp"
 #include "depthai-shared/common/Extrinsics.hpp"
 #include "depthai-shared/common/Point3f.hpp"
 #include "nlohmann/json.hpp"
+#include "spdlog/spdlog.h"
 #include "utility/matrixOps.hpp"
 
 namespace dai {
@@ -124,19 +126,19 @@ CalibrationHandler::CalibrationHandler(std::string calibrationDataPath, std::str
     eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.rotationMatrix = matrixConv(calibrationBuff, 36);
     eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.toCameraSocket = CameraBoardSocket::RIGHT;
 
-    eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.translation.x = -calibrationBuff[45];
-    eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.translation.y = -calibrationBuff[46];
-    eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.translation.z = -calibrationBuff[47];
+    eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.translation.x = calibrationBuff[45];
+    eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.translation.y = calibrationBuff[46];
+    eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.translation.z = calibrationBuff[47];
 
     eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.fromCameraSocket = CameraBoardSocket::AUTO;
     eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.rotationMatrix = matrixConv(calibrationBuff, 57);
     eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.toCameraSocket = CameraBoardSocket::RGB;
 
-    eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.translation.x = calibrationBuff[66];
-    eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.translation.y = calibrationBuff[67];
-    eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.translation.z = calibrationBuff[68];
+    eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.translation.x = -calibrationBuff[66];
+    eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.translation.y = -calibrationBuff[67];
+    eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.translation.z = -calibrationBuff[68];
 
-    CameraInfo& camera = eepromData.cameraData[CameraBoardSocket::LEFT];
+    CameraInfo& camera = eepromData.cameraData[CameraBoardSocket::RIGHT];
 
     float temp = camera.extrinsics.rotationMatrix[0][1];
     camera.extrinsics.rotationMatrix[0][1] = camera.extrinsics.rotationMatrix[1][0];
@@ -159,7 +161,6 @@ dai::EepromData CalibrationHandler::getEepromData() const {
     return eepromData;
 }
 
-// FIXME(sachin): Returns wrong value when resizing from 1080 to 720 with only height passed
 std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(
     CameraBoardSocket cameraId, int resizeWidth, int resizeHeight, Point2f topLeftPixelId, Point2f bottomRightPixelId) {
     if(eepromData.version < 4) {
@@ -262,7 +263,6 @@ uint8_t CalibrationHandler::getLensPosition(CameraBoardSocket cameraId) {
     return eepromData.cameraData[cameraId].lensPosition;
 }
 
-// FIXME(sachin): Does inverse works on the 4x4 projection matrix since it is in homogeneous  coordinate system? I think yes but corss check once
 // TODO(sachin) : Add a loop checker to make sure lin found doesnt go into infinite loop
 std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useMeasuredTranslation) {
     /**
@@ -400,7 +400,10 @@ std::vector<std::vector<float>> CalibrationHandler::computeExtrinsicMatrix(Camer
     if(eepromData.cameraData[srcCamera].extrinsics.toCameraSocket == dstCamera) {
         std::vector<std::vector<float>> transformationMatrix = eepromData.cameraData[srcCamera].extrinsics.rotationMatrix;
         if(useMeasuredTranslation) {
-            // TODO(sachin): What if measured translation is (0,0,0) ??? Should I throw an error ?
+            dai::Point3f& mTrans = eepromData.cameraData[srcCamera].extrinsics.measuredTranslation;
+            if(mTrans.x == 0 && mTrans.y == 0 && mTrans.z == 0) {
+                throw std::runtime_error("Cannot use useMeasuredTranslation argument since measuredTranslation has {0, 0, 0}");
+            }
             transformationMatrix[0].push_back(eepromData.cameraData[srcCamera].extrinsics.measuredTranslation.x);
             transformationMatrix[1].push_back(eepromData.cameraData[srcCamera].extrinsics.measuredTranslation.y);
             transformationMatrix[2].push_back(eepromData.cameraData[srcCamera].extrinsics.measuredTranslation.z);
@@ -417,7 +420,10 @@ std::vector<std::vector<float>> CalibrationHandler::computeExtrinsicMatrix(Camer
             computeExtrinsicMatrix(eepromData.cameraData[srcCamera].extrinsics.toCameraSocket, dstCamera, useMeasuredTranslation);
         std::vector<std::vector<float>> currTransformationMatrix = eepromData.cameraData[srcCamera].extrinsics.rotationMatrix;
         if(useMeasuredTranslation) {
-            // TODO(sachin): What if measured translation is (0,0,0) ??? Should I throw an error ?
+            dai::Point3f& mTrans = eepromData.cameraData[srcCamera].extrinsics.measuredTranslation;
+            if(mTrans.x == 0 && mTrans.y == 0 && mTrans.z == 0) {
+                throw std::runtime_error("Cannot use useMeasuredTranslation argument since measuredTranslation has {0, 0, 0}");
+            }
             currTransformationMatrix[0].push_back(eepromData.cameraData[srcCamera].extrinsics.measuredTranslation.x);
             currTransformationMatrix[1].push_back(eepromData.cameraData[srcCamera].extrinsics.measuredTranslation.y);
             currTransformationMatrix[2].push_back(eepromData.cameraData[srcCamera].extrinsics.measuredTranslation.z);
@@ -561,7 +567,6 @@ void CalibrationHandler::setImuExtrinsics(CameraBoardSocket destCameraId,
     if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3) {
         throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
     }
-    //  TODO(sachin): Add measuredTranslation also as optional argumnet ?
     if(translation.size() != 3) {
         throw std::runtime_error("Translation vector size should always be 3x1");
     }
@@ -594,6 +599,47 @@ void CalibrationHandler::setStereoRight(CameraBoardSocket cameraId, std::vector<
     eepromData.stereoRectificationData.rectifiedRotationRight = rectifiedRotation;
     eepromData.stereoRectificationData.rightCameraSocket = cameraId;
     return;
+}
+
+bool CalibrationHandler::validateCameraArray() {
+    if(eepromData.cameraData.size() > 1) {
+        std::unordered_set<dai::CameraBoardSocket> marked;
+        if(eepromData.cameraData.find(dai::CameraBoardSocket::LEFT) != eepromData.cameraData.end()) {
+            dai::CameraBoardSocket currentSocket = dai::CameraBoardSocket::LEFT;
+            bool isConnectionValidated = true;
+            while(currentSocket != CameraBoardSocket::AUTO) {
+                if(eepromData.cameraData.find(currentSocket) == eepromData.cameraData.end()) {
+                    spdlog::debug(
+                        "Found link to a CameraID whose camera calibration is not loaded. Please cross check the connection by creating a json file using "
+                        "eepromToJsonFile(). ");
+                    isConnectionValidated = false;
+                    break;
+                }
+                if(marked.find(currentSocket) != marked.end()) {
+                    spdlog::debug(
+                        "Loop found in extrinsics connection. Please cross check that the extrinsics are connected in an array in single direction by creating "
+                        "a json file using eepromToJsonFile(). ");
+                    isConnectionValidated = false;
+                    break;
+                }
+                marked.insert(currentSocket);
+                currentSocket = eepromData.cameraData.at(currentSocket).extrinsics.toCameraSocket;
+            }
+
+            if(isConnectionValidated && eepromData.cameraData.size() != marked.size()) {
+                isConnectionValidated = false;
+                spdlog::debug("Extrinsics between all the cameras is not found with single head and a tail");
+            }
+            return isConnectionValidated;
+        } else {
+            spdlog::debug(
+                "make sure the head of the Extrinsics is dai::CameraBoardSocket::Left. Please cross check the data by creating a json file using "
+                "eepromToJsonFile(). ");
+            return false;
+        }
+    } else {
+        return true;  // Considering this would be bw1093 device
+    }
 }
 
 }  // namespace dai
