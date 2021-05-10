@@ -221,7 +221,7 @@ target_compile_definitions(webcam_mobilenet PRIVATE BLOB_PATH="${mobilenet_8shav
 dai_add_example(mjpeg_encoding src/mjpeg_encoding_example.cpp)
 
 # RGB-depth alignment example
-dai_add_example(rgb_depth_aligned src/rgb_depth_aligned_example.cpp)
+dai_add_example(rgb_depth_aligned src/rgb_depth_aligned.cpp)
 
 # Sync example between NN and camera frames
 dai_add_example(camera_mobilenet_sync src/camera_mobilenet_sync_example.cpp)
