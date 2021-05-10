@@ -353,10 +353,10 @@ class CalibrationHandler {
     void setStereoRight(CameraBoardSocket cameraId, std::vector<std::vector<float>> rectifiedRotation);
 
     /**
-     * Using left camera as the head it iterates over the camera extrinsics connection 
+     * Using left camera as the head it iterates over the camera extrinsics connection
      * to check if all the camera extrinsics are connected and no loop exists.
-     * 
-     * @return true on proper connection with no loops. 
+     *
+     * @return true on proper connection with no loops.
      */
     bool validateCameraArray();
 

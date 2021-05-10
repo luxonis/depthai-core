@@ -1,5 +1,6 @@
 #include "depthai/pipeline/Pipeline.hpp"
 
+#include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/utility/Initialization.hpp"
 
 // std
@@ -375,7 +376,7 @@ void PipelineImpl::unlink(const Node::Output& out, const Node::Input& in) {
 }
 
 void PipelineImpl::setCalibrationData(CalibrationHandler calibrationDataHandler) {
-    if(!calibrationDataHandler.validateCameraArray()){
+    if(!calibrationDataHandler.validateCameraArray()) {
         throw std::runtime_error("Failed to validate the extrinscis connection. Enable debug mode for more info.");
     }
     globalProperties.calibData = calibrationDataHandler.getEepromData();

@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
         calibBinaryFile = std::string(argv[1]);
         boardConfigFile = std::string(argv[2]);
         destFilename = std::string(argv[3]);
-    } else {        
+    } else {
         throw std::runtime_error("Required .calib file, board.json file path and destination file path argumnents in the same order");
     }
 

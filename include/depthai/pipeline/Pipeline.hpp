@@ -235,7 +235,7 @@ class Pipeline {
     CalibrationHandler getCalibrationData() const {
         return impl()->getCalibrationData();
     }
-    
+
     /// Get required OpenVINO version to run this pipeline
     OpenVINO::Version getOpenVINOVersion() const {
         return impl()->getPipelineOpenVINOVersion();

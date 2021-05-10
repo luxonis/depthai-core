@@ -25,7 +25,7 @@ dai::Pipeline createCameraPipeline() {
     return p;
 }
 
-// NOTE: Do not use the values below. The values used below are dummy data. 
+// NOTE: Do not use the values below. The values used below are dummy data.
 int main() {
     dai::CalibrationHandler calibData;
 
