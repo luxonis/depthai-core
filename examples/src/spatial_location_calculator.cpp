@@ -134,7 +134,7 @@ int main() {
                     newConfig = true;
                 }
                 break;
-            case 'device':
+            case 'd':
                 if(bottomRight.x + stepSize <= 1) {
                     topLeft.x += stepSize;
                     bottomRight.x += stepSize;
