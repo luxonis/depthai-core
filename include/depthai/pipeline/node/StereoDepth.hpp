@@ -174,6 +174,12 @@ class StereoDepth : public Node {
      * DEPRECATED. The output is auto-enabled if used
      */
     [[deprecated("Function call should be removed")]] void setOutputDepth(bool enable);
+
+    /**
+     * Useful for normalization of the disparity map.
+     * @returns Number of disparity levels
+     */
+    float getMaxDisparity();
 };
 
 }  // namespace node
