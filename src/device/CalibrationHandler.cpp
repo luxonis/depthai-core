@@ -65,20 +65,20 @@ CalibrationHandler::CalibrationHandler(std::string calibrationDataPath, std::str
         eepromData.swapLeftRightCam = boardConfigData.at("board_config").at("swap_left_and_right_cameras").get<bool>();
         eepromData.version = 6;
 
-        eepromData.cameraData[CameraBoardSocket::RIGHT].measuredFovDeg = boardConfigData.at("board_config").at("left_fov_deg").get<float>();
-        eepromData.cameraData[CameraBoardSocket::LEFT].measuredFovDeg = boardConfigData.at("board_config").at("left_fov_deg").get<float>();
-        eepromData.cameraData[CameraBoardSocket::RGB].measuredFovDeg = boardConfigData.at("board_config").at("rgb_fov_deg").get<float>();
+        eepromData.cameraData[CameraBoardSocket::RIGHT].specHfovDeg = boardConfigData.at("board_config").at("left_fov_deg").get<float>();
+        eepromData.cameraData[CameraBoardSocket::LEFT].specHfovDeg = boardConfigData.at("board_config").at("left_fov_deg").get<float>();
+        eepromData.cameraData[CameraBoardSocket::RGB].specHfovDeg = boardConfigData.at("board_config").at("rgb_fov_deg").get<float>();
 
-        eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.measuredTranslation.x =
+        eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.specTranslation.x =
             boardConfigData.at("board_config").at("left_to_right_distance_cm").get<float>();
-        eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.measuredTranslation.y = 0;
-        eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.measuredTranslation.z = 0;
+        eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.specTranslation.y = 0;
+        eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.specTranslation.z = 0;
 
-        eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.measuredTranslation.x =
+        eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.specTranslation.x =
             boardConfigData.at("board_config").at("left_to_rgb_distance_cm").get<float>()
             - boardConfigData.at("board_config").at("left_to_right_distance_cm").get<float>();
-        eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.measuredTranslation.y = 0;
-        eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.measuredTranslation.z = 0;
+        eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.specTranslation.y = 0;
+        eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.specTranslation.z = 0;
     } else {
         throw std::runtime_error("board_config key not found");
     }
@@ -122,7 +122,6 @@ CalibrationHandler::CalibrationHandler(std::string calibrationDataPath, std::str
     eepromData.cameraData[CameraBoardSocket::RGB].distortionCoeff =
         std::vector<float>(calibrationBuff.begin() + 69 + (2 * 14), calibrationBuff.begin() + 69 + (3 * 14));
 
-    eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.fromCameraSocket = CameraBoardSocket::AUTO;
     eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.rotationMatrix = matrixConv(calibrationBuff, 36);
     eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.toCameraSocket = CameraBoardSocket::RIGHT;
 
@@ -130,7 +129,6 @@ CalibrationHandler::CalibrationHandler(std::string calibrationDataPath, std::str
     eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.translation.y = calibrationBuff[46];
     eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.translation.z = calibrationBuff[47];
 
-    eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.fromCameraSocket = CameraBoardSocket::AUTO;
     eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.rotationMatrix = matrixConv(calibrationBuff, 57);
     eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.toCameraSocket = CameraBoardSocket::RGB;
 
@@ -253,7 +251,7 @@ double CalibrationHandler::getFov(CameraBoardSocket cameraId) {
     if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end())
         throw std::runtime_error("There is no Camera data available corresponding to the the requested cameraID");
 
-    return eepromData.cameraData[cameraId].measuredFovDeg;
+    return eepromData.cameraData[cameraId].specHfovDeg;
 }
 
 uint8_t CalibrationHandler::getLensPosition(CameraBoardSocket cameraId) {
@@ -264,7 +262,7 @@ uint8_t CalibrationHandler::getLensPosition(CameraBoardSocket cameraId) {
 }
 
 // TODO(sachin) : Add a loop checker to make sure lin found doesnt go into infinite loop
-std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useMeasuredTranslation) {
+std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation) {
     /**
      * 1. Check if both camera ID exists.
      * 2. Check if the forward link exists from source to dest camera. if No go to step 5
@@ -284,9 +282,9 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBo
 
     std::vector<std::vector<float>> extrinsics;
     if(checkExtrinsicsLink(srcCamera, dstCamera)) {
-        return computeExtrinsicMatrix(srcCamera, dstCamera, useMeasuredTranslation);
+        return computeExtrinsicMatrix(srcCamera, dstCamera, useSpecTranslation);
     } else if(checkExtrinsicsLink(dstCamera, srcCamera)) {
-        extrinsics = computeExtrinsicMatrix(dstCamera, srcCamera, useMeasuredTranslation);
+        extrinsics = computeExtrinsicMatrix(dstCamera, srcCamera, useSpecTranslation);
 
         float temp = extrinsics[0][1];
         extrinsics[0][1] = extrinsics[1][0];
@@ -311,8 +309,8 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBo
     return extrinsics;
 }
 
-std::vector<std::vector<float>> CalibrationHandler::getCameraToImuExtrinsics(CameraBoardSocket cameraId, bool useMeasuredTranslation) {
-    std::vector<std::vector<float>> transformationMatrix = getImuToCameraExtrinsics(cameraId, useMeasuredTranslation);
+std::vector<std::vector<float>> CalibrationHandler::getCameraToImuExtrinsics(CameraBoardSocket cameraId, bool useSpecTranslation) {
+    std::vector<std::vector<float>> transformationMatrix = getImuToCameraExtrinsics(cameraId, useSpecTranslation);
     float temp = transformationMatrix[0][1];
     transformationMatrix[0][1] = transformationMatrix[1][0];
     transformationMatrix[1][0] = temp;
@@ -332,16 +330,16 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraToImuExtrinsics(Cam
     return transformationMatrix;
 }
 
-std::vector<std::vector<float>> CalibrationHandler::getImuToCameraExtrinsics(CameraBoardSocket cameraId, bool useMeasuredTranslation) {
+std::vector<std::vector<float>> CalibrationHandler::getImuToCameraExtrinsics(CameraBoardSocket cameraId, bool useSpecTranslation) {
     if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end()) {
         throw std::runtime_error("There is no Camera data available corresponding to the the requested source cameraId");
     }
     std::vector<std::vector<float>> transformationMatrix = eepromData.imuExtrinsics.rotationMatrix;
-    if(useMeasuredTranslation) {
+    if(useSpecTranslation) {
         // TODO(sachin): What if measured translation is (0,0,0) ??? Should I throw an error ?
-        transformationMatrix[0].push_back(eepromData.cameraData[cameraId].extrinsics.measuredTranslation.x);
-        transformationMatrix[1].push_back(eepromData.cameraData[cameraId].extrinsics.measuredTranslation.y);
-        transformationMatrix[2].push_back(eepromData.cameraData[cameraId].extrinsics.measuredTranslation.z);
+        transformationMatrix[0].push_back(eepromData.cameraData[cameraId].extrinsics.specTranslation.x);
+        transformationMatrix[1].push_back(eepromData.cameraData[cameraId].extrinsics.specTranslation.y);
+        transformationMatrix[2].push_back(eepromData.cameraData[cameraId].extrinsics.specTranslation.z);
     } else {
         transformationMatrix[0].push_back(eepromData.cameraData[cameraId].extrinsics.translation.x);
         transformationMatrix[1].push_back(eepromData.cameraData[cameraId].extrinsics.translation.y);
@@ -353,8 +351,7 @@ std::vector<std::vector<float>> CalibrationHandler::getImuToCameraExtrinsics(Cam
     if(eepromData.imuExtrinsics.toCameraSocket == cameraId) {
         return transformationMatrix;
     } else {
-        std::vector<std::vector<float>> localTransformationMatrix =
-            getCameraExtrinsics(eepromData.imuExtrinsics.toCameraSocket, cameraId, useMeasuredTranslation);
+        std::vector<std::vector<float>> localTransformationMatrix = getCameraExtrinsics(eepromData.imuExtrinsics.toCameraSocket, cameraId, useSpecTranslation);
         return matMul(transformationMatrix, localTransformationMatrix);
     }
 }
@@ -391,22 +388,20 @@ bool CalibrationHandler::eepromToJsonFile(std::string destPath) const {
     return true;
 }
 
-std::vector<std::vector<float>> CalibrationHandler::computeExtrinsicMatrix(CameraBoardSocket srcCamera,
-                                                                           CameraBoardSocket dstCamera,
-                                                                           bool useMeasuredTranslation) {
+std::vector<std::vector<float>> CalibrationHandler::computeExtrinsicMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation) {
     if(srcCamera == CameraBoardSocket::AUTO || dstCamera == CameraBoardSocket::AUTO) {
         throw std::runtime_error("Invalid cameraId input..");
     }
     if(eepromData.cameraData[srcCamera].extrinsics.toCameraSocket == dstCamera) {
         std::vector<std::vector<float>> transformationMatrix = eepromData.cameraData[srcCamera].extrinsics.rotationMatrix;
-        if(useMeasuredTranslation) {
-            dai::Point3f& mTrans = eepromData.cameraData[srcCamera].extrinsics.measuredTranslation;
+        if(useSpecTranslation) {
+            dai::Point3f& mTrans = eepromData.cameraData[srcCamera].extrinsics.specTranslation;
             if(mTrans.x == 0 && mTrans.y == 0 && mTrans.z == 0) {
-                throw std::runtime_error("Cannot use useMeasuredTranslation argument since measuredTranslation has {0, 0, 0}");
+                throw std::runtime_error("Cannot use useSpecTranslation argument since specTranslation has {0, 0, 0}");
             }
-            transformationMatrix[0].push_back(eepromData.cameraData[srcCamera].extrinsics.measuredTranslation.x);
-            transformationMatrix[1].push_back(eepromData.cameraData[srcCamera].extrinsics.measuredTranslation.y);
-            transformationMatrix[2].push_back(eepromData.cameraData[srcCamera].extrinsics.measuredTranslation.z);
+            transformationMatrix[0].push_back(eepromData.cameraData[srcCamera].extrinsics.specTranslation.x);
+            transformationMatrix[1].push_back(eepromData.cameraData[srcCamera].extrinsics.specTranslation.y);
+            transformationMatrix[2].push_back(eepromData.cameraData[srcCamera].extrinsics.specTranslation.z);
         } else {
             transformationMatrix[0].push_back(eepromData.cameraData[srcCamera].extrinsics.translation.x);
             transformationMatrix[1].push_back(eepromData.cameraData[srcCamera].extrinsics.translation.y);
@@ -417,16 +412,16 @@ std::vector<std::vector<float>> CalibrationHandler::computeExtrinsicMatrix(Camer
         return transformationMatrix;
     } else {
         std::vector<std::vector<float>> futureTransformationMatrix =
-            computeExtrinsicMatrix(eepromData.cameraData[srcCamera].extrinsics.toCameraSocket, dstCamera, useMeasuredTranslation);
+            computeExtrinsicMatrix(eepromData.cameraData[srcCamera].extrinsics.toCameraSocket, dstCamera, useSpecTranslation);
         std::vector<std::vector<float>> currTransformationMatrix = eepromData.cameraData[srcCamera].extrinsics.rotationMatrix;
-        if(useMeasuredTranslation) {
-            dai::Point3f& mTrans = eepromData.cameraData[srcCamera].extrinsics.measuredTranslation;
+        if(useSpecTranslation) {
+            dai::Point3f& mTrans = eepromData.cameraData[srcCamera].extrinsics.specTranslation;
             if(mTrans.x == 0 && mTrans.y == 0 && mTrans.z == 0) {
-                throw std::runtime_error("Cannot use useMeasuredTranslation argument since measuredTranslation has {0, 0, 0}");
+                throw std::runtime_error("Cannot use useSpecTranslation argument since specTranslation has {0, 0, 0}");
             }
-            currTransformationMatrix[0].push_back(eepromData.cameraData[srcCamera].extrinsics.measuredTranslation.x);
-            currTransformationMatrix[1].push_back(eepromData.cameraData[srcCamera].extrinsics.measuredTranslation.y);
-            currTransformationMatrix[2].push_back(eepromData.cameraData[srcCamera].extrinsics.measuredTranslation.z);
+            currTransformationMatrix[0].push_back(eepromData.cameraData[srcCamera].extrinsics.specTranslation.x);
+            currTransformationMatrix[1].push_back(eepromData.cameraData[srcCamera].extrinsics.specTranslation.y);
+            currTransformationMatrix[2].push_back(eepromData.cameraData[srcCamera].extrinsics.specTranslation.z);
         } else {
             currTransformationMatrix[0].push_back(eepromData.cameraData[srcCamera].extrinsics.translation.x);
             currTransformationMatrix[1].push_back(eepromData.cameraData[srcCamera].extrinsics.translation.y);
@@ -509,10 +504,10 @@ void CalibrationHandler::setDistortionCoefficients(CameraBoardSocket cameraId, s
 void CalibrationHandler::setFov(CameraBoardSocket cameraId, double hfov) {
     if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end()) {
         dai::CameraInfo camera_info;
-        camera_info.measuredFovDeg = hfov;
+        camera_info.specHfovDeg = hfov;
         eepromData.cameraData.emplace(cameraId, camera_info);
     } else {
-        eepromData.cameraData[cameraId].measuredFovDeg = hfov;
+        eepromData.cameraData[cameraId].specHfovDeg = hfov;
     }
     return;
 }
@@ -532,22 +527,22 @@ void CalibrationHandler::setCameraExtrinsics(CameraBoardSocket srcCameraId,
                                              CameraBoardSocket destCameraId,
                                              std::vector<std::vector<float>> rotationMatrix,
                                              std::vector<float> translation,
-                                             std::vector<float> measuredTranslation) {
+                                             std::vector<float> specTranslation) {
     if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3) {
         throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
     }
-    //  TODO(sachin): Add measuredTranslation also as optional argumnet ?
+    //  TODO(sachin): Add specTranslation also as optional argumnet ?
     if(translation.size() != 3) {
         throw std::runtime_error("Translation vector size should always be 3x1");
     }
-    if(measuredTranslation.size() != 3) {
-        throw std::runtime_error("measuredTranslation vector size should always be 3x1");
+    if(specTranslation.size() != 3) {
+        throw std::runtime_error("specTranslation vector size should always be 3x1");
     }
 
     dai::Extrinsics extrinsics;
     extrinsics.rotationMatrix = rotationMatrix;
     extrinsics.translation = dai::Point3f(translation[0], translation[1], translation[2]);
-    extrinsics.measuredTranslation = dai::Point3f(measuredTranslation[0], measuredTranslation[1], measuredTranslation[2]);
+    extrinsics.specTranslation = dai::Point3f(specTranslation[0], specTranslation[1], specTranslation[2]);
     extrinsics.toCameraSocket = destCameraId;
 
     if(eepromData.cameraData.find(srcCameraId) == eepromData.cameraData.end()) {
@@ -563,21 +558,21 @@ void CalibrationHandler::setCameraExtrinsics(CameraBoardSocket srcCameraId,
 void CalibrationHandler::setImuExtrinsics(CameraBoardSocket destCameraId,
                                           std::vector<std::vector<float>> rotationMatrix,
                                           std::vector<float> translation,
-                                          std::vector<float> measuredTranslation) {
+                                          std::vector<float> specTranslation) {
     if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3) {
         throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
     }
     if(translation.size() != 3) {
         throw std::runtime_error("Translation vector size should always be 3x1");
     }
-    if(measuredTranslation.size() != 3) {
-        throw std::runtime_error("measuredTranslation vector size should always be 3x1");
+    if(specTranslation.size() != 3) {
+        throw std::runtime_error("specTranslation vector size should always be 3x1");
     }
 
     dai::Extrinsics extrinsics;
     extrinsics.rotationMatrix = rotationMatrix;
     extrinsics.translation = dai::Point3f(translation[0], translation[1], translation[2]);
-    extrinsics.measuredTranslation = dai::Point3f(measuredTranslation[0], measuredTranslation[1], measuredTranslation[2]);
+    extrinsics.specTranslation = dai::Point3f(specTranslation[0], specTranslation[1], specTranslation[2]);
     extrinsics.toCameraSocket = destCameraId;
     eepromData.imuExtrinsics = extrinsics;
     return;

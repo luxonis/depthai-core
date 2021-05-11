@@ -131,7 +131,7 @@ class CalibrationHandler {
      *
      * @param srcCamera - Camera Id of the camera which will be considerd as origin.
      * @param dstCamera -  Camera Id of the destination camera to which we are fetching the rotation and translation from the SrcCamera
-     * @param useMeasuredTranslation - Enabling this bool uses the translation information from the board design data
+     * @param useSpecTranslation - Enabling this bool uses the translation information from the board design data
      * @return a transformationMatrix which is 4x4 in homogenious coordinate system
      *
      * Matrix representation of transformation matrix
@@ -141,7 +141,7 @@ class CalibrationHandler {
      *                              r_20 & r_21 & r_22 & T_z
      *                          \end{bmatrix}
      */
-    std::vector<std::vector<float>> getCameraExtrinsics(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useMeasuredTranslation = false);
+    std::vector<std::vector<float>> getCameraExtrinsics(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = false);
 
     /**
      * Get the Camera To Imu Extrinsics object
@@ -149,7 +149,7 @@ class CalibrationHandler {
      * is returned.
      *
      * @param cameraId - Camera Id of the camera which will be considerd as origin. from which Transformation matrix to the IMU will be found
-     * @param useMeasuredTranslation - Enabling this bool uses the translation information from the board design data
+     * @param useSpecTranslation - Enabling this bool uses the translation information from the board design data
      * @return Returns a transformationMatrix which is 4x4 in homogenious coordinate system
      * Matrix representation of transformation matrix
      * transformation matrix = \begin{bmatrix}
@@ -158,7 +158,7 @@ class CalibrationHandler {
      *                              r_20 & r_21 & r_22 & T_z
      *                          \end{bmatrix}
      */
-    std::vector<std::vector<float>> getCameraToImuExtrinsics(CameraBoardSocket cameraId, bool useMeasuredTranslation = false);
+    std::vector<std::vector<float>> getCameraToImuExtrinsics(CameraBoardSocket cameraId, bool useSpecTranslation = false);
 
     /**
      * Get the Imu To Camera Extrinsics object from the data loaded if there is a linked connection
@@ -166,7 +166,7 @@ class CalibrationHandler {
      * is returned.
      *
      * @param cameraId - Camera Id of the camera which will be considerd as destination. To which Transformation matrix from the IMU will be found.
-     * @param useMeasuredTranslation - Enabling this bool uses the translation information from the board design data
+     * @param useSpecTranslation - Enabling this bool uses the translation information from the board design data
      * @return Returns a transformationMatrix which is 4x4 in homogenious coordinate system
      * Matrix representation of transformation matrix
      * transformation matrix = \begin{bmatrix}
@@ -176,7 +176,7 @@ class CalibrationHandler {
      *                               0   &  0   &  0   & 1
      *                          \end{bmatrix}
      */
-    std::vector<std::vector<float>> getImuToCameraExtrinsics(CameraBoardSocket cameraId, bool useMeasuredTranslation = false);
+    std::vector<std::vector<float>> getImuToCameraExtrinsics(CameraBoardSocket cameraId, bool useSpecTranslation = false);
 
     // TODO (Sachin) : Fill therse docstrings
     /**
@@ -311,13 +311,13 @@ class CalibrationHandler {
      * @param destCameraId - Camera Id of the camera which will be considerd as destination from srcCameraId.
      * @param rotationMatrix - Rotation between srcCameraId and destCameraId origins.
      * @param translation - Translation between srcCameraId and destCameraId origins.
-     * @param measuredTranslation - Translation between srcCameraId and destCameraId origins from the design.
+     * @param specTranslation - Translation between srcCameraId and destCameraId origins from the design.
      */
     void setCameraExtrinsics(CameraBoardSocket srcCameraId,
                              CameraBoardSocket destCameraId,
                              std::vector<std::vector<float>> rotationMatrix,
                              std::vector<float> translation,
-                             std::vector<float> measuredTranslation = {0, 0, 0});
+                             std::vector<float> specTranslation = {0, 0, 0});
 
     /**
      * Set the Imu to Camera Extrinsics object
@@ -325,12 +325,12 @@ class CalibrationHandler {
      * @param destCameraId - Camera Id of the camera which will be considerd as destination from IMU.
      * @param rotationMatrix - Rotation between srcCameraId and destCameraId origins.
      * @param translation - Translation between IMU and destCameraId origins.
-     * @param measuredTranslation - Translation between IMU and destCameraId origins from the design.
+     * @param specTranslation - Translation between IMU and destCameraId origins from the design.
      */
     void setImuExtrinsics(CameraBoardSocket destCameraId,
                           std::vector<std::vector<float>> rotationMatrix,
                           std::vector<float> translation,
-                          std::vector<float> measuredTranslation = {0, 0, 0});
+                          std::vector<float> specTranslation = {0, 0, 0});
 
     /**
      * Set the Stereo Left Rectification object
@@ -370,7 +370,7 @@ class CalibrationHandler {
      */
     // bool isCameraArrayConnected;
     dai::EepromData eepromData;
-    std::vector<std::vector<float>> computeExtrinsicMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useMeasuredTranslation = false);
+    std::vector<std::vector<float>> computeExtrinsicMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = false);
     bool checkExtrinsicsLink(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera);
 
     // void createSrcLinks();

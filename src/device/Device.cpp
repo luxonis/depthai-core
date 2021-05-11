@@ -919,12 +919,7 @@ bool Device::flashCalibration(CalibrationHandler calibrationDataHandler) {
     if(!calibrationDataHandler.validateCameraArray()) {
         throw std::runtime_error("Failed to validate the extrinscis connection. Enable debug mode for more info.");
     }
-    int res = client->call("storeToEeprom", calibrationDataHandler.getEepromData());
-    if(res == 0) {
-        return true;
-    } else {
-        return false;
-    }
+    return client->call("storeToEeprom", calibrationDataHandler.getEepromData()).as<bool>();
 }
 
 CalibrationHandler Device::readCalibration() {
