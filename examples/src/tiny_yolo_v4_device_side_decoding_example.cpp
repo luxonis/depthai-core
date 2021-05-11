@@ -81,15 +81,13 @@ int main(int argc, char** argv) {
     // Create pipeline
     dai::Pipeline p = createNNPipeline(nnPath);
 
-    // Connect to device with above created pipeline
+    // Connect and start the pipeline
     dai::Device d(p);
-    // Start the pipeline
-    d.startPipeline();
 
     auto preview = d.getOutputQueue("preview", 4, false);
     auto detections = d.getOutputQueue("detections", 4, false);
 
-    auto startTime = std::chrono::steady_clock::now();
+    auto startTime = steady_clock::now();
     int counter = 0;
     float fps = 0;
     while(1) {
@@ -97,10 +95,10 @@ int main(int argc, char** argv) {
         auto det = detections->get<dai::ImgDetections>();
 
         counter++;
-        auto currentTime = std::chrono::steady_clock::now();
+        auto currentTime = steady_clock::now();
         auto elapsed = duration_cast<duration<float>>(currentTime - startTime);
         if(elapsed > seconds(1)) {
-            fps = (float)counter / elapsed.count();
+            fps = counter / elapsed.count();
             counter = 0;
             startTime = currentTime;
         }

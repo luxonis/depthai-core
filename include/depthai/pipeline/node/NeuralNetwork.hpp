@@ -16,17 +16,20 @@ namespace node {
  * @brief NeuralNetwork node. Runs a neural inference on input data.
  */
 class NeuralNetwork : public Node {
+   public:
     using Properties = dai::NeuralNetworkProperties;
-
-    Properties properties;
 
     std::string getName() const override;
     std::vector<Output> getOutputs() override;
     std::vector<Input> getInputs() override;
+
+   protected:
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
     tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion() override;
-    // void loadAssets(AssetManager& assetManager) override;
+
+   private:
+    Properties properties;
 
    protected:
     OpenVINO::Version networkOpenvinoVersion;

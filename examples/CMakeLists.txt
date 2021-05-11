@@ -3,6 +3,7 @@ option(DEPTHAI_TEST_EXAMPLES "Test examples - examples will be ran as a part of 
 
 # Dependencies
 find_package(OpenCV REQUIRED)
+find_package(Sanitizers)
 
 # Create utility library
 add_library(utility src/utility.cpp)
@@ -13,13 +14,16 @@ macro(dai_add_example example_name example_src)
     add_executable("${example_name}" "${example_src}")
     target_link_libraries("${example_name}" PRIVATE utility depthai::opencv ${OpenCV_LIBS})
 
+    # Add sanitizers for example
+    add_sanitizers(${example_name})
+
     # Add to clangformat target
     target_clangformat_setup(${example_name} "")
 
     # parse the rest of the arguments
     set(arguments ${ARGV})
     list(REMOVE_AT arguments 0 1)
-    
+
     # If 'DEPTHAI_TEST_EXAMPLES' is ON, then examples will be part of the test suite
     if(DEPTHAI_TEST_EXAMPLES)
         add_test(NAME ${example_name} COMMAND ${CMAKE_COMMAND}
@@ -28,16 +32,13 @@ macro(dai_add_example example_name example_src)
         )
 
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
-        set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]") 
-            
-        # Add sanitizers for tests as well
-        add_sanitizers(${example_name})
+        set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]")
 
         # Add ubsan halt on error
         set_tests_properties(${example_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1")
 
     endif()
-endmacro() 
+endmacro()
 
 # Create a custom target which runs all examples for 10 seconds max, and check if they executed without errors
 
@@ -130,6 +131,9 @@ dai_add_example(device_queue_event src/device_queue_event_example.cpp)
 # OpenCV support example
 dai_add_example(opencv_support src/opencv_support_example.cpp)
 
+# RGB-depth alignment example
+dai_add_example(rgb_depth_aligned src/rgb_depth_aligned_example.cpp)
+
 # Device side decoding example for mobilenet-ssd
 dai_add_example(mobilenet_device_side_decoding src/mobilenet_device_side_decoding_example.cpp)
 target_compile_definitions(mobilenet_device_side_decoding PRIVATE BLOB_PATH="${mobilenet_blob}")
@@ -166,3 +170,12 @@ target_compile_definitions(spatial_tiny_yolo_v4 PRIVATE BLOB_PATH="${tiny_yolo_v
 
 # Script node controlling color camera
 dai_add_example(script_camera_control src/script_camera_control.cpp)
+
+# Object tracker example on mobilenet SSD output
+dai_add_example(object_tracker_example src/object_tracker_example.cpp)
+target_compile_definitions(object_tracker_example PRIVATE BLOB_PATH="${mobilenet_blob}")
+
+# Spatial Object tracker example on mobilenet SSD output
+dai_add_example(spatial_object_tracker_example src/spatial_object_tracker_example.cpp)
+target_compile_definitions(spatial_object_tracker_example PRIVATE BLOB_PATH="${mobilenet_blob}")
+

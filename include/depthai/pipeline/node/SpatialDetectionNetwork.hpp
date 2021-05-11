@@ -18,17 +18,19 @@ namespace node {
  * @brief SpatialDetectionNetwork node. Runs a neural inference on input image and calculates spatial location data.
  */
 class SpatialDetectionNetwork : public DetectionNetwork {
+   public:
     using Properties = dai::SpatialDetectionNetworkProperties;
 
     std::string getName() const override;
     std::vector<Input> getInputs() override;
     std::vector<Output> getOutputs() override;
-    nlohmann::json getProperties() override;
 
    protected:
     SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     Properties properties;
     virtual Properties& getPropertiesRef() override;
+    nlohmann::json getProperties() override;
+    std::shared_ptr<Node> clone() override;
 
    public:
     /**
@@ -92,6 +94,9 @@ class SpatialDetectionNetwork : public DetectionNetwork {
  * MobileNetSpatialDetectionNetwork. Mobilenet-SSD based network with spatial location data.
  */
 class MobileNetSpatialDetectionNetwork : public SpatialDetectionNetwork {
+   protected:
+    std::shared_ptr<Node> clone() override;
+
    public:
     MobileNetSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 };
@@ -100,6 +105,9 @@ class MobileNetSpatialDetectionNetwork : public SpatialDetectionNetwork {
  * YoloSpatialDetectionNetwork. (tiny)Yolov3/v4 based network with spatial location data.
  */
 class YoloSpatialDetectionNetwork : public SpatialDetectionNetwork {
+   protected:
+    std::shared_ptr<Node> clone() override;
+
    public:
     YoloSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     /// Set num classes

@@ -40,7 +40,6 @@ int main() {
 
     dai::Pipeline p = createPipeline();
     dai::Device d(p);
-    d.startPipeline();
 
     auto still = d.getOutputQueue("still");
 

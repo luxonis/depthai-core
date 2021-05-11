@@ -18,6 +18,7 @@
 #include "pipeline/node/ImageManip.hpp"
 #include "pipeline/node/MonoCamera.hpp"
 #include "pipeline/node/NeuralNetwork.hpp"
+#include "pipeline/node/ObjectTracker.hpp"
 #include "pipeline/node/SPIOut.hpp"
 #include "pipeline/node/SpatialDetectionNetwork.hpp"
 #include "pipeline/node/SpatialLocationCalculator.hpp"
@@ -38,6 +39,7 @@
 #include "pipeline/datatype/SpatialImgDetections.hpp"
 #include "pipeline/datatype/SpatialLocationCalculatorData.hpp"
 #include "pipeline/datatype/SystemInformation.hpp"
+#include "pipeline/datatype/Tracklets.hpp"
 
 // namespace dai {
 // namespace{

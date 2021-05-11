@@ -43,6 +43,10 @@ void VideoEncoder::setRateControlMode(VideoEncoderProperties::RateControlMode mo
     properties.rateCtrlMode = mode;
 }
 
+void VideoEncoder::setProfile(std::tuple<int, int> size, VideoEncoderProperties::Profile profile) {
+    setProfile(std::get<0>(size), std::get<1>(size), profile);
+}
+
 void VideoEncoder::setProfile(int width, int height, VideoEncoderProperties::Profile profile) {
     // Width & height H26x limitations
     if(profile != VideoEncoderProperties::Profile::MJPEG) {
@@ -89,7 +93,11 @@ void VideoEncoder::setQuality(int quality) {
     properties.quality = quality;
 }
 
-void VideoEncoder::setFrameRate(int frameRate) {
+void VideoEncoder::setLossless(bool lossless) {
+    properties.lossless = lossless;
+}
+
+void VideoEncoder::setFrameRate(float frameRate) {
     properties.frameRate = frameRate;
 }
 
@@ -137,7 +145,7 @@ int VideoEncoder::getHeight() const {
     return std::get<1>(getSize());
 }
 
-int VideoEncoder::getFrameRate() const {
+float VideoEncoder::getFrameRate() const {
     return properties.frameRate;
 }
 
@@ -158,7 +166,7 @@ void VideoEncoder::setDefaultProfilePreset(int width, int height, float fps, Vid
         case VideoEncoderProperties::Profile::H264_MAIN:
         case VideoEncoderProperties::Profile::H265_MAIN: {
             // By default set keyframe frequency to equal fps
-            properties.keyframeFrequency = fps;
+            properties.keyframeFrequency = static_cast<int32_t>(fps);
 
             // Approximate bitrate on input w/h and fps
             constexpr float ESTIMATION_FPS = 30.0f;
@@ -168,16 +176,16 @@ void VideoEncoder::setDefaultProfilePreset(int width, int height, float fps, Vid
             const int pixelArea = width * height;
             if(pixelArea <= 1280 * 720 * AREA_MUL) {
                 // 720p
-                setBitrateKbps((4000 / ESTIMATION_FPS) * fps);
+                setBitrateKbps(static_cast<int>((4000 / ESTIMATION_FPS) * fps));
             } else if(pixelArea <= 1920 * 1080 * AREA_MUL) {
                 // 1080p
-                setBitrateKbps((8500 / ESTIMATION_FPS) * fps);
+                setBitrateKbps(static_cast<int>((8500 / ESTIMATION_FPS) * fps));
             } else if(pixelArea <= 2560 * 1440 * AREA_MUL) {
                 // 1440p
-                setBitrateKbps((14000 / ESTIMATION_FPS) * fps);
+                setBitrateKbps(static_cast<int>((14000 / ESTIMATION_FPS) * fps));
             } else {
                 // 4K
-                setBitrateKbps((20000 / ESTIMATION_FPS) * fps);
+                setBitrateKbps(static_cast<int>((20000 / ESTIMATION_FPS) * fps));
             }
         } break;
 
@@ -188,6 +196,10 @@ void VideoEncoder::setDefaultProfilePreset(int width, int height, float fps, Vid
 
 void VideoEncoder::setDefaultProfilePreset(std::tuple<int, int> size, float fps, VideoEncoderProperties::Profile profile) {
     setDefaultProfilePreset(std::get<0>(size), std::get<1>(size), fps, profile);
+}
+
+bool VideoEncoder::getLossless() const {
+    return properties.lossless;
 }
 
 }  // namespace node

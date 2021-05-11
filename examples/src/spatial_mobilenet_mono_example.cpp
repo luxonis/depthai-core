@@ -43,8 +43,6 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
     // StereoDepth
-    stereo->setOutputDepth(true);
-    stereo->setOutputRectified(true);
     stereo->setConfidenceThreshold(255);
 
     // Link plugins CAM -> STEREO -> XLINK
@@ -63,10 +61,11 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
 
     // Link plugins CAM -> NN -> XLINK
     imageManip->out.link(spatialDetectionNetwork->input);
-    if(syncNN)
+    if(syncNN) {
         spatialDetectionNetwork->passthrough.link(xlinkOut->input);
-    else
+    } else {
         imageManip->out.link(xlinkOut->input);
+    }
 
     spatialDetectionNetwork->out.link(nnOut->input);
     spatialDetectionNetwork->boundingBoxMapping.link(depthRoiMap->input);
@@ -93,17 +92,15 @@ int main(int argc, char** argv) {
     // Create pipeline
     dai::Pipeline p = createNNPipeline(nnPath);
 
-    // Connect to device with above created pipeline
+    // Connect and start the pipeline
     dai::Device d(p);
-    // Start the pipeline
-    d.startPipeline();
 
     auto preview = d.getOutputQueue("preview", 4, false);
     auto detections = d.getOutputQueue("detections", 4, false);
     auto depthRoiMap = d.getOutputQueue("boundingBoxDepthMapping", 4, false);
     auto depthQueue = d.getOutputQueue("depth", 4, false);
 
-    auto startTime = std::chrono::steady_clock::now();
+    auto startTime = steady_clock::now();
     int counter = 0;
     float fps = 0;
     auto color = cv::Scalar(255, 255, 255);
@@ -114,10 +111,10 @@ int main(int argc, char** argv) {
         auto depth = depthQueue->get<dai::ImgFrame>();
 
         counter++;
-        auto currentTime = std::chrono::steady_clock::now();
+        auto currentTime = steady_clock::now();
         auto elapsed = duration_cast<duration<float>>(currentTime - startTime);
         if(elapsed > seconds(1)) {
-            fps = (float)counter / elapsed.count();
+            fps = counter / elapsed.count();
             counter = 0;
             startTime = currentTime;
         }

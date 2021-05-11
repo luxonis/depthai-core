@@ -122,7 +122,7 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
         }
 
         // calculate offset
-        std::uint32_t offset = storage.size() + toAdd;
+        std::uint32_t offset = static_cast<uint32_t>(storage.size()) + toAdd;
 
         // Add alignment bytes
         storage.resize(storage.size() + toAdd);
@@ -131,7 +131,7 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
         storage.insert(storage.end(), a.data.begin(), a.data.end());
 
         // Add to map the currently added asset
-        mutableAssets.set(prefix + a.key, offset, a.data.size(), a.alignment);
+        mutableAssets.set(prefix + a.key, offset, static_cast<uint32_t>(a.data.size()), a.alignment);
     }
 }
 

@@ -57,7 +57,7 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
 
         case dai::RawImgFrame::Type::BITSTREAM:
         default:
-            size = cv::Size(getData().size(), 1);
+            size = cv::Size(static_cast<int>(getData().size()), 1);
             type = CV_8UC1;
             break;
     }
@@ -118,7 +118,7 @@ cv::Mat ImgFrame::getCvFrame() {
         } break;
 
         case Type::YUV420p:
-            cv::cvtColor(frame, output, cv::ColorConversionCodes::COLOR_YUV420p2BGR);
+            cv::cvtColor(frame, output, cv::ColorConversionCodes::COLOR_YUV2BGR_IYUV);
             break;
 
         case Type::NV12:

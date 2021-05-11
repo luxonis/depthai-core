@@ -19,10 +19,11 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     auto colorCam = p.create<dai::node::ColorCamera>();
     auto xlinkOut = p.create<dai::node::XLinkOut>();
     auto detectionNetwork = p.create<dai::node::MobileNetDetectionNetwork>();
-    auto nnOut = p.create<dai::node::XLinkOut>();
+    auto objectTracker = p.create<dai::node::ObjectTracker>();
+    auto trackerOut = p.create<dai::node::XLinkOut>();
 
     xlinkOut->setStreamName("preview");
-    nnOut->setStreamName("detections");
+    trackerOut->setStreamName("tracklets");
 
     colorCam->setPreviewSize(300, 300);
     colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
@@ -37,12 +38,19 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
     // Link plugins CAM -> NN -> XLINK
     colorCam->preview.link(detectionNetwork->input);
     if(syncNN) {
-        detectionNetwork->passthrough.link(xlinkOut->input);
+        objectTracker->passthroughTrackerFrame.link(xlinkOut->input);
     } else {
         colorCam->preview.link(xlinkOut->input);
     }
 
-    detectionNetwork->out.link(nnOut->input);
+    objectTracker->setDetectionLabelsToTrack({15});  // track only person
+    objectTracker->setTrackerType(dai::TrackerType::ZERO_TERM_COLOR_HISTOGRAM);
+    objectTracker->setTrackerIdAssigmentPolicy(dai::TrackerIdAssigmentPolicy::SMALLEST_ID);
+
+    detectionNetwork->passthrough.link(objectTracker->inputTrackerFrame);
+    detectionNetwork->passthrough.link(objectTracker->inputDetectionFrame);
+    detectionNetwork->out.link(objectTracker->inputDetections);
+    objectTracker->out.link(trackerOut->input);
 
     return p;
 }
@@ -67,14 +75,14 @@ int main(int argc, char** argv) {
     dai::Device d(p);
 
     auto preview = d.getOutputQueue("preview", 4, false);
-    auto detections = d.getOutputQueue("detections", 4, false);
+    auto tracklets = d.getOutputQueue("tracklets", 4, false);
 
     auto startTime = steady_clock::now();
     int counter = 0;
     float fps = 0;
     while(1) {
         auto imgFrame = preview->get<dai::ImgFrame>();
-        auto det = detections->get<dai::ImgDetections>();
+        auto track = tracklets->get<dai::Tracklets>();
 
         counter++;
         auto currentTime = steady_clock::now();
@@ -85,35 +93,39 @@ int main(int argc, char** argv) {
             startTime = currentTime;
         }
 
-        cv::Mat frame = imgFrame->getCvFrame();
+        auto color = cv::Scalar(255, 0, 0);
+        cv::Mat trackletFrame = imgFrame->getCvFrame();
+        auto trackletsData = track->tracklets;
+        for(auto& t : trackletsData) {
+            auto roi = t.roi.denormalize(trackletFrame.cols, trackletFrame.rows);
+            int x1 = roi.topLeft().x;
+            int y1 = roi.topLeft().y;
+            int x2 = roi.bottomRight().x;
+            int y2 = roi.bottomRight().y;
 
-        auto color = cv::Scalar(255, 255, 255);
-        auto dets = det->detections;
-        for(const auto& d : dets) {
-            int x1 = d.xmin * frame.cols;
-            int y1 = d.ymin * frame.rows;
-            int x2 = d.xmax * frame.cols;
-            int y2 = d.ymax * frame.rows;
-
-            int labelIndex = d.label;
+            int labelIndex = t.label;
             std::string labelStr = to_string(labelIndex);
             if(labelIndex < labelMap.size()) {
                 labelStr = labelMap[labelIndex];
             }
-            cv::putText(frame, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(trackletFrame, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
 
-            std::stringstream confStr;
-            confStr << std::fixed << std::setprecision(2) << d.confidence * 100;
-            cv::putText(frame, confStr.str(), cv::Point(x1 + 10, y1 + 40), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            std::stringstream idStr;
+            idStr << "ID: " << t.id;
+            cv::putText(trackletFrame, idStr.str(), cv::Point(x1 + 10, y1 + 40), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            std::stringstream statusStr;
+            statusStr << "Status: " << t.status;
+            cv::putText(trackletFrame, statusStr.str(), cv::Point(x1 + 10, y1 + 60), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
 
-            cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
+            cv::rectangle(trackletFrame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
         }
 
         std::stringstream fpsStr;
         fpsStr << std::fixed << std::setprecision(2) << fps;
-        cv::putText(frame, fpsStr.str(), cv::Point(2, imgFrame->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
+        cv::putText(trackletFrame, fpsStr.str(), cv::Point(2, imgFrame->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
 
-        cv::imshow("preview", frame);
+        cv::imshow("tracker", trackletFrame);
+
         int key = cv::waitKey(1);
         if(key == 'q') {
             return 0;

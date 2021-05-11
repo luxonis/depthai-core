@@ -4,11 +4,15 @@
 #include <unordered_map>
 #include <vector>
 
-#include "depthai-shared/datatype/RawImgFrame.hpp"
+// project
+#include "depthai/build/config.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
+// shared
+#include "depthai-shared/datatype/RawImgFrame.hpp"
+
 // optional
-#ifdef DEPTHAI_OPENCV_SUPPORT
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/opencv.hpp>
 #endif
 
@@ -117,9 +121,9 @@ class ImgFrame : public Buffer {
     void setType(Type type);
 
 // Optional - OpenCV support
-#ifdef DEPTHAI_OPENCV_SUPPORT
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**
-     * @note This API only available if OpenCV support enabled
+     * @note This API only available if OpenCV support is enabled
      *
      * Copies cv::Mat data to ImgFrame buffer
      *
@@ -128,7 +132,7 @@ class ImgFrame : public Buffer {
     void setFrame(cv::Mat frame);
 
     /**
-     * @note This API only available if OpenCV support enabled
+     * @note This API only available if OpenCV support is enabled
      *
      * Retrieves data as cv::Mat with specified width, height and type
      *
@@ -138,7 +142,7 @@ class ImgFrame : public Buffer {
     cv::Mat getFrame(bool copy = false);
 
     /**
-     * @note This API only available if OpenCV support enabled
+     * @note This API only available if OpenCV support is enabled
      *
      * Retrieves cv::Mat suitable for use in common opencv functions.
      * ImgFrame is converted to color BGR interleaved or grayscale depending on type.
@@ -148,6 +152,26 @@ class ImgFrame : public Buffer {
      * @returns cv::Mat for use in opencv functions
      */
     cv::Mat getCvFrame();
+
+#else
+
+    template <typename... T>
+    struct dependent_false {
+        static constexpr bool value = false;
+    };
+    template <typename... T>
+    void setFrame(T...) {
+        static_assert(dependent_false<T...>::value, "Library not configured with OpenCV support");
+    }
+    template <typename... T>
+    void getFrame(T...) {
+        static_assert(dependent_false<T...>::value, "Library not configured with OpenCV support");
+    }
+    template <typename... T>
+    void getCvFrame(T...) {
+        static_assert(dependent_false<T...>::value, "Library not configured with OpenCV support");
+    }
+
 #endif
 };
 
