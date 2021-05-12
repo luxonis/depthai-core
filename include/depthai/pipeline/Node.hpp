@@ -88,6 +88,19 @@ class Node {
         void unlink(const Input& in);
     };
 
+    /**
+     * Output map which keeps track of extra outputs assigned to Node
+     * Extends std::unordered_map<std::string, dai::Node::Output>
+     */
+    class OutputMap : public std::unordered_map<std::string, Output> {
+        Output defaultOutput;
+
+       public:
+        OutputMap(Output defaultOutput);
+        /// Create or modify an input
+        Output& operator[](const std::string& key);
+    };
+
     struct Input {
         enum class Type { SReceiver, MReceiver };
         Node& parent;
@@ -117,7 +130,7 @@ class Node {
 
         /**
          * Get input queue behavior
-         * @return True blocking, false overwriting
+         * @returns True blocking, false overwriting
          */
         bool getBlocking() const;
 
@@ -130,9 +143,22 @@ class Node {
 
         /**
          * Get input queue size.
-         * @return Maximum input queue size
+         * @returns Maximum input queue size
          */
         int getQueueSize() const;
+    };
+
+    /**
+     * Input map which keeps track of inputs assigned to MicroPython node
+     * Extends std::unordered_map<std::string, dai::Node::Input>
+     */
+    class InputMap : public std::unordered_map<std::string, Input> {
+        Input defaultInput;
+
+       public:
+        InputMap(Input defaultInput);
+        /// Create or modify an input
+        Input& operator[](const std::string& key);
     };
 
     // when Pipeline tries to serialize and construct on remote, it will check if all connected nodes are on same pipeline
@@ -156,8 +182,6 @@ class Node {
     virtual std::vector<Output> getOutputs() = 0;
     /// Retrieves all nodes inputs
     virtual std::vector<Input> getInputs() = 0;
-    /// Retrieves all nodes assets
-    virtual std::vector<std::shared_ptr<Asset>> getAssets();
 
     /// Connection between an Input and Output
     struct Connection {
@@ -171,8 +195,13 @@ class Node {
     };
 
     Node(const std::shared_ptr<PipelineImpl>& p, Id nodeId);
-
     virtual ~Node() = default;
+
+    /// Get node AssetManager as a const reference
+    const AssetManager& getAssetManager() const;
+
+    /// Get node AssetManager as a reference
+    AssetManager& getAssetManager();
 };
 
 }  // namespace dai

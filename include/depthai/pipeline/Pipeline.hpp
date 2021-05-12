@@ -35,7 +35,6 @@ class PipelineImpl {
     Node::Id getNextUniqueId();
     PipelineSchema getPipelineSchema() const;
     OpenVINO::Version getPipelineOpenVINOVersion() const;
-    AssetManager getAllAssets() const;
 
     // Access to nodes
     std::vector<std::shared_ptr<const Node>> getAllNodes() const;
@@ -194,11 +193,6 @@ class Pipeline {
      */
     void unlink(const Node::Output& out, const Node::Input& in) {
         impl()->unlink(out, in);
-    }
-
-    /// Get assets on the pipeline includes nodes assets
-    AssetManager getAllAssets() const {
-        return impl()->getAllAssets();
     }
 
     /// Get pipelines AssetManager as reference

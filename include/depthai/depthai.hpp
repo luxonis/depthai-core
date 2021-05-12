@@ -28,6 +28,7 @@
 #include "pipeline/node/VideoEncoder.hpp"
 #include "pipeline/node/XLinkIn.hpp"
 #include "pipeline/node/XLinkOut.hpp"
+#include "pipeline/node/Script.hpp"
 
 // Include common datatypes
 #include "pipeline/datatype/Buffer.hpp"

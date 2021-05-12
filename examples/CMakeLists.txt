@@ -180,6 +180,9 @@ target_compile_definitions(spatial_tiny_yolo_v3 PRIVATE BLOB_PATH="${tiny_yolo_v
 dai_add_example(spatial_tiny_yolo_v4 src/spatial_tiny_yolo_example.cpp)
 target_compile_definitions(spatial_tiny_yolo_v4 PRIVATE BLOB_PATH="${tiny_yolo_v4_blob}")
 
+# Script node controlling color camera
+dai_add_example(script_camera_control src/script_camera_control.cpp)
+
 # Object tracker example on mobilenet SSD output
 dai_add_example(object_tracker_example src/object_tracker_example.cpp)
 target_compile_definitions(object_tracker_example PRIVATE BLOB_PATH="${mobilenet_blob}")

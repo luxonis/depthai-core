@@ -1,6 +1,7 @@
 #include "utility/Initialization.hpp"
 
 // project
+#include "build/version.hpp"
 #include "utility/Resources.hpp"
 
 // libraries
@@ -28,7 +29,7 @@ namespace {
 
 }  // namespace
 
-bool initialize() {
+bool initialize(std::string additionalInfo) {
     // atomic bool for checking whether depthai was already initialized
     static std::atomic<bool> initialized{false};
 
@@ -37,9 +38,9 @@ bool initialize() {
     // Set global logging level from ENV variable 'DEPTHAI_LEVEL'
     // Taken from spdlog, to replace with DEPTHAI_LEVEL instead of SPDLOG_LEVEL
     // spdlog::cfg::load_env_levels();
-    auto env_val = spdlog::details::os::getenv("DEPTHAI_LEVEL");
-    if(!env_val.empty()) {
-        spdlog::cfg::helpers::load_levels(env_val);
+    auto envLevel = spdlog::details::os::getenv("DEPTHAI_LEVEL");
+    if(!envLevel.empty()) {
+        spdlog::cfg::helpers::load_levels(envLevel);
     } else {
         // Otherwise set default level to WARN
         spdlog::set_level(spdlog::level::warn);
@@ -49,6 +50,13 @@ bool initialize() {
     // if(!debugger_val.empty()){
     //    // TODO(themarpe) - instruct Device class that first available device is also a booted device
     // }
+
+    // Print core commit and build datetime
+    if(!additionalInfo.empty()) {
+        spdlog::debug("{}", additionalInfo);
+    }
+    spdlog::debug(
+        "Library information - version: {}, commit: {} from {}, build: {}", build::VERSION, build::COMMIT, build::COMMIT_DATETIME, build::BUILD_DATETIME);
 
     // Executed at library load time
 

@@ -593,7 +593,7 @@ void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToM
 
         // Starts pipeline if given
         if(pipeline) {
-            if(!startPipeline(*pipeline)){
+            if(!startPipeline(*pipeline)) {
                 throw std::runtime_error("Couldn't start the pipeline");
             }
         }
@@ -911,7 +911,7 @@ void Device::setSystemInformationLoggingRate(float rateHz) {
 float Device::getSystemInformationLoggingRate() {
     checkClosed();
 
-    return client->call("getSystemInformationLoggingrate").as<float>();
+    return client->call("getSystemInformationLoggingRate").as<float>();
 }
 
 bool Device::flashCalibration(CalibrationHandler calibrationDataHandler) {

@@ -82,7 +82,7 @@ int main() {
             stereo->rectifiedRight.link(xoutRectifR->input);
         }
         stereo->disparity.link(xoutDisp->input);
-        if (outputDepth) {
+        if(outputDepth) {
             stereo->depth.link(xoutDepth->input);
         }
 
@@ -126,13 +126,13 @@ int main() {
             if(outputRectified) {
                 auto rectifL = rectifLeftQueue->get<dai::ImgFrame>();
                 cv::Mat rectifiedLeftFrame = rectifL->getFrame();
-                //cv::flip(rectifiedLeftFrame, rectifiedLeftFrame, 1);
+                // cv::flip(rectifiedLeftFrame, rectifiedLeftFrame, 1);
                 cv::imshow("rectified_left", rectifiedLeftFrame);
 
                 auto rectifR = rectifRightQueue->get<dai::ImgFrame>();
                 cv::Mat rectifiedRightFrame = rectifR->getFrame();
 
-                //cv::flip(rectifiedRightFrame, rectifiedRightFrame, 1);
+                // cv::flip(rectifiedRightFrame, rectifiedRightFrame, 1);
                 cv::imshow("rectified_right", rectifiedRightFrame);
             }
         }
