@@ -50,8 +50,6 @@ int main(int argc, char** argv) {
 
     // Connect to device with above created pipeline
     dai::Device d(p);
-    // Start the pipeline
-    d.startPipeline();
 
     cv::Mat frame;
     auto in = d.getInputQueue("nn_in");

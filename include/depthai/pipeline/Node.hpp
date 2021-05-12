@@ -130,7 +130,7 @@ class Node {
 
         /**
          * Get input queue behavior
-         * @return True blocking, false overwriting
+         * @returns True blocking, false overwriting
          */
         bool getBlocking() const;
 
@@ -143,7 +143,7 @@ class Node {
 
         /**
          * Get input queue size.
-         * @return Maximum input queue size
+         * @returns Maximum input queue size
          */
         int getQueueSize() const;
     };

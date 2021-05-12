@@ -21,65 +21,114 @@ MacOS: `brew install libusb`
 
 Linux: `sudo apt install libusb-1.0-0-dev`
 
-## Using as library
+## Integration
 
-To use this library in your own project you can use CMake `add_subdirectory` pointing to the root of this repository
-Optionally append `EXCLUDE_FROM_ALL` to hide depthai-core related targets, etc...
+### CMake
+
+Targets available to link to are:
+ - depthai::core - Core library, without using opencv internally
+ - depthai::opencv - Core + support for opencv related helper functions (requires OpenCV4)
+
+#### Using find_package
+
+Build static or dynamic version of library and install (See: [Building](##building) and [Installing](##installing))
+
+Add `find_package` and `target_link_libraries` to your project
 ```
-add_subdirectory(depthai-core)
+find_package(depthai CONFIG REQUIRED)
+...
+target_link_libraries([my-app] PRIVATE depthai::opencv)
+```
+
+And point CMake to either build directory or install directory:
+```
+-D depthai_DIR=depthai-core/build
 ```
 or
 ```
-add_subdirectory(depthai-core EXCLUDE_FROM_ALL)
+-D depthai_DIR=depthai-core/build/install/lib/cmake/depthai
 ```
-And at the end link to your target (PUBLIC or PRIVATE depending on your needs)
+
+If library was installed to default search path like `/usr/local` on Linux, specifying `depthai_DIR` isn't necessary as CMake will find it automatically.
+
+#### Using add_subdirectory
+
+This method is more intrusive but simpler as it doesn't require building the library separately.
+
+Add `add_subdirectory` which points to `depthai-core` folder **before** project command. Then link to any required targets.
 ```
-target_link_libraries(my-app PUBLIC depthai-core)
+add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/depthai-core EXCLUDE_FROM_ALL)
+...
+project(my-app)
+...
+target_link_libraries([my-app] PRIVATE depthai::opencv)
 ```
+
+### Non-CMake integration (Visual Studio, Xcode, CodeBlocks, ...)
+
+To integrate into a different build system than CMake, prefered way is compiling as dynamic library and pointing to correct include directories.
+1. First build as dynamic library: [Building Dynamic library](###dynamic-library)
+2. Then install: [Installing](##installing)
+3. Set needed library directories:
+    - `build/install/lib` (for linking to either depthai-core or depthai-opencv)
+    - `build/install/bin` (for .dll's)
+4. And include directories
+    - `build/install/include` (library headers)
+    - `build/install/include/depthai-shared/3rdparty` (shared 3rdparty headers)
+    - `build/install/lib/cmake/depthai/dependencies/include` (dependencies headers)
+
+> ℹ️ Threading library might need to be linked to explicitly.
 
 ## Building
 
-Make sure submodules are updated 
+Make sure submodules are updated
 ```
 git submodule update --init --recursive
 ```
 
-**Static library** 
+> ℹ️ To speed up build times, use `cmake --build build --parallel [num CPU cores]` (CMake >= 3.12).
+For older versions use: Linux/macOS: `cmake --build build -- -j[num CPU cores]`, MSVC: `cmake --build build -- /MP[num CPU cores]`
+
+### Static library
 ```
-mkdir build && cd build
-cmake ..
-cmake --build . --parallel 8
+cmake -H. -Bbuild
+cmake --build build
 ```
 
-**Dynamic library**
+### Dynamic library
 ```
-mkdir build && cd build
-cmake .. -D BUILD_SHARED_LIBS=ON
-cmake --build . --parallel 8
+cmake -H. -Bbuild -D BUILD_SHARED_LIBS=ON
+cmake --build build
 ```
 ## Installing
 
 To install specify optional prefix and build target install
 ```
-cmake .. -D CMAKE_INSTALL_PREFIX=[path/to/install/dir]
-cmake --build . --parallel 8
-cmake --build . --target install --parallel 8
+cmake -H. -Bbuild -D CMAKE_INSTALL_PREFIX=[path/to/install/dir]
+cmake --build build
+cmake --build build --target install
 ```
+
+If `CMAKE_INSTALL_PREFIX` isn't specified, the library is installed under build folder `install`.
 
 ## Running tests
 
 To run the tests build the library with the following options
 ```
-mkdir build_tests && cd build_tests
-cmake .. -D DEPTHAI_TEST_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_BUILD_EXAMPLES=ON
-cmake --build . --parallel 8
+cmake -H. -Bbuild -D DEPTHAI_TEST_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_BUILD_EXAMPLES=ON
+cmake --build build
+```
+
+Then navigate to `build` folder and run `ctest`
+```
+cd build
 ctest
 ```
 
 ## Style check
 
-The library uses clang format to enforce a certain style. 
-If a style check is failing, run the `clangformat` target, check the output and push changes
+The library uses clang format to enforce a certain coding style.
+If a style check is failing, run the `clangformat` target, check the output and push changes.
 
 To use this target clang format must be installed, preferably clang-format-10
 ```
@@ -88,7 +137,7 @@ sudo apt install clang-format-10
 
 And to apply formatting
 ```
-cmake --build [build/dir] --target clangformat
+cmake --build build --target clangformat
 ```
 
 ## Documentation generation
@@ -119,7 +168,7 @@ This retains the libraries source code, so that debugger can step through it (th
 ## Troubleshooting
 
 ### Hunter
-Hunter is a CMake-only dependency manager for C/C++ projects. 
+Hunter is a CMake-only dependency manager for C/C++ projects.
 
 If you are stuck with error message which mentions external libraries (subdirectory of `.hunter`) like the following:
 ```

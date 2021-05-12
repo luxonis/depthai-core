@@ -21,6 +21,11 @@ class PipelineImpl {
     friend class Pipeline;
     friend class Node;
 
+   public:
+    PipelineImpl() = default;
+    PipelineImpl(const PipelineImpl&) = default;
+
+   private:
     // static functions
     static bool isSamePipeline(const Node::Output& out, const Node::Input& in);
     static bool canConnect(const Node::Output& out, const Node::Input& in);
@@ -93,6 +98,9 @@ class Pipeline {
      */
     Pipeline();
     explicit Pipeline(const std::shared_ptr<PipelineImpl>& pimpl);
+
+    /// Clone the pipeline (Creates a copy)
+    Pipeline clone() const;
 
     /// Default Pipeline openvino version
     constexpr static auto DEFAULT_OPENVINO_VERSION = PipelineImpl::DEFAULT_OPENVINO_VERSION;
@@ -199,6 +207,11 @@ class Pipeline {
     /// Set a specific OpenVINO version to use with this pipeline
     void setOpenVINOVersion(OpenVINO::Version version) {
         impl()->forceRequiredOpenVINOVersion = version;
+    }
+
+    /// Get required OpenVINO version to run this pipeline
+    OpenVINO::Version getOpenVINOVersion() const {
+        return impl()->getPipelineOpenVINOVersion();
     }
 };
 

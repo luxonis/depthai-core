@@ -39,8 +39,8 @@ DeviceInfo::DeviceInfo(const char* mxId) : DeviceInfo(std::string(mxId)) {}
 
 std::string DeviceInfo::getMxId() const {
     std::string mxId = "";
-    int len = std::strlen(desc.name);
-    for(int i = 0; i < len; i++) {
+    auto len = std::strlen(desc.name);
+    for(std::size_t i = 0; i < len; i++) {
         if(desc.name[i] == '-') break;
         mxId += desc.name[i];
     }
@@ -89,7 +89,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
         suitableDevice.protocol = X_LINK_ANY_PROTOCOL;
         suitableDevice.platform = X_LINK_ANY_PLATFORM;
 
-        auto status = XLinkFindAllSuitableDevices(state, suitableDevice, deviceDescAll.data(), deviceDescAll.size(), &numdev);
+        auto status = XLinkFindAllSuitableDevices(state, suitableDevice, deviceDescAll.data(), static_cast<unsigned int>(deviceDescAll.size()), &numdev);
         if(status != X_LINK_SUCCESS) throw std::runtime_error("Couldn't retrieve all connected devices");
 
         for(unsigned i = 0; i < numdev; i++) {
@@ -202,7 +202,7 @@ bool XLinkConnection::bootAvailableDevice(const deviceDesc_t& deviceToBoot, cons
 }
 
 bool XLinkConnection::bootAvailableDevice(const deviceDesc_t& deviceToBoot, std::vector<std::uint8_t>& mvcmd) {
-    auto status = XLinkBootMemory(&deviceToBoot, mvcmd.data(), mvcmd.size());
+    auto status = XLinkBootMemory(&deviceToBoot, mvcmd.data(), static_cast<unsigned long>(mvcmd.size()));
     return status == X_LINK_SUCCESS;
 }
 
