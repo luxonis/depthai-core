@@ -103,10 +103,10 @@ void StereoDepth::setOutputDepth(bool enable) {
     spdlog::warn("{} is deprecated. The output is auto-enabled if used", __func__);
 }
 
-float StereoDepth::getMaxDisparity(void) {
+float StereoDepth::getMaxDisparity(void) const {
     float maxDisp = 95.0;
-    if (properties.enableExtendedDisparity) maxDisp *= 2;
-    if (properties.enableLeftRightCheck) maxDisp *= 32;
+    if(properties.enableExtendedDisparity) maxDisp *= 2;
+    if(properties.enableLeftRightCheck) maxDisp *= 32;
     return maxDisp;
 }
 

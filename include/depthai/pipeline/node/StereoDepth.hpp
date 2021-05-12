@@ -177,9 +177,9 @@ class StereoDepth : public Node {
 
     /**
      * Useful for normalization of the disparity map.
-     * @returns Number of disparity levels
+     * @returns Maximum disparity value that the node can return
      */
-    float getMaxDisparity();
+    float getMaxDisparity() const;
 };
 
 }  // namespace node
