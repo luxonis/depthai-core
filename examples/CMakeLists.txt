@@ -123,7 +123,7 @@ dai_add_example(h264_encoding src/h264_encoding_example.cpp ON)
 dai_add_example(stereo src/stereo_example.cpp ON)
 
 # StereoDepth rgb example
-dai_add_example(stereo_rgb src/stereo_rgb_example.cpp)
+dai_add_example(stereo_rgb src/stereo_rgb_example.cpp ON)
 
 
 # Image Manip node examples
@@ -180,7 +180,7 @@ dai_add_example(spatial_tiny_yolo_v4 src/spatial_tiny_yolo_example.cpp ON)
 target_compile_definitions(spatial_tiny_yolo_v4 PRIVATE BLOB_PATH="${tiny_yolo_v4_blob}")
 
 # Script node controlling color camera
-dai_add_example(script_camera_control src/script_camera_control.cpp)
+dai_add_example(script_camera_control src/script_camera_control.cpp ON)
 
 # Object tracker example on mobilenet SSD output
 dai_add_example(object_tracker_example src/object_tracker_example.cpp ON)
