@@ -25,6 +25,7 @@ dai::Pipeline createCameraPipeline() {
     return p;
 }
 
+// NOTE: Do not use the values below. The values used below are dummy data.
 int main() {
     dai::CalibrationHandler calibData;
 
@@ -73,10 +74,10 @@ int main() {
     // calibData.eepromToJsonFile(filename);
 
     dai::Pipeline p = createCameraPipeline();
-    dai::Device d(p);
+    dai::Device d;
     std::cout << "status ->" << d.flashCalibration(calibData) << std::endl;
 
-    d.startPipeline();
+    d.startPipeline(p);
     auto preview = d.getOutputQueue("preview");
     cv::Mat frame;
 

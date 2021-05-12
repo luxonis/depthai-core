@@ -27,7 +27,6 @@ dai::Pipeline createCameraPipeline() {
 
     monoLeft->out.link(stereo->left);
     monoRight->out.link(stereo->right);
-    stereo->setOutputDepth(true);
     stereo->depth.link(xoutDepth->input);
 
     return p;
@@ -36,7 +35,7 @@ dai::Pipeline createCameraPipeline() {
 int main() {
     dai::CalibrationHandler calibData;
 
-    calibData.setBoardInfo(true, "bw1098zzz", "Rev");
+    calibData.setBoardInfo(true, "bw1098", "Rev-dummy");
     std::vector<std::vector<float>> inMatrix = {{1500.458984, 0.000000, 950.694458}, {0.000000, 1477.587158, 530.697632}, {0.000000, 0.000000, 1.000000}};
     std::vector<float> inOneD = {
         -1.872860, 16.683033, 0.001053, -0.002063, 61.878521, -2.158907, 18.424637, 57.682858, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000};
@@ -83,10 +82,10 @@ int main() {
     dai::Pipeline p = createCameraPipeline();
     p.setCalibrationData(calibData);
 
-    dai::Device d(p);
+    dai::Device d;
     // std::cout << "status ->" << d.flashCalibration(calibData) << std::endl;
 
-    d.startPipeline();
+    d.startPipeline(p);
     auto preview = d.getOutputQueue("depth");
     cv::Mat frame;
 

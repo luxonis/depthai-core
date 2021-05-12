@@ -237,9 +237,9 @@ class Device {
     /**
      * Get the Device Info object o the device which is currently running
      *
-     * @return DeviceInfo - DeviceInfo of the current device in execution
+     * @return DeviceInfo of the current device in execution
      */
-    DeviceInfo getCurrentDeviceInfo();
+    DeviceInfo getDeviceInfo();
 
     /**
      * Sets logging level which decides printing level to standard output.
@@ -463,6 +463,8 @@ class Device {
      * Stores the Calibration and Device information to the Device EEPROM
      *
      * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
+     *
+     * @return true on successful flash, false on failure
      */
     bool flashCalibration(CalibrationHandler calibrationDataHandler);
 
@@ -471,7 +473,7 @@ class Device {
      *
      * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
      */
-    CalibrationHandler getCalibration();
+    CalibrationHandler readCalibration();
 
     /**
      * Explicitly closes connection to device.
