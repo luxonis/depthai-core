@@ -36,12 +36,12 @@ std::shared_ptr<Node> StereoDepth::clone() {
 
 void StereoDepth::loadCalibrationData(const std::vector<std::uint8_t>& data) {
     (void)data;
-    spdlog::warn("{} is deprecated. This function call is replaced by setCalibrationData under pipeline. ", __func__);
+    spdlog::warn("{} is deprecated. This function call is replaced by Pipeline::setCalibrationData under pipeline. ", __func__);
 }
 
 void StereoDepth::loadCalibrationFile(const std::string& path) {
     (void)path;
-    spdlog::warn("{} is deprecated. This function call is replaced by setCalibrationData under pipeline. ", __func__);
+    spdlog::warn("{} is deprecated. This function call is replaced by Pipeline::setCalibrationData under pipeline. ", __func__);
 }
 
 void StereoDepth::setEmptyCalibration(void) {
