@@ -61,10 +61,11 @@ dai::Pipeline createNNPipeline(std::string nnPath) {
 
     // Link plugins CAM -> NN -> XLINK
     imageManip->out.link(spatialDetectionNetwork->input);
-    if(syncNN)
+    if(syncNN) {
         spatialDetectionNetwork->passthrough.link(xlinkOut->input);
-    else
+    } else {
         imageManip->out.link(xlinkOut->input);
+    }
 
     spatialDetectionNetwork->out.link(nnOut->input);
     spatialDetectionNetwork->boundingBoxMapping.link(depthRoiMap->input);
@@ -91,10 +92,8 @@ int main(int argc, char** argv) {
     // Create pipeline
     dai::Pipeline p = createNNPipeline(nnPath);
 
-    // Connect to device with above created pipeline
+    // Connect and start the pipeline
     dai::Device d(p);
-    // Start the pipeline
-    d.startPipeline();
 
     auto preview = d.getOutputQueue("preview", 4, false);
     auto detections = d.getOutputQueue("detections", 4, false);

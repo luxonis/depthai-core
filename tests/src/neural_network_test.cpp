@@ -42,7 +42,7 @@ TEST_CASE("Neural network node data checks") {
 
     auto pipeline = createNeuralNetworkPipeline();
 
-    dai::Device device(pipeline);
+    dai::Device device(pipeline.getOpenVINOVersion());
 
     std::atomic<bool> receivedLogMessage{false};
 
@@ -55,7 +55,7 @@ TEST_CASE("Neural network node data checks") {
     });
 
     // Start pipeline and feed correct sized data in various forms (Planar BGR 300*300*3 for mobilenet)
-    device.startPipeline();
+    device.startPipeline(pipeline);
 
     // Iterate 10 times
     for(int i = 0; i < 10; i++) {
