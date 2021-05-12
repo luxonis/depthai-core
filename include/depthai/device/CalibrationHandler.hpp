@@ -296,13 +296,13 @@ class CalibrationHandler {
      */
     void setLensPosition(CameraBoardSocket cameraId, uint8_t lensPosition);
 
-    // /**
-    //  * Set the Camera Type object
-    //  *
-    //  * @param cameraId - CameraId of the camera for which cameraModel Type is being updated.
-    //  * @param cameraModel - Type of the model the camera represents
-    //  */
-    // void setCameraType(CameraBoardSocket cameraId, CameraModel cameraModel);
+    /**
+     * Set the Camera Type object
+     *
+     * @param cameraId - CameraId of the camera for which cameraModel Type is being updated.
+     * @param cameraModel - Type of the model the camera represents
+     */
+    void setCameraType(CameraBoardSocket cameraId, CameraModel cameraModel);
 
     /**
      * Set the Camera Extrinsics object

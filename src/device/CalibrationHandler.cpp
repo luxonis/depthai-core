@@ -523,6 +523,17 @@ void CalibrationHandler::setLensPosition(CameraBoardSocket cameraId, uint8_t len
     return;
 }
 
+void CalibrationHandler::setCameraType(CameraBoardSocket cameraId, CameraModel cameraModel) {
+    if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end()) {
+        dai::CameraInfo camera_info;
+        camera_info.cameraType = cameraModel;
+        eepromData.cameraData.emplace(cameraId, camera_info);
+    } else {
+        eepromData.cameraData[cameraId].cameraType = cameraModel;
+    }
+    return;
+}
+
 void CalibrationHandler::setCameraExtrinsics(CameraBoardSocket srcCameraId,
                                              CameraBoardSocket destCameraId,
                                              std::vector<std::vector<float>> rotationMatrix,

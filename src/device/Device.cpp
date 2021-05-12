@@ -917,7 +917,7 @@ float Device::getSystemInformationLoggingRate() {
 bool Device::flashCalibration(CalibrationHandler calibrationDataHandler) {
     // std::unique_lock<std::mutex> lock(this->rpcMutex);
     if(!calibrationDataHandler.validateCameraArray()) {
-        throw std::runtime_error("Failed to validate the extrinscis connection. Enable debug mode for more info.");
+        throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
     }
     return client->call("storeToEeprom", calibrationDataHandler.getEepromData()).as<bool>();
 }

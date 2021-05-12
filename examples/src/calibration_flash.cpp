@@ -74,10 +74,10 @@ int main() {
     // calibData.eepromToJsonFile(filename);
 
     dai::Pipeline p = createCameraPipeline();
-    dai::Device d(p);
+    dai::Device d;
     std::cout << "status ->" << d.flashCalibration(calibData) << std::endl;
 
-    d.startPipeline();
+    d.startPipeline(p);
     auto preview = d.getOutputQueue("preview");
     cv::Mat frame;
 

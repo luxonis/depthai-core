@@ -36,7 +36,7 @@ int main(int argc, char** argv) {
     }
 
     dai::Pipeline p = createCameraPipeline();
-    dai::Device d(p);
+    dai::Device d;
 
     dai::CalibrationHandler calibData = d.readCalibration();
     calibData.eepromToJsonFile(filename);
@@ -128,7 +128,7 @@ int main(int argc, char** argv) {
         std::cout << std::endl;
     }
 
-    d.startPipeline();
+    d.startPipeline(p);
     auto preview = d.getOutputQueue("preview");
     cv::Mat frame;
 
