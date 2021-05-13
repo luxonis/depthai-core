@@ -19,7 +19,7 @@ class CalibrationHandler {
      * Construct a new Calibration Handler object using the
      * eeprom json file created from calibration procedure.
      *
-     * @param eepromDataPath - takes the full path to the json file containing the calibration and device info.
+     * @param eepromDataPath takes the full path to the json file containing the calibration and device info.
      */
     explicit CalibrationHandler(std::string eepromDataPath);
 
@@ -27,15 +27,15 @@ class CalibrationHandler {
      * Construct a new Calibration Handler object using the board
      * config json file and .calib binary files created using gen1 calibration.
      *
-     * @param calibrationDataPath - Full Path to the .calib binary file from the gen1 calibration. (Supports only Version 5)
-     * @param boardConfigPath - Full Path to the board config json file containing device information.
+     * @param calibrationDataPath Full Path to the .calib binary file from the gen1 calibration. (Supports only Version 5)
+     * @param boardConfigPath Full Path to the board config json file containing device information.
      */
     CalibrationHandler(std::string calibrationDataPath, std::string boardConfigPath);
 
     /**
      * Construct a new Calibration Handler object from EepromData object.
      *
-     * @param eepromData - EepromData data structure containing the calibration data.
+     * @param eepromData EepromData data structure containing the calibration data.
      */
     explicit CalibrationHandler(EepromData eepromData);
 
@@ -49,12 +49,12 @@ class CalibrationHandler {
     /**
      * Get the Camera Intrinsics object
      *
-     * @param cameraId - Uses the cameraId to identify which camera intrinsics to return
-     * @param resizewidth - resized width of the image for which intrinsics is requested.  resizewidth = -1 represents width is same as default intrinsics
-     * @param resizeHeight - resized height of the image for which intrinsics is requested.  resizeHeight = -1 represents height is same as default intrinsics
-     * @param topLeftPixelId - (x, y) point represents the top left corner coordinates of the cropped image which is used to modify the intrinsics for the
+     * @param cameraId Uses the cameraId to identify which camera intrinsics to return
+     * @param resizewidth resized width of the image for which intrinsics is requested.  resizewidth = -1 represents width is same as default intrinsics
+     * @param resizeHeight resized height of the image for which intrinsics is requested.  resizeHeight = -1 represents height is same as default intrinsics
+     * @param topLeftPixelId (x, y) point represents the top left corner coordinates of the cropped image which is used to modify the intrinsics for the
      * respective cropped image
-     * @param bottomRightPixelId - (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
+     * @param bottomRightPixelId (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
      * the respective cropped image
      * @return Repesents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      */
@@ -64,11 +64,11 @@ class CalibrationHandler {
     /**
      * Get the Camera Intrinsics object
      *
-     * @param cameraId - Uses the cameraId to identify which camera intrinsics to return
-     * @param destShape - resized width and height of the image for which intrinsics is requested.
-     * @param topLeftPixelId - (x, y) point represents the top left corner coordinates of the cropped image which is used to modify the intrinsics for the
+     * @param cameraId Uses the cameraId to identify which camera intrinsics to return
+     * @param destShape resized width and height of the image for which intrinsics is requested.
+     * @param topLeftPixelId (x, y) point represents the top left corner coordinates of the cropped image which is used to modify the intrinsics for the
      * respective cropped image
-     * @param bottomRightPixelId - (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
+     * @param bottomRightPixelId (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
      * the respective cropped image
      * @return Repesents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      */
@@ -80,11 +80,11 @@ class CalibrationHandler {
     /**
      * Get the Camera Intrinsics object
      *
-     * @param cameraId - Uses the cameraId to identify which camera intrinsics to return
-     * @param destShape - resized width and height of the image for which intrinsics is requested.
-     * @param topLeftPixelId - (x, y) point represents the top left corner coordinates of the cropped image which is used to modify the intrinsics for the
+     * @param cameraId Uses the cameraId to identify which camera intrinsics to return
+     * @param destShape resized width and height of the image for which intrinsics is requested.
+     * @param topLeftPixelId (x, y) point represents the top left corner coordinates of the cropped image which is used to modify the intrinsics for the
      * respective cropped image
-     * @param bottomRightPixelId - (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
+     * @param bottomRightPixelId (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
      * the respective cropped image
      * @return Repesents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      */
@@ -96,7 +96,7 @@ class CalibrationHandler {
     /**
      * Get the Default Intrinsics object
      *
-     * @param cameraId - Uses the cameraId to identify which camera intrinsics to return
+     * @param cameraId Uses the cameraId to identify which camera intrinsics to return
      * @return Repesents the 3x3 intrinsics matrix of the respective camera along with width and height at which it was calibrated.
      */
     std::tuple<std::vector<std::vector<float>>, int, int> getDefaultIntrinsics(CameraBoardSocket cameraId);
@@ -104,7 +104,7 @@ class CalibrationHandler {
     /**
      * Get the Distortion Coefficients object
      *
-     * @param cameraId - Uses the cameraId to identify which distortion Coefficients to return.
+     * @param cameraId Uses the cameraId to identify which distortion Coefficients to return.
      * @return repesents the distortion coefficients of the requested camera.
      */
     std::vector<float> getDistortionCoefficients(CameraBoardSocket cameraId);
@@ -129,9 +129,9 @@ class CalibrationHandler {
      * Get the Camera Extrinsics object between two cameras from the data loaded if there is a linked connection
      *  between any two cameras then there relative rotation and translation is returned by this function.
      *
-     * @param srcCamera - Camera Id of the camera which will be considerd as origin.
-     * @param dstCamera -  Camera Id of the destination camera to which we are fetching the rotation and translation from the SrcCamera
-     * @param useSpecTranslation - Enabling this bool uses the translation information from the board design data
+     * @param srcCamera Camera Id of the camera which will be considerd as origin.
+     * @param dstCamera  Camera Id of the destination camera to which we are fetching the rotation and translation from the SrcCamera
+     * @param useSpecTranslation Enabling this bool uses the translation information from the board design data
      * @return a transformationMatrix which is 4x4 in homogenious coordinate system
      *
      * Matrix representation of transformation matrix
@@ -148,8 +148,8 @@ class CalibrationHandler {
      * From the data loaded if there is a linked connection between IMU and the given camera then there relative rotation and translation from the camera to IMU
      * is returned.
      *
-     * @param cameraId - Camera Id of the camera which will be considerd as origin. from which Transformation matrix to the IMU will be found
-     * @param useSpecTranslation - Enabling this bool uses the translation information from the board design data
+     * @param cameraId Camera Id of the camera which will be considerd as origin. from which Transformation matrix to the IMU will be found
+     * @param useSpecTranslation Enabling this bool uses the translation information from the board design data
      * @return Returns a transformationMatrix which is 4x4 in homogenious coordinate system
      * Matrix representation of transformation matrix
      * transformation matrix = \begin{bmatrix}
@@ -165,8 +165,8 @@ class CalibrationHandler {
      * between IMU and the given camera then there relative rotation and translation from the IMU to Camera
      * is returned.
      *
-     * @param cameraId - Camera Id of the camera which will be considerd as destination. To which Transformation matrix from the IMU will be found.
-     * @param useSpecTranslation - Enabling this bool uses the translation information from the board design data
+     * @param cameraId Camera Id of the camera which will be considerd as destination. To which Transformation matrix from the IMU will be found.
+     * @param useSpecTranslation Enabling this bool uses the translation information from the board design data
      * @return Returns a transformationMatrix which is 4x4 in homogenious coordinate system
      * Matrix representation of transformation matrix
      * transformation matrix = \begin{bmatrix}
@@ -211,7 +211,7 @@ class CalibrationHandler {
     /**
      * Write raw calibration/board data to json file.
      *
-     * @param destPath -  Full path to the json file in which raw calibration data will be stored
+     * @param destPath  Full path to the json file in which raw calibration data will be stored
      * @return True on success, false otherwise
      */
     bool eepromToJsonFile(std::string destPath) const;
@@ -219,19 +219,19 @@ class CalibrationHandler {
     /**
      * Set the Board Info object
      *
-     * @param version - Sets the version of the Calibration data(Current version is 6)
-     * @param swapLeftRightCam - This bool swaps the connection of left and right camera
-     * @param boardName - Sets your board name.
-     * @param boardRev - set your board revision id.
+     * @param version Sets the version of the Calibration data(Current version is 6)
+     * @param swapLeftRightCam This bool swaps the connection of left and right camera
+     * @param boardName Sets your board name.
+     * @param boardRev set your board revision id.
      */
     void setBoardInfo(bool swapLeftRightCam, std::string boardName, std::string boardRev);
 
     /**
      * Set the Camera Intrinsics object
      *
-     * @param cameraId - CameraId of the camera for which Camera intrinsics are being loaded
-     * @param intrinsics - 3x3 intrinsics matrix in the form of std::vector<std::vector<float>>
-     * @param frameSize - repesents the width and height of the image at which intrinsics are calculated.
+     * @param cameraId CameraId of the camera for which Camera intrinsics are being loaded
+     * @param intrinsics 3x3 intrinsics matrix in the form of std::vector<std::vector<float>>
+     * @param frameSize repesents the width and height of the image at which intrinsics are calculated.
      *
      * intrinsic matrix = \begin{bmatrix}
      *                              f_x &  0  & c_x \\
@@ -244,10 +244,10 @@ class CalibrationHandler {
     /**
      * Set the Camera Intrinsics object
      *
-     * @param cameraId - CameraId of the camera for which Camera intrinsics are being loaded
-     * @param intrinsics - 3x3 intrinsics matrix in the form of std::vector<std::vector<float>>
-     * @param width - repesents the width of the image at which intrinsics are calculated.
-     * @param height - repesents the height of the image at which intrinsics are calculated.
+     * @param cameraId CameraId of the camera for which Camera intrinsics are being loaded
+     * @param intrinsics 3x3 intrinsics matrix in the form of std::vector<std::vector<float>>
+     * @param width repesents the width of the image at which intrinsics are calculated.
+     * @param height repesents the height of the image at which intrinsics are calculated.
      *
      * intrinsic matrix = \begin{bmatrix}
      *                              f_x &  0  & c_x \\
@@ -260,9 +260,9 @@ class CalibrationHandler {
     /**
      * Set the Camera Intrinsics object
      *
-     * @param cameraId - CameraId of the camera for which Camera intrinsics are being loaded
-     * @param intrinsics - 3x3 intrinsics matrix in the form of std::vector<std::vector<float>>
-     * @param frameSize - repesents the width and height of the image at which intrinsics are calculated.
+     * @param cameraId CameraId of the camera for which Camera intrinsics are being loaded
+     * @param intrinsics 3x3 intrinsics matrix in the form of std::vector<std::vector<float>>
+     * @param frameSize repesents the width and height of the image at which intrinsics are calculated.
      *
      * intrinsic matrix = \begin{bmatrix}
      *                              f_x &  0  & c_x \\
@@ -275,43 +275,43 @@ class CalibrationHandler {
     /**
      * Sets the distortion Coefficients obtained from camera calibration
      *
-     * @param cameraId - Camera Id of the camera for which distoriton coefficients are computed
-     * @param distortionCoefficients - Distortion Coefficients of the respective Camera.
+     * @param cameraId Camera Id of the camera for which distoriton coefficients are computed
+     * @param distortionCoefficients Distortion Coefficients of the respective Camera.
      */
     void setDistortionCoefficients(CameraBoardSocket cameraId, std::vector<float> distortionCoefficients);
 
     /**
      * Set the Fov of the Camera
      *
-     * @param cameraId - Camera Id of the camera
-     * @param hfov - Horizontal fov of the camera from Camera Datasheet
+     * @param cameraId Camera Id of the camera
+     * @param hfov Horizontal fov of the camera from Camera Datasheet
      */
     void setFov(CameraBoardSocket cameraId, double hfov);
 
     /**
      * Sets the distortion Coefficients obtained from camera calibration
      *
-     * @param cameraId - Camera Id of the camera
-     * @param lensPosition - lens posiotion value of the camera at the time of calibration
+     * @param cameraId Camera Id of the camera
+     * @param lensPosition lens posiotion value of the camera at the time of calibration
      */
     void setLensPosition(CameraBoardSocket cameraId, uint8_t lensPosition);
 
     /**
      * Set the Camera Type object
      *
-     * @param cameraId - CameraId of the camera for which cameraModel Type is being updated.
-     * @param cameraModel - Type of the model the camera represents
+     * @param cameraId CameraId of the camera for which cameraModel Type is being updated.
+     * @param cameraModel Type of the model the camera represents
      */
     void setCameraType(CameraBoardSocket cameraId, CameraModel cameraModel);
 
     /**
      * Set the Camera Extrinsics object
      *
-     * @param srcCameraId - Camera Id of the camera which will be considerd as relative origin.
-     * @param destCameraId - Camera Id of the camera which will be considerd as destination from srcCameraId.
-     * @param rotationMatrix - Rotation between srcCameraId and destCameraId origins.
-     * @param translation - Translation between srcCameraId and destCameraId origins.
-     * @param specTranslation - Translation between srcCameraId and destCameraId origins from the design.
+     * @param srcCameraId Camera Id of the camera which will be considerd as relative origin.
+     * @param destCameraId Camera Id of the camera which will be considerd as destination from srcCameraId.
+     * @param rotationMatrix Rotation between srcCameraId and destCameraId origins.
+     * @param translation Translation between srcCameraId and destCameraId origins.
+     * @param specTranslation Translation between srcCameraId and destCameraId origins from the design.
      */
     void setCameraExtrinsics(CameraBoardSocket srcCameraId,
                              CameraBoardSocket destCameraId,
@@ -322,10 +322,10 @@ class CalibrationHandler {
     /**
      * Set the Imu to Camera Extrinsics object
      *
-     * @param destCameraId - Camera Id of the camera which will be considerd as destination from IMU.
-     * @param rotationMatrix - Rotation between srcCameraId and destCameraId origins.
-     * @param translation - Translation between IMU and destCameraId origins.
-     * @param specTranslation - Translation between IMU and destCameraId origins from the design.
+     * @param destCameraId Camera Id of the camera which will be considerd as destination from IMU.
+     * @param rotationMatrix Rotation between srcCameraId and destCameraId origins.
+     * @param translation Translation between IMU and destCameraId origins.
+     * @param specTranslation Translation between IMU and destCameraId origins from the design.
      */
     void setImuExtrinsics(CameraBoardSocket destCameraId,
                           std::vector<std::vector<float>> rotationMatrix,
@@ -335,8 +335,8 @@ class CalibrationHandler {
     /**
      * Set the Stereo Left Rectification object
      *
-     * @param cameraId - CameraId of the camera which will be used as left Camera of stereo Setup
-     * @param rectifiedRotation - Rectification rotation of the left camera required for feature matching
+     * @param cameraId CameraId of the camera which will be used as left Camera of stereo Setup
+     * @param rectifiedRotation Rectification rotation of the left camera required for feature matching
      *
      * Homography of the Left Rectification = Intrinsics_right * rectifiedRotation * inv(Intrinsics_left)
      */
@@ -345,8 +345,8 @@ class CalibrationHandler {
     /**
      * Set the Stereo Right Rectification object
      *
-     * @param cameraId - CameraId of the camera which will be used as left Camera of stereo Setup
-     * @param rectifiedRotation - Rectification rotation of the left camera required for feature matching
+     * @param cameraId CameraId of the camera which will be used as left Camera of stereo Setup
+     * @param rectifiedRotation Rectification rotation of the left camera required for feature matching
      *
      * Homography of the Right Rectification = Intrinsics_right * rectifiedRotation * inv(Intrinsics_right)
      */
