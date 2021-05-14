@@ -95,6 +95,28 @@ class StereoDepth : public Node {
     void setEmptyCalibration();
 
     /**
+     * Specify local filesystem paths to the mesh calibration files for 'left' and 'right' inputs.
+     * When a mesh calibration is set, it overrides the camera intrinsics/extrinsics matrices.
+     * Mesh format: a sequence of (y,x) points as 'float' with coordinates from the input image
+     * to be mapped in the output. The mesh can be subsampled, configured by `setMeshStep`.
+     * With a 1280x800 resolution and the default (16,16) step, the required mesh size is:
+     * width: 1280 / 16 + 1 = 81
+     * height: 800 / 16 + 1 = 51
+     */
+    void loadMeshFiles(const std::string& pathLeft, const std::string& pathRight);
+
+    /**
+     * Specify mesh calibration data for 'left' and 'right' inputs, as vectors of bytes.
+     * See `loadMeshFiles` for the expected data format
+     */
+    void loadMeshData(const std::vector<std::uint8_t>& dataLeft, const std::vector<std::uint8_t>& dataRight);
+
+    /**
+     * Set the distance between mesh points. Default: (16, 16)
+     */
+    void setMeshStep(int width, int height);
+
+    /**
      * Specify input resolution size
      *
      * Optional if MonoCamera exists, otherwise necessary
