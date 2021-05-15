@@ -101,15 +101,12 @@ std::vector<std::shared_ptr<Node>> PipelineImpl::getAllNodes() {
     return nodes;
 }
 
-void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, OpenVINO::Version& version) const {
+void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage) const {
     // Set schema
     schema = getPipelineSchema();
 
     // set assets and generate asset storage
     getAllAssets().serialize(assets, assetStorage);
-
-    // detect and set openvino version
-    version = getPipelineOpenVINOVersion();
 }
 
 AssetManager PipelineImpl::getAllAssets() const {
@@ -200,7 +197,16 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
     return schema;
 }
 
-OpenVINO::Version PipelineImpl::getPipelineOpenVINOVersion() const {
+bool PipelineImpl::isOpenVINOVersionCompatible(OpenVINO::Version version) const {
+    auto ver = getPipelineOpenVINOVersion();
+    if(ver) {
+        return OpenVINO::areVersionsBlobCompatible(version, *ver);
+    } else {
+        return true;
+    }
+}
+
+tl::optional<OpenVINO::Version> PipelineImpl::getPipelineOpenVINOVersion() const {
     // Loop over nodes, and get the required information
     tl::optional<OpenVINO::Version> version;
     std::string lastNodeNameWithRequiredVersion = "";
@@ -240,17 +246,23 @@ OpenVINO::Version PipelineImpl::getPipelineOpenVINOVersion() const {
         }
     }
 
-    // After iterating over, set openvinoVersion
-    OpenVINO::Version openvinoVersion = DEFAULT_OPENVINO_VERSION;
+    // After iterating over, return appropriate version
     if(forceRequiredOpenVINOVersion) {
-        // set to forced version
-        openvinoVersion = *forceRequiredOpenVINOVersion;
+        // Return forced version
+        return forceRequiredOpenVINOVersion;
     } else if(version) {
-        // set to detected version
-        openvinoVersion = *version;
+        // Return detected version
+        return version;
+    } else {
+        // Return null
+        return tl::nullopt;
     }
+}
 
-    return openvinoVersion;
+PrebootConfig PipelineImpl::getDevicePrebootConfig() const {
+    PrebootConfig cfg{};
+    // TODO - rest of preboot config
+    return cfg;
 }
 
 void PipelineImpl::setCameraTuningBlobPath(const std::string& path) {

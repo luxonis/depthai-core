@@ -84,6 +84,7 @@ template std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono:
 constexpr std::chrono::seconds Device::DEFAULT_SEARCH_TIME;
 constexpr std::size_t Device::EVENT_QUEUE_MAXIMUM_SIZE;
 constexpr float Device::DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ;
+constexpr UsbSpeed Device::DEFAULT_USB_SPEED;
 
 template <typename Rep, typename Period>
 std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono::duration<Rep, Period> timeout) {
@@ -214,6 +215,10 @@ Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mod
     init(pipeline, true, usb2Mode, "");
 }
 
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : deviceInfo(devInfo) {
+    init(pipeline, true, maxUsbSpeed, "");
+}
+
 Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd) : deviceInfo(devInfo) {
     init(pipeline, false, false, std::string(pathToCmd));
 }
@@ -254,6 +259,16 @@ Device::Device(const Pipeline& pipeline, const std::string& pathToCmd) {
     init(pipeline, false, false, pathToCmd);
 }
 
+Device::Device(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) {
+    // Searches for any available device for 'default' timeout
+    bool found = false;
+    std::tie(found, deviceInfo) = getAnyAvailableDevice();
+
+    // If no device found, throw
+    if(!found) throw std::runtime_error("No available devices");
+    init(pipeline, true, maxUsbSpeed, "");
+}
+
 Device::Device(const Pipeline& pipeline, bool usb2Mode) {
     // Searches for any available device for 'default' timeout
     bool found = false;
@@ -266,6 +281,10 @@ Device::Device(const Pipeline& pipeline, bool usb2Mode) {
 
 Device::Device(OpenVINO::Version version, const DeviceInfo& devInfo, bool usb2Mode) : deviceInfo(devInfo) {
     init(version, true, usb2Mode, "");
+}
+
+Device::Device(OpenVINO::Version version, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : deviceInfo(devInfo) {
+    init(version, true, maxUsbSpeed, "");
 }
 
 Device::Device(OpenVINO::Version version, const DeviceInfo& devInfo, const char* pathToCmd) : deviceInfo(devInfo) {
@@ -316,6 +335,20 @@ Device::Device(OpenVINO::Version version, bool usb2Mode) {
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
     init(version, true, usb2Mode, "");
+}
+
+Device::Device(OpenVINO::Version version, UsbSpeed maxUsbSpeed) {
+    // Searches for any available device for 'default' timeout
+    bool found = false;
+    std::tie(found, deviceInfo) = getAnyAvailableDevice();
+
+    // If no device found, throw
+    if(!found) throw std::runtime_error("No available devices");
+    init(version, true, maxUsbSpeed, "");
+}
+
+Device::Device(const DeviceInfo& devInfo, Config config) {
+    init2(config, false, {}, {});
 }
 
 void Device::close() {
@@ -372,35 +405,56 @@ Device::~Device() {
 }
 
 void Device::init(OpenVINO::Version version, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
-    // Initalize depthai library if not already
-    initialize();
-
+    Config cfg;
+    // Specify usb speed
+    cfg.preboot.maxUsbSpeed = usb2Mode ? UsbSpeed::HIGH : Device::DEFAULT_USB_SPEED;
     // Specify the OpenVINO version
-    openvinoVersion = version;
-
-    spdlog::debug("Device - OpenVINO version: {}", OpenVINO::getVersionName(openvinoVersion));
-
-    init2(embeddedMvcmd, usb2Mode, pathToMvcmd, tl::nullopt);
+    cfg.version = version;
+    init2(cfg, embeddedMvcmd, pathToMvcmd, {});
+}
+void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
+    Config cfg;
+    // Specify usb speed
+    cfg.preboot.maxUsbSpeed = usb2Mode ? UsbSpeed::HIGH : Device::DEFAULT_USB_SPEED;
+    // Specify the OpenVINO version
+    cfg.version = pipeline.getOpenVINOVersion();
+    init2(cfg, embeddedMvcmd, pathToMvcmd, pipeline);
+}
+void Device::init(OpenVINO::Version version, bool embeddedMvcmd, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd) {
+    Config cfg;
+    // Specify usb speed
+    cfg.preboot.maxUsbSpeed = maxUsbSpeed;
+    // Specify the OpenVINO version
+    cfg.version = version;
+    init2(cfg, embeddedMvcmd, pathToMvcmd, {});
+}
+void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd) {
+    Config cfg;
+    // Specify usb speed
+    cfg.preboot.maxUsbSpeed = maxUsbSpeed;
+    // Specify the OpenVINO version
+    cfg.version = pipeline.getOpenVINOVersion();
+    init2(cfg, embeddedMvcmd, pathToMvcmd, pipeline);
 }
 
-void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
+void Device::init2(Config cfg, bool embeddedMvcmd, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline) {
     // Initalize depthai library if not already
     initialize();
 
-    // Mark the OpenVINO version
-    openvinoVersion = pipeline.getOpenVINOVersion();
+    // Specify cfg
+    config = cfg;
 
-    spdlog::debug("Device - pipeline serialized, OpenVINO version: {}", OpenVINO::getVersionName(openvinoVersion));
+    if(pipeline) {
+        spdlog::debug("Device - pipeline serialized, OpenVINO version: {}", OpenVINO::getVersionName(config.version));
+    } else {
+        spdlog::debug("Device - OpenVINO version: {}", OpenVINO::getVersionName(config.version));
+    }
 
-    init2(embeddedMvcmd, usb2Mode, pathToMvcmd, pipeline);
-}
-
-void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline) {
     // Set logging pattern of device (device id + shared pattern)
     pimpl->setPattern(fmt::format("[{}] {}", deviceInfo.getMxId(), LOG_DEFAULT_PATTERN));
 
     // Get embedded mvcmd
-    std::vector<std::uint8_t> embeddedFw = Resources::getInstance().getDeviceFirmware(usb2Mode, openvinoVersion);
+    std::vector<std::uint8_t> embeddedFw = Resources::getInstance().getDeviceFirmware(config);
 
     // Init device (if bootloader, handle correctly - issue USB boot command)
     if(deviceInfo.state == X_LINK_UNBOOTED) {
@@ -838,6 +892,12 @@ CpuUsage Device::getLeonMssCpuUsage() {
     return client->call("getLeonMssCpuUsage").as<CpuUsage>();
 }
 
+UsbSpeed Device::getUsbSpeed() {
+    checkClosed();
+
+    return client->call("getUsbSpeed").as<UsbSpeed>();
+}
+
 bool Device::isPipelineRunning() {
     checkClosed();
 
@@ -923,16 +983,16 @@ bool Device::startPipeline(const Pipeline& pipeline) {
         throw std::runtime_error("Pipeline is already running");
     }
 
+    // Check openvino version
+    if(!pipeline.isOpenVINOVersionCompatible(config.version)) {
+        throw std::runtime_error("Device booted with different OpenVINO version that pipeline requires");
+    }
+
+    // Serialize the pipeline
     PipelineSchema schema;
     Assets assets;
     std::vector<std::uint8_t> assetStorage;
-
-    // Mark the OpenVINO version and serialize the pipeline
-    OpenVINO::Version pipelineOpenvinoVersion;
-    pipeline.serialize(schema, assets, assetStorage, pipelineOpenvinoVersion);
-    if(openvinoVersion != pipelineOpenvinoVersion) {
-        throw std::runtime_error("Device booted with different OpenVINO version that pipeline requires");
-    }
+    pipeline.serialize(schema, assets, assetStorage);
 
     // Open queues upfront, let queues know about data sizes (input queues)
     // Go through Pipeline and check for 'XLinkIn' and 'XLinkOut' nodes

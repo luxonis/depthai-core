@@ -20,6 +20,7 @@
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
+#include "depthai-shared/device/PrebootConfig.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
 
@@ -44,6 +45,18 @@ class Device {
     static constexpr std::size_t EVENT_QUEUE_MAXIMUM_SIZE{2048};
     /// Default rate at which system information is logged
     static constexpr float DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ{1.0f};
+    /// Default UsbSpeed for device connection
+    static constexpr UsbSpeed DEFAULT_USB_SPEED{UsbSpeed::SUPER};
+
+    // Structures
+
+    /**
+     * Device specific configuration
+     */
+    struct Config {
+        OpenVINO::Version version;
+        PrebootConfig preboot;
+    };
 
     // static API
 
@@ -106,15 +119,16 @@ class Device {
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * @param pipeline Pipeline to be executed on the device
-     * @param pathToCmd Path to custom device firmware
+     * @param maxUsbSpeed Maximum allowed USB speed
      */
-    Device(const Pipeline& pipeline, const char* pathToCmd);
+    Device(const Pipeline& pipeline, UsbSpeed maxUsbSpeed);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * @param pipeline Pipeline to be executed on the device
      * @param pathToCmd Path to custom device firmware
      */
+    Device(const Pipeline& pipeline, const char* pathToCmd);
     Device(const Pipeline& pipeline, const std::string& pathToCmd);
 
     /**
@@ -129,16 +143,17 @@ class Device {
      * Connects to device specified by devInfo.
      * @param pipeline Pipeline to be executed on the device
      * @param devInfo DeviceInfo which specifies which device to connect to
-     * @param pathToCmd Path to custom device firmware
+     * @param maxUsbSpeed Maximum allowed USB speed
      */
-    Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd);
+    Device(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
 
     /**
      * Connects to device specified by devInfo.
      * @param pipeline Pipeline to be executed on the device
      * @param devInfo DeviceInfo which specifies which device to connect to
-     * @param usb2Mode Path to custom device firmware
+     * @param pathToCmd Path to custom device firmware
      */
+    Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd);
     Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd);
 
     /**
@@ -157,15 +172,16 @@ class Device {
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * @param version OpenVINO version which the device will be booted with
-     * @param pathToCmd Path to custom device firmware
+     * @param maxUsbSpeed Maximum allowed USB speed
      */
-    Device(OpenVINO::Version version, const char* pathToCmd);
+    Device(OpenVINO::Version version, UsbSpeed maxUsbSpeed);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * @param version OpenVINO version which the device will be booted with
      * @param pathToCmd Path to custom device firmware
      */
+    Device(OpenVINO::Version version, const char* pathToCmd);
     Device(OpenVINO::Version version, const std::string& pathToCmd);
 
     /**
@@ -180,17 +196,25 @@ class Device {
      * Connects to device specified by devInfo.
      * @param version OpenVINO version which the device will be booted with
      * @param devInfo DeviceInfo which specifies which device to connect to
-     * @param pathToCmd Path to custom device firmware
+     * @param maxUsbSpeed Maximum USB speed
      */
-    Device(OpenVINO::Version version, const DeviceInfo& devInfo, const char* pathToCmd);
+    Device(OpenVINO::Version version, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
 
     /**
      * Connects to device specified by devInfo.
      * @param version OpenVINO version which the device will be booted with
      * @param devInfo DeviceInfo which specifies which device to connect to
-     * @param usb2Mode Path to custom device firmware
+     * @param pathToCmd Path to custom device firmware
      */
+    Device(OpenVINO::Version version, const DeviceInfo& devInfo, const char* pathToCmd);
     Device(OpenVINO::Version version, const DeviceInfo& devInfo, const std::string& pathToCmd);
+
+    /**
+     * Connects to device 'devInfo' with custom config.
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param config Device custom configuration to boot with
+     */
+    Device(const DeviceInfo& devInfo, Config config);
 
     /**
      * Device destructor. Closes the connection and data queues.
@@ -452,6 +476,13 @@ class Device {
     CpuUsage getLeonMssCpuUsage();
 
     /**
+     * Retrieves USB connection speed
+     *
+     * @returns USB connection speed of connected device if applicable. Unknown otherwise.
+     */
+    UsbSpeed getUsbSpeed();
+
+    /**
      * Explicitly closes connection to device.
      * @note This function does not need to be explicitly called
      * as destructor closes the device automatically
@@ -464,10 +495,12 @@ class Device {
     bool isClosed() const;
 
    private:
-    // private static
+    // private
     void init(OpenVINO::Version version, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
     void init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
-    void init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline);
+    void init(OpenVINO::Version version, bool embeddedMvcmd, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd);
+    void init(const Pipeline& pipeline, bool embeddedMvcmd, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd);
+    void init2(Config cfg, bool embeddedMvcmd, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline);
     void checkClosed() const;
 
     std::shared_ptr<XLinkConnection> connection;
@@ -514,8 +547,8 @@ class Device {
     class Impl;
     Pimpl<Impl> pimpl;
 
-    // OpenVINO version device was booted with
-    OpenVINO::Version openvinoVersion;
+    // Device config
+    Config config;
 };
 
 }  // namespace dai

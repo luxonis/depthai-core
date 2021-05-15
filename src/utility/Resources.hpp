@@ -7,11 +7,13 @@
 #include <cstdint>
 #include <thread>
 
+// project
 #include <depthai/openvino/OpenVINO.hpp>
+#include <depthai/device/Device.hpp>
+#include <depthai/device/DeviceBootloader.hpp>
 
 namespace dai
 {
-    
 class Resources {
     // private constructor
     Resources();
@@ -21,7 +23,7 @@ class Resources {
     std::thread lazyThread;
     std::unordered_map<std::string, std::vector<std::uint8_t>> resourceMap;
 
-    std::vector<std::uint8_t> getDeviceBinary(OpenVINO::Version version, bool usb2Mode);
+    std::vector<std::uint8_t> getDeviceBinary(Device::Config config);
 
 public:
     static Resources& getInstance();
@@ -30,7 +32,8 @@ public:
 
     // Available resources
     std::vector<std::uint8_t> getDeviceFirmware(bool usb2Mode, OpenVINO::Version version = OpenVINO::VERSION_2020_1);
-    std::vector<std::uint8_t> getBootloaderFirmware();
+    std::vector<std::uint8_t> getDeviceFirmware(Device::Config config);
+    std::vector<std::uint8_t> getBootloaderFirmware(DeviceBootloader::Config config);
 
 };
 

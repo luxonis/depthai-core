@@ -12,6 +12,7 @@
 #include "depthai/openvino/OpenVINO.hpp"
 
 // shared
+#include "depthai-shared/device/PrebootConfig.hpp"
 #include "depthai-shared/pipeline/PipelineSchema.hpp"
 #include "depthai-shared/properties/GlobalProperties.hpp"
 
@@ -33,9 +34,11 @@ class PipelineImpl {
     // Functions
     Node::Id getNextUniqueId();
     PipelineSchema getPipelineSchema() const;
-    OpenVINO::Version getPipelineOpenVINOVersion() const;
+    tl::optional<OpenVINO::Version> getPipelineOpenVINOVersion() const;
+    bool isOpenVINOVersionCompatible(OpenVINO::Version version) const;
     AssetManager getAllAssets() const;
     void setCameraTuningBlobPath(const std::string& path);
+    PrebootConfig getDevicePrebootConfig() const;
 
     // Access to nodes
     std::vector<std::shared_ptr<const Node>> getAllNodes() const;
@@ -43,7 +46,7 @@ class PipelineImpl {
     std::shared_ptr<const Node> getNode(Node::Id id) const;
     std::shared_ptr<Node> getNode(Node::Id id);
 
-    void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, OpenVINO::Version& version) const;
+    void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage) const;
     void remove(std::shared_ptr<Node> node);
 
     std::vector<Node::Connection> getConnections() const;
@@ -118,8 +121,8 @@ class Pipeline {
     PipelineSchema getPipelineSchema();
 
     // void loadAssets(AssetManager& assetManager);
-    void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, OpenVINO::Version& version) const {
-        impl()->serialize(schema, assets, assetStorage, version);
+    void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage) const {
+        impl()->serialize(schema, assets, assetStorage);
     }
 
     /**
@@ -216,14 +219,29 @@ class Pipeline {
         impl()->forceRequiredOpenVINOVersion = version;
     }
 
-    /// Get required OpenVINO version to run this pipeline
+    /// Get possible OpenVINO version to run this pipeline
     OpenVINO::Version getOpenVINOVersion() const {
+        return impl()->getPipelineOpenVINOVersion().value_or(Pipeline::DEFAULT_OPENVINO_VERSION);
+    }
+
+    /// Get required OpenVINO version to run this pipeline. Can be none
+    tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion() const {
         return impl()->getPipelineOpenVINOVersion();
     }
 
     /// Set a camera IQ (Image Quality) tuning blob, used for all cameras
     void setCameraTuningBlobPath(const std::string& path) {
         impl()->setCameraTuningBlobPath(path);
+    }
+
+    /// Checks whether a given OpenVINO version is compatible with the pipeline
+    bool isOpenVINOVersionCompatible(OpenVINO::Version version) const {
+        return impl()->isOpenVINOVersionCompatible(version);
+    }
+
+    /// Checks whether a given OpenVINO version is compatible with the pipeline
+    PrebootConfig getDevicePrebootConfig() const {
+        return impl()->getDevicePrebootConfig();
     }
 };
 
