@@ -20,6 +20,7 @@
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
+#include "depthai-shared/common/UsbSpeed.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
 
@@ -450,6 +451,13 @@ class Device {
      * @returns Average CPU usage and sampling duration
      */
     CpuUsage getLeonMssCpuUsage();
+
+    /**
+     * Retrieves USB connection speed
+     *
+     * @returns USB connection speed of connected device if applicable. Unknown otherwise.
+     */
+    UsbSpeed getUsbSpeed();
 
     /**
      * Explicitly closes connection to device.
