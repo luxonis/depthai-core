@@ -10,17 +10,17 @@
 // project
 #include "CallbackHandler.hpp"
 #include "DataQueue.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/UsbSpeed.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 
 // shared
-#include "depthai-shared/common/CameraBoardSocket.hpp"
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
-#include "depthai-shared/common/UsbSpeed.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
 

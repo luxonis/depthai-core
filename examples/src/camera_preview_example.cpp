@@ -34,9 +34,12 @@ int main() {
 
     cout << "Connected cameras: ";
     for(const auto& cam : d.getConnectedCameras()) {
-        cout << static_cast<int>(cam) << " ";
+        cout << cam << " ";
     }
     cout << endl;
+
+    // Print USB speed
+    cout << "Usb speed: " << d.getUsbSpeed() << endl;
 
     // Start the pipeline
     d.startPipeline(p);
