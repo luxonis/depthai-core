@@ -10,13 +10,14 @@
 // project
 #include "CallbackHandler.hpp"
 #include "DataQueue.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/UsbSpeed.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 
 // shared
-#include "depthai-shared/common/CameraBoardSocket.hpp"
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
@@ -450,6 +451,13 @@ class Device {
      * @returns Average CPU usage and sampling duration
      */
     CpuUsage getLeonMssCpuUsage();
+
+    /**
+     * Retrieves USB connection speed
+     *
+     * @returns USB connection speed of connected device if applicable. Unknown otherwise.
+     */
+    UsbSpeed getUsbSpeed();
 
     /**
      * Explicitly closes connection to device.
