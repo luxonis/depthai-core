@@ -1,5 +1,4 @@
 #include <chrono>
-#include <cstdio>
 #include <iostream>
 
 // Inludes common necessary includes for development using depthai library

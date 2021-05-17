@@ -1,4 +1,3 @@
-#include <cstdio>
 #include <iostream>
 
 // Inludes common necessary includes for development using depthai library
@@ -12,8 +11,6 @@ static std::atomic<bool> subpixel{false};
 static std::atomic<bool> lr_check{false};
 
 int main() {
-    using namespace std;
-
     // Create pipeline
     dai::Pipeline pipeline;
 

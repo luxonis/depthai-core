@@ -1,16 +1,12 @@
-#include <cstdio>
 #include <iostream>
-
-#include "utility.hpp"
 
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
+static std::atomic<bool> withDepth{true};
+
 int main() {
     using namespace std;
-    using namespace std::chrono;
-    // TODO - split this example into two separate examples
-    bool withDepth = true;
 
     // Create pipeline
     dai::Pipeline pipeline;
@@ -45,11 +41,11 @@ int main() {
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
     // monoRight->setFps(5.0);
 
-    bool outputDepth = false;
-    bool outputRectified = true;
-    bool lrcheck = true;
-    bool extended = false;
-    bool subpixel = false;
+    std::atomic<bool> outputDepth{false};
+    std::atomic<bool> outputRectified{true};
+    std::atomic<bool> lrcheck{true};
+    std::atomic<bool> extended{false};
+    std::atomic<bool> subpixel{false};
 
     int maxDisp = 96;
     if(extended) maxDisp *= 2;

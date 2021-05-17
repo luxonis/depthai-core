@@ -1,6 +1,4 @@
 #include <chrono>
-#include <cstdio>
-#include <iostream>
 
 #include "utility.hpp"
 
@@ -11,7 +9,7 @@ static const std::vector<std::string> labelMap = {"background", "aeroplane", "bi
                                                   "car",        "cat",       "chair",       "cow",   "diningtable", "dog",    "horse",
                                                   "motorbike",  "person",    "pottedplant", "sheep", "sofa",        "train",  "tvmonitor"};
 
-static bool syncNN = true;
+static std::atomic<bool> syncNN{true};
 
 int main(int argc, char** argv) {
     using namespace std;

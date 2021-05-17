@@ -1,4 +1,3 @@
-#include <cstdio>
 #include <iostream>
 
 // Inludes common necessary includes for development using depthai library
@@ -8,9 +7,6 @@
 #include <opencv2/opencv.hpp>
 
 int main() {
-    using namespace std;
-    using namespace std::chrono;
-
     // Create pipeline
     dai::Pipeline pipeline;
 

@@ -1,4 +1,3 @@
-#include <cstdio>
 #include <iostream>
 
 // Inludes common necessary includes for development using depthai library
@@ -19,8 +18,6 @@ void printSystemInformation(dai::SystemInformation info) {
 }
 
 int main() {
-    using namespace std;
-
     // Create pipeline
     dai::Pipeline pipeline;
 

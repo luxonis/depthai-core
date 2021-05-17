@@ -1,4 +1,3 @@
-#include <cstdio>
 #include <iostream>
 
 #include "depthai/depthai.hpp"

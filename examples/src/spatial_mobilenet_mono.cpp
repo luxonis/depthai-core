@@ -1,8 +1,5 @@
 #include <chrono>
-#include <cstdio>
 #include <iostream>
-
-#include "utility.hpp"
 
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
@@ -73,10 +70,11 @@ int main(int argc, char** argv) {
     monoRight->out.link(stereo->right);
 
     imageManip->out.link(spatialDetectionNetwork->input);
-    if(syncNN)
+    if(syncNN) {
         spatialDetectionNetwork->passthrough.link(xoutManip->input);
-    else
+    } else {
         imageManip->out.link(xoutManip->input);
+    }
 
     spatialDetectionNetwork->out.link(nnOut->input);
     spatialDetectionNetwork->boundingBoxMapping.link(depthRoiMap->input);

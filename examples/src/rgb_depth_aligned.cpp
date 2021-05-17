@@ -8,7 +8,7 @@
 
 // Optional. If set (true), the ColorCamera is downscaled from 1080p to 720p.
 // Otherwise (false), the aligned depth is automatically upscaled to 1080p
-static constexpr bool downscaleColor = true;
+static std::atomic<bool> downscaleColor{true};
 
 int main() {
     using namespace std;

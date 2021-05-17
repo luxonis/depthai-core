@@ -1,7 +1,4 @@
-#include <cstdio>
 #include <iostream>
-
-#include "utility.hpp"
 
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
@@ -110,8 +107,8 @@ int main(int argc, char** argv) {
 
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q') {
-            std::cout << "To view the encoded data, convert the stream file (.h265) into a video file (.mp4), using a command below:" << std::endl;
-            std::cout << "ffmpeg -framerate 30 -i video.h264 -c copy video.mp4" << std::endl;
+            cout << "To view the encoded data, convert the stream file (.h265) into a video file (.mp4), using a command below:" << endl;
+            cout << "ffmpeg -framerate 30 -i video.h264 -c copy video.mp4" << endl;
             return 0;
         }
     }

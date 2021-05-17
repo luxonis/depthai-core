@@ -2,7 +2,6 @@
  * This example shows usage of depth camera in crop mode with the possibility to move the crop.
  * Use 'WASD' in order to do it.
  */
-#include <cstdio>
 #include <iostream>
 
 // Includes common necessary includes for development using depthai library

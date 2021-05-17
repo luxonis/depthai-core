@@ -1,13 +1,9 @@
-#include <cstdio>
 #include <iostream>
-
-#include "utility.hpp"
 
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-int main(int argc, char** argv) {
-    using namespace std;
+int main() {
     using namespace std::chrono;
 
     // Create pipeline
@@ -69,6 +65,5 @@ int main(int argc, char** argv) {
             return 0;
         }
     }
-
     return 0;
 }

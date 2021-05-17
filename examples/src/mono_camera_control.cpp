@@ -7,7 +7,6 @@
  * To go back to auto controls:
  *   'E' - autoexposure
  */
-#include <cstdio>
 #include <iostream>
 
 // Includes common necessary includes for development using depthai library

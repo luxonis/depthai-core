@@ -1,12 +1,11 @@
 #include <chrono>
-#include <cstdio>
 #include <iostream>
 
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 #include "utility.hpp"
 
-int main(int argc, char** argv) {
+int main() {
     using namespace std::chrono;
 
     // Create pipeline
@@ -49,7 +48,7 @@ int main(int argc, char** argv) {
 
         auto encFrames = qJpeg->tryGetAll<dai::ImgFrame>();
         for(const auto& encFrame : encFrames) {
-            uint64_t time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
+            uint64_t time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
             std::stringstream videoStr;
             videoStr << dirName << "/" << time << ".jpeg";
             auto videoFile = std::ofstream(videoStr.str(), std::ios::binary);

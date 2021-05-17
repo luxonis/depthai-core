@@ -1,7 +1,4 @@
-#include <cstdio>
 #include <iostream>
-
-#include "utility.hpp"
 
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
@@ -92,7 +89,7 @@ int main(int argc, char** argv) {
 
     cv::namedWindow("video", cv::WINDOW_NORMAL);
     cv::resizeWindow("video", 1280, 720);
-    std::cout << "Resize video window with mouse drag!" << std::endl;
+    cout << "Resize video window with mouse drag!" << endl;
 
     while(true) {
         auto inVideo = qVideo->get<dai::ImgFrame>();
@@ -106,7 +103,9 @@ int main(int argc, char** argv) {
         displayFrame("preview", previewFrame, detections);
 
         int key = cv::waitKey(1);
-        if(key == 'q' || key == 'Q') return 0;
+        if(key == 'q' || key == 'Q') {
+            return 0;
+        }
     }
     return 0;
 }

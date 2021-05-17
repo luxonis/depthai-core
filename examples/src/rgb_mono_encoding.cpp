@@ -1,5 +1,4 @@
 #include <csignal>
-#include <cstdio>
 #include <iostream>
 
 // Inludes common necessary includes for development using depthai library
@@ -11,9 +10,8 @@ static void sigintHandler(int signum) {
     alive = false;
 }
 
-int main(int argc, char** argv) {
+int main() {
     using namespace std;
-    using namespace std::chrono;
     std::signal(SIGINT, &sigintHandler);
 
     // Create pipeline
@@ -64,7 +62,7 @@ int main(int argc, char** argv) {
     auto videoFile1 = std::ofstream("mono1.h264", std::ios::binary);
     auto videoFile2 = std::ofstream("color.h265", std::ios::binary);
     auto videoFile3 = std::ofstream("mono2.h264", std::ios::binary);
-    std::cout << "Press Ctrl+C to stop encoding..." << std::endl;
+    cout << "Press Ctrl+C to stop encoding..." << endl;
 
     while(alive) {
         auto out1 = outQ1->get<dai::ImgFrame>();
@@ -75,10 +73,10 @@ int main(int argc, char** argv) {
         videoFile3.write((char*)out3->getData().data(), out3->getData().size());
     }
 
-    std::cout << "To view the encoded data, convert the stream file (.h264/.h265) into a video file (.mp4), using a command below:" << std::endl;
-    std::cout << "ffmpeg -framerate 30 -i mono1.h264 -c copy mono1.mp4" << std::endl;
-    std::cout << "ffmpeg -framerate 30 -i mono2.h264 -c copy mono2.mp4" << std::endl;
-    std::cout << "ffmpeg -framerate 30 -i color.h265 -c copy color.mp4" << std::endl;
+    cout << "To view the encoded data, convert the stream file (.h264/.h265) into a video file (.mp4), using a command below:" << endl;
+    cout << "ffmpeg -framerate 30 -i mono1.h264 -c copy mono1.mp4" << endl;
+    cout << "ffmpeg -framerate 30 -i mono2.h264 -c copy mono2.mp4" << endl;
+    cout << "ffmpeg -framerate 30 -i color.h265 -c copy color.mp4" << endl;
 
     return 0;
 }

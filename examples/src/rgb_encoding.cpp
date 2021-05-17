@@ -1,5 +1,4 @@
 #include <csignal>
-#include <cstdio>
 #include <iostream>
 
 // Includes common necessary includes for development using depthai library
@@ -12,6 +11,7 @@ static void sigintHandler(int signum) {
 }
 
 int main(int argc, char** argv) {
+    using namespace std;
     std::signal(SIGINT, &sigintHandler);
 
     // Create pipeline
@@ -42,15 +42,15 @@ int main(int argc, char** argv) {
 
     // The .h265 file is a raw stream file (not playable yet)
     auto videoFile = std::ofstream("video.h265", std::ios::binary);
-    std::cout << "Press Ctrl+C to stop encoding..." << std::endl;
+    cout << "Press Ctrl+C to stop encoding..." << endl;
 
     while(alive) {
         auto h265Packet = q->get<dai::ImgFrame>();
         videoFile.write((char*)(h265Packet->getData().data()), h265Packet->getData().size());
     }
 
-    std::cout << "To view the encoded data, convert the stream file (.h265) into a video file (.mp4) using a command below:" << std::endl;
-    std::cout << "ffmpeg -framerate 30 -i video.h265 -c copy video.mp4" << std::endl;
+    cout << "To view the encoded data, convert the stream file (.h265) into a video file (.mp4) using a command below:" << endl;
+    cout << "ffmpeg -framerate 30 -i video.h265 -c copy video.mp4" << endl;
 
     return 0;
 }

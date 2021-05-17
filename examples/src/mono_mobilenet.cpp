@@ -1,4 +1,3 @@
-#include <cstdio>
 #include <iostream>
 
 #include "utility.hpp"

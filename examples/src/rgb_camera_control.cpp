@@ -10,7 +10,6 @@
  *   'E' - autoexposure
  *   'F' - autofocus (continuous)
  */
-#include <cstdio>
 #include <iostream>
 
 #include "utility.hpp"

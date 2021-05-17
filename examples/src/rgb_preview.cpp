@@ -1,12 +1,9 @@
-#include <cstdio>
 #include <iostream>
 
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 int main() {
-    using namespace std;
-
     // Create pipeline
     dai::Pipeline pipeline;
 
@@ -36,7 +33,7 @@ int main() {
         auto inRgb = qRgb->get<dai::ImgFrame>();
 
         // Retrieve 'bgr' (opencv format) frame
-        cv::imshow("bgr", inRgb->getCvFrame());
+        cv::imshow("rgb", inRgb->getCvFrame());
 
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q') {
