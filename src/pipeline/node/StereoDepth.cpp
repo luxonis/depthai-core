@@ -65,6 +65,9 @@ void StereoDepth::setInputResolution(int width, int height) {
     properties.width = width;
     properties.height = height;
 }
+void StereoDepth::setInputResolution(std::tuple<int, int> resolution) {
+    setInputResolution(std::get<0>(resolution), std::get<1>(resolution));
+}
 void StereoDepth::setMedianFilter(Properties::MedianFilter median) {
     properties.median = median;
 }

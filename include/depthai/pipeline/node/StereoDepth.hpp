@@ -102,6 +102,13 @@ class StereoDepth : public Node {
     void setInputResolution(int width, int height);
 
     /**
+     * Specify input resolution size
+     *
+     * Optional if MonoCamera exists, otherwise necessary
+     */
+    void setInputResolution(std::tuple<int, int> resolution);
+
+    /**
      * @param median Set kernel size for disparity/depth median filtering, or disable
      */
     void setMedianFilter(Properties::MedianFilter median);
