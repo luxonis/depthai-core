@@ -6,16 +6,16 @@ namespace dai {
 
 inline std::ostream& operator<<(std::ostream& out, const CameraBoardSocket& socket) {
     switch(socket) {
-        case CameraBoardSocket::AUTO :
+        case CameraBoardSocket::AUTO:
             out << "AUTO";
             break;
-        case CameraBoardSocket::RGB :
+        case CameraBoardSocket::RGB:
             out << "RGB";
             break;
-        case CameraBoardSocket::LEFT :
+        case CameraBoardSocket::LEFT:
             out << "LEFT";
             break;
-        case CameraBoardSocket::RIGHT :
+        case CameraBoardSocket::RIGHT:
             out << "RIGHT";
             break;
     }
