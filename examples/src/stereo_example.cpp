@@ -50,10 +50,6 @@ int main() {
     bool extended = false;
     bool subpixel = true;
 
-    int maxDisp = 96;
-    if(extended) maxDisp *= 2;
-    if(subpixel) maxDisp *= 32;  // 5 bits fractional disparity
-
     if(withDepth) {
         // StereoDepth
         stereo->setConfidenceThreshold(200);
@@ -77,7 +73,7 @@ int main() {
             stereo->rectifiedRight.link(xoutRectifR->input);
         }
         stereo->disparity.link(xoutDisp->input);
-        if (outputDepth) {
+        if(outputDepth) {
             stereo->depth.link(xoutDepth->input);
         }
 
@@ -87,9 +83,8 @@ int main() {
         monoRight->out.link(xoutRight->input);
     }
 
-    // CONNECT TO DEVICE
+    // Connect and start the pipeline
     dai::Device d(p);
-    d.startPipeline();
 
     auto leftQueue = d.getOutputQueue("left", 8, false);
     auto rightQueue = d.getOutputQueue("right", 8, false);
@@ -108,7 +103,7 @@ int main() {
             // Note: in some configurations (if depth is enabled), disparity may output garbage data
             auto disparity = dispQueue->get<dai::ImgFrame>();
             cv::Mat disp(disparity->getHeight(), disparity->getWidth(), subpixel ? CV_16UC1 : CV_8UC1, disparity->getData().data());
-            disp.convertTo(disp, CV_8UC1, 255.0 / maxDisp);  // Extend disparity range
+            disp.convertTo(disp, CV_8UC1, 255 / stereo->getMaxDisparity());  // Extend disparity range
             cv::imshow("disparity", disp);
             cv::Mat disp_color;
             cv::applyColorMap(disp, disp_color, cv::COLORMAP_JET);
@@ -122,13 +117,13 @@ int main() {
             if(outputRectified) {
                 auto rectifL = rectifLeftQueue->get<dai::ImgFrame>();
                 cv::Mat rectifiedLeftFrame = rectifL->getFrame();
-                //cv::flip(rectifiedLeftFrame, rectifiedLeftFrame, 1);
+                // cv::flip(rectifiedLeftFrame, rectifiedLeftFrame, 1);
                 cv::imshow("rectified_left", rectifiedLeftFrame);
 
                 auto rectifR = rectifRightQueue->get<dai::ImgFrame>();
                 cv::Mat rectifiedRightFrame = rectifR->getFrame();
 
-                //cv::flip(rectifiedRightFrame, rectifiedRightFrame, 1);
+                // cv::flip(rectifiedRightFrame, rectifiedRightFrame, 1);
                 cv::imshow("rectified_right", rectifiedRightFrame);
             }
         }

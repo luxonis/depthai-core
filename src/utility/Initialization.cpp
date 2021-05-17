@@ -1,6 +1,7 @@
 #include "utility/Initialization.hpp"
 
 // project
+#include "build/version.hpp"
 #include "utility/Resources.hpp"
 
 // libraries
@@ -28,7 +29,7 @@ namespace {
 
 }  // namespace
 
-bool initialize() {
+bool initialize(std::string additionalInfo) {
     // atomic bool for checking whether depthai was already initialized
     static std::atomic<bool> initialized{false};
 
@@ -49,6 +50,13 @@ bool initialize() {
     // if(!debugger_val.empty()){
     //    // TODO(themarpe) - instruct Device class that first available device is also a booted device
     // }
+
+    // Print core commit and build datetime
+    if(!additionalInfo.empty()) {
+        spdlog::debug("{}", additionalInfo);
+    }
+    spdlog::debug(
+        "Library information - version: {}, commit: {} from {}, build: {}", build::VERSION, build::COMMIT, build::COMMIT_DATETIME, build::BUILD_DATETIME);
 
     // Executed at library load time
 

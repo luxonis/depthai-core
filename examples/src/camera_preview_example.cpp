@@ -28,8 +28,21 @@ int main() {
     using namespace std;
 
     dai::Pipeline p = createCameraPipeline();
-    dai::Device d(p);
-    d.startPipeline();
+
+    // Start the pipeline
+    dai::Device d;
+
+    cout << "Connected cameras: ";
+    for(const auto& cam : d.getConnectedCameras()) {
+        cout << cam << " ";
+    }
+    cout << endl;
+
+    // Print USB speed
+    cout << "Usb speed: " << d.getUsbSpeed() << endl;
+
+    // Start the pipeline
+    d.startPipeline(p);
 
     cv::Mat frame;
     auto preview = d.getOutputQueue("preview");
