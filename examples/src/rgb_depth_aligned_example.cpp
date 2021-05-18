@@ -22,7 +22,7 @@ int main() {
     if(downscaleColor) cam->setIspScale(2, 3);
     // For now, RGB needs fixed focus to properly align with depth.
     // This value was used during calibration
-    cam->initialControl.setManualFocus(130);
+    cam->initialControl.setManualFocus(135);
 
     auto rgbOut = p.create<dai::node::XLinkOut>();
     rgbOut->setStreamName("rgb");
