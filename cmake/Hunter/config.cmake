@@ -25,6 +25,8 @@ hunter_config(
     CMAKE_ARGS
         SPDLOG_BUILD_EXAMPLE=OFF
         SPDLOG_FMT_EXTERNAL=OFF
+        CMAKE_CXX_VISIBILITY_PRESET=hidden
+        CMAKE_C_VISIBILITY_PRESET=hidden
 )
 
 # libarchive, luxonis fork
