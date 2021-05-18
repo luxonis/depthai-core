@@ -81,8 +81,9 @@ int main() {
             if(latestPacket.find(name) != latestPacket.end()) {
                 if(name == "depth") {
                     frame[name] = latestPacket[name]->getFrame();
+                    auto maxDisparity = stereo->getMaxDisparity();
                     // Optional, extend range 0..95 -> 0..255, for a better visualisation
-                    if(1) frame[name].convertTo(frame[name], CV_8UC1, 255. / 95);
+                    if(1) frame[name].convertTo(frame[name], CV_8UC1, 255. / maxDisparity);
                     // Optional, apply false colorization
                     if(1) cv::applyColorMap(frame[name], frame[name], cv::COLORMAP_HOT);
                 } else {

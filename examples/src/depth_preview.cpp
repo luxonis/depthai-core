@@ -33,19 +33,8 @@ int main() {
     // Options: MEDIAN_OFF, KERNEL_3x3, KERNEL_5x5, KERNEL_7x7 (default)
     depth->setMedianFilter(dai::StereoDepthProperties::MedianFilter::KERNEL_7x7);
     depth->setLeftRightCheck(lr_check);
-
-    // Normal disparity values range from 0..95, will be used for normalization
-    int max_disparity = 95;
-
-    if(extended_disparity) max_disparity *= 2;  // Double the range
     depth->setExtendedDisparity(extended_disparity);
-
-    if(subpixel) max_disparity *= 32;  // 5 fractional bits, x32
     depth->setSubpixel(subpixel);
-
-    // When we get disparity to the host, we will multiply all values with the multiplier
-    // for better visualization
-    float multiplier = 255 / max_disparity;
 
     // Linking
     monoLeft->out.link(depth->left);
@@ -61,7 +50,8 @@ int main() {
     while(true) {
         auto inDepth = q->get<dai::ImgFrame>();
         auto frame = inDepth->getFrame();
-        frame.convertTo(frame, CV_8UC1, multiplier);
+        // Normalization for better visualization
+        frame.convertTo(frame, CV_8UC1, 255 / depth->getMaxDisparity());
 
         cv::imshow("disparity", frame);
 

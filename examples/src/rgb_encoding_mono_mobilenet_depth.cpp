@@ -84,6 +84,9 @@ int main(int argc, char** argv) {
     manip->out.link(manipOut->input);
     nn->out.link(nnOut->input);
 
+    // Disparity range is used for normalization
+    float disparityMultiplier = 255 / depth->getMaxDisparity();
+
     // Connect to device and start pipeline
     dai::Device device(pipeline);
 
@@ -98,9 +101,6 @@ int main(int argc, char** argv) {
     auto videoFile = std::ofstream("video.h265", std::ios::binary);
     cv::namedWindow("right", cv::WINDOW_NORMAL);
     cv::namedWindow("manip", cv::WINDOW_NORMAL);
-
-    // Disparity range is 0..95, used for normalization
-    float disparity_multiplier = 255 / 95;
 
     while(true) {
         auto inRight = qRight->get<dai::ImgFrame>();
@@ -119,7 +119,7 @@ int main(int argc, char** argv) {
         if(flipRectified) {
             cv::flip(frameDisparity, frameDisparity, 1);
         }
-        frameDisparity.convertTo(frameDisparity, CV_8UC1, disparity_multiplier);
+        frameDisparity.convertTo(frameDisparity, CV_8UC1, disparityMultiplier);
         cv::applyColorMap(frameDisparity, frameDisparity, cv::COLORMAP_JET);
 
         int offsetX = (camRight->getResolutionWidth() - camRight->getResolutionHeight()) / 2;

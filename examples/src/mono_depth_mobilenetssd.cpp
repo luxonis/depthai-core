@@ -102,7 +102,8 @@ int main(int argc, char** argv) {
         cv::imshow(name, frame);
     };
 
-    float disparity_multiplier = 255 / 95;
+    // Disparity range is used for normalization
+    float disparityMultiplier = 255 / stereo->getMaxDisparity();
 
     while(true) {
         auto inRight = qRight->get<dai::ImgFrame>();
@@ -121,7 +122,7 @@ int main(int argc, char** argv) {
                 detection.xmax = 1 - swap;
             }
         }
-        disparityFrame.convertTo(disparityFrame, CV_8UC1, disparity_multiplier);
+        disparityFrame.convertTo(disparityFrame, CV_8UC1, disparityMultiplier);
         // Available color maps: https://docs.opencv.org/3.4/d3/d50/group__imgproc__colormap.html
         cv::applyColorMap(disparityFrame, disparityFrame, cv::COLORMAP_JET);
         show("disparity", disparityFrame, detections);
