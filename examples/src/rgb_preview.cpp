@@ -4,6 +4,7 @@
 #include "depthai/depthai.hpp"
 
 int main() {
+    using namespace std;
     // Create pipeline
     dai::Pipeline pipeline;
 
@@ -25,6 +26,16 @@ int main() {
 
     // Connect to device and start pipeline
     dai::Device device(pipeline);
+
+    cout << "Connected cameras: ";
+    for(const auto& cam : device.getConnectedCameras()) {
+        cout << static_cast<int>(cam) << " ";
+        cout << cam << " ";
+    }
+    cout << endl;
+
+    // Print USB speed
+    cout << "Usb speed: " << device.getUsbSpeed() << endl;
 
     // Output queue will be used to get the rgb frames from the output defined above
     auto qRgb = device.getOutputQueue("rgb", 4, false);

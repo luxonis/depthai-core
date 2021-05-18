@@ -44,7 +44,7 @@ NeuralNetwork::BlobAssetInfo NeuralNetwork::loadBlob(const std::string& path) {
 
     // Load blob in blobPath into asset
     // And mark in properties where to look for it
-    std::ifstream blobStream(blobPath, std::ios::in | std::ios::binary);
+    std::ifstream blobStream(blobPath, std::ios::binary);
     if(!blobStream.is_open()) throw std::runtime_error("NeuralNetwork node | Blob at path: " + blobPath + " doesn't exist");
 
     // Create an asset (alignment 64)

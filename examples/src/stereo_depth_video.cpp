@@ -47,10 +47,6 @@ int main() {
     std::atomic<bool> extended{false};
     std::atomic<bool> subpixel{false};
 
-    int maxDisp = 96;
-    if(extended) maxDisp *= 2;
-    if(subpixel) maxDisp *= 32;  // 5 bits fractional disparity
-
     if(withDepth) {
         // StereoDepth
         stereo->setConfidenceThreshold(200);
@@ -104,7 +100,7 @@ int main() {
             // Note: in some configurations (if depth is enabled), disparity may output garbage data
             auto disparity = dispQueue->get<dai::ImgFrame>();
             cv::Mat disp(disparity->getHeight(), disparity->getWidth(), subpixel ? CV_16UC1 : CV_8UC1, disparity->getData().data());
-            disp.convertTo(disp, CV_8UC1, 255.0 / maxDisp);  // Extend disparity range
+            disp.convertTo(disp, CV_8UC1, 255 / stereo->getMaxDisparity());  // Extend disparity range
             cv::imshow("disparity", disp);
             cv::Mat disp_color;
             cv::applyColorMap(disp, disp_color, cv::COLORMAP_JET);
