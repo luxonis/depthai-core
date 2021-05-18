@@ -9,7 +9,7 @@ static const std::vector<std::string> labelMap = {"background", "aeroplane", "bi
                                                   "car",        "cat",       "chair",       "cow",   "diningtable", "dog",    "horse",
                                                   "motorbike",  "person",    "pottedplant", "sheep", "sofa",        "train",  "tvmonitor"};
 
-static std::atomic<bool> syncNN{true};
+static std::atomic<bool> fullFrameTracking{false};
 
 int main(int argc, char** argv) {
     using namespace std;
@@ -63,7 +63,9 @@ int main(int argc, char** argv) {
     spatialDetectionNetwork->setDepthUpperThreshold(5000);
 
     objectTracker->setDetectionLabelsToTrack({15});  // track only person
+    // possible tracking types: ZERO_TERM_COLOR_HISTOGRAM, ZERO_TERM_IMAGELESS
     objectTracker->setTrackerType(dai::TrackerType::ZERO_TERM_COLOR_HISTOGRAM);
+    // take the smallest ID when new object is tracked, possible options: SMALLEST_ID, UNIQUE_ID
     objectTracker->setTrackerIdAssigmentPolicy(dai::TrackerIdAssigmentPolicy::SMALLEST_ID);
 
     // Linking
@@ -71,18 +73,21 @@ int main(int argc, char** argv) {
     monoRight->out.link(stereo->right);
 
     camRgb->preview.link(spatialDetectionNetwork->input);
-    if(syncNN) {
-        objectTracker->passthroughTrackerFrame.link(xoutRgb->input);
-    } else {
-        camRgb->preview.link(xoutRgb->input);
-    }
-
+    objectTracker->passthroughTrackerFrame.link(xoutRgb->input);
     objectTracker->out.link(trackerOut->input);
 
-    spatialDetectionNetwork->passthrough.link(objectTracker->inputTrackerFrame);
+    if(fullFrameTracking) {
+        camRgb->setPreviewKeepAspectRatio(false);
+        camRgb->video.link(objectTracker->inputTrackerFrame);
+        objectTracker->inputTrackerFrame.setBlocking(false);
+        // do not block the pipeline if it's too slow on full frame
+        objectTracker->inputTrackerFrame.setQueueSize(2);
+    } else {
+        spatialDetectionNetwork->passthrough.link(objectTracker->inputTrackerFrame);
+    }
+
     spatialDetectionNetwork->passthrough.link(objectTracker->inputDetectionFrame);
     spatialDetectionNetwork->out.link(objectTracker->inputDetections);
-
     stereo->depth.link(spatialDetectionNetwork->inputDepth);
 
     // Connect to device and start pipeline
@@ -94,7 +99,7 @@ int main(int argc, char** argv) {
     auto startTime = steady_clock::now();
     int counter = 0;
     float fps = 0;
-    auto color = cv::Scalar(255, 0, 0);
+    auto color = cv::Scalar(255, 255, 255);
 
     while(true) {
         auto imgFrame = preview->get<dai::ImgFrame>();
@@ -123,30 +128,30 @@ int main(int argc, char** argv) {
             if(labelIndex < labelMap.size()) {
                 labelStr = labelMap[labelIndex];
             }
-            cv::putText(frame, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(frame, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
 
             std::stringstream idStr;
             idStr << "ID: " << t.id;
-            cv::putText(frame, idStr.str(), cv::Point(x1 + 10, y1 + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(frame, idStr.str(), cv::Point(x1 + 10, y1 + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
             std::stringstream statusStr;
             statusStr << "Status: " << t.status;
-            cv::putText(frame, statusStr.str(), cv::Point(x1 + 10, y1 + 50), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(frame, statusStr.str(), cv::Point(x1 + 10, y1 + 50), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
 
             std::stringstream depthX;
             depthX << "X: " << (int)t.spatialCoordinates.x << " mm";
-            cv::putText(frame, depthX.str(), cv::Point(x1 + 10, y1 + 65), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(frame, depthX.str(), cv::Point(x1 + 10, y1 + 65), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
             std::stringstream depthY;
             depthY << "Y: " << (int)t.spatialCoordinates.y << " mm";
-            cv::putText(frame, depthY.str(), cv::Point(x1 + 10, y1 + 80), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(frame, depthY.str(), cv::Point(x1 + 10, y1 + 80), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
             std::stringstream depthZ;
             depthZ << "Z: " << (int)t.spatialCoordinates.z << " mm";
-            cv::putText(frame, depthZ.str(), cv::Point(x1 + 10, y1 + 95), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(frame, depthZ.str(), cv::Point(x1 + 10, y1 + 95), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
 
             cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
         }
 
         std::stringstream fpsStr;
-        fpsStr << std::fixed << std::setprecision(2) << fps;
+        fpsStr << "NN fps: " << std::fixed << std::setprecision(2) << fps;
         cv::putText(frame, fpsStr.str(), cv::Point(2, imgFrame->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
 
         cv::imshow("tracker", frame);

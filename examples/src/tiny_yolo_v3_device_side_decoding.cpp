@@ -76,6 +76,13 @@ int main(int argc, char** argv) {
     auto qRgb = device.getOutputQueue("rgb", 4, false);
     auto qDet = device.getOutputQueue("nn", 4, false);
 
+    cv::Mat frame;
+    std::vector<dai::ImgDetection> detections;
+    auto startTime = steady_clock::now();
+    int counter = 0;
+    float fps = 0;
+    auto color2 = cv::Scalar(255, 255, 255);
+
     // Add bounding boxes and text to the frame and show it to the user
     auto displayFrame = [](std::string name, cv::Mat frame, std::vector<dai::ImgDetection>& detections) {
         auto color = cv::Scalar(255, 0, 0);
@@ -101,15 +108,17 @@ int main(int argc, char** argv) {
         cv::imshow(name, frame);
     };
 
-    auto startTime = steady_clock::now();
-    int counter = 0;
-    float fps = 0;
-
     while(true) {
-        auto inRgb = qRgb->get<dai::ImgFrame>();
-        auto inDet = qDet->get<dai::ImgDetections>();
-        auto detections = inDet->detections;
-        cv::Mat frame = inRgb->getCvFrame();
+        std::shared_ptr<dai::ImgFrame> inRgb;
+        std::shared_ptr<dai::ImgDetections> inDet;
+
+        if(syncNN) {
+            inRgb = qRgb->get<dai::ImgFrame>();
+            inDet = qDet->get<dai::ImgDetections>();
+        } else {
+            inRgb = qRgb->tryGet<dai::ImgFrame>();
+            inDet = qDet->tryGet<dai::ImgDetections>();
+        }
 
         counter++;
         auto currentTime = steady_clock::now();
@@ -120,11 +129,20 @@ int main(int argc, char** argv) {
             startTime = currentTime;
         }
 
-        std::stringstream fpsStr;
-        fpsStr << std::fixed << std::setprecision(2) << fps;
-        cv::putText(frame, fpsStr.str(), cv::Point(2, inRgb->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, 255, 0, 0);
+        if(inRgb) {
+            frame = inRgb->getCvFrame();
+            std::stringstream fpsStr;
+            fpsStr << "NN fps: " << std::fixed << std::setprecision(2) << fps;
+            cv::putText(frame, fpsStr.str(), cv::Point(2, inRgb->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color2);
+        }
 
-        displayFrame("video", frame, detections);
+        if(inDet) {
+            detections = inDet->detections;
+        }
+
+        if(!frame.empty()) {
+            displayFrame("rgb", frame, detections);
+        }
 
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q') {

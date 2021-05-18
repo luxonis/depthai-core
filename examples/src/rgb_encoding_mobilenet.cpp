@@ -67,6 +67,9 @@ int main(int argc, char** argv) {
     auto qDet = device.getOutputQueue("nn", queueSize);
     auto qRgbEnc = device.getOutputQueue("h265", 30, true);
 
+    cv::Mat frame;
+    std::vector<dai::ImgDetection> detections;
+
     // Add bounding boxes and text to the frame and show it to the user
     auto displayFrame = [](std::string name, cv::Mat frame, std::vector<dai::ImgDetection>& detections) {
         auto color = cv::Scalar(255, 0, 0);
@@ -95,22 +98,30 @@ int main(int argc, char** argv) {
     auto videoFile = std::ofstream("video.h264", std::ios::binary);
 
     while(true) {
-        auto inRgb = qRgb->get<dai::ImgFrame>();
-        auto inDet = qDet->get<dai::ImgDetections>();
-        auto out = qRgbEnc->get<dai::ImgFrame>();
-        auto detections = inDet->detections;
-        cv::Mat frame = inRgb->getCvFrame();
+        auto inRgb = qRgb->tryGet<dai::ImgFrame>();
+        auto inDet = qDet->tryGet<dai::ImgDetections>();
 
+        auto out = qRgbEnc->get<dai::ImgFrame>();
         videoFile.write((char*)out->getData().data(), out->getData().size());
 
-        displayFrame("rgb", frame, detections);
+        if(inRgb) {
+            frame = inRgb->getCvFrame();
+        }
+
+        if(inDet) {
+            detections = inDet->detections;
+        }
+
+        if(!frame.empty()) {
+            displayFrame("rgb", frame, detections);
+        }
 
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q') {
-            cout << "To view the encoded data, convert the stream file (.h265) into a video file (.mp4), using a command below:" << endl;
-            cout << "ffmpeg -framerate 30 -i video.h264 -c copy video.mp4" << endl;
-            return 0;
+            break;
         }
     }
+    cout << "To view the encoded data, convert the stream file (.h265) into a video file (.mp4), using a command below:" << endl;
+    cout << "ffmpeg -framerate 30 -i video.h264 -c copy video.mp4" << endl;
     return 0;
 }

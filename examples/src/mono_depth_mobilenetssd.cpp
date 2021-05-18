@@ -54,6 +54,7 @@ int main(int argc, char** argv) {
     manip->initialConfig.setResize(300, 300);
     // The NN model expects BGR input. By default ImageManip output type would be same as input (gray in this case)
     manip->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
+
     // Define a neural network that will make predictions based on the source frames
     nn->setConfidenceThreshold(0.5);
     nn->setBlobPath(nnPath);
@@ -76,6 +77,10 @@ int main(int argc, char** argv) {
     auto qRight = device.getOutputQueue("rectifiedRight", 4, false);
     auto qDisparity = device.getOutputQueue("disparity", 4, false);
     auto qDet = device.getOutputQueue("nn", 4, false);
+
+    cv::Mat rightFrame;
+    cv::Mat disparityFrame;
+    std::vector<dai::ImgDetection> detections;
 
     // Add bounding boxes and text to the frame and show it to the user
     auto show = [](std::string name, cv::Mat frame, std::vector<dai::ImgDetection>& detections) {
@@ -102,31 +107,44 @@ int main(int argc, char** argv) {
         cv::imshow(name, frame);
     };
 
-    // Disparity range is used for normalization
     float disparityMultiplier = 255 / stereo->getMaxDisparity();
 
     while(true) {
-        auto inRight = qRight->get<dai::ImgFrame>();
-        auto inDet = qDet->get<dai::ImgDetections>();
-        auto inDisparity = qDisparity->get<dai::ImgFrame>();
-        auto detections = inDet->detections;
-        cv::Mat rightFrame = inRight->getCvFrame();
-        cv::Mat disparityFrame = inDisparity->getCvFrame();
+        // Instead of get (blocking), we use tryGet (nonblocking) which will return the available data or None otherwise
+        auto inRight = qRight->tryGet<dai::ImgFrame>();
+        auto inDet = qDet->tryGet<dai::ImgDetections>();
+        auto inDisparity = qDisparity->tryGet<dai::ImgFrame>();
 
-        if(flipRectified) {
-            cv::flip(rightFrame, rightFrame, 1);
-
-            for(auto& detection : detections) {
-                auto swap = detection.xmin;
-                detection.xmin = 1 - detection.xmax;
-                detection.xmax = 1 - swap;
+        if(inRight) {
+            rightFrame = inRight->getCvFrame();
+            if(flipRectified) {
+                cv::flip(rightFrame, rightFrame, 1);
             }
         }
-        disparityFrame.convertTo(disparityFrame, CV_8UC1, disparityMultiplier);
-        // Available color maps: https://docs.opencv.org/3.4/d3/d50/group__imgproc__colormap.html
-        cv::applyColorMap(disparityFrame, disparityFrame, cv::COLORMAP_JET);
-        show("disparity", disparityFrame, detections);
-        show("rectified right", rightFrame, detections);
+
+        if(inDet) {
+            detections = inDet->detections;
+            if(flipRectified) {
+                for(auto& detection : detections) {
+                    auto swap = detection.xmin;
+                    detection.xmin = 1 - detection.xmax;
+                    detection.xmax = 1 - swap;
+                }
+            }
+        }
+
+        if(inDisparity) {
+            // Frame is transformed, normalized, and color map will be applied to highlight the depth info
+            disparityFrame = inDisparity->getFrame();
+            disparityFrame.convertTo(disparityFrame, CV_8UC1, disparityMultiplier);
+            // Available color maps: https://docs.opencv.org/3.4/d3/d50/group__imgproc__colormap.html
+            cv::applyColorMap(disparityFrame, disparityFrame, cv::COLORMAP_JET);
+            show("disparity", disparityFrame, detections);
+        }
+
+        if(!rightFrame.empty()) {
+            show("rectified right", rightFrame, detections);
+        }
 
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q') return 0;

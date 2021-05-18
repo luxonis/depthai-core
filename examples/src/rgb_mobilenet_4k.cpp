@@ -57,10 +57,14 @@ int main(int argc, char** argv) {
     // Connect to device and start pipeline
     dai::Device device(pipeline);
 
-    // Queues
+    // Output queues will be used to get the frames and nn data from the outputs defined above
     auto qVideo = device.getOutputQueue("video", 4, false);
     auto qPreview = device.getOutputQueue("preview", 4, false);
     auto qDet = device.getOutputQueue("nn", 4, false);
+
+    cv::Mat previewFrame;
+    cv::Mat videoFrame;
+    std::vector<dai::ImgDetection> detections;
 
     // Add bounding boxes and text to the frame and show it to the user
     auto displayFrame = [](std::string name, cv::Mat frame, std::vector<dai::ImgDetection>& detections) {
@@ -92,15 +96,30 @@ int main(int argc, char** argv) {
     cout << "Resize video window with mouse drag!" << endl;
 
     while(true) {
-        auto inVideo = qVideo->get<dai::ImgFrame>();
-        auto inPreview = qPreview->get<dai::ImgFrame>();
-        auto inDet = qDet->get<dai::ImgDetections>();
-        auto detections = inDet->detections;
-        cv::Mat videoFrame = inVideo->getCvFrame();
-        cv::Mat previewFrame = inPreview->getCvFrame();
+        // Instead of get (blocking), we use tryGet (nonblocking) which will return the available data or None otherwise
+        auto inVideo = qVideo->tryGet<dai::ImgFrame>();
+        auto inPreview = qPreview->tryGet<dai::ImgFrame>();
+        auto inDet = qDet->tryGet<dai::ImgDetections>();
 
-        displayFrame("video", videoFrame, detections);
-        displayFrame("preview", previewFrame, detections);
+        if(inVideo) {
+            videoFrame = inVideo->getCvFrame();
+        }
+
+        if(inPreview) {
+            previewFrame = inPreview->getCvFrame();
+        }
+
+        if(inDet) {
+            detections = inDet->detections;
+        }
+
+        if(!videoFrame.empty()) {
+            displayFrame("video", videoFrame, detections);
+        }
+
+        if(!previewFrame.empty()) {
+            displayFrame("preview", previewFrame, detections);
+        }
 
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q') {

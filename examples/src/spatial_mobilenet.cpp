@@ -99,14 +99,24 @@ int main(int argc, char** argv) {
         auto inDet = detectionNNQueue->get<dai::SpatialImgDetections>();
         auto depth = depthQueue->get<dai::ImgFrame>();
 
-        auto detections = inDet->detections;
+        counter++;
+        auto currentTime = steady_clock::now();
+        auto elapsed = duration_cast<duration<float>>(currentTime - startTime);
+        if(elapsed > seconds(1)) {
+            fps = counter / elapsed.count();
+            counter = 0;
+            startTime = currentTime;
+        }
 
+        cv::Mat frame = inPreview->getCvFrame();
         cv::Mat depthFrame = depth->getFrame();
+
         cv::Mat depthFrameColor;
         cv::normalize(depthFrame, depthFrameColor, 255, 0, cv::NORM_INF, CV_8UC1);
         cv::equalizeHist(depthFrameColor, depthFrameColor);
         cv::applyColorMap(depthFrameColor, depthFrameColor, cv::COLORMAP_HOT);
 
+        auto detections = inDet->detections;
         if(!detections.empty()) {
             auto boundingBoxMapping = xoutBoundingBoxDepthMappingQueue->get<dai::SpatialLocationCalculatorConfig>();
             auto roiDatas = boundingBoxMapping->getConfigData();
@@ -124,16 +134,6 @@ int main(int argc, char** argv) {
                 cv::rectangle(depthFrameColor, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
             }
         }
-        counter++;
-        auto currentTime = steady_clock::now();
-        auto elapsed = duration_cast<duration<float>>(currentTime - startTime);
-        if(elapsed > seconds(1)) {
-            fps = counter / elapsed.count();
-            counter = 0;
-            startTime = currentTime;
-        }
-
-        cv::Mat frame = inPreview->getCvFrame();
 
         for(const auto& detection : detections) {
             int x1 = detection.xmin * frame.cols;
@@ -146,30 +146,30 @@ int main(int argc, char** argv) {
             if(labelIndex < labelMap.size()) {
                 labelStr = labelMap[labelIndex];
             }
-            cv::putText(frame, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(frame, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
             std::stringstream confStr;
             confStr << std::fixed << std::setprecision(2) << detection.confidence * 100;
-            cv::putText(frame, confStr.str(), cv::Point(x1 + 10, y1 + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(frame, confStr.str(), cv::Point(x1 + 10, y1 + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
 
             std::stringstream depthX;
             depthX << "X: " << (int)detection.spatialCoordinates.x << " mm";
-            cv::putText(frame, depthX.str(), cv::Point(x1 + 10, y1 + 50), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(frame, depthX.str(), cv::Point(x1 + 10, y1 + 50), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
             std::stringstream depthY;
             depthY << "Y: " << (int)detection.spatialCoordinates.y << " mm";
-            cv::putText(frame, depthY.str(), cv::Point(x1 + 10, y1 + 65), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(frame, depthY.str(), cv::Point(x1 + 10, y1 + 65), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
             std::stringstream depthZ;
             depthZ << "Z: " << (int)detection.spatialCoordinates.z << " mm";
-            cv::putText(frame, depthZ.str(), cv::Point(x1 + 10, y1 + 80), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(frame, depthZ.str(), cv::Point(x1 + 10, y1 + 80), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
 
             cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
         }
 
         std::stringstream fpsStr;
-        fpsStr << std::fixed << std::setprecision(2) << fps;
+        fpsStr << "NN fps: " << std::fixed << std::setprecision(2) << fps;
         cv::putText(frame, fpsStr.str(), cv::Point(2, inPreview->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
 
         cv::imshow("depth", depthFrameColor);
-        cv::imshow("rgb", frame);
+        cv::imshow("preview", frame);
 
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q') {

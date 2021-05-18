@@ -8,7 +8,7 @@ static const std::vector<std::string> labelMap = {"background", "aeroplane", "bi
                                                   "car",        "cat",       "chair",       "cow",   "diningtable", "dog",    "horse",
                                                   "motorbike",  "person",    "pottedplant", "sheep", "sofa",        "train",  "tvmonitor"};
 
-static std::atomic<bool> syncNN{true};
+static std::atomic<bool> fullFrameTracking{false};
 
 int main(int argc, char** argv) {
     using namespace std;
@@ -57,13 +57,14 @@ int main(int argc, char** argv) {
 
     // Linking
     camRgb->preview.link(detectionNetwork->input);
-    if(syncNN) {
-        objectTracker->passthroughTrackerFrame.link(xlinkOut->input);
+    objectTracker->passthroughTrackerFrame.link(xlinkOut->input);
+
+    if(fullFrameTracking) {
+        camRgb->video.link(objectTracker->inputTrackerFrame);
     } else {
-        camRgb->preview.link(xlinkOut->input);
+        detectionNetwork->passthrough.link(objectTracker->inputTrackerFrame);
     }
 
-    detectionNetwork->passthrough.link(objectTracker->inputTrackerFrame);
     detectionNetwork->passthrough.link(objectTracker->inputDetectionFrame);
     detectionNetwork->out.link(objectTracker->inputDetections);
     objectTracker->out.link(trackerOut->input);

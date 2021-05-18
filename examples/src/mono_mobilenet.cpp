@@ -40,14 +40,16 @@ int main(int argc, char** argv) {
     // Properties
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    nn->setConfidenceThreshold(0.5);
-    nn->setBlobPath(nnPath);
-    nn->setNumInferenceThreads(2);
-    nn->input.setBlocking(false);
+
     // Convert the grayscale frame into the nn-acceptable form
     manip->initialConfig.setResize(300, 300);
     // The NN model expects BGR input. By default ImageManip output type would be same as input (gray in this case)
     manip->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
+
+    nn->setConfidenceThreshold(0.5);
+    nn->setBlobPath(nnPath);
+    nn->setNumInferenceThreads(2);
+    nn->input.setBlocking(false);
 
     // Linking
     monoRight->out.link(manip->inputImage);
@@ -61,6 +63,9 @@ int main(int argc, char** argv) {
     // Output queues will be used to get the grayscale frames and nn data from the outputs defined above
     auto qRight = device.getOutputQueue("right", 4, false);
     auto qDet = device.getOutputQueue("nn", 4, false);
+
+    cv::Mat frame;
+    std::vector<dai::ImgDetection> detections;
 
     // Add bounding boxes and text to the frame and show it to the user
     auto displayFrame = [](std::string name, cv::Mat frame, std::vector<dai::ImgDetection>& detections) {
@@ -88,12 +93,21 @@ int main(int argc, char** argv) {
     };
 
     while(true) {
-        auto inRight = qRight->get<dai::ImgFrame>();
-        auto inDet = qDet->get<dai::ImgDetections>();
-        auto detections = inDet->detections;
-        cv::Mat frame = inRight->getCvFrame();
+        // Instead of get (blocking), we use tryGet (nonblocking) which will return the available data or None otherwise
+        auto inRight = qRight->tryGet<dai::ImgFrame>();
+        auto inDet = qDet->tryGet<dai::ImgDetections>();
 
-        displayFrame("right", frame, detections);
+        if(inRight) {
+            frame = inRight->getCvFrame();
+        }
+
+        if(inDet) {
+            detections = inDet->detections;
+        }
+
+        if(!frame.empty()) {
+            displayFrame("right", frame, detections);
+        }
 
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q') return 0;

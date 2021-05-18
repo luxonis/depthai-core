@@ -26,7 +26,7 @@ int main() {
     // Connect to device and start pipeline
     dai::Device device(pipeline);
 
-    // Queue
+    // Output queue will be used to get the grayscale frames from the output defined above
     auto qRight = device.getOutputQueue("right", 4, false);
 
     std::string dirName = "mono_data";
@@ -34,6 +34,7 @@ int main() {
 
     while(true) {
         auto inRight = qRight->get<dai::ImgFrame>();
+        // Data is originally represented as a flat 1D array, it needs to be converted into HxW form
         // Frame is transformed and ready to be shown
         cv::imshow("right", inRight->getCvFrame());
 
@@ -44,7 +45,9 @@ int main() {
         cv::imwrite(videoStr.str(), inRight->getCvFrame());
 
         int key = cv::waitKey(1);
-        if(key == 'q' || key == 'Q') return 0;
+        if(key == 'q' || key == 'Q') {
+            return 0;
+        }
     }
     return 0;
 }

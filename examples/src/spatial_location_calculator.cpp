@@ -67,12 +67,13 @@ int main() {
     // Connect to device and start pipeline
     dai::Device device(pipeline);
 
+    // Output queue will be used to get the depth frames from the outputs defined above
     auto depthQueue = device.getOutputQueue("depth", 8, false);
     auto spatialCalcQueue = device.getOutputQueue("spatialData", 8, false);
     auto spatialCalcConfigInQueue = device.getInputQueue("spatialCalcConfig");
 
-    cv::Mat depthFrame;
     auto color = cv::Scalar(255, 255, 255);
+
     std::cout << "Use WASD keys to move ROI!" << std::endl;
 
     while(true) {
@@ -104,13 +105,12 @@ int main() {
             depthZ << "Z: " << (int)depthData.spatialCoordinates.z << " mm";
             cv::putText(depthFrameColor, depthZ.str(), cv::Point(xmin + 10, ymin + 50), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
         }
-
+        // Show the frame
         cv::imshow("depth", depthFrameColor);
 
         int key = cv::waitKey(1);
         switch(key) {
             case 'q':
-                return 0;
                 break;
             case 'w':
                 if(topLeft.y - stepSize >= 0) {

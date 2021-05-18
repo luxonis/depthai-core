@@ -34,11 +34,17 @@ int main() {
     auto qRight = device.getOutputQueue("right", 4, false);
 
     while(true) {
-        auto inLeft = qLeft->get<dai::ImgFrame>();
-        auto inRight = qRight->get<dai::ImgFrame>();
+        // Instead of get (blocking), we use tryGet (nonblocking) which will return the available data or None otherwise
+        auto inLeft = qLeft->tryGet<dai::ImgFrame>();
+        auto inRight = qRight->tryGet<dai::ImgFrame>();
 
-        cv::imshow("left", inLeft->getCvFrame());
-        cv::imshow("right", inRight->getCvFrame());
+        if(inLeft) {
+            cv::imshow("left", inLeft->getCvFrame());
+        }
+
+        if(inRight) {
+            cv::imshow("right", inRight->getCvFrame());
+        }
 
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q') {

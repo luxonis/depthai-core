@@ -134,7 +134,6 @@ int main(int argc, char** argv) {
                 auto ymin = (int)topLeft.y;
                 auto xmax = (int)bottomRight.x;
                 auto ymax = (int)bottomRight.y;
-
                 cv::rectangle(depthFrameColor, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
             }
         }
@@ -155,20 +154,20 @@ int main(int argc, char** argv) {
             if(labelIndex < labelMap.size()) {
                 labelStr = labelMap[labelIndex];
             }
-            cv::putText(rectifiedRight, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(rectifiedRight, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
             std::stringstream confStr;
             confStr << std::fixed << std::setprecision(2) << detection.confidence * 100;
-            cv::putText(rectifiedRight, confStr.str(), cv::Point(x1 + 10, y1 + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(rectifiedRight, confStr.str(), cv::Point(x1 + 10, y1 + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
 
             std::stringstream depthX;
             depthX << "X: " << (int)detection.spatialCoordinates.x << " mm";
-            cv::putText(rectifiedRight, depthX.str(), cv::Point(x1 + 10, y1 + 50), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(rectifiedRight, depthX.str(), cv::Point(x1 + 10, y1 + 50), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
             std::stringstream depthY;
             depthY << "Y: " << (int)detection.spatialCoordinates.y << " mm";
-            cv::putText(rectifiedRight, depthY.str(), cv::Point(x1 + 10, y1 + 65), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(rectifiedRight, depthY.str(), cv::Point(x1 + 10, y1 + 65), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
             std::stringstream depthZ;
             depthZ << "Z: " << (int)detection.spatialCoordinates.z << " mm";
-            cv::putText(rectifiedRight, depthZ.str(), cv::Point(x1 + 10, y1 + 80), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(rectifiedRight, depthZ.str(), cv::Point(x1 + 10, y1 + 80), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
 
             cv::rectangle(rectifiedRight, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
         }

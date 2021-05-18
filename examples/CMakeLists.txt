@@ -165,7 +165,7 @@ target_compile_definitions(rgb_encoding_mobilenet PRIVATE BLOB_PATH="${mobilenet
 dai_add_example(image_manip src/image_manip_example.cpp)
 
 # Imagae manip node exapmle with warping
-dai_add_example(image_manip_warp src/image_manip_warp.cpp)
+dai_add_example(rgb_rotate_warp src/rgb_rotate_warp.cpp)
 
 # Device side decoding example for tiny-yolo-v3
 dai_add_example(tiny_yolo_v3_device_side_decoding src/tiny_yolo_v3_device_side_decoding.cpp)

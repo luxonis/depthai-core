@@ -33,11 +33,8 @@ int main() {
     // Linking
     sysLog->out.link(xout->input);
 
-    // Connect to device
-    dai::Device device;
-
     // Connect to device and start pipeline
-    device.startPipeline(pipeline);
+    dai::Device device(pipeline);
 
     // Output queue will be used to get the system info
     auto qSysInfo = device.getOutputQueue("sysinfo", 4, false);
