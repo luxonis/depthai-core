@@ -12,28 +12,32 @@ namespace node {
  * @brief SPIOut node. Sends messages over SPI.
  */
 class SPIOut : public Node {
-    dai::SPIOutProperties properties;
+   public:
+    using Properties = dai::SPIOutProperties;
 
-    std::string getName() const {
+   private:
+    Properties properties;
+
+    std::string getName() const override {
         return "SPIOut";
     }
 
-    std::vector<Input> getInputs() {
+    std::vector<Input> getInputs() override {
         return {input};
     }
 
-    std::vector<Output> getOutputs() {
+    std::vector<Output> getOutputs() override {
         return {};
     }
 
-    nlohmann::json getProperties() {
+    nlohmann::json getProperties() override {
         nlohmann::json j;
         nlohmann::to_json(j, properties);
         return j;
     }
 
-    std::shared_ptr<Node> clone() {
-        return std::make_shared<SPIOut>(*this);
+    std::shared_ptr<Node> clone() override {
+        return std::make_shared<std::decay<decltype(*this)>::type>(*this);
     }
 
    public:

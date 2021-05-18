@@ -9,31 +9,35 @@ namespace dai {
 namespace node {
 
 /**
- * @brief SPIIn node. Sends messages over SPI.
+ * @brief SPIIn node. Receives messages over SPI.
  */
 class SPIIn : public Node {
-    dai::SPIInProperties properties;
+   public:
+    using Properties = dai::SPIInProperties;
 
-    std::string getName() const {
+   private:
+    Properties properties;
+
+    std::string getName() const override {
         return "SPIIn";
     }
 
-    std::vector<Input> getInputs() {
+    std::vector<Input> getInputs() override {
         return {};
     }
 
-    std::vector<Output> getOutputs() {
+    std::vector<Output> getOutputs() override {
         return {out};
     }
 
-    nlohmann::json getProperties() {
+    nlohmann::json getProperties() override {
         nlohmann::json j;
         nlohmann::to_json(j, properties);
         return j;
     }
 
-    std::shared_ptr<Node> clone() {
-        return std::make_shared<SPIIn>(*this);
+    std::shared_ptr<Node> clone() override {
+        return std::make_shared<std::decay<decltype(*this)>::type>(*this);
     }
 
    public:
@@ -47,7 +51,7 @@ class SPIIn : public Node {
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
 
     /**
-     * Specifies stream name over which the node will send data
+     * Specifies stream name over which the node will receive data
      *
      * @param name Stream name
      */
