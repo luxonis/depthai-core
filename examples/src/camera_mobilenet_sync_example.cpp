@@ -21,9 +21,11 @@ int main(int argc, char** argv) {
         nnPath = std::string(argv[1]);
     }
 
+    // Create pipeline
     dai::Pipeline pipeline;
 
-    auto colorCam = pipeline.create<dai::node::ColorCamera>();
+    // Define sources and outputs
+    auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
     auto camOut = pipeline.create<dai::node::XLinkOut>();
     auto passthroughMeta = pipeline.create<dai::node::XLinkOut>();
@@ -35,11 +37,11 @@ int main(int argc, char** argv) {
     resultOut->setStreamName("resultOut");
 
     // ColorCamera options
-    colorCam->setPreviewSize(300, 300);
-    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    colorCam->setInterleaved(false);
-    colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
-    colorCam->setFps(CAMERA_FPS);
+    camRgb->setPreviewSize(300, 300);
+    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    camRgb->setInterleaved(false);
+    camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
+    camRgb->setFps(CAMERA_FPS);
 
     // NN input options
     nn->input.setBlocking(false);
@@ -49,8 +51,8 @@ int main(int argc, char** argv) {
     nn->setNumInferenceThreads(2);
 
     // Link nodes CAM -> XLINK
-    colorCam->preview.link(nn->input);
-    colorCam->preview.link(camOut->input);
+    camRgb->preview.link(nn->input);
+    camRgb->preview.link(camOut->input);
     nn->passthrough.link(passthroughMeta->input);
     nn->out.link(resultOut->input);
 
