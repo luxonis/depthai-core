@@ -10,7 +10,9 @@ add_library(utility src/utility.cpp)
 target_link_libraries(utility FP16::fp16 ${OpenCV_LIBS})
 
 # Macro for adding new examples
-macro(dai_add_example example_name example_src)
+function(dai_add_example example_name example_src)
+
+    # Add example
     add_executable("${example_name}" "${example_src}")
     target_link_libraries("${example_name}" PRIVATE utility depthai::opencv ${OpenCV_LIBS})
 
@@ -38,7 +40,7 @@ macro(dai_add_example example_name example_src)
         set_tests_properties(${example_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1")
 
     endif()
-endmacro()
+endfunction()
 
 # Create a custom target which runs all examples for 10 seconds max, and check if they executed without errors
 

@@ -7,11 +7,11 @@ hunter_add_package(Catch)
 find_package(Catch2 CONFIG REQUIRED)
 
 # Macro for adding new tests
-macro(dai_add_test test_name test_src)
+function(dai_add_test test_name test_src)
 
     # Create test executable
     add_executable("${test_name}" "${test_src}")
-    
+
     # Add to clangformat target
     target_clangformat_setup(${test_name} "")
 
@@ -26,10 +26,10 @@ macro(dai_add_test test_name test_src)
 
     # Add sanitizers for tests as well
     add_sanitizers(${test_name})
-    
+
     # Add ubsan halt on error
     set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1")
-endmacro() 
+endfunction()
 
 # Mobilenet network
 hunter_private_data(
