@@ -468,7 +468,8 @@ void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToM
 
     client = std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>(
         new nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>([this](nanorpc::core::type::buffer request) {
-            std::unique_lock<std::mutex> lock(this->rpcMutex);
+            // TODO(TheMarpe) - causes issues on Windows
+            // std::unique_lock<std::mutex> lock(this->rpcMutex);
 
             // Log the request data
             if(spdlog::get_level() == spdlog::level::trace) {
