@@ -35,6 +35,7 @@ class PipelineImpl {
     PipelineSchema getPipelineSchema() const;
     OpenVINO::Version getPipelineOpenVINOVersion() const;
     AssetManager getAllAssets() const;
+    void setCameraTuningBlobPath(const std::string& path);
 
     // Access to nodes
     std::vector<std::shared_ptr<const Node>> getAllNodes() const;
@@ -218,6 +219,11 @@ class Pipeline {
     /// Get required OpenVINO version to run this pipeline
     OpenVINO::Version getOpenVINOVersion() const {
         return impl()->getPipelineOpenVINOVersion();
+    }
+
+    /// Set a camera IQ (Image Quality) tuning blob, used for all cameras
+    void setCameraTuningBlobPath(const std::string& path) {
+        impl()->setCameraTuningBlobPath(path);
     }
 };
 
