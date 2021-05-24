@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-#include "spdlog/spdlog.h"
+// #include "spdlog/spdlog.h"
 
 namespace dai {
 
@@ -71,7 +71,8 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
         throw std::runtime_error("ImgFrame doesn't have enough data to encode specified frame, required " + std::to_string(requiredSize) + ", actual "
                                  + std::to_string(actualSize) + ". Maybe metadataOnly transfer was made?");
     } else if(actualSize > requiredSize) {
-        spdlog::warn("ImgFrame has excess data: actual {}, expected {}", actualSize, requiredSize);
+        // FIXME doesn't build on Windows (multiple definitions during link)
+        // spdlog::warn("ImgFrame has excess data: actual {}, expected {}", actualSize, requiredSize);
     }
     if(getWidth() <= 0 || getHeight() <= 0) {
         throw std::runtime_error("ImgFrame metadata not valid (width or height = 0)");
