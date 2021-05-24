@@ -1,24 +1,28 @@
-#include <cstdio>
 #include <iostream>
 
 #include "depthai/depthai.hpp"
 #include "utility.hpp"
 
-struct warpFourPointTest {
-    std::vector<dai::Point2f> points;
-    bool normalizedCoords;
-    const char* description;
-};
+static constexpr auto keyRotateDecr = 'z';
+static constexpr auto keyRotateIncr = 'x';
+static constexpr auto keyResizeInc = 'v';
+static constexpr auto keyWarpTestCycle = 'c';
+
+void printControls() {
+    printf("\n=== Controls:\n");
+    printf(" %c -rotated rectangle crop, decrease rate\n", keyRotateDecr);
+    printf(" %c -rotated rectangle crop, increase rate\n", keyRotateIncr);
+    printf(" %c -warp 4-point transform, cycle through modes\n", keyWarpTestCycle);
+    printf(" %c -resize cropped region, or disable resize\n", keyResizeInc);
+    printf(" h -print controls (help)\n");
+}
 
 static constexpr auto ROTATE_RATE_MAX = 5.0;
 static constexpr auto ROTATE_RATE_INC = 0.1;
-static constexpr auto KEY_ROTATE_DECR = 'z';
-static constexpr auto KEY_ROTATE_INCR = 'x';
 
 static constexpr auto RESIZE_MAX_W = 800;
 static constexpr auto RESIZE_MAX_H = 600;
 static constexpr auto RESIZE_FACTOR_MAX = 5;
-static constexpr auto KEY_RESIZE_INC = 'v';
 
 /* The crop points are specified in clockwise order,
  * with first point mapped to output top-left, as:
@@ -30,6 +34,11 @@ static const dai::Point2f P0 = {0, 0};  // top-left
 static const dai::Point2f P1 = {1, 0};  // top-right
 static const dai::Point2f P2 = {1, 1};  // bottom-right
 static const dai::Point2f P3 = {0, 1};  // bottom-left
+struct warpFourPointTest {
+    std::vector<dai::Point2f> points;
+    bool normalizedCoords;
+    const char* description;
+};
 
 std::vector<warpFourPointTest> warpList = {
     //{{{  0,  0},{  1,  0},{  1,  1},{  0,  1}}, true, "passthrough"},
@@ -44,42 +53,33 @@ std::vector<warpFourPointTest> warpList = {
     {{{-0.3, 0}, {1, 0}, {1.3, 1}, {0, 1}}, true, "8. parallelogram transform"},
     {{{-0.2, 0}, {1.8, 0}, {1, 1}, {0, 1}}, true, "9. trapezoid transform"},
 };
-static constexpr auto KEY_WARP_TEST_CYCLE = 'c';
-
-void printControls() {
-    printf("\n=== Controls:\n");
-    printf(" %c -rotated rectangle crop, decrease rate\n", KEY_ROTATE_DECR);
-    printf(" %c -rotated rectangle crop, increase rate\n", KEY_ROTATE_INCR);
-    printf(" %c -warp 4-point transform, cycle through modes\n", KEY_WARP_TEST_CYCLE);
-    printf(" %c -resize cropped region, or disable resize\n", KEY_RESIZE_INC);
-    printf(" h -print controls (help)\n");
-}
 
 int main() {
+    // Create pipeline
     dai::Pipeline pipeline;
 
-    auto colorCam = pipeline.create<dai::node::ColorCamera>();
-    auto camOut = pipeline.create<dai::node::XLinkOut>();
+    // Define sources and outputs
+    auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto manip = pipeline.create<dai::node::ImageManip>();
-    auto manipCfg = pipeline.create<dai::node::XLinkIn>();
+
+    auto camOut = pipeline.create<dai::node::XLinkOut>();
     auto manipOut = pipeline.create<dai::node::XLinkOut>();
+    auto manipCfg = pipeline.create<dai::node::XLinkIn>();
 
     camOut->setStreamName("preview");
     manipOut->setStreamName("manip");
     manipCfg->setStreamName("manipCfg");
 
-    colorCam->setPreviewSize(640, 480);
-    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    colorCam->setInterleaved(false);
-    colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
+    // Properties
+    camRgb->setPreviewSize(640, 480);
+    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    camRgb->setInterleaved(false);
+    camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
     manip->setMaxOutputFrameSize(2000 * 1500 * 3);
 
-    /* Link nodes: CAM --> XLINK(preview)
-     *                \--> manip -> XLINK(manipOut)
-     *        manipCfg ---/
-     */
-    colorCam->preview.link(camOut->input);
-    colorCam->preview.link(manip->inputImage);
+    // Linking
+    camRgb->preview.link(camOut->input);
+    camRgb->preview.link(manip->inputImage);
     manip->out.link(manipOut->input);
     manipCfg->out.link(manip->inputConfig);
 
@@ -87,17 +87,19 @@ int main() {
     dai::Device device(pipeline);
 
     // Create input & output queues
-    auto previewQueue = device.getOutputQueue("preview", 8, false);
-    auto manipQueue = device.getOutputQueue("manip", 8, false);
-    auto manipInQueue = device.getInputQueue("manipCfg");
+    auto qPreview = device.getOutputQueue("preview", 8, false);
+    auto qManip = device.getOutputQueue("manip", 8, false);
+    auto qManipCfg = device.getInputQueue("manipCfg");
 
-    std::vector<decltype(previewQueue)> frameQueues{previewQueue, manipQueue};
+    std::vector<decltype(qPreview)> frameQueues{qPreview, qManip};
 
     // keep processing data
     int key = -1;
     float angleDeg = 0;
     float rotateRate = 1.0;
-    int resizeFactor = 0, resizeX, resizeY;
+    int resizeFactor = 0;
+    int resizeX = 0;
+    int resizeY = 0;
     bool testFourPt = false;
     int warpIdx = -1;
 
@@ -106,15 +108,15 @@ int main() {
     while(key != 'q') {
         if(key >= 0) {
             printf("Pressed: %c | ", key);
-            if(key == KEY_ROTATE_DECR || key == KEY_ROTATE_INCR) {
-                if(key == KEY_ROTATE_DECR) {
+            if(key == keyRotateDecr || key == keyRotateIncr) {
+                if(key == keyRotateDecr) {
                     if(rotateRate > -ROTATE_RATE_MAX) rotateRate -= ROTATE_RATE_INC;
-                } else if(key == KEY_ROTATE_INCR) {
+                } else if(key == keyRotateIncr) {
                     if(rotateRate < ROTATE_RATE_MAX) rotateRate += ROTATE_RATE_INC;
                 }
                 testFourPt = false;
                 printf("Crop rotated rectangle, rate: %g degrees", rotateRate);
-            } else if(key == KEY_RESIZE_INC) {
+            } else if(key == keyResizeInc) {
                 resizeFactor++;
                 if(resizeFactor > RESIZE_FACTOR_MAX) {
                     resizeFactor = 0;
@@ -124,10 +126,10 @@ int main() {
                     resizeY = RESIZE_MAX_H / resizeFactor;
                     printf("Crop region resized to: %d x %d", resizeX, resizeY);
                 }
-            } else if(key == KEY_WARP_TEST_CYCLE) {
+            } else if(key == keyWarpTestCycle) {
                 resizeFactor = 0;  // Disable resizing initially
                 warpIdx = (warpIdx + 1) % warpList.size();
-                printf("Warp 4-point transform, %s", warpList[warpIdx].description);
+                printf("Warp 4-point transform: %s", warpList[warpIdx].description);
                 testFourPt = true;
             } else if(key == 'h') {
                 printControls();
@@ -145,15 +147,14 @@ int main() {
                 dai::RotatedRect rr = {{320, 240},  // center
                                        {640, 480},  //{400, 400}, // size
                                        angleDeg};
-                bool normalized = false;
-                cfg.setCropRotatedRect(rr, normalized);
+                cfg.setCropRotatedRect(rr, false);
             }
             if(resizeFactor > 0) {
                 cfg.setResize(resizeX, resizeY);
             }
             // cfg.setWarpBorderFillColor(255, 0, 0);
             // cfg.setWarpBorderReplicatePixels();
-            manipInQueue->send(cfg);
+            qManipCfg->send(cfg);
         }
 
         for(const auto& q : frameQueues) {
@@ -163,4 +164,5 @@ int main() {
         }
         key = cv::waitKey(1);
     }
+    return 0;
 }
