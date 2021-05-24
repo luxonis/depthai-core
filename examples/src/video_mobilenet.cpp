@@ -92,13 +92,14 @@ int main(int argc, char** argv) {
     while(cap.isOpened()) {
         // Read frame from video
         cap >> frame;
-        auto tensor = std::make_shared<dai::RawBuffer>();
+        if (frame.empty()) break;
 
+        auto img = std::make_shared<dai::ImgFrame>();
         frame = resizeKeepAspectRatio(frame, cv::Size(300, 300), cv::Scalar(0));
-
-        toPlanar(frame, tensor->data);
-
-        qIn->send(tensor);
+        toPlanar(frame, img->getData());
+        img->setWidth(300);
+        img->setHeight(300);
+        qIn->send(img);
 
         auto inDet = qDet->get<dai::ImgDetections>();
         auto detections = inDet->detections;

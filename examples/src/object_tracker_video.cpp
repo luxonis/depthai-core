@@ -128,15 +128,14 @@ int main(int argc, char** argv) {
     while(cap.isOpened()) {
         // Read frame from video
         cap >> frame;
+        if (frame.empty()) break;
 
         auto img = std::make_shared<dai::ImgFrame>();
-
         frame = resizeKeepAspectRatio(frame, cv::Size(1280, 720), cv::Scalar(0));
         toPlanar(frame, img->getData());
         img->setWidth(1280);
         img->setHeight(720);
         img->setType(dai::ImgFrame::Type::BGR888p);
-
         qIn->send(img);
 
         auto trackFrame = trackerFrameQ->tryGet<dai::ImgFrame>();
