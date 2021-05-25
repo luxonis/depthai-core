@@ -58,27 +58,34 @@ CalibrationHandler::CalibrationHandler(std::string calibrationDataPath, std::str
     }
 
     nlohmann::json boardConfigData = nlohmann::json::parse(boardConfigStream);
+    CameraBoardSocket left = CameraBoardSocket::LEFT;
+    CameraBoardSocket right = CameraBoardSocket::RIGHT;
 
     if(boardConfigData.contains("board_config")) {
         eepromData.boardName = boardConfigData.at("board_config").at("name").get<std::string>();
         eepromData.boardRev = boardConfigData.at("board_config").at("revision").get<std::string>();
-        eepromData.swapLeftRightCam = boardConfigData.at("board_config").at("swap_left_and_right_cameras").get<bool>();
+        bool swapLeftRightCam = boardConfigData.at("board_config").at("swap_left_and_right_cameras").get<bool>();
         eepromData.version = 6;
 
-        eepromData.cameraData[CameraBoardSocket::RIGHT].specHfovDeg = boardConfigData.at("board_config").at("left_fov_deg").get<float>();
-        eepromData.cameraData[CameraBoardSocket::LEFT].specHfovDeg = boardConfigData.at("board_config").at("left_fov_deg").get<float>();
+        if(!swapLeftRightCam){
+            right = CameraBoardSocket::LEFT;
+            left = CameraBoardSocket::RIGHT;
+        }
+
+        eepromData.cameraData[right].specHfovDeg = boardConfigData.at("board_config").at("left_fov_deg").get<float>();
+        eepromData.cameraData[left].specHfovDeg = boardConfigData.at("board_config").at("left_fov_deg").get<float>();
         eepromData.cameraData[CameraBoardSocket::RGB].specHfovDeg = boardConfigData.at("board_config").at("rgb_fov_deg").get<float>();
 
-        eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.specTranslation.x =
+        eepromData.cameraData[left].extrinsics.specTranslation.x =
             boardConfigData.at("board_config").at("left_to_right_distance_cm").get<float>();
-        eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.specTranslation.y = 0;
-        eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.specTranslation.z = 0;
+        eepromData.cameraData[left].extrinsics.specTranslation.y = 0;
+        eepromData.cameraData[left].extrinsics.specTranslation.z = 0;
 
-        eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.specTranslation.x =
+        eepromData.cameraData[right].extrinsics.specTranslation.x =
             boardConfigData.at("board_config").at("left_to_rgb_distance_cm").get<float>()
             - boardConfigData.at("board_config").at("left_to_right_distance_cm").get<float>();
-        eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.specTranslation.y = 0;
-        eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.specTranslation.z = 0;
+        eepromData.cameraData[right].extrinsics.specTranslation.y = 0;
+        eepromData.cameraData[right].extrinsics.specTranslation.z = 0;
     } else {
         throw std::runtime_error("board_config key not found");
     }
@@ -97,46 +104,46 @@ CalibrationHandler::CalibrationHandler(std::string calibrationDataPath, std::str
 
     eepromData.stereoRectificationData.rectifiedRotationLeft = matrixConv(calibrationBuff, 0);
     eepromData.stereoRectificationData.rectifiedRotationRight = matrixConv(calibrationBuff, 9);
-    eepromData.stereoRectificationData.leftCameraSocket = CameraBoardSocket::LEFT;
-    eepromData.stereoRectificationData.rightCameraSocket = CameraBoardSocket::RIGHT;
+    eepromData.stereoRectificationData.leftCameraSocket = left;
+    eepromData.stereoRectificationData.rightCameraSocket = right;
 
-    eepromData.cameraData[CameraBoardSocket::LEFT].intrinsicMatrix = matrixConv(calibrationBuff, 18);
-    eepromData.cameraData[CameraBoardSocket::RIGHT].intrinsicMatrix = matrixConv(calibrationBuff, 27);
+    eepromData.cameraData[left].intrinsicMatrix = matrixConv(calibrationBuff, 18);
+    eepromData.cameraData[right].intrinsicMatrix = matrixConv(calibrationBuff, 27);
     eepromData.cameraData[CameraBoardSocket::RGB].intrinsicMatrix = matrixConv(calibrationBuff, 48);  // 9*5 + 3
 
-    eepromData.cameraData[CameraBoardSocket::LEFT].cameraType = CameraModel::Perspective;
-    eepromData.cameraData[CameraBoardSocket::RIGHT].cameraType = CameraModel::Perspective;
+    eepromData.cameraData[left].cameraType = CameraModel::Perspective;
+    eepromData.cameraData[right].cameraType = CameraModel::Perspective;
     eepromData.cameraData[CameraBoardSocket::RGB].cameraType = CameraModel::Perspective;  // 9*5 + 3
 
-    eepromData.cameraData[CameraBoardSocket::LEFT].width = 1280;
-    eepromData.cameraData[CameraBoardSocket::LEFT].height = 800;
+    eepromData.cameraData[left].width = 1280;
+    eepromData.cameraData[left].height = 800;
 
-    eepromData.cameraData[CameraBoardSocket::RIGHT].width = 1280;
-    eepromData.cameraData[CameraBoardSocket::RIGHT].height = 800;
+    eepromData.cameraData[right].width = 1280;
+    eepromData.cameraData[right].height = 800;
 
     eepromData.cameraData[CameraBoardSocket::RGB].width = 1920;
     eepromData.cameraData[CameraBoardSocket::RGB].height = 1080;
 
-    eepromData.cameraData[CameraBoardSocket::LEFT].distortionCoeff = std::vector<float>(calibrationBuff.begin() + 69, calibrationBuff.begin() + 83);  // 69 + 14
-    eepromData.cameraData[CameraBoardSocket::RIGHT].distortionCoeff = std::vector<float>(calibrationBuff.begin() + 83, calibrationBuff.begin() + 69 + (2 * 14));
+    eepromData.cameraData[left].distortionCoeff = std::vector<float>(calibrationBuff.begin() + 69, calibrationBuff.begin() + 83);  // 69 + 14
+    eepromData.cameraData[right].distortionCoeff = std::vector<float>(calibrationBuff.begin() + 83, calibrationBuff.begin() + 69 + (2 * 14));
     eepromData.cameraData[CameraBoardSocket::RGB].distortionCoeff =
         std::vector<float>(calibrationBuff.begin() + 69 + (2 * 14), calibrationBuff.begin() + 69 + (3 * 14));
 
-    eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.rotationMatrix = matrixConv(calibrationBuff, 36);
-    eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.toCameraSocket = CameraBoardSocket::RIGHT;
+    eepromData.cameraData[left].extrinsics.rotationMatrix = matrixConv(calibrationBuff, 36);
+    eepromData.cameraData[left].extrinsics.toCameraSocket = right;
 
-    eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.translation.x = calibrationBuff[45];
-    eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.translation.y = calibrationBuff[46];
-    eepromData.cameraData[CameraBoardSocket::LEFT].extrinsics.translation.z = calibrationBuff[47];
+    eepromData.cameraData[left].extrinsics.translation.x = calibrationBuff[45];
+    eepromData.cameraData[left].extrinsics.translation.y = calibrationBuff[46];
+    eepromData.cameraData[left].extrinsics.translation.z = calibrationBuff[47];
 
-    eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.rotationMatrix = matrixConv(calibrationBuff, 57);
-    eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.toCameraSocket = CameraBoardSocket::RGB;
+    eepromData.cameraData[right].extrinsics.rotationMatrix = matrixConv(calibrationBuff, 57);
+    eepromData.cameraData[right].extrinsics.toCameraSocket = CameraBoardSocket::RGB;
 
-    eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.translation.x = -calibrationBuff[66];
-    eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.translation.y = -calibrationBuff[67];
-    eepromData.cameraData[CameraBoardSocket::RIGHT].extrinsics.translation.z = -calibrationBuff[68];
+    eepromData.cameraData[right].extrinsics.translation.x = -calibrationBuff[66];
+    eepromData.cameraData[right].extrinsics.translation.y = -calibrationBuff[67];
+    eepromData.cameraData[right].extrinsics.translation.z = -calibrationBuff[68];
 
-    CameraInfo& camera = eepromData.cameraData[CameraBoardSocket::RIGHT];
+    CameraInfo& camera = eepromData.cameraData[right];
 
     float temp = camera.extrinsics.rotationMatrix[0][1];
     camera.extrinsics.rotationMatrix[0][1] = camera.extrinsics.rotationMatrix[1][0];
@@ -446,8 +453,7 @@ bool CalibrationHandler::checkExtrinsicsLink(CameraBoardSocket srcCamera, Camera
     return isConnectionFound;
 }
 
-void CalibrationHandler::setBoardInfo(bool swapLeftRightCam, std::string boardName, std::string boardRev) {
-    eepromData.swapLeftRightCam = swapLeftRightCam;
+void CalibrationHandler::setBoardInfo(std::string boardName, std::string boardRev) {
     eepromData.boardName = boardName;
     eepromData.boardRev = boardRev;
     return;

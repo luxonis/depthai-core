@@ -72,10 +72,11 @@ int main() {
     calibData.setFov(dai::CameraBoardSocket::RGB, 70.55);
 
     // calibData.eepromToJsonFile(filename);
-
+    std::string data_pth("/home/sachin/Desktop/bw1098obc_14442C1001615ED700.json");
+    dai::CalibrationHandler calibData2(data_pth);
     dai::Pipeline p = createCameraPipeline();
     dai::Device d;
-    std::cout << "status ->" << d.flashCalibration(calibData) << std::endl;
+    std::cout << "status ->" << d.flashCalibration(calibData2) << std::endl;
 
     d.startPipeline(p);
     auto preview = d.getOutputQueue("preview");
