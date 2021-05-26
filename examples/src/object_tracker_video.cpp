@@ -123,6 +123,8 @@ int main(int argc, char** argv) {
     };
 
     cv::VideoCapture cap(videoPath);
+    auto baseTs = steady_clock::now();
+    float simulatedFps = 30;
 
     while(cap.isOpened()) {
         // Read frame from video
@@ -132,6 +134,8 @@ int main(int argc, char** argv) {
         auto img = std::make_shared<dai::ImgFrame>();
         frame = resizeKeepAspectRatio(frame, cv::Size(1280, 720), cv::Scalar(0));
         toPlanar(frame, img->getData());
+        img->setTimestamp(baseTs);
+        baseTs += steady_clock::duration(static_cast<int64_t>((1000 * 1000 * 1000 / simulatedFps)));
         img->setWidth(1280);
         img->setHeight(720);
         img->setType(dai::ImgFrame::Type::BGR888p);
