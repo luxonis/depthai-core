@@ -29,7 +29,7 @@ dai::Pipeline createCameraPipeline() {
 int main() {
     dai::CalibrationHandler calibData;
 
-    calibData.setBoardInfo(true, "bw1098obc", "Rev");
+    calibData.setBoardInfo("bw1098obc", "Rev");
     std::vector<std::vector<float>> inMatrix = {{1479.458984, 0.000000, 950.694458}, {0.000000, 1477.587158, 530.697632}, {0.000000, 0.000000, 1.000000}};
     std::vector<float> inOneD = {
         -1.872860, 16.683033, 0.001053, -0.002063, 61.878521, -2.158907, 18.424637, 57.682858, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000, 0.000000};
@@ -72,11 +72,11 @@ int main() {
     calibData.setFov(dai::CameraBoardSocket::RGB, 70.55);
 
     // calibData.eepromToJsonFile(filename);
-    std::string data_pth("/home/sachin/Desktop/bw1098obc_14442C1001615ED700.json");
-    dai::CalibrationHandler calibData2(data_pth);
+    // std::string data_pth("/home/sachin/Desktop/bw1098obc_14442C1001615ED700.json");
+    // dai::CalibrationHandler calibData2(data_pth);
     dai::Pipeline p = createCameraPipeline();
     dai::Device d;
-    std::cout << "status ->" << d.flashCalibration(calibData2) << std::endl;
+    std::cout << "status ->" << d.flashCalibration(calibData) << std::endl;
 
     d.startPipeline(p);
     auto preview = d.getOutputQueue("preview");
