@@ -40,7 +40,6 @@ int main(int argc, char** argv) {
     auto xlinkOut = pipeline.create<dai::node::XLinkOut>();
     auto nnOut = pipeline.create<dai::node::XLinkOut>();
 
-
     manipOut->setStreamName("manip");
     xinFrame->setStreamName("inFrame");
     xlinkOut->setStreamName("trackerFrame");
@@ -48,7 +47,7 @@ int main(int argc, char** argv) {
     nnOut->setStreamName("nn");
 
     // Properties
-    xinFrame->setMaxDataSize(1920*1080*3);
+    xinFrame->setMaxDataSize(1920 * 1080 * 3);
 
     manip->initialConfig.setResizeThumbnail(384, 384);
     // manip->initialConfig.setResize(384, 384);
@@ -128,7 +127,7 @@ int main(int argc, char** argv) {
     while(cap.isOpened()) {
         // Read frame from video
         cap >> frame;
-        if (frame.empty()) break;
+        if(frame.empty()) break;
 
         auto img = std::make_shared<dai::ImgFrame>();
         frame = resizeKeepAspectRatio(frame, cv::Size(1280, 720), cv::Scalar(0));
@@ -139,7 +138,7 @@ int main(int argc, char** argv) {
         qIn->send(img);
 
         auto trackFrame = trackerFrameQ->tryGet<dai::ImgFrame>();
-        if (!trackFrame) {
+        if(!trackFrame) {
             continue;
         }
 

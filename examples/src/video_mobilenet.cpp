@@ -92,7 +92,7 @@ int main(int argc, char** argv) {
     while(cap.isOpened()) {
         // Read frame from video
         cap >> frame;
-        if (frame.empty()) break;
+        if(frame.empty()) break;
 
         auto img = std::make_shared<dai::ImgFrame>();
         frame = resizeKeepAspectRatio(frame, cv::Size(300, 300), cv::Scalar(0));
