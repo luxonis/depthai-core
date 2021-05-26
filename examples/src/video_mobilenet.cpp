@@ -1,3 +1,4 @@
+#include <chrono>
 #include <iostream>
 
 #include "utility.hpp"
@@ -12,6 +13,7 @@ static const std::vector<std::string> labelMap = {"background", "aeroplane", "bi
 
 int main(int argc, char** argv) {
     using namespace std;
+    using namespace std::chrono;
     // Default blob path provided by Hunter private data download
     // Applicable for easier example usage only
     std::string nnPath(BLOB_PATH);
@@ -97,6 +99,7 @@ int main(int argc, char** argv) {
         auto img = std::make_shared<dai::ImgFrame>();
         frame = resizeKeepAspectRatio(frame, cv::Size(300, 300), cv::Scalar(0));
         toPlanar(frame, img->getData());
+        img->setTimestamp(steady_clock::now());
         img->setWidth(300);
         img->setHeight(300);
         qIn->send(img);
