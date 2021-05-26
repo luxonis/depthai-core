@@ -220,7 +220,6 @@ class CalibrationHandler {
      * Set the Board Info object
      *
      * @param version Sets the version of the Calibration data(Current version is 6)
-     * @param swapLeftRightCam This bool swaps the connection of left and right camera
      * @param boardName Sets your board name.
      * @param boardRev set your board revision id.
      */
