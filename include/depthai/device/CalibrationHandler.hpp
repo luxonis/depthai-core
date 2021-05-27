@@ -371,8 +371,7 @@ class CalibrationHandler {
     dai::EepromData eepromData;
     std::vector<std::vector<float>> computeExtrinsicMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = false);
     bool checkExtrinsicsLink(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera);
-
-    // void createSrcLinks();
+    bool checkSrcLinks(CameraBoardSocket headSocket);
 };
 
 }  // namespace dai

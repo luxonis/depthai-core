@@ -615,37 +615,11 @@ void CalibrationHandler::setStereoRight(CameraBoardSocket cameraId, std::vector<
 
 bool CalibrationHandler::validateCameraArray() {
     if(eepromData.cameraData.size() > 1) {
-        std::unordered_set<dai::CameraBoardSocket> marked;
         if(eepromData.cameraData.find(dai::CameraBoardSocket::LEFT) != eepromData.cameraData.end()) {
-            dai::CameraBoardSocket currentSocket = dai::CameraBoardSocket::LEFT;
-            bool isConnectionValidated = true;
-            while(currentSocket != CameraBoardSocket::AUTO) {
-                if(eepromData.cameraData.find(currentSocket) == eepromData.cameraData.end()) {
-                    spdlog::debug(
-                        "Found link to a CameraID whose camera calibration is not loaded. Please cross check the connection by creating a json file using "
-                        "eepromToJsonFile(). ");
-                    isConnectionValidated = false;
-                    break;
-                }
-                if(marked.find(currentSocket) != marked.end()) {
-                    spdlog::debug(
-                        "Loop found in extrinsics connection. Please cross check that the extrinsics are connected in an array in single direction by creating "
-                        "a json file using eepromToJsonFile(). ");
-                    isConnectionValidated = false;
-                    break;
-                }
-                marked.insert(currentSocket);
-                currentSocket = eepromData.cameraData.at(currentSocket).extrinsics.toCameraSocket;
-            }
-
-            if(isConnectionValidated && eepromData.cameraData.size() != marked.size()) {
-                isConnectionValidated = false;
-                spdlog::debug("Extrinsics between all the cameras is not found with single head and a tail");
-            }
-            return isConnectionValidated;
+            return checkSrcLinks(dai::CameraBoardSocket::LEFT) or checkSrcLinks(dai::CameraBoardSocket::RIGHT);
         } else {
             spdlog::debug(
-                "make sure the head of the Extrinsics is dai::CameraBoardSocket::Left. Please cross check the data by creating a json file using "
+                "make sure the head of the Extrinsics is your left camera. Please cross check the data by creating a json file using "
                 "eepromToJsonFile(). ");
             return false;
         }
@@ -653,5 +627,37 @@ bool CalibrationHandler::validateCameraArray() {
         return true;  // Considering this would be bw1093 device
     }
 }
+
+bool CalibrationHandler::checkSrcLinks(CameraBoardSocket headSocket){
+    bool isConnectionValidated = true;
+    std::unordered_set<dai::CameraBoardSocket> marked;
+
+    while(headSocket != CameraBoardSocket::AUTO) {
+        if(eepromData.cameraData.find(headSocket) == eepromData.cameraData.end()) {
+            spdlog::debug(
+                "Found link to a CameraID whose camera calibration is not loaded. Please cross check the connection by creating a json file using "
+                "eepromToJsonFile(). ");
+            isConnectionValidated = false;
+            break;
+        }
+        if(marked.find(headSocket) != marked.end()) {
+            spdlog::debug(
+                "Loop found in extrinsics connection. Please cross check that the extrinsics are connected in an array in single direction by creating "
+                "a json file using eepromToJsonFile(). ");
+            isConnectionValidated = false;
+            break;
+        }
+        marked.insert(headSocket);
+        headSocket = eepromData.cameraData.at(headSocket).extrinsics.toCameraSocket;
+    }
+    
+    if(isConnectionValidated && eepromData.cameraData.size() != marked.size()) {
+        isConnectionValidated = false;
+        spdlog::debug("Extrinsics between all the cameras is not found with single head and a tail");
+    }
+    return isConnectionValidated;
+}
+
+
 
 }  // namespace dai
