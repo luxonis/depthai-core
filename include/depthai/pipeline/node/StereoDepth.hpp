@@ -102,6 +102,13 @@ class StereoDepth : public Node {
     void setInputResolution(int width, int height);
 
     /**
+     * Specify disparity/depth output resolution size, implemented by scaling.
+     *
+     * Currently only applicable when aligning to RGB camera
+     */
+    void setOutputResolution(int width, int height);
+
+    /**
      * @param median Set kernel size for disparity/depth median filtering, or disable
      */
     void setMedianFilter(Properties::MedianFilter median);
