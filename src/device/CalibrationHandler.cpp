@@ -614,7 +614,7 @@ void CalibrationHandler::setStereoRight(CameraBoardSocket cameraId, std::vector<
 bool CalibrationHandler::validateCameraArray() {
     if(eepromData.cameraData.size() > 1) {
         if(eepromData.cameraData.find(dai::CameraBoardSocket::LEFT) != eepromData.cameraData.end()) {
-            return checkSrcLinks(dai::CameraBoardSocket::LEFT) or checkSrcLinks(dai::CameraBoardSocket::RIGHT);
+            return checkSrcLinks(dai::CameraBoardSocket::LEFT) || checkSrcLinks(dai::CameraBoardSocket::RIGHT);
         } else {
             spdlog::debug(
                 "make sure the head of the Extrinsics is your left camera. Please cross check the data by creating a json file using "
