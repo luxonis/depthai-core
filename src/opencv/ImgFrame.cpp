@@ -2,6 +2,8 @@
 
 #include <cmath>
 
+// #include "spdlog/spdlog.h"
+
 namespace dai {
 
 void ImgFrame::setFrame(cv::Mat frame) {
@@ -64,8 +66,13 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
 
     // Check if enough data
     long requiredSize = CV_ELEM_SIZE(type) * size.area();
-    if(static_cast<long>(img.data.size()) < requiredSize) {
-        throw std::runtime_error("ImgFrame doesn't have enough data to encode specified frame. Maybe metadataOnly transfer was made?");
+    long actualSize = static_cast<long>(img.data.size());
+    if(actualSize < requiredSize) {
+        throw std::runtime_error("ImgFrame doesn't have enough data to encode specified frame, required " + std::to_string(requiredSize) + ", actual "
+                                 + std::to_string(actualSize) + ". Maybe metadataOnly transfer was made?");
+    } else if(actualSize > requiredSize) {
+        // FIXME doesn't build on Windows (multiple definitions during link)
+        // spdlog::warn("ImgFrame has excess data: actual {}, expected {}", actualSize, requiredSize);
     }
     if(getWidth() <= 0 || getHeight() <= 0) {
         throw std::runtime_error("ImgFrame metadata not valid (width or height = 0)");

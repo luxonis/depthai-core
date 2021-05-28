@@ -838,6 +838,12 @@ CpuUsage Device::getLeonMssCpuUsage() {
     return client->call("getLeonMssCpuUsage").as<CpuUsage>();
 }
 
+UsbSpeed Device::getUsbSpeed() {
+    checkClosed();
+
+    return client->call("getUsbSpeed").as<UsbSpeed>();
+}
+
 bool Device::isPipelineRunning() {
     checkClosed();
 
