@@ -1,7 +1,6 @@
 #pragma once
 
 // std
-#include <chrono>
 #include <string>
 #include <thread>
 #include <type_traits>
@@ -9,7 +8,6 @@
 // project
 #include "CallbackHandler.hpp"
 #include "DataQueue.hpp"
-#include "Device.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
@@ -43,11 +41,6 @@ class DeviceBootloader {
         unsigned versionMajor, versionMinor, versionPatch;
     };
 
-    struct Config {
-        Config() : timeout(3) {}
-        std::chrono::milliseconds timeout;
-    };
-
     // Static API
     /**
      * Searches for connected devices in either UNBOOTED or BOOTLOADER states and returns first available.
@@ -67,7 +60,7 @@ class DeviceBootloader {
      * @param pathToCmd Optional path to custom device firmware
      * @returns Depthai application package
      */
-    static std::vector<uint8_t> createDepthaiApplicationPackage(Pipeline& pipeline, UsbSpeed maxUsbSpeed = Device::DEFAULT_USB_SPEED);
+    static std::vector<uint8_t> createDepthaiApplicationPackage(Pipeline& pipeline, std::string pathToCmd = "");
 
     /**
      * Saves application package to a file which can be flashed to depthai device.
@@ -75,7 +68,7 @@ class DeviceBootloader {
      * @param pipeline Pipeline from which to create the application package
      * @param pathToCmd Optional path to custom device firmware
      */
-    static void saveDepthaiApplicationPackage(std::string path, Pipeline& pipeline, UsbSpeed maxUsbSpeed = Device::DEFAULT_USB_SPEED);
+    static void saveDepthaiApplicationPackage(std::string path, Pipeline& pipeline, std::string pathToCmd = "");
 
     /**
      * @returns Embedded bootloader version
@@ -85,7 +78,7 @@ class DeviceBootloader {
     /**
      * @returns Embedded bootloader binary
      */
-    static std::vector<std::uint8_t> getEmbeddedBootloaderBinary(Config config);
+    static std::vector<std::uint8_t> getEmbeddedBootloaderBinary();
     //
 
     DeviceBootloader() = delete;
@@ -128,7 +121,7 @@ class DeviceBootloader {
      * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
      * @param path Optional parameter to custom bootloader to flash
      */
-    std::tuple<bool, std::string> flashBootloader(std::function<void(float)> progressCallback, Config config = {});
+    std::tuple<bool, std::string> flashBootloader(std::function<void(float)> progressCallback, std::string path = "");
 
     /**
      * @returns Version of current running bootloader

@@ -51,21 +51,26 @@ std::vector<DeviceInfo> DeviceBootloader::getAllAvailableDevices() {
     return availableDevices;
 }
 
-std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(Pipeline& pipeline, UsbSpeed maxUsbSpeed) {
+std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(Pipeline& pipeline, std::string pathToCmd) {
     // Serialize the pipeline
     PipelineSchema schema;
     Assets assets;
     std::vector<std::uint8_t> assetStorage;
     pipeline.serialize(schema, assets, assetStorage);
 
-    // Prepare Device::Config
-    Device::Config cfg;
-    cfg.version = pipeline.getOpenVINOVersion();
-    cfg.preboot = pipeline.getDevicePrebootConfig();
-    cfg.preboot.maxUsbSpeed = maxUsbSpeed;
+    // Get openvino version
+    OpenVINO::Version version = pipeline.getOpenVINOVersion();
 
     // Prepare device firmware
-    std::vector<uint8_t> deviceFirmware = Resources::getInstance().getDeviceFirmware(cfg);
+    std::vector<uint8_t> deviceFirmware;
+    if(pathToCmd != "") {
+        std::ifstream fwStream(pathToCmd, std::ios::binary);
+        if(!fwStream.is_open()) throw std::runtime_error("Cannot create application package, device firmware at path: " + pathToCmd + " doesn't exist");
+        deviceFirmware = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
+    } else {
+        // TODO(themarpe) - specify OpenVINO version
+        deviceFirmware = Resources::getInstance().getDeviceFirmware(false, version);
+    }
 
     // Create msgpacks
     std::vector<uint8_t> pipelineBinary, assetsBinary;
@@ -152,11 +157,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd) 
     if(deviceInfo.state == X_LINK_UNBOOTED) {
         // Unbooted device found, boot to BOOTLOADER and connect with XLinkConnection constructor
         if(embeddedMvcmd) {
-            Config cfg;
-            // Never timeout
-            cfg.timeout = std::chrono::milliseconds(-1);
-
-            connection = std::make_shared<XLinkConnection>(deviceInfo, getEmbeddedBootloaderBinary(cfg), X_LINK_BOOTLOADER);
+            connection = std::make_shared<XLinkConnection>(deviceInfo, getEmbeddedBootloaderBinary(), X_LINK_BOOTLOADER);
         } else {
             connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd, X_LINK_BOOTLOADER);
         }
@@ -273,8 +274,8 @@ std::tuple<bool, std::string> DeviceBootloader::flash(std::function<void(float)>
     return flashDepthaiApplicationPackage(progressCb, createDepthaiApplicationPackage(pipeline));
 }
 
-void DeviceBootloader::saveDepthaiApplicationPackage(std::string path, Pipeline& pipeline, UsbSpeed maxUsbSpeed) {
-    auto dap = createDepthaiApplicationPackage(pipeline, maxUsbSpeed);
+void DeviceBootloader::saveDepthaiApplicationPackage(std::string path, Pipeline& pipeline, std::string pathToCmd) {
+    auto dap = createDepthaiApplicationPackage(pipeline, pathToCmd);
     std::ofstream outfile(path, std::ios::binary);
     outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
 }
@@ -318,8 +319,15 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
     return {result.success, result.errorMsg};
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashBootloader(std::function<void(float)> progressCb, DeviceBootloader::Config config) {
-    std::vector<uint8_t> package = getEmbeddedBootloaderBinary(config);
+std::tuple<bool, std::string> DeviceBootloader::flashBootloader(std::function<void(float)> progressCb, std::string path) {
+    std::vector<uint8_t> package;
+    if(path != "") {
+        std::ifstream fwStream(path, std::ios::binary);
+        if(!fwStream.is_open()) throw std::runtime_error("Cannot flash bootloader, binary at path: " + path + " doesn't exist");
+        package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
+    } else {
+        package = getEmbeddedBootloaderBinary();
+    }
 
     // get streamId
     streamId_t streamId = stream->getStreamId();
@@ -365,8 +373,8 @@ bool DeviceBootloader::isEmbeddedVersion() {
     return isEmbedded;
 }
 
-std::vector<std::uint8_t> DeviceBootloader::getEmbeddedBootloaderBinary(Config config) {
-    return Resources::getInstance().getBootloaderFirmware(config);
+std::vector<std::uint8_t> DeviceBootloader::getEmbeddedBootloaderBinary() {
+    return Resources::getInstance().getBootloaderFirmware();
 }
 
 DeviceBootloader::Version::Version(const std::string& v) : versionMajor(0), versionMinor(0), versionPatch(0) {

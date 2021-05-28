@@ -17,7 +17,8 @@
 #include "spdlog/spdlog.h"
 
 // shared
-#include "depthai-bootloader-shared/PrebootConfig.hpp"
+#include "depthai-shared/device/PrebootConfig.hpp"
+#include "depthai-shared/utility/Checksum.hpp"
 
 extern "C" {
 #include "bspatch/bspatch.h"
@@ -31,7 +32,7 @@ CMRC_DECLARE(depthai);
 
 namespace dai {
 
-static std::vector<std::uint8_t> createPrebootHeader(const std::vector<uint8_t>& payload);
+static std::vector<std::uint8_t> createPrebootHeader(const std::vector<uint8_t>& payload, uint32_t magic1, uint32_t magic2);
 
 #ifdef DEPTHAI_RESOURCES_TAR_XZ
 
@@ -150,7 +151,7 @@ std::vector<std::uint8_t> Resources::getDeviceBinary(Device::Config config) {
     }
 
     // Prepend preboot config
-    auto prebootHeader = createPrebootHeader(nlohmann::json::to_msgpack(config.preboot));
+    auto prebootHeader = createPrebootHeader(nlohmann::json::to_msgpack(config.preboot), PREBOOT_CONFIG_MAGIC1, PREBOOT_CONFIG_MAGIC2);
     depthaiBinary.insert(depthaiBinary.begin(), prebootHeader.begin(), prebootHeader.end());
 
     // Return created firmware
@@ -372,11 +373,7 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(bool usb2Mode, OpenVINO::
     return getDeviceFirmware(cfg);
 }
 
-std::vector<std::uint8_t> Resources::getBootloaderFirmware(DeviceBootloader::Config config) {
-    // Convert Config to PrebootConfig
-    bootloader::PrebootConfig prebootCfg;
-    prebootCfg.timeoutMs = config.timeout.count();
-
+std::vector<std::uint8_t> Resources::getBootloaderFirmware() {
 // Binaries are resource compiled
 #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
 
@@ -389,12 +386,6 @@ std::vector<std::uint8_t> Resources::getBootloaderFirmware(DeviceBootloader::Con
     auto bootloaderBinary = fs.open(CMRC_DEPTHAI_BOOTLOADER_PATH);
     std::vector<std::uint8_t> bootloaderFw{bootloaderBinary.begin(), bootloaderBinary.end()};
 
-    // Create prebootCfg header
-    const uint8_t* pCfg = reinterpret_cast<uint8_t*>(&prebootCfg);
-    auto header = createPrebootHeader({pCfg, pCfg + sizeof(prebootCfg)});
-    bootloaderFw.insert(bootloaderFw.begin(), header.begin(), header.end());
-
-    // Return final bootloader fw
     return bootloaderFw;
 
 #else
@@ -403,8 +394,16 @@ std::vector<std::uint8_t> Resources::getBootloaderFirmware(DeviceBootloader::Con
 #endif
 }
 
-std::vector<std::uint8_t> createPrebootHeader(const std::vector<uint8_t>& payload) {
-    constexpr const std::uint8_t HEADER[] = {77, 65, 50, 120, 0x8A, 0x00, 0x00, 0x00, 0x70};
+std::vector<std::uint8_t> createPrebootHeader(const std::vector<uint8_t>& payload, uint32_t magic1, uint32_t magic2) {
+    const std::uint8_t HEADER[] = {77,
+                                   65,
+                                   50,
+                                   120,
+                                   0x8A,
+                                   static_cast<uint8_t>((magic1 >> 0) & 0xFF),
+                                   static_cast<uint8_t>((magic1 >> 8) & 0xFF),
+                                   static_cast<uint8_t>((magic1 >> 16) & 0xFF),
+                                   static_cast<uint8_t>((magic1 >> 24) & 0xFF)};
 
     // Store the constructed preboot information
     std::vector<std::uint8_t> prebootHeader;
@@ -413,8 +412,11 @@ std::vector<std::uint8_t> createPrebootHeader(const std::vector<uint8_t>& payloa
     prebootHeader.insert(prebootHeader.begin(), std::begin(HEADER), std::end(HEADER));
 
     // Calculate size
-    std::size_t totalPayloadSize = payload.size() + sizeof(std::uint32_t);
-    std::size_t toAddBytes = 4 - (totalPayloadSize % 4);
+    std::size_t totalPayloadSize = payload.size() + sizeof(magic2) + sizeof(uint32_t) + sizeof(uint32_t);
+    std::size_t toAddBytes = 0;
+    if(totalPayloadSize % 4 != 0) {
+        toAddBytes = 4 - (totalPayloadSize % 4);
+    }
     std::size_t totalSize = totalPayloadSize + toAddBytes;
     std::size_t totalSizeWord = totalSize / 4;
 
@@ -422,9 +424,14 @@ std::vector<std::uint8_t> createPrebootHeader(const std::vector<uint8_t>& payloa
     prebootHeader.push_back((totalSizeWord >> 0) & 0xFF);
     prebootHeader.push_back((totalSizeWord >> 8) & 0xFF);
 
-    // Write payload size (uint32_t LE)
-    for(int i = 0; i < 4; i++) {
-        prebootHeader.push_back((payload.size() >> (i * 8)) & 0xFF);
+    // Compute payload checksum
+    auto checksum = utility::checksum(payload.data(), payload.size());
+
+    // Write checksum & payload size as uint32_t LE
+    for(const auto& field : {magic2, checksum, static_cast<uint32_t>(payload.size())}) {
+        for(int i = 0; i < 4; i++) {
+            prebootHeader.push_back((field >> (i * 8)) & 0xFF);
+        }
     }
 
     // Copy payload

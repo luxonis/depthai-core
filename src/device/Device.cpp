@@ -518,7 +518,7 @@ void Device::init2(Config cfg, bool embeddedMvcmd, const std::string& pathToMvcm
     deviceInfo.state = X_LINK_BOOTED;
 
     // prepare rpc for both attached and host controlled mode
-    rpcStream = std::unique_ptr<XLinkStream>(new XLinkStream(*connection, dai::XLINK_CHANNEL_MAIN_RPC, dai::XLINK_USB_BUFFER_MAX_SIZE));
+    rpcStream = std::unique_ptr<XLinkStream>(new XLinkStream(*connection, device::XLINK_CHANNEL_MAIN_RPC, device::XLINK_USB_BUFFER_MAX_SIZE));
 
     client = std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>(
         new nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>([this](nanorpc::core::type::buffer request) {
@@ -548,7 +548,7 @@ void Device::init2(Config cfg, bool embeddedMvcmd, const std::string& pathToMvcm
                 break;
             }
             // Ping with a period half of that of the watchdog timeout
-            std::this_thread::sleep_for(XLINK_WATCHDOG_TIMEOUT / 2);
+            std::this_thread::sleep_for(device::XLINK_WATCHDOG_TIMEOUT / 2);
         }
 
         // Watchdog ended. Useful for checking disconnects
@@ -560,7 +560,7 @@ void Device::init2(Config cfg, bool embeddedMvcmd, const std::string& pathToMvcm
         using namespace std::chrono;
 
         try {
-            XLinkStream stream(*this->connection, XLINK_CHANNEL_TIMESYNC, 128);
+            XLinkStream stream(*this->connection, device::XLINK_CHANNEL_TIMESYNC, 128);
             Timestamp timestamp = {};
             while(timesyncRunning) {
                 // Block
@@ -587,7 +587,7 @@ void Device::init2(Config cfg, bool embeddedMvcmd, const std::string& pathToMvcm
         using namespace std::chrono;
         std::vector<LogMessage> messages;
         try {
-            XLinkStream stream(*this->connection, XLINK_CHANNEL_LOG, 128);
+            XLinkStream stream(*this->connection, device::XLINK_CHANNEL_LOG, 128);
             while(loggingRunning) {
                 // Block
                 auto log = stream.read();
@@ -1059,10 +1059,10 @@ bool Device::startPipeline(const Pipeline& pipeline) {
         // Transfer the whole assetStorage in a separate thread
         const std::string streamAssetStorage = "__stream_asset_storage";
         std::thread t1([this, &streamAssetStorage, &assetStorage]() {
-            XLinkStream stream(*connection, streamAssetStorage, XLINK_USB_BUFFER_MAX_SIZE);
+            XLinkStream stream(*connection, streamAssetStorage, device::XLINK_USB_BUFFER_MAX_SIZE);
             int64_t offset = 0;
             do {
-                int64_t toTransfer = std::min(static_cast<int64_t>(XLINK_USB_BUFFER_MAX_SIZE), static_cast<int64_t>(assetStorage.size() - offset));
+                int64_t toTransfer = std::min(static_cast<int64_t>(device::XLINK_USB_BUFFER_MAX_SIZE), static_cast<int64_t>(assetStorage.size() - offset));
                 stream.write(&assetStorage[offset], toTransfer);
                 offset += toTransfer;
             } while(offset < static_cast<int64_t>(assetStorage.size()));

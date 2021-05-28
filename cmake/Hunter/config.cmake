@@ -8,8 +8,8 @@ hunter_config(
 hunter_config(
     XLink
     VERSION "luxonis-2021.2-develop"
-    URL "https://github.com/luxonis/XLink/archive/ee361ecba950335390ad539e509f8ab96313b6b4.tar.gz"
-    SHA1 "72108319bf2289d91157a3933663ed5fb2b6eb18"
+    URL "https://github.com/luxonis/XLink/archive/48549564792b32cfff9292b3f3cd89710151775e.tar.gz"
+    SHA1 "c8893d59051da5abf99bc09cf818877d9e4fa88f"
 )
 
 hunter_config(
@@ -34,33 +34,33 @@ hunter_config(
     URL "https://github.com/luxonis/libarchive/archive/cf2caf0588fc5e2af22cae37027d3ff6902e096f.tar.gz"
     SHA1 "e99477d32ce14292fe652dc5f4f460d3af8fbc93"
     CMAKE_ARGS
-        ENABLE_ACL=OFF                                           
-        ENABLE_BZip2=OFF                                          
-        ENABLE_CAT=OFF                                          
-        ENABLE_CAT_SHARED=OFF                                          
-        ENABLE_CNG=OFF                                          
-        ENABLE_COVERAGE=OFF                                          
-        ENABLE_CPIO=OFF                                          
-        ENABLE_CPIO_SHARED=OFF                                          
-        ENABLE_EXPAT=OFF                                          
-        ENABLE_ICONV=OFF                                          
-        ENABLE_INSTALL=ON                                          
-        ENABLE_LIBB2=OFF                                          
-        ENABLE_LIBXML2=OFF                                          
-        ENABLE_LZ4=OFF                                          
-        ENABLE_LZMA=ON                                           
-        ENABLE_LZO=OFF                                          
-        ENABLE_LibGCC=OFF                                          
-        ENABLE_MBEDTLS=OFF                                          
-        ENABLE_NETTLE=OFF                                          
-        ENABLE_OPENSSL=OFF                                          
-        ENABLE_PCREPOSIX=OFF                                          
-        ENABLE_SAFESEH=AUTO                                         
-        ENABLE_TAR=OFF                                           
-        ENABLE_TAR_SHARED=OFF                                          
-        ENABLE_TEST=OFF                                          
-        ENABLE_WERROR=OFF                                           
-        ENABLE_XATTR=OFF                                          
-        ENABLE_ZLIB=OFF                                          
+        ENABLE_ACL=OFF
+        ENABLE_BZip2=OFF
+        ENABLE_CAT=OFF
+        ENABLE_CAT_SHARED=OFF
+        ENABLE_CNG=OFF
+        ENABLE_COVERAGE=OFF
+        ENABLE_CPIO=OFF
+        ENABLE_CPIO_SHARED=OFF
+        ENABLE_EXPAT=OFF
+        ENABLE_ICONV=OFF
+        ENABLE_INSTALL=ON
+        ENABLE_LIBB2=OFF
+        ENABLE_LIBXML2=OFF
+        ENABLE_LZ4=OFF
+        ENABLE_LZMA=ON
+        ENABLE_LZO=OFF
+        ENABLE_LibGCC=OFF
+        ENABLE_MBEDTLS=OFF
+        ENABLE_NETTLE=OFF
+        ENABLE_OPENSSL=OFF
+        ENABLE_PCREPOSIX=OFF
+        ENABLE_SAFESEH=AUTO
+        ENABLE_TAR=OFF
+        ENABLE_TAR_SHARED=OFF
+        ENABLE_TEST=OFF
+        ENABLE_WERROR=OFF
+        ENABLE_XATTR=OFF
+        ENABLE_ZLIB=OFF
         ENABLE_ZSTD=OFF
 )
