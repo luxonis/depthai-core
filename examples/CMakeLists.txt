@@ -66,12 +66,36 @@ dai_add_example(camera_video src/camera_video_example.cpp ON)
 # Mono camera video output example
 dai_add_example(mono_camera src/mono_camera_example.cpp ON)
 
+dai_add_example(bootloader_example src/bootloader_example.cpp OFF)
+
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/depthai_calib.json"
+    SHA1 "ec50a47496473116c51cec1c8249bff2679383c3"
+    FILE "depthai_calib.json"
+    LOCATION calib_v6
+)
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/depthai_v5.calib"
+    SHA1 "adfe9976b9aacfdaa76ac7138810999988177e71"
+    FILE "depthai_v5.calib"
+    LOCATION calib_v5
+)
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/BW1098OBC.json"
+    SHA1 "1e84b6c339ac51e3b254775090b91235a40fac71"
+    FILE "BW1098OBC.json"
+    LOCATION device_config
+)
+
 dai_add_example(calibration_flash src/calibration_flash.cpp OFF)
 dai_add_example(calibration_flash_version5 src/calibration_flash_v5.cpp OFF)
 dai_add_example(calibration_load src/calibration_load.cpp OFF)
 dai_add_example(calibration_reader src/calibration_reader.cpp OFF)
 
-dai_add_example(bootloader_example src/bootloader_example.cpp OFF)
+target_compile_definitions(calibration_flash PRIVATE CALIB_PATH="${calib_v6}")
+target_compile_definitions(calibration_flash_version5 PRIVATE CALIB_PATH="${calib_v5}" BOARD_PATH="${device_config}")
+target_compile_definitions(calibration_load PRIVATE CALIB_PATH="${calib_v6}")
+
 
 
 # NeuralNetwork node, mobilenet example

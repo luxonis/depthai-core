@@ -8,38 +8,11 @@
 #include "depthai-shared/common/EepromData.hpp"
 #include "depthai/depthai.hpp"
 
-dai::Pipeline createCameraPipeline() {
-    dai::Pipeline p;
-
-    auto colorCam = p.create<dai::node::ColorCamera>();
-    auto xlinkOut = p.create<dai::node::XLinkOut>();
-    xlinkOut->setStreamName("preview");
-
-    colorCam->setPreviewSize(300, 300);
-    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    colorCam->setInterleaved(true);
-
-    // Link plugins CAM -> XLINK
-    colorCam->preview.link(xlinkOut->input);
-
-    return p;
-}
-
 int main(int argc, char** argv) {
-    std::string filename;
-
-    std::cout << "Number of args" << argc << std::endl;
-    if(argc == 2) {
-        filename = std::string(argv[1]);
-    } else {
-        throw std::runtime_error("Required destination json path file");
-    }
-
-    dai::Pipeline p = createCameraPipeline();
     dai::Device d;
 
     dai::CalibrationHandler calibData = d.readCalibration();
-    calibData.eepromToJsonFile(filename);
+    // calibData.eepromToJsonFile(filename);
     std::vector<std::vector<float>> intrinsics;
     int width, height;
 
@@ -126,24 +99,6 @@ int main(int argc, char** argv) {
     for(auto row : extrinsics) {
         for(auto val : row) std::cout << val << "  ";
         std::cout << std::endl;
-    }
-
-    d.startPipeline(p);
-    auto preview = d.getOutputQueue("preview");
-    cv::Mat frame;
-
-    while(1) {
-        auto imgFrame = preview->get<dai::ImgFrame>();
-        if(imgFrame) {
-            frame = cv::Mat(imgFrame->getHeight(), imgFrame->getWidth(), CV_8UC3, imgFrame->getData().data());
-            cv::imshow("preview", frame);
-            int key = cv::waitKey(1);
-            if(key == 'q') {
-                return 0;
-            }
-        } else {
-            std::cout << "Not ImgFrame" << std::endl;
-        }
     }
 
     return 0;

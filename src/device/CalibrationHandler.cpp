@@ -67,7 +67,7 @@ CalibrationHandler::CalibrationHandler(std::string calibrationDataPath, std::str
         bool swapLeftRightCam = boardConfigData.at("board_config").at("swap_left_and_right_cameras").get<bool>();
         eepromData.version = 6;
 
-        if(!swapLeftRightCam){
+        if(!swapLeftRightCam) {
             right = CameraBoardSocket::LEFT;
             left = CameraBoardSocket::RIGHT;
         }
@@ -76,14 +76,12 @@ CalibrationHandler::CalibrationHandler(std::string calibrationDataPath, std::str
         eepromData.cameraData[left].specHfovDeg = boardConfigData.at("board_config").at("left_fov_deg").get<float>();
         eepromData.cameraData[CameraBoardSocket::RGB].specHfovDeg = boardConfigData.at("board_config").at("rgb_fov_deg").get<float>();
 
-        eepromData.cameraData[left].extrinsics.specTranslation.x =
-            boardConfigData.at("board_config").at("left_to_right_distance_cm").get<float>();
+        eepromData.cameraData[left].extrinsics.specTranslation.x = boardConfigData.at("board_config").at("left_to_right_distance_cm").get<float>();
         eepromData.cameraData[left].extrinsics.specTranslation.y = 0;
         eepromData.cameraData[left].extrinsics.specTranslation.z = 0;
 
-        eepromData.cameraData[right].extrinsics.specTranslation.x =
-            boardConfigData.at("board_config").at("left_to_rgb_distance_cm").get<float>()
-            - boardConfigData.at("board_config").at("left_to_right_distance_cm").get<float>();
+        eepromData.cameraData[right].extrinsics.specTranslation.x = boardConfigData.at("board_config").at("left_to_rgb_distance_cm").get<float>()
+                                                                    - boardConfigData.at("board_config").at("left_to_right_distance_cm").get<float>();
         eepromData.cameraData[right].extrinsics.specTranslation.y = 0;
         eepromData.cameraData[right].extrinsics.specTranslation.z = 0;
     } else {
@@ -628,7 +626,7 @@ bool CalibrationHandler::validateCameraArray() {
     }
 }
 
-bool CalibrationHandler::checkSrcLinks(CameraBoardSocket headSocket){
+bool CalibrationHandler::checkSrcLinks(CameraBoardSocket headSocket) {
     bool isConnectionValidated = true;
     std::unordered_set<dai::CameraBoardSocket> marked;
 
@@ -650,14 +648,12 @@ bool CalibrationHandler::checkSrcLinks(CameraBoardSocket headSocket){
         marked.insert(headSocket);
         headSocket = eepromData.cameraData.at(headSocket).extrinsics.toCameraSocket;
     }
-    
+
     if(isConnectionValidated && eepromData.cameraData.size() != marked.size()) {
         isConnectionValidated = false;
         spdlog::debug("Extrinsics between all the cameras is not found with single head and a tail");
     }
     return isConnectionValidated;
 }
-
-
 
 }  // namespace dai
