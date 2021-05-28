@@ -10,6 +10,7 @@
 // project
 #include "CallbackHandler.hpp"
 #include "DataQueue.hpp"
+#include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
@@ -22,7 +23,6 @@
 #include "depthai-shared/common/MemoryInfo.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
-#include "depthai/device/CalibrationHandler.hpp"
 
 // libraries
 #include "nanorpc/core/client.h"

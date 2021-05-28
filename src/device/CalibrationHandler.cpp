@@ -96,9 +96,9 @@ CalibrationHandler::CalibrationHandler(std::string calibrationDataPath, std::str
         throw std::runtime_error("The calib file version is less than version 5. which has been deprecated. Please Recalibrate with the new version.");
     }
 
-    // std::vector<float> calibrationBuff(versionSize / sizeof(float));
-    // file.read(reinterpret_cast<char*>(calibrationBuff.data()), fSize);
-    std::vector<float> calibrationBuff(std::istreambuf_iterator<char>(file), {});
+    std::vector<float> calibrationBuff(versionSize / sizeof(float));
+    file.read(reinterpret_cast<char*>(calibrationBuff.data()), fSize);
+    // std::vector<float> calibrationBuff(std::istreambuf_iterator<char>(file), {});
 
     eepromData.stereoRectificationData.rectifiedRotationLeft = matrixConv(calibrationBuff, 0);
     eepromData.stereoRectificationData.rectifiedRotationRight = matrixConv(calibrationBuff, 9);

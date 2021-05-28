@@ -33,17 +33,16 @@ dai::Pipeline createCameraPipeline() {
 }
 
 int main(int argc, char** argv) {
-    std::string calib_pth(CALIB_PATH);
+    std::string calibPth(CALIB_PATH);
     if(argc > 1) {
-        calib_pth = std::string(argv[1]);
+        calibPth = std::string(argv[1]);
     }
 
-    dai::CalibrationHandler calibData(calib_pth);
+    dai::CalibrationHandler calibData(calibPth);
     dai::Pipeline p = createCameraPipeline();
     p.setCalibrationData(calibData);
-    dai::Device d;
+    dai::Device d(p);
 
-    d.startPipeline(p);
     auto depthQueue = d.getOutputQueue("depth");
     cv::Mat frame;
 

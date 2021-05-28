@@ -7,12 +7,12 @@
 #include "depthai/depthai.hpp"
 
 int main(int argc, char** argv) {
-    std::string calib_pth(CALIB_PATH);
+    std::string calibPth(CALIB_PATH);
     if(argc > 1) {
-        calib_pth = std::string(argv[1]);
+        calibPth = std::string(argv[1]);
     }
 
-    dai::CalibrationHandler calibData(calib_pth);
+    dai::CalibrationHandler calibData(calibPth);
     dai::Device d;
     if(d.flashCalibration(calibData)) {
         std::cout << "Calibration flash Successfull" << std::endl;
