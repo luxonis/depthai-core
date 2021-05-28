@@ -86,8 +86,8 @@ std::vector<std::uint8_t> Resources::getDeviceBinary(OpenVINO::Version version, 
     // Binaries are resource compiled
     #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
 
-    std::vector<std::uint8_t>& depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2021_3_PATH];
-    std::vector<std::uint8_t>& depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2021_3_USB2_PATCH_PATH];
+    std::vector<std::uint8_t> depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2021_3_PATH];
+    std::vector<std::uint8_t> depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2021_3_USB2_PATCH_PATH];
 
     switch(version) {
         case OpenVINO::VERSION_2020_1:
