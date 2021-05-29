@@ -18,7 +18,7 @@ int main(int argc, char** argv) {
     dai::Device d;
     dai::CalibrationHandler calibData(calibBinaryFile, boardConfigFile);
     if(d.flashCalibration(calibData)) {
-        std::cout << "Calibration flash Successfull" << std::endl;
+        std::cout << "Calibration flash Successful" << std::endl;
     } else {
         std::cout << "Calibration flash Failed!!!" << std::endl;
     }
