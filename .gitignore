@@ -21,7 +21,7 @@ depthai-cpp/build/
 
 #ci
 wheelhouse/
-
+calib*.json
 #git
 *.orig
 *_REMOTE_*
