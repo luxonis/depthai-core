@@ -31,7 +31,7 @@ public:
     void operator=(Resources const&) = delete;
 
     // Available resources
-    std::vector<std::uint8_t> getDeviceFirmware(bool usb2Mode, OpenVINO::Version version = OpenVINO::VERSION_2020_1);
+    std::vector<std::uint8_t> getDeviceFirmware(bool usb2Mode, OpenVINO::Version version = Pipeline::DEFAULT_OPENVINO_VERSION);
     std::vector<std::uint8_t> getDeviceFirmware(Device::Config config);
     std::vector<std::uint8_t> getBootloaderFirmware();
 

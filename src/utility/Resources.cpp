@@ -34,17 +34,13 @@ namespace dai {
 
 static std::vector<std::uint8_t> createPrebootHeader(const std::vector<uint8_t>& payload, uint32_t magic1, uint32_t magic2);
 
-#ifdef DEPTHAI_RESOURCES_TAR_XZ
-
 constexpr static auto CMRC_DEPTHAI_DEVICE_TAR_XZ = "depthai-device-fwp-" DEPTHAI_DEVICE_VERSION ".tar.xz";
 
 // Main FW
 constexpr static auto DEPTHAI_CMD_OPENVINO_2021_3_PATH = "depthai-device-openvino-2021.3-" DEPTHAI_DEVICE_VERSION ".cmd";
 
 // Patches from Main FW
-constexpr static auto DEPTHAI_CMD_OPENVINO_2020_1_PATCH_PATH = "depthai-device-openvino-2020.1-" DEPTHAI_DEVICE_VERSION ".patch";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_3_PATCH_PATH = "depthai-device-openvino-2020.3-" DEPTHAI_DEVICE_VERSION ".patch";
-constexpr static auto DEPTHAI_CMD_OPENVINO_2020_2_PATCH_PATH = DEPTHAI_CMD_OPENVINO_2020_3_PATCH_PATH;
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_4_PATCH_PATH = "depthai-device-openvino-2020.4-" DEPTHAI_DEVICE_VERSION ".patch";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2021_1_PATCH_PATH = "depthai-device-openvino-2021.1-" DEPTHAI_DEVICE_VERSION ".patch";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH = "depthai-device-openvino-2021.2-" DEPTHAI_DEVICE_VERSION ".patch";
@@ -56,14 +52,16 @@ static constexpr auto array_of(T&&... t) -> std::array<V, sizeof...(T)> {
 }
 
 constexpr static auto resourcesListTarXz = array_of<const char*>(DEPTHAI_CMD_OPENVINO_2021_3_PATH,
-                                                                 DEPTHAI_CMD_OPENVINO_2020_1_PATCH_PATH,
                                                                  DEPTHAI_CMD_OPENVINO_2020_3_PATCH_PATH,
-                                                                 DEPTHAI_CMD_OPENVINO_2020_2_PATCH_PATH,
                                                                  DEPTHAI_CMD_OPENVINO_2020_4_PATCH_PATH,
                                                                  DEPTHAI_CMD_OPENVINO_2021_1_PATCH_PATH,
                                                                  DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH);
 
 std::vector<std::uint8_t> Resources::getDeviceBinary(Device::Config config) {
+    // Acquire mutex (this mutex signifies that lazy load is complete)
+    // It is necessary when accessing resourceMap variable
+    std::unique_lock<std::mutex> lock(mtx);
+
     std::vector<std::uint8_t> depthaiBinary;
 
     // Get OpenVINO version
@@ -82,25 +80,21 @@ std::vector<std::uint8_t> Resources::getDeviceBinary(Device::Config config) {
 
         depthaiBinary = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
     } else {
-    // Binaries are resource compiled
-    #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
+// Binaries are resource compiled
+#ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
 
         // Temporary binary
         std::vector<std::uint8_t> tmpDepthaiBinary;
         // Main FW
         depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2021_3_PATH];
         // Patch from main to specified
-        std::vector<std::uint8_t>& depthaiPatch = resourceMap[DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH];
+        std::vector<std::uint8_t> depthaiPatch;
 
         switch(version) {
             case OpenVINO::VERSION_2020_1:
-                spdlog::warn("OpenVino version 2020.1 is deprecated and will be removed in the next release!");
-                depthaiPatch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_1_PATCH_PATH];
-                break;
-
             case OpenVINO::VERSION_2020_2:
-                spdlog::warn("OpenVino version 2020.2 is deprecated and will be removed in the next release!");
-                depthaiPatch = resourceMap[DEPTHAI_CMD_OPENVINO_2020_2_PATCH_PATH];
+                // Deprecated
+                throw std::invalid_argument("Selected OpenVINO version is deprecated");
                 break;
 
             case OpenVINO::VERSION_2020_3:
@@ -144,10 +138,10 @@ std::vector<std::uint8_t> Resources::getDeviceBinary(Device::Config config) {
             depthaiBinary = tmpDepthaiBinary;
         }
 
-    #else
-            // Binaries from default path (TODO)
+#else
+        // Binaries from default path (TODO)
 
-    #endif
+#endif
     }
 
     // Prepend preboot config
@@ -158,80 +152,12 @@ std::vector<std::uint8_t> Resources::getDeviceBinary(Device::Config config) {
     return depthaiBinary;
 }
 
-#else
-// TODO - DEPRECATE
-
-constexpr static auto CMRC_DEPTHAI_CMD_PATH = "depthai-" DEPTHAI_DEVICE_VERSION ".cmd";
-    #ifdef DEPTHAI_PATCH_ONLY_MODE
-constexpr static auto CMRC_DEPTHAI_USB2_PATCH_PATH = "depthai-usb2-patch-" DEPTHAI_DEVICE_VERSION ".patch";
-    #else
-constexpr static auto CMRC_DEPTHAI_USB2_CMD_PATH = "depthai-usb2-" DEPTHAI_DEVICE_VERSION ".cmd";
-    #endif
-
-static std::vector<std::uint8_t> getEmbeddedDeviceBinary(bool usb2Mode) {
-    std::vector<std::uint8_t> finalCmd;
-
-    // Binaries are resource compiled
-    #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
-
-    // Get binaries from internal sources
-    auto fs = cmrc::depthai::get_filesystem();
-
-    if(usb2Mode) {
-        #ifdef DEPTHAI_PATCH_ONLY_MODE
-
-        // Get size of original
-        auto depthaiBinary = fs.open(CMRC_DEPTHAI_CMD_PATH);
-
-        // Open patch
-        auto depthaiUsb2Patch = fs.open(CMRC_DEPTHAI_USB2_PATCH_PATH);
-
-        // Get new size
-        int64_t patchedSize = bspatch_mem_get_newsize(reinterpret_cast<const uint8_t*>(depthaiUsb2Patch.begin()), depthaiUsb2Patch.size());
-
-        // Reserve space for patched binary
-        finalCmd.resize(patchedSize);
-
-        // Patch
-        int error = bspatch_mem(reinterpret_cast<const uint8_t*>(depthaiBinary.begin()),
-                                depthaiBinary.size(),
-                                reinterpret_cast<const uint8_t*>(depthaiUsb2Patch.begin()),
-                                depthaiUsb2Patch.size(),
-                                finalCmd.data());
-
-        // if patch not successful
-        if(error > 0) throw std::runtime_error("Error while patching cmd for usb2 mode");
-
-        #else
-
-        auto depthaiUsb2Binary = fs.open(CMRC_DEPTHAI_USB2_CMD_PATH);
-        finalCmd = std::vector<std::uint8_t>(depthaiUsb2Binary.begin(), depthaiUsb2Binary.end());
-
-        #endif
-
-    } else {
-        auto depthaiBinary = fs.open(CMRC_DEPTHAI_CMD_PATH);
-        finalCmd = std::vector<std::uint8_t>(depthaiBinary.begin(), depthaiBinary.end());
-    }
-
-    #else
-        // Binaries from default path (TODO)
-
-    #endif
-
-    return finalCmd;
-}
-
-#endif
-
 Resources& Resources::getInstance() {
     static Resources instance;  // Guaranteed to be destroyed, instantiated on first use.
     return instance;
 }
 
 Resources::Resources() {
-#ifdef DEPTHAI_RESOURCES_TAR_XZ
-
     // condition variable to let this thread know when the mutex was acquired
     std::mutex mtxCv;
     std::condition_variable cv;
@@ -333,8 +259,6 @@ Resources::Resources() {
     // Wait for 'cv' to signal
     std::unique_lock<std::mutex> l(mtxCv);
     cv.wait(l, [&mutexAcquired]() { return mutexAcquired; });
-
-#endif
 }
 
 Resources::~Resources() {
@@ -343,21 +267,8 @@ Resources::~Resources() {
 }
 
 std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config) {
-    // Acquire mutex (this mutex signifies that lazy load is complete)
-    // It is necessary when accessing resourceMap variable
-    std::unique_lock<std::mutex> lock(mtx);
-
-#ifdef DEPTHAI_RESOURCES_TAR_XZ
-
     // Return device firmware
     return getDeviceBinary(config);
-
-#else
-
-    // Return device firmware
-    return getEmbeddedDeviceBinary(config);
-
-#endif
 }
 
 // Get device firmware
