@@ -26,7 +26,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.3.0" LANGUAGES CXX C)
+project(depthai VERSION "2.4.0" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -138,6 +138,7 @@ add_library(${TARGET_CORE_NAME}
     src/device/DeviceBootloader.cpp
     src/device/DataQueue.cpp
     src/device/CallbackHandler.cpp
+    src/device/CalibrationHandler.cpp
     src/pipeline/Pipeline.cpp
     src/pipeline/AssetManager.cpp
     src/pipeline/Node.cpp
