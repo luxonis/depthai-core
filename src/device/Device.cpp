@@ -916,6 +916,10 @@ LogLevel Device::getLogLevel() {
     return client->call("getLogLevel").as<LogLevel>();
 }
 
+DeviceInfo Device::getDeviceInfo() {
+    return deviceInfo;
+}
+
 void Device::setLogOutputLevel(LogLevel level) {
     checkClosed();
 
@@ -968,6 +972,18 @@ float Device::getSystemInformationLoggingRate() {
     checkClosed();
 
     return client->call("getSystemInformationLoggingrate").as<float>();
+}
+
+bool Device::flashCalibration(CalibrationHandler calibrationDataHandler) {
+    if(!calibrationDataHandler.validateCameraArray()) {
+        throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
+    }
+    return client->call("storeToEeprom", calibrationDataHandler.getEepromData()).as<bool>();
+}
+
+CalibrationHandler Device::readCalibration() {
+    dai::EepromData eepromData = client->call("readFromEeprom");
+    return CalibrationHandler(eepromData);
 }
 
 bool Device::startPipeline() {
