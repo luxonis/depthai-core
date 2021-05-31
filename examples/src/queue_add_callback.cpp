@@ -13,13 +13,13 @@ int main() {
     // Create pipeline
     dai::Pipeline pipeline;
 
-    // Define sources and outputs
+    // Add all three cameras
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto left = pipeline.create<dai::node::MonoCamera>();
     auto right = pipeline.create<dai::node::MonoCamera>();
 
+    // Create XLink output
     auto xout = pipeline.create<dai::node::XLinkOut>();
-
     xout->setStreamName("frames");
 
     // Properties
@@ -29,7 +29,7 @@ int main() {
     right->setBoardSocket(dai::CameraBoardSocket::RIGHT);
     right->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
 
-    // Linking
+    // Stream all the camera streams through the same XLink node
     camRgb->preview.link(xout->input);
     left->out.link(xout->input);
     right->out.link(xout->input);
@@ -52,7 +52,7 @@ int main() {
         }
     };
 
-    // Output queues will be used to get the grayscale frames from the outputs defined above
+    // Add callback to the output queue "frames" for all newly arrived frames (color, left, right)
     device.getOutputQueue("frames", 4, false)->addCallback(newFrame);
 
     while(true) {
