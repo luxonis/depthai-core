@@ -56,8 +56,10 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(Pipeline&
     PipelineSchema schema;
     Assets assets;
     std::vector<std::uint8_t> assetStorage;
-    OpenVINO::Version version;
-    pipeline.serialize(schema, assets, assetStorage, version);
+    pipeline.serialize(schema, assets, assetStorage);
+
+    // Get openvino version
+    OpenVINO::Version version = pipeline.getOpenVINOVersion();
 
     // Prepare device firmware
     std::vector<uint8_t> deviceFirmware;

@@ -25,11 +25,10 @@ int main() {
     camRgb->preview.link(xoutRgb->input);
 
     // Connect to device and start pipeline
-    dai::Device device(pipeline);
+    dai::Device device(pipeline, dai::UsbSpeed::SUPER);
 
     cout << "Connected cameras: ";
     for(const auto& cam : device.getConnectedCameras()) {
-        cout << static_cast<int>(cam) << " ";
         cout << cam << " ";
     }
     cout << endl;
