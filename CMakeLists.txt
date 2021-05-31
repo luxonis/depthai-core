@@ -193,8 +193,8 @@ if(DEPTHAI_CLANG_TIDY)
     target_clangtidy_setup(${TARGET_CORE_NAME})
 endif()
 
-# Set compiler features (c++11), and disables extensions (g++11)
-set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD 11)
+# Set compiler features (c++14), and disables extensions (g++14)
+set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD 14)
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_EXTENSIONS OFF)
 

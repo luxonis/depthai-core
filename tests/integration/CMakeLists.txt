@@ -1,5 +1,8 @@
 cmake_minimum_required(VERSION 3.4)
 
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 # Add depthai using add_subdirectory
 if(NOT TEST_FIND_PACKAGE)
     add_subdirectory("${CMAKE_CURRENT_LIST_DIR}/../../" depthai-core EXCLUDE_FROM_ALL)

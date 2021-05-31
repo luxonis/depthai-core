@@ -1,6 +1,9 @@
 # Add an option to test examples
 option(DEPTHAI_TEST_EXAMPLES "Test examples - examples will be ran as a part of test suite" OFF)
 
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 # Dependencies
 find_package(OpenCV REQUIRED)
 find_package(Sanitizers)
