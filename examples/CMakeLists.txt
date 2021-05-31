@@ -104,6 +104,14 @@ hunter_private_data(
     LOCATION construction_vest
 )
 
+# person-detection
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/person-detection-0201_openvino_2021.3_7shave.blob"
+    SHA1 "a8d4b0067deb889ec66b2204573d9ee1e0039c8e"
+    FILE "person-detection-0201_openvino_2021.3_7shave.blob"
+    LOCATION person_detection
+)
+
 ## message(STATUS "Location of test1.data: ${test1_data}")
 
 # RGB camera preview output example
@@ -226,3 +234,6 @@ dai_add_example(rgb_depth_aligned src/rgb_depth_aligned.cpp)
 # Sync example between NN and camera frames
 dai_add_example(camera_mobilenet_sync src/camera_mobilenet_sync_example.cpp)
 target_compile_definitions(camera_mobilenet_sync PRIVATE BLOB_PATH="${mobilenet_blob}")
+
+dai_add_example(object_tracker_video src/object_tracker_video.cpp)
+target_compile_definitions(object_tracker_video PRIVATE BLOB_PATH="${person_detection}" VIDEO_PATH="${construction_vest}")
