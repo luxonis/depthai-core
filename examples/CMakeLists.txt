@@ -237,3 +237,5 @@ target_compile_definitions(camera_mobilenet_sync PRIVATE BLOB_PATH="${mobilenet_
 
 dai_add_example(object_tracker_video src/object_tracker_video.cpp)
 target_compile_definitions(object_tracker_video PRIVATE BLOB_PATH="${person_detection}" VIDEO_PATH="${construction_vest}")
+
+dai_add_example(queue_add_callback src/queue_add_callback.cpp)
