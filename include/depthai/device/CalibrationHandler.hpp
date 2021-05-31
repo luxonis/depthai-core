@@ -115,7 +115,7 @@ class CalibrationHandler {
      * @param cameraId of the camera of which we are fetching fov.
      * @return field of view of the camera with given cameraId.
      */
-    double getFov(CameraBoardSocket cameraId);
+    float getFov(CameraBoardSocket cameraId);
 
     /**
      *  Get the lens position of the given camera
@@ -175,10 +175,18 @@ class CalibrationHandler {
      *                              r_20 & r_21 & r_22 & T_z \\
      *                               0   &  0   &  0   & 1
      *                          \end{bmatrix}
+     * 
+     *.. math::
+     *
+     *   M = \begin{bmatrix}
+     *           1 & 4 & 7 \\
+     *           2 & 5 & 8 \\
+     *           3 & 6 & 9
+     *       \end{bmatrix}
+     * 
      */
     std::vector<std::vector<float>> getImuToCameraExtrinsics(CameraBoardSocket cameraId, bool useSpecTranslation = false);
 
-    // TODO (Sachin) : Fill therse docstrings
     /**
      *
      * Get the Stereo Right Rectification Rotation object
@@ -285,7 +293,7 @@ class CalibrationHandler {
      * @param cameraId Camera Id of the camera
      * @param hfov Horizontal fov of the camera from Camera Datasheet
      */
-    void setFov(CameraBoardSocket cameraId, double hfov);
+    void setFov(CameraBoardSocket cameraId, float hfov);
 
     /**
      * Sets the distortion Coefficients obtained from camera calibration
