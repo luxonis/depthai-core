@@ -157,6 +157,11 @@ class CalibrationHandler {
      *                              r_10 & r_11 & r_12 & T_y \\
      *                              r_20 & r_21 & r_22 & T_z
      *                          \end{bmatrix}
+     * 
+     *     \f[\left [  \begin{matrix}   x \\   y \\  w \end{matrix} \right ] = \left [ \begin{matrix}   f_x & 0 & c_x \\  0 & f_y & c_y \\   0 & 0 & 1 \end{matrix} \right ] \left [ \begin{matrix}  X \\  Y \\   Z \end{matrix} \right ]\f]
+    
+    \f[\left [  \begin{matrix}   x \\   y \\  w \end{matrix} \right ] = \left [ \begin{matrix}   f_x & 0 & c_x \\  0 & f_y & c_y \\   0 & 0 & 1 \end{matrix} \right ] \left [ \begin{matrix}  X \\  Y \\   Z \end{matrix} \right ]\f]
+
      */
     std::vector<std::vector<float>> getCameraToImuExtrinsics(CameraBoardSocket cameraId, bool useSpecTranslation = false);
 
