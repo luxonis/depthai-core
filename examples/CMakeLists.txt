@@ -9,8 +9,10 @@ find_package(Sanitizers)
 add_library(utility src/utility.cpp)
 target_link_libraries(utility FP16::fp16 ${OpenCV_LIBS})
 
-# Macro for adding new examples
-macro(dai_add_example example_name example_src enable_test)
+# Helper for adding new examples
+function(dai_add_example example_name example_src enable_test)
+
+    # Add example
     add_executable("${example_name}" "${example_src}")
     target_link_libraries("${example_name}" PRIVATE utility depthai::opencv ${OpenCV_LIBS})
 
@@ -22,7 +24,7 @@ macro(dai_add_example example_name example_src enable_test)
     # parse the rest of the arguments
     set(arguments ${ARGV})
     list(REMOVE_AT arguments 0 1 2)
-    
+
     # If 'DEPTHAI_TEST_EXAMPLES' is ON, then examples will be part of the test suite
     if(${enable_test} AND DEPTHAI_TEST_EXAMPLES)
         add_test(NAME ${example_name} COMMAND ${CMAKE_COMMAND}
@@ -37,7 +39,7 @@ macro(dai_add_example example_name example_src enable_test)
         set_tests_properties(${example_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1")
 
     endif()
-endmacro()
+endfunction()
 
 # Create a custom target which runs all examples for 10 seconds max, and check if they executed without errors
 
@@ -103,7 +105,7 @@ hunter_private_data(
     LOCATION construction_vest
 )
 
-# Calibration Sample files 
+# Calibration Sample files
 hunter_private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/misc/depthai_calib.json"
     SHA1 "ec50a47496473116c51cec1c8249bff2679383c3"
