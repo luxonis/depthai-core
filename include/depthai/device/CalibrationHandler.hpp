@@ -176,14 +176,15 @@ class CalibrationHandler {
      *                               0   &  0   &  0   & 1
      *                          \end{bmatrix}
      * 
-     *.. math::
-     *
-     *   M = \begin{bmatrix}
-     *           1 & 4 & 7 \\
-     *           2 & 5 & 8 \\
-     *           3 & 6 & 9
-     *       \end{bmatrix}
-     * 
+    r"""
+    .. math::
+
+        M = \begin{bmatrix}
+                1 & 4 & 7 \\
+                2 & 5 & 8 \\
+                3 & 6 & 9
+            \end{bmatrix}
+    """
      */
     std::vector<std::vector<float>> getImuToCameraExtrinsics(CameraBoardSocket cameraId, bool useSpecTranslation = false);
 
