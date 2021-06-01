@@ -94,6 +94,9 @@ int main() {
             auto xmax = (int)roi.bottomRight().x;
             auto ymax = (int)roi.bottomRight().y;
 
+            auto depthMin = depthData.depthMin;
+            auto depthMax = depthData.depthMax;
+
             cv::rectangle(depthFrameColor, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
             std::stringstream depthX;
             depthX << "X: " << (int)depthData.spatialCoordinates.x << " mm";
@@ -111,7 +114,7 @@ int main() {
         int key = cv::waitKey(1);
         switch(key) {
             case 'q':
-                break;
+                return 0;
             case 'w':
                 if(topLeft.y - stepSize >= 0) {
                     topLeft.y -= stepSize;
