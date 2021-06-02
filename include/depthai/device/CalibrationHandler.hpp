@@ -59,7 +59,11 @@ class CalibrationHandler {
      * @return Repesents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      *
      * Matrix representation of intrinsic matrix
-     * \f[ \text{Intrinsic Matrix} = \left [ \begin{matrix}   f_x & 0 & c_x \\  0 & f_y & c_y \\ 0 & 0 & 1 \end{matrix} \right ] \f]
+     * \f[ \text{Intrinsic Matrix} = \left [ \begin{matrix}
+     *                                        f_x & 0 & c_x \\
+     *                                        0 & f_y & c_y \\
+     *                                        0 &  0  & 1
+     *                                      \end{matrix} \right ] \f]
      *
      */
     std::vector<std::vector<float>> getCameraIntrinsics(
@@ -77,7 +81,11 @@ class CalibrationHandler {
      * @return Repesents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      *
      * Matrix representation of intrinsic matrix
-     * \f[ \text{Intrinsic Matrix} = \left [ \begin{matrix}   f_x & 0 & c_x \\  0 & f_y & c_y \\ 0 & 0 & 1 \end{matrix} \right ] \f]
+     * \f[ \text{Intrinsic Matrix} = \left [ \begin{matrix}
+     *                                        f_x & 0 & c_x \\
+     *                                        0 & f_y & c_y \\
+     *                                        0 &  0  & 1
+     *                                      \end{matrix} \right ] \f]
      *
      */
     std::vector<std::vector<float>> getCameraIntrinsics(CameraBoardSocket cameraId,
@@ -97,7 +105,11 @@ class CalibrationHandler {
      * @return Repesents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      *
      * Matrix representation of intrinsic matrix
-     * \f[ \text{Intrinsic Matrix} = \left [ \begin{matrix}   f_x & 0 & c_x \\  0 & f_y & c_y \\ 0 & 0 & 1 \end{matrix} \right ] \f]
+     * \f[ \text{Intrinsic Matrix} = \left [ \begin{matrix}
+     *                                        f_x & 0 & c_x \\
+     *                                        0 & f_y & c_y \\
+     *                                        0 &  0  & 1
+     *                                      \end{matrix} \right ] \f]
      *
      */
     std::vector<std::vector<float>> getCameraIntrinsics(CameraBoardSocket cameraId,
@@ -112,7 +124,11 @@ class CalibrationHandler {
      * @return Repesents the 3x3 intrinsics matrix of the respective camera along with width and height at which it was calibrated.
      *
      * Matrix representation of intrinsic matrix
-     * \f[ \text{Intrinsic Matrix} = \left [ \begin{matrix}   f_x & 0 & c_x \\  0 & f_y & c_y \\ 0 & 0 & 1 \end{matrix} \right ] \f]
+     * \f[ \text{Intrinsic Matrix} = \left [ \begin{matrix}
+     *                                        f_x & 0 & c_x \\
+     *                                        0 & f_y & c_y \\
+     *                                        0 &  0  & 1
+     *                                      \end{matrix} \right ] \f]
      *
      */
     std::tuple<std::vector<std::vector<float>>, int, int> getDefaultIntrinsics(CameraBoardSocket cameraId);
@@ -151,8 +167,12 @@ class CalibrationHandler {
      * @return a transformationMatrix which is 4x4 in homogenious coordinate system
      *
      * Matrix representation of transformation matrix
-     * \f[ \text{Transformation Matrix} = \left [ \begin{matrix}   r_{00} & r_{01} & r_{02} & T_x \\  r_{10} & r_{11} & r_{12} & T_y \\ r_{20} & r_{21} & r_{22}
-     * & T_z \\ 0   &  0   &  0   & 1\end{matrix} \right ] \f]
+     * \f[ \text{Transformation Matrix} = \left [ \begin{matrix}
+     *                                             r_{00} & r_{01} & r_{02} & T_x \\
+     *                                             r_{10} & r_{11} & r_{12} & T_y \\
+     *                                             r_{20} & r_{21} & r_{22} & T_z \\
+     *                                               0    &   0    &   0    & 1
+     *                                            \end{matrix} \right ] \f]
      *
      */
     std::vector<std::vector<float>> getCameraExtrinsics(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = false);
@@ -167,8 +187,12 @@ class CalibrationHandler {
      * @return Returns a transformationMatrix which is 4x4 in homogenious coordinate system
      *
      * Matrix representation of transformation matrix
-     * \f[ \text{Transformation Matrix} = \left [ \begin{matrix}   r_{00} & r_{01} & r_{02} & T_x \\  r_{10} & r_{11} & r_{12} & T_y \\ r_{20} & r_{21} & r_{22}
-     * & T_z \\ 0   &  0   &  0   & 1\end{matrix} \right ] \f]
+     * \f[ \text{Transformation Matrix} = \left [ \begin{matrix}
+     *                                             r_{00} & r_{01} & r_{02} & T_x \\
+     *                                             r_{10} & r_{11} & r_{12} & T_y \\
+     *                                             r_{20} & r_{21} & r_{22} & T_z \\
+     *                                               0    &   0    &   0    & 1
+     *                                            \end{matrix} \right ] \f]
      *
      */
     std::vector<std::vector<float>> getCameraToImuExtrinsics(CameraBoardSocket cameraId, bool useSpecTranslation = false);
@@ -183,8 +207,12 @@ class CalibrationHandler {
      * @return Returns a transformationMatrix which is 4x4 in homogenious coordinate system
      *
      * Matrix representation of transformation matrix
-     * \f[ \text{Transformation Matrix} = \left [ \begin{matrix}   r_{00} & r_{01} & r_{02} & T_x \\  r_{10} & r_{11} & r_{12} & T_y \\ r_{20} & r_{21} & r_{22}
-     * & T_z \\ 0   &  0   &  0   & 1\end{matrix} \right ] \f]
+     * \f[ \text{Transformation Matrix} = \left [ \begin{matrix}
+     *                                             r_{00} & r_{01} & r_{02} & T_x \\
+     *                                             r_{10} & r_{11} & r_{12} & T_y \\
+     *                                             r_{20} & r_{21} & r_{22} & T_z \\
+     *                                               0    &   0    &   0    & 1
+     *                                            \end{matrix} \right ] \f]
      *
      */
     std::vector<std::vector<float>> getImuToCameraExtrinsics(CameraBoardSocket cameraId, bool useSpecTranslation = false);
@@ -239,14 +267,16 @@ class CalibrationHandler {
      * Set the Camera Intrinsics object
      *
      * @param cameraId CameraId of the camera for which Camera intrinsics are being loaded
-     * @param intrinsics 3x3 intrinsics matrix in the form of std::vector<std::vector<float>>
+     * @param intrinsics 3x3 intrinsics matrix
      * @param frameSize repesents the width and height of the image at which intrinsics are calculated.
      *
-     * intrinsic matrix = \begin{bmatrix}
-     *                              f_x &  0  & c_x \\
-     *                              0   & f_y & c_y \\
-     *                              0   &  0  &  1
-     *                          \end{bmatrix}
+     * Matrix representation of intrinsic matrix
+     * \f[ \text{Intrinsic Matrix} = \left [ \begin{matrix}
+     *                                        f_x & 0 & c_x \\
+     *                                        0 & f_y & c_y \\
+     *                                        0 &  0  & 1
+     *                                      \end{matrix} \right ] \f]
+     *
      */
     void setCameraIntrinsics(CameraBoardSocket cameraId, std::vector<std::vector<float>> intrinsics, Size2f frameSize);
 
@@ -254,15 +284,17 @@ class CalibrationHandler {
      * Set the Camera Intrinsics object
      *
      * @param cameraId CameraId of the camera for which Camera intrinsics are being loaded
-     * @param intrinsics 3x3 intrinsics matrix in the form of std::vector<std::vector<float>>
+     * @param intrinsics 3x3 intrinsics matrix
      * @param width repesents the width of the image at which intrinsics are calculated.
      * @param height repesents the height of the image at which intrinsics are calculated.
      *
-     * intrinsic matrix = \begin{bmatrix}
-     *                              f_x &  0  & c_x \\
-     *                              0   & f_y & c_y \\
-     *                              0   &  0  &  1
-     *                          \end{bmatrix}
+     * Matrix representation of intrinsic matrix
+     * \f[ \text{Intrinsic Matrix} = \left [ \begin{matrix}
+     *                                        f_x & 0 & c_x \\
+     *                                        0 & f_y & c_y \\
+     *                                        0 &  0  & 1
+     *                                      \end{matrix} \right ] \f]
+     *
      */
     void setCameraIntrinsics(CameraBoardSocket cameraId, std::vector<std::vector<float>> intrinsics, int width, int height);
 
@@ -270,14 +302,16 @@ class CalibrationHandler {
      * Set the Camera Intrinsics object
      *
      * @param cameraId CameraId of the camera for which Camera intrinsics are being loaded
-     * @param intrinsics 3x3 intrinsics matrix in the form of std::vector<std::vector<float>>
+     * @param intrinsics 3x3 intrinsics matrix
      * @param frameSize repesents the width and height of the image at which intrinsics are calculated.
      *
-     * intrinsic matrix = \begin{bmatrix}
-     *                              f_x &  0  & c_x \\
-     *                              0   & f_y & c_y \\
-     *                              0   &  0  &  1
-     *                          \end{bmatrix}
+     * Matrix representation of intrinsic matrix
+     * \f[ \text{Intrinsic Matrix} = \left [ \begin{matrix}
+     *                                        f_x & 0 & c_x \\
+     *                                        0 & f_y & c_y \\
+     *                                        0 &  0  & 1
+     *                                      \end{matrix} \right ] \f]
+     *
      */
     void setCameraIntrinsics(CameraBoardSocket cameraId, std::vector<std::vector<float>> intrinsics, std::tuple<int, int> frameSize);
 
