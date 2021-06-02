@@ -3,8 +3,30 @@
 // libraries
 #include "fp16/fp16.h"
 
+#include "errno.h"
+
+#if (defined(_WIN32) || defined(_WIN64))
+#include <Windows.h>
+#include <direct.h>
+#else
+#include <sys/stat.h>
+#endif
+
+int createDirectory(std::string directory)
+{
+    int ret = 0;
+#if (defined(_WIN32) || defined(_WIN64))
+    ret =  _mkdir(directory.c_str());
+#else
+    ret = mkdir(directory.c_str(), 0777);
+#endif
+    if (ret == EEXIST) ret = 0;
+    return ret;
+}
+
+
 cv::Mat toMat(const std::vector<uint8_t>& data, int w, int h , int numPlanes, int bpp){
-    
+
     cv::Mat frame;
 
     if(numPlanes == 3){
@@ -15,15 +37,15 @@ cv::Mat toMat(const std::vector<uint8_t>& data, int w, int h , int numPlanes, in
             uint8_t b = data.data()[i + w*h * 0];
             frame.data[i*3+0] = b;
         }
-        for(int i = 0; i < w*h; i++) {                
-            uint8_t g = data.data()[i + w*h * 1];    
+        for(int i = 0; i < w*h; i++) {
+            uint8_t g = data.data()[i + w*h * 1];
             frame.data[i*3+1] = g;
         }
         for(int i = 0; i < w*h; i++) {
             uint8_t r = data.data()[i + w*h * 2];
             frame.data[i*3+2] = r;
         }
-                    
+
     } else {
         if(bpp == 3){
             frame = cv::Mat(h, w, CV_8UC3);
@@ -31,26 +53,26 @@ cv::Mat toMat(const std::vector<uint8_t>& data, int w, int h , int numPlanes, in
                 uint8_t b,g,r;
                 b = data.data()[i + 2];
                 g = data.data()[i + 1];
-                r = data.data()[i + 0];    
+                r = data.data()[i + 0];
                 frame.at<cv::Vec3b>( (i/bpp) / w, (i/bpp) % w) = cv::Vec3b(b,g,r);
             }
 
         } else if(bpp == 6) {
             //first denormalize
             //dump
-            
+
             frame = cv::Mat(h, w, CV_8UC3);
             for(int y = 0; y < h; y++){
                 for(int x = 0; x < w; x++){
 
-                    const uint16_t* fp16 = (const uint16_t*) (data.data() + (y*w+x)*bpp);                        
+                    const uint16_t* fp16 = (const uint16_t*) (data.data() + (y*w+x)*bpp);
                     uint8_t r = (uint8_t) (fp16_ieee_to_fp32_value(fp16[0]) * 255.0f);
                     uint8_t g = (uint8_t) (fp16_ieee_to_fp32_value(fp16[1]) * 255.0f);
                     uint8_t b = (uint8_t) (fp16_ieee_to_fp32_value(fp16[2]) * 255.0f);
                     frame.at<cv::Vec3b>(y, x) = cv::Vec3b(b,g,r);
                 }
             }
-            
+
         }
     }
 

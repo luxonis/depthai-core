@@ -13,6 +13,10 @@ namespace node {
 //--------------------------------------------------------------------
 SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : DetectionNetwork(par, nodeId) {}
 
+std::shared_ptr<Node> SpatialDetectionNetwork::clone() {
+    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
+}
+
 std::string SpatialDetectionNetwork::getName() const {
     return "SpatialDetectionNetwork";
 }
@@ -55,11 +59,19 @@ MobileNetSpatialDetectionNetwork::MobileNetSpatialDetectionNetwork(const std::sh
     getPropertiesRef().nnFamily = DetectionNetworkType::MOBILENET;
 }
 
+std::shared_ptr<Node> MobileNetSpatialDetectionNetwork::clone() {
+    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
+}
+
 //--------------------------------------------------------------------
 // YOLO
 //--------------------------------------------------------------------
 YoloSpatialDetectionNetwork::YoloSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : SpatialDetectionNetwork(par, nodeId) {
     getPropertiesRef().nnFamily = DetectionNetworkType::YOLO;
+}
+
+std::shared_ptr<Node> YoloSpatialDetectionNetwork::clone() {
+    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
 void YoloSpatialDetectionNetwork::setNumClasses(const int numClasses) {

@@ -12,7 +12,7 @@ int main(){
     frame.setHeight(2);
     frame.setType(dai::ImgFrame::Type::GRAY8);
 
-#ifdef DEPTHAI_OPENCV_SUPPORT
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     auto x = frame.getFrame();
     std::cout << "Frame cols: " << x.cols << " rows: " << x.rows << std::endl;
 #else

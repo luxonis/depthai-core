@@ -264,6 +264,60 @@ Device::Device(const Pipeline& pipeline, bool usb2Mode) {
     init(pipeline, true, usb2Mode, "");
 }
 
+Device::Device(OpenVINO::Version version, const DeviceInfo& devInfo, bool usb2Mode) : deviceInfo(devInfo) {
+    init(version, true, usb2Mode, "");
+}
+
+Device::Device(OpenVINO::Version version, const DeviceInfo& devInfo, const char* pathToCmd) : deviceInfo(devInfo) {
+    init(version, false, false, std::string(pathToCmd));
+}
+
+Device::Device(OpenVINO::Version version, const DeviceInfo& devInfo, const std::string& pathToCmd) : deviceInfo(devInfo) {
+    init(version, false, false, pathToCmd);
+}
+
+Device::Device(OpenVINO::Version version) {
+    // Searches for any available device for 'default' timeout
+
+    bool found = false;
+    std::tie(found, deviceInfo) = getAnyAvailableDevice();
+
+    // If no device found, throw
+    if(!found) throw std::runtime_error("No available devices");
+    init(version, true, false, "");
+}
+
+Device::Device(OpenVINO::Version version, const char* pathToCmd) {
+    // Searches for any available device for 'default' timeout
+
+    bool found = false;
+    std::tie(found, deviceInfo) = getAnyAvailableDevice();
+
+    // If no device found, throw
+    if(!found) throw std::runtime_error("No available devices");
+    init(version, false, false, std::string(pathToCmd));
+}
+
+Device::Device(OpenVINO::Version version, const std::string& pathToCmd) {
+    // Searches for any available device for 'default' timeout
+    bool found = false;
+    std::tie(found, deviceInfo) = getAnyAvailableDevice();
+
+    // If no device found, throw
+    if(!found) throw std::runtime_error("No available devices");
+    init(version, false, false, pathToCmd);
+}
+
+Device::Device(OpenVINO::Version version, bool usb2Mode) {
+    // Searches for any available device for 'default' timeout
+    bool found = false;
+    std::tie(found, deviceInfo) = getAnyAvailableDevice();
+
+    // If no device found, throw
+    if(!found) throw std::runtime_error("No available devices");
+    init(version, true, usb2Mode, "");
+}
+
 void Device::close() {
     // Only allow to close once
     if(closed.exchange(true)) return;
@@ -317,20 +371,36 @@ Device::~Device() {
     close();
 }
 
+void Device::init(OpenVINO::Version version, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
+    // Initalize depthai library if not already
+    initialize();
+
+    // Specify the OpenVINO version
+    openvinoVersion = version;
+
+    spdlog::debug("Device - OpenVINO version: {}", OpenVINO::getVersionName(openvinoVersion));
+
+    init2(embeddedMvcmd, usb2Mode, pathToMvcmd, tl::nullopt);
+}
+
 void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
     // Initalize depthai library if not already
     initialize();
 
-    // Mark the OpenVINO version and serialize the pipeline
-    pipeline.serialize(schema, assets, assetStorage, version);
+    // Mark the OpenVINO version
+    openvinoVersion = pipeline.getOpenVINOVersion();
 
-    spdlog::debug("Device - pipeline serialized, OpenVINO version: {}", OpenVINO::getVersionName(version));
+    spdlog::debug("Device - pipeline serialized, OpenVINO version: {}", OpenVINO::getVersionName(openvinoVersion));
 
+    init2(embeddedMvcmd, usb2Mode, pathToMvcmd, pipeline);
+}
+
+void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline) {
     // Set logging pattern of device (device id + shared pattern)
     pimpl->setPattern(fmt::format("[{}] {}", deviceInfo.getMxId(), LOG_DEFAULT_PATTERN));
 
     // Get embedded mvcmd
-    std::vector<std::uint8_t> embeddedFw = Resources::getInstance().getDeviceFirmware(usb2Mode, version);
+    std::vector<std::uint8_t> embeddedFw = Resources::getInstance().getDeviceFirmware(usb2Mode, openvinoVersion);
 
     // Init device (if bootloader, handle correctly - issue USB boot command)
     if(deviceInfo.state == X_LINK_UNBOOTED) {
@@ -521,48 +591,11 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
         // Sets system inforation logging rate. By default 1s
         setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
 
-        // Open queues upfront, let queues know about data sizes (input queues)
-        // Go through Pipeline and check for 'XLinkIn' and 'XLinkOut' nodes
-        // and create corresponding default queues for them
-        for(const auto& kv : pipeline.getNodeMap()) {
-            const auto& node = kv.second;
-            const auto& xlinkIn = std::dynamic_pointer_cast<const node::XLinkIn>(node);
-            if(xlinkIn == nullptr) {
-                continue;
+        // Starts pipeline if given
+        if(pipeline) {
+            if(!startPipeline(*pipeline)) {
+                throw std::runtime_error("Couldn't start the pipeline");
             }
-            // Create DataInputQueue's
-            inputQueueMap[xlinkIn->getStreamName()] = std::make_shared<DataInputQueue>(connection, xlinkIn->getStreamName());
-            // set max data size, for more verbosity
-            inputQueueMap[xlinkIn->getStreamName()]->setMaxDataSize(xlinkIn->getMaxDataSize());
-        }
-        for(const auto& kv : pipeline.getNodeMap()) {
-            const auto& node = kv.second;
-            const auto& xlinkOut = std::dynamic_pointer_cast<const node::XLinkOut>(node);
-            if(xlinkOut == nullptr) {
-                continue;
-            }
-
-            auto streamName = xlinkOut->getStreamName();
-            // Create DataOutputQueue's
-            outputQueueMap[streamName] = std::make_shared<DataOutputQueue>(connection, streamName);
-
-            // Add callback for events
-            callbackIdMap[streamName] = outputQueueMap[streamName]->addCallback([this](std::string queueName, std::shared_ptr<ADatatype>) {
-                // Lock first
-                std::unique_lock<std::mutex> lock(eventMtx);
-
-                // Check if size is equal or greater than EVENT_QUEUE_MAXIMUM_SIZE
-                if(eventQueue.size() >= EVENT_QUEUE_MAXIMUM_SIZE) {
-                    auto numToRemove = eventQueue.size() - EVENT_QUEUE_MAXIMUM_SIZE + 1;
-                    eventQueue.erase(eventQueue.begin(), eventQueue.begin() + numToRemove);
-                }
-
-                // Add to the end of event queue
-                eventQueue.push_back(queueName);
-
-                // notify the rest
-                eventCv.notify_all();
-            });
         }
 
     } catch(const std::exception&) {
@@ -756,6 +789,12 @@ std::string Device::getQueueEvent(std::chrono::microseconds timeout) {
     return getQueueEvent(getOutputQueueNames(), timeout);
 }
 
+std::vector<CameraBoardSocket> Device::getConnectedCameras() {
+    checkClosed();
+
+    return client->call("getConnectedCameras").as<std::vector<CameraBoardSocket>>();
+}
+
 // Convinience functions for querying current system information
 MemoryInfo Device::getDdrMemoryUsage() {
     checkClosed();
@@ -799,6 +838,12 @@ CpuUsage Device::getLeonMssCpuUsage() {
     return client->call("getLeonMssCpuUsage").as<CpuUsage>();
 }
 
+UsbSpeed Device::getUsbSpeed() {
+    checkClosed();
+
+    return client->call("getUsbSpeed").as<UsbSpeed>();
+}
+
 bool Device::isPipelineRunning() {
     checkClosed();
 
@@ -815,6 +860,10 @@ LogLevel Device::getLogLevel() {
     checkClosed();
 
     return client->call("getLogLevel").as<LogLevel>();
+}
+
+DeviceInfo Device::getDeviceInfo() {
+    return deviceInfo;
 }
 
 void Device::setLogOutputLevel(LogLevel level) {
@@ -871,11 +920,85 @@ float Device::getSystemInformationLoggingRate() {
     return client->call("getSystemInformationLoggingrate").as<float>();
 }
 
+bool Device::flashCalibration(CalibrationHandler calibrationDataHandler) {
+    if(!calibrationDataHandler.validateCameraArray()) {
+        throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
+    }
+    return client->call("storeToEeprom", calibrationDataHandler.getEepromData()).as<bool>();
+}
+
+CalibrationHandler Device::readCalibration() {
+    dai::EepromData eepromData = client->call("readFromEeprom");
+    return CalibrationHandler(eepromData);
+}
+
 bool Device::startPipeline() {
+    // Deprecated
+    return true;
+}
+
+bool Device::startPipeline(const Pipeline& pipeline) {
     checkClosed();
 
-    // first check if pipeline is not already started
-    if(isPipelineRunning()) return false;
+    // first check if pipeline is not already running
+    if(isPipelineRunning()) {
+        throw std::runtime_error("Pipeline is already running");
+    }
+
+    PipelineSchema schema;
+    Assets assets;
+    std::vector<std::uint8_t> assetStorage;
+
+    // Mark the OpenVINO version and serialize the pipeline
+    OpenVINO::Version pipelineOpenvinoVersion;
+    pipeline.serialize(schema, assets, assetStorage, pipelineOpenvinoVersion);
+    if(openvinoVersion != pipelineOpenvinoVersion) {
+        throw std::runtime_error("Device booted with different OpenVINO version that pipeline requires");
+    }
+
+    // Open queues upfront, let queues know about data sizes (input queues)
+    // Go through Pipeline and check for 'XLinkIn' and 'XLinkOut' nodes
+    // and create corresponding default queues for them
+    for(const auto& kv : pipeline.getNodeMap()) {
+        const auto& node = kv.second;
+        const auto& xlinkIn = std::dynamic_pointer_cast<const node::XLinkIn>(node);
+        if(xlinkIn == nullptr) {
+            continue;
+        }
+        // Create DataInputQueue's
+        inputQueueMap[xlinkIn->getStreamName()] = std::make_shared<DataInputQueue>(connection, xlinkIn->getStreamName());
+        // set max data size, for more verbosity
+        inputQueueMap[xlinkIn->getStreamName()]->setMaxDataSize(xlinkIn->getMaxDataSize());
+    }
+    for(const auto& kv : pipeline.getNodeMap()) {
+        const auto& node = kv.second;
+        const auto& xlinkOut = std::dynamic_pointer_cast<const node::XLinkOut>(node);
+        if(xlinkOut == nullptr) {
+            continue;
+        }
+
+        auto streamName = xlinkOut->getStreamName();
+        // Create DataOutputQueue's
+        outputQueueMap[streamName] = std::make_shared<DataOutputQueue>(connection, streamName);
+
+        // Add callback for events
+        callbackIdMap[streamName] = outputQueueMap[streamName]->addCallback([this](std::string queueName, std::shared_ptr<ADatatype>) {
+            // Lock first
+            std::unique_lock<std::mutex> lock(eventMtx);
+
+            // Check if size is equal or greater than EVENT_QUEUE_MAXIMUM_SIZE
+            if(eventQueue.size() >= EVENT_QUEUE_MAXIMUM_SIZE) {
+                auto numToRemove = eventQueue.size() - EVENT_QUEUE_MAXIMUM_SIZE + 1;
+                eventQueue.erase(eventQueue.begin(), eventQueue.begin() + numToRemove);
+            }
+
+            // Add to the end of event queue
+            eventQueue.push_back(queueName);
+
+            // notify the rest
+            eventCv.notify_all();
+        });
+    }
 
     // if debug
     if(spdlog::get_level() == spdlog::level::debug) {
@@ -897,7 +1020,7 @@ bool Device::startPipeline() {
 
         // Transfer the whole assetStorage in a separate thread
         const std::string streamAssetStorage = "__stream_asset_storage";
-        std::thread t1([this, &streamAssetStorage]() {
+        std::thread t1([this, &streamAssetStorage, &assetStorage]() {
             XLinkStream stream(*connection, streamAssetStorage, XLINK_USB_BUFFER_MAX_SIZE);
             int64_t offset = 0;
             do {

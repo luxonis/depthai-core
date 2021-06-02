@@ -1,9 +1,11 @@
 #include "depthai/pipeline/Pipeline.hpp"
 
+#include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/utility/Initialization.hpp"
 
 // std
 #include <cassert>
+#include <fstream>
 
 // libraries
 #include "spdlog/fmt/fmt.h"
@@ -22,20 +24,27 @@ Pipeline::Pipeline() : pimpl(std::make_shared<PipelineImpl>()) {
     initialize();
 }
 
-/*
-Pipeline::Pipeline(const Pipeline& p){
-    pimpl = std::make_shared<PipelineImpl>();
+Pipeline Pipeline::clone() const {
+    // TODO(themarpe) - Copy assets
 
+    Pipeline clone;
+
+    // Make a copy of PipelineImpl
+    clone.pimpl = std::make_shared<PipelineImpl>(*impl());
+
+    // All IDs remain the same, just switch out the actual nodes with copies
     // Copy all nodes
-    pimpl->globalProperties = p.getGlobalProperties();
-    pimpl->nodes.reserve(p.pimpl->nodes.size());
-    for(const auto& n : p.pimpl->nodes){
-        auto clone = n->clone();
-        clone->parent = std::weak_ptr<PipelineImpl>(pimpl);
-        pimpl->nodes.push_back(clone);
+    for(const auto& kv : impl()->nodeMap) {
+        const auto& id = kv.first;
+
+        // Swap out with a copy
+        clone.pimpl->nodeMap[id] = impl()->nodeMap.at(id)->clone();
+        // Set parent to be the new pipeline
+        clone.pimpl->nodeMap[id]->parent = std::weak_ptr<PipelineImpl>(clone.pimpl);
     }
+
+    return clone;
 }
-*/
 
 Pipeline::Pipeline(const std::shared_ptr<PipelineImpl>& pimpl) {
     this->pimpl = pimpl;
@@ -245,6 +254,24 @@ OpenVINO::Version PipelineImpl::getPipelineOpenVINOVersion() const {
     return openvinoVersion;
 }
 
+void PipelineImpl::setCameraTuningBlobPath(const std::string& path) {
+    std::string assetKey = "camTuning";
+
+    std::ifstream blobStream(path, std::ios::binary);
+    if(!blobStream.is_open()) {
+        throw std::runtime_error("Pipeline | Couldn't open camera tuning blob at path: " + path);
+    }
+
+    Asset blobAsset;
+    blobAsset.alignment = 64;
+    blobAsset.data = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(blobStream), {});
+
+    assetManager.set(assetKey, blobAsset);
+
+    globalProperties.cameraTuningBlobUri = std::string("asset:") + assetKey;
+    globalProperties.cameraTuningBlobSize = blobAsset.data.size();
+}
+
 // Remove node capability
 void PipelineImpl::remove(std::shared_ptr<Node> toRemove) {
     // Search for this node in 'nodes' vector.
@@ -367,4 +394,18 @@ void PipelineImpl::unlink(const Node::Output& out, const Node::Input& in) {
     nodeConnectionMap[in.parent.id].erase(connection);
 }
 
+void PipelineImpl::setCalibrationData(CalibrationHandler calibrationDataHandler) {
+    if(!calibrationDataHandler.validateCameraArray()) {
+        throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
+    }
+    globalProperties.calibData = calibrationDataHandler.getEepromData();
+}
+
+CalibrationHandler PipelineImpl::getCalibrationData() const {
+    if(globalProperties.calibData) {
+        return CalibrationHandler(globalProperties.calibData.value());
+    } else {
+        return CalibrationHandler();
+    }
+}
 }  // namespace dai
