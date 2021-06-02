@@ -1,9 +1,6 @@
 # Add an option to test examples
 option(DEPTHAI_TEST_EXAMPLES "Test examples - examples will be ran as a part of test suite" OFF)
 
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
 # Dependencies
 find_package(OpenCV REQUIRED)
 find_package(Sanitizers)
@@ -18,6 +15,10 @@ function(dai_add_example example_name example_src enable_test)
     # Add example
     add_executable("${example_name}" "${example_src}")
     target_link_libraries("${example_name}" PRIVATE utility depthai::opencv ${OpenCV_LIBS})
+
+    # Set compiler standard (C++14)
+    set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD 14)
+    set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 
     # Add sanitizers for example
     add_sanitizers(${example_name})
@@ -36,7 +37,7 @@ function(dai_add_example example_name example_src enable_test)
         )
 
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
-        set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]")
+        set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]")
 
         # Add ubsan halt on error
         set_tests_properties(${example_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1")

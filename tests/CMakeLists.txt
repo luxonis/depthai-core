@@ -15,8 +15,9 @@ function(dai_add_test test_name test_src)
     # Add to clangformat target
     target_clangformat_setup(${test_name} "")
 
-    # Set C++ standard
-    set_property(TARGET ${test_name} PROPERTY CXX_STANDARD 14)
+    # Set compiler standard (C++14)
+    set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD 14)
+    set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 
     # Link to core and Catch2 testing framework
     target_link_libraries("${test_name}" PRIVATE depthai-core Catch2::Catch2)
