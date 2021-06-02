@@ -252,7 +252,7 @@ std::vector<float> CalibrationHandler::getDistortionCoefficients(CameraBoardSock
     return eepromData.cameraData[cameraId].distortionCoeff;
 }
 
-double CalibrationHandler::getFov(CameraBoardSocket cameraId) {
+float CalibrationHandler::getFov(CameraBoardSocket cameraId) {
     if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end())
         throw std::runtime_error("There is no Camera data available corresponding to the the requested cameraID");
 
@@ -505,7 +505,7 @@ void CalibrationHandler::setDistortionCoefficients(CameraBoardSocket cameraId, s
     return;
 }
 
-void CalibrationHandler::setFov(CameraBoardSocket cameraId, double hfov) {
+void CalibrationHandler::setFov(CameraBoardSocket cameraId, float hfov) {
     if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end()) {
         dai::CameraInfo camera_info;
         camera_info.specHfovDeg = hfov;
