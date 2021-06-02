@@ -249,7 +249,7 @@ dai_add_example(rgb_depth_aligned src/rgb_depth_aligned.cpp ON)
 dai_add_example(camera_mobilenet_sync src/camera_mobilenet_sync_example.cpp ON)
 target_compile_definitions(camera_mobilenet_sync PRIVATE BLOB_PATH="${mobilenet_blob}")
 
-dai_add_example(imu_gyro_accelero src/imu_gyro_accelero.cpp ON)
+dai_add_example(imu_gyroscope_accelerometer src/imu_gyroscope_accelerometer.cpp ON)
 dai_add_example(imu_rotation_vector src/imu_rotation_vector.cpp ON)
 
 
