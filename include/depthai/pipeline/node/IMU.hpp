@@ -31,24 +31,30 @@ class IMU : public Node {
     IMU(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
     /**
-     * Outputs ImgFrame message that carries BGR/RGB planar/interleaved encoded frame data.
-     *
-     * Suitable for use with NeuralNetwork node
+     * Outputs IMUData message that carries IMU packets.
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::IMUDatas, false}}};
+    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::IMUData, false}}};
 
     /**
-     * Enable a new IMU sensor
+     * Enable a new IMU sensor with explicit configuration
      */
     void enableIMUSensor(IMUSensorConfig imuSensor);
+
     /**
-     * Enable a list of IMU sensors
+     * Enable a list of IMU sensors with explicit configuration
      */
-    void enableIMUSensors(std::vector<IMUSensorConfig> imuSensors);
+    void enableIMUSensor(const std::vector<IMUSensorConfig>& imuSensors);
+
+    /**
+     * Enable a list of IMU sensors, simplified function
+     */
+    void enableIMUSensor(const std::vector<IMUSensor>& sensors, uint32_t reportRate);
+
     /**
      * Above this packet threshold data will be sent to host, if queue is not blocked
      */
     void setBatchReportThreshold(std::int32_t batchReportThreshold);
+
     /**
      * Above this packet threshold data will be sent to host, if queue is not blocked
      */

@@ -22,7 +22,7 @@ class IMUData : public Buffer {
     virtual ~IMUData() = default;
 
     /// Detections
-    std::vector<IMUDatas>& imuDatas;
+    std::vector<IMUPacket>& packets;
 };
 
 }  // namespace dai

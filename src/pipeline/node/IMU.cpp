@@ -33,8 +33,19 @@ void IMU::enableIMUSensor(IMUSensorConfig imuSensor) {
     properties.imuSensors.push_back(imuSensor);
 }
 
-void IMU::enableIMUSensors(std::vector<IMUSensorConfig> imuSensors) {
+void IMU::enableIMUSensor(const std::vector<IMUSensorConfig>& imuSensors) {
     properties.imuSensors = imuSensors;
+}
+
+void IMU::enableIMUSensor(const std::vector<IMUSensor>& sensors, uint32_t reportRate) {
+    std::vector<IMUSensorConfig> configs;
+    for(auto& sensor : sensors) {
+        IMUSensorConfig config;
+        config.sensorId = sensor;
+        config.reportRate = reportRate;
+        configs.push_back(config);
+    }
+    properties.imuSensors = configs;
 }
 
 void IMU::setBatchReportThreshold(std::int32_t batchReportThreshold) {

@@ -7,49 +7,37 @@
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-static bool testCamera = true;
-
-dai::Pipeline createCameraPipeline() {
-    dai::Pipeline p;
-
-    auto imu = p.create<dai::node::IMU>();
-    auto xlinkOut = p.create<dai::node::XLinkOut>();
-    xlinkOut->setStreamName("imu");
-
-    dai::IMUSensorConfig sensorConfig;
-    sensorConfig.reportIntervalUs = 2500;  // 400hz
-    sensorConfig.sensorId = dai::IMUSensorId::ROTATION_VECTOR;
-    imu->enableIMUSensor(sensorConfig);
-    // above this threshold packets will be sent in batch of X, if the host is not blocked
-    imu->setBatchReportThreshold(1);
-    // maximum number of IMU packets in a batch, if it's reached device will block sending until host can receive it
-    // if lower or equal to batchReportThreshold then the sending is always blocking on device
-    imu->setMaxBatchReports(5);
-    // WARNING, temporarily 6 is the max
-
-    // Link plugins CAM -> XLINK
-    imu->out.link(xlinkOut->input);
-
-    return p;
-}
-
 int main() {
     using namespace std;
     using namespace std::chrono;
 
-    dai::Pipeline pipeline = createCameraPipeline();
+    // Create pipeline
+    dai::Pipeline pipeline;
+
+    // Define sources and outputs
+    auto imu = pipeline.create<dai::node::IMU>();
+    auto xlinkOut = pipeline.create<dai::node::XLinkOut>();
+
+    xlinkOut->setStreamName("imu");
+
+    // Properties
+    imu->enableIMUSensor({dai::IMUSensor::ROTATION_VECTOR}, 400);
+
+    // Link plugins IMU -> XLINK
+    imu->out.link(xlinkOut->input);
+
     dai::Device d(pipeline);
 
     auto imuQueue = d.getOutputQueue("imu", 50, false);
     auto baseTs = steady_clock::now();
 
-    while(1) {
-        auto imuPacket = imuQueue->get<dai::IMUData>();
+    while(true) {
+        auto imuData = imuQueue->get<dai::IMUData>();
 
-        auto imuDatas = imuPacket->imuDatas;
-        for(auto& imuData : imuDatas) {
-            auto rvTs = imuData.rotationVector.timestamp.getTimestamp() - baseTs;
-            auto& rVvalues = imuData.rotationVector;
+        auto imuPackets = imuData->packets;
+        for(auto& imuPacket : imuPackets) {
+            auto rvTs = imuPacket.rotationVector.timestamp.get() - baseTs;
+            auto& rVvalues = imuPacket.rotationVector;
             printf("Rotation vector timestamp: %ld ms\n", duration_cast<milliseconds>(rvTs).count());
 
             printf(

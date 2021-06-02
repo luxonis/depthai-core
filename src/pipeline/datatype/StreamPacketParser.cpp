@@ -123,7 +123,7 @@ std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
             return parseDatatype<RawTracklets>(jser, data);
             break;
 
-        case DatatypeEnum::IMUDatas:
+        case DatatypeEnum::IMUData:
             return parseDatatype<RawIMUData>(jser, data);
             break;
     }
@@ -194,7 +194,7 @@ std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
             return std::make_shared<Tracklets>(parseDatatype<RawTracklets>(jser, data));
             break;
 
-        case DatatypeEnum::IMUDatas:
+        case DatatypeEnum::IMUData:
             return std::make_shared<IMUData>(parseDatatype<RawIMUData>(jser, data));
             break;
     }
