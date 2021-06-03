@@ -38,15 +38,20 @@ class IMU : public Node {
     /**
      * Enable a new IMU sensor with explicit configuration
      */
-    void enableIMUSensor(IMUSensorConfig imuSensor);
+    void enableIMUSensor(IMUSensorConfig sensorConfig);
 
     /**
      * Enable a list of IMU sensors with explicit configuration
      */
-    void enableIMUSensor(const std::vector<IMUSensorConfig>& imuSensors);
+    void enableIMUSensor(const std::vector<IMUSensorConfig>& sensorConfigs);
 
     /**
-     * Enable a list of IMU sensors, simplified function
+     * Enable a new IMU sensor with default configuration
+     */
+    void enableIMUSensor(IMUSensor sensor, uint32_t reportRate);
+
+    /**
+     * Enable a list of IMU sensors with default configuration
      */
     void enableIMUSensor(const std::vector<IMUSensor>& sensors, uint32_t reportRate);
 

@@ -29,12 +29,19 @@ std::shared_ptr<Node> IMU::clone() {
     return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
-void IMU::enableIMUSensor(IMUSensorConfig imuSensor) {
-    properties.imuSensors.push_back(imuSensor);
+void IMU::enableIMUSensor(IMUSensorConfig sensorConfig) {
+    properties.imuSensors.push_back(sensorConfig);
 }
 
-void IMU::enableIMUSensor(const std::vector<IMUSensorConfig>& imuSensors) {
-    properties.imuSensors = imuSensors;
+void IMU::enableIMUSensor(const std::vector<IMUSensorConfig>& sensorConfigs) {
+    properties.imuSensors = sensorConfigs;
+}
+
+void IMU::enableIMUSensor(IMUSensor sensor, uint32_t reportRate) {
+    IMUSensorConfig config;
+    config.sensorId = sensor;
+    config.reportRate = reportRate;
+    properties.imuSensors.push_back(config);
 }
 
 void IMU::enableIMUSensor(const std::vector<IMUSensor>& sensors, uint32_t reportRate) {
@@ -57,7 +64,7 @@ std::int32_t IMU::getBatchReportThreshold() const {
 }
 
 void IMU::setMaxBatchReports(std::int32_t maxBatchReports) {
-    properties.maxBatchReports = maxBatchReports > 5 ? 5 : maxBatchReports;
+    properties.maxBatchReports = maxBatchReports;
 }
 
 std::int32_t IMU::getMaxBatchReports() const {

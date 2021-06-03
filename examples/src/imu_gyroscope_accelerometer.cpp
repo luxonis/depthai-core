@@ -20,8 +20,14 @@ int main() {
 
     xlinkOut->setStreamName("imu");
 
-    // enable RAW_ACCELEROMETER and RAW_GYROSCOPE at 400 hz rate
-    imu->enableIMUSensor({dai::IMUSensor::RAW_ACCELEROMETER, dai::IMUSensor::RAW_GYROSCOPE}, 400);
+    // enable RAW_ACCELEROMETER and RAW_GYROSCOPE at 500 hz rate
+    imu->enableIMUSensor({dai::IMUSensor::RAW_ACCELEROMETER, dai::IMUSensor::RAW_GYROSCOPE}, 500);
+    // above this threshold packets will be sent in batch of X, if the host is not blocked and USB bandwidth is available
+    imu->setBatchReportThreshold(1);
+    // maximum number of IMU packets in a batch, if it's reached device will block sending until host can receive it
+    // if lower or equal to batchReportThreshold then the sending is always blocking on device
+    // useful to reduce device's CPU load  and number of lost packets, if CPU load is high on device side due to multiple nodes
+    imu->setMaxBatchReports(10);
 
     // Link plugins IMU -> XLINK
     imu->out.link(xlinkOut->input);
@@ -39,20 +45,23 @@ int main() {
 
         auto imuPackets = imuData->packets;
         for(auto& imuPacket : imuPackets) {
-            auto acceleroTs1 = imuPacket.rawAcceleroMeter.timestamp.get();
-            auto gyroTs1 = imuPacket.rawGyroscope.timestamp.get();
+            auto& acceleroValues = imuPacket.acceleroMeter;
+            auto& gyroValues = imuPacket.gyroscope;
+
+            auto acceleroTs1 = acceleroValues.timestamp.get();
+            auto gyroTs1 = gyroValues.timestamp.get();
             if(!firstTs) {
                 baseTs = std::min(acceleroTs1, gyroTs1);
                 firstTs = true;
             }
+
             auto acceleroTs = acceleroTs1 - baseTs;
             auto gyroTs = gyroTs1 - baseTs;
 
             printf("Accelerometer timestamp: %ld ms\n", duration_cast<milliseconds>(acceleroTs).count());
-            printf(
-                "Accelerometer [m/s^2]: x: %.3f y: %.3f z: %.3f \n", imuPacket.rawAcceleroMeter.x, imuPacket.rawAcceleroMeter.y, imuPacket.rawAcceleroMeter.z);
+            printf("Accelerometer [m/s^2]: x: %.3f y: %.3f z: %.3f \n", acceleroValues.x, acceleroValues.y, acceleroValues.z);
             printf("Gyroscope timestamp: %ld ms\n", duration_cast<milliseconds>(gyroTs).count());
-            printf("Gyroscope [rad/s]: x: %.3f y: %.3f z: %.3f \n", imuPacket.rawGyroscope.x, imuPacket.rawGyroscope.y, imuPacket.rawGyroscope.z);
+            printf("Gyroscope [rad/s]: x: %.3f y: %.3f z: %.3f \n", gyroValues.x, gyroValues.y, gyroValues.z);
         }
 
         int key = cv::waitKey(1);
