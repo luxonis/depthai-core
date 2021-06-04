@@ -233,7 +233,6 @@ target_compile_definitions(object_tracker PRIVATE BLOB_PATH="${mobilenet_blob}")
 dai_add_example(spatial_object_tracker src/spatial_object_tracker.cpp ON)
 target_compile_definitions(spatial_object_tracker PRIVATE BLOB_PATH="${mobilenet_blob}")
 
-# Stereo Depth example
 dai_add_example(stereo_depth_video src/stereo_depth_video.cpp ON)
 
 # NeuralNetwork node, webcam input (from host)
@@ -250,7 +249,9 @@ dai_add_example(rgb_depth_aligned src/rgb_depth_aligned.cpp ON)
 dai_add_example(camera_mobilenet_sync src/camera_mobilenet_sync_example.cpp ON)
 target_compile_definitions(camera_mobilenet_sync PRIVATE BLOB_PATH="${mobilenet_blob}")
 
-dai_add_example(bootloader_example src/bootloader_example.cpp OFF)
+dai_add_example(imu_gyroscope_accelerometer src/imu_gyroscope_accelerometer.cpp ON)
+dai_add_example(imu_rotation_vector src/imu_rotation_vector.cpp ON)
+
 
 # Calibration Read and write samples
 dai_add_example(calibration_flash src/calibration_flash.cpp OFF)
