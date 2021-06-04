@@ -9,7 +9,7 @@ namespace dai {
 namespace node {
 
 /**
- * @brief IMU node. For use with color sensors.
+ * @brief IMU node for BNO08X.
  */
 class IMU : public Node {
    public:
