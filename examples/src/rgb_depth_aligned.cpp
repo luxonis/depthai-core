@@ -10,6 +10,7 @@
 // Otherwise (false), the aligned depth is automatically upscaled to 1080p
 static std::atomic<bool> downscaleColor{true};
 static constexpr int fps = 30;
+// The disparity is computed at this resolution, then upscaled to RGB resolution
 static constexpr auto monoRes = dai::MonoCameraProperties::SensorResolution::THE_400_P;
 
 int main() {
@@ -49,7 +50,7 @@ int main() {
     right->setBoardSocket(dai::CameraBoardSocket::RIGHT);
     right->setFps(fps);
 
-    stereo->setConfidenceThreshold(200);
+    stereo->setConfidenceThreshold(230);
     // LR-check is required for depth alignment
     stereo->setLeftRightCheck(true);
     stereo->setDepthAlign(dai::CameraBoardSocket::RGB);
