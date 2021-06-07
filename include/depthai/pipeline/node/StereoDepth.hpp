@@ -80,13 +80,13 @@ class StereoDepth : public Node {
      * Specify local filesystem path to the calibration file
      * @param path Path to calibration file. If empty use EEPROM
      */
-    void loadCalibrationFile(const std::string& path);
+    [[deprecated("Use 'Pipeline::setCalibrationData()' instead")]] void loadCalibrationFile(const std::string& path);
 
     /**
      * Specify calibration data as a vector of bytes
      * @param path Calibration data. If empty use EEPROM
      */
-    void loadCalibrationData(const std::vector<std::uint8_t>& data);
+    [[deprecated("Use 'Pipeline::setCalibrationData()' instead")]] void loadCalibrationData(const std::vector<std::uint8_t>& data);
 
     /**
      * Specify that a passthrough/dummy calibration should be used,

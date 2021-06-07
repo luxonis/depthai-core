@@ -14,6 +14,7 @@
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
+#include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
@@ -28,6 +29,7 @@
 #include "depthai-shared/datatype/DatatypeEnum.hpp"
 #include "depthai-shared/datatype/RawBuffer.hpp"
 #include "depthai-shared/datatype/RawCameraControl.hpp"
+#include "depthai-shared/datatype/RawIMUData.hpp"
 #include "depthai-shared/datatype/RawImageManipConfig.hpp"
 #include "depthai-shared/datatype/RawImgDetections.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
@@ -120,6 +122,10 @@ std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
         case DatatypeEnum::Tracklets:
             return parseDatatype<RawTracklets>(jser, data);
             break;
+
+        case DatatypeEnum::IMUData:
+            return parseDatatype<RawIMUData>(jser, data);
+            break;
     }
 
     throw std::runtime_error("Bad packet, couldn't parse");
@@ -186,6 +192,10 @@ std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
 
         case DatatypeEnum::Tracklets:
             return std::make_shared<Tracklets>(parseDatatype<RawTracklets>(jser, data));
+            break;
+
+        case DatatypeEnum::IMUData:
+            return std::make_shared<IMUData>(parseDatatype<RawIMUData>(jser, data));
             break;
     }
 
