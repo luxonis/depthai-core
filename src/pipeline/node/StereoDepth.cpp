@@ -51,7 +51,7 @@ void StereoDepth::setEmptyCalibration(void) {
 }
 
 void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const std::vector<std::uint8_t>& dataRight) {
-    if (dataLeft.size() != dataRight.size()) {
+    if(dataLeft.size() != dataRight.size()) {
         throw std::runtime_error("StereoDepth | left and right mesh sizes must match");
     }
 
