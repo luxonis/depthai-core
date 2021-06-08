@@ -1,4 +1,4 @@
-#include "StreamPacketParser.hpp"
+#include "depthai/pipeline/datatype/StreamPacketParser.hpp"
 
 // standard
 #include <memory>

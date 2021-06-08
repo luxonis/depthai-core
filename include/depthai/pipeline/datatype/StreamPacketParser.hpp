@@ -6,10 +6,10 @@
 // libraries
 #include <XLink/XLinkPublicDefines.h>
 
-//project
+// project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 
-//shared
+// shared
 #include "depthai-shared/datatype/RawBuffer.hpp"
 
 // StreamPacket structure ->  || imgframepixels... , serialized_object, object_type, serialized_object_size ||
