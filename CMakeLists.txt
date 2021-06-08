@@ -135,6 +135,7 @@ add_library(${TARGET_CORE_NAME}
     "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
     # sources
     src/device/Device.cpp
+    src/device/DeviceBase.cpp
     src/device/DeviceBootloader.cpp
     src/device/DataQueue.cpp
     src/device/CallbackHandler.cpp
