@@ -29,6 +29,10 @@ void ImageManipConfig::setCropRect(float xmin, float ymin, float xmax, float yma
     cfg.cropConfig.cropRect.ymax = ymax;
 }
 
+void ImageManipConfig::setCropRect(std::vector<float> coordinates) {
+    setCropRect(std::get<0>(coordinates), std::get<1>(coordinates), std::get<2>(coordinates), std::get<3>(coordinates));
+}
+
 void ImageManipConfig::setCropRotatedRect(RotatedRect rr, bool normalizedCoords) {
     // Enable crop stage and extended flags
     cfg.enableCrop = true;
@@ -103,6 +107,10 @@ void ImageManipConfig::setResize(int w, int h) {
     cfg.resizeConfig.height = h;
 }
 
+void ImageManipConfig::setResize(std::tuple<int, int> size) {
+    setResize(std::get<0>(size), std::get<1>(size));
+}
+
 void ImageManipConfig::setResizeThumbnail(int w, int h, int bgRed, int bgGreen, int bgBlue) {
     // Enable resize stage
     cfg.enableResize = true;
@@ -118,6 +126,10 @@ void ImageManipConfig::setResizeThumbnail(int w, int h, int bgRed, int bgGreen, 
     cfg.resizeConfig.bgRed = bgRed;
     cfg.resizeConfig.bgGreen = bgGreen;
     cfg.resizeConfig.bgBlue = bgBlue;
+}
+
+void ImageManipConfig::setResizeThumbnail(std::tuple<int, int> size, int bgRed = 0, int bgGreen = 0, int bgBlue = 0) {
+    setResizeThumbnail(std::get<0>(size), std::get<1>(size), bgRed, bgGreen, bgBlue);
 }
 
 void ImageManipConfig::setFrameType(dai::RawImgFrame::Type type) {
