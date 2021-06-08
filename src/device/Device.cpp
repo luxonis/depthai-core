@@ -79,16 +79,16 @@ static spdlog::level::level_enum logLevelToSpdlogLevel(LogLevel level, spdlog::l
 }
 
 // Common explicit instantiation, to remove the need to define in header
-template std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono::nanoseconds);
-template std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono::microseconds);
-template std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono::milliseconds);
-template std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono::seconds);
-constexpr std::chrono::seconds Device::DEFAULT_SEARCH_TIME;
+template std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::nanoseconds);
+template std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::microseconds);
+template std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::milliseconds);
+template std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::seconds);
+constexpr std::chrono::seconds DeviceBase::DEFAULT_SEARCH_TIME;
 constexpr std::size_t Device::EVENT_QUEUE_MAXIMUM_SIZE;
-constexpr float Device::DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ;
+constexpr float DeviceBase::DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ;
 
 template <typename Rep, typename Period>
-std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono::duration<Rep, Period> timeout) {
+std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::duration<Rep, Period> timeout) {
     using namespace std::chrono;
     constexpr auto POOL_SLEEP_TIME = milliseconds(100);
 
@@ -120,14 +120,14 @@ std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice(std::chrono::duration
 }
 
 // Default overload ('DEFAULT_SEARCH_TIME' timeout)
-std::tuple<bool, DeviceInfo> Device::getAnyAvailableDevice() {
+std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice() {
     return getAnyAvailableDevice(DEFAULT_SEARCH_TIME);
 }
 
 // static api
 
 // First tries to find UNBOOTED device, then BOOTLOADER device
-std::tuple<bool, DeviceInfo> Device::getFirstAvailableDevice() {
+std::tuple<bool, DeviceInfo> DeviceBase::getFirstAvailableDevice() {
     bool found;
     DeviceInfo dev;
     std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
@@ -138,7 +138,7 @@ std::tuple<bool, DeviceInfo> Device::getFirstAvailableDevice() {
 }
 
 // Returns all devices which aren't already booted
-std::vector<DeviceInfo> Device::getAllAvailableDevices() {
+std::vector<DeviceInfo> DeviceBase::getAllAvailableDevices() {
     std::vector<DeviceInfo> availableDevices;
     auto connectedDevices = XLinkConnection::getAllConnectedDevices();
     for(const auto& d : connectedDevices) {
@@ -148,7 +148,7 @@ std::vector<DeviceInfo> Device::getAllAvailableDevices() {
 }
 
 // First tries to find UNBOOTED device with mxId, then BOOTLOADER device with mxId
-std::tuple<bool, DeviceInfo> Device::getDeviceByMxId(std::string mxId) {
+std::tuple<bool, DeviceInfo> DeviceBase::getDeviceByMxId(std::string mxId) {
     std::vector<DeviceInfo> availableDevices;
     auto states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER};
     bool found;
@@ -160,17 +160,17 @@ std::tuple<bool, DeviceInfo> Device::getDeviceByMxId(std::string mxId) {
     return {false, DeviceInfo()};
 }
 
-std::vector<std::uint8_t> Device::getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version) {
+std::vector<std::uint8_t> DeviceBase::getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version) {
     return Resources::getInstance().getDeviceFirmware(usb2Mode, version);
 }
 
 /*
-std::vector<DeviceInfo> Device::getAllConnectedDevices(){
+std::vector<DeviceInfo> DeviceBase::getAllConnectedDevices(){
     return XLinkConnection::getAllConnectedDevices();
 }
 
 
-std::tuple<bool, DeviceInfo> Device::getFirstDevice(){
+std::tuple<bool, DeviceInfo> DeviceBase::getFirstDevice(){
     return XLinkConnection::getFirstAvailableDevice();
 }
 */
@@ -178,7 +178,7 @@ std::tuple<bool, DeviceInfo> Device::getFirstDevice(){
 ///////////////////////////////////////////////
 // Impl section - use this to hide dependencies
 ///////////////////////////////////////////////
-class Device::Impl {
+class DeviceBase::Impl {
    public:
     Impl() = default;
 
@@ -192,18 +192,18 @@ class Device::Impl {
     void setPattern(const std::string& pattern);
 };
 
-void Device::Impl::setPattern(const std::string& pattern) {
+void DeviceBase::Impl::setPattern(const std::string& pattern) {
     logger.set_pattern(pattern);
 }
 
-void Device::Impl::setLogLevel(LogLevel level) {
+void DeviceBase::Impl::setLogLevel(LogLevel level) {
     // Converts LogLevel to spdlog and reconfigures logger level
     auto spdlogLevel = logLevelToSpdlogLevel(level, spdlog::level::warn);
     // Set level for all configured sinks
     logger.set_level(spdlogLevel);
 }
 
-LogLevel Device::Impl::getLogLevel() {
+LogLevel DeviceBase::Impl::getLogLevel() {
     // Converts spdlog to LogLevel
     return spdlogLevelToLogLevel(logger.level(), LogLevel::WARN);
 }
@@ -212,19 +212,19 @@ LogLevel Device::Impl::getLogLevel() {
 // END OF Impl section
 ///////////////////////////////////////////////
 
-Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode) : deviceInfo(devInfo) {
+DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode) : deviceInfo(devInfo) {
     init(pipeline, true, usb2Mode, "");
 }
 
-Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd) : deviceInfo(devInfo) {
+DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd) : deviceInfo(devInfo) {
     init(pipeline, false, false, std::string(pathToCmd));
 }
 
-Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd) : deviceInfo(devInfo) {
+DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd) : deviceInfo(devInfo) {
     init(pipeline, false, false, pathToCmd);
 }
 
-Device::Device(const Pipeline& pipeline) {
+DeviceBase::DeviceBase(const Pipeline& pipeline) {
     // Searches for any available device for 'default' timeout
 
     bool found = false;
@@ -235,7 +235,7 @@ Device::Device(const Pipeline& pipeline) {
     init(pipeline, true, false, "");
 }
 
-Device::Device(const Pipeline& pipeline, const char* pathToCmd) {
+DeviceBase::DeviceBase(const Pipeline& pipeline, const char* pathToCmd) {
     // Searches for any available device for 'default' timeout
 
     bool found = false;
@@ -246,7 +246,7 @@ Device::Device(const Pipeline& pipeline, const char* pathToCmd) {
     init(pipeline, false, false, std::string(pathToCmd));
 }
 
-Device::Device(const Pipeline& pipeline, const std::string& pathToCmd) {
+DeviceBase::DeviceBase(const Pipeline& pipeline, const std::string& pathToCmd) {
     // Searches for any available device for 'default' timeout
     bool found = false;
     std::tie(found, deviceInfo) = getAnyAvailableDevice();
@@ -256,7 +256,7 @@ Device::Device(const Pipeline& pipeline, const std::string& pathToCmd) {
     init(pipeline, false, false, pathToCmd);
 }
 
-Device::Device(const Pipeline& pipeline, bool usb2Mode) {
+DeviceBase::DeviceBase(const Pipeline& pipeline, bool usb2Mode) {
     // Searches for any available device for 'default' timeout
     bool found = false;
     std::tie(found, deviceInfo) = getAnyAvailableDevice();
@@ -266,19 +266,19 @@ Device::Device(const Pipeline& pipeline, bool usb2Mode) {
     init(pipeline, true, usb2Mode, "");
 }
 
-Device::Device(OpenVINO::Version version, const DeviceInfo& devInfo, bool usb2Mode) : deviceInfo(devInfo) {
+DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, bool usb2Mode) : deviceInfo(devInfo) {
     init(version, true, usb2Mode, "");
 }
 
-Device::Device(OpenVINO::Version version, const DeviceInfo& devInfo, const char* pathToCmd) : deviceInfo(devInfo) {
+DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, const char* pathToCmd) : deviceInfo(devInfo) {
     init(version, false, false, std::string(pathToCmd));
 }
 
-Device::Device(OpenVINO::Version version, const DeviceInfo& devInfo, const std::string& pathToCmd) : deviceInfo(devInfo) {
+DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, const std::string& pathToCmd) : deviceInfo(devInfo) {
     init(version, false, false, pathToCmd);
 }
 
-Device::Device(OpenVINO::Version version) {
+DeviceBase::DeviceBase(OpenVINO::Version version) {
     // Searches for any available device for 'default' timeout
 
     bool found = false;
@@ -289,7 +289,7 @@ Device::Device(OpenVINO::Version version) {
     init(version, true, false, "");
 }
 
-Device::Device(OpenVINO::Version version, const char* pathToCmd) {
+DeviceBase::DeviceBase(OpenVINO::Version version, const char* pathToCmd) {
     // Searches for any available device for 'default' timeout
 
     bool found = false;
@@ -300,7 +300,7 @@ Device::Device(OpenVINO::Version version, const char* pathToCmd) {
     init(version, false, false, std::string(pathToCmd));
 }
 
-Device::Device(OpenVINO::Version version, const std::string& pathToCmd) {
+DeviceBase::DeviceBase(OpenVINO::Version version, const std::string& pathToCmd) {
     // Searches for any available device for 'default' timeout
     bool found = false;
     std::tie(found, deviceInfo) = getAnyAvailableDevice();
@@ -310,7 +310,7 @@ Device::Device(OpenVINO::Version version, const std::string& pathToCmd) {
     init(version, false, false, pathToCmd);
 }
 
-Device::Device(OpenVINO::Version version, bool usb2Mode) {
+DeviceBase::DeviceBase(OpenVINO::Version version, bool usb2Mode) {
     // Searches for any available device for 'default' timeout
     bool found = false;
     std::tie(found, deviceInfo) = getAnyAvailableDevice();
@@ -321,12 +321,7 @@ Device::Device(OpenVINO::Version version, bool usb2Mode) {
 }
 
 void Device::close() {
-    // Only allow to close once
-    if(closed.exchange(true)) return;
-
-    using namespace std::chrono;
-    auto t1 = steady_clock::now();
-    spdlog::debug("Device about to be closed...");
+    if(this->isClosed()) return;
 
     // Remove callbacks to this from queues
     for(const auto& kv : callbackIdMap) {
@@ -335,15 +330,27 @@ void Device::close() {
     // Clear map
     callbackIdMap.clear();
 
-    // Close connection first (so queues unblock)
-    connection->close();
-    connection = nullptr;
+    // Is this expected? Should we clear the queues before closing the device?
+    DeviceBase::close();
 
     // Close and clear queues
     for(auto& kv : outputQueueMap) kv.second->close();
     for(auto& kv : inputQueueMap) kv.second->close();
     outputQueueMap.clear();
     inputQueueMap.clear();
+}
+
+void DeviceBase::close() {
+    // Only allow to close once
+    if(closed.exchange(true)) return;
+
+    using namespace std::chrono;
+    auto t1 = steady_clock::now();
+    spdlog::debug("Device about to be closed...");
+
+    // Close connection first (so queues unblock)
+    connection->close();
+    connection = nullptr;
 
     // Stop watchdog
     watchdogRunning = false;
@@ -363,19 +370,19 @@ void Device::close() {
     spdlog::debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
 }
 
-bool Device::isClosed() const {
+bool DeviceBase::isClosed() const {
     return closed || !watchdogRunning;
 }
 
-void Device::checkClosed() const {
+void DeviceBase::checkClosed() const {
     if(isClosed()) throw std::invalid_argument("Device already closed or disconnected");
 }
 
-Device::~Device() {
+DeviceBase::~DeviceBase() {
     close();
 }
 
-void Device::init(OpenVINO::Version version, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
+void DeviceBase::init(OpenVINO::Version version, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
     // Initalize depthai library if not already
     initialize();
 
@@ -387,7 +394,7 @@ void Device::init(OpenVINO::Version version, bool embeddedMvcmd, bool usb2Mode, 
     init2(embeddedMvcmd, usb2Mode, pathToMvcmd, tl::nullopt);
 }
 
-void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
+void DeviceBase::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
     // Initalize depthai library if not already
     initialize();
 
@@ -399,7 +406,7 @@ void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, c
     init2(embeddedMvcmd, usb2Mode, pathToMvcmd, pipeline);
 }
 
-void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline) {
+void DeviceBase::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline) {
     // Set logging pattern of device (device id + shared pattern)
     pimpl->setPattern(fmt::format("[{}] {}", deviceInfo.getMxId(), LOG_DEFAULT_PATTERN));
 
@@ -842,102 +849,102 @@ std::string Device::getQueueEvent(std::chrono::microseconds timeout) {
     return getQueueEvent(getOutputQueueNames(), timeout);
 }
 
-std::string Device::getMxId() {
+std::string DeviceBase::getMxId() {
     checkClosed();
 
     return client->call("getMxId").as<std::string>();
 }
 
-std::vector<CameraBoardSocket> Device::getConnectedCameras() {
+std::vector<CameraBoardSocket> DeviceBase::getConnectedCameras() {
     checkClosed();
 
     return client->call("getConnectedCameras").as<std::vector<CameraBoardSocket>>();
 }
 
 // Convinience functions for querying current system information
-MemoryInfo Device::getDdrMemoryUsage() {
+MemoryInfo DeviceBase::getDdrMemoryUsage() {
     checkClosed();
 
     return client->call("getDdrUsage").as<MemoryInfo>();
 }
 
-MemoryInfo Device::getCmxMemoryUsage() {
+MemoryInfo DeviceBase::getCmxMemoryUsage() {
     checkClosed();
 
     return client->call("getCmxUsage").as<MemoryInfo>();
 }
 
-MemoryInfo Device::getLeonCssHeapUsage() {
+MemoryInfo DeviceBase::getLeonCssHeapUsage() {
     checkClosed();
 
     return client->call("getLeonCssHeapUsage").as<MemoryInfo>();
 }
 
-MemoryInfo Device::getLeonMssHeapUsage() {
+MemoryInfo DeviceBase::getLeonMssHeapUsage() {
     checkClosed();
 
     return client->call("getLeonMssHeapUsage").as<MemoryInfo>();
 }
 
-ChipTemperature Device::getChipTemperature() {
+ChipTemperature DeviceBase::getChipTemperature() {
     checkClosed();
 
     return client->call("getChipTemperature").as<ChipTemperature>();
 }
 
-CpuUsage Device::getLeonCssCpuUsage() {
+CpuUsage DeviceBase::getLeonCssCpuUsage() {
     checkClosed();
 
     return client->call("getLeonCssCpuUsage").as<CpuUsage>();
 }
 
-CpuUsage Device::getLeonMssCpuUsage() {
+CpuUsage DeviceBase::getLeonMssCpuUsage() {
     checkClosed();
 
     return client->call("getLeonMssCpuUsage").as<CpuUsage>();
 }
 
-UsbSpeed Device::getUsbSpeed() {
+UsbSpeed DeviceBase::getUsbSpeed() {
     checkClosed();
 
     return client->call("getUsbSpeed").as<UsbSpeed>();
 }
 
-bool Device::isPipelineRunning() {
+bool DeviceBase::isPipelineRunning() {
     checkClosed();
 
     return client->call("isPipelineRunning").as<bool>();
 }
 
-void Device::setLogLevel(LogLevel level) {
+void DeviceBase::setLogLevel(LogLevel level) {
     checkClosed();
 
     client->call("setLogLevel", level);
 }
 
-LogLevel Device::getLogLevel() {
+LogLevel DeviceBase::getLogLevel() {
     checkClosed();
 
     return client->call("getLogLevel").as<LogLevel>();
 }
 
-DeviceInfo Device::getDeviceInfo() {
+DeviceInfo DeviceBase::getDeviceInfo() {
     return deviceInfo;
 }
 
-void Device::setLogOutputLevel(LogLevel level) {
+void DeviceBase::setLogOutputLevel(LogLevel level) {
     checkClosed();
 
     pimpl->setLogLevel(level);
 }
 
-LogLevel Device::getLogOutputLevel() {
+LogLevel DeviceBase::getLogOutputLevel() {
     checkClosed();
 
     return pimpl->getLogLevel();
 }
 
-int Device::addLogCallback(std::function<void(LogMessage)> callback) {
+int DeviceBase::addLogCallback(std::function<void(LogMessage)> callback) {
     checkClosed();
 
     // Lock first
@@ -953,7 +960,7 @@ int Device::addLogCallback(std::function<void(LogMessage)> callback) {
     return id;
 }
 
-bool Device::removeLogCallback(int callbackId) {
+bool DeviceBase::removeLogCallback(int callbackId) {
     checkClosed();
 
     // Lock first
@@ -967,36 +974,36 @@ bool Device::removeLogCallback(int callbackId) {
     return true;
 }
 
-void Device::setSystemInformationLoggingRate(float rateHz) {
+void DeviceBase::setSystemInformationLoggingRate(float rateHz) {
     checkClosed();
 
     client->call("setSystemInformationLoggingRate", rateHz);
 }
 
-float Device::getSystemInformationLoggingRate() {
+float DeviceBase::getSystemInformationLoggingRate() {
     checkClosed();
 
     return client->call("getSystemInformationLoggingrate").as<float>();
 }
 
-bool Device::flashCalibration(CalibrationHandler calibrationDataHandler) {
+bool DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
     if(!calibrationDataHandler.validateCameraArray()) {
         throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
     }
     return client->call("storeToEeprom", calibrationDataHandler.getEepromData()).as<bool>();
 }
 
-CalibrationHandler Device::readCalibration() {
+CalibrationHandler DeviceBase::readCalibration() {
     dai::EepromData eepromData = client->call("readFromEeprom");
     return CalibrationHandler(eepromData);
 }
 
-bool Device::startPipeline() {
+bool DeviceBase::startPipeline() {
     // Deprecated
     return true;
 }
 
-bool Device::startPipeline(const Pipeline& pipeline) {
+bool DeviceBase::startPipeline(const Pipeline& pipeline) {
     checkClosed();
 
     // first check if pipeline is not already running
@@ -1013,50 +1020,6 @@ bool Device::startPipeline(const Pipeline& pipeline) {
     pipeline.serialize(schema, assets, assetStorage, pipelineOpenvinoVersion);
     if(openvinoVersion != pipelineOpenvinoVersion) {
         throw std::runtime_error("Device booted with different OpenVINO version that pipeline requires");
-    }
-
-    // Open queues upfront, let queues know about data sizes (input queues)
-    // Go through Pipeline and check for 'XLinkIn' and 'XLinkOut' nodes
-    // and create corresponding default queues for them
-    for(const auto& kv : pipeline.getNodeMap()) {
-        const auto& node = kv.second;
-        const auto& xlinkIn = std::dynamic_pointer_cast<const node::XLinkIn>(node);
-        if(xlinkIn == nullptr) {
-            continue;
-        }
-        // Create DataInputQueue's
-        inputQueueMap[xlinkIn->getStreamName()] = std::make_shared<DataInputQueue>(connection, xlinkIn->getStreamName());
-        // set max data size, for more verbosity
-        inputQueueMap[xlinkIn->getStreamName()]->setMaxDataSize(xlinkIn->getMaxDataSize());
-    }
-    for(const auto& kv : pipeline.getNodeMap()) {
-        const auto& node = kv.second;
-        const auto& xlinkOut = std::dynamic_pointer_cast<const node::XLinkOut>(node);
-        if(xlinkOut == nullptr) {
-            continue;
-        }
-
-        auto streamName = xlinkOut->getStreamName();
-        // Create DataOutputQueue's
-        outputQueueMap[streamName] = std::make_shared<DataOutputQueue>(connection, streamName);
-
-        // Add callback for events
-        callbackIdMap[streamName] = outputQueueMap[streamName]->addCallback([this](std::string queueName, std::shared_ptr<ADatatype>) {
-            // Lock first
-            std::unique_lock<std::mutex> lock(eventMtx);
-
-            // Check if size is equal or greater than EVENT_QUEUE_MAXIMUM_SIZE
-            if(eventQueue.size() >= EVENT_QUEUE_MAXIMUM_SIZE) {
-                auto numToRemove = eventQueue.size() - EVENT_QUEUE_MAXIMUM_SIZE + 1;
-                eventQueue.erase(eventQueue.begin(), eventQueue.begin() + numToRemove);
-            }
-
-            // Add to the end of event queue
-            eventQueue.push_back(queueName);
-
-            // notify the rest
-            eventCv.notify_all();
-        });
     }
 
     // if debug
@@ -1114,4 +1077,53 @@ bool Device::startPipeline(const Pipeline& pipeline) {
     return true;
 }
 
+bool Device::startPipeline(const Pipeline& pipeline) {
+    bool success = DeviceBase::startPipeline(pipeline);
+    if(!success) return success;
+
+    // Open queues upfront, let queues know about data sizes (input queues)
+    // Go through Pipeline and check for 'XLinkIn' and 'XLinkOut' nodes
+    // and create corresponding default queues for them
+    for(const auto& kv : pipeline.getNodeMap()) {
+        const auto& node = kv.second;
+        const auto& xlinkIn = std::dynamic_pointer_cast<const node::XLinkIn>(node);
+        if(xlinkIn == nullptr) {
+            continue;
+        }
+        // Create DataInputQueue's
+        inputQueueMap[xlinkIn->getStreamName()] = std::make_shared<DataInputQueue>(connection, xlinkIn->getStreamName());
+        // set max data size, for more verbosity
+        inputQueueMap[xlinkIn->getStreamName()]->setMaxDataSize(xlinkIn->getMaxDataSize());
+    }
+    for(const auto& kv : pipeline.getNodeMap()) {
+        const auto& node = kv.second;
+        const auto& xlinkOut = std::dynamic_pointer_cast<const node::XLinkOut>(node);
+        if(xlinkOut == nullptr) {
+            continue;
+        }
+
+        auto streamName = xlinkOut->getStreamName();
+        // Create DataOutputQueue's
+        outputQueueMap[streamName] = std::make_shared<DataOutputQueue>(connection, streamName);
+
+        // Add callback for events
+        callbackIdMap[streamName] = outputQueueMap[streamName]->addCallback([this](std::string queueName, std::shared_ptr<ADatatype>) {
+            // Lock first
+            std::unique_lock<std::mutex> lock(eventMtx);
+
+            // Check if size is equal or greater than EVENT_QUEUE_MAXIMUM_SIZE
+            if(eventQueue.size() >= EVENT_QUEUE_MAXIMUM_SIZE) {
+                auto numToRemove = eventQueue.size() - EVENT_QUEUE_MAXIMUM_SIZE + 1;
+                eventQueue.erase(eventQueue.begin(), eventQueue.begin() + numToRemove);
+            }
+
+            // Add to the end of event queue
+            eventQueue.push_back(queueName);
+
+            // notify the rest
+            eventCv.notify_all();
+        });
+    }
+    return success;
+}
 }  // namespace dai

@@ -36,14 +36,12 @@ namespace dai {
 /**
  * Represents the DepthAI device with the methods to interact with it.
  */
-class Device {
+class DeviceBase {
    public:
     // constants
 
     /// Default search time for constructors which discover devices
     static constexpr std::chrono::seconds DEFAULT_SEARCH_TIME{3};
-    /// Maximum number of elements in event queue
-    static constexpr std::size_t EVENT_QUEUE_MAXIMUM_SIZE{2048};
     /// Default rate at which system information is logged
     static constexpr float DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ{1.0f};
 
@@ -96,28 +94,28 @@ class Device {
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * @param pipeline Pipeline to be executed on the device
      */
-    explicit Device(const Pipeline& pipeline);
+    explicit DeviceBase(const Pipeline& pipeline);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * @param pipeline Pipeline to be executed on the device
      * @param usb2Mode Boot device using USB2 mode firmware
      */
-    Device(const Pipeline& pipeline, bool usb2Mode);
+    DeviceBase(const Pipeline& pipeline, bool usb2Mode);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * @param pipeline Pipeline to be executed on the device
      * @param pathToCmd Path to custom device firmware
      */
-    Device(const Pipeline& pipeline, const char* pathToCmd);
+    DeviceBase(const Pipeline& pipeline, const char* pathToCmd);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * @param pipeline Pipeline to be executed on the device
      * @param pathToCmd Path to custom device firmware
      */
-    Device(const Pipeline& pipeline, const std::string& pathToCmd);
+    DeviceBase(const Pipeline& pipeline, const std::string& pathToCmd);
 
     /**
      * Connects to device specified by devInfo.
@@ -125,7 +123,7 @@ class Device {
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param usb2Mode Boot device using USB2 mode firmware
      */
-    Device(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode = false);
+    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode = false);
 
     /**
      * Connects to device specified by devInfo.
@@ -133,7 +131,7 @@ class Device {
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param pathToCmd Path to custom device firmware
      */
-    Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd);
+    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd);
 
     /**
      * Connects to device specified by devInfo.
@@ -141,34 +139,34 @@ class Device {
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param usb2Mode Path to custom device firmware
      */
-    Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd);
+    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * @param version OpenVINO version which the device will be booted with. Default is Pipeline::DEFAULT_OPENVINO_VERSION
      */
-    explicit Device(OpenVINO::Version version = Pipeline::DEFAULT_OPENVINO_VERSION);
+    explicit DeviceBase(OpenVINO::Version version = Pipeline::DEFAULT_OPENVINO_VERSION);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * @param version OpenVINO version which the device will be booted with
      * @param usb2Mode Boot device using USB2 mode firmware
      */
-    Device(OpenVINO::Version version, bool usb2Mode);
+    DeviceBase(OpenVINO::Version version, bool usb2Mode);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * @param version OpenVINO version which the device will be booted with
      * @param pathToCmd Path to custom device firmware
      */
-    Device(OpenVINO::Version version, const char* pathToCmd);
+    DeviceBase(OpenVINO::Version version, const char* pathToCmd);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * @param version OpenVINO version which the device will be booted with
      * @param pathToCmd Path to custom device firmware
      */
-    Device(OpenVINO::Version version, const std::string& pathToCmd);
+    DeviceBase(OpenVINO::Version version, const std::string& pathToCmd);
 
     /**
      * Connects to device specified by devInfo.
@@ -176,7 +174,7 @@ class Device {
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param usb2Mode Boot device using USB2 mode firmware
      */
-    Device(OpenVINO::Version version, const DeviceInfo& devInfo, bool usb2Mode = false);
+    DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, bool usb2Mode = false);
 
     /**
      * Connects to device specified by devInfo.
@@ -184,7 +182,7 @@ class Device {
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param pathToCmd Path to custom device firmware
      */
-    Device(OpenVINO::Version version, const DeviceInfo& devInfo, const char* pathToCmd);
+    DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, const char* pathToCmd);
 
     /**
      * Connects to device specified by devInfo.
@@ -192,12 +190,12 @@ class Device {
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param usb2Mode Path to custom device firmware
      */
-    Device(OpenVINO::Version version, const DeviceInfo& devInfo, const std::string& pathToCmd);
+    DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, const std::string& pathToCmd);
 
     /**
      * Device destructor. Closes the connection and data queues.
      */
-    ~Device();
+    virtual ~DeviceBase();
 
     /**
      * Checks if devices pipeline is already running
@@ -219,7 +217,7 @@ class Device {
      *
      * @returns True if pipeline started, false otherwise
      */
-    bool startPipeline(const Pipeline& pipeline);
+    virtual bool startPipeline(const Pipeline& pipeline);
 
     /**
      * Sets the devices logging severity level. This level affects which logs are transfered from device to host.
@@ -287,6 +285,164 @@ class Device {
      * @returns Logging rate in Hz
      */
     float getSystemInformationLoggingRate();
+
+    /**
+     * Get MxId of device
+     *
+     * @returns MxId of connected device
+     */
+    std::string getMxId();
+
+    /**
+     * Get cameras that are connected to the device
+     *
+     * @returns Vector of connected cameras
+     */
+    std::vector<CameraBoardSocket> getConnectedCameras();
+
+    /**
+     * Retrieves current DDR memory information from device
+     *
+     * @returns Used, remaining and total ddr memory
+     */
+    MemoryInfo getDdrMemoryUsage();
+
+    /**
+     * Retrieves current CMX memory information from device
+     *
+     * @returns Used, remaining and total cmx memory
+     */
+    MemoryInfo getCmxMemoryUsage();
+
+    /**
+     * Retrieves current CSS Leon CPU heap information from device
+     *
+     * @returns Used, remaining and total heap memory
+     */
+    MemoryInfo getLeonCssHeapUsage();
+
+    /**
+     * Retrieves current MSS Leon CPU heap information from device
+     *
+     * @returns Used, remaining and total heap memory
+     */
+    MemoryInfo getLeonMssHeapUsage();
+
+    /**
+     * Retrieves current chip temperature as measured by device
+     *
+     * @returns Temperature of various onboard sensors
+     */
+    ChipTemperature getChipTemperature();
+
+    /**
+     * Retrieves average CSS Leon CPU usage
+     *
+     * @returns Average CPU usage and sampling duration
+     */
+    CpuUsage getLeonCssCpuUsage();
+
+    /**
+     * Retrieves average MSS Leon CPU usage
+     *
+     * @returns Average CPU usage and sampling duration
+     */
+    CpuUsage getLeonMssCpuUsage();
+
+    /**
+     * Stores the Calibration and Device information to the Device EEPROM
+     *
+     * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
+     *
+     * @return true on successful flash, false on failure
+     */
+    bool flashCalibration(CalibrationHandler calibrationDataHandler);
+
+    /**
+     * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
+     *
+     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
+     */
+    CalibrationHandler readCalibration();
+
+    /**
+     * Retrieves USB connection speed
+     *
+     * @returns USB connection speed of connected device if applicable. Unknown otherwise.
+     */
+    UsbSpeed getUsbSpeed();
+
+    /**
+     * Explicitly closes connection to device.
+     * @note This function does not need to be explicitly called
+     * as destructor closes the device automatically
+     */
+    void close();
+
+    /**
+     * Is the device already closed (or disconnected)
+     */
+    bool isClosed() const;
+
+   protected:
+    void checkClosed() const;
+    std::shared_ptr<XLinkConnection> connection;
+
+   private:
+    // private static
+    void init(OpenVINO::Version version, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
+    void init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
+    void init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline);
+
+    std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> client;
+    std::mutex rpcMutex;
+    std::vector<uint8_t> patchedCmd;
+
+    DeviceInfo deviceInfo = {};
+
+    // Log callback
+    int uniqueCallbackId = 0;
+    std::mutex logCallbackMapMtx;
+    std::unordered_map<int, std::function<void(LogMessage)>> logCallbackMap;
+
+    // Watchdog thread
+    std::thread watchdogThread;
+    std::atomic<bool> watchdogRunning{true};
+
+    // Timesync thread
+    std::thread timesyncThread;
+    std::atomic<bool> timesyncRunning{true};
+
+    // Logging thread
+    std::thread loggingThread;
+    std::atomic<bool> loggingRunning{true};
+
+    // RPC stream
+    std::unique_ptr<XLinkStream> rpcStream;
+
+    // closed
+    std::atomic<bool> closed{false};
+
+    // pimpl
+    class Impl;
+    Pimpl<Impl> pimpl;
+
+    // OpenVINO version device was booted with
+    OpenVINO::Version openvinoVersion;
+};
+
+class Device : public DeviceBase {
+   public:
+    using DeviceBase::DeviceBase;
+    /// Maximum number of elements in event queue
+    static constexpr std::size_t EVENT_QUEUE_MAXIMUM_SIZE{2048};
+
+    /**
+     * Explicitly closes connection to device.
+     * @note This function does not need to be explicitly called
+     * as destructor closes the device automatically
+     */
+    void close();
 
     /**
      * Gets an output queue corresponding to stream name. If it doesn't exist it throws
@@ -405,156 +561,23 @@ class Device {
     std::string getQueueEvent(std::chrono::microseconds timeout = std::chrono::microseconds(-1));
 
     /**
-     * Get MxId of device
+     * Starts the execution of a given pipeline
+     * @param pipeline OpenVINO version of the pipeline must match the one which the device was booted with.
      *
-     * @returns MxId of connected device
+     * @returns True if pipeline started, false otherwise
      */
-    std::string getMxId();
-
-    /**
-     * Get cameras that are connected to the device
-     *
-     * @returns Vector of connected cameras
-     */
-    std::vector<CameraBoardSocket> getConnectedCameras();
-
-    /**
-     * Retrieves current DDR memory information from device
-     *
-     * @returns Used, remaining and total ddr memory
-     */
-    MemoryInfo getDdrMemoryUsage();
-
-    /**
-     * Retrieves current CMX memory information from device
-     *
-     * @returns Used, remaining and total cmx memory
-     */
-    MemoryInfo getCmxMemoryUsage();
-
-    /**
-     * Retrieves current CSS Leon CPU heap information from device
-     *
-     * @returns Used, remaining and total heap memory
-     */
-    MemoryInfo getLeonCssHeapUsage();
-
-    /**
-     * Retrieves current MSS Leon CPU heap information from device
-     *
-     * @returns Used, remaining and total heap memory
-     */
-    MemoryInfo getLeonMssHeapUsage();
-
-    /**
-     * Retrieves current chip temperature as measured by device
-     *
-     * @returns Temperature of various onboard sensors
-     */
-    ChipTemperature getChipTemperature();
-
-    /**
-     * Retrieves average CSS Leon CPU usage
-     *
-     * @returns Average CPU usage and sampling duration
-     */
-    CpuUsage getLeonCssCpuUsage();
-
-    /**
-     * Retrieves average MSS Leon CPU usage
-     *
-     * @returns Average CPU usage and sampling duration
-     */
-    CpuUsage getLeonMssCpuUsage();
-
-    /**
-     * Stores the Calibration and Device information to the Device EEPROM
-     *
-     * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
-     *
-     * @return true on successful flash, false on failure
-     */
-    bool flashCalibration(CalibrationHandler calibrationDataHandler);
-
-    /**
-     * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
-     *
-     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
-     */
-    CalibrationHandler readCalibration();
-
-    /**
-     * Retrieves USB connection speed
-     *
-     * @returns USB connection speed of connected device if applicable. Unknown otherwise.
-     */
-    UsbSpeed getUsbSpeed();
-
-    /**
-     * Explicitly closes connection to device.
-     * @note This function does not need to be explicitly called
-     * as destructor closes the device automatically
-     */
-    void close();
-
-    /**
-     * Is the device already closed (or disconnected)
-     */
-    bool isClosed() const;
+    bool startPipeline(const Pipeline& pipeline) override;
 
    private:
-    // private static
-    void init(OpenVINO::Version version, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
-    void init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
-    void init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline);
-    void checkClosed() const;
-
-    std::shared_ptr<XLinkConnection> connection;
-    std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> client;
-    std::mutex rpcMutex;
-    std::vector<uint8_t> patchedCmd;
-
-    DeviceInfo deviceInfo = {};
-
     std::unordered_map<std::string, std::shared_ptr<DataOutputQueue>> outputQueueMap;
     std::unordered_map<std::string, std::shared_ptr<DataInputQueue>> inputQueueMap;
     std::unordered_map<std::string, DataOutputQueue::CallbackId> callbackIdMap;
     // std::unordered_map<std::string, CallbackHandler> callbackMap;
 
-    // Log callback
-    int uniqueCallbackId = 0;
-    std::mutex logCallbackMapMtx;
-    std::unordered_map<int, std::function<void(LogMessage)>> logCallbackMap;
-
     // Event queue
     std::mutex eventMtx;
     std::condition_variable eventCv;
     std::deque<std::string> eventQueue;
-
-    // Watchdog thread
-    std::thread watchdogThread;
-    std::atomic<bool> watchdogRunning{true};
-
-    // Timesync thread
-    std::thread timesyncThread;
-    std::atomic<bool> timesyncRunning{true};
-
-    // Logging thread
-    std::thread loggingThread;
-    std::atomic<bool> loggingRunning{true};
-
-    // RPC stream
-    std::unique_ptr<XLinkStream> rpcStream;
-
-    // closed
-    std::atomic<bool> closed{false};
-
-    // pimpl
-    class Impl;
-    Pimpl<Impl> pimpl;
-
-    // OpenVINO version device was booted with
-    OpenVINO::Version openvinoVersion;
 };
 
 }  // namespace dai
