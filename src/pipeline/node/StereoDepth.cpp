@@ -101,6 +101,9 @@ void StereoDepth::setOutputSize(int width, int height) {
     properties.outWidth = width;
     properties.outHeight = height;
 }
+void StereoDepth::setOutputKeepAspectRatio(bool keep) {
+    properties.outKeepAspectRatio = keep;
+}
 void StereoDepth::setMedianFilter(Properties::MedianFilter median) {
     properties.median = median;
 }

@@ -135,6 +135,12 @@ class StereoDepth : public Node {
     void setOutputSize(int width, int height);
 
     /**
+     * Specifies whether the frames resized by `setOutputSize` should preserve aspect ratio,
+     * with potential cropping when enabled. Default `true`
+     */
+    void setOutputKeepAspectRatio(bool keep);
+
+    /**
      * @param median Set kernel size for disparity/depth median filtering, or disable
      */
     void setMedianFilter(Properties::MedianFilter median);
