@@ -97,7 +97,7 @@ void StereoDepth::setInputResolution(int width, int height) {
     properties.width = width;
     properties.height = height;
 }
-void StereoDepth::setOutputResolution(int width, int height) {
+void StereoDepth::setOutputSize(int width, int height) {
     properties.outWidth = width;
     properties.outHeight = height;
 }
