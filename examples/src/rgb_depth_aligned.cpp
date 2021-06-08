@@ -37,7 +37,7 @@ int main() {
     if(downscaleColor) camRgb->setIspScale(2, 3);
     // For now, RGB needs fixed focus to properly align with depth.
     // This value was used during calibration
-    camRgb->initialControl.setManualFocus(130);
+    camRgb->initialControl.setManualFocus(135);
 
     left->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
     left->setBoardSocket(dai::CameraBoardSocket::LEFT);
