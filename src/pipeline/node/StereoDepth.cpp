@@ -46,7 +46,7 @@ void StereoDepth::loadCalibrationFile(const std::string& path) {
 
 void StereoDepth::setEmptyCalibration(void) {
     // Special case: a single element
-    const std::vector<std::uint8_t> empty = {0};
+    const std::vector<std::uint8_t> empty = {};
     properties.calibration = empty;
 }
 
