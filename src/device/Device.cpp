@@ -228,13 +228,16 @@ std::string Device::getQueueEvent(std::chrono::microseconds timeout) {
 }
 
 bool Device::startPipeline(const Pipeline& pipeline) {
-    bool success = DeviceBase::startPipeline(pipeline);
-    if(!success) return success;
+    if(isPipelineRunning()) {
+        // let the base class handle this case
+        return DeviceBase::startPipeline(pipeline);
+    }
 
-    const auto& connection = getConnection();
     // Open queues upfront, let queues know about data sizes (input queues)
     // Go through Pipeline and check for 'XLinkIn' and 'XLinkOut' nodes
     // and create corresponding default queues for them
+
+    const auto& connection = getConnection();
     for(const auto& kv : pipeline.getNodeMap()) {
         const auto& node = kv.second;
         const auto& xlinkIn = std::dynamic_pointer_cast<const node::XLinkIn>(node);
@@ -276,6 +279,6 @@ bool Device::startPipeline(const Pipeline& pipeline) {
             eventCv.notify_all();
         });
     }
-    return success;
+    return DeviceBase::startPipeline(pipeline);
 }
 }  // namespace dai
