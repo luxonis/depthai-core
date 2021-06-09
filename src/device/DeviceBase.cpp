@@ -743,8 +743,6 @@ bool DeviceBase::startPipeline() {
 }
 
 bool DeviceBase::startPipeline(const Pipeline& pipeline) {
-    checkClosed();
-
     // first check if pipeline is not already running
     if(isPipelineRunning()) {
         throw std::runtime_error("Pipeline is already running");
