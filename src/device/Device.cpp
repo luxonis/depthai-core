@@ -24,9 +24,7 @@ namespace dai {
 // Common explicit instantiation, to remove the need to define in header
 constexpr std::size_t Device::EVENT_QUEUE_MAXIMUM_SIZE;
 
-void Device::close() {
-    if(this->isClosed()) return;
-
+void Device::closeImpl() {
     // Remove callbacks to this from queues
     for(const auto& kv : callbackIdMap) {
         outputQueueMap[kv.first]->removeCallback(kv.second);
@@ -35,7 +33,7 @@ void Device::close() {
     callbackIdMap.clear();
 
     // Close the device before clearning the queues
-    DeviceBase::close();
+    DeviceBase::closeImpl();
 
     // Close and clear queues
     for(auto& kv : outputQueueMap) kv.second->close();
@@ -227,16 +225,10 @@ std::string Device::getQueueEvent(std::chrono::microseconds timeout) {
     return getQueueEvent(getOutputQueueNames(), timeout);
 }
 
-bool Device::startPipeline(const Pipeline& pipeline) {
-    if(isPipelineRunning()) {
-        // let the base class handle this case
-        return DeviceBase::startPipeline(pipeline);
-    }
-
+bool Device::startPipelineImpl(const Pipeline& pipeline) {
     // Open queues upfront, let queues know about data sizes (input queues)
     // Go through Pipeline and check for 'XLinkIn' and 'XLinkOut' nodes
     // and create corresponding default queues for them
-
     const auto& connection = getConnection();
     for(const auto& kv : pipeline.getNodeMap()) {
         const auto& node = kv.second;

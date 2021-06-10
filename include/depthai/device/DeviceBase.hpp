@@ -219,7 +219,7 @@ class DeviceBase {
      *
      * @returns True if pipeline started, false otherwise
      */
-    virtual bool startPipeline(const Pipeline& pipeline);
+    bool startPipeline(const Pipeline& pipeline);
 
     /**
      * Sets the devices logging severity level. This level affects which logs are transfered from device to host.
@@ -379,7 +379,7 @@ class DeviceBase {
      * @note This function does not need to be explicitly called
      * as destructor closes the device automatically
      */
-    virtual void close();
+    void close();
 
     /**
      * Is the device already closed (or disconnected)
@@ -391,7 +391,24 @@ class DeviceBase {
     }
 
    protected:
+    /**
+     * throws an error if the device has been closed or the watchdog has died
+     */
     void checkClosed() const;
+
+    /**
+     * Allows the derived classes to handle custom setup for starting the pipeline
+     * @param pipeline OpenVINO version of the pipeline must match the one which the device was booted with
+     * @sa startPipeline
+     *
+     * @returns True if pipeline started, false otherwise
+     */
+    virtual bool startPipelineImpl(const Pipeline& pipeline);
+
+    /**
+     * Allows the derived classes to handle custom setup for gracefully stopping the pipeline
+     */
+    virtual void closeImpl();
 
    private:
     // private static

@@ -322,6 +322,10 @@ void DeviceBase::close() {
     // Only allow to close once
     if(closed.exchange(true)) return;
 
+    closeImpl();
+}
+
+void DeviceBase::closeImpl() {
     using namespace std::chrono;
     auto t1 = steady_clock::now();
     spdlog::debug("Device about to be closed...");
@@ -804,6 +808,10 @@ bool DeviceBase::startPipeline(const Pipeline& pipeline) {
         throw std::runtime_error("Pipeline is already running");
     }
 
+    return startPipelineImpl(pipeline);
+}
+
+bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     PipelineSchema schema;
     Assets assets;
     std::vector<std::uint8_t> assetStorage;
