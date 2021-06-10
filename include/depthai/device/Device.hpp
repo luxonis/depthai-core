@@ -27,13 +27,6 @@ class Device : public DeviceBase {
     static constexpr std::size_t EVENT_QUEUE_MAXIMUM_SIZE{2048};
 
     /**
-     * Explicitly closes connection to device.
-     * @note This function does not need to be explicitly called
-     * as destructor closes the device automatically
-     */
-    void close() override;
-
-    /**
      * Gets an output queue corresponding to stream name. If it doesn't exist it throws
      *
      * @param name Queue/stream name, created by XLinkOut node
@@ -149,14 +142,6 @@ class Device : public DeviceBase {
      */
     std::string getQueueEvent(std::chrono::microseconds timeout = std::chrono::microseconds(-1));
 
-    /**
-     * Starts the execution of a given pipeline
-     * @param pipeline OpenVINO version of the pipeline must match the one which the device was booted with.
-     *
-     * @returns True if pipeline started, false otherwise
-     */
-    bool startPipeline(const Pipeline& pipeline) override;
-
    private:
     std::unordered_map<std::string, std::shared_ptr<DataOutputQueue>> outputQueueMap;
     std::unordered_map<std::string, std::shared_ptr<DataInputQueue>> inputQueueMap;
@@ -166,6 +151,9 @@ class Device : public DeviceBase {
     std::mutex eventMtx;
     std::condition_variable eventCv;
     std::deque<std::string> eventQueue;
+
+    bool startPipelineImpl(const Pipeline& pipeline) override;
+    void closeImpl() override;
 };
 
 }  // namespace dai
