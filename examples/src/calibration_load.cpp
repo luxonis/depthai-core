@@ -1,4 +1,3 @@
-
 #include <cstdio>
 #include <iostream>
 #include <string>
@@ -8,13 +7,22 @@
 #include "depthai-shared/common/EepromData.hpp"
 #include "depthai/depthai.hpp"
 
-dai::Pipeline createCameraPipeline() {
-    dai::Pipeline p;
+int main(int argc, char** argv) {
+    std::string calibJsonFile(CALIB_PATH);
+    if(argc > 1) {
+        calibJsonFile = std::string(argv[1]);
+    }
+    dai::CalibrationHandler calibData(calibJsonFile);
 
-    auto monoLeft = p.create<dai::node::MonoCamera>();
-    auto monoRight = p.create<dai::node::MonoCamera>();
-    auto stereo = p.create<dai::node::StereoDepth>();
-    auto xoutDepth = p.create<dai::node::XLinkOut>();
+    // Create pipeline
+    dai::Pipeline pipeline;
+    pipeline.setCalibrationData(calibData);
+
+    // Define sources and output
+    auto monoLeft = pipeline.create<dai::node::MonoCamera>();
+    auto monoRight = pipeline.create<dai::node::MonoCamera>();
+    auto stereo = pipeline.create<dai::node::StereoDepth>();
+    auto xoutDepth = pipeline.create<dai::node::XLinkOut>();
     xoutDepth->setStreamName("depth");
 
     // MonoCamera
@@ -25,40 +33,28 @@ dai::Pipeline createCameraPipeline() {
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
     // monoRight->setFps(5.0);
 
+    // Linking
     monoLeft->out.link(stereo->left);
     monoRight->out.link(stereo->right);
     stereo->depth.link(xoutDepth->input);
 
-    return p;
-}
+    // Connect to device and start pipeline
+    dai::Device device(pipeline);
 
-int main(int argc, char** argv) {
-    std::string calibPth(CALIB_PATH);
-    if(argc > 1) {
-        calibPth = std::string(argv[1]);
-    }
+    auto depthQueue = device.getOutputQueue("depth", 4, false);
 
-    dai::CalibrationHandler calibData(calibPth);
-    dai::Pipeline p = createCameraPipeline();
-    p.setCalibrationData(calibData);
-    dai::Device d(p);
+    while(true) {
+        // blocking call, will wait until a new data has arrived
+        auto inDepth = depthQueue->get<dai::ImgFrame>();
+        cv::Mat frame = cv::Mat(inDepth->getHeight(), inDepth->getWidth(), CV_16UC1, inDepth->getData().data());
 
-    auto depthQueue = d.getOutputQueue("depth");
-    cv::Mat frame;
+        // frame is ready to be shown
+        cv::imshow("depth", frame);
 
-    while(1) {
-        auto imgFrame = depthQueue->get<dai::ImgFrame>();
-        if(imgFrame) {
-            frame = cv::Mat(imgFrame->getHeight(), imgFrame->getWidth(), CV_16UC1, imgFrame->getData().data());
-            cv::imshow("depth", frame);
-            int key = cv::waitKey(1);
-            if(key == 'q') {
-                return 0;
-            }
-        } else {
-            std::cout << "Not ImgFrame" << std::endl;
+        int key = cv::waitKey(1);
+        if(key == 'q') {
+            return 0;
         }
     }
-
     return 0;
 }
