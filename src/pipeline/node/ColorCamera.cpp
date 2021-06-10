@@ -391,6 +391,7 @@ bool ColorCamera::getPreviewKeepAspectRatio() {
 }
 
 void ColorCamera::setCameraTuningBlobPath(const std::string& path) {
+    throw std::invalid_argument("Please call setCameraTuningBlobPath on the Pipeline object");
     auto asset = assetManager.add("camTuning", path);
     properties.cameraTuningBlobUri = asset->getRelativeUri();
     properties.cameraTuningBlobSize = asset->data.size();
