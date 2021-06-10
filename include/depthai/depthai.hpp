@@ -16,6 +16,7 @@
 // Include common nodes
 #include "pipeline/node/ColorCamera.hpp"
 #include "pipeline/node/DetectionNetwork.hpp"
+#include "pipeline/node/IMU.hpp"
 #include "pipeline/node/ImageManip.hpp"
 #include "pipeline/node/MonoCamera.hpp"
 #include "pipeline/node/NeuralNetwork.hpp"
@@ -33,6 +34,7 @@
 // Include common datatypes
 #include "pipeline/datatype/Buffer.hpp"
 #include "pipeline/datatype/CameraControl.hpp"
+#include "pipeline/datatype/IMUData.hpp"
 #include "pipeline/datatype/ImageManipConfig.hpp"
 #include "pipeline/datatype/ImgDetections.hpp"
 #include "pipeline/datatype/ImgFrame.hpp"

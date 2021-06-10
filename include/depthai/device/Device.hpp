@@ -10,19 +10,20 @@
 // project
 #include "CallbackHandler.hpp"
 #include "DataQueue.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/UsbSpeed.hpp"
+#include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 
 // shared
-#include "depthai-shared/common/CameraBoardSocket.hpp"
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
-#include "depthai/device/CalibrationHandler.hpp"
 
 // libraries
 #include "nanorpc/core/client.h"
@@ -474,6 +475,13 @@ class Device {
      * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
      */
     CalibrationHandler readCalibration();
+
+    /**
+     * Retrieves USB connection speed
+     *
+     * @returns USB connection speed of connected device if applicable. Unknown otherwise.
+     */
+    UsbSpeed getUsbSpeed();
 
     /**
      * Explicitly closes connection to device.

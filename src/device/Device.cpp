@@ -838,6 +838,12 @@ CpuUsage Device::getLeonMssCpuUsage() {
     return client->call("getLeonMssCpuUsage").as<CpuUsage>();
 }
 
+UsbSpeed Device::getUsbSpeed() {
+    checkClosed();
+
+    return client->call("getUsbSpeed").as<UsbSpeed>();
+}
+
 bool Device::isPipelineRunning() {
     checkClosed();
 
@@ -915,7 +921,6 @@ float Device::getSystemInformationLoggingRate() {
 }
 
 bool Device::flashCalibration(CalibrationHandler calibrationDataHandler) {
-    // std::unique_lock<std::mutex> lock(this->rpcMutex);
     if(!calibrationDataHandler.validateCameraArray()) {
         throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
     }

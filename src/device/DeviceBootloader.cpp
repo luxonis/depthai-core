@@ -71,7 +71,7 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(Pipeline&
     // Prepare device firmware
     std::vector<uint8_t> deviceFirmware;
     if(pathToCmd != "") {
-        std::ifstream fwStream(pathToCmd, std::ios::in | std::ios::binary);
+        std::ifstream fwStream(pathToCmd, std::ios::binary);
         if(!fwStream.is_open()) throw std::runtime_error("Cannot create application package, device firmware at path: " + pathToCmd + " doesn't exist");
         deviceFirmware = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
     } else {
@@ -283,7 +283,7 @@ std::tuple<bool, std::string> DeviceBootloader::flash(std::function<void(float)>
 
 void DeviceBootloader::saveDepthaiApplicationPackage(std::string path, Pipeline& pipeline, std::string pathToCmd) {
     auto dap = createDepthaiApplicationPackage(pipeline, pathToCmd);
-    std::ofstream outfile(path, std::ios::out | std::ios::binary);
+    std::ofstream outfile(path, std::ios::binary);
     outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
 }
 
@@ -329,7 +329,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
 std::tuple<bool, std::string> DeviceBootloader::flashBootloader(std::function<void(float)> progressCb, std::string path) {
     std::vector<uint8_t> package;
     if(path != "") {
-        std::ifstream fwStream(path, std::ios::in | std::ios::binary);
+        std::ifstream fwStream(path, std::ios::binary);
         if(!fwStream.is_open()) throw std::runtime_error("Cannot flash bootloader, binary at path: " + path + " doesn't exist");
         package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
     } else {

@@ -26,7 +26,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.3.0" LANGUAGES CXX C)
+project(depthai VERSION "2.5.0" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -157,6 +157,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/SystemLogger.cpp
     src/pipeline/node/SpatialLocationCalculator.cpp
     src/pipeline/node/ObjectTracker.cpp
+    src/pipeline/node/IMU.cpp
     src/pipeline/node/UVC.cpp
     src/pipeline/node/UAC.cpp
     src/pipeline/datatype/Buffer.cpp
@@ -171,6 +172,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/SpatialLocationCalculatorData.cpp
     src/pipeline/datatype/SpatialLocationCalculatorConfig.cpp
     src/pipeline/datatype/Tracklets.cpp
+    src/pipeline/datatype/IMUData.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/xlink/XLinkConnection.cpp

@@ -36,12 +36,12 @@ std::shared_ptr<Node> StereoDepth::clone() {
 
 void StereoDepth::loadCalibrationData(const std::vector<std::uint8_t>& data) {
     (void)data;
-    spdlog::warn("{} is deprecated. This function call is replaced by setCalibrationData under pipeline. ", __func__);
+    spdlog::warn("{} is deprecated. This function call is replaced by Pipeline::setCalibrationData under pipeline. ", __func__);
 }
 
 void StereoDepth::loadCalibrationFile(const std::string& path) {
     (void)path;
-    spdlog::warn("{} is deprecated. This function call is replaced by setCalibrationData under pipeline. ", __func__);
+    spdlog::warn("{} is deprecated. This function call is replaced by Pipeline::setCalibrationData under pipeline. ", __func__);
 }
 
 void StereoDepth::setEmptyCalibration(void) {
@@ -90,6 +90,13 @@ void StereoDepth::setOutputRectified(bool enable) {
 void StereoDepth::setOutputDepth(bool enable) {
     (void)enable;
     spdlog::warn("{} is deprecated. The output is auto-enabled if used", __func__);
+}
+
+float StereoDepth::getMaxDisparity() const {
+    float maxDisp = 95.0;
+    if(properties.enableExtendedDisparity) maxDisp *= 2;
+    if(properties.enableSubpixel) maxDisp *= 32;
+    return maxDisp;
 }
 
 }  // namespace node
