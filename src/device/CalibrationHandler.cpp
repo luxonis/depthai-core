@@ -337,7 +337,7 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraToImuExtrinsics(Cam
 
 std::vector<std::vector<float>> CalibrationHandler::getImuToCameraExtrinsics(CameraBoardSocket cameraId, bool useSpecTranslation) {
     if(eepromData.imuExtrinsics.rotationMatrix.size() == 0 || eepromData.imuExtrinsics.toCameraSocket == CameraBoardSocket::AUTO) {
-        throw std::runtime_error("IMU calibration data is not available on device yet!!!");
+        throw std::runtime_error("IMU calibration data is not available on device yet.");
     } else if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end()) {
         throw std::runtime_error("There is no Camera data available corresponding to the the requested source cameraId");
     }
@@ -400,6 +400,10 @@ std::vector<std::vector<float>> CalibrationHandler::computeExtrinsicMatrix(Camer
         throw std::runtime_error("Invalid cameraId input..");
     }
     if(eepromData.cameraData[srcCamera].extrinsics.toCameraSocket == dstCamera) {
+        if(eepromData.imuExtrinsics.rotationMatrix.size() == 0 || eepromData.imuExtrinsics.toCameraSocket == CameraBoardSocket::AUTO) {
+            throw std::runtime_error(
+                "Defined Extrinsic conenction but rotation matrix is not available. Please cross check your calibration data configuration.");
+        }
         std::vector<std::vector<float>> transformationMatrix = eepromData.cameraData[srcCamera].extrinsics.rotationMatrix;
         if(useSpecTranslation) {
             dai::Point3f& mTrans = eepromData.cameraData[srcCamera].extrinsics.specTranslation;
