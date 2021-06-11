@@ -13,12 +13,8 @@ target_link_libraries(utility FP16::fp16 ${OpenCV_LIBS})
 function(dai_add_example example_name example_src enable_test)
 
     # Add example
-    add_executable("${example_name}" "${example_src}")
-    target_link_libraries("${example_name}" PRIVATE utility depthai::opencv ${OpenCV_LIBS})
-
-    # Set compiler standard (C++14)
-    set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD 14)
-    set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
+    add_executable(${example_name} ${example_src})
+    target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS})
 
     # Add sanitizers for example
     add_sanitizers(${example_name})

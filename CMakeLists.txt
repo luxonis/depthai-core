@@ -197,6 +197,12 @@ endif()
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD 14)
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_EXTENSIONS OFF)
+# Add interface transitive property (C++14)
+if(${CMAKE_VERSION} VERSION_LESS "3.8.0") 
+    target_compile_features(${TARGET_CORE_NAME} INTERFACE cxx_generic_lambdas)
+else()
+    target_compile_features(${TARGET_CORE_NAME} INTERFACE cxx_std_14)
+endif()
 
 # First specify options
 option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
