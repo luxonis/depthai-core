@@ -11,6 +11,7 @@ namespace dai {
 class ADatatype {
    protected:
     friend class DataInputQueue;
+    friend class StreamPacketParser;
     virtual std::shared_ptr<dai::RawBuffer> serialize() const = 0;
     std::shared_ptr<RawBuffer> raw;
 
