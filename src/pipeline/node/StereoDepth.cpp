@@ -50,9 +50,59 @@ void StereoDepth::setEmptyCalibration(void) {
     properties.calibration = empty;
 }
 
+void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const std::vector<std::uint8_t>& dataRight) {
+    if(dataLeft.size() != dataRight.size()) {
+        throw std::runtime_error("StereoDepth | left and right mesh sizes must match");
+    }
+
+    Asset meshAsset;
+    std::string assetKey;
+    meshAsset.alignment = 64;
+
+    meshAsset.data = dataLeft;
+    assetKey = "meshLeft";
+    assetManager.set(assetKey, meshAsset);
+    properties.mesh.meshLeftUri = std::string("asset:") + assetKey;
+
+    meshAsset.data = dataRight;
+    assetKey = "meshRight";
+    assetManager.set(assetKey, meshAsset);
+    properties.mesh.meshRightUri = std::string("asset:") + assetKey;
+
+    properties.mesh.meshSize = meshAsset.data.size();
+}
+
+void StereoDepth::loadMeshFiles(const std::string& pathLeft, const std::string& pathRight) {
+    std::ifstream streamLeft(pathLeft, std::ios::binary);
+    if(!streamLeft.is_open()) {
+        throw std::runtime_error("StereoDepth | Cannot open mesh at path: " + pathLeft);
+    }
+    std::vector<std::uint8_t> dataLeft = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(streamLeft), {});
+
+    std::ifstream streamRight(pathRight, std::ios::binary);
+    if(!streamRight.is_open()) {
+        throw std::runtime_error("StereoDepth | Cannot open mesh at path: " + pathRight);
+    }
+    std::vector<std::uint8_t> dataRight = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(streamRight), {});
+
+    loadMeshData(dataLeft, dataRight);
+}
+
+void StereoDepth::setMeshStep(int width, int height) {
+    properties.mesh.stepWidth = width;
+    properties.mesh.stepHeight = height;
+}
+
 void StereoDepth::setInputResolution(int width, int height) {
     properties.width = width;
     properties.height = height;
+}
+void StereoDepth::setOutputSize(int width, int height) {
+    properties.outWidth = width;
+    properties.outHeight = height;
+}
+void StereoDepth::setOutputKeepAspectRatio(bool keep) {
+    properties.outKeepAspectRatio = keep;
 }
 void StereoDepth::setMedianFilter(Properties::MedianFilter median) {
     properties.median = median;
