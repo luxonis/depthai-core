@@ -14,10 +14,10 @@
 #include "pipeline/Pipeline.hpp"
 
 // Include common nodes
-#include "pipeline/Nodes.hpp"
+#include "pipeline/nodes.hpp"
 
 // Include common datatypes
-#include "pipeline/Datatypes.hpp"
+#include "pipeline/datatypes.hpp"
 
 // namespace dai {
 // namespace{
