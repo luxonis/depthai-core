@@ -386,7 +386,11 @@ class DeviceBase {
      */
     bool isClosed() const;
 
-    std::shared_ptr<XLinkConnection> getConnection() const {
+    std::shared_ptr<XLinkConnection> getConnection() {
+        return connection;
+    }
+
+    std::shared_ptr<const XLinkConnection> getConnection() const {
         return connection;
     }
 

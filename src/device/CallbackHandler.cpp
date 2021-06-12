@@ -24,14 +24,14 @@ CallbackHandler::CallbackHandler(std::shared_ptr<XLinkConnection> conn,
                 // read packet
                 auto* packet = stream.readRaw();
                 // parse packet
-                auto data = parsePacket(packet);
+                auto data = StreamPacketParser::parsePacket(packet);
                 // release packet
                 stream.readRawRelease();
 
                 // CALLBACK
                 auto toSend = callback(data);
 
-                auto serialized = serializeData(toSend);
+                auto serialized = StreamPacketParser::serializeMessage(toSend);
 
                 // Write packet back
                 stream.write(serialized);
