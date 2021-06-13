@@ -29,7 +29,7 @@ hunter_config(
 
 # libarchive, luxonis fork
 hunter_config(
-    libarchive
+    libarchive-luxonis
     VERSION "3.4.2-p2"
     URL "https://github.com/luxonis/libarchive/archive/cf2caf0588fc5e2af22cae37027d3ff6902e096f.tar.gz"
     SHA1 "e99477d32ce14292fe652dc5f4f460d3af8fbc93"
