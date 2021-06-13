@@ -391,21 +391,6 @@ bool DeviceBootloader::Version::operator==(const Version& other) const {
     return false;
 }
 
-bool DeviceBootloader::Version::operator>(const Version& other) const {
-    if(versionMajor > other.versionMajor) {
-        return true;
-    } else {
-        if(versionMinor > other.versionMinor) {
-            return true;
-        } else {
-            if(versionPatch > other.versionPatch) {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
 bool DeviceBootloader::Version::operator<(const Version& other) const {
     if(versionMajor < other.versionMajor) {
         return true;

@@ -32,8 +32,11 @@ class DeviceBootloader {
         /// Construct Version major, minor and patch numbers
         Version(unsigned major, unsigned minor, unsigned patch);
         bool operator==(const Version& other) const;
-        bool operator>(const Version& other) const;
         bool operator<(const Version& other) const;
+        inline bool operator!=(const Version& rhs){ return !(*this == rhs); }
+        inline bool operator> (const Version& rhs){ return rhs < *this; }
+        inline bool operator<=(const Version& rhs){ return !(*this > rhs); }
+        inline bool operator>=(const Version& rhs){ return !(*this < rhs); }
         /// Convert Version to string
         std::string toString() const;
 
