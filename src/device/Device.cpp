@@ -22,6 +22,7 @@
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Resources.hpp"
+#include "depthai/device/DeviceBootloader.hpp"
 
 // libraries
 #include "spdlog/sinks/stdout_color_sinks.h"
@@ -419,29 +420,41 @@ void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToM
 
             // Open stream
             XLinkStream stream(bootloaderConnection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
-            streamId_t streamId = stream.getStreamId();
 
-            // // Send request for bootloader version
-            // if(!sendBootloaderRequest(streamId, bootloader::request::GetBootloaderVersion{})){
-            //     throw std::runtime_error("Error trying to connect to device");
-            // }
-            // // Receive response
-            // dai::bootloader::response::BootloaderVersion ver;
-            // if(!receiveBootloaderResponse(streamId, ver)) throw std::runtime_error("Error trying to connect to device");
+            // Send request for bootloader version
+            if(!sendBootloaderRequest(stream.getStreamId(), bootloader::request::GetBootloaderVersion{})){
+                throw std::runtime_error("Error trying to connect to device");
+            }
+            // Receive response
+            bootloader::response::BootloaderVersion ver;
+            if(!receiveBootloaderResponse(stream.getStreamId(), ver)) throw std::runtime_error("Error trying to connect to device");
+            DeviceBootloader::Version version(ver.major, ver.minor, ver.patch);
 
-            // Send request to jump to USB bootloader
-            // Boot into USB ROM BOOTLOADER NOW
-            if(!sendBootloaderRequest(streamId, dai::bootloader::request::UsbRomBoot{})) {
+            spdlog::debug("Booting FW with Bootloader. Version {}", version.toString());
+
+            // Check if version is recent enough for this operation
+            if(version < DeviceBootloader::Version(0, 0, 12)){
+                throw std::runtime_error("Bootloader is outdated. Please update bootloader first using DeviceBootloader::flashBootloader");
+            }
+
+            // Send request to boot firmware directly from bootloader
+            dai::bootloader::request::BootMemory bootMemory;
+            bootMemory.totalSize = static_cast<uint32_t>(embeddedFw.size());
+            bootMemory.numPackets = ((static_cast<uint32_t>(embeddedFw.size()) - 1) / bootloader::XLINK_STREAM_MAX_SIZE) + 1;
+            if(!sendBootloaderRequest(stream.getStreamId(), bootMemory)) {
                 throw std::runtime_error("Error trying to connect to device");
             }
 
+            // After that send numPackets of data
+            stream.writeSplit(embeddedFw.data(), embeddedFw.size(), bootloader::XLINK_STREAM_MAX_SIZE);
+
             // Dummy read, until link falls down and it returns an error code
             streamPacketDesc_t* pPacket;
-            XLinkReadData(streamId, &pPacket);
+            XLinkReadData(stream.getStreamId(), &pPacket);
         }
 
-        // After that the state is UNBOOTED
-        deviceInfo.state = X_LINK_UNBOOTED;
+        // After that the state is BOOTED
+        deviceInfo.state = X_LINK_BOOTED;
 
         // Boot and connect with XLinkConnection constructor
         if(embeddedMvcmd) {
