@@ -15,6 +15,7 @@
 
 // project
 #include "DeviceLogger.hpp"
+#include "depthai/device/DeviceBootloader.hpp"
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "pipeline/Pipeline.hpp"
@@ -22,7 +23,6 @@
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Resources.hpp"
-#include "depthai/device/DeviceBootloader.hpp"
 
 // libraries
 #include "spdlog/sinks/stdout_color_sinks.h"
@@ -422,7 +422,7 @@ void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToM
             XLinkStream stream(bootloaderConnection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
 
             // Send request for bootloader version
-            if(!sendBootloaderRequest(stream.getStreamId(), bootloader::request::GetBootloaderVersion{})){
+            if(!sendBootloaderRequest(stream.getStreamId(), bootloader::request::GetBootloaderVersion{})) {
                 throw std::runtime_error("Error trying to connect to device");
             }
             // Receive response
@@ -432,7 +432,7 @@ void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToM
 
             // If version is >= 0.0.12 then boot directly, otherwise jump to USB ROM bootloader
             // Check if version is recent enough for this operation
-            if(version >= DeviceBootloader::Version(0, 0, 12)){
+            if(version >= DeviceBootloader::Version(0, 0, 12)) {
                 spdlog::debug("Booting FW with Bootloader. Version {}", version.toString());
 
                 // Send request to boot firmware directly from bootloader
@@ -460,15 +460,12 @@ void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToM
 
                 // After that the state will be UNBOOTED
                 deviceInfo.state = X_LINK_UNBOOTED;
-
             }
 
             // Dummy read, until link falls down and it returns an error code
             streamPacketDesc_t* pPacket;
             XLinkReadData(stream.getStreamId(), &pPacket);
-
         }
-
 
         // Boot and connect with XLinkConnection constructor
         if(embeddedMvcmd) {
