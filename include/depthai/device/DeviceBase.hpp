@@ -402,8 +402,10 @@ class DeviceBase {
 
     /**
      * Allows the derived classes to handle custom setup for starting the pipeline
+     *
      * @param pipeline OpenVINO version of the pipeline must match the one which the device was booted with
      * @sa startPipeline
+     * @note Remember to call this function in the overload to setup the comunication properly
      *
      * @returns True if pipeline started, false otherwise
      */
@@ -411,6 +413,8 @@ class DeviceBase {
 
     /**
      * Allows the derived classes to handle custom setup for gracefully stopping the pipeline
+     *
+     * @note Remember to call this function in the overload to setup the comunication properly
      */
     virtual void closeImpl();
 
