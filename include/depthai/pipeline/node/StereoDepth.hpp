@@ -4,6 +4,7 @@
 
 // shared
 #include "depthai-shared/properties/StereoDepthProperties.hpp"
+#include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 
 namespace dai {
 namespace node {
@@ -23,9 +24,21 @@ class StereoDepth : public Node {
     std::vector<Input> getInputs() override;
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
+    std::shared_ptr<RawStereoDepthConfig> rawConfig;
 
    public:
     StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+
+    /**
+     * Initial config to use when calculating spatial location data.
+     */
+    StereoDepthConfig initialConfig;
+
+    /**
+     * Input StereoDepthConfig message with ability to modify parameters in runtime.
+     * Default queue is non-blocking with size 4.
+     */
+    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::StereoDepthConfig, false}}};
 
     /**
      * Input for left ImgFrame of left-right pair

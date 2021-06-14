@@ -8,7 +8,8 @@
 namespace dai {
 namespace node {
 
-StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
+StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
+    : Node(par, nodeId), rawConfig(std::make_shared<RawStereoDepthConfig>()), initialConfig(rawConfig) {
     // 'properties' defaults already set
 }
 
@@ -21,11 +22,12 @@ std::vector<Node::Output> StereoDepth::getOutputs() {
 }
 
 std::vector<Node::Input> StereoDepth::getInputs() {
-    return {left, right};
+    return {inputConfig, left, right};
 }
 
 nlohmann::json StereoDepth::getProperties() {
     nlohmann::json j;
+    properties.initialConfig = *rawConfig;
     nlohmann::to_json(j, properties);
     return j;
 }
@@ -55,7 +57,10 @@ void StereoDepth::setInputResolution(int width, int height) {
     properties.height = height;
 }
 void StereoDepth::setMedianFilter(Properties::MedianFilter median) {
-    properties.median = median;
+    StereoDepthConfigData::MedianFilter cfgMedian = static_cast<StereoDepthConfigData::MedianFilter>(median);
+    initialConfig.setMedianFilter(cfgMedian);
+    properties.initialConfig = *rawConfig;
+    ;
 }
 void StereoDepth::setDepthAlign(Properties::DepthAlign align) {
     properties.depthAlign = align;
@@ -66,7 +71,9 @@ void StereoDepth::setDepthAlign(CameraBoardSocket camera) {
     properties.depthAlignCamera = camera;
 }
 void StereoDepth::setConfidenceThreshold(int confThr) {
-    properties.confidenceThreshold = confThr;
+    initialConfig.setConfidenceThreshold(confThr);
+    properties.initialConfig = *rawConfig;
+    ;
 }
 void StereoDepth::setLeftRightCheck(bool enable) {
     properties.enableLeftRightCheck = enable;
