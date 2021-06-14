@@ -22,8 +22,8 @@ class SpatialDetectionNetwork : public DetectionNetwork {
     using Properties = dai::SpatialDetectionNetworkProperties;
 
     std::string getName() const override;
-    std::vector<Input> getInputs() override;
-    std::vector<Output> getOutputs() override;
+    std::vector<Input> getInputs() const override;
+    std::vector<Output> getOutputs() const override;
 
    protected:
     SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);

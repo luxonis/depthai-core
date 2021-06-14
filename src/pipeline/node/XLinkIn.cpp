@@ -9,11 +9,11 @@ std::string XLinkIn::getName() const {
     return "XLinkIn";
 }
 
-std::vector<Node::Input> XLinkIn::getInputs() {
+std::vector<Node::Input> XLinkIn::getInputs() const {
     return {};
 }
 
-std::vector<Node::Output> XLinkIn::getOutputs() {
+std::vector<Node::Output> XLinkIn::getOutputs() const {
     return {out};
 }
 

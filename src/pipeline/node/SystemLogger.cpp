@@ -11,11 +11,11 @@ std::string SystemLogger::getName() const {
     return "SystemLogger";
 }
 
-std::vector<Node::Input> SystemLogger::getInputs() {
+std::vector<Node::Input> SystemLogger::getInputs() const {
     return {};
 }
 
-std::vector<Node::Output> SystemLogger::getOutputs() {
+std::vector<Node::Output> SystemLogger::getOutputs() const {
     return {out};
 }
 

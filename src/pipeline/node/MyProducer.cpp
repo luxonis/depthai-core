@@ -9,11 +9,11 @@ std::string MyProducer::getName() const {
     return "MyProducer";
 }
 
-std::vector<Node::Input> MyProducer::getInputs() {
+std::vector<Node::Input> MyProducer::getInputs() const {
     return {};
 }
 
-std::vector<Node::Output> MyProducer::getOutputs() {
+std::vector<Node::Output> MyProducer::getOutputs() const {
     return {out};
 }
 

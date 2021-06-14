@@ -17,11 +17,11 @@ std::string StereoDepth::getName() const {
     return "StereoDepth";
 }
 
-std::vector<Node::Output> StereoDepth::getOutputs() {
+std::vector<Node::Output> StereoDepth::getOutputs() const {
     return {disparity, depth, syncedLeft, syncedRight, rectifiedLeft, rectifiedRight};
 }
 
-std::vector<Node::Input> StereoDepth::getInputs() {
+std::vector<Node::Input> StereoDepth::getInputs() const {
     return {inputConfig, left, right};
 }
 

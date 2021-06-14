@@ -12,11 +12,11 @@ std::string NeuralNetwork::getName() const {
     return "NeuralNetwork";
 }
 
-std::vector<Node::Output> NeuralNetwork::getOutputs() {
+std::vector<Node::Output> NeuralNetwork::getOutputs() const {
     return {out, passthrough};
 }
 
-std::vector<Node::Input> NeuralNetwork::getInputs() {
+std::vector<Node::Input> NeuralNetwork::getInputs() const {
     return {input};
 }
 

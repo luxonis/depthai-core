@@ -11,11 +11,11 @@ std::string ObjectTracker::getName() const {
     return "ObjectTracker";
 }
 
-std::vector<Node::Output> ObjectTracker::getOutputs() {
+std::vector<Node::Output> ObjectTracker::getOutputs() const {
     return {out, passthroughTrackerFrame, passthroughDetectionFrame, passthroughDetections};
 }
 
-std::vector<Node::Input> ObjectTracker::getInputs() {
+std::vector<Node::Input> ObjectTracker::getInputs() const {
     return {inputTrackerFrame, inputDetectionFrame, inputDetections};
 }
 

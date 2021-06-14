@@ -12,11 +12,11 @@ std::string SpatialLocationCalculator::getName() const {
     return "SpatialLocationCalculator";
 }
 
-std::vector<Node::Output> SpatialLocationCalculator::getOutputs() {
+std::vector<Node::Output> SpatialLocationCalculator::getOutputs() const {
     return {out, passthroughDepth};
 }
 
-std::vector<Node::Input> SpatialLocationCalculator::getInputs() {
+std::vector<Node::Input> SpatialLocationCalculator::getInputs() const {
     return {inputConfig, inputDepth};
 }
 

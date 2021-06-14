@@ -9,11 +9,11 @@ std::string VideoEncoder::getName() const {
     return "VideoEncoder";
 }
 
-std::vector<Node::Input> VideoEncoder::getInputs() {
+std::vector<Node::Input> VideoEncoder::getInputs() const {
     return {input};
 }
 
-std::vector<Node::Output> VideoEncoder::getOutputs() {
+std::vector<Node::Output> VideoEncoder::getOutputs() const {
     return {bitstream};
 }
 

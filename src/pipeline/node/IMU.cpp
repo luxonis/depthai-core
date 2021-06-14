@@ -11,11 +11,11 @@ std::string IMU::getName() const {
     return "IMU";
 }
 
-std::vector<Node::Output> IMU::getOutputs() {
+std::vector<Node::Output> IMU::getOutputs() const {
     return {out};
 }
 
-std::vector<Node::Input> IMU::getInputs() {
+std::vector<Node::Input> IMU::getInputs() const {
     return {};
 }
 

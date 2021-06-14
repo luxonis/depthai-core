@@ -11,11 +11,11 @@ std::string XLinkOut::getName() const {
     return "XLinkOut";
 }
 
-std::vector<Node::Input> XLinkOut::getInputs() {
+std::vector<Node::Input> XLinkOut::getInputs() const {
     return {input};
 }
 
-std::vector<Node::Output> XLinkOut::getOutputs() {
+std::vector<Node::Output> XLinkOut::getOutputs() const {
     return {};
 }
 

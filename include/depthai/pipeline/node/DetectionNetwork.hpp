@@ -22,8 +22,8 @@ class DetectionNetwork : public NeuralNetwork {
     using Properties = dai::DetectionNetworkProperties;
 
     std::string getName() const override;
-    std::vector<Output> getOutputs() override;
-    std::vector<Input> getInputs() override;
+    std::vector<Output> getOutputs() const override;
+    std::vector<Input> getInputs() const override;
 
    protected:
     DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);

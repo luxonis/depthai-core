@@ -15,8 +15,8 @@ class XLinkOut : public Node {
     dai::XLinkOutProperties properties;
 
     std::string getName() const override;
-    std::vector<Input> getInputs() override;
-    std::vector<Output> getOutputs() override;
+    std::vector<Input> getInputs() const override;
+    std::vector<Output> getOutputs() const override;
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
 

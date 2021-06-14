@@ -21,11 +21,11 @@ std::string SpatialDetectionNetwork::getName() const {
     return "SpatialDetectionNetwork";
 }
 
-std::vector<Node::Input> SpatialDetectionNetwork::getInputs() {
+std::vector<Node::Input> SpatialDetectionNetwork::getInputs() const {
     return {input, inputDepth};
 }
 
-std::vector<Node::Output> SpatialDetectionNetwork::getOutputs() {
+std::vector<Node::Output> SpatialDetectionNetwork::getOutputs() const {
     return {out, boundingBoxMapping, passthrough, passthroughDepth};
 }
 

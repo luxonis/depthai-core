@@ -154,9 +154,9 @@ class Node {
     /// Retrieves nodes name
     virtual std::string getName() const = 0;
     /// Retrieves all nodes outputs
-    virtual std::vector<Output> getOutputs() = 0;
+    virtual std::vector<Output> getOutputs() const = 0;
     /// Retrieves all nodes inputs
-    virtual std::vector<Input> getInputs() = 0;
+    virtual std::vector<Input> getInputs() const = 0;
     /// Retrieves all nodes assets
     virtual std::vector<std::shared_ptr<Asset>> getAssets();
 

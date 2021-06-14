@@ -9,11 +9,11 @@ std::string ImageManip::getName() const {
     return "ImageManip";
 }
 
-std::vector<Node::Input> ImageManip::getInputs() {
+std::vector<Node::Input> ImageManip::getInputs() const {
     return {inputConfig, inputImage};
 }
 
-std::vector<Node::Output> ImageManip::getOutputs() {
+std::vector<Node::Output> ImageManip::getOutputs() const {
     return {out};
 }
 

@@ -18,11 +18,11 @@ class SPIOut : public Node {
         return "SPIOut";
     }
 
-    std::vector<Input> getInputs() {
+    std::vector<Input> getInputs() const {
         return {input};
     }
 
-    std::vector<Output> getOutputs() {
+    std::vector<Output> getOutputs() const {
         return {};
     }
 

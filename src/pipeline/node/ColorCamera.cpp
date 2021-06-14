@@ -24,11 +24,11 @@ std::string ColorCamera::getName() const {
     return "ColorCamera";
 }
 
-std::vector<Node::Output> ColorCamera::getOutputs() {
+std::vector<Node::Output> ColorCamera::getOutputs() const {
     return {raw, isp, video, preview, still};
 }
 
-std::vector<Node::Input> ColorCamera::getInputs() {
+std::vector<Node::Input> ColorCamera::getInputs() const {
     return {inputConfig, inputControl};
 }
 

@@ -16,11 +16,11 @@ std::string MonoCamera::getName() const {
     return "MonoCamera";
 }
 
-std::vector<Node::Output> MonoCamera::getOutputs() {
+std::vector<Node::Output> MonoCamera::getOutputs() const {
     return {out, raw};
 }
 
-std::vector<Node::Input> MonoCamera::getInputs() {
+std::vector<Node::Input> MonoCamera::getInputs() const {
     return {inputControl};
 }
 

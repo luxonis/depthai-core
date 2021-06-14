@@ -17,11 +17,11 @@ std::string DetectionNetwork::getName() const {
     return "DetectionNetwork";
 }
 
-std::vector<Node::Input> DetectionNetwork::getInputs() {
+std::vector<Node::Input> DetectionNetwork::getInputs() const {
     return {input};
 }
 
-std::vector<Node::Output> DetectionNetwork::getOutputs() {
+std::vector<Node::Output> DetectionNetwork::getOutputs() const {
     return {out, passthrough};
 }
 
