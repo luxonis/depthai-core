@@ -33,7 +33,7 @@ static std::size_t sizeofTensorInfoDataType(TensorInfo::DataType type) {
     }
 }
 
-static std::size_t getTensorDataSize(const TensorInfo& tensor){
+static std::size_t getTensorDataSize(const TensorInfo& tensor) {
     return tensor.dims[0] * tensor.strides[0];
 }
 
