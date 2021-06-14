@@ -33,6 +33,10 @@ static std::size_t sizeofTensorInfoDataType(TensorInfo::DataType type) {
     }
 }
 
+static std::size_t getTensorDataSize(const TensorInfo& tensor){
+    return tensor.dims[0] * tensor.strides[0];
+}
+
 std::shared_ptr<RawBuffer> NNData::serialize() const {
     // get data from u8Data and fp16Data and place properly into the underlying raw buffer
     rawNn.tensors = {};
@@ -169,7 +173,7 @@ std::vector<std::uint8_t> NNData::getLayerUInt8(const std::string& name) const {
         if(tensor.dataType == TensorInfo::DataType::U8F) {
             // Total data size = last dimension * last stride
             if(tensor.numDimensions > 0) {
-                size_t size = tensor.dims[tensor.numDimensions - 1] * tensor.strides[tensor.numDimensions - 1];
+                size_t size = getTensorDataSize(tensor);
                 auto beg = rawNn.data.begin() + tensor.offset;
                 auto end = beg + size;
                 return {beg, end};
@@ -179,8 +183,6 @@ std::vector<std::uint8_t> NNData::getLayerUInt8(const std::string& name) const {
     return {};
 }
 
-#include <cstdio>
-
 // int32_t
 std::vector<std::int32_t> NNData::getLayerInt32(const std::string& name) const {
     // find layer name and its offset
@@ -189,7 +191,7 @@ std::vector<std::int32_t> NNData::getLayerInt32(const std::string& name) const {
         if(tensor.dataType == TensorInfo::DataType::INT) {
             // Total data size = last dimension * last stride
             if(tensor.numDimensions > 0) {
-                size_t size = tensor.dims[tensor.numDimensions - 1] * tensor.strides[tensor.numDimensions - 1];
+                size_t size = getTensorDataSize(tensor);
                 std::size_t numElements = size / sizeof(std::int32_t);  // FP16
 
                 std::vector<std::int32_t> data;
@@ -213,7 +215,7 @@ std::vector<float> NNData::getLayerFp16(const std::string& name) const {
         if(tensor.dataType == TensorInfo::DataType::FP16) {
             // Total data size = last dimension * last stride
             if(tensor.numDimensions > 0) {
-                std::size_t size = tensor.dims[tensor.numDimensions - 1] * tensor.strides[tensor.numDimensions - 1];
+                std::size_t size = getTensorDataSize(tensor);
                 std::size_t numElements = size / 2;  // FP16
 
                 std::vector<float> data;
