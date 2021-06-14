@@ -271,6 +271,6 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
             eventCv.notify_all();
         });
     }
-    return DeviceBase::startPipeline(pipeline);
+    return DeviceBase::startPipelineImpl(pipeline);
 }
 }  // namespace dai
