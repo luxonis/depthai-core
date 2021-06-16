@@ -46,7 +46,7 @@ class Node {
     class Output {
         Node& parent;
 
-        public:
+       public:
         enum class Type { MSender, SSender };
         const std::string name;
         const Type type;
@@ -56,8 +56,12 @@ class Node {
             : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {}
         bool isSamePipeline(const Input& in);
 
-        Node& getParent() { return parent; }
-        const Node& getParent() const { return parent; }
+        Node& getParent() {
+            return parent;
+        }
+        const Node& getParent() const {
+            return parent;
+        }
 
         /**
          * Check if connection is possible
@@ -95,7 +99,7 @@ class Node {
     class Input {
         Node& parent;
 
-        public:
+       public:
         enum class Type { SReceiver, MReceiver };
         const std::string name;
         const Type type;
@@ -114,8 +118,12 @@ class Node {
         Input(Node& par, std::string n, Type t, bool blocking, int queueSize, std::vector<DatatypeHierarchy> types)
             : parent(par), name(std::move(n)), type(t), defaultBlocking(blocking), defaultQueueSize(queueSize), possibleDatatypes(std::move(types)) {}
 
-        Node& getParent() { return parent; }
-        const Node& getParent() const { return parent; }
+        Node& getParent() {
+            return parent;
+        }
+        const Node& getParent() const {
+            return parent;
+        }
 
         /**
          * Overrides default input queue behavior.
