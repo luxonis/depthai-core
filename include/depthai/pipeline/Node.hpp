@@ -41,11 +41,13 @@ class Node {
     };
 
     // fwd declare Input class
-    struct Input;
+    class Input;
 
-    struct Output {
-        enum class Type { MSender, SSender };
+    class Output {
         Node& parent;
+
+        public:
+        enum class Type { MSender, SSender };
         const std::string name;
         const Type type;
         // Which types and do descendants count as well?
@@ -54,7 +56,9 @@ class Node {
             : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {}
         bool isSamePipeline(const Input& in);
 
-       public:
+        Node& getParent() { return parent; }
+        const Node& getParent() const { return parent; }
+
         /**
          * Check if connection is possible
          * @param in Input to connect to
@@ -88,9 +92,11 @@ class Node {
         void unlink(const Input& in);
     };
 
-    struct Input {
-        enum class Type { SReceiver, MReceiver };
+    class Input {
         Node& parent;
+
+        public:
+        enum class Type { SReceiver, MReceiver };
         const std::string name;
         const Type type;
         bool defaultBlocking{true};
@@ -108,7 +114,9 @@ class Node {
         Input(Node& par, std::string n, Type t, bool blocking, int queueSize, std::vector<DatatypeHierarchy> types)
             : parent(par), name(std::move(n)), type(t), defaultBlocking(blocking), defaultQueueSize(queueSize), possibleDatatypes(std::move(types)) {}
 
-       public:
+        Node& getParent() { return parent; }
+        const Node& getParent() const { return parent; }
+
         /**
          * Overrides default input queue behavior.
          * @param blocking True blocking, false overwriting
