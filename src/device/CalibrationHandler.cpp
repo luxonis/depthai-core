@@ -266,7 +266,6 @@ uint8_t CalibrationHandler::getLensPosition(CameraBoardSocket cameraId) {
     return eepromData.cameraData[cameraId].lensPosition;
 }
 
-// TODO(sachin) : Add a loop checker to make sure lin found doesnt go into infinite loop
 std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation) {
     /**
      * 1. Check if both camera ID exists.
@@ -336,12 +335,14 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraToImuExtrinsics(Cam
 }
 
 std::vector<std::vector<float>> CalibrationHandler::getImuToCameraExtrinsics(CameraBoardSocket cameraId, bool useSpecTranslation) {
-    if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end()) {
-        throw std::runtime_error("There is no Camera data available corresponding to the the requested source cameraId");
+    if(eepromData.imuExtrinsics.rotationMatrix.size() == 0 || eepromData.imuExtrinsics.toCameraSocket == CameraBoardSocket::AUTO) {
+        throw std::runtime_error("IMU calibration data is not available on device yet.");
+    } else if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end()) {
+        throw std::runtime_error("There is no Camera data available corresponding to the requested source cameraId");
     }
+
     std::vector<std::vector<float>> transformationMatrix = eepromData.imuExtrinsics.rotationMatrix;
     if(useSpecTranslation) {
-        // TODO(sachin): What if measured translation is (0,0,0) ??? Should I throw an error ?
         transformationMatrix[0].push_back(eepromData.cameraData[cameraId].extrinsics.specTranslation.x);
         transformationMatrix[1].push_back(eepromData.cameraData[cameraId].extrinsics.specTranslation.y);
         transformationMatrix[2].push_back(eepromData.cameraData[cameraId].extrinsics.specTranslation.z);
@@ -398,6 +399,10 @@ std::vector<std::vector<float>> CalibrationHandler::computeExtrinsicMatrix(Camer
         throw std::runtime_error("Invalid cameraId input..");
     }
     if(eepromData.cameraData[srcCamera].extrinsics.toCameraSocket == dstCamera) {
+        if(eepromData.imuExtrinsics.rotationMatrix.size() == 0 || eepromData.imuExtrinsics.toCameraSocket == CameraBoardSocket::AUTO) {
+            throw std::runtime_error(
+                "Defined Extrinsic conenction but rotation matrix is not available. Please cross check your calibration data configuration.");
+        }
         std::vector<std::vector<float>> transformationMatrix = eepromData.cameraData[srcCamera].extrinsics.rotationMatrix;
         if(useSpecTranslation) {
             dai::Point3f& mTrans = eepromData.cameraData[srcCamera].extrinsics.specTranslation;
@@ -546,7 +551,6 @@ void CalibrationHandler::setCameraExtrinsics(CameraBoardSocket srcCameraId,
     if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3) {
         throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
     }
-    //  TODO(sachin): Add specTranslation also as optional argumnet ?
     if(translation.size() != 3) {
         throw std::runtime_error("Translation vector size should always be 3x1");
     }
