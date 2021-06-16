@@ -266,7 +266,6 @@ uint8_t CalibrationHandler::getLensPosition(CameraBoardSocket cameraId) {
     return eepromData.cameraData[cameraId].lensPosition;
 }
 
-// TODO(sachin) : Add a loop checker to make sure lin found doesnt go into infinite loop
 std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation) {
     /**
      * 1. Check if both camera ID exists.
@@ -339,7 +338,7 @@ std::vector<std::vector<float>> CalibrationHandler::getImuToCameraExtrinsics(Cam
     if(eepromData.imuExtrinsics.rotationMatrix.size() == 0 || eepromData.imuExtrinsics.toCameraSocket == CameraBoardSocket::AUTO) {
         throw std::runtime_error("IMU calibration data is not available on device yet.");
     } else if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end()) {
-        throw std::runtime_error("There is no Camera data available corresponding to the the requested source cameraId");
+        throw std::runtime_error("There is no Camera data available corresponding to the requested source cameraId");
     }
 
     std::vector<std::vector<float>> transformationMatrix = eepromData.imuExtrinsics.rotationMatrix;
