@@ -58,21 +58,21 @@ XLinkStream::~XLinkStream() {
 // BLOCKING VERSIONS
 ////////////////////
 
-void XLinkStream::write(const std::uint8_t* data, std::size_t size) {
+void XLinkStream::write(const std::uint8_t* data, std::size_t size) const {
     auto status = XLinkWriteData(streamId, data, static_cast<int>(size));
     if(status != X_LINK_SUCCESS) {
         throw std::runtime_error(fmt::format("Couldn't write data to stream: '{}' ({})", streamName, XLinkConnection::convertErrorCodeToString(status)));
     }
 }
-void XLinkStream::write(const void* data, std::size_t size) {
+void XLinkStream::write(const void* data, std::size_t size) const {
     write(reinterpret_cast<const uint8_t*>(data), size);
 }
 
-void XLinkStream::write(const std::vector<std::uint8_t>& data) {
+void XLinkStream::write(const std::vector<std::uint8_t>& data) const {
     write(data.data(), data.size());
 }
 
-void XLinkStream::read(std::vector<std::uint8_t>& data) {
+void XLinkStream::read(std::vector<std::uint8_t>& data) const {
     streamPacketDesc_t* pPacket = nullptr;
     auto status = XLinkReadData(streamId, &pPacket);
     if(status != X_LINK_SUCCESS) {
@@ -82,14 +82,14 @@ void XLinkStream::read(std::vector<std::uint8_t>& data) {
     XLinkReleaseData(streamId);
 }
 
-std::vector<std::uint8_t> XLinkStream::read() {
+std::vector<std::uint8_t> XLinkStream::read() const {
     std::vector<std::uint8_t> data;
     read(data);
     return data;
 }
 
 // USE ONLY WHEN COPYING DATA AT LATER STAGES
-streamPacketDesc_t* XLinkStream::readRaw() {
+streamPacketDesc_t* XLinkStream::readRaw() const {
     streamPacketDesc_t* pPacket = nullptr;
     auto status = XLinkReadData(streamId, &pPacket);
     if(status != X_LINK_SUCCESS) {
@@ -99,12 +99,12 @@ streamPacketDesc_t* XLinkStream::readRaw() {
 }
 
 // USE ONLY WHEN COPYING DATA AT LATER STAGES
-void XLinkStream::readRawRelease() {
+void XLinkStream::readRawRelease() const {
     XLinkReleaseData(streamId);
 }
 
 // SPLIT HELPER
-void XLinkStream::writeSplit(const void* d, std::size_t size, std::size_t split) {
+void XLinkStream::writeSplit(const void* d, std::size_t size, std::size_t split) const {
     const uint8_t* data = (const uint8_t*)d;
     std::size_t currentOffset = 0;
     std::size_t remaining = size;
@@ -121,7 +121,7 @@ void XLinkStream::writeSplit(const void* d, std::size_t size, std::size_t split)
     }
 }
 
-void XLinkStream::writeSplit(const std::vector<uint8_t>& data, std::size_t split) {
+void XLinkStream::writeSplit(const std::vector<uint8_t>& data, std::size_t split) const {
     writeSplit(data.data(), data.size(), split);
 }
 
@@ -129,7 +129,7 @@ void XLinkStream::writeSplit(const std::vector<uint8_t>& data, std::size_t split
 // Timeout versions //
 //////////////////////
 
-bool XLinkStream::write(const std::uint8_t* data, std::size_t size, std::chrono::milliseconds timeout) {
+bool XLinkStream::write(const std::uint8_t* data, std::size_t size, std::chrono::milliseconds timeout) const {
     auto status = XLinkWriteDataWithTimeout(streamId, data, static_cast<int>(size), static_cast<unsigned int>(timeout.count()));
     if(status == X_LINK_SUCCESS) {
         return true;
@@ -140,15 +140,15 @@ bool XLinkStream::write(const std::uint8_t* data, std::size_t size, std::chrono:
     }
 }
 
-bool XLinkStream::write(const void* data, std::size_t size, std::chrono::milliseconds timeout) {
+bool XLinkStream::write(const void* data, std::size_t size, std::chrono::milliseconds timeout) const {
     return write(reinterpret_cast<const std::uint8_t*>(data), size, timeout);
 }
 
-bool XLinkStream::write(const std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout) {
+bool XLinkStream::write(const std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout) const {
     return write(data.data(), data.size(), timeout);
 }
 
-bool XLinkStream::read(std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout) {
+bool XLinkStream::read(std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout) const {
     streamPacketDesc_t* pPacket = nullptr;
     auto status = XLinkReadDataWithTimeout(streamId, &pPacket, static_cast<unsigned int>(timeout.count()));
     if(status == X_LINK_SUCCESS) {
@@ -163,7 +163,7 @@ bool XLinkStream::read(std::vector<std::uint8_t>& data, std::chrono::millisecond
     return false;
 }
 
-bool XLinkStream::readRaw(streamPacketDesc_t*& pPacket, std::chrono::milliseconds timeout) {
+bool XLinkStream::readRaw(streamPacketDesc_t*& pPacket, std::chrono::milliseconds timeout) const {
     auto status = XLinkReadDataWithTimeout(streamId, &pPacket, static_cast<unsigned int>(timeout.count()));
     if(status == X_LINK_SUCCESS) {
         return true;

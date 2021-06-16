@@ -36,26 +36,26 @@ class XLinkStream {
     ~XLinkStream();
 
     // Blocking
-    void write(const void* data, std::size_t size);
-    void write(const std::uint8_t* data, std::size_t size);
-    void write(const std::vector<std::uint8_t>& data);
-    std::vector<std::uint8_t> read();
-    void read(std::vector<std::uint8_t>& data);
+    void write(const void* data, std::size_t size) const;
+    void write(const std::uint8_t* data, std::size_t size) const;
+    void write(const std::vector<std::uint8_t>& data) const;
+    std::vector<std::uint8_t> read() const;
+    void read(std::vector<std::uint8_t>& data) const;
     // split write helper
-    void writeSplit(const void* data, std::size_t size, std::size_t split);
-    void writeSplit(const std::vector<uint8_t>& data, std::size_t split);
+    void writeSplit(const void* data, std::size_t size, std::size_t split) const;
+    void writeSplit(const std::vector<uint8_t>& data, std::size_t split) const;
     // USE ONLY WHEN COPYING DATA AT LATER STAGES
-    streamPacketDesc_t* readRaw();
+    streamPacketDesc_t* readRaw() const;
 
     // Timeout
-    bool write(const void* data, std::size_t size, std::chrono::milliseconds timeout);
-    bool write(const std::uint8_t* data, std::size_t size, std::chrono::milliseconds timeout);
-    bool write(const std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout);
-    bool read(std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout);
-    bool readRaw(streamPacketDesc_t*& pPacket, std::chrono::milliseconds timeout);
+    bool write(const void* data, std::size_t size, std::chrono::milliseconds timeout) const;
+    bool write(const std::uint8_t* data, std::size_t size, std::chrono::milliseconds timeout) const;
+    bool write(const std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout) const;
+    bool read(std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout) const;
+    bool readRaw(streamPacketDesc_t*& pPacket, std::chrono::milliseconds timeout) const;
 
     // USE ONLY WHEN COPYING DATA AT LATER STAGES
-    void readRawRelease();
+    void readRawRelease() const;
 
     streamId_t getStreamId() const;
 };
