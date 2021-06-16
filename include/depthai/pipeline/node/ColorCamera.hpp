@@ -19,18 +19,18 @@ class ColorCamera : public Node {
 
    private:
     Properties properties;
+    std::shared_ptr<RawCameraControl> rawControl;
 
+    std::shared_ptr<Node> clone() override;
+    nlohmann::json getProperties() override;
+
+   public:
     std::string getName() const override;
     std::vector<Output> getOutputs() const override;
     std::vector<Input> getInputs() const override;
-    nlohmann::json getProperties() override;
-    std::shared_ptr<Node> clone() override;
-
-    std::shared_ptr<RawCameraControl> rawControl;
 
     int getScaledSize(int input, int num, int denom) const;
 
-   public:
     /**
      * Constructs ColorCamera node.
      */

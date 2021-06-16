@@ -26,13 +26,14 @@ class SpatialDetectionNetwork : public DetectionNetwork {
     std::vector<Output> getOutputs() const override;
 
    protected:
-    SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     Properties properties;
     virtual Properties& getPropertiesRef() override;
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
 
    public:
+    SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+
     /**
      * Input message with data to be infered upon
      * Default queue is blocking with size 5

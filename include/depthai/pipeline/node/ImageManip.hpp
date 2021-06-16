@@ -18,16 +18,16 @@ class ImageManip : public Node {
 
    private:
     Properties properties;
+    std::shared_ptr<RawImageManipConfig> rawConfig;
 
-    std::string getName() const override;
-    std::vector<Input> getInputs() const override;
-    std::vector<Output> getOutputs() const override;
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
 
-    std::shared_ptr<RawImageManipConfig> rawConfig;
-
    public:
+    std::string getName() const override;
+    std::vector<Input> getInputs() const override;
+    std::vector<Output> getOutputs() const override;
+
     ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
     /**

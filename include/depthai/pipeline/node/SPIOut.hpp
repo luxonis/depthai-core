@@ -14,6 +14,17 @@ namespace node {
 class SPIOut : public Node {
     dai::SPIOutProperties properties;
 
+    nlohmann::json getProperties() {
+        nlohmann::json j;
+        nlohmann::to_json(j, properties);
+        return j;
+    }
+
+    std::shared_ptr<Node> clone() {
+        return std::make_shared<SPIOut>(*this);
+    }
+
+   public:
     std::string getName() const {
         return "SPIOut";
     }
@@ -26,17 +37,6 @@ class SPIOut : public Node {
         return {};
     }
 
-    nlohmann::json getProperties() {
-        nlohmann::json j;
-        nlohmann::to_json(j, properties);
-        return j;
-    }
-
-    std::shared_ptr<Node> clone() {
-        return std::make_shared<SPIOut>(*this);
-    }
-
-   public:
     SPIOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
         properties.busId = 0;
     }
