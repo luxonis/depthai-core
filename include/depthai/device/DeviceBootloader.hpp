@@ -16,6 +16,9 @@
 #include "nanorpc/core/client.h"
 #include "nanorpc/packer/nlohmann_msgpack.h"
 
+// shared
+#include "depthai-bootloader-shared/Bootloader.hpp"
+
 namespace dai {
 
 // DeviceBootloader (RAII), connects to device and maintains watchdog ...
@@ -51,6 +54,11 @@ class DeviceBootloader {
        private:
         unsigned versionMajor, versionMinor, versionPatch;
     };
+
+    // constants
+
+    /// Default Bootloader type
+    static constexpr const bootloader::Type DEFAULT_TYPE{dai::bootloader::Type::USB};
 
     // Static API
     /**
@@ -89,7 +97,7 @@ class DeviceBootloader {
     /**
      * @returns Embedded bootloader binary
      */
-    static std::vector<std::uint8_t> getEmbeddedBootloaderBinary();
+    static std::vector<std::uint8_t> getEmbeddedBootloaderBinary(bootloader::Type type = DEFAULT_TYPE);
     //
 
     DeviceBootloader() = delete;
@@ -99,6 +107,14 @@ class DeviceBootloader {
      * @param devInfo DeviceInfo of which to boot or connect to
      */
     explicit DeviceBootloader(const DeviceInfo& devInfo);
+
+    /**
+     * Connects to device in bootloader of specified type. Throws if it wasn't possible.
+     * This constructor will automatically boot into specified bootloader type if not already running
+     * @param devInfo DeviceInfo of which to boot or connect to
+     * @param type Type of bootloader to boot/connect to.
+     */
+    DeviceBootloader(const DeviceInfo& devInfo, bootloader::Type type);
 
     /**
      * Connects to or boots device in bootloader mode depending on devInfo state with a custom bootloader firmware.
@@ -135,6 +151,14 @@ class DeviceBootloader {
     std::tuple<bool, std::string> flashBootloader(std::function<void(float)> progressCallback, std::string path = "");
 
     /**
+     * Flash selected bootloader to the current board
+     * @param type Bootloader type to flash
+     * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
+     * @param path Optional parameter to custom bootloader to flash
+     */
+    std::tuple<bool, std::string> flashBootloader(bootloader::Type type, std::function<void(float)> progressCallback, std::string path = "");
+
+    /**
      * @returns Version of current running bootloader
      */
     Version getVersion();
@@ -160,13 +184,14 @@ class DeviceBootloader {
     // private static
 
     // private variables
-    void init(bool embeddedMvcmd, const std::string& pathToMvcmd);
+    void init(bool embeddedMvcmd, const std::string& pathToMvcmd, tl::optional<bootloader::Type> type);
     void checkClosed() const;
 
     std::shared_ptr<XLinkConnection> connection;
     DeviceInfo deviceInfo = {};
 
     bool isEmbedded = false;
+    bootloader::Type bootloaderType;
 
     // closed
     std::atomic<bool> closed{false};
