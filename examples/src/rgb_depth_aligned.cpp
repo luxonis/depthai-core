@@ -9,6 +9,9 @@
 // Optional. If set (true), the ColorCamera is downscaled from 1080p to 720p.
 // Otherwise (false), the aligned depth is automatically upscaled to 1080p
 static std::atomic<bool> downscaleColor{true};
+static constexpr int fps = 30;
+// The disparity is computed at this resolution, then upscaled to RGB resolution
+static constexpr auto monoRes = dai::MonoCameraProperties::SensorResolution::THE_400_P;
 
 int main() {
     using namespace std;
@@ -34,17 +37,20 @@ int main() {
     // Properties
     camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    camRgb->setFps(fps);
     if(downscaleColor) camRgb->setIspScale(2, 3);
     // For now, RGB needs fixed focus to properly align with depth.
     // This value was used during calibration
     camRgb->initialControl.setManualFocus(135);
 
-    left->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
+    left->setResolution(monoRes);
     left->setBoardSocket(dai::CameraBoardSocket::LEFT);
-    right->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
+    left->setFps(fps);
+    right->setResolution(monoRes);
     right->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    right->setFps(fps);
 
-    stereo->setConfidenceThreshold(200);
+    stereo->setConfidenceThreshold(230);
     // LR-check is required for depth alignment
     stereo->setLeftRightCheck(true);
     stereo->setDepthAlign(dai::CameraBoardSocket::RGB);
