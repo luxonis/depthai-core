@@ -47,9 +47,8 @@ void StereoDepth::loadCalibrationFile(const std::string& path) {
 }
 
 void StereoDepth::setEmptyCalibration(void) {
-    // Special case: a single element
-    const std::vector<std::uint8_t> empty = {};
-    properties.calibration = empty;
+    setRectification(false);
+    spdlog::warn("{} is deprecated. This function call can be replaced by Stereo::setRectification(false). ", __func__);
 }
 
 void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const std::vector<std::uint8_t>& dataRight) {
@@ -107,10 +106,8 @@ void StereoDepth::setOutputKeepAspectRatio(bool keep) {
     properties.outKeepAspectRatio = keep;
 }
 void StereoDepth::setMedianFilter(dai::MedianFilter median) {
-    StereoDepthConfigData::MedianFilter cfgMedian = static_cast<StereoDepthConfigData::MedianFilter>(median);
-    initialConfig.setMedianFilter(cfgMedian);
+    initialConfig.setMedianFilter(median);
     properties.initialConfig = *rawConfig;
-    ;
 }
 void StereoDepth::setDepthAlign(Properties::DepthAlign align) {
     properties.depthAlign = align;
@@ -123,7 +120,9 @@ void StereoDepth::setDepthAlign(CameraBoardSocket camera) {
 void StereoDepth::setConfidenceThreshold(int confThr) {
     initialConfig.setConfidenceThreshold(confThr);
     properties.initialConfig = *rawConfig;
-    ;
+}
+void StereoDepth::setRectification(bool enable) {
+    properties.enableRectification = enable;
 }
 void StereoDepth::setLeftRightCheck(bool enable) {
     properties.enableLeftRightCheck = enable;

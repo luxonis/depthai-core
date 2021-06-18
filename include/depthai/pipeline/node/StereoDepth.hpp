@@ -105,7 +105,7 @@ class StereoDepth : public Node {
      * Specify that a passthrough/dummy calibration should be used,
      * when input frames are already rectified (e.g. sourced from recordings on the host)
      */
-    void setEmptyCalibration();
+    [[deprecated("Use 'Stereo::setRectification(false)' instead")]] void setEmptyCalibration();
 
     /**
      * Specify local filesystem paths to the mesh calibration files for 'left' and 'right' inputs.
@@ -174,6 +174,11 @@ class StereoDepth : public Node {
      * @param confThr Confidence threshold value 0..255
      */
     void setConfidenceThreshold(int confThr);
+
+    /**
+     * Rectify input images or not.
+     */
+    void setRectification(bool enable);
 
     /**
      * Computes and combines disparities in both L-R and R-L directions, and combine them.

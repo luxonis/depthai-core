@@ -14,7 +14,7 @@ void StereoDepthConfig::setConfidenceThreshold(int confThr) {
     cfg.config.confidenceThreshold = confThr;
 }
 
-void StereoDepthConfig::setMedianFilter(StereoDepthConfigData::MedianFilter median) {
+void StereoDepthConfig::setMedianFilter(dai::MedianFilter median) {
     cfg.config.median = median;
 }
 
