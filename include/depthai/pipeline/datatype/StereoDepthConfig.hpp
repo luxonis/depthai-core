@@ -23,9 +23,35 @@ class StereoDepthConfig : public Buffer {
     explicit StereoDepthConfig(std::shared_ptr<RawStereoDepthConfig> ptr);
     virtual ~StereoDepthConfig() = default;
 
+    /**
+     * Confidence threshold for disparity calculation
+     * @param confThr Confidence threshold value 0..255
+     */
     void setConfidenceThreshold(int confThr);
-    void setMedianFilter(StereoDepthConfigData::MedianFilter median);
+    /**
+     * Get confidence threshold for disparity calculation
+     */
+    int getConfidenceThreshold() const;
+
+    /**
+     * @param median Set kernel size for disparity/depth median filtering, or disable
+     */
+    void setMedianFilter(dai::MedianFilter median);
+    /**
+     * Get median filter setting
+     */
+    dai::MedianFilter getMedianFilter() const;
+
+    /**
+     * A larger value of the parameter means that farther colors within the pixel neighborhood will be mixed together,
+     * resulting in larger areas of semi-equal color.
+     * @param sigma Set sigma value for 5x5 bilateral filter
+     */
     void setBilateralFilterSigma(uint16_t sigma);
+    /**
+     * Get sigma value for 5x5 bilateral filter
+     */
+    uint16_t getBilateralFilterSigma() const;
 };
 
 }  // namespace dai

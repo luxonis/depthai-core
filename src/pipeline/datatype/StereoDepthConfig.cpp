@@ -14,12 +14,24 @@ void StereoDepthConfig::setConfidenceThreshold(int confThr) {
     cfg.config.confidenceThreshold = confThr;
 }
 
+int StereoDepthConfig::getConfidenceThreshold() const {
+    return cfg.config.confidenceThreshold;
+}
+
 void StereoDepthConfig::setMedianFilter(dai::MedianFilter median) {
     cfg.config.median = median;
 }
 
+dai::MedianFilter StereoDepthConfig::getMedianFilter() const {
+    return cfg.config.median;
+}
+
 void StereoDepthConfig::setBilateralFilterSigma(uint16_t sigma) {
     cfg.config.bilateralSigmaValue = sigma;
+}
+
+uint16_t StereoDepthConfig::getBilateralFilterSigma() const {
+    return cfg.config.bilateralSigmaValue;
 }
 
 }  // namespace dai
