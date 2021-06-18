@@ -45,13 +45,22 @@ class StereoDepthConfig : public Buffer {
     /**
      * A larger value of the parameter means that farther colors within the pixel neighborhood will be mixed together,
      * resulting in larger areas of semi-equal color.
-     * @param sigma Set sigma value for 5x5 bilateral filter
+     * @param sigma Set sigma value for 5x5 bilateral filter. 0..65535
      */
     void setBilateralFilterSigma(uint16_t sigma);
     /**
      * Get sigma value for 5x5 bilateral filter
      */
     uint16_t getBilateralFilterSigma() const;
+
+    /**
+     * @param threshold Set threshold for left-right, right-left disparity map combine, 0..255
+     */
+    void setLeftRightCheckThreshold(int threshold);
+    /**
+     * Get threshold for left-right check combine
+     */
+    int getLeftRightCheckThreshold() const;
 };
 
 }  // namespace dai

@@ -34,4 +34,12 @@ uint16_t StereoDepthConfig::getBilateralFilterSigma() const {
     return cfg.config.bilateralSigmaValue;
 }
 
+void StereoDepthConfig::setLeftRightCheckThreshold(int threshold) {
+    cfg.config.leftRightCheckThreshold = threshold;
+}
+
+int StereoDepthConfig::getLeftRightCheckThreshold() const {
+    return cfg.config.leftRightCheckThreshold;
+}
+
 }  // namespace dai
