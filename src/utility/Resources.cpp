@@ -161,7 +161,7 @@ constexpr static auto DEVICE_BOOTLOADER_ETH_PATH = "depthai-bootloader-eth.cmd";
 
 constexpr static std::array<const char*, 2> RESOURCE_LIST_BOOTLOADER = {
     DEVICE_BOOTLOADER_USB_PATH,
-    DEVICE_BOOTLOADER_USB_PATH,
+    DEVICE_BOOTLOADER_ETH_PATH,
 };
 
 std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type type) {

@@ -435,53 +435,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashBootloader(std::function<void(float)> progressCb, std::string path) {
-    std::vector<uint8_t> package;
-    if(path != "") {
-        std::ifstream fwStream(path, std::ios::binary);
-        if(!fwStream.is_open()) throw std::runtime_error("Cannot flash bootloader, binary at path: " + path + " doesn't exist");
-        package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
-    } else {
-        package = getEmbeddedBootloaderBinary();
-    }
-
-    // get streamId
-    streamId_t streamId = stream->getStreamId();
-
-    // send request to FLASH BOOTLOADER
-    dai::bootloader::request::UpdateFlash updateFlash;
-    updateFlash.storage = dai::bootloader::request::UpdateFlash::BOOTLOADER;
-    updateFlash.totalSize = static_cast<uint32_t>(package.size());
-    updateFlash.numPackets = ((static_cast<uint32_t>(package.size()) - 1) / bootloader::XLINK_STREAM_MAX_SIZE) + 1;
-    if(!sendBootloaderRequest(streamId, updateFlash)) return {false, "Couldn't send bootloader flash request"};
-
-    // After that send numPackets of data
-    stream->writeSplit(package.data(), package.size(), bootloader::XLINK_STREAM_MAX_SIZE);
-
-    // Then wait for response by bootloader
-    // Wait till FLASH_COMPLETE response
-    dai::bootloader::response::FlashComplete result;
-    do {
-        std::vector<uint8_t> data;
-        if(!receiveBootloaderResponseData(streamId, data)) return {false, "Couldn't receive bootloader response"};
-
-        dai::bootloader::response::FlashStatusUpdate update;
-        if(parseBootloaderResponse(data, update)) {
-            // if progress callback is set
-            if(progressCb != nullptr) {
-                progressCb(update.progress);
-            }
-            // if flash complete response arrived, break from while loop
-        } else if(parseBootloaderResponse(data, result)) {
-            break;
-        } else {
-            // Unknown response, shouldn't happen
-            return {false, "Unknown response from bootloader while flashing"};
-        }
-
-    } while(true);
-
-    // Return if flashing was successful
-    return {result.success, result.errorMsg};
+    return flashBootloader(bootloaderType, progressCb, path);
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashBootloader(dai::bootloader::Type type, std::function<void(float)> progressCb, std::string path) {
@@ -493,7 +447,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(dai::bootloader:
         if(!fwStream.is_open()) throw std::runtime_error("Cannot flash bootloader, binary at path: " + path + " doesn't exist");
         package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
     } else {
-        package = getEmbeddedBootloaderBinary();
+        package = getEmbeddedBootloaderBinary(type);
     }
 
     // get streamId

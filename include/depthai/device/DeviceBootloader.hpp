@@ -28,6 +28,9 @@ namespace dai {
  */
 class DeviceBootloader {
    public:
+    // Alias
+    using Type = dai::bootloader::Type;
+
     /// Bootloader version structure
     struct Version {
         /// Construct Version from string
