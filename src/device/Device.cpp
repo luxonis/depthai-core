@@ -25,9 +25,9 @@
 #include "utility/Resources.hpp"
 
 // libraries
+#include "spdlog/fmt/chrono.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
-#include "spdlog/fmt/chrono.h"
 
 namespace dai {
 
@@ -424,15 +424,12 @@ void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToM
             // Open stream
             XLinkStream stream(bootloaderConnection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
 
-            std::atomic<bool> watchdogRunning{true};
-
             // prepare watchdog thread, which will keep device alive
+            std::atomic<bool> watchdogRunning{true};
             watchdogThread = std::thread([&]() {
                 // prepare watchdog thread
                 XLinkStream stream(bootloaderConnection, bootloader::XLINK_CHANNEL_WATCHDOG, 64);
-
                 std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
-                std::vector<uint8_t> reset = {1, 0, 0, 0};
                 while(watchdogRunning) {
                     try {
                         stream.write(watchdogKeepalive);
@@ -442,17 +439,6 @@ void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToM
                     // Ping with a period half of that of the watchdog timeout
                     std::this_thread::sleep_for(bootloader::XLINK_WATCHDOG_TIMEOUT / 2);
                 }
-
-                try {
-                    // Send reset request
-                    stream.write(reset);
-                    // Dummy read (wait till link falls down)
-                    stream.readRaw();
-                } catch(const std::exception&) {
-                }  // ignore
-
-                // Sleep a bit, so device isn't available anymore
-                std::this_thread::sleep_for(std::chrono::milliseconds(500));
             });
 
             // Send request for bootloader version
@@ -467,7 +453,6 @@ void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToM
             // If version is >= 0.0.12 then boot directly, otherwise jump to USB ROM bootloader
             // Check if version is recent enough for this operation
             if(version >= DeviceBootloader::Version(0, 0, 12)) {
-
                 // Send request to boot firmware directly from bootloader
                 dai::bootloader::request::BootMemory bootMemory;
                 bootMemory.totalSize = static_cast<uint32_t>(embeddedFw.size());
@@ -480,13 +465,17 @@ void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToM
                 auto t1 = steady_clock::now();
                 // After that send numPackets of data
                 stream.writeSplit(embeddedFw.data(), embeddedFw.size(), bootloader::XLINK_STREAM_MAX_SIZE);
-                spdlog::debug("Booting FW with Bootloader. Version {}, Time taken: {}", version.toString(), duration_cast<milliseconds>(steady_clock::now() - t1));
+                spdlog::debug(
+                    "Booting FW with Bootloader. Version {}, Time taken: {}", version.toString(), duration_cast<milliseconds>(steady_clock::now() - t1));
 
                 // After that the state will be BOOTED
                 deviceInfo.state = X_LINK_BOOTED;
 
+                // TODO(themarpe) - Possibility of switching to another port for cleaner transitions
+                // strcat(deviceInfo.desc.name, ":11492");
+
             } else {
-                spdlog::debug("Booting FW jumpint to USB ROM Bootloader first. Bootloader Version {}", version.toString());
+                spdlog::debug("Booting FW by jumping to USB ROM Bootloader first. Bootloader Version {}", version.toString());
 
                 // Send request to jump to USB bootloader
                 // Boot into USB ROM BOOTLOADER NOW
@@ -498,13 +487,12 @@ void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToM
                 deviceInfo.state = X_LINK_UNBOOTED;
             }
 
-            // wait till link falls down
             watchdogRunning = false;
             watchdogThread.join();
 
-            // // Dummy read, until link falls down and it returns an error code
-            // streamPacketDesc_t* pPacket;
-            // XLinkReadData(stream.getStreamId(), &pPacket);
+            // Dummy read, until link falls down and it returns an error code
+            streamPacketDesc_t* pPacket;
+            XLinkReadData(stream.getStreamId(), &pPacket);
         }
 
         // Boot and connect with XLinkConnection constructor
