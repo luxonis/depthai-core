@@ -170,6 +170,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/SpatialLocationCalculatorConfig.cpp
     src/pipeline/datatype/Tracklets.cpp
     src/pipeline/datatype/IMUData.cpp
+    src/pipeline/datatype/StereoDepthConfig.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/xlink/XLinkConnection.cpp

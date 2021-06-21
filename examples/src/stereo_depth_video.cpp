@@ -47,12 +47,12 @@ int main() {
 
     if(withDepth) {
         // StereoDepth
-        stereo->setConfidenceThreshold(200);
+        stereo->initialConfig.setConfidenceThreshold(200);
         stereo->setRectifyEdgeFillColor(0);  // black, to better see the cutout
         // stereo->loadCalibrationFile("../../../../depthai/resources/depthai.calib");
         // stereo->setInputResolution(1280, 720);
         // TODO: median filtering is disabled on device with (lrcheck || extended || subpixel)
-        stereo->setMedianFilter(dai::StereoDepthProperties::MedianFilter::MEDIAN_OFF);
+        stereo->setMedianFilter(dai::MedianFilter::MEDIAN_OFF);
         stereo->setLeftRightCheck(lrcheck);
         stereo->setExtendedDisparity(extended);
         stereo->setSubpixel(subpixel);

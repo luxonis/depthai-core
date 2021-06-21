@@ -4,6 +4,7 @@
 
 // shared
 #include "depthai-shared/properties/StereoDepthProperties.hpp"
+#include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 
 namespace dai {
 namespace node {
@@ -23,9 +24,21 @@ class StereoDepth : public Node {
     std::vector<Input> getInputs() override;
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
+    std::shared_ptr<RawStereoDepthConfig> rawConfig;
 
    public:
     StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+
+    /**
+     * Initial config to use for StereoDepth.
+     */
+    StereoDepthConfig initialConfig;
+
+    /**
+     * Input StereoDepthConfig message with ability to modify parameters in runtime.
+     * Default queue is non-blocking with size 4.
+     */
+    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::StereoDepthConfig, false}}};
 
     /**
      * Input for left ImgFrame of left-right pair
@@ -92,7 +105,7 @@ class StereoDepth : public Node {
      * Specify that a passthrough/dummy calibration should be used,
      * when input frames are already rectified (e.g. sourced from recordings on the host)
      */
-    void setEmptyCalibration();
+    [[deprecated("Use 'Stereo::setRectification(false)' instead")]] void setEmptyCalibration();
 
     /**
      * Specify local filesystem paths to the mesh calibration files for 'left' and 'right' inputs.
@@ -143,7 +156,7 @@ class StereoDepth : public Node {
     /**
      * @param median Set kernel size for disparity/depth median filtering, or disable
      */
-    void setMedianFilter(Properties::MedianFilter median);
+    [[deprecated("Use 'initialConfig.setMedianFilter()' instead")]] void setMedianFilter(dai::MedianFilter median);
 
     /**
      * @param align Set the disparity/depth alignment: centered (between the 'left' and 'right' inputs),
@@ -160,7 +173,12 @@ class StereoDepth : public Node {
      * Confidence threshold for disparity calculation
      * @param confThr Confidence threshold value 0..255
      */
-    void setConfidenceThreshold(int confThr);
+    [[deprecated("Use 'initialConfig.setConfidenceThreshold()' instead")]] void setConfidenceThreshold(int confThr);
+
+    /**
+     * Rectify input images or not.
+     */
+    void setRectification(bool enable);
 
     /**
      * Computes and combines disparities in both L-R and R-L directions, and combine them.

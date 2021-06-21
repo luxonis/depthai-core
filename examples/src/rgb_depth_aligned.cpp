@@ -50,7 +50,7 @@ int main() {
     right->setBoardSocket(dai::CameraBoardSocket::RIGHT);
     right->setFps(fps);
 
-    stereo->setConfidenceThreshold(230);
+    stereo->initialConfig.setConfidenceThreshold(230);
     // LR-check is required for depth alignment
     stereo->setLeftRightCheck(true);
     stereo->setDepthAlign(dai::CameraBoardSocket::RGB);

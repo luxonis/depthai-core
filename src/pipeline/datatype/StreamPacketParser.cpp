@@ -22,6 +22,7 @@
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorData.hpp"
+#include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/pipeline/datatype/SystemInformation.hpp"
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 
@@ -37,6 +38,7 @@
 #include "depthai-shared/datatype/RawSpatialImgDetections.hpp"
 #include "depthai-shared/datatype/RawSpatialLocationCalculatorConfig.hpp"
 #include "depthai-shared/datatype/RawSpatialLocations.hpp"
+#include "depthai-shared/datatype/RawStereoDepthConfig.hpp"
 #include "depthai-shared/datatype/RawSystemInformation.hpp"
 #include "depthai-shared/datatype/RawTracklets.hpp"
 
@@ -126,6 +128,9 @@ std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
         case DatatypeEnum::IMUData:
             return parseDatatype<RawIMUData>(jser, data);
             break;
+        case DatatypeEnum::StereoDepthConfig:
+            return parseDatatype<RawStereoDepthConfig>(jser, data);
+            break;
     }
 
     throw std::runtime_error("Bad packet, couldn't parse");
@@ -196,6 +201,10 @@ std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
 
         case DatatypeEnum::IMUData:
             return std::make_shared<IMUData>(parseDatatype<RawIMUData>(jser, data));
+            break;
+
+        case DatatypeEnum::StereoDepthConfig:
+            return std::make_shared<StereoDepthConfig>(parseDatatype<RawStereoDepthConfig>(jser, data));
             break;
     }
 

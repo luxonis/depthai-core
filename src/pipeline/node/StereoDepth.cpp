@@ -8,7 +8,8 @@
 namespace dai {
 namespace node {
 
-StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
+StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
+    : Node(par, nodeId), rawConfig(std::make_shared<RawStereoDepthConfig>()), initialConfig(rawConfig) {
     // 'properties' defaults already set
 }
 
@@ -21,11 +22,12 @@ std::vector<Node::Output> StereoDepth::getOutputs() {
 }
 
 std::vector<Node::Input> StereoDepth::getInputs() {
-    return {left, right};
+    return {inputConfig, left, right};
 }
 
 nlohmann::json StereoDepth::getProperties() {
     nlohmann::json j;
+    properties.initialConfig = *rawConfig;
     nlohmann::to_json(j, properties);
     return j;
 }
@@ -45,9 +47,8 @@ void StereoDepth::loadCalibrationFile(const std::string& path) {
 }
 
 void StereoDepth::setEmptyCalibration(void) {
-    // Special case: a single element
-    const std::vector<std::uint8_t> empty = {0};
-    properties.calibration = empty;
+    setRectification(false);
+    spdlog::warn("{} is deprecated. This function call can be replaced by Stereo::setRectification(false). ", __func__);
 }
 
 void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const std::vector<std::uint8_t>& dataRight) {
@@ -104,8 +105,9 @@ void StereoDepth::setOutputSize(int width, int height) {
 void StereoDepth::setOutputKeepAspectRatio(bool keep) {
     properties.outKeepAspectRatio = keep;
 }
-void StereoDepth::setMedianFilter(Properties::MedianFilter median) {
-    properties.median = median;
+void StereoDepth::setMedianFilter(dai::MedianFilter median) {
+    initialConfig.setMedianFilter(median);
+    properties.initialConfig = *rawConfig;
 }
 void StereoDepth::setDepthAlign(Properties::DepthAlign align) {
     properties.depthAlign = align;
@@ -116,7 +118,11 @@ void StereoDepth::setDepthAlign(CameraBoardSocket camera) {
     properties.depthAlignCamera = camera;
 }
 void StereoDepth::setConfidenceThreshold(int confThr) {
-    properties.confidenceThreshold = confThr;
+    initialConfig.setConfidenceThreshold(confThr);
+    properties.initialConfig = *rawConfig;
+}
+void StereoDepth::setRectification(bool enable) {
+    properties.enableRectification = enable;
 }
 void StereoDepth::setLeftRightCheck(bool enable) {
     properties.enableLeftRightCheck = enable;
