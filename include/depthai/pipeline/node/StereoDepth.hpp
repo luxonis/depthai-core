@@ -30,7 +30,7 @@ class StereoDepth : public Node {
     StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
     /**
-     * Initial config to use when calculating spatial location data.
+     * Initial config to use for StereoDepth.
      */
     StereoDepthConfig initialConfig;
 
@@ -156,7 +156,7 @@ class StereoDepth : public Node {
     /**
      * @param median Set kernel size for disparity/depth median filtering, or disable
      */
-    void setMedianFilter(dai::MedianFilter median);
+    [[deprecated("Use 'initialConfig.setMedianFilter()' instead")]] void setMedianFilter(dai::MedianFilter median);
 
     /**
      * @param align Set the disparity/depth alignment: centered (between the 'left' and 'right' inputs),
@@ -173,7 +173,7 @@ class StereoDepth : public Node {
      * Confidence threshold for disparity calculation
      * @param confThr Confidence threshold value 0..255
      */
-    void setConfidenceThreshold(int confThr);
+    [[deprecated("Use 'initialConfig.setConfidenceThreshold()' instead")]] void setConfidenceThreshold(int confThr);
 
     /**
      * Rectify input images or not.

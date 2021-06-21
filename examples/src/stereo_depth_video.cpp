@@ -47,7 +47,7 @@ int main() {
 
     if(withDepth) {
         // StereoDepth
-        stereo->setConfidenceThreshold(200);
+        stereo->initialConfig.setConfidenceThreshold(200);
         stereo->setRectifyEdgeFillColor(0);  // black, to better see the cutout
         // stereo->loadCalibrationFile("../../../../depthai/resources/depthai.calib");
         // stereo->setInputResolution(1280, 720);

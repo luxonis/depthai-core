@@ -38,7 +38,7 @@ int main() {
     bool lrcheck = false;
     bool subpixel = false;
 
-    stereo->setConfidenceThreshold(255);
+    stereo->initialConfig.setConfidenceThreshold(255);
     stereo->setLeftRightCheck(lrcheck);
     stereo->setSubpixel(subpixel);
 
