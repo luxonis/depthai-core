@@ -176,7 +176,7 @@ class Node {
     /// Retrieves all nodes outputs
     std::vector<Output> getOutputs() {
         std::vector<Output> result;
-        for (auto* x: getOutputRefs()) {
+        for(auto* x : getOutputRefs()) {
             result.push_back(*x);
         }
         return result;
@@ -184,7 +184,7 @@ class Node {
     /// Retrieves all nodes inputs
     std::vector<Input> getInputs() {
         std::vector<Input> result;
-        for (auto* x: getInputRefs()) {
+        for(auto* x : getInputRefs()) {
             result.push_back(*x);
         }
         return result;
