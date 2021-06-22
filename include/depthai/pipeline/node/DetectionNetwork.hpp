@@ -22,8 +22,6 @@ class DetectionNetwork : public NeuralNetwork {
     using Properties = dai::DetectionNetworkProperties;
 
     std::string getName() const override;
-    std::vector<Output> getOutputs() const override;
-    std::vector<Input> getInputs() const override;
 
    protected:
     Properties properties;

@@ -5,18 +5,13 @@
 namespace dai {
 namespace node {
 
-IMU::IMU(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
+IMU::IMU(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
+    firstOutput = &out;
+    lastOutput = &out;
+}
 
 std::string IMU::getName() const {
     return "IMU";
-}
-
-std::vector<Node::Output> IMU::getOutputs() const {
-    return {out};
-}
-
-std::vector<Node::Input> IMU::getInputs() const {
-    return {};
 }
 
 nlohmann::json IMU::getProperties() {

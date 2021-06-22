@@ -5,18 +5,13 @@ namespace node {
 
 SystemLogger::SystemLogger(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
     properties.rateHz = 1.0f;
+
+    firstOutput = &out;
+    lastOutput = &out;
 }
 
 std::string SystemLogger::getName() const {
     return "SystemLogger";
-}
-
-std::vector<Node::Input> SystemLogger::getInputs() const {
-    return {};
-}
-
-std::vector<Node::Output> SystemLogger::getOutputs() const {
-    return {out};
 }
 
 nlohmann::json SystemLogger::getProperties() {

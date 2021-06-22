@@ -28,8 +28,6 @@ class MonoCamera : public Node {
 
    public:
     std::string getName() const override;
-    std::vector<Output> getOutputs() const override;
-    std::vector<Input> getInputs() const override;
 
     MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 

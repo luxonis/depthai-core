@@ -6,18 +6,16 @@ namespace dai {
 namespace node {
 
 SpatialLocationCalculator::SpatialLocationCalculator(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : Node(par, nodeId), rawConfig(std::make_shared<RawSpatialLocationCalculatorConfig>()), initialConfig(rawConfig) {}
+    : Node(par, nodeId), rawConfig(std::make_shared<RawSpatialLocationCalculatorConfig>()), initialConfig(rawConfig) {
+    firstInput = &inputConfig;
+    lastInput = &inputDepth;
+
+    firstOutput = &out;
+    lastOutput = &passthroughDepth;
+}
 
 std::string SpatialLocationCalculator::getName() const {
     return "SpatialLocationCalculator";
-}
-
-std::vector<Node::Output> SpatialLocationCalculator::getOutputs() const {
-    return {out, passthroughDepth};
-}
-
-std::vector<Node::Input> SpatialLocationCalculator::getInputs() const {
-    return {inputConfig, inputDepth};
 }
 
 nlohmann::json SpatialLocationCalculator::getProperties() {

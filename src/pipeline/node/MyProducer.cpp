@@ -3,18 +3,13 @@
 namespace dai {
 namespace node {
 
-MyProducer::MyProducer(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
+MyProducer::MyProducer(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
+    firstOutput = &out;
+    lastOutput = &out;
+}
 
 std::string MyProducer::getName() const {
     return "MyProducer";
-}
-
-std::vector<Node::Input> MyProducer::getInputs() const {
-    return {};
-}
-
-std::vector<Node::Output> MyProducer::getOutputs() const {
-    return {out};
 }
 
 nlohmann::json MyProducer::getProperties() {

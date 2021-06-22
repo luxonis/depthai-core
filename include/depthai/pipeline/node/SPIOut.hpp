@@ -29,16 +29,11 @@ class SPIOut : public Node {
         return "SPIOut";
     }
 
-    std::vector<Input> getInputs() const {
-        return {input};
-    }
-
-    std::vector<Output> getOutputs() const {
-        return {};
-    }
-
     SPIOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
         properties.busId = 0;
+
+        firstInput = &input;
+        lastInput = &input + 1;
     }
 
     /**

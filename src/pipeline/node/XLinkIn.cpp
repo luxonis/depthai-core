@@ -3,18 +3,13 @@
 namespace dai {
 namespace node {
 
-XLinkIn::XLinkIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
+XLinkIn::XLinkIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
+    firstOutput = &out;
+    lastOutput = &out;
+}
 
 std::string XLinkIn::getName() const {
     return "XLinkIn";
-}
-
-std::vector<Node::Input> XLinkIn::getInputs() const {
-    return {};
-}
-
-std::vector<Node::Output> XLinkIn::getOutputs() const {
-    return {out};
 }
 
 nlohmann::json XLinkIn::getProperties() {

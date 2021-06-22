@@ -18,18 +18,16 @@ ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
     properties.resolution = ColorCameraProperties::SensorResolution::THE_1080_P;
     properties.fps = 30.0;
     properties.previewKeepAspectRatio = true;
+
+    firstInput = &inputConfig;
+    lastInput = &inputControl;
+
+    firstOutput = &video;
+    lastOutput = &raw;
 }
 
 std::string ColorCamera::getName() const {
     return "ColorCamera";
-}
-
-std::vector<Node::Output> ColorCamera::getOutputs() const {
-    return {raw, isp, video, preview, still};
-}
-
-std::vector<Node::Input> ColorCamera::getInputs() const {
-    return {inputConfig, inputControl};
 }
 
 nlohmann::json ColorCamera::getProperties() {

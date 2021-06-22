@@ -23,8 +23,6 @@ class IMU : public Node {
 
    public:
     std::string getName() const override;
-    std::vector<Output> getOutputs() const override;
-    std::vector<Input> getInputs() const override;
 
     /**
      * Constructs IMU node.

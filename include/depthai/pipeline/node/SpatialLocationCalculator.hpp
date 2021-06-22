@@ -29,8 +29,6 @@ class SpatialLocationCalculator : public Node {
 
    public:
     std::string getName() const override;
-    std::vector<Input> getInputs() const override;
-    std::vector<Output> getOutputs() const override;
 
     SpatialLocationCalculator(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 

@@ -34,14 +34,18 @@ class Node {
     struct Connection;
 
    protected:
+    // fwd declare classes
+    class Input;
+    class Output;
+
+    Output *firstOutput = nullptr, *lastOutput = nullptr;
+    Input *firstInput = nullptr, *lastInput = nullptr;
+
     struct DatatypeHierarchy {
         DatatypeHierarchy(DatatypeEnum d, bool c) : datatype(d), descendants(c) {}
         DatatypeEnum datatype;
         bool descendants;
     };
-
-    // fwd declare Input class
-    class Input;
 
     class Output {
         Node& parent;
@@ -170,11 +174,40 @@ class Node {
     /// Retrieves nodes name
     virtual std::string getName() const = 0;
     /// Retrieves all nodes outputs
-    virtual std::vector<Output> getOutputs() const = 0;
+    std::vector<Output> getOutputs() {
+        std::vector<Output> result;
+        for (auto* x: getOutputRefs()) {
+            result.push_back(*x);
+        }
+        return result;
+    }
     /// Retrieves all nodes inputs
-    virtual std::vector<Input> getInputs() const = 0;
+    std::vector<Input> getInputs() {
+        std::vector<Input> result;
+        for (auto* x: getInputRefs()) {
+            result.push_back(*x);
+        }
+        return result;
+    }
     /// Retrieves all nodes assets
     virtual std::vector<std::shared_ptr<Asset>> getAssets();
+
+    std::vector<Output*> getOutputRefs() {
+        if(firstOutput == nullptr) return {};
+        return std::vector<Output*>{firstOutput, lastOutput};
+    }
+    std::vector<const Output*> getOutputRefs() const {
+        if(firstOutput == nullptr) return {};
+        return std::vector<const Output*>{firstOutput, lastOutput};
+    }
+    std::vector<Input*> getInputRefs() {
+        if(firstInput == nullptr) return {};
+        return std::vector<Input*>{firstInput, lastInput};
+    }
+    std::vector<const Input*> getInputRefs() const {
+        if(firstInput == nullptr) return {};
+        return std::vector<const Input*>{firstInput, lastInput};
+    }
 
     /// Connection between an Input and Output
     struct Connection {
