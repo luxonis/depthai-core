@@ -2,6 +2,7 @@
 
 #include <unordered_map>
 #include <vector>
+#include <ostream>
 
 #include "depthai-shared/datatype/RawTracklets.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
