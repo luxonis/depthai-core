@@ -1,9 +1,11 @@
 #include "depthai/pipeline/Pipeline.hpp"
 
+#include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/utility/Initialization.hpp"
 
 // std
 #include <cassert>
+#include <fstream>
 
 // libraries
 #include "spdlog/fmt/fmt.h"
@@ -234,6 +236,15 @@ OpenVINO::Version PipelineImpl::getPipelineOpenVINOVersion() const {
     return openvinoVersion;
 }
 
+void PipelineImpl::setCameraTuningBlobPath(const std::string& path) {
+    std::string assetKey = "camTuning";
+
+    auto asset = assetManager.add(assetKey, path);
+
+    globalProperties.cameraTuningBlobUri = asset->getRelativeUri();
+    globalProperties.cameraTuningBlobSize = asset->data.size();
+}
+
 // Remove node capability
 void PipelineImpl::remove(std::shared_ptr<Node> toRemove) {
     // Search for this node in 'nodes' vector.
@@ -356,4 +367,18 @@ void PipelineImpl::unlink(const Node::Output& out, const Node::Input& in) {
     nodeConnectionMap[in.parent.id].erase(connection);
 }
 
+void PipelineImpl::setCalibrationData(CalibrationHandler calibrationDataHandler) {
+    if(!calibrationDataHandler.validateCameraArray()) {
+        throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
+    }
+    globalProperties.calibData = calibrationDataHandler.getEepromData();
+}
+
+CalibrationHandler PipelineImpl::getCalibrationData() const {
+    if(globalProperties.calibData) {
+        return CalibrationHandler(globalProperties.calibData.value());
+    } else {
+        return CalibrationHandler();
+    }
+}
 }  // namespace dai

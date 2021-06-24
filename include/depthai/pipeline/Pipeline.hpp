@@ -9,6 +9,7 @@
 // project
 #include "AssetManager.hpp"
 #include "Node.hpp"
+#include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 
 // shared
@@ -34,6 +35,7 @@ class PipelineImpl {
     Node::Id getNextUniqueId();
     PipelineSchema getPipelineSchema() const;
     OpenVINO::Version getPipelineOpenVINOVersion() const;
+    void setCameraTuningBlobPath(const std::string& path);
 
     // Access to nodes
     std::vector<std::shared_ptr<const Node>> getAllNodes() const;
@@ -47,6 +49,8 @@ class PipelineImpl {
     std::vector<Node::Connection> getConnections() const;
     void link(const Node::Output& out, const Node::Input& in);
     void unlink(const Node::Output& out, const Node::Input& in);
+    void setCalibrationData(CalibrationHandler calibrationDataHandler);
+    CalibrationHandler getCalibrationData() const;
 
     // Must be incremented and unique for each node
     Node::Id latestId = 0;
@@ -209,9 +213,32 @@ class Pipeline {
         impl()->forceRequiredOpenVINOVersion = version;
     }
 
+    /**
+     * Sets the calibration in pipeline which overrides the calibration data in eeprom
+     *
+     * @param calibrationDataHandler CalibrationHandler object which is loaded with calibration information.
+     */
+    void setCalibrationData(CalibrationHandler calibrationDataHandler) {
+        impl()->setCalibrationData(calibrationDataHandler);
+    }
+
+    /**
+     * gets the calibration data which is set through pipeline
+     *
+     * @return the calibrationHandler with calib data in the pipeline
+     */
+    CalibrationHandler getCalibrationData() const {
+        return impl()->getCalibrationData();
+    }
+
     /// Get required OpenVINO version to run this pipeline
     OpenVINO::Version getOpenVINOVersion() const {
         return impl()->getPipelineOpenVINOVersion();
+    }
+
+    /// Set a camera IQ (Image Quality) tuning blob, used for all cameras
+    void setCameraTuningBlobPath(const std::string& path) {
+        impl()->setCameraTuningBlobPath(path);
     }
 };
 

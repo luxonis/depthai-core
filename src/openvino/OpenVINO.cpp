@@ -17,11 +17,25 @@ namespace dai {
 const std::map<std::pair<std::uint32_t, std::uint32_t>, OpenVINO::Version> OpenVINO::blobVersionToLatestOpenvinoMapping = {
     {{5, 0}, OpenVINO::VERSION_2020_3},
     {{6, 0}, OpenVINO::VERSION_2021_3},
+    {{2020, 1}, OpenVINO::VERSION_2020_1},
+    {{2020, 2}, OpenVINO::VERSION_2020_2},
+    {{2020, 3}, OpenVINO::VERSION_2020_3},
+    {{2020, 4}, OpenVINO::VERSION_2020_4},
+    {{2021, 1}, OpenVINO::VERSION_2021_1},
+    {{2021, 2}, OpenVINO::VERSION_2021_2},
+    {{2021, 3}, OpenVINO::VERSION_2021_3},
 };
 
 const std::map<std::pair<std::uint32_t, std::uint32_t>, std::vector<OpenVINO::Version>> OpenVINO::blobVersionToOpenvinoMapping = {
     {{5, 0}, {OpenVINO::VERSION_2020_1, OpenVINO::VERSION_2020_2, OpenVINO::VERSION_2020_3}},
     {{6, 0}, {OpenVINO::VERSION_2020_4, OpenVINO::VERSION_2021_1, OpenVINO::VERSION_2021_2, OpenVINO::VERSION_2021_3}},
+    {{2020, 1}, {OpenVINO::VERSION_2020_1}},
+    {{2020, 2}, {OpenVINO::VERSION_2020_2}},
+    {{2020, 3}, {OpenVINO::VERSION_2020_3}},
+    {{2020, 4}, {OpenVINO::VERSION_2020_4}},
+    {{2021, 1}, {OpenVINO::VERSION_2021_1}},
+    {{2021, 2}, {OpenVINO::VERSION_2021_2}},
+    {{2021, 3}, {OpenVINO::VERSION_2021_3}},
 };
 
 std::vector<OpenVINO::Version> OpenVINO::getVersions() {

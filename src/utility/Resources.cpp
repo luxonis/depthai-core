@@ -78,7 +78,7 @@ std::vector<std::uint8_t> Resources::getDeviceBinary(OpenVINO::Version version, 
     auto fwBinaryPath = spdlog::details::os::getenv("DEPTHAI_DEVICE_BINARY");
     if(!fwBinaryPath.empty()) {
         // Load binary file at path
-        std::ifstream stream(fwBinaryPath, std::ios::in | std::ios::binary);
+        std::ifstream stream(fwBinaryPath, std::ios::binary);
         if(!stream.is_open()) {
             // Throw an error
             // TODO(themarpe) - Unify exceptions into meaningful groups
@@ -94,11 +94,11 @@ std::vector<std::uint8_t> Resources::getDeviceBinary(OpenVINO::Version version, 
     // Temporary binary
     std::vector<std::uint8_t> tmpDepthaiBinary;
     // Main FW
-    std::vector<std::uint8_t>& depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2021_3_PATH];
+    std::vector<std::uint8_t> depthaiBinary = resourceMap[DEPTHAI_CMD_OPENVINO_2021_3_PATH];
     // Patch from main to specified
-    std::vector<std::uint8_t>& depthaiPatch = resourceMap[DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH];
+    std::vector<std::uint8_t> depthaiPatch = resourceMap[DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH];
     // Patch from specified to usb2 specified
-    std::vector<std::uint8_t>& depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2021_3_USB2_PATCH_PATH];
+    std::vector<std::uint8_t> depthaiUsb2Patch = resourceMap[DEPTHAI_CMD_OPENVINO_2021_3_USB2_PATCH_PATH];
 
     switch(version) {
         case OpenVINO::VERSION_2020_1:

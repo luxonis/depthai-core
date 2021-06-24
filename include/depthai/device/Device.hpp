@@ -10,13 +10,15 @@
 // project
 #include "CallbackHandler.hpp"
 #include "DataQueue.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/UsbSpeed.hpp"
+#include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 
 // shared
-#include "depthai-shared/common/CameraBoardSocket.hpp"
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
@@ -232,6 +234,13 @@ class Device {
      * @returns Logging severity level
      */
     LogLevel getLogLevel();
+
+    /**
+     * Get the Device Info object o the device which is currently running
+     *
+     * @return DeviceInfo of the current device in execution
+     */
+    DeviceInfo getDeviceInfo();
 
     /**
      * Sets logging level which decides printing level to standard output.
@@ -450,6 +459,29 @@ class Device {
      * @returns Average CPU usage and sampling duration
      */
     CpuUsage getLeonMssCpuUsage();
+
+    /**
+     * Stores the Calibration and Device information to the Device EEPROM
+     *
+     * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
+     *
+     * @return true on successful flash, false on failure
+     */
+    bool flashCalibration(CalibrationHandler calibrationDataHandler);
+
+    /**
+     * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
+     *
+     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
+     */
+    CalibrationHandler readCalibration();
+
+    /**
+     * Retrieves USB connection speed
+     *
+     * @returns USB connection speed of connected device if applicable. Unknown otherwise.
+     */
+    UsbSpeed getUsbSpeed();
 
     /**
      * Explicitly closes connection to device.

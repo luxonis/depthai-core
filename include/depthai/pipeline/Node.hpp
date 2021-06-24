@@ -169,13 +169,14 @@ class Node {
     virtual tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion();
     virtual std::shared_ptr<Node> clone() = 0;
 
+   public:
+    /// Id of node
+    const Id id;
+
     // access
     Pipeline getParentPipeline();
     const Pipeline getParentPipeline() const;
 
-   public:
-    /// Id of node
-    const Id id;
     /// Retrieves nodes name
     virtual std::string getName() const = 0;
     /// Retrieves all nodes outputs
