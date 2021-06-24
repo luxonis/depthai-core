@@ -15,7 +15,7 @@ namespace dai {
 namespace node {
 
 /**
- * @brief DetectionNetwork. Base for different network specializations
+ * @brief DetectionNetwork, base for different network specializations
  */
 class DetectionNetwork : public NeuralNetwork {
    public:

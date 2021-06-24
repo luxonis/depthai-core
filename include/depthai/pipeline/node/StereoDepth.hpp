@@ -80,13 +80,13 @@ class StereoDepth : public Node {
      * Specify local filesystem path to the calibration file
      * @param path Path to calibration file. If empty use EEPROM
      */
-    void loadCalibrationFile(const std::string& path);
+    [[deprecated("Use 'Pipeline::setCalibrationData()' instead")]] void loadCalibrationFile(const std::string& path);
 
     /**
      * Specify calibration data as a vector of bytes
      * @param path Calibration data. If empty use EEPROM
      */
-    void loadCalibrationData(const std::vector<std::uint8_t>& data);
+    [[deprecated("Use 'Pipeline::setCalibrationData()' instead")]] void loadCalibrationData(const std::vector<std::uint8_t>& data);
 
     /**
      * Specify that a passthrough/dummy calibration should be used,
@@ -155,8 +155,9 @@ class StereoDepth : public Node {
      * The mirroring is required to have a normal non-mirrored disparity/depth output.
      *
      * A side effect of this option is disparity alignment to the perspective of left or right input:
-     * - LR-check disabled: `false`: mapped to left and mirrored, `true`: mapped to right;
-     * - LR-check enabled: `false`: mapped to right, `true`: mapped to left, never mirrored.
+     * `false`: mapped to left and mirrored, `true`: mapped to right.
+     * With LR-check enabled, this option is ignored, none of the outputs are mirrored,
+     * and disparity is mapped to right.
      *
      * @param enable True for normal disparity/depth, otherwise mirrored
      */
@@ -174,6 +175,12 @@ class StereoDepth : public Node {
      * DEPRECATED. The output is auto-enabled if used
      */
     [[deprecated("Function call should be removed")]] void setOutputDepth(bool enable);
+
+    /**
+     * Useful for normalization of the disparity map.
+     * @returns Maximum disparity value that the node can return
+     */
+    float getMaxDisparity() const;
 };
 
 }  // namespace node

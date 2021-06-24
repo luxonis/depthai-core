@@ -35,24 +35,13 @@ std::shared_ptr<Node> StereoDepth::clone() {
 }
 
 void StereoDepth::loadCalibrationData(const std::vector<std::uint8_t>& data) {
-    if(data.empty()) {
-        // Will use EEPROM data
-        properties.calibration.clear();
-    } else {
-        properties.calibration = data;
-    }
+    (void)data;
+    spdlog::warn("{} is deprecated. This function call is replaced by Pipeline::setCalibrationData under pipeline. ", __func__);
 }
 
 void StereoDepth::loadCalibrationFile(const std::string& path) {
-    std::vector<std::uint8_t> data;
-    if(!path.empty()) {
-        std::ifstream calib(path, std::ios::in | std::ios::binary);
-        if(!calib.is_open()) {
-            throw std::runtime_error("StereoDepth node | Unable to open calibration file: " + path);
-        }
-        data = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(calib), {});
-    }
-    loadCalibrationData(data);
+    (void)path;
+    spdlog::warn("{} is deprecated. This function call is replaced by Pipeline::setCalibrationData under pipeline. ", __func__);
 }
 
 void StereoDepth::setEmptyCalibration(void) {
@@ -101,6 +90,13 @@ void StereoDepth::setOutputRectified(bool enable) {
 void StereoDepth::setOutputDepth(bool enable) {
     (void)enable;
     spdlog::warn("{} is deprecated. The output is auto-enabled if used", __func__);
+}
+
+float StereoDepth::getMaxDisparity() const {
+    float maxDisp = 95.0;
+    if(properties.enableExtendedDisparity) maxDisp *= 2;
+    if(properties.enableSubpixel) maxDisp *= 32;
+    return maxDisp;
 }
 
 }  // namespace node
