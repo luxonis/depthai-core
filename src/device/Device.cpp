@@ -841,6 +841,12 @@ std::string Device::getQueueEvent(std::chrono::microseconds timeout) {
     return getQueueEvent(getOutputQueueNames(), timeout);
 }
 
+std::string Device::getMxId() {
+    checkClosed();
+
+    return client->call("getMxId").as<std::string>();
+}
+
 std::vector<CameraBoardSocket> Device::getConnectedCameras() {
     checkClosed();
 
