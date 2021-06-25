@@ -76,12 +76,12 @@ CalibrationHandler::CalibrationHandler(std::string calibrationDataPath, std::str
         eepromData.cameraData[left].specHfovDeg = boardConfigData.at("board_config").at("left_fov_deg").get<float>();
         eepromData.cameraData[CameraBoardSocket::RGB].specHfovDeg = boardConfigData.at("board_config").at("rgb_fov_deg").get<float>();
 
-        eepromData.cameraData[left].extrinsics.specTranslation.x = boardConfigData.at("board_config").at("left_to_right_distance_cm").get<float>();
+        eepromData.cameraData[left].extrinsics.specTranslation.x = - boardConfigData.at("board_config").at("left_to_right_distance_cm").get<float>();
         eepromData.cameraData[left].extrinsics.specTranslation.y = 0;
         eepromData.cameraData[left].extrinsics.specTranslation.z = 0;
 
-        eepromData.cameraData[right].extrinsics.specTranslation.x = boardConfigData.at("board_config").at("left_to_rgb_distance_cm").get<float>()
-                                                                    - boardConfigData.at("board_config").at("left_to_right_distance_cm").get<float>();
+        eepromData.cameraData[right].extrinsics.specTranslation.x = boardConfigData.at("board_config").at("left_to_right_distance_cm").get<float>()
+                                                                    - boardConfigData.at("board_config").at("left_to_rgb_distance_cm").get<float>();
         eepromData.cameraData[right].extrinsics.specTranslation.y = 0;
         eepromData.cameraData[right].extrinsics.specTranslation.z = 0;
     } else {
