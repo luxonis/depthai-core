@@ -76,7 +76,7 @@ CalibrationHandler::CalibrationHandler(std::string calibrationDataPath, std::str
         eepromData.cameraData[left].specHfovDeg = boardConfigData.at("board_config").at("left_fov_deg").get<float>();
         eepromData.cameraData[CameraBoardSocket::RGB].specHfovDeg = boardConfigData.at("board_config").at("rgb_fov_deg").get<float>();
 
-        eepromData.cameraData[left].extrinsics.specTranslation.x = - boardConfigData.at("board_config").at("left_to_right_distance_cm").get<float>();
+        eepromData.cameraData[left].extrinsics.specTranslation.x = -boardConfigData.at("board_config").at("left_to_right_distance_cm").get<float>();
         eepromData.cameraData[left].extrinsics.specTranslation.y = 0;
         eepromData.cameraData[left].extrinsics.specTranslation.z = 0;
 
@@ -399,7 +399,8 @@ std::vector<std::vector<float>> CalibrationHandler::computeExtrinsicMatrix(Camer
         throw std::runtime_error("Invalid cameraId input..");
     }
     if(eepromData.cameraData[srcCamera].extrinsics.toCameraSocket == dstCamera) {
-        if(eepromData.cameraData[srcCamera].extrinsics.rotationMatrix.size() == 0 || eepromData.cameraData[srcCamera].extrinsics.toCameraSocket == CameraBoardSocket::AUTO) {
+        if(eepromData.cameraData[srcCamera].extrinsics.rotationMatrix.size() == 0
+           || eepromData.cameraData[srcCamera].extrinsics.toCameraSocket == CameraBoardSocket::AUTO) {
             throw std::runtime_error(
                 "Defined Extrinsic conenction but rotation matrix is not available. Please cross check your calibration data configuration.");
         }
