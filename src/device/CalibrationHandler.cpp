@@ -343,7 +343,7 @@ std::vector<std::vector<float>> CalibrationHandler::getImuToCameraExtrinsics(Cam
 
     std::vector<std::vector<float>> transformationMatrix = eepromData.imuExtrinsics.rotationMatrix;
     if(useSpecTranslation) {
-        transformationMatrix[0].push_back(eepromData.cameraData[cameraId].extrinsics.specTranslation.x);
+        transformationMatrix4[0].push_back(eepromData.cameraData[cameraId].extrinsics.specTranslation.x);
         transformationMatrix[1].push_back(eepromData.cameraData[cameraId].extrinsics.specTranslation.y);
         transformationMatrix[2].push_back(eepromData.cameraData[cameraId].extrinsics.specTranslation.z);
     } else {
@@ -399,7 +399,7 @@ std::vector<std::vector<float>> CalibrationHandler::computeExtrinsicMatrix(Camer
         throw std::runtime_error("Invalid cameraId input..");
     }
     if(eepromData.cameraData[srcCamera].extrinsics.toCameraSocket == dstCamera) {
-        if(eepromData.imuExtrinsics.rotationMatrix.size() == 0 || eepromData.imuExtrinsics.toCameraSocket == CameraBoardSocket::AUTO) {
+        if(eepromData.cameraData[srcCamera].rotationMatrix.size() == 0 || eepromData.cameraData[srcCamera].toCameraSocket == CameraBoardSocket::AUTO) {
             throw std::runtime_error(
                 "Defined Extrinsic conenction but rotation matrix is not available. Please cross check your calibration data configuration.");
         }
