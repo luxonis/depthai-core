@@ -1,11 +1,7 @@
 #include <iostream>
 
-#include "utility.hpp"
-
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
-
-static std::atomic<bool> newConfig{false};
 
 int main() {
     using namespace std;

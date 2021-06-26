@@ -32,7 +32,7 @@ class EdgeDetectorConfig : public Buffer {
 
     /**
      * Retrieve configuration data for EdgeDetector
-     * @returns Vector of configuration parameters for ROIs (region of interests)
+     * @returns EdgeDetectorConfigData: sobel filter horizontal and vertical 3x3 kernels
      */
     EdgeDetectorConfigData getConfigData() const;
 };
