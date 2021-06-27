@@ -18,7 +18,7 @@ int main() {
     auto xoutMono = pipeline.create<dai::node::XLinkOut>();
     auto xoutAprilTag = pipeline.create<dai::node::XLinkOut>();
 
-    xoutMono->setStreamName("depth");
+    xoutMono->setStreamName("mono");
     xoutAprilTag->setStreamName("aprilTagData");
 
     // Properties
@@ -36,8 +36,8 @@ int main() {
     // Connect to device and start pipeline
     dai::Device device(pipeline);
 
-    // Output queue will be used to get the depth frames from the outputs defined above
-    auto monoQueue = device.getOutputQueue("depth", 8, false);
+    // Output queue will be used to get the mono frames from the outputs defined above
+    auto monoQueue = device.getOutputQueue("mono", 8, false);
     auto aprilTagQueue = device.getOutputQueue("aprilTagData", 8, false);
 
     auto color = cv::Scalar(0, 255, 0);
