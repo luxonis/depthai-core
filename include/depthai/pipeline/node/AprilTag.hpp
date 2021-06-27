@@ -52,7 +52,7 @@ class AprilTag : public Node {
     /**
      * Outputs AprilTagData message that carries spatial location results.
      */
-    Output outputImage{*this, "outputImage", Output::Type::MSender, {{DatatypeEnum::AprilTagData, false}}};
+    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::AprilTagData, false}}};
 
     /**
      * Passthrough message on which the calculation was performed.

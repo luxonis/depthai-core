@@ -1,8 +1,6 @@
 #include <chrono>
 #include <iostream>
 
-#include "utility.hpp"
-
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
@@ -17,30 +15,30 @@ int main() {
     auto monoLeft = pipeline.create<dai::node::MonoCamera>();
     auto aprilTag = pipeline.create<dai::node::AprilTag>();
 
-    if(aprilTag == nullptr) return 0;
+    auto xoutMono = pipeline.create<dai::node::XLinkOut>();
+    auto xoutAprilTag = pipeline.create<dai::node::XLinkOut>();
 
-    auto xoutDepth = pipeline.create<dai::node::XLinkOut>();
-    auto xoutSpatialData = pipeline.create<dai::node::XLinkOut>();
-
-    xoutDepth->setStreamName("depth");
-    xoutSpatialData->setStreamName("spatialData");
+    xoutMono->setStreamName("depth");
+    xoutAprilTag->setStreamName("aprilTagData");
 
     // Properties
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
 
+    aprilTag->initialConfig.setType(dai::AprilTagConfigData::AprilTagType::TAG_36H11);
+
     // Linking
-    aprilTag->passthroughInputImage.link(xoutDepth->input);
+    aprilTag->passthroughInputImage.link(xoutMono->input);
     monoLeft->out.link(aprilTag->inputImage);
 
-    aprilTag->outputImage.link(xoutSpatialData->input);
+    aprilTag->out.link(xoutAprilTag->input);
 
     // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     // Output queue will be used to get the depth frames from the outputs defined above
-    auto depthQueue = device.getOutputQueue("depth", 8, false);
-    auto spatialCalcQueue = device.getOutputQueue("spatialData", 8, false);
+    auto monoQueue = device.getOutputQueue("depth", 8, false);
+    auto aprilTagQueue = device.getOutputQueue("aprilTagData", 8, false);
 
     auto color = cv::Scalar(0, 255, 0);
 
@@ -49,7 +47,7 @@ int main() {
     float fps = 0;
 
     while(true) {
-        auto inDepth = depthQueue->get<dai::ImgFrame>();
+        auto inFrame = monoQueue->get<dai::ImgFrame>();
 
         counter++;
         auto currentTime = steady_clock::now();
@@ -60,27 +58,27 @@ int main() {
             startTime = currentTime;
         }
 
-        cv::Mat depthFrame = inDepth->getCvFrame();
+        cv::Mat frame = inFrame->getCvFrame();
 
-        auto spatialData = spatialCalcQueue->get<dai::AprilTagData>()->getAprilTag();
-        for(auto depthData : spatialData) {
-            auto xmin = (int)depthData.p.x;
-            auto ymin = (int)depthData.p.y;
-            auto xmax = xmin + (int)depthData.p.width;
-            auto ymax = ymin + (int)depthData.p.height;
+        auto aprilTagData = aprilTagQueue->get<dai::AprilTagData>()->getAprilTag();
+        for(auto aprilTag : aprilTagData) {
+            auto xmin = (int)aprilTag.p.x;
+            auto ymin = (int)aprilTag.p.y;
+            auto xmax = xmin + (int)aprilTag.p.width;
+            auto ymax = ymin + (int)aprilTag.p.height;
 
             std::stringstream idStr;
-            idStr << "ID: " << depthData.id;
-            cv::putText(depthFrame, idStr.str(), cv::Point(xmin + 10, ymin + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            idStr << "ID: " << aprilTag.id;
+            cv::putText(frame, idStr.str(), cv::Point(xmin + 10, ymin + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
 
-            cv::rectangle(depthFrame, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
+            cv::rectangle(frame, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
         }
 
         std::stringstream fpsStr;
-        fpsStr << "NN fps:" << std::fixed << std::setprecision(2) << fps;
-        cv::putText(depthFrame, fpsStr.str(), cv::Point(2, inDepth->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
+        fpsStr << "fps:" << std::fixed << std::setprecision(2) << fps;
+        cv::putText(frame, fpsStr.str(), cv::Point(2, inFrame->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
 
-        cv::imshow("depth", depthFrame);
+        cv::imshow("mono", frame);
 
         int key = cv::waitKey(1);
         if(key == 'q') {

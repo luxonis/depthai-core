@@ -13,7 +13,7 @@ std::string AprilTag::getName() const {
 }
 
 std::vector<Node::Output> AprilTag::getOutputs() {
-    return {outputImage, passthroughInputImage};
+    return {out, passthroughInputImage};
 }
 
 std::vector<Node::Input> AprilTag::getInputs() {
