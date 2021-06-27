@@ -12,6 +12,8 @@
 
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
+#include "depthai/pipeline/datatype/AprilTagConfig.hpp"
+#include "depthai/pipeline/datatype/AprilTagData.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
@@ -28,6 +30,8 @@
 
 // shared
 #include "depthai-shared/datatype/DatatypeEnum.hpp"
+#include "depthai-shared/datatype/RawAprilTagConfig.hpp"
+#include "depthai-shared/datatype/RawAprilTags.hpp"
 #include "depthai-shared/datatype/RawBuffer.hpp"
 #include "depthai-shared/datatype/RawCameraControl.hpp"
 #include "depthai-shared/datatype/RawIMUData.hpp"
@@ -118,7 +122,15 @@ std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
             break;
 
         case DatatypeEnum::SpatialLocationCalculatorConfig:
-            return parseDatatype<RawSpatialLocations>(jser, data);
+            return parseDatatype<RawSpatialLocationCalculatorConfig>(jser, data);
+            break;
+
+        case DatatypeEnum::AprilTagData:
+            return parseDatatype<RawAprilTags>(jser, data);
+            break;
+
+        case DatatypeEnum::AprilTagConfig:
+            return parseDatatype<RawAprilTagConfig>(jser, data);
             break;
 
         case DatatypeEnum::Tracklets:
@@ -193,6 +205,14 @@ std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
 
         case DatatypeEnum::SpatialLocationCalculatorConfig:
             return std::make_shared<SpatialLocationCalculatorConfig>(parseDatatype<RawSpatialLocationCalculatorConfig>(jser, data));
+            break;
+
+        case DatatypeEnum::AprilTagData:
+            return std::make_shared<AprilTagData>(parseDatatype<RawAprilTags>(jser, data));
+            break;
+
+        case DatatypeEnum::AprilTagConfig:
+            return std::make_shared<AprilTagConfig>(parseDatatype<RawAprilTagConfig>(jser, data));
             break;
 
         case DatatypeEnum::Tracklets:

@@ -1,5 +1,5 @@
-#include <iostream>
 #include <chrono>
+#include <iostream>
 
 #include "utility.hpp"
 
@@ -15,7 +15,9 @@ int main() {
 
     // Define sources and outputs
     auto monoLeft = pipeline.create<dai::node::MonoCamera>();
-    auto spatialDataCalculator = pipeline.create<dai::node::SpatialLocationCalculator>();
+    auto aprilTag = pipeline.create<dai::node::AprilTag>();
+
+    if(aprilTag == nullptr) return 0;
 
     auto xoutDepth = pipeline.create<dai::node::XLinkOut>();
     auto xoutSpatialData = pipeline.create<dai::node::XLinkOut>();
@@ -27,23 +29,11 @@ int main() {
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
 
-    // Config
-    dai::Point2f topLeft(0.4f, 0.4f);
-    dai::Point2f bottomRight(0.6f, 0.6f);
-
-    dai::SpatialLocationCalculatorConfigData config;
-    config.depthThresholds.lowerThreshold = 100;
-    config.depthThresholds.upperThreshold = 10000;
-    config.roi = dai::Rect(topLeft, bottomRight);
-
-    spatialDataCalculator->setWaitForConfigInput(false);
-    spatialDataCalculator->initialConfig.addROI(config);
-
     // Linking
-    spatialDataCalculator->passthroughDepth.link(xoutDepth->input);
-    monoLeft->out.link(spatialDataCalculator->inputDepth);
+    aprilTag->passthroughInputImage.link(xoutDepth->input);
+    monoLeft->out.link(aprilTag->inputImage);
 
-    spatialDataCalculator->out.link(xoutSpatialData->input);
+    aprilTag->outputImage.link(xoutSpatialData->input);
 
     // Connect to device and start pipeline
     dai::Device device(pipeline);
@@ -70,17 +60,10 @@ int main() {
             startTime = currentTime;
         }
 
-
         cv::Mat depthFrame = inDepth->getCvFrame();
 
-        auto spatialData = spatialCalcQueue->get<dai::SpatialLocationCalculatorData>()->getSpatialLocations();
+        auto spatialData = spatialCalcQueue->get<dai::AprilTagData>()->getAprilTag();
         for(auto depthData : spatialData) {
-            // cout << "id: " << depthData.id << endl;
-
-            // cout << "x: " << depthData.c.x << " y: " << depthData.c.y << endl;
-
-            // cout << "x: " << depthData.p.x << "y: " << depthData.p.y << "width: " << depthData.p.width << "height: " << depthData.p.height << endl;
-
             auto xmin = (int)depthData.p.x;
             auto ymin = (int)depthData.p.y;
             auto xmax = xmin + (int)depthData.p.width;
@@ -91,12 +74,7 @@ int main() {
             cv::putText(depthFrame, idStr.str(), cv::Point(xmin + 10, ymin + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
 
             cv::rectangle(depthFrame, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
-
-            // for(int i = 0; i < 4; i++) {
-            //     std::cout << "x: " << depthData.p[i][0] << " y: " << depthData.p[i][1] << std::endl;
-            // }
         }
-        // Show the frame
 
         std::stringstream fpsStr;
         fpsStr << "NN fps:" << std::fixed << std::setprecision(2) << fps;

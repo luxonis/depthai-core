@@ -228,7 +228,7 @@ target_compile_definitions(spatial_tiny_yolo_v3 PRIVATE BLOB_PATH="${tiny_yolo_v
 dai_add_example(spatial_tiny_yolo_v4 src/spatial_tiny_yolo.cpp ON)
 target_compile_definitions(spatial_tiny_yolo_v4 PRIVATE BLOB_PATH="${tiny_yolo_v4_blob}")
 
-dai_add_example(spatial_location_calculator src/spatial_location_calculator.cpp ON)
+##################dai_add_example(spatial_location_calculator src/spatial_location_calculator.cpp ON)
 
 # RGB camera video output example
 dai_add_example(rgb_video src/rgb_video.cpp ON)
@@ -273,3 +273,6 @@ dai_add_example(calibration_reader src/calibration_reader.cpp OFF)
 target_compile_definitions(calibration_flash PRIVATE CALIB_PATH="${calib_v6}")
 target_compile_definitions(calibration_flash_version5 PRIVATE CALIB_PATH="${calib_v5}" BOARD_PATH="${device_config}")
 target_compile_definitions(calibration_load PRIVATE CALIB_PATH="${calib_v6}")
+
+
+dai_add_example(apriltag src/apriltag.cpp OFF)
