@@ -1,4 +1,4 @@
-#include "depthai/pipeline/datatype/StreamPacketParser.hpp"
+#include "depthai/pipeline/datatype/StreamMessageParser.hpp"
 
 // standard
 #include <memory>
@@ -62,7 +62,7 @@ inline std::shared_ptr<T> parseDatatype(nlohmann::json& ser, std::vector<uint8_t
     return tmp;
 }
 
-std::shared_ptr<RawBuffer> StreamPacketParser::parsePacket(streamPacketDesc_t* packet) {
+std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t* packet) {
     int serializedObjectSize = readIntLE(packet->data + packet->length - 4);
     auto objectType = static_cast<DatatypeEnum>(readIntLE(packet->data + packet->length - 8));
 
@@ -143,7 +143,7 @@ std::shared_ptr<RawBuffer> StreamPacketParser::parsePacket(streamPacketDesc_t* p
     throw std::runtime_error("Bad packet, couldn't parse");
 }
 
-std::shared_ptr<ADatatype> StreamPacketParser::parsePacketToADatatype(streamPacketDesc_t* packet) {
+std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPacketDesc_t* packet) {
     int serializedObjectSize = readIntLE(packet->data + packet->length - 4);
     auto objectType = static_cast<DatatypeEnum>(readIntLE(packet->data + packet->length - 8));
 
@@ -222,7 +222,7 @@ std::shared_ptr<ADatatype> StreamPacketParser::parsePacketToADatatype(streamPack
     throw std::runtime_error("Bad packet, couldn't parse");
 }
 
-std::vector<std::uint8_t> StreamPacketParser::serializeMessage(const RawBuffer& data) {
+std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer& data) {
     // Serialization:
     // 1. fill vector with bytes from data.data
     // 2. serialize and append metadata
@@ -250,16 +250,16 @@ std::vector<std::uint8_t> StreamPacketParser::serializeMessage(const RawBuffer& 
     return ser;
 }
 
-std::vector<std::uint8_t> StreamPacketParser::serializeMessage(const std::shared_ptr<const RawBuffer>& data) {
+std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const std::shared_ptr<const RawBuffer>& data) {
     if(!data) return {};
     return serializeMessage(*data);
 }
 
-std::vector<std::uint8_t> StreamPacketParser::serializeMessage(const ADatatype& data) {
+std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const ADatatype& data) {
     return serializeMessage(data.serialize());
 }
 
-std::vector<std::uint8_t> StreamPacketParser::serializeMessage(const std::shared_ptr<const ADatatype>& data) {
+std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const std::shared_ptr<const ADatatype>& data) {
     if(!data) return {};
     return serializeMessage(*data);
 }

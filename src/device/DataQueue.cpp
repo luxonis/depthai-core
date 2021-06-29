@@ -6,7 +6,7 @@
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
-#include "pipeline/datatype/StreamPacketParser.hpp"
+#include "pipeline/datatype/StreamMessageParser.hpp"
 
 // shared
 #include "depthai-shared/xlink/XLinkConstants.hpp"
@@ -35,7 +35,7 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
                 packet = stream.readRaw();
 
                 // parse packet
-                auto data = StreamPacketParser::parsePacketToADatatype(packet);
+                auto data = StreamMessageParser::parseMessageToADatatype(packet);
 
                 // Trace level debugging
                 if(spdlog::get_level() == spdlog::level::trace) {
@@ -192,8 +192,9 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
                     if(!metadata.empty()) objData = nlohmann::json::from_msgpack(metadata).dump();
                     spdlog::trace("Sending message to device ({}) - data size: {}, object type: {} object data: {}", name, data->data.size(), type, objData);
                 }
+
                 // serialize
-                auto serialized = StreamPacketParser::serializeMessage(data);
+                auto serialized = StreamMessageParser::serializeMessage(data);
 
                 // Blocking
                 stream.write(serialized);
