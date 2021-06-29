@@ -22,8 +22,6 @@ class EdgeDetector : public Node {
 
    private:
     std::string getName() const override;
-    std::vector<Input> getInputs() override;
-    std::vector<Output> getOutputs() override;
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
 
