@@ -14,6 +14,7 @@
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
+#include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
@@ -30,6 +31,7 @@
 #include "depthai-shared/datatype/DatatypeEnum.hpp"
 #include "depthai-shared/datatype/RawBuffer.hpp"
 #include "depthai-shared/datatype/RawCameraControl.hpp"
+#include "depthai-shared/datatype/RawEdgeDetectorConfig.hpp"
 #include "depthai-shared/datatype/RawIMUData.hpp"
 #include "depthai-shared/datatype/RawImageManipConfig.hpp"
 #include "depthai-shared/datatype/RawImgDetections.hpp"
@@ -118,7 +120,7 @@ std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
             break;
 
         case DatatypeEnum::SpatialLocationCalculatorConfig:
-            return parseDatatype<RawSpatialLocations>(jser, data);
+            return parseDatatype<RawSpatialLocationCalculatorConfig>(jser, data);
             break;
 
         case DatatypeEnum::Tracklets:
@@ -128,8 +130,13 @@ std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
         case DatatypeEnum::IMUData:
             return parseDatatype<RawIMUData>(jser, data);
             break;
+
         case DatatypeEnum::StereoDepthConfig:
             return parseDatatype<RawStereoDepthConfig>(jser, data);
+            break;
+
+        case DatatypeEnum::EdgeDetectorConfig:
+            return parseDatatype<RawEdgeDetectorConfig>(jser, data);
             break;
     }
 
@@ -205,6 +212,10 @@ std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
 
         case DatatypeEnum::StereoDepthConfig:
             return std::make_shared<StereoDepthConfig>(parseDatatype<RawStereoDepthConfig>(jser, data));
+            break;
+
+        case DatatypeEnum::EdgeDetectorConfig:
+            return std::make_shared<EdgeDetectorConfig>(parseDatatype<RawEdgeDetectorConfig>(jser, data));
             break;
     }
 
