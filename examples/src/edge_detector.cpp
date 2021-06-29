@@ -60,7 +60,7 @@ int main() {
     // Connect to device and start pipeline
     dai::Device device(pipeline);
 
-    // Output queue will be used to get the depth frames from the outputs defined above
+    // Output/input queues
     auto edgeLeftQueue = device.getOutputQueue(edgeLeftStr, 8, false);
     auto edgeRightQueue = device.getOutputQueue(edgeRightStr, 8, false);
     auto edgeRgbQueue = device.getOutputQueue(edgeRgbStr, 8, false);
