@@ -4,11 +4,8 @@ namespace node {
 
 ImageManip::ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     : Node(par, nodeId), rawConfig(std::make_shared<RawImageManipConfig>()), initialConfig(rawConfig) {
-    firstInput = &inputConfig;
-    lastInput = &inputImage;
-
-    firstOutput = &out;
-    lastOutput = &out;
+    inputs = {&inputConfig, &inputImage};
+    outputs = {&out};
 }
 
 std::string ImageManip::getName() const {

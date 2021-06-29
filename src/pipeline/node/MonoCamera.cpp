@@ -11,11 +11,8 @@ MonoCamera::MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     properties.resolution = MonoCameraProperties::SensorResolution::THE_720_P;
     properties.fps = 30.0;
 
-    firstInput = &inputControl;
-    lastInput = &inputControl;
-
-    firstOutput = &out;
-    lastOutput = &raw;
+    inputs = {&inputControl};
+    outputs = {&out, &raw};
 }
 
 std::string MonoCamera::getName() const {

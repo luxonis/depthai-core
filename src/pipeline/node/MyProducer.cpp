@@ -4,8 +4,7 @@ namespace dai {
 namespace node {
 
 MyProducer::MyProducer(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
-    firstOutput = &out;
-    lastOutput = &out;
+    outputs = {&out};
 }
 
 std::string MyProducer::getName() const {

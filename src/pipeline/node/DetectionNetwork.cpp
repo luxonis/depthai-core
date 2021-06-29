@@ -12,11 +12,8 @@ namespace node {
 // Base Detection Network Class
 //--------------------------------------------------------------------
 DetectionNetwork::DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : NeuralNetwork(par, nodeId) {
-    firstInput = &input;
-    lastInput = &input;
-
-    firstOutput = &out;
-    lastOutput = &passthrough;
+    inputs = {&input};
+    outputs = {&out, &passthrough};
 }
 
 std::string DetectionNetwork::getName() const {

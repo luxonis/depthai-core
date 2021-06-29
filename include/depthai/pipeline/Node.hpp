@@ -38,8 +38,8 @@ class Node {
     class Input;
     class Output;
 
-    Output *firstOutput = nullptr, *lastOutput = nullptr;
-    Input *firstInput = nullptr, *lastInput = nullptr;
+    std::vector<Output*> outputs;
+    std::vector<Input*> inputs;
 
     struct DatatypeHierarchy {
         DatatypeHierarchy(DatatypeEnum d, bool c) : datatype(d), descendants(c) {}
@@ -193,20 +193,20 @@ class Node {
     virtual std::vector<std::shared_ptr<Asset>> getAssets();
 
     std::vector<Output*> getOutputRefs() {
-        if(firstOutput == nullptr) return {};
-        return std::vector<Output*>{firstOutput, lastOutput};
+        if(outputs.empty()) return {};
+        return outputs;
     }
     std::vector<const Output*> getOutputRefs() const {
-        if(firstOutput == nullptr) return {};
-        return std::vector<const Output*>{firstOutput, lastOutput};
+        if(outputs.empty()) return {};
+        return {outputs.begin(), outputs.end()};
     }
     std::vector<Input*> getInputRefs() {
-        if(firstInput == nullptr) return {};
-        return std::vector<Input*>{firstInput, lastInput};
+        if(inputs.empty()) return {};
+        return inputs;
     }
     std::vector<const Input*> getInputRefs() const {
-        if(firstInput == nullptr) return {};
-        return std::vector<const Input*>{firstInput, lastInput};
+        if(inputs.empty()) return {};
+        return {inputs.begin(), inputs.end()};
     }
 
     /// Connection between an Input and Output
