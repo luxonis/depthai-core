@@ -31,7 +31,7 @@ void Device::closeImpl() {
     // Clear map
     callbackIdMap.clear();
 
-    // Close the device before clearning the queues
+    // Close the device before clearing the queues
     DeviceBase::closeImpl();
 
     // Clear queues
