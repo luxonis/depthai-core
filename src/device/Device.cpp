@@ -464,25 +464,24 @@ void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToM
     deviceInfo.state = X_LINK_BOOTED;
 
     // prepare rpc for both attached and host controlled mode
-    rpcStream = std::unique_ptr<XLinkStream>(new XLinkStream(*connection, dai::XLINK_CHANNEL_MAIN_RPC, dai::XLINK_USB_BUFFER_MAX_SIZE));
+    rpcStream = std::make_unique<XLinkStream>(*connection, dai::XLINK_CHANNEL_MAIN_RPC, dai::XLINK_USB_BUFFER_MAX_SIZE);
 
-    client = std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>(
-        new nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>([this](nanorpc::core::type::buffer request) {
-            // TODO(TheMarpe) - causes issues on Windows
-            // std::unique_lock<std::mutex> lock(this->rpcMutex);
+    client = std::make_unique<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>([this](nanorpc::core::type::buffer request) {
+        // TODO(TheMarpe) - causes issues on Windows
+        // std::unique_lock<std::mutex> lock(this->rpcMutex);
 
-            // Log the request data
-            if(spdlog::get_level() == spdlog::level::trace) {
-                spdlog::trace("RPC: {}", nlohmann::json::from_msgpack(request).dump());
-            }
+        // Log the request data
+        if(spdlog::get_level() == spdlog::level::trace) {
+            spdlog::trace("RPC: {}", nlohmann::json::from_msgpack(request).dump());
+        }
 
-            // Send request to device
-            rpcStream->write(std::move(request));
+        // Send request to device
+        rpcStream->write(std::move(request));
 
-            // Receive response back
-            // Send to nanorpc to parse
-            return rpcStream->read();
-        }));
+        // Receive response back
+        // Send to nanorpc to parse
+        return rpcStream->read();
+    });
 
     // prepare watchdog thread, which will keep device alive
     watchdogThread = std::thread([this]() {

@@ -24,65 +24,60 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
     XLinkStream stream(*conn, name, 1);
 
     // Creates a thread which reads from connection into the queue
-    readingThread = std::thread(std::bind(
-        [this, conn](XLinkStream& stream) {
-            std::uint64_t numPacketsRead = 0;
-            try {
-                while(running) {
-                    // read packet
-                    streamPacketDesc_t* packet;
+    readingThread = std::thread([this, stream = std::move(stream)]() mutable {
+        std::uint64_t numPacketsRead = 0;
+        try {
+            while(running) {
+                // read packet
+                streamPacketDesc_t* packet;
 
-                    // Blocking
-                    packet = stream.readRaw();
+                // Blocking
+                packet = stream.readRaw();
 
-                    // parse packet
-                    auto data = parsePacketToADatatype(packet);
+                // parse packet
+                auto data = parsePacketToADatatype(packet);
 
-                    // Trace level debugging
-                    if(spdlog::get_level() == spdlog::level::trace) {
-                        std::vector<std::uint8_t> metadata;
-                        DatatypeEnum type;
-                        data->getRaw()->serialize(metadata, type);
-                        std::string objData = "/";
-                        if(!metadata.empty()) objData = nlohmann::json::from_msgpack(metadata).dump();
-                        spdlog::trace("Received message from device ({}) - data size: {}, object type: {} object data: {}",
-                                      name,
-                                      data->getRaw()->data.size(),
-                                      type,
-                                      objData);
-                    }
+                // Trace level debugging
+                if(spdlog::get_level() == spdlog::level::trace) {
+                    std::vector<std::uint8_t> metadata;
+                    DatatypeEnum type;
+                    data->getRaw()->serialize(metadata, type);
+                    std::string objData = "/";
+                    if(!metadata.empty()) objData = nlohmann::json::from_msgpack(metadata).dump();
+                    spdlog::trace(
+                        "Received message from device ({}) - data size: {}, object type: {} object data: {}", name, data->getRaw()->data.size(), type, objData);
+                }
 
-                    // release packet
-                    stream.readRawRelease();
+                // release packet
+                stream.readRawRelease();
 
-                    // Add 'data' to queue
-                    queue.push(data);
+                // Add 'data' to queue
+                queue.push(data);
 
-                    // Increment numPacketsRead
-                    numPacketsRead++;
+                // Increment numPacketsRead
+                numPacketsRead++;
 
-                    // Call callbacks
-                    {
-                        std::unique_lock<std::mutex> l(callbacksMtx);
-                        for(const auto& kv : callbacks) {
-                            const auto& callback = kv.second;
-                            try {
-                                callback(name, data);
-                            } catch(const std::exception& ex) {
-                                spdlog::error("Callback with id: {} throwed an exception: {}", kv.first, ex.what());
-                            }
+                // Call callbacks
+                {
+                    std::unique_lock<std::mutex> l(callbacksMtx);
+                    for(const auto& kv : callbacks) {
+                        const auto& callback = kv.second;
+                        try {
+                            callback(name, data);
+                        } catch(const std::exception& ex) {
+                            spdlog::error("Callback with id: {} throwed an exception: {}", kv.first, ex.what());
                         }
                     }
                 }
-
-            } catch(const std::exception& ex) {
-                exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
             }
 
-            queue.destruct();
-            running = false;
-        },
-        std::move(stream)));
+        } catch(const std::exception& ex) {
+            exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
+        }
+
+        queue.destruct();
+        running = false;
+    });
 }
 
 DataOutputQueue::~DataOutputQueue() {
@@ -113,7 +108,7 @@ void DataOutputQueue::setMaxSize(unsigned int maxSize) {
     queue.setMaxSize(maxSize);
 }
 
-unsigned int DataOutputQueue::getMaxSize(unsigned int maxSize) const {
+unsigned int DataOutputQueue::getMaxSize() const {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
     return queue.getMaxSize();
 }
@@ -164,46 +159,43 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
     // open stream with default XLINK_USB_BUFFER_MAX_SIZE write size
     XLinkStream stream(*conn, name, dai::XLINK_USB_BUFFER_MAX_SIZE);
 
-    writingThread = std::thread(std::bind(
-        [this, conn](XLinkStream& stream) {
-            std::uint64_t numPacketsSent = 0;
-            try {
-                while(running) {
-                    // get data from queue
-                    std::shared_ptr<RawBuffer> data;
-                    if(!queue.waitAndPop(data)) {
-                        continue;
-                    }
-
-                    // Trace level debugging
-                    if(spdlog::get_level() == spdlog::level::trace) {
-                        std::vector<std::uint8_t> metadata;
-                        DatatypeEnum type;
-                        data->serialize(metadata, type);
-                        std::string objData = "/";
-                        if(!metadata.empty()) objData = nlohmann::json::from_msgpack(metadata).dump();
-                        spdlog::trace(
-                            "Sending message to device ({}) - data size: {}, object type: {} object data: {}", name, data->data.size(), type, objData);
-                    }
-
-                    // serialize
-                    auto serialized = serializeData(data);
-
-                    // Blocking
-                    stream.write(serialized);
-
-                    // Increment num packets sent
-                    numPacketsSent++;
+    writingThread = std::thread([this, stream = std::move(stream)]() mutable {
+        std::uint64_t numPacketsSent = 0;
+        try {
+            while(running) {
+                // get data from queue
+                std::shared_ptr<RawBuffer> data;
+                if(!queue.waitAndPop(data)) {
+                    continue;
                 }
 
-            } catch(const std::exception& ex) {
-                exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
+                // Trace level debugging
+                if(spdlog::get_level() == spdlog::level::trace) {
+                    std::vector<std::uint8_t> metadata;
+                    DatatypeEnum type;
+                    data->serialize(metadata, type);
+                    std::string objData = "/";
+                    if(!metadata.empty()) objData = nlohmann::json::from_msgpack(metadata).dump();
+                    spdlog::trace("Sending message to device ({}) - data size: {}, object type: {} object data: {}", name, data->data.size(), type, objData);
+                }
+
+                // serialize
+                auto serialized = serializeData(data);
+
+                // Blocking
+                stream.write(serialized);
+
+                // Increment num packets sent
+                numPacketsSent++;
             }
 
-            queue.destruct();
-            running = false;
-        },
-        std::move(stream)));
+        } catch(const std::exception& ex) {
+            exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
+        }
+
+        queue.destruct();
+        running = false;
+    });
 }
 
 DataInputQueue::~DataInputQueue() {
@@ -233,7 +225,7 @@ void DataInputQueue::setMaxSize(unsigned int maxSize) {
     queue.setMaxSize(maxSize);
 }
 
-unsigned int DataInputQueue::getMaxSize(unsigned int maxSize) const {
+unsigned int DataInputQueue::getMaxSize() const {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
     return queue.getMaxSize();
 }

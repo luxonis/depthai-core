@@ -207,7 +207,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd) 
     });
 
     // prepare bootloader stream
-    stream = std::unique_ptr<XLinkStream>(new XLinkStream(*connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE));
+    stream = std::make_unique<XLinkStream>(*connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
 }
 
 void DeviceBootloader::close() {
