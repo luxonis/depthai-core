@@ -120,7 +120,7 @@ std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
             break;
 
         case DatatypeEnum::SpatialLocationCalculatorConfig:
-            return parseDatatype<RawSpatialLocations>(jser, data);
+            return parseDatatype<RawSpatialLocationCalculatorConfig>(jser, data);
             break;
 
         case DatatypeEnum::Tracklets:
