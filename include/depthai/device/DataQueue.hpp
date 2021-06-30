@@ -66,7 +66,7 @@ class DataOutputQueue {
      *
      * @returns Maximum queue size
      */
-    unsigned int getMaxSize(unsigned int maxSize) const;
+    unsigned int getMaxSize() const;
 
     /**
      * Gets queues name
@@ -379,7 +379,7 @@ class DataInputQueue {
      *
      * @returns Maximum queue size
      */
-    unsigned int getMaxSize(unsigned int maxSize) const;
+    unsigned int getMaxSize() const;
 
     /**
      * Gets queues name
