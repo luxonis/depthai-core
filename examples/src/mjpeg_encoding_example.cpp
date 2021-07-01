@@ -1,47 +1,43 @@
-
-#include <cstdio>
 #include <iostream>
-
-#include "utility.hpp"
 
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-int main(int argc, char** argv) {
-    using namespace std;
+int main() {
     using namespace std::chrono;
 
-    dai::Pipeline p;
+    // Create pipeline
+    dai::Pipeline pipeline;
 
-    auto colorCam = p.create<dai::node::ColorCamera>();
-    auto xout = p.create<dai::node::XLinkOut>();
-    auto xout2 = p.create<dai::node::XLinkOut>();
-    auto videnc = p.create<dai::node::VideoEncoder>();
+    // Define sources and outputs
+    auto camRgb = pipeline.create<dai::node::ColorCamera>();
+    auto xout = pipeline.create<dai::node::XLinkOut>();
+    auto xout2 = pipeline.create<dai::node::XLinkOut>();
+    auto videnc = pipeline.create<dai::node::VideoEncoder>();
 
-    // XLinkOut
     xout->setStreamName("mjpeg");
     xout2->setStreamName("preview");
 
     // ColorCamera
-    colorCam->setPreviewSize(300, 300);
-    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    // colorCam->setFps(5.0);
-    colorCam->setInterleaved(true);
+    camRgb->setPreviewSize(300, 300);
+    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    // camRgb->setFps(5.0);
+    camRgb->setInterleaved(true);
 
     // VideoEncoder
     videnc->setDefaultProfilePreset(1920, 1080, 30, dai::VideoEncoderProperties::Profile::MJPEG);
 
-    // Link plugins CAM -> XLINK
-    colorCam->video.link(videnc->input);
-    colorCam->preview.link(xout2->input);
+    // Linking
+    camRgb->video.link(videnc->input);
+    camRgb->preview.link(xout2->input);
     videnc->bitstream.link(xout->input);
 
-    // Connect and start the pipeline
-    dai::Device d(p);
+    // Connect to device and start pipeline
+    dai::Device device(pipeline);
 
-    auto mjpegQueue = d.getOutputQueue("mjpeg", 8, false);
-    auto previewQueue = d.getOutputQueue("preview", 8, false);
-    while(1) {
+    auto mjpegQueue = device.getOutputQueue("mjpeg", 8, false);
+    auto previewQueue = device.getOutputQueue("preview", 8, false);
+    while(true) {
         auto t1 = steady_clock::now();
         auto preview = previewQueue->get<dai::ImgFrame>();
         auto t2 = steady_clock::now();
@@ -69,6 +65,5 @@ int main(int argc, char** argv) {
             return 0;
         }
     }
-
     return 0;
 }

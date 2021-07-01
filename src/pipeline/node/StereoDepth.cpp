@@ -8,7 +8,8 @@
 namespace dai {
 namespace node {
 
-StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
+StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
+    : Node(par, nodeId), rawConfig(std::make_shared<RawStereoDepthConfig>()), initialConfig(rawConfig) {
     // 'properties' defaults already set
 }
 
@@ -21,11 +22,12 @@ std::vector<Node::Output> StereoDepth::getOutputs() {
 }
 
 std::vector<Node::Input> StereoDepth::getInputs() {
-    return {left, right};
+    return {inputConfig, left, right};
 }
 
 nlohmann::json StereoDepth::getProperties() {
     nlohmann::json j;
+    properties.initialConfig = *rawConfig;
     nlohmann::to_json(j, properties);
     return j;
 }
@@ -35,38 +37,77 @@ std::shared_ptr<Node> StereoDepth::clone() {
 }
 
 void StereoDepth::loadCalibrationData(const std::vector<std::uint8_t>& data) {
-    if(data.empty()) {
-        // Will use EEPROM data
-        properties.calibration.clear();
-    } else {
-        properties.calibration = data;
-    }
+    (void)data;
+    spdlog::warn("{} is deprecated. This function call is replaced by Pipeline::setCalibrationData under pipeline. ", __func__);
 }
 
 void StereoDepth::loadCalibrationFile(const std::string& path) {
-    std::vector<std::uint8_t> data;
-    if(!path.empty()) {
-        std::ifstream calib(path, std::ios::binary);
-        if(!calib.is_open()) {
-            throw std::runtime_error("StereoDepth node | Unable to open calibration file: " + path);
-        }
-        data = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(calib), {});
-    }
-    loadCalibrationData(data);
+    (void)path;
+    spdlog::warn("{} is deprecated. This function call is replaced by Pipeline::setCalibrationData under pipeline. ", __func__);
 }
 
 void StereoDepth::setEmptyCalibration(void) {
-    // Special case: a single element
-    const std::vector<std::uint8_t> empty = {0};
-    properties.calibration = empty;
+    setRectification(false);
+    spdlog::warn("{} is deprecated. This function call can be replaced by Stereo::setRectification(false). ", __func__);
+}
+
+void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const std::vector<std::uint8_t>& dataRight) {
+    if(dataLeft.size() != dataRight.size()) {
+        throw std::runtime_error("StereoDepth | left and right mesh sizes must match");
+    }
+
+    Asset meshAsset;
+    std::string assetKey;
+    meshAsset.alignment = 64;
+
+    meshAsset.data = dataLeft;
+    assetKey = "meshLeft";
+    assetManager.set(assetKey, meshAsset);
+    properties.mesh.meshLeftUri = std::string("asset:") + assetKey;
+
+    meshAsset.data = dataRight;
+    assetKey = "meshRight";
+    assetManager.set(assetKey, meshAsset);
+    properties.mesh.meshRightUri = std::string("asset:") + assetKey;
+
+    properties.mesh.meshSize = meshAsset.data.size();
+}
+
+void StereoDepth::loadMeshFiles(const std::string& pathLeft, const std::string& pathRight) {
+    std::ifstream streamLeft(pathLeft, std::ios::binary);
+    if(!streamLeft.is_open()) {
+        throw std::runtime_error("StereoDepth | Cannot open mesh at path: " + pathLeft);
+    }
+    std::vector<std::uint8_t> dataLeft = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(streamLeft), {});
+
+    std::ifstream streamRight(pathRight, std::ios::binary);
+    if(!streamRight.is_open()) {
+        throw std::runtime_error("StereoDepth | Cannot open mesh at path: " + pathRight);
+    }
+    std::vector<std::uint8_t> dataRight = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(streamRight), {});
+
+    loadMeshData(dataLeft, dataRight);
+}
+
+void StereoDepth::setMeshStep(int width, int height) {
+    properties.mesh.stepWidth = width;
+    properties.mesh.stepHeight = height;
 }
 
 void StereoDepth::setInputResolution(int width, int height) {
     properties.width = width;
     properties.height = height;
 }
-void StereoDepth::setMedianFilter(Properties::MedianFilter median) {
-    properties.median = median;
+void StereoDepth::setOutputSize(int width, int height) {
+    properties.outWidth = width;
+    properties.outHeight = height;
+}
+void StereoDepth::setOutputKeepAspectRatio(bool keep) {
+    properties.outKeepAspectRatio = keep;
+}
+void StereoDepth::setMedianFilter(dai::MedianFilter median) {
+    initialConfig.setMedianFilter(median);
+    properties.initialConfig = *rawConfig;
 }
 void StereoDepth::setDepthAlign(Properties::DepthAlign align) {
     properties.depthAlign = align;
@@ -77,7 +118,11 @@ void StereoDepth::setDepthAlign(CameraBoardSocket camera) {
     properties.depthAlignCamera = camera;
 }
 void StereoDepth::setConfidenceThreshold(int confThr) {
-    properties.confidenceThreshold = confThr;
+    initialConfig.setConfidenceThreshold(confThr);
+    properties.initialConfig = *rawConfig;
+}
+void StereoDepth::setRectification(bool enable) {
+    properties.enableRectification = enable;
 }
 void StereoDepth::setLeftRightCheck(bool enable) {
     properties.enableLeftRightCheck = enable;
@@ -101,6 +146,13 @@ void StereoDepth::setOutputRectified(bool enable) {
 void StereoDepth::setOutputDepth(bool enable) {
     (void)enable;
     spdlog::warn("{} is deprecated. The output is auto-enabled if used", __func__);
+}
+
+float StereoDepth::getMaxDisparity() const {
+    float maxDisp = 95.0;
+    if(properties.enableExtendedDisparity) maxDisp *= 2;
+    if(properties.enableSubpixel) maxDisp *= 32;
+    return maxDisp;
 }
 
 }  // namespace node

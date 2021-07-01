@@ -17,7 +17,7 @@ std::string MonoCamera::getName() const {
 }
 
 std::vector<Node::Output> MonoCamera::getOutputs() {
-    return {out};
+    return {out, raw};
 }
 
 std::vector<Node::Input> MonoCamera::getInputs() {
