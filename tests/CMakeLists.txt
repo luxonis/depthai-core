@@ -88,6 +88,7 @@ target_compile_definitions(openvino_blob PRIVATE
     OPENVINO_2021_1_BLOB_PATH="${openvino_2021_1_blob}"
     OPENVINO_2021_2_BLOB_PATH="${openvino_2021_2_blob}"
     OPENVINO_2021_3_BLOB_PATH="${openvino_2021_3_blob}"
+    OPENVINO_2021_4_BLOB_PATH="${openvino_2021_3_blob}"
 )
 
 

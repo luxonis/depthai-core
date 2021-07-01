@@ -11,7 +11,7 @@
 
 namespace dai
 {
-    
+
 class Resources {
     // private constructor
     Resources();
@@ -29,7 +29,7 @@ public:
     void operator=(Resources const&) = delete;
 
     // Available resources
-    std::vector<std::uint8_t> getDeviceFirmware(bool usb2Mode, OpenVINO::Version version = OpenVINO::VERSION_2020_1);
+    std::vector<std::uint8_t> getDeviceFirmware(bool usb2Mode, OpenVINO::Version version = OpenVINO::VERSION_2021_4);
     std::vector<std::uint8_t> getBootloaderFirmware();
 
 };
