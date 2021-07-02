@@ -57,6 +57,14 @@ class CameraControl : public Buffer {
      */
     void setStopStreaming();
 
+    /**
+     * Set a command to enable external trigger snapshot mode
+     *
+     * A rising edge on the sensor FSIN pin will make it capture a sequence of
+     * `numFramesBurst` frames
+     */
+    void setExternalTrigger(int numFramesBurst);
+
     // Focus
     /**
      * Set a command to specify autofocus mode
