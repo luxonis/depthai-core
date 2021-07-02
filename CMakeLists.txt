@@ -26,7 +26,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.3.0" LANGUAGES CXX C)
+project(depthai VERSION "2.5.0" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -138,6 +138,7 @@ add_library(${TARGET_CORE_NAME}
     src/device/DeviceBootloader.cpp
     src/device/DataQueue.cpp
     src/device/CallbackHandler.cpp
+    src/device/CalibrationHandler.cpp
     src/pipeline/Pipeline.cpp
     src/pipeline/AssetManager.cpp
     src/pipeline/Node.cpp
@@ -155,6 +156,8 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/SystemLogger.cpp
     src/pipeline/node/SpatialLocationCalculator.cpp
     src/pipeline/node/ObjectTracker.cpp
+    src/pipeline/node/IMU.cpp
+    src/pipeline/node/EdgeDetector.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
@@ -167,6 +170,9 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/SpatialLocationCalculatorData.cpp
     src/pipeline/datatype/SpatialLocationCalculatorConfig.cpp
     src/pipeline/datatype/Tracklets.cpp
+    src/pipeline/datatype/IMUData.cpp
+    src/pipeline/datatype/StereoDepthConfig.cpp
+    src/pipeline/datatype/EdgeDetectorConfig.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/xlink/XLinkConnection.cpp
@@ -192,10 +198,16 @@ if(DEPTHAI_CLANG_TIDY)
     target_clangtidy_setup(${TARGET_CORE_NAME})
 endif()
 
-# Set compiler features (c++11), and disables extensions (g++11)
-set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD 11)
+# Set compiler features (c++14), and disables extensions (g++14)
+set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD 14)
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_EXTENSIONS OFF)
+# Add interface transitive property (C++14)
+if(${CMAKE_VERSION} VERSION_LESS "3.8.0") 
+    target_compile_features(${TARGET_CORE_NAME} INTERFACE cxx_generic_lambdas)
+else()
+    target_compile_features(${TARGET_CORE_NAME} INTERFACE cxx_std_14)
+endif()
 
 # First specify options
 option(DEPTHAI_BUILD_TESTS "Build tests" OFF)

@@ -91,7 +91,7 @@ class SpatialDetectionNetwork : public DetectionNetwork {
 };
 
 /**
- * MobileNetSpatialDetectionNetwork. Mobilenet-SSD based network with spatial location data.
+ * MobileNetSpatialDetectionNetwork node. Mobilenet-SSD based network with spatial location data.
  */
 class MobileNetSpatialDetectionNetwork : public SpatialDetectionNetwork {
    protected:
@@ -102,7 +102,7 @@ class MobileNetSpatialDetectionNetwork : public SpatialDetectionNetwork {
 };
 
 /**
- * YoloSpatialDetectionNetwork. (tiny)Yolov3/v4 based network with spatial location data.
+ * YoloSpatialDetectionNetwork node. (tiny)Yolov3/v4 based network with spatial location data.
  */
 class YoloSpatialDetectionNetwork : public SpatialDetectionNetwork {
    protected:

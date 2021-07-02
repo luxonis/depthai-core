@@ -8,7 +8,7 @@ else()
     hunter_add_package(XLink)
     hunter_add_package(BZip2)
     hunter_add_package(FP16)
-    hunter_add_package(libarchive)
+    hunter_add_package(libarchive-luxonis)
     hunter_add_package(spdlog)
 endif()
 
