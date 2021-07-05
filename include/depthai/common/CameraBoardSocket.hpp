@@ -1,5 +1,7 @@
 #pragma once
 
+#include <ostream>
+
 #include "depthai-shared/common/CameraBoardSocket.hpp"
 
 namespace dai {
