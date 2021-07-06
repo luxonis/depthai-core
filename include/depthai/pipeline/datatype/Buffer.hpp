@@ -10,7 +10,7 @@ namespace dai {
 
 /// Base message - buffer of binary data
 class Buffer : public ADatatype {
-    virtual std::shared_ptr<dai::RawBuffer> serialize() const;
+    std::shared_ptr<dai::RawBuffer> serialize() const override;
 
    public:
     /// Creates Buffer message

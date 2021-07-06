@@ -11,12 +11,13 @@ namespace dai {
 class ADatatype {
    protected:
     friend class DataInputQueue;
-    virtual std::shared_ptr<dai::RawBuffer> serialize() const = 0;
+    friend class StreamMessageParser;
     std::shared_ptr<RawBuffer> raw;
 
    public:
     explicit ADatatype(std::shared_ptr<RawBuffer> r) : raw(std::move(r)) {}
     virtual ~ADatatype() = default;
+    virtual std::shared_ptr<dai::RawBuffer> serialize() const = 0;
     std::shared_ptr<RawBuffer> getRaw() {
         return raw;
     }
