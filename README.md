@@ -66,7 +66,7 @@ target_link_libraries([my-app] PRIVATE depthai::opencv)
 
 ### Non-CMake integration (Visual Studio, Xcode, CodeBlocks, ...)
 
-To integrate into a different build system than CMake, prefered way is compiling as dynamic library and pointing to correct include directories.
+To integrate into a different build system than CMake, prefered way is compiling as dynamic library and setting correct build options.
 1. First build as dynamic library: [Building Dynamic library](###dynamic-library)
 2. Then install: [Installing](##installing)
 3. Set needed library directories:
@@ -75,7 +75,10 @@ To integrate into a different build system than CMake, prefered way is compiling
 4. And include directories
     - `build/install/include` (library headers)
     - `build/install/include/depthai-shared/3rdparty` (shared 3rdparty headers)
-    - `build/install/lib/cmake/depthai/dependencies/include` (dependencies headers)
+    - `build/install/lib/cmake/depthai/dependencies/include` (dependency headers)
+5. Add the following defines
+    - `XLINK_USE_MX_ID_NAME=ON`
+    - `__PC__=ON`
 
 > ℹ️ Threading library might need to be linked to explicitly.
 
