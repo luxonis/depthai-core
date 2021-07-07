@@ -82,6 +82,9 @@ To integrate into a different build system than CMake, prefered way is compiling
 
 > ℹ️ Threading library might need to be linked to explicitly.
 
+> ℹ️ Check `build/depthai-core-integration.txt` or `build/depthai-opencv-integration.txt` for up to date define options.
+The generated integration file also specifies include paths without requiring installation.
+
 ## Building
 
 Make sure submodules are updated
