@@ -40,7 +40,7 @@ int main() {
 
     manip->initialConfig.setCropRect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
     manip->setMaxOutputFrameSize(monoRight->getResolutionHeight() * monoRight->getResolutionWidth() * 3);
-    stereo->setConfidenceThreshold(200);
+    stereo->initialConfig.setConfidenceThreshold(200);
 
     // Linking
     configIn->out.link(manip->inputConfig);

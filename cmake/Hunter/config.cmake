@@ -7,9 +7,9 @@ hunter_config(
 
 hunter_config(
     XLink
-    VERSION "luxonis-2021.2-tcpip_driver_stream_desync_fix"
-    URL "https://github.com/luxonis/XLink/archive/cb21bd48c0908c1ed89c1a5b1189268f431204bf.tar.gz"
-    SHA1 "716f6730a8a6245a7a8ef0d0a22cfc5e21e2df9c"
+    VERSION "luxonis-2021.3-develop_tcpip_driver"
+    URL "https://github.com/luxonis/XLink/archive/eb17e70a52cce578e015780788922c8e8ed43b05.tar.gz"
+    SHA1 "25d6a7e9e9f965aa84f13f762ea47a16fa57e67b"
 )
 
 hunter_config(
