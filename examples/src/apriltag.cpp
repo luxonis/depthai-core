@@ -25,7 +25,7 @@ int main() {
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
 
-    aprilTag->initialConfig.setType(dai::AprilTagConfigData::AprilTagType::TAG_36H11);
+    aprilTag->initialConfig.setType(dai::AprilTagType::Type::TAG_36H11);
 
     // Linking
     aprilTag->passthroughInputImage.link(xoutMono->input);
@@ -60,12 +60,12 @@ int main() {
 
         cv::Mat frame = inFrame->getCvFrame();
 
-        auto aprilTagData = aprilTagQueue->get<dai::AprilTagData>()->getAprilTag();
+        auto aprilTagData = aprilTagQueue->get<dai::AprilTagData>()->aprilTags;
         for(auto aprilTag : aprilTagData) {
-            auto xmin = (int)aprilTag.p.x;
-            auto ymin = (int)aprilTag.p.y;
-            auto xmax = xmin + (int)aprilTag.p.width;
-            auto ymax = ymin + (int)aprilTag.p.height;
+            auto xmin = (int)aprilTag.points.x;
+            auto ymin = (int)aprilTag.points.y;
+            auto xmax = xmin + (int)aprilTag.points.width;
+            auto ymax = ymin + (int)aprilTag.points.height;
 
             std::stringstream idStr;
             idStr << "ID: " << aprilTag.id;

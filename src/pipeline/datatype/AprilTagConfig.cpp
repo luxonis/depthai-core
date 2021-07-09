@@ -9,11 +9,11 @@ std::shared_ptr<RawBuffer> AprilTagConfig::serialize() const {
 AprilTagConfig::AprilTagConfig() : Buffer(std::make_shared<RawAprilTagConfig>()), cfg(*dynamic_cast<RawAprilTagConfig*>(raw.get())) {}
 AprilTagConfig::AprilTagConfig(std::shared_ptr<RawAprilTagConfig> ptr) : Buffer(std::move(ptr)), cfg(*dynamic_cast<RawAprilTagConfig*>(raw.get())) {}
 
-void AprilTagConfig::setType(AprilTagConfigData::AprilTagType type) {
-    cfg.config.type = type;
+void AprilTagConfig::setType(AprilTagType::Type t) {
+    cfg.config.t = t;
 }
 
-AprilTagConfigData AprilTagConfig::getConfigData() const {
+AprilTagType AprilTagConfig::getConfigData() const {
     return cfg.config;
 }
 

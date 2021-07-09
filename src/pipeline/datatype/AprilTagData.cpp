@@ -10,8 +10,4 @@ AprilTagData::AprilTagData() : Buffer(std::make_shared<RawAprilTags>()), rawdata
 AprilTagData::AprilTagData(std::shared_ptr<RawAprilTags> ptr)
     : Buffer(std::move(ptr)), rawdata(*dynamic_cast<RawAprilTags*>(raw.get())), aprilTags(rawdata.aprilTags) {}
 
-std::vector<AprilTags>& AprilTagData::getAprilTag() const {
-    return rawdata.aprilTags;
-}
-
 }  // namespace dai

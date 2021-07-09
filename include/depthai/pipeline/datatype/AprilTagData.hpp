@@ -23,12 +23,6 @@ class AprilTagData : public Buffer {
     explicit AprilTagData(std::shared_ptr<RawAprilTags> ptr);
     virtual ~AprilTagData() = default;
 
-    /**
-     * Retrieve configuration data for AprilTagData.
-     * @returns Vector of spatial location data, carrying spatial information (X,Y,Z)
-     */
-    std::vector<AprilTags>& getAprilTag() const;
-
     std::vector<AprilTags>& aprilTags;
 };
 

@@ -9,7 +9,7 @@
 namespace dai {
 
 /**
- * AprilTagConfig message. Carries ROI (region of interest) and threshold for depth calculation
+ * AprilTagConfig message.
  */
 class AprilTagConfig : public Buffer {
     std::shared_ptr<RawBuffer> serialize() const override;
@@ -24,16 +24,15 @@ class AprilTagConfig : public Buffer {
     virtual ~AprilTagConfig() = default;
 
     /**
-     * Set a vector of ROIs as configuration data.
-     * @param ROIs Vector of configuration parameters for ROIs (region of interests)
+     * @param t AprilTag type
      */
-    void setType(AprilTagConfigData::AprilTagType type);
+    void setType(AprilTagType::Type t);
 
     /**
      * Retrieve configuration data for AprilTag
-     * @returns Vector of configuration parameters for ROIs (region of interests)
+     * @returns Vector of configuration parameters for type (region of interests)
      */
-    AprilTagConfigData getConfigData() const;
+    AprilTagType getConfigData() const;
 };
 
 }  // namespace dai

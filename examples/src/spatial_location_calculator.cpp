@@ -1,31 +1,46 @@
 #include <iostream>
-#include <chrono>
 
 #include "utility.hpp"
 
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
+static constexpr float stepSize = 0.05;
+
+static std::atomic<bool> newConfig{false};
+
 int main() {
     using namespace std;
-    using namespace std::chrono;
 
     // Create pipeline
     dai::Pipeline pipeline;
 
     // Define sources and outputs
     auto monoLeft = pipeline.create<dai::node::MonoCamera>();
+    auto monoRight = pipeline.create<dai::node::MonoCamera>();
+    auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto spatialDataCalculator = pipeline.create<dai::node::SpatialLocationCalculator>();
 
     auto xoutDepth = pipeline.create<dai::node::XLinkOut>();
     auto xoutSpatialData = pipeline.create<dai::node::XLinkOut>();
+    auto xinSpatialCalcConfig = pipeline.create<dai::node::XLinkIn>();
 
     xoutDepth->setStreamName("depth");
     xoutSpatialData->setStreamName("spatialData");
+    xinSpatialCalcConfig->setStreamName("spatialCalcConfig");
 
     // Properties
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+
+    bool lrcheck = false;
+    bool subpixel = false;
+
+    stereo->setConfidenceThreshold(255);
+    stereo->setLeftRightCheck(lrcheck);
+    stereo->setSubpixel(subpixel);
 
     // Config
     dai::Point2f topLeft(0.4f, 0.4f);
@@ -40,10 +55,14 @@ int main() {
     spatialDataCalculator->initialConfig.addROI(config);
 
     // Linking
+    monoLeft->out.link(stereo->left);
+    monoRight->out.link(stereo->right);
+
     spatialDataCalculator->passthroughDepth.link(xoutDepth->input);
-    monoLeft->out.link(spatialDataCalculator->inputDepth);
+    stereo->depth.link(spatialDataCalculator->inputDepth);
 
     spatialDataCalculator->out.link(xoutSpatialData->input);
+    xinSpatialCalcConfig->out.link(spatialDataCalculator->inputConfig);
 
     // Connect to device and start pipeline
     dai::Device device(pipeline);
@@ -51,62 +70,89 @@ int main() {
     // Output queue will be used to get the depth frames from the outputs defined above
     auto depthQueue = device.getOutputQueue("depth", 8, false);
     auto spatialCalcQueue = device.getOutputQueue("spatialData", 8, false);
+    auto spatialCalcConfigInQueue = device.getInputQueue("spatialCalcConfig");
 
-    auto color = cv::Scalar(0, 255, 0);
+    auto color = cv::Scalar(255, 255, 255);
 
-    auto startTime = steady_clock::now();
-    int counter = 0;
-    float fps = 0;
+    std::cout << "Use WASD keys to move ROI!" << std::endl;
 
     while(true) {
         auto inDepth = depthQueue->get<dai::ImgFrame>();
 
-        counter++;
-        auto currentTime = steady_clock::now();
-        auto elapsed = duration_cast<duration<float>>(currentTime - startTime);
-        if(elapsed > seconds(1)) {
-            fps = counter / elapsed.count();
-            counter = 0;
-            startTime = currentTime;
-        }
-
-
-        cv::Mat depthFrame = inDepth->getCvFrame();
+        cv::Mat depthFrame = inDepth->getFrame();
+        cv::Mat depthFrameColor;
+        cv::normalize(depthFrame, depthFrameColor, 255, 0, cv::NORM_INF, CV_8UC1);
+        cv::equalizeHist(depthFrameColor, depthFrameColor);
+        cv::applyColorMap(depthFrameColor, depthFrameColor, cv::COLORMAP_HOT);
 
         auto spatialData = spatialCalcQueue->get<dai::SpatialLocationCalculatorData>()->getSpatialLocations();
         for(auto depthData : spatialData) {
-            // cout << "id: " << depthData.id << endl;
+            auto roi = depthData.config.roi;
+            roi = roi.denormalize(depthFrameColor.cols, depthFrameColor.rows);
+            auto xmin = (int)roi.topLeft().x;
+            auto ymin = (int)roi.topLeft().y;
+            auto xmax = (int)roi.bottomRight().x;
+            auto ymax = (int)roi.bottomRight().y;
 
-            // cout << "x: " << depthData.c.x << " y: " << depthData.c.y << endl;
+            auto depthMin = depthData.depthMin;
+            auto depthMax = depthData.depthMax;
 
-            // cout << "x: " << depthData.p.x << "y: " << depthData.p.y << "width: " << depthData.p.width << "height: " << depthData.p.height << endl;
-
-            auto xmin = (int)depthData.p.x;
-            auto ymin = (int)depthData.p.y;
-            auto xmax = xmin + (int)depthData.p.width;
-            auto ymax = ymin + (int)depthData.p.height;
-
-            std::stringstream idStr;
-            idStr << "ID: " << depthData.id;
-            cv::putText(depthFrame, idStr.str(), cv::Point(xmin + 10, ymin + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-
-            cv::rectangle(depthFrame, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
-
-            // for(int i = 0; i < 4; i++) {
-            //     std::cout << "x: " << depthData.p[i][0] << " y: " << depthData.p[i][1] << std::endl;
-            // }
+            cv::rectangle(depthFrameColor, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
+            std::stringstream depthX;
+            depthX << "X: " << (int)depthData.spatialCoordinates.x << " mm";
+            cv::putText(depthFrameColor, depthX.str(), cv::Point(xmin + 10, ymin + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            std::stringstream depthY;
+            depthY << "Y: " << (int)depthData.spatialCoordinates.y << " mm";
+            cv::putText(depthFrameColor, depthY.str(), cv::Point(xmin + 10, ymin + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            std::stringstream depthZ;
+            depthZ << "Z: " << (int)depthData.spatialCoordinates.z << " mm";
+            cv::putText(depthFrameColor, depthZ.str(), cv::Point(xmin + 10, ymin + 50), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
         }
         // Show the frame
-
-        std::stringstream fpsStr;
-        fpsStr << "NN fps:" << std::fixed << std::setprecision(2) << fps;
-        cv::putText(depthFrame, fpsStr.str(), cv::Point(2, inDepth->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
-
-        cv::imshow("depth", depthFrame);
+        cv::imshow("depth", depthFrameColor);
 
         int key = cv::waitKey(1);
-        if(key == 'q') {
-            return 0;
+        switch(key) {
+            case 'q':
+                return 0;
+            case 'w':
+                if(topLeft.y - stepSize >= 0) {
+                    topLeft.y -= stepSize;
+                    bottomRight.y -= stepSize;
+                    newConfig = true;
+                }
+                break;
+            case 'a':
+                if(topLeft.x - stepSize >= 0) {
+                    topLeft.x -= stepSize;
+                    bottomRight.x -= stepSize;
+                    newConfig = true;
+                }
+                break;
+            case 's':
+                if(bottomRight.y + stepSize <= 1) {
+                    topLeft.y += stepSize;
+                    bottomRight.y += stepSize;
+                    newConfig = true;
+                }
+                break;
+            case 'd':
+                if(bottomRight.x + stepSize <= 1) {
+                    topLeft.x += stepSize;
+                    bottomRight.x += stepSize;
+                    newConfig = true;
+                }
+                break;
+            default:
+                break;
+        }
+
+        if(newConfig) {
+            config.roi = dai::Rect(topLeft, bottomRight);
+            dai::SpatialLocationCalculatorConfig cfg;
+            cfg.addROI(config);
+            spatialCalcConfigInQueue->send(cfg);
+            newConfig = false;
         }
     }
     return 0;
