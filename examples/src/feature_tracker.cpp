@@ -96,7 +96,7 @@ int main() {
     // Connect to device and start pipeline
     dai::Device device(pipeline);
 
-    // Output queue will be used to get the depth frames from the outputs defined above
+    // Output queues used to receive the results
     auto passthroughImageLeftQueue = device.getOutputQueue("passthroughFrameLeft", 8, false);
     auto outputFeaturesLeftQueue = device.getOutputQueue("trackedFeaturesLeft", 8, false);
 

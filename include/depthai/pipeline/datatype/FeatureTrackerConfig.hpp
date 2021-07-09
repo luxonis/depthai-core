@@ -24,12 +24,6 @@ class FeatureTrackerConfig : public Buffer {
     virtual ~FeatureTrackerConfig() = default;
 
     /**
-     * Set a vector of ROIs as configuration data.
-     * @param ROIs Vector of configuration parameters for ROIs (region of interests)
-     */
-    void setROIs(FeatureTrackerConfigData ROIs);
-
-    /**
      * Retrieve configuration data for FeatureTracker
      * @returns Vector of configuration parameters for ROIs (region of interests)
      */

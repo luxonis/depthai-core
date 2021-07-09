@@ -10,10 +10,6 @@ FeatureTrackerConfig::FeatureTrackerConfig() : Buffer(std::make_shared<RawFeatur
 FeatureTrackerConfig::FeatureTrackerConfig(std::shared_ptr<RawFeatureTrackerConfig> ptr)
     : Buffer(std::move(ptr)), cfg(*dynamic_cast<RawFeatureTrackerConfig*>(raw.get())) {}
 
-void FeatureTrackerConfig::setROIs(FeatureTrackerConfigData ROIs) {
-    cfg.config = ROIs;
-}
-
 FeatureTrackerConfigData FeatureTrackerConfig::getConfigData() const {
     return cfg.config;
 }
