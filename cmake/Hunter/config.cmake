@@ -8,8 +8,8 @@ hunter_config(
 hunter_config(
     XLink
     VERSION "luxonis-2021.3-develop_tcpip_driver"
-    URL "https://github.com/luxonis/XLink/archive/eb17e70a52cce578e015780788922c8e8ed43b05.tar.gz"
-    SHA1 "25d6a7e9e9f965aa84f13f762ea47a16fa57e67b"
+    URL "https://github.com/luxonis/XLink/archive/37391b1be51eaa9ed0dda4d5e6e90ab0731c6636.tar.gz"
+    SHA1 "4d3f78d65bda07526c68d7e022ba82a7336375c8"
 )
 
 hunter_config(
