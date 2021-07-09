@@ -102,7 +102,7 @@ int main() {
 
     const auto leftWindowName = "left";
     cv::namedWindow(leftWindowName);
-    cv::createTrackbar("Feature tracking length", leftWindowName, &trackedFeaturesPathLength, maxTrackedFeaturesPathLength, nullptr);
+    cv::createTrackbar("Feature tracking duration (frames)", leftWindowName, &trackedFeaturesPathLength, maxTrackedFeaturesPathLength, nullptr);
 
     while(true) {
         auto inPassthroughFrameLeft = passthroughImageLeftQueue->get<dai::ImgFrame>();
