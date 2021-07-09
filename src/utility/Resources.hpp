@@ -9,9 +9,7 @@
 
 // project
 #include <depthai/openvino/OpenVINO.hpp>
-
-// shared
-#include <depthai-bootloader-shared/Bootloader.hpp>
+#include <depthai/device/DeviceBootloader.hpp>
 
 namespace dai
 {
@@ -38,7 +36,7 @@ public:
 
     // Available resources
     std::vector<std::uint8_t> getDeviceFirmware(bool usb2Mode, OpenVINO::Version version = OpenVINO::VERSION_2020_1);
-    std::vector<std::uint8_t> getBootloaderFirmware(dai::bootloader::Type type = dai::bootloader::Type::USB);
+    std::vector<std::uint8_t> getBootloaderFirmware(DeviceBootloader::Type type = DeviceBootloader::Type::USB);
 
 };
 
