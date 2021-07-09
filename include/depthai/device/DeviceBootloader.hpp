@@ -17,7 +17,9 @@
 #include "nanorpc/packer/nlohmann_msgpack.h"
 
 // shared
-#include "depthai-bootloader-shared/Bootloader.hpp"
+#include "depthai-bootloader-shared/Memory.hpp"
+#include "depthai-bootloader-shared/Section.hpp"
+#include "depthai-bootloader-shared/Type.hpp"
 
 namespace dai {
 
@@ -30,6 +32,8 @@ class DeviceBootloader {
    public:
     // Alias
     using Type = dai::bootloader::Type;
+    using Memory = dai::bootloader::Memory;
+    using Section = dai::bootloader::Section;
 
     /// Bootloader version structure
     struct Version {
@@ -61,7 +65,7 @@ class DeviceBootloader {
     // constants
 
     /// Default Bootloader type
-    static constexpr const bootloader::Type DEFAULT_TYPE{dai::bootloader::Type::USB};
+    static constexpr const Type DEFAULT_TYPE{Type::USB};
 
     // Static API
     /**
@@ -100,8 +104,7 @@ class DeviceBootloader {
     /**
      * @returns Embedded bootloader binary
      */
-    static std::vector<std::uint8_t> getEmbeddedBootloaderBinary(bootloader::Type type = DEFAULT_TYPE);
-    //
+    static std::vector<std::uint8_t> getEmbeddedBootloaderBinary(Type type = DEFAULT_TYPE);
 
     DeviceBootloader() = delete;
 
@@ -117,7 +120,7 @@ class DeviceBootloader {
      * @param devInfo DeviceInfo of which to boot or connect to
      * @param type Type of bootloader to boot/connect to.
      */
-    DeviceBootloader(const DeviceInfo& devInfo, bootloader::Type type);
+    DeviceBootloader(const DeviceInfo& devInfo, Type type);
 
     /**
      * Connects to or boots device in bootloader mode depending on devInfo state with a custom bootloader firmware.
@@ -155,11 +158,21 @@ class DeviceBootloader {
 
     /**
      * Flash selected bootloader to the current board
+     * @param memory Memory to flash
      * @param type Bootloader type to flash
      * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
      * @param path Optional parameter to custom bootloader to flash
      */
-    std::tuple<bool, std::string> flashBootloader(bootloader::Type type, std::function<void(float)> progressCallback, std::string path = "");
+    std::tuple<bool, std::string> flashBootloader(Memory memory, Type type, std::function<void(float)> progressCallback, std::string path = "");
+
+    /**
+     * Flash arbitrary data at custom offset in specified memory
+     * @param memory Memory to flash
+     * @param offset Offset at which to flash the given data in bytes
+     * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
+     * @param data Data to flash
+     */
+    // std::tuple<bool, std::string> flashCustom(Memory memory, uint32_t offset, std::function<void(float)> progressCb, std::vector<uint8_t> data);
 
     /**
      * @returns Version of current running bootloader
@@ -194,7 +207,7 @@ class DeviceBootloader {
     DeviceInfo deviceInfo = {};
 
     bool isEmbedded = false;
-    bootloader::Type bootloaderType;
+    Type bootloaderType;
 
     // closed
     std::atomic<bool> closed{false};

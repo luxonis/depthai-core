@@ -29,7 +29,7 @@ CMRC_DECLARE(depthai);
 namespace dai {
 
 // constants
-constexpr const bootloader::Type DeviceBootloader::DEFAULT_TYPE;
+constexpr const DeviceBootloader::Type DeviceBootloader::DEFAULT_TYPE;
 
 // static api
 
@@ -145,7 +145,7 @@ DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo) : deviceInfo(devIn
     init(true, "", tl::nullopt);
 }
 
-DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, dai::bootloader::Type type) : deviceInfo(devInfo) {
+DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, Type type) : deviceInfo(devInfo) {
     init(true, "", type);
 }
 
@@ -255,7 +255,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, 
             }
 
         } else {
-            if(type && *type != bootloader::Type::USB) {
+            if(type && *type != Type::USB) {
                 // Send request to jump to USB bootloader
                 // Boot into USB ROM BOOTLOADER NOW
                 if(!sendBootloaderRequest(stream->getStreamId(), dai::bootloader::request::UsbRomBoot{})) {
@@ -435,11 +435,17 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashBootloader(std::function<void(float)> progressCb, std::string path) {
-    return flashBootloader(bootloaderType, progressCb, path);
+    return flashBootloader(Memory::FLASH, bootloaderType, progressCb, path);
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashBootloader(dai::bootloader::Type type, std::function<void(float)> progressCb, std::string path) {
-    // TODO(themarpe) - TBD, must rather use UpdateFlashEx2, if current booted type != type
+std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, Type type, std::function<void(float)> progressCb, std::string path) {
+    // Only flash memory is supported for now
+    if(memory != Memory::FLASH) {
+        throw std::invalid_argument("Only FLASH memory is supported for now");
+    }
+    if(bootloaderType != type && getVersion() < Version(0, 0, 12)) {
+        std::runtime_error("Current bootloader version doesn't support flashing different type of bootloader");
+    }
 
     std::vector<uint8_t> package;
     if(path != "") {
@@ -453,12 +459,27 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(dai::bootloader:
     // get streamId
     streamId_t streamId = stream->getStreamId();
 
-    // send request to FLASH BOOTLOADER
-    dai::bootloader::request::UpdateFlash updateFlash;
-    updateFlash.storage = dai::bootloader::request::UpdateFlash::BOOTLOADER;
-    updateFlash.totalSize = static_cast<uint32_t>(package.size());
-    updateFlash.numPackets = ((static_cast<uint32_t>(package.size()) - 1) / bootloader::XLINK_STREAM_MAX_SIZE) + 1;
-    if(!sendBootloaderRequest(streamId, updateFlash)) return {false, "Couldn't send bootloader flash request"};
+    // If booted and desired bootloader types don't match
+    // Use UpdateFlashEx2 instead to properly flash
+    if(bootloaderType == type) {
+        // Old command
+
+        // send request to FLASH BOOTLOADER
+        dai::bootloader::request::UpdateFlash updateFlash;
+        updateFlash.storage = dai::bootloader::request::UpdateFlash::BOOTLOADER;
+        updateFlash.totalSize = static_cast<uint32_t>(package.size());
+        updateFlash.numPackets = ((static_cast<uint32_t>(package.size()) - 1) / bootloader::XLINK_STREAM_MAX_SIZE) + 1;
+        if(!sendBootloaderRequest(streamId, updateFlash)) return {false, "Couldn't send bootloader flash request"};
+
+    } else {
+        // send request to FLASH BOOTLOADER
+        dai::bootloader::request::UpdateFlashEx2 updateFlashEx2;
+        updateFlashEx2.memory = memory;
+        updateFlashEx2.offset = dai::bootloader::getStructure(type).offset.at(Section::BOOTLOADER);
+        updateFlashEx2.totalSize = static_cast<uint32_t>(package.size());
+        updateFlashEx2.numPackets = ((static_cast<uint32_t>(package.size()) - 1) / bootloader::XLINK_STREAM_MAX_SIZE) + 1;
+        if(!sendBootloaderRequest(streamId, updateFlashEx2)) return {false, "Couldn't send bootloader flash request"};
+    }
 
     // After that send numPackets of data
     stream->writeSplit(package.data(), package.size(), bootloader::XLINK_STREAM_MAX_SIZE);
@@ -490,11 +511,63 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(dai::bootloader:
     return {result.success, result.errorMsg};
 }
 
+/* TODO(themarpe)
+std::tuple<bool, std::string> DeviceBootloader::flashCustom(Memory memory, uint32_t offset, std::function<void(float)> progressCb, std::vector<uint8_t> data) {
+    // Only flash memory is supported for now
+    if(memory != Memory::FLASH) {
+        throw std::invalid_argument("Only FLASH memory is supported for now");
+    }
+    if(getVersion() < Version(0, 0, 12)) {
+        std::runtime_error("Current bootloader version doesn't support custom flashing");
+    }
+
+    // get streamId
+    streamId_t streamId = stream->getStreamId();
+
+    // send request to FLASH BOOTLOADER
+    dai::bootloader::request::UpdateFlashEx2 updateFlashEx2;
+    updateFlashEx2.memory = memory;
+    updateFlashEx2.offset = offset;
+    updateFlashEx2.totalSize = static_cast<uint32_t>(data.size());
+    updateFlashEx2.numPackets = ((static_cast<uint32_t>(data.size()) - 1) / bootloader::XLINK_STREAM_MAX_SIZE) + 1;
+    if(!sendBootloaderRequest(streamId, updateFlashEx2)) return {false, "Couldn't send bootloader flash request"};
+
+    // After that send numPackets of data
+    stream->writeSplit(data.data(), data.size(), bootloader::XLINK_STREAM_MAX_SIZE);
+
+    // Then wait for response by bootloader
+    // Wait till FLASH_COMPLETE response
+    dai::bootloader::response::FlashComplete result;
+    do {
+        std::vector<uint8_t> data;
+        if(!receiveBootloaderResponseData(streamId, data)) return {false, "Couldn't receive bootloader response"};
+
+        dai::bootloader::response::FlashStatusUpdate update;
+        if(parseBootloaderResponse(data, update)) {
+            // if progress callback is set
+            if(progressCb != nullptr) {
+                progressCb(update.progress);
+            }
+            // if flash complete response arrived, break from while loop
+        } else if(parseBootloaderResponse(data, result)) {
+            break;
+        } else {
+            // Unknown response, shouldn't happen
+            return {false, "Unknown response from bootloader while flashing"};
+        }
+
+    } while(true);
+
+    // Return if flashing was successful
+    return {result.success, result.errorMsg};
+}
+*/
+
 bool DeviceBootloader::isEmbeddedVersion() {
     return isEmbedded;
 }
 
-std::vector<std::uint8_t> DeviceBootloader::getEmbeddedBootloaderBinary(dai::bootloader::Type type) {
+std::vector<std::uint8_t> DeviceBootloader::getEmbeddedBootloaderBinary(Type type) {
     return Resources::getInstance().getBootloaderFirmware(type);
 }
 

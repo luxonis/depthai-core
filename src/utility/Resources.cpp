@@ -174,7 +174,7 @@ std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type
             return resourceMapBootloader[DEVICE_BOOTLOADER_USB_PATH];
             break;
 
-        case dai::bootloader::Type::ETHERNET:
+        case dai::bootloader::Type::NETWORK:
             return resourceMapBootloader[DEVICE_BOOTLOADER_ETH_PATH];
             break;
 

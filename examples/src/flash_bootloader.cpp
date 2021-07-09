@@ -11,7 +11,7 @@ int main(int argc, char** argv) {
         if(std::string(argv[1]) == "usb") {
             blType = dai::DeviceBootloader::Type::USB;
         } else if(std::string(argv[1]) == "eth") {
-            blType = dai::DeviceBootloader::Type::ETHERNET;
+            blType = dai::DeviceBootloader::Type::NETWORK;
         } else {
             std::cout << "Specify either 'usb' or 'eth' bootloader type\n";
             return 0;
@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
 
     std::string message;
     auto t1 = steady_clock::now();
-    std::tie(res, message) = bl.flashBootloader(blType, progress);
+    std::tie(res, message) = bl.flashBootloader(dai::DeviceBootloader::Memory::FLASH, blType, progress);
     if(res) {
         std::cout << "Flashing successful. Took " << duration_cast<milliseconds>(steady_clock::now() - t1).count() << "ms" << std::endl;
     } else {
