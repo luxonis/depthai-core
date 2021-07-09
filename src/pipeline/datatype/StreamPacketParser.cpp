@@ -15,6 +15,8 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
+#include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
+#include "depthai/pipeline/datatype/FeatureTrackerData.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
@@ -32,6 +34,7 @@
 #include "depthai-shared/datatype/RawBuffer.hpp"
 #include "depthai-shared/datatype/RawCameraControl.hpp"
 #include "depthai-shared/datatype/RawEdgeDetectorConfig.hpp"
+#include "depthai-shared/datatype/RawFeatureTrackerConfig.hpp"
 #include "depthai-shared/datatype/RawIMUData.hpp"
 #include "depthai-shared/datatype/RawImageManipConfig.hpp"
 #include "depthai-shared/datatype/RawImgDetections.hpp"
@@ -138,6 +141,14 @@ std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
         case DatatypeEnum::EdgeDetectorConfig:
             return parseDatatype<RawEdgeDetectorConfig>(jser, data);
             break;
+
+        case DatatypeEnum::FeatureTrackerData:
+            return parseDatatype<RawTrackedFeatures>(jser, data);
+            break;
+
+        case DatatypeEnum::FeatureTrackerConfig:
+            return parseDatatype<RawFeatureTrackerConfig>(jser, data);
+            break;
     }
 
     throw std::runtime_error("Bad packet, couldn't parse");
@@ -216,6 +227,14 @@ std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
 
         case DatatypeEnum::EdgeDetectorConfig:
             return std::make_shared<EdgeDetectorConfig>(parseDatatype<RawEdgeDetectorConfig>(jser, data));
+            break;
+
+        case DatatypeEnum::FeatureTrackerData:
+            return std::make_shared<FeatureTrackerData>(parseDatatype<RawTrackedFeatures>(jser, data));
+            break;
+
+        case DatatypeEnum::FeatureTrackerConfig:
+            return std::make_shared<FeatureTrackerConfig>(parseDatatype<RawFeatureTrackerConfig>(jser, data));
             break;
     }
 

@@ -4,6 +4,8 @@
 #include "datatype/ADatatype.hpp"
 #include "datatype/Buffer.hpp"
 #include "datatype/CameraControl.hpp"
+#include "datatype/FeatureTrackerConfig.hpp"
+#include "datatype/FeatureTrackerData.hpp"
 #include "datatype/IMUData.hpp"
 #include "datatype/ImageManipConfig.hpp"
 #include "datatype/ImgDetections.hpp"

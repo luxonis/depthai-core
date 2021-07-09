@@ -13,7 +13,7 @@ std::string EdgeDetector::getName() const {
 }
 
 std::vector<Node::Output> EdgeDetector::getOutputs() {
-    return {outputImage};
+    return {outputImage, passthroughInputImage};
 }
 
 std::vector<Node::Input> EdgeDetector::getInputs() {

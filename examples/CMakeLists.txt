@@ -266,6 +266,8 @@ dai_add_example(queue_add_callback src/queue_add_callback.cpp ON)
 
 dai_add_example(edge_detector src/edge_detector.cpp ON)
 
+dai_add_example(feature_tracker src/feature_tracker.cpp ON)
+
 # Calibration Read and write samples
 dai_add_example(calibration_flash src/calibration_flash.cpp OFF)
 dai_add_example(calibration_flash_version5 src/calibration_flash_v5.cpp OFF)
