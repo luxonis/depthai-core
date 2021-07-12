@@ -276,3 +276,4 @@ target_compile_definitions(calibration_load PRIVATE CALIB_PATH="${calib_v6}")
 
 
 dai_add_example(apriltag src/apriltag.cpp OFF)
+dai_add_example(apriltag_rgb src/apriltag_rgb.cpp OFF)
