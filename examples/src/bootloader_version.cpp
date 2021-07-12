@@ -1,7 +1,3 @@
-#include <chrono>
-#include <string>
-#include <thread>
-
 #include "depthai/depthai.hpp"
 
 int main(int argc, char** argv) {
@@ -15,10 +11,8 @@ int main(int argc, char** argv) {
         dai::DeviceBootloader bl(info, path);
         std::cout << "Version: " << bl.getVersion().toString() << std::endl;
     } else {
-        std::cout << "Didn't find any devices" << std::endl;
+        std::cout << "No devices found" << std::endl;
     }
-
-    std::this_thread::sleep_for(std::chrono::seconds(3));
 
     return 0;
 }
