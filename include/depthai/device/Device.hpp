@@ -405,6 +405,13 @@ class Device {
     std::string getQueueEvent(std::chrono::microseconds timeout = std::chrono::microseconds(-1));
 
     /**
+     * Get MxId of device
+     *
+     * @returns MxId of connected device
+     */
+    std::string getMxId();
+
+    /**
      * Get cameras that are connected to the device
      *
      * @returns Vector of connected cameras
