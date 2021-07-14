@@ -82,7 +82,7 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
 }
 
 bool DataOutputQueue::isClosed() const {
-    return running;
+    return !running;
 }
 
 void DataOutputQueue::close() {
@@ -214,7 +214,7 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
 }
 
 bool DataInputQueue::isClosed() const {
-    return running;
+    return !running;
 }
 
 void DataInputQueue::close() {

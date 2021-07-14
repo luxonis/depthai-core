@@ -46,7 +46,7 @@ class DataOutputQueue {
     bool isClosed() const;
 
     /**
-     * Closes the queue and underlying thread
+     * Closes the queue and the underlying thread
      */
     void close();
 
@@ -355,7 +355,7 @@ class DataInputQueue {
     bool isClosed() const;
 
     /**
-     * Closes the queue and underlying thread
+     * Closes the queue and the underlying thread
      */
     void close();
 
