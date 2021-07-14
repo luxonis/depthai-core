@@ -3,18 +3,13 @@ namespace dai {
 namespace node {
 
 ImageManip::ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : Node(par, nodeId), rawConfig(std::make_shared<RawImageManipConfig>()), initialConfig(rawConfig) {}
+    : Node(par, nodeId), rawConfig(std::make_shared<RawImageManipConfig>()), initialConfig(rawConfig) {
+    inputs = {&inputConfig, &inputImage};
+    outputs = {&out};
+}
 
 std::string ImageManip::getName() const {
     return "ImageManip";
-}
-
-std::vector<Node::Input> ImageManip::getInputs() {
-    return {inputConfig, inputImage};
-}
-
-std::vector<Node::Output> ImageManip::getOutputs() {
-    return {out};
 }
 
 nlohmann::json ImageManip::getProperties() {

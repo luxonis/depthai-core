@@ -5,18 +5,13 @@
 namespace dai {
 namespace node {
 
-ObjectTracker::ObjectTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
+ObjectTracker::ObjectTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
+    inputs = {&inputTrackerFrame, &inputDetectionFrame, &inputDetections};
+    outputs = {&out, &passthroughTrackerFrame, &passthroughDetectionFrame, &passthroughDetections};
+}
 
 std::string ObjectTracker::getName() const {
     return "ObjectTracker";
-}
-
-std::vector<Node::Output> ObjectTracker::getOutputs() {
-    return {out, passthroughTrackerFrame, passthroughDetectionFrame, passthroughDetections};
-}
-
-std::vector<Node::Input> ObjectTracker::getInputs() {
-    return {inputTrackerFrame, inputDetectionFrame, inputDetections};
 }
 
 nlohmann::json ObjectTracker::getProperties() {

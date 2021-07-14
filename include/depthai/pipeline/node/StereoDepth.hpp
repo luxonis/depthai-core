@@ -19,14 +19,13 @@ class StereoDepth : public Node {
    private:
     Properties properties;
 
-    std::string getName() const override;
-    std::vector<Output> getOutputs() override;
-    std::vector<Input> getInputs() override;
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
     std::shared_ptr<RawStereoDepthConfig> rawConfig;
 
    public:
+    std::string getName() const override;
+
     StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
     /**
