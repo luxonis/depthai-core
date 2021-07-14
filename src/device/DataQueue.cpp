@@ -75,8 +75,9 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
             exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
         }
 
-        queue.destruct();
+        // Close the queue
         running = false;
+        queue.destruct();
     });
 }
 
@@ -85,21 +86,25 @@ bool DataOutputQueue::isClosed() const {
 }
 
 void DataOutputQueue::close() {
-    running = false;
-    queue.destruct();
-}
-
-DataOutputQueue::~DataOutputQueue() {
-    spdlog::debug("DataOutputQueue ({}) about to be destructed...", name);
-    // Set reading thread to stop
-    running = false;
+    // Set reading thread to stop and allow to be closed only once
+    if(!running.exchange(false)) return;
 
     // Destroy queue
     queue.destruct();
 
-    // join thread
+    // Then join thread
     if(readingThread.joinable()) readingThread.join();
-    spdlog::debug("DataOutputQueue ({}) destructed", name);
+
+    // Log
+    spdlog::debug("DataOutputQueue ({}) closed", name);
+}
+
+DataOutputQueue::~DataOutputQueue() {
+    // Close the queue first
+    close();
+
+    // Then join thread
+    if(readingThread.joinable()) readingThread.join();
 }
 
 void DataOutputQueue::setBlocking(bool blocking) {
@@ -202,8 +207,9 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
             exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
         }
 
-        queue.destruct();
+        // Close the queue
         running = false;
+        queue.destruct();
     });
 }
 
@@ -212,20 +218,25 @@ bool DataInputQueue::isClosed() const {
 }
 
 void DataInputQueue::close() {
-    running = false;
-    queue.destruct();
-}
-
-DataInputQueue::~DataInputQueue() {
-    spdlog::debug("DataInputQueue ({}) about to be destructed...", name);
-    // Set writing thread to stop
-    running = false;
+    // Set reading thread to stop and allow to be closed only once
+    if(!running.exchange(false)) return;
 
     // Destroy queue
     queue.destruct();
 
+    // Then join thread
     if(writingThread.joinable()) writingThread.join();
-    spdlog::debug("DataInputQueue ({}) destructed", name);
+
+    // Log
+    spdlog::debug("DataInputQueue ({}) closed", name);
+}
+
+DataInputQueue::~DataInputQueue() {
+    // Close the queue
+    close();
+
+    // Then join thread
+    if(writingThread.joinable()) writingThread.join();
 }
 
 void DataInputQueue::setBlocking(bool blocking) {
