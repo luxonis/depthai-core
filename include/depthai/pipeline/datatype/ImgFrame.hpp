@@ -40,32 +40,32 @@ class ImgFrame : public Buffer {
 
     // getters
     /**
-     * Retrievies image timestamp related to steady_clock / time.monotonic
+     * Retrieves image timestamp related to steady_clock / time.monotonic
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;
 
     /**
-     * Retrievies instance number
+     * Retrieves instance number
      */
     unsigned int getInstanceNum() const;
 
     /**
-     * Retrievies image category
+     * Retrieves image category
      */
     unsigned int getCategory() const;
 
     /**
-     * Retrievies image sequence number
+     * Retrieves image sequence number
      */
     unsigned int getSequenceNum() const;
 
     /**
-     * Retrievies image width in pixels
+     * Retrieves image width in pixels
      */
     unsigned int getWidth() const;
 
     /**
-     * Retrievies image height in pixels
+     * Retrieves image height in pixels
      */
     unsigned int getHeight() const;
 
