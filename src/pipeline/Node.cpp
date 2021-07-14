@@ -22,9 +22,9 @@ Pipeline Node::getParentPipeline() {
 }
 
 Node::Connection::Connection(Output out, Input in) {
-    outputId = out.parent.id;
+    outputId = out.getParent().id;
     outputName = out.name;
-    inputId = in.parent.id;
+    inputId = in.getParent().id;
     inputName = in.name;
 }
 

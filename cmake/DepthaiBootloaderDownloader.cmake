@@ -3,7 +3,7 @@
 function(DepthaiBootloaderDownload)
 
     ### VARIABLES
-    # Artifactory 
+    # Artifactory
     set(DOWNLOADER_BASE_URL "https://artifacts.luxonis.com/artifactory")
 
     # Repositories
@@ -29,7 +29,7 @@ function(DepthaiBootloaderDownload)
     set(commit_version_arg "${ARGV5}")
 
     message(STATUS "Downloading depthai bootloader")
-    
+
     # END PARSE ARGUMENTS
 
     #DEBUG
@@ -56,15 +56,15 @@ function(DepthaiBootloaderDownload)
 
         # Create download directory string
         string(CONFIGURE "@DOWNLOADER_BASE_URL@/@DOWNLOADER_REPO_RELEASE@/@DOWNLOADER_ARTIFACT_PREFIX@/@version@" _download_directory_url)
-        
+
         # Create _version_commit_identifier
         set(_version_commit_identifier "${version}")
     else()
         # Not a recognized maturity level
         message(FATAL_ERROR "Cannot download depthai-bootloader binaries. Maturity level not recognized (${maturity_lower})")
-        return()        
+        return()
     endif()
-    
+
     # Prints error message
     macro(PrintErrorMessage status)
         if(${status} EQUAL 22)
@@ -76,9 +76,9 @@ function(DepthaiBootloaderDownload)
         else()
             message(STATUS "Unknown error.\n")
         endif()
-    endmacro() 
+    endmacro()
 
-    # Download files 
+    # Download files
     function(DownloadAndChecksum url url_checksum output status_var)
 
         # Check if file already downloaded (in resources)
@@ -149,16 +149,17 @@ function(DepthaiBootloaderDownload)
         message(STATUS "bootloader shared commit: ${_depthai_bootloader_shared_commit}")
         DownloadAndChecksum(
             "${_download_directory_url}/depthai-bootloader-shared-commit-hash-${_version_commit_identifier}.txt" # File
-            "${_download_directory_url}/depthai-bootloader-shared-commit-hash-${_version_commit_identifier}.sha256.checksum" # File checksum
+            "${_download_directory_url}/depthai-bootloader-shared-commit-hash-${_version_commit_identifier}.txt.sha256" # File checksum
             "${folder}/depthai-bootloader-shared-commit-hash-${_version_commit_identifier}.txt"
             status
         )
         if(${status})
+
             message(STATUS "Couldn't check if depthai-bootloader-shared codebase matches between device and host")
             if(${_enforce_depthai_bootloader_shared_commit})
                 message(FATAL_ERROR "Aborting.\n")
             endif()
-            
+
         else()
 
             set(_message_mode WARNING)
@@ -178,26 +179,30 @@ function(DepthaiBootloaderDownload)
             else()
                 message(STATUS "depthai-bootloader-shared between device and host MATCH!. (device: ${_device_depthai_bootloader_shared_commit_hash}, host: ${_depthai_bootloader_shared_commit}")
             endif()
-            
+
         endif()
 
     endif()
 
-    # depthai-bootloader.cmd
-    message(STATUS "Downloading and checking depthai-bootloader.cmd")
+
+    # Download depthai-bootloader firmware package
+    message(STATUS "Downloading and checking depthai-bootloader-fwp.tar.xz")
     DownloadAndChecksum(
-        "${_download_directory_url}/depthai-bootloader-${_version_commit_identifier}.cmd" # File
-        "${_download_directory_url}/depthai-bootloader-${_version_commit_identifier}.sha256.checksum" # File checksum
-        "${folder}/depthai-bootloader-${_version_commit_identifier}.cmd"
+        "${_download_directory_url}/depthai-bootloader-fwp-${_version_commit_identifier}.tar.xz" # File
+        "${_download_directory_url}/depthai-bootloader-fwp-${_version_commit_identifier}.tar.xz.sha256" # File checksum
+        "${folder}/depthai-bootloader-fwp-${_version_commit_identifier}.tar.xz"
         status
     )
     if(${status})
-        message(STATUS "\nCouldn't download depthai-bootloader.cmd (depthai-bootloader-${_version_commit_identifier}.cmd)\n")
+        message(STATUS "\nCouldn't download depthai-bootloader-fwp.tar.xz\n")
         PrintErrorMessage(${status})
         message(FATAL_ERROR "Aborting.\n")
     endif()
-    # add depthai-bootloader-${_version_commit_identifier}.cmd to list
-    list(APPEND "${output_list_var}" "${folder}/depthai-bootloader-${_version_commit_identifier}.cmd")
+    # add depthai-bootloader-fwp.tar.xz to list
+    list(APPEND "${output_list_var}" "${folder}/depthai-bootloader-fwp-${_version_commit_identifier}.tar.xz")
+
+
+    # Set list of files as output
     set("${output_list_var}" "${${output_list_var}}" PARENT_SCOPE)
-    
+
 endfunction()
