@@ -15,15 +15,14 @@ namespace node {
 class Script : public Node {
     dai::ScriptProperties properties;
 
-    std::string getName() const override;
-    std::vector<Output> getOutputs() override;
-    std::vector<Input> getInputs() override;
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
 
     std::string scriptPath = "";
 
    public:
+    std::string getName() const override;
+
     Script(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
     /**

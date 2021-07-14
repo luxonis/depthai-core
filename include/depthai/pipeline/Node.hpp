@@ -37,9 +37,14 @@ class Node {
     // fwd declare classes
     class Input;
     class Output;
+    class InputMap;
+    class OutputMap;
 
     std::vector<Output*> outputs;
     std::vector<Input*> inputs;
+
+    std::vector<OutputMap*> outputMaps;
+    std::vector<InputMap*> inputMaps;
 
     struct DatatypeHierarchy {
         DatatypeHierarchy(DatatypeEnum d, bool c) : datatype(d), descendants(c) {}
@@ -199,41 +204,24 @@ class Node {
 
     /// Retrieves nodes name
     virtual std::string getName() const = 0;
+
     /// Retrieves all nodes outputs
-    std::vector<Output> getOutputs() {
-        std::vector<Output> result;
-        for(auto* x : getOutputRefs()) {
-            result.push_back(*x);
-        }
-        return result;
-    }
+    std::vector<Output> getOutputs();
+
     /// Retrieves all nodes inputs
-    std::vector<Input> getInputs() {
-        std::vector<Input> result;
-        for(auto* x : getInputRefs()) {
-            result.push_back(*x);
-        }
-        return result;
-    }
-    /// Retrieves all nodes assets
-    virtual std::vector<std::shared_ptr<Asset>> getAssets();
+    std::vector<Input> getInputs();
 
     /// Retrieves reference to node outputs
-    std::vector<Output*> getOutputRefs() {
-        return outputs;
-    }
+    std::vector<Output*> getOutputRefs();
+
     /// Retrieves reference to node outputs
-    std::vector<const Output*> getOutputRefs() const {
-        return {outputs.begin(), outputs.end()};
-    }
+    std::vector<const Output*> getOutputRefs() const;
+
     /// Retrieves reference to node inputs
-    std::vector<Input*> getInputRefs() {
-        return inputs;
-    }
+    std::vector<Input*> getInputRefs();
+
     /// Retrieves reference to node inputs
-    std::vector<const Input*> getInputRefs() const {
-        return {inputs.begin(), inputs.end()};
-    }
+    std::vector<const Input*> getInputRefs() const;
 
     /// Connection between an Input and Output
     struct Connection {

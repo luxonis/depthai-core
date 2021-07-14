@@ -102,7 +102,7 @@ Node::Output& Node::OutputMap::operator[](const std::string& key) {
     if(count(key) == 0) {
         // Create using default and rename with key
         auto& d = defaultOutput;
-        insert(std::make_pair(key, Output(d.parent, key, d.type, d.possibleDatatypes)));
+        insert(std::make_pair(key, Output(d.getParent(), key, d.type, d.possibleDatatypes)));
     }
     // otherwise just return reference to existing
     return at(key);
@@ -113,10 +113,72 @@ Node::Input& Node::InputMap::operator[](const std::string& key) {
     if(count(key) == 0) {
         // Create using default and rename with key
         auto& d = defaultInput;
-        insert(std::make_pair(key, Input(d.parent, key, d.type, d.defaultBlocking, d.defaultQueueSize, d.possibleDatatypes)));
+        insert(std::make_pair(key, Input(d.getParent(), key, d.type, d.defaultBlocking, d.defaultQueueSize, d.possibleDatatypes)));
     }
     // otherwise just return reference to existing
     return at(key);
 }
+
+/// Retrieves all nodes outputs
+std::vector<Node::Output> Node::getOutputs() {
+    std::vector<Node::Output> result;
+    for(auto* x : getOutputRefs()) {
+        result.push_back(*x);
+    }
+    return result;
+}
+
+/// Retrieves all nodes inputs
+std::vector<Node::Input> Node::getInputs() {
+    std::vector<Node::Input> result;
+    for(auto* x : getInputRefs()) {
+        result.push_back(*x);
+    }
+    return result;
+}
+
+/// Retrieves reference to node outputs
+std::vector<Node::Output*> Node::getOutputRefs() {
+    std::vector<Node::Output*> outputRefs{outputs.begin(), outputs.end()};
+    for(auto*& map : outputMaps){
+        for(auto& kv : *map){
+            outputRefs.push_back(&kv.second);
+        }
+    }
+    return outputRefs;
+}
+
+/// Retrieves reference to node outputs
+std::vector<const Node::Output*> Node::getOutputRefs() const {
+    std::vector<const Node::Output*> outputRefs{outputs.begin(), outputs.end()};
+    for(const auto* const& map : outputMaps){
+        for(const auto& kv : *map){
+            outputRefs.push_back(&kv.second);
+        }
+    }
+    return outputRefs;
+}
+/// Retrieves reference to node inputs
+std::vector<Node::Input*> Node::getInputRefs() {
+    std::vector<Node::Input*> inputRefs{inputs.begin(), inputs.end()};
+    for(auto*& map : inputMaps){
+        for(auto& kv : *map){
+            inputRefs.push_back(&kv.second);
+        }
+    }
+    return inputRefs;
+}
+
+/// Retrieves reference to node inputs
+std::vector<const Node::Input*> Node::getInputRefs() const {
+    std::vector<const Node::Input*> inputRefs{inputs.begin(), inputs.end()};
+    for(const auto* const& map : inputMaps){
+        for(const auto& kv : *map){
+            inputRefs.push_back(&kv.second);
+        }
+    }
+    return inputRefs;
+}
+
 
 }  // namespace dai

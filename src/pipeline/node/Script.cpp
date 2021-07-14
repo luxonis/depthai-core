@@ -13,26 +13,13 @@ Script::Script(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     properties.scriptUri = "";
     properties.scriptName = "<script>";
     properties.processor = ProcessorType::LEON_MSS;
+
+    inputMaps.push_back({&inputs});
+    outputMaps.push_back({&outputs});
 }
 
 std::string Script::getName() const {
     return "Script";
-}
-
-std::vector<Node::Output> Script::getOutputs() {
-    std::vector<Node::Output> vecOutputs;
-    for(const auto& kv : outputs) {
-        vecOutputs.push_back(kv.second);
-    }
-    return vecOutputs;
-}
-
-std::vector<Node::Input> Script::getInputs() {
-    std::vector<Node::Input> vecInputs;
-    for(const auto& kv : inputs) {
-        vecInputs.push_back(kv.second);
-    }
-    return vecInputs;
 }
 
 nlohmann::json Script::getProperties() {
