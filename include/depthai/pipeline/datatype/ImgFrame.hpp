@@ -45,7 +45,13 @@ class ImgFrame : public Buffer {
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;
 
     /**
-     * Retrievies instance number
+     * Retrieves image timestamp directly captured from device's monotonic clock,
+     * not synchronized to host time. Used mostly for debugging
+     */
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
+
+    /**
+     * Retrieves instance number
      */
     unsigned int getInstanceNum() const;
 
