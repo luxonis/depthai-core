@@ -80,6 +80,15 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
     });
 }
 
+bool DataOutputQueue::isClosed() const {
+    return running;
+}
+
+void DataOutputQueue::close() {
+    running = false;
+    queue.destruct();
+}
+
 DataOutputQueue::~DataOutputQueue() {
     spdlog::debug("DataOutputQueue ({}) about to be destructed...", name);
     // Set reading thread to stop
@@ -196,6 +205,15 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
         queue.destruct();
         running = false;
     });
+}
+
+bool DataInputQueue::isClosed() const {
+    return running;
+}
+
+void DataInputQueue::close() {
+    running = false;
+    queue.destruct();
 }
 
 DataInputQueue::~DataInputQueue() {
