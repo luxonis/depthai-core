@@ -16,12 +16,12 @@ dai::Pipeline createPipeline() {
     // Script node
     auto script = p.create<dai::node::Script>();
     script->setScriptData(R"(
-import time
-ctrl = CameraControl()
-ctrl.setCaptureStill(True)
-while True:
-    time.sleep(1)
-    node.io['out'].send(ctrl)
+        import time
+        ctrl = CameraControl()
+        ctrl.setCaptureStill(True)
+        while True:
+            time.sleep(1)
+            node.io['out'].send(ctrl)
     )");
 
     // XLinkOut
