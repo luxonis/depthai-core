@@ -15,6 +15,7 @@
 
 // project
 #include "DeviceLogger.hpp"
+#include "depthai/device/DeviceBootloader.hpp"
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "pipeline/Pipeline.hpp"
@@ -24,6 +25,7 @@
 #include "utility/Resources.hpp"
 
 // libraries
+#include "spdlog/fmt/chrono.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
 
@@ -337,7 +339,9 @@ void Device::close() {
     connection->close();
     connection = nullptr;
 
-    // Clear queues
+    // Close and clear queues
+    for(auto& kv : outputQueueMap) kv.second->close();
+    for(auto& kv : inputQueueMap) kv.second->close();
     outputQueueMap.clear();
     inputQueueMap.clear();
 
@@ -414,34 +418,84 @@ void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToM
     } else if(deviceInfo.state == X_LINK_BOOTLOADER) {
         // Scope so bootloaderConnection is desctructed and XLink cleans its state
         {
+            // TODO(themarpe) - move this logic to DeviceBootloader
+
             // Bootloader state, proceed by issuing a command to bootloader
             XLinkConnection bootloaderConnection(deviceInfo, X_LINK_BOOTLOADER);
 
             // Open stream
             XLinkStream stream(bootloaderConnection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
-            streamId_t streamId = stream.getStreamId();
 
-            // // Send request for bootloader version
-            // if(!sendBootloaderRequest(streamId, bootloader::request::GetBootloaderVersion{})){
-            //     throw std::runtime_error("Error trying to connect to device");
-            // }
-            // // Receive response
-            // dai::bootloader::response::BootloaderVersion ver;
-            // if(!receiveBootloaderResponse(streamId, ver)) throw std::runtime_error("Error trying to connect to device");
+            // prepare watchdog thread, which will keep device alive
+            std::atomic<bool> watchdogRunning{true};
+            watchdogThread = std::thread([&]() {
+                // prepare watchdog thread
+                XLinkStream stream(bootloaderConnection, bootloader::XLINK_CHANNEL_WATCHDOG, 64);
+                std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
+                while(watchdogRunning) {
+                    try {
+                        stream.write(watchdogKeepalive);
+                    } catch(const std::exception&) {
+                        break;
+                    }
+                    // Ping with a period half of that of the watchdog timeout
+                    std::this_thread::sleep_for(bootloader::XLINK_WATCHDOG_TIMEOUT / 2);
+                }
+            });
 
-            // Send request to jump to USB bootloader
-            // Boot into USB ROM BOOTLOADER NOW
-            if(!sendBootloaderRequest(streamId, dai::bootloader::request::UsbRomBoot{})) {
+            // Send request for bootloader version
+            if(!sendBootloaderRequest(stream.getStreamId(), bootloader::request::GetBootloaderVersion{})) {
                 throw std::runtime_error("Error trying to connect to device");
             }
+            // Receive response
+            bootloader::response::BootloaderVersion ver;
+            if(!receiveBootloaderResponse(stream.getStreamId(), ver)) throw std::runtime_error("Error trying to connect to device");
+            DeviceBootloader::Version version(ver.major, ver.minor, ver.patch);
+
+            // If version is >= 0.0.12 then boot directly, otherwise jump to USB ROM bootloader
+            // Check if version is recent enough for this operation
+            if(version >= DeviceBootloader::Version(0, 0, 12)) {
+                // Send request to boot firmware directly from bootloader
+                dai::bootloader::request::BootMemory bootMemory;
+                bootMemory.totalSize = static_cast<uint32_t>(embeddedFw.size());
+                bootMemory.numPackets = ((static_cast<uint32_t>(embeddedFw.size()) - 1) / bootloader::XLINK_STREAM_MAX_SIZE) + 1;
+                if(!sendBootloaderRequest(stream.getStreamId(), bootMemory)) {
+                    throw std::runtime_error("Error trying to connect to device");
+                }
+
+                using namespace std::chrono;
+                auto t1 = steady_clock::now();
+                // After that send numPackets of data
+                stream.writeSplit(embeddedFw.data(), embeddedFw.size(), bootloader::XLINK_STREAM_MAX_SIZE);
+                spdlog::debug(
+                    "Booting FW with Bootloader. Version {}, Time taken: {}", version.toString(), duration_cast<milliseconds>(steady_clock::now() - t1));
+
+                // After that the state will be BOOTED
+                deviceInfo.state = X_LINK_BOOTED;
+
+                // TODO(themarpe) - Possibility of switching to another port for cleaner transitions
+                // strcat(deviceInfo.desc.name, ":11492");
+
+            } else {
+                spdlog::debug("Booting FW by jumping to USB ROM Bootloader first. Bootloader Version {}", version.toString());
+
+                // Send request to jump to USB bootloader
+                // Boot into USB ROM BOOTLOADER NOW
+                if(!sendBootloaderRequest(stream.getStreamId(), dai::bootloader::request::UsbRomBoot{})) {
+                    throw std::runtime_error("Error trying to connect to device");
+                }
+
+                // After that the state will be UNBOOTED
+                deviceInfo.state = X_LINK_UNBOOTED;
+            }
+
+            watchdogRunning = false;
+            watchdogThread.join();
 
             // Dummy read, until link falls down and it returns an error code
             streamPacketDesc_t* pPacket;
-            XLinkReadData(streamId, &pPacket);
+            XLinkReadData(stream.getStreamId(), &pPacket);
         }
-
-        // After that the state is UNBOOTED
-        deviceInfo.state = X_LINK_UNBOOTED;
 
         // Boot and connect with XLinkConnection constructor
         if(embeddedMvcmd) {
@@ -786,6 +840,12 @@ std::string Device::getQueueEvent(std::string queueName, std::chrono::microsecon
 
 std::string Device::getQueueEvent(std::chrono::microseconds timeout) {
     return getQueueEvent(getOutputQueueNames(), timeout);
+}
+
+std::string Device::getMxId() {
+    checkClosed();
+
+    return client->call("getMxId").as<std::string>();
 }
 
 std::vector<CameraBoardSocket> Device::getConnectedCameras() {
