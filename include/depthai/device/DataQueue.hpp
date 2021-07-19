@@ -41,6 +41,16 @@ class DataOutputQueue {
     ~DataOutputQueue();
 
     /**
+     * Check whether queue is closed
+     */
+    bool isClosed() const;
+
+    /**
+     * Closes the queue and the underlying thread
+     */
+    void close();
+
+    /**
      * Sets queue behavior when full (maxSize)
      *
      * @param blocking Specifies if block or overwrite the oldest message in the queue
@@ -338,6 +348,16 @@ class DataInputQueue {
    public:
     DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize = 16, bool blocking = true);
     ~DataInputQueue();
+
+    /**
+     * Check whether queue is closed
+     */
+    bool isClosed() const;
+
+    /**
+     * Closes the queue and the underlying thread
+     */
+    void close();
 
     /**
      * Sets maximum message size. If message is larger than specified, then an exception is issued.

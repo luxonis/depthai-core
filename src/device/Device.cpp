@@ -339,7 +339,9 @@ void Device::close() {
     connection->close();
     connection = nullptr;
 
-    // Clear queues
+    // Close and clear queues
+    for(auto& kv : outputQueueMap) kv.second->close();
+    for(auto& kv : inputQueueMap) kv.second->close();
     outputQueueMap.clear();
     inputQueueMap.clear();
 
