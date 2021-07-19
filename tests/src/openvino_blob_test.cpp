@@ -52,3 +52,12 @@ TEST_CASE("OpenVINO 2021.3 blob") {
     REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2021_3);
     dai::Device d(p);
 }
+
+TEST_CASE("OpenVINO 2021.4 blob") {
+    dai::Pipeline p;
+    auto nn = p.create<dai::node::NeuralNetwork>();
+    nn->setBlobPath(OPENVINO_2021_4_BLOB_PATH);
+    auto networkOpenvinoVersion = p.getOpenVINOVersion();
+    REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2021_4);
+    dai::Device d(p);
+}

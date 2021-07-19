@@ -16,44 +16,38 @@ namespace dai {
 // major and minor represent openvino NN blob version information
 const std::map<std::pair<std::uint32_t, std::uint32_t>, OpenVINO::Version> OpenVINO::blobVersionToLatestOpenvinoMapping = {
     {{5, 0}, OpenVINO::VERSION_2020_3},
-    {{6, 0}, OpenVINO::VERSION_2021_3},
-    {{2020, 1}, OpenVINO::VERSION_2020_1},
-    {{2020, 2}, OpenVINO::VERSION_2020_2},
+    {{6, 0}, OpenVINO::VERSION_2021_4},
     {{2020, 3}, OpenVINO::VERSION_2020_3},
     {{2020, 4}, OpenVINO::VERSION_2020_4},
     {{2021, 1}, OpenVINO::VERSION_2021_1},
     {{2021, 2}, OpenVINO::VERSION_2021_2},
     {{2021, 3}, OpenVINO::VERSION_2021_3},
+    {{2021, 4}, OpenVINO::VERSION_2021_4},
+
 };
 
 const std::map<std::pair<std::uint32_t, std::uint32_t>, std::vector<OpenVINO::Version>> OpenVINO::blobVersionToOpenvinoMapping = {
-    {{5, 0}, {OpenVINO::VERSION_2020_1, OpenVINO::VERSION_2020_2, OpenVINO::VERSION_2020_3}},
-    {{6, 0}, {OpenVINO::VERSION_2020_4, OpenVINO::VERSION_2021_1, OpenVINO::VERSION_2021_2, OpenVINO::VERSION_2021_3}},
-    {{2020, 1}, {OpenVINO::VERSION_2020_1}},
-    {{2020, 2}, {OpenVINO::VERSION_2020_2}},
+    {{5, 0}, {OpenVINO::VERSION_2020_3}},
+    {{6, 0}, {OpenVINO::VERSION_2020_4, OpenVINO::VERSION_2021_1, OpenVINO::VERSION_2021_2, OpenVINO::VERSION_2021_3, OpenVINO::VERSION_2021_4}},
     {{2020, 3}, {OpenVINO::VERSION_2020_3}},
     {{2020, 4}, {OpenVINO::VERSION_2020_4}},
     {{2021, 1}, {OpenVINO::VERSION_2021_1}},
     {{2021, 2}, {OpenVINO::VERSION_2021_2}},
     {{2021, 3}, {OpenVINO::VERSION_2021_3}},
+    {{2021, 4}, {OpenVINO::VERSION_2021_4}},
 };
 
 std::vector<OpenVINO::Version> OpenVINO::getVersions() {
-    return {OpenVINO::VERSION_2020_1,
-            OpenVINO::VERSION_2020_2,
-            OpenVINO::VERSION_2020_3,
+    return {OpenVINO::VERSION_2020_3,
             OpenVINO::VERSION_2020_4,
             OpenVINO::VERSION_2021_1,
             OpenVINO::VERSION_2021_2,
-            OpenVINO::VERSION_2021_3};
+            OpenVINO::VERSION_2021_3,
+            OpenVINO::VERSION_2021_4};
 }
 
 std::string OpenVINO::getVersionName(OpenVINO::Version version) {
     switch(version) {
-        case OpenVINO::VERSION_2020_1:
-            return "2020.1";
-        case OpenVINO::VERSION_2020_2:
-            return "2020.2";
         case OpenVINO::VERSION_2020_3:
             return "2020.3";
         case OpenVINO::VERSION_2020_4:
@@ -64,6 +58,8 @@ std::string OpenVINO::getVersionName(OpenVINO::Version version) {
             return "2021.2";
         case OpenVINO::VERSION_2021_3:
             return "2021.3";
+        case OpenVINO::VERSION_2021_4:
+            return "2021.4";
     }
     throw std::logic_error("OpenVINO - Unknown version enum specified");
 }
