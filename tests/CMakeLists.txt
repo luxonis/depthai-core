@@ -72,6 +72,14 @@ hunter_private_data(
     FILE "text-image-super-resolution-0001_2021.3_4shave.blob"
     LOCATION openvino_2021_3_blob
 )
+# OpenVINO 2021.4 blob
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.4_4shave.blob"
+    SHA1 "fd11bb63781fc3315cdf4bb74247a8b98817f6fd"
+    FILE "text-image-super-resolution-0001_2021.4_4shave.blob"
+    LOCATION openvino_2021_4_blob
+)
+
 
 # Add tests
 dai_add_test(color_camera_node_test src/color_camera_node_test.cpp)
@@ -88,6 +96,7 @@ target_compile_definitions(openvino_blob PRIVATE
     OPENVINO_2021_1_BLOB_PATH="${openvino_2021_1_blob}"
     OPENVINO_2021_2_BLOB_PATH="${openvino_2021_2_blob}"
     OPENVINO_2021_3_BLOB_PATH="${openvino_2021_3_blob}"
+    OPENVINO_2021_4_BLOB_PATH="${openvino_2021_4_blob}"
 )
 
 
