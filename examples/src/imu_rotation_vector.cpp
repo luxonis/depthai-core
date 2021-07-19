@@ -54,7 +54,7 @@ int main() {
                 rVvalues.j,
                 rVvalues.k,
                 rVvalues.real,
-                rVvalues.accuracy);
+                rVvalues.rotationVectorAccuracy);
         }
 
         int key = cv::waitKey(1);
