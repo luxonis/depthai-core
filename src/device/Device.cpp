@@ -529,7 +529,8 @@ void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToM
     pimpl->rpcStream = std::make_unique<XLinkStream>(*connection, dai::XLINK_CHANNEL_MAIN_RPC, dai::XLINK_USB_BUFFER_MAX_SIZE);
 
     pimpl->rpcClient = std::make_unique<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>([this](nanorpc::core::type::buffer request) {
-        // TODO(TheMarpe) - causes issues on Windows
+        // Lock for time of the RPC call, to not mix the responses between calling threads.
+        // Note: might cause issues on Windows on incorrect shutdown. To be investigated
         std::unique_lock<std::mutex> lock(pimpl->rpcMutex);
 
         // Log the request data
