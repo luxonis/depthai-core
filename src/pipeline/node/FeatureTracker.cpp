@@ -15,7 +15,6 @@ std::string FeatureTracker::getName() const {
     return "FeatureTracker";
 }
 
-
 nlohmann::json FeatureTracker::getProperties() {
     nlohmann::json j;
     properties.initialConfig = *rawConfig;
