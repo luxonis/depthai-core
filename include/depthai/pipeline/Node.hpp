@@ -34,18 +34,24 @@ class Node {
     struct Connection;
 
    protected:
+    // fwd declare classes
+    class Input;
+    class Output;
+
+    std::vector<Output*> outputs;
+    std::vector<Input*> inputs;
+
     struct DatatypeHierarchy {
         DatatypeHierarchy(DatatypeEnum d, bool c) : datatype(d), descendants(c) {}
         DatatypeEnum datatype;
         bool descendants;
     };
 
-    // fwd declare Input class
-    struct Input;
-
-    struct Output {
-        enum class Type { MSender, SSender };
+    class Output {
         Node& parent;
+
+       public:
+        enum class Type { MSender, SSender };
         const std::string name;
         const Type type;
         // Which types and do descendants count as well?
@@ -54,7 +60,13 @@ class Node {
             : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {}
         bool isSamePipeline(const Input& in);
 
-       public:
+        Node& getParent() {
+            return parent;
+        }
+        const Node& getParent() const {
+            return parent;
+        }
+
         /**
          * Check if connection is possible
          * @param in Input to connect to
@@ -88,16 +100,18 @@ class Node {
         void unlink(const Input& in);
     };
 
-    struct Input {
-        enum class Type { SReceiver, MReceiver };
+    class Input {
         Node& parent;
+
+       public:
+        enum class Type { SReceiver, MReceiver };
         const std::string name;
         const Type type;
         bool defaultBlocking{true};
         int defaultQueueSize{8};
         tl::optional<bool> blocking;
         tl::optional<int> queueSize;
-        friend struct Output;
+        friend class Output;
         const std::vector<DatatypeHierarchy> possibleDatatypes;
 
         /// Constructs Input with default blocking and queueSize options
@@ -108,7 +122,13 @@ class Node {
         Input(Node& par, std::string n, Type t, bool blocking, int queueSize, std::vector<DatatypeHierarchy> types)
             : parent(par), name(std::move(n)), type(t), defaultBlocking(blocking), defaultQueueSize(queueSize), possibleDatatypes(std::move(types)) {}
 
-       public:
+        Node& getParent() {
+            return parent;
+        }
+        const Node& getParent() const {
+            return parent;
+        }
+
         /**
          * Overrides default input queue behavior.
          * @param blocking True blocking, false overwriting
@@ -154,11 +174,40 @@ class Node {
     /// Retrieves nodes name
     virtual std::string getName() const = 0;
     /// Retrieves all nodes outputs
-    virtual std::vector<Output> getOutputs() = 0;
+    std::vector<Output> getOutputs() {
+        std::vector<Output> result;
+        for(auto* x : getOutputRefs()) {
+            result.push_back(*x);
+        }
+        return result;
+    }
     /// Retrieves all nodes inputs
-    virtual std::vector<Input> getInputs() = 0;
+    std::vector<Input> getInputs() {
+        std::vector<Input> result;
+        for(auto* x : getInputRefs()) {
+            result.push_back(*x);
+        }
+        return result;
+    }
     /// Retrieves all nodes assets
     virtual std::vector<std::shared_ptr<Asset>> getAssets();
+
+    /// Retrieves reference to node outputs
+    std::vector<Output*> getOutputRefs() {
+        return outputs;
+    }
+    /// Retrieves reference to node outputs
+    std::vector<const Output*> getOutputRefs() const {
+        return {outputs.begin(), outputs.end()};
+    }
+    /// Retrieves reference to node inputs
+    std::vector<Input*> getInputRefs() {
+        return inputs;
+    }
+    /// Retrieves reference to node inputs
+    std::vector<const Input*> getInputRefs() const {
+        return {inputs.begin(), inputs.end()};
+    }
 
     /// Connection between an Input and Output
     struct Connection {

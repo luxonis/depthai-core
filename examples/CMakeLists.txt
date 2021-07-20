@@ -264,6 +264,8 @@ target_compile_definitions(object_tracker_video PRIVATE BLOB_PATH="${person_dete
 
 dai_add_example(queue_add_callback src/queue_add_callback.cpp ON)
 
+dai_add_example(bootloader_version src/bootloader_version.cpp ON)
+#dai_add_example(flash_bootloader src/flash_bootloader.cpp OFF)
 dai_add_example(edge_detector src/edge_detector.cpp ON)
 
 dai_add_example(feature_tracker src/feature_tracker.cpp ON)

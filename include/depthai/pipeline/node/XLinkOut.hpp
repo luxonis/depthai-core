@@ -14,13 +14,12 @@ namespace node {
 class XLinkOut : public Node {
     dai::XLinkOutProperties properties;
 
-    std::string getName() const override;
-    std::vector<Input> getInputs() override;
-    std::vector<Output> getOutputs() override;
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
 
    public:
+    std::string getName() const override;
+
     XLinkOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
     /**

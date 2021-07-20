@@ -21,9 +21,6 @@ class SpatialLocationCalculator : public Node {
     using Properties = dai::SpatialLocationCalculatorProperties;
 
    private:
-    std::string getName() const override;
-    std::vector<Input> getInputs() override;
-    std::vector<Output> getOutputs() override;
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
 
@@ -31,6 +28,8 @@ class SpatialLocationCalculator : public Node {
     Properties properties;
 
    public:
+    std::string getName() const override;
+
     SpatialLocationCalculator(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
     /**

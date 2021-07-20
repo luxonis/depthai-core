@@ -13,7 +13,7 @@ namespace dai {
 class OpenVINO {
    public:
     /// OpenVINO Version supported version information
-    enum Version { VERSION_2020_1, VERSION_2020_2, VERSION_2020_3, VERSION_2020_4, VERSION_2021_1, VERSION_2021_2, VERSION_2021_3 };
+    enum Version { VERSION_2020_3, VERSION_2020_4, VERSION_2021_1, VERSION_2021_2, VERSION_2021_3, VERSION_2021_4 };
 
     /**
      * @returns Supported versions
