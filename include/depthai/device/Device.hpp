@@ -25,10 +25,6 @@
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
 
-// libraries
-#include "nanorpc/core/client.h"
-#include "nanorpc/packer/nlohmann_msgpack.h"
-
 namespace dai {
 
 // Device (RAII), connects to device and maintains watchdog, timesync, ...
@@ -510,8 +506,6 @@ class Device {
     void checkClosed() const;
 
     std::shared_ptr<XLinkConnection> connection;
-    std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> client;
-    std::mutex rpcMutex;
     std::vector<uint8_t> patchedCmd;
 
     DeviceInfo deviceInfo = {};
@@ -542,9 +536,6 @@ class Device {
     // Logging thread
     std::thread loggingThread;
     std::atomic<bool> loggingRunning{true};
-
-    // RPC stream
-    std::unique_ptr<XLinkStream> rpcStream;
 
     // closed
     std::atomic<bool> closed{false};
