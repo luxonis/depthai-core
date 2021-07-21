@@ -12,10 +12,6 @@
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 
-// libraries
-#include "nanorpc/core/client.h"
-#include "nanorpc/packer/nlohmann_msgpack.h"
-
 // shared
 #include "depthai-bootloader-shared/Memory.hpp"
 #include "depthai-bootloader-shared/Section.hpp"
