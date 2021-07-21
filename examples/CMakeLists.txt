@@ -28,7 +28,7 @@ function(dai_add_example example_name example_src enable_test)
     # If 'DEPTHAI_TEST_EXAMPLES' is ON, then examples will be part of the test suite
     if(${enable_test} AND DEPTHAI_TEST_EXAMPLES)
         add_test(NAME ${example_name} COMMAND ${CMAKE_COMMAND}
-            -DTIMEOUT_SECONDS=5
+            -DTIMEOUT_SECONDS=10
             -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake $<TARGET_FILE:${example_name}> ${arguments}
         )
 
