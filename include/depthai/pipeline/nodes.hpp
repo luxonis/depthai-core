@@ -11,6 +11,7 @@
 #include "node/NeuralNetwork.hpp"
 #include "node/ObjectTracker.hpp"
 #include "node/SPIOut.hpp"
+#include "node/Script.hpp"
 #include "node/SpatialDetectionNetwork.hpp"
 #include "node/SpatialLocationCalculator.hpp"
 #include "node/StereoDepth.hpp"
@@ -18,4 +19,3 @@
 #include "node/VideoEncoder.hpp"
 #include "node/XLinkIn.hpp"
 #include "node/XLinkOut.hpp"
-#include "node/Script.hpp"

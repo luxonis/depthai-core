@@ -140,8 +140,8 @@ std::vector<Node::Input> Node::getInputs() {
 /// Retrieves reference to node outputs
 std::vector<Node::Output*> Node::getOutputRefs() {
     std::vector<Node::Output*> outputRefs{outputs.begin(), outputs.end()};
-    for(auto*& map : outputMaps){
-        for(auto& kv : *map){
+    for(auto*& map : outputMaps) {
+        for(auto& kv : *map) {
             outputRefs.push_back(&kv.second);
         }
     }
@@ -151,8 +151,8 @@ std::vector<Node::Output*> Node::getOutputRefs() {
 /// Retrieves reference to node outputs
 std::vector<const Node::Output*> Node::getOutputRefs() const {
     std::vector<const Node::Output*> outputRefs{outputs.begin(), outputs.end()};
-    for(const auto* const& map : outputMaps){
-        for(const auto& kv : *map){
+    for(const auto* const& map : outputMaps) {
+        for(const auto& kv : *map) {
             outputRefs.push_back(&kv.second);
         }
     }
@@ -161,8 +161,8 @@ std::vector<const Node::Output*> Node::getOutputRefs() const {
 /// Retrieves reference to node inputs
 std::vector<Node::Input*> Node::getInputRefs() {
     std::vector<Node::Input*> inputRefs{inputs.begin(), inputs.end()};
-    for(auto*& map : inputMaps){
-        for(auto& kv : *map){
+    for(auto*& map : inputMaps) {
+        for(auto& kv : *map) {
             inputRefs.push_back(&kv.second);
         }
     }
@@ -172,13 +172,12 @@ std::vector<Node::Input*> Node::getInputRefs() {
 /// Retrieves reference to node inputs
 std::vector<const Node::Input*> Node::getInputRefs() const {
     std::vector<const Node::Input*> inputRefs{inputs.begin(), inputs.end()};
-    for(const auto* const& map : inputMaps){
-        for(const auto& kv : *map){
+    for(const auto* const& map : inputMaps) {
+        for(const auto& kv : *map) {
             inputRefs.push_back(&kv.second);
         }
     }
     return inputRefs;
 }
-
 
 }  // namespace dai
