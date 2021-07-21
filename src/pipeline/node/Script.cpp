@@ -38,7 +38,7 @@ void Script::setScriptPath(const std::string& path) {
     properties.scriptName = path;
 }
 
-void Script::setScriptData(const std::string& script, const std::string& name) {
+void Script::setScript(const std::string& script, const std::string& name) {
     std::vector<std::uint8_t> data{script.begin(), script.end()};
     properties.scriptUri = assetManager.add("__script", std::move(data))->getRelativeUri();
     scriptPath = "";
@@ -49,7 +49,7 @@ void Script::setScriptData(const std::string& script, const std::string& name) {
     }
 }
 
-void Script::setScriptData(const std::vector<std::uint8_t>& data, const std::string& name) {
+void Script::setScript(const std::vector<std::uint8_t>& data, const std::string& name) {
     properties.scriptUri = assetManager.add("__script", std::move(data))->getRelativeUri();
     scriptPath = "";
     if(name.empty()) {
