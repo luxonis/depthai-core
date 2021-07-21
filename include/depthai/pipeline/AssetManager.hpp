@@ -87,12 +87,12 @@ class AssetManager /*: public Assets*/ {
     std::shared_ptr<dai::Asset> set(const std::string& key, Asset asset);
 
     /**
-     * @returns Asset assigned to the specified key or throws an error otherwise
+     * @returns Asset assigned to the specified key or a nullptr otherwise
      */
     std::shared_ptr<const Asset> get(const std::string& key) const;
 
     /**
-     * @returns Asset assigned to the specified key or throws an error otherwise
+     * @returns Asset assigned to the specified key or a nullptr otherwise
      */
     std::shared_ptr<Asset> get(const std::string& key);
 
