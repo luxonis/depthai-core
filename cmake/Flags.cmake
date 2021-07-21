@@ -24,10 +24,10 @@ function(add_default_flags target)
         add_flag(${target} -Wtype-limits)            # size_t - size_t >= 0 -> always true
 
         # disable those flags
-        add_flag(${target} -Wno-unused-command-line-argument)    # clang: warning: argument unused during compilation: '--coverage' [-Wunused-command-line-argument]
-        add_flag(${target} -Wno-unused-parameter)    # prints too many useless warnings
-        add_flag(${target} -Wno-format-nonliteral)   # prints way too many warnings from spdlog
-        add_flag(${target} -Wno-gnu-zero-variadic-macro-arguments)   # https://stackoverflow.com/questions/21266380/is-the-gnu-zero-variadic-macro-arguments-safe-to-ignore
+        # add_flag(${target} -Wno-unused-command-line-argument)    # clang: warning: argument unused during compilation: '--coverage' [-Wunused-command-line-argument]
+        # add_flag(${target} -Wno-unused-parameter)    # prints too many useless warnings
+        # add_flag(${target} -Wno-format-nonliteral)   # prints way too many warnings from spdlog
+        # add_flag(${target} -Wno-gnu-zero-variadic-macro-arguments)   # https://stackoverflow.com/questions/21266380/is-the-gnu-zero-variadic-macro-arguments-safe-to-ignore
 
         # promote to errors
         add_flag(${target} -Werror=self-assign-field)  # error if self assign - bugprone

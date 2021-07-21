@@ -21,15 +21,14 @@ class MonoCamera : public Node {
    private:
     Properties properties;
 
-    std::string getName() const override;
-    std::vector<Output> getOutputs() override;
-    std::vector<Input> getInputs() override;
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
 
     std::shared_ptr<RawCameraControl> rawControl;
 
    public:
+    std::string getName() const override;
+
     MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
     /**

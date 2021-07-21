@@ -13,8 +13,8 @@ target_link_libraries(utility FP16::fp16 ${OpenCV_LIBS})
 function(dai_add_example example_name example_src enable_test)
 
     # Add example
-    add_executable("${example_name}" "${example_src}")
-    target_link_libraries("${example_name}" PRIVATE utility depthai::opencv ${OpenCV_LIBS})
+    add_executable(${example_name} ${example_src})
+    target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS})
 
     # Add sanitizers for example
     add_sanitizers(${example_name})
@@ -33,7 +33,7 @@ function(dai_add_example example_name example_src enable_test)
         )
 
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
-        set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]")
+        set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]")
 
         # Add ubsan halt on error
         set_tests_properties(${example_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1")
@@ -127,6 +127,13 @@ hunter_private_data(
     LOCATION device_config
 )
 
+# person-detection
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/person-detection-0201_openvino_2021.3_7shave.blob"
+    SHA1 "a8d4b0067deb889ec66b2204573d9ee1e0039c8e"
+    FILE "person-detection-0201_openvino_2021.3_7shave.blob"
+    LOCATION person_detection
+)
 
 ## message(STATUS "Location of test1.data: ${test1_data}")
 
@@ -233,7 +240,6 @@ target_compile_definitions(object_tracker PRIVATE BLOB_PATH="${mobilenet_blob}")
 dai_add_example(spatial_object_tracker src/spatial_object_tracker.cpp ON)
 target_compile_definitions(spatial_object_tracker PRIVATE BLOB_PATH="${mobilenet_blob}")
 
-# Stereo Depth example
 dai_add_example(stereo_depth_video src/stereo_depth_video.cpp ON)
 
 # NeuralNetwork node, webcam input (from host)
@@ -250,7 +256,17 @@ dai_add_example(rgb_depth_aligned src/rgb_depth_aligned.cpp ON)
 dai_add_example(camera_mobilenet_sync src/camera_mobilenet_sync_example.cpp ON)
 target_compile_definitions(camera_mobilenet_sync PRIVATE BLOB_PATH="${mobilenet_blob}")
 
-dai_add_example(bootloader_example src/bootloader_example.cpp OFF)
+dai_add_example(imu_gyroscope_accelerometer src/imu_gyroscope_accelerometer.cpp ON)
+dai_add_example(imu_rotation_vector src/imu_rotation_vector.cpp ON)
+
+dai_add_example(object_tracker_video src/object_tracker_video.cpp ON)
+target_compile_definitions(object_tracker_video PRIVATE BLOB_PATH="${person_detection}" VIDEO_PATH="${construction_vest}")
+
+dai_add_example(queue_add_callback src/queue_add_callback.cpp ON)
+
+dai_add_example(bootloader_version src/bootloader_version.cpp ON)
+#dai_add_example(flash_bootloader src/flash_bootloader.cpp OFF)
+dai_add_example(edge_detector src/edge_detector.cpp ON)
 
 # Calibration Read and write samples
 dai_add_example(calibration_flash src/calibration_flash.cpp OFF)

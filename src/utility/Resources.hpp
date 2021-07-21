@@ -12,16 +12,20 @@
 #include <depthai/device/Device.hpp>
 #include <depthai/device/DeviceBootloader.hpp>
 
-namespace dai
-{
+namespace dai {
+
 class Resources {
     // private constructor
     Resources();
     ~Resources();
 
-    std::mutex mtx;
-    std::thread lazyThread;
-    std::unordered_map<std::string, std::vector<std::uint8_t>> resourceMap;
+    std::mutex mtxDevice;
+    std::thread lazyThreadDevice;
+    std::unordered_map<std::string, std::vector<std::uint8_t>> resourceMapDevice;
+
+    std::mutex mtxBootloader;
+    std::thread lazyThreadBootloader;
+    std::unordered_map<std::string, std::vector<std::uint8_t>> resourceMapBootloader;
 
     std::vector<std::uint8_t> getDeviceBinary(Device::Config config);
 
@@ -33,7 +37,7 @@ public:
     // Available resources
     std::vector<std::uint8_t> getDeviceFirmware(bool usb2Mode, OpenVINO::Version version = Pipeline::DEFAULT_OPENVINO_VERSION);
     std::vector<std::uint8_t> getDeviceFirmware(Device::Config config);
-    std::vector<std::uint8_t> getBootloaderFirmware();
+    std::vector<std::uint8_t> getBootloaderFirmware(DeviceBootloader::Type type = DeviceBootloader::Type::USB);
 
 };
 
