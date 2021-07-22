@@ -18,18 +18,6 @@ class SPIIn : public Node {
    private:
     Properties properties;
 
-    std::string getName() const override {
-        return "SPIIn";
-    }
-
-    std::vector<Input> getInputs() override {
-        return {};
-    }
-
-    std::vector<Output> getOutputs() override {
-        return {out};
-    }
-
     nlohmann::json getProperties() override {
         nlohmann::json j;
         nlohmann::to_json(j, properties);
@@ -41,8 +29,13 @@ class SPIIn : public Node {
     }
 
    public:
+    std::string getName() const override {
+        return "SPIIn";
+    }
+
     SPIIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
         properties.busId = 0;
+        outputs = {&out};
     }
 
     /**

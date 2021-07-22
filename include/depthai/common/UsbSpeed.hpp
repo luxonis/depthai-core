@@ -1,9 +1,7 @@
 #pragma once
 
-// std
-#include <iostream>
+#include <ostream>
 
-// shared
 #include "depthai-shared/common/UsbSpeed.hpp"
 
 namespace dai {

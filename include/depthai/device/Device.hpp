@@ -12,6 +12,7 @@
 #include "DataQueue.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/UsbSpeed.hpp"
+#include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
@@ -23,10 +24,6 @@
 #include "depthai-shared/common/MemoryInfo.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
-
-// libraries
-#include "nanorpc/core/client.h"
-#include "nanorpc/packer/nlohmann_msgpack.h"
 
 namespace dai {
 
@@ -235,6 +232,13 @@ class Device {
     LogLevel getLogLevel();
 
     /**
+     * Get the Device Info object o the device which is currently running
+     *
+     * @return DeviceInfo of the current device in execution
+     */
+    DeviceInfo getDeviceInfo();
+
+    /**
      * Sets logging level which decides printing level to standard output.
      * If lower than setLogLevel, no messages will be printed
      *
@@ -397,6 +401,13 @@ class Device {
     std::string getQueueEvent(std::chrono::microseconds timeout = std::chrono::microseconds(-1));
 
     /**
+     * Get MxId of device
+     *
+     * @returns MxId of connected device
+     */
+    std::string getMxId();
+
+    /**
      * Get cameras that are connected to the device
      *
      * @returns Vector of connected cameras
@@ -453,6 +464,22 @@ class Device {
     CpuUsage getLeonMssCpuUsage();
 
     /**
+     * Stores the Calibration and Device information to the Device EEPROM
+     *
+     * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
+     *
+     * @return true on successful flash, false on failure
+     */
+    bool flashCalibration(CalibrationHandler calibrationDataHandler);
+
+    /**
+     * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
+     *
+     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
+     */
+    CalibrationHandler readCalibration();
+
+    /**
      * Retrieves USB connection speed
      *
      * @returns USB connection speed of connected device if applicable. Unknown otherwise.
@@ -479,8 +506,6 @@ class Device {
     void checkClosed() const;
 
     std::shared_ptr<XLinkConnection> connection;
-    std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> client;
-    std::mutex rpcMutex;
     std::vector<uint8_t> patchedCmd;
 
     DeviceInfo deviceInfo = {};
@@ -511,9 +536,6 @@ class Device {
     // Logging thread
     std::thread loggingThread;
     std::atomic<bool> loggingRunning{true};
-
-    // RPC stream
-    std::unique_ptr<XLinkStream> rpcStream;
 
     // closed
     std::atomic<bool> closed{false};

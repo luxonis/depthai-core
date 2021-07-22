@@ -18,19 +18,7 @@ class SPIOut : public Node {
    private:
     Properties properties;
 
-    std::string getName() const override {
-        return "SPIOut";
-    }
-
-    std::vector<Input> getInputs() override {
-        return {input};
-    }
-
-    std::vector<Output> getOutputs() override {
-        return {};
-    }
-
-    nlohmann::json getProperties() override {
+    nlohmann::json getProperties() {
         nlohmann::json j;
         nlohmann::to_json(j, properties);
         return j;
@@ -41,8 +29,14 @@ class SPIOut : public Node {
     }
 
    public:
+    std::string getName() const override {
+        return "SPIOut";
+    }
+
     SPIOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
         properties.busId = 0;
+
+        inputs = {&input};
     }
 
     /**

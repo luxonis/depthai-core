@@ -6,18 +6,14 @@
 namespace dai {
 namespace node {
 
-NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
+NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
+    inputs = {&input};
+
+    outputs = {&out, &passthrough};
+}
 
 std::string NeuralNetwork::getName() const {
     return "NeuralNetwork";
-}
-
-std::vector<Node::Output> NeuralNetwork::getOutputs() {
-    return {out, passthrough};
-}
-
-std::vector<Node::Input> NeuralNetwork::getInputs() {
-    return {input};
 }
 
 NeuralNetwork::Properties& NeuralNetwork::getPropertiesRef() {
@@ -42,10 +38,10 @@ tl::optional<OpenVINO::Version> NeuralNetwork::getRequiredOpenVINOVersion() {
 NeuralNetwork::BlobAssetInfo NeuralNetwork::loadBlob(const std::string& path) {
     // Each Node has its own asset manager
 
-    // Load blob in blobPath into asset
+    // Load blob in path into asset
     // And mark in properties where to look for it
-    std::ifstream blobStream(blobPath, std::ios::binary);
-    if(!blobStream.is_open()) throw std::runtime_error("NeuralNetwork node | Blob at path: " + blobPath + " doesn't exist");
+    std::ifstream blobStream(path, std::ios::binary);
+    if(!blobStream.is_open()) throw std::runtime_error("NeuralNetwork node | Blob at path: " + path + " doesn't exist");
 
     // Create an asset (alignment 64)
     Asset blobAsset;
