@@ -524,11 +524,11 @@ class Device {
 
    private:
     // private
-    void init(OpenVINO::Version version, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
-    void init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
-    void init(OpenVINO::Version version, bool embeddedMvcmd, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd);
-    void init(const Pipeline& pipeline, bool embeddedMvcmd, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd);
-    void init2(Config cfg, bool embeddedMvcmd, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline);
+    void init(OpenVINO::Version version, bool usb2Mode, const std::string& pathToMvcmd);
+    void init(const Pipeline& pipeline, bool usb2Mode, const std::string& pathToMvcmd);
+    void init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd);
+    void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd);
+    void init2(Config cfg, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline);
     void checkClosed() const;
 
     std::shared_ptr<XLinkConnection> connection;

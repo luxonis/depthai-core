@@ -61,7 +61,7 @@ constexpr static auto RESOURCE_LIST_DEVICE = array_of<const char*>(DEPTHAI_CMD_O
                                                                    DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH,
                                                                    DEPTHAI_CMD_OPENVINO_2021_3_PATCH_PATH);
 
-std::vector<std::uint8_t> Resources::getDeviceBinary(Device::Config config) {
+std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, std::string pathToMvcmd) {
     // Acquire mutex (this mutex signifies that lazy load is complete)
     // It is necessary when accessing resourceMap variable
     std::unique_lock<std::mutex> lock(mtxDevice);
@@ -71,11 +71,20 @@ std::vector<std::uint8_t> Resources::getDeviceBinary(Device::Config config) {
     // Get OpenVINO version
     auto& version = config.version;
 
-    // Check if env variable DEPTHAI_DEVICE_BINARY is set
+    // Check if pathToMvcmd variable is set
+    std::string finalFwBinaryPath = "";
+    if(!pathToMvcmd.empty()) {
+        finalFwBinaryPath = pathToMvcmd;
+    }
+    // Override if env variable DEPTHAI_DEVICE_BINARY is set
     auto fwBinaryPath = spdlog::details::os::getenv("DEPTHAI_DEVICE_BINARY");
     if(!fwBinaryPath.empty()) {
+        finalFwBinaryPath = fwBinaryPath;
+    }
+    // Return binary from file if any of above paths are present
+    if(!finalFwBinaryPath.empty()) {
         // Load binary file at path
-        std::ifstream stream(fwBinaryPath, std::ios::binary);
+        std::ifstream stream(finalFwBinaryPath, std::ios::binary);
         if(!stream.is_open()) {
             // Throw an error
             // TODO(themarpe) - Unify exceptions into meaningful groups
@@ -88,9 +97,9 @@ std::vector<std::uint8_t> Resources::getDeviceBinary(Device::Config config) {
 #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
 
         // Main FW
-        std::vector<std::uint8_t> depthaiBinary{};
+        std::vector<std::uint8_t> depthaiBinary;
         // Patch from main to specified
-        std::vector<std::uint8_t> depthaiPatch{};
+        std::vector<std::uint8_t> depthaiPatch;
 
         switch(version) {
             case OpenVINO::VERSION_2020_3:
@@ -134,7 +143,10 @@ std::vector<std::uint8_t> Resources::getDeviceBinary(Device::Config config) {
             int error = bspatch_mem(depthaiBinary.data(), depthaiBinary.size(), depthaiPatch.data(), depthaiPatch.size(), tmpDepthaiBinary.data());
 
             // if patch not successful
-            if(error > 0) throw std::runtime_error("Error while patching cmd for usb2 mode");
+            if(error > 0) {
+                throw std::runtime_error(fmt::format(
+                    "Error while patching OpenVINO FW version from {} to {}", OpenVINO::getVersionName(MAIN_FW_VERSION), OpenVINO::getVersionName(version)));
+            }
 
             // Change depthaiBinary to tmpDepthaiBinary
             depthaiBinary = std::move(tmpDepthaiBinary);
@@ -326,18 +338,13 @@ Resources::~Resources() {
     if(lazyThreadBootloader.joinable()) lazyThreadBootloader.join();
 }
 
-std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config) {
-    // Return device firmware
-    return getDeviceBinary(config);
-}
-
 // Get device firmware
 std::vector<std::uint8_t> Resources::getDeviceFirmware(bool usb2Mode, OpenVINO::Version version) {
     Device::Config cfg;
     if(usb2Mode) {
-        cfg.preboot.maxUsbSpeed = UsbSpeed::HIGH;
+        cfg.preboot.usb.maxSpeed = UsbSpeed::HIGH;
     } else {
-        cfg.preboot.maxUsbSpeed = Device::DEFAULT_USB_SPEED;
+        cfg.preboot.usb.maxSpeed = Device::DEFAULT_USB_SPEED;
     }
     cfg.version = version;
 

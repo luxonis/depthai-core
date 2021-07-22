@@ -27,6 +27,7 @@
 // libraries
 #include "nanorpc/core/client.h"
 #include "nanorpc/packer/nlohmann_msgpack.h"
+#include "spdlog/details/os.h"
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
@@ -221,19 +222,19 @@ LogLevel Device::Impl::getLogLevel() {
 ///////////////////////////////////////////////
 
 Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode) : deviceInfo(devInfo) {
-    init(pipeline, true, usb2Mode, "");
+    init(pipeline, usb2Mode, "");
 }
 
 Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : deviceInfo(devInfo) {
-    init(pipeline, true, maxUsbSpeed, "");
+    init(pipeline, maxUsbSpeed, "");
 }
 
 Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd) : deviceInfo(devInfo) {
-    init(pipeline, false, false, std::string(pathToCmd));
+    init(pipeline, false, std::string(pathToCmd));
 }
 
 Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd) : deviceInfo(devInfo) {
-    init(pipeline, false, false, pathToCmd);
+    init(pipeline, false, pathToCmd);
 }
 
 Device::Device(const Pipeline& pipeline) {
@@ -244,7 +245,7 @@ Device::Device(const Pipeline& pipeline) {
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
-    init(pipeline, true, false, "");
+    init(pipeline, false, "");
 }
 
 Device::Device(const Pipeline& pipeline, const char* pathToCmd) {
@@ -255,7 +256,7 @@ Device::Device(const Pipeline& pipeline, const char* pathToCmd) {
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
-    init(pipeline, false, false, std::string(pathToCmd));
+    init(pipeline, false, std::string(pathToCmd));
 }
 
 Device::Device(const Pipeline& pipeline, const std::string& pathToCmd) {
@@ -265,7 +266,7 @@ Device::Device(const Pipeline& pipeline, const std::string& pathToCmd) {
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
-    init(pipeline, false, false, pathToCmd);
+    init(pipeline, false, pathToCmd);
 }
 
 Device::Device(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) {
@@ -275,7 +276,7 @@ Device::Device(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) {
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
-    init(pipeline, true, maxUsbSpeed, "");
+    init(pipeline, maxUsbSpeed, "");
 }
 
 Device::Device(const Pipeline& pipeline, bool usb2Mode) {
@@ -285,23 +286,23 @@ Device::Device(const Pipeline& pipeline, bool usb2Mode) {
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
-    init(pipeline, true, usb2Mode, "");
+    init(pipeline, usb2Mode, "");
 }
 
 Device::Device(OpenVINO::Version version, const DeviceInfo& devInfo, bool usb2Mode) : deviceInfo(devInfo) {
-    init(version, true, usb2Mode, "");
+    init(version, usb2Mode, "");
 }
 
 Device::Device(OpenVINO::Version version, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : deviceInfo(devInfo) {
-    init(version, true, maxUsbSpeed, "");
+    init(version, maxUsbSpeed, "");
 }
 
 Device::Device(OpenVINO::Version version, const DeviceInfo& devInfo, const char* pathToCmd) : deviceInfo(devInfo) {
-    init(version, false, false, std::string(pathToCmd));
+    init(version, false, std::string(pathToCmd));
 }
 
 Device::Device(OpenVINO::Version version, const DeviceInfo& devInfo, const std::string& pathToCmd) : deviceInfo(devInfo) {
-    init(version, false, false, pathToCmd);
+    init(version, false, pathToCmd);
 }
 
 Device::Device(OpenVINO::Version version) {
@@ -312,7 +313,7 @@ Device::Device(OpenVINO::Version version) {
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
-    init(version, true, false, "");
+    init(version, false, "");
 }
 
 Device::Device(OpenVINO::Version version, const char* pathToCmd) {
@@ -323,7 +324,7 @@ Device::Device(OpenVINO::Version version, const char* pathToCmd) {
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
-    init(version, false, false, std::string(pathToCmd));
+    init(version, false, std::string(pathToCmd));
 }
 
 Device::Device(OpenVINO::Version version, const std::string& pathToCmd) {
@@ -333,7 +334,7 @@ Device::Device(OpenVINO::Version version, const std::string& pathToCmd) {
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
-    init(version, false, false, pathToCmd);
+    init(version, false, pathToCmd);
 }
 
 Device::Device(OpenVINO::Version version, bool usb2Mode) {
@@ -343,7 +344,7 @@ Device::Device(OpenVINO::Version version, bool usb2Mode) {
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
-    init(version, true, usb2Mode, "");
+    init(version, usb2Mode, "");
 }
 
 Device::Device(OpenVINO::Version version, UsbSpeed maxUsbSpeed) {
@@ -353,11 +354,12 @@ Device::Device(OpenVINO::Version version, UsbSpeed maxUsbSpeed) {
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
-    init(version, true, maxUsbSpeed, "");
+    init(version, maxUsbSpeed, "");
 }
 
 Device::Device(const DeviceInfo& devInfo, Config config) {
-    init2(config, false, {}, {});
+    deviceInfo = devInfo;
+    init2(config, {}, {});
 }
 
 void Device::close() {
@@ -415,40 +417,40 @@ Device::~Device() {
     close();
 }
 
-void Device::init(OpenVINO::Version version, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
+void Device::init(OpenVINO::Version version, bool usb2Mode, const std::string& pathToMvcmd) {
     Config cfg;
     // Specify usb speed
-    cfg.preboot.maxUsbSpeed = usb2Mode ? UsbSpeed::HIGH : Device::DEFAULT_USB_SPEED;
+    cfg.preboot.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : Device::DEFAULT_USB_SPEED;
     // Specify the OpenVINO version
     cfg.version = version;
-    init2(cfg, embeddedMvcmd, pathToMvcmd, {});
+    init2(cfg, pathToMvcmd, {});
 }
-void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
+void Device::init(const Pipeline& pipeline, bool usb2Mode, const std::string& pathToMvcmd) {
     Config cfg;
     // Specify usb speed
-    cfg.preboot.maxUsbSpeed = usb2Mode ? UsbSpeed::HIGH : Device::DEFAULT_USB_SPEED;
+    cfg.preboot.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : Device::DEFAULT_USB_SPEED;
     // Specify the OpenVINO version
     cfg.version = pipeline.getOpenVINOVersion();
-    init2(cfg, embeddedMvcmd, pathToMvcmd, pipeline);
+    init2(cfg, pathToMvcmd, pipeline);
 }
-void Device::init(OpenVINO::Version version, bool embeddedMvcmd, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd) {
+void Device::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd) {
     Config cfg;
     // Specify usb speed
-    cfg.preboot.maxUsbSpeed = maxUsbSpeed;
+    cfg.preboot.usb.maxSpeed = maxUsbSpeed;
     // Specify the OpenVINO version
     cfg.version = version;
-    init2(cfg, embeddedMvcmd, pathToMvcmd, {});
+    init2(cfg, pathToMvcmd, {});
 }
-void Device::init(const Pipeline& pipeline, bool embeddedMvcmd, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd) {
+void Device::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd) {
     Config cfg;
     // Specify usb speed
-    cfg.preboot.maxUsbSpeed = maxUsbSpeed;
+    cfg.preboot.usb.maxSpeed = maxUsbSpeed;
     // Specify the OpenVINO version
     cfg.version = pipeline.getOpenVINOVersion();
-    init2(cfg, embeddedMvcmd, pathToMvcmd, pipeline);
+    init2(cfg, pathToMvcmd, pipeline);
 }
 
-void Device::init2(Config cfg, bool embeddedMvcmd, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline) {
+void Device::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline) {
     // Initalize depthai library if not already
     initialize();
 
@@ -464,18 +466,27 @@ void Device::init2(Config cfg, bool embeddedMvcmd, const std::string& pathToMvcm
     // Set logging pattern of device (device id + shared pattern)
     pimpl->setPattern(fmt::format("[{}] {}", deviceInfo.getMxId(), LOG_DEFAULT_PATTERN));
 
-    // Get embedded mvcmd
-    std::vector<std::uint8_t> embeddedFw = Resources::getInstance().getDeviceFirmware(config);
+    // Check if WD env var is set
+    std::chrono::milliseconds watchdogTimeout = device::XLINK_WATCHDOG_TIMEOUT;
+    auto watchdogMsStr = spdlog::details::os::getenv("DEPTHAI_WATCHDOG");
+    if(!watchdogMsStr.empty()) {
+        // Try parsing the string as a number
+        try {
+            std::chrono::milliseconds watchdog{std::stoi(watchdogMsStr)};
+            config.preboot.watchdogTimeoutMs = watchdog.count();
+            watchdogTimeout = watchdog;
+        } catch(const std::invalid_argument e) {
+            spdlog::warn("DEPTHAI_WATCHDOG value invalid: {}", e.what());
+        }
+    }
+
+    // Get embedded mvcmd or external with applied config
+    std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, pathToMvcmd);
 
     // Init device (if bootloader, handle correctly - issue USB boot command)
     if(deviceInfo.state == X_LINK_UNBOOTED) {
         // Unbooted device found, boot and connect with XLinkConnection constructor
-        if(embeddedMvcmd) {
-            connection = std::make_shared<XLinkConnection>(deviceInfo, embeddedFw);
-        } else {
-            connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd);
-        }
-
+        connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
     } else if(deviceInfo.state == X_LINK_BOOTLOADER) {
         // Scope so bootloaderConnection is desctructed and XLink cleans its state
         {
@@ -518,8 +529,8 @@ void Device::init2(Config cfg, bool embeddedMvcmd, const std::string& pathToMvcm
             if(version >= DeviceBootloader::Version(0, 0, 12)) {
                 // Send request to boot firmware directly from bootloader
                 dai::bootloader::request::BootMemory bootMemory;
-                bootMemory.totalSize = static_cast<uint32_t>(embeddedFw.size());
-                bootMemory.numPackets = ((static_cast<uint32_t>(embeddedFw.size()) - 1) / bootloader::XLINK_STREAM_MAX_SIZE) + 1;
+                bootMemory.totalSize = static_cast<uint32_t>(fwWithConfig.size());
+                bootMemory.numPackets = ((static_cast<uint32_t>(fwWithConfig.size()) - 1) / bootloader::XLINK_STREAM_MAX_SIZE) + 1;
                 if(!sendBootloaderRequest(stream.getStreamId(), bootMemory)) {
                     throw std::runtime_error("Error trying to connect to device");
                 }
@@ -527,7 +538,7 @@ void Device::init2(Config cfg, bool embeddedMvcmd, const std::string& pathToMvcm
                 using namespace std::chrono;
                 auto t1 = steady_clock::now();
                 // After that send numPackets of data
-                stream.writeSplit(embeddedFw.data(), embeddedFw.size(), bootloader::XLINK_STREAM_MAX_SIZE);
+                stream.writeSplit(fwWithConfig.data(), fwWithConfig.size(), bootloader::XLINK_STREAM_MAX_SIZE);
                 spdlog::debug(
                     "Booting FW with Bootloader. Version {}, Time taken: {}", version.toString(), duration_cast<milliseconds>(steady_clock::now() - t1));
 
@@ -559,19 +570,11 @@ void Device::init2(Config cfg, bool embeddedMvcmd, const std::string& pathToMvcm
         }
 
         // Boot and connect with XLinkConnection constructor
-        if(embeddedMvcmd) {
-            connection = std::make_shared<XLinkConnection>(deviceInfo, embeddedFw);
-        } else {
-            connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd);
-        }
+        connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
 
     } else if(deviceInfo.state == X_LINK_BOOTED) {
         // Connect without booting
-        if(embeddedMvcmd) {
-            connection = std::make_shared<XLinkConnection>(deviceInfo, embeddedFw);
-        } else {
-            connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd);
-        }
+        connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
     } else {
         throw std::runtime_error("Cannot find any device with given deviceInfo");
     }
@@ -600,7 +603,7 @@ void Device::init2(Config cfg, bool embeddedMvcmd, const std::string& pathToMvcm
     });
 
     // prepare watchdog thread, which will keep device alive
-    watchdogThread = std::thread([this]() {
+    watchdogThread = std::thread([this, watchdogTimeout]() {
         std::shared_ptr<XLinkConnection> conn = this->connection;
         while(watchdogRunning) {
             try {
@@ -609,7 +612,7 @@ void Device::init2(Config cfg, bool embeddedMvcmd, const std::string& pathToMvcm
                 break;
             }
             // Ping with a period half of that of the watchdog timeout
-            std::this_thread::sleep_for(device::XLINK_WATCHDOG_TIMEOUT / 2);
+            std::this_thread::sleep_for(watchdogTimeout / 2);
         }
 
         // Watchdog ended. Useful for checking disconnects
