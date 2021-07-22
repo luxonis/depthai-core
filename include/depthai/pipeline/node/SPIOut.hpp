@@ -18,7 +18,7 @@ class SPIOut : public Node {
    private:
     Properties properties;
 
-    nlohmann::json getProperties() {
+    nlohmann::json getProperties() override {
         nlohmann::json j;
         nlohmann::to_json(j, properties);
         return j;
