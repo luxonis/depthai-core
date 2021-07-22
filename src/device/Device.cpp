@@ -603,16 +603,19 @@ void Device::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<cons
     });
 
     // prepare watchdog thread, which will keep device alive
+    // separate stream so it doesn't miss between potentially long RPC calls
     watchdogThread = std::thread([this, watchdogTimeout]() {
-        std::shared_ptr<XLinkConnection> conn = this->connection;
-        while(watchdogRunning) {
-            try {
-                pimpl->rpcClient->call("watchdogKeepalive");
-            } catch(const std::exception&) {
-                break;
+        try {
+            XLinkStream stream(*this->connection, device::XLINK_CHANNEL_WATCHDOG, 128);
+            std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
+            while(watchdogRunning) {
+                stream.write(watchdogKeepalive);
+                // Ping with a period half of that of the watchdog timeout
+                std::this_thread::sleep_for(watchdogTimeout / 2);
             }
-            // Ping with a period half of that of the watchdog timeout
-            std::this_thread::sleep_for(watchdogTimeout / 2);
+        } catch(const std::exception& ex) {
+            // ignore
+            spdlog::debug("Watchdog thread exception caught: {}", ex.what());
         }
 
         // Watchdog ended. Useful for checking disconnects
