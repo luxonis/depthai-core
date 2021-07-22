@@ -123,14 +123,16 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, st
                 break;
 
             case MAIN_FW_VERSION:
-                spdlog::debug("resourceMapDevice[{}] size: {}", MAIN_FW_PATH, resourceMapDevice[MAIN_FW_PATH].size());
                 depthaiBinary = resourceMapDevice[MAIN_FW_PATH];
                 break;
         }
 
         // is patching required?
-        if(version != MAIN_FW_VERSION) {
+        if(!depthaiPatch.empty()) {
             spdlog::debug("Patching OpenVINO FW version from {} to {}", OpenVINO::getVersionName(MAIN_FW_VERSION), OpenVINO::getVersionName(version));
+
+            // Load full binary for patch
+            depthaiBinary = resourceMapDevice[MAIN_FW_PATH];
 
             // Get new size
             int64_t patchedSize = bspatch_mem_get_newsize(depthaiPatch.data(), depthaiPatch.size());
