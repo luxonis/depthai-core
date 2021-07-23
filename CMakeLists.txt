@@ -158,6 +158,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/ObjectTracker.cpp
     src/pipeline/node/IMU.cpp
     src/pipeline/node/EdgeDetector.cpp
+    src/pipeline/node/SPIIn.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
