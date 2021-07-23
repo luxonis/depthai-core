@@ -10,6 +10,7 @@
 #include "node/MyProducer.hpp"
 #include "node/NeuralNetwork.hpp"
 #include "node/ObjectTracker.hpp"
+#include "node/SPIIn.hpp"
 #include "node/SPIOut.hpp"
 #include "node/SpatialDetectionNetwork.hpp"
 #include "node/SpatialLocationCalculator.hpp"
@@ -18,4 +19,3 @@
 #include "node/VideoEncoder.hpp"
 #include "node/XLinkIn.hpp"
 #include "node/XLinkOut.hpp"
-#include "node/SPIIn.hpp"

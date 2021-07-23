@@ -18,25 +18,13 @@ class SPIIn : public Node {
    private:
     Properties properties;
 
-    nlohmann::json getProperties() override {
-        nlohmann::json j;
-        nlohmann::to_json(j, properties);
-        return j;
-    }
-
-    std::shared_ptr<Node> clone() override {
-        return std::make_shared<std::decay<decltype(*this)>::type>(*this);
-    }
+    nlohmann::json getProperties() override;
+    std::shared_ptr<Node> clone() override;
 
    public:
-    std::string getName() const override {
-        return "SPIIn";
-    }
+    std::string getName() const override;
 
-    SPIIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
-        properties.busId = 0;
-        outputs = {&out};
-    }
+    SPIIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
     /**
      * Outputs message of same type as send from host.
@@ -48,17 +36,34 @@ class SPIIn : public Node {
      *
      * @param name Stream name
      */
-    void setStreamName(std::string name) {
-        properties.streamName = name;
-    }
+    void setStreamName(const std::string& name);
 
     /**
      * Specifies SPI Bus number to use
      * @param id SPI Bus id
      */
-    void setBusId(int id) {
-        properties.busId = id;
-    }
+    void setBusId(int id);
+
+    /**
+     * Set maximum message size it can receive
+     * @param maxDataSize Maximum size in bytes
+     */
+    void setMaxDataSize(std::uint32_t maxDataSize);
+
+    /**
+     * Set number of frames in pool for sending messages forward
+     * @param numFrames Maximum number of frames in pool
+     */
+    void setNumFrames(std::uint32_t numFrames);
+
+    /// Get stream name
+    std::string getStreamName() const;
+    /// Get bus id
+    int getBusId() const;
+    /// Get maximum messages size in bytes
+    std::uint32_t getMaxDataSize() const;
+    /// Get number of frames in pool
+    std::uint32_t getNumFrames() const;
 };
 
 }  // namespace node
