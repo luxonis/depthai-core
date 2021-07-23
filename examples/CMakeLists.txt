@@ -28,7 +28,7 @@ function(dai_add_example example_name example_src enable_test)
     # If 'DEPTHAI_TEST_EXAMPLES' is ON, then examples will be part of the test suite
     if(${enable_test} AND DEPTHAI_TEST_EXAMPLES)
         add_test(NAME ${example_name} COMMAND ${CMAKE_COMMAND}
-            -DTIMEOUT_SECONDS=5
+            -DTIMEOUT_SECONDS=10
             -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake $<TARGET_FILE:${example_name}> ${arguments}
         )
 
@@ -227,6 +227,9 @@ target_compile_definitions(spatial_tiny_yolo_v3 PRIVATE BLOB_PATH="${tiny_yolo_v
 # Device side decoding example for tiny-yolo-v4 with 3d coordinates on RGB camera
 dai_add_example(spatial_tiny_yolo_v4 src/spatial_tiny_yolo.cpp ON)
 target_compile_definitions(spatial_tiny_yolo_v4 PRIVATE BLOB_PATH="${tiny_yolo_v4_blob}")
+
+# Script node controlling color camera
+dai_add_example(script_camera_control src/script_camera_control.cpp ON)
 
 dai_add_example(spatial_location_calculator src/spatial_location_calculator.cpp ON)
 
