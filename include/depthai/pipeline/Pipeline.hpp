@@ -250,7 +250,7 @@ class Pipeline {
         return impl()->isOpenVINOVersionCompatible(version);
     }
 
-    /// Checks whether a given OpenVINO version is compatible with the pipeline
+    /// Get device configuration needed for this pipeline
     Device::Config getDeviceConfig() const {
         return impl()->getDeviceConfig();
     }

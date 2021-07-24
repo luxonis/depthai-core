@@ -481,7 +481,8 @@ void Device::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<cons
             std::chrono::milliseconds watchdog{std::stoi(watchdogMsStr)};
             config.preboot.watchdogTimeoutMs = watchdog.count();
             watchdogTimeout = watchdog;
-        } catch(const std::invalid_argument e) {
+            spdlog::debug("Using a custom watchdog value of {}", watchdogTimeout);
+        } catch(const std::invalid_argument& e) {
             spdlog::warn("DEPTHAI_WATCHDOG value invalid: {}", e.what());
         }
     }
