@@ -357,6 +357,16 @@ Device::Device(OpenVINO::Version version, UsbSpeed maxUsbSpeed) {
     init(version, maxUsbSpeed, "");
 }
 
+Device::Device(Config config) {
+    // Searches for any available device for 'default' timeout
+    bool found = false;
+    std::tie(found, deviceInfo) = getAnyAvailableDevice();
+
+    // If no device found, throw
+    if(!found) throw std::runtime_error("No available devices");
+    init2(config, {}, {});
+}
+
 Device::Device(const DeviceInfo& devInfo, Config config) {
     deviceInfo = devInfo;
     init2(config, {}, {});
@@ -426,11 +436,9 @@ void Device::init(OpenVINO::Version version, bool usb2Mode, const std::string& p
     init2(cfg, pathToMvcmd, {});
 }
 void Device::init(const Pipeline& pipeline, bool usb2Mode, const std::string& pathToMvcmd) {
-    Config cfg;
-    // Specify usb speed
+    Config cfg = pipeline.getDeviceConfig();
+    // Modify usb speed
     cfg.preboot.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : Device::DEFAULT_USB_SPEED;
-    // Specify the OpenVINO version
-    cfg.version = pipeline.getOpenVINOVersion();
     init2(cfg, pathToMvcmd, pipeline);
 }
 void Device::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd) {
@@ -442,11 +450,9 @@ void Device::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const std::st
     init2(cfg, pathToMvcmd, {});
 }
 void Device::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd) {
-    Config cfg;
-    // Specify usb speed
+    Config cfg = pipeline.getDeviceConfig();
+    // Modify usb speed
     cfg.preboot.usb.maxSpeed = maxUsbSpeed;
-    // Specify the OpenVINO version
-    cfg.version = pipeline.getOpenVINOVersion();
     init2(cfg, pathToMvcmd, pipeline);
 }
 
@@ -1044,7 +1050,7 @@ void Device::setSystemInformationLoggingRate(float rateHz) {
 float Device::getSystemInformationLoggingRate() {
     checkClosed();
 
-    return pimpl->rpcClient->call("getSystemInformationLoggingrate").as<float>();
+    return pimpl->rpcClient->call("getSystemInformationLoggingRate").as<float>();
 }
 
 bool Device::flashCalibration(CalibrationHandler calibrationDataHandler) {

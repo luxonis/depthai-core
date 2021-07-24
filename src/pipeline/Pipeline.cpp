@@ -12,9 +12,6 @@
 
 namespace dai {
 
-constexpr OpenVINO::Version PipelineImpl::DEFAULT_OPENVINO_VERSION;
-constexpr OpenVINO::Version Pipeline::DEFAULT_OPENVINO_VERSION;
-
 Node::Id PipelineImpl::getNextUniqueId() {
     return latestId++;
 }
@@ -54,26 +51,6 @@ GlobalProperties Pipeline::getGlobalProperties() const {
     return pimpl->globalProperties;
 }
 
-/*
-void Pipeline::loadAssets(AssetManager& assetManager) {
-    return pimpl->loadAssets(assetManager);
-}
-*/
-
-/*
-void PipelineImpl::loadAssets() {
-
-    // Load assets of nodes
-    for(const auto& node : nodes){
-        node->loadAssets(assetManager);
-    }
-
-    // Load assets of pipeline (if any)
-    // ...
-
-}
-*/
-
 std::shared_ptr<const Node> PipelineImpl::getNode(Node::Id id) const {
     if(nodeMap.count(id) > 0) {
         return nodeMap.at(id);
@@ -106,20 +83,17 @@ void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector
     // Set schema
     schema = getPipelineSchema();
 
-    // set assets and generate asset storage
-    getAllAssets().serialize(assets, assetStorage);
-}
-
-AssetManager PipelineImpl::getAllAssets() const {
-    AssetManager am = assetManager;
-
+    // Serialize all asset managers into asset storage
+    assetStorage.clear();
+    AssetsMutable mutableAssets;
+    // Pipeline assets
+    assetManager.serialize(mutableAssets, assetStorage, "/pipeline/");
+    // Node assets
     for(const auto& kv : nodeMap) {
-        const auto& node = kv.second;
-        // Loop over all nodes and add any assets they have
-        am.addExisting(node->getAssets());
+        kv.second->getAssetManager().serialize(mutableAssets, assetStorage, fmt::format("/node/{}/", kv.second->id));
     }
 
-    return am;
+    assets = mutableAssets;
 }
 
 PipelineSchema PipelineImpl::getPipelineSchema() const {
@@ -156,6 +130,9 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
                     break;
             }
 
+            if(info.ioInfo.count(io.name) > 0) {
+                throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
+            }
             info.ioInfo[io.name] = io;
         }
 
@@ -173,6 +150,9 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
                     break;
             }
 
+            if(info.ioInfo.count(io.name) > 0) {
+                throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
+            }
             info.ioInfo[io.name] = io;
         }
 
@@ -260,28 +240,20 @@ tl::optional<OpenVINO::Version> PipelineImpl::getPipelineOpenVINOVersion() const
     }
 }
 
-PrebootConfig PipelineImpl::getDevicePrebootConfig() const {
-    PrebootConfig cfg{};
-    // TODO - rest of preboot config
-    return cfg;
+Device::Config PipelineImpl::getDeviceConfig() const {
+    Device::Config config;
+    config.version = getPipelineOpenVINOVersion().value_or(OpenVINO::DEFAULT_VERSION);
+    // TODO(themarpe) - fill out rest of preboot config
+    return config;
 }
 
 void PipelineImpl::setCameraTuningBlobPath(const std::string& path) {
     std::string assetKey = "camTuning";
 
-    std::ifstream blobStream(path, std::ios::binary);
-    if(!blobStream.is_open()) {
-        throw std::runtime_error("Pipeline | Couldn't open camera tuning blob at path: " + path);
-    }
+    auto asset = assetManager.set(assetKey, path);
 
-    Asset blobAsset;
-    blobAsset.alignment = 64;
-    blobAsset.data = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(blobStream), {});
-
-    assetManager.set(assetKey, blobAsset);
-
-    globalProperties.cameraTuningBlobUri = std::string("asset:") + assetKey;
-    globalProperties.cameraTuningBlobSize = blobAsset.data.size();
+    globalProperties.cameraTuningBlobUri = asset->getRelativeUri();
+    globalProperties.cameraTuningBlobSize = asset->data.size();
 }
 
 // Remove node capability

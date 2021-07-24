@@ -565,7 +565,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashCustom(Memory memory, uint3
 }
 */
 
-bool DeviceBootloader::isEmbeddedVersion() {
+bool DeviceBootloader::isEmbeddedVersion() const {
     return isEmbedded;
 }
 

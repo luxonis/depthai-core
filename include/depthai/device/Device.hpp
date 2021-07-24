@@ -13,7 +13,7 @@
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
-#include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
@@ -25,10 +25,12 @@
 #include "depthai-shared/device/PrebootConfig.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
+#include "tl/optional.hpp"
 
 namespace dai {
 
-// Device (RAII), connects to device and maintains watchdog, timesync, ...
+// Forward declare Pipeline
+class Pipeline;
 
 /**
  * Represents the DepthAI device with the methods to interact with it.
@@ -99,7 +101,7 @@ class Device {
      * @param version Version of OpenVINO which firmware will support
      * @returns Firmware binary
      */
-    static std::vector<std::uint8_t> getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version = Pipeline::DEFAULT_OPENVINO_VERSION);
+    static std::vector<std::uint8_t> getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version = OpenVINO::DEFAULT_VERSION);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
@@ -156,9 +158,9 @@ class Device {
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * @param version OpenVINO version which the device will be booted with. Default is Pipeline::DEFAULT_OPENVINO_VERSION
+     * @param version OpenVINO version which the device will be booted with. Default is OpenVINO::DEFAULT_VERSION
      */
-    explicit Device(OpenVINO::Version version = Pipeline::DEFAULT_OPENVINO_VERSION);
+    explicit Device(OpenVINO::Version version = OpenVINO::DEFAULT_VERSION);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
@@ -206,6 +208,12 @@ class Device {
      */
     Device(OpenVINO::Version version, const DeviceInfo& devInfo, const char* pathToCmd);
     Device(OpenVINO::Version version, const DeviceInfo& devInfo, const std::string& pathToCmd);
+
+    /**
+     * Connects to any available device with custom config.
+     * @param config Device custom configuration to boot with
+     */
+    explicit Device(Config config);
 
     /**
      * Connects to device 'devInfo' with custom config.

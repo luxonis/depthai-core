@@ -10,6 +10,7 @@
 #include "AssetManager.hpp"
 #include "Node.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
+#include "depthai/device/Device.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 
 // shared
@@ -37,9 +38,8 @@ class PipelineImpl {
     PipelineSchema getPipelineSchema() const;
     tl::optional<OpenVINO::Version> getPipelineOpenVINOVersion() const;
     bool isOpenVINOVersionCompatible(OpenVINO::Version version) const;
-    AssetManager getAllAssets() const;
+    Device::Config getDeviceConfig() const;
     void setCameraTuningBlobPath(const std::string& path);
-    PrebootConfig getDevicePrebootConfig() const;
 
     // Access to nodes
     std::vector<std::shared_ptr<const Node>> getAllNodes() const;
@@ -60,8 +60,6 @@ class PipelineImpl {
     Node::Id latestId = 0;
     // Pipeline asset manager
     AssetManager assetManager;
-    // Default version
-    constexpr static auto DEFAULT_OPENVINO_VERSION = OpenVINO::Version::VERSION_2021_4;
     // Optionally forced version
     tl::optional<OpenVINO::Version> forceRequiredOpenVINOVersion;
     // Global pipeline properties
@@ -109,9 +107,6 @@ class Pipeline {
 
     /// Clone the pipeline (Creates a copy)
     Pipeline clone() const;
-
-    /// Default Pipeline openvino version
-    constexpr static auto DEFAULT_OPENVINO_VERSION = PipelineImpl::DEFAULT_OPENVINO_VERSION;
 
     /**
      * @returns Global properties of current pipeline
@@ -202,11 +197,6 @@ class Pipeline {
         impl()->unlink(out, in);
     }
 
-    /// Get assets on the pipeline includes nodes assets
-    AssetManager getAllAssets() const {
-        return impl()->getAllAssets();
-    }
-
     /// Get pipelines AssetManager as reference
     const AssetManager& getAssetManager() const {
         return impl()->assetManager;
@@ -242,7 +232,7 @@ class Pipeline {
 
     /// Get possible OpenVINO version to run this pipeline
     OpenVINO::Version getOpenVINOVersion() const {
-        return impl()->getPipelineOpenVINOVersion().value_or(Pipeline::DEFAULT_OPENVINO_VERSION);
+        return impl()->getPipelineOpenVINOVersion().value_or(OpenVINO::DEFAULT_VERSION);
     }
 
     /// Get required OpenVINO version to run this pipeline. Can be none
@@ -261,8 +251,8 @@ class Pipeline {
     }
 
     /// Checks whether a given OpenVINO version is compatible with the pipeline
-    PrebootConfig getDevicePrebootConfig() const {
-        return impl()->getDevicePrebootConfig();
+    Device::Config getDeviceConfig() const {
+        return impl()->getDeviceConfig();
     }
 };
 
