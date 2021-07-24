@@ -69,6 +69,11 @@ class CameraControl : public Buffer {
     void setAutoFocusTrigger();
 
     /**
+     * Set autofocus lens range, `infinityPosition < macroPosition`, valid values `0..255`
+     */
+    void setAutoFocusLensRange(int infinityPosition, int macroPosition);
+
+    /**
      * Set a command to specify focus region in pixels
      * @param startX X coordinate of top left corner of region
      * @param startY Y coordinate of top left corner of region

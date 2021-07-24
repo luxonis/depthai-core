@@ -31,6 +31,11 @@ void CameraControl::setAutoFocusMode(AutoFocusMode mode) {
 void CameraControl::setAutoFocusTrigger() {
     cfg.setCommand(RawCameraControl::Command::AF_TRIGGER);
 }
+void CameraControl::setAutoFocusLensRange(int infinityPosition, int macroPosition) {
+    cfg.setCommand(RawCameraControl::Command::AF_LENS_RANGE);
+    cfg.lensPosAutoInfinity = infinityPosition;
+    cfg.lensPosAutoMacro = macroPosition;
+}
 void CameraControl::setAutoFocusRegion(uint16_t startX, uint16_t startY, uint16_t width, uint16_t height) {
     cfg.setCommand(RawCameraControl::Command::AF_REGION);
     cfg.afRegion.x = startX;
