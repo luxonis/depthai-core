@@ -23,7 +23,7 @@ class FeatureTrackerData : public Buffer {
     explicit FeatureTrackerData(std::shared_ptr<RawTrackedFeatures> ptr);
     virtual ~FeatureTrackerData() = default;
 
-    std::vector<TrackedFeatures>& trackedFeatures;
+    std::vector<TrackedFeature>& trackedFeatures;
 };
 
 }  // namespace dai

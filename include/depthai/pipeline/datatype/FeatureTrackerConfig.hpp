@@ -24,28 +24,52 @@ class FeatureTrackerConfig : public Buffer {
     virtual ~FeatureTrackerConfig() = default;
 
     /**
-     * Set feature tracking algorithm type
-     * @param algorithmType Algorithm type for feature tracking
-     */
-    void setAlgorithmType(dai::FeatureTrackerConfigData::AlgorithmType algorithmType);
-
-    /**
      * Set corner detector algorithm type
      * @param cornerDetector Corner detector type, HARRIS or SHI_THOMASI
      */
-    void setCornerDetector(dai::FeatureTrackerConfigData::CornerDetector cornerDetector);
+    void setCornerDetector(dai::FeatureTrackerConfigData::CornerDetector::AlgorithmType cornerDetector);
+
+    /**
+     * Set corner detector full configuration
+     * @param config Corner detector configuration
+     */
+    void setCornerDetector(dai::FeatureTrackerConfigData::CornerDetector config);
+
+    /**
+     * Set optical flow full configuration
+     * @param config Optical flow configuration
+     */
+    void setOpticalFlow(dai::FeatureTrackerConfigData::MotionEstimator::OpticalFlow config);
 
     /**
      * Set target number of features to detect
-     * @param targetNrFeatures Number of features
+     * @param targetNumFeatures Number of features
      */
-    void setTargetNrFeatures(std::int32_t targetNrFeatures);
+    void setTargetNumFeatures(std::int32_t targetNumFeatures);
+
+    /**
+     * Set motion estimator full configuration
+     * @param config Motion estimator configuration
+     */
+    void setMotionEstimator(dai::FeatureTrackerConfigData::MotionEstimator config);
+
+    /**
+     * Set feature maintainer full configuration
+     * @param config feature maintainer configuration
+     */
+    void setFeatureMaintainer(dai::FeatureTrackerConfigData::FeatureMaintainer config);
+
+    /**
+     * Set explicit configuration
+     * @param config Explicit configuration
+     */
+    void set(dai::FeatureTrackerConfigData config);
 
     /**
      * Retrieve configuration data for FeatureTracker
      * @returns config for feature tracking algorithm
      */
-    FeatureTrackerConfigData getConfigData() const;
+    FeatureTrackerConfigData get() const;
 };
 
 }  // namespace dai

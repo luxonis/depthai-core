@@ -21,7 +21,7 @@ class FeatureTrackerDrawer {
     std::unordered_map<featureIdType, std::deque<dai::Point2f>> trackedFeaturesPath;
 
    public:
-    void trackFeaturePath(std::vector<dai::TrackedFeatures>& features) {
+    void trackFeaturePath(std::vector<dai::TrackedFeature>& features) {
         std::unordered_set<featureIdType> newTrackedIDs;
         for(auto& currentFeature : features) {
             auto currentID = currentFeature.id;
