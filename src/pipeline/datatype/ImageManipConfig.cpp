@@ -22,11 +22,11 @@ void ImageManipConfig::setCropRect(float xmin, float ymin, float xmax, float yma
     // Disable center crop
     cfg.cropConfig.enableCenterCropRectangle = false;
 
-    // Set crop rect
-    cfg.cropConfig.cropRect.xmin = xmin;
-    cfg.cropConfig.cropRect.ymin = ymin;
-    cfg.cropConfig.cropRect.xmax = xmax;
-    cfg.cropConfig.cropRect.ymax = ymax;
+    // Set crop rect - limit to bounds beforehand
+    cfg.cropConfig.cropRect.xmin = std::max(xmin, 0.0f);
+    cfg.cropConfig.cropRect.ymin = std::max(ymin, 0.0f);
+    cfg.cropConfig.cropRect.xmax = std::min(xmax, 1.0f);
+    cfg.cropConfig.cropRect.ymax = std::min(ymax, 1.0f);
 }
 
 void ImageManipConfig::setCropRotatedRect(RotatedRect rr, bool normalizedCoords) {
@@ -77,6 +77,11 @@ void ImageManipConfig::setCenterCrop(float ratio, float whRatio) {
 
     // Set crop center crop config
     cfg.cropConfig.cropRatio = ratio;
+    // Limit to max 1.0f and disallow setting zero ratio
+    if(ratio > 1.0f || ratio < 0.0f) {
+        cfg.cropConfig.cropRatio = 1.0f;
+    }
+
     cfg.cropConfig.widthHeightAspectRatio = whRatio;
 }
 

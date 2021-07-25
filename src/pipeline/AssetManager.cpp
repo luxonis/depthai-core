@@ -1,36 +1,70 @@
 #include "depthai/pipeline/AssetManager.hpp"
 
+#include "spdlog/fmt/fmt.h"
+
+// std
+#include <fstream>
+
 namespace dai {
 
-void AssetManager::add(Asset asset) {
+std::string Asset::getRelativeUri() {
+    return fmt::format("{}:{}", "asset", key);
+}
+
+std::shared_ptr<dai::Asset> AssetManager::set(Asset asset) {
     // make sure that key doesn't exist already
     if(assetMap.count(asset.key) > 0) throw std::logic_error("An Asset with the key: " + asset.key + " already exists.");
     std::string key = asset.key;
     assetMap[key] = std::make_shared<Asset>(std::move(asset));
+    return assetMap[key];
 }
 
-void AssetManager::add(const std::string& key, Asset asset) {
+std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, Asset asset) {
     // Rename the asset with supplied key and store
     Asset a(key);
     a.data = std::move(asset.data);
     a.alignment = asset.alignment;
-    add(std::move(a));
+    return set(std::move(a));
 }
 
-void AssetManager::set(const std::string& key, Asset asset) {
-    // Rename the asset with supplied key and store
-    Asset a(key);
-    a.data = std::move(asset.data);
-    a.alignment = asset.alignment;
-    assetMap[key] = std::make_shared<Asset>(std::move(a));
+std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const std::string& path, int alignment) {
+    // Load binary file at path
+    std::ifstream stream(path, std::ios::in | std::ios::binary);
+    if(!stream.is_open()) {
+        // Throw an error
+        // TODO(themarpe) - Unify exceptions into meaningful groups
+        throw std::runtime_error(fmt::format("Cannot load asset, file at path {} doesn't exist.", path));
+    }
+
+    // Create an asset
+    Asset binaryAsset(key);
+    binaryAsset.alignment = alignment;
+    binaryAsset.data = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
+    // Store asset
+    return set(std::move(binaryAsset));
+}
+
+std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const std::vector<std::uint8_t>& data, int alignment) {
+    // Create an asset
+    Asset binaryAsset(key);
+    binaryAsset.alignment = alignment;
+    binaryAsset.data = std::move(data);
+    // Store asset
+    return set(std::move(binaryAsset));
 }
 
 std::shared_ptr<const Asset> AssetManager::get(const std::string& key) const {
+    if(assetMap.count(key) == 0) {
+        return nullptr;
+    }
     return assetMap.at(key);
 }
 
 std::shared_ptr<Asset> AssetManager::get(const std::string& key) {
-    return assetMap[key];
+    if(assetMap.count(key) == 0) {
+        return nullptr;
+    }
+    return assetMap.at(key);
 }
 
 void AssetManager::addExisting(std::vector<std::shared_ptr<Asset>> assets) {
@@ -66,10 +100,8 @@ void AssetManager::remove(const std::string& key) {
     assetMap.erase(key);
 }
 
-void AssetManager::serialize(Assets& serAssets, std::vector<std::uint8_t>& assetStorage) const {
+void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint8_t>& storage, std::string prefix) const {
     using namespace std;
-    vector<uint8_t> storage;
-    AssetsMutable mutableAssets;
 
     for(auto& kv : assetMap) {
         auto& a = *kv.second;
@@ -90,11 +122,8 @@ void AssetManager::serialize(Assets& serAssets, std::vector<std::uint8_t>& asset
         storage.insert(storage.end(), a.data.begin(), a.data.end());
 
         // Add to map the currently added asset
-        mutableAssets.set(a.key, offset, static_cast<uint32_t>(a.data.size()), a.alignment);
+        mutableAssets.set(prefix + a.key, offset, static_cast<uint32_t>(a.data.size()), a.alignment);
     }
-
-    assetStorage = std::move(storage);
-    serAssets = Assets(mutableAssets);
 }
 
 void AssetsMutable::set(std::string key, std::uint32_t offset, std::uint32_t size, std::uint32_t alignment) {
