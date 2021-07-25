@@ -22,6 +22,10 @@ void FeatureTrackerConfig::setCornerDetector(dai::FeatureTrackerConfigData::Corn
     cfg.config.cornerDetector = config;
 }
 
+void FeatureTrackerConfig::setMotionEstimator(bool enable) {
+    cfg.config.motionEstimator.enable = enable;
+}
+
 void FeatureTrackerConfig::setMotionEstimator(dai::FeatureTrackerConfigData::MotionEstimator config) {
     cfg.config.motionEstimator = config;
 }
@@ -29,6 +33,10 @@ void FeatureTrackerConfig::setMotionEstimator(dai::FeatureTrackerConfigData::Mot
 void FeatureTrackerConfig::setOpticalFlow(dai::FeatureTrackerConfigData::MotionEstimator::OpticalFlow config) {
     cfg.config.motionEstimator.algorithmType = dai::FeatureTrackerConfigData::MotionEstimator::AlgorithmType::LUCAS_KANADE_OPTICAL_FLOW;
     cfg.config.motionEstimator.opticalFlow = config;
+}
+
+void FeatureTrackerConfig::setFeatureMaintainer(bool enable) {
+    cfg.config.featureMaintainer.enable = enable;
 }
 
 void FeatureTrackerConfig::setFeatureMaintainer(dai::FeatureTrackerConfigData::FeatureMaintainer config) {

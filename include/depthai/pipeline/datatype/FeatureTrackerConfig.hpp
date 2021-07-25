@@ -48,10 +48,22 @@ class FeatureTrackerConfig : public Buffer {
     void setTargetNumFeatures(std::int32_t targetNumFeatures);
 
     /**
+     * Enable or disable motion estimator
+     * @param enable
+     */
+    void setMotionEstimator(bool enable);
+
+    /**
      * Set motion estimator full configuration
      * @param config Motion estimator configuration
      */
     void setMotionEstimator(dai::FeatureTrackerConfigData::MotionEstimator config);
+
+    /**
+     * Enable or disable feature maintainer
+     * @param enable
+     */
+    void setFeatureMaintainer(bool enable);
 
     /**
      * Set feature maintainer full configuration
