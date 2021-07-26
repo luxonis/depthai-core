@@ -22,9 +22,10 @@ void CameraControl::setStartStreaming() {
 void CameraControl::setStopStreaming() {
     cfg.setCommand(RawCameraControl::Command::STOP_STREAM);
 }
-void CameraControl::setExternalTrigger(int numFramesBurst) {
+void CameraControl::setExternalTrigger(int numFramesBurst, int numFramesDiscard) {
     cfg.setCommand(RawCameraControl::Command::EXTERNAL_TRIGGER);
     cfg.lowPowerNumFramesBurst = numFramesBurst;
+    cfg.lowPowerNumFramesDiscard = numFramesDiscard;
 }
 
 // Focus
