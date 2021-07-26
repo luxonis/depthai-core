@@ -64,6 +64,14 @@ class FeatureTracker : public Node {
      * @param wait True to wait for configuration message, false otherwise.
      */
     void setWaitForConfigInput(bool wait);
+
+    /**
+     * Specify allocated hardware resources for feature tracking.
+     * 2 shaves/memory slices are required for optical flow, 1 for corner detection only.
+     * @param numShaves Number of shaves. Maximum 2.
+     * @param numMemorySlices Number of memory slices. Maximum 2.
+     */
+    void setHardwareResources(int numShaves, int numMemorySlices);
 };
 
 }  // namespace node

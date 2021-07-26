@@ -27,6 +27,11 @@ void FeatureTracker::setWaitForConfigInput(bool wait) {
     properties.inputConfigSync = wait;
 }
 
+void FeatureTracker::setHardwareResources(int numShaves, int numMemorySlices) {
+    properties.numShaves = numShaves;
+    properties.numMemorySlices = numMemorySlices;
+}
+
 std::shared_ptr<Node> FeatureTracker::clone() {
     return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
