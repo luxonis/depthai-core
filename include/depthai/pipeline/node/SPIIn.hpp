@@ -3,16 +3,20 @@
 #include <depthai/pipeline/Node.hpp>
 
 // shared
-#include <depthai-shared/properties/XLinkInProperties.hpp>
+#include <depthai-shared/properties/SPIInProperties.hpp>
 
 namespace dai {
 namespace node {
 
 /**
- * @brief XLinkIn node. Receives messages over XLink.
+ * @brief SPIIn node. Receives messages over SPI.
  */
-class XLinkIn : public Node {
-    dai::XLinkInProperties properties;
+class SPIIn : public Node {
+   public:
+    using Properties = dai::SPIInProperties;
+
+   private:
+    Properties properties;
 
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
@@ -20,7 +24,7 @@ class XLinkIn : public Node {
    public:
     std::string getName() const override;
 
-    XLinkIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    SPIIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
     /**
      * Outputs message of same type as send from host.
@@ -28,13 +32,17 @@ class XLinkIn : public Node {
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
 
     /**
-     * Specifies XLink stream name to use.
+     * Specifies stream name over which the node will receive data
      *
-     * The name should not start with double underscores '__',
-     * as those are reserved for internal use.
      * @param name Stream name
      */
     void setStreamName(const std::string& name);
+
+    /**
+     * Specifies SPI Bus number to use
+     * @param id SPI Bus id
+     */
+    void setBusId(int id);
 
     /**
      * Set maximum message size it can receive
@@ -50,6 +58,8 @@ class XLinkIn : public Node {
 
     /// Get stream name
     std::string getStreamName() const;
+    /// Get bus id
+    int getBusId() const;
     /// Get maximum messages size in bytes
     std::uint32_t getMaxDataSize() const;
     /// Get number of frames in pool

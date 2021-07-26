@@ -18,16 +18,15 @@ XLinkStream::XLinkStream(const XLinkConnection& conn, const std::string& name, s
     if(name.empty()) throw std::invalid_argument("Cannot create XLinkStream using empty stream name");
     if(conn.getLinkId() == -1) throw std::invalid_argument("Cannot create XLinkStream using unconnected XLinkConnection");
 
-    std::unique_lock<std::mutex> lock(xlinkStreamOperationMutex);
     streamId = INVALID_STREAM_ID;
 
     for(int retryCount = 0; retryCount < STREAM_OPEN_RETRIES; retryCount++) {
         streamId = XLinkOpenStream(conn.getLinkId(), streamName.c_str(), static_cast<int>(maxWriteSize));
 
-        // Give some time before continuing
-        std::this_thread::sleep_for(WAIT_FOR_STREAM_RETRY);
-
-        if(streamId != INVALID_STREAM_ID) {
+        if(streamId == INVALID_STREAM_ID) {
+            // Give some time before continuing
+            std::this_thread::sleep_for(WAIT_FOR_STREAM_RETRY);
+        } else {
             break;
         }
     }
@@ -48,9 +47,7 @@ XLinkStream::XLinkStream(XLinkStream&& stream) : streamName(std::move(stream.str
 XLinkStream::~XLinkStream() {
     // If streamId != invalid (eg. wasn't moved to another XLinkStream)
     if(streamId != INVALID_STREAM_ID) {
-        std::unique_lock<std::mutex> lock(xlinkStreamOperationMutex);
         XLinkCloseStream(streamId);
-        std::this_thread::sleep_for(WAIT_FOR_STREAM_RETRY);
     }
 }
 

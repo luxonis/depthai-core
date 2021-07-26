@@ -16,6 +16,7 @@
 #include "depthai/pipeline/datatype/AprilTagData.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
+#include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
@@ -34,6 +35,7 @@
 #include "depthai-shared/datatype/RawAprilTags.hpp"
 #include "depthai-shared/datatype/RawBuffer.hpp"
 #include "depthai-shared/datatype/RawCameraControl.hpp"
+#include "depthai-shared/datatype/RawEdgeDetectorConfig.hpp"
 #include "depthai-shared/datatype/RawIMUData.hpp"
 #include "depthai-shared/datatype/RawImageManipConfig.hpp"
 #include "depthai-shared/datatype/RawImgDetections.hpp"
@@ -74,7 +76,10 @@ std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
     std::uint32_t bufferLength = packet->length - 8 - serializedObjectSize;
     auto* msgpackStart = packet->data + bufferLength;
 
-    nlohmann::json jser = nlohmann::json::from_msgpack(msgpackStart, msgpackStart + serializedObjectSize);
+    nlohmann::json jser;
+    if(serializedObjectSize > 0) {
+        jser = nlohmann::json::from_msgpack(msgpackStart, msgpackStart + serializedObjectSize);
+    }
 
     // copy data part
     std::vector<uint8_t> data(packet->data, packet->data + bufferLength);
@@ -140,8 +145,13 @@ std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
         case DatatypeEnum::IMUData:
             return parseDatatype<RawIMUData>(jser, data);
             break;
+
         case DatatypeEnum::StereoDepthConfig:
             return parseDatatype<RawStereoDepthConfig>(jser, data);
+            break;
+
+        case DatatypeEnum::EdgeDetectorConfig:
+            return parseDatatype<RawEdgeDetectorConfig>(jser, data);
             break;
     }
 
@@ -158,7 +168,10 @@ std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
     std::uint32_t bufferLength = packet->length - 8 - serializedObjectSize;
     auto* msgpackStart = packet->data + bufferLength;
 
-    nlohmann::json jser = nlohmann::json::from_msgpack(msgpackStart, msgpackStart + serializedObjectSize);
+    nlohmann::json jser;
+    if(serializedObjectSize > 0) {
+        jser = nlohmann::json::from_msgpack(msgpackStart, msgpackStart + serializedObjectSize);
+    }
 
     // copy data part
     std::vector<uint8_t> data(packet->data, packet->data + bufferLength);
@@ -225,6 +238,10 @@ std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
 
         case DatatypeEnum::StereoDepthConfig:
             return std::make_shared<StereoDepthConfig>(parseDatatype<RawStereoDepthConfig>(jser, data));
+            break;
+
+        case DatatypeEnum::EdgeDetectorConfig:
+            return std::make_shared<EdgeDetectorConfig>(parseDatatype<RawEdgeDetectorConfig>(jser, data));
             break;
     }
 

@@ -3,18 +3,13 @@
 namespace dai {
 namespace node {
 
-VideoEncoder::VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
+VideoEncoder::VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
+    inputs = {&input};
+    outputs = {&bitstream};
+}
 
 std::string VideoEncoder::getName() const {
     return "VideoEncoder";
-}
-
-std::vector<Node::Input> VideoEncoder::getInputs() {
-    return {input};
-}
-
-std::vector<Node::Output> VideoEncoder::getOutputs() {
-    return {bitstream};
 }
 
 nlohmann::json VideoEncoder::getProperties() {

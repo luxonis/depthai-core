@@ -6,7 +6,7 @@
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-static const std::vector<std::string> labelMap = {"person", ""};
+static const std::vector<std::string> labelMap = {"", "person"};
 
 static std::atomic<bool> fullFrameTracking{false};
 
@@ -49,7 +49,7 @@ int main(int argc, char** argv) {
     // Properties
     xinFrame->setMaxDataSize(1920 * 1080 * 3);
 
-    manip->initialConfig.setResizeThumbnail(384, 384);
+    manip->initialConfig.setResizeThumbnail(544, 320);
     // manip->initialConfig.setResize(384, 384);
     // manip->initialConfig.setKeepAspectRatio(false); //squash the image to not lose FOV
     // The NN model expects BGR input. By default ImageManip output type would be same as input (gray in this case)
@@ -64,7 +64,7 @@ int main(int argc, char** argv) {
     objectTracker->inputTrackerFrame.setBlocking(true);
     objectTracker->inputDetectionFrame.setBlocking(true);
     objectTracker->inputDetections.setBlocking(true);
-    objectTracker->setDetectionLabelsToTrack({0});  // track only person
+    objectTracker->setDetectionLabelsToTrack({1});  // track only person
     // possible tracking types: ZERO_TERM_COLOR_HISTOGRAM, ZERO_TERM_IMAGELESS
     objectTracker->setTrackerType(dai::TrackerType::ZERO_TERM_COLOR_HISTOGRAM);
     // take the smallest ID when new object is tracked, possible options: SMALLEST_ID, UNIQUE_ID
