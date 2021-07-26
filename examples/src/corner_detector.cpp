@@ -6,81 +6,13 @@
 #include "unordered_map"
 #include "unordered_set"
 
-static const auto lineColor = cv::Scalar(200, 0, 200);
-static const auto pointColor = cv::Scalar(0, 0, 255);
-
-class FeatureTrackerDrawer {
-   private:
+static void drawFeatures(cv::Mat& frame, std::vector<dai::TrackedFeature>& features) {
+    static const auto pointColor = cv::Scalar(0, 0, 255);
     static const int circleRadius = 2;
-    static const int maxTrackedFeaturesPathLength = 30;
-    // for how many frames the feature is tracked
-    static int trackedFeaturesPathLength;
-
-    using featureIdType = decltype(dai::Point2f::x);
-
-    std::unordered_set<featureIdType> trackedIDs;
-    std::unordered_map<featureIdType, std::deque<dai::Point2f>> trackedFeaturesPath;
-
-    std::string trackbarName;
-    std::string windowName;
-
-   public:
-    void trackFeaturePath(std::vector<dai::TrackedFeature>& features) {
-        std::unordered_set<featureIdType> newTrackedIDs;
-        for(auto& currentFeature : features) {
-            auto currentID = currentFeature.id;
-            newTrackedIDs.insert(currentID);
-
-            if(!trackedFeaturesPath.count(currentID)) {
-                trackedFeaturesPath.insert({currentID, std::deque<dai::Point2f>()});
-            }
-            std::deque<dai::Point2f>& path = trackedFeaturesPath.at(currentID);
-
-            path.push_back(currentFeature.position);
-            while(path.size() > std::max(1, trackedFeaturesPathLength)) {
-                path.pop_front();
-            }
-        }
-
-        std::unordered_set<featureIdType> featuresToRemove;
-        for(auto& oldId : trackedIDs) {
-            if(!newTrackedIDs.count(oldId)) {
-                featuresToRemove.insert(oldId);
-            }
-        }
-
-        for(auto& id : featuresToRemove) {
-            trackedFeaturesPath.erase(id);
-        }
-
-        trackedIDs = newTrackedIDs;
+    for(auto& feature : features) {
+        cv::circle(frame, cv::Point(feature.position.x, feature.position.y), circleRadius, pointColor, -1, cv::LINE_AA, 0);
     }
-
-    void drawFeatures(cv::Mat& img) {
-        cv::setTrackbarPos(trackbarName.c_str(), windowName.c_str(), trackedFeaturesPathLength);
-
-        for(auto& featurePath : trackedFeaturesPath) {
-            std::deque<dai::Point2f>& path = featurePath.second;
-            int j = 0;
-            for(j = 0; j < path.size() - 1; j++) {
-                auto src = cv::Point(path[j].x, path[j].y);
-                auto dst = cv::Point(path[j + 1].x, path[j + 1].y);
-                cv::line(img, src, dst, lineColor, 1, cv::LINE_AA, 0);
-            }
-
-            cv::circle(img, cv::Point(path[j].x, path[j].y), circleRadius, pointColor, -1, cv::LINE_AA, 0);
-        }
-    }
-
-    FeatureTrackerDrawer(std::string trackbarName, std::string windowName) {
-        this->trackbarName = trackbarName;
-        this->windowName = windowName;
-        cv::namedWindow(windowName.c_str());
-        cv::createTrackbar(trackbarName.c_str(), windowName.c_str(), &trackedFeaturesPathLength, maxTrackedFeaturesPathLength, nullptr);
-    }
-};
-
-int FeatureTrackerDrawer::trackedFeaturesPathLength = 10;
+}
 
 int main() {
     using namespace std;
@@ -98,11 +30,13 @@ int main() {
     auto xoutTrackedFeaturesLeft = pipeline.create<dai::node::XLinkOut>();
     auto xoutPassthroughFrameRight = pipeline.create<dai::node::XLinkOut>();
     auto xoutTrackedFeaturesRight = pipeline.create<dai::node::XLinkOut>();
+    auto xinTrackedFeaturesConfig = pipeline.create<dai::node::XLinkIn>();
 
     xoutPassthroughFrameLeft->setStreamName("passthroughFrameLeft");
     xoutTrackedFeaturesLeft->setStreamName("trackedFeaturesLeft");
     xoutPassthroughFrameRight->setStreamName("passthroughFrameRight");
     xoutTrackedFeaturesRight->setStreamName("trackedFeaturesRight");
+    xinTrackedFeaturesConfig->setStreamName("trackedFeaturesConfig");
 
     // Properties
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
@@ -110,21 +44,24 @@ int main() {
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
+    // Disable optical flow
+    featureTrackerLeft->initialConfig.setMotionEstimator(false);
+    featureTrackerRight->initialConfig.setMotionEstimator(false);
+
     // Linking
     monoLeft->out.link(featureTrackerLeft->inputImage);
     featureTrackerLeft->passthroughInputImage.link(xoutPassthroughFrameLeft->input);
     featureTrackerLeft->outputFeatures.link(xoutTrackedFeaturesLeft->input);
+    xinTrackedFeaturesConfig->out.link(featureTrackerLeft->inputConfig);
 
     monoRight->out.link(featureTrackerRight->inputImage);
     featureTrackerRight->passthroughInputImage.link(xoutPassthroughFrameRight->input);
     featureTrackerRight->outputFeatures.link(xoutTrackedFeaturesRight->input);
+    xinTrackedFeaturesConfig->out.link(featureTrackerRight->inputConfig);
 
-    // By default the least mount of resources are allocated
-    // increasing it improves performance
-    auto numShaves = 2;
-    auto numMemorySlices = 2;
-    featureTrackerLeft->setHardwareResources(numShaves, numMemorySlices);
-    featureTrackerRight->setHardwareResources(numShaves, numMemorySlices);
+    auto featureTrackerConfig = featureTrackerRight->initialConfig.get();
+
+    printf("Press 's' to switch between Harris and Shi-Thomasi corner detector! \n");
 
     // Connect to device and start pipeline
     dai::Device device(pipeline);
@@ -135,11 +72,10 @@ int main() {
     auto passthroughImageRightQueue = device.getOutputQueue("passthroughFrameRight", 8, false);
     auto outputFeaturesRightQueue = device.getOutputQueue("trackedFeaturesRight", 8, false);
 
-    const auto leftWindowName = "left";
-    auto leftFeatureDrawer = FeatureTrackerDrawer("Feature tracking duration (frames)", leftWindowName);
+    auto inputFeatureTrackerConfigQueue = device.getInputQueue("trackedFeaturesConfig");
 
+    const auto leftWindowName = "left";
     const auto rightWindowName = "right";
-    auto rightFeatureDrawer = FeatureTrackerDrawer("Feature tracking duration (frames)", rightWindowName);
 
     while(true) {
         auto inPassthroughFrameLeft = passthroughImageLeftQueue->get<dai::ImgFrame>();
@@ -153,12 +89,10 @@ int main() {
         cv::cvtColor(passthroughFrameRight, rightFrame, cv::COLOR_GRAY2BGR);
 
         auto trackedFeaturesLeft = outputFeaturesLeftQueue->get<dai::FeatureTrackerData>()->trackedFeatures;
-        leftFeatureDrawer.trackFeaturePath(trackedFeaturesLeft);
-        leftFeatureDrawer.drawFeatures(leftFrame);
+        drawFeatures(leftFrame, trackedFeaturesLeft);
 
         auto trackedFeaturesRight = outputFeaturesRightQueue->get<dai::FeatureTrackerData>()->trackedFeatures;
-        rightFeatureDrawer.trackFeaturePath(trackedFeaturesRight);
-        rightFeatureDrawer.drawFeatures(rightFrame);
+        drawFeatures(rightFrame, trackedFeaturesRight);
 
         // Show the frame
         cv::imshow(leftWindowName, leftFrame);
@@ -167,6 +101,17 @@ int main() {
         int key = cv::waitKey(1);
         if(key == 'q') {
             break;
+        } else if(key == 's') {
+            if(featureTrackerConfig.cornerDetector.algorithmType == dai::FeatureTrackerConfigData::CornerDetector::AlgorithmType::HARRIS) {
+                featureTrackerConfig.cornerDetector.algorithmType = dai::FeatureTrackerConfigData::CornerDetector::AlgorithmType::SHI_THOMASI;
+                printf("Switching to Shi-Thomasi \n");
+            } else {
+                featureTrackerConfig.cornerDetector.algorithmType = dai::FeatureTrackerConfigData::CornerDetector::AlgorithmType::HARRIS;
+                printf("Switching to Harris \n");
+            }
+            auto cfg = dai::FeatureTrackerConfig();
+            cfg.set(featureTrackerConfig);
+            inputFeatureTrackerConfigQueue->send(cfg);
         }
     }
     return 0;

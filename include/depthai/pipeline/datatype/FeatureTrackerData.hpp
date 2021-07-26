@@ -9,7 +9,7 @@
 namespace dai {
 
 /**
- * FeatureTrackerData message. Carries spatial information (X,Y,Z) and their configuration parameters
+ * FeatureTrackerData message. Carries position (X, Y) of tracked features and their ID.
  */
 class FeatureTrackerData : public Buffer {
     std::shared_ptr<RawBuffer> serialize() const override;
