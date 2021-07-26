@@ -29,6 +29,7 @@ class ImgFrame : public Buffer {
     // Raw* mirror
     using Type = RawImgFrame::Type;
     using Specs = RawImgFrame::Specs;
+    using CameraSettings = RawImgFrame::CameraSettings;
 
     /**
      * Construct ImgFrame message.
@@ -40,32 +41,38 @@ class ImgFrame : public Buffer {
 
     // getters
     /**
-     * Retrievies image timestamp related to steady_clock / time.monotonic
+     * Retrieves image timestamp related to steady_clock / time.monotonic
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;
 
     /**
-     * Retrievies instance number
+     * Retrieves image timestamp directly captured from device's monotonic clock,
+     * not synchronized to host time. Used mostly for debugging
+     */
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
+
+    /**
+     * Retrieves instance number
      */
     unsigned int getInstanceNum() const;
 
     /**
-     * Retrievies image category
+     * Retrieves image category
      */
     unsigned int getCategory() const;
 
     /**
-     * Retrievies image sequence number
+     * Retrieves image sequence number
      */
     unsigned int getSequenceNum() const;
 
     /**
-     * Retrievies image width in pixels
+     * Retrieves image width in pixels
      */
     unsigned int getWidth() const;
 
     /**
-     * Retrievies image height in pixels
+     * Retrieves image height in pixels
      */
     unsigned int getHeight() const;
 
@@ -73,6 +80,21 @@ class ImgFrame : public Buffer {
      * Retrieves image type
      */
     Type getType() const;
+
+    /**
+     * Retrieves exposure time, in microseconds
+     */
+    int getExposureTime() const;
+
+    /**
+     * Retrieves sensitivity, as an ISO value
+     */
+    int getSensitivity() const;
+
+    /**
+     * Retrieves lens position, range 0..255. Returns -1 if not available
+     */
+    int getLensPosition() const;
 
     // setters
     /**

@@ -163,6 +163,7 @@ void XLinkConnection::close() {
         XLinkResetRemote(deviceLinkId);
         deviceLinkId = -1;
 
+        // TODO(themarpe) - revisit for TCPIP protocol
         using namespace std::chrono;
         const auto BOOTUP_SEARCH = std::chrono::seconds(5);
 
@@ -250,7 +251,10 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
     // Search for booted device
     {
         // Create description of device to look for
-        DeviceInfo bootedDeviceInfo = deviceInfoFix(deviceToInit, expectedState);
+        DeviceInfo bootedDeviceInfo = deviceToInit;
+        if(deviceToInit.desc.protocol != X_LINK_TCP_IP) {
+            bootedDeviceInfo = deviceInfoFix(deviceToInit, expectedState);
+        }
 
         // Find booted device
         auto tstart = steady_clock::now();

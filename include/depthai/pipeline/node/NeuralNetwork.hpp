@@ -20,8 +20,6 @@ class NeuralNetwork : public Node {
     using Properties = dai::NeuralNetworkProperties;
 
     std::string getName() const override;
-    std::vector<Output> getOutputs() override;
-    std::vector<Input> getInputs() override;
 
    protected:
     nlohmann::json getProperties() override;

@@ -47,7 +47,6 @@ void CameraControl::setAutoFocusRegion(uint16_t startX, uint16_t startY, uint16_
 void CameraControl::setManualFocus(uint8_t lensPosition) {
     cfg.setCommand(RawCameraControl::Command::MOVE_LENS);
     cfg.lensPosition = lensPosition;
-    setAutoFocusMode(AutoFocusMode::OFF);  // TODO added for initialConfig case
 }
 
 // Exposure

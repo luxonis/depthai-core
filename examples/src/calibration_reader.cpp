@@ -1,4 +1,3 @@
-
 #include <cstdio>
 #include <iostream>
 #include <string>
@@ -9,96 +8,99 @@
 #include "depthai/depthai.hpp"
 
 int main(int argc, char** argv) {
-    dai::Device d;
+    using namespace std;
 
-    dai::CalibrationHandler calibData = d.readCalibration();
+    // Connect Device
+    dai::Device device;
+
+    dai::CalibrationHandler calibData = device.readCalibration();
     // calibData.eepromToJsonFile(filename);
     std::vector<std::vector<float>> intrinsics;
     int width, height;
 
-    std::cout << "Intrinsics from defaultIntrinsics function" << std::endl;
+    cout << "Intrinsics from defaultIntrinsics function" << endl;
     std::tie(intrinsics, width, height) = calibData.getDefaultIntrinsics(dai::CameraBoardSocket::RIGHT);
 
     for(auto row : intrinsics) {
-        for(auto val : row) std::cout << val << "  ";
-        std::cout << std::endl;
+        for(auto val : row) cout << val << "  ";
+        cout << endl;
     }
 
-    std::cout << "Width -> " << width << std::endl;
-    std::cout << "Height -> " << height << std::endl;
+    cout << "Width -> " << width << endl;
+    cout << "Height -> " << height << endl;
 
-    std::cout << "Intrinsics from getCameraIntrinsics function full resolution ->" << std::endl;
+    cout << "Intrinsics from getCameraIntrinsics function full resolution ->" << endl;
     intrinsics = calibData.getCameraIntrinsics(dai::CameraBoardSocket::RIGHT);
 
     for(auto row : intrinsics) {
-        for(auto val : row) std::cout << val << "  ";
-        std::cout << std::endl;
+        for(auto val : row) cout << val << "  ";
+        cout << endl;
     }
 
-    std::cout << "Intrinsics from getCameraIntrinsics function 1280 x 720  ->" << std::endl;
+    cout << "Intrinsics from getCameraIntrinsics function 1280 x 720  ->" << endl;
     intrinsics = calibData.getCameraIntrinsics(dai::CameraBoardSocket::RIGHT, 1280, 720);
 
     for(auto row : intrinsics) {
-        for(auto val : row) std::cout << val << "  ";
-        std::cout << std::endl;
+        for(auto val : row) cout << val << "  ";
+        cout << endl;
     }
 
-    std::cout << "Intrinsics from getCameraIntrinsics function 720 x 450 ->" << std::endl;
+    cout << "Intrinsics from getCameraIntrinsics function 720 x 450 ->" << endl;
     intrinsics = calibData.getCameraIntrinsics(dai::CameraBoardSocket::RIGHT, 720);
 
     for(auto row : intrinsics) {
-        for(auto val : row) std::cout << val << "  ";
-        std::cout << std::endl;
+        for(auto val : row) cout << val << "  ";
+        cout << endl;
     }
 
-    std::cout << "Intrinsics from getCameraIntrinsics function 600 x 1280 ->" << std::endl;
+    cout << "Intrinsics from getCameraIntrinsics function 600 x 1280 ->" << endl;
     intrinsics = calibData.getCameraIntrinsics(dai::CameraBoardSocket::RIGHT, 600, 1280);
 
     for(auto row : intrinsics) {
-        for(auto val : row) std::cout << val << "  ";
-        std::cout << std::endl;
+        for(auto val : row) cout << val << "  ";
+        cout << endl;
     }
 
     std::vector<std::vector<float>> extrinsics;
 
-    std::cout << "Extrinsics from left->right test ->" << std::endl;
+    cout << "Extrinsics from left->right test ->" << endl;
     extrinsics = calibData.getCameraExtrinsics(dai::CameraBoardSocket::LEFT, dai::CameraBoardSocket::RIGHT);
 
     for(auto row : extrinsics) {
-        for(auto val : row) std::cout << val << "  ";
-        std::cout << std::endl;
+        for(auto val : row) cout << val << "  ";
+        cout << endl;
     }
 
-    std::cout << "Extrinsics from right->left test ->" << std::endl;
+    cout << "Extrinsics from right->left test ->" << endl;
     extrinsics = calibData.getCameraExtrinsics(dai::CameraBoardSocket::RIGHT, dai::CameraBoardSocket::LEFT);
 
     for(auto row : extrinsics) {
-        for(auto val : row) std::cout << val << "  ";
-        std::cout << std::endl;
+        for(auto val : row) cout << val << "  ";
+        cout << endl;
     }
 
-    std::cout << "Extrinsics from right->rgb test ->" << std::endl;
+    cout << "Extrinsics from right->rgb test ->" << endl;
     extrinsics = calibData.getCameraExtrinsics(dai::CameraBoardSocket::RIGHT, dai::CameraBoardSocket::RGB);
 
     for(auto row : extrinsics) {
-        for(auto val : row) std::cout << val << "  ";
-        std::cout << std::endl;
+        for(auto val : row) cout << val << "  ";
+        cout << endl;
     }
 
-    std::cout << "Extrinsics from rgb->right test ->" << std::endl;
+    cout << "Extrinsics from rgb->right test ->" << endl;
     extrinsics = calibData.getCameraExtrinsics(dai::CameraBoardSocket::RGB, dai::CameraBoardSocket::RIGHT);
 
     for(auto row : extrinsics) {
-        for(auto val : row) std::cout << val << "  ";
-        std::cout << std::endl;
+        for(auto val : row) cout << val << "  ";
+        cout << endl;
     }
 
-    std::cout << "Extrinsics from left->rgb test ->" << std::endl;
+    cout << "Extrinsics from left->rgb test ->" << endl;
     extrinsics = calibData.getCameraExtrinsics(dai::CameraBoardSocket::LEFT, dai::CameraBoardSocket::RGB);
 
     for(auto row : extrinsics) {
-        for(auto val : row) std::cout << val << "  ";
-        std::cout << std::endl;
+        for(auto val : row) cout << val << "  ";
+        cout << endl;
     }
 
     return 0;

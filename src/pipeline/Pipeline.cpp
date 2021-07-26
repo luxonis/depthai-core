@@ -312,9 +312,9 @@ void PipelineImpl::remove(std::shared_ptr<Node> toRemove) {
 bool PipelineImpl::isSamePipeline(const Node::Output& out, const Node::Input& in) {
     // Check whether Output 'out' and Input 'in' are on the same pipeline.
     // By checking whether their parent nodes are on same pipeline
-    auto outputPipeline = out.parent.parent.lock();
+    auto outputPipeline = out.getParent().parent.lock();
     if(outputPipeline != nullptr) {
-        return (outputPipeline == in.parent.parent.lock());
+        return (outputPipeline == in.getParent().parent.lock());
     }
     return false;
 }
@@ -359,20 +359,20 @@ void PipelineImpl::link(const Node::Output& out, const Node::Input& in) {
     }
 
     if(!canConnect(out, in)) {
-        throw std::runtime_error(fmt::format("Cannot link '{}.{}' to '{}.{}'", out.parent.getName(), out.name, in.parent.getName(), in.name));
+        throw std::runtime_error(fmt::format("Cannot link '{}.{}' to '{}.{}'", out.getParent().getName(), out.name, in.getParent().getName(), in.name));
     }
 
     // Create 'Connection' object between 'out' and 'in'
     Node::Connection connection(out, in);
 
     // Check if connection was already made - the following is possible as operator[] constructs the underlying set if it doesn't exist.
-    if(nodeConnectionMap[in.parent.id].count(connection) > 0) {
+    if(nodeConnectionMap[in.getParent().id].count(connection) > 0) {
         // this means a connection was already made.
-        throw std::logic_error(fmt::format("'{}.{}' already linked to '{}.{}'", out.parent.getName(), out.name, in.parent.getName(), in.name));
+        throw std::logic_error(fmt::format("'{}.{}' already linked to '{}.{}'", out.getParent().getName(), out.name, in.getParent().getName(), in.name));
     }
 
-    // Otherwise all is set to add a new connection into nodeConnectionMap[in.parent.id]
-    nodeConnectionMap[in.parent.id].insert(connection);
+    // Otherwise all is set to add a new connection into nodeConnectionMap[in.getParent().id]
+    nodeConnectionMap[in.getParent().id].insert(connection);
 }
 
 void PipelineImpl::unlink(const Node::Output& out, const Node::Input& in) {
@@ -385,13 +385,13 @@ void PipelineImpl::unlink(const Node::Output& out, const Node::Input& in) {
     Node::Connection connection(out, in);
 
     // Check if not connected (connection object doesn't exist in nodeConnectionMap)
-    if(nodeConnectionMap[in.parent.id].count(connection) <= 0) {
+    if(nodeConnectionMap[in.getParent().id].count(connection) <= 0) {
         // not connected
-        throw std::logic_error(fmt::format("'{}.{}' not linked to '{}.{}'", out.parent.getName(), out.name, in.parent.getName(), in.name));
+        throw std::logic_error(fmt::format("'{}.{}' not linked to '{}.{}'", out.getParent().getName(), out.name, in.getParent().getName(), in.name));
     }
 
     // Otherwise if exists, remove this connection
-    nodeConnectionMap[in.parent.id].erase(connection);
+    nodeConnectionMap[in.getParent().id].erase(connection);
 }
 
 void PipelineImpl::setCalibrationData(CalibrationHandler calibrationDataHandler) {
