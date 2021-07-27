@@ -281,6 +281,5 @@ target_compile_definitions(calibration_flash PRIVATE CALIB_PATH="${calib_v6}")
 target_compile_definitions(calibration_flash_version5 PRIVATE CALIB_PATH="${calib_v5}" BOARD_PATH="${device_config}")
 target_compile_definitions(calibration_load PRIVATE CALIB_PATH="${calib_v6}")
 
-
-dai_add_example(apriltag src/apriltag.cpp OFF)
-dai_add_example(apriltag_rgb src/apriltag_rgb.cpp OFF)
+dai_add_example(apriltag src/apriltag.cpp ON)
+dai_add_example(apriltag_rgb src/apriltag_rgb.cpp ON)

@@ -14,16 +14,13 @@ namespace dai {
 namespace node {
 
 /**
- * @brief AprilTag node. Calculates spatial location data on a set of ROIs on depth map.
+ * @brief AprilTag node.
  */
 class AprilTag : public Node {
    public:
     using Properties = dai::AprilTagProperties;
 
    private:
-    std::string getName() const override;
-    std::vector<Input> getInputs() override;
-    std::vector<Output> getOutputs() override;
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
 
@@ -31,6 +28,8 @@ class AprilTag : public Node {
     Properties properties;
 
    public:
+    std::string getName() const override;
+
     AprilTag(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
     /**
