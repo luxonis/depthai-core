@@ -16,7 +16,6 @@
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
-#include "depthai/pipeline/datatype/FeatureTrackerData.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
@@ -27,6 +26,7 @@
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorData.hpp"
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/pipeline/datatype/SystemInformation.hpp"
+#include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 
 // shared
@@ -145,7 +145,7 @@ std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
             return parseDatatype<RawEdgeDetectorConfig>(jser, data);
             break;
 
-        case DatatypeEnum::FeatureTrackerData:
+        case DatatypeEnum::TrackedFeatures:
             return parseDatatype<RawTrackedFeatures>(jser, data);
             break;
 
@@ -235,8 +235,8 @@ std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
             return std::make_shared<EdgeDetectorConfig>(parseDatatype<RawEdgeDetectorConfig>(jser, data));
             break;
 
-        case DatatypeEnum::FeatureTrackerData:
-            return std::make_shared<FeatureTrackerData>(parseDatatype<RawTrackedFeatures>(jser, data));
+        case DatatypeEnum::TrackedFeatures:
+            return std::make_shared<TrackedFeatures>(parseDatatype<RawTrackedFeatures>(jser, data));
             break;
 
         case DatatypeEnum::FeatureTrackerConfig:

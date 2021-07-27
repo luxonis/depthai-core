@@ -48,9 +48,9 @@ class FeatureTracker : public Node {
     Input inputImage{*this, "inputImage", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
-     * Outputs FeatureTrackerData message that carries tracked features results.
+     * Outputs TrackedFeatures message that carries tracked features results.
      */
-    Output outputFeatures{*this, "outputFeatures", Output::Type::MSender, {{DatatypeEnum::FeatureTrackerData, false}}};
+    Output outputFeatures{*this, "outputFeatures", Output::Type::MSender, {{DatatypeEnum::TrackedFeatures, false}}};
 
     /**
      * Passthrough message on which the calculation was performed.

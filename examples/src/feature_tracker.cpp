@@ -152,11 +152,11 @@ int main() {
         cv::Mat rightFrame;
         cv::cvtColor(passthroughFrameRight, rightFrame, cv::COLOR_GRAY2BGR);
 
-        auto trackedFeaturesLeft = outputFeaturesLeftQueue->get<dai::FeatureTrackerData>()->trackedFeatures;
+        auto trackedFeaturesLeft = outputFeaturesLeftQueue->get<dai::TrackedFeatures>()->trackedFeatures;
         leftFeatureDrawer.trackFeaturePath(trackedFeaturesLeft);
         leftFeatureDrawer.drawFeatures(leftFrame);
 
-        auto trackedFeaturesRight = outputFeaturesRightQueue->get<dai::FeatureTrackerData>()->trackedFeatures;
+        auto trackedFeaturesRight = outputFeaturesRightQueue->get<dai::TrackedFeatures>()->trackedFeatures;
         rightFeatureDrawer.trackFeaturePath(trackedFeaturesRight);
         rightFeatureDrawer.drawFeatures(rightFrame);
 

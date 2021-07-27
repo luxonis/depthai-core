@@ -9,19 +9,19 @@
 namespace dai {
 
 /**
- * FeatureTrackerData message. Carries position (X, Y) of tracked features and their ID.
+ * TrackedFeatures message. Carries position (X, Y) of tracked features and their ID.
  */
-class FeatureTrackerData : public Buffer {
+class TrackedFeatures : public Buffer {
     std::shared_ptr<RawBuffer> serialize() const override;
     RawTrackedFeatures& rawdata;
 
    public:
     /**
-     * Construct FeatureTrackerData message.
+     * Construct TrackedFeatures message.
      */
-    FeatureTrackerData();
-    explicit FeatureTrackerData(std::shared_ptr<RawTrackedFeatures> ptr);
-    virtual ~FeatureTrackerData() = default;
+    TrackedFeatures();
+    explicit TrackedFeatures(std::shared_ptr<RawTrackedFeatures> ptr);
+    virtual ~TrackedFeatures() = default;
 
     std::vector<TrackedFeature>& trackedFeatures;
 };

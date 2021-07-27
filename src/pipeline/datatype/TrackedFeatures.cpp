@@ -1,14 +1,14 @@
-#include "depthai/pipeline/datatype/FeatureTrackerData.hpp"
+#include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 
 namespace dai {
 
-std::shared_ptr<RawBuffer> FeatureTrackerData::serialize() const {
+std::shared_ptr<RawBuffer> TrackedFeatures::serialize() const {
     return raw;
 }
 
-FeatureTrackerData::FeatureTrackerData()
+TrackedFeatures::TrackedFeatures()
     : Buffer(std::make_shared<RawTrackedFeatures>()), rawdata(*dynamic_cast<RawTrackedFeatures*>(raw.get())), trackedFeatures(rawdata.trackedFeatures) {}
-FeatureTrackerData::FeatureTrackerData(std::shared_ptr<RawTrackedFeatures> ptr)
+TrackedFeatures::TrackedFeatures(std::shared_ptr<RawTrackedFeatures> ptr)
     : Buffer(std::move(ptr)), rawdata(*dynamic_cast<RawTrackedFeatures*>(raw.get())), trackedFeatures(rawdata.trackedFeatures) {}
 
 }  // namespace dai

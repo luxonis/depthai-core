@@ -176,7 +176,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/IMUData.cpp
     src/pipeline/datatype/StereoDepthConfig.cpp
     src/pipeline/datatype/EdgeDetectorConfig.cpp
-    src/pipeline/datatype/FeatureTrackerData.cpp
+    src/pipeline/datatype/TrackedFeatures.cpp
     src/pipeline/datatype/FeatureTrackerConfig.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp

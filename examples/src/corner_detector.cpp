@@ -88,10 +88,10 @@ int main() {
         cv::Mat rightFrame;
         cv::cvtColor(passthroughFrameRight, rightFrame, cv::COLOR_GRAY2BGR);
 
-        auto trackedFeaturesLeft = outputFeaturesLeftQueue->get<dai::FeatureTrackerData>()->trackedFeatures;
+        auto trackedFeaturesLeft = outputFeaturesLeftQueue->get<dai::TrackedFeatures>()->trackedFeatures;
         drawFeatures(leftFrame, trackedFeaturesLeft);
 
-        auto trackedFeaturesRight = outputFeaturesRightQueue->get<dai::FeatureTrackerData>()->trackedFeatures;
+        auto trackedFeaturesRight = outputFeaturesRightQueue->get<dai::TrackedFeatures>()->trackedFeatures;
         drawFeatures(rightFrame, trackedFeaturesRight);
 
         // Show the frame
