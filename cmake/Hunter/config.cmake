@@ -64,3 +64,14 @@ hunter_config(
         ENABLE_ZLIB=OFF
         ENABLE_ZSTD=OFF
 )
+
+# Luxonis FP16 fork which doesn't use git cloning for its dependencies
+hunter_config(
+    FP16
+    VERSION "luxonis-0.0.0"
+    URL "https://github.com/luxonis/FP16/archive/c911175d2717e562976e606c6e5f799bf40cf94e.tar.gz"
+    SHA1 "40e9723c87c2fe21781132c0f2f8b90338500e32"
+    CMAKE_ARGS
+        FP16_BUILD_BENCHMARKS=OFF
+        FP16_BUILD_TESTS=OFF
+)
