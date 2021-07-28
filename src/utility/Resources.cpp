@@ -397,6 +397,20 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(bool usb2Mode, OpenVINO::
 }
 
 std::vector<std::uint8_t> Resources::getBootloaderFirmware() {
+    // Check if env variable DEPTHAI_BOOTLOADER_BINARY is set
+    auto blBinaryPath = spdlog::details::os::getenv("DEPTHAI_BOOTLOADER_BINARY");
+    if(!blBinaryPath.empty()) {
+        // Load binary file at path
+        std::ifstream stream(blBinaryPath, std::ios::binary);
+        if(!stream.is_open()) {
+            // Throw an error
+            // TODO(themarpe) - Unify exceptions into meaningful groups
+            throw std::runtime_error(fmt::format("File at path {} pointed to by DEPTHAI_BOOTLOADER_BINARY doesn't exist.", blBinaryPath));
+        }
+        // Read the file and return its content
+        return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
+    }
+
     // Acquire mutex (this mutex signifies that lazy load is complete)
     // It is necessary when accessing resourceMap variable
     std::unique_lock<std::mutex> lock(mtx);
