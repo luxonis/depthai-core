@@ -84,6 +84,7 @@ std::vector<std::uint8_t> Resources::getDeviceBinary(OpenVINO::Version version, 
             // TODO(themarpe) - Unify exceptions into meaningful groups
             throw std::runtime_error(fmt::format("File at path {} pointed to by DEPTHAI_DEVICE_BINARY doesn't exist.", fwBinaryPath));
         }
+        spdlog::warn("Overriding firmware: {}", fwBinaryPath);
         // Read the file and return its contents
         return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
     }
@@ -407,6 +408,7 @@ std::vector<std::uint8_t> Resources::getBootloaderFirmware() {
             // TODO(themarpe) - Unify exceptions into meaningful groups
             throw std::runtime_error(fmt::format("File at path {} pointed to by DEPTHAI_BOOTLOADER_BINARY doesn't exist.", blBinaryPath));
         }
+        spdlog::warn("Overriding bootloader: {}", blBinaryPath);
         // Read the file and return its content
         return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
     }
