@@ -422,7 +422,7 @@ class DeviceBase {
     // private static
     void init(OpenVINO::Version version, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
     void init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
-    void init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline);
+    void init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
 
     std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> client;
     std::mutex rpcMutex;

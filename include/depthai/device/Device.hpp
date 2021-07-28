@@ -23,6 +23,85 @@ class Device : public DeviceBase {
    public:
     using DeviceBase::DeviceBase;  // inherit the ctors
 
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param pipeline Pipeline to be executed on the device
+     */
+    explicit Device(const Pipeline& pipeline) : DeviceBase(pipeline) {
+        if(!startPipeline(pipeline)) {
+            throw std::runtime_error("Couldn't start the pipeline");
+        }
+    }
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param pipeline Pipeline to be executed on the device
+     * @param usb2Mode Boot device using USB2 mode firmware
+     */
+    Device(const Pipeline& pipeline, bool usb2Mode) : DeviceBase(pipeline, usb2Mode) {
+        if(!startPipeline(pipeline)) {
+            throw std::runtime_error("Couldn't start the pipeline");
+        }
+    }
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param pipeline Pipeline to be executed on the device
+     * @param pathToCmd Path to custom device firmware
+     */
+    Device(const Pipeline& pipeline, const char* pathToCmd) : DeviceBase(pipeline, pathToCmd) {
+        if(!startPipeline(pipeline)) {
+            throw std::runtime_error("Couldn't start the pipeline");
+        }
+    }
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param pipeline Pipeline to be executed on the device
+     * @param pathToCmd Path to custom device firmware
+     */
+    Device(const Pipeline& pipeline, const std::string& pathToCmd) : DeviceBase(pipeline, pathToCmd) {
+        if(!startPipeline(pipeline)) {
+            throw std::runtime_error("Couldn't start the pipeline");
+        }
+    }
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param pipeline Pipeline to be executed on the device
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param usb2Mode Boot device using USB2 mode firmware
+     */
+    Device(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode = false) : DeviceBase(pipeline, devInfo, usb2Mode) {
+        if(!startPipeline(pipeline)) {
+            throw std::runtime_error("Couldn't start the pipeline");
+        }
+    }
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param pipeline Pipeline to be executed on the device
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param pathToCmd Path to custom device firmware
+     */
+    Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd) : DeviceBase(pipeline, devInfo, pathToCmd) {
+        if(!startPipeline(pipeline)) {
+            throw std::runtime_error("Couldn't start the pipeline");
+        }
+    }
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param pipeline Pipeline to be executed on the device
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param usb2Mode Path to custom device firmware
+     */
+    Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd) : DeviceBase(pipeline, devInfo, pathToCmd) {
+        if(!startPipeline(pipeline)) {
+            throw std::runtime_error("Couldn't start the pipeline");
+        }
+    }
+
     /// Maximum number of elements in event queue
     static constexpr std::size_t EVENT_QUEUE_MAXIMUM_SIZE{2048};
 

@@ -373,7 +373,7 @@ void DeviceBase::init(OpenVINO::Version version, bool embeddedMvcmd, bool usb2Mo
 
     spdlog::debug("Device - OpenVINO version: {}", OpenVINO::getVersionName(openvinoVersion));
 
-    init2(embeddedMvcmd, usb2Mode, pathToMvcmd, tl::nullopt);
+    init2(embeddedMvcmd, usb2Mode, pathToMvcmd);
 }
 
 void DeviceBase::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
@@ -385,10 +385,10 @@ void DeviceBase::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mod
 
     spdlog::debug("Device - pipeline serialized, OpenVINO version: {}", OpenVINO::getVersionName(openvinoVersion));
 
-    init2(embeddedMvcmd, usb2Mode, pathToMvcmd, pipeline);
+    init2(embeddedMvcmd, usb2Mode, pathToMvcmd);
 }
 
-void DeviceBase::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline) {
+void DeviceBase::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
     // Set logging pattern of device (device id + shared pattern)
     pimpl->setPattern(fmt::format("[{}] {}", deviceInfo.getMxId(), LOG_DEFAULT_PATTERN));
 
@@ -632,14 +632,6 @@ void DeviceBase::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pat
 
         // Sets system inforation logging rate. By default 1s
         setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
-
-        // Starts pipeline if given
-        if(pipeline) {
-            if(!startPipeline(*pipeline)) {
-                throw std::runtime_error("Couldn't start the pipeline");
-            }
-        }
-
     } catch(const std::exception&) {
         // close device (cleanup)
         close();
