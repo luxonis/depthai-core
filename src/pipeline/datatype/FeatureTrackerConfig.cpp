@@ -33,6 +33,12 @@ void FeatureTrackerConfig::setMotionEstimator(dai::FeatureTrackerConfigData::Mot
 void FeatureTrackerConfig::setOpticalFlow(dai::FeatureTrackerConfigData::MotionEstimator::OpticalFlow config) {
     cfg.config.motionEstimator.algorithmType = dai::FeatureTrackerConfigData::MotionEstimator::AlgorithmType::LUCAS_KANADE_OPTICAL_FLOW;
     cfg.config.motionEstimator.opticalFlow = config;
+    setMotionEstimator(true);
+}
+
+void FeatureTrackerConfig::setHwMotionEstimation() {
+    cfg.config.motionEstimator.algorithmType = dai::FeatureTrackerConfigData::MotionEstimator::AlgorithmType::HW_MOTION_ESTIMATION;
+    setMotionEstimator(true);
 }
 
 void FeatureTrackerConfig::setFeatureMaintainer(bool enable) {

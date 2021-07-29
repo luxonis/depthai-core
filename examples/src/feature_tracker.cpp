@@ -98,11 +98,13 @@ int main() {
     auto xoutTrackedFeaturesLeft = pipeline.create<dai::node::XLinkOut>();
     auto xoutPassthroughFrameRight = pipeline.create<dai::node::XLinkOut>();
     auto xoutTrackedFeaturesRight = pipeline.create<dai::node::XLinkOut>();
+    auto xinTrackedFeaturesConfig = pipeline.create<dai::node::XLinkIn>();
 
     xoutPassthroughFrameLeft->setStreamName("passthroughFrameLeft");
     xoutTrackedFeaturesLeft->setStreamName("trackedFeaturesLeft");
     xoutPassthroughFrameRight->setStreamName("passthroughFrameRight");
     xoutTrackedFeaturesRight->setStreamName("trackedFeaturesRight");
+    xinTrackedFeaturesConfig->setStreamName("trackedFeaturesConfig");
 
     // Properties
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
@@ -114,17 +116,23 @@ int main() {
     monoLeft->out.link(featureTrackerLeft->inputImage);
     featureTrackerLeft->passthroughInputImage.link(xoutPassthroughFrameLeft->input);
     featureTrackerLeft->outputFeatures.link(xoutTrackedFeaturesLeft->input);
+    xinTrackedFeaturesConfig->out.link(featureTrackerLeft->inputConfig);
 
     monoRight->out.link(featureTrackerRight->inputImage);
     featureTrackerRight->passthroughInputImage.link(xoutPassthroughFrameRight->input);
     featureTrackerRight->outputFeatures.link(xoutTrackedFeaturesRight->input);
+    xinTrackedFeaturesConfig->out.link(featureTrackerRight->inputConfig);
 
     // By default the least mount of resources are allocated
-    // increasing it improves performance
+    // increasing it improves performance when optical flow is enabled
     auto numShaves = 2;
     auto numMemorySlices = 2;
     featureTrackerLeft->setHardwareResources(numShaves, numMemorySlices);
     featureTrackerRight->setHardwareResources(numShaves, numMemorySlices);
+
+    auto featureTrackerConfig = featureTrackerRight->initialConfig.get();
+
+    printf("Press 's' to switch between Lucas-Kanade optical flow and hardware accelerated motion estimation! \n");
 
     // Connect to device and start pipeline
     dai::Device device(pipeline);
@@ -134,6 +142,8 @@ int main() {
     auto outputFeaturesLeftQueue = device.getOutputQueue("trackedFeaturesLeft", 8, false);
     auto passthroughImageRightQueue = device.getOutputQueue("passthroughFrameRight", 8, false);
     auto outputFeaturesRightQueue = device.getOutputQueue("trackedFeaturesRight", 8, false);
+
+    auto inputFeatureTrackerConfigQueue = device.getInputQueue("trackedFeaturesConfig");
 
     const auto leftWindowName = "left";
     auto leftFeatureDrawer = FeatureTrackerDrawer("Feature tracking duration (frames)", leftWindowName);
@@ -167,6 +177,17 @@ int main() {
         int key = cv::waitKey(1);
         if(key == 'q') {
             break;
+        } else if(key == 's') {
+            if(featureTrackerConfig.motionEstimator.algorithmType == dai::FeatureTrackerConfigData::MotionEstimator::AlgorithmType::LUCAS_KANADE_OPTICAL_FLOW) {
+                featureTrackerConfig.motionEstimator.algorithmType = dai::FeatureTrackerConfigData::MotionEstimator::AlgorithmType::HW_MOTION_ESTIMATION;
+                printf("Switching to hardware accelerated motion estimation \n");
+            } else {
+                featureTrackerConfig.motionEstimator.algorithmType = dai::FeatureTrackerConfigData::MotionEstimator::AlgorithmType::LUCAS_KANADE_OPTICAL_FLOW;
+                printf("Switching to Lucas-Kanade optical flow \n");
+            }
+            auto cfg = dai::FeatureTrackerConfig();
+            cfg.set(featureTrackerConfig);
+            inputFeatureTrackerConfigQueue->send(cfg);
         }
     }
     return 0;

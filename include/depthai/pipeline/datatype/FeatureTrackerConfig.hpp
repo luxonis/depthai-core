@@ -42,6 +42,12 @@ class FeatureTrackerConfig : public Buffer {
     void setOpticalFlow(dai::FeatureTrackerConfigData::MotionEstimator::OpticalFlow config);
 
     /**
+     * Set hardware accelerated motion estiomation using block matching.
+     * Faster than optical flow (software implementation) but might not be as accurate.
+     */
+    void setHwMotionEstimation();
+
+    /**
      * Set target number of features to detect
      * @param targetNumFeatures Number of features
      */
