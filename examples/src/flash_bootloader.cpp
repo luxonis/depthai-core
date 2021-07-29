@@ -47,8 +47,7 @@ int main(int argc, char** argv) {
         std::cout << "Are you sure you want to flash '" << blType << "' bootloader over current '" << currentBlType << "' bootloader?" << std::endl;
         std::cout << "Type 'y' and press enter to proceed, otherwise exits: ";
         std::cin.ignore();
-        confirmation = std::cin.get();
-        if(confirmation != 'y') {
+        if(std::cin.get() != 'y') {
             std::cout << "Prompt declined, exiting..." << std::endl;
             return -1;
         }
