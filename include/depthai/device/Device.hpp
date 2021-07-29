@@ -28,9 +28,7 @@ class Device : public DeviceBase {
      * @param pipeline Pipeline to be executed on the device
      */
     explicit Device(const Pipeline& pipeline) : DeviceBase(pipeline) {
-        if(!startPipeline(pipeline)) {
-            throw std::runtime_error("Couldn't start the pipeline");
-        }
+        try_start_pipeline(pipeline);
     }
 
     /**
@@ -39,9 +37,7 @@ class Device : public DeviceBase {
      * @param usb2Mode Boot device using USB2 mode firmware
      */
     Device(const Pipeline& pipeline, bool usb2Mode) : DeviceBase(pipeline, usb2Mode) {
-        if(!startPipeline(pipeline)) {
-            throw std::runtime_error("Couldn't start the pipeline");
-        }
+        try_start_pipeline(pipeline);
     }
 
     /**
@@ -50,9 +46,7 @@ class Device : public DeviceBase {
      * @param pathToCmd Path to custom device firmware
      */
     Device(const Pipeline& pipeline, const char* pathToCmd) : DeviceBase(pipeline, pathToCmd) {
-        if(!startPipeline(pipeline)) {
-            throw std::runtime_error("Couldn't start the pipeline");
-        }
+        try_start_pipeline(pipeline);
     }
 
     /**
@@ -61,9 +55,7 @@ class Device : public DeviceBase {
      * @param pathToCmd Path to custom device firmware
      */
     Device(const Pipeline& pipeline, const std::string& pathToCmd) : DeviceBase(pipeline, pathToCmd) {
-        if(!startPipeline(pipeline)) {
-            throw std::runtime_error("Couldn't start the pipeline");
-        }
+        try_start_pipeline(pipeline);
     }
 
     /**
@@ -73,9 +65,7 @@ class Device : public DeviceBase {
      * @param usb2Mode Boot device using USB2 mode firmware
      */
     Device(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode = false) : DeviceBase(pipeline, devInfo, usb2Mode) {
-        if(!startPipeline(pipeline)) {
-            throw std::runtime_error("Couldn't start the pipeline");
-        }
+        try_start_pipeline(pipeline);
     }
 
     /**
@@ -85,9 +75,7 @@ class Device : public DeviceBase {
      * @param pathToCmd Path to custom device firmware
      */
     Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd) : DeviceBase(pipeline, devInfo, pathToCmd) {
-        if(!startPipeline(pipeline)) {
-            throw std::runtime_error("Couldn't start the pipeline");
-        }
+        try_start_pipeline(pipeline);
     }
 
     /**
@@ -97,9 +85,7 @@ class Device : public DeviceBase {
      * @param usb2Mode Path to custom device firmware
      */
     Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd) : DeviceBase(pipeline, devInfo, pathToCmd) {
-        if(!startPipeline(pipeline)) {
-            throw std::runtime_error("Couldn't start the pipeline");
-        }
+        try_start_pipeline(pipeline);
     }
 
     /// Maximum number of elements in event queue
@@ -222,6 +208,16 @@ class Device : public DeviceBase {
     std::string getQueueEvent(std::chrono::microseconds timeout = std::chrono::microseconds(-1));
 
    private:
+    void try_start_pipeline(const Pipeline& pipeline) {
+        try {
+            if(!startPipeline(pipeline)) {
+                throw std::runtime_error("Couldn't start the pipeline");
+            }
+        } catch(const std::exception& e) {
+            close();
+            throw e;
+        }
+    }
     std::unordered_map<std::string, std::shared_ptr<DataOutputQueue>> outputQueueMap;
     std::unordered_map<std::string, std::shared_ptr<DataInputQueue>> inputQueueMap;
     std::unordered_map<std::string, DataOutputQueue::CallbackId> callbackIdMap;
