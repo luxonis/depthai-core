@@ -10,51 +10,51 @@ FeatureTrackerConfig::FeatureTrackerConfig() : Buffer(std::make_shared<RawFeatur
 FeatureTrackerConfig::FeatureTrackerConfig(std::shared_ptr<RawFeatureTrackerConfig> ptr)
     : Buffer(std::move(ptr)), cfg(*dynamic_cast<RawFeatureTrackerConfig*>(raw.get())) {}
 
-dai::FeatureTrackerConfigData FeatureTrackerConfig::get() const {
-    return cfg.config;
+dai::RawFeatureTrackerConfig FeatureTrackerConfig::get() const {
+    return cfg;
 }
 
-void FeatureTrackerConfig::setCornerDetector(dai::FeatureTrackerConfigData::CornerDetector::Type cornerDetector) {
-    cfg.config.cornerDetector.type = cornerDetector;
+void FeatureTrackerConfig::setCornerDetector(dai::RawFeatureTrackerConfig::CornerDetector::Type cornerDetector) {
+    cfg.cornerDetector.type = cornerDetector;
 }
 
-void FeatureTrackerConfig::setCornerDetector(dai::FeatureTrackerConfigData::CornerDetector config) {
-    cfg.config.cornerDetector = config;
+void FeatureTrackerConfig::setCornerDetector(dai::RawFeatureTrackerConfig::CornerDetector config) {
+    cfg.cornerDetector = config;
 }
 
 void FeatureTrackerConfig::setMotionEstimator(bool enable) {
-    cfg.config.motionEstimator.enable = enable;
+    cfg.motionEstimator.enable = enable;
 }
 
-void FeatureTrackerConfig::setMotionEstimator(dai::FeatureTrackerConfigData::MotionEstimator config) {
-    cfg.config.motionEstimator = config;
+void FeatureTrackerConfig::setMotionEstimator(dai::RawFeatureTrackerConfig::MotionEstimator config) {
+    cfg.motionEstimator = config;
 }
 
-void FeatureTrackerConfig::setOpticalFlow(dai::FeatureTrackerConfigData::MotionEstimator::OpticalFlow config) {
-    cfg.config.motionEstimator.type = dai::FeatureTrackerConfigData::MotionEstimator::Type::LUCAS_KANADE_OPTICAL_FLOW;
-    cfg.config.motionEstimator.opticalFlow = config;
+void FeatureTrackerConfig::setOpticalFlow(dai::RawFeatureTrackerConfig::MotionEstimator::OpticalFlow config) {
+    cfg.motionEstimator.type = dai::RawFeatureTrackerConfig::MotionEstimator::Type::LUCAS_KANADE_OPTICAL_FLOW;
+    cfg.motionEstimator.opticalFlow = config;
     setMotionEstimator(true);
 }
 
 void FeatureTrackerConfig::setHwMotionEstimation() {
-    cfg.config.motionEstimator.type = dai::FeatureTrackerConfigData::MotionEstimator::Type::HW_MOTION_ESTIMATION;
+    cfg.motionEstimator.type = dai::RawFeatureTrackerConfig::MotionEstimator::Type::HW_MOTION_ESTIMATION;
     setMotionEstimator(true);
 }
 
 void FeatureTrackerConfig::setFeatureMaintainer(bool enable) {
-    cfg.config.featureMaintainer.enable = enable;
+    cfg.featureMaintainer.enable = enable;
 }
 
-void FeatureTrackerConfig::setFeatureMaintainer(dai::FeatureTrackerConfigData::FeatureMaintainer config) {
-    cfg.config.featureMaintainer = config;
+void FeatureTrackerConfig::setFeatureMaintainer(dai::RawFeatureTrackerConfig::FeatureMaintainer config) {
+    cfg.featureMaintainer = config;
 }
 
-void FeatureTrackerConfig::set(dai::FeatureTrackerConfigData config) {
-    cfg.config = config;
+void FeatureTrackerConfig::set(dai::RawFeatureTrackerConfig config) {
+    cfg = config;
 }
 
 void FeatureTrackerConfig::setNumTargetFeatures(std::int32_t numTargetFeatures) {
-    cfg.config.cornerDetector.numTargetFeatures = numTargetFeatures;
+    cfg.cornerDetector.numTargetFeatures = numTargetFeatures;
 }
 
 }  // namespace dai
