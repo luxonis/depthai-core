@@ -30,6 +30,8 @@
 #include "pipeline/node/XLinkIn.hpp"
 #include "pipeline/node/XLinkOut.hpp"
 #include "pipeline/node/Script.hpp"
+#include "pipeline/node/UVC.hpp"
+#include "pipeline/node/UAC.hpp"
 
 // Include common datatypes
 #include "pipeline/datatype/Buffer.hpp"
