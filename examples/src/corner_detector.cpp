@@ -102,11 +102,11 @@ int main() {
         if(key == 'q') {
             break;
         } else if(key == 's') {
-            if(featureTrackerConfig.cornerDetector.algorithmType == dai::FeatureTrackerConfigData::CornerDetector::AlgorithmType::HARRIS) {
-                featureTrackerConfig.cornerDetector.algorithmType = dai::FeatureTrackerConfigData::CornerDetector::AlgorithmType::SHI_THOMASI;
+            if(featureTrackerConfig.cornerDetector.type == dai::FeatureTrackerConfigData::CornerDetector::Type::HARRIS) {
+                featureTrackerConfig.cornerDetector.type = dai::FeatureTrackerConfigData::CornerDetector::Type::SHI_THOMASI;
                 printf("Switching to Shi-Thomasi \n");
             } else {
-                featureTrackerConfig.cornerDetector.algorithmType = dai::FeatureTrackerConfigData::CornerDetector::AlgorithmType::HARRIS;
+                featureTrackerConfig.cornerDetector.type = dai::FeatureTrackerConfigData::CornerDetector::Type::HARRIS;
                 printf("Switching to Harris \n");
             }
             auto cfg = dai::FeatureTrackerConfig();

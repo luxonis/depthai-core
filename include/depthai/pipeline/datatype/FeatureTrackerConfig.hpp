@@ -24,19 +24,19 @@ class FeatureTrackerConfig : public Buffer {
     virtual ~FeatureTrackerConfig() = default;
 
     /**
-     * Set corner detector algorithm type
+     * Set corner detector algorithm type.
      * @param cornerDetector Corner detector type, HARRIS or SHI_THOMASI
      */
-    void setCornerDetector(dai::FeatureTrackerConfigData::CornerDetector::AlgorithmType cornerDetector);
+    void setCornerDetector(dai::FeatureTrackerConfigData::CornerDetector::Type cornerDetector);
 
     /**
-     * Set corner detector full configuration
+     * Set corner detector full configuration.
      * @param config Corner detector configuration
      */
     void setCornerDetector(dai::FeatureTrackerConfigData::CornerDetector config);
 
     /**
-     * Set optical flow full configuration
+     * Set optical flow full configuration.
      * @param config Optical flow configuration
      */
     void setOpticalFlow(dai::FeatureTrackerConfigData::MotionEstimator::OpticalFlow config);
@@ -48,46 +48,46 @@ class FeatureTrackerConfig : public Buffer {
     void setHwMotionEstimation();
 
     /**
-     * Set target number of features to detect
-     * @param targetNumFeatures Number of features
+     * Set number of target features to detect.
+     * @param numTargetFeatures Number of features
      */
-    void setTargetNumFeatures(std::int32_t targetNumFeatures);
+    void setNumTargetFeatures(std::int32_t numTargetFeatures);
 
     /**
-     * Enable or disable motion estimator
+     * Enable or disable motion estimator.
      * @param enable
      */
     void setMotionEstimator(bool enable);
 
     /**
-     * Set motion estimator full configuration
+     * Set motion estimator full configuration.
      * @param config Motion estimator configuration
      */
     void setMotionEstimator(dai::FeatureTrackerConfigData::MotionEstimator config);
 
     /**
-     * Enable or disable feature maintainer
+     * Enable or disable feature maintainer.
      * @param enable
      */
     void setFeatureMaintainer(bool enable);
 
     /**
-     * Set feature maintainer full configuration
+     * Set feature maintainer full configuration.
      * @param config feature maintainer configuration
      */
     void setFeatureMaintainer(dai::FeatureTrackerConfigData::FeatureMaintainer config);
 
     /**
-     * Set explicit configuration
+     * Set explicit configuration.
      * @param config Explicit configuration
      */
     void set(dai::FeatureTrackerConfigData config);
 
     /**
-     * Retrieve configuration data for FeatureTracker
+     * Retrieve configuration data for FeatureTracker.
      * @returns config for feature tracking algorithm
      */
-    FeatureTrackerConfigData get() const;
+    dai::FeatureTrackerConfigData get() const;
 };
 
 }  // namespace dai

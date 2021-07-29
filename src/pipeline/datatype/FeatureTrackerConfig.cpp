@@ -10,12 +10,12 @@ FeatureTrackerConfig::FeatureTrackerConfig() : Buffer(std::make_shared<RawFeatur
 FeatureTrackerConfig::FeatureTrackerConfig(std::shared_ptr<RawFeatureTrackerConfig> ptr)
     : Buffer(std::move(ptr)), cfg(*dynamic_cast<RawFeatureTrackerConfig*>(raw.get())) {}
 
-FeatureTrackerConfigData FeatureTrackerConfig::get() const {
+dai::FeatureTrackerConfigData FeatureTrackerConfig::get() const {
     return cfg.config;
 }
 
-void FeatureTrackerConfig::setCornerDetector(dai::FeatureTrackerConfigData::CornerDetector::AlgorithmType cornerDetector) {
-    cfg.config.cornerDetector.algorithmType = cornerDetector;
+void FeatureTrackerConfig::setCornerDetector(dai::FeatureTrackerConfigData::CornerDetector::Type cornerDetector) {
+    cfg.config.cornerDetector.type = cornerDetector;
 }
 
 void FeatureTrackerConfig::setCornerDetector(dai::FeatureTrackerConfigData::CornerDetector config) {
@@ -31,13 +31,13 @@ void FeatureTrackerConfig::setMotionEstimator(dai::FeatureTrackerConfigData::Mot
 }
 
 void FeatureTrackerConfig::setOpticalFlow(dai::FeatureTrackerConfigData::MotionEstimator::OpticalFlow config) {
-    cfg.config.motionEstimator.algorithmType = dai::FeatureTrackerConfigData::MotionEstimator::AlgorithmType::LUCAS_KANADE_OPTICAL_FLOW;
+    cfg.config.motionEstimator.type = dai::FeatureTrackerConfigData::MotionEstimator::Type::LUCAS_KANADE_OPTICAL_FLOW;
     cfg.config.motionEstimator.opticalFlow = config;
     setMotionEstimator(true);
 }
 
 void FeatureTrackerConfig::setHwMotionEstimation() {
-    cfg.config.motionEstimator.algorithmType = dai::FeatureTrackerConfigData::MotionEstimator::AlgorithmType::HW_MOTION_ESTIMATION;
+    cfg.config.motionEstimator.type = dai::FeatureTrackerConfigData::MotionEstimator::Type::HW_MOTION_ESTIMATION;
     setMotionEstimator(true);
 }
 
@@ -53,8 +53,8 @@ void FeatureTrackerConfig::set(dai::FeatureTrackerConfigData config) {
     cfg.config = config;
 }
 
-void FeatureTrackerConfig::setTargetNumFeatures(std::int32_t targetNumFeatures) {
-    cfg.config.cornerDetector.targetNumFeatures = targetNumFeatures;
+void FeatureTrackerConfig::setNumTargetFeatures(std::int32_t numTargetFeatures) {
+    cfg.config.cornerDetector.numTargetFeatures = numTargetFeatures;
 }
 
 }  // namespace dai

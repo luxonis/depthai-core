@@ -178,11 +178,11 @@ int main() {
         if(key == 'q') {
             break;
         } else if(key == 's') {
-            if(featureTrackerConfig.motionEstimator.algorithmType == dai::FeatureTrackerConfigData::MotionEstimator::AlgorithmType::LUCAS_KANADE_OPTICAL_FLOW) {
-                featureTrackerConfig.motionEstimator.algorithmType = dai::FeatureTrackerConfigData::MotionEstimator::AlgorithmType::HW_MOTION_ESTIMATION;
+            if(featureTrackerConfig.motionEstimator.type == dai::FeatureTrackerConfigData::MotionEstimator::Type::LUCAS_KANADE_OPTICAL_FLOW) {
+                featureTrackerConfig.motionEstimator.type = dai::FeatureTrackerConfigData::MotionEstimator::Type::HW_MOTION_ESTIMATION;
                 printf("Switching to hardware accelerated motion estimation \n");
             } else {
-                featureTrackerConfig.motionEstimator.algorithmType = dai::FeatureTrackerConfigData::MotionEstimator::AlgorithmType::LUCAS_KANADE_OPTICAL_FLOW;
+                featureTrackerConfig.motionEstimator.type = dai::FeatureTrackerConfigData::MotionEstimator::Type::LUCAS_KANADE_OPTICAL_FLOW;
                 printf("Switching to Lucas-Kanade optical flow \n");
             }
             auto cfg = dai::FeatureTrackerConfig();
