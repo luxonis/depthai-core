@@ -6,12 +6,9 @@
 int main(int argc, char** argv) {
     using namespace std::chrono;
 
-    char confirmation;
-
     dai::DeviceBootloader::Type blType = dai::DeviceBootloader::Type::USB;
-    std::string blTypeStr;
     if(argc > 1) {
-        blTypeStr = std::string(argv[1]);
+        std::string blTypeStr(argv[1]);
         if(blTypeStr == "usb") {
             blType = dai::DeviceBootloader::Type::USB;
         } else if(blTypeStr == "network") {
@@ -28,8 +25,7 @@ int main(int argc, char** argv) {
     std::cout << "Warning! Flashing bootloader can potentially soft brick your device and should be done with caution." << std::endl;
     std::cout << "Do not unplug your device in while the bootloader is flashing." << std::endl;
     std::cout << "Type 'y' and press enter to proceed, otherwise exits: ";
-    confirmation = std::cin.get();
-    if(confirmation != 'y') {
+    if(std::cin.get() != 'y') {
         std::cout << "Prompt declined, exiting..." << std::endl;
         return -1;
     }
@@ -45,7 +41,6 @@ int main(int argc, char** argv) {
     // Open DeviceBootloader and allow flashing bootloader
     dai::DeviceBootloader bl(info, true);
     auto currentBlType = bl.getType();
-    std::cout << "Connected to already running bootloader: " << !bl.isEmbeddedVersion() << std::endl;
 
     // Check if bootloader type is the same
     if(currentBlType != blType) {
@@ -62,6 +57,7 @@ int main(int argc, char** argv) {
     // Create a progress callback lambda
     auto progress = [](float p) { std::cout << "Flashing Progress..." << p * 100 << "%" << std::endl; };
 
+    std::cout << "Flashing " << blType << " bootloader..." << std::endl;
     auto t1 = steady_clock::now();
     bool success = false;
     std::string message;

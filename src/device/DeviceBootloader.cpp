@@ -399,11 +399,11 @@ DeviceBootloader::Version DeviceBootloader::getVersion() {
     return DeviceBootloader::Version(ver.major, ver.minor, ver.patch);
 }
 
-DeviceBootloader::Type DeviceBootloader::getType() {
+DeviceBootloader::Type DeviceBootloader::getType() const {
     return bootloaderType;
 }
 
-bool DeviceBootloader::isAllowedFlashingBootloader() {
+bool DeviceBootloader::isAllowedFlashingBootloader() const {
     return allowFlashingBootloader;
 }
 

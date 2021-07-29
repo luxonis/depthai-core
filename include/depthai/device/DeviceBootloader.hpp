@@ -187,12 +187,12 @@ class DeviceBootloader {
     /**
      * @returns Type of currently connected bootloader
      */
-    Type getType();
+    Type getType() const;
 
     /**
      * @returns True if allowed to flash bootloader
      */
-    bool isAllowedFlashingBootloader();
+    bool isAllowedFlashingBootloader() const;
 
     /**
      * Explicitly closes connection to device.
