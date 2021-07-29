@@ -395,6 +395,8 @@ class DeviceBase {
     }
 
    protected:
+    std::shared_ptr<XLinkConnection> connection;
+
     /**
      * throws an error if the device has been closed or the watchdog has died
      */
@@ -427,7 +429,6 @@ class DeviceBase {
     std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> client;
     std::mutex rpcMutex;
     std::vector<uint8_t> patchedCmd;
-    std::shared_ptr<XLinkConnection> connection;
 
     DeviceInfo deviceInfo = {};
 
