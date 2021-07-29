@@ -137,6 +137,8 @@ hunter_private_data(
 
 ## message(STATUS "Location of test1.data: ${test1_data}")
 
+dai_add_example(flash src/flash_example.cpp  ON)
+
 # RGB camera preview output example
 dai_add_example(rgb_preview src/rgb_preview.cpp ON)
 
