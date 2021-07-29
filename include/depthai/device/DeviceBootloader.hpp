@@ -39,16 +39,16 @@ class DeviceBootloader {
         Version(unsigned major, unsigned minor, unsigned patch);
         bool operator==(const Version& other) const;
         bool operator<(const Version& other) const;
-        inline bool operator!=(const Version& rhs) {
+        inline bool operator!=(const Version& rhs) const {
             return !(*this == rhs);
         }
-        inline bool operator>(const Version& rhs) {
+        inline bool operator>(const Version& rhs) const {
             return rhs < *this;
         }
-        inline bool operator<=(const Version& rhs) {
+        inline bool operator<=(const Version& rhs) const {
             return !(*this > rhs);
         }
-        inline bool operator>=(const Version& rhs) {
+        inline bool operator>=(const Version& rhs) const {
             return !(*this < rhs);
         }
         /// Convert Version to string
@@ -107,28 +107,31 @@ class DeviceBootloader {
     /**
      * Connects to or boots device in bootloader mode depending on devInfo state.
      * @param devInfo DeviceInfo of which to boot or connect to
+     * @param allowFlashingBootloader Set to true to allow flashing the devices bootloader. Defaults to false
      */
-    explicit DeviceBootloader(const DeviceInfo& devInfo);
+    explicit DeviceBootloader(const DeviceInfo& devInfo, bool allowFlashingBootloader = false);
 
     /**
      * Connects to device in bootloader of specified type. Throws if it wasn't possible.
      * This constructor will automatically boot into specified bootloader type if not already running
      * @param devInfo DeviceInfo of which to boot or connect to
      * @param type Type of bootloader to boot/connect to.
+     * @param allowFlashingBootloader Set to true to allow flashing the devices bootloader. Defaults to false
      */
-    DeviceBootloader(const DeviceInfo& devInfo, Type type);
+    DeviceBootloader(const DeviceInfo& devInfo, Type type, bool allowFlashingBootloader = false);
 
     /**
      * Connects to or boots device in bootloader mode depending on devInfo state with a custom bootloader firmware.
      * @param devInfo DeviceInfo of which to boot or connect to
      * @param pathToBootloader Custom bootloader firmware to boot
+     * @param allowFlashingBootloader Set to true to allow flashing the devices bootloader. Defaults to false
      */
-    DeviceBootloader(const DeviceInfo& devInfo, const std::string& pathToBootloader);
+    DeviceBootloader(const DeviceInfo& devInfo, const std::string& pathToBootloader, bool allowFlashingBootloader = false);
 
     /**
      * @overload
      */
-    DeviceBootloader(const DeviceInfo& devInfo, const char* pathToBootloader);
+    DeviceBootloader(const DeviceInfo& devInfo, const char* pathToBootloader, bool allowFlashingBootloader = false);
     ~DeviceBootloader();
 
     /**
@@ -176,9 +179,20 @@ class DeviceBootloader {
     Version getVersion();
 
     /**
-     * @returns True whether the bootloader running is flashed or booted by library
+     * @returns True when bootloader was booted using latest bootloader integrated in the library.
+     * False when bootloader is already running on the device and just connected to.
      */
     bool isEmbeddedVersion() const;
+
+    /**
+     * @returns Type of currently connected bootloader
+     */
+    Type getType();
+
+    /**
+     * @returns True if allowed to flash bootloader
+     */
+    bool isAllowedFlashingBootloader();
 
     /**
      * Explicitly closes connection to device.
@@ -196,7 +210,7 @@ class DeviceBootloader {
     // private static
 
     // private variables
-    void init(bool embeddedMvcmd, const std::string& pathToMvcmd, tl::optional<bootloader::Type> type);
+    void init(bool embeddedMvcmd, const std::string& pathToMvcmd, tl::optional<bootloader::Type> type, bool allowBlFlash);
     void checkClosed() const;
 
     std::shared_ptr<XLinkConnection> connection;
@@ -214,6 +228,52 @@ class DeviceBootloader {
 
     // bootloader stream
     std::unique_ptr<XLinkStream> stream;
+
+    // Allow flashing bootloader flag
+    bool allowFlashingBootloader = false;
 };
 
 }  // namespace dai
+
+// Global namespace
+inline std::ostream& operator<<(std::ostream& out, const dai::DeviceBootloader::Type& type) {
+    switch(type) {
+        case dai::DeviceBootloader::Type::USB:
+            out << "USB";
+            break;
+        case dai::DeviceBootloader::Type::NETWORK:
+            out << "NETWORK";
+            break;
+    }
+    return out;
+}
+
+inline std::ostream& operator<<(std::ostream& out, const dai::DeviceBootloader::Memory& memory) {
+    switch(memory) {
+        case dai::DeviceBootloader::Memory::FLASH:
+            out << "FLASH";
+            break;
+        case dai::DeviceBootloader::Memory::EMMC:
+            out << "EMMC";
+            break;
+    }
+    return out;
+}
+
+inline std::ostream& operator<<(std::ostream& out, const dai::DeviceBootloader::Section& type) {
+    switch(type) {
+        case dai::DeviceBootloader::Section::HEADER:
+            out << "HEADER";
+            break;
+        case dai::DeviceBootloader::Section::BOOTLOADER:
+            out << "BOOTLOADER";
+            break;
+        case dai::DeviceBootloader::Section::BOOTLOADER_CONFIG:
+            out << "BOOTLOADER_CONFIG";
+            break;
+        case dai::DeviceBootloader::Section::APPLICATION:
+            out << "APPLICATION";
+            break;
+    }
+    return out;
+}

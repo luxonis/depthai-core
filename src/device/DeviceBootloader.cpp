@@ -141,24 +141,25 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(Pipeline&
     return fwPackage;
 }
 
-DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo) : deviceInfo(devInfo) {
-    init(true, "", tl::nullopt);
+DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, bool allowFlashingBootloader) : deviceInfo(devInfo) {
+    init(true, "", tl::nullopt, allowFlashingBootloader);
 }
 
-DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, Type type) : deviceInfo(devInfo) {
-    init(true, "", type);
+DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, Type type, bool allowFlashingBootloader) : deviceInfo(devInfo) {
+    init(true, "", type, allowFlashingBootloader);
 }
 
-DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, const char* pathToBootloader) : deviceInfo(devInfo) {
-    init(false, std::string(pathToBootloader), tl::nullopt);
+DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, const char* pathToBootloader, bool allowFlashingBootloader) : deviceInfo(devInfo) {
+    init(false, std::string(pathToBootloader), tl::nullopt, allowFlashingBootloader);
 }
 
-DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, const std::string& pathToBootloader) : deviceInfo(devInfo) {
-    init(false, pathToBootloader, tl::nullopt);
+DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, const std::string& pathToBootloader, bool allowFlashingBootloader) : deviceInfo(devInfo) {
+    init(false, pathToBootloader, tl::nullopt, allowFlashingBootloader);
 }
 
-void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, tl::optional<bootloader::Type> type) {
+void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, tl::optional<bootloader::Type> type, bool allowBlFlash) {
     stream = nullptr;
+    allowFlashingBootloader = allowBlFlash;
 
     bootloaderType = type.value_or(DEFAULT_TYPE);
 
@@ -194,8 +195,9 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, 
         if(!receiveBootloaderResponse(stream->getStreamId(), ver)) throw std::runtime_error("Error trying to connect to device");
         DeviceBootloader::Version version(ver.major, ver.minor, ver.patch);
 
-        // If version is adequite
         if(version >= Version(0, 0, 12)) {
+            // If version is adequate, do an in memory boot.
+
             // Send request for bootloader type
             if(!sendBootloaderRequest(stream->getStreamId(), bootloader::request::GetBootloaderType{})) {
                 throw std::runtime_error("Error trying to connect to device");
@@ -207,8 +209,10 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, 
             // Modify actual bootloader type
             bootloaderType = runningBootloaderType.type;
 
-            // Boot memory correct type of BL
-            if(type && runningBootloaderType.type != *type) {
+            Type desiredBootloaderType = type.value_or(bootloaderType);
+
+            // If not correct type OR if allowFlashingBootloader is set, then boot internal (latest) bootloader of correct type
+            if((desiredBootloaderType != bootloaderType) || allowFlashingBootloader) {
                 // prepare watchdog thread, which will keep device alive
                 std::atomic<bool> wdRunning{true};
                 std::thread wd = std::thread([&]() {
@@ -228,7 +232,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, 
 
                 // Send request to boot firmware directly from bootloader
                 dai::bootloader::request::BootMemory bootMemory;
-                auto binary = getEmbeddedBootloaderBinary(*type);
+                auto binary = getEmbeddedBootloaderBinary(desiredBootloaderType);
                 bootMemory.totalSize = static_cast<uint32_t>(binary.size());
                 bootMemory.numPackets = ((static_cast<uint32_t>(binary.size()) - 1) / bootloader::XLINK_STREAM_MAX_SIZE) + 1;
                 if(!sendBootloaderRequest(stream->getStreamId(), bootMemory)) {
@@ -249,13 +253,22 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, 
                 // Now connect
                 connection = std::make_shared<XLinkConnection>(deviceInfo, X_LINK_BOOTLOADER);
 
-                isEmbedded = false;
-            } else {
+                // The type of bootloader is now 'desiredBootloaderType'
+                bootloaderType = desiredBootloaderType;
+
+                // Embedded bootloader was used to boot, set to true
                 isEmbedded = true;
+            } else {
+                // Just connected to existing bootloader on device. Set embedded to false
+                isEmbedded = false;
             }
 
         } else {
-            if(type && *type != Type::USB) {
+            // If version isn't adequate to do an in memory boot - do regular Bootloader -> USB ROM -> Boot transition.
+            Type desiredBootloaderType = type.value_or(Type::USB);
+
+            // If not correct type OR if allowFlashingBootloader is set, then boot internal (latest) bootloader of correct type
+            if((desiredBootloaderType != Type::USB) || allowFlashingBootloader) {
                 // Send request to jump to USB bootloader
                 // Boot into USB ROM BOOTLOADER NOW
                 if(!sendBootloaderRequest(stream->getStreamId(), dai::bootloader::request::UsbRomBoot{})) {
@@ -268,19 +281,20 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, 
 
                 // Unbooted device found, boot to BOOTLOADER and connect with XLinkConnection constructor
                 if(embeddedMvcmd) {
-                    connection = std::make_shared<XLinkConnection>(deviceInfo, getEmbeddedBootloaderBinary(*type), X_LINK_BOOTLOADER);
+                    connection = std::make_shared<XLinkConnection>(deviceInfo, getEmbeddedBootloaderBinary(desiredBootloaderType), X_LINK_BOOTLOADER);
                 } else {
                     connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd, X_LINK_BOOTLOADER);
                 }
 
-                bootloaderType = *type;
+                bootloaderType = desiredBootloaderType;
 
-                // Device wasn't already in bootloader, that means that embedded bootloader is booted
+                // Embedded bootloader was used to boot, set to true
                 isEmbedded = true;
 
             } else {
                 bootloaderType = dai::bootloader::Type::USB;
-                // Device was already in bootloader, that means that embedded isn't running
+
+                // Just connected to existing bootloader on device. Set embedded to false
                 isEmbedded = false;
             }
         }
@@ -385,6 +399,14 @@ DeviceBootloader::Version DeviceBootloader::getVersion() {
     return DeviceBootloader::Version(ver.major, ver.minor, ver.patch);
 }
 
+DeviceBootloader::Type DeviceBootloader::getType() {
+    return bootloaderType;
+}
+
+bool DeviceBootloader::isAllowedFlashingBootloader() {
+    return allowFlashingBootloader;
+}
+
 std::tuple<bool, std::string> DeviceBootloader::flash(std::function<void(float)> progressCb, Pipeline& pipeline) {
     return flashDepthaiApplicationPackage(progressCb, createDepthaiApplicationPackage(pipeline));
 }
@@ -439,6 +461,11 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(std::function<vo
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, Type type, std::function<void(float)> progressCb, std::string path) {
+    // Check if 'allowFlashingBootloader' is set to true.
+    if(!allowFlashingBootloader) {
+        throw std::invalid_argument("DeviceBootloader wasn't initialized to allow flashing bootloader. Set 'allowFlashingBootloader' in constructor");
+    }
+
     // Only flash memory is supported for now
     if(memory != Memory::FLASH) {
         throw std::invalid_argument("Only FLASH memory is supported for now");
