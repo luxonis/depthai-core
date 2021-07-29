@@ -4,30 +4,27 @@
 
 #include "depthai-shared/common/UsbSpeed.hpp"
 
-namespace dai {
-
-inline std::ostream& operator<<(std::ostream& out, const UsbSpeed& speed) {
+// Global namespace
+inline std::ostream& operator<<(std::ostream& out, const dai::UsbSpeed& speed) {
     switch(speed) {
-        case UsbSpeed::UNKNOWN:
+        case dai::UsbSpeed::UNKNOWN:
             out << "UNKNOWN";
             break;
-        case UsbSpeed::LOW:
+        case dai::UsbSpeed::LOW:
             out << "LOW";
             break;
-        case UsbSpeed::FULL:
+        case dai::UsbSpeed::FULL:
             out << "FULL";
             break;
-        case UsbSpeed::HIGH:
+        case dai::UsbSpeed::HIGH:
             out << "HIGH";
             break;
-        case UsbSpeed::SUPER:
+        case dai::UsbSpeed::SUPER:
             out << "SUPER";
             break;
-        case UsbSpeed::SUPER_PLUS:
+        case dai::UsbSpeed::SUPER_PLUS:
             out << "SUPER_PLUS";
             break;
     }
     return out;
 }
-
-}  // namespace dai
