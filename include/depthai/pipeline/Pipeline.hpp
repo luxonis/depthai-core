@@ -36,6 +36,7 @@ class PipelineImpl {
     PipelineSchema getPipelineSchema() const;
     OpenVINO::Version getPipelineOpenVINOVersion() const;
     void setCameraTuningBlobPath(const std::string& path);
+    void setXlinkMaxPacketSize(int size);
 
     // Access to nodes
     std::vector<std::shared_ptr<const Node>> getAllNodes() const;
@@ -239,6 +240,15 @@ class Pipeline {
     /// Set a camera IQ (Image Quality) tuning blob, used for all cameras
     void setCameraTuningBlobPath(const std::string& path) {
         impl()->setCameraTuningBlobPath(path);
+    }
+
+    /**
+     * Maximum packet size to be sent by device on XLinkOut (the larger messages are split).
+     * Increase the size to improve performance, or set to 0 to disable splitting.
+     * Value in bytes, default 64KiB 
+     */
+    void setXlinkMaxPacketSize(int size) {
+        impl()->setXlinkMaxPacketSize(size);
     }
 };
 

@@ -242,6 +242,10 @@ void PipelineImpl::setCameraTuningBlobPath(const std::string& path) {
     globalProperties.cameraTuningBlobSize = asset->data.size();
 }
 
+void PipelineImpl::setXlinkMaxPacketSize(int size) {
+    globalProperties.xlinkMaxPacketSize = size;
+}
+
 // Remove node capability
 void PipelineImpl::remove(std::shared_ptr<Node> toRemove) {
     // Search for this node in 'nodes' vector.
