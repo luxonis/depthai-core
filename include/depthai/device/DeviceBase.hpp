@@ -144,6 +144,72 @@ class DeviceBase {
     DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, const std::string& pathToCmd);
 
     /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param pipeline Pipeline to be executed on the device
+     */
+    explicit DeviceBase(const Pipeline& pipeline) : DeviceBase(pipeline.getOpenVINOVersion()) {
+        try_start_pipeline(pipeline);
+    }
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param pipeline Pipeline to be executed on the device
+     * @param usb2Mode Boot device using USB2 mode firmware
+     */
+    DeviceBase(const Pipeline& pipeline, bool usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), usb2Mode) {
+        try_start_pipeline(pipeline);
+    }
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param pipeline Pipeline to be executed on the device
+     * @param pathToCmd Path to custom device firmware
+     */
+    DeviceBase(const Pipeline& pipeline, const char* pathToCmd) : DeviceBase(pipeline.getOpenVINOVersion(), pathToCmd) {
+        try_start_pipeline(pipeline);
+    }
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param pipeline Pipeline to be executed on the device
+     * @param pathToCmd Path to custom device firmware
+     */
+    DeviceBase(const Pipeline& pipeline, const std::string& pathToCmd) : DeviceBase(pipeline.getOpenVINOVersion(), pathToCmd) {
+        try_start_pipeline(pipeline);
+    }
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param pipeline Pipeline to be executed on the device
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param usb2Mode Boot device using USB2 mode firmware
+     */
+    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode = false) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, usb2Mode) {
+        try_start_pipeline(pipeline);
+    }
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param pipeline Pipeline to be executed on the device
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param pathToCmd Path to custom device firmware
+     */
+    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, pathToCmd) {
+        try_start_pipeline(pipeline);
+    }
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param pipeline Pipeline to be executed on the device
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param usb2Mode Path to custom device firmware
+     */
+    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd)
+        : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, pathToCmd) {
+        try_start_pipeline(pipeline);
+    }
+
+    /**
      * Device destructor
      */
     virtual ~DeviceBase();
@@ -345,6 +411,20 @@ class DeviceBase {
 
    protected:
     std::shared_ptr<XLinkConnection> connection;
+
+    /**
+     * @brief a safe way to start a pipeline, which is closed if any exception occurs
+     */
+    void try_start_pipeline(const Pipeline& pipeline) {
+        try {
+            if(!startPipeline(pipeline)) {
+                throw std::runtime_error("Couldn't start the pipeline");
+            }
+        } catch(const std::exception& e) {
+            close();
+            throw e;
+        }
+    }
 
     /**
      * throws an error if the device has been closed or the watchdog has died

@@ -208,16 +208,6 @@ class Device : public DeviceBase {
     std::string getQueueEvent(std::chrono::microseconds timeout = std::chrono::microseconds(-1));
 
    private:
-    void try_start_pipeline(const Pipeline& pipeline) {
-        try {
-            if(!startPipeline(pipeline)) {
-                throw std::runtime_error("Couldn't start the pipeline");
-            }
-        } catch(const std::exception& e) {
-            close();
-            throw e;
-        }
-    }
     std::unordered_map<std::string, std::shared_ptr<DataOutputQueue>> outputQueueMap;
     std::unordered_map<std::string, std::shared_ptr<DataInputQueue>> inputQueueMap;
     std::unordered_map<std::string, DataOutputQueue::CallbackId> callbackIdMap;
