@@ -210,60 +210,6 @@ LogLevel DeviceBase::Impl::getLogLevel() {
 // END OF Impl section
 ///////////////////////////////////////////////
 
-DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode) : deviceInfo(devInfo) {
-    init(pipeline, true, usb2Mode, "");
-}
-
-DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd) : deviceInfo(devInfo) {
-    init(pipeline, false, false, std::string(pathToCmd));
-}
-
-DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd) : deviceInfo(devInfo) {
-    init(pipeline, false, false, pathToCmd);
-}
-
-DeviceBase::DeviceBase(const Pipeline& pipeline) {
-    // Searches for any available device for 'default' timeout
-
-    bool found = false;
-    std::tie(found, deviceInfo) = getAnyAvailableDevice();
-
-    // If no device found, throw
-    if(!found) throw std::runtime_error("No available devices");
-    init(pipeline, true, false, "");
-}
-
-DeviceBase::DeviceBase(const Pipeline& pipeline, const char* pathToCmd) {
-    // Searches for any available device for 'default' timeout
-
-    bool found = false;
-    std::tie(found, deviceInfo) = getAnyAvailableDevice();
-
-    // If no device found, throw
-    if(!found) throw std::runtime_error("No available devices");
-    init(pipeline, false, false, std::string(pathToCmd));
-}
-
-DeviceBase::DeviceBase(const Pipeline& pipeline, const std::string& pathToCmd) {
-    // Searches for any available device for 'default' timeout
-    bool found = false;
-    std::tie(found, deviceInfo) = getAnyAvailableDevice();
-
-    // If no device found, throw
-    if(!found) throw std::runtime_error("No available devices");
-    init(pipeline, false, false, pathToCmd);
-}
-
-DeviceBase::DeviceBase(const Pipeline& pipeline, bool usb2Mode) {
-    // Searches for any available device for 'default' timeout
-    bool found = false;
-    std::tie(found, deviceInfo) = getAnyAvailableDevice();
-
-    // If no device found, throw
-    if(!found) throw std::runtime_error("No available devices");
-    init(pipeline, true, usb2Mode, "");
-}
-
 DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, bool usb2Mode) : deviceInfo(devInfo) {
     init(version, true, usb2Mode, "");
 }

@@ -94,57 +94,6 @@ class DeviceBase {
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * @param pipeline Pipeline to be executed on the device
-     */
-    explicit DeviceBase(const Pipeline& pipeline);
-
-    /**
-     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * @param pipeline Pipeline to be executed on the device
-     * @param usb2Mode Boot device using USB2 mode firmware
-     */
-    DeviceBase(const Pipeline& pipeline, bool usb2Mode);
-
-    /**
-     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * @param pipeline Pipeline to be executed on the device
-     * @param pathToCmd Path to custom device firmware
-     */
-    DeviceBase(const Pipeline& pipeline, const char* pathToCmd);
-
-    /**
-     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * @param pipeline Pipeline to be executed on the device
-     * @param pathToCmd Path to custom device firmware
-     */
-    DeviceBase(const Pipeline& pipeline, const std::string& pathToCmd);
-
-    /**
-     * Connects to device specified by devInfo.
-     * @param pipeline Pipeline to be executed on the device
-     * @param devInfo DeviceInfo which specifies which device to connect to
-     * @param usb2Mode Boot device using USB2 mode firmware
-     */
-    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode = false);
-
-    /**
-     * Connects to device specified by devInfo.
-     * @param pipeline Pipeline to be executed on the device
-     * @param devInfo DeviceInfo which specifies which device to connect to
-     * @param pathToCmd Path to custom device firmware
-     */
-    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd);
-
-    /**
-     * Connects to device specified by devInfo.
-     * @param pipeline Pipeline to be executed on the device
-     * @param devInfo DeviceInfo which specifies which device to connect to
-     * @param usb2Mode Path to custom device firmware
-     */
-    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd);
-
-    /**
-     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * @param version OpenVINO version which the device will be booted with. Default is Pipeline::DEFAULT_OPENVINO_VERSION
      */
     explicit DeviceBase(OpenVINO::Version version = Pipeline::DEFAULT_OPENVINO_VERSION);
