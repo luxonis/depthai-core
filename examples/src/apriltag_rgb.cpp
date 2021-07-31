@@ -36,7 +36,6 @@ int main() {
     aprilTag->passthroughInputImage.link(manipOut->input);
     camRgb->video.link(manip->inputImage);
     manip->out.link(aprilTag->inputImage);
-    manip->out.link(manipOut->input);
     aprilTag->out.link(xoutAprilTag->input);
 
     // Connect to device and start pipeline
