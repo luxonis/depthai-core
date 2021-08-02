@@ -14,11 +14,11 @@ dai::RawFeatureTrackerConfig FeatureTrackerConfig::get() const {
     return cfg;
 }
 
-void FeatureTrackerConfig::setCornerDetector(dai::RawFeatureTrackerConfig::CornerDetector::Type cornerDetector) {
+void FeatureTrackerConfig::setCornerDetector(dai::FeatureTrackerConfig::CornerDetector::Type cornerDetector) {
     cfg.cornerDetector.type = cornerDetector;
 }
 
-void FeatureTrackerConfig::setCornerDetector(dai::RawFeatureTrackerConfig::CornerDetector config) {
+void FeatureTrackerConfig::setCornerDetector(dai::FeatureTrackerConfig::CornerDetector config) {
     cfg.cornerDetector = config;
 }
 
@@ -26,18 +26,18 @@ void FeatureTrackerConfig::setMotionEstimator(bool enable) {
     cfg.motionEstimator.enable = enable;
 }
 
-void FeatureTrackerConfig::setMotionEstimator(dai::RawFeatureTrackerConfig::MotionEstimator config) {
+void FeatureTrackerConfig::setMotionEstimator(dai::FeatureTrackerConfig::MotionEstimator config) {
     cfg.motionEstimator = config;
 }
 
-void FeatureTrackerConfig::setOpticalFlow(dai::RawFeatureTrackerConfig::MotionEstimator::OpticalFlow config) {
-    cfg.motionEstimator.type = dai::RawFeatureTrackerConfig::MotionEstimator::Type::LUCAS_KANADE_OPTICAL_FLOW;
+void FeatureTrackerConfig::setOpticalFlow(dai::FeatureTrackerConfig::MotionEstimator::OpticalFlow config) {
+    cfg.motionEstimator.type = dai::FeatureTrackerConfig::MotionEstimator::Type::LUCAS_KANADE_OPTICAL_FLOW;
     cfg.motionEstimator.opticalFlow = config;
     setMotionEstimator(true);
 }
 
 void FeatureTrackerConfig::setHwMotionEstimation() {
-    cfg.motionEstimator.type = dai::RawFeatureTrackerConfig::MotionEstimator::Type::HW_MOTION_ESTIMATION;
+    cfg.motionEstimator.type = dai::FeatureTrackerConfig::MotionEstimator::Type::HW_MOTION_ESTIMATION;
     setMotionEstimator(true);
 }
 
@@ -45,7 +45,7 @@ void FeatureTrackerConfig::setFeatureMaintainer(bool enable) {
     cfg.featureMaintainer.enable = enable;
 }
 
-void FeatureTrackerConfig::setFeatureMaintainer(dai::RawFeatureTrackerConfig::FeatureMaintainer config) {
+void FeatureTrackerConfig::setFeatureMaintainer(dai::FeatureTrackerConfig::FeatureMaintainer config) {
     cfg.featureMaintainer = config;
 }
 
