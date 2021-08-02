@@ -11,7 +11,10 @@ namespace node {
 //--------------------------------------------------------------------
 // Base Detection Network Class
 //--------------------------------------------------------------------
-SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : DetectionNetwork(par, nodeId) {}
+SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : DetectionNetwork(par, nodeId) {
+    inputs = {&input, &inputDepth};
+    outputs = {&out, &boundingBoxMapping, &passthrough, &passthroughDepth};
+}
 
 std::shared_ptr<Node> SpatialDetectionNetwork::clone() {
     return std::make_shared<std::decay<decltype(*this)>::type>(*this);
@@ -19,14 +22,6 @@ std::shared_ptr<Node> SpatialDetectionNetwork::clone() {
 
 std::string SpatialDetectionNetwork::getName() const {
     return "SpatialDetectionNetwork";
-}
-
-std::vector<Node::Input> SpatialDetectionNetwork::getInputs() {
-    return {input, inputDepth};
-}
-
-std::vector<Node::Output> SpatialDetectionNetwork::getOutputs() {
-    return {out, boundingBoxMapping, passthrough, passthroughDepth};
 }
 
 SpatialDetectionNetwork::Properties& SpatialDetectionNetwork::getPropertiesRef() {
