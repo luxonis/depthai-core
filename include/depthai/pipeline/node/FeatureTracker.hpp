@@ -14,7 +14,8 @@ namespace dai {
 namespace node {
 
 /**
- * @brief FeatureTracker node. Calculates spatial location data on a set of ROIs on depth map.
+ * @brief FeatureTracker node.
+ * Performs feature tracking and reidentification using motion estimation between 2 consecutive frames.
  */
 class FeatureTracker : public Node {
    public:

@@ -41,13 +41,18 @@ class FeatureTrackerConfig : public Buffer {
     void setCornerDetector(dai::FeatureTrackerConfig::CornerDetector config);
 
     /**
+     * Set optical flow as motion estimation algorithm type.
+     */
+    void setOpticalFlow();
+
+    /**
      * Set optical flow full configuration.
      * @param config Optical flow configuration
      */
     void setOpticalFlow(dai::FeatureTrackerConfig::MotionEstimator::OpticalFlow config);
 
     /**
-     * Set hardware accelerated motion estiomation using block matching.
+     * Set hardware accelerated motion estimation using block matching.
      * Faster than optical flow (software implementation) but might not be as accurate.
      */
     void setHwMotionEstimation();
