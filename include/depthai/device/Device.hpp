@@ -74,6 +74,13 @@ class Device : public DeviceBase {
      */
     Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd);
 
+    /**
+     * @brief dtor to close the device
+     */
+    ~Device() override {
+        DeviceBase::close();
+    }
+
     /// Maximum number of elements in event queue
     static constexpr std::size_t EVENT_QUEUE_MAXIMUM_SIZE{2048};
 

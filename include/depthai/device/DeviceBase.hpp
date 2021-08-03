@@ -192,6 +192,7 @@ class DeviceBase {
 
     /**
      * Device destructor
+     * @note In the destructor of the derived class, remember to call close()
      */
     virtual ~DeviceBase();
 

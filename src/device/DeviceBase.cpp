@@ -344,7 +344,10 @@ void DeviceBase::checkClosed() const {
 }
 
 DeviceBase::~DeviceBase() {
-    close();
+    // Only allow to close once
+    if(closed.exchange(true)) return;
+
+    DeviceBase::closeImpl();
 }
 
 void DeviceBase::tryStartPipeline(const Pipeline& pipeline) {
