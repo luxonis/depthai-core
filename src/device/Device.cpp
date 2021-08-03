@@ -24,6 +24,35 @@ namespace dai {
 // Common explicit instantiation, to remove the need to define in header
 constexpr std::size_t Device::EVENT_QUEUE_MAXIMUM_SIZE;
 
+Device::Device(const Pipeline& pipeline) : DeviceBase(pipeline.getOpenVINOVersion()) {
+    tryStartPipeline(pipeline);
+}
+
+Device::Device(const Pipeline& pipeline, bool usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), usb2Mode) {
+    tryStartPipeline(pipeline);
+}
+
+Device::Device(const Pipeline& pipeline, const char* pathToCmd) : DeviceBase(pipeline.getOpenVINOVersion(), pathToCmd) {
+    tryStartPipeline(pipeline);
+}
+
+Device::Device(const Pipeline& pipeline, const std::string& pathToCmd) : DeviceBase(pipeline.getOpenVINOVersion(), pathToCmd) {
+    tryStartPipeline(pipeline);
+}
+
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, usb2Mode) {
+    tryStartPipeline(pipeline);
+}
+
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, pathToCmd) {
+    tryStartPipeline(pipeline);
+}
+
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd)
+    : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, pathToCmd) {
+    tryStartPipeline(pipeline);
+}
+
 void Device::closeImpl() {
     // Remove callbacks to this from queues
     for(const auto& kv : callbackIdMap) {
@@ -272,4 +301,5 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
     }
     return DeviceBase::startPipelineImpl(pipeline);
 }
+
 }  // namespace dai

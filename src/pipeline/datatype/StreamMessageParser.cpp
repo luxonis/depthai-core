@@ -72,7 +72,10 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
     std::uint32_t bufferLength = packet->length - 8 - serializedObjectSize;
     auto* msgpackStart = packet->data + bufferLength;
 
-    nlohmann::json jser = nlohmann::json::from_msgpack(msgpackStart, msgpackStart + serializedObjectSize);
+    nlohmann::json jser;
+    if(serializedObjectSize > 0) {
+        jser = nlohmann::json::from_msgpack(msgpackStart, msgpackStart + serializedObjectSize);
+    }
 
     // copy data part
     std::vector<uint8_t> data(packet->data, packet->data + bufferLength);
@@ -153,7 +156,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
     std::uint32_t bufferLength = packet->length - 8 - serializedObjectSize;
     auto* msgpackStart = packet->data + bufferLength;
 
-    nlohmann::json jser = nlohmann::json::from_msgpack(msgpackStart, msgpackStart + serializedObjectSize);
+    nlohmann::json jser;
+    if(serializedObjectSize > 0) {
+        jser = nlohmann::json::from_msgpack(msgpackStart, msgpackStart + serializedObjectSize);
+    }
 
     // copy data part
     std::vector<uint8_t> data(packet->data, packet->data + bufferLength);

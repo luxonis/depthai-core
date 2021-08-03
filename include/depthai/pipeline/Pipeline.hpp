@@ -35,7 +35,6 @@ class PipelineImpl {
     Node::Id getNextUniqueId();
     PipelineSchema getPipelineSchema() const;
     OpenVINO::Version getPipelineOpenVINOVersion() const;
-    AssetManager getAllAssets() const;
     void setCameraTuningBlobPath(const std::string& path);
 
     // Access to nodes
@@ -58,7 +57,7 @@ class PipelineImpl {
     // Pipeline asset manager
     AssetManager assetManager;
     // Default version
-    constexpr static auto DEFAULT_OPENVINO_VERSION = OpenVINO::Version::VERSION_2021_3;
+    constexpr static auto DEFAULT_OPENVINO_VERSION = OpenVINO::Version::VERSION_2021_4;
     // Optionally forced version
     tl::optional<OpenVINO::Version> forceRequiredOpenVINOVersion;
     // Global pipeline properties
@@ -197,11 +196,6 @@ class Pipeline {
      */
     void unlink(const Node::Output& out, const Node::Input& in) {
         impl()->unlink(out, in);
-    }
-
-    /// Get assets on the pipeline includes nodes assets
-    AssetManager getAllAssets() const {
-        return impl()->getAllAssets();
     }
 
     /// Get pipelines AssetManager as reference

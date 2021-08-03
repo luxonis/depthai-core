@@ -29,10 +29,6 @@
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
 
-// libraries
-#include "nanorpc/core/client.h"
-#include "nanorpc/packer/nlohmann_msgpack.h"
-
 namespace dai {
 
 /**
@@ -94,6 +90,57 @@ class DeviceBase {
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param pipeline Pipeline to be executed on the device
+     */
+    explicit DeviceBase(const Pipeline& pipeline);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param pipeline Pipeline to be executed on the device
+     * @param usb2Mode Boot device using USB2 mode firmware
+     */
+    DeviceBase(const Pipeline& pipeline, bool usb2Mode);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param pipeline Pipeline to be executed on the device
+     * @param pathToCmd Path to custom device firmware
+     */
+    DeviceBase(const Pipeline& pipeline, const char* pathToCmd);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param pipeline Pipeline to be executed on the device
+     * @param pathToCmd Path to custom device firmware
+     */
+    DeviceBase(const Pipeline& pipeline, const std::string& pathToCmd);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param pipeline Pipeline to be executed on the device
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param usb2Mode Boot device using USB2 mode firmware
+     */
+    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode = false);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param pipeline Pipeline to be executed on the device
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param pathToCmd Path to custom device firmware
+     */
+    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param pipeline Pipeline to be executed on the device
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param usb2Mode Path to custom device firmware
+     */
+    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * @param version OpenVINO version which the device will be booted with. Default is Pipeline::DEFAULT_OPENVINO_VERSION
      */
     explicit DeviceBase(OpenVINO::Version version = Pipeline::DEFAULT_OPENVINO_VERSION);
@@ -142,72 +189,6 @@ class DeviceBase {
      * @param usb2Mode Path to custom device firmware
      */
     DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, const std::string& pathToCmd);
-
-    /**
-     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * @param pipeline Pipeline to be executed on the device
-     */
-    explicit DeviceBase(const Pipeline& pipeline) : DeviceBase(pipeline.getOpenVINOVersion()) {
-        try_start_pipeline(pipeline);
-    }
-
-    /**
-     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * @param pipeline Pipeline to be executed on the device
-     * @param usb2Mode Boot device using USB2 mode firmware
-     */
-    DeviceBase(const Pipeline& pipeline, bool usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), usb2Mode) {
-        try_start_pipeline(pipeline);
-    }
-
-    /**
-     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * @param pipeline Pipeline to be executed on the device
-     * @param pathToCmd Path to custom device firmware
-     */
-    DeviceBase(const Pipeline& pipeline, const char* pathToCmd) : DeviceBase(pipeline.getOpenVINOVersion(), pathToCmd) {
-        try_start_pipeline(pipeline);
-    }
-
-    /**
-     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * @param pipeline Pipeline to be executed on the device
-     * @param pathToCmd Path to custom device firmware
-     */
-    DeviceBase(const Pipeline& pipeline, const std::string& pathToCmd) : DeviceBase(pipeline.getOpenVINOVersion(), pathToCmd) {
-        try_start_pipeline(pipeline);
-    }
-
-    /**
-     * Connects to device specified by devInfo.
-     * @param pipeline Pipeline to be executed on the device
-     * @param devInfo DeviceInfo which specifies which device to connect to
-     * @param usb2Mode Boot device using USB2 mode firmware
-     */
-    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode = false) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, usb2Mode) {
-        try_start_pipeline(pipeline);
-    }
-
-    /**
-     * Connects to device specified by devInfo.
-     * @param pipeline Pipeline to be executed on the device
-     * @param devInfo DeviceInfo which specifies which device to connect to
-     * @param pathToCmd Path to custom device firmware
-     */
-    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, pathToCmd) {
-        try_start_pipeline(pipeline);
-    }
-
-    /**
-     * Connects to device specified by devInfo.
-     * @param pipeline Pipeline to be executed on the device
-     * @param devInfo DeviceInfo which specifies which device to connect to
-     * @param usb2Mode Path to custom device firmware
-     */
-    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd)
-        : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, pathToCmd) {
-        try_start_pipeline(pipeline);
-    }
 
     /**
      * Device destructor
@@ -415,16 +396,7 @@ class DeviceBase {
     /**
      * @brief a safe way to start a pipeline, which is closed if any exception occurs
      */
-    void try_start_pipeline(const Pipeline& pipeline) {
-        try {
-            if(!startPipeline(pipeline)) {
-                throw std::runtime_error("Couldn't start the pipeline");
-            }
-        } catch(const std::exception& e) {
-            close();
-            throw e;
-        }
-    }
+    void tryStartPipeline(const Pipeline& pipeline);
 
     /**
      * throws an error if the device has been closed or the watchdog has died
@@ -454,10 +426,6 @@ class DeviceBase {
     void init(OpenVINO::Version version, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
     void init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
     void init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
-
-    std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> client;
-    std::mutex rpcMutex;
-    std::vector<uint8_t> patchedCmd;
 
     DeviceInfo deviceInfo = {};
 
