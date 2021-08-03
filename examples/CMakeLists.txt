@@ -277,6 +277,9 @@ dai_add_example(calibration_reader src/calibration_reader.cpp OFF)
 # ImageManip rotate example
 dai_add_example(image_manip_rotate src/image_manip_rotate.cpp ON)
 
+# ImageManip tiling example
+dai_add_example(image_manip_tiling src/image_manip_tiling.cpp ON)
+
 target_compile_definitions(calibration_flash PRIVATE CALIB_PATH="${calib_v6}")
 target_compile_definitions(calibration_flash_version5 PRIVATE CALIB_PATH="${calib_v5}" BOARD_PATH="${device_config}")
 target_compile_definitions(calibration_load PRIVATE CALIB_PATH="${calib_v6}")
