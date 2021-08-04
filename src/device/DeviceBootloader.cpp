@@ -183,7 +183,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, 
         connection = std::make_shared<XLinkConnection>(deviceInfo, X_LINK_BOOTLOADER);
 
         // If type is specified, try to boot into that BL type
-        stream = std::unique_ptr<XLinkStream>(new XLinkStream(*connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE));
+        stream = std::make_unique<XLinkStream>(*connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
 
         // Send request for bootloader version
         if(!sendBootloaderRequest(stream->getStreamId(), bootloader::request::GetBootloaderVersion{})) {
@@ -241,17 +241,18 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, 
 
                 // After that send numPackets of data
                 stream->writeSplit(binary.data(), binary.size(), bootloader::XLINK_STREAM_MAX_SIZE);
-
+                // Close existing stream first
+                stream = nullptr;
                 // Stop watchdog
                 wdRunning = false;
                 wd.join();
+                // Close connection
+                connection->close();
 
-                // Dummy read, until link falls down and it returns an error code
-                streamPacketDesc_t* pPacket;
-                XLinkReadData(stream->getStreamId(), &pPacket);
-
-                // Now connect
+                // Now reconnect
                 connection = std::make_shared<XLinkConnection>(deviceInfo, X_LINK_BOOTLOADER);
+                // prepare new bootloader stream
+                stream = std::make_unique<XLinkStream>(*connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
 
                 // The type of bootloader is now 'desiredBootloaderType'
                 bootloaderType = desiredBootloaderType;
@@ -274,17 +275,21 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, 
                 if(!sendBootloaderRequest(stream->getStreamId(), dai::bootloader::request::UsbRomBoot{})) {
                     throw std::runtime_error("Error trying to connect to device");
                 }
+                // Close existing stream first
+                stream = nullptr;
+                // Close connection
+                connection->close();
 
-                // Dummy read, until link falls down and it returns an error code
-                streamPacketDesc_t* pPacket;
-                XLinkReadData(stream->getStreamId(), &pPacket);
-
+                // Now reconnect
                 // Unbooted device found, boot to BOOTLOADER and connect with XLinkConnection constructor
                 if(embeddedMvcmd) {
                     connection = std::make_shared<XLinkConnection>(deviceInfo, getEmbeddedBootloaderBinary(desiredBootloaderType), X_LINK_BOOTLOADER);
                 } else {
                     connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd, X_LINK_BOOTLOADER);
                 }
+
+                // prepare bootloader stream
+                stream = std::make_unique<XLinkStream>(*connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
 
                 bootloaderType = desiredBootloaderType;
 
@@ -334,11 +339,6 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, 
         // Sleep a bit, so device isn't available anymore
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
     });
-
-    // prepare bootloader stream
-    if(stream == nullptr) {
-        stream = std::unique_ptr<XLinkStream>(new XLinkStream(*connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE));
-    }
 }
 
 void DeviceBootloader::close() {

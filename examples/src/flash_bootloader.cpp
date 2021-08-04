@@ -23,7 +23,7 @@ int main(int argc, char** argv) {
     }
 
     std::cout << "Warning! Flashing bootloader can potentially soft brick your device and should be done with caution." << std::endl;
-    std::cout << "Do not unplug your device in while the bootloader is flashing." << std::endl;
+    std::cout << "Do not unplug your device while the bootloader is flashing." << std::endl;
     std::cout << "Type 'y' and press enter to proceed, otherwise exits: ";
     if(std::cin.get() != 'y') {
         std::cout << "Prompt declined, exiting..." << std::endl;
