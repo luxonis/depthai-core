@@ -13,26 +13,13 @@ Script::Script(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     properties.scriptUri = "";
     properties.scriptName = "<script>";
     properties.processor = ProcessorType::LEON_MSS;
+
+    inputMaps.push_back({&inputs});
+    outputMaps.push_back({&outputs});
 }
 
 std::string Script::getName() const {
     return "Script";
-}
-
-std::vector<Node::Output> Script::getOutputs() {
-    std::vector<Node::Output> vecOutputs;
-    for(const auto& kv : outputs) {
-        vecOutputs.push_back(kv.second);
-    }
-    return vecOutputs;
-}
-
-std::vector<Node::Input> Script::getInputs() {
-    std::vector<Node::Input> vecInputs;
-    for(const auto& kv : inputs) {
-        vecInputs.push_back(kv.second);
-    }
-    return vecInputs;
 }
 
 nlohmann::json Script::getProperties() {
@@ -46,14 +33,14 @@ std::shared_ptr<Node> Script::clone() {
 }
 
 void Script::setScriptPath(const std::string& path) {
-    properties.scriptUri = assetManager.add("__script", path)->getRelativeUri();
+    properties.scriptUri = assetManager.set("__script", path)->getRelativeUri();
     scriptPath = path;
     properties.scriptName = path;
 }
 
-void Script::setScriptData(const std::string& script, const std::string& name) {
+void Script::setScript(const std::string& script, const std::string& name) {
     std::vector<std::uint8_t> data{script.begin(), script.end()};
-    properties.scriptUri = assetManager.add("__script", std::move(data))->getRelativeUri();
+    properties.scriptUri = assetManager.set("__script", std::move(data))->getRelativeUri();
     scriptPath = "";
     if(name.empty()) {
         properties.scriptName = "<script>";
@@ -62,8 +49,8 @@ void Script::setScriptData(const std::string& script, const std::string& name) {
     }
 }
 
-void Script::setScriptData(const std::vector<std::uint8_t>& data, const std::string& name) {
-    properties.scriptUri = assetManager.add("__script", std::move(data))->getRelativeUri();
+void Script::setScript(const std::vector<std::uint8_t>& data, const std::string& name) {
+    properties.scriptUri = assetManager.set("__script", std::move(data))->getRelativeUri();
     scriptPath = "";
     if(name.empty()) {
         properties.scriptName = "<script>";

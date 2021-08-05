@@ -40,23 +40,21 @@ class AssetManager /*: public Assets*/ {
     void addExisting(std::vector<std::shared_ptr<Asset>> assets);
 
     /**
-     * Adds an asset object to AssetManager.
+     * Adds or overwrites an asset object to AssetManager.
      * @param asset Asset to add
      * @returns Shared pointer to asset
      */
-    std::shared_ptr<dai::Asset> add(Asset asset);
+    std::shared_ptr<dai::Asset> set(Asset asset);
 
     /**
-     * Adds an asset object to AssetManager with a specificied key.
+     * Adds or overwrites an asset object to AssetManager with a specificied key.
      * Key value will be assigned to an Asset as well
-     *
-     * If asset with key already exists, the function throws an error
      *
      * @param key Key under which the asset should be stored
      * @param asset Asset to store
      * @returns Shared pointer to asset
      */
-    std::shared_ptr<dai::Asset> add(const std::string& key, Asset asset);
+    std::shared_ptr<dai::Asset> set(const std::string& key, Asset asset);
 
     /**
      * Loads file into asset manager under specified key.
@@ -65,7 +63,7 @@ class AssetManager /*: public Assets*/ {
      * @param path Path to file which to load as asset
      * @param alignment [Optional] alignment of asset data in asset storage. Default is 64B
      */
-    std::shared_ptr<dai::Asset> add(const std::string& key, const std::string& path, int alignment = 64);
+    std::shared_ptr<dai::Asset> set(const std::string& key, const std::string& path, int alignment = 64);
 
     /**
      * Loads file into asset manager under specified key.
@@ -75,24 +73,15 @@ class AssetManager /*: public Assets*/ {
      * @param alignment [Optional] alignment of asset data in asset storage. Default is 64B
      * @returns Shared pointer to asset
      */
-    std::shared_ptr<dai::Asset> add(const std::string& key, const std::vector<std::uint8_t>& data, int alignment = 64);
+    std::shared_ptr<dai::Asset> set(const std::string& key, const std::vector<std::uint8_t>& data, int alignment = 64);
 
     /**
-     * Adds or overwrites existing asset with a specificied key.
-     *
-     * @param key Key under which the asset should be stored
-     * @param asset Asset to store
-     * @returns Shared pointer to asset
-     */
-    std::shared_ptr<dai::Asset> set(const std::string& key, Asset asset);
-
-    /**
-     * @returns Asset assigned to the specified key or throws an error otherwise
+     * @returns Asset assigned to the specified key or a nullptr otherwise
      */
     std::shared_ptr<const Asset> get(const std::string& key) const;
 
     /**
-     * @returns Asset assigned to the specified key or throws an error otherwise
+     * @returns Asset assigned to the specified key or a nullptr otherwise
      */
     std::shared_ptr<Asset> get(const std::string& key);
 

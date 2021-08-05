@@ -11,7 +11,7 @@ std::string Asset::getRelativeUri() {
     return fmt::format("{}:{}", "asset", key);
 }
 
-std::shared_ptr<dai::Asset> AssetManager::add(Asset asset) {
+std::shared_ptr<dai::Asset> AssetManager::set(Asset asset) {
     // make sure that key doesn't exist already
     if(assetMap.count(asset.key) > 0) throw std::logic_error("An Asset with the key: " + asset.key + " already exists.");
     std::string key = asset.key;
@@ -19,21 +19,21 @@ std::shared_ptr<dai::Asset> AssetManager::add(Asset asset) {
     return assetMap[key];
 }
 
-std::shared_ptr<dai::Asset> AssetManager::add(const std::string& key, Asset asset) {
+std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, Asset asset) {
     // Rename the asset with supplied key and store
     Asset a(key);
     a.data = std::move(asset.data);
     a.alignment = asset.alignment;
-    return add(std::move(a));
+    return set(std::move(a));
 }
 
-std::shared_ptr<dai::Asset> AssetManager::add(const std::string& key, const std::string& path, int alignment) {
+std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const std::string& path, int alignment) {
     // Load binary file at path
     std::ifstream stream(path, std::ios::in | std::ios::binary);
     if(!stream.is_open()) {
         // Throw an error
         // TODO(themarpe) - Unify exceptions into meaningful groups
-        throw std::runtime_error(fmt::format("Cannot load asset, file at path {} doesn\'t exist.", path));
+        throw std::runtime_error(fmt::format("Cannot load asset, file at path {} doesn't exist.", path));
     }
 
     // Create an asset
@@ -41,25 +41,16 @@ std::shared_ptr<dai::Asset> AssetManager::add(const std::string& key, const std:
     binaryAsset.alignment = alignment;
     binaryAsset.data = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
     // Store asset
-    return add(std::move(binaryAsset));
+    return set(std::move(binaryAsset));
 }
 
-std::shared_ptr<dai::Asset> AssetManager::add(const std::string& key, const std::vector<std::uint8_t>& data, int alignment) {
+std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const std::vector<std::uint8_t>& data, int alignment) {
     // Create an asset
     Asset binaryAsset(key);
     binaryAsset.alignment = alignment;
     binaryAsset.data = std::move(data);
     // Store asset
-    return add(std::move(binaryAsset));
-}
-
-std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, Asset asset) {
-    // Rename the asset with supplied key and store
-    Asset a(key);
-    a.data = std::move(asset.data);
-    a.alignment = asset.alignment;
-    assetMap[key] = std::make_shared<Asset>(std::move(a));
-    return assetMap[key];
+    return set(std::move(binaryAsset));
 }
 
 std::shared_ptr<const Asset> AssetManager::get(const std::string& key) const {

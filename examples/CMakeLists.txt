@@ -13,8 +13,8 @@ target_link_libraries(utility FP16::fp16 ${OpenCV_LIBS})
 function(dai_add_example example_name example_src enable_test)
 
     # Add example
-    add_executable("${example_name}" "${example_src}")
-    target_link_libraries("${example_name}" PRIVATE utility depthai::opencv ${OpenCV_LIBS})
+    add_executable(${example_name} ${example_src})
+    target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS})
 
     # Add sanitizers for example
     add_sanitizers(${example_name})
@@ -28,12 +28,12 @@ function(dai_add_example example_name example_src enable_test)
     # If 'DEPTHAI_TEST_EXAMPLES' is ON, then examples will be part of the test suite
     if(${enable_test} AND DEPTHAI_TEST_EXAMPLES)
         add_test(NAME ${example_name} COMMAND ${CMAKE_COMMAND}
-            -DTIMEOUT_SECONDS=5
+            -DTIMEOUT_SECONDS=10
             -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake $<TARGET_FILE:${example_name}> ${arguments}
         )
 
         # Sets a regex catching any logged warnings, errors or critical (coming either from device or host)
-        set_tests_properties (${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]")
+        set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]")
 
         # Add ubsan halt on error
         set_tests_properties(${example_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1")
@@ -59,41 +59,41 @@ endfunction()
 
 # NeuralNetwork node, mobilenet example
 hunter_private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet-ssd_openvino_2021.2_6shave.blob"
-    SHA1 "f0e14978b3f77a4f93b9f969cd39e58bb7aef490"
-    FILE "mobilenet-ssd_openvino_2021.2_6shave.blob"
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet-ssd_openvino_2021.4_6shave.blob"
+    SHA1 "4f4506726e3083981064938a0faaf9af6180d2c6"
+    FILE "mobilenet-ssd_openvino_2021.4_6shave.blob"
     LOCATION mobilenet_blob
 )
 
 # YoloV3 resource
 hunter_private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/tiny-yolo-v3_openvino_2021.2_6shave.blob"
-    SHA1 "f0ac263a0d55c374e1892eea21c9b7d1170bde46"
-    FILE "tiny-yolo-v3_openvino_2021.2_6shave.blob"
+    URL "http://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/yolo-v3-tiny-tf_openvino_2021.4_6shave.blob"
+    SHA1 "dedb2d4d96b23e42d15c15e454b8f02eca2713de"
+    FILE "yolo-v3-tiny-tf_openvino_2021.4_6shave.blob"
     LOCATION tiny_yolo_v3_blob
 )
 
 # YoloV4 resource
 hunter_private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/tiny-yolo-v4_openvino_2021.2_6shave.blob"
-    SHA1 "219d949610a5760e62a8458941e1300b81c3fe4a"
-    FILE "tiny-yolo-v4_openvino_2021.2_6shave.blob"
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/yolo-v4-tiny-tf_openvino_2021.4_6shave.blob"
+    SHA1 "d8d09b697dac298fe83cf8856740a21b1a61ab89"
+    FILE "yolo-v4-tiny-tf_openvino_2021.4_6shave.blob"
     LOCATION tiny_yolo_v4_blob
 )
 
 # NeuralNetwork node, mobilenet example, 5 shaves
 hunter_private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet-ssd_openvino_2021.2_5shave.blob"
-    SHA1 "d715f85e474609cf3f696d7a2e3750804ed6c726"
-    FILE "mobilenet-ssd_openvino_2021.2_5shave.blob"
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet-ssd_openvino_2021.4_5shave.blob"
+    SHA1 "14ab3ef446b8a649d6694d94c2fc8b798efd74a3"
+    FILE "mobilenet-ssd_openvino_2021.4_5shave.blob"
     LOCATION mobilenet_5shaves_blob
 )
 
 # NeuralNetwork node, mobilenet example, 8 shaves
 hunter_private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet-ssd_openvino_2021.2_8shave.blob"
-    SHA1 "3329bb8f3a9c881ef9756d232055f9d6f38aa07b"
-    FILE "mobilenet-ssd_openvino_2021.2_8shave.blob"
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet-ssd_openvino_2021.4_8shave.blob"
+    SHA1 "7e7ea9a680668f3ca9e8f1d22cc8f3f1a02ac018"
+    FILE "mobilenet-ssd_openvino_2021.4_8shave.blob"
     LOCATION mobilenet_8shaves_blob
 )
 
@@ -129,9 +129,9 @@ hunter_private_data(
 
 # person-detection
 hunter_private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/person-detection-0201_openvino_2021.3_7shave.blob"
-    SHA1 "a8d4b0067deb889ec66b2204573d9ee1e0039c8e"
-    FILE "person-detection-0201_openvino_2021.3_7shave.blob"
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/person-detection-retail-0013_openvino_2021.4_7shave.blob"
+    SHA1 "946d102874b287292cdb5952fa66356c8d36025f"
+    FILE "person-detection-retail-0013_openvino_2021.4_7shave.blob"
     LOCATION person_detection
 )
 
@@ -230,13 +230,13 @@ target_compile_definitions(spatial_tiny_yolo_v3 PRIVATE BLOB_PATH="${tiny_yolo_v
 dai_add_example(spatial_tiny_yolo_v4 src/spatial_tiny_yolo.cpp ON)
 target_compile_definitions(spatial_tiny_yolo_v4 PRIVATE BLOB_PATH="${tiny_yolo_v4_blob}")
 
+# Script node controlling color camera
+dai_add_example(script_camera_control src/script_camera_control.cpp ON)
+
 dai_add_example(spatial_location_calculator src/spatial_location_calculator.cpp ON)
 
 # RGB camera video output example
 dai_add_example(rgb_video src/rgb_video.cpp ON)
-
-# Script node controlling color camera
-dai_add_example(script_camera_control src/script_camera_control.cpp ON)
 
 dai_add_example(object_tracker src/object_tracker.cpp ON)
 target_compile_definitions(object_tracker PRIVATE BLOB_PATH="${mobilenet_blob}")
@@ -268,6 +268,10 @@ dai_add_example(object_tracker_video src/object_tracker_video.cpp ON)
 target_compile_definitions(object_tracker_video PRIVATE BLOB_PATH="${person_detection}" VIDEO_PATH="${construction_vest}")
 
 dai_add_example(queue_add_callback src/queue_add_callback.cpp ON)
+
+dai_add_example(bootloader_version src/bootloader_version.cpp ON)
+#dai_add_example(flash_bootloader src/flash_bootloader.cpp OFF)
+dai_add_example(edge_detector src/edge_detector.cpp ON)
 
 # Calibration Read and write samples
 dai_add_example(calibration_flash src/calibration_flash.cpp OFF)

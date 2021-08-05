@@ -6,18 +6,14 @@
 namespace dai {
 namespace node {
 
-NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
+NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
+    inputs = {&input};
+
+    outputs = {&out, &passthrough};
+}
 
 std::string NeuralNetwork::getName() const {
     return "NeuralNetwork";
-}
-
-std::vector<Node::Output> NeuralNetwork::getOutputs() {
-    return {out, passthrough};
-}
-
-std::vector<Node::Input> NeuralNetwork::getInputs() {
-    return {input};
 }
 
 NeuralNetwork::Properties& NeuralNetwork::getPropertiesRef() {
@@ -41,7 +37,7 @@ tl::optional<OpenVINO::Version> NeuralNetwork::getRequiredOpenVINOVersion() {
 
 // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
 void NeuralNetwork::setBlobPath(const std::string& path) {
-    auto asset = assetManager.add("__blob", path);
+    auto asset = assetManager.set("__blob", path);
 
     // Read blobs header to determine openvino version
     BlobReader reader;

@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
     /// setting node configs
-    stereo->setConfidenceThreshold(255);
+    stereo->initialConfig.setConfidenceThreshold(255);
 
     spatialDetectionNetwork->setBlobPath(nnPath);
     spatialDetectionNetwork->setConfidenceThreshold(0.5f);

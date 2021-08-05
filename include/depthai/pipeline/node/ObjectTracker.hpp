@@ -21,15 +21,14 @@ class ObjectTracker : public Node {
     using Properties = dai::ObjectTrackerProperties;
 
    private:
-    std::string getName() const override;
-    std::vector<Input> getInputs() override;
-    std::vector<Output> getOutputs() override;
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
 
     Properties properties;
 
    public:
+    std::string getName() const override;
+
     ObjectTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
     /**
