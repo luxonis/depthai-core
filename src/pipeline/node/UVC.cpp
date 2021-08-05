@@ -9,14 +9,6 @@ std::string UVC::getName() const {
     return "UVC";
 }
 
-std::vector<Node::Input> UVC::getInputs() {
-    return {input};
-}
-
-std::vector<Node::Output> UVC::getOutputs() {
-    return {};
-}
-
 nlohmann::json UVC::getProperties() {
     nlohmann::json j;
     nlohmann::to_json(j, properties);

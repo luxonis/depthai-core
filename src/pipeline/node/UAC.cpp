@@ -11,14 +11,6 @@ std::string UAC::getName() const {
     return "UAC";
 }
 
-std::vector<Node::Input> UAC::getInputs() {
-    return {};
-}
-
-std::vector<Node::Output> UAC::getOutputs() {
-    return {out};
-}
-
 nlohmann::json UAC::getProperties() {
     nlohmann::json j;
     nlohmann::to_json(j, properties);

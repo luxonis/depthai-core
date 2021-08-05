@@ -192,6 +192,7 @@ constexpr static std::array<const char*, 2> RESOURCE_LIST_BOOTLOADER = {
 };
 
 std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type type) {
+    throw std::runtime_error("TODO merge + update the bootloader. Do not use for now");
     // Acquire mutex (this mutex signifies that lazy load is complete)
     // It is necessary when accessing resourceMap variable
     std::unique_lock<std::mutex> lock(mtxBootloader);
