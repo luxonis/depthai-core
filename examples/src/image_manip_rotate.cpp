@@ -16,8 +16,8 @@ int main() {
     camRgb->setInterleaved(false);
 
     auto manipRgb = pipeline.create<dai::node::ImageManip>();
-    dai::RotatedRect rgbRr = {{camRgb->getPreviewWidth() / 2.0, camRgb->getPreviewHeight() / 2.0}, // center
-                           {camRgb->getPreviewHeight(), camRgb->getPreviewWidth()}, // size
+    dai::RotatedRect rgbRr = {{camRgb->getPreviewWidth() / 2.0f, camRgb->getPreviewHeight() / 2.0f}, // center
+                           {camRgb->getPreviewHeight() * 1.0f, camRgb->getPreviewWidth() * 1.0f}, // size
                             90}; // angle
     manipRgb->initialConfig.setCropRotatedRect(rgbRr, false);
     camRgb->preview.link(manipRgb->inputImage);
@@ -32,8 +32,8 @@ int main() {
     monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
 
     auto manipLeft = pipeline.create<dai::node::ImageManip>();
-    dai::RotatedRect rr = {{monoLeft->getResolutionWidth() / 2.0, monoLeft->getResolutionHeight() / 2.0}, // center
-                           {monoLeft->getResolutionHeight(), monoLeft->getResolutionWidth()}, // size
+    dai::RotatedRect rr = {{monoLeft->getResolutionWidth() / 2.0f, monoLeft->getResolutionHeight() / 2.0f}, // center
+                           {monoLeft->getResolutionHeight() * 1.0f, monoLeft->getResolutionWidth()} * 1.0f, // size
                             90}; // angle
     manipLeft->initialConfig.setCropRotatedRect(rr, false);
     monoLeft->out.link(manipLeft->inputImage);
