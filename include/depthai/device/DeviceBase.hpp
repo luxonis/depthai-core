@@ -185,7 +185,7 @@ class DeviceBase {
      * @param devInfo DeviceInfo which specifies which device to connect to
      */
     DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo);
-    
+
     /**
      * Connects to device specified by devInfo.
      * @param version OpenVINO version which the device will be booted with
