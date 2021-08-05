@@ -33,7 +33,7 @@ int main() {
 
     auto manipLeft = pipeline.create<dai::node::ImageManip>();
     dai::RotatedRect rr = {{monoLeft->getResolutionWidth() / 2.0f, monoLeft->getResolutionHeight() / 2.0f}, // center
-                           {monoLeft->getResolutionHeight() * 1.0f, monoLeft->getResolutionWidth()} * 1.0f, // size
+                           {monoLeft->getResolutionHeight() * 1.0f, monoLeft->getResolutionWidth() * 1.0f}, // size
                             90}; // angle
     manipLeft->initialConfig.setCropRotatedRect(rr, false);
     monoLeft->out.link(manipLeft->inputImage);
