@@ -217,6 +217,8 @@ LogLevel DeviceBase::Impl::getLogLevel() {
 // END OF Impl section
 ///////////////////////////////////////////////
 
+DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo) : DeviceBase(version, devInfo, false) {}
+
 DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, bool usb2Mode) : deviceInfo(devInfo) {
     init(version, true, usb2Mode, "");
 }
@@ -229,9 +231,10 @@ DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, con
     init(version, false, false, pathToCmd);
 }
 
+DeviceBase::DeviceBase() : DeviceBase(Pipeline::DEFAULT_OPENVINO_VERSION) {}
+
 DeviceBase::DeviceBase(OpenVINO::Version version) {
     // Searches for any available device for 'default' timeout
-
     bool found = false;
     std::tie(found, deviceInfo) = getAnyAvailableDevice();
 
@@ -286,6 +289,8 @@ DeviceBase::DeviceBase(const Pipeline& pipeline, const char* pathToCmd) : Device
 DeviceBase::DeviceBase(const Pipeline& pipeline, const std::string& pathToCmd) : DeviceBase(pipeline.getOpenVINOVersion(), pathToCmd) {
     tryStartPipeline(pipeline);
 }
+
+DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, false) {}
 
 DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, usb2Mode) {
     tryStartPipeline(pipeline);

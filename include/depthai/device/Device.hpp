@@ -54,9 +54,16 @@ class Device : public DeviceBase {
      * Connects to device specified by devInfo.
      * @param pipeline Pipeline to be executed on the device
      * @param devInfo DeviceInfo which specifies which device to connect to
+     */
+    Device(const Pipeline& pipeline, const DeviceInfo& devInfo);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param pipeline Pipeline to be executed on the device
+     * @param devInfo DeviceInfo which specifies which device to connect to
      * @param usb2Mode Boot device using USB2 mode firmware
      */
-    Device(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode = false);
+    Device(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode);
 
     /**
      * Connects to device specified by devInfo.
@@ -77,9 +84,7 @@ class Device : public DeviceBase {
     /**
      * @brief dtor to close the device
      */
-    ~Device() override {
-        DeviceBase::close();
-    }
+    ~Device() override;
 
     /// Maximum number of elements in event queue
     static constexpr std::size_t EVENT_QUEUE_MAXIMUM_SIZE{2048};

@@ -119,9 +119,16 @@ class DeviceBase {
      * Connects to device specified by devInfo.
      * @param pipeline Pipeline to be executed on the device
      * @param devInfo DeviceInfo which specifies which device to connect to
+     */
+    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param pipeline Pipeline to be executed on the device
+     * @param devInfo DeviceInfo which specifies which device to connect to
      * @param usb2Mode Boot device using USB2 mode firmware
      */
-    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode = false);
+    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode);
 
     /**
      * Connects to device specified by devInfo.
@@ -135,15 +142,21 @@ class DeviceBase {
      * Connects to device specified by devInfo.
      * @param pipeline Pipeline to be executed on the device
      * @param devInfo DeviceInfo which specifies which device to connect to
-     * @param usb2Mode Path to custom device firmware
+     * @param pathToCmd Path to custom device firmware
      */
     DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * @param version OpenVINO version which the device will be booted with. Default is Pipeline::DEFAULT_OPENVINO_VERSION
+     * Uses OpenVINO version Pipeline::DEFAULT_OPENVINO_VERSION
      */
-    explicit DeviceBase(OpenVINO::Version version = Pipeline::DEFAULT_OPENVINO_VERSION);
+    DeviceBase();
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param version OpenVINO version which the device will be booted with.
+     */
+    explicit DeviceBase(OpenVINO::Version version);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
@@ -170,9 +183,16 @@ class DeviceBase {
      * Connects to device specified by devInfo.
      * @param version OpenVINO version which the device will be booted with
      * @param devInfo DeviceInfo which specifies which device to connect to
+     */
+    DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo);
+    
+    /**
+     * Connects to device specified by devInfo.
+     * @param version OpenVINO version which the device will be booted with
+     * @param devInfo DeviceInfo which specifies which device to connect to
      * @param usb2Mode Boot device using USB2 mode firmware
      */
-    DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, bool usb2Mode = false);
+    DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, bool usb2Mode);
 
     /**
      * Connects to device specified by devInfo.

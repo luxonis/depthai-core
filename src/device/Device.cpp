@@ -40,6 +40,10 @@ Device::Device(const Pipeline& pipeline, const std::string& pathToCmd) : DeviceB
     tryStartPipeline(pipeline);
 }
 
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, false) {
+    tryStartPipeline(pipeline);
+}
+
 Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, usb2Mode) {
     tryStartPipeline(pipeline);
 }
@@ -51,6 +55,10 @@ Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* 
 Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd)
     : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, pathToCmd) {
     tryStartPipeline(pipeline);
+}
+
+Device::~Device() {
+    DeviceBase::close();
 }
 
 void Device::closeImpl() {
