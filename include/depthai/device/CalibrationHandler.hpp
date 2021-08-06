@@ -137,7 +137,7 @@ class CalibrationHandler {
      * Get the Distortion Coefficients object
      *
      * @param cameraId Uses the cameraId to identify which distortion Coefficients to return.
-     * @return repesents the distortion coefficients of the requested camera.
+     * @return the distortion coefficients of the requested camera in this order: [k1,k2,p1,p2,k3,k4,k5,k6,s1,s2,s3,s4,τx,τy]
      */
     std::vector<float> getDistortionCoefficients(CameraBoardSocket cameraId);
 
