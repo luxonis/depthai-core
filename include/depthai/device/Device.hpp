@@ -82,6 +82,12 @@ class Device : public DeviceBase {
     Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd);
 
     /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * Uses OpenVINO version Pipeline::DEFAULT_OPENVINO_VERSION
+     */
+    Device();
+
+    /**
      * @brief dtor to close the device
      */
     ~Device() override;

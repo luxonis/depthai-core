@@ -57,6 +57,8 @@ Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::s
     tryStartPipeline(pipeline);
 }
 
+Device::Device() : DeviceBase() {}
+
 Device::~Device() {
     DeviceBase::close();
 }
