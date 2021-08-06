@@ -178,7 +178,7 @@ class DeviceBootloader {
     /**
      * @returns True whether the bootloader running is flashed or booted by library
      */
-    bool isEmbeddedVersion();
+    bool isEmbeddedVersion() const;
 
     /**
      * Explicitly closes connection to device.

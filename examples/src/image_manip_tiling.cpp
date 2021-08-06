@@ -17,7 +17,7 @@ int main() {
     // In this example we use 2 imageManips for splitting the original 1000x500
     // preview frame into 2 500x500 frames
     auto manip1 = pipeline.create<dai::node::ImageManip>();
-    manip1->initialConfig.setCropRect(0,0,0.5,1);
+    manip1->initialConfig.setCropRect(0, 0, 0.5, 1);
     manip1->setMaxOutputFrameSize(maxFrameSize);
     camRgb->preview.link(manip1->inputImage);
 
