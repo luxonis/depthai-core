@@ -984,7 +984,7 @@ void Device::setSystemInformationLoggingRate(float rateHz) {
 float Device::getSystemInformationLoggingRate() {
     checkClosed();
 
-    return pimpl->rpcClient->call("getSystemInformationLoggingrate").as<float>();
+    return pimpl->rpcClient->call("getSystemInformationLoggingRate").as<float>();
 }
 
 bool Device::flashCalibration(CalibrationHandler calibrationDataHandler) {

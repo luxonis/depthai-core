@@ -37,9 +37,14 @@ class Node {
     // fwd declare classes
     class Input;
     class Output;
+    class InputMap;
+    class OutputMap;
 
     std::vector<Output*> outputs;
     std::vector<Input*> inputs;
+
+    std::vector<OutputMap*> outputMaps;
+    std::vector<InputMap*> inputMaps;
 
     struct DatatypeHierarchy {
         DatatypeHierarchy(DatatypeEnum d, bool c) : datatype(d), descendants(c) {}
@@ -100,6 +105,19 @@ class Node {
         void unlink(const Input& in);
     };
 
+    /**
+     * Output map which keeps track of extra outputs assigned to a node
+     * Extends std::unordered_map<std::string, dai::Node::Output>
+     */
+    class OutputMap : public std::unordered_map<std::string, Output> {
+        Output defaultOutput;
+
+       public:
+        OutputMap(Output defaultOutput);
+        /// Create or modify an input
+        Output& operator[](const std::string& key);
+    };
+
     class Input {
         Node& parent;
 
@@ -155,6 +173,19 @@ class Node {
         int getQueueSize() const;
     };
 
+    /**
+     * Input map which keeps track of inputs assigned to a node
+     * Extends std::unordered_map<std::string, dai::Node::Input>
+     */
+    class InputMap : public std::unordered_map<std::string, Input> {
+        Input defaultInput;
+
+       public:
+        InputMap(Input defaultInput);
+        /// Create or modify an input
+        Input& operator[](const std::string& key);
+    };
+
     // when Pipeline tries to serialize and construct on remote, it will check if all connected nodes are on same pipeline
     std::weak_ptr<PipelineImpl> parent;
     AssetManager assetManager;
@@ -173,41 +204,24 @@ class Node {
 
     /// Retrieves nodes name
     virtual std::string getName() const = 0;
+
     /// Retrieves all nodes outputs
-    std::vector<Output> getOutputs() {
-        std::vector<Output> result;
-        for(auto* x : getOutputRefs()) {
-            result.push_back(*x);
-        }
-        return result;
-    }
+    std::vector<Output> getOutputs();
+
     /// Retrieves all nodes inputs
-    std::vector<Input> getInputs() {
-        std::vector<Input> result;
-        for(auto* x : getInputRefs()) {
-            result.push_back(*x);
-        }
-        return result;
-    }
-    /// Retrieves all nodes assets
-    virtual std::vector<std::shared_ptr<Asset>> getAssets();
+    std::vector<Input> getInputs();
 
     /// Retrieves reference to node outputs
-    std::vector<Output*> getOutputRefs() {
-        return outputs;
-    }
+    std::vector<Output*> getOutputRefs();
+
     /// Retrieves reference to node outputs
-    std::vector<const Output*> getOutputRefs() const {
-        return {outputs.begin(), outputs.end()};
-    }
+    std::vector<const Output*> getOutputRefs() const;
+
     /// Retrieves reference to node inputs
-    std::vector<Input*> getInputRefs() {
-        return inputs;
-    }
+    std::vector<Input*> getInputRefs();
+
     /// Retrieves reference to node inputs
-    std::vector<const Input*> getInputRefs() const {
-        return {inputs.begin(), inputs.end()};
-    }
+    std::vector<const Input*> getInputRefs() const;
 
     /// Connection between an Input and Output
     struct Connection {
@@ -221,8 +235,13 @@ class Node {
     };
 
     Node(const std::shared_ptr<PipelineImpl>& p, Id nodeId);
-
     virtual ~Node() = default;
+
+    /// Get node AssetManager as a const reference
+    const AssetManager& getAssetManager() const;
+
+    /// Get node AssetManager as a reference
+    AssetManager& getAssetManager();
 };
 
 }  // namespace dai
