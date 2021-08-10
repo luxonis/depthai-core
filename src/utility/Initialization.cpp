@@ -38,9 +38,9 @@ bool initialize(std::string additionalInfo) {
     // Set global logging level from ENV variable 'DEPTHAI_LEVEL'
     // Taken from spdlog, to replace with DEPTHAI_LEVEL instead of SPDLOG_LEVEL
     // spdlog::cfg::load_env_levels();
-    auto env_val = spdlog::details::os::getenv("DEPTHAI_LEVEL");
-    if(!env_val.empty()) {
-        spdlog::cfg::helpers::load_levels(env_val);
+    auto envLevel = spdlog::details::os::getenv("DEPTHAI_LEVEL");
+    if(!envLevel.empty()) {
+        spdlog::cfg::helpers::load_levels(envLevel);
     } else {
         // Otherwise set default level to WARN
         spdlog::set_level(spdlog::level::warn);

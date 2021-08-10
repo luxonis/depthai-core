@@ -398,6 +398,12 @@ void DeviceBootloader::saveDepthaiApplicationPackage(std::string path, Pipeline&
 std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(std::function<void(float)> progressCb, std::vector<uint8_t> package) {
     streamId_t streamId = stream->getStreamId();
 
+    // Bug in NETWORK bootloader in version 0.0.12 < 0.1.0 - flashing can cause a soft brick
+    auto version = getVersion();
+    if(bootloaderType == Type::NETWORK && version < Version(0, 1, 0)) {
+        throw std::invalid_argument("Network bootloader requires version 0.1.0 or higher to flash applications. Current version: " + version.toString());
+    }
+
     // send request to FLASH BOOTLOADER
     dai::bootloader::request::UpdateFlash updateFlash;
     updateFlash.storage = dai::bootloader::request::UpdateFlash::SBR;
@@ -563,7 +569,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashCustom(Memory memory, uint3
 }
 */
 
-bool DeviceBootloader::isEmbeddedVersion() {
+bool DeviceBootloader::isEmbeddedVersion() const {
     return isEmbedded;
 }
 
