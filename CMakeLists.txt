@@ -160,6 +160,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/IMU.cpp
     src/pipeline/node/EdgeDetector.cpp
     src/pipeline/node/SPIIn.cpp
+    src/pipeline/node/FeatureTracker.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
@@ -175,6 +176,8 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/IMUData.cpp
     src/pipeline/datatype/StereoDepthConfig.cpp
     src/pipeline/datatype/EdgeDetectorConfig.cpp
+    src/pipeline/datatype/TrackedFeatures.cpp
+    src/pipeline/datatype/FeatureTrackerConfig.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/xlink/XLinkConnection.cpp

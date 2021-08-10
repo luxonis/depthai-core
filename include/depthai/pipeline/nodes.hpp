@@ -4,6 +4,7 @@
 #include "node/ColorCamera.hpp"
 #include "node/DetectionNetwork.hpp"
 #include "node/EdgeDetector.hpp"
+#include "node/FeatureTracker.hpp"
 #include "node/IMU.hpp"
 #include "node/ImageManip.hpp"
 #include "node/MonoCamera.hpp"
