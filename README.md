@@ -139,10 +139,10 @@ cmake -H. -Bbuild -D DEPTHAI_BUILD_EXAMPLES=ON
 cmake --build build
 ```
 
-Then navigate to `build/examples` folder and run a preffered test
+Then navigate to `build/examples` folder and run a preferred example
 ```
-cd build
-ctest
+cd build/examples
+./rgb_mobilenet
 ```
 
 ## Style check
