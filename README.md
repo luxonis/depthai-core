@@ -142,8 +142,11 @@ cmake --build build
 Then navigate to `build/examples` folder and run a preferred example
 ```
 cd build/examples
-./rgb_mobilenet
+./rgb_mobilenet 
 ```
+
+Please be aware that multi config generators (like Visual Studio on Windows) will have the examples built in `build/examples/Debug/Release/.../rgb_mobilenet`
+
 
 ## Style check
 
@@ -190,13 +193,13 @@ This retains the libraries source code, so that debugger can step through it (th
 ### Build fails with missing OpenCV dependency
 
 If your build process happen to fail due to OpenCV library not being found, but you have the OpenCV installed, please
-run this command (replacing default Ubuntu path `` with yours)
+run build with additional `-D OpenCV_DIR` flag (replacing default Ubuntu path `/usr/lib/x86_64-linux-gnu/cmake/opencv4` with yours)
 
 ```
-export OpenCV_DIR=/usr/lib/x86_64-linux-gnu/cmake/opencv4
+cmake -H. -Bbuild -D OpenCV_DIR=/usr/lib/x86_64-linux-gnu/cmake/opencv4
 ```
 
-Now if you run the build process again, and the path is correct, it should be successful
+Now the build process should correctly discover your OpenCV installation
 
 ### Hunter
 Hunter is a CMake-only dependency manager for C/C++ projects.
