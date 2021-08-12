@@ -135,6 +135,7 @@ add_library(${TARGET_CORE_NAME}
     "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
     # sources
     src/device/Device.cpp
+    src/device/DeviceBase.cpp
     src/device/DeviceBootloader.cpp
     src/device/DataQueue.cpp
     src/device/CallbackHandler.cpp
@@ -169,7 +170,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/ImgDetections.cpp
     src/pipeline/datatype/SpatialImgDetections.cpp
     src/pipeline/datatype/SystemInformation.cpp
-    src/pipeline/datatype/StreamPacketParser.cpp
+    src/pipeline/datatype/StreamMessageParser.cpp
     src/pipeline/datatype/SpatialLocationCalculatorData.cpp
     src/pipeline/datatype/SpatialLocationCalculatorConfig.cpp
     src/pipeline/datatype/Tracklets.cpp
