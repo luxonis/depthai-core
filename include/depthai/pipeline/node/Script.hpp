@@ -13,6 +13,10 @@ namespace dai {
 namespace node {
 
 class Script : public Node {
+   public:
+    using Properties = dai::ScriptProperties;
+
+   private:
     dai::ScriptProperties properties;
 
     nlohmann::json getProperties() override;

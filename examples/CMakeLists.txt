@@ -271,11 +271,21 @@ dai_add_example(bootloader_version src/bootloader_version.cpp ON)
 dai_add_example(flash_bootloader src/flash_bootloader.cpp OFF)
 dai_add_example(edge_detector src/edge_detector.cpp ON)
 
+dai_add_example(feature_tracker src/feature_tracker.cpp ON)
+
+dai_add_example(corner_detector src/corner_detector.cpp ON)
+
 # Calibration Read and write samples
 dai_add_example(calibration_flash src/calibration_flash.cpp OFF)
 dai_add_example(calibration_flash_version5 src/calibration_flash_v5.cpp OFF)
 dai_add_example(calibration_load src/calibration_load.cpp OFF)
 dai_add_example(calibration_reader src/calibration_reader.cpp OFF)
+
+# ImageManip rotate example
+dai_add_example(image_manip_rotate src/image_manip_rotate.cpp ON)
+
+# ImageManip tiling example
+dai_add_example(image_manip_tiling src/image_manip_tiling.cpp ON)
 
 target_compile_definitions(calibration_flash PRIVATE CALIB_PATH="${calib_v6}")
 target_compile_definitions(calibration_flash_version5 PRIVATE CALIB_PATH="${calib_v5}" BOARD_PATH="${device_config}")
