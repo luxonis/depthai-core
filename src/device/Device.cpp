@@ -15,6 +15,7 @@
 
 // project
 #include "DeviceLogger.hpp"
+#include "depthai/device/DeviceBootloader.hpp"
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "pipeline/Pipeline.hpp"
@@ -24,6 +25,9 @@
 #include "utility/Resources.hpp"
 
 // libraries
+#include "nanorpc/core/client.h"
+#include "nanorpc/packer/nlohmann_msgpack.h"
+#include "spdlog/fmt/chrono.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
 
@@ -185,6 +189,11 @@ class Device::Impl {
     // Device Logger
     DeviceLogger logger{"", stdoutColorSink};
 
+    // RPC
+    std::mutex rpcMutex;
+    std::unique_ptr<XLinkStream> rpcStream;
+    std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> rpcClient;
+
     void setLogLevel(LogLevel level);
     LogLevel getLogLevel();
     void setPattern(const std::string& pattern);
@@ -337,7 +346,9 @@ void Device::close() {
     connection->close();
     connection = nullptr;
 
-    // Clear queues
+    // Close and clear queues
+    for(auto& kv : outputQueueMap) kv.second->close();
+    for(auto& kv : inputQueueMap) kv.second->close();
     outputQueueMap.clear();
     inputQueueMap.clear();
 
@@ -354,7 +365,7 @@ void Device::close() {
     if(loggingThread.joinable()) loggingThread.join();
 
     // Close rpcStream
-    rpcStream = nullptr;
+    pimpl->rpcStream = nullptr;
 
     spdlog::debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
 }
@@ -414,34 +425,84 @@ void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToM
     } else if(deviceInfo.state == X_LINK_BOOTLOADER) {
         // Scope so bootloaderConnection is desctructed and XLink cleans its state
         {
+            // TODO(themarpe) - move this logic to DeviceBootloader
+
             // Bootloader state, proceed by issuing a command to bootloader
             XLinkConnection bootloaderConnection(deviceInfo, X_LINK_BOOTLOADER);
 
             // Open stream
             XLinkStream stream(bootloaderConnection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
-            streamId_t streamId = stream.getStreamId();
 
-            // // Send request for bootloader version
-            // if(!sendBootloaderRequest(streamId, bootloader::request::GetBootloaderVersion{})){
-            //     throw std::runtime_error("Error trying to connect to device");
-            // }
-            // // Receive response
-            // dai::bootloader::response::BootloaderVersion ver;
-            // if(!receiveBootloaderResponse(streamId, ver)) throw std::runtime_error("Error trying to connect to device");
+            // prepare watchdog thread, which will keep device alive
+            std::atomic<bool> watchdogRunning{true};
+            watchdogThread = std::thread([&]() {
+                // prepare watchdog thread
+                XLinkStream stream(bootloaderConnection, bootloader::XLINK_CHANNEL_WATCHDOG, 64);
+                std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
+                while(watchdogRunning) {
+                    try {
+                        stream.write(watchdogKeepalive);
+                    } catch(const std::exception&) {
+                        break;
+                    }
+                    // Ping with a period half of that of the watchdog timeout
+                    std::this_thread::sleep_for(bootloader::XLINK_WATCHDOG_TIMEOUT / 2);
+                }
+            });
 
-            // Send request to jump to USB bootloader
-            // Boot into USB ROM BOOTLOADER NOW
-            if(!sendBootloaderRequest(streamId, dai::bootloader::request::UsbRomBoot{})) {
+            // Send request for bootloader version
+            if(!sendBootloaderRequest(stream.getStreamId(), bootloader::request::GetBootloaderVersion{})) {
                 throw std::runtime_error("Error trying to connect to device");
             }
+            // Receive response
+            bootloader::response::BootloaderVersion ver;
+            if(!receiveBootloaderResponse(stream.getStreamId(), ver)) throw std::runtime_error("Error trying to connect to device");
+            DeviceBootloader::Version version(ver.major, ver.minor, ver.patch);
+
+            // If version is >= 0.0.12 then boot directly, otherwise jump to USB ROM bootloader
+            // Check if version is recent enough for this operation
+            if(version >= DeviceBootloader::Version(0, 0, 12)) {
+                // Send request to boot firmware directly from bootloader
+                dai::bootloader::request::BootMemory bootMemory;
+                bootMemory.totalSize = static_cast<uint32_t>(embeddedFw.size());
+                bootMemory.numPackets = ((static_cast<uint32_t>(embeddedFw.size()) - 1) / bootloader::XLINK_STREAM_MAX_SIZE) + 1;
+                if(!sendBootloaderRequest(stream.getStreamId(), bootMemory)) {
+                    throw std::runtime_error("Error trying to connect to device");
+                }
+
+                using namespace std::chrono;
+                auto t1 = steady_clock::now();
+                // After that send numPackets of data
+                stream.writeSplit(embeddedFw.data(), embeddedFw.size(), bootloader::XLINK_STREAM_MAX_SIZE);
+                spdlog::debug(
+                    "Booting FW with Bootloader. Version {}, Time taken: {}", version.toString(), duration_cast<milliseconds>(steady_clock::now() - t1));
+
+                // After that the state will be BOOTED
+                deviceInfo.state = X_LINK_BOOTED;
+
+                // TODO(themarpe) - Possibility of switching to another port for cleaner transitions
+                // strcat(deviceInfo.desc.name, ":11492");
+
+            } else {
+                spdlog::debug("Booting FW by jumping to USB ROM Bootloader first. Bootloader Version {}", version.toString());
+
+                // Send request to jump to USB bootloader
+                // Boot into USB ROM BOOTLOADER NOW
+                if(!sendBootloaderRequest(stream.getStreamId(), dai::bootloader::request::UsbRomBoot{})) {
+                    throw std::runtime_error("Error trying to connect to device");
+                }
+
+                // After that the state will be UNBOOTED
+                deviceInfo.state = X_LINK_UNBOOTED;
+            }
+
+            watchdogRunning = false;
+            watchdogThread.join();
 
             // Dummy read, until link falls down and it returns an error code
             streamPacketDesc_t* pPacket;
-            XLinkReadData(streamId, &pPacket);
+            XLinkReadData(stream.getStreamId(), &pPacket);
         }
-
-        // After that the state is UNBOOTED
-        deviceInfo.state = X_LINK_UNBOOTED;
 
         // Boot and connect with XLinkConnection constructor
         if(embeddedMvcmd) {
@@ -464,11 +525,12 @@ void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToM
     deviceInfo.state = X_LINK_BOOTED;
 
     // prepare rpc for both attached and host controlled mode
-    rpcStream = std::make_unique<XLinkStream>(*connection, dai::XLINK_CHANNEL_MAIN_RPC, dai::XLINK_USB_BUFFER_MAX_SIZE);
+    pimpl->rpcStream = std::make_unique<XLinkStream>(*connection, dai::XLINK_CHANNEL_MAIN_RPC, dai::XLINK_USB_BUFFER_MAX_SIZE);
 
-    client = std::make_unique<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>([this](nanorpc::core::type::buffer request) {
-        // TODO(TheMarpe) - causes issues on Windows
-        // std::unique_lock<std::mutex> lock(this->rpcMutex);
+    pimpl->rpcClient = std::make_unique<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>([this](nanorpc::core::type::buffer request) {
+        // Lock for time of the RPC call, to not mix the responses between calling threads.
+        // Note: might cause issues on Windows on incorrect shutdown. To be investigated
+        std::unique_lock<std::mutex> lock(pimpl->rpcMutex);
 
         // Log the request data
         if(spdlog::get_level() == spdlog::level::trace) {
@@ -476,11 +538,11 @@ void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToM
         }
 
         // Send request to device
-        rpcStream->write(std::move(request));
+        pimpl->rpcStream->write(std::move(request));
 
         // Receive response back
         // Send to nanorpc to parse
-        return rpcStream->read();
+        return pimpl->rpcStream->read();
     });
 
     // prepare watchdog thread, which will keep device alive
@@ -488,7 +550,7 @@ void Device::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToM
         std::shared_ptr<XLinkConnection> conn = this->connection;
         while(watchdogRunning) {
             try {
-                client->call("watchdogKeepalive");
+                pimpl->rpcClient->call("watchdogKeepalive");
             } catch(const std::exception&) {
                 break;
             }
@@ -788,77 +850,83 @@ std::string Device::getQueueEvent(std::chrono::microseconds timeout) {
     return getQueueEvent(getOutputQueueNames(), timeout);
 }
 
+std::string Device::getMxId() {
+    checkClosed();
+
+    return pimpl->rpcClient->call("getMxId").as<std::string>();
+}
+
 std::vector<CameraBoardSocket> Device::getConnectedCameras() {
     checkClosed();
 
-    return client->call("getConnectedCameras").as<std::vector<CameraBoardSocket>>();
+    return pimpl->rpcClient->call("getConnectedCameras").as<std::vector<CameraBoardSocket>>();
 }
 
 // Convinience functions for querying current system information
 MemoryInfo Device::getDdrMemoryUsage() {
     checkClosed();
 
-    return client->call("getDdrUsage").as<MemoryInfo>();
+    return pimpl->rpcClient->call("getDdrUsage").as<MemoryInfo>();
 }
 
 MemoryInfo Device::getCmxMemoryUsage() {
     checkClosed();
 
-    return client->call("getCmxUsage").as<MemoryInfo>();
+    return pimpl->rpcClient->call("getCmxUsage").as<MemoryInfo>();
 }
 
 MemoryInfo Device::getLeonCssHeapUsage() {
     checkClosed();
 
-    return client->call("getLeonCssHeapUsage").as<MemoryInfo>();
+    return pimpl->rpcClient->call("getLeonCssHeapUsage").as<MemoryInfo>();
 }
 
 MemoryInfo Device::getLeonMssHeapUsage() {
     checkClosed();
 
-    return client->call("getLeonMssHeapUsage").as<MemoryInfo>();
+    return pimpl->rpcClient->call("getLeonMssHeapUsage").as<MemoryInfo>();
 }
 
 ChipTemperature Device::getChipTemperature() {
     checkClosed();
 
-    return client->call("getChipTemperature").as<ChipTemperature>();
+    return pimpl->rpcClient->call("getChipTemperature").as<ChipTemperature>();
 }
 
 CpuUsage Device::getLeonCssCpuUsage() {
     checkClosed();
 
-    return client->call("getLeonCssCpuUsage").as<CpuUsage>();
+    return pimpl->rpcClient->call("getLeonCssCpuUsage").as<CpuUsage>();
 }
 
 CpuUsage Device::getLeonMssCpuUsage() {
     checkClosed();
 
-    return client->call("getLeonMssCpuUsage").as<CpuUsage>();
+    return pimpl->rpcClient->call("getLeonMssCpuUsage").as<CpuUsage>();
 }
 
 UsbSpeed Device::getUsbSpeed() {
     checkClosed();
 
-    return client->call("getUsbSpeed").as<UsbSpeed>();
+    return pimpl->rpcClient->call("getUsbSpeed").as<UsbSpeed>();
 }
 
 bool Device::isPipelineRunning() {
     checkClosed();
 
-    return client->call("isPipelineRunning").as<bool>();
+    return pimpl->rpcClient->call("isPipelineRunning").as<bool>();
 }
 
 void Device::setLogLevel(LogLevel level) {
     checkClosed();
 
-    client->call("setLogLevel", level);
+    pimpl->rpcClient->call("setLogLevel", level);
 }
 
 LogLevel Device::getLogLevel() {
     checkClosed();
 
-    return client->call("getLogLevel").as<LogLevel>();
+    return pimpl->rpcClient->call("getLogLevel").as<LogLevel>();
 }
 
 DeviceInfo Device::getDeviceInfo() {
@@ -910,24 +978,24 @@ bool Device::removeLogCallback(int callbackId) {
 void Device::setSystemInformationLoggingRate(float rateHz) {
     checkClosed();
 
-    client->call("setSystemInformationLoggingRate", rateHz);
+    pimpl->rpcClient->call("setSystemInformationLoggingRate", rateHz);
 }
 
 float Device::getSystemInformationLoggingRate() {
     checkClosed();
 
-    return client->call("getSystemInformationLoggingrate").as<float>();
+    return pimpl->rpcClient->call("getSystemInformationLoggingRate").as<float>();
 }
 
 bool Device::flashCalibration(CalibrationHandler calibrationDataHandler) {
     if(!calibrationDataHandler.validateCameraArray()) {
         throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
     }
-    return client->call("storeToEeprom", calibrationDataHandler.getEepromData()).as<bool>();
+    return pimpl->rpcClient->call("storeToEeprom", calibrationDataHandler.getEepromData()).as<bool>();
 }
 
 CalibrationHandler Device::readCalibration() {
-    dai::EepromData eepromData = client->call("readFromEeprom");
+    dai::EepromData eepromData = pimpl->rpcClient->call("readFromEeprom");
     return CalibrationHandler(eepromData);
 }
 
@@ -1008,14 +1076,14 @@ bool Device::startPipeline(const Pipeline& pipeline) {
     }
 
     // Load pipelineDesc, assets, and asset storage
-    client->call("setPipelineSchema", schema);
+    pimpl->rpcClient->call("setPipelineSchema", schema);
 
     // Transfer storage != empty
     if(!assetStorage.empty()) {
-        client->call("setAssets", assets);
+        pimpl->rpcClient->call("setAssets", assets);
 
         // allocate, returns a pointer to memory on device side
-        auto memHandle = client->call("memAlloc", static_cast<std::uint32_t>(assetStorage.size())).as<uint32_t>();
+        auto memHandle = pimpl->rpcClient->call("memAlloc", static_cast<std::uint32_t>(assetStorage.size())).as<uint32_t>();
 
         // Transfer the whole assetStorage in a separate thread
         const std::string streamAssetStorage = "__stream_asset_storage";
@@ -1030,22 +1098,22 @@ bool Device::startPipeline(const Pipeline& pipeline) {
         });
 
         // Open a channel to transfer AssetStorage
-        client->call("readFromXLink", streamAssetStorage, memHandle, assetStorage.size());
+        pimpl->rpcClient->call("readFromXLink", streamAssetStorage, memHandle, assetStorage.size());
         t1.join();
 
         // After asset storage is transfers, set the asset storage
-        client->call("setAssetStorage", memHandle, assetStorage.size());
+        pimpl->rpcClient->call("setAssetStorage", memHandle, assetStorage.size());
     }
 
     // print assets on device side for test
-    client->call("printAssets");
+    pimpl->rpcClient->call("printAssets");
 
     // Build and start the pipeline
     bool success = false;
     std::string errorMsg;
-    std::tie(success, errorMsg) = client->call("buildPipeline").as<std::tuple<bool, std::string>>();
+    std::tie(success, errorMsg) = pimpl->rpcClient->call("buildPipeline").as<std::tuple<bool, std::string>>();
     if(success) {
-        client->call("startPipeline");
+        pimpl->rpcClient->call("startPipeline");
     } else {
         throw std::runtime_error(errorMsg);
         return false;

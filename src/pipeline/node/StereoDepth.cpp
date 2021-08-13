@@ -11,18 +11,12 @@ namespace node {
 StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     : Node(par, nodeId), rawConfig(std::make_shared<RawStereoDepthConfig>()), initialConfig(rawConfig) {
     // 'properties' defaults already set
+    inputs = {&inputConfig, &left, &right};
+    outputs = {&depth, &disparity, &syncedLeft, &syncedRight, &rectifiedLeft, &rectifiedRight};
 }
 
 std::string StereoDepth::getName() const {
     return "StereoDepth";
-}
-
-std::vector<Node::Output> StereoDepth::getOutputs() {
-    return {disparity, depth, syncedLeft, syncedRight, rectifiedLeft, rectifiedRight};
-}
-
-std::vector<Node::Input> StereoDepth::getInputs() {
-    return {inputConfig, left, right};
 }
 
 nlohmann::json StereoDepth::getProperties() {
@@ -62,13 +56,11 @@ void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const 
 
     meshAsset.data = dataLeft;
     assetKey = "meshLeft";
-    assetManager.set(assetKey, meshAsset);
-    properties.mesh.meshLeftUri = std::string("asset:") + assetKey;
+    properties.mesh.meshLeftUri = assetManager.set(assetKey, meshAsset)->getRelativeUri();
 
     meshAsset.data = dataRight;
     assetKey = "meshRight";
-    assetManager.set(assetKey, meshAsset);
-    properties.mesh.meshRightUri = std::string("asset:") + assetKey;
+    properties.mesh.meshRightUri = assetManager.set(assetKey, meshAsset)->getRelativeUri();
 
     properties.mesh.meshSize = meshAsset.data.size();
 }

@@ -7,9 +7,9 @@ hunter_config(
 
 hunter_config(
     XLink
-    VERSION "luxonis-2021.3-develop"
-    URL "https://github.com/luxonis/XLink/archive/1038cf1ece3749ff1aeafcabc0663f5b0e8082eb.tar.gz"
-    SHA1 "7fe90ccc13c61a47b41e86b8d3fd8b72984dfd18"
+    VERSION "luxonis-2021.3-master"
+    URL "https://github.com/luxonis/XLink/archive/2c6cdb857f3d21088b34ec172a0ea8df16528d00.tar.gz"
+    SHA1 "736da6528515d9c969008e2334f1387428f91a3b"
 )
 
 hunter_config(
@@ -63,4 +63,15 @@ hunter_config(
         ENABLE_XATTR=OFF
         ENABLE_ZLIB=OFF
         ENABLE_ZSTD=OFF
+)
+
+# Luxonis FP16 fork which doesn't use git cloning for its dependencies
+hunter_config(
+    FP16
+    VERSION "luxonis-0.0.0"
+    URL "https://github.com/luxonis/FP16/archive/c911175d2717e562976e606c6e5f799bf40cf94e.tar.gz"
+    SHA1 "40e9723c87c2fe21781132c0f2f8b90338500e32"
+    CMAKE_ARGS
+        FP16_BUILD_BENCHMARKS=OFF
+        FP16_BUILD_TESTS=OFF
 )

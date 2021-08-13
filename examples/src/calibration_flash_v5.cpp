@@ -1,6 +1,4 @@
-
 #include <cstdio>
-#include <filesystem>
 #include <iostream>
 #include <string>
 
@@ -9,20 +7,24 @@
 
 int main(int argc, char** argv) {
     std::string calibBinaryFile(CALIB_PATH), boardConfigFile(BOARD_PATH);
-    std::string calibBackUpPath("depthai_calib_backup.json");
+    std::string calibBackUpFile("depthai_calib_backup.json");
     if(argc > 2) {
         calibBinaryFile = std::string(argv[1]);
         boardConfigFile = std::string(argv[2]);
     }
 
+    // Connect device
+    dai::Device device;
+
+    dai::CalibrationHandler deviceCalib = device.readCalibration();
+    deviceCalib.eepromToJsonFile(calibBackUpFile);
+    std::cout << "Calibration Data on the device is backed up at:" << calibBackUpFile << std::endl;
     dai::CalibrationHandler calibData(calibBinaryFile, boardConfigFile);
-    dai::Device d;
-    dai::CalibrationHandler deviceCalib = d.readCalibration();
-    deviceCalib.eepromToJsonFile(calibBackUpPath);
-    if(d.flashCalibration(calibData)) {
-        std::cout << "Calibration flash Successful" << std::endl;
+
+    if(device.flashCalibration(calibData)) {
+        std::cout << "Calibration Flash Successful" << std::endl;
     } else {
-        std::cout << "Calibration flash Failed!!!" << std::endl;
+        std::cout << "Calibration Flash Failed!!!" << std::endl;
     }
 
     return 0;
