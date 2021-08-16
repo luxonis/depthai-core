@@ -6,6 +6,7 @@
 // shared
 #include "depthai-bootloader-shared/Bootloader.hpp"
 #include "depthai-bootloader-shared/SBR.h"
+#include "depthai-bootloader-shared/Structure.hpp"
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
 #include "depthai-shared/pipeline/Assets.hpp"
@@ -171,6 +172,9 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, 
         } else {
             connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd, X_LINK_BOOTLOADER);
         }
+
+        // prepare bootloader stream
+        stream = std::make_unique<XLinkStream>(*connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
 
         // Device wasn't already in bootloader, that means that embedded bootloader is booted
         isEmbedded = true;
@@ -595,6 +599,89 @@ std::tuple<bool, std::string> DeviceBootloader::flashCustom(Memory memory, uint3
     return {result.success, result.errorMsg};
 }
 */
+
+nlohmann::json DeviceBootloader::readConfigurationData(Memory memory) {
+    // Send request to GET_BOOTLOADER_CONFIG
+    dai::bootloader::request::GetBootloaderConfig getConfigReq;
+    getConfigReq.memory = memory;
+    if(!sendBootloaderRequest(stream->getStreamId(), getConfigReq)) return {false, "Couldn't send request to get configuration data"};
+
+    // Get response
+    dai::bootloader::response::GetBootloaderConfig resp;
+    receiveBootloaderResponse(stream->getStreamId(), resp);
+
+    if(resp.success) {
+        // Read back bootloader config (1 packet max)
+        auto bsonConfig = stream->read();
+        // Parse from BSON
+        return nlohmann::json::from_bson(bsonConfig);
+    } else {
+        return {};
+    }
+}
+
+std::tuple<bool, std::string> DeviceBootloader::flashConfigurationClear(Memory memory) {
+    // send request to SET_BOOTLOADER_CONFIG
+    dai::bootloader::request::SetBootloaderConfig setConfigReq;
+    setConfigReq.memory = memory;
+    setConfigReq.numPackets = 0;
+    setConfigReq.totalSize = 0;
+    setConfigReq.clearConfig = 1;
+    if(!sendBootloaderRequest(stream->getStreamId(), setConfigReq)) return {false, "Couldn't send request to flash configuration data"};
+
+    // Read back response
+    dai::bootloader::response::FlashComplete result;
+    receiveBootloaderResponse(stream->getStreamId(), result);
+
+    // Return if flashing was successful
+    return {result.success, result.errorMsg};
+}
+
+std::tuple<bool, std::string> DeviceBootloader::flashConfigurationData(nlohmann::json configData, Memory memory) {
+    // Parse to BSON
+    auto bson = nlohmann::json::to_bson(configData);
+
+    // Send request to SET_BOOTLOADER_CONFIG
+    dai::bootloader::request::SetBootloaderConfig setConfigReq;
+    setConfigReq.memory = memory;
+    setConfigReq.numPackets = 1;
+    setConfigReq.totalSize = bson.size();
+    setConfigReq.clearConfig = 0;
+    if(!sendBootloaderRequest(stream->getStreamId(), setConfigReq)) return {false, "Couldn't send request to flash configuration data"};
+
+    // Send 1 packet, of bson config data
+    stream->write(bson);
+
+    // Read back response
+    dai::bootloader::response::FlashComplete result;
+    receiveBootloaderResponse(stream->getStreamId(), result);
+
+    // Return if flashing was successful
+    return {result.success, result.errorMsg};
+}
+
+std::tuple<bool, std::string> DeviceBootloader::flashConfigurationData(std::string configJson, Memory memory) {
+    return flashConfigurationData(nlohmann::json::parse(configJson), memory);
+}
+
+std::tuple<bool, std::string> DeviceBootloader::flashConfigurationFile(std::string configPath, Memory memory) {
+    // read a JSON file
+    std::ifstream configInputStream(configPath);
+    nlohmann::json configJson;
+    configInputStream >> configJson;
+    return flashConfigurationData(configJson, memory);
+}
+
+DeviceBootloader::Config DeviceBootloader::readConfiguration(Memory memory) {
+    auto json = readConfigurationData(memory);
+    // Implicit parse from json to Config
+    return json;
+}
+
+std::tuple<bool, std::string> DeviceBootloader::flashConfiguration(const Config& config) {
+    // Implicit parse from Config to json
+    return flashConfigurationData(config);
+}
 
 bool DeviceBootloader::isEmbeddedVersion() const {
     return isEmbedded;

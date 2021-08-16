@@ -13,6 +13,7 @@
 #include "depthai/xlink/XLinkStream.hpp"
 
 // shared
+#include "depthai-bootloader-shared/Config.hpp"
 #include "depthai-bootloader-shared/Memory.hpp"
 #include "depthai-bootloader-shared/Section.hpp"
 #include "depthai-bootloader-shared/Type.hpp"
@@ -30,6 +31,9 @@ class DeviceBootloader {
     using Type = dai::bootloader::Type;
     using Memory = dai::bootloader::Memory;
     using Section = dai::bootloader::Section;
+    using UsbConfig = dai::bootloader::UsbConfig;
+    using NetworkConfig = dai::bootloader::NetworkConfig;
+    using Config = dai::bootloader::Config;
 
     /// Bootloader version structure
     struct Version {
@@ -174,6 +178,48 @@ class DeviceBootloader {
     // std::tuple<bool, std::string> flashCustom(Memory memory, uint32_t offset, std::function<void(float)> progressCb, std::vector<uint8_t> data);
 
     /**
+     * Reads configuration data from bootloader
+     * @returns Unstructured configuration data
+     */
+    nlohmann::json readConfigurationData(Memory memory = Memory::AUTO);
+
+    /**
+     * Flashes configuration data to bootloader
+     * @param configData Unstructured configuration data
+     */
+    std::tuple<bool, std::string> flashConfigurationData(nlohmann::json configData, Memory memory = Memory::AUTO);
+
+    /**
+     * Flashes JSON configuration data to bootloader
+     * @param configJson JSON configuration data
+     */
+    std::tuple<bool, std::string> flashConfigurationData(std::string configJson, Memory memory = Memory::AUTO);
+
+    /**
+     * Flashes configuration data to bootloader
+     * @param configPath Unstructured configuration data
+     */
+    std::tuple<bool, std::string> flashConfigurationFile(std::string configPath, Memory memory = Memory::AUTO);
+
+    /**
+     * Flashes configuration data to bootloader
+     * @param configData Unstructured configuration data
+     */
+    std::tuple<bool, std::string> flashConfigurationClear(Memory memory = Memory::AUTO);
+
+    /**
+     * Reads configuration from bootloader
+     * @returns Configuration
+     */
+    Config readConfiguration(Memory memory = Memory::AUTO);
+
+    /**
+     * Flashes configuration to bootloader
+     * @param configData Configuration
+     */
+    std::tuple<bool, std::string> flashConfiguration(const Config& config);
+
+    /**
      * @returns Version of current running bootloader
      */
     Version getVersion();
@@ -250,6 +296,9 @@ inline std::ostream& operator<<(std::ostream& out, const dai::DeviceBootloader::
 
 inline std::ostream& operator<<(std::ostream& out, const dai::DeviceBootloader::Memory& memory) {
     switch(memory) {
+        case dai::DeviceBootloader::Memory::AUTO:
+            out << "AUTO";
+            break;
         case dai::DeviceBootloader::Memory::FLASH:
             out << "FLASH";
             break;
@@ -262,6 +311,9 @@ inline std::ostream& operator<<(std::ostream& out, const dai::DeviceBootloader::
 
 inline std::ostream& operator<<(std::ostream& out, const dai::DeviceBootloader::Section& type) {
     switch(type) {
+        case dai::DeviceBootloader::Section::AUTO:
+            out << "AUTO";
+            break;
         case dai::DeviceBootloader::Section::HEADER:
             out << "HEADER";
             break;
