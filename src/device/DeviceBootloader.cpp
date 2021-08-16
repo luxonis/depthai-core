@@ -667,6 +667,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashConfigurationData(std::stri
 std::tuple<bool, std::string> DeviceBootloader::flashConfigurationFile(std::string configPath, Memory memory) {
     // read a JSON file
     std::ifstream configInputStream(configPath);
+    if(!configInputStream.is_open()) throw std::runtime_error("Cannot flash configuration, JSON at path: " + configPath + " doesn't exist");
     nlohmann::json configJson;
     configInputStream >> configJson;
     return flashConfigurationData(configJson, memory);

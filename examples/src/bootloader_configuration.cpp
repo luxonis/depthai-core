@@ -1,6 +1,8 @@
 #include "depthai/depthai.hpp"
 
 int main(int argc, char** argv) {
+    // Options
+    bool usage = false;
     bool read = true, clear = false;
     std::string path = "";
     if(argc >= 2) {
@@ -11,22 +13,25 @@ int main(int argc, char** argv) {
             read = false;
             if(argc >= 3) {
                 path = argv[2];
-            } else if(op == "clear") {
-                clear = true;
-                read = false;
-            } else {
-                std::cout << "Usage: " << argv[0] << " " << argv[1] << " [path/to/config/json]" << std::endl;
-                return -1;
             }
+        } else if(op == "clear") {
+            clear = true;
+            read = false;
+        } else if(op == "clear") {
+            clear = true;
+            read = false;
         } else {
-            std::cout << "Usage: " << argv[0] << " [read/flash] [flash: path/to/config/json]" << std::endl;
-            return -1;
+            usage = true;
         }
     } else {
-        std::cout << "Usage: " << argv[0] << " [read/flash] [flash: path/to/config/json]" << std::endl;
+        usage = true;
+    }
+    if(usage) {
+        std::cout << "Usage: " << argv[0] << " [read/flash/clear] [flash: path/to/config/json]" << std::endl;
         return -1;
     }
 
+    // DeviceBootloader configuration
     bool res = false;
     dai::DeviceInfo info;
     std::tie(res, info) = dai::DeviceBootloader::getFirstAvailableDevice();
@@ -43,7 +48,11 @@ int main(int argc, char** argv) {
             if(clear) {
                 std::tie(success, error) = bl.flashConfigurationClear();
             } else {
-                std::tie(success, error) = bl.flashConfigurationFile(path);
+                if(path.empty()) {
+                    std::tie(success, error) = bl.flashConfiguration(dai::DeviceBootloader::Config{});
+                } else {
+                    std::tie(success, error) = bl.flashConfigurationFile(path);
+                }
             }
             if(success) {
                 std::cout << "Successfully flashed bootloader configuration\n";
