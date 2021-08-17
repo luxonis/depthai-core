@@ -66,7 +66,8 @@ struct XLinkError : public std::runtime_error {
 
     using std::runtime_error::runtime_error;
 
-    XLinkError(XLinkError_t statusID, const std::string& stream, const std::string& message) : runtime_error(message), status(statusID), streamName(stream) {}
+    XLinkError(XLinkError_t statusID, std::string stream, const std::string& message)
+        : runtime_error(message), status(statusID), streamName(std::move(stream)) {}
 };
 struct XLinkReadError : public XLinkError {
     using XLinkError = XLinkError;

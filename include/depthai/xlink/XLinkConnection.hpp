@@ -68,8 +68,8 @@ class XLinkConnection {
     bool isClosed() const;
 
    private:
-    friend class XLinkReadError;
-    friend class XLinkWriteError;
+    friend struct XLinkReadError;
+    friend struct XLinkWriteError;
     // static
     static bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, const std::string& pathToMvcmd);
     static bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, std::vector<std::uint8_t>& mvcmd);
