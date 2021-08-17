@@ -145,7 +145,7 @@ cd build/examples
 ./rgb_mobilenet 
 ```
 
-Please be aware that multi config generators (like Visual Studio on Windows) will have the examples built in `build/examples/Debug/Release/.../rgb_mobilenet`
+Please be aware that multi config generators (like Visual Studio on Windows) will have the examples built in `build/examples/[Debug/Release/...]/rgb_mobilenet`
 
 
 ## Style check
