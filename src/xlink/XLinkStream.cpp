@@ -175,12 +175,10 @@ streamId_t XLinkStream::getStreamId() const {
     return streamId;
 }
 
-XLinkReadError::XLinkReadError(XLinkError_t status_, const std::string& streamName_)
-    : XLinkError(
-        status_, streamName_, fmt::format("Couldn't write data to stream: '{}' ({})", streamName_, XLinkConnection::convertErrorCodeToString(status_))) {}
+XLinkReadError::XLinkReadError(XLinkError_t status, const std::string& streamName)
+    : XLinkError(status, streamName, fmt::format("Couldn't write data to stream: '{}' ({})", streamName, XLinkConnection::convertErrorCodeToString(status))) {}
 
-XLinkWriteError::XLinkWriteError(XLinkError_t status_, const std::string& streamName_)
-    : XLinkError(
-        status_, streamName_, fmt::format("Couldn't read data from stream: '{}' ({})", streamName_, XLinkConnection::convertErrorCodeToString(status_))) {}
+XLinkWriteError::XLinkWriteError(XLinkError_t status, const std::string& streamName)
+    : XLinkError(status, streamName, fmt::format("Couldn't read data from stream: '{}' ({})", streamName, XLinkConnection::convertErrorCodeToString(status))) {}
 
 }  // namespace dai

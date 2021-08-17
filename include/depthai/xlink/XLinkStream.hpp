@@ -66,16 +66,15 @@ struct XLinkError : public std::runtime_error {
 
     using std::runtime_error::runtime_error;
 
-    XLinkError(XLinkError_t status_, const std::string& streamName_, const std::string& message_)
-        : runtime_error(message_), status(status_), streamName(streamName_) {}
+    XLinkError(XLinkError_t statusID, const std::string& stream, const std::string& message) : runtime_error(message), status(statusID), streamName(stream) {}
 };
 struct XLinkReadError : public XLinkError {
     using XLinkError = XLinkError;
-    XLinkReadError(XLinkError_t status_, const std::string& streamName_);
+    XLinkReadError(XLinkError_t status, const std::string& stream);
 };
 struct XLinkWriteError : public XLinkError {
     using XLinkError = XLinkError;
-    XLinkWriteError(XLinkError_t status_, const std::string& streamName_);
+    XLinkWriteError(XLinkError_t status, const std::string& stream);
 };
 
 }  // namespace dai
