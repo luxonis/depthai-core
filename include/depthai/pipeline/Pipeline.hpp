@@ -36,7 +36,7 @@ class PipelineImpl {
     PipelineSchema getPipelineSchema() const;
     OpenVINO::Version getPipelineOpenVINOVersion() const;
     void setCameraTuningBlobPath(const std::string& path);
-    void setXlinkChunkSize(int sizeBytes);
+    void setXLinkChunkSize(int sizeBytes);
 
     // Access to nodes
     std::vector<std::shared_ptr<const Node>> getAllNodes() const;
@@ -247,8 +247,8 @@ class Pipeline {
      * increase performance, with 0 disabling chunking. A negative value won't modify the
      * device defaults - configured per protocol, currently 64*1024 for both USB and Ethernet.
      */
-    void setXlinkChunkSize(int sizeBytes) {
-        impl()->setXlinkChunkSize(sizeBytes);
+    void setXLinkChunkSize(int sizeBytes) {
+        impl()->setXLinkChunkSize(sizeBytes);
     }
 };
 

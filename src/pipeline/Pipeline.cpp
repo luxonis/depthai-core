@@ -245,7 +245,7 @@ void PipelineImpl::setCameraTuningBlobPath(const std::string& path) {
     globalProperties.cameraTuningBlobSize = asset->data.size();
 }
 
-void PipelineImpl::setXlinkChunkSize(int sizeBytes) {
+void PipelineImpl::setXLinkChunkSize(int sizeBytes) {
     globalProperties.xlinkChunkSize = sizeBytes;
 }
 
