@@ -318,11 +318,12 @@ void DeviceBase::closeImpl() {
     auto t1 = steady_clock::now();
     spdlog::debug("Device about to be closed...");
 
-    // Close connection first (so queues unblock)
+    // Close connection first
+    // Resets device as well and queues unblock
     connection->close();
     connection = nullptr;
 
-    // Stop watchdog
+    // Stop various threads
     watchdogRunning = false;
     timesyncRunning = false;
     loggingRunning = false;

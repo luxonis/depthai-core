@@ -426,7 +426,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
 
     // Bug in NETWORK bootloader in version 0.0.12 < 0.1.0 - flashing can cause a soft brick
     auto version = getVersion();
-    if(bootloaderType == Type::NETWORK && version < Version(0, 1, 0)) {
+    if(bootloaderType == Type::NETWORK && version < Version(0, 0, 14)) {
         throw std::invalid_argument("Network bootloader requires version 0.1.0 or higher to flash applications. Current version: " + version.toString());
     }
 
