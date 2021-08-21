@@ -218,6 +218,10 @@ std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type
     std::unique_lock<std::mutex> lock(mtxBootloader);
 
     switch(type) {
+        case dai::bootloader::Type::AUTO:
+            throw std::invalid_argument("DeviceBootloader::Type::AUTO not allowed, when getting bootloader firmware.");
+            break;
+
         case dai::bootloader::Type::USB:
             return resourceMapBootloader[DEVICE_BOOTLOADER_USB_PATH];
             break;

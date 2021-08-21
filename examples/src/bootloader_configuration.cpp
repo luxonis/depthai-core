@@ -2,8 +2,7 @@
 
 int main(int argc, char** argv) {
     // Options
-    bool usage = false;
-    bool read = true, clear = false;
+    bool usage = false, read = true, clear = false;
     std::string path = "";
     if(argc >= 2) {
         std::string op = argv[1];
@@ -41,17 +40,17 @@ int main(int argc, char** argv) {
         dai::DeviceBootloader bl(info);
 
         if(read) {
-            std::cout << "Current flashed configuration\n" << bl.readConfigurationData().dump(4) << std::endl;
+            std::cout << "Current flashed configuration\n" << bl.readConfigData().dump(4) << std::endl;
         } else {
             bool success;
             std::string error;
             if(clear) {
-                std::tie(success, error) = bl.flashConfigurationClear();
+                std::tie(success, error) = bl.flashConfigClear();
             } else {
                 if(path.empty()) {
-                    std::tie(success, error) = bl.flashConfiguration(dai::DeviceBootloader::Config{});
+                    std::tie(success, error) = bl.flashConfig(dai::DeviceBootloader::Config{});
                 } else {
-                    std::tie(success, error) = bl.flashConfigurationFile(path);
+                    std::tie(success, error) = bl.flashConfigFile(path);
                 }
             }
             if(success) {

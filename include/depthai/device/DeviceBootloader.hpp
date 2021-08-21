@@ -8,6 +8,7 @@
 // project
 #include "CallbackHandler.hpp"
 #include "DataQueue.hpp"
+#include "depthai/common/UsbSpeed.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
@@ -33,7 +34,48 @@ class DeviceBootloader {
     using Section = dai::bootloader::Section;
     using UsbConfig = dai::bootloader::UsbConfig;
     using NetworkConfig = dai::bootloader::NetworkConfig;
-    using Config = dai::bootloader::Config;
+
+    // Derive and extend bootloader::Config for easier usage
+    struct Config : public bootloader::Config {
+        /// Setting a static IPv4 won't start DHCP client
+        void setStaticIPv4(std::string ip, std::string mask, std::string gateway);
+        /// Setting a dynamic IPv4 will set that IP as well as start DHCP client
+        void setDynamicIPv4(std::string ip, std::string mask, std::string gateway);
+        /// Get if static IPv4 configuration is set
+        bool isStaticIPV4();
+        /// Get IPv4
+        std::string getIPv4();
+        /// Get IPv4 mask
+        std::string getIPv4Mask();
+        /// Get IPv4 gateway
+        std::string getIPv4Gateway();
+        /// Set IPv4 DNS options
+        void setDnsIPv4(std::string dns, std::string dnsAlt = "");
+        /// Get primary IPv4 DNS server
+        std::string getDnsIPv4();
+        /// Get alternate IPv4 DNS server
+        std::string getDnsAltIPv4();
+
+        /// Set USB timeout
+        void setUsbTimeout(std::chrono::milliseconds ms);
+        /// Get USB timeout
+        std::chrono::milliseconds getUsbTimeout();
+
+        /// Set NETWOR timeout
+        void setNetworkTimeout(std::chrono::milliseconds ms);
+        /// Get NETWORK timeout
+        std::chrono::milliseconds getNetworkTimeout();
+
+        /// Set MAC address if not flashed on controller
+        void setMacAddress(std::string mac);
+        /// Get MAC address if not flashed on controller
+        std::string getMacAddress();
+
+        /// Set maxUsbSpeed
+        void setUsbMaxSpeed(UsbSpeed speed);
+        /// Get maxUsbSpeed
+        UsbSpeed getUsbMaxSpeed();
+    };
 
     /// Bootloader version structure
     struct Version {
@@ -84,17 +126,35 @@ class DeviceBootloader {
      * Creates application package which can be flashed to depthai device.
      * @param pipeline Pipeline from which to create the application package
      * @param pathToCmd Optional path to custom device firmware
+     * @param compress Optional boolean which specifies if contents should be compressed
      * @returns Depthai application package
      */
-    static std::vector<uint8_t> createDepthaiApplicationPackage(Pipeline& pipeline, std::string pathToCmd = "");
+    static std::vector<uint8_t> createDepthaiApplicationPackage(const Pipeline& pipeline, std::string pathToCmd = "", bool compress = false);
+
+    /**
+     * Creates application package which can be flashed to depthai device.
+     * @param pipeline Pipeline from which to create the application package
+     * @param compress Specifies if contents should be compressed
+     * @returns Depthai application package
+     */
+    static std::vector<uint8_t> createDepthaiApplicationPackage(const Pipeline& pipeline, bool compress);
 
     /**
      * Saves application package to a file which can be flashed to depthai device.
      * @param path Path where to save the application package
      * @param pipeline Pipeline from which to create the application package
      * @param pathToCmd Optional path to custom device firmware
+     * @param compress Optional boolean which specifies if contents should be compressed
      */
-    static void saveDepthaiApplicationPackage(std::string path, Pipeline& pipeline, std::string pathToCmd = "");
+    static void saveDepthaiApplicationPackage(std::string path, const Pipeline& pipeline, std::string pathToCmd = "", bool compress = false);
+
+    /**
+     * Saves application package to a file which can be flashed to depthai device.
+     * @param path Path where to save the application package
+     * @param pipeline Pipeline from which to create the application package
+     * @param compress Specifies if contents should be compressed
+     */
+    static void saveDepthaiApplicationPackage(std::string path, const Pipeline& pipeline, bool compress);
 
     /**
      * @returns Embedded bootloader version
@@ -139,11 +199,17 @@ class DeviceBootloader {
     ~DeviceBootloader();
 
     /**
-     * Flashes a give pipeline to the board.
+     * Flashes a given pipeline to the device.
      * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
      * @param pipeline Pipeline to flash to the board
      */
-    std::tuple<bool, std::string> flash(std::function<void(float)> progressCallback, Pipeline& pipeline);
+    std::tuple<bool, std::string> flash(std::function<void(float)> progressCallback, const Pipeline& pipeline, bool compress = false);
+
+    /**
+     * Flashes a given pipeline to the device.
+     * @param pipeline Pipeline to flash to the board
+     */
+    std::tuple<bool, std::string> flash(const Pipeline& pipeline, bool compress = false);
 
     /**
      * Flashes a specific depthai application package that was generated using createDepthaiApplicationPackage or saveDepthaiApplicationPackage
@@ -151,6 +217,12 @@ class DeviceBootloader {
      * @param package Depthai application package to flash to the board
      */
     std::tuple<bool, std::string> flashDepthaiApplicationPackage(std::function<void(float)> progressCallback, std::vector<uint8_t> package);
+
+    /**
+     * Flashes a specific depthai application package that was generated using createDepthaiApplicationPackage or saveDepthaiApplicationPackage
+     * @param package Depthai application package to flash to the board
+     */
+    std::tuple<bool, std::string> flashDepthaiApplicationPackage(std::vector<uint8_t> package);
 
     /**
      * Flashes bootloader to the current board
@@ -180,44 +252,49 @@ class DeviceBootloader {
     /**
      * Reads configuration data from bootloader
      * @returns Unstructured configuration data
+     * @param memory Optional - from which memory to read configuration data
+     * @param type Optional - from which type of bootloader to read configuration data
      */
-    nlohmann::json readConfigurationData(Memory memory = Memory::AUTO);
+    nlohmann::json readConfigData(Memory memory = Memory::AUTO, Type type = Type::AUTO);
 
     /**
      * Flashes configuration data to bootloader
      * @param configData Unstructured configuration data
+     * @param memory Optional - to which memory flash configuration
+     * @param type Optional - for which type of bootloader to flash configuration
      */
-    std::tuple<bool, std::string> flashConfigurationData(nlohmann::json configData, Memory memory = Memory::AUTO);
-
-    /**
-     * Flashes JSON configuration data to bootloader
-     * @param configJson JSON configuration data
-     */
-    std::tuple<bool, std::string> flashConfigurationData(std::string configJson, Memory memory = Memory::AUTO);
+    std::tuple<bool, std::string> flashConfigData(nlohmann::json configData, Memory memory = Memory::AUTO, Type type = Type::AUTO);
 
     /**
      * Flashes configuration data to bootloader
      * @param configPath Unstructured configuration data
+     * @param memory Optional - to which memory flash configuration
+     * @param type Optional - for which type of bootloader to flash configuration
      */
-    std::tuple<bool, std::string> flashConfigurationFile(std::string configPath, Memory memory = Memory::AUTO);
+    std::tuple<bool, std::string> flashConfigFile(std::string configPath, Memory memory = Memory::AUTO, Type type = Type::AUTO);
 
     /**
-     * Flashes configuration data to bootloader
-     * @param configData Unstructured configuration data
+     * Clears configuration data
+     * @param memory Optional - on which memory to clear configuration data
+     * @param type Optional - for which type of bootloader to clear configuration data
      */
-    std::tuple<bool, std::string> flashConfigurationClear(Memory memory = Memory::AUTO);
+    std::tuple<bool, std::string> flashConfigClear(Memory memory = Memory::AUTO, Type type = Type::AUTO);
 
     /**
      * Reads configuration from bootloader
-     * @returns Configuration
+     * @param memory Optional - from which memory to read configuration
+     * @param type Optional - from which type of bootloader to read configuration
+     * @returns Configuration structure
      */
-    Config readConfiguration(Memory memory = Memory::AUTO);
+    Config readConfig(Memory memory = Memory::AUTO, Type type = Type::AUTO);
 
     /**
      * Flashes configuration to bootloader
-     * @param configData Configuration
+     * @param configData Configuration structure
+     * @param memory Optional - to which memory flash configuration
+     * @param type Optional - for which type of bootloader to flash configuration
      */
-    std::tuple<bool, std::string> flashConfiguration(const Config& config);
+    std::tuple<bool, std::string> flashConfig(const Config& config, Memory memory = Memory::AUTO, Type type = Type::AUTO);
 
     /**
      * @returns Version of current running bootloader
@@ -284,6 +361,9 @@ class DeviceBootloader {
 // Global namespace
 inline std::ostream& operator<<(std::ostream& out, const dai::DeviceBootloader::Type& type) {
     switch(type) {
+        case dai::DeviceBootloader::Type::AUTO:
+            out << "AUTO";
+            break;
         case dai::DeviceBootloader::Type::USB:
             out << "USB";
             break;

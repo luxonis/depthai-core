@@ -16,10 +16,13 @@
 #include "device/Device.hpp"
 #include "pipeline/Pipeline.hpp"
 #include "utility/BootloaderHelper.hpp"
+#include "utility/Platform.hpp"
 #include "utility/Resources.hpp"
 
 // libraries
+#include "spdlog/fmt/chrono.h"
 #include "spdlog/spdlog.h"
+#include "zlib.h"
 
 // Resource compiled assets (cmds)
 #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
@@ -55,7 +58,7 @@ std::vector<DeviceInfo> DeviceBootloader::getAllAvailableDevices() {
     return availableDevices;
 }
 
-std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(Pipeline& pipeline, std::string pathToCmd) {
+std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pipeline& pipeline, std::string pathToCmd, bool compress) {
     // Serialize the pipeline
     PipelineSchema schema;
     Assets assets;
@@ -99,12 +102,47 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(Pipeline&
         return ((((S) + (SECTION_ALIGNMENT_SIZE)-1)) & ~((SECTION_ALIGNMENT_SIZE)-1));
     };
 
+    // Should compress firmware?
+    if(compress) {
+        using namespace std::chrono;
+
+        auto t1 = steady_clock::now();
+        auto compressBufferSize = compressBound(deviceFirmware.size());
+        std::vector<uint8_t> compressBuffer(compressBufferSize);
+        // Chosen impirically
+        constexpr int COMPRESSION_LEVEL = 9;
+        if(compress2(compressBuffer.data(), &compressBufferSize, deviceFirmware.data(), deviceFirmware.size(), COMPRESSION_LEVEL) != Z_OK) {
+            throw std::runtime_error("Error while compressing device firmware\n");
+        }
+
+        // Resize output buffer
+        compressBuffer.resize(compressBufferSize);
+
+        // Set the compressed firmware
+        auto prevSize = deviceFirmware.size();
+        deviceFirmware = std::move(compressBuffer);
+
+        auto diff = duration_cast<milliseconds>(steady_clock::now() - t1);
+        spdlog::debug("Compressed firmware for Dephai Application Package. Took {}, size reduced from {:.2f}MiB to {:.2f}MiB",
+                      diff,
+                      prevSize / (1024.0f * 1024.0f),
+                      deviceFirmware.size() / (1024.0f * 1024.0f));
+    }
+
     // First section, MVCMD, name '__firmware'
     sbr_section_set_name(fwSection, "__firmware");
     sbr_section_set_bootable(fwSection, true);
     sbr_section_set_size(fwSection, static_cast<uint32_t>(deviceFirmware.size()));
     sbr_section_set_checksum(fwSection, sbr_compute_checksum(deviceFirmware.data(), static_cast<uint32_t>(deviceFirmware.size())));
     sbr_section_set_offset(fwSection, SBR_RAW_SIZE);
+    // Ignore checksum to allow faster booting (images are verified after flashing, low risk)
+    sbr_section_set_ignore_checksum(fwSection, true);
+    // Set compression flags
+    if(compress) {
+        sbr_section_set_compression(fwSection, SBR_COMPRESSION_ZLIB);
+    } else {
+        sbr_section_set_compression(fwSection, SBR_NO_COMPRESSION);
+    }
 
     // Second section, pipeline schema, name 'pipeline'
     sbr_section_set_name(pipelineSection, "pipeline");
@@ -134,12 +172,28 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(Pipeline&
     sbr_serialize(&sbr, fwPackage.data(), static_cast<uint32_t>(fwPackage.size()));
 
     // Write to fwPackage
-    for(unsigned i = 0; i < deviceFirmware.size(); i++) fwPackage[fwSection->offset + i] = deviceFirmware[i];
-    for(unsigned i = 0; i < pipelineBinary.size(); i++) fwPackage[pipelineSection->offset + i] = pipelineBinary[i];
-    for(unsigned i = 0; i < assetsBinary.size(); i++) fwPackage[assetsSection->offset + i] = assetsBinary[i];
-    for(unsigned i = 0; i < assetStorage.size(); i++) fwPackage[assetStorageSection->offset + i] = assetStorage[i];
+    for(std::size_t i = 0; i < deviceFirmware.size(); i++) fwPackage[fwSection->offset + i] = deviceFirmware[i];
+    for(std::size_t i = 0; i < pipelineBinary.size(); i++) fwPackage[pipelineSection->offset + i] = pipelineBinary[i];
+    for(std::size_t i = 0; i < assetsBinary.size(); i++) fwPackage[assetsSection->offset + i] = assetsBinary[i];
+    for(std::size_t i = 0; i < assetStorage.size(); i++) fwPackage[assetStorageSection->offset + i] = assetStorage[i];
 
     return fwPackage;
+}
+
+std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pipeline& pipeline, bool compress) {
+    return createDepthaiApplicationPackage(pipeline, "", compress);
+}
+
+void DeviceBootloader::saveDepthaiApplicationPackage(std::string path, const Pipeline& pipeline, std::string pathToCmd, bool compress) {
+    auto dap = createDepthaiApplicationPackage(pipeline, pathToCmd, compress);
+    std::ofstream outfile(path, std::ios::binary);
+    outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
+}
+
+void DeviceBootloader::saveDepthaiApplicationPackage(std::string path, const Pipeline& pipeline, bool compress) {
+    auto dap = createDepthaiApplicationPackage(pipeline, compress);
+    std::ofstream outfile(path, std::ios::binary);
+    outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
 }
 
 DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, bool allowFlashingBootloader) : deviceInfo(devInfo) {
@@ -411,14 +465,12 @@ bool DeviceBootloader::isAllowedFlashingBootloader() const {
     return allowFlashingBootloader;
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flash(std::function<void(float)> progressCb, Pipeline& pipeline) {
-    return flashDepthaiApplicationPackage(progressCb, createDepthaiApplicationPackage(pipeline));
+std::tuple<bool, std::string> DeviceBootloader::flash(std::function<void(float)> progressCb, const Pipeline& pipeline, bool compress) {
+    return flashDepthaiApplicationPackage(progressCb, createDepthaiApplicationPackage(pipeline, compress));
 }
 
-void DeviceBootloader::saveDepthaiApplicationPackage(std::string path, Pipeline& pipeline, std::string pathToCmd) {
-    auto dap = createDepthaiApplicationPackage(pipeline, pathToCmd);
-    std::ofstream outfile(path, std::ios::binary);
-    outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
+std::tuple<bool, std::string> DeviceBootloader::flash(const Pipeline& pipeline, bool compress) {
+    return flashDepthaiApplicationPackage(createDepthaiApplicationPackage(pipeline, compress));
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(std::function<void(float)> progressCb, std::vector<uint8_t> package) {
@@ -464,6 +516,10 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
 
     // Return if flashing was successful
     return {result.success, result.errorMsg};
+}
+
+std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(std::vector<uint8_t> package) {
+    return flashDepthaiApplicationPackage(nullptr, package);
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashBootloader(std::function<void(float)> progressCb, std::string path) {
@@ -600,10 +656,19 @@ std::tuple<bool, std::string> DeviceBootloader::flashCustom(Memory memory, uint3
 }
 */
 
-nlohmann::json DeviceBootloader::readConfigurationData(Memory memory) {
+nlohmann::json DeviceBootloader::readConfigData(Memory memory, Type type) {
     // Send request to GET_BOOTLOADER_CONFIG
     dai::bootloader::request::GetBootloaderConfig getConfigReq;
     getConfigReq.memory = memory;
+
+    if(type != Type::AUTO) {
+        const auto confStructure = bootloader::getStructure(type);
+        getConfigReq.offset = confStructure.offset.at(bootloader::Section::BOOTLOADER_CONFIG);
+        getConfigReq.maxSize = confStructure.size.at(bootloader::Section::BOOTLOADER_CONFIG);
+    } else {
+        // leaves as default values, which correspond to AUTO
+    }
+
     if(!sendBootloaderRequest(stream->getStreamId(), getConfigReq)) return {false, "Couldn't send request to get configuration data"};
 
     // Get response
@@ -620,10 +685,14 @@ nlohmann::json DeviceBootloader::readConfigurationData(Memory memory) {
     }
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashConfigurationClear(Memory memory) {
+std::tuple<bool, std::string> DeviceBootloader::flashConfigClear(Memory memory, Type type) {
     // send request to SET_BOOTLOADER_CONFIG
     dai::bootloader::request::SetBootloaderConfig setConfigReq;
     setConfigReq.memory = memory;
+    if(type != Type::AUTO) {
+        setConfigReq.offset = bootloader::getStructure(type).offset.at(bootloader::Section::BOOTLOADER_CONFIG);
+    }
+
     setConfigReq.numPackets = 0;
     setConfigReq.totalSize = 0;
     setConfigReq.clearConfig = 1;
@@ -637,13 +706,16 @@ std::tuple<bool, std::string> DeviceBootloader::flashConfigurationClear(Memory m
     return {result.success, result.errorMsg};
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashConfigurationData(nlohmann::json configData, Memory memory) {
+std::tuple<bool, std::string> DeviceBootloader::flashConfigData(nlohmann::json configData, Memory memory, Type type) {
     // Parse to BSON
     auto bson = nlohmann::json::to_bson(configData);
 
     // Send request to SET_BOOTLOADER_CONFIG
     dai::bootloader::request::SetBootloaderConfig setConfigReq;
     setConfigReq.memory = memory;
+    if(type != Type::AUTO) {
+        setConfigReq.offset = bootloader::getStructure(type).offset.at(bootloader::Section::BOOTLOADER_CONFIG);
+    }
     setConfigReq.numPackets = 1;
     setConfigReq.totalSize = bson.size();
     setConfigReq.clearConfig = 0;
@@ -660,28 +732,24 @@ std::tuple<bool, std::string> DeviceBootloader::flashConfigurationData(nlohmann:
     return {result.success, result.errorMsg};
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashConfigurationData(std::string configJson, Memory memory) {
-    return flashConfigurationData(nlohmann::json::parse(configJson), memory);
-}
-
-std::tuple<bool, std::string> DeviceBootloader::flashConfigurationFile(std::string configPath, Memory memory) {
+std::tuple<bool, std::string> DeviceBootloader::flashConfigFile(std::string configPath, Memory memory, Type type) {
     // read a JSON file
     std::ifstream configInputStream(configPath);
     if(!configInputStream.is_open()) throw std::runtime_error("Cannot flash configuration, JSON at path: " + configPath + " doesn't exist");
     nlohmann::json configJson;
     configInputStream >> configJson;
-    return flashConfigurationData(configJson, memory);
+    return flashConfigData(configJson, memory, type);
 }
 
-DeviceBootloader::Config DeviceBootloader::readConfiguration(Memory memory) {
-    auto json = readConfigurationData(memory);
+DeviceBootloader::Config DeviceBootloader::readConfig(Memory memory, Type type) {
+    auto json = readConfigData(memory, type);
     // Implicit parse from json to Config
     return json;
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashConfiguration(const Config& config) {
+std::tuple<bool, std::string> DeviceBootloader::flashConfig(const Config& config, Memory memory, Type type) {
     // Implicit parse from Config to json
-    return flashConfigurationData(config);
+    return flashConfigData(config, memory, type);
 }
 
 bool DeviceBootloader::isEmbeddedVersion() const {
@@ -725,6 +793,98 @@ bool DeviceBootloader::Version::operator<(const Version& other) const {
 
 std::string DeviceBootloader::Version::toString() const {
     return std::to_string(versionMajor) + "." + std::to_string(versionMinor) + "." + std::to_string(versionPatch);
+}
+
+// Config functions
+void DeviceBootloader::Config::setStaticIPv4(std::string ip, std::string mask, std::string gateway) {
+    network.ipv4 = platform::getIPv4AddressAsBinary(ip);
+    network.ipv4Mask = platform::getIPv4AddressAsBinary(mask);
+    network.ipv4Gateway = platform::getIPv4AddressAsBinary(gateway);
+    network.staticIpv4 = true;
+}
+void DeviceBootloader::Config::setDynamicIPv4(std::string ip, std::string mask, std::string gateway) {
+    network.ipv4 = platform::getIPv4AddressAsBinary(ip);
+    network.ipv4Mask = platform::getIPv4AddressAsBinary(mask);
+    network.ipv4Gateway = platform::getIPv4AddressAsBinary(gateway);
+    network.staticIpv4 = false;
+}
+
+bool DeviceBootloader::Config::isStaticIPV4() {
+    return network.staticIpv4;
+}
+
+std::string DeviceBootloader::Config::getIPv4() {
+    return platform::getIPv4AddressAsString(network.ipv4);
+}
+std::string DeviceBootloader::Config::getIPv4Mask() {
+    return platform::getIPv4AddressAsString(network.ipv4Mask);
+}
+std::string DeviceBootloader::Config::getIPv4Gateway() {
+    return platform::getIPv4AddressAsString(network.ipv4Gateway);
+}
+
+void DeviceBootloader::Config::setDnsIPv4(std::string dns, std::string dnsAlt) {
+    network.ipv4Dns = platform::getIPv4AddressAsBinary(dns);
+    network.ipv4DnsAlt = platform::getIPv4AddressAsBinary(dnsAlt);
+}
+
+std::string DeviceBootloader::Config::getDnsIPv4() {
+    return platform::getIPv4AddressAsString(network.ipv4Dns);
+}
+
+std::string DeviceBootloader::Config::getDnsAltIPv4() {
+    return platform::getIPv4AddressAsString(network.ipv4DnsAlt);
+}
+
+void DeviceBootloader::Config::setUsbTimeout(std::chrono::milliseconds ms) {
+    usb.timeoutMs = ms.count();
+}
+
+std::chrono::milliseconds DeviceBootloader::Config::getUsbTimeout() {
+    return std::chrono::milliseconds(usb.timeoutMs);
+}
+
+void DeviceBootloader::Config::setNetworkTimeout(std::chrono::milliseconds ms) {
+    network.timeoutMs = ms.count();
+}
+
+std::chrono::milliseconds DeviceBootloader::Config::getNetworkTimeout() {
+    return std::chrono::milliseconds(network.timeoutMs);
+}
+
+void DeviceBootloader::Config::setUsbMaxSpeed(UsbSpeed speed) {
+    usb.maxUsbSpeed = static_cast<int>(speed);
+}
+
+UsbSpeed DeviceBootloader::Config::getUsbMaxSpeed() {
+    return static_cast<UsbSpeed>(usb.maxUsbSpeed);
+}
+
+void DeviceBootloader::Config::setMacAddress(std::string mac) {
+    std::array<uint8_t, 6> a;
+    int last = -1;
+    int rc = std::sscanf(mac.c_str(), "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx%n", &a[0], &a[1], &a[2], &a[3], &a[4], &a[5], &last);
+    if(rc != 6 || static_cast<long>(mac.size()) != last) {
+        throw std::invalid_argument("Invalid MAC address format " + mac);
+    }
+
+    // Set the parsed mac address
+    network.mac = a;
+}
+std::string DeviceBootloader::Config::getMacAddress() {
+    // 32 characters is adequite for MAC address representation
+    std::array<char, 32> macStr = {};
+    std::snprintf(macStr.data(),
+                  macStr.size(),
+                  "%02X:%02X:%02X:%02X:%02X:%02X",
+                  network.mac[0],
+                  network.mac[1],
+                  network.mac[2],
+                  network.mac[3],
+                  network.mac[4],
+                  network.mac[5]);
+
+    return std::string(macStr.data());
 }
 
 }  // namespace dai
