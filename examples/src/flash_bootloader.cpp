@@ -6,7 +6,7 @@
 int main(int argc, char** argv) {
     using namespace std::chrono;
 
-    dai::DeviceBootloader::Type blType = dai::DeviceBootloader::Type::USB;
+    dai::DeviceBootloader::Type blType = dai::DeviceBootloader::Type::AUTO;
     if(argc > 1) {
         std::string blTypeStr(argv[1]);
         if(blTypeStr == "usb") {
@@ -17,9 +17,6 @@ int main(int argc, char** argv) {
             std::cout << "Specify either 'usb' or 'network' bootloader type\n";
             return 0;
         }
-    } else {
-        std::cout << "Usage: " << argv[0] << " <usb/network>\n";
-        return 0;
     }
 
     std::cout << "Warning! Flashing bootloader can potentially soft brick your device and should be done with caution." << std::endl;
@@ -39,11 +36,12 @@ int main(int argc, char** argv) {
     }
 
     // Open DeviceBootloader and allow flashing bootloader
+    std::cout << "Booting latest bootloader first, will take a tad longer..." << std::endl;
     dai::DeviceBootloader bl(info, true);
     auto currentBlType = bl.getType();
 
     // Check if bootloader type is the same
-    if(currentBlType != blType) {
+    if(blType != dai::DeviceBootloader::Type::AUTO && currentBlType != blType) {
         std::cout << "Are you sure you want to flash '" << blType << "' bootloader over current '" << currentBlType << "' bootloader?" << std::endl;
         std::cout << "Type 'y' and press enter to proceed, otherwise exits: ";
         std::cin.ignore();
@@ -56,11 +54,11 @@ int main(int argc, char** argv) {
     // Create a progress callback lambda
     auto progress = [](float p) { std::cout << "Flashing Progress..." << p * 100 << "%" << std::endl; };
 
-    std::cout << "Flashing " << blType << " bootloader..." << std::endl;
+    std::cout << "Flashing " << currentBlType << " bootloader..." << std::endl;
     auto t1 = steady_clock::now();
     bool success = false;
     std::string message;
-    std::tie(success, message) = bl.flashBootloader(dai::DeviceBootloader::Memory::FLASH, blType, progress);
+    std::tie(success, message) = bl.flashBootloader(dai::DeviceBootloader::Memory::FLASH, currentBlType, progress);
     if(success) {
         std::cout << "Flashing successful. Took " << duration_cast<milliseconds>(steady_clock::now() - t1).count() << "ms" << std::endl;
     } else {
