@@ -292,4 +292,4 @@ target_compile_definitions(calibration_flash_version5 PRIVATE CALIB_PATH="${cali
 target_compile_definitions(calibration_load PRIVATE CALIB_PATH="${calib_v6}")
 
 # Bootloader configuration example
-dai_add_example(bootloader_configuration src/bootloader_configuration.cpp OFF)
+dai_add_example(bootloader_config src/bootloader_config.cpp OFF)

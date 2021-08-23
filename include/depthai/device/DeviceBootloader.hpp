@@ -297,9 +297,22 @@ class DeviceBootloader {
     std::tuple<bool, std::string> flashConfig(const Config& config, Memory memory = Memory::AUTO, Type type = Type::AUTO);
 
     /**
+     * Boots a custom FW in memory
+     * @param fw
+     * @throws A runtime exception if there are any communication issues
+     */
+    void bootMemory(const std::vector<uint8_t>& fw);
+
+    /**
+     * Boots into integrated ROM bootloader in USB mode
+     * @throws A runtime exception if there are any communication issues
+     */
+    void bootUsbRomBootloader();
+
+    /**
      * @returns Version of current running bootloader
      */
-    Version getVersion();
+    Version getVersion() const;
 
     /**
      * @returns True when bootloader was booted using latest bootloader integrated in the library.
@@ -332,10 +345,19 @@ class DeviceBootloader {
    private:
     // private static
 
-    // private variables
+    // private methods
     void init(bool embeddedMvcmd, const std::string& pathToMvcmd, tl::optional<bootloader::Type> type, bool allowBlFlash);
     void checkClosed() const;
+    template <typename T>
+    bool sendRequest(const T& request);
+    bool receiveResponseData(std::vector<uint8_t>& data);
+    template <typename T>
+    bool parseResponse(const std::vector<uint8_t>& data, T& response);
+    template <typename T>
+    bool receiveResponse(T& response);
+    Version requestVersion();
 
+    // private variables
     std::shared_ptr<XLinkConnection> connection;
     DeviceInfo deviceInfo = {};
 
@@ -354,6 +376,9 @@ class DeviceBootloader {
 
     // Allow flashing bootloader flag
     bool allowFlashingBootloader = false;
+
+    // Current connected bootloader version
+    Version version{0, 0, 2};
 };
 
 }  // namespace dai
