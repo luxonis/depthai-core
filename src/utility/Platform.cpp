@@ -18,12 +18,17 @@ namespace platform {
 
 uint32_t getIPv4AddressAsBinary(std::string address) {
     uint32_t binary = 0;
+    if(address == "") {
+        // inet_addr returns 0xFFFFFFFF if addr is ""
+        return 0;
+    }
 
 #if defined(_WIN32) || defined(__USE_W32_SOCKETS)
-    #ifdef _WIN32_WINNT 0x0501
+    #if (_WIN32_WINNT <= 0x0501)   
     binary = inet_addr(address.c_str());  // for XP
-    #endif
+    #else
     inet_pton(AF_INET, address.c_str(), &binary);  // for Vista or higher
+    #endif
 #else
     inet_pton(AF_INET, address.c_str(), &binary);
 #endif
