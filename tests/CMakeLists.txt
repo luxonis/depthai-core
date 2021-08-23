@@ -99,5 +99,5 @@ target_compile_definitions(openvino_blob PRIVATE
     OPENVINO_2021_4_BLOB_PATH="${openvino_2021_4_blob}"
 )
 
-
-
+# Device USB Speed test
+dai_add_test(device_usbspeed_test src/device_usbspeed_test.cpp)
