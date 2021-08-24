@@ -24,7 +24,6 @@ class XLinkStream {
     // static
     constexpr static int STREAM_OPEN_RETRIES = 5;
     constexpr static std::chrono::milliseconds WAIT_FOR_STREAM_RETRY{50};
-    static std::mutex xlinkStreamOperationMutex;
 
     std::string streamName;
     streamId_t streamId{INVALID_STREAM_ID};

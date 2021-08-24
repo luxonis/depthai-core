@@ -76,7 +76,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
 
     std::vector<XLinkDeviceState_t> states;
     if(state == X_LINK_ANY_STATE) {
-        states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_BOOTED};
+        states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_BOOTED, X_LINK_FLASH_BOOTED};
     } else {
         states = {state};
     }
@@ -121,6 +121,37 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceByMxId(std::string mxId, 
         }
     }
     return {false, DeviceInfo()};
+}
+
+DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
+    using namespace std::chrono;
+
+    // Device is in flash booted state. Boot to bootloader first
+    XLinkBootBootloader(&deviceInfo.desc);
+
+    // Fix deviceInfo for BOOTLOADER state
+    DeviceInfo deviceToWait = deviceInfoFix(deviceInfo, X_LINK_BOOTLOADER);
+
+    // Device desc if found
+    deviceDesc_t foundDeviceDesc = {};
+
+    // Wait for device to get to bootloader state
+    XLinkError_t rc;
+    auto tstart = steady_clock::now();
+    do {
+        rc = XLinkFindFirstSuitableDevice(X_LINK_BOOTLOADER, deviceToWait.desc, &foundDeviceDesc);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        if(rc == X_LINK_SUCCESS) break;
+    } while(steady_clock::now() - tstart < WAIT_FOR_BOOTUP_TIMEOUT);
+
+    // If device not found
+    if(rc != X_LINK_SUCCESS) {
+        throw std::runtime_error("Failed to find device (" + std::string(deviceToWait.desc.name) + "), error message: " + convertErrorCodeToString(rc));
+    }
+
+    deviceToWait.state = X_LINK_BOOTLOADER;
+    deviceToWait.desc = foundDeviceDesc;
+    return deviceToWait;
 }
 
 XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary, XLinkDeviceState_t expectedState) {
@@ -319,6 +350,11 @@ std::string XLinkConnection::convertErrorCodeToString(XLinkError_t errorCode) {
 }
 
 DeviceInfo deviceInfoFix(const DeviceInfo& dev, XLinkDeviceState_t state) {
+    if(dev.desc.protocol == X_LINK_TCP_IP) {
+        // X_LINK_TCP_IP doesn't need a fix
+        return dev;
+    }
+
     DeviceInfo fixed(dev);
 
     // Remove everything after dash

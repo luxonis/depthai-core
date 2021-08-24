@@ -48,6 +48,9 @@ std::tuple<bool, DeviceInfo> DeviceBootloader::getFirstAvailableDevice() {
     if(!found) {
         std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_BOOTLOADER);
     }
+    if(!found) {
+        std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_FLASH_BOOTED);
+    }
     return {found, dev};
 }
 
@@ -240,7 +243,13 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, 
 
         // Device wasn't already in bootloader, that means that embedded bootloader is booted
         isEmbedded = true;
-    } else if(deviceInfo.state == X_LINK_BOOTLOADER) {
+    } else if(deviceInfo.state == X_LINK_BOOTLOADER || deviceInfo.state == X_LINK_FLASH_BOOTED) {
+        // If device is in flash booted state, reset to bootloader and then continue by booting appropriate FW
+        if(deviceInfo.state == X_LINK_FLASH_BOOTED) {
+            // Boot bootloader and set current deviceInfo to new device state
+            deviceInfo = XLinkConnection::bootBootloader(deviceInfo);
+        }
+
         // In this case boot specified bootloader only if current bootloader isn't of correct type
         // Check version first, if >= 0.0.12 then check type and then either bootmemory to correct BL or continue as is
 
@@ -370,7 +379,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, 
         }
 
     } else {
-        throw std::runtime_error("Device not in UNBOOTED or BOOTLOADER state");
+        throw std::runtime_error("Device not in UNBOOTED, BOOTLOADER or FLASH_BOOTED state");
     }
 
     deviceInfo.state = X_LINK_BOOTLOADER;

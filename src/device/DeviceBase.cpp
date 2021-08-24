@@ -23,6 +23,7 @@
 #include "utility/Resources.hpp"
 
 // libraries
+#include "XLink/XLink.h"
 #include "nanorpc/core/client.h"
 #include "nanorpc/packer/nlohmann_msgpack.h"
 #include "spdlog/details/os.h"
@@ -98,7 +99,7 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::dura
     bool found = false;
     DeviceInfo deviceInfo;
     do {
-        for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER}) {
+        for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED}) {
             std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(searchState);
             if(found) break;
         }
@@ -134,6 +135,9 @@ std::tuple<bool, DeviceInfo> DeviceBase::getFirstAvailableDevice() {
     std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
     if(!found) {
         std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_BOOTLOADER);
+    }
+    if(!found) {
+        std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_FLASH_BOOTED);
     }
     return {found, dev};
 }
@@ -476,7 +480,13 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
     if(deviceInfo.state == X_LINK_UNBOOTED) {
         // Unbooted device found, boot and connect with XLinkConnection constructor
         connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
-    } else if(deviceInfo.state == X_LINK_BOOTLOADER) {
+    } else if(deviceInfo.state == X_LINK_BOOTLOADER || deviceInfo.state == X_LINK_FLASH_BOOTED) {
+        // If device is in flash booted state, reset to bootloader and then continue by booting appropriate FW
+        if(deviceInfo.state == X_LINK_FLASH_BOOTED) {
+            // Boot bootloader and set current deviceInfo to new device state
+            deviceInfo = XLinkConnection::bootBootloader(deviceInfo);
+        }
+
         // Scope so DeviceBootloader is disconnected
         {
             DeviceBootloader bl(deviceInfo);
