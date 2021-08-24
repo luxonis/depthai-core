@@ -15,7 +15,6 @@
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "pipeline/Pipeline.hpp"
-#include "utility/BootloaderHelper.hpp"
 #include "utility/Initialization.hpp"
 #include "utility/Resources.hpp"
 

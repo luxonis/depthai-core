@@ -12,11 +12,12 @@ else()
     hunter_add_package(FP16)
     hunter_add_package(libarchive-luxonis)
     hunter_add_package(spdlog)
+    hunter_add_package(ZLIB)
 endif()
 
 # If library was build as static, find all dependencies
 if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT depthai_SHARED_LIBS))
-        
+
     # BZip2 (for bspatch)
     find_package(BZip2 ${_QUIET} CONFIG REQUIRED)
 
@@ -26,10 +27,12 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT depthai_SHARED_LIBS))
     # libarchive for firmware packages
     find_package(archive_static ${_QUIET} CONFIG REQUIRED)
     find_package(lzma ${_QUIET} CONFIG REQUIRED)
+    # ZLIB for compressing Apps
+    find_package(ZLIB CONFIG REQUIRED)
 
     # spdlog for library and device logging
     find_package(spdlog ${_QUIET} CONFIG REQUIRED)
-        
+
 endif()
 
 # Add threads (c++)

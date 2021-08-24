@@ -99,5 +99,7 @@ target_compile_definitions(openvino_blob PRIVATE
     OPENVINO_2021_4_BLOB_PATH="${openvino_2021_4_blob}"
 )
 
+# Bootloader configuration tests
+dai_add_test(bootloader_config_test src/bootloader_config_test.cpp)
 
 

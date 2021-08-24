@@ -181,6 +181,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/FeatureTrackerConfig.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
+    src/utility/Platform.cpp
     src/xlink/XLinkConnection.cpp
     src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp
@@ -366,6 +367,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         FP16::fp16
         archive_static
         spdlog::spdlog
+        ZLIB::zlib
 )
 
 # Add compile definitions

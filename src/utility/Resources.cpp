@@ -78,6 +78,7 @@ std::vector<std::uint8_t> Resources::getDeviceBinary(OpenVINO::Version version, 
             // TODO(themarpe) - Unify exceptions into meaningful groups
             throw std::runtime_error(fmt::format("File at path {} pointed to by DEPTHAI_DEVICE_BINARY doesn't exist.", fwBinaryPath));
         }
+        spdlog::warn("Overriding firmware: {}", fwBinaryPath);
         // Read the file and return its contents
         return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
     }
@@ -191,11 +192,36 @@ constexpr static std::array<const char*, 2> RESOURCE_LIST_BOOTLOADER = {
 };
 
 std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type type) {
+    // Check if env variable DEPTHAI_BOOTLOADER_BINARY_USB/_ETH is set
+    std::string blEnvVar;
+    if(type == dai::bootloader::Type::USB) {
+        blEnvVar = "DEPTHAI_BOOTLOADER_BINARY_USB";
+    } else if(type == dai::bootloader::Type::NETWORK) {
+        blEnvVar = "DEPTHAI_BOOTLOADER_BINARY_ETH";
+    }
+    auto blBinaryPath = spdlog::details::os::getenv(blEnvVar.c_str());
+    if(!blBinaryPath.empty()) {
+        // Load binary file at path
+        std::ifstream stream(blBinaryPath, std::ios::binary);
+        if(!stream.is_open()) {
+            // Throw an error
+            // TODO(themarpe) - Unify exceptions into meaningful groups
+            throw std::runtime_error(fmt::format("File at path {} pointed to by {} doesn't exist.", blBinaryPath, blEnvVar));
+        }
+        spdlog::warn("Overriding bootloader {}: {}", blEnvVar, blBinaryPath);
+        // Read the file and return its content
+        return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
+    }
+
     // Acquire mutex (this mutex signifies that lazy load is complete)
     // It is necessary when accessing resourceMap variable
     std::unique_lock<std::mutex> lock(mtxBootloader);
 
     switch(type) {
+        case dai::bootloader::Type::AUTO:
+            throw std::invalid_argument("DeviceBootloader::Type::AUTO not allowed, when getting bootloader firmware.");
+            break;
+
         case dai::bootloader::Type::USB:
             return resourceMapBootloader[DEVICE_BOOTLOADER_USB_PATH];
             break;
