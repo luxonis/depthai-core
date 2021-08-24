@@ -15,11 +15,11 @@ DepthAI library doesn't yet provide API stability guarantees. While we take care
 - cmake >= 3.4
 - libusb1 development package (MacOS & Linux only)
 - C/C++14 compiler
-- [optional] OpenCV 4
+- [optional] OpenCV 4 (required if building examples)
 
-MacOS: `brew install libusb`
+MacOS: `brew install libusb`, optionally with `brew install opencv`
 
-Linux: `sudo apt install libusb-1.0-0-dev`
+Linux: `sudo apt install libusb-1.0-0-dev`, optionally with `sudo apt install libopencv-dev`
 
 ## Integration
 
@@ -131,6 +131,23 @@ cd build
 ctest
 ```
 
+## Running examples
+
+To run the tests build the library with the following options
+```
+cmake -H. -Bbuild -D DEPTHAI_BUILD_EXAMPLES=ON
+cmake --build build
+```
+
+Then navigate to `build/examples` folder and run a preferred example
+```
+cd build/examples
+./rgb_mobilenet 
+```
+
+Please be aware that multi config generators (like Visual Studio on Windows) will have the examples built in `build/examples/[Debug/Release/...]/rgb_mobilenet`
+
+
 ## Style check
 
 The library uses clang format to enforce a certain coding style.
@@ -172,6 +189,17 @@ This retains the libraries source code, so that debugger can step through it (th
 
 
 ## Troubleshooting
+
+### Build fails with missing OpenCV dependency
+
+If your build process happen to fail due to OpenCV library not being found, but you have the OpenCV installed, please
+run build with additional `-D OpenCV_DIR` flag (replacing default Ubuntu path `/usr/lib/x86_64-linux-gnu/cmake/opencv4` with yours)
+
+```
+cmake -H. -Bbuild -D OpenCV_DIR=/usr/lib/x86_64-linux-gnu/cmake/opencv4
+```
+
+Now the build process should correctly discover your OpenCV installation
 
 ### Hunter
 Hunter is a CMake-only dependency manager for C/C++ projects.
