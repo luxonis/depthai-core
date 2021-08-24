@@ -102,4 +102,5 @@ target_compile_definitions(openvino_blob PRIVATE
 # Bootloader configuration tests
 dai_add_test(bootloader_config_test src/bootloader_config_test.cpp)
 
-
+# Device USB Speed test
+dai_add_test(device_usbspeed_test src/device_usbspeed_test.cpp)

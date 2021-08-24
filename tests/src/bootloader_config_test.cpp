@@ -8,12 +8,11 @@
 #include <depthai/depthai.hpp>
 
 TEST_CASE("Bootloader Config") {
-
     dai::DeviceBootloader::Config config;
 
     // By default IPv4 is 0.0.0.0 (invalid)
     REQUIRE("0.0.0.0" == config.getIPv4());
-    
+
     std::string ipv4 = "192.168.1.150";
     std::string ipv4Mask = "255.255.255.0";
     std::string ipv4Gateway = "192.168.1.1";
@@ -21,7 +20,7 @@ TEST_CASE("Bootloader Config") {
     config.setStaticIPv4(ipv4, ipv4Mask, ipv4Gateway);
 
     std::array<uint8_t, 4> ipv4InMemory = {192, 168, 1, 150};
-    for(int i = 0; i < ipv4InMemory.size(); i++){
+    for(int i = 0; i < ipv4InMemory.size(); i++) {
         REQUIRE(ipv4InMemory[i] == reinterpret_cast<uint8_t*>(&config.network.ipv4)[i]);
     }
 
@@ -49,5 +48,4 @@ TEST_CASE("Bootloader Config") {
     // std::cout << "Orig mac address: " << mac << " len: " << mac.length() << std::endl;
     // std::cout << "Get  mac address: " << config.getMacAddress() << " len: " << config.getMacAddress().length() << std::endl;
     REQUIRE(config.getMacAddress() == mac);
-
 }

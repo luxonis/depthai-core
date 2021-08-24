@@ -31,6 +31,10 @@ Device::Device(const Pipeline& pipeline, bool usb2Mode) : DeviceBase(pipeline.ge
     tryStartPipeline(pipeline);
 }
 
+Device::Device(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) : DeviceBase(pipeline.getOpenVINOVersion(), maxUsbSpeed) {
+    tryStartPipeline(pipeline);
+}
+
 Device::Device(const Pipeline& pipeline, const char* pathToCmd) : DeviceBase(pipeline.getOpenVINOVersion(), pathToCmd) {
     tryStartPipeline(pipeline);
 }
@@ -53,6 +57,10 @@ Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* 
 
 Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd)
     : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, pathToCmd) {
+    tryStartPipeline(pipeline);
+}
+
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, maxUsbSpeed) {
     tryStartPipeline(pipeline);
 }
 

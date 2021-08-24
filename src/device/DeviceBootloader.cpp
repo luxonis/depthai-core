@@ -66,8 +66,10 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
     PipelineSchema schema;
     Assets assets;
     std::vector<std::uint8_t> assetStorage;
-    OpenVINO::Version version;
-    pipeline.serialize(schema, assets, assetStorage, version);
+    pipeline.serialize(schema, assets, assetStorage);
+
+    // Get openvino version
+    OpenVINO::Version version = pipeline.getOpenVINOVersion();
 
     // Prepare device firmware
     std::vector<uint8_t> deviceFirmware;
@@ -770,7 +772,7 @@ void DeviceBootloader::bootMemory(const std::vector<uint8_t>& embeddedFw) {
     // Then wait for the link to fall down
     try {
         stream->read();
-    } catch (const std::exception& ex){
+    } catch(const std::exception& ex) {
         // ignore
     }
 }
@@ -784,7 +786,7 @@ void DeviceBootloader::bootUsbRomBootloader() {
     // Then wait for the link to fall down
     try {
         stream->read();
-    } catch (const std::exception& ex){
+    } catch(const std::exception& ex) {
         // ignore
     }
 }

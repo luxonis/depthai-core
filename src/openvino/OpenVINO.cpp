@@ -11,6 +11,9 @@
 
 namespace dai {
 
+// Definition
+constexpr OpenVINO::Version OpenVINO::DEFAULT_VERSION;
+
 // static member init
 // {{major, minor}, 'latest openvino version to support it'}
 // major and minor represent openvino NN blob version information
