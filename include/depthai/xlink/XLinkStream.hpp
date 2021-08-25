@@ -60,4 +60,22 @@ class XLinkStream {
     streamId_t getStreamId() const;
 };
 
+struct XLinkError : public std::runtime_error {
+    const XLinkError_t status = X_LINK_ERROR;
+    const std::string streamName;
+
+    using std::runtime_error::runtime_error;
+
+    XLinkError(XLinkError_t statusID, std::string stream, const std::string& message)
+        : runtime_error(message), status(statusID), streamName(std::move(stream)) {}
+};
+struct XLinkReadError : public XLinkError {
+    using XLinkError = XLinkError;
+    XLinkReadError(XLinkError_t status, const std::string& stream);
+};
+struct XLinkWriteError : public XLinkError {
+    using XLinkError = XLinkError;
+    XLinkWriteError(XLinkError_t status, const std::string& stream);
+};
+
 }  // namespace dai
