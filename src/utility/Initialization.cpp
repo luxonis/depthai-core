@@ -9,6 +9,14 @@
 #include "spdlog/cfg/helpers.h"
 #include "spdlog/details/os.h"
 #include "spdlog/spdlog.h"
+#include "backward.hpp"
+
+// Backward library stacktrace handling
+namespace backward {
+
+backward::SignalHandling sh;
+
+} // namespace backward
 
 // For easier access to dai namespaced symbols
 namespace dai {

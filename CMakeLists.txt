@@ -20,6 +20,10 @@ HunterGate(
     LOCAL # Local config for dependencies
 )
 
+# TODO(themarpe) - might be more applicable to set as a target property
+# Additional function information for 'backward' stacktrace
+set(CMAKE_ENABLE_EXPORTS ON)
+
 # Move binary dir if windows, to shorten the path
 if(WIN32)
     set(HUNTER_BINARY_DIR "${HUNTER_GATE_ROOT}/_bin" CACHE STRING "Hunter binary directory")
@@ -368,6 +372,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         archive_static
         spdlog::spdlog
         ZLIB::zlib
+        Backward::Backward
 )
 
 # Add compile definitions
