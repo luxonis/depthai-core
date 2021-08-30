@@ -73,7 +73,7 @@ void ImgFrame::setSize(unsigned int width, unsigned int height) {
     setHeight(height);
 }
 void ImgFrame::setSize(std::tuple<unsigned int, unsigned int> size) {
-    setSize(std::get<0>(size), std::get<1>(size))
+    setSize(std::get<0>(size), std::get<1>(size));
 }
 void ImgFrame::setType(RawImgFrame::Type type) {
     img.fb.type = type;
