@@ -12,9 +12,10 @@
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 
-// libraries
-#include "nanorpc/core/client.h"
-#include "nanorpc/packer/nlohmann_msgpack.h"
+// shared
+#include "depthai-bootloader-shared/Memory.hpp"
+#include "depthai-bootloader-shared/Section.hpp"
+#include "depthai-bootloader-shared/Type.hpp"
 
 namespace dai {
 
@@ -25,6 +26,11 @@ namespace dai {
  */
 class DeviceBootloader {
    public:
+    // Alias
+    using Type = dai::bootloader::Type;
+    using Memory = dai::bootloader::Memory;
+    using Section = dai::bootloader::Section;
+
     /// Bootloader version structure
     struct Version {
         /// Construct Version from string
@@ -32,14 +38,30 @@ class DeviceBootloader {
         /// Construct Version major, minor and patch numbers
         Version(unsigned major, unsigned minor, unsigned patch);
         bool operator==(const Version& other) const;
-        bool operator>(const Version& other) const;
         bool operator<(const Version& other) const;
+        inline bool operator!=(const Version& rhs) {
+            return !(*this == rhs);
+        }
+        inline bool operator>(const Version& rhs) {
+            return rhs < *this;
+        }
+        inline bool operator<=(const Version& rhs) {
+            return !(*this > rhs);
+        }
+        inline bool operator>=(const Version& rhs) {
+            return !(*this < rhs);
+        }
         /// Convert Version to string
         std::string toString() const;
 
        private:
         unsigned versionMajor, versionMinor, versionPatch;
     };
+
+    // constants
+
+    /// Default Bootloader type
+    static constexpr const Type DEFAULT_TYPE{Type::USB};
 
     // Static API
     /**
@@ -78,8 +100,7 @@ class DeviceBootloader {
     /**
      * @returns Embedded bootloader binary
      */
-    static std::vector<std::uint8_t> getEmbeddedBootloaderBinary();
-    //
+    static std::vector<std::uint8_t> getEmbeddedBootloaderBinary(Type type = DEFAULT_TYPE);
 
     DeviceBootloader() = delete;
 
@@ -88,6 +109,14 @@ class DeviceBootloader {
      * @param devInfo DeviceInfo of which to boot or connect to
      */
     explicit DeviceBootloader(const DeviceInfo& devInfo);
+
+    /**
+     * Connects to device in bootloader of specified type. Throws if it wasn't possible.
+     * This constructor will automatically boot into specified bootloader type if not already running
+     * @param devInfo DeviceInfo of which to boot or connect to
+     * @param type Type of bootloader to boot/connect to.
+     */
+    DeviceBootloader(const DeviceInfo& devInfo, Type type);
 
     /**
      * Connects to or boots device in bootloader mode depending on devInfo state with a custom bootloader firmware.
@@ -124,6 +153,24 @@ class DeviceBootloader {
     std::tuple<bool, std::string> flashBootloader(std::function<void(float)> progressCallback, std::string path = "");
 
     /**
+     * Flash selected bootloader to the current board
+     * @param memory Memory to flash
+     * @param type Bootloader type to flash
+     * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
+     * @param path Optional parameter to custom bootloader to flash
+     */
+    std::tuple<bool, std::string> flashBootloader(Memory memory, Type type, std::function<void(float)> progressCallback, std::string path = "");
+
+    /**
+     * Flash arbitrary data at custom offset in specified memory
+     * @param memory Memory to flash
+     * @param offset Offset at which to flash the given data in bytes
+     * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
+     * @param data Data to flash
+     */
+    // std::tuple<bool, std::string> flashCustom(Memory memory, uint32_t offset, std::function<void(float)> progressCb, std::vector<uint8_t> data);
+
+    /**
      * @returns Version of current running bootloader
      */
     Version getVersion();
@@ -131,7 +178,7 @@ class DeviceBootloader {
     /**
      * @returns True whether the bootloader running is flashed or booted by library
      */
-    bool isEmbeddedVersion();
+    bool isEmbeddedVersion() const;
 
     /**
      * Explicitly closes connection to device.
@@ -149,13 +196,14 @@ class DeviceBootloader {
     // private static
 
     // private variables
-    void init(bool embeddedMvcmd, const std::string& pathToMvcmd);
+    void init(bool embeddedMvcmd, const std::string& pathToMvcmd, tl::optional<bootloader::Type> type);
     void checkClosed() const;
 
     std::shared_ptr<XLinkConnection> connection;
     DeviceInfo deviceInfo = {};
 
     bool isEmbedded = false;
+    Type bootloaderType;
 
     // closed
     std::atomic<bool> closed{false};

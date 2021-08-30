@@ -14,12 +14,12 @@ DepthAI library doesn't yet provide API stability guarantees. While we take care
 ## Dependencies
 - cmake >= 3.4
 - libusb1 development package (MacOS & Linux only)
-- C/C++11 compiler
-- [optional] OpenCV 4
+- C/C++14 compiler
+- [optional] OpenCV 4 (required if building examples)
 
-MacOS: `brew install libusb`
+MacOS: `brew install libusb`, optionally with `brew install opencv`
 
-Linux: `sudo apt install libusb-1.0-0-dev`
+Linux: `sudo apt install libusb-1.0-0-dev`, optionally with `sudo apt install libopencv-dev`
 
 ## Integration
 
@@ -66,7 +66,7 @@ target_link_libraries([my-app] PRIVATE depthai::opencv)
 
 ### Non-CMake integration (Visual Studio, Xcode, CodeBlocks, ...)
 
-To integrate into a different build system than CMake, prefered way is compiling as dynamic library and pointing to correct include directories.
+To integrate into a different build system than CMake, prefered way is compiling as dynamic library and setting correct build options.
 1. First build as dynamic library: [Building Dynamic library](###dynamic-library)
 2. Then install: [Installing](##installing)
 3. Set needed library directories:
@@ -75,9 +75,15 @@ To integrate into a different build system than CMake, prefered way is compiling
 4. And include directories
     - `build/install/include` (library headers)
     - `build/install/include/depthai-shared/3rdparty` (shared 3rdparty headers)
-    - `build/install/lib/cmake/depthai/dependencies/include` (dependencies headers)
+    - `build/install/lib/cmake/depthai/dependencies/include` (dependency headers)
+5. Add the following defines
+    - `XLINK_USE_MX_ID_NAME=ON`
+    - `__PC__=ON`
 
 > ℹ️ Threading library might need to be linked to explicitly.
+
+> ℹ️ Check `build/depthai-core-integration.txt` or `build/depthai-opencv-integration.txt` for up to date define options.
+The generated integration file also specifies include paths without requiring installation.
 
 ## Building
 
@@ -125,6 +131,23 @@ cd build
 ctest
 ```
 
+## Running examples
+
+To run the tests build the library with the following options
+```
+cmake -H. -Bbuild -D DEPTHAI_BUILD_EXAMPLES=ON
+cmake --build build
+```
+
+Then navigate to `build/examples` folder and run a preferred example
+```
+cd build/examples
+./rgb_mobilenet 
+```
+
+Please be aware that multi config generators (like Visual Studio on Windows) will have the examples built in `build/examples/[Debug/Release/...]/rgb_mobilenet`
+
+
 ## Style check
 
 The library uses clang format to enforce a certain coding style.
@@ -166,6 +189,17 @@ This retains the libraries source code, so that debugger can step through it (th
 
 
 ## Troubleshooting
+
+### Build fails with missing OpenCV dependency
+
+If your build process happen to fail due to OpenCV library not being found, but you have the OpenCV installed, please
+run build with additional `-D OpenCV_DIR` flag (replacing default Ubuntu path `/usr/lib/x86_64-linux-gnu/cmake/opencv4` with yours)
+
+```
+cmake -H. -Bbuild -D OpenCV_DIR=/usr/lib/x86_64-linux-gnu/cmake/opencv4
+```
+
+Now the build process should correctly discover your OpenCV installation
 
 ### Hunter
 Hunter is a CMake-only dependency manager for C/C++ projects.

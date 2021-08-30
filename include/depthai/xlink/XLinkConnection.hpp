@@ -68,7 +68,8 @@ class XLinkConnection {
     bool isClosed() const;
 
    private:
-    friend class XLinkStream;
+    friend struct XLinkReadError;
+    friend struct XLinkWriteError;
     // static
     static bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, const std::string& pathToMvcmd);
     static bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, std::vector<std::uint8_t>& mvcmd);
@@ -91,7 +92,7 @@ class XLinkConnection {
     // closed
     std::atomic<bool> closed{false};
 
-    constexpr static std::chrono::milliseconds WAIT_FOR_BOOTUP_TIMEOUT{5000};
+    constexpr static std::chrono::milliseconds WAIT_FOR_BOOTUP_TIMEOUT{15000};
     constexpr static std::chrono::milliseconds WAIT_FOR_CONNECT_TIMEOUT{5000};
 };
 

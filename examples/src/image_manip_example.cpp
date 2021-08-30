@@ -1,6 +1,3 @@
-
-
-#include <cstdio>
 #include <iostream>
 
 #include "utility.hpp"
@@ -9,9 +6,11 @@
 #include "depthai/depthai.hpp"
 
 int main() {
+    // Create pipeline
     dai::Pipeline pipeline;
 
-    auto colorCam = pipeline.create<dai::node::ColorCamera>();
+    // Define sources and outputs
+    auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto imageManip = pipeline.create<dai::node::ImageManip>();
     auto imageManip2 = pipeline.create<dai::node::ImageManip>();
     auto camOut = pipeline.create<dai::node::XLinkOut>();
@@ -24,10 +23,11 @@ int main() {
     manipOut2->setStreamName("manip2");
     manip2In->setStreamName("manip2In");
 
-    colorCam->setPreviewSize(304, 304);
-    colorCam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    colorCam->setInterleaved(false);
-    colorCam->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
+    // Properties
+    camRgb->setPreviewSize(304, 304);
+    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    camRgb->setInterleaved(false);
+    camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
 
     // Create a center crop image manipulation
     imageManip->initialConfig.setCenterCrop(0.7f);
@@ -37,20 +37,12 @@ int main() {
     imageManip2->initialConfig.setCropRect(0.1, 0.1, 0.3, 0.3);
     imageManip2->setWaitForConfigInput(true);
 
-    // Link nodes CAM -> XLINK
-    colorCam->preview.link(camOut->input);
-
-    // Link nodes CAM -> imageManip -> XLINK
-    colorCam->preview.link(imageManip->inputImage);
+    // Linking
+    camRgb->preview.link(camOut->input);
+    camRgb->preview.link(imageManip->inputImage);
     imageManip->out.link(manipOut->input);
-
-    // ImageManip -> ImageManip 2
     imageManip->out.link(imageManip2->inputImage);
-
-    // ImageManip2 -> XLinkOut
     imageManip2->out.link(manipOut2->input);
-
-    // Host config -> image manip 2
     manip2In->out.link(imageManip2->inputConfig);
 
     // Connect to device and start pipeline
@@ -66,6 +58,7 @@ int main() {
     int frameCounter = 0;
     float xmin = 0.1f;
     float xmax = 0.3f;
+
     while(true) {
         xmin += 0.003f;
         xmax += 0.003f;
@@ -99,4 +92,5 @@ int main() {
 
         frameCounter++;
     }
+    return 0;
 }
