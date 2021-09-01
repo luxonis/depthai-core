@@ -159,7 +159,7 @@ class CalibrationHandler {
 
     /**
      * Get the Camera Extrinsics object between two cameras from the data loaded if there is a linked connection
-     *  between any two cameras then there relative rotation and translation is returned by this function.
+     *  between any two cameras then there relative rotation and translation (in centimeters) is returned by this function.
      *
      * @param srcCamera Camera Id of the camera which will be considerd as origin.
      * @param dstCamera  Camera Id of the destination camera to which we are fetching the rotation and translation from the SrcCamera
