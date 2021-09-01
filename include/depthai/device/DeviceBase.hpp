@@ -253,6 +253,22 @@ class DeviceBase {
     LogLevel getLogLevel();
 
     /**
+     * Sets the chunk size for splitting device-sent XLink packets. A larger value could
+     * increase performance, and 0 disables chunking. A negative value is ignored.
+     * Device defaults are configured per protocol, currently 64*1024 for both USB and Ethernet.
+     *
+     * @param sizeBytes XLink chunk size in bytes
+     */
+    void setXLinkChunkSize(int sizeBytes);
+
+    /**
+     * Gets current XLink chunk size.
+     *
+     * @returns XLink chunk size in bytes
+     */
+    int getXLinkChunkSize();
+
+    /**
      * Get the Device Info object o the device which is currently running
      *
      * @return DeviceInfo of the current device in execution

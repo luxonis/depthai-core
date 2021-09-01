@@ -722,6 +722,18 @@ LogLevel DeviceBase::getLogLevel() {
     return pimpl->rpcClient->call("getLogLevel").as<LogLevel>();
 }
 
+void DeviceBase::setXLinkChunkSize(int sizeBytes) {
+    checkClosed();
+
+    pimpl->rpcClient->call("setXLinkChunkSize", sizeBytes);
+}
+
+int DeviceBase::getXLinkChunkSize() {
+    checkClosed();
+
+    return pimpl->rpcClient->call("getXLinkChunkSize").as<int>();
+}
+
 DeviceInfo DeviceBase::getDeviceInfo() {
     return deviceInfo;
 }

@@ -41,6 +41,12 @@ class ImageManipConfig : public Buffer {
     void setCropRect(float xmin, float ymin, float xmax, float ymax);
 
     /**
+     * Specifies crop with rectangle with normalized values (0..1)
+     * @param coordinates Coordinate of rectangle
+     */
+    void setCropRect(std::tuple<float, float, float, float> coordinates);
+
+    /**
      * Specifies crop with rotated rectangle. Optionally as non normalized coordinates
      * @param rr Rotated rectangle which specifies crop
      * @param normalizedCoords If true coordinates are in normalized range (0..1) otherwise absolute
@@ -105,6 +111,12 @@ class ImageManipConfig : public Buffer {
     void setResize(int w, int h);
 
     /**
+     * Specifies output image size. After crop stage the image will be streched to fit.
+     * @param size Size in pixels
+     */
+    void setResize(std::tuple<int, int> size);
+
+    /**
      * Specifies output image size. After crop stage the image will be resized by preserving aspect ration.
      * Optionally background can be specified.
      *
@@ -115,6 +127,17 @@ class ImageManipConfig : public Buffer {
      * @param bgBlue Blue component
      */
     void setResizeThumbnail(int w, int h, int bgRed = 0, int bgGreen = 0, int bgBlue = 0);
+
+    /**
+     * Specifies output image size. After crop stage the image will be resized by preserving aspect ration.
+     * Optionally background can be specified.
+     *
+     * @param size Size in pixels
+     * @param bgRed Red component
+     * @param bgGreen Green component
+     * @param bgBlue Blue component
+     */
+    void setResizeThumbnail(std::tuple<int, int> size, int bgRed = 0, int bgGreen = 0, int bgBlue = 0);
 
     /**
      * Specify output frame type.
