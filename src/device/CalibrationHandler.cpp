@@ -13,6 +13,7 @@
 #include "nlohmann/json.hpp"
 #include "spdlog/spdlog.h"
 #include "utility/matrixOps.hpp"
+#include <math.h>
 
 namespace dai {
 
@@ -252,11 +253,19 @@ std::vector<float> CalibrationHandler::getDistortionCoefficients(CameraBoardSock
     return eepromData.cameraData[cameraId].distortionCoeff;
 }
 
-float CalibrationHandler::getFov(CameraBoardSocket cameraId) {
-    if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end())
-        throw std::runtime_error("There is no Camera data available corresponding to the the requested cameraID");
+float CalibrationHandler::getFov(CameraBoardSocket cameraId, bool useSpec) {
+    if (useSpec) {
+        if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end())
+            throw std::runtime_error("There is no Camera data available corresponding to the the requested cameraID");
 
-    return eepromData.cameraData[cameraId].specHfovDeg;
+        return eepromData.cameraData[cameraId].specHfovDeg;
+    }
+    // Calculate fov from intrinsics
+    std::vector<std::vector<float>> intrinsics;
+    int width, height;
+    std::tie(intrinsics, width, height) = CalibrationHandler::getDefaultIntrinsics(dai::CameraBoardSocket::LEFT);
+    auto focalLength = intrinsics[0][0];
+    return 2 * 180 / M_PI * atan(width * 0.5 / focalLength);
 }
 
 uint8_t CalibrationHandler::getLensPosition(CameraBoardSocket cameraId) {
