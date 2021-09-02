@@ -9,6 +9,9 @@
 #include <thread>
 #include <vector>
 
+// project
+#include "depthai/utility/Initialization.hpp"
+
 // libraries
 #include <XLink/XLink.h>
 extern "C" {
@@ -53,24 +56,8 @@ static DeviceInfo deviceInfoFix(const DeviceInfo& d, XLinkDeviceState_t state);
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT;
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_CONNECT_TIMEOUT;
 
-void XLinkConnection::initXLinkGlobal() {
-    if(xlinkGlobalInitialized.exchange(true)) return;
-
-    xlinkGlobalHandler.protocol = X_LINK_USB_VSC;
-    auto status = XLinkInitialize(&xlinkGlobalHandler);
-    if(X_LINK_SUCCESS != status) {
-        throw std::runtime_error("Couldn't initialize XLink");
-    }
-
-    // Suppress XLink related errors
-    mvLogDefaultLevelSet(MVLOG_LAST);
-}
-
-std::atomic<bool> XLinkConnection::xlinkGlobalInitialized{false};
-XLinkGlobalHandler_t XLinkConnection::xlinkGlobalHandler = {};
-
 std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState_t state) {
-    initXLinkGlobal();
+    initialize();
 
     std::vector<DeviceInfo> devices;
 
@@ -239,7 +226,7 @@ bool XLinkConnection::bootAvailableDevice(const deviceDesc_t& deviceToBoot, std:
 }
 
 void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceState_t expectedState) {
-    initXLinkGlobal();
+    initialize();
     assert(deviceLinkId == -1);
 
     XLinkError_t rc = X_LINK_ERROR;

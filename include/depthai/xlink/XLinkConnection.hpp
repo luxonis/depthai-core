@@ -33,10 +33,6 @@ struct DeviceInfo {
  * Represents connection between host and device over XLink protocol
  */
 class XLinkConnection {
-    static std::atomic<bool> xlinkGlobalInitialized;
-    static XLinkGlobalHandler_t xlinkGlobalHandler;
-    static void initXLinkGlobal();
-
    public:
     // static API
     static std::vector<DeviceInfo> getAllConnectedDevices(XLinkDeviceState_t state = X_LINK_ANY_STATE);
