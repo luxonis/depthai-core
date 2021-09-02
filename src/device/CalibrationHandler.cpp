@@ -1,5 +1,6 @@
 #include "device/CalibrationHandler.hpp"
 
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -13,7 +14,6 @@
 #include "nlohmann/json.hpp"
 #include "spdlog/spdlog.h"
 #include "utility/matrixOps.hpp"
-#include <math.h>
 
 namespace dai {
 
@@ -254,18 +254,18 @@ std::vector<float> CalibrationHandler::getDistortionCoefficients(CameraBoardSock
 }
 
 float CalibrationHandler::getFov(CameraBoardSocket cameraId, bool useSpec) {
-    if (useSpec) {
-        if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end())
-            throw std::runtime_error("There is no Camera data available corresponding to the the requested cameraID");
+    if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end())
+        throw std::runtime_error("There is no Camera data available corresponding to the the requested cameraID");
 
+    if(useSpec) {
         return eepromData.cameraData[cameraId].specHfovDeg;
     }
     // Calculate fov from intrinsics
     std::vector<std::vector<float>> intrinsics;
     int width, height;
-    std::tie(intrinsics, width, height) = CalibrationHandler::getDefaultIntrinsics(dai::CameraBoardSocket::LEFT);
+    std::tie(intrinsics, width, height) = CalibrationHandler::getDefaultIntrinsics(cameraId);
     auto focalLength = intrinsics[0][0];
-    return 2 * 180 / M_PI * atan(width * 0.5 / focalLength);
+    return 2 * 180 / M_PI * atan(width * 0.5f / focalLength);
 }
 
 uint8_t CalibrationHandler::getLensPosition(CameraBoardSocket cameraId) {

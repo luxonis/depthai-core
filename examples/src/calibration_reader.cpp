@@ -13,9 +13,9 @@ void printMatrix(std::vector<std::vector<float>> matrix) {
     for(auto row : matrix) {
         out += "[";
         for(auto val : row) out += to_string(val) + ", ";
-        out = out.substr(0, out.size()-2) + "]\n";
+        out = out.substr(0, out.size() - 2) + "]\n";
     }
-    out = out.substr(0, out.size()-1) + "]\n\n";
+    out = out.substr(0, out.size() - 1) + "]\n\n";
     cout << out;
 }
 int main(int argc, char** argv) {
@@ -38,7 +38,8 @@ int main(int argc, char** argv) {
 
     cout << "Stereo baseline distance: " << calibData.getBaselineDistance() << " cm" << endl;
 
-    cout << "Mono FOV from camera specs: " << calibData.getFov(dai::CameraBoardSocket::LEFT) << ", calculated FOV: " << calibData.getFov(dai::CameraBoardSocket::LEFT, false) << endl;
+    cout << "Mono FOV from camera specs: " << calibData.getFov(dai::CameraBoardSocket::LEFT)
+         << ", calculated FOV: " << calibData.getFov(dai::CameraBoardSocket::LEFT, false) << endl;
 
     cout << "Intrinsics from getCameraIntrinsics function full resolution:" << endl;
     intrinsics = calibData.getCameraIntrinsics(dai::CameraBoardSocket::RIGHT);
