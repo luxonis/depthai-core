@@ -196,7 +196,9 @@ class CalibrationHandler {
      * @param useSpecTranslation Enabling this bool uses the translation information from the board design data (not the calibration data)
      * @return baseline distance in centimeters
      */
-    float getBaselineDistance(CameraBoardSocket cam1 = CameraBoardSocket::RIGHT, CameraBoardSocket cam2 = CameraBoardSocket::LEFT, bool useSpecTranslation = true);
+    float getBaselineDistance(CameraBoardSocket cam1 = CameraBoardSocket::RIGHT,
+                              CameraBoardSocket cam2 = CameraBoardSocket::LEFT,
+                              bool useSpecTranslation = true);
 
     /**
      * Get the Camera To Imu Extrinsics object
