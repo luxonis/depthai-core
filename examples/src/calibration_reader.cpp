@@ -39,7 +39,7 @@ int main(int argc, char** argv) {
         cout << endl;
     }
 
-    cout << "Intrinsics from getCameraIntrinsicscalibData function 1280 x 720  ->" << endl;
+    cout << "Intrinsics from getCameraIntrinsics function 1280 x 720  ->" << endl;
     intrinsics = calibData.getCameraIntrinsics(dai::CameraBoardSocket::RIGHT, 1280, 720);
 
     for(auto row : intrinsics) {
