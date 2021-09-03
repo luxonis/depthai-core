@@ -8,7 +8,7 @@ namespace node {
 EdgeDetector::EdgeDetector(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     : Node(par, nodeId), rawConfig(std::make_shared<RawEdgeDetectorConfig>()), initialConfig(rawConfig) {
     inputs = {&inputConfig, &inputImage};
-    outputs = {&outputImage};
+    outputs = {&outputImage, &passthroughInputImage};
 }
 
 std::string EdgeDetector::getName() const {

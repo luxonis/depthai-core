@@ -140,6 +140,13 @@ class StereoDepth : public Node {
     void setInputResolution(int width, int height);
 
     /**
+     * Specify input resolution size
+     *
+     * Optional if MonoCamera exists, otherwise necessary
+     */
+    void setInputResolution(std::tuple<int, int> resolution);
+
+    /**
      * Specify disparity/depth output resolution size, implemented by scaling.
      *
      * Currently only applicable when aligning to RGB camera

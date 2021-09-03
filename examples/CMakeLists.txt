@@ -271,6 +271,10 @@ dai_add_example(bootloader_version src/bootloader_version.cpp ON)
 #dai_add_example(flash_bootloader src/flash_bootloader.cpp OFF)
 dai_add_example(edge_detector src/edge_detector.cpp ON)
 
+dai_add_example(feature_tracker src/feature_tracker.cpp ON)
+
+dai_add_example(corner_detector src/corner_detector.cpp ON)
+
 # Calibration Read and write samples
 dai_add_example(calibration_flash src/calibration_flash.cpp OFF)
 dai_add_example(calibration_flash_version5 src/calibration_flash_v5.cpp OFF)

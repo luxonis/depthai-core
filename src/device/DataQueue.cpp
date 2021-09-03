@@ -6,7 +6,7 @@
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
-#include "pipeline/datatype/StreamPacketParser.hpp"
+#include "pipeline/datatype/StreamMessageParser.hpp"
 
 // shared
 #include "depthai-shared/xlink/XLinkConstants.hpp"
@@ -35,7 +35,7 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
                 packet = stream.readRaw();
 
                 // parse packet
-                auto data = parsePacketToADatatype(packet);
+                auto data = StreamMessageParser::parseMessageToADatatype(packet);
 
                 // Trace level debugging
                 if(spdlog::get_level() == spdlog::level::trace) {
@@ -194,7 +194,7 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
                 }
 
                 // serialize
-                auto serialized = serializeData(data);
+                auto serialized = StreamMessageParser::serializeMessage(data);
 
                 // Blocking
                 stream.write(serialized);
