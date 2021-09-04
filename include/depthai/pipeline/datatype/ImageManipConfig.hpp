@@ -200,6 +200,16 @@ class ImageManipConfig : public Buffer {
     int getResizeHeight() const;
 
     /**
+     * @returns Crop configuration
+     */
+    RawImageManipConfig::CropConfig getCropConfig() const;
+
+    /**
+     * @returns Resize configuration
+     */
+    RawImageManipConfig::ResizeConfig getResizeConfig() const;
+
+    /**
      * @returns True if resize thumbnail mode is set, false otherwise
      */
     bool isResizeThumbnail() const;
