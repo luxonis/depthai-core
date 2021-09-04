@@ -191,6 +191,18 @@ int ImageManipConfig::getResizeHeight() const {
     return cfg.resizeConfig.height;
 }
 
+ImageManipConfig::CropConfig ImageManipConfig::getCropConfig() const {
+    return cfg.cropConfig;
+}
+
+ImageManipConfig::ResizeConfig ImageManipConfig::getResizeConfig() const {
+    return cfg.resizeConfig;
+}
+
+ImageManipConfig::FormatConfig ImageManipConfig::getFormatConfig() const {
+    return cfg.formatConfig;
+}
+
 bool ImageManipConfig::isResizeThumbnail() const {
     return cfg.resizeConfig.lockAspectRatioFill;
 }
