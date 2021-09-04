@@ -25,6 +25,11 @@ class ImageManipConfig : public Buffer {
     RawImageManipConfig& cfg;
 
    public:
+    // Alias
+    using CropConfig = RawImageManipConfig::CropConfig;
+    using ResizeConfig = RawImageManipConfig::ResizeConfig;
+    using FormatConfig = RawImageManipConfig::FormatConfig;
+    
     /// Construct ImageManipConfig message
     ImageManipConfig();
     explicit ImageManipConfig(std::shared_ptr<RawImageManipConfig> ptr);
@@ -202,12 +207,12 @@ class ImageManipConfig : public Buffer {
     /**
      * @returns Crop configuration
      */
-    RawImageManipConfig::CropConfig getCropConfig() const;
+    CropConfig getCropConfig() const;
 
     /**
      * @returns Resize configuration
      */
-    RawImageManipConfig::ResizeConfig getResizeConfig() const;
+    ResizeConfig getResizeConfig() const;
 
     /**
      * @returns True if resize thumbnail mode is set, false otherwise
