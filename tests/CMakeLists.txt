@@ -99,5 +99,4 @@ target_compile_definitions(openvino_blob PRIVATE
     OPENVINO_2021_4_BLOB_PATH="${openvino_2021_4_blob}"
 )
 
-
-
+dai_add_test(unlimited_io_connection_test src/unlimited_io_connection_test.cpp)

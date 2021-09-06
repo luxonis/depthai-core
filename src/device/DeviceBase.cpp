@@ -361,8 +361,10 @@ void DeviceBase::tryStartPipeline(const Pipeline& pipeline) {
             throw std::runtime_error("Couldn't start the pipeline");
         }
     } catch(const std::exception& e) {
+        // close device (cleanup)
         close();
-        throw e;
+        // Rethrow original exception
+        throw;
     }
 }
 
@@ -878,6 +880,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     if(success) {
         pimpl->rpcClient->call("startPipeline");
     } else {
+        printf("errorMsg: %s\n", errorMsg.c_str());
         throw std::runtime_error(errorMsg);
         return false;
     }
