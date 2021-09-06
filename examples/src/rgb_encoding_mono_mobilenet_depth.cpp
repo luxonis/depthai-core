@@ -9,8 +9,6 @@ static const std::vector<std::string> labelMap = {"background", "aeroplane", "bi
                                                   "car",        "cat",       "chair",       "cow",   "diningtable", "dog",    "horse",
                                                   "motorbike",  "person",    "pottedplant", "sheep", "sofa",        "train",  "tvmonitor"};
 
-static std::atomic<bool> flipRectified{true};
-
 int main(int argc, char** argv) {
     using namespace std;
     // Default blob path provided by Hunter private data download
@@ -128,9 +126,6 @@ int main(int argc, char** argv) {
 
         if(inDisparity) {
             frameDisparity = inDisparity->getCvFrame();
-            if(flipRectified) {
-                cv::flip(frameDisparity, frameDisparity, 1);
-            }
             frameDisparity.convertTo(frameDisparity, CV_8UC1, disparityMultiplier);
             cv::applyColorMap(frameDisparity, frameDisparity, cv::COLORMAP_JET);
         }
