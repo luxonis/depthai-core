@@ -18,7 +18,7 @@ CallbackHandler::CallbackHandler(std::shared_ptr<XLinkConnection> conn,
     t = std::thread([this, streamName]() {
         try {
             // open stream with 1B write size (no writing will happen here)
-            XLinkStream stream(*connection, streamName, XLINK_USB_BUFFER_MAX_SIZE);
+            XLinkStream stream(*connection, streamName, device::XLINK_USB_BUFFER_MAX_SIZE);
 
             while(running) {
                 // read packet

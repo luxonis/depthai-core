@@ -4,6 +4,6 @@
 
 namespace dai {
 
-bool initialize(std::string additionalInfo = "");
+bool initialize(std::string additionalInfo = "", bool installSignalHandler = true);
 
 }  // namespace dai
