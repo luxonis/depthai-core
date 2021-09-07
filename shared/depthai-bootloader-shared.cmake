@@ -2,6 +2,7 @@ set(DEPTHAI_BOOTLOADER_SHARED_FOLDER ${CMAKE_CURRENT_LIST_DIR}/depthai-bootloade
 
 set(DEPTHAI_BOOTLOADER_SHARED_SOURCES
     ${DEPTHAI_BOOTLOADER_SHARED_FOLDER}/src/SBR.c
+    ${DEPTHAI_BOOTLOADER_SHARED_FOLDER}/src/Bootloader.cpp
 )
 
 set(DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE
@@ -26,8 +27,8 @@ if(GIT_FOUND AND NOT DEPTHAI_DOWNLOADED_SOURCES)
     string(SUBSTRING ${statusCommit} 0 1 status)
     if(${status} STREQUAL "-")
         message(FATAL_ERROR "Submodule 'depthai-bootloader-shared' not initialized/updated. Run 'git submodule update --init --recursive' first")
-    endif()   
-    
+    endif()
+
     # Get depthai-bootloader-shared current commit
     execute_process(
         COMMAND ${GIT_EXECUTABLE} rev-parse HEAD

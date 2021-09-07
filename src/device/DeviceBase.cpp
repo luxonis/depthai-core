@@ -18,14 +18,15 @@
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "pipeline/Pipeline.hpp"
-#include "utility/BootloaderHelper.hpp"
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Resources.hpp"
 
 // libraries
+#include "XLink/XLink.h"
 #include "nanorpc/core/client.h"
 #include "nanorpc/packer/nlohmann_msgpack.h"
+#include "spdlog/details/os.h"
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
@@ -86,6 +87,7 @@ template std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chr
 template std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::seconds);
 constexpr std::chrono::seconds DeviceBase::DEFAULT_SEARCH_TIME;
 constexpr float DeviceBase::DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ;
+constexpr UsbSpeed DeviceBase::DEFAULT_USB_SPEED;
 
 template <typename Rep, typename Period>
 std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::duration<Rep, Period> timeout) {
@@ -97,7 +99,7 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::dura
     bool found = false;
     DeviceInfo deviceInfo;
     do {
-        for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER}) {
+        for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED}) {
             std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(searchState);
             if(found) break;
         }
@@ -134,6 +136,9 @@ std::tuple<bool, DeviceInfo> DeviceBase::getFirstAvailableDevice() {
     if(!found) {
         std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_BOOTLOADER);
     }
+    if(!found) {
+        std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_FLASH_BOOTED);
+    }
     return {found, dev};
 }
 
@@ -162,6 +167,10 @@ std::tuple<bool, DeviceInfo> DeviceBase::getDeviceByMxId(std::string mxId) {
 
 std::vector<std::uint8_t> DeviceBase::getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version) {
     return Resources::getInstance().getDeviceFirmware(usb2Mode, version);
+}
+
+std::vector<std::uint8_t> DeviceBase::getEmbeddedDeviceBinary(Config config) {
+    return Resources::getInstance().getDeviceFirmware(config);
 }
 
 /*
@@ -220,18 +229,22 @@ LogLevel DeviceBase::Impl::getLogLevel() {
 DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo) : DeviceBase(version, devInfo, false) {}
 
 DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, bool usb2Mode) : deviceInfo(devInfo) {
-    init(version, true, usb2Mode, "");
+    init(version, usb2Mode, "");
+}
+
+DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : deviceInfo(devInfo) {
+    init(version, maxUsbSpeed, "");
 }
 
 DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, const char* pathToCmd) : deviceInfo(devInfo) {
-    init(version, false, false, std::string(pathToCmd));
+    init(version, false, std::string(pathToCmd));
 }
 
 DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, const std::string& pathToCmd) : deviceInfo(devInfo) {
-    init(version, false, false, pathToCmd);
+    init(version, false, pathToCmd);
 }
 
-DeviceBase::DeviceBase() : DeviceBase(Pipeline::DEFAULT_OPENVINO_VERSION) {}
+DeviceBase::DeviceBase() : DeviceBase(OpenVINO::DEFAULT_VERSION) {}
 
 DeviceBase::DeviceBase(OpenVINO::Version version) {
     // Searches for any available device for 'default' timeout
@@ -240,7 +253,7 @@ DeviceBase::DeviceBase(OpenVINO::Version version) {
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
-    init(version, true, false, "");
+    init(version, false, "");
 }
 
 DeviceBase::DeviceBase(OpenVINO::Version version, const char* pathToCmd) {
@@ -251,7 +264,7 @@ DeviceBase::DeviceBase(OpenVINO::Version version, const char* pathToCmd) {
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
-    init(version, false, false, std::string(pathToCmd));
+    init(version, false, std::string(pathToCmd));
 }
 
 DeviceBase::DeviceBase(OpenVINO::Version version, const std::string& pathToCmd) {
@@ -261,7 +274,7 @@ DeviceBase::DeviceBase(OpenVINO::Version version, const std::string& pathToCmd) 
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
-    init(version, false, false, pathToCmd);
+    init(version, false, pathToCmd);
 }
 
 DeviceBase::DeviceBase(OpenVINO::Version version, bool usb2Mode) {
@@ -271,7 +284,17 @@ DeviceBase::DeviceBase(OpenVINO::Version version, bool usb2Mode) {
 
     // If no device found, throw
     if(!found) throw std::runtime_error("No available devices");
-    init(version, true, usb2Mode, "");
+    init(version, usb2Mode, "");
+}
+
+DeviceBase::DeviceBase(OpenVINO::Version version, UsbSpeed maxUsbSpeed) {
+    // Searches for any available device for 'default' timeout
+    bool found = false;
+    std::tie(found, deviceInfo) = getAnyAvailableDevice();
+
+    // If no device found, throw
+    if(!found) throw std::runtime_error("No available devices");
+    init(version, maxUsbSpeed, "");
 }
 
 DeviceBase::DeviceBase(const Pipeline& pipeline) : DeviceBase(pipeline.getOpenVINOVersion()) {
@@ -279,6 +302,10 @@ DeviceBase::DeviceBase(const Pipeline& pipeline) : DeviceBase(pipeline.getOpenVI
 }
 
 DeviceBase::DeviceBase(const Pipeline& pipeline, bool usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), usb2Mode) {
+    tryStartPipeline(pipeline);
+}
+
+DeviceBase::DeviceBase(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) : DeviceBase(pipeline.getOpenVINOVersion(), maxUsbSpeed) {
     tryStartPipeline(pipeline);
 }
 
@@ -296,6 +323,11 @@ DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, bool
     tryStartPipeline(pipeline);
 }
 
+DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed)
+    : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, maxUsbSpeed) {
+    tryStartPipeline(pipeline);
+}
+
 DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd)
     : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, pathToCmd) {
     tryStartPipeline(pipeline);
@@ -304,6 +336,20 @@ DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, cons
 DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd)
     : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, pathToCmd) {
     tryStartPipeline(pipeline);
+}
+
+DeviceBase::DeviceBase(Config config) {
+    // Searches for any available device for 'default' timeout
+    bool found = false;
+    std::tie(found, deviceInfo) = getAnyAvailableDevice();
+
+    // If no device found, throw
+    if(!found) throw std::runtime_error("No available devices");
+    init2(config, {}, {});
+}
+
+DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo) : deviceInfo(devInfo) {
+    init2(config, {}, {});
 }
 
 void DeviceBase::close() {
@@ -318,11 +364,12 @@ void DeviceBase::closeImpl() {
     auto t1 = steady_clock::now();
     spdlog::debug("Device about to be closed...");
 
-    // Close connection first (so queues unblock)
+    // Close connection first
+    // Resets device as well and queues unblock
     connection->close();
     connection = nullptr;
 
-    // Stop watchdog
+    // Stop various threads
     watchdogRunning = false;
     timesyncRunning = false;
     loggingRunning = false;
@@ -361,147 +408,120 @@ void DeviceBase::tryStartPipeline(const Pipeline& pipeline) {
             throw std::runtime_error("Couldn't start the pipeline");
         }
     } catch(const std::exception& e) {
+        // close device (cleanup)
         close();
-        throw e;
+        // Rethrow original exception
+        throw;
     }
 }
 
-void DeviceBase::init(OpenVINO::Version version, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
-    // Initalize depthai library if not already
-    initialize();
-
+void DeviceBase::init(OpenVINO::Version version, bool usb2Mode, const std::string& pathToMvcmd) {
+    Config cfg;
+    // Specify usb speed
+    cfg.preboot.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
     // Specify the OpenVINO version
-    openvinoVersion = version;
-
-    spdlog::debug("Device - OpenVINO version: {}", OpenVINO::getVersionName(openvinoVersion));
-
-    init2(embeddedMvcmd, usb2Mode, pathToMvcmd);
+    cfg.version = version;
+    init2(cfg, pathToMvcmd, {});
+}
+void DeviceBase::init(const Pipeline& pipeline, bool usb2Mode, const std::string& pathToMvcmd) {
+    Config cfg = pipeline.getDeviceConfig();
+    // Modify usb speed
+    cfg.preboot.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
+    init2(cfg, pathToMvcmd, pipeline);
+}
+void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd) {
+    Config cfg;
+    // Specify usb speed
+    cfg.preboot.usb.maxSpeed = maxUsbSpeed;
+    // Specify the OpenVINO version
+    cfg.version = version;
+    init2(cfg, pathToMvcmd, {});
+}
+void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd) {
+    Config cfg = pipeline.getDeviceConfig();
+    // Modify usb speed
+    cfg.preboot.usb.maxSpeed = maxUsbSpeed;
+    init2(cfg, pathToMvcmd, pipeline);
 }
 
-void DeviceBase::init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
+void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline) {
     // Initalize depthai library if not already
     initialize();
 
-    // Mark the OpenVINO version
-    openvinoVersion = pipeline.getOpenVINOVersion();
+    // Specify cfg
+    config = cfg;
 
-    spdlog::debug("Device - pipeline serialized, OpenVINO version: {}", OpenVINO::getVersionName(openvinoVersion));
+    if(pipeline) {
+        spdlog::debug("Device - pipeline serialized, OpenVINO version: {}", OpenVINO::getVersionName(config.version));
+    } else {
+        spdlog::debug("Device - OpenVINO version: {}", OpenVINO::getVersionName(config.version));
+    }
 
-    init2(embeddedMvcmd, usb2Mode, pathToMvcmd);
-}
-
-void DeviceBase::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd) {
     // Set logging pattern of device (device id + shared pattern)
     pimpl->setPattern(fmt::format("[{}] {}", deviceInfo.getMxId(), LOG_DEFAULT_PATTERN));
 
-    // Get embedded mvcmd
-    std::vector<std::uint8_t> embeddedFw = Resources::getInstance().getDeviceFirmware(usb2Mode, openvinoVersion);
+    // Check if WD env var is set
+    std::chrono::milliseconds watchdogTimeout = device::XLINK_WATCHDOG_TIMEOUT;
+    auto watchdogMsStr = spdlog::details::os::getenv("DEPTHAI_WATCHDOG");
+    if(!watchdogMsStr.empty()) {
+        // Try parsing the string as a number
+        try {
+            std::chrono::milliseconds watchdog{std::stoi(watchdogMsStr)};
+            config.preboot.watchdogTimeoutMs = watchdog.count();
+            watchdogTimeout = watchdog;
+            spdlog::debug("Using a custom watchdog value of {}", watchdogTimeout);
+        } catch(const std::invalid_argument& e) {
+            spdlog::warn("DEPTHAI_WATCHDOG value invalid: {}", e.what());
+        }
+    }
+
+    // Get embedded mvcmd or external with applied config
+    std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, pathToMvcmd);
 
     // Init device (if bootloader, handle correctly - issue USB boot command)
     if(deviceInfo.state == X_LINK_UNBOOTED) {
         // Unbooted device found, boot and connect with XLinkConnection constructor
-        if(embeddedMvcmd) {
-            connection = std::make_shared<XLinkConnection>(deviceInfo, embeddedFw);
-        } else {
-            connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd);
+        connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
+    } else if(deviceInfo.state == X_LINK_BOOTLOADER || deviceInfo.state == X_LINK_FLASH_BOOTED) {
+        // If device is in flash booted state, reset to bootloader and then continue by booting appropriate FW
+        if(deviceInfo.state == X_LINK_FLASH_BOOTED) {
+            // Boot bootloader and set current deviceInfo to new device state
+            deviceInfo = XLinkConnection::bootBootloader(deviceInfo);
         }
 
-    } else if(deviceInfo.state == X_LINK_BOOTLOADER) {
-        // Scope so bootloaderConnection is desctructed and XLink cleans its state
+        // Scope so DeviceBootloader is disconnected
         {
-            // TODO(themarpe) - move this logic to DeviceBootloader
-
-            // Bootloader state, proceed by issuing a command to bootloader
-            XLinkConnection bootloaderConnection(deviceInfo, X_LINK_BOOTLOADER);
-
-            // Open stream
-            XLinkStream stream(bootloaderConnection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
-
-            // prepare watchdog thread, which will keep device alive
-            std::atomic<bool> watchdogRunning{true};
-            watchdogThread = std::thread([&]() {
-                // prepare watchdog thread
-                XLinkStream stream(bootloaderConnection, bootloader::XLINK_CHANNEL_WATCHDOG, 64);
-                std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
-                while(watchdogRunning) {
-                    try {
-                        stream.write(watchdogKeepalive);
-                    } catch(const std::exception&) {
-                        break;
-                    }
-                    // Ping with a period half of that of the watchdog timeout
-                    std::this_thread::sleep_for(bootloader::XLINK_WATCHDOG_TIMEOUT / 2);
-                }
-            });
-
-            // Send request for bootloader version
-            if(!sendBootloaderRequest(stream.getStreamId(), bootloader::request::GetBootloaderVersion{})) {
-                throw std::runtime_error("Error trying to connect to device");
-            }
-            // Receive response
-            bootloader::response::BootloaderVersion ver;
-            if(!receiveBootloaderResponse(stream.getStreamId(), ver)) throw std::runtime_error("Error trying to connect to device");
-            DeviceBootloader::Version version(ver.major, ver.minor, ver.patch);
+            DeviceBootloader bl(deviceInfo);
+            auto version = bl.getVersion();
 
             // If version is >= 0.0.12 then boot directly, otherwise jump to USB ROM bootloader
             // Check if version is recent enough for this operation
             if(version >= DeviceBootloader::Version(0, 0, 12)) {
-                // Send request to boot firmware directly from bootloader
-                dai::bootloader::request::BootMemory bootMemory;
-                bootMemory.totalSize = static_cast<uint32_t>(embeddedFw.size());
-                bootMemory.numPackets = ((static_cast<uint32_t>(embeddedFw.size()) - 1) / bootloader::XLINK_STREAM_MAX_SIZE) + 1;
-                if(!sendBootloaderRequest(stream.getStreamId(), bootMemory)) {
-                    throw std::runtime_error("Error trying to connect to device");
-                }
-
                 using namespace std::chrono;
+                // Boot the given FW
                 auto t1 = steady_clock::now();
-                // After that send numPackets of data
-                stream.writeSplit(embeddedFw.data(), embeddedFw.size(), bootloader::XLINK_STREAM_MAX_SIZE);
-                spdlog::debug(
-                    "Booting FW with Bootloader. Version {}, Time taken: {}", version.toString(), duration_cast<milliseconds>(steady_clock::now() - t1));
+                bl.bootMemory(fwWithConfig);
+                auto t2 = steady_clock::now();
+                spdlog::debug("Booting FW with Bootloader. Version {}, Time taken: {}", version.toString(), duration_cast<milliseconds>(t2 - t1));
 
                 // After that the state will be BOOTED
                 deviceInfo.state = X_LINK_BOOTED;
-
-                // TODO(themarpe) - Possibility of switching to another port for cleaner transitions
-                // strcat(deviceInfo.desc.name, ":11492");
-
             } else {
+                // Boot into USB ROM BOOTLOADER
+                bl.bootUsbRomBootloader();
                 spdlog::debug("Booting FW by jumping to USB ROM Bootloader first. Bootloader Version {}", version.toString());
-
-                // Send request to jump to USB bootloader
-                // Boot into USB ROM BOOTLOADER NOW
-                if(!sendBootloaderRequest(stream.getStreamId(), dai::bootloader::request::UsbRomBoot{})) {
-                    throw std::runtime_error("Error trying to connect to device");
-                }
 
                 // After that the state will be UNBOOTED
                 deviceInfo.state = X_LINK_UNBOOTED;
             }
-
-            watchdogRunning = false;
-            watchdogThread.join();
-
-            // Dummy read, until link falls down and it returns an error code
-            streamPacketDesc_t* pPacket;
-            XLinkReadData(stream.getStreamId(), &pPacket);
         }
 
         // Boot and connect with XLinkConnection constructor
-        if(embeddedMvcmd) {
-            connection = std::make_shared<XLinkConnection>(deviceInfo, embeddedFw);
-        } else {
-            connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd);
-        }
+        connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
 
     } else if(deviceInfo.state == X_LINK_BOOTED) {
         // Connect without booting
-        if(embeddedMvcmd) {
-            connection = std::make_shared<XLinkConnection>(deviceInfo, embeddedFw);
-        } else {
-            connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd);
-        }
+        connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
     } else {
         throw std::runtime_error("Cannot find any device with given deviceInfo");
     }
@@ -509,7 +529,7 @@ void DeviceBase::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pat
     deviceInfo.state = X_LINK_BOOTED;
 
     // prepare rpc for both attached and host controlled mode
-    pimpl->rpcStream = std::make_unique<XLinkStream>(*connection, dai::XLINK_CHANNEL_MAIN_RPC, dai::XLINK_USB_BUFFER_MAX_SIZE);
+    pimpl->rpcStream = std::make_unique<XLinkStream>(*connection, device::XLINK_CHANNEL_MAIN_RPC, device::XLINK_USB_BUFFER_MAX_SIZE);
 
     pimpl->rpcClient = std::make_unique<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>([this](nanorpc::core::type::buffer request) {
         // Lock for time of the RPC call, to not mix the responses between calling threads.
@@ -530,16 +550,19 @@ void DeviceBase::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pat
     });
 
     // prepare watchdog thread, which will keep device alive
-    watchdogThread = std::thread([this]() {
-        std::shared_ptr<XLinkConnection> conn = this->connection;
-        while(watchdogRunning) {
-            try {
-                pimpl->rpcClient->call("watchdogKeepalive");
-            } catch(const std::exception&) {
-                break;
+    // separate stream so it doesn't miss between potentially long RPC calls
+    watchdogThread = std::thread([this, watchdogTimeout]() {
+        try {
+            XLinkStream stream(*this->connection, device::XLINK_CHANNEL_WATCHDOG, 128);
+            std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
+            while(watchdogRunning) {
+                stream.write(watchdogKeepalive);
+                // Ping with a period half of that of the watchdog timeout
+                std::this_thread::sleep_for(watchdogTimeout / 2);
             }
-            // Ping with a period half of that of the watchdog timeout
-            std::this_thread::sleep_for(XLINK_WATCHDOG_TIMEOUT / 2);
+        } catch(const std::exception& ex) {
+            // ignore
+            spdlog::debug("Watchdog thread exception caught: {}", ex.what());
         }
 
         // Watchdog ended. Useful for checking disconnects
@@ -551,7 +574,7 @@ void DeviceBase::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pat
         using namespace std::chrono;
 
         try {
-            XLinkStream stream(*this->connection, XLINK_CHANNEL_TIMESYNC, 128);
+            XLinkStream stream(*this->connection, device::XLINK_CHANNEL_TIMESYNC, 128);
             Timestamp timestamp = {};
             while(timesyncRunning) {
                 // Block
@@ -578,7 +601,7 @@ void DeviceBase::init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pat
         using namespace std::chrono;
         std::vector<LogMessage> messages;
         try {
-            XLinkStream stream(*this->connection, XLINK_CHANNEL_LOG, 128);
+            XLinkStream stream(*this->connection, device::XLINK_CHANNEL_LOG, 128);
             while(loggingRunning) {
                 // Block
                 auto log = stream.read();
@@ -734,7 +757,7 @@ int DeviceBase::getXLinkChunkSize() {
     return pimpl->rpcClient->call("getXLinkChunkSize").as<int>();
 }
 
-DeviceInfo DeviceBase::getDeviceInfo() {
+DeviceInfo DeviceBase::getDeviceInfo() const {
     return deviceInfo;
 }
 
@@ -819,16 +842,16 @@ bool DeviceBase::startPipeline(const Pipeline& pipeline) {
 }
 
 bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
+    // Check openvino version
+    if(!pipeline.isOpenVINOVersionCompatible(config.version)) {
+        throw std::runtime_error("Device booted with different OpenVINO version that pipeline requires");
+    }
+
+    // Serialize the pipeline
     PipelineSchema schema;
     Assets assets;
     std::vector<std::uint8_t> assetStorage;
-
-    // Mark the OpenVINO version and serialize the pipeline
-    OpenVINO::Version pipelineOpenvinoVersion;
-    pipeline.serialize(schema, assets, assetStorage, pipelineOpenvinoVersion);
-    if(openvinoVersion != pipelineOpenvinoVersion) {
-        throw std::runtime_error("Device booted with different OpenVINO version that pipeline requires");
-    }
+    pipeline.serialize(schema, assets, assetStorage);
 
     // if debug
     if(spdlog::get_level() == spdlog::level::debug) {
@@ -851,10 +874,10 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
         // Transfer the whole assetStorage in a separate thread
         const std::string streamAssetStorage = "__stream_asset_storage";
         std::thread t1([this, &streamAssetStorage, &assetStorage]() {
-            XLinkStream stream(*connection, streamAssetStorage, XLINK_USB_BUFFER_MAX_SIZE);
+            XLinkStream stream(*connection, streamAssetStorage, device::XLINK_USB_BUFFER_MAX_SIZE);
             int64_t offset = 0;
             do {
-                int64_t toTransfer = std::min(static_cast<int64_t>(XLINK_USB_BUFFER_MAX_SIZE), static_cast<int64_t>(assetStorage.size() - offset));
+                int64_t toTransfer = std::min(static_cast<int64_t>(device::XLINK_USB_BUFFER_MAX_SIZE), static_cast<int64_t>(assetStorage.size() - offset));
                 stream.write(&assetStorage[offset], toTransfer);
                 offset += toTransfer;
             } while(offset < static_cast<int64_t>(assetStorage.size()));

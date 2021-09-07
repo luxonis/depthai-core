@@ -268,7 +268,7 @@ target_compile_definitions(object_tracker_video PRIVATE BLOB_PATH="${person_dete
 dai_add_example(queue_add_callback src/queue_add_callback.cpp ON)
 
 dai_add_example(bootloader_version src/bootloader_version.cpp ON)
-#dai_add_example(flash_bootloader src/flash_bootloader.cpp OFF)
+dai_add_example(flash_bootloader src/flash_bootloader.cpp OFF)
 dai_add_example(edge_detector src/edge_detector.cpp ON)
 
 dai_add_example(feature_tracker src/feature_tracker.cpp ON)
@@ -290,3 +290,6 @@ dai_add_example(image_manip_tiling src/image_manip_tiling.cpp ON)
 target_compile_definitions(calibration_flash PRIVATE CALIB_PATH="${calib_v6}")
 target_compile_definitions(calibration_flash_version5 PRIVATE CALIB_PATH="${calib_v5}" BOARD_PATH="${device_config}")
 target_compile_definitions(calibration_load PRIVATE CALIB_PATH="${calib_v6}")
+
+# Bootloader configuration example
+dai_add_example(bootloader_config src/bootloader_config.cpp OFF)
