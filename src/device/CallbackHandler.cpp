@@ -2,7 +2,7 @@
 
 // project
 #include "depthai/xlink/XLinkStream.hpp"
-#include "pipeline/datatype/StreamPacketParser.hpp"
+#include "pipeline/datatype/StreamMessageParser.hpp"
 
 namespace dai {
 
@@ -24,14 +24,14 @@ CallbackHandler::CallbackHandler(std::shared_ptr<XLinkConnection> conn,
                 // read packet
                 auto* packet = stream.readRaw();
                 // parse packet
-                auto data = parsePacket(packet);
+                auto data = StreamMessageParser::parseMessage(packet);
                 // release packet
                 stream.readRawRelease();
 
                 // CALLBACK
                 auto toSend = callback(data);
 
-                auto serialized = serializeData(toSend);
+                auto serialized = StreamMessageParser::serializeMessage(toSend);
 
                 // Write packet back
                 stream.write(serialized);
