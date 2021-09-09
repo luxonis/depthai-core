@@ -16,6 +16,10 @@
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/spdlog.h"
 
+// shared
+#include "depthai-shared/device/PrebootConfig.hpp"
+#include "depthai-shared/utility/Checksum.hpp"
+
 extern "C" {
 #include "bspatch/bspatch.h"
 }
@@ -28,157 +32,143 @@ CMRC_DECLARE(depthai);
 
 namespace dai {
 
+static std::vector<std::uint8_t> createPrebootHeader(const std::vector<uint8_t>& payload, uint32_t magic1, uint32_t magic2);
+
 constexpr static auto CMRC_DEPTHAI_DEVICE_TAR_XZ = "depthai-device-fwp-" DEPTHAI_DEVICE_VERSION ".tar.xz";
 
 // Main FW
 constexpr static auto DEPTHAI_CMD_OPENVINO_2021_4_PATH = "depthai-device-openvino-2021.4-" DEPTHAI_DEVICE_VERSION ".cmd";
+constexpr static auto MAIN_FW_PATH = DEPTHAI_CMD_OPENVINO_2021_4_PATH;
+constexpr static auto& MAIN_FW_VERSION = OpenVINO::DEFAULT_VERSION;
 
 // Patches from Main FW
-
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_3_PATCH_PATH = "depthai-device-openvino-2020.3-" DEPTHAI_DEVICE_VERSION ".patch";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_4_PATCH_PATH = "depthai-device-openvino-2020.4-" DEPTHAI_DEVICE_VERSION ".patch";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2021_1_PATCH_PATH = "depthai-device-openvino-2021.1-" DEPTHAI_DEVICE_VERSION ".patch";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH = "depthai-device-openvino-2021.2-" DEPTHAI_DEVICE_VERSION ".patch";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2021_3_PATCH_PATH = "depthai-device-openvino-2021.3-" DEPTHAI_DEVICE_VERSION ".patch";
 
-// Usb2 patches
-constexpr static auto DEPTHAI_CMD_OPENVINO_2020_3_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2020.3-" DEPTHAI_DEVICE_VERSION ".patch";
-constexpr static auto DEPTHAI_CMD_OPENVINO_2020_4_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2020.4-" DEPTHAI_DEVICE_VERSION ".patch";
-constexpr static auto DEPTHAI_CMD_OPENVINO_2021_1_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2021.1-" DEPTHAI_DEVICE_VERSION ".patch";
-constexpr static auto DEPTHAI_CMD_OPENVINO_2021_2_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2021.2-" DEPTHAI_DEVICE_VERSION ".patch";
-constexpr static auto DEPTHAI_CMD_OPENVINO_2021_3_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2021.3-" DEPTHAI_DEVICE_VERSION ".patch";
-constexpr static auto DEPTHAI_CMD_OPENVINO_2021_4_USB2_PATCH_PATH = "depthai-device-usb2-patch-openvino-2021.4-" DEPTHAI_DEVICE_VERSION ".patch";
+// Creates std::array without explicitly needing to state the size
+template <typename V, typename... T>
+static constexpr auto array_of(T&&... t) -> std::array<V, sizeof...(T)> {
+    return {{std::forward<T>(t)...}};
+}
 
-constexpr static std::array<const char*, 12> RESOURCE_LIST_DEVICE = {
-    DEPTHAI_CMD_OPENVINO_2020_3_PATCH_PATH,
-    DEPTHAI_CMD_OPENVINO_2020_4_PATCH_PATH,
-    DEPTHAI_CMD_OPENVINO_2021_1_PATCH_PATH,
-    DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH,
-    DEPTHAI_CMD_OPENVINO_2021_3_PATCH_PATH,
-    DEPTHAI_CMD_OPENVINO_2021_4_PATH,
-    DEPTHAI_CMD_OPENVINO_2020_3_USB2_PATCH_PATH,
-    DEPTHAI_CMD_OPENVINO_2020_4_USB2_PATCH_PATH,
-    DEPTHAI_CMD_OPENVINO_2021_1_USB2_PATCH_PATH,
-    DEPTHAI_CMD_OPENVINO_2021_2_USB2_PATCH_PATH,
-    DEPTHAI_CMD_OPENVINO_2021_3_USB2_PATCH_PATH,
-    DEPTHAI_CMD_OPENVINO_2021_4_USB2_PATCH_PATH,
+constexpr static auto RESOURCE_LIST_DEVICE = array_of<const char*>(DEPTHAI_CMD_OPENVINO_2021_4_PATH,
+                                                                   DEPTHAI_CMD_OPENVINO_2020_3_PATCH_PATH,
+                                                                   DEPTHAI_CMD_OPENVINO_2020_4_PATCH_PATH,
+                                                                   DEPTHAI_CMD_OPENVINO_2021_1_PATCH_PATH,
+                                                                   DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH,
+                                                                   DEPTHAI_CMD_OPENVINO_2021_3_PATCH_PATH);
 
-};
+std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, std::string pathToMvcmd) {
+    // Acquire mutex (this mutex signifies that lazy load is complete)
+    // It is necessary when accessing resourceMap variable
+    std::unique_lock<std::mutex> lock(mtxDevice);
 
-std::vector<std::uint8_t> Resources::getDeviceBinary(OpenVINO::Version version, bool usb2Mode) {
-    std::vector<std::uint8_t> finalCmd;
+    std::vector<std::uint8_t> finalFwBinary;
 
-    // Check if env variable DEPTHAI_DEVICE_BINARY is set
+    // Get OpenVINO version
+    auto& version = config.version;
+
+    // Check if pathToMvcmd variable is set
+    std::string finalFwBinaryPath = "";
+    if(!pathToMvcmd.empty()) {
+        finalFwBinaryPath = pathToMvcmd;
+    }
+    // Override if env variable DEPTHAI_DEVICE_BINARY is set
     auto fwBinaryPath = spdlog::details::os::getenv("DEPTHAI_DEVICE_BINARY");
     if(!fwBinaryPath.empty()) {
+        finalFwBinaryPath = fwBinaryPath;
+    }
+    // Return binary from file if any of above paths are present
+    if(!finalFwBinaryPath.empty()) {
         // Load binary file at path
-        std::ifstream stream(fwBinaryPath, std::ios::binary);
+        std::ifstream stream(finalFwBinaryPath, std::ios::binary);
         if(!stream.is_open()) {
             // Throw an error
             // TODO(themarpe) - Unify exceptions into meaningful groups
             throw std::runtime_error(fmt::format("File at path {} pointed to by DEPTHAI_DEVICE_BINARY doesn't exist.", fwBinaryPath));
         }
+        spdlog::warn("Overriding firmware: {}", fwBinaryPath);
         // Read the file and return its contents
-        return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
-    }
-
+        finalFwBinary = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
+    } else {
 // Binaries are resource compiled
 #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
 
-    // Temporary binary
-    std::vector<std::uint8_t> tmpDepthaiBinary;
-    // Main FW
-    std::vector<std::uint8_t> depthaiBinary = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2021_4_PATH];
-    // Patch from main to specified
-    std::vector<std::uint8_t> depthaiPatch = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2021_3_PATCH_PATH];
-    // Patch from specified to usb2 specified
-    std::vector<std::uint8_t> depthaiUsb2Patch = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2021_4_USB2_PATCH_PATH];
+        // Main FW
+        std::vector<std::uint8_t> depthaiBinary;
+        // Patch from main to specified
+        std::vector<std::uint8_t> depthaiPatch;
 
-    switch(version) {
-        case OpenVINO::VERSION_2020_3:
-            depthaiPatch = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2020_3_PATCH_PATH];
-            depthaiUsb2Patch = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2020_3_USB2_PATCH_PATH];
-            break;
+        switch(version) {
+            case OpenVINO::VERSION_2020_3:
+                depthaiPatch = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2020_3_PATCH_PATH];
+                break;
 
-        case OpenVINO::VERSION_2020_4:
-            depthaiPatch = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2020_4_PATCH_PATH];
-            depthaiUsb2Patch = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2020_4_USB2_PATCH_PATH];
-            break;
+            case OpenVINO::VERSION_2020_4:
+                depthaiPatch = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2020_4_PATCH_PATH];
+                break;
 
-        case OpenVINO::VERSION_2021_1:
-            depthaiPatch = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2021_1_PATCH_PATH];
-            depthaiUsb2Patch = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2021_1_USB2_PATCH_PATH];
-            break;
+            case OpenVINO::VERSION_2021_1:
+                depthaiPatch = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2021_1_PATCH_PATH];
+                break;
 
-        case OpenVINO::VERSION_2021_2:
-            depthaiPatch = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH];
-            depthaiUsb2Patch = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2021_2_USB2_PATCH_PATH];
-            break;
+            case OpenVINO::VERSION_2021_2:
+                depthaiPatch = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH];
+                break;
 
-        case OpenVINO::VERSION_2021_3:
-            depthaiPatch = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2021_3_PATCH_PATH];
-            depthaiUsb2Patch = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2021_3_USB2_PATCH_PATH];
-            break;
+            case OpenVINO::VERSION_2021_3:
+                depthaiPatch = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2021_3_PATCH_PATH];
+                break;
 
-        case OpenVINO::VERSION_2021_4:
-            depthaiBinary = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2021_4_PATH];
-            depthaiUsb2Patch = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2021_4_USB2_PATCH_PATH];
-            break;
-    }
+            case MAIN_FW_VERSION:
+                depthaiBinary = resourceMapDevice[MAIN_FW_PATH];
+                break;
+        }
 
-    // is patching required?
-    if(version != OpenVINO::VERSION_2021_4) {
-        spdlog::debug("Patching OpenVINO FW version from {} to {}", OpenVINO::getVersionName(OpenVINO::VERSION_2021_4), OpenVINO::getVersionName(version));
+        // is patching required?
+        if(!depthaiPatch.empty()) {
+            spdlog::debug("Patching OpenVINO FW version from {} to {}", OpenVINO::getVersionName(MAIN_FW_VERSION), OpenVINO::getVersionName(version));
 
-        // Get new size
-        int64_t patchedSize = bspatch_mem_get_newsize(depthaiPatch.data(), depthaiPatch.size());
+            // Load full binary for patch
+            depthaiBinary = resourceMapDevice[MAIN_FW_PATH];
 
-        // Reserve space for patched binary
-        tmpDepthaiBinary.resize(patchedSize);
+            // Get new size
+            int64_t patchedSize = bspatch_mem_get_newsize(depthaiPatch.data(), depthaiPatch.size());
 
-        // Patch
-        int error = bspatch_mem(depthaiBinary.data(), depthaiBinary.size(), depthaiPatch.data(), depthaiPatch.size(), tmpDepthaiBinary.data());
+            // Reserve space for patched binary
+            std::vector<std::uint8_t> tmpDepthaiBinary{};
+            tmpDepthaiBinary.resize(patchedSize);
 
-        // if patch not successful
-        if(error > 0) throw std::runtime_error("Error while patching cmd for usb2 mode");
+            // Patch
+            int error = bspatch_mem(depthaiBinary.data(), depthaiBinary.size(), depthaiPatch.data(), depthaiPatch.size(), tmpDepthaiBinary.data());
 
-        // Change depthaiBinary to tmpDepthaiBinary
-        depthaiBinary = tmpDepthaiBinary;
-    }
+            // if patch not successful
+            if(error > 0) {
+                throw std::runtime_error(fmt::format(
+                    "Error while patching OpenVINO FW version from {} to {}", OpenVINO::getVersionName(MAIN_FW_VERSION), OpenVINO::getVersionName(version)));
+            }
 
-    if(usb2Mode) {
-    #ifdef DEPTHAI_PATCH_ONLY_MODE
+            // Change depthaiBinary to tmpDepthaiBinary
+            depthaiBinary = std::move(tmpDepthaiBinary);
+        }
 
-        spdlog::debug("Patching FW version {} to USB2 mode", OpenVINO::getVersionName(version));
-
-        // Get new size
-        int64_t patchedSize = bspatch_mem_get_newsize(depthaiUsb2Patch.data(), depthaiUsb2Patch.size());
-
-        // Reserve space for patched binary
-        finalCmd.resize(patchedSize);
-
-        // Patch
-        int error = bspatch_mem(depthaiBinary.data(), depthaiBinary.size(), depthaiUsb2Patch.data(), depthaiUsb2Patch.size(), finalCmd.data());
-
-        // if patch not successful
-        if(error > 0) throw std::runtime_error("Error while patching cmd for usb2 mode");
-
-    #else
-
-        static_assert("Unsupported currently");
-
-    #endif
-
-    } else {
-        return depthaiBinary;
-    }
+        finalFwBinary = std::move(depthaiBinary);
 
 #else
-    // Binaries from default path (TODO)
+        // Binaries from default path (TODO)
 
 #endif
+    }
 
-    return finalCmd;
+    // Prepend preboot config
+    auto prebootHeader = createPrebootHeader(nlohmann::json::to_msgpack(config.preboot), PREBOOT_CONFIG_MAGIC1, PREBOOT_CONFIG_MAGIC2);
+    finalFwBinary.insert(finalFwBinary.begin(), prebootHeader.begin(), prebootHeader.end());
+
+    // Return created firmware
+    return finalFwBinary;
 }
 
 constexpr static auto CMRC_DEPTHAI_BOOTLOADER_TAR_XZ = "depthai-bootloader-fwp-" DEPTHAI_BOOTLOADER_VERSION ".tar.xz";
@@ -191,11 +181,36 @@ constexpr static std::array<const char*, 2> RESOURCE_LIST_BOOTLOADER = {
 };
 
 std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type type) {
+    // Check if env variable DEPTHAI_BOOTLOADER_BINARY_USB/_ETH is set
+    std::string blEnvVar;
+    if(type == dai::bootloader::Type::USB) {
+        blEnvVar = "DEPTHAI_BOOTLOADER_BINARY_USB";
+    } else if(type == dai::bootloader::Type::NETWORK) {
+        blEnvVar = "DEPTHAI_BOOTLOADER_BINARY_ETH";
+    }
+    auto blBinaryPath = spdlog::details::os::getenv(blEnvVar.c_str());
+    if(!blBinaryPath.empty()) {
+        // Load binary file at path
+        std::ifstream stream(blBinaryPath, std::ios::binary);
+        if(!stream.is_open()) {
+            // Throw an error
+            // TODO(themarpe) - Unify exceptions into meaningful groups
+            throw std::runtime_error(fmt::format("File at path {} pointed to by {} doesn't exist.", blBinaryPath, blEnvVar));
+        }
+        spdlog::warn("Overriding bootloader {}: {}", blEnvVar, blBinaryPath);
+        // Read the file and return its content
+        return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
+    }
+
     // Acquire mutex (this mutex signifies that lazy load is complete)
     // It is necessary when accessing resourceMap variable
     std::unique_lock<std::mutex> lock(mtxBootloader);
 
     switch(type) {
+        case dai::bootloader::Type::AUTO:
+            throw std::invalid_argument("DeviceBootloader::Type::AUTO not allowed, when getting bootloader firmware.");
+            break;
+
         case dai::bootloader::Type::USB:
             return resourceMapBootloader[DEVICE_BOOTLOADER_USB_PATH];
             break;
@@ -353,12 +368,65 @@ Resources::~Resources() {
 
 // Get device firmware
 std::vector<std::uint8_t> Resources::getDeviceFirmware(bool usb2Mode, OpenVINO::Version version) {
-    // Acquire mutex (this mutex signifies that lazy load is complete)
-    // It is necessary when accessing resourceMapDevice variable
-    std::unique_lock<std::mutex> lock(mtxDevice);
+    Device::Config cfg;
+    if(usb2Mode) {
+        cfg.preboot.usb.maxSpeed = UsbSpeed::HIGH;
+    } else {
+        cfg.preboot.usb.maxSpeed = Device::DEFAULT_USB_SPEED;
+    }
+    cfg.version = version;
 
-    // Return device firmware
-    return getDeviceBinary(version, usb2Mode);
+    return getDeviceFirmware(cfg);
+}
+
+std::vector<std::uint8_t> createPrebootHeader(const std::vector<uint8_t>& payload, uint32_t magic1, uint32_t magic2) {
+    const std::uint8_t HEADER[] = {77,
+                                   65,
+                                   50,
+                                   120,
+                                   0x8A,
+                                   static_cast<uint8_t>((magic1 >> 0) & 0xFF),
+                                   static_cast<uint8_t>((magic1 >> 8) & 0xFF),
+                                   static_cast<uint8_t>((magic1 >> 16) & 0xFF),
+                                   static_cast<uint8_t>((magic1 >> 24) & 0xFF)};
+
+    // Store the constructed preboot information
+    std::vector<std::uint8_t> prebootHeader;
+
+    // Store initial header
+    prebootHeader.insert(prebootHeader.begin(), std::begin(HEADER), std::end(HEADER));
+
+    // Calculate size
+    std::size_t totalPayloadSize = payload.size() + sizeof(magic2) + sizeof(uint32_t) + sizeof(uint32_t);
+    std::size_t toAddBytes = 0;
+    if(totalPayloadSize % 4 != 0) {
+        toAddBytes = 4 - (totalPayloadSize % 4);
+    }
+    std::size_t totalSize = totalPayloadSize + toAddBytes;
+    std::size_t totalSizeWord = totalSize / 4;
+
+    // Write size in words in little endian
+    prebootHeader.push_back((totalSizeWord >> 0) & 0xFF);
+    prebootHeader.push_back((totalSizeWord >> 8) & 0xFF);
+
+    // Compute payload checksum
+    auto checksum = utility::checksum(payload.data(), payload.size());
+
+    // Write checksum & payload size as uint32_t LE
+    for(const auto& field : {magic2, checksum, static_cast<uint32_t>(payload.size())}) {
+        for(int i = 0; i < 4; i++) {
+            prebootHeader.push_back((field >> (i * 8)) & 0xFF);
+        }
+    }
+
+    // Copy payload
+    prebootHeader.insert(prebootHeader.end(), payload.begin(), payload.end());
+    // Add missing bytes
+    for(std::size_t i = 0; i < toAddBytes; i++) {
+        prebootHeader.push_back(0x00);
+    }
+
+    return prebootHeader;
 }
 
 }  // namespace dai

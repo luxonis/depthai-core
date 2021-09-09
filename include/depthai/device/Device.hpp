@@ -12,7 +12,6 @@
 // project
 #include "DataQueue.hpp"
 #include "depthai/device/DeviceBase.hpp"
-#include "depthai/pipeline/Pipeline.hpp"
 
 namespace dai {
 /**
@@ -35,6 +34,13 @@ class Device : public DeviceBase {
      * @param usb2Mode Boot device using USB2 mode firmware
      */
     Device(const Pipeline& pipeline, bool usb2Mode);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param pipeline Pipeline to be executed on the device
+     * @param maxUsbSpeed Maximum allowed USB speed
+     */
+    Device(const Pipeline& pipeline, UsbSpeed maxUsbSpeed);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
@@ -69,6 +75,14 @@ class Device : public DeviceBase {
      * Connects to device specified by devInfo.
      * @param pipeline Pipeline to be executed on the device
      * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param maxUsbSpeed Maximum allowed USB speed
+     */
+    Device(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param pipeline Pipeline to be executed on the device
+     * @param devInfo DeviceInfo which specifies which device to connect to
      * @param pathToCmd Path to custom device firmware
      */
     Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd);
@@ -77,7 +91,7 @@ class Device : public DeviceBase {
      * Connects to device specified by devInfo.
      * @param pipeline Pipeline to be executed on the device
      * @param devInfo DeviceInfo which specifies which device to connect to
-     * @param usb2Mode Path to custom device firmware
+     * @param pathToCmd Path to custom device firmware
      */
     Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd);
 

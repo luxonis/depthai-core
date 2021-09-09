@@ -10,9 +10,11 @@
 #include "AssetManager.hpp"
 #include "Node.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
+#include "depthai/device/Device.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 
 // shared
+#include "depthai-shared/device/PrebootConfig.hpp"
 #include "depthai-shared/pipeline/PipelineSchema.hpp"
 #include "depthai-shared/properties/GlobalProperties.hpp"
 
@@ -34,7 +36,9 @@ class PipelineImpl {
     // Functions
     Node::Id getNextUniqueId();
     PipelineSchema getPipelineSchema() const;
-    OpenVINO::Version getPipelineOpenVINOVersion() const;
+    tl::optional<OpenVINO::Version> getPipelineOpenVINOVersion() const;
+    bool isOpenVINOVersionCompatible(OpenVINO::Version version) const;
+    Device::Config getDeviceConfig() const;
     void setCameraTuningBlobPath(const std::string& path);
     void setXLinkChunkSize(int sizeBytes);
 
@@ -44,7 +48,7 @@ class PipelineImpl {
     std::shared_ptr<const Node> getNode(Node::Id id) const;
     std::shared_ptr<Node> getNode(Node::Id id);
 
-    void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, OpenVINO::Version& version) const;
+    void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage) const;
     void remove(std::shared_ptr<Node> node);
 
     std::vector<Node::Connection> getConnections() const;
@@ -57,8 +61,6 @@ class PipelineImpl {
     Node::Id latestId = 0;
     // Pipeline asset manager
     AssetManager assetManager;
-    // Default version
-    constexpr static auto DEFAULT_OPENVINO_VERSION = OpenVINO::Version::VERSION_2021_4;
     // Optionally forced version
     tl::optional<OpenVINO::Version> forceRequiredOpenVINOVersion;
     // Global pipeline properties
@@ -107,9 +109,6 @@ class Pipeline {
     /// Clone the pipeline (Creates a copy)
     Pipeline clone() const;
 
-    /// Default Pipeline openvino version
-    constexpr static auto DEFAULT_OPENVINO_VERSION = PipelineImpl::DEFAULT_OPENVINO_VERSION;
-
     /**
      * @returns Global properties of current pipeline
      */
@@ -121,8 +120,8 @@ class Pipeline {
     PipelineSchema getPipelineSchema();
 
     // void loadAssets(AssetManager& assetManager);
-    void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, OpenVINO::Version& version) const {
-        impl()->serialize(schema, assets, assetStorage, version);
+    void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage) const {
+        impl()->serialize(schema, assets, assetStorage);
     }
 
     /**
@@ -232,8 +231,13 @@ class Pipeline {
         return impl()->getCalibrationData();
     }
 
-    /// Get required OpenVINO version to run this pipeline
+    /// Get possible OpenVINO version to run this pipeline
     OpenVINO::Version getOpenVINOVersion() const {
+        return impl()->getPipelineOpenVINOVersion().value_or(OpenVINO::DEFAULT_VERSION);
+    }
+
+    /// Get required OpenVINO version to run this pipeline. Can be none
+    tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion() const {
         return impl()->getPipelineOpenVINOVersion();
     }
 
@@ -249,6 +253,16 @@ class Pipeline {
      */
     void setXLinkChunkSize(int sizeBytes) {
         impl()->setXLinkChunkSize(sizeBytes);
+    }
+
+    /// Checks whether a given OpenVINO version is compatible with the pipeline
+    bool isOpenVINOVersionCompatible(OpenVINO::Version version) const {
+        return impl()->isOpenVINOVersionCompatible(version);
+    }
+
+    /// Get device configuration needed for this pipeline
+    Device::Config getDeviceConfig() const {
+        return impl()->getDeviceConfig();
     }
 };
 

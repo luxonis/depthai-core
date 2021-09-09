@@ -171,7 +171,7 @@ bool DataOutputQueue::removeCallback(int callbackId) {
 DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize, bool blocking)
     : queue(maxSize, blocking), name(streamName) {
     // open stream with default XLINK_USB_BUFFER_MAX_SIZE write size
-    XLinkStream stream(*conn, name, dai::XLINK_USB_BUFFER_MAX_SIZE);
+    XLinkStream stream(*conn, name, device::XLINK_USB_BUFFER_MAX_SIZE);
 
     writingThread = std::thread([this, stream = std::move(stream)]() mutable {
         std::uint64_t numPacketsSent = 0;
