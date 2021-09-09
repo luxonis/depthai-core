@@ -10,8 +10,6 @@
 // Step size ('W','A','S','D' controls)
 static constexpr float stepSize = 0.02;
 
-static std::atomic<bool> sendCamConfig{false};
-
 int main() {
     // Create pipeline
     dai::Pipeline pipeline;
@@ -46,8 +44,8 @@ int main() {
     configIn->out.link(manip->inputConfig);
     stereo->depth.link(manip->inputImage);
     manip->out.link(xout->input);
-    monoRight->out.link(stereo->left);
-    monoLeft->out.link(stereo->right);
+    monoRight->out.link(stereo->right);
+    monoLeft->out.link(stereo->left);
 
     // Connect to device and start pipeline
     dai::Device device(pipeline);
@@ -55,6 +53,8 @@ int main() {
     // Queues
     auto q = device.getOutputQueue(xout->getStreamName(), 4, false);
     auto configQueue = device.getInputQueue(configIn->getStreamName());
+
+    bool sendCamConfig = false;
 
     while(true) {
         auto inDepth = q->get<dai::ImgFrame>();
@@ -69,7 +69,8 @@ int main() {
         cv::imshow("depth", depthFrameColor);
 
         // Update screen (10ms pooling rate)
-        int key = cv::waitKey(10);
+        int key = cv::waitKey(9);
+        cv::waitKey(1);  // glitch workaround
         if(key == 'q') {
             break;
         } else if(key == 'w') {

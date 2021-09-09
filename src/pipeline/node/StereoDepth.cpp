@@ -56,13 +56,11 @@ void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const 
 
     meshAsset.data = dataLeft;
     assetKey = "meshLeft";
-    assetManager.set(assetKey, meshAsset);
-    properties.mesh.meshLeftUri = std::string("asset:") + assetKey;
+    properties.mesh.meshLeftUri = assetManager.set(assetKey, meshAsset)->getRelativeUri();
 
     meshAsset.data = dataRight;
     assetKey = "meshRight";
-    assetManager.set(assetKey, meshAsset);
-    properties.mesh.meshRightUri = std::string("asset:") + assetKey;
+    properties.mesh.meshRightUri = assetManager.set(assetKey, meshAsset)->getRelativeUri();
 
     properties.mesh.meshSize = meshAsset.data.size();
 }
@@ -91,6 +89,9 @@ void StereoDepth::setMeshStep(int width, int height) {
 void StereoDepth::setInputResolution(int width, int height) {
     properties.width = width;
     properties.height = height;
+}
+void StereoDepth::setInputResolution(std::tuple<int, int> resolution) {
+    setInputResolution(std::get<0>(resolution), std::get<1>(resolution));
 }
 void StereoDepth::setOutputSize(int width, int height) {
     properties.outWidth = width;

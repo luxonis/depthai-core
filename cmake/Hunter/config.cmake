@@ -8,8 +8,8 @@ hunter_config(
 hunter_config(
     XLink
     VERSION "luxonis-2021.3-develop"
-    URL "https://github.com/luxonis/XLink/archive/1a89b3003529ccbed90a32cf7c13438be1901744.tar.gz"
-    SHA1 "5a0ce8016edf9a5092290b2971eba5e1f37059ee"
+    URL "https://github.com/luxonis/XLink/archive/4c149080d22c35a17ce285f5bca99f2b2fe05e46.tar.gz"
+    SHA1 "64b0a8bfeb1a91f909df88ea8b1d0b17885b92ff"
 )
 
 hunter_config(
@@ -63,4 +63,25 @@ hunter_config(
         ENABLE_XATTR=OFF
         ENABLE_ZLIB=OFF
         ENABLE_ZSTD=OFF
+)
+
+# Luxonis FP16 fork which doesn't use git cloning for its dependencies
+hunter_config(
+    FP16
+    VERSION "luxonis-0.0.0"
+    URL "https://github.com/luxonis/FP16/archive/c911175d2717e562976e606c6e5f799bf40cf94e.tar.gz"
+    SHA1 "40e9723c87c2fe21781132c0f2f8b90338500e32"
+    CMAKE_ARGS
+        FP16_BUILD_BENCHMARKS=OFF
+        FP16_BUILD_TESTS=OFF
+)
+
+# Backward - Stacktrace printer
+hunter_config(
+    Backward
+    VERSION "1.6"
+    URL "https://github.com/bombela/backward-cpp/archive/refs/tags/v1.6.tar.gz"
+    SHA1 "4ecb711eabfd15bc88ff9dd9342907fc5da46b62"
+    CMAKE_ARGS
+        BACKWARD_TESTS=OFF
 )

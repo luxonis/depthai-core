@@ -14,6 +14,9 @@ namespace node {
 DetectionNetwork::DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : NeuralNetwork(par, nodeId) {
     inputs = {&input};
     outputs = {&out, &passthrough};
+
+    // Default confidence threshold
+    getPropertiesRef().confidenceThreshold = 0.5;
 }
 
 std::string DetectionNetwork::getName() const {

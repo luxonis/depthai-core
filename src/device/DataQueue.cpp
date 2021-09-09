@@ -6,7 +6,7 @@
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
-#include "pipeline/datatype/StreamPacketParser.hpp"
+#include "pipeline/datatype/StreamMessageParser.hpp"
 
 // shared
 #include "depthai-shared/xlink/XLinkConstants.hpp"
@@ -35,7 +35,7 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
                 packet = stream.readRaw();
 
                 // parse packet
-                auto data = parsePacketToADatatype(packet);
+                auto data = StreamMessageParser::parseMessageToADatatype(packet);
 
                 // Trace level debugging
                 if(spdlog::get_level() == spdlog::level::trace) {
@@ -171,7 +171,7 @@ bool DataOutputQueue::removeCallback(int callbackId) {
 DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize, bool blocking)
     : queue(maxSize, blocking), name(streamName) {
     // open stream with default XLINK_USB_BUFFER_MAX_SIZE write size
-    XLinkStream stream(*conn, name, dai::XLINK_USB_BUFFER_MAX_SIZE);
+    XLinkStream stream(*conn, name, device::XLINK_USB_BUFFER_MAX_SIZE);
 
     writingThread = std::thread([this, stream = std::move(stream)]() mutable {
         std::uint64_t numPacketsSent = 0;
@@ -194,7 +194,7 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
                 }
 
                 // serialize
-                auto serialized = serializeData(data);
+                auto serialized = StreamMessageParser::serializeMessage(data);
 
                 // Blocking
                 stream.write(serialized);

@@ -1,4 +1,4 @@
-#include "StreamPacketParser.hpp"
+#include "depthai/pipeline/datatype/StreamMessageParser.hpp"
 
 // standard
 #include <memory>
@@ -15,6 +15,7 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
+#include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
@@ -25,6 +26,7 @@
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorData.hpp"
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/pipeline/datatype/SystemInformation.hpp"
+#include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 
 // shared
@@ -32,6 +34,7 @@
 #include "depthai-shared/datatype/RawBuffer.hpp"
 #include "depthai-shared/datatype/RawCameraControl.hpp"
 #include "depthai-shared/datatype/RawEdgeDetectorConfig.hpp"
+#include "depthai-shared/datatype/RawFeatureTrackerConfig.hpp"
 #include "depthai-shared/datatype/RawIMUData.hpp"
 #include "depthai-shared/datatype/RawImageManipConfig.hpp"
 #include "depthai-shared/datatype/RawImgDetections.hpp"
@@ -62,7 +65,7 @@ inline std::shared_ptr<T> parseDatatype(nlohmann::json& ser, std::vector<uint8_t
     return tmp;
 }
 
-std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
+std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t* packet) {
     int serializedObjectSize = readIntLE(packet->data + packet->length - 4);
     auto objectType = static_cast<DatatypeEnum>(readIntLE(packet->data + packet->length - 8));
 
@@ -72,7 +75,10 @@ std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
     std::uint32_t bufferLength = packet->length - 8 - serializedObjectSize;
     auto* msgpackStart = packet->data + bufferLength;
 
-    nlohmann::json jser = nlohmann::json::from_msgpack(msgpackStart, msgpackStart + serializedObjectSize);
+    nlohmann::json jser;
+    if(serializedObjectSize > 0) {
+        jser = nlohmann::json::from_msgpack(msgpackStart, msgpackStart + serializedObjectSize);
+    }
 
     // copy data part
     std::vector<uint8_t> data(packet->data, packet->data + bufferLength);
@@ -138,12 +144,20 @@ std::shared_ptr<RawBuffer> parsePacket(streamPacketDesc_t* packet) {
         case DatatypeEnum::EdgeDetectorConfig:
             return parseDatatype<RawEdgeDetectorConfig>(jser, data);
             break;
+
+        case DatatypeEnum::TrackedFeatures:
+            return parseDatatype<RawTrackedFeatures>(jser, data);
+            break;
+
+        case DatatypeEnum::FeatureTrackerConfig:
+            return parseDatatype<RawFeatureTrackerConfig>(jser, data);
+            break;
     }
 
     throw std::runtime_error("Bad packet, couldn't parse");
 }
 
-std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
+std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPacketDesc_t* packet) {
     int serializedObjectSize = readIntLE(packet->data + packet->length - 4);
     auto objectType = static_cast<DatatypeEnum>(readIntLE(packet->data + packet->length - 8));
 
@@ -153,7 +167,10 @@ std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
     std::uint32_t bufferLength = packet->length - 8 - serializedObjectSize;
     auto* msgpackStart = packet->data + bufferLength;
 
-    nlohmann::json jser = nlohmann::json::from_msgpack(msgpackStart, msgpackStart + serializedObjectSize);
+    nlohmann::json jser;
+    if(serializedObjectSize > 0) {
+        jser = nlohmann::json::from_msgpack(msgpackStart, msgpackStart + serializedObjectSize);
+    }
 
     // copy data part
     std::vector<uint8_t> data(packet->data, packet->data + bufferLength);
@@ -217,15 +234,20 @@ std::shared_ptr<ADatatype> parsePacketToADatatype(streamPacketDesc_t* packet) {
         case DatatypeEnum::EdgeDetectorConfig:
             return std::make_shared<EdgeDetectorConfig>(parseDatatype<RawEdgeDetectorConfig>(jser, data));
             break;
+
+        case DatatypeEnum::TrackedFeatures:
+            return std::make_shared<TrackedFeatures>(parseDatatype<RawTrackedFeatures>(jser, data));
+            break;
+
+        case DatatypeEnum::FeatureTrackerConfig:
+            return std::make_shared<FeatureTrackerConfig>(parseDatatype<RawFeatureTrackerConfig>(jser, data));
+            break;
     }
 
     throw std::runtime_error("Bad packet, couldn't parse");
 }
 
-std::vector<std::uint8_t> serializeData(const std::shared_ptr<RawBuffer>& data) {
-    std::vector<std::uint8_t> ser;
-    if(!data) return ser;
-
+std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer& data) {
     // Serialization:
     // 1. fill vector with bytes from data.data
     // 2. serialize and append metadata
@@ -234,21 +256,37 @@ std::vector<std::uint8_t> serializeData(const std::shared_ptr<RawBuffer>& data) 
 
     std::vector<std::uint8_t> metadata;
     DatatypeEnum datatype;
-    data->serialize(metadata, datatype);
+    data.serialize(metadata, datatype);
     uint32_t metadataSize = static_cast<uint32_t>(metadata.size());
 
     // 4B datatype & 4B metadata size
-    std::uint8_t leDatatype[4];
-    std::uint8_t leMetadataSize[4];
+    std::array<std::uint8_t, 4> leDatatype;
+    std::array<std::uint8_t, 4> leMetadataSize;
     for(int i = 0; i < 4; i++) leDatatype[i] = (static_cast<std::int32_t>(datatype) >> (i * 8)) & 0xFF;
     for(int i = 0; i < 4; i++) leMetadataSize[i] = (metadataSize >> i * 8) & 0xFF;
 
-    ser.insert(ser.end(), data->data.begin(), data->data.end());
+    std::vector<std::uint8_t> ser;
+    ser.reserve(data.data.size() + metadata.size() + leDatatype.size() + leMetadataSize.size());
+    ser.insert(ser.end(), data.data.begin(), data.data.end());
     ser.insert(ser.end(), metadata.begin(), metadata.end());
-    ser.insert(ser.end(), leDatatype, leDatatype + sizeof(leDatatype));
-    ser.insert(ser.end(), leMetadataSize, leMetadataSize + sizeof(leMetadataSize));
+    ser.insert(ser.end(), leDatatype.begin(), leDatatype.end());
+    ser.insert(ser.end(), leMetadataSize.begin(), leMetadataSize.end());
 
     return ser;
+}
+
+std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const std::shared_ptr<const RawBuffer>& data) {
+    if(!data) return {};
+    return serializeMessage(*data);
+}
+
+std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const ADatatype& data) {
+    return serializeMessage(data.serialize());
+}
+
+std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const std::shared_ptr<const ADatatype>& data) {
+    if(!data) return {};
+    return serializeMessage(*data);
 }
 
 }  // namespace dai
