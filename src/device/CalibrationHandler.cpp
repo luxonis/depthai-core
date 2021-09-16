@@ -313,6 +313,25 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBo
     return extrinsics;
 }
 
+std::vector<float> CalibrationHandler::getCameraTranslationVector(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation) {
+    std::vector<std::vector<float>> extrinsics = getCameraExtrinsics(srcCamera, dstCamera, useSpecTranslation);
+
+    std::vector<float> translationVector = {0, 0, 0};
+    for(auto i = 0; i < 3; i++) {
+        translationVector[i] = extrinsics[i][3];
+    }
+    return translationVector;
+}
+
+float CalibrationHandler::getBaselineDistance(CameraBoardSocket cam1, CameraBoardSocket cam2, bool useSpecTranslation) {
+    std::vector<float> translationVector = getCameraTranslationVector(cam1, cam2, useSpecTranslation);
+    float sum = 0;
+    for(auto val : translationVector) {
+        sum += val * val;
+    }
+    return std::sqrt(sum);
+}
+
 std::vector<std::vector<float>> CalibrationHandler::getCameraToImuExtrinsics(CameraBoardSocket cameraId, bool useSpecTranslation) {
     std::vector<std::vector<float>> transformationMatrix = getImuToCameraExtrinsics(cameraId, useSpecTranslation);
     float temp = transformationMatrix[0][1];

@@ -9,10 +9,10 @@
 
 // project
 #include <depthai/openvino/OpenVINO.hpp>
+#include <depthai/device/Device.hpp>
 #include <depthai/device/DeviceBootloader.hpp>
 
-namespace dai
-{
+namespace dai {
 
 class Resources {
     // private constructor
@@ -27,7 +27,7 @@ class Resources {
     std::thread lazyThreadBootloader;
     std::unordered_map<std::string, std::vector<std::uint8_t>> resourceMapBootloader;
 
-    std::vector<std::uint8_t> getDeviceBinary(OpenVINO::Version version, bool usb2Mode);
+    std::vector<std::uint8_t> getDeviceBinary(Device::Config config);
 
 public:
     static Resources& getInstance();
@@ -35,7 +35,8 @@ public:
     void operator=(Resources const&) = delete;
 
     // Available resources
-    std::vector<std::uint8_t> getDeviceFirmware(bool usb2Mode, OpenVINO::Version version = OpenVINO::VERSION_2021_4);
+    std::vector<std::uint8_t> getDeviceFirmware(bool usb2Mode, OpenVINO::Version version = OpenVINO::DEFAULT_VERSION);
+    std::vector<std::uint8_t> getDeviceFirmware(Device::Config config, std::string pathToMvcmd = "");
     std::vector<std::uint8_t> getBootloaderFirmware(DeviceBootloader::Type type = DeviceBootloader::Type::USB);
 
 };

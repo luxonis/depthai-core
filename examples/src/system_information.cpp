@@ -12,8 +12,8 @@ void printSystemInformation(dai::SystemInformation info) {
            info.leonMssMemoryUsage.used / (1024.0f * 1024.0f),
            info.leonMssMemoryUsage.total / (1024.0f * 1024.0f));
     const auto& t = info.chipTemperature;
-    printf("Chip temperature - average: %.2f, css: %.2f, mss: %.2f, upa0: %.2f, upa1: %.2f\n", t.average, t.css, t.mss, t.upa, t.dss);
-    printf("Cpu usage - Leon OS: %.2f %%, Leon RT: %.2f %%\n", info.leonCssCpuUsage.average * 100, info.leonMssCpuUsage.average * 100);
+    printf("Chip temperature - average: %.2f, css: %.2f, mss: %.2f, upa: %.2f, dss: %.2f\n", t.average, t.css, t.mss, t.upa, t.dss);
+    printf("Cpu usage - Leon CSS: %.2f %%, Leon MSS: %.2f %%\n", info.leonCssCpuUsage.average * 100, info.leonMssCpuUsage.average * 100);
     printf("----------------------------------------\n");
 }
 

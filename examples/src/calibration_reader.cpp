@@ -29,6 +29,8 @@ int main(int argc, char** argv) {
     cout << "Width -> " << width << endl;
     cout << "Height -> " << height << endl;
 
+    cout << "Stereo baseline distance -> " << calibData.getBaselineDistance() << " cm" << endl;
+
     cout << "Intrinsics from getCameraIntrinsics function full resolution ->" << endl;
     intrinsics = calibData.getCameraIntrinsics(dai::CameraBoardSocket::RIGHT);
 
