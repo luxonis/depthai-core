@@ -214,6 +214,7 @@ class StereoDepth : public Node {
     void setRectifyEdgeFillColor(int color);
 
     /**
+     * DEPRECATED function. It was removed, since rectified images are not flipped anymore.
      * Mirror rectified frames, only when LR-check mode is disabled. Default `true`.
      * The mirroring is required to have a normal non-mirrored disparity/depth output.
      *
@@ -224,7 +225,7 @@ class StereoDepth : public Node {
      *
      * @param enable True for normal disparity/depth, otherwise mirrored
      */
-    void setRectifyMirrorFrame(bool enable);
+    [[deprecated("Function call should be removed")]] void setRectifyMirrorFrame(bool enable);
 
     /**
      * Enable outputting rectified frames. Optimizes computation on device side when disabled.
@@ -238,6 +239,12 @@ class StereoDepth : public Node {
      * DEPRECATED. The output is auto-enabled if used
      */
     [[deprecated("Function call should be removed")]] void setOutputDepth(bool enable);
+
+    /**
+     * Enable runtime stereo mode switch, e.g. from standard to LR-check.
+     * Note: when enabled resources allocated for worst case to enable switching to any mode.
+     */
+    void setRuntimeModeSwitch(bool enable);
 
     /**
      * Useful for normalization of the disparity map.

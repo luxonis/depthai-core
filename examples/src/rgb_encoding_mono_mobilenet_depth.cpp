@@ -56,9 +56,7 @@ int main(int argc, char** argv) {
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     videoEncoder->setDefaultProfilePreset(1920, 1080, 30, dai::VideoEncoderProperties::Profile::H265_MAIN);
 
-    // Note: the rectified streams are horizontally mirrored by default
     depth->initialConfig.setConfidenceThreshold(255);
-    depth->setRectifyMirrorFrame(false);
     depth->setRectifyEdgeFillColor(0);  // Black, to better see the cutout
 
     nn->setConfidenceThreshold(0.5);

@@ -120,10 +120,12 @@ void StereoDepth::setRectification(bool enable) {
     properties.enableRectification = enable;
 }
 void StereoDepth::setLeftRightCheck(bool enable) {
-    properties.enableLeftRightCheck = enable;
+    initialConfig.setLeftRightCheck(enable);
+    properties.initialConfig = *rawConfig;
 }
 void StereoDepth::setSubpixel(bool enable) {
-    properties.enableSubpixel = enable;
+    initialConfig.setSubpixel(enable);
+    properties.initialConfig = *rawConfig;
 }
 void StereoDepth::setExtendedDisparity(bool enable) {
     properties.enableExtendedDisparity = enable;
@@ -132,7 +134,8 @@ void StereoDepth::setRectifyEdgeFillColor(int color) {
     properties.rectifyEdgeFillColor = color;
 }
 void StereoDepth::setRectifyMirrorFrame(bool enable) {
-    properties.rectifyMirrorFrame = enable;
+    (void)enable;
+    spdlog::warn("{} is deprecated.", __func__);
 }
 void StereoDepth::setOutputRectified(bool enable) {
     (void)enable;
@@ -143,10 +146,14 @@ void StereoDepth::setOutputDepth(bool enable) {
     spdlog::warn("{} is deprecated. The output is auto-enabled if used", __func__);
 }
 
+void StereoDepth::setRuntimeModeSwitch(bool enable) {
+    properties.enableRuntimeStereoModeSwitch = enable;
+}
+
 float StereoDepth::getMaxDisparity() const {
     float maxDisp = 95.0;
     if(properties.enableExtendedDisparity) maxDisp *= 2;
-    if(properties.enableSubpixel) maxDisp *= 32;
+    if(rawConfig->config.algorithmControl.enableSubpixel) maxDisp *= 32;
     return maxDisp;
 }
 
