@@ -153,7 +153,7 @@ void StereoDepth::setRuntimeModeSwitch(bool enable) {
 float StereoDepth::getMaxDisparity() const {
     float maxDisp = 95.0;
     if(properties.enableExtendedDisparity) maxDisp *= 2;
-    if(rawConfig->config.algorithmControl.enableSubpixel) maxDisp *= 32;
+    if(rawConfig->algorithmControl.enableSubpixel) maxDisp *= 32;
     return maxDisp;
 }
 
