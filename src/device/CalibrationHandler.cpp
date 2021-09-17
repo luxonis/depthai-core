@@ -362,13 +362,13 @@ std::vector<std::vector<float>> CalibrationHandler::getImuToCameraExtrinsics(Cam
 
     std::vector<std::vector<float>> transformationMatrix = eepromData.imuExtrinsics.rotationMatrix;
     if(useSpecTranslation) {
-        transformationMatrix[0].push_back(eepromData.cameraData[cameraId].extrinsics.specTranslation.x);
-        transformationMatrix[1].push_back(eepromData.cameraData[cameraId].extrinsics.specTranslation.y);
-        transformationMatrix[2].push_back(eepromData.cameraData[cameraId].extrinsics.specTranslation.z);
+        transformationMatrix[0].push_back(eepromData.imuExtrinsics.specTranslation.x);
+        transformationMatrix[1].push_back(eepromData.imuExtrinsics.specTranslation.y);
+        transformationMatrix[2].push_back(eepromData.imuExtrinsics.specTranslation.z);
     } else {
-        transformationMatrix[0].push_back(eepromData.cameraData[cameraId].extrinsics.translation.x);
-        transformationMatrix[1].push_back(eepromData.cameraData[cameraId].extrinsics.translation.y);
-        transformationMatrix[2].push_back(eepromData.cameraData[cameraId].extrinsics.translation.z);
+        transformationMatrix[0].push_back(eepromData.imuExtrinsics.translation.x);
+        transformationMatrix[1].push_back(eepromData.imuExtrinsics.translation.y);
+        transformationMatrix[2].push_back(eepromData.imuExtrinsics.translation.z);
     }
     std::vector<float> homogeneous_vector = {0, 0, 0, 1};
     transformationMatrix.push_back(homogeneous_vector);
