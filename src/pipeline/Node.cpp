@@ -89,6 +89,14 @@ int Node::Input::getQueueSize() const {
     return defaultQueueSize;
 }
 
+// void Node::Input::setWaitForMessage(bool waitForMessage) {
+//     this->waitForMessage = waitForMessage;
+// }
+//
+// bool Node::Input::getWaitForMessage() const {
+//     return waitForMessage.value_or(defaultWaitForMessage);
+// }
+
 const AssetManager& Node::getAssetManager() const {
     return assetManager;
 }

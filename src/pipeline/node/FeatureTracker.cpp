@@ -24,7 +24,11 @@ nlohmann::json FeatureTracker::getProperties() {
 
 // Node properties configuration
 void FeatureTracker::setWaitForConfigInput(bool wait) {
-    properties.inputConfigSync = wait;
+    inputConfig.options.waitForMessage = wait;
+}
+
+bool FeatureTracker::getWaitForConfigInput() const {
+    return inputConfig.options.waitForMessage;
 }
 
 void FeatureTracker::setHardwareResources(int numShaves, int numMemorySlices) {

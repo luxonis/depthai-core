@@ -62,9 +62,15 @@ class ImageManip : public Node {
     // Functions to set properties
     /**
      * Specify whether or not wait until configuration message arrives to inputConfig Input.
-     * @param wait True to wait for configuration message, false otherwise
+     * @param wait True to wait for configuration message, false otherwise.
      */
-    void setWaitForConfigInput(bool wait);
+    [[deprecated("Use 'inputConfig.options.waitForMessage' instead")]] void setWaitForConfigInput(bool wait);
+
+    /**
+     * @see setWaitForConfigInput
+     * @returns True if wait for inputConfig message, false otherwise
+     */
+    [[deprecated("Use 'inputConfig.options.waitForMessage' instead")]] bool getWaitForConfigInput() const;
 
     /**
      * Specify number of frames in pool.

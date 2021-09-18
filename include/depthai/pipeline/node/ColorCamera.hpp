@@ -250,13 +250,13 @@ class ColorCamera : public Node {
      * before sending out a frame.
      * @param wait True to wait for inputConfig message, false otherwise
      */
-    void setWaitForConfigInput(bool wait);
+    [[deprecated("Use 'inputConfig.options.waitForMessage' instead")]] void setWaitForConfigInput(bool wait);
 
     /**
      * @see setWaitForConfigInput
      * @returns True if wait for inputConfig message, false otherwise
      */
-    bool getWaitForConfigInput();
+    [[deprecated("Use 'inputConfig.options.waitForMessage' instead")]] bool getWaitForConfigInput();
 
     /**
      * Specifies whether preview output should preserve aspect ratio,

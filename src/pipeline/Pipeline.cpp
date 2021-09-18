@@ -121,6 +121,7 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
             io.blocking = input.getBlocking();
             io.queueSize = input.getQueueSize();
             io.name = input.name;
+            io.options.waitForMessage = input.options.waitForMessage;
             switch(input.type) {
                 case Node::Input::Type::MReceiver:
                     io.type = NodeIoInfo::Type::MReceiver;
@@ -308,6 +309,11 @@ bool PipelineImpl::isSamePipeline(const Node::Output& out, const Node::Input& in
 }
 
 bool PipelineImpl::canConnect(const Node::Output& out, const Node::Input& in) {
+    // First check if on same pipeline
+    if(!isSamePipeline(out, in)) {
+        return false;
+    }
+
     // Check that IoType match up
     if(out.type == Node::Output::Type::MSender && in.type == Node::Input::Type::MReceiver) return false;
     if(out.type == Node::Output::Type::SSender && in.type == Node::Input::Type::SReceiver) return false;
@@ -346,6 +352,7 @@ void PipelineImpl::link(const Node::Output& out, const Node::Input& in) {
         throw std::logic_error(fmt::format("Nodes are not on same pipeline or one of nodes parent pipeline doesn't exists anymore"));
     }
 
+    // First check if can connect (must be on same pipeline and correct types)
     if(!canConnect(out, in)) {
         throw std::runtime_error(fmt::format("Cannot link '{}.{}' to '{}.{}'", out.getParent().getName(), out.name, in.getParent().getName(), in.name));
     }

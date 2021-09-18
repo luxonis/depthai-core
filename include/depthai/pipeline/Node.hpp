@@ -129,6 +129,10 @@ class Node {
         int defaultQueueSize{8};
         tl::optional<bool> blocking;
         tl::optional<int> queueSize;
+        // Options - more information about the input
+        struct Options {
+            bool waitForMessage;
+        } options;
         friend class Output;
         const std::vector<DatatypeHierarchy> possibleDatatypes;
 
@@ -139,6 +143,16 @@ class Node {
         /// Constructs Input with specified blocking and queueSize options
         Input(Node& par, std::string n, Type t, bool blocking, int queueSize, std::vector<DatatypeHierarchy> types)
             : parent(par), name(std::move(n)), type(t), defaultBlocking(blocking), defaultQueueSize(queueSize), possibleDatatypes(std::move(types)) {}
+
+        /// Constructs Input with specified blocking and queueSize as well as additional options
+        Input(Node& par, std::string n, Type t, bool blocking, int queueSize, Options options, std::vector<DatatypeHierarchy> types)
+            : parent(par),
+              name(std::move(n)),
+              type(t),
+              defaultBlocking(blocking),
+              defaultQueueSize(queueSize),
+              options(options),
+              possibleDatatypes(std::move(types)) {}
 
         Node& getParent() {
             return parent;
@@ -171,6 +185,20 @@ class Node {
          * @returns Maximum input queue size
          */
         int getQueueSize() const;
+
+        // /**
+        //  * Overrides default wait for message behavior.
+        //  * Applicable for nodes with multiple inputs.
+        //  * Specifies behavior whether to wait for this input when a Node processes certain data or not.
+        //  * @param waitForMessage Whether to wait for message to arrive to this input or not
+        //  */
+        // void setWaitForMessage(bool waitForMessage);
+
+        // /**
+        //  * Get behavoir whether to wait for this input when a Node processes certain data or not
+        //  * @returns Whether to wait for message to arrive to this input or not
+        //  */
+        // bool getWaitForMessage() const;
     };
 
     /**

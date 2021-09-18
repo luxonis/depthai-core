@@ -24,7 +24,11 @@ nlohmann::json SpatialLocationCalculator::getProperties() {
 
 // Node properties configuration
 void SpatialLocationCalculator::setWaitForConfigInput(bool wait) {
-    properties.inputConfigSync = wait;
+    inputConfig.options.waitForMessage = wait;
+}
+
+bool SpatialLocationCalculator::getWaitForConfigInput() const {
+    return inputConfig.options.waitForMessage;
 }
 
 std::shared_ptr<Node> SpatialLocationCalculator::clone() {

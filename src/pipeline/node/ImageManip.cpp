@@ -61,7 +61,11 @@ void ImageManip::setKeepAspectRatio(bool keep) {
 
 // Node properties configuration
 void ImageManip::setWaitForConfigInput(bool wait) {
-    properties.inputConfigSync = wait;
+    inputConfig.options.waitForMessage = wait;
+}
+
+bool ImageManip::getWaitForConfigInput() const {
+    return inputConfig.options.waitForMessage;
 }
 
 void ImageManip::setNumFramesPool(int numFramesPool) {
