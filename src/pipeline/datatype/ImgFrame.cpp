@@ -77,6 +77,7 @@ void ImgFrame::setSize(std::tuple<unsigned int, unsigned int> size) {
 }
 void ImgFrame::setType(RawImgFrame::Type type) {
     img.fb.type = type;
+    img.fb.bytesPP = RawImgFrame::typeToBpp(img.fb.type);
 }
 
 }  // namespace dai
