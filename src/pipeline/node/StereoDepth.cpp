@@ -150,6 +150,10 @@ void StereoDepth::setRuntimeModeSwitch(bool enable) {
     properties.enableRuntimeStereoModeSwitch = enable;
 }
 
+void StereoDepth::setNumFramesPool(int numFramesPool) {
+    properties.numFramesPool = numFramesPool;
+}
+
 float StereoDepth::getMaxDisparity() const {
     float maxDisp = 95.0;
     if(properties.enableExtendedDisparity) maxDisp *= 2;

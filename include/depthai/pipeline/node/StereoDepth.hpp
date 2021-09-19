@@ -89,6 +89,18 @@ class StereoDepth : public Node {
     Output rectifiedRight{*this, "rectifiedRight", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
+     * Outputs ImgFrame message that carries left-right check first iteration (before combining with second iteration) disparity map.
+     * Useful for debugging.
+     */
+    Output debugDispLrCheckIt1{*this, "debugDispLrCheckIt1", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
+     * Outputs ImgFrame message that carries cost dump of disparity map.
+     * Useful for debugging.
+     */
+    Output debugDispCostDump{*this, "debugDispCostDump", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
      * Specify local filesystem path to the calibration file
      * @param path Path to calibration file. If empty use EEPROM
      */
@@ -245,6 +257,12 @@ class StereoDepth : public Node {
      * Note: when enabled resources allocated for worst case to enable switching to any mode.
      */
     void setRuntimeModeSwitch(bool enable);
+
+    /**
+     * Specify number of frames in pool.
+     * @param numFramesPool How many frames should the pool have
+     */
+    void setNumFramesPool(int numFramesPool);
 
     /**
      * Useful for normalization of the disparity map.
