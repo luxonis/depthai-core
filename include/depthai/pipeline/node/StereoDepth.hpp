@@ -89,14 +89,25 @@ class StereoDepth : public Node {
     Output rectifiedRight{*this, "rectifiedRight", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
+     * Outputs StereoDepthConfig message that contains current stereo configuration.
+     */
+    Output outConfig{*this, "outConfig", Output::Type::MSender, {{DatatypeEnum::StereoDepthConfig, false}}};
+
+    /**
      * Outputs ImgFrame message that carries left-right check first iteration (before combining with second iteration) disparity map.
-     * Useful for debugging.
+     * Useful for debugging/fine tuning.
      */
     Output debugDispLrCheckIt1{*this, "debugDispLrCheckIt1", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
+     * Outputs ImgFrame message that carries left-right check second iteration (before combining with first iteration) disparity map.
+     * Useful for debugging/fine tuning.
+     */
+    Output debugDispLrCheckIt2{*this, "debugDispLrCheckIt2", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
      * Outputs ImgFrame message that carries cost dump of disparity map.
-     * Useful for debugging.
+     * Useful for debugging/fine tuning.
      */
     Output debugDispCostDump{*this, "debugDispCostDump", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
