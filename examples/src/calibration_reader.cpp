@@ -18,6 +18,7 @@ void printMatrix(std::vector<std::vector<float>> matrix) {
     out = out.substr(0, out.size() - 1) + "]\n\n";
     cout << out;
 }
+
 int main(int argc, char** argv) {
     using namespace std;
 
