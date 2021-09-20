@@ -155,10 +155,7 @@ void StereoDepth::setNumFramesPool(int numFramesPool) {
 }
 
 float StereoDepth::getMaxDisparity() const {
-    float maxDisp = 95.0;
-    if(properties.enableExtendedDisparity) maxDisp *= 2;
-    if(rawConfig->algorithmControl.enableSubpixel) maxDisp *= 32;
-    return maxDisp;
+    return initialConfig.getMaxDisparity();
 }
 
 }  // namespace node

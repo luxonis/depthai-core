@@ -50,6 +50,13 @@ void StereoDepthConfig::setSubpixel(bool enable) {
     cfg.algorithmControl.enableSubpixel = enable;
 }
 
+float StereoDepthConfig::getMaxDisparity() const {
+    float maxDisp = 95.0;
+    if(false) maxDisp *= 2;  // TODO re-enable with extended
+    if(cfg.algorithmControl.enableSubpixel) maxDisp *= (1 << cfg.algorithmControl.subpixelFractionalBits);
+    return maxDisp;
+}
+
 dai::RawStereoDepthConfig StereoDepthConfig::get() const {
     return cfg;
 }

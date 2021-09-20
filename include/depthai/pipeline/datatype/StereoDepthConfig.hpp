@@ -77,6 +77,12 @@ class StereoDepthConfig : public Buffer {
     void setSubpixel(bool enable);
 
     /**
+     * Useful for normalization of the disparity map.
+     * @returns Maximum disparity value that the node can return
+     */
+    float getMaxDisparity() const;
+
+    /**
      * Set explicit configuration.
      * @param config Explicit configuration
      */

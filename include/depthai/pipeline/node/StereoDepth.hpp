@@ -279,7 +279,7 @@ class StereoDepth : public Node {
      * Useful for normalization of the disparity map.
      * @returns Maximum disparity value that the node can return
      */
-    float getMaxDisparity() const;
+    [[deprecated("Use 'initialConfig.getMaxDisparity()' instead")]] float getMaxDisparity() const;
 };
 
 }  // namespace node
