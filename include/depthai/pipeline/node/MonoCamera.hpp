@@ -2,10 +2,10 @@
 
 #include <depthai/pipeline/datatype/CameraControl.hpp>
 
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/pipeline/Node.hpp"
 
 // shared
-#include <depthai-shared/common/CameraBoardSocket.hpp>
 #include <depthai-shared/properties/MonoCameraProperties.hpp>
 
 namespace dai {
@@ -21,15 +21,14 @@ class MonoCamera : public Node {
    private:
     Properties properties;
 
-    std::string getName() const override;
-    std::vector<Output> getOutputs() override;
-    std::vector<Input> getInputs() override;
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
 
     std::shared_ptr<RawCameraControl> rawControl;
 
    public:
+    std::string getName() const override;
+
     MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
     /**
@@ -46,9 +45,16 @@ class MonoCamera : public Node {
     /**
      * Outputs ImgFrame message that carries RAW8 encoded (grayscale) frame data.
      *
-     * Suitable for use StereoDepth node
+     * Suitable for use StereoDepth node. Processed by ISP
      */
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
+     * Outputs ImgFrame message that carries RAW10-packed (MIPI CSI-2 format) frame data.
+     *
+     * Captured directly from the camera sensor
+     */
+    Output raw{*this, "raw", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Specify which board socket to use

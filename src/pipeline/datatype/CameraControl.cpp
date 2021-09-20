@@ -22,6 +22,11 @@ void CameraControl::setStartStreaming() {
 void CameraControl::setStopStreaming() {
     cfg.setCommand(RawCameraControl::Command::STOP_STREAM);
 }
+void CameraControl::setExternalTrigger(int numFramesBurst, int numFramesDiscard) {
+    cfg.setCommand(RawCameraControl::Command::EXTERNAL_TRIGGER);
+    cfg.lowPowerNumFramesBurst = numFramesBurst;
+    cfg.lowPowerNumFramesDiscard = numFramesDiscard;
+}
 
 // Focus
 void CameraControl::setAutoFocusMode(AutoFocusMode mode) {
@@ -42,7 +47,6 @@ void CameraControl::setAutoFocusRegion(uint16_t startX, uint16_t startY, uint16_
 void CameraControl::setManualFocus(uint8_t lensPosition) {
     cfg.setCommand(RawCameraControl::Command::MOVE_LENS);
     cfg.lensPosition = lensPosition;
-    setAutoFocusMode(AutoFocusMode::OFF);  // TODO added for initialConfig case
 }
 
 // Exposure
@@ -84,6 +88,10 @@ void CameraControl::setAutoWhiteBalanceMode(AutoWhiteBalanceMode mode) {
 void CameraControl::setAutoWhiteBalanceLock(bool lock) {
     cfg.setCommand(RawCameraControl::Command::AWB_LOCK);
     cfg.awbLockMode = lock;
+}
+void CameraControl::setManualWhiteBalance(int colorTemperatureK) {
+    cfg.setCommand(RawCameraControl::Command::WB_COLOR_TEMP);
+    cfg.wbColorTemp = colorTemperatureK;
 }
 
 // Other image controls

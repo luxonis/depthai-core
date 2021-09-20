@@ -6,7 +6,7 @@
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
-#include "pipeline/datatype/StreamPacketParser.hpp"
+#include "pipeline/datatype/StreamMessageParser.hpp"
 
 // shared
 #include "depthai-shared/xlink/XLinkConstants.hpp"
@@ -24,78 +24,87 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
     XLinkStream stream(*conn, name, 1);
 
     // Creates a thread which reads from connection into the queue
-    readingThread = std::thread(std::bind(
-        [this, conn](XLinkStream& stream) {
-            std::uint64_t numPacketsRead = 0;
-            try {
-                while(running) {
-                    // read packet
-                    streamPacketDesc_t* packet;
+    readingThread = std::thread([this, stream = std::move(stream)]() mutable {
+        std::uint64_t numPacketsRead = 0;
+        try {
+            while(running) {
+                // read packet
+                streamPacketDesc_t* packet;
 
-                    // Blocking
-                    packet = stream.readRaw();
+                // Blocking
+                packet = stream.readRaw();
 
-                    // parse packet
-                    auto data = parsePacketToADatatype(packet);
+                // parse packet
+                auto data = StreamMessageParser::parseMessageToADatatype(packet);
 
-                    // Trace level debugging
-                    if(spdlog::get_level() == spdlog::level::trace) {
-                        std::vector<std::uint8_t> metadata;
-                        DatatypeEnum type;
-                        data->getRaw()->serialize(metadata, type);
-                        std::string objData = "/";
-                        if(!metadata.empty()) objData = nlohmann::json::from_msgpack(metadata).dump();
-                        spdlog::trace("Received message from device ({}) - data size: {}, object type: {} object data: {}",
-                                      name,
-                                      data->getRaw()->data.size(),
-                                      type,
-                                      objData);
-                    }
+                // Trace level debugging
+                if(spdlog::get_level() == spdlog::level::trace) {
+                    std::vector<std::uint8_t> metadata;
+                    DatatypeEnum type;
+                    data->getRaw()->serialize(metadata, type);
+                    std::string objData = "/";
+                    if(!metadata.empty()) objData = nlohmann::json::from_msgpack(metadata).dump();
+                    spdlog::trace(
+                        "Received message from device ({}) - data size: {}, object type: {} object data: {}", name, data->getRaw()->data.size(), type, objData);
+                }
 
-                    // release packet
-                    stream.readRawRelease();
+                // release packet
+                stream.readRawRelease();
 
-                    // Add 'data' to queue
-                    queue.push(data);
+                // Add 'data' to queue
+                queue.push(data);
 
-                    // Increment numPacketsRead
-                    numPacketsRead++;
+                // Increment numPacketsRead
+                numPacketsRead++;
 
-                    // Call callbacks
-                    {
-                        std::unique_lock<std::mutex> l(callbacksMtx);
-                        for(const auto& kv : callbacks) {
-                            const auto& callback = kv.second;
-                            try {
-                                callback(name, data);
-                            } catch(const std::exception& ex) {
-                                spdlog::error("Callback with id: {} throwed an exception: {}", kv.first, ex.what());
-                            }
+                // Call callbacks
+                {
+                    std::unique_lock<std::mutex> l(callbacksMtx);
+                    for(const auto& kv : callbacks) {
+                        const auto& callback = kv.second;
+                        try {
+                            callback(name, data);
+                        } catch(const std::exception& ex) {
+                            spdlog::error("Callback with id: {} throwed an exception: {}", kv.first, ex.what());
                         }
                     }
                 }
-
-            } catch(const std::exception& ex) {
-                exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
             }
 
-            queue.destruct();
-            running = false;
-        },
-        std::move(stream)));
+        } catch(const std::exception& ex) {
+            exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
+        }
+
+        // Close the queue
+        running = false;
+        queue.destruct();
+    });
 }
 
-DataOutputQueue::~DataOutputQueue() {
-    spdlog::debug("DataOutputQueue ({}) about to be destructed...", name);
-    // Set reading thread to stop
-    running = false;
+bool DataOutputQueue::isClosed() const {
+    return !running;
+}
+
+void DataOutputQueue::close() {
+    // Set reading thread to stop and allow to be closed only once
+    if(!running.exchange(false)) return;
 
     // Destroy queue
     queue.destruct();
 
-    // join thread
+    // Then join thread
     if(readingThread.joinable()) readingThread.join();
-    spdlog::debug("DataOutputQueue ({}) destructed", name);
+
+    // Log
+    spdlog::debug("DataOutputQueue ({}) closed", name);
+}
+
+DataOutputQueue::~DataOutputQueue() {
+    // Close the queue first
+    close();
+
+    // Then join thread
+    if(readingThread.joinable()) readingThread.join();
 }
 
 void DataOutputQueue::setBlocking(bool blocking) {
@@ -113,7 +122,7 @@ void DataOutputQueue::setMaxSize(unsigned int maxSize) {
     queue.setMaxSize(maxSize);
 }
 
-unsigned int DataOutputQueue::getMaxSize(unsigned int maxSize) const {
+unsigned int DataOutputQueue::getMaxSize() const {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
     return queue.getMaxSize();
 }
@@ -162,60 +171,72 @@ bool DataOutputQueue::removeCallback(int callbackId) {
 DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize, bool blocking)
     : queue(maxSize, blocking), name(streamName) {
     // open stream with default XLINK_USB_BUFFER_MAX_SIZE write size
-    XLinkStream stream(*conn, name, dai::XLINK_USB_BUFFER_MAX_SIZE);
+    XLinkStream stream(*conn, name, device::XLINK_USB_BUFFER_MAX_SIZE);
 
-    writingThread = std::thread(std::bind(
-        [this, conn](XLinkStream& stream) {
-            std::uint64_t numPacketsSent = 0;
-            try {
-                while(running) {
-                    // get data from queue
-                    std::shared_ptr<RawBuffer> data;
-                    if(!queue.waitAndPop(data)) {
-                        continue;
-                    }
-
-                    // Trace level debugging
-                    if(spdlog::get_level() == spdlog::level::trace) {
-                        std::vector<std::uint8_t> metadata;
-                        DatatypeEnum type;
-                        data->serialize(metadata, type);
-                        std::string objData = "/";
-                        if(!metadata.empty()) objData = nlohmann::json::from_msgpack(metadata).dump();
-                        spdlog::trace(
-                            "Sending message to device ({}) - data size: {}, object type: {} object data: {}", name, data->data.size(), type, objData);
-                    }
-
-                    // serialize
-                    auto serialized = serializeData(data);
-
-                    // Blocking
-                    stream.write(serialized);
-
-                    // Increment num packets sent
-                    numPacketsSent++;
+    writingThread = std::thread([this, stream = std::move(stream)]() mutable {
+        std::uint64_t numPacketsSent = 0;
+        try {
+            while(running) {
+                // get data from queue
+                std::shared_ptr<RawBuffer> data;
+                if(!queue.waitAndPop(data)) {
+                    continue;
                 }
 
-            } catch(const std::exception& ex) {
-                exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
+                // Trace level debugging
+                if(spdlog::get_level() == spdlog::level::trace) {
+                    std::vector<std::uint8_t> metadata;
+                    DatatypeEnum type;
+                    data->serialize(metadata, type);
+                    std::string objData = "/";
+                    if(!metadata.empty()) objData = nlohmann::json::from_msgpack(metadata).dump();
+                    spdlog::trace("Sending message to device ({}) - data size: {}, object type: {} object data: {}", name, data->data.size(), type, objData);
+                }
+
+                // serialize
+                auto serialized = StreamMessageParser::serializeMessage(data);
+
+                // Blocking
+                stream.write(serialized);
+
+                // Increment num packets sent
+                numPacketsSent++;
             }
 
-            queue.destruct();
-            running = false;
-        },
-        std::move(stream)));
+        } catch(const std::exception& ex) {
+            exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
+        }
+
+        // Close the queue
+        running = false;
+        queue.destruct();
+    });
 }
 
-DataInputQueue::~DataInputQueue() {
-    spdlog::debug("DataInputQueue ({}) about to be destructed...", name);
-    // Set writing thread to stop
-    running = false;
+bool DataInputQueue::isClosed() const {
+    return !running;
+}
+
+void DataInputQueue::close() {
+    // Set reading thread to stop and allow to be closed only once
+    if(!running.exchange(false)) return;
 
     // Destroy queue
     queue.destruct();
 
+    // Then join thread
     if(writingThread.joinable()) writingThread.join();
-    spdlog::debug("DataInputQueue ({}) destructed", name);
+
+    // Log
+    spdlog::debug("DataInputQueue ({}) closed", name);
+}
+
+DataInputQueue::~DataInputQueue() {
+    // Close the queue
+    close();
+
+    // Then join thread
+    if(writingThread.joinable()) writingThread.join();
 }
 
 void DataInputQueue::setBlocking(bool blocking) {
@@ -233,7 +254,7 @@ void DataInputQueue::setMaxSize(unsigned int maxSize) {
     queue.setMaxSize(maxSize);
 }
 
-unsigned int DataInputQueue::getMaxSize(unsigned int maxSize) const {
+unsigned int DataInputQueue::getMaxSize() const {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
     return queue.getMaxSize();
 }

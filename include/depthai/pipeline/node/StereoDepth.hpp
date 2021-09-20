@@ -4,6 +4,7 @@
 
 // shared
 #include "depthai-shared/properties/StereoDepthProperties.hpp"
+#include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 
 namespace dai {
 namespace node {
@@ -18,14 +19,25 @@ class StereoDepth : public Node {
    private:
     Properties properties;
 
-    std::string getName() const override;
-    std::vector<Output> getOutputs() override;
-    std::vector<Input> getInputs() override;
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
+    std::shared_ptr<RawStereoDepthConfig> rawConfig;
 
    public:
+    std::string getName() const override;
+
     StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+
+    /**
+     * Initial config to use for StereoDepth.
+     */
+    StereoDepthConfig initialConfig;
+
+    /**
+     * Input StereoDepthConfig message with ability to modify parameters in runtime.
+     * Default queue is non-blocking with size 4.
+     */
+    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::StereoDepthConfig, false}}};
 
     /**
      * Input for left ImgFrame of left-right pair
@@ -43,11 +55,16 @@ class StereoDepth : public Node {
 
     /**
      * Outputs ImgFrame message that carries RAW16 encoded (0..65535) depth data in millimeters.
+     *
+     * Non-determined / invalid depth values are set to 0
      */
     Output depth{*this, "depth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
-     * Outputs ImgFrame message that carries RAW8 encoded (0..96 or 0..192 for Extended mode) disparity data.
+     * Outputs ImgFrame message that carries RAW8 / RAW16 encoded disparity data:
+     * RAW8 encoded (0..95) for standard mode;
+     * RAW8 encoded (0..190) for extended disparity mode;
+     * RAW16 encoded (0..3040) for subpixel disparity mode (32 subpixel levels on top of standard mode).
      */
     Output disparity{*this, "disparity", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
@@ -75,19 +92,45 @@ class StereoDepth : public Node {
      * Specify local filesystem path to the calibration file
      * @param path Path to calibration file. If empty use EEPROM
      */
-    void loadCalibrationFile(const std::string& path);
+    [[deprecated("Use 'Pipeline::setCalibrationData()' instead")]] void loadCalibrationFile(const std::string& path);
 
     /**
      * Specify calibration data as a vector of bytes
      * @param path Calibration data. If empty use EEPROM
      */
-    void loadCalibrationData(const std::vector<std::uint8_t>& data);
+    [[deprecated("Use 'Pipeline::setCalibrationData()' instead")]] void loadCalibrationData(const std::vector<std::uint8_t>& data);
 
     /**
      * Specify that a passthrough/dummy calibration should be used,
      * when input frames are already rectified (e.g. sourced from recordings on the host)
      */
-    void setEmptyCalibration();
+    [[deprecated("Use 'Stereo::setRectification(false)' instead")]] void setEmptyCalibration();
+
+    /**
+     * Specify local filesystem paths to the mesh calibration files for 'left' and 'right' inputs.
+     *
+     * When a mesh calibration is set, it overrides the camera intrinsics/extrinsics matrices.
+     * Mesh format: a sequence of (y,x) points as 'float' with coordinates from the input image
+     * to be mapped in the output. The mesh can be subsampled, configured by `setMeshStep`.
+     *
+     * With a 1280x800 resolution and the default (16,16) step, the required mesh size is:
+     *
+     * width: 1280 / 16 + 1 = 81
+     *
+     * height: 800 / 16 + 1 = 51
+     */
+    void loadMeshFiles(const std::string& pathLeft, const std::string& pathRight);
+
+    /**
+     * Specify mesh calibration data for 'left' and 'right' inputs, as vectors of bytes.
+     * See `loadMeshFiles` for the expected data format
+     */
+    void loadMeshData(const std::vector<std::uint8_t>& dataLeft, const std::vector<std::uint8_t>& dataRight);
+
+    /**
+     * Set the distance between mesh points. Default: (16, 16)
+     */
+    void setMeshStep(int width, int height);
 
     /**
      * Specify input resolution size
@@ -97,9 +140,29 @@ class StereoDepth : public Node {
     void setInputResolution(int width, int height);
 
     /**
+     * Specify input resolution size
+     *
+     * Optional if MonoCamera exists, otherwise necessary
+     */
+    void setInputResolution(std::tuple<int, int> resolution);
+
+    /**
+     * Specify disparity/depth output resolution size, implemented by scaling.
+     *
+     * Currently only applicable when aligning to RGB camera
+     */
+    void setOutputSize(int width, int height);
+
+    /**
+     * Specifies whether the frames resized by `setOutputSize` should preserve aspect ratio,
+     * with potential cropping when enabled. Default `true`
+     */
+    void setOutputKeepAspectRatio(bool keep);
+
+    /**
      * @param median Set kernel size for disparity/depth median filtering, or disable
      */
-    void setMedianFilter(Properties::MedianFilter median);
+    [[deprecated("Use 'initialConfig.setMedianFilter()' instead")]] void setMedianFilter(dai::MedianFilter median);
 
     /**
      * @param align Set the disparity/depth alignment: centered (between the 'left' and 'right' inputs),
@@ -116,26 +179,31 @@ class StereoDepth : public Node {
      * Confidence threshold for disparity calculation
      * @param confThr Confidence threshold value 0..255
      */
-    void setConfidenceThreshold(int confThr);
+    [[deprecated("Use 'initialConfig.setConfidenceThreshold()' instead")]] void setConfidenceThreshold(int confThr);
+
+    /**
+     * Rectify input images or not.
+     */
+    void setRectification(bool enable);
 
     /**
      * Computes and combines disparities in both L-R and R-L directions, and combine them.
      *
-     * For better occlusion handling
+     * For better occlusion handling, discarding invalid disparity values
      */
     void setLeftRightCheck(bool enable);
 
     /**
      * Computes disparity with sub-pixel interpolation (5 fractional bits).
      *
-     * Suitable for long range
+     * Suitable for long range. Currently incompatible with extended disparity
      */
     void setSubpixel(bool enable);
 
     /**
      * Disparity range increased from 0-95 to 0-190, combined from full resolution and downscaled images.
      *
-     * Suitable for short range objects
+     * Suitable for short range objects. Currently incompatible with sub-pixel disparity
      */
     void setExtendedDisparity(bool enable);
 
@@ -146,7 +214,14 @@ class StereoDepth : public Node {
     void setRectifyEdgeFillColor(int color);
 
     /**
-     * Mirror rectified frames
+     * Mirror rectified frames, only when LR-check mode is disabled. Default `true`.
+     * The mirroring is required to have a normal non-mirrored disparity/depth output.
+     *
+     * A side effect of this option is disparity alignment to the perspective of left or right input:
+     * `false`: mapped to left and mirrored, `true`: mapped to right.
+     * With LR-check enabled, this option is ignored, none of the outputs are mirrored,
+     * and disparity is mapped to right.
+     *
      * @param enable True for normal disparity/depth, otherwise mirrored
      */
     void setRectifyMirrorFrame(bool enable);
@@ -163,6 +238,12 @@ class StereoDepth : public Node {
      * DEPRECATED. The output is auto-enabled if used
      */
     [[deprecated("Function call should be removed")]] void setOutputDepth(bool enable);
+
+    /**
+     * Useful for normalization of the disparity map.
+     * @returns Maximum disparity value that the node can return
+     */
+    float getMaxDisparity() const;
 };
 
 }  // namespace node

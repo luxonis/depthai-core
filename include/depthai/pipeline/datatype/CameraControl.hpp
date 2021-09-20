@@ -9,7 +9,7 @@
 namespace dai {
 
 /**
- * CameraControl message
+ * CameraControl message.
  * Specifies various camera control commands like:
  *
  *  - Still capture
@@ -56,6 +56,15 @@ class CameraControl : public Buffer {
      * Set a command to stop streaming
      */
     void setStopStreaming();
+
+    /**
+     * Set a command to enable external trigger snapshot mode
+     *
+     * A rising edge on the sensor FSIN pin will make it capture a sequence of
+     * `numFramesBurst` frames. First `numFramesDiscard` will be skipped as
+     * configured (can be set to 0 as well), as they may have degraded quality
+     */
+    void setExternalTrigger(int numFramesBurst, int numFramesDiscard);
 
     // Focus
     /**
@@ -135,6 +144,12 @@ class CameraControl : public Buffer {
      * @param lock Auto white balance lock mode enabled or disabled
      */
     void setAutoWhiteBalanceLock(bool lock);
+
+    /**
+     * Set a command to manually specify white-balance color correction
+     * @param colorTemperatureK Light source temperature in kelvins, range 1000..12000
+     */
+    void setManualWhiteBalance(int colorTemperatureK);
 
     // Other image controls
     /**

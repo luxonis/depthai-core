@@ -26,7 +26,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.2.1" LANGUAGES CXX C)
+project(depthai VERSION "2.10.0" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -77,6 +77,13 @@ option(DEPTHAI_INSTALL   "Enable install target for depthai-core targets" ON)
 # Debug option
 set(DEPTHAI_XLINK_LOCAL "" CACHE STRING "Path to local XLink source to use instead of Hunter")
 
+# Enable backward stack printing on crash
+option(DEPTHAI_ENABLE_BACKWARD "Enable stacktrace printing on crash using Backward" ON)
+# Additional function information for 'backward' stacktrace
+if(DEPTHAI_ENABLE_BACKWARD)
+    set(CMAKE_ENABLE_EXPORTS ON)
+endif()
+
 ### Constants
 set(PROJECT_EXPORT_GROUP "${PROJECT_NAME}Targets")
 
@@ -88,6 +95,20 @@ if(GIT_FOUND)
         WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
         RESULT_VARIABLE DEPTHAI_DOWNLOADED_SOURCES
         OUTPUT_QUIET ERROR_QUIET
+    )
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
+        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+        OUTPUT_VARIABLE BUILD_COMMIT
+        ERROR_QUIET
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+    )
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} show -s --format=%ci ${BUILD_COMMIT}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+        OUTPUT_VARIABLE BUILD_COMMIT_DATETIME
+        ERROR_QUIET
+        OUTPUT_STRIP_TRAILING_WHITESPACE
     )
 endif()
 
@@ -121,9 +142,11 @@ add_library(${TARGET_CORE_NAME}
     "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
     # sources
     src/device/Device.cpp
+    src/device/DeviceBase.cpp
     src/device/DeviceBootloader.cpp
     src/device/DataQueue.cpp
     src/device/CallbackHandler.cpp
+    src/device/CalibrationHandler.cpp
     src/pipeline/Pipeline.cpp
     src/pipeline/AssetManager.cpp
     src/pipeline/Node.cpp
@@ -137,10 +160,15 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/MyProducer.cpp
     src/pipeline/node/VideoEncoder.cpp
     src/pipeline/node/DetectionNetwork.cpp
+    src/pipeline/node/Script.cpp
     src/pipeline/node/SpatialDetectionNetwork.cpp
     src/pipeline/node/SystemLogger.cpp
     src/pipeline/node/SpatialLocationCalculator.cpp
     src/pipeline/node/ObjectTracker.cpp
+    src/pipeline/node/IMU.cpp
+    src/pipeline/node/EdgeDetector.cpp
+    src/pipeline/node/SPIIn.cpp
+    src/pipeline/node/FeatureTracker.cpp
     src/pipeline/node/UVC.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
@@ -150,12 +178,18 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/ImgDetections.cpp
     src/pipeline/datatype/SpatialImgDetections.cpp
     src/pipeline/datatype/SystemInformation.cpp
-    src/pipeline/datatype/StreamPacketParser.cpp
+    src/pipeline/datatype/StreamMessageParser.cpp
     src/pipeline/datatype/SpatialLocationCalculatorData.cpp
     src/pipeline/datatype/SpatialLocationCalculatorConfig.cpp
     src/pipeline/datatype/Tracklets.cpp
+    src/pipeline/datatype/IMUData.cpp
+    src/pipeline/datatype/StereoDepthConfig.cpp
+    src/pipeline/datatype/EdgeDetectorConfig.cpp
+    src/pipeline/datatype/TrackedFeatures.cpp
+    src/pipeline/datatype/FeatureTrackerConfig.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
+    src/utility/Platform.cpp
     src/xlink/XLinkConnection.cpp
     src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp
@@ -163,6 +197,8 @@ add_library(${TARGET_CORE_NAME}
     src/bspatch/bspatch.c
 )
 add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
+# Specify that we are building core
+target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_TARGET_CORE)
 # Specifies name of generated IMPORTED target (set to alias)
 set_target_properties(${TARGET_CORE_NAME} PROPERTIES EXPORT_NAME ${TARGET_CORE_ALIAS})
 # Add to list of targets to export and install
@@ -177,10 +213,16 @@ if(DEPTHAI_CLANG_TIDY)
     target_clangtidy_setup(${TARGET_CORE_NAME})
 endif()
 
-# Set compiler features (c++11), and disables extensions (g++11)
-set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD 11)
+# Set compiler features (c++14), and disables extensions (g++14)
+set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD 14)
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_EXTENSIONS OFF)
+# Add interface transitive property (C++14)
+if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
+    target_compile_features(${TARGET_CORE_NAME} INTERFACE cxx_generic_lambdas)
+else()
+    target_compile_features(${TARGET_CORE_NAME} INTERFACE cxx_std_14)
+endif()
 
 # First specify options
 option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
@@ -289,10 +331,6 @@ else()
 
 endif()
 
-
-# Configure build information (version, ...)
-configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in" "${CMAKE_CURRENT_LIST_DIR}/include/depthai/build/version.hpp")
-
 # Add include directories
 target_include_directories(${TARGET_CORE_NAME}
     PUBLIC
@@ -337,6 +375,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         FP16::fp16
         archive_static
         spdlog::spdlog
+        ZLIB::zlib
 )
 
 # Add compile definitions
@@ -346,11 +385,15 @@ target_compile_definitions(${TARGET_CORE_NAME}
         __PC__
         # Add depthai-device version
         DEPTHAI_DEVICE_VERSION="${DEPTHAI_DEVICE_SIDE_COMMIT}"
-        # Add if using depthai device FWP
-        DEPTHAI_RESOURCES_TAR_XZ
         # Add depthai-bootloader version
         DEPTHAI_BOOTLOADER_VERSION="${DEPTHAI_BOOTLOADER_VERSION}"
 )
+
+# Add Backward dependency if enabled (On by default)
+if(DEPTHAI_ENABLE_BACKWARD)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_BACKWARD)
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE Backward::Backward)
+endif()
 
 # Add patch only mode definition
 if(DEPTHAI_USB2_PATCH_ONLY_MODE)
@@ -388,7 +431,10 @@ if(DEPTHAI_OPENCV_SUPPORT)
         target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES})
 
         # Add public compile definition indicating that OpenCV support is available
-        target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_OPENCV_SUPPORT)
+        set(DEPTHAI_HAVE_OPENCV_SUPPORT ON)
+
+        # Specify that we are building target opencv
+        target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
 
         # Add public dependency to depthai::core library
         target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${TARGET_CORE_NAME})
@@ -442,6 +488,17 @@ endif()
 if (DEPTHAI_BUILD_DOCS)
     add_subdirectory(docs)
 endif()
+
+########################
+# Build configuration
+########################
+# Add year information
+string(TIMESTAMP BUILD_DATETIME "%Y-%m-%d %H:%M:%S +0000" UTC)
+message(STATUS "BUILD_DATETIME: ${BUILD_DATETIME}, BUILD_COMMIT: ${BUILD_COMMIT}, BUILD_COMMIT_DATETIME: ${BUILD_COMMIT_DATETIME}")
+
+# Configure build information (version, opencv support)
+configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in" "${CMAKE_CURRENT_LIST_DIR}/include/depthai/build/version.hpp")
+configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/config.hpp.in" "${CMAKE_CURRENT_LIST_DIR}/include/depthai/build/config.hpp")
 
 ########################
 # Export and install
@@ -516,4 +573,23 @@ if(DEPTHAI_INSTALL)
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
     )
 
+endif()
+
+##############################
+# Integration settings export
+##############################
+set(tmp_definitions "$<TARGET_PROPERTY:${TARGET_CORE_NAME},INTERFACE_COMPILE_DEFINITIONS>")
+set(tmp_includes "$<TARGET_PROPERTY:${TARGET_CORE_NAME},INTERFACE_INCLUDE_DIRECTORIES>")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/depthai-core-integration.txt" CONTENT
+    "$<$<BOOL:${tmp_definitions}>:\n-D\'$<JOIN:${tmp_definitions},\'\n-D\'>\'>\n
+    $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
+)
+
+if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    set(tmp_definitions "$<TARGET_PROPERTY:${TARGET_OPENCV_NAME},INTERFACE_COMPILE_DEFINITIONS>")
+    set(tmp_includes "$<TARGET_PROPERTY:${TARGET_OPENCV_NAME},INTERFACE_INCLUDE_DIRECTORIES>")
+    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/depthai-opencv-integration.txt" CONTENT
+        "$<$<BOOL:${tmp_definitions}>:\n-D\'$<JOIN:${tmp_definitions},\'\n-D\'>\'>\n
+        $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
+    )
 endif()

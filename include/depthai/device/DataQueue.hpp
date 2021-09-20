@@ -41,6 +41,16 @@ class DataOutputQueue {
     ~DataOutputQueue();
 
     /**
+     * Check whether queue is closed
+     */
+    bool isClosed() const;
+
+    /**
+     * Closes the queue and the underlying thread
+     */
+    void close();
+
+    /**
      * Sets queue behavior when full (maxSize)
      *
      * @param blocking Specifies if block or overwrite the oldest message in the queue
@@ -50,7 +60,7 @@ class DataOutputQueue {
     /**
      * Gets current queue behavior when full (maxSize)
      *
-     * @return true if blocking, false otherwise
+     * @returns True if blocking, false otherwise
      */
     bool getBlocking() const;
 
@@ -64,14 +74,14 @@ class DataOutputQueue {
     /**
      * Gets queue maximum size
      *
-     * @return Maximum queue size
+     * @returns Maximum queue size
      */
-    unsigned int getMaxSize(unsigned int maxSize) const;
+    unsigned int getMaxSize() const;
 
     /**
      * Gets queues name
      *
-     * @return Queue name
+     * @returns Queue name
      */
     std::string getName() const;
 
@@ -79,7 +89,7 @@ class DataOutputQueue {
      * Adds a callback on message received
      *
      * @param callback Callback function with queue name and message pointer
-     * @return Callback id
+     * @returns Callback id
      */
     CallbackId addCallback(std::function<void(std::string, std::shared_ptr<ADatatype>)>);
 
@@ -87,7 +97,7 @@ class DataOutputQueue {
      * Adds a callback on message received
      *
      * @param callback Callback function with message pointer
-     * @return Callback id
+     * @returns Callback id
      */
     CallbackId addCallback(std::function<void(std::shared_ptr<ADatatype>)>);
 
@@ -95,7 +105,7 @@ class DataOutputQueue {
      * Adds a callback on message received
      *
      * @param callback Callback function without any parameters
-     * @return Callback id
+     * @returns Callback id
      */
     CallbackId addCallback(std::function<void()> callback);
 
@@ -103,13 +113,13 @@ class DataOutputQueue {
      * Removes a callback
      *
      * @param callbackId Id of callback to be removed
-     * @return true if callback was removed, false otherwise
+     * @returns True if callback was removed, false otherwise
      */
     bool removeCallback(CallbackId callbackId);
 
     /**
      * Check whether front of the queue has message of type T
-     * @returns true if queue isn't empty and the first element is of type T, false otherwise
+     * @returns True if queue isn't empty and the first element is of type T, false otherwise
      */
     template <class T>
     bool has() {
@@ -123,7 +133,7 @@ class DataOutputQueue {
 
     /**
      * Check whether front of the queue has a message (isn't empty)
-     * @returns true if queue isn't empty, false otherwise
+     * @returns True if queue isn't empty, false otherwise
      */
     bool has() {
         if(!running) throw std::runtime_error(exceptionMessage.c_str());
@@ -340,6 +350,16 @@ class DataInputQueue {
     ~DataInputQueue();
 
     /**
+     * Check whether queue is closed
+     */
+    bool isClosed() const;
+
+    /**
+     * Closes the queue and the underlying thread
+     */
+    void close();
+
+    /**
      * Sets maximum message size. If message is larger than specified, then an exception is issued.
      *
      * @param maxSize Maximum message size to add to queue
@@ -349,7 +369,7 @@ class DataInputQueue {
     /**
      * Gets maximum queue size.
      *
-     * @return Maximum message size
+     * @returns Maximum message size
      */
     std::size_t getMaxDataSize();
 
@@ -363,7 +383,7 @@ class DataInputQueue {
     /**
      * Gets current queue behavior when full (maxSize)
      *
-     * @return true if blocking, false otherwise
+     * @returns True if blocking, false otherwise
      */
     bool getBlocking() const;
 
@@ -377,14 +397,14 @@ class DataInputQueue {
     /**
      * Gets queue maximum size
      *
-     * @return Maximum queue size
+     * @returns Maximum queue size
      */
-    unsigned int getMaxSize(unsigned int maxSize) const;
+    unsigned int getMaxSize() const;
 
     /**
      * Gets queues name
      *
-     * @return Queue name
+     * @returns Queue name
      */
     std::string getName() const;
 

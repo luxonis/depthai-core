@@ -4,11 +4,15 @@
 #include <unordered_map>
 #include <vector>
 
-#include "depthai-shared/datatype/RawImgFrame.hpp"
+// project
+#include "depthai/build/config.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
+// shared
+#include "depthai-shared/datatype/RawImgFrame.hpp"
+
 // optional
-#ifdef DEPTHAI_OPENCV_SUPPORT
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/opencv.hpp>
 #endif
 
@@ -25,6 +29,7 @@ class ImgFrame : public Buffer {
     // Raw* mirror
     using Type = RawImgFrame::Type;
     using Specs = RawImgFrame::Specs;
+    using CameraSettings = RawImgFrame::CameraSettings;
 
     /**
      * Construct ImgFrame message.
@@ -36,32 +41,38 @@ class ImgFrame : public Buffer {
 
     // getters
     /**
-     * Retrievies image timestamp related to steady_clock / time.monotonic
+     * Retrieves image timestamp related to steady_clock / time.monotonic
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;
 
     /**
-     * Retrievies instance number
+     * Retrieves image timestamp directly captured from device's monotonic clock,
+     * not synchronized to host time. Used mostly for debugging
+     */
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
+
+    /**
+     * Retrieves instance number
      */
     unsigned int getInstanceNum() const;
 
     /**
-     * Retrievies image category
+     * Retrieves image category
      */
     unsigned int getCategory() const;
 
     /**
-     * Retrievies image sequence number
+     * Retrieves image sequence number
      */
     unsigned int getSequenceNum() const;
 
     /**
-     * Retrievies image width in pixels
+     * Retrieves image width in pixels
      */
     unsigned int getWidth() const;
 
     /**
-     * Retrievies image height in pixels
+     * Retrieves image height in pixels
      */
     unsigned int getHeight() const;
 
@@ -69,6 +80,21 @@ class ImgFrame : public Buffer {
      * Retrieves image type
      */
     Type getType() const;
+
+    /**
+     * Retrieves exposure time, in microseconds
+     */
+    int getExposureTime() const;
+
+    /**
+     * Retrieves sensitivity, as an ISO value
+     */
+    int getSensitivity() const;
+
+    /**
+     * Retrieves lens position, range 0..255. Returns -1 if not available
+     */
+    int getLensPosition() const;
 
     // setters
     /**
@@ -105,9 +131,24 @@ class ImgFrame : public Buffer {
     /**
      * Specifies frame height
      *
-     * @param width frame height
+     * @param height frame height
      */
-    void setHeight(unsigned int);
+    void setHeight(unsigned int height);
+
+    /**
+     * Specifies frame size
+     *
+     * @param height frame height
+     * @param width frame width
+     */
+    void setSize(unsigned int width, unsigned int height);
+
+    /**
+     * Specifies frame size
+     *
+     * @param size frame size
+     */
+    void setSize(std::tuple<unsigned int, unsigned int> size);
 
     /**
      * Specifies frame type, RGB, BGR, ...
@@ -117,9 +158,9 @@ class ImgFrame : public Buffer {
     void setType(Type type);
 
 // Optional - OpenCV support
-#ifdef DEPTHAI_OPENCV_SUPPORT
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**
-     * @note This API only available if OpenCV support enabled
+     * @note This API only available if OpenCV support is enabled
      *
      * Copies cv::Mat data to ImgFrame buffer
      *
@@ -128,7 +169,7 @@ class ImgFrame : public Buffer {
     void setFrame(cv::Mat frame);
 
     /**
-     * @note This API only available if OpenCV support enabled
+     * @note This API only available if OpenCV support is enabled
      *
      * Retrieves data as cv::Mat with specified width, height and type
      *
@@ -138,7 +179,7 @@ class ImgFrame : public Buffer {
     cv::Mat getFrame(bool copy = false);
 
     /**
-     * @note This API only available if OpenCV support enabled
+     * @note This API only available if OpenCV support is enabled
      *
      * Retrieves cv::Mat suitable for use in common opencv functions.
      * ImgFrame is converted to color BGR interleaved or grayscale depending on type.
@@ -148,6 +189,26 @@ class ImgFrame : public Buffer {
      * @returns cv::Mat for use in opencv functions
      */
     cv::Mat getCvFrame();
+
+#else
+
+    template <typename... T>
+    struct dependent_false {
+        static constexpr bool value = false;
+    };
+    template <typename... T>
+    void setFrame(T...) {
+        static_assert(dependent_false<T...>::value, "Library not configured with OpenCV support");
+    }
+    template <typename... T>
+    void getFrame(T...) {
+        static_assert(dependent_false<T...>::value, "Library not configured with OpenCV support");
+    }
+    template <typename... T>
+    void getCvFrame(T...) {
+        static_assert(dependent_false<T...>::value, "Library not configured with OpenCV support");
+    }
+
 #endif
 };
 

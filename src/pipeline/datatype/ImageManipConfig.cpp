@@ -22,11 +22,15 @@ void ImageManipConfig::setCropRect(float xmin, float ymin, float xmax, float yma
     // Disable center crop
     cfg.cropConfig.enableCenterCropRectangle = false;
 
-    // Set crop rect
-    cfg.cropConfig.cropRect.xmin = xmin;
-    cfg.cropConfig.cropRect.ymin = ymin;
-    cfg.cropConfig.cropRect.xmax = xmax;
-    cfg.cropConfig.cropRect.ymax = ymax;
+    // Set crop rect - limit to bounds beforehand
+    cfg.cropConfig.cropRect.xmin = std::max(xmin, 0.0f);
+    cfg.cropConfig.cropRect.ymin = std::max(ymin, 0.0f);
+    cfg.cropConfig.cropRect.xmax = std::min(xmax, 1.0f);
+    cfg.cropConfig.cropRect.ymax = std::min(ymax, 1.0f);
+}
+
+void ImageManipConfig::setCropRect(std::tuple<float, float, float, float> coordinates) {
+    setCropRect(std::get<0>(coordinates), std::get<1>(coordinates), std::get<2>(coordinates), std::get<3>(coordinates));
 }
 
 void ImageManipConfig::setCropRotatedRect(RotatedRect rr, bool normalizedCoords) {
@@ -77,6 +81,11 @@ void ImageManipConfig::setCenterCrop(float ratio, float whRatio) {
 
     // Set crop center crop config
     cfg.cropConfig.cropRatio = ratio;
+    // Limit to max 1.0f and disallow setting zero ratio
+    if(ratio > 1.0f || ratio < 0.0f) {
+        cfg.cropConfig.cropRatio = 1.0f;
+    }
+
     cfg.cropConfig.widthHeightAspectRatio = whRatio;
 }
 
@@ -103,6 +112,10 @@ void ImageManipConfig::setResize(int w, int h) {
     cfg.resizeConfig.height = h;
 }
 
+void ImageManipConfig::setResize(std::tuple<int, int> size) {
+    setResize(std::get<0>(size), std::get<1>(size));
+}
+
 void ImageManipConfig::setResizeThumbnail(int w, int h, int bgRed, int bgGreen, int bgBlue) {
     // Enable resize stage
     cfg.enableResize = true;
@@ -118,6 +131,10 @@ void ImageManipConfig::setResizeThumbnail(int w, int h, int bgRed, int bgGreen, 
     cfg.resizeConfig.bgRed = bgRed;
     cfg.resizeConfig.bgGreen = bgGreen;
     cfg.resizeConfig.bgBlue = bgBlue;
+}
+
+void ImageManipConfig::setResizeThumbnail(std::tuple<int, int> size, int bgRed, int bgGreen, int bgBlue) {
+    setResizeThumbnail(std::get<0>(size), std::get<1>(size), bgRed, bgGreen, bgBlue);
 }
 
 void ImageManipConfig::setFrameType(dai::RawImgFrame::Type type) {
@@ -172,6 +189,18 @@ int ImageManipConfig::getResizeWidth() const {
 
 int ImageManipConfig::getResizeHeight() const {
     return cfg.resizeConfig.height;
+}
+
+ImageManipConfig::CropConfig ImageManipConfig::getCropConfig() const {
+    return cfg.cropConfig;
+}
+
+ImageManipConfig::ResizeConfig ImageManipConfig::getResizeConfig() const {
+    return cfg.resizeConfig;
+}
+
+ImageManipConfig::FormatConfig ImageManipConfig::getFormatConfig() const {
+    return cfg.formatConfig;
 }
 
 bool ImageManipConfig::isResizeThumbnail() const {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ostream>
 #include <unordered_map>
 #include <vector>
 
@@ -30,19 +31,23 @@ class Tracklets : public Buffer {
     std::vector<Tracklet>& tracklets;
 };
 
-inline std::ostream& operator<<(std::ostream& out, const Tracklet::TrackingStatus& status) {
+}  // namespace dai
+
+// Global namespace
+inline std::ostream& operator<<(std::ostream& out, const dai::Tracklet::TrackingStatus& status) {
     switch(status) {
-        case Tracklet::TrackingStatus::NEW:
+        case dai::Tracklet::TrackingStatus::NEW:
             out << "NEW";
             break;
-        case Tracklet::TrackingStatus::TRACKED:
+        case dai::Tracklet::TrackingStatus::TRACKED:
             out << "TRACKED";
             break;
-        case Tracklet::TrackingStatus::LOST:
+        case dai::Tracklet::TrackingStatus::LOST:
             out << "LOST";
+            break;
+        case dai::Tracklet::TrackingStatus::REMOVED:
+            out << "REMOVED";
             break;
     }
     return out;
 }
-
-}  // namespace dai

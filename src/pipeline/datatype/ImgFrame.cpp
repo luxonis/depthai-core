@@ -21,6 +21,10 @@ std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::du
     using namespace std::chrono;
     return time_point<steady_clock, steady_clock::duration>{seconds(img.ts.sec) + nanoseconds(img.ts.nsec)};
 }
+std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> ImgFrame::getTimestampDevice() const {
+    using namespace std::chrono;
+    return time_point<steady_clock, steady_clock::duration>{seconds(img.tsDevice.sec) + nanoseconds(img.tsDevice.nsec)};
+}
 unsigned int ImgFrame::getInstanceNum() const {
     return img.instanceNum;
 }
@@ -38,6 +42,15 @@ unsigned int ImgFrame::getHeight() const {
 }
 RawImgFrame::Type ImgFrame::getType() const {
     return img.fb.type;
+}
+int ImgFrame::getExposureTime() const {
+    return img.cam.exposureTimeUs;
+}
+int ImgFrame::getSensitivity() const {
+    return img.cam.sensitivityIso;
+}
+int ImgFrame::getLensPosition() const {
+    return img.cam.lensPosition;
 }
 
 // setters
@@ -63,6 +76,13 @@ void ImgFrame::setWidth(unsigned int width) {
 }
 void ImgFrame::setHeight(unsigned int height) {
     img.fb.height = height;
+}
+void ImgFrame::setSize(unsigned int width, unsigned int height) {
+    setWidth(width);
+    setHeight(height);
+}
+void ImgFrame::setSize(std::tuple<unsigned int, unsigned int> size) {
+    setSize(std::get<0>(size), std::get<1>(size));
 }
 void ImgFrame::setType(RawImgFrame::Type type) {
     img.fb.type = type;

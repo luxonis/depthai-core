@@ -9,9 +9,12 @@
 // project
 #include "AssetManager.hpp"
 #include "Node.hpp"
+#include "depthai/device/CalibrationHandler.hpp"
+#include "depthai/device/Device.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 
 // shared
+#include "depthai-shared/device/PrebootConfig.hpp"
 #include "depthai-shared/pipeline/PipelineSchema.hpp"
 #include "depthai-shared/properties/GlobalProperties.hpp"
 
@@ -33,8 +36,11 @@ class PipelineImpl {
     // Functions
     Node::Id getNextUniqueId();
     PipelineSchema getPipelineSchema() const;
-    OpenVINO::Version getPipelineOpenVINOVersion() const;
-    AssetManager getAllAssets() const;
+    tl::optional<OpenVINO::Version> getPipelineOpenVINOVersion() const;
+    bool isOpenVINOVersionCompatible(OpenVINO::Version version) const;
+    Device::Config getDeviceConfig() const;
+    void setCameraTuningBlobPath(const std::string& path);
+    void setXLinkChunkSize(int sizeBytes);
 
     // Access to nodes
     std::vector<std::shared_ptr<const Node>> getAllNodes() const;
@@ -42,19 +48,19 @@ class PipelineImpl {
     std::shared_ptr<const Node> getNode(Node::Id id) const;
     std::shared_ptr<Node> getNode(Node::Id id);
 
-    void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, OpenVINO::Version& version) const;
+    void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage) const;
     void remove(std::shared_ptr<Node> node);
 
     std::vector<Node::Connection> getConnections() const;
     void link(const Node::Output& out, const Node::Input& in);
     void unlink(const Node::Output& out, const Node::Input& in);
+    void setCalibrationData(CalibrationHandler calibrationDataHandler);
+    CalibrationHandler getCalibrationData() const;
 
     // Must be incremented and unique for each node
     Node::Id latestId = 0;
     // Pipeline asset manager
     AssetManager assetManager;
-    // Default version
-    constexpr static auto DEFAULT_OPENVINO_VERSION = OpenVINO::Version::VERSION_2021_3;
     // Optionally forced version
     tl::optional<OpenVINO::Version> forceRequiredOpenVINOVersion;
     // Global pipeline properties
@@ -103,9 +109,6 @@ class Pipeline {
     /// Clone the pipeline (Creates a copy)
     Pipeline clone() const;
 
-    /// Default Pipeline openvino version
-    constexpr static auto DEFAULT_OPENVINO_VERSION = PipelineImpl::DEFAULT_OPENVINO_VERSION;
-
     /**
      * @returns Global properties of current pipeline
      */
@@ -117,8 +120,8 @@ class Pipeline {
     PipelineSchema getPipelineSchema();
 
     // void loadAssets(AssetManager& assetManager);
-    void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, OpenVINO::Version& version) const {
-        impl()->serialize(schema, assets, assetStorage, version);
+    void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage) const {
+        impl()->serialize(schema, assets, assetStorage);
     }
 
     /**
@@ -195,11 +198,6 @@ class Pipeline {
         impl()->unlink(out, in);
     }
 
-    /// Get assets on the pipeline includes nodes assets
-    AssetManager getAllAssets() const {
-        return impl()->getAllAssets();
-    }
-
     /// Get pipelines AssetManager as reference
     const AssetManager& getAssetManager() const {
         return impl()->assetManager;
@@ -215,9 +213,56 @@ class Pipeline {
         impl()->forceRequiredOpenVINOVersion = version;
     }
 
-    /// Get required OpenVINO version to run this pipeline
+    /**
+     * Sets the calibration in pipeline which overrides the calibration data in eeprom
+     *
+     * @param calibrationDataHandler CalibrationHandler object which is loaded with calibration information.
+     */
+    void setCalibrationData(CalibrationHandler calibrationDataHandler) {
+        impl()->setCalibrationData(calibrationDataHandler);
+    }
+
+    /**
+     * gets the calibration data which is set through pipeline
+     *
+     * @return the calibrationHandler with calib data in the pipeline
+     */
+    CalibrationHandler getCalibrationData() const {
+        return impl()->getCalibrationData();
+    }
+
+    /// Get possible OpenVINO version to run this pipeline
     OpenVINO::Version getOpenVINOVersion() const {
+        return impl()->getPipelineOpenVINOVersion().value_or(OpenVINO::DEFAULT_VERSION);
+    }
+
+    /// Get required OpenVINO version to run this pipeline. Can be none
+    tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion() const {
         return impl()->getPipelineOpenVINOVersion();
+    }
+
+    /// Set a camera IQ (Image Quality) tuning blob, used for all cameras
+    void setCameraTuningBlobPath(const std::string& path) {
+        impl()->setCameraTuningBlobPath(path);
+    }
+
+    /**
+     * Set chunk size for splitting device-sent XLink packets, in bytes. A larger value could
+     * increase performance, with 0 disabling chunking. A negative value won't modify the
+     * device defaults - configured per protocol, currently 64*1024 for both USB and Ethernet.
+     */
+    void setXLinkChunkSize(int sizeBytes) {
+        impl()->setXLinkChunkSize(sizeBytes);
+    }
+
+    /// Checks whether a given OpenVINO version is compatible with the pipeline
+    bool isOpenVINOVersionCompatible(OpenVINO::Version version) const {
+        return impl()->isOpenVINOVersionCompatible(version);
+    }
+
+    /// Get device configuration needed for this pipeline
+    Device::Config getDeviceConfig() const {
+        return impl()->getDeviceConfig();
     }
 };
 
