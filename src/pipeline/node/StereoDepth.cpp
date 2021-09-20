@@ -11,8 +11,8 @@ namespace node {
 StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     : Node(par, nodeId), rawConfig(std::make_shared<RawStereoDepthConfig>()), initialConfig(rawConfig) {
     // 'properties' defaults already set
-    inputs = {&inputConfig, &left, &right};
-    outputs = {&depth, &disparity, &syncedLeft, &syncedRight, &rectifiedLeft, &rectifiedRight};
+    setInputRefs({&inputConfig, &left, &right});
+    setOutputRefs({&depth, &disparity, &syncedLeft, &syncedRight, &rectifiedLeft, &rectifiedRight});
 }
 
 std::string StereoDepth::getName() const {

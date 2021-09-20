@@ -157,7 +157,6 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/StereoDepth.cpp
     src/pipeline/node/NeuralNetwork.cpp
     src/pipeline/node/ImageManip.cpp
-    src/pipeline/node/MyProducer.cpp
     src/pipeline/node/VideoEncoder.cpp
     src/pipeline/node/DetectionNetwork.cpp
     src/pipeline/node/Script.cpp

@@ -4,8 +4,8 @@ namespace dai {
 namespace node {
 
 VideoEncoder::VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
-    inputs = {&input};
-    outputs = {&bitstream};
+    setInputRefs({&input});
+    setOutputRefs({&bitstream});
 }
 
 std::string VideoEncoder::getName() const {

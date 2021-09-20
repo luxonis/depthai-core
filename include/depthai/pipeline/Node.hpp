@@ -40,11 +40,21 @@ class Node {
     class InputMap;
     class OutputMap;
 
-    std::vector<Output*> outputs;
-    std::vector<Input*> inputs;
+    std::unordered_map<std::string, Output*> outputRefs;
+    std::unordered_map<std::string, Input*> inputRefs;
 
-    std::vector<OutputMap*> outputMaps;
-    std::vector<InputMap*> inputMaps;
+    std::unordered_map<std::string, OutputMap*> outputMapRefs;
+    std::unordered_map<std::string, InputMap*> inputMapRefs;
+
+    // helpers for setting refs
+    void setOutputRefs(std::initializer_list<Output*> l);
+    void setOutputRefs(Output* outRef);
+    void setInputRefs(std::initializer_list<Input*> l);
+    void setInputRefs(Input* inRef);
+    void setOutputMapRefs(std::initializer_list<OutputMap*> l);
+    void setOutputMapRefs(OutputMap* outMapRef);
+    void setInputMapRefs(std::initializer_list<InputMap*> l);
+    void setInputMapRefs(InputMap* inMapRef);
 
     struct DatatypeHierarchy {
         DatatypeHierarchy(DatatypeEnum d, bool c) : datatype(d), descendants(c) {}
@@ -57,13 +67,15 @@ class Node {
 
        public:
         enum class Type { MSender, SSender };
-        const std::string name;
-        const Type type;
+        std::string group = "";
+        std::string name;
+        Type type;
         // Which types and do descendants count as well?
-        const std::vector<DatatypeHierarchy> possibleDatatypes;
+        std::vector<DatatypeHierarchy> possibleDatatypes;
         Output(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types)
             : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {}
-        bool isSamePipeline(const Input& in);
+        Output(Node& par, std::string group, std::string n, Type t, std::vector<DatatypeHierarchy> types)
+            : parent(par), group(std::move(group)), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {}
 
         Node& getParent() {
             return parent;
@@ -71,6 +83,13 @@ class Node {
         const Node& getParent() const {
             return parent;
         }
+
+        /**
+         * Check if this output and given input are on the same pipeline.
+         * @see canConnect for checking if connection is possible
+         * @returns True if output and input are on the same pipeline
+         */
+        bool isSamePipeline(const Input& in);
 
         /**
          * Check if connection is possible
@@ -113,6 +132,8 @@ class Node {
         Output defaultOutput;
 
        public:
+        std::string name;
+        OutputMap(std::string name, Output defaultOutput);
         OutputMap(Output defaultOutput);
         /// Create or modify an input
         Output& operator[](const std::string& key);
@@ -123,18 +144,19 @@ class Node {
 
        public:
         enum class Type { SReceiver, MReceiver };
-        const std::string name;
-        const Type type;
+        std::string group = "";
+        std::string name;
+        Type type;
         bool defaultBlocking{true};
         int defaultQueueSize{8};
         tl::optional<bool> blocking;
         tl::optional<int> queueSize;
         // Options - more information about the input
         struct Options {
-            bool waitForMessage;
+            bool waitForMessage = false;
         } options;
         friend class Output;
-        const std::vector<DatatypeHierarchy> possibleDatatypes;
+        std::vector<DatatypeHierarchy> possibleDatatypes;
 
         /// Constructs Input with default blocking and queueSize options
         Input(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types)
@@ -147,6 +169,17 @@ class Node {
         /// Constructs Input with specified blocking and queueSize as well as additional options
         Input(Node& par, std::string n, Type t, bool blocking, int queueSize, Options options, std::vector<DatatypeHierarchy> types)
             : parent(par),
+              name(std::move(n)),
+              type(t),
+              defaultBlocking(blocking),
+              defaultQueueSize(queueSize),
+              options(options),
+              possibleDatatypes(std::move(types)) {}
+
+        /// Constructs Input with specified blocking and queueSize as well as additional options
+        Input(Node& par, std::string group, std::string n, Type t, bool blocking, int queueSize, Options options, std::vector<DatatypeHierarchy> types)
+            : parent(par),
+              group(std::move(group)),
               name(std::move(n)),
               type(t),
               defaultBlocking(blocking),
@@ -209,7 +242,9 @@ class Node {
         Input defaultInput;
 
        public:
+        std::string name;
         InputMap(Input defaultInput);
+        InputMap(std::string name, Input defaultInput);
         /// Create or modify an input
         Input& operator[](const std::string& key);
     };
@@ -257,8 +292,10 @@ class Node {
         Connection(Output out, Input in);
         Id outputId;
         std::string outputName;
+        std::string outputGroup;
         Id inputId;
         std::string inputName;
+        std::string inputGroup;
         bool operator==(const Connection& rhs) const;
     };
 

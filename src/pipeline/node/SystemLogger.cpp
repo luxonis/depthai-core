@@ -6,7 +6,7 @@ namespace node {
 SystemLogger::SystemLogger(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
     properties.rateHz = 1.0f;
 
-    outputs = {&out};
+    setOutputRefs(&out);
 }
 
 std::string SystemLogger::getName() const {

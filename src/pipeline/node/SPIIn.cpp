@@ -5,7 +5,7 @@ namespace node {
 
 SPIIn::SPIIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
     properties.busId = 0;
-    outputs = {&out};
+    setOutputRefs({&out});
 }
 
 std::string SPIIn::getName() const {

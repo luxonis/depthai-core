@@ -6,8 +6,8 @@ namespace dai {
 namespace node {
 
 ObjectTracker::ObjectTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
-    inputs = {&inputTrackerFrame, &inputDetectionFrame, &inputDetections};
-    outputs = {&out, &passthroughTrackerFrame, &passthroughDetectionFrame, &passthroughDetections};
+    setInputRefs({&inputTrackerFrame, &inputDetectionFrame, &inputDetections});
+    setOutputRefs({&out, &passthroughTrackerFrame, &passthroughDetectionFrame, &passthroughDetections});
 }
 
 std::string ObjectTracker::getName() const {

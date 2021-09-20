@@ -12,9 +12,6 @@ namespace node {
 // Base Detection Network Class
 //--------------------------------------------------------------------
 DetectionNetwork::DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : NeuralNetwork(par, nodeId) {
-    inputs = {&input};
-    outputs = {&out, &passthrough};
-
     // Default confidence threshold
     getPropertiesRef().confidenceThreshold = 0.5;
 }
@@ -24,6 +21,9 @@ std::string DetectionNetwork::getName() const {
 }
 
 DetectionNetwork::Properties& DetectionNetwork::getPropertiesRef() {
+    return properties;
+}
+const DetectionNetwork::Properties& DetectionNetwork::getPropertiesRef() const {
     return properties;
 }
 
@@ -39,6 +39,10 @@ nlohmann::json DetectionNetwork::getProperties() {
 
 void DetectionNetwork::setConfidenceThreshold(float thresh) {
     getPropertiesRef().confidenceThreshold = thresh;
+}
+
+float DetectionNetwork::getConfidenceThreshold() const {
+    return getPropertiesRef().confidenceThreshold;
 }
 
 //--------------------------------------------------------------------
@@ -81,6 +85,31 @@ void YoloDetectionNetwork::setIouThreshold(float thresh) {
 
 std::shared_ptr<Node> YoloDetectionNetwork::clone() {
     return std::make_shared<std::decay<decltype(*this)>::type>(*this);
+}
+
+/// Get num classes
+int YoloDetectionNetwork::getNumClasses() const {
+    return getPropertiesRef().classes;
+}
+
+/// Get coordianate size
+int YoloDetectionNetwork::getCoordinateSize() const {
+    return getPropertiesRef().coordinates;
+}
+
+/// Get anchors
+std::vector<float> YoloDetectionNetwork::getAnchors() const {
+    return getPropertiesRef().anchors;
+}
+
+/// Get anchor masks
+std::map<std::string, std::vector<int>> YoloDetectionNetwork::getAnchorMasks() const {
+    return getPropertiesRef().anchorMasks;
+}
+
+/// Get Iou threshold
+float YoloDetectionNetwork::getIouThreshold() const {
+    return getPropertiesRef().iouThreshold;
 }
 
 }  // namespace node

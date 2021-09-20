@@ -12,8 +12,9 @@ namespace node {
 // Base Detection Network Class
 //--------------------------------------------------------------------
 SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : DetectionNetwork(par, nodeId) {
-    inputs = {&input, &inputDepth};
-    outputs = {&out, &boundingBoxMapping, &passthrough, &passthroughDepth};
+    // Additional IO (or overloaded, eg input), compared to base NeuralNetwork
+    setInputRefs({&input, &inputDepth});
+    setOutputRefs({&out, &boundingBoxMapping, &passthrough, &passthroughDepth});
 }
 
 std::shared_ptr<Node> SpatialDetectionNetwork::clone() {
@@ -25,6 +26,10 @@ std::string SpatialDetectionNetwork::getName() const {
 }
 
 SpatialDetectionNetwork::Properties& SpatialDetectionNetwork::getPropertiesRef() {
+    return properties;
+}
+
+const SpatialDetectionNetwork::Properties& SpatialDetectionNetwork::getPropertiesRef() const {
     return properties;
 }
 
@@ -87,6 +92,31 @@ void YoloSpatialDetectionNetwork::setAnchorMasks(std::map<std::string, std::vect
 
 void YoloSpatialDetectionNetwork::setIouThreshold(float thresh) {
     getPropertiesRef().iouThreshold = thresh;
+}
+
+/// Get num classes
+int YoloSpatialDetectionNetwork::getNumClasses() const {
+    return getPropertiesRef().classes;
+}
+
+/// Get coordianate size
+int YoloSpatialDetectionNetwork::getCoordinateSize() const {
+    return getPropertiesRef().coordinates;
+}
+
+/// Get anchors
+std::vector<float> YoloSpatialDetectionNetwork::getAnchors() const {
+    return getPropertiesRef().anchors;
+}
+
+/// Get anchor masks
+std::map<std::string, std::vector<int>> YoloSpatialDetectionNetwork::getAnchorMasks() const {
+    return getPropertiesRef().anchorMasks;
+}
+
+/// Get Iou threshold
+float YoloSpatialDetectionNetwork::getIouThreshold() const {
+    return getPropertiesRef().iouThreshold;
 }
 
 }  // namespace node

@@ -36,7 +36,7 @@ class SPIOut : public Node {
     SPIOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
         properties.busId = 0;
 
-        inputs = {&input};
+        setInputRefs({&input});
     }
 
     /**

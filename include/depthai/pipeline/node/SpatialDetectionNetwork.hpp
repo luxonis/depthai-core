@@ -26,6 +26,7 @@ class SpatialDetectionNetwork : public DetectionNetwork {
    protected:
     Properties properties;
     virtual Properties& getPropertiesRef() override;
+    virtual const Properties& getPropertiesRef() const override;
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
 
@@ -119,6 +120,17 @@ class YoloSpatialDetectionNetwork : public SpatialDetectionNetwork {
     void setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks);
     /// Set Iou threshold
     void setIouThreshold(float thresh);
+
+    /// Get num classes
+    int getNumClasses() const;
+    /// Get coordianate size
+    int getCoordinateSize() const;
+    /// Get anchors
+    std::vector<float> getAnchors() const;
+    /// Get anchor masks
+    std::map<std::string, std::vector<int>> getAnchorMasks() const;
+    /// Get Iou threshold
+    float getIouThreshold() const;
 };
 
 }  // namespace node

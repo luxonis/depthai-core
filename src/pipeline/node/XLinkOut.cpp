@@ -6,7 +6,7 @@ namespace node {
 XLinkOut::XLinkOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
     properties.maxFpsLimit = -1;
 
-    inputs = {&input};
+    setInputRefs(&input);
 }
 
 std::string XLinkOut::getName() const {

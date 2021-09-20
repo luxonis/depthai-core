@@ -7,8 +7,8 @@ namespace node {
 
 SpatialLocationCalculator::SpatialLocationCalculator(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     : Node(par, nodeId), rawConfig(std::make_shared<RawSpatialLocationCalculatorConfig>()), initialConfig(rawConfig) {
-    inputs = {&inputConfig, &inputDepth};
-    outputs = {&out, &passthroughDepth};
+    setInputRefs({&inputConfig, &inputDepth});
+    setOutputRefs({&out, &passthroughDepth});
 }
 
 std::string SpatialLocationCalculator::getName() const {

@@ -170,8 +170,10 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
             NodeConnectionSchema c;
             c.node1Id = conn.outputId;
             c.node1Output = conn.outputName;
+            c.node1OutputGroup = conn.outputGroup;
             c.node2Id = conn.inputId;
             c.node2Input = conn.inputName;
+            c.node2InputGroup = conn.inputGroup;
             schema.connections.push_back(c);
         }
     }

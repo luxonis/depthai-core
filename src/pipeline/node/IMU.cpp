@@ -6,7 +6,7 @@ namespace dai {
 namespace node {
 
 IMU::IMU(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
-    outputs = {&out};
+    setOutputRefs({&out});
 }
 
 std::string IMU::getName() const {

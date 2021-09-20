@@ -19,8 +19,8 @@ ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
     properties.fps = 30.0;
     properties.previewKeepAspectRatio = true;
 
-    inputs = {&inputConfig, &inputControl};
-    outputs = {&video, &preview, &still, &isp, &raw};
+    setInputRefs({&inputConfig, &inputControl});
+    setOutputRefs({&video, &preview, &still, &isp, &raw});
 }
 
 std::string ColorCamera::getName() const {

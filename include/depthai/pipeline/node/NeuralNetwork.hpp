@@ -32,6 +32,7 @@ class NeuralNetwork : public Node {
    protected:
     OpenVINO::Version networkOpenvinoVersion;
     virtual Properties& getPropertiesRef();
+    virtual const Properties& getPropertiesRef() const;
 
    public:
     NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
@@ -53,6 +54,16 @@ class NeuralNetwork : public Node {
      * Suitable for when input queue is set to non-blocking behavior.
      */
     Output passthrough{*this, "passthrough", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
+
+    /**
+     * Inputs mapped to network inputs. Useful for infering from separate data sources
+     */
+    InputMap inputs;
+
+    /**
+     * Passthroughs which correspond to specified input
+     */
+    OutputMap passthroughs;
 
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**

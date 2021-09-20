@@ -7,8 +7,8 @@ namespace node {
 
 FeatureTracker::FeatureTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     : Node(par, nodeId), rawConfig(std::make_shared<RawFeatureTrackerConfig>()), initialConfig(rawConfig) {
-    inputs = {&inputConfig, &inputImage};
-    outputs = {&outputFeatures, &passthroughInputImage};
+    setInputRefs({&inputConfig, &inputImage});
+    setOutputRefs({&outputFeatures, &passthroughInputImage});
 }
 
 std::string FeatureTracker::getName() const {

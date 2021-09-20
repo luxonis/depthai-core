@@ -8,14 +8,14 @@ namespace node {
 
 Script::Script(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     : Node(par, nodeId),
-      inputs(Input(*this, "", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}})),
-      outputs(Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}})) {
+      inputs("inputs", Input(*this, "", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}})),
+      outputs("outputs", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}})) {
     properties.scriptUri = "";
     properties.scriptName = "<script>";
     properties.processor = ProcessorType::LEON_MSS;
 
-    inputMaps.push_back({&inputs});
-    outputMaps.push_back({&outputs});
+    setInputMapRefs(&inputs);
+    setOutputMapRefs(&outputs);
 }
 
 std::string Script::getName() const {

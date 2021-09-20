@@ -6,10 +6,14 @@
 namespace dai {
 namespace node {
 
-NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
-    inputs = {&input};
-
-    outputs = {&out, &passthrough};
+NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
+    : Node(par, nodeId),
+      inputs("inputs", Input(*this, "", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}})),
+      passthroughs("passthroughs", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}})) {
+    setInputRefs({&input});
+    setOutputRefs({&out, &passthrough});
+    setInputMapRefs({&inputs});
+    setOutputMapRefs({&passthroughs});
 }
 
 std::string NeuralNetwork::getName() const {
@@ -17,6 +21,10 @@ std::string NeuralNetwork::getName() const {
 }
 
 NeuralNetwork::Properties& NeuralNetwork::getPropertiesRef() {
+    return properties;
+}
+
+const NeuralNetwork::Properties& NeuralNetwork::getPropertiesRef() const {
     return properties;
 }
 
