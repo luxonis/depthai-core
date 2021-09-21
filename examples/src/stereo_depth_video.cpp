@@ -91,7 +91,7 @@ int main() {
     auto rectifRightQueue = withDepth ? device.getOutputQueue("rectified_right", 8, false) : nullptr;
 
     // Disparity range is used for normalization
-    float disparityMultiplier = withDepth ? 255 / stereo->getMaxDisparity() : 0;
+    float disparityMultiplier = withDepth ? 255 / stereo->initialConfig.getMaxDisparity() : 0;
 
     while(true) {
         auto left = leftQueue->get<dai::ImgFrame>();

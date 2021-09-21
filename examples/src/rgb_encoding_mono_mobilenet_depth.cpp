@@ -81,7 +81,7 @@ int main(int argc, char** argv) {
     nn->out.link(nnOut->input);
 
     // Disparity range is used for normalization
-    float disparityMultiplier = 255 / depth->getMaxDisparity();
+    float disparityMultiplier = 255 / depth->initialConfig.getMaxDisparity();
 
     // Connect to device and start pipeline
     dai::Device device(pipeline);

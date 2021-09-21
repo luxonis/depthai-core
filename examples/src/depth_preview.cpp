@@ -51,7 +51,7 @@ int main() {
         auto inDepth = q->get<dai::ImgFrame>();
         auto frame = inDepth->getFrame();
         // Normalization for better visualization
-        frame.convertTo(frame, CV_8UC1, 255 / depth->getMaxDisparity());
+        frame.convertTo(frame, CV_8UC1, 255 / depth->initialConfig.getMaxDisparity());
 
         cv::imshow("disparity", frame);
 

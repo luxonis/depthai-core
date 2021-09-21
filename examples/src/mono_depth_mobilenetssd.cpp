@@ -105,7 +105,7 @@ int main(int argc, char** argv) {
         cv::imshow(name, frame);
     };
 
-    float disparityMultiplier = 255 / stereo->getMaxDisparity();
+    float disparityMultiplier = 255 / stereo->initialConfig.getMaxDisparity();
 
     while(true) {
         // Instead of get (blocking), we use tryGet (nonblocking) which will return the available data or None otherwise
