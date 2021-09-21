@@ -52,6 +52,10 @@ void StereoDepthConfig::setSubpixel(bool enable) {
 
 float StereoDepthConfig::getMaxDisparity() const {
     float maxDisp = 95.0;
+    if(cfg.costMatching.disparityWidth == RawStereoDepthConfig::CostMatching::DisparityWidth::DISPARITY_64) {
+        maxDisp = 63;
+    }
+    if(cfg.costMatching.enableCompanding) maxDisp = 175;
     if(false) maxDisp *= 2;  // TODO re-enable with extended
     if(cfg.algorithmControl.enableSubpixel) maxDisp *= (1 << cfg.algorithmControl.subpixelFractionalBits);
     return maxDisp;
