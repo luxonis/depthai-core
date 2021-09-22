@@ -47,12 +47,10 @@ int main() {
 
     if(withDepth) {
         // StereoDepth
-        stereo->initialConfig.setConfidenceThreshold(200);
+        stereo->initialConfig.setConfidenceThreshold(230);
         stereo->setRectifyEdgeFillColor(0);  // black, to better see the cutout
-        // stereo->loadCalibrationFile("../../../../depthai/resources/depthai.calib");
         // stereo->setInputResolution(1280, 720);
-        // TODO: median filtering is disabled on device with (lrcheck || extended || subpixel)
-        stereo->initialConfig.setMedianFilter(dai::MedianFilter::MEDIAN_OFF);
+        stereo->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_5x5);
         stereo->setLeftRightCheck(lrcheck);
         stereo->setExtendedDisparity(extended);
         stereo->setSubpixel(subpixel);
@@ -91,7 +89,7 @@ int main() {
     auto rectifRightQueue = withDepth ? device.getOutputQueue("rectified_right", 8, false) : nullptr;
 
     // Disparity range is used for normalization
-    float disparityMultiplier = withDepth ? 255 / stereo->getMaxDisparity() : 0;
+    float disparityMultiplier = withDepth ? 255 / stereo->initialConfig.getMaxDisparity() : 0;
 
     while(true) {
         auto left = leftQueue->get<dai::ImgFrame>();
@@ -111,16 +109,14 @@ int main() {
 
             if(outputDepth) {
                 auto depth = depthQueue->get<dai::ImgFrame>();
-                cv::imshow("depth", cv::Mat(depth->getHeight(), depth->getWidth(), CV_16UC1, depth->getData().data()));
+                cv::imshow("depth", depth->getCvFrame());
             }
 
             if(outputRectified) {
                 auto rectifL = rectifLeftQueue->get<dai::ImgFrame>();
-                // cv::flip(rectifiedLeftFrame, rectifiedLeftFrame, 1);
                 cv::imshow("rectified_left", rectifL->getFrame());
 
                 auto rectifR = rectifRightQueue->get<dai::ImgFrame>();
-                // cv::flip(rectifiedRightFrame, rectifiedRightFrame, 1);
                 cv::imshow("rectified_right", rectifR->getFrame());
             }
         }
