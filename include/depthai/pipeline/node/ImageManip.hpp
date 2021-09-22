@@ -43,7 +43,7 @@ class ImageManip : public Node {
      * Input image to be modified
      * Default queue is blocking with size 8
      */
-    Input inputImage{*this, "inputImage", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImgFrame, true}}};
+    Input inputImage{*this, "inputImage", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
      * Outputs ImgFrame message that carries modified image.
@@ -64,13 +64,13 @@ class ImageManip : public Node {
      * Specify whether or not wait until configuration message arrives to inputConfig Input.
      * @param wait True to wait for configuration message, false otherwise.
      */
-    [[deprecated("Use 'inputConfig.options.waitForMessage' instead")]] void setWaitForConfigInput(bool wait);
+    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] void setWaitForConfigInput(bool wait);
 
     /**
      * @see setWaitForConfigInput
      * @returns True if wait for inputConfig message, false otherwise
      */
-    [[deprecated("Use 'inputConfig.options.waitForMessage' instead")]] bool getWaitForConfigInput() const;
+    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] bool getWaitForConfigInput() const;
 
     /**
      * Specify number of frames in pool.

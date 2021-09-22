@@ -30,7 +30,7 @@ class VideoEncoder : public Node {
      * Input for NV12 ImgFrame to be encoded
      * Default queue is blocking with size set by 'setNumFramesPool' (4).
      */
-    Input input{*this, "in", Input::Type::SReceiver, true, 4, {{DatatypeEnum::ImgFrame, true}}};
+    Input input{*this, "in", Input::Type::SReceiver, true, 4, true, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
      * Outputs ImgFrame message that carries BITSTREAM encoded (MJPEG, H264 or H265) frame data.

@@ -24,11 +24,11 @@ nlohmann::json EdgeDetector::getProperties() {
 
 // Node properties configuration
 void EdgeDetector::setWaitForConfigInput(bool wait) {
-    inputConfig.options.waitForMessage = wait;
+    inputConfig.setWaitForMessage(wait);
 }
 
 bool EdgeDetector::getWaitForConfigInput() const {
-    return inputConfig.options.waitForMessage;
+    return inputConfig.getWaitForMessage();
 }
 
 void EdgeDetector::setNumFramesPool(int numFramesPool) {

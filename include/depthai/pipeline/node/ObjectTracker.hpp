@@ -35,19 +35,19 @@ class ObjectTracker : public Node {
      * Input ImgFrame message on which tracking will be performed. RGBp, BGRp, NV12, YUV420p types are supported.
      * Default queue is non-blocking with size 4.
      */
-    Input inputTrackerFrame{*this, "inputTrackerFrame", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputTrackerFrame{*this, "inputTrackerFrame", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Input ImgFrame message on which object detection was performed.
      * Default queue is non-blocking with size 4.
      */
-    Input inputDetectionFrame{*this, "inputDetectionFrame", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputDetectionFrame{*this, "inputDetectionFrame", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Input message with image detection from neural network.
      * Default queue is non-blocking with size 4.
      */
-    Input inputDetections{*this, "inputDetections", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImgDetections, true}}};
+    Input inputDetections{*this, "inputDetections", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgDetections, true}}};
 
     /**
      * Outputs Tracklets message that carries object tracking results.

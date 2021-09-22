@@ -37,13 +37,13 @@ class SpatialDetectionNetwork : public DetectionNetwork {
      * Input message with data to be infered upon
      * Default queue is blocking with size 5
      */
-    Input input{*this, "in", Input::Type::SReceiver, true, 5, {{DatatypeEnum::ImgFrame, false}}};
+    Input input{*this, "in", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Input message with depth data used to retrieve spatial information about detected object
      * Default queue is non-blocking with size 4
      */
-    Input inputDepth{*this, "inputDepth", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputDepth{*this, "inputDepth", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs ImgDetections message that carries parsed detection results.

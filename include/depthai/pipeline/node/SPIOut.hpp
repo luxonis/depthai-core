@@ -44,7 +44,7 @@ class SPIOut : public Node {
      *
      * Default queue is blocking with size 8
      */
-    Input input{*this, "in", Input::Type::SReceiver, true, 8, {{DatatypeEnum::Buffer, true}}};
+    Input input{*this, "in", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::Buffer, true}}};
 
     /**
      * Specifies stream name over which the node will send data

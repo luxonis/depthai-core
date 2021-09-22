@@ -84,6 +84,9 @@ class Node {
             return parent;
         }
 
+        /// Output to string representation
+        std::string toString() const;
+
         /**
          * Check if this output and given input are on the same pipeline.
          * @see canConnect for checking if connection is possible
@@ -152,9 +155,8 @@ class Node {
         tl::optional<bool> blocking;
         tl::optional<int> queueSize;
         // Options - more information about the input
-        struct Options {
-            bool waitForMessage = false;
-        } options;
+        tl::optional<bool> waitForMessage;
+        bool defaultWaitForMessage{false};
         friend class Output;
         std::vector<DatatypeHierarchy> possibleDatatypes;
 
@@ -167,24 +169,24 @@ class Node {
             : parent(par), name(std::move(n)), type(t), defaultBlocking(blocking), defaultQueueSize(queueSize), possibleDatatypes(std::move(types)) {}
 
         /// Constructs Input with specified blocking and queueSize as well as additional options
-        Input(Node& par, std::string n, Type t, bool blocking, int queueSize, Options options, std::vector<DatatypeHierarchy> types)
+        Input(Node& par, std::string n, Type t, bool blocking, int queueSize, bool waitForMessage, std::vector<DatatypeHierarchy> types)
             : parent(par),
               name(std::move(n)),
               type(t),
               defaultBlocking(blocking),
               defaultQueueSize(queueSize),
-              options(options),
+              defaultWaitForMessage(waitForMessage),
               possibleDatatypes(std::move(types)) {}
 
         /// Constructs Input with specified blocking and queueSize as well as additional options
-        Input(Node& par, std::string group, std::string n, Type t, bool blocking, int queueSize, Options options, std::vector<DatatypeHierarchy> types)
+        Input(Node& par, std::string group, std::string n, Type t, bool blocking, int queueSize, bool waitForMessage, std::vector<DatatypeHierarchy> types)
             : parent(par),
               group(std::move(group)),
               name(std::move(n)),
               type(t),
               defaultBlocking(blocking),
               defaultQueueSize(queueSize),
-              options(options),
+              defaultWaitForMessage(waitForMessage),
               possibleDatatypes(std::move(types)) {}
 
         Node& getParent() {
@@ -193,6 +195,9 @@ class Node {
         const Node& getParent() const {
             return parent;
         }
+
+        /// Input to string representation
+        std::string toString() const;
 
         /**
          * Overrides default input queue behavior.
@@ -219,19 +224,29 @@ class Node {
          */
         int getQueueSize() const;
 
-        // /**
-        //  * Overrides default wait for message behavior.
-        //  * Applicable for nodes with multiple inputs.
-        //  * Specifies behavior whether to wait for this input when a Node processes certain data or not.
-        //  * @param waitForMessage Whether to wait for message to arrive to this input or not
-        //  */
-        // void setWaitForMessage(bool waitForMessage);
+        /**
+         * Overrides default wait for message behavior.
+         * Applicable for nodes with multiple inputs.
+         * Specifies behavior whether to wait for this input when a Node processes certain data or not.
+         * @param waitForMessage Whether to wait for message to arrive to this input or not
+         */
+        void setWaitForMessage(bool waitForMessage);
 
-        // /**
-        //  * Get behavoir whether to wait for this input when a Node processes certain data or not
-        //  * @returns Whether to wait for message to arrive to this input or not
-        //  */
-        // bool getWaitForMessage() const;
+        /**
+         * Get behavior whether to wait for this input when a Node processes certain data or not
+         * @returns Whether to wait for message to arrive to this input or not
+         */
+        bool getWaitForMessage() const;
+
+        /**
+         * Equaivalent to setWaitForMessage but with inverted logic.
+         */
+        void setReusePreviousMessage(bool reusePreviousMessage);
+
+        /**
+         * Equaivalent to getWaitForMessage but with inverted logic.
+         */
+        bool getReusePreviousMessage() const;
     };
 
     /**

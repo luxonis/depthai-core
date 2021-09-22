@@ -45,7 +45,7 @@ class EdgeDetector : public Node {
      * Input image on which edge detection is performed.
      * Default queue is non-blocking with size 4.
      */
-    Input inputImage{*this, "inputImage", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputImage{*this, "inputImage", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs image frame with detected edges
@@ -62,13 +62,13 @@ class EdgeDetector : public Node {
      * Specify whether or not wait until configuration message arrives to inputConfig Input.
      * @param wait True to wait for configuration message, false otherwise.
      */
-    [[deprecated("Use 'inputConfig.options.waitForMessage' instead")]] void setWaitForConfigInput(bool wait);
+    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] void setWaitForConfigInput(bool wait);
 
     /**
      * @see setWaitForConfigInput
      * @returns True if wait for inputConfig message, false otherwise
      */
-    [[deprecated("Use 'inputConfig.options.waitForMessage' instead")]] bool getWaitForConfigInput() const;
+    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] bool getWaitForConfigInput() const;
 
     /**
      * Specify number of frames in pool.

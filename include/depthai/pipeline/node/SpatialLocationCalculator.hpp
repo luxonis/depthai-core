@@ -46,7 +46,7 @@ class SpatialLocationCalculator : public Node {
      * Input message with depth data used to retrieve spatial information about detected object.
      * Default queue is non-blocking with size 4.
      */
-    Input inputDepth{*this, "inputDepth", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputDepth{*this, "inputDepth", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs SpatialLocationCalculatorData message that carries spatial location results.
@@ -64,13 +64,13 @@ class SpatialLocationCalculator : public Node {
      * Specify whether or not wait until configuration message arrives to inputConfig Input.
      * @param wait True to wait for configuration message, false otherwise.
      */
-    [[deprecated("Use 'inputConfig.options.waitForMessage' instead")]] void setWaitForConfigInput(bool wait);
+    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] void setWaitForConfigInput(bool wait);
 
     /**
      * @see setWaitForConfigInput
      * @returns True if wait for inputConfig message, false otherwise
      */
-    [[deprecated("Use 'inputConfig.options.waitForMessage' instead")]] bool getWaitForConfigInput() const;
+    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] bool getWaitForConfigInput() const;
 };
 
 }  // namespace node

@@ -35,6 +35,22 @@ bool Node::Connection::operator==(const Node::Connection& rhs) const {
             && inputGroup == rhs.inputGroup);
 }
 
+std::string Node::Output::toString() const {
+    if(group == "") {
+        return fmt::format("{}", name);
+    } else {
+        return fmt::format("{}[\"{}\"]", group, name);
+    }
+}
+
+std::string Node::Input::toString() const {
+    if(group == "") {
+        return fmt::format("{}", name);
+    } else {
+        return fmt::format("{}[\"{}\"]", group, name);
+    }
+}
+
 std::vector<Node::Connection> Node::Output::getConnections() {
     std::vector<Node::Connection> myConnections;
     auto allConnections = parent.getParentPipeline().getConnections();
@@ -92,13 +108,21 @@ int Node::Input::getQueueSize() const {
     return defaultQueueSize;
 }
 
-// void Node::Input::setWaitForMessage(bool waitForMessage) {
-//     this->waitForMessage = waitForMessage;
-// }
-//
-// bool Node::Input::getWaitForMessage() const {
-//     return waitForMessage.value_or(defaultWaitForMessage);
-// }
+void Node::Input::setWaitForMessage(bool waitForMessage) {
+    this->waitForMessage = waitForMessage;
+}
+
+bool Node::Input::getWaitForMessage() const {
+    return waitForMessage.value_or(defaultWaitForMessage);
+}
+
+void Node::Input::setReusePreviousMessage(bool waitForMessage) {
+    this->waitForMessage = !waitForMessage;
+}
+
+bool Node::Input::getReusePreviousMessage() const {
+    return !waitForMessage.value_or(defaultWaitForMessage);
+}
 
 const AssetManager& Node::getAssetManager() const {
     return assetManager;

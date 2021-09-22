@@ -44,14 +44,14 @@ class StereoDepth : public Node {
      *
      * Default queue is non-blocking with size 8
      */
-    Input left{*this, "left", Input::Type::SReceiver, false, 8, {{DatatypeEnum::ImgFrame, true}}};
+    Input left{*this, "left", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
      * Input for right ImgFrame of left-right pair
      *
      * Default queue is non-blocking with size 8
      */
-    Input right{*this, "right", Input::Type::SReceiver, false, 8, {{DatatypeEnum::ImgFrame, true}}};
+    Input right{*this, "right", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
      * Outputs ImgFrame message that carries RAW16 encoded (0..65535) depth data in millimeters.
