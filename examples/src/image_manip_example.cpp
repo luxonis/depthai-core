@@ -35,7 +35,7 @@ int main() {
 
     // Second image manipulator - Create a off center crop
     imageManip2->initialConfig.setCropRect(0.1, 0.1, 0.3, 0.3);
-    imageManip2->setWaitForConfigInput(true);
+    imageManip2->inputConfig.setWaitForMessage(true);
 
     // Linking
     camRgb->preview.link(camOut->input);
