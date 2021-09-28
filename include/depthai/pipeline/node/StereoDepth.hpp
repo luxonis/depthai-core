@@ -118,6 +118,20 @@ class StereoDepth : public Node {
      */
     Output confidenceMap{*this, "confidenceMap", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
+#if 0 //will be enabled when confidence map RGB aligment/LR-check support will be added
+    /**
+     * Outputs ImgFrame message that carries left-right check first iteration (before combining with second iteration) confidence map.
+     * Useful for debugging/fine tuning.
+     */
+    Output debugConfMapLrCheckIt1{*this, "debugConfMapLrCheckIt1", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
+     * Outputs ImgFrame message that carries left-right check second iteration (before combining with first iteration) confidence map.
+     * Useful for debugging/fine tuning.
+     */
+    Output debugConfMapLrCheckIt2{*this, "debugConfMapLrCheckIt2", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+#endif
+
     /**
      * Specify local filesystem path to the calibration file
      * @param path Path to calibration file. If empty use EEPROM
