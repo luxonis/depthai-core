@@ -118,7 +118,7 @@ class StereoDepth : public Node {
      */
     Output confidenceMap{*this, "confidenceMap", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
-#if 0 //will be enabled when confidence map RGB aligment/LR-check support will be added
+#if 0  // will be enabled when confidence map RGB aligment/LR-check support will be added
     /**
      * Outputs ImgFrame message that carries left-right check first iteration (before combining with second iteration) confidence map.
      * Useful for debugging/fine tuning.
