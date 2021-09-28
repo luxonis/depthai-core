@@ -112,6 +112,13 @@ class StereoDepth : public Node {
     Output debugDispCostDump{*this, "debugDispCostDump", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
+     * Outputs ImgFrame message that carries RAW8 confidence map.
+     * Lower values means higher confidence of the calculated disparity value.
+     * RGB aligment or left-right check is not performed on confidence map.
+     */
+    Output confidenceMap{*this, "confidenceMap", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
      * Specify local filesystem path to the calibration file
      * @param path Path to calibration file. If empty use EEPROM
      */
