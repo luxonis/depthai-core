@@ -114,7 +114,7 @@ class StereoDepth : public Node {
     /**
      * Outputs ImgFrame message that carries RAW8 confidence map.
      * Lower values means higher confidence of the calculated disparity value.
-     * RGB aligment or left-right check is not performed on confidence map.
+     * RGB aligment, left-right check or any postproccessing (e.g. median filter) is not performed on confidence map.
      */
     Output confidenceMap{*this, "confidenceMap", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
