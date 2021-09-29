@@ -39,6 +39,7 @@ int main() {
         auto inRight = qRight->tryGet<dai::ImgFrame>();
 
         if(inLeft) {
+            std::cout << "Widht : "  << inLeft->getWidth() << "Height : " << inLeft->getHeight() << std::endl;
             cv::imshow("left", inLeft->getCvFrame());
         }
 
