@@ -52,6 +52,11 @@ class EdgeDetector : public Node {
      */
     Output outputImage{*this, "outputImage", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
+    /**
+     * Passthrough message on which the calculation was performed.
+     */
+    Output passthroughInputImage{*this, "passthroughInputImage", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
     // Functions to set properties
     /**
      * Specify whether or not wait until configuration message arrives to inputConfig Input.
