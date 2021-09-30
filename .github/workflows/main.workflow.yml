@@ -115,6 +115,10 @@ jobs:
         os: [macos-latest, windows-latest, ubuntu-latest]
         build-type: [Debug, Release]
         shared: [Shared, Static]
+        include:
+          - platform: Win32
+            os: windows-latest
+            shared: Shared
     steps:
     - name: Cache .hunter folder
       if: matrix.os != 'windows-latest'
@@ -155,6 +159,11 @@ jobs:
     - name: Configure ${{ matrix.build-type }}, ${{ matrix.shared }}
       if: matrix.shared == 'Shared'
       run: cmake -S . -B build -D BUILD_SHARED_LIBS=ON -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} -D CMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/depthai_install
+
+    - name: Configure ${{ matrix.build-type }}, ${{ matrix.shared }}
+      if: matrix.shared == 'Shared' && matrix.platform == 'Win32'
+      run: cmake -A Win32 -S . -B build -D BUILD_SHARED_LIBS=ON -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} -D CMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/depthai_install
+
     - name: Configure ${{ matrix.build-type }}, ${{ matrix.shared }}
       if: matrix.shared == 'Static'
       run: cmake -S . -B build -D BUILD_SHARED_LIBS=OFF -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} -D CMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/depthai_install
@@ -165,6 +174,20 @@ jobs:
 
     - name: Build and install
       run: cmake --build build --config ${{ matrix.build-type }} --target install --parallel 8
+
+    - name: Upload Win64 shared library
+      if: matrix.os == 'windows-latest' && matrix.shared == 'Shared'
+      uses: actions/upload-artifact@v2
+      with:
+        name: windows-prebuilt-win64
+        path: $GITHUB_WORKSPACE/depthai_install
+
+    - name: Upload Win32 shared library
+      if: matrix.os == 'windows-latest' && matrix.shared == 'Shared' && matrix.platform == 'Win32'
+      uses: actions/upload-artifact@v2
+      with:
+        name: windows-prebuilt-win32
+        path: $GITHUB_WORKSPACE/depthai_install
 
     - name: Build and test add_subdirectory
       run: |
@@ -214,10 +237,24 @@ jobs:
     - name: Install dependencies
       run: python3.8 -m pip install git-archive-all
 
+    - name: Download Win64 artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: 'windows-prebuilt-win64'
+        path: depthai-core-${{ steps.tag.outputs.version }}-win64
+
+    - name: Download Win32 artifacts
+      uses: actions/download-artifact@v2
+      with:
+        name: 'windows-prebuilt-win32'
+        path: depthai-core-${{ steps.tag.outputs.version }}-win32
+
     - name: Create release assets
       run: |
         git-archive-all depthai-core-${{ steps.tag.outputs.version }}.tar.gz
         git-archive-all depthai-core-${{ steps.tag.outputs.version }}.zip
+        zip -r depthai-core-${{ steps.tag.outputs.version }}-win64.zip depthai-core-${{ steps.tag.outputs.version }}-win64
+        zip -r depthai-core-${{ steps.tag.outputs.version }}-win32.zip depthai-core-${{ steps.tag.outputs.version }}-win32
 
     # Create GitHub release
     - uses: actions/create-release@master
@@ -256,4 +293,24 @@ jobs:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
         asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}.tar.gz
         asset_name: depthai-core-${{ steps.tag.outputs.version }}.tar.gz
+        asset_content_type: application/octet-stream
+
+    - name: Upload Win64 package (zip)
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}-win64.zip
+        asset_name: depthai-core-${{ steps.tag.outputs.version }}-win64.zip
+        asset_content_type: application/octet-stream
+
+    - name: Upload Win32 package (zip)
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.createRelease.outputs.upload_url }}
+        asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}-win32.zip
+        asset_name: depthai-core-${{ steps.tag.outputs.version }}-win32.zip
         asset_content_type: application/octet-stream
