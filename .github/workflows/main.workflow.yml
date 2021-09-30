@@ -119,6 +119,9 @@ jobs:
           - platform: Win32
             os: windows-latest
             shared: Shared
+          - platform: x64
+            os: windows-latest
+            shared: Shared
     steps:
     - name: Cache .hunter folder
       if: matrix.os != 'windows-latest'
@@ -157,10 +160,10 @@ jobs:
         echo "C:\tools\opencv\build\x64\vc15\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
     - name: Configure ${{ matrix.build-type }}, ${{ matrix.shared }}
-      if: matrix.shared == 'Shared'
+      if: matrix.shared == 'Shared' && matrix.platform != 'Win32'
       run: cmake -S . -B build -D BUILD_SHARED_LIBS=ON -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} -D CMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/depthai_install
 
-    - name: Configure ${{ matrix.build-type }}, ${{ matrix.shared }}
+    - name: Configure ${{ matrix.build-type }}, ${{ matrix.shared }}, Win32
       if: matrix.shared == 'Shared' && matrix.platform == 'Win32'
       run: cmake -A Win32 -S . -B build -D BUILD_SHARED_LIBS=ON -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} -D CMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/depthai_install
 
@@ -246,15 +249,15 @@ jobs:
     - name: Download Win32 artifacts
       uses: actions/download-artifact@v2
       with:
-        name: 'windows-prebuilt-win32'
-        path: depthai-core-${{ steps.tag.outputs.version }}-win32
+        name: 'windows-prebuilt-win32-no-opencv'
+        path: depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv
 
     - name: Create release assets
       run: |
         git-archive-all depthai-core-${{ steps.tag.outputs.version }}.tar.gz
         git-archive-all depthai-core-${{ steps.tag.outputs.version }}.zip
         zip -r depthai-core-${{ steps.tag.outputs.version }}-win64.zip depthai-core-${{ steps.tag.outputs.version }}-win64
-        zip -r depthai-core-${{ steps.tag.outputs.version }}-win32.zip depthai-core-${{ steps.tag.outputs.version }}-win32
+        zip -r depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv.zip depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv
 
     # Create GitHub release
     - uses: actions/create-release@master
