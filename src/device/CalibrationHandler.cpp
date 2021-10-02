@@ -1,5 +1,7 @@
 #include "device/CalibrationHandler.hpp"
 
+#define _USE_MATH_DEFINES
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -279,11 +281,19 @@ std::vector<float> CalibrationHandler::getDistortionCoefficients(CameraBoardSock
     return eepromData.cameraData[cameraId].distortionCoeff;
 }
 
-float CalibrationHandler::getFov(CameraBoardSocket cameraId) {
+float CalibrationHandler::getFov(CameraBoardSocket cameraId, bool useSpec) {
     if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end())
         throw std::runtime_error("There is no Camera data available corresponding to the the requested cameraID");
 
-    return eepromData.cameraData[cameraId].specHfovDeg;
+    if(useSpec) {
+        return eepromData.cameraData[cameraId].specHfovDeg;
+    }
+    // Calculate fov from intrinsics
+    std::vector<std::vector<float>> intrinsics;
+    int width, height;
+    std::tie(intrinsics, width, height) = CalibrationHandler::getDefaultIntrinsics(cameraId);
+    auto focalLength = intrinsics[0][0];
+    return 2 * 180 / M_PI * atan(width * 0.5f / focalLength);
 }
 
 uint8_t CalibrationHandler::getLensPosition(CameraBoardSocket cameraId) {
