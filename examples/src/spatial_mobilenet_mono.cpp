@@ -9,7 +9,6 @@ static const std::vector<std::string> labelMap = {"background", "aeroplane", "bi
                                                   "motorbike",  "person",    "pottedplant", "sheep", "sofa",        "train",  "tvmonitor"};
 
 static std::atomic<bool> syncNN{true};
-static std::atomic<bool> flipRectified{true};
 
 int main(int argc, char** argv) {
     using namespace std;
@@ -112,7 +111,6 @@ int main(int argc, char** argv) {
         }
 
         cv::Mat rectifiedRight = inRectified->getCvFrame();
-        if(flipRectified) cv::flip(rectifiedRight, rectifiedRight, 1);
 
         cv::Mat depthFrame = inDepth->getFrame();
         cv::Mat depthFrameColor;
@@ -139,11 +137,6 @@ int main(int argc, char** argv) {
         }
 
         for(auto& detection : detections) {
-            if(flipRectified) {
-                auto swap = detection.xmin;
-                detection.xmin = 1 - detection.xmax;
-                detection.xmax = 1 - swap;
-            }
             int x1 = detection.xmin * rectifiedRight.cols;
             int y1 = detection.ymin * rectifiedRight.rows;
             int x2 = detection.xmax * rectifiedRight.cols;

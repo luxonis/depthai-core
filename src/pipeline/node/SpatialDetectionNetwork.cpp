@@ -51,6 +51,10 @@ void SpatialDetectionNetwork::setDepthUpperThreshold(uint32_t upperThreshold) {
     getPropertiesRef().depthThresholds.upperThreshold = upperThreshold;
 }
 
+void SpatialDetectionNetwork::setSpatialCalculationAlgorithm(dai::SpatialLocationCalculatorAlgorithm calculationAlgorithm) {
+    getPropertiesRef().calculationAlgorithm = calculationAlgorithm;
+}
+
 //--------------------------------------------------------------------
 // MobileNet
 //--------------------------------------------------------------------
