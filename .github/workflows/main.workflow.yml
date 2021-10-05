@@ -115,6 +115,7 @@ jobs:
         os: [macos-latest, windows-latest, ubuntu-latest]
         build-type: [Debug, Release]
         shared: [Shared, Static]
+        platform: [x64]
         include:
           - platform: Win32
             os: windows-latest
