@@ -317,6 +317,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.createRelease.outputs.upload_url }}
-        asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}-win32.zip
-        asset_name: depthai-core-${{ steps.tag.outputs.version }}-win32.zip
+        asset_path: ${{ github.workspace }}/depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv.zip
+        asset_name: depthai-core-${{ steps.tag.outputs.version }}-win32-no-opencv.zip
         asset_content_type: application/octet-stream
