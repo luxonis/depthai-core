@@ -192,7 +192,7 @@ jobs:
       if: matrix.os == 'windows-latest' && matrix.shared == 'Shared' && matrix.platform == 'Win32'
       uses: actions/upload-artifact@v2
       with:
-        name: windows-prebuilt-win32
+        name: windows-prebuilt-win32-no-opencv
         path: ${{ env.GITHUB_WORKSPACE }}/depthai_install/
 
     - name: Build and test add_subdirectory
