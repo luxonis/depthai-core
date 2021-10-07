@@ -186,14 +186,14 @@ jobs:
       uses: actions/upload-artifact@v2
       with:
         name: windows-prebuilt-win64
-        path: depthai_install/
+        path: ${{ env.GITHUB_WORKSPACE }}/depthai_install/
 
     - name: Upload Win32 shared library
       if: matrix.os == 'windows-latest' && matrix.shared == 'Shared' && matrix.platform == 'Win32'
       uses: actions/upload-artifact@v2
       with:
         name: windows-prebuilt-win32
-        path: depthai_install/
+        path: ${{ env.GITHUB_WORKSPACE }}/depthai_install/
 
     - name: Build and test add_subdirectory
       run: |
