@@ -91,7 +91,20 @@ void toPlanar(cv::Mat& bgr, std::vector<std::uint8_t>& data){
             data[x + y*bgr.cols + 2 * bgr.rows*bgr.cols] = p[2];
         }
     }
+}
 
+// source is in planar
+// cv::Mat has to be in interleaved
+cv::Mat toPlanarFp16(const std::vector<flaot>& source, int width, int heigth){
+    std::uint8_t buffer[source * width * 3];
+    for(int y = 0; y < heigth; y++){
+        for(int x = 0; x < width; x++){
+            buffer[x*3 + y*width*3 + 0] = (std::uint8_t)source[x + y*width + 0 * heigth*width]; // B
+            buffer[x*3 + y*width*3 + 1] = (std::uint8_t)source[x + y*width + 1 * heigth*width]; // G
+            buffer[x*3 + y*width*3 + 2] = (std::uint8_t)source[x + y*width + 2 * heigth*width]; // R
+        }
+    }
+    return cv::Mat(heigth, width, CV_8UC3, &buffer);
 }
 
 
