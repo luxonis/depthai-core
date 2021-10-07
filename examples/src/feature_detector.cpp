@@ -6,7 +6,7 @@
 #include "unordered_map"
 #include "unordered_set"
 
-void drawFeatures(cv::Mat& img, std::vector<dai::TrackedFeature> &features) {
+void drawFeatures(cv::Mat& img, std::vector<dai::TrackedFeature>& features) {
     static const auto pointColor = cv::Scalar(0, 0, 255);
     static const int circleRadius = 2;
     for(auto& feature : features) {
