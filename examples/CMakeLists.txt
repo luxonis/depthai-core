@@ -99,7 +99,7 @@ hunter_private_data(
 
 hunter_private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/normalize_openvino_2021.4_4shave.blob"
-    SHA1 "  1435f6d11e0dfdbc60f2dfa45aecd3d530b6153b"
+    SHA1 "1435f6d11e0dfdbc60f2dfa45aecd3d530b6153b"
     FILE "normalize_openvino_2021.4_4shave.blob"
     LOCATION normalize
 )

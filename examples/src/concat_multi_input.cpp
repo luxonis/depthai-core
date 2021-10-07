@@ -38,7 +38,7 @@ int main(int argc, char** argv) {
     auto manipRight = pipeline.create<dai::node::ImageManip>();
     manipRight->initialConfig.setResize(300, 300);
     manipRight->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
-    right->out.link(manipRight->input);
+    right->out.link(manipRight->inputImage);
 
     auto left = pipeline.create<dai::node::MonoCamera>();
     left->setBoardSocket(dai::CameraBoardSocket::LEFT);
@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
     auto manipLeft = pipeline.create<dai::node::ImageManip>();
     manipLeft->initialConfig.setResize(300, 300);
     manipLeft->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
-    left->out.link(manipLeft->input);
+    left->out.link(manipLeft->inputImage);
 
     auto nn = pipeline.create<dai::node::NeuralNetwork>();
     nn->setBlobPath(nnPath);
@@ -69,7 +69,7 @@ int main(int argc, char** argv) {
 
     while(true) {
         auto inNn = qNn->get<dai::NNData>();
-        cv::imshow("Concat", toPlanarFp16(inNn.getFirstLayerFp16(), 900, 300));
+        cv::imshow("Concat", fromPlanarFp16(inNn->getFirstLayerFp16(), 900, 300));
 
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q') {

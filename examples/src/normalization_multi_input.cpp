@@ -27,8 +27,14 @@ int main(int argc, char** argv) {
 
     // Define sources and outputs
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
-    camRgb->setPreviewSize(300, 300);  // NN input
+    // Model expects values in FP16, as we have compiled it with `-ip FP16`
+    camRgb->setFp16(true);
     camRgb->setInterleaved(false);
+    camRgb->setPreviewSize(300, 300);  // NN input
+
+    auto nn = pipeline.create<dai::node::NeuralNetwork>();
+    nn->setBlobPath(nnPath);
+    nn->setNumInferenceThreads(2);
 
     auto script = pipeline.create<dai::node::Script>();
     script->setScript(R"(
@@ -48,11 +54,6 @@ int main(int argc, char** argv) {
     data.setLayer("scale", [255.0])
     node.io['scale'].send(data)
     )");
-
-    auto nn = pipeline.create<dai::node::NeuralNetwork>();
-    nn->setBlobPath(nnPath);
-    nn->setNumInferenceThreads(2);
-
     // Re-use the initial values for mean/scale
     script->outputs["mean"].link(nn->inputs["mean"]);
     nn->inputs["mean"].setWaitForMessage(false);
@@ -74,7 +75,8 @@ int main(int argc, char** argv) {
 
     while(true) {
         auto inNn = qNn->get<dai::NNData>();
-        cv::imshow("Concat", toPlanarFp16(inNn.getFirstLayerFp16(), 900, 300));
+        // To get original frame back (0-255), we add multiply all frame values (pixels) by 255 and then add 127.5 to them.
+        cv::imshow("Original Frame", fromPlanarFp16(inNn->getFirstLayerFp16(), 300, 300, 127.5, 255.0));
 
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q') {
