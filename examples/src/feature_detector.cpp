@@ -6,11 +6,11 @@
 #include "unordered_map"
 #include "unordered_set"
 
-void drawFeatures(cv::Mat& img, std::vector<dai::TrackedFeature>& features) {
+static void drawFeatures(cv::Mat& frame, std::vector<dai::TrackedFeature>& features) {
     static const auto pointColor = cv::Scalar(0, 0, 255);
     static const int circleRadius = 2;
     for(auto& feature : features) {
-        cv::circle(img, cv::Point(feature.position.x, feature.position.y), circleRadius, pointColor, -1, cv::LINE_AA, 0);
+        cv::circle(frame, cv::Point(feature.position.x, feature.position.y), circleRadius, pointColor, -1, cv::LINE_AA, 0);
     }
 }
 
@@ -39,10 +39,14 @@ int main() {
     xinTrackedFeaturesConfig->setStreamName("trackedFeaturesConfig");
 
     // Properties
-    monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
     monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
-    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+
+    // Disable optical flow
+    featureTrackerLeft->initialConfig.setMotionEstimator(false);
+    featureTrackerRight->initialConfig.setMotionEstimator(false);
 
     // Linking
     monoLeft->out.link(featureTrackerLeft->inputImage);
@@ -55,16 +59,9 @@ int main() {
     featureTrackerRight->outputFeatures.link(xoutTrackedFeaturesRight->input);
     xinTrackedFeaturesConfig->out.link(featureTrackerRight->inputConfig);
 
-    // By default the least mount of resources are allocated
-    // increasing it improves performance when optical flow is enabled
-    auto numShaves = 2;
-    auto numMemorySlices = 2;
-    featureTrackerLeft->setHardwareResources(numShaves, numMemorySlices);
-    featureTrackerRight->setHardwareResources(numShaves, numMemorySlices);
-
     auto featureTrackerConfig = featureTrackerRight->initialConfig.get();
 
-    printf("Press 's' to switch between Lucas-Kanade optical flow and hardware accelerated motion estimation! \n");
+    printf("Press 's' to switch between Harris and Shi-Thomasi corner detector! \n");
 
     // Connect to device and start pipeline
     dai::Device device(pipeline);
@@ -76,6 +73,9 @@ int main() {
     auto outputFeaturesRightQueue = device.getOutputQueue("trackedFeaturesRight", 8, false);
 
     auto inputFeatureTrackerConfigQueue = device.getInputQueue("trackedFeaturesConfig");
+
+    const auto leftWindowName = "left";
+    const auto rightWindowName = "right";
 
     while(true) {
         auto inPassthroughFrameLeft = passthroughImageLeftQueue->get<dai::ImgFrame>();
@@ -95,19 +95,19 @@ int main() {
         drawFeatures(rightFrame, trackedFeaturesRight);
 
         // Show the frame
-        cv::imshow("left", leftFrame);
-        cv::imshow("right", rightFrame);
+        cv::imshow(leftWindowName, leftFrame);
+        cv::imshow(rightWindowName, rightFrame);
 
         int key = cv::waitKey(1);
         if(key == 'q') {
             break;
         } else if(key == 's') {
-            if(featureTrackerConfig.motionEstimator.type == dai::FeatureTrackerConfig::MotionEstimator::Type::LUCAS_KANADE_OPTICAL_FLOW) {
-                featureTrackerConfig.motionEstimator.type = dai::FeatureTrackerConfig::MotionEstimator::Type::HW_MOTION_ESTIMATION;
-                printf("Switching to hardware accelerated motion estimation \n");
+            if(featureTrackerConfig.cornerDetector.type == dai::FeatureTrackerConfig::CornerDetector::Type::HARRIS) {
+                featureTrackerConfig.cornerDetector.type = dai::FeatureTrackerConfig::CornerDetector::Type::SHI_THOMASI;
+                printf("Switching to Shi-Thomasi \n");
             } else {
-                featureTrackerConfig.motionEstimator.type = dai::FeatureTrackerConfig::MotionEstimator::Type::LUCAS_KANADE_OPTICAL_FLOW;
-                printf("Switching to Lucas-Kanade optical flow \n");
+                featureTrackerConfig.cornerDetector.type = dai::FeatureTrackerConfig::CornerDetector::Type::HARRIS;
+                printf("Switching to Harris \n");
             }
             auto cfg = dai::FeatureTrackerConfig();
             cfg.set(featureTrackerConfig);
