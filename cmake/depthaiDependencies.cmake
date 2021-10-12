@@ -38,7 +38,11 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
 
     # Backward
     if(DEPTHAI_ENABLE_BACKWARD)
+        # Disable automatic check for additional stack unwinding libraries
+        # Just use the default compiler one
+        set(STACK_DETAILS_AUTO_DETECT FALSE)
         find_package(Backward ${_QUIET} CONFIG REQUIRED)
+        set(STACK_DETAILS_AUTO_DETECT)
     endif()
 
 endif()
