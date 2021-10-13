@@ -9,8 +9,6 @@ static const std::vector<std::string> labelMap = {"background", "aeroplane", "bi
                                                   "car",        "cat",       "chair",       "cow",   "diningtable", "dog",    "horse",
                                                   "motorbike",  "person",    "pottedplant", "sheep", "sofa",        "train",  "tvmonitor"};
 
-static std::atomic<bool> flipRectified{true};
-
 int main(int argc, char** argv) {
     using namespace std;
     // Default blob path provided by Hunter private data download
@@ -58,9 +56,7 @@ int main(int argc, char** argv) {
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     videoEncoder->setDefaultProfilePreset(1920, 1080, 30, dai::VideoEncoderProperties::Profile::H265_MAIN);
 
-    // Note: the rectified streams are horizontally mirrored by default
     depth->initialConfig.setConfidenceThreshold(255);
-    depth->setRectifyMirrorFrame(false);
     depth->setRectifyEdgeFillColor(0);  // Black, to better see the cutout
 
     nn->setConfidenceThreshold(0.5);
@@ -85,7 +81,7 @@ int main(int argc, char** argv) {
     nn->out.link(nnOut->input);
 
     // Disparity range is used for normalization
-    float disparityMultiplier = 255 / depth->getMaxDisparity();
+    float disparityMultiplier = 255 / depth->initialConfig.getMaxDisparity();
 
     // Connect to device and start pipeline
     dai::Device device(pipeline);
@@ -128,9 +124,6 @@ int main(int argc, char** argv) {
 
         if(inDisparity) {
             frameDisparity = inDisparity->getCvFrame();
-            if(flipRectified) {
-                cv::flip(frameDisparity, frameDisparity, 1);
-            }
             frameDisparity.convertTo(frameDisparity, CV_8UC1, disparityMultiplier);
             cv::applyColorMap(frameDisparity, frameDisparity, cv::COLORMAP_JET);
         }

@@ -17,7 +17,7 @@
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
-#include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
@@ -26,10 +26,14 @@
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
+#include "depthai-shared/device/PrebootConfig.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
 
 namespace dai {
+
+// Forward declare Pipeline
+class Pipeline;
 
 /**
  * The core of depthai device for RAII, connects to device and maintains watchdog, timesync, ...
@@ -42,6 +46,18 @@ class DeviceBase {
     static constexpr std::chrono::seconds DEFAULT_SEARCH_TIME{3};
     /// Default rate at which system information is logged
     static constexpr float DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ{1.0f};
+    /// Default UsbSpeed for device connection
+    static constexpr UsbSpeed DEFAULT_USB_SPEED{UsbSpeed::SUPER};
+
+    // Structures
+
+    /**
+     * Device specific configuration
+     */
+    struct Config {
+        OpenVINO::Version version;
+        PrebootConfig preboot;
+    };
 
     // static API
 
@@ -86,7 +102,14 @@ class DeviceBase {
      * @param version Version of OpenVINO which firmware will support
      * @returns Firmware binary
      */
-    static std::vector<std::uint8_t> getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version = Pipeline::DEFAULT_OPENVINO_VERSION);
+    static std::vector<std::uint8_t> getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version = OpenVINO::DEFAULT_VERSION);
+
+    /**
+     * Gets device firmware binary for a specific configuration
+     * @param config FW with applied configuration
+     * @returns Firmware binary
+     */
+    static std::vector<std::uint8_t> getEmbeddedDeviceBinary(Config config);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
@@ -100,6 +123,13 @@ class DeviceBase {
      * @param usb2Mode Boot device using USB2 mode firmware
      */
     DeviceBase(const Pipeline& pipeline, bool usb2Mode);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param pipeline Pipeline to be executed on the device
+     * @param maxUsbSpeed Maximum allowed USB speed
+     */
+    DeviceBase(const Pipeline& pipeline, UsbSpeed maxUsbSpeed);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
@@ -129,6 +159,14 @@ class DeviceBase {
      * @param usb2Mode Boot device using USB2 mode firmware
      */
     DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param pipeline Pipeline to be executed on the device
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param maxUsbSpeed Maximum allowed USB speed
+     */
+    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
 
     /**
      * Connects to device specified by devInfo.
@@ -166,6 +204,14 @@ class DeviceBase {
     DeviceBase(OpenVINO::Version version, bool usb2Mode);
 
     /**
+     * Connects to device specified by devInfo.
+     * @param version OpenVINO version which the device will be booted with
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param maxUsbSpeed Maximum allowed USB speed
+     */
+    DeviceBase(OpenVINO::Version version, UsbSpeed maxUsbSpeed);
+
+    /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * @param version OpenVINO version which the device will be booted with
      * @param pathToCmd Path to custom device firmware
@@ -198,6 +244,14 @@ class DeviceBase {
      * Connects to device specified by devInfo.
      * @param version OpenVINO version which the device will be booted with
      * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param maxUsbSpeed Maximum allowed USB speed
+     */
+    DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param version OpenVINO version which the device will be booted with
+     * @param devInfo DeviceInfo which specifies which device to connect to
      * @param pathToCmd Path to custom device firmware
      */
     DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, const char* pathToCmd);
@@ -209,6 +263,19 @@ class DeviceBase {
      * @param usb2Mode Path to custom device firmware
      */
     DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, const std::string& pathToCmd);
+
+    /**
+     * Connects to any available device with custom config.
+     * @param config Device custom configuration to boot with
+     */
+    explicit DeviceBase(Config config);
+
+    /**
+     * Connects to device 'devInfo' with custom config.
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param config Device custom configuration to boot with
+     */
+    DeviceBase(Config config, const DeviceInfo& devInfo);
 
     /**
      * Device destructor
@@ -273,7 +340,7 @@ class DeviceBase {
      *
      * @return DeviceInfo of the current device in execution
      */
-    DeviceInfo getDeviceInfo();
+    DeviceInfo getDeviceInfo() const;
 
     /**
      * Get MxId of device
@@ -419,10 +486,16 @@ class DeviceBase {
      */
     bool isClosed() const;
 
+    /**
+     * Returns underlying XLinkConnection
+     */
     std::shared_ptr<XLinkConnection> getConnection() {
         return connection;
     }
 
+    /**
+     * Returns underlying XLinkConnection
+     */
     std::shared_ptr<const XLinkConnection> getConnection() const {
         return connection;
     }
@@ -459,10 +532,12 @@ class DeviceBase {
     virtual void closeImpl();
 
    private:
-    // private static
-    void init(OpenVINO::Version version, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
-    void init(const Pipeline& pipeline, bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
-    void init2(bool embeddedMvcmd, bool usb2Mode, const std::string& pathToMvcmd);
+    // private functions
+    void init(OpenVINO::Version version, bool usb2Mode, const std::string& pathToMvcmd);
+    void init(const Pipeline& pipeline, bool usb2Mode, const std::string& pathToMvcmd);
+    void init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd);
+    void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd);
+    void init2(Config cfg, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline);
 
     DeviceInfo deviceInfo = {};
 
@@ -493,7 +568,7 @@ class DeviceBase {
     class Impl;
     Pimpl<Impl> pimpl;
 
-    // OpenVINO version device was booted with
-    OpenVINO::Version openvinoVersion;
+    // Device config
+    Config config;
 };
 }  // namespace dai

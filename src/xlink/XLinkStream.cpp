@@ -12,7 +12,6 @@ namespace dai {
 // static
 constexpr std::chrono::milliseconds XLinkStream::WAIT_FOR_STREAM_RETRY;
 constexpr int XLinkStream::STREAM_OPEN_RETRIES;
-std::mutex XLinkStream::xlinkStreamOperationMutex;
 
 XLinkStream::XLinkStream(const XLinkConnection& conn, const std::string& name, std::size_t maxWriteSize) : streamName(name) {
     if(name.empty()) throw std::invalid_argument("Cannot create XLinkStream using empty stream name");
@@ -58,7 +57,7 @@ XLinkStream::~XLinkStream() {
 void XLinkStream::write(const std::uint8_t* data, std::size_t size) {
     auto status = XLinkWriteData(streamId, data, static_cast<int>(size));
     if(status != X_LINK_SUCCESS) {
-        throw std::runtime_error(fmt::format("Couldn't write data to stream: '{}' ({})", streamName, XLinkConnection::convertErrorCodeToString(status)));
+        throw XLinkWriteError(status, streamName);
     }
 }
 void XLinkStream::write(const void* data, std::size_t size) {
@@ -73,7 +72,7 @@ void XLinkStream::read(std::vector<std::uint8_t>& data) {
     streamPacketDesc_t* pPacket = nullptr;
     auto status = XLinkReadData(streamId, &pPacket);
     if(status != X_LINK_SUCCESS) {
-        throw std::runtime_error(fmt::format("Couldn't read data from stream: '{}' ({})", streamName, XLinkConnection::convertErrorCodeToString(status)));
+        throw XLinkReadError(status, streamName);
     }
     data = std::vector<std::uint8_t>(pPacket->data, pPacket->data + pPacket->length);
     XLinkReleaseData(streamId);
@@ -90,7 +89,7 @@ streamPacketDesc_t* XLinkStream::readRaw() {
     streamPacketDesc_t* pPacket = nullptr;
     auto status = XLinkReadData(streamId, &pPacket);
     if(status != X_LINK_SUCCESS) {
-        throw std::runtime_error(fmt::format("Couldn't read data from stream: '{}' ({})", streamName, XLinkConnection::convertErrorCodeToString(status)));
+        throw XLinkReadError(status, streamName);
     }
     return pPacket;
 }
@@ -111,7 +110,7 @@ void XLinkStream::writeSplit(const void* d, std::size_t size, std::size_t split)
         sizeToTransmit = remaining > split ? split : remaining;
         ret = XLinkWriteData(streamId, data + currentOffset, static_cast<int>(sizeToTransmit));
         if(ret != X_LINK_SUCCESS) {
-            throw std::runtime_error(fmt::format("Couldn't write data to stream: '{}' ({})", streamName, XLinkConnection::convertErrorCodeToString(ret)));
+            throw XLinkWriteError(ret, streamName);
         }
         currentOffset += sizeToTransmit;
         remaining = size - currentOffset;
@@ -133,7 +132,7 @@ bool XLinkStream::write(const std::uint8_t* data, std::size_t size, std::chrono:
     } else if(status == X_LINK_TIMEOUT) {
         return false;
     } else {
-        throw std::runtime_error(fmt::format("Couldn't write data to stream: '{}' ({})", streamName, XLinkConnection::convertErrorCodeToString(status)));
+        throw XLinkWriteError(status, streamName);
     }
 }
 
@@ -155,7 +154,7 @@ bool XLinkStream::read(std::vector<std::uint8_t>& data, std::chrono::millisecond
     } else if(status == X_LINK_TIMEOUT) {
         return false;
     } else {
-        throw std::runtime_error(fmt::format("Couldn't read data from stream: '{}' ({})", streamName, XLinkConnection::convertErrorCodeToString(status)));
+        throw XLinkReadError(status, streamName);
     }
     return false;
 }
@@ -167,12 +166,18 @@ bool XLinkStream::readRaw(streamPacketDesc_t*& pPacket, std::chrono::millisecond
     } else if(status == X_LINK_TIMEOUT) {
         return false;
     } else {
-        throw std::runtime_error(fmt::format("Couldn't read data from stream: '{}' ({})", streamName, XLinkConnection::convertErrorCodeToString(status)));
+        throw XLinkReadError(status, streamName);
     }
 }
 
 streamId_t XLinkStream::getStreamId() const {
     return streamId;
 }
+
+XLinkReadError::XLinkReadError(XLinkError_t status, const std::string& streamName)
+    : XLinkError(status, streamName, fmt::format("Couldn't read data from stream: '{}' ({})", streamName, XLinkConnection::convertErrorCodeToString(status))) {}
+
+XLinkWriteError::XLinkWriteError(XLinkError_t status, const std::string& streamName)
+    : XLinkError(status, streamName, fmt::format("Couldn't write data to stream: '{}' ({})", streamName, XLinkConnection::convertErrorCodeToString(status))) {}
 
 }  // namespace dai
