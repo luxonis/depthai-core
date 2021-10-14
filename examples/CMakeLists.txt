@@ -198,13 +198,12 @@ dai_add_example(image_manip src/image_manip_example.cpp ON)
 # Imagae manip node exapmle with warping
 dai_add_example(rgb_rotate_warp src/rgb_rotate_warp.cpp ON)
 
-# Device side decoding example for tiny-yolo-v3
-dai_add_example(tiny_yolo_v3_device_side_decoding src/tiny_yolo_v3_device_side_decoding.cpp  ON)
-target_compile_definitions(tiny_yolo_v3_device_side_decoding PRIVATE BLOB_PATH="${tiny_yolo_v3_blob}")
-
-# Device side decoding example for tiny-yolo-v4
-dai_add_example(tiny_yolo_v4_device_side_decoding src/tiny_yolo_v4_device_side_decoding.cpp ON)
+# Device side decoding example for tiny-yolo
+dai_add_example(tiny_yolo_v4_device_side_decoding src/tiny_yolo.cpp ON)
 target_compile_definitions(tiny_yolo_v4_device_side_decoding PRIVATE BLOB_PATH="${tiny_yolo_v4_blob}")
+
+dai_add_example(tiny_yolo_v3_device_side_decoding src/tiny_yolo.cpp  ON)
+target_compile_definitions(tiny_yolo_v3_device_side_decoding PRIVATE BLOB_PATH="${tiny_yolo_v3_blob}")
 
 # OpenCV support example
 dai_add_example(opencv_support src/opencv_support.cpp ON)
@@ -293,3 +292,6 @@ target_compile_definitions(calibration_load PRIVATE CALIB_PATH="${calib_v6}")
 
 # Bootloader configuration example
 dai_add_example(bootloader_config src/bootloader_config.cpp OFF)
+
+# Freature detector
+dai_add_example(feature_detector src/feature_detector.cpp ON)
