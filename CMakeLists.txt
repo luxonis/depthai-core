@@ -26,7 +26,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.10.0" LANGUAGES CXX C)
+project(depthai VERSION "2.11.0" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -76,6 +76,13 @@ option(DEPTHAI_INSTALL   "Enable install target for depthai-core targets" ON)
 
 # Debug option
 set(DEPTHAI_XLINK_LOCAL "" CACHE STRING "Path to local XLink source to use instead of Hunter")
+
+# Enable backward stack printing on crash
+option(DEPTHAI_ENABLE_BACKWARD "Enable stacktrace printing on crash using Backward" ON)
+# Additional function information for 'backward' stacktrace
+if(DEPTHAI_ENABLE_BACKWARD)
+    set(CMAKE_ENABLE_EXPORTS ON)
+endif()
 
 ### Constants
 set(PROJECT_EXPORT_GROUP "${PROJECT_NAME}Targets")
@@ -181,6 +188,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/FeatureTrackerConfig.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
+    src/utility/Platform.cpp
     src/xlink/XLinkConnection.cpp
     src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp
@@ -366,6 +374,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         FP16::fp16
         archive_static
         spdlog::spdlog
+        ZLIB::zlib
 )
 
 # Add compile definitions
@@ -378,6 +387,12 @@ target_compile_definitions(${TARGET_CORE_NAME}
         # Add depthai-bootloader version
         DEPTHAI_BOOTLOADER_VERSION="${DEPTHAI_BOOTLOADER_VERSION}"
 )
+
+# Add Backward dependency if enabled (On by default)
+if(DEPTHAI_ENABLE_BACKWARD)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_BACKWARD)
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE Backward::Backward)
+endif()
 
 # Add patch only mode definition
 if(DEPTHAI_USB2_PATCH_ONLY_MODE)

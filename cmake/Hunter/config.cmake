@@ -7,9 +7,9 @@ hunter_config(
 
 hunter_config(
     XLink
-    VERSION "luxonis-2021.3-master"
-    URL "https://github.com/luxonis/XLink/archive/2c6cdb857f3d21088b34ec172a0ea8df16528d00.tar.gz"
-    SHA1 "736da6528515d9c969008e2334f1387428f91a3b"
+    VERSION "luxonis-2021.3-develop"
+    URL "https://github.com/luxonis/XLink/archive/4c149080d22c35a17ce285f5bca99f2b2fe05e46.tar.gz"
+    SHA1 "64b0a8bfeb1a91f909df88ea8b1d0b17885b92ff"
 )
 
 hunter_config(
@@ -76,4 +76,14 @@ hunter_config(
     CMAKE_ARGS
         FP16_BUILD_BENCHMARKS=OFF
         FP16_BUILD_TESTS=OFF
+)
+
+# Backward - Stacktrace printer
+hunter_config(
+    Backward
+    VERSION "1.6"
+    URL "https://github.com/bombela/backward-cpp/archive/refs/tags/v1.6.tar.gz"
+    SHA1 "4ecb711eabfd15bc88ff9dd9342907fc5da46b62"
+    CMAKE_ARGS
+        BACKWARD_TESTS=OFF
 )

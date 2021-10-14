@@ -48,12 +48,14 @@ class Script : public Node {
     /**
      * Sets script data to be interpreted
      * @param script Script string to be interpreted
+     * @param name Optionally set a name of this script
      */
     void setScript(const std::string& script, const std::string& name = "");
 
     /**
      * Sets script data to be interpreted
      * @param data Binary data that represents the script to be interpreted
+     * @param name Optionally set a name of this script
      */
     void setScript(const std::vector<std::uint8_t>& data, const std::string& name = "");
 

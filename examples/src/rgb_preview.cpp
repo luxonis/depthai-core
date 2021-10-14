@@ -25,11 +25,10 @@ int main() {
     camRgb->preview.link(xoutRgb->input);
 
     // Connect to device and start pipeline
-    dai::Device device(pipeline);
+    dai::Device device(pipeline, dai::UsbSpeed::SUPER);
 
     cout << "Connected cameras: ";
     for(const auto& cam : device.getConnectedCameras()) {
-        cout << static_cast<int>(cam) << " ";
         cout << cam << " ";
     }
     cout << endl;
@@ -48,7 +47,7 @@ int main() {
 
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q') {
-            return 0;
+            break;
         }
     }
     return 0;
