@@ -3,7 +3,7 @@
 
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
-#include "utility.hpp"
+#include "../utility.hpp"
 
 int main() {
     using namespace std::chrono;

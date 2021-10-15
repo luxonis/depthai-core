@@ -8,8 +8,6 @@ static const std::vector<std::string> labelMap = {"background", "aeroplane", "bi
                                                   "car",        "cat",       "chair",       "cow",   "diningtable", "dog",    "horse",
                                                   "motorbike",  "person",    "pottedplant", "sheep", "sofa",        "train",  "tvmonitor"};
 
-static const std::tuple<int, int> nn_size = {300, 300};
-
 int main(int argc, char** argv) {
     using namespace std;
     // Default blob path provided by Hunter private data download
@@ -40,7 +38,7 @@ int main(int argc, char** argv) {
     nnOut->setStreamName("nn");
 
     // Properties
-    camRgb->setPreviewSize(nn_size);  // NN input
+    camRgb->setPreviewSize(300, 300);  // NN input
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_4_K);
     camRgb->setInterleaved(false);
     camRgb->setPreviewKeepAspectRatio(false);
@@ -70,32 +68,24 @@ int main(int argc, char** argv) {
 
     // Add bounding boxes and text to the frame and show it to the user
     auto displayFrame = [](std::string name, cv::Mat frame, std::vector<dai::ImgDetection>& detections) {
-        auto frameNorm = [](cv::Mat frame, std::tuple<int, int> nn_size, dai::ImgDetection det) {
-            float xmin = det.xmin, ymin = det.ymin, xmax = det.xmax, ymax = det.ymax;
-            // auto aspectRatioDiff = (float)std::get<0>(nn_size) / std::get<1>(nn_size) - (float)frame.rows / frame.cols;
-            // if(0 < aspectRatioDiff) {
-            //     xmin = xmin * (1-str::abs(aspectRatioDiff)) + std::abs(aspectRatioDiff))/2;
-            //     xmax = xmax * (1-str::abs(aspectRatioDiff)) + std::abs(aspectRatioDiff))/2;
-            // }
-            // return std::tuple<int, int, int, int>{xmin * frame.cols, ymin * frame.rows, xmax * frame.cols, ymax * frame.rows};
-            int ret[] = {xmin * frame.cols, ymin * frame.rows, xmax * frame.cols, ymax * frame.rows};
-            return ret;
-        };
         auto color = cv::Scalar(255, 0, 0);
         // nn data, being the bounding box locations, are in <0..1> range - they need to be normalized with frame width/height
         for(auto& detection : detections) {
-            auto bbox = frameNorm(frame, nn_size, detection);
+            int x1 = detection.xmin * frame.cols;
+            int y1 = detection.ymin * frame.rows;
+            int x2 = detection.xmax * frame.cols;
+            int y2 = detection.ymax * frame.rows;
 
             int labelIndex = detection.label;
             std::string labelStr = to_string(labelIndex);
             if(labelIndex < labelMap.size()) {
                 labelStr = labelMap[labelIndex];
             }
-            cv::putText(frame, labelStr, cv::Point(bbox[0] + 10, bbox[1] + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(frame, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
             std::stringstream confStr;
             confStr << std::fixed << std::setprecision(2) << detection.confidence * 100;
-            cv::putText(frame, confStr.str(), cv::Point(bbox[0] + 10, bbox[1] + 40), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-            cv::rectangle(frame, cv::Rect(cv::Point(bbox[0], bbox[1]), cv::Point(bbox[2], bbox[3])), color, cv::FONT_HERSHEY_SIMPLEX);
+            cv::putText(frame, confStr.str(), cv::Point(x1 + 10, y1 + 40), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
         }
         // Show the frame
         cv::imshow(name, frame);
