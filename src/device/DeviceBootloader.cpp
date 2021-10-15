@@ -11,6 +11,7 @@
 #include "depthai-shared/datatype/RawImgFrame.hpp"
 #include "depthai-shared/pipeline/Assets.hpp"
 #include "depthai-shared/xlink/XLinkConstants.hpp"
+#include "depthai-shared/utility/Serialization.hpp"
 
 // project
 #include "device/Device.hpp"
@@ -85,16 +86,10 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
         deviceFirmware = Resources::getInstance().getDeviceFirmware(false, version);
     }
 
-    // Create msgpacks
+    // Serialize data
     std::vector<uint8_t> pipelineBinary, assetsBinary;
-    {
-        nlohmann::json j = schema;
-        pipelineBinary = nlohmann::json::to_msgpack(j);
-    }
-    {
-        nlohmann::json j = assets;
-        assetsBinary = nlohmann::json::to_msgpack(j);
-    }
+    utility::serialize(schema, pipelineBinary);
+    utility::serialize(assets, assetsBinary);
 
     // Prepare SBR structure
     SBR sbr = {};

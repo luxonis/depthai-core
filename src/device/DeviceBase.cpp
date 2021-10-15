@@ -12,6 +12,7 @@
 #include "depthai-shared/log/LogMessage.hpp"
 #include "depthai-shared/pipeline/Assets.hpp"
 #include "depthai-shared/xlink/XLinkConstants.hpp"
+#include "depthai-shared/utility/Serialization.hpp"
 
 // project
 #include "DeviceLogger.hpp"
@@ -606,11 +607,9 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
                 // Block
                 auto log = stream.read();
 
-                // parse packet as msgpack
                 try {
-                    auto j = nlohmann::json::from_msgpack(log);
-                    // create pipeline schema from retrieved data
-                    nlohmann::from_json(j, messages);
+                    // Deserialize incoming messages
+                    utility::deserialize(log, messages);
 
                     spdlog::trace("Log vector decoded, size: {}", messages.size());
 

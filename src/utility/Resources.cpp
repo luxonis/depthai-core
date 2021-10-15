@@ -19,6 +19,7 @@
 // shared
 #include "depthai-shared/device/PrebootConfig.hpp"
 #include "depthai-shared/utility/Checksum.hpp"
+#include "depthai-shared/utility/Serialization.hpp"
 
 extern "C" {
 #include "bspatch/bspatch.h"
@@ -164,7 +165,9 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, st
     }
 
     // Prepend preboot config
-    auto prebootHeader = createPrebootHeader(nlohmann::json::to_msgpack(config.preboot), PREBOOT_CONFIG_MAGIC1, PREBOOT_CONFIG_MAGIC2);
+    // Serialize preboot
+    auto prebootPayload = utility::serialize(config.preboot);
+    auto prebootHeader = createPrebootHeader(prebootPayload, PREBOOT_CONFIG_MAGIC1, PREBOOT_CONFIG_MAGIC2);
     finalFwBinary.insert(finalFwBinary.begin(), prebootHeader.begin(), prebootHeader.end());
 
     // Return created firmware
