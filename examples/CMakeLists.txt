@@ -6,7 +6,7 @@ find_package(OpenCV REQUIRED)
 find_package(Sanitizers)
 
 # Create utility library
-add_library(utility utility/utility.hpp)
+add_library(utility utility/utility.cpp)
 target_include_directories(utility PUBLIC "utility")
 
 target_link_libraries(utility FP16::fp16 ${OpenCV_LIBS})
