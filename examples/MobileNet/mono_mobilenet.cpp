@@ -1,7 +1,6 @@
-#include <chrono>
 #include <iostream>
 
-#include "../utility.hpp"
+#include "utility.hpp"
 
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
@@ -13,51 +12,60 @@ static const std::vector<std::string> labelMap = {"background", "aeroplane", "bi
 
 int main(int argc, char** argv) {
     using namespace std;
-    using namespace std::chrono;
     // Default blob path provided by Hunter private data download
     // Applicable for easier example usage only
     std::string nnPath(BLOB_PATH);
-    std::string videoPath(VIDEO_PATH);
 
     // If path to blob specified, use that
-    if(argc > 2) {
+    if(argc > 1) {
         nnPath = std::string(argv[1]);
-        videoPath = std::string(argv[2]);
     }
 
     // Print which blob we are using
     printf("Using blob at path: %s\n", nnPath.c_str());
-    printf("Using video at path: %s\n", videoPath.c_str());
 
     // Create pipeline
     dai::Pipeline pipeline;
 
-    // Define source and outputs
+    // Define sources and outputs
+    auto monoRight = pipeline.create<dai::node::MonoCamera>();
+    auto manip = pipeline.create<dai::node::ImageManip>();
     auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
-
-    auto xinFrame = pipeline.create<dai::node::XLinkIn>();
+    auto manipOut = pipeline.create<dai::node::XLinkOut>();
     auto nnOut = pipeline.create<dai::node::XLinkOut>();
 
-    xinFrame->setStreamName("inFrame");
+    manipOut->setStreamName("right");
     nnOut->setStreamName("nn");
 
     // Properties
+    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
+
+    // Convert the grayscale frame into the nn-acceptable form
+    manip->initialConfig.setResize(300, 300);
+    // The NN model expects BGR input. By default ImageManip output type would be same as input (gray in this case)
+    manip->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
+
     nn->setConfidenceThreshold(0.5);
     nn->setBlobPath(nnPath);
     nn->setNumInferenceThreads(2);
     nn->input.setBlocking(false);
 
     // Linking
-    xinFrame->out.link(nn->input);
+    monoRight->out.link(manip->inputImage);
+    manip->out.link(nn->input);
+    manip->out.link(manipOut->input);
     nn->out.link(nnOut->input);
 
     // Connect to device and start pipeline
     dai::Device device(pipeline);
 
-    // Input queue will be used to send video frames to the device.
-    auto qIn = device.getInputQueue("inFrame");
-    // Output queue will be used to get nn data from the video frames.
+    // Output queues will be used to get the grayscale frames and nn data from the outputs defined above
+    auto qRight = device.getOutputQueue("right", 4, false);
     auto qDet = device.getOutputQueue("nn", 4, false);
+
+    cv::Mat frame;
+    std::vector<dai::ImgDetection> detections;
 
     // Add bounding boxes and text to the frame and show it to the user
     auto displayFrame = [](std::string name, cv::Mat frame, std::vector<dai::ImgDetection>& detections) {
@@ -84,30 +92,22 @@ int main(int argc, char** argv) {
         cv::imshow(name, frame);
     };
 
-    cv::Mat frame;
-    cv::VideoCapture cap(videoPath);
+    while(true) {
+        // Instead of get (blocking), we use tryGet (nonblocking) which will return the available data or None otherwise
+        auto inRight = qRight->tryGet<dai::ImgFrame>();
+        auto inDet = qDet->tryGet<dai::ImgDetections>();
 
-    cv::namedWindow("inFrame", cv::WINDOW_NORMAL);
-    cv::resizeWindow("inFrame", 1280, 720);
-    std::cout << "Resize video window with mouse drag!" << std::endl;
+        if(inRight) {
+            frame = inRight->getCvFrame();
+        }
 
-    while(cap.isOpened()) {
-        // Read frame from video
-        cap >> frame;
-        if(frame.empty()) break;
+        if(inDet) {
+            detections = inDet->detections;
+        }
 
-        auto img = std::make_shared<dai::ImgFrame>();
-        frame = resizeKeepAspectRatio(frame, cv::Size(300, 300), cv::Scalar(0));
-        toPlanar(frame, img->getData());
-        img->setTimestamp(steady_clock::now());
-        img->setWidth(300);
-        img->setHeight(300);
-        qIn->send(img);
-
-        auto inDet = qDet->get<dai::ImgDetections>();
-        auto detections = inDet->detections;
-
-        displayFrame("inFrame", frame, detections);
+        if(!frame.empty()) {
+            displayFrame("right", frame, detections);
+        }
 
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q') return 0;

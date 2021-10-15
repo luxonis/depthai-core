@@ -1,6 +1,6 @@
 #include <iostream>
 
-#include "../utility.hpp"
+#include "utility.hpp"
 #include "depthai/depthai.hpp"
 
 static constexpr auto keyRotateDecr = 'z';

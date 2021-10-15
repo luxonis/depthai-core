@@ -2,7 +2,7 @@
 #include <iostream>
 
 // Inludes common necessary includes for development using depthai library
-#include "../utility.hpp"
+#include "utility.hpp"
 #include "depthai/depthai.hpp"
 
 int main() {

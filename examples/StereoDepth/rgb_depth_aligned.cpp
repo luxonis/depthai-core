@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <iostream>
 
-#include "../utility.hpp"
+#include "utility.hpp"
 
 // Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
