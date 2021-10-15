@@ -93,22 +93,6 @@ void toPlanar(cv::Mat& bgr, std::vector<std::uint8_t>& data){
     }
 }
 
-// source is in planar
-// cv::Mat has to be in interleaved
-// mean and scale (optional) values are for de-normalization of the frame
-cv::Mat fromPlanarFp16(const std::vector<float>& source, int width, int heigth, float mean, float scale){
-    std::uint8_t buffer[width * width * 3];
-    for(int y = 0; y < heigth; y++){
-        for(int x = 0; x < width; x++){
-            buffer[x*3 + y*width*3 + 0] = (std::uint8_t)(scale * source[x + y*width + 0 * heigth*width] + mean); // B;
-            buffer[x*3 + y*width*3 + 1] = (std::uint8_t)(scale * source[x + y*width + 1 * heigth*width] + mean); // G
-            buffer[x*3 + y*width*3 + 2] = (std::uint8_t)(scale * source[x + y*width + 2 * heigth*width] + mean); // R
-        }
-    }
-    return cv::Mat(heigth, width, CV_8UC3, &buffer);
-}
-
-
 cv::Mat resizeKeepAspectRatio(const cv::Mat &input, const cv::Size &dstSize, const cv::Scalar &bgcolor)
 {
     cv::Mat output;
