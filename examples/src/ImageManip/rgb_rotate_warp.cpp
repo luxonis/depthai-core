@@ -1,7 +1,7 @@
 #include <iostream>
 
-#include "depthai/depthai.hpp"
 #include "../utility.hpp"
+#include "depthai/depthai.hpp"
 
 static constexpr auto keyRotateDecr = 'z';
 static constexpr auto keyRotateIncr = 'x';
