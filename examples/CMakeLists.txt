@@ -228,8 +228,8 @@ dai_add_example(script_camera_control Script/script_camera_control.cpp ON)
 dai_add_example(script_get_ip Script/script_get_ip.cpp OFF)
 dai_add_example(script_http_client Script/script_http_client.cpp OFF)
 dai_add_example(script_http_server Script/script_http_server.cpp OFF)
-dai_add_example(script_http_stream Script/script_http_stream.cpp OFF)
-dai_add_example(script_nndata_datatype Script/script_nndata_datatype.cpp ON)
+dai_add_example(script_mjpeg_server Script/script_mjpeg_server.cpp OFF)
+dai_add_example(script_nndata_example Script/script_nndata_example.cpp ON)
 
 # SpatialDetection
 dai_add_example(spatial_location_calculator SpatialDetection/spatial_location_calculator.cpp ON)
