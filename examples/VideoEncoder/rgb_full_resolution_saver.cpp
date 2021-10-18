@@ -2,8 +2,8 @@
 #include <iostream>
 
 // Inludes common necessary includes for development using depthai library
-#include "depthai/depthai.hpp"
 #include "utility.hpp"
+#include "depthai/depthai.hpp"
 
 int main() {
     using namespace std::chrono;
