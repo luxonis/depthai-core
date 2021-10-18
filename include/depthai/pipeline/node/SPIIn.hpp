@@ -14,17 +14,18 @@ namespace node {
 class SPIIn : public Node {
    public:
     using Properties = dai::SPIInProperties;
+    /// Underlying properties
+    Properties& properties;
 
    private:
-    Properties properties;
-
-    nlohmann::json getProperties() override;
+    Properties& getProperties() override;
     std::shared_ptr<Node> clone() override;
 
    public:
     std::string getName() const override;
 
     SPIIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    SPIIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Outputs message of same type as send from host.

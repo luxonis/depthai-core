@@ -15,11 +15,11 @@ namespace node {
 class StereoDepth : public Node {
    public:
     using Properties = dai::StereoDepthProperties;
+    /// Underlying properties
+    Properties& properties;
 
    private:
-    Properties properties;
-
-    nlohmann::json getProperties() override;
+    Properties& getProperties() override;
     std::shared_ptr<Node> clone() override;
     std::shared_ptr<RawStereoDepthConfig> rawConfig;
 
@@ -27,6 +27,7 @@ class StereoDepth : public Node {
     std::string getName() const override;
 
     StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Initial config to use for StereoDepth.

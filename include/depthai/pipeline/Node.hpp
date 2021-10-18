@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <memory>
 #include <set>
 #include <string>
 #include <tuple>
@@ -8,12 +9,13 @@
 // project
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/pipeline/AssetManager.hpp"
+#include "depthai/utility/copyable_unique_ptr.hpp"
 
 // depthai-shared
 #include "depthai-shared/datatype/DatatypeEnum.hpp"
+#include "depthai-shared/properties/Properties.hpp"
 
 // libraries
-#include "nlohmann/json.hpp"
 #include "tl/optional.hpp"
 
 namespace dai {
@@ -188,16 +190,20 @@ class Node {
 
     // when Pipeline tries to serialize and construct on remote, it will check if all connected nodes are on same pipeline
     std::weak_ptr<PipelineImpl> parent;
-    AssetManager assetManager;
-
-    virtual nlohmann::json getProperties() = 0;
-    virtual tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion();
-    virtual std::shared_ptr<Node> clone() = 0;
 
    public:
     /// Id of node
     const Id id;
 
+   protected:
+    AssetManager assetManager;
+
+    virtual Properties& getProperties();
+    virtual tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion();
+    virtual std::shared_ptr<Node> clone() = 0;
+    copyable_unique_ptr<Properties> properties;
+
+   public:
     // access
     Pipeline getParentPipeline();
     const Pipeline getParentPipeline() const;
@@ -234,7 +240,7 @@ class Node {
         bool operator==(const Connection& rhs) const;
     };
 
-    Node(const std::shared_ptr<PipelineImpl>& p, Id nodeId);
+    Node(const std::shared_ptr<PipelineImpl>& p, Id nodeId, std::unique_ptr<Properties> props);
     virtual ~Node() = default;
 
     /// Get node AssetManager as a const reference

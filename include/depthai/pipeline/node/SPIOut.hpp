@@ -14,14 +14,12 @@ namespace node {
 class SPIOut : public Node {
    public:
     using Properties = dai::SPIOutProperties;
+    /// Underlying properties
+    Properties& properties;
 
    private:
-    Properties properties;
-
-    nlohmann::json getProperties() override {
-        nlohmann::json j;
-        nlohmann::to_json(j, properties);
-        return j;
+    Properties& getProperties() override {
+        return properties;
     }
 
     std::shared_ptr<Node> clone() override {
@@ -33,11 +31,13 @@ class SPIOut : public Node {
         return "SPIOut";
     }
 
-    SPIOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
+    SPIOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+        : Node(par, nodeId, std::move(props)), properties(static_cast<Properties&>(*Node::properties)) {
         properties.busId = 0;
 
         inputs = {&input};
     }
+    SPIOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : SPIOut(par, nodeId, std::make_unique<SPIOut::Properties>()) {}
 
     /**
      * Input for any type of messages to be transfered over SPI stream

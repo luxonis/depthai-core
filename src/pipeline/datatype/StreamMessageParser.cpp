@@ -8,8 +8,6 @@
 #include <XLink/XLinkPublicDefines.h>
 #include <spdlog/spdlog.h>
 
-#include <nlohmann/json.hpp>
-
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
@@ -30,7 +28,6 @@
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 
 // shared
-#include "depthai-shared/utility/Serialization.hpp"
 #include "depthai-shared/datatype/DatatypeEnum.hpp"
 #include "depthai-shared/datatype/RawBuffer.hpp"
 #include "depthai-shared/datatype/RawCameraControl.hpp"
@@ -47,6 +44,7 @@
 #include "depthai-shared/datatype/RawStereoDepthConfig.hpp"
 #include "depthai-shared/datatype/RawSystemInformation.hpp"
 #include "depthai-shared/datatype/RawTracklets.hpp"
+#include "depthai-shared/utility/Serialization.hpp"
 
 // StreamPacket structure ->  || imgframepixels... , serialized_object, object_type, serialized_object_size ||
 // object_type -> DataType(int), serialized_object_size -> int
@@ -211,7 +209,8 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
             break;
 
         case DatatypeEnum::SpatialLocationCalculatorConfig:
-            return std::make_shared<SpatialLocationCalculatorConfig>(parseDatatype<RawSpatialLocationCalculatorConfig>(metadataStart, serializedObjectSize, data));
+            return std::make_shared<SpatialLocationCalculatorConfig>(
+                parseDatatype<RawSpatialLocationCalculatorConfig>(metadataStart, serializedObjectSize, data));
             break;
 
         case DatatypeEnum::Tracklets:

@@ -6,7 +6,12 @@ namespace dai {
 namespace node {
 
 EdgeDetector::EdgeDetector(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : Node(par, nodeId), rawConfig(std::make_shared<RawEdgeDetectorConfig>()), initialConfig(rawConfig) {
+    : EdgeDetector(par, nodeId, std::make_unique<EdgeDetector::Properties>()) {}
+EdgeDetector::EdgeDetector(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : Node(par, nodeId, std::move(props)),
+      properties(static_cast<Properties&>(*Node::properties)),
+      rawConfig(std::make_shared<RawEdgeDetectorConfig>()),
+      initialConfig(rawConfig) {
     inputs = {&inputConfig, &inputImage};
     outputs = {&outputImage, &passthroughInputImage};
 }
@@ -15,11 +20,9 @@ std::string EdgeDetector::getName() const {
     return "EdgeDetector";
 }
 
-nlohmann::json EdgeDetector::getProperties() {
-    nlohmann::json j;
+EdgeDetector::Properties& EdgeDetector::getProperties() {
     properties.initialConfig = *rawConfig;
-    nlohmann::to_json(j, properties);
-    return j;
+    return properties;
 }
 
 // Node properties configuration

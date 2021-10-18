@@ -19,17 +19,19 @@ namespace node {
 class EdgeDetector : public Node {
    public:
     using Properties = dai::EdgeDetectorProperties;
+    /// Underlying properties
+    Properties& properties;
 
    private:
     std::string getName() const override;
-    nlohmann::json getProperties() override;
+    Properties& getProperties() override;
     std::shared_ptr<Node> clone() override;
 
     std::shared_ptr<RawEdgeDetectorConfig> rawConfig;
-    Properties properties;
 
    public:
     EdgeDetector(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    EdgeDetector(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Initial config to use for edge detection.

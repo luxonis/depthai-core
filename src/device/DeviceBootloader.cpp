@@ -10,8 +10,8 @@
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
 #include "depthai-shared/pipeline/Assets.hpp"
-#include "depthai-shared/xlink/XLinkConstants.hpp"
 #include "depthai-shared/utility/Serialization.hpp"
+#include "depthai-shared/xlink/XLinkConstants.hpp"
 
 // project
 #include "device/Device.hpp"

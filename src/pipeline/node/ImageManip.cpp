@@ -2,8 +2,12 @@
 namespace dai {
 namespace node {
 
-ImageManip::ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : Node(par, nodeId), rawConfig(std::make_shared<RawImageManipConfig>()), initialConfig(rawConfig) {
+ImageManip::ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : ImageManip(par, nodeId, std::make_unique<ImageManip::Properties>()) {}
+ImageManip::ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : Node(par, nodeId, std::move(props)),
+      properties(static_cast<Properties&>(*Node::properties)),
+      rawConfig(std::make_shared<RawImageManipConfig>()),
+      initialConfig(rawConfig) {
     inputs = {&inputConfig, &inputImage};
     outputs = {&out};
 }
@@ -12,11 +16,9 @@ std::string ImageManip::getName() const {
     return "ImageManip";
 }
 
-nlohmann::json ImageManip::getProperties() {
-    nlohmann::json j;
+ImageManip::Properties& ImageManip::getProperties() {
     properties.initialConfig = *rawConfig;
-    nlohmann::to_json(j, properties);
-    return j;
+    return properties;
 }
 
 std::shared_ptr<Node> ImageManip::clone() {

@@ -51,6 +51,10 @@ GlobalProperties Pipeline::getGlobalProperties() const {
     return pimpl->globalProperties;
 }
 
+PipelineSchema Pipeline::getPipelineSchema() const {
+    return pimpl->getPipelineSchema();
+}
+
 std::shared_ptr<const Node> PipelineImpl::getNode(Node::Id id) const {
     if(nodeMap.count(id) > 0) {
         return nodeMap.at(id);
@@ -107,7 +111,7 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
         NodeObjInfo info;
         info.id = node->id;
         info.name = node->getName();
-        info.properties = node->getProperties();
+        node->getProperties().serialize(info.properties);
 
         // Create Io information
         auto inputs = node->getInputs();

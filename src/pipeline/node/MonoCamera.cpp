@@ -5,8 +5,12 @@
 namespace dai {
 namespace node {
 
-MonoCamera::MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : Node(par, nodeId), rawControl(std::make_shared<RawCameraControl>()), initialControl(rawControl) {
+MonoCamera::MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : MonoCamera(par, nodeId, std::make_unique<MonoCamera::Properties>()) {}
+MonoCamera::MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : Node(par, nodeId, std::move(props)),
+      properties(static_cast<Properties&>(*Node::properties)),
+      rawControl(std::make_shared<RawCameraControl>()),
+      initialControl(rawControl) {
     properties.boardSocket = CameraBoardSocket::AUTO;
     properties.resolution = MonoCameraProperties::SensorResolution::THE_720_P;
     properties.fps = 30.0;
@@ -19,11 +23,9 @@ std::string MonoCamera::getName() const {
     return "MonoCamera";
 }
 
-nlohmann::json MonoCamera::getProperties() {
-    nlohmann::json j;
+MonoCamera::Properties& MonoCamera::getProperties() {
     properties.initialControl = *rawControl;
-    nlohmann::to_json(j, properties);
-    return j;
+    return properties;
 }
 
 std::shared_ptr<Node> MonoCamera::clone() {

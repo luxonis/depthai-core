@@ -6,7 +6,12 @@ namespace dai {
 namespace node {
 
 FeatureTracker::FeatureTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : Node(par, nodeId), rawConfig(std::make_shared<RawFeatureTrackerConfig>()), initialConfig(rawConfig) {
+    : FeatureTracker(par, nodeId, std::make_unique<FeatureTracker::Properties>()) {}
+FeatureTracker::FeatureTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : Node(par, nodeId, std::move(props)),
+      properties(static_cast<Properties&>(*Node::properties)),
+      rawConfig(std::make_shared<RawFeatureTrackerConfig>()),
+      initialConfig(rawConfig) {
     inputs = {&inputConfig, &inputImage};
     outputs = {&outputFeatures, &passthroughInputImage};
 }
@@ -15,11 +20,9 @@ std::string FeatureTracker::getName() const {
     return "FeatureTracker";
 }
 
-nlohmann::json FeatureTracker::getProperties() {
-    nlohmann::json j;
+FeatureTracker::Properties& FeatureTracker::getProperties() {
     properties.initialConfig = *rawConfig;
-    nlohmann::to_json(j, properties);
-    return j;
+    return properties;
 }
 
 // Node properties configuration

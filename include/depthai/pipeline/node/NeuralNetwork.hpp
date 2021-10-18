@@ -18,23 +18,20 @@ namespace node {
 class NeuralNetwork : public Node {
    public:
     using Properties = dai::NeuralNetworkProperties;
+    /// Underlying properties
+    Properties& properties;
 
     std::string getName() const override;
 
    protected:
-    nlohmann::json getProperties() override;
+    Properties& getProperties() override;
     std::shared_ptr<Node> clone() override;
     tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion() override;
-
-   private:
-    Properties properties;
-
-   protected:
     OpenVINO::Version networkOpenvinoVersion;
-    virtual Properties& getPropertiesRef();
 
    public:
     NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Input message with data to be infered upon

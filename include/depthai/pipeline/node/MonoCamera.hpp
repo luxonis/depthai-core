@@ -17,11 +17,11 @@ namespace node {
 class MonoCamera : public Node {
    public:
     using Properties = dai::MonoCameraProperties;
+    /// Underlying properties
+    Properties& properties;
 
    private:
-    Properties properties;
-
-    nlohmann::json getProperties() override;
+    Properties& getProperties() override;
     std::shared_ptr<Node> clone() override;
 
     std::shared_ptr<RawCameraControl> rawControl;
@@ -30,6 +30,7 @@ class MonoCamera : public Node {
     std::string getName() const override;
 
     MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Initial control options to apply to sensor

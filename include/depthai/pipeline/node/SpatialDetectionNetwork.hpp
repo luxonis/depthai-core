@@ -20,17 +20,18 @@ namespace node {
 class SpatialDetectionNetwork : public DetectionNetwork {
    public:
     using Properties = dai::SpatialDetectionNetworkProperties;
+    /// Underlying properties
+    Properties& properties;
 
     std::string getName() const override;
 
    protected:
-    Properties properties;
-    virtual Properties& getPropertiesRef() override;
-    nlohmann::json getProperties() override;
+    Properties& getProperties() override;
     std::shared_ptr<Node> clone() override;
 
    public:
     SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Input message with data to be infered upon
@@ -104,6 +105,7 @@ class MobileNetSpatialDetectionNetwork : public SpatialDetectionNetwork {
 
    public:
     MobileNetSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    MobileNetSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 };
 
 /**
@@ -115,6 +117,7 @@ class YoloSpatialDetectionNetwork : public SpatialDetectionNetwork {
 
    public:
     YoloSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    YoloSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
     /// Set num classes
     void setNumClasses(const int numClasses);
     /// Set coordianate size

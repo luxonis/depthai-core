@@ -20,15 +20,15 @@ namespace node {
 class DetectionNetwork : public NeuralNetwork {
    public:
     using Properties = dai::DetectionNetworkProperties;
+    /// Underlying properties
+    Properties& properties;
 
     std::string getName() const override;
 
    protected:
-    Properties properties;
-
     DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    Properties& getPropertiesRef() override;
-    nlohmann::json getProperties() override;
+    DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    Properties& getProperties() override;
     std::shared_ptr<Node> clone() override;
 
    public:
@@ -66,6 +66,7 @@ class MobileNetDetectionNetwork : public DetectionNetwork {
 
    public:
     MobileNetDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    MobileNetDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 };
 
 /**
@@ -77,6 +78,7 @@ class YoloDetectionNetwork : public DetectionNetwork {
 
    public:
     YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /// Set num classes
     void setNumClasses(const int numClasses);

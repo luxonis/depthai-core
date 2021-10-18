@@ -19,18 +19,20 @@ namespace node {
 class SpatialLocationCalculator : public Node {
    public:
     using Properties = dai::SpatialLocationCalculatorProperties;
+    /// Underlying properties
+    Properties& properties;
 
    private:
-    nlohmann::json getProperties() override;
+    Properties& getProperties() override;
     std::shared_ptr<Node> clone() override;
 
     std::shared_ptr<RawSpatialLocationCalculatorConfig> rawConfig;
-    Properties properties;
 
    public:
     std::string getName() const override;
 
     SpatialLocationCalculator(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    SpatialLocationCalculator(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Initial config to use when calculating spatial location data.

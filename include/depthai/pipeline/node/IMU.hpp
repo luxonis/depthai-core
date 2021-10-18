@@ -14,11 +14,11 @@ namespace node {
 class IMU : public Node {
    public:
     using Properties = dai::IMUProperties;
+    /// Underlying properties
+    Properties& properties;
 
    private:
-    Properties properties;
-
-    nlohmann::json getProperties() override;
+    Properties& getProperties() override;
     std::shared_ptr<Node> clone() override;
 
    public:
@@ -28,6 +28,7 @@ class IMU : public Node {
      * Constructs IMU node.
      */
     IMU(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    IMU(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Outputs IMUData message that carries IMU packets.

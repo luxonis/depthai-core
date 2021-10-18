@@ -12,15 +12,18 @@ namespace node {
  * @brief SystemLogger node. Send system information periodically.
  */
 class SystemLogger : public Node {
-    dai::SystemLoggerProperties properties;
+    using Properties = dai::SystemLoggerProperties;
+    /// Underlying properties
+    Properties& properties;
 
-    nlohmann::json getProperties() override;
+    Properties& getProperties() override;
     std::shared_ptr<Node> clone() override;
 
    public:
     std::string getName() const override;
 
     SystemLogger(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    SystemLogger(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Outputs SystemInformation message that carries various system information

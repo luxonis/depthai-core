@@ -6,8 +6,10 @@
 namespace dai {
 namespace node {
 
-Script::Script(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : Node(par, nodeId),
+Script::Script(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Script(par, nodeId, std::make_unique<Script::Properties>()) {}
+Script::Script(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : Node(par, nodeId, std::move(props)),
+      properties(static_cast<Properties&>(*Node::properties)),
       inputs(Input(*this, "", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}})),
       outputs(Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}})) {
     properties.scriptUri = "";
@@ -22,10 +24,8 @@ std::string Script::getName() const {
     return "Script";
 }
 
-nlohmann::json Script::getProperties() {
-    nlohmann::json j;
-    nlohmann::to_json(j, properties);
-    return j;
+Script::Properties& Script::getProperties() {
+    return properties;
 }
 
 std::shared_ptr<Node> Script::clone() {

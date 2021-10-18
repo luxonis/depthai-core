@@ -5,7 +5,9 @@
 namespace dai {
 namespace node {
 
-IMU::IMU(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
+IMU::IMU(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : IMU(par, nodeId, std::make_unique<IMU::Properties>()) {}
+IMU::IMU(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : Node(par, nodeId, std::move(props)), properties(static_cast<Properties&>(*Node::properties)) {
     outputs = {&out};
 }
 
@@ -13,10 +15,8 @@ std::string IMU::getName() const {
     return "IMU";
 }
 
-nlohmann::json IMU::getProperties() {
-    nlohmann::json j;
-    nlohmann::to_json(j, properties);
-    return j;
+IMU::Properties& IMU::getProperties() {
+    return properties;
 }
 
 std::shared_ptr<Node> IMU::clone() {

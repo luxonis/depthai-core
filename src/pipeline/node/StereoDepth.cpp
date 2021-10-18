@@ -8,8 +8,12 @@
 namespace dai {
 namespace node {
 
-StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : Node(par, nodeId), rawConfig(std::make_shared<RawStereoDepthConfig>()), initialConfig(rawConfig) {
+StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : StereoDepth(par, nodeId, std::make_unique<StereoDepth::Properties>()) {}
+StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : Node(par, nodeId, std::move(props)),
+      properties(static_cast<Properties&>(*Node::properties)),
+      rawConfig(std::make_shared<RawStereoDepthConfig>()),
+      initialConfig(rawConfig) {
     // 'properties' defaults already set
     inputs = {&inputConfig, &left, &right};
     outputs = {&depth, &disparity, &syncedLeft, &syncedRight, &rectifiedLeft, &rectifiedRight};
@@ -19,11 +23,9 @@ std::string StereoDepth::getName() const {
     return "StereoDepth";
 }
 
-nlohmann::json StereoDepth::getProperties() {
-    nlohmann::json j;
+StereoDepth::Properties& StereoDepth::getProperties() {
     properties.initialConfig = *rawConfig;
-    nlohmann::to_json(j, properties);
-    return j;
+    return properties;
 }
 
 std::shared_ptr<Node> StereoDepth::clone() {

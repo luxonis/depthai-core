@@ -6,7 +6,10 @@
 namespace dai {
 namespace node {
 
-NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
+NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
+    : NeuralNetwork(par, nodeId, std::make_unique<NeuralNetwork::Properties>()) {}
+NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : Node(par, nodeId, std::move(props)), properties(static_cast<Properties&>(*Node::properties)) {
     inputs = {&input};
 
     outputs = {&out, &passthrough};
@@ -16,15 +19,8 @@ std::string NeuralNetwork::getName() const {
     return "NeuralNetwork";
 }
 
-NeuralNetwork::Properties& NeuralNetwork::getPropertiesRef() {
+NeuralNetwork::Properties& NeuralNetwork::getProperties() {
     return properties;
-}
-
-nlohmann::json NeuralNetwork::getProperties() {
-    nlohmann::json j;
-    Properties& properties = getPropertiesRef();
-    nlohmann::to_json(j, properties);
-    return j;
 }
 
 std::shared_ptr<Node> NeuralNetwork::clone() {
@@ -44,28 +40,23 @@ void NeuralNetwork::setBlobPath(const std::string& path) {
     reader.parse(asset->data);
     networkOpenvinoVersion = OpenVINO::getBlobLatestSupportedVersion(reader.getVersionMajor(), reader.getVersionMinor());
 
-    NeuralNetworkProperties& properties = getPropertiesRef();
     properties.blobUri = asset->getRelativeUri();
     properties.blobSize = asset->data.size();
 }
 
 void NeuralNetwork::setNumPoolFrames(int numFrames) {
-    Properties& properties = getPropertiesRef();
     properties.numFrames = numFrames;
 }
 
 void NeuralNetwork::setNumInferenceThreads(int numThreads) {
-    Properties& properties = getPropertiesRef();
     properties.numThreads = numThreads;
 }
 
 void NeuralNetwork::setNumNCEPerInferenceThread(int numNCEPerThread) {
-    Properties& properties = getPropertiesRef();
     properties.numNCEPerThread = numNCEPerThread;
 }
 
 int NeuralNetwork::getNumInferenceThreads() {
-    Properties& properties = getPropertiesRef();
     return properties.numThreads;
 }
 

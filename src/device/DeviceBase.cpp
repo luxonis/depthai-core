@@ -11,8 +11,8 @@
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
 #include "depthai-shared/pipeline/Assets.hpp"
-#include "depthai-shared/xlink/XLinkConstants.hpp"
 #include "depthai-shared/utility/Serialization.hpp"
+#include "depthai-shared/xlink/XLinkConstants.hpp"
 
 // project
 #include "DeviceLogger.hpp"
