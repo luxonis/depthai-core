@@ -1,6 +1,7 @@
+#define _USE_MATH_DEFINES
+
 #include "device/CalibrationHandler.hpp"
 
-#define _USE_MATH_DEFINES
 #include <cmath>
 #include <fstream>
 #include <iomanip>

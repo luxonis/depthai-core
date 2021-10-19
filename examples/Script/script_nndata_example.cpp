@@ -15,7 +15,7 @@ int main() {
     buf = NNData(150)
     buf.setLayer("fp16", [1.0, 1.2, 3.9, 5.5])
     buf.setLayer("uint8", [6, 9, 4, 2, 0])
-    node.warn("Names of layers: " + str(buf.getAllLayerNames()))
+    node.info("Names of layers: " + str(buf.getAllLayerNames()))
     node.io['host'].send(buf)
     )");
 
