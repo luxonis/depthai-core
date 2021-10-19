@@ -1,6 +1,7 @@
-
 #include "depthai/device/DataQueue.hpp"
+
 // std
+#include <chrono>
 #include <iostream>
 
 // project
@@ -13,6 +14,10 @@
 
 // libraries
 #include "spdlog/spdlog.h"
+
+// Additions
+#include "spdlog/fmt/bin_to_hex.h"
+#include "spdlog/fmt/chrono.h"
 
 namespace dai {
 
@@ -34,18 +39,22 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
                 // Blocking
                 packet = stream.readRaw();
 
-                // parse packet
+                // parse packet - gather timing information
+                auto t1Parse = std::chrono::steady_clock::now();
                 auto data = StreamMessageParser::parseMessageToADatatype(packet);
+                auto t2Parse = std::chrono::steady_clock::now();
 
                 // Trace level debugging
                 if(spdlog::get_level() == spdlog::level::trace) {
                     std::vector<std::uint8_t> metadata;
                     DatatypeEnum type;
                     data->getRaw()->serialize(metadata, type);
-                    std::string objData = "/";
-                    if(!metadata.empty()) objData = nlohmann::json::from_msgpack(metadata).dump();
-                    spdlog::trace(
-                        "Received message from device ({}) - data size: {}, object type: {} object data: {}", name, data->getRaw()->data.size(), type, objData);
+                    spdlog::trace("Received message from device ({}) - parsing time: {}, data size: {}, object type: {} object data: {}",
+                                  name,
+                                  std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
+                                  data->getRaw()->data.size(),
+                                  type,
+                                  spdlog::to_hex(metadata));
                 }
 
                 // release packet
@@ -183,18 +192,23 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
                     continue;
                 }
 
+                // serialize
+                auto t1Parse = std::chrono::steady_clock::now();
+                auto serialized = StreamMessageParser::serializeMessage(data);
+                auto t2Parse = std::chrono::steady_clock::now();
+
                 // Trace level debugging
                 if(spdlog::get_level() == spdlog::level::trace) {
                     std::vector<std::uint8_t> metadata;
                     DatatypeEnum type;
                     data->serialize(metadata, type);
-                    std::string objData = "/";
-                    if(!metadata.empty()) objData = nlohmann::json::from_msgpack(metadata).dump();
-                    spdlog::trace("Sending message to device ({}) - data size: {}, object type: {} object data: {}", name, data->data.size(), type, objData);
+                    spdlog::trace("Sending message to device ({}) - serialize time: {}, data size: {}, object type: {} object data: {}",
+                                  name,
+                                  std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
+                                  data->data.size(),
+                                  type,
+                                  spdlog::to_hex(metadata));
                 }
-
-                // serialize
-                auto serialized = StreamMessageParser::serializeMessage(data);
 
                 // Blocking
                 stream.write(serialized);

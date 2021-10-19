@@ -17,22 +17,15 @@ namespace node {
 /**
  * @brief SpatialDetectionNetwork node. Runs a neural inference on input image and calculates spatial location data.
  */
-class SpatialDetectionNetwork : public DetectionNetwork {
+class SpatialDetectionNetwork : public NodeCRTP<DetectionNetwork, SpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
-    using Properties = dai::SpatialDetectionNetworkProperties;
-
-    std::string getName() const override;
+    constexpr static const char* NAME = "SpatialDetectionNetwork";
 
    protected:
-    Properties properties;
-    virtual Properties& getPropertiesRef() override;
-    virtual const Properties& getPropertiesRef() const override;
-    nlohmann::json getProperties() override;
-    std::shared_ptr<Node> clone() override;
+    SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
    public:
-    SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-
     /**
      * Input message with data to be infered upon
      * Default queue is blocking with size 5
@@ -99,10 +92,7 @@ class SpatialDetectionNetwork : public DetectionNetwork {
 /**
  * MobileNetSpatialDetectionNetwork node. Mobilenet-SSD based network with spatial location data.
  */
-class MobileNetSpatialDetectionNetwork : public SpatialDetectionNetwork {
-   protected:
-    std::shared_ptr<Node> clone() override;
-
+class MobileNetSpatialDetectionNetwork : public NodeCRTP<SpatialDetectionNetwork, MobileNetSpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
     MobileNetSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 };
@@ -110,12 +100,10 @@ class MobileNetSpatialDetectionNetwork : public SpatialDetectionNetwork {
 /**
  * YoloSpatialDetectionNetwork node. (tiny)Yolov3/v4 based network with spatial location data.
  */
-class YoloSpatialDetectionNetwork : public SpatialDetectionNetwork {
-   protected:
-    std::shared_ptr<Node> clone() override;
-
+class YoloSpatialDetectionNetwork : public NodeCRTP<SpatialDetectionNetwork, YoloSpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
     YoloSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+
     /// Set num classes
     void setNumClasses(const int numClasses);
     /// Set coordianate size

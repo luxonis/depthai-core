@@ -7,36 +7,15 @@ namespace dai {
 namespace node {
 
 NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : Node(par, nodeId),
-      inputs("inputs", Input(*this, "", Input::Type::SReceiver, false, 1, true, {{DatatypeEnum::Buffer, true}})),
-      passthroughs("passthroughs", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}})) {
+    : NeuralNetwork(par, nodeId, std::make_unique<NeuralNetwork::Properties>()) {}
+NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperties>(par, nodeId, std::move(props)),
+    inputs("inputs", Input(*this, "", Input::Type::SReceiver, false, 1, true, {{DatatypeEnum::Buffer, true}})),
+    passthroughs("passthroughs", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}})) {
     setInputRefs({&input});
     setOutputRefs({&out, &passthrough});
     setInputMapRefs({&inputs});
     setOutputMapRefs({&passthroughs});
-}
-
-std::string NeuralNetwork::getName() const {
-    return "NeuralNetwork";
-}
-
-NeuralNetwork::Properties& NeuralNetwork::getPropertiesRef() {
-    return properties;
-}
-
-const NeuralNetwork::Properties& NeuralNetwork::getPropertiesRef() const {
-    return properties;
-}
-
-nlohmann::json NeuralNetwork::getProperties() {
-    nlohmann::json j;
-    Properties& properties = getPropertiesRef();
-    nlohmann::to_json(j, properties);
-    return j;
-}
-
-std::shared_ptr<Node> NeuralNetwork::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
 tl::optional<OpenVINO::Version> NeuralNetwork::getRequiredOpenVINOVersion() {
@@ -52,28 +31,23 @@ void NeuralNetwork::setBlobPath(const std::string& path) {
     reader.parse(asset->data);
     networkOpenvinoVersion = OpenVINO::getBlobLatestSupportedVersion(reader.getVersionMajor(), reader.getVersionMinor());
 
-    NeuralNetworkProperties& properties = getPropertiesRef();
     properties.blobUri = asset->getRelativeUri();
     properties.blobSize = asset->data.size();
 }
 
 void NeuralNetwork::setNumPoolFrames(int numFrames) {
-    Properties& properties = getPropertiesRef();
     properties.numFrames = numFrames;
 }
 
 void NeuralNetwork::setNumInferenceThreads(int numThreads) {
-    Properties& properties = getPropertiesRef();
     properties.numThreads = numThreads;
 }
 
 void NeuralNetwork::setNumNCEPerInferenceThread(int numNCEPerThread) {
-    Properties& properties = getPropertiesRef();
     properties.numNCEPerThread = numNCEPerThread;
 }
 
 int NeuralNetwork::getNumInferenceThreads() {
-    Properties& properties = getPropertiesRef();
     return properties.numThreads;
 }
 

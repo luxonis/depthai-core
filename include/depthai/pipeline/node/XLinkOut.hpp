@@ -11,16 +11,13 @@ namespace node {
 /**
  * @brief XLinkOut node. Sends messages over XLink.
  */
-class XLinkOut : public Node {
-    dai::XLinkOutProperties properties;
-
-    nlohmann::json getProperties() override;
-    std::shared_ptr<Node> clone() override;
+class XLinkOut : public NodeCRTP<Node, XLinkOut, XLinkOutProperties> {
+   public:
+    constexpr static const char* NAME = "XLinkOut";
 
    public:
-    std::string getName() const override;
-
     XLinkOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    XLinkOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Input for any type of messages to be transfered over XLink stream

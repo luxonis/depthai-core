@@ -6,20 +6,18 @@ namespace dai {
 namespace node {
 
 SpatialLocationCalculator::SpatialLocationCalculator(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : Node(par, nodeId), rawConfig(std::make_shared<RawSpatialLocationCalculatorConfig>()), initialConfig(rawConfig) {
+    : SpatialLocationCalculator(par, nodeId, std::make_unique<SpatialLocationCalculator::Properties>()) {}
+SpatialLocationCalculator::SpatialLocationCalculator(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<Node, SpatialLocationCalculator, SpatialLocationCalculatorProperties>(par, nodeId, std::move(props)),
+      rawConfig(std::make_shared<RawSpatialLocationCalculatorConfig>()),
+      initialConfig(rawConfig) {
     setInputRefs({&inputConfig, &inputDepth});
     setOutputRefs({&out, &passthroughDepth});
 }
 
-std::string SpatialLocationCalculator::getName() const {
-    return "SpatialLocationCalculator";
-}
-
-nlohmann::json SpatialLocationCalculator::getProperties() {
-    nlohmann::json j;
+SpatialLocationCalculator::Properties& SpatialLocationCalculator::getProperties() {
     properties.roiConfig = *rawConfig;
-    nlohmann::to_json(j, properties);
-    return j;
+    return properties;
 }
 
 // Node properties configuration
@@ -29,10 +27,6 @@ void SpatialLocationCalculator::setWaitForConfigInput(bool wait) {
 
 bool SpatialLocationCalculator::getWaitForConfigInput() const {
     return inputConfig.getWaitForMessage();
-}
-
-std::shared_ptr<Node> SpatialLocationCalculator::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
 }  // namespace node

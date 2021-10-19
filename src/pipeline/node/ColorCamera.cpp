@@ -7,8 +7,11 @@
 namespace dai {
 namespace node {
 
-ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : Node(par, nodeId), rawControl(std::make_shared<RawCameraControl>()), initialControl(rawControl) {
+ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : ColorCamera(par, nodeId, std::make_unique<ColorCamera::Properties>()) {}
+ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<Node, ColorCamera, ColorCameraProperties>(par, nodeId, std::move(props)),
+      rawControl(std::make_shared<RawCameraControl>()),
+      initialControl(rawControl) {
     properties.boardSocket = CameraBoardSocket::AUTO;
     properties.imageOrientation = CameraImageOrientation::AUTO;
     properties.colorOrder = ColorCameraProperties::ColorOrder::BGR;
@@ -21,21 +24,6 @@ ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
 
     setInputRefs({&inputConfig, &inputControl});
     setOutputRefs({&video, &preview, &still, &isp, &raw});
-}
-
-std::string ColorCamera::getName() const {
-    return "ColorCamera";
-}
-
-nlohmann::json ColorCamera::getProperties() {
-    nlohmann::json j;
-    properties.initialControl = *rawControl;
-    nlohmann::to_json(j, properties);
-    return j;
-}
-
-std::shared_ptr<Node> ColorCamera::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
 // Set board socket to use

@@ -16,20 +16,12 @@ namespace node {
 /**
  * @brief ObjectTracker node. Performs object tracking using Kalman filter and hungarian algorithm.
  */
-class ObjectTracker : public Node {
+class ObjectTracker : public NodeCRTP<Node, ObjectTracker, ObjectTrackerProperties> {
    public:
-    using Properties = dai::ObjectTrackerProperties;
-
-   private:
-    nlohmann::json getProperties() override;
-    std::shared_ptr<Node> clone() override;
-
-    Properties properties;
-
-   public:
-    std::string getName() const override;
+    constexpr static const char* NAME = "ObjectTracker";
 
     ObjectTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    ObjectTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Input ImgFrame message on which tracking will be performed. RGBp, BGRp, NV12, YUV420p types are supported.

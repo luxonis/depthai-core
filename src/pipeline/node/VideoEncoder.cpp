@@ -3,25 +3,13 @@
 namespace dai {
 namespace node {
 
-VideoEncoder::VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
+VideoEncoder::VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
+    : VideoEncoder(par, nodeId, std::make_unique<VideoEncoder::Properties>()) {}
+VideoEncoder::VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<Node, VideoEncoder, VideoEncoderProperties>(par, nodeId, std::move(props)) {
     setInputRefs({&input});
     setOutputRefs({&bitstream});
 }
-
-std::string VideoEncoder::getName() const {
-    return "VideoEncoder";
-}
-
-nlohmann::json VideoEncoder::getProperties() {
-    nlohmann::json j;
-    nlohmann::to_json(j, properties);
-    return j;
-}
-
-std::shared_ptr<Node> VideoEncoder::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
-}
-
 // node properties
 void VideoEncoder::setNumFramesPool(int frames) {
     properties.numFramesPool = frames;

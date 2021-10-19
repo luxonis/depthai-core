@@ -5,7 +5,8 @@
 
 namespace dai {
 
-Node::Node(const std::shared_ptr<PipelineImpl>& p, Id nodeId) : parent(p), id(nodeId) {}
+Node::Node(const std::shared_ptr<PipelineImpl>& p, Id nodeId, std::unique_ptr<Properties> props)
+    : parent(p), id(nodeId), propertiesHolder(std::move(props)), properties(*propertiesHolder) {}
 
 tl::optional<OpenVINO::Version> Node::getRequiredOpenVINOVersion() {
     return tl::nullopt;
@@ -19,6 +20,10 @@ const Pipeline Node::getParentPipeline() const {
 Pipeline Node::getParentPipeline() {
     Pipeline pipeline(std::shared_ptr<PipelineImpl>{parent});
     return pipeline;
+}
+
+Properties& Node::getProperties() {
+    return properties;
 }
 
 Node::Connection::Connection(Output out, Input in) {

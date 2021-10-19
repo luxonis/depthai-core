@@ -13,26 +13,24 @@ namespace node {
 /**
  * @brief ColorCamera node. For use with color sensors.
  */
-class ColorCamera : public Node {
+class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
    public:
-    using Properties = dai::ColorCameraProperties;
+    constexpr static const char* NAME = "ColorCamera";
 
    private:
-    Properties properties;
     std::shared_ptr<RawCameraControl> rawControl;
 
-    std::shared_ptr<Node> clone() override;
-    nlohmann::json getProperties() override;
-
    public:
-    std::string getName() const override;
-
-    int getScaledSize(int input, int num, int denom) const;
-
     /**
      * Constructs ColorCamera node.
      */
     ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+
+    /**
+     * Computes the scaled size given numerator and denominator
+     */
+    int getScaledSize(int input, int num, int denom) const;
 
     /**
      * Initial control options to apply to sensor

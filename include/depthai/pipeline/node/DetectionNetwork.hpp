@@ -17,20 +17,13 @@ namespace node {
 /**
  * @brief DetectionNetwork, base for different network specializations
  */
-class DetectionNetwork : public NeuralNetwork {
+class DetectionNetwork : public NodeCRTP<NeuralNetwork, DetectionNetwork, DetectionNetworkProperties> {
    public:
-    using Properties = dai::DetectionNetworkProperties;
-
-    std::string getName() const override;
+    constexpr static const char* NAME = "DetectionNetwork";
 
    protected:
-    Properties properties;
-
     DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    Properties& getPropertiesRef() override;
-    const Properties& getPropertiesRef() const override;
-    nlohmann::json getProperties() override;
-    std::shared_ptr<Node> clone() override;
+    DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
    public:
     /**
@@ -55,23 +48,19 @@ class DetectionNetwork : public NeuralNetwork {
 /**
  * @brief MobileNetDetectionNetwork node. Parses MobileNet results
  */
-class MobileNetDetectionNetwork : public DetectionNetwork {
-   protected:
-    std::shared_ptr<Node> clone() override;
-
+class MobileNetDetectionNetwork : public NodeCRTP<DetectionNetwork, MobileNetDetectionNetwork, DetectionNetworkProperties> {
    public:
-    MobileNetDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    using NodeCRTP<DetectionNetwork, MobileNetDetectionNetwork, DetectionNetworkProperties>::NodeCRTP;
+    MobileNetDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 };
 
 /**
  * @brief YoloDetectionNetwork node. Parses Yolo results
  */
-class YoloDetectionNetwork : public DetectionNetwork {
-   protected:
-    std::shared_ptr<Node> clone() override;
-
+class YoloDetectionNetwork : public NodeCRTP<DetectionNetwork, YoloDetectionNetwork, DetectionNetworkProperties> {
    public:
-    YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    using NodeCRTP<DetectionNetwork, YoloDetectionNetwork, DetectionNetworkProperties>::NodeCRTP;
+    YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /// Set num classes
     void setNumClasses(int numClasses);
