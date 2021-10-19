@@ -1,6 +1,7 @@
+#define _USE_MATH_DEFINES
+
 #include "device/CalibrationHandler.hpp"
 
-#define _USE_MATH_DEFINES
 #include <cmath>
 #include <fstream>
 #include <iomanip>
@@ -293,7 +294,7 @@ float CalibrationHandler::getFov(CameraBoardSocket cameraId, bool useSpec) {
     int width, height;
     std::tie(intrinsics, width, height) = CalibrationHandler::getDefaultIntrinsics(cameraId);
     auto focalLength = intrinsics[0][0];
-    return 2 * 180 / M_PI * atan(width * 0.5f / focalLength);
+    return 2 * 180 / ((float)M_PI) * std::atan(width * 0.5f / focalLength);
 }
 
 uint8_t CalibrationHandler::getLensPosition(CameraBoardSocket cameraId) {
