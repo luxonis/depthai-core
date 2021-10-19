@@ -11,18 +11,9 @@ namespace node {
 /**
  * @brief IMU node for BNO08X.
  */
-class IMU : public Node {
+class IMU : public NodeCRTP<Node, IMU, IMUProperties> {
    public:
-    using Properties = dai::IMUProperties;
-    /// Underlying properties
-    Properties& properties;
-
-   private:
-    Properties& getProperties() override;
-    std::shared_ptr<Node> clone() override;
-
-   public:
-    std::string getName() const override;
+    constexpr static const char* NAME = "IMU";
 
     /**
      * Constructs IMU node.

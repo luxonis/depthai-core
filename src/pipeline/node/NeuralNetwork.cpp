@@ -9,22 +9,9 @@ namespace node {
 NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     : NeuralNetwork(par, nodeId, std::make_unique<NeuralNetwork::Properties>()) {}
 NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : Node(par, nodeId, std::move(props)), properties(static_cast<Properties&>(*Node::properties)) {
+    : NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperties>(par, nodeId, std::move(props)) {
     inputs = {&input};
-
     outputs = {&out, &passthrough};
-}
-
-std::string NeuralNetwork::getName() const {
-    return "NeuralNetwork";
-}
-
-NeuralNetwork::Properties& NeuralNetwork::getProperties() {
-    return properties;
-}
-
-std::shared_ptr<Node> NeuralNetwork::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
 tl::optional<OpenVINO::Version> NeuralNetwork::getRequiredOpenVINOVersion() {

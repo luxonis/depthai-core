@@ -11,19 +11,11 @@ namespace node {
 /**
  * @brief XLinkIn node. Receives messages over XLink.
  */
-class XLinkIn : public Node {
+class XLinkIn : public NodeCRTP<Node, XLinkIn, XLinkInProperties> {
    public:
-    using Properties = XLinkInProperties;
-    /// Underlying properties
-    Properties& properties;
-
-   private:
-    Properties& getProperties() override;
-    std::shared_ptr<Node> clone() override;
+    constexpr static const char* NAME = "XLinkIn";
 
    public:
-    std::string getName() const override;
-
     XLinkIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     XLinkIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 

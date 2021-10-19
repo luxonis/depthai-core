@@ -12,25 +12,13 @@ namespace node {
 // Base Detection Network Class
 //--------------------------------------------------------------------
 DetectionNetwork::DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : DetectionNetwork(par, nodeId, std::make_unique<Properties>()) {}
-DetectionNetwork::DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<DetectionNetwork::Properties> props)
-    : NeuralNetwork(par, nodeId, std::move(props)), properties(static_cast<Properties&>(*Node::properties)) {
+DetectionNetwork::DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<NeuralNetwork, DetectionNetwork, DetectionNetworkProperties>(par, nodeId, std::move(props)) {
     inputs = {&input};
     outputs = {&out, &passthrough};
 
     // Default confidence threshold
     properties.confidenceThreshold = 0.5;
-}
-
-std::string DetectionNetwork::getName() const {
-    return "DetectionNetwork";
-}
-
-std::shared_ptr<Node> DetectionNetwork::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
-}
-
-DetectionNetwork::Properties& DetectionNetwork::getProperties() {
-    return properties;
 }
 
 void DetectionNetwork::setConfidenceThreshold(float thresh) {
@@ -40,18 +28,16 @@ void DetectionNetwork::setConfidenceThreshold(float thresh) {
 //--------------------------------------------------------------------
 // MobileNet
 //--------------------------------------------------------------------
-MobileNetDetectionNetwork::MobileNetDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : DetectionNetwork(par, nodeId) {
+MobileNetDetectionNetwork::MobileNetDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<DetectionNetwork, MobileNetDetectionNetwork, DetectionNetworkProperties>(par, nodeId, std::move(props)) {
     properties.nnFamily = DetectionNetworkType::MOBILENET;
-}
-
-std::shared_ptr<Node> MobileNetDetectionNetwork::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
 //--------------------------------------------------------------------
 // YOLO
 //--------------------------------------------------------------------
-YoloDetectionNetwork::YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : DetectionNetwork(par, nodeId) {
+YoloDetectionNetwork::YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<DetectionNetwork, YoloDetectionNetwork, DetectionNetworkProperties>(par, nodeId, std::move(props)) {
     properties.nnFamily = DetectionNetworkType::YOLO;
 }
 
@@ -73,10 +59,6 @@ void YoloDetectionNetwork::setAnchorMasks(std::map<std::string, std::vector<int>
 
 void YoloDetectionNetwork::setIouThreshold(float thresh) {
     properties.iouThreshold = thresh;
-}
-
-std::shared_ptr<Node> YoloDetectionNetwork::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
 }  // namespace node

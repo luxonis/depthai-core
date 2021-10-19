@@ -17,17 +17,14 @@ namespace node {
  * @brief FeatureTracker node.
  * Performs feature tracking and reidentification using motion estimation between 2 consecutive frames.
  */
-class FeatureTracker : public Node {
+class FeatureTracker : public NodeCRTP<Node, FeatureTracker, FeatureTrackerProperties> {
    public:
-    using Properties = dai::FeatureTrackerProperties;
-    /// Underlying properties
-    Properties& properties;
+    constexpr static const char* NAME = "FeatureTracker";
+
+   protected:
+    Properties& getProperties();
 
    private:
-    std::string getName() const override;
-    Properties& getProperties() override;
-    std::shared_ptr<Node> clone() override;
-
     std::shared_ptr<RawFeatureTrackerConfig> rawConfig;
 
    public:

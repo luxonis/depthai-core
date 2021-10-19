@@ -12,21 +12,14 @@
 namespace dai {
 namespace node {
 
-class Script : public Node {
+class Script : public NodeCRTP<Node, Script, ScriptProperties> {
    public:
-    using Properties = dai::ScriptProperties;
-    /// Underlying properties
-    Properties& properties;
+    constexpr static const char* NAME = "Script";
 
    private:
-    Properties& getProperties() override;
-    std::shared_ptr<Node> clone() override;
-
     std::string scriptPath = "";
 
    public:
-    std::string getName() const override;
-
     Script(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     Script(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 

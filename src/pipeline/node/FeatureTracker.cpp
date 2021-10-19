@@ -8,16 +8,11 @@ namespace node {
 FeatureTracker::FeatureTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     : FeatureTracker(par, nodeId, std::make_unique<FeatureTracker::Properties>()) {}
 FeatureTracker::FeatureTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : Node(par, nodeId, std::move(props)),
-      properties(static_cast<Properties&>(*Node::properties)),
+    : NodeCRTP<Node, FeatureTracker, FeatureTrackerProperties>(par, nodeId, std::move(props)),
       rawConfig(std::make_shared<RawFeatureTrackerConfig>()),
       initialConfig(rawConfig) {
     inputs = {&inputConfig, &inputImage};
     outputs = {&outputFeatures, &passthroughInputImage};
-}
-
-std::string FeatureTracker::getName() const {
-    return "FeatureTracker";
 }
 
 FeatureTracker::Properties& FeatureTracker::getProperties() {
@@ -33,10 +28,6 @@ void FeatureTracker::setWaitForConfigInput(bool wait) {
 void FeatureTracker::setHardwareResources(int numShaves, int numMemorySlices) {
     properties.numShaves = numShaves;
     properties.numMemorySlices = numMemorySlices;
-}
-
-std::shared_ptr<Node> FeatureTracker::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
 }  // namespace node

@@ -16,17 +16,14 @@ namespace node {
 /**
  * @brief EdgeDetector node. Performs edge detection using 3x3 Sobel filter
  */
-class EdgeDetector : public Node {
+class EdgeDetector : public NodeCRTP<Node, EdgeDetector, EdgeDetectorProperties> {
    public:
-    using Properties = dai::EdgeDetectorProperties;
-    /// Underlying properties
-    Properties& properties;
+    constexpr static const char* NAME = "EdgeDetector";
+
+   protected:
+    Properties& getProperties();
 
    private:
-    std::string getName() const override;
-    Properties& getProperties() override;
-    std::shared_ptr<Node> clone() override;
-
     std::shared_ptr<RawEdgeDetectorConfig> rawConfig;
 
    public:

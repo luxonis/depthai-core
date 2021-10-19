@@ -200,16 +200,21 @@ class Node {
 
     virtual Properties& getProperties();
     virtual tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion();
-    virtual std::shared_ptr<Node> clone() = 0;
-    copyable_unique_ptr<Properties> properties;
+    copyable_unique_ptr<Properties> propertiesHolder;
 
    public:
+    // Underlying properties
+    Properties& properties;
+
     // access
     Pipeline getParentPipeline();
     const Pipeline getParentPipeline() const;
 
+    /// Deep copy the node
+    virtual std::unique_ptr<Node> clone() const = 0;
+
     /// Retrieves nodes name
-    virtual std::string getName() const = 0;
+    virtual const char* getName() const = 0;
 
     /// Retrieves all nodes outputs
     std::vector<Output> getOutputs();
@@ -248,6 +253,29 @@ class Node {
 
     /// Get node AssetManager as a reference
     AssetManager& getAssetManager();
+};
+
+// Node CRTP class
+template <typename Base, typename Derived, typename Props>
+class NodeCRTP : public Base {
+   public:
+    using Properties = Props;
+    /// Underlying properties
+    Properties& properties;
+    const char* getName() const override {
+        return Derived::NAME;
+    };
+    std::unique_ptr<Node> clone() const override {
+        return std::make_unique<Derived>(static_cast<const Derived&>(*this));
+    };
+
+   private:
+    NodeCRTP(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+        : Base(par, nodeId, std::move(props)), properties(static_cast<Properties&>(Node::properties)) {}
+    NodeCRTP(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : NodeCRTP(par, nodeId, std::make_unique<Props>()) {}
+    friend Derived;
+    friend Base;
+    friend class PipelineImpl;
 };
 
 }  // namespace dai

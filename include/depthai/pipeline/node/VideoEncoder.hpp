@@ -11,18 +11,9 @@ namespace node {
 /**
  * @brief VideoEncoder node. Encodes frames into MJPEG, H264 or H265.
  */
-class VideoEncoder : public Node {
+class VideoEncoder : public NodeCRTP<Node, VideoEncoder, VideoEncoderProperties> {
    public:
-    using Properties = dai::VideoEncoderProperties;
-    /// Underlying properties
-    Properties& properties;
-
-   private:
-    Properties& getProperties() override;
-    std::shared_ptr<Node> clone() override;
-
-   public:
-    std::string getName() const override;
+    constexpr static const char* NAME = "VideoEncoder";
 
     VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);

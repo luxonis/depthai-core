@@ -4,25 +4,16 @@ namespace node {
 
 ImageManip::ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : ImageManip(par, nodeId, std::make_unique<ImageManip::Properties>()) {}
 ImageManip::ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : Node(par, nodeId, std::move(props)),
-      properties(static_cast<Properties&>(*Node::properties)),
+    : NodeCRTP<Node, ImageManip, ImageManipProperties>(par, nodeId, std::move(props)),
       rawConfig(std::make_shared<RawImageManipConfig>()),
       initialConfig(rawConfig) {
     inputs = {&inputConfig, &inputImage};
     outputs = {&out};
 }
 
-std::string ImageManip::getName() const {
-    return "ImageManip";
-}
-
 ImageManip::Properties& ImageManip::getProperties() {
     properties.initialConfig = *rawConfig;
     return properties;
-}
-
-std::shared_ptr<Node> ImageManip::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
 // Initial ImageManipConfig

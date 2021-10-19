@@ -11,27 +11,12 @@ namespace node {
 //--------------------------------------------------------------------
 // Base Detection Network Class
 //--------------------------------------------------------------------
-
 SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     : SpatialDetectionNetwork(par, nodeId, std::make_unique<Properties>()) {}
-SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par,
-                                                 int64_t nodeId,
-                                                 std::unique_ptr<SpatialDetectionNetwork::Properties> props)
-    : DetectionNetwork(par, nodeId, std::move(props)), properties(static_cast<Properties&>(*Node::properties)) {
+SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<DetectionNetwork, SpatialDetectionNetwork, SpatialDetectionNetworkProperties>(par, nodeId, std::move(props)) {
     inputs = {&input, &inputDepth};
     outputs = {&out, &boundingBoxMapping, &passthrough, &passthroughDepth};
-}
-
-std::shared_ptr<Node> SpatialDetectionNetwork::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
-}
-
-std::string SpatialDetectionNetwork::getName() const {
-    return "SpatialDetectionNetwork";
-}
-
-SpatialDetectionNetwork::Properties& SpatialDetectionNetwork::getProperties() {
-    return properties;
 }
 
 void SpatialDetectionNetwork::setBoundingBoxScaleFactor(float scaleFactor) {
@@ -54,23 +39,16 @@ void SpatialDetectionNetwork::setSpatialCalculationAlgorithm(dai::SpatialLocatio
 // MobileNet
 //--------------------------------------------------------------------
 MobileNetSpatialDetectionNetwork::MobileNetSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : SpatialDetectionNetwork(par, nodeId) {
+    : NodeCRTP<SpatialDetectionNetwork, MobileNetSpatialDetectionNetwork, SpatialDetectionNetworkProperties>(par, nodeId) {
     properties.nnFamily = DetectionNetworkType::MOBILENET;
-}
-
-std::shared_ptr<Node> MobileNetSpatialDetectionNetwork::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
 //--------------------------------------------------------------------
 // YOLO
 //--------------------------------------------------------------------
-YoloSpatialDetectionNetwork::YoloSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : SpatialDetectionNetwork(par, nodeId) {
+YoloSpatialDetectionNetwork::YoloSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
+    : NodeCRTP<SpatialDetectionNetwork, YoloSpatialDetectionNetwork, SpatialDetectionNetworkProperties>(par, nodeId) {
     properties.nnFamily = DetectionNetworkType::YOLO;
-}
-
-std::shared_ptr<Node> YoloSpatialDetectionNetwork::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
 void YoloSpatialDetectionNetwork::setNumClasses(const int numClasses) {

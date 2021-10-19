@@ -11,30 +11,13 @@ namespace node {
 /**
  * @brief SPIOut node. Sends messages over SPI.
  */
-class SPIOut : public Node {
+class SPIOut : public NodeCRTP<Node, SPIOut, SPIOutProperties> {
    public:
-    using Properties = dai::SPIOutProperties;
-    /// Underlying properties
-    Properties& properties;
-
-   private:
-    Properties& getProperties() override {
-        return properties;
-    }
-
-    std::shared_ptr<Node> clone() override {
-        return std::make_shared<std::decay<decltype(*this)>::type>(*this);
-    }
-
-   public:
-    std::string getName() const override {
-        return "SPIOut";
-    }
+    constexpr static const char* NAME = "SPIOut";
 
     SPIOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-        : Node(par, nodeId, std::move(props)), properties(static_cast<Properties&>(*Node::properties)) {
+        : NodeCRTP<Node, SPIOut, SPIOutProperties>(par, nodeId, std::move(props)) {
         properties.busId = 0;
-
         inputs = {&input};
     }
     SPIOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : SPIOut(par, nodeId, std::make_unique<SPIOut::Properties>()) {}

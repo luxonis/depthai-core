@@ -16,21 +16,17 @@ namespace node {
 /**
  * @brief SpatialLocationCalculator node. Calculates spatial location data on a set of ROIs on depth map.
  */
-class SpatialLocationCalculator : public Node {
+class SpatialLocationCalculator : public NodeCRTP<Node, SpatialLocationCalculator, SpatialLocationCalculatorProperties> {
    public:
-    using Properties = dai::SpatialLocationCalculatorProperties;
-    /// Underlying properties
-    Properties& properties;
+    constexpr static const char* NAME = "SpatialLocationCalculator";
+
+   protected:
+    Properties& getProperties();
 
    private:
-    Properties& getProperties() override;
-    std::shared_ptr<Node> clone() override;
-
     std::shared_ptr<RawSpatialLocationCalculatorConfig> rawConfig;
 
    public:
-    std::string getName() const override;
-
     SpatialLocationCalculator(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     SpatialLocationCalculator(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 

@@ -10,26 +10,12 @@ namespace node {
 
 StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : StereoDepth(par, nodeId, std::make_unique<StereoDepth::Properties>()) {}
 StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : Node(par, nodeId, std::move(props)),
-      properties(static_cast<Properties&>(*Node::properties)),
+    : NodeCRTP<Node, StereoDepth, StereoDepthProperties>(par, nodeId, std::move(props)),
       rawConfig(std::make_shared<RawStereoDepthConfig>()),
       initialConfig(rawConfig) {
     // 'properties' defaults already set
     inputs = {&inputConfig, &left, &right};
     outputs = {&depth, &disparity, &syncedLeft, &syncedRight, &rectifiedLeft, &rectifiedRight};
-}
-
-std::string StereoDepth::getName() const {
-    return "StereoDepth";
-}
-
-StereoDepth::Properties& StereoDepth::getProperties() {
-    properties.initialConfig = *rawConfig;
-    return properties;
-}
-
-std::shared_ptr<Node> StereoDepth::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
 void StereoDepth::loadCalibrationData(const std::vector<std::uint8_t>& data) {

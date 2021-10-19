@@ -9,8 +9,7 @@ namespace node {
 
 ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : ColorCamera(par, nodeId, std::make_unique<ColorCamera::Properties>()) {}
 ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : Node(par, nodeId, std::move(props)),
-      properties(static_cast<Properties&>(*Node::properties)),
+    : NodeCRTP<Node, ColorCamera, ColorCameraProperties>(par, nodeId, std::move(props)),
       rawControl(std::make_shared<RawCameraControl>()),
       initialControl(rawControl) {
     properties.boardSocket = CameraBoardSocket::AUTO;
@@ -25,19 +24,6 @@ ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
 
     inputs = {&inputConfig, &inputControl};
     outputs = {&video, &preview, &still, &isp, &raw};
-}
-
-std::string ColorCamera::getName() const {
-    return "ColorCamera";
-}
-
-ColorCamera::Properties& ColorCamera::getProperties() {
-    properties.initialControl = *rawControl;
-    return properties;
-}
-
-std::shared_ptr<Node> ColorCamera::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
 // Set board socket to use

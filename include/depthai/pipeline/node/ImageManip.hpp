@@ -12,21 +12,17 @@ namespace node {
 /**
  * @brief ImageManip node. Capability to crop, resize, warp, ... incoming image frames
  */
-class ImageManip : public Node {
+class ImageManip : public NodeCRTP<Node, ImageManip, ImageManipProperties> {
    public:
-    using Properties = dai::ImageManipProperties;
-    /// Underlying properties
-    Properties& properties;
+    constexpr static const char* NAME = "ImageManip";
 
    protected:
+    Properties& getProperties();
+
+   private:
     std::shared_ptr<RawImageManipConfig> rawConfig;
 
-    Properties& getProperties() override;
-    std::shared_ptr<Node> clone() override;
-
    public:
-    std::string getName() const override;
-
     ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 

@@ -15,17 +15,11 @@ namespace node {
 /**
  * @brief NeuralNetwork node. Runs a neural inference on input data.
  */
-class NeuralNetwork : public Node {
+class NeuralNetwork : public NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperties> {
    public:
-    using Properties = dai::NeuralNetworkProperties;
-    /// Underlying properties
-    Properties& properties;
-
-    std::string getName() const override;
+    constexpr static const char* NAME = "NeuralNetwork";
 
    protected:
-    Properties& getProperties() override;
-    std::shared_ptr<Node> clone() override;
     tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion() override;
     OpenVINO::Version networkOpenvinoVersion;
 

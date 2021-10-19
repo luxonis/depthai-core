@@ -8,16 +8,11 @@ namespace node {
 EdgeDetector::EdgeDetector(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     : EdgeDetector(par, nodeId, std::make_unique<EdgeDetector::Properties>()) {}
 EdgeDetector::EdgeDetector(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : Node(par, nodeId, std::move(props)),
-      properties(static_cast<Properties&>(*Node::properties)),
+    : NodeCRTP<Node, EdgeDetector, EdgeDetectorProperties>(par, nodeId, std::move(props)),
       rawConfig(std::make_shared<RawEdgeDetectorConfig>()),
       initialConfig(rawConfig) {
     inputs = {&inputConfig, &inputImage};
     outputs = {&outputImage, &passthroughInputImage};
-}
-
-std::string EdgeDetector::getName() const {
-    return "EdgeDetector";
 }
 
 EdgeDetector::Properties& EdgeDetector::getProperties() {
@@ -36,10 +31,6 @@ void EdgeDetector::setNumFramesPool(int numFramesPool) {
 
 void EdgeDetector::setMaxOutputFrameSize(int maxFrameSize) {
     properties.outputFrameSize = maxFrameSize;
-}
-
-std::shared_ptr<Node> EdgeDetector::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
 }  // namespace node
