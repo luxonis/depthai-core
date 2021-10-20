@@ -12,7 +12,7 @@ TEST_CASE("Roundtrip") {
     stereo->setInputResolution(0xa0a0a0a0, 0xa0a0a0a0);
     stereo->setOutputSize(0x55555555, 0x55555555);
     stereo->setExtendedDisparity(true);
-    stereo->properties.inputConfigSync = true;
+    stereo->properties.numFramesPool = 42;
 
     // Round trip
     {
@@ -28,7 +28,7 @@ TEST_CASE("Roundtrip") {
         REQUIRE(des.height.value() == 0xa0a0a0a0);
         REQUIRE(des.outWidth.value() == 0x55555555);
         REQUIRE(des.outHeight.value() == 0x55555555);
-        REQUIRE(des.inputConfigSync == true);
+        REQUIRE(des.numFramesPool == 42);
     }
 
     // Round trip through pipeline
@@ -45,6 +45,6 @@ TEST_CASE("Roundtrip") {
         REQUIRE(des.height.value() == 0xa0a0a0a0);
         REQUIRE(des.outWidth.value() == 0x55555555);
         REQUIRE(des.outHeight.value() == 0x55555555);
-        REQUIRE(des.inputConfigSync == true);
+        REQUIRE(des.numFramesPool == 42);
     }
 }

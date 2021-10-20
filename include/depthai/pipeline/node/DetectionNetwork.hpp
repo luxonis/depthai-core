@@ -50,7 +50,7 @@ class DetectionNetwork : public NodeCRTP<NeuralNetwork, DetectionNetwork, Detect
  */
 class MobileNetDetectionNetwork : public NodeCRTP<DetectionNetwork, MobileNetDetectionNetwork, DetectionNetworkProperties> {
    public:
-    using NodeCRTP<DetectionNetwork, MobileNetDetectionNetwork, DetectionNetworkProperties>::NodeCRTP;
+    MobileNetDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     MobileNetDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 };
 
@@ -59,7 +59,7 @@ class MobileNetDetectionNetwork : public NodeCRTP<DetectionNetwork, MobileNetDet
  */
 class YoloDetectionNetwork : public NodeCRTP<DetectionNetwork, YoloDetectionNetwork, DetectionNetworkProperties> {
    public:
-    using NodeCRTP<DetectionNetwork, YoloDetectionNetwork, DetectionNetworkProperties>::NodeCRTP;
+    YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /// Set num classes

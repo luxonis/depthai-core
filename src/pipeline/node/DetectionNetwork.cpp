@@ -32,6 +32,7 @@ float DetectionNetwork::getConfidenceThreshold() const {
 //--------------------------------------------------------------------
 // MobileNet
 //--------------------------------------------------------------------
+MobileNetDetectionNetwork::MobileNetDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : MobileNetDetectionNetwork(par, nodeId, std::make_unique<Properties>()) {}
 MobileNetDetectionNetwork::MobileNetDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
     : NodeCRTP<DetectionNetwork, MobileNetDetectionNetwork, DetectionNetworkProperties>(par, nodeId, std::move(props)) {
     properties.nnFamily = DetectionNetworkType::MOBILENET;
@@ -40,6 +41,7 @@ MobileNetDetectionNetwork::MobileNetDetectionNetwork(const std::shared_ptr<Pipel
 //--------------------------------------------------------------------
 // YOLO
 //--------------------------------------------------------------------
+YoloDetectionNetwork::YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : YoloDetectionNetwork(par, nodeId, std::make_unique<Properties>()) {}
 YoloDetectionNetwork::YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
     : NodeCRTP<DetectionNetwork, YoloDetectionNetwork, DetectionNetworkProperties>(par, nodeId, std::move(props)) {
     properties.nnFamily = DetectionNetworkType::YOLO;
