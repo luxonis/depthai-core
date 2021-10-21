@@ -66,6 +66,8 @@ cd build/examples
 
 ## Integration
 
+Under releases you may find prebuilt library for Windows, for use in either integration method. See [Releases](https://github.com/luxonis/depthai-core/releases)
+
 ### CMake
 
 Targets available to link to are:
