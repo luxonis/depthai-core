@@ -28,18 +28,17 @@ Make sure submodules are updated
 git submodule update --init --recursive
 ```
 
-> ℹ️ To speed up build times, use `cmake --build build --parallel [num CPU cores]` (CMake >= 3.12).
-For older versions use: Linux/macOS: `cmake --build build -- -j[num CPU cores]`, MSVC: `cmake --build build -- /MP[num CPU cores]`
+Then configure and build
 
-> ⚠️ If any CMake commands below error with `CMake Error: The source directory "" does not exist.` replace argument `-S` with `-H`
-
-### Static library
-
-To build dynamic version of library configure with following option added
 ```
 cmake -S. -Bbuild
 cmake --build build
 ```
+
+> ℹ️ To speed up build times, use `cmake --build build --parallel [num CPU cores]` (CMake >= 3.12).
+For older versions use: Linux/macOS: `cmake --build build -- -j[num CPU cores]`, MSVC: `cmake --build build -- /MP[num CPU cores]`
+
+> ⚠️ If any CMake commands error with `CMake Error: The source directory "" does not exist.` replace argument `-S` with `-H`
 
 ### Dynamic library
 
