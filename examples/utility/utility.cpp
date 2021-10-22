@@ -91,9 +91,7 @@ void toPlanar(cv::Mat& bgr, std::vector<std::uint8_t>& data){
             data[x + y*bgr.cols + 2 * bgr.rows*bgr.cols] = p[2];
         }
     }
-
 }
-
 
 cv::Mat resizeKeepAspectRatio(const cv::Mat &input, const cv::Size &dstSize, const cv::Scalar &bgcolor)
 {
