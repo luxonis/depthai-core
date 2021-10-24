@@ -65,6 +65,7 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
+        cmake: ['3.10.x', ''] # Older version (Ubuntu 18.04) and newest
 
     steps:
     - name: Cache .hunter folder
@@ -72,16 +73,22 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.hunter/
-        key: hunter-${{ matrix.os }}
+        key: hunter-${{ matrix.os }}-${{ matrix.cmake }}
     - name: Cache .hunter folder
       if: matrix.os == 'windows-latest'
       uses: actions/cache@v2
       with:
         path: C:/.hunter/
-        key: hunter-${{ matrix.os }}
+        key: hunter-${{ matrix.os }}-${{ matrix.cmake }}
+
     - uses: actions/checkout@v2
       with:
         submodules: 'recursive'
+
+    - name: Setup cmake
+      uses: jwlawson/actions-setup-cmake@v1.9
+      with:
+        cmake-version: ${{ matrix.cmake }}
 
     - name: Install dependencies
       if: matrix.os == 'macos-latest'
