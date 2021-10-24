@@ -85,3 +85,10 @@ hunter_config(
     CMAKE_ARGS
         BACKWARD_TESTS=OFF
 )
+
+hunter_config(
+    Catch2
+    VERSION "2.13.7"
+    URL "https://github.com/catchorg/Catch2/archive/refs/tags/v2.13.7.tar.gz"
+    SHA1 "fa8f14ccf852413d3c6d3999145ada934d37d773"
+)
