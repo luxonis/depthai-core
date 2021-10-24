@@ -109,11 +109,23 @@ jobs:
         echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
         echo "C:\tools\opencv\build\x64\vc15\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-    - name: configure
-      run: cmake -S . -B build -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON
+    - name: Build (old CMake, gcc/Clang)
+      if: matrix.cmake == '3.10.x' && matrix.os != 'windows-latest'
+      run: |
+        cmake -H. -Bbuild -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON
+        cmake --build build -- -j8
 
-    - name: build
-      run: cmake --build build --parallel 8
+    - name: Build (old CMake, MSVC)
+      if: matrix.cmake == '3.10.x' && matrix.os == 'windows-latest'
+      run: |
+        cmake -H. -Bbuild -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON
+        cmake --build build -- /maxcpucount:8
+
+    - name: Build (newest CMake)
+      if: matrix.cmake != '3.10.x'
+      run: |
+        cmake -S . -B build -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON
+        cmake --build build --parallel 8
 
   integration:
     runs-on: ${{ matrix.os }}

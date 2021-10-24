@@ -85,3 +85,11 @@ hunter_config(
     CMAKE_ARGS
         BACKWARD_TESTS=OFF
 )
+
+# ZLib - Luxonis fix for alias on imported target for old CMake versions
+hunter_config(
+    ZLIB
+    VERSION "1.2.11-p2"
+    URL "https://github.com/luxonis/zlib/archive/refs/tags/v1.2.11-p2.tar.gz"
+    SHA1 "fb8b6486183b13a86040f793a939b128f6d27095"
+)
