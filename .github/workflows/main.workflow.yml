@@ -118,8 +118,10 @@ jobs:
     - name: Build (old CMake, MSVC)
       if: matrix.cmake == '3.10.x' && matrix.os == 'windows-latest'
       run: |
-        cmake -H. -Bbuild -DDEPTHAI_BUILD_EXAMPLES=ON -DDEPTHAI_BUILD_TESTS=ON
-        cmake --build build -- /maxcpucount:8
+        mkdir build
+        cd build
+        cmake .. -DDEPTHAI_BUILD_EXAMPLES=ON -DDEPTHAI_BUILD_TESTS=ON
+        cmake --build . -- /maxcpucount:8
 
     - name: Build (newest CMake)
       if: matrix.cmake != '3.10.x'

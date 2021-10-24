@@ -374,7 +374,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         FP16::fp16
         archive_static
         spdlog::spdlog
-        ZLIB
+        ZLIB::zlib
 )
 
 # Add compile definitions
