@@ -12,7 +12,7 @@ Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.co
 DepthAI library doesn't yet provide API stability guarantees. While we take care to properly deprecate old functions, some changes might still be breaking. We expect to provide API stability from version 3.0.0 onwards.
 
 ## Dependencies
-- cmake >= 3.4
+- CMake >= 3.10
 - libusb1 development package (MacOS & Linux only)
 - C/C++14 compiler
 - [optional] OpenCV 4 (required if building examples)
@@ -44,7 +44,7 @@ For older versions use: Linux/macOS: `cmake --build build -- -j[num CPU cores]`,
 
 To build dynamic version of library configure with following option added
 ```
-cmake -S. -Bbuild -D BUILD_SHARED_LIBS=ON
+cmake -S. -Bbuild -D'BUILD_SHARED_LIBS=ON'
 cmake --build build
 ```
 
@@ -52,7 +52,7 @@ cmake --build build
 
 To build the examples configure with following option added
 ```
-cmake -S. -Bbuild -D DEPTHAI_BUILD_EXAMPLES=ON
+cmake -S. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON'
 cmake --build build
 ```
 
@@ -87,11 +87,11 @@ target_link_libraries([my-app] PRIVATE depthai::opencv)
 
 And point CMake to either build directory or install directory:
 ```
--D depthai_DIR=depthai-core/build
+-D'depthai_DIR=depthai-core/build'
 ```
 or
 ```
--D depthai_DIR=depthai-core/build/install/lib/cmake/depthai
+-D'depthai_DIR=depthai-core/build/install/lib/cmake/depthai'
 ```
 
 If library was installed to default search path like `/usr/local` on Linux, specifying `depthai_DIR` isn't necessary as CMake will find it automatically.
@@ -136,7 +136,7 @@ The generated integration file also specifies include paths without requiring in
 
 To install specify optional prefix and build target install
 ```
-cmake -S. -Bbuild -D CMAKE_INSTALL_PREFIX=[path/to/install/dir]
+cmake -S. -Bbuild -D'CMAKE_INSTALL_PREFIX=[path/to/install/dir]'
 cmake --build build --target install
 ```
 
@@ -147,7 +147,7 @@ If `CMAKE_INSTALL_PREFIX` isn't specified, the library is installed under build 
 
 To run the tests build the library with the following options
 ```
-cmake -S. -Bbuild -D DEPTHAI_TEST_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_BUILD_EXAMPLES=ON
+cmake -S. -Bbuild -D'DEPTHAI_TEST_EXAMPLES=ON' -D'DEPTHAI_BUILD_TESTS=ON' -D'DEPTHAI_BUILD_EXAMPLES=ON'
 cmake --build build
 ```
 
@@ -176,7 +176,7 @@ cmake --build build --target clangformat
 
 Doxygen is used to generate documentation. Follow [doxygen download](https://www.doxygen.nl/download.html#srcbin) and install the required binaries for your platform.
 
-After that specify CMake define `-D DEPTHAI_BUILD_DOCS=ON` and build the target `doxygen`
+After that specify CMake define `-D'DEPTHAI_BUILD_DOCS=ON`' and build the target `doxygen`
 
 ## Debugging tips
 
@@ -191,7 +191,7 @@ rm -r ~/.hunter
 
 And configuring the project with the following CMake option set to `ON`
 ```
-cmake . -D HUNTER_KEEP_PACKAGE_SOURCES=ON
+cmake . -D'HUNTER_KEEP_PACKAGE_SOURCES=ON'
 ```
 
 This retains the libraries source code, so that debugger can step through it (the paths are already set up correctly)
@@ -202,10 +202,10 @@ This retains the libraries source code, so that debugger can step through it (th
 ### Build fails with missing OpenCV dependency
 
 If your build process happen to fail due to OpenCV library not being found, but you have the OpenCV installed, please
-run build with additional `-D OpenCV_DIR` flag (replacing default Ubuntu path `/usr/lib/x86_64-linux-gnu/cmake/opencv4` with yours)
+run build with additional `-D'OpenCV_DIR=...`' flag (replacing default Ubuntu path `/usr/lib/x86_64-linux-gnu/cmake/opencv4` with yours)
 
 ```
-cmake -S. -Bbuild -D OpenCV_DIR=/usr/lib/x86_64-linux-gnu/cmake/opencv4
+cmake -S. -Bbuild -D'OpenCV_DIR=/usr/lib/x86_64-linux-gnu/cmake/opencv4'
 ```
 
 Now the build process should correctly discover your OpenCV installation
