@@ -225,6 +225,7 @@ target_compile_definitions(object_tracker_video PRIVATE BLOB_PATH="${person_dete
 
 # Script
 dai_add_example(script_camera_control Script/script_camera_control.cpp ON)
+dai_add_example(script_forward_frames Script/script_forward_frames.cpp ON)
 dai_add_example(script_get_ip Script/script_get_ip.cpp OFF)
 dai_add_example(script_http_client Script/script_http_client.cpp OFF)
 dai_add_example(script_http_server Script/script_http_server.cpp OFF)
