@@ -112,7 +112,7 @@ jobs:
     - name: Build (old CMake, gcc/Clang)
       if: matrix.cmake == '3.10.x' && matrix.os != 'windows-latest'
       run: |
-        cmake -H. -Bbuild -DDEPTHAI_BUILD_EXAMPLES=ON -DDEPTHAI_BUILD_TESTS=ON
+        cmake -H. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON' -D'DEPTHAI_BUILD_TESTS=ON'
         cmake --build build -- -j8
 
     - name: Build (newest CMake)
