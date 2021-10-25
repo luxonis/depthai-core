@@ -254,6 +254,7 @@ dai_add_example(stereo_depth_video StereoDepth/stereo_depth_video.cpp ON)
 dai_add_example(system_information SystemLogger/system_information.cpp ON)
 
 # VideoEncoder
+dai_add_example(disparity_encoding VideoEncoder/disparity_encoding.cpp  ON)
 dai_add_example(rgb_encoding VideoEncoder/rgb_encoding.cpp  ON)
 dai_add_example(rgb_full_resolution_saver VideoEncoder/rgb_full_resolution_saver.cpp  ON)
 dai_add_example(rgb_mono_encoding VideoEncoder/rgb_mono_encoding.cpp  ON)
