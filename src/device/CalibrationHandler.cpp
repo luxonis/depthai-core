@@ -1,5 +1,8 @@
+#define _USE_MATH_DEFINES
+
 #include "device/CalibrationHandler.hpp"
 
+#include <cmath>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -17,6 +20,33 @@
 namespace dai {
 
 using namespace matrix;
+
+namespace {
+void invertSe3Matrix4x4InPlace(std::vector<std::vector<float>>& mat) {
+    // Transpose in-place
+    float temp = mat[0][1];
+    mat[0][1] = mat[1][0];
+    mat[1][0] = temp;
+
+    temp = mat[0][2];
+    mat[0][2] = mat[2][0];
+    mat[2][0] = temp;
+
+    temp = mat[1][2];
+    mat[1][2] = mat[2][1];
+    mat[2][1] = temp;
+
+    // The inverse of an SE(3) transformation (R, t) is (R^T, -R^T t)
+    float newTrans[3];
+    for(int i = 0; i < 3; ++i) {
+        newTrans[i] = 0;
+        for(int j = 0; j < 3; ++j) {
+            newTrans[i] -= mat[i][j] * mat[j][3];
+        }
+    }
+    for(int i = 0; i < 3; ++i) mat[i][3] = newTrans[i];
+}
+}  // namespace
 
 CalibrationHandler::CalibrationHandler(std::string eepromDataPath) {
     std::ifstream jsonStream(eepromDataPath);
@@ -252,11 +282,19 @@ std::vector<float> CalibrationHandler::getDistortionCoefficients(CameraBoardSock
     return eepromData.cameraData[cameraId].distortionCoeff;
 }
 
-float CalibrationHandler::getFov(CameraBoardSocket cameraId) {
+float CalibrationHandler::getFov(CameraBoardSocket cameraId, bool useSpec) {
     if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end())
         throw std::runtime_error("There is no Camera data available corresponding to the the requested cameraID");
 
-    return eepromData.cameraData[cameraId].specHfovDeg;
+    if(useSpec) {
+        return eepromData.cameraData[cameraId].specHfovDeg;
+    }
+    // Calculate fov from intrinsics
+    std::vector<std::vector<float>> intrinsics;
+    int width, height;
+    std::tie(intrinsics, width, height) = CalibrationHandler::getDefaultIntrinsics(cameraId);
+    auto focalLength = intrinsics[0][0];
+    return 2 * 180 / ((float)M_PI) * std::atan(width * 0.5f / focalLength);
 }
 
 uint8_t CalibrationHandler::getLensPosition(CameraBoardSocket cameraId) {
@@ -289,23 +327,7 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBo
         return computeExtrinsicMatrix(srcCamera, dstCamera, useSpecTranslation);
     } else if(checkExtrinsicsLink(dstCamera, srcCamera)) {
         extrinsics = computeExtrinsicMatrix(dstCamera, srcCamera, useSpecTranslation);
-
-        float temp = extrinsics[0][1];
-        extrinsics[0][1] = extrinsics[1][0];
-        extrinsics[1][0] = temp;
-
-        temp = extrinsics[0][2];
-        extrinsics[0][2] = extrinsics[2][0];
-        extrinsics[2][0] = temp;
-
-        temp = extrinsics[1][2];
-        extrinsics[1][2] = extrinsics[2][1];
-        extrinsics[2][1] = temp;
-
-        extrinsics[0][3] = -extrinsics[0][3];
-        extrinsics[1][3] = -extrinsics[1][3];
-        extrinsics[2][3] = -extrinsics[2][3];
-
+        invertSe3Matrix4x4InPlace(extrinsics);
         return extrinsics;
     } else {
         throw std::runtime_error("Extrinsic connection between the requested cameraId's doesn't exist. Please recalibrate or modify your calibration data");
@@ -313,24 +335,28 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBo
     return extrinsics;
 }
 
+std::vector<float> CalibrationHandler::getCameraTranslationVector(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation) {
+    std::vector<std::vector<float>> extrinsics = getCameraExtrinsics(srcCamera, dstCamera, useSpecTranslation);
+
+    std::vector<float> translationVector = {0, 0, 0};
+    for(auto i = 0; i < 3; i++) {
+        translationVector[i] = extrinsics[i][3];
+    }
+    return translationVector;
+}
+
+float CalibrationHandler::getBaselineDistance(CameraBoardSocket cam1, CameraBoardSocket cam2, bool useSpecTranslation) {
+    std::vector<float> translationVector = getCameraTranslationVector(cam1, cam2, useSpecTranslation);
+    float sum = 0;
+    for(auto val : translationVector) {
+        sum += val * val;
+    }
+    return std::sqrt(sum);
+}
+
 std::vector<std::vector<float>> CalibrationHandler::getCameraToImuExtrinsics(CameraBoardSocket cameraId, bool useSpecTranslation) {
     std::vector<std::vector<float>> transformationMatrix = getImuToCameraExtrinsics(cameraId, useSpecTranslation);
-    float temp = transformationMatrix[0][1];
-    transformationMatrix[0][1] = transformationMatrix[1][0];
-    transformationMatrix[1][0] = temp;
-
-    temp = transformationMatrix[0][2];
-    transformationMatrix[0][2] = transformationMatrix[2][0];
-    transformationMatrix[2][0] = temp;
-
-    temp = transformationMatrix[1][2];
-    transformationMatrix[1][2] = transformationMatrix[2][1];
-    transformationMatrix[2][1] = temp;
-
-    transformationMatrix[0][3] = -transformationMatrix[0][3];
-    transformationMatrix[1][3] = -transformationMatrix[1][3];
-    transformationMatrix[2][3] = -transformationMatrix[2][3];
-
+    invertSe3Matrix4x4InPlace(transformationMatrix);
     return transformationMatrix;
 }
 
@@ -343,13 +369,13 @@ std::vector<std::vector<float>> CalibrationHandler::getImuToCameraExtrinsics(Cam
 
     std::vector<std::vector<float>> transformationMatrix = eepromData.imuExtrinsics.rotationMatrix;
     if(useSpecTranslation) {
-        transformationMatrix[0].push_back(eepromData.cameraData[cameraId].extrinsics.specTranslation.x);
-        transformationMatrix[1].push_back(eepromData.cameraData[cameraId].extrinsics.specTranslation.y);
-        transformationMatrix[2].push_back(eepromData.cameraData[cameraId].extrinsics.specTranslation.z);
+        transformationMatrix[0].push_back(eepromData.imuExtrinsics.specTranslation.x);
+        transformationMatrix[1].push_back(eepromData.imuExtrinsics.specTranslation.y);
+        transformationMatrix[2].push_back(eepromData.imuExtrinsics.specTranslation.z);
     } else {
-        transformationMatrix[0].push_back(eepromData.cameraData[cameraId].extrinsics.translation.x);
-        transformationMatrix[1].push_back(eepromData.cameraData[cameraId].extrinsics.translation.y);
-        transformationMatrix[2].push_back(eepromData.cameraData[cameraId].extrinsics.translation.z);
+        transformationMatrix[0].push_back(eepromData.imuExtrinsics.translation.x);
+        transformationMatrix[1].push_back(eepromData.imuExtrinsics.translation.y);
+        transformationMatrix[2].push_back(eepromData.imuExtrinsics.translation.z);
     }
     std::vector<float> homogeneous_vector = {0, 0, 0, 1};
     transformationMatrix.push_back(homogeneous_vector);
