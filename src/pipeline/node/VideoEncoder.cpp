@@ -1,5 +1,8 @@
 #include "depthai/pipeline/node/VideoEncoder.hpp"
 
+// std
+#include <stdexcept>
+
 namespace dai {
 namespace node {
 
@@ -12,6 +15,12 @@ VideoEncoder::VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nod
 }
 // node properties
 void VideoEncoder::setNumFramesPool(int frames) {
+
+    // 16 is maximum allowed value
+    if(frames > 16) {
+        throw std::invalid_argument("Maximum number of frames in pool for VideoEncoder is 16");
+    }
+
     properties.numFramesPool = frames;
     // Set default input queue size as well
     input.defaultQueueSize = frames;
