@@ -7,7 +7,9 @@ static std::unordered_map<int, int> rgb_cam_supported_configs =
 {
     {1080, 0},
     {2160, 1},
-    {3040, 2}
+    {3040, 2},
+    {1560, 3},
+    {3120, 4},
 };
 
 static std::unordered_map<int, int> mono_cam_supported_configs =
@@ -15,6 +17,7 @@ static std::unordered_map<int, int> mono_cam_supported_configs =
     {720, 0},
     {800, 1},
     {400, 2},
+    {480, 3},
 };
 
 #define WARNING "\033[1;5;31m"
@@ -378,11 +381,15 @@ bool HostPipelineConfig::initWithJSON(const nlohmann::json &json_obj)
                 rgb_cam_config.resolution_w =  1920;
             if (rgb_cam_config.resolution_h == 2160)
                 rgb_cam_config.resolution_w =  3840;
+            if (rgb_cam_config.resolution_h == 3120)
+                rgb_cam_config.resolution_w =  4208;
+            if (rgb_cam_config.resolution_h == 1560)
+                rgb_cam_config.resolution_w =  2096;
         }
 
         // Defaults if the resolution width is not specified
         if (mono_cam_config.resolution_w == 0) {
-            if (mono_cam_config.resolution_h == 400)
+            if (mono_cam_config.resolution_h == 400 || mono_cam_config.resolution_h == 480)
                 mono_cam_config.resolution_w =  640;
             if (mono_cam_config.resolution_h == 720 || mono_cam_config.resolution_h == 800)
                 mono_cam_config.resolution_w = 1280;
