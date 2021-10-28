@@ -93,6 +93,7 @@ jobs:
     - name: Install dependencies
       if: matrix.os == 'macos-latest'
       run: |
+        brew untap homebrew/homebrew-cask-drivers
         brew update
         brew install libusb opencv
 
@@ -159,6 +160,7 @@ jobs:
     - name: Install dependencies
       if: matrix.os == 'macos-latest'
       run: |
+        brew untap homebrew/homebrew-cask-drivers
         brew update
         brew install libusb opencv
 
