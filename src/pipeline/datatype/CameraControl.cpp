@@ -28,6 +28,11 @@ void CameraControl::setExternalTrigger(int numFramesBurst, int numFramesDiscard)
     cfg.lowPowerNumFramesDiscard = numFramesDiscard;
 }
 
+void CameraControl::setFrameSyncMode(FrameSyncMode mode) {
+    cfg.setCommand(RawCameraControl::Command::FRAME_SYNC);
+    cfg.frameSyncMode = mode;
+}
+
 // Focus
 void CameraControl::setAutoFocusMode(AutoFocusMode mode) {
     cfg.setCommand(RawCameraControl::Command::AF_MODE);

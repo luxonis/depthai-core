@@ -36,6 +36,7 @@ class CameraControl : public Buffer {
     using AutoWhiteBalanceMode = RawCameraControl::AutoWhiteBalanceMode;
     using SceneMode = RawCameraControl::SceneMode;
     using EffectMode = RawCameraControl::EffectMode;
+    using FrameSyncMode = RawCameraControl::FrameSyncMode;
 
     /// Construct CameraControl message
     CameraControl();
@@ -65,6 +66,12 @@ class CameraControl : public Buffer {
      * configured (can be set to 0 as well), as they may have degraded quality
      */
     void setExternalTrigger(int numFramesBurst, int numFramesDiscard);
+
+    /**
+     * Set the frame sync mode for continuous streaming operation mode,
+     * translating to how the camera pin FSIN/FSYNC is used: input/output/disabled
+     */
+    void setFrameSyncMode(FrameSyncMode mode);
 
     // Focus
     /**
