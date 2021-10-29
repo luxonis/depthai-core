@@ -128,7 +128,8 @@ void StereoDepth::setSubpixel(bool enable) {
     properties.initialConfig = *rawConfig;
 }
 void StereoDepth::setExtendedDisparity(bool enable) {
-    properties.enableExtendedDisparity = enable;
+    initialConfig.setExtendedDisparity(enable);
+    properties.initialConfig = *rawConfig;
 }
 void StereoDepth::setRectifyEdgeFillColor(int color) {
     properties.rectifyEdgeFillColor = color;
