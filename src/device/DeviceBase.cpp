@@ -678,6 +678,12 @@ std::vector<CameraBoardSocket> DeviceBase::getConnectedCameras() {
     return pimpl->rpcClient->call("getConnectedCameras").as<std::vector<CameraBoardSocket>>();
 }
 
+std::vector<CameraProperties> DeviceBase::getConnectedCameraProperties() {
+    checkClosed();
+
+    return pimpl->rpcClient->call("getConnectedCameraProperties").as<std::vector<CameraProperties>>();
+}
+
 // Convinience functions for querying current system information
 MemoryInfo DeviceBase::getDdrMemoryUsage() {
     checkClosed();
