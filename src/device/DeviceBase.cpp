@@ -469,7 +469,11 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
             std::chrono::milliseconds watchdog{std::stoi(watchdogMsStr)};
             config.preboot.watchdogTimeoutMs = watchdog.count();
             watchdogTimeout = watchdog;
-            spdlog::debug("Using a custom watchdog value of {}", watchdogTimeout);
+            if(watchdogTimeout.count() == 0) {
+                spdlog::warn("Watchdog disabled! In case of unclean exit, the device needs reset or power-cycle for next run", watchdogTimeout);
+            } else {
+                spdlog::warn("Using a custom watchdog value of {}", watchdogTimeout);
+            }
         } catch(const std::invalid_argument& e) {
             spdlog::warn("DEPTHAI_WATCHDOG value invalid: {}", e.what());
         }
