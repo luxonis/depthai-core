@@ -29,7 +29,7 @@ DeviceInfo::DeviceInfo(std::string mxId) {
     // Add dash at the end of mxId ([mxId]-[xlinkDevName] format)
     mxId += "-";
     // Construct device info which will points to device with specific mxId
-    std::strncpy(desc.name, mxId.c_str(), sizeof(desc.name));
+    std::strncpy(desc.name, mxId.c_str(), sizeof(desc.name) - 1);
 
     // set protocol to any
     desc.protocol = X_LINK_ANY_PROTOCOL;
