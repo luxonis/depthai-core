@@ -12,7 +12,19 @@ StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
     : Node(par, nodeId), rawConfig(std::make_shared<RawStereoDepthConfig>()), initialConfig(rawConfig) {
     // 'properties' defaults already set
     inputs = {&inputConfig, &left, &right};
-    outputs = {&depth, &disparity, &syncedLeft, &syncedRight, &rectifiedLeft, &rectifiedRight};
+    outputs = {&depth,
+               &disparity,
+               &syncedLeft,
+               &syncedRight,
+               &rectifiedLeft,
+               &rectifiedRight,
+               &outConfig,
+               &debugDispLrCheckIt1,
+               &debugDispLrCheckIt2,
+               &debugExtDispLrCheckIt1,
+               &debugExtDispLrCheckIt2,
+               &debugDispCostDump,
+               &confidenceMap};
 }
 
 std::string StereoDepth::getName() const {
