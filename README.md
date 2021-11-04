@@ -12,16 +12,61 @@ Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.co
 DepthAI library doesn't yet provide API stability guarantees. While we take care to properly deprecate old functions, some changes might still be breaking. We expect to provide API stability from version 3.0.0 onwards.
 
 ## Dependencies
-- cmake >= 3.4
+- CMake >= 3.10
 - libusb1 development package (MacOS & Linux only)
 - C/C++14 compiler
-- [optional] OpenCV 4
+- [optional] OpenCV 4 (required if building examples)
 
-MacOS: `brew install libusb`
+MacOS: `brew install libusb`, optionally with `brew install opencv`
 
-Linux: `sudo apt install libusb-1.0-0-dev`
+Linux: `sudo apt install libusb-1.0-0-dev`, optionally with `sudo apt install libopencv-dev`
+
+## Building
+
+Make sure submodules are updated
+```
+git submodule update --init --recursive
+```
+
+Then configure and build
+
+```
+cmake -S. -Bbuild
+cmake --build build
+```
+
+> ℹ️ To speed up build times, use `cmake --build build --parallel [num CPU cores]` (CMake >= 3.12).
+For older versions use: Linux/macOS: `cmake --build build -- -j[num CPU cores]`, MSVC: `cmake --build build -- /MP[num CPU cores]`
+
+> ⚠️ If any CMake commands error with `CMake Error: The source directory "" does not exist.` replace argument `-S` with `-H`
+
+### Dynamic library
+
+To build dynamic version of library configure with following option added
+```
+cmake -S. -Bbuild -D'BUILD_SHARED_LIBS=ON'
+cmake --build build
+```
+
+## Running examples
+
+To build the examples configure with following option added
+```
+cmake -S. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON'
+cmake --build build
+```
+
+Then navigate to `build/examples` folder and run a preferred example
+```
+cd build/examples
+./MobileNet/rgb_mobilenet
+```
+
+> ℹ️ Multi-Config generators (like Visual Studio on Windows) will have the examples built in `build/examples/MobileNet/[Debug/Release/...]/rgb_mobilenet`
 
 ## Integration
+
+Under releases you may find prebuilt library for Windows, for use in either integration method. See [Releases](https://github.com/luxonis/depthai-core/releases)
 
 ### CMake
 
@@ -31,7 +76,7 @@ Targets available to link to are:
 
 #### Using find_package
 
-Build static or dynamic version of library and install (See: [Building](##building) and [Installing](##installing))
+Build static or dynamic version of library (See: [Building](##building) and optionally [Installing](##installing))
 
 Add `find_package` and `target_link_libraries` to your project
 ```
@@ -42,11 +87,11 @@ target_link_libraries([my-app] PRIVATE depthai::opencv)
 
 And point CMake to either build directory or install directory:
 ```
--D depthai_DIR=depthai-core/build
+-D'depthai_DIR=depthai-core/build'
 ```
 or
 ```
--D depthai_DIR=depthai-core/build/install/lib/cmake/depthai
+-D'depthai_DIR=depthai-core/build/install/lib/cmake/depthai'
 ```
 
 If library was installed to default search path like `/usr/local` on Linux, specifying `depthai_DIR` isn't necessary as CMake will find it automatically.
@@ -69,14 +114,16 @@ target_link_libraries([my-app] PRIVATE depthai::opencv)
 To integrate into a different build system than CMake, prefered way is compiling as dynamic library and setting correct build options.
 1. First build as dynamic library: [Building Dynamic library](###dynamic-library)
 2. Then install: [Installing](##installing)
-3. Set needed library directories:
+
+In your non-CMake project (new Visual Studio project, ...)
+1. Set needed library directories:
     - `build/install/lib` (for linking to either depthai-core or depthai-opencv)
     - `build/install/bin` (for .dll's)
-4. And include directories
+2. And include directories
     - `build/install/include` (library headers)
     - `build/install/include/depthai-shared/3rdparty` (shared 3rdparty headers)
     - `build/install/lib/cmake/depthai/dependencies/include` (dependency headers)
-5. Add the following defines
+3. Add the following defines
     - `XLINK_USE_MX_ID_NAME=ON`
     - `__PC__=ON`
 
@@ -85,43 +132,22 @@ To integrate into a different build system than CMake, prefered way is compiling
 > ℹ️ Check `build/depthai-core-integration.txt` or `build/depthai-opencv-integration.txt` for up to date define options.
 The generated integration file also specifies include paths without requiring installation.
 
-## Building
-
-Make sure submodules are updated
-```
-git submodule update --init --recursive
-```
-
-> ℹ️ To speed up build times, use `cmake --build build --parallel [num CPU cores]` (CMake >= 3.12).
-For older versions use: Linux/macOS: `cmake --build build -- -j[num CPU cores]`, MSVC: `cmake --build build -- /MP[num CPU cores]`
-
-### Static library
-```
-cmake -H. -Bbuild
-cmake --build build
-```
-
-### Dynamic library
-```
-cmake -H. -Bbuild -D BUILD_SHARED_LIBS=ON
-cmake --build build
-```
 ## Installing
 
 To install specify optional prefix and build target install
 ```
-cmake -H. -Bbuild -D CMAKE_INSTALL_PREFIX=[path/to/install/dir]
-cmake --build build
+cmake -S. -Bbuild -D'CMAKE_INSTALL_PREFIX=[path/to/install/dir]'
 cmake --build build --target install
 ```
 
 If `CMAKE_INSTALL_PREFIX` isn't specified, the library is installed under build folder `install`.
 
+
 ## Running tests
 
 To run the tests build the library with the following options
 ```
-cmake -H. -Bbuild -D DEPTHAI_TEST_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_BUILD_EXAMPLES=ON
+cmake -S. -Bbuild -D'DEPTHAI_TEST_EXAMPLES=ON' -D'DEPTHAI_BUILD_TESTS=ON' -D'DEPTHAI_BUILD_EXAMPLES=ON'
 cmake --build build
 ```
 
@@ -150,7 +176,7 @@ cmake --build build --target clangformat
 
 Doxygen is used to generate documentation. Follow [doxygen download](https://www.doxygen.nl/download.html#srcbin) and install the required binaries for your platform.
 
-After that specify CMake define `-D DEPTHAI_BUILD_DOCS=ON` and build the target `doxygen`
+After that specify CMake define `-D'DEPTHAI_BUILD_DOCS=ON`' and build the target `doxygen`
 
 ## Debugging tips
 
@@ -165,13 +191,24 @@ rm -r ~/.hunter
 
 And configuring the project with the following CMake option set to `ON`
 ```
-cmake . -D HUNTER_KEEP_PACKAGE_SOURCES=ON
+cmake . -D'HUNTER_KEEP_PACKAGE_SOURCES=ON'
 ```
 
 This retains the libraries source code, so that debugger can step through it (the paths are already set up correctly)
 
 
 ## Troubleshooting
+
+### Build fails with missing OpenCV dependency
+
+If your build process happen to fail due to OpenCV library not being found, but you have the OpenCV installed, please
+run build with additional `-D'OpenCV_DIR=...`' flag (replacing default Ubuntu path `/usr/lib/x86_64-linux-gnu/cmake/opencv4` with yours)
+
+```
+cmake -S. -Bbuild -D'OpenCV_DIR=/usr/lib/x86_64-linux-gnu/cmake/opencv4'
+```
+
+Now the build process should correctly discover your OpenCV installation
 
 ### Hunter
 Hunter is a CMake-only dependency manager for C/C++ projects.

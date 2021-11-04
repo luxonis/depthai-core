@@ -3,7 +3,7 @@ include(CTest)
 enable_testing()
 
 # Add catch2 for writing tests
-hunter_add_package(Catch)
+hunter_add_package(Catch2)
 find_package(Catch2 CONFIG REQUIRED)
 
 # Macro for adding new tests
@@ -99,5 +99,11 @@ target_compile_definitions(openvino_blob PRIVATE
     OPENVINO_2021_4_BLOB_PATH="${openvino_2021_4_blob}"
 )
 
+# Bootloader configuration tests
+dai_add_test(bootloader_config_test src/bootloader_config_test.cpp)
 
+# Device USB Speed test
+dai_add_test(device_usbspeed_test src/device_usbspeed_test.cpp)
 
+# Unlimited io connections test
+dai_add_test(unlimited_io_connection_test src/unlimited_io_connection_test.cpp)

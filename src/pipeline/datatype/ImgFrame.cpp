@@ -77,8 +77,16 @@ void ImgFrame::setWidth(unsigned int width) {
 void ImgFrame::setHeight(unsigned int height) {
     img.fb.height = height;
 }
+void ImgFrame::setSize(unsigned int width, unsigned int height) {
+    setWidth(width);
+    setHeight(height);
+}
+void ImgFrame::setSize(std::tuple<unsigned int, unsigned int> size) {
+    setSize(std::get<0>(size), std::get<1>(size));
+}
 void ImgFrame::setType(RawImgFrame::Type type) {
     img.fb.type = type;
+    img.fb.bytesPP = RawImgFrame::typeToBpp(img.fb.type);
 }
 
 }  // namespace dai
