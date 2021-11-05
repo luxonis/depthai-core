@@ -181,7 +181,6 @@ constexpr static std::array<const char*, 2> RESOURCE_LIST_BOOTLOADER = {
 };
 
 std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type type) {
-    throw std::runtime_error("TODO merge + update the bootloader. Do not use for now");
     // Check if env variable DEPTHAI_BOOTLOADER_BINARY_USB/_ETH is set
     std::string blEnvVar;
     if(type == dai::bootloader::Type::USB) {
