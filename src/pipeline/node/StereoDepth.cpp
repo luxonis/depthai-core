@@ -13,9 +13,6 @@ StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
     // 'properties' defaults already set
     inputs = {&inputConfig, &left, &right};
     outputs = {&depth, &disparity, &syncedLeft, &syncedRight, &rectifiedLeft, &rectifiedRight};
-    rawConfig->censusTransform.enableMeanMode = true;
-    rawConfig->costMatching.linearEquationParameters.alpha = 0;
-    rawConfig->costMatching.linearEquationParameters.beta = 2;
 }
 
 std::string StereoDepth::getName() const {
