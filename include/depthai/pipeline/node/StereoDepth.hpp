@@ -106,10 +106,43 @@ class StereoDepth : public Node {
     Output debugDispLrCheckIt2{*this, "debugDispLrCheckIt2", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
+     * Outputs ImgFrame message that carries extended left-right check first iteration (downscaled frame, before combining with second iteration) disparity map.
+     * Useful for debugging/fine tuning.
+     */
+    Output debugExtDispLrCheckIt1{*this, "debugExtDispLrCheckIt1", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
+     * Outputs ImgFrame message that carries extended left-right check second iteration (downscaled frame, before combining with first iteration) disparity map.
+     * Useful for debugging/fine tuning.
+     */
+    Output debugExtDispLrCheckIt2{*this, "debugExtDispLrCheckIt2", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
      * Outputs ImgFrame message that carries cost dump of disparity map.
      * Useful for debugging/fine tuning.
      */
     Output debugDispCostDump{*this, "debugDispCostDump", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
+     * Outputs ImgFrame message that carries RAW8 confidence map.
+     * Lower values means higher confidence of the calculated disparity value.
+     * RGB aligment, left-right check or any postproccessing (e.g. median filter) is not performed on confidence map.
+     */
+    Output confidenceMap{*this, "confidenceMap", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+#if 0  // will be enabled when confidence map RGB aligment/LR-check support will be added
+    /**
+     * Outputs ImgFrame message that carries left-right check first iteration (before combining with second iteration) confidence map.
+     * Useful for debugging/fine tuning.
+     */
+    Output debugConfMapLrCheckIt1{*this, "debugConfMapLrCheckIt1", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
+     * Outputs ImgFrame message that carries left-right check second iteration (before combining with first iteration) confidence map.
+     * Useful for debugging/fine tuning.
+     */
+    Output debugConfMapLrCheckIt2{*this, "debugConfMapLrCheckIt2", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+#endif
 
     /**
      * Specify local filesystem path to the calibration file
