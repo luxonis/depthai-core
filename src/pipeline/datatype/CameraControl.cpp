@@ -68,11 +68,16 @@ void CameraControl::setAntiBandingMode(AntiBandingMode mode) {
     cfg.setCommand(RawCameraControl::Command::ANTIBANDING_MODE);
     cfg.antiBandingMode = mode;
 }
+
 void CameraControl::setManualExposure(uint32_t exposureTimeUs, uint32_t sensitivityIso) {
     cfg.setCommand(RawCameraControl::Command::AE_MANUAL);
     cfg.expManual.exposureTimeUs = exposureTimeUs;
     cfg.expManual.sensitivityIso = sensitivityIso;
     cfg.expManual.frameDurationUs = 0;  // TODO
+}
+
+void CameraControl::setManualExposure(std::chrono::microseconds exposureTime, uint32_t sensitivityIso) {
+    setManualExposure(exposureTime.count(), sensitivityIso);
 }
 
 // White Balance
@@ -121,6 +126,18 @@ void CameraControl::setEffectMode(EffectMode mode) {
 
 bool CameraControl::getCaptureStill() const {
     return cfg.getCommand(RawCameraControl::Command::STILL_CAPTURE);
+}
+
+std::chrono::microseconds CameraControl::getExposureTime() const {
+    return std::chrono::microseconds(cfg.expManual.exposureTimeUs);
+}
+
+int CameraControl::getSensitivity() const {
+    return cfg.expManual.sensitivityIso;
+}
+
+int CameraControl::getLensPosition() const {
+    return cfg.lensPosition;
 }
 
 }  // namespace dai

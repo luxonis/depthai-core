@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <unordered_map>
 #include <vector>
 
@@ -123,6 +124,13 @@ class CameraControl : public Buffer {
      */
     void setManualExposure(uint32_t exposureTimeUs, uint32_t sensitivityIso);
 
+    /**
+     * Set a command to manually specify exposure
+     * @param exposureTime Exposure time
+     * @param sensitivityIso Sensitivity as ISO value, usual range 100..1600
+     */
+    void setManualExposure(std::chrono::microseconds exposureTime, uint32_t sensitivityIso);
+
     // White Balance
     /**
      * Set a command to specify auto white balance mode
@@ -191,6 +199,21 @@ class CameraControl : public Buffer {
      * @returns True if capture still command is set
      */
     bool getCaptureStill() const;
+
+    /**
+     * Retrieves exposure time
+     */
+    std::chrono::microseconds getExposureTime() const;
+
+    /**
+     * Retrieves sensitivity, as an ISO value
+     */
+    int getSensitivity() const;
+
+    /**
+     * Retrieves lens position, range 0..255. Returns -1 if not available
+     */
+    int getLensPosition() const;
 };
 
 }  // namespace dai

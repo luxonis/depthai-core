@@ -82,9 +82,9 @@ class ImgFrame : public Buffer {
     Type getType() const;
 
     /**
-     * Retrieves exposure time, in microseconds
+     * Retrieves exposure time
      */
-    int getExposureTime() const;
+    std::chrono::microseconds getExposureTime() const;
 
     /**
      * Retrieves sensitivity, as an ISO value
