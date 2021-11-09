@@ -145,9 +145,10 @@ class CalibrationHandler {
      *  Get the Fov of the camera
      *
      * @param cameraId of the camera of which we are fetching fov.
+     * @param useSpec Disabling this bool will calculate the fov based on intrinsics (focal length, image width), instead of getting it from the camera specs
      * @return field of view of the camera with given cameraId.
      */
-    float getFov(CameraBoardSocket cameraId);
+    float getFov(CameraBoardSocket cameraId, bool useSpec = true);
 
     /**
      *  Get the lens position of the given camera

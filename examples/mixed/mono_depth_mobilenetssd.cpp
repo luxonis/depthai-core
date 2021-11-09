@@ -8,8 +8,6 @@ static const std::vector<std::string> labelMap = {"background", "aeroplane", "bi
                                                   "car",        "cat",       "chair",       "cow",   "diningtable", "dog",    "horse",
                                                   "motorbike",  "person",    "pottedplant", "sheep", "sofa",        "train",  "tvmonitor"};
 
-static std::atomic<bool> flipRectified{true};
-
 int main(int argc, char** argv) {
     using namespace std;
     // Default blob path provided by Hunter private data download
@@ -107,31 +105,13 @@ int main(int argc, char** argv) {
         cv::imshow(name, frame);
     };
 
-    float disparityMultiplier = 255 / stereo->getMaxDisparity();
+    float disparityMultiplier = 255 / stereo->initialConfig.getMaxDisparity();
 
     while(true) {
         // Instead of get (blocking), we use tryGet (nonblocking) which will return the available data or None otherwise
         auto inRight = qRight->tryGet<dai::ImgFrame>();
         auto inDet = qDet->tryGet<dai::ImgDetections>();
         auto inDisparity = qDisparity->tryGet<dai::ImgFrame>();
-
-        if(inRight) {
-            rightFrame = inRight->getCvFrame();
-            if(flipRectified) {
-                cv::flip(rightFrame, rightFrame, 1);
-            }
-        }
-
-        if(inDet) {
-            detections = inDet->detections;
-            if(flipRectified) {
-                for(auto& detection : detections) {
-                    auto swap = detection.xmin;
-                    detection.xmin = 1 - detection.xmax;
-                    detection.xmax = 1 - swap;
-                }
-            }
-        }
 
         if(inDisparity) {
             // Frame is transformed, normalized, and color map will be applied to highlight the depth info

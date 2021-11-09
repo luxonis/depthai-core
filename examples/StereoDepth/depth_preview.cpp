@@ -29,7 +29,7 @@ int main() {
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
     // Create a node that will produce the depth map (using disparity output as it's easier to visualize depth this way)
-    depth->initialConfig.setConfidenceThreshold(200);
+    depth->initialConfig.setConfidenceThreshold(245);
     // Options: MEDIAN_OFF, KERNEL_3x3, KERNEL_5x5, KERNEL_7x7 (default)
     depth->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_7x7);
     depth->setLeftRightCheck(lr_check);
@@ -51,7 +51,7 @@ int main() {
         auto inDepth = q->get<dai::ImgFrame>();
         auto frame = inDepth->getFrame();
         // Normalization for better visualization
-        frame.convertTo(frame, CV_8UC1, 255 / depth->getMaxDisparity());
+        frame.convertTo(frame, CV_8UC1, 255 / depth->initialConfig.getMaxDisparity());
 
         cv::imshow("disparity", frame);
 
