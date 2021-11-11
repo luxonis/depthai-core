@@ -8,7 +8,9 @@ endif()
 
 # Read the BUILD_SHARED_LIBS option and select PIC toolchain
 if(BUILD_SHARED_LIBS)
-    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_LIST_DIR}/cmake/toolchain/pic.cmake" CACHE STRING "")
+    if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+        set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_LIST_DIR}/cmake/toolchain/pic.cmake" CACHE STRING "")
+    endif()
     # Specify exporting all symbols on Windows
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON CACHE BOOL "")
 endif()
@@ -427,7 +429,7 @@ if(DEPTHAI_OPENCV_SUPPORT)
         add_flag(${TARGET_OPENCV_NAME} -Wno-switch-enum)
 
         # Link to OpenCV (publically)
-        target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES})
+        target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
 
         # Add public compile definition indicating that OpenCV support is available
         set(DEPTHAI_HAVE_OPENCV_SUPPORT ON)
@@ -439,7 +441,9 @@ if(DEPTHAI_OPENCV_SUPPORT)
         target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${TARGET_CORE_NAME})
 
         # Add to clangformat target
-        target_clangformat_setup(${TARGET_OPENCV_NAME} "")
+        if(COMMAND target_clangformat_setup)
+            target_clangformat_setup(${TARGET_OPENCV_NAME} "")
+        endif()
 
         # Add to list of targets to export and install
         list(APPEND targets_to_export ${TARGET_OPENCV_NAME})
@@ -457,9 +461,9 @@ endif()
 if(DEPTHAI_SANITIZE)
     set(SANITIZE_ADDRESS ON CACHE BOOL "Enable AddressSanitizer for sanitized targets." FORCE)
     set(SANITIZE_UNDEFINED ON CACHE BOOL "Enable UndefinedBehaviorSanitizer for sanitized targets." FORCE)
+    find_package(Sanitizers)
+    add_sanitizers(${TARGET_CORE_NAME} ${TARGET_OPENCV_NAME})
 endif()
-find_package(Sanitizers)
-add_sanitizers(${TARGET_CORE_NAME} ${TARGET_OPENCV_NAME})
 
 ########################
 # Testing infrastructure

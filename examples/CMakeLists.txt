@@ -19,9 +19,13 @@ function(dai_add_example example_name example_src enable_test)
     target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS})
 
     # Add sanitizers for example
-    add_sanitizers(${example_name})
+    if(COMMAND add_sanitizers)
+        add_sanitizers(${example_name})
+    endif()
     # Add to clangformat target
-    target_clangformat_setup(${example_name} "")
+    if(COMMAND target_clangformat_setup)
+        target_clangformat_setup(${example_name} "")
+    endif()
 
     # parse the rest of the arguments
     set(arguments ${ARGV})
