@@ -3,7 +3,7 @@ include(CTest)
 enable_testing()
 
 # Add catch2 for writing tests
-hunter_add_package(Catch)
+hunter_add_package(Catch2)
 find_package(Catch2 CONFIG REQUIRED)
 
 # Macro for adding new tests
