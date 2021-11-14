@@ -49,5 +49,13 @@ void UAC::setXlinkSampleSizeBytes(int size) {
     properties.xlinkSampleSizeBytes = size;
 }
 
+void UAC::setEnableSpeaker(bool enable) {
+    properties.enableSpeaker = enable;
+}
+
+void UAC::setSpeakerVolume(int volume) {
+    properties.speakerVolume = volume;
+}
+
 }  // namespace node
 }  // namespace dai

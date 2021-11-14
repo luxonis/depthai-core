@@ -39,6 +39,13 @@ class UAC : public Node {
 
     /// XLink sample size in bytes. Default 3, other options: 2 or 4
     void setXlinkSampleSizeBytes(int size);
+
+    /// Enable speaker
+    void setEnableSpeaker(bool enable);
+
+    /// Set speaker volume, 0..100. Default: 70
+    void setSpeakerVolume(int volume);
+
 };
 
 }  // namespace node

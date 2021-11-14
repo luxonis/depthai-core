@@ -385,12 +385,5 @@ bool ColorCamera::getPreviewKeepAspectRatio() {
     return properties.previewKeepAspectRatio;
 }
 
-void ColorCamera::setCameraTuningBlobPath(const std::string& path) {
-    throw std::invalid_argument("Please call setCameraTuningBlobPath on the Pipeline object");
-    auto asset = assetManager.set("camTuning", path);
-    properties.cameraTuningBlobUri = asset->getRelativeUri();
-    properties.cameraTuningBlobSize = asset->data.size();
-}
-
 }  // namespace node
 }  // namespace dai
