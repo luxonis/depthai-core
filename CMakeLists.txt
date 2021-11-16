@@ -117,6 +117,7 @@ endif()
 ### Get and find dependencies
 
 # Include project dependencies
+set(DEPTHAI_DEPENDENCY_INCLUDE "" CACHE FILEPATH "Optional cmake file to append to dependency processing, e.g. additional find_package()")
 include(depthaiDependencies)
 
 # Add threads preference
@@ -404,6 +405,7 @@ endif()
 ########################
 # OpenCV Support
 ########################
+set(THIRDPARTY_OPENCV_LIBRARIES "" CACHE STRING "Optional libraries to link OpenCV support, e.g. TBB::tbb")
 set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)

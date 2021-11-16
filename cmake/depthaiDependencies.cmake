@@ -64,7 +64,7 @@ endif()
 find_package(OpenCV 4 QUIET CONFIG)
 
 # include optional dependency cmake
-if(DEFINED DEPTHAI_DEPENDENCY_INCLUDE)
+if(DEPTHAI_DEPENDENCY_INCLUDE)
     include(${DEPTHAI_DEPENDENCY_INCLUDE} OPTIONAL)
 endif()
 
