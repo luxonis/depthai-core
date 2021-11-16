@@ -184,7 +184,7 @@ void XLinkConnection::close() {
         auto tmp = deviceLinkId;
 
         auto ret = XLinkResetRemoteTimeout(deviceLinkId, duration_cast<milliseconds>(RESET_TIMEOUT).count());
-        if(ret != X_LINK_SUCCESS){
+        if(ret != X_LINK_SUCCESS) {
             spdlog::debug("XLinkResetRemoteTimeout returned: {}", XLinkErrorToStr(ret));
         }
 
