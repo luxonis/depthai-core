@@ -74,7 +74,7 @@ void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const 
     assetKey = "meshRight";
     properties.mesh.meshRightUri = assetManager.set(assetKey, meshAsset)->getRelativeUri();
 
-    properties.mesh.meshSize = meshAsset.data.size();
+    properties.mesh.meshSize = static_cast<uint32_t>(meshAsset.data.size());
 }
 
 void StereoDepth::loadMeshFiles(const std::string& pathLeft, const std::string& pathRight) {

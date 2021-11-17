@@ -5,7 +5,7 @@
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-static constexpr float stepSize = 0.05;
+static constexpr float stepSize = 0.05f;
 
 static std::atomic<bool> newConfig{false};
 

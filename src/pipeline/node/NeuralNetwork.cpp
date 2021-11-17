@@ -46,7 +46,7 @@ void NeuralNetwork::setBlobPath(const std::string& path) {
 
     NeuralNetworkProperties& properties = getPropertiesRef();
     properties.blobUri = asset->getRelativeUri();
-    properties.blobSize = asset->data.size();
+    properties.blobSize = static_cast<uint32_t>(asset->data.size());
 }
 
 void NeuralNetwork::setNumPoolFrames(int numFrames) {
