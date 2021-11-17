@@ -58,9 +58,9 @@ int main() {
             auto acceleroTs = acceleroTs1 - baseTs;
             auto gyroTs = gyroTs1 - baseTs;
 
-            printf("Accelerometer timestamp: %ld ms\n", duration_cast<milliseconds>(acceleroTs).count());
+            printf("Accelerometer timestamp: %ld ms\n", static_cast<long>(duration_cast<milliseconds>(acceleroTs).count()));
             printf("Accelerometer [m/s^2]: x: %.3f y: %.3f z: %.3f \n", acceleroValues.x, acceleroValues.y, acceleroValues.z);
-            printf("Gyroscope timestamp: %ld ms\n", duration_cast<milliseconds>(gyroTs).count());
+            printf("Gyroscope timestamp: %ld ms\n", static_cast<long>(duration_cast<milliseconds>(gyroTs).count()));
             printf("Gyroscope [rad/s]: x: %.3f y: %.3f z: %.3f \n", gyroValues.x, gyroValues.y, gyroValues.z);
         }
 
