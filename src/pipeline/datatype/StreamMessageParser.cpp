@@ -65,15 +65,15 @@ inline std::shared_ptr<T> parseDatatype(nlohmann::json& ser, std::vector<uint8_t
     return tmp;
 }
 
-std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t* packet) {
-    int serializedObjectSize = readIntLE(packet->data + packet->length - 4);
-    auto objectType = static_cast<DatatypeEnum>(readIntLE(packet->data + packet->length - 8));
+std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t* const packet) {
+    const int serializedObjectSize = readIntLE(packet->data + packet->length - 4);
+    const auto objectType = static_cast<DatatypeEnum>(readIntLE(packet->data + packet->length - 8));
 
     if(serializedObjectSize < 0) {
         throw std::runtime_error("Bad packet, couldn't parse");
     }
-    std::uint32_t bufferLength = packet->length - 8 - serializedObjectSize;
-    auto* msgpackStart = packet->data + bufferLength;
+    const std::uint32_t bufferLength = packet->length - 8 - serializedObjectSize;
+    auto* const msgpackStart = packet->data + bufferLength;
 
     nlohmann::json jser;
     if(serializedObjectSize > 0) {
@@ -157,15 +157,15 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
     throw std::runtime_error("Bad packet, couldn't parse");
 }
 
-std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPacketDesc_t* packet) {
-    int serializedObjectSize = readIntLE(packet->data + packet->length - 4);
-    auto objectType = static_cast<DatatypeEnum>(readIntLE(packet->data + packet->length - 8));
+std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPacketDesc_t* const packet) {
+    const int serializedObjectSize = readIntLE(packet->data + packet->length - 4);
+    const auto objectType = static_cast<DatatypeEnum>(readIntLE(packet->data + packet->length - 8));
 
     if(serializedObjectSize < 0) {
         throw std::runtime_error("Bad packet, couldn't parse");
     }
-    std::uint32_t bufferLength = packet->length - 8 - serializedObjectSize;
-    auto* msgpackStart = packet->data + bufferLength;
+    const std::uint32_t bufferLength = packet->length - 8 - serializedObjectSize;
+    auto* const msgpackStart = packet->data + bufferLength;
 
     nlohmann::json jser;
     if(serializedObjectSize > 0) {

@@ -62,12 +62,13 @@ bool initialize(std::string additionalInfo, bool installSignalHandler) {
         // Taken from spdlog, to replace with DEPTHAI_LEVEL instead of SPDLOG_LEVEL
         // spdlog::cfg::load_env_levels();
         auto envLevel = spdlog::details::os::getenv("DEPTHAI_LEVEL");
+        auto newLogLevel = spdlog::level::warn;
         if(!envLevel.empty()) {
             spdlog::cfg::helpers::load_levels(envLevel);
-        } else {
-            // Otherwise set default level to WARN
-            spdlog::set_level(spdlog::level::warn);
+            newLogLevel = spdlog::get_level();
+            if(newLogLevel < spdlog::level::info) spdlog::flush_on(newLogLevel);
         }
+        spdlog::set_level(newLogLevel);
 
         // Print core commit and build datetime
         if(!additionalInfo.empty()) {
@@ -88,8 +89,13 @@ bool initialize(std::string additionalInfo, bool installSignalHandler) {
         if(X_LINK_SUCCESS != status) {
             throw std::runtime_error("Couldn't initialize XLink");
         }
-        // Suppress XLink related errors
-        mvLogDefaultLevelSet(MVLOG_LAST);
+
+        // Set/suppress XLink related errors
+        if(newLogLevel < spdlog::level::info) {
+            mvLogDefaultLevelSet(MVLOG_ERROR);
+        } else {
+            mvLogDefaultLevelSet(MVLOG_LAST);
+        }
 
         spdlog::debug("Initialize - finished");
 
