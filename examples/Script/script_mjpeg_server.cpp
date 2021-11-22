@@ -14,7 +14,7 @@ int main() {
     auto cam = pipeline.create<dai::node::ColorCamera>();
 
     auto jpeg = pipeline.create<dai::node::VideoEncoder>();
-    jpeg->setDefaultProfilePreset(cam->getVideoSize(), cam->getFps(), dai::VideoEncoderProperties::Profile::MJPEG);
+    jpeg->setDefaultProfilePreset(cam->getFps(), dai::VideoEncoderProperties::Profile::MJPEG);
     cam->video.link(jpeg->input);
 
     // Script node
