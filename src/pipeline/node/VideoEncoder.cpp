@@ -59,12 +59,10 @@ void VideoEncoder::setProfile(int width, int height, VideoEncoderProperties::Pro
 
 void VideoEncoder::setBitrate(int bitrate) {
     properties.bitrate = bitrate;
-    properties.maxBitrate = bitrate;
 }
 
 void VideoEncoder::setBitrateKbps(int bitrateKbps) {
     properties.bitrate = bitrateKbps * 1000;
-    properties.maxBitrate = bitrateKbps * 1000;
 }
 
 void VideoEncoder::setKeyframeFrequency(int freq) {
