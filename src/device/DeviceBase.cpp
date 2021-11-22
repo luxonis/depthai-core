@@ -407,7 +407,7 @@ void DeviceBase::tryStartPipeline(const Pipeline& pipeline) {
         if(!startPipeline(pipeline)) {
             throw std::runtime_error("Couldn't start the pipeline");
         }
-    } catch(const std::exception& e) {
+    } catch(const std::exception&) {
         // close device (cleanup)
         close();
         // Rethrow original exception
@@ -467,7 +467,7 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
         // Try parsing the string as a number
         try {
             std::chrono::milliseconds watchdog{std::stoi(watchdogMsStr)};
-            config.preboot.watchdogTimeoutMs = watchdog.count();
+            config.preboot.watchdogTimeoutMs = static_cast<uint32_t>(watchdog.count());
             watchdogTimeout = watchdog;
             spdlog::debug("Using a custom watchdog value of {}", watchdogTimeout);
         } catch(const std::invalid_argument& e) {

@@ -8,7 +8,7 @@
 #include "depthai/depthai.hpp"
 
 // Step size ('W','A','S','D' controls)
-static constexpr float stepSize = 0.02;
+static constexpr float stepSize = 0.02f;
 
 int main() {
     // Create pipeline
@@ -27,8 +27,8 @@ int main() {
     xout->setStreamName("depth");
 
     // Crop range
-    dai::Point2f topLeft(0.2, 0.2);
-    dai::Point2f bottomRight(0.8, 0.8);
+    dai::Point2f topLeft(0.2f, 0.2f);
+    dai::Point2f bottomRight(0.8f, 0.8f);
 
     // Properties
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
