@@ -46,56 +46,56 @@ static std::unique_ptr<backward::SignalHandling> signalHandler;
 #endif
 
 bool initialize(std::string additionalInfo, bool installSignalHandler) {
-    // atomic bool for checking whether depthai was already initialized
-    static std::atomic<bool> initialized{false};
-    if(initialized.exchange(true)) return true;
-
+    // singleton for checking whether depthai was already initialized
+    static const bool initialized = [&]() {
 #ifdef DEPTHAI_ENABLE_BACKWARD
-    // install backward if specified
-    auto envSignalHandler = spdlog::details::os::getenv("DEPTHAI_INSTALL_SIGNAL_HANDLER");
-    if(installSignalHandler && envSignalHandler != "0") {
-        signalHandler = std::make_unique<backward::SignalHandling>();
-    }
+        // install backward if specified
+        auto envSignalHandler = spdlog::details::os::getenv("DEPTHAI_INSTALL_SIGNAL_HANDLER");
+        if(installSignalHandler && envSignalHandler != "0") {
+            signalHandler = std::make_unique<backward::SignalHandling>();
+        }
 #else
-    (void)installSignalHandler;
+        (void)installSignalHandler;
 #endif
 
-    // Set global logging level from ENV variable 'DEPTHAI_LEVEL'
-    // Taken from spdlog, to replace with DEPTHAI_LEVEL instead of SPDLOG_LEVEL
-    // spdlog::cfg::load_env_levels();
-    auto envLevel = spdlog::details::os::getenv("DEPTHAI_LEVEL");
-    if(!envLevel.empty()) {
-        spdlog::cfg::helpers::load_levels(envLevel);
-    } else {
-        // Otherwise set default level to WARN
-        spdlog::set_level(spdlog::level::warn);
-    }
+        // Set global logging level from ENV variable 'DEPTHAI_LEVEL'
+        // Taken from spdlog, to replace with DEPTHAI_LEVEL instead of SPDLOG_LEVEL
+        // spdlog::cfg::load_env_levels();
+        auto envLevel = spdlog::details::os::getenv("DEPTHAI_LEVEL");
+        if(!envLevel.empty()) {
+            spdlog::cfg::helpers::load_levels(envLevel);
+        } else {
+            // Otherwise set default level to WARN
+            spdlog::set_level(spdlog::level::warn);
+        }
 
-    // Print core commit and build datetime
-    if(!additionalInfo.empty()) {
-        spdlog::debug("{}", additionalInfo);
-    }
-    spdlog::debug(
-        "Library information - version: {}, commit: {} from {}, build: {}", build::VERSION, build::COMMIT, build::COMMIT_DATETIME, build::BUILD_DATETIME);
+        // Print core commit and build datetime
+        if(!additionalInfo.empty()) {
+            spdlog::debug("{}", additionalInfo);
+        }
+        spdlog::debug(
+            "Library information - version: {}, commit: {} from {}, build: {}", build::VERSION, build::COMMIT, build::COMMIT_DATETIME, build::BUILD_DATETIME);
 
-    // Executed at library load time
+        // Executed at library load time
 
-    // Preload Resources (getting instance causes some internal lazy loading to start)
-    Resources::getInstance();
+        // Preload Resources (getting instance causes some internal lazy loading to start)
+        Resources::getInstance();
 
-    // Static global handler
-    static XLinkGlobalHandler_t xlinkGlobalHandler = {};
-    xlinkGlobalHandler.protocol = X_LINK_USB_VSC;
-    auto status = XLinkInitialize(&xlinkGlobalHandler);
-    if(X_LINK_SUCCESS != status) {
-        throw std::runtime_error("Couldn't initialize XLink");
-    }
-    // Suppress XLink related errors
-    mvLogDefaultLevelSet(MVLOG_LAST);
+        // Static global handler
+        static XLinkGlobalHandler_t xlinkGlobalHandler = {};
+        xlinkGlobalHandler.protocol = X_LINK_USB_VSC;
+        auto status = XLinkInitialize(&xlinkGlobalHandler);
+        if(X_LINK_SUCCESS != status) {
+            throw std::runtime_error("Couldn't initialize XLink");
+        }
+        // Suppress XLink related errors
+        mvLogDefaultLevelSet(MVLOG_LAST);
 
-    spdlog::debug("Initialize - finished");
+        spdlog::debug("Initialize - finished");
 
-    return true;
+        return true;
+    }();
+    return initialized;
 }
 
 }  // namespace dai
