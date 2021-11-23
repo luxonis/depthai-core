@@ -258,6 +258,10 @@ std::tuple<int, int> ColorCamera::getStillSize() const {
             maxStillWidth = 4032;  // Note not 4056 as full sensor resolution
             maxStillHeight = 3040;
         }
+        if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_13_MP) {
+            maxStillWidth = 4192;  // Note not 4208 as full sensor resolution
+            maxStillHeight = 3120;
+        }
 
         // Take into the account the ISP scaling
         int numW = properties.ispScale.horizNumerator;

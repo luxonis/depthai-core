@@ -411,6 +411,13 @@ class DeviceBase {
     std::vector<CameraProperties> getConnectedCameraProperties();
 
     /**
+     * Get sensor names for cameras that are connected to the device
+     *
+     * @returns Map/dictionary with camera sensor names, indexed by socket
+     */
+    std::unordered_map<CameraBoardSocket, std::string> getCameraSensorNames();
+
+    /**
      * Retrieves current DDR memory information from device
      *
      * @returns Used, remaining and total ddr memory

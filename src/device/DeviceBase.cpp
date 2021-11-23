@@ -407,7 +407,7 @@ void DeviceBase::tryStartPipeline(const Pipeline& pipeline) {
         if(!startPipeline(pipeline)) {
             throw std::runtime_error("Couldn't start the pipeline");
         }
-    } catch(const std::exception& e) {
+    } catch(const std::exception&) {
         // close device (cleanup)
         close();
         // Rethrow original exception
@@ -467,7 +467,7 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
         // Try parsing the string as a number
         try {
             std::chrono::milliseconds watchdog{std::stoi(watchdogMsStr)};
-            config.preboot.watchdogTimeoutMs = watchdog.count();
+            config.preboot.watchdogTimeoutMs = static_cast<uint32_t>(watchdog.count());
             watchdogTimeout = watchdog;
             spdlog::debug("Using a custom watchdog value of {}", watchdogTimeout);
         } catch(const std::invalid_argument& e) {
@@ -682,6 +682,12 @@ std::vector<CameraProperties> DeviceBase::getConnectedCameraProperties() {
     checkClosed();
 
     return pimpl->rpcClient->call("getConnectedCameraProperties").as<std::vector<CameraProperties>>();
+}
+
+std::unordered_map<CameraBoardSocket, std::string> DeviceBase::getCameraSensorNames() {
+    checkClosed();
+
+    return pimpl->rpcClient->call("getCameraSensorNames").as<std::unordered_map<CameraBoardSocket, std::string>>();
 }
 
 // Convinience functions for querying current system information

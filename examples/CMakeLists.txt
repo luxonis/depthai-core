@@ -19,9 +19,13 @@ function(dai_add_example example_name example_src enable_test)
     target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS})
 
     # Add sanitizers for example
-    add_sanitizers(${example_name})
+    if(COMMAND add_sanitizers)
+        add_sanitizers(${example_name})
+    endif()
     # Add to clangformat target
-    target_clangformat_setup(${example_name} "")
+    if(COMMAND target_clangformat_setup)
+        target_clangformat_setup(${example_name} "")
+    endif()
 
     # parse the rest of the arguments
     set(arguments ${ARGV})
@@ -143,6 +147,7 @@ hunter_private_data(
 dai_add_example(bootloader_version bootloader/bootloader_version.cpp ON)
 dai_add_example(flash_bootloader bootloader/flash_bootloader.cpp OFF)
 dai_add_example(bootloader_config bootloader/bootloader_config.cpp OFF)
+dai_add_example(poe_set_ip bootloader/poe_set_ip.cpp OFF)
 
 # calibration
 dai_add_example(calibration_flash calibration/calibration_flash.cpp OFF)
@@ -225,6 +230,7 @@ target_compile_definitions(object_tracker_video PRIVATE BLOB_PATH="${person_dete
 
 # Script
 dai_add_example(script_camera_control Script/script_camera_control.cpp ON)
+dai_add_example(script_forward_frames Script/script_forward_frames.cpp ON)
 dai_add_example(script_get_ip Script/script_get_ip.cpp OFF)
 dai_add_example(script_http_client Script/script_http_client.cpp OFF)
 dai_add_example(script_http_server Script/script_http_server.cpp OFF)
@@ -253,6 +259,7 @@ dai_add_example(stereo_depth_video StereoDepth/stereo_depth_video.cpp ON)
 dai_add_example(system_information SystemLogger/system_information.cpp ON)
 
 # VideoEncoder
+dai_add_example(disparity_encoding VideoEncoder/disparity_encoding.cpp  ON)
 dai_add_example(rgb_encoding VideoEncoder/rgb_encoding.cpp  ON)
 dai_add_example(rgb_full_resolution_saver VideoEncoder/rgb_full_resolution_saver.cpp  ON)
 dai_add_example(rgb_mono_encoding VideoEncoder/rgb_mono_encoding.cpp  ON)
