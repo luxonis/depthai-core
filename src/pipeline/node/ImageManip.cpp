@@ -72,5 +72,20 @@ void ImageManip::setMaxOutputFrameSize(int maxFrameSize) {
     properties.outputFrameSize = maxFrameSize;
 }
 
+void ImageManip::setWarpMesh(std::vector<Point2f> meshData, int width, int height) {
+    // TODO(themarpe) - optimize
+    Asset asset("mesh");
+    asset.alignment = 64;
+    asset.data = std::vector<uint8_t>(meshData.size() * sizeof(Point2f));
+    for(size_t i = 0; i < meshData.size(); i++) {
+        // swap x & y, to construct internal representation
+        reinterpret_cast<Point2f*>(asset.data.data())[i].x = meshData[i].y;
+        reinterpret_cast<Point2f*>(asset.data.data())[i].y = meshData[i].x;
+    }
+    properties.meshUri = assetManager.set(asset)->getRelativeUri();
+    properties.meshWidth = width;
+    properties.meshHeight = height;
+}
+
 }  // namespace node
 }  // namespace dai

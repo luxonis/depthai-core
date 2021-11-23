@@ -55,7 +55,7 @@ class ImageManip : public Node {
     [[deprecated("Use 'initialConfig.setCenterCrop()' instead")]] void setCenterCrop(float ratio, float whRatio = 1.0f);
     [[deprecated("Use 'initialConfig.setResize()' instead")]] void setResize(int w, int h);
     [[deprecated("Use 'initialConfig.setResizeThumbnail()' instead")]] void setResizeThumbnail(int w, int h, int bgRed = 0, int bgGreen = 0, int bgBlue = 0);
-    [[deprecated("Use 'initialConfig.setFrameType()' instead")]] void setFrameType(dai::RawImgFrame::Type name);
+    [[deprecated("Use 'initialConfig.setFrameType()' instead")]] void setFrameType(ImgFrame::Type name);
     [[deprecated("Use 'initialConfig.setHorizontalFlip()' instead")]] void setHorizontalFlip(bool flip);
     void setKeepAspectRatio(bool keep);
 
@@ -77,6 +77,14 @@ class ImageManip : public Node {
      * @param maxFrameSize Maximum frame size in bytes
      */
     void setMaxOutputFrameSize(int maxFrameSize);
+
+    /**
+     * Set a custom warp mesh
+     * @param meshData 2D plane of mesh points, starting from top left to bottom right
+     * @param width Width of mesh
+     * @param height Height of mesh
+     */
+    void setWarpMesh(std::vector<Point2f> meshData, int width, int height);
 };
 
 }  // namespace node
