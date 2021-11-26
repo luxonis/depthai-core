@@ -36,7 +36,7 @@ int main() {
     monoRight->out.link(stereo->right);
 
     auto videoEnc = pipeline.create<dai::node::VideoEncoder>();
-    videoEnc->setDefaultProfilePreset(monoLeft->getResolutionSize(), monoLeft->getFps(), dai::VideoEncoderProperties::Profile::MJPEG);
+    videoEnc->setDefaultProfilePreset(monoLeft->getFps(), dai::VideoEncoderProperties::Profile::MJPEG);
     stereo->disparity.link(videoEnc->input);
 
     auto xout = pipeline.create<dai::node::XLinkOut>();
