@@ -85,6 +85,10 @@ void CameraControl::setAutoWhiteBalanceLock(bool lock) {
     cfg.setCommand(RawCameraControl::Command::AWB_LOCK);
     cfg.awbLockMode = lock;
 }
+void CameraControl::setManualWhiteBalance(int colorTemperatureK) {
+    cfg.setCommand(RawCameraControl::Command::WB_COLOR_TEMP);
+    cfg.wbColorTemp = colorTemperatureK;
+}
 
 // Other image controls
 void CameraControl::setBrightness(int value) {
