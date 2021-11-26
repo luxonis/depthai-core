@@ -22,6 +22,7 @@ class ImageManip : public Node {
 
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
+    void setWarpMesh(const float* meshData, int numMeshPoints, int width, int height);
 
    public:
     std::string getName() const override;
@@ -84,7 +85,8 @@ class ImageManip : public Node {
      * @param width Width of mesh
      * @param height Height of mesh
      */
-    void setWarpMesh(std::vector<Point2f> meshData, int width, int height);
+    void setWarpMesh(const std::vector<Point2f>& meshData, int width, int height);
+    void setWarpMesh(const std::vector<std::pair<float, float>>& meshData, int width, int height);
 };
 
 }  // namespace node
