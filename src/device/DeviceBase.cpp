@@ -170,7 +170,7 @@ std::vector<std::uint8_t> DeviceBase::getEmbeddedDeviceBinary(bool usb2Mode, Ope
 }
 
 std::vector<std::uint8_t> DeviceBase::getEmbeddedDeviceBinary(Config config) {
-    return Resources::getInstance().getDeviceFirmware(config);
+    return Resources::getInstance().getDeviceFirmware(Resources::DeviceResource::FIRMWARE, config);
 }
 
 /*
@@ -384,7 +384,7 @@ void DeviceBase::closeImpl() {
     // Close rpcStream
     pimpl->rpcStream = nullptr;
 
-    spdlog::debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
+    spdlog::debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1));
 }
 
 bool DeviceBase::isClosed() const {
@@ -448,6 +448,8 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
     // Initalize depthai library if not already
     initialize();
 
+    using namespace std::chrono;
+
     // Specify cfg
     config = cfg;
 
@@ -476,7 +478,9 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
     }
 
     // Get embedded mvcmd or external with applied config
-    std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, pathToMvcmd);
+    std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(Resources::DeviceResource::FIRMWARE, config, pathToMvcmd);
+
+    auto deviceBootT1 = steady_clock::now();
 
     // Init device (if bootloader, handle correctly - issue USB boot command)
     if(deviceInfo.state == X_LINK_UNBOOTED) {
@@ -525,8 +529,10 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
     } else {
         throw std::runtime_error("Cannot find any device with given deviceInfo");
     }
-
     deviceInfo.state = X_LINK_BOOTED;
+
+    auto deviceBootT2 = steady_clock::now();
+    spdlog::debug("Device boot time, {}", duration_cast<milliseconds>(deviceBootT2 - deviceBootT1));
 
     // prepare rpc for both attached and host controlled mode
     pimpl->rpcStream = std::make_unique<XLinkStream>(*connection, device::XLINK_CHANNEL_MAIN_RPC, device::XLINK_USB_BUFFER_MAX_SIZE);
