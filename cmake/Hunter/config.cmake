@@ -7,9 +7,9 @@ hunter_config(
 
 hunter_config(
     XLink
-    VERSION "luxonis-2021.3-develop"
-    URL "https://github.com/luxonis/XLink/archive/b6ec00a15f2f59632eec71f00935db1fa0b882a4.tar.gz"
-    SHA1 "43687c4494153ecb28f50d71b55d8e1bbb41b1ef"
+    VERSION "luxonis-2021.4-master"
+    URL "https://github.com/luxonis/XLink/archive/d2de4895b8f956b3f3afea220a95a30dd4a3ae79.tar.gz"
+    SHA1 "2f58b22a9c2441f9adf8ebd871f2d08162ec552b"
 )
 
 hunter_config(
@@ -25,6 +25,8 @@ hunter_config(
     CMAKE_ARGS
         SPDLOG_BUILD_EXAMPLE=OFF
         SPDLOG_FMT_EXTERNAL=OFF
+        CMAKE_CXX_VISIBILITY_PRESET=hidden
+        CMAKE_C_VISIBILITY_PRESET=hidden
 )
 
 # libarchive, luxonis fork
@@ -63,4 +65,40 @@ hunter_config(
         ENABLE_XATTR=OFF
         ENABLE_ZLIB=OFF
         ENABLE_ZSTD=OFF
+)
+
+# Luxonis FP16 fork which doesn't use git cloning for its dependencies
+hunter_config(
+    FP16
+    VERSION "luxonis-0.0.0"
+    URL "https://github.com/luxonis/FP16/archive/c911175d2717e562976e606c6e5f799bf40cf94e.tar.gz"
+    SHA1 "40e9723c87c2fe21781132c0f2f8b90338500e32"
+    CMAKE_ARGS
+        FP16_BUILD_BENCHMARKS=OFF
+        FP16_BUILD_TESTS=OFF
+)
+
+# Backward - Stacktrace printer
+hunter_config(
+    Backward
+    VERSION "1.6"
+    URL "https://github.com/bombela/backward-cpp/archive/refs/tags/v1.6.tar.gz"
+    SHA1 "4ecb711eabfd15bc88ff9dd9342907fc5da46b62"
+    CMAKE_ARGS
+        BACKWARD_TESTS=OFF
+)
+
+hunter_config(
+    Catch2
+    VERSION "2.13.7"
+    URL "https://github.com/catchorg/Catch2/archive/refs/tags/v2.13.7.tar.gz"
+    SHA1 "fa8f14ccf852413d3c6d3999145ada934d37d773"
+)
+
+# ZLib - Luxonis fix for alias on imported target for old CMake versions
+hunter_config(
+    ZLIB
+    VERSION "1.2.11-p2"
+    URL "https://github.com/luxonis/zlib/archive/refs/tags/v1.2.11-p2.tar.gz"
+    SHA1 "fb8b6486183b13a86040f793a939b128f6d27095"
 )

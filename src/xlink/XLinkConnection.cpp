@@ -9,6 +9,9 @@
 #include <thread>
 #include <vector>
 
+// project
+#include "depthai/utility/Initialization.hpp"
+
 // libraries
 #include <XLink/XLink.h>
 extern "C" {
@@ -51,24 +54,8 @@ std::string DeviceInfo::getMxId() const {
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT;
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_CONNECT_TIMEOUT;
 
-void XLinkConnection::initXLinkGlobal() {
-    if(xlinkGlobalInitialized.exchange(true)) return;
-
-    xlinkGlobalHandler.protocol = X_LINK_USB_VSC;
-    auto status = XLinkInitialize(&xlinkGlobalHandler);
-    if(X_LINK_SUCCESS != status) {
-        throw std::runtime_error("Couldn't initialize XLink");
-    }
-
-    // Suppress XLink related errors
-    mvLogDefaultLevelSet(MVLOG_LAST);
-}
-
-std::atomic<bool> XLinkConnection::xlinkGlobalInitialized{false};
-XLinkGlobalHandler_t XLinkConnection::xlinkGlobalHandler = {};
-
 std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState_t state) {
-    initXLinkGlobal();
+    initialize();
 
     std::vector<DeviceInfo> devices;
 
@@ -124,6 +111,37 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceByMxId(std::string mxId, 
     return {false, DeviceInfo()};
 }
 
+DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
+    using namespace std::chrono;
+
+    // Device is in flash booted state. Boot to bootloader first
+    XLinkBootBootloader(&deviceInfo.desc);
+
+    // Fix deviceInfo for BOOTLOADER state
+    DeviceInfo deviceToWait = deviceInfoFix(deviceInfo, X_LINK_BOOTLOADER);
+
+    // Device desc if found
+    deviceDesc_t foundDeviceDesc = {};
+
+    // Wait for device to get to bootloader state
+    XLinkError_t rc;
+    auto tstart = steady_clock::now();
+    do {
+        rc = XLinkFindFirstSuitableDevice(X_LINK_BOOTLOADER, deviceToWait.desc, &foundDeviceDesc);
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        if(rc == X_LINK_SUCCESS) break;
+    } while(steady_clock::now() - tstart < WAIT_FOR_BOOTUP_TIMEOUT);
+
+    // If device not found
+    if(rc != X_LINK_SUCCESS) {
+        throw std::runtime_error("Failed to find device (" + std::string(deviceToWait.desc.name) + "), error message: " + convertErrorCodeToString(rc));
+    }
+
+    deviceToWait.state = X_LINK_BOOTLOADER;
+    deviceToWait.desc = foundDeviceDesc;
+    return deviceToWait;
+}
+
 XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary, XLinkDeviceState_t expectedState) {
     bootDevice = true;
     bootWithPath = false;
@@ -159,13 +177,21 @@ void XLinkConnection::checkClosed() const {
 void XLinkConnection::close() {
     if(closed.exchange(true)) return;
 
+    using namespace std::chrono;
+    constexpr auto RESET_TIMEOUT = seconds(2);
+    constexpr auto BOOTUP_SEARCH = seconds(5);
+
     if(deviceLinkId != -1 && rebootOnDestruction) {
         auto tmp = deviceLinkId;
-        XLinkResetRemote(deviceLinkId);
+
+        auto ret = XLinkResetRemoteTimeout(deviceLinkId, duration_cast<milliseconds>(RESET_TIMEOUT).count());
+        if(ret != X_LINK_SUCCESS) {
+            spdlog::debug("XLinkResetRemoteTimeout returned: {}", XLinkErrorToStr(ret));
+        }
+
         deviceLinkId = -1;
 
-        using namespace std::chrono;
-        const auto BOOTUP_SEARCH = std::chrono::seconds(5);
+        // TODO(themarpe) - revisit for TCPIP protocol
 
         // Wait till same device reappears (is rebooted).
         // Only in case if device was booted to begin with
@@ -208,7 +234,7 @@ bool XLinkConnection::bootAvailableDevice(const deviceDesc_t& deviceToBoot, std:
 }
 
 void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceState_t expectedState) {
-    initXLinkGlobal();
+    initialize();
     assert(deviceLinkId == -1);
 
     XLinkError_t rc = X_LINK_ERROR;
@@ -222,7 +248,10 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
     // boot device
     if(bootDevice) {
         DeviceInfo deviceToBoot = deviceToInit;
-        deviceToBoot.desc.name[0] = 0;
+        // If USB, search by mxid as name can change
+        if(deviceToInit.desc.protocol == X_LINK_USB_VSC) {
+            deviceToBoot.desc.name[0] = 0;
+        }
         deviceToBoot.desc.state = X_LINK_UNBOOTED;
 
         //DeviceInfo deviceToBoot = deviceInfoFix(deviceToInit, X_LINK_UNBOOTED);
@@ -255,9 +284,12 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
     // Search for booted device
     {
         // Create description of device to look for
-        //DeviceInfo bootedDeviceInfo = deviceInfoFix(deviceToInit, expectedState);
         DeviceInfo bootedDeviceInfo = deviceToInit;
-        bootedDeviceInfo.desc.name[0] = 0;
+        // If USB, search by mxid as name can change
+        if(deviceToInit.desc.protocol == X_LINK_USB_VSC) {
+            bootedDeviceInfo.desc.name[0] = 0;
+        }
+        // Has to match expected state
         bootedDeviceInfo.desc.state = expectedState;
 
         // Find booted device

@@ -61,6 +61,44 @@ class StereoDepthConfig : public Buffer {
      * Get threshold for left-right check combine
      */
     int getLeftRightCheckThreshold() const;
+
+    /**
+     * Computes and combines disparities in both L-R and R-L directions, and combine them.
+     *
+     * For better occlusion handling, discarding invalid disparity values
+     */
+    void setLeftRightCheck(bool enable);
+
+    /**
+     * Disparity range increased from 95 to 190, combined from full resolution and downscaled images.
+     * Suitable for short range objects
+     */
+    void setExtendedDisparity(bool enable);
+
+    /**
+     * Computes disparity with sub-pixel interpolation (5 fractional bits).
+     *
+     * Suitable for long range. Currently incompatible with extended disparity
+     */
+    void setSubpixel(bool enable);
+
+    /**
+     * Useful for normalization of the disparity map.
+     * @returns Maximum disparity value that the node can return
+     */
+    float getMaxDisparity() const;
+
+    /**
+     * Set explicit configuration.
+     * @param config Explicit configuration
+     */
+    void set(dai::RawStereoDepthConfig config);
+
+    /**
+     * Retrieve configuration data for StereoDepth.
+     * @returns config for stereo depth algorithm
+     */
+    dai::RawStereoDepthConfig get() const;
 };
 
 }  // namespace dai

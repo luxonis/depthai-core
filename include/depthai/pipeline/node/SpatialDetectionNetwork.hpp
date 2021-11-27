@@ -22,17 +22,16 @@ class SpatialDetectionNetwork : public DetectionNetwork {
     using Properties = dai::SpatialDetectionNetworkProperties;
 
     std::string getName() const override;
-    std::vector<Input> getInputs() override;
-    std::vector<Output> getOutputs() override;
 
    protected:
-    SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     Properties properties;
     virtual Properties& getPropertiesRef() override;
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
 
    public:
+    SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+
     /**
      * Input message with data to be infered upon
      * Default queue is blocking with size 5
@@ -88,6 +87,12 @@ class SpatialDetectionNetwork : public DetectionNetwork {
      * @param upperThreshold UpperThreshold must be in the interval (lowerThreshold,65535].
      */
     void setDepthUpperThreshold(uint32_t upperThreshold);
+
+    /**
+     * Specifies spatial location calculator algorithm: Average/Min/Max
+     * @param calculationAlgorithm Calculation algorithm.
+     */
+    void setSpatialCalculationAlgorithm(dai::SpatialLocationCalculatorAlgorithm calculationAlgorithm);
 };
 
 /**

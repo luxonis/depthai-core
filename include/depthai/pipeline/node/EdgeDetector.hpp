@@ -22,8 +22,6 @@ class EdgeDetector : public Node {
 
    private:
     std::string getName() const override;
-    std::vector<Input> getInputs() override;
-    std::vector<Output> getOutputs() override;
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
 
@@ -53,6 +51,11 @@ class EdgeDetector : public Node {
      * Outputs image frame with detected edges
      */
     Output outputImage{*this, "outputImage", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
+     * Passthrough message on which the calculation was performed.
+     */
+    Output passthroughInputImage{*this, "passthroughInputImage", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     // Functions to set properties
     /**

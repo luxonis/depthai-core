@@ -18,18 +18,13 @@ ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
     properties.resolution = ColorCameraProperties::SensorResolution::THE_1080_P;
     properties.fps = 30.0;
     properties.previewKeepAspectRatio = true;
+
+    inputs = {&inputConfig, &inputControl};
+    outputs = {&video, &preview, &still, &isp, &raw};
 }
 
 std::string ColorCamera::getName() const {
     return "ColorCamera";
-}
-
-std::vector<Node::Output> ColorCamera::getOutputs() {
-    return {raw, isp, video, preview, still};
-}
-
-std::vector<Node::Input> ColorCamera::getInputs() {
-    return {inputConfig, inputControl};
 }
 
 nlohmann::json ColorCamera::getProperties() {
@@ -209,7 +204,8 @@ std::tuple<int, int> ColorCamera::getVideoSize() const {
         int maxVideoHeight = 1080;
 
         if(properties.resolution == ColorCameraProperties::SensorResolution::THE_4_K
-           || properties.resolution == ColorCameraProperties::SensorResolution::THE_12_MP) {
+           || properties.resolution == ColorCameraProperties::SensorResolution::THE_12_MP
+           || properties.resolution == ColorCameraProperties::SensorResolution::THE_13_MP) {
             maxVideoWidth = 3840;
             maxVideoHeight = 2160;
         }
@@ -255,6 +251,10 @@ std::tuple<int, int> ColorCamera::getStillSize() const {
             maxStillWidth = 4032;  // Note not 4056 as full sensor resolution
             maxStillHeight = 3040;
         }
+        if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_13_MP) {
+            maxStillWidth = 4192;  // Note not 4208 as full sensor resolution
+            maxStillHeight = 3120;
+        }
 
         // Take into the account the ISP scaling
         int numW = properties.ispScale.horizNumerator;
@@ -297,6 +297,10 @@ std::tuple<int, int> ColorCamera::getResolutionSize() const {
 
         case ColorCameraProperties::SensorResolution::THE_12_MP:
             return {4056, 3040};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_13_MP:
+            return {4208, 3120};
             break;
     }
 

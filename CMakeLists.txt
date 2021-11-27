@@ -8,7 +8,9 @@ endif()
 
 # Read the BUILD_SHARED_LIBS option and select PIC toolchain
 if(BUILD_SHARED_LIBS)
-    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_LIST_DIR}/cmake/toolchain/pic.cmake" CACHE STRING "")
+    if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+        set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_LIST_DIR}/cmake/toolchain/pic.cmake" CACHE STRING "")
+    endif()
     # Specify exporting all symbols on Windows
     set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON CACHE BOOL "")
 endif()
@@ -26,7 +28,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.5.0" LANGUAGES CXX C)
+project(depthai VERSION "2.13.2" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -77,6 +79,13 @@ option(DEPTHAI_INSTALL   "Enable install target for depthai-core targets" ON)
 # Debug option
 set(DEPTHAI_XLINK_LOCAL "" CACHE STRING "Path to local XLink source to use instead of Hunter")
 
+# Enable backward stack printing on crash
+option(DEPTHAI_ENABLE_BACKWARD "Enable stacktrace printing on crash using Backward" ON)
+# Additional function information for 'backward' stacktrace
+if(DEPTHAI_ENABLE_BACKWARD)
+    set(CMAKE_ENABLE_EXPORTS ON)
+endif()
+
 ### Constants
 set(PROJECT_EXPORT_GROUP "${PROJECT_NAME}Targets")
 
@@ -108,6 +117,7 @@ endif()
 ### Get and find dependencies
 
 # Include project dependencies
+set(DEPTHAI_DEPENDENCY_INCLUDE "" CACHE FILEPATH "Optional cmake file to append to dependency processing, e.g. additional find_package()")
 include(depthaiDependencies)
 
 # Add threads preference
@@ -135,6 +145,7 @@ add_library(${TARGET_CORE_NAME}
     "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
     # sources
     src/device/Device.cpp
+    src/device/DeviceBase.cpp
     src/device/DeviceBootloader.cpp
     src/device/DataQueue.cpp
     src/device/CallbackHandler.cpp
@@ -152,12 +163,15 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/MyProducer.cpp
     src/pipeline/node/VideoEncoder.cpp
     src/pipeline/node/DetectionNetwork.cpp
+    src/pipeline/node/Script.cpp
     src/pipeline/node/SpatialDetectionNetwork.cpp
     src/pipeline/node/SystemLogger.cpp
     src/pipeline/node/SpatialLocationCalculator.cpp
     src/pipeline/node/ObjectTracker.cpp
     src/pipeline/node/IMU.cpp
     src/pipeline/node/EdgeDetector.cpp
+    src/pipeline/node/SPIIn.cpp
+    src/pipeline/node/FeatureTracker.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
@@ -166,15 +180,18 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/ImgDetections.cpp
     src/pipeline/datatype/SpatialImgDetections.cpp
     src/pipeline/datatype/SystemInformation.cpp
-    src/pipeline/datatype/StreamPacketParser.cpp
+    src/pipeline/datatype/StreamMessageParser.cpp
     src/pipeline/datatype/SpatialLocationCalculatorData.cpp
     src/pipeline/datatype/SpatialLocationCalculatorConfig.cpp
     src/pipeline/datatype/Tracklets.cpp
     src/pipeline/datatype/IMUData.cpp
     src/pipeline/datatype/StereoDepthConfig.cpp
     src/pipeline/datatype/EdgeDetectorConfig.cpp
+    src/pipeline/datatype/TrackedFeatures.cpp
+    src/pipeline/datatype/FeatureTrackerConfig.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
+    src/utility/Platform.cpp
     src/xlink/XLinkConnection.cpp
     src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp
@@ -203,7 +220,7 @@ set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD 14)
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_EXTENSIONS OFF)
 # Add interface transitive property (C++14)
-if(${CMAKE_VERSION} VERSION_LESS "3.8.0") 
+if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
     target_compile_features(${TARGET_CORE_NAME} INTERFACE cxx_generic_lambdas)
 else()
     target_compile_features(${TARGET_CORE_NAME} INTERFACE cxx_std_14)
@@ -360,6 +377,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         FP16::fp16
         archive_static
         spdlog::spdlog
+        ZLIB::zlib
 )
 
 # Add compile definitions
@@ -369,11 +387,15 @@ target_compile_definitions(${TARGET_CORE_NAME}
         __PC__
         # Add depthai-device version
         DEPTHAI_DEVICE_VERSION="${DEPTHAI_DEVICE_SIDE_COMMIT}"
-        # Add if using depthai device FWP
-        DEPTHAI_RESOURCES_TAR_XZ
         # Add depthai-bootloader version
         DEPTHAI_BOOTLOADER_VERSION="${DEPTHAI_BOOTLOADER_VERSION}"
 )
+
+# Add Backward dependency if enabled (On by default)
+if(DEPTHAI_ENABLE_BACKWARD)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_BACKWARD)
+    target_link_libraries(${TARGET_CORE_NAME} PRIVATE Backward::Backward)
+endif()
 
 # Add patch only mode definition
 if(DEPTHAI_USB2_PATCH_ONLY_MODE)
@@ -383,6 +405,7 @@ endif()
 ########################
 # OpenCV Support
 ########################
+set(THIRDPARTY_OPENCV_LIBRARIES "" CACHE STRING "Optional libraries to link OpenCV support, e.g. TBB::tbb")
 set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
@@ -408,7 +431,7 @@ if(DEPTHAI_OPENCV_SUPPORT)
         add_flag(${TARGET_OPENCV_NAME} -Wno-switch-enum)
 
         # Link to OpenCV (publically)
-        target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES})
+        target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${REQUIRED_OPENCV_LIBRARIES} ${THIRDPARTY_OPENCV_LIBRARIES})
 
         # Add public compile definition indicating that OpenCV support is available
         set(DEPTHAI_HAVE_OPENCV_SUPPORT ON)
@@ -420,7 +443,9 @@ if(DEPTHAI_OPENCV_SUPPORT)
         target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${TARGET_CORE_NAME})
 
         # Add to clangformat target
-        target_clangformat_setup(${TARGET_OPENCV_NAME} "")
+        if(COMMAND target_clangformat_setup)
+            target_clangformat_setup(${TARGET_OPENCV_NAME} "")
+        endif()
 
         # Add to list of targets to export and install
         list(APPEND targets_to_export ${TARGET_OPENCV_NAME})
@@ -438,9 +463,9 @@ endif()
 if(DEPTHAI_SANITIZE)
     set(SANITIZE_ADDRESS ON CACHE BOOL "Enable AddressSanitizer for sanitized targets." FORCE)
     set(SANITIZE_UNDEFINED ON CACHE BOOL "Enable UndefinedBehaviorSanitizer for sanitized targets." FORCE)
+    find_package(Sanitizers)
+    add_sanitizers(${TARGET_CORE_NAME} ${TARGET_OPENCV_NAME})
 endif()
-find_package(Sanitizers)
-add_sanitizers(${TARGET_CORE_NAME} ${TARGET_OPENCV_NAME})
 
 ########################
 # Testing infrastructure
@@ -553,4 +578,23 @@ if(DEPTHAI_INSTALL)
         DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}"
     )
 
+endif()
+
+##############################
+# Integration settings export
+##############################
+set(tmp_definitions "$<TARGET_PROPERTY:${TARGET_CORE_NAME},INTERFACE_COMPILE_DEFINITIONS>")
+set(tmp_includes "$<TARGET_PROPERTY:${TARGET_CORE_NAME},INTERFACE_INCLUDE_DIRECTORIES>")
+file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/depthai-core-integration.txt" CONTENT
+    "$<$<BOOL:${tmp_definitions}>:\n-D\'$<JOIN:${tmp_definitions},\'\n-D\'>\'>\n
+    $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
+)
+
+if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+    set(tmp_definitions "$<TARGET_PROPERTY:${TARGET_OPENCV_NAME},INTERFACE_COMPILE_DEFINITIONS>")
+    set(tmp_includes "$<TARGET_PROPERTY:${TARGET_OPENCV_NAME},INTERFACE_INCLUDE_DIRECTORIES>")
+    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/depthai-opencv-integration.txt" CONTENT
+        "$<$<BOOL:${tmp_definitions}>:\n-D\'$<JOIN:${tmp_definitions},\'\n-D\'>\'>\n
+        $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
+    )
 endif()
