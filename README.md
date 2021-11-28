@@ -124,7 +124,6 @@ In your non-CMake project (new Visual Studio project, ...)
     - `build/install/include/depthai-shared/3rdparty` (shared 3rdparty headers)
     - `build/install/lib/cmake/depthai/dependencies/include` (dependency headers)
 3. Add the following defines
-    - `XLINK_USE_MX_ID_NAME=ON`
     - `__PC__=ON`
 
 > ℹ️ Threading library might need to be linked to explicitly.

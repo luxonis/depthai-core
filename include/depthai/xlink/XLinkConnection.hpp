@@ -22,11 +22,21 @@ namespace dai {
  */
 struct DeviceInfo {
     DeviceInfo() = default;
-    DeviceInfo(const char*);
-    DeviceInfo(std::string);
-    deviceDesc_t desc = {};
-    XLinkDeviceState_t state = X_LINK_ANY_STATE;
+    /**
+     * Creates a DeviceInfo by checking whether supplied parameter is a MXID or IP/USB name
+     * @param mxidOrName Either MXID, IP Address or USB port name
+     */
+    DeviceInfo(std::string mxidOrName);
+    DeviceInfo(const deviceDesc_t& desc);
+    deviceDesc_t getXLinkDeviceDesc() const;
     std::string getMxId() const;
+    std::string toString() const;
+
+    std::string name = "";
+    std::string mxid = "";
+    XLinkDeviceState_t state = X_LINK_ANY_STATE;
+    XLinkProtocol_t protocol = X_LINK_ANY_PROTOCOL;
+    XLinkPlatform_t platform = X_LINK_ANY_PLATFORM;
 };
 
 /**
@@ -90,6 +100,7 @@ class XLinkConnection {
 
     constexpr static std::chrono::milliseconds WAIT_FOR_BOOTUP_TIMEOUT{15000};
     constexpr static std::chrono::milliseconds WAIT_FOR_CONNECT_TIMEOUT{5000};
+    constexpr static std::chrono::milliseconds POLLING_DELAY_TIME{10};
 };
 
 }  // namespace dai

@@ -22,37 +22,56 @@ extern "C" {
 
 namespace dai {
 
-// DeviceInfo
-DeviceInfo::DeviceInfo(std::string mxId) {
-    // Add dash at the end of mxId ([mxId]-[xlinkDevName] format)
-    mxId += "-";
-    // Construct device info which will points to device with specific mxId
-    std::strncpy(desc.name, mxId.c_str(), sizeof(desc.name));
-
-    // set protocol to any
-    desc.protocol = X_LINK_ANY_PROTOCOL;
-
-    // set platform to any
-    desc.platform = X_LINK_ANY_PLATFORM;
-
-    // set state to any
-    state = X_LINK_ANY_STATE;
+DeviceInfo::DeviceInfo(const deviceDesc_t& desc){
+    name = std::string(desc.name);
+    mxid = std::string(desc.mxid);
+    state = desc.state;
+    protocol = desc.protocol;
+    platform = desc.platform;
 }
-DeviceInfo::DeviceInfo(const char* mxId) : DeviceInfo(std::string(mxId)) {}
 
-std::string DeviceInfo::getMxId() const {
-    std::string mxId = "";
-    auto len = std::strlen(desc.name);
-    for(std::size_t i = 0; i < len; i++) {
-        if(desc.name[i] == '-') break;
-        mxId += desc.name[i];
+DeviceInfo::DeviceInfo(std::string mxidOrName){
+    // Parse parameter and set to ip if any dots found
+    // mxid doesn't have a dot in the name
+    if(mxidOrName.find(".") != std::string::npos){
+        // This is reasoned as an IP address or USB path (name). Set rest of info accordingly
+        name = std::move(mxidOrName);
+        mxid = "";
+    } else {
+        // This is reasoned as mxid
+        name = "";
+        mxid = std::move(mxidOrName);
     }
-    return mxId;
+}
+
+deviceDesc_t DeviceInfo::getXLinkDeviceDesc() const {
+    // Create XLink deviceDesc_t, init all fields to zero
+    deviceDesc_t desc = {};
+
+    // c_str is guranteed to be nullterminated
+    strncpy(desc.mxid, mxid.c_str(), sizeof(desc.mxid));
+    strncpy(desc.name, name.c_str(), sizeof(desc.name));
+
+    desc.platform = platform;
+    desc.protocol = protocol;
+    desc.state = state;
+
+    return desc;
+}
+
+// backward compatibility
+std::string DeviceInfo::getMxId() const {
+    return mxid;
+}
+
+std::string DeviceInfo::toString() const {
+    return fmt::format("{}, {}, {}, {}, {}", name, mxid, XLinkDeviceStateToStr(state), XLinkProtocolToStr(protocol), XLinkPlatformToStr(platform));
 }
 
 // STATIC
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT;
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_CONNECT_TIMEOUT;
+constexpr std::chrono::milliseconds XLinkConnection::POLLING_DELAY_TIME;
 
 std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState_t state) {
     initialize();
@@ -70,10 +89,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
     if(status != X_LINK_SUCCESS) throw std::runtime_error("Couldn't retrieve all connected devices");
 
     for(unsigned i = 0; i < numdev; i++) {
-        DeviceInfo info = {};
-        info.desc = deviceDescAll.at(i);
-        info.state = state;
-        devices.push_back(info);
+        devices.push_back(DeviceInfo(deviceDescAll.at(i)));
     }
 
     return devices;
@@ -81,44 +97,48 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
 
 std::tuple<bool, DeviceInfo> XLinkConnection::getFirstDevice(XLinkDeviceState_t state) {
 
-    deviceDesc_t devReq;
+    deviceDesc_t devReq = {};
     devReq.protocol = X_LINK_ANY_PROTOCOL;
     devReq.platform = X_LINK_ANY_PLATFORM;
     devReq.name[0] = 0;
     devReq.mxid[0] = 0;
     devReq.state = state;
 
-    deviceDesc_t dev;
+    deviceDesc_t dev = {};
     auto res = XLinkFindFirstSuitableDevice(devReq, &dev);
     if(res == X_LINK_SUCCESS){
-        DeviceInfo info;
-        info.desc = dev;
-        info.state = state;
+        DeviceInfo info(dev);
         return {true, info};
     }
     return {false, {}};
 }
 
 std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceByMxId(std::string mxId, XLinkDeviceState_t state) {
-    auto devices = getAllConnectedDevices();
-    for(const auto& d : devices) {
-        if(d.state == state || state == X_LINK_ANY_STATE) {
-            if(d.getMxId() == mxId) {
-                return {true, d};
-            }
-        }
+    DeviceInfo dev;
+    dev.mxid = mxId;
+    dev.state = state;
+
+    deviceDesc_t desc = {};
+    auto res = XLinkFindFirstSuitableDevice(dev.getXLinkDeviceDesc(), &desc);
+    if(res == X_LINK_SUCCESS){
+        return {true, {desc}};
     }
-    return {false, DeviceInfo()};
+    return {false, {}};
 }
 
 DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
     using namespace std::chrono;
 
     // Device is in flash booted state. Boot to bootloader first
-    XLinkBootBootloader(&deviceInfo.desc);
+    auto deviceDesc = deviceInfo.getXLinkDeviceDesc();
+    XLinkBootBootloader(&deviceDesc);
 
-    // Fix deviceInfo for BOOTLOADER state
-    DeviceInfo deviceToWait = deviceInfoFix(deviceInfo, X_LINK_BOOTLOADER);
+    // Wait for a bootloader device now
+    DeviceInfo deviceToWait = deviceInfo;
+    if(deviceInfo.protocol == X_LINK_USB_VSC){
+        deviceToWait.name = "";
+    }
+    deviceToWait.state = X_LINK_BOOTLOADER;
 
     // Device desc if found
     deviceDesc_t foundDeviceDesc = {};
@@ -127,19 +147,17 @@ DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
     XLinkError_t rc;
     auto tstart = steady_clock::now();
     do {
-        rc = XLinkFindFirstSuitableDevice(X_LINK_BOOTLOADER, deviceToWait.desc, &foundDeviceDesc);
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        rc = XLinkFindFirstSuitableDevice(deviceToWait.getXLinkDeviceDesc(), &foundDeviceDesc);
         if(rc == X_LINK_SUCCESS) break;
+        std::this_thread::sleep_for(POLLING_DELAY_TIME);
     } while(steady_clock::now() - tstart < WAIT_FOR_BOOTUP_TIMEOUT);
 
     // If device not found
     if(rc != X_LINK_SUCCESS) {
-        throw std::runtime_error("Failed to find device (" + std::string(deviceToWait.desc.name) + "), error message: " + convertErrorCodeToString(rc));
+        throw std::runtime_error(fmt::format("Failed to find device (mxid: {}), error message: {}", deviceToWait.mxid, convertErrorCodeToString(rc)));
     }
 
-    deviceToWait.state = X_LINK_BOOTLOADER;
-    deviceToWait.desc = foundDeviceDesc;
-    return deviceToWait;
+    return DeviceInfo(foundDeviceDesc);
 }
 
 XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary, XLinkDeviceState_t expectedState) {
@@ -203,6 +221,7 @@ void XLinkConnection::close() {
                 for(const auto& state : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER}) {
                     std::tie(found, tmp) = XLinkConnection::getDeviceByMxId(deviceInfo.getMxId(), state);
                     if(found) break;
+                    std::this_thread::sleep_for(POLLING_DELAY_TIME);
                 }
             } while(!found && steady_clock::now() - t1 < BOOTUP_SEARCH);
         }
@@ -238,37 +257,35 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
     assert(deviceLinkId == -1);
 
     XLinkError_t rc = X_LINK_ERROR;
-    deviceDesc_t deviceDesc = {};
 
     using namespace std::chrono;
 
     // if device is in UNBOOTED then boot
     bootDevice = deviceToInit.state == X_LINK_UNBOOTED;
 
+    DeviceInfo lastDeviceInfo = deviceToInit;
+
     // boot device
     if(bootDevice) {
-        DeviceInfo deviceToBoot = deviceToInit;
-        // If USB, search by mxid as name can change
-        if(deviceToInit.desc.protocol == X_LINK_USB_VSC) {
-            deviceToBoot.desc.name[0] = 0;
-        }
-        deviceToBoot.desc.state = X_LINK_UNBOOTED;
+        DeviceInfo deviceToBoot = lastDeviceInfo;
+        deviceToBoot.state = X_LINK_UNBOOTED;
 
-        //DeviceInfo deviceToBoot = deviceInfoFix(deviceToInit, X_LINK_UNBOOTED);
         deviceDesc_t foundDeviceDesc = {};
 
         // Wait for the device to be available
         auto tstart = steady_clock::now();
         do {
-            rc = XLinkFindFirstSuitableDevice(deviceToBoot.desc, &foundDeviceDesc);
-            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            rc = XLinkFindFirstSuitableDevice(deviceToBoot.getXLinkDeviceDesc(), &foundDeviceDesc);
             if(rc == X_LINK_SUCCESS) break;
+            std::this_thread::sleep_for(POLLING_DELAY_TIME);
         } while(steady_clock::now() - tstart < WAIT_FOR_BOOTUP_TIMEOUT);
 
         // If device not found
         if(rc != X_LINK_SUCCESS) {
-            throw std::runtime_error("Failed to find device (" + std::string(deviceToBoot.desc.name) + "), error message: " + convertErrorCodeToString(rc));
+            throw std::runtime_error("Failed to find device (" + deviceToBoot.name + "), error message: " + convertErrorCodeToString(rc));
         }
+
+        lastDeviceInfo = DeviceInfo(foundDeviceDesc);
 
         bool bootStatus;
         if(bootWithPath) {
@@ -284,41 +301,49 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
     // Search for booted device
     {
         // Create description of device to look for
-        DeviceInfo bootedDeviceInfo = deviceToInit;
-        // If USB, search by mxid as name can change
-        if(deviceToInit.desc.protocol == X_LINK_USB_VSC) {
-            bootedDeviceInfo.desc.name[0] = 0;
+        DeviceInfo bootedDeviceInfo = lastDeviceInfo;
+        // If USB, search by mxid only as name usually changes
+        if(deviceToInit.protocol == X_LINK_USB_VSC) {
+            bootedDeviceInfo.name = "";
         }
         // Has to match expected state
-        bootedDeviceInfo.desc.state = expectedState;
+        bootedDeviceInfo.state = expectedState;
+
+        spdlog::debug("Searching for device: {}", bootedDeviceInfo.toString());
 
         // Find booted device
+        deviceDesc_t foundDeviceDesc = {};
         auto tstart = steady_clock::now();
         do {
-            rc = XLinkFindFirstSuitableDevice(bootedDeviceInfo.desc, &deviceDesc);
+            rc = XLinkFindFirstSuitableDevice(bootedDeviceInfo.getXLinkDeviceDesc(), &foundDeviceDesc);
             if(rc == X_LINK_SUCCESS) break;
+            std::this_thread::sleep_for(POLLING_DELAY_TIME);
         } while(steady_clock::now() - tstart < WAIT_FOR_BOOTUP_TIMEOUT);
 
         if(rc != X_LINK_SUCCESS) {
             throw std::runtime_error("Failed to find device after booting, error message: " + convertErrorCodeToString(rc));
         }
+
+        lastDeviceInfo = DeviceInfo(foundDeviceDesc);
     }
 
     // Try to connect to device
     {
         XLinkHandler_t connectionHandler = {};
-        connectionHandler.devicePath = deviceDesc.name;
-        connectionHandler.protocol = deviceDesc.protocol;
+        auto desc = lastDeviceInfo.getXLinkDeviceDesc();
+        connectionHandler.devicePath = desc.name;
+        connectionHandler.protocol = lastDeviceInfo.protocol;
 
         auto tstart = steady_clock::now();
         do {
             if((rc = XLinkConnect(&connectionHandler)) == X_LINK_SUCCESS) break;
+            std::this_thread::sleep_for(POLLING_DELAY_TIME);
         } while(steady_clock::now() - tstart < WAIT_FOR_CONNECT_TIMEOUT);
 
         if(rc != X_LINK_SUCCESS) throw std::runtime_error("Failed to connect to device, error message: " + convertErrorCodeToString(rc));
 
         deviceLinkId = connectionHandler.linkId;
-        deviceInfo.desc = deviceDesc;
+        deviceInfo = lastDeviceInfo;
         deviceInfo.state = X_LINK_BOOTED;
     }
 }
@@ -328,30 +353,7 @@ int XLinkConnection::getLinkId() const {
 }
 
 std::string XLinkConnection::convertErrorCodeToString(XLinkError_t errorCode) {
-    switch(errorCode) {
-        case X_LINK_SUCCESS:
-            return "X_LINK_SUCCESS";
-        case X_LINK_ALREADY_OPEN:
-            return "X_LINK_ALREADY_OPEN";
-        case X_LINK_COMMUNICATION_NOT_OPEN:
-            return "X_LINK_COMMUNICATION_NOT_OPEN";
-        case X_LINK_COMMUNICATION_FAIL:
-            return "X_LINK_COMMUNICATION_FAIL";
-        case X_LINK_COMMUNICATION_UNKNOWN_ERROR:
-            return "X_LINK_COMMUNICATION_UNKNOWN_ERROR";
-        case X_LINK_DEVICE_NOT_FOUND:
-            return "X_LINK_DEVICE_NOT_FOUND";
-        case X_LINK_TIMEOUT:
-            return "X_LINK_TIMEOUT";
-        case X_LINK_ERROR:
-            return "X_LINK_ERROR";
-        case X_LINK_OUT_OF_MEMORY:
-            return "X_LINK_OUT_OF_MEMORY";
-        case X_LINK_NOT_IMPLEMENTED:
-            return "X_LINK_NOT_IMPLEMENTED";
-        default:
-            return "<UNKNOWN ERROR>";
-    }
+    return XLinkErrorToStr(errorCode);
 }
 
 }  // namespace dai

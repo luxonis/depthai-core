@@ -96,14 +96,16 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::dura
 
     // First looks for UNBOOTED, then BOOTLOADER, for 'timeout' time
     auto searchStartTime = steady_clock::now();
-    bool found = false;
     DeviceInfo deviceInfo;
     do {
+        auto devices = XLinkConnection::getAllConnectedDevices();
         for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED}) {
-            std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(searchState);
-            if(found) break;
+            for(const auto& device : devices){
+                if(device.state == searchState){
+                    return {true, device};
+                }
+            }
         }
-        if(found) break;
 
         // If 'timeout' < 'POOL_SLEEP_TIME', use 'timeout' as sleep time and then break
         if(timeout < POOL_SLEEP_TIME) {
@@ -116,9 +118,7 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::dura
     } while(steady_clock::now() - searchStartTime < timeout);
 
     // If none were found, try BOOTED
-    if(!found) std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(X_LINK_BOOTED);
-
-    return {found, deviceInfo};
+    return XLinkConnection::getFirstDevice(X_LINK_BOOTED);
 }
 
 // Default overload ('DEFAULT_SEARCH_TIME' timeout)
@@ -130,16 +130,17 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice() {
 
 // First tries to find UNBOOTED device, then BOOTLOADER device
 std::tuple<bool, DeviceInfo> DeviceBase::getFirstAvailableDevice() {
-    bool found;
-    DeviceInfo dev;
-    std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
-    if(!found) {
-        std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_BOOTLOADER);
+    // Get all connected devices
+    auto devices = XLinkConnection::getAllConnectedDevices();
+    // Search order - first unbooted, then bootloader and last flash booted
+    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED}){
+        for(const auto& device : devices){
+            if(device.state == searchState){
+                return {true, device};
+            }
+        }
     }
-    if(!found) {
-        std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_FLASH_BOOTED);
-    }
-    return {found, dev};
+    return {false, {}};
 }
 
 // Returns all devices which aren't already booted
@@ -451,6 +452,19 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
     // Specify cfg
     config = cfg;
 
+    // If deviceInfo isn't fully specified (eg ANY_STATE, etc...), try finding it first
+    if(deviceInfo.state == X_LINK_ANY_STATE || deviceInfo.protocol == X_LINK_ANY_PROTOCOL){
+        deviceDesc_t foundDesc;
+        auto ret = XLinkFindFirstSuitableDevice(deviceInfo.getXLinkDeviceDesc(), &foundDesc);
+        if(ret == X_LINK_SUCCESS){
+            deviceInfo = DeviceInfo(foundDesc);
+            spdlog::debug("Found an actual device by given DeviceInfo: {}", deviceInfo.toString());
+        } else {
+            deviceInfo.state = X_LINK_ANY_STATE;
+            spdlog::debug("Searched, but no actual device found by given DeviceInfo");
+        }
+    }
+
     if(pipeline) {
         spdlog::debug("Device - pipeline serialized, OpenVINO version: {}", OpenVINO::getVersionName(config.version));
     } else {
@@ -458,7 +472,7 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
     }
 
     // Set logging pattern of device (device id + shared pattern)
-    pimpl->setPattern(fmt::format("[{}] {}", deviceInfo.getMxId(), LOG_DEFAULT_PATTERN));
+    pimpl->setPattern(fmt::format("[{}] [{}] {}", deviceInfo.mxid, deviceInfo.name, LOG_DEFAULT_PATTERN));
 
     // Check if WD env var is set
     std::chrono::milliseconds watchdogTimeout = device::XLINK_WATCHDOG_TIMEOUT;
