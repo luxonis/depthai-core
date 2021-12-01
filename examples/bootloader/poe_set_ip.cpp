@@ -79,10 +79,11 @@ int main(int argc, char** argv) {
             return 0;
         }
         auto conf = dai::DeviceBootloader::Config();
-        if(key == '1')
+        if(key == '1') {
             conf.setStaticIPv4(ip, mask, gateway);
-        else
+        } else {
             conf.setDynamicIPv4(ip, mask, gateway);
+        }
 
         std::tie(success, error) = bl.flashConfig(conf);
     } else if(key == '3') {
@@ -92,8 +93,9 @@ int main(int argc, char** argv) {
         return 0;
     }
 
-    if(success)
+    if(success) {
         std::cout << "Flashing successful." << std::endl;
-    else
+    } else {
         std::cout << "Flashing failed: " << error << std::endl;
+    }
 }
