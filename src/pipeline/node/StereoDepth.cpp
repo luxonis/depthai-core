@@ -171,5 +171,9 @@ float StereoDepth::getMaxDisparity() const {
     return initialConfig.getMaxDisparity();
 }
 
+void StereoDepth::setHardwareResources(int numShaves) {
+    properties.numShaves = numShaves;
+}
+
 }  // namespace node
 }  // namespace dai

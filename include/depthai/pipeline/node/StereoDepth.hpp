@@ -313,6 +313,13 @@ class StereoDepth : public Node {
      * @returns Maximum disparity value that the node can return
      */
     [[deprecated("Use 'initialConfig.getMaxDisparity()' instead")]] float getMaxDisparity() const;
+
+    /**
+     * Specify allocated hardware resources for stereo depth.
+     * Suitable only to increase post processing runtime.
+     * @param numShaves Number of shaves. Maximum 2.
+     */
+    void setHardwareResources(int numShaves);
 };
 
 }  // namespace node
