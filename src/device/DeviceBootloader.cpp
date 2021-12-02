@@ -496,10 +496,10 @@ std::tuple<bool, std::string> DeviceBootloader::flash(const Pipeline& pipeline, 
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(std::function<void(float)> progressCb, std::vector<uint8_t> package) {
-    // Bug in NETWORK bootloader in version 0.0.12 < 0.1.0 - flashing can cause a soft brick
+    // Bug in NETWORK bootloader in version 0.0.12 < 0.0.14 - flashing can cause a soft brick
     auto version = getVersion();
     if(bootloaderType == Type::NETWORK && version < Version(0, 0, 14)) {
-        throw std::invalid_argument("Network bootloader requires version 0.1.0 or higher to flash applications. Current version: " + version.toString());
+        throw std::invalid_argument("Network bootloader requires version 0.0.14 or higher to flash applications. Current version: " + version.toString());
     }
 
     // send request to FLASH BOOTLOADER
