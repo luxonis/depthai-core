@@ -346,6 +346,8 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, 
                 stream = nullptr;
                 // Close connection
                 connection->close();
+                // Unbooted state at this point
+                deviceInfo.state = X_LINK_UNBOOTED;
 
                 // Now reconnect
                 // Unbooted device found, boot to BOOTLOADER and connect with XLinkConnection constructor
