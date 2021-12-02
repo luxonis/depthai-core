@@ -844,7 +844,7 @@ bool DeviceBootloader::sendRequest(const T& request) {
     if(stream == nullptr) return false;
 
     // Do a version check beforehand
-    if(0) if(getVersion() < Version(T::VERSION)) {
+    if(getVersion() < Version(T::VERSION)) {
         throw std::runtime_error(
             fmt::format("Bootloader version {} required to send request '{}'. Current version {}", T::VERSION, T::NAME, getVersion().toString()));
     }
