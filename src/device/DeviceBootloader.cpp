@@ -471,6 +471,11 @@ DeviceBootloader::Version DeviceBootloader::requestVersion() {
         throw std::runtime_error("Couldn't get bootloader version");
     }
 
+    // Workaround for older bootloader versions not tagged, default to 0.0.4
+    if(ver.major == 0 && ver.minor == 0 && ver.patch == 0) {
+        ver.patch = 4;
+    }
+
     // Create bootloader::Version object and return
     return DeviceBootloader::Version(ver.major, ver.minor, ver.patch);
 }
