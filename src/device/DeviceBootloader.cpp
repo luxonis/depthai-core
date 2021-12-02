@@ -261,7 +261,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, 
         stream = std::make_unique<XLinkStream>(*connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
 
         // Retrieve bootloader version
-        version = requestVersion();
+        flashedVersion = version = requestVersion();
         if(version >= Version(0, 0, 12)) {
             // If version is adequate, do an in memory boot.
 
@@ -458,6 +458,10 @@ DeviceBootloader::Version DeviceBootloader::getVersion() const {
     return version;
 }
 
+DeviceBootloader::Version DeviceBootloader::getFlashedVersion() const {
+    return flashedVersion;
+}
+
 DeviceBootloader::Version DeviceBootloader::requestVersion() {
     // Send request to jump to USB bootloader
     if(!sendRequest(Request::GetBootloaderVersion{})) {
@@ -497,9 +501,20 @@ std::tuple<bool, std::string> DeviceBootloader::flash(const Pipeline& pipeline, 
 
 std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(std::function<void(float)> progressCb, std::vector<uint8_t> package) {
     // Bug in NETWORK bootloader in version 0.0.12 < 0.0.14 - flashing can cause a soft brick
-    auto version = getVersion();
     if(bootloaderType == Type::NETWORK && version < Version(0, 0, 14)) {
         throw std::invalid_argument("Network bootloader requires version 0.0.14 or higher to flash applications. Current version: " + version.toString());
+    }
+
+    // Older versions have a limitation on the maximum firmware size that can be booted from NOR flash,
+    // due to 24-bit addressing. Check only if a bootloader is flashed (version > 0.0.0)
+    if(flashedVersion < Version(0, 0, 14) && !(flashedVersion < Version(0, 0, 1))) {
+        // TODO should check firmware section only, and make sure it's not compressed either
+        constexpr uint32_t MAX_24BIT_SIZE = 1 << 24;
+        uint32_t dapLastOffset = bootloader::getStructure(bootloaderType).offset.at(bootloader::Section::APPLICATION) + package.size();
+        if(dapLastOffset > MAX_24BIT_SIZE) {
+            throw std::invalid_argument("Application to flash is too large, unsupported by current flashed bootloader " + flashedVersion.toString()
+                                        + ". Please upgrade the bootloader");
+        }
     }
 
     // send request to FLASH BOOTLOADER
