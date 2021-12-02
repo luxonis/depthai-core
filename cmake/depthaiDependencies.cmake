@@ -1,5 +1,9 @@
 if(CONFIG_MODE)
     set(_CMAKE_PREFIX_PATH_ORIGINAL ${CMAKE_PREFIX_PATH})
+    set(_CMAKE_FIND_ROOT_PATH_MODE_PACKAGE_ORIGINAL ${CMAKE_FIND_ROOT_PATH_MODE_PACKAGE})
+    # Fixes Android NDK build, where prefix path is ignored as its not inside sysroot
+    set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE "BOTH")
+    # Sets where to search for packages about to follow
     set(CMAKE_PREFIX_PATH "${CMAKE_CURRENT_LIST_DIR}/${_IMPORT_PREFIX}" ${CMAKE_PREFIX_PATH})
     set(_QUIET "QUIET")
 else()
@@ -55,9 +59,9 @@ find_package(nlohmann_json ${_QUIET} CONFIG REQUIRED)
 
 # XLink
 if(DEPTHAI_XLINK_LOCAL)
-    add_subdirectory("${DEPTHAI_XLINK_LOCAL}" ${CMAKE_CURRENT_BINARY_DIR}/XLink EXCLUDE_FROM_ALL)
+    add_subdirectory("${DEPTHAI_XLINK_LOCAL}" "${CMAKE_CURRENT_BINARY_DIR}/XLink" EXCLUDE_FROM_ALL)
 else()
-    find_package(XLink ${_QUIET} CONFIG REQUIRED)
+    find_package(XLink ${_QUIET} CONFIG REQUIRED HINTS "${CMAKE_CURRENT_LIST_DIR}/XLink")
 endif()
 
 # OpenCV 4 - (optional, quiet always)
@@ -72,6 +76,8 @@ endif()
 if(CONFIG_MODE)
     set(CMAKE_PREFIX_PATH ${_CMAKE_PREFIX_PATH_ORIGINAL})
     set(_CMAKE_PREFIX_PATH_ORIGINAL)
+    set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ${_CMAKE_FIND_ROOT_PATH_MODE_PACKAGE_ORIGINAL})
+    set(_CMAKE_FIND_ROOT_PATH_MODE_PACKAGE_ORIGINAL)
     set(_QUIET)
 else()
     set(DEPTHAI_SHARED_LIBS)

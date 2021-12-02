@@ -199,7 +199,7 @@ class DeviceBase::Impl {
 
     // RPC
     std::mutex rpcMutex;
-    std::unique_ptr<XLinkStream> rpcStream;
+    std::shared_ptr<XLinkStream> rpcStream;
     std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> rpcClient;
 
     void setLogLevel(LogLevel level);
@@ -543,9 +543,10 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
     deviceInfo.state = X_LINK_BOOTED;
 
     // prepare rpc for both attached and host controlled mode
-    pimpl->rpcStream = std::make_unique<XLinkStream>(*connection, device::XLINK_CHANNEL_MAIN_RPC, device::XLINK_USB_BUFFER_MAX_SIZE);
+    pimpl->rpcStream = std::make_shared<XLinkStream>(*connection, device::XLINK_CHANNEL_MAIN_RPC, device::XLINK_USB_BUFFER_MAX_SIZE);
+    auto rpcStream = pimpl->rpcStream;
 
-    pimpl->rpcClient = std::make_unique<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>([this](nanorpc::core::type::buffer request) {
+    pimpl->rpcClient = std::make_unique<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>([this, rpcStream](nanorpc::core::type::buffer request) {
         // Lock for time of the RPC call, to not mix the responses between calling threads.
         // Note: might cause issues on Windows on incorrect shutdown. To be investigated
         std::unique_lock<std::mutex> lock(pimpl->rpcMutex);
@@ -556,11 +557,11 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
         }
 
         // Send request to device
-        pimpl->rpcStream->write(std::move(request));
+        rpcStream->write(std::move(request));
 
         // Receive response back
         // Send to nanorpc to parse
-        return pimpl->rpcStream->read();
+        return rpcStream->read();
     });
 
     // prepare watchdog thread, which will keep device alive
