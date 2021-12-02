@@ -100,8 +100,8 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::dura
     do {
         auto devices = XLinkConnection::getAllConnectedDevices();
         for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED}) {
-            for(const auto& device : devices){
-                if(device.state == searchState){
+            for(const auto& device : devices) {
+                if(device.state == searchState) {
                     return {true, device};
                 }
             }
@@ -133,9 +133,9 @@ std::tuple<bool, DeviceInfo> DeviceBase::getFirstAvailableDevice() {
     // Get all connected devices
     auto devices = XLinkConnection::getAllConnectedDevices();
     // Search order - first unbooted, then bootloader and last flash booted
-    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED}){
-        for(const auto& device : devices){
-            if(device.state == searchState){
+    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED}) {
+        for(const auto& device : devices) {
+            if(device.state == searchState) {
                 return {true, device};
             }
         }
@@ -453,10 +453,10 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
     config = cfg;
 
     // If deviceInfo isn't fully specified (eg ANY_STATE, etc...), try finding it first
-    if(deviceInfo.state == X_LINK_ANY_STATE || deviceInfo.protocol == X_LINK_ANY_PROTOCOL){
+    if(deviceInfo.state == X_LINK_ANY_STATE || deviceInfo.protocol == X_LINK_ANY_PROTOCOL) {
         deviceDesc_t foundDesc;
         auto ret = XLinkFindFirstSuitableDevice(deviceInfo.getXLinkDeviceDesc(), &foundDesc);
-        if(ret == X_LINK_SUCCESS){
+        if(ret == X_LINK_SUCCESS) {
             deviceInfo = DeviceInfo(foundDesc);
             spdlog::debug("Found an actual device by given DeviceInfo: {}", deviceInfo.toString());
         } else {

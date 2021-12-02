@@ -8,8 +8,8 @@ hunter_config(
 hunter_config(
     XLink
     VERSION "luxonis-2021.4-master"
-    URL "https://github.com/luxonis/XLink/archive/db38ab19c80d074d11afbe106510b53a8ab5ac35.tar.gz"
-    SHA1 "2962b417e98948ff75682099865d8114be8edfff"
+    URL "https://github.com/luxonis/XLink/archive/1a7ae5704e40756b06a3f05c4ab560a3d28fe445.tar.gz"
+    SHA1 "b1db49ddc3c8b86e912241616b87646808bb539e"
 )
 
 hunter_config(
@@ -108,8 +108,8 @@ hunter_config(
 hunter_config(
     libusb-luxonis
     VERSION "1.0.24-cmake"
-    URL "https://github.com/luxonis/libusb/archive/57dc3a52a1ce09f617bd282c66c25485961e3361.tar.gz"
-    SHA1 "098ee4702ceee9ff65bb4e1f69280b3eccc38c95"
+    URL "https://github.com/luxonis/libusb/archive/603ea0c74b6119c8fec25c20d4358462ee1309d4.tar.gz"
+    SHA1 "46ed5287889efa4e78d23741facd70fb432d6914"
     CMAKE_ARGS
         WITH_UDEV=OFF
 )

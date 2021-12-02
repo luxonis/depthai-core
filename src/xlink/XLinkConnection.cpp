@@ -22,7 +22,7 @@ extern "C" {
 
 namespace dai {
 
-DeviceInfo::DeviceInfo(const deviceDesc_t& desc){
+DeviceInfo::DeviceInfo(const deviceDesc_t& desc) {
     name = std::string(desc.name);
     mxid = std::string(desc.mxid);
     state = desc.state;
@@ -30,10 +30,10 @@ DeviceInfo::DeviceInfo(const deviceDesc_t& desc){
     platform = desc.platform;
 }
 
-DeviceInfo::DeviceInfo(std::string mxidOrName){
+DeviceInfo::DeviceInfo(std::string mxidOrName) {
     // Parse parameter and set to ip if any dots found
     // mxid doesn't have a dot in the name
-    if(mxidOrName.find(".") != std::string::npos){
+    if(mxidOrName.find(".") != std::string::npos) {
         // This is reasoned as an IP address or USB path (name). Set rest of info accordingly
         name = std::move(mxidOrName);
         mxid = "";
@@ -96,6 +96,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
 }
 
 std::tuple<bool, DeviceInfo> XLinkConnection::getFirstDevice(XLinkDeviceState_t state) {
+    initialize();
 
     deviceDesc_t devReq = {};
     devReq.protocol = X_LINK_ANY_PROTOCOL;
@@ -106,7 +107,7 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getFirstDevice(XLinkDeviceState_t 
 
     deviceDesc_t dev = {};
     auto res = XLinkFindFirstSuitableDevice(devReq, &dev);
-    if(res == X_LINK_SUCCESS){
+    if(res == X_LINK_SUCCESS) {
         DeviceInfo info(dev);
         return {true, info};
     }
@@ -114,19 +115,23 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getFirstDevice(XLinkDeviceState_t 
 }
 
 std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceByMxId(std::string mxId, XLinkDeviceState_t state) {
+    initialize();
+
     DeviceInfo dev;
     dev.mxid = mxId;
     dev.state = state;
 
     deviceDesc_t desc = {};
     auto res = XLinkFindFirstSuitableDevice(dev.getXLinkDeviceDesc(), &desc);
-    if(res == X_LINK_SUCCESS){
+    if(res == X_LINK_SUCCESS) {
         return {true, {desc}};
     }
     return {false, {}};
 }
 
 DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
+    initialize();
+
     using namespace std::chrono;
 
     // Device is in flash booted state. Boot to bootloader first
@@ -135,7 +140,7 @@ DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
 
     // Wait for a bootloader device now
     DeviceInfo deviceToWait = deviceInfo;
-    if(deviceInfo.protocol == X_LINK_USB_VSC){
+    if(deviceInfo.protocol == X_LINK_USB_VSC) {
         deviceToWait.name = "";
     }
     deviceToWait.state = X_LINK_BOOTLOADER;
@@ -161,6 +166,8 @@ DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
 }
 
 XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary, XLinkDeviceState_t expectedState) {
+    initialize();
+
     bootDevice = true;
     bootWithPath = false;
     this->mvcmd = std::move(mvcmdBinary);
@@ -168,6 +175,8 @@ XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::
 }
 
 XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::string pathToMvcmd, XLinkDeviceState_t expectedState) {
+    initialize();
+
     if(!pathToMvcmd.empty()) {
         std::ifstream f(pathToMvcmd.c_str());
         if(!f.good()) throw std::runtime_error("Error path doesn't exist. Note: Environment variables in path are not expanded. (E.g. '~', '$PATH').");
@@ -180,6 +189,8 @@ XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::string pathT
 
 // Skip boot
 XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, XLinkDeviceState_t expectedState) {
+    initialize();
+
     bootDevice = false;
     initDevice(deviceDesc, expectedState);
 }
@@ -253,7 +264,6 @@ bool XLinkConnection::bootAvailableDevice(const deviceDesc_t& deviceToBoot, std:
 }
 
 void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceState_t expectedState) {
-    initialize();
     assert(deviceLinkId == -1);
 
     XLinkError_t rc = X_LINK_ERROR;
