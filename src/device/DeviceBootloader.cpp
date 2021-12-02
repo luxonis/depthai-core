@@ -340,11 +340,8 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, 
 
             // If not correct type OR if allowFlashingBootloader is set, then boot internal (latest) bootloader of correct type
             if((desiredBootloaderType != Type::USB) || allowFlashingBootloader) {
-                // Send request to jump to USB bootloader
-                // Boot into USB ROM BOOTLOADER NOW
-                if(!sendRequest(Request::UsbRomBoot{})) {
-                    throw std::runtime_error("Error trying to connect to device");
-                }
+                // Send request to jump to USB bootloader and wait for link down
+                bootUsbRomBootloader();
                 // Close existing stream first
                 stream = nullptr;
                 // Close connection
