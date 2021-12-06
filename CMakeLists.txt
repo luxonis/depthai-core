@@ -86,6 +86,17 @@ if(DEPTHAI_ENABLE_BACKWARD)
     set(CMAKE_ENABLE_EXPORTS ON)
 endif()
 
+# Force Colored output when using Ninja
+# Global option - affects all targets
+option(FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)" OFF)
+if(FORCE_COLORED_OUTPUT)
+    if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+       add_compile_options(-fdiagnostics-color=always)
+    elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+       add_compile_options(-fcolor-diagnostics)
+    endif()
+endif()
+
 ### Constants
 set(PROJECT_EXPORT_GROUP "${PROJECT_NAME}Targets")
 
