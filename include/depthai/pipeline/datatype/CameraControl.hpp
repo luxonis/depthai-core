@@ -159,7 +159,7 @@ class CameraControl : public Buffer {
 
     /**
      * Set a command to manually specify white-balance color correction
-     * @param colorTemperatureK Light source temperature in kelvins, range 1000..12000
+     * @param colorTemperatureK Light source color temperature in kelvins, range 1000..12000
      */
     void setManualWhiteBalance(int colorTemperatureK);
 
