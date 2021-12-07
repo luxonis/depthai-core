@@ -78,6 +78,8 @@ option(DEPTHAI_INSTALL   "Enable install target for depthai-core targets" ON)
 
 # Debug option
 set(DEPTHAI_XLINK_LOCAL "" CACHE STRING "Path to local XLink source to use instead of Hunter")
+set(DEPTHAI_SHARED_LOCAL "" CACHE STRING "Path to local depthai-shared source to use instead of submodule")
+set(DEPTHAI_BOOTLOADER_SHARED_LOCAL "" CACHE STRING "Path to local depthai-bootloader-shared source to use instead of submodule")
 
 # Enable backward stack printing on crash
 option(DEPTHAI_ENABLE_BACKWARD "Enable stacktrace printing on crash using Backward" ON)
