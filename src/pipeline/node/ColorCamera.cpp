@@ -214,6 +214,11 @@ std::tuple<int, int> ColorCamera::getVideoSize() const {
             maxVideoHeight = 1200;
         }
 
+        if(properties.resolution == ColorCameraProperties::SensorResolution::THE_5_MP) {
+            maxVideoWidth = 2592;
+            maxVideoHeight = 1944;
+        }
+
         // Take into the account the ISP scaling
         int numW = properties.ispScale.horizNumerator;
         int denW = properties.ispScale.horizDenominator;
@@ -253,6 +258,10 @@ std::tuple<int, int> ColorCamera::getStillSize() const {
         if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_4_K) {
             maxStillWidth = 3840;
             maxStillHeight = 2160;
+        }
+        if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_5_MP) {
+            maxStillWidth = 2592;
+            maxStillHeight = 1944;
         }
         if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_12_MP) {
             maxStillWidth = 4032;  // Note not 4056 as full sensor resolution
@@ -304,6 +313,10 @@ std::tuple<int, int> ColorCamera::getResolutionSize() const {
 
         case ColorCameraProperties::SensorResolution::THE_4_K:
             return {3840, 2160};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_5_MP:
+            return {2592, 1944};
             break;
 
         case ColorCameraProperties::SensorResolution::THE_12_MP:
