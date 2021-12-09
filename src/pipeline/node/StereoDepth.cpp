@@ -171,8 +171,22 @@ float StereoDepth::getMaxDisparity() const {
     return initialConfig.getMaxDisparity();
 }
 
-void StereoDepth::setHardwareResources(int numShaves) {
-    properties.numShaves = numShaves;
+void StereoDepth::setPostProcessingHardwareResources(int numShaves, int numMemorySlices) {
+    properties.numPostProcessingShaves = numShaves;
+    properties.numPostProcessingMemorySlices = numMemorySlices;
+}
+
+void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
+    switch(mode) {
+        case PresetMode::HIGH_ACCURACY: {
+            initialConfig.setConfidenceThreshold(200);
+            initialConfig.setLeftRightCheck(5);
+        } break;
+        case PresetMode::HIGH_DENSITY: {
+            initialConfig.setConfidenceThreshold(245);
+            initialConfig.setLeftRightCheck(10);
+        } break;
+    }
 }
 
 }  // namespace node

@@ -16,6 +16,11 @@ class StereoDepth : public Node {
    public:
     using Properties = dai::StereoDepthProperties;
 
+    /**
+     * Preset modes for stereo depth.
+     */
+    enum class PresetMode : std::uint32_t { HIGH_ACCURACY, HIGH_DENSITY };
+
    private:
     Properties properties;
 
@@ -317,9 +322,16 @@ class StereoDepth : public Node {
     /**
      * Specify allocated hardware resources for stereo depth.
      * Suitable only to increase post processing runtime.
-     * @param numShaves Number of shaves. Maximum 2.
+     * @param numShaves Number of shaves.
+     * @param numMemorySlices Number of memory slices.
      */
-    void setHardwareResources(int numShaves);
+    void setPostProcessingHardwareResources(int numShaves, int numMemorySlices);
+
+    /**
+     * Sets a default preset based on specified option.
+     * @param mode Stereo depth preset mode
+     */
+    void setDefaultProfilePreset(PresetMode mode);
 };
 
 }  // namespace node
