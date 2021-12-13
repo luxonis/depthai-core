@@ -622,8 +622,92 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, T
     return {result.success, result.errorMsg};
 }
 
-/* TODO(themarpe)
-std::tuple<bool, std::string> DeviceBootloader::flashCustom(Memory memory, uint32_t offset, std::function<void(float)> progressCb, std::vector<uint8_t> data) {
+std::tuple<bool, std::string> DeviceBootloader::flashGpioModeBootHeader(Memory memory, int gpioMode) {
+    // TODO(themarpe) - use memory param
+    (void)memory;
+
+    Request::UpdateFlashBootHeader updateBootHeader;
+    updateBootHeader.type = Request::UpdateFlashBootHeader::GPIO_MODE;
+    updateBootHeader.gpioMode = gpioMode;
+
+    // Send & Get response
+    if(!sendRequest(updateBootHeader)) return {false, "Couldn't send request to flash boot header"};
+    Response::FlashComplete resp = {};
+    receiveResponse(resp);
+    return {resp.success, resp.errorMsg};
+}
+
+std::tuple<bool, std::string> DeviceBootloader::flashUsbRecoveryBootHeader(Memory memory) {
+    // TODO(themarpe) - use memory param
+    (void)memory;
+
+    Request::UpdateFlashBootHeader updateBootHeader;
+    updateBootHeader.type = Request::UpdateFlashBootHeader::USB_RECOVERY;
+
+    // Send & Get response
+    if(!sendRequest(updateBootHeader)) return {false, "Couldn't send request to flash boot header"};
+    Response::FlashComplete resp = {};
+    receiveResponse(resp);
+    return {resp.success, resp.errorMsg};
+}
+
+std::tuple<bool, std::string> DeviceBootloader::flashBootHeader(Memory memory, int64_t offset, int64_t location, int32_t dummyCycles, int32_t frequency) {
+    // TODO(themarpe) - use memory param
+    (void)memory;
+
+    Request::UpdateFlashBootHeader updateBootHeader;
+    updateBootHeader.type = Request::UpdateFlashBootHeader::NORMAL;
+    updateBootHeader.offset = offset;
+    updateBootHeader.location = location;
+    updateBootHeader.dummyCycles = dummyCycles;
+    updateBootHeader.frequency = frequency;
+
+    // Send & Get response
+    if(!sendRequest(updateBootHeader)) return {false, "Couldn't send request to flash boot header"};
+    Response::FlashComplete resp = {};
+    receiveResponse(resp);
+    return {resp.success, resp.errorMsg};
+}
+
+std::tuple<bool, std::string> DeviceBootloader::flashFastBootHeader(Memory memory, int64_t offset, int64_t location, int32_t dummyCycles, int32_t frequency) {
+    // TODO(themarpe) - use memory param
+    (void)memory;
+
+    Request::UpdateFlashBootHeader updateBootHeader;
+    updateBootHeader.type = Request::UpdateFlashBootHeader::FAST;
+    updateBootHeader.offset = offset;
+    updateBootHeader.location = location;
+    updateBootHeader.dummyCycles = dummyCycles;
+    updateBootHeader.frequency = frequency;
+
+    // Send & Get response
+    if(!sendRequest(updateBootHeader)) return {false, "Couldn't send request to flash boot header"};
+    Response::FlashComplete resp = {};
+    receiveResponse(resp);
+    return {resp.success, resp.errorMsg};
+}
+
+std::tuple<bool, std::string> DeviceBootloader::flashCustom(Memory memory,
+                                                            size_t offset,
+                                                            const std::vector<uint8_t>& data,
+                                                            std::function<void(float)> progressCb) {
+    if(data.size() == 0) {
+        throw std::invalid_argument("Size to flash is zero");
+    }
+    return flashCustom(memory, offset, data.data(), data.size(), "", progressCb);
+}
+std::tuple<bool, std::string> DeviceBootloader::flashCustom(
+    Memory memory, size_t offset, const uint8_t* data, size_t size, std::function<void(float)> progressCb) {
+    if(data == nullptr || size == 0) {
+        throw std::invalid_argument("Data is nullptr or size is zero");
+    }
+    return flashCustom(memory, offset, data, size, "", progressCb);
+}
+std::tuple<bool, std::string> DeviceBootloader::flashCustom(Memory memory, size_t offset, std::string filename, std::function<void(float)> progressCb) {
+    return flashCustom(memory, offset, nullptr, 0, filename, progressCb);
+}
+std::tuple<bool, std::string> DeviceBootloader::flashCustom(
+    Memory memory, size_t offset, const uint8_t* data, size_t size, std::string filename, std::function<void(float)> progressCb) {
     // Only flash memory is supported for now
     if(memory != Memory::FLASH) {
         throw std::invalid_argument("Only FLASH memory is supported for now");
@@ -632,19 +716,25 @@ std::tuple<bool, std::string> DeviceBootloader::flashCustom(Memory memory, uint3
         std::runtime_error("Current bootloader version doesn't support custom flashing");
     }
 
-    // get streamId
-    streamId_t streamId = stream->getStreamId();
+    std::vector<uint8_t> optFileData;
+    if(!filename.empty()) {
+        // Read file into memory first
+        std::ifstream stream(filename, std::ios::in | std::ios::binary);
+        optFileData = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
+        data = optFileData.data();
+        size = optFileData.size();
+    }
 
     // send request to FLASH BOOTLOADER
     Request::UpdateFlashEx2 updateFlashEx2;
     updateFlashEx2.memory = memory;
-    updateFlashEx2.offset = offset;
-    updateFlashEx2.totalSize = static_cast<uint32_t>(data.size());
-    updateFlashEx2.numPackets = ((static_cast<uint32_t>(data.size()) - 1) / bootloader::XLINK_STREAM_MAX_SIZE) + 1;
+    updateFlashEx2.offset = static_cast<uint32_t>(offset);
+    updateFlashEx2.totalSize = static_cast<uint32_t>(size);
+    updateFlashEx2.numPackets = ((static_cast<uint32_t>(size) - 1) / bootloader::XLINK_STREAM_MAX_SIZE) + 1;
     if(!sendRequest(updateFlashEx2)) return {false, "Couldn't send bootloader flash request"};
 
     // After that send numPackets of data
-    stream->writeSplit(data.data(), data.size(), bootloader::XLINK_STREAM_MAX_SIZE);
+    stream->writeSplit(data, size, bootloader::XLINK_STREAM_MAX_SIZE);
 
     // Then wait for response by bootloader
     // Wait till FLASH_COMPLETE response
@@ -654,13 +744,13 @@ std::tuple<bool, std::string> DeviceBootloader::flashCustom(Memory memory, uint3
         if(!receiveResponseData(data)) return {false, "Couldn't receive bootloader response"};
 
         Response::FlashStatusUpdate update;
-        if(parseBootloaderResponse(data, update)) {
+        if(parseResponse(data, update)) {
             // if progress callback is set
             if(progressCb != nullptr) {
                 progressCb(update.progress);
             }
             // if flash complete response arrived, break from while loop
-        } else if(parseBootloaderResponse(data, result)) {
+        } else if(parseResponse(data, result)) {
             break;
         } else {
             // Unknown response, shouldn't happen
@@ -672,7 +762,68 @@ std::tuple<bool, std::string> DeviceBootloader::flashCustom(Memory memory, uint3
     // Return if flashing was successful
     return {result.success, result.errorMsg};
 }
-*/
+
+std::tuple<bool, std::string> DeviceBootloader::readCustom(
+    Memory memory, size_t offset, size_t size, std::vector<uint8_t>& data, std::function<void(float)> progressCb) {
+    // Resize container if not too small
+    if(data.size() < size) {
+        data.resize(size);
+    }
+    return readCustom(memory, offset, size, data.data(), "", progressCb);
+}
+std::tuple<bool, std::string> DeviceBootloader::readCustom(Memory memory, size_t offset, size_t size, uint8_t* data, std::function<void(float)> progressCb) {
+    return readCustom(memory, offset, size, data, "", progressCb);
+}
+std::tuple<bool, std::string> DeviceBootloader::readCustom(
+    Memory memory, size_t offset, size_t size, std::string filename, std::function<void(float)> progressCb) {
+    return readCustom(memory, offset, size, nullptr, filename, progressCb);
+}
+
+std::tuple<bool, std::string> DeviceBootloader::readCustom(
+    Memory memory, size_t offset, size_t size, uint8_t* data, std::string filename, std::function<void(float)> progressCb) {
+    // Only flash memory is supported for now
+    if(memory != Memory::FLASH) {
+        throw std::invalid_argument("Only FLASH memory is supported for now");
+    }
+
+    // send request to Read Flash
+    Request::ReadFlash readFlash;
+    readFlash.memory = memory;
+    readFlash.offset = static_cast<uint32_t>(offset);
+    readFlash.totalSize = static_cast<uint32_t>(size);
+    if(!sendRequest(readFlash)) return {false, "Couldn't send bootloader flash request"};
+
+    // Then wait for response by bootloader
+    Response::ReadFlash response;
+    receiveResponse(response);
+    // If error
+    if(!response.success) {
+        return {false, std::string(response.errorMsg)};
+    }
+
+    // Read numPackets of data
+    if(filename.empty()) {
+        // Read to buffer
+        size_t dataOffset = 0;
+        for(unsigned i = 0; i < response.numPackets; i++) {
+            auto d = stream->read();
+            memcpy(data + dataOffset, d.data(), d.size());
+            dataOffset += d.size();
+            if(progressCb) progressCb((1.0f / response.numPackets) * (i + 1));
+        }
+    } else {
+        // Write to file
+        std::ofstream outputFile(filename);
+        for(unsigned i = 0; i < response.numPackets; i++) {
+            auto d = stream->read();
+            outputFile.write(reinterpret_cast<char*>(d.data()), d.size());
+            if(progressCb) progressCb((1.0f / response.numPackets) * (i + 1));
+        }
+    }
+
+    // Return if flashing was successful
+    return {response.success, response.errorMsg};
+}
 
 nlohmann::json DeviceBootloader::readConfigData(Memory memory, Type type) {
     // Send request to GET_BOOTLOADER_CONFIG
