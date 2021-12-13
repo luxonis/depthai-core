@@ -24,6 +24,8 @@ class StereoDepth : public Node {
    private:
     Properties properties;
 
+    PresetMode presetMode = PresetMode::HIGH_DENSITY;
+
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
     std::shared_ptr<RawStereoDepthConfig> rawConfig;

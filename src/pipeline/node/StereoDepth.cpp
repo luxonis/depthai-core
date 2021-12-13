@@ -25,6 +25,8 @@ StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
                &debugExtDispLrCheckIt2,
                &debugDispCostDump,
                &confidenceMap};
+
+    setDefaultProfilePreset(presetMode);
 }
 
 std::string StereoDepth::getName() const {
@@ -177,7 +179,8 @@ void StereoDepth::setPostProcessingHardwareResources(int numShaves, int numMemor
 }
 
 void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
-    switch(mode) {
+    presetMode = mode;
+    switch(presetMode) {
         case PresetMode::HIGH_ACCURACY: {
             initialConfig.setConfidenceThreshold(200);
             initialConfig.setLeftRightCheck(5);
