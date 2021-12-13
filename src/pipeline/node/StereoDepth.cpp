@@ -117,7 +117,7 @@ void StereoDepth::setMedianFilter(dai::MedianFilter median) {
     properties.initialConfig = *rawConfig;
 }
 void StereoDepth::setDepthAlign(Properties::DepthAlign align) {
-    properties.depthAlign = align;
+    initialConfig.setDepthAlign(align);
     // Unset 'depthAlignCamera', that would take precedence otherwise
     properties.depthAlignCamera = CameraBoardSocket::AUTO;
 }
