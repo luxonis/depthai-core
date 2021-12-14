@@ -10,6 +10,10 @@ StereoDepthConfig::StereoDepthConfig() : Buffer(std::make_shared<RawStereoDepthC
 StereoDepthConfig::StereoDepthConfig(std::shared_ptr<RawStereoDepthConfig> ptr)
     : Buffer(std::move(ptr)), cfg(*dynamic_cast<RawStereoDepthConfig*>(raw.get())) {}
 
+void StereoDepthConfig::setDepthAlign(AlgorithmControl::DepthAlign align) {
+    cfg.algorithmControl.depthAlign = align;
+}
+
 void StereoDepthConfig::setConfidenceThreshold(int confThr) {
     cfg.costMatching.confidenceThreshold = confThr;
 }
@@ -18,11 +22,11 @@ int StereoDepthConfig::getConfidenceThreshold() const {
     return cfg.costMatching.confidenceThreshold;
 }
 
-void StereoDepthConfig::setMedianFilter(dai::MedianFilter median) {
+void StereoDepthConfig::setMedianFilter(MedianFilter median) {
     cfg.postProcessing.median = median;
 }
 
-dai::MedianFilter StereoDepthConfig::getMedianFilter() const {
+MedianFilter StereoDepthConfig::getMedianFilter() const {
     return cfg.postProcessing.median;
 }
 

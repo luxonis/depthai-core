@@ -16,8 +16,15 @@ class StereoDepth : public Node {
    public:
     using Properties = dai::StereoDepthProperties;
 
+    /**
+     * Preset modes for stereo depth.
+     */
+    enum class PresetMode : std::uint32_t { HIGH_ACCURACY, HIGH_DENSITY };
+
    private:
     Properties properties;
+
+    PresetMode presetMode = PresetMode::HIGH_DENSITY;
 
     nlohmann::json getProperties() override;
     std::shared_ptr<Node> clone() override;
@@ -313,6 +320,20 @@ class StereoDepth : public Node {
      * @returns Maximum disparity value that the node can return
      */
     [[deprecated("Use 'initialConfig.getMaxDisparity()' instead")]] float getMaxDisparity() const;
+
+    /**
+     * Specify allocated hardware resources for stereo depth.
+     * Suitable only to increase post processing runtime.
+     * @param numShaves Number of shaves.
+     * @param numMemorySlices Number of memory slices.
+     */
+    void setPostProcessingHardwareResources(int numShaves, int numMemorySlices);
+
+    /**
+     * Sets a default preset based on specified option.
+     * @param mode Stereo depth preset mode
+     */
+    void setDefaultProfilePreset(PresetMode mode);
 };
 
 }  // namespace node
