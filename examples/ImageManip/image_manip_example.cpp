@@ -34,7 +34,7 @@ int main() {
     imageManip->initialConfig.setResizeThumbnail(300, 400);
 
     // Second image manipulator - Create a off center crop
-    imageManip2->initialConfig.setCropRect(0.1, 0.1, 0.3, 0.3);
+    imageManip2->initialConfig.setCropRect(0.1f, 0.1f, 0.3f, 0.3f);
     imageManip2->inputConfig.setWaitForMessage(true);
 
     // Linking

@@ -10,8 +10,8 @@ NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t n
     : NeuralNetwork(par, nodeId, std::make_unique<NeuralNetwork::Properties>()) {}
 NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
     : NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperties>(par, nodeId, std::move(props)),
-    inputs("inputs", Input(*this, "", Input::Type::SReceiver, false, 1, true, {{DatatypeEnum::Buffer, true}})),
-    passthroughs("passthroughs", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}})) {
+      inputs("inputs", Input(*this, "", Input::Type::SReceiver, false, 1, true, {{DatatypeEnum::Buffer, true}})),
+      passthroughs("passthroughs", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}})) {
     setInputRefs({&input});
     setOutputRefs({&out, &passthrough});
     setInputMapRefs({&inputs});
@@ -32,7 +32,7 @@ void NeuralNetwork::setBlobPath(const std::string& path) {
     networkOpenvinoVersion = OpenVINO::getBlobLatestSupportedVersion(reader.getVersionMajor(), reader.getVersionMinor());
 
     properties.blobUri = asset->getRelativeUri();
-    properties.blobSize = asset->data.size();
+    properties.blobSize = static_cast<uint32_t>(asset->data.size());
 }
 
 void NeuralNetwork::setNumPoolFrames(int numFrames) {

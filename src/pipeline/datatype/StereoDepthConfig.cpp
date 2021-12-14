@@ -46,6 +46,10 @@ void StereoDepthConfig::setLeftRightCheck(bool enable) {
     cfg.algorithmControl.enableLeftRightCheck = enable;
 }
 
+void StereoDepthConfig::setExtendedDisparity(bool enable) {
+    cfg.algorithmControl.enableExtended = enable;
+}
+
 void StereoDepthConfig::setSubpixel(bool enable) {
     cfg.algorithmControl.enableSubpixel = enable;
 }
@@ -56,7 +60,7 @@ float StereoDepthConfig::getMaxDisparity() const {
         maxDisp = 63;
     }
     if(cfg.costMatching.enableCompanding) maxDisp = 175;
-    if(false) maxDisp *= 2;  // TODO re-enable with extended
+    if(cfg.algorithmControl.enableExtended) maxDisp *= 2;
     if(cfg.algorithmControl.enableSubpixel) maxDisp *= (1 << cfg.algorithmControl.subpixelFractionalBits);
     return maxDisp;
 }

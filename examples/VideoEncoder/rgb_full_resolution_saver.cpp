@@ -2,8 +2,8 @@
 #include <iostream>
 
 // Inludes common necessary includes for development using depthai library
-#include "utility.hpp"
 #include "depthai/depthai.hpp"
+#include "utility.hpp"
 
 int main() {
     using namespace std::chrono;
@@ -23,7 +23,7 @@ int main() {
     // Properties
     camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_4_K);
-    videoEnc->setDefaultProfilePreset(camRgb->getVideoSize(), camRgb->getFps(), dai::VideoEncoderProperties::Profile::MJPEG);
+    videoEnc->setDefaultProfilePreset(camRgb->getFps(), dai::VideoEncoderProperties::Profile::MJPEG);
 
     // Linking
     camRgb->video.link(xoutRgb->input);

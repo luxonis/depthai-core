@@ -3,7 +3,7 @@ include(CTest)
 enable_testing()
 
 # Add catch2 for writing tests
-hunter_add_package(Catch)
+hunter_add_package(Catch2)
 find_package(Catch2 CONFIG REQUIRED)
 
 # Macro for adding new tests
@@ -13,7 +13,9 @@ function(dai_add_test test_name test_src)
     add_executable(${test_name} ${test_src})
 
     # Add to clangformat target
-    target_clangformat_setup(${test_name} "")
+    if(COMMAND target_clangformat_setup)
+        target_clangformat_setup(${test_name} "")
+    endif()
 
     # Link to core and Catch2 testing framework
     target_link_libraries(${test_name} PRIVATE depthai-core Catch2::Catch2)
@@ -22,7 +24,9 @@ function(dai_add_test test_name test_src)
     add_test(${test_name} ${test_name})
 
     # Add sanitizers for tests as well
-    add_sanitizers(${test_name})
+    if(COMMAND add_sanitizers)
+        add_sanitizers(${test_name})
+    endif()
 
     # Add ubsan halt on error
     set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1")

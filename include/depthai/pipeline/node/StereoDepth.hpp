@@ -101,6 +101,18 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
     Output debugDispLrCheckIt2{*this, "debugDispLrCheckIt2", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
+     * Outputs ImgFrame message that carries extended left-right check first iteration (downscaled frame, before combining with second iteration) disparity map.
+     * Useful for debugging/fine tuning.
+     */
+    Output debugExtDispLrCheckIt1{*this, "debugExtDispLrCheckIt1", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
+     * Outputs ImgFrame message that carries extended left-right check second iteration (downscaled frame, before combining with first iteration) disparity map.
+     * Useful for debugging/fine tuning.
+     */
+    Output debugExtDispLrCheckIt2{*this, "debugExtDispLrCheckIt2", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
      * Outputs ImgFrame message that carries cost dump of disparity map.
      * Useful for debugging/fine tuning.
      */

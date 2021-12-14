@@ -15,7 +15,19 @@ StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
       initialConfig(rawConfig) {
     // 'properties' defaults already set
     setInputRefs({&inputConfig, &left, &right});
-    setOutputRefs({&depth, &disparity, &syncedLeft, &syncedRight, &rectifiedLeft, &rectifiedRight});
+    setOutputRefs({&depth,
+                   &disparity,
+                   &syncedLeft,
+                   &syncedRight,
+                   &rectifiedLeft,
+                   &rectifiedRight,
+                   &outConfig,
+                   &debugDispLrCheckIt1,
+                   &debugDispLrCheckIt2,
+                   &debugExtDispLrCheckIt1,
+                   &debugExtDispLrCheckIt2,
+                   &debugDispCostDump,
+                   &confidenceMap});
 }
 
 void StereoDepth::loadCalibrationData(const std::vector<std::uint8_t>& data) {
@@ -50,7 +62,7 @@ void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const 
     assetKey = "meshRight";
     properties.mesh.meshRightUri = assetManager.set(assetKey, meshAsset)->getRelativeUri();
 
-    properties.mesh.meshSize = meshAsset.data.size();
+    properties.mesh.meshSize = static_cast<uint32_t>(meshAsset.data.size());
 }
 
 void StereoDepth::loadMeshFiles(const std::string& pathLeft, const std::string& pathRight) {
@@ -116,7 +128,8 @@ void StereoDepth::setSubpixel(bool enable) {
     properties.initialConfig = *rawConfig;
 }
 void StereoDepth::setExtendedDisparity(bool enable) {
-    properties.enableExtendedDisparity = enable;
+    initialConfig.setExtendedDisparity(enable);
+    properties.initialConfig = *rawConfig;
 }
 void StereoDepth::setRectifyEdgeFillColor(int color) {
     properties.rectifyEdgeFillColor = color;

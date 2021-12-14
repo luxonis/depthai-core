@@ -59,13 +59,25 @@ find_package(libnop ${_QUIET} CONFIG REQUIRED)
 
 # XLink
 if(DEPTHAI_XLINK_LOCAL)
-    add_subdirectory("${DEPTHAI_XLINK_LOCAL}" ${CMAKE_CURRENT_BINARY_DIR}/XLink EXCLUDE_FROM_ALL)
+    set(_BUILD_SHARED_LIBS_SAVED "${BUILD_SHARED_LIBS}")
+    set(BUILD_SHARED_LIBS OFF)
+    add_subdirectory("${DEPTHAI_XLINK_LOCAL}" ${CMAKE_CURRENT_BINARY_DIR}/XLink)
+    set(BUILD_SHARED_LIBS "${_BUILD_SHARED_LIBS_SAVED}")
+    unset(_BUILD_SHARED_LIBS_SAVED)
+    if(NOT BUILD_SHARED_LIBS)
+        list(APPEND targets_to_export XLink)
+    endif()
 else()
     find_package(XLink ${_QUIET} CONFIG REQUIRED)
 endif()
 
 # OpenCV 4 - (optional, quiet always)
 find_package(OpenCV 4 QUIET CONFIG)
+
+# include optional dependency cmake
+if(DEPTHAI_DEPENDENCY_INCLUDE)
+    include(${DEPTHAI_DEPENDENCY_INCLUDE} OPTIONAL)
+endif()
 
 # Cleanup
 if(CONFIG_MODE)
