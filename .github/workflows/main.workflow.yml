@@ -196,14 +196,14 @@ jobs:
 
     - name: Upload Win64 shared library
       if: matrix.os == 'windows-latest' && matrix.shared == 'Shared' && matrix.platform == 'x64'
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v2.2.4
       with:
         name: windows-prebuilt-win64
         path: ${{ env.GITHUB_WORKSPACE }}/depthai_install/
 
     - name: Upload Win32 shared library
       if: matrix.os == 'windows-latest' && matrix.shared == 'Shared' && matrix.platform == 'Win32'
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v2.2.4
       with:
         name: windows-prebuilt-win32-no-opencv
         path: ${{ env.GITHUB_WORKSPACE }}/depthai_install/
