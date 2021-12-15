@@ -1,6 +1,7 @@
 
 #include "depthai/device/DataQueue.hpp"
 // std
+#include <chrono>
 #include <iostream>
 
 // project
@@ -12,6 +13,7 @@
 #include "depthai-shared/xlink/XLinkConstants.hpp"
 
 // libraries
+#include "spdlog/fmt/chrono.h"
 #include "spdlog/spdlog.h"
 
 namespace dai {
@@ -34,8 +36,10 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
                 // Blocking
                 packet = stream.readRaw();
 
-                // parse packet
+                // parse packet - gather timing information
+                auto t1Parse = std::chrono::steady_clock::now();
                 auto data = StreamMessageParser::parseMessageToADatatype(packet);
+                auto t2Parse = std::chrono::steady_clock::now();
 
                 // Trace level debugging
                 if(spdlog::get_level() == spdlog::level::trace) {
@@ -44,8 +48,12 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
                     data->getRaw()->serialize(metadata, type);
                     std::string objData = "/";
                     if(!metadata.empty()) objData = nlohmann::json::from_msgpack(metadata).dump();
-                    spdlog::trace(
-                        "Received message from device ({}) - data size: {}, object type: {} object data: {}", name, data->getRaw()->data.size(), type, objData);
+                    spdlog::trace("Received message from device ({}) -  parsing time: {}, data size: {}, object type: {} object data: {}",
+                                  name,
+                                  std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
+                                  data->getRaw()->data.size(),
+                                  type,
+                                  objData);
                 }
 
                 // release packet
