@@ -38,7 +38,7 @@ int main() {
     bool lrcheck = false;
     bool subpixel = false;
 
-    stereo->initialConfig.setConfidenceThreshold(255);
+    stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     stereo->setLeftRightCheck(lrcheck);
     stereo->setSubpixel(subpixel);
 

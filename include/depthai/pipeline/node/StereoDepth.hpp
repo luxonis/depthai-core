@@ -16,7 +16,13 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
    public:
     constexpr static const char* NAME = "StereoDepth";
 
+    /**
+     * Preset modes for stereo depth.
+     */
+    enum class PresetMode : std::uint32_t { HIGH_ACCURACY, HIGH_DENSITY };
+
    private:
+    PresetMode presetMode = PresetMode::HIGH_DENSITY;
     std::shared_ptr<RawStereoDepthConfig> rawConfig;
 
    public:
@@ -308,6 +314,20 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * @returns Maximum disparity value that the node can return
      */
     [[deprecated("Use 'initialConfig.getMaxDisparity()' instead")]] float getMaxDisparity() const;
+
+    /**
+     * Specify allocated hardware resources for stereo depth.
+     * Suitable only to increase post processing runtime.
+     * @param numShaves Number of shaves.
+     * @param numMemorySlices Number of memory slices.
+     */
+    void setPostProcessingHardwareResources(int numShaves, int numMemorySlices);
+
+    /**
+     * Sets a default preset based on specified option.
+     * @param mode Stereo depth preset mode
+     */
+    void setDefaultProfilePreset(PresetMode mode);
 };
 
 }  // namespace node

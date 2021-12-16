@@ -28,6 +28,8 @@ StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
                    &debugExtDispLrCheckIt2,
                    &debugDispCostDump,
                    &confidenceMap});
+
+    setDefaultProfilePreset(presetMode);
 }
 
 void StereoDepth::loadCalibrationData(const std::vector<std::uint8_t>& data) {
@@ -105,7 +107,7 @@ void StereoDepth::setMedianFilter(dai::MedianFilter median) {
     properties.initialConfig = *rawConfig;
 }
 void StereoDepth::setDepthAlign(Properties::DepthAlign align) {
-    properties.depthAlign = align;
+    initialConfig.setDepthAlign(align);
     // Unset 'depthAlignCamera', that would take precedence otherwise
     properties.depthAlignCamera = CameraBoardSocket::AUTO;
 }
@@ -157,6 +159,25 @@ void StereoDepth::setNumFramesPool(int numFramesPool) {
 
 float StereoDepth::getMaxDisparity() const {
     return initialConfig.getMaxDisparity();
+}
+
+void StereoDepth::setPostProcessingHardwareResources(int numShaves, int numMemorySlices) {
+    properties.numPostProcessingShaves = numShaves;
+    properties.numPostProcessingMemorySlices = numMemorySlices;
+}
+
+void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
+    presetMode = mode;
+    switch(presetMode) {
+        case PresetMode::HIGH_ACCURACY: {
+            initialConfig.setConfidenceThreshold(200);
+            initialConfig.setLeftRightCheck(5);
+        } break;
+        case PresetMode::HIGH_DENSITY: {
+            initialConfig.setConfidenceThreshold(245);
+            initialConfig.setLeftRightCheck(10);
+        } break;
+    }
 }
 
 }  // namespace node

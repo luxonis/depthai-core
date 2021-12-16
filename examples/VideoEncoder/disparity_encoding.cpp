@@ -26,7 +26,7 @@ int main() {
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
     auto stereo = pipeline.create<dai::node::StereoDepth>();
-    stereo->initialConfig.setConfidenceThreshold(245);
+    stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     stereo->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_7x7);
     stereo->setLeftRightCheck(false);
     stereo->setExtendedDisparity(false);
