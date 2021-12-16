@@ -39,6 +39,10 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                 } catch(const std::exception&) {
                     throw;
                 }
+
+                // TMP TMP
+                data->packet = std::make_shared<decltype(packet)>(std::move(packet));
+
                 const auto t2Parse = std::chrono::steady_clock::now();
 
                 // Trace level debugging

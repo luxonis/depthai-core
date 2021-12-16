@@ -172,8 +172,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
         jser = nlohmann::json::from_msgpack(msgpackStart, msgpackStart + serializedObjectSize);
     }
 
-    // copy data part
-    std::vector<uint8_t> data(packet->data, packet->data + bufferLength);
+    // // copy data part
+    // TMPTMP
+    // std::vector<uint8_t> data(packet->data, packet->data + bufferLength);
+    std::vector<uint8_t> data;
 
     switch(objectType) {
         case DatatypeEnum::Buffer: {

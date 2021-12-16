@@ -36,7 +36,7 @@ XLinkStream::XLinkStream(const std::shared_ptr<XLinkConnection> conn, const std:
 
 // Move constructor
 XLinkStream::XLinkStream(XLinkStream&& other)
-    : connection(std::move(other.connection)), streamId(std::exchange(other.streamId, INVALID_STREAM_ID)), streamName(std::exchange(other.streamName, {})) {
+    : connection(std::move(other.connection)), streamName(std::exchange(other.streamName, {})), streamId(std::exchange(other.streamId, INVALID_STREAM_ID)) {
     // Set 'other's streamId to INVALID_STREAM_ID to prevent closing
 }
 
