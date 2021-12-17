@@ -61,6 +61,7 @@ std::shared_ptr<RawBuffer> NNData::serialize() const {
         rawNn.data.insert(rawNn.data.end(), data, data + dataSize);
 
         // Add entry in tensors
+        // TODO(themarpe) - refactor with proper way off specifying tensors
         TensorInfo info;
         info.dataType = dataType;
         info.numDimensions = 1;
@@ -90,6 +91,7 @@ std::shared_ptr<RawBuffer> NNData::serialize() const {
         rawNn.data.insert(rawNn.data.end(), data, data + dataSize);
 
         // Add entry in tensors
+        // TODO(themarpe) - refactor with proper way off specifying tensors
         TensorInfo info;
         info.dataType = dataType;
         info.numDimensions = 1;
