@@ -40,7 +40,7 @@ class ColorCamera : public Node {
     CameraControl initialControl;
 
     /**
-     * Input for ImageManipConfig message, which can modify crop paremeters in runtime
+     * Input for ImageManipConfig message, which can modify crop parameters in runtime
      *
      * Default queue is non-blocking with size 8
      */

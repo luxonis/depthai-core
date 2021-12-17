@@ -33,7 +33,7 @@ class DetectionNetwork : public NeuralNetwork {
 
    public:
     /**
-     * Input message with data to be infered upon
+     * Input message with data to be inferred upon
      * Default queue is blocking with size 5
      */
     Input input{*this, "in", Input::Type::SReceiver, true, 5, {{DatatypeEnum::Buffer, true}}};
