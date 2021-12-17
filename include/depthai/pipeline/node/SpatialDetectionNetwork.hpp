@@ -33,7 +33,7 @@ class SpatialDetectionNetwork : public DetectionNetwork {
     SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
     /**
-     * Input message with data to be infered upon
+     * Input message with data to be inferred upon
      * Default queue is blocking with size 5
      */
     Input input{*this, "in", Input::Type::SReceiver, true, 5, {{DatatypeEnum::ImgFrame, false}}};
@@ -77,13 +77,13 @@ class SpatialDetectionNetwork : public DetectionNetwork {
     void setBoundingBoxScaleFactor(float scaleFactor);
 
     /**
-     * Specifies lower threshold in milimeters for depth values which will used to calculate spatial data
+     * Specifies lower threshold in millimeters for depth values which will used to calculate spatial data
      * @param lowerThreshold LowerThreshold must be in the interval [0,upperThreshold] and less than upperThreshold.
      */
     void setDepthLowerThreshold(uint32_t lowerThreshold);
 
     /**
-     * Specifies upper threshold in milimeters for depth values which will used to calculate spatial data
+     * Specifies upper threshold in millimeters for depth values which will used to calculate spatial data
      * @param upperThreshold UpperThreshold must be in the interval (lowerThreshold,65535].
      */
     void setDepthUpperThreshold(uint32_t upperThreshold);

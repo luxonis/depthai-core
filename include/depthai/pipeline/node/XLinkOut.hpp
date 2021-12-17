@@ -23,7 +23,7 @@ class XLinkOut : public Node {
     XLinkOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
     /**
-     * Input for any type of messages to be transfered over XLink stream
+     * Input for any type of messages to be transferred over XLink stream
      *
      * Default queue is blocking with size 8
      */

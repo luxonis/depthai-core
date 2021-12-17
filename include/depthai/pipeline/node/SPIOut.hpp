@@ -40,7 +40,7 @@ class SPIOut : public Node {
     }
 
     /**
-     * Input for any type of messages to be transfered over SPI stream
+     * Input for any type of messages to be transferred over SPI stream
      *
      * Default queue is blocking with size 8
      */

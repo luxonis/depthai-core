@@ -126,11 +126,11 @@ class StereoDepth : public Node {
     /**
      * Outputs ImgFrame message that carries RAW8 confidence map.
      * Lower values means higher confidence of the calculated disparity value.
-     * RGB aligment, left-right check or any postproccessing (e.g. median filter) is not performed on confidence map.
+     * RGB alignment, left-right check or any postproccessing (e.g. median filter) is not performed on confidence map.
      */
     Output confidenceMap{*this, "confidenceMap", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
-#if 0  // will be enabled when confidence map RGB aligment/LR-check support will be added
+#if 0  // will be enabled when confidence map RGB alignment/LR-check support will be added
     /**
      * Outputs ImgFrame message that carries left-right check first iteration (before combining with second iteration) confidence map.
      * Useful for debugging/fine tuning.

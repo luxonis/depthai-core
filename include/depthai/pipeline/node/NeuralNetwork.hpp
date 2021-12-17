@@ -37,7 +37,7 @@ class NeuralNetwork : public Node {
     NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
 
     /**
-     * Input message with data to be infered upon
+     * Input message with data to be inferred upon
      * Default queue is blocking with size 5
      */
     Input input{*this, "in", Input::Type::SReceiver, true, 5, {{DatatypeEnum::Buffer, true}}};
@@ -64,7 +64,7 @@ class NeuralNetwork : public Node {
     void setBlobPath(const std::string& path);
 
     /**
-     * Specifies how many frames will be avilable in the pool
+     * Specifies how many frames will be available in the pool
      * @param numFrames How many frames will pool have
      */
     void setNumPoolFrames(int numFrames);
