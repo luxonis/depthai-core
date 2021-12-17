@@ -55,7 +55,7 @@ int main(int argc, char** argv) {
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
     // Setting node configs
-    stereo->initialConfig.setConfidenceThreshold(255);
+    stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
 
     spatialDetectionNetwork->setBlobPath(nnPath);
     spatialDetectionNetwork->setConfidenceThreshold(0.5f);

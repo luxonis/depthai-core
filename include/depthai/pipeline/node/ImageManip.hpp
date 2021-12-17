@@ -12,21 +12,19 @@ namespace node {
 /**
  * @brief ImageManip node. Capability to crop, resize, warp, ... incoming image frames
  */
-class ImageManip : public Node {
+class ImageManip : public NodeCRTP<Node, ImageManip, ImageManipProperties> {
    public:
-    using Properties = dai::ImageManipProperties;
+    constexpr static const char* NAME = "ImageManip";
+
+   protected:
+    Properties& getProperties();
 
    private:
-    Properties properties;
     std::shared_ptr<RawImageManipConfig> rawConfig;
 
-    nlohmann::json getProperties() override;
-    std::shared_ptr<Node> clone() override;
-
    public:
-    std::string getName() const override;
-
     ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Initial config to use when manipulating frames
@@ -43,7 +41,7 @@ class ImageManip : public Node {
      * Input image to be modified
      * Default queue is blocking with size 8
      */
-    Input inputImage{*this, "inputImage", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImgFrame, true}}};
+    Input inputImage{*this, "inputImage", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
      * Outputs ImgFrame message that carries modified image.
@@ -62,9 +60,15 @@ class ImageManip : public Node {
     // Functions to set properties
     /**
      * Specify whether or not wait until configuration message arrives to inputConfig Input.
-     * @param wait True to wait for configuration message, false otherwise
+     * @param wait True to wait for configuration message, false otherwise.
      */
-    void setWaitForConfigInput(bool wait);
+    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] void setWaitForConfigInput(bool wait);
+
+    /**
+     * @see setWaitForConfigInput
+     * @returns True if wait for inputConfig message, false otherwise
+     */
+    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] bool getWaitForConfigInput() const;
 
     /**
      * Specify number of frames in pool.

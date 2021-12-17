@@ -42,7 +42,6 @@ void CameraControl::setAutoFocusRegion(uint16_t startX, uint16_t startY, uint16_
 void CameraControl::setManualFocus(uint8_t lensPosition) {
     cfg.setCommand(RawCameraControl::Command::MOVE_LENS);
     cfg.lensPosition = lensPosition;
-    setAutoFocusMode(AutoFocusMode::OFF);  // TODO added for initialConfig case
 }
 
 // Exposure
@@ -84,6 +83,10 @@ void CameraControl::setAutoWhiteBalanceMode(AutoWhiteBalanceMode mode) {
 void CameraControl::setAutoWhiteBalanceLock(bool lock) {
     cfg.setCommand(RawCameraControl::Command::AWB_LOCK);
     cfg.awbLockMode = lock;
+}
+void CameraControl::setManualWhiteBalance(int colorTemperatureK) {
+    cfg.setCommand(RawCameraControl::Command::WB_COLOR_TEMP);
+    cfg.wbColorTemp = colorTemperatureK;
 }
 
 // Other image controls

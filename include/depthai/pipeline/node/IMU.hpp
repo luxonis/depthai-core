@@ -11,23 +11,15 @@ namespace node {
 /**
  * @brief IMU node for BNO08X.
  */
-class IMU : public Node {
+class IMU : public NodeCRTP<Node, IMU, IMUProperties> {
    public:
-    using Properties = dai::IMUProperties;
-
-   private:
-    Properties properties;
-
-    nlohmann::json getProperties() override;
-    std::shared_ptr<Node> clone() override;
-
-   public:
-    std::string getName() const override;
+    constexpr static const char* NAME = "IMU";
 
     /**
      * Constructs IMU node.
      */
     IMU(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    IMU(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Outputs IMUData message that carries IMU packets.
