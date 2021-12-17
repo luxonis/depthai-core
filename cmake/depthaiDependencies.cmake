@@ -16,6 +16,7 @@ else()
     if(DEPTHAI_ENABLE_BACKWARD)
         hunter_add_package(Backward)
     endif()
+    hunter_add_package(libnop)
 endif()
 
 # If library was build as static, find all dependencies
@@ -52,6 +53,9 @@ find_package(Threads ${_QUIET} REQUIRED)
 
 # Nlohmann JSON
 find_package(nlohmann_json ${_QUIET} CONFIG REQUIRED)
+
+# libnop for serialization
+find_package(libnop ${_QUIET} CONFIG REQUIRED)
 
 # XLink
 if(DEPTHAI_XLINK_LOCAL AND (NOT CONFIG_MODE))

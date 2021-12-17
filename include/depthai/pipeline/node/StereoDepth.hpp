@@ -12,9 +12,9 @@ namespace node {
 /**
  * @brief StereoDepth node. Compute stereo disparity and depth from left-right image pair.
  */
-class StereoDepth : public Node {
+class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
    public:
-    using Properties = dai::StereoDepthProperties;
+    constexpr static const char* NAME = "StereoDepth";
 
     /**
      * Preset modes for stereo depth.
@@ -22,18 +22,12 @@ class StereoDepth : public Node {
     enum class PresetMode : std::uint32_t { HIGH_ACCURACY, HIGH_DENSITY };
 
    private:
-    Properties properties;
-
     PresetMode presetMode = PresetMode::HIGH_DENSITY;
-
-    nlohmann::json getProperties() override;
-    std::shared_ptr<Node> clone() override;
     std::shared_ptr<RawStereoDepthConfig> rawConfig;
 
    public:
-    std::string getName() const override;
-
     StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Initial config to use for StereoDepth.
@@ -51,14 +45,14 @@ class StereoDepth : public Node {
      *
      * Default queue is non-blocking with size 8
      */
-    Input left{*this, "left", Input::Type::SReceiver, false, 8, {{DatatypeEnum::ImgFrame, true}}};
+    Input left{*this, "left", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
      * Input for right ImgFrame of left-right pair
      *
      * Default queue is non-blocking with size 8
      */
-    Input right{*this, "right", Input::Type::SReceiver, false, 8, {{DatatypeEnum::ImgFrame, true}}};
+    Input right{*this, "right", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
      * Outputs ImgFrame message that carries RAW16 encoded (0..65535) depth data in millimeters.

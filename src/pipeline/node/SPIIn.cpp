@@ -3,23 +3,11 @@
 namespace dai {
 namespace node {
 
-SPIIn::SPIIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
+SPIIn::SPIIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : SPIIn(par, nodeId, std::make_unique<SPIIn::Properties>()) {}
+SPIIn::SPIIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<Node, SPIIn, SPIInProperties>(par, nodeId, std::move(props)) {
     properties.busId = 0;
-    outputs = {&out};
-}
-
-std::string SPIIn::getName() const {
-    return "SPIIn";
-}
-
-nlohmann::json SPIIn::getProperties() {
-    nlohmann::json j;
-    nlohmann::to_json(j, properties);
-    return j;
-}
-
-std::shared_ptr<Node> SPIIn::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
+    setOutputRefs({&out});
 }
 
 void SPIIn::setStreamName(const std::string& name) {
