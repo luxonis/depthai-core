@@ -61,9 +61,12 @@ std::shared_ptr<RawBuffer> NNData::serialize() const {
         rawNn.data.insert(rawNn.data.end(), data, data + dataSize);
 
         // Add entry in tensors
+        // TODO(themarpe) - refactor with proper way off specifying tensors
         TensorInfo info;
         info.dataType = dataType;
-        info.numDimensions = 0;
+        info.numDimensions = 1;
+        info.dims.push_back(kv.second.size());
+        info.strides.push_back(sizeofTensorInfoDataType(dataType));
         info.name = kv.first;
         info.offset = static_cast<unsigned int>(offset);
         rawNn.tensors.push_back(info);
@@ -88,9 +91,12 @@ std::shared_ptr<RawBuffer> NNData::serialize() const {
         rawNn.data.insert(rawNn.data.end(), data, data + dataSize);
 
         // Add entry in tensors
+        // TODO(themarpe) - refactor with proper way off specifying tensors
         TensorInfo info;
         info.dataType = dataType;
-        info.numDimensions = 0;
+        info.numDimensions = 1;
+        info.dims.push_back(kv.second.size());
+        info.strides.push_back(sizeofTensorInfoDataType(dataType));
         info.name = kv.first;
         info.offset = static_cast<unsigned int>(offset);
         rawNn.tensors.push_back(info);
