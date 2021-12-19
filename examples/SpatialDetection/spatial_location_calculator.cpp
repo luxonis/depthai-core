@@ -51,7 +51,7 @@ int main() {
     config.depthThresholds.upperThreshold = 10000;
     config.roi = dai::Rect(topLeft, bottomRight);
 
-    spatialDataCalculator->setWaitForConfigInput(false);
+    spatialDataCalculator->inputConfig.setWaitForMessage(false);
     spatialDataCalculator->initialConfig.addROI(config);
 
     // Linking

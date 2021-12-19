@@ -173,7 +173,6 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/StereoDepth.cpp
     src/pipeline/node/NeuralNetwork.cpp
     src/pipeline/node/ImageManip.cpp
-    src/pipeline/node/MyProducer.cpp
     src/pipeline/node/VideoEncoder.cpp
     src/pipeline/node/DetectionNetwork.cpp
     src/pipeline/node/Script.cpp
@@ -384,6 +383,7 @@ target_link_libraries(${TARGET_CORE_NAME}
     PUBLIC
         nlohmann_json::nlohmann_json
         XLink
+        libnop
     PRIVATE
         Threads::Threads
         BZip2::bz2
@@ -403,6 +403,15 @@ target_compile_definitions(${TARGET_CORE_NAME}
         # Add depthai-bootloader version
         DEPTHAI_BOOTLOADER_VERSION="${DEPTHAI_BOOTLOADER_VERSION}"
 )
+# Check if MSVC and add a conforming preprocessor flag (libnop serialization macros)
+if (MSVC)
+    if(MSVC_VERSION LESS 1925)
+        target_compile_options(${TARGET_CORE_NAME} PUBLIC "/experimental:preprocessor")
+    else()
+        target_compile_options(${TARGET_CORE_NAME} PUBLIC "/Zc:preprocessor")
+    endif()
+endif()
+
 
 # Add Backward dependency if enabled (On by default)
 if(DEPTHAI_ENABLE_BACKWARD)
