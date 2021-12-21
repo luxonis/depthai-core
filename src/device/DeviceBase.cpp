@@ -847,6 +847,10 @@ bool DeviceBase::startPipeline(const Pipeline& pipeline) {
 }
 
 bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
+    // Pipeline start timing
+    using namespace std::chrono;
+    auto t1 = steady_clock::now();
+
     // Check openvino version
     if(!pipeline.isOpenVINOVersionCompatible(config.version)) {
         throw std::runtime_error("Device booted with different OpenVINO version that pipeline requires");
@@ -870,34 +874,39 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     pimpl->rpcClient->call("setPipelineSchema", schema);
 
     // Transfer storage != empty
+    struct JThread {
+        ~JThread() {
+            if(thread.joinable()) thread.join();
+        }
+        std::thread thread;
+    };
+    JThread assetTransferThread;
     if(!assetStorage.empty()) {
         pimpl->rpcClient->call("setAssets", assets);
 
-        // allocate, returns a pointer to memory on device side
-        auto memHandle = pimpl->rpcClient->call("memAlloc", static_cast<std::uint32_t>(assetStorage.size())).as<uint32_t>();
+        // Open a channel to transfer AssetStorage (concurrently)
+        constexpr const char* ASSET_STORAGE_STREAM = "__stream_asset_storage";
+        pimpl->rpcClient->call("openAssetStorageStream", ASSET_STORAGE_STREAM, static_cast<std::uint32_t>(assetStorage.size()));
 
         // Transfer the whole assetStorage in a separate thread
-        const std::string streamAssetStorage = "__stream_asset_storage";
-        std::thread t1([this, &streamAssetStorage, &assetStorage]() {
-            XLinkStream stream(*connection, streamAssetStorage, device::XLINK_USB_BUFFER_MAX_SIZE);
+        assetTransferThread.thread = std::thread([this, &assetStorage]() {
+            auto t1Transfer = steady_clock::now();
+            XLinkStream stream(*connection, ASSET_STORAGE_STREAM, device::XLINK_USB_BUFFER_MAX_SIZE);
+            spdlog::debug("AssetStorageStream id: {}", stream.getStreamId());
             int64_t offset = 0;
             do {
-                int64_t toTransfer = std::min(static_cast<int64_t>(device::XLINK_USB_BUFFER_MAX_SIZE), static_cast<int64_t>(assetStorage.size() - offset));
+                // Transfer half the specified size as one packet, enables FW to process it while the other packet is being transfered
+                int64_t toTransfer = std::min(static_cast<int64_t>(device::XLINK_USB_BUFFER_MAX_SIZE / 2), static_cast<int64_t>(assetStorage.size() - offset));
                 stream.write(&assetStorage[offset], toTransfer);
                 offset += toTransfer;
             } while(offset < static_cast<int64_t>(assetStorage.size()));
+            auto t2Transfer = steady_clock::now();
+            spdlog::debug("Asset transfer took: {}", duration_cast<milliseconds>(t2Transfer - t1Transfer));
         });
 
-        // Open a channel to transfer AssetStorage
-        pimpl->rpcClient->call("readFromXLink", streamAssetStorage, memHandle, assetStorage.size());
-        t1.join();
-
-        // After asset storage is transfers, set the asset storage
-        pimpl->rpcClient->call("setAssetStorage", memHandle, assetStorage.size());
+        // // TMP TMP - remove
+        // if(assetTransferThread.thread.joinable()) assetTransferThread.thread.join();
     }
-
-    // print assets on device side for test
-    pimpl->rpcClient->call("printAssets");
 
     // Build and start the pipeline
     bool success = false;
@@ -910,6 +919,11 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
         return false;
     }
 
+    auto t2 = steady_clock::now();
+
+    spdlog::debug("startPipelineImpl took: {}", duration_cast<milliseconds>(t2 - t1));
+
+    // Asset transfer thread will join upon exit
     return true;
 }
 }  // namespace dai
