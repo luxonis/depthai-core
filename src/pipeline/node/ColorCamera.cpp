@@ -204,9 +204,19 @@ std::tuple<int, int> ColorCamera::getVideoSize() const {
         int maxVideoHeight = 1080;
 
         if(properties.resolution == ColorCameraProperties::SensorResolution::THE_4_K
-           || properties.resolution == ColorCameraProperties::SensorResolution::THE_12_MP) {
+           || properties.resolution == ColorCameraProperties::SensorResolution::THE_12_MP
+           || properties.resolution == ColorCameraProperties::SensorResolution::THE_13_MP) {
             maxVideoWidth = 3840;
             maxVideoHeight = 2160;
+        }
+
+        if(properties.resolution == ColorCameraProperties::SensorResolution::THE_1200_P) {
+            maxVideoHeight = 1200;
+        }
+
+        if(properties.resolution == ColorCameraProperties::SensorResolution::THE_5_MP) {
+            maxVideoWidth = 2592;
+            maxVideoHeight = 1944;
         }
 
         // Take into the account the ISP scaling
@@ -242,13 +252,24 @@ std::tuple<int, int> ColorCamera::getStillSize() const {
     if(properties.stillWidth == ColorCameraProperties::AUTO || properties.stillHeight == ColorCameraProperties::AUTO) {
         int maxStillWidth = 1920;
         int maxStillHeight = 1080;
+        if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_1200_P) {
+            maxStillHeight = 1200;
+        }
         if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_4_K) {
             maxStillWidth = 3840;
             maxStillHeight = 2160;
         }
+        if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_5_MP) {
+            maxStillWidth = 2592;
+            maxStillHeight = 1944;
+        }
         if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_12_MP) {
             maxStillWidth = 4032;  // Note not 4056 as full sensor resolution
             maxStillHeight = 3040;
+        }
+        if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_13_MP) {
+            maxStillWidth = 4192;  // Note not 4208 as full sensor resolution
+            maxStillHeight = 3120;
         }
 
         // Take into the account the ISP scaling
@@ -286,12 +307,24 @@ std::tuple<int, int> ColorCamera::getResolutionSize() const {
             return {1920, 1080};
             break;
 
+        case ColorCameraProperties::SensorResolution::THE_1200_P:
+            return {1920, 1200};
+            break;
+
         case ColorCameraProperties::SensorResolution::THE_4_K:
             return {3840, 2160};
             break;
 
+        case ColorCameraProperties::SensorResolution::THE_5_MP:
+            return {2592, 1944};
+            break;
+
         case ColorCameraProperties::SensorResolution::THE_12_MP:
             return {4056, 3040};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_13_MP:
+            return {4208, 3120};
             break;
 
         case ColorCameraProperties::SensorResolution::THE_720_P:

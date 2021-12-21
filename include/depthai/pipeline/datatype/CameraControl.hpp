@@ -36,6 +36,7 @@ class CameraControl : public Buffer {
     using AutoWhiteBalanceMode = RawCameraControl::AutoWhiteBalanceMode;
     using SceneMode = RawCameraControl::SceneMode;
     using EffectMode = RawCameraControl::EffectMode;
+    using FrameSyncMode = RawCameraControl::FrameSyncMode;
 
     /// Construct CameraControl message
     CameraControl();
@@ -66,6 +67,12 @@ class CameraControl : public Buffer {
      */
     void setExternalTrigger(int numFramesBurst, int numFramesDiscard);
 
+    /**
+     * Set the frame sync mode for continuous streaming operation mode,
+     * translating to how the camera pin FSIN/FSYNC is used: input/output/disabled
+     */
+    void setFrameSyncMode(FrameSyncMode mode);
+
     // Focus
     /**
      * Set a command to specify autofocus mode
@@ -76,6 +83,11 @@ class CameraControl : public Buffer {
      * Set a command to trigger autofocus
      */
     void setAutoFocusTrigger();
+
+    /**
+     * Set autofocus lens range, `infinityPosition < macroPosition`, valid values `0..255`
+     */
+    void setAutoFocusLensRange(int infinityPosition, int macroPosition);
 
     /**
      * Set a command to specify focus region in pixels
@@ -147,7 +159,7 @@ class CameraControl : public Buffer {
 
     /**
      * Set a command to manually specify white-balance color correction
-     * @param colorTemperatureK Light source temperature in kelvins, range 1000..12000
+     * @param colorTemperatureK Light source color temperature in kelvins, range 1000..12000
      */
     void setManualWhiteBalance(int colorTemperatureK);
 

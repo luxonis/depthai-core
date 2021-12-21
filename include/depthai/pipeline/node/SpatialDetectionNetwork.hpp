@@ -87,6 +87,12 @@ class SpatialDetectionNetwork : public DetectionNetwork {
      * @param upperThreshold UpperThreshold must be in the interval (lowerThreshold,65535].
      */
     void setDepthUpperThreshold(uint32_t upperThreshold);
+
+    /**
+     * Specifies spatial location calculator algorithm: Average/Min/Max
+     * @param calculationAlgorithm Calculation algorithm.
+     */
+    void setSpatialCalculationAlgorithm(dai::SpatialLocationCalculatorAlgorithm calculationAlgorithm);
 };
 
 /**
