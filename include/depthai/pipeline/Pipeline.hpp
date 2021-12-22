@@ -41,6 +41,7 @@ class PipelineImpl {
     Device::Config getDeviceConfig() const;
     void setCameraTuningBlobPath(const std::string& path);
     void setXLinkChunkSize(int sizeBytes);
+    bool isLibcpythonRequired() const;
 
     // Access to nodes
     std::vector<std::shared_ptr<const Node>> getAllNodes() const;

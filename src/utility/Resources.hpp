@@ -34,10 +34,17 @@ public:
     Resources(Resources const&) = delete;
     void operator=(Resources const&) = delete;
 
+    enum class DeviceResource {
+        FIRMWARE,
+        LIBCPYTHON
+    };
+
     // Available resources
     std::vector<std::uint8_t> getDeviceFirmware(bool usb2Mode, OpenVINO::Version version = OpenVINO::DEFAULT_VERSION);
-    std::vector<std::uint8_t> getDeviceFirmware(Device::Config config, std::string pathToMvcmd = "");
+    std::vector<std::uint8_t> getDeviceFirmware(DeviceResource resource, Device::Config config, std::string pathToMvcmd = "");
     std::vector<std::uint8_t> getBootloaderFirmware(DeviceBootloader::Type type = DeviceBootloader::Type::USB);
+    std::vector<std::uint8_t> getDeviceLibcpython(Device::Config config, std::string pathToMvcmd = "");
+    std::vector<std::uint8_t> getDeviceLibcpython(OpenVINO::Version version = OpenVINO::DEFAULT_VERSION);
 
 };
 

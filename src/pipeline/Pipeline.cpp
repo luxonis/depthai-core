@@ -1,11 +1,14 @@
 #include "depthai/pipeline/Pipeline.hpp"
 
 #include "depthai/device/CalibrationHandler.hpp"
+#include "depthai/pipeline/node/Script.hpp"
 #include "depthai/utility/Initialization.hpp"
+#include "utility/Resources.hpp"
 
 // std
 #include <cassert>
 #include <fstream>
+#include <memory>
 
 // libraries
 #include "spdlog/fmt/fmt.h"
@@ -90,11 +93,18 @@ void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector
     // Serialize all asset managers into asset storage
     assetStorage.clear();
     AssetsMutable mutableAssets;
+
     // Pipeline assets
     assetManager.serialize(mutableAssets, assetStorage, "/pipeline/");
     // Node assets
     for(const auto& kv : nodeMap) {
         kv.second->getAssetManager().serialize(mutableAssets, assetStorage, fmt::format("/node/{}/", kv.second->id));
+    }
+    // Additional required assets (libcpython, ...)
+    AssetManager additionalAssets;
+    if(isLibcpythonRequired()) {
+        additionalAssets.set("__libcpython", Resources::getInstance().getDeviceLibcpython(getPipelineOpenVINOVersion().value_or(OpenVINO::DEFAULT_VERSION)));
+        additionalAssets.serialize(mutableAssets, assetStorage, "/pipeline/");
     }
 
     assets = mutableAssets;
@@ -261,6 +271,16 @@ tl::optional<OpenVINO::Version> PipelineImpl::getPipelineOpenVINOVersion() const
         // Return null
         return tl::nullopt;
     }
+}
+
+bool PipelineImpl::isLibcpythonRequired() const {
+    for(const auto& kv : nodeMap) {
+        const auto& node = kv.second;
+        if(std::dynamic_pointer_cast<const node::Script>(node)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 Device::Config PipelineImpl::getDeviceConfig() const {
