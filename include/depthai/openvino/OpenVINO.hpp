@@ -39,18 +39,18 @@ class OpenVINO {
     static Version parseVersionName(const std::string& versionString);
 
     /**
-     * Returns a list of potentionally supported versions for a specified blob major and minor versions.
+     * Returns a list of potentially supported versions for a specified blob major and minor versions.
      * @param majorVersion Major version from OpenVINO blob
      * @param minorVersion Minor version from OpenVINO blob
-     * @returns Vector of potentionally supported versions
+     * @returns Vector of potentially supported versions
      */
     static std::vector<Version> getBlobSupportedVersions(std::uint32_t majorVersion, std::uint32_t minorVersion);
 
     /**
-     * Returns latest potentionally supported version by a given blob version.
+     * Returns latest potentially supported version by a given blob version.
      * @param majorVersion Major version from OpenVINO blob
      * @param minorVersion Minor version from OpenVINO blob
-     * @returns Latest potentionally supported version
+     * @returns Latest potentially supported version
      */
     static Version getBlobLatestSupportedVersion(std::uint32_t majorVersion, std::uint32_t minorVersion);
 

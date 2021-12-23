@@ -29,8 +29,8 @@ void ObjectTracker::setTrackerType(TrackerType type) {
     properties.trackerType = type;
 }
 
-void ObjectTracker::setTrackerIdAssigmentPolicy(TrackerIdAssigmentPolicy type) {
-    properties.trackerIdAssigmentPolicy = type;
+void ObjectTracker::setTrackerIdAssignmentPolicy(TrackerIdAssignmentPolicy type) {
+    properties.trackerIdAssignmentPolicy = type;
 }
 
 }  // namespace node
