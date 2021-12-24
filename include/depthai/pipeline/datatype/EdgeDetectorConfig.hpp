@@ -25,8 +25,8 @@ class EdgeDetectorConfig : public Buffer {
 
     /**
      * Set sobel filter horizontal and vertical 3x3 kernels
-     * @param horizontalKernel Used for horizontal gradiant computation in 3x3 Sobel filter
-     * @param verticalKernel Used for vertical gradiant computation in 3x3 Sobel filter
+     * @param horizontalKernel Used for horizontal gradient computation in 3x3 Sobel filter
+     * @param verticalKernel Used for vertical gradient computation in 3x3 Sobel filter
      */
     void setSobelFilterKernels(const std::vector<std::vector<int>>& horizontalKernel, const std::vector<std::vector<int>>& verticalKernel);
 

@@ -306,7 +306,7 @@ class DeviceBase {
     bool startPipeline(const Pipeline& pipeline);
 
     /**
-     * Sets the devices logging severity level. This level affects which logs are transfered from device to host.
+     * Sets the devices logging severity level. This level affects which logs are transferred from device to host.
      *
      * @param level Logging severity
      */

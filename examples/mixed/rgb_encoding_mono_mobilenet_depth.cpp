@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <iostream>
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 // MobilenetSSD label texts

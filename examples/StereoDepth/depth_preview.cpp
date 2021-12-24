@@ -1,6 +1,6 @@
 #include <iostream>
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 // Closer-in minimum depth, disparity range is doubled (from 95 to 190):

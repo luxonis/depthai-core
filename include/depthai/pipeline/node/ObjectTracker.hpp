@@ -59,7 +59,7 @@ class ObjectTracker : public NodeCRTP<Node, ObjectTracker, ObjectTrackerProperti
     Output passthroughDetectionFrame{*this, "passthroughDetectionFrame", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
-     * Passthrough image detections message from neural nework output.
+     * Passthrough image detections message from neural network output.
      * Suitable for when input queue is set to non-blocking behavior.
      */
     Output passthroughDetections{*this, "passthroughDetections", Output::Type::MSender, {{DatatypeEnum::ImgDetections, true}}};
@@ -89,10 +89,10 @@ class ObjectTracker : public NodeCRTP<Node, ObjectTracker, ObjectTrackerProperti
     void setTrackerType(TrackerType type);
 
     /**
-     * Specify tracker ID assigment policy.
-     * @param type Tracker ID assigment policy.
+     * Specify tracker ID assignment policy.
+     * @param type Tracker ID assignment policy.
      */
-    void setTrackerIdAssigmentPolicy(TrackerIdAssigmentPolicy type);
+    void setTrackerIdAssignmentPolicy(TrackerIdAssignmentPolicy type);
 };
 
 }  // namespace node
