@@ -23,6 +23,22 @@ class ImgDetections : public Buffer {
 
     /// Detections
     std::vector<ImgDetection>& detections;
+
+    /**
+     * Retrieves image timestamp related to steady_clock / time.monotonic
+     */
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;
+
+    /**
+     * Retrieves image timestamp directly captured from device's monotonic clock,
+     * not synchronized to host time. Used mostly for debugging
+     */
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
+
+    /**
+     * Retrieves image sequence number
+     */
+    unsigned int getSequenceNum() const;
 };
 
 }  // namespace dai

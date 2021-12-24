@@ -265,4 +265,17 @@ std::vector<std::int32_t> NNData::getFirstLayerInt32() const {
     return {};
 }
 
+// getters
+std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> NNData::getTimestamp() const {
+    using namespace std::chrono;
+    return time_point<steady_clock, steady_clock::duration>{seconds(rawNn.ts.sec) + nanoseconds(rawNn.ts.nsec)};
+}
+std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> NNData::getTimestampDevice() const {
+    using namespace std::chrono;
+    return time_point<steady_clock, steady_clock::duration>{seconds(rawNn.tsDevice.sec) + nanoseconds(rawNn.tsDevice.nsec)};
+}
+unsigned int NNData::getSequenceNum() const {
+    return rawNn.sequenceNum;
+}
+
 }  // namespace dai

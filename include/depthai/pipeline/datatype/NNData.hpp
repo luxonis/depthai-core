@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <limits>
 #include <unordered_map>
 #include <vector>
@@ -138,6 +139,22 @@ class NNData : public Buffer {
      * @returns INT32 data
      */
     std::vector<std::int32_t> getFirstLayerInt32() const;
+
+    /**
+     * Retrieves image timestamp related to steady_clock / time.monotonic
+     */
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;
+
+    /**
+     * Retrieves image timestamp directly captured from device's monotonic clock,
+     * not synchronized to host time. Used mostly for debugging
+     */
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
+
+    /**
+     * Retrieves image sequence number
+     */
+    unsigned int getSequenceNum() const;
 };
 
 }  // namespace dai
