@@ -2,25 +2,18 @@
 namespace dai {
 namespace node {
 
-ImageManip::ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : Node(par, nodeId), rawConfig(std::make_shared<RawImageManipConfig>()), initialConfig(rawConfig) {
-    inputs = {&inputConfig, &inputImage};
-    outputs = {&out};
+ImageManip::ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : ImageManip(par, nodeId, std::make_unique<ImageManip::Properties>()) {}
+ImageManip::ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<Node, ImageManip, ImageManipProperties>(par, nodeId, std::move(props)),
+      rawConfig(std::make_shared<RawImageManipConfig>()),
+      initialConfig(rawConfig) {
+    setInputRefs({&inputConfig, &inputImage});
+    setOutputRefs({&out});
 }
 
-std::string ImageManip::getName() const {
-    return "ImageManip";
-}
-
-nlohmann::json ImageManip::getProperties() {
-    nlohmann::json j;
+ImageManip::Properties& ImageManip::getProperties() {
     properties.initialConfig = *rawConfig;
-    nlohmann::to_json(j, properties);
-    return j;
-}
-
-std::shared_ptr<Node> ImageManip::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
+    return properties;
 }
 
 // Initial ImageManipConfig
@@ -61,7 +54,11 @@ void ImageManip::setKeepAspectRatio(bool keep) {
 
 // Node properties configuration
 void ImageManip::setWaitForConfigInput(bool wait) {
-    properties.inputConfigSync = wait;
+    inputConfig.setWaitForMessage(wait);
+}
+
+bool ImageManip::getWaitForConfigInput() const {
+    return inputConfig.getWaitForMessage();
 }
 
 void ImageManip::setNumFramesPool(int numFramesPool) {

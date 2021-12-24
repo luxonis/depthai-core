@@ -8,38 +8,28 @@
 namespace dai {
 namespace node {
 
-StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : Node(par, nodeId), rawConfig(std::make_shared<RawStereoDepthConfig>()), initialConfig(rawConfig) {
+StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : StereoDepth(par, nodeId, std::make_unique<StereoDepth::Properties>()) {}
+StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<Node, StereoDepth, StereoDepthProperties>(par, nodeId, std::move(props)),
+      rawConfig(std::make_shared<RawStereoDepthConfig>()),
+      initialConfig(rawConfig) {
     // 'properties' defaults already set
-    inputs = {&inputConfig, &left, &right};
-    outputs = {&depth,
-               &disparity,
-               &syncedLeft,
-               &syncedRight,
-               &rectifiedLeft,
-               &rectifiedRight,
-               &outConfig,
-               &debugDispLrCheckIt1,
-               &debugDispLrCheckIt2,
-               &debugExtDispLrCheckIt1,
-               &debugExtDispLrCheckIt2,
-               &debugDispCostDump,
-               &confidenceMap};
-}
+    setInputRefs({&inputConfig, &left, &right});
+    setOutputRefs({&depth,
+                   &disparity,
+                   &syncedLeft,
+                   &syncedRight,
+                   &rectifiedLeft,
+                   &rectifiedRight,
+                   &outConfig,
+                   &debugDispLrCheckIt1,
+                   &debugDispLrCheckIt2,
+                   &debugExtDispLrCheckIt1,
+                   &debugExtDispLrCheckIt2,
+                   &debugDispCostDump,
+                   &confidenceMap});
 
-std::string StereoDepth::getName() const {
-    return "StereoDepth";
-}
-
-nlohmann::json StereoDepth::getProperties() {
-    nlohmann::json j;
-    properties.initialConfig = *rawConfig;
-    nlohmann::to_json(j, properties);
-    return j;
-}
-
-std::shared_ptr<Node> StereoDepth::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
+    setDefaultProfilePreset(presetMode);
 }
 
 void StereoDepth::loadCalibrationData(const std::vector<std::uint8_t>& data) {
@@ -117,7 +107,7 @@ void StereoDepth::setMedianFilter(dai::MedianFilter median) {
     properties.initialConfig = *rawConfig;
 }
 void StereoDepth::setDepthAlign(Properties::DepthAlign align) {
-    properties.depthAlign = align;
+    initialConfig.setDepthAlign(align);
     // Unset 'depthAlignCamera', that would take precedence otherwise
     properties.depthAlignCamera = CameraBoardSocket::AUTO;
 }
@@ -169,6 +159,25 @@ void StereoDepth::setNumFramesPool(int numFramesPool) {
 
 float StereoDepth::getMaxDisparity() const {
     return initialConfig.getMaxDisparity();
+}
+
+void StereoDepth::setPostProcessingHardwareResources(int numShaves, int numMemorySlices) {
+    properties.numPostProcessingShaves = numShaves;
+    properties.numPostProcessingMemorySlices = numMemorySlices;
+}
+
+void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
+    presetMode = mode;
+    switch(presetMode) {
+        case PresetMode::HIGH_ACCURACY: {
+            initialConfig.setConfidenceThreshold(200);
+            initialConfig.setLeftRightCheck(5);
+        } break;
+        case PresetMode::HIGH_DENSITY: {
+            initialConfig.setConfidenceThreshold(245);
+            initialConfig.setLeftRightCheck(10);
+        } break;
+    }
 }
 
 }  // namespace node

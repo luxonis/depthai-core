@@ -8,8 +8,8 @@ hunter_config(
 hunter_config(
     XLink
     VERSION "luxonis-2021.4-master"
-    URL "https://github.com/luxonis/XLink/archive/d2de4895b8f956b3f3afea220a95a30dd4a3ae79.tar.gz"
-    SHA1 "2f58b22a9c2441f9adf8ebd871f2d08162ec552b"
+    URL "https://github.com/luxonis/XLink/archive/1eaa307a3f0b5c390ee10c23daaf5fa45aa974e5.tar.gz"
+    SHA1 "a49bcb57db604e11fcfcf8fb6318b69c756735fe"
 )
 
 hunter_config(
@@ -88,6 +88,15 @@ hunter_config(
         BACKWARD_TESTS=OFF
 )
 
+# libnop - Serialization
+hunter_config(
+    libnop
+    VERSION "1.0-5a66ba9"
+    URL "https://github.com/luxonis/libnop/archive/5a66ba96d0b3d93afc4164a8a9c71949f4cee64f.tar.gz"
+    SHA1 "d699e9aede2a15d188d87d9ef1dcb1ffcb2b2321"
+)
+
+# Specific Catch2 version
 hunter_config(
     Catch2
     VERSION "2.13.7"

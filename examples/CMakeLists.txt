@@ -226,7 +226,7 @@ dai_add_example(spatial_object_tracker ObjectTracker/spatial_object_tracker.cpp 
 dai_add_example(object_tracker_video ObjectTracker/object_tracker_video.cpp ON)
 
 target_compile_definitions(object_tracker PRIVATE BLOB_PATH="${mobilenet_blob}")
-target_compile_definitions(spatial_object_tracker PRIVATE BLOB_PATH="${mobilenet_blob}")
+target_compile_definitions(spatial_object_tracker PRIVATE BLOB_PATH="${mobilenet_5shaves_blob}")
 target_compile_definitions(object_tracker_video PRIVATE BLOB_PATH="${person_detection}" VIDEO_PATH="${construction_vest}")
 
 # Script
@@ -253,6 +253,7 @@ target_compile_definitions(spatial_tiny_yolo_v4 PRIVATE BLOB_PATH="${tiny_yolo_v
 # StereoDepth
 dai_add_example(depth_crop_control StereoDepth/depth_crop_control.cpp ON)
 dai_add_example(depth_preview StereoDepth/depth_preview.cpp  ON)
+dai_add_example(depth_post_processing StereoDepth/depth_post_processing.cpp  ON)
 dai_add_example(rgb_depth_aligned StereoDepth/rgb_depth_aligned.cpp ON)
 dai_add_example(stereo_depth_video StereoDepth/stereo_depth_video.cpp ON)
 
