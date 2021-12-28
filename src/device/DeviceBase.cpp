@@ -480,7 +480,7 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
         }
     }
 
-    auto watchdogInitMsStr = spdlog::details::os::getenv("DEPTHAI_INIT_WATCHDOG");
+    auto watchdogInitMsStr = spdlog::details::os::getenv("DEPTHAI_WATCHDOG_INITIAL_DELAY");
     if(!watchdogInitMsStr.empty()) {
         // Try parsing the string as a number
         try {
@@ -488,7 +488,7 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
             config.preboot.watchdogInitialDelayMs = static_cast<uint32_t>(watchdog.count());
             spdlog::warn("Watchdog initial delay set to {} ms", *config.preboot.watchdogInitialDelayMs);
         } catch(const std::invalid_argument& e) {
-            spdlog::warn("DEPTHAI_INIT_WATCHDOG value invalid: {}", e.what());
+            spdlog::warn("DEPTHAI_WATCHDOG_INITIAL_DELAY value invalid: {}", e.what());
         }
     }
 
