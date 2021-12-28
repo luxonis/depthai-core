@@ -473,10 +473,22 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
             if(watchdogTimeout.count() == 0) {
                 spdlog::warn("Watchdog disabled! In case of unclean exit, the device needs reset or power-cycle for next run", watchdogTimeout);
             } else {
-                spdlog::warn("Using a custom watchdog value of {}", watchdogTimeout);
+                spdlog::warn("Using a custom watchdog value of {} ms", watchdogTimeout);
             }
         } catch(const std::invalid_argument& e) {
             spdlog::warn("DEPTHAI_WATCHDOG value invalid: {}", e.what());
+        }
+    }
+
+    auto watchdogInitMsStr = spdlog::details::os::getenv("DEPTHAI_INIT_WATCHDOG");
+    if(!watchdogInitMsStr.empty()) {
+        // Try parsing the string as a number
+        try {
+            std::chrono::milliseconds watchdog{std::stoi(watchdogInitMsStr)};
+            config.preboot.watchdogInitialDelayMs = static_cast<uint32_t>(watchdog.count());
+            spdlog::warn("Watchdog initial delay set to {} ms", *config.preboot.watchdogInitialDelayMs);
+        } catch(const std::invalid_argument& e) {
+            spdlog::warn("DEPTHAI_INIT_WATCHDOG value invalid: {}", e.what());
         }
     }
 
