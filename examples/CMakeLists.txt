@@ -19,9 +19,13 @@ function(dai_add_example example_name example_src enable_test)
     target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS})
 
     # Add sanitizers for example
-    add_sanitizers(${example_name})
+    if(COMMAND add_sanitizers)
+        add_sanitizers(${example_name})
+    endif()
     # Add to clangformat target
-    target_clangformat_setup(${example_name} "")
+    if(COMMAND target_clangformat_setup)
+        target_clangformat_setup(${example_name} "")
+    endif()
 
     # parse the rest of the arguments
     set(arguments ${ARGV})
@@ -143,6 +147,7 @@ hunter_private_data(
 dai_add_example(bootloader_version bootloader/bootloader_version.cpp ON)
 dai_add_example(flash_bootloader bootloader/flash_bootloader.cpp OFF)
 dai_add_example(bootloader_config bootloader/bootloader_config.cpp OFF)
+dai_add_example(poe_set_ip bootloader/poe_set_ip.cpp OFF)
 
 # calibration
 dai_add_example(calibration_flash calibration/calibration_flash.cpp OFF)
@@ -220,16 +225,18 @@ dai_add_example(spatial_object_tracker ObjectTracker/spatial_object_tracker.cpp 
 dai_add_example(object_tracker_video ObjectTracker/object_tracker_video.cpp ON)
 
 target_compile_definitions(object_tracker PRIVATE BLOB_PATH="${mobilenet_blob}")
-target_compile_definitions(spatial_object_tracker PRIVATE BLOB_PATH="${mobilenet_blob}")
+target_compile_definitions(spatial_object_tracker PRIVATE BLOB_PATH="${mobilenet_5shaves_blob}")
 target_compile_definitions(object_tracker_video PRIVATE BLOB_PATH="${person_detection}" VIDEO_PATH="${construction_vest}")
 
 # Script
 dai_add_example(script_camera_control Script/script_camera_control.cpp ON)
+dai_add_example(script_forward_frames Script/script_forward_frames.cpp ON)
 dai_add_example(script_get_ip Script/script_get_ip.cpp OFF)
 dai_add_example(script_http_client Script/script_http_client.cpp OFF)
 dai_add_example(script_http_server Script/script_http_server.cpp OFF)
 dai_add_example(script_mjpeg_server Script/script_mjpeg_server.cpp OFF)
 dai_add_example(script_nndata_example Script/script_nndata_example.cpp ON)
+dai_add_example(script_json_communication Script/script_json_communication.cpp ON)
 
 # SpatialDetection
 dai_add_example(spatial_location_calculator SpatialDetection/spatial_location_calculator.cpp ON)
@@ -246,6 +253,7 @@ target_compile_definitions(spatial_tiny_yolo_v4 PRIVATE BLOB_PATH="${tiny_yolo_v
 # StereoDepth
 dai_add_example(depth_crop_control StereoDepth/depth_crop_control.cpp ON)
 dai_add_example(depth_preview StereoDepth/depth_preview.cpp  ON)
+dai_add_example(depth_post_processing StereoDepth/depth_post_processing.cpp  ON)
 dai_add_example(rgb_depth_aligned StereoDepth/rgb_depth_aligned.cpp ON)
 dai_add_example(stereo_depth_video StereoDepth/stereo_depth_video.cpp ON)
 
@@ -253,6 +261,7 @@ dai_add_example(stereo_depth_video StereoDepth/stereo_depth_video.cpp ON)
 dai_add_example(system_information SystemLogger/system_information.cpp ON)
 
 # VideoEncoder
+dai_add_example(disparity_encoding VideoEncoder/disparity_encoding.cpp  ON)
 dai_add_example(rgb_encoding VideoEncoder/rgb_encoding.cpp  ON)
 dai_add_example(rgb_full_resolution_saver VideoEncoder/rgb_full_resolution_saver.cpp  ON)
 dai_add_example(rgb_mono_encoding VideoEncoder/rgb_mono_encoding.cpp  ON)

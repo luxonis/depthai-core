@@ -306,7 +306,7 @@ class DeviceBase {
     bool startPipeline(const Pipeline& pipeline);
 
     /**
-     * Sets the devices logging severity level. This level affects which logs are transfered from device to host.
+     * Sets the devices logging severity level. This level affects which logs are transferred from device to host.
      *
      * @param level Logging severity
      */
@@ -401,6 +401,13 @@ class DeviceBase {
      * @returns Vector of connected cameras
      */
     std::vector<CameraBoardSocket> getConnectedCameras();
+
+    /**
+     * Get sensor names for cameras that are connected to the device
+     *
+     * @returns Map/dictionary with camera sensor names, indexed by socket
+     */
+    std::unordered_map<CameraBoardSocket, std::string> getCameraSensorNames();
 
     /**
      * Retrieves current DDR memory information from device

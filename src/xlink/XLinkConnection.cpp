@@ -178,14 +178,21 @@ void XLinkConnection::checkClosed() const {
 void XLinkConnection::close() {
     if(closed.exchange(true)) return;
 
+    using namespace std::chrono;
+    constexpr auto RESET_TIMEOUT = seconds(2);
+    constexpr auto BOOTUP_SEARCH = seconds(5);
+
     if(deviceLinkId != -1 && rebootOnDestruction) {
         auto tmp = deviceLinkId;
-        XLinkResetRemote(deviceLinkId);
+
+        auto ret = XLinkResetRemoteTimeout(deviceLinkId, duration_cast<milliseconds>(RESET_TIMEOUT).count());
+        if(ret != X_LINK_SUCCESS) {
+            spdlog::debug("XLinkResetRemoteTimeout returned: {}", XLinkErrorToStr(ret));
+        }
+
         deviceLinkId = -1;
 
         // TODO(themarpe) - revisit for TCPIP protocol
-        using namespace std::chrono;
-        const auto BOOTUP_SEARCH = std::chrono::seconds(5);
 
         // Wait till same device reappears (is rebooted).
         // Only in case if device was booted to begin with

@@ -10,6 +10,7 @@
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
 #include "depthai-shared/pipeline/Assets.hpp"
+#include "depthai-shared/utility/Serialization.hpp"
 #include "depthai-shared/xlink/XLinkConstants.hpp"
 
 // project
@@ -85,16 +86,10 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
         deviceFirmware = Resources::getInstance().getDeviceFirmware(false, version);
     }
 
-    // Create msgpacks
+    // Serialize data
     std::vector<uint8_t> pipelineBinary, assetsBinary;
-    {
-        nlohmann::json j = schema;
-        pipelineBinary = nlohmann::json::to_msgpack(j);
-    }
-    {
-        nlohmann::json j = assets;
-        assetsBinary = nlohmann::json::to_msgpack(j);
-    }
+    utility::serialize(schema, pipelineBinary);
+    utility::serialize(assets, assetsBinary);
 
     // Prepare SBR structure
     SBR sbr = {};
@@ -115,11 +110,16 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
         using namespace std::chrono;
 
         auto t1 = steady_clock::now();
-        auto compressBufferSize = compressBound(deviceFirmware.size());
+        auto compressBufferSize = compressBound(static_cast<decltype(compressBound(1))>(deviceFirmware.size()));
         std::vector<uint8_t> compressBuffer(compressBufferSize);
         // Chosen impirically
         constexpr int COMPRESSION_LEVEL = 9;
-        if(compress2(compressBuffer.data(), &compressBufferSize, deviceFirmware.data(), deviceFirmware.size(), COMPRESSION_LEVEL) != Z_OK) {
+        if(compress2(compressBuffer.data(),
+                     &compressBufferSize,
+                     deviceFirmware.data(),
+                     static_cast<decltype(compressBufferSize)>(deviceFirmware.size()),
+                     COMPRESSION_LEVEL)
+           != Z_OK) {
             throw std::runtime_error("Error while compressing device firmware\n");
         }
 
@@ -730,7 +730,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashConfigData(nlohmann::json c
         setConfigReq.offset = bootloader::getStructure(type).offset.at(bootloader::Section::BOOTLOADER_CONFIG);
     }
     setConfigReq.numPackets = 1;
-    setConfigReq.totalSize = bson.size();
+    setConfigReq.totalSize = static_cast<decltype(setConfigReq.totalSize)>(bson.size());
     setConfigReq.clearConfig = 0;
     if(!sendRequest(setConfigReq)) return {false, "Couldn't send request to flash configuration data"};
 
@@ -781,7 +781,7 @@ void DeviceBootloader::bootMemory(const std::vector<uint8_t>& embeddedFw) {
     // Then wait for the link to fall down
     try {
         stream->read();
-    } catch(const std::exception& ex) {
+    } catch(const std::exception&) {
         // ignore
     }
 }
@@ -795,7 +795,7 @@ void DeviceBootloader::bootUsbRomBootloader() {
     // Then wait for the link to fall down
     try {
         stream->read();
-    } catch(const std::exception& ex) {
+    } catch(const std::exception&) {
         // ignore
     }
 }
@@ -851,7 +851,7 @@ bool DeviceBootloader::sendRequest(const T& request) {
 
     try {
         stream->write((uint8_t*)&request, sizeof(T));
-    } catch(const std::exception& ex) {
+    } catch(const std::exception&) {
         return false;
     }
 
@@ -934,7 +934,7 @@ std::string DeviceBootloader::Config::getDnsAltIPv4() {
 }
 
 void DeviceBootloader::Config::setUsbTimeout(std::chrono::milliseconds ms) {
-    usb.timeoutMs = ms.count();
+    usb.timeoutMs = static_cast<decltype(usb.timeoutMs)>(ms.count());
 }
 
 std::chrono::milliseconds DeviceBootloader::Config::getUsbTimeout() {
@@ -942,7 +942,7 @@ std::chrono::milliseconds DeviceBootloader::Config::getUsbTimeout() {
 }
 
 void DeviceBootloader::Config::setNetworkTimeout(std::chrono::milliseconds ms) {
-    network.timeoutMs = ms.count();
+    network.timeoutMs = static_cast<decltype(network.timeoutMs)>(ms.count());
 }
 
 std::chrono::milliseconds DeviceBootloader::Config::getNetworkTimeout() {

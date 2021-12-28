@@ -2,7 +2,7 @@
 #include <iostream>
 #include <thread>
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 int main() {
@@ -14,7 +14,7 @@ int main() {
     auto cam = pipeline.create<dai::node::ColorCamera>();
 
     auto jpeg = pipeline.create<dai::node::VideoEncoder>();
-    jpeg->setDefaultProfilePreset(cam->getVideoSize(), cam->getFps(), dai::VideoEncoderProperties::Profile::MJPEG);
+    jpeg->setDefaultProfilePreset(cam->getFps(), dai::VideoEncoderProperties::Profile::MJPEG);
 
     // Script node
     auto script = pipeline.create<dai::node::Script>();

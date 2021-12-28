@@ -1,20 +1,22 @@
 /**
  * This example shows usage of Camera Control message as well as ColorCamera configInput to change crop x and y
- * Uses 'WASD' controls to move the crop window, 'C' to capture a still image, 'T' to trigger autofocus, 'IOKL,.'
- * for manual exposure/focus:
+ * Uses 'WASD' controls to move the crop window, 'C' to capture a still image, 'T' to trigger autofocus, 'IOKL,.[]'
+ * for manual exposure/focus/white-balance:
  *   Control:      key[dec/inc]  min..max
  *   exposure time:     I   O      1..33000 [us]
  *   sensitivity iso:   K   L    100..1600
  *   focus:             ,   .      0..255 [far..near]
+ *   white balance:     [   ]   1000..12000 (light color temperature K)
  * To go back to auto controls:
  *   'E' - autoexposure
  *   'F' - autofocus (continuous)
+ *   'B' - auto white-balance
  */
 #include <iostream>
 
 #include "utility.hpp"
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 // Step size ('W','A','S','D' controls)
@@ -24,6 +26,7 @@ static constexpr int STEP_SIZE = 8;
 static constexpr int EXP_STEP = 500;  // us
 static constexpr int ISO_STEP = 50;
 static constexpr int LENS_STEP = 3;
+static constexpr int WB_STEP = 200;
 
 static int clamp(int num, int v0, int v1) {
     return std::max(v0, std::min(num, v1));
@@ -53,8 +56,8 @@ int main() {
     // Properties
     camRgb->setVideoSize(640, 360);
     camRgb->setPreviewSize(300, 300);
-    videoEncoder->setDefaultProfilePreset(camRgb->getVideoSize(), camRgb->getFps(), dai::VideoEncoderProperties::Profile::MJPEG);
-    stillEncoder->setDefaultProfilePreset(camRgb->getStillSize(), 1, dai::VideoEncoderProperties::Profile::MJPEG);
+    videoEncoder->setDefaultProfilePreset(camRgb->getFps(), dai::VideoEncoderProperties::Profile::MJPEG);
+    stillEncoder->setDefaultProfilePreset(1, dai::VideoEncoderProperties::Profile::MJPEG);
 
     // Linking
     camRgb->video.link(videoEncoder->input);
@@ -96,6 +99,10 @@ int main() {
     int sensIso = 800;
     int sensMin = 100;
     int sensMax = 1600;
+
+    int wbManual = 4000;
+    int wbMin = 1000;
+    int wbMax = 12000;
 
     while(true) {
         auto previewFrames = previewQueue->tryGetAll<dai::ImgFrame>();
@@ -153,6 +160,11 @@ int main() {
             dai::CameraControl ctrl;
             ctrl.setAutoExposureEnable();
             controlQueue->send(ctrl);
+        } else if(key == 'b') {
+            printf("Auto white-balance enable\n");
+            dai::CameraControl ctrl;
+            ctrl.setAutoWhiteBalanceMode(dai::CameraControl::AutoWhiteBalanceMode::AUTO);
+            controlQueue->send(ctrl);
         } else if(key == ',' || key == '.') {
             if(key == ',') lensPos -= LENS_STEP;
             if(key == '.') lensPos += LENS_STEP;
@@ -171,6 +183,14 @@ int main() {
             printf("Setting manual exposure, time: %d, iso: %d\n", expTime, sensIso);
             dai::CameraControl ctrl;
             ctrl.setManualExposure(expTime, sensIso);
+            controlQueue->send(ctrl);
+        } else if(key == '[' || key == ']') {
+            if(key == '[') wbManual -= WB_STEP;
+            if(key == ']') wbManual += WB_STEP;
+            wbManual = clamp(wbManual, wbMin, wbMax);
+            printf("Setting manual white balance, temperature: %d K\n", wbManual);
+            dai::CameraControl ctrl;
+            ctrl.setManualWhiteBalance(wbManual);
             controlQueue->send(ctrl);
         } else if(key == 'w' || key == 'a' || key == 's' || key == 'd') {
             if(key == 'a') {
