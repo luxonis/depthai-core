@@ -18,9 +18,9 @@ extern "C" {
 #include <XLink/XLinkLog.h>
 }
 
-#include <spdlog/spdlog.h>
 #include "spdlog/details/os.h"
 #include "spdlog/fmt/chrono.h"
+#include "spdlog/spdlog.h"
 
 namespace dai {
 
@@ -251,8 +251,8 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
 
     // Override with environment variables, if set
     const std::vector<std::pair<std::string, std::chrono::milliseconds*>> evars = {
-            {"DEPTHAI_CONNECT_TIMEOUT", &connectTimeout},
-            {"DEPTHAI_BOOTUP_TIMEOUT", &bootupTimeout},
+        {"DEPTHAI_CONNECT_TIMEOUT", &connectTimeout},
+        {"DEPTHAI_BOOTUP_TIMEOUT", &bootupTimeout},
     };
 
     for(auto ev : evars) {
