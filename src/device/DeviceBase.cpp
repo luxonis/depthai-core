@@ -470,9 +470,25 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
             std::chrono::milliseconds watchdog{std::stoi(watchdogMsStr)};
             config.preboot.watchdogTimeoutMs = static_cast<uint32_t>(watchdog.count());
             watchdogTimeout = watchdog;
-            spdlog::debug("Using a custom watchdog value of {}", watchdogTimeout);
+            if(watchdogTimeout.count() == 0) {
+                spdlog::warn("Watchdog disabled! In case of unclean exit, the device needs reset or power-cycle for next run", watchdogTimeout);
+            } else {
+                spdlog::warn("Using a custom watchdog value of {} ms", watchdogTimeout);
+            }
         } catch(const std::invalid_argument& e) {
             spdlog::warn("DEPTHAI_WATCHDOG value invalid: {}", e.what());
+        }
+    }
+
+    auto watchdogInitMsStr = spdlog::details::os::getenv("DEPTHAI_WATCHDOG_INITIAL_DELAY");
+    if(!watchdogInitMsStr.empty()) {
+        // Try parsing the string as a number
+        try {
+            std::chrono::milliseconds watchdog{std::stoi(watchdogInitMsStr)};
+            config.preboot.watchdogInitialDelayMs = static_cast<uint32_t>(watchdog.count());
+            spdlog::warn("Watchdog initial delay set to {} ms", *config.preboot.watchdogInitialDelayMs);
+        } catch(const std::invalid_argument& e) {
+            spdlog::warn("DEPTHAI_WATCHDOG_INITIAL_DELAY value invalid: {}", e.what());
         }
     }
 
