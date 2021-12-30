@@ -14,22 +14,19 @@ namespace node {
 /**
  * @brief MonoCamera node. For use with grayscale sensors.
  */
-class MonoCamera : public Node {
+class MonoCamera : public NodeCRTP<Node, MonoCamera, MonoCameraProperties> {
    public:
-    using Properties = dai::MonoCameraProperties;
+    constexpr static const char* NAME = "MonoCamera";
 
    private:
-    Properties properties;
-
-    nlohmann::json getProperties() override;
-    std::shared_ptr<Node> clone() override;
-
     std::shared_ptr<RawCameraControl> rawControl;
 
-   public:
-    std::string getName() const override;
+   protected:
+    Properties& getProperties();
 
+   public:
     MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Initial control options to apply to sensor

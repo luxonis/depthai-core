@@ -1,6 +1,6 @@
 #include <iostream>
 
-// Includes common necessary includes for development using depthai library
+// Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 // Closer-in minimum depth, disparity range is doubled (from 95 to 190):
@@ -35,6 +35,17 @@ int main() {
     depth->setLeftRightCheck(lr_check);
     depth->setExtendedDisparity(extended_disparity);
     depth->setSubpixel(subpixel);
+    auto config = depth->initialConfig.get();
+    config.postProcessing.speckleFilter.enable = false;
+    config.postProcessing.speckleFilter.speckleRange = 50;
+    config.postProcessing.temporalFilter.enable = true;
+    config.postProcessing.spatialFilter.enable = true;
+    config.postProcessing.spatialFilter.holeFillingRadius = 2;
+    config.postProcessing.spatialFilter.numIterations = 1;
+    config.postProcessing.thresholdFilter.minRange = 400;
+    config.postProcessing.thresholdFilter.maxRange = 15000;
+    config.postProcessing.decimationFilter.decimationFactor = 1;
+    depth->initialConfig.set(config);
 
     // Linking
     monoLeft->out.link(depth->left);

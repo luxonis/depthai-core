@@ -11,6 +11,7 @@
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
 #include "depthai-shared/pipeline/Assets.hpp"
+#include "depthai-shared/utility/Serialization.hpp"
 #include "depthai-shared/xlink/XLinkConstants.hpp"
 
 // project
@@ -469,9 +470,25 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
             std::chrono::milliseconds watchdog{std::stoi(watchdogMsStr)};
             config.preboot.watchdogTimeoutMs = static_cast<uint32_t>(watchdog.count());
             watchdogTimeout = watchdog;
-            spdlog::debug("Using a custom watchdog value of {}", watchdogTimeout);
+            if(watchdogTimeout.count() == 0) {
+                spdlog::warn("Watchdog disabled! In case of unclean exit, the device needs reset or power-cycle for next run", watchdogTimeout);
+            } else {
+                spdlog::warn("Using a custom watchdog value of {} ms", watchdogTimeout);
+            }
         } catch(const std::invalid_argument& e) {
             spdlog::warn("DEPTHAI_WATCHDOG value invalid: {}", e.what());
+        }
+    }
+
+    auto watchdogInitMsStr = spdlog::details::os::getenv("DEPTHAI_WATCHDOG_INITIAL_DELAY");
+    if(!watchdogInitMsStr.empty()) {
+        // Try parsing the string as a number
+        try {
+            std::chrono::milliseconds watchdog{std::stoi(watchdogInitMsStr)};
+            config.preboot.watchdogInitialDelayMs = static_cast<uint32_t>(watchdog.count());
+            spdlog::warn("Watchdog initial delay set to {} ms", *config.preboot.watchdogInitialDelayMs);
+        } catch(const std::invalid_argument& e) {
+            spdlog::warn("DEPTHAI_WATCHDOG_INITIAL_DELAY value invalid: {}", e.what());
         }
     }
 
@@ -606,11 +623,9 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
                 // Block
                 auto log = stream.read();
 
-                // parse packet as msgpack
                 try {
-                    auto j = nlohmann::json::from_msgpack(log);
-                    // create pipeline schema from retrieved data
-                    nlohmann::from_json(j, messages);
+                    // Deserialize incoming messages
+                    utility::deserialize(log, messages);
 
                     spdlog::trace("Log vector decoded, size: {}", messages.size());
 
@@ -684,7 +699,7 @@ std::unordered_map<CameraBoardSocket, std::string> DeviceBase::getCameraSensorNa
     return pimpl->rpcClient->call("getCameraSensorNames").as<std::unordered_map<CameraBoardSocket, std::string>>();
 }
 
-// Convinience functions for querying current system information
+// Convenience functions for querying current system information
 MemoryInfo DeviceBase::getDdrMemoryUsage() {
     checkClosed();
 
