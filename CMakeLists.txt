@@ -17,9 +17,9 @@ endif()
 
 include("cmake/HunterGate.cmake")
 HunterGate(
-    URL "https://github.com/cpp-pm/hunter/archive/v0.23.258.tar.gz"
-    SHA1 "062a19ab13ce8dffa9a882b6ce3e43bdabdf75d3"
-    LOCAL # Local config for dependencies
+    URL "https://github.com/cpp-pm/hunter/archive/v0.23.320.tar.gz"
+    SHA1 "9b4e732afd22f40482c11ad6342f7d336634226f"
+    FILEPATH ${CMAKE_CURRENT_BINARY_DIR}/generated/Hunter/config.cmake # Combined config
 )
 
 # Move binary dir if windows, to shorten the path
