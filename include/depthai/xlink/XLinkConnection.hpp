@@ -33,16 +33,12 @@ struct DeviceInfo {
  * Represents connection between host and device over XLink protocol
  */
 class XLinkConnection {
-    static std::atomic<bool> xlinkGlobalInitialized;
-    static XLinkGlobalHandler_t xlinkGlobalHandler;
-    static void initXLinkGlobal();
-    static std::mutex xlinkStreamOperationMutex;
-
    public:
     // static API
     static std::vector<DeviceInfo> getAllConnectedDevices(XLinkDeviceState_t state = X_LINK_ANY_STATE);
     static std::tuple<bool, DeviceInfo> getFirstDevice(XLinkDeviceState_t state = X_LINK_ANY_STATE);
     static std::tuple<bool, DeviceInfo> getDeviceByMxId(std::string, XLinkDeviceState_t state = X_LINK_ANY_STATE);
+    static DeviceInfo bootBootloader(const DeviceInfo& devInfo);
 
     XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
     XLinkConnection(const DeviceInfo& deviceDesc, std::string pathToMvcmd, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
@@ -68,7 +64,8 @@ class XLinkConnection {
     bool isClosed() const;
 
    private:
-    friend class XLinkStream;
+    friend struct XLinkReadError;
+    friend struct XLinkWriteError;
     // static
     static bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, const std::string& pathToMvcmd);
     static bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, std::vector<std::uint8_t>& mvcmd);

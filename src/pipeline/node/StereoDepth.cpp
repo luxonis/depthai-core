@@ -12,7 +12,19 @@ StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
     : Node(par, nodeId), rawConfig(std::make_shared<RawStereoDepthConfig>()), initialConfig(rawConfig) {
     // 'properties' defaults already set
     inputs = {&inputConfig, &left, &right};
-    outputs = {&depth, &disparity, &syncedLeft, &syncedRight, &rectifiedLeft, &rectifiedRight};
+    outputs = {&depth,
+               &disparity,
+               &syncedLeft,
+               &syncedRight,
+               &rectifiedLeft,
+               &rectifiedRight,
+               &outConfig,
+               &debugDispLrCheckIt1,
+               &debugDispLrCheckIt2,
+               &debugExtDispLrCheckIt1,
+               &debugExtDispLrCheckIt2,
+               &debugDispCostDump,
+               &confidenceMap};
 }
 
 std::string StereoDepth::getName() const {
@@ -62,7 +74,7 @@ void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const 
     assetKey = "meshRight";
     properties.mesh.meshRightUri = assetManager.set(assetKey, meshAsset)->getRelativeUri();
 
-    properties.mesh.meshSize = meshAsset.data.size();
+    properties.mesh.meshSize = static_cast<uint32_t>(meshAsset.data.size());
 }
 
 void StereoDepth::loadMeshFiles(const std::string& pathLeft, const std::string& pathRight) {
@@ -89,6 +101,9 @@ void StereoDepth::setMeshStep(int width, int height) {
 void StereoDepth::setInputResolution(int width, int height) {
     properties.width = width;
     properties.height = height;
+}
+void StereoDepth::setInputResolution(std::tuple<int, int> resolution) {
+    setInputResolution(std::get<0>(resolution), std::get<1>(resolution));
 }
 void StereoDepth::setOutputSize(int width, int height) {
     properties.outWidth = width;
@@ -117,19 +132,23 @@ void StereoDepth::setRectification(bool enable) {
     properties.enableRectification = enable;
 }
 void StereoDepth::setLeftRightCheck(bool enable) {
-    properties.enableLeftRightCheck = enable;
+    initialConfig.setLeftRightCheck(enable);
+    properties.initialConfig = *rawConfig;
 }
 void StereoDepth::setSubpixel(bool enable) {
-    properties.enableSubpixel = enable;
+    initialConfig.setSubpixel(enable);
+    properties.initialConfig = *rawConfig;
 }
 void StereoDepth::setExtendedDisparity(bool enable) {
-    properties.enableExtendedDisparity = enable;
+    initialConfig.setExtendedDisparity(enable);
+    properties.initialConfig = *rawConfig;
 }
 void StereoDepth::setRectifyEdgeFillColor(int color) {
     properties.rectifyEdgeFillColor = color;
 }
 void StereoDepth::setRectifyMirrorFrame(bool enable) {
-    properties.rectifyMirrorFrame = enable;
+    (void)enable;
+    spdlog::warn("{} is deprecated.", __func__);
 }
 void StereoDepth::setOutputRectified(bool enable) {
     (void)enable;
@@ -140,11 +159,16 @@ void StereoDepth::setOutputDepth(bool enable) {
     spdlog::warn("{} is deprecated. The output is auto-enabled if used", __func__);
 }
 
+void StereoDepth::setRuntimeModeSwitch(bool enable) {
+    properties.enableRuntimeStereoModeSwitch = enable;
+}
+
+void StereoDepth::setNumFramesPool(int numFramesPool) {
+    properties.numFramesPool = numFramesPool;
+}
+
 float StereoDepth::getMaxDisparity() const {
-    float maxDisp = 95.0;
-    if(properties.enableExtendedDisparity) maxDisp *= 2;
-    if(properties.enableSubpixel) maxDisp *= 32;
-    return maxDisp;
+    return initialConfig.getMaxDisparity();
 }
 
 }  // namespace node

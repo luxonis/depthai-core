@@ -145,9 +145,10 @@ class CalibrationHandler {
      *  Get the Fov of the camera
      *
      * @param cameraId of the camera of which we are fetching fov.
+     * @param useSpec Disabling this bool will calculate the fov based on intrinsics (focal length, image width), instead of getting it from the camera specs
      * @return field of view of the camera with given cameraId.
      */
-    float getFov(CameraBoardSocket cameraId);
+    float getFov(CameraBoardSocket cameraId, bool useSpec = true);
 
     /**
      *  Get the lens position of the given camera
@@ -158,8 +159,8 @@ class CalibrationHandler {
     uint8_t getLensPosition(CameraBoardSocket cameraId);
 
     /**
-     * Get the Camera Extrinsics object between two cameras from the data loaded if there is a linked connection
-     *  between any two cameras then there relative rotation and translation is returned by this function.
+     * Get the Camera Extrinsics object between two cameras from the calibration data if there is a linked connection
+     *  between any two cameras then the relative rotation and translation (in centimeters) is returned by this function.
      *
      * @param srcCamera Camera Id of the camera which will be considerd as origin.
      * @param dstCamera  Camera Id of the destination camera to which we are fetching the rotation and translation from the SrcCamera
@@ -176,6 +177,29 @@ class CalibrationHandler {
      *
      */
     std::vector<std::vector<float>> getCameraExtrinsics(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = false);
+
+    /**
+     * Get the Camera translation vector between two cameras from the calibration data.
+     *
+     * @param srcCamera Camera Id of the camera which will be considerd as origin.
+     * @param dstCamera  Camera Id of the destination camera to which we are fetching the translation vector from the SrcCamera
+     * @param useSpecTranslation Disabling this bool uses the translation information from the calibration data (not the board design data)
+     * @return a translation vector like [x, y, z] in centimeters
+     */
+    std::vector<float> getCameraTranslationVector(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = true);
+
+    /**
+     * Get the baseline distance between two specified cameras. By default it will get the baseline between CameraBoardSocket.RIGHT
+     * and CameraBoardSocket.LEFT.
+     *
+     * @param cam1 First camera
+     * @param cam2 Second camera
+     * @param useSpecTranslation Enabling this bool uses the translation information from the board design data (not the calibration data)
+     * @return baseline distance in centimeters
+     */
+    float getBaselineDistance(CameraBoardSocket cam1 = CameraBoardSocket::RIGHT,
+                              CameraBoardSocket cam2 = CameraBoardSocket::LEFT,
+                              bool useSpecTranslation = true);
 
     /**
      * Get the Camera To Imu Extrinsics object

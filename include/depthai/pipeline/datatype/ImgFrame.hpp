@@ -131,9 +131,24 @@ class ImgFrame : public Buffer {
     /**
      * Specifies frame height
      *
-     * @param width frame height
+     * @param height frame height
      */
-    void setHeight(unsigned int);
+    void setHeight(unsigned int height);
+
+    /**
+     * Specifies frame size
+     *
+     * @param height frame height
+     * @param width frame width
+     */
+    void setSize(unsigned int width, unsigned int height);
+
+    /**
+     * Specifies frame size
+     *
+     * @param size frame size
+     */
+    void setSize(std::tuple<unsigned int, unsigned int> size);
 
     /**
      * Specifies frame type, RGB, BGR, ...

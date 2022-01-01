@@ -25,6 +25,11 @@ class ImageManipConfig : public Buffer {
     RawImageManipConfig& cfg;
 
    public:
+    // Alias
+    using CropConfig = RawImageManipConfig::CropConfig;
+    using ResizeConfig = RawImageManipConfig::ResizeConfig;
+    using FormatConfig = RawImageManipConfig::FormatConfig;
+
     /// Construct ImageManipConfig message
     ImageManipConfig();
     explicit ImageManipConfig(std::shared_ptr<RawImageManipConfig> ptr);
@@ -39,6 +44,12 @@ class ImageManipConfig : public Buffer {
      * @param ymax Bottom right Y coordinate of rectangle
      */
     void setCropRect(float xmin, float ymin, float xmax, float ymax);
+
+    /**
+     * Specifies crop with rectangle with normalized values (0..1)
+     * @param coordinates Coordinate of rectangle
+     */
+    void setCropRect(std::tuple<float, float, float, float> coordinates);
 
     /**
      * Specifies crop with rotated rectangle. Optionally as non normalized coordinates
@@ -105,6 +116,12 @@ class ImageManipConfig : public Buffer {
     void setResize(int w, int h);
 
     /**
+     * Specifies output image size. After crop stage the image will be streched to fit.
+     * @param size Size in pixels
+     */
+    void setResize(std::tuple<int, int> size);
+
+    /**
      * Specifies output image size. After crop stage the image will be resized by preserving aspect ration.
      * Optionally background can be specified.
      *
@@ -115,6 +132,17 @@ class ImageManipConfig : public Buffer {
      * @param bgBlue Blue component
      */
     void setResizeThumbnail(int w, int h, int bgRed = 0, int bgGreen = 0, int bgBlue = 0);
+
+    /**
+     * Specifies output image size. After crop stage the image will be resized by preserving aspect ration.
+     * Optionally background can be specified.
+     *
+     * @param size Size in pixels
+     * @param bgRed Red component
+     * @param bgGreen Green component
+     * @param bgBlue Blue component
+     */
+    void setResizeThumbnail(std::tuple<int, int> size, int bgRed = 0, int bgGreen = 0, int bgBlue = 0);
 
     /**
      * Specify output frame type.
@@ -175,6 +203,21 @@ class ImageManipConfig : public Buffer {
      * @returns Output image height
      */
     int getResizeHeight() const;
+
+    /**
+     * @returns Crop configuration
+     */
+    CropConfig getCropConfig() const;
+
+    /**
+     * @returns Resize configuration
+     */
+    ResizeConfig getResizeConfig() const;
+
+    /**
+     * @returns Format configuration
+     */
+    FormatConfig getFormatConfig() const;
 
     /**
      * @returns True if resize thumbnail mode is set, false otherwise

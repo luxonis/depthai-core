@@ -12,9 +12,6 @@
 
 namespace dai {
 
-constexpr OpenVINO::Version PipelineImpl::DEFAULT_OPENVINO_VERSION;
-constexpr OpenVINO::Version Pipeline::DEFAULT_OPENVINO_VERSION;
-
 Node::Id PipelineImpl::getNextUniqueId() {
     return latestId++;
 }
@@ -82,7 +79,7 @@ std::vector<std::shared_ptr<Node>> PipelineImpl::getAllNodes() {
     return nodes;
 }
 
-void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, OpenVINO::Version& version) const {
+void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage) const {
     // Set schema
     schema = getPipelineSchema();
 
@@ -95,10 +92,8 @@ void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector
     for(const auto& kv : nodeMap) {
         kv.second->getAssetManager().serialize(mutableAssets, assetStorage, fmt::format("/node/{}/", kv.second->id));
     }
-    assets = mutableAssets;
 
-    // detect and set openvino version
-    version = getPipelineOpenVINOVersion();
+    assets = mutableAssets;
 }
 
 PipelineSchema PipelineImpl::getPipelineSchema() const {
@@ -183,7 +178,16 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
     return schema;
 }
 
-OpenVINO::Version PipelineImpl::getPipelineOpenVINOVersion() const {
+bool PipelineImpl::isOpenVINOVersionCompatible(OpenVINO::Version version) const {
+    auto ver = getPipelineOpenVINOVersion();
+    if(ver) {
+        return OpenVINO::areVersionsBlobCompatible(version, *ver);
+    } else {
+        return true;
+    }
+}
+
+tl::optional<OpenVINO::Version> PipelineImpl::getPipelineOpenVINOVersion() const {
     // Loop over nodes, and get the required information
     tl::optional<OpenVINO::Version> version;
     std::string lastNodeNameWithRequiredVersion = "";
@@ -223,17 +227,24 @@ OpenVINO::Version PipelineImpl::getPipelineOpenVINOVersion() const {
         }
     }
 
-    // After iterating over, set openvinoVersion
-    OpenVINO::Version openvinoVersion = DEFAULT_OPENVINO_VERSION;
+    // After iterating over, return appropriate version
     if(forceRequiredOpenVINOVersion) {
-        // set to forced version
-        openvinoVersion = *forceRequiredOpenVINOVersion;
+        // Return forced version
+        return forceRequiredOpenVINOVersion;
     } else if(version) {
-        // set to detected version
-        openvinoVersion = *version;
+        // Return detected version
+        return version;
+    } else {
+        // Return null
+        return tl::nullopt;
     }
+}
 
-    return openvinoVersion;
+Device::Config PipelineImpl::getDeviceConfig() const {
+    Device::Config config;
+    config.version = getPipelineOpenVINOVersion().value_or(OpenVINO::DEFAULT_VERSION);
+    // TODO(themarpe) - fill out rest of preboot config
+    return config;
 }
 
 void PipelineImpl::setCameraTuningBlobPath(const std::string& path) {
@@ -242,7 +253,11 @@ void PipelineImpl::setCameraTuningBlobPath(const std::string& path) {
     auto asset = assetManager.set(assetKey, path);
 
     globalProperties.cameraTuningBlobUri = asset->getRelativeUri();
-    globalProperties.cameraTuningBlobSize = asset->data.size();
+    globalProperties.cameraTuningBlobSize = static_cast<uint32_t>(asset->data.size());
+}
+
+void PipelineImpl::setXLinkChunkSize(int sizeBytes) {
+    globalProperties.xlinkChunkSize = sizeBytes;
 }
 
 // Remove node capability
