@@ -74,6 +74,13 @@ class CameraControl : public Buffer {
     void setAutoFocusLensRange(int infinityPosition, int macroPosition);
 
     /**
+     * Set autofocus lens position limits, applied after `setAutoFocusLensRange` remapping
+     *
+     * Defaults to no limiting: `minPosition` = 0, `maxPosition` = 255
+     */
+    void setAutoFocusLensLimit(int minPosition, int maxPosition);
+
+    /**
      * Set a command to specify focus region in pixels
      * @param startX X coordinate of top left corner of region
      * @param startY Y coordinate of top left corner of region
