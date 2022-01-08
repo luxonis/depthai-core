@@ -286,7 +286,7 @@ bool PipelineImpl::isLibcpythonRequired() const {
 Device::Config PipelineImpl::getDeviceConfig() const {
     Device::Config config;
     config.version = getPipelineOpenVINOVersion().value_or(OpenVINO::DEFAULT_VERSION);
-    // TODO(themarpe) - fill out rest of preboot config
+    // TODO(themarpe) - fill out rest of board config
     return config;
 }
 

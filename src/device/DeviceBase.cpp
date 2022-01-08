@@ -419,7 +419,7 @@ void DeviceBase::tryStartPipeline(const Pipeline& pipeline) {
 void DeviceBase::init(OpenVINO::Version version, bool usb2Mode, const std::string& pathToMvcmd) {
     Config cfg;
     // Specify usb speed
-    cfg.preboot.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
+    cfg.board.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
     // Specify the OpenVINO version
     cfg.version = version;
     init2(cfg, pathToMvcmd, {});
@@ -427,13 +427,13 @@ void DeviceBase::init(OpenVINO::Version version, bool usb2Mode, const std::strin
 void DeviceBase::init(const Pipeline& pipeline, bool usb2Mode, const std::string& pathToMvcmd) {
     Config cfg = pipeline.getDeviceConfig();
     // Modify usb speed
-    cfg.preboot.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
+    cfg.board.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
     init2(cfg, pathToMvcmd, pipeline);
 }
 void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd) {
     Config cfg;
     // Specify usb speed
-    cfg.preboot.usb.maxSpeed = maxUsbSpeed;
+    cfg.board.usb.maxSpeed = maxUsbSpeed;
     // Specify the OpenVINO version
     cfg.version = version;
     init2(cfg, pathToMvcmd, {});
@@ -441,7 +441,7 @@ void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const std
 void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd) {
     Config cfg = pipeline.getDeviceConfig();
     // Modify usb speed
-    cfg.preboot.usb.maxSpeed = maxUsbSpeed;
+    cfg.board.usb.maxSpeed = maxUsbSpeed;
     init2(cfg, pathToMvcmd, pipeline);
 }
 
@@ -470,7 +470,7 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
         // Try parsing the string as a number
         try {
             std::chrono::milliseconds watchdog{std::stoi(watchdogMsStr)};
-            config.preboot.watchdogTimeoutMs = static_cast<uint32_t>(watchdog.count());
+            config.board.watchdogTimeoutMs = static_cast<uint32_t>(watchdog.count());
             watchdogTimeout = watchdog;
             spdlog::debug("Using a custom watchdog value of {}", watchdogTimeout);
         } catch(const std::invalid_argument& e) {
