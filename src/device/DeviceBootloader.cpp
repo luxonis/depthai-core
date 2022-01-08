@@ -553,7 +553,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, T
         throw std::invalid_argument("Only FLASH memory is supported for now");
     }
     if(bootloaderType != type && getVersion() < Version(Request::UpdateFlashEx2::VERSION)) {
-        std::runtime_error("Current bootloader version doesn't support flashing different type of bootloader");
+        throw std::runtime_error("Current bootloader version doesn't support flashing different type of bootloader");
     }
 
     std::vector<uint8_t> package;
