@@ -365,10 +365,12 @@ void DeviceBase::closeImpl() {
     auto t1 = steady_clock::now();
     spdlog::debug("Device about to be closed...");
 
-    // Close connection first
-    // Resets device as well and queues unblock
+    // Close connection first; causes Xlink internal calls to unblock semaphore waits and
+    // return error codes, which then allows queues to unblock
+    // always manage ownership because other threads (e.g. watchdog) are running and need to
+    // keep the shared_ptr valid (even if closed). Otherwise leads to using null pointers,
+    // invalid memory, etc. which hard crashes main app
     connection->close();
-    connection = nullptr;
 
     // Stop various threads
     watchdogRunning = false;
@@ -397,10 +399,7 @@ void DeviceBase::checkClosed() const {
 }
 
 DeviceBase::~DeviceBase() {
-    // Only allow to close once
-    if(closed.exchange(true)) return;
-
-    DeviceBase::closeImpl();
+    DeviceBase::close();
 }
 
 void DeviceBase::tryStartPipeline(const Pipeline& pipeline) {
@@ -546,7 +545,7 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
     deviceInfo.state = X_LINK_BOOTED;
 
     // prepare rpc for both attached and host controlled mode
-    pimpl->rpcStream = std::make_unique<XLinkStream>(*connection, device::XLINK_CHANNEL_MAIN_RPC, device::XLINK_USB_BUFFER_MAX_SIZE);
+    pimpl->rpcStream = std::make_unique<XLinkStream>(connection, device::XLINK_CHANNEL_MAIN_RPC, device::XLINK_USB_BUFFER_MAX_SIZE);
 
     pimpl->rpcClient = std::make_unique<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>([this](nanorpc::core::type::buffer request) {
         // Lock for time of the RPC call, to not mix the responses between calling threads.
@@ -570,7 +569,7 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
     // separate stream so it doesn't miss between potentially long RPC calls
     watchdogThread = std::thread([this, watchdogTimeout]() {
         try {
-            XLinkStream stream(*this->connection, device::XLINK_CHANNEL_WATCHDOG, 128);
+            XLinkStream stream(connection, device::XLINK_CHANNEL_WATCHDOG, 128);
             std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
             while(watchdogRunning) {
                 stream.write(watchdogKeepalive);
@@ -591,7 +590,7 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
         using namespace std::chrono;
 
         try {
-            XLinkStream stream(*this->connection, device::XLINK_CHANNEL_TIMESYNC, 128);
+            XLinkStream stream(connection, device::XLINK_CHANNEL_TIMESYNC, 128);
             Timestamp timestamp = {};
             while(timesyncRunning) {
                 // Block
@@ -618,7 +617,7 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
         using namespace std::chrono;
         std::vector<LogMessage> messages;
         try {
-            XLinkStream stream(*this->connection, device::XLINK_CHANNEL_LOG, 128);
+            XLinkStream stream(connection, device::XLINK_CHANNEL_LOG, 128);
             while(loggingRunning) {
                 // Block
                 auto log = stream.read();
@@ -895,7 +894,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
         // Transfer the whole assetStorage in a separate thread
         const std::string streamAssetStorage = "__stream_asset_storage";
         std::thread t1([this, &streamAssetStorage, &assetStorage]() {
-            XLinkStream stream(*connection, streamAssetStorage, device::XLINK_USB_BUFFER_MAX_SIZE);
+            XLinkStream stream(connection, streamAssetStorage, device::XLINK_USB_BUFFER_MAX_SIZE);
             int64_t offset = 0;
             do {
                 int64_t toTransfer = std::min(static_cast<int64_t>(device::XLINK_USB_BUFFER_MAX_SIZE), static_cast<int64_t>(assetStorage.size() - offset));

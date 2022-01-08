@@ -22,27 +22,22 @@
 namespace dai {
 
 // DATA OUTPUT QUEUE
-DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize, bool blocking)
+DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize, bool blocking)
     : queue(maxSize, blocking), name(streamName) {
     // Create stream first and then pass to thread
     // Open stream with 1B write size (no writing will happen here)
-    XLinkStream stream(*conn, name, 1);
+    XLinkStream stream(std::move(conn), name, 1);
 
     // Creates a thread which reads from connection into the queue
     readingThread = std::thread([this, stream = std::move(stream)]() mutable {
         std::uint64_t numPacketsRead = 0;
         try {
             while(running) {
-                // read packet
-                streamPacketDesc_t* packet;
-
-                // Blocking
-                packet = stream.readRaw();
-
-                // parse packet - gather timing information
-                auto t1Parse = std::chrono::steady_clock::now();
-                auto data = StreamMessageParser::parseMessageToADatatype(packet);
-                auto t2Parse = std::chrono::steady_clock::now();
+                // Blocking -- parse packet and gather timing information
+                auto packet = stream.readMove();
+                const auto t1Parse = std::chrono::steady_clock::now();
+                const auto data = StreamMessageParser::parseMessageToADatatype(&packet);
+                const auto t2Parse = std::chrono::steady_clock::now();
 
                 // Trace level debugging
                 if(spdlog::get_level() == spdlog::level::trace) {
@@ -56,9 +51,6 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
                                   type,
                                   spdlog::to_hex(metadata));
                 }
-
-                // release packet
-                stream.readRawRelease();
 
                 // Add 'data' to queue
                 queue.push(data);
@@ -85,8 +77,7 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, c
         }
 
         // Close the queue
-        running = false;
-        queue.destruct();
+        close();
     });
 }
 
@@ -102,7 +93,7 @@ void DataOutputQueue::close() {
     queue.destruct();
 
     // Then join thread
-    if(readingThread.joinable()) readingThread.join();
+    if((readingThread.get_id() != std::this_thread::get_id()) && readingThread.joinable()) readingThread.join();
 
     // Log
     spdlog::debug("DataOutputQueue ({}) closed", name);
@@ -177,10 +168,10 @@ bool DataOutputQueue::removeCallback(int callbackId) {
 }
 
 // DATA INPUT QUEUE
-DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize, bool blocking)
+DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize, bool blocking)
     : queue(maxSize, blocking), name(streamName) {
     // open stream with default XLINK_USB_BUFFER_MAX_SIZE write size
-    XLinkStream stream(*conn, name, device::XLINK_USB_BUFFER_MAX_SIZE);
+    XLinkStream stream(std::move(conn), name, device::XLINK_USB_BUFFER_MAX_SIZE);
 
     writingThread = std::thread([this, stream = std::move(stream)]() mutable {
         std::uint64_t numPacketsSent = 0;
@@ -222,8 +213,7 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, con
         }
 
         // Close the queue
-        running = false;
-        queue.destruct();
+        close();
     });
 }
 
@@ -232,14 +222,14 @@ bool DataInputQueue::isClosed() const {
 }
 
 void DataInputQueue::close() {
-    // Set reading thread to stop and allow to be closed only once
+    // Set writing thread to stop and allow to be closed only once
     if(!running.exchange(false)) return;
 
     // Destroy queue
     queue.destruct();
 
     // Then join thread
-    if(writingThread.joinable()) writingThread.join();
+    if((writingThread.get_id() != std::this_thread::get_id()) && writingThread.joinable()) writingThread.join();
 
     // Log
     spdlog::debug("DataInputQueue ({}) closed", name);

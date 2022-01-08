@@ -43,9 +43,10 @@ class LockingQueue {
     }
 
     void destruct() {
-        destructed = true;
-        signalPop.notify_all();
-        signalPush.notify_all();
+        if(!destructed.exchange(true)) {
+            signalPop.notify_all();
+            signalPush.notify_all();
+        }
     }
     ~LockingQueue() = default;
 
