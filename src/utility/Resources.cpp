@@ -245,6 +245,9 @@ std::function<void()> getLazyTarXzFunction(MTX& lazyMtx, CV& cv, BOOL& mutexAcqu
         {
             std::unique_lock<std::mutex> cvLock(mtxCv);
             mutexAcquired = true;
+            // manual unlock since notified thread would immediately block again, waiting
+            // for the notifying thread to release the lock https://en.cppreference.com/w/cpp/thread/condition_variable/notify_all
+            cvLock.unlock();
             cv.notify_all();
         }
 
