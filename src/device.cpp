@@ -569,7 +569,8 @@ bool Device::init_device(
             break;
         }
 
-        g_xlink = std::unique_ptr<XLinkWrapper>(new XLinkWrapper(true));
+        bool verbose = false;
+        g_xlink = std::unique_ptr<XLinkWrapper>(new XLinkWrapper(verbose));
 
         if(binary != nullptr && binary_size != 0){
             if (!g_xlink->initFromHostSide(
