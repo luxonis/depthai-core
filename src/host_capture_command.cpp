@@ -18,6 +18,15 @@ void HostCaptureCommand::sendDisparityConfidenceThreshold(uint8_t confidence_thr
     notifyObservers(stream, conf_thr_metadata);
 }
 
+void HostCaptureCommand::sendIrWriteCommand(uint8_t dev_id, uint8_t reg, uint8_t data){
+    StreamData conf_thr_metadata;
+    conf_thr_metadata.packet_number = 0;
+    uint8_t buf[] = {dev_id, reg, data};
+    conf_thr_metadata.data = buf;
+    conf_thr_metadata.size = sizeof(buf);
+    notifyObservers(stream, conf_thr_metadata);
+}
+
 void HostCaptureCommand::sendCustomDeviceResetRequest(void){
     StreamData custom_reset;
     uint32_t reset = 0xDEADDEAD;

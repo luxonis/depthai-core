@@ -15,6 +15,7 @@ public:
     void afMode(CaptureMetadata::AutofocusMode mode);
     void afTrigger();
     void sendDisparityConfidenceThreshold(uint8_t confidence_thr);
+    void sendIrWriteCommand(uint8_t dev_id, uint8_t reg, uint8_t data);
     void sendCustomDeviceResetRequest(void);
     void sendCameraControl(CameraControl::CamId camera_id,
             CameraControl::Command command_id,

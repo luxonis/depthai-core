@@ -58,6 +58,7 @@ public:
     bool is_left_connected();
     bool is_right_connected();
     bool is_device_changed();
+    bool is_projector_connected();
 
     void override_device_changed();
     void reset_device_changed();
@@ -65,6 +66,7 @@ public:
     void request_af_trigger();
     void request_af_mode(CaptureMetadata::AutofocusMode mode);
     void send_disparity_confidence_threshold(uint8_t confidence);
+    void send_ir_write_command(uint8_t dev_id, uint8_t reg, uint8_t data);
     void send_camera_control(CameraControl::CamId camera_id,
             CameraControl::Command command_id,
             const std::string &extra_args);

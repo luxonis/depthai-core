@@ -131,6 +131,10 @@ bool Device::is_right_connected(){
     return g_config_d2h.at("_cams").at("right").get<bool>();
 }
 
+bool Device::is_projector_connected(){
+    return g_config_d2h.at("_ir").get<bool>();
+}
+
 
 void Device::wdog_thread(std::chrono::milliseconds& wd_timeout)
 {
@@ -1500,6 +1504,12 @@ void Device::request_af_mode(CaptureMetadata::AutofocusMode mode){
 void Device::send_disparity_confidence_threshold(uint8_t confidence){
     if(g_host_capture_command != nullptr){
         g_host_capture_command->sendDisparityConfidenceThreshold(confidence);
+    }
+}
+
+void Device::send_ir_write_command(uint8_t dev_id, uint8_t reg, uint8_t data){
+    if(g_host_capture_command != nullptr){
+        g_host_capture_command->sendIrWriteCommand(dev_id, reg, data);
     }
 }
 
