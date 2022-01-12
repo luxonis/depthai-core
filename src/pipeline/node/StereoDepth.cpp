@@ -32,6 +32,11 @@ StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
     setDefaultProfilePreset(presetMode);
 }
 
+StereoDepth::Properties& StereoDepth::getProperties() {
+    properties.initialConfig = *rawConfig;
+    return properties;
+}
+
 void StereoDepth::loadCalibrationData(const std::vector<std::uint8_t>& data) {
     (void)data;
     spdlog::warn("{} is deprecated. This function call is replaced by Pipeline::setCalibrationData under pipeline. ", __func__);
