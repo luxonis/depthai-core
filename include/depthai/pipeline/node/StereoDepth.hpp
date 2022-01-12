@@ -21,6 +21,9 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      */
     enum class PresetMode : std::uint32_t { HIGH_ACCURACY, HIGH_DENSITY };
 
+   protected:
+    Properties& getProperties();
+
    private:
     PresetMode presetMode = PresetMode::HIGH_DENSITY;
     std::shared_ptr<RawStereoDepthConfig> rawConfig;

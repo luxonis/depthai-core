@@ -17,6 +17,9 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
    public:
     constexpr static const char* NAME = "ColorCamera";
 
+   protected:
+    Properties& getProperties();
+
    private:
     std::shared_ptr<RawCameraControl> rawControl;
 

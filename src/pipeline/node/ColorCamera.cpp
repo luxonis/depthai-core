@@ -26,6 +26,11 @@ ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
     setOutputRefs({&video, &preview, &still, &isp, &raw});
 }
 
+ColorCamera::Properties& ColorCamera::getProperties() {
+    properties.initialControl = *rawControl;
+    return properties;
+}
+
 // Set board socket to use
 void ColorCamera::setBoardSocket(dai::CameraBoardSocket boardSocket) {
     properties.boardSocket = boardSocket;
