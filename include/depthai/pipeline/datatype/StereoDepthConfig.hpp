@@ -16,12 +16,25 @@ class StereoDepthConfig : public Buffer {
     RawStereoDepthConfig& cfg;
 
    public:
+    using MedianFilter = dai::MedianFilter;
+    using AlgorithmControl = RawStereoDepthConfig::AlgorithmControl;
+    using PostProcessing = RawStereoDepthConfig::PostProcessing;
+    using CensusTransform = RawStereoDepthConfig::CensusTransform;
+    using CostMatching = RawStereoDepthConfig::CostMatching;
+    using CostAggregation = RawStereoDepthConfig::CostAggregation;
+
     /**
      * Construct StereoDepthConfig message.
      */
     StereoDepthConfig();
     explicit StereoDepthConfig(std::shared_ptr<RawStereoDepthConfig> ptr);
     virtual ~StereoDepthConfig() = default;
+
+    /**
+     * @param align Set the disparity/depth alignment: centered (between the 'left' and 'right' inputs),
+     * or from the perspective of a rectified output stream
+     */
+    void setDepthAlign(AlgorithmControl::DepthAlign align);
 
     /**
      * Confidence threshold for disparity calculation
@@ -36,11 +49,11 @@ class StereoDepthConfig : public Buffer {
     /**
      * @param median Set kernel size for disparity/depth median filtering, or disable
      */
-    void setMedianFilter(dai::MedianFilter median);
+    void setMedianFilter(MedianFilter median);
     /**
      * Get median filter setting
      */
-    dai::MedianFilter getMedianFilter() const;
+    MedianFilter getMedianFilter() const;
 
     /**
      * A larger value of the parameter means that farther colors within the pixel neighborhood will be mixed together,
@@ -61,6 +74,44 @@ class StereoDepthConfig : public Buffer {
      * Get threshold for left-right check combine
      */
     int getLeftRightCheckThreshold() const;
+
+    /**
+     * Computes and combines disparities in both L-R and R-L directions, and combine them.
+     *
+     * For better occlusion handling, discarding invalid disparity values
+     */
+    void setLeftRightCheck(bool enable);
+
+    /**
+     * Disparity range increased from 95 to 190, combined from full resolution and downscaled images.
+     * Suitable for short range objects
+     */
+    void setExtendedDisparity(bool enable);
+
+    /**
+     * Computes disparity with sub-pixel interpolation (5 fractional bits).
+     *
+     * Suitable for long range. Currently incompatible with extended disparity
+     */
+    void setSubpixel(bool enable);
+
+    /**
+     * Useful for normalization of the disparity map.
+     * @returns Maximum disparity value that the node can return
+     */
+    float getMaxDisparity() const;
+
+    /**
+     * Set explicit configuration.
+     * @param config Explicit configuration
+     */
+    void set(dai::RawStereoDepthConfig config);
+
+    /**
+     * Retrieve configuration data for StereoDepth.
+     * @returns config for stereo depth algorithm
+     */
+    dai::RawStereoDepthConfig get() const;
 };
 
 }  // namespace dai

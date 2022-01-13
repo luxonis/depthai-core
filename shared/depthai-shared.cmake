@@ -1,9 +1,14 @@
-set(DEPTHAI_SHARED_FOLDER ${CMAKE_CURRENT_LIST_DIR}/depthai-shared)
+if(DEPTHAI_SHARED_LOCAL)
+    set(DEPTHAI_SHARED_FOLDER ${DEPTHAI_SHARED_LOCAL})
+else()
+    set(DEPTHAI_SHARED_FOLDER ${CMAKE_CURRENT_LIST_DIR}/depthai-shared)
+endif()
 
 set(DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH "depthai-shared/3rdparty")
 
 set(DEPTHAI_SHARED_SOURCES
     ${DEPTHAI_SHARED_FOLDER}/src/datatype/DatatypeEnum.cpp
+    ${DEPTHAI_SHARED_FOLDER}/src/utility/Checksum.cpp
 )
 
 set(DEPTHAI_SHARED_PUBLIC_INCLUDE
@@ -21,18 +26,20 @@ set(DEPTHAI_SHARED_INCLUDE
 # Try retriving depthai-shared commit hash (if cloned and not sources only)
 find_package(Git)
 if(GIT_FOUND AND NOT DEPTHAI_DOWNLOADED_SOURCES)
-    
-    # Check that submodule is initialized and updated
-    execute_process(
-        COMMAND ${GIT_EXECUTABLE} submodule status ${DEPTHAI_SHARED_FOLDER}
-        WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-        OUTPUT_VARIABLE statusCommit
-        ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE
-    )
-    string(SUBSTRING ${statusCommit} 0 1 status)
-    if(${status} STREQUAL "-")
-        message(FATAL_ERROR "Submodule 'depthai-shared' not initialized/updated. Run 'git submodule update --init --recursive' first")
-    endif()   
+
+    if(NOT DEPTHAI_SHARED_LOCAL)
+        # Check that submodule is initialized and updated
+        execute_process(
+            COMMAND ${GIT_EXECUTABLE} submodule status ${DEPTHAI_SHARED_FOLDER}
+            WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+            OUTPUT_VARIABLE statusCommit
+            ERROR_QUIET OUTPUT_STRIP_TRAILING_WHITESPACE
+        )
+        string(SUBSTRING ${statusCommit} 0 1 status)
+        if(${status} STREQUAL "-")
+            message(FATAL_ERROR "Submodule 'depthai-shared' not initialized/updated. Run 'git submodule update --init --recursive' first")
+        endif()
+    endif()
 
     # Get depthai-shared current commit
     execute_process(

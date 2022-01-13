@@ -2,9 +2,6 @@
 
 #include <depthai/pipeline/Node.hpp>
 
-// standard
-#include <fstream>
-
 // shared
 #include <depthai-shared/properties/AprilTagProperties.hpp>
 
@@ -16,21 +13,21 @@ namespace node {
 /**
  * @brief AprilTag node.
  */
-class AprilTag : public Node {
+class AprilTag : public NodeCRTP<Node, AprilTag, AprilTagProperties> {
    public:
-    using Properties = dai::AprilTagProperties;
+    constexpr static const char* NAME = "AprilTag";
+
+   protected:
+    Properties& getProperties();
 
    private:
-    nlohmann::json getProperties() override;
-    std::shared_ptr<Node> clone() override;
 
     std::shared_ptr<RawAprilTagConfig> rawConfig;
-    Properties properties;
 
    public:
-    std::string getName() const override;
 
     AprilTag(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    AprilTag(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Initial config to use when calculating spatial location data.

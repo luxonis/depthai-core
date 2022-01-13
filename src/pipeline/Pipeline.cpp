@@ -12,9 +12,6 @@
 
 namespace dai {
 
-constexpr OpenVINO::Version PipelineImpl::DEFAULT_OPENVINO_VERSION;
-constexpr OpenVINO::Version Pipeline::DEFAULT_OPENVINO_VERSION;
-
 Node::Id PipelineImpl::getNextUniqueId() {
     return latestId++;
 }
@@ -54,6 +51,10 @@ GlobalProperties Pipeline::getGlobalProperties() const {
     return pimpl->globalProperties;
 }
 
+PipelineSchema Pipeline::getPipelineSchema() const {
+    return pimpl->getPipelineSchema();
+}
+
 std::shared_ptr<const Node> PipelineImpl::getNode(Node::Id id) const {
     if(nodeMap.count(id) > 0) {
         return nodeMap.at(id);
@@ -82,7 +83,7 @@ std::vector<std::shared_ptr<Node>> PipelineImpl::getAllNodes() {
     return nodes;
 }
 
-void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, OpenVINO::Version& version) const {
+void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage) const {
     // Set schema
     schema = getPipelineSchema();
 
@@ -95,10 +96,8 @@ void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector
     for(const auto& kv : nodeMap) {
         kv.second->getAssetManager().serialize(mutableAssets, assetStorage, fmt::format("/node/{}/", kv.second->id));
     }
-    assets = mutableAssets;
 
-    // detect and set openvino version
-    version = getPipelineOpenVINOVersion();
+    assets = mutableAssets;
 }
 
 PipelineSchema PipelineImpl::getPipelineSchema() const {
@@ -112,7 +111,7 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
         NodeObjInfo info;
         info.id = node->id;
         info.name = node->getName();
-        info.properties = node->getProperties();
+        node->getProperties().serialize(info.properties);
 
         // Create Io information
         auto inputs = node->getInputs();
@@ -126,6 +125,10 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
             io.blocking = input.getBlocking();
             io.queueSize = input.getQueueSize();
             io.name = input.name;
+            io.group = input.group;
+            auto ioKey = std::make_tuple(io.group, io.name);
+
+            io.waitForMessage = input.waitForMessage.value_or(input.defaultWaitForMessage);
             switch(input.type) {
                 case Node::Input::Type::MReceiver:
                     io.type = NodeIoInfo::Type::MReceiver;
@@ -135,10 +138,15 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
                     break;
             }
 
-            if(info.ioInfo.count(io.name) > 0) {
-                throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
+            if(info.ioInfo.count(ioKey) > 0) {
+                if(io.group == "") {
+                    throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
+                } else {
+                    throw std::invalid_argument(
+                        fmt::format("'{}.{}[\"{}\"]' redefined. Inputs and outputs must have unique names", info.name, io.group, io.name));
+                }
             }
-            info.ioInfo[io.name] = io;
+            info.ioInfo[ioKey] = io;
         }
 
         // Add outputs
@@ -146,6 +154,9 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
             NodeIoInfo io;
             io.blocking = false;
             io.name = output.name;
+            io.group = output.group;
+            auto ioKey = std::make_tuple(io.group, io.name);
+
             switch(output.type) {
                 case Node::Output::Type::MSender:
                     io.type = NodeIoInfo::Type::MSender;
@@ -155,10 +166,15 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
                     break;
             }
 
-            if(info.ioInfo.count(io.name) > 0) {
-                throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
+            if(info.ioInfo.count(ioKey) > 0) {
+                if(io.group == "") {
+                    throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
+                } else {
+                    throw std::invalid_argument(
+                        fmt::format("'{}.{}[\"{}\"]' redefined. Inputs and outputs must have unique names", info.name, io.group, io.name));
+                }
             }
-            info.ioInfo[io.name] = io;
+            info.ioInfo[ioKey] = io;
         }
 
         // At the end, add the constructed node information to the schema
@@ -174,8 +190,10 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
             NodeConnectionSchema c;
             c.node1Id = conn.outputId;
             c.node1Output = conn.outputName;
+            c.node1OutputGroup = conn.outputGroup;
             c.node2Id = conn.inputId;
             c.node2Input = conn.inputName;
+            c.node2InputGroup = conn.inputGroup;
             schema.connections.push_back(c);
         }
     }
@@ -183,7 +201,16 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
     return schema;
 }
 
-OpenVINO::Version PipelineImpl::getPipelineOpenVINOVersion() const {
+bool PipelineImpl::isOpenVINOVersionCompatible(OpenVINO::Version version) const {
+    auto ver = getPipelineOpenVINOVersion();
+    if(ver) {
+        return OpenVINO::areVersionsBlobCompatible(version, *ver);
+    } else {
+        return true;
+    }
+}
+
+tl::optional<OpenVINO::Version> PipelineImpl::getPipelineOpenVINOVersion() const {
     // Loop over nodes, and get the required information
     tl::optional<OpenVINO::Version> version;
     std::string lastNodeNameWithRequiredVersion = "";
@@ -223,17 +250,24 @@ OpenVINO::Version PipelineImpl::getPipelineOpenVINOVersion() const {
         }
     }
 
-    // After iterating over, set openvinoVersion
-    OpenVINO::Version openvinoVersion = DEFAULT_OPENVINO_VERSION;
+    // After iterating over, return appropriate version
     if(forceRequiredOpenVINOVersion) {
-        // set to forced version
-        openvinoVersion = *forceRequiredOpenVINOVersion;
+        // Return forced version
+        return forceRequiredOpenVINOVersion;
     } else if(version) {
-        // set to detected version
-        openvinoVersion = *version;
+        // Return detected version
+        return version;
+    } else {
+        // Return null
+        return tl::nullopt;
     }
+}
 
-    return openvinoVersion;
+Device::Config PipelineImpl::getDeviceConfig() const {
+    Device::Config config;
+    config.version = getPipelineOpenVINOVersion().value_or(OpenVINO::DEFAULT_VERSION);
+    // TODO(themarpe) - fill out rest of preboot config
+    return config;
 }
 
 void PipelineImpl::setCameraTuningBlobPath(const std::string& path) {
@@ -242,7 +276,11 @@ void PipelineImpl::setCameraTuningBlobPath(const std::string& path) {
     auto asset = assetManager.set(assetKey, path);
 
     globalProperties.cameraTuningBlobUri = asset->getRelativeUri();
-    globalProperties.cameraTuningBlobSize = asset->data.size();
+    globalProperties.cameraTuningBlobSize = static_cast<uint32_t>(asset->data.size());
+}
+
+void PipelineImpl::setXLinkChunkSize(int sizeBytes) {
+    globalProperties.xlinkChunkSize = sizeBytes;
 }
 
 // Remove node capability
@@ -293,6 +331,11 @@ bool PipelineImpl::isSamePipeline(const Node::Output& out, const Node::Input& in
 }
 
 bool PipelineImpl::canConnect(const Node::Output& out, const Node::Input& in) {
+    // First check if on same pipeline
+    if(!isSamePipeline(out, in)) {
+        return false;
+    }
+
     // Check that IoType match up
     if(out.type == Node::Output::Type::MSender && in.type == Node::Input::Type::MReceiver) return false;
     if(out.type == Node::Output::Type::SSender && in.type == Node::Input::Type::SReceiver) return false;
@@ -331,8 +374,10 @@ void PipelineImpl::link(const Node::Output& out, const Node::Input& in) {
         throw std::logic_error(fmt::format("Nodes are not on same pipeline or one of nodes parent pipeline doesn't exists anymore"));
     }
 
+    // First check if can connect (must be on same pipeline and correct types)
     if(!canConnect(out, in)) {
-        throw std::runtime_error(fmt::format("Cannot link '{}.{}' to '{}.{}'", out.getParent().getName(), out.name, in.getParent().getName(), in.name));
+        throw std::runtime_error(
+            fmt::format("Cannot link '{}.{}' to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
     }
 
     // Create 'Connection' object between 'out' and 'in'
@@ -341,7 +386,8 @@ void PipelineImpl::link(const Node::Output& out, const Node::Input& in) {
     // Check if connection was already made - the following is possible as operator[] constructs the underlying set if it doesn't exist.
     if(nodeConnectionMap[in.getParent().id].count(connection) > 0) {
         // this means a connection was already made.
-        throw std::logic_error(fmt::format("'{}.{}' already linked to '{}.{}'", out.getParent().getName(), out.name, in.getParent().getName(), in.name));
+        throw std::logic_error(
+            fmt::format("'{}.{}' already linked to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
     }
 
     // Otherwise all is set to add a new connection into nodeConnectionMap[in.getParent().id]
@@ -360,7 +406,8 @@ void PipelineImpl::unlink(const Node::Output& out, const Node::Input& in) {
     // Check if not connected (connection object doesn't exist in nodeConnectionMap)
     if(nodeConnectionMap[in.getParent().id].count(connection) <= 0) {
         // not connected
-        throw std::logic_error(fmt::format("'{}.{}' not linked to '{}.{}'", out.getParent().getName(), out.name, in.getParent().getName(), in.name));
+        throw std::logic_error(
+            fmt::format("'{}.{}' not linked to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
     }
 
     // Otherwise if exists, remove this connection

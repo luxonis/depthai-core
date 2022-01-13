@@ -4,24 +4,21 @@
 
 #include "depthai-shared/common/CameraBoardSocket.hpp"
 
-namespace dai {
-
-inline std::ostream& operator<<(std::ostream& out, const CameraBoardSocket& socket) {
+// Global namespace
+inline std::ostream& operator<<(std::ostream& out, const dai::CameraBoardSocket& socket) {
     switch(socket) {
-        case CameraBoardSocket::AUTO:
+        case dai::CameraBoardSocket::AUTO:
             out << "AUTO";
             break;
-        case CameraBoardSocket::RGB:
+        case dai::CameraBoardSocket::RGB:
             out << "RGB";
             break;
-        case CameraBoardSocket::LEFT:
+        case dai::CameraBoardSocket::LEFT:
             out << "LEFT";
             break;
-        case CameraBoardSocket::RIGHT:
+        case dai::CameraBoardSocket::RIGHT:
             out << "RIGHT";
             break;
     }
     return out;
 }
-
-}  // namespace dai

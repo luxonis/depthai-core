@@ -12,18 +12,16 @@
 namespace dai {
 namespace node {
 
-class Script : public Node {
-    dai::ScriptProperties properties;
+class Script : public NodeCRTP<Node, Script, ScriptProperties> {
+   public:
+    constexpr static const char* NAME = "Script";
 
-    nlohmann::json getProperties() override;
-    std::shared_ptr<Node> clone() override;
-
+   private:
     std::string scriptPath = "";
 
    public:
-    std::string getName() const override;
-
     Script(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    Script(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      *  Inputs to Script node. Can be accessed using subscript operator (Eg: inputs['in1'])
@@ -44,12 +42,14 @@ class Script : public Node {
     /**
      * Sets script data to be interpreted
      * @param script Script string to be interpreted
+     * @param name Optionally set a name of this script
      */
     void setScript(const std::string& script, const std::string& name = "");
 
     /**
      * Sets script data to be interpreted
      * @param data Binary data that represents the script to be interpreted
+     * @param name Optionally set a name of this script
      */
     void setScript(const std::vector<std::uint8_t>& data, const std::string& name = "");
 

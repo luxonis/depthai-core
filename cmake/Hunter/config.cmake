@@ -7,9 +7,9 @@ hunter_config(
 
 hunter_config(
     XLink
-    VERSION "luxonis-2021.3-develop"
-    URL "https://github.com/luxonis/XLink/archive/1a89b3003529ccbed90a32cf7c13438be1901744.tar.gz"
-    SHA1 "5a0ce8016edf9a5092290b2971eba5e1f37059ee"
+    VERSION "luxonis-2021.4-master"
+    URL "https://github.com/luxonis/XLink/archive/93c6124f7a541a25cf296fea156296bc9ed2a24d.tar.gz"
+    SHA1 "d671cdf7935c5a1b1c408fd82d1f11630090eced"
 )
 
 hunter_config(
@@ -25,6 +25,8 @@ hunter_config(
     CMAKE_ARGS
         SPDLOG_BUILD_EXAMPLE=OFF
         SPDLOG_FMT_EXTERNAL=OFF
+        CMAKE_CXX_VISIBILITY_PRESET=hidden
+        CMAKE_C_VISIBILITY_PRESET=hidden
 )
 
 # libarchive, luxonis fork
@@ -63,4 +65,49 @@ hunter_config(
         ENABLE_XATTR=OFF
         ENABLE_ZLIB=OFF
         ENABLE_ZSTD=OFF
+)
+
+# Luxonis FP16 fork which doesn't use git cloning for its dependencies
+hunter_config(
+    FP16
+    VERSION "luxonis-0.0.0"
+    URL "https://github.com/luxonis/FP16/archive/c911175d2717e562976e606c6e5f799bf40cf94e.tar.gz"
+    SHA1 "40e9723c87c2fe21781132c0f2f8b90338500e32"
+    CMAKE_ARGS
+        FP16_BUILD_BENCHMARKS=OFF
+        FP16_BUILD_TESTS=OFF
+)
+
+# Backward - Stacktrace printer
+hunter_config(
+    Backward
+    VERSION "1.6"
+    URL "https://github.com/bombela/backward-cpp/archive/refs/tags/v1.6.tar.gz"
+    SHA1 "4ecb711eabfd15bc88ff9dd9342907fc5da46b62"
+    CMAKE_ARGS
+        BACKWARD_TESTS=OFF
+)
+
+# libnop - Serialization
+hunter_config(
+    libnop
+    VERSION "1.0-5a66ba9"
+    URL "https://github.com/luxonis/libnop/archive/83967ad391a30d8f871d57777a91ebd7f9370ad4.tar.gz"
+    SHA1 "d77a3fa02597569cf7fa624a3f804a30a787a500"
+)
+
+# Specific Catch2 version
+hunter_config(
+    Catch2
+    VERSION "2.13.7"
+    URL "https://github.com/catchorg/Catch2/archive/refs/tags/v2.13.7.tar.gz"
+    SHA1 "fa8f14ccf852413d3c6d3999145ada934d37d773"
+)
+
+# ZLib - Luxonis fix for alias on imported target for old CMake versions
+hunter_config(
+    ZLIB
+    VERSION "1.2.11-p2"
+    URL "https://github.com/luxonis/zlib/archive/refs/tags/v1.2.11-p2.tar.gz"
+    SHA1 "fb8b6486183b13a86040f793a939b128f6d27095"
 )
