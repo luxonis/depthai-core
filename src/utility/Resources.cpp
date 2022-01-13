@@ -325,8 +325,8 @@ std::function<void()> getLazyTarXzFunction(MTX& mtx, CV& cv, BOOL& ready, PATH c
         {
             std::unique_lock<std::mutex> l(mtx);
             ready = true;
-            cv.notify_all();
         }
+        cv.notify_all();
     };
 }
 
