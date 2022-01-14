@@ -799,6 +799,18 @@ LogLevel DeviceBase::getLogOutputLevel() {
     return pimpl->getLogLevel();
 }
 
+void DeviceBase::irWriteReg(int reg, int value) {
+    checkClosed();
+
+    pimpl->rpcClient->call("irWriteReg", reg, value);
+}
+
+int DeviceBase::irReadReg(int reg) {
+    checkClosed();
+
+    return pimpl->rpcClient->call("irReadReg", reg);
+}
+
 int DeviceBase::addLogCallback(std::function<void(LogMessage)> callback) {
     checkClosed();
 
