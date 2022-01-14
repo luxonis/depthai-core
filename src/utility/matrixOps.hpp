@@ -121,7 +121,7 @@ static void adjoint(std::vector<std::vector<float>>& A, std::vector<std::vector<
 bool matInv(std::vector<std::vector<float>>& A, std::vector<std::vector<float>>& inverse) {
     // Find determinant of A[][]
     if(A[0].size() != A.size()) {
-        std::runtime_error("Not a Square Matrix ");
+        throw std::runtime_error("Not a Square Matrix ");
     }
 
     float det = determinant(A, A.size());

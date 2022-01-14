@@ -16,12 +16,25 @@ class StereoDepthConfig : public Buffer {
     RawStereoDepthConfig& cfg;
 
    public:
+    using MedianFilter = dai::MedianFilter;
+    using AlgorithmControl = RawStereoDepthConfig::AlgorithmControl;
+    using PostProcessing = RawStereoDepthConfig::PostProcessing;
+    using CensusTransform = RawStereoDepthConfig::CensusTransform;
+    using CostMatching = RawStereoDepthConfig::CostMatching;
+    using CostAggregation = RawStereoDepthConfig::CostAggregation;
+
     /**
      * Construct StereoDepthConfig message.
      */
     StereoDepthConfig();
     explicit StereoDepthConfig(std::shared_ptr<RawStereoDepthConfig> ptr);
     virtual ~StereoDepthConfig() = default;
+
+    /**
+     * @param align Set the disparity/depth alignment: centered (between the 'left' and 'right' inputs),
+     * or from the perspective of a rectified output stream
+     */
+    void setDepthAlign(AlgorithmControl::DepthAlign align);
 
     /**
      * Confidence threshold for disparity calculation
@@ -36,11 +49,11 @@ class StereoDepthConfig : public Buffer {
     /**
      * @param median Set kernel size for disparity/depth median filtering, or disable
      */
-    void setMedianFilter(dai::MedianFilter median);
+    void setMedianFilter(MedianFilter median);
     /**
      * Get median filter setting
      */
-    dai::MedianFilter getMedianFilter() const;
+    MedianFilter getMedianFilter() const;
 
     /**
      * A larger value of the parameter means that farther colors within the pixel neighborhood will be mixed together,

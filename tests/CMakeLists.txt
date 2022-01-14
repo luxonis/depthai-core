@@ -111,3 +111,9 @@ dai_add_test(device_usbspeed_test src/device_usbspeed_test.cpp)
 
 # Unlimited io connections test
 dai_add_test(unlimited_io_connection_test src/unlimited_io_connection_test.cpp)
+
+# Serialization test
+dai_add_test(serialization_test src/serialization_test.cpp)
+
+# Multiple devices test
+dai_add_test(multiple_devices_test src/multiple_devices_test.cpp)

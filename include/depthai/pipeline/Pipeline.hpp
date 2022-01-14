@@ -80,7 +80,7 @@ class PipelineImpl {
         // Get unique id for this new node
         auto id = getNextUniqueId();
         // Create and store the node in the map
-        auto node = std::make_shared<N>(itself, id);
+        auto node = std::shared_ptr<N>(new N(itself, id));
         nodeMap[id] = node;
         // Return shared pointer to this node
         return node;
@@ -117,7 +117,7 @@ class Pipeline {
     /**
      * @returns Pipeline schema
      */
-    PipelineSchema getPipelineSchema();
+    PipelineSchema getPipelineSchema() const;
 
     // void loadAssets(AssetManager& assetManager);
     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage) const {

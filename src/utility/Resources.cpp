@@ -19,6 +19,7 @@
 // shared
 #include "depthai-shared/device/PrebootConfig.hpp"
 #include "depthai-shared/utility/Checksum.hpp"
+#include "depthai-shared/utility/Serialization.hpp"
 
 extern "C" {
 #include "bspatch/bspatch.h"
@@ -61,10 +62,12 @@ constexpr static auto RESOURCE_LIST_DEVICE = array_of<const char*>(DEPTHAI_CMD_O
                                                                    DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH,
                                                                    DEPTHAI_CMD_OPENVINO_2021_3_PATCH_PATH);
 
-std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, std::string pathToMvcmd) {
-    // Acquire mutex (this mutex signifies that lazy load is complete)
-    // It is necessary when accessing resourceMap variable
-    std::unique_lock<std::mutex> lock(mtxDevice);
+std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, std::string pathToMvcmd) const {
+    // Wait until lazy load is complete
+    {
+        std::unique_lock<std::mutex> lock(mtxDevice);
+        cvDevice.wait(lock, [this]() { return readyDevice; });
+    }
 
     std::vector<std::uint8_t> finalFwBinary;
 
@@ -104,27 +107,27 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, st
 
         switch(version) {
             case OpenVINO::VERSION_2020_3:
-                depthaiPatch = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2020_3_PATCH_PATH];
+                depthaiPatch = resourceMapDevice.at(DEPTHAI_CMD_OPENVINO_2020_3_PATCH_PATH);
                 break;
 
             case OpenVINO::VERSION_2020_4:
-                depthaiPatch = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2020_4_PATCH_PATH];
+                depthaiPatch = resourceMapDevice.at(DEPTHAI_CMD_OPENVINO_2020_4_PATCH_PATH);
                 break;
 
             case OpenVINO::VERSION_2021_1:
-                depthaiPatch = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2021_1_PATCH_PATH];
+                depthaiPatch = resourceMapDevice.at(DEPTHAI_CMD_OPENVINO_2021_1_PATCH_PATH);
                 break;
 
             case OpenVINO::VERSION_2021_2:
-                depthaiPatch = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH];
+                depthaiPatch = resourceMapDevice.at(DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH);
                 break;
 
             case OpenVINO::VERSION_2021_3:
-                depthaiPatch = resourceMapDevice[DEPTHAI_CMD_OPENVINO_2021_3_PATCH_PATH];
+                depthaiPatch = resourceMapDevice.at(DEPTHAI_CMD_OPENVINO_2021_3_PATCH_PATH);
                 break;
 
             case MAIN_FW_VERSION:
-                depthaiBinary = resourceMapDevice[MAIN_FW_PATH];
+                depthaiBinary = resourceMapDevice.at(MAIN_FW_PATH);
                 break;
         }
 
@@ -133,7 +136,7 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, st
             spdlog::debug("Patching OpenVINO FW version from {} to {}", OpenVINO::getVersionName(MAIN_FW_VERSION), OpenVINO::getVersionName(version));
 
             // Load full binary for patch
-            depthaiBinary = resourceMapDevice[MAIN_FW_PATH];
+            depthaiBinary = resourceMapDevice.at(MAIN_FW_PATH);
 
             // Get new size
             int64_t patchedSize = bspatch_mem_get_newsize(depthaiPatch.data(), depthaiPatch.size());
@@ -164,7 +167,9 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, st
     }
 
     // Prepend preboot config
-    auto prebootHeader = createPrebootHeader(nlohmann::json::to_msgpack(config.preboot), PREBOOT_CONFIG_MAGIC1, PREBOOT_CONFIG_MAGIC2);
+    // Serialize preboot
+    auto prebootPayload = utility::serialize(config.preboot);
+    auto prebootHeader = createPrebootHeader(prebootPayload, PREBOOT_CONFIG_MAGIC1, PREBOOT_CONFIG_MAGIC2);
     finalFwBinary.insert(finalFwBinary.begin(), prebootHeader.begin(), prebootHeader.end());
 
     // Return created firmware
@@ -180,7 +185,13 @@ constexpr static std::array<const char*, 2> RESOURCE_LIST_BOOTLOADER = {
     DEVICE_BOOTLOADER_ETH_PATH,
 };
 
-std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type type) {
+std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type type) const {
+    // Wait until lazy load is complete
+    {
+        std::unique_lock<std::mutex> lock(mtxBootloader);
+        cvDevice.wait(lock, [this]() { return readyBootloader; });
+    }
+
     // Check if env variable DEPTHAI_BOOTLOADER_BINARY_USB/_ETH is set
     std::string blEnvVar;
     if(type == dai::bootloader::Type::USB) {
@@ -202,21 +213,17 @@ std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type
         return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
     }
 
-    // Acquire mutex (this mutex signifies that lazy load is complete)
-    // It is necessary when accessing resourceMap variable
-    std::unique_lock<std::mutex> lock(mtxBootloader);
-
     switch(type) {
         case dai::bootloader::Type::AUTO:
             throw std::invalid_argument("DeviceBootloader::Type::AUTO not allowed, when getting bootloader firmware.");
             break;
 
         case dai::bootloader::Type::USB:
-            return resourceMapBootloader[DEVICE_BOOTLOADER_USB_PATH];
+            return resourceMapBootloader.at(DEVICE_BOOTLOADER_USB_PATH);
             break;
 
         case dai::bootloader::Type::NETWORK:
-            return resourceMapBootloader[DEVICE_BOOTLOADER_ETH_PATH];
+            return resourceMapBootloader.at(DEVICE_BOOTLOADER_ETH_PATH);
             break;
 
         default:
@@ -231,19 +238,9 @@ Resources& Resources::getInstance() {
 }
 
 template <typename CV, typename BOOL, typename MTX, typename PATH, typename LIST, typename MAP>
-std::function<void()> getLazyTarXzFunction(MTX& lazyMtx, CV& cv, BOOL& mutexAcquired, MTX& mtxCv, PATH cmrcPath, LIST& resourceList, MAP& resourceMap) {
-    return [&lazyMtx, &cv, &mutexAcquired, &mtxCv, cmrcPath, &resourceList, &resourceMap] {
+std::function<void()> getLazyTarXzFunction(MTX& mtx, CV& cv, BOOL& ready, PATH cmrcPath, LIST& resourceList, MAP& resourceMap) {
+    return [&mtx, &cv, &ready, cmrcPath, &resourceList, &resourceMap] {
         using namespace std::chrono;
-
-        // Hold 'lazyMtx' until initial preload is finished
-        std::unique_lock<std::mutex> lock(lazyMtx);
-
-        // Let the calling thread know that it may continue
-        {
-            std::unique_lock<std::mutex> cvLock(mtxCv);
-            mutexAcquired = true;
-            cv.notify_all();
-        }
 
         // Get binaries from internal sources
         auto fs = cmrc::depthai::get_filesystem();
@@ -323,41 +320,32 @@ std::function<void()> getLazyTarXzFunction(MTX& lazyMtx, CV& cv, BOOL& mutexAcqu
         // Debug - logs loading times
         spdlog::debug(
             "Resources - Archive '{}' open: {}, archive read: {}", cmrcPath, duration_cast<milliseconds>(t2 - t1), duration_cast<milliseconds>(t3 - t2));
+
+        // Notify that that preload is finished
+        {
+            std::unique_lock<std::mutex> l(mtx);
+            ready = true;
+        }
+        cv.notify_all();
     };
 }
 
 Resources::Resources() {
+    // Preinit libarchive
+    struct archive* a = archive_read_new();
+    auto r = archive_read_free(a);
+    assert(r == ARCHIVE_OK);
+    // Ignore 'r' variable when in Release build
+    (void)r;
+
     // Device resources
-    {
-        // condition variable to let this thread know when the mutex was acquired
-        std::mutex mtxCv;
-        std::condition_variable cv;
-        bool mutexAcquired = false;
-
-        // Create a thread which lazy-loads firmware resources package
-        lazyThreadDevice =
-            std::thread(getLazyTarXzFunction(mtxDevice, cv, mutexAcquired, mtxCv, CMRC_DEPTHAI_DEVICE_TAR_XZ, RESOURCE_LIST_DEVICE, resourceMapDevice));
-
-        // Wait for 'cv' to signal
-        std::unique_lock<std::mutex> l(mtxCv);
-        cv.wait(l, [&mutexAcquired]() { return mutexAcquired; });
-    }
+    // Create a thread which lazy-loads firmware resources package
+    lazyThreadDevice = std::thread(getLazyTarXzFunction(mtxDevice, cvDevice, readyDevice, CMRC_DEPTHAI_DEVICE_TAR_XZ, RESOURCE_LIST_DEVICE, resourceMapDevice));
 
     // Bootloader resources
-    {
-        // condition variable to let this thread know when the mutex was acquired
-        std::mutex mtxCv;
-        std::condition_variable cv;
-        bool mutexAcquired = false;
-
-        // Create a thread which lazy-loads firmware resources package
-        lazyThreadBootloader = std::thread(
-            getLazyTarXzFunction(mtxBootloader, cv, mutexAcquired, mtxCv, CMRC_DEPTHAI_BOOTLOADER_TAR_XZ, RESOURCE_LIST_BOOTLOADER, resourceMapBootloader));
-
-        // Wait for 'cv' to signal
-        std::unique_lock<std::mutex> l(mtxCv);
-        cv.wait(l, [&mutexAcquired]() { return mutexAcquired; });
-    }
+    // Create a thread which lazy-loads firmware resources package
+    lazyThreadBootloader = std::thread(
+        getLazyTarXzFunction(mtxBootloader, cvBootloader, readyBootloader, CMRC_DEPTHAI_BOOTLOADER_TAR_XZ, RESOURCE_LIST_BOOTLOADER, resourceMapBootloader));
 }
 
 Resources::~Resources() {
@@ -367,7 +355,7 @@ Resources::~Resources() {
 }
 
 // Get device firmware
-std::vector<std::uint8_t> Resources::getDeviceFirmware(bool usb2Mode, OpenVINO::Version version) {
+std::vector<std::uint8_t> Resources::getDeviceFirmware(bool usb2Mode, OpenVINO::Version version) const {
     Device::Config cfg;
     if(usb2Mode) {
         cfg.preboot.usb.maxSpeed = UsbSpeed::HIGH;

@@ -15,32 +15,23 @@ namespace node {
 /**
  * @brief NeuralNetwork node. Runs a neural inference on input data.
  */
-class NeuralNetwork : public Node {
+class NeuralNetwork : public NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperties> {
    public:
-    using Properties = dai::NeuralNetworkProperties;
-
-    std::string getName() const override;
+    constexpr static const char* NAME = "NeuralNetwork";
 
    protected:
-    nlohmann::json getProperties() override;
-    std::shared_ptr<Node> clone() override;
     tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion() override;
-
-   private:
-    Properties properties;
-
-   protected:
     OpenVINO::Version networkOpenvinoVersion;
-    virtual Properties& getPropertiesRef();
 
    public:
     NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
-     * Input message with data to be infered upon
+     * Input message with data to be inferred upon
      * Default queue is blocking with size 5
      */
-    Input input{*this, "in", Input::Type::SReceiver, true, 5, {{DatatypeEnum::Buffer, true}}};
+    Input input{*this, "in", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::Buffer, true}}};
 
     /**
      * Outputs NNData message that carries inference results
@@ -54,6 +45,17 @@ class NeuralNetwork : public Node {
      */
     Output passthrough{*this, "passthrough", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
 
+    /**
+     * Inputs mapped to network inputs. Useful for infering from separate data sources
+     * Default input is non-blocking with queue size 1 and waits for messages
+     */
+    InputMap inputs;
+
+    /**
+     * Passthroughs which correspond to specified input
+     */
+    OutputMap passthroughs;
+
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**
      * Load network blob into assets and use once pipeline is started.
@@ -64,7 +66,7 @@ class NeuralNetwork : public Node {
     void setBlobPath(const std::string& path);
 
     /**
-     * Specifies how many frames will be avilable in the pool
+     * Specifies how many frames will be available in the pool
      * @param numFrames How many frames will pool have
      */
     void setNumPoolFrames(int numFrames);
