@@ -6,6 +6,7 @@
 #include "depthai/depthai.hpp"
 
 using namespace std;
+using namespace std::chrono;
 using namespace std::chrono_literals;
 
 constexpr auto NUM_MESSAGES = 50;
@@ -35,7 +36,16 @@ int main() {
 
     vector<thread> threads;
     int deviceCounter = 0;
-    auto availableDevices = dai::Device::getAllAvailableDevices();
+
+    // Wait for 3s to acquire more than 1 device. Otherwise perform the test with 1 device
+    // Could also fail instead - but requires test groups before
+    auto t1 = steady_clock::now();
+    vector<dai::DeviceInfo> availableDevices;
+    do {
+        availableDevices = dai::Device::getAllAvailableDevices();
+        this_thread::sleep_for(500ms);
+    } while(availableDevices.size() <= 1 && steady_clock::now() - t1 <= 3s);
+
     for(const auto& dev : availableDevices){
         threads.push_back(thread([dev, pipeline, deviceCounter](){
 
