@@ -30,6 +30,7 @@ class ImgFrame : public Buffer {
     using Type = RawImgFrame::Type;
     using Specs = RawImgFrame::Specs;
     using CameraSettings = RawImgFrame::CameraSettings;
+    using WhiteBalance = RawImgFrame::WhiteBalance;
 
     /**
      * Construct ImgFrame message.
@@ -95,6 +96,11 @@ class ImgFrame : public Buffer {
      * Retrieves lens position, range 0..255. Returns -1 if not available
      */
     int getLensPosition() const;
+
+    /**
+     * Retrieves white balance gains, per color channel: R, Gr, Gb, B
+     */
+    WhiteBalance getWhiteBalanceGains() const;
 
     // setters
     /**

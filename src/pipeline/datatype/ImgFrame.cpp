@@ -52,6 +52,9 @@ int ImgFrame::getSensitivity() const {
 int ImgFrame::getLensPosition() const {
     return img.cam.lensPosition;
 }
+ImgFrame::WhiteBalance ImgFrame::getWhiteBalanceGains() const {
+    return img.cam.whiteBalanceGains;
+}
 
 // setters
 void ImgFrame::setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
