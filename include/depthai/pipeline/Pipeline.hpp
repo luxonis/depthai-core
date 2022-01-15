@@ -117,7 +117,7 @@ class Pipeline {
     /**
      * @returns Pipeline schema
      */
-    PipelineSchema getPipelineSchema();
+    PipelineSchema getPipelineSchema() const;
 
     // void loadAssets(AssetManager& assetManager);
     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage) const {

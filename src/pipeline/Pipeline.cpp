@@ -51,6 +51,10 @@ GlobalProperties Pipeline::getGlobalProperties() const {
     return pimpl->globalProperties;
 }
 
+PipelineSchema Pipeline::getPipelineSchema() const {
+    return pimpl->getPipelineSchema();
+}
+
 std::shared_ptr<const Node> PipelineImpl::getNode(Node::Id id) const {
     if(nodeMap.count(id) > 0) {
         return nodeMap.at(id);
