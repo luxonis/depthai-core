@@ -290,7 +290,7 @@ std::function<void()> getLazyTarXzFunction(MTX& lazyMtx, CV& cv, BOOL& mutexAcqu
                         resourceMap[resPath].resize(currentSize + readSize);
                         long long size = archive_read_data(a, &resourceMap[resPath][currentSize], readSize);
 
-                        // Assert that no errors occured
+                        // Assert that no errors occurred
                         assert(size >= 0);
 
                         // Append number of bytes actually read to finalSize

@@ -46,7 +46,7 @@ class NeuralNetwork : public NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperti
     Output passthrough{*this, "passthrough", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
 
     /**
-     * Inputs mapped to network inputs. Useful for infering from separate data sources
+     * Inputs mapped to network inputs. Useful for inferring from separate data sources
      * Default input is non-blocking with queue size 1 and waits for messages
      */
     InputMap inputs;

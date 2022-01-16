@@ -154,7 +154,7 @@ class DataOutputQueue {
     }
 
     /**
-     * Try to retrieve message from queue. If no message available, return immidiately with nullptr
+     * Try to retrieve message from queue. If no message available, return immediately with nullptr
      *
      * @returns Message or nullptr if no message available
      */
@@ -213,8 +213,8 @@ class DataOutputQueue {
      * Block until a message is available with a timeout.
      *
      * @param timeout Duration for which the function should block
-     * @param[out] hasTimedout Outputs true if timeout occured, false otherwise
-     * @returns Message of type T otherwise nullptr if message isn't type T or timeout occured
+     * @param[out] hasTimedout Outputs true if timeout occurred, false otherwise
+     * @returns Message of type T otherwise nullptr if message isn't type T or timeout occurred
      */
     template <class T, typename Rep, typename Period>
     std::shared_ptr<T> get(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
@@ -232,8 +232,8 @@ class DataOutputQueue {
      * Block until a message is available with a timeout.
      *
      * @param timeout Duration for which the function should block
-     * @param[out] hasTimedout Outputs true if timeout occured, false otherwise
-     * @returns Message of type T otherwise nullptr if message isn't type T or timeout occured
+     * @param[out] hasTimedout Outputs true if timeout occurred, false otherwise
+     * @returns Message of type T otherwise nullptr if message isn't type T or timeout occurred
      */
     template <typename Rep, typename Period>
     std::shared_ptr<ADatatype> get(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
@@ -302,7 +302,7 @@ class DataOutputQueue {
      * Block for maximum timeout duration.
      * Then return all messages from the queue.
      * @param timeout Maximum duration to block
-     * @param[out] hasTimedout Outputs true if timeout occured, false otherwise
+     * @param[out] hasTimedout Outputs true if timeout occurred, false otherwise
      * @returns Vector of messages which can either be of type T or nullptr
      */
     template <class T, typename Rep, typename Period>
@@ -325,7 +325,7 @@ class DataOutputQueue {
      * Block for maximum timeout duration.
      * Then return all messages from the queue.
      * @param timeout Maximum duration to block
-     * @param[out] hasTimedout Outputs true if timeout occured, false otherwise
+     * @param[out] hasTimedout Outputs true if timeout occurred, false otherwise
      * @returns Vector of messages
      */
     template <typename Rep, typename Period>
