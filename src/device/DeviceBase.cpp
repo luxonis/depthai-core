@@ -811,6 +811,18 @@ int DeviceBase::irReadReg(int reg) {
     return pimpl->rpcClient->call("irReadReg", reg);
 }
 
+void DeviceBase::setIrLaserDotProjectorBrightness(float mA, int mask) {
+    checkClosed();
+
+    pimpl->rpcClient->call("setIrLaserDotProjectorBrightness", mA, mask);
+}
+
+void DeviceBase::setIrFloodLightBrightness(float mA, int mask) {
+    checkClosed();
+
+    pimpl->rpcClient->call("setIrFloodLightBrightness", mA, mask);
+}
+
 int DeviceBase::addLogCallback(std::function<void(LogMessage)> callback) {
     checkClosed();
 
