@@ -371,6 +371,22 @@ class DeviceBase {
      */
     LogLevel getLogOutputLevel();
 
+    /**
+     * Sets the brightness of the IR Laser Dot Projector. Theoretical maximum 1500mA, but recommended to not exceed 765mA.
+     *
+     * @param mA Current in mA that will determine brightness, 0 or negative to turn off
+     * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W
+     */
+    void setIrLaserDotProjectorBrightness(float mA, int mask = -1);
+
+    /**
+     * Sets the brightness of the IR Flood Light. Maximum 1500mA.
+     *
+     * @param mA Current in mA that will determine brightness, 0 or negative to turn off
+     * @param mask Optional mask to mofify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W
+     */
+    void setIrFloodLightBrightness(float mA, int mask = -1);
+
     /// Write register on LM3644 IR projector
     void irWriteReg(int reg, int value);
 
