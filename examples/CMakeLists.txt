@@ -141,6 +141,22 @@ hunter_private_data(
     LOCATION person_detection
 )
 
+# concat model
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/concat_openvino_2021.4_6shave.blob"
+    SHA1 "e4af6fb2bed39648a2a4424d8bdc5bac56d616df"
+    FILE "concat_openvino_2021.4_6shave.blob"
+    LOCATION concat_model
+)
+
+# normalization model
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/normalize_openvino_2021.4_4shave.blob"
+    SHA1 "1435f6d11e0dfdbc60f2dfa45aecd3d530b6153b"
+    FILE "normalize_openvino_2021.4_4shave.blob"
+    LOCATION normalization_model
+)
+
 ## message(STATUS "Location of test1.data: ${test1_data}")
 
 # bootloader
@@ -218,6 +234,11 @@ dai_add_example(mono_preview MonoCamera/mono_preview.cpp  ON)
 dai_add_example(mono_full_resolution_saver MonoCamera/mono_full_resolution_saver.cpp  ON)
 
 # NeuralNetwork
+dai_add_example(concatenate NeuralNetwork/concat_multi_input.cpp ON)
+dai_add_example(normalize NeuralNetwork/normalization_multi_input.cpp ON)
+
+target_compile_definitions(concatenate PRIVATE BLOB_PATH="${concat_model}")
+target_compile_definitions(normalize PRIVATE BLOB_PATH="${normalization_model}")
 
 # ObjectTracker
 dai_add_example(object_tracker ObjectTracker/object_tracker.cpp ON)
