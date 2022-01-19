@@ -173,7 +173,6 @@ class DataOutputQueue {
         std::shared_ptr<ADatatype> val = nullptr;
         if(!queue.waitAndPop(val)) {
             throw std::runtime_error(exceptionMessage.c_str());
-            return nullptr;
         }
         return std::dynamic_pointer_cast<T>(val);
     }
