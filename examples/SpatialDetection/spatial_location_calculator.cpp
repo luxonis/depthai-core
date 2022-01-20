@@ -2,7 +2,7 @@
 
 #include "utility.hpp"
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 static constexpr float stepSize = 0.05f;
@@ -51,7 +51,7 @@ int main() {
     config.depthThresholds.upperThreshold = 10000;
     config.roi = dai::Rect(topLeft, bottomRight);
 
-    spatialDataCalculator->setWaitForConfigInput(false);
+    spatialDataCalculator->inputConfig.setWaitForMessage(false);
     spatialDataCalculator->initialConfig.addROI(config);
 
     // Linking

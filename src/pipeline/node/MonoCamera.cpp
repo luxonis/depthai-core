@@ -5,29 +5,22 @@
 namespace dai {
 namespace node {
 
-MonoCamera::MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : Node(par, nodeId), rawControl(std::make_shared<RawCameraControl>()), initialControl(rawControl) {
+MonoCamera::MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : MonoCamera(par, nodeId, std::make_unique<MonoCamera::Properties>()) {}
+MonoCamera::MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<Node, MonoCamera, MonoCameraProperties>(par, nodeId, std::move(props)),
+      rawControl(std::make_shared<RawCameraControl>()),
+      initialControl(rawControl) {
     properties.boardSocket = CameraBoardSocket::AUTO;
     properties.resolution = MonoCameraProperties::SensorResolution::THE_720_P;
     properties.fps = 30.0;
 
-    inputs = {&inputControl};
-    outputs = {&out, &raw};
+    setInputRefs({&inputControl});
+    setOutputRefs({&out, &raw});
 }
 
-std::string MonoCamera::getName() const {
-    return "MonoCamera";
-}
-
-nlohmann::json MonoCamera::getProperties() {
-    nlohmann::json j;
+MonoCamera::Properties& MonoCamera::getProperties() {
     properties.initialControl = *rawControl;
-    nlohmann::to_json(j, properties);
-    return j;
-}
-
-std::shared_ptr<Node> MonoCamera::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
+    return properties;
 }
 
 // Set board socket to use

@@ -26,7 +26,7 @@
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
-#include "depthai-shared/device/PrebootConfig.hpp"
+#include "depthai-shared/device/BoardConfig.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
 
@@ -56,7 +56,7 @@ class DeviceBase {
      */
     struct Config {
         OpenVINO::Version version;
-        PrebootConfig preboot;
+        BoardConfig board;
     };
 
     // static API
@@ -306,7 +306,7 @@ class DeviceBase {
     bool startPipeline(const Pipeline& pipeline);
 
     /**
-     * Sets the devices logging severity level. This level affects which logs are transfered from device to host.
+     * Sets the devices logging severity level. This level affects which logs are transferred from device to host.
      *
      * @param level Logging severity
      */
