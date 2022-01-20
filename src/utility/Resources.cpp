@@ -17,7 +17,7 @@
 #include "spdlog/spdlog.h"
 
 // shared
-#include "depthai-shared/device/PrebootConfig.hpp"
+#include "depthai-shared/device/BoardConfig.hpp"
 #include "depthai-shared/utility/Checksum.hpp"
 #include "depthai-shared/utility/Serialization.hpp"
 
@@ -168,8 +168,8 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, st
 
     // Prepend preboot config
     // Serialize preboot
-    auto prebootPayload = utility::serialize(config.preboot);
-    auto prebootHeader = createPrebootHeader(prebootPayload, PREBOOT_CONFIG_MAGIC1, PREBOOT_CONFIG_MAGIC2);
+    auto prebootPayload = utility::serialize(config.board);
+    auto prebootHeader = createPrebootHeader(prebootPayload, BOARD_CONFIG_MAGIC1, BOARD_CONFIG_MAGIC2);
     finalFwBinary.insert(finalFwBinary.begin(), prebootHeader.begin(), prebootHeader.end());
 
     // Return created firmware
@@ -358,9 +358,9 @@ Resources::~Resources() {
 std::vector<std::uint8_t> Resources::getDeviceFirmware(bool usb2Mode, OpenVINO::Version version) const {
     Device::Config cfg;
     if(usb2Mode) {
-        cfg.preboot.usb.maxSpeed = UsbSpeed::HIGH;
+        cfg.board.usb.maxSpeed = UsbSpeed::HIGH;
     } else {
-        cfg.preboot.usb.maxSpeed = Device::DEFAULT_USB_SPEED;
+        cfg.board.usb.maxSpeed = Device::DEFAULT_USB_SPEED;
     }
     cfg.version = version;
 
@@ -378,7 +378,7 @@ std::vector<std::uint8_t> createPrebootHeader(const std::vector<uint8_t>& payloa
                                    static_cast<uint8_t>((magic1 >> 16) & 0xFF),
                                    static_cast<uint8_t>((magic1 >> 24) & 0xFF)};
 
-    // Store the constructed preboot information
+    // Store the constructed board information
     std::vector<std::uint8_t> prebootHeader;
 
     // Store initial header
