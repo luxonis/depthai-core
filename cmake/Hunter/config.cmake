@@ -7,9 +7,9 @@ hunter_config(
 
 hunter_config(
     XLink
-    VERSION "luxonis-2021.4.2-master"
-    URL "https://github.com/luxonis/XLink/archive/ed9970a02cbc88724623c450daf4d1d2f6ee5e44.tar.gz"
-    SHA1 "2f52c3e1f4a489a159037869684caac2dfc4eb5e"
+    VERSION "luxonis-2021.4.2-develop"
+    URL "https://github.com/luxonis/XLink/archive/02060efde2ad487054b36f3926f22964214e13b4.tar.gz"
+    SHA1 "dcbb0bd83087ce8617a593c75e725d69dea17f8b"
 )
 
 hunter_config(
