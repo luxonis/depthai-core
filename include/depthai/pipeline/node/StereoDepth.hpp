@@ -317,6 +317,12 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * @param mode Stereo depth preset mode
      */
     void setDefaultProfilePreset(PresetMode mode);
+
+    /**
+     * Sets a default preset based on specified option.
+     * @param mode Stereo depth preset mode
+     */
+    void setFocalLengthFromCalibration(bool focalLengthFromCalibration);
 };
 
 }  // namespace node
