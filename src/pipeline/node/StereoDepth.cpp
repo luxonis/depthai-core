@@ -171,6 +171,10 @@ void StereoDepth::setPostProcessingHardwareResources(int numShaves, int numMemor
     properties.numPostProcessingMemorySlices = numMemorySlices;
 }
 
+void StereoDepth::setFocalLengthFromCalibration(bool focalLengthFromCalibration) {
+    properties.focalLengthFromCalibration = focalLengthFromCalibration;
+}
+
 void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
     presetMode = mode;
     switch(presetMode) {
