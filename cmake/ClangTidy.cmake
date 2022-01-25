@@ -1,8 +1,12 @@
 function(target_clangtidy_setup target)
 
-    if(NOT CLANG_TIDY_BIN)
-        find_program(CLANG_TIDY_BIN clang-tidy)
-    endif()
+    set(CLANG_TIDY_NAMES clang-tidy clang-tidy-10 clang-tidy-11)
+    foreach(clangtidy ${CLANG_TIDY_NAMES})
+        if(CLANG_TIDY_BIN)
+            break()
+        endif()
+        find_program(CLANG_TIDY_BIN ${clangtidy})
+    endforeach()
 
     if(NOT CLANG_TIDY_BIN)
         message(FATAL_ERROR "clang-tidy is not installed. Aborting...")

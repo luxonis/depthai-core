@@ -28,6 +28,7 @@
 #include "nanorpc/core/client.h"
 #include "nanorpc/packer/nlohmann_msgpack.h"
 #include "spdlog/details/os.h"
+#include "spdlog/fmt/bin_to_hex.h"
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
@@ -418,7 +419,7 @@ void DeviceBase::tryStartPipeline(const Pipeline& pipeline) {
 void DeviceBase::init(OpenVINO::Version version, bool usb2Mode, const std::string& pathToMvcmd) {
     Config cfg;
     // Specify usb speed
-    cfg.preboot.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
+    cfg.board.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
     // Specify the OpenVINO version
     cfg.version = version;
     init2(cfg, pathToMvcmd, {});
@@ -426,13 +427,13 @@ void DeviceBase::init(OpenVINO::Version version, bool usb2Mode, const std::strin
 void DeviceBase::init(const Pipeline& pipeline, bool usb2Mode, const std::string& pathToMvcmd) {
     Config cfg = pipeline.getDeviceConfig();
     // Modify usb speed
-    cfg.preboot.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
+    cfg.board.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
     init2(cfg, pathToMvcmd, pipeline);
 }
 void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd) {
     Config cfg;
     // Specify usb speed
-    cfg.preboot.usb.maxSpeed = maxUsbSpeed;
+    cfg.board.usb.maxSpeed = maxUsbSpeed;
     // Specify the OpenVINO version
     cfg.version = version;
     init2(cfg, pathToMvcmd, {});
@@ -440,7 +441,7 @@ void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const std
 void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd) {
     Config cfg = pipeline.getDeviceConfig();
     // Modify usb speed
-    cfg.preboot.usb.maxSpeed = maxUsbSpeed;
+    cfg.board.usb.maxSpeed = maxUsbSpeed;
     init2(cfg, pathToMvcmd, pipeline);
 }
 
@@ -467,7 +468,7 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
         // Try parsing the string as a number
         try {
             std::chrono::milliseconds watchdog{std::stoi(watchdogMsStr)};
-            config.preboot.watchdogTimeoutMs = static_cast<uint32_t>(watchdog.count());
+            config.board.watchdogTimeoutMs = static_cast<uint32_t>(watchdog.count());
             watchdogTimeout = watchdog;
             if(watchdogTimeout.count() == 0) {
                 spdlog::warn("Watchdog disabled! In case of unclean exit, the device needs reset or power-cycle for next run", watchdogTimeout);
@@ -484,14 +485,18 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
         // Try parsing the string as a number
         try {
             std::chrono::milliseconds watchdog{std::stoi(watchdogInitMsStr)};
-            config.preboot.watchdogInitialDelayMs = static_cast<uint32_t>(watchdog.count());
-            spdlog::warn("Watchdog initial delay set to {} ms", *config.preboot.watchdogInitialDelayMs);
+            config.board.watchdogInitialDelayMs = static_cast<uint32_t>(watchdog.count());
+            spdlog::warn("Watchdog initial delay set to {} ms", *config.board.watchdogInitialDelayMs);
         } catch(const std::invalid_argument& e) {
             spdlog::warn("DEPTHAI_WATCHDOG_INITIAL_DELAY value invalid: {}", e.what());
         }
     }
 
     // Get embedded mvcmd or external with applied config
+    if(spdlog::get_level() == spdlog::level::debug) {
+        nlohmann::json jBoardConfig = config.board;
+        spdlog::debug("Device - BoardConfig: {} \nlibnop:{}", jBoardConfig.dump(), spdlog::to_hex(utility::serialize(config.board)));
+    }
     std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, pathToMvcmd);
 
     // Init device (if bootloader, handle correctly - issue USB boot command)
