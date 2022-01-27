@@ -112,7 +112,7 @@ int main(int argc, char** argv) {
 
         cv::Mat rectifiedRight = inRectified->getCvFrame();
 
-        cv::Mat depthFrame = inDepth->getFrame(); // depthFrame values are in millimeters
+        cv::Mat depthFrame = inDepth->getFrame();  // depthFrame values are in millimeters
         cv::Mat depthFrameColor;
 
         cv::normalize(depthFrame, depthFrameColor, 255, 0, cv::NORM_INF, CV_8UC1);

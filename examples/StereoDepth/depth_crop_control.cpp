@@ -58,7 +58,7 @@ int main() {
 
     while(true) {
         auto inDepth = q->get<dai::ImgFrame>();
-        cv::Mat depthFrame = inDepth->getFrame(); // depthFrame values are in millimeters
+        cv::Mat depthFrame = inDepth->getFrame();  // depthFrame values are in millimeters
 
         // Frame is transformed, the color map will be applied to highlight the depth info
         cv::Mat depthFrameColor;
