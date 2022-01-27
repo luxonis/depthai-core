@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
     float disparityMultiplier = 255 / stereo->initialConfig.getMaxDisparity();
 
     while(true) {
-        // Instead of get (blocking), we use tryGet (nonblocking) which will return the available data or None otherwise
+        // Instead of get (blocking), we use tryGet (non-blocking) which will return the available data or None otherwise
         auto inRight = qRight->tryGet<dai::ImgFrame>();
         auto inDet = qDet->tryGet<dai::ImgDetections>();
         auto inDisparity = qDisparity->tryGet<dai::ImgFrame>();
