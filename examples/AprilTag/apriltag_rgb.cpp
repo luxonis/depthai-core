@@ -17,10 +17,10 @@ int main() {
     auto manip = pipeline.create<dai::node::ImageManip>();
 
     auto xoutAprilTag = pipeline.create<dai::node::XLinkOut>();
-    auto manipOut = pipeline.create<dai::node::XLinkOut>();
+    auto xoutAprilTagImage = pipeline.create<dai::node::XLinkOut>();
 
     xoutAprilTag->setStreamName("aprilTagData");
-    manipOut->setStreamName("manip");
+    xoutAprilTagImage->setStreamName("aprilTagImage");
 
     // Properties
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
@@ -32,17 +32,19 @@ int main() {
     aprilTag->initialConfig.setFamily(dai::AprilTagConfig::Family::TAG_36H11);
 
     // Linking
-
-    aprilTag->passthroughInputImage.link(manipOut->input);
+    aprilTag->passthroughInputImage.link(xoutAprilTagImage->input);
     camRgb->video.link(manip->inputImage);
     manip->out.link(aprilTag->inputImage);
     aprilTag->out.link(xoutAprilTag->input);
+    // always take the latest frame as apriltag detections are slow
+    aprilTag->inputImage.setBlocking(false);
+    aprilTag->inputImage.setQueueSize(1);
 
     // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     // Output queue will be used to get the mono frames from the outputs defined above
-    auto manipQueue = device.getOutputQueue("manip", 8, false);
+    auto manipQueue = device.getOutputQueue("aprilTagImage", 8, false);
     auto aprilTagQueue = device.getOutputQueue("aprilTagData", 8, false);
 
     auto color = cv::Scalar(0, 255, 0);
@@ -83,7 +85,7 @@ int main() {
         fpsStr << "fps:" << std::fixed << std::setprecision(2) << fps;
         cv::putText(frame, fpsStr.str(), cv::Point(2, inFrame->getHeight() - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, color);
 
-        cv::imshow("manip", frame);
+        cv::imshow("April tag frame", frame);
 
         int key = cv::waitKey(1);
         if(key == 'q') {

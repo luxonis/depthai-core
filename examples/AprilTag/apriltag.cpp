@@ -30,8 +30,10 @@ int main() {
     // Linking
     aprilTag->passthroughInputImage.link(xoutMono->input);
     monoLeft->out.link(aprilTag->inputImage);
-
     aprilTag->out.link(xoutAprilTag->input);
+    // always take the latest frame as apriltag detections are slow
+    aprilTag->inputImage.setBlocking(false);
+    aprilTag->inputImage.setQueueSize(1);
 
     // Connect to device and start pipeline
     dai::Device device(pipeline);

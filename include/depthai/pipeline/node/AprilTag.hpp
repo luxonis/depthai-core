@@ -49,6 +49,11 @@ class AprilTag : public NodeCRTP<Node, AprilTag, AprilTagProperties> {
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::AprilTagData, false}}};
 
     /**
+     * Outputs AprilTagConfig message that contains current configuration.
+     */
+    Output outConfig{*this, "outConfig", Output::Type::MSender, {{DatatypeEnum::AprilTagConfig, false}}};
+
+    /**
      * Passthrough message on which the calculation was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
