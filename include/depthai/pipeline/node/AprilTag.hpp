@@ -21,11 +21,9 @@ class AprilTag : public NodeCRTP<Node, AprilTag, AprilTagProperties> {
     Properties& getProperties();
 
    private:
-
     std::shared_ptr<RawAprilTagConfig> rawConfig;
 
    public:
-
     AprilTag(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     AprilTag(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
