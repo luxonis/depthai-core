@@ -96,7 +96,7 @@ int main(int argc, char** argv) {
     cout << "Resize video window with mouse drag!" << endl;
 
     while(true) {
-        // Instead of get (blocking), we use tryGet (nonblocking) which will return the available data or None otherwise
+        // Instead of get (blocking), we use tryGet (non-blocking) which will return the available data or None otherwise
         auto inVideo = qVideo->tryGet<dai::ImgFrame>();
         auto inPreview = qPreview->tryGet<dai::ImgFrame>();
         auto inDet = qDet->tryGet<dai::ImgDetections>();

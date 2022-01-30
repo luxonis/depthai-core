@@ -529,6 +529,8 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
     // Then wait for response by bootloader
     // Wait till FLASH_COMPLETE response
     Response::FlashComplete result;
+    result.success = 0;  // TODO remove these inits after fix https://github.com/luxonis/depthai-bootloader-shared/issues/4
+    result.errorMsg[0] = 0;
     do {
         std::vector<uint8_t> data;
         if(!receiveResponseData(data)) return {false, "Couldn't receive bootloader response"};
@@ -611,6 +613,8 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, T
     // Then wait for response by bootloader
     // Wait till FLASH_COMPLETE response
     Response::FlashComplete result;
+    result.success = 0;  // TODO remove these inits after fix https://github.com/luxonis/depthai-bootloader-shared/issues/4
+    result.errorMsg[0] = 0;
     do {
         std::vector<uint8_t> data;
         if(!receiveResponseData(data)) return {false, "Couldn't receive bootloader response"};
@@ -662,6 +666,8 @@ std::tuple<bool, std::string> DeviceBootloader::flashCustom(Memory memory, uint3
     // Then wait for response by bootloader
     // Wait till FLASH_COMPLETE response
     Response::FlashComplete result;
+    result.success = 0;  // TODO remove these inits after fix https://github.com/luxonis/depthai-bootloader-shared/issues/4
+    result.errorMsg[0] = 0;
     do {
         std::vector<uint8_t> data;
         if(!receiveResponseData(data)) return {false, "Couldn't receive bootloader response"};
@@ -704,9 +710,9 @@ nlohmann::json DeviceBootloader::readConfigData(Memory memory, Type type) {
 
     // Get response
     Response::GetBootloaderConfig resp;
-    receiveResponse(resp);
+    resp.success = 0;  // TODO remove these inits after fix https://github.com/luxonis/depthai-bootloader-shared/issues/4
 
-    if(resp.success) {
+    if(receiveResponse(resp) && resp.success) {
         // Read back bootloader config (1 packet max)
         auto bsonConfig = stream->read();
         // Parse from BSON
@@ -727,11 +733,15 @@ std::tuple<bool, std::string> DeviceBootloader::flashConfigClear(Memory memory, 
     setConfigReq.numPackets = 0;
     setConfigReq.totalSize = 0;
     setConfigReq.clearConfig = 1;
-    if(!sendRequest(setConfigReq)) return {false, "Couldn't send request to flash configuration data"};
+    if(!sendRequest(setConfigReq)) return {false, "Couldn't send request to flash configuration clear"};
 
     // Read back response
     Response::FlashComplete result;
-    receiveResponse(result);
+    result.success = 0;  // TODO remove these inits after fix https://github.com/luxonis/depthai-bootloader-shared/issues/4
+    result.errorMsg[0] = 0;
+    if(!receiveResponse(result)) {
+        return {false, "Couldn't receive response to flash configuration clear"};
+    }
 
     // Return if flashing was successful
     return {result.success, result.errorMsg};
@@ -757,7 +767,11 @@ std::tuple<bool, std::string> DeviceBootloader::flashConfigData(nlohmann::json c
 
     // Read back response
     Response::FlashComplete result;
-    receiveResponse(result);
+    result.success = 0;  // TODO remove these inits after fix https://github.com/luxonis/depthai-bootloader-shared/issues/4
+    result.errorMsg[0] = 0;
+    if(!receiveResponse(result)) {
+        return {false, "Couldn't receive response to flash configuration data"};
+    }
 
     // Return if flashing was successful
     return {result.success, result.errorMsg};

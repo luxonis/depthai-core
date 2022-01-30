@@ -125,7 +125,8 @@ streamPacketDesc_t* XLinkStream::readRaw() {
 
 // USE ONLY WHEN COPYING DATA AT LATER STAGES
 void XLinkStream::readRawRelease() {
-    XLinkReleaseData(streamId);
+    XLinkError_t status;
+    if((status = XLinkReleaseData(streamId)) != X_LINK_SUCCESS) throw XLinkReadError(status, streamName);
 }
 
 // SPLIT HELPER

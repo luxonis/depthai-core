@@ -34,7 +34,7 @@ int main() {
     auto qRight = device.getOutputQueue("right", 4, false);
 
     while(true) {
-        // Instead of get (blocking), we use tryGet (nonblocking) which will return the available data or None otherwise
+        // Instead of get (blocking), we use tryGet (non-blocking) which will return the available data or None otherwise
         auto inLeft = qLeft->tryGet<dai::ImgFrame>();
         auto inRight = qRight->tryGet<dai::ImgFrame>();
 
