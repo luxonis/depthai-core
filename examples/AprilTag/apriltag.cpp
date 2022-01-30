@@ -25,7 +25,7 @@ int main() {
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
 
-    aprilTag->initialConfig.setType(dai::AprilTagType::Type::TAG_36H11);
+    aprilTag->initialConfig.setFamily(dai::AprilTagConfig::Family::TAG_36H11);
 
     // Linking
     aprilTag->passthroughInputImage.link(xoutMono->input);

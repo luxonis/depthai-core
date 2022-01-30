@@ -16,6 +16,8 @@ class AprilTagConfig : public Buffer {
     RawAprilTagConfig& cfg;
 
    public:
+    using Family = RawAprilTagConfig::Family;
+
     /**
      * Construct AprilTagConfig message.
      */
@@ -24,15 +26,21 @@ class AprilTagConfig : public Buffer {
     virtual ~AprilTagConfig() = default;
 
     /**
-     * @param t AprilTag type
+     * @param family AprilTag family
      */
-    void setType(AprilTagType::Type t);
+    void setFamily(Family family);
 
     /**
-     * Retrieve configuration data for AprilTag
-     * @returns Vector of configuration parameters for type (region of interests)
+     * Set explicit configuration.
+     * @param config Explicit configuration
      */
-    AprilTagType getConfigData() const;
+    void set(dai::RawAprilTagConfig config);
+
+    /**
+     * Retrieve configuration data for AprilTag.
+     * @returns config for stereo depth algorithm
+     */
+    dai::RawAprilTagConfig get() const;
 };
 
 }  // namespace dai

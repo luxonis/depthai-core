@@ -29,7 +29,7 @@ int main() {
     manip->initialConfig.setResize(480, 270);
     manip->initialConfig.setFrameType(dai::ImgFrame::Type::GRAY8);
 
-    aprilTag->initialConfig.setType(dai::AprilTagType::Type::TAG_36H11);
+    aprilTag->initialConfig.setFamily(dai::AprilTagConfig::Family::TAG_36H11);
 
     // Linking
 
