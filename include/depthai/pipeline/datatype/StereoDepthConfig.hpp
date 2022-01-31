@@ -89,7 +89,7 @@ class StereoDepthConfig : public Buffer {
     void setExtendedDisparity(bool enable);
 
     /**
-     * Computes disparity with sub-pixel interpolation (5 fractional bits).
+     * Computes disparity with sub-pixel interpolation (3 fractional bits by default).
      *
      * Suitable for long range. Currently incompatible with extended disparity
      */
