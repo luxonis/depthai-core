@@ -65,20 +65,27 @@ int main() {
             startTime = currentTime;
         }
 
-        cv::Mat frame = inFrame->getCvFrame();
+        cv::Mat monoFrame = inFrame->getFrame();
+        cv::Mat frame;
+        cv::cvtColor(monoFrame, frame, cv::COLOR_GRAY2BGR);
 
         auto aprilTagData = aprilTagQueue->get<dai::AprilTagData>()->aprilTags;
         for(auto aprilTag : aprilTagData) {
-            auto xmin = (int)aprilTag.points.x;
-            auto ymin = (int)aprilTag.points.y;
-            auto xmax = xmin + (int)aprilTag.points.width;
-            auto ymax = ymin + (int)aprilTag.points.height;
+            auto& topLeft = aprilTag.topLeft;
+            auto& topRight = aprilTag.topRight;
+            auto& bottomRight = aprilTag.bottomRight;
+            auto& bottomLeft = aprilTag.bottomLeft;
+
+            cv::Point center = cv::Point((topLeft.x + bottomRight.x) / 2, (topLeft.y + bottomRight.y) / 2);
+
+            cv::line(frame, cv::Point(topLeft.x, topLeft.y), cv::Point(topRight.x, topRight.y), color, cv::LINE_AA, 0);
+            cv::line(frame, cv::Point(topRight.x, topRight.y), cv::Point(bottomRight.x, bottomRight.y), color, cv::LINE_AA, 0);
+            cv::line(frame, cv::Point(bottomRight.x, bottomRight.y), cv::Point(bottomLeft.x, bottomLeft.y), color, cv::LINE_AA, 0);
+            cv::line(frame, cv::Point(bottomLeft.x, bottomLeft.y), cv::Point(topLeft.x, topLeft.y), color, cv::LINE_AA, 0);
 
             std::stringstream idStr;
             idStr << "ID: " << aprilTag.id;
-            cv::putText(frame, idStr.str(), cv::Point(xmin + 10, ymin + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-
-            cv::rectangle(frame, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
+            cv::putText(frame, idStr.str(), center, cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
         }
 
         std::stringstream fpsStr;
