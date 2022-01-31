@@ -17,6 +17,7 @@ class AprilTagConfig : public Buffer {
 
    public:
     using Family = RawAprilTagConfig::Family;
+    using QuadThresholds = RawAprilTagConfig::QuadThresholds;
 
     /**
      * Construct AprilTagConfig message.

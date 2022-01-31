@@ -78,10 +78,10 @@ int main() {
 
             cv::Point center = cv::Point((topLeft.x + bottomRight.x) / 2, (topLeft.y + bottomRight.y) / 2);
 
-            cv::line(frame, cv::Point(topLeft.x, topLeft.y), cv::Point(topRight.x, topRight.y), color, cv::LINE_AA, 0);
-            cv::line(frame, cv::Point(topRight.x, topRight.y), cv::Point(bottomRight.x, bottomRight.y), color, cv::LINE_AA, 0);
-            cv::line(frame, cv::Point(bottomRight.x, bottomRight.y), cv::Point(bottomLeft.x, bottomLeft.y), color, cv::LINE_AA, 0);
-            cv::line(frame, cv::Point(bottomLeft.x, bottomLeft.y), cv::Point(topLeft.x, topLeft.y), color, cv::LINE_AA, 0);
+            cv::line(frame, cv::Point(topLeft.x, topLeft.y), cv::Point(topRight.x, topRight.y), color, 2, cv::LINE_AA, 0);
+            cv::line(frame, cv::Point(topRight.x, topRight.y), cv::Point(bottomRight.x, bottomRight.y), color, 2, cv::LINE_AA, 0);
+            cv::line(frame, cv::Point(bottomRight.x, bottomRight.y), cv::Point(bottomLeft.x, bottomLeft.y), color, 2, cv::LINE_AA, 0);
+            cv::line(frame, cv::Point(bottomLeft.x, bottomLeft.y), cv::Point(topLeft.x, topLeft.y), color, 2, cv::LINE_AA, 0);
 
             std::stringstream idStr;
             idStr << "ID: " << aprilTag.id;
