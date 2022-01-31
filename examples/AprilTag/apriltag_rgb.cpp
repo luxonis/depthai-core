@@ -69,7 +69,7 @@ int main() {
         cv::Mat frame;
         cv::cvtColor(monoFrame, frame, cv::COLOR_GRAY2BGR);
 
-        auto aprilTagData = aprilTagQueue->get<dai::AprilTagData>()->aprilTags;
+        auto aprilTagData = aprilTagQueue->get<dai::AprilTags>()->aprilTags;
         for(auto aprilTag : aprilTagData) {
             auto& topLeft = aprilTag.topLeft;
             auto& topRight = aprilTag.topRight;

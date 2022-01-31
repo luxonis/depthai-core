@@ -3,7 +3,7 @@
 // all the data types
 #include "datatype/ADatatype.hpp"
 #include "datatype/AprilTagConfig.hpp"
-#include "datatype/AprilTagData.hpp"
+#include "datatype/AprilTags.hpp"
 #include "datatype/Buffer.hpp"
 #include "datatype/CameraControl.hpp"
 #include "datatype/FeatureTrackerConfig.hpp"

@@ -9,21 +9,21 @@
 namespace dai {
 
 /**
- * AprilTagData message.
+ * AprilTags message.
  */
-class AprilTagData : public Buffer {
+class AprilTags : public Buffer {
     std::shared_ptr<RawBuffer> serialize() const override;
     RawAprilTags& rawdata;
 
    public:
     /**
-     * Construct AprilTagData message.
+     * Construct AprilTags message.
      */
-    AprilTagData();
-    explicit AprilTagData(std::shared_ptr<RawAprilTags> ptr);
-    virtual ~AprilTagData() = default;
+    AprilTags();
+    explicit AprilTags(std::shared_ptr<RawAprilTags> ptr);
+    virtual ~AprilTags() = default;
 
-    std::vector<AprilTags>& aprilTags;
+    std::vector<AprilTag>& aprilTags;
 };
 
 }  // namespace dai

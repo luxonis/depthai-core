@@ -11,7 +11,7 @@
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/AprilTagConfig.hpp"
-#include "depthai/pipeline/datatype/AprilTagData.hpp"
+#include "depthai/pipeline/datatype/AprilTags.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
@@ -131,7 +131,7 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<RawSpatialLocationCalculatorConfig>(metadataStart, serializedObjectSize, data);
             break;
 
-        case DatatypeEnum::AprilTagData:
+        case DatatypeEnum::AprilTags:
             return parseDatatype<RawAprilTags>(metadataStart, serializedObjectSize, data);
             break;
 
@@ -225,8 +225,8 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
                 parseDatatype<RawSpatialLocationCalculatorConfig>(metadataStart, serializedObjectSize, data));
             break;
 
-        case DatatypeEnum::AprilTagData:
-            return std::make_shared<AprilTagData>(parseDatatype<RawAprilTags>(metadataStart, serializedObjectSize, data));
+        case DatatypeEnum::AprilTags:
+            return std::make_shared<AprilTags>(parseDatatype<RawAprilTags>(metadataStart, serializedObjectSize, data));
             break;
 
         case DatatypeEnum::AprilTagConfig:

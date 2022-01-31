@@ -44,9 +44,9 @@ class AprilTag : public NodeCRTP<Node, AprilTag, AprilTagProperties> {
     Input inputImage{*this, "inputImage", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
-     * Outputs AprilTagData message that carries spatial location results.
+     * Outputs AprilTags message that carries spatial location results.
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::AprilTagData, false}}};
+    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::AprilTags, false}}};
 
     /**
      * Outputs AprilTagConfig message that contains current configuration.

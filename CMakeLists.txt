@@ -196,7 +196,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/StreamMessageParser.cpp
     src/pipeline/datatype/SpatialLocationCalculatorData.cpp
     src/pipeline/datatype/SpatialLocationCalculatorConfig.cpp
-    src/pipeline/datatype/AprilTagData.cpp
+    src/pipeline/datatype/AprilTags.cpp
     src/pipeline/datatype/AprilTagConfig.cpp
     src/pipeline/datatype/Tracklets.cpp
     src/pipeline/datatype/IMUData.cpp
