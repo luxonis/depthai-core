@@ -311,6 +311,7 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
         auto tstart = steady_clock::now();
         do {
             rc = XLinkFindFirstSuitableDevice(expectedState, bootedDeviceInfo.desc, &deviceDesc);
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
             if(rc == X_LINK_SUCCESS) break;
         } while(steady_clock::now() - tstart < bootupTimeout);
 
@@ -325,9 +326,18 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
         connectionHandler.devicePath = deviceDesc.name;
         connectionHandler.protocol = deviceDesc.protocol;
 
+        // Modify the port for booted device in case of TCP protocol
+        std::string devicePath = std::string(deviceDesc.name);
+        if(deviceDesc.protocol == X_LINK_TCP_IP && expectedState == X_LINK_BOOTED){
+            // TODO(themarpe) - make the port a constant
+            devicePath = std::string(connectionHandler.devicePath) + ":11492";
+        }
+        connectionHandler.devicePath = (char*) devicePath.c_str();
+
         auto tstart = steady_clock::now();
         do {
-            if((rc = XLinkConnect(&connectionHandler)) == X_LINK_SUCCESS) break;
+            if((rc = XLinkConnectWithTimeout(&connectionHandler, duration_cast<milliseconds>(connectTimeout).count())) == X_LINK_SUCCESS) break;
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         } while(steady_clock::now() - tstart < connectTimeout);
 
         if(rc != X_LINK_SUCCESS) throw std::runtime_error("Failed to connect to device, error message: " + convertErrorCodeToString(rc));
