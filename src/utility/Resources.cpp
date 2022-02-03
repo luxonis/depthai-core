@@ -368,15 +368,20 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(bool usb2Mode, OpenVINO::
 }
 
 std::vector<std::uint8_t> createPrebootHeader(const std::vector<uint8_t>& payload, uint32_t magic1, uint32_t magic2) {
-    const std::uint8_t HEADER[] = {77,
-                                   65,
-                                   50,
-                                   120,
+    // clang-format off
+    const std::uint8_t HEADER[] = {77, 65, 50, 120,
+                                   // WD Protection
+                                   // TODO(themarpe) - expose timings                             
+                                   0x9A, 0xA8, 0x00, 0x32, 0x20, 0xAD, 0xDE, 0xD0, 0xF1,
+                                   0x9A, 0x9C, 0x00, 0x32, 0x20, 0xFF, 0xFF, 0xFF, 0xFF,
+                                   0x9A, 0xA8, 0x00, 0x32, 0x20, 0xAD, 0xDE, 0xD0, 0xF1,
+                                   0x9A, 0xA4, 0x00, 0x32, 0x20, 0x01, 0x00, 0x00, 0x00,
                                    0x8A,
                                    static_cast<uint8_t>((magic1 >> 0) & 0xFF),
                                    static_cast<uint8_t>((magic1 >> 8) & 0xFF),
                                    static_cast<uint8_t>((magic1 >> 16) & 0xFF),
                                    static_cast<uint8_t>((magic1 >> 24) & 0xFF)};
+    // clang-format on
 
     // Store the constructed board information
     std::vector<std::uint8_t> prebootHeader;
