@@ -241,12 +241,12 @@ class Node {
         bool getWaitForMessage() const;
 
         /**
-         * Equaivalent to setWaitForMessage but with inverted logic.
+         * Equivalent to setWaitForMessage but with inverted logic.
          */
         void setReusePreviousMessage(bool reusePreviousMessage);
 
         /**
-         * Equaivalent to getWaitForMessage but with inverted logic.
+         * Equivalent to getWaitForMessage but with inverted logic.
          */
         bool getReusePreviousMessage() const;
     };

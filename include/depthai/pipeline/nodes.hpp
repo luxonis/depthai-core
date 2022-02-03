@@ -1,6 +1,7 @@
 #pragma once
 
 // all the nodes
+#include "node/AprilTag.hpp"
 #include "node/ColorCamera.hpp"
 #include "node/DetectionNetwork.hpp"
 #include "node/EdgeDetector.hpp"

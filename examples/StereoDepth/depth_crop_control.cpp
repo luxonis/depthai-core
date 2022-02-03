@@ -58,7 +58,8 @@ int main() {
 
     while(true) {
         auto inDepth = q->get<dai::ImgFrame>();
-        cv::Mat depthFrame = inDepth->getFrame();
+        cv::Mat depthFrame = inDepth->getFrame();  // depthFrame values are in millimeters
+
         // Frame is transformed, the color map will be applied to highlight the depth info
         cv::Mat depthFrameColor;
         cv::normalize(depthFrame, depthFrameColor, 255, 0, cv::NORM_INF, CV_8UC1);
