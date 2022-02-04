@@ -1,7 +1,7 @@
 #include <csignal>
 #include <iostream>
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 static std::atomic<bool> alive{true};
@@ -26,7 +26,7 @@ int main() {
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
     auto stereo = pipeline.create<dai::node::StereoDepth>();
-    stereo->initialConfig.setConfidenceThreshold(245);
+    stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     stereo->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_7x7);
     stereo->setLeftRightCheck(false);
     stereo->setExtendedDisparity(false);
@@ -36,7 +36,7 @@ int main() {
     monoRight->out.link(stereo->right);
 
     auto videoEnc = pipeline.create<dai::node::VideoEncoder>();
-    videoEnc->setDefaultProfilePreset(monoLeft->getResolutionSize(), monoLeft->getFps(), dai::VideoEncoderProperties::Profile::MJPEG);
+    videoEnc->setDefaultProfilePreset(monoLeft->getFps(), dai::VideoEncoderProperties::Profile::MJPEG);
     stereo->disparity.link(videoEnc->input);
 
     auto xout = pipeline.create<dai::node::XLinkOut>();

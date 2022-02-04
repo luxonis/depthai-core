@@ -441,3 +441,7 @@ inline std::ostream& operator<<(std::ostream& out, const dai::DeviceBootloader::
     }
     return out;
 }
+
+inline std::ostream& operator<<(std::ostream& out, const dai::DeviceBootloader::Version& v) {
+    return out << v.toString();
+}

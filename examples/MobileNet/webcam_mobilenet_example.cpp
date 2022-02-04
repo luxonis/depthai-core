@@ -3,7 +3,7 @@
 
 #include "utility.hpp"
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 int main(int argc, char** argv) {
@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
             cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), cv::Scalar(255, 255, 255));
         }
 
-        printf("===================== %lu detection(s) =======================\n", dets.size());
+        printf("===================== %lu detection(s) =======================\n", static_cast<unsigned long>(dets.size()));
         for(unsigned det = 0; det < dets.size(); ++det) {
             printf("%5d | %6.4f | %7.4f | %7.4f | %7.4f | %7.4f\n",
                    dets[det].label,

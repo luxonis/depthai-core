@@ -1,6 +1,7 @@
 #pragma once
 
 // all the nodes
+#include "node/AprilTag.hpp"
 #include "node/ColorCamera.hpp"
 #include "node/DetectionNetwork.hpp"
 #include "node/EdgeDetector.hpp"
@@ -8,7 +9,6 @@
 #include "node/IMU.hpp"
 #include "node/ImageManip.hpp"
 #include "node/MonoCamera.hpp"
-#include "node/MyProducer.hpp"
 #include "node/NeuralNetwork.hpp"
 #include "node/ObjectTracker.hpp"
 #include "node/SPIIn.hpp"

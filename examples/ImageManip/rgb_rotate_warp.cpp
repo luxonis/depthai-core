@@ -17,8 +17,8 @@ void printControls() {
     printf(" h -print controls (help)\n");
 }
 
-static constexpr auto ROTATE_RATE_MAX = 5.0;
-static constexpr auto ROTATE_RATE_INC = 0.1;
+static constexpr auto ROTATE_RATE_MAX = 5.0f;
+static constexpr auto ROTATE_RATE_INC = 0.1f;
 
 static constexpr auto RESIZE_MAX_W = 800;
 static constexpr auto RESIZE_MAX_H = 600;
@@ -49,9 +49,9 @@ std::vector<warpFourPointTest> warpList = {
     {{P1, P2, P3, P0}, true, "4. rotate 270"},
     {{P1, P0, P3, P2}, true, "5. horizontal mirror"},
     {{P3, P2, P1, P0}, true, "6. vertical flip"},
-    {{{-0.1, -0.1}, {1.1, -0.1}, {1.1, 1.1}, {-0.1, 1.1}}, true, "7. add black borders"},
-    {{{-0.3, 0}, {1, 0}, {1.3, 1}, {0, 1}}, true, "8. parallelogram transform"},
-    {{{-0.2, 0}, {1.8, 0}, {1, 1}, {0, 1}}, true, "9. trapezoid transform"},
+    {{{-0.1f, -0.1f}, {1.1f, -0.1f}, {1.1f, 1.1f}, {-0.1f, 1.1f}}, true, "7. add black borders"},
+    {{{-0.3f, 0}, {1, 0}, {1.3f, 1}, {0, 1}}, true, "8. parallelogram transform"},
+    {{{-0.2f, 0}, {1.8f, 0}, {1, 1}, {0, 1}}, true, "9. trapezoid transform"},
 };
 
 int main() {

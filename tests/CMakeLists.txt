@@ -13,7 +13,9 @@ function(dai_add_test test_name test_src)
     add_executable(${test_name} ${test_src})
 
     # Add to clangformat target
-    target_clangformat_setup(${test_name} "")
+    if(COMMAND target_clangformat_setup)
+        target_clangformat_setup(${test_name} "")
+    endif()
 
     # Link to core and Catch2 testing framework
     target_link_libraries(${test_name} PRIVATE depthai-core Catch2::Catch2)
@@ -22,7 +24,9 @@ function(dai_add_test test_name test_src)
     add_test(${test_name} ${test_name})
 
     # Add sanitizers for tests as well
-    add_sanitizers(${test_name})
+    if(COMMAND add_sanitizers)
+        add_sanitizers(${test_name})
+    endif()
 
     # Add ubsan halt on error
     set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1")
@@ -107,3 +111,9 @@ dai_add_test(device_usbspeed_test src/device_usbspeed_test.cpp)
 
 # Unlimited io connections test
 dai_add_test(unlimited_io_connection_test src/unlimited_io_connection_test.cpp)
+
+# Serialization test
+dai_add_test(serialization_test src/serialization_test.cpp)
+
+# Multiple devices test
+dai_add_test(multiple_devices_test src/multiple_devices_test.cpp)
