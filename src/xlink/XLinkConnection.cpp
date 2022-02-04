@@ -24,6 +24,21 @@ extern "C" {
 
 namespace dai {
 
+static XLinkProtocol_t getDefaultProtocol(){
+    auto protocolStr = spdlog::details::os::getenv("DEPTHAI_PROTOCOL");
+    std::transform(protocolStr.begin(), protocolStr.end(), protocolStr.begin(), ::tolower);
+    if(protocolStr.empty() || protocolStr == "any"){
+        return X_LINK_ANY_PROTOCOL;
+    } else if(protocolStr == "usb"){
+        return X_LINK_USB_VSC;
+    } else if(protocolStr == "tcpip") {
+        return X_LINK_TCP_IP;
+    } else {
+        spdlog::warn("Unsupported protocol specified");
+        return X_LINK_ANY_PROTOCOL;
+    }
+}
+
 // DeviceInfo
 DeviceInfo::DeviceInfo(std::string mxId) {
     // Add dash at the end of mxId ([mxId]-[xlinkDevName] format)
@@ -75,11 +90,13 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
         unsigned int numdev = 0;
         std::array<deviceDesc_t, 32> deviceDescAll = {};
         deviceDesc_t suitableDevice = {};
-        suitableDevice.protocol = X_LINK_ANY_PROTOCOL;
+        suitableDevice.protocol = getDefaultProtocol();
         suitableDevice.platform = X_LINK_ANY_PLATFORM;
 
         auto status = XLinkFindAllSuitableDevices(state, suitableDevice, deviceDescAll.data(), static_cast<unsigned int>(deviceDescAll.size()), &numdev);
-        if(status != X_LINK_SUCCESS) throw std::runtime_error("Couldn't retrieve all connected devices");
+        if(status != X_LINK_SUCCESS && status != X_LINK_DEVICE_NOT_FOUND){
+            throw std::runtime_error("Couldn't retrieve all connected devices");
+        }
 
         for(unsigned i = 0; i < numdev; i++) {
             DeviceInfo info = {};

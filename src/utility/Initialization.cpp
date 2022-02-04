@@ -89,7 +89,7 @@ bool initialize(std::string additionalInfo, bool installSignalHandler) {
             throw std::runtime_error("Couldn't initialize XLink");
         }
         // Suppress XLink related errors
-        mvLogDefaultLevelSet(MVLOG_LAST);
+        mvLogDefaultLevelSet(MVLOG_FATAL);
 
         spdlog::debug("Initialize - finished");
 
