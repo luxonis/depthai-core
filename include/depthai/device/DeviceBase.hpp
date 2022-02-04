@@ -64,7 +64,7 @@ class DeviceBase {
     /**
      * @brief Get the Default Search Time for finding devices
      *
-     * @returns Default serach time in milliseconds
+     * @returns Default search time in milliseconds
      */
     static std::chrono::milliseconds getDefaultSearchTime();
 
