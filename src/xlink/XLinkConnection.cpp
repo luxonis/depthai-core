@@ -70,7 +70,8 @@ std::string DeviceInfo::getMxId() const {
 static DeviceInfo deviceInfoFix(const DeviceInfo& d, XLinkDeviceState_t state);
 
 // STATIC
-constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT;
+constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT_TCPIP;
+constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT_USB;
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_CONNECT_TIMEOUT;
 
 std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState_t state) {
@@ -143,12 +144,22 @@ DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
 
     // Wait for device to get to bootloader state
     XLinkError_t rc;
+    auto bootupTimeout = WAIT_FOR_BOOTUP_TIMEOUT_USB;
+    if(deviceToWait.desc.protocol == X_LINK_TCP_IP){
+        bootupTimeout = WAIT_FOR_BOOTUP_TIMEOUT_TCPIP;
+    }
+
+    // Override with environment variables, if set
+    const std::vector<std::pair<std::string, std::chrono::milliseconds*>> evars = {
+        {"DEPTHAI_BOOTUP_TIMEOUT", &bootupTimeout},
+    };
+
     auto tstart = steady_clock::now();
     do {
         rc = XLinkFindFirstSuitableDevice(X_LINK_BOOTLOADER, deviceToWait.desc, &foundDeviceDesc);
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
         if(rc == X_LINK_SUCCESS) break;
-    } while(steady_clock::now() - tstart < WAIT_FOR_BOOTUP_TIMEOUT);
+    } while(steady_clock::now() - tstart < bootupTimeout);
 
     // If device not found
     if(rc != X_LINK_SUCCESS) {
@@ -264,7 +275,10 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
     bootDevice = deviceToInit.state == X_LINK_UNBOOTED;
 
     std::chrono::milliseconds connectTimeout = WAIT_FOR_CONNECT_TIMEOUT;
-    std::chrono::milliseconds bootupTimeout = WAIT_FOR_BOOTUP_TIMEOUT;
+    std::chrono::milliseconds bootupTimeout = WAIT_FOR_BOOTUP_TIMEOUT_USB;
+    if(deviceToInit.desc.protocol == X_LINK_TCP_IP){
+        bootupTimeout = WAIT_FOR_BOOTUP_TIMEOUT_TCPIP;
+    }
 
     // Override with environment variables, if set
     const std::vector<std::pair<std::string, std::chrono::milliseconds*>> evars = {
