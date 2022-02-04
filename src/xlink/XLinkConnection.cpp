@@ -11,6 +11,7 @@
 
 // project
 #include "depthai/utility/Initialization.hpp"
+#include "utility/Environment.hpp"
 
 // libraries
 #include <XLink/XLink.h>
@@ -24,19 +25,23 @@ extern "C" {
 
 namespace dai {
 
-static XLinkProtocol_t getDefaultProtocol(){
-    auto protocolStr = spdlog::details::os::getenv("DEPTHAI_PROTOCOL");
+static XLinkProtocol_t getDefaultProtocol() {
+    XLinkProtocol_t defaultProtocol = X_LINK_ANY_PROTOCOL;
+
+    auto protocolStr = utility::getEnv("DEPTHAI_PROTOCOL");
+
     std::transform(protocolStr.begin(), protocolStr.end(), protocolStr.begin(), ::tolower);
-    if(protocolStr.empty() || protocolStr == "any"){
-        return X_LINK_ANY_PROTOCOL;
-    } else if(protocolStr == "usb"){
-        return X_LINK_USB_VSC;
+    if(protocolStr.empty() || protocolStr == "any") {
+        defaultProtocol = X_LINK_ANY_PROTOCOL;
+    } else if(protocolStr == "usb") {
+        defaultProtocol = X_LINK_USB_VSC;
     } else if(protocolStr == "tcpip") {
-        return X_LINK_TCP_IP;
+        defaultProtocol = X_LINK_TCP_IP;
     } else {
         spdlog::warn("Unsupported protocol specified");
-        return X_LINK_ANY_PROTOCOL;
     }
+
+    return defaultProtocol;
 }
 
 // DeviceInfo
@@ -95,7 +100,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
         suitableDevice.platform = X_LINK_ANY_PLATFORM;
 
         auto status = XLinkFindAllSuitableDevices(state, suitableDevice, deviceDescAll.data(), static_cast<unsigned int>(deviceDescAll.size()), &numdev);
-        if(status != X_LINK_SUCCESS && status != X_LINK_DEVICE_NOT_FOUND){
+        if(status != X_LINK_SUCCESS && status != X_LINK_DEVICE_NOT_FOUND) {
             throw std::runtime_error("Couldn't retrieve all connected devices");
         }
 
@@ -145,7 +150,7 @@ DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
     // Wait for device to get to bootloader state
     XLinkError_t rc;
     auto bootupTimeout = WAIT_FOR_BOOTUP_TIMEOUT_USB;
-    if(deviceToWait.desc.protocol == X_LINK_TCP_IP){
+    if(deviceToWait.desc.protocol == X_LINK_TCP_IP) {
         bootupTimeout = WAIT_FOR_BOOTUP_TIMEOUT_TCPIP;
     }
 
@@ -153,6 +158,21 @@ DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
     const std::vector<std::pair<std::string, std::chrono::milliseconds*>> evars = {
         {"DEPTHAI_BOOTUP_TIMEOUT", &bootupTimeout},
     };
+
+    for(auto ev : evars) {
+        auto name = ev.first;
+        auto valstr = utility::getEnv(name);
+        if(!valstr.empty()) {
+            try {
+                std::chrono::milliseconds value{std::stoi(valstr)};
+                // auto initial = *ev.second;
+                // *ev.second = value;
+                // spdlog::warn("{} override: {} -> {}", name, initial, value);
+            } catch(const std::invalid_argument& e) {
+                spdlog::warn("{} value invalid: {}", name, e.what());
+            }
+        }
+    }
 
     auto tstart = steady_clock::now();
     do {
@@ -276,7 +296,7 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
 
     std::chrono::milliseconds connectTimeout = WAIT_FOR_CONNECT_TIMEOUT;
     std::chrono::milliseconds bootupTimeout = WAIT_FOR_BOOTUP_TIMEOUT_USB;
-    if(deviceToInit.desc.protocol == X_LINK_TCP_IP){
+    if(deviceToInit.desc.protocol == X_LINK_TCP_IP) {
         bootupTimeout = WAIT_FOR_BOOTUP_TIMEOUT_TCPIP;
     }
 
@@ -288,13 +308,12 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
 
     for(auto ev : evars) {
         auto name = ev.first;
-        auto valstr = spdlog::details::os::getenv(name.c_str());
+        auto valstr = utility::getEnv(name);
         if(!valstr.empty()) {
             try {
                 std::chrono::milliseconds value{std::stoi(valstr)};
-                auto initial = *ev.second;
-                *ev.second = value;
-                spdlog::warn("{} override: {} -> {}", name, initial, value);
+                // auto initial = *ev.second;
+                // *ev.second = value;
             } catch(const std::invalid_argument& e) {
                 spdlog::warn("{} value invalid: {}", name, e.what());
             }

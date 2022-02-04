@@ -62,6 +62,13 @@ class DeviceBase {
     // static API
 
     /**
+     * @brief Get the Default Search Time for finding devices
+     *
+     * @returns Default serach time in milliseconds
+     */
+    static std::chrono::milliseconds getDefaultSearchTime();
+
+    /**
      * Waits for any available device with a timeout
      *
      * @param timeout duration of time to wait for the any device

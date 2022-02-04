@@ -207,6 +207,7 @@ add_library(${TARGET_CORE_NAME}
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/utility/Platform.cpp
+    src/utility/Environment.cpp
     src/xlink/XLinkConnection.cpp
     src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp
