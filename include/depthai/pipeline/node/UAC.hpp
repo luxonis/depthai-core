@@ -7,15 +7,17 @@
 
 namespace dai {
 namespace node {
-class UAC : public Node {
-    dai::UACProperties properties;
 
-    std::string getName() const override;
-    nlohmann::json getProperties() override;
-    std::shared_ptr<Node> clone() override;
+/**
+ * @brief UAC (USB Audio Class) node
+ */
+class UAC : public NodeCRTP<Node, UAC, UACProperties>  {
+   public:
+    constexpr static const char* NAME = "UAC";
 
    public:
     UAC(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    UAC(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Outputs audio data from onboard microphones. Reusing ImgFrame for now

@@ -5,20 +5,10 @@
 namespace dai {
 namespace node {
 
-UAC::UAC(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
-
-std::string UAC::getName() const {
-    return "UAC";
-}
-
-nlohmann::json UAC::getProperties() {
-    nlohmann::json j;
-    nlohmann::to_json(j, properties);
-    return j;
-}
-
-std::shared_ptr<Node> UAC::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
+UAC::UAC(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : UAC(par, nodeId, std::make_unique<UAC::Properties>()) {}
+UAC::UAC(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<Node, UAC, UACProperties>(par, nodeId, std::move(props)) {
+    setOutputRefs(&out);
 }
 
 void UAC::setStreamBackMic(bool enable) {
