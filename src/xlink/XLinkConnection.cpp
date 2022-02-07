@@ -165,8 +165,8 @@ DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
         if(!valstr.empty()) {
             try {
                 std::chrono::milliseconds value{std::stoi(valstr)};
+                *ev.second = value;
                 // auto initial = *ev.second;
-                // *ev.second = value;
                 // spdlog::warn("{} override: {} -> {}", name, initial, value);
             } catch(const std::invalid_argument& e) {
                 spdlog::warn("{} value invalid: {}", name, e.what());
@@ -312,8 +312,8 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
         if(!valstr.empty()) {
             try {
                 std::chrono::milliseconds value{std::stoi(valstr)};
+                *ev.second = value;
                 // auto initial = *ev.second;
-                // *ev.second = value;
             } catch(const std::invalid_argument& e) {
                 spdlog::warn("{} value invalid: {}", name, e.what());
             }
