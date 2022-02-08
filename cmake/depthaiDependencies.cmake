@@ -52,7 +52,7 @@ endif()
 find_package(Threads ${_QUIET} REQUIRED)
 
 # Nlohmann JSON
-find_package(nlohmann_json ${_QUIET} CONFIG REQUIRED)
+find_package(nlohmann_json 3.9.0 ${_QUIET} CONFIG REQUIRED)
 
 # libnop for serialization
 find_package(libnop ${_QUIET} CONFIG REQUIRED)

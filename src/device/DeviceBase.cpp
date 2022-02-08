@@ -19,6 +19,7 @@
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "pipeline/Pipeline.hpp"
+#include "utility/Environment.hpp"
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Resources.hpp"
@@ -28,6 +29,7 @@
 #include "nanorpc/core/client.h"
 #include "nanorpc/packer/nlohmann_msgpack.h"
 #include "spdlog/details/os.h"
+#include "spdlog/fmt/bin_to_hex.h"
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
@@ -90,6 +92,22 @@ constexpr std::chrono::seconds DeviceBase::DEFAULT_SEARCH_TIME;
 constexpr float DeviceBase::DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ;
 constexpr UsbSpeed DeviceBase::DEFAULT_USB_SPEED;
 
+std::chrono::milliseconds DeviceBase::getDefaultSearchTime() {
+    std::chrono::milliseconds defaultSearchTime = DEFAULT_SEARCH_TIME;
+    auto searchTimeStr = utility::getEnv("DEPTHAI_SEARCH_TIME");
+
+    if(!searchTimeStr.empty()) {
+        // Try parsing the string as a number
+        try {
+            defaultSearchTime = std::chrono::milliseconds{std::stoi(searchTimeStr)};
+        } catch(const std::invalid_argument& e) {
+            spdlog::warn("DEPTHAI_SEARCH_TIME value invalid: {}", e.what());
+        }
+    }
+
+    return defaultSearchTime;
+}
+
 template <typename Rep, typename Period>
 std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::duration<Rep, Period> timeout) {
     using namespace std::chrono;
@@ -124,7 +142,7 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::dura
 
 // Default overload ('DEFAULT_SEARCH_TIME' timeout)
 std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice() {
-    return getAnyAvailableDevice(DEFAULT_SEARCH_TIME);
+    return getAnyAvailableDevice(getDefaultSearchTime());
 }
 
 // static api
@@ -418,7 +436,7 @@ void DeviceBase::tryStartPipeline(const Pipeline& pipeline) {
 void DeviceBase::init(OpenVINO::Version version, bool usb2Mode, const std::string& pathToMvcmd) {
     Config cfg;
     // Specify usb speed
-    cfg.preboot.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
+    cfg.board.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
     // Specify the OpenVINO version
     cfg.version = version;
     init2(cfg, pathToMvcmd, {});
@@ -426,13 +444,13 @@ void DeviceBase::init(OpenVINO::Version version, bool usb2Mode, const std::strin
 void DeviceBase::init(const Pipeline& pipeline, bool usb2Mode, const std::string& pathToMvcmd) {
     Config cfg = pipeline.getDeviceConfig();
     // Modify usb speed
-    cfg.preboot.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
+    cfg.board.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
     init2(cfg, pathToMvcmd, pipeline);
 }
 void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd) {
     Config cfg;
     // Specify usb speed
-    cfg.preboot.usb.maxSpeed = maxUsbSpeed;
+    cfg.board.usb.maxSpeed = maxUsbSpeed;
     // Specify the OpenVINO version
     cfg.version = version;
     init2(cfg, pathToMvcmd, {});
@@ -440,7 +458,7 @@ void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const std
 void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd) {
     Config cfg = pipeline.getDeviceConfig();
     // Modify usb speed
-    cfg.preboot.usb.maxSpeed = maxUsbSpeed;
+    cfg.board.usb.maxSpeed = maxUsbSpeed;
     init2(cfg, pathToMvcmd, pipeline);
 }
 
@@ -462,36 +480,40 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
 
     // Check if WD env var is set
     std::chrono::milliseconds watchdogTimeout = device::XLINK_WATCHDOG_TIMEOUT;
-    auto watchdogMsStr = spdlog::details::os::getenv("DEPTHAI_WATCHDOG");
+    auto watchdogMsStr = utility::getEnv("DEPTHAI_WATCHDOG");
     if(!watchdogMsStr.empty()) {
         // Try parsing the string as a number
         try {
             std::chrono::milliseconds watchdog{std::stoi(watchdogMsStr)};
-            config.preboot.watchdogTimeoutMs = static_cast<uint32_t>(watchdog.count());
+            config.board.watchdogTimeoutMs = static_cast<uint32_t>(watchdog.count());
             watchdogTimeout = watchdog;
             if(watchdogTimeout.count() == 0) {
                 spdlog::warn("Watchdog disabled! In case of unclean exit, the device needs reset or power-cycle for next run", watchdogTimeout);
             } else {
-                spdlog::warn("Using a custom watchdog value of {} ms", watchdogTimeout);
+                spdlog::warn("Using a custom watchdog value of {}", watchdogTimeout);
             }
         } catch(const std::invalid_argument& e) {
             spdlog::warn("DEPTHAI_WATCHDOG value invalid: {}", e.what());
         }
     }
 
-    auto watchdogInitMsStr = spdlog::details::os::getenv("DEPTHAI_WATCHDOG_INITIAL_DELAY");
+    auto watchdogInitMsStr = utility::getEnv("DEPTHAI_WATCHDOG_INITIAL_DELAY");
     if(!watchdogInitMsStr.empty()) {
         // Try parsing the string as a number
         try {
             std::chrono::milliseconds watchdog{std::stoi(watchdogInitMsStr)};
-            config.preboot.watchdogInitialDelayMs = static_cast<uint32_t>(watchdog.count());
-            spdlog::warn("Watchdog initial delay set to {} ms", *config.preboot.watchdogInitialDelayMs);
+            config.board.watchdogInitialDelayMs = static_cast<uint32_t>(watchdog.count());
+            spdlog::warn("Watchdog initial delay set to {}", watchdog);
         } catch(const std::invalid_argument& e) {
             spdlog::warn("DEPTHAI_WATCHDOG_INITIAL_DELAY value invalid: {}", e.what());
         }
     }
 
     // Get embedded mvcmd or external with applied config
+    if(spdlog::get_level() == spdlog::level::debug) {
+        nlohmann::json jBoardConfig = config.board;
+        spdlog::debug("Device - BoardConfig: {} \nlibnop:{}", jBoardConfig.dump(), spdlog::to_hex(utility::serialize(config.board)));
+    }
     std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, pathToMvcmd);
 
     // Init device (if bootloader, handle correctly - issue USB boot command)

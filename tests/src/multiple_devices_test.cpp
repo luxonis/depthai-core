@@ -1,5 +1,5 @@
-#include <iostream>
 #include <atomic>
+#include <iostream>
 #include <vector>
 
 // Inludes common necessary includes for development using depthai library
@@ -46,9 +46,8 @@ int main() {
         this_thread::sleep_for(500ms);
     } while(availableDevices.size() <= 1 && steady_clock::now() - t1 <= 3s);
 
-    for(const auto& dev : availableDevices){
-        threads.push_back(thread([dev, pipeline, deviceCounter](){
-
+    for(const auto& dev : availableDevices) {
+        threads.push_back(thread([dev, pipeline, deviceCounter]() {
             // Optional delay between device connection
             // if(deviceCounter) this_thread::sleep_for(1s);
 
@@ -83,18 +82,17 @@ int main() {
                     counter++;
                 }
 
-                if(counter < NUM_MESSAGES){
+                if(counter < NUM_MESSAGES) {
                     finished = false;
                 }
             }
-
         }
 
         std::this_thread::sleep_for(1ms);
     }
 
     // Join device threads
-    for(auto& thread : threads){
+    for(auto& thread : threads) {
         thread.join();
     }
 
