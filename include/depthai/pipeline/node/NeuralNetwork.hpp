@@ -66,6 +66,14 @@ class NeuralNetwork : public NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperti
     void setBlobPath(const std::string& path);
 
     /**
+     * Load network blob into assets and use once pipeline is started.
+     *
+     * Throws if blob isn't valid
+     * @param blob Network blob
+     */
+    void setBlob(OpenVINO::Blob blob);
+
+    /**
      * Specifies how many frames will be available in the pool
      * @param numFrames How many frames will pool have
      */

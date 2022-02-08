@@ -93,8 +93,8 @@ dai_add_test(pipeline_test src/pipeline_test.cpp)
 dai_add_test(neural_network_test src/neural_network_test.cpp)
 target_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
 
-dai_add_test(openvino_blob src/openvino_blob_test.cpp)
-target_compile_definitions(openvino_blob PRIVATE
+dai_add_test(openvino_blob_test src/openvino_blob_test.cpp)
+target_compile_definitions(openvino_blob_test PRIVATE
     OPENVINO_2020_3_BLOB_PATH="${openvino_2020_3_blob}"
     OPENVINO_2020_4_BLOB_PATH="${openvino_2020_4_blob}"
     OPENVINO_2021_1_BLOB_PATH="${openvino_2021_1_blob}"
