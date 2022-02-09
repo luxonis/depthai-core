@@ -91,7 +91,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
         states = {state};
     }
 
-    auto allowedDeviceIDs = spdlog::details::os::getenv("DEPTHAI_DEVICE_MXIDS");
+    auto allowedDeviceIDs = utility::getEnv("DEPTHAI_DEVICE_MXID_LIST");
 
     // Get all available devices (unbooted & booted)
     for(const auto& state : states) {
@@ -112,8 +112,8 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
             info.state = state;
             bool allowedID = allowedDeviceIDs.find(info.getMxId()) != std::string::npos || allowedDeviceIDs.empty();
             if(allowedID) {
-	      devices.push_back(info);
-	    }
+                devices.push_back(info);
+            }
         }
     }
 
