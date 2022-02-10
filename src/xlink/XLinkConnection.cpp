@@ -91,6 +91,8 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
         states = {state};
     }
 
+    auto allowedDeviceIds = utility::getEnv("DEPTHAI_DEVICE_MXID_LIST");
+
     // Get all available devices (unbooted & booted)
     for(const auto& state : states) {
         unsigned int numdev = 0;
@@ -108,7 +110,10 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
             DeviceInfo info = {};
             info.desc = deviceDescAll.at(i);
             info.state = state;
-            devices.push_back(info);
+            bool allowedId = allowedDeviceIds.find(info.getMxId()) != std::string::npos || allowedDeviceIds.empty();
+            if(allowedId) {
+                devices.push_back(info);
+            }
         }
     }
 
@@ -165,8 +170,8 @@ DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
         if(!valstr.empty()) {
             try {
                 std::chrono::milliseconds value{std::stoi(valstr)};
+                *ev.second = value;
                 // auto initial = *ev.second;
-                // *ev.second = value;
                 // spdlog::warn("{} override: {} -> {}", name, initial, value);
             } catch(const std::invalid_argument& e) {
                 spdlog::warn("{} value invalid: {}", name, e.what());
@@ -312,8 +317,8 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
         if(!valstr.empty()) {
             try {
                 std::chrono::milliseconds value{std::stoi(valstr)};
+                *ev.second = value;
                 // auto initial = *ev.second;
-                // *ev.second = value;
             } catch(const std::invalid_argument& e) {
                 spdlog::warn("{} value invalid: {}", name, e.what());
             }
