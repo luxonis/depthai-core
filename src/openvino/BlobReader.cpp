@@ -26,7 +26,9 @@ namespace {
 
 template <typename T>
 T readFromBlob(const std::vector<std::uint8_t>& blob, uint32_t& offset) {
-    assert(offset + sizeof(T) <= blob.size());
+    if(offset + sizeof(T) > blob.size()){
+        throw std::logic_error("BlobReader error: Filesize is less than blob specifies. Likely corrupted");
+    }
 
     auto srcPtr = blob.data() + offset;
     offset += sizeof(T);
@@ -51,6 +53,10 @@ void BlobReader::parse(const std::vector<std::uint8_t>& blob) {
 
     if(blobHeader.magic_number != BLOB_MAGIC_NUMBER) {
         throw std::logic_error("BlobReader error: File does not seem to be a supported neural network blob");
+    }
+
+    if(blob.size() < blobHeader.file_size) {
+        throw std::logic_error("BlobReader error: Filesize is less than blob specifies. Likely corrupted");
     }
 
     const auto readIO = [this, &blob](uint32_t& ioSectionOffset, uint32_t idx) {

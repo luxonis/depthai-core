@@ -4,6 +4,7 @@
 // std
 #include <atomic>
 #include <iostream>
+#include <fstream>
 
 // Include depthai library
 #include <depthai/depthai.hpp>
@@ -173,4 +174,15 @@ TEST_CASE("OpenVINO 2021.4 blob") {
     auto networkOpenvinoVersion = p.getOpenVINOVersion();
     REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2021_4);
     dai::Device d(p);
+}
+
+// Check if an exception is thrown if blob is corrupted
+TEST_CASE("OpenVINO corrupted blob") {
+    std::ifstream stream(OPENVINO_2021_4_BLOB_PATH, std::ios::in | std::ios::binary);
+    std::vector<std::uint8_t> blobData(std::istreambuf_iterator<char>(stream), {});
+
+    // Corrupt blob by removing half the file size
+    blobData.resize(blobData.size()/2);
+
+    REQUIRE_THROWS(dai::OpenVINO::Blob(blobData));
 }
