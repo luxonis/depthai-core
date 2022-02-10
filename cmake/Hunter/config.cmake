@@ -91,9 +91,9 @@ hunter_config(
 # libnop - Serialization
 hunter_config(
     libnop
-    VERSION "1.0-72fcaaf"
-    URL "https://github.com/luxonis/libnop/archive/72fcaaf119708cbaad2e04c087eadc88bbdefdef.tar.gz"
-    SHA1 "fe13e463ed1f8ad045e0faa33f9bc5d581892fd5"
+    VERSION "1.0-ec8f75a"
+    URL "https://github.com/luxonis/libnop/archive/ec8f75aa4df3454f73b5d7a7fe0680f3701b1744.tar.gz"
+    SHA1 "261b8bfe734aff0456793416bbe4c4503dafbfdb"
 )
 
 # Specific Catch2 version
