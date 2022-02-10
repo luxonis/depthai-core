@@ -25,7 +25,7 @@ class ImgDetections : public Buffer {
     std::vector<ImgDetection>& detections;
 
     /**
-     * Retrieves image timestamp related to steady_clock / time.monotonic
+     * Retrieves image timestamp related to dai::Clock::now()
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;
 
@@ -38,7 +38,7 @@ class ImgDetections : public Buffer {
     /**
      * Retrieves image sequence number
      */
-    unsigned int getSequenceNum() const;
+    int64_t getSequenceNum() const;
 };
 
 }  // namespace dai

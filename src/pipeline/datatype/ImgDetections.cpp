@@ -19,7 +19,7 @@ std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::du
     using namespace std::chrono;
     return time_point<steady_clock, steady_clock::duration>{seconds(dets.tsDevice.sec) + nanoseconds(dets.tsDevice.nsec)};
 }
-unsigned int ImgDetections::getSequenceNum() const {
+int64_t ImgDetections::getSequenceNum() const {
     return dets.sequenceNum;
 }
 

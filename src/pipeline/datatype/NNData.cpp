@@ -274,7 +274,7 @@ std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::du
     using namespace std::chrono;
     return time_point<steady_clock, steady_clock::duration>{seconds(rawNn.tsDevice.sec) + nanoseconds(rawNn.tsDevice.nsec)};
 }
-unsigned int NNData::getSequenceNum() const {
+int64_t NNData::getSequenceNum() const {
     return rawNn.sequenceNum;
 }
 
