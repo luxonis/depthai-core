@@ -30,6 +30,21 @@ class SpatialImgDetections : public Buffer {
     std::vector<SpatialImgDetection>& detections;
 
     /**
+     * Sets image timestamp related to dai::Clock::now()
+     */
+    SpatialImgDetections& setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+
+    /**
+     * Sets image timestamp related to dai::Clock::now()
+     */
+    SpatialImgDetections& setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+
+    /**
+     * Retrieves image sequence number
+     */
+    SpatialImgDetections& setSequenceNum(int64_t sequenceNum);
+
+    /**
      * Retrieves image timestamp related to dai::Clock::now()
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;

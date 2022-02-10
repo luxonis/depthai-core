@@ -39,14 +39,14 @@ class NNData : public Buffer {
      * @param name Name of the layer
      * @param data Data to store
      */
-    void setLayer(const std::string& name, std::vector<std::uint8_t> data);
+    NNData& setLayer(const std::string& name, std::vector<std::uint8_t> data);
 
     /**
      * Set a layer with datatype U8. Integers are cast to bytes.
      * @param name Name of the layer
      * @param data Data to store
      */
-    void setLayer(const std::string& name, const std::vector<int>& data);
+    NNData& setLayer(const std::string& name, const std::vector<int>& data);
 
     // fp16
     /**
@@ -54,14 +54,14 @@ class NNData : public Buffer {
      * @param name Name of the layer
      * @param data Data to store
      */
-    void setLayer(const std::string& name, std::vector<float> data);
+    NNData& setLayer(const std::string& name, std::vector<float> data);
 
     /**
      * Set a layer with datatype FP16. Double values are converted to FP16.
      * @param name Name of the layer
      * @param data Data to store
      */
-    void setLayer(const std::string& name, std::vector<double> data);
+    NNData& setLayer(const std::string& name, std::vector<double> data);
 
     // getters
     /**
@@ -155,6 +155,21 @@ class NNData : public Buffer {
      * Retrieves image sequence number
      */
     int64_t getSequenceNum() const;
+
+    /**
+     * Sets image timestamp related to dai::Clock::now()
+     */
+    NNData& setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+
+    /**
+     * Sets image timestamp related to dai::Clock::now()
+     */
+    NNData& setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+
+    /**
+     * Retrieves image sequence number
+     */
+    NNData& setSequenceNum(int64_t sequenceNum);
 };
 
 }  // namespace dai

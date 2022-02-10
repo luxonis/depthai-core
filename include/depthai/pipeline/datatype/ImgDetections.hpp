@@ -25,6 +25,21 @@ class ImgDetections : public Buffer {
     std::vector<ImgDetection>& detections;
 
     /**
+     * Sets image timestamp related to dai::Clock::now()
+     */
+    ImgDetections& setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+
+    /**
+     * Sets image timestamp related to dai::Clock::now()
+     */
+    ImgDetections& setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+
+    /**
+     * Retrieves image sequence number
+     */
+    ImgDetections& setSequenceNum(int64_t sequenceNum);
+
+    /**
      * Retrieves image timestamp related to dai::Clock::now()
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;
