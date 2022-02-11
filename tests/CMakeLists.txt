@@ -35,7 +35,7 @@ function(dai_add_test test_name test_src)
     if (MSVC)
         # Create test executable with MSVC conforming preprocessor
         add_executable(${test_name}_conforming ${test_src})
-        
+
         # Link to core and Catch2 testing framework
         target_link_libraries(${test_name}_conforming PRIVATE depthai-core Catch2::Catch2)
 
@@ -47,7 +47,7 @@ function(dai_add_test test_name test_src)
 
         # Add to list of tests
         add_test(${test_name}_conforming ${test_name}_conforming)
-        
+
         # Add ubsan halt on error
         set_tests_properties(${test_name}_conforming PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1")
     endif()
@@ -128,8 +128,8 @@ dai_add_test(pipeline_test src/pipeline_test.cpp)
 dai_add_test(neural_network_test src/neural_network_test.cpp)
 dai_test_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
 
-dai_add_test(openvino_blob src/openvino_blob_test.cpp)
-dai_test_compile_definitions(openvino_blob PRIVATE
+dai_add_test(openvino_blob_test src/openvino_blob_test.cpp)
+dai_test_compile_definitions(openvino_blob_test PRIVATE
     OPENVINO_2020_3_BLOB_PATH="${openvino_2020_3_blob}"
     OPENVINO_2020_4_BLOB_PATH="${openvino_2020_4_blob}"
     OPENVINO_2021_1_BLOB_PATH="${openvino_2021_1_blob}"
