@@ -28,12 +28,9 @@ int main(int argc, char** argv) {
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
     auto camOut = pipeline.create<dai::node::XLinkOut>();
-    auto passthroughMeta = pipeline.create<dai::node::XLinkOut>();
     auto resultOut = pipeline.create<dai::node::XLinkOut>();
 
     camOut->setStreamName("preview");
-    passthroughMeta->setMetadataOnly(true);
-    passthroughMeta->setStreamName("passthroughMeta");
     resultOut->setStreamName("resultOut");
 
     // ColorCamera options
@@ -53,7 +50,6 @@ int main(int argc, char** argv) {
     // Link nodes CAM -> XLINK
     camRgb->preview.link(nn->input);
     camRgb->preview.link(camOut->input);
-    nn->passthrough.link(passthroughMeta->input);
     nn->out.link(resultOut->input);
 
     // Connect to device and start pipeline
@@ -61,11 +57,9 @@ int main(int argc, char** argv) {
 
     // Create input & output queues
     auto previewQueue = device.getOutputQueue("preview");
-    auto passthroughQueue = device.getOutputQueue("passthroughMeta");
     auto resultQueue = device.getOutputQueue("resultOut");
 
-    // Get first passthrough and result at the same time
-    auto prevPassthrough = passthroughQueue->get<dai::ImgFrame>();
+    // Get initial inference result
     auto prevResult = resultQueue->get<dai::ImgDetections>();
 
     // statistics
@@ -106,14 +100,12 @@ int main(int argc, char** argv) {
     });
 
     while(running) {
-        // Get first passthrough and result at the same time
-        auto passthrough = passthroughQueue->get<dai::ImgFrame>();
+        // Get next result
         auto result = resultQueue->get<dai::ImgDetections>();
-
         nnFps++;
 
         // Match up prevResults and previews
-        while(true) {
+        while(running) {
             // pop the preview
             auto preview = previewQueue->get<dai::ImgFrame>();
             camFps++;
@@ -147,7 +139,7 @@ int main(int argc, char** argv) {
             }
 
             // If seq number >= next detection seq number - 1, break
-            if(preview->getSequenceNum() >= prevPassthrough->getSequenceNum() - 1) {
+            if(preview->getSequenceNum() >= result->getSequenceNum() - 1) {
                 numFrames++;
                 sumLatency = sumLatency + (steady_clock::now() - preview->getTimestamp());
 
@@ -175,7 +167,6 @@ int main(int argc, char** argv) {
         }
 
         // Move current NN results to prev
-        prevPassthrough = passthrough;
         prevResult = result;
     }
 

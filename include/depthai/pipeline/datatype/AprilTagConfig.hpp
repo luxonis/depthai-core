@@ -29,13 +29,13 @@ class AprilTagConfig : public Buffer {
     /**
      * @param family AprilTag family
      */
-    void setFamily(Family family);
+    AprilTagConfig& setFamily(Family family);
 
     /**
      * Set explicit configuration.
      * @param config Explicit configuration
      */
-    void set(dai::RawAprilTagConfig config);
+    AprilTagConfig& set(dai::RawAprilTagConfig config);
 
     /**
      * Retrieve configuration data for AprilTag.
