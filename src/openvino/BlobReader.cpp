@@ -27,7 +27,7 @@ namespace {
 template <typename T>
 T readFromBlob(const std::vector<std::uint8_t>& blob, uint32_t& offset) {
     if(offset + sizeof(T) > blob.size()){
-        throw std::logic_error("BlobReader error: Filesize is less than blob specifies. Likely corrupted");
+        throw std::length_error("BlobReader error: Filesize is less than blob specifies. Likely corrupted");
     }
 
     auto srcPtr = blob.data() + offset;
@@ -56,7 +56,7 @@ void BlobReader::parse(const std::vector<std::uint8_t>& blob) {
     }
 
     if(blob.size() < blobHeader.file_size) {
-        throw std::logic_error("BlobReader error: Filesize is less than blob specifies. Likely corrupted");
+        throw std::length_error("BlobReader error: Filesize is less than blob specifies. Likely corrupted");
     }
 
     const auto readIO = [this, &blob](uint32_t& ioSectionOffset, uint32_t idx) {
