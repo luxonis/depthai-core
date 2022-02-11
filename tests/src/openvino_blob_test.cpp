@@ -3,8 +3,8 @@
 
 // std
 #include <atomic>
-#include <iostream>
 #include <fstream>
+#include <iostream>
 
 // Include depthai library
 #include <depthai/depthai.hpp>
@@ -182,7 +182,7 @@ TEST_CASE("OpenVINO corrupted blob") {
     std::vector<std::uint8_t> blobData(std::istreambuf_iterator<char>(stream), {});
 
     // Corrupt blob by removing half the file size
-    blobData.resize(blobData.size()/2);
+    blobData.resize(blobData.size() / 2);
 
     REQUIRE_THROWS(dai::OpenVINO::Blob(blobData));
 }

@@ -26,7 +26,7 @@ namespace {
 
 template <typename T>
 T readFromBlob(const std::vector<std::uint8_t>& blob, uint32_t& offset) {
-    if(offset + sizeof(T) > blob.size()){
+    if(offset + sizeof(T) > blob.size()) {
         throw std::length_error("BlobReader error: Filesize is less than blob specifies. Likely corrupted");
     }
 
