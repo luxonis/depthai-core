@@ -188,6 +188,7 @@ class ImgFrame : public Buffer {
     template <typename... T>
     ImgFrame& setFrame(T...) {
         static_assert(dependent_false<T...>::value, "Library not configured with OpenCV support");
+        return *this;
     }
     template <typename... T>
     void getFrame(T...) {
