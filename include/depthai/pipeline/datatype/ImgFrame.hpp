@@ -40,7 +40,7 @@ class ImgFrame : public Buffer {
 
     // getters
     /**
-     * Retrieves image timestamp related to steady_clock / time.monotonic
+     * Retrieves image timestamp related to dai::Clock::now()
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;
 
@@ -63,7 +63,7 @@ class ImgFrame : public Buffer {
     /**
      * Retrieves image sequence number
      */
-    unsigned int getSequenceNum() const;
+    int64_t getSequenceNum() const;
 
     /**
      * Retrieves image width in pixels
@@ -82,7 +82,7 @@ class ImgFrame : public Buffer {
 
     // setters
     /**
-     * Specifies current timestamp, related to steady_clock / time.monotonic
+     * Retrieves image timestamp related to dai::Clock::now()
      */
     void setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
 
@@ -103,7 +103,7 @@ class ImgFrame : public Buffer {
      *
      * @param seq Sequence number
      */
-    void setSequenceNum(unsigned int seq);
+    void setSequenceNum(int64_t seq);
 
     /**
      * Specifies frame width

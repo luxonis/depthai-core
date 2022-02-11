@@ -31,7 +31,7 @@ unsigned int ImgFrame::getInstanceNum() const {
 unsigned int ImgFrame::getCategory() const {
     return img.category;
 }
-unsigned int ImgFrame::getSequenceNum() const {
+int64_t ImgFrame::getSequenceNum() const {
     return img.sequenceNum;
 }
 unsigned int ImgFrame::getWidth() const {
@@ -58,7 +58,7 @@ void ImgFrame::setInstanceNum(unsigned int instanceNum) {
 void ImgFrame::setCategory(unsigned int category) {
     img.category = category;
 }
-void ImgFrame::setSequenceNum(unsigned int sequenceNum) {
+void ImgFrame::setSequenceNum(int64_t sequenceNum) {
     img.sequenceNum = sequenceNum;
 }
 void ImgFrame::setWidth(unsigned int width) {
