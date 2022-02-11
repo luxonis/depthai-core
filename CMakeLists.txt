@@ -207,6 +207,7 @@ add_library(${TARGET_CORE_NAME}
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/utility/Platform.cpp
+    src/utility/Environment.cpp
     src/xlink/XLinkConnection.cpp
     src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp
@@ -406,15 +407,6 @@ target_compile_definitions(${TARGET_CORE_NAME}
         # Add depthai-bootloader version
         DEPTHAI_BOOTLOADER_VERSION="${DEPTHAI_BOOTLOADER_VERSION}"
 )
-# Check if MSVC and add a conforming preprocessor flag (libnop serialization macros)
-if (MSVC)
-    if(MSVC_VERSION LESS 1925)
-        target_compile_options(${TARGET_CORE_NAME} PUBLIC "/experimental:preprocessor")
-    else()
-        target_compile_options(${TARGET_CORE_NAME} PUBLIC "/Zc:preprocessor")
-    endif()
-endif()
-
 
 # Add Backward dependency if enabled (On by default)
 if(DEPTHAI_ENABLE_BACKWARD)

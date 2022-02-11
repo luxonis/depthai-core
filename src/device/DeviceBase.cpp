@@ -19,6 +19,7 @@
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "pipeline/Pipeline.hpp"
+#include "utility/Environment.hpp"
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Resources.hpp"
@@ -91,6 +92,22 @@ constexpr std::chrono::seconds DeviceBase::DEFAULT_SEARCH_TIME;
 constexpr float DeviceBase::DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ;
 constexpr UsbSpeed DeviceBase::DEFAULT_USB_SPEED;
 
+std::chrono::milliseconds DeviceBase::getDefaultSearchTime() {
+    std::chrono::milliseconds defaultSearchTime = DEFAULT_SEARCH_TIME;
+    auto searchTimeStr = utility::getEnv("DEPTHAI_SEARCH_TIME");
+
+    if(!searchTimeStr.empty()) {
+        // Try parsing the string as a number
+        try {
+            defaultSearchTime = std::chrono::milliseconds{std::stoi(searchTimeStr)};
+        } catch(const std::invalid_argument& e) {
+            spdlog::warn("DEPTHAI_SEARCH_TIME value invalid: {}", e.what());
+        }
+    }
+
+    return defaultSearchTime;
+}
+
 template <typename Rep, typename Period>
 std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::duration<Rep, Period> timeout) {
     using namespace std::chrono;
@@ -125,7 +142,7 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::dura
 
 // Default overload ('DEFAULT_SEARCH_TIME' timeout)
 std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice() {
-    return getAnyAvailableDevice(DEFAULT_SEARCH_TIME);
+    return getAnyAvailableDevice(getDefaultSearchTime());
 }
 
 // static api
@@ -463,7 +480,7 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
 
     // Check if WD env var is set
     std::chrono::milliseconds watchdogTimeout = device::XLINK_WATCHDOG_TIMEOUT;
-    auto watchdogMsStr = spdlog::details::os::getenv("DEPTHAI_WATCHDOG");
+    auto watchdogMsStr = utility::getEnv("DEPTHAI_WATCHDOG");
     if(!watchdogMsStr.empty()) {
         // Try parsing the string as a number
         try {
@@ -473,20 +490,20 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
             if(watchdogTimeout.count() == 0) {
                 spdlog::warn("Watchdog disabled! In case of unclean exit, the device needs reset or power-cycle for next run", watchdogTimeout);
             } else {
-                spdlog::warn("Using a custom watchdog value of {} ms", watchdogTimeout);
+                spdlog::warn("Using a custom watchdog value of {}", watchdogTimeout);
             }
         } catch(const std::invalid_argument& e) {
             spdlog::warn("DEPTHAI_WATCHDOG value invalid: {}", e.what());
         }
     }
 
-    auto watchdogInitMsStr = spdlog::details::os::getenv("DEPTHAI_WATCHDOG_INITIAL_DELAY");
+    auto watchdogInitMsStr = utility::getEnv("DEPTHAI_WATCHDOG_INITIAL_DELAY");
     if(!watchdogInitMsStr.empty()) {
         // Try parsing the string as a number
         try {
             std::chrono::milliseconds watchdog{std::stoi(watchdogInitMsStr)};
             config.board.watchdogInitialDelayMs = static_cast<uint32_t>(watchdog.count());
-            spdlog::warn("Watchdog initial delay set to {} ms", *config.board.watchdogInitialDelayMs);
+            spdlog::warn("Watchdog initial delay set to {}", watchdog);
         } catch(const std::invalid_argument& e) {
             spdlog::warn("DEPTHAI_WATCHDOG_INITIAL_DELAY value invalid: {}", e.what());
         }
