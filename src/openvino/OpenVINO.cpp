@@ -3,10 +3,12 @@
 
 #include <algorithm>
 #include <exception>
+#include <fstream>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "BlobReader.hpp"
 #include "spdlog/spdlog.h"
 
 namespace dai {
@@ -123,6 +125,33 @@ bool OpenVINO::areVersionsBlobCompatible(OpenVINO::Version v1, OpenVINO::Version
     // If versions weren't matched up in any of the above cases, log an error and return false
     spdlog::error("OpenVINO - version compatibility check with invalid values or unknown blob version");
     return false;
+}
+
+static void blobInit(OpenVINO::Blob& blob, std::vector<uint8_t> data) {
+    blob.data = std::move(data);
+    BlobReader reader;
+    reader.parse(blob.data);
+    blob.networkInputs = reader.getNetworkInputs();
+    blob.networkOutputs = reader.getNetworkOutputs();
+    blob.stageCount = reader.getStageCount();
+    blob.numShaves = reader.getNumberOfShaves();
+    blob.numSlices = reader.getNumberOfSlices();
+    blob.version = OpenVINO::getBlobLatestSupportedVersion(reader.getVersionMajor(), reader.getVersionMinor());
+}
+
+OpenVINO::Blob::Blob(std::vector<uint8_t> data) {
+    blobInit(*this, std::move(data));
+}
+
+OpenVINO::Blob::Blob(const std::string& path) {
+    // Load binary file at path
+    std::ifstream stream(path, std::ios::in | std::ios::binary);
+    if(!stream.is_open()) {
+        // Throw an error
+        // TODO(themarpe) - Unify exceptions into meaningful groups
+        throw std::runtime_error(fmt::format("Cannot load blob, file at path {} doesn't exist.", path));
+    }
+    blobInit(*this, std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {}));
 }
 
 }  // namespace dai

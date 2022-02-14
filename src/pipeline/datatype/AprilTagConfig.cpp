@@ -9,16 +9,18 @@ std::shared_ptr<RawBuffer> AprilTagConfig::serialize() const {
 AprilTagConfig::AprilTagConfig() : Buffer(std::make_shared<RawAprilTagConfig>()), cfg(*dynamic_cast<RawAprilTagConfig*>(raw.get())) {}
 AprilTagConfig::AprilTagConfig(std::shared_ptr<RawAprilTagConfig> ptr) : Buffer(std::move(ptr)), cfg(*dynamic_cast<RawAprilTagConfig*>(raw.get())) {}
 
-void AprilTagConfig::setFamily(Family family) {
+AprilTagConfig& AprilTagConfig::setFamily(Family family) {
     cfg.family = family;
+    return *this;
 }
 
 dai::RawAprilTagConfig AprilTagConfig::get() const {
     return cfg;
 }
 
-void AprilTagConfig::set(dai::RawAprilTagConfig config) {
+AprilTagConfig& AprilTagConfig::set(dai::RawAprilTagConfig config) {
     cfg = config;
+    return *this;
 }
 
 }  // namespace dai
