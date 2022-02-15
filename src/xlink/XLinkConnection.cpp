@@ -108,6 +108,10 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
 
         for(unsigned i = 0; i < numdev; i++) {
             DeviceInfo info = {};
+            if(std::strcmp("<error>", deviceDescAll.at(i).name) == 0) {
+                spdlog::error("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(state), deviceDescAll.at(i).name);
+                continue;
+            }
             info.desc = deviceDescAll.at(i);
             info.state = state;
             bool allowedId = allowedDeviceIds.find(info.getMxId()) != std::string::npos || allowedDeviceIds.empty();
