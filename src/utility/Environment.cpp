@@ -23,7 +23,7 @@ std::string getEnv(const std::string& var) {
 
     // Warn if env variable set
     if(!value.empty()) {
-        spdlog::warn("Environment '{}' set to '{}'", var, value);
+        spdlog::trace("Environment '{}' set to '{}'", var, value);
     }
 
     return value;
