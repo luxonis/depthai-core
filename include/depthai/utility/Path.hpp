@@ -1,12 +1,14 @@
 #pragma once
-#include <codecvt>
 #if(__cplusplus >= 201703L) || (_MSVC_LANG >= 201703L)
     #include <filesystem>
 #endif
-#include <locale>
 #include <string>
 
 namespace dai {
+
+// TODO C++20 char8_t
+// TODO test if caller works when replace "dai::Path" -> "std::filesystem::path"
+// TODO test if can `using Path = std::filesystem::path` on C++17 to completely use STL
 
 /**
  * @brief accepts utf-8, Windows wchar_t, or std::filesystem::path
@@ -18,10 +20,12 @@ class Path {
 #if defined(_WIN32) && defined(_MSC_VER)
     using value_type = wchar_t;
 #else
-    // TODO C++20 char8_t
     using value_type = char;
 #endif
     using string_type = std::basic_string<value_type>;
+
+    string_type nativePath;
+    std::wstring convert_utf8_to_wide(const std::string& utf8string);
 
    public:
     Path() = default;
@@ -46,18 +50,9 @@ class Path {
     Path(const char* source) : nativePath(convert_utf8_to_wide(std::string(source))) {}
 #endif
 
-    // implicitly convert *this into a string containing the native format
+    // implicitly convert *this to native format string
     operator string_type() const noexcept {
         return nativePath;
-    }
-
-   private:
-    string_type nativePath;
-
-    std::wstring convert_utf8_to_wide(const std::string& utf8string) {
-        //#pragma warning(suppress : 4996)
-        std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> converter;
-        return converter.from_bytes(utf8string);
     }
 };
 

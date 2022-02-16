@@ -216,6 +216,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/FeatureTrackerConfig.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
+    src/utility/Path.cpp
     src/utility/Platform.cpp
     src/utility/Environment.cpp
     src/xlink/XLinkConnection.cpp
