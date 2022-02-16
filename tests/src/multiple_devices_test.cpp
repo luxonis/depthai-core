@@ -1,6 +1,7 @@
 #include <atomic>
 #include <iostream>
 #include <vector>
+#include <tuple>
 
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
@@ -50,6 +51,7 @@ int main() {
         threads.push_back(thread([dev, pipeline, deviceCounter]() {
             // Optional delay between device connection
             // if(deviceCounter) this_thread::sleep_for(1s);
+            std::ignore = deviceCounter;
 
             auto device = make_shared<dai::Device>(pipeline, dev, dai::UsbSpeed::SUPER);
             device->getOutputQueue("rgb", 4, false);

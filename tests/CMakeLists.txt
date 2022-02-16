@@ -11,6 +11,7 @@ function(dai_add_test test_name test_src)
 
     # Create test executable
     add_executable(${test_name} ${test_src})
+    add_default_flags(${test_name} LEAN)
 
     # Add to clangformat target
     if(COMMAND target_clangformat_setup)

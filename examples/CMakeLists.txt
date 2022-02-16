@@ -8,7 +8,7 @@ find_package(Sanitizers)
 # Create utility library
 add_library(utility utility/utility.cpp)
 target_include_directories(utility PUBLIC "utility")
-
+add_default_flags(utility LEAN)
 target_link_libraries(utility FP16::fp16 ${OpenCV_LIBS})
 
 # Helper for adding new examples
@@ -16,6 +16,7 @@ function(dai_add_example example_name example_src enable_test)
 
     # Add example
     add_executable(${example_name} ${example_src})
+    add_default_flags(${example_name} LEAN)
     target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS})
 
     # Add sanitizers for example
