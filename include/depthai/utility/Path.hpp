@@ -19,6 +19,8 @@ class Path {
    public:
 #if defined(_WIN32) && defined(_MSC_VER)
     using value_type = wchar_t;
+    static constexpr char convert_err[] = "<Unicode path not convertible>";
+    static constexpr wchar_t convert_err_wide[] = L"<Unicode path not convertible>";
 #else
     using value_type = char;
 #endif
@@ -48,6 +50,15 @@ class Path {
     // Path(std::string source) : nativePath(convert_utf8_to_wide(source)) {}
     Path(const std::string& source) : nativePath(convert_utf8_to_wide(source)) {}
     Path(const char* source) : nativePath(convert_utf8_to_wide(std::string(source))) {}
+    std::string string() const noexcept;
+    std::string u8string() const noexcept;
+#else
+    std::string string() const noexcept {
+        return nativePath;
+    }
+    std::string u8string() const noexcept {
+        return nativePath;
+    }
 #endif
 
     // implicitly convert *this to native format string

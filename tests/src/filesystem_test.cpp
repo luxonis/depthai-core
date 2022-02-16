@@ -88,6 +88,11 @@ TEST_CASE("dai::Path utf-8 and native char set handling") {
     auto wrapper = [&getBlob](const dai::Path& path) -> bool { return getBlob(path); };
     REQUIRE(wrapper("pass dai::Path across functions"));
 
+    REQUIRE(path3.string().length() == (sizeof(PATH3) - 1));
+    REQUIRE(path3.u8string().length() == (sizeof(PATH3) - 1));
+    REQUIRE(path4.string() == dai::Path::convert_err);
+    REQUIRE(path4.u8string() == string4);
+
 #if defined(__cpp_lib_filesystem)
     const std::filesystem::path fspath1(PATH1);
     const std::filesystem::path fspath2(PATH2);
