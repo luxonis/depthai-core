@@ -164,3 +164,6 @@ dai_add_test(serialization_test src/serialization_test.cpp)
 
 # Multiple devices test
 dai_add_test(multiple_devices_test src/multiple_devices_test.cpp)
+
+# Filesystem test
+dai_add_test(filesystem_test src/filesystem_test.cpp)
