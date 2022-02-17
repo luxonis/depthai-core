@@ -74,6 +74,7 @@ class AssetManager /*: public Assets*/ {
      * @returns Shared pointer to asset
      */
     std::shared_ptr<dai::Asset> set(const std::string& key, const std::vector<std::uint8_t>& data, int alignment = 64);
+    std::shared_ptr<dai::Asset> set(const std::string& key, std::vector<std::uint8_t>&& data, int alignment = 64);
 
     /**
      * @returns Asset assigned to the specified key or a nullptr otherwise

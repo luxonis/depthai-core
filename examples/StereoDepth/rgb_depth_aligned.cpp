@@ -11,7 +11,7 @@
 static std::atomic<bool> downscaleColor{true};
 static constexpr int fps = 30;
 // The disparity is computed at this resolution, then upscaled to RGB resolution
-static constexpr auto monoRes = dai::MonoCameraProperties::SensorResolution::THE_400_P;
+static constexpr auto monoRes = dai::MonoCameraProperties::SensorResolution::THE_720_P;
 
 static float rgbWeight = 0.4f;
 static float depthWeight = 0.6f;
