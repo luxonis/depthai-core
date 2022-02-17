@@ -167,3 +167,4 @@ dai_add_test(multiple_devices_test src/multiple_devices_test.cpp)
 
 # Filesystem test
 dai_add_test(filesystem_test src/filesystem_test.cpp)
+dai_test_compile_definitions(filesystem_test PRIVATE BLOB_PATH="${mobilenet_blob}")

@@ -143,7 +143,7 @@ OpenVINO::Blob::Blob(std::vector<uint8_t> data) {
     blobInit(*this, std::move(data));
 }
 
-OpenVINO::Blob::Blob(const std::string& path) {
+OpenVINO::Blob::Blob(const dai::Path& path) {
     // Load binary file at path
     std::ifstream stream(path, std::ios::in | std::ios::binary);
     if(!stream.is_open()) {

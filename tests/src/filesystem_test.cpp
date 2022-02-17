@@ -102,3 +102,23 @@ TEST_CASE("dai::Path utf-8 and native char set handling") {
     REQUIRE(getBlob(fspath3));
 #endif
 }
+
+TEST_CASE("dai::Path with NN blobs") {
+    char osTmpPathname[L_tmpnam];
+    REQUIRE(std::tmpnam(osTmpPathname) != nullptr);
+    std::string strPath(osTmpPathname);
+    strPath += PATH4;
+    const dai::Path daiPath(strPath);
+
+    dai::Pipeline pipeline;
+    auto nn = pipeline.create<dai::node::NeuralNetwork>();
+
+    // attempt to use a non-existing blob at a utf-8 path
+    //  REQUIRE_THROWS_AS(nn->setBlobPath(daiPath), std::runtime_error);
+    REQUIRE_THROWS_WITH(nn->setBlobPath(PATH4), Catch::Matchers::Contains("Cannot load blob") && Catch::Matchers::Contains("not convertible"));
+    REQUIRE_THROWS_WITH(nn->setBlobPath(strPath), Catch::Matchers::Contains("Cannot load blob") && Catch::Matchers::Contains("not convertible"));
+    REQUIRE_THROWS_WITH(nn->setBlobPath(daiPath), Catch::Matchers::Contains("Cannot load blob") && Catch::Matchers::Contains("not convertible"));
+
+    // use blob at known test path
+    REQUIRE_NOTHROW(nn->setBlobPath(BLOB_PATH));
+}
