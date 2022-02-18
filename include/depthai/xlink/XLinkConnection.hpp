@@ -37,6 +37,7 @@ struct DeviceInfo {
     XLinkDeviceState_t state = X_LINK_ANY_STATE;
     XLinkProtocol_t protocol = X_LINK_ANY_PROTOCOL;
     XLinkPlatform_t platform = X_LINK_ANY_PLATFORM;
+    XLinkError_t status = X_LINK_SUCCESS;
 };
 
 /**
@@ -98,8 +99,7 @@ class XLinkConnection {
     // closed
     std::atomic<bool> closed{false};
 
-    constexpr static std::chrono::milliseconds WAIT_FOR_BOOTUP_TIMEOUT_TCPIP{15000};
-    constexpr static std::chrono::milliseconds WAIT_FOR_BOOTUP_TIMEOUT_USB{5000};
+    constexpr static std::chrono::milliseconds WAIT_FOR_BOOTUP_TIMEOUT{15000};
     constexpr static std::chrono::milliseconds WAIT_FOR_CONNECT_TIMEOUT{5000};
     constexpr static std::chrono::milliseconds POLLING_DELAY_TIME{10};
 };

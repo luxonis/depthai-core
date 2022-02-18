@@ -31,6 +31,7 @@ DeviceInfo::DeviceInfo(const deviceDesc_t& desc) {
     state = desc.state;
     protocol = desc.protocol;
     platform = desc.platform;
+    status = desc.status;
 }
 
 DeviceInfo::DeviceInfo(std::string mxidOrName) {
@@ -58,6 +59,7 @@ deviceDesc_t DeviceInfo::getXLinkDeviceDesc() const {
     desc.platform = platform;
     desc.protocol = protocol;
     desc.state = state;
+    desc.status = status;
 
     return desc;
 }
@@ -68,7 +70,13 @@ std::string DeviceInfo::getMxId() const {
 }
 
 std::string DeviceInfo::toString() const {
-    return fmt::format("{}, {}, {}, {}, {}", name, mxid, XLinkDeviceStateToStr(state), XLinkProtocolToStr(protocol), XLinkPlatformToStr(platform));
+    return fmt::format("{}, {}, {}, {}, {}, {}",
+                       name,
+                       mxid,
+                       XLinkDeviceStateToStr(state),
+                       XLinkProtocolToStr(protocol),
+                       XLinkPlatformToStr(platform),
+                       XLinkErrorToStr(status));
 }
 
 static XLinkProtocol_t getDefaultProtocol() {
@@ -91,8 +99,7 @@ static XLinkProtocol_t getDefaultProtocol() {
 }
 
 // STATIC
-constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT_TCPIP;
-constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT_USB;
+constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT;
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_CONNECT_TIMEOUT;
 constexpr std::chrono::milliseconds XLinkConnection::POLLING_DELAY_TIME;
 
@@ -179,10 +186,7 @@ DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
 
     // Wait for device to get to bootloader state
     XLinkError_t rc;
-    auto bootupTimeout = WAIT_FOR_BOOTUP_TIMEOUT_USB;
-    if(deviceToWait.protocol == X_LINK_TCP_IP) {
-        bootupTimeout = WAIT_FOR_BOOTUP_TIMEOUT_TCPIP;
-    }
+    auto bootupTimeout = WAIT_FOR_BOOTUP_TIMEOUT;
 
     // Override with environment variables, if set
     const std::vector<std::pair<std::string, std::chrono::milliseconds*>> evars = {
@@ -213,7 +217,7 @@ DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
 
     // If device not found
     if(rc != X_LINK_SUCCESS) {
-        throw std::runtime_error(fmt::format("Failed to find device (mxid: {}), error message: {}", deviceToWait.mxid, convertErrorCodeToString(rc)));
+        throw std::runtime_error(fmt::format("Failed to find device ({}), error message: {}", deviceToWait.toString(), convertErrorCodeToString(rc)));
     }
 
     return DeviceInfo(foundDeviceDesc);
@@ -330,10 +334,7 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
     DeviceInfo lastDeviceInfo = deviceToInit;
 
     std::chrono::milliseconds connectTimeout = WAIT_FOR_CONNECT_TIMEOUT;
-    std::chrono::milliseconds bootupTimeout = WAIT_FOR_BOOTUP_TIMEOUT_USB;
-    if(deviceToInit.protocol == X_LINK_TCP_IP) {
-        bootupTimeout = WAIT_FOR_BOOTUP_TIMEOUT_TCPIP;
-    }
+    std::chrono::milliseconds bootupTimeout = WAIT_FOR_BOOTUP_TIMEOUT;
 
     // Override with environment variables, if set
     const std::vector<std::pair<std::string, std::chrono::milliseconds*>> evars = {

@@ -123,8 +123,6 @@ In your non-CMake project (new Visual Studio project, ...)
     - `build/install/include` (library headers)
     - `build/install/include/depthai-shared/3rdparty` (shared 3rdparty headers)
     - `build/install/lib/cmake/depthai/dependencies/include` (dependency headers)
-3. Add the following defines
-    - `__PC__=ON`
 
 > ℹ️ Threading library might need to be linked to explicitly.
 
@@ -151,7 +149,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_INSTALL_SIGNAL_HANDLER | Set to 0 to disable installing Backward signal handler for stack trace printing |
 | DEPTHAI_WATCHDOG | Sets device watchdog timeout. Useful for debugging (`DEPTHAI_WATCHDOG=0`), to prevent device reset while the process is paused. |
 | DEPTHAI_WATCHDOG_INITIAL_DELAY | Specifies delay after which the device watchdog starts. |
-| DEPTHAI_SEARCH_TIME | Specifies device search time in milliseconds for functions that block until a device is found. |
+| DEPTHAI_SEARCH_TIMEOUT | Specifies timeout in milliseconds for device search time in functions that block until a device is found. |
 | DEPTHAI_CONNECT_TIMEOUT | Specifies timeout in milliseconds for establishing a connection to a given device. |
 | DEPTHAI_BOOTUP_TIMEOUT | Specifies timeout in milliseconds for waiting the device to boot after sending the binary. |
 | DEPTHAI_PROTOCOL | Restricts default search to the specified protocol. Options: any, usb, tcpip. |
