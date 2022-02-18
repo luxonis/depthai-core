@@ -2,7 +2,7 @@
 
 #include "utility.hpp"
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 static constexpr float stepSize = 0.05f;
@@ -38,7 +38,7 @@ int main() {
     bool lrcheck = false;
     bool subpixel = false;
 
-    stereo->initialConfig.setConfidenceThreshold(255);
+    stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     stereo->setLeftRightCheck(lrcheck);
     stereo->setSubpixel(subpixel);
 
@@ -51,7 +51,7 @@ int main() {
     config.depthThresholds.upperThreshold = 10000;
     config.roi = dai::Rect(topLeft, bottomRight);
 
-    spatialDataCalculator->setWaitForConfigInput(false);
+    spatialDataCalculator->inputConfig.setWaitForMessage(false);
     spatialDataCalculator->initialConfig.addROI(config);
 
     // Linking
@@ -79,8 +79,9 @@ int main() {
     while(true) {
         auto inDepth = depthQueue->get<dai::ImgFrame>();
 
-        cv::Mat depthFrame = inDepth->getFrame();
+        cv::Mat depthFrame = inDepth->getFrame();  // depthFrame values are in millimeters
         cv::Mat depthFrameColor;
+
         cv::normalize(depthFrame, depthFrameColor, 255, 0, cv::NORM_INF, CV_8UC1);
         cv::equalizeHist(depthFrameColor, depthFrameColor);
         cv::applyColorMap(depthFrameColor, depthFrameColor, cv::COLORMAP_HOT);

@@ -16,38 +16,30 @@ namespace node {
 /**
  * @brief ObjectTracker node. Performs object tracking using Kalman filter and hungarian algorithm.
  */
-class ObjectTracker : public Node {
+class ObjectTracker : public NodeCRTP<Node, ObjectTracker, ObjectTrackerProperties> {
    public:
-    using Properties = dai::ObjectTrackerProperties;
-
-   private:
-    nlohmann::json getProperties() override;
-    std::shared_ptr<Node> clone() override;
-
-    Properties properties;
-
-   public:
-    std::string getName() const override;
+    constexpr static const char* NAME = "ObjectTracker";
 
     ObjectTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    ObjectTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Input ImgFrame message on which tracking will be performed. RGBp, BGRp, NV12, YUV420p types are supported.
      * Default queue is non-blocking with size 4.
      */
-    Input inputTrackerFrame{*this, "inputTrackerFrame", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputTrackerFrame{*this, "inputTrackerFrame", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Input ImgFrame message on which object detection was performed.
      * Default queue is non-blocking with size 4.
      */
-    Input inputDetectionFrame{*this, "inputDetectionFrame", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputDetectionFrame{*this, "inputDetectionFrame", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Input message with image detection from neural network.
      * Default queue is non-blocking with size 4.
      */
-    Input inputDetections{*this, "inputDetections", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImgDetections, true}}};
+    Input inputDetections{*this, "inputDetections", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgDetections, true}}};
 
     /**
      * Outputs Tracklets message that carries object tracking results.
@@ -67,7 +59,7 @@ class ObjectTracker : public Node {
     Output passthroughDetectionFrame{*this, "passthroughDetectionFrame", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
-     * Passthrough image detections message from neural nework output.
+     * Passthrough image detections message from neural network output.
      * Suitable for when input queue is set to non-blocking behavior.
      */
     Output passthroughDetections{*this, "passthroughDetections", Output::Type::MSender, {{DatatypeEnum::ImgDetections, true}}};
@@ -97,10 +89,10 @@ class ObjectTracker : public Node {
     void setTrackerType(TrackerType type);
 
     /**
-     * Specify tracker ID assigment policy.
-     * @param type Tracker ID assigment policy.
+     * Specify tracker ID assignment policy.
+     * @param type Tracker ID assignment policy.
      */
-    void setTrackerIdAssigmentPolicy(TrackerIdAssigmentPolicy type);
+    void setTrackerIdAssignmentPolicy(TrackerIdAssignmentPolicy type);
 };
 
 }  // namespace node

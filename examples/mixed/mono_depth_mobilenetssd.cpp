@@ -1,6 +1,6 @@
 #include <iostream>
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 // MobilenetSSD label texts
@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
     monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     // Produce the depth map (using disparity output as it's easier to visualize depth this way)
-    stereo->initialConfig.setConfidenceThreshold(255);
+    stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     stereo->setRectifyEdgeFillColor(0);  // Black, to better see the cutout from rectification (black stripe on the edges)
     // Convert the grayscale frame into the nn-acceptable form
     manip->initialConfig.setResize(300, 300);
@@ -90,7 +90,7 @@ int main(int argc, char** argv) {
             int x2 = detection.xmax * frame.cols;
             int y2 = detection.ymax * frame.rows;
 
-            int labelIndex = detection.label;
+            uint32_t labelIndex = detection.label;
             std::string labelStr = to_string(labelIndex);
             if(labelIndex < labelMap.size()) {
                 labelStr = labelMap[labelIndex];
@@ -108,7 +108,7 @@ int main(int argc, char** argv) {
     float disparityMultiplier = 255 / stereo->initialConfig.getMaxDisparity();
 
     while(true) {
-        // Instead of get (blocking), we use tryGet (nonblocking) which will return the available data or None otherwise
+        // Instead of get (blocking), we use tryGet (non-blocking) which will return the available data or None otherwise
         auto inRight = qRight->tryGet<dai::ImgFrame>();
         auto inDet = qDet->tryGet<dai::ImgDetections>();
         auto inDisparity = qDisparity->tryGet<dai::ImgFrame>();

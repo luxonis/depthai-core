@@ -11,6 +11,7 @@
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
 #include "depthai-shared/pipeline/Assets.hpp"
+#include "depthai-shared/utility/Serialization.hpp"
 #include "depthai-shared/xlink/XLinkConstants.hpp"
 
 // project
@@ -18,6 +19,7 @@
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "pipeline/Pipeline.hpp"
+#include "utility/Environment.hpp"
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Resources.hpp"
@@ -27,6 +29,7 @@
 #include "nanorpc/core/client.h"
 #include "nanorpc/packer/nlohmann_msgpack.h"
 #include "spdlog/details/os.h"
+#include "spdlog/fmt/bin_to_hex.h"
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
@@ -89,6 +92,22 @@ constexpr std::chrono::seconds DeviceBase::DEFAULT_SEARCH_TIME;
 constexpr float DeviceBase::DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ;
 constexpr UsbSpeed DeviceBase::DEFAULT_USB_SPEED;
 
+std::chrono::milliseconds DeviceBase::getDefaultSearchTime() {
+    std::chrono::milliseconds defaultSearchTime = DEFAULT_SEARCH_TIME;
+    auto searchTimeStr = utility::getEnv("DEPTHAI_SEARCH_TIME");
+
+    if(!searchTimeStr.empty()) {
+        // Try parsing the string as a number
+        try {
+            defaultSearchTime = std::chrono::milliseconds{std::stoi(searchTimeStr)};
+        } catch(const std::invalid_argument& e) {
+            spdlog::warn("DEPTHAI_SEARCH_TIME value invalid: {}", e.what());
+        }
+    }
+
+    return defaultSearchTime;
+}
+
 template <typename Rep, typename Period>
 std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::duration<Rep, Period> timeout) {
     using namespace std::chrono;
@@ -123,7 +142,7 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::dura
 
 // Default overload ('DEFAULT_SEARCH_TIME' timeout)
 std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice() {
-    return getAnyAvailableDevice(DEFAULT_SEARCH_TIME);
+    return getAnyAvailableDevice(getDefaultSearchTime());
 }
 
 // static api
@@ -365,10 +384,12 @@ void DeviceBase::closeImpl() {
     auto t1 = steady_clock::now();
     spdlog::debug("Device about to be closed...");
 
-    // Close connection first
-    // Resets device as well and queues unblock
+    // Close connection first; causes Xlink internal calls to unblock semaphore waits and
+    // return error codes, which then allows queues to unblock
+    // always manage ownership because other threads (e.g. watchdog) are running and need to
+    // keep the shared_ptr valid (even if closed). Otherwise leads to using null pointers,
+    // invalid memory, etc. which hard crashes main app
     connection->close();
-    connection = nullptr;
 
     // Stop various threads
     watchdogRunning = false;
@@ -397,10 +418,7 @@ void DeviceBase::checkClosed() const {
 }
 
 DeviceBase::~DeviceBase() {
-    // Only allow to close once
-    if(closed.exchange(true)) return;
-
-    DeviceBase::closeImpl();
+    DeviceBase::close();
 }
 
 void DeviceBase::tryStartPipeline(const Pipeline& pipeline) {
@@ -419,7 +437,7 @@ void DeviceBase::tryStartPipeline(const Pipeline& pipeline) {
 void DeviceBase::init(OpenVINO::Version version, bool usb2Mode, const std::string& pathToMvcmd) {
     Config cfg;
     // Specify usb speed
-    cfg.preboot.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
+    cfg.board.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
     // Specify the OpenVINO version
     cfg.version = version;
     init2(cfg, pathToMvcmd, {});
@@ -427,13 +445,13 @@ void DeviceBase::init(OpenVINO::Version version, bool usb2Mode, const std::strin
 void DeviceBase::init(const Pipeline& pipeline, bool usb2Mode, const std::string& pathToMvcmd) {
     Config cfg = pipeline.getDeviceConfig();
     // Modify usb speed
-    cfg.preboot.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
+    cfg.board.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
     init2(cfg, pathToMvcmd, pipeline);
 }
 void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd) {
     Config cfg;
     // Specify usb speed
-    cfg.preboot.usb.maxSpeed = maxUsbSpeed;
+    cfg.board.usb.maxSpeed = maxUsbSpeed;
     // Specify the OpenVINO version
     cfg.version = version;
     init2(cfg, pathToMvcmd, {});
@@ -441,7 +459,7 @@ void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const std
 void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd) {
     Config cfg = pipeline.getDeviceConfig();
     // Modify usb speed
-    cfg.preboot.usb.maxSpeed = maxUsbSpeed;
+    cfg.board.usb.maxSpeed = maxUsbSpeed;
     init2(cfg, pathToMvcmd, pipeline);
 }
 
@@ -476,20 +494,40 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
 
     // Check if WD env var is set
     std::chrono::milliseconds watchdogTimeout = device::XLINK_WATCHDOG_TIMEOUT;
-    auto watchdogMsStr = spdlog::details::os::getenv("DEPTHAI_WATCHDOG");
+    auto watchdogMsStr = utility::getEnv("DEPTHAI_WATCHDOG");
     if(!watchdogMsStr.empty()) {
         // Try parsing the string as a number
         try {
             std::chrono::milliseconds watchdog{std::stoi(watchdogMsStr)};
-            config.preboot.watchdogTimeoutMs = static_cast<uint32_t>(watchdog.count());
+            config.board.watchdogTimeoutMs = static_cast<uint32_t>(watchdog.count());
             watchdogTimeout = watchdog;
-            spdlog::debug("Using a custom watchdog value of {}", watchdogTimeout);
+            if(watchdogTimeout.count() == 0) {
+                spdlog::warn("Watchdog disabled! In case of unclean exit, the device needs reset or power-cycle for next run", watchdogTimeout);
+            } else {
+                spdlog::warn("Using a custom watchdog value of {}", watchdogTimeout);
+            }
         } catch(const std::invalid_argument& e) {
             spdlog::warn("DEPTHAI_WATCHDOG value invalid: {}", e.what());
         }
     }
 
+    auto watchdogInitMsStr = utility::getEnv("DEPTHAI_WATCHDOG_INITIAL_DELAY");
+    if(!watchdogInitMsStr.empty()) {
+        // Try parsing the string as a number
+        try {
+            std::chrono::milliseconds watchdog{std::stoi(watchdogInitMsStr)};
+            config.board.watchdogInitialDelayMs = static_cast<uint32_t>(watchdog.count());
+            spdlog::warn("Watchdog initial delay set to {}", watchdog);
+        } catch(const std::invalid_argument& e) {
+            spdlog::warn("DEPTHAI_WATCHDOG_INITIAL_DELAY value invalid: {}", e.what());
+        }
+    }
+
     // Get embedded mvcmd or external with applied config
+    if(spdlog::get_level() == spdlog::level::debug) {
+        nlohmann::json jBoardConfig = config.board;
+        spdlog::debug("Device - BoardConfig: {} \nlibnop:{}", jBoardConfig.dump(), spdlog::to_hex(utility::serialize(config.board)));
+    }
     std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, pathToMvcmd);
 
     // Init device (if bootloader, handle correctly - issue USB boot command)
@@ -543,7 +581,7 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
     deviceInfo.state = X_LINK_BOOTED;
 
     // prepare rpc for both attached and host controlled mode
-    pimpl->rpcStream = std::make_shared<XLinkStream>(*connection, device::XLINK_CHANNEL_MAIN_RPC, device::XLINK_USB_BUFFER_MAX_SIZE);
+    pimpl->rpcStream = std::make_shared<XLinkStream>(connection, device::XLINK_CHANNEL_MAIN_RPC, device::XLINK_USB_BUFFER_MAX_SIZE);
     auto rpcStream = pimpl->rpcStream;
 
     pimpl->rpcClient = std::make_unique<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>([this, rpcStream](nanorpc::core::type::buffer request) {
@@ -568,7 +606,7 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
     // separate stream so it doesn't miss between potentially long RPC calls
     watchdogThread = std::thread([this, watchdogTimeout]() {
         try {
-            XLinkStream stream(*this->connection, device::XLINK_CHANNEL_WATCHDOG, 128);
+            XLinkStream stream(connection, device::XLINK_CHANNEL_WATCHDOG, 128);
             std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
             while(watchdogRunning) {
                 stream.write(watchdogKeepalive);
@@ -589,7 +627,7 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
         using namespace std::chrono;
 
         try {
-            XLinkStream stream(*this->connection, device::XLINK_CHANNEL_TIMESYNC, 128);
+            XLinkStream stream(connection, device::XLINK_CHANNEL_TIMESYNC, 128);
             Timestamp timestamp = {};
             while(timesyncRunning) {
                 // Block
@@ -616,16 +654,14 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
         using namespace std::chrono;
         std::vector<LogMessage> messages;
         try {
-            XLinkStream stream(*this->connection, device::XLINK_CHANNEL_LOG, 128);
+            XLinkStream stream(connection, device::XLINK_CHANNEL_LOG, 128);
             while(loggingRunning) {
                 // Block
                 auto log = stream.read();
 
-                // parse packet as msgpack
                 try {
-                    auto j = nlohmann::json::from_msgpack(log);
-                    // create pipeline schema from retrieved data
-                    nlohmann::from_json(j, messages);
+                    // Deserialize incoming messages
+                    utility::deserialize(log, messages);
 
                     spdlog::trace("Log vector decoded, size: {}", messages.size());
 
@@ -699,7 +735,7 @@ std::unordered_map<CameraBoardSocket, std::string> DeviceBase::getCameraSensorNa
     return pimpl->rpcClient->call("getCameraSensorNames").as<std::unordered_map<CameraBoardSocket, std::string>>();
 }
 
-// Convinience functions for querying current system information
+// Convenience functions for querying current system information
 MemoryInfo DeviceBase::getDdrMemoryUsage() {
     checkClosed();
 
@@ -895,7 +931,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
         // Transfer the whole assetStorage in a separate thread
         const std::string streamAssetStorage = "__stream_asset_storage";
         std::thread t1([this, &streamAssetStorage, &assetStorage]() {
-            XLinkStream stream(*connection, streamAssetStorage, device::XLINK_USB_BUFFER_MAX_SIZE);
+            XLinkStream stream(connection, streamAssetStorage, device::XLINK_USB_BUFFER_MAX_SIZE);
             int64_t offset = 0;
             do {
                 int64_t toTransfer = std::min(static_cast<int64_t>(device::XLINK_USB_BUFFER_MAX_SIZE), static_cast<int64_t>(assetStorage.size() - offset));

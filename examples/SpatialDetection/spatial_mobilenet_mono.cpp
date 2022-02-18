@@ -1,7 +1,7 @@
 #include <chrono>
 #include <iostream>
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 static const std::vector<std::string> labelMap = {"background", "aeroplane", "bicycle",     "bird",  "boat",        "bottle", "bus",
@@ -54,7 +54,7 @@ int main(int argc, char** argv) {
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
     // StereoDepth
-    stereo->initialConfig.setConfidenceThreshold(255);
+    stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
 
     // Define a neural network that will make predictions based on the source frames
     spatialDetectionNetwork->setConfidenceThreshold(0.5f);
@@ -112,8 +112,9 @@ int main(int argc, char** argv) {
 
         cv::Mat rectifiedRight = inRectified->getCvFrame();
 
-        cv::Mat depthFrame = inDepth->getFrame();
+        cv::Mat depthFrame = inDepth->getFrame();  // depthFrame values are in millimeters
         cv::Mat depthFrameColor;
+
         cv::normalize(depthFrame, depthFrameColor, 255, 0, cv::NORM_INF, CV_8UC1);
         cv::equalizeHist(depthFrameColor, depthFrameColor);
         cv::applyColorMap(depthFrameColor, depthFrameColor, cv::COLORMAP_HOT);
@@ -142,7 +143,7 @@ int main(int argc, char** argv) {
             int x2 = detection.xmax * rectifiedRight.cols;
             int y2 = detection.ymax * rectifiedRight.rows;
 
-            int labelIndex = detection.label;
+            uint32_t labelIndex = detection.label;
             std::string labelStr = to_string(labelIndex);
             if(labelIndex < labelMap.size()) {
                 labelStr = labelMap[labelIndex];

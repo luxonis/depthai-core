@@ -1,6 +1,6 @@
 #include <iostream>
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 // Closer-in minimum depth, disparity range is doubled (from 95 to 190):
@@ -8,7 +8,7 @@ static std::atomic<bool> extended_disparity{false};
 // Better accuracy for longer distance, fractional disparity 32-levels:
 static std::atomic<bool> subpixel{false};
 // Better handling for occlusions:
-static std::atomic<bool> lr_check{false};
+static std::atomic<bool> lr_check{true};
 
 int main() {
     // Create pipeline
@@ -29,7 +29,7 @@ int main() {
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
     // Create a node that will produce the depth map (using disparity output as it's easier to visualize depth this way)
-    depth->initialConfig.setConfidenceThreshold(245);
+    depth->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     // Options: MEDIAN_OFF, KERNEL_3x3, KERNEL_5x5, KERNEL_7x7 (default)
     depth->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_7x7);
     depth->setLeftRightCheck(lr_check);

@@ -11,6 +11,7 @@
 
 // project
 #include "depthai/utility/Initialization.hpp"
+#include "utility/Environment.hpp"
 
 // libraries
 #include <XLink/XLink.h>
@@ -18,7 +19,9 @@ extern "C" {
 #include <XLink/XLinkLog.h>
 }
 
-#include <spdlog/spdlog.h>
+#include "spdlog/details/os.h"
+#include "spdlog/fmt/chrono.h"
+#include "spdlog/spdlog.h"
 
 namespace dai {
 
@@ -68,8 +71,28 @@ std::string DeviceInfo::toString() const {
     return fmt::format("{}, {}, {}, {}, {}", name, mxid, XLinkDeviceStateToStr(state), XLinkProtocolToStr(protocol), XLinkPlatformToStr(platform));
 }
 
+static XLinkProtocol_t getDefaultProtocol() {
+    XLinkProtocol_t defaultProtocol = X_LINK_ANY_PROTOCOL;
+
+    auto protocolStr = utility::getEnv("DEPTHAI_PROTOCOL");
+
+    std::transform(protocolStr.begin(), protocolStr.end(), protocolStr.begin(), ::tolower);
+    if(protocolStr.empty() || protocolStr == "any") {
+        defaultProtocol = X_LINK_ANY_PROTOCOL;
+    } else if(protocolStr == "usb") {
+        defaultProtocol = X_LINK_USB_VSC;
+    } else if(protocolStr == "tcpip") {
+        defaultProtocol = X_LINK_TCP_IP;
+    } else {
+        spdlog::warn("Unsupported protocol specified");
+    }
+
+    return defaultProtocol;
+}
+
 // STATIC
-constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT;
+constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT_TCPIP;
+constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT_USB;
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_CONNECT_TIMEOUT;
 constexpr std::chrono::milliseconds XLinkConnection::POLLING_DELAY_TIME;
 
@@ -81,15 +104,21 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
     unsigned int numdev = 0;
     std::array<deviceDesc_t, 32> deviceDescAll = {};
     deviceDesc_t suitableDevice = {};
-    suitableDevice.protocol = X_LINK_ANY_PROTOCOL;
+    suitableDevice.protocol = getDefaultProtocol();
     suitableDevice.platform = X_LINK_ANY_PLATFORM;
     suitableDevice.state = state;
+
+    auto allowedDeviceIds = utility::getEnv("DEPTHAI_DEVICE_MXID_LIST");
 
     auto status = XLinkFindAllSuitableDevices(suitableDevice, deviceDescAll.data(), static_cast<unsigned int>(deviceDescAll.size()), &numdev);
     if(status != X_LINK_SUCCESS) throw std::runtime_error("Couldn't retrieve all connected devices");
 
     for(unsigned i = 0; i < numdev; i++) {
-        devices.push_back(DeviceInfo(deviceDescAll.at(i)));
+        DeviceInfo info(deviceDescAll.at(i));
+        bool allowedId = allowedDeviceIds.find(info.getMxId()) != std::string::npos || allowedDeviceIds.empty();
+        if(allowedId) {
+            devices.push_back(info);
+        }
     }
 
     return devices;
@@ -150,12 +179,37 @@ DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
 
     // Wait for device to get to bootloader state
     XLinkError_t rc;
+    auto bootupTimeout = WAIT_FOR_BOOTUP_TIMEOUT_USB;
+    if(deviceToWait.protocol == X_LINK_TCP_IP) {
+        bootupTimeout = WAIT_FOR_BOOTUP_TIMEOUT_TCPIP;
+    }
+
+    // Override with environment variables, if set
+    const std::vector<std::pair<std::string, std::chrono::milliseconds*>> evars = {
+        {"DEPTHAI_BOOTUP_TIMEOUT", &bootupTimeout},
+    };
+
+    for(auto ev : evars) {
+        auto name = ev.first;
+        auto valstr = utility::getEnv(name);
+        if(!valstr.empty()) {
+            try {
+                std::chrono::milliseconds value{std::stoi(valstr)};
+                *ev.second = value;
+                // auto initial = *ev.second;
+                // spdlog::warn("{} override: {} -> {}", name, initial, value);
+            } catch(const std::invalid_argument& e) {
+                spdlog::warn("{} value invalid: {}", name, e.what());
+            }
+        }
+    }
+
     auto tstart = steady_clock::now();
     do {
         rc = XLinkFindFirstSuitableDevice(deviceToWait.getXLinkDeviceDesc(), &foundDeviceDesc);
         if(rc == X_LINK_SUCCESS) break;
         std::this_thread::sleep_for(POLLING_DELAY_TIME);
-    } while(steady_clock::now() - tstart < WAIT_FOR_BOOTUP_TIMEOUT);
+    } while(steady_clock::now() - tstart < bootupTimeout);
 
     // If device not found
     if(rc != X_LINK_SUCCESS) {
@@ -275,6 +329,32 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
 
     DeviceInfo lastDeviceInfo = deviceToInit;
 
+    std::chrono::milliseconds connectTimeout = WAIT_FOR_CONNECT_TIMEOUT;
+    std::chrono::milliseconds bootupTimeout = WAIT_FOR_BOOTUP_TIMEOUT_USB;
+    if(deviceToInit.protocol == X_LINK_TCP_IP) {
+        bootupTimeout = WAIT_FOR_BOOTUP_TIMEOUT_TCPIP;
+    }
+
+    // Override with environment variables, if set
+    const std::vector<std::pair<std::string, std::chrono::milliseconds*>> evars = {
+        {"DEPTHAI_CONNECT_TIMEOUT", &connectTimeout},
+        {"DEPTHAI_BOOTUP_TIMEOUT", &bootupTimeout},
+    };
+
+    for(auto ev : evars) {
+        auto name = ev.first;
+        auto valstr = utility::getEnv(name);
+        if(!valstr.empty()) {
+            try {
+                std::chrono::milliseconds value{std::stoi(valstr)};
+                *ev.second = value;
+                // auto initial = *ev.second;
+            } catch(const std::invalid_argument& e) {
+                spdlog::warn("{} value invalid: {}", name, e.what());
+            }
+        }
+    }
+
     // boot device
     if(bootDevice) {
         DeviceInfo deviceToBoot = lastDeviceInfo;
@@ -288,7 +368,7 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
             rc = XLinkFindFirstSuitableDevice(deviceToBoot.getXLinkDeviceDesc(), &foundDeviceDesc);
             if(rc == X_LINK_SUCCESS) break;
             std::this_thread::sleep_for(POLLING_DELAY_TIME);
-        } while(steady_clock::now() - tstart < WAIT_FOR_BOOTUP_TIMEOUT);
+        } while(steady_clock::now() - tstart < bootupTimeout);
 
         // If device not found
         if(rc != X_LINK_SUCCESS) {
@@ -328,7 +408,7 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
             rc = XLinkFindFirstSuitableDevice(bootedDeviceInfo.getXLinkDeviceDesc(), &foundDeviceDesc);
             if(rc == X_LINK_SUCCESS) break;
             std::this_thread::sleep_for(POLLING_DELAY_TIME);
-        } while(steady_clock::now() - tstart < WAIT_FOR_BOOTUP_TIMEOUT);
+        } while(steady_clock::now() - tstart < bootupTimeout);
 
         if(rc != X_LINK_SUCCESS) {
             throw std::runtime_error("Failed to find device after booting, error message: " + convertErrorCodeToString(rc));
@@ -348,7 +428,7 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
         do {
             if((rc = XLinkConnect(&connectionHandler)) == X_LINK_SUCCESS) break;
             std::this_thread::sleep_for(POLLING_DELAY_TIME);
-        } while(steady_clock::now() - tstart < WAIT_FOR_CONNECT_TIMEOUT);
+        } while(steady_clock::now() - tstart < connectTimeout);
 
         if(rc != X_LINK_SUCCESS) throw std::runtime_error("Failed to connect to device, error message: " + convertErrorCodeToString(rc));
 

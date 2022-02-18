@@ -14,7 +14,7 @@
 #include "depthai/openvino/OpenVINO.hpp"
 
 // shared
-#include "depthai-shared/device/PrebootConfig.hpp"
+#include "depthai-shared/device/BoardConfig.hpp"
 #include "depthai-shared/pipeline/PipelineSchema.hpp"
 #include "depthai-shared/properties/GlobalProperties.hpp"
 

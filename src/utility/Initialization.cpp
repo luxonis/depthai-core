@@ -5,6 +5,7 @@
 
 // project
 #include "build/version.hpp"
+#include "utility/Environment.hpp"
 #include "utility/Resources.hpp"
 
 // libraries
@@ -62,7 +63,7 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
     static const bool initialized = [&]() {
 #ifdef DEPTHAI_ENABLE_BACKWARD
         // install backward if specified
-        auto envSignalHandler = spdlog::details::os::getenv("DEPTHAI_INSTALL_SIGNAL_HANDLER");
+        auto envSignalHandler = utility::getEnv("DEPTHAI_INSTALL_SIGNAL_HANDLER");
         if(installSignalHandler && envSignalHandler != "0") {
             signalHandler = std::make_unique<backward::SignalHandling>();
         }
@@ -73,7 +74,7 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
         // Set global logging level from ENV variable 'DEPTHAI_LEVEL'
         // Taken from spdlog, to replace with DEPTHAI_LEVEL instead of SPDLOG_LEVEL
         // spdlog::cfg::load_env_levels();
-        auto envLevel = spdlog::details::os::getenv("DEPTHAI_LEVEL");
+        auto envLevel = utility::getEnv("DEPTHAI_LEVEL");
         if(!envLevel.empty()) {
             spdlog::cfg::helpers::load_levels(envLevel);
         } else {
@@ -102,7 +103,7 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
             throw std::runtime_error("Couldn't initialize XLink");
         }
         // Suppress XLink related errors
-        mvLogDefaultLevelSet(MVLOG_LAST);
+        mvLogDefaultLevelSet(MVLOG_FATAL);
 
         spdlog::debug("Initialize - finished");
 
