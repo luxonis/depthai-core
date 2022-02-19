@@ -1,7 +1,7 @@
 #include <atomic>
 #include <iostream>
-#include <vector>
 #include <tuple>
+#include <vector>
 
 // Inludes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
