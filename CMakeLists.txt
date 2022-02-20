@@ -6,13 +6,18 @@ if(NOT WIN32)
     set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
 endif()
 
-# Read the BUILD_SHARED_LIBS option and select PIC toolchain
-if(BUILD_SHARED_LIBS)
-    if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-        set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_LIST_DIR}/cmake/toolchain/pic.cmake" CACHE STRING "")
-    endif()
-    # Specify exporting all symbols on Windows
-    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON CACHE BOOL "")
+# Create a custom toolchain to pass certain options to dependencies
+set(gen_toolchain "${CMAKE_CURRENT_BINARY_DIR}/generated/toolchain.cmake")
+configure_file(
+    "${CMAKE_CURRENT_LIST_DIR}/cmake/toolchain/custom.cmake.in"
+    "${gen_toolchain}"
+    @ONLY
+)
+set(CMAKE_TOOLCHAIN_FILE "${gen_toolchain}" CACHE STRING "" FORCE)
+if(DEFINED _INTERNAL_DEPTHAI_ORIGINAL_CMAKE_TOOLCHAIN_FILE)
+    message(STATUS "Using specified toolchain file: ${_INTERNAL_DEPTHAI_ORIGINAL_CMAKE_TOOLCHAIN_FILE} combined into: ${CMAKE_TOOLCHAIN_FILE}")
+else()
+    message(STATUS "Using toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
 endif()
 
 include("cmake/HunterGate.cmake")
@@ -97,6 +102,11 @@ if(FORCE_COLORED_OUTPUT)
     elseif("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
        add_compile_options(-fcolor-diagnostics)
     endif()
+endif()
+
+# Specify exporting all symbols on Windows
+if(WIN32 AND BUILD_SHARED_LIBS)
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON CACHE BOOL "")
 endif()
 
 ### Constants
@@ -481,7 +491,13 @@ if(DEPTHAI_SANITIZE)
     set(SANITIZE_ADDRESS ON CACHE BOOL "Enable AddressSanitizer for sanitized targets." FORCE)
     set(SANITIZE_UNDEFINED ON CACHE BOOL "Enable UndefinedBehaviorSanitizer for sanitized targets." FORCE)
     find_package(Sanitizers)
-    add_sanitizers(${TARGET_CORE_NAME} ${TARGET_OPENCV_NAME})
+    add_sanitizers(${TARGET_CORE_NAME})
+    if(DEPTHAI_HAVE_OPENCV_SUPPORT)
+        add_sanitizers(${TARGET_OPENCV_NAME})
+    endif()
+    if(DEPTHAI_XLINK_LOCAL)
+        add_sanitizers(XLink)
+    endif()
 endif()
 
 ########################
