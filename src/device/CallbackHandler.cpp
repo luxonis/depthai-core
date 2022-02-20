@@ -26,7 +26,7 @@ CallbackHandler::CallbackHandler(std::shared_ptr<XLinkConnection> conn,
                 const auto data = StreamMessageParser::parseMessage(&packet);
 
                 // CALLBACK
-                auto toSend = callback(data);
+                auto toSend = callback(std::move(data));
 
                 auto serialized = StreamMessageParser::serializeMessage(toSend);
 
