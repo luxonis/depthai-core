@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <limits>
 #include <unordered_map>
 #include <vector>
@@ -38,14 +39,14 @@ class NNData : public Buffer {
      * @param name Name of the layer
      * @param data Data to store
      */
-    void setLayer(const std::string& name, std::vector<std::uint8_t> data);
+    NNData& setLayer(const std::string& name, std::vector<std::uint8_t> data);
 
     /**
-     * Set a layer with datatype U8. Integers are casted to bytes.
+     * Set a layer with datatype U8. Integers are cast to bytes.
      * @param name Name of the layer
      * @param data Data to store
      */
-    void setLayer(const std::string& name, const std::vector<int>& data);
+    NNData& setLayer(const std::string& name, const std::vector<int>& data);
 
     // fp16
     /**
@@ -53,14 +54,14 @@ class NNData : public Buffer {
      * @param name Name of the layer
      * @param data Data to store
      */
-    void setLayer(const std::string& name, std::vector<float> data);
+    NNData& setLayer(const std::string& name, std::vector<float> data);
 
     /**
      * Set a layer with datatype FP16. Double values are converted to FP16.
      * @param name Name of the layer
      * @param data Data to store
      */
-    void setLayer(const std::string& name, std::vector<double> data);
+    NNData& setLayer(const std::string& name, std::vector<double> data);
 
     // getters
     /**
@@ -76,7 +77,7 @@ class NNData : public Buffer {
     /**
      * Retrieve layers tensor information
      * @param name Name of the layer
-     * @param[out] tensor Outputs tensor infromation of that layer
+     * @param[out] tensor Outputs tensor information of that layer
      * @returns True if layer exists, false otherwise
      */
     bool getLayer(const std::string& name, TensorInfo& tensor) const;
@@ -98,7 +99,7 @@ class NNData : public Buffer {
 
     // uint8
     /**
-     * Convinience function to retrieve U8 data from layer
+     * Convenience function to retrieve U8 data from layer
      * @param name Name of the layer
      * @returns U8 binary data
      */
@@ -106,7 +107,7 @@ class NNData : public Buffer {
 
     // fp16
     /**
-     * Convinience function to retrieve float values from layers FP16 tensor
+     * Convenience function to retrieve float values from layers FP16 tensor
      * @param name Name of the layer
      * @returns Float data
      */
@@ -114,7 +115,7 @@ class NNData : public Buffer {
 
     // int32
     /**
-     * Convinience function to retrieve INT32 values from layers tensor
+     * Convenience function to retrieve INT32 values from layers tensor
      * @param name Name of the layer
      * @returns INT32 data
      */
@@ -122,22 +123,53 @@ class NNData : public Buffer {
 
     // first layer
     /**
-     * Convinience function to retrieve U8 data from first layer
+     * Convenience function to retrieve U8 data from first layer
      * @returns U8 binary data
      */
     std::vector<std::uint8_t> getFirstLayerUInt8() const;
 
     /**
-     * Convinience function to retrieve float values from first layers FP16 tensor
+     * Convenience function to retrieve float values from first layers FP16 tensor
      * @returns Float data
      */
     std::vector<float> getFirstLayerFp16() const;
 
     /**
-     * Convinience function to retrieve INT32 values from first layers tensor
+     * Convenience function to retrieve INT32 values from first layers tensor
      * @returns INT32 data
      */
     std::vector<std::int32_t> getFirstLayerInt32() const;
+
+    /**
+     * Retrieves image timestamp related to dai::Clock::now()
+     */
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;
+
+    /**
+     * Retrieves image timestamp directly captured from device's monotonic clock,
+     * not synchronized to host time. Used mostly for debugging
+     */
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
+
+    /**
+     * Retrieves image sequence number
+     */
+    int64_t getSequenceNum() const;
+
+    /**
+     * Sets image timestamp related to dai::Clock::now()
+     */
+    NNData& setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+
+    /**
+     * Sets image timestamp related to dai::Clock::now()
+     */
+    NNData& setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+
+    /**
+     * Retrieves image sequence number
+     */
+    NNData& setSequenceNum(int64_t sequenceNum);
 };
 
 }  // namespace dai

@@ -19,7 +19,6 @@ class LockingQueue {
 
     void setMaxSize(unsigned sz) {
         // Lock first
-        if(sz == 0) throw std::invalid_argument("Queue size can't be 0!");
         std::unique_lock<std::mutex> lock(guard);
         maxSize = sz;
     }
@@ -43,9 +42,10 @@ class LockingQueue {
     }
 
     void destruct() {
-        destructed = true;
-        signalPop.notify_all();
-        signalPush.notify_all();
+        if(!destructed.exchange(true)) {
+            signalPop.notify_all();
+            signalPush.notify_all();
+        }
     }
     ~LockingQueue() = default;
 
@@ -56,7 +56,6 @@ class LockingQueue {
 
             // First checks predicate, then waits
             bool pred = signalPush.wait_for(lock, timeout, [this]() { return !queue.empty() || destructed; });
-            if(destructed) return false;
             if(!pred) return false;
 
             // Continue here if and only if queue has any elements
@@ -75,7 +74,6 @@ class LockingQueue {
             std::unique_lock<std::mutex> lock(guard);
 
             signalPush.wait(lock, [this]() { return !queue.empty() || destructed; });
-            if(destructed) return false;
             if(queue.empty()) return false;
 
             while(!queue.empty()) {
@@ -107,6 +105,13 @@ class LockingQueue {
     bool push(T const& data) {
         {
             std::unique_lock<std::mutex> lock(guard);
+            if(maxSize == 0) {
+                // necessary if maxSize was changed
+                while(!queue.empty()) {
+                    queue.pop();
+                }
+                return true;
+            }
             if(!blocking) {
                 // if non blocking, remove as many oldest elements as necessary, so next one will fit
                 // necessary if maxSize was changed
@@ -115,7 +120,6 @@ class LockingQueue {
                 }
             } else {
                 signalPop.wait(lock, [this]() { return queue.size() < maxSize || destructed; });
-                if(destructed) return false;
             }
 
             queue.push(data);
@@ -128,6 +132,13 @@ class LockingQueue {
     bool tryWaitAndPush(T const& data, std::chrono::duration<Rep, Period> timeout) {
         {
             std::unique_lock<std::mutex> lock(guard);
+            if(maxSize == 0) {
+                // necessary if maxSize was changed
+                while(!queue.empty()) {
+                    queue.pop();
+                }
+                return true;
+            }
             if(!blocking) {
                 // if non blocking, remove as many oldest elements as necessary, so next one will fit
                 // necessary if maxSize was changed
@@ -138,7 +149,6 @@ class LockingQueue {
                 // First checks predicate, then waits
                 bool pred = signalPop.wait_for(lock, timeout, [this]() { return queue.size() < maxSize || destructed; });
                 if(!pred) return false;
-                if(destructed) return false;
             }
 
             queue.push(data);
@@ -169,7 +179,7 @@ class LockingQueue {
                 return false;
             }
 
-            value = queue.front();
+            value = std::move(queue.front());
             queue.pop();
         }
         signalPop.notify_all();
@@ -181,10 +191,9 @@ class LockingQueue {
             std::unique_lock<std::mutex> lock(guard);
 
             signalPush.wait(lock, [this]() { return (!queue.empty() || destructed); });
-            if(destructed) return false;
             if(queue.empty()) return false;
 
-            value = queue.front();
+            value = std::move(queue.front());
             queue.pop();
         }
         signalPop.notify_all();
@@ -198,10 +207,9 @@ class LockingQueue {
 
             // First checks predicate, then waits
             bool pred = signalPush.wait_for(lock, timeout, [this]() { return !queue.empty() || destructed; });
-            if(destructed) return false;
             if(!pred) return false;
 
-            value = queue.front();
+            value = std::move(queue.front());
             queue.pop();
         }
         signalPop.notify_all();

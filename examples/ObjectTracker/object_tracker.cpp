@@ -1,7 +1,7 @@
 #include <chrono>
 #include <iostream>
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 static const std::vector<std::string> labelMap = {"background", "aeroplane", "bicycle",     "bird",  "boat",        "bottle", "bus",
@@ -50,10 +50,10 @@ int main(int argc, char** argv) {
     detectionNetwork->input.setBlocking(false);
 
     objectTracker->setDetectionLabelsToTrack({15});  // track only person
-    // possible tracking types: ZERO_TERM_COLOR_HISTOGRAM, ZERO_TERM_IMAGELESS
+    // possible tracking types: ZERO_TERM_COLOR_HISTOGRAM, ZERO_TERM_IMAGELESS, SHORT_TERM_IMAGELESS, SHORT_TERM_KCF
     objectTracker->setTrackerType(dai::TrackerType::ZERO_TERM_COLOR_HISTOGRAM);
     // take the smallest ID when new object is tracked, possible options: SMALLEST_ID, UNIQUE_ID
-    objectTracker->setTrackerIdAssigmentPolicy(dai::TrackerIdAssigmentPolicy::SMALLEST_ID);
+    objectTracker->setTrackerIdAssignmentPolicy(dai::TrackerIdAssignmentPolicy::SMALLEST_ID);
 
     // Linking
     camRgb->preview.link(detectionNetwork->input);
@@ -102,7 +102,7 @@ int main(int argc, char** argv) {
             int x2 = roi.bottomRight().x;
             int y2 = roi.bottomRight().y;
 
-            int labelIndex = t.label;
+            uint32_t labelIndex = t.label;
             std::string labelStr = to_string(labelIndex);
             if(labelIndex < labelMap.size()) {
                 labelStr = labelMap[labelIndex];

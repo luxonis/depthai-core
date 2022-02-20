@@ -18,7 +18,7 @@ class ADatatype {
     explicit ADatatype(std::shared_ptr<RawBuffer> r) : raw(std::move(r)) {}
     virtual ~ADatatype() = default;
     virtual std::shared_ptr<dai::RawBuffer> serialize() const = 0;
-    std::shared_ptr<RawBuffer> getRaw() {
+    std::shared_ptr<RawBuffer> getRaw() const {
         return raw;
     }
 };

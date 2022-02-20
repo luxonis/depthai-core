@@ -26,7 +26,7 @@
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
-#include "depthai-shared/device/PrebootConfig.hpp"
+#include "depthai-shared/device/BoardConfig.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
 
@@ -56,10 +56,17 @@ class DeviceBase {
      */
     struct Config {
         OpenVINO::Version version;
-        PrebootConfig preboot;
+        BoardConfig board;
     };
 
     // static API
+
+    /**
+     * @brief Get the Default Search Time for finding devices
+     *
+     * @returns Default search time in milliseconds
+     */
+    static std::chrono::milliseconds getDefaultSearchTime();
 
     /**
      * Waits for any available device with a timeout
@@ -306,7 +313,7 @@ class DeviceBase {
     bool startPipeline(const Pipeline& pipeline);
 
     /**
-     * Sets the devices logging severity level. This level affects which logs are transfered from device to host.
+     * Sets the devices logging severity level. This level affects which logs are transferred from device to host.
      *
      * @param level Logging severity
      */
@@ -525,7 +532,7 @@ class DeviceBase {
      *
      * @param pipeline OpenVINO version of the pipeline must match the one which the device was booted with
      * @sa startPipeline
-     * @note Remember to call this function in the overload to setup the comunication properly
+     * @note Remember to call this function in the overload to setup the communication properly
      *
      * @returns True if pipeline started, false otherwise
      */
@@ -534,7 +541,7 @@ class DeviceBase {
     /**
      * Allows the derived classes to handle custom setup for gracefully stopping the pipeline
      *
-     * @note Remember to call this function in the overload to setup the comunication properly
+     * @note Remember to call this function in the overload to setup the communication properly
      */
     virtual void closeImpl();
 

@@ -12,21 +12,25 @@ namespace node {
 /**
  * @brief StereoDepth node. Compute stereo disparity and depth from left-right image pair.
  */
-class StereoDepth : public Node {
+class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
    public:
-    using Properties = dai::StereoDepthProperties;
+    constexpr static const char* NAME = "StereoDepth";
+
+    /**
+     * Preset modes for stereo depth.
+     */
+    enum class PresetMode : std::uint32_t { HIGH_ACCURACY, HIGH_DENSITY };
+
+   protected:
+    Properties& getProperties();
 
    private:
-    Properties properties;
-
-    nlohmann::json getProperties() override;
-    std::shared_ptr<Node> clone() override;
+    PresetMode presetMode = PresetMode::HIGH_DENSITY;
     std::shared_ptr<RawStereoDepthConfig> rawConfig;
 
    public:
-    std::string getName() const override;
-
     StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Initial config to use for StereoDepth.
@@ -44,14 +48,14 @@ class StereoDepth : public Node {
      *
      * Default queue is non-blocking with size 8
      */
-    Input left{*this, "left", Input::Type::SReceiver, false, 8, {{DatatypeEnum::ImgFrame, true}}};
+    Input left{*this, "left", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
      * Input for right ImgFrame of left-right pair
      *
      * Default queue is non-blocking with size 8
      */
-    Input right{*this, "right", Input::Type::SReceiver, false, 8, {{DatatypeEnum::ImgFrame, true}}};
+    Input right{*this, "right", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
      * Outputs ImgFrame message that carries RAW16 encoded (0..65535) depth data in millimeters.
@@ -64,7 +68,10 @@ class StereoDepth : public Node {
      * Outputs ImgFrame message that carries RAW8 / RAW16 encoded disparity data:
      * RAW8 encoded (0..95) for standard mode;
      * RAW8 encoded (0..190) for extended disparity mode;
-     * RAW16 encoded (0..3040) for subpixel disparity mode (32 subpixel levels on top of standard mode).
+     * RAW16 encoded for subpixel disparity mode:
+     * - 0..760 for 3 fractional bits (by default)
+     * - 0..1520 for 4 fractional bits
+     * - 0..3040 for 5 fractional bits
      */
     Output disparity{*this, "disparity", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
@@ -126,23 +133,9 @@ class StereoDepth : public Node {
     /**
      * Outputs ImgFrame message that carries RAW8 confidence map.
      * Lower values means higher confidence of the calculated disparity value.
-     * RGB aligment, left-right check or any postproccessing (e.g. median filter) is not performed on confidence map.
+     * RGB alignment, left-right check or any postproccessing (e.g. median filter) is not performed on confidence map.
      */
     Output confidenceMap{*this, "confidenceMap", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-
-#if 0  // will be enabled when confidence map RGB aligment/LR-check support will be added
-    /**
-     * Outputs ImgFrame message that carries left-right check first iteration (before combining with second iteration) confidence map.
-     * Useful for debugging/fine tuning.
-     */
-    Output debugConfMapLrCheckIt1{*this, "debugConfMapLrCheckIt1", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-
-    /**
-     * Outputs ImgFrame message that carries left-right check second iteration (before combining with first iteration) confidence map.
-     * Useful for debugging/fine tuning.
-     */
-    Output debugConfMapLrCheckIt2{*this, "debugConfMapLrCheckIt2", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-#endif
 
     /**
      * Specify local filesystem path to the calibration file
@@ -250,7 +243,7 @@ class StereoDepth : public Node {
     void setLeftRightCheck(bool enable);
 
     /**
-     * Computes disparity with sub-pixel interpolation (5 fractional bits).
+     * Computes disparity with sub-pixel interpolation (3 fractional bits by default).
      *
      * Suitable for long range. Currently incompatible with extended disparity
      */
@@ -313,6 +306,26 @@ class StereoDepth : public Node {
      * @returns Maximum disparity value that the node can return
      */
     [[deprecated("Use 'initialConfig.getMaxDisparity()' instead")]] float getMaxDisparity() const;
+
+    /**
+     * Specify allocated hardware resources for stereo depth.
+     * Suitable only to increase post processing runtime.
+     * @param numShaves Number of shaves.
+     * @param numMemorySlices Number of memory slices.
+     */
+    void setPostProcessingHardwareResources(int numShaves, int numMemorySlices);
+
+    /**
+     * Sets a default preset based on specified option.
+     * @param mode Stereo depth preset mode
+     */
+    void setDefaultProfilePreset(PresetMode mode);
+
+    /**
+     * Sets a default preset based on specified option.
+     * @param mode Stereo depth preset mode
+     */
+    void setFocalLengthFromCalibration(bool focalLengthFromCalibration);
 };
 
 }  // namespace node
