@@ -10,6 +10,7 @@
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
 #include "depthai-shared/pipeline/Assets.hpp"
+#include "depthai-shared/utility/Serialization.hpp"
 #include "depthai-shared/xlink/XLinkConstants.hpp"
 
 // project
@@ -84,17 +85,14 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
         // TODO(themarpe) - specify OpenVINO version
         deviceFirmware = Resources::getInstance().getDeviceFirmware(false, version);
     }
+    if(deviceFirmware.empty()) {
+        throw std::runtime_error("Error getting device firmware");
+    }
 
-    // Create msgpacks
+    // Serialize data
     std::vector<uint8_t> pipelineBinary, assetsBinary;
-    {
-        nlohmann::json j = schema;
-        pipelineBinary = nlohmann::json::to_msgpack(j);
-    }
-    {
-        nlohmann::json j = assets;
-        assetsBinary = nlohmann::json::to_msgpack(j);
-    }
+    utility::serialize(schema, pipelineBinary);
+    utility::serialize(assets, assetsBinary);
 
     // Prepare SBR structure
     SBR sbr = {};
@@ -241,7 +239,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, 
         }
 
         // prepare bootloader stream
-        stream = std::make_unique<XLinkStream>(*connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
+        stream = std::make_unique<XLinkStream>(connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
 
         // Retrieve bootloader version
         version = requestVersion();
@@ -263,7 +261,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, 
         connection = std::make_shared<XLinkConnection>(deviceInfo, X_LINK_BOOTLOADER);
 
         // If type is specified, try to boot into that BL type
-        stream = std::make_unique<XLinkStream>(*connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
+        stream = std::make_unique<XLinkStream>(connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
 
         // Retrieve bootloader version
         version = requestVersion();
@@ -289,16 +287,22 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, 
                 std::atomic<bool> wdRunning{true};
                 std::thread wd = std::thread([&]() {
                     // prepare watchdog thread
-                    XLinkStream stream(*connection, bootloader::XLINK_CHANNEL_WATCHDOG, 64);
-                    std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
-                    while(wdRunning) {
-                        try {
-                            stream.write(watchdogKeepalive);
-                        } catch(const std::exception&) {
-                            break;
+                    try {
+                        // constructor can throw in rare+quick start/stop scenarios because
+                        // the connection is close() eg. by DeviceBootloader::close()
+                        XLinkStream stream(connection, bootloader::XLINK_CHANNEL_WATCHDOG, 64);
+                        std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
+                        while(wdRunning) {
+                            try {
+                                stream.write(watchdogKeepalive);
+                            } catch(const std::exception&) {
+                                break;
+                            }
+                            // Ping with a period half of that of the watchdog timeout
+                            std::this_thread::sleep_for(bootloader::XLINK_WATCHDOG_TIMEOUT / 2);
                         }
-                        // Ping with a period half of that of the watchdog timeout
-                        std::this_thread::sleep_for(bootloader::XLINK_WATCHDOG_TIMEOUT / 2);
+                    } catch(const std::exception&) {
+                        // ignore, probably invalid connection or stream
                     }
                 });
 
@@ -323,8 +327,9 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, 
 
                 // Now reconnect
                 connection = std::make_shared<XLinkConnection>(deviceInfo, X_LINK_BOOTLOADER);
+
                 // prepare new bootloader stream
-                stream = std::make_unique<XLinkStream>(*connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
+                stream = std::make_unique<XLinkStream>(connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
 
                 // Retrieve bootloader version
                 version = requestVersion();
@@ -364,7 +369,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, 
                 }
 
                 // prepare bootloader stream
-                stream = std::make_unique<XLinkStream>(*connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
+                stream = std::make_unique<XLinkStream>(connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
 
                 // Retrieve bootloader version
                 version = requestVersion();
@@ -391,29 +396,33 @@ void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, 
 
     // prepare watchdog thread, which will keep device alive
     watchdogThread = std::thread([this]() {
-        // prepare watchdog thread
-        XLinkStream stream(*connection, bootloader::XLINK_CHANNEL_WATCHDOG, 64);
-
-        std::shared_ptr<XLinkConnection> conn = this->connection;
-        std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
-        std::vector<uint8_t> reset = {1, 0, 0, 0};
-        while(watchdogRunning) {
-            try {
-                stream.write(watchdogKeepalive);
-            } catch(const std::exception&) {
-                break;
-            }
-            // Ping with a period half of that of the watchdog timeout
-            std::this_thread::sleep_for(bootloader::XLINK_WATCHDOG_TIMEOUT / 2);
-        }
-
         try {
-            // Send reset request
-            stream.write(reset);
-            // Dummy read (wait till link falls down)
-            stream.readRaw();
+            // constructor often throws in quick start/stop scenarios because
+            // the connection is close()...usually by DeviceBootloader::close()
+            XLinkStream stream(connection, bootloader::XLINK_CHANNEL_WATCHDOG, 64);
+            std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
+            std::vector<uint8_t> reset = {1, 0, 0, 0};
+            while(watchdogRunning) {
+                try {
+                    stream.write(watchdogKeepalive);
+                } catch(const std::exception&) {
+                    break;
+                }
+                // Ping with a period half of that of the watchdog timeout
+                std::this_thread::sleep_for(bootloader::XLINK_WATCHDOG_TIMEOUT / 2);
+            }
+
+            try {
+                // Send reset request
+                stream.write(reset);
+                // Dummy read (wait till link falls down)
+                const auto dummy = stream.readMove();
+            } catch(const std::exception&) {
+                // ignore
+            }
         } catch(const std::exception&) {
-        }  // ignore
+            // ignore
+        }
 
         // Sleep a bit, so device isn't available anymore
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
@@ -428,9 +437,12 @@ void DeviceBootloader::close() {
     auto t1 = steady_clock::now();
     spdlog::debug("DeviceBootloader about to be closed...");
 
-    // Close connection first (so queues unblock)
+    // Close connection first; causes Xlink internal calls to unblock semaphore waits and
+    // return error codes, which then allows queues to unblock
+    // always manage ownership because other threads (e.g. watchdog) are running and need to
+    // keep the shared_ptr valid (even if closed). Otherwise leads to using null pointers,
+    // invalid memory, etc. which hard crashes main app
     connection->close();
-    connection = nullptr;
 
     // Stop watchdog
     watchdogRunning = false;
@@ -439,6 +451,7 @@ void DeviceBootloader::close() {
     if(watchdogThread.joinable()) watchdogThread.join();
 
     // Close stream
+    // BUGBUG investigate ownership; can another thread accessing this at the same time?
     stream = nullptr;
 
     spdlog::debug("DeviceBootloader closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
@@ -516,6 +529,8 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
     // Then wait for response by bootloader
     // Wait till FLASH_COMPLETE response
     Response::FlashComplete result;
+    result.success = 0;  // TODO remove these inits after fix https://github.com/luxonis/depthai-bootloader-shared/issues/4
+    result.errorMsg[0] = 0;
     do {
         std::vector<uint8_t> data;
         if(!receiveResponseData(data)) return {false, "Couldn't receive bootloader response"};
@@ -558,7 +573,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, T
         throw std::invalid_argument("Only FLASH memory is supported for now");
     }
     if(bootloaderType != type && getVersion() < Version(Request::UpdateFlashEx2::VERSION)) {
-        std::runtime_error("Current bootloader version doesn't support flashing different type of bootloader");
+        throw std::runtime_error("Current bootloader version doesn't support flashing different type of bootloader");
     }
 
     std::vector<uint8_t> package;
@@ -598,6 +613,8 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, T
     // Then wait for response by bootloader
     // Wait till FLASH_COMPLETE response
     Response::FlashComplete result;
+    result.success = 0;  // TODO remove these inits after fix https://github.com/luxonis/depthai-bootloader-shared/issues/4
+    result.errorMsg[0] = 0;
     do {
         std::vector<uint8_t> data;
         if(!receiveResponseData(data)) return {false, "Couldn't receive bootloader response"};
@@ -649,6 +666,8 @@ std::tuple<bool, std::string> DeviceBootloader::flashCustom(Memory memory, uint3
     // Then wait for response by bootloader
     // Wait till FLASH_COMPLETE response
     Response::FlashComplete result;
+    result.success = 0;  // TODO remove these inits after fix https://github.com/luxonis/depthai-bootloader-shared/issues/4
+    result.errorMsg[0] = 0;
     do {
         std::vector<uint8_t> data;
         if(!receiveResponseData(data)) return {false, "Couldn't receive bootloader response"};
@@ -691,9 +710,9 @@ nlohmann::json DeviceBootloader::readConfigData(Memory memory, Type type) {
 
     // Get response
     Response::GetBootloaderConfig resp;
-    receiveResponse(resp);
+    resp.success = 0;  // TODO remove these inits after fix https://github.com/luxonis/depthai-bootloader-shared/issues/4
 
-    if(resp.success) {
+    if(receiveResponse(resp) && resp.success) {
         // Read back bootloader config (1 packet max)
         auto bsonConfig = stream->read();
         // Parse from BSON
@@ -714,11 +733,15 @@ std::tuple<bool, std::string> DeviceBootloader::flashConfigClear(Memory memory, 
     setConfigReq.numPackets = 0;
     setConfigReq.totalSize = 0;
     setConfigReq.clearConfig = 1;
-    if(!sendRequest(setConfigReq)) return {false, "Couldn't send request to flash configuration data"};
+    if(!sendRequest(setConfigReq)) return {false, "Couldn't send request to flash configuration clear"};
 
     // Read back response
     Response::FlashComplete result;
-    receiveResponse(result);
+    result.success = 0;  // TODO remove these inits after fix https://github.com/luxonis/depthai-bootloader-shared/issues/4
+    result.errorMsg[0] = 0;
+    if(!receiveResponse(result)) {
+        return {false, "Couldn't receive response to flash configuration clear"};
+    }
 
     // Return if flashing was successful
     return {result.success, result.errorMsg};
@@ -744,7 +767,11 @@ std::tuple<bool, std::string> DeviceBootloader::flashConfigData(nlohmann::json c
 
     // Read back response
     Response::FlashComplete result;
-    receiveResponse(result);
+    result.success = 0;  // TODO remove these inits after fix https://github.com/luxonis/depthai-bootloader-shared/issues/4
+    result.errorMsg[0] = 0;
+    if(!receiveResponse(result)) {
+        return {false, "Couldn't receive response to flash configuration data"};
+    }
 
     // Return if flashing was successful
     return {result.success, result.errorMsg};

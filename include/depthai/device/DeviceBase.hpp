@@ -27,7 +27,7 @@
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
-#include "depthai-shared/device/PrebootConfig.hpp"
+#include "depthai-shared/device/BoardConfig.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
 
@@ -57,10 +57,17 @@ class DeviceBase {
      */
     struct Config {
         OpenVINO::Version version;
-        PrebootConfig preboot;
+        BoardConfig board;
     };
 
     // static API
+
+    /**
+     * @brief Get the Default Search Time for finding devices
+     *
+     * @returns Default search time in milliseconds
+     */
+    static std::chrono::milliseconds getDefaultSearchTime();
 
     /**
      * Waits for any available device with a timeout
@@ -307,7 +314,7 @@ class DeviceBase {
     bool startPipeline(const Pipeline& pipeline);
 
     /**
-     * Sets the devices logging severity level. This level affects which logs are transfered from device to host.
+     * Sets the devices logging severity level. This level affects which logs are transferred from device to host.
      *
      * @param level Logging severity
      */
@@ -364,6 +371,28 @@ class DeviceBase {
      * @returns Standard output printing severity
      */
     LogLevel getLogOutputLevel();
+
+    /**
+     * Sets the brightness of the IR Laser Dot Projector. Theoretical maximum 1500mA, but recommended to not exceed 765mA.
+     *
+     * @param mA Current in mA that will determine brightness, 0 or negative to turn off
+     * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W
+     */
+    void setIrLaserDotProjectorBrightness(float mA, int mask = -1);
+
+    /**
+     * Sets the brightness of the IR Flood Light. Maximum 1500mA.
+     *
+     * @param mA Current in mA that will determine brightness, 0 or negative to turn off
+     * @param mask Optional mask to mofify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W
+     */
+    void setIrFloodLightBrightness(float mA, int mask = -1);
+
+    /// Write register on LM3644 IR projector
+    void irWriteReg(int reg, int value);
+
+    /// Read register on LM3644 IR projector
+    int irReadReg(int reg);
 
     /**
      * Add a callback for device logging. The callback will be called from a separate thread with the LogMessage being passed.
@@ -533,7 +562,7 @@ class DeviceBase {
      *
      * @param pipeline OpenVINO version of the pipeline must match the one which the device was booted with
      * @sa startPipeline
-     * @note Remember to call this function in the overload to setup the comunication properly
+     * @note Remember to call this function in the overload to setup the communication properly
      *
      * @returns True if pipeline started, false otherwise
      */
@@ -542,7 +571,7 @@ class DeviceBase {
     /**
      * Allows the derived classes to handle custom setup for gracefully stopping the pipeline
      *
-     * @note Remember to call this function in the overload to setup the comunication properly
+     * @note Remember to call this function in the overload to setup the communication properly
      */
     virtual void closeImpl();
 

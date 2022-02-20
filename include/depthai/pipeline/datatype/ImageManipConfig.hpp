@@ -43,45 +43,45 @@ class ImageManipConfig : public Buffer {
      * @param xmax Bottom right X coordinate of rectangle
      * @param ymax Bottom right Y coordinate of rectangle
      */
-    void setCropRect(float xmin, float ymin, float xmax, float ymax);
+    ImageManipConfig& setCropRect(float xmin, float ymin, float xmax, float ymax);
 
     /**
      * Specifies crop with rectangle with normalized values (0..1)
      * @param coordinates Coordinate of rectangle
      */
-    void setCropRect(std::tuple<float, float, float, float> coordinates);
+    ImageManipConfig& setCropRect(std::tuple<float, float, float, float> coordinates);
 
     /**
      * Specifies crop with rotated rectangle. Optionally as non normalized coordinates
      * @param rr Rotated rectangle which specifies crop
      * @param normalizedCoords If true coordinates are in normalized range (0..1) otherwise absolute
      */
-    void setCropRotatedRect(RotatedRect rr, bool normalizedCoords = true);
+    ImageManipConfig& setCropRotatedRect(RotatedRect rr, bool normalizedCoords = true);
 
     /**
      * Specifies a centered crop.
      * @param ratio Ratio between input image and crop region (0..1)
      * @param whRatio Crop region aspect ratio - 1 equals to square, 1.7 equals to 16:9, ...
      */
-    void setCenterCrop(float ratio, float whRatio = 1.0f);
+    ImageManipConfig& setCenterCrop(float ratio, float whRatio = 1.0f);
 
     /**
-     * Specifies warp by suppling 4 points in either absolute or normalized coordinates
+     * Specifies warp by supplying 4 points in either absolute or normalized coordinates
      * @param pt 4 points specifying warp
      * @param normalizedCoords If true pt is interpreted as normalized, absolute otherwise
      */
-    void setWarpTransformFourPoints(std::vector<Point2f> pt, bool normalizedCoords);
+    ImageManipConfig& setWarpTransformFourPoints(std::vector<Point2f> pt, bool normalizedCoords);
 
     /**
      * Specifies warp with a 3x3 matrix
      * @param mat 3x3 matrix
      */
-    void setWarpTransformMatrix3x3(std::vector<float> mat);
+    ImageManipConfig& setWarpTransformMatrix3x3(std::vector<float> mat);
 
     /**
      * Specifies that warp replicates border pixels
      */
-    void setWarpBorderReplicatePixels();
+    ImageManipConfig& setWarpBorderReplicatePixels();
 
     /**
      * Specifies fill color for border pixels. Example:
@@ -94,32 +94,32 @@ class ImageManipConfig : public Buffer {
      * @param green Green component
      * @param blue Blue component
      */
-    void setWarpBorderFillColor(int red, int green, int blue);
+    ImageManipConfig& setWarpBorderFillColor(int red, int green, int blue);
 
     /**
      * Specifies clockwise rotation in degrees
      * @param deg Rotation in degrees
      */
-    void setRotationDegrees(float deg);
+    ImageManipConfig& setRotationDegrees(float deg);
 
     /**
      * Specifies clockwise rotation in radians
      * @param rad Rotation in radians
      */
-    void setRotationRadians(float rad);
+    ImageManipConfig& setRotationRadians(float rad);
 
     /**
-     * Specifies output image size. After crop stage the image will be streched to fit.
+     * Specifies output image size. After crop stage the image will be stretched to fit.
      * @param w Width in pixels
      * @param h Height in pixels
      */
-    void setResize(int w, int h);
+    ImageManipConfig& setResize(int w, int h);
 
     /**
-     * Specifies output image size. After crop stage the image will be streched to fit.
+     * Specifies output image size. After crop stage the image will be stretched to fit.
      * @param size Size in pixels
      */
-    void setResize(std::tuple<int, int> size);
+    ImageManipConfig& setResize(std::tuple<int, int> size);
 
     /**
      * Specifies output image size. After crop stage the image will be resized by preserving aspect ration.
@@ -131,7 +131,7 @@ class ImageManipConfig : public Buffer {
      * @param bgGreen Green component
      * @param bgBlue Blue component
      */
-    void setResizeThumbnail(int w, int h, int bgRed = 0, int bgGreen = 0, int bgBlue = 0);
+    ImageManipConfig& setResizeThumbnail(int w, int h, int bgRed = 0, int bgGreen = 0, int bgBlue = 0);
 
     /**
      * Specifies output image size. After crop stage the image will be resized by preserving aspect ration.
@@ -142,36 +142,36 @@ class ImageManipConfig : public Buffer {
      * @param bgGreen Green component
      * @param bgBlue Blue component
      */
-    void setResizeThumbnail(std::tuple<int, int> size, int bgRed = 0, int bgGreen = 0, int bgBlue = 0);
+    ImageManipConfig& setResizeThumbnail(std::tuple<int, int> size, int bgRed = 0, int bgGreen = 0, int bgBlue = 0);
 
     /**
      * Specify output frame type.
      * @param name Frame type
      */
-    void setFrameType(ImgFrame::Type name);
+    ImageManipConfig& setFrameType(ImgFrame::Type name);
 
     /**
      * Specify horizontal flip
      * @param flip True to enable flip, false otherwise
      */
-    void setHorizontalFlip(bool flip);
+    ImageManipConfig& setHorizontalFlip(bool flip);
 
     /**
      * Instruct ImageManip to not remove current image from its queue and use the same for next message.
      * @param reuse True to enable reuse, false otherwise
      */
-    void setReusePreviousImage(bool reuse);
+    ImageManipConfig& setReusePreviousImage(bool reuse);
 
     /**
      * Instructs ImageManip to skip current image and wait for next in queue.
      * @param skip True to skip current image, false otherwise
      */
-    void setSkipCurrentImage(bool skip);
+    ImageManipConfig& setSkipCurrentImage(bool skip);
 
     /**
      * Specifies to whether to keep aspect ratio or not
      */
-    void setKeepAspectRatio(bool keep);
+    ImageManipConfig& setKeepAspectRatio(bool keep);
 
     // Functions to retrieve properties
     /**

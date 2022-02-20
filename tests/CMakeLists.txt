@@ -6,7 +6,7 @@ enable_testing()
 hunter_add_package(Catch2)
 find_package(Catch2 CONFIG REQUIRED)
 
-# Macro for adding new tests
+# Function for adding new tests
 function(dai_add_test test_name test_src)
 
     # Create test executable
@@ -30,6 +30,41 @@ function(dai_add_test test_name test_src)
 
     # Add ubsan halt on error
     set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1")
+
+    # Check if MSVC and add a conforming preprocessor test (serialization macros)
+    if (MSVC)
+        # Create test executable with MSVC conforming preprocessor
+        add_executable(${test_name}_conforming ${test_src})
+
+        # Link to core and Catch2 testing framework
+        target_link_libraries(${test_name}_conforming PRIVATE depthai-core Catch2::Catch2)
+
+        if(MSVC_VERSION LESS 1925)
+            target_compile_options(${test_name}_conforming INTERFACE "/experimental:preprocessor")
+        else()
+            target_compile_options(${test_name}_conforming INTERFACE "/Zc:preprocessor")
+        endif()
+
+        # Add to list of tests
+        add_test(${test_name}_conforming ${test_name}_conforming)
+
+        # Add ubsan halt on error
+        set_tests_properties(${test_name}_conforming PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1")
+    endif()
+
+endfunction()
+
+# Function for adding compile definitions to tests
+function(dai_test_compile_definitions)
+    target_compile_definitions(${ARGV})
+    message(STATUS "Calling first with ${ARGV}")
+    if(MSVC)
+        set(ARGV0 ${ARGV0}_conforming)
+        list(REMOVE_AT ARGV 0)
+        list(INSERT ARGV 0 ${ARGV0})
+        message(STATUS "Calling second with ${ARGV}")
+        target_compile_definitions(${ARGV})
+    endif()
 endfunction()
 
 # Mobilenet network
@@ -91,10 +126,10 @@ dai_add_test(image_manip_node_test src/image_manip_node_test.cpp)
 dai_add_test(pipeline_test src/pipeline_test.cpp)
 
 dai_add_test(neural_network_test src/neural_network_test.cpp)
-target_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_test_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
 
-dai_add_test(openvino_blob src/openvino_blob_test.cpp)
-target_compile_definitions(openvino_blob PRIVATE
+dai_add_test(openvino_blob_test src/openvino_blob_test.cpp)
+dai_test_compile_definitions(openvino_blob_test PRIVATE
     OPENVINO_2020_3_BLOB_PATH="${openvino_2020_3_blob}"
     OPENVINO_2020_4_BLOB_PATH="${openvino_2020_4_blob}"
     OPENVINO_2021_1_BLOB_PATH="${openvino_2021_1_blob}"
@@ -111,3 +146,9 @@ dai_add_test(device_usbspeed_test src/device_usbspeed_test.cpp)
 
 # Unlimited io connections test
 dai_add_test(unlimited_io_connection_test src/unlimited_io_connection_test.cpp)
+
+# Serialization test
+dai_add_test(serialization_test src/serialization_test.cpp)
+
+# Multiple devices test
+dai_add_test(multiple_devices_test src/multiple_devices_test.cpp)

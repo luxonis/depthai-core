@@ -16,6 +16,7 @@ else()
     if(DEPTHAI_ENABLE_BACKWARD)
         hunter_add_package(Backward)
     endif()
+    hunter_add_package(libnop)
 endif()
 
 # If library was build as static, find all dependencies
@@ -51,11 +52,19 @@ endif()
 find_package(Threads ${_QUIET} REQUIRED)
 
 # Nlohmann JSON
-find_package(nlohmann_json ${_QUIET} CONFIG REQUIRED)
+find_package(nlohmann_json 3.9.0 ${_QUIET} CONFIG REQUIRED)
+
+# libnop for serialization
+find_package(libnop ${_QUIET} CONFIG REQUIRED)
 
 # XLink
-if(DEPTHAI_XLINK_LOCAL)
-    add_subdirectory("${DEPTHAI_XLINK_LOCAL}" ${CMAKE_CURRENT_BINARY_DIR}/XLink EXCLUDE_FROM_ALL)
+if(DEPTHAI_XLINK_LOCAL AND (NOT CONFIG_MODE))
+    set(_BUILD_SHARED_LIBS_SAVED "${BUILD_SHARED_LIBS}")
+    set(BUILD_SHARED_LIBS OFF)
+    add_subdirectory("${DEPTHAI_XLINK_LOCAL}" ${CMAKE_CURRENT_BINARY_DIR}/XLink)
+    set(BUILD_SHARED_LIBS "${_BUILD_SHARED_LIBS_SAVED}")
+    unset(_BUILD_SHARED_LIBS_SAVED)
+    list(APPEND targets_to_export XLink)
 else()
     find_package(XLink ${_QUIET} CONFIG REQUIRED)
 endif()

@@ -1,31 +1,28 @@
 #include "depthai/pipeline/node/VideoEncoder.hpp"
 
+// std
+#include <stdexcept>
+
+// libraries
 #include "spdlog/spdlog.h"
 
 namespace dai {
 namespace node {
 
-VideoEncoder::VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
-    inputs = {&input};
-    outputs = {&bitstream};
+VideoEncoder::VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
+    : VideoEncoder(par, nodeId, std::make_unique<VideoEncoder::Properties>()) {}
+VideoEncoder::VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<Node, VideoEncoder, VideoEncoderProperties>(par, nodeId, std::move(props)) {
+    setInputRefs({&input});
+    setOutputRefs({&bitstream});
 }
-
-std::string VideoEncoder::getName() const {
-    return "VideoEncoder";
-}
-
-nlohmann::json VideoEncoder::getProperties() {
-    nlohmann::json j;
-    nlohmann::to_json(j, properties);
-    return j;
-}
-
-std::shared_ptr<Node> VideoEncoder::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
-}
-
 // node properties
 void VideoEncoder::setNumFramesPool(int frames) {
+    // 16 is maximum allowed value
+    if(frames > 16) {
+        throw std::invalid_argument("Maximum number of frames in pool for VideoEncoder is 16");
+    }
+
     properties.numFramesPool = frames;
     // Set default input queue size as well
     input.defaultQueueSize = frames;
