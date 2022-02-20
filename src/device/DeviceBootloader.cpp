@@ -510,10 +510,10 @@ std::tuple<bool, std::string> DeviceBootloader::flash(const Pipeline& pipeline, 
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(std::function<void(float)> progressCb, std::vector<uint8_t> package) {
-    // Bug in NETWORK bootloader in version 0.0.12 < 0.1.0 - flashing can cause a soft brick
+    // Bug in NETWORK bootloader in version 0.0.12 < 0.0.14 - flashing can cause a soft brick
     auto version = getVersion();
     if(bootloaderType == Type::NETWORK && version < Version(0, 0, 14)) {
-        throw std::invalid_argument("Network bootloader requires version 0.1.0 or higher to flash applications. Current version: " + version.toString());
+        throw std::invalid_argument("Network bootloader requires version 0.0.14 or higher to flash applications. Current version: " + version.toString());
     }
 
     // send request to FLASH BOOTLOADER
@@ -556,6 +556,14 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
 
 std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(std::vector<uint8_t> package) {
     return flashDepthaiApplicationPackage(nullptr, package);
+}
+
+std::tuple<bool, std::string> DeviceBootloader::flashClear() {
+    std::vector<uint8_t> clear;
+    for(size_t i = 0; i < SBR_RAW_SIZE; i++){
+        clear.push_back(0xFF);
+    }
+    return flashCustom(Memory::FLASH, bootloader::getStructure(getType()).offset.at(Section::APPLICATION), clear);
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashBootloader(std::function<void(float)> progressCb, std::string path) {
@@ -796,6 +804,12 @@ std::tuple<bool, std::string> DeviceBootloader::readCustom(Memory memory, size_t
 std::tuple<bool, std::string> DeviceBootloader::readCustom(
     Memory memory, size_t offset, size_t size, std::string filename, std::function<void(float)> progressCb) {
     return readCustom(memory, offset, size, nullptr, filename, progressCb);
+}
+std::tuple<bool, std::string, std::vector<uint8_t>> DeviceBootloader::readCustom(
+    Memory memory, size_t offset, size_t size, std::function<void(float)> progressCb) {
+    std::vector<uint8_t> data;
+    auto ret = readCustom(memory, offset, size, data, progressCb);
+    return {std::get<0>(ret), std::get<1>(ret), data};
 }
 
 std::tuple<bool, std::string> DeviceBootloader::readCustom(

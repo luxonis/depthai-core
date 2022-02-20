@@ -225,6 +225,12 @@ class DeviceBootloader {
     std::tuple<bool, std::string> flashDepthaiApplicationPackage(std::vector<uint8_t> package);
 
     /**
+     * Clears flashed application on the device, by removing SBR boot structure
+     * Doesnt remove fast boot header capability to still boot the application
+     */
+    std::tuple<bool, std::string> flashClear();
+
+    /**
      * Flashes bootloader to the current board
      * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
      * @param path Optional parameter to custom bootloader to flash
@@ -291,13 +297,14 @@ class DeviceBootloader {
      * @param memory Memory to read
      * @param offset Offset at which to read the specified bytes
      * @param size Number of bytes to read
-     * @param progressCallback Callback that sends back a value between 0..1 which signifies current reading progress
      * @param data Data to read to. Must be atleast 'size' number of bytes big
+     * @param progressCallback Callback that sends back a value between 0..1 which signifies current reading progress
      */
     std::tuple<bool, std::string> readCustom(
         Memory memory, size_t offset, size_t size, std::vector<uint8_t>& data, std::function<void(float)> progressCb = nullptr);
     std::tuple<bool, std::string> readCustom(Memory memory, size_t offset, size_t size, uint8_t* data, std::function<void(float)> progressCb = nullptr);
     std::tuple<bool, std::string> readCustom(Memory memory, size_t offset, size_t size, std::string filename, std::function<void(float)> progressCb = nullptr);
+    std::tuple<bool, std::string, std::vector<uint8_t>> readCustom(Memory memory, size_t offset, size_t size, std::function<void(float)> progressCb = nullptr);
 
     /**
      * Reads configuration data from bootloader
