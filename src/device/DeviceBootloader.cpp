@@ -560,7 +560,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
 
 std::tuple<bool, std::string> DeviceBootloader::flashClear() {
     std::vector<uint8_t> clear;
-    for(size_t i = 0; i < SBR_RAW_SIZE; i++){
+    for(size_t i = 0; i < SBR_RAW_SIZE; i++) {
         clear.push_back(0xFF);
     }
     return flashCustom(Memory::FLASH, bootloader::getStructure(getType()).offset.at(Section::APPLICATION), clear);
@@ -805,8 +805,10 @@ std::tuple<bool, std::string> DeviceBootloader::readCustom(
     Memory memory, size_t offset, size_t size, std::string filename, std::function<void(float)> progressCb) {
     return readCustom(memory, offset, size, nullptr, filename, progressCb);
 }
-std::tuple<bool, std::string, std::vector<uint8_t>> DeviceBootloader::readCustom(
-    Memory memory, size_t offset, size_t size, std::function<void(float)> progressCb) {
+std::tuple<bool, std::string, std::vector<uint8_t>> DeviceBootloader::readCustom(Memory memory,
+                                                                                 size_t offset,
+                                                                                 size_t size,
+                                                                                 std::function<void(float)> progressCb) {
     std::vector<uint8_t> data;
     auto ret = readCustom(memory, offset, size, data, progressCb);
     return {std::get<0>(ret), std::get<1>(ret), data};
