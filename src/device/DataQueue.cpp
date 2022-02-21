@@ -96,7 +96,7 @@ void DataOutputQueue::close() {
     if((readingThread.get_id() != std::this_thread::get_id()) && readingThread.joinable()) readingThread.join();
 
     // Log
-    spdlog::debug("DataOutputQueue ({}) closed", name);
+    // spdlog::debug("DataOutputQueue ({}) closed", name);
 }
 
 DataOutputQueue::~DataOutputQueue() {
@@ -232,7 +232,7 @@ void DataInputQueue::close() {
     if((writingThread.get_id() != std::this_thread::get_id()) && writingThread.joinable()) writingThread.join();
 
     // Log
-    spdlog::debug("DataInputQueue ({}) closed", name);
+    // spdlog::debug("DataInputQueue ({}) closed", name);
 }
 
 DataInputQueue::~DataInputQueue() {

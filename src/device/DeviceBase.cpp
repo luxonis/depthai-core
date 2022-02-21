@@ -143,7 +143,7 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::dura
     // Check if its an invalid device
     if(invalidDeviceFound) {
         // Warn
-        spdlog::warn("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(invalidDeviceInfo.state), invalidDeviceInfo.desc.name);
+        // spdlog::warn("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(invalidDeviceInfo.state), invalidDeviceInfo.desc.name);
     }
 
     // If none were found, try BOOTED
@@ -393,7 +393,7 @@ void DeviceBase::close() {
 void DeviceBase::closeImpl() {
     using namespace std::chrono;
     auto t1 = steady_clock::now();
-    spdlog::debug("Device about to be closed...");
+    // spdlog::debug("Device about to be closed...");
 
     // Close connection first; causes Xlink internal calls to unblock semaphore waits and
     // return error codes, which then allows queues to unblock
@@ -417,7 +417,7 @@ void DeviceBase::closeImpl() {
     // Close rpcStream
     pimpl->rpcStream = nullptr;
 
-    spdlog::debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
+    // spdlog::debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
 }
 
 bool DeviceBase::isClosed() const {
@@ -614,7 +614,7 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
                 }
             } catch(const std::exception& ex) {
                 // ignore
-                spdlog::debug("Watchdog thread exception caught: {}", ex.what());
+                // spdlog::debug("Watchdog thread exception caught: {}", ex.what());
             }
 
             // Watchdog ended. Useful for checking disconnects
@@ -647,7 +647,7 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
             }
         } catch(const std::exception& ex) {
             // ignore
-            spdlog::debug("Timesync thread exception caught: {}", ex.what());
+            // spdlog::debug("Timesync thread exception caught: {}", ex.what());
         }
 
         timesyncRunning = false;
@@ -667,7 +667,7 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
                     // Deserialize incoming messages
                     utility::deserialize(log, messages);
 
-                    spdlog::trace("Log vector decoded, size: {}", messages.size());
+                    // spdlog::trace("Log vector decoded, size: {}", messages.size());
 
                     // log the messages in incremental order (0 -> size-1)
                     for(const auto& msg : messages) {
@@ -688,12 +688,12 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
                     }
 
                 } catch(const nlohmann::json::exception& ex) {
-                    spdlog::error("Exception while parsing or calling callbacks for log message from device: {}", ex.what());
+                    // spdlog::error("Exception while parsing or calling callbacks for log message from device: {}", ex.what());
                 }
             }
         } catch(const std::exception& ex) {
             // ignore exception from logging
-            spdlog::debug("Log thread exception caught: {}", ex.what());
+            // spdlog::debug("Log thread exception caught: {}", ex.what());
         }
 
         loggingRunning = false;

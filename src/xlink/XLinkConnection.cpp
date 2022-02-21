@@ -38,7 +38,7 @@ static XLinkProtocol_t getDefaultProtocol() {
     } else if(protocolStr == "tcpip") {
         defaultProtocol = X_LINK_TCP_IP;
     } else {
-        spdlog::warn("Unsupported protocol specified");
+        // spdlog::warn("Unsupported protocol specified");
     }
 
     return defaultProtocol;
@@ -109,7 +109,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
         for(unsigned i = 0; i < numdev; i++) {
             DeviceInfo info = {};
             if(skipInvalidDevices && std::strcmp("<error>", deviceDescAll.at(i).name) == 0) {
-                spdlog::warn("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(state), deviceDescAll.at(i).name);
+                // spdlog::warn("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(state), deviceDescAll.at(i).name);
                 continue;
             }
             info.desc = deviceDescAll.at(i);
@@ -244,7 +244,7 @@ void XLinkConnection::close() {
 
         auto ret = XLinkResetRemoteTimeout(deviceLinkId, duration_cast<milliseconds>(RESET_TIMEOUT).count());
         if(ret != X_LINK_SUCCESS) {
-            spdlog::debug("XLinkResetRemoteTimeout returned: {}", XLinkErrorToStr(ret));
+            // spdlog::debug("XLinkResetRemoteTimeout returned: {}", XLinkErrorToStr(ret));
         }
 
         deviceLinkId = -1;
@@ -265,7 +265,7 @@ void XLinkConnection::close() {
             } while(!found && steady_clock::now() - t1 < BOOTUP_SEARCH);
         }
 
-        spdlog::debug("XLinkResetRemote of linkId: ({})", tmp);
+        // spdlog::debug("XLinkResetRemote of linkId: ({})", tmp);
     }
 }
 

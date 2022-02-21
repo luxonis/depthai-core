@@ -435,7 +435,7 @@ void DeviceBootloader::close() {
 
     using namespace std::chrono;
     auto t1 = steady_clock::now();
-    spdlog::debug("DeviceBootloader about to be closed...");
+    // spdlog::debug("DeviceBootloader about to be closed...");
 
     // Close connection first; causes Xlink internal calls to unblock semaphore waits and
     // return error codes, which then allows queues to unblock
@@ -454,7 +454,7 @@ void DeviceBootloader::close() {
     // BUGBUG investigate ownership; can another thread accessing this at the same time?
     stream = nullptr;
 
-    spdlog::debug("DeviceBootloader closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
+    // spdlog::debug("DeviceBootloader closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
 }
 
 bool DeviceBootloader::isClosed() const {
