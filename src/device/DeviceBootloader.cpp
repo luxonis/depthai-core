@@ -738,7 +738,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashCustom(
         throw std::invalid_argument("Only FLASH memory is supported for now");
     }
     if(getVersion() < Version(0, 0, 12)) {
-        std::runtime_error("Current bootloader version doesn't support custom flashing");
+        throw std::runtime_error("Current bootloader version doesn't support custom flashing");
     }
 
     std::vector<uint8_t> optFileData;
