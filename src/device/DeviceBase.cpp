@@ -601,23 +601,30 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
 
     // prepare watchdog thread, which will keep device alive
     // separate stream so it doesn't miss between potentially long RPC calls
-    watchdogThread = std::thread([this, watchdogTimeout]() {
-        try {
-            XLinkStream stream(connection, device::XLINK_CHANNEL_WATCHDOG, 128);
-            std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
-            while(watchdogRunning) {
-                stream.write(watchdogKeepalive);
-                // Ping with a period half of that of the watchdog timeout
-                std::this_thread::sleep_for(watchdogTimeout / 2);
+    // Only create the thread if watchdog is enabled
+    if(watchdogTimeout > std::chrono::milliseconds(0)){
+        watchdogThread = std::thread([this, watchdogTimeout]() {
+            try {
+                XLinkStream stream(connection, device::XLINK_CHANNEL_WATCHDOG, 128);
+                std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
+                while(watchdogRunning) {
+                    stream.write(watchdogKeepalive);
+                    // Ping with a period half of that of the watchdog timeout
+                    std::this_thread::sleep_for(watchdogTimeout / 2);
+                }
+            } catch(const std::exception& ex) {
+                // ignore
+                spdlog::debug("Watchdog thread exception caught: {}", ex.what());
             }
-        } catch(const std::exception& ex) {
-            // ignore
-            spdlog::debug("Watchdog thread exception caught: {}", ex.what());
-        }
 
-        // Watchdog ended. Useful for checking disconnects
-        watchdogRunning = false;
-    });
+            // Watchdog ended. Useful for checking disconnects
+            watchdogRunning = false;
+        });
+    } else {
+        // Still set watchdogRunning explictitly
+        // as it indicates device not being closed
+        watchdogRunning = true;
+    }
 
     // prepare timesync thread, which will keep device synchronized
     timesyncThread = std::thread([this]() {
