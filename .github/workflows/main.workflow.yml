@@ -68,7 +68,9 @@ jobs:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
         cmake: ['3.10.x', ''] # Older version (Ubuntu 18.04) and newest
-
+        exclude:
+          - os: windows-latest
+            cmake: '3.10.x'
     steps:
     - name: Cache .hunter folder
       if: matrix.os != 'windows-latest'
@@ -117,6 +119,13 @@ jobs:
       run: |
         cmake -H. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON' -D'DEPTHAI_BUILD_TESTS=ON' ${{ env.CMAKE_ARGS }}
         cmake --build build -- -j4
+
+    # CMake binaries unavailable
+    # - name: Build (old CMake, MSVC)
+    #   if: matrix.cmake == '3.10.x' && matrix.os == 'windows-latest'
+    #   run: |
+    #     cmake -H. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON' -D'DEPTHAI_BUILD_TESTS=ON'
+    #     cmake --build build
 
     - name: Build (newest CMake)
       if: matrix.cmake != '3.10.x'

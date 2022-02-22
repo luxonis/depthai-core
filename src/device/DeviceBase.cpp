@@ -116,10 +116,16 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::dura
     // First looks for UNBOOTED, then BOOTLOADER, for 'timeout' time
     auto searchStartTime = steady_clock::now();
     bool found = false;
-    DeviceInfo deviceInfo;
+    bool invalidDeviceFound = false;
+    DeviceInfo deviceInfo, invalidDeviceInfo;
     do {
         for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED}) {
-            std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(searchState);
+            std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(searchState, false);
+            if(strcmp("<error>", deviceInfo.desc.name) == 0) {
+                invalidDeviceFound = true;
+                invalidDeviceInfo = deviceInfo;
+                found = false;
+            }
             if(found) break;
         }
         if(found) break;
@@ -133,6 +139,12 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::dura
             std::this_thread::sleep_for(POOL_SLEEP_TIME);  // default pool rate
         }
     } while(steady_clock::now() - searchStartTime < timeout);
+
+    // Check if its an invalid device
+    if(invalidDeviceFound) {
+        // Warn
+        spdlog::warn("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(invalidDeviceInfo.state), invalidDeviceInfo.desc.name);
+    }
 
     // If none were found, try BOOTED
     if(!found) std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(X_LINK_BOOTED);
@@ -148,15 +160,15 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice() {
 // static api
 
 // First tries to find UNBOOTED device, then BOOTLOADER device
-std::tuple<bool, DeviceInfo> DeviceBase::getFirstAvailableDevice() {
+std::tuple<bool, DeviceInfo> DeviceBase::getFirstAvailableDevice(bool skipInvalidDevice) {
     bool found;
     DeviceInfo dev;
-    std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
+    std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_UNBOOTED, skipInvalidDevice);
     if(!found) {
-        std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_BOOTLOADER);
+        std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_BOOTLOADER, skipInvalidDevice);
     }
     if(!found) {
-        std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_FLASH_BOOTED);
+        std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_FLASH_BOOTED, skipInvalidDevice);
     }
     return {found, dev};
 }
@@ -589,23 +601,30 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
 
     // prepare watchdog thread, which will keep device alive
     // separate stream so it doesn't miss between potentially long RPC calls
-    watchdogThread = std::thread([this, watchdogTimeout]() {
-        try {
-            XLinkStream stream(connection, device::XLINK_CHANNEL_WATCHDOG, 128);
-            std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
-            while(watchdogRunning) {
-                stream.write(watchdogKeepalive);
-                // Ping with a period half of that of the watchdog timeout
-                std::this_thread::sleep_for(watchdogTimeout / 2);
+    // Only create the thread if watchdog is enabled
+    if(watchdogTimeout > std::chrono::milliseconds(0)){
+        watchdogThread = std::thread([this, watchdogTimeout]() {
+            try {
+                XLinkStream stream(connection, device::XLINK_CHANNEL_WATCHDOG, 128);
+                std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
+                while(watchdogRunning) {
+                    stream.write(watchdogKeepalive);
+                    // Ping with a period half of that of the watchdog timeout
+                    std::this_thread::sleep_for(watchdogTimeout / 2);
+                }
+            } catch(const std::exception& ex) {
+                // ignore
+                spdlog::debug("Watchdog thread exception caught: {}", ex.what());
             }
-        } catch(const std::exception& ex) {
-            // ignore
-            spdlog::debug("Watchdog thread exception caught: {}", ex.what());
-        }
 
-        // Watchdog ended. Useful for checking disconnects
-        watchdogRunning = false;
-    });
+            // Watchdog ended. Useful for checking disconnects
+            watchdogRunning = false;
+        });
+    } else {
+        // Still set watchdogRunning explictitly
+        // as it indicates device not being closed
+        watchdogRunning = true;
+    }
 
     // prepare timesync thread, which will keep device synchronized
     timesyncThread = std::thread([this]() {
