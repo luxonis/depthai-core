@@ -858,6 +858,12 @@ void DeviceBase::setIrFloodLightBrightness(float mA, int mask) {
     pimpl->rpcClient->call("setIrFloodLightBrightness", mA, mask);
 }
 
+std::vector<int> DeviceBase::getIrDrivers() {
+    checkClosed();
+
+    return pimpl->rpcClient->call("getIrDrivers");
+}
+
 int DeviceBase::addLogCallback(std::function<void(LogMessage)> callback) {
     checkClosed();
 

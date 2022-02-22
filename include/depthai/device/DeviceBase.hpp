@@ -372,20 +372,30 @@ class DeviceBase {
     LogLevel getLogOutputLevel();
 
     /**
-     * Sets the brightness of the IR Laser Dot Projector. Theoretical maximum 1500mA, but recommended to not exceed 765mA.
+     * Sets the brightness of the IR Laser Dot Projector. Limits: up to 765mA at 30% duty cycle, up to 1200mA at 6% duty cycle.
+     * The duty cycle is controlled by `left` camera STROBE, aligned to start of exposure.
+     * The emitter is turned off by default
      *
      * @param mA Current in mA that will determine brightness, 0 or negative to turn off
-     * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W
+     * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W-DEV
      */
     void setIrLaserDotProjectorBrightness(float mA, int mask = -1);
 
     /**
-     * Sets the brightness of the IR Flood Light. Maximum 1500mA.
+     * Sets the brightness of the IR Flood Light. Limits: up to 1500mA at 30% duty cycle.
+     * The duty cycle is controlled by the `left` camera STROBE, aligned to start of exposure.
+     * If the dot projector is also enabled, its lower duty cycle limits take precedence.
+     * The emitter is turned off by default
      *
      * @param mA Current in mA that will determine brightness, 0 or negative to turn off
-     * @param mask Optional mask to mofify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W
+     * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W-DEV
      */
     void setIrFloodLightBrightness(float mA, int mask = -1);
+
+    /**
+     * Returns a vector of I2C bus numbers where IR drivers were detected. For OAK-D-Pro it should be `[2]`
+     */
+    std::vector<int> getIrDrivers();
 
     /// Write register on LM3644 IR projector
     void irWriteReg(int reg, int value);
