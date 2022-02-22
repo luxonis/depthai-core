@@ -42,7 +42,6 @@ class Path {
     Path(const value_type* source) : nativePath(string_type(source)) {}
 
 #if defined(__cpp_lib_filesystem)
-    // Path(std::filesystem::path source) : nativePath(source) {}
     Path(const std::filesystem::path& source) : nativePath(source) {}
 #endif
 
@@ -67,35 +66,3 @@ class Path {
 };
 
 }  // namespace dai
-
-#include <spdlog/fmt/bundled/format.h>
-template <>
-struct fmt::formatter<dai::Path> : formatter<std::string> {
-    // https://fmt.dev/latest/api.html#formatting-user-defined-types
-    // https://fmt.dev/latest/syntax.html#format-specification-mini-language
-    /*
-    char presentation = 's';
-    constexpr auto parse(format_parse_context& ctx) {
-        auto it = ctx.begin();
-        auto end = ctx.end();
-        if(it != end && (*it == 's')) presentation = *it++;
-        if(it != end && *it != '}') throw format_error("invalid format");
-        return it;
-    }
-
-    template <typename FormatContext>
-    auto format(const dai::Path& p, FormatContext& ctx) -> decltype(ctx.out()) {
-        return format_to(ctx.out(), "{}", p.string());
-    }
-    */
-    template <typename FormatContext>
-    auto format(const dai::Path& p, FormatContext& ctx) {
-        std::string output;
-        try {
-            output = p.string();
-        } catch(const std::exception&) {
-            output = dai::Path::convert_err;
-        }
-        return formatter<std::string>::format(output, ctx);
-    }
-};

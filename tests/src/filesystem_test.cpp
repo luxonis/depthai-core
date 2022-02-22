@@ -9,8 +9,6 @@
 #endif
 #include <string>
 
-#include "depthai/utility/Path.hpp"
-
 #if defined(_WIN32) && defined(_MSC_VER)
     #define NATIVETYPE std::wstring
     #define MAKENATIVEx(x) L##x
@@ -93,13 +91,16 @@ TEST_CASE("dai::Path utf-8 and native char set handling") {
     REQUIRE_THROWS_AS(path4.string() == dai::Path::convert_err, std::range_error);
     REQUIRE(path4.u8string() == string4);
 
+    // test with std::filesystem
 #if defined(__cpp_lib_filesystem)
     const std::filesystem::path fspath1(PATH1);
     const std::filesystem::path fspath2(PATH2);
     const std::filesystem::path fspath3(PATH3);
+    const std::filesystem::path fspath4(PATH4);
     REQUIRE(getBlob(fspath1));
     REQUIRE(getBlob(fspath2));
     REQUIRE(getBlob(fspath3));
+    REQUIRE(getBlob(fspath4));
 #endif
 }
 
@@ -119,5 +120,25 @@ TEST_CASE("dai::Path with NN blobs") {
     REQUIRE_THROWS_WITH(nn->setBlobPath(daiPath), Catch::Matchers::Contains("Cannot load blob") && Catch::Matchers::Contains("not convertible"));
 
     // use blob at known test path
+    const std::string blobPath(BLOB_PATH);
+    const dai::Path diaPath2(BLOB_PATH);
+    const dai::Path diaPath3(blobPath);
+    const dai::Path diaPath4(diaPath2);
     REQUIRE_NOTHROW(nn->setBlobPath(BLOB_PATH));
+    nn->getAssetManager().remove("__blob");
+    REQUIRE_NOTHROW(nn->setBlobPath(blobPath));
+    nn->getAssetManager().remove("__blob");
+    REQUIRE_NOTHROW(nn->setBlobPath(diaPath2));
+    nn->getAssetManager().remove("__blob");
+    REQUIRE_NOTHROW(nn->setBlobPath(diaPath3));
+    nn->getAssetManager().remove("__blob");
+    REQUIRE_NOTHROW(nn->setBlobPath(diaPath4));
+    nn->getAssetManager().remove("__blob");
+
+    // use blob at known test path with std::filesystem
+#if defined(__cpp_lib_filesystem)
+    std::filesystem::path stdPath(BLOB_PATH);
+    REQUIRE_NOTHROW(nn->setBlobPath(stdPath));
+    nn->getAssetManager().remove("__blob");
+#endif
 }

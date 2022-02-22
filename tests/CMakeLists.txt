@@ -8,7 +8,10 @@ find_package(Catch2 CONFIG REQUIRED)
 
 # Function for adding new tests
 # Creates separate tests for USB and PoE devices
+include(CMakeParseArguments)
 function(dai_add_test test_name test_src)
+    # parse arguments
+    cmake_parse_arguments(DAT "" "CXX_STANDARD" "" ${ARGN})
 
     # Create test executable
     add_executable(${test_name} ${test_src})
@@ -25,6 +28,20 @@ function(dai_add_test test_name test_src)
     # Add sanitizers for tests as well
     if(COMMAND add_sanitizers)
         add_sanitizers(${test_name})
+    endif()
+
+    # Set compiler c++ standard, and disables extensions (g++)
+    if (NOT DAT_CXX_STANDARD)
+        set(DAT_CXX_STANDARD 14)
+    endif()
+    set_property(TARGET ${test_name} PROPERTY CXX_STANDARD ${DAT_CXX_STANDARD})
+    set_property(TARGET ${test_name} PROPERTY CXX_STANDARD_REQUIRED ON)
+    set_property(TARGET ${test_name} PROPERTY CXX_EXTENSIONS OFF)
+    # Add interface transitive property (C++14)
+    if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
+        target_compile_features(${test_name} INTERFACE cxx_generic_lambdas)
+    else()
+        target_compile_features(${test_name} INTERFACE cxx_std_${DAT_CXX_STANDARD})
     endif()
 
     # Add to list of tests
@@ -168,3 +185,6 @@ dai_add_test(multiple_devices_test src/multiple_devices_test.cpp)
 # Filesystem test
 dai_add_test(filesystem_test src/filesystem_test.cpp)
 dai_test_compile_definitions(filesystem_test PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_add_test(filesystem_test_17 src/filesystem_test.cpp CXX_STANDARD 17)
+dai_test_compile_definitions(filesystem_test_17 PRIVATE BLOB_PATH="${mobilenet_blob}")
+

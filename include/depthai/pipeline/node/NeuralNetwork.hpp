@@ -2,7 +2,6 @@
 
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/pipeline/Node.hpp"
-#include "depthai/utility/Path.hpp"
 
 // standard
 #include <fstream>
