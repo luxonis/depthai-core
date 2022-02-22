@@ -10,6 +10,8 @@
 
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
+#include "depthai/pipeline/datatype/AprilTagConfig.hpp"
+#include "depthai/pipeline/datatype/AprilTags.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
@@ -29,6 +31,8 @@
 
 // shared
 #include "depthai-shared/datatype/DatatypeEnum.hpp"
+#include "depthai-shared/datatype/RawAprilTagConfig.hpp"
+#include "depthai-shared/datatype/RawAprilTags.hpp"
 #include "depthai-shared/datatype/RawBuffer.hpp"
 #include "depthai-shared/datatype/RawCameraControl.hpp"
 #include "depthai-shared/datatype/RawEdgeDetectorConfig.hpp"
@@ -68,15 +72,15 @@ inline std::shared_ptr<T> parseDatatype(std::uint8_t* metadata, size_t size, std
     return tmp;
 }
 
-std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t* packet) {
-    int serializedObjectSize = readIntLE(packet->data + packet->length - 4);
-    auto objectType = static_cast<DatatypeEnum>(readIntLE(packet->data + packet->length - 8));
+std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t* const packet) {
+    const int serializedObjectSize = readIntLE(packet->data + packet->length - 4);
+    const auto objectType = static_cast<DatatypeEnum>(readIntLE(packet->data + packet->length - 8));
 
     if(serializedObjectSize < 0) {
         throw std::runtime_error("Bad packet, couldn't parse");
     }
-    std::uint32_t bufferLength = packet->length - 8 - serializedObjectSize;
-    auto* metadataStart = packet->data + bufferLength;
+    const std::uint32_t bufferLength = packet->length - 8 - serializedObjectSize;
+    auto* const metadataStart = packet->data + bufferLength;
 
     // copy data part
     std::vector<uint8_t> data(packet->data, packet->data + bufferLength);
@@ -127,6 +131,14 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<RawSpatialLocationCalculatorConfig>(metadataStart, serializedObjectSize, data);
             break;
 
+        case DatatypeEnum::AprilTags:
+            return parseDatatype<RawAprilTags>(metadataStart, serializedObjectSize, data);
+            break;
+
+        case DatatypeEnum::AprilTagConfig:
+            return parseDatatype<RawAprilTagConfig>(metadataStart, serializedObjectSize, data);
+            break;
+
         case DatatypeEnum::Tracklets:
             return parseDatatype<RawTracklets>(metadataStart, serializedObjectSize, data);
             break;
@@ -155,15 +167,15 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
     throw std::runtime_error("Bad packet, couldn't parse");
 }
 
-std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPacketDesc_t* packet) {
-    int serializedObjectSize = readIntLE(packet->data + packet->length - 4);
-    auto objectType = static_cast<DatatypeEnum>(readIntLE(packet->data + packet->length - 8));
+std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPacketDesc_t* const packet) {
+    const int serializedObjectSize = readIntLE(packet->data + packet->length - 4);
+    const auto objectType = static_cast<DatatypeEnum>(readIntLE(packet->data + packet->length - 8));
 
     if(serializedObjectSize < 0) {
         throw std::runtime_error("Bad packet, couldn't parse");
     }
-    std::uint32_t bufferLength = packet->length - 8 - serializedObjectSize;
-    auto* metadataStart = packet->data + bufferLength;
+    const std::uint32_t bufferLength = packet->length - 8 - serializedObjectSize;
+    auto* const metadataStart = packet->data + bufferLength;
 
     // copy data part
     std::vector<uint8_t> data(packet->data, packet->data + bufferLength);
@@ -211,6 +223,14 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
         case DatatypeEnum::SpatialLocationCalculatorConfig:
             return std::make_shared<SpatialLocationCalculatorConfig>(
                 parseDatatype<RawSpatialLocationCalculatorConfig>(metadataStart, serializedObjectSize, data));
+            break;
+
+        case DatatypeEnum::AprilTags:
+            return std::make_shared<AprilTags>(parseDatatype<RawAprilTags>(metadataStart, serializedObjectSize, data));
+            break;
+
+        case DatatypeEnum::AprilTagConfig:
+            return std::make_shared<AprilTagConfig>(parseDatatype<RawAprilTagConfig>(metadataStart, serializedObjectSize, data));
             break;
 
         case DatatypeEnum::Tracklets:

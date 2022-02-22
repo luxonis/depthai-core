@@ -46,7 +46,7 @@ class NeuralNetwork : public NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperti
     Output passthrough{*this, "passthrough", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
 
     /**
-     * Inputs mapped to network inputs. Useful for infering from separate data sources
+     * Inputs mapped to network inputs. Useful for inferring from separate data sources
      * Default input is non-blocking with queue size 1 and waits for messages
      */
     InputMap inputs;
@@ -60,10 +60,17 @@ class NeuralNetwork : public NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperti
     /**
      * Load network blob into assets and use once pipeline is started.
      *
-     * Throws if file doesn't exist or isn't a valid network blob.
+     * @throws Error if file doesn't exist or isn't a valid network blob.
      * @param path Path to network blob
      */
     void setBlobPath(const std::string& path);
+
+    /**
+     * Load network blob into assets and use once pipeline is started.
+     *
+     * @param blob Network blob
+     */
+    void setBlob(OpenVINO::Blob blob);
 
     /**
      * Specifies how many frames will be available in the pool
