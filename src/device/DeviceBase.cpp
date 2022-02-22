@@ -602,7 +602,7 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
     // prepare watchdog thread, which will keep device alive
     // separate stream so it doesn't miss between potentially long RPC calls
     // Only create the thread if watchdog is enabled
-    if(watchdogTimeout > std::chrono::milliseconds(0)){
+    if(watchdogTimeout > std::chrono::milliseconds(0)) {
         watchdogThread = std::thread([this, watchdogTimeout]() {
             try {
                 XLinkStream stream(connection, device::XLINK_CHANNEL_WATCHDOG, 128);
