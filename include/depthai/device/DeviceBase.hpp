@@ -397,12 +397,6 @@ class DeviceBase {
      */
     std::vector<int> getIrDrivers();
 
-    /// Write register on LM3644 IR projector
-    void irWriteReg(int reg, int value);
-
-    /// Read register on LM3644 IR projector
-    int irReadReg(int reg);
-
     /**
      * Add a callback for device logging. The callback will be called from a separate thread with the LogMessage being passed.
      *
