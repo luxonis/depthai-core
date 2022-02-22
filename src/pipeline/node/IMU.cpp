@@ -53,5 +53,9 @@ std::int32_t IMU::getMaxBatchReports() const {
     return properties.maxBatchReports;
 }
 
+void IMU::doFirmwareUpdate() {
+    properties.doFirmwareUpdate = true;
+}
+
 }  // namespace node
 }  // namespace dai
