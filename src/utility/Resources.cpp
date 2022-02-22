@@ -103,6 +103,13 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, st
 // Binaries are resource compiled
 #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
 
+        std::unordered_set<OpenVINO::Version> deprecatedVersions(
+            {OpenVINO::VERSION_2020_4, OpenVINO::VERSION_2021_1, OpenVINO::VERSION_2021_2, OpenVINO::VERSION_2021_3});
+
+        if(deprecatedVersions.count(version)) {
+            spdlog::warn("OpenVINO {} is deprecated!", OpenVINO::getVersionName(version));
+        }
+
         // Main FW
         std::vector<std::uint8_t> depthaiBinary;
         // Patch from main to specified
