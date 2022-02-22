@@ -47,11 +47,10 @@ class Path {
 #endif
 
 #if defined(_WIN32) && defined(_MSC_VER)
-    // Path(std::string source) : nativePath(convert_utf8_to_wide(source)) {}
     Path(const std::string& source) : nativePath(convert_utf8_to_wide(source)) {}
     Path(const char* source) : nativePath(convert_utf8_to_wide(std::string(source))) {}
-    std::string string() const noexcept;
-    std::string u8string() const noexcept;
+    std::string string() const;
+    std::string u8string() const;
 #else
     std::string string() const noexcept {
         return nativePath;
@@ -91,6 +90,12 @@ struct fmt::formatter<dai::Path> : formatter<std::string> {
     */
     template <typename FormatContext>
     auto format(const dai::Path& p, FormatContext& ctx) {
-        return formatter<std::string>::format(p.string(), ctx);
+        std::string output;
+        try {
+            output = p.string();
+        } catch(const std::exception&) {
+            output = dai::Path::convert_err;
+        }
+        return formatter<std::string>::format(output, ctx);
     }
 };
