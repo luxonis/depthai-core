@@ -834,19 +834,19 @@ LogLevel DeviceBase::getLogOutputLevel() {
     return pimpl->getLogLevel();
 }
 
-void DeviceBase::setIrLaserDotProjectorBrightness(float mA, int mask) {
+bool DeviceBase::setIrLaserDotProjectorBrightness(float mA, int mask) {
     checkClosed();
 
-    pimpl->rpcClient->call("setIrLaserDotProjectorBrightness", mA, mask);
+    return pimpl->rpcClient->call("setIrLaserDotProjectorBrightness", mA, mask);
 }
 
-void DeviceBase::setIrFloodLightBrightness(float mA, int mask) {
+bool DeviceBase::setIrFloodLightBrightness(float mA, int mask) {
     checkClosed();
 
-    pimpl->rpcClient->call("setIrFloodLightBrightness", mA, mask);
+    return pimpl->rpcClient->call("setIrFloodLightBrightness", mA, mask);
 }
 
-std::vector<int> DeviceBase::getIrDrivers() {
+std::vector<std::tuple<std::string, int, int>> DeviceBase::getIrDrivers() {
     checkClosed();
 
     return pimpl->rpcClient->call("getIrDrivers");

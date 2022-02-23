@@ -378,8 +378,9 @@ class DeviceBase {
      *
      * @param mA Current in mA that will determine brightness, 0 or negative to turn off
      * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W-DEV
+     * @returns True on success, false if not found or other failure
      */
-    void setIrLaserDotProjectorBrightness(float mA, int mask = -1);
+    bool setIrLaserDotProjectorBrightness(float mA, int mask = -1);
 
     /**
      * Sets the brightness of the IR Flood Light. Limits: up to 1500mA at 30% duty cycle.
@@ -389,13 +390,17 @@ class DeviceBase {
      *
      * @param mA Current in mA that will determine brightness, 0 or negative to turn off
      * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W-DEV
+     * @returns True on success, false if not found or other failure
      */
-    void setIrFloodLightBrightness(float mA, int mask = -1);
+    bool setIrFloodLightBrightness(float mA, int mask = -1);
 
     /**
-     * Returns a vector of I2C bus numbers where IR drivers were detected. For OAK-D-Pro it should be `[2]`
+     * Retrieves detected IR laser/LED drivers.
+     *
+     * @returns Vector of tuples containing: driver name, I2C bus, I2C address.
+     * For OAK-D-Pro it should be `[{"LM3644", 2, 0x63}]`
      */
-    std::vector<int> getIrDrivers();
+    std::vector<std::tuple<std::string, int, int>> getIrDrivers();
 
     /**
      * Add a callback for device logging. The callback will be called from a separate thread with the LogMessage being passed.
