@@ -79,3 +79,16 @@ function(add_default_flags target)
     endif()
 
 endfunction()
+
+# discover compiler C++ standard support
+if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
+    check_cxx_compiler_flag("-std:c++14" COMPILER_SUPPORTS_CXX14)
+    check_cxx_compiler_flag("-std:c++17" COMPILER_SUPPORTS_CXX17)
+    check_cxx_compiler_flag("-std:c++20" COMPILER_SUPPORTS_CXX20)
+    check_cxx_compiler_flag("-std:c++23" COMPILER_SUPPORTS_CXX23)
+else()
+    check_cxx_compiler_flag("-std=c++14" COMPILER_SUPPORTS_CXX14)
+    check_cxx_compiler_flag("-std=c++17" COMPILER_SUPPORTS_CXX17)
+    check_cxx_compiler_flag("-std=c++20" COMPILER_SUPPORTS_CXX20)
+    check_cxx_compiler_flag("-std=c++23" COMPILER_SUPPORTS_CXX23)
+endif()

@@ -13,6 +13,15 @@ function(dai_add_test test_name test_src)
     # parse arguments
     cmake_parse_arguments(DAT "" "CXX_STANDARD" "" ${ARGN})
 
+    # check compiler for C++ standard
+    if (NOT DAT_CXX_STANDARD)
+        set(DAT_CXX_STANDARD 14)
+    endif()
+    if (NOT COMPILER_SUPPORTS_CXX${DAT_CXX_STANDARD})
+        message(STATUS "Skipping test ${test_name} with c++${DAT_CXX_STANDARD}; no compiler support")
+        return()
+    endif()
+
     # Create test executable
     add_executable(${test_name} ${test_src})
     add_default_flags(${test_name} LEAN)
@@ -31,13 +40,10 @@ function(dai_add_test test_name test_src)
     endif()
 
     # Set compiler c++ standard, and disables extensions (g++)
-    if (NOT DAT_CXX_STANDARD)
-        set(DAT_CXX_STANDARD 14)
-    endif()
     set_property(TARGET ${test_name} PROPERTY CXX_STANDARD ${DAT_CXX_STANDARD})
     set_property(TARGET ${test_name} PROPERTY CXX_STANDARD_REQUIRED ON)
     set_property(TARGET ${test_name} PROPERTY CXX_EXTENSIONS OFF)
-    # Add interface transitive property (C++14)
+    # Add interface transitive property
     if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
         target_compile_features(${test_name} INTERFACE cxx_generic_lambdas)
     else()
@@ -187,4 +193,3 @@ dai_add_test(filesystem_test src/filesystem_test.cpp)
 dai_test_compile_definitions(filesystem_test PRIVATE BLOB_PATH="${mobilenet_blob}")
 dai_add_test(filesystem_test_17 src/filesystem_test.cpp CXX_STANDARD 17)
 dai_test_compile_definitions(filesystem_test_17 PRIVATE BLOB_PATH="${mobilenet_blob}")
-
