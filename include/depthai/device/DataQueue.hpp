@@ -37,7 +37,7 @@ class DataOutputQueue {
 
    public:
     // DataOutputQueue constructor
-    DataOutputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize = 16, bool blocking = true);
+    DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize = 16, bool blocking = true);
     ~DataOutputQueue();
 
     /**
@@ -173,7 +173,6 @@ class DataOutputQueue {
         std::shared_ptr<ADatatype> val = nullptr;
         if(!queue.waitAndPop(val)) {
             throw std::runtime_error(exceptionMessage.c_str());
-            return nullptr;
         }
         return std::dynamic_pointer_cast<T>(val);
     }
@@ -346,7 +345,7 @@ class DataInputQueue {
     std::size_t maxDataSize;
 
    public:
-    DataInputQueue(const std::shared_ptr<XLinkConnection>& conn, const std::string& streamName, unsigned int maxSize = 16, bool blocking = true);
+    DataInputQueue(const std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize = 16, bool blocking = true);
     ~DataInputQueue();
 
     /**

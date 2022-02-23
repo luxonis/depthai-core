@@ -53,6 +53,15 @@ std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const std:
     return set(std::move(binaryAsset));
 }
 
+std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, std::vector<std::uint8_t>&& data, int alignment) {
+    // Create an asset
+    Asset binaryAsset(key);
+    binaryAsset.alignment = alignment;
+    binaryAsset.data = std::move(data);
+    // Store asset
+    return set(std::move(binaryAsset));
+}
+
 std::shared_ptr<const Asset> AssetManager::get(const std::string& key) const {
     if(assetMap.count(key) == 0) {
         return nullptr;

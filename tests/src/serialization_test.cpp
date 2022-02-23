@@ -24,10 +24,10 @@ TEST_CASE("Roundtrip") {
         }
         printf("\n");
 
-        REQUIRE(des.width.value() == 0xa0a0a0a0);
-        REQUIRE(des.height.value() == 0xa0a0a0a0);
-        REQUIRE(des.outWidth.value() == 0x55555555);
-        REQUIRE(des.outHeight.value() == 0x55555555);
+        REQUIRE(des.width.value() == (int)0xa0a0a0a0);
+        REQUIRE(des.height.value() == (int)0xa0a0a0a0);
+        REQUIRE(des.outWidth.value() == (int)0x55555555);
+        REQUIRE(des.outHeight.value() == (int)0x55555555);
         REQUIRE(des.numFramesPool == 42);
     }
 
@@ -41,10 +41,10 @@ TEST_CASE("Roundtrip") {
         }
         printf("\n");
 
-        REQUIRE(des.width.value() == 0xa0a0a0a0);
-        REQUIRE(des.height.value() == 0xa0a0a0a0);
-        REQUIRE(des.outWidth.value() == 0x55555555);
-        REQUIRE(des.outHeight.value() == 0x55555555);
+        REQUIRE(des.width.value() == (int)0xa0a0a0a0);
+        REQUIRE(des.height.value() == (int)0xa0a0a0a0);
+        REQUIRE(des.outWidth.value() == (int)0x55555555);
+        REQUIRE(des.outHeight.value() == (int)0x55555555);
         REQUIRE(des.numFramesPool == 42);
     }
 }

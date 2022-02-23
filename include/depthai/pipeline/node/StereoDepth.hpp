@@ -137,20 +137,6 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      */
     Output confidenceMap{*this, "confidenceMap", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
-#if 0  // will be enabled when confidence map RGB alignment/LR-check support will be added
-    /**
-     * Outputs ImgFrame message that carries left-right check first iteration (before combining with second iteration) confidence map.
-     * Useful for debugging/fine tuning.
-     */
-    Output debugConfMapLrCheckIt1{*this, "debugConfMapLrCheckIt1", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-
-    /**
-     * Outputs ImgFrame message that carries left-right check second iteration (before combining with first iteration) confidence map.
-     * Useful for debugging/fine tuning.
-     */
-    Output debugConfMapLrCheckIt2{*this, "debugConfMapLrCheckIt2", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-#endif
-
     /**
      * Specify local filesystem path to the calibration file
      * @param path Path to calibration file. If empty use EEPROM
@@ -334,6 +320,12 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * @param mode Stereo depth preset mode
      */
     void setDefaultProfilePreset(PresetMode mode);
+
+    /**
+     * Sets a default preset based on specified option.
+     * @param mode Stereo depth preset mode
+     */
+    void setFocalLengthFromCalibration(bool focalLengthFromCalibration);
 };
 
 }  // namespace node

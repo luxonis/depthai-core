@@ -14,7 +14,7 @@
 #include "depthai/openvino/OpenVINO.hpp"
 
 // shared
-#include "depthai-shared/device/PrebootConfig.hpp"
+#include "depthai-shared/device/BoardConfig.hpp"
 #include "depthai-shared/pipeline/PipelineSchema.hpp"
 #include "depthai-shared/properties/GlobalProperties.hpp"
 
@@ -80,7 +80,7 @@ class PipelineImpl {
         // Get unique id for this new node
         auto id = getNextUniqueId();
         // Create and store the node in the map
-        auto node = std::shared_ptr<N>(new N(itself, id));
+        auto node = std::make_shared<N>(itself, id);
         nodeMap[id] = node;
         // Return shared pointer to this node
         return node;
