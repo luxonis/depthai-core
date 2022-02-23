@@ -171,16 +171,22 @@ void StereoDepth::setPostProcessingHardwareResources(int numShaves, int numMemor
     properties.numPostProcessingMemorySlices = numMemorySlices;
 }
 
+void StereoDepth::setFocalLengthFromCalibration(bool focalLengthFromCalibration) {
+    properties.focalLengthFromCalibration = focalLengthFromCalibration;
+}
+
 void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
     presetMode = mode;
     switch(presetMode) {
         case PresetMode::HIGH_ACCURACY: {
             initialConfig.setConfidenceThreshold(200);
-            initialConfig.setLeftRightCheck(5);
+            initialConfig.setLeftRightCheck(true);
+            initialConfig.setLeftRightCheckThreshold(5);
         } break;
         case PresetMode::HIGH_DENSITY: {
             initialConfig.setConfidenceThreshold(245);
-            initialConfig.setLeftRightCheck(10);
+            initialConfig.setLeftRightCheck(true);
+            initialConfig.setLeftRightCheckThreshold(10);
         } break;
     }
 }

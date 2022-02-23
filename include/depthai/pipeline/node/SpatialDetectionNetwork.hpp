@@ -65,6 +65,13 @@ class SpatialDetectionNetwork : public NodeCRTP<DetectionNetwork, SpatialDetecti
     Output passthroughDepth{*this, "passthroughDepth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
+     * Output of SpatialLocationCalculator node, which is used internally by SpatialDetectionNetwork.
+     * Suitable when extra information is required from SpatialLocationCalculator node, e.g. minimum, maximum distance.
+     */
+    Output spatialLocationCalculatorOutput{
+        *this, "spatialLocationCalculatorOutput", Output::Type::MSender, {{DatatypeEnum::SpatialLocationCalculatorData, false}}};
+
+    /**
      * Specifies scale factor for detected bounding boxes.
      * @param scaleFactor Scale factor must be in the interval (0,1].
      */
