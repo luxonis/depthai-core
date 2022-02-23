@@ -51,7 +51,7 @@ function(dai_add_example example_name example_src enable_test)
             -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake $<TARGET_FILE:${example_name}> ${arguments}
         )
         # Add ubsan halt on error
-        set_tests_properties(${example_name}_poe PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=tcpip;DEPTHAI_SEARCH_TIME=15000" LABELS poe)
+        set_tests_properties(${example_name}_poe PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=tcpip;DEPTHAI_SEARCH_TIMEOUT=15000" LABELS poe)
 
     endif()
 endfunction()

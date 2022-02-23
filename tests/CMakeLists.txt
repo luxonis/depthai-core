@@ -56,12 +56,12 @@ function(dai_add_test test_name test_src)
     # Add PoE test variants
     add_test(${test_name}_poe ${test_name})
     # Add ubsan halt on error
-    set_tests_properties(${test_name}_poe PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=tcpip;DEPTHAI_SEARCH_TIME=15000" LABELS poe)
+    set_tests_properties(${test_name}_poe PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=tcpip;DEPTHAI_SEARCH_TIMEOUT=15000" LABELS poe)
     if(MSVC)
         # Add to list of tests
         add_test(${test_name}_conforming_poe ${test_name}_conforming)
         # Add ubsan halt on error
-        set_tests_properties(${test_name}_conforming_poe PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=tcpip;DEPTHAI_SEARCH_TIME=15000" LABELS poe)
+        set_tests_properties(${test_name}_conforming_poe PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=tcpip;DEPTHAI_SEARCH_TIMEOUT=15000" LABELS poe)
     endif()
 
 endfunction()
