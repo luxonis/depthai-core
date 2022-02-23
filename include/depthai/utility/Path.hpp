@@ -1,6 +1,9 @@
 #pragma once
 #if(__cplusplus >= 201703L) || (_MSVC_LANG >= 201703L)
     #include <filesystem>
+    #define DAI_NODISCARD [[nodiscard]]
+#else
+    #define DAI_NODISCARD
 #endif
 #include <string>
 
@@ -62,6 +65,10 @@ class Path {
     // implicitly convert *this to native format string
     operator string_type() const noexcept {
         return nativePath;
+    }
+
+    DAI_NODISCARD bool empty() const noexcept {
+        return nativePath.empty();
     }
 };
 
