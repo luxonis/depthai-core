@@ -176,3 +176,24 @@ TEST_CASE("dai::Path with dai::Device") {
 
     dai::Device d(pipeline);
 }
+
+TEST_CASE("dai::Path with dai::CalibrationHandler") {
+    char tmpFilename[L_tmpnam];
+    REQUIRE(std::tmpnam(tmpFilename) != nullptr);
+    std::string strFilename(tmpFilename);
+    strFilename += PATH4;
+    dai::Path daiFilename(strFilename);
+
+    dai::Device device;
+    dai::CalibrationHandler deviceCalib = device.readCalibration();
+    REQUIRE_NOTHROW(deviceCalib.eepromToJsonFile(strFilename));
+    REQUIRE_NOTHROW([&]() {
+        std::ifstream file(daiFilename, std::ios::binary);
+        if(!file.is_open() || !file.good() || file.bad()) {
+            throw std::runtime_error("calibration file not found or corrupted");
+        }
+        file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
+        const char c1 = file.get();
+    }());
+    REQUIRE(0 == DELETEFILE(static_cast<NATIVETYPE>(daiFilename).c_str()));
+}
