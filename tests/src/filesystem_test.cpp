@@ -26,7 +26,11 @@
 #define PATH2 "file2.txt"
 #define PATH3 "/dir3/dir33/file3.txt"
 #define PATH4 u8"\u00e4\u00eb\u00ef\u00f6\u00fc\u00e1\u00e9\u00ed\u00f3\u00fa\u00df\u00c6\u002e\u010c\u011a\u0141"
+#define PATH5 "asdf.nothing"
 #define FILETEXT "This is a test\n"
+#if defined(_WIN32) && defined(_MSC_VER)
+    #define LPATH5 L"asdf.nothing"
+#endif
 
 int u8length(const char* str) noexcept {
     int count = 0;
@@ -140,5 +144,33 @@ TEST_CASE("dai::Path with NN blobs") {
     std::filesystem::path stdPath(BLOB_PATH);
     REQUIRE_NOTHROW(nn->setBlobPath(stdPath));
     nn->getAssetManager().remove("__blob");
+#endif
+}
+
+TEST_CASE("dai::Path with dai::Device") {
+    const char badfile[] = PATH5;
+    const std::string strBadfile(&badfile[0]);
+    const dai::Path diaBadPath(PATH5);
+    dai::Pipeline pipeline;
+    auto nn = pipeline.create<dai::node::NeuralNetwork>();
+    REQUIRE_NOTHROW(nn->setBlobPath(BLOB_PATH));
+    REQUIRE_THROWS_WITH(dai::Device(pipeline, PATH5), Catch::Matchers::Contains(PATH5));
+    REQUIRE_THROWS_WITH(dai::Device(pipeline, &badfile[0]), Catch::Matchers::Contains(PATH5));
+    REQUIRE_THROWS_WITH(dai::Device(pipeline, strBadfile), Catch::Matchers::Contains(PATH5));
+    REQUIRE_THROWS_WITH(dai::Device(pipeline, diaBadPath), Catch::Matchers::Contains(PATH5));
+
+#if defined(_WIN32) && defined(_MSC_VER)
+    const wchar_t wideBadfile[] = LPATH5;
+    const std::wstring wstrBadfile(LPATH5);
+    const dai::Path diaPathFromWide(LPATH5);
+    REQUIRE_THROWS_WITH(dai::Device(pipeline, LPATH5), Catch::Matchers::Contains(PATH5));
+    REQUIRE_THROWS_WITH(dai::Device(pipeline, &wideBadfile[0]), Catch::Matchers::Contains(PATH5));
+    REQUIRE_THROWS_WITH(dai::Device(pipeline, wstrBadfile), Catch::Matchers::Contains(PATH5));
+    REQUIRE_THROWS_WITH(dai::Device(pipeline, diaPathFromWide), Catch::Matchers::Contains(PATH5));
+#endif
+
+#if defined(__cpp_lib_filesystem)
+    std::filesystem::path stdBadfile(PATH5);
+    REQUIRE_THROWS_WITH(dai::Device(pipeline, stdBadfile), Catch::Matchers::Contains(PATH5));
 #endif
 }

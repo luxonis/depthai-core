@@ -22,8 +22,8 @@ namespace dai {
  */
 struct DeviceInfo {
     DeviceInfo() = default;
-    DeviceInfo(const char*);
-    DeviceInfo(std::string);
+    explicit DeviceInfo(const char*);
+    explicit DeviceInfo(std::string);
     deviceDesc_t desc = {};
     XLinkDeviceState_t state = X_LINK_ANY_STATE;
     std::string getMxId() const;
