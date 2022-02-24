@@ -11,7 +11,7 @@ namespace dai {
 
 // TODO C++20 char8_t
 // TODO test if caller works when replace "dai::Path" -> "std::filesystem::path"
-// TODO test if can `using Path = std::filesystem::path` on C++17 to completely use STL
+// TODO test if can `using dai::Path = std::filesystem::path` on C++17 to completely use STL
 
 /**
  * @brief accepts utf-8, Windows wchar_t, or std::filesystem::path
@@ -22,17 +22,11 @@ class Path {
    public:
 #if defined(_WIN32) && defined(_MSC_VER)
     using value_type = wchar_t;
-    static constexpr char convert_err[] = "<Unicode path not convertible>";
-    static constexpr wchar_t convert_err_wide[] = L"<Unicode path not convertible>";
 #else
     using value_type = char;
 #endif
     using string_type = std::basic_string<value_type>;
 
-    string_type nativePath;
-    std::wstring convert_utf8_to_wide(const std::string& utf8string);
-
-   public:
     Path() = default;
     ~Path() = default;
     Path(const Path&) = default;
@@ -49,6 +43,10 @@ class Path {
 #endif
 
 #if defined(_WIN32) && defined(_MSC_VER)
+   private:
+    static std::wstring convert_utf8_to_wide(const std::string& utf8string);
+
+   public:
     Path(const std::string& source) : nativePath(convert_utf8_to_wide(source)) {}
     Path(const char* source) : nativePath(convert_utf8_to_wide(std::string(source))) {}
     std::string string() const;
@@ -70,6 +68,9 @@ class Path {
     DAI_NODISCARD bool empty() const noexcept {
         return nativePath.empty();
     }
+
+   private:
+    string_type nativePath;
 };
 
 }  // namespace dai

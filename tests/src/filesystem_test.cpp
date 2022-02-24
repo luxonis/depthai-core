@@ -92,7 +92,7 @@ TEST_CASE("dai::Path utf-8 and native char set handling") {
 
     REQUIRE(path3.string().length() == (sizeof(PATH3) - 1));
     REQUIRE(path3.u8string().length() == (sizeof(PATH3) - 1));
-    REQUIRE_THROWS_AS(path4.string() == dai::Path::convert_err, std::range_error);
+    REQUIRE_THROWS_AS(path4.string(), std::range_error);
     REQUIRE(path4.u8string() == string4);
 
     // test with std::filesystem

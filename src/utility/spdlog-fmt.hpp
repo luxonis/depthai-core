@@ -4,6 +4,12 @@
 
 #include "depthai/utility/Path.hpp"
 
+namespace dai {
+namespace utility {
+static constexpr char path_convert_err[] = "<Unicode path not convertible>";
+}
+}  // namespace dai
+
 template <>
 struct fmt::formatter<dai::Path> : formatter<std::string> {
     // https://fmt.dev/latest/api.html#formatting-user-defined-types
@@ -14,7 +20,7 @@ struct fmt::formatter<dai::Path> : formatter<std::string> {
         try {
             output = p.string();
         } catch(const std::exception&) {
-            output = dai::Path::convert_err;
+            output = dai::utility::path_convert_err;
         }
         return formatter<std::string>::format(output, ctx);
     }
