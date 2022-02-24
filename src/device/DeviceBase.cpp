@@ -257,7 +257,16 @@ LogLevel DeviceBase::Impl::getLogLevel() {
 // END OF Impl section
 ///////////////////////////////////////////////
 
-DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo) : DeviceBase(version, devInfo, false) {}
+void DeviceBase::tryGetDevice() {
+    // Searches for any available device for 'default' timeout
+    bool found = false;
+    std::tie(found, deviceInfo) = getAnyAvailableDevice();
+
+    // If no device found, throw
+    if(!found) throw std::runtime_error("No available devices");
+}
+
+DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo) : DeviceBase(version, devInfo, DeviceBase::DEFAULT_USB_SPEED) {}
 
 DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : deviceInfo(devInfo) {
     init(version, maxUsbSpeed, "");
@@ -270,32 +279,17 @@ DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, con
 DeviceBase::DeviceBase() : DeviceBase(OpenVINO::DEFAULT_VERSION) {}
 
 DeviceBase::DeviceBase(OpenVINO::Version version) {
-    // Searches for any available device for 'default' timeout
-    bool found = false;
-    std::tie(found, deviceInfo) = getAnyAvailableDevice();
-
-    // If no device found, throw
-    if(!found) throw std::runtime_error("No available devices");
+    tryGetDevice();
     init(version, false, "");
 }
 
 DeviceBase::DeviceBase(OpenVINO::Version version, const dai::Path& pathToCmd) {
-    // Searches for any available device for 'default' timeout
-    bool found = false;
-    std::tie(found, deviceInfo) = getAnyAvailableDevice();
-
-    // If no device found, throw
-    if(!found) throw std::runtime_error("No available devices");
+    tryGetDevice();
     init(version, false, pathToCmd);
 }
 
 DeviceBase::DeviceBase(OpenVINO::Version version, UsbSpeed maxUsbSpeed) {
-    // Searches for any available device for 'default' timeout
-    bool found = false;
-    std::tie(found, deviceInfo) = getAnyAvailableDevice();
-
-    // If no device found, throw
-    if(!found) throw std::runtime_error("No available devices");
+    tryGetDevice();
     init(version, maxUsbSpeed, "");
 }
 
@@ -311,7 +305,8 @@ DeviceBase::DeviceBase(const Pipeline& pipeline, const dai::Path& pathToCmd) : D
     tryStartPipeline(pipeline);
 }
 
-DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, false) {}
+DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo)
+    : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, DeviceBase::DEFAULT_USB_SPEED) {}
 
 DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed)
     : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, maxUsbSpeed) {
@@ -324,12 +319,7 @@ DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, cons
 }
 
 DeviceBase::DeviceBase(Config config) {
-    // Searches for any available device for 'default' timeout
-    bool found = false;
-    std::tie(found, deviceInfo) = getAnyAvailableDevice();
-
-    // If no device found, throw
-    if(!found) throw std::runtime_error("No available devices");
+    tryGetDevice();
     init2(config, {}, {});
 }
 

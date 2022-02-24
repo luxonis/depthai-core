@@ -173,4 +173,6 @@ TEST_CASE("dai::Path with dai::Device") {
     std::filesystem::path stdBadfile(PATH5);
     REQUIRE_THROWS_WITH(dai::Device(pipeline, stdBadfile), Catch::Matchers::Contains(PATH5));
 #endif
+
+    dai::Device d(pipeline);
 }

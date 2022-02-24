@@ -31,10 +31,10 @@ class Device : public DeviceBase {
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * @param pipeline Pipeline to be executed on the device
-     * @param usb2Mode Boot device using USB2 mode firmware
+     * @param usb2Mode (bool) Boot device using USB2 mode firmware
      */
     template <typename T, std::enable_if_t<std::is_same_v<T, bool>, bool> = true>
-    Device(const Pipeline& pipeline, T usb2Mode) : Device(pipeline, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
+    Device(const Pipeline& pipeline, T usb2Mode) : DeviceBase(pipeline, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
@@ -61,11 +61,11 @@ class Device : public DeviceBase {
      * Connects to device specified by devInfo.
      * @param pipeline Pipeline to be executed on the device
      * @param devInfo DeviceInfo which specifies which device to connect to
-     * @param usb2Mode Boot device using USB2 mode firmware
+     * @param usb2Mode (bool) Boot device using USB2 mode firmware
      */
     template <typename T, std::enable_if_t<std::is_same_v<T, bool>, bool> = true>
     Device(const Pipeline& pipeline, const DeviceInfo& devInfo, T usb2Mode)
-        : Device(pipeline, devInfo, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
+        : DeviceBase(pipeline, devInfo, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
 
     /**
      * Connects to device specified by devInfo.
