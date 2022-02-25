@@ -150,23 +150,23 @@ TEST_CASE("dai::Path with NN blobs") {
 TEST_CASE("dai::Path with dai::Device") {
     const char badfile[] = PATH5;
     const std::string strBadfile(&badfile[0]);
-    const dai::Path diaBadPath(PATH5);
+    const dai::Path diaBadFile(PATH5);
     dai::Pipeline pipeline;
     auto nn = pipeline.create<dai::node::NeuralNetwork>();
     REQUIRE_NOTHROW(nn->setBlobPath(BLOB_PATH));
     REQUIRE_THROWS_WITH(dai::Device(pipeline, PATH5), Catch::Matchers::Contains(PATH5));
     REQUIRE_THROWS_WITH(dai::Device(pipeline, &badfile[0]), Catch::Matchers::Contains(PATH5));
     REQUIRE_THROWS_WITH(dai::Device(pipeline, strBadfile), Catch::Matchers::Contains(PATH5));
-    REQUIRE_THROWS_WITH(dai::Device(pipeline, diaBadPath), Catch::Matchers::Contains(PATH5));
+    REQUIRE_THROWS_WITH(dai::Device(pipeline, diaBadFile), Catch::Matchers::Contains(PATH5));
 
 #if defined(_WIN32) && defined(_MSC_VER)
     const wchar_t wideBadfile[] = LPATH5;
     const std::wstring wstrBadfile(LPATH5);
-    const dai::Path diaPathFromWide(LPATH5);
+    const dai::Path diaFileFromWide(LPATH5);
     REQUIRE_THROWS_WITH(dai::Device(pipeline, LPATH5), Catch::Matchers::Contains(PATH5));
     REQUIRE_THROWS_WITH(dai::Device(pipeline, &wideBadfile[0]), Catch::Matchers::Contains(PATH5));
     REQUIRE_THROWS_WITH(dai::Device(pipeline, wstrBadfile), Catch::Matchers::Contains(PATH5));
-    REQUIRE_THROWS_WITH(dai::Device(pipeline, diaPathFromWide), Catch::Matchers::Contains(PATH5));
+    REQUIRE_THROWS_WITH(dai::Device(pipeline, diaFileFromWide), Catch::Matchers::Contains(PATH5));
 #endif
 
 #if defined(__cpp_lib_filesystem)
@@ -196,4 +196,80 @@ TEST_CASE("dai::Path with dai::CalibrationHandler") {
         const char c1 = file.get();
     }());
     REQUIRE(0 == DELETEFILE(static_cast<NATIVETYPE>(daiFilename).c_str()));
+}
+
+TEST_CASE("dai::Path with dai::DeviceBootloader") {
+    const char badfile[] = PATH4;
+    const std::string strBadfile(&badfile[0]);
+    const dai::Path diaBadfile(PATH4);
+#if defined(_WIN32) && defined(_MSC_VER)
+    const wchar_t wideBadfile[] = LPATH5;
+    const std::wstring wstrBadfile(LPATH5);
+    const dai::Path diaBadWide(LPATH5);
+#endif
+#if defined(__cpp_lib_filesystem)
+    auto stdBadpath = std::filesystem::u8path(PATH4);
+#endif
+
+    bool found = false;
+    dai::DeviceInfo deviceInfo;
+    std::tie(found, deviceInfo) = dai::DeviceBootloader::getFirstAvailableDevice();
+    if(found) {
+        REQUIRE_NOTHROW([&]() {
+            dai::DeviceBootloader bl(deviceInfo);
+            auto currentBlType = bl.getType();
+        }());
+        REQUIRE_NOTHROW([&]() {
+            dai::DeviceBootloader bl(deviceInfo, false);
+            auto currentBlType = bl.getType();
+        }());
+        REQUIRE_THROWS_WITH(
+            [&]() {
+                dai::DeviceBootloader bl(deviceInfo, &badfile[0]);
+                auto currentBlType = bl.getType();
+            }(),
+            Catch::Matchers::Contains("doesn't exist"));
+        REQUIRE_THROWS_WITH(
+            [&]() {
+                dai::DeviceBootloader bl(deviceInfo, strBadfile);
+                auto currentBlType = bl.getType();
+            }(),
+            Catch::Matchers::Contains("doesn't exist"));
+        REQUIRE_THROWS_WITH(
+            [&]() {
+                dai::DeviceBootloader bl(deviceInfo, diaBadfile);
+                auto currentBlType = bl.getType();
+            }(),
+            Catch::Matchers::Contains("doesn't exist"));
+#if defined(_WIN32) && defined(_MSC_VER)
+        REQUIRE_THROWS_WITH(
+            [&]() {
+                dai::DeviceBootloader bl(deviceInfo, &wideBadfile[0]);
+                auto currentBlType = bl.getType();
+            }(),
+            Catch::Matchers::Contains("doesn't exist"));
+        REQUIRE_THROWS_WITH(
+            [&]() {
+                dai::DeviceBootloader bl(deviceInfo, wstrBadfile);
+                auto currentBlType = bl.getType();
+            }(),
+            Catch::Matchers::Contains("doesn't exist"));
+        REQUIRE_THROWS_WITH(
+            [&]() {
+                dai::DeviceBootloader bl(deviceInfo, diaBadWide);
+                auto currentBlType = bl.getType();
+            }(),
+            Catch::Matchers::Contains("doesn't exist"));
+#endif
+#if defined(__cpp_lib_filesystem)
+        REQUIRE_THROWS_WITH(
+            [&]() {
+                dai::DeviceBootloader bl(deviceInfo, stdBadpath);
+                auto currentBlType = bl.getType();
+            }(),
+            Catch::Matchers::Contains("doesn't exist"));
+#endif
+    } else {
+        std::cout << "No devices found" << std::endl;
+    }
 }
