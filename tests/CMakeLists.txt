@@ -59,6 +59,7 @@ function(dai_add_test test_name test_src)
     if (MSVC)
         # Create test executable with MSVC conforming preprocessor
         add_executable(${test_name}_conforming ${test_src})
+        add_default_flags(${test_name}_conforming LEAN)
 
         # Link to core and Catch2 testing framework
         target_link_libraries(${test_name}_conforming PRIVATE depthai-core Catch2::Catch2)

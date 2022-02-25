@@ -45,6 +45,8 @@ function(add_default_flags target)
 
     elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
         # using Visual Studio C++
+        add_flag(${target} -DNOMINMAX)
+
         if(NOT ADF_LEAN)
             # TODO(warchant): add flags https://github.com/lefticus/cppbestpractices/blob/master/02-Use_the_Tools_Available.md#msvc
         endif()
