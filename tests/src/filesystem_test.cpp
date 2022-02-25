@@ -147,7 +147,7 @@ TEST_CASE("dai::Path with NN blobs") {
 #endif
 }
 
-TEST_CASE("dai::Path with dai::Device") {
+TEST_CASE("dai::Path with Device") {
     const char badfile[] = PATH5;
     const std::string strBadfile(&badfile[0]);
     const dai::Path diaBadFile(PATH5);
@@ -177,7 +177,7 @@ TEST_CASE("dai::Path with dai::Device") {
     dai::Device d(pipeline);
 }
 
-TEST_CASE("dai::Path with dai::CalibrationHandler") {
+TEST_CASE("dai::Path with CalibrationHandler") {
     char tmpFilename[L_tmpnam];
     REQUIRE(std::tmpnam(tmpFilename) != nullptr);
     std::string strFilename(tmpFilename);
@@ -198,7 +198,7 @@ TEST_CASE("dai::Path with dai::CalibrationHandler") {
     REQUIRE(0 == DELETEFILE(static_cast<NATIVETYPE>(daiFilename).c_str()));
 }
 
-TEST_CASE("dai::Path with dai::DeviceBootloader") {
+TEST_CASE("dai::Path with DeviceBootloader") {
     const char badfile[] = PATH4;
     const std::string strBadfile(&badfile[0]);
     const dai::Path diaBadfile(PATH4);
@@ -272,4 +272,58 @@ TEST_CASE("dai::Path with dai::DeviceBootloader") {
     } else {
         std::cout << "No devices found" << std::endl;
     }
+}
+
+TEST_CASE("dai::Path with AssetManager, StereoDepth") {
+    char tmp_name4[L_tmpnam];
+    REQUIRE(std::tmpnam(tmp_name4) != nullptr);
+    std::string string4(tmp_name4);
+    string4 += PATH4;
+    const dai::Path path4(string4);
+    REQUIRE_NOTHROW([&]() {
+        std::ofstream file(path4);
+        file.write(FILETEXT, sizeof(FILETEXT) - 1);
+    }());
+
+    dai::Pipeline pipeline;
+    REQUIRE_NOTHROW(pipeline.setCameraTuningBlobPath(string4.c_str()));
+    pipeline.getAssetManager().remove("camTuning");
+    REQUIRE_NOTHROW(pipeline.setCameraTuningBlobPath(string4));
+    pipeline.getAssetManager().remove("camTuning");
+    REQUIRE_NOTHROW(pipeline.setCameraTuningBlobPath(path4));
+    pipeline.getAssetManager().remove("camTuning");
+
+    auto depth = pipeline.create<dai::node::StereoDepth>();
+    REQUIRE_NOTHROW(depth->loadMeshFiles(string4.c_str(), string4.c_str()));
+    depth->getAssetManager().remove("meshLeft");
+    depth->getAssetManager().remove("meshRight");
+    REQUIRE_NOTHROW(depth->loadMeshFiles(string4, string4));
+    depth->getAssetManager().remove("meshLeft");
+    depth->getAssetManager().remove("meshRight");
+    REQUIRE_NOTHROW(depth->loadMeshFiles(path4, path4));
+    depth->getAssetManager().remove("meshLeft");
+    depth->getAssetManager().remove("meshRight");
+
+#if defined(_WIN32) && defined(_MSC_VER)
+    const std::wstring widePath4 = path4.native();
+    REQUIRE_NOTHROW(pipeline.setCameraTuningBlobPath(widePath4.c_str()));
+    pipeline.getAssetManager().remove("camTuning");
+    REQUIRE_NOTHROW(pipeline.setCameraTuningBlobPath(widePath4));
+    pipeline.getAssetManager().remove("camTuning");
+
+    REQUIRE_NOTHROW(depth->loadMeshFiles(widePath4.c_str(), widePath4.c_str()));
+    depth->getAssetManager().remove("meshLeft");
+    depth->getAssetManager().remove("meshRight");
+    REQUIRE_NOTHROW(depth->loadMeshFiles(widePath4, widePath4));
+    depth->getAssetManager().remove("meshLeft");
+    depth->getAssetManager().remove("meshRight");
+#endif
+
+#if defined(__cpp_lib_filesystem)
+    auto stdPath4 = std::filesystem::u8path(string4);
+    REQUIRE_NOTHROW(pipeline.setCameraTuningBlobPath(stdPath4));
+    REQUIRE_NOTHROW(depth->loadMeshFiles(stdPath4, stdPath4));
+#endif
+
+    REQUIRE(0 == DELETEFILE(static_cast<NATIVETYPE>(path4).c_str()));
 }

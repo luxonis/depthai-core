@@ -34,12 +34,12 @@ class Path {
     Path& operator=(const Path&) = default;
     Path& operator=(Path&&) = default;
 
-    Path(string_type&& source) noexcept : nativePath(std::move(source)) {}
-    Path(const string_type& source) : nativePath(source) {}
-    Path(const value_type* source) : nativePath(string_type(source)) {}
+    Path(string_type&& source) noexcept : _nativePath(std::move(source)) {}
+    Path(const string_type& source) : _nativePath(source) {}
+    Path(const value_type* source) : _nativePath(string_type(source)) {}
 
 #if defined(__cpp_lib_filesystem)
-    Path(const std::filesystem::path& source) : nativePath(source) {}
+    Path(const std::filesystem::path& source) : _nativePath(source) {}
 #endif
 
 #if defined(_WIN32) && defined(_MSC_VER)
@@ -47,30 +47,34 @@ class Path {
     static std::wstring convert_utf8_to_wide(const std::string& utf8string);
 
    public:
-    Path(const std::string& source) : nativePath(convert_utf8_to_wide(source)) {}
-    Path(const char* source) : nativePath(convert_utf8_to_wide(std::string(source))) {}
+    Path(const std::string& source) : _nativePath(convert_utf8_to_wide(source)) {}
+    Path(const char* source) : _nativePath(convert_utf8_to_wide(std::string(source))) {}
     std::string string() const;
     std::string u8string() const;
 #else
     std::string string() const noexcept {
-        return nativePath;
+        return _nativePath;
     }
     std::string u8string() const noexcept {
-        return nativePath;
+        return _nativePath;
     }
 #endif
 
     // implicitly convert *this to native format string
     operator string_type() const noexcept {
-        return nativePath;
+        return _nativePath;
+    }
+
+    const string_type& native() const noexcept {
+        return _nativePath;
     }
 
     DAI_NODISCARD bool empty() const noexcept {
-        return nativePath.empty();
+        return _nativePath.empty();
     }
 
    private:
-    string_type nativePath;
+    string_type _nativePath;
 };
 
 }  // namespace dai
