@@ -327,3 +327,51 @@ TEST_CASE("dai::Path with AssetManager, StereoDepth") {
 
     REQUIRE(0 == DELETEFILE(static_cast<NATIVETYPE>(path4).c_str()));
 }
+
+TEST_CASE("dai::Path with Script") {
+    char tmp_name4[L_tmpnam];
+    REQUIRE(std::tmpnam(tmp_name4) != nullptr);
+    std::string string4(tmp_name4);
+    string4 += PATH4;
+    const dai::Path path4(string4);
+    REQUIRE_NOTHROW([&]() {
+        std::ofstream file(path4);
+        file.write(FILETEXT, sizeof(FILETEXT) - 1);
+    }());
+
+    dai::Pipeline pipeline;
+    auto script = pipeline.create<dai::node::Script>();
+
+    REQUIRE_NOTHROW(script->setScriptPath(path4));
+    REQUIRE(script->getScriptPath().u8string() == string4);
+    REQUIRE(script->getScriptName() == string4);
+    script->getAssetManager().remove("__script");
+
+    REQUIRE_NOTHROW(script->setScript("<s>nothing</s>"));
+    REQUIRE(script->getScriptPath().empty());
+    REQUIRE(script->getScriptName() == "<script>");
+    script->getAssetManager().remove("__script");
+
+    REQUIRE_NOTHROW(script->setScript("<s>nothing</s>", "myname"));
+    REQUIRE(script->getScriptPath().empty());
+    REQUIRE(script->getScriptName() == "myname");
+    script->getAssetManager().remove("__script");
+
+#if defined(_WIN32) && defined(_MSC_VER)
+    const std::wstring widePath4 = path4.native();
+    REQUIRE_NOTHROW(script->setScriptPath(widePath4));
+    REQUIRE(script->getScriptPath().native() == widePath4);
+    REQUIRE(script->getScriptName() == string4);
+    script->getAssetManager().remove("__script");
+#endif
+
+#if defined(__cpp_lib_filesystem)
+    auto stdPath4 = std::filesystem::u8path(string4);
+    REQUIRE_NOTHROW(script->setScriptPath(stdPath4));
+    REQUIRE(script->getScriptPath().u8string() == stdPath4.u8string());
+    REQUIRE(script->getScriptName() == string4);
+    script->getAssetManager().remove("__script");
+#endif
+
+    REQUIRE(0 == DELETEFILE(static_cast<NATIVETYPE>(path4).c_str()));
+}
