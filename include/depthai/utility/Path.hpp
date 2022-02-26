@@ -14,16 +14,20 @@ namespace dai {
 // TODO test if can `using dai::Path = std::filesystem::path` on C++17 to completely use STL
 
 /**
- * @brief accepts utf-8, Windows wchar_t, or std::filesystem::path
- *        and returns the path in a type accepted by fstream()
+ * @brief Represents paths on a filesystem; accepts utf-8, Windows utf-16 wchar_t, or
+ *        std::filesystem::path.
+ *
+ *        It is suitable for direct use with OS APIs.
+ *        Features are limited to character-set conversion of paths. It is not
+ *        intended as a full replacement for std::filesystem::path
  *
  */
 class Path {
    public:
 #if defined(_WIN32) && defined(_MSC_VER)
-    using value_type = wchar_t;
+    using value_type = wchar_t;  ///< character used by native-encoding of filesystem
 #else
-    using value_type = char;
+    using value_type = char;  ///< character used by native-encoding of filesystem
 #endif
     using string_type = std::basic_string<value_type>;
 
@@ -34,11 +38,33 @@ class Path {
     Path& operator=(const Path&) = default;
     Path& operator=(Path&&) = default;
 
+    /**
+     * @brief Construct Path object from source.
+     *
+     * @param source native-encoding character sequence; no conversion
+     */
     Path(string_type&& source) noexcept : _nativePath(std::move(source)) {}
+
+    /**
+     * @brief Construct Path object from source.
+     *
+     * @param source native-encoding character sequence; no conversion
+     */
     Path(const string_type& source) : _nativePath(source) {}
+
+    /**
+     * @brief Construct Path object from source.
+     *
+     * @param source pointer to null-terminated native-encoding character sequence; no conversion
+     */
     Path(const value_type* source) : _nativePath(string_type(source)) {}
 
 #if defined(__cpp_lib_filesystem)
+    /**
+     * @brief Construct Path object from source.
+     *
+     * @param source std::filesystem::path; conversion managed by std::filesystem::path
+     */
     Path(const std::filesystem::path& source) : _nativePath(source) {}
 #endif
 
@@ -47,28 +73,81 @@ class Path {
     static std::wstring convert_utf8_to_wide(const std::string& utf8string);
 
    public:
+    /**
+     * @brief Construct Path object from source.
+     *
+     * @param source utf-8 character sequence; converts to Windows utf-16
+     */
     Path(const std::string& source) : _nativePath(convert_utf8_to_wide(source)) {}
+
+    /**
+     * @brief Construct Path object from source.
+     *
+     * @param source pointer to null-terminated utf-8 character sequence; converts to Windows utf-16
+     */
     Path(const char* source) : _nativePath(convert_utf8_to_wide(std::string(source))) {}
+
+    /**
+     * @brief Get path in narrow multibyte representation in the current C locale.
+     *
+     *        Will throw exception if there is no valid conversion.
+     *        Could be used to get the narrow ascii representation.
+     *
+     * @return std::string in narrow multibyte representation
+     */
     std::string string() const;
+
+    /**
+     * @brief Get path in utf-8.
+     *
+     *        Will throw exception if there is no valid conversion.
+     *
+     * @return std::string in utf-8
+     */
     std::string u8string() const;
 #else
+    /**
+     * @brief Get path in native-encoding string.
+     *
+     * @return std::string
+     */
     std::string string() const noexcept {
         return _nativePath;
     }
+
+    /**
+     * @brief Get path in utf-8.
+     *
+     * @return std::string
+     */
     std::string u8string() const noexcept {
         return _nativePath;
     }
 #endif
 
-    // implicitly convert *this to native format string
+    /**
+     * @brief Implicitly convert to native-encoding string, suitable for use with OS APIs
+     *
+     * @return std::string of utf-8 on most OSs, std::wstring of utf-16 on Windows
+     */
     operator string_type() const noexcept {
         return _nativePath;
     }
 
+    /**
+     * @brief Returns native-encoding string by const reference, suitable for use with OS APIs
+     *
+     * @return const std::string& of utf-8 on most OSs, const std::wstring& of utf-16 on Windows
+     */
     const string_type& native() const noexcept {
         return _nativePath;
     }
 
+    /**
+     * @brief Observes if path is empty (contains no string/folders/filename)
+     *
+     * @return bool true if the path is empty, false otherwise
+     */
     DAI_NODISCARD bool empty() const noexcept {
         return _nativePath.empty();
     }
