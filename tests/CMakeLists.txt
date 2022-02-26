@@ -14,10 +14,10 @@ function(dai_add_test test_name test_src)
     cmake_parse_arguments(DAT "" "CXX_STANDARD" "" ${ARGN})
 
     # check compiler for C++ standard
-    if (NOT DAT_CXX_STANDARD)
+    if(NOT DAT_CXX_STANDARD)
         set(DAT_CXX_STANDARD 14)
     endif()
-    if (NOT COMPILER_SUPPORTS_CXX${DAT_CXX_STANDARD})
+    if(NOT COMPILER_SUPPORTS_CXX${DAT_CXX_STANDARD})
         message(STATUS "Skipping test ${test_name} with c++${DAT_CXX_STANDARD}; no compiler support")
         return()
     endif()
@@ -43,11 +43,12 @@ function(dai_add_test test_name test_src)
     set_property(TARGET ${test_name} PROPERTY CXX_STANDARD ${DAT_CXX_STANDARD})
     set_property(TARGET ${test_name} PROPERTY CXX_STANDARD_REQUIRED ON)
     set_property(TARGET ${test_name} PROPERTY CXX_EXTENSIONS OFF)
-    # Add interface transitive property
+
+    # Add additional feature level property
     if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
-        target_compile_features(${test_name} INTERFACE cxx_generic_lambdas)
+        target_compile_features(${test_name} PRIVATE cxx_generic_lambdas)
     else()
-        target_compile_features(${test_name} INTERFACE cxx_std_${DAT_CXX_STANDARD})
+        target_compile_features(${test_name} PRIVATE cxx_std_${DAT_CXX_STANDARD})
     endif()
 
     # Add to list of tests
@@ -56,7 +57,7 @@ function(dai_add_test test_name test_src)
     set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=usb" LABELS usb)
 
     # Check if MSVC and add a conforming preprocessor test (serialization macros)
-    if (MSVC)
+    if(MSVC)
         # Create test executable with MSVC conforming preprocessor
         add_executable(${test_name}_conforming ${test_src})
         add_default_flags(${test_name}_conforming LEAN)
@@ -64,10 +65,22 @@ function(dai_add_test test_name test_src)
         # Link to core and Catch2 testing framework
         target_link_libraries(${test_name}_conforming PRIVATE depthai-core Catch2::Catch2)
 
-        if(MSVC_VERSION LESS 1925)
-            target_compile_options(${test_name}_conforming INTERFACE "/experimental:preprocessor")
+        # Set compiler c++ standard, and disables extensions (g++)
+        set_property(TARGET ${test_name}_conforming PROPERTY CXX_STANDARD ${DAT_CXX_STANDARD})
+        set_property(TARGET ${test_name}_conforming PROPERTY CXX_STANDARD_REQUIRED ON)
+        set_property(TARGET ${test_name}_conforming PROPERTY CXX_EXTENSIONS OFF)
+
+        # Add additional feature level property
+        if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
+            target_compile_features(${test_name}_conforming PRIVATE cxx_generic_lambdas)
         else()
-            target_compile_options(${test_name}_conforming INTERFACE "/Zc:preprocessor")
+            target_compile_features(${test_name}_conforming PRIVATE cxx_std_${DAT_CXX_STANDARD})
+        endif()
+
+        if(MSVC_VERSION LESS 1925)
+            target_compile_options(${test_name}_conforming PRIVATE "/experimental:preprocessor")
+        else()
+            target_compile_options(${test_name}_conforming PRIVATE "/Zc:preprocessor")
         endif()
 
         # Add to list of tests
@@ -194,3 +207,5 @@ dai_add_test(filesystem_test src/filesystem_test.cpp)
 dai_test_compile_definitions(filesystem_test PRIVATE BLOB_PATH="${mobilenet_blob}")
 dai_add_test(filesystem_test_17 src/filesystem_test.cpp CXX_STANDARD 17)
 dai_test_compile_definitions(filesystem_test_17 PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_add_test(filesystem_test_20 src/filesystem_test.cpp CXX_STANDARD 20)
+dai_test_compile_definitions(filesystem_test_20 PRIVATE BLOB_PATH="${mobilenet_blob}")
