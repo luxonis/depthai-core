@@ -33,7 +33,7 @@ class Device : public DeviceBase {
      * @param pipeline Pipeline to be executed on the device
      * @param usb2Mode (bool) Boot device using USB2 mode firmware
      */
-    template <typename T, std::enable_if_t<std::is_same_v<T, bool>, bool> = true>
+    template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
     Device(const Pipeline& pipeline, T usb2Mode) : DeviceBase(pipeline, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
 
     /**
@@ -63,7 +63,7 @@ class Device : public DeviceBase {
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param usb2Mode (bool) Boot device using USB2 mode firmware
      */
-    template <typename T, std::enable_if_t<std::is_same_v<T, bool>, bool> = true>
+    template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
     Device(const Pipeline& pipeline, const DeviceInfo& devInfo, T usb2Mode)
         : DeviceBase(pipeline, devInfo, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
 

@@ -130,7 +130,7 @@ class DeviceBase {
      * @param pipeline Pipeline to be executed on the device
      * @param usb2Mode Boot device using USB2 mode firmware
      */
-    template <typename T, std::enable_if_t<std::is_same_v<T, bool>, bool> = true>
+    template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
     DeviceBase(const Pipeline& pipeline, T usb2Mode) : DeviceBase(pipeline, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
 
     /**
@@ -160,7 +160,7 @@ class DeviceBase {
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param usb2Mode Boot device using USB2 mode firmware
      */
-    template <typename T, std::enable_if_t<std::is_same_v<T, bool>, bool> = true>
+    template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
     DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, T usb2Mode)
         : DeviceBase(pipeline, devInfo, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
 
@@ -197,7 +197,7 @@ class DeviceBase {
      * @param version OpenVINO version which the device will be booted with
      * @param usb2Mode Boot device using USB2 mode firmware
      */
-    template <typename T, std::enable_if_t<std::is_same_v<T, bool>, bool> = true>
+    template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
     DeviceBase(OpenVINO::Version version, T usb2Mode) : DeviceBase(version, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
 
     /**
@@ -227,7 +227,7 @@ class DeviceBase {
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param usb2Mode Boot device using USB2 mode firmware
      */
-    template <typename T, std::enable_if_t<std::is_same_v<T, bool>, bool> = true>
+    template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
     DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, T usb2Mode)
         : DeviceBase(version, devInfo, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
 

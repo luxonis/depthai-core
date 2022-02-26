@@ -179,7 +179,7 @@ class DeviceBootloader {
      * @param devInfo DeviceInfo of which to boot or connect to
      * @param allowFlashingBootloader (bool) Set to true to allow flashing the devices bootloader
      */
-    template <typename T, std::enable_if_t<std::is_same_v<T, bool>, bool> = true>
+    template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
     DeviceBootloader(const DeviceInfo& devInfo, T allowFlashingBootloader);
 
     /**

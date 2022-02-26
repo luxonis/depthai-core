@@ -66,7 +66,7 @@ TEST_CASE("dai::Path utf-8 and native char set handling") {
         std::ofstream file(path4);
         file.write(FILETEXT, sizeof(FILETEXT) - 1);
     }());
-    REQUIRE_NOTHROW([&]() {
+    CHECK_NOTHROW([&]() {
         std::ifstream file(path4, std::ios::binary);
         if(!file.is_open() || !file.good() || file.bad()) {
             throw std::runtime_error("file not found or corrupted");
@@ -74,7 +74,7 @@ TEST_CASE("dai::Path utf-8 and native char set handling") {
         file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
         const char c1 = file.get();
     }());
-    REQUIRE(0 == DELETEFILE(static_cast<NATIVETYPE>(path4).c_str()));
+    DELETEFILE(static_cast<NATIVETYPE>(path4).c_str());
 
     auto getBlob = [](const dai::Path& path) -> bool { return !static_cast<NATIVETYPE>(path).empty(); };
     REQUIRE(getBlob(string4));
@@ -85,15 +85,18 @@ TEST_CASE("dai::Path utf-8 and native char set handling") {
     std::wstring move2ndTry(L"move my data on the second try");
     REQUIRE(getBlob(move2ndTry));
     REQUIRE(getBlob(std::move(move2ndTry)));
-#endif
 
-    auto wrapper = [&getBlob](const dai::Path& path) -> bool { return getBlob(path); };
-    REQUIRE(wrapper("pass dai::Path across functions"));
+    REQUIRE_THROWS_AS(path4.string(), std::range_error);
+#else
+    REQUIRE_NOTHROW(path4.string());
+#endif
 
     REQUIRE(path3.string().length() == (sizeof(PATH3) - 1));
     REQUIRE(path3.u8string().length() == (sizeof(PATH3) - 1));
-    REQUIRE_THROWS_AS(path4.string(), std::range_error);
     REQUIRE(path4.u8string() == string4);
+
+    auto wrapper = [&getBlob](const dai::Path& path) -> bool { return getBlob(path); };
+    REQUIRE(wrapper("pass dai::Path across functions"));
 
     // test with std::filesystem
 #if defined(__cpp_lib_filesystem)
@@ -119,9 +122,15 @@ TEST_CASE("dai::Path with NN blobs") {
     auto nn = pipeline.create<dai::node::NeuralNetwork>();
 
     // attempt to use a non-existing blob at a utf-8 path
+#if defined(_WIN32) && defined(_MSC_VER)
     REQUIRE_THROWS_WITH(nn->setBlobPath(PATH4), Catch::Matchers::Contains("Cannot load blob") && Catch::Matchers::Contains("not convertible"));
     REQUIRE_THROWS_WITH(nn->setBlobPath(strPath), Catch::Matchers::Contains("Cannot load blob") && Catch::Matchers::Contains("not convertible"));
     REQUIRE_THROWS_WITH(nn->setBlobPath(daiPath), Catch::Matchers::Contains("Cannot load blob") && Catch::Matchers::Contains("not convertible"));
+#else
+    REQUIRE_THROWS_WITH(nn->setBlobPath(PATH4), Catch::Matchers::Contains("Cannot load blob") && Catch::Matchers::Contains(PATH4));
+    REQUIRE_THROWS_WITH(nn->setBlobPath(strPath), Catch::Matchers::Contains("Cannot load blob") && Catch::Matchers::Contains(strPath));
+    REQUIRE_THROWS_WITH(nn->setBlobPath(daiPath), Catch::Matchers::Contains("Cannot load blob") && Catch::Matchers::Contains(daiPath.u8string()));
+#endif
 
     // use blob at known test path
     const std::string blobPath(BLOB_PATH);
@@ -184,10 +193,10 @@ TEST_CASE("dai::Path with CalibrationHandler") {
     strFilename += PATH4;
     dai::Path daiFilename(strFilename);
 
-    dai::Device device;
-    dai::CalibrationHandler deviceCalib = device.readCalibration();
-    REQUIRE_NOTHROW(deviceCalib.eepromToJsonFile(strFilename));
-    REQUIRE_NOTHROW([&]() {
+    CHECK_NOTHROW([&]() {
+        dai::Device device;
+        dai::CalibrationHandler deviceCalib = device.readCalibration();
+        deviceCalib.eepromToJsonFile(strFilename);
         std::ifstream file(daiFilename, std::ios::binary);
         if(!file.is_open() || !file.good() || file.bad()) {
             throw std::runtime_error("calibration file not found or corrupted");
@@ -195,7 +204,7 @@ TEST_CASE("dai::Path with CalibrationHandler") {
         file.exceptions(std::ifstream::failbit | std::ifstream::badbit);
         const char c1 = file.get();
     }());
-    REQUIRE(0 == DELETEFILE(static_cast<NATIVETYPE>(daiFilename).c_str()));
+    DELETEFILE(static_cast<NATIVETYPE>(daiFilename).c_str());
 }
 
 TEST_CASE("dai::Path with DeviceBootloader") {
@@ -286,46 +295,46 @@ TEST_CASE("dai::Path with AssetManager, StereoDepth") {
     }());
 
     dai::Pipeline pipeline;
-    REQUIRE_NOTHROW(pipeline.setCameraTuningBlobPath(string4.c_str()));
+    CHECK_NOTHROW(pipeline.setCameraTuningBlobPath(string4.c_str()));
     pipeline.getAssetManager().remove("camTuning");
-    REQUIRE_NOTHROW(pipeline.setCameraTuningBlobPath(string4));
+    CHECK_NOTHROW(pipeline.setCameraTuningBlobPath(string4));
     pipeline.getAssetManager().remove("camTuning");
-    REQUIRE_NOTHROW(pipeline.setCameraTuningBlobPath(path4));
+    CHECK_NOTHROW(pipeline.setCameraTuningBlobPath(path4));
     pipeline.getAssetManager().remove("camTuning");
 
     auto depth = pipeline.create<dai::node::StereoDepth>();
-    REQUIRE_NOTHROW(depth->loadMeshFiles(string4.c_str(), string4.c_str()));
+    CHECK_NOTHROW(depth->loadMeshFiles(string4.c_str(), string4.c_str()));
     depth->getAssetManager().remove("meshLeft");
     depth->getAssetManager().remove("meshRight");
-    REQUIRE_NOTHROW(depth->loadMeshFiles(string4, string4));
+    CHECK_NOTHROW(depth->loadMeshFiles(string4, string4));
     depth->getAssetManager().remove("meshLeft");
     depth->getAssetManager().remove("meshRight");
-    REQUIRE_NOTHROW(depth->loadMeshFiles(path4, path4));
+    CHECK_NOTHROW(depth->loadMeshFiles(path4, path4));
     depth->getAssetManager().remove("meshLeft");
     depth->getAssetManager().remove("meshRight");
 
 #if defined(_WIN32) && defined(_MSC_VER)
     const std::wstring widePath4 = path4.native();
-    REQUIRE_NOTHROW(pipeline.setCameraTuningBlobPath(widePath4.c_str()));
+    CHECK_NOTHROW(pipeline.setCameraTuningBlobPath(widePath4.c_str()));
     pipeline.getAssetManager().remove("camTuning");
-    REQUIRE_NOTHROW(pipeline.setCameraTuningBlobPath(widePath4));
+    CHECK_NOTHROW(pipeline.setCameraTuningBlobPath(widePath4));
     pipeline.getAssetManager().remove("camTuning");
 
-    REQUIRE_NOTHROW(depth->loadMeshFiles(widePath4.c_str(), widePath4.c_str()));
+    CHECK_NOTHROW(depth->loadMeshFiles(widePath4.c_str(), widePath4.c_str()));
     depth->getAssetManager().remove("meshLeft");
     depth->getAssetManager().remove("meshRight");
-    REQUIRE_NOTHROW(depth->loadMeshFiles(widePath4, widePath4));
+    CHECK_NOTHROW(depth->loadMeshFiles(widePath4, widePath4));
     depth->getAssetManager().remove("meshLeft");
     depth->getAssetManager().remove("meshRight");
 #endif
 
 #if defined(__cpp_lib_filesystem)
     auto stdPath4 = std::filesystem::u8path(string4);
-    REQUIRE_NOTHROW(pipeline.setCameraTuningBlobPath(stdPath4));
-    REQUIRE_NOTHROW(depth->loadMeshFiles(stdPath4, stdPath4));
+    CHECK_NOTHROW(pipeline.setCameraTuningBlobPath(stdPath4));
+    CHECK_NOTHROW(depth->loadMeshFiles(stdPath4, stdPath4));
 #endif
 
-    REQUIRE(0 == DELETEFILE(static_cast<NATIVETYPE>(path4).c_str()));
+    DELETEFILE(static_cast<NATIVETYPE>(path4).c_str());
 }
 
 TEST_CASE("dai::Path with Script") {
@@ -342,36 +351,36 @@ TEST_CASE("dai::Path with Script") {
     dai::Pipeline pipeline;
     auto script = pipeline.create<dai::node::Script>();
 
-    REQUIRE_NOTHROW(script->setScriptPath(path4));
-    REQUIRE(script->getScriptPath().u8string() == string4);
-    REQUIRE(script->getScriptName() == string4);
+    CHECK_NOTHROW(script->setScriptPath(path4));
+    CHECK(script->getScriptPath().u8string() == string4);
+    CHECK(script->getScriptName() == string4);
     script->getAssetManager().remove("__script");
 
-    REQUIRE_NOTHROW(script->setScript("<s>nothing</s>"));
-    REQUIRE(script->getScriptPath().empty());
-    REQUIRE(script->getScriptName() == "<script>");
+    CHECK_NOTHROW(script->setScript("<s>nothing</s>"));
+    CHECK(script->getScriptPath().empty());
+    CHECK(script->getScriptName() == "<script>");
     script->getAssetManager().remove("__script");
 
-    REQUIRE_NOTHROW(script->setScript("<s>nothing</s>", "myname"));
-    REQUIRE(script->getScriptPath().empty());
-    REQUIRE(script->getScriptName() == "myname");
+    CHECK_NOTHROW(script->setScript("<s>nothing</s>", "myname"));
+    CHECK(script->getScriptPath().empty());
+    CHECK(script->getScriptName() == "myname");
     script->getAssetManager().remove("__script");
 
 #if defined(_WIN32) && defined(_MSC_VER)
     const std::wstring widePath4 = path4.native();
-    REQUIRE_NOTHROW(script->setScriptPath(widePath4));
-    REQUIRE(script->getScriptPath().native() == widePath4);
-    REQUIRE(script->getScriptName() == string4);
+    CHECK_NOTHROW(script->setScriptPath(widePath4));
+    CHECK(script->getScriptPath().native() == widePath4);
+    CHECK(script->getScriptName() == string4);
     script->getAssetManager().remove("__script");
 #endif
 
 #if defined(__cpp_lib_filesystem)
     auto stdPath4 = std::filesystem::u8path(string4);
-    REQUIRE_NOTHROW(script->setScriptPath(stdPath4));
-    REQUIRE(script->getScriptPath().u8string() == stdPath4.u8string());
-    REQUIRE(script->getScriptName() == string4);
+    CHECK_NOTHROW(script->setScriptPath(stdPath4));
+    CHECK(script->getScriptPath().u8string() == stdPath4.u8string());
+    CHECK(script->getScriptName() == string4);
     script->getAssetManager().remove("__script");
 #endif
 
-    REQUIRE(0 == DELETEFILE(static_cast<NATIVETYPE>(path4).c_str()));
+    DELETEFILE(static_cast<NATIVETYPE>(path4).c_str());
 }
