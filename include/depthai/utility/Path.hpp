@@ -66,6 +66,22 @@ class Path {
      * @param source std::filesystem::path; conversion managed by std::filesystem::path
      */
     Path(const std::filesystem::path& source) : _nativePath(source) {}
+
+    #if defined(__cpp_lib_char8_t)
+    /**
+     * @brief Construct Path object from source.
+     *
+     * @param source std::u8string; conversion managed by std::filesystem::path
+     */
+    Path(const std::u8string& source) : Path(std::filesystem::path(source)) {}
+
+    /**
+     * @brief Construct Path object from source.
+     *
+     * @param source pointer to null-terminated char8_t character sequence; conversion managed by std::filesystem::path
+     */
+    Path(const char8_t* source) : Path(std::filesystem::path(source)) {}
+    #endif
 #endif
 
 #if defined(_WIN32) && defined(_MSC_VER)
@@ -97,6 +113,18 @@ class Path {
      */
     std::string string() const;
 
+    #if defined(__cpp_lib_char8_t)
+    /**
+     * @brief Get path in utf-8.
+     *
+     *        Will throw exception if there is no valid conversion.
+     *
+     * @return std::u8string in utf-8
+     */
+    std::u8string u8string() const {
+        return std::filesystem::path(_nativePath).u8string();
+    }
+    #else
     /**
      * @brief Get path in utf-8.
      *
@@ -105,24 +133,36 @@ class Path {
      * @return std::string in utf-8
      */
     std::string u8string() const;
+    #endif
 #else
     /**
-     * @brief Get path in native-encoding string.
+     * @brief Get path in native-encoding string; no conversion.
      *
      * @return std::string
      */
-    std::string string() const noexcept {
+    std::string string() const {
         return _nativePath;
     }
 
+    #if defined(__cpp_lib_char8_t)
     /**
      * @brief Get path in utf-8.
      *
-     * @return std::string
+     * @return std::u8string in utf-8
      */
-    std::string u8string() const noexcept {
+    std::u8string u8string() const {
+        return std::filesystem::path(_nativePath).u8string();
+    }
+    #else
+    /**
+     * @brief Get path in utf-8.
+     *
+     * @return std::string in utf-8
+     */
+    std::string u8string() const {
         return _nativePath;
     }
+    #endif
 #endif
 
     /**

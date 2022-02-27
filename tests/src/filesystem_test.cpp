@@ -3,10 +3,11 @@
 
 // Include depthai library
 #include <cstdio>
-#include <depthai/depthai.hpp>
 #if(__cplusplus >= 201703L) || (_MSVC_LANG >= 201703L)
     #include <filesystem>
 #endif
+#include <algorithm>
+#include <depthai/depthai.hpp>
 #include <string>
 
 #if defined(_WIN32) && defined(_MSC_VER)
@@ -22,6 +23,14 @@
     #define NATIVELENGTH(x) u8length(static_cast<std::string>(x).c_str())
 #endif
 
+#if defined(__cpp_lib_char8_t)
+    #define U8CHAR char8_t
+    #define U8STRING std::u8string
+#else
+    #define U8CHAR char
+    #define U8STRING std::string
+#endif
+
 #define PATH1 "C:\\dir1\\file1.txt"
 #define PATH2 "file2.txt"
 #define PATH3 "/dir3/dir33/file3.txt"
@@ -29,13 +38,22 @@
 #define PATH5 "asdf.nothing"
 #define FILETEXT "This is a test\n"
 #if defined(_WIN32) && defined(_MSC_VER)
+    #define LPATH4 L"\u00e4\u00eb\u00ef\u00f6\u00fc\u00e1\u00e9\u00ed\u00f3\u00fa\u00df\u00c6\u002e\u010c\u011a\u0141"
     #define LPATH5 L"asdf.nothing"
 #endif
 
-int u8length(const char* str) noexcept {
+template <typename T>
+int u8length(const T* str) noexcept {
     int count = 0;
     for(; *str != 0; ++str) count += ((*str & 0xc0) != 0x80);
     return count;
+}
+
+template <typename U, typename V>
+bool equalStrings(const U a, const V b) {
+    return std::equal(a.cbegin(), a.cend(), b.cbegin(), b.cend(), [](const typename U::value_type& first, const typename V::value_type& second) {
+        return *reinterpret_cast<const typename U::value_type*>(&first) == *reinterpret_cast<const typename U::value_type*>(&second);
+    });
 }
 
 TEST_CASE("dai::Path utf-8 and native char set handling") {
@@ -55,11 +73,12 @@ TEST_CASE("dai::Path utf-8 and native char set handling") {
     const NATIVETYPE string3(path3);
     REQUIRE(string3 == MAKENATIVE(PATH3));
 
-    char tmp_name4[L_tmpnam];
-    REQUIRE(std::tmpnam(tmp_name4) != nullptr);
-    std::string string4(tmp_name4);
+    U8CHAR tmp_name4[L_tmpnam];
+    REQUIRE(std::tmpnam(reinterpret_cast<char*>(&tmp_name4[0])) != nullptr);
+    U8STRING string4(tmp_name4);
     string4 += PATH4;
     const dai::Path path4(string4);
+    const dai::Path path4compare(PATH4);
     REQUIRE(u8length(string4.c_str()) == NATIVELENGTH(path4));
 
     REQUIRE_NOTHROW([&]() {
@@ -86,6 +105,10 @@ TEST_CASE("dai::Path utf-8 and native char set handling") {
     REQUIRE(getBlob(move2ndTry));
     REQUIRE(getBlob(std::move(move2ndTry)));
 
+    const dai::Path path4wide(LPATH4);
+    REQUIRE(equalStrings(path4compare.native(), path4wide.native()));
+    REQUIRE(equalStrings(path4compare.u8string(), path4wide.u8string()));
+
     REQUIRE_THROWS_AS(path4.string(), std::range_error);
 #else
     REQUIRE_NOTHROW(path4.string());
@@ -103,7 +126,11 @@ TEST_CASE("dai::Path utf-8 and native char set handling") {
     const std::filesystem::path fspath1(PATH1);
     const std::filesystem::path fspath2(PATH2);
     const std::filesystem::path fspath3(PATH3);
-    const std::filesystem::path fspath4(PATH4);
+    #if defined(__cpp_lib_char8_t)
+    const auto fspath4 = std::filesystem::path(PATH4);
+    #else
+    const auto fspath4 = std::filesystem::u8path(PATH4);
+    #endif
     REQUIRE(getBlob(fspath1));
     REQUIRE(getBlob(fspath2));
     REQUIRE(getBlob(fspath3));
@@ -112,9 +139,9 @@ TEST_CASE("dai::Path utf-8 and native char set handling") {
 }
 
 TEST_CASE("dai::Path with NN blobs") {
-    char osTmpPathname[L_tmpnam];
-    REQUIRE(std::tmpnam(osTmpPathname) != nullptr);
-    std::string strPath(osTmpPathname);
+    U8CHAR osTmpPathname[L_tmpnam];
+    REQUIRE(std::tmpnam(reinterpret_cast<char*>(&osTmpPathname[0])) != nullptr);
+    U8STRING strPath(osTmpPathname);
     strPath += PATH4;
     const dai::Path daiPath(strPath);
 
@@ -187,9 +214,9 @@ TEST_CASE("dai::Path with Device") {
 }
 
 TEST_CASE("dai::Path with CalibrationHandler") {
-    char tmpFilename[L_tmpnam];
-    REQUIRE(std::tmpnam(tmpFilename) != nullptr);
-    std::string strFilename(tmpFilename);
+    U8CHAR tmpFilename[L_tmpnam];
+    REQUIRE(std::tmpnam(reinterpret_cast<char*>(&tmpFilename[0])) != nullptr);
+    U8STRING strFilename(tmpFilename);
     strFilename += PATH4;
     dai::Path daiFilename(strFilename);
 
@@ -208,16 +235,13 @@ TEST_CASE("dai::Path with CalibrationHandler") {
 }
 
 TEST_CASE("dai::Path with DeviceBootloader") {
-    const char badfile[] = PATH4;
-    const std::string strBadfile(&badfile[0]);
+    const U8CHAR badfile[] = PATH4;
+    const U8STRING strBadfile(&badfile[0]);
     const dai::Path diaBadfile(PATH4);
 #if defined(_WIN32) && defined(_MSC_VER)
     const wchar_t wideBadfile[] = LPATH5;
     const std::wstring wstrBadfile(LPATH5);
     const dai::Path diaBadWide(LPATH5);
-#endif
-#if defined(__cpp_lib_filesystem)
-    auto stdBadpath = std::filesystem::u8path(PATH4);
 #endif
 
     bool found = false;
@@ -271,6 +295,11 @@ TEST_CASE("dai::Path with DeviceBootloader") {
             Catch::Matchers::Contains("doesn't exist"));
 #endif
 #if defined(__cpp_lib_filesystem)
+    #if defined(__cpp_lib_char8_t)
+        const auto stdBadpath = std::filesystem::path(PATH4);
+    #else
+        const auto stdBadpath = std::filesystem::u8path(PATH4);
+    #endif
         REQUIRE_THROWS_WITH(
             [&]() {
                 dai::DeviceBootloader bl(deviceInfo, stdBadpath);
@@ -284,9 +313,9 @@ TEST_CASE("dai::Path with DeviceBootloader") {
 }
 
 TEST_CASE("dai::Path with AssetManager, StereoDepth") {
-    char tmp_name4[L_tmpnam];
-    REQUIRE(std::tmpnam(tmp_name4) != nullptr);
-    std::string string4(tmp_name4);
+    U8CHAR tmp_name4[L_tmpnam];
+    REQUIRE(std::tmpnam(reinterpret_cast<char*>(&tmp_name4[0])) != nullptr);
+    U8STRING string4(tmp_name4);
     string4 += PATH4;
     const dai::Path path4(string4);
     REQUIRE_NOTHROW([&]() {
@@ -329,7 +358,11 @@ TEST_CASE("dai::Path with AssetManager, StereoDepth") {
 #endif
 
 #if defined(__cpp_lib_filesystem)
-    auto stdPath4 = std::filesystem::u8path(string4);
+    #if defined(__cpp_lib_char8_t)
+    const auto stdPath4 = std::filesystem::path(string4);
+    #else
+    const auto stdPath4 = std::filesystem::u8path(string4);
+    #endif
     CHECK_NOTHROW(pipeline.setCameraTuningBlobPath(stdPath4));
     CHECK_NOTHROW(depth->loadMeshFiles(stdPath4, stdPath4));
 #endif
@@ -338,9 +371,9 @@ TEST_CASE("dai::Path with AssetManager, StereoDepth") {
 }
 
 TEST_CASE("dai::Path with Script") {
-    char tmp_name4[L_tmpnam];
-    REQUIRE(std::tmpnam(tmp_name4) != nullptr);
-    std::string string4(tmp_name4);
+    U8CHAR tmp_name4[L_tmpnam];
+    REQUIRE(std::tmpnam(reinterpret_cast<char*>(&tmp_name4[0])) != nullptr);
+    U8STRING string4(tmp_name4);
     string4 += PATH4;
     const dai::Path path4(string4);
     REQUIRE_NOTHROW([&]() {
@@ -353,7 +386,7 @@ TEST_CASE("dai::Path with Script") {
 
     CHECK_NOTHROW(script->setScriptPath(path4));
     CHECK(script->getScriptPath().u8string() == string4);
-    CHECK(script->getScriptName() == string4);
+    CHECK(equalStrings(script->getScriptName(), string4));
     script->getAssetManager().remove("__script");
 
     CHECK_NOTHROW(script->setScript("<s>nothing</s>"));
@@ -370,15 +403,19 @@ TEST_CASE("dai::Path with Script") {
     const std::wstring widePath4 = path4.native();
     CHECK_NOTHROW(script->setScriptPath(widePath4));
     CHECK(script->getScriptPath().native() == widePath4);
-    CHECK(script->getScriptName() == string4);
+    CHECK(equalStrings(script->getScriptName(), string4));
     script->getAssetManager().remove("__script");
 #endif
 
 #if defined(__cpp_lib_filesystem)
-    auto stdPath4 = std::filesystem::u8path(string4);
+    #if defined(__cpp_lib_char8_t)
+    const auto stdPath4 = std::filesystem::path(string4);
+    #else
+    const auto stdPath4 = std::filesystem::u8path(string4);
+    #endif
     CHECK_NOTHROW(script->setScriptPath(stdPath4));
     CHECK(script->getScriptPath().u8string() == stdPath4.u8string());
-    CHECK(script->getScriptName() == string4);
+    CHECK(equalStrings(script->getScriptName(), string4));
     script->getAssetManager().remove("__script");
 #endif
 
