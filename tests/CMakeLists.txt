@@ -8,7 +8,19 @@ find_package(Catch2 CONFIG REQUIRED)
 
 # Function for adding new tests
 # Creates separate tests for USB and PoE devices
+include(CMakeParseArguments)
 function(dai_add_test test_name test_src)
+    # parse arguments
+    cmake_parse_arguments(DAT "" "CXX_STANDARD" "" ${ARGN})
+
+    # check compiler for C++ standard
+    if(NOT DAT_CXX_STANDARD)
+        set(DAT_CXX_STANDARD 14)
+    endif()
+    if(NOT COMPILER_SUPPORTS_CXX${DAT_CXX_STANDARD})
+        message(STATUS "Skipping test ${test_name} with c++${DAT_CXX_STANDARD}; no compiler support")
+        return()
+    endif()
 
     # Create test executable
     add_executable(${test_name} ${test_src})
@@ -27,23 +39,48 @@ function(dai_add_test test_name test_src)
         add_sanitizers(${test_name})
     endif()
 
+    # Set compiler c++ standard, and disables extensions (g++)
+    set_property(TARGET ${test_name} PROPERTY CXX_STANDARD ${DAT_CXX_STANDARD})
+    set_property(TARGET ${test_name} PROPERTY CXX_STANDARD_REQUIRED ON)
+    set_property(TARGET ${test_name} PROPERTY CXX_EXTENSIONS OFF)
+
+    # Add additional feature level property
+    if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
+        target_compile_features(${test_name} PRIVATE cxx_generic_lambdas)
+    else()
+        target_compile_features(${test_name} PRIVATE cxx_std_${DAT_CXX_STANDARD})
+    endif()
+
     # Add to list of tests
     add_test(${test_name} ${test_name})
     # Add ubsan halt on error
     set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=usb" LABELS usb)
 
     # Check if MSVC and add a conforming preprocessor test (serialization macros)
-    if (MSVC)
+    if(MSVC)
         # Create test executable with MSVC conforming preprocessor
         add_executable(${test_name}_conforming ${test_src})
+        add_default_flags(${test_name}_conforming LEAN)
 
         # Link to core and Catch2 testing framework
         target_link_libraries(${test_name}_conforming PRIVATE depthai-core Catch2::Catch2)
 
-        if(MSVC_VERSION LESS 1925)
-            target_compile_options(${test_name}_conforming INTERFACE "/experimental:preprocessor")
+        # Set compiler c++ standard, and disables extensions (g++)
+        set_property(TARGET ${test_name}_conforming PROPERTY CXX_STANDARD ${DAT_CXX_STANDARD})
+        set_property(TARGET ${test_name}_conforming PROPERTY CXX_STANDARD_REQUIRED ON)
+        set_property(TARGET ${test_name}_conforming PROPERTY CXX_EXTENSIONS OFF)
+
+        # Add additional feature level property
+        if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
+            target_compile_features(${test_name}_conforming PRIVATE cxx_generic_lambdas)
         else()
-            target_compile_options(${test_name}_conforming INTERFACE "/Zc:preprocessor")
+            target_compile_features(${test_name}_conforming PRIVATE cxx_std_${DAT_CXX_STANDARD})
+        endif()
+
+        if(MSVC_VERSION LESS 1925)
+            target_compile_options(${test_name}_conforming PRIVATE "/experimental:preprocessor")
+        else()
+            target_compile_options(${test_name}_conforming PRIVATE "/Zc:preprocessor")
         endif()
 
         # Add to list of tests
