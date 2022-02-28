@@ -5,6 +5,7 @@
 #include <chrono>
 #include <cstdint>
 #include <list>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -20,18 +21,31 @@
 
 namespace dai {
 
+class StreamPacketDesc : public streamPacketDesc_t {
+   public:
+    StreamPacketDesc() noexcept : streamPacketDesc_t{nullptr, 0} {};
+    StreamPacketDesc(const StreamPacketDesc&) = delete;
+    StreamPacketDesc(StreamPacketDesc&& other) noexcept;
+    StreamPacketDesc& operator=(const StreamPacketDesc&) = delete;
+    StreamPacketDesc& operator=(StreamPacketDesc&& other) noexcept;
+    ~StreamPacketDesc() noexcept;
+};
+
 class XLinkStream {
     // static
     constexpr static int STREAM_OPEN_RETRIES = 5;
     constexpr static std::chrono::milliseconds WAIT_FOR_STREAM_RETRY{50};
 
+    std::shared_ptr<XLinkConnection> connection;
     std::string streamName;
     streamId_t streamId{INVALID_STREAM_ID};
 
    public:
-    XLinkStream(const XLinkConnection& conn, const std::string& name, std::size_t maxWriteSize);
+    XLinkStream(const std::shared_ptr<XLinkConnection> conn, const std::string& name, std::size_t maxWriteSize);
     XLinkStream(const XLinkStream&) = delete;
     XLinkStream(XLinkStream&& stream);
+    XLinkStream& operator=(const XLinkStream&) = delete;
+    XLinkStream& operator=(XLinkStream&& stream);
     ~XLinkStream();
 
     // Blocking
@@ -43,18 +57,22 @@ class XLinkStream {
     // split write helper
     void writeSplit(const void* data, std::size_t size, std::size_t split);
     void writeSplit(const std::vector<uint8_t>& data, std::size_t split);
-    // USE ONLY WHEN COPYING DATA AT LATER STAGES
-    streamPacketDesc_t* readRaw();
+    StreamPacketDesc readMove();
 
     // Timeout
     bool write(const void* data, std::size_t size, std::chrono::milliseconds timeout);
     bool write(const std::uint8_t* data, std::size_t size, std::chrono::milliseconds timeout);
     bool write(const std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout);
     bool read(std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout);
-    bool readRaw(streamPacketDesc_t*& pPacket, std::chrono::milliseconds timeout);
+    bool readMove(StreamPacketDesc& packet, const std::chrono::milliseconds timeout);
+    // TODO optional<StreamPacketDesc> readMove(timeout) -or- tuple<bool, StreamPacketDesc> readMove(timeout)
 
-    // USE ONLY WHEN COPYING DATA AT LATER STAGES
-    void readRawRelease();
+    // deprecated use readMove() instead; readRaw leads to memory violations and/or memory leaks
+    [[deprecated("use readMove()")]] streamPacketDesc_t* readRaw();
+    // deprecated use readMove(packet, timeout) instead; readRaw leads to memory violations and/or memory leaks
+    [[deprecated("use readMove(packet, timeout)")]] bool readRaw(streamPacketDesc_t*& pPacket, std::chrono::milliseconds timeout);
+    // deprecated; unsafe leads to memory violations and/or memory leaks
+    [[deprecated]] void readRawRelease();
 
     streamId_t getStreamId() const;
 };

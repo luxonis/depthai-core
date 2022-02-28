@@ -32,6 +32,11 @@ StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
     setDefaultProfilePreset(presetMode);
 }
 
+StereoDepth::Properties& StereoDepth::getProperties() {
+    properties.initialConfig = *rawConfig;
+    return properties;
+}
+
 void StereoDepth::loadCalibrationData(const std::vector<std::uint8_t>& data) {
     (void)data;
     spdlog::warn("{} is deprecated. This function call is replaced by Pipeline::setCalibrationData under pipeline. ", __func__);
@@ -166,16 +171,22 @@ void StereoDepth::setPostProcessingHardwareResources(int numShaves, int numMemor
     properties.numPostProcessingMemorySlices = numMemorySlices;
 }
 
+void StereoDepth::setFocalLengthFromCalibration(bool focalLengthFromCalibration) {
+    properties.focalLengthFromCalibration = focalLengthFromCalibration;
+}
+
 void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
     presetMode = mode;
     switch(presetMode) {
         case PresetMode::HIGH_ACCURACY: {
             initialConfig.setConfidenceThreshold(200);
-            initialConfig.setLeftRightCheck(5);
+            initialConfig.setLeftRightCheck(true);
+            initialConfig.setLeftRightCheckThreshold(5);
         } break;
         case PresetMode::HIGH_DENSITY: {
             initialConfig.setConfidenceThreshold(245);
-            initialConfig.setLeftRightCheck(10);
+            initialConfig.setLeftRightCheck(true);
+            initialConfig.setLeftRightCheckThreshold(10);
         } break;
     }
 }
