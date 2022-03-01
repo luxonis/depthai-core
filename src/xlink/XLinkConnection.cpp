@@ -103,7 +103,7 @@ constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT;
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_CONNECT_TIMEOUT;
 constexpr std::chrono::milliseconds XLinkConnection::POLLING_DELAY_TIME;
 
-std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState_t state) {
+std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState_t state, bool skipInvalidDevices) {
     initialize();
 
     std::vector<DeviceInfo> devices;
@@ -122,6 +122,21 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
 
     for(unsigned i = 0; i < numdev; i++) {
         DeviceInfo info(deviceDescAll.at(i));
+
+        if(skipInvalidDevices) {
+            if(info.status == X_LINK_SUCCESS) {
+                // device is okay
+            } else if(info.status == X_LINK_INSUFFICIENT_PERMISSIONS) {
+                spdlog::warn("Insufficient permissions to communicate with {} device having name \"{}\". Make sure udev rules are set",
+                             XLinkDeviceStateToStr(info.state),
+                             info.name);
+                continue;
+            } else {
+                spdlog::warn("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(info.state), info.name);
+                continue;
+            }
+        }
+
         bool allowedId = allowedDeviceIds.find(info.getMxId()) != std::string::npos || allowedDeviceIds.empty();
         if(allowedId) {
             devices.push_back(info);
@@ -131,26 +146,39 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
     return devices;
 }
 
-std::tuple<bool, DeviceInfo> XLinkConnection::getFirstDevice(XLinkDeviceState_t state) {
+std::tuple<bool, DeviceInfo> XLinkConnection::getFirstDevice(XLinkDeviceState_t state, bool skipInvalidDevice) {
     initialize();
 
-    deviceDesc_t devReq = {};
+    DeviceInfo devReq = {};
     devReq.protocol = X_LINK_ANY_PROTOCOL;
     devReq.platform = X_LINK_ANY_PLATFORM;
-    devReq.name[0] = 0;
-    devReq.mxid[0] = 0;
+    devReq.name = "";
+    devReq.mxid = "";
     devReq.state = state;
 
-    deviceDesc_t dev = {};
-    auto res = XLinkFindFirstSuitableDevice(devReq, &dev);
+    deviceDesc_t desc = {};
+    auto res = XLinkFindFirstSuitableDevice(devReq.getXLinkDeviceDesc(), &desc);
     if(res == X_LINK_SUCCESS) {
-        DeviceInfo info(dev);
+        if(skipInvalidDevice) {
+            if(desc.status == X_LINK_SUCCESS) {
+                // device is okay
+            } else if(desc.status == X_LINK_INSUFFICIENT_PERMISSIONS) {
+                spdlog::warn("Insufficient permissions to communicate with {} device having name \"{}\". Make sure udev rules are set",
+                             XLinkDeviceStateToStr(desc.state),
+                             desc.name);
+                return {false, {}};
+            } else {
+                spdlog::warn("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(desc.state), desc.name);
+                return {false, {}};
+            }
+        }
+        DeviceInfo info(desc);
         return {true, info};
     }
     return {false, {}};
 }
 
-std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceByMxId(std::string mxId, XLinkDeviceState_t state) {
+std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceByMxId(std::string mxId, XLinkDeviceState_t state, bool skipInvalidDevices) {
     initialize();
 
     DeviceInfo dev;
@@ -160,6 +188,19 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceByMxId(std::string mxId, 
     deviceDesc_t desc = {};
     auto res = XLinkFindFirstSuitableDevice(dev.getXLinkDeviceDesc(), &desc);
     if(res == X_LINK_SUCCESS) {
+        if(skipInvalidDevices) {
+            if(desc.status == X_LINK_SUCCESS) {
+                // device is okay
+            } else if(desc.status == X_LINK_INSUFFICIENT_PERMISSIONS) {
+                spdlog::warn("Insufficient permissions to communicate with {} device having name \"{}\". Make sure udev rules are set",
+                             XLinkDeviceStateToStr(desc.state),
+                             desc.name);
+                return {false, {}};
+            } else {
+                spdlog::warn("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(desc.state), desc.name);
+                return {false, {}};
+            }
+        }
         return {true, {desc}};
     }
     return {false, {}};
@@ -288,7 +329,7 @@ void XLinkConnection::close() {
             do {
                 DeviceInfo tmp;
                 for(const auto& state : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER}) {
-                    std::tie(found, tmp) = XLinkConnection::getDeviceByMxId(deviceInfo.getMxId(), state);
+                    std::tie(found, tmp) = XLinkConnection::getDeviceByMxId(deviceInfo.getMxId(), state, false);
                     if(found) break;
                     std::this_thread::sleep_for(POLLING_DELAY_TIME);
                 }

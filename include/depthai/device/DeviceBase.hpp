@@ -88,7 +88,7 @@ class DeviceBase {
      * Gets first available device. Device can be either in XLINK_UNBOOTED or XLINK_BOOTLOADER state
      * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
-    static std::tuple<bool, DeviceInfo> getFirstAvailableDevice();
+    static std::tuple<bool, DeviceInfo> getFirstAvailableDevice(bool skipInvalidDevice = true);
 
     /**
      * Finds a device by MX ID. Example: 14442C10D13EABCE00
@@ -370,6 +370,37 @@ class DeviceBase {
      * @returns Standard output printing severity
      */
     LogLevel getLogOutputLevel();
+
+    /**
+     * Sets the brightness of the IR Laser Dot Projector. Limits: up to 765mA at 30% duty cycle, up to 1200mA at 6% duty cycle.
+     * The duty cycle is controlled by `left` camera STROBE, aligned to start of exposure.
+     * The emitter is turned off by default
+     *
+     * @param mA Current in mA that will determine brightness, 0 or negative to turn off
+     * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W-DEV
+     * @returns True on success, false if not found or other failure
+     */
+    bool setIrLaserDotProjectorBrightness(float mA, int mask = -1);
+
+    /**
+     * Sets the brightness of the IR Flood Light. Limits: up to 1500mA at 30% duty cycle.
+     * The duty cycle is controlled by the `left` camera STROBE, aligned to start of exposure.
+     * If the dot projector is also enabled, its lower duty cycle limits take precedence.
+     * The emitter is turned off by default
+     *
+     * @param mA Current in mA that will determine brightness, 0 or negative to turn off
+     * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W-DEV
+     * @returns True on success, false if not found or other failure
+     */
+    bool setIrFloodLightBrightness(float mA, int mask = -1);
+
+    /**
+     * Retrieves detected IR laser/LED drivers.
+     *
+     * @returns Vector of tuples containing: driver name, I2C bus, I2C address.
+     * For OAK-D-Pro it should be `[{"LM3644", 2, 0x63}]`
+     */
+    std::vector<std::tuple<std::string, int, int>> getIrDrivers();
 
     /**
      * Add a callback for device logging. The callback will be called from a separate thread with the LogMessage being passed.

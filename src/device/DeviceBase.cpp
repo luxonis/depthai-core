@@ -120,8 +120,14 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::dura
         auto devices = XLinkConnection::getAllConnectedDevices();
         for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED}) {
             for(const auto& device : devices) {
-                if(device.state == searchState) {
-                    return {true, device};
+                if(device.status == X_LINK_SUCCESS) {
+                    if(device.state == searchState) {
+                        return {true, device};
+                    }
+                } else if(device.status == X_LINK_INSUFFICIENT_PERMISSIONS) {
+                    spdlog::warn("Insufficient permissions to communicate with {} device having name \"{}\". Make sure udev rules are set",
+                                 XLinkDeviceStateToStr(device.state),
+                                 device.name);
                 }
             }
         }
@@ -148,9 +154,9 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice() {
 // static api
 
 // First tries to find UNBOOTED device, then BOOTLOADER device
-std::tuple<bool, DeviceInfo> DeviceBase::getFirstAvailableDevice() {
+std::tuple<bool, DeviceInfo> DeviceBase::getFirstAvailableDevice(bool skipInvalidDevice) {
     // Get all connected devices
-    auto devices = XLinkConnection::getAllConnectedDevices();
+    auto devices = XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, skipInvalidDevice);
     // Search order - first unbooted, then bootloader and last flash booted
     for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED}) {
         for(const auto& device : devices) {
@@ -604,23 +610,30 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
 
     // prepare watchdog thread, which will keep device alive
     // separate stream so it doesn't miss between potentially long RPC calls
-    watchdogThread = std::thread([this, watchdogTimeout]() {
-        try {
-            XLinkStream stream(connection, device::XLINK_CHANNEL_WATCHDOG, 128);
-            std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
-            while(watchdogRunning) {
-                stream.write(watchdogKeepalive);
-                // Ping with a period half of that of the watchdog timeout
-                std::this_thread::sleep_for(watchdogTimeout / 2);
+    // Only create the thread if watchdog is enabled
+    if(watchdogTimeout > std::chrono::milliseconds(0)) {
+        watchdogThread = std::thread([this, watchdogTimeout]() {
+            try {
+                XLinkStream stream(connection, device::XLINK_CHANNEL_WATCHDOG, 128);
+                std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
+                while(watchdogRunning) {
+                    stream.write(watchdogKeepalive);
+                    // Ping with a period half of that of the watchdog timeout
+                    std::this_thread::sleep_for(watchdogTimeout / 2);
+                }
+            } catch(const std::exception& ex) {
+                // ignore
+                spdlog::debug("Watchdog thread exception caught: {}", ex.what());
             }
-        } catch(const std::exception& ex) {
-            // ignore
-            spdlog::debug("Watchdog thread exception caught: {}", ex.what());
-        }
 
-        // Watchdog ended. Useful for checking disconnects
-        watchdogRunning = false;
-    });
+            // Watchdog ended. Useful for checking disconnects
+            watchdogRunning = false;
+        });
+    } else {
+        // Still set watchdogRunning explictitly
+        // as it indicates device not being closed
+        watchdogRunning = true;
+    }
 
     // prepare timesync thread, which will keep device synchronized
     timesyncThread = std::thread([this]() {
@@ -828,6 +841,24 @@ LogLevel DeviceBase::getLogOutputLevel() {
     checkClosed();
 
     return pimpl->getLogLevel();
+}
+
+bool DeviceBase::setIrLaserDotProjectorBrightness(float mA, int mask) {
+    checkClosed();
+
+    return pimpl->rpcClient->call("setIrLaserDotProjectorBrightness", mA, mask);
+}
+
+bool DeviceBase::setIrFloodLightBrightness(float mA, int mask) {
+    checkClosed();
+
+    return pimpl->rpcClient->call("setIrFloodLightBrightness", mA, mask);
+}
+
+std::vector<std::tuple<std::string, int, int>> DeviceBase::getIrDrivers() {
+    checkClosed();
+
+    return pimpl->rpcClient->call("getIrDrivers");
 }
 
 int DeviceBase::addLogCallback(std::function<void(LogMessage)> callback) {
