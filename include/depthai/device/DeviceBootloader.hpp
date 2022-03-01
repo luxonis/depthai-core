@@ -225,6 +225,12 @@ class DeviceBootloader {
     std::tuple<bool, std::string> flashDepthaiApplicationPackage(std::vector<uint8_t> package);
 
     /**
+     * Clears flashed application on the device, by removing SBR boot structure
+     * Doesnt remove fast boot header capability to still boot the application
+     */
+    std::tuple<bool, std::string> flashClear();
+
+    /**
      * Flashes bootloader to the current board
      * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
      * @param path Optional parameter to custom bootloader to flash
@@ -241,13 +247,64 @@ class DeviceBootloader {
     std::tuple<bool, std::string> flashBootloader(Memory memory, Type type, std::function<void(float)> progressCallback, std::string path = "");
 
     /**
+     * Flash boot header which boots same as equivalent GPIO mode would
+     * @param gpioMode GPIO mode equivalent
+     */
+    std::tuple<bool, std::string> flashGpioModeBootHeader(Memory memory, int gpioMode);
+
+    /**
+     * Flash USB recovery boot header. Switches to USB ROM Bootloader
+     * @param memory Which memory to flash the header to
+     */
+    std::tuple<bool, std::string> flashUsbRecoveryBootHeader(Memory memory);
+
+    /**
+     * Flash optimized boot header
+     * @param memory Which memory to flasht the header to
+     * @param offset Offset in memory to flash the header to. Defaults to offset of boot header
+     * @param location Target location the header should boot to. Default to location of bootloader
+     * @param dummyCycles SPI specific parameter
+     * @param frequency SPI specific parameter, frequency in MHz
+     * @return std::tuple<bool, std::string>
+     */
+    std::tuple<bool, std::string> flashBootHeader(Memory memory, int64_t offset = -1, int64_t location = -1, int32_t dummyCycles = -1, int32_t frequency = -1);
+
+    /**
+     * Flash fast boot header. Application must already be present in flash, or location must be specified manually.
+     * Note - Can soft brick your device if firmware location changes.
+     * @param memory Which memory to flash the header to
+     * @param offset Offset in memory to flash the header to. Defaults to offset of boot header
+     * @param location Target location the header should boot to. Default to location of bootloader
+     * @param dummyCycles SPI specific parameter
+     * @param frequency SPI specific parameter, frequency in MHz
+     */
+    std::tuple<bool, std::string> flashFastBootHeader(
+        Memory memory, int64_t offset = -1, int64_t location = -1, int32_t dummyCycles = -1, int32_t frequency = -1);
+
+    /**
      * Flash arbitrary data at custom offset in specified memory
      * @param memory Memory to flash
      * @param offset Offset at which to flash the given data in bytes
      * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
      * @param data Data to flash
      */
-    // std::tuple<bool, std::string> flashCustom(Memory memory, uint32_t offset, std::function<void(float)> progressCb, std::vector<uint8_t> data);
+    std::tuple<bool, std::string> flashCustom(Memory memory, size_t offset, const std::vector<uint8_t>& data, std::function<void(float)> progressCb = nullptr);
+    std::tuple<bool, std::string> flashCustom(Memory memory, size_t offset, const uint8_t* data, size_t size, std::function<void(float)> progressCb = nullptr);
+    std::tuple<bool, std::string> flashCustom(Memory memory, size_t offset, std::string filename, std::function<void(float)> progressCb = nullptr);
+
+    /**
+     * Reads arbitrary data at custom offset in specified memory
+     * @param memory Memory to read
+     * @param offset Offset at which to read the specified bytes
+     * @param size Number of bytes to read
+     * @param data Data to read to. Must be atleast 'size' number of bytes big
+     * @param progressCallback Callback that sends back a value between 0..1 which signifies current reading progress
+     */
+    std::tuple<bool, std::string> readCustom(
+        Memory memory, size_t offset, size_t size, std::vector<uint8_t>& data, std::function<void(float)> progressCb = nullptr);
+    std::tuple<bool, std::string> readCustom(Memory memory, size_t offset, size_t size, uint8_t* data, std::function<void(float)> progressCb = nullptr);
+    std::tuple<bool, std::string> readCustom(Memory memory, size_t offset, size_t size, std::string filename, std::function<void(float)> progressCb = nullptr);
+    std::tuple<bool, std::string, std::vector<uint8_t>> readCustom(Memory memory, size_t offset, size_t size, std::function<void(float)> progressCb = nullptr);
 
     /**
      * Reads configuration data from bootloader
@@ -356,6 +413,10 @@ class DeviceBootloader {
     template <typename T>
     bool receiveResponse(T& response);
     Version requestVersion();
+    std::tuple<bool, std::string> flashCustom(
+        Memory memory, size_t offset, const uint8_t* data, size_t size, std::string filename, std::function<void(float)> progressCb);
+    std::tuple<bool, std::string> readCustom(
+        Memory memory, size_t offset, size_t size, uint8_t* data, std::string filename, std::function<void(float)> progressCb);
 
     // private variables
     std::shared_ptr<XLinkConnection> connection;
