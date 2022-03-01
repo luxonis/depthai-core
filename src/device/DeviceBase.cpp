@@ -94,14 +94,14 @@ constexpr UsbSpeed DeviceBase::DEFAULT_USB_SPEED;
 
 std::chrono::milliseconds DeviceBase::getDefaultSearchTime() {
     std::chrono::milliseconds defaultSearchTime = DEFAULT_SEARCH_TIME;
-    auto searchTimeStr = utility::getEnv("DEPTHAI_SEARCH_TIME");
+    auto searchTimeStr = utility::getEnv("DEPTHAI_SEARCH_TIMEOUT");
 
     if(!searchTimeStr.empty()) {
         // Try parsing the string as a number
         try {
             defaultSearchTime = std::chrono::milliseconds{std::stoi(searchTimeStr)};
         } catch(const std::invalid_argument& e) {
-            spdlog::warn("DEPTHAI_SEARCH_TIME value invalid: {}", e.what());
+            spdlog::warn("DEPTHAI_SEARCH_TIMEOUT value invalid: {}", e.what());
         }
     }
 
@@ -832,6 +832,24 @@ LogLevel DeviceBase::getLogOutputLevel() {
     checkClosed();
 
     return pimpl->getLogLevel();
+}
+
+bool DeviceBase::setIrLaserDotProjectorBrightness(float mA, int mask) {
+    checkClosed();
+
+    return pimpl->rpcClient->call("setIrLaserDotProjectorBrightness", mA, mask);
+}
+
+bool DeviceBase::setIrFloodLightBrightness(float mA, int mask) {
+    checkClosed();
+
+    return pimpl->rpcClient->call("setIrFloodLightBrightness", mA, mask);
+}
+
+std::vector<std::tuple<std::string, int, int>> DeviceBase::getIrDrivers() {
+    checkClosed();
+
+    return pimpl->rpcClient->call("getIrDrivers");
 }
 
 int DeviceBase::addLogCallback(std::function<void(LogMessage)> callback) {
