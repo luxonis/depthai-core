@@ -33,17 +33,18 @@ function(dai_add_test test_name test_src)
     set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=usb" LABELS usb)
 
     # Check if MSVC and add a conforming preprocessor test (serialization macros)
-    if (MSVC)
+    if(MSVC)
         # Create test executable with MSVC conforming preprocessor
         add_executable(${test_name}_conforming ${test_src})
+        add_default_flags(${test_name}_conforming LEAN)
 
         # Link to core and Catch2 testing framework
         target_link_libraries(${test_name}_conforming PRIVATE depthai-core Catch2::Catch2)
 
         if(MSVC_VERSION LESS 1925)
-            target_compile_options(${test_name}_conforming INTERFACE "/experimental:preprocessor")
+            target_compile_options(${test_name}_conforming PRIVATE "/experimental:preprocessor")
         else()
-            target_compile_options(${test_name}_conforming INTERFACE "/Zc:preprocessor")
+            target_compile_options(${test_name}_conforming PRIVATE "/Zc:preprocessor")
         endif()
 
         # Add to list of tests
