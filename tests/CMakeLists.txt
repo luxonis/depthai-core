@@ -201,3 +201,6 @@ dai_add_test(serialization_test src/serialization_test.cpp)
 
 # Multiple devices test
 dai_add_test(multiple_devices_test src/multiple_devices_test.cpp)
+
+# Detailed hardware performance data collection
+dai_add_test(perf_hw_cputemp src/hardware_cputemp_perf.cpp CXX_STANDARD 17)
