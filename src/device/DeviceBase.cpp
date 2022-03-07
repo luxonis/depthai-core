@@ -969,7 +969,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
         pimpl->rpcClient->call("openAssetStorageStream", ASSET_STORAGE_STREAM, static_cast<std::uint32_t>(assetStorage.size()));
 
         // Transfer the whole assetStorage in a separate thread
-        assetTransferThread.thread = std::thread([this, &assetStorage]() {
+        assetTransferThread.thread = std::thread([this, &assetStorage, ASSET_STORAGE_STREAM]() {
             auto t1Transfer = steady_clock::now();
             XLinkStream stream(connection, ASSET_STORAGE_STREAM, device::XLINK_USB_BUFFER_MAX_SIZE);
             spdlog::debug("AssetStorageStream id: {}", stream.getStreamId());
