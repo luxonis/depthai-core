@@ -76,7 +76,7 @@ Targets available to link to are:
 
 #### Using find_package
 
-Build static or dynamic version of library (See: [Building](##building) and optionally [Installing](##installing))
+Build static or dynamic version of library (See: [Building](#building) and optionally [Installing](#installing))
 
 Add `find_package` and `target_link_libraries` to your project
 ```
@@ -112,8 +112,8 @@ target_link_libraries([my-app] PRIVATE depthai::opencv)
 ### Non-CMake integration (Visual Studio, Xcode, CodeBlocks, ...)
 
 To integrate into a different build system than CMake, prefered way is compiling as dynamic library and setting correct build options.
-1. First build as dynamic library: [Building Dynamic library](###dynamic-library)
-2. Then install: [Installing](##installing)
+1. First build as dynamic library: [Building Dynamic library](#dynamic-library)
+2. Then install: [Installing](#installing)
 
 In your non-CMake project (new Visual Studio project, ...)
 1. Set needed library directories:
