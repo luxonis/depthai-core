@@ -648,22 +648,22 @@ set(CPACK_PACKAGE_VERSION ${DEPTHAI_VERSION})
 set(CPACK_PACKAGE_VERSION_MAJOR ${DEPTHAI_VERSION_MAJOR})
 set(CPACK_PACKAGE_VERSION_MINOR ${DEPTHAI_VERSION_MINOR})
 set(CPACK_PACKAGE_VERSION_PATCH ${DEPTHAI_VERSION_PATCH})
-set(CPACK_PACKAGE_INSTALL_DIRECTORY "CMake ${CMake_VERSION_MAJOR}.${CMake_VERSION_MINOR}")
+# set(CPACK_PACKAGE_INSTALL_DIRECTORY "CMake ${CMake_VERSION_MAJOR}.${CMake_VERSION_MINOR}")
 #set(CPACK_INSTALLED_DIRECTORIES "doc;.") # Include doc directory
-#set(CPACK_INSTALLED_DIRECTORIES ".") # FIXME: throws error
-set(CPACK_SOURCE_IGNORE_FILES "/build*;/\\\\.;/makestats.sh$")
+# set(CPACK_SOURCE_IGNORE_FILES "/build*;/\\\\.;/makestats.sh$")
 # set(CPACK_SOURCE_IGNORE_FILES "${CPACK_SOURCE_IGNORE_FILES}" "/package_scripts/")
 set(CPACK_SOURCE_PACKAGE_FILE_NAME "depthai-${DEPTHAI_VERSION_MAJOR}.${DEPTHAI_VERSION_MINOR}.${DEPTHAI_VERSION_PATCH}")
 #set(CPACK_SOURCE_PACKAGE_FILE_NAME "depthai-aspn${DEPTHAI_VERSION_PATCH}") # Used for creating ASPN tarballs
 
 # Deb-package specific cpack
 set(CPACK_DEBIAN_PACKAGE_NAME "libdepthai-dev")
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "libopencv-dev (>= 4.1)") 
+set(CPACK_DEBIAN_PACKAGE_DEPENDS "libusb-1.0-0-dev") 
 # set(CPACK_DEBIAN_PACKAGE_MAINTAINER "User Name")
 
-message(STATUS "Packaging flags-----------------------------------------------")
+message(STATUS "Packaging flags                                             ")
 message(STATUS "  CPack Source Generator         : ${CPACK_SOURCE_GENERATOR}")
 message(STATUS "  CPack Generator                : ${CPACK_GENERATOR}")
-
 
 # Include CPack *after* all flags
 include(CPack)
