@@ -10,11 +10,15 @@ Buffer::Buffer() : ADatatype(std::make_shared<dai::RawBuffer>()) {}
 Buffer::Buffer(std::shared_ptr<dai::RawBuffer> ptr) : ADatatype(std::move(ptr)) {}
 
 // helpers
-std::vector<std::uint8_t>& Buffer::getData() {
+std::vector<std::uint8_t>& Buffer::getData() const {
     return raw->data;
 }
 
-void Buffer::setData(std::vector<std::uint8_t> data) {
+void Buffer::setData(const std::vector<std::uint8_t>& data) {
+    raw->data = data;
+}
+
+void Buffer::setData(std::vector<std::uint8_t>&& data) {
     raw->data = std::move(data);
 }
 

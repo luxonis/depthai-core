@@ -6,34 +6,32 @@ namespace dai {
 namespace node {
 
 FeatureTracker::FeatureTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : Node(par, nodeId), rawConfig(std::make_shared<RawFeatureTrackerConfig>()), initialConfig(rawConfig) {
-    inputs = {&inputConfig, &inputImage};
-    outputs = {&outputFeatures, &passthroughInputImage};
+    : FeatureTracker(par, nodeId, std::make_unique<FeatureTracker::Properties>()) {}
+FeatureTracker::FeatureTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<Node, FeatureTracker, FeatureTrackerProperties>(par, nodeId, std::move(props)),
+      rawConfig(std::make_shared<RawFeatureTrackerConfig>()),
+      initialConfig(rawConfig) {
+    setInputRefs({&inputConfig, &inputImage});
+    setOutputRefs({&outputFeatures, &passthroughInputImage});
 }
 
-std::string FeatureTracker::getName() const {
-    return "FeatureTracker";
-}
-
-nlohmann::json FeatureTracker::getProperties() {
-    nlohmann::json j;
+FeatureTracker::Properties& FeatureTracker::getProperties() {
     properties.initialConfig = *rawConfig;
-    nlohmann::to_json(j, properties);
-    return j;
+    return properties;
 }
 
 // Node properties configuration
 void FeatureTracker::setWaitForConfigInput(bool wait) {
-    properties.inputConfigSync = wait;
+    inputConfig.setWaitForMessage(wait);
+}
+
+bool FeatureTracker::getWaitForConfigInput() const {
+    return inputConfig.getWaitForMessage();
 }
 
 void FeatureTracker::setHardwareResources(int numShaves, int numMemorySlices) {
     properties.numShaves = numShaves;
     properties.numMemorySlices = numMemorySlices;
-}
-
-std::shared_ptr<Node> FeatureTracker::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
 }
 
 }  // namespace node

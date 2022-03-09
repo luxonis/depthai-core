@@ -11,26 +11,18 @@ namespace node {
 /**
  * @brief VideoEncoder node. Encodes frames into MJPEG, H264 or H265.
  */
-class VideoEncoder : public Node {
+class VideoEncoder : public NodeCRTP<Node, VideoEncoder, VideoEncoderProperties> {
    public:
-    using Properties = dai::VideoEncoderProperties;
-
-   private:
-    Properties properties;
-
-    nlohmann::json getProperties() override;
-    std::shared_ptr<Node> clone() override;
-
-   public:
-    std::string getName() const override;
+    constexpr static const char* NAME = "VideoEncoder";
 
     VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Input for NV12 ImgFrame to be encoded
      * Default queue is blocking with size set by 'setNumFramesPool' (4).
      */
-    Input input{*this, "in", Input::Type::SReceiver, true, 4, {{DatatypeEnum::ImgFrame, true}}};
+    Input input{*this, "in", Input::Type::SReceiver, true, 4, true, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
      * Outputs ImgFrame message that carries BITSTREAM encoded (MJPEG, H264 or H265) frame data.
