@@ -3,6 +3,8 @@
 // Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
+bool enableUVC = 0;
+
 int main() {
     // Create pipeline
     dai::Pipeline pipeline;
@@ -26,10 +28,20 @@ int main() {
     xoutVideo->input.setQueueSize(1);
 
     // Linking
-    camRgb->video.link(xoutVideo->input);
+    if (enableUVC) {
+        auto uvc = pipeline.create<dai::node::UVC>();
+        camRgb->video.link(uvc->input);
+        //camRgb->video.link(xoutVideo->input); // Could actually keep this as well
+        printf(">>> Keep this running, and open a separate UVC viewer\n");
+    } else {
+        camRgb->video.link(xoutVideo->input);
+    }
 
     // Connect to device and start pipeline
-    dai::Device device(pipeline);
+    auto config = dai::Device::Config();
+    config.board.uvcEnable = enableUVC;
+    dai::Device device(config);
+    device.startPipeline(pipeline);
 
     int qsize = 1;
     bool blocking = false;
