@@ -138,8 +138,8 @@ int DataOutputQueue::addCallback(std::function<void(std::string, std::shared_ptr
     // Get unique id
     int id = uniqueCallbackId++;
 
-    // assign callback
-    callbacks[id] = callback;
+    // move assign callback
+    callbacks[id] = std::move(callback);
 
     // return id assigned to the callback
     return id;
@@ -147,12 +147,12 @@ int DataOutputQueue::addCallback(std::function<void(std::string, std::shared_ptr
 
 int DataOutputQueue::addCallback(std::function<void(std::shared_ptr<ADatatype>)> callback) {
     // Create a wrapper
-    return addCallback([callback](std::string, std::shared_ptr<ADatatype> message) { callback(message); });
+    return addCallback([callback = std::move(callback)](std::string, std::shared_ptr<ADatatype> message) { callback(std::move(message)); });
 }
 
 int DataOutputQueue::addCallback(std::function<void()> callback) {
     // Create a wrapper
-    return addCallback([callback](std::string, std::shared_ptr<ADatatype>) { callback(); });
+    return addCallback([callback = std::move(callback)](std::string, std::shared_ptr<ADatatype>) { callback(); });
 }
 
 bool DataOutputQueue::removeCallback(int callbackId) {
