@@ -4,6 +4,16 @@ cmake_minimum_required(VERSION 3.4) # For Hunter
 # Generalize to Win32 platform for now
 if(NOT WIN32)
     set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
+    set(DEB_CHANGELOG_REQUIRED ON)
+    set(DEB_CHANGELOG "${CMAKE_CURRENT_SOURCE_DIR}/Changelog")
+    set(PROJECT_VENDOR "Luxonis (https://luxonis.com)")
+    set(PROJECT_WEBSITE "https://github.com/luxonis/depthai-core")
+    set(PROJECT_MAINTAINER "Martin <martin@luxonis.com>")
+    set(PROJECT_DESCRIPTION_SUMMARY "DepthAI is a Spatial AI platform, which allows robots and computers to perceive the world like a human can - what objects or features are - and where they are in physical world.")
+    set(PROJECT_DESCRIPTION "DepthAI is a Spatial AI platform, which allows robots and computers to perceive the world like a human can - what objects or features are - and where they are in physical world.")
+    set(CHANGELOG_MESSAGE ${CHANGELOG_LAST_MESSAGE})
+    set(PROJECT_PPA "ppa:luxonis/depthai")
+    set(PROJECT_PPA_USER "saching13")
 endif()
 
 # Create a custom toolchain to pass certain options to dependencies
@@ -42,8 +52,8 @@ set (DEPTHAI_VERSION_MAJOR 2)
 set (DEPTHAI_VERSION_MINOR 15)
 set (DEPTHAI_VERSION_PATCH 0)
 
-set(CPACK_SOURCE_GENERATOR "DEB" CACHE STRING "CPack Default Source Generator")
-set(CPACK_GENERATOR        "DEB" CACHE STRING "CPack Default Binary Generator")
+set(CPACK_SOURCE_GENERATOR "TGZ" CACHE STRING "CPack Default Source Generator")
+set(CPACK_GENERATOR        "TGZ" CACHE STRING "CPack Default Binary Generator")
 
 # Set default build type depending on context
 set(default_build_type "Release")
@@ -654,7 +664,8 @@ set(CPACK_PACKAGE_VERSION_PATCH ${DEPTHAI_VERSION_PATCH})
 # set(CPACK_SOURCE_IGNORE_FILES "${CPACK_SOURCE_IGNORE_FILES}" "/package_scripts/")
 set(CPACK_SOURCE_PACKAGE_FILE_NAME "depthai-${DEPTHAI_VERSION_MAJOR}.${DEPTHAI_VERSION_MINOR}.${DEPTHAI_VERSION_PATCH}")
 #set(CPACK_SOURCE_PACKAGE_FILE_NAME "depthai-aspn${DEPTHAI_VERSION_PATCH}") # Used for creating ASPN tarballs
-
+set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+        
 # Deb-package specific cpack
 set(CPACK_DEBIAN_PACKAGE_NAME "libdepthai-dev")
 set(CPACK_DEBIAN_PACKAGE_DEPENDS "libopencv-dev (>= 4.1)") 
