@@ -39,6 +39,9 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                 const auto data = StreamMessageParser::parseMessageToADatatype(&packet);
                 const auto t2Parse = std::chrono::steady_clock::now();
 
+                // TMP TMP
+                data->packet = std::make_shared<decltype(packet)>(std::move(packet));
+
                 // Trace level debugging
                 if(spdlog::get_level() == spdlog::level::trace) {
                     std::vector<std::uint8_t> metadata;
