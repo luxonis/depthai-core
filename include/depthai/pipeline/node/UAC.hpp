@@ -5,6 +5,8 @@
 // shared
 #include <depthai-shared/properties/UACProperties.hpp>
 
+#include "depthai/pipeline/datatype/AudioInConfig.hpp"
+
 namespace dai {
 namespace node {
 
@@ -15,9 +17,26 @@ class UAC : public NodeCRTP<Node, UAC, UACProperties>  {
    public:
     constexpr static const char* NAME = "UAC";
 
+   protected:
+    Properties& getProperties();
+
+   private:
+    std::shared_ptr<RawAudioInConfig> rawConfig;
+
    public:
     UAC(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     UAC(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+
+    /**
+     * Initial config to use for edge detection.
+     */
+    AudioInConfig initialConfig;
+
+    /**
+     * Input AudioInConfig message with ability to modify parameters in runtime.
+     * Default queue is non-blocking with size 4.
+     */
+    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::AudioInConfig, false}}};
 
     /**
      * Outputs audio data from onboard microphones. Reusing ImgFrame for now
@@ -29,12 +48,6 @@ class UAC : public NodeCRTP<Node, UAC, UACProperties>  {
 
     /// Enable experimental digital AGC
     void setMicAutoGain(bool enable);
-
-    /// Set a fixed microphone gain, in multiplication times
-    void setMicGainTimes(float times);
-
-    /// Set a fixed microphone gain, in dB
-    void setMicGainDecibels(float dB);
 
     /// Apply mic gain to XLink output as well. Enabled by default
     void setXlinkApplyMicGain(bool enable);

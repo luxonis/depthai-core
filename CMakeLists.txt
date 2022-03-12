@@ -206,6 +206,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/EdgeDetectorConfig.cpp
     src/pipeline/datatype/TrackedFeatures.cpp
     src/pipeline/datatype/FeatureTrackerConfig.cpp
+    src/pipeline/datatype/AudioInConfig.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/utility/Platform.cpp
