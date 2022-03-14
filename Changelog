@@ -1,0 +1,5 @@
+depthai (2.10.0) testing; urgency=medium
+
+  * Added Deb package testing
+
+ -- Sachin Guruswamy <sachin@luxonis.com>  Thu, 10 Mar 2022 09:18:55 +0700

@@ -109,6 +109,7 @@ else()
   # add space before each line
   string(REPLACE "\n" "\n " deb_long_description " ${CPACK_PACKAGE_DESCRIPTION}")
 endif()
+message(STATUS "-----Debian deb_long_description: ${deb_long_description}")
 
 if(PPA_DEBIAN_VERSION)
   set(DEBIAN_PACKAGE_VERSION "${CPACK_PACKAGE_VERSION}-${PPA_DEBIAN_VERSION}~${DISTRI}1")

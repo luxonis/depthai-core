@@ -1,5 +1,11 @@
 cmake_minimum_required(VERSION 3.4) # For Hunter
 
+set(DEB_CHANGELOG_REQUIRED ON)
+set(DEB_CHANGELOG "${CMAKE_CURRENT_SOURCE_DIR}/Changelog")
+unset(CHANGELOG_LAST_VERSION)
+unset(CHANGELOG_LAST_MESSAGE)
+include("cmake/installer/DebChangelog.cmake")
+
 # MSVC variable isn't available before 'project' call
 # Generalize to Win32 platform for now
 if(NOT WIN32)
@@ -8,7 +14,7 @@ if(NOT WIN32)
     set(DEB_CHANGELOG "${CMAKE_CURRENT_SOURCE_DIR}/Changelog")
     set(PROJECT_VENDOR "Luxonis (https://luxonis.com)")
     set(PROJECT_WEBSITE "https://github.com/luxonis/depthai-core")
-    set(PROJECT_MAINTAINER "Martin <martin@luxonis.com>")
+    set(PROJECT_MAINTAINER "Sachin Guruswamy <sachin@luxonis.com>")
     set(PROJECT_DESCRIPTION_SUMMARY "DepthAI is a Spatial AI platform, which allows robots and computers to perceive the world like a human can - what objects or features are - and where they are in physical world.")
     set(PROJECT_DESCRIPTION "DepthAI is a Spatial AI platform, which allows robots and computers to perceive the world like a human can - what objects or features are - and where they are in physical world.")
     set(CHANGELOG_MESSAGE ${CHANGELOG_LAST_MESSAGE})
@@ -41,19 +47,17 @@ HunterGate(
 if(WIN32)
     set(HUNTER_BINARY_DIR "${HUNTER_GATE_ROOT}/_bin" CACHE STRING "Hunter binary directory")
 endif()
+set (DEPTHAI_VERSION_MAJOR ${CHANGELOG_LAST_VERSION_MAJOR})
+set (DEPTHAI_VERSION_MINOR ${CHANGELOG_LAST_VERSION_MINOR})
+set (DEPTHAI_VERSION_PATCH ${CHANGELOG_LAST_VERSION_PATCH})
 
 # Create depthai project
-project(depthai VERSION "2.15.0" LANGUAGES CXX C)
+project(depthai VERSION "2.10.0" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
+
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
 endif()
-set (DEPTHAI_VERSION_MAJOR 2)
-set (DEPTHAI_VERSION_MINOR 15)
-set (DEPTHAI_VERSION_PATCH 0)
-
-set(CPACK_SOURCE_GENERATOR "TGZ" CACHE STRING "CPack Default Source Generator")
-set(CPACK_GENERATOR        "TGZ" CACHE STRING "CPack Default Binary Generator")
 
 # Set default build type depending on context
 set(default_build_type "Release")
@@ -283,6 +287,17 @@ if(DEPTHAI_USB2_PATCH_ONLY_MODE)
 else()
     option(DEPTHAI_USB2_CMD_PATH "Use local path for depthai-usb2.cmd instead of downloading" OFF)
 endif()
+
+# specify packaging options
+option(PACKAGE_DEB "Build .deb instalation packages" OFF)
+option(PACKAGE_RPM "Build .rpm instalation packages" OFF)
+option(PACKAGE_TGZ "Build .tgz package archive" ON)
+option(PACKAGE_ZIP "Build .zip package archive" ON)
+option(ENABLE_PPA "Enable PPA package build" ON)
+option(UPLOAD_PPA "Upload debian packages to the launchpad ppa repository" OFF)
+
+set(PPA_DEBIAN_VERSION "ppa1" CACHE STRING "PPA version suffix for debian packages")
+set(PROJECT_PPA_DISTRIB_TARGET "focal;bionic;xenial" CACHE STRING "Ubuntu PPA distrubutive names")
 
 if(DEPTHAI_USB2_PATCH_ONLY_MODE)
     message(STATUS "Compiling ${TARGET_CORE_NAME} resources in PATCH_ONLY mode")
@@ -648,33 +663,86 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT)
     )
 endif()
 
-# Set up CPack
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "DepthAI")
-set(CPACK_PACKAGE_VENDOR "LUXONIS")
-set(CPACK_PACKAGE_CONTACT "Luxonis, support@luxonis.com")
-set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
-set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
-set(CPACK_PACKAGE_VERSION ${DEPTHAI_VERSION})
-set(CPACK_PACKAGE_VERSION_MAJOR ${DEPTHAI_VERSION_MAJOR})
-set(CPACK_PACKAGE_VERSION_MINOR ${DEPTHAI_VERSION_MINOR})
-set(CPACK_PACKAGE_VERSION_PATCH ${DEPTHAI_VERSION_PATCH})
-# set(CPACK_PACKAGE_INSTALL_DIRECTORY "CMake ${CMake_VERSION_MAJOR}.${CMake_VERSION_MINOR}")
-#set(CPACK_INSTALLED_DIRECTORIES "doc;.") # Include doc directory
-# set(CPACK_SOURCE_IGNORE_FILES "/build*;/\\\\.;/makestats.sh$")
-# set(CPACK_SOURCE_IGNORE_FILES "${CPACK_SOURCE_IGNORE_FILES}" "/package_scripts/")
-set(CPACK_SOURCE_PACKAGE_FILE_NAME "depthai-${DEPTHAI_VERSION_MAJOR}.${DEPTHAI_VERSION_MINOR}.${DEPTHAI_VERSION_PATCH}")
-#set(CPACK_SOURCE_PACKAGE_FILE_NAME "depthai-aspn${DEPTHAI_VERSION_PATCH}") # Used for creating ASPN tarballs
-set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
+
+if(UPLOAD_PPA)
+    set(ENABLE_PPA ON)
+    set(PACKAGE_DEB ON)
+endif(UPLOAD_PPA)
+
+set(CPACK_GENERATORS)
+if(PACKAGE_TGZ)
+    list(APPEND CPACK_GENERATORS "TGZ")
+endif()
+if(PACKAGE_ZIP)
+    list(APPEND CPACK_GENERATORS "ZIP")
+endif()
+if(PACKAGE_DEB)
+    list(APPEND CPACK_GENERATORS "DEB")
+endif()
+if(PACKAGE_RPM)
+    list(APPEND CPACK_GENERATORS "RPM")
+endif()
+
+if(CPACK_GENERATORS)
+    set(CPACK_GENERATOR "${CPACK_GENERATORS}")
+    set(CPACK_SOURCE_IGNORE_FILES
+            "/\\\\.vscode/"
+            "/\\\\.idea/"
+            "/cmake-.*/"
+            "\\\\.sh$"
+            "\\\\.project$"
+            "\\\\.workspace$"
+            "\\\\.iml$"
+            "\\\\.mk$"
+            "\\\\.astylerc$"
+            "/Makefile$"
+    )
+    set(PROJECT_ARCH "${CMAKE_SYSTEM_PROCESSOR}")
+    add_subdirectory(cmake/installer)
+endif(CPACK_GENERATORS)
+
+message("${PROJECT_NAME} CMAKE_INSTALL_PREFIX: ${CMAKE_INSTALL_PREFIX}")
+message("${PROJECT_NAME} CPACK_GENERATORS: ${CPACK_GENERATORS}")
+message("${PROJECT_NAME} CMAKE_GENERATOR: ${CMAKE_GENERATOR}")
+if(CMAKE_SYSTEM_NAME)
+    message("${PROJECT_NAME} CMAKE_SYSTEM_NAME: ${CMAKE_SYSTEM_NAME}")
+endif()
+message("${PROJECT_NAME} CPU: ${CMAKE_SYSTEM_PROCESSOR}")
+if(CMAKE_SIZEOF_VOID_P)
+    message("${PROJECT_NAME} SIZEOF *VOID: ${CMAKE_SIZEOF_VOID_P}")
+endif()
+message("${PROJECT_NAME} PROJECT: ${CHANGELOG_LAST_LINE}")
+if(CHANGELOG_MESSAGE)
+    message("${PROJECT_NAME} CHANGELOG_MESSAGE:\n  ${CHANGELOG_MESSAGE}")
+endif()
+
+# # Set up CPack
+# set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "DepthAI")
+# set(CPACK_PACKAGE_VENDOR "LUXONIS")
+# set(CPACK_PACKAGE_CONTACT "Luxonis, support@luxonis.com")
+# set(CPACK_PACKAGE_DESCRIPTION_FILE "${CMAKE_CURRENT_SOURCE_DIR}/README.md")
+# set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE")
+# set(CPACK_PACKAGE_VERSION ${DEPTHAI_VERSION})
+# set(CPACK_PACKAGE_VERSION_MAJOR ${DEPTHAI_VERSION_MAJOR})
+# set(CPACK_PACKAGE_VERSION_MINOR ${DEPTHAI_VERSION_MINOR})
+# set(CPACK_PACKAGE_VERSION_PATCH ${DEPTHAI_VERSION_PATCH})
+# # set(CPACK_PACKAGE_INSTALL_DIRECTORY "CMake ${CMake_VERSION_MAJOR}.${CMake_VERSION_MINOR}")
+# #set(CPACK_INSTALLED_DIRECTORIES "doc;.") # Include doc directory
+# # set(CPACK_SOURCE_IGNORE_FILES "/build*;/\\\\.;/makestats.sh$")
+# # set(CPACK_SOURCE_IGNORE_FILES "${CPACK_SOURCE_IGNORE_FILES}" "/package_scripts/")
+# set(CPACK_SOURCE_PACKAGE_FILE_NAME "depthai-${DEPTHAI_VERSION_MAJOR}.${DEPTHAI_VERSION_MINOR}.${DEPTHAI_VERSION_PATCH}")
+# #set(CPACK_SOURCE_PACKAGE_FILE_NAME "depthai-aspn${DEPTHAI_VERSION_PATCH}") # Used for creating ASPN tarballs
+# set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
         
-# Deb-package specific cpack
-set(CPACK_DEBIAN_PACKAGE_NAME "libdepthai-dev")
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "libopencv-dev (>= 4.1)") 
-set(CPACK_DEBIAN_PACKAGE_DEPENDS "libusb-1.0-0-dev") 
-# set(CPACK_DEBIAN_PACKAGE_MAINTAINER "User Name")
+# # Deb-package specific cpack
+# set(CPACK_DEBIAN_PACKAGE_NAME "libdepthai-dev")
+# set(CPACK_DEBIAN_PACKAGE_DEPENDS "libopencv-dev (>= 4.1)") 
+# set(CPACK_DEBIAN_PACKAGE_DEPENDS "libusb-1.0-0-dev") 
+# # set(CPACK_DEBIAN_PACKAGE_MAINTAINER "User Name")
 
-message(STATUS "Packaging flags                                             ")
-message(STATUS "  CPack Source Generator         : ${CPACK_SOURCE_GENERATOR}")
-message(STATUS "  CPack Generator                : ${CPACK_GENERATOR}")
+# message(STATUS "Packaging flags                                             ")
+# message(STATUS "  CPack Source Generator         : ${CPACK_SOURCE_GENERATOR}")
+# message(STATUS "  CPack Generator                : ${CPACK_GENERATOR}")
 
-# Include CPack *after* all flags
-include(CPack)
+# # Include CPack *after* all flags
+# include(CPack)
