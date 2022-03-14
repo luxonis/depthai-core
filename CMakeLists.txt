@@ -294,7 +294,7 @@ option(PACKAGE_RPM "Build .rpm instalation packages" OFF)
 option(PACKAGE_TGZ "Build .tgz package archive" ON)
 option(PACKAGE_ZIP "Build .zip package archive" ON)
 option(ENABLE_PPA "Enable PPA package build" ON)
-option(UPLOAD_PPA "Upload debian packages to the launchpad ppa repository" OFF)
+option(UPLOAD_PPA "Upload debian packages to the launchpad ppa repository" ON)
 
 set(PPA_DEBIAN_VERSION "ppa1" CACHE STRING "PPA version suffix for debian packages")
 set(PROJECT_PPA_DISTRIB_TARGET "focal;bionic;xenial" CACHE STRING "Ubuntu PPA distrubutive names")

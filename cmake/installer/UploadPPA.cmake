@@ -324,6 +324,9 @@ add_custom_command(OUTPUT ${DEBIAN_SOURCE_DIR}/CMakeLists.txt
 set(DEB_SOURCE_CHANGES
   ${CPACK_DEBIAN_PACKAGE_NAME}_${DEBIAN_PACKAGE_VERSION}_source.changes
   )
+message(STATUS "------- Creating DEBIAN_SOURCE_DIR is ${DEBIAN_SOURCE_DIR}")
+message(STATUS "------- CMAKE_BINARY_DIR is ${CMAKE_BINARY_DIR}")
+message(STATUS "------- DEBUILD_EXECUTABLE is ${DEBUILD_EXECUTABLE}")
 
 add_custom_command(OUTPUT ${CMAKE_BINARY_DIR}/Debian/${DISTRI}/${DEB_SOURCE_CHANGES}
   COMMAND ${DEBUILD_EXECUTABLE} --no-tgz-check -S
@@ -336,6 +339,7 @@ add_custom_target(debuild_${DISTRI} ALL
 ##############################################################################
 # dput ppa:your-lp-id/ppa <source.changes>
 message(STATUS "Upload PPA is ${UPLOAD_PPA}")
+message(STATUS "-------Upload DEB_SOURCE_CHANGES is ${DEB_SOURCE_CHANGES}")
 if(UPLOAD_PPA)
     if (EXISTS ${DPUT_CONFIG_IN})
         set(DPUT_DIST ${DISTRI})
