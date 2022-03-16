@@ -109,7 +109,7 @@ int main(int argc, char** argv) {
         }
 
         cv::Mat frame = inPreview->getCvFrame();
-        cv::Mat depthFrame = depth->getFrame();
+        cv::Mat depthFrame = depth->getFrame();  // depthFrame values are in millimeters
 
         cv::Mat depthFrameColor;
         cv::normalize(depthFrame, depthFrameColor, 255, 0, cv::NORM_INF, CV_8UC1);
@@ -141,7 +141,7 @@ int main(int argc, char** argv) {
             int x2 = detection.xmax * frame.cols;
             int y2 = detection.ymax * frame.rows;
 
-            int labelIndex = detection.label;
+            uint32_t labelIndex = detection.label;
             std::string labelStr = to_string(labelIndex);
             if(labelIndex < labelMap.size()) {
                 labelStr = labelMap[labelIndex];

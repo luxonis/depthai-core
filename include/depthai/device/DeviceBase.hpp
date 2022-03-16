@@ -26,7 +26,7 @@
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
-#include "depthai-shared/device/PrebootConfig.hpp"
+#include "depthai-shared/device/BoardConfig.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
 
@@ -56,10 +56,17 @@ class DeviceBase {
      */
     struct Config {
         OpenVINO::Version version;
-        PrebootConfig preboot;
+        BoardConfig board;
     };
 
     // static API
+
+    /**
+     * @brief Get the Default Search Time for finding devices
+     *
+     * @returns Default search time in milliseconds
+     */
+    static std::chrono::milliseconds getDefaultSearchTime();
 
     /**
      * Waits for any available device with a timeout
@@ -81,7 +88,7 @@ class DeviceBase {
      * Gets first available device. Device can be either in XLINK_UNBOOTED or XLINK_BOOTLOADER state
      * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
-    static std::tuple<bool, DeviceInfo> getFirstAvailableDevice();
+    static std::tuple<bool, DeviceInfo> getFirstAvailableDevice(bool skipInvalidDevice = true);
 
     /**
      * Finds a device by MX ID. Example: 14442C10D13EABCE00
@@ -365,6 +372,37 @@ class DeviceBase {
     LogLevel getLogOutputLevel();
 
     /**
+     * Sets the brightness of the IR Laser Dot Projector. Limits: up to 765mA at 30% duty cycle, up to 1200mA at 6% duty cycle.
+     * The duty cycle is controlled by `left` camera STROBE, aligned to start of exposure.
+     * The emitter is turned off by default
+     *
+     * @param mA Current in mA that will determine brightness, 0 or negative to turn off
+     * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W-DEV
+     * @returns True on success, false if not found or other failure
+     */
+    bool setIrLaserDotProjectorBrightness(float mA, int mask = -1);
+
+    /**
+     * Sets the brightness of the IR Flood Light. Limits: up to 1500mA at 30% duty cycle.
+     * The duty cycle is controlled by the `left` camera STROBE, aligned to start of exposure.
+     * If the dot projector is also enabled, its lower duty cycle limits take precedence.
+     * The emitter is turned off by default
+     *
+     * @param mA Current in mA that will determine brightness, 0 or negative to turn off
+     * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W-DEV
+     * @returns True on success, false if not found or other failure
+     */
+    bool setIrFloodLightBrightness(float mA, int mask = -1);
+
+    /**
+     * Retrieves detected IR laser/LED drivers.
+     *
+     * @returns Vector of tuples containing: driver name, I2C bus, I2C address.
+     * For OAK-D-Pro it should be `[{"LM3644", 2, 0x63}]`
+     */
+    std::vector<std::tuple<std::string, int, int>> getIrDrivers();
+
+    /**
      * Add a callback for device logging. The callback will be called from a separate thread with the LogMessage being passed.
      *
      * @param callback Callback to call whenever a log message arrives
@@ -525,7 +563,7 @@ class DeviceBase {
      *
      * @param pipeline OpenVINO version of the pipeline must match the one which the device was booted with
      * @sa startPipeline
-     * @note Remember to call this function in the overload to setup the comunication properly
+     * @note Remember to call this function in the overload to setup the communication properly
      *
      * @returns True if pipeline started, false otherwise
      */
@@ -534,7 +572,7 @@ class DeviceBase {
     /**
      * Allows the derived classes to handle custom setup for gracefully stopping the pipeline
      *
-     * @note Remember to call this function in the overload to setup the comunication properly
+     * @note Remember to call this function in the overload to setup the communication properly
      */
     virtual void closeImpl();
 
