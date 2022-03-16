@@ -3,8 +3,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "depthai/xlink/XLinkStream.hpp"
-
 #include "depthai-shared/datatype/RawBuffer.hpp"
 
 namespace dai {
@@ -23,9 +21,6 @@ class ADatatype {
     std::shared_ptr<RawBuffer> getRaw() const {
         return raw;
     }
-
-    std::shared_ptr<StreamPacketDesc> packet;
-
 };
 
 }  // namespace dai

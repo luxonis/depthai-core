@@ -79,7 +79,6 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
     if(serializedObjectSize < 0) {
         throw std::runtime_error("Bad packet, couldn't parse");
     }
-
     const std::uint32_t bufferLength = packet->length - 8 - serializedObjectSize;
     auto* const metadataStart = packet->data + bufferLength;
 
@@ -175,14 +174,11 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
     if(serializedObjectSize < 0) {
         throw std::runtime_error("Bad packet, couldn't parse");
     }
-
     const std::uint32_t bufferLength = packet->length - 8 - serializedObjectSize;
     auto* const metadataStart = packet->data + bufferLength;
 
-    // // copy data part
-    // TMPTMP
-    // std::vector<uint8_t> data(packet->data, packet->data + bufferLength);
-    std::vector<uint8_t> data;
+    // copy data part
+    std::vector<uint8_t> data(packet->data, packet->data + bufferLength);
 
     switch(objectType) {
         case DatatypeEnum::Buffer: {
