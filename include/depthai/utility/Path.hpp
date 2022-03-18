@@ -1,9 +1,9 @@
 #pragma once
 #if(__cplusplus >= 201703L) || (_MSVC_LANG >= 201703L)
     #include <filesystem>
-    #define DAI_NODISCARD [[nodiscard]]
+    #define DEPTHAI_NODISCARD [[nodiscard]]
 #else
-    #define DAI_NODISCARD
+    #define DEPTHAI_NODISCARD
 #endif
 #include <string>
 
@@ -188,7 +188,7 @@ class Path {
      *
      * @return bool true if the path is empty, false otherwise
      */
-    DAI_NODISCARD bool empty() const noexcept {
+    DEPTHAI_NODISCARD bool empty() const noexcept {
         return _nativePath.empty();
     }
 
