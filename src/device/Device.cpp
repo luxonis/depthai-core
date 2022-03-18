@@ -311,7 +311,7 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
                 }
 
                 // Add to the end of event queue
-                eventQueue.push_back(queueName);
+                eventQueue.push_back(std::move(queueName));
             }
 
             // notify the rest

@@ -143,7 +143,7 @@ int main(int argc, char** argv) {
             int x2 = detection.xmax * rectifiedRight.cols;
             int y2 = detection.ymax * rectifiedRight.rows;
 
-            int labelIndex = detection.label;
+            uint32_t labelIndex = detection.label;
             std::string labelStr = to_string(labelIndex);
             if(labelIndex < labelMap.size()) {
                 labelStr = labelMap[labelIndex];
