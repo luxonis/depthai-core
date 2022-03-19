@@ -2,27 +2,26 @@
 
 #include "depthai/pipeline/Node.hpp"
 
+// shared
+#include <depthai-shared/properties/ToFProperties.hpp>
+
 namespace dai {
 namespace node {
 
 /**
  * @brief ToF node
  */
-class ToF : public Node {
+class ToF : public NodeCRTP<Node, ToF, ToFProperties> {
    public:
+    constexpr static const char* NAME = "ToF";
 
-   private:
-
-   public:
-  std::string getName() const override { return "ToF"; }
-  std::shared_ptr<Node> clone() override;
-  nlohmann::json getProperties() override;
     /**
      * Constructs ToF node.
      */
     ToF(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    ToF(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
-  Input inputImage{*this, "inputImage", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImgFrame, true}}};
+    Input inputImage{*this, "inputImage", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
      * Outputs ImgFrame message that carries modified image.

@@ -7,8 +7,11 @@
 namespace dai {
 namespace node {
 
-Camera::Camera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : Node(par, nodeId), rawControl(std::make_shared<RawCameraControl>()), initialControl(rawControl) {
+Camera::Camera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Camera(par, nodeId, std::make_unique<Camera::Properties>()) {}
+Camera::Camera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<Node, Camera, CameraProperties>(par, nodeId, std::move(props)),
+      rawControl(std::make_shared<RawCameraControl>()),
+      initialControl(rawControl) {
     properties.boardSocket = CameraBoardSocket::AUTO;
     properties.imageOrientation = CameraImageOrientation::AUTO;
     properties.colorOrder = CameraProperties::ColorOrder::BGR;
@@ -19,23 +22,13 @@ Camera::Camera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     properties.fps = 30.0;
     properties.previewKeepAspectRatio = true;
 
-    inputs = {&inputConfig, &inputControl};
-    outputs = {&video, &preview, &still, &isp, &raw};
+    setInputRefs({&inputConfig, &inputControl});
+    setOutputRefs({&video, &preview, &still, &isp, &raw});
 }
 
-std::string Camera::getName() const {
-    return "Camera";
-}
-
-nlohmann::json Camera::getProperties() {
-    nlohmann::json j;
+Camera::Properties& Camera::getProperties() {
     properties.initialControl = *rawControl;
-    nlohmann::to_json(j, properties);
-    return j;
-}
-
-std::shared_ptr<Node> Camera::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
+    return properties;
 }
 
 // Set board socket to use
@@ -418,11 +411,11 @@ float Camera::getSensorCropY() const {
 }
 
 void Camera::setWaitForConfigInput(bool wait) {
-    properties.inputConfigSync = wait;
+    inputConfig.setWaitForMessage(wait);
 }
 
-bool Camera::getWaitForConfigInput() {
-    return properties.inputConfigSync;
+bool Camera::getWaitForConfigInput() const {
+    return inputConfig.getWaitForMessage();
 }
 
 void Camera::setPreviewKeepAspectRatio(bool keep) {
