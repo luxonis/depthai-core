@@ -14,7 +14,7 @@ if(NOT WIN32)
     set(DEB_CHANGELOG "${CMAKE_CURRENT_SOURCE_DIR}/Changelog")
     set(PROJECT_VENDOR "Luxonis (https://luxonis.com)")
     set(PROJECT_WEBSITE "https://github.com/luxonis/depthai-core")
-    set(PROJECT_MAINTAINER "Sachin Guruswamy <sachin@luxonis.com>")
+    set(PROJECT_MAINTAINER "Sachin Guruswamy (PPA) <sachin@luxonis.com>")
     set(PROJECT_DESCRIPTION_SUMMARY "DepthAI is a Spatial AI platform, which allows robots and computers to perceive the world like a human can - what objects or features are - and where they are in physical world.")
     set(PROJECT_DESCRIPTION "DepthAI is a Spatial AI platform, which allows robots and computers to perceive the world like a human can - what objects or features are - and where they are in physical world.")
     set(CHANGELOG_MESSAGE ${CHANGELOG_LAST_MESSAGE})
@@ -52,7 +52,7 @@ set (DEPTHAI_VERSION_MINOR ${CHANGELOG_LAST_VERSION_MINOR})
 set (DEPTHAI_VERSION_PATCH ${CHANGELOG_LAST_VERSION_PATCH})
 
 # Create depthai project
-project(depthai VERSION "2.10.0" LANGUAGES CXX C)
+project(depthai VERSION "2.10.2" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 
 if(has_parent)

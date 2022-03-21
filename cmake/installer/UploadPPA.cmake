@@ -100,6 +100,7 @@ if(NOT CPACK_DEBIAN_PACKAGE_MAINTAINER)
   set(CPACK_DEBIAN_PACKAGE_MAINTAINER ${CPACK_PACKAGE_CONTACT})
 endif()
 
+#TODO(sachin): Cross check the desciption setting and do necessary changes
 if(NOT CPACK_PACKAGE_DESCRIPTION AND EXISTS ${CPACK_PACKAGE_DESCRIPTION_FILE})
   file(STRINGS ${CPACK_PACKAGE_DESCRIPTION_FILE} DESC_LINES)
   foreach(LINE ${DESC_LINES})
@@ -197,7 +198,7 @@ file(WRITE ${debian_rules}
 	"\n\n%:\n"
 	"\tdh  $@ --buildsystem=cmake\n"
 	"\noverride_dh_auto_configure:\n"
-	"\tDESTDIR=\"$(CURDIR)/debian/${CPACK_DEBIAN_PACKAGE_NAME}\" dh_auto_configure -- -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=ON -DPACKAGE_TGZ=OFF"
+	"\tDESTDIR=\"$(CURDIR)/debian/${CPACK_DEBIAN_PACKAGE_NAME}\" dh_auto_configure -- -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=ON -DPACKAGE_TGZ=OFF -DHUNTER_ROOT=\"$(CURDIR)/.hunter\" "
 	"\n\noverride_dh_auto_install:\n"
 	"\tdh_auto_install --destdir=\"$(CURDIR)/debian/${CPACK_DEBIAN_PACKAGE_NAME}\" --buildsystem=cmake"
 	"\n\noverride_dh_strip:\n"
@@ -208,7 +209,7 @@ execute_process(COMMAND chmod +x ${debian_rules})
 
 ##############################################################################
 # debian/compat
-file(WRITE ${DEBIAN_SOURCE_DIR}/debian/compat "7")
+file(WRITE ${DEBIAN_SOURCE_DIR}/debian/compat "9")
 
 ##############################################################################
 # debian/source/format
@@ -339,10 +340,13 @@ add_custom_target(debuild_${DISTRI} ALL
 ##############################################################################
 # dput ppa:your-lp-id/ppa <source.changes>
 message(STATUS "Upload PPA is ${UPLOAD_PPA}")
+message(STATUS "DPUT_HOST PPA is ${DPUT_HOST}")
 message(STATUS "-------Upload DEB_SOURCE_CHANGES is ${DEB_SOURCE_CHANGES}")
 if(UPLOAD_PPA)
     if (EXISTS ${DPUT_CONFIG_IN})
-        set(DPUT_DIST ${DISTRI})
+        message(STATUS "In DPUT_CONFIG_IN is ${DPUT_CONFIG_IN}")
+        set(DPUT_PPA "depthai")
+        set(DPUT_DIST "${DISTRI}")
         configure_file(
             ${DPUT_CONFIG_IN}
             ${CMAKE_BINARY_DIR}/Debian/${DISTRI}/dput.cf
@@ -354,6 +358,7 @@ if(UPLOAD_PPA)
             WORKING_DIRECTORY ${CMAKE_BINARY_DIR}/Debian/${DISTRI}
         )
     else()
+        message(STATUS "In else of  DPUT_CONFIG_IN is ${DPUT_CONFIG_IN}")
         add_custom_target(dput_${DISTRI} ALL
             COMMAND ${DPUT_EXECUTABLE} ${DPUT_HOST} ${DEB_SOURCE_CHANGES}
             DEPENDS debuild_${DISTRI}
