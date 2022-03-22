@@ -159,6 +159,14 @@ class CalibrationHandler {
     uint8_t getLensPosition(CameraBoardSocket cameraId);
 
     /**
+     *  Get the distortion model of the given camera
+     *
+     * @param cameraId of the camera with lens position is requested.
+     * @return lens position of the camera with given cameraId at which it was calibrated.
+     */
+    CameraModel getDistortionModel(CameraBoardSocket cameraId);
+
+    /**
      * Get the Camera Extrinsics object between two cameras from the calibration data if there is a linked connection
      *  between any two cameras then the relative rotation and translation (in centimeters) is returned by this function.
      *
