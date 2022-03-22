@@ -98,7 +98,7 @@ class StereoDepthConfig : public Buffer {
     /**
      * Set depth unit of depth map.
      *
-     * Metre, centimetre, millimetre, inch, foot or custom unit is available.
+     * Meter, centimeter, millimeter, inch, foot or custom unit is available.
      */
     StereoDepthConfig& setDepthUnit(AlgorithmControl::DepthUnit depthUnit);
 
