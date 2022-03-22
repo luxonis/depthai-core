@@ -306,6 +306,13 @@ uint8_t CalibrationHandler::getLensPosition(CameraBoardSocket cameraId) {
     return eepromData.cameraData[cameraId].lensPosition;
 }
 
+CameraModel CalibrationHandler::getDistortionModel(CameraBoardSocket cameraId) {
+    if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end())
+        throw std::runtime_error("There is no Camera data available corresponding to the the requested cameraID");
+
+    return eepromData.cameraData[cameraId].cameraType;
+}
+
 std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation) {
     /**
      * 1. Check if both camera ID exists.
