@@ -78,13 +78,13 @@ class SpatialDetectionNetwork : public NodeCRTP<DetectionNetwork, SpatialDetecti
     void setBoundingBoxScaleFactor(float scaleFactor);
 
     /**
-     * Specifies lower threshold in millimeters for depth values which will used to calculate spatial data
+     * Specifies lower threshold in depth units (millimeter by default) for depth values which will used to calculate spatial data
      * @param lowerThreshold LowerThreshold must be in the interval [0,upperThreshold] and less than upperThreshold.
      */
     void setDepthLowerThreshold(uint32_t lowerThreshold);
 
     /**
-     * Specifies upper threshold in millimeters for depth values which will used to calculate spatial data
+     * Specifies upper threshold in depth units (millimeter by default) for depth values which will used to calculate spatial data
      * @param upperThreshold UpperThreshold must be in the interval (lowerThreshold,65535].
      */
     void setDepthUpperThreshold(uint32_t upperThreshold);

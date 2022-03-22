@@ -66,6 +66,15 @@ StereoDepthConfig& StereoDepthConfig::setSubpixel(bool enable) {
     return *this;
 }
 
+StereoDepthConfig& StereoDepthConfig::setDepthUnit(AlgorithmControl::DepthUnit depthUnit) {
+    cfg.algorithmControl.depthUnit = depthUnit;
+    return *this;
+}
+
+dai::StereoDepthConfig::AlgorithmControl::DepthUnit StereoDepthConfig::getDepthUnit() {
+    return cfg.algorithmControl.depthUnit;
+}
+
 float StereoDepthConfig::getMaxDisparity() const {
     float maxDisp = 95.0;
     if(cfg.costMatching.disparityWidth == RawStereoDepthConfig::CostMatching::DisparityWidth::DISPARITY_64) {
