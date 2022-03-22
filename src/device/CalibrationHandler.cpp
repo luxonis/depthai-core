@@ -532,8 +532,19 @@ void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, std::ve
 }
 
 void CalibrationHandler::setDistortionCoefficients(CameraBoardSocket cameraId, std::vector<float> distortionCoefficients) {
-    if(distortionCoefficients.size() != 14) {
-        throw std::runtime_error("distortionCoefficients size should always be 14");  // should it be ??
+    const size_t num = 14;
+
+    if(distortionCoefficients.size() > num) {
+        throw std::runtime_error("Too many distortion coefficients! Max is 14.");
+    }
+
+    if(num != 14) {
+        while(distortionCoefficients.size() != num) {
+            // Pad to 14 parameters.
+            // On the device it's static PoD, we always want it to be 14 parameters - for Perspective camera model, we return all 14; for Fisheye camera model,
+            // we only return the first four.
+            distortionCoefficients.push_back(0.0f);
+        }
     }
 
     if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end()) {
