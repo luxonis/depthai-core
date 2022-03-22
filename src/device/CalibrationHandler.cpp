@@ -281,6 +281,17 @@ std::vector<float> CalibrationHandler::getDistortionCoefficients(CameraBoardSock
     if(eepromData.cameraData[cameraId].intrinsicMatrix.size() == 0 || eepromData.cameraData[cameraId].intrinsicMatrix[0][0] == 0)
         throw std::runtime_error("There is no Intrinsic matrix available for the the requested cameraID");
 
+    if(eepromData.cameraData[cameraId].cameraType == CameraModel::Fisheye) {
+        // in this case the camera model is Fisheye; we only want to return four floats.
+        // camera calibration is stored as 14 floats in eeprom, only return the first four.
+        std::vector<float> ret(4);
+        for(int i = 0; i < 4; i++) {
+            ret[i] = eepromData.cameraData[cameraId].distortionCoeff[i];
+        }
+        return ret;
+    }
+
+    // in this case the camera model is Perspective, we want to return all 14
     return eepromData.cameraData[cameraId].distortionCoeff;
 }
 
