@@ -22,6 +22,10 @@ if(NOT WIN32)
     set(PROJECT_PPA_USER "saching13")
 endif()
 
+# Additional options
+option(USE_LOCAL "Enable to use hunter from local path" ON)
+option(UPLOAD_PPA "Upload debian packages to the launchpad ppa repository" ON)
+
 # Create a custom toolchain to pass certain options to dependencies
 set(gen_toolchain "${CMAKE_CURRENT_BINARY_DIR}/generated/toolchain.cmake")
 configure_file(
@@ -37,19 +41,29 @@ else()
 endif()
 
 include("cmake/HunterGate.cmake")
+
+if(USE_LOCAL)
+    set(HUNTER_URL "${CMAKE_SOURCE_DIR}/hunter/_Base/Download/Hunter/0.23.320/9b4e732/v0.23.320.tar.gz")
+    set(HUNTER_CONFIG_PATH "${CMAKE_SOURCE_DIR}/cmake/Hunter/config.cmake")
+else()
+    set(HUNTER_URL "https://github.com/cpp-pm/hunter/archive/v0.23.320.tar.gz")
+    set(HUNTER_CONFIG_PATH "${CMAKE_SOURCE_DIR}/cmake/Hunter/configLocal.cmake")
+endif()
+
 HunterGate(
-    URL "https://github.com/cpp-pm/hunter/archive/v0.23.320.tar.gz"
+    URL "${HUNTER_URL}"
     SHA1 "9b4e732afd22f40482c11ad6342f7d336634226f"
-    LOCAL # Local config for dependencies
+    FILEPATH "${HUNTER_CONFIG_PATH}"
 )
+message(STATUS "---------------------Finished inititing Hunter")
 
 # Move binary dir if windows, to shorten the path
 if(WIN32)
     set(HUNTER_BINARY_DIR "${HUNTER_GATE_ROOT}/_bin" CACHE STRING "Hunter binary directory")
 endif()
-set (DEPTHAI_VERSION_MAJOR ${CHANGELOG_LAST_VERSION_MAJOR})
-set (DEPTHAI_VERSION_MINOR ${CHANGELOG_LAST_VERSION_MINOR})
-set (DEPTHAI_VERSION_PATCH ${CHANGELOG_LAST_VERSION_PATCH})
+set(DEPTHAI_VERSION_MAJOR ${CHANGELOG_LAST_VERSION_MAJOR})
+set(DEPTHAI_VERSION_MINOR ${CHANGELOG_LAST_VERSION_MINOR})
+set(DEPTHAI_VERSION_PATCH ${CHANGELOG_LAST_VERSION_PATCH})
 
 # Create depthai project
 project(depthai VERSION "2.10.2" LANGUAGES CXX C)
@@ -294,7 +308,6 @@ option(PACKAGE_RPM "Build .rpm instalation packages" OFF)
 option(PACKAGE_TGZ "Build .tgz package archive" ON)
 option(PACKAGE_ZIP "Build .zip package archive" ON)
 option(ENABLE_PPA "Enable PPA package build" ON)
-option(UPLOAD_PPA "Upload debian packages to the launchpad ppa repository" ON)
 
 set(PPA_DEBIAN_VERSION "ppa1" CACHE STRING "PPA version suffix for debian packages")
 set(PROJECT_PPA_DISTRIB_TARGET "focal;bionic;xenial" CACHE STRING "Ubuntu PPA distrubutive names")
@@ -306,7 +319,11 @@ else()
 endif()
 
 # Set constant
-set(DEPTHAI_RESOURCES_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/resources")
+if(UPLOAD_PPA)
+    set(DEPTHAI_RESOURCES_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/resources")
+else()
+    set(DEPTHAI_RESOURCES_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/resources")
+endif()
 
 # Include configuration
 include(Depthai/DepthaiDeviceSideConfig)    # Depthai device binary commit/version configuration
@@ -667,7 +684,7 @@ endif()
 if(UPLOAD_PPA)
     set(ENABLE_PPA ON)
     set(PACKAGE_DEB ON)
-endif(UPLOAD_PPA)
+endif()
 
 set(CPACK_GENERATORS)
 if(PACKAGE_TGZ)

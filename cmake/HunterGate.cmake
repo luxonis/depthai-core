@@ -494,6 +494,8 @@ macro(HunterGate)
     )
 
     set(_master_location "${_hunter_self}/cmake/Hunter")
+    message(STATUS "---------------------Before HunterGate ${_master_location}")
+
     if(EXISTS "${HUNTER_GATE_ROOT}/cmake/Hunter")
       # Hunter downloaded manually (e.g. by 'git clone')
       set(_unused "xxxxxxxxxx")
@@ -533,6 +535,10 @@ macro(HunterGate)
         )
       endif()
     endif()
+    message(STATUS "---------------------Mid HunterGate ${HUNTER_GATE_ROOT}")
+
+    message(STATUS "---------------------Finished HunterGate ${_master_location}")
+
     include("${_master_location}")
     set_property(GLOBAL PROPERTY HUNTER_GATE_DONE YES)
   endif()
