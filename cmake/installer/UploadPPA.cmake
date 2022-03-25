@@ -187,6 +187,10 @@ endforeach(COMPONENT ${CPACK_COMPONENTS_ALL})
 # debian/copyright
 set(debian_copyright ${DEBIAN_SOURCE_DIR}/debian/copyright)
 configure_file(${CPACK_RESOURCE_FILE_LICENSE} ${debian_copyright} COPYONLY)
+# set(hunterpath)
+# configure_file(${CMAKE_BINARY_DIR}/resources ${DEBIAN_SOURCE_DIR}/resources COPYONLY)
+file(COPY ${CMAKE_BINARY_DIR}/hunter/_Base/Download DESTINATION ${DEBIAN_SOURCE_DIR}/hunter/_Base)
+file(COPY ${CMAKE_BINARY_DIR}/resources DESTINATION ${DEBIAN_SOURCE_DIR})
 
 ##############################################################################
 # debian/rules
@@ -198,7 +202,7 @@ file(WRITE ${debian_rules}
 	"\n\n%:\n"
 	"\tdh  $@ --buildsystem=cmake\n"
 	"\noverride_dh_auto_configure:\n"
-	"\tDESTDIR=\"$(CURDIR)/debian/${CPACK_DEBIAN_PACKAGE_NAME}\" dh_auto_configure -- -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=ON -DPACKAGE_TGZ=OFF -DHUNTER_ROOT=\"$(CURDIR)/.hunter\" "
+	"\tdh_auto_configure -- -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=ON -DPACKAGE_TGZ=OFF -DDEB_BUILD=ON -DHUNTER_ROOT=\"$(CURDIR)/hunter\" "
 	"\n\noverride_dh_auto_install:\n"
 	"\tdh_auto_install --destdir=\"$(CURDIR)/debian/${CPACK_DEBIAN_PACKAGE_NAME}\" --buildsystem=cmake"
 	"\n\noverride_dh_strip:\n"

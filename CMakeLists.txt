@@ -23,8 +23,8 @@ if(NOT WIN32)
 endif()
 
 # Additional options
-option(USE_LOCAL "Enable to use hunter from local path" ON)
-option(UPLOAD_PPA "Upload debian packages to the launchpad ppa repository" ON)
+option(DEB_BUILD "Enable to use local from deb build" OFF)
+option(UPLOAD_PPA "Upload debian packages to the launchpad ppa repository" OFF)
 
 # Create a custom toolchain to pass certain options to dependencies
 set(gen_toolchain "${CMAKE_CURRENT_BINARY_DIR}/generated/toolchain.cmake")
@@ -42,13 +42,14 @@ endif()
 
 include("cmake/HunterGate.cmake")
 
-if(USE_LOCAL)
+if(DEB_BUILD)
     set(HUNTER_URL "${CMAKE_SOURCE_DIR}/hunter/_Base/Download/Hunter/0.23.320/9b4e732/v0.23.320.tar.gz")
-    set(HUNTER_CONFIG_PATH "${CMAKE_SOURCE_DIR}/cmake/Hunter/config.cmake")
+    set(HUNTER_CONFIG_PATH "${CMAKE_SOURCE_DIR}/cmake/Hunter/configLocal.cmake")
 else()
     set(HUNTER_URL "https://github.com/cpp-pm/hunter/archive/v0.23.320.tar.gz")
-    set(HUNTER_CONFIG_PATH "${CMAKE_SOURCE_DIR}/cmake/Hunter/configLocal.cmake")
+    set(HUNTER_CONFIG_PATH "${CMAKE_SOURCE_DIR}/cmake/Hunter/config.cmake")
 endif()
+message(STATUS "Hunter URL file: ${HUNTER_URL}")
 
 HunterGate(
     URL "${HUNTER_URL}"
@@ -66,7 +67,7 @@ set(DEPTHAI_VERSION_MINOR ${CHANGELOG_LAST_VERSION_MINOR})
 set(DEPTHAI_VERSION_PATCH ${CHANGELOG_LAST_VERSION_PATCH})
 
 # Create depthai project
-project(depthai VERSION "2.10.2" LANGUAGES CXX C)
+project(depthai VERSION "2.10.5" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 
 if(has_parent)
@@ -307,7 +308,7 @@ option(PACKAGE_DEB "Build .deb instalation packages" OFF)
 option(PACKAGE_RPM "Build .rpm instalation packages" OFF)
 option(PACKAGE_TGZ "Build .tgz package archive" ON)
 option(PACKAGE_ZIP "Build .zip package archive" ON)
-option(ENABLE_PPA "Enable PPA package build" ON)
+option(ENABLE_PPA "Enable PPA package build" OFF)
 
 set(PPA_DEBIAN_VERSION "ppa1" CACHE STRING "PPA version suffix for debian packages")
 set(PROJECT_PPA_DISTRIB_TARGET "focal;bionic;xenial" CACHE STRING "Ubuntu PPA distrubutive names")
@@ -319,7 +320,7 @@ else()
 endif()
 
 # Set constant
-if(UPLOAD_PPA)
+if(DEB_BUILD)
     set(DEPTHAI_RESOURCES_OUTPUT_DIR "${CMAKE_CURRENT_SOURCE_DIR}/resources")
 else()
     set(DEPTHAI_RESOURCES_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/resources")

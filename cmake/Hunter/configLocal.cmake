@@ -14,11 +14,17 @@ hunter_config(
     SHA1 "58885ff0609ed5291039e512361bf7161b69910e"
 )
 
+# hunter_config(
+#     BZip2
+#     VERSION "1.0.8-p0"
+#     URL "${HUNTER_ROOT}/_Base/Download/BZip2/1.0.8-p0/9125bd6/v1.0.8-p0.tar.gz"
+#     SHA1 "9125bd674fbe7c8169c8ea6a2a15a414a7dc2f86"
+# )
+
+
 hunter_config(
     BZip2
     VERSION "1.0.8-p0"
-    URL "${HUNTER_ROOT}/_Base/Download/BZip2/1.0.8-p0/9125bd6/v1.0.8-p0.tar.gz"
-    SHA1 "9125bd674fbe7c8169c8ea6a2a15a414a7dc2f86"
 )
 
 hunter_config(
@@ -33,12 +39,12 @@ hunter_config(
         CMAKE_C_VISIBILITY_PRESET=hidden
 )
 
-hunter_config(
-    lzma
-    VERSION "5.2.3-p4"
-    URL "${HUNTER_ROOT}/_Base/Download/lzma/5.2.3-p4/09d7d8c/v5.2.3-p4.tar.gz"
-    SHA1 "09d7d8c8c8f1f488b3ccb739760c2092aae62441"
-)
+# hunter_config(
+#     lzma
+#     VERSION "5.2.3-p4"
+#     URL "${HUNTER_ROOT}/_Base/Download/lzma/5.2.3-p4/09d7d8c/v5.2.3-p4.tar.gz"
+#     SHA1 "09d7d8c8c8f1f488b3ccb739760c2092aae62441"
+# )
 
 # libarchive, luxonis fork
 hunter_config(
