@@ -93,6 +93,7 @@ hunter_config(
     CMAKE_ARGS
         FP16_BUILD_BENCHMARKS=OFF
         FP16_BUILD_TESTS=OFF
+        PSIMD_SOURCE_DIR="${HUNTER_ROOT}/_Base/Download/FP16"
 )
 
 # Backward - Stacktrace printer

@@ -68,6 +68,13 @@ hunter_config(
         ENABLE_ZSTD=OFF
 )
 
+hunter_config(
+    psimd
+    VERSION "luxonis-0.0.0"
+    URL "https://github.com/Maratyszcza/psimd/archive/072586a71b55b7f8c584153d223e95687148a900.tar.gz"
+    SHA1 "531ef739b029f75b5641e04739476d977ddf4c75"
+)
+
 # Luxonis FP16 fork which doesn't use git cloning for its dependencies
 hunter_config(
     FP16
