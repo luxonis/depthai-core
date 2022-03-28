@@ -6,7 +6,7 @@ export DH_VERBOSE=1
 	dh  $@ --buildsystem=cmake
 
 override_dh_auto_configure:
-	dh_auto_configure -- -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=ON -DHUNTER_ROOT="$(CURDIR)/hunter" 
+	dh_auto_configure -- -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=ON -DHUNTER_ROOT="$(CURDIR)/build/hunter" 
 
 override_dh_auto_install:
 	dh_auto_install --buildsystem=cmake

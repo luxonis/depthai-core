@@ -1,5 +1,11 @@
 # Microsoft Visual Studio Code
 .project
+*debhelper*
+debhelper-*
+libdepthai-core*
+files
+tmp
+obj-x86_64-linux-gnu
 .vscode/
 .vs/
 build*/*

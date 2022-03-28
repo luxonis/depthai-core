@@ -1,4 +1,4 @@
 ###usr/lib/*/pkgconfig/*.pc
 usr/include
 usr/lib/*/*.so
-usr/lib/*/*/depthai/*.cmake
+usr/lib/*/cmake/depthai
