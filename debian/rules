@@ -1,0 +1,15 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE=1
+
+%:
+	dh  $@ --buildsystem=cmake
+
+override_dh_auto_configure:
+	dh_auto_configure -- -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/usr/local -DHUNTER_ROOT="$(CURDIR)/hunter" 
+
+override_dh_auto_install:
+	dh_auto_install --buildsystem=cmake
+
+override_dh_strip:
+	dh_strip --dbg-package=libdepthai-dev-dbg
