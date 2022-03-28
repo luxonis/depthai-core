@@ -332,7 +332,6 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * Default value: false.
      */
     void useHomographyRectification(bool useHomographyRectification);
-
 };
 
 }  // namespace node
