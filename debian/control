@@ -1,20 +1,23 @@
-Source: libdepthai-dev
+Source: depthai-core
 Section: libs
 Priority: optional
-Maintainer: Sachin Guruswamy (PPA) <sachin@luxonis.com>
-Build-Depends: cmake, debhelper (>= 11), devscripts, dh-make, libopencv-dev (>= 4.1), libusb-1.0-0-dev
+Maintainer: Sachin Guruswamy <sachin@luxonis.com>
+Build-Depends: cmake, debhelper (>= 11), devscripts, dh-make, libusb-1.0-0-dev, pkg-config, libc6
 Standards-Version: 3.9.2
 Homepage: https://github.com/luxonis/depthai-core
 
-Package: libdepthai-dev
-Architecture: any
-Depends: libopencv-dev (>= 4.1), libusb-1.0-0-dev
-Description: DepthAI is a Spatial AI platform, which allows robots and computers to perceive the world like a human can - what objects or features are - and where they are in physical world.
+Package: libdepthai-core
+Architecture: amd64
+Depends: libusb-1.0-0-dev, ${misc:Depends}
+Description: DepthAI is a Spatial AI platform.
+ Platform allows robots and computers to perceive the world like a human can - what objects or features are - and where they are in physical world.
 
-Package: libdepthai-dev-dbg
+Package: libdepthai-core-dbg
 Priority: extra
 Section: debug
-Architecture: any
-Depends: libdepthai-dev (= ${binary:Version})
-Description: DepthAI is a Spatial AI platform, which allows robots and computers to perceive the world like a human can - what objects or features are - and where they are in physical world.
- This is the debugging symbols for the libdepthai-dev library
+Architecture: amd64
+Depends: libdepthai-core (= ${binary:Version})
+Description: DepthAI is a Spatial AI platform.
+ Platform allows robots and computers to perceive the world like a human can - what objects or features are - and where they are in physical world.
+ This is the debugging symbols for the libdepthai-core library
+

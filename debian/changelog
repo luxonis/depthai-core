@@ -1,4 +1,4 @@
-libdepthai-dev (2.10.5-ppa1~focal1) focal; urgency=low
+depthai-core (2.15.1) focal; urgency=low
 
   * lib usb dependency testing 1
   * Added hunter package testing 6

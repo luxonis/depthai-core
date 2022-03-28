@@ -6,10 +6,27 @@ export DH_VERBOSE=1
 	dh  $@ --buildsystem=cmake
 
 override_dh_auto_configure:
-	dh_auto_configure -- -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=ON -DCMAKE_INSTALL_PREFIX=/usr/local -DHUNTER_ROOT="$(CURDIR)/hunter" 
+	dh_auto_configure -- -DCMAKE_BUILD_TYPE=RelWithDebInfo -DBUILD_SHARED_LIBS=ON -DHUNTER_ROOT="$(CURDIR)/hunter" 
 
 override_dh_auto_install:
 	dh_auto_install --buildsystem=cmake
 
 override_dh_strip:
-	dh_strip --dbg-package=libdepthai-dev-dbg
+	dh_strip --dbg-package=libdepthai-core-dbg
+
+
+
+# Package: libdepthai-opencv
+# Architecture: amd64
+# Depends: libopencv-dev (>= 4.1), ${misc:Depends}
+# Description: DepthAI is a Spatial AI platform.
+#  Platform allows robots and computers to perceive the world like a human can - what objects or features are - and where they are in physical world.
+
+# Package: libdepthai-opencv-dbg
+# Priority: extra
+# Section: debug
+# Architecture: amd64
+# Depends: libdepthai-opencv (= ${binary:Version})
+# Description: DepthAI is a Spatial AI platform.
+#  Platform allows robots and computers to perceive the world like a human can - what objects or features are - and where they are in physical world.
+#  This is the debugging symbols for the libdepthai-opencv library
