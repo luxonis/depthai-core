@@ -176,6 +176,10 @@ void StereoDepth::setFocalLengthFromCalibration(bool focalLengthFromCalibration)
     properties.focalLengthFromCalibration = focalLengthFromCalibration;
 }
 
+void StereoDepth::useHomographyRectification(bool useHomographyRectification) {
+    properties.useHomographyRectification = useHomographyRectification;
+}
+
 void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
     presetMode = mode;
     switch(presetMode) {
