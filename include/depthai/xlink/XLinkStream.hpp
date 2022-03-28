@@ -11,8 +11,8 @@
 #include <thread>
 #include <tuple>
 #include <unordered_map>
-#include <vector>
 #include <utility>
+#include <vector>
 
 // libraries
 #include <XLink/XLinkPublicDefines.h>
