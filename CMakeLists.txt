@@ -22,8 +22,8 @@ endif()
 
 include("cmake/HunterGate.cmake")
 HunterGate(
-    URL "https://github.com/cpp-pm/hunter/archive/v0.23.320.tar.gz"
-    SHA1 "9b4e732afd22f40482c11ad6342f7d336634226f"
+    URL "https://github.com/cpp-pm/hunter/archive/v0.23.322.tar.gz"
+    SHA1 "cb0ea1f74f4a2c49a807de34885743495fccccbe"
     LOCAL # Local config for dependencies
 )
 
