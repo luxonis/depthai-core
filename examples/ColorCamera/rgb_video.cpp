@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
     camRgb->setIspScale(1, 2);
     camRgb->setVideoSize(1920, 1080);
     camRgb->initialControl.setAntiBandingMode(dai::CameraControl::AntiBandingMode::MAINS_60_HZ);
-    camRgb->setFps(38);
+    camRgb->setFps(30);
 
     xoutVideo->input.setBlocking(false);
     xoutVideo->input.setQueueSize(1);
