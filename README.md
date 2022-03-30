@@ -76,7 +76,7 @@ Targets available to link to are:
 
 #### Using find_package
 
-Build static or dynamic version of library (See: [Building](##building) and optionally [Installing](##installing))
+Build static or dynamic version of library (See: [Building](#building) and optionally [Installing](#installing))
 
 Add `find_package` and `target_link_libraries` to your project
 ```
@@ -112,8 +112,8 @@ target_link_libraries([my-app] PRIVATE depthai::opencv)
 ### Non-CMake integration (Visual Studio, Xcode, CodeBlocks, ...)
 
 To integrate into a different build system than CMake, prefered way is compiling as dynamic library and setting correct build options.
-1. First build as dynamic library: [Building Dynamic library](###dynamic-library)
-2. Then install: [Installing](##installing)
+1. First build as dynamic library: [Building Dynamic library](#dynamic-library)
+2. Then install: [Installing](#installing)
 
 In your non-CMake project (new Visual Studio project, ...)
 1. Set needed library directories:
@@ -152,7 +152,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_INSTALL_SIGNAL_HANDLER | Set to 0 to disable installing Backward signal handler for stack trace printing |
 | DEPTHAI_WATCHDOG | Sets device watchdog timeout. Useful for debugging (`DEPTHAI_WATCHDOG=0`), to prevent device reset while the process is paused. |
 | DEPTHAI_WATCHDOG_INITIAL_DELAY | Specifies delay after which the device watchdog starts. |
-| DEPTHAI_SEARCH_TIME | Specifies device search time in milliseconds for functions that block until a device is found. |
+| DEPTHAI_SEARCH_TIMEOUT | Specifies timeout in milliseconds for device searching in blocking functions. |
 | DEPTHAI_CONNECT_TIMEOUT | Specifies timeout in milliseconds for establishing a connection to a given device. |
 | DEPTHAI_BOOTUP_TIMEOUT | Specifies timeout in milliseconds for waiting the device to boot after sending the binary. |
 | DEPTHAI_PROTOCOL | Restricts default search to the specified protocol. Options: any, usb, tcpip. |
@@ -168,10 +168,17 @@ cmake -S. -Bbuild -D'DEPTHAI_TEST_EXAMPLES=ON' -D'DEPTHAI_BUILD_TESTS=ON' -D'DEP
 cmake --build build
 ```
 
-Then navigate to `build` folder and run `ctest`
+Then navigate to `build` folder and run `ctest` with specified labels that denote device type to test on.
+Currently available labels:
+ - usb
+ - poe
+
 ```
 cd build
-ctest
+# Run tests on USB devices
+ctest -L usb
+# Run tests on PoE devices
+ctest -L poe
 ```
 
 ## Style check
