@@ -236,7 +236,7 @@ class DeviceBootloader {
     std::tuple<bool, std::string> flash(std::function<void(float)> progressCallback,
                                         const Pipeline& pipeline,
                                         bool compress = false,
-                                        std::string applicationName = "");
+                                        std::string applicationName = "", Memory memory = Memory::AUTO);
 
     /**
      * Flashes a given pipeline to the device.
@@ -244,7 +244,7 @@ class DeviceBootloader {
      * @param compress Compresses application to reduce needed memory size
      * @param applicationName Optional name the application that is flashed
      */
-    std::tuple<bool, std::string> flash(const Pipeline& pipeline, bool compress = false, std::string applicationName = "");
+    std::tuple<bool, std::string> flash(const Pipeline& pipeline, bool compress = false, std::string applicationName = "", Memory memory = Memory::AUTO);
 
     /**
      * Reads flashed application information from device
@@ -256,13 +256,13 @@ class DeviceBootloader {
      * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
      * @param package Depthai application package to flash to the board
      */
-    std::tuple<bool, std::string> flashDepthaiApplicationPackage(std::function<void(float)> progressCallback, std::vector<uint8_t> package);
+    std::tuple<bool, std::string> flashDepthaiApplicationPackage(std::function<void(float)> progressCallback, std::vector<uint8_t> package, Memory memory = Memory::AUTO);
 
     /**
      * Flashes a specific depthai application package that was generated using createDepthaiApplicationPackage or saveDepthaiApplicationPackage
      * @param package Depthai application package to flash to the board
      */
-    std::tuple<bool, std::string> flashDepthaiApplicationPackage(std::vector<uint8_t> package);
+    std::tuple<bool, std::string> flashDepthaiApplicationPackage(std::vector<uint8_t> package, Memory memory = Memory::AUTO);
 
     /**
      * Clears flashed application on the device, by removing SBR boot structure

@@ -557,12 +557,12 @@ bool DeviceBootloader::isAllowedFlashingBootloader() const {
 std::tuple<bool, std::string> DeviceBootloader::flash(std::function<void(float)> progressCb,
                                                       const Pipeline& pipeline,
                                                       bool compress,
-                                                      std::string applicationName) {
-    return flashDepthaiApplicationPackage(progressCb, createDepthaiApplicationPackage(pipeline, compress, applicationName));
+                                                      std::string applicationName, Memory memory) {
+    return flashDepthaiApplicationPackage(progressCb, createDepthaiApplicationPackage(pipeline, compress, applicationName), memory);
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flash(const Pipeline& pipeline, bool compress, std::string applicationName) {
-    return flashDepthaiApplicationPackage(createDepthaiApplicationPackage(pipeline, compress, applicationName));
+std::tuple<bool, std::string> DeviceBootloader::flash(const Pipeline& pipeline, bool compress, std::string applicationName, Memory memory) {
+    return flashDepthaiApplicationPackage(createDepthaiApplicationPackage(pipeline, compress, applicationName), memory);
 }
 
 std::tuple<bool, std::string, DeviceBootloader::ApplicationInfo> DeviceBootloader::readApplicationInfo() {
@@ -611,53 +611,61 @@ std::tuple<bool, std::string, DeviceBootloader::MemoryInfo> DeviceBootloader::ge
     return {true, "", mem};
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(std::function<void(float)> progressCb, std::vector<uint8_t> package) {
+std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(std::function<void(float)> progressCb, std::vector<uint8_t> package, Memory memory) {
     // Bug in NETWORK bootloader in version 0.0.12 < 0.0.14 - flashing can cause a soft brick
     auto version = getVersion();
     if(bootloaderType == Type::NETWORK && version < Version(0, 0, 14)) {
         throw std::invalid_argument("Network bootloader requires version 0.0.14 or higher to flash applications. Current version: " + version.toString());
     }
 
-    // send request to FLASH BOOTLOADER
-    Request::UpdateFlash updateFlash;
-    updateFlash.storage = Request::UpdateFlash::SBR;
-    updateFlash.totalSize = static_cast<uint32_t>(package.size());
-    updateFlash.numPackets = ((static_cast<uint32_t>(package.size()) - 1) / bootloader::XLINK_STREAM_MAX_SIZE) + 1;
-    if(!sendRequest(updateFlash)) return {false, "Couldn't send bootloader flash request"};
+    if(memory == Memory::AUTO) {
 
-    // After that send numPackets of data
-    stream->writeSplit(package.data(), package.size(), bootloader::XLINK_STREAM_MAX_SIZE);
+        // send request to FLASH BOOTLOADER
+        Request::UpdateFlash updateFlash;
+        updateFlash.storage = Request::UpdateFlash::SBR;
+        updateFlash.totalSize = static_cast<uint32_t>(package.size());
+        updateFlash.numPackets = ((static_cast<uint32_t>(package.size()) - 1) / bootloader::XLINK_STREAM_MAX_SIZE) + 1;
+        if(!sendRequest(updateFlash)) return {false, "Couldn't send bootloader flash request"};
 
-    // Then wait for response by bootloader
-    // Wait till FLASH_COMPLETE response
-    Response::FlashComplete result;
-    result.success = 0;  // TODO remove these inits after fix https://github.com/luxonis/depthai-bootloader-shared/issues/4
-    result.errorMsg[0] = 0;
-    do {
-        std::vector<uint8_t> data;
-        if(!receiveResponseData(data)) return {false, "Couldn't receive bootloader response"};
+        // After that send numPackets of data
+        stream->writeSplit(package.data(), package.size(), bootloader::XLINK_STREAM_MAX_SIZE);
 
-        Response::FlashStatusUpdate update;
-        if(parseResponse(data, update)) {
-            // if progress callback is set
-            if(progressCb != nullptr) {
-                progressCb(update.progress);
+        // Then wait for response by bootloader
+        // Wait till FLASH_COMPLETE response
+        Response::FlashComplete result;
+        result.success = 0;  // TODO remove these inits after fix https://github.com/luxonis/depthai-bootloader-shared/issues/4
+        result.errorMsg[0] = 0;
+        do {
+            std::vector<uint8_t> data;
+            if(!receiveResponseData(data)) return {false, "Couldn't receive bootloader response"};
+
+            Response::FlashStatusUpdate update;
+            if(parseResponse(data, update)) {
+                // if progress callback is set
+                if(progressCb != nullptr) {
+                    progressCb(update.progress);
+                }
+            } else if(parseResponse(data, result)) {
+                break;
+            } else {
+                // Unknown response, shouldn't happen
+                return {false, "Unknown response from bootloader while flashing"};
             }
-        } else if(parseResponse(data, result)) {
-            break;
-        } else {
-            // Unknown response, shouldn't happen
-            return {false, "Unknown response from bootloader while flashing"};
-        }
 
-    } while(true);
+        } while(true);
 
-    // Return if flashing was successful
-    return {result.success, result.errorMsg};
+        // Return if flashing was successful
+        return {result.success, result.errorMsg};
+
+    } else {
+        // Flash custom
+        return flashCustom(memory, bootloader::getStructure(getType()).offset.at(Section::APPLICATION), package, progressCb);
+    }
+
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(std::vector<uint8_t> package) {
-    return flashDepthaiApplicationPackage(nullptr, package);
+std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(std::vector<uint8_t> package, Memory memory) {
+    return flashDepthaiApplicationPackage(nullptr, package, memory);
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashClear(Memory memory) {
