@@ -843,10 +843,10 @@ std::tuple<bool, std::string> DeviceBootloader::flashCustom(Memory memory, size_
 }
 std::tuple<bool, std::string> DeviceBootloader::flashCustom(
     Memory memory, size_t offset, const uint8_t* data, size_t size, std::string filename, std::function<void(float)> progressCb) {
-    // Only flash memory is supported for now
-    if(memory != Memory::FLASH) {
-        throw std::invalid_argument("Only FLASH memory is supported for now");
-    }
+    // // Only flash memory is supported for now
+    // if(memory != Memory::FLASH) {
+    //     throw std::invalid_argument("Only FLASH memory is supported for now");
+    // }
     if(getVersion() < Version(0, 0, 12)) {
         throw std::runtime_error("Current bootloader version doesn't support custom flashing");
     }
@@ -926,10 +926,10 @@ std::tuple<bool, std::string, std::vector<uint8_t>> DeviceBootloader::readCustom
 
 std::tuple<bool, std::string> DeviceBootloader::readCustom(
     Memory memory, size_t offset, size_t size, uint8_t* data, std::string filename, std::function<void(float)> progressCb) {
-    // Only flash memory is supported for now
-    if(memory != Memory::FLASH) {
-        throw std::invalid_argument("Only FLASH memory is supported for now");
-    }
+    // // Only flash memory is supported for now
+    // if(memory != Memory::FLASH) {
+    //     throw std::invalid_argument("Only FLASH memory is supported for now");
+    // }
 
     // send request to Read Flash
     Request::ReadFlash readFlash;
