@@ -3,7 +3,7 @@ Upstream-Name: depthai-core
 Source: https://github.com/luxonis/depthai-core
 
 Files: *
-Copyright: 2019 Greenzie <support@luxonis.com>
+Copyright: 2019 Luxonis <support@luxonis.com>
 License: MIT
 
 Files: debian/*
