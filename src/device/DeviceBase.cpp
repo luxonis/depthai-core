@@ -583,7 +583,7 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
         spdlog::debug("Device - Connecting to {} device", XLinkDeviceStateToStr(deviceInfo.state));
         // Connect without booting
         connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig, deviceInfo.state);
-        if(deviceInfo.state != X_LINK_FLASH_BOOTED){
+        if(deviceInfo.state != X_LINK_FLASH_BOOTED) {
             deviceInfo.state = X_LINK_BOOTED;
         }
     } else {
@@ -927,10 +927,10 @@ bool DeviceBase::startPipeline() {
 }
 
 bool DeviceBase::startPipeline(const Pipeline& pipeline) {
-    // first check if pipeline is not already running
-    if(isPipelineRunning()) {
-        throw std::runtime_error("Pipeline is already running");
-    }
+    // // first check if pipeline is not already running
+    // if(isPipelineRunning()) {
+    //     throw std::runtime_error("Pipeline is already running");
+    // }
 
     return startPipelineImpl(pipeline);
 }
@@ -940,8 +940,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     using namespace std::chrono;
     auto t1 = steady_clock::now();
 
-    if(deviceInfo.state != X_LINK_FLASH_BOOTED){
-
+    if(deviceInfo.state != X_LINK_FLASH_BOOTED) {
         // Check openvino version
         if(!pipeline.isOpenVINOVersionCompatible(config.version)) {
             throw std::runtime_error("Device booted with different OpenVINO version that pipeline requires");
@@ -976,7 +975,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
             pimpl->rpcClient->call("setAssets", assets);
 
             // Open a channel to transfer AssetStorage (concurrently)
-            constexpr const char* ASSET_STORAGE_STREAM = "__stream_asset_storage";
+            const char* ASSET_STORAGE_STREAM = "__stream_asset_storage";
             pimpl->rpcClient->call("openAssetStorageStream", ASSET_STORAGE_STREAM, static_cast<std::uint32_t>(assetStorage.size()));
 
             // Transfer the whole assetStorage in a separate thread
@@ -987,7 +986,8 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
                 int64_t offset = 0;
                 do {
                     // Transfer half the specified size as one packet, enables FW to process it while the other packet is being transfered
-                    int64_t toTransfer = std::min(static_cast<int64_t>(device::XLINK_USB_BUFFER_MAX_SIZE / 2), static_cast<int64_t>(assetStorage.size() - offset));
+                    int64_t toTransfer =
+                        std::min(static_cast<int64_t>(device::XLINK_USB_BUFFER_MAX_SIZE / 2), static_cast<int64_t>(assetStorage.size() - offset));
                     stream.write(&assetStorage[offset], toTransfer);
                     offset += toTransfer;
                 } while(offset < static_cast<int64_t>(assetStorage.size()));
@@ -999,7 +999,6 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
             // if(assetTransferThread.thread.joinable()) assetTransferThread.thread.join();
         }
 
-
         // Build and start the pipeline
         bool success = false;
         std::string errorMsg;
@@ -1010,7 +1009,6 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
             throw std::runtime_error(errorMsg);
             return false;
         }
-
     }
 
     auto t2 = steady_clock::now();
