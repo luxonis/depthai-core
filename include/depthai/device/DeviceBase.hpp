@@ -57,6 +57,7 @@ class DeviceBase {
     struct Config {
         OpenVINO::Version version;
         BoardConfig board;
+        bool connectToFlashBootedDevice{false};
     };
 
     // static API

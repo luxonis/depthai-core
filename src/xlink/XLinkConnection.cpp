@@ -336,6 +336,8 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
         DeviceInfo deviceToBoot = deviceInfoFix(deviceToInit, X_LINK_UNBOOTED);
         deviceDesc_t foundDeviceDesc = {};
 
+        spdlog::debug("Waiting for device to boot name: {}, protocol: {}, platform: {}", deviceToBoot.desc.name, XLinkProtocolToStr(deviceToBoot.desc.protocol), XLinkPlatformToStr(deviceToBoot.desc.platform));
+
         // Wait for the device to be available
         auto tstart = steady_clock::now();
         do {
@@ -367,6 +369,8 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
         if(deviceToInit.desc.protocol != X_LINK_TCP_IP) {
             bootedDeviceInfo = deviceInfoFix(deviceToInit, expectedState);
         }
+
+        spdlog::debug("Waiting for booted device to connect to name: {}, expected state: {}, protocol: {}, platform: {}", bootedDeviceInfo.desc.name, XLinkDeviceStateToStr(expectedState), XLinkProtocolToStr(bootedDeviceInfo.desc.protocol), XLinkPlatformToStr(bootedDeviceInfo.desc.platform));
 
         // Find booted device
         auto tstart = steady_clock::now();
@@ -458,6 +462,8 @@ DeviceInfo deviceInfoFix(const DeviceInfo& dev, XLinkDeviceState_t state) {
         } else {
             std::strncat(fixed.desc.name, "ma2480", sizeof(fixed.desc.name) - std::strlen(fixed.desc.name));
         }
+    } else if(state == X_LINK_FLASH_BOOTED) {
+        std::strncat(fixed.desc.name, "flash_booted", sizeof(fixed.desc.name) - std::strlen(fixed.desc.name));
     } else if(state == X_LINK_BOOTED) {
         // set platform to any
         fixed.desc.platform = X_LINK_ANY_PLATFORM;

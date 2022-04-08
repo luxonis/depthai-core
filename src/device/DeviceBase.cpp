@@ -535,12 +535,17 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
     // Init device (if bootloader, handle correctly - issue USB boot command)
     if(deviceInfo.state == X_LINK_UNBOOTED) {
         // Unbooted device found, boot and connect with XLinkConnection constructor
+        spdlog::debug("Device - Booting and connecting to X_LINK_UNBOOTED device");
         connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
-    } else if(deviceInfo.state == X_LINK_BOOTLOADER || deviceInfo.state == X_LINK_FLASH_BOOTED) {
+        deviceInfo.state = X_LINK_BOOTED;
+    } else if(deviceInfo.state == X_LINK_BOOTLOADER || (!config.connectToFlashBootedDevice && deviceInfo.state == X_LINK_FLASH_BOOTED)) {
         // If device is in flash booted state, reset to bootloader and then continue by booting appropriate FW
         if(deviceInfo.state == X_LINK_FLASH_BOOTED) {
+            spdlog::debug("Device - Resetting FLASH_BOOTED device and connecting");
             // Boot bootloader and set current deviceInfo to new device state
             deviceInfo = XLinkConnection::bootBootloader(deviceInfo);
+        } else {
+            spdlog::debug("Device - Booting and connecting to X_LINK_BOOTLOADER device");
         }
 
         // Scope so DeviceBootloader is disconnected
@@ -572,14 +577,18 @@ void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<
 
         // Boot and connect with XLinkConnection constructor
         connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
+        deviceInfo.state = X_LINK_BOOTED;
 
-    } else if(deviceInfo.state == X_LINK_BOOTED) {
+    } else if(deviceInfo.state == X_LINK_BOOTED || (config.connectToFlashBootedDevice && deviceInfo.state == X_LINK_FLASH_BOOTED)) {
+        spdlog::debug("Device - Connecting to {} device", XLinkDeviceStateToStr(deviceInfo.state));
         // Connect without booting
-        connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
+        connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig, deviceInfo.state);
+        if(deviceInfo.state != X_LINK_FLASH_BOOTED){
+            deviceInfo.state = X_LINK_BOOTED;
+        }
     } else {
         throw std::runtime_error("Cannot find any device with given deviceInfo");
     }
-    deviceInfo.state = X_LINK_BOOTED;
 
     auto deviceBootT2 = steady_clock::now();
     spdlog::debug("Device boot time, {}", duration_cast<milliseconds>(deviceBootT2 - deviceBootT1));
@@ -931,72 +940,77 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     using namespace std::chrono;
     auto t1 = steady_clock::now();
 
-    // Check openvino version
-    if(!pipeline.isOpenVINOVersionCompatible(config.version)) {
-        throw std::runtime_error("Device booted with different OpenVINO version that pipeline requires");
-    }
+    if(deviceInfo.state != X_LINK_FLASH_BOOTED){
 
-    // Serialize the pipeline
-    PipelineSchema schema;
-    Assets assets;
-    std::vector<std::uint8_t> assetStorage;
-    pipeline.serialize(schema, assets, assetStorage);
-
-    // if debug
-    if(spdlog::get_level() == spdlog::level::debug) {
-        nlohmann::json jSchema = schema;
-        spdlog::debug("Schema dump: {}", jSchema.dump());
-        nlohmann::json jAssets = assets;
-        spdlog::debug("Asset map dump: {}", jAssets.dump());
-    }
-
-    // Load pipelineDesc, assets, and asset storage
-    pimpl->rpcClient->call("setPipelineSchema", schema);
-
-    // Transfer storage != empty
-    struct JThread {
-        ~JThread() {
-            if(thread.joinable()) thread.join();
+        // Check openvino version
+        if(!pipeline.isOpenVINOVersionCompatible(config.version)) {
+            throw std::runtime_error("Device booted with different OpenVINO version that pipeline requires");
         }
-        std::thread thread;
-    };
-    JThread assetTransferThread;
-    if(!assetStorage.empty()) {
-        pimpl->rpcClient->call("setAssets", assets);
 
-        // Open a channel to transfer AssetStorage (concurrently)
-        constexpr const char* ASSET_STORAGE_STREAM = "__stream_asset_storage";
-        pimpl->rpcClient->call("openAssetStorageStream", ASSET_STORAGE_STREAM, static_cast<std::uint32_t>(assetStorage.size()));
+        // Serialize the pipeline
+        PipelineSchema schema;
+        Assets assets;
+        std::vector<std::uint8_t> assetStorage;
+        pipeline.serialize(schema, assets, assetStorage);
 
-        // Transfer the whole assetStorage in a separate thread
-        assetTransferThread.thread = std::thread([this, &assetStorage, ASSET_STORAGE_STREAM]() {
-            auto t1Transfer = steady_clock::now();
-            XLinkStream stream(connection, ASSET_STORAGE_STREAM, device::XLINK_USB_BUFFER_MAX_SIZE);
-            spdlog::debug("AssetStorageStream id: {}", stream.getStreamId());
-            int64_t offset = 0;
-            do {
-                // Transfer half the specified size as one packet, enables FW to process it while the other packet is being transfered
-                int64_t toTransfer = std::min(static_cast<int64_t>(device::XLINK_USB_BUFFER_MAX_SIZE / 2), static_cast<int64_t>(assetStorage.size() - offset));
-                stream.write(&assetStorage[offset], toTransfer);
-                offset += toTransfer;
-            } while(offset < static_cast<int64_t>(assetStorage.size()));
-            auto t2Transfer = steady_clock::now();
-            spdlog::debug("Asset transfer took: {}", duration_cast<milliseconds>(t2Transfer - t1Transfer));
-        });
+        // if debug
+        if(spdlog::get_level() == spdlog::level::debug) {
+            nlohmann::json jSchema = schema;
+            spdlog::debug("Schema dump: {}", jSchema.dump());
+            nlohmann::json jAssets = assets;
+            spdlog::debug("Asset map dump: {}", jAssets.dump());
+        }
 
-        // // TMP TMP - remove
-        // if(assetTransferThread.thread.joinable()) assetTransferThread.thread.join();
-    }
+        // Load pipelineDesc, assets, and asset storage
+        pimpl->rpcClient->call("setPipelineSchema", schema);
 
-    // Build and start the pipeline
-    bool success = false;
-    std::string errorMsg;
-    std::tie(success, errorMsg) = pimpl->rpcClient->call("buildPipeline").as<std::tuple<bool, std::string>>();
-    if(success) {
-        pimpl->rpcClient->call("startPipeline");
-    } else {
-        throw std::runtime_error(errorMsg);
-        return false;
+        // Transfer storage != empty
+        struct JThread {
+            ~JThread() {
+                if(thread.joinable()) thread.join();
+            }
+            std::thread thread;
+        };
+        JThread assetTransferThread;
+        if(!assetStorage.empty()) {
+            pimpl->rpcClient->call("setAssets", assets);
+
+            // Open a channel to transfer AssetStorage (concurrently)
+            constexpr const char* ASSET_STORAGE_STREAM = "__stream_asset_storage";
+            pimpl->rpcClient->call("openAssetStorageStream", ASSET_STORAGE_STREAM, static_cast<std::uint32_t>(assetStorage.size()));
+
+            // Transfer the whole assetStorage in a separate thread
+            assetTransferThread.thread = std::thread([this, &assetStorage, ASSET_STORAGE_STREAM]() {
+                auto t1Transfer = steady_clock::now();
+                XLinkStream stream(connection, ASSET_STORAGE_STREAM, device::XLINK_USB_BUFFER_MAX_SIZE);
+                spdlog::debug("AssetStorageStream id: {}", stream.getStreamId());
+                int64_t offset = 0;
+                do {
+                    // Transfer half the specified size as one packet, enables FW to process it while the other packet is being transfered
+                    int64_t toTransfer = std::min(static_cast<int64_t>(device::XLINK_USB_BUFFER_MAX_SIZE / 2), static_cast<int64_t>(assetStorage.size() - offset));
+                    stream.write(&assetStorage[offset], toTransfer);
+                    offset += toTransfer;
+                } while(offset < static_cast<int64_t>(assetStorage.size()));
+                auto t2Transfer = steady_clock::now();
+                spdlog::debug("Asset transfer took: {}", duration_cast<milliseconds>(t2Transfer - t1Transfer));
+            });
+
+            // // TMP TMP - remove
+            // if(assetTransferThread.thread.joinable()) assetTransferThread.thread.join();
+        }
+
+
+        // Build and start the pipeline
+        bool success = false;
+        std::string errorMsg;
+        std::tie(success, errorMsg) = pimpl->rpcClient->call("buildPipeline").as<std::tuple<bool, std::string>>();
+        if(success) {
+            pimpl->rpcClient->call("startPipeline");
+        } else {
+            throw std::runtime_error(errorMsg);
+            return false;
+        }
+
     }
 
     auto t2 = steady_clock::now();
