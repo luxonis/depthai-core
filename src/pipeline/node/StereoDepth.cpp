@@ -39,16 +39,6 @@ StereoDepth::Properties& StereoDepth::getProperties() {
     return properties;
 }
 
-void StereoDepth::loadCalibrationData(const std::vector<std::uint8_t>& data) {
-    (void)data;
-    spdlog::warn("{} is deprecated. This function call is replaced by Pipeline::setCalibrationData under pipeline. ", __func__);
-}
-
-void StereoDepth::loadCalibrationFile(const std::string& path) {
-    (void)path;
-    spdlog::warn("{} is deprecated. This function call is replaced by Pipeline::setCalibrationData under pipeline. ", __func__);
-}
-
 void StereoDepth::setEmptyCalibration(void) {
     setRectification(false);
     spdlog::warn("{} is deprecated. This function call can be replaced by Stereo::setRectification(false). ", __func__);

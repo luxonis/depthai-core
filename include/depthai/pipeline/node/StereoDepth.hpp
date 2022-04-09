@@ -138,18 +138,6 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
     Output confidenceMap{*this, "confidenceMap", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
-     * Specify local filesystem path to the calibration file
-     * @param path Path to calibration file. If empty use EEPROM
-     */
-    [[deprecated("Use 'Pipeline::setCalibrationData()' instead")]] void loadCalibrationFile(const std::string& path);
-
-    /**
-     * Specify calibration data as a vector of bytes
-     * @param path Calibration data. If empty use EEPROM
-     */
-    [[deprecated("Use 'Pipeline::setCalibrationData()' instead")]] void loadCalibrationData(const std::vector<std::uint8_t>& data);
-
-    /**
      * Specify that a passthrough/dummy calibration should be used,
      * when input frames are already rectified (e.g. sourced from recordings on the host)
      */
