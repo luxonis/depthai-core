@@ -168,7 +168,7 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      *
      * height: 800 / 16 + 1 = 51
      */
-    void loadMeshFiles(const std::string& pathLeft, const std::string& pathRight);
+    void loadMeshFiles(const dai::Path& pathLeft, const dai::Path& pathRight);
 
     /**
      * Specify mesh calibration data for 'left' and 'right' inputs, as vectors of bytes.

@@ -4,6 +4,7 @@
 #include <fstream>
 
 #include "spdlog/spdlog.h"
+#include "utility/spdlog-fmt.hpp"
 
 namespace dai {
 namespace node {
@@ -73,16 +74,16 @@ void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const 
     properties.mesh.meshSize = static_cast<uint32_t>(meshAsset.data.size());
 }
 
-void StereoDepth::loadMeshFiles(const std::string& pathLeft, const std::string& pathRight) {
+void StereoDepth::loadMeshFiles(const dai::Path& pathLeft, const dai::Path& pathRight) {
     std::ifstream streamLeft(pathLeft, std::ios::binary);
     if(!streamLeft.is_open()) {
-        throw std::runtime_error("StereoDepth | Cannot open mesh at path: " + pathLeft);
+        throw std::runtime_error(fmt::format("StereoDepth | Cannot open mesh at path: {}", pathLeft));
     }
     std::vector<std::uint8_t> dataLeft = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(streamLeft), {});
 
     std::ifstream streamRight(pathRight, std::ios::binary);
     if(!streamRight.is_open()) {
-        throw std::runtime_error("StereoDepth | Cannot open mesh at path: " + pathRight);
+        throw std::runtime_error(fmt::format("StereoDepth | Cannot open mesh at path: {}", pathRight));
     }
     std::vector<std::uint8_t> dataRight = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(streamRight), {});
 
