@@ -21,7 +21,7 @@ class NeuralNetwork : public NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperti
 
    protected:
     tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion() override;
-    OpenVINO::Version networkOpenvinoVersion;
+    tl::optional<OpenVINO::Version> networkOpenvinoVersion;
 
    public:
     NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
