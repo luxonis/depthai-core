@@ -188,7 +188,8 @@ class Path {
      *
      * @return bool true if the path is empty, false otherwise
      */
-    DEPTHAI_NODISCARD bool empty() const noexcept {
+    // TODO add back DEPTHAI_NODISCARD once sphinx fixes are in place
+    bool empty() const noexcept {
         return _nativePath.empty();
     }
 
