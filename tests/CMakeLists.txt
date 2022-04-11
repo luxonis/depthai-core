@@ -44,13 +44,6 @@ function(dai_add_test test_name test_src)
     set_property(TARGET ${test_name} PROPERTY CXX_STANDARD_REQUIRED ON)
     set_property(TARGET ${test_name} PROPERTY CXX_EXTENSIONS OFF)
 
-    # Add additional feature level property
-    if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
-        target_compile_features(${test_name} PRIVATE cxx_generic_lambdas)
-    else()
-        target_compile_features(${test_name} PRIVATE cxx_std_${DAT_CXX_STANDARD})
-    endif()
-
     # Add to list of tests
     add_test(${test_name} ${test_name})
     # Add ubsan halt on error
@@ -69,13 +62,6 @@ function(dai_add_test test_name test_src)
         set_property(TARGET ${test_name}_conforming PROPERTY CXX_STANDARD ${DAT_CXX_STANDARD})
         set_property(TARGET ${test_name}_conforming PROPERTY CXX_STANDARD_REQUIRED ON)
         set_property(TARGET ${test_name}_conforming PROPERTY CXX_EXTENSIONS OFF)
-
-        # Add additional feature level property
-        if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
-            target_compile_features(${test_name}_conforming PRIVATE cxx_generic_lambdas)
-        else()
-            target_compile_features(${test_name}_conforming PRIVATE cxx_std_${DAT_CXX_STANDARD})
-        endif()
 
         if(MSVC_VERSION LESS 1925)
             target_compile_options(${test_name}_conforming PRIVATE "/experimental:preprocessor")
