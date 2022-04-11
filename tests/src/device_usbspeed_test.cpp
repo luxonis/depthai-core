@@ -8,6 +8,11 @@
 // Include depthai library
 #include <depthai/depthai.hpp>
 
+TEST_CASE("usb2Mode == true") {
+    dai::Pipeline p;
+    dai::Device d(p, true);
+}
+
 TEST_CASE("UsbSpeed::HIGH") {
     dai::Pipeline p;
     dai::Device d(p, dai::UsbSpeed::HIGH);
