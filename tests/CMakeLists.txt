@@ -39,18 +39,9 @@ function(dai_add_test test_name test_src)
         add_sanitizers(${test_name})
     endif()
 
-    # Set compiler c++ standard, and disables extensions (g++)
-    set_property(TARGET ${test_name} PROPERTY CXX_STANDARD ${DAT_CXX_STANDARD})
-    set_property(TARGET ${test_name} PROPERTY CXX_STANDARD_REQUIRED ON)
-    set_property(TARGET ${test_name} PROPERTY CXX_EXTENSIONS OFF)
-
-    # Add additional feature level property
-    if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
-        target_compile_features(${test_name} PRIVATE cxx_generic_lambdas)
-    else()
-        target_compile_features(${test_name} PRIVATE cxx_std_${DAT_CXX_STANDARD})
-    endif()
-
+    # Set compiler c++ standard
+    target_compile_options(${test_name} PRIVATE "${CMAKE_CXX${DAT_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
+    
     # Add to list of tests
     add_test(${test_name} ${test_name})
     # Add ubsan halt on error
@@ -65,18 +56,9 @@ function(dai_add_test test_name test_src)
         # Link to core and Catch2 testing framework
         target_link_libraries(${test_name}_conforming PRIVATE depthai-core Catch2::Catch2)
 
-        # Set compiler c++ standard, and disables extensions (g++)
-        set_property(TARGET ${test_name}_conforming PROPERTY CXX_STANDARD ${DAT_CXX_STANDARD})
-        set_property(TARGET ${test_name}_conforming PROPERTY CXX_STANDARD_REQUIRED ON)
-        set_property(TARGET ${test_name}_conforming PROPERTY CXX_EXTENSIONS OFF)
-
-        # Add additional feature level property
-        if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
-            target_compile_features(${test_name}_conforming PRIVATE cxx_generic_lambdas)
-        else()
-            target_compile_features(${test_name}_conforming PRIVATE cxx_std_${DAT_CXX_STANDARD})
-        endif()
-
+        # Set compiler c++ standard
+        target_compile_options(${test_name} PRIVATE "${CMAKE_CXX${DAT_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
+        
         if(MSVC_VERSION LESS 1925)
             target_compile_options(${test_name}_conforming PRIVATE "/experimental:preprocessor")
         else()
@@ -105,14 +87,16 @@ endfunction()
 
 # Function for adding compile definitions to tests
 function(dai_test_compile_definitions)
-    target_compile_definitions(${ARGV})
-    message(STATUS "Calling first with ${ARGV}")
-    if(MSVC)
-        set(ARGV0 ${ARGV0}_conforming)
-        list(REMOVE_AT ARGV 0)
-        list(INSERT ARGV 0 ${ARGV0})
-        message(STATUS "Calling second with ${ARGV}")
+    if(TARGET ${ARGV0})
         target_compile_definitions(${ARGV})
+        message(STATUS "Calling first with ${ARGV}")
+        if(MSVC)
+            set(ARGV0 ${ARGV0}_conforming)
+            list(REMOVE_AT ARGV 0)
+            list(INSERT ARGV 0 ${ARGV0})
+            message(STATUS "Calling second with ${ARGV}")
+            target_compile_definitions(${ARGV})
+        endif()
     endif()
 endfunction()
 
@@ -207,3 +191,5 @@ dai_add_test(filesystem_test src/filesystem_test.cpp)
 dai_test_compile_definitions(filesystem_test PRIVATE BLOB_PATH="${mobilenet_blob}")
 dai_add_test(filesystem_test_17 src/filesystem_test.cpp CXX_STANDARD 17)
 dai_test_compile_definitions(filesystem_test_17 PRIVATE BLOB_PATH="${mobilenet_blob}")
+dai_add_test(filesystem_test_20 src/filesystem_test.cpp CXX_STANDARD 20)
+dai_test_compile_definitions(filesystem_test_20 PRIVATE BLOB_PATH="${mobilenet_blob}")
