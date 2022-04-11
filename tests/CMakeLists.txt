@@ -39,11 +39,9 @@ function(dai_add_test test_name test_src)
         add_sanitizers(${test_name})
     endif()
 
-    # Set compiler c++ standard, and disables extensions (g++)
-    set_property(TARGET ${test_name} PROPERTY CXX_STANDARD ${DAT_CXX_STANDARD})
-    set_property(TARGET ${test_name} PROPERTY CXX_STANDARD_REQUIRED ON)
-    set_property(TARGET ${test_name} PROPERTY CXX_EXTENSIONS OFF)
-
+    # Set compiler c++ standard
+    target_compile_options(${test_name} PRIVATE "${CMAKE_CXX${DAT_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
+    
     # Add to list of tests
     add_test(${test_name} ${test_name})
     # Add ubsan halt on error
@@ -58,11 +56,9 @@ function(dai_add_test test_name test_src)
         # Link to core and Catch2 testing framework
         target_link_libraries(${test_name}_conforming PRIVATE depthai-core Catch2::Catch2)
 
-        # Set compiler c++ standard, and disables extensions (g++)
-        set_property(TARGET ${test_name}_conforming PROPERTY CXX_STANDARD ${DAT_CXX_STANDARD})
-        set_property(TARGET ${test_name}_conforming PROPERTY CXX_STANDARD_REQUIRED ON)
-        set_property(TARGET ${test_name}_conforming PROPERTY CXX_EXTENSIONS OFF)
-
+        # Set compiler c++ standard
+        target_compile_options(${test_name} PRIVATE "${CMAKE_CXX${DAT_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
+        
         if(MSVC_VERSION LESS 1925)
             target_compile_options(${test_name}_conforming PRIVATE "/experimental:preprocessor")
         else()
