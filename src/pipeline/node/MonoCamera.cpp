@@ -15,7 +15,7 @@ MonoCamera::MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId,
     properties.fps = 30.0;
 
     setInputRefs({&inputControl});
-    setOutputRefs({&out, &raw});
+    setOutputRefs({&out, &raw, &frameEvent});
 }
 
 MonoCamera::Properties& MonoCamera::getProperties() {
