@@ -58,7 +58,7 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
     Input right{*this, "right", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
-     * Outputs ImgFrame message that carries RAW16 encoded (0..65535) depth data in millimeters.
+     * Outputs ImgFrame message that carries RAW16 encoded (0..65535) depth data in depth units (millimeter by default).
      *
      * Non-determined / invalid depth values are set to 0
      */
@@ -138,18 +138,6 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
     Output confidenceMap{*this, "confidenceMap", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
-     * Specify local filesystem path to the calibration file
-     * @param path Path to calibration file. If empty use EEPROM
-     */
-    [[deprecated("Use 'Pipeline::setCalibrationData()' instead")]] void loadCalibrationFile(const std::string& path);
-
-    /**
-     * Specify calibration data as a vector of bytes
-     * @param path Calibration data. If empty use EEPROM
-     */
-    [[deprecated("Use 'Pipeline::setCalibrationData()' instead")]] void loadCalibrationData(const std::vector<std::uint8_t>& data);
-
-    /**
      * Specify that a passthrough/dummy calibration should be used,
      * when input frames are already rectified (e.g. sourced from recordings on the host)
      */
@@ -168,7 +156,7 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      *
      * height: 800 / 16 + 1 = 51
      */
-    void loadMeshFiles(const std::string& pathLeft, const std::string& pathRight);
+    void loadMeshFiles(const dai::Path& pathLeft, const dai::Path& pathRight);
 
     /**
      * Specify mesh calibration data for 'left' and 'right' inputs, as vectors of bytes.

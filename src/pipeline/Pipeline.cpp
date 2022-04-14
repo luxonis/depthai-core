@@ -270,7 +270,7 @@ Device::Config PipelineImpl::getDeviceConfig() const {
     return config;
 }
 
-void PipelineImpl::setCameraTuningBlobPath(const std::string& path) {
+void PipelineImpl::setCameraTuningBlobPath(const dai::Path& path) {
     std::string assetKey = "camTuning";
 
     auto asset = assetManager.set(assetKey, path);
