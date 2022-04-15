@@ -51,8 +51,8 @@ GlobalProperties Pipeline::getGlobalProperties() const {
     return pimpl->globalProperties;
 }
 
-PipelineSchema Pipeline::getPipelineSchema() const {
-    return pimpl->getPipelineSchema();
+PipelineSchema Pipeline::getPipelineSchema(utility::SerializationType type) const {
+    return pimpl->getPipelineSchema(type);
 }
 
 std::shared_ptr<const Node> PipelineImpl::getNode(Node::Id id) const {
@@ -83,9 +83,9 @@ std::vector<std::shared_ptr<Node>> PipelineImpl::getAllNodes() {
     return nodes;
 }
 
-void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage) const {
+void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, utility::SerializationType type) const {
     // Set schema
-    schema = getPipelineSchema();
+    schema = getPipelineSchema(type);
 
     // Serialize all asset managers into asset storage
     assetStorage.clear();
@@ -100,7 +100,24 @@ void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector
     assets = mutableAssets;
 }
 
-PipelineSchema PipelineImpl::getPipelineSchema() const {
+std::string PipelineImpl::serializeToJson() const {
+    PipelineSchema schema;
+    Assets assets;
+    std::vector<uint8_t> assetStorage;
+    serialize(schema, assets, assetStorage, utility::SerializationType::JSON);
+
+    nlohmann::json j;
+    j["pipeline"] = schema;
+    for(auto& node : j["pipeline"]["nodes"]) {
+        node[1]["properties"] = nlohmann::json::parse(node[1]["properties"].get<std::vector<uint8_t>>());
+    }
+
+    j["assets"] = assets;
+    j["assetStorage"] = assetStorage;
+    return j.dump();
+}
+
+PipelineSchema PipelineImpl::getPipelineSchema(utility::SerializationType type) const {
     PipelineSchema schema;
     schema.globalProperties = globalProperties;
 
@@ -111,7 +128,7 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
         NodeObjInfo info;
         info.id = node->id;
         info.name = node->getName();
-        node->getProperties().serialize(info.properties);
+        node->getProperties().serialize(info.properties, type);
 
         // Create Io information
         auto inputs = node->getInputs();
