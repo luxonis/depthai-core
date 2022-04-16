@@ -51,7 +51,7 @@ GlobalProperties Pipeline::getGlobalProperties() const {
     return pimpl->globalProperties;
 }
 
-PipelineSchema Pipeline::getPipelineSchema(utility::SerializationType type) const {
+PipelineSchema Pipeline::getPipelineSchema(SerializationType type) const {
     return pimpl->getPipelineSchema(type);
 }
 
@@ -83,7 +83,7 @@ std::vector<std::shared_ptr<Node>> PipelineImpl::getAllNodes() {
     return nodes;
 }
 
-void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, utility::SerializationType type) const {
+void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type) const {
     // Set schema
     schema = getPipelineSchema(type);
 
@@ -100,11 +100,11 @@ void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector
     assets = mutableAssets;
 }
 
-std::string PipelineImpl::serializeToJson() const {
+nlohmann::json PipelineImpl::serializeToJson() const {
     PipelineSchema schema;
     Assets assets;
     std::vector<uint8_t> assetStorage;
-    serialize(schema, assets, assetStorage, utility::SerializationType::JSON);
+    serialize(schema, assets, assetStorage, SerializationType::JSON);
 
     nlohmann::json j;
     j["pipeline"] = schema;
@@ -114,10 +114,10 @@ std::string PipelineImpl::serializeToJson() const {
 
     j["assets"] = assets;
     j["assetStorage"] = assetStorage;
-    return j.dump();
+    return j;
 }
 
-PipelineSchema PipelineImpl::getPipelineSchema(utility::SerializationType type) const {
+PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
     PipelineSchema schema;
     schema.globalProperties = globalProperties;
 
