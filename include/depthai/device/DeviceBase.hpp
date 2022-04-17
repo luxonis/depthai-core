@@ -489,6 +489,28 @@ class DeviceBase {
     CalibrationHandler readCalibration();
 
     /**
+     * Factory reset EEPROM data if factory backup is available.
+     *
+     * @return True if successful, false otherwise.
+     */
+    bool factoryResetCalibration();
+
+    /**
+     * Stores the Calibration and Device information to the Device EEPROM in Factory area
+     * To perform this action, correct env variable must be set
+     *
+     * @return True on successful flash, false on failure
+     */
+    bool flashFactoryCalibration(CalibrationHandler calibrationHandler);
+
+    /**
+     * Fetches the EEPROM data from Factory area and loads it into CalibrationHandler object
+     *
+     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM in Factory Area
+     */
+    CalibrationHandler readFactoryCalibration();
+
+    /**
      * Retrieves USB connection speed
      *
      * @returns USB connection speed of connected device if applicable. Unknown otherwise.

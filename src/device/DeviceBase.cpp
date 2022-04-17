@@ -850,6 +850,28 @@ CalibrationHandler DeviceBase::readCalibration() {
     return CalibrationHandler(eepromData);
 }
 
+bool DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandler) {
+    const std::string MAGIC_VALUE = "42";
+
+    if(utility::getEnv("DEPTHAI_ALLOW_FACTORY_FUNCTIONALITY") != MAGIC_VALUE) {
+        throw std::invalid_argument("Calling factory API is not allowed in current configuration");
+    }
+
+    if(!calibrationDataHandler.validateCameraArray()) {
+        throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
+    }
+    return pimpl->rpcClient->call("storeToEepromFactory", calibrationDataHandler.getEepromData()).as<bool>();
+}
+
+CalibrationHandler DeviceBase::readFactoryCalibration() {
+    dai::EepromData eepromData = pimpl->rpcClient->call("readFromEepromFactory");
+    return CalibrationHandler(eepromData);
+}
+
+bool DeviceBase::factoryResetCalibration() {
+    return pimpl->rpcClient->call("eepromFactoryReset").as<bool>();
+}
+
 bool DeviceBase::startPipeline() {
     // Deprecated
     return true;
