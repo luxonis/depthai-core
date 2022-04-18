@@ -1,3 +1,9 @@
+depthai-core (2.15.2) focal; urgency=low
+
+  * lib usb dependency testing 
+
+ -- Sachin Guruswamy (PPA) <sachin@luxonis.com>  Sat, 7 Apr 2022 11:10:26 -0700
+
 depthai-core (2.15.1) focal; urgency=low
 
   * lib usb dependency testing 1

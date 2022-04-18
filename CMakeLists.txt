@@ -42,7 +42,7 @@ message(STATUS "PROJECT_VERSION version..................: ${PROJECT_VERSION}")
 message(STATUS "DEPTHAI_VERSION version..................: ${DEPTHAI_VERSION}")
 set(DEPTHAI_VERSION_MAJOR 2)
 set(DEPTHAI_VERSION_MINOR 15)
-set(DEPTHAI_VERSION_PATCH 1)
+set(DEPTHAI_VERSION_PATCH 2)
 
 # Set default build type depending on context
 set(default_build_type "Release")
