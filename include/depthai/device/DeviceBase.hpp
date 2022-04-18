@@ -473,6 +473,12 @@ class DeviceBase {
     CpuUsage getLeonMssCpuUsage();
 
     /**
+     * Check if EEPROM is available
+     * @returns True if EEPROM is present on board, false otherwise
+     */
+    bool isEepromAvailable();
+
+    /**
      * Stores the Calibration and Device information to the Device EEPROM
      *
      * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
@@ -484,9 +490,18 @@ class DeviceBase {
     /**
      * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
      *
+     * @throws std::runtime_exception if no calibration is flashed
      * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
      */
     CalibrationHandler readCalibration();
+
+    /**
+     * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
+     * If no calibration is flashed, it returns default
+     *
+     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
+     */
+    CalibrationHandler readCalibrationOrDefault();
 
     /**
      * Factory reset EEPROM data if factory backup is available.
@@ -506,9 +521,18 @@ class DeviceBase {
     /**
      * Fetches the EEPROM data from Factory area and loads it into CalibrationHandler object
      *
+     * @throws std::runtime_exception if no calibration is flashed
      * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM in Factory Area
      */
     CalibrationHandler readFactoryCalibration();
+
+    /**
+     * Fetches the EEPROM data from Factory area and loads it into CalibrationHandler object
+     * If no calibration is flashed, it returns default
+     *
+     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM in Factory Area
+     */
+    CalibrationHandler readFactoryCalibrationOrDefault();
 
     /**
      * Retrieves USB connection speed

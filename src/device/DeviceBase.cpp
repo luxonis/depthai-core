@@ -36,6 +36,8 @@
 
 namespace dai {
 
+const std::string MAGIC_FACTORY_FLASHING_VALUE = "42";
+
 // local static function
 static LogLevel spdlogLevelToLogLevel(spdlog::level::level_enum level, LogLevel defaultValue = LogLevel::OFF) {
     switch(level) {
@@ -838,22 +840,39 @@ float DeviceBase::getSystemInformationLoggingRate() {
     return pimpl->rpcClient->call("getSystemInformationLoggingrate").as<float>();
 }
 
+bool DeviceBase::isEepromAvailable() {
+    return pimpl->rpcClient->call("isEepromAvailable").as<bool>();
+}
+
 bool DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
+    bool allowFactoryFlashing = false;
+    if(utility::getEnv("DEPTHAI_ALLOW_FACTORY_FLASHING") == MAGIC_FACTORY_FLASHING_VALUE) {
+    }
+    spdlog::debug("Flashing calibration. Allow factory flashing {}", allowFactoryFlashing);
+
     if(!calibrationDataHandler.validateCameraArray()) {
         throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
     }
-    return pimpl->rpcClient->call("storeToEeprom", calibrationDataHandler.getEepromData()).as<bool>();
+
+    return pimpl->rpcClient->call("storeToEeprom", calibrationDataHandler.getEepromData(), allowFactoryFlashing).as<bool>();
 }
 
 CalibrationHandler DeviceBase::readCalibration() {
     dai::EepromData eepromData = pimpl->rpcClient->call("readFromEeprom");
     return CalibrationHandler(eepromData);
 }
+CalibrationHandler DeviceBase::readCalibrationOrDefault() {
+    dai::EepromData eepromData{};
+    try {
+        eepromData = pimpl->rpcClient->call("readFromEeprom");
+    } catch(const std::exception& ex) {
+        // ignore - use default
+    }
+    return CalibrationHandler(eepromData);
+}
 
 bool DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandler) {
-    const std::string MAGIC_VALUE = "42";
-
-    if(utility::getEnv("DEPTHAI_ALLOW_FACTORY_FUNCTIONALITY") != MAGIC_VALUE) {
+    if(utility::getEnv("DEPTHAI_ALLOW_FACTORY_FUNCTIONALITY") != MAGIC_FACTORY_FLASHING_VALUE) {
         throw std::invalid_argument("Calling factory API is not allowed in current configuration");
     }
 
@@ -865,6 +884,15 @@ bool DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandl
 
 CalibrationHandler DeviceBase::readFactoryCalibration() {
     dai::EepromData eepromData = pimpl->rpcClient->call("readFromEepromFactory");
+    return CalibrationHandler(eepromData);
+}
+CalibrationHandler DeviceBase::readFactoryCalibrationOrDefault() {
+    dai::EepromData eepromData{};
+    try {
+        eepromData = pimpl->rpcClient->call("readFromEepromFactory");
+    } catch(const std::exception& ex) {
+        // ignore - use default
+    }
     return CalibrationHandler(eepromData);
 }
 
