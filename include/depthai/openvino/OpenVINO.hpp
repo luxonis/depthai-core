@@ -4,8 +4,11 @@
 #include <exception>
 #include <map>
 #include <string>
+#include <unordered_map>
 #include <utility>
 #include <vector>
+
+#include "depthai-shared/common/TensorInfo.hpp"
 
 namespace dai {
 
@@ -14,6 +17,37 @@ class OpenVINO {
    public:
     /// OpenVINO Version supported version information
     enum Version { VERSION_2020_3, VERSION_2020_4, VERSION_2021_1, VERSION_2021_2, VERSION_2021_3, VERSION_2021_4 };
+
+    /// OpenVINO Blob
+    struct Blob {
+        /**
+         * @brief Construct a new Blob from data in memory
+         *
+         * @param data In memory blob
+         */
+        Blob(std::vector<uint8_t> data);
+        /**
+         * @brief Construct a new Blob by loading from a filesystem path
+         *
+         * @param path Filesystem path to the blob
+         */
+        Blob(const std::string& path);
+
+        /// OpenVINO version
+        Version version;
+        /// Map of input names to additional information
+        std::unordered_map<std::string, TensorInfo> networkInputs;
+        /// Map of output names to additional information
+        std::unordered_map<std::string, TensorInfo> networkOutputs;
+        /// Number of network stages
+        uint32_t stageCount = 0;
+        /// Number of shaves the blob was compiled for
+        uint32_t numShaves = 0;
+        /// Number of CMX slices the blob was compiled for
+        uint32_t numSlices = 0;
+        /// Blob data
+        std::vector<uint8_t> data;
+    };
 
     /// Main OpenVINO version
     constexpr static const Version DEFAULT_VERSION = VERSION_2021_4;

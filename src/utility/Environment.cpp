@@ -21,9 +21,9 @@ std::string getEnv(const std::string& var) {
     auto value = spdlog::details::os::getenv(var.c_str());
     map[var] = value;
 
-    // Warn if env variable set
+    // Log if env variable is set
     if(!value.empty()) {
-        spdlog::warn("Environment '{}' set to '{}'", var, value);
+        spdlog::debug("Environment '{}' set to '{}'", var, value);
     }
 
     return value;

@@ -30,6 +30,7 @@ StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
                    &confidenceMap});
 
     setDefaultProfilePreset(presetMode);
+    setFocalLengthFromCalibration(true);
 }
 
 StereoDepth::Properties& StereoDepth::getProperties() {
