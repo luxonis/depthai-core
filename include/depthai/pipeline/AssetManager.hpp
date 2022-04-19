@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "depthai-shared/pipeline/Assets.hpp"
+#include "depthai/utility/Path.hpp"
 
 namespace dai {
 
@@ -63,7 +64,7 @@ class AssetManager /*: public Assets*/ {
      * @param path Path to file which to load as asset
      * @param alignment [Optional] alignment of asset data in asset storage. Default is 64B
      */
-    std::shared_ptr<dai::Asset> set(const std::string& key, const std::string& path, int alignment = 64);
+    std::shared_ptr<dai::Asset> set(const std::string& key, const dai::Path& path, int alignment = 64);
 
     /**
      * Loads file into asset manager under specified key.
