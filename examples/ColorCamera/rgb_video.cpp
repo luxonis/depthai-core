@@ -50,7 +50,12 @@ int main(int argc, char** argv) {
     config.board.uvcEnable = enableUVC;
     printf("=== Creating device with board config...\n");
     dai::Device device(config);
-    printf("=== Device created, starting pipeline...\n");
+    printf("=== Device created, connected cameras:");
+    const auto sensorNames = device.getCameraSensorNames();
+    for (auto sensorName : sensorNames) {
+        printf(" %s", sensorName.second.c_str());
+    }
+    printf("\nStarting pipeline...\n");
     device.startPipeline(pipeline);
     printf("=== Started!\n");
     if (enableUVC) printf(">>> Keep this running, and open a separate UVC viewer\n");
