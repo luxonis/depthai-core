@@ -51,7 +51,7 @@ Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::P
 }
 
 template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool>>
-Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, T usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, usb2Mode)  {
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, T usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, usb2Mode) {
     tryStartPipeline(pipeline);
 }
 template Device::Device(const Pipeline&, const DeviceInfo&, bool);
