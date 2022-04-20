@@ -317,7 +317,7 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
 
     /**
      * Use homography for stereo rectification instead of sparse mesh generated on device.
-     * Default value: false.
+     * Default value: true.
      */
     void useHomographyRectification(bool useHomographyRectification);
 };

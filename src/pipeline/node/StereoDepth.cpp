@@ -32,7 +32,6 @@ StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
 
     setDefaultProfilePreset(presetMode);
     setFocalLengthFromCalibration(true);
-    useHomographyRectification(true);
 }
 
 StereoDepth::Properties& StereoDepth::getProperties() {
