@@ -965,7 +965,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
         pimpl->rpcClient->call("setAssets", assets);
 
         // Open a channel to transfer AssetStorage (concurrently)
-        constexpr const char* ASSET_STORAGE_STREAM = "__stream_asset_storage";
+        const char* ASSET_STORAGE_STREAM = "__stream_asset_storage";
         pimpl->rpcClient->call("openAssetStorageStream", ASSET_STORAGE_STREAM, static_cast<std::uint32_t>(assetStorage.size()));
 
         // Transfer the whole assetStorage in a separate thread
