@@ -314,6 +314,12 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * @param mode Stereo depth preset mode
      */
     void setFocalLengthFromCalibration(bool focalLengthFromCalibration);
+
+    /**
+     * Use homography for stereo rectification instead of sparse mesh generated on device.
+     * Default value: false.
+     */
+    void useHomographyRectification(bool useHomographyRectification);
 };
 
 }  // namespace node

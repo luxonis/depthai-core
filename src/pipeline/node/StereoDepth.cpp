@@ -32,6 +32,7 @@ StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
 
     setDefaultProfilePreset(presetMode);
     setFocalLengthFromCalibration(true);
+    useHomographyRectification(true);
 }
 
 StereoDepth::Properties& StereoDepth::getProperties() {
@@ -165,6 +166,10 @@ void StereoDepth::setPostProcessingHardwareResources(int numShaves, int numMemor
 
 void StereoDepth::setFocalLengthFromCalibration(bool focalLengthFromCalibration) {
     properties.focalLengthFromCalibration = focalLengthFromCalibration;
+}
+
+void StereoDepth::useHomographyRectification(bool useHomographyRectification) {
+    properties.useHomographyRectification = useHomographyRectification;
 }
 
 void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
