@@ -138,18 +138,6 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
     Output confidenceMap{*this, "confidenceMap", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
-     * Specify local filesystem path to the calibration file
-     * @param path Path to calibration file. If empty use EEPROM
-     */
-    [[deprecated("Use 'Pipeline::setCalibrationData()' instead")]] void loadCalibrationFile(const std::string& path);
-
-    /**
-     * Specify calibration data as a vector of bytes
-     * @param path Calibration data. If empty use EEPROM
-     */
-    [[deprecated("Use 'Pipeline::setCalibrationData()' instead")]] void loadCalibrationData(const std::vector<std::uint8_t>& data);
-
-    /**
      * Specify that a passthrough/dummy calibration should be used,
      * when input frames are already rectified (e.g. sourced from recordings on the host)
      */
@@ -168,7 +156,7 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      *
      * height: 800 / 16 + 1 = 51
      */
-    void loadMeshFiles(const std::string& pathLeft, const std::string& pathRight);
+    void loadMeshFiles(const dai::Path& pathLeft, const dai::Path& pathRight);
 
     /**
      * Specify mesh calibration data for 'left' and 'right' inputs, as vectors of bytes.
@@ -326,6 +314,12 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * @param mode Stereo depth preset mode
      */
     void setFocalLengthFromCalibration(bool focalLengthFromCalibration);
+
+    /**
+     * Use homography for stereo rectification instead of sparse mesh generated on device.
+     * Default value: true.
+     */
+    void useHomographyRectification(bool useHomographyRectification);
 };
 
 }  // namespace node
