@@ -297,6 +297,27 @@ class CalibrationHandler {
     void setBoardInfo(std::string boardName, std::string boardRev);
 
     /**
+     * Set the Board Info object. Creates version 7 EEPROM data
+     *
+     * @param productName Sets product name (alias).
+     * @param boardName Sets board name.
+     * @param boardRev Sets board revision id.
+     * @param boardConf Sets board configuration id.
+     * @param hardwareConf Sets hardware configuration id.
+     * @param batchName Sets batch name.
+     * @param batchTime Sets batch time (unix timestamp).
+     * @param boardCustom Sets a custom board (Default empty string).
+     */
+    void setBoardInfo(std::string productName,
+                      std::string boardName,
+                      std::string boardRev,
+                      std::string boardConf,
+                      std::string hardwareConf,
+                      std::string batchName,
+                      uint64_t batchTime,
+                      std::string boardCustom = "");
+
+    /**
      * Set the Camera Intrinsics object
      *
      * @param cameraId CameraId of the camera for which Camera intrinsics are being loaded

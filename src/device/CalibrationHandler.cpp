@@ -506,7 +506,27 @@ bool CalibrationHandler::checkExtrinsicsLink(CameraBoardSocket srcCamera, Camera
 void CalibrationHandler::setBoardInfo(std::string boardName, std::string boardRev) {
     eepromData.boardName = boardName;
     eepromData.boardRev = boardRev;
-    return;
+}
+
+void CalibrationHandler::setBoardInfo(std::string productName,
+                                      std::string boardName,
+                                      std::string boardRev,
+                                      std::string boardConf,
+                                      std::string hardwareConf,
+                                      std::string batchName,
+                                      uint64_t batchTime,
+                                      std::string boardCustom) {
+    eepromData.productName = productName;
+    eepromData.boardName = boardName;
+    eepromData.boardRev = boardRev;
+    eepromData.boardConf = boardConf;
+    eepromData.hardwareConf = hardwareConf;
+    eepromData.batchName = batchName;
+    eepromData.batchTime = batchTime;
+    eepromData.boardCustom = boardCustom;
+
+    // Bump version to V7
+    eepromData.version = 7;
 }
 
 void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, std::vector<std::vector<float>> intrinsics, int width, int height) {

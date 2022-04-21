@@ -488,12 +488,28 @@ class DeviceBase {
     bool flashCalibration(CalibrationHandler calibrationDataHandler);
 
     /**
+     * Stores the Calibration and Device information to the Device EEPROM
+     *
+     * @throws std::runtime_exception if failed to flash the calibration
+     * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
+     */
+    void flashCalibration2(CalibrationHandler calibrationDataHandler);
+
+    /**
+     * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
+     * If no calibration is flashed, it returns default
+     *
+     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
+     */
+    CalibrationHandler readCalibration();
+
+    /**
      * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
      *
      * @throws std::runtime_exception if no calibration is flashed
      * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
      */
-    CalibrationHandler readCalibration();
+    CalibrationHandler readCalibration2();
 
     /**
      * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
