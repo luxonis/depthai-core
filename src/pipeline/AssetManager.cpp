@@ -1,6 +1,7 @@
 #include "depthai/pipeline/AssetManager.hpp"
 
 #include "spdlog/fmt/fmt.h"
+#include "utility/spdlog-fmt.hpp"
 
 // std
 #include <fstream>
@@ -27,7 +28,7 @@ std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, Asset asse
     return set(std::move(a));
 }
 
-std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const std::string& path, int alignment) {
+std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const dai::Path& path, int alignment) {
     // Load binary file at path
     std::ifstream stream(path, std::ios::in | std::ios::binary);
     if(!stream.is_open()) {

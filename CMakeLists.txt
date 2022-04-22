@@ -33,7 +33,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.15.2" LANGUAGES CXX C)
+project(depthai VERSION "2.15.3" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -216,6 +216,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/FeatureTrackerConfig.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
+    src/utility/Path.cpp
     src/utility/Platform.cpp
     src/utility/Environment.cpp
     src/xlink/XLinkConnection.cpp
