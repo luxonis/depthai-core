@@ -315,6 +315,7 @@ class CalibrationHandler {
                       std::string hardwareConf,
                       std::string batchName,
                       uint64_t batchTime,
+                      uint32_t boardOptions,
                       std::string boardCustom = "");
 
     /**

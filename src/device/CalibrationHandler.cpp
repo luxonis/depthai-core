@@ -515,6 +515,7 @@ void CalibrationHandler::setBoardInfo(std::string productName,
                                       std::string hardwareConf,
                                       std::string batchName,
                                       uint64_t batchTime,
+                                      uint32_t boardOptions,
                                       std::string boardCustom) {
     eepromData.productName = productName;
     eepromData.boardName = boardName;
@@ -524,6 +525,7 @@ void CalibrationHandler::setBoardInfo(std::string productName,
     eepromData.batchName = batchName;
     eepromData.batchTime = batchTime;
     eepromData.boardCustom = boardCustom;
+    eepromData.boardOptions = boardOptions;
 
     // Bump version to V7
     eepromData.version = 7;

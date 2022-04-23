@@ -37,8 +37,27 @@
 namespace dai {
 
 const std::string MAGIC_FACTORY_FLASHING_VALUE = "42";
+const std::string MAGIC_PROTECTED_FLASHING_VALUE = "43008";
+const std::string MAGIC_FACTORY_PROTECTED_FLASHING_VALUE = "43050";
 
 // local static function
+static void getFlashingPermissions(bool& factoryPermissions, bool& protectedPermissions) {
+    auto permissionEnv = utility::getEnv("DEPTHAI_ALLOW_FACTORY_FLASHING");
+    if(permissionEnv == MAGIC_FACTORY_FLASHING_VALUE) {
+        factoryPermissions = true;
+        protectedPermissions = false;
+    } else if(permissionEnv == MAGIC_PROTECTED_FLASHING_VALUE) {
+        factoryPermissions = false;
+        protectedPermissions = true;
+    } else if(permissionEnv == MAGIC_FACTORY_PROTECTED_FLASHING_VALUE) {
+        factoryPermissions = true;
+        protectedPermissions = true;
+    } else {
+        factoryPermissions = false;
+        protectedPermissions = false;
+    }
+}
+
 static LogLevel spdlogLevelToLogLevel(spdlog::level::level_enum level, LogLevel defaultValue = LogLevel::OFF) {
     switch(level) {
         case spdlog::level::trace:
@@ -854,11 +873,10 @@ bool DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
 }
 
 void DeviceBase::flashCalibration2(CalibrationHandler calibrationDataHandler) {
-    bool allowFactoryFlashing = false;
-    if(utility::getEnv("DEPTHAI_ALLOW_FACTORY_FLASHING") == MAGIC_FACTORY_FLASHING_VALUE) {
-        allowFactoryFlashing = true;
-    }
-    spdlog::debug("Flashing calibration. Allow factory flashing {}", allowFactoryFlashing);
+    bool factoryPermissions = false;
+    bool protectedPermissions = false;
+    getFlashingPermissions(factoryPermissions, protectedPermissions);
+    spdlog::debug("Flashing calibration. Factory permissions {}, Protected permissions {}", factoryPermissions, protectedPermissions);
 
     if(!calibrationDataHandler.validateCameraArray()) {
         throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
@@ -866,8 +884,8 @@ void DeviceBase::flashCalibration2(CalibrationHandler calibrationDataHandler) {
 
     bool success;
     std::string errorMsg;
-    std::tie(success, errorMsg) =
-        pimpl->rpcClient->call("storeToEeprom", calibrationDataHandler.getEepromData(), allowFactoryFlashing).as<std::tuple<bool, std::string>>();
+    std::tie(success, errorMsg) = pimpl->rpcClient->call("storeToEeprom", calibrationDataHandler.getEepromData(), factoryPermissions, protectedPermissions)
+                                      .as<std::tuple<bool, std::string>>();
 
     if(!success) {
         throw std::runtime_error(errorMsg);
@@ -899,14 +917,19 @@ CalibrationHandler DeviceBase::readCalibrationOrDefault() {
 }
 
 bool DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandler) {
-    if(utility::getEnv("DEPTHAI_ALLOW_FACTORY_FLASHING") != MAGIC_FACTORY_FLASHING_VALUE) {
+    bool factoryPermissions = false;
+    bool protectedPermissions = false;
+    getFlashingPermissions(factoryPermissions, protectedPermissions);
+    spdlog::debug("Flashing factory calibration. Factory permissions {}, Protected permissions {}", factoryPermissions, protectedPermissions);
+
+    if(!factoryPermissions) {
         throw std::invalid_argument("Calling factory API is not allowed in current configuration");
     }
 
     if(!calibrationDataHandler.validateCameraArray()) {
         throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
     }
-    return pimpl->rpcClient->call("storeToEepromFactory", calibrationDataHandler.getEepromData()).as<bool>();
+    return pimpl->rpcClient->call("storeToEepromFactory", calibrationDataHandler.getEepromData(), factoryPermissions, protectedPermissions).as<bool>();
 }
 
 CalibrationHandler DeviceBase::readFactoryCalibration() {
