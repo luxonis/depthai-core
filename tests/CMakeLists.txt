@@ -41,7 +41,7 @@ function(dai_add_test test_name test_src)
 
     # Set compiler c++ standard
     target_compile_options(${test_name} PRIVATE "${CMAKE_CXX${DAT_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
-    
+
     # Add to list of tests
     add_test(${test_name} ${test_name})
     # Add ubsan halt on error
@@ -58,7 +58,7 @@ function(dai_add_test test_name test_src)
 
         # Set compiler c++ standard
         target_compile_options(${test_name} PRIVATE "${CMAKE_CXX${DAT_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
-        
+
         if(MSVC_VERSION LESS 1925)
             target_compile_options(${test_name}_conforming PRIVATE "/experimental:preprocessor")
         else()
@@ -193,3 +193,6 @@ dai_add_test(filesystem_test_17 src/filesystem_test.cpp CXX_STANDARD 17)
 dai_test_compile_definitions(filesystem_test_17 PRIVATE BLOB_PATH="${mobilenet_blob}")
 dai_add_test(filesystem_test_20 src/filesystem_test.cpp CXX_STANDARD 20)
 dai_test_compile_definitions(filesystem_test_20 PRIVATE BLOB_PATH="${mobilenet_blob}")
+
+# Bootloader version tests
+dai_add_test(bootloader_version_test src/bootloader_version_test.cpp)
