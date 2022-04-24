@@ -53,7 +53,7 @@ class CalibrationHandler {
      *
      * @param eepromDataJson EepromData as JSON
      */
-    explicit CalibrationHandler(nlohmann::json eepromDataJson);
+    static CalibrationHandler fromJson(nlohmann::json eepromDataJson);
 
     /**
      * Get the Eeprom Data object

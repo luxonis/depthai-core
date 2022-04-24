@@ -61,8 +61,10 @@ CalibrationHandler::CalibrationHandler(dai::Path eepromDataPath) {
     eepromData = jsonData;
 }
 
-CalibrationHandler::CalibrationHandler(nlohmann::json eepromDataJson) {
-    eepromData = eepromDataJson;
+CalibrationHandler CalibrationHandler::fromJson(nlohmann::json eepromDataJson) {
+    CalibrationHandler calib;
+    calib.eepromData = eepromDataJson;
+    return calib;
 }
 
 CalibrationHandler::CalibrationHandler(dai::Path calibrationDataPath, dai::Path boardConfigPath) {
