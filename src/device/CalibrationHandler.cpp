@@ -61,6 +61,10 @@ CalibrationHandler::CalibrationHandler(dai::Path eepromDataPath) {
     eepromData = jsonData;
 }
 
+CalibrationHandler::CalibrationHandler(nlohmann::json eepromDataJson) {
+    eepromData = eepromDataJson;
+}
+
 CalibrationHandler::CalibrationHandler(dai::Path calibrationDataPath, dai::Path boardConfigPath) {
     auto matrixConv = [](std::vector<float>& src, int startIdx) {
         std::vector<std::vector<float>> dest;
@@ -438,6 +442,10 @@ bool CalibrationHandler::eepromToJsonFile(dai::Path destPath) const {
     std::ofstream ob(destPath);
     ob << std::setw(4) << j << std::endl;
     return true;
+}
+
+nlohmann::json CalibrationHandler::eepromToJson() const {
+    return eepromData;
 }
 
 std::vector<std::vector<float>> CalibrationHandler::computeExtrinsicMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation) {

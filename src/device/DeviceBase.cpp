@@ -916,20 +916,28 @@ CalibrationHandler DeviceBase::readCalibrationOrDefault() {
     return readCalibration();
 }
 
-bool DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandler) {
+void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandler) {
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
     spdlog::debug("Flashing factory calibration. Factory permissions {}, Protected permissions {}", factoryPermissions, protectedPermissions);
 
     if(!factoryPermissions) {
-        throw std::invalid_argument("Calling factory API is not allowed in current configuration");
+        throw std::runtime_error("Calling factory API is not allowed in current configuration");
     }
 
     if(!calibrationDataHandler.validateCameraArray()) {
         throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
     }
-    return pimpl->rpcClient->call("storeToEepromFactory", calibrationDataHandler.getEepromData(), factoryPermissions, protectedPermissions).as<bool>();
+
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) =
+        pimpl->rpcClient->call("storeToEepromFactory", calibrationDataHandler.getEepromData(), factoryPermissions, protectedPermissions)
+            .as<std::tuple<bool, std::string>>();
+    if(!success) {
+        throw std::runtime_error(errorMsg);
+    }
 }
 
 CalibrationHandler DeviceBase::readFactoryCalibration() {
@@ -952,8 +960,13 @@ CalibrationHandler DeviceBase::readFactoryCalibrationOrDefault() {
     return CalibrationHandler(eepromData);
 }
 
-bool DeviceBase::factoryResetCalibration() {
-    return pimpl->rpcClient->call("eepromFactoryReset").as<bool>();
+void DeviceBase::factoryResetCalibration() {
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) = pimpl->rpcClient->call("eepromFactoryReset").as<std::tuple<bool, std::string>>();
+    if(!success) {
+        throw std::runtime_error(errorMsg);
+    }
 }
 
 bool DeviceBase::startPipeline() {

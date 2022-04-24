@@ -11,6 +11,14 @@
 namespace dai {
 /**
  * CalibrationHandler is an interface to read/load/write structured calibration and device data.
+ * The following fields are protected and aren't allowed to be overriden by default:
+ *  - boardName
+ *  - boardRev
+ *  - boardConf
+ *  - hardwareConf
+ *  - batchName
+ *  - batchTime
+ *  - boardOptions
  */
 class CalibrationHandler {
    public:
@@ -39,6 +47,13 @@ class CalibrationHandler {
      * @param eepromData EepromData data structure containing the calibration data.
      */
     explicit CalibrationHandler(EepromData eepromData);
+
+    /**
+     * Construct a new Calibration Handler object from JSON EepromData.
+     *
+     * @param eepromDataJson EepromData as JSON
+     */
+    explicit CalibrationHandler(nlohmann::json eepromDataJson);
 
     /**
      * Get the Eeprom Data object
@@ -286,6 +301,13 @@ class CalibrationHandler {
      * @return True on success, false otherwise
      */
     bool eepromToJsonFile(dai::Path destPath) const;
+
+    /**
+     * Get JSON representation of calibration data
+     *
+     * @return JSON structure
+     */
+    nlohmann::json eepromToJson() const;
 
     /**
      * Set the Board Info object

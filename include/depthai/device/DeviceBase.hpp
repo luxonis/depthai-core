@@ -522,17 +522,18 @@ class DeviceBase {
     /**
      * Factory reset EEPROM data if factory backup is available.
      *
-     * @return True if successful, false otherwise.
+     * @throws std::runtime_exception If factory reset was unsuccessful
      */
-    bool factoryResetCalibration();
+    void factoryResetCalibration();
 
     /**
      * Stores the Calibration and Device information to the Device EEPROM in Factory area
      * To perform this action, correct env variable must be set
      *
+     * @throws std::runtime_exception if failed to flash the calibration
      * @return True on successful flash, false on failure
      */
-    bool flashFactoryCalibration(CalibrationHandler calibrationHandler);
+    void flashFactoryCalibration(CalibrationHandler calibrationHandler);
 
     /**
      * Fetches the EEPROM data from Factory area and loads it into CalibrationHandler object
