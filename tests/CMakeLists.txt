@@ -11,7 +11,7 @@ find_package(Catch2 CONFIG REQUIRED)
 include(CMakeParseArguments)
 function(dai_add_test test_name test_src)
     # parse arguments
-    cmake_parse_arguments(DAT "" "CXX_STANDARD" "" ${ARGN})
+    cmake_parse_arguments(DAT "CONFORMING" "CXX_STANDARD" "" ${ARGN})
 
     # check compiler for C++ standard
     if(NOT DAT_CXX_STANDARD)
@@ -41,14 +41,14 @@ function(dai_add_test test_name test_src)
 
     # Set compiler c++ standard
     target_compile_options(${test_name} PRIVATE "${CMAKE_CXX${DAT_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
-    
+
     # Add to list of tests
     add_test(${test_name} ${test_name})
     # Add ubsan halt on error
     set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=usb" LABELS usb)
 
-    # Check if MSVC and add a conforming preprocessor test (serialization macros)
-    if(MSVC)
+    # add a conforming preprocessor test (serialization macros) if MSVC and CONFORMING option set on function call
+    if(MSVC AND DAT_CONFORMING)
         # Create test executable with MSVC conforming preprocessor
         add_executable(${test_name}_conforming ${test_src})
         add_default_flags(${test_name}_conforming LEAN)
@@ -57,8 +57,8 @@ function(dai_add_test test_name test_src)
         target_link_libraries(${test_name}_conforming PRIVATE depthai-core Catch2::Catch2)
 
         # Set compiler c++ standard
-        target_compile_options(${test_name} PRIVATE "${CMAKE_CXX${DAT_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
-        
+        target_compile_options(${test_name}_conforming PRIVATE "${CMAKE_CXX${DAT_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
+
         if(MSVC_VERSION LESS 1925)
             target_compile_options(${test_name}_conforming PRIVATE "/experimental:preprocessor")
         else()
@@ -76,7 +76,7 @@ function(dai_add_test test_name test_src)
     add_test(${test_name}_poe ${test_name})
     # Add ubsan halt on error
     set_tests_properties(${test_name}_poe PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=tcpip;DEPTHAI_SEARCH_TIMEOUT=15000" LABELS poe)
-    if(MSVC)
+    if(MSVC AND DAT_CONFORMING)
         # Add to list of tests
         add_test(${test_name}_conforming_poe ${test_name}_conforming)
         # Add ubsan halt on error
@@ -90,7 +90,7 @@ function(dai_test_compile_definitions)
     if(TARGET ${ARGV0})
         target_compile_definitions(${ARGV})
         message(STATUS "Calling first with ${ARGV}")
-        if(MSVC)
+        if(TARGET ${ARGV0}_conforming)
             set(ARGV0 ${ARGV0}_conforming)
             list(REMOVE_AT ARGV 0)
             list(INSERT ARGV 0 ${ARGV0})
@@ -174,8 +174,10 @@ dai_test_compile_definitions(openvino_blob_test PRIVATE
 # Bootloader configuration tests
 dai_add_test(bootloader_config_test src/bootloader_config_test.cpp)
 
-# Device USB Speed test
-dai_add_test(device_usbspeed_test src/device_usbspeed_test.cpp)
+# Device USB Speed and serialization macros test
+dai_add_test(device_usbspeed_test    src/device_usbspeed_test.cpp CONFORMING)
+dai_add_test(device_usbspeed_test_17 src/device_usbspeed_test.cpp CONFORMING CXX_STANDARD 17)
+dai_add_test(device_usbspeed_test_20 src/device_usbspeed_test.cpp CONFORMING CXX_STANDARD 20)
 
 # Unlimited io connections test
 dai_add_test(unlimited_io_connection_test src/unlimited_io_connection_test.cpp)
