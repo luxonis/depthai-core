@@ -36,9 +36,9 @@
 
 namespace dai {
 
-const std::string MAGIC_FACTORY_FLASHING_VALUE = "42";
-const std::string MAGIC_PROTECTED_FLASHING_VALUE = "43008";
-const std::string MAGIC_FACTORY_PROTECTED_FLASHING_VALUE = "43050";
+const std::string MAGIC_PROTECTED_FLASHING_VALUE = "235539980";
+const std::string MAGIC_FACTORY_FLASHING_VALUE = "413424129";
+const std::string MAGIC_FACTORY_PROTECTED_FLASHING_VALUE = "868632271";
 
 // local static function
 static void getFlashingPermissions(bool& factoryPermissions, bool& protectedPermissions) {
