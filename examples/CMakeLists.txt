@@ -171,14 +171,14 @@ hunter_private_data(
 # bootloader
 dai_add_example(bootloader_version bootloader/bootloader_version.cpp ON)
 dai_add_example(flash_bootloader bootloader/flash_bootloader.cpp OFF)
-dai_add_example(bootloader_config bootloader/bootloader_config.cpp OFF)
+dai_add_example(bootloader_config bootloader/bootloader_config.cpp ON read)
 dai_add_example(poe_set_ip bootloader/poe_set_ip.cpp OFF)
 
 # calibration
 dai_add_example(calibration_flash calibration/calibration_flash.cpp OFF)
 dai_add_example(calibration_flash_version5 calibration/calibration_flash_v5.cpp OFF)
-dai_add_example(calibration_load calibration/calibration_load.cpp OFF)
-dai_add_example(calibration_reader calibration/calibration_reader.cpp OFF)
+dai_add_example(calibration_load calibration/calibration_load.cpp ON)
+dai_add_example(calibration_reader calibration/calibration_reader.cpp ON)
 
 target_compile_definitions(calibration_flash PRIVATE CALIB_PATH="${calib_v6}")
 target_compile_definitions(calibration_flash_version5 PRIVATE CALIB_PATH="${calib_v5}" BOARD_PATH="${device_config}")
@@ -287,6 +287,7 @@ dai_add_example(depth_crop_control StereoDepth/depth_crop_control.cpp ON)
 dai_add_example(depth_preview StereoDepth/depth_preview.cpp  ON)
 dai_add_example(depth_post_processing StereoDepth/depth_post_processing.cpp  ON)
 dai_add_example(rgb_depth_aligned StereoDepth/rgb_depth_aligned.cpp ON)
+dai_add_example(rgb_depth_confidence_aligned StereoDepth/rgb_depth_confidence_aligned.cpp ON)
 dai_add_example(stereo_depth_video StereoDepth/stereo_depth_video.cpp ON)
 
 # SystemLogger

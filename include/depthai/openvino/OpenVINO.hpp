@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "depthai-shared/common/TensorInfo.hpp"
+#include "depthai/utility/Path.hpp"
 
 namespace dai {
 
@@ -31,7 +32,7 @@ class OpenVINO {
          *
          * @param path Filesystem path to the blob
          */
-        Blob(const std::string& path);
+        Blob(const dai::Path& path);
 
         /// OpenVINO version
         Version version;

@@ -12,6 +12,9 @@
 #include <unordered_map>
 #include <vector>
 
+// project
+#include "depthai/utility/Path.hpp"
+
 // Libraries
 #include <XLink/XLinkPublicDefines.h>
 
@@ -26,8 +29,8 @@ struct DeviceInfo {
      * Creates a DeviceInfo by checking whether supplied parameter is a MXID or IP/USB name
      * @param mxidOrName Either MXID, IP Address or USB port name
      */
-    DeviceInfo(std::string mxidOrName);
-    DeviceInfo(const deviceDesc_t& desc);
+    explicit DeviceInfo(std::string mxidOrName);
+    explicit DeviceInfo(const deviceDesc_t& desc);
     deviceDesc_t getXLinkDeviceDesc() const;
     std::string getMxId() const;
     std::string toString() const;
@@ -52,7 +55,7 @@ class XLinkConnection {
     static DeviceInfo bootBootloader(const DeviceInfo& devInfo);
 
     XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
-    XLinkConnection(const DeviceInfo& deviceDesc, std::string pathToMvcmd, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
+    XLinkConnection(const DeviceInfo& deviceDesc, dai::Path pathToMvcmd, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
     explicit XLinkConnection(const DeviceInfo& deviceDesc, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
 
     ~XLinkConnection();
@@ -78,7 +81,7 @@ class XLinkConnection {
     friend struct XLinkReadError;
     friend struct XLinkWriteError;
     // static
-    static bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, const std::string& pathToMvcmd);
+    static bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, const dai::Path& pathToMvcmd);
     static bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, std::vector<std::uint8_t>& mvcmd);
     static std::string convertErrorCodeToString(XLinkError_t errorCode);
 
@@ -87,7 +90,7 @@ class XLinkConnection {
 
     bool bootDevice = true;
     bool bootWithPath = true;
-    std::string pathToMvcmd;
+    dai::Path pathToMvcmd;
     std::vector<std::uint8_t> mvcmd;
 
     bool rebootOnDestruction{true};

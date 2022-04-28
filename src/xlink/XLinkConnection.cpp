@@ -12,6 +12,7 @@
 // project
 #include "depthai/utility/Initialization.hpp"
 #include "utility/Environment.hpp"
+#include "utility/spdlog-fmt.hpp"
 
 // libraries
 #include <XLink/XLink.h>
@@ -273,11 +274,11 @@ XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::
     initDevice(deviceDesc, expectedState);
 }
 
-XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::string pathToMvcmd, XLinkDeviceState_t expectedState) {
+XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, dai::Path pathToMvcmd, XLinkDeviceState_t expectedState) {
     initialize();
 
     if(!pathToMvcmd.empty()) {
-        std::ifstream f(pathToMvcmd.c_str());
+        std::ifstream f(pathToMvcmd);
         if(!f.good()) throw std::runtime_error("Error path doesn't exist. Note: Environment variables in path are not expanded. (E.g. '~', '$PATH').");
     }
     bootDevice = true;
@@ -352,9 +353,11 @@ bool XLinkConnection::getRebootOnDestruction() const {
     return rebootOnDestruction;
 }
 
-bool XLinkConnection::bootAvailableDevice(const deviceDesc_t& deviceToBoot, const std::string& pathToMvcmd) {
-    auto status = XLinkBoot(&deviceToBoot, pathToMvcmd.c_str());
-    return status == X_LINK_SUCCESS;
+bool XLinkConnection::bootAvailableDevice(const deviceDesc_t& deviceToBoot, const dai::Path& pathToMvcmd) {
+    std::ifstream fwStream(pathToMvcmd, std::ios::binary);
+    if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot boot firmware, binary at path: {} doesn't exist", pathToMvcmd));
+    std::vector<uint8_t> package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
+    return bootAvailableDevice(deviceToBoot, package);
 }
 
 bool XLinkConnection::bootAvailableDevice(const deviceDesc_t& deviceToBoot, std::vector<std::uint8_t>& mvcmd) {
