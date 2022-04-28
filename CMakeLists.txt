@@ -7,12 +7,20 @@ if(NOT WIN32)
 endif()
 
 # Create a custom toolchain to pass certain options to dependencies
+message(STATUS "Toolchain: ${CMAKE_TOOLCHAIN_FILE}, internal: ${_INTERNAL_DEPTHAI_ORIGINAL_CMAKE_TOOLCHAIN_FILE}")
 set(gen_toolchain "${CMAKE_CURRENT_BINARY_DIR}/generated/toolchain.cmake")
-configure_file(
-    "${CMAKE_CURRENT_LIST_DIR}/cmake/toolchain/custom.cmake.in"
-    "${gen_toolchain}"
-    @ONLY
-)
+
+if(EXISTS "${gen_toolchain}" AND ("${_INTERNAL_DEPTHAI_ORIGINAL_CMAKE_TOOLCHAIN_FILE}" STREQUAL "${CMAKE_TOOLCHAIN_FILE}" OR NOT "${CMAKE_TOOLCHAIN_FILE}" STREQUAL ""))
+    message(STATUS "Using existing generated toolchain")
+else()
+    message(STATUS "Generating new toolchain...")
+    configure_file(
+        "${CMAKE_CURRENT_LIST_DIR}/cmake/toolchain/custom.cmake.in"
+        "${gen_toolchain}"
+        @ONLY
+    )
+endif()
+
 set(CMAKE_TOOLCHAIN_FILE "${gen_toolchain}" CACHE STRING "" FORCE)
 if(DEFINED _INTERNAL_DEPTHAI_ORIGINAL_CMAKE_TOOLCHAIN_FILE)
     message(STATUS "Using specified toolchain file: ${_INTERNAL_DEPTHAI_ORIGINAL_CMAKE_TOOLCHAIN_FILE} combined into: ${CMAKE_TOOLCHAIN_FILE}")

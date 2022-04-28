@@ -8,8 +8,8 @@ hunter_config(
 hunter_config(
     XLink
     VERSION "luxonis-2021.4.2-develop"
-    URL "https://github.com/luxonis/XLink/archive/b27656e4b1f21d4c3ddccdbd287fce84d2bac273.tar.gz"
-    SHA1 "0b640651e7ae5475ad832d1833816b16157c99d5"
+    URL "https://github.com/luxonis/XLink/archive/96a8fa2491616eba38bf89f9a723a20fc2a869bf.tar.gz"
+    SHA1 "f1f85470fac6936c52030caac9b9137d33149f95"
 )
 
 hunter_config(
@@ -117,9 +117,10 @@ hunter_config(
 hunter_config(
     libusb-luxonis
     VERSION "1.0.24-cmake"
-    URL "https://github.com/luxonis/libusb/archive/603ea0c74b6119c8fec25c20d4358462ee1309d4.tar.gz"
-    SHA1 "46ed5287889efa4e78d23741facd70fb432d6914"
+    URL "https://github.com/luxonis/libusb/archive/4a5f684d4b1ddfb462468056b31290d674b340b1.tar.gz"
+    SHA1 "fd741a5d27ac954a4a7e4876fddc0d98bac83d01"
     CMAKE_ARGS
         WITH_UDEV=OFF
+        # Build shared libs by default to not cause licensing issues
         BUILD_SHARED_LIBS=ON
 )

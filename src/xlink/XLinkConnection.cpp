@@ -202,7 +202,7 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceByMxId(std::string mxId, 
                 return {false, {}};
             }
         }
-        return {true, {desc}};
+        return {true, DeviceInfo{desc}};
     }
     return {false, {}};
 }
