@@ -184,7 +184,7 @@ std::vector<std::uint8_t> NNData::getLayerUInt8(const std::string& name) const {
             // Total data size = last dimension * last stride
             if(tensor.numDimensions > 0) {
                 size_t size = getTensorDataSize(tensor);
-                auto beg = packet->data + tensor.offset;
+                auto beg = rawNn.data.begin() + tensor.offset;
                 auto end = beg + size;
                 return {beg, end};
             }
@@ -206,7 +206,7 @@ std::vector<std::int32_t> NNData::getLayerInt32(const std::string& name) const {
 
                 std::vector<std::int32_t> data;
                 data.reserve(numElements);
-                auto* pInt32Data = reinterpret_cast<std::int32_t*>(&packet->data[tensor.offset]);
+                auto* pInt32Data = reinterpret_cast<std::int32_t*>(&rawNn.data[tensor.offset]);
                 for(std::size_t i = 0; i < numElements; i++) {
                     data.push_back(pInt32Data[i]);
                 }
@@ -230,7 +230,7 @@ std::vector<float> NNData::getLayerFp16(const std::string& name) const {
 
                 std::vector<float> data;
                 data.reserve(numElements);
-                auto* pFp16Data = reinterpret_cast<std::uint16_t*>(&packet->data[tensor.offset]);
+                auto* pFp16Data = reinterpret_cast<std::uint16_t*>(&rawNn.data[tensor.offset]);
                 for(std::size_t i = 0; i < numElements; i++) {
                     data.push_back(fp16_ieee_to_fp32_value(pFp16Data[i]));
                 }
