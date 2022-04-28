@@ -119,7 +119,7 @@ CalibrationHandler::CalibrationHandler(std::string calibrationDataPath, std::str
     }
 
     file.seekg(0, file.end);
-    unsigned fSize = file.tellg();
+    const unsigned fSize = static_cast<unsigned>(file.tellg());
     file.seekg(0, file.beg);
 
     if(fSize != versionSize) {
@@ -205,10 +205,12 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(
     std::vector<std::vector<float>> intrinsicMatrix = eepromData.cameraData[cameraId].intrinsicMatrix;
     if(resizeWidth != -1 || resizeHeight != -1) {
         if(resizeWidth == -1) {
-            resizeWidth = eepromData.cameraData[cameraId].width * resizeHeight / static_cast<float>(eepromData.cameraData[cameraId].height);
+            resizeWidth = static_cast<decltype(resizeWidth)>(eepromData.cameraData[cameraId].width * resizeHeight
+                                                             / static_cast<float>(eepromData.cameraData[cameraId].height));
         }
         if(resizeHeight == -1) {
-            resizeHeight = eepromData.cameraData[cameraId].height * resizeWidth / static_cast<float>(eepromData.cameraData[cameraId].width);
+            resizeHeight = static_cast<decltype(resizeHeight)>(eepromData.cameraData[cameraId].height * resizeWidth
+                                                               / static_cast<float>(eepromData.cameraData[cameraId].width));
         }
         float scale = resizeHeight / static_cast<float>(eepromData.cameraData[cameraId].height);
         if(scale * eepromData.cameraData[cameraId].width < resizeWidth) {
@@ -246,7 +248,7 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(CameraBo
                                                                         Size2f destShape,
                                                                         Point2f topLeftPixelId,
                                                                         Point2f bottomRightPixelId) {
-    return getCameraIntrinsics(cameraId, destShape.width, destShape.height, topLeftPixelId, bottomRightPixelId);
+    return getCameraIntrinsics(cameraId, static_cast<int>(destShape.width), static_cast<int>(destShape.height), topLeftPixelId, bottomRightPixelId);
 }
 
 std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(CameraBoardSocket cameraId,
@@ -513,7 +515,7 @@ void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, std::ve
 }
 
 void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, std::vector<std::vector<float>> intrinsics, Size2f frameSize) {
-    setCameraIntrinsics(cameraId, intrinsics, frameSize.width, frameSize.height);
+    setCameraIntrinsics(cameraId, intrinsics, static_cast<int>(frameSize.width), static_cast<int>(frameSize.height));
     return;
 }
 

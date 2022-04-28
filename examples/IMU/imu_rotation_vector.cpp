@@ -4,7 +4,7 @@
 
 #include "utility.hpp"
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 int main() {
@@ -45,7 +45,7 @@ int main() {
             auto& rVvalues = imuPacket.rotationVector;
 
             auto rvTs = rVvalues.timestamp.get() - baseTs;
-            printf("Rotation vector timestamp: %ld ms\n", duration_cast<milliseconds>(rvTs).count());
+            printf("Rotation vector timestamp: %ld ms\n", static_cast<long>(duration_cast<milliseconds>(rvTs).count()));
 
             printf(
                 "Quaternion: i: %.3f j: %.3f k: %.3f real: %.3f\n"

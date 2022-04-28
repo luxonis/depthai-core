@@ -8,8 +8,11 @@
 namespace dai {
 namespace node {
 
-ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : Node(par, nodeId), rawControl(std::make_shared<RawCameraControl>()), initialControl(rawControl) {
+ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : ColorCamera(par, nodeId, std::make_unique<ColorCamera::Properties>()) {}
+ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<Node, ColorCamera, ColorCameraProperties>(par, nodeId, std::move(props)),
+      rawControl(std::make_shared<RawCameraControl>()),
+      initialControl(rawControl) {
     properties.boardSocket = CameraBoardSocket::AUTO;
     properties.imageOrientation = CameraImageOrientation::AUTO;
     properties.colorOrder = ColorCameraProperties::ColorOrder::BGR;
@@ -20,23 +23,13 @@ ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
     properties.fps = 30.0;
     properties.previewKeepAspectRatio = true;
 
-    inputs = {&inputConfig, &inputControl};
-    outputs = {&video, &preview, &still, &isp, &raw};
+    setInputRefs({&inputConfig, &inputControl});
+    setOutputRefs({&video, &preview, &still, &isp, &raw});
 }
 
-std::string ColorCamera::getName() const {
-    return "ColorCamera";
-}
-
-nlohmann::json ColorCamera::getProperties() {
-    nlohmann::json j;
+ColorCamera::Properties& ColorCamera::getProperties() {
     properties.initialControl = *rawControl;
-    nlohmann::to_json(j, properties);
-    return j;
-}
-
-std::shared_ptr<Node> ColorCamera::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
+    return properties;
 }
 
 // Set board socket to use
@@ -205,9 +198,19 @@ std::tuple<int, int> ColorCamera::getVideoSize() const {
         int maxVideoHeight = 1080;
 
         if(properties.resolution == ColorCameraProperties::SensorResolution::THE_4_K
-           || properties.resolution == ColorCameraProperties::SensorResolution::THE_12_MP) {
+           || properties.resolution == ColorCameraProperties::SensorResolution::THE_12_MP
+           || properties.resolution == ColorCameraProperties::SensorResolution::THE_13_MP) {
             maxVideoWidth = 3840;
             maxVideoHeight = 2160;
+        }
+
+        if(properties.resolution == ColorCameraProperties::SensorResolution::THE_1200_P) {
+            maxVideoHeight = 1200;
+        }
+
+        if(properties.resolution == ColorCameraProperties::SensorResolution::THE_5_MP) {
+            maxVideoWidth = 2592;
+            maxVideoHeight = 1944;
         }
 
         // Take into the account the ISP scaling
@@ -243,13 +246,24 @@ std::tuple<int, int> ColorCamera::getStillSize() const {
     if(properties.stillWidth == ColorCameraProperties::AUTO || properties.stillHeight == ColorCameraProperties::AUTO) {
         int maxStillWidth = 1920;
         int maxStillHeight = 1080;
+        if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_1200_P) {
+            maxStillHeight = 1200;
+        }
         if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_4_K) {
             maxStillWidth = 3840;
             maxStillHeight = 2160;
         }
+        if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_5_MP) {
+            maxStillWidth = 2592;
+            maxStillHeight = 1944;
+        }
         if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_12_MP) {
             maxStillWidth = 4032;  // Note not 4056 as full sensor resolution
             maxStillHeight = 3040;
+        }
+        if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_13_MP) {
+            maxStillWidth = 4192;  // Note not 4208 as full sensor resolution
+            maxStillHeight = 3120;
         }
 
         // Take into the account the ISP scaling
@@ -287,12 +301,32 @@ std::tuple<int, int> ColorCamera::getResolutionSize() const {
             return {1920, 1080};
             break;
 
+        case ColorCameraProperties::SensorResolution::THE_1200_P:
+            return {1920, 1200};
+            break;
+
         case ColorCameraProperties::SensorResolution::THE_4_K:
             return {3840, 2160};
             break;
 
+        case ColorCameraProperties::SensorResolution::THE_5_MP:
+            return {2592, 1944};
+            break;
+
         case ColorCameraProperties::SensorResolution::THE_12_MP:
             return {4056, 3040};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_13_MP:
+            return {4208, 3120};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_720_P:
+            return {1280, 720};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_800_P:
+            return {1280, 800};
             break;
     }
 
@@ -370,11 +404,11 @@ float ColorCamera::getSensorCropY() const {
 }
 
 void ColorCamera::setWaitForConfigInput(bool wait) {
-    properties.inputConfigSync = wait;
+    inputConfig.setWaitForMessage(wait);
 }
 
-bool ColorCamera::getWaitForConfigInput() {
-    return properties.inputConfigSync;
+bool ColorCamera::getWaitForConfigInput() const {
+    return inputConfig.getWaitForMessage();
 }
 
 void ColorCamera::setPreviewKeepAspectRatio(bool keep) {

@@ -1,24 +1,21 @@
 #include "depthai/pipeline/node/UAC.hpp"
 
-#include <cmath>
-
 namespace dai {
 namespace node {
 
-UAC::UAC(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {}
-
-std::string UAC::getName() const {
-    return "UAC";
+UAC::UAC(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
+    : UAC(par, nodeId, std::make_unique<UAC::Properties>()) {}
+UAC::UAC(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<Node, UAC, UACProperties>(par, nodeId, std::move(props)),
+      rawConfig(std::make_shared<RawAudioInConfig>()),
+      initialConfig(rawConfig) {
+    setInputRefs({&inputConfig});
+    setOutputRefs({&out});
 }
 
-nlohmann::json UAC::getProperties() {
-    nlohmann::json j;
-    nlohmann::to_json(j, properties);
-    return j;
-}
-
-std::shared_ptr<Node> UAC::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
+UAC::Properties& UAC::getProperties() {
+    properties.initialConfig = *rawConfig;
+    return properties;
 }
 
 void UAC::setStreamBackMic(bool enable) {
@@ -27,15 +24,6 @@ void UAC::setStreamBackMic(bool enable) {
 
 void UAC::setMicAutoGain(bool enable) {
     properties.enableAgc = enable;
-}
-
-void UAC::setMicGainTimes(float times) {
-    properties.micGain = times;
-}
-
-void UAC::setMicGainDecibels(float dB) {
-    float times = pow(10, dB / 20);
-    setMicGainTimes(times);
 }
 
 void UAC::setXlinkApplyMicGain(bool enable) {

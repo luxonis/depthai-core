@@ -300,17 +300,19 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
 
         // Add callback for events
         callbackIdMap[streamName] = outputQueueMap[streamName]->addCallback([this](std::string queueName, std::shared_ptr<ADatatype>) {
-            // Lock first
-            std::unique_lock<std::mutex> lock(eventMtx);
+            {
+                // Lock first
+                std::unique_lock<std::mutex> lock(eventMtx);
 
-            // Check if size is equal or greater than EVENT_QUEUE_MAXIMUM_SIZE
-            if(eventQueue.size() >= EVENT_QUEUE_MAXIMUM_SIZE) {
-                auto numToRemove = eventQueue.size() - EVENT_QUEUE_MAXIMUM_SIZE + 1;
-                eventQueue.erase(eventQueue.begin(), eventQueue.begin() + numToRemove);
+                // Check if size is equal or greater than EVENT_QUEUE_MAXIMUM_SIZE
+                if(eventQueue.size() >= EVENT_QUEUE_MAXIMUM_SIZE) {
+                    auto numToRemove = eventQueue.size() - EVENT_QUEUE_MAXIMUM_SIZE + 1;
+                    eventQueue.erase(eventQueue.begin(), eventQueue.begin() + numToRemove);
+                }
+
+                // Add to the end of event queue
+                eventQueue.push_back(std::move(queueName));
             }
-
-            // Add to the end of event queue
-            eventQueue.push_back(queueName);
 
             // notify the rest
             eventCv.notify_all();

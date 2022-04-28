@@ -1,6 +1,6 @@
 #include <iostream>
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 // MobilenetSSD label texts
@@ -47,7 +47,7 @@ int main(int argc, char** argv) {
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    videoEncoder->setDefaultProfilePreset(1920, 1080, 30, dai::VideoEncoderProperties::Profile::H265_MAIN);
+    videoEncoder->setDefaultProfilePreset(30, dai::VideoEncoderProperties::Profile::H265_MAIN);
 
     nn->setConfidenceThreshold(0.5);
     nn->setBlobPath(nnPath);
@@ -114,7 +114,7 @@ int main(int argc, char** argv) {
                 int x2 = detection.xmax * monoRight->getResolutionHeight() + offsetX;
                 int y2 = detection.ymax * monoRight->getResolutionHeight();
 
-                int labelIndex = detection.label;
+                uint32_t labelIndex = detection.label;
                 std::string labelStr = to_string(labelIndex);
                 if(labelIndex < labelMap.size()) {
                     labelStr = labelMap[labelIndex];
@@ -136,7 +136,7 @@ int main(int argc, char** argv) {
                 int x2 = detection.xmax * frameManip.cols;
                 int y2 = detection.ymax * frameManip.rows;
 
-                int labelIndex = detection.label;
+                uint32_t labelIndex = detection.label;
                 std::string labelStr = to_string(labelIndex);
                 if(labelIndex < labelMap.size()) {
                     labelStr = labelMap[labelIndex];

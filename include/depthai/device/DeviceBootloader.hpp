@@ -315,6 +315,11 @@ class DeviceBootloader {
     Version getVersion() const;
 
     /**
+     * @returns Version of current flashed bootloader
+     */
+    Version getFlashedVersion() const;
+
+    /**
      * @returns True when bootloader was booted using latest bootloader integrated in the library.
      * False when bootloader is already running on the device and just connected to.
      */
@@ -379,6 +384,8 @@ class DeviceBootloader {
 
     // Current connected bootloader version
     Version version{0, 0, 2};
+    // Flashed bootloader version
+    Version flashedVersion{0, 0, 0};
 };
 
 }  // namespace dai
@@ -433,4 +440,8 @@ inline std::ostream& operator<<(std::ostream& out, const dai::DeviceBootloader::
             break;
     }
     return out;
+}
+
+inline std::ostream& operator<<(std::ostream& out, const dai::DeviceBootloader::Version& v) {
+    return out << v.toString();
 }

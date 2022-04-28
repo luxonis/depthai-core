@@ -1,7 +1,7 @@
 #include <csignal>
 #include <iostream>
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 // Keyboard interrupt (Ctrl + C) detected
@@ -41,9 +41,9 @@ int main() {
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
     // Setting to 26fps will trigger error
-    ve1->setDefaultProfilePreset(1280, 720, 25, dai::VideoEncoderProperties::Profile::H264_MAIN);
-    ve2->setDefaultProfilePreset(3840, 2160, 25, dai::VideoEncoderProperties::Profile::H265_MAIN);
-    ve3->setDefaultProfilePreset(1280, 720, 25, dai::VideoEncoderProperties::Profile::H264_MAIN);
+    ve1->setDefaultProfilePreset(25, dai::VideoEncoderProperties::Profile::H264_MAIN);
+    ve2->setDefaultProfilePreset(25, dai::VideoEncoderProperties::Profile::H265_MAIN);
+    ve3->setDefaultProfilePreset(25, dai::VideoEncoderProperties::Profile::H264_MAIN);
 
     // Linking
     monoLeft->out.link(ve1->input);
