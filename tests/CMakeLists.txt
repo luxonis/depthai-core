@@ -6,6 +6,30 @@ enable_testing()
 hunter_add_package(Catch2)
 find_package(Catch2 CONFIG REQUIRED)
 
+# Specify path separator
+set(SYS_PATH_SEPARATOR ";")
+if(UNIX)
+    set(SYS_PATH_SEPARATOR ":")
+endif()
+
+# Create environments for usb & poe labels
+set(test_usb_env
+    # PATH (dlls)
+    "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
+    # Misc
+    "UBSAN_OPTIONS=halt_on_error=1"
+    # DepthAI
+    "DEPTHAI_PROTOCOL=usb"
+)
+set(test_poe_env
+    # PATH (dlls)
+    "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
+    # Misc
+    "UBSAN_OPTIONS=halt_on_error=1"
+    # DepthAI
+    "DEPTHAI_PROTOCOL=tcpip;DEPTHAI_SEARCH_TIMEOUT=15000"
+)
+
 # Function for adding new tests
 # Creates separate tests for USB and PoE devices
 include(CMakeParseArguments)
@@ -45,7 +69,7 @@ function(dai_add_test test_name test_src)
     # Add to list of tests
     add_test(${test_name} ${test_name})
     # Add ubsan halt on error
-    set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=usb" LABELS usb)
+    set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "${test_usb_env}" LABELS usb)
 
     # add a conforming preprocessor test (serialization macros) if MSVC and CONFORMING option set on function call
     if(MSVC AND DAT_CONFORMING)
@@ -69,18 +93,18 @@ function(dai_add_test test_name test_src)
         add_test(${test_name}_conforming ${test_name}_conforming)
 
         # Add ubsan halt on error
-        set_tests_properties(${test_name}_conforming PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=usb" LABELS usb)
+        set_tests_properties(${test_name}_conforming PROPERTIES ENVIRONMENT "${test_usb_env}" LABELS usb)
     endif()
 
     # Add PoE test variants
     add_test(${test_name}_poe ${test_name})
     # Add ubsan halt on error
-    set_tests_properties(${test_name}_poe PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=tcpip;DEPTHAI_SEARCH_TIMEOUT=15000" LABELS poe)
+    set_tests_properties(${test_name}_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS poe)
     if(MSVC AND DAT_CONFORMING)
         # Add to list of tests
         add_test(${test_name}_conforming_poe ${test_name}_conforming)
         # Add ubsan halt on error
-        set_tests_properties(${test_name}_conforming_poe PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=tcpip;DEPTHAI_SEARCH_TIMEOUT=15000" LABELS poe)
+        set_tests_properties(${test_name}_conforming_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS poe)
     endif()
 
 endfunction()
