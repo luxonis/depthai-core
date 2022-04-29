@@ -25,6 +25,18 @@ CameraControl& CameraControl::setStopStreaming() {
     cfg.setCommand(RawCameraControl::Command::STOP_STREAM);
     return *this;
 }
+CameraControl& CameraControl::setExternalTrigger(int numFramesBurst, int numFramesDiscard) {
+    cfg.setCommand(RawCameraControl::Command::EXTERNAL_TRIGGER);
+    cfg.lowPowerNumFramesBurst = numFramesBurst;
+    cfg.lowPowerNumFramesDiscard = numFramesDiscard;
+    return *this;
+}
+
+CameraControl& CameraControl::setFrameSyncMode(FrameSyncMode mode) {
+    cfg.setCommand(RawCameraControl::Command::FRAME_SYNC);
+    cfg.frameSyncMode = mode;
+    return *this;
+}
 
 // Focus
 CameraControl& CameraControl::setAutoFocusMode(AutoFocusMode mode) {
@@ -34,6 +46,18 @@ CameraControl& CameraControl::setAutoFocusMode(AutoFocusMode mode) {
 }
 CameraControl& CameraControl::setAutoFocusTrigger() {
     cfg.setCommand(RawCameraControl::Command::AF_TRIGGER);
+    return *this;
+}
+CameraControl& CameraControl::setAutoFocusLensRange(int infinityPosition, int macroPosition) {
+    cfg.setCommand(RawCameraControl::Command::AF_LENS_RANGE);
+    cfg.lensPosAutoInfinity = infinityPosition;
+    cfg.lensPosAutoMacro = macroPosition;
+    return *this;
+}
+CameraControl& CameraControl::setAutoFocusLensLimit(int minPosition, int maxPosition) {
+    cfg.setCommand(RawCameraControl::Command::AF_LENS_LIMIT);
+    cfg.lensPosLimitMin = minPosition;
+    cfg.lensPosLimitMax = maxPosition;
     return *this;
 }
 CameraControl& CameraControl::setAutoFocusRegion(uint16_t startX, uint16_t startY, uint16_t width, uint16_t height) {

@@ -10,6 +10,7 @@
 #include <string>
 #include <thread>
 #include <tuple>
+#include <type_traits>
 #include <unordered_map>
 #include <vector>
 
@@ -23,6 +24,7 @@
 #include "depthai/xlink/XLinkStream.hpp"
 
 // shared
+#include "depthai-shared/common/CameraFeatures.hpp"
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
@@ -130,7 +132,8 @@ class DeviceBase {
      * @param pipeline Pipeline to be executed on the device
      * @param usb2Mode Boot device using USB2 mode firmware
      */
-    DeviceBase(const Pipeline& pipeline, bool usb2Mode);
+    template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
+    DeviceBase(const Pipeline& pipeline, T usb2Mode) : DeviceBase(pipeline, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
@@ -144,14 +147,7 @@ class DeviceBase {
      * @param pipeline Pipeline to be executed on the device
      * @param pathToCmd Path to custom device firmware
      */
-    DeviceBase(const Pipeline& pipeline, const char* pathToCmd);
-
-    /**
-     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * @param pipeline Pipeline to be executed on the device
-     * @param pathToCmd Path to custom device firmware
-     */
-    DeviceBase(const Pipeline& pipeline, const std::string& pathToCmd);
+    DeviceBase(const Pipeline& pipeline, const dai::Path& pathToCmd);
 
     /**
      * Connects to device specified by devInfo.
@@ -166,7 +162,9 @@ class DeviceBase {
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param usb2Mode Boot device using USB2 mode firmware
      */
-    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode);
+    template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
+    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, T usb2Mode)
+        : DeviceBase(pipeline, devInfo, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
 
     /**
      * Connects to device specified by devInfo.
@@ -182,15 +180,7 @@ class DeviceBase {
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param pathToCmd Path to custom device firmware
      */
-    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd);
-
-    /**
-     * Connects to device specified by devInfo.
-     * @param pipeline Pipeline to be executed on the device
-     * @param devInfo DeviceInfo which specifies which device to connect to
-     * @param pathToCmd Path to custom device firmware
-     */
-    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd);
+    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
@@ -209,12 +199,12 @@ class DeviceBase {
      * @param version OpenVINO version which the device will be booted with
      * @param usb2Mode Boot device using USB2 mode firmware
      */
-    DeviceBase(OpenVINO::Version version, bool usb2Mode);
+    template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
+    DeviceBase(OpenVINO::Version version, T usb2Mode) : DeviceBase(version, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
 
     /**
      * Connects to device specified by devInfo.
      * @param version OpenVINO version which the device will be booted with
-     * @param devInfo DeviceInfo which specifies which device to connect to
      * @param maxUsbSpeed Maximum allowed USB speed
      */
     DeviceBase(OpenVINO::Version version, UsbSpeed maxUsbSpeed);
@@ -224,14 +214,7 @@ class DeviceBase {
      * @param version OpenVINO version which the device will be booted with
      * @param pathToCmd Path to custom device firmware
      */
-    DeviceBase(OpenVINO::Version version, const char* pathToCmd);
-
-    /**
-     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * @param version OpenVINO version which the device will be booted with
-     * @param pathToCmd Path to custom device firmware
-     */
-    DeviceBase(OpenVINO::Version version, const std::string& pathToCmd);
+    DeviceBase(OpenVINO::Version version, const dai::Path& pathToCmd);
 
     /**
      * Connects to device specified by devInfo.
@@ -246,7 +229,9 @@ class DeviceBase {
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param usb2Mode Boot device using USB2 mode firmware
      */
-    DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, bool usb2Mode);
+    template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
+    DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, T usb2Mode)
+        : DeviceBase(version, devInfo, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
 
     /**
      * Connects to device specified by devInfo.
@@ -262,15 +247,7 @@ class DeviceBase {
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param pathToCmd Path to custom device firmware
      */
-    DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, const char* pathToCmd);
-
-    /**
-     * Connects to device specified by devInfo.
-     * @param version OpenVINO version which the device will be booted with
-     * @param devInfo DeviceInfo which specifies which device to connect to
-     * @param usb2Mode Path to custom device firmware
-     */
-    DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, const std::string& pathToCmd);
+    DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
 
     /**
      * Connects to any available device with custom config.
@@ -442,6 +419,13 @@ class DeviceBase {
     std::vector<CameraBoardSocket> getConnectedCameras();
 
     /**
+     * Get cameras that are connected to the device with their features/properties
+     *
+     * @returns Vector of connected camera features
+     */
+    std::vector<CameraFeatures> getConnectedCameraFeatures();
+
+    /**
      * Get sensor names for cameras that are connected to the device
      *
      * @returns Map/dictionary with camera sensor names, indexed by socket
@@ -579,11 +563,12 @@ class DeviceBase {
 
    private:
     // private functions
-    void init(OpenVINO::Version version, bool usb2Mode, const std::string& pathToMvcmd);
-    void init(const Pipeline& pipeline, bool usb2Mode, const std::string& pathToMvcmd);
-    void init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd);
-    void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd);
-    void init2(Config cfg, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline);
+    void init(OpenVINO::Version version, bool usb2Mode, const dai::Path& pathToMvcmd);
+    void init(const Pipeline& pipeline, bool usb2Mode, const dai::Path& pathToMvcmd);
+    void init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
+    void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
+    void init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<const Pipeline&> pipeline);
+    void tryGetDevice();
 
     DeviceInfo deviceInfo = {};
 

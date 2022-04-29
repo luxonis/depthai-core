@@ -22,8 +22,8 @@ endif()
 
 include("cmake/HunterGate.cmake")
 HunterGate(
-    URL "https://github.com/cpp-pm/hunter/archive/v0.23.320.tar.gz"
-    SHA1 "9b4e732afd22f40482c11ad6342f7d336634226f"
+    URL "https://github.com/cpp-pm/hunter/archive/v0.23.322.tar.gz"
+    SHA1 "cb0ea1f74f4a2c49a807de34885743495fccccbe"
     LOCAL # Local config for dependencies
 )
 
@@ -33,7 +33,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.15.0" LANGUAGES CXX C)
+project(depthai VERSION "2.15.3" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -179,6 +179,8 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/XLinkIn.cpp
     src/pipeline/node/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
+    src/pipeline/node/Camera.cpp
+    src/pipeline/node/ToF.cpp    
     src/pipeline/node/MonoCamera.cpp
     src/pipeline/node/StereoDepth.cpp
     src/pipeline/node/NeuralNetwork.cpp
@@ -194,6 +196,8 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/IMU.cpp
     src/pipeline/node/EdgeDetector.cpp
     src/pipeline/node/SPIIn.cpp
+    src/pipeline/node/UVC.cpp
+    src/pipeline/node/UAC.cpp
     src/pipeline/node/FeatureTracker.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
@@ -214,8 +218,10 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/EdgeDetectorConfig.cpp
     src/pipeline/datatype/TrackedFeatures.cpp
     src/pipeline/datatype/FeatureTrackerConfig.cpp
+    src/pipeline/datatype/AudioInConfig.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
+    src/utility/Path.cpp
     src/utility/Platform.cpp
     src/utility/Environment.cpp
     src/xlink/XLinkConnection.cpp

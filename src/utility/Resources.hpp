@@ -8,9 +8,10 @@
 #include <thread>
 
 // project
-#include <depthai/openvino/OpenVINO.hpp>
 #include <depthai/device/Device.hpp>
 #include <depthai/device/DeviceBootloader.hpp>
+#include <depthai/openvino/OpenVINO.hpp>
+#include <depthai/utility/Path.hpp>
 
 namespace dai {
 
@@ -43,7 +44,7 @@ public:
 
     // Available resources
     std::vector<std::uint8_t> getDeviceFirmware(bool usb2Mode, OpenVINO::Version version = OpenVINO::DEFAULT_VERSION) const;
-    std::vector<std::uint8_t> getDeviceFirmware(DeviceResource resource, Device::Config config, std::string pathToMvcmd = "") const;
+    std::vector<std::uint8_t> getDeviceFirmware(DeviceResource resource, Device::Config config, dai::Path pathToMvcmd = {}) const;
     std::vector<std::uint8_t> getBootloaderFirmware(DeviceBootloader::Type type = DeviceBootloader::Type::USB) const;
     std::vector<std::uint8_t> getDeviceLibcpython(Device::Config config, std::string pathToMvcmd = "") const;
     std::vector<std::uint8_t> getDeviceLibcpython(OpenVINO::Version version = OpenVINO::DEFAULT_VERSION) const;

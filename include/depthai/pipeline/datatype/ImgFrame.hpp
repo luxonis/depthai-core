@@ -29,6 +29,8 @@ class ImgFrame : public Buffer {
     // Raw* mirror
     using Type = RawImgFrame::Type;
     using Specs = RawImgFrame::Specs;
+    using CameraSettings = RawImgFrame::CameraSettings;
+    using WhiteBalance = RawImgFrame::WhiteBalance;
 
     /**
      * Construct ImgFrame message.
@@ -79,6 +81,26 @@ class ImgFrame : public Buffer {
      * Retrieves image type
      */
     Type getType() const;
+
+    /**
+     * Retrieves exposure time, in microseconds
+     */
+    int getExposureTime() const;
+
+    /**
+     * Retrieves sensitivity, as an ISO value
+     */
+    int getSensitivity() const;
+
+    /**
+     * Retrieves lens position, range 0..255. Returns -1 if not available
+     */
+    int getLensPosition() const;
+
+    /**
+     * Retrieves white balance gains, per color channel: R, Gr, Gb, B
+     */
+    WhiteBalance getWhiteBalanceGains() const;
 
     // setters
     /**
