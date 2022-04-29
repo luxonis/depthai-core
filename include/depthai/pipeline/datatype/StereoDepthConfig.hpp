@@ -96,6 +96,18 @@ class StereoDepthConfig : public Buffer {
     StereoDepthConfig& setSubpixel(bool enable);
 
     /**
+     * Set depth unit of depth map.
+     *
+     * Meter, centimeter, millimeter, inch, foot or custom unit is available.
+     */
+    StereoDepthConfig& setDepthUnit(AlgorithmControl::DepthUnit depthUnit);
+
+    /**
+     * Get depth unit of depth map.
+     */
+    AlgorithmControl::DepthUnit getDepthUnit();
+
+    /**
      * Useful for normalization of the disparity map.
      * @returns Maximum disparity value that the node can return
      */

@@ -6,6 +6,7 @@
 #include "depthai-shared/common/EepromData.hpp"
 #include "depthai-shared/common/Point2f.hpp"
 #include "depthai-shared/common/Size2f.hpp"
+#include "depthai/utility/Path.hpp"
 
 namespace dai {
 /**
@@ -26,7 +27,7 @@ class CalibrationHandler {
      *
      * @param eepromDataPath takes the full path to the json file containing the calibration and device info.
      */
-    explicit CalibrationHandler(std::string eepromDataPath);
+    explicit CalibrationHandler(dai::Path eepromDataPath);
 
     /**
      * Construct a new Calibration Handler object using the board
@@ -35,7 +36,7 @@ class CalibrationHandler {
      * @param calibrationDataPath Full Path to the .calib binary file from the gen1 calibration. (Supports only Version 5)
      * @param boardConfigPath Full Path to the board config json file containing device information.
      */
-    CalibrationHandler(std::string calibrationDataPath, std::string boardConfigPath);
+    CalibrationHandler(dai::Path calibrationDataPath, dai::Path boardConfigPath);
 
     /**
      * Construct a new Calibration Handler object from EepromData object.
@@ -164,6 +165,14 @@ class CalibrationHandler {
     uint8_t getLensPosition(CameraBoardSocket cameraId);
 
     /**
+     *  Get the distortion model of the given camera
+     *
+     * @param cameraId of the camera with lens position is requested.
+     * @return lens position of the camera with given cameraId at which it was calibrated.
+     */
+    CameraModel getDistortionModel(CameraBoardSocket cameraId);
+
+    /**
      * Get the Camera Extrinsics object between two cameras from the calibration data if there is a linked connection
      *  between any two cameras then the relative rotation and translation (in centimeters) is returned by this function.
      *
@@ -281,7 +290,7 @@ class CalibrationHandler {
      * @param destPath  Full path to the json file in which raw calibration data will be stored
      * @return True on success, false otherwise
      */
-    bool eepromToJsonFile(std::string destPath) const;
+    bool eepromToJsonFile(dai::Path destPath) const;
 
     /**
      * Set the Board Info object

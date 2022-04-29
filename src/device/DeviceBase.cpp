@@ -257,74 +257,39 @@ LogLevel DeviceBase::Impl::getLogLevel() {
 // END OF Impl section
 ///////////////////////////////////////////////
 
-DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo) : DeviceBase(version, devInfo, false) {}
+void DeviceBase::tryGetDevice() {
+    // Searches for any available device for 'default' timeout
+    bool found = false;
+    std::tie(found, deviceInfo) = getAnyAvailableDevice();
 
-DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, bool usb2Mode) : deviceInfo(devInfo) {
-    init(version, usb2Mode, "");
+    // If no device found, throw
+    if(!found) throw std::runtime_error("No available devices");
 }
+
+DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo) : DeviceBase(version, devInfo, DeviceBase::DEFAULT_USB_SPEED) {}
 
 DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : deviceInfo(devInfo) {
     init(version, maxUsbSpeed, "");
 }
 
-DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, const char* pathToCmd) : deviceInfo(devInfo) {
-    init(version, false, std::string(pathToCmd));
-}
-
-DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, const std::string& pathToCmd) : deviceInfo(devInfo) {
+DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, const dai::Path& pathToCmd) : deviceInfo(devInfo) {
     init(version, false, pathToCmd);
 }
 
 DeviceBase::DeviceBase() : DeviceBase(OpenVINO::DEFAULT_VERSION) {}
 
 DeviceBase::DeviceBase(OpenVINO::Version version) {
-    // Searches for any available device for 'default' timeout
-    bool found = false;
-    std::tie(found, deviceInfo) = getAnyAvailableDevice();
-
-    // If no device found, throw
-    if(!found) throw std::runtime_error("No available devices");
+    tryGetDevice();
     init(version, false, "");
 }
 
-DeviceBase::DeviceBase(OpenVINO::Version version, const char* pathToCmd) {
-    // Searches for any available device for 'default' timeout
-
-    bool found = false;
-    std::tie(found, deviceInfo) = getAnyAvailableDevice();
-
-    // If no device found, throw
-    if(!found) throw std::runtime_error("No available devices");
-    init(version, false, std::string(pathToCmd));
-}
-
-DeviceBase::DeviceBase(OpenVINO::Version version, const std::string& pathToCmd) {
-    // Searches for any available device for 'default' timeout
-    bool found = false;
-    std::tie(found, deviceInfo) = getAnyAvailableDevice();
-
-    // If no device found, throw
-    if(!found) throw std::runtime_error("No available devices");
+DeviceBase::DeviceBase(OpenVINO::Version version, const dai::Path& pathToCmd) {
+    tryGetDevice();
     init(version, false, pathToCmd);
 }
 
-DeviceBase::DeviceBase(OpenVINO::Version version, bool usb2Mode) {
-    // Searches for any available device for 'default' timeout
-    bool found = false;
-    std::tie(found, deviceInfo) = getAnyAvailableDevice();
-
-    // If no device found, throw
-    if(!found) throw std::runtime_error("No available devices");
-    init(version, usb2Mode, "");
-}
-
 DeviceBase::DeviceBase(OpenVINO::Version version, UsbSpeed maxUsbSpeed) {
-    // Searches for any available device for 'default' timeout
-    bool found = false;
-    std::tie(found, deviceInfo) = getAnyAvailableDevice();
-
-    // If no device found, throw
-    if(!found) throw std::runtime_error("No available devices");
+    tryGetDevice();
     init(version, maxUsbSpeed, "");
 }
 
@@ -332,50 +297,29 @@ DeviceBase::DeviceBase(const Pipeline& pipeline) : DeviceBase(pipeline.getOpenVI
     tryStartPipeline(pipeline);
 }
 
-DeviceBase::DeviceBase(const Pipeline& pipeline, bool usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), usb2Mode) {
-    tryStartPipeline(pipeline);
-}
-
 DeviceBase::DeviceBase(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) : DeviceBase(pipeline.getOpenVINOVersion(), maxUsbSpeed) {
     tryStartPipeline(pipeline);
 }
 
-DeviceBase::DeviceBase(const Pipeline& pipeline, const char* pathToCmd) : DeviceBase(pipeline.getOpenVINOVersion(), pathToCmd) {
+DeviceBase::DeviceBase(const Pipeline& pipeline, const dai::Path& pathToCmd) : DeviceBase(pipeline.getOpenVINOVersion(), pathToCmd) {
     tryStartPipeline(pipeline);
 }
 
-DeviceBase::DeviceBase(const Pipeline& pipeline, const std::string& pathToCmd) : DeviceBase(pipeline.getOpenVINOVersion(), pathToCmd) {
-    tryStartPipeline(pipeline);
-}
-
-DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, false) {}
-
-DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, usb2Mode) {
-    tryStartPipeline(pipeline);
-}
+DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo)
+    : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, DeviceBase::DEFAULT_USB_SPEED) {}
 
 DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed)
     : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, maxUsbSpeed) {
     tryStartPipeline(pipeline);
 }
 
-DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd)
-    : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, pathToCmd) {
-    tryStartPipeline(pipeline);
-}
-
-DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd)
+DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd)
     : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, pathToCmd) {
     tryStartPipeline(pipeline);
 }
 
 DeviceBase::DeviceBase(Config config) {
-    // Searches for any available device for 'default' timeout
-    bool found = false;
-    std::tie(found, deviceInfo) = getAnyAvailableDevice();
-
-    // If no device found, throw
-    if(!found) throw std::runtime_error("No available devices");
+    tryGetDevice();
     init2(config, {}, {});
 }
 
@@ -445,7 +389,7 @@ void DeviceBase::tryStartPipeline(const Pipeline& pipeline) {
     }
 }
 
-void DeviceBase::init(OpenVINO::Version version, bool usb2Mode, const std::string& pathToMvcmd) {
+void DeviceBase::init(OpenVINO::Version version, bool usb2Mode, const dai::Path& pathToMvcmd) {
     Config cfg;
     // Specify usb speed
     cfg.board.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
@@ -453,13 +397,13 @@ void DeviceBase::init(OpenVINO::Version version, bool usb2Mode, const std::strin
     cfg.version = version;
     init2(cfg, pathToMvcmd, {});
 }
-void DeviceBase::init(const Pipeline& pipeline, bool usb2Mode, const std::string& pathToMvcmd) {
+void DeviceBase::init(const Pipeline& pipeline, bool usb2Mode, const dai::Path& pathToMvcmd) {
     Config cfg = pipeline.getDeviceConfig();
     // Modify usb speed
     cfg.board.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
     init2(cfg, pathToMvcmd, pipeline);
 }
-void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd) {
+void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd) {
     Config cfg;
     // Specify usb speed
     cfg.board.usb.maxSpeed = maxUsbSpeed;
@@ -467,14 +411,14 @@ void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const std
     cfg.version = version;
     init2(cfg, pathToMvcmd, {});
 }
-void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd) {
+void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd) {
     Config cfg = pipeline.getDeviceConfig();
     // Modify usb speed
     cfg.board.usb.maxSpeed = maxUsbSpeed;
     init2(cfg, pathToMvcmd, pipeline);
 }
 
-void DeviceBase::init2(Config cfg, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline) {
+void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<const Pipeline&> pipeline) {
     // Initalize depthai library if not already
     initialize();
 
