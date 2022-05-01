@@ -115,22 +115,27 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::dura
 
     // First looks for UNBOOTED, then BOOTLOADER, for 'timeout' time
     auto searchStartTime = steady_clock::now();
-    DeviceInfo deviceInfo;
+    bool found = false;
+    bool invalidDeviceFound = false;
+    DeviceInfo deviceInfo, invalidDeviceInfo;
     do {
-        auto devices = XLinkConnection::getAllConnectedDevices();
+        auto devices = XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, false);
         for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED}) {
             for(const auto& device : devices) {
-                if(device.status == X_LINK_SUCCESS) {
-                    if(device.state == searchState) {
-                        return {true, device};
+                if(device.state == searchState) {
+                    if(device.status == X_LINK_SUCCESS) {
+                        found = true;
+                        break;
+                    } else {
+                        found = false;
+                        invalidDeviceFound = true;
+                        invalidDeviceInfo = device;
                     }
-                } else if(device.status == X_LINK_INSUFFICIENT_PERMISSIONS) {
-                    spdlog::warn("Insufficient permissions to communicate with {} device having name \"{}\". Make sure udev rules are set",
-                                 XLinkDeviceStateToStr(device.state),
-                                 device.name);
                 }
             }
+            if(found) break;
         }
+        if(found) break;
 
         // If 'timeout' < 'POOL_SLEEP_TIME', use 'timeout' as sleep time and then break
         if(timeout < POOL_SLEEP_TIME) {
@@ -142,8 +147,22 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::dura
         }
     } while(steady_clock::now() - searchStartTime < timeout);
 
+    // Check if its an invalid device
+    if(invalidDeviceFound) {
+        if(invalidDeviceInfo.status == X_LINK_INSUFFICIENT_PERMISSIONS) {
+            spdlog::warn("Insufficient permissions to communicate with {} device having name \"{}\". Make sure udev rules are set",
+                        XLinkDeviceStateToStr(invalidDeviceInfo.state),
+                        invalidDeviceInfo.name);
+        } else {
+            // Warn
+            spdlog::warn("Skipping {} device having name \"{}\" ({})", XLinkDeviceStateToStr(invalidDeviceInfo.state), invalidDeviceInfo.name, invalidDeviceInfo.mxid);
+        }
+    }
+
     // If none were found, try BOOTED
-    return XLinkConnection::getFirstDevice(X_LINK_BOOTED);
+    if(!found) std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(X_LINK_BOOTED);
+
+    return {found, deviceInfo};
 }
 
 // Default overload ('DEFAULT_SEARCH_TIME' timeout)

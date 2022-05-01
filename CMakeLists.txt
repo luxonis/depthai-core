@@ -96,7 +96,7 @@ set(DEPTHAI_BOOTLOADER_SHARED_LOCAL "" CACHE STRING "Path to local depthai-bootl
 
 # Enable backward stack printing on crash
 if(ANDROID)
-    # Backward not support currently
+    # Backward not supported currently on Android
     set(DEPTHAI_ENABLE_BACKWARD OFF CACHE BOOL "" FORCE)
 else()
     option(DEPTHAI_ENABLE_BACKWARD "Enable stacktrace printing on crash using Backward" ON)
@@ -104,11 +104,6 @@ else()
     if(DEPTHAI_ENABLE_BACKWARD)
         set(CMAKE_ENABLE_EXPORTS ON)
     endif()
-endif()
-
-if(WIN32 AND BUILD_SHARED_LIBS)
-    # Specify exporting all symbols on Windows
-    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON CACHE BOOL "")
 endif()
 
 # Force Colored output when using Ninja
