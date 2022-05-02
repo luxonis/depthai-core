@@ -83,11 +83,6 @@ static spdlog::level::level_enum logLevelToSpdlogLevel(LogLevel level, spdlog::l
     return defaultValue;
 }
 
-// Common explicit instantiation, to remove the need to define in header
-template std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::nanoseconds);
-template std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::microseconds);
-template std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::milliseconds);
-template std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::seconds);
 constexpr std::chrono::seconds DeviceBase::DEFAULT_SEARCH_TIME;
 constexpr float DeviceBase::DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ;
 constexpr UsbSpeed DeviceBase::DEFAULT_USB_SPEED;
@@ -108,16 +103,19 @@ std::chrono::milliseconds DeviceBase::getDefaultSearchTime() {
     return defaultSearchTime;
 }
 
-template <typename Rep, typename Period>
-std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::duration<Rep, Period> timeout) {
+std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::milliseconds timeout) {
+    return getAnyAvailableDevice(timeout, nullptr);
+}
+
+std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::milliseconds timeout, std::function<void()> cb) {
     using namespace std::chrono;
     constexpr auto POOL_SLEEP_TIME = milliseconds(100);
 
     // First looks for UNBOOTED, then BOOTLOADER, for 'timeout' time
     auto searchStartTime = steady_clock::now();
     bool found = false;
-    bool invalidDeviceFound = false;
-    DeviceInfo deviceInfo, invalidDeviceInfo;
+    DeviceInfo deviceInfo;
+    std::unordered_map<std::string, DeviceInfo> invalidDevices;
     do {
         auto devices = XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, false);
         for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED}) {
@@ -125,17 +123,20 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::dura
                 if(device.state == searchState) {
                     if(device.status == X_LINK_SUCCESS) {
                         found = true;
+                        deviceInfo = device;
                         break;
                     } else {
                         found = false;
-                        invalidDeviceFound = true;
-                        invalidDeviceInfo = device;
+                        invalidDevices[device.name] = device;
                     }
                 }
             }
             if(found) break;
         }
         if(found) break;
+
+        // Call the callback
+        if(cb) cb();
 
         // If 'timeout' < 'POOL_SLEEP_TIME', use 'timeout' as sleep time and then break
         if(timeout < POOL_SLEEP_TIME) {
@@ -148,14 +149,16 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::dura
     } while(steady_clock::now() - searchStartTime < timeout);
 
     // Check if its an invalid device
-    if(invalidDeviceFound) {
+    for(const auto& invalidDevice : invalidDevices) {
+        const auto& invalidDeviceInfo = invalidDevice.second;
         if(invalidDeviceInfo.status == X_LINK_INSUFFICIENT_PERMISSIONS) {
-            spdlog::warn("Insufficient permissions to communicate with {} device having name \"{}\". Make sure udev rules are set",
-                        XLinkDeviceStateToStr(invalidDeviceInfo.state),
-                        invalidDeviceInfo.name);
+            spdlog::warn("Insufficient permissions to communicate with {} device with name \"{}\". Make sure udev rules are set",
+                         XLinkDeviceStateToStr(invalidDeviceInfo.state),
+                         invalidDeviceInfo.name);
         } else {
             // Warn
-            spdlog::warn("Skipping {} device having name \"{}\" ({})", XLinkDeviceStateToStr(invalidDeviceInfo.state), invalidDeviceInfo.name, invalidDeviceInfo.mxid);
+            spdlog::warn(
+                "Skipping {} device with name \"{}\" ({})", XLinkDeviceStateToStr(invalidDeviceInfo.state), invalidDeviceInfo.name, invalidDeviceInfo.mxid);
         }
     }
 
