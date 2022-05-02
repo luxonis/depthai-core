@@ -40,8 +40,8 @@ target_link_libraries(integration-test-opencv PRIVATE depthai::opencv)
 
 # Add runtime dependencies
 if(TEST_FIND_PACKAGE)
-    add_runtime_dependencies(integration-test-core depthai::core)
-    add_runtime_dependencies(integration-test-opencv depthai::opencv)
+    add_runtime_dependencies(integration-test-core usb-1.0)
+    add_runtime_dependencies(integration-test-opencv usb-1.0)
 endif()
 
 include(CTest)
