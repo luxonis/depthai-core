@@ -1,6 +1,6 @@
 /**
  * This example shows usage of Camera Control message as well as ColorCamera configInput to change crop x and y
- * Uses 'WASD' controls to move the crop window, 'C' to capture a still image, 'T' to trigger autofocus, 'IOKL,.[]'
+ * Uses 'WASD' controls to move auto-exposure ROI, 'C' to capture a still image, 'T' to trigger autofocus, 'IOKL,.[]'
  * for manual exposure/focus/white-balance:
  *   Control:      key[dec/inc]  min..max
  *   exposure time:     I   O      1..33000 [us]
@@ -20,7 +20,9 @@
 #include "depthai/depthai.hpp"
 
 // Step size ('W','A','S','D' controls)
-static constexpr int STEP_SIZE = 8;
+static constexpr int STEP_SIZE = 100;
+static constexpr int ROI_W = 400;
+static constexpr int ROI_H = 400;
 
 // Manual exposure/focus set step
 static constexpr int EXP_STEP = 500;  // us
@@ -53,8 +55,16 @@ int main() {
     stillMjpegOut->setStreamName("still");
     previewOut->setStreamName("preview");
 
+    int drawDivider = 1;
     // Properties
-    camRgb->setVideoSize(640, 360);
+    if (1) {
+        camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_4_K);
+        camRgb->setIspScale(1, 2);
+        drawDivider = 2;
+    } else {
+        camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    }
+    camRgb->setVideoSize(1920, 1080);
     camRgb->setPreviewSize(300, 300);
     videoEncoder->setDefaultProfilePreset(camRgb->getFps(), dai::VideoEncoderProperties::Profile::MJPEG);
     stillEncoder->setDefaultProfilePreset(1, dai::VideoEncoderProperties::Profile::MJPEG);
@@ -79,13 +89,13 @@ int main() {
     auto stillQueue = device.getOutputQueue("still");
 
     // Max cropX & cropY
-    float maxCropX = (camRgb->getResolutionWidth() - camRgb->getVideoWidth()) / (float)camRgb->getResolutionWidth();
-    float maxCropY = (camRgb->getResolutionHeight() - camRgb->getVideoHeight()) / (float)camRgb->getResolutionHeight();
+    int maxCropX = camRgb->getResolutionWidth() - ROI_W;
+    int maxCropY = camRgb->getResolutionHeight() - ROI_H;
 
     // Default crop
-    float cropX = 0;
-    float cropY = 0;
-    bool sendCamConfig = true;
+    int cropX = 0;
+    int cropY = 0;
+    bool sendCamConfig = false;//true;
 
     // Defaults and limits for manual focus/exposure controls
     int lensPos = 150;
@@ -115,6 +125,10 @@ int main() {
         for(const auto& videoFrame : videoFrames) {
             // Decode JPEG
             auto frame = cv::imdecode(videoFrame->getData(), cv::IMREAD_UNCHANGED);
+            auto color = cv::Scalar(255, 0, 0);
+            cv::rectangle(frame, cv::Rect(cv::Point(cropX/drawDivider, cropY/drawDivider),
+                                          cv::Point((cropX+ROI_W)/drawDivider, (cropY+ROI_W)/drawDivider)),
+                    color, cv::FONT_HERSHEY_SIMPLEX);
             // Display
             cv::imshow("video", frame);
 
@@ -194,19 +208,23 @@ int main() {
             controlQueue->send(ctrl);
         } else if(key == 'w' || key == 'a' || key == 's' || key == 'd') {
             if(key == 'a') {
-                cropX -= (maxCropX / camRgb->getResolutionWidth()) * STEP_SIZE;
+                cropX -= STEP_SIZE;
                 if(cropX < 0) cropX = maxCropX;
             } else if(key == 'd') {
-                cropX += (maxCropX / camRgb->getResolutionWidth()) * STEP_SIZE;
-                if(cropX > maxCropX) cropX = 0.0f;
+                cropX += STEP_SIZE;
+                if(cropX > maxCropX) cropX = 0;
             } else if(key == 'w') {
-                cropY -= (maxCropY / camRgb->getResolutionHeight()) * STEP_SIZE;
+                cropY -= STEP_SIZE;
                 if(cropY < 0) cropY = maxCropY;
             } else if(key == 's') {
-                cropY += (maxCropY / camRgb->getResolutionHeight()) * STEP_SIZE;
-                if(cropY > maxCropY) cropY = 0.0f;
+                cropY += STEP_SIZE;
+                if(cropY > maxCropY) cropY = 0;
             }
-            sendCamConfig = true;
+            printf("cropX = %4d, cropY = %4d\n", cropX, cropY);
+            dai::CameraControl ctrl;
+            ctrl.setAutoExposureRegion(cropX, cropY, ROI_W, ROI_H);
+            controlQueue->send(ctrl);
+            //sendCamConfig = true;
         }
     }
     return 0;
