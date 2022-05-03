@@ -54,8 +54,10 @@ deviceDesc_t DeviceInfo::getXLinkDeviceDesc() const {
     deviceDesc_t desc = {};
 
     // c_str is guranteed to be nullterminated
-    strncpy(desc.mxid, mxid.c_str(), sizeof(desc.mxid));
-    strncpy(desc.name, name.c_str(), sizeof(desc.name));
+    desc.mxid[sizeof(desc.mxid)-1] = 0;
+    strncpy(desc.mxid, mxid.c_str(), sizeof(desc.mxid) - 1);
+    desc.name[sizeof(desc.name)-1] = 0;
+    strncpy(desc.name, name.c_str(), sizeof(desc.name) - 1);
 
     desc.platform = platform;
     desc.protocol = protocol;
