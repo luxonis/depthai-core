@@ -147,6 +147,7 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * Specify local filesystem paths to the mesh calibration files for 'left' and 'right' inputs.
      *
      * When a mesh calibration is set, it overrides the camera intrinsics/extrinsics matrices.
+     * Overrides useHomographyRectification behavior.
      * Mesh format: a sequence of (y,x) points as 'float' with coordinates from the input image
      * to be mapped in the output. The mesh can be subsampled, configured by `setMeshStep`.
      *
@@ -160,6 +161,7 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
 
     /**
      * Specify mesh calibration data for 'left' and 'right' inputs, as vectors of bytes.
+     * Overrides useHomographyRectification behavior.
      * See `loadMeshFiles` for the expected data format
      */
     void loadMeshData(const std::vector<std::uint8_t>& dataLeft, const std::vector<std::uint8_t>& dataRight);
@@ -316,8 +318,14 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
     void setFocalLengthFromCalibration(bool focalLengthFromCalibration);
 
     /**
-     * Use homography for stereo rectification instead of sparse mesh generated on device.
+     * Use 3x3 homography matrix for stereo rectification instead of sparse mesh generated on device.
      * Default value: true.
+     * If custom mesh data is provided through loadMeshData or loadMeshFiles this option is ignored.
+     * @param useHomographyRectification true: 3x3 homography matrix generated from calibration data is used for stereo rectification, can't correct lens
+     * distortion.
+     * false: sparse mesh is generated on-device from calibration data with mesh step specified with setMeshStep (Default: (16, 16)), can correct lens
+     * distortion. Implementation for generating the mesh is same as opencv's initUndistortRectifyMap function. Only the first 8 distortion coefficients are
+     * used from calibration data.
      */
     void useHomographyRectification(bool useHomographyRectification);
 };
