@@ -155,7 +155,9 @@ TEST_CASE("dai::Path with NN blobs") {
     REQUIRE_THROWS_WITH(nn->setBlobPath(daiPath), Catch::Matchers::Contains("Cannot load blob") && Catch::Matchers::Contains("not convertible"));
 #else
     REQUIRE_THROWS_WITH(nn->setBlobPath(PATH4), Catch::Matchers::Contains("Cannot load blob") && Catch::Matchers::Contains(dai::Path(PATH4).string()));
-    REQUIRE_THROWS_WITH(nn->setBlobPath(strPath), Catch::Matchers::Contains("Cannot load blob") && Catch::Matchers::Contains(std::string{reinterpret_cast<const char *>(strPath.c_str())}));
+    REQUIRE_THROWS_WITH(
+        nn->setBlobPath(strPath),
+        Catch::Matchers::Contains("Cannot load blob") && Catch::Matchers::Contains(std::string{reinterpret_cast<const char*>(strPath.c_str())}));
     REQUIRE_THROWS_WITH(nn->setBlobPath(daiPath), Catch::Matchers::Contains("Cannot load blob") && Catch::Matchers::Contains(daiPath.string()));
 #endif
 
