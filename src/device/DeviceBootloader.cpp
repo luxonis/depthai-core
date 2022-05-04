@@ -18,6 +18,7 @@
 #include "pipeline/Pipeline.hpp"
 #include "utility/Platform.hpp"
 #include "utility/Resources.hpp"
+#include "utility/spdlog-fmt.hpp"
 
 // libraries
 #include "spdlog/fmt/chrono.h"
@@ -65,7 +66,7 @@ std::vector<DeviceInfo> DeviceBootloader::getAllAvailableDevices() {
     return availableDevices;
 }
 
-std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pipeline& pipeline, std::string pathToCmd, bool compress) {
+std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pipeline& pipeline, const dai::Path& pathToCmd, bool compress) {
     // Serialize the pipeline
     PipelineSchema schema;
     Assets assets;
@@ -77,9 +78,10 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
 
     // Prepare device firmware
     std::vector<uint8_t> deviceFirmware;
-    if(pathToCmd != "") {
+    if(!pathToCmd.empty()) {
         std::ifstream fwStream(pathToCmd, std::ios::binary);
-        if(!fwStream.is_open()) throw std::runtime_error("Cannot create application package, device firmware at path: " + pathToCmd + " doesn't exist");
+        if(!fwStream.is_open())
+            throw std::runtime_error(fmt::format("Cannot create application package, device firmware at path: {} doesn't exist", pathToCmd));
         deviceFirmware = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
     } else {
         // TODO(themarpe) - specify OpenVINO version
@@ -192,38 +194,39 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
 }
 
 std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pipeline& pipeline, bool compress) {
-    return createDepthaiApplicationPackage(pipeline, "", compress);
+    return createDepthaiApplicationPackage(pipeline, {}, compress);
 }
 
-void DeviceBootloader::saveDepthaiApplicationPackage(std::string path, const Pipeline& pipeline, std::string pathToCmd, bool compress) {
+void DeviceBootloader::saveDepthaiApplicationPackage(const dai::Path& path, const Pipeline& pipeline, const dai::Path& pathToCmd, bool compress) {
     auto dap = createDepthaiApplicationPackage(pipeline, pathToCmd, compress);
     std::ofstream outfile(path, std::ios::binary);
     outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
 }
 
-void DeviceBootloader::saveDepthaiApplicationPackage(std::string path, const Pipeline& pipeline, bool compress) {
+void DeviceBootloader::saveDepthaiApplicationPackage(const dai::Path& path, const Pipeline& pipeline, bool compress) {
     auto dap = createDepthaiApplicationPackage(pipeline, compress);
     std::ofstream outfile(path, std::ios::binary);
     outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
 }
 
+DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo) : deviceInfo(devInfo) {
+    init(true, {}, tl::nullopt, false);
+}
+
+template <>
 DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, bool allowFlashingBootloader) : deviceInfo(devInfo) {
-    init(true, "", tl::nullopt, allowFlashingBootloader);
+    init(true, {}, tl::nullopt, allowFlashingBootloader);
 }
 
 DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, Type type, bool allowFlashingBootloader) : deviceInfo(devInfo) {
-    init(true, "", type, allowFlashingBootloader);
+    init(true, {}, type, allowFlashingBootloader);
 }
 
-DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, const char* pathToBootloader, bool allowFlashingBootloader) : deviceInfo(devInfo) {
-    init(false, std::string(pathToBootloader), tl::nullopt, allowFlashingBootloader);
-}
-
-DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, const std::string& pathToBootloader, bool allowFlashingBootloader) : deviceInfo(devInfo) {
+DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, const dai::Path& pathToBootloader, bool allowFlashingBootloader) : deviceInfo(devInfo) {
     init(false, pathToBootloader, tl::nullopt, allowFlashingBootloader);
 }
 
-void DeviceBootloader::init(bool embeddedMvcmd, const std::string& pathToMvcmd, tl::optional<bootloader::Type> type, bool allowBlFlash) {
+void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl::optional<bootloader::Type> type, bool allowBlFlash) {
     stream = nullptr;
     allowFlashingBootloader = allowBlFlash;
 
@@ -478,7 +481,7 @@ DeviceBootloader::Version DeviceBootloader::getVersion() const {
 }
 
 DeviceBootloader::Version DeviceBootloader::requestVersion() {
-    // Send request to jump to USB bootloader
+    // Send request to retrieve bootloader version
     if(!sendRequest(Request::GetBootloaderVersion{})) {
         throw std::runtime_error("Couldn't get bootloader version");
     }
@@ -486,11 +489,26 @@ DeviceBootloader::Version DeviceBootloader::requestVersion() {
     // Receive response
     Response::BootloaderVersion ver;
     if(!receiveResponse(ver)) {
-        throw std::runtime_error("Couldn't get bootloader version");
+        throw std::runtime_error("Couldn't parse version response");
     }
 
-    // Create bootloader::Version object and return
-    return DeviceBootloader::Version(ver.major, ver.minor, ver.patch);
+    Version blVersion(ver.major, ver.minor, ver.patch);
+
+    if(blVersion >= Version(Request::GetBootloaderCommit::VERSION)) {
+        // Send request to retrieve bootloader commit (skip version check)
+        Request::GetBootloaderCommit request{};
+        stream->write((uint8_t*)&request, sizeof(request));
+
+        // Receive response
+        Response::BootloaderCommit commit;
+        if(!receiveResponse(commit)) {
+            throw std::runtime_error("Couldn't get bootloader commit");
+        }
+
+        blVersion = Version(ver.major, ver.minor, ver.patch, commit.commitStr);
+    }
+
+    return blVersion;
 }
 
 DeviceBootloader::Type DeviceBootloader::getType() const {
@@ -513,7 +531,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
     // Bug in NETWORK bootloader in version 0.0.12 < 0.1.0 - flashing can cause a soft brick
     auto version = getVersion();
     if(bootloaderType == Type::NETWORK && version < Version(0, 0, 14)) {
-        throw std::invalid_argument("Network bootloader requires version 0.1.0 or higher to flash applications. Current version: " + version.toString());
+        throw std::invalid_argument("Network bootloader requires version 0.0.14 or higher to flash applications. Current version: " + version.toString());
     }
 
     // send request to FLASH BOOTLOADER
@@ -558,11 +576,11 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
     return flashDepthaiApplicationPackage(nullptr, package);
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashBootloader(std::function<void(float)> progressCb, std::string path) {
+std::tuple<bool, std::string> DeviceBootloader::flashBootloader(std::function<void(float)> progressCb, const dai::Path& path) {
     return flashBootloader(Memory::FLASH, bootloaderType, progressCb, path);
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, Type type, std::function<void(float)> progressCb, std::string path) {
+std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, Type type, std::function<void(float)> progressCb, const dai::Path& path) {
     // Check if 'allowFlashingBootloader' is set to true.
     if(!allowFlashingBootloader) {
         throw std::invalid_argument("DeviceBootloader wasn't initialized to allow flashing bootloader. Set 'allowFlashingBootloader' in constructor");
@@ -577,9 +595,9 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, T
     }
 
     std::vector<uint8_t> package;
-    if(path != "") {
+    if(!path.empty()) {
         std::ifstream fwStream(path, std::ios::binary);
-        if(!fwStream.is_open()) throw std::runtime_error("Cannot flash bootloader, binary at path: " + path + " doesn't exist");
+        if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash bootloader, binary at path: {} doesn't exist", path));
         package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
     } else {
         package = getEmbeddedBootloaderBinary(type);
@@ -777,10 +795,10 @@ std::tuple<bool, std::string> DeviceBootloader::flashConfigData(nlohmann::json c
     return {result.success, result.errorMsg};
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashConfigFile(std::string configPath, Memory memory, Type type) {
+std::tuple<bool, std::string> DeviceBootloader::flashConfigFile(const dai::Path& configPath, Memory memory, Type type) {
     // read a JSON file
     std::ifstream configInputStream(configPath);
-    if(!configInputStream.is_open()) throw std::runtime_error("Cannot flash configuration, JSON at path: " + configPath + " doesn't exist");
+    if(!configInputStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash configuration, JSON at path: {} doesn't exist", configPath));
     nlohmann::json configJson;
     configInputStream >> configJson;
     return flashConfigData(configJson, memory, type);
@@ -840,27 +858,44 @@ std::vector<std::uint8_t> DeviceBootloader::getEmbeddedBootloaderBinary(Type typ
     return Resources::getInstance().getBootloaderFirmware(type);
 }
 
-DeviceBootloader::Version::Version(const std::string& v) : versionMajor(0), versionMinor(0), versionPatch(0) {
+DeviceBootloader::Version::Version(const std::string& v) : versionMajor(0), versionMinor(0), versionPatch(0), buildInfo{""} {
     // Parse string
-    if(std::sscanf(v.c_str(), "%u.%u.%u", &versionMajor, &versionMinor, &versionPatch) != 3) throw std::runtime_error("Cannot parse version: " + v);
+    char buffer[256]{0};
+    if(std::sscanf(v.c_str(), "%u.%u.%u+%255s", &versionMajor, &versionMinor, &versionPatch, buffer) != 4) {
+        if(std::sscanf(v.c_str(), "%u.%u.%u", &versionMajor, &versionMinor, &versionPatch) != 3) {
+            throw std::runtime_error("Cannot parse version: " + v);
+        }
+    } else {
+        buildInfo = std::string{buffer};
+    }
 }
 
-DeviceBootloader::Version::Version(unsigned vmajor, unsigned vminor, unsigned vpatch) : versionMajor(vmajor), versionMinor(vminor), versionPatch(vpatch) {}
+DeviceBootloader::Version::Version(unsigned vmajor, unsigned vminor, unsigned vpatch)
+    : versionMajor(vmajor), versionMinor(vminor), versionPatch(vpatch), buildInfo{""} {}
+
+DeviceBootloader::Version::Version(unsigned vmajor, unsigned vminor, unsigned vpatch, std::string buildInfo)
+    : versionMajor(vmajor), versionMinor(vminor), versionPatch(vpatch), buildInfo(buildInfo) {}
 
 bool DeviceBootloader::Version::operator==(const Version& other) const {
-    if(versionMajor == other.versionMajor && versionMinor == other.versionMinor && versionPatch == other.versionPatch) return true;
+    if(versionMajor == other.versionMajor && versionMinor == other.versionMinor && versionPatch == other.versionPatch && buildInfo == other.buildInfo) {
+        return true;
+    }
     return false;
 }
 
 bool DeviceBootloader::Version::operator<(const Version& other) const {
     if(versionMajor < other.versionMajor) {
         return true;
-    } else {
+    } else if(versionMajor == other.versionMajor) {
         if(versionMinor < other.versionMinor) {
             return true;
-        } else {
+        } else if(versionMinor == other.versionMinor) {
             if(versionPatch < other.versionPatch) {
                 return true;
+            } else if(versionPatch == other.versionPatch) {
+                if(!buildInfo.empty() && other.buildInfo.empty()) {
+                    return true;
+                }
             }
         }
     }
@@ -868,7 +903,24 @@ bool DeviceBootloader::Version::operator<(const Version& other) const {
 }
 
 std::string DeviceBootloader::Version::toString() const {
-    return std::to_string(versionMajor) + "." + std::to_string(versionMinor) + "." + std::to_string(versionPatch);
+    std::string version = std::to_string(versionMajor) + "." + std::to_string(versionMinor) + "." + std::to_string(versionPatch);
+    if(!buildInfo.empty()) {
+        version += "+" + buildInfo;
+    }
+    return version;
+}
+
+std::string DeviceBootloader::Version::toStringSemver() const {
+    std::string version = std::to_string(versionMajor) + "." + std::to_string(versionMinor) + "." + std::to_string(versionPatch);
+    return version;
+}
+
+std::string DeviceBootloader::Version::getBuildInfo() const {
+    return buildInfo;
+}
+
+DeviceBootloader::Version DeviceBootloader::Version::getSemver() const {
+    return Version(versionMajor, versionMinor, versionPatch);
 }
 
 template <typename T>
@@ -876,7 +928,7 @@ bool DeviceBootloader::sendRequest(const T& request) {
     if(stream == nullptr) return false;
 
     // Do a version check beforehand
-    if(getVersion() < Version(T::VERSION)) {
+    if(getVersion().getSemver() < Version(T::VERSION)) {
         throw std::runtime_error(
             fmt::format("Bootloader version {} required to send request '{}'. Current version {}", T::VERSION, T::NAME, getVersion().toString()));
     }

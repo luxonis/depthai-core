@@ -58,7 +58,7 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
     Input right{*this, "right", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
-     * Outputs ImgFrame message that carries RAW16 encoded (0..65535) depth data in millimeters.
+     * Outputs ImgFrame message that carries RAW16 encoded (0..65535) depth data in depth units (millimeter by default).
      *
      * Non-determined / invalid depth values are set to 0
      */
@@ -138,18 +138,6 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
     Output confidenceMap{*this, "confidenceMap", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
-     * Specify local filesystem path to the calibration file
-     * @param path Path to calibration file. If empty use EEPROM
-     */
-    [[deprecated("Use 'Pipeline::setCalibrationData()' instead")]] void loadCalibrationFile(const std::string& path);
-
-    /**
-     * Specify calibration data as a vector of bytes
-     * @param path Calibration data. If empty use EEPROM
-     */
-    [[deprecated("Use 'Pipeline::setCalibrationData()' instead")]] void loadCalibrationData(const std::vector<std::uint8_t>& data);
-
-    /**
      * Specify that a passthrough/dummy calibration should be used,
      * when input frames are already rectified (e.g. sourced from recordings on the host)
      */
@@ -159,6 +147,7 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * Specify local filesystem paths to the mesh calibration files for 'left' and 'right' inputs.
      *
      * When a mesh calibration is set, it overrides the camera intrinsics/extrinsics matrices.
+     * Overrides useHomographyRectification behavior.
      * Mesh format: a sequence of (y,x) points as 'float' with coordinates from the input image
      * to be mapped in the output. The mesh can be subsampled, configured by `setMeshStep`.
      *
@@ -168,10 +157,11 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      *
      * height: 800 / 16 + 1 = 51
      */
-    void loadMeshFiles(const std::string& pathLeft, const std::string& pathRight);
+    void loadMeshFiles(const dai::Path& pathLeft, const dai::Path& pathRight);
 
     /**
      * Specify mesh calibration data for 'left' and 'right' inputs, as vectors of bytes.
+     * Overrides useHomographyRectification behavior.
      * See `loadMeshFiles` for the expected data format
      */
     void loadMeshData(const std::vector<std::uint8_t>& dataLeft, const std::vector<std::uint8_t>& dataRight);
@@ -326,6 +316,18 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * @param mode Stereo depth preset mode
      */
     void setFocalLengthFromCalibration(bool focalLengthFromCalibration);
+
+    /**
+     * Use 3x3 homography matrix for stereo rectification instead of sparse mesh generated on device.
+     * Default value: true.
+     * If custom mesh data is provided through loadMeshData or loadMeshFiles this option is ignored.
+     * @param useHomographyRectification true: 3x3 homography matrix generated from calibration data is used for stereo rectification, can't correct lens
+     * distortion.
+     * false: sparse mesh is generated on-device from calibration data with mesh step specified with setMeshStep (Default: (16, 16)), can correct lens
+     * distortion. Implementation for generating the mesh is same as opencv's initUndistortRectifyMap function. Only the first 8 distortion coefficients are
+     * used from calibration data.
+     */
+    void useHomographyRectification(bool useHomographyRectification);
 };
 
 }  // namespace node
