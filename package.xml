@@ -1,29 +1,22 @@
 <package format="3">
-  <name>depthai</name>
-  <version>2.15.4</version>
+  <name>depthai-core</name>
+  <version>2.15.3</version>
   <description>DepthAI core is a C++ library which comes with firmware and an API to interact with OAK Platform</description>
 
-  <maintainer email="sachin@luxonis.com">Sachin Guruswamy</maintainer>
-  <author email="martin@luxonis.com">Martin Peterlin</author>
-
+  <!-- <author email="martin@luxonis.com">Martin  Peterlin</author> -->
+  <author email="sachin@luxonis.com">Sachin Guruswamy</author>
   <license>MIT</license>
 
   <url type="website">https://www.luxonis.com/</url>
-
-  <build_depend>ros_environment</build_depend>
-
-  <depend>libusb-1.0-dev</depend>
-  <depend>libopencv-dev</depend>
-  <depend>nlohmann-json-dev</depend>
-  <!-- The following tags are recommended by REP-136 -->
-  <exec_depend condition="$ROS_VERSION == 1">catkin</exec_depend>
   
-  <buildtool_depend condition="$ROS_VERSION == 1">cmake</buildtool_depend>
-  <buildtool_depend condition="$ROS_VERSION == 2">ament_cmake</buildtool_depend>
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>libusb</depend>
+  <depend>libopencv-dev</depend>
+  <depend>nlohmann-json3-dev</depend>
 
   <export>
-    <build_type condition="$ROS_VERSION == 1">cmake</build_type>
-    <build_type condition="$ROS_VERSION == 2">ament_cmake</build_type>
+    <build_type>ament_cmake</build_type>
   </export>
 
 </package>
