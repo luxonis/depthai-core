@@ -3,6 +3,7 @@
 
 #include "depthai/depthai.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
+#include "XLink/XLink.h"
 
 int main(int argc, char** argv) {
     using namespace std::chrono;
@@ -28,7 +29,7 @@ int main(int argc, char** argv) {
     } else {
         for(int i = 0; i < deviceInfos.size(); i++) {
             const auto& devInfo = deviceInfos[i];
-            std::cout << "[" << i << "] " << devInfo.getMxId() << "[" << devInfo.desc.protocol << "]";
+            std::cout << "[" << i << "] " << devInfo.getMxId() << "[" << XLinkProtocolToStr(devInfo.desc.protocol) << "]";
             if(devInfo.state == X_LINK_BOOTLOADER) {
                 dai::DeviceBootloader bl(devInfo);
                 std::cout << " current bootloader: " << bl.getVersion();

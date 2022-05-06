@@ -18,7 +18,7 @@ int main(int argc, char** argv) {
     }
     std::string mode{argv[1]};
     std::transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
-    std::function<void(dai::DeviceBootloader&)> flash;
+    std::function<void(dai::DeviceBootloader&)> flash = nullptr;
 
     if(mode == "gpio_mode") {
         // gpio mode header
@@ -79,7 +79,11 @@ int main(int argc, char** argv) {
         std::cout << "Found device with name: " << info.desc.name << std::endl;
         dai::DeviceBootloader bl(info);
         // Flash the specified boot header
-        flash(bl);
+        if(flash) {
+            flash(bl);
+        } else {
+            std::cout << "Invalid boot option header specified" << std::endl;
+        }
     } else {
         std::cout << "No devices found" << std::endl;
     }
