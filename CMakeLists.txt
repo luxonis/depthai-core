@@ -383,6 +383,7 @@ target_include_directories(${TARGET_CORE_NAME}
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_LIST_DIR}/include>"
         "$<BUILD_INTERFACE:${DEPTHAI_SHARED_PUBLIC_INCLUDE}>"
         "$<BUILD_INTERFACE:${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}>"
+        "$<BUILD_INTERFACE:$<$<BOOL:${DEPTHAI_XLINK_LOCAL}>:${DEPTHAI_XLINK_LOCAL}/include>>"
     #INTERFACE
     #    # ...
     PRIVATE
@@ -409,9 +410,9 @@ endif()
 target_link_libraries(${TARGET_CORE_NAME}
     PUBLIC
         nlohmann_json::nlohmann_json
-        XLink
         libnop
     PRIVATE
+        XLink
         Threads::Threads
         BZip2::bz2
         FP16::fp16
