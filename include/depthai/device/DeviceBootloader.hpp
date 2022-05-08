@@ -243,7 +243,8 @@ class DeviceBootloader {
     std::tuple<bool, std::string> flash(std::function<void(float)> progressCallback,
                                         const Pipeline& pipeline,
                                         bool compress = false,
-                                        std::string applicationName = "", Memory memory = Memory::AUTO);
+                                        std::string applicationName = "",
+                                        Memory memory = Memory::AUTO);
 
     /**
      * Flashes a given pipeline to the device.
@@ -263,7 +264,9 @@ class DeviceBootloader {
      * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
      * @param package Depthai application package to flash to the board
      */
-    std::tuple<bool, std::string> flashDepthaiApplicationPackage(std::function<void(float)> progressCallback, std::vector<uint8_t> package, Memory memory = Memory::AUTO);
+    std::tuple<bool, std::string> flashDepthaiApplicationPackage(std::function<void(float)> progressCallback,
+                                                                 std::vector<uint8_t> package,
+                                                                 Memory memory = Memory::AUTO);
 
     /**
      * Flashes a specific depthai application package that was generated using createDepthaiApplicationPackage or saveDepthaiApplicationPackage

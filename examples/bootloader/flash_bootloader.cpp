@@ -1,9 +1,9 @@
 #include <chrono>
 #include <string>
 
+#include "XLink/XLink.h"
 #include "depthai/depthai.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
-#include "XLink/XLink.h"
 
 int main(int argc, char** argv) {
     using namespace std::chrono;

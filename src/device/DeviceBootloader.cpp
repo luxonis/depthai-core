@@ -76,20 +76,11 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
     std::vector<std::uint8_t> assetStorage;
     pipeline.serialize(schema, assets, assetStorage);
 
-    // Get openvino version
-    OpenVINO::Version version = pipeline.getOpenVINOVersion();
+    // Get DeviceConfig
+    DeviceBase::Config deviceConfig = pipeline.getDeviceConfig();
 
     // Prepare device firmware
-    std::vector<uint8_t> deviceFirmware;
-    if(!pathToCmd.empty()) {
-        std::ifstream fwStream(pathToCmd, std::ios::binary);
-        if(!fwStream.is_open())
-            throw std::runtime_error(fmt::format("Cannot create application package, device firmware at path: {} doesn't exist", pathToCmd));
-        deviceFirmware = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
-    } else {
-        // TODO(themarpe) - specify OpenVINO version
-        deviceFirmware = Resources::getInstance().getDeviceFirmware(false, version);
-    }
+    std::vector<uint8_t> deviceFirmware = Resources::getInstance().getDeviceFirmware(deviceConfig, pathToCmd);
     if(deviceFirmware.empty()) {
         throw std::runtime_error("Error getting device firmware");
     }
@@ -115,6 +106,11 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
     // Alignup for easier updating
     auto getSectionAlignedOffset = [](long S) {
         constexpr long SECTION_ALIGNMENT_SIZE = 1 * 1024 * 1024;  // 1MiB for easier updating
+        return ((((S) + (SECTION_ALIGNMENT_SIZE)-1)) & ~((SECTION_ALIGNMENT_SIZE)-1));
+    };
+    // Alignup for easier updating
+    auto getSectionAlignedOffsetSmall = [](long S) {
+        constexpr long SECTION_ALIGNMENT_SIZE = 64 * 1024;  // 64k for flash alignement
         return ((((S) + (SECTION_ALIGNMENT_SIZE)-1)) & ~((SECTION_ALIGNMENT_SIZE)-1));
     };
 
@@ -165,35 +161,35 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
         sbr_section_set_compression(fwSection, SBR_NO_COMPRESSION);
     }
 
-    // Second section, firmware version
-    sbr_section_set_name(fwVersionSection, "__fw_version");
-    sbr_section_set_size(fwVersionSection, static_cast<uint32_t>(fwVersionBuffer.size()));
-    sbr_section_set_checksum(fwVersionSection, sbr_compute_checksum(fwVersionBuffer.data(), static_cast<uint32_t>(fwVersionBuffer.size())));
-    sbr_section_set_offset(fwVersionSection, getSectionAlignedOffset(fwSection->offset + fwSection->size));
-
-    // Third section, application name
-    sbr_section_set_name(appNameSection, "app_name");
-    sbr_section_set_size(appNameSection, static_cast<uint32_t>(applicationName.size()));
-    sbr_section_set_checksum(appNameSection, sbr_compute_checksum(applicationName.data(), static_cast<uint32_t>(applicationName.size())));
-    sbr_section_set_offset(appNameSection, getSectionAlignedOffset(fwVersionSection->offset + fwVersionSection->size));
-
-    // Fourth section, pipeline schema, name 'pipeline'
+    // Section, pipeline schema, name 'pipeline'
     sbr_section_set_name(pipelineSection, "pipeline");
     sbr_section_set_size(pipelineSection, static_cast<uint32_t>(pipelineBinary.size()));
     sbr_section_set_checksum(pipelineSection, sbr_compute_checksum(pipelineBinary.data(), static_cast<uint32_t>(pipelineBinary.size())));
     sbr_section_set_offset(pipelineSection, getSectionAlignedOffset(appNameSection->offset + appNameSection->size));
 
-    // Fifth section, assets map, name 'assets'
+    // Section, assets map, name 'assets'
     sbr_section_set_name(assetsSection, "assets");
     sbr_section_set_size(assetsSection, static_cast<uint32_t>(assetsBinary.size()));
     sbr_section_set_checksum(assetsSection, sbr_compute_checksum(assetsBinary.data(), static_cast<uint32_t>(assetsBinary.size())));
-    sbr_section_set_offset(assetsSection, getSectionAlignedOffset(pipelineSection->offset + pipelineSection->size));
+    sbr_section_set_offset(assetsSection, getSectionAlignedOffsetSmall(pipelineSection->offset + pipelineSection->size));
 
-    // Sixth section, asset storage, name 'asset_storage'
+    // Section, asset storage, name 'asset_storage'
     sbr_section_set_name(assetStorageSection, "asset_storage");
     sbr_section_set_size(assetStorageSection, static_cast<uint32_t>(assetStorage.size()));
     sbr_section_set_checksum(assetStorageSection, sbr_compute_checksum(assetStorage.data(), static_cast<uint32_t>(assetStorage.size())));
-    sbr_section_set_offset(assetStorageSection, getSectionAlignedOffset(assetsSection->offset + assetsSection->size));
+    sbr_section_set_offset(assetStorageSection, getSectionAlignedOffsetSmall(assetsSection->offset + assetsSection->size));
+
+    // Section, firmware version
+    sbr_section_set_name(fwVersionSection, "__fw_version");
+    sbr_section_set_size(fwVersionSection, static_cast<uint32_t>(fwVersionBuffer.size()));
+    sbr_section_set_checksum(fwVersionSection, sbr_compute_checksum(fwVersionBuffer.data(), static_cast<uint32_t>(fwVersionBuffer.size())));
+    sbr_section_set_offset(fwVersionSection, getSectionAlignedOffsetSmall(fwSection->offset + fwSection->size));
+
+    // Section, application name
+    sbr_section_set_name(appNameSection, "app_name");
+    sbr_section_set_size(appNameSection, static_cast<uint32_t>(applicationName.size()));
+    sbr_section_set_checksum(appNameSection, sbr_compute_checksum(applicationName.data(), static_cast<uint32_t>(applicationName.size())));
+    sbr_section_set_offset(appNameSection, getSectionAlignedOffsetSmall(fwVersionSection->offset + fwVersionSection->size));
 
     // TODO(themarpe) - Add additional sections (Pipeline nodes will be able to use sections)
 
@@ -557,10 +553,8 @@ bool DeviceBootloader::isAllowedFlashingBootloader() const {
     return allowFlashingBootloader;
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flash(std::function<void(float)> progressCb,
-                                                      const Pipeline& pipeline,
-                                                      bool compress,
-                                                      std::string applicationName, Memory memory) {
+std::tuple<bool, std::string> DeviceBootloader::flash(
+    std::function<void(float)> progressCb, const Pipeline& pipeline, bool compress, std::string applicationName, Memory memory) {
     return flashDepthaiApplicationPackage(progressCb, createDepthaiApplicationPackage(pipeline, compress, applicationName), memory);
 }
 
@@ -614,7 +608,9 @@ std::tuple<bool, std::string, DeviceBootloader::MemoryInfo> DeviceBootloader::ge
     return {true, "", mem};
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(std::function<void(float)> progressCb, std::vector<uint8_t> package, Memory memory) {
+std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(std::function<void(float)> progressCb,
+                                                                               std::vector<uint8_t> package,
+                                                                               Memory memory) {
     // Bug in NETWORK bootloader in version 0.0.12 < 0.0.14 - flashing can cause a soft brick
     auto version = getVersion();
     if(bootloaderType == Type::NETWORK && version < Version(0, 0, 14)) {
@@ -622,7 +618,6 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
     }
 
     if(memory == Memory::AUTO) {
-
         // send request to FLASH BOOTLOADER
         Request::UpdateFlash updateFlash;
         updateFlash.storage = Request::UpdateFlash::SBR;
@@ -664,7 +659,6 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
         // Flash custom
         return flashCustom(memory, bootloader::getStructure(getType()).offset.at(Section::APPLICATION), package, progressCb);
     }
-
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(std::vector<uint8_t> package, Memory memory) {
