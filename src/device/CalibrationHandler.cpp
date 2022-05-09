@@ -61,6 +61,12 @@ CalibrationHandler::CalibrationHandler(dai::Path eepromDataPath) {
     eepromData = jsonData;
 }
 
+CalibrationHandler CalibrationHandler::fromJson(nlohmann::json eepromDataJson) {
+    CalibrationHandler calib;
+    calib.eepromData = eepromDataJson;
+    return calib;
+}
+
 CalibrationHandler::CalibrationHandler(dai::Path calibrationDataPath, dai::Path boardConfigPath) {
     auto matrixConv = [](std::vector<float>& src, int startIdx) {
         std::vector<std::vector<float>> dest;
@@ -440,6 +446,10 @@ bool CalibrationHandler::eepromToJsonFile(dai::Path destPath) const {
     return true;
 }
 
+nlohmann::json CalibrationHandler::eepromToJson() const {
+    return eepromData;
+}
+
 std::vector<std::vector<float>> CalibrationHandler::computeExtrinsicMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation) {
     if(srcCamera == CameraBoardSocket::AUTO || dstCamera == CameraBoardSocket::AUTO) {
         throw std::runtime_error("Invalid cameraId input..");
@@ -506,7 +516,29 @@ bool CalibrationHandler::checkExtrinsicsLink(CameraBoardSocket srcCamera, Camera
 void CalibrationHandler::setBoardInfo(std::string boardName, std::string boardRev) {
     eepromData.boardName = boardName;
     eepromData.boardRev = boardRev;
-    return;
+}
+
+void CalibrationHandler::setBoardInfo(std::string productName,
+                                      std::string boardName,
+                                      std::string boardRev,
+                                      std::string boardConf,
+                                      std::string hardwareConf,
+                                      std::string batchName,
+                                      uint64_t batchTime,
+                                      uint32_t boardOptions,
+                                      std::string boardCustom) {
+    eepromData.productName = productName;
+    eepromData.boardName = boardName;
+    eepromData.boardRev = boardRev;
+    eepromData.boardConf = boardConf;
+    eepromData.hardwareConf = hardwareConf;
+    eepromData.batchName = batchName;
+    eepromData.batchTime = batchTime;
+    eepromData.boardCustom = boardCustom;
+    eepromData.boardOptions = boardOptions;
+
+    // Bump version to V7
+    eepromData.version = 7;
 }
 
 void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, std::vector<std::vector<float>> intrinsics, int width, int height) {
