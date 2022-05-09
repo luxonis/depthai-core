@@ -19,7 +19,16 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
     /**
      * Preset modes for stereo depth.
      */
-    enum class PresetMode : std::uint32_t { HIGH_ACCURACY, HIGH_DENSITY };
+    enum class PresetMode : std::uint32_t {
+        /**
+         * Prefers accuracy over density. More invalid depth values, but less outliers.
+         */
+        HIGH_ACCURACY,
+        /**
+         * Prefers density over accuracy. Less invalid depth values, but more outliers.
+         */
+        HIGH_DENSITY
+    };
 
    protected:
     Properties& getProperties();
@@ -319,7 +328,7 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
 
     /**
      * Use 3x3 homography matrix for stereo rectification instead of sparse mesh generated on device.
-     * Default behaviour is AUTO, for lenses with FOV over 90 degrees sparse mesh is used, otherwise 3x3 homography.
+     * Default behaviour is AUTO, for lenses with FOV over 85 degrees sparse mesh is used, otherwise 3x3 homography.
      * If custom mesh data is provided through loadMeshData or loadMeshFiles this option is ignored.
      * @param useHomographyRectification true: 3x3 homography matrix generated from calibration data is used for stereo rectification, can't correct lens
      * distortion.
