@@ -8,11 +8,18 @@ endif()
 
 # Create a custom toolchain to pass certain options to dependencies
 set(gen_toolchain "${CMAKE_CURRENT_BINARY_DIR}/generated/toolchain.cmake")
-configure_file(
-    "${CMAKE_CURRENT_LIST_DIR}/cmake/toolchain/custom.cmake.in"
-    "${gen_toolchain}"
-    @ONLY
-)
+
+if(EXISTS "${gen_toolchain}" AND ("${_INTERNAL_DEPTHAI_ORIGINAL_CMAKE_TOOLCHAIN_FILE}" STREQUAL "${CMAKE_TOOLCHAIN_FILE}" OR NOT "${CMAKE_TOOLCHAIN_FILE}" STREQUAL ""))
+    message(STATUS "Using existing generated toolchain")
+else()
+    message(STATUS "Generating new toolchain...")
+    configure_file(
+        "${CMAKE_CURRENT_LIST_DIR}/cmake/toolchain/custom.cmake.in"
+        "${gen_toolchain}"
+        @ONLY
+    )
+endif()
+
 set(CMAKE_TOOLCHAIN_FILE "${gen_toolchain}" CACHE STRING "" FORCE)
 if(DEFINED _INTERNAL_DEPTHAI_ORIGINAL_CMAKE_TOOLCHAIN_FILE)
     message(STATUS "Using specified toolchain file: ${_INTERNAL_DEPTHAI_ORIGINAL_CMAKE_TOOLCHAIN_FILE} combined into: ${CMAKE_TOOLCHAIN_FILE}")
@@ -87,10 +94,15 @@ set(DEPTHAI_SHARED_LOCAL "" CACHE STRING "Path to local depthai-shared source to
 set(DEPTHAI_BOOTLOADER_SHARED_LOCAL "" CACHE STRING "Path to local depthai-bootloader-shared source to use instead of submodule")
 
 # Enable backward stack printing on crash
-option(DEPTHAI_ENABLE_BACKWARD "Enable stacktrace printing on crash using Backward" ON)
-# Additional function information for 'backward' stacktrace
-if(DEPTHAI_ENABLE_BACKWARD)
-    set(CMAKE_ENABLE_EXPORTS ON)
+if(ANDROID)
+    # Backward not supported currently on Android
+    set(DEPTHAI_ENABLE_BACKWARD OFF CACHE BOOL "" FORCE)
+else()
+    option(DEPTHAI_ENABLE_BACKWARD "Enable stacktrace printing on crash using Backward" ON)
+    # Additional function information for 'backward' stacktrace
+    if(DEPTHAI_ENABLE_BACKWARD)
+        set(CMAKE_ENABLE_EXPORTS ON)
+    endif()
 endif()
 
 # Force Colored output when using Ninja
@@ -498,6 +510,9 @@ if(DEPTHAI_SANITIZE)
     endif()
     if(DEPTHAI_XLINK_LOCAL)
         add_sanitizers(XLink)
+        if(XLINK_LIBUSB_LOCAL)
+            add_sanitizers(usb-1.0)
+        endif()
     endif()
 endif()
 
