@@ -95,13 +95,18 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
 
     // Prepare SBR structure
     SBR sbr = {};
-    SBR_SECTION* fwSection = &sbr.sections[0];
-    SBR_SECTION* fwVersionSection = &sbr.sections[1];
-    SBR_SECTION* appNameSection = &sbr.sections[2];
-    SBR_SECTION* pipelineSection = &sbr.sections[3];
-    SBR_SECTION* assetsSection = &sbr.sections[4];
-    SBR_SECTION* assetStorageSection = &sbr.sections[5];
-    SBR_SECTION* lastSection = assetStorageSection;
+    SBR_SECTION* lastSection = &sbr.sections[0];
+
+    // Order of sections
+    SBR_SECTION* fwSection = lastSection++;
+    SBR_SECTION* pipelineSection = lastSection++;
+    SBR_SECTION* assetsSection = lastSection++;
+    SBR_SECTION* assetStorageSection = lastSection++;
+    SBR_SECTION* fwVersionSection = lastSection++;
+    SBR_SECTION* appNameSection = lastSection++;
+
+    // Set to last section
+    lastSection = lastSection-1;
 
     // Alignup for easier updating
     auto getSectionAlignedOffset = [](long S) {
@@ -146,7 +151,7 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
                       deviceFirmware.size() / (1024.0f * 1024.0f));
     }
 
-    // First section, MVCMD, name '__firmware'
+    // Section, MVCMD, name '__firmware'
     sbr_section_set_name(fwSection, "__firmware");
     sbr_section_set_bootable(fwSection, true);
     sbr_section_set_size(fwSection, static_cast<uint32_t>(deviceFirmware.size()));
@@ -165,7 +170,7 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
     sbr_section_set_name(pipelineSection, "pipeline");
     sbr_section_set_size(pipelineSection, static_cast<uint32_t>(pipelineBinary.size()));
     sbr_section_set_checksum(pipelineSection, sbr_compute_checksum(pipelineBinary.data(), static_cast<uint32_t>(pipelineBinary.size())));
-    sbr_section_set_offset(pipelineSection, getSectionAlignedOffset(appNameSection->offset + appNameSection->size));
+    sbr_section_set_offset(pipelineSection, getSectionAlignedOffset(fwSection->offset + fwSection->size));
 
     // Section, assets map, name 'assets'
     sbr_section_set_name(assetsSection, "assets");
@@ -183,7 +188,7 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
     sbr_section_set_name(fwVersionSection, "__fw_version");
     sbr_section_set_size(fwVersionSection, static_cast<uint32_t>(fwVersionBuffer.size()));
     sbr_section_set_checksum(fwVersionSection, sbr_compute_checksum(fwVersionBuffer.data(), static_cast<uint32_t>(fwVersionBuffer.size())));
-    sbr_section_set_offset(fwVersionSection, getSectionAlignedOffsetSmall(fwSection->offset + fwSection->size));
+    sbr_section_set_offset(fwVersionSection, getSectionAlignedOffsetSmall(assetStorageSection->offset + assetStorageSection->size));
 
     // Section, application name
     sbr_section_set_name(appNameSection, "app_name");
@@ -212,7 +217,7 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
     if(spdlog::get_level() == spdlog::level::debug) {
         SBR_SECTION* cur = &sbr.sections[0];
         spdlog::debug("DepthAI Application Package");
-        for(; cur != lastSection; cur++) {
+        for(; cur != lastSection+1; cur++) {
             spdlog::debug("{}, {}B, {}, {}, {}, {}", cur->name, cur->size, cur->offset, cur->checksum, cur->type, cur->flags);
         }
     }
