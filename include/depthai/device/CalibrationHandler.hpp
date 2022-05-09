@@ -11,6 +11,14 @@
 namespace dai {
 /**
  * CalibrationHandler is an interface to read/load/write structured calibration and device data.
+ * The following fields are protected and aren't allowed to be overriden by default:
+ *  - boardName
+ *  - boardRev
+ *  - boardConf
+ *  - hardwareConf
+ *  - batchName
+ *  - batchTime
+ *  - boardOptions
  */
 class CalibrationHandler {
    public:
@@ -39,6 +47,13 @@ class CalibrationHandler {
      * @param eepromData EepromData data structure containing the calibration data.
      */
     explicit CalibrationHandler(EepromData eepromData);
+
+    /**
+     * Construct a new Calibration Handler object from JSON EepromData.
+     *
+     * @param eepromDataJson EepromData as JSON
+     */
+    static CalibrationHandler fromJson(nlohmann::json eepromDataJson);
 
     /**
      * Get the Eeprom Data object
@@ -288,6 +303,13 @@ class CalibrationHandler {
     bool eepromToJsonFile(dai::Path destPath) const;
 
     /**
+     * Get JSON representation of calibration data
+     *
+     * @return JSON structure
+     */
+    nlohmann::json eepromToJson() const;
+
+    /**
      * Set the Board Info object
      *
      * @param version Sets the version of the Calibration data(Current version is 6)
@@ -295,6 +317,28 @@ class CalibrationHandler {
      * @param boardRev set your board revision id.
      */
     void setBoardInfo(std::string boardName, std::string boardRev);
+
+    /**
+     * Set the Board Info object. Creates version 7 EEPROM data
+     *
+     * @param productName Sets product name (alias).
+     * @param boardName Sets board name.
+     * @param boardRev Sets board revision id.
+     * @param boardConf Sets board configuration id.
+     * @param hardwareConf Sets hardware configuration id.
+     * @param batchName Sets batch name.
+     * @param batchTime Sets batch time (unix timestamp).
+     * @param boardCustom Sets a custom board (Default empty string).
+     */
+    void setBoardInfo(std::string productName,
+                      std::string boardName,
+                      std::string boardRev,
+                      std::string boardConf,
+                      std::string hardwareConf,
+                      std::string batchName,
+                      uint64_t batchTime,
+                      uint32_t boardOptions,
+                      std::string boardCustom = "");
 
     /**
      * Set the Camera Intrinsics object
