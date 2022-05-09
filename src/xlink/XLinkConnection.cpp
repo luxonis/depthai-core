@@ -216,7 +216,12 @@ DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
 
     // Device is in flash booted state. Boot to bootloader first
     auto deviceDesc = deviceInfo.getXLinkDeviceDesc();
-    XLinkBootBootloader(&deviceDesc);
+
+    // Device is in flash booted state. Boot to bootloader first
+    XLinkError_t bootBootloaderError = XLinkBootBootloader(&deviceDesc);
+    if(bootBootloaderError != X_LINK_SUCCESS) {
+        throw std::runtime_error(fmt::format("Couldn't boot device to bootloader - {}", XLinkErrorToStr(bootBootloaderError)));
+    }
 
     // Wait for a bootloader device now
     DeviceInfo deviceToWait = deviceInfo;
