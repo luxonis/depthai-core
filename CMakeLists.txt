@@ -84,7 +84,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/sanitizers")
 option(HUNTER_SKIP_PACKAGE_nlohmann_json "Use json from system installed packages" ON)
 option(DEPTHAI_CLANG_TIDY "Enable clang-tidy checks during compilation" OFF)
 option(DEPTHAI_SANITIZE "Enable Address and Undefined sanitizers for library, examples and tests" OFF)
-option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON)
+option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  OFF)
 
 # Should install depthai core libraries
 option(DEPTHAI_INSTALL   "Enable install target for depthai-core targets" ON)
