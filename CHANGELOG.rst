@@ -2,13 +2,6 @@
 Changelog for package depthai-core
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
-* Merge remote-tracking branch 'origin/main' into ros-release
-* Updatedf package xml, cmake list to include json from system install
-* WIP package.xml
-* Contributors: Sachin
-
 2.15.4 (2022-05-09)
 -------------------
 * Release 2.15.4
