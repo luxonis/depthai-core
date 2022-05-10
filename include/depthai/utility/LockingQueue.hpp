@@ -74,7 +74,7 @@ class LockingQueue {
             std::unique_lock<std::mutex> lock(guard);
 
             signalPush.wait(lock, [this]() { return !queue.empty() || destructed; });
-            if(queue.empty()) return false;
+            if(queue.empty() || destructed) return false;
 
             while(!queue.empty()) {
                 callback(queue.front());
@@ -207,7 +207,7 @@ class LockingQueue {
 
             // First checks predicate, then waits
             bool pred = signalPush.wait_for(lock, timeout, [this]() { return !queue.empty() || destructed; });
-            if(!pred) return false;
+            if(!pred || destructed) return false;
 
             value = std::move(queue.front());
             queue.pop();
