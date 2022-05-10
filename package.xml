@@ -1,6 +1,6 @@
 <package format="3">
-  <name>depthai-core</name>
-  <version>2.15.3</version>
+  <name>depthai</name>
+  <version>2.15.4</version>
   <description>DepthAI core is a C++ library which comes with firmware and an API to interact with OAK Platform</description>
 
   <maintainer email="sachin@luxonis.com">Sachin Guruswamy</maintainer>
@@ -13,7 +13,7 @@
 
   <depend>libusb</depend>
   <depend>libopencv-dev</depend>
-  <depend>nlohmann-json3-dev</depend>
+  <depend>nlohmann-json-dev</depend>
 
   <export>
     <build_type>ament_cmake</build_type>
