@@ -798,6 +798,8 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootHeader(Memory memory, i
     updateBootHeader.location = location;
     updateBootHeader.dummyCycles = dummyCycles;
     updateBootHeader.frequency = frequency;
+    // Set optimized gpio boot mode, which allows changing above parameters
+    updateBootHeader.gpioMode = 0x7;
 
     // Send & Get response
     if(!sendRequest(updateBootHeader)) return {false, "Couldn't send request to flash boot header"};
@@ -816,6 +818,8 @@ std::tuple<bool, std::string> DeviceBootloader::flashFastBootHeader(Memory memor
     updateBootHeader.location = location;
     updateBootHeader.dummyCycles = dummyCycles;
     updateBootHeader.frequency = frequency;
+    // Set optimized gpio boot mode, which allows changing above parameters
+    updateBootHeader.gpioMode = 0x7;
 
     // Send & Get response
     if(!sendRequest(updateBootHeader)) return {false, "Couldn't send request to flash boot header"};

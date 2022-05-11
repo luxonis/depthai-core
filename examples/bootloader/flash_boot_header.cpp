@@ -18,7 +18,7 @@ int main(int argc, char** argv) {
     }
     std::string mode{argv[1]};
     std::transform(mode.begin(), mode.end(), mode.begin(), ::tolower);
-    std::function<void(dai::DeviceBootloader&)> flash = nullptr;
+    std::function<std::tuple<bool, std::string>(dai::DeviceBootloader&)> flash = nullptr;
 
     if(mode == "gpio_mode") {
         // gpio mode header
@@ -28,10 +28,10 @@ int main(int argc, char** argv) {
         }
         int gpioMode = std::stoi(std::string(argv[2]));
 
-        flash = [gpioMode](dai::DeviceBootloader& bl) { bl.flashGpioModeBootHeader(dai::DeviceBootloader::Memory::FLASH, gpioMode); };
+        flash = [gpioMode](dai::DeviceBootloader& bl) { return bl.flashGpioModeBootHeader(dai::DeviceBootloader::Memory::FLASH, gpioMode); };
     } else if(mode == "usb_recovery") {
         // usb recovery header
-        flash = [](dai::DeviceBootloader& bl) { bl.flashUsbRecoveryBootHeader(dai::DeviceBootloader::Memory::FLASH); };
+        flash = [](dai::DeviceBootloader& bl) { return bl.flashUsbRecoveryBootHeader(dai::DeviceBootloader::Memory::FLASH); };
     } else if(mode == "normal" || mode == "fast") {
         if(argc != 2 && argc != 3 && argc <= 3) {
             std::cout << "Usage: " << argv[0] << " NORMAL/FAST [offset] [location] [dummyCycles] [frequency]" << std::endl;
@@ -61,11 +61,11 @@ int main(int argc, char** argv) {
 
         if(mode == "normal") {
             flash = [offset, location, dummyCycles, frequency](dai::DeviceBootloader& bl) {
-                bl.flashBootHeader(dai::DeviceBootloader::Memory::FLASH, offset, location, dummyCycles, frequency);
+                return bl.flashBootHeader(dai::DeviceBootloader::Memory::FLASH, offset, location, dummyCycles, frequency);
             };
         } else if(mode == "fast") {
             flash = [offset, location, dummyCycles, frequency](dai::DeviceBootloader& bl) {
-                bl.flashFastBootHeader(dai::DeviceBootloader::Memory::FLASH, offset, location, dummyCycles, frequency);
+                return bl.flashFastBootHeader(dai::DeviceBootloader::Memory::FLASH, offset, location, dummyCycles, frequency);
             };
         }
     }
@@ -80,7 +80,14 @@ int main(int argc, char** argv) {
         dai::DeviceBootloader bl(info);
         // Flash the specified boot header
         if(flash) {
-            flash(bl);
+            bool success;
+            std::string errorMsg;
+            std::tie(success, errorMsg) = flash(bl);
+            if(success) {
+                std::cout << "Successfully flashed boot header!" << std::endl;
+            } else {
+                std::cout << "Couldn't flash boot header: " << errorMsg << std::endl;
+            }
         } else {
             std::cout << "Invalid boot option header specified" << std::endl;
         }
