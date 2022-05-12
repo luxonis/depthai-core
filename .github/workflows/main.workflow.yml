@@ -97,7 +97,6 @@ jobs:
     - name: Install dependencies
       if: matrix.os == 'macos-latest'
       run: |
-        brew update
         brew install libusb opencv
 
     - name: Install dependencies
@@ -171,7 +170,6 @@ jobs:
     - name: Install dependencies
       if: matrix.os == 'macos-latest'
       run: |
-        brew update
         brew install libusb opencv
 
     - name: Install dependencies
@@ -300,7 +298,7 @@ jobs:
         body: |
           ## Features
 
-          ## Bugs
+          ## Bug fixes
 
           ## Misc
 

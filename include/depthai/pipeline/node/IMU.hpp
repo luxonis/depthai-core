@@ -66,10 +66,11 @@ class IMU : public NodeCRTP<Node, IMU, IMUProperties> {
      */
     std::int32_t getMaxBatchReports() const;
 
-    /**
-     * Perform firmware update if newer firmware is available
+    /*
+     * Whether to perform firmware update or not.
+     * Default value: false.
      */
-    void doFirmwareUpdate();
+    void enableFirmwareUpdate(bool enable);
 };
 
 }  // namespace node

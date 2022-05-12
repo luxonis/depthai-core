@@ -23,6 +23,7 @@
 
 // project
 #include "utility/Environment.hpp"
+#include "utility/spdlog-fmt.hpp"
 
 extern "C" {
 #include "bspatch/bspatch.h"
@@ -65,7 +66,7 @@ constexpr static auto RESOURCE_LIST_DEVICE = array_of<const char*>(DEPTHAI_CMD_O
                                                                    DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH,
                                                                    DEPTHAI_CMD_OPENVINO_2021_3_PATCH_PATH);
 
-std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, std::string pathToMvcmd) const {
+std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, dai::Path pathToMvcmd) const {
     // Wait until lazy load is complete
     {
         std::unique_lock<std::mutex> lock(mtxDevice);
@@ -78,12 +79,12 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, st
     auto& version = config.version;
 
     // Check if pathToMvcmd variable is set
-    std::string finalFwBinaryPath = "";
+    dai::Path finalFwBinaryPath;
     if(!pathToMvcmd.empty()) {
         finalFwBinaryPath = pathToMvcmd;
     }
     // Override if env variable DEPTHAI_DEVICE_BINARY is set
-    auto fwBinaryPath = utility::getEnv("DEPTHAI_DEVICE_BINARY");
+    dai::Path fwBinaryPath = utility::getEnv("DEPTHAI_DEVICE_BINARY");
     if(!fwBinaryPath.empty()) {
         finalFwBinaryPath = fwBinaryPath;
     }
@@ -94,14 +95,22 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, st
         if(!stream.is_open()) {
             // Throw an error
             // TODO(themarpe) - Unify exceptions into meaningful groups
-            throw std::runtime_error(fmt::format("File at path {} pointed to by DEPTHAI_DEVICE_BINARY doesn't exist.", fwBinaryPath));
+            throw std::runtime_error(
+                fmt::format("File at path {}{} doesn't exist.", finalFwBinaryPath, !fwBinaryPath.empty() ? " pointed to by DEPTHAI_DEVICE_BINARY" : ""));
         }
-        spdlog::warn("Overriding firmware: {}", fwBinaryPath);
+        spdlog::warn("Overriding firmware: {}", finalFwBinaryPath);
         // Read the file and return its contents
         finalFwBinary = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
     } else {
 // Binaries are resource compiled
 #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
+
+        std::unordered_set<OpenVINO::Version> deprecatedVersions(
+            {OpenVINO::VERSION_2020_4, OpenVINO::VERSION_2021_1, OpenVINO::VERSION_2021_2, OpenVINO::VERSION_2021_3});
+
+        if(deprecatedVersions.count(version)) {
+            spdlog::warn("OpenVINO {} is deprecated!", OpenVINO::getVersionName(version));
+        }
 
         // Main FW
         std::vector<std::uint8_t> depthaiBinary;
@@ -202,7 +211,7 @@ std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type
     } else if(type == dai::bootloader::Type::NETWORK) {
         blEnvVar = "DEPTHAI_BOOTLOADER_BINARY_ETH";
     }
-    auto blBinaryPath = utility::getEnv(blEnvVar);
+    dai::Path blBinaryPath = utility::getEnv(blEnvVar);
     if(!blBinaryPath.empty()) {
         // Load binary file at path
         std::ifstream stream(blBinaryPath, std::ios::binary);
