@@ -55,7 +55,7 @@ class DeviceBase {
      * Device specific configuration
      */
     struct Config {
-        OpenVINO::Version version;
+        OpenVINO::Version version{OpenVINO::DEFAULT_VERSION};
         BoardConfig board;
         bool connectToFlashBootedDevice{false};
     };
