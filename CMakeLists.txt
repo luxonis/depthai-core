@@ -6,6 +6,9 @@ if(NOT WIN32)
     set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
 endif()
 
+set(HUNTER_SKIP_PACKAGE_nlohmann_json OFF)
+set(BUILD_SHARED_LIBS ON)
+
 # Create a custom toolchain to pass certain options to dependencies
 set(gen_toolchain "${CMAKE_CURRENT_BINARY_DIR}/generated/toolchain.cmake")
 
@@ -84,7 +87,6 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/sanitizers")
 option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON)
 option(DEPTHAI_CLANG_TIDY "Enable clang-tidy checks during compilation" OFF)
 option(DEPTHAI_SANITIZE "Enable Address and Undefined sanitizers for library, examples and tests" OFF)
-option(HUNTER_SKIP_PACKAGE_nlohmann_json "Use json from system installed packages" OFF)
 
 # Should install depthai core libraries
 option(DEPTHAI_INSTALL   "Enable install target for depthai-core targets" ON)
@@ -93,13 +95,6 @@ option(DEPTHAI_INSTALL   "Enable install target for depthai-core targets" ON)
 set(DEPTHAI_XLINK_LOCAL "" CACHE STRING "Path to local XLink source to use instead of Hunter")
 set(DEPTHAI_SHARED_LOCAL "" CACHE STRING "Path to local depthai-shared source to use instead of submodule")
 set(DEPTHAI_BOOTLOADER_SHARED_LOCAL "" CACHE STRING "Path to local depthai-bootloader-shared source to use instead of submodule")
-
-find_package(ament_cmake QUIET)
-
-if ( ament_cmake_FOUND )
-    set(HUNTER_SKIP_PACKAGE_nlohmann_json ON)
-    # set(BUILD_SHARED_LIBS ON)
-endif()
 
 # Enable backward stack printing on crash
 if(ANDROID)
@@ -655,3 +650,4 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT)
         $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
     )
 endif()
+ament_package()
