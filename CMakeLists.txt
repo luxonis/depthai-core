@@ -129,6 +129,7 @@ set(PROJECT_EXPORT_GROUP "${PROJECT_NAME}Targets")
 
 ## Check if cloned or sources
 find_package(Git)
+find_package(ament_cmake QUIET)
 if(GIT_FOUND)
     execute_process(
         COMMAND ${GIT_EXECUTABLE} rev-parse --is-inside-work-tree
