@@ -651,4 +651,6 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT)
         $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
     )
 endif()
-ament_package()
+if ( ament_cmake_FOUND )
+    ament_package()
+endif()
