@@ -212,11 +212,24 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
 }
 
 bool PipelineImpl::isOpenVINOVersionCompatible(OpenVINO::Version version) const {
+    bool hasLibcpython = isLibcpythonRequired();
     auto ver = getPipelineOpenVINOVersion();
     if(ver) {
-        return OpenVINO::areVersionsBlobCompatible(version, *ver);
+        if(hasLibcpython) {
+            // Has to match exactly
+            return *ver == version;
+        } else {
+            // Can be "compatible"
+            return OpenVINO::areVersionsBlobCompatible(version, *ver);
+        }
     } else {
-        return true;
+        if(hasLibcpython) {
+            // If libcpython is required and no version is set explicitly, then version must be default version
+            return version == OpenVINO::DEFAULT_VERSION;
+        } else {
+            // If no libcpython, then version is compatible
+            return true;
+        }
     }
 }
 
