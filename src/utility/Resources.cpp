@@ -96,6 +96,8 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(DeviceResource resource, 
         envVar = "DEPTHAI_DEVICE_LIBCPYTHON_BINARY";
     }
 
+    spdlog::debug("Loading firmware '{}', for OpenVINO Version: {}", envVar, OpenVINO::getVersionName(config.version));
+
     // Final patched device FW resource
     std::vector<std::uint8_t> finalFwBinary;
 
@@ -130,7 +132,7 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(DeviceResource resource, 
 #ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
 
         std::unordered_set<OpenVINO::Version> deprecatedVersions(
-            {OpenVINO::VERSION_2020_4, OpenVINO::VERSION_2021_1, OpenVINO::VERSION_2021_2, OpenVINO::VERSION_2021_3});
+            {OpenVINO::VERSION_2020_3, OpenVINO::VERSION_2020_4, OpenVINO::VERSION_2021_1, OpenVINO::VERSION_2021_2, OpenVINO::VERSION_2021_3});
 
         if(deprecatedVersions.count(version)) {
             spdlog::warn("OpenVINO {} is deprecated!", OpenVINO::getVersionName(version));
