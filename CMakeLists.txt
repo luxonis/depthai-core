@@ -40,7 +40,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.15.3" LANGUAGES CXX C)
+project(depthai VERSION "2.15.4" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -409,9 +409,11 @@ endif()
 target_link_libraries(${TARGET_CORE_NAME}
     PUBLIC
         nlohmann_json::nlohmann_json
-        XLink
         libnop
+    INTERFACE
+        XLinkPublic
     PRIVATE
+        XLink
         Threads::Threads
         BZip2::bz2
         FP16::fp16
