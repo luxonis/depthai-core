@@ -66,6 +66,11 @@ StereoDepthConfig& StereoDepthConfig::setSubpixel(bool enable) {
     return *this;
 }
 
+StereoDepthConfig& StereoDepthConfig::setSubpixelFractionalBits(int subpixelFractionalBits) {
+    cfg.algorithmControl.subpixelFractionalBits = subpixelFractionalBits;
+    return *this;
+}
+
 StereoDepthConfig& StereoDepthConfig::setDepthUnit(AlgorithmControl::DepthUnit depthUnit) {
     cfg.algorithmControl.depthUnit = depthUnit;
     return *this;
