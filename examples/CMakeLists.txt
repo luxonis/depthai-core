@@ -309,3 +309,7 @@ target_compile_definitions(tiny_yolo_v4_device_side_decoding PRIVATE BLOB_PATH="
 target_compile_definitions(tiny_yolo_v3_device_side_decoding PRIVATE BLOB_PATH="${tiny_yolo_v3_blob}")
 dai_add_example(apriltag AprilTag/apriltag.cpp ON)
 dai_add_example(apriltag_rgb AprilTag/apriltag_rgb.cpp ON)
+
+# DetectionParser
+dai_add_example(detection_parser NeuralNetwork/detection_parser.cpp ON)
+target_compile_definitions(detection_parser PRIVATE BLOB_PATH="${mobilenet_blob}")
