@@ -27,6 +27,12 @@ Device::Device(const Pipeline& pipeline) : DeviceBase(pipeline.getOpenVINOVersio
     tryStartPipeline(pipeline);
 }
 
+template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool>>
+Device::Device(const Pipeline& pipeline, T usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), usb2Mode) {
+    tryStartPipeline(pipeline);
+}
+template Device::Device(const Pipeline&, bool);
+
 Device::Device(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) : DeviceBase(pipeline.getOpenVINOVersion(), maxUsbSpeed) {
     tryStartPipeline(pipeline);
 }
@@ -43,6 +49,12 @@ Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::P
     : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, pathToCmd) {
     tryStartPipeline(pipeline);
 }
+
+template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool>>
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, T usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, usb2Mode) {
+    tryStartPipeline(pipeline);
+}
+template Device::Device(const Pipeline&, const DeviceInfo&, bool);
 
 Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, maxUsbSpeed) {
     tryStartPipeline(pipeline);
