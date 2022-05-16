@@ -203,6 +203,7 @@ dai_add_example(calibration_flash calibration/calibration_flash.cpp OFF)
 dai_add_example(calibration_flash_version5 calibration/calibration_flash_v5.cpp OFF)
 dai_add_example(calibration_load calibration/calibration_load.cpp ON)
 dai_add_example(calibration_reader calibration/calibration_reader.cpp ON)
+dai_add_example(calibration_dump calibration/calibration_dump.cpp ON)
 
 target_compile_definitions(calibration_flash PRIVATE CALIB_PATH="${calib_v6}")
 target_compile_definitions(calibration_flash_version5 PRIVATE CALIB_PATH="${calib_v5}" BOARD_PATH="${device_config}")
@@ -332,3 +333,7 @@ target_compile_definitions(tiny_yolo_v4_device_side_decoding PRIVATE BLOB_PATH="
 target_compile_definitions(tiny_yolo_v3_device_side_decoding PRIVATE BLOB_PATH="${tiny_yolo_v3_blob}")
 dai_add_example(apriltag AprilTag/apriltag.cpp ON)
 dai_add_example(apriltag_rgb AprilTag/apriltag_rgb.cpp ON)
+
+# DetectionParser
+dai_add_example(detection_parser NeuralNetwork/detection_parser.cpp ON)
+target_compile_definitions(detection_parser PRIVATE BLOB_PATH="${mobilenet_blob}")

@@ -83,6 +83,8 @@ class DeviceBootloader {
         explicit Version(const std::string& v);
         /// Construct Version major, minor and patch numbers
         Version(unsigned major, unsigned minor, unsigned patch);
+        /// Construct Version major, minor and patch numbers with buildInfo
+        Version(unsigned major, unsigned minor, unsigned patch, std::string buildInfo);
         bool operator==(const Version& other) const;
         bool operator<(const Version& other) const;
         inline bool operator!=(const Version& rhs) const {
@@ -99,9 +101,16 @@ class DeviceBootloader {
         }
         /// Convert Version to string
         std::string toString() const;
+        /// Convert Version to semver string
+        std::string toStringSemver() const;
+        /// Get build info
+        std::string getBuildInfo() const;
+        /// Retrieves semver version (no build information)
+        Version getSemver() const;
 
        private:
         unsigned versionMajor, versionMinor, versionPatch;
+        std::string buildInfo;
     };
 
     // constants

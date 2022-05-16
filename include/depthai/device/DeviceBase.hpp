@@ -481,6 +481,12 @@ class DeviceBase {
     CpuUsage getLeonMssCpuUsage();
 
     /**
+     * Check if EEPROM is available
+     * @returns True if EEPROM is present on board, false otherwise
+     */
+    bool isEepromAvailable();
+
+    /**
      * Stores the Calibration and Device information to the Device EEPROM
      *
      * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
@@ -490,11 +496,68 @@ class DeviceBase {
     bool flashCalibration(CalibrationHandler calibrationDataHandler);
 
     /**
+     * Stores the Calibration and Device information to the Device EEPROM
+     *
+     * @throws std::runtime_exception if failed to flash the calibration
+     * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
+     */
+    void flashCalibration2(CalibrationHandler calibrationDataHandler);
+
+    /**
      * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
+     * If no calibration is flashed, it returns default
      *
      * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
      */
     CalibrationHandler readCalibration();
+
+    /**
+     * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
+     *
+     * @throws std::runtime_exception if no calibration is flashed
+     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
+     */
+    CalibrationHandler readCalibration2();
+
+    /**
+     * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
+     * If no calibration is flashed, it returns default
+     *
+     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
+     */
+    CalibrationHandler readCalibrationOrDefault();
+
+    /**
+     * Factory reset EEPROM data if factory backup is available.
+     *
+     * @throws std::runtime_exception If factory reset was unsuccessful
+     */
+    void factoryResetCalibration();
+
+    /**
+     * Stores the Calibration and Device information to the Device EEPROM in Factory area
+     * To perform this action, correct env variable must be set
+     *
+     * @throws std::runtime_exception if failed to flash the calibration
+     * @return True on successful flash, false on failure
+     */
+    void flashFactoryCalibration(CalibrationHandler calibrationHandler);
+
+    /**
+     * Fetches the EEPROM data from Factory area and loads it into CalibrationHandler object
+     *
+     * @throws std::runtime_exception if no calibration is flashed
+     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM in Factory Area
+     */
+    CalibrationHandler readFactoryCalibration();
+
+    /**
+     * Fetches the EEPROM data from Factory area and loads it into CalibrationHandler object
+     * If no calibration is flashed, it returns default
+     *
+     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM in Factory Area
+     */
+    CalibrationHandler readFactoryCalibrationOrDefault();
 
     /**
      * Retrieves USB connection speed
