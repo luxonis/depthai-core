@@ -97,6 +97,7 @@ class StereoDepthConfig : public Buffer {
 
     /**
      * Number of fractional bits for subpixel mode.
+     * Default value: 3.
      * Valid values: 3,4,5.
      * Defines the number of fractional disparities: 2^x.
      * Median filter postprocessing is supported only for 3 fractional bits.
