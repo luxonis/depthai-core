@@ -444,12 +444,6 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
     {
         // Create description of device to look for
         DeviceInfo bootedDeviceInfo = lastDeviceInfo;
-        // TBD - should we NOT do another search in some cases?
-        // If USB, search by mxid only as name usually changes
-        // if(deviceToInit.protocol == X_LINK_USB_VSC) {
-        //    bootedDeviceInfo.name = "";
-        // }
-
         // Reset "name" and search for MXID again after booting the device for all cases
         bootedDeviceInfo.name = "";
 
