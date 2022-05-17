@@ -70,7 +70,7 @@ if(DEPTHAI_XLINK_LOCAL AND (NOT CONFIG_MODE))
     unset(_BUILD_SHARED_LIBS_SAVED)
     list(APPEND targets_to_export XLink)
 else()
-    find_package(XLink ${_QUIET} CONFIG REQUIRED HINTS "${CMAKE_CURRENT_LIST_DIR}/XLink")
+    find_package(XLink ${_QUIET} CONFIG REQUIRED HINTS "${CMAKE_CURRENT_LIST_DIR}/XLink" "${CMAKE_CURRENT_LIST_DIR}/../XLink")
 endif()
 
 # OpenCV 4 - (optional, quiet always)
