@@ -410,9 +410,11 @@ endif()
 target_link_libraries(${TARGET_CORE_NAME}
     PUBLIC
         nlohmann_json::nlohmann_json
-        XLink
         libnop
+    INTERFACE
+        XLinkPublic
     PRIVATE
+        XLink
         Threads::Threads
         BZip2::bz2
         FP16::fp16
