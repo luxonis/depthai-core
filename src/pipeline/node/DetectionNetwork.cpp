@@ -18,15 +18,15 @@ DetectionNetwork::DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int
     setOutputRefs({&out, &passthrough});
 
     // Default confidence threshold
-    properties.confidenceThreshold = 0.5;
+    properties.parser.confidenceThreshold = 0.5;
 }
 
 void DetectionNetwork::setConfidenceThreshold(float thresh) {
-    properties.confidenceThreshold = thresh;
+    properties.parser.confidenceThreshold = thresh;
 }
 
 float DetectionNetwork::getConfidenceThreshold() const {
-    return properties.confidenceThreshold;
+    return properties.parser.confidenceThreshold;
 }
 
 //--------------------------------------------------------------------
@@ -36,7 +36,7 @@ MobileNetDetectionNetwork::MobileNetDetectionNetwork(const std::shared_ptr<Pipel
     : MobileNetDetectionNetwork(par, nodeId, std::make_unique<Properties>()) {}
 MobileNetDetectionNetwork::MobileNetDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
     : NodeCRTP<DetectionNetwork, MobileNetDetectionNetwork, DetectionNetworkProperties>(par, nodeId, std::move(props)) {
-    properties.nnFamily = DetectionNetworkType::MOBILENET;
+    properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
 }
 
 //--------------------------------------------------------------------
@@ -46,52 +46,52 @@ YoloDetectionNetwork::YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& 
     : YoloDetectionNetwork(par, nodeId, std::make_unique<Properties>()) {}
 YoloDetectionNetwork::YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
     : NodeCRTP<DetectionNetwork, YoloDetectionNetwork, DetectionNetworkProperties>(par, nodeId, std::move(props)) {
-    properties.nnFamily = DetectionNetworkType::YOLO;
+    properties.parser.nnFamily = DetectionNetworkType::YOLO;
 }
 
 void YoloDetectionNetwork::setNumClasses(const int numClasses) {
-    properties.classes = numClasses;
+    properties.parser.classes = numClasses;
 }
 
 void YoloDetectionNetwork::setCoordinateSize(const int coordinates) {
-    properties.coordinates = coordinates;
+    properties.parser.coordinates = coordinates;
 }
 
 void YoloDetectionNetwork::setAnchors(std::vector<float> anchors) {
-    properties.anchors = anchors;
+    properties.parser.anchors = anchors;
 }
 
 void YoloDetectionNetwork::setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks) {
-    properties.anchorMasks = anchorMasks;
+    properties.parser.anchorMasks = anchorMasks;
 }
 
 void YoloDetectionNetwork::setIouThreshold(float thresh) {
-    properties.iouThreshold = thresh;
+    properties.parser.iouThreshold = thresh;
 }
 
 /// Get num classes
 int YoloDetectionNetwork::getNumClasses() const {
-    return properties.classes;
+    return properties.parser.classes;
 }
 
 /// Get coordianate size
 int YoloDetectionNetwork::getCoordinateSize() const {
-    return properties.coordinates;
+    return properties.parser.coordinates;
 }
 
 /// Get anchors
 std::vector<float> YoloDetectionNetwork::getAnchors() const {
-    return properties.anchors;
+    return properties.parser.anchors;
 }
 
 /// Get anchor masks
 std::map<std::string, std::vector<int>> YoloDetectionNetwork::getAnchorMasks() const {
-    return properties.anchorMasks;
+    return properties.parser.anchorMasks;
 }
 
 /// Get Iou threshold
 float YoloDetectionNetwork::getIouThreshold() const {
-    return properties.iouThreshold;
+    return properties.parser.iouThreshold;
 }
 
 }  // namespace node

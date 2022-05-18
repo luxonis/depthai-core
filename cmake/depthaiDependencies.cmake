@@ -1,5 +1,9 @@
 if(CONFIG_MODE)
     set(_CMAKE_PREFIX_PATH_ORIGINAL ${CMAKE_PREFIX_PATH})
+    set(_CMAKE_FIND_ROOT_PATH_MODE_PACKAGE_ORIGINAL ${CMAKE_FIND_ROOT_PATH_MODE_PACKAGE})
+    # Fixes Android NDK build, where prefix path is ignored as its not inside sysroot
+    set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE "BOTH")
+    # Sets where to search for packages about to follow
     set(CMAKE_PREFIX_PATH "${CMAKE_CURRENT_LIST_DIR}/${_IMPORT_PREFIX}" ${CMAKE_PREFIX_PATH})
     set(_QUIET "QUIET")
 else()
@@ -52,7 +56,7 @@ endif()
 find_package(Threads ${_QUIET} REQUIRED)
 
 # Nlohmann JSON
-find_package(nlohmann_json 3.9.0 ${_QUIET} CONFIG REQUIRED)
+find_package(nlohmann_json 3.6.0 ${_QUIET} CONFIG REQUIRED)
 
 # libnop for serialization
 find_package(libnop ${_QUIET} CONFIG REQUIRED)
@@ -66,7 +70,7 @@ if(DEPTHAI_XLINK_LOCAL AND (NOT CONFIG_MODE))
     unset(_BUILD_SHARED_LIBS_SAVED)
     list(APPEND targets_to_export XLink)
 else()
-    find_package(XLink ${_QUIET} CONFIG REQUIRED)
+    find_package(XLink ${_QUIET} CONFIG REQUIRED HINTS "${CMAKE_CURRENT_LIST_DIR}/XLink" "${CMAKE_CURRENT_LIST_DIR}/../XLink")
 endif()
 
 # OpenCV 4 - (optional, quiet always)
@@ -81,6 +85,8 @@ endif()
 if(CONFIG_MODE)
     set(CMAKE_PREFIX_PATH ${_CMAKE_PREFIX_PATH_ORIGINAL})
     set(_CMAKE_PREFIX_PATH_ORIGINAL)
+    set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ${_CMAKE_FIND_ROOT_PATH_MODE_PACKAGE_ORIGINAL})
+    set(_CMAKE_FIND_ROOT_PATH_MODE_PACKAGE_ORIGINAL)
     set(_QUIET)
 else()
     set(DEPTHAI_SHARED_LIBS)

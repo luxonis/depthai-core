@@ -44,16 +44,17 @@ constexpr const DeviceBootloader::Type DeviceBootloader::DEFAULT_TYPE;
 
 // First tries to find UNBOOTED device, then BOOTLOADER device
 std::tuple<bool, DeviceInfo> DeviceBootloader::getFirstAvailableDevice() {
-    bool found;
-    DeviceInfo dev;
-    std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
-    if(!found) {
-        std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_BOOTLOADER);
+    // Get all connected devices
+    auto devices = XLinkConnection::getAllConnectedDevices();
+    // Search order - first unbooted, then bootloader and last flash booted
+    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED}) {
+        for(const auto& device : devices) {
+            if(device.state == searchState) {
+                return {true, device};
+            }
+        }
     }
-    if(!found) {
-        std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_FLASH_BOOTED);
-    }
-    return {found, dev};
+    return {false, {}};
 }
 
 // Returns all devices which aren't already booted
@@ -481,7 +482,7 @@ DeviceBootloader::Version DeviceBootloader::getVersion() const {
 }
 
 DeviceBootloader::Version DeviceBootloader::requestVersion() {
-    // Send request to jump to USB bootloader
+    // Send request to retrieve bootloader version
     if(!sendRequest(Request::GetBootloaderVersion{})) {
         throw std::runtime_error("Couldn't get bootloader version");
     }
@@ -489,11 +490,26 @@ DeviceBootloader::Version DeviceBootloader::requestVersion() {
     // Receive response
     Response::BootloaderVersion ver;
     if(!receiveResponse(ver)) {
-        throw std::runtime_error("Couldn't get bootloader version");
+        throw std::runtime_error("Couldn't parse version response");
     }
 
-    // Create bootloader::Version object and return
-    return DeviceBootloader::Version(ver.major, ver.minor, ver.patch);
+    Version blVersion(ver.major, ver.minor, ver.patch);
+
+    if(blVersion >= Version(Request::GetBootloaderCommit::VERSION)) {
+        // Send request to retrieve bootloader commit (skip version check)
+        Request::GetBootloaderCommit request{};
+        stream->write((uint8_t*)&request, sizeof(request));
+
+        // Receive response
+        Response::BootloaderCommit commit;
+        if(!receiveResponse(commit)) {
+            throw std::runtime_error("Couldn't get bootloader commit");
+        }
+
+        blVersion = Version(ver.major, ver.minor, ver.patch, commit.commitStr);
+    }
+
+    return blVersion;
 }
 
 DeviceBootloader::Type DeviceBootloader::getType() const {
@@ -516,7 +532,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
     // Bug in NETWORK bootloader in version 0.0.12 < 0.1.0 - flashing can cause a soft brick
     auto version = getVersion();
     if(bootloaderType == Type::NETWORK && version < Version(0, 0, 14)) {
-        throw std::invalid_argument("Network bootloader requires version 0.1.0 or higher to flash applications. Current version: " + version.toString());
+        throw std::invalid_argument("Network bootloader requires version 0.0.14 or higher to flash applications. Current version: " + version.toString());
     }
 
     // send request to FLASH BOOTLOADER
@@ -843,27 +859,44 @@ std::vector<std::uint8_t> DeviceBootloader::getEmbeddedBootloaderBinary(Type typ
     return Resources::getInstance().getBootloaderFirmware(type);
 }
 
-DeviceBootloader::Version::Version(const std::string& v) : versionMajor(0), versionMinor(0), versionPatch(0) {
+DeviceBootloader::Version::Version(const std::string& v) : versionMajor(0), versionMinor(0), versionPatch(0), buildInfo{""} {
     // Parse string
-    if(std::sscanf(v.c_str(), "%u.%u.%u", &versionMajor, &versionMinor, &versionPatch) != 3) throw std::runtime_error("Cannot parse version: " + v);
+    char buffer[256]{0};
+    if(std::sscanf(v.c_str(), "%u.%u.%u+%255s", &versionMajor, &versionMinor, &versionPatch, buffer) != 4) {
+        if(std::sscanf(v.c_str(), "%u.%u.%u", &versionMajor, &versionMinor, &versionPatch) != 3) {
+            throw std::runtime_error("Cannot parse version: " + v);
+        }
+    } else {
+        buildInfo = std::string{buffer};
+    }
 }
 
-DeviceBootloader::Version::Version(unsigned vmajor, unsigned vminor, unsigned vpatch) : versionMajor(vmajor), versionMinor(vminor), versionPatch(vpatch) {}
+DeviceBootloader::Version::Version(unsigned vmajor, unsigned vminor, unsigned vpatch)
+    : versionMajor(vmajor), versionMinor(vminor), versionPatch(vpatch), buildInfo{""} {}
+
+DeviceBootloader::Version::Version(unsigned vmajor, unsigned vminor, unsigned vpatch, std::string buildInfo)
+    : versionMajor(vmajor), versionMinor(vminor), versionPatch(vpatch), buildInfo(buildInfo) {}
 
 bool DeviceBootloader::Version::operator==(const Version& other) const {
-    if(versionMajor == other.versionMajor && versionMinor == other.versionMinor && versionPatch == other.versionPatch) return true;
+    if(versionMajor == other.versionMajor && versionMinor == other.versionMinor && versionPatch == other.versionPatch && buildInfo == other.buildInfo) {
+        return true;
+    }
     return false;
 }
 
 bool DeviceBootloader::Version::operator<(const Version& other) const {
     if(versionMajor < other.versionMajor) {
         return true;
-    } else {
+    } else if(versionMajor == other.versionMajor) {
         if(versionMinor < other.versionMinor) {
             return true;
-        } else {
+        } else if(versionMinor == other.versionMinor) {
             if(versionPatch < other.versionPatch) {
                 return true;
+            } else if(versionPatch == other.versionPatch) {
+                if(!buildInfo.empty() && other.buildInfo.empty()) {
+                    return true;
+                }
             }
         }
     }
@@ -871,7 +904,24 @@ bool DeviceBootloader::Version::operator<(const Version& other) const {
 }
 
 std::string DeviceBootloader::Version::toString() const {
-    return std::to_string(versionMajor) + "." + std::to_string(versionMinor) + "." + std::to_string(versionPatch);
+    std::string version = std::to_string(versionMajor) + "." + std::to_string(versionMinor) + "." + std::to_string(versionPatch);
+    if(!buildInfo.empty()) {
+        version += "+" + buildInfo;
+    }
+    return version;
+}
+
+std::string DeviceBootloader::Version::toStringSemver() const {
+    std::string version = std::to_string(versionMajor) + "." + std::to_string(versionMinor) + "." + std::to_string(versionPatch);
+    return version;
+}
+
+std::string DeviceBootloader::Version::getBuildInfo() const {
+    return buildInfo;
+}
+
+DeviceBootloader::Version DeviceBootloader::Version::getSemver() const {
+    return Version(versionMajor, versionMinor, versionPatch);
 }
 
 template <typename T>
@@ -879,7 +929,7 @@ bool DeviceBootloader::sendRequest(const T& request) {
     if(stream == nullptr) return false;
 
     // Do a version check beforehand
-    if(getVersion() < Version(T::VERSION)) {
+    if(getVersion().getSemver() < Version(T::VERSION)) {
         throw std::runtime_error(
             fmt::format("Bootloader version {} required to send request '{}'. Current version {}", T::VERSION, T::NAME, getVersion().toString()));
     }
