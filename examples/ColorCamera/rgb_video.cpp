@@ -10,6 +10,7 @@ int main(int argc, char** argv) {
     bool enableUVC = 0;
     bool enableToF = 0;
     bool enableMic = 0;
+    bool enableMicNc = 0;
     if(argc > 1) {
         if (std::string(argv[1]) == "uvc") {
             enableUVC = 1;
@@ -17,6 +18,7 @@ int main(int argc, char** argv) {
             enableToF = 1;
         } else if (std::string(argv[1]) == "mic") {
             enableMic = 1;
+            enableMicNc = 1;
         } else {
             printf("Unrecognized argument: %s\n", argv[1]);
         }
@@ -64,16 +66,38 @@ int main(int argc, char** argv) {
     }
 
     std::ofstream fAudio;
-    int audioSampleSize = 3; // 2, 3, 4
+    std::ofstream fAudioBack;
+    std::ofstream fAudioNc;
+    int audioSampleSize = 2; // 2, 3, 4. Note: must be 2 for NC
     if (enableMic) {
         auto uac = pipeline.create<dai::node::UAC>();
         auto xoutMic = pipeline.create<dai::node::XLinkOut>();
-        uac->initialConfig.setMicGainDecibels(30);
+        auto xoutMicBack = pipeline.create<dai::node::XLinkOut>();
+
+        // uac->initialConfig.setMicGainDecibels(30); // with NC we also have AGC
         uac->setXlinkSampleSizeBytes(audioSampleSize);
+
         xoutMic->setStreamName("mic");
+        xoutMicBack->setStreamName("micBack");
+
         uac->out.link(xoutMic->input);
+        uac->outBack.link(xoutMicBack->input);
+
+        if (enableMicNc) {
+            auto audioProc = pipeline.create<dai::node::AudioProc>();
+            auto xoutMicNc = pipeline.create<dai::node::XLinkOut>();
+
+            xoutMicNc->setStreamName("micNc");
+
+            uac->out.link(audioProc->input);
+            uac->outBack.link(audioProc->reference);
+            audioProc->out.link(xoutMicNc->input);
+
+            fAudioNc.open("audioNc.raw", std::ios::trunc | std::ios::binary);
+        }
 
         fAudio.open("audio.raw", std::ios::trunc | std::ios::binary);
+        fAudioBack.open("audioBack.raw", std::ios::trunc | std::ios::binary);
     }
 
     // Connect to device and start pipeline
@@ -90,12 +114,14 @@ int main(int argc, char** argv) {
     printf("=== Started!\n");
     if (enableUVC) printf(">>> Keep this running, and open a separate UVC viewer\n");
 
-    int qsize = 1;
+    int qsize = 8;
     bool blocking = false;
     auto video = device.getOutputQueue("video", qsize, blocking);
 
     auto depth = enableToF ? device.getOutputQueue("tof", qsize, blocking) : nullptr;
     auto audio = enableMic ? device.getOutputQueue("mic", qsize, blocking) : nullptr;
+    auto audioBack = enableMic ? device.getOutputQueue("micBack", qsize, blocking) : nullptr;
+    auto audioNc = enableMicNc ? device.getOutputQueue("micNc", qsize, blocking) : nullptr;
 
     using namespace std::chrono;
     auto tprev = steady_clock::now();
@@ -132,11 +158,12 @@ int main(int argc, char** argv) {
         }
 
         if (enableMic) {
+            // Main/front mics - 2x 48kHz
             auto audioIn = audio->tryGet<dai::ImgFrame>();
             if (audioIn) {
 #if 0 // works without zero-copy
                 auto audioData = audioIn->getData();
-                printf("MIC seq %ld, data size %lu, samples %d, mics %d\n",
+                printf("MIC      seq %ld, data size %lu, samples %d, mics %d\n",
                         audioIn->getSequenceNum(),
                         audioData.size(),
                         audioIn->getHeight(),
@@ -146,12 +173,60 @@ int main(int argc, char** argv) {
                 uint8_t *audioData = audioIn->packet->data;
                 // uint32_t size = audioIn->packet->length; // not ok, includes metadata
                 uint32_t size = audioSampleSize * audioIn->getHeight() * audioIn->getWidth();
-                printf("MIC seq %ld, data size %u, samples %d, mics %d\n",
+                printf("MIC      seq %ld, data size %u, samples %d, mics %d\n",
                         audioIn->getSequenceNum(),
                         size,
                         audioIn->getHeight(),
                         audioIn->getWidth() );
                 fAudio.write((char*)audioData, size);
+#endif
+            }
+
+            // Back mic - 1x 48kHz
+            audioIn = audioBack->tryGet<dai::ImgFrame>();
+            if (audioIn) {
+#if 0 // works without zero-copy
+                auto audioData = audioIn->getData();
+                printf("MIC-back seq %ld, data size %lu, samples %d, mics %d\n",
+                        audioIn->getSequenceNum(),
+                        audioData.size(),
+                        audioIn->getHeight(),
+                        audioIn->getWidth() );
+                fAudio.write((char*)&audioData[0], audioData.size());
+#else // with zero-copy
+                uint8_t *audioData = audioIn->packet->data;
+                // uint32_t size = audioIn->packet->length; // not ok, includes metadata
+                uint32_t size = audioSampleSize * audioIn->getHeight() * audioIn->getWidth();
+                printf("MIC-back seq %ld, data size %u, samples %d, mics %d\n",
+                        audioIn->getSequenceNum(),
+                        size,
+                        audioIn->getHeight(),
+                        audioIn->getWidth() );
+                fAudioBack.write((char*)audioData, size);
+#endif
+            }
+
+            // AudioProc output (with noise cancelation) - 2x 16kHz
+            audioIn = audioNc->tryGet<dai::ImgFrame>();
+            if (audioIn) {
+#if 0 // works without zero-copy
+                auto audioData = audioIn->getData();
+                printf("MIC-NC   seq %ld, data size %lu, samples %d, mics %d\n",
+                        audioIn->getSequenceNum(),
+                        audioData.size(),
+                        audioIn->getHeight(),
+                        audioIn->getWidth() );
+                fAudio.write((char*)&audioData[0], audioData.size());
+#else // with zero-copy
+                uint8_t *audioData = audioIn->packet->data;
+                // uint32_t size = audioIn->packet->length; // not ok, includes metadata
+                uint32_t size = audioSampleSize * audioIn->getHeight() * audioIn->getWidth();
+                printf("MIC-NC   seq %ld, data size %u, samples %d, mics %d\n",
+                        audioIn->getSequenceNum(),
+                        size,
+                        audioIn->getHeight(),
+                        audioIn->getWidth() );
+                fAudioNc.write((char*)audioData, size);
 #endif
             }
         }
