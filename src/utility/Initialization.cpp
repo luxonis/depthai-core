@@ -100,7 +100,9 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
         xlinkGlobalHandler.options = javavm;
         auto status = XLinkInitialize(&xlinkGlobalHandler);
         if(X_LINK_SUCCESS != status) {
-            throw std::runtime_error("Couldn't initialize XLink");
+            std::string errorMsg = fmt::format("Couldn't initialize XLink: {}", XLinkErrorToStr(status));
+            spdlog::debug("Initialize failed - {}", errorMsg);
+            throw std::runtime_error(errorMsg);
         }
         // Suppress XLink related errors
         mvLogDefaultLevelSet(MVLOG_FATAL);
