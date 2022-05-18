@@ -42,6 +42,7 @@ class UAC : public NodeCRTP<Node, UAC, UACProperties>  {
      * Outputs audio data from onboard microphones. Reusing ImgFrame for now
      */
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output outBack{*this, "outBack", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /// Enable streaming back microphone instead of the front ones (L/R)
     void setStreamBackMic(bool enable);

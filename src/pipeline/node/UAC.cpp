@@ -10,7 +10,7 @@ UAC::UAC(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_p
       rawConfig(std::make_shared<RawAudioInConfig>()),
       initialConfig(rawConfig) {
     setInputRefs({&inputConfig});
-    setOutputRefs({&out});
+    setOutputRefs({&out, &outBack});
 }
 
 UAC::Properties& UAC::getProperties() {
