@@ -13,7 +13,7 @@ namespace node {
 /**
  * @brief UAC (USB Audio Class) node
  */
-class UAC : public NodeCRTP<Node, UAC, UACProperties>  {
+class UAC : public NodeCRTP<Node, UAC, UACProperties> {
    public:
     constexpr static const char* NAME = "UAC";
 
@@ -60,7 +60,6 @@ class UAC : public NodeCRTP<Node, UAC, UACProperties>  {
 
     /// Set speaker volume, 0..100. Default: 70
     void setSpeakerVolume(int volume);
-
 };
 
 }  // namespace node

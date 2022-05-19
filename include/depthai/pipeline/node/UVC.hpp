@@ -11,7 +11,7 @@ namespace node {
 /**
  * @brief UVC (USB Video Class) node
  */
-class UVC : public NodeCRTP<Node, UVC, UVCProperties>  {
+class UVC : public NodeCRTP<Node, UVC, UVCProperties> {
    public:
     constexpr static const char* NAME = "UVC";
 

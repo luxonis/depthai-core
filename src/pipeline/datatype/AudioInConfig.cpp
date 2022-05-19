@@ -9,8 +9,7 @@ std::shared_ptr<RawBuffer> AudioInConfig::serialize() const {
 }
 
 AudioInConfig::AudioInConfig() : Buffer(std::make_shared<RawAudioInConfig>()), cfg(*dynamic_cast<RawAudioInConfig*>(raw.get())) {}
-AudioInConfig::AudioInConfig(std::shared_ptr<RawAudioInConfig> ptr)
-    : Buffer(std::move(ptr)), cfg(*dynamic_cast<RawAudioInConfig*>(raw.get())) {}
+AudioInConfig::AudioInConfig(std::shared_ptr<RawAudioInConfig> ptr) : Buffer(std::move(ptr)), cfg(*dynamic_cast<RawAudioInConfig*>(raw.get())) {}
 
 void AudioInConfig::setMicGainTimes(float times) {
     cfg.config.micGain = times;

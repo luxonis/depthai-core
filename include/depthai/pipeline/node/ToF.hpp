@@ -28,7 +28,7 @@ class ToF : public NodeCRTP<Node, ToF, ToFProperties> {
      */
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
     Output amp_out{*this, "amplitude", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
-    Output err_out{*this, "error", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};  
+    Output err_out{*this, "error", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
 };
 
 }  // namespace node

@@ -9,9 +9,7 @@ namespace node {
 
 Camera::Camera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Camera(par, nodeId, std::make_unique<Camera::Properties>()) {}
 Camera::Camera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, Camera, CameraProperties>(par, nodeId, std::move(props)),
-      rawControl(std::make_shared<RawCameraControl>()),
-      initialControl(rawControl) {
+    : NodeCRTP<Node, Camera, CameraProperties>(par, nodeId, std::move(props)), rawControl(std::make_shared<RawCameraControl>()), initialControl(rawControl) {
     properties.boardSocket = CameraBoardSocket::AUTO;
     properties.imageOrientation = CameraImageOrientation::AUTO;
     properties.colorOrder = CameraProperties::ColorOrder::BGR;
@@ -196,8 +194,7 @@ std::tuple<int, int> Camera::getVideoSize() const {
         int maxVideoWidth = 1920;
         int maxVideoHeight = 1080;
 
-        if(properties.resolution == CameraProperties::SensorResolution::THE_4_K
-           || properties.resolution == CameraProperties::SensorResolution::THE_12_MP
+        if(properties.resolution == CameraProperties::SensorResolution::THE_4_K || properties.resolution == CameraProperties::SensorResolution::THE_12_MP
            || properties.resolution == CameraProperties::SensorResolution::THE_13_MP) {
             maxVideoWidth = 3840;
             maxVideoHeight = 2160;
