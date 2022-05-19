@@ -110,7 +110,7 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(DeviceResource resource, 
         finalFwBinaryPath = pathToMvcmd;
     }
     // Override if env variable DEPTHAI_DEVICE_BINARY is set
-    dai::Path fwBinaryPath = utility::getEnv("DEPTHAI_DEVICE_BINARY");
+    dai::Path fwBinaryPath = utility::getEnv(envVar);
     if(!fwBinaryPath.empty()) {
         finalFwBinaryPath = fwBinaryPath;
     }
@@ -122,9 +122,9 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(DeviceResource resource, 
             // Throw an error
             // TODO(themarpe) - Unify exceptions into meaningful groups
             throw std::runtime_error(
-                fmt::format("File at path {}{} doesn't exist.", finalFwBinaryPath, !fwBinaryPath.empty() ? " pointed to by DEPTHAI_DEVICE_BINARY" : ""));
+                fmt::format("File at path {}{} doesn't exist.", finalFwBinaryPath, !fwBinaryPath.empty() ? fmt::format(" pointed to by {}", envVar) : ""));
         }
-        spdlog::warn("Overriding firmware: {}", finalFwBinaryPath);
+        spdlog::warn("Overriding {}: {}", envVar, finalFwBinaryPath);
         // Read the file and return its contents
         finalFwBinary = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
     } else {
