@@ -42,5 +42,17 @@ void UAC::setSpeakerVolume(int volume) {
     properties.speakerVolume = volume;
 }
 
+void UAC::setMicMask(int mask) {
+    properties.xlinkMicMask = mask;
+}
+
+void UAC::setNumFramesPool(int frames) {
+    properties.numFramesPool = frames;
+}
+
+int UAC::getNumFramesPool() const {
+    return properties.numFramesPool;
+}
+
 }  // namespace node
 }  // namespace dai

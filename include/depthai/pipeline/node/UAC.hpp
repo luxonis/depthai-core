@@ -60,6 +60,14 @@ class UAC : public NodeCRTP<Node, UAC, UACProperties> {
 
     /// Set speaker volume, 0..100. Default: 70
     void setSpeakerVolume(int volume);
+
+    /// Set mic mask to be streamed on XLink. Default: 0b111111, all 6 mics
+    void setMicMask(int mask);
+
+    /// Set number of frames to be queued in device side pool. One frame: 33.3ms
+    void setNumFramesPool(int frames);
+
+    int getNumFramesPool() const;
 };
 
 }  // namespace node
