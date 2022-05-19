@@ -81,7 +81,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/sanitizers")
 
 # Additional options
-option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON )
+option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON)
 option(DEPTHAI_CLANG_TIDY "Enable clang-tidy checks during compilation" OFF)
 option(DEPTHAI_SANITIZE "Enable Address and Undefined sanitizers for library, examples and tests" OFF)
 
