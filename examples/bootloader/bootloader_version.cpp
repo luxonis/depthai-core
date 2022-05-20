@@ -10,24 +10,17 @@ int main(int argc, char** argv) {
         dai::DeviceBootloader bl(info);
         std::cout << "Version: " << bl.getVersion().toString() << std::endl;
 
-        bool ok;
-        std::string err;
-        dai::DeviceBootloader::ApplicationInfo info;
-        std::tie(ok, err, info) = bl.readApplicationInfo();
-        if(ok) {
-            std::cout << "Application, flashed: " << info.hasApplication << " firmware version: " << info.firmwareVersion
-                      << " application name: " << info.applicationName << std::endl;
-        } else {
-            std::cout << "Error reading application infomation: " << err << std::endl;
-        }
-
         for(const auto& mem : {dai::DeviceBootloader::Memory::FLASH, dai::DeviceBootloader::Memory::EMMC}) {
-            dai::DeviceBootloader::MemoryInfo info;
-            std::tie(ok, err, info) = bl.getMemoryInfo(mem);
-            if(ok) {
-                std::cout << "Memory size: " << info.size << ", info: " << info.info << std::endl;
+            std::cout << std::endl;
+            auto memoryInfo = bl.getMemoryInfo(mem);
+            if(memoryInfo.available) {
+                std::cout << "Memory '" << mem << "' size: " << memoryInfo.size << ", info: " << memoryInfo.info << std::endl;
+
+                auto appInfo = bl.readApplicationInfo(mem);
+                std::cout << "Application, flashed: " << appInfo.hasApplication << " firmware version: " << appInfo.firmwareVersion
+                          << " application name: " << appInfo.applicationName << std::endl;
             } else {
-                std::cout << "Error retrieving memory information: " << err << std::endl;
+                std::cout << "Memory '" << mem << "' not available..." << std::endl;
             }
         }
     } else {

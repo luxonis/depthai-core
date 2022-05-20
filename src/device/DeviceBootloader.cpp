@@ -107,7 +107,7 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
     SBR_SECTION* appNameSection = lastSection++;
 
     // Set to last section
-    lastSection = lastSection-1;
+    lastSection = lastSection - 1;
 
     // Alignup for easier updating
     auto getSectionAlignedOffset = [](long S) {
@@ -218,7 +218,7 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
     if(spdlog::get_level() == spdlog::level::debug) {
         SBR_SECTION* cur = &sbr.sections[0];
         spdlog::debug("DepthAI Application Package");
-        for(; cur != lastSection+1; cur++) {
+        for(; cur != lastSection + 1; cur++) {
             spdlog::debug("{}, {}B, {}, {}, {}, {}", cur->name, cur->size, cur->offset, cur->checksum, cur->type, cur->flags);
         }
     }
@@ -568,8 +568,11 @@ std::tuple<bool, std::string> DeviceBootloader::flash(const Pipeline& pipeline, 
     return flashDepthaiApplicationPackage(createDepthaiApplicationPackage(pipeline, compress, applicationName), memory);
 }
 
-std::tuple<bool, std::string, DeviceBootloader::ApplicationInfo> DeviceBootloader::readApplicationInfo() {
+DeviceBootloader::ApplicationInfo DeviceBootloader::readApplicationInfo(Memory mem) {
     // Send request to retrieve bootloader version
+    Request::GetApplicationDetails appDetails;
+    appDetails.memory = mem;
+
     sendRequestThrow(Request::GetApplicationDetails{});
 
     // Receive response
@@ -578,6 +581,7 @@ std::tuple<bool, std::string, DeviceBootloader::ApplicationInfo> DeviceBootloade
 
     // Set default values
     ApplicationInfo info;
+    info.memory = mem;
     info.firmwareVersion = "";
     info.applicationName = "";
 
@@ -590,14 +594,19 @@ std::tuple<bool, std::string, DeviceBootloader::ApplicationInfo> DeviceBootloade
         info.applicationName = std::string(details.applicationNameStr);
     }
 
-    if(details.success) {
-        return {true, "", info};
-    } else {
-        return {false, details.errorMsg, info};
+    if(!details.success) {
+        throw std::runtime_error(details.errorMsg);
     }
+
+    return info;
 }
 
-std::tuple<bool, std::string, DeviceBootloader::MemoryInfo> DeviceBootloader::getMemoryInfo(Memory memory) {
+DeviceBootloader::MemoryInfo DeviceBootloader::getMemoryInfo(Memory memory) {
+    if(memory == Memory::EMMC && bootloaderType == Type::USB) {
+        // Warn, as result of "no emmc" might be deceiving
+        spdlog::warn("USB Bootloader type does NOT support eMMC");
+    }
+
     // Send request to retrieve bootloader version
     Request::GetMemoryDetails req{};
     req.memory = memory;
@@ -608,10 +617,11 @@ std::tuple<bool, std::string, DeviceBootloader::MemoryInfo> DeviceBootloader::ge
     receiveResponseThrow(details);
 
     MemoryInfo mem;
+    mem.available = details.hasMemory;
     mem.size = details.memorySize;
     mem.info = std::string(details.memoryInfo);
 
-    return {true, "", mem};
+    return mem;
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(std::function<void(float)> progressCb,
@@ -623,6 +633,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
         throw std::invalid_argument("Network bootloader requires version 0.0.14 or higher to flash applications. Current version: " + version.toString());
     }
 
+    std::tuple<bool, std::string> ret;
     if(memory == Memory::AUTO) {
         // send request to FLASH BOOTLOADER
         Request::UpdateFlash updateFlash;
@@ -659,12 +670,50 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
         } while(true);
 
         // Return if flashing was successful
-        return {result.success, result.errorMsg};
+        ret = {result.success, result.errorMsg};
 
     } else {
         // Flash custom
-        return flashCustom(memory, bootloader::getStructure(getType()).offset.at(Section::APPLICATION), package, progressCb);
+        ret = flashCustom(memory, bootloader::getStructure(getType()).offset.at(Section::APPLICATION), package, progressCb);
     }
+
+    // Try specifing final app memory if set explicitly or if AUTO would be EMMC
+    try {
+        Memory finalAppMem = Memory::FLASH;
+        if(memory != Memory::AUTO) {
+            // Specify final app memory if explicitly set
+            finalAppMem = memory;
+        } else if(memory == Memory::AUTO && bootloaderType == Type::NETWORK) {
+            // If AUTO, only do so if eMMC is target memory
+            auto mem = getMemoryInfo(Memory::EMMC);
+            if(mem.available) {
+                finalAppMem = Memory::EMMC;
+            }
+        }
+
+        // Try reading existing config, or create a new one
+        nlohmann::json configJson;
+        try {
+            configJson = readConfigData();
+        } catch(const std::exception& ex) {
+            spdlog::debug("Error while trying to read existing bootloader configuration: {}", ex.what());
+        }
+        // Set the following field 'appMem' (in forward/backward compat manner)
+        configJson["appMem"] = finalAppMem;
+        // Flash back the rest of configuration as is
+        bool success;
+        std::string errorMsg;
+        std::tie(success, errorMsg) = flashConfigData(configJson);
+        if(success) {
+            spdlog::debug("Success flashing the appMem configuration to '{}'", finalAppMem);
+        } else {
+            throw std::runtime_error(errorMsg);
+        }
+    } catch(const std::exception& ex) {
+        spdlog::debug("Error while trying to specify final appMem configuration: {}", ex.what());
+    }
+
+    return ret;
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(std::vector<uint8_t> package, Memory memory) {

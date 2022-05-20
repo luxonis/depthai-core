@@ -22,7 +22,7 @@ int main(int argc, char** argv) {
     std::tie(res, info) = dai::DeviceBootloader::getFirstAvailableDevice();
 
     if(res) {
-        std::cout << "Found device with name: " << info.desc.name << std::endl;
+        std::cout << "Found device with name: " << info.name << std::endl;
         dai::DeviceBootloader bl(info);
 
         auto progress = [](float p) { std::cout << "Reading progress..." << p * 100 << "%" << std::endl; };

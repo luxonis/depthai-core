@@ -114,12 +114,14 @@ class DeviceBootloader {
     };
 
     struct ApplicationInfo {
+        Memory memory;
         bool hasApplication;
         std::string firmwareVersion;
         std::string applicationName;
     };
 
     struct MemoryInfo {
+        bool available;
         std::int64_t size;
         std::string info;
     };
@@ -255,9 +257,10 @@ class DeviceBootloader {
     std::tuple<bool, std::string> flash(const Pipeline& pipeline, bool compress = false, std::string applicationName = "", Memory memory = Memory::AUTO);
 
     /**
-     * Reads flashed application information from device
+     * Reads information about flashed application in specified memory from device
+     * @param memory Specifies which memory to query
      */
-    std::tuple<bool, std::string, ApplicationInfo> readApplicationInfo();
+    ApplicationInfo readApplicationInfo(Memory memory);
 
     /**
      * Flashes a specific depthai application package that was generated using createDepthaiApplicationPackage or saveDepthaiApplicationPackage
@@ -407,7 +410,7 @@ class DeviceBootloader {
      * Retrieves information about specified memory
      * @param memory Specifies which memory to query
      */
-    std::tuple<bool, std::string, MemoryInfo> getMemoryInfo(Memory memory);
+    MemoryInfo getMemoryInfo(Memory memory);
 
     /**
      * Boots a custom FW in memory
