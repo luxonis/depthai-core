@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
     } else {
         for(int i = 0; i < deviceInfos.size(); i++) {
             const auto& devInfo = deviceInfos[i];
-            std::cout << "[" << i << "] " << devInfo.getMxId() << "[" << XLinkProtocolToStr(devInfo.desc.protocol) << "]";
+            std::cout << "[" << i << "] " << devInfo.getMxId() << "[" << XLinkProtocolToStr(devInfo.protocol) << "]";
             if(devInfo.state == X_LINK_BOOTLOADER) {
                 dai::DeviceBootloader bl(devInfo);
                 std::cout << " current bootloader: " << bl.getVersion();

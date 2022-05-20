@@ -46,7 +46,19 @@ namespace {
 static std::unique_ptr<backward::SignalHandling> signalHandler;
 #endif
 
-bool initialize(std::string additionalInfo, bool installSignalHandler) {
+bool initialize() {
+    return initialize(nullptr, false, nullptr);
+}
+
+bool initialize(void* javavm) {
+    return initialize(nullptr, false, javavm);
+}
+
+bool initialize(std::string additionalInfo, bool installSignalHandler, void* javavm) {
+    return initialize(additionalInfo.c_str(), installSignalHandler, javavm);
+}
+
+bool initialize(const char* additionalInfo, bool installSignalHandler, void* javavm) {
     // singleton for checking whether depthai was already initialized
     static const bool initialized = [&]() {
 #ifdef DEPTHAI_ENABLE_BACKWARD
@@ -71,7 +83,7 @@ bool initialize(std::string additionalInfo, bool installSignalHandler) {
         }
 
         // Print core commit and build datetime
-        if(!additionalInfo.empty()) {
+        if(additionalInfo != nullptr && additionalInfo[0] != '\0') {
             spdlog::debug("{}", additionalInfo);
         }
         spdlog::debug(
@@ -85,9 +97,12 @@ bool initialize(std::string additionalInfo, bool installSignalHandler) {
         // Static global handler
         static XLinkGlobalHandler_t xlinkGlobalHandler = {};
         xlinkGlobalHandler.protocol = X_LINK_USB_VSC;
+        xlinkGlobalHandler.options = javavm;
         auto status = XLinkInitialize(&xlinkGlobalHandler);
         if(X_LINK_SUCCESS != status) {
-            throw std::runtime_error("Couldn't initialize XLink");
+            std::string errorMsg = fmt::format("Couldn't initialize XLink: {}", XLinkErrorToStr(status));
+            spdlog::debug("Initialize failed - {}", errorMsg);
+            throw std::runtime_error(errorMsg);
         }
         // Suppress XLink related errors
         mvLogDefaultLevelSet(MVLOG_FATAL);

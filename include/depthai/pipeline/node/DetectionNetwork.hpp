@@ -33,6 +33,11 @@ class DetectionNetwork : public NodeCRTP<NeuralNetwork, DetectionNetwork, Detect
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgDetections, false}}};
 
     /**
+     * Outputs unparsed inference results.
+     */
+    Output outNetwork{*this, "outNetwork", Output::Type::MSender, {{DatatypeEnum::NNData, false}}};
+
+    /**
      * Specifies confidence threshold at which to filter the rest of the detections.
      * @param thresh Detection confidence must be greater than specified threshold to be added to the list
      */
