@@ -10,14 +10,13 @@
 
   <url type="website">https://www.luxonis.com/</url>
   
-  <buildtool_depend>ament_cmake</buildtool_depend>
-
   <depend>libusb-1.0-dev</depend>
   <depend>libopencv-dev</depend>
   <depend>nlohmann-json-dev</depend>
   <!-- The following tags are recommended by REP-136 -->
   <exec_depend condition="$ROS_VERSION == 1">catkin</exec_depend>
   <buildtool_depend condition="$ROS_VERSION == 1">cmake</buildtool_depend>
+  <buildtool_depend condition="$ROS_VERSION == 2">ament_cmake</buildtool_depend>
 
   <export>
     <build_type condition="$ROS_VERSION == 1">cmake</build_type>
