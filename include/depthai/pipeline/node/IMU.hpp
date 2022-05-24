@@ -65,6 +65,12 @@ class IMU : public NodeCRTP<Node, IMU, IMUProperties> {
      * Maximum number of IMU packets in a batch report
      */
     std::int32_t getMaxBatchReports() const;
+
+    /*
+     * Whether to perform firmware update or not.
+     * Default value: false.
+     */
+    void enableFirmwareUpdate(bool enable);
 };
 
 }  // namespace node
