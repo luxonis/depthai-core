@@ -10,7 +10,7 @@
 
   <url type="website">https://www.luxonis.com/</url>
 
-  <build_depend>ros_environment</depend>
+  <build_depend>ros_environment</build_depend>
 
   <depend>libusb-1.0-dev</depend>
   <depend>libopencv-dev</depend>
