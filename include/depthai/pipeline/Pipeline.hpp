@@ -25,7 +25,7 @@ class PipelineImpl {
     friend class Node;
 
    public:
-    PipelineImpl() = default;
+    PipelineImpl(Pipeline& pipeline) : parent(pipeline) {}
     PipelineImpl(const PipelineImpl&) = default;
 
    private:

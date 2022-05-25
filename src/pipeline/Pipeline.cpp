@@ -4,6 +4,9 @@
 #include "depthai/utility/Initialization.hpp"
 #include "depthai/pipeline/node/XLinkIn.hpp"
 
+// shared
+#include "depthai-shared/pipeline/NodeConnectionSchema.hpp"
+
 // std
 #include <cassert>
 #include <fstream>
@@ -11,13 +14,35 @@
 // libraries
 #include "spdlog/fmt/fmt.h"
 
+
+// Specialization of std::hash for NodeConnectionSchema
+namespace std {
+template <>
+struct hash<::dai::NodeConnectionSchema> {
+    size_t operator()(const ::dai::NodeConnectionSchema& obj) const {
+        size_t seed = 0;
+        std::hash<std::int64_t> hId;
+        std::hash<std::string> hStr;
+        seed ^= hId(obj.node1Id) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        seed ^= hId(obj.node2Id) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        seed ^= hStr(obj.node1OutputGroup) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        seed ^= hStr(obj.node1Output) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        seed ^= hStr(obj.node2InputGroup) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        seed ^= hStr(obj.node2Input) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+        return seed;
+    }
+};
+
+}
+
+
 namespace dai {
 
 Node::Id PipelineImpl::getNextUniqueId() {
     return latestId++;
 }
 
-Pipeline::Pipeline() : pimpl(std::make_shared<PipelineImpl>()) {
+Pipeline::Pipeline() : pimpl(std::make_shared<PipelineImpl>(*this)) {
     // Initialize library
     initialize();
 }
@@ -225,8 +250,8 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
             c.node2Input = conn.inputName;
             c.node2InputGroup = conn.inputGroup;
 
-            bool outputHost = nodeMap[conn.outputId]->hostNode;
-            bool inputHost = nodeMap[conn.inputId]->hostNode;
+            bool outputHost = nodeMap.at(conn.outputId)->hostNode;
+            bool inputHost = nodeMap.at(conn.inputId)->hostNode;
 
             std::shared_ptr<Node> node;
 
@@ -244,10 +269,15 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
                 xlinkConnection.node2Input = "";
                 xlinkConnection.node2InputGroup = "";
 
+
+                // FIXME(themarpe) - move to Pipeline level
+                static int uniqueXLinkNum = 0;
+
                 if(hostDeviceXLinkBridge.count(xlinkConnection) <= 0){
                     // create it
                     auto nodeTmp = std::make_shared<node::XLinkIn>(parent.pimpl, 0);
-                    nodeTmp->setStreamName("")
+                    nodeTmp->setStreamName(std::string("__xlink_") + std::to_string(uniqueXLinkNum++));
+                }
 
             } else if(outputHost == false && inputHost == true) {
                 // device -> host
@@ -268,7 +298,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
             NodeObjInfo info;
             info.id = node->id;
             info.name = node->getName();
-            node->getProperties().serialize(info.properties);
+            node->getProperties().serialize(info.properties, type);
 
             // Create Io information
             auto inputs = node->getInputs();
