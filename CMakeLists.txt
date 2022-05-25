@@ -187,6 +187,7 @@ add_library(${TARGET_CORE_NAME}
     src/device/CalibrationHandler.cpp
     src/pipeline/Pipeline.cpp
     src/pipeline/AssetManager.cpp
+    src/pipeline/MessageQueue.cpp
     src/pipeline/Node.cpp
     src/pipeline/node/XLinkIn.cpp
     src/pipeline/node/XLinkOut.cpp

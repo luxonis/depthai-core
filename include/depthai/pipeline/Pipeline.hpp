@@ -72,6 +72,8 @@ class PipelineImpl {
     using NodeConnectionMap = std::unordered_map<Node::Id, std::unordered_set<Node::Connection>>;
     // Connection map, NodeId represents id of node connected TO (input)
     NodeConnectionMap nodeConnectionMap;
+    // parent
+    Pipeline& parent;
 
     // Template create function
     template <class N>
@@ -92,6 +94,7 @@ class PipelineImpl {
  * @brief Represents the pipeline, set of nodes and connections between them
  */
 class Pipeline {
+    friend class PipelineImpl;
     std::shared_ptr<PipelineImpl> pimpl;
     PipelineImpl* impl() {
         return pimpl.get();

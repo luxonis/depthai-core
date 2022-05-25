@@ -26,7 +26,7 @@ Properties& Node::getProperties() {
     return properties;
 }
 
-Node::Connection::Connection(Output out, Input in) {
+Node::Connection::Connection(const Output& out, const Input& in) {
     outputId = out.getParent().id;
     outputName = out.name;
     outputGroup = out.group;
@@ -89,6 +89,46 @@ void Node::Output::link(const Input& in) {
 void Node::Output::unlink(const Input& in) {
     // Call unlink of pipeline parents pipeline
     parent.getParentPipeline().unlink(*this, in);
+}
+
+void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
+    auto conns = getConnections();
+    for(auto& conn : conns){
+        // Get node AND hold a reference to it.
+        auto node = parent.getParentPipeline().getNode(conn.inputId);
+        // Safe, as long as we also hold 'node' shared_ptr
+        auto inputs = node->getInputRefs();
+        // Find the corresponding inputs
+        for(auto& input : inputs){
+            if(input->group == conn.inputGroup && input->name == conn.inputName){
+                // Corresponding input to a given connection
+                // Send the message
+                input->queue.send(msg);
+            }
+        }
+    }
+}
+
+bool Node::Output::trySend(const std::shared_ptr<ADatatype>& msg) {
+    bool success = true;
+
+    auto conns = getConnections();
+    for(auto& conn : conns){
+        // Get node AND hold a reference to it.
+        auto node = parent.getParentPipeline().getNode(conn.inputId);
+        // Safe, as long as we also hold 'node' shared_ptr
+        auto inputs = node->getInputRefs();
+        // Find the corresponding inputs
+        for(auto& input : inputs){
+            if(input->group == conn.inputGroup && input->name == conn.inputName){
+                // Corresponding input to a given connection
+                // Send the message
+                success &= input->queue.trySend(msg);
+            }
+        }
+    }
+
+    return success;
 }
 
 void Node::Input::setBlocking(bool blocking) {

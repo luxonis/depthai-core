@@ -9,6 +9,7 @@
 // project
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/pipeline/AssetManager.hpp"
+#include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/utility/copyable_unique_ptr.hpp"
 
 // depthai-shared
@@ -127,6 +128,20 @@ class Node {
          * @param in Input from which to unlink from
          */
         void unlink(const Input& in);
+
+        /**
+         * Sends a Message to all connected inputs
+         * @param msg Message to send to all connected inputs
+         */
+        void send(const std::shared_ptr<ADatatype>& msg);
+
+        /**
+         * Try sending a message to all connected inputs
+         * @param msg Message to send to all connected inputs
+         * @returns True if ALL connected inputs got the message, false otherwise
+         */
+        bool trySend(const std::shared_ptr<ADatatype>& msg);
+
     };
 
     /**
@@ -161,6 +176,8 @@ class Node {
         bool defaultWaitForMessage{false};
         friend class Output;
         std::vector<DatatypeHierarchy> possibleDatatypes;
+
+        MessageQueue queue;
 
         /// Constructs Input with default blocking and queueSize options
         Input(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types)
@@ -272,6 +289,8 @@ class Node {
    public:
     /// Id of node
     const Id id;
+    /// Marker if the node can run on host
+    bool hostNode{false};
 
    protected:
     AssetManager assetManager;
@@ -294,6 +313,15 @@ class Node {
     /// Retrieves nodes name
     virtual const char* getName() const = 0;
 
+    /// Start node execution
+    virtual void start();
+
+    /// Wait for node to finish execution
+    virtual void wait();
+
+    /// Stop node execution
+    virtual void stop();
+
     /// Retrieves all nodes outputs
     std::vector<Output> getOutputs();
 
@@ -315,7 +343,7 @@ class Node {
     /// Connection between an Input and Output
     struct Connection {
         friend struct std::hash<Connection>;
-        Connection(Output out, Input in);
+        Connection(const Output& out, const Input& in);
         Id outputId;
         std::string outputName;
         std::string outputGroup;

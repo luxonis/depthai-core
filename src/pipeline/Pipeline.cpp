@@ -2,6 +2,7 @@
 
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/utility/Initialization.hpp"
+#include "depthai/pipeline/node/XLinkIn.hpp"
 
 // std
 #include <cassert>
@@ -124,86 +125,98 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
     // Loop over nodes, and add them to schema
     for(const auto& kv : nodeMap) {
         const auto& node = kv.second;
-        // Create 'node' info
-        NodeObjInfo info;
-        info.id = node->id;
-        info.name = node->getName();
-        node->getProperties().serialize(info.properties, type);
 
-        // Create Io information
-        auto inputs = node->getInputs();
-        auto outputs = node->getOutputs();
+        // Check if its a host node or device node
+        if(node->hostNode){
+            // host node, no need to serialize to a schema
+            // TBD any additional changes
+        } else {
 
-        info.ioInfo.reserve(inputs.size() + outputs.size());
+            // Create 'node' info
+            NodeObjInfo info;
+            info.id = node->id;
+            info.name = node->getName();
+            node->getProperties().serialize(info.properties, type);
 
-        // Add inputs
-        for(const auto& input : inputs) {
-            NodeIoInfo io;
-            io.blocking = input.getBlocking();
-            io.queueSize = input.getQueueSize();
-            io.name = input.name;
-            io.group = input.group;
-            auto ioKey = std::make_tuple(io.group, io.name);
+            // Create Io information
+            auto inputs = node->getInputs();
+            auto outputs = node->getOutputs();
 
-            io.waitForMessage = input.waitForMessage.value_or(input.defaultWaitForMessage);
-            switch(input.type) {
-                case Node::Input::Type::MReceiver:
-                    io.type = NodeIoInfo::Type::MReceiver;
-                    break;
-                case Node::Input::Type::SReceiver:
-                    io.type = NodeIoInfo::Type::SReceiver;
-                    break;
-            }
+            info.ioInfo.reserve(inputs.size() + outputs.size());
 
-            if(info.ioInfo.count(ioKey) > 0) {
-                if(io.group == "") {
-                    throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
-                } else {
-                    throw std::invalid_argument(
-                        fmt::format("'{}.{}[\"{}\"]' redefined. Inputs and outputs must have unique names", info.name, io.group, io.name));
+            // Add inputs
+            for(const auto& input : inputs) {
+                NodeIoInfo io;
+                io.blocking = input.getBlocking();
+                io.queueSize = input.getQueueSize();
+                io.name = input.name;
+                io.group = input.group;
+                auto ioKey = std::make_tuple(io.group, io.name);
+
+                io.waitForMessage = input.waitForMessage.value_or(input.defaultWaitForMessage);
+                switch(input.type) {
+                    case Node::Input::Type::MReceiver:
+                        io.type = NodeIoInfo::Type::MReceiver;
+                        break;
+                    case Node::Input::Type::SReceiver:
+                        io.type = NodeIoInfo::Type::SReceiver;
+                        break;
                 }
-            }
-            info.ioInfo[ioKey] = io;
-        }
 
-        // Add outputs
-        for(const auto& output : outputs) {
-            NodeIoInfo io;
-            io.blocking = false;
-            io.name = output.name;
-            io.group = output.group;
-            auto ioKey = std::make_tuple(io.group, io.name);
-
-            switch(output.type) {
-                case Node::Output::Type::MSender:
-                    io.type = NodeIoInfo::Type::MSender;
-                    break;
-                case Node::Output::Type::SSender:
-                    io.type = NodeIoInfo::Type::SSender;
-                    break;
-            }
-
-            if(info.ioInfo.count(ioKey) > 0) {
-                if(io.group == "") {
-                    throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
-                } else {
-                    throw std::invalid_argument(
-                        fmt::format("'{}.{}[\"{}\"]' redefined. Inputs and outputs must have unique names", info.name, io.group, io.name));
+                if(info.ioInfo.count(ioKey) > 0) {
+                    if(io.group == "") {
+                        throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
+                    } else {
+                        throw std::invalid_argument(
+                            fmt::format("'{}.{}[\"{}\"]' redefined. Inputs and outputs must have unique names", info.name, io.group, io.name));
+                    }
                 }
+                info.ioInfo[ioKey] = io;
             }
-            info.ioInfo[ioKey] = io;
-        }
 
-        // At the end, add the constructed node information to the schema
-        schema.nodes[info.id] = info;
+            // Add outputs
+            for(const auto& output : outputs) {
+                NodeIoInfo io;
+                io.blocking = false;
+                io.name = output.name;
+                io.group = output.group;
+                auto ioKey = std::make_tuple(io.group, io.name);
+
+                switch(output.type) {
+                    case Node::Output::Type::MSender:
+                        io.type = NodeIoInfo::Type::MSender;
+                        break;
+                    case Node::Output::Type::SSender:
+                        io.type = NodeIoInfo::Type::SSender;
+                        break;
+                }
+
+                if(info.ioInfo.count(ioKey) > 0) {
+                    if(io.group == "") {
+                        throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
+                    } else {
+                        throw std::invalid_argument(
+                            fmt::format("'{}.{}[\"{}\"]' redefined. Inputs and outputs must have unique names", info.name, io.group, io.name));
+                    }
+                }
+                info.ioInfo[ioKey] = io;
+            }
+
+            // At the end, add the constructed node information to the schema
+            schema.nodes[info.id] = info;
+        }
     }
 
     // Create 'connections' info
     // Loop through connections (output -> input) and add them to schema
+
+    std::unordered_map<NodeConnectionSchema, bool> hostDeviceXLinkBridge;
+
     for(const auto& kv : nodeConnectionMap) {
         const auto& connections = kv.second;
 
         for(const auto& conn : connections) {
+
             NodeConnectionSchema c;
             c.node1Id = conn.outputId;
             c.node1Output = conn.outputName;
@@ -211,8 +224,126 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
             c.node2Id = conn.inputId;
             c.node2Input = conn.inputName;
             c.node2InputGroup = conn.inputGroup;
-            schema.connections.push_back(c);
+
+            bool outputHost = nodeMap[conn.outputId]->hostNode;
+            bool inputHost = nodeMap[conn.inputId]->hostNode;
+
+            std::shared_ptr<Node> node;
+
+            if(outputHost && inputHost){
+                // skip - connection between host nodes doesn't have to be represented to the device
+                continue;
+            }
+
+            if(outputHost == true && inputHost != true){
+                // host->device - create implicit XLinkIn node and connect it
+
+                // Create a map entry, only one bridge is required for multiple connections
+                auto xlinkConnection = c;
+                xlinkConnection.node2Id = 0;
+                xlinkConnection.node2Input = "";
+                xlinkConnection.node2InputGroup = "";
+
+                if(hostDeviceXLinkBridge.count(xlinkConnection) <= 0){
+                    // create it
+                    auto nodeTmp = std::make_shared<node::XLinkIn>(parent.pimpl, 0);
+                    nodeTmp->setStreamName("")
+
+            } else if(outputHost == false && inputHost == true) {
+                // device -> host
+
+            } else {
+                // device->device connection
+
+                schema.connections.push_back(c);
+
+            }
+
+            // Check if its device->host / host->device connection and implicitly add XLink node
+
+
+
+
+            // Create 'node' info
+            NodeObjInfo info;
+            info.id = node->id;
+            info.name = node->getName();
+            node->getProperties().serialize(info.properties);
+
+            // Create Io information
+            auto inputs = node->getInputs();
+            auto outputs = node->getOutputs();
+
+            info.ioInfo.reserve(inputs.size() + outputs.size());
+
+            // Add inputs
+            for(const auto& input : inputs) {
+                NodeIoInfo io;
+                io.blocking = input.getBlocking();
+                io.queueSize = input.getQueueSize();
+                io.name = input.name;
+                io.group = input.group;
+                auto ioKey = std::make_tuple(io.group, io.name);
+
+                io.waitForMessage = input.waitForMessage.value_or(input.defaultWaitForMessage);
+                switch(input.type) {
+                    case Node::Input::Type::MReceiver:
+                        io.type = NodeIoInfo::Type::MReceiver;
+                        break;
+                    case Node::Input::Type::SReceiver:
+                        io.type = NodeIoInfo::Type::SReceiver;
+                        break;
+                }
+
+                if(info.ioInfo.count(ioKey) > 0) {
+                    if(io.group == "") {
+                        throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
+                    } else {
+                        throw std::invalid_argument(
+                            fmt::format("'{}.{}[\"{}\"]' redefined. Inputs and outputs must have unique names", info.name, io.group, io.name));
+                    }
+                }
+                info.ioInfo[ioKey] = io;
+            }
+
+            // Add outputs
+            for(const auto& output : outputs) {
+                NodeIoInfo io;
+                io.blocking = false;
+                io.name = output.name;
+                io.group = output.group;
+                auto ioKey = std::make_tuple(io.group, io.name);
+
+                switch(output.type) {
+                    case Node::Output::Type::MSender:
+                        io.type = NodeIoInfo::Type::MSender;
+                        break;
+                    case Node::Output::Type::SSender:
+                        io.type = NodeIoInfo::Type::SSender;
+                        break;
+                }
+
+                if(info.ioInfo.count(ioKey) > 0) {
+                    if(io.group == "") {
+                        throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
+                    } else {
+                        throw std::invalid_argument(
+                            fmt::format("'{}.{}[\"{}\"]' redefined. Inputs and outputs must have unique names", info.name, io.group, io.name));
+                    }
+                }
+                info.ioInfo[ioKey] = io;
+            }
+
+            // At the end, add the constructed node information to the schema
+            schema.nodes[info.id] = info;
+
+
+
+
         }
+
+
+
     }
 
     return schema;
