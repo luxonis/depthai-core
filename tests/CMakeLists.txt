@@ -168,8 +168,8 @@ hunter_private_data(
 )
 # OpenVINO 2021.4 blob
 hunter_private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.4_4shave.blob"
-    SHA1 "fd11bb63781fc3315cdf4bb74247a8b98817f6fd"
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.4.2_4shave.blob"
+    SHA1 "164b6b2ae48d38bc4f07cc8296b8bcb7644a1578"
     FILE "text-image-super-resolution-0001_2021.4_4shave.blob"
     LOCATION openvino_2021_4_blob
 )
