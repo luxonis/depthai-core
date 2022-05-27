@@ -31,17 +31,16 @@ class MyConsumer : public NodeCRTP<ThreadedNode, MyConsumer, XLinkOutProperties>
     Input input{*this, "in", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::Buffer, true}}};
 
     void run() override {
-        while(isRunning()){
+        while(isRunning()) {
             auto msg = input.queue.get<dai::Buffer>();
             std::cout << "got message (ptr: " << msg.get() << ", raw: " << msg->getRaw().get() << "), data (size: " << msg->getRaw()->data.size() << "): ";
 
-            for(int b : msg->getData()){
+            for(int b : msg->getData()) {
                 std::cout << b;
             }
             std::cout << "\n";
         }
     }
-
 };
 
 }  // namespace test

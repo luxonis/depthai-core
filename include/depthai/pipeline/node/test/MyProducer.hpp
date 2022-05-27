@@ -26,7 +26,6 @@ class MyProducer : public NodeCRTP<ThreadedNode, MyProducer, XLinkOutProperties>
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
 
     void run() override;
-
 };
 
 }  // namespace test

@@ -1,15 +1,13 @@
 #include "depthai/pipeline/ThreadedNode.hpp"
 
-
-namespace dai
-{
+namespace dai {
 
 void ThreadedNode::start() {
     // Start the thread
-    thread = std::thread([this](){
+    thread = std::thread([this]() {
         try {
             run();
-        } catch (...){
+        } catch(...) {
             // catch anything and stop the node
             running = false;
         }
@@ -37,4 +35,4 @@ bool ThreadedNode::isRunning() const {
     return running;
 }
 
-} // namespace dai
+}  // namespace dai

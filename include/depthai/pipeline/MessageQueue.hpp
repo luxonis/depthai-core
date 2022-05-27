@@ -380,7 +380,6 @@ class MessageQueue {
      */
     bool trySend(const std::shared_ptr<ADatatype>& msg);
     // bool trySend(const ADatatype& msg);
-
 };
 
 }  // namespace dai

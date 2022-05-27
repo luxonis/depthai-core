@@ -141,7 +141,6 @@ class Node {
          * @returns True if ALL connected inputs got the message, false otherwise
          */
         bool trySend(const std::shared_ptr<ADatatype>& msg);
-
     };
 
     /**
@@ -312,7 +311,6 @@ class Node {
 
     /// Retrieves nodes name
     virtual const char* getName() const = 0;
-
 
     // TBD - might be an default impl instead
     /// Start node execution

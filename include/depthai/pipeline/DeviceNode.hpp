@@ -4,10 +4,8 @@
 
 namespace dai {
 
-class DeviceNode : public ThreadedNode
-{
-
-public:
+class DeviceNode : public ThreadedNode {
+   public:
     using ThreadedNode::ThreadedNode;
     virtual ~DeviceNode() = default;
 
@@ -15,5 +13,4 @@ public:
     virtual void run() override;
 };
 
-
-} // namespace dai
+}  // namespace dai

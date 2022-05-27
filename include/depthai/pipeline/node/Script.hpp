@@ -1,8 +1,8 @@
 #pragma once
 
-#include "depthai/openvino/OpenVINO.hpp"
 #include <depthai/pipeline/DeviceNode.hpp>
 
+#include "depthai/openvino/OpenVINO.hpp"
 
 // standard
 #include <fstream>

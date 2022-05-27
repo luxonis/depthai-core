@@ -17,11 +17,9 @@
 
 namespace dai {
 
-MessageQueue::MessageQueue(const std::string& name, unsigned int maxSize, bool blocking)
-    : queue(maxSize, blocking), name(name) {}
+MessageQueue::MessageQueue(const std::string& name, unsigned int maxSize, bool blocking) : queue(maxSize, blocking), name(name) {}
 
-MessageQueue::MessageQueue(unsigned int maxSize, bool blocking)
-    : queue(maxSize, blocking) {}
+MessageQueue::MessageQueue(unsigned int maxSize, bool blocking) : queue(maxSize, blocking) {}
 
 bool MessageQueue::isClosed() const {
     return queue.isDestroyed();

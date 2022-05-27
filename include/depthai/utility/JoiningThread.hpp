@@ -2,12 +2,10 @@
 
 #include <thread>
 
-namespace dai
-{
+namespace dai {
 
-class JoiningThread : private std::thread
-{
-public:
+class JoiningThread : private std::thread {
+   public:
     using std::thread::thread;
     JoiningThread() = default;
     // Create an empty copy constructor
@@ -20,23 +18,26 @@ public:
         swap(thr);
         return *this;
     };
-    ~JoiningThread()
-    {
-        if (joinable()) {
+    ~JoiningThread() {
+        if(joinable()) {
             join();
         }
     }
     JoiningThread(std::thread t) : std::thread(std::move(t)) {}
 
-    using std::thread::join;
     using std::thread::detach;
-    using std::thread::joinable;
     using std::thread::get_id;
     using std::thread::hardware_concurrency;
+    using std::thread::join;
+    using std::thread::joinable;
 
-    void swap(JoiningThread& x) {std::thread::swap(x);}
+    void swap(JoiningThread& x) {
+        std::thread::swap(x);
+    }
 };
 
-inline void swap(JoiningThread& x, JoiningThread& y) {x.swap(y);}
+inline void swap(JoiningThread& x, JoiningThread& y) {
+    x.swap(y);
+}
 
-} // namespace dai
+}  // namespace dai

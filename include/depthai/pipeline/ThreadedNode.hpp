@@ -1,18 +1,17 @@
 #pragma once
 
 #include "depthai/pipeline/Node.hpp"
-#include "depthai/utility/JoiningThread.hpp"
 #include "depthai/utility/AtomicBool.hpp"
+#include "depthai/utility/JoiningThread.hpp"
 
 namespace dai {
 
-class ThreadedNode : public Node
-{
-
-private:
+class ThreadedNode : public Node {
+   private:
     JoiningThread thread;
     AtomicBool running;
-public:
+
+   public:
     using Node::Node;
     virtual ~ThreadedNode() = default;
 
@@ -28,5 +27,4 @@ public:
     bool isRunning() const;
 };
 
-
-} // namespace dai
+}  // namespace dai

@@ -2,7 +2,6 @@
 
 #include <depthai/pipeline/DeviceNode.hpp>
 
-
 // shared
 #include <depthai-shared/properties/IMUProperties.hpp>
 

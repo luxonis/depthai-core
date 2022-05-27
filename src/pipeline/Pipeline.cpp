@@ -1,8 +1,8 @@
 #include "depthai/pipeline/Pipeline.hpp"
 
 #include "depthai/device/CalibrationHandler.hpp"
-#include "depthai/utility/Initialization.hpp"
 #include "depthai/pipeline/node/XLinkIn.hpp"
+#include "depthai/utility/Initialization.hpp"
 
 // shared
 #include "depthai-shared/pipeline/NodeConnectionSchema.hpp"
@@ -13,7 +13,6 @@
 
 // libraries
 #include "spdlog/fmt/fmt.h"
-
 
 // Specialization of std::hash for NodeConnectionSchema
 namespace std {
@@ -33,8 +32,7 @@ struct hash<::dai::NodeConnectionSchema> {
     }
 };
 
-}
-
+}  // namespace std
 
 namespace dai {
 
@@ -152,11 +150,10 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
         const auto& node = kv.second;
 
         // Check if its a host node or device node
-        if(node->hostNode){
+        if(node->hostNode) {
             // host node, no need to serialize to a schema
             // TBD any additional changes
         } else {
-
             // Create 'node' info
             NodeObjInfo info;
             info.id = node->id;
@@ -241,7 +238,6 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
         const auto& connections = kv.second;
 
         for(const auto& conn : connections) {
-
             NodeConnectionSchema c;
             c.node1Id = conn.outputId;
             c.node1Output = conn.outputName;
@@ -255,12 +251,12 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
 
             std::shared_ptr<Node> node;
 
-            if(outputHost && inputHost){
+            if(outputHost && inputHost) {
                 // skip - connection between host nodes doesn't have to be represented to the device
                 continue;
             }
 
-            if(outputHost == true && inputHost != true){
+            if(outputHost == true && inputHost != true) {
                 // host->device - create implicit XLinkIn node and connect it
 
                 // Create a map entry, only one bridge is required for multiple connections
@@ -269,11 +265,10 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
                 xlinkConnection.node2Input = "";
                 xlinkConnection.node2InputGroup = "";
 
-
                 // FIXME(themarpe) - move to Pipeline level
                 static int uniqueXLinkNum = 0;
 
-                if(hostDeviceXLinkBridge.count(xlinkConnection) <= 0){
+                if(hostDeviceXLinkBridge.count(xlinkConnection) <= 0) {
                     // create it
                     auto nodeTmp = std::make_shared<node::XLinkIn>(parent.pimpl, 0);
                     nodeTmp->setStreamName(std::string("__xlink_") + std::to_string(uniqueXLinkNum++));
@@ -286,13 +281,9 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
                 // device->device connection
 
                 schema.connections.push_back(c);
-
             }
 
             // Check if its device->host / host->device connection and implicitly add XLink node
-
-
-
 
             // Create 'node' info
             NodeObjInfo info;
@@ -366,14 +357,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
 
             // At the end, add the constructed node information to the schema
             schema.nodes[info.id] = info;
-
-
-
-
         }
-
-
-
     }
 
     return schema;
@@ -631,6 +615,5 @@ void PipelineImpl::stop() {
 PipelineImpl::~PipelineImpl() {
     wait();
 }
-
 
 }  // namespace dai

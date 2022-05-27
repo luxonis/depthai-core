@@ -16,20 +16,18 @@ MyProducer::MyProducer(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId,
     setOutputRefs(&out);
 }
 
-
 void MyProducer::run() {
     std::cout << "Hello, I just woke up and I'm ready to do some work!\n";
     while(isRunning()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1500));
 
         auto buf = std::make_shared<Buffer>();
-        buf->setData({1,2,3});
+        buf->setData({1, 2, 3});
 
         std::cout << "sending message (ptr: " << buf.get() << ", raw: " << buf->getRaw().get() << ")\n";
         out.send(buf);
     }
 }
-
 
 }  // namespace test
 }  // namespace node

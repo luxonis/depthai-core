@@ -1,9 +1,7 @@
 #pragma once
 
-#include <depthai/pipeline/datatype/CameraControl.hpp>
-
 #include <depthai/pipeline/DeviceNode.hpp>
-
+#include <depthai/pipeline/datatype/CameraControl.hpp>
 
 // shared
 #include <depthai-shared/properties/ColorCameraProperties.hpp>

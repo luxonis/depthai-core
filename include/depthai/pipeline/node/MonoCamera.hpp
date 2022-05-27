@@ -1,10 +1,9 @@
 #pragma once
 
+#include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/datatype/CameraControl.hpp>
 
 #include "depthai/common/CameraBoardSocket.hpp"
-#include <depthai/pipeline/DeviceNode.hpp>
-
 
 // shared
 #include <depthai-shared/properties/MonoCameraProperties.hpp>

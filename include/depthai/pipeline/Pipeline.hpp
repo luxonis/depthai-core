@@ -289,7 +289,6 @@ class Pipeline {
     void stop() {
         impl()->stop();
     }
-
 };
 
 }  // namespace dai

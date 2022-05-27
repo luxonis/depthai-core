@@ -2,7 +2,6 @@
 
 #include <depthai/pipeline/DeviceNode.hpp>
 
-
 // shared
 #include "depthai-shared/properties/StereoDepthProperties.hpp"
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
