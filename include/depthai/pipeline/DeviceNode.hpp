@@ -9,16 +9,10 @@ class DeviceNode : public ThreadedNode
 
 public:
     using ThreadedNode::ThreadedNode;
-
-    // override the following methods
-    virtual void start() override;
-    virtual void wait() override;
-    virtual void stop() override;
+    virtual ~DeviceNode() = default;
 
     // virtual 'run' method
     virtual void run() override;
-};
-
 };
 
 

@@ -13,7 +13,13 @@ public:
     // Create an empty copy constructor
     JoiningThread(const JoiningThread&) : JoiningThread() {}
     JoiningThread(JoiningThread&&) = default;
-    JoiningThread& operator=(JoiningThread&&) = default;
+    JoiningThread& operator=(JoiningThread&& thr) {
+        if(joinable()) {
+            join();
+        }
+        swap(thr);
+        return *this;
+    };
     ~JoiningThread()
     {
         if (joinable()) {

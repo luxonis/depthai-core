@@ -1,4 +1,5 @@
-#include "depthai/pipeline/Node.hpp"
+#include <depthai/pipeline/DeviceNode.hpp>
+
 
 #include "depthai/pipeline/Pipeline.hpp"
 #include "spdlog/fmt/fmt.h"

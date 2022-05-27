@@ -189,6 +189,8 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/AssetManager.cpp
     src/pipeline/MessageQueue.cpp
     src/pipeline/Node.cpp
+    src/pipeline/ThreadedNode.cpp
+    src/pipeline/DeviceNode.cpp
     src/pipeline/node/XLinkIn.cpp
     src/pipeline/node/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
@@ -209,6 +211,8 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/SPIIn.cpp
     src/pipeline/node/FeatureTracker.cpp
     src/pipeline/node/DetectionParser.cpp
+    src/pipeline/node/test/MyProducer.cpp
+    src/pipeline/node/test/MyConsumer.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImageManipConfig.cpp

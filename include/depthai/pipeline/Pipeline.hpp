@@ -27,6 +27,7 @@ class PipelineImpl {
    public:
     PipelineImpl(Pipeline& pipeline) : parent(pipeline) {}
     PipelineImpl(const PipelineImpl&) = default;
+    ~PipelineImpl();
 
    private:
     // static functions
@@ -88,6 +89,11 @@ class PipelineImpl {
         // Return shared pointer to this node
         return node;
     }
+
+    // Run only host side, if any device nodes are present, error out
+    void start();
+    void wait();
+    void stop();
 };
 
 /**
@@ -273,6 +279,17 @@ class Pipeline {
     Device::Config getDeviceConfig() const {
         return impl()->getDeviceConfig();
     }
+
+    void start() {
+        impl()->start();
+    }
+    void wait() {
+        impl()->wait();
+    }
+    void stop() {
+        impl()->stop();
+    }
+
 };
 
 }  // namespace dai

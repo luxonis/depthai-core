@@ -313,14 +313,16 @@ class Node {
     /// Retrieves nodes name
     virtual const char* getName() const = 0;
 
+
+    // TBD - might be an default impl instead
     /// Start node execution
-    virtual void start();
+    virtual void start() = 0;
 
     /// Wait for node to finish execution
-    virtual void wait();
+    virtual void wait() = 0;
 
     /// Stop node execution
-    virtual void stop();
+    virtual void stop() = 0;
 
     /// Retrieves all nodes outputs
     std::vector<Output> getOutputs();
@@ -368,6 +370,7 @@ template <typename Base, typename Derived, typename Props>
 class NodeCRTP : public Base {
    public:
     using Properties = Props;
+    virtual ~NodeCRTP() = default;
     /// Underlying properties
     Properties& properties;
     const char* getName() const override {

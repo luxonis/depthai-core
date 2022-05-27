@@ -21,14 +21,6 @@ namespace dai {
 
 template <typename T>
 class LockingQueue {
-    unsigned maxSize = std::numeric_limits<unsigned>::max();
-    bool blocking = true;
-    std::queue<T> queue;
-    mutable std::mutex guard;
-    bool destructed{false};
-    std::condition_variable signalPop;
-    std::condition_variable signalPush;
-
    public:
     LockingQueue() = default;
     explicit LockingQueue(unsigned maxSize, bool blocking = true) {
@@ -49,7 +41,6 @@ class LockingQueue {
         queue = std::move(q.queue);
         destructed = std::move(q.destructed);
     }
-    ~LockingQueue() = default;
 
     void setMaxSize(unsigned sz) {
         // Lock first
@@ -76,21 +67,17 @@ class LockingQueue {
     }
 
     void destruct() {
-        std::unique_lock<std::mutex> lock;
-        if(!destructed) {
-            destructed = true;
-            lock.unlock();
+        if(!destructed.exchange(true)) {
             signalPop.notify_all();
             signalPush.notify_all();
-            return;
         }
     }
 
     bool isDestroyed() const {
-        std::unique_lock<std::mutex> lock;
         return destructed;
     }
 
+    ~LockingQueue() = default;
 
     template <typename Rep, typename Period>
     bool waitAndConsumeAll(std::function<void(T&)> callback, std::chrono::duration<Rep, Period> timeout) {
@@ -264,6 +251,14 @@ class LockingQueue {
         signalPop.wait(lock, [this]() { return queue.empty() || destructed; });
     }
 
+   private:
+    unsigned maxSize = std::numeric_limits<unsigned>::max();
+    bool blocking = true;
+    std::queue<T> queue;
+    mutable std::mutex guard;
+    std::atomic<bool> destructed{false};
+    std::condition_variable signalPop;
+    std::condition_variable signalPush;
 };
 
 }  // namespace dai

@@ -606,4 +606,31 @@ CalibrationHandler PipelineImpl::getCalibrationData() const {
         return CalibrationHandler();
     }
 }
+
+void PipelineImpl::start() {
+    // Starts pipeline, go through all nodes and start them
+    for(const auto& kv : nodeMap) {
+        kv.second->start();
+    }
+}
+
+void PipelineImpl::wait() {
+    // Waits for all nodes to finish the execution
+    for(const auto& kv : nodeMap) {
+        kv.second->wait();
+    }
+}
+
+void PipelineImpl::stop() {
+    // Stops the pipeline execution
+    for(const auto& kv : nodeMap) {
+        kv.second->stop();
+    }
+}
+
+PipelineImpl::~PipelineImpl() {
+    wait();
+}
+
+
 }  // namespace dai
