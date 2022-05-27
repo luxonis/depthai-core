@@ -1,6 +1,7 @@
 #pragma once
 
-#include "depthai/pipeline/Node.hpp"
+#include <depthai/pipeline/DeviceNode.hpp>
+
 
 // shared
 #include "depthai-shared/properties/StereoDepthProperties.hpp"
@@ -12,7 +13,7 @@ namespace node {
 /**
  * @brief StereoDepth node. Compute stereo disparity and depth from left-right image pair.
  */
-class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
+class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties> {
    public:
     constexpr static const char* NAME = "StereoDepth";
 

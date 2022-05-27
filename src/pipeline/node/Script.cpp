@@ -8,7 +8,7 @@ namespace node {
 
 Script::Script(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Script(par, nodeId, std::make_unique<Script::Properties>()) {}
 Script::Script(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, Script, ScriptProperties>(par, nodeId, std::move(props)),
+    : NodeCRTP<DeviceNode, Script, ScriptProperties>(par, nodeId, std::move(props)),
       inputs("io", Input(*this, "", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}})),
       outputs("io", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}})) {
     properties.scriptUri = "";

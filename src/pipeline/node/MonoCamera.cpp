@@ -7,7 +7,7 @@ namespace node {
 
 MonoCamera::MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : MonoCamera(par, nodeId, std::make_unique<MonoCamera::Properties>()) {}
 MonoCamera::MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, MonoCamera, MonoCameraProperties>(par, nodeId, std::move(props)),
+    : NodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>(par, nodeId, std::move(props)),
       rawControl(std::make_shared<RawCameraControl>()),
       initialControl(rawControl) {
     properties.boardSocket = CameraBoardSocket::AUTO;

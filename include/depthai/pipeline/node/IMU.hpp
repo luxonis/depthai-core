@@ -1,6 +1,7 @@
 #pragma once
 
-#include "depthai/pipeline/Node.hpp"
+#include <depthai/pipeline/DeviceNode.hpp>
+
 
 // shared
 #include <depthai-shared/properties/IMUProperties.hpp>
@@ -11,7 +12,7 @@ namespace node {
 /**
  * @brief IMU node for BNO08X.
  */
-class IMU : public NodeCRTP<Node, IMU, IMUProperties> {
+class IMU : public NodeCRTP<DeviceNode, IMU, IMUProperties> {
    public:
     constexpr static const char* NAME = "IMU";
 

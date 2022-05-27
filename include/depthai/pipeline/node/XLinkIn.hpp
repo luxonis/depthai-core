@@ -1,6 +1,6 @@
 #pragma once
 
-#include <depthai/pipeline/Node.hpp>
+#include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
 #include <depthai-shared/properties/XLinkInProperties.hpp>
@@ -11,13 +11,14 @@ namespace node {
 /**
  * @brief XLinkIn node. Receives messages over XLink.
  */
-class XLinkIn : public NodeCRTP<Node, XLinkIn, XLinkInProperties> {
+class XLinkIn : public NodeCRTP<DeviceNode, XLinkIn, XLinkInProperties> {
    public:
     constexpr static const char* NAME = "XLinkIn";
 
    public:
     XLinkIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     XLinkIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    virtual ~XLinkIn() = default;
 
     /**
      * Outputs message of same type as send from host.

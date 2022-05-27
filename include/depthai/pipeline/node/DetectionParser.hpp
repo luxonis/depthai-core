@@ -1,6 +1,6 @@
 #pragma once
 
-#include <depthai/pipeline/Node.hpp>
+#include <depthai/pipeline/DeviceNode.hpp>
 
 // standard
 #include <fstream>
@@ -14,7 +14,7 @@ namespace node {
 /**
  * @brief DetectionParser node. Performs edge detection using 3x3 Sobel filter
  */
-class DetectionParser : public NodeCRTP<Node, DetectionParser, DetectionParserProperties> {
+class DetectionParser : public NodeCRTP<DeviceNode, DetectionParser, DetectionParserProperties> {
    public:
     constexpr static const char* NAME = "DetectionParser";
 

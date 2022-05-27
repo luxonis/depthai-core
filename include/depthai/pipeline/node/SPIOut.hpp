@@ -1,6 +1,6 @@
 #pragma once
 
-#include <depthai/pipeline/Node.hpp>
+#include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
 #include <depthai-shared/properties/SPIOutProperties.hpp>
@@ -11,12 +11,12 @@ namespace node {
 /**
  * @brief SPIOut node. Sends messages over SPI.
  */
-class SPIOut : public NodeCRTP<Node, SPIOut, SPIOutProperties> {
+class SPIOut : public NodeCRTP<DeviceNode, SPIOut, SPIOutProperties> {
    public:
     constexpr static const char* NAME = "SPIOut";
 
     SPIOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-        : NodeCRTP<Node, SPIOut, SPIOutProperties>(par, nodeId, std::move(props)) {
+        : NodeCRTP<DeviceNode, SPIOut, SPIOutProperties>(par, nodeId, std::move(props)) {
         properties.busId = 0;
 
         setInputRefs({&input});

@@ -1,7 +1,8 @@
 #pragma once
 
 #include "depthai/openvino/OpenVINO.hpp"
-#include "depthai/pipeline/Node.hpp"
+#include <depthai/pipeline/DeviceNode.hpp>
+
 
 // standard
 #include <fstream>
@@ -15,7 +16,7 @@ namespace node {
 /**
  * @brief NeuralNetwork node. Runs a neural inference on input data.
  */
-class NeuralNetwork : public NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperties> {
+class NeuralNetwork : public NodeCRTP<DeviceNode, NeuralNetwork, NeuralNetworkProperties> {
    public:
     constexpr static const char* NAME = "NeuralNetwork";
 

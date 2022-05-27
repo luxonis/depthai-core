@@ -1,6 +1,6 @@
 #pragma once
 
-#include <depthai/pipeline/Node.hpp>
+#include <depthai/pipeline/DeviceNode.hpp>
 
 // standard
 #include <fstream>
@@ -16,7 +16,7 @@ namespace node {
 /**
  * @brief SpatialLocationCalculator node. Calculates spatial location data on a set of ROIs on depth map.
  */
-class SpatialLocationCalculator : public NodeCRTP<Node, SpatialLocationCalculator, SpatialLocationCalculatorProperties> {
+class SpatialLocationCalculator : public NodeCRTP<DeviceNode, SpatialLocationCalculator, SpatialLocationCalculatorProperties> {
    public:
     constexpr static const char* NAME = "SpatialLocationCalculator";
 

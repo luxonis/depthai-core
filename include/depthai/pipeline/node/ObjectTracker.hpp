@@ -1,6 +1,6 @@
 #pragma once
 
-#include <depthai/pipeline/Node.hpp>
+#include <depthai/pipeline/DeviceNode.hpp>
 
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 
@@ -16,7 +16,7 @@ namespace node {
 /**
  * @brief ObjectTracker node. Performs object tracking using Kalman filter and hungarian algorithm.
  */
-class ObjectTracker : public NodeCRTP<Node, ObjectTracker, ObjectTrackerProperties> {
+class ObjectTracker : public NodeCRTP<DeviceNode, ObjectTracker, ObjectTrackerProperties> {
    public:
     constexpr static const char* NAME = "ObjectTracker";
 

@@ -9,7 +9,7 @@ namespace node {
 NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     : NeuralNetwork(par, nodeId, std::make_unique<NeuralNetwork::Properties>()) {}
 NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperties>(par, nodeId, std::move(props)),
+    : NodeCRTP<DeviceNode, NeuralNetwork, NeuralNetworkProperties>(par, nodeId, std::move(props)),
       inputs("inputs", Input(*this, "", Input::Type::SReceiver, false, 1, true, {{DatatypeEnum::Buffer, true}})),
       passthroughs("passthroughs", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}})) {
     setInputRefs({&input});

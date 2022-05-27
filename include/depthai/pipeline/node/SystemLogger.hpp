@@ -1,6 +1,6 @@
 #pragma once
 
-#include <depthai/pipeline/Node.hpp>
+#include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
 #include <depthai-shared/properties/SystemLoggerProperties.hpp>
@@ -11,7 +11,7 @@ namespace node {
 /**
  * @brief SystemLogger node. Send system information periodically.
  */
-class SystemLogger : public NodeCRTP<Node, SystemLogger, SystemLoggerProperties> {
+class SystemLogger : public NodeCRTP<DeviceNode, SystemLogger, SystemLoggerProperties> {
    public:
     constexpr static const char* NAME = "SystemLogger";
 

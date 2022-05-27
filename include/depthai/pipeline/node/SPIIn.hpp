@@ -1,6 +1,6 @@
 #pragma once
 
-#include <depthai/pipeline/Node.hpp>
+#include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
 #include <depthai-shared/properties/SPIInProperties.hpp>
@@ -11,7 +11,7 @@ namespace node {
 /**
  * @brief SPIIn node. Receives messages over SPI.
  */
-class SPIIn : public NodeCRTP<Node, SPIIn, SPIInProperties> {
+class SPIIn : public NodeCRTP<DeviceNode, SPIIn, SPIInProperties> {
    public:
     constexpr static const char* NAME = "SPIIn";
 

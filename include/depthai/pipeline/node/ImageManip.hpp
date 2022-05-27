@@ -1,6 +1,6 @@
 #pragma once
 
-#include <depthai/pipeline/Node.hpp>
+#include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/datatype/ImageManipConfig.hpp>
 
 // shared
@@ -12,7 +12,7 @@ namespace node {
 /**
  * @brief ImageManip node. Capability to crop, resize, warp, ... incoming image frames
  */
-class ImageManip : public NodeCRTP<Node, ImageManip, ImageManipProperties> {
+class ImageManip : public NodeCRTP<DeviceNode, ImageManip, ImageManipProperties> {
    public:
     constexpr static const char* NAME = "ImageManip";
 

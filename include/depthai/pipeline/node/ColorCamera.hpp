@@ -2,7 +2,8 @@
 
 #include <depthai/pipeline/datatype/CameraControl.hpp>
 
-#include "depthai/pipeline/Node.hpp"
+#include <depthai/pipeline/DeviceNode.hpp>
+
 
 // shared
 #include <depthai-shared/properties/ColorCameraProperties.hpp>
@@ -13,7 +14,7 @@ namespace node {
 /**
  * @brief ColorCamera node. For use with color sensors.
  */
-class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
+class ColorCamera : public NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties> {
    public:
     constexpr static const char* NAME = "ColorCamera";
 

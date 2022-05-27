@@ -1,6 +1,6 @@
 #pragma once
 
-#include <depthai/pipeline/Node.hpp>
+#include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
 #include <depthai-shared/properties/VideoEncoderProperties.hpp>
@@ -11,7 +11,7 @@ namespace node {
 /**
  * @brief VideoEncoder node. Encodes frames into MJPEG, H264 or H265.
  */
-class VideoEncoder : public NodeCRTP<Node, VideoEncoder, VideoEncoderProperties> {
+class VideoEncoder : public NodeCRTP<DeviceNode, VideoEncoder, VideoEncoderProperties> {
    public:
     constexpr static const char* NAME = "VideoEncoder";
 

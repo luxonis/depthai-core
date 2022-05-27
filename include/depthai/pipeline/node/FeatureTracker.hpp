@@ -1,6 +1,6 @@
 #pragma once
 
-#include <depthai/pipeline/Node.hpp>
+#include <depthai/pipeline/DeviceNode.hpp>
 
 // standard
 #include <fstream>
@@ -17,7 +17,7 @@ namespace node {
  * @brief FeatureTracker node.
  * Performs feature tracking and reidentification using motion estimation between 2 consecutive frames.
  */
-class FeatureTracker : public NodeCRTP<Node, FeatureTracker, FeatureTrackerProperties> {
+class FeatureTracker : public NodeCRTP<DeviceNode, FeatureTracker, FeatureTrackerProperties> {
    public:
     constexpr static const char* NAME = "FeatureTracker";
 

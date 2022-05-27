@@ -8,7 +8,7 @@ namespace node {
 DetectionParser::DetectionParser(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     : DetectionParser(par, nodeId, std::make_unique<DetectionParser::Properties>()) {}
 DetectionParser::DetectionParser(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, DetectionParser, DetectionParserProperties>(par, nodeId, std::move(props)), rawConfig(std::make_shared<RawEdgeDetectorConfig>()) {
+    : NodeCRTP<DeviceNode, DetectionParser, DetectionParserProperties>(par, nodeId, std::move(props)), rawConfig(std::make_shared<RawEdgeDetectorConfig>()) {
     setInputRefs({&input});
     setOutputRefs({&out});
 }

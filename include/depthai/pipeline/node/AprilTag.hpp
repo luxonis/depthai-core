@@ -1,6 +1,6 @@
 #pragma once
 
-#include <depthai/pipeline/Node.hpp>
+#include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
 #include <depthai-shared/properties/AprilTagProperties.hpp>
@@ -13,7 +13,7 @@ namespace node {
 /**
  * @brief AprilTag node.
  */
-class AprilTag : public NodeCRTP<Node, AprilTag, AprilTagProperties> {
+class AprilTag : public NodeCRTP<DeviceNode, AprilTag, AprilTagProperties> {
    public:
     constexpr static const char* NAME = "AprilTag";
 

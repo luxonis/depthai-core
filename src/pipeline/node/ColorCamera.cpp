@@ -9,7 +9,7 @@ namespace node {
 
 ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : ColorCamera(par, nodeId, std::make_unique<ColorCamera::Properties>()) {}
 ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, ColorCamera, ColorCameraProperties>(par, nodeId, std::move(props)),
+    : NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(par, nodeId, std::move(props)),
       rawControl(std::make_shared<RawCameraControl>()),
       initialControl(rawControl) {
     properties.boardSocket = CameraBoardSocket::AUTO;

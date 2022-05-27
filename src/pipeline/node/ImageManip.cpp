@@ -4,7 +4,7 @@ namespace node {
 
 ImageManip::ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : ImageManip(par, nodeId, std::make_unique<ImageManip::Properties>()) {}
 ImageManip::ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, ImageManip, ImageManipProperties>(par, nodeId, std::move(props)),
+    : NodeCRTP<DeviceNode, ImageManip, ImageManipProperties>(par, nodeId, std::move(props)),
       rawConfig(std::make_shared<RawImageManipConfig>()),
       initialConfig(rawConfig) {
     setInputRefs({&inputConfig, &inputImage});

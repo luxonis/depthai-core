@@ -3,7 +3,8 @@
 #include <depthai/pipeline/datatype/CameraControl.hpp>
 
 #include "depthai/common/CameraBoardSocket.hpp"
-#include "depthai/pipeline/Node.hpp"
+#include <depthai/pipeline/DeviceNode.hpp>
+
 
 // shared
 #include <depthai-shared/properties/MonoCameraProperties.hpp>
@@ -14,7 +15,7 @@ namespace node {
 /**
  * @brief MonoCamera node. For use with grayscale sensors.
  */
-class MonoCamera : public NodeCRTP<Node, MonoCamera, MonoCameraProperties> {
+class MonoCamera : public NodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties> {
    public:
     constexpr static const char* NAME = "MonoCamera";
 

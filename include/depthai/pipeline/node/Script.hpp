@@ -1,7 +1,8 @@
 #pragma once
 
 #include "depthai/openvino/OpenVINO.hpp"
-#include "depthai/pipeline/Node.hpp"
+#include <depthai/pipeline/DeviceNode.hpp>
+
 
 // standard
 #include <fstream>
@@ -12,7 +13,7 @@
 namespace dai {
 namespace node {
 
-class Script : public NodeCRTP<Node, Script, ScriptProperties> {
+class Script : public NodeCRTP<DeviceNode, Script, ScriptProperties> {
    public:
     constexpr static const char* NAME = "Script";
 

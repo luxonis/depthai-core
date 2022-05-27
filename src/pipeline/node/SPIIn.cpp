@@ -5,7 +5,7 @@ namespace node {
 
 SPIIn::SPIIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : SPIIn(par, nodeId, std::make_unique<SPIIn::Properties>()) {}
 SPIIn::SPIIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, SPIIn, SPIInProperties>(par, nodeId, std::move(props)) {
+    : NodeCRTP<DeviceNode, SPIIn, SPIInProperties>(par, nodeId, std::move(props)) {
     properties.busId = 0;
     setOutputRefs({&out});
 }

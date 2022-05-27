@@ -8,7 +8,7 @@ namespace node {
 FeatureTracker::FeatureTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     : FeatureTracker(par, nodeId, std::make_unique<FeatureTracker::Properties>()) {}
 FeatureTracker::FeatureTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, FeatureTracker, FeatureTrackerProperties>(par, nodeId, std::move(props)),
+    : NodeCRTP<DeviceNode, FeatureTracker, FeatureTrackerProperties>(par, nodeId, std::move(props)),
       rawConfig(std::make_shared<RawFeatureTrackerConfig>()),
       initialConfig(rawConfig) {
     setInputRefs({&inputConfig, &inputImage});
