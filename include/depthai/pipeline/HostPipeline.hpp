@@ -20,14 +20,15 @@
 
 namespace dai {
 
-class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
+class HostPipelineImpl : public PipelineImpl {
+    friend class HostPipeline;
     friend class Pipeline;
     friend class Node;
 
    public:
-    PipelineImpl(Pipeline& pipeline) : parent(pipeline) {}
-    PipelineImpl(const PipelineImpl&) = default;
-    ~PipelineImpl();
+    HostPipelineImpl(HostPipeline& pipeline) : parent(pipeline) {}
+    HostPipelineImpl(const HostPipelineImpl&) = default;
+    ~HostPipelineImpl();
 
    private:
     // static functions
@@ -79,10 +80,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     NodeConnectionMap nodeConnectionMap;
     // parent
     Pipeline& parent;
-
-    // TMP TMP - to be moved
     // DeviceBase for hybrid pipelines
-    std::shared_ptr<Device> device;
+    std::shared_ptr<DeviceBase> device;
 
     // Template create function
     template <class N>
@@ -107,7 +106,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 /**
  * @brief Represents the pipeline, set of nodes and connections between them
  */
-class Pipeline {
+class HostPipeline :  {
     friend class PipelineImpl;
     std::shared_ptr<PipelineImpl> pimpl;
     PipelineImpl* impl() {
@@ -121,11 +120,11 @@ class Pipeline {
     /**
      * Constructs a new pipeline
      */
-    Pipeline();
-    explicit Pipeline(std::shared_ptr<PipelineImpl> pimpl);
+    HostPipeline();
+    explicit HostPipeline(const std::shared_ptr<HostPipelineImpl>& pimpl);
 
     /// Clone the pipeline (Creates a copy)
-    Pipeline clone() const;
+    HostPipeline clone() const;
 
     /**
      * @returns Global properties of current pipeline
@@ -297,11 +296,6 @@ class Pipeline {
     void stop() {
         impl()->stop();
     }
-
-    std::shared_ptr<Device> getDevice() {
-        return impl()->device;
-    }
-
 };
 
 }  // namespace dai

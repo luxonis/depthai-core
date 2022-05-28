@@ -268,52 +268,55 @@ std::string Device::getQueueEvent(std::chrono::microseconds timeout) {
 }
 
 bool Device::startPipelineImpl(const Pipeline& pipeline) {
-    // Open queues upfront, let queues know about data sizes (input queues)
-    // Go through Pipeline and check for 'XLinkIn' and 'XLinkOut' nodes
-    // and create corresponding default queues for them
-    for(const auto& kv : pipeline.getNodeMap()) {
-        const auto& node = kv.second;
-        const auto& xlinkIn = std::dynamic_pointer_cast<const node::XLinkIn>(node);
-        if(xlinkIn == nullptr) {
-            continue;
-        }
 
-        // Create DataInputQueue's
-        inputQueueMap[xlinkIn->getStreamName()] = std::make_shared<DataInputQueue>(connection, xlinkIn->getStreamName());
-        // set max data size, for more verbosity
-        inputQueueMap[xlinkIn->getStreamName()]->setMaxDataSize(xlinkIn->getMaxDataSize());
-    }
-    for(const auto& kv : pipeline.getNodeMap()) {
-        const auto& node = kv.second;
-        const auto& xlinkOut = std::dynamic_pointer_cast<const node::XLinkOut>(node);
-        if(xlinkOut == nullptr) {
-            continue;
-        }
+    auto schema = pipeline.getPipelineSchema();
+    for(auto& kv : schema.nodes){
 
-        auto streamName = xlinkOut->getStreamName();
-        // Create DataOutputQueue's
-        outputQueueMap[streamName] = std::make_shared<DataOutputQueue>(connection, streamName);
+        spdlog::trace("Inspecting node: {} for {} or {}", kv.second.name, std::string(node::XLinkIn::NAME), std::string(node::XLinkOut::NAME));
+        if(kv.second.name == node::XLinkIn::NAME) {
 
-        // Add callback for events
-        callbackIdMap[streamName] = outputQueueMap[streamName]->addCallback([this](std::string queueName, std::shared_ptr<ADatatype>) {
-            {
-                // Lock first
-                std::unique_lock<std::mutex> lock(eventMtx);
+            // deserialize properties to check the stream name
+            node::XLinkIn::Properties props;
+            utility::deserialize(kv.second.properties, props);
+            auto streamName = props.streamName;
 
-                // Check if size is equal or greater than EVENT_QUEUE_MAXIMUM_SIZE
-                if(eventQueue.size() >= EVENT_QUEUE_MAXIMUM_SIZE) {
-                    auto numToRemove = eventQueue.size() - EVENT_QUEUE_MAXIMUM_SIZE + 1;
-                    eventQueue.erase(eventQueue.begin(), eventQueue.begin() + numToRemove);
+            // Create DataInputQueue's
+            inputQueueMap[streamName] = std::make_shared<DataInputQueue>(connection, streamName);
+            // set max data size, for more verbosity
+            inputQueueMap[streamName]->setMaxDataSize(props.maxDataSize);
+
+        } else if(kv.second.name == node::XLinkOut::NAME) {
+            // deserialize properties to check the stream name
+            node::XLinkOut::Properties props;
+            utility::deserialize(kv.second.properties, props);
+            auto streamName = props.streamName;
+
+            // Create DataOutputQueue's
+            outputQueueMap[streamName] = std::make_shared<DataOutputQueue>(connection, streamName);
+            spdlog::trace("Opened DataOutputQueue for {}", streamName);
+            // Add callback for events
+            callbackIdMap[streamName] = outputQueueMap[streamName]->addCallback([this](std::string queueName, std::shared_ptr<ADatatype>) {
+                {
+                    // Lock first
+                    std::unique_lock<std::mutex> lock(eventMtx);
+
+                    // Check if size is equal or greater than EVENT_QUEUE_MAXIMUM_SIZE
+                    if(eventQueue.size() >= EVENT_QUEUE_MAXIMUM_SIZE) {
+                        auto numToRemove = eventQueue.size() - EVENT_QUEUE_MAXIMUM_SIZE + 1;
+                        eventQueue.erase(eventQueue.begin(), eventQueue.begin() + numToRemove);
+                    }
+
+                    // Add to the end of event queue
+                    eventQueue.push_back(std::move(queueName));
                 }
 
-                // Add to the end of event queue
-                eventQueue.push_back(std::move(queueName));
-            }
+                // notify the rest
+                eventCv.notify_all();
+            });
+        }
 
-            // notify the rest
-            eventCv.notify_all();
-        });
     }
+
     return DeviceBase::startPipelineImpl(pipeline);
 }
 

@@ -8,6 +8,7 @@ MyConsumer::MyConsumer(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
 MyConsumer::MyConsumer(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
     : NodeCRTP<ThreadedNode, MyConsumer, XLinkOutProperties>(par, nodeId, std::move(props)) {
     setInputRefs(&input);
+    hostNode = true;
 }
 
 }  // namespace test

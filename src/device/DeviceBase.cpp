@@ -1028,10 +1028,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
 
     // if debug
     if(spdlog::get_level() == spdlog::level::debug) {
-        nlohmann::json jSchema = schema;
-        spdlog::debug("Schema dump: {}", jSchema.dump());
-        nlohmann::json jAssets = assets;
-        spdlog::debug("Asset map dump: {}", jAssets.dump());
+        spdlog::debug("Serialized pipeline: {}", pipeline.serializeToJson().dump());
     }
 
     // Load pipelineDesc, assets, and asset storage
