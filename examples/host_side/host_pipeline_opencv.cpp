@@ -19,7 +19,8 @@ class Display : public dai::NodeCRTP<dai::ThreadedNode, Display, dai::XLinkOutPr
 
    public:
     Display(const std::shared_ptr<dai::PipelineImpl>& par, int64_t nodeId) : Display(par, nodeId, std::make_unique<Display::Properties>()) {}
-    Display(const std::shared_ptr<dai::PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props) : dai::NodeCRTP<dai::ThreadedNode, Display, dai::XLinkOutProperties>(par, nodeId, std::move(std::move(props))) {
+    Display(const std::shared_ptr<dai::PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+        : dai::NodeCRTP<dai::ThreadedNode, Display, dai::XLinkOutProperties>(par, nodeId, std::move(std::move(props))) {
         setInputRefs(&input);
         hostNode = true;
     }
@@ -37,7 +38,6 @@ class Display : public dai::NodeCRTP<dai::ThreadedNode, Display, dai::XLinkOutPr
                 cv::imshow("MyConsumer", imgFrame->getCvFrame());
                 cv::waitKey(1);
             }
-
         }
     }
 };

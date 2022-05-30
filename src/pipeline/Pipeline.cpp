@@ -72,12 +72,16 @@ Pipeline::Pipeline(std::shared_ptr<PipelineImpl> pimpl) {
     this->pimpl = pimpl;
 }
 
-GlobalProperties Pipeline::getGlobalProperties() const {
-    return pimpl->globalProperties;
-}
-
 PipelineSchema Pipeline::getPipelineSchema(SerializationType type) const {
     return pimpl->getPipelineSchema(type);
+}
+
+GlobalProperties PipelineImpl::getGlobalProperties() const {
+    return globalProperties;
+}
+
+void PipelineImpl::setGlobalProperties(GlobalProperties globalProperties) {
+    this->globalProperties = globalProperties;
 }
 
 std::shared_ptr<const Node> PipelineImpl::getNode(Node::Id id) const {
@@ -648,7 +652,7 @@ bool PipelineImpl::isHostOnly() const {
     // Starts pipeline, go through all nodes and start them
     bool hostOnly = true;
     for(const auto& kv : nodeMap) {
-        if(!kv.second->hostNode){
+        if(!kv.second->hostNode) {
             hostOnly = false;
             break;
         }
@@ -660,7 +664,7 @@ bool PipelineImpl::isDeviceOnly() const {
     // Starts pipeline, go through all nodes and start them
     bool deviceOnly = true;
     for(const auto& kv : nodeMap) {
-        if(kv.second->hostNode){
+        if(kv.second->hostNode) {
             deviceOnly = false;
             break;
         }
@@ -669,7 +673,6 @@ bool PipelineImpl::isDeviceOnly() const {
 }
 
 void PipelineImpl::start() {
-
     if(!isHostOnly()) {
         // throw std::invalid_argument("Pipeline contains device nodes");
         device = std::make_shared<Device>(Pipeline(shared_from_this()));

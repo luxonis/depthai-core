@@ -340,6 +340,14 @@ class Node {
     /// Retrieves reference to node inputs
     std::vector<const Input*> getInputRefs() const;
 
+    /// Retrieves reference to specific output
+    Output* getOutputRef(std::string name);
+    Output* getOutputRef(std::string group, std::string name);
+
+    /// Retrieves reference to specific output
+    Input* getInputRef(std::string name);
+    Input* getInputRef(std::string group, std::string name);
+
     /// Connection between an Input and Output
     struct Connection {
         friend struct std::hash<Connection>;

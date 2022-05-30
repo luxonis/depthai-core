@@ -298,6 +298,32 @@ std::vector<const Node::Input*> Node::getInputRefs() const {
     return tmpInputRefs;
 }
 
+Node::Output* Node::getOutputRef(std::string name) {
+    return getOutputRef("", name);
+}
+Node::Output* Node::getOutputRef(std::string group, std::string name) {
+    auto refs = getOutputRefs();
+    for(auto& out : refs) {
+        if(out->group == group && out->name == name) {
+            return out;
+        }
+    }
+    return nullptr;
+}
+
+Node::Input* Node::getInputRef(std::string name) {
+    return getInputRef("", name);
+}
+Node::Input* Node::getInputRef(std::string group, std::string name) {
+    auto refs = getInputRefs();
+    for(auto& input : refs) {
+        if(input->group == group && input->name == name) {
+            return input;
+        }
+    }
+    return nullptr;
+}
+
 void Node::setOutputRefs(std::initializer_list<Node::Output*> l) {
     for(auto& outRef : l) {
         outputRefs[outRef->name] = outRef;

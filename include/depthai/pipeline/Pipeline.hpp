@@ -44,6 +44,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     Device::Config getDeviceConfig() const;
     void setCameraTuningBlobPath(const dai::Path& path);
     void setXLinkChunkSize(int sizeBytes);
+    GlobalProperties getGlobalProperties() const;
+    void setGlobalProperties(GlobalProperties globalProperties);
 
     // Access to nodes
     std::vector<std::shared_ptr<const Node>> getAllNodes() const;
@@ -98,6 +100,19 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
         return node;
     }
 
+    // Add a node to nodeMap
+    void add(std::shared_ptr<Node> node) {
+        if(node == nullptr) {
+            throw std::invalid_argument(fmt::format("Given node pointer is null"));
+        }
+        if(nodeMap.count(node->id) > 0) {
+            throw std::invalid_argument(fmt::format("Node with id: {} already exists", node->id));
+        }
+
+        // Add to the map
+        nodeMap[node->id] = node;
+    }
+
     // Run only host side, if any device nodes are present, error out
     void start();
     void wait();
@@ -130,7 +145,16 @@ class Pipeline {
     /**
      * @returns Global properties of current pipeline
      */
-    GlobalProperties getGlobalProperties() const;
+    GlobalProperties getGlobalProperties() const {
+        return impl()->getGlobalProperties();
+    }
+
+    /**
+     * Sets global properties of pipeline
+     */
+    void setGlobalProperties(GlobalProperties globalProperties) {
+        impl->setGlobalProperties(globalProperties);
+    }
 
     /**
      * @returns Pipeline schema
@@ -148,13 +172,20 @@ class Pipeline {
     }
 
     /**
-     * Adds a node to pipeline.
+     * Creates and adds a node to the pipeline.
      *
      * Node is specified by template argument N
      */
     template <class N>
     std::shared_ptr<N> create() {
         return impl()->create<N>(pimpl);
+    }
+
+    /**
+     * Adds an existing node to the pipeline
+     */
+    void add(std::shared_ptr<Node> node) {
+        impl()->add(node);
     }
 
     /// Removes a node from pipeline
@@ -301,7 +332,6 @@ class Pipeline {
     std::shared_ptr<Device> getDevice() {
         return impl()->device;
     }
-
 };
 
 }  // namespace dai

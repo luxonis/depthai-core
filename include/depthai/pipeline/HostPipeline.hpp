@@ -106,7 +106,7 @@ class HostPipelineImpl : public PipelineImpl {
 /**
  * @brief Represents the pipeline, set of nodes and connections between them
  */
-class HostPipeline :  {
+class HostPipeline : {
     friend class PipelineImpl;
     std::shared_ptr<PipelineImpl> pimpl;
     PipelineImpl* impl() {
