@@ -9,7 +9,6 @@ else()
         hunter_add_package(XLink)
     endif()
     hunter_add_package(BZip2)
-    hunter_add_package(FP16)
     hunter_add_package(libarchive-luxonis)
     hunter_add_package(spdlog)
     hunter_add_package(ZLIB)
@@ -24,9 +23,6 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
 
     # BZip2 (for bspatch)
     find_package(BZip2 ${_QUIET} CONFIG REQUIRED)
-
-    # FP16 for conversions
-    find_package(FP16 ${_QUIET} CONFIG REQUIRED)
 
     # libarchive for firmware packages
     find_package(archive_static ${_QUIET} CONFIG REQUIRED)

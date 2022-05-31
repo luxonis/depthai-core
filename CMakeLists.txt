@@ -167,6 +167,8 @@ include(${CMAKE_CURRENT_LIST_DIR}/shared/depthai-bootloader-shared.cmake)
 # Add flags helpers
 include(Flags)
 
+add_subdirectory(vendor/fp16)
+
 ### End of dependencies
 
 set(TARGET_CORE_NAME ${PROJECT_NAME}-core)
@@ -414,7 +416,7 @@ target_link_libraries(${TARGET_CORE_NAME}
     PRIVATE
         Threads::Threads
         BZip2::bz2
-        FP16::fp16
+        fp16
         archive_static
         spdlog::spdlog
         ZLIB::zlib
