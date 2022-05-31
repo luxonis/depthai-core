@@ -101,17 +101,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     }
 
     // Add a node to nodeMap
-    void add(std::shared_ptr<Node> node) {
-        if(node == nullptr) {
-            throw std::invalid_argument(fmt::format("Given node pointer is null"));
-        }
-        if(nodeMap.count(node->id) > 0) {
-            throw std::invalid_argument(fmt::format("Node with id: {} already exists", node->id));
-        }
-
-        // Add to the map
-        nodeMap[node->id] = node;
-    }
+    void add(std::shared_ptr<Node> node);
 
     // Run only host side, if any device nodes are present, error out
     void start();
@@ -153,7 +143,7 @@ class Pipeline {
      * Sets global properties of pipeline
      */
     void setGlobalProperties(GlobalProperties globalProperties) {
-        impl->setGlobalProperties(globalProperties);
+        impl()->setGlobalProperties(globalProperties);
     }
 
     /**

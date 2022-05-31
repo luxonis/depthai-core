@@ -672,6 +672,18 @@ bool PipelineImpl::isDeviceOnly() const {
     return deviceOnly;
 }
 
+void PipelineImpl::add(std::shared_ptr<Node> node) {
+    if(node == nullptr) {
+        throw std::invalid_argument(fmt::format("Given node pointer is null"));
+    }
+    if(nodeMap.count(node->id) > 0) {
+        throw std::invalid_argument(fmt::format("Node with id: {} already exists", node->id));
+    }
+
+    // Add to the map
+    nodeMap[node->id] = node;
+}
+
 void PipelineImpl::start() {
     if(!isHostOnly()) {
         // throw std::invalid_argument("Pipeline contains device nodes");
