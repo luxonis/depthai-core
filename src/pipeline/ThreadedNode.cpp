@@ -4,6 +4,7 @@ namespace dai {
 
 void ThreadedNode::start() {
     // Start the thread
+    running = true;
     thread = std::thread([this]() {
         try {
             run();

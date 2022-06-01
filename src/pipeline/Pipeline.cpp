@@ -42,8 +42,8 @@ Node::Id PipelineImpl::getNextUniqueId() {
 }
 
 Pipeline::Pipeline() : pimpl(std::make_shared<PipelineImpl>(*this)) {
-    // Initialize library
-    initialize();
+    // // Initialize library
+    // initialize();
 }
 
 Pipeline Pipeline::clone() const {
@@ -684,7 +684,13 @@ void PipelineImpl::add(std::shared_ptr<Node> node) {
     nodeMap[node->id] = node;
 }
 
+bool PipelineImpl::isRunning() const {
+    return running;
+}
+
 void PipelineImpl::start() {
+    // TODO(themarpe) - add mutex and set running up ahead
+
     if(!isHostOnly()) {
         // throw std::invalid_argument("Pipeline contains device nodes");
         device = std::make_shared<Device>(Pipeline(shared_from_this()));
@@ -695,6 +701,9 @@ void PipelineImpl::start() {
             device->getInputQueue(inQ, 0, false);
         }
     }
+
+    // Indicate that pipeline is running
+    running = true;
 
     // Starts pipeline, go through all nodes and start them
     for(const auto& kv : nodeMap) {
@@ -714,6 +723,9 @@ void PipelineImpl::stop() {
     for(const auto& kv : nodeMap) {
         kv.second->stop();
     }
+
+    // Indicate that pipeline is not runnin
+    running = false;
 }
 
 PipelineImpl::~PipelineImpl() {

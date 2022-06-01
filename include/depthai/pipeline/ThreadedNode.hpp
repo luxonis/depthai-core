@@ -9,7 +9,7 @@ namespace dai {
 class ThreadedNode : public Node {
    private:
     JoiningThread thread;
-    AtomicBool running;
+    AtomicBool running{false};
 
    public:
     using Node::Node;

@@ -9,10 +9,11 @@
 namespace dai {
 namespace utility {
 
-static std::mutex mtx;
-static std::unordered_map<std::string, std::string> map;
-
 std::string getEnv(const std::string& var) {
+    // Initialize only when getEnv called, instead of globally
+    static std::mutex mtx;
+    static std::unordered_map<std::string, std::string> map;
+
     std::unique_lock<std::mutex> lock(mtx);
 
     if(map.count(var) > 0) {

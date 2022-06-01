@@ -12,6 +12,7 @@
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/device/Device.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
+#include "depthai/utility/AtomicBool.hpp"
 
 // shared
 #include "depthai-shared/device/BoardConfig.hpp"
@@ -82,6 +83,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // parent
     Pipeline& parent;
 
+    // is pipeline running
+    AtomicBool running;
+
     // TMP TMP - to be moved
     // DeviceBase for hybrid pipelines
     std::shared_ptr<Device> device;
@@ -104,6 +108,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void add(std::shared_ptr<Node> node);
 
     // Run only host side, if any device nodes are present, error out
+    bool isRunning() const;
     void start();
     void wait();
     void stop();
@@ -115,6 +120,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 class Pipeline {
     friend class PipelineImpl;
     std::shared_ptr<PipelineImpl> pimpl;
+
+   public:
     PipelineImpl* impl() {
         return pimpl.get();
     }
@@ -122,7 +129,6 @@ class Pipeline {
         return pimpl.get();
     }
 
-   public:
     /**
      * Constructs a new pipeline
      */
@@ -309,6 +315,9 @@ class Pipeline {
         return impl()->getDeviceConfig();
     }
 
+    bool isRunning() const {
+        return impl()->isRunning();
+    }
     void start() {
         impl()->start();
     }

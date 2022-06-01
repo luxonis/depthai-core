@@ -1061,8 +1061,8 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
         pimpl->rpcClient->call("setAssetStorage", memHandle, assetStorage.size());
     }
 
-    // print assets on device side for test
-    pimpl->rpcClient->call("printAssets");
+    // // print assets on device side for test
+    // pimpl->rpcClient->call("printAssets");
 
     // Build and start the pipeline
     bool success = false;

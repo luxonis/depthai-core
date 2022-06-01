@@ -185,6 +185,8 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection> conn, cons
 
                 // serialize
                 auto t1Parse = std::chrono::steady_clock::now();
+
+                // TODO(themarpe) - part of zerocopy - refactor to use multipart/XLinkWriteData2 instead
                 auto serialized = StreamMessageParser::serializeMessage(data);
                 auto t2Parse = std::chrono::steady_clock::now();
 

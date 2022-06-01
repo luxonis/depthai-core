@@ -68,8 +68,10 @@ if(DEPTHAI_XLINK_LOCAL AND (NOT CONFIG_MODE))
     add_subdirectory("${DEPTHAI_XLINK_LOCAL}" ${CMAKE_CURRENT_BINARY_DIR}/XLink)
     set(BUILD_SHARED_LIBS "${_BUILD_SHARED_LIBS_SAVED}")
     unset(_BUILD_SHARED_LIBS_SAVED)
-    list(APPEND targets_to_export XLink)
+    list(APPEND targets_to_export XLink XLinkPublic)
 else()
+    # TODO(themarpe) - might be required
+    # elseif(NOT DEPTHAI_XLINK_LOCAL)
     find_package(XLink ${_QUIET} CONFIG REQUIRED HINTS "${CMAKE_CURRENT_LIST_DIR}/XLink" "${CMAKE_CURRENT_LIST_DIR}/../XLink")
 endif()
 
