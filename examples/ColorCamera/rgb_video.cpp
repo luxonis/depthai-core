@@ -11,6 +11,7 @@ int main(int argc, char** argv) {
     bool enableToF = 0;
     bool enableMic = 0;
     bool enableMicNc = 0;
+    int audioSampleSize = 3; // 2, 3, 4. Note: must be 2 for NC
     if(argc > 1) {
         if (std::string(argv[1]) == "uvc") {
             enableUVC = 1;
@@ -18,7 +19,10 @@ int main(int argc, char** argv) {
             enableToF = 1;
         } else if (std::string(argv[1]) == "mic") {
             enableMic = 1;
+        } else if (std::string(argv[1]) == "micnc") {
+            enableMic = 1;
             enableMicNc = 1;
+            audioSampleSize = 2;
         } else {
             printf("Unrecognized argument: %s\n", argv[1]);
         }
@@ -68,20 +72,20 @@ int main(int argc, char** argv) {
     std::ofstream fAudio;
     std::ofstream fAudioBack;
     std::ofstream fAudioNc;
-    int audioSampleSize = 2; // 2, 3, 4. Note: must be 2 for NC
     if (enableMic) {
         auto uac = pipeline.create<dai::node::UAC>();
+        auto mic = pipeline.create<dai::node::AudioMic>();
         auto xoutMic = pipeline.create<dai::node::XLinkOut>();
         auto xoutMicBack = pipeline.create<dai::node::XLinkOut>();
 
-        // uac->initialConfig.setMicGainDecibels(30); // with NC we also have AGC
-        uac->setXlinkSampleSizeBytes(audioSampleSize);
+        // mic->initialConfig.setMicGainDecibels(30); // with NC we also have AGC
+        mic->setXlinkSampleSizeBytes(audioSampleSize);
 
         xoutMic->setStreamName("mic");
         xoutMicBack->setStreamName("micBack");
 
-        uac->out.link(xoutMic->input);
-        uac->outBack.link(xoutMicBack->input);
+        mic->out.link(xoutMic->input);
+        mic->outBack.link(xoutMicBack->input);
 
         if (enableMicNc) {
             auto audioProc = pipeline.create<dai::node::AudioProc>();
@@ -89,11 +93,14 @@ int main(int argc, char** argv) {
 
             xoutMicNc->setStreamName("micNc");
 
-            uac->out.link(audioProc->input);
-            uac->outBack.link(audioProc->reference);
+            mic->out.link(audioProc->input);
+            mic->outBack.link(audioProc->reference);
             audioProc->out.link(xoutMicNc->input);
+            audioProc->out.link(uac->input);
 
             fAudioNc.open("audioNc.raw", std::ios::trunc | std::ios::binary);
+        } else {
+            mic->out.link(uac->input);
         }
 
         fAudio.open("audio.raw", std::ios::trunc | std::ios::binary);
@@ -206,6 +213,7 @@ int main(int argc, char** argv) {
 #endif
             }
 
+          if (enableMicNc) {
             // AudioProc output (with noise cancelation) - 2x 16kHz
             audioIn = audioNc->tryGet<dai::ImgFrame>();
             if (audioIn) {
@@ -229,6 +237,7 @@ int main(int argc, char** argv) {
                 fAudioNc.write((char*)audioData, size);
 #endif
             }
+          }
         }
 
 
