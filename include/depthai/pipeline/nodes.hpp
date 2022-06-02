@@ -2,6 +2,7 @@
 
 // all the nodes
 #include "node/AprilTag.hpp"
+#include "node/AudioMic.hpp"
 #include "node/AudioProc.hpp"
 #include "node/Camera.hpp"
 #include "node/ColorCamera.hpp"
