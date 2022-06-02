@@ -2,18 +2,9 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
+2.15.5 (2022-06-02)
 -----------
-* Empty-Commit
-* Updated ament cmake rule
-* created a dummy release for noetic test
-* Made ament condirtional
-* Updated changelog:
-* add ament package:
-* Cleanup
-* Added ament found condition
-* CHnaged version for testing
-* Added author
+* EEPROM FIX
 * Json fix (`#478 <https://github.com/luxonis/depthai-core/issues/478>`_)
   * Fixed nlohmann json < v3.9.0 compat and toolchain generation
   * turn off clang format
@@ -21,17 +12,6 @@ Forthcoming
   Co-authored-by: TheMarpe <martin@luxonis.com>
 * Empty-Commit
 * Update package.xml
-* ROS2 release test commit (`#475 <https://github.com/luxonis/depthai-core/issues/475>`_)
-  * Empty-Commit
-  * Change libusb versions
-* Change libsub to libusb-dev
-* Empty-Commit
-* Updated sub modules
-* Modified json in package.xml and changed the changelog"
-* Added Changelog file
-* Merge remote-tracking branch 'origin/main' into ros-release
-* Updatedf package xml, cmake list to include json from system install
-* WIP package.xml
 * Contributors: Sachin, Sachin Guruswamy
 
 2.15.4 (2022-05-09)
