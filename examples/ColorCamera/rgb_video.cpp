@@ -11,6 +11,7 @@ int main(int argc, char** argv) {
     bool enableToF = 0;
     bool enableMic = 0;
     bool enableMicNc = 0;
+    bool enableNN = 0; // Set 1 for resource allocation test
     int audioSampleSize = 3; // 2, 3, 4. Note: must be 2 for NC
     if(argc > 1) {
         if (std::string(argv[1]) == "uvc") {
@@ -107,6 +108,28 @@ int main(int argc, char** argv) {
         fAudioBack.open("audioBack.raw", std::ios::trunc | std::ios::binary);
     }
 
+    if (enableNN) {
+        // Default blob path provided by Hunter private data download
+        // Applicable for easier example usage only
+        std::string nnPath(BLOB_PATH);
+        std::cout << "NN blob: " << nnPath << "\n";
+
+        auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
+        auto nnOut = pipeline.create<dai::node::XLinkOut>();
+        nnOut->setStreamName("nn");
+
+        camRgb->setPreviewSize(300, 300);  // NN input
+        camRgb->setInterleaved(false);
+
+        nn->setConfidenceThreshold(0.5);
+        nn->setBlobPath(nnPath);
+        nn->setNumInferenceThreads(2); // TODO
+        nn->input.setBlocking(false);
+
+        camRgb->preview.link(nn->input);
+        nn->out.link(nnOut->input);
+    }
+
     // Connect to device and start pipeline
     auto config = dai::Device::Config();
     config.board.uvcEnable = enableUVC;
@@ -129,6 +152,7 @@ int main(int argc, char** argv) {
     auto audio = enableMic ? device.getOutputQueue("mic", qsize, blocking) : nullptr;
     auto audioBack = enableMic ? device.getOutputQueue("micBack", qsize, blocking) : nullptr;
     auto audioNc = enableMicNc ? device.getOutputQueue("micNc", qsize, blocking) : nullptr;
+    auto nn = enableNN ? device.getOutputQueue("nn", qsize, blocking) : nullptr;
 
     using namespace std::chrono;
     auto tprev = steady_clock::now();
@@ -161,6 +185,13 @@ int main(int argc, char** argv) {
                 cv::normalize(depthFrm, norm, 255, 0, cv::NORM_MINMAX, CV_8UC1);
                 cv::applyColorMap(norm, norm, cv::COLORMAP_JET);
                 cv::imshow("tof-depth", norm);
+            }
+        }
+
+        if (enableNN) {
+            auto nnIn = nn->tryGet<dai::ImgDetections>();
+            if (nnIn) {
+                printf("Got NN results\n");
             }
         }
 
