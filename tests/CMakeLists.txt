@@ -166,12 +166,19 @@ hunter_private_data(
     FILE "text-image-super-resolution-0001_2021.3_4shave.blob"
     LOCATION openvino_2021_3_blob
 )
-# OpenVINO 2021.4 blob
+# OpenVINO 2021.4.2 blob
 hunter_private_data(
-    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.4_4shave.blob"
-    SHA1 "fd11bb63781fc3315cdf4bb74247a8b98817f6fd"
-    FILE "text-image-super-resolution-0001_2021.4_4shave.blob"
-    LOCATION openvino_2021_4_blob
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2021.4.2_4shave.blob"
+    SHA1 "164b6b2ae48d38bc4f07cc8296b8bcb7644a1578"
+    FILE "text-image-super-resolution-0001_2021.4.2_4shave.blob"
+    LOCATION openvino_2021_4_2_blob
+)
+# OpenVINO 2022.1.0 blob
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/text-image-super-resolution-0001_2022.1.0_4shave.blob"
+    SHA1 "98e94b865b9c48a92eaebd1ddc883712dfe7cfcb"
+    FILE "text-image-super-resolution-0001_2022.1.0_4shave.blob"
+    LOCATION openvino_2022_1_blob
 )
 
 
@@ -190,7 +197,8 @@ dai_test_compile_definitions(openvino_blob_test PRIVATE
     OPENVINO_2021_1_BLOB_PATH="${openvino_2021_1_blob}"
     OPENVINO_2021_2_BLOB_PATH="${openvino_2021_2_blob}"
     OPENVINO_2021_3_BLOB_PATH="${openvino_2021_3_blob}"
-    OPENVINO_2021_4_BLOB_PATH="${openvino_2021_4_blob}"
+    OPENVINO_2021_4_BLOB_PATH="${openvino_2021_4_2_blob}"
+    OPENVINO_2022_1_BLOB_PATH="${openvino_2022_1_blob}"
 )
 
 # Bootloader configuration tests
