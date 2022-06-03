@@ -9,32 +9,12 @@ UAC::UAC(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_p
     : NodeCRTP<Node, UAC, UACProperties>(par, nodeId, std::move(props)),
       rawConfig(std::make_shared<RawAudioInConfig>()),
       initialConfig(rawConfig) {
-    setInputRefs({&inputConfig});
-    setOutputRefs({&out});
+    setInputRefs({&inputConfig, &input});
 }
 
 UAC::Properties& UAC::getProperties() {
     properties.initialConfig = *rawConfig;
     return properties;
-}
-
-void UAC::setStreamBackMic(bool enable) {
-    properties.streamBackMic = enable;
-}
-
-void UAC::setMicAutoGain(bool enable) {
-    properties.enableAgc = enable;
-}
-
-void UAC::setXlinkApplyMicGain(bool enable) {
-    properties.xLinkApplyMicGain = enable;
-}
-
-void UAC::setXlinkSampleSizeBytes(int size) {
-    if (size < 2 || size > 4) {
-        throw std::runtime_error("UAC | sample size must be: 2, 3 or 4");
-    }
-    properties.xlinkSampleSizeBytes = size;
 }
 
 }  // namespace node

@@ -28,7 +28,7 @@ class UAC : public NodeCRTP<Node, UAC, UACProperties>  {
     UAC(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
-     * Initial config to use for edge detection.
+     * Initial config to use for audio config - TODO
      */
     AudioInConfig initialConfig;
 
@@ -39,21 +39,10 @@ class UAC : public NodeCRTP<Node, UAC, UACProperties>  {
     Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::AudioInConfig, false}}};
 
     /**
-     * Outputs audio data from onboard microphones. Reusing ImgFrame for now
+     * Input for audio data to be streamed over UAC. Reusing ImgFrame for now.
+     * Default queue is non-blocking with size 4.
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-
-    /// Enable streaming back microphone instead of the front ones (L/R)
-    void setStreamBackMic(bool enable);
-
-    /// Enable experimental digital AGC
-    void setMicAutoGain(bool enable);
-
-    /// Apply mic gain to XLink output as well. Enabled by default
-    void setXlinkApplyMicGain(bool enable);
-
-    /// XLink sample size in bytes. Default 3, other options: 2 or 4
-    void setXlinkSampleSizeBytes(int size);
+    Input input{*this, "input", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImgFrame, false}}};
 };
 
 }  // namespace node
