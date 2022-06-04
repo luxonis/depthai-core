@@ -38,7 +38,7 @@ jobs:
     - name: Cache .hunter folder
       uses: actions/cache@v2
       with:
-        path: $HOME/.hun_${{ matrix.flavor }}
+        path: $HOME/.hun2_${{ matrix.flavor }}
         key: hunter-${{ matrix.os }}-${{ matrix.cmake }}
     - uses: actions/checkout@v2
       with:
