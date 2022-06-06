@@ -32,7 +32,7 @@ jobs:
             arch: 'x64'
             flavor: 'tsan'
       fail-fast: false
-    runs-on: ['self-hosted', '${{ matrix.os }}', '${{ matrix.arch }}']
+    runs-on: ['self-hosted', 'hil-test', '${{ matrix.os }}', '${{ matrix.arch }}']
 
     steps:
     - name: Cache .hunter folder
