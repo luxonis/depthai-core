@@ -120,6 +120,20 @@ TEST_CASE("OpenVINO 2021.4 setBlob") {
     dai::Device d(p);
 }
 
+TEST_CASE("OpenVINO 2022.1 setBlob") {
+    dai::Pipeline p;
+    auto nn = p.create<dai::node::NeuralNetwork>();
+
+    dai::OpenVINO::Blob blob(OPENVINO_2022_1_BLOB_PATH);
+    REQUIRE(blob.version == dai::OpenVINO::VERSION_2022_1);
+    checkBlob(blob);
+    nn->setBlob(std::move(blob));
+
+    auto networkOpenvinoVersion = p.getOpenVINOVersion();
+    REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2022_1);
+    dai::Device d(p);
+}
+
 // setBlobPath
 
 TEST_CASE("OpenVINO 2020.3 blob") {
@@ -173,6 +187,15 @@ TEST_CASE("OpenVINO 2021.4 blob") {
     nn->setBlobPath(OPENVINO_2021_4_BLOB_PATH);
     auto networkOpenvinoVersion = p.getOpenVINOVersion();
     REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2021_4);
+    dai::Device d(p);
+}
+
+TEST_CASE("OpenVINO 2022.1 blob") {
+    dai::Pipeline p;
+    auto nn = p.create<dai::node::NeuralNetwork>();
+    nn->setBlobPath(OPENVINO_2022_1_BLOB_PATH);
+    auto networkOpenvinoVersion = p.getOpenVINOVersion();
+    REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2022_1);
     dai::Device d(p);
 }
 
