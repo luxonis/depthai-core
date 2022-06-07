@@ -11,6 +11,30 @@ target_include_directories(utility PUBLIC "utility")
 add_default_flags(utility LEAN)
 target_link_libraries(utility FP16::fp16 ${OpenCV_LIBS})
 
+# Specify path separator
+set(SYS_PATH_SEPARATOR ";")
+if(UNIX)
+    set(SYS_PATH_SEPARATOR ":")
+endif()
+
+# Create environments for usb & poe labels
+set(test_usb_env
+    # PATH (dlls)
+    "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
+    # Misc
+    "UBSAN_OPTIONS=halt_on_error=1"
+    # DepthAI
+    "DEPTHAI_PROTOCOL=usb"
+)
+set(test_poe_env
+    # PATH (dlls)
+    "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
+    # Misc
+    "UBSAN_OPTIONS=halt_on_error=1"
+    # DepthAI
+    "DEPTHAI_PROTOCOL=tcpip;DEPTHAI_SEARCH_TIMEOUT=15000"
+)
+
 # Helper for adding new examples
 function(dai_add_example example_name example_src enable_test)
 
@@ -43,7 +67,7 @@ function(dai_add_example example_name example_src enable_test)
         set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]")
 
         # Add ubsan halt on error
-        set_tests_properties(${example_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=usb" LABELS usb)
+        set_tests_properties(${example_name} PROPERTIES ENVIRONMENT "${test_usb_env}" LABELS usb)
 
         # Add PoE test variants
         add_test(NAME ${example_name}_poe COMMAND ${CMAKE_COMMAND}
@@ -51,7 +75,7 @@ function(dai_add_example example_name example_src enable_test)
             -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake $<TARGET_FILE:${example_name}> ${arguments}
         )
         # Add ubsan halt on error
-        set_tests_properties(${example_name}_poe PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=tcpip;DEPTHAI_SEARCH_TIMEOUT=15000" LABELS poe)
+        set_tests_properties(${example_name}_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS poe)
 
     endif()
 endfunction()
@@ -171,14 +195,15 @@ hunter_private_data(
 # bootloader
 dai_add_example(bootloader_version bootloader/bootloader_version.cpp ON)
 dai_add_example(flash_bootloader bootloader/flash_bootloader.cpp OFF)
-dai_add_example(bootloader_config bootloader/bootloader_config.cpp OFF)
+dai_add_example(bootloader_config bootloader/bootloader_config.cpp ON read)
 dai_add_example(poe_set_ip bootloader/poe_set_ip.cpp OFF)
 
 # calibration
 dai_add_example(calibration_flash calibration/calibration_flash.cpp OFF)
 dai_add_example(calibration_flash_version5 calibration/calibration_flash_v5.cpp OFF)
-dai_add_example(calibration_load calibration/calibration_load.cpp OFF)
-dai_add_example(calibration_reader calibration/calibration_reader.cpp OFF)
+dai_add_example(calibration_load calibration/calibration_load.cpp ON)
+dai_add_example(calibration_reader calibration/calibration_reader.cpp ON)
+dai_add_example(calibration_dump calibration/calibration_dump.cpp ON)
 
 target_compile_definitions(calibration_flash PRIVATE CALIB_PATH="${calib_v6}")
 target_compile_definitions(calibration_flash_version5 PRIVATE CALIB_PATH="${calib_v5}" BOARD_PATH="${device_config}")
@@ -309,3 +334,7 @@ target_compile_definitions(tiny_yolo_v4_device_side_decoding PRIVATE BLOB_PATH="
 target_compile_definitions(tiny_yolo_v3_device_side_decoding PRIVATE BLOB_PATH="${tiny_yolo_v3_blob}")
 dai_add_example(apriltag AprilTag/apriltag.cpp ON)
 dai_add_example(apriltag_rgb AprilTag/apriltag_rgb.cpp ON)
+
+# DetectionParser
+dai_add_example(detection_parser NeuralNetwork/detection_parser.cpp ON)
+target_compile_definitions(detection_parser PRIVATE BLOB_PATH="${mobilenet_blob}")

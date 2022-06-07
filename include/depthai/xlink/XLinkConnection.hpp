@@ -12,6 +12,9 @@
 #include <unordered_map>
 #include <vector>
 
+// project
+#include "depthai/utility/Path.hpp"
+
 // Libraries
 #include <XLink/XLinkPublicDefines.h>
 
@@ -22,11 +25,23 @@ namespace dai {
  */
 struct DeviceInfo {
     DeviceInfo() = default;
-    DeviceInfo(const char*);
-    DeviceInfo(std::string);
-    deviceDesc_t desc = {};
-    XLinkDeviceState_t state = X_LINK_ANY_STATE;
+    DeviceInfo(std::string name, std::string mxid, XLinkDeviceState_t state, XLinkProtocol_t protocol, XLinkPlatform_t platform, XLinkError_t status);
+    /**
+     * Creates a DeviceInfo by checking whether supplied parameter is a MXID or IP/USB name
+     * @param mxidOrName Either MXID, IP Address or USB port name
+     */
+    explicit DeviceInfo(std::string mxidOrName);
+    explicit DeviceInfo(const deviceDesc_t& desc);
+    deviceDesc_t getXLinkDeviceDesc() const;
     std::string getMxId() const;
+    std::string toString() const;
+
+    std::string name = "";
+    std::string mxid = "";
+    XLinkDeviceState_t state = X_LINK_ANY_STATE;
+    XLinkProtocol_t protocol = X_LINK_ANY_PROTOCOL;
+    XLinkPlatform_t platform = X_LINK_ANY_PLATFORM;
+    XLinkError_t status = X_LINK_SUCCESS;
 };
 
 /**
@@ -41,7 +56,7 @@ class XLinkConnection {
     static DeviceInfo bootBootloader(const DeviceInfo& devInfo);
 
     XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
-    XLinkConnection(const DeviceInfo& deviceDesc, std::string pathToMvcmd, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
+    XLinkConnection(const DeviceInfo& deviceDesc, dai::Path pathToMvcmd, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
     explicit XLinkConnection(const DeviceInfo& deviceDesc, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
 
     ~XLinkConnection();
@@ -67,7 +82,7 @@ class XLinkConnection {
     friend struct XLinkReadError;
     friend struct XLinkWriteError;
     // static
-    static bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, const std::string& pathToMvcmd);
+    static bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, const dai::Path& pathToMvcmd);
     static bool bootAvailableDevice(const deviceDesc_t& deviceToBoot, std::vector<std::uint8_t>& mvcmd);
     static std::string convertErrorCodeToString(XLinkError_t errorCode);
 
@@ -76,7 +91,7 @@ class XLinkConnection {
 
     bool bootDevice = true;
     bool bootWithPath = true;
-    std::string pathToMvcmd;
+    dai::Path pathToMvcmd;
     std::vector<std::uint8_t> mvcmd;
 
     bool rebootOnDestruction{true};
@@ -88,9 +103,9 @@ class XLinkConnection {
     // closed
     std::atomic<bool> closed{false};
 
-    constexpr static std::chrono::milliseconds WAIT_FOR_BOOTUP_TIMEOUT_TCPIP{15000};
-    constexpr static std::chrono::milliseconds WAIT_FOR_BOOTUP_TIMEOUT_USB{5000};
+    constexpr static std::chrono::milliseconds WAIT_FOR_BOOTUP_TIMEOUT{15000};
     constexpr static std::chrono::milliseconds WAIT_FOR_CONNECT_TIMEOUT{5000};
+    constexpr static std::chrono::milliseconds POLLING_DELAY_TIME{10};
 };
 
 }  // namespace dai
