@@ -32,13 +32,13 @@ jobs:
             arch: 'x64'
             flavor: 'tsan'
       fail-fast: false
-    runs-on: ['self-hosted', '${{ matrix.os }}', '${{ matrix.arch }}']
+    runs-on: ['self-hosted', 'hil-test', '${{ matrix.os }}', '${{ matrix.arch }}']
 
     steps:
     - name: Cache .hunter folder
       uses: actions/cache@v2
       with:
-        path: $HOME/.hun_${{ matrix.flavor }}
+        path: $HOME/.hun2_${{ matrix.flavor }}
         key: hunter-${{ matrix.os }}-${{ matrix.cmake }}
     - uses: actions/checkout@v2
       with:
@@ -54,7 +54,7 @@ jobs:
     - name: Configure, Build and Test
       if: matrix.os != 'linux'
       run: |
-        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_ROOT=$HOME/.hun_${{ matrix.flavor }} -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_TEST_EXAMPLES=ON
+        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_ROOT=$HOME/.hun2_${{ matrix.flavor }} -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_TEST_EXAMPLES=ON
         cmake --build build --parallel 8 --config Release
         cd build
         ctest -C Release --output-on-failure -L usb
@@ -64,7 +64,7 @@ jobs:
       run: |
         export DISPLAY=:99
         xdpyinfo -display $DISPLAY >/dev/null 2>&1 || (Xvfb $DISPLAY &)
-        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_ROOT=$HOME/.hun_${{ matrix.flavor }} -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_TEST_EXAMPLES=ON
+        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_ROOT=$HOME/.hun2_${{ matrix.flavor }} -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON -D DEPTHAI_TEST_EXAMPLES=ON
         cmake --build build --parallel 8 --config Release
         cd build
         ctest -C Release --output-on-failure -L usb
