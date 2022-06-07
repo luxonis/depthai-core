@@ -26,6 +26,12 @@ class AudioInConfig : public Buffer {
     /// Set a fixed microphone gain, in dB
     void setMicGainDecibels(float dB);
 
+    /// Set passthrough flag
+    void setPassthrough(bool passThrough);
+
+    /// Set disable output flag
+    void setDisableOutput(bool disable);
+
     /**
      * Retrieve configuration data for AudioIn
      * @returns AudioInConfigData: mic gain, ...

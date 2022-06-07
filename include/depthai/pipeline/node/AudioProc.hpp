@@ -5,6 +5,8 @@
 // shared
 #include <depthai-shared/properties/AudioProcProperties.hpp>
 
+#include "depthai/pipeline/datatype/AudioInConfig.hpp"
+
 namespace dai {
 namespace node {
 
@@ -17,6 +19,17 @@ class AudioProc : public NodeCRTP<Node, AudioProc, AudioProcProperties> {
 
     AudioProc(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     AudioProc(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+
+    /**
+     * Initial config to use for audio/mic.
+     */
+    AudioInConfig initialConfig;
+
+    /**
+     * Input AudioInConfig message with ability to modify parameters in runtime.
+     * Default queue is non-blocking with size 4.
+     */
+    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::AudioInConfig, false}}};
 
     /**
      * Audio input frames.

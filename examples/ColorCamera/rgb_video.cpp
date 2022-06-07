@@ -12,7 +12,7 @@ int main(int argc, char** argv) {
     bool enableMic = 0;
     bool enableMicNc = 0;
     bool enableNN = 0; // Set 1 for resource allocation test
-    int audioSampleSize = 3; // 2, 3, 4. Note: must be 2 for NC
+    int audioSampleSize = 2; // 2, 3, 4. Note: must be 2 for NC
     if(argc > 1) {
         if (std::string(argv[1]) == "uvc") {
             enableUVC = 1;
@@ -73,13 +73,13 @@ int main(int argc, char** argv) {
     std::ofstream fAudio;
     std::ofstream fAudioBack;
     std::ofstream fAudioNc;
+    int gain_dB = 30;
     if (enableMic) {
         auto uac = pipeline.create<dai::node::UAC>();
         auto mic = pipeline.create<dai::node::AudioMic>();
         auto xoutMic = pipeline.create<dai::node::XLinkOut>();
         auto xoutMicBack = pipeline.create<dai::node::XLinkOut>();
 
-        // mic->initialConfig.setMicGainDecibels(30); // with NC we also have AGC
         mic->setXlinkSampleSizeBytes(audioSampleSize);
 
         xoutMic->setStreamName("mic");
@@ -88,21 +88,35 @@ int main(int argc, char** argv) {
         mic->out.link(xoutMic->input);
         mic->outBack.link(xoutMicBack->input);
 
+        auto micCfgIn = pipeline.create<dai::node::XLinkIn>();
+        micCfgIn->setMaxDataSize(256);
+        micCfgIn->setStreamName("micCfg");
+        micCfgIn->out.link(mic->inputConfig);
+
         if (enableMicNc) {
             auto audioProc = pipeline.create<dai::node::AudioProc>();
             auto xoutMicNc = pipeline.create<dai::node::XLinkOut>();
 
             xoutMicNc->setStreamName("micNc");
 
+            gain_dB = 0; // with NC we also have AGC
+
             mic->out.link(audioProc->input);
             mic->outBack.link(audioProc->reference);
             audioProc->out.link(xoutMicNc->input);
             audioProc->out.link(uac->input);
 
+            auto procCfgIn = pipeline.create<dai::node::XLinkIn>();
+            procCfgIn->setMaxDataSize(256);
+            procCfgIn->setStreamName("procCfg");
+            procCfgIn->out.link(audioProc->inputConfig);
+
             fAudioNc.open("audioNc.raw", std::ios::trunc | std::ios::binary);
         } else {
             mic->out.link(uac->input);
         }
+
+        mic->initialConfig.setMicGainDecibels(gain_dB);
 
         fAudio.open("audio.raw", std::ios::trunc | std::ios::binary);
         fAudioBack.open("audioBack.raw", std::ios::trunc | std::ios::binary);
@@ -154,9 +168,24 @@ int main(int argc, char** argv) {
     auto audioNc = enableMicNc ? device.getOutputQueue("micNc", qsize, blocking) : nullptr;
     auto nn = enableNN ? device.getOutputQueue("nn", qsize, blocking) : nullptr;
 
+    auto micCfgQ = enableMic ? device.getInputQueue("micCfg") : nullptr;
+    auto procCfgQ = enableMicNc ? device.getInputQueue("procCfg") : nullptr;
+
     using namespace std::chrono;
     auto tprev = steady_clock::now();
     int count = 0;
+
+    bool muted = false;
+    bool disableOutput = false;
+    bool passthrough = false;
+
+    // Config packets modify all fields at once, prepare in advance
+    dai::AudioInConfig micConfig;
+    micConfig.setMicGainDecibels(gain_dB);
+    micConfig.setDisableOutput(disableOutput);
+
+    dai::AudioInConfig procConfig;
+    procConfig.setPassthrough(passthrough);
 
     while(true) {
         auto videoIn = video->get<dai::ImgFrame>();
@@ -275,6 +304,30 @@ int main(int argc, char** argv) {
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q') {
             return 0;
+        } else if (key == 'm') {  // Mute / unmute
+            muted = !muted;
+            printf("Audio control: %s\n", muted ? "mute" : "unmute");
+            if (muted) micConfig.setMicGainTimes(0);
+            else micConfig.setMicGainDecibels(gain_dB);
+            micCfgQ->send(micConfig);
+        } else if (key == 'w' || key == 's') { // mic gain up / down
+            if (key == 'w') gain_dB += 10;
+            if (key == 's') gain_dB -= 10;
+            printf("Audio control: MIC gain change to %d dB\n", gain_dB);
+            micConfig.setMicGainDecibels(gain_dB);
+            micCfgQ->send(micConfig);
+        } else if (key == 'd') {  // disable output
+            disableOutput = !disableOutput;
+            printf("Audio control: MIC output: %s\n", disableOutput ? "disabled" : "enabled");
+            micConfig.setDisableOutput(disableOutput);
+            micCfgQ->send(micConfig);
+        } else if (key == 'a') {  // enable / disable NC
+            passthrough = !passthrough;
+            printf("Audio control: Proc/NC: %s\n", passthrough ? "disabled" : "enabled");
+            procConfig.setPassthrough(passthrough);
+            procCfgQ->send(procConfig);
+            // Note: at this step we should preferably reconfigure `micConfig.setMicGain...`
+            // as the gain used by AudioProc might be different than direct MIC
         }
     }
     return 0;
