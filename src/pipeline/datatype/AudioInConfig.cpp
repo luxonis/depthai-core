@@ -21,6 +21,14 @@ void AudioInConfig::setMicGainDecibels(float dB) {
     setMicGainTimes(times);
 }
 
+void AudioInConfig::setPassthrough(bool passThrough) {
+    cfg.config.passThrough = passThrough;
+}
+
+void AudioInConfig::setDisableOutput(bool disable) {
+    cfg.config.disableOutput = disable;
+}
+
 AudioInConfigData AudioInConfig::getConfigData() const {
     return cfg.config;
 }

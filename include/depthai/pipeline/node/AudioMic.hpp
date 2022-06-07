@@ -28,7 +28,7 @@ class AudioMic : public NodeCRTP<Node, AudioMic, AudioMicProperties>  {
     AudioMic(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
-     * Initial config to use for edge detection.
+     * Initial config to use for audio/mic.
      */
     AudioInConfig initialConfig;
 

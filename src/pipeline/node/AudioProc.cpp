@@ -7,7 +7,7 @@ AudioProc::AudioProc(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     : AudioProc(par, nodeId, std::make_unique<AudioProc::Properties>()) {}
 AudioProc::AudioProc(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
     : NodeCRTP<Node, AudioProc, AudioProcProperties>(par, nodeId, std::move(props)) {
-    setInputRefs({&input, &reference});
+    setInputRefs({&inputConfig, &input, &reference});
     setOutputRefs({&out});
 }
 
