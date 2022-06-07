@@ -283,7 +283,7 @@ tl::optional<OpenVINO::Version> PipelineImpl::getPipelineOpenVINOVersion() const
 Device::Config PipelineImpl::getDeviceConfig() const {
     Device::Config config;
     config.version = getPipelineOpenVINOVersion().value_or(OpenVINO::DEFAULT_VERSION);
-    // TODO(themarpe) - fill out rest of board config
+    config.board = board;
     return config;
 }
 
@@ -298,6 +298,14 @@ void PipelineImpl::setCameraTuningBlobPath(const dai::Path& path) {
 
 void PipelineImpl::setXLinkChunkSize(int sizeBytes) {
     globalProperties.xlinkChunkSize = sizeBytes;
+}
+
+void PipelineImpl::setBoardConfig(BoardConfig board) {
+    this->board = board;
+}
+
+BoardConfig PipelineImpl::getBoardConfig() const {
+    return board;
 }
 
 // Remove node capability
