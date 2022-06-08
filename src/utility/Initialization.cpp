@@ -100,7 +100,10 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
         xlinkGlobalHandler.options = javavm;
         auto status = XLinkInitialize(&xlinkGlobalHandler);
         if(X_LINK_SUCCESS != status) {
-            std::string errorMsg = fmt::format("Couldn't initialize XLink: {}", XLinkErrorToStr(status));
+            std::string errorMsg = fmt::format("Couldn't initialize XLink: {}. ", XLinkErrorToStr(status));
+            if(status == X_LINK_INIT_USB_ERROR) {
+                errorMsg += fmt::format("If running in a container, make sure that the following is set: \"{}\"", "-v /dev/bus/usb:/dev/bus/usb --device-cgroup-rule='c 189:* rmw'");
+            }
             spdlog::debug("Initialize failed - {}", errorMsg);
             throw std::runtime_error(errorMsg);
         }
