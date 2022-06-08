@@ -38,6 +38,28 @@ CameraControl& CameraControl::setFrameSyncMode(FrameSyncMode mode) {
     return *this;
 }
 
+CameraControl& CameraControl::setStrobeSensor(int activeLevel) {
+    cfg.setCommand(RawCameraControl::Command::STROBE_CONFIG);
+    cfg.strobeConfig.enable = true;
+    cfg.strobeConfig.activeLevel = activeLevel;
+    cfg.strobeConfig.gpioNumber = -1;
+    return *this;
+}
+
+CameraControl& CameraControl::setStrobeExternal(int gpioNumber, int activeLevel) {
+    cfg.setCommand(RawCameraControl::Command::STROBE_CONFIG);
+    cfg.strobeConfig.enable = true;
+    cfg.strobeConfig.activeLevel = activeLevel;
+    cfg.strobeConfig.gpioNumber = gpioNumber;
+    return *this;
+}
+
+CameraControl& CameraControl::setStrobeDisable() {
+    cfg.setCommand(RawCameraControl::Command::STROBE_CONFIG);
+    cfg.strobeConfig.enable = false;
+    return *this;
+}
+
 // Focus
 CameraControl& CameraControl::setAutoFocusMode(AutoFocusMode mode) {
     cfg.setCommand(RawCameraControl::Command::AF_MODE);

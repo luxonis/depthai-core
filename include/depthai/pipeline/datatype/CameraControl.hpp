@@ -73,6 +73,27 @@ class CameraControl : public Buffer {
      */
     CameraControl& setFrameSyncMode(FrameSyncMode mode);
 
+    /**
+     * Enable STROBE output on sensor pin, optionally configuring the polarity.
+     * Note: for many sensors the polarity is high-active and not configurable
+     */
+    CameraControl& setStrobeSensor(int activeLevel = 1);
+
+    /**
+     * Enable STROBE output driven by a MyriadX GPIO, optionally configuring the polarity
+     * This normally requires a FSIN/FSYNC/trigger input for MyriadX (usually GPIO 41),
+     * to generate timings
+     */
+    CameraControl& setStrobeExternal(int gpioNumber, int activeLevel = 1);
+
+    // TODO API to set strobe line directly high/low (not following the exposure window)
+    // TODO API to set strobe timings, as offsets in relation to exposure window, or fixed duration
+
+    /**
+     * Disable STROBE output
+     */
+    CameraControl& setStrobeDisable();
+
     // Focus
     /**
      * Set a command to specify autofocus mode
