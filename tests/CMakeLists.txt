@@ -6,24 +6,14 @@ enable_testing()
 hunter_add_package(Catch2)
 find_package(Catch2 CONFIG REQUIRED)
 
-# Specify path separator
-set(SYS_PATH_SEPARATOR ";")
-if(UNIX)
-    set(SYS_PATH_SEPARATOR ":")
-endif()
-
 # Create environments for usb & poe labels
 set(test_usb_env
-    # PATH (dlls)
-    "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
     # Misc
     "UBSAN_OPTIONS=halt_on_error=1"
     # DepthAI
     "DEPTHAI_PROTOCOL=usb"
 )
 set(test_poe_env
-    # PATH (dlls)
-    "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
     # Misc
     "UBSAN_OPTIONS=halt_on_error=1"
     # DepthAI
@@ -107,6 +97,20 @@ function(dai_add_test test_name test_src)
         set_tests_properties(${test_name}_conforming_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS poe)
     endif()
 
+    # Copy over required DLLs (Windows)
+    if(WIN32)
+        # Copy dlls to target directory - Windows only
+        # TARGET_RUNTIME_DLLS generator expression available since CMake 3.21
+        if(CMAKE_VERSION VERSION_LESS "3.21")
+            file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
+        else()
+            set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${test_name}>")
+        endif()
+        add_custom_command(TARGET ${test_name} POST_BUILD COMMAND
+            ${CMAKE_COMMAND} -E copy ${depthai_dll_libraries} $<TARGET_FILE_DIR:${test_name}>
+            COMMAND_EXPAND_LISTS
+        )
+    endif()
 endfunction()
 
 # Function for adding compile definitions to tests

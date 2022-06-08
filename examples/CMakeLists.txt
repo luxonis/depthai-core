@@ -11,24 +11,14 @@ target_include_directories(utility PUBLIC "utility")
 add_default_flags(utility LEAN)
 target_link_libraries(utility FP16::fp16 ${OpenCV_LIBS})
 
-# Specify path separator
-set(SYS_PATH_SEPARATOR ";")
-if(UNIX)
-    set(SYS_PATH_SEPARATOR ":")
-endif()
-
 # Create environments for usb & poe labels
 set(test_usb_env
-    # PATH (dlls)
-    "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
     # Misc
     "UBSAN_OPTIONS=halt_on_error=1"
     # DepthAI
     "DEPTHAI_PROTOCOL=usb"
 )
 set(test_poe_env
-    # PATH (dlls)
-    "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
     # Misc
     "UBSAN_OPTIONS=halt_on_error=1"
     # DepthAI
@@ -77,6 +67,21 @@ function(dai_add_example example_name example_src enable_test)
         # Add ubsan halt on error
         set_tests_properties(${example_name}_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS poe)
 
+    endif()
+
+    # Copy over required DLLs (Windows)
+    if(WIN32)
+        # Copy dlls to target directory - Windows only
+        # TARGET_RUNTIME_DLLS generator expression available since CMake 3.21
+        if(CMAKE_VERSION VERSION_LESS "3.21")
+            file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
+        else()
+            set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${example_name}>")
+        endif()
+        add_custom_command(TARGET ${example_name} POST_BUILD COMMAND
+            ${CMAKE_COMMAND} -E copy ${depthai_dll_libraries} $<TARGET_FILE_DIR:${example_name}>
+            COMMAND_EXPAND_LISTS
+        )
     endif()
 endfunction()
 
