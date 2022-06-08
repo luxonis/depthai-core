@@ -76,7 +76,7 @@ function(dai_add_example example_name example_src enable_test)
         if(CMAKE_VERSION VERSION_LESS "3.21")
             file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
         else()
-            set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${TARGET_NAME}>")
+            set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${example_name}>")
         endif()
         add_custom_command(TARGET ${example_name} POST_BUILD COMMAND
             ${CMAKE_COMMAND} -E copy ${depthai_dll_libraries} $<TARGET_FILE_DIR:${example_name}>
