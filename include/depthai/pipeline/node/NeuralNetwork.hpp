@@ -21,7 +21,7 @@ class NeuralNetwork : public NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperti
 
    protected:
     tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion() override;
-    OpenVINO::Version networkOpenvinoVersion;
+    tl::optional<OpenVINO::Version> networkOpenvinoVersion;
 
    public:
     NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
@@ -63,7 +63,7 @@ class NeuralNetwork : public NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperti
      * @throws Error if file doesn't exist or isn't a valid network blob.
      * @param path Path to network blob
      */
-    void setBlobPath(const std::string& path);
+    void setBlobPath(const dai::Path& path);
 
     /**
      * Load network blob into assets and use once pipeline is started.

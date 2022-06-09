@@ -13,12 +13,16 @@ static constexpr int fps = 30;
 // The disparity is computed at this resolution, then upscaled to RGB resolution
 static constexpr auto monoRes = dai::MonoCameraProperties::SensorResolution::THE_720_P;
 
-static float rgbWeight = 0.4f;
-static float depthWeight = 0.6f;
+static float rgbWeight = 0.3f;
+static float depthWeight = 0.3f;
+static float confWeight = 0.3f;
 
-static void updateBlendWeights(int percentRgb, void* ctx) {
-    rgbWeight = float(percentRgb) / 100.f;
-    depthWeight = 1.f - rgbWeight;
+static float rgbWeightNorm = 0.3f;
+static float depthWeightNorm = 0.3f;
+static float confWeightNorm = 0.3f;
+
+static void updateBlendWeights(int percentRgb, void* weight) {
+    *((float*)weight) = float(percentRgb) / 100.f;
 }
 
 int main() {
@@ -37,11 +41,14 @@ int main() {
 
     auto rgbOut = pipeline.create<dai::node::XLinkOut>();
     auto depthOut = pipeline.create<dai::node::XLinkOut>();
+    auto confOut = pipeline.create<dai::node::XLinkOut>();
 
     rgbOut->setStreamName("rgb");
     queueNames.push_back("rgb");
     depthOut->setStreamName("depth");
     queueNames.push_back("depth");
+    confOut->setStreamName("conf");
+    queueNames.push_back("conf");
 
     // Properties
     camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
@@ -78,6 +85,7 @@ int main() {
     left->out.link(stereo->left);
     right->out.link(stereo->right);
     stereo->disparity.link(depthOut->input);
+    stereo->confidenceMap.link(confOut->input);
 
     // Connect to device and start pipeline
     device.startPipeline(pipeline);
@@ -91,12 +99,18 @@ int main() {
 
     auto rgbWindowName = "rgb";
     auto depthWindowName = "depth";
-    auto blendedWindowName = "rgb-depth";
+    auto confWindowName = "conf";
+    auto blendedWindowName = "rgb-depth-confidence";
     cv::namedWindow(rgbWindowName);
     cv::namedWindow(depthWindowName);
+    cv::namedWindow(confWindowName);
     cv::namedWindow(blendedWindowName);
-    int defaultValue = (int)(rgbWeight * 100);
-    cv::createTrackbar("RGB Weight %", blendedWindowName, &defaultValue, 100, updateBlendWeights);
+    int defRgbWeightValue = (int)(rgbWeight * 100);
+    int defDepthWeightValue = (int)(rgbWeight * 100);
+    int defConfWeightValue = (int)(rgbWeight * 100);
+    cv::createTrackbar("RGB Weight %", blendedWindowName, &defRgbWeightValue, 100, updateBlendWeights, &rgbWeight);
+    cv::createTrackbar("Depth Weight %", blendedWindowName, &defDepthWeightValue, 100, updateBlendWeights, &depthWeight);
+    cv::createTrackbar("Confidence Weight %", blendedWindowName, &defConfWeightValue, 100, updateBlendWeights, &confWeight);
 
     while(true) {
         std::unordered_map<std::string, std::shared_ptr<dai::ImgFrame>> latestPacket;
@@ -127,15 +141,32 @@ int main() {
             }
         }
 
-        // Blend when both received
-        if(frame.find(rgbWindowName) != frame.end() && frame.find(depthWindowName) != frame.end()) {
-            // Need to have both frames in BGR format before blending
+        // Blend when all three frames received
+        if(frame.find(rgbWindowName) != frame.end() && frame.find(depthWindowName) != frame.end() && frame.find(confWindowName) != frame.end()) {
+            // Need to have all three frames in BGR format before blending
             if(frame[depthWindowName].channels() < 3) {
                 cv::cvtColor(frame[depthWindowName], frame[depthWindowName], cv::COLOR_GRAY2BGR);
             }
-            cv::Mat blended;
-            cv::addWeighted(frame[rgbWindowName], rgbWeight, frame[depthWindowName], depthWeight, 0, blended);
-            cv::imshow(blendedWindowName, blended);
+            if(frame[confWindowName].channels() < 3) {
+                cv::cvtColor(frame[confWindowName], frame[confWindowName], cv::COLOR_GRAY2BGR);
+            }
+
+            float sumWeight = rgbWeight + depthWeight + confWeight;
+            // Normalize the weights so their sum to be <= 1.0
+            if(sumWeight <= 1.0) {
+                rgbWeightNorm = rgbWeight;
+                depthWeightNorm = depthWeight;
+                confWeightNorm = confWeight;
+            } else {
+                rgbWeightNorm = rgbWeight / sumWeight;
+                depthWeightNorm = depthWeight / sumWeight;
+                confWeightNorm = confWeight / sumWeight;
+            }
+
+            cv::Mat blended1, blended2;
+            cv::addWeighted(frame[rgbWindowName], rgbWeightNorm, frame[depthWindowName], depthWeightNorm, 0, blended1);
+            cv::addWeighted(blended1, rgbWeightNorm + depthWeightNorm, frame[confWindowName], confWeightNorm, 0, blended2);
+            cv::imshow(blendedWindowName, blended2);
             frame.clear();
         }
 

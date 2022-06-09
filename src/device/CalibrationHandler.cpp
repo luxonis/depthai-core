@@ -48,7 +48,7 @@ void invertSe3Matrix4x4InPlace(std::vector<std::vector<float>>& mat) {
 }
 }  // namespace
 
-CalibrationHandler::CalibrationHandler(std::string eepromDataPath) {
+CalibrationHandler::CalibrationHandler(dai::Path eepromDataPath) {
     std::ifstream jsonStream(eepromDataPath);
     // TODO(sachin): Check if the file exists first.
     if(!jsonStream.is_open()) {
@@ -61,7 +61,13 @@ CalibrationHandler::CalibrationHandler(std::string eepromDataPath) {
     eepromData = jsonData;
 }
 
-CalibrationHandler::CalibrationHandler(std::string calibrationDataPath, std::string boardConfigPath) {
+CalibrationHandler CalibrationHandler::fromJson(nlohmann::json eepromDataJson) {
+    CalibrationHandler calib;
+    calib.eepromData = eepromDataJson;
+    return calib;
+}
+
+CalibrationHandler::CalibrationHandler(dai::Path calibrationDataPath, dai::Path boardConfigPath) {
     auto matrixConv = [](std::vector<float>& src, int startIdx) {
         std::vector<std::vector<float>> dest;
         int currIdx = startIdx;
@@ -281,6 +287,17 @@ std::vector<float> CalibrationHandler::getDistortionCoefficients(CameraBoardSock
     if(eepromData.cameraData[cameraId].intrinsicMatrix.size() == 0 || eepromData.cameraData[cameraId].intrinsicMatrix[0][0] == 0)
         throw std::runtime_error("There is no Intrinsic matrix available for the the requested cameraID");
 
+    if(eepromData.cameraData[cameraId].cameraType == CameraModel::Fisheye) {
+        // in this case the camera model is Fisheye; we only want to return four floats.
+        // camera calibration is stored as 14 floats in eeprom, only return the first four.
+        std::vector<float> ret(4);
+        for(int i = 0; i < 4; i++) {
+            ret[i] = eepromData.cameraData[cameraId].distortionCoeff[i];
+        }
+        return ret;
+    }
+
+    // in this case the camera model is Perspective, we want to return all 14
     return eepromData.cameraData[cameraId].distortionCoeff;
 }
 
@@ -304,6 +321,13 @@ uint8_t CalibrationHandler::getLensPosition(CameraBoardSocket cameraId) {
         throw std::runtime_error("There is no Camera data available corresponding to the the requested cameraID");
 
     return eepromData.cameraData[cameraId].lensPosition;
+}
+
+CameraModel CalibrationHandler::getDistortionModel(CameraBoardSocket cameraId) {
+    if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end())
+        throw std::runtime_error("There is no Camera data available corresponding to the the requested cameraID");
+
+    return eepromData.cameraData[cameraId].cameraType;
 }
 
 std::vector<std::vector<float>> CalibrationHandler::getCameraExtrinsics(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation) {
@@ -415,11 +439,15 @@ dai::CameraBoardSocket CalibrationHandler::getStereoRightCameraId() {
     return eepromData.stereoRectificationData.rightCameraSocket;
 }
 
-bool CalibrationHandler::eepromToJsonFile(std::string destPath) const {
+bool CalibrationHandler::eepromToJsonFile(dai::Path destPath) const {
     nlohmann::json j = eepromData;
     std::ofstream ob(destPath);
     ob << std::setw(4) << j << std::endl;
     return true;
+}
+
+nlohmann::json CalibrationHandler::eepromToJson() const {
+    return eepromData;
 }
 
 std::vector<std::vector<float>> CalibrationHandler::computeExtrinsicMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation) {
@@ -488,7 +516,29 @@ bool CalibrationHandler::checkExtrinsicsLink(CameraBoardSocket srcCamera, Camera
 void CalibrationHandler::setBoardInfo(std::string boardName, std::string boardRev) {
     eepromData.boardName = boardName;
     eepromData.boardRev = boardRev;
-    return;
+}
+
+void CalibrationHandler::setBoardInfo(std::string productName,
+                                      std::string boardName,
+                                      std::string boardRev,
+                                      std::string boardConf,
+                                      std::string hardwareConf,
+                                      std::string batchName,
+                                      uint64_t batchTime,
+                                      uint32_t boardOptions,
+                                      std::string boardCustom) {
+    eepromData.productName = productName;
+    eepromData.boardName = boardName;
+    eepromData.boardRev = boardRev;
+    eepromData.boardConf = boardConf;
+    eepromData.hardwareConf = hardwareConf;
+    eepromData.batchName = batchName;
+    eepromData.batchTime = batchTime;
+    eepromData.boardCustom = boardCustom;
+    eepromData.boardOptions = boardOptions;
+
+    // Bump version to V7
+    eepromData.version = 7;
 }
 
 void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, std::vector<std::vector<float>> intrinsics, int width, int height) {
@@ -525,8 +575,19 @@ void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, std::ve
 }
 
 void CalibrationHandler::setDistortionCoefficients(CameraBoardSocket cameraId, std::vector<float> distortionCoefficients) {
-    if(distortionCoefficients.size() != 14) {
-        throw std::runtime_error("distortionCoefficients size should always be 14");  // should it be ??
+    const size_t num = 14;
+
+    if(distortionCoefficients.size() > num) {
+        throw std::runtime_error("Too many distortion coefficients! Max is 14.");
+    }
+
+    if(num != 14) {
+        while(distortionCoefficients.size() != num) {
+            // Pad to 14 parameters.
+            // On the device it's static PoD, we always want it to be 14 parameters - for Perspective camera model, we return all 14; for Fisheye camera model,
+            // we only return the first four.
+            distortionCoefficients.push_back(0.0f);
+        }
     }
 
     if(eepromData.cameraData.find(cameraId) == eepromData.cameraData.end()) {
