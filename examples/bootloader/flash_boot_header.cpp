@@ -12,8 +12,8 @@ int main(int argc, char** argv) {
         std::cout << "\tOptions:\n";
         std::cout << "\t\t" << argv[0] << " GPIO_MODE gpioModeNum" << std::endl;
         std::cout << "\t\t" << argv[0] << " USB_RECOVERY" << std::endl;
-        std::cout << "\t\t" << argv[0] << " NORMAL [offset] [location] [dummyCycles] [frequency]" << std::endl;
-        std::cout << "\t\t" << argv[0] << " FAST [offset] [location] [dummyCycles] [frequency]" << std::endl;
+        std::cout << "\t\t" << argv[0] << " NORMAL [frequency] [location] [dummyCycles] [offset]" << std::endl;
+        std::cout << "\t\t" << argv[0] << " FAST [frequency] [location] [dummyCycles] [offset]" << std::endl;
         return 0;
     }
     std::string mode{argv[1]};
@@ -34,7 +34,7 @@ int main(int argc, char** argv) {
         flash = [](dai::DeviceBootloader& bl) { return bl.flashUsbRecoveryBootHeader(dai::DeviceBootloader::Memory::FLASH); };
     } else if(mode == "normal" || mode == "fast") {
         if(argc != 2 && argc != 3 && argc <= 3) {
-            std::cout << "Usage: " << argv[0] << " NORMAL/FAST [offset] [location] [dummyCycles] [frequency]" << std::endl;
+            std::cout << "Usage: " << argv[0] << " NORMAL/FAST [frequency] [location] [dummyCycles] [offset]" << std::endl;
             std::cout << "Usage: " << argv[0] << " NORMAL/FAST [frequency]" << std::endl;
             return 0;
         }
@@ -61,11 +61,11 @@ int main(int argc, char** argv) {
 
         if(mode == "normal") {
             flash = [offset, location, dummyCycles, frequency](dai::DeviceBootloader& bl) {
-                return bl.flashBootHeader(dai::DeviceBootloader::Memory::FLASH, offset, location, dummyCycles, frequency);
+                return bl.flashBootHeader(dai::DeviceBootloader::Memory::FLASH, frequency, location, dummyCycles, offset);
             };
         } else if(mode == "fast") {
             flash = [offset, location, dummyCycles, frequency](dai::DeviceBootloader& bl) {
-                return bl.flashFastBootHeader(dai::DeviceBootloader::Memory::FLASH, offset, location, dummyCycles, frequency);
+                return bl.flashFastBootHeader(dai::DeviceBootloader::Memory::FLASH, frequency, location, dummyCycles, offset);
             };
         }
     }
