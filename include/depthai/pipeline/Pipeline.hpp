@@ -42,6 +42,8 @@ class PipelineImpl {
     void setCameraTuningBlobPath(const dai::Path& path);
     void setXLinkChunkSize(int sizeBytes);
     bool isLibcpythonRequired() const;
+    void setBoardConfig(BoardConfig board);
+    BoardConfig getBoardConfig() const;
 
     // Access to nodes
     std::vector<std::shared_ptr<const Node>> getAllNodes() const;
@@ -73,6 +75,8 @@ class PipelineImpl {
     using NodeConnectionMap = std::unordered_map<Node::Id, std::unordered_set<Node::Connection>>;
     // Connection map, NodeId represents id of node connected TO (input)
     NodeConnectionMap nodeConnectionMap;
+    // Board configuration
+    BoardConfig board;
 
     // Template create function
     template <class N>
@@ -265,6 +269,16 @@ class Pipeline {
     /// Checks whether a given OpenVINO version is compatible with the pipeline
     bool isOpenVINOVersionCompatible(OpenVINO::Version version) const {
         return impl()->isOpenVINOVersionCompatible(version);
+    }
+
+    /// Sets board configuration
+    void setBoardConfig(BoardConfig board) {
+        impl()->setBoardConfig(board);
+    }
+
+    /// Gets board configuration
+    BoardConfig getBoardConfig() const {
+        return impl()->getBoardConfig();
     }
 
     /// Get device configuration needed for this pipeline

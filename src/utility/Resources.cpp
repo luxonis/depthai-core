@@ -83,7 +83,7 @@ constexpr static auto RESOURCE_LIST_DEVICE = array_of<const char*>(DEPTHAI_CMD_O
                                                                    DEPTHAI_LIBCPYTHON_OPENVINO_2021_2_PATCH_PATH,
                                                                    DEPTHAI_LIBCPYTHON_OPENVINO_2021_3_PATCH_PATH);
 
-std::vector<std::uint8_t> Resources::getDeviceFirmware(DeviceResource resource, Device::Config config, std::string pathToMvcmd) const {
+std::vector<std::uint8_t> Resources::getDeviceFirmware(DeviceResource resource, Device::Config config, dai::Path pathToMvcmd) const {
     // Wait until lazy load is complete
     {
         std::unique_lock<std::mutex> lock(mtxDevice);

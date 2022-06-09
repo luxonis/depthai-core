@@ -113,6 +113,19 @@ class DeviceBootloader {
         std::string buildInfo;
     };
 
+    struct ApplicationInfo {
+        Memory memory;
+        bool hasApplication;
+        std::string firmwareVersion;
+        std::string applicationName;
+    };
+
+    struct MemoryInfo {
+        bool available;
+        std::int64_t size;
+        std::string info;
+    };
+
     // constants
 
     /// Default Bootloader type
@@ -136,17 +149,22 @@ class DeviceBootloader {
      * @param pipeline Pipeline from which to create the application package
      * @param pathToCmd Optional path to custom device firmware
      * @param compress Optional boolean which specifies if contents should be compressed
+     * @param applicationName Optional name the application that is flashed
      * @returns Depthai application package
      */
-    static std::vector<uint8_t> createDepthaiApplicationPackage(const Pipeline& pipeline, const dai::Path& pathToCmd = {}, bool compress = false);
+    static std::vector<uint8_t> createDepthaiApplicationPackage(const Pipeline& pipeline,
+                                                                const dai::Path& pathToCmd = {},
+                                                                bool compress = false,
+                                                                std::string applicationName = "");
 
     /**
      * Creates application package which can be flashed to depthai device.
      * @param pipeline Pipeline from which to create the application package
      * @param compress Specifies if contents should be compressed
+     * @param applicationName Name the application that is flashed
      * @returns Depthai application package
      */
-    static std::vector<uint8_t> createDepthaiApplicationPackage(const Pipeline& pipeline, bool compress);
+    static std::vector<uint8_t> createDepthaiApplicationPackage(const Pipeline& pipeline, bool compress, std::string applicationName = "");
 
     /**
      * Saves application package to a file which can be flashed to depthai device.
@@ -154,16 +172,19 @@ class DeviceBootloader {
      * @param pipeline Pipeline from which to create the application package
      * @param pathToCmd Optional path to custom device firmware
      * @param compress Optional boolean which specifies if contents should be compressed
+     * @param applicationName Optional name the application that is flashed
      */
-    static void saveDepthaiApplicationPackage(const dai::Path& path, const Pipeline& pipeline, const dai::Path& pathToCmd = {}, bool compress = false);
+    static void saveDepthaiApplicationPackage(
+        const dai::Path& path, const Pipeline& pipeline, const dai::Path& pathToCmd = {}, bool compress = false, std::string applicationName = "");
 
     /**
      * Saves application package to a file which can be flashed to depthai device.
      * @param path Path where to save the application package
      * @param pipeline Pipeline from which to create the application package
      * @param compress Specifies if contents should be compressed
+     * @param applicationName Optional name the application that is flashed
      */
-    static void saveDepthaiApplicationPackage(const dai::Path& path, const Pipeline& pipeline, bool compress);
+    static void saveDepthaiApplicationPackage(const dai::Path& path, const Pipeline& pipeline, bool compress, std::string applicationName = "");
 
     /**
      * @returns Embedded bootloader version
@@ -218,33 +239,49 @@ class DeviceBootloader {
      * Flashes a given pipeline to the device.
      * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
      * @param pipeline Pipeline to flash to the board
+     * @param compress Compresses application to reduce needed memory size
+     * @param applicationName Name the application that is flashed
      */
-    std::tuple<bool, std::string> flash(std::function<void(float)> progressCallback, const Pipeline& pipeline, bool compress = false);
+    std::tuple<bool, std::string> flash(std::function<void(float)> progressCallback,
+                                        const Pipeline& pipeline,
+                                        bool compress = false,
+                                        std::string applicationName = "",
+                                        Memory memory = Memory::AUTO);
 
     /**
      * Flashes a given pipeline to the device.
      * @param pipeline Pipeline to flash to the board
+     * @param compress Compresses application to reduce needed memory size
+     * @param applicationName Optional name the application that is flashed
      */
-    std::tuple<bool, std::string> flash(const Pipeline& pipeline, bool compress = false);
+    std::tuple<bool, std::string> flash(const Pipeline& pipeline, bool compress = false, std::string applicationName = "", Memory memory = Memory::AUTO);
+
+    /**
+     * Reads information about flashed application in specified memory from device
+     * @param memory Specifies which memory to query
+     */
+    ApplicationInfo readApplicationInfo(Memory memory);
 
     /**
      * Flashes a specific depthai application package that was generated using createDepthaiApplicationPackage or saveDepthaiApplicationPackage
      * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
      * @param package Depthai application package to flash to the board
      */
-    std::tuple<bool, std::string> flashDepthaiApplicationPackage(std::function<void(float)> progressCallback, std::vector<uint8_t> package);
+    std::tuple<bool, std::string> flashDepthaiApplicationPackage(std::function<void(float)> progressCallback,
+                                                                 std::vector<uint8_t> package,
+                                                                 Memory memory = Memory::AUTO);
 
     /**
      * Flashes a specific depthai application package that was generated using createDepthaiApplicationPackage or saveDepthaiApplicationPackage
      * @param package Depthai application package to flash to the board
      */
-    std::tuple<bool, std::string> flashDepthaiApplicationPackage(std::vector<uint8_t> package);
+    std::tuple<bool, std::string> flashDepthaiApplicationPackage(std::vector<uint8_t> package, Memory memory = Memory::AUTO);
 
     /**
      * Clears flashed application on the device, by removing SBR boot structure
      * Doesnt remove fast boot header capability to still boot the application
      */
-    std::tuple<bool, std::string> flashClear();
+    std::tuple<bool, std::string> flashClear(Memory memory = Memory::AUTO);
 
     /**
      * Flashes bootloader to the current board
@@ -277,25 +314,26 @@ class DeviceBootloader {
     /**
      * Flash optimized boot header
      * @param memory Which memory to flasht the header to
-     * @param offset Offset in memory to flash the header to. Defaults to offset of boot header
+     * @param frequency SPI specific parameter, frequency in MHz
      * @param location Target location the header should boot to. Default to location of bootloader
      * @param dummyCycles SPI specific parameter
-     * @param frequency SPI specific parameter, frequency in MHz
-     * @return std::tuple<bool, std::string>
+     * @param offset Offset in memory to flash the header to. Defaults to offset of boot header
+     * @returns status as std::tuple<bool, std::string>
      */
-    std::tuple<bool, std::string> flashBootHeader(Memory memory, int64_t offset = -1, int64_t location = -1, int32_t dummyCycles = -1, int32_t frequency = -1);
+    std::tuple<bool, std::string> flashBootHeader(Memory memory, int32_t frequency = -1, int64_t location = -1, int32_t dummyCycles = -1, int64_t offset = -1);
 
     /**
      * Flash fast boot header. Application must already be present in flash, or location must be specified manually.
      * Note - Can soft brick your device if firmware location changes.
      * @param memory Which memory to flash the header to
-     * @param offset Offset in memory to flash the header to. Defaults to offset of boot header
+     * @param frequency SPI specific parameter, frequency in MHz
      * @param location Target location the header should boot to. Default to location of bootloader
      * @param dummyCycles SPI specific parameter
-     * @param frequency SPI specific parameter, frequency in MHz
+     * @param offset Offset in memory to flash the header to. Defaults to offset of boot header
+     * @returns status as std::tuple<bool, std::string>
      */
     std::tuple<bool, std::string> flashFastBootHeader(
-        Memory memory, int64_t offset = -1, int64_t location = -1, int32_t dummyCycles = -1, int32_t frequency = -1);
+        Memory memory, int32_t frequency = -1, int64_t location = -1, int32_t dummyCycles = -1, int64_t offset = -1);
 
     /**
      * Flash arbitrary data at custom offset in specified memory
@@ -370,6 +408,12 @@ class DeviceBootloader {
     std::tuple<bool, std::string> flashConfig(const Config& config, Memory memory = Memory::AUTO, Type type = Type::AUTO);
 
     /**
+     * Retrieves information about specified memory
+     * @param memory Specifies which memory to query
+     */
+    MemoryInfo getMemoryInfo(Memory memory);
+
+    /**
      * Boots a custom FW in memory
      * @param fw
      * @throws A runtime exception if there are any communication issues
@@ -423,11 +467,15 @@ class DeviceBootloader {
     void checkClosed() const;
     template <typename T>
     bool sendRequest(const T& request);
+    template <typename T>
+    void sendRequestThrow(const T& request);
     bool receiveResponseData(std::vector<uint8_t>& data);
     template <typename T>
     bool parseResponse(const std::vector<uint8_t>& data, T& response);
     template <typename T>
     bool receiveResponse(T& response);
+    template <typename T>
+    void receiveResponseThrow(T& response);
     Version requestVersion();
     std::tuple<bool, std::string> flashCustom(
         Memory memory, size_t offset, const uint8_t* data, size_t size, std::string filename, std::function<void(float)> progressCb);
