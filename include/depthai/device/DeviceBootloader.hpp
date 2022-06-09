@@ -314,25 +314,26 @@ class DeviceBootloader {
     /**
      * Flash optimized boot header
      * @param memory Which memory to flasht the header to
-     * @param offset Offset in memory to flash the header to. Defaults to offset of boot header
+     * @param frequency SPI specific parameter, frequency in MHz
      * @param location Target location the header should boot to. Default to location of bootloader
      * @param dummyCycles SPI specific parameter
-     * @param frequency SPI specific parameter, frequency in MHz
-     * @return std::tuple<bool, std::string>
+     * @param offset Offset in memory to flash the header to. Defaults to offset of boot header
+     * @returns status as std::tuple<bool, std::string>
      */
-    std::tuple<bool, std::string> flashBootHeader(Memory memory, int64_t offset = -1, int64_t location = -1, int32_t dummyCycles = -1, int32_t frequency = -1);
+    std::tuple<bool, std::string> flashBootHeader(Memory memory, int32_t frequency = -1, int64_t location = -1, int32_t dummyCycles = -1, int64_t offset = -1);
 
     /**
      * Flash fast boot header. Application must already be present in flash, or location must be specified manually.
      * Note - Can soft brick your device if firmware location changes.
      * @param memory Which memory to flash the header to
-     * @param offset Offset in memory to flash the header to. Defaults to offset of boot header
+     * @param frequency SPI specific parameter, frequency in MHz
      * @param location Target location the header should boot to. Default to location of bootloader
      * @param dummyCycles SPI specific parameter
-     * @param frequency SPI specific parameter, frequency in MHz
+     * @param offset Offset in memory to flash the header to. Defaults to offset of boot header
+     * @returns status as std::tuple<bool, std::string>
      */
     std::tuple<bool, std::string> flashFastBootHeader(
-        Memory memory, int64_t offset = -1, int64_t location = -1, int32_t dummyCycles = -1, int32_t frequency = -1);
+        Memory memory, int32_t frequency = -1, int64_t location = -1, int32_t dummyCycles = -1, int64_t offset = -1);
 
     /**
      * Flash arbitrary data at custom offset in specified memory

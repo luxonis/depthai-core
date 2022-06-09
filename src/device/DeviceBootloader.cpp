@@ -838,7 +838,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashUsbRecoveryBootHeader(Memor
     return {resp.success, resp.errorMsg};
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashBootHeader(Memory memory, int64_t offset, int64_t location, int32_t dummyCycles, int32_t frequency) {
+std::tuple<bool, std::string> DeviceBootloader::flashBootHeader(Memory memory, int32_t frequency, int64_t location, int32_t dummyCycles, int64_t offset) {
     // TODO(themarpe) - use memory param
     (void)memory;
 
@@ -858,7 +858,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootHeader(Memory memory, i
     return {resp.success, resp.errorMsg};
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flashFastBootHeader(Memory memory, int64_t offset, int64_t location, int32_t dummyCycles, int32_t frequency) {
+std::tuple<bool, std::string> DeviceBootloader::flashFastBootHeader(Memory memory, int32_t frequency, int64_t location, int32_t dummyCycles, int64_t offset) {
     // TODO(themarpe) - use memory param
     (void)memory;
 
