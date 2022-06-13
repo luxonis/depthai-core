@@ -304,6 +304,10 @@ tl::optional<OpenVINO::Version> PipelineImpl::getPipelineOpenVINOVersion() const
 }
 
 bool PipelineImpl::isLibcpythonRequired() const {
+    // TMP TMP - don't lazy load libcpython
+    return false;
+    // TMP TMP
+
     for(const auto& kv : nodeMap) {
         const auto& node = kv.second;
         if(std::dynamic_pointer_cast<const node::Script>(node)) {
