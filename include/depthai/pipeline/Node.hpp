@@ -369,6 +369,9 @@ class Node {
 
     /// Get node AssetManager as a reference
     AssetManager& getAssetManager();
+
+    /// Loads resource specified by URI and returns its data
+    std::vector<uint8_t> loadResource(dai::Path uri);
 };
 
 // Node CRTP class

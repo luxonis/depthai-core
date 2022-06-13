@@ -4,6 +4,7 @@
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "depthai/utility/Initialization.hpp"
+#include "utility/spdlog-fmt.hpp"
 
 // shared
 #include "depthai-shared/pipeline/NodeConnectionSchema.hpp"
@@ -732,6 +733,51 @@ PipelineImpl::~PipelineImpl() {
     wait();
     // TMP - might be more appropriate
     // stop();
+}
+
+std::vector<uint8_t> PipelineImpl::loadResource(dai::Path uri) {
+    return loadResourceCwd(uri, "/pipeline");
+}
+
+std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd) {
+    struct ProtocolHandler {
+        const char* protocol = nullptr;
+        std::function<std::vector<uint8_t>(PipelineImpl&, const dai::Path&)> handle = nullptr;
+    };
+
+    const std::vector<ProtocolHandler> protocolHandlers = {
+        {"asset",
+         [](PipelineImpl& p, const dai::Path& path) -> std::vector<uint8_t> {
+             auto asset = p.assetManager.get(path);
+             if(asset == nullptr) {
+                 throw std::invalid_argument(fmt::format("No asset with key ({}) found", path));
+             }
+
+             return asset->data;
+         }} /*, TODO (read from filesystem 'file://' or default scheme, ...) */
+    };
+
+    for(const auto& handler : protocolHandlers) {
+        std::string protocolPrefix = std::string(handler.protocol) + ":";
+
+        if(uri.u8string().find(protocolPrefix) == 0) {
+            // // protocol matches, resolve URI and call handler
+            // std::filesystem::path path(uri.substr(protocolPrefix.size()));
+            // // Create full path, and normalize
+            // // If path is relative, otherwise path will be taken as absolute
+            // auto fullPath = (cwd / path).lexically_normal();
+            // // Call handler and return
+            // return handler.handle(this, fullPath.string());
+
+            // TODO(themarpe) - use above approach instead
+            dai::Path path(uri.u8string().substr(protocolPrefix.size()));
+            auto fullPath = dai::Path(cwd.u8string() + "/" + path.u8string());
+            return handler.handle(*this, fullPath);
+        }
+    }
+
+    // If no handler executed, then return nullptr
+    throw std::invalid_argument(fmt::format("No handler specified for following ({}) URI", uri));
 }
 
 }  // namespace dai
