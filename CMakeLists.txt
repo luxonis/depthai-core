@@ -585,6 +585,14 @@ configure_file(cmake/${PROJECT_NAME}Config.cmake.in ${PROJECT_NAME}Config.cmake 
 set(DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL "./dependencies")
 configure_file(cmake/${PROJECT_NAME}Config.cmake.in _install/${PROJECT_NAME}Config.cmake @ONLY)
 
+# Modify RPath to point to the cmake/depthai/dependencies/lib
+# note: macOS is APPLE and also UNIX!
+if(APPLE)
+  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/cmake/${PROJECT_NAME}/dependencies/lib")
+elseif(UNIX)
+  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/cmake/${PROJECT_NAME}/dependencies/lib")
+endif()
+
 # Export to CMake registry if specified
 if(CMAKE_EXPORT_PACKAGE_REGISTRY)
     export(PACKAGE depthai)
