@@ -31,7 +31,7 @@ function(dai_add_example example_name example_src enable_test)
     # Add example
     add_executable(${example_name} ${example_src})
     add_default_flags(${example_name} LEAN)
-    target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS})
+    target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS} Threads::Threads)
 
     # Add sanitizers for example
     if(COMMAND add_sanitizers)
