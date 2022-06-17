@@ -67,6 +67,7 @@ jobs:
         exclude:
           - os: windows-latest
             cmake: '3.10.x'
+
     steps:
     - name: Cache .hunter folder
       if: matrix.os != 'windows-latest'
@@ -177,6 +178,7 @@ jobs:
       run: |
         choco install opencv
         echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        echo "CMAKE_GENERATOR=\"Visual Studio 17 2022\"" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
         echo "CMAKE_GENERATOR_PLATFORM=${{ matrix.platform }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
     - name: Configure ${{ matrix.build-type }}, shared ${{ matrix.shared }}, ${{ matrix.platform }}
