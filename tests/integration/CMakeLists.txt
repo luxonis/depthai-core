@@ -19,15 +19,11 @@ function(add_runtime_dependencies depending_target dependency)
     if(WIN32)
         if(TARGET ${dependency})
             get_property(imported_configs TARGET ${dependency} PROPERTY IMPORTED_CONFIGURATIONS)
-            set(dlls "")
+            set(depthai_dll_libraries "")
             foreach(cfg ${imported_configs})
                 get_property(dll TARGET ${dependency} PROPERTY IMPORTED_LOCATION_${cfg})
-                set(dlls ${dlls} $<$<CONFIG:${cfg}>:${dll}>)
+                set(depthai_dll_libraries ${depthai_dll_libraries} $<$<CONFIG:${cfg}>:${dll}>)
             endforeach()
-            add_custom_command(TARGET ${depending_target} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                ${dlls}
-                $<TARGET_FILE_DIR:${depending_target}>)
         else()
             # TARGET_RUNTIME_DLLS generator expression available since CMake 3.21
             if(CMAKE_VERSION VERSION_LESS "3.21")
@@ -35,11 +31,12 @@ function(add_runtime_dependencies depending_target dependency)
             else()
                 set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${depending_target}>")
             endif()
-            add_custom_command(TARGET ${depending_target} POST_BUILD COMMAND
-                ${CMAKE_COMMAND} -E copy ${depthai_dll_libraries} $<TARGET_FILE_DIR:${depending_target}>
-                COMMAND_EXPAND_LISTS
-            )
         endif()
+        # Copy the required dlls
+        add_custom_command(TARGET ${depending_target} POST_BUILD COMMAND
+            ${CMAKE_COMMAND} -E copy_if_different ${depthai_dll_libraries} $<TARGET_FILE_DIR:${depending_target}>
+            COMMAND_EXPAND_LISTS
+        )
     endif()
 endfunction()
 
