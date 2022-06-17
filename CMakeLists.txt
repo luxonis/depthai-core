@@ -40,7 +40,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.15.4" LANGUAGES CXX C)
+project(depthai VERSION "2.16.0" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -81,7 +81,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/sanitizers")
 
 # Additional options
-option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON )
+option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON)
 option(DEPTHAI_CLANG_TIDY "Enable clang-tidy checks during compilation" OFF)
 option(DEPTHAI_SANITIZE "Enable Address and Undefined sanitizers for library, examples and tests" OFF)
 
@@ -207,6 +207,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/EdgeDetector.cpp
     src/pipeline/node/SPIIn.cpp
     src/pipeline/node/FeatureTracker.cpp
+    src/pipeline/node/DetectionParser.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
@@ -409,9 +410,11 @@ endif()
 target_link_libraries(${TARGET_CORE_NAME}
     PUBLIC
         nlohmann_json::nlohmann_json
-        XLink
         libnop
+    INTERFACE
+        XLinkPublic
     PRIVATE
+        XLink
         Threads::Threads
         BZip2::bz2
         FP16::fp16

@@ -7,9 +7,9 @@ hunter_config(
 
 hunter_config(
     XLink
-    VERSION "luxonis-2021.4.2-develop-tcp_nodelay"
-    URL "https://github.com/luxonis/XLink/archive/b765883efc43ecbbbc1ede25403f933de6679d53.tar.gz"
-    SHA1 "c4e0d2d186b79227558b307b9f5a98b4c9a746f7"
+    VERSION "luxonis-2021.4.2-develop"
+    URL "https://github.com/luxonis/XLink/archive/9fcd6dc8b7d0f95d892b059c0c938c97bc9da6dc.tar.gz"
+    SHA1 "6a4187839a94b948db3d7cc94a7e8e8651573ef4"
 )
 
 hunter_config(
@@ -32,9 +32,9 @@ hunter_config(
 # libarchive, luxonis fork
 hunter_config(
     libarchive-luxonis
-    VERSION "3.4.2-p2"
-    URL "https://github.com/luxonis/libarchive/archive/cf2caf0588fc5e2af22cae37027d3ff6902e096f.tar.gz"
-    SHA1 "e99477d32ce14292fe652dc5f4f460d3af8fbc93"
+    VERSION "hunter-3.5.2"
+    URL "https://github.com/luxonis/libarchive/archive/45baa3a3e57104519e1165bcd5ac29c3bd8c9f3a.tar.gz"
+    SHA1 "ca5cd0f1c31b9c187d7119cb1aa7467f8c231d29"
     CMAKE_ARGS
         ENABLE_ACL=OFF
         ENABLE_BZip2=OFF
@@ -110,4 +110,17 @@ hunter_config(
     VERSION "1.2.11-p2"
     URL "https://github.com/luxonis/zlib/archive/refs/tags/v1.2.11-p2.tar.gz"
     SHA1 "fb8b6486183b13a86040f793a939b128f6d27095"
+)
+
+# TMP, could be read from XLink
+# libusb without udev
+hunter_config(
+    libusb-luxonis
+    VERSION "1.0.24-cmake"
+    URL "https://github.com/luxonis/libusb/archive/b7e4548958325b18feb73977163ad44398099534.tar.gz"
+    SHA1 "2d79573d57628fe56d2868d2f6ce756d40906cf4"
+    CMAKE_ARGS
+        WITH_UDEV=OFF
+        # Build shared libs by default to not cause licensing issues
+        BUILD_SHARED_LIBS=ON
 )

@@ -11,6 +11,20 @@ target_include_directories(utility PUBLIC "utility")
 add_default_flags(utility LEAN)
 target_link_libraries(utility FP16::fp16 ${OpenCV_LIBS})
 
+# Create environments for usb & poe labels
+set(test_usb_env
+    # Misc
+    "UBSAN_OPTIONS=halt_on_error=1"
+    # DepthAI
+    "DEPTHAI_PROTOCOL=usb"
+)
+set(test_poe_env
+    # Misc
+    "UBSAN_OPTIONS=halt_on_error=1"
+    # DepthAI
+    "DEPTHAI_PROTOCOL=tcpip;DEPTHAI_SEARCH_TIMEOUT=15000"
+)
+
 # Helper for adding new examples
 function(dai_add_example example_name example_src enable_test)
 
@@ -43,7 +57,7 @@ function(dai_add_example example_name example_src enable_test)
         set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]")
 
         # Add ubsan halt on error
-        set_tests_properties(${example_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=usb" LABELS usb)
+        set_tests_properties(${example_name} PROPERTIES ENVIRONMENT "${test_usb_env}" LABELS usb)
 
         # Add PoE test variants
         add_test(NAME ${example_name}_poe COMMAND ${CMAKE_COMMAND}
@@ -51,8 +65,23 @@ function(dai_add_example example_name example_src enable_test)
             -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake $<TARGET_FILE:${example_name}> ${arguments}
         )
         # Add ubsan halt on error
-        set_tests_properties(${example_name}_poe PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=tcpip;DEPTHAI_SEARCH_TIMEOUT=15000" LABELS poe)
+        set_tests_properties(${example_name}_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS poe)
 
+    endif()
+
+    # Copy over required DLLs (Windows)
+    if(WIN32)
+        # Copy dlls to target directory - Windows only
+        # TARGET_RUNTIME_DLLS generator expression available since CMake 3.21
+        if(CMAKE_VERSION VERSION_LESS "3.21")
+            file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
+        else()
+            set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${example_name}>")
+        endif()
+        add_custom_command(TARGET ${example_name} POST_BUILD COMMAND
+            ${CMAKE_COMMAND} -E copy ${depthai_dll_libraries} $<TARGET_FILE_DIR:${example_name}>
+            COMMAND_EXPAND_LISTS
+        )
     endif()
 endfunction()
 
@@ -310,3 +339,7 @@ target_compile_definitions(tiny_yolo_v4_device_side_decoding PRIVATE BLOB_PATH="
 target_compile_definitions(tiny_yolo_v3_device_side_decoding PRIVATE BLOB_PATH="${tiny_yolo_v3_blob}")
 dai_add_example(apriltag AprilTag/apriltag.cpp ON)
 dai_add_example(apriltag_rgb AprilTag/apriltag_rgb.cpp ON)
+
+# DetectionParser
+dai_add_example(detection_parser NeuralNetwork/detection_parser.cpp ON)
+target_compile_definitions(detection_parser PRIVATE BLOB_PATH="${mobilenet_blob}")

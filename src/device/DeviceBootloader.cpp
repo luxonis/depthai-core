@@ -44,16 +44,17 @@ constexpr const DeviceBootloader::Type DeviceBootloader::DEFAULT_TYPE;
 
 // First tries to find UNBOOTED device, then BOOTLOADER device
 std::tuple<bool, DeviceInfo> DeviceBootloader::getFirstAvailableDevice() {
-    bool found;
-    DeviceInfo dev;
-    std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_UNBOOTED);
-    if(!found) {
-        std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_BOOTLOADER);
+    // Get all connected devices
+    auto devices = XLinkConnection::getAllConnectedDevices();
+    // Search order - first unbooted, then bootloader and last flash booted
+    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED}) {
+        for(const auto& device : devices) {
+            if(device.state == searchState) {
+                return {true, device};
+            }
+        }
     }
-    if(!found) {
-        std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_FLASH_BOOTED);
-    }
-    return {found, dev};
+    return {false, {}};
 }
 
 // Returns all devices which aren't already booted

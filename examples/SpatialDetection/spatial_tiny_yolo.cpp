@@ -45,11 +45,13 @@ int main(int argc, char** argv) {
     auto xoutNN = pipeline.create<dai::node::XLinkOut>();
     auto xoutBoundingBoxDepthMapping = pipeline.create<dai::node::XLinkOut>();
     auto xoutDepth = pipeline.create<dai::node::XLinkOut>();
+    auto nnNetworkOut = pipeline.create<dai::node::XLinkOut>();
 
     xoutRgb->setStreamName("rgb");
     xoutNN->setStreamName("detections");
     xoutBoundingBoxDepthMapping->setStreamName("boundingBoxDepthMapping");
     xoutDepth->setStreamName("depth");
+    nnNetworkOut->setStreamName("nnNetwork");
 
     // Properties
     camRgb->setPreviewSize(416, 416);
@@ -98,6 +100,7 @@ int main(int argc, char** argv) {
 
     stereo->depth.link(spatialDetectionNetwork->inputDepth);
     spatialDetectionNetwork->passthroughDepth.link(xoutDepth->input);
+    spatialDetectionNetwork->outNetwork.link(nnNetworkOut->input);
 
     // Connect to device and start pipeline
     dai::Device device(pipeline);
@@ -107,16 +110,28 @@ int main(int argc, char** argv) {
     auto detectionNNQueue = device.getOutputQueue("detections", 4, false);
     auto xoutBoundingBoxDepthMappingQueue = device.getOutputQueue("boundingBoxDepthMapping", 4, false);
     auto depthQueue = device.getOutputQueue("depth", 4, false);
+    auto networkQueue = device.getOutputQueue("nnNetwork", 4, false);
 
     auto startTime = steady_clock::now();
     int counter = 0;
     float fps = 0;
     auto color = cv::Scalar(255, 255, 255);
+    bool printOutputLayersOnce = true;
 
     while(true) {
         auto imgFrame = previewQueue->get<dai::ImgFrame>();
         auto inDet = detectionNNQueue->get<dai::SpatialImgDetections>();
         auto depth = depthQueue->get<dai::ImgFrame>();
+        auto inNN = networkQueue->get<dai::NNData>();
+
+        if(printOutputLayersOnce && inNN) {
+            std::cout << "Output layer names: ";
+            for(const auto& ten : inNN->getAllLayerNames()) {
+                std::cout << ten << ", ";
+            }
+            std::cout << std::endl;
+            printOutputLayersOnce = false;
+        }
 
         cv::Mat frame = imgFrame->getCvFrame();
         cv::Mat depthFrame = depth->getFrame();  // depthFrame values are in millimeters
