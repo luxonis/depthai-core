@@ -385,6 +385,9 @@ std::function<void()> getLazyTarXzFunction(MTX& mtx, CV& cv, BOOL& ready, PATH c
         // Check that all resources were read
         for(const auto& cpath : resourceList) {
             std::string resPath(cpath);
+            if(resourceMap.count(resPath) <= 0) {
+                spdlog::critical("Resource: {}, not found in archive", resPath);
+            }
             assert(resourceMap.count(resPath) > 0);
         }
 
