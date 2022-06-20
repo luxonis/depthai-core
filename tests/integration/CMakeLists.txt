@@ -40,19 +40,22 @@ function(add_runtime_dependencies depending_target dependency)
     endif()
 endfunction()
 
+include(CTest)
+enable_testing()
+
 # Create target dependant on depthai::core
 add_executable(integration-test-core src/main.cpp)
 target_link_libraries(integration-test-core PRIVATE depthai::core)
-
-# Create target dependant on depthai::opencv
-add_executable(integration-test-opencv src/main.cpp)
-target_link_libraries(integration-test-opencv PRIVATE depthai::opencv)
-
-# Add runtime dependencies
 add_runtime_dependencies(integration-test-core usb-1.0)
-add_runtime_dependencies(integration-test-opencv usb-1.0)
-
-include(CTest)
-enable_testing()
 add_test(integration-test-core integration-test-core)
-add_test(integration-test-opencv integration-test-opencv)
+
+# Create target dependant on depthai::opencv (if available)
+if(TARGET depthai::opencv)
+    add_executable(integration-test-opencv src/main.cpp)
+    target_link_libraries(integration-test-opencv PRIVATE depthai::opencv)
+    add_runtime_dependencies(integration-test-opencv usb-1.0)
+    add_test(integration-test-opencv integration-test-opencv)
+elseif("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "x64")
+    # Make sure that DepthAI OpenCV support is avaible with x64
+    message(FATAL_ERROR "Integration test targeting x64 assumes opencv support to be available, which seems to be missing.")
+endif()
