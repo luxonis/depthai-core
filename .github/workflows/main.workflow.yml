@@ -210,21 +210,21 @@ jobs:
         cmake -S tests/integration/ -B tests/integration/build_add_subdirectory -D TEST_FIND_PACKAGE=OFF ${{ env.CMAKE_ARGS }}
         cmake --build tests/integration/build_add_subdirectory --config ${{ matrix.build-type }} --parallel 4
         cd tests/integration/build_add_subdirectory
-        ctest -C ${{ matrix.build-type }} --output-on-failure
+        ctest -C ${{ matrix.build-type }} --output-on-failure --no-tests=error
 
     - name: Build and test find_package (installed)
       run: |
         cmake -S tests/integration/ -B tests/integration/build_find_package -D TEST_FIND_PACKAGE=ON -D depthai_DIR=$GITHUB_WORKSPACE/depthai_install/lib/cmake/depthai ${{ env.CMAKE_ARGS }}
         cmake --build tests/integration/build_find_package --config ${{ matrix.build-type }} --parallel 4
         cd tests/integration/build_find_package
-        ctest -C ${{ matrix.build-type }} --output-on-failure
+        ctest -C ${{ matrix.build-type }} --output-on-failure --no-tests=error
 
     - name: Build and test find_package (build directory)
       run: |
         cmake -S tests/integration/ -B tests/integration/build_find_package_2 -D TEST_FIND_PACKAGE=ON -D depthai_DIR=$GITHUB_WORKSPACE/build ${{ env.CMAKE_ARGS }}
         cmake --build tests/integration/build_find_package_2 --config ${{ matrix.build-type }} --parallel 4
         cd tests/integration/build_find_package_2
-        ctest -C ${{ matrix.build-type }} --output-on-failure
+        ctest -C ${{ matrix.build-type }} --output-on-failure --no-tests=error
 
 
   release:
