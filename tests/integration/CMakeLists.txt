@@ -54,7 +54,7 @@ if(TARGET depthai::opencv)
     target_link_libraries(integration-test-opencv PRIVATE depthai::opencv)
     add_runtime_dependencies(integration-test-opencv usb-1.0)
     add_test(integration-test-opencv integration-test-opencv)
-elseif(NOT "${CMAKE_VS_PLATFORM_NAME}" STREQUAL "Win32")
+elseif("${CMAKE_VS_PLATFORM_NAME}" STREQUAL "Win32")
     message(STATUS "Skipping DepthAI OpenCV integration test as its not readily available on Win32 architecture.")
 else()
     # Make sure that DepthAI OpenCV support is avaible with x64
