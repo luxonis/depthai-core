@@ -31,7 +31,7 @@ function(dai_add_example example_name example_src enable_test)
     # Add example
     add_executable(${example_name} ${example_src})
     add_default_flags(${example_name} LEAN)
-    target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS})
+    target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS} Threads::Threads)
 
     # Add sanitizers for example
     if(COMMAND add_sanitizers)
@@ -79,7 +79,7 @@ function(dai_add_example example_name example_src enable_test)
             set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${example_name}>")
         endif()
         add_custom_command(TARGET ${example_name} POST_BUILD COMMAND
-            ${CMAKE_COMMAND} -E copy ${depthai_dll_libraries} $<TARGET_FILE_DIR:${example_name}>
+            ${CMAKE_COMMAND} -E copy_if_different ${depthai_dll_libraries} $<TARGET_FILE_DIR:${example_name}>
             COMMAND_EXPAND_LISTS
         )
     endif()
