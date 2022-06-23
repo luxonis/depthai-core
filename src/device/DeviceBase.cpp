@@ -1000,6 +1000,28 @@ void DeviceBase::factoryResetCalibration() {
     }
 }
 
+std::vector<std::uint8_t> DeviceBase::readCalibrationRaw() {
+    bool success;
+    std::string errorMsg;
+    std::vector<uint8_t> eepromDataRaw;
+    std::tie(success, errorMsg, eepromDataRaw) = pimpl->rpcClient->call("readFromEepromRaw").as<std::tuple<bool, std::string, std::vector<uint8_t>>>();
+    if(!success) {
+        throw std::runtime_error(errorMsg);
+    }
+    return eepromDataRaw;
+}
+
+std::vector<std::uint8_t> DeviceBase::readFactoryCalibrationRaw() {
+    bool success;
+    std::string errorMsg;
+    std::vector<uint8_t> eepromDataRaw;
+    std::tie(success, errorMsg, eepromDataRaw) = pimpl->rpcClient->call("readFromEepromFactoryRaw").as<std::tuple<bool, std::string, std::vector<uint8_t>>>();
+    if(!success) {
+        throw std::runtime_error(errorMsg);
+    }
+    return eepromDataRaw;
+}
+
 bool DeviceBase::startPipeline() {
     // Deprecated
     return true;
