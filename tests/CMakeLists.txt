@@ -46,7 +46,7 @@ function(dai_add_test test_name test_src)
     endif()
 
     # Link to core and Catch2 testing framework
-    target_link_libraries(${test_name} PRIVATE depthai-core Catch2::Catch2)
+    target_link_libraries(${test_name} PRIVATE depthai-core Catch2::Catch2 Threads::Threads)
 
     # Add sanitizers for tests as well
     if(COMMAND add_sanitizers)
@@ -68,7 +68,7 @@ function(dai_add_test test_name test_src)
         add_default_flags(${test_name}_conforming LEAN)
 
         # Link to core and Catch2 testing framework
-        target_link_libraries(${test_name}_conforming PRIVATE depthai-core Catch2::Catch2)
+        target_link_libraries(${test_name}_conforming PRIVATE depthai-core Catch2::Catch2 Threads::Threads)
 
         # Set compiler c++ standard
         target_compile_options(${test_name}_conforming PRIVATE "${CMAKE_CXX${DAT_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
@@ -107,7 +107,7 @@ function(dai_add_test test_name test_src)
             set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${test_name}>")
         endif()
         add_custom_command(TARGET ${test_name} POST_BUILD COMMAND
-            ${CMAKE_COMMAND} -E copy ${depthai_dll_libraries} $<TARGET_FILE_DIR:${test_name}>
+            ${CMAKE_COMMAND} -E copy_if_different ${depthai_dll_libraries} $<TARGET_FILE_DIR:${test_name}>
             COMMAND_EXPAND_LISTS
         )
     endif()
