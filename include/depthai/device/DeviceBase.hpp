@@ -567,6 +567,9 @@ class DeviceBase {
      */
     CalibrationHandler readFactoryCalibrationOrDefault();
 
+    void flashWrite(std::vector<std::uint8_t> data, uint64_t offset = 0);
+    std::vector<std::uint8_t> flashRead(uint32_t size, uint64_t offset = 0);
+
     /**
      * Fetches the raw EEPROM data from User area
      *

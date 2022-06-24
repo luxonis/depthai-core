@@ -1028,6 +1028,26 @@ std::vector<std::uint8_t> DeviceBase::readFactoryCalibrationRaw() {
     return eepromDataRaw;
 }
 
+void DeviceBase::flashWrite(std::vector<std::uint8_t> data, uint64_t offset) {
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) = pimpl->rpcClient->call("flashWrite", data, offset).as<std::tuple<bool, std::string>>();
+    if(!success) {
+        throw std::runtime_error(errorMsg);
+    }
+}
+
+std::vector<std::uint8_t> DeviceBase::flashRead(uint32_t size, uint64_t offset) {
+    bool success;
+    std::string errorMsg;
+    std::vector<uint8_t> data;
+    std::tie(success, errorMsg, data) = pimpl->rpcClient->call("flashRead", size, offset).as<std::tuple<bool, std::string, std::vector<uint8_t>>>();
+    if(!success) {
+        throw std::runtime_error(errorMsg);
+    }
+    return data;
+}
+
 bool DeviceBase::startPipeline() {
     // Deprecated
     return true;
