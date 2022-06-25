@@ -306,6 +306,7 @@ XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, XLinkDeviceState_
 }
 
 bool XLinkConnection::isClosed() const {
+    std::unique_lock<std::mutex> lock(closedMtx);
     return closed;
 }
 
@@ -314,7 +315,8 @@ void XLinkConnection::checkClosed() const {
 }
 
 void XLinkConnection::close() {
-    if(closed.exchange(true)) return;
+    std::unique_lock<std::mutex> lock(closedMtx);
+    if(closed) return;
 
     using namespace std::chrono;
     constexpr auto RESET_TIMEOUT = seconds(2);
@@ -350,6 +352,8 @@ void XLinkConnection::close() {
 
         spdlog::debug("XLinkResetRemote of linkId: ({})", tmp);
     }
+
+    closed = true;
 }
 
 XLinkConnection::~XLinkConnection() {
