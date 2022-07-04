@@ -366,10 +366,11 @@ DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo) : deviceInfo(de
 }
 
 void DeviceBase::close() {
-    // Only allow to close once
-    if(closed.exchange(true)) return;
-
-    closeImpl();
+    std::unique_lock<std::mutex> lock(closedMtx);
+    if(!closed) {
+        closeImpl();
+        closed = true;
+    }
 }
 
 void DeviceBase::closeImpl() {
@@ -395,6 +396,8 @@ void DeviceBase::closeImpl() {
     if(timesyncThread.joinable()) timesyncThread.join();
     // And at the end stop logging thread
     if(loggingThread.joinable()) loggingThread.join();
+    // At the end stop the monitor thread
+    if(monitorThread.joinable()) monitorThread.join();
 
     // Close rpcStream
     pimpl->rpcStream = nullptr;
@@ -403,6 +406,7 @@ void DeviceBase::closeImpl() {
 }
 
 bool DeviceBase::isClosed() const {
+    std::unique_lock<std::mutex> lock(closedMtx);
     return closed || !watchdogRunning;
 }
 
@@ -599,12 +603,23 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     // separate stream so it doesn't miss between potentially long RPC calls
     // Only create the thread if watchdog is enabled
     if(watchdogTimeout > std::chrono::milliseconds(0)) {
+        // Specify "last" ping time (5s in the future, for some grace time)
+        {
+            std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
+            lastWatchdogPingTime = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        }
+
+        // Start watchdog thread for device
         watchdogThread = std::thread([this, watchdogTimeout]() {
             try {
                 XLinkStream stream(connection, device::XLINK_CHANNEL_WATCHDOG, 128);
                 std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
                 while(watchdogRunning) {
                     stream.write(watchdogKeepalive);
+                    {
+                        std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
+                        lastWatchdogPingTime = std::chrono::steady_clock::now();
+                    }
                     // Ping with a period half of that of the watchdog timeout
                     std::this_thread::sleep_for(watchdogTimeout / 2);
                 }
@@ -616,6 +631,28 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
             // Watchdog ended. Useful for checking disconnects
             watchdogRunning = false;
         });
+
+        // Start monitor thread for host - makes sure that device is responding to pings, otherwise it disconnects
+        monitorThread = std::thread([this, watchdogTimeout]() {
+            while(watchdogRunning) {
+                // Ping with a period half of that of the watchdog timeout
+                std::this_thread::sleep_for(watchdogTimeout);
+                // Check if wd was pinged in the specified watchdogTimeout time.
+                decltype(lastWatchdogPingTime) prevPingTime;
+                {
+                    std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
+                    prevPingTime = lastWatchdogPingTime;
+                }
+                if(std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout) {
+                    spdlog::warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
+                    // ping was missed, reset the device
+                    watchdogRunning = false;
+                    // close the underlying connection
+                    connection->close();
+                }
+            }
+        });
+
     } else {
         // Still set watchdogRunning explictitly
         // as it indicates device not being closed

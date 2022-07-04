@@ -667,11 +667,17 @@ class DeviceBase {
     std::thread loggingThread;
     std::atomic<bool> loggingRunning{true};
 
+    // Monitor thread
+    std::thread monitorThread;
+    std::mutex lastWatchdogPingTimeMtx;
+    std::chrono::steady_clock::time_point lastWatchdogPingTime;
+
     // RPC stream
     std::unique_ptr<XLinkStream> rpcStream;
 
     // closed
-    std::atomic<bool> closed{false};
+    mutable std::mutex closedMtx;
+    bool closed{false};
 
     // pimpl
     class Impl;

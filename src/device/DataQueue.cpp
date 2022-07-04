@@ -53,7 +53,9 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                 }
 
                 // Add 'data' to queue
-                queue.push(data);
+                if(!queue.push(data)) {
+                    throw std::runtime_error(fmt::format("Underlying queue destructed"));
+                }
 
                 // Increment numPacketsRead
                 numPacketsRead++;
@@ -284,7 +286,9 @@ void DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg) {
         throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize));
     }
 
-    queue.push(rawMsg);
+    if(!queue.push(rawMsg)) {
+        throw std::runtime_error(fmt::format("Underlying queue destructed"));
+    }
 }
 void DataInputQueue::send(const std::shared_ptr<ADatatype>& msg) {
     if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
