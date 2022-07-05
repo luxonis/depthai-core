@@ -643,7 +643,8 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
                     std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
                     prevPingTime = lastWatchdogPingTime;
                 }
-                if(std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout) {
+                // Recheck if watchdogRunning wasn't already closed
+                if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout) {
                     spdlog::warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
                     // ping was missed, reset the device
                     watchdogRunning = false;
