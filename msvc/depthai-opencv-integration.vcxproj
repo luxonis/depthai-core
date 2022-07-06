@@ -115,16 +115,16 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;_CONSOLE;DEPTHAI_HAVE_OPENCV_SUPPORT;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalUsingDirectories>%(AdditionalUsingDirectories)</AdditionalUsingDirectories>
-      <AdditionalIncludeDirectories>$(ProjectDir)/../build/install/include/;$(ProjectDir)/../build/install/include/depthai-shared/3rdparty;$(ProjectDir)/../build/install/lib/cmake/depthai/dependencies/include/;C:\opencv\build\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\build\install\include;$(ProjectDir)..\build\install\include\depthai-shared\3rdparty;$(ProjectDir)..\build\install\lib\cmake\depthai\dependencies\include;C:\opencv\build\include\opencv2;C:\workspace\Phabricator\depthai-core-v2.16.0-win64\lib\cmake\depthai\dependencies\lib;C:\opencv\build\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalOptions>/DEPTHAI_TARGET_CORE /JSON_USE_IMPLICIT_CONVERSIONS=1 /__PC__ /XLINK_USE_MX_ID_NAME %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>$(ProjectDir)/../build/install/lib/depthai-cored.lib;$(ProjectDir)/../build/install/lib/depthai-opencvd.lib;C:\opencv\build\x64\vc15\lib\opencv_world455d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(ProjectDir)/../build/install/lib/depthai-cored.lib;$(ProjectDir)/../build/install/lib/depthai-opencvd.lib;C:\opencv\build\x64\vc15\lib\opencv_world455d.lib;C:\workspace\Phabricator\depthai-core-v2.16.0-win64\lib\cmake\depthai\dependencies\lib\XLinkd.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">

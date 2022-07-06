@@ -1,8 +1,10 @@
 #include <iostream>
 #include "depthai/depthai.hpp"
+#include <opencv2/opencv.hpp>
 
 int main() try {
 
+    #define DEPTHAI_HAVE_OPENCV_SUPPORT
     // Create pipeline
     dai::Pipeline pipeline;
     
@@ -26,7 +28,10 @@ int main() try {
     monoLeft->out.link(xoutLeft->input);
 
     // Connect to device and start pipeline
-    dai::Device device(pipeline);
+    std::vector<dai::DeviceInfo> vDeviceInfo = dai::XLinkConnection::getAllConnectedDevices();
+    //dai::Device device = vDeviceInfo.front();
+    //dai::Device device(pipeline, false);
+    dai::Device device(pipeline, vDeviceInfo.front());
 
     // Output queues will be used to get the grayscale frames from the outputs defined above
     auto qLeft = device.getOutputQueue("left", 4, false);
