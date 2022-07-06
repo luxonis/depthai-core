@@ -128,11 +128,19 @@ set(PROJECT_EXPORT_GROUP "${PROJECT_NAME}Targets")
 find_package(Git)
 if(GIT_FOUND)
     execute_process(
-        COMMAND ${GIT_EXECUTABLE} rev-parse --is-inside-work-tree
+        COMMAND ${GIT_EXECUTABLE} rev-parse --show-toplevel
         WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-        RESULT_VARIABLE DEPTHAI_DOWNLOADED_SOURCES
-        OUTPUT_QUIET ERROR_QUIET
+        RESULT_VARIABLE _git_root_dir_error
+        OUTPUT_VARIABLE _git_root_dir
+        ERROR_QUIET
+        OUTPUT_STRIP_TRAILING_WHITESPACE
     )
+    set(DEPTHAI_DOWNLOADED_SOURCES ON)
+    if(_git_root_dir_error EQUAL 0 AND "${_git_root_dir}" STREQUAL "${CMAKE_CURRENT_LIST_DIR}")
+        set(DEPTHAI_DOWNLOADED_SOURCES OFF)
+    endif()
+    message(DEBUG "Git root dir (${_git_root_dir_error}): ${_git_root_dir}")
+    message(DEBUG "DepthAI as downloaded sources: ${DEPTHAI_DOWNLOADED_SOURCES}")
     execute_process(
         COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
         WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
