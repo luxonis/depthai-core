@@ -61,6 +61,18 @@ class AudioProc : public NodeCRTP<Node, AudioProc, AudioProcProperties> {
      */
     int getNumFramesPool() const;
 
+    /**
+     * Set sample rate used for processing.
+     * @param frames Sample rate in Hz
+     */
+    void setSampleRate(int rate);
+
+    /**
+     * Get sample rate used for processing.
+     * @returns Sample rate in Hz
+     */
+    int getSampleRate() const;
+
 };
 
 }  // namespace node
