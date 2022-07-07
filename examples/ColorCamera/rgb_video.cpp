@@ -97,6 +97,8 @@ int main(int argc, char** argv) {
             auto audioProc = pipeline.create<dai::node::AudioProc>();
             auto xoutMicNc = pipeline.create<dai::node::XLinkOut>();
 
+            // audioProc->setSampleRate(48000);
+
             xoutMicNc->setStreamName("micNc");
 
             gain_dB = 0; // with NC we also have AGC

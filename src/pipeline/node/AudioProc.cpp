@@ -28,5 +28,13 @@ int AudioProc::getNumFramesPool() const {
     return properties.numFramesPool;
 }
 
+void AudioProc::setSampleRate(int rate) {
+    properties.sampleRate = rate;
+}
+
+int AudioProc::getSampleRate() const {
+    return properties.sampleRate;
+}
+
 }  // namespace node
 }  // namespace dai
