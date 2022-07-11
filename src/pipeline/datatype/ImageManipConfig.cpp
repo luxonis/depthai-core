@@ -169,6 +169,14 @@ ImageManipConfig& ImageManipConfig::setHorizontalFlip(bool flip) {
     return *this;
 }
 
+void ImageManipConfig::setVerticalFlip(bool flip) {
+    // Enable format stage
+    cfg.enableFormat = true;
+
+    // Set pixel format
+    cfg.formatConfig.flipVertical = flip;
+}
+
 ImageManipConfig& ImageManipConfig::setReusePreviousImage(bool reuse) {
     cfg.reusePreviousImage = reuse;
     return *this;
