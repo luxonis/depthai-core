@@ -206,6 +206,7 @@ dai_add_example(image_manip ImageManip/image_manip_example.cpp ON)
 dai_add_example(image_manip_rotate ImageManip/image_manip_rotate.cpp ON)
 dai_add_example(image_manip_tiling ImageManip/image_manip_tiling.cpp ON)
 dai_add_example(rgb_rotate_warp ImageManip/rgb_rotate_warp.cpp ON)
+dai_add_example(image_manip_warp_mesh ImageManip/image_manip_warp_mesh.cpp ON)
 
 # IMU
 dai_add_example(imu_gyroscope_accelerometer IMU/imu_gyroscope_accelerometer.cpp ON)
