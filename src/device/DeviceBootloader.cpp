@@ -738,6 +738,11 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, T
         throw std::invalid_argument("DeviceBootloader wasn't initialized to allow flashing bootloader. Set 'allowFlashingBootloader' in constructor");
     }
 
+    // Set specific type if AUTO
+    if(type == Type::AUTO) {
+        type = getType();
+    }
+
     // Only flash memory is supported for now
     if(memory != Memory::FLASH) {
         throw std::invalid_argument("Only FLASH memory is supported for now");
