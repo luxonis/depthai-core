@@ -2,6 +2,21 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.16.0 (2022-06-15)
+-----------
+* OpenVINO 2022.1 support
+* XLink device search improvements
+* cross subnets for PoE devices
+* drastically reduced discovery time
+* Separated name / IP and MXID, to be able to query both USB path / IP and MXID
+* Android support
+* libusb dependency is now managed by Hunter
+* IMU FW update for BNO sensor
+* Added DetectionParser node as a standalone component of DetectionNetwork
+* StereoDepth - subpixel fractional bits API
+* VideoEncoder - lifted 16 frame pool limitation
+* Contributors: Sachin, Sachin Guruswamy
+
 2.15.5 (2022-06-02)
 -----------
 * EEPROM FIX
