@@ -2,6 +2,27 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.17.0 (2022-07-11)
+-----------
+* Support for new S2/Pro devices
+* FW: support for OAK-D-S2 / OAK-D-Pro using the latest board DM9098 R6M2E6
+* Handle new resolutions THE_720_P and THE_800_P for ColorCamera, applicable to OV9782 on RGB/center socket
+* StereoDepth: Add option for disparity shift to reduce minimum depth
+* StereoDepth: extended and subpixel mode can be enabled simultaneously
+* YoloV6 support
+* Refactor ImageManip node
+* macOS / Linux shared library and CI improvements
+* Bootloader improvements
+* Flash boot improvements
+* Bootloader improvements (capability to flash and boot from eMMC)
+* Flashed application information
+* Memory querying
+* XLink device search race fix
+* Capability to flash BoardConfig along with the Pipeline
+* Added host monitor thread to disconnect offline PoE devices
+* Contributors: Alex Bougdan, Szabolcs Gergely, Martin Peterlin, Sachin Guruswamy
+
+
 2.16.0 (2022-06-15)
 -----------
 * OpenVINO 2022.1 support
