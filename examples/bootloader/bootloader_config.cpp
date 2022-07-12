@@ -69,7 +69,7 @@ int main(int argc, char** argv) {
                     std::cout << "Error flashing bootloader configuration: " << error;
                 }
             }
-        } catch (const std::exception& ex) {
+        } catch(const std::exception& ex) {
             std::cout << "Error accessing config: " << ex.what() << std::endl;
         }
 

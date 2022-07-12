@@ -11,7 +11,7 @@ int main(int argc, char** argv) {
         std::cout << "Version: " << bl.getVersion().toString() << std::endl;
 
         auto supportedMemTypes = {dai::DeviceBootloader::Memory::FLASH, dai::DeviceBootloader::Memory::EMMC};
-        if(bl.getType() == dai::DeviceBootloader::Type::USB){
+        if(bl.getType() == dai::DeviceBootloader::Type::USB) {
             std::cout << "USB Bootloader - supports only Flash memory" << std::endl;
             supportedMemTypes = {dai::DeviceBootloader::Memory::FLASH};
         } else {
@@ -27,7 +27,7 @@ int main(int argc, char** argv) {
 
                     auto appInfo = bl.readApplicationInfo(mem);
                     std::cout << "Application, flashed: " << appInfo.hasApplication << " firmware version: " << appInfo.firmwareVersion
-                            << " application name: " << appInfo.applicationName << std::endl;
+                              << " application name: " << appInfo.applicationName << std::endl;
                 } else {
                     std::cout << "Memory '" << mem << "' not available..." << std::endl;
                 }
