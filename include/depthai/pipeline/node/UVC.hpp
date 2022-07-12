@@ -3,7 +3,7 @@
 #include <depthai/pipeline/Node.hpp>
 
 // shared
-// TODO #include <depthai-shared/pb/properties/XLinkOutProperties.hpp>
+#include <depthai-shared/properties/UVCProperties.hpp>
 
 namespace dai {
 namespace node {
@@ -11,21 +11,29 @@ namespace node {
 /**
  * @brief UVC (USB Video Class) node
  */
-class UVC : public Node {
-    //dai::XLinkOutProperties properties;
-
-    std::string getName() const override;
-    nlohmann::json getProperties() override;
-    std::shared_ptr<Node> clone() override;
+class UVC : public NodeCRTP<Node, UVC, UVCProperties>  {
+   public:
+    constexpr static const char* NAME = "UVC";
 
    public:
     UVC(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    UVC(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
-     * Input for UVC node. Limited for now to 1920x1080, NV12 frame types
+     * Input for image frames to be streamed over UVC
+     *
+     * Default queue is blocking with size 8
      */
-    Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}}};
+    Input input{*this, "in", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::Buffer, true}}};
 
+    /// Set GPIO list <gpio_number, value> for GPIOs to set (on/off) at init
+    void setGpiosOnInit(std::unordered_map<int, int> list);
+
+    /// Set GPIO list <gpio_number, value> for GPIOs to set when streaming is enabled
+    void setGpiosOnStreamOn(std::unordered_map<int, int> list);
+
+    /// Set GPIO list <gpio_number, value> for GPIOs to set when streaming is disabled
+    void setGpiosOnStreamOff(std::unordered_map<int, int> list);
 };
 
 }  // namespace node
