@@ -1,29 +1,21 @@
 #include "depthai/pipeline/node/VideoEncoder.hpp"
 
+// std
+#include <stdexcept>
+
+// libraries
 #include "spdlog/spdlog.h"
 
 namespace dai {
 namespace node {
 
-VideoEncoder::VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
-    inputs = {&input};
-    outputs = {&bitstream};
+VideoEncoder::VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
+    : VideoEncoder(par, nodeId, std::make_unique<VideoEncoder::Properties>()) {}
+VideoEncoder::VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<Node, VideoEncoder, VideoEncoderProperties>(par, nodeId, std::move(props)) {
+    setInputRefs({&input});
+    setOutputRefs({&bitstream});
 }
-
-std::string VideoEncoder::getName() const {
-    return "VideoEncoder";
-}
-
-nlohmann::json VideoEncoder::getProperties() {
-    nlohmann::json j;
-    nlohmann::to_json(j, properties);
-    return j;
-}
-
-std::shared_ptr<Node> VideoEncoder::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
-}
-
 // node properties
 void VideoEncoder::setNumFramesPool(int frames) {
     properties.numFramesPool = frames;
@@ -83,6 +75,10 @@ void VideoEncoder::setLossless(bool lossless) {
 
 void VideoEncoder::setFrameRate(float frameRate) {
     properties.frameRate = frameRate;
+}
+
+void VideoEncoder::setMaxOutputFrameSize(int maxFrameSize) {
+    properties.outputFrameSize = maxFrameSize;
 }
 
 VideoEncoderProperties::RateControlMode VideoEncoder::getRateControlMode() const {
@@ -178,6 +174,10 @@ void VideoEncoder::setDefaultProfilePreset(std::tuple<int, int> size, float fps,
 
 bool VideoEncoder::getLossless() const {
     return properties.lossless;
+}
+
+int VideoEncoder::getMaxOutputFrameSize() const {
+    return properties.outputFrameSize;
 }
 
 }  // namespace node

@@ -5,23 +5,12 @@
 namespace dai {
 namespace node {
 
-ObjectTracker::ObjectTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
-    inputs = {&inputTrackerFrame, &inputDetectionFrame, &inputDetections};
-    outputs = {&out, &passthroughTrackerFrame, &passthroughDetectionFrame, &passthroughDetections};
-}
-
-std::string ObjectTracker::getName() const {
-    return "ObjectTracker";
-}
-
-nlohmann::json ObjectTracker::getProperties() {
-    nlohmann::json j;
-    nlohmann::to_json(j, properties);
-    return j;
-}
-
-std::shared_ptr<Node> ObjectTracker::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
+ObjectTracker::ObjectTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
+    : ObjectTracker(par, nodeId, std::make_unique<ObjectTracker::Properties>()) {}
+ObjectTracker::ObjectTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<Node, ObjectTracker, ObjectTrackerProperties>(par, nodeId, std::move(props)) {
+    setInputRefs({&inputTrackerFrame, &inputDetectionFrame, &inputDetections});
+    setOutputRefs({&out, &passthroughTrackerFrame, &passthroughDetectionFrame, &passthroughDetections});
 }
 
 void ObjectTracker::setTrackerThreshold(float threshold) {
@@ -40,8 +29,8 @@ void ObjectTracker::setTrackerType(TrackerType type) {
     properties.trackerType = type;
 }
 
-void ObjectTracker::setTrackerIdAssigmentPolicy(TrackerIdAssigmentPolicy type) {
-    properties.trackerIdAssigmentPolicy = type;
+void ObjectTracker::setTrackerIdAssignmentPolicy(TrackerIdAssignmentPolicy type) {
+    properties.trackerIdAssignmentPolicy = type;
 }
 
 }  // namespace node

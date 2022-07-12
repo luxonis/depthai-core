@@ -61,9 +61,12 @@ std::shared_ptr<RawBuffer> NNData::serialize() const {
         rawNn.data.insert(rawNn.data.end(), data, data + dataSize);
 
         // Add entry in tensors
+        // TODO(themarpe) - refactor with proper way off specifying tensors
         TensorInfo info;
         info.dataType = dataType;
-        info.numDimensions = 0;
+        info.numDimensions = 1;
+        info.dims.push_back(kv.second.size());
+        info.strides.push_back(sizeofTensorInfoDataType(dataType));
         info.name = kv.first;
         info.offset = static_cast<unsigned int>(offset);
         rawNn.tensors.push_back(info);
@@ -88,9 +91,12 @@ std::shared_ptr<RawBuffer> NNData::serialize() const {
         rawNn.data.insert(rawNn.data.end(), data, data + dataSize);
 
         // Add entry in tensors
+        // TODO(themarpe) - refactor with proper way off specifying tensors
         TensorInfo info;
         info.dataType = dataType;
-        info.numDimensions = 0;
+        info.numDimensions = 1;
+        info.dims.push_back(kv.second.size());
+        info.strides.push_back(sizeofTensorInfoDataType(dataType));
         info.name = kv.first;
         info.offset = static_cast<unsigned int>(offset);
         rawNn.tensors.push_back(info);
@@ -101,28 +107,32 @@ std::shared_ptr<RawBuffer> NNData::serialize() const {
 
 // setters
 // uint8_t
-void NNData::setLayer(const std::string& name, std::vector<std::uint8_t> data) {
+NNData& NNData::setLayer(const std::string& name, std::vector<std::uint8_t> data) {
     u8Data[name] = std::move(data);
+    return *this;
 }
-void NNData::setLayer(const std::string& name, const std::vector<int>& data) {
+NNData& NNData::setLayer(const std::string& name, const std::vector<int>& data) {
     u8Data[name] = std::vector<std::uint8_t>(data.size());
     for(unsigned i = 0; i < data.size(); i++) {
         u8Data[name][i] = static_cast<std::uint8_t>(data[i]);
     }
+    return *this;
 }
 
 // fp16
-void NNData::setLayer(const std::string& name, std::vector<float> data) {
+NNData& NNData::setLayer(const std::string& name, std::vector<float> data) {
     fp16Data[name] = std::vector<std::uint16_t>(data.size());
     for(unsigned i = 0; i < data.size(); i++) {
         fp16Data[name][i] = fp16_ieee_from_fp32_value(data[i]);
     }
+    return *this;
 }
-void NNData::setLayer(const std::string& name, std::vector<double> data) {
+NNData& NNData::setLayer(const std::string& name, std::vector<double> data) {
     fp16Data[name] = std::vector<std::uint16_t>(data.size());
     for(unsigned i = 0; i < data.size(); i++) {
         fp16Data[name][i] = fp16_ieee_from_fp32_value(static_cast<float>(data[i]));
     }
+    return *this;
 }
 
 // getters
@@ -257,6 +267,41 @@ std::vector<std::int32_t> NNData::getFirstLayerInt32() const {
         return getLayerInt32(rawNn.tensors[0].name);
     }
     return {};
+}
+
+// getters
+std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> NNData::getTimestamp() const {
+    using namespace std::chrono;
+    return time_point<steady_clock, steady_clock::duration>{seconds(rawNn.ts.sec) + nanoseconds(rawNn.ts.nsec)};
+}
+std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> NNData::getTimestampDevice() const {
+    using namespace std::chrono;
+    return time_point<steady_clock, steady_clock::duration>{seconds(rawNn.tsDevice.sec) + nanoseconds(rawNn.tsDevice.nsec)};
+}
+int64_t NNData::getSequenceNum() const {
+    return rawNn.sequenceNum;
+}
+
+// setters
+NNData& NNData::setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
+    // Set timestamp from timepoint
+    using namespace std::chrono;
+    auto ts = tp.time_since_epoch();
+    rawNn.ts.sec = duration_cast<seconds>(ts).count();
+    rawNn.ts.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
+    return *this;
+}
+NNData& NNData::setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
+    // Set timestamp from timepoint
+    using namespace std::chrono;
+    auto ts = tp.time_since_epoch();
+    rawNn.tsDevice.sec = duration_cast<seconds>(ts).count();
+    rawNn.ts.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
+    return *this;
+}
+NNData& NNData::setSequenceNum(int64_t sequenceNum) {
+    rawNn.sequenceNum = sequenceNum;
+    return *this;
 }
 
 }  // namespace dai

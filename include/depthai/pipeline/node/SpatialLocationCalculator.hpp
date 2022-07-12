@@ -16,21 +16,19 @@ namespace node {
 /**
  * @brief SpatialLocationCalculator node. Calculates spatial location data on a set of ROIs on depth map.
  */
-class SpatialLocationCalculator : public Node {
+class SpatialLocationCalculator : public NodeCRTP<Node, SpatialLocationCalculator, SpatialLocationCalculatorProperties> {
    public:
-    using Properties = dai::SpatialLocationCalculatorProperties;
+    constexpr static const char* NAME = "SpatialLocationCalculator";
+
+   protected:
+    Properties& getProperties();
 
    private:
-    nlohmann::json getProperties() override;
-    std::shared_ptr<Node> clone() override;
-
     std::shared_ptr<RawSpatialLocationCalculatorConfig> rawConfig;
-    Properties properties;
 
    public:
-    std::string getName() const override;
-
     SpatialLocationCalculator(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    SpatialLocationCalculator(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Initial config to use when calculating spatial location data.
@@ -46,7 +44,7 @@ class SpatialLocationCalculator : public Node {
      * Input message with depth data used to retrieve spatial information about detected object.
      * Default queue is non-blocking with size 4.
      */
-    Input inputDepth{*this, "inputDepth", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputDepth{*this, "inputDepth", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs SpatialLocationCalculatorData message that carries spatial location results.
@@ -64,7 +62,13 @@ class SpatialLocationCalculator : public Node {
      * Specify whether or not wait until configuration message arrives to inputConfig Input.
      * @param wait True to wait for configuration message, false otherwise.
      */
-    void setWaitForConfigInput(bool wait);
+    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] void setWaitForConfigInput(bool wait);
+
+    /**
+     * @see setWaitForConfigInput
+     * @returns True if wait for inputConfig message, false otherwise
+     */
+    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] bool getWaitForConfigInput() const;
 };
 
 }  // namespace node

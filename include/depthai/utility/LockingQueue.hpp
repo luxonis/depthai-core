@@ -19,7 +19,6 @@ class LockingQueue {
 
     void setMaxSize(unsigned sz) {
         // Lock first
-        if(sz == 0) throw std::invalid_argument("Queue size can't be 0!");
         std::unique_lock<std::mutex> lock(guard);
         maxSize = sz;
     }
@@ -43,9 +42,12 @@ class LockingQueue {
     }
 
     void destruct() {
-        destructed = true;
-        signalPop.notify_all();
-        signalPush.notify_all();
+        std::unique_lock<std::mutex> lock(guard);
+        if(!destructed) {
+            signalPop.notify_all();
+            signalPush.notify_all();
+            destructed = true;
+        }
     }
     ~LockingQueue() = default;
 
@@ -56,8 +58,8 @@ class LockingQueue {
 
             // First checks predicate, then waits
             bool pred = signalPush.wait_for(lock, timeout, [this]() { return !queue.empty() || destructed; });
-            if(destructed) return false;
             if(!pred) return false;
+            if(destructed) return false;
 
             // Continue here if and only if queue has any elements
             while(!queue.empty()) {
@@ -75,8 +77,8 @@ class LockingQueue {
             std::unique_lock<std::mutex> lock(guard);
 
             signalPush.wait(lock, [this]() { return !queue.empty() || destructed; });
-            if(destructed) return false;
             if(queue.empty()) return false;
+            if(destructed) return false;
 
             while(!queue.empty()) {
                 callback(queue.front());
@@ -107,6 +109,13 @@ class LockingQueue {
     bool push(T const& data) {
         {
             std::unique_lock<std::mutex> lock(guard);
+            if(maxSize == 0) {
+                // necessary if maxSize was changed
+                while(!queue.empty()) {
+                    queue.pop();
+                }
+                return true;
+            }
             if(!blocking) {
                 // if non blocking, remove as many oldest elements as necessary, so next one will fit
                 // necessary if maxSize was changed
@@ -128,6 +137,13 @@ class LockingQueue {
     bool tryWaitAndPush(T const& data, std::chrono::duration<Rep, Period> timeout) {
         {
             std::unique_lock<std::mutex> lock(guard);
+            if(maxSize == 0) {
+                // necessary if maxSize was changed
+                while(!queue.empty()) {
+                    queue.pop();
+                }
+                return true;
+            }
             if(!blocking) {
                 // if non blocking, remove as many oldest elements as necessary, so next one will fit
                 // necessary if maxSize was changed
@@ -169,7 +185,7 @@ class LockingQueue {
                 return false;
             }
 
-            value = queue.front();
+            value = std::move(queue.front());
             queue.pop();
         }
         signalPop.notify_all();
@@ -181,10 +197,10 @@ class LockingQueue {
             std::unique_lock<std::mutex> lock(guard);
 
             signalPush.wait(lock, [this]() { return (!queue.empty() || destructed); });
-            if(destructed) return false;
             if(queue.empty()) return false;
+            if(destructed) return false;
 
-            value = queue.front();
+            value = std::move(queue.front());
             queue.pop();
         }
         signalPop.notify_all();
@@ -198,10 +214,10 @@ class LockingQueue {
 
             // First checks predicate, then waits
             bool pred = signalPush.wait_for(lock, timeout, [this]() { return !queue.empty() || destructed; });
-            if(destructed) return false;
             if(!pred) return false;
+            if(destructed) return false;
 
-            value = queue.front();
+            value = std::move(queue.front());
             queue.pop();
         }
         signalPop.notify_all();
@@ -218,7 +234,7 @@ class LockingQueue {
     bool blocking = true;
     std::queue<T> queue;
     mutable std::mutex guard;
-    std::atomic<bool> destructed{false};
+    bool destructed{false};
     std::condition_variable signalPop;
     std::condition_variable signalPush;
 };

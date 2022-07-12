@@ -1,6 +1,6 @@
 #include <iostream>
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 int main() {
@@ -11,7 +11,6 @@ int main() {
 
     // Define a source - color camera
     auto cam = pipeline.create<dai::node::ColorCamera>();
-    cam->initialControl.setManualFocus(130);
     // Not needed, you can display 1080P frames as well
     cam->setIspScale(1, 2);
 

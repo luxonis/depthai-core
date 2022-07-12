@@ -18,8 +18,8 @@
 namespace dai {
 class StreamMessageParser {
    public:
-    static std::shared_ptr<RawBuffer> parseMessage(streamPacketDesc_t* packet);
-    static std::shared_ptr<ADatatype> parseMessageToADatatype(streamPacketDesc_t* packet);
+    static std::shared_ptr<RawBuffer> parseMessage(streamPacketDesc_t* const packet);
+    static std::shared_ptr<ADatatype> parseMessageToADatatype(streamPacketDesc_t* const packet);
     static std::vector<std::uint8_t> serializeMessage(const std::shared_ptr<const RawBuffer>& data);
     static std::vector<std::uint8_t> serializeMessage(const RawBuffer& data);
     static std::vector<std::uint8_t> serializeMessage(const std::shared_ptr<const ADatatype>& data);

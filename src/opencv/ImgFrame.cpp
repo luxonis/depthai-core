@@ -6,9 +6,10 @@
 
 namespace dai {
 
-void ImgFrame::setFrame(cv::Mat frame) {
+ImgFrame& ImgFrame::setFrame(cv::Mat frame) {
     img.data.clear();
     img.data.insert(img.data.begin(), frame.datastart, frame.dataend);
+    return *this;
 }
 
 cv::Mat ImgFrame::getFrame(bool deepCopy) {

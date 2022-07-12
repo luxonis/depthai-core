@@ -2,7 +2,7 @@
 
 #include "utility.hpp"
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 int main() {
@@ -35,7 +35,7 @@ int main() {
 
     // Second image manipulator - Create a off center crop
     imageManip2->initialConfig.setCropRect(0.1f, 0.1f, 0.3f, 0.3f);
-    imageManip2->setWaitForConfigInput(true);
+    imageManip2->inputConfig.setWaitForMessage(true);
 
     // Linking
     camRgb->preview.link(camOut->input);

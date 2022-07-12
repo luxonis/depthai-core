@@ -11,86 +11,89 @@ namespace node {
 //--------------------------------------------------------------------
 // Base Detection Network Class
 //--------------------------------------------------------------------
-SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : DetectionNetwork(par, nodeId) {
-    inputs = {&input, &inputDepth};
-    outputs = {&out, &boundingBoxMapping, &passthrough, &passthroughDepth};
-}
-
-std::shared_ptr<Node> SpatialDetectionNetwork::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
-}
-
-std::string SpatialDetectionNetwork::getName() const {
-    return "SpatialDetectionNetwork";
-}
-
-SpatialDetectionNetwork::Properties& SpatialDetectionNetwork::getPropertiesRef() {
-    return properties;
-}
-
-nlohmann::json SpatialDetectionNetwork::getProperties() {
-    nlohmann::json j;
-    nlohmann::to_json(j, properties);
-    return j;
+SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
+    : SpatialDetectionNetwork(par, nodeId, std::make_unique<Properties>()) {}
+SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<DetectionNetwork, SpatialDetectionNetwork, SpatialDetectionNetworkProperties>(par, nodeId, std::move(props)) {
+    setInputRefs({&input, &inputDepth});
+    setOutputRefs({&out, &boundingBoxMapping, &passthrough, &passthroughDepth});
 }
 
 void SpatialDetectionNetwork::setBoundingBoxScaleFactor(float scaleFactor) {
-    getPropertiesRef().detectedBBScaleFactor = scaleFactor;
+    properties.detectedBBScaleFactor = scaleFactor;
 }
 
 void SpatialDetectionNetwork::setDepthLowerThreshold(uint32_t lowerThreshold) {
-    getPropertiesRef().depthThresholds.lowerThreshold = lowerThreshold;
+    properties.depthThresholds.lowerThreshold = lowerThreshold;
 }
 
 void SpatialDetectionNetwork::setDepthUpperThreshold(uint32_t upperThreshold) {
-    getPropertiesRef().depthThresholds.upperThreshold = upperThreshold;
+    properties.depthThresholds.upperThreshold = upperThreshold;
 }
 
 void SpatialDetectionNetwork::setSpatialCalculationAlgorithm(dai::SpatialLocationCalculatorAlgorithm calculationAlgorithm) {
-    getPropertiesRef().calculationAlgorithm = calculationAlgorithm;
+    properties.calculationAlgorithm = calculationAlgorithm;
 }
 
 //--------------------------------------------------------------------
 // MobileNet
 //--------------------------------------------------------------------
 MobileNetSpatialDetectionNetwork::MobileNetSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : SpatialDetectionNetwork(par, nodeId) {
-    getPropertiesRef().nnFamily = DetectionNetworkType::MOBILENET;
-}
-
-std::shared_ptr<Node> MobileNetSpatialDetectionNetwork::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
+    : NodeCRTP<SpatialDetectionNetwork, MobileNetSpatialDetectionNetwork, SpatialDetectionNetworkProperties>(par, nodeId) {
+    properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
 }
 
 //--------------------------------------------------------------------
 // YOLO
 //--------------------------------------------------------------------
-YoloSpatialDetectionNetwork::YoloSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : SpatialDetectionNetwork(par, nodeId) {
-    getPropertiesRef().nnFamily = DetectionNetworkType::YOLO;
-}
-
-std::shared_ptr<Node> YoloSpatialDetectionNetwork::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
+YoloSpatialDetectionNetwork::YoloSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
+    : NodeCRTP<SpatialDetectionNetwork, YoloSpatialDetectionNetwork, SpatialDetectionNetworkProperties>(par, nodeId) {
+    properties.parser.nnFamily = DetectionNetworkType::YOLO;
 }
 
 void YoloSpatialDetectionNetwork::setNumClasses(const int numClasses) {
-    getPropertiesRef().classes = numClasses;
+    properties.parser.classes = numClasses;
 }
 
 void YoloSpatialDetectionNetwork::setCoordinateSize(const int coordinates) {
-    getPropertiesRef().coordinates = coordinates;
+    properties.parser.coordinates = coordinates;
 }
 
 void YoloSpatialDetectionNetwork::setAnchors(std::vector<float> anchors) {
-    getPropertiesRef().anchors = anchors;
+    properties.parser.anchors = anchors;
 }
 
 void YoloSpatialDetectionNetwork::setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks) {
-    getPropertiesRef().anchorMasks = anchorMasks;
+    properties.parser.anchorMasks = anchorMasks;
 }
 
 void YoloSpatialDetectionNetwork::setIouThreshold(float thresh) {
-    getPropertiesRef().iouThreshold = thresh;
+    properties.parser.iouThreshold = thresh;
+}
+
+/// Get num classes
+int YoloSpatialDetectionNetwork::getNumClasses() const {
+    return properties.parser.classes;
+}
+
+/// Get coordianate size
+int YoloSpatialDetectionNetwork::getCoordinateSize() const {
+    return properties.parser.coordinates;
+}
+
+/// Get anchors
+std::vector<float> YoloSpatialDetectionNetwork::getAnchors() const {
+    return properties.parser.anchors;
+}
+
+/// Get anchor masks
+std::map<std::string, std::vector<int>> YoloSpatialDetectionNetwork::getAnchorMasks() const {
+    return properties.parser.anchorMasks;
+}
+
+/// Get Iou threshold
+float YoloSpatialDetectionNetwork::getIouThreshold() const {
+    return properties.parser.iouThreshold;
 }
 
 }  // namespace node

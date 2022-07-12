@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <memory>
 #include <set>
 #include <string>
 #include <tuple>
@@ -8,12 +9,13 @@
 // project
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/pipeline/AssetManager.hpp"
+#include "depthai/utility/copyable_unique_ptr.hpp"
 
 // depthai-shared
 #include "depthai-shared/datatype/DatatypeEnum.hpp"
+#include "depthai-shared/properties/Properties.hpp"
 
 // libraries
-#include "nlohmann/json.hpp"
 #include "tl/optional.hpp"
 
 namespace dai {
@@ -40,11 +42,21 @@ class Node {
     class InputMap;
     class OutputMap;
 
-    std::vector<Output*> outputs;
-    std::vector<Input*> inputs;
+    std::unordered_map<std::string, Output*> outputRefs;
+    std::unordered_map<std::string, Input*> inputRefs;
 
-    std::vector<OutputMap*> outputMaps;
-    std::vector<InputMap*> inputMaps;
+    std::unordered_map<std::string, OutputMap*> outputMapRefs;
+    std::unordered_map<std::string, InputMap*> inputMapRefs;
+
+    // helpers for setting refs
+    void setOutputRefs(std::initializer_list<Output*> l);
+    void setOutputRefs(Output* outRef);
+    void setInputRefs(std::initializer_list<Input*> l);
+    void setInputRefs(Input* inRef);
+    void setOutputMapRefs(std::initializer_list<OutputMap*> l);
+    void setOutputMapRefs(OutputMap* outMapRef);
+    void setInputMapRefs(std::initializer_list<InputMap*> l);
+    void setInputMapRefs(InputMap* inMapRef);
 
     struct DatatypeHierarchy {
         DatatypeHierarchy(DatatypeEnum d, bool c) : datatype(d), descendants(c) {}
@@ -57,13 +69,15 @@ class Node {
 
        public:
         enum class Type { MSender, SSender };
-        const std::string name;
-        const Type type;
+        std::string group = "";
+        std::string name;
+        Type type;
         // Which types and do descendants count as well?
-        const std::vector<DatatypeHierarchy> possibleDatatypes;
+        std::vector<DatatypeHierarchy> possibleDatatypes;
         Output(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types)
             : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {}
-        bool isSamePipeline(const Input& in);
+        Output(Node& par, std::string group, std::string n, Type t, std::vector<DatatypeHierarchy> types)
+            : parent(par), group(std::move(group)), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {}
 
         Node& getParent() {
             return parent;
@@ -71,6 +85,16 @@ class Node {
         const Node& getParent() const {
             return parent;
         }
+
+        /// Output to string representation
+        std::string toString() const;
+
+        /**
+         * Check if this output and given input are on the same pipeline.
+         * @see canConnect for checking if connection is possible
+         * @returns True if output and input are on the same pipeline
+         */
+        bool isSamePipeline(const Input& in);
 
         /**
          * Check if connection is possible
@@ -113,6 +137,8 @@ class Node {
         Output defaultOutput;
 
        public:
+        std::string name;
+        OutputMap(std::string name, Output defaultOutput);
         OutputMap(Output defaultOutput);
         /// Create or modify an input
         Output& operator[](const std::string& key);
@@ -123,14 +149,18 @@ class Node {
 
        public:
         enum class Type { SReceiver, MReceiver };
-        const std::string name;
-        const Type type;
+        std::string group = "";
+        std::string name;
+        Type type;
         bool defaultBlocking{true};
         int defaultQueueSize{8};
         tl::optional<bool> blocking;
         tl::optional<int> queueSize;
+        // Options - more information about the input
+        tl::optional<bool> waitForMessage;
+        bool defaultWaitForMessage{false};
         friend class Output;
-        const std::vector<DatatypeHierarchy> possibleDatatypes;
+        std::vector<DatatypeHierarchy> possibleDatatypes;
 
         /// Constructs Input with default blocking and queueSize options
         Input(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types)
@@ -140,12 +170,36 @@ class Node {
         Input(Node& par, std::string n, Type t, bool blocking, int queueSize, std::vector<DatatypeHierarchy> types)
             : parent(par), name(std::move(n)), type(t), defaultBlocking(blocking), defaultQueueSize(queueSize), possibleDatatypes(std::move(types)) {}
 
+        /// Constructs Input with specified blocking and queueSize as well as additional options
+        Input(Node& par, std::string n, Type t, bool blocking, int queueSize, bool waitForMessage, std::vector<DatatypeHierarchy> types)
+            : parent(par),
+              name(std::move(n)),
+              type(t),
+              defaultBlocking(blocking),
+              defaultQueueSize(queueSize),
+              defaultWaitForMessage(waitForMessage),
+              possibleDatatypes(std::move(types)) {}
+
+        /// Constructs Input with specified blocking and queueSize as well as additional options
+        Input(Node& par, std::string group, std::string n, Type t, bool blocking, int queueSize, bool waitForMessage, std::vector<DatatypeHierarchy> types)
+            : parent(par),
+              group(std::move(group)),
+              name(std::move(n)),
+              type(t),
+              defaultBlocking(blocking),
+              defaultQueueSize(queueSize),
+              defaultWaitForMessage(waitForMessage),
+              possibleDatatypes(std::move(types)) {}
+
         Node& getParent() {
             return parent;
         }
         const Node& getParent() const {
             return parent;
         }
+
+        /// Input to string representation
+        std::string toString() const;
 
         /**
          * Overrides default input queue behavior.
@@ -171,6 +225,30 @@ class Node {
          * @returns Maximum input queue size
          */
         int getQueueSize() const;
+
+        /**
+         * Overrides default wait for message behavior.
+         * Applicable for nodes with multiple inputs.
+         * Specifies behavior whether to wait for this input when a Node processes certain data or not.
+         * @param waitForMessage Whether to wait for message to arrive to this input or not
+         */
+        void setWaitForMessage(bool waitForMessage);
+
+        /**
+         * Get behavior whether to wait for this input when a Node processes certain data or not
+         * @returns Whether to wait for message to arrive to this input or not
+         */
+        bool getWaitForMessage() const;
+
+        /**
+         * Equivalent to setWaitForMessage but with inverted logic.
+         */
+        void setReusePreviousMessage(bool reusePreviousMessage);
+
+        /**
+         * Equivalent to getWaitForMessage but with inverted logic.
+         */
+        bool getReusePreviousMessage() const;
     };
 
     /**
@@ -181,29 +259,40 @@ class Node {
         Input defaultInput;
 
        public:
+        std::string name;
         InputMap(Input defaultInput);
+        InputMap(std::string name, Input defaultInput);
         /// Create or modify an input
         Input& operator[](const std::string& key);
     };
 
     // when Pipeline tries to serialize and construct on remote, it will check if all connected nodes are on same pipeline
     std::weak_ptr<PipelineImpl> parent;
-    AssetManager assetManager;
-
-    virtual nlohmann::json getProperties() = 0;
-    virtual tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion();
-    virtual std::shared_ptr<Node> clone() = 0;
 
    public:
     /// Id of node
     const Id id;
 
+   protected:
+    AssetManager assetManager;
+
+    virtual Properties& getProperties();
+    virtual tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion();
+    copyable_unique_ptr<Properties> propertiesHolder;
+
+   public:
+    // Underlying properties
+    Properties& properties;
+
     // access
     Pipeline getParentPipeline();
     const Pipeline getParentPipeline() const;
 
+    /// Deep copy the node
+    virtual std::unique_ptr<Node> clone() const = 0;
+
     /// Retrieves nodes name
-    virtual std::string getName() const = 0;
+    virtual const char* getName() const = 0;
 
     /// Retrieves all nodes outputs
     std::vector<Output> getOutputs();
@@ -229,12 +318,14 @@ class Node {
         Connection(Output out, Input in);
         Id outputId;
         std::string outputName;
+        std::string outputGroup;
         Id inputId;
         std::string inputName;
+        std::string inputGroup;
         bool operator==(const Connection& rhs) const;
     };
 
-    Node(const std::shared_ptr<PipelineImpl>& p, Id nodeId);
+    Node(const std::shared_ptr<PipelineImpl>& p, Id nodeId, std::unique_ptr<Properties> props);
     virtual ~Node() = default;
 
     /// Get node AssetManager as a const reference
@@ -242,6 +333,29 @@ class Node {
 
     /// Get node AssetManager as a reference
     AssetManager& getAssetManager();
+};
+
+// Node CRTP class
+template <typename Base, typename Derived, typename Props>
+class NodeCRTP : public Base {
+   public:
+    using Properties = Props;
+    /// Underlying properties
+    Properties& properties;
+    const char* getName() const override {
+        return Derived::NAME;
+    };
+    std::unique_ptr<Node> clone() const override {
+        return std::make_unique<Derived>(static_cast<const Derived&>(*this));
+    };
+
+   private:
+    NodeCRTP(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+        : Base(par, nodeId, std::move(props)), properties(static_cast<Properties&>(Node::properties)) {}
+    NodeCRTP(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : NodeCRTP(par, nodeId, std::make_unique<Props>()) {}
+    friend Derived;
+    friend Base;
+    friend class PipelineImpl;
 };
 
 }  // namespace dai

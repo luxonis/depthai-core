@@ -1,6 +1,7 @@
 #include <chrono>
 #include <string>
 
+#include "XLink/XLink.h"
 #include "depthai/depthai.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
@@ -20,12 +21,25 @@ int main(int argc, char** argv) {
         }
     }
 
-    bool found = false;
     dai::DeviceInfo info;
-    std::tie(found, info) = dai::DeviceBootloader::getFirstAvailableDevice();
-    if(!found) {
+    auto deviceInfos = dai::DeviceBootloader::getAllAvailableDevices();
+    if(deviceInfos.empty()) {
         std::cout << "No device found to flash. Exiting." << std::endl;
         return -1;
+    } else {
+        for(int i = 0; i < deviceInfos.size(); i++) {
+            const auto& devInfo = deviceInfos[i];
+            std::cout << "[" << i << "] " << devInfo.getMxId() << "[" << XLinkProtocolToStr(devInfo.protocol) << "]";
+            if(devInfo.state == X_LINK_BOOTLOADER) {
+                dai::DeviceBootloader bl(devInfo);
+                std::cout << " current bootloader: " << bl.getVersion();
+            }
+            std::cout << std::endl;
+        }
+        int selected = 0;
+        std::cout << "Which DepthAI device to flash bootloader for [0.." << deviceInfos.size() - 1 << "]\n";
+        std::cin >> selected;
+        info = deviceInfos[selected];
     }
 
     bool hasBootloader = (info.state == X_LINK_BOOTLOADER);
@@ -33,6 +47,7 @@ int main(int argc, char** argv) {
         std::cout << "Warning! Flashing bootloader can potentially soft brick your device and should be done with caution." << std::endl;
         std::cout << "Do not unplug your device while the bootloader is flashing." << std::endl;
         std::cout << "Type 'y' and press enter to proceed, otherwise exits: ";
+        std::cin.ignore();
         if(std::cin.get() != 'y') {
             std::cout << "Prompt declined, exiting..." << std::endl;
             return -1;

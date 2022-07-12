@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "depthai-shared/pipeline/Assets.hpp"
+#include "depthai/utility/Path.hpp"
 
 namespace dai {
 
@@ -47,7 +48,7 @@ class AssetManager /*: public Assets*/ {
     std::shared_ptr<dai::Asset> set(Asset asset);
 
     /**
-     * Adds or overwrites an asset object to AssetManager with a specificied key.
+     * Adds or overwrites an asset object to AssetManager with a specified key.
      * Key value will be assigned to an Asset as well
      *
      * @param key Key under which the asset should be stored
@@ -63,7 +64,7 @@ class AssetManager /*: public Assets*/ {
      * @param path Path to file which to load as asset
      * @param alignment [Optional] alignment of asset data in asset storage. Default is 64B
      */
-    std::shared_ptr<dai::Asset> set(const std::string& key, const std::string& path, int alignment = 64);
+    std::shared_ptr<dai::Asset> set(const std::string& key, const dai::Path& path, int alignment = 64);
 
     /**
      * Loads file into asset manager under specified key.
@@ -74,6 +75,7 @@ class AssetManager /*: public Assets*/ {
      * @returns Shared pointer to asset
      */
     std::shared_ptr<dai::Asset> set(const std::string& key, const std::vector<std::uint8_t>& data, int alignment = 64);
+    std::shared_ptr<dai::Asset> set(const std::string& key, std::vector<std::uint8_t>&& data, int alignment = 64);
 
     /**
      * @returns Asset assigned to the specified key or a nullptr otherwise

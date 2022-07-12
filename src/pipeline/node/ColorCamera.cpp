@@ -7,8 +7,11 @@
 namespace dai {
 namespace node {
 
-ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : Node(par, nodeId), rawControl(std::make_shared<RawCameraControl>()), initialControl(rawControl) {
+ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : ColorCamera(par, nodeId, std::make_unique<ColorCamera::Properties>()) {}
+ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<Node, ColorCamera, ColorCameraProperties>(par, nodeId, std::move(props)),
+      rawControl(std::make_shared<RawCameraControl>()),
+      initialControl(rawControl) {
     properties.boardSocket = CameraBoardSocket::AUTO;
     properties.imageOrientation = CameraImageOrientation::AUTO;
     properties.colorOrder = ColorCameraProperties::ColorOrder::BGR;
@@ -19,23 +22,13 @@ ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
     properties.fps = 30.0;
     properties.previewKeepAspectRatio = true;
 
-    inputs = {&inputConfig, &inputControl};
-    outputs = {&video, &preview, &still, &isp, &raw};
+    setInputRefs({&inputConfig, &inputControl});
+    setOutputRefs({&video, &preview, &still, &isp, &raw});
 }
 
-std::string ColorCamera::getName() const {
-    return "ColorCamera";
-}
-
-nlohmann::json ColorCamera::getProperties() {
-    nlohmann::json j;
+ColorCamera::Properties& ColorCamera::getProperties() {
     properties.initialControl = *rawControl;
-    nlohmann::to_json(j, properties);
-    return j;
-}
-
-std::shared_ptr<Node> ColorCamera::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
+    return properties;
 }
 
 // Set board socket to use
@@ -334,6 +327,11 @@ std::tuple<int, int> ColorCamera::getResolutionSize() const {
         case ColorCameraProperties::SensorResolution::THE_800_P:
             return {1280, 800};
             break;
+
+        case ColorCameraProperties::SensorResolution::THE_48_MP:
+            // Note: temporarily width is cropped from 8000 to 5312 (ISP limitation)
+            return {5312, 6000};
+            break;
     }
 
     return {1920, 1080};
@@ -410,11 +408,11 @@ float ColorCamera::getSensorCropY() const {
 }
 
 void ColorCamera::setWaitForConfigInput(bool wait) {
-    properties.inputConfigSync = wait;
+    inputConfig.setWaitForMessage(wait);
 }
 
-bool ColorCamera::getWaitForConfigInput() {
-    return properties.inputConfigSync;
+bool ColorCamera::getWaitForConfigInput() const {
+    return inputConfig.getWaitForMessage();
 }
 
 void ColorCamera::setPreviewKeepAspectRatio(bool keep) {
@@ -423,6 +421,46 @@ void ColorCamera::setPreviewKeepAspectRatio(bool keep) {
 
 bool ColorCamera::getPreviewKeepAspectRatio() {
     return properties.previewKeepAspectRatio;
+}
+
+void ColorCamera::setNumFramesPool(int raw, int isp, int preview, int video, int still) {
+    properties.numFramesPoolRaw = raw;
+    properties.numFramesPoolIsp = isp;
+    properties.numFramesPoolPreview = preview;
+    properties.numFramesPoolVideo = video;
+    properties.numFramesPoolStill = still;
+}
+
+void ColorCamera::setPreviewNumFramesPool(int num) {
+    properties.numFramesPoolPreview = num;
+}
+void ColorCamera::setVideoNumFramesPool(int num) {
+    properties.numFramesPoolVideo = num;
+}
+void ColorCamera::setStillNumFramesPool(int num) {
+    properties.numFramesPoolStill = num;
+}
+void ColorCamera::setRawNumFramesPool(int num) {
+    properties.numFramesPoolRaw = num;
+}
+void ColorCamera::setIspNumFramesPool(int num) {
+    properties.numFramesPoolIsp = num;
+}
+
+int ColorCamera::getPreviewNumFramesPool() {
+    return properties.numFramesPoolPreview;
+}
+int ColorCamera::getVideoNumFramesPool() {
+    return properties.numFramesPoolVideo;
+}
+int ColorCamera::getStillNumFramesPool() {
+    return properties.numFramesPoolStill;
+}
+int ColorCamera::getRawNumFramesPool() {
+    return properties.numFramesPoolRaw;
+}
+int ColorCamera::getIspNumFramesPool() {
+    return properties.numFramesPoolIsp;
 }
 
 }  // namespace node

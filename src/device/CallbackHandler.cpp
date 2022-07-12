@@ -18,18 +18,15 @@ CallbackHandler::CallbackHandler(std::shared_ptr<XLinkConnection> conn,
     t = std::thread([this, streamName]() {
         try {
             // open stream with 1B write size (no writing will happen here)
-            XLinkStream stream(*connection, streamName, device::XLINK_USB_BUFFER_MAX_SIZE);
+            XLinkStream stream(connection, streamName, device::XLINK_USB_BUFFER_MAX_SIZE);
 
             while(running) {
-                // read packet
-                auto* packet = stream.readRaw();
-                // parse packet
-                auto data = StreamMessageParser::parseMessage(packet);
-                // release packet
-                stream.readRawRelease();
+                // Blocking -- parse packet
+                auto packet = stream.readMove();
+                const auto data = StreamMessageParser::parseMessage(&packet);
 
                 // CALLBACK
-                auto toSend = callback(data);
+                auto toSend = callback(std::move(data));
 
                 auto serialized = StreamMessageParser::serializeMessage(toSend);
 

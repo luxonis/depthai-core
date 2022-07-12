@@ -51,6 +51,10 @@ GlobalProperties Pipeline::getGlobalProperties() const {
     return pimpl->globalProperties;
 }
 
+PipelineSchema Pipeline::getPipelineSchema(SerializationType type) const {
+    return pimpl->getPipelineSchema(type);
+}
+
 std::shared_ptr<const Node> PipelineImpl::getNode(Node::Id id) const {
     if(nodeMap.count(id) > 0) {
         return nodeMap.at(id);
@@ -79,9 +83,9 @@ std::vector<std::shared_ptr<Node>> PipelineImpl::getAllNodes() {
     return nodes;
 }
 
-void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage) const {
+void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type) const {
     // Set schema
-    schema = getPipelineSchema();
+    schema = getPipelineSchema(type);
 
     // Serialize all asset managers into asset storage
     assetStorage.clear();
@@ -96,7 +100,24 @@ void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector
     assets = mutableAssets;
 }
 
-PipelineSchema PipelineImpl::getPipelineSchema() const {
+nlohmann::json PipelineImpl::serializeToJson() const {
+    PipelineSchema schema;
+    Assets assets;
+    std::vector<uint8_t> assetStorage;
+    serialize(schema, assets, assetStorage, SerializationType::JSON);
+
+    nlohmann::json j;
+    j["pipeline"] = schema;
+    for(auto& node : j["pipeline"]["nodes"]) {
+        node[1]["properties"] = nlohmann::json::parse(node[1]["properties"].get<std::vector<uint8_t>>());
+    }
+
+    j["assets"] = assets;
+    j["assetStorage"] = assetStorage;
+    return j;
+}
+
+PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
     PipelineSchema schema;
     schema.globalProperties = globalProperties;
 
@@ -107,7 +128,7 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
         NodeObjInfo info;
         info.id = node->id;
         info.name = node->getName();
-        info.properties = node->getProperties();
+        node->getProperties().serialize(info.properties, type);
 
         // Create Io information
         auto inputs = node->getInputs();
@@ -121,6 +142,10 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
             io.blocking = input.getBlocking();
             io.queueSize = input.getQueueSize();
             io.name = input.name;
+            io.group = input.group;
+            auto ioKey = std::make_tuple(io.group, io.name);
+
+            io.waitForMessage = input.waitForMessage.value_or(input.defaultWaitForMessage);
             switch(input.type) {
                 case Node::Input::Type::MReceiver:
                     io.type = NodeIoInfo::Type::MReceiver;
@@ -130,10 +155,15 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
                     break;
             }
 
-            if(info.ioInfo.count(io.name) > 0) {
-                throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
+            if(info.ioInfo.count(ioKey) > 0) {
+                if(io.group == "") {
+                    throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
+                } else {
+                    throw std::invalid_argument(
+                        fmt::format("'{}.{}[\"{}\"]' redefined. Inputs and outputs must have unique names", info.name, io.group, io.name));
+                }
             }
-            info.ioInfo[io.name] = io;
+            info.ioInfo[ioKey] = io;
         }
 
         // Add outputs
@@ -141,6 +171,9 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
             NodeIoInfo io;
             io.blocking = false;
             io.name = output.name;
+            io.group = output.group;
+            auto ioKey = std::make_tuple(io.group, io.name);
+
             switch(output.type) {
                 case Node::Output::Type::MSender:
                     io.type = NodeIoInfo::Type::MSender;
@@ -150,10 +183,15 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
                     break;
             }
 
-            if(info.ioInfo.count(io.name) > 0) {
-                throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
+            if(info.ioInfo.count(ioKey) > 0) {
+                if(io.group == "") {
+                    throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
+                } else {
+                    throw std::invalid_argument(
+                        fmt::format("'{}.{}[\"{}\"]' redefined. Inputs and outputs must have unique names", info.name, io.group, io.name));
+                }
             }
-            info.ioInfo[io.name] = io;
+            info.ioInfo[ioKey] = io;
         }
 
         // At the end, add the constructed node information to the schema
@@ -169,8 +207,10 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
             NodeConnectionSchema c;
             c.node1Id = conn.outputId;
             c.node1Output = conn.outputName;
+            c.node1OutputGroup = conn.outputGroup;
             c.node2Id = conn.inputId;
             c.node2Input = conn.inputName;
+            c.node2InputGroup = conn.inputGroup;
             schema.connections.push_back(c);
         }
     }
@@ -243,11 +283,11 @@ tl::optional<OpenVINO::Version> PipelineImpl::getPipelineOpenVINOVersion() const
 Device::Config PipelineImpl::getDeviceConfig() const {
     Device::Config config;
     config.version = getPipelineOpenVINOVersion().value_or(OpenVINO::DEFAULT_VERSION);
-    // TODO(themarpe) - fill out rest of preboot config
+    config.board = board;
     return config;
 }
 
-void PipelineImpl::setCameraTuningBlobPath(const std::string& path) {
+void PipelineImpl::setCameraTuningBlobPath(const dai::Path& path) {
     std::string assetKey = "camTuning";
 
     auto asset = assetManager.set(assetKey, path);
@@ -258,6 +298,14 @@ void PipelineImpl::setCameraTuningBlobPath(const std::string& path) {
 
 void PipelineImpl::setXLinkChunkSize(int sizeBytes) {
     globalProperties.xlinkChunkSize = sizeBytes;
+}
+
+void PipelineImpl::setBoardConfig(BoardConfig board) {
+    this->board = board;
+}
+
+BoardConfig PipelineImpl::getBoardConfig() const {
+    return board;
 }
 
 // Remove node capability
@@ -308,6 +356,11 @@ bool PipelineImpl::isSamePipeline(const Node::Output& out, const Node::Input& in
 }
 
 bool PipelineImpl::canConnect(const Node::Output& out, const Node::Input& in) {
+    // First check if on same pipeline
+    if(!isSamePipeline(out, in)) {
+        return false;
+    }
+
     // Check that IoType match up
     if(out.type == Node::Output::Type::MSender && in.type == Node::Input::Type::MReceiver) return false;
     if(out.type == Node::Output::Type::SSender && in.type == Node::Input::Type::SReceiver) return false;
@@ -346,8 +399,10 @@ void PipelineImpl::link(const Node::Output& out, const Node::Input& in) {
         throw std::logic_error(fmt::format("Nodes are not on same pipeline or one of nodes parent pipeline doesn't exists anymore"));
     }
 
+    // First check if can connect (must be on same pipeline and correct types)
     if(!canConnect(out, in)) {
-        throw std::runtime_error(fmt::format("Cannot link '{}.{}' to '{}.{}'", out.getParent().getName(), out.name, in.getParent().getName(), in.name));
+        throw std::runtime_error(
+            fmt::format("Cannot link '{}.{}' to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
     }
 
     // Create 'Connection' object between 'out' and 'in'
@@ -356,7 +411,8 @@ void PipelineImpl::link(const Node::Output& out, const Node::Input& in) {
     // Check if connection was already made - the following is possible as operator[] constructs the underlying set if it doesn't exist.
     if(nodeConnectionMap[in.getParent().id].count(connection) > 0) {
         // this means a connection was already made.
-        throw std::logic_error(fmt::format("'{}.{}' already linked to '{}.{}'", out.getParent().getName(), out.name, in.getParent().getName(), in.name));
+        throw std::logic_error(
+            fmt::format("'{}.{}' already linked to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
     }
 
     // Otherwise all is set to add a new connection into nodeConnectionMap[in.getParent().id]
@@ -375,7 +431,8 @@ void PipelineImpl::unlink(const Node::Output& out, const Node::Input& in) {
     // Check if not connected (connection object doesn't exist in nodeConnectionMap)
     if(nodeConnectionMap[in.getParent().id].count(connection) <= 0) {
         // not connected
-        throw std::logic_error(fmt::format("'{}.{}' not linked to '{}.{}'", out.getParent().getName(), out.name, in.getParent().getName(), in.name));
+        throw std::logic_error(
+            fmt::format("'{}.{}' not linked to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
     }
 
     // Otherwise if exists, remove this connection

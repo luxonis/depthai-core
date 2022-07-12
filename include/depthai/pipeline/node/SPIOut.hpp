@@ -11,40 +11,24 @@ namespace node {
 /**
  * @brief SPIOut node. Sends messages over SPI.
  */
-class SPIOut : public Node {
+class SPIOut : public NodeCRTP<Node, SPIOut, SPIOutProperties> {
    public:
-    using Properties = dai::SPIOutProperties;
+    constexpr static const char* NAME = "SPIOut";
 
-   private:
-    Properties properties;
-
-    nlohmann::json getProperties() override {
-        nlohmann::json j;
-        nlohmann::to_json(j, properties);
-        return j;
-    }
-
-    std::shared_ptr<Node> clone() override {
-        return std::make_shared<std::decay<decltype(*this)>::type>(*this);
-    }
-
-   public:
-    std::string getName() const override {
-        return "SPIOut";
-    }
-
-    SPIOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
+    SPIOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+        : NodeCRTP<Node, SPIOut, SPIOutProperties>(par, nodeId, std::move(props)) {
         properties.busId = 0;
 
-        inputs = {&input};
+        setInputRefs({&input});
     }
+    SPIOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : SPIOut(par, nodeId, std::make_unique<SPIOut::Properties>()) {}
 
     /**
-     * Input for any type of messages to be transfered over SPI stream
+     * Input for any type of messages to be transferred over SPI stream
      *
      * Default queue is blocking with size 8
      */
-    Input input{*this, "in", Input::Type::SReceiver, true, 8, {{DatatypeEnum::Buffer, true}}};
+    Input input{*this, "in", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::Buffer, true}}};
 
     /**
      * Specifies stream name over which the node will send data
