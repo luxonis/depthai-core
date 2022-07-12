@@ -75,8 +75,7 @@ class DeviceBase {
      * @param timeout duration of time to wait for the any device
      * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
-    template <typename Rep, typename Period>
-    static std::tuple<bool, DeviceInfo> getAnyAvailableDevice(std::chrono::duration<Rep, Period> timeout);
+    static std::tuple<bool, DeviceInfo> getAnyAvailableDevice(std::chrono::milliseconds timeout);
 
     /**
      * Gets any available device
@@ -84,6 +83,15 @@ class DeviceBase {
      * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
     static std::tuple<bool, DeviceInfo> getAnyAvailableDevice();
+
+    /**
+     * Waits for any available device with a timeout
+     *
+     * @param timeout duration of time to wait for the any device
+     * @param cb callback function called between pooling intervals
+     * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
+     */
+    static std::tuple<bool, DeviceInfo> getAnyAvailableDevice(std::chrono::milliseconds timeout, std::function<void()> cb);
 
     /**
      * Gets first available device. Device can be either in XLINK_UNBOOTED or XLINK_BOOTLOADER state
@@ -552,6 +560,22 @@ class DeviceBase {
     CalibrationHandler readFactoryCalibrationOrDefault();
 
     /**
+     * Fetches the raw EEPROM data from User area
+     *
+     * @throws std::runtime_exception if any error occured
+     * @returns Binary dump of User area EEPROM data
+     */
+    std::vector<std::uint8_t> readCalibrationRaw();
+
+    /**
+     * Fetches the raw EEPROM data from Factory area
+     *
+     * @throws std::runtime_exception if any error occured
+     * @returns Binary dump of Factory area EEPROM data
+     */
+    std::vector<std::uint8_t> readFactoryCalibrationRaw();
+
+    /**
      * Retrieves USB connection speed
      *
      * @returns USB connection speed of connected device if applicable. Unknown otherwise.
@@ -643,11 +667,17 @@ class DeviceBase {
     std::thread loggingThread;
     std::atomic<bool> loggingRunning{true};
 
+    // Monitor thread
+    std::thread monitorThread;
+    std::mutex lastWatchdogPingTimeMtx;
+    std::chrono::steady_clock::time_point lastWatchdogPingTime;
+
     // RPC stream
     std::unique_ptr<XLinkStream> rpcStream;
 
     // closed
-    std::atomic<bool> closed{false};
+    mutable std::mutex closedMtx;
+    bool closed{false};
 
     // pimpl
     class Impl;

@@ -13,13 +13,12 @@ DepthAI library doesn't yet provide API stability guarantees. While we take care
 
 ## Dependencies
 - CMake >= 3.10
-- libusb1 development package (MacOS & Linux only)
 - C/C++14 compiler
 - [optional] OpenCV 4 (required if building examples)
 
-MacOS: `brew install libusb`, optionally with `brew install opencv`
+MacOS: Optional `brew install opencv`
 
-Linux: `sudo apt install libusb-1.0-0-dev`, optionally with `sudo apt install libopencv-dev`
+Linux: Optional `sudo apt install libopencv-dev`
 
 ## Building
 
@@ -123,9 +122,6 @@ In your non-CMake project (new Visual Studio project, ...)
     - `build/install/include` (library headers)
     - `build/install/include/depthai-shared/3rdparty` (shared 3rdparty headers)
     - `build/install/lib/cmake/depthai/dependencies/include` (dependency headers)
-3. Add the following defines
-    - `XLINK_USE_MX_ID_NAME=ON`
-    - `__PC__=ON`
 
 > ℹ️ Threading library might need to be linked to explicitly.
 
@@ -157,6 +153,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_CONNECT_TIMEOUT | Specifies timeout in milliseconds for establishing a connection to a given device. |
 | DEPTHAI_BOOTUP_TIMEOUT | Specifies timeout in milliseconds for waiting the device to boot after sending the binary. |
 | DEPTHAI_PROTOCOL | Restricts default search to the specified protocol. Options: any, usb, tcpip. |
+| DEPTHAI_DEVICE_MXID_LIST | Restricts default search to the specified MXIDs. Accepts comma separated list of MXIDs |
 | DEPTHAI_DEVICE_BINARY | Overrides device Firmware binary. Mostly for internal debugging purposes. |
 | DEPTHAI_BOOTLOADER_BINARY_USB | Overrides device USB Bootloader binary. Mostly for internal debugging purposes. |
 | DEPTHAI_BOOTLOADER_BINARY_ETH | Overrides device Network Bootloader binary. Mostly for internal debugging purposes. |

@@ -43,7 +43,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.15.5" LANGUAGES CXX C)
+project(depthai VERSION "2.17.0" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -132,11 +132,19 @@ find_package(Git)
 find_package(ament_cmake QUIET)
 if(GIT_FOUND)
     execute_process(
-        COMMAND ${GIT_EXECUTABLE} rev-parse --is-inside-work-tree
+        COMMAND ${GIT_EXECUTABLE} rev-parse --show-toplevel
         WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-        RESULT_VARIABLE DEPTHAI_DOWNLOADED_SOURCES
-        OUTPUT_QUIET ERROR_QUIET
+        RESULT_VARIABLE _git_root_dir_error
+        OUTPUT_VARIABLE _git_root_dir
+        ERROR_QUIET
+        OUTPUT_STRIP_TRAILING_WHITESPACE
     )
+    set(DEPTHAI_DOWNLOADED_SOURCES ON)
+    if(_git_root_dir_error EQUAL 0 AND "${_git_root_dir}" STREQUAL "${CMAKE_CURRENT_LIST_DIR}")
+        set(DEPTHAI_DOWNLOADED_SOURCES OFF)
+    endif()
+    message(DEBUG "Git root dir (${_git_root_dir_error}): ${_git_root_dir}")
+    message(DEBUG "DepthAI as downloaded sources: ${DEPTHAI_DOWNLOADED_SOURCES}")
     execute_process(
         COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
         WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
@@ -211,6 +219,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/EdgeDetector.cpp
     src/pipeline/node/SPIIn.cpp
     src/pipeline/node/FeatureTracker.cpp
+    src/pipeline/node/DetectionParser.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
@@ -413,9 +422,11 @@ endif()
 target_link_libraries(${TARGET_CORE_NAME}
     PUBLIC
         nlohmann_json::nlohmann_json
-        XLink
         libnop
+    INTERFACE
+        XLinkPublic
     PRIVATE
+        XLink
         Threads::Threads
         BZip2::bz2
         FP16::fp16
@@ -585,6 +596,14 @@ configure_file(cmake/${PROJECT_NAME}Config.cmake.in ${PROJECT_NAME}Config.cmake 
 # Config for installation
 set(DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL "./dependencies")
 configure_file(cmake/${PROJECT_NAME}Config.cmake.in _install/${PROJECT_NAME}Config.cmake @ONLY)
+
+# Modify RPath to point to the cmake/depthai/dependencies/lib
+# note: macOS is APPLE and also UNIX!
+if(APPLE)
+  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/cmake/${PROJECT_NAME}/dependencies/lib")
+elseif(UNIX)
+  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/cmake/${PROJECT_NAME}/dependencies/lib")
+endif()
 
 # Export to CMake registry if specified
 if(CMAKE_EXPORT_PACKAGE_REGISTRY)

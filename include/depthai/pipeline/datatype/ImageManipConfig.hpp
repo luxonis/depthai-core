@@ -157,6 +157,12 @@ class ImageManipConfig : public Buffer {
     ImageManipConfig& setHorizontalFlip(bool flip);
 
     /**
+     * Specify vertical flip
+     * @param flip True to enable vertical flip, false otherwise
+     */
+    void setVerticalFlip(bool flip);
+
+    /**
      * Instruct ImageManip to not remove current image from its queue and use the same for next message.
      * @param reuse True to enable reuse, false otherwise
      */

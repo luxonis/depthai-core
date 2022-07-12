@@ -104,11 +104,6 @@ static spdlog::level::level_enum logLevelToSpdlogLevel(LogLevel level, spdlog::l
     return defaultValue;
 }
 
-// Common explicit instantiation, to remove the need to define in header
-template std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::nanoseconds);
-template std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::microseconds);
-template std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::milliseconds);
-template std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::seconds);
 constexpr std::chrono::seconds DeviceBase::DEFAULT_SEARCH_TIME;
 constexpr float DeviceBase::DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ;
 constexpr UsbSpeed DeviceBase::DEFAULT_USB_SPEED;
@@ -129,27 +124,40 @@ std::chrono::milliseconds DeviceBase::getDefaultSearchTime() {
     return defaultSearchTime;
 }
 
-template <typename Rep, typename Period>
-std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::duration<Rep, Period> timeout) {
+std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::milliseconds timeout) {
+    return getAnyAvailableDevice(timeout, nullptr);
+}
+
+std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::milliseconds timeout, std::function<void()> cb) {
     using namespace std::chrono;
     constexpr auto POOL_SLEEP_TIME = milliseconds(100);
 
     // First looks for UNBOOTED, then BOOTLOADER, for 'timeout' time
     auto searchStartTime = steady_clock::now();
     bool found = false;
-    bool invalidDeviceFound = false;
-    DeviceInfo deviceInfo, invalidDeviceInfo;
+    DeviceInfo deviceInfo;
+    std::unordered_map<std::string, DeviceInfo> invalidDevices;
     do {
+        auto devices = XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, false);
         for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED}) {
-            std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(searchState, false);
-            if(strcmp("<error>", deviceInfo.desc.name) == 0) {
-                invalidDeviceFound = true;
-                invalidDeviceInfo = deviceInfo;
-                found = false;
+            for(const auto& device : devices) {
+                if(device.state == searchState) {
+                    if(device.status == X_LINK_SUCCESS) {
+                        found = true;
+                        deviceInfo = device;
+                        break;
+                    } else {
+                        found = false;
+                        invalidDevices[device.name] = device;
+                    }
+                }
             }
             if(found) break;
         }
         if(found) break;
+
+        // Call the callback
+        if(cb) cb();
 
         // If 'timeout' < 'POOL_SLEEP_TIME', use 'timeout' as sleep time and then break
         if(timeout < POOL_SLEEP_TIME) {
@@ -162,9 +170,17 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::dura
     } while(steady_clock::now() - searchStartTime < timeout);
 
     // Check if its an invalid device
-    if(invalidDeviceFound) {
-        // Warn
-        spdlog::warn("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(invalidDeviceInfo.state), invalidDeviceInfo.desc.name);
+    for(const auto& invalidDevice : invalidDevices) {
+        const auto& invalidDeviceInfo = invalidDevice.second;
+        if(invalidDeviceInfo.status == X_LINK_INSUFFICIENT_PERMISSIONS) {
+            spdlog::warn("Insufficient permissions to communicate with {} device with name \"{}\". Make sure udev rules are set",
+                         XLinkDeviceStateToStr(invalidDeviceInfo.state),
+                         invalidDeviceInfo.name);
+        } else {
+            // Warn
+            spdlog::warn(
+                "Skipping {} device with name \"{}\" ({})", XLinkDeviceStateToStr(invalidDeviceInfo.state), invalidDeviceInfo.name, invalidDeviceInfo.mxid);
+        }
     }
 
     // If none were found, try BOOTED
@@ -182,16 +198,17 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice() {
 
 // First tries to find UNBOOTED device, then BOOTLOADER device
 std::tuple<bool, DeviceInfo> DeviceBase::getFirstAvailableDevice(bool skipInvalidDevice) {
-    bool found;
-    DeviceInfo dev;
-    std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_UNBOOTED, skipInvalidDevice);
-    if(!found) {
-        std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_BOOTLOADER, skipInvalidDevice);
+    // Get all connected devices
+    auto devices = XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, skipInvalidDevice);
+    // Search order - first unbooted, then bootloader and last flash booted
+    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED}) {
+        for(const auto& device : devices) {
+            if(device.state == searchState) {
+                return {true, device};
+            }
+        }
     }
-    if(!found) {
-        std::tie(found, dev) = XLinkConnection::getFirstDevice(X_LINK_FLASH_BOOTED, skipInvalidDevice);
-    }
-    return {found, dev};
+    return {false, {}};
 }
 
 // Returns all devices which aren't already booted
@@ -250,7 +267,7 @@ class DeviceBase::Impl {
 
     // RPC
     std::mutex rpcMutex;
-    std::unique_ptr<XLinkStream> rpcStream;
+    std::shared_ptr<XLinkStream> rpcStream;
     std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> rpcClient;
 
     void setLogLevel(LogLevel level);
@@ -349,10 +366,11 @@ DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo) : deviceInfo(de
 }
 
 void DeviceBase::close() {
-    // Only allow to close once
-    if(closed.exchange(true)) return;
-
-    closeImpl();
+    std::unique_lock<std::mutex> lock(closedMtx);
+    if(!closed) {
+        closeImpl();
+        closed = true;
+    }
 }
 
 void DeviceBase::closeImpl() {
@@ -378,6 +396,8 @@ void DeviceBase::closeImpl() {
     if(timesyncThread.joinable()) timesyncThread.join();
     // And at the end stop logging thread
     if(loggingThread.joinable()) loggingThread.join();
+    // At the end stop the monitor thread
+    if(monitorThread.joinable()) monitorThread.join();
 
     // Close rpcStream
     pimpl->rpcStream = nullptr;
@@ -386,6 +406,7 @@ void DeviceBase::closeImpl() {
 }
 
 bool DeviceBase::isClosed() const {
+    std::unique_lock<std::mutex> lock(closedMtx);
     return closed || !watchdogRunning;
 }
 
@@ -446,6 +467,19 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     // Specify cfg
     config = cfg;
 
+    // If deviceInfo isn't fully specified (eg ANY_STATE, etc...), try finding it first
+    if(deviceInfo.state == X_LINK_ANY_STATE || deviceInfo.protocol == X_LINK_ANY_PROTOCOL) {
+        deviceDesc_t foundDesc;
+        auto ret = XLinkFindFirstSuitableDevice(deviceInfo.getXLinkDeviceDesc(), &foundDesc);
+        if(ret == X_LINK_SUCCESS) {
+            deviceInfo = DeviceInfo(foundDesc);
+            spdlog::debug("Found an actual device by given DeviceInfo: {}", deviceInfo.toString());
+        } else {
+            deviceInfo.state = X_LINK_ANY_STATE;
+            spdlog::debug("Searched, but no actual device found by given DeviceInfo");
+        }
+    }
+
     if(pipeline) {
         spdlog::debug("Device - pipeline serialized, OpenVINO version: {}", OpenVINO::getVersionName(config.version));
     } else {
@@ -453,7 +487,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     }
 
     // Set logging pattern of device (device id + shared pattern)
-    pimpl->setPattern(fmt::format("[{}] {}", deviceInfo.getMxId(), LOG_DEFAULT_PATTERN));
+    pimpl->setPattern(fmt::format("[{}] [{}] {}", deviceInfo.mxid, deviceInfo.name, LOG_DEFAULT_PATTERN));
 
     // Check if WD env var is set
     std::chrono::milliseconds watchdogTimeout = device::XLINK_WATCHDOG_TIMEOUT;
@@ -544,9 +578,10 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     deviceInfo.state = X_LINK_BOOTED;
 
     // prepare rpc for both attached and host controlled mode
-    pimpl->rpcStream = std::make_unique<XLinkStream>(connection, device::XLINK_CHANNEL_MAIN_RPC, device::XLINK_USB_BUFFER_MAX_SIZE);
+    pimpl->rpcStream = std::make_shared<XLinkStream>(connection, device::XLINK_CHANNEL_MAIN_RPC, device::XLINK_USB_BUFFER_MAX_SIZE);
+    auto rpcStream = pimpl->rpcStream;
 
-    pimpl->rpcClient = std::make_unique<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>([this](nanorpc::core::type::buffer request) {
+    pimpl->rpcClient = std::make_unique<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>([this, rpcStream](nanorpc::core::type::buffer request) {
         // Lock for time of the RPC call, to not mix the responses between calling threads.
         // Note: might cause issues on Windows on incorrect shutdown. To be investigated
         std::unique_lock<std::mutex> lock(pimpl->rpcMutex);
@@ -557,23 +592,34 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         }
 
         // Send request to device
-        pimpl->rpcStream->write(std::move(request));
+        rpcStream->write(std::move(request));
 
         // Receive response back
         // Send to nanorpc to parse
-        return pimpl->rpcStream->read();
+        return rpcStream->read();
     });
 
     // prepare watchdog thread, which will keep device alive
     // separate stream so it doesn't miss between potentially long RPC calls
     // Only create the thread if watchdog is enabled
     if(watchdogTimeout > std::chrono::milliseconds(0)) {
+        // Specify "last" ping time (5s in the future, for some grace time)
+        {
+            std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
+            lastWatchdogPingTime = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        }
+
+        // Start watchdog thread for device
         watchdogThread = std::thread([this, watchdogTimeout]() {
             try {
                 XLinkStream stream(connection, device::XLINK_CHANNEL_WATCHDOG, 128);
                 std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
                 while(watchdogRunning) {
                     stream.write(watchdogKeepalive);
+                    {
+                        std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
+                        lastWatchdogPingTime = std::chrono::steady_clock::now();
+                    }
                     // Ping with a period half of that of the watchdog timeout
                     std::this_thread::sleep_for(watchdogTimeout / 2);
                 }
@@ -585,6 +631,29 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
             // Watchdog ended. Useful for checking disconnects
             watchdogRunning = false;
         });
+
+        // Start monitor thread for host - makes sure that device is responding to pings, otherwise it disconnects
+        monitorThread = std::thread([this, watchdogTimeout]() {
+            while(watchdogRunning) {
+                // Ping with a period half of that of the watchdog timeout
+                std::this_thread::sleep_for(watchdogTimeout);
+                // Check if wd was pinged in the specified watchdogTimeout time.
+                decltype(lastWatchdogPingTime) prevPingTime;
+                {
+                    std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
+                    prevPingTime = lastWatchdogPingTime;
+                }
+                // Recheck if watchdogRunning wasn't already closed
+                if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout) {
+                    spdlog::warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
+                    // ping was missed, reset the device
+                    watchdogRunning = false;
+                    // close the underlying connection
+                    connection->close();
+                }
+            }
+        });
+
     } else {
         // Still set watchdogRunning explictitly
         // as it indicates device not being closed
@@ -967,6 +1036,28 @@ void DeviceBase::factoryResetCalibration() {
     if(!success) {
         throw std::runtime_error(errorMsg);
     }
+}
+
+std::vector<std::uint8_t> DeviceBase::readCalibrationRaw() {
+    bool success;
+    std::string errorMsg;
+    std::vector<uint8_t> eepromDataRaw;
+    std::tie(success, errorMsg, eepromDataRaw) = pimpl->rpcClient->call("readFromEepromRaw").as<std::tuple<bool, std::string, std::vector<uint8_t>>>();
+    if(!success) {
+        throw std::runtime_error(errorMsg);
+    }
+    return eepromDataRaw;
+}
+
+std::vector<std::uint8_t> DeviceBase::readFactoryCalibrationRaw() {
+    bool success;
+    std::string errorMsg;
+    std::vector<uint8_t> eepromDataRaw;
+    std::tie(success, errorMsg, eepromDataRaw) = pimpl->rpcClient->call("readFromEepromFactoryRaw").as<std::tuple<bool, std::string, std::vector<uint8_t>>>();
+    if(!success) {
+        throw std::runtime_error(errorMsg);
+    }
+    return eepromDataRaw;
 }
 
 bool DeviceBase::startPipeline() {

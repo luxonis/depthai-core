@@ -125,6 +125,10 @@ void StereoDepth::setSubpixel(bool enable) {
     initialConfig.setSubpixel(enable);
     properties.initialConfig = *rawConfig;
 }
+void StereoDepth::setSubpixelFractionalBits(int subpixelFractionalBits) {
+    initialConfig.setSubpixelFractionalBits(subpixelFractionalBits);
+    properties.initialConfig = *rawConfig;
+}
 void StereoDepth::setExtendedDisparity(bool enable) {
     initialConfig.setExtendedDisparity(enable);
     properties.initialConfig = *rawConfig;
@@ -168,6 +172,10 @@ void StereoDepth::setFocalLengthFromCalibration(bool focalLengthFromCalibration)
 
 void StereoDepth::useHomographyRectification(bool useHomographyRectification) {
     properties.useHomographyRectification = useHomographyRectification;
+}
+
+void StereoDepth::enableDistortionCorrection(bool enableDistortionCorrection) {
+    useHomographyRectification(!enableDistortionCorrection);
 }
 
 void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
