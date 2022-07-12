@@ -418,5 +418,45 @@ bool ColorCamera::getPreviewKeepAspectRatio() {
     return properties.previewKeepAspectRatio;
 }
 
+void ColorCamera::setNumFramesPool(int raw, int isp, int preview, int video, int still) {
+    properties.numFramesPoolRaw = raw;
+    properties.numFramesPoolIsp = isp;
+    properties.numFramesPoolPreview = preview;
+    properties.numFramesPoolVideo = video;
+    properties.numFramesPoolStill = still;
+}
+
+void ColorCamera::setPreviewNumFramesPool(int num) {
+    properties.numFramesPoolPreview = num;
+}
+void ColorCamera::setVideoNumFramesPool(int num) {
+    properties.numFramesPoolVideo = num;
+}
+void ColorCamera::setStillNumFramesPool(int num) {
+    properties.numFramesPoolStill = num;
+}
+void ColorCamera::setRawNumFramesPool(int num) {
+    properties.numFramesPoolRaw = num;
+}
+void ColorCamera::setIspNumFramesPool(int num) {
+    properties.numFramesPoolIsp = num;
+}
+
+int ColorCamera::getPreviewNumFramesPool() {
+    return properties.numFramesPoolPreview;
+}
+int ColorCamera::getVideoNumFramesPool() {
+    return properties.numFramesPoolVideo;
+}
+int ColorCamera::getStillNumFramesPool() {
+    return properties.numFramesPoolStill;
+}
+int ColorCamera::getRawNumFramesPool() {
+    return properties.numFramesPoolRaw;
+}
+int ColorCamera::getIspNumFramesPool() {
+    return properties.numFramesPoolIsp;
+}
+
 }  // namespace node
 }  // namespace dai

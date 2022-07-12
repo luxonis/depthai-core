@@ -31,7 +31,7 @@ function(dai_add_example example_name example_src enable_test)
     # Add example
     add_executable(${example_name} ${example_src})
     add_default_flags(${example_name} LEAN)
-    target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS})
+    target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS} Threads::Threads)
 
     # Add sanitizers for example
     if(COMMAND add_sanitizers)
@@ -79,7 +79,7 @@ function(dai_add_example example_name example_src enable_test)
             set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${example_name}>")
         endif()
         add_custom_command(TARGET ${example_name} POST_BUILD COMMAND
-            ${CMAKE_COMMAND} -E copy ${depthai_dll_libraries} $<TARGET_FILE_DIR:${example_name}>
+            ${CMAKE_COMMAND} -E copy_if_different ${depthai_dll_libraries} $<TARGET_FILE_DIR:${example_name}>
             COMMAND_EXPAND_LISTS
         )
     endif()
@@ -202,6 +202,9 @@ dai_add_example(bootloader_version bootloader/bootloader_version.cpp ON)
 dai_add_example(flash_bootloader bootloader/flash_bootloader.cpp OFF)
 dai_add_example(bootloader_config bootloader/bootloader_config.cpp ON read)
 dai_add_example(poe_set_ip bootloader/poe_set_ip.cpp OFF)
+dai_add_example(read_flash_memory bootloader/read_flash_memory.cpp OFF)
+dai_add_example(write_flash_memory bootloader/write_flash_memory.cpp OFF)
+dai_add_example(flash_boot_header bootloader/flash_boot_header.cpp OFF)
 
 # calibration
 dai_add_example(calibration_flash calibration/calibration_flash.cpp OFF)
@@ -236,6 +239,7 @@ dai_add_example(image_manip ImageManip/image_manip_example.cpp ON)
 dai_add_example(image_manip_rotate ImageManip/image_manip_rotate.cpp ON)
 dai_add_example(image_manip_tiling ImageManip/image_manip_tiling.cpp ON)
 dai_add_example(rgb_rotate_warp ImageManip/rgb_rotate_warp.cpp ON)
+dai_add_example(image_manip_warp_mesh ImageManip/image_manip_warp_mesh.cpp ON)
 
 # IMU
 dai_add_example(imu_gyroscope_accelerometer IMU/imu_gyroscope_accelerometer.cpp ON)

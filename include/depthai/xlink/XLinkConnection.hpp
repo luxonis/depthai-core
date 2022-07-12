@@ -101,7 +101,8 @@ class XLinkConnection {
     DeviceInfo deviceInfo;
 
     // closed
-    std::atomic<bool> closed{false};
+    mutable std::mutex closedMtx;
+    bool closed{false};
 
     constexpr static std::chrono::milliseconds WAIT_FOR_BOOTUP_TIMEOUT{15000};
     constexpr static std::chrono::milliseconds WAIT_FOR_CONNECT_TIMEOUT{5000};
