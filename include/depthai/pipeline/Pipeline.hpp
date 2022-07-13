@@ -47,6 +47,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setXLinkChunkSize(int sizeBytes);
     GlobalProperties getGlobalProperties() const;
     void setGlobalProperties(GlobalProperties globalProperties);
+    void setBoardConfig(BoardConfig board);
+    BoardConfig getBoardConfig() const;
 
     // Access to nodes
     std::vector<std::shared_ptr<const Node>> getAllNodes() const;
@@ -80,6 +82,10 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     using NodeConnectionMap = std::unordered_map<Node::Id, std::unordered_set<Node::Connection>>;
     // Connection map, NodeId represents id of node connected TO (input)
     NodeConnectionMap nodeConnectionMap;
+
+    // Board configuration
+    BoardConfig board;
+
     // parent
     Pipeline& parent;
 
@@ -312,6 +318,16 @@ class Pipeline {
     /// Checks whether a given OpenVINO version is compatible with the pipeline
     bool isOpenVINOVersionCompatible(OpenVINO::Version version) const {
         return impl()->isOpenVINOVersionCompatible(version);
+    }
+
+    /// Sets board configuration
+    void setBoardConfig(BoardConfig board) {
+        impl()->setBoardConfig(board);
+    }
+
+    /// Gets board configuration
+    BoardConfig getBoardConfig() const {
+        return impl()->getBoardConfig();
     }
 
     /// Get device configuration needed for this pipeline

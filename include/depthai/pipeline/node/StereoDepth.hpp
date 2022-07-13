@@ -346,6 +346,11 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      * used from calibration data.
      */
     void useHomographyRectification(bool useHomographyRectification);
+
+    /**
+     * Equivalent to useHomographyRectification(!enableDistortionCorrection)
+     */
+    void enableDistortionCorrection(bool enableDistortionCorrection);
 };
 
 }  // namespace node

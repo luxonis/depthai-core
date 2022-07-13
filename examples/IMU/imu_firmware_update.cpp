@@ -11,6 +11,15 @@ int main() {
     using namespace std;
     using namespace std::chrono;
 
+    std::cout << "Warning! Flashing IMU firmware can potentially soft brick your device and should be done with caution." << std::endl;
+    std::cout << "Do not unplug your device while the IMU firmware is flashing." << std::endl;
+    std::cout << "Type 'y' and press enter to proceed, otherwise exits: ";
+    std::cin.ignore();
+    if(std::cin.get() != 'y') {
+        std::cout << "Prompt declined, exiting..." << std::endl;
+        return -1;
+    }
+
     // Create pipeline
     dai::Pipeline pipeline;
 

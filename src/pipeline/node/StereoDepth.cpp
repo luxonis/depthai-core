@@ -174,6 +174,10 @@ void StereoDepth::useHomographyRectification(bool useHomographyRectification) {
     properties.useHomographyRectification = useHomographyRectification;
 }
 
+void StereoDepth::enableDistortionCorrection(bool enableDistortionCorrection) {
+    useHomographyRectification(!enableDistortionCorrection);
+}
+
 void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
     presetMode = mode;
     switch(presetMode) {
