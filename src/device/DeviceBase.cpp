@@ -989,9 +989,9 @@ void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandl
         throw std::runtime_error("Calling factory API is not allowed in current configuration");
     }
 
-    if(!calibrationDataHandler.validateCameraArray()) {
+    /* if(!calibrationDataHandler.validateCameraArray()) {
         throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
-    }
+    } */
 
     bool success;
     std::string errorMsg;
