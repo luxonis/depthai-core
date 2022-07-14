@@ -705,7 +705,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
         std::string errorMsg;
         std::tie(success, errorMsg) = flashConfigData(configJson);
         if(success) {
-            spdlog::debug("Success flashing the appMem configuration to '{}'", finalAppMem);
+            spdlog::debug("Success flashing the appMem configuration to '{}'", static_cast<std::int32_t>(finalAppMem));
         } else {
             throw std::runtime_error(errorMsg);
         }
