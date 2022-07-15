@@ -48,7 +48,7 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                                   name,
                                   std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
                                   data->getRaw()->data.size(),
-                                  type,
+                                  static_cast<std::int32_t>(type),
                                   spdlog::to_hex(metadata));
                 }
 

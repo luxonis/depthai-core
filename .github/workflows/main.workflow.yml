@@ -192,14 +192,14 @@ jobs:
       run: cmake --build build --config ${{ matrix.build-type }} --target install --parallel 4
 
     - name: Upload Win64 shared library
-      if: matrix.os == 'windows-latest' && matrix.shared == 'Shared' && matrix.platform == 'x64'
+      if: matrix.os == 'windows-latest' && matrix.shared && matrix.platform == 'x64'
       uses: actions/upload-artifact@v2.2.4
       with:
         name: windows-prebuilt-win64
         path: ${{ env.GITHUB_WORKSPACE }}/depthai_install/
 
     - name: Upload Win32 shared library
-      if: matrix.os == 'windows-latest' && matrix.shared == 'Shared' && matrix.platform == 'Win32'
+      if: matrix.os == 'windows-latest' && matrix.shared && matrix.platform == 'Win32'
       uses: actions/upload-artifact@v2.2.4
       with:
         name: windows-prebuilt-win32-no-opencv
