@@ -234,9 +234,4 @@ dai_test_compile_definitions(filesystem_test_20 PRIVATE BLOB_PATH="${mobilenet_b
 dai_add_test(bootloader_version_test src/bootloader_version_test.cpp)
 
 # XLinkIn -> XLinkOut passthorugh with large frames
-dai_add_test(xlinkin_test_3mb src/xlinkin_test.cpp)
-dai_test_compile_definitions(xlinkin_test_3mb PRIVATE WIDTH=1000 HEIGHT=1000)
-dai_add_test(xlinkin_test_6mb src/xlinkin_test.cpp)
-dai_test_compile_definitions(xlinkin_test_6mb PRIVATE WIDTH=2000 HEIGHT=1000)
-dai_add_test(xlinkin_test_36mb src/xlinkin_test.cpp)
-dai_test_compile_definitions(xlinkin_test_36mb PRIVATE WIDTH=4000 HEIGHT=3000)
+dai_add_test(xlink_roundtrip_test src/xlink_roundtrip_test.cpp)
