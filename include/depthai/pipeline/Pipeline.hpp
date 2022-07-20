@@ -35,11 +35,11 @@ class PipelineImpl {
 
     // Functions
     Node::Id getNextUniqueId();
-    PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
+    PipelineSchema getPipelineSchema() const;
     tl::optional<OpenVINO::Version> getPipelineOpenVINOVersion() const;
     bool isOpenVINOVersionCompatible(OpenVINO::Version version) const;
     Device::Config getDeviceConfig() const;
-    void setCameraTuningBlobPath(const dai::Path& path);
+    void setCameraTuningBlobPath(const std::string& path);
     void setXLinkChunkSize(int sizeBytes);
 
     // Access to nodes
@@ -48,8 +48,7 @@ class PipelineImpl {
     std::shared_ptr<const Node> getNode(Node::Id id) const;
     std::shared_ptr<Node> getNode(Node::Id id);
 
-    void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
-    nlohmann::json serializeToJson() const;
+    void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage) const;
     void remove(std::shared_ptr<Node> node);
 
     std::vector<Node::Connection> getConnections() const;
@@ -118,16 +117,11 @@ class Pipeline {
     /**
      * @returns Pipeline schema
      */
-    PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
+    PipelineSchema getPipelineSchema() const;
 
     // void loadAssets(AssetManager& assetManager);
     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage) const {
         impl()->serialize(schema, assets, assetStorage);
-    }
-
-    /// Returns whole pipeline represented as JSON
-    nlohmann::json serializeToJson() const {
-        return impl()->serializeToJson();
     }
 
     /**
@@ -248,7 +242,7 @@ class Pipeline {
     }
 
     /// Set a camera IQ (Image Quality) tuning blob, used for all cameras
-    void setCameraTuningBlobPath(const dai::Path& path) {
+    void setCameraTuningBlobPath(const std::string& path) {
         impl()->setCameraTuningBlobPath(path);
     }
 

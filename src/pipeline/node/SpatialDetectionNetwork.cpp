@@ -40,7 +40,7 @@ void SpatialDetectionNetwork::setSpatialCalculationAlgorithm(dai::SpatialLocatio
 //--------------------------------------------------------------------
 MobileNetSpatialDetectionNetwork::MobileNetSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     : NodeCRTP<SpatialDetectionNetwork, MobileNetSpatialDetectionNetwork, SpatialDetectionNetworkProperties>(par, nodeId) {
-    properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
+    properties.nnFamily = DetectionNetworkType::MOBILENET;
 }
 
 //--------------------------------------------------------------------
@@ -48,52 +48,52 @@ MobileNetSpatialDetectionNetwork::MobileNetSpatialDetectionNetwork(const std::sh
 //--------------------------------------------------------------------
 YoloSpatialDetectionNetwork::YoloSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     : NodeCRTP<SpatialDetectionNetwork, YoloSpatialDetectionNetwork, SpatialDetectionNetworkProperties>(par, nodeId) {
-    properties.parser.nnFamily = DetectionNetworkType::YOLO;
+    properties.nnFamily = DetectionNetworkType::YOLO;
 }
 
 void YoloSpatialDetectionNetwork::setNumClasses(const int numClasses) {
-    properties.parser.classes = numClasses;
+    properties.classes = numClasses;
 }
 
 void YoloSpatialDetectionNetwork::setCoordinateSize(const int coordinates) {
-    properties.parser.coordinates = coordinates;
+    properties.coordinates = coordinates;
 }
 
 void YoloSpatialDetectionNetwork::setAnchors(std::vector<float> anchors) {
-    properties.parser.anchors = anchors;
+    properties.anchors = anchors;
 }
 
 void YoloSpatialDetectionNetwork::setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks) {
-    properties.parser.anchorMasks = anchorMasks;
+    properties.anchorMasks = anchorMasks;
 }
 
 void YoloSpatialDetectionNetwork::setIouThreshold(float thresh) {
-    properties.parser.iouThreshold = thresh;
+    properties.iouThreshold = thresh;
 }
 
 /// Get num classes
 int YoloSpatialDetectionNetwork::getNumClasses() const {
-    return properties.parser.classes;
+    return properties.classes;
 }
 
 /// Get coordianate size
 int YoloSpatialDetectionNetwork::getCoordinateSize() const {
-    return properties.parser.coordinates;
+    return properties.coordinates;
 }
 
 /// Get anchors
 std::vector<float> YoloSpatialDetectionNetwork::getAnchors() const {
-    return properties.parser.anchors;
+    return properties.anchors;
 }
 
 /// Get anchor masks
 std::map<std::string, std::vector<int>> YoloSpatialDetectionNetwork::getAnchorMasks() const {
-    return properties.parser.anchorMasks;
+    return properties.anchorMasks;
 }
 
 /// Get Iou threshold
 float YoloSpatialDetectionNetwork::getIouThreshold() const {
-    return properties.parser.iouThreshold;
+    return properties.iouThreshold;
 }
 
 }  // namespace node

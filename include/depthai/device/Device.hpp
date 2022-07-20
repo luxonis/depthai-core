@@ -31,10 +31,9 @@ class Device : public DeviceBase {
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * @param pipeline Pipeline to be executed on the device
-     * @param usb2Mode (bool) Boot device using USB2 mode firmware
+     * @param usb2Mode Boot device using USB2 mode firmware
      */
-    template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
-    Device(const Pipeline& pipeline, T usb2Mode);
+    Device(const Pipeline& pipeline, bool usb2Mode);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
@@ -48,7 +47,14 @@ class Device : public DeviceBase {
      * @param pipeline Pipeline to be executed on the device
      * @param pathToCmd Path to custom device firmware
      */
-    Device(const Pipeline& pipeline, const dai::Path& pathToCmd);
+    Device(const Pipeline& pipeline, const char* pathToCmd);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param pipeline Pipeline to be executed on the device
+     * @param pathToCmd Path to custom device firmware
+     */
+    Device(const Pipeline& pipeline, const std::string& pathToCmd);
 
     /**
      * Connects to device specified by devInfo.
@@ -61,10 +67,9 @@ class Device : public DeviceBase {
      * Connects to device specified by devInfo.
      * @param pipeline Pipeline to be executed on the device
      * @param devInfo DeviceInfo which specifies which device to connect to
-     * @param usb2Mode (bool) Boot device using USB2 mode firmware
+     * @param usb2Mode Boot device using USB2 mode firmware
      */
-    template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
-    Device(const Pipeline& pipeline, const DeviceInfo& devInfo, T usb2Mode);
+    Device(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode);
 
     /**
      * Connects to device specified by devInfo.
@@ -80,7 +85,15 @@ class Device : public DeviceBase {
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param pathToCmd Path to custom device firmware
      */
-    Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
+    Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param pipeline Pipeline to be executed on the device
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param pathToCmd Path to custom device firmware
+     */
+    Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.

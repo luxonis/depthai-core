@@ -6,14 +6,6 @@
 int main(){
     using namespace std;
 
-    volatile int test = 0;
-    if(test) {
-        auto devices = dai::XLinkConnection::getAllConnectedDevices();
-        for(const auto& device : devices){
-            std::cout << "Device name: " << device.name << " id: " << device.mxid << std::endl;
-        }
-    }
-
     dai::ImgFrame frame;
     frame.setData({1,2,3,4});
     frame.setWidth(2);

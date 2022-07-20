@@ -124,11 +124,6 @@ class VideoEncoder : public NodeCRTP<Node, VideoEncoder, VideoEncoderProperties>
      */
     void setFrameRate(float frameRate);
 
-    /**
-     * Specifies maximum output encoded frame size
-     */
-    void setMaxOutputFrameSize(int maxFrameSize);
-
     /// Get rate control mode
     Properties::RateControlMode getRateControlMode() const;
     /// Get profile
@@ -154,7 +149,6 @@ class VideoEncoder : public NodeCRTP<Node, VideoEncoder, VideoEncoderProperties>
     float getFrameRate() const;
     /// Get lossless mode. Applies only when using [M]JPEG profile.
     bool getLossless() const;
-    int getMaxOutputFrameSize() const;
 };
 
 }  // namespace node

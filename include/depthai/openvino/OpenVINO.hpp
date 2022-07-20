@@ -9,7 +9,6 @@
 #include <vector>
 
 #include "depthai-shared/common/TensorInfo.hpp"
-#include "depthai/utility/Path.hpp"
 
 namespace dai {
 
@@ -17,7 +16,7 @@ namespace dai {
 class OpenVINO {
    public:
     /// OpenVINO Version supported version information
-    enum Version { VERSION_2020_3, VERSION_2020_4, VERSION_2021_1, VERSION_2021_2, VERSION_2021_3, VERSION_2021_4, VERSION_2022_1 };
+    enum Version { VERSION_2020_3, VERSION_2020_4, VERSION_2021_1, VERSION_2021_2, VERSION_2021_3, VERSION_2021_4 };
 
     /// OpenVINO Blob
     struct Blob {
@@ -32,7 +31,7 @@ class OpenVINO {
          *
          * @param path Filesystem path to the blob
          */
-        Blob(const dai::Path& path);
+        Blob(const std::string& path);
 
         /// OpenVINO version
         Version version;
@@ -51,7 +50,7 @@ class OpenVINO {
     };
 
     /// Main OpenVINO version
-    constexpr static const Version DEFAULT_VERSION = VERSION_2022_1;
+    constexpr static const Version DEFAULT_VERSION = VERSION_2021_4;
 
     /**
      * @returns Supported versions

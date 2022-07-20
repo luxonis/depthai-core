@@ -51,8 +51,8 @@ GlobalProperties Pipeline::getGlobalProperties() const {
     return pimpl->globalProperties;
 }
 
-PipelineSchema Pipeline::getPipelineSchema(SerializationType type) const {
-    return pimpl->getPipelineSchema(type);
+PipelineSchema Pipeline::getPipelineSchema() const {
+    return pimpl->getPipelineSchema();
 }
 
 std::shared_ptr<const Node> PipelineImpl::getNode(Node::Id id) const {
@@ -83,9 +83,9 @@ std::vector<std::shared_ptr<Node>> PipelineImpl::getAllNodes() {
     return nodes;
 }
 
-void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type) const {
+void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage) const {
     // Set schema
-    schema = getPipelineSchema(type);
+    schema = getPipelineSchema();
 
     // Serialize all asset managers into asset storage
     assetStorage.clear();
@@ -100,24 +100,7 @@ void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector
     assets = mutableAssets;
 }
 
-nlohmann::json PipelineImpl::serializeToJson() const {
-    PipelineSchema schema;
-    Assets assets;
-    std::vector<uint8_t> assetStorage;
-    serialize(schema, assets, assetStorage, SerializationType::JSON);
-
-    nlohmann::json j;
-    j["pipeline"] = schema;
-    for(auto& node : j["pipeline"]["nodes"]) {
-        node[1]["properties"] = nlohmann::json::parse(node[1]["properties"].get<std::vector<uint8_t>>());
-    }
-
-    j["assets"] = assets;
-    j["assetStorage"] = assetStorage;
-    return j;
-}
-
-PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
+PipelineSchema PipelineImpl::getPipelineSchema() const {
     PipelineSchema schema;
     schema.globalProperties = globalProperties;
 
@@ -128,7 +111,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
         NodeObjInfo info;
         info.id = node->id;
         info.name = node->getName();
-        node->getProperties().serialize(info.properties, type);
+        node->getProperties().serialize(info.properties);
 
         // Create Io information
         auto inputs = node->getInputs();
@@ -287,7 +270,7 @@ Device::Config PipelineImpl::getDeviceConfig() const {
     return config;
 }
 
-void PipelineImpl::setCameraTuningBlobPath(const dai::Path& path) {
+void PipelineImpl::setCameraTuningBlobPath(const std::string& path) {
     std::string assetKey = "camTuning";
 
     auto asset = assetManager.set(assetKey, path);
