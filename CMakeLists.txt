@@ -198,6 +198,8 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/SPIIn.cpp
     src/pipeline/node/UVC.cpp
     src/pipeline/node/UAC.cpp
+    src/pipeline/node/AudioMic.cpp
+    src/pipeline/node/AudioProc.cpp
     src/pipeline/node/FeatureTracker.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp

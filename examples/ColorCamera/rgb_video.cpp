@@ -10,6 +10,11 @@ int main(int argc, char** argv) {
     bool enableUVC = 0;
     bool enableToF = 0;
     bool enableMic = 0;
+    bool enableMicNc = 0;
+    bool enableNN = 0; // Set 1 for resource allocation test
+    bool rotate = 0;
+    bool downscale = 1;
+    int audioSampleSize = 2; // 2, 3, 4. Note: must be 2 for NC
     if(argc > 1) {
         if (std::string(argv[1]) == "uvc") {
             enableUVC = 1;
@@ -17,6 +22,10 @@ int main(int argc, char** argv) {
             enableToF = 1;
         } else if (std::string(argv[1]) == "mic") {
             enableMic = 1;
+        } else if (std::string(argv[1]) == "micnc") {
+            enableMic = 1;
+            enableMicNc = 1;
+            audioSampleSize = 2;
         } else {
             printf("Unrecognized argument: %s\n", argv[1]);
         }
@@ -33,10 +42,13 @@ int main(int argc, char** argv) {
 
     // Properties
     camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
+    if (rotate) camRgb->setImageOrientation(dai::CameraImageOrientation::ROTATE_180_DEG);
 //    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_4_K);
-    camRgb->setIspScale(1, 2);
-    camRgb->setVideoSize(1920, 1080);
+    if (downscale) {
+        camRgb->setIspScale(1, 2);
+        camRgb->setVideoSize(1920, 1080);
+    }
     camRgb->initialControl.setAntiBandingMode(dai::CameraControl::AntiBandingMode::MAINS_60_HZ);
     camRgb->setFps(30);
 
@@ -64,16 +76,79 @@ int main(int argc, char** argv) {
     }
 
     std::ofstream fAudio;
-    int audioSampleSize = 3; // 2, 3, 4
+    std::ofstream fAudioBack;
+    std::ofstream fAudioNc;
+    int gain_dB = 30;
     if (enableMic) {
         auto uac = pipeline.create<dai::node::UAC>();
+        auto mic = pipeline.create<dai::node::AudioMic>();
         auto xoutMic = pipeline.create<dai::node::XLinkOut>();
-        uac->initialConfig.setMicGainDecibels(30);
-        uac->setXlinkSampleSizeBytes(audioSampleSize);
+        auto xoutMicBack = pipeline.create<dai::node::XLinkOut>();
+
+        mic->setXlinkSampleSizeBytes(audioSampleSize);
+
         xoutMic->setStreamName("mic");
-        uac->out.link(xoutMic->input);
+        xoutMicBack->setStreamName("micBack");
+
+        mic->out.link(xoutMic->input);
+        mic->outBack.link(xoutMicBack->input);
+
+        auto micCfgIn = pipeline.create<dai::node::XLinkIn>();
+        micCfgIn->setMaxDataSize(256);
+        micCfgIn->setStreamName("micCfg");
+        micCfgIn->out.link(mic->inputConfig);
+
+        if (enableMicNc) {
+            auto audioProc = pipeline.create<dai::node::AudioProc>();
+            auto xoutMicNc = pipeline.create<dai::node::XLinkOut>();
+
+            // audioProc->setSampleRate(48000);
+
+            xoutMicNc->setStreamName("micNc");
+
+            gain_dB = 0; // with NC we also have AGC
+
+            mic->out.link(audioProc->input);
+            mic->outBack.link(audioProc->reference);
+            audioProc->out.link(xoutMicNc->input);
+            audioProc->out.link(uac->input);
+
+            auto procCfgIn = pipeline.create<dai::node::XLinkIn>();
+            procCfgIn->setMaxDataSize(256);
+            procCfgIn->setStreamName("procCfg");
+            procCfgIn->out.link(audioProc->inputConfig);
+
+            fAudioNc.open("audioNc.raw", std::ios::trunc | std::ios::binary);
+        } else {
+            mic->out.link(uac->input);
+        }
+
+        mic->initialConfig.setMicGainDecibels(gain_dB);
 
         fAudio.open("audio.raw", std::ios::trunc | std::ios::binary);
+        fAudioBack.open("audioBack.raw", std::ios::trunc | std::ios::binary);
+    }
+
+    if (enableNN) {
+        // Default blob path provided by Hunter private data download
+        // Applicable for easier example usage only
+        std::string nnPath(BLOB_PATH);
+        std::cout << "NN blob: " << nnPath << "\n";
+
+        auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
+        auto nnOut = pipeline.create<dai::node::XLinkOut>();
+        nnOut->setStreamName("nn");
+
+        camRgb->setPreviewSize(300, 300);  // NN input
+        camRgb->setInterleaved(false);
+
+        nn->setConfidenceThreshold(0.5);
+        nn->setBlobPath(nnPath);
+        nn->setNumInferenceThreads(2); // TODO
+        nn->input.setBlocking(false);
+
+        camRgb->preview.link(nn->input);
+        nn->out.link(nnOut->input);
     }
 
     // Connect to device and start pipeline
@@ -90,16 +165,34 @@ int main(int argc, char** argv) {
     printf("=== Started!\n");
     if (enableUVC) printf(">>> Keep this running, and open a separate UVC viewer\n");
 
-    int qsize = 1;
+    int qsize = 8;
     bool blocking = false;
     auto video = device.getOutputQueue("video", qsize, blocking);
 
     auto depth = enableToF ? device.getOutputQueue("tof", qsize, blocking) : nullptr;
     auto audio = enableMic ? device.getOutputQueue("mic", qsize, blocking) : nullptr;
+    auto audioBack = enableMic ? device.getOutputQueue("micBack", qsize, blocking) : nullptr;
+    auto audioNc = enableMicNc ? device.getOutputQueue("micNc", qsize, blocking) : nullptr;
+    auto nn = enableNN ? device.getOutputQueue("nn", qsize, blocking) : nullptr;
+
+    auto micCfgQ = enableMic ? device.getInputQueue("micCfg") : nullptr;
+    auto procCfgQ = enableMicNc ? device.getInputQueue("procCfg") : nullptr;
 
     using namespace std::chrono;
     auto tprev = steady_clock::now();
     int count = 0;
+
+    bool muted = false;
+    bool disableOutput = false;
+    bool passthrough = false;
+
+    // Config packets modify all fields at once, prepare in advance
+    dai::AudioInConfig micConfig;
+    micConfig.setMicGainDecibels(gain_dB);
+    micConfig.setDisableOutput(disableOutput);
+
+    dai::AudioInConfig procConfig;
+    procConfig.setPassthrough(passthrough);
 
     while(true) {
         auto videoIn = video->get<dai::ImgFrame>();
@@ -131,12 +224,20 @@ int main(int argc, char** argv) {
             }
         }
 
+        if (enableNN) {
+            auto nnIn = nn->tryGet<dai::ImgDetections>();
+            if (nnIn) {
+                printf("Got NN results\n");
+            }
+        }
+
         if (enableMic) {
+            // Main/front mics - 2x 48kHz
             auto audioIn = audio->tryGet<dai::ImgFrame>();
             if (audioIn) {
 #if 0 // works without zero-copy
                 auto audioData = audioIn->getData();
-                printf("MIC seq %ld, data size %lu, samples %d, mics %d\n",
+                printf("MIC      seq %ld, data size %lu, samples %d, mics %d\n",
                         audioIn->getSequenceNum(),
                         audioData.size(),
                         audioIn->getHeight(),
@@ -146,7 +247,7 @@ int main(int argc, char** argv) {
                 uint8_t *audioData = audioIn->packet->data;
                 // uint32_t size = audioIn->packet->length; // not ok, includes metadata
                 uint32_t size = audioSampleSize * audioIn->getHeight() * audioIn->getWidth();
-                printf("MIC seq %ld, data size %u, samples %d, mics %d\n",
+                printf("MIC      seq %ld, data size %u, samples %d, mics %d\n",
                         audioIn->getSequenceNum(),
                         size,
                         audioIn->getHeight(),
@@ -154,12 +255,86 @@ int main(int argc, char** argv) {
                 fAudio.write((char*)audioData, size);
 #endif
             }
+
+            // Back mic - 1x 48kHz
+            audioIn = audioBack->tryGet<dai::ImgFrame>();
+            if (audioIn) {
+#if 0 // works without zero-copy
+                auto audioData = audioIn->getData();
+                printf("MIC-back seq %ld, data size %lu, samples %d, mics %d\n",
+                        audioIn->getSequenceNum(),
+                        audioData.size(),
+                        audioIn->getHeight(),
+                        audioIn->getWidth() );
+                fAudio.write((char*)&audioData[0], audioData.size());
+#else // with zero-copy
+                uint8_t *audioData = audioIn->packet->data;
+                // uint32_t size = audioIn->packet->length; // not ok, includes metadata
+                uint32_t size = audioSampleSize * audioIn->getHeight() * audioIn->getWidth();
+                printf("MIC-back seq %ld, data size %u, samples %d, mics %d\n",
+                        audioIn->getSequenceNum(),
+                        size,
+                        audioIn->getHeight(),
+                        audioIn->getWidth() );
+                fAudioBack.write((char*)audioData, size);
+#endif
+            }
+
+          if (enableMicNc) {
+            // AudioProc output (with noise cancelation) - 2x 16kHz
+            audioIn = audioNc->tryGet<dai::ImgFrame>();
+            if (audioIn) {
+#if 0 // works without zero-copy
+                auto audioData = audioIn->getData();
+                printf("MIC-NC   seq %ld, data size %lu, samples %d, mics %d\n",
+                        audioIn->getSequenceNum(),
+                        audioData.size(),
+                        audioIn->getHeight(),
+                        audioIn->getWidth() );
+                fAudio.write((char*)&audioData[0], audioData.size());
+#else // with zero-copy
+                uint8_t *audioData = audioIn->packet->data;
+                // uint32_t size = audioIn->packet->length; // not ok, includes metadata
+                uint32_t size = audioSampleSize * audioIn->getHeight() * audioIn->getWidth();
+                printf("MIC-NC   seq %ld, data size %u, samples %d, mics %d\n",
+                        audioIn->getSequenceNum(),
+                        size,
+                        audioIn->getHeight(),
+                        audioIn->getWidth() );
+                fAudioNc.write((char*)audioData, size);
+#endif
+            }
+          }
         }
 
 
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q') {
             return 0;
+        } else if (key == 'm') {  // Mute / unmute
+            muted = !muted;
+            printf("Audio control: %s\n", muted ? "mute" : "unmute");
+            if (muted) micConfig.setMicGainTimes(0);
+            else micConfig.setMicGainDecibels(gain_dB);
+            micCfgQ->send(micConfig);
+        } else if (key == 'w' || key == 's') { // mic gain up / down
+            if (key == 'w') gain_dB += 10;
+            if (key == 's') gain_dB -= 10;
+            printf("Audio control: MIC gain change to %d dB\n", gain_dB);
+            micConfig.setMicGainDecibels(gain_dB);
+            micCfgQ->send(micConfig);
+        } else if (key == 'd') {  // disable output
+            disableOutput = !disableOutput;
+            printf("Audio control: MIC output: %s\n", disableOutput ? "disabled" : "enabled");
+            micConfig.setDisableOutput(disableOutput);
+            micCfgQ->send(micConfig);
+        } else if (key == 'a') {  // enable / disable NC
+            passthrough = !passthrough;
+            printf("Audio control: Proc/NC: %s\n", passthrough ? "disabled" : "enabled");
+            procConfig.setPassthrough(passthrough);
+            procCfgQ->send(procConfig);
+            // Note: at this step we should preferably reconfigure `micConfig.setMicGain...`
+            // as the gain used by AudioProc might be different than direct MIC
         }
     }
     return 0;

@@ -234,6 +234,7 @@ dai_add_example(webcam_mobilenet MobileNet/webcam_mobilenet_example.cpp OFF)
 
 target_compile_definitions(camera_mobilenet_sync PRIVATE BLOB_PATH="${mobilenet_blob}")
 target_compile_definitions(rgb_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}"  ON)
+target_compile_definitions(rgb_video PRIVATE BLOB_PATH="${mobilenet_blob}"  ON)
 target_compile_definitions(rgb_mobilenet_4k PRIVATE BLOB_PATH="${mobilenet_5shaves_blob}")
 target_compile_definitions(mono_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}")
 target_compile_definitions(video_mobilenet PRIVATE BLOB_PATH="${mobilenet_8shaves_blob}" VIDEO_PATH="${construction_vest}")
