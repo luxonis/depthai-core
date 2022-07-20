@@ -12,6 +12,8 @@ int main(int argc, char** argv) {
     bool enableMic = 0;
     bool enableMicNc = 0;
     bool enableNN = 0; // Set 1 for resource allocation test
+    bool rotate = 0;
+    bool downscale = 1;
     int audioSampleSize = 2; // 2, 3, 4. Note: must be 2 for NC
     if(argc > 1) {
         if (std::string(argv[1]) == "uvc") {
@@ -40,10 +42,13 @@ int main(int argc, char** argv) {
 
     // Properties
     camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
+    if (rotate) camRgb->setImageOrientation(dai::CameraImageOrientation::ROTATE_180_DEG);
 //    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_4_K);
-    camRgb->setIspScale(1, 2);
-    camRgb->setVideoSize(1920, 1080);
+    if (downscale) {
+        camRgb->setIspScale(1, 2);
+        camRgb->setVideoSize(1920, 1080);
+    }
     camRgb->initialControl.setAntiBandingMode(dai::CameraControl::AntiBandingMode::MAINS_60_HZ);
     camRgb->setFps(30);
 
