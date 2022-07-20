@@ -232,3 +232,6 @@ dai_test_compile_definitions(filesystem_test_20 PRIVATE BLOB_PATH="${mobilenet_b
 
 # Bootloader version tests
 dai_add_test(bootloader_version_test src/bootloader_version_test.cpp)
+
+# XLinkIn -> XLinkOut passthrough with large frames
+dai_add_test(xlink_roundtrip_test src/xlink_roundtrip_test.cpp)
