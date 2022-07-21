@@ -54,18 +54,18 @@ int main() {
     previewOut->setStreamName("preview");
 
     // Properties
-    camRgb->setVideoSize(640, 360);
+    //camRgb->setVideoSize(640, 360);
     camRgb->setPreviewSize(300, 300);
     videoEncoder->setDefaultProfilePreset(camRgb->getFps(), dai::VideoEncoderProperties::Profile::MJPEG);
     stillEncoder->setDefaultProfilePreset(1, dai::VideoEncoderProperties::Profile::MJPEG);
 
     // Linking
-    camRgb->video.link(videoEncoder->input);
+    camRgb->video.link(videoMjpegOut->input);
     camRgb->still.link(stillEncoder->input);
     camRgb->preview.link(previewOut->input);
     controlIn->out.link(camRgb->inputControl);
     configIn->out.link(camRgb->inputConfig);
-    videoEncoder->bitstream.link(videoMjpegOut->input);
+//videoEncoder->bitstream.link(videoMjpegOut->input);
     stillEncoder->bitstream.link(stillMjpegOut->input);
 
     // Connect to device and start pipeline
@@ -107,16 +107,16 @@ int main() {
     while(true) {
         auto previewFrames = previewQueue->tryGetAll<dai::ImgFrame>();
         for(const auto& previewFrame : previewFrames) {
-            cv::Mat frame(previewFrame->getHeight(), previewFrame->getWidth(), CV_8UC3, previewFrame->getData().data());
-            cv::imshow("preview", frame);
+//            cv::Mat frame(previewFrame->getHeight(), previewFrame->getWidth(), CV_8UC3, previewFrame->getData().data());
+            cv::imshow("preview", previewFrame->getCvFrame());
         }
 
         auto videoFrames = videoQueue->tryGetAll<dai::ImgFrame>();
         for(const auto& videoFrame : videoFrames) {
             // Decode JPEG
-            auto frame = cv::imdecode(videoFrame->getData(), cv::IMREAD_UNCHANGED);
+//            auto frame = cv::imdecode(videoFrame->getData(), cv::IMREAD_UNCHANGED);
             // Display
-            cv::imshow("video", frame);
+            cv::imshow("video", videoFrame->getCvFrame());
 
             // Send new cfg to camera
             if(sendCamConfig) {
@@ -160,6 +160,22 @@ int main() {
             dai::CameraControl ctrl;
             ctrl.setAutoExposureEnable();
             controlQueue->send(ctrl);
+
+        } else if(key == 'x') {
+            static bool running = true;
+            running = !running;
+
+            dai::CameraControl ctrl;
+            if (running) {
+                printf("cam stop\n");
+                ctrl.setStopStreaming();
+            } else {
+                printf("cam start\n");
+                ctrl.setStartStreaming();
+            }
+            controlQueue->send(ctrl);
+
+
         } else if(key == 'b') {
             printf("Auto white-balance enable\n");
             dai::CameraControl ctrl;
