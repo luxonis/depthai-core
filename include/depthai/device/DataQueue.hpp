@@ -346,7 +346,11 @@ class DataInputQueue {
     std::size_t maxDataSize = device::XLINK_USB_BUFFER_MAX_SIZE;
 
    public:
-    DataInputQueue(const std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize = 16, bool blocking = true, std::size_t maxDataSize = device::XLINK_USB_BUFFER_MAX_SIZE);
+    DataInputQueue(const std::shared_ptr<XLinkConnection> conn,
+                   const std::string& streamName,
+                   unsigned int maxSize = 16,
+                   bool blocking = true,
+                   std::size_t maxDataSize = device::XLINK_USB_BUFFER_MAX_SIZE);
     ~DataInputQueue();
 
     /**

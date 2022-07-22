@@ -10,7 +10,7 @@ using namespace std::chrono_literals;
 auto TIMEOUT = 5s;
 
 static void test_xlink_roundtrip(int w, int h) {
-    std::vector<std::uint8_t> data(w*h*3);
+    std::vector<std::uint8_t> data(w * h * 3);
 
     dai::Pipeline p;
     auto x_in = p.create<dai::node::XLinkIn>();
@@ -45,19 +45,19 @@ static void test_xlink_roundtrip(int w, int h) {
             REQUIRE(imgFrame.getSequenceNum() == 123);
             return;
         }
-    } while (steady_clock::now() - t1 < TIMEOUT);
+    } while(steady_clock::now() - t1 < TIMEOUT);
     // Timeout
     FAIL("Timeout receiving back the sent message");
 }
 
 TEST_CASE("Test XLinkIn->XLinkOut passthrough with random 1000x1000 frame") {
-    test_xlink_roundtrip(1000,1000);
+    test_xlink_roundtrip(1000, 1000);
 }
 
 TEST_CASE("Test XLinkIn->XLinkOut passthrough with random 2000x1000 frame") {
-    test_xlink_roundtrip(2000,1000);
+    test_xlink_roundtrip(2000, 1000);
 }
 
 TEST_CASE("Test XLinkIn->XLinkOut passthrough with random 4000x3000 frame") {
-    test_xlink_roundtrip(4000,3000);
+    test_xlink_roundtrip(4000, 3000);
 }
