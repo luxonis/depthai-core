@@ -12,7 +12,7 @@ NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t n
     : NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperties>(par, nodeId, std::move(props)),
       inputs("inputs", Input(*this, "", Input::Type::SReceiver, false, 1, true, {{DatatypeEnum::Buffer, true}})),
       passthroughs("passthroughs", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}})) {
-    setInputRefs({&input});
+    setInputRefs({&input, &inputConfig});
     setOutputRefs({&out, &passthrough});
     setInputMapRefs({&inputs});
     setOutputMapRefs({&passthroughs});

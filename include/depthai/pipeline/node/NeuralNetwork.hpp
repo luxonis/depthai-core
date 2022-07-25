@@ -33,6 +33,8 @@ class NeuralNetwork : public NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperti
      */
     Input input{*this, "in", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::Buffer, true}}};
 
+    Input inputConfig{*this, "inConfig", Input::Type::SReceiver, false, 5, false, {{DatatypeEnum::NNConfig, false}}};
+
     /**
      * Outputs NNData message that carries inference results
      */
