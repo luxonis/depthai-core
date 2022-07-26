@@ -140,7 +140,15 @@ int main() {
         int key = cv::waitKey(1);
         if(key == 'q') {
             break;
-        } else if(key == 'c') {
+        } else if(key == 'z') {
+            dai::ImageManipConfig cfg;
+            cfg.setSkipCurrentImage(true);
+            configQueue->send(cfg);
+        } else if(key == 'x') {
+            dai::ImageManipConfig cfg;
+            cfg.setSkipCurrentImage(false);
+            configQueue->send(cfg);
+         else if(key == 'c') {
             dai::CameraControl ctrl;
             ctrl.setCaptureStill(true);
             controlQueue->send(ctrl);
