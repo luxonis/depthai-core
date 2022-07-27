@@ -45,9 +45,9 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     if(DEPTHAI_ENABLE_BACKWARD)
         # Disable automatic check for additional stack unwinding libraries
         # Just use the default compiler one
-        set(STACK_DETAILS_AUTO_DETECT FALSE)
+        set(STACK_DETAILS_AUTO_DETECT FALSE CACHE BOOL "Auto detect backward's stack details dependencies")
         find_package(Backward ${_QUIET} CONFIG REQUIRED)
-        set(STACK_DETAILS_AUTO_DETECT)
+        unset(STACK_DETAILS_AUTO_DETECT)
     endif()
 
 endif()

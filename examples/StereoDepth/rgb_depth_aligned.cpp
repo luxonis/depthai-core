@@ -51,7 +51,7 @@ int main() {
     // For now, RGB needs fixed focus to properly align with depth.
     // This value was used during calibration
     try {
-        auto calibData = device.readCalibration();
+        auto calibData = device.readCalibration2();
         auto lensPosition = calibData.getLensPosition(dai::CameraBoardSocket::RGB);
         if(lensPosition) {
             camRgb->initialControl.setManualFocus(lensPosition);
