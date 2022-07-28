@@ -88,7 +88,7 @@ class DeviceBase {
      * Gets first available device. Device can be either in XLINK_UNBOOTED or XLINK_BOOTLOADER state
      * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
-    static std::tuple<bool, DeviceInfo> getFirstAvailableDevice();
+    static std::tuple<bool, DeviceInfo> getFirstAvailableDevice(bool skipInvalidDevice = true);
 
     /**
      * Finds a device by MX ID. Example: 14442C10D13EABCE00

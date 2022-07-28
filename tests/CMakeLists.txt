@@ -7,10 +7,12 @@ hunter_add_package(Catch2)
 find_package(Catch2 CONFIG REQUIRED)
 
 # Function for adding new tests
+# Creates separate tests for USB and PoE devices
 function(dai_add_test test_name test_src)
 
     # Create test executable
     add_executable(${test_name} ${test_src})
+    add_default_flags(${test_name} LEAN)
 
     # Add to clangformat target
     if(COMMAND target_clangformat_setup)
@@ -20,16 +22,15 @@ function(dai_add_test test_name test_src)
     # Link to core and Catch2 testing framework
     target_link_libraries(${test_name} PRIVATE depthai-core Catch2::Catch2)
 
-    # Add to list of tests
-    add_test(${test_name} ${test_name})
-
     # Add sanitizers for tests as well
     if(COMMAND add_sanitizers)
         add_sanitizers(${test_name})
     endif()
 
+    # Add to list of tests
+    add_test(${test_name} ${test_name})
     # Add ubsan halt on error
-    set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1")
+    set_tests_properties(${test_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=usb" LABELS usb)
 
     # Check if MSVC and add a conforming preprocessor test (serialization macros)
     if (MSVC)
@@ -49,7 +50,18 @@ function(dai_add_test test_name test_src)
         add_test(${test_name}_conforming ${test_name}_conforming)
 
         # Add ubsan halt on error
-        set_tests_properties(${test_name}_conforming PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1")
+        set_tests_properties(${test_name}_conforming PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=usb" LABELS usb)
+    endif()
+
+    # Add PoE test variants
+    add_test(${test_name}_poe ${test_name})
+    # Add ubsan halt on error
+    set_tests_properties(${test_name}_poe PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=tcpip;DEPTHAI_SEARCH_TIME=15000" LABELS poe)
+    if(MSVC)
+        # Add to list of tests
+        add_test(${test_name}_conforming_poe ${test_name}_conforming)
+        # Add ubsan halt on error
+        set_tests_properties(${test_name}_conforming_poe PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=tcpip;DEPTHAI_SEARCH_TIME=15000" LABELS poe)
     endif()
 
 endfunction()

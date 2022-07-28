@@ -8,7 +8,7 @@ find_package(Sanitizers)
 # Create utility library
 add_library(utility utility/utility.cpp)
 target_include_directories(utility PUBLIC "utility")
-
+add_default_flags(utility LEAN)
 target_link_libraries(utility FP16::fp16 ${OpenCV_LIBS})
 
 # Helper for adding new examples
@@ -16,6 +16,7 @@ function(dai_add_example example_name example_src enable_test)
 
     # Add example
     add_executable(${example_name} ${example_src})
+    add_default_flags(${example_name} LEAN)
     target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS})
 
     # Add sanitizers for example
@@ -42,7 +43,15 @@ function(dai_add_example example_name example_src enable_test)
         set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]")
 
         # Add ubsan halt on error
-        set_tests_properties(${example_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1")
+        set_tests_properties(${example_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=usb" LABELS usb)
+
+        # Add PoE test variants
+        add_test(NAME ${example_name}_poe COMMAND ${CMAKE_COMMAND}
+            -DTIMEOUT_SECONDS=50
+            -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake $<TARGET_FILE:${example_name}> ${arguments}
+        )
+        # Add ubsan halt on error
+        set_tests_properties(${example_name}_poe PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=tcpip;DEPTHAI_SEARCH_TIME=15000" LABELS poe)
 
     endif()
 endfunction()
@@ -219,7 +228,9 @@ dai_add_example(rgb_mobilenet MobileNet/rgb_mobilenet.cpp  ON)
 dai_add_example(rgb_mobilenet_4k MobileNet/rgb_mobilenet_4k.cpp ON)
 dai_add_example(mono_mobilenet MobileNet/mono_mobilenet.cpp  ON)
 dai_add_example(video_mobilenet MobileNet/video_mobilenet.cpp ON)
-dai_add_example(webcam_mobilenet MobileNet/webcam_mobilenet_example.cpp ON)
+# Usually not available - removed from tests
+# TODO - add to a separate group if possible
+dai_add_example(webcam_mobilenet MobileNet/webcam_mobilenet_example.cpp OFF)
 
 target_compile_definitions(camera_mobilenet_sync PRIVATE BLOB_PATH="${mobilenet_blob}")
 target_compile_definitions(rgb_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}"  ON)

@@ -79,7 +79,7 @@ constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT_TCP
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT_USB;
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_CONNECT_TIMEOUT;
 
-std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState_t state) {
+std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState_t state, bool skipInvalidDevices) {
     initialize();
 
     std::vector<DeviceInfo> devices;
@@ -108,6 +108,10 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
 
         for(unsigned i = 0; i < numdev; i++) {
             DeviceInfo info = {};
+            if(skipInvalidDevices && std::strcmp("<error>", deviceDescAll.at(i).name) == 0) {
+                spdlog::warn("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(state), deviceDescAll.at(i).name);
+                continue;
+            }
             info.desc = deviceDescAll.at(i);
             info.state = state;
             bool allowedId = allowedDeviceIds.find(info.getMxId()) != std::string::npos || allowedDeviceIds.empty();
@@ -120,16 +124,16 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
     return devices;
 }
 
-std::tuple<bool, DeviceInfo> XLinkConnection::getFirstDevice(XLinkDeviceState_t state) {
-    auto devices = getAllConnectedDevices();
+std::tuple<bool, DeviceInfo> XLinkConnection::getFirstDevice(XLinkDeviceState_t state, bool skipInvalidDevice) {
+    auto devices = getAllConnectedDevices(state, skipInvalidDevice);
     for(const auto& d : devices) {
         if(d.state == state || state == X_LINK_ANY_STATE) return {true, d};
     }
     return {false, DeviceInfo()};
 }
 
-std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceByMxId(std::string mxId, XLinkDeviceState_t state) {
-    auto devices = getAllConnectedDevices();
+std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceByMxId(std::string mxId, XLinkDeviceState_t state, bool skipInvalidDevice) {
+    auto devices = getAllConnectedDevices(state, skipInvalidDevice);
     for(const auto& d : devices) {
         if(d.state == state || state == X_LINK_ANY_STATE) {
             if(d.getMxId() == mxId) {
@@ -255,7 +259,7 @@ void XLinkConnection::close() {
             do {
                 DeviceInfo tmp;
                 for(const auto& state : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER}) {
-                    std::tie(found, tmp) = XLinkConnection::getDeviceByMxId(deviceInfo.getMxId(), state);
+                    std::tie(found, tmp) = XLinkConnection::getDeviceByMxId(deviceInfo.getMxId(), state, false);
                     if(found) break;
                 }
             } while(!found && steady_clock::now() - t1 < BOOTUP_SEARCH);

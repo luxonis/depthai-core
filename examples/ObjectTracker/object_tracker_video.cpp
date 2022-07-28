@@ -107,7 +107,7 @@ int main(int argc, char** argv) {
             int x2 = detection.xmax * frame.cols;
             int y2 = detection.ymax * frame.rows;
 
-            int labelIndex = detection.label;
+            uint32_t labelIndex = detection.label;
             std::string labelStr = to_string(labelIndex);
             if(labelIndex < labelMap.size()) {
                 labelStr = labelMap[labelIndex];
@@ -173,7 +173,7 @@ int main(int argc, char** argv) {
             int x2 = roi.bottomRight().x;
             int y2 = roi.bottomRight().y;
 
-            int labelIndex = t.label;
+            uint32_t labelIndex = t.label;
             std::string labelStr = to_string(labelIndex);
             if(labelIndex < labelMap.size()) {
                 labelStr = labelMap[labelIndex];

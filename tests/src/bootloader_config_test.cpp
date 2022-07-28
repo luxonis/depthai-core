@@ -20,7 +20,7 @@ TEST_CASE("Bootloader Config") {
     config.setStaticIPv4(ipv4, ipv4Mask, ipv4Gateway);
 
     std::array<uint8_t, 4> ipv4InMemory = {192, 168, 1, 150};
-    for(int i = 0; i < ipv4InMemory.size(); i++) {
+    for(size_t i = 0; i < ipv4InMemory.size(); i++) {
         REQUIRE(ipv4InMemory[i] == reinterpret_cast<uint8_t*>(&config.network.ipv4)[i]);
     }
 
