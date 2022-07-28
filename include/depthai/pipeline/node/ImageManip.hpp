@@ -22,6 +22,8 @@ class ImageManip : public NodeCRTP<Node, ImageManip, ImageManipProperties> {
    private:
     std::shared_ptr<RawImageManipConfig> rawConfig;
 
+    void setWarpMesh(const float* meshData, int numMeshPoints, int width, int height);
+
    public:
     ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
@@ -53,7 +55,7 @@ class ImageManip : public NodeCRTP<Node, ImageManip, ImageManipProperties> {
     [[deprecated("Use 'initialConfig.setCenterCrop()' instead")]] void setCenterCrop(float ratio, float whRatio = 1.0f);
     [[deprecated("Use 'initialConfig.setResize()' instead")]] void setResize(int w, int h);
     [[deprecated("Use 'initialConfig.setResizeThumbnail()' instead")]] void setResizeThumbnail(int w, int h, int bgRed = 0, int bgGreen = 0, int bgBlue = 0);
-    [[deprecated("Use 'initialConfig.setFrameType()' instead")]] void setFrameType(dai::RawImgFrame::Type name);
+    [[deprecated("Use 'initialConfig.setFrameType()' instead")]] void setFrameType(ImgFrame::Type name);
     [[deprecated("Use 'initialConfig.setHorizontalFlip()' instead")]] void setHorizontalFlip(bool flip);
     void setKeepAspectRatio(bool keep);
 
@@ -81,6 +83,15 @@ class ImageManip : public NodeCRTP<Node, ImageManip, ImageManipProperties> {
      * @param maxFrameSize Maximum frame size in bytes
      */
     void setMaxOutputFrameSize(int maxFrameSize);
+
+    /**
+     * Set a custom warp mesh
+     * @param meshData 2D plane of mesh points, starting from top left to bottom right
+     * @param width Width of mesh
+     * @param height Height of mesh
+     */
+    void setWarpMesh(const std::vector<Point2f>& meshData, int width, int height);
+    void setWarpMesh(const std::vector<std::pair<float, float>>& meshData, int width, int height);
 };
 
 }  // namespace node

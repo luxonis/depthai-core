@@ -8,11 +8,18 @@ endif()
 
 # Create a custom toolchain to pass certain options to dependencies
 set(gen_toolchain "${CMAKE_CURRENT_BINARY_DIR}/generated/toolchain.cmake")
-configure_file(
-    "${CMAKE_CURRENT_LIST_DIR}/cmake/toolchain/custom.cmake.in"
-    "${gen_toolchain}"
-    @ONLY
-)
+
+if(EXISTS "${gen_toolchain}" AND ("${_INTERNAL_DEPTHAI_ORIGINAL_CMAKE_TOOLCHAIN_FILE}" STREQUAL "${CMAKE_TOOLCHAIN_FILE}" OR NOT "${CMAKE_TOOLCHAIN_FILE}" STREQUAL ""))
+    message(STATUS "Using existing generated toolchain")
+else()
+    message(STATUS "Generating new toolchain...")
+    configure_file(
+        "${CMAKE_CURRENT_LIST_DIR}/cmake/toolchain/custom.cmake.in"
+        "${gen_toolchain}"
+        @ONLY
+    )
+endif()
+
 set(CMAKE_TOOLCHAIN_FILE "${gen_toolchain}" CACHE STRING "" FORCE)
 if(DEFINED _INTERNAL_DEPTHAI_ORIGINAL_CMAKE_TOOLCHAIN_FILE)
     message(STATUS "Using specified toolchain file: ${_INTERNAL_DEPTHAI_ORIGINAL_CMAKE_TOOLCHAIN_FILE} combined into: ${CMAKE_TOOLCHAIN_FILE}")
@@ -22,8 +29,8 @@ endif()
 
 include("cmake/HunterGate.cmake")
 HunterGate(
-    URL "https://github.com/cpp-pm/hunter/archive/v0.23.320.tar.gz"
-    SHA1 "9b4e732afd22f40482c11ad6342f7d336634226f"
+    URL "https://github.com/cpp-pm/hunter/archive/v0.23.322.tar.gz"
+    SHA1 "cb0ea1f74f4a2c49a807de34885743495fccccbe"
     LOCAL # Local config for dependencies
 )
 
@@ -33,7 +40,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.14.1" LANGUAGES CXX C)
+project(depthai VERSION "2.17.2" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -74,7 +81,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/")
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/sanitizers")
 
 # Additional options
-option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON )
+option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON)
 option(DEPTHAI_CLANG_TIDY "Enable clang-tidy checks during compilation" OFF)
 option(DEPTHAI_SANITIZE "Enable Address and Undefined sanitizers for library, examples and tests" OFF)
 
@@ -87,10 +94,15 @@ set(DEPTHAI_SHARED_LOCAL "" CACHE STRING "Path to local depthai-shared source to
 set(DEPTHAI_BOOTLOADER_SHARED_LOCAL "" CACHE STRING "Path to local depthai-bootloader-shared source to use instead of submodule")
 
 # Enable backward stack printing on crash
-option(DEPTHAI_ENABLE_BACKWARD "Enable stacktrace printing on crash using Backward" ON)
-# Additional function information for 'backward' stacktrace
-if(DEPTHAI_ENABLE_BACKWARD)
-    set(CMAKE_ENABLE_EXPORTS ON)
+if(ANDROID)
+    # Backward not supported currently on Android
+    set(DEPTHAI_ENABLE_BACKWARD OFF CACHE BOOL "" FORCE)
+else()
+    option(DEPTHAI_ENABLE_BACKWARD "Enable stacktrace printing on crash using Backward" ON)
+    # Additional function information for 'backward' stacktrace
+    if(DEPTHAI_ENABLE_BACKWARD)
+        set(CMAKE_ENABLE_EXPORTS ON)
+    endif()
 endif()
 
 # Force Colored output when using Ninja
@@ -116,11 +128,19 @@ set(PROJECT_EXPORT_GROUP "${PROJECT_NAME}Targets")
 find_package(Git)
 if(GIT_FOUND)
     execute_process(
-        COMMAND ${GIT_EXECUTABLE} rev-parse --is-inside-work-tree
+        COMMAND ${GIT_EXECUTABLE} rev-parse --show-toplevel
         WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-        RESULT_VARIABLE DEPTHAI_DOWNLOADED_SOURCES
-        OUTPUT_QUIET ERROR_QUIET
+        RESULT_VARIABLE _git_root_dir_error
+        OUTPUT_VARIABLE _git_root_dir
+        ERROR_QUIET
+        OUTPUT_STRIP_TRAILING_WHITESPACE
     )
+    set(DEPTHAI_DOWNLOADED_SOURCES ON)
+    if(_git_root_dir_error EQUAL 0 AND "${_git_root_dir}" STREQUAL "${CMAKE_CURRENT_LIST_DIR}")
+        set(DEPTHAI_DOWNLOADED_SOURCES OFF)
+    endif()
+    message(DEBUG "Git root dir (${_git_root_dir_error}): ${_git_root_dir}")
+    message(DEBUG "DepthAI as downloaded sources: ${DEPTHAI_DOWNLOADED_SOURCES}")
     execute_process(
         COMMAND ${GIT_EXECUTABLE} rev-parse HEAD
         WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
@@ -195,6 +215,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/EdgeDetector.cpp
     src/pipeline/node/SPIIn.cpp
     src/pipeline/node/FeatureTracker.cpp
+    src/pipeline/node/DetectionParser.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
@@ -216,6 +237,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/FeatureTrackerConfig.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
+    src/utility/Path.cpp
     src/utility/Platform.cpp
     src/utility/Environment.cpp
     src/xlink/XLinkConnection.cpp
@@ -396,9 +418,11 @@ endif()
 target_link_libraries(${TARGET_CORE_NAME}
     PUBLIC
         nlohmann_json::nlohmann_json
-        XLink
         libnop
+    INTERFACE
+        XLinkPublic
     PRIVATE
+        XLink
         Threads::Threads
         BZip2::bz2
         FP16::fp16
@@ -497,6 +521,9 @@ if(DEPTHAI_SANITIZE)
     endif()
     if(DEPTHAI_XLINK_LOCAL)
         add_sanitizers(XLink)
+        if(XLINK_LIBUSB_LOCAL)
+            add_sanitizers(usb-1.0)
+        endif()
     endif()
 endif()
 
@@ -565,6 +592,14 @@ configure_file(cmake/${PROJECT_NAME}Config.cmake.in ${PROJECT_NAME}Config.cmake 
 # Config for installation
 set(DEPTHAI_DEPENDENCIES_INSTALLATION_PATH_REL "./dependencies")
 configure_file(cmake/${PROJECT_NAME}Config.cmake.in _install/${PROJECT_NAME}Config.cmake @ONLY)
+
+# Modify RPath to point to the cmake/depthai/dependencies/lib
+# note: macOS is APPLE and also UNIX!
+if(APPLE)
+  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "@loader_path;@loader_path/cmake/${PROJECT_NAME}/dependencies/lib")
+elseif(UNIX)
+  set_target_properties(${TARGET_CORE_NAME} PROPERTIES INSTALL_RPATH "$ORIGIN:$ORIGIN/cmake/${PROJECT_NAME}/dependencies/lib")
+endif()
 
 # Export to CMake registry if specified
 if(CMAKE_EXPORT_PACKAGE_REGISTRY)

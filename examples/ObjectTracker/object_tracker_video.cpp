@@ -132,12 +132,12 @@ int main(int argc, char** argv) {
         if(frame.empty()) break;
 
         auto img = std::make_shared<dai::ImgFrame>();
-        frame = resizeKeepAspectRatio(frame, cv::Size(1280, 720), cv::Scalar(0));
+        frame = resizeKeepAspectRatio(frame, cv::Size(1920, 1080), cv::Scalar(0));
         toPlanar(frame, img->getData());
         img->setTimestamp(baseTs);
         baseTs += steady_clock::duration(static_cast<int64_t>((1000 * 1000 * 1000 / simulatedFps)));
-        img->setWidth(1280);
-        img->setHeight(720);
+        img->setWidth(1920);
+        img->setHeight(1080);
         img->setType(dai::ImgFrame::Type::BGR888p);
         qIn->send(img);
 

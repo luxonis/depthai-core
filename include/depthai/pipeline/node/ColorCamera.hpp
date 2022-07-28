@@ -137,11 +137,17 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
     /// Set preview output size, as a tuple <width, height>
     void setPreviewSize(std::tuple<int, int> size);
 
+    /// Set number of frames in preview pool
+    void setPreviewNumFramesPool(int num);
+
     /// Set video output size
     void setVideoSize(int width, int height);
 
     /// Set video output size, as a tuple <width, height>
     void setVideoSize(std::tuple<int, int> size);
+
+    /// Set number of frames in preview pool
+    void setVideoNumFramesPool(int num);
 
     /// Set still output size
     void setStillSize(int width, int height);
@@ -149,11 +155,23 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
     /// Set still output size, as a tuple <width, height>
     void setStillSize(std::tuple<int, int> size);
 
+    /// Set number of frames in preview pool
+    void setStillNumFramesPool(int num);
+
     /// Set sensor resolution
     void setResolution(Properties::SensorResolution resolution);
 
     /// Get sensor resolution
     Properties::SensorResolution getResolution() const;
+
+    /// Set number of frames in raw pool
+    void setRawNumFramesPool(int num);
+
+    /// Set number of frames in isp pool
+    void setIspNumFramesPool(int num);
+
+    /// Set number of frames in all pools
+    void setNumFramesPool(int raw, int isp, int preview, int video, int still);
 
     /**
      * Set 'isp' output scaling (numerator/denominator), preserving the aspect ratio.
@@ -273,6 +291,17 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
      * @returns Preview keep aspect ratio option
      */
     bool getPreviewKeepAspectRatio();
+
+    /// Get number of frames in preview pool
+    int getPreviewNumFramesPool();
+    /// Get number of frames in video pool
+    int getVideoNumFramesPool();
+    /// Get number of frames in still pool
+    int getStillNumFramesPool();
+    /// Get number of frames in raw pool
+    int getRawNumFramesPool();
+    /// Get number of frames in isp pool
+    int getIspNumFramesPool();
 };
 
 }  // namespace node

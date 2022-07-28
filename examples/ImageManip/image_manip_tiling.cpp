@@ -18,11 +18,15 @@ int main() {
     // preview frame into 2 500x500 frames
     auto manip1 = pipeline.create<dai::node::ImageManip>();
     manip1->initialConfig.setCropRect(0, 0, 0.5, 1);
+    // Flip functionality
+    manip1->initialConfig.setHorizontalFlip(true);
     manip1->setMaxOutputFrameSize(maxFrameSize);
     camRgb->preview.link(manip1->inputImage);
 
     auto manip2 = pipeline.create<dai::node::ImageManip>();
     manip2->initialConfig.setCropRect(0.5, 0, 1, 1);
+    // Flip functionality
+    manip1->initialConfig.setVerticalFlip(true);
     manip2->setMaxOutputFrameSize(maxFrameSize);
     camRgb->preview.link(manip2->inputImage);
 

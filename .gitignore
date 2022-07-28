@@ -28,3 +28,6 @@ calib*.json
 *_LOCAL_*
 *_BACKUP_*
 *_BASE_*
+
+# clangd cache
+.cache/
