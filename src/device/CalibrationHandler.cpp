@@ -564,7 +564,7 @@ void CalibrationHandler::setBoardInfo(std::string productName,
     eepromData.version = 7;
 }
 
-void setProductName(std::string productName){
+void CalibrationHandler::setProductName(std::string productName){
     eepromData.productName = productName;
 }
 
