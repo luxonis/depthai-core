@@ -564,6 +564,11 @@ void CalibrationHandler::setBoardInfo(std::string productName,
     eepromData.version = 7;
 }
 
+void setProductName(std::string productName){
+    eepromData.productName = productName;
+}
+
+
 void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, std::vector<std::vector<float>> intrinsics, int width, int height) {
     if(intrinsics.size() != 3 || intrinsics[0].size() != 3) {
         throw std::runtime_error("Intrinsic Matrix size should always be 3x3 ");
