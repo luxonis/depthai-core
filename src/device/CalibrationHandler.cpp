@@ -564,10 +564,12 @@ void CalibrationHandler::setBoardInfo(std::string productName,
     eepromData.version = 7;
 }
 
-void CalibrationHandler::setProductName(std::string productName){
+void CalibrationHandler::setProductName(std::string productName) {
     eepromData.productName = productName;
-}
 
+    // Bump version to V7
+    eepromData.version = 7;
+}
 
 void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, std::vector<std::vector<float>> intrinsics, int width, int height) {
     if(intrinsics.size() != 3 || intrinsics[0].size() != 3) {
