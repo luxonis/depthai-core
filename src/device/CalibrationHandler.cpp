@@ -221,20 +221,23 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(
 
         std::vector<std::vector<float>> scaleMat;
         if(keepAspectRatio) {
-            if(resizeWidth / resizeHeight <= 1.34 && eepromData.cameraData[cameraId].width / eepromData.cameraData[cameraId].height <= 1.778) {
+            float originalRatio = eepromData.cameraData[cameraId].width / eepromData.cameraData[cameraId].height
+            if(resizeWidth / resizeHeight <= 1.34 && originalRatio <= 1.778 && originalRatio > 1.5) {
                 float scaleW = resizeWidth / static_cast<float>(eepromData.cameraData[cameraId].width);
                 float scaleH = resizeHeight / static_cast<float>(eepromData.cameraData[cameraId].height);
-
+                std::cout << "In 4:3 ratio sections " << originalRatio << "resizeRatio " << resizeWidth/resizeHeight << std::endl;
                 scaleW = std::min(scaleW, scaleH);
                 scaleMat = {{scaleW, 0, 0}, {0, scaleW, 0}, {0, 0, 1}};
                 intrinsicMatrix = matMul(scaleMat, intrinsicMatrix);
 
                 if(scaleW * height < resizeHeight) {
-                    scaledIntrinscs[1][2] += static_cast<float>(resizeHeight - eepromData.cameraData[cameraId].height * scaleW) / 2.0f;
+                    intrinsicMatrix[1][2] += static_cast<float>(resizeHeight - eepromData.cameraData[cameraId].height * scaleW) / 2.0f;
                 } else if(scaleW * width > destWidth) {
-                    scaledIntrinscs[0][2] += static_cast<float>(resizeWidth - eepromData.cameraData[cameraId].width * scaleW) / 2.0f;
+                    intrinsicMatrix[0][2] += static_cast<float>(resizeWidth - eepromData.cameraData[cameraId].width * scaleW) / 2.0f;
                 }
             } else {
+                std::cout << "In 16:9 ratio sections " << originalRatio << "resizeRatio " << resizeWidth/resizeHeight << std::endl;
+
                 float scale = resizeHeight / static_cast<float>(eepromData.cameraData[cameraId].height);
 
                 if(scale * eepromData.cameraData[cameraId].width < resizeWidth) {
