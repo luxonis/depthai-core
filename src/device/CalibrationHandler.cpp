@@ -225,7 +225,7 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(
             if(resizeWidth / resizeHeight <= 1.34 && originalRatio <= 1.778 && originalRatio > 1.5) {
                 float scaleW = resizeWidth / static_cast<float>(eepromData.cameraData[cameraId].width);
                 float scaleH = resizeHeight / static_cast<float>(eepromData.cameraData[cameraId].height);
-                std::cout << "In 4:3 ratio sections " << originalRatio << "resizeRatio " << resizeWidth/resizeHeight << std::endl;
+                std::cout << "In 4:3 ratio sections " << originalRatio << "resizeRatio " << resizeWidth / resizeHeight << std::endl;
                 scaleW = std::min(scaleW, scaleH);
                 scaleMat = {{scaleW, 0, 0}, {0, scaleW, 0}, {0, 0, 1}};
                 intrinsicMatrix = matMul(scaleMat, intrinsicMatrix);
@@ -236,7 +236,7 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(
                     intrinsicMatrix[0][2] += static_cast<float>(resizeWidth - eepromData.cameraData[cameraId].width * scaleW) / 2.0f;
                 }
             } else {
-                std::cout << "In 16:9 ratio sections " << originalRatio << "resizeRatio " << resizeWidth/resizeHeight << std::endl;
+                std::cout << "In 16:9 ratio sections " << originalRatio << "resizeRatio " << resizeWidth / resizeHeight << std::endl;
 
                 float scale = resizeHeight / static_cast<float>(eepromData.cameraData[cameraId].height);
 
