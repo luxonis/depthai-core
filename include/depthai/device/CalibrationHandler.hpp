@@ -72,28 +72,8 @@ class CalibrationHandler {
      * respective cropped image
      * @param bottomRightPixelId (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
      * the respective cropped image
-     * @return Represents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
-     *
-     * Matrix representation of intrinsic matrix
-     * \f[ \text{Intrinsic Matrix} = \left [ \begin{matrix}
-     *                                        f_x & 0 & c_x \\
-     *                                        0 & f_y & c_y \\
-     *                                        0 &  0  & 1
-     *                                      \end{matrix} \right ] \f]
-     *
-     */
-    std::vector<std::vector<float>> getCameraIntrinsics(
-        CameraBoardSocket cameraId, int resizeWidth = -1, int resizeHeight = -1, Point2f topLeftPixelId = Point2f(), Point2f bottomRightPixelId = Point2f());
-
-    /**
-     * Get the Camera Intrinsics object
-     *
-     * @param cameraId Uses the cameraId to identify which camera intrinsics to return
-     * @param destShape resized width and height of the image for which intrinsics is requested.
-     * @param topLeftPixelId (x, y) point represents the top left corner coordinates of the cropped image which is used to modify the intrinsics for the
-     * respective cropped image
-     * @param bottomRightPixelId (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
-     * the respective cropped image
+     * @param keepAspectRatio Enabling this will scale on width or height depending on which provides the max resolution and crops the remaning part of the
+     * other side
      * @return Represents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      *
      * Matrix representation of intrinsic matrix
@@ -105,9 +85,11 @@ class CalibrationHandler {
      *
      */
     std::vector<std::vector<float>> getCameraIntrinsics(CameraBoardSocket cameraId,
-                                                        Size2f destShape,
+                                                        int resizeWidth = -1,
+                                                        int resizeHeight = -1,
                                                         Point2f topLeftPixelId = Point2f(),
-                                                        Point2f bottomRightPixelId = Point2f());
+                                                        Point2f bottomRightPixelId = Point2f(),
+                                                        bool keepAspectRatio = true);
 
     /**
      * Get the Camera Intrinsics object
@@ -118,6 +100,32 @@ class CalibrationHandler {
      * respective cropped image
      * @param bottomRightPixelId (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
      * the respective cropped image
+     * @param keepAspectRatio Enabling this will scale on width or height depending on which provides the max resolution and crops the remaning part of the
+     * other side
+     * @return Represents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
+     *
+     * Matrix representation of intrinsic matrix
+     * \f[ \text{Intrinsic Matrix} = \left [ \begin{matrix}
+     *                                        f_x & 0 & c_x \\
+     *                                        0 & f_y & c_y \\
+     *                                        0 &  0  & 1
+     *                                      \end{matrix} \right ] \f]
+     *
+     */
+    std::vector<std::vector<float>> getCameraIntrinsics(
+        CameraBoardSocket cameraId, Size2f destShape, Point2f topLeftPixelId = Point2f(), Point2f bottomRightPixelId = Point2f(), bool keepAspectRatio = true);
+
+    /**
+     * Get the Camera Intrinsics object
+     *
+     * @param cameraId Uses the cameraId to identify which camera intrinsics to return
+     * @param destShape resized width and height of the image for which intrinsics is requested.
+     * @param topLeftPixelId (x, y) point represents the top left corner coordinates of the cropped image which is used to modify the intrinsics for the
+     * respective cropped image
+     * @param bottomRightPixelId (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
+     * the respective cropped image
+     * @param keepAspectRatio Enabling this will scale on width or height depending on which provides the max resolution and crops the remaning part of the
+     * other side
      * @return Represents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      *
      * Matrix representation of intrinsic matrix
@@ -131,7 +139,8 @@ class CalibrationHandler {
     std::vector<std::vector<float>> getCameraIntrinsics(CameraBoardSocket cameraId,
                                                         std::tuple<int, int> destShape,
                                                         Point2f topLeftPixelId = Point2f(),
-                                                        Point2f bottomRightPixelId = Point2f());
+                                                        Point2f bottomRightPixelId = Point2f(),
+                                                        bool keepAspectRatio = true);
 
     /**
      * Get the Default Intrinsics object
