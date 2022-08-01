@@ -223,7 +223,7 @@ std::vector<std::vector<float>> CalibrationHandler::getCameraIntrinsics(
         if(keepAspectRatio) {
             float originalRatio = eepromData.cameraData[cameraId].width / static_cast<float>(eepromData.cameraData[cameraId].height);
             float resizeRatio = resizeWidth / static_cast<float>(resizeHeight);
-            if(resizeRatio <= 1.34 && originalRatio <= 1.778 && originalRatio > 1.5) {
+            if(resizeRatio <= 1.34f && originalRatio <= 1.778f && originalRatio > 1.5f) {
                 float scaleW = resizeWidth / static_cast<float>(eepromData.cameraData[cameraId].width);
                 float scaleH = resizeHeight / static_cast<float>(eepromData.cameraData[cameraId].height);
 
