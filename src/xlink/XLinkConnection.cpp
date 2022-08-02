@@ -228,10 +228,12 @@ DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
 
     // Wait for a bootloader device now
     DeviceInfo deviceToWait = deviceInfo;
-    if(deviceInfo.protocol == X_LINK_USB_VSC) {
-        deviceToWait.name = "";
-    }
     deviceToWait.state = X_LINK_BOOTLOADER;
+
+    // Prepare descriptor to search for
+    auto descToWait = deviceToWait.getXLinkDeviceDesc();
+    // Use "name" as hint only, but might still change
+    descToWait.nameHintOnly = true;
 
     // Device desc if found
     deviceDesc_t foundDeviceDesc = {};
@@ -262,7 +264,7 @@ DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
 
     auto tstart = steady_clock::now();
     do {
-        rc = XLinkFindFirstSuitableDevice(deviceToWait.getXLinkDeviceDesc(), &foundDeviceDesc);
+        rc = XLinkFindFirstSuitableDevice(descToWait, &foundDeviceDesc);
         if(rc == X_LINK_SUCCESS) break;
         std::this_thread::sleep_for(POLLING_DELAY_TIME);
     } while(steady_clock::now() - tstart < bootupTimeout);
@@ -452,19 +454,21 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
     if(expectedState != X_LINK_ANY_STATE) {
         // Create description of device to look for
         DeviceInfo bootedDeviceInfo = lastDeviceInfo;
-        // Reset "name" and search for MXID again after booting the device for all cases
-        bootedDeviceInfo.name = "";
-
         // Has to match expected state
         bootedDeviceInfo.state = expectedState;
 
-        spdlog::debug("Searching for device: {}", bootedDeviceInfo.toString());
+        // Prepare descriptor to search for
+        auto bootedDescInfo = bootedDeviceInfo.getXLinkDeviceDesc();
+        // Use "name" as hint only, but might still change
+        bootedDescInfo.nameHintOnly = true;
+
+        spdlog::debug("Searching for booted device: {}, name used as hint only", bootedDeviceInfo.toString());
 
         // Find booted device
         deviceDesc_t foundDeviceDesc = {};
         auto tstart = steady_clock::now();
         do {
-            rc = XLinkFindFirstSuitableDevice(bootedDeviceInfo.getXLinkDeviceDesc(), &foundDeviceDesc);
+            rc = XLinkFindFirstSuitableDevice(bootedDescInfo, &foundDeviceDesc);
             if(rc == X_LINK_SUCCESS) break;
             std::this_thread::sleep_for(POLLING_DELAY_TIME);
         } while(steady_clock::now() - tstart < bootupTimeout);

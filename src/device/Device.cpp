@@ -278,10 +278,7 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
             auto streamName = props.streamName;
 
             // Create DataInputQueue's
-            inputQueueMap[streamName] = std::make_shared<DataInputQueue>(connection, streamName);
-            // set max data size, for more verbosity
-            inputQueueMap[streamName]->setMaxDataSize(props.maxDataSize);
-
+            inputQueueMap[streamName] = std::make_shared<DataInputQueue>(connection, streamName, 16, true, props.maxDataSize);
         } else if(kv.second.name == node::XLinkOut::NAME) {
             // deserialize properties to check the stream name
             node::XLinkOut::Properties props;

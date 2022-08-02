@@ -532,12 +532,6 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         // Unbooted device found, boot and connect with XLinkConnection constructor
         connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
     } else if(deviceInfo.state == X_LINK_BOOTLOADER || deviceInfo.state == X_LINK_FLASH_BOOTED) {
-        // If device is in flash booted state, reset to bootloader and then continue by booting appropriate FW
-        if(deviceInfo.state == X_LINK_FLASH_BOOTED) {
-            // Boot bootloader and set current deviceInfo to new device state
-            deviceInfo = XLinkConnection::bootBootloader(deviceInfo);
-        }
-
         // Scope so DeviceBootloader is disconnected
         {
             DeviceBootloader bl(deviceInfo);
