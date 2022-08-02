@@ -41,6 +41,7 @@ public:
     std::vector<std::uint8_t> getDeviceFirmware(bool usb2Mode, OpenVINO::Version version = OpenVINO::DEFAULT_VERSION) const;
     std::vector<std::uint8_t> getDeviceFirmware(Device::Config config, dai::Path pathToMvcmd = {}) const;
     std::vector<std::uint8_t> getBootloaderFirmware(DeviceBootloader::Type type = DeviceBootloader::Type::USB) const;
+    std::vector<std::uint8_t> getDeviceKbFwp() const;
 
 };
 

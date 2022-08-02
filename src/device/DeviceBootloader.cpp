@@ -25,12 +25,6 @@
 #include "spdlog/spdlog.h"
 #include "zlib.h"
 
-// Resource compiled assets (cmds)
-#ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
-    #include "cmrc/cmrc.hpp"
-CMRC_DECLARE(depthai);
-#endif
-
 namespace dai {
 
 // Using

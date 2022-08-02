@@ -139,7 +139,7 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::mill
     std::unordered_map<std::string, DeviceInfo> invalidDevices;
     do {
         auto devices = XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, false);
-        for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED}) {
+        for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED, X_LINK_GATE}) {
             for(const auto& device : devices) {
                 if(device.state == searchState) {
                     if(device.status == X_LINK_SUCCESS) {
@@ -201,7 +201,7 @@ std::tuple<bool, DeviceInfo> DeviceBase::getFirstAvailableDevice(bool skipInvali
     // Get all connected devices
     auto devices = XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, skipInvalidDevice);
     // Search order - first unbooted, then bootloader and last flash booted
-    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED}) {
+    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED, X_LINK_GATE}) {
         for(const auto& device : devices) {
             if(device.state == searchState) {
                 return {true, device};
@@ -224,7 +224,7 @@ std::vector<DeviceInfo> DeviceBase::getAllAvailableDevices() {
 // First tries to find UNBOOTED device with mxId, then BOOTLOADER device with mxId
 std::tuple<bool, DeviceInfo> DeviceBase::getDeviceByMxId(std::string mxId) {
     std::vector<DeviceInfo> availableDevices;
-    auto states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER};
+    auto states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_GATE};
     bool found;
     DeviceInfo dev;
     for(const auto& state : states) {
@@ -571,6 +571,16 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     } else if(deviceInfo.state == X_LINK_BOOTED) {
         // Connect without booting
         connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
+    } else if(deviceInfo.state == X_LINK_GATE) {
+        // Boot FW using DeviceGate then connect directly
+        gate = std::make_unique<DeviceGate>(deviceInfo);
+
+        // Create and start session
+        gate->createSession();
+        gate->startSession();
+
+        // Connect with XLinkConnection (skip checking if booted)
+        connection = std::make_shared<XLinkConnection>(deviceInfo, X_LINK_ANY_STATE);
     } else {
         throw std::runtime_error("Cannot find any device with given deviceInfo");
     }

@@ -250,6 +250,7 @@ add_library(${TARGET_CORE_NAME}
     src/openvino/OpenVINO.cpp
     src/openvino/BlobReader.cpp
     src/bspatch/bspatch.c
+    src/device/DeviceGate.cpp
 )
 add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
 # Specify that we are building core
@@ -307,10 +308,12 @@ set(DEPTHAI_RESOURCES_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/resources")
 # Include configuration
 include(Depthai/DepthaiDeviceSideConfig)    # Depthai device binary commit/version configuration
 include(Depthai/DepthaiBootloaderConfig)    # Depthai bootloader binary commit/version configuration
+include(Depthai/DepthaiDeviceKbConfig)    # depthai-device-kb fwp commit/version configuration
 
 # Include downloaders
 include(DepthaiDownloader)                  # Depthai device binary downloader
 include(DepthaiBootloaderDownloader)        # Depthai bootloader binary downloader
+include(DepthaiDeviceKbDownloader)          # depthai-device-kb fwp downloader
 
 
 # depthai-shared enforce commit hash match if CI
@@ -359,6 +362,16 @@ DepthaiBootloaderDownload(
     "${DEPTHAI_BOOTLOADER_VERSION}"                 # if maturity == snapshot -> hash else version
 )
 list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_BOOTLOADER_RESOURCE_LIST})
+
+# Add device-kb
+DepthaiDeviceKbDownload(
+    "${DEPTHAI_SHARED_COMMIT_HASH}" "${DEPTHAI_SHARED_COMMIT_HASH_ENFORCE}"
+    "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
+    DEPTHAI_DEVICE_KB_RESOURCE_LIST                 # List of output resources
+    "${DEPTHAI_DEVICE_KB_MATURITY}"                # Maturity
+    "${DEPTHAI_DEVICE_KB_VERSION}"
+)
+list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_DEVICE_KB_RESOURCE_LIST})
 
 message(STATUS "LIST OF RESOURCE COMPILED FILES: ${RESOURCE_COMPILED_FILES}")
 
@@ -434,6 +447,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         archive_static
         spdlog::spdlog
         ZLIB::zlib
+        httplib::httplib
 )
 
 # Add compile definitions
@@ -445,6 +459,8 @@ target_compile_definitions(${TARGET_CORE_NAME}
         DEPTHAI_DEVICE_VERSION="${DEPTHAI_DEVICE_SIDE_COMMIT}"
         # Add depthai-bootloader version
         DEPTHAI_BOOTLOADER_VERSION="${DEPTHAI_BOOTLOADER_VERSION}"
+        # Add depthai-device-kb version
+        DEPTHAI_DEVICE_KB_VERSION="${DEPTHAI_DEVICE_KB_VERSION}"
 )
 
 # Add Backward dependency if enabled (On by default)

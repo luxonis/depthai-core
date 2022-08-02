@@ -17,6 +17,7 @@ else()
     hunter_add_package(libarchive-luxonis)
     hunter_add_package(spdlog)
     hunter_add_package(ZLIB)
+    hunter_add_package(httplib)
     if(DEPTHAI_ENABLE_BACKWARD)
         hunter_add_package(Backward)
     endif()
@@ -40,6 +41,9 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
 
     # spdlog for library and device logging
     find_package(spdlog ${_QUIET} CONFIG REQUIRED)
+
+    # httplib for Gate communication
+    find_package(httplib ${_QUIET} CONFIG REQUIRED)
 
     # Backward
     if(DEPTHAI_ENABLE_BACKWARD)

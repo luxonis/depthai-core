@@ -18,6 +18,7 @@
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
+#include "depthai/device/DeviceGate.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
@@ -674,6 +675,9 @@ class DeviceBase {
 
     // RPC stream
     std::unique_ptr<XLinkStream> rpcStream;
+
+    // DeviceGate connection
+    std::unique_ptr<DeviceGate> gate;
 
     // closed
     mutable std::mutex closedMtx;

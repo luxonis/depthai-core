@@ -8,8 +8,8 @@ hunter_config(
 hunter_config(
     XLink
     VERSION "luxonis-2021.4.2-develop"
-    URL "https://github.com/luxonis/XLink/archive/3c7b655d62dd7edab1169bc8e31dcefb03f24619.tar.gz"
-    SHA1 "2a5f798e15ada8a5d63279f0615d04ac24a1b6c3"
+    URL "https://github.com/luxonis/XLink/archive/e3bd353cb846f037962e6bac60bd8b40308a19b7.tar.gz"
+    SHA1 "3aa689412fa4d3513d5cc6d1dd16a54ea888d4f0"
 )
 
 hunter_config(
@@ -123,4 +123,15 @@ hunter_config(
         WITH_UDEV=OFF
         # Build shared libs by default to not cause licensing issues
         BUILD_SHARED_LIBS=ON
+)
+
+# cpp-httplib
+hunter_config(
+    httplib
+    VERSION "0.11.0"
+    URL "https://github.com/yhirose/cpp-httplib/archive/refs/tags/v0.11.0.tar.gz"
+    SHA1 "c26ce2539f8c43d3ce1179113ccb1f2e12bf553c"
+    CMAKE_ARGS
+        HTTPLIB_USE_OPENSSL_IF_AVAILABLE=OFF
+        HTTPLIB_USE_BROTLI_IF_AVAILABLE=OFF
 )

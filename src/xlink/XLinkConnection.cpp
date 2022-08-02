@@ -448,8 +448,8 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
         }
     }
 
-    // Search for booted device
-    {
+    // Search for booted device (if expected state is specified)
+    if(expectedState != X_LINK_ANY_STATE) {
         // Create description of device to look for
         DeviceInfo bootedDeviceInfo = lastDeviceInfo;
         // Reset "name" and search for MXID again after booting the device for all cases
