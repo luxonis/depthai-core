@@ -744,10 +744,6 @@ PipelineImpl::~PipelineImpl() {
 }
 
 std::vector<uint8_t> PipelineImpl::loadResource(dai::Path uri) {
-    return loadResourceCwd(uri, "/pipeline");
-}
-
-std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd) {
     struct ProtocolHandler {
         const char* protocol = nullptr;
         std::function<std::vector<uint8_t>(PipelineImpl&, const dai::Path&)> handle = nullptr;
@@ -755,13 +751,24 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd)
 
     const std::vector<ProtocolHandler> protocolHandlers = {
         {"asset",
-         [](PipelineImpl& p, const dai::Path& path) -> std::vector<uint8_t> {
-             auto asset = p.assetManager.get(path);
-             if(asset == nullptr) {
-                 throw std::invalid_argument(fmt::format("No asset with key ({}) found", path));
+         [](PipelineImpl& p, const dai::Path& uri) -> std::vector<uint8_t> {
+             // First check the pipeline asset manager
+             auto asset = p.assetManager.get(std::string{uri});
+             if(asset != nullptr) {
+                 return asset->data;
              }
-
-             return asset->data;
+             // If asset not found in the pipeline asset manager, check all nodes
+             else {
+                 for(auto& node : p.getAllNodes()) {
+                     auto& assetManager = node->getAssetManager();
+                     auto asset = assetManager.get(uri);
+                     if(asset != nullptr) {
+                         return asset->data;
+                     }
+                 }
+             }
+             // Asset not found anywhere
+             throw std::invalid_argument(fmt::format("No asset with key ({}) found", uri));
          }} /*, TODO (read from filesystem 'file://' or default scheme, ...) */
     };
 
@@ -779,8 +786,7 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd)
 
             // TODO(themarpe) - use above approach instead
             dai::Path path(uri.u8string().substr(protocolPrefix.size()));
-            auto fullPath = dai::Path(cwd.u8string() + "/" + path.u8string());
-            return handler.handle(*this, fullPath);
+            return handler.handle(*this, path.u8string());
         }
     }
 

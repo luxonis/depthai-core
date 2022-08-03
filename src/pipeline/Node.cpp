@@ -178,10 +178,7 @@ AssetManager& Node::getAssetManager() {
 }
 
 std::vector<uint8_t> Node::loadResource(dai::Path uri) {
-    // Current node "working directory"
-    std::string cwd = fmt::format("/node/{}/", id);
-    // Load resource relative to cwd (if uri path relative)
-    return parent.lock()->loadResourceCwd(uri, cwd);
+    return parent.lock()->loadResource(uri);
 }
 
 Node::OutputMap::OutputMap(std::string name, Node::Output defaultOutput) : defaultOutput(defaultOutput), name(std::move(name)) {}
