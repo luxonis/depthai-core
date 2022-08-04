@@ -30,6 +30,37 @@ class SpatialLocationCalculatorData : public Buffer {
     std::vector<SpatialLocations>& getSpatialLocations() const;
 
     std::vector<SpatialLocations>& spatialLocations;
+
+    /**
+     * Retrieves image timestamp related to dai::Clock::now()
+     */
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;
+
+    /**
+     * Retrieves image timestamp directly captured from device's monotonic clock,
+     * not synchronized to host time. Used mostly for debugging
+     */
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
+
+    /**
+     * Retrieves image sequence number
+     */
+    int64_t getSequenceNum() const;
+
+    /**
+     * Sets image timestamp related to dai::Clock::now()
+     */
+    SpatialLocationCalculatorData& setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+
+    /**
+     * Sets image timestamp related to dai::Clock::now()
+     */
+    SpatialLocationCalculatorData& setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+
+    /**
+     * Retrieves image sequence number
+     */
+    SpatialLocationCalculatorData& setSequenceNum(int64_t sequenceNum);
 };
 
 }  // namespace dai
