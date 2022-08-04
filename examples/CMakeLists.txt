@@ -195,7 +195,23 @@ hunter_private_data(
     LOCATION normalization_model
 )
 
-## message(STATUS "Location of test1.data: ${test1_data}")
+# mobilnet xml model for keembay example
+hunter_private_data(
+    URL "https://download.01.org/opencv/2021/openvinotoolkit/2021.1/open_model_zoo/models_bin/1/person-detection-0202/FP32/person-detection-0202.xml"
+    SHA1 "87f9cf8833043162f1b728e9afa6f38ba177d9db"
+    FILE "person-detection-0202.xml"
+    LOCATION person_detection_xml
+)
+
+# mobilnet xml model for keembay example
+hunter_private_data(
+    URL "https://download.01.org/opencv/2021/openvinotoolkit/2021.1/open_model_zoo/models_bin/1/person-detection-0202/FP32/person-detection-0202.bin"
+    SHA1 "1560bf2ee372a0640539780ea8bd061278a6cc20"
+    FILE "person-detection-0202.bin"
+    LOCATION person_detection_bin
+)
+
+# # message(STATUS "Location of test1.data: ${test1_data}")
 
 # bootloader
 dai_add_example(bootloader_version bootloader/bootloader_version.cpp ON)
@@ -354,3 +370,4 @@ dai_add_example(host_pipeline_opencv host_side/host_pipeline_opencv.cpp ON)
 # TMP
 dai_add_example(tmp_preview tmp/tmp_preview.cpp OFF)
 dai_add_example(webcam_keembay tmp/webcam_keembay.cpp OFF)
+target_compile_definitions(webcam_keembay PRIVATE MODEL_XML_PATH="${person_detection_xml}" MODEL_BIN_PATH="${person_detection_bin}")
