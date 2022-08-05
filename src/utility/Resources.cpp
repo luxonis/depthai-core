@@ -67,11 +67,10 @@ constexpr static auto RESOURCE_LIST_DEVICE = array_of<const char*>(DEPTHAI_CMD_O
                                                                    DEPTHAI_CMD_OPENVINO_2021_3_PATCH_PATH);
 
 std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, dai::Path pathToMvcmd) const {
-
-    // First check if device fw is enabled
-    #ifndef DEPTHAI_ENABLE_DEVICE_FW
-        throw std::invalid_argument("DepthAI compiled without support for MyriadX Device FW");
-    #endif
+// First check if device fw is enabled
+#ifndef DEPTHAI_ENABLE_DEVICE_FW
+    throw std::invalid_argument("DepthAI compiled without support for MyriadX Device FW");
+#endif
 
     // Wait until lazy load is complete
     {
@@ -205,11 +204,10 @@ constexpr static std::array<const char*, 2> RESOURCE_LIST_BOOTLOADER = {
 };
 
 std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type type) const {
-
-    // First check if device bootloader fw is enabled
-    #ifndef DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW
-        throw std::invalid_argument("DepthAI compiled without support for MyriadX Device Bootloader FW");
-    #endif
+// First check if device bootloader fw is enabled
+#ifndef DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW
+    throw std::invalid_argument("DepthAI compiled without support for MyriadX Device Bootloader FW");
+#endif
 
     // Wait until lazy load is complete
     {
@@ -259,11 +257,10 @@ std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type
 
 constexpr static auto CMRC_DEPTHAI_DEVICE_KB_FWP_TAR_XZ = "depthai-device-kb-fwp-" DEPTHAI_DEVICE_KB_VERSION ".tar.xz";
 std::vector<std::uint8_t> Resources::getDeviceKbFwp() const {
-
-    // First check if device bootloader fw is enabled
-    #ifndef DEPTHAI_ENABLE_DEVICE_KB_FW
-        throw std::invalid_argument("DepthAI compiled without support for MyriadX Device Bootloader FW");
-    #endif
+// First check if device bootloader fw is enabled
+#ifndef DEPTHAI_ENABLE_DEVICE_KB_FW
+    throw std::invalid_argument("DepthAI compiled without support for MyriadX Device Bootloader FW");
+#endif
 
     // tmp
     std::string pathToFwp;
@@ -407,22 +404,20 @@ Resources::Resources() {
     // Ignore 'r' variable when in Release build
     (void)r;
 
-
-    // First check if device kb fw is enabled
-    #ifdef DEPTHAI_ENABLE_DEVICE_FW
+// First check if device kb fw is enabled
+#ifdef DEPTHAI_ENABLE_DEVICE_FW
     // Device resources
     // Create a thread which lazy-loads firmware resources package
     lazyThreadDevice = std::thread(getLazyTarXzFunction(mtxDevice, cvDevice, readyDevice, CMRC_DEPTHAI_DEVICE_TAR_XZ, RESOURCE_LIST_DEVICE, resourceMapDevice));
-    #endif
+#endif
 
-
-    // First check if device bootloader fw is enabled
-    #ifdef DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW
+// First check if device bootloader fw is enabled
+#ifdef DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW
     // Bootloader resources
     // Create a thread which lazy-loads firmware resources package
     lazyThreadBootloader = std::thread(
         getLazyTarXzFunction(mtxBootloader, cvBootloader, readyBootloader, CMRC_DEPTHAI_BOOTLOADER_TAR_XZ, RESOURCE_LIST_BOOTLOADER, resourceMapBootloader));
-    #endif
+#endif
 }
 
 Resources::~Resources() {
