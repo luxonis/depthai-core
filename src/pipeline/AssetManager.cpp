@@ -12,6 +12,12 @@ std::string Asset::getRelativeUri() {
     return fmt::format("{}:{}", "asset", key);
 }
 
+AssetManager::AssetManager(std::string rootPath) : rootPath{rootPath} {}
+
+std::string AssetManager::getRootPath() {
+    return rootPath;
+}
+
 std::shared_ptr<dai::Asset> AssetManager::set(Asset asset) {
     // make sure that key doesn't exist already
     if(assetMap.count(asset.key) > 0) throw std::logic_error("An Asset with the key: " + asset.key + " already exists.");
@@ -64,17 +70,45 @@ std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, std::vecto
 }
 
 std::shared_ptr<const Asset> AssetManager::get(const std::string& key) const {
-    if(assetMap.count(key) == 0) {
+    // Check if asset key is absolute or relative
+    std::string relativeKey;
+
+    if(key[0] == '/') {                // Absolute path
+        if(key.find(rootPath) == 0) {  // Root path of the node is contained in the key
+            int rootPathPosition = key.find(rootPath);
+            relativeKey = key.substr(rootPathPosition);
+        } else {
+            throw std::logic_error("Incorrect root path used. Node root path: " + rootPath + " used absolute key: " + key);
+        }
+    } else {  // Relative path
+        relativeKey = key;
+    }
+
+    if(assetMap.count(relativeKey) == 0) {
         return nullptr;
     }
-    return assetMap.at(key);
+    return assetMap.at(relativeKey);
 }
 
 std::shared_ptr<Asset> AssetManager::get(const std::string& key) {
-    if(assetMap.count(key) == 0) {
+    // Check if asset key is absolute or relative
+    std::string relativeKey;
+
+    if(key[0] == '/') {                // Absolute path
+        if(key.find(rootPath) == 0) {  // Root path of the node is contained in the key
+            int rootPathLen = rootPath.size();
+            relativeKey = key.substr(rootPathLen);
+        } else {
+            return nullptr;
+        }
+    } else {  // Relative path
+        relativeKey = key;
+    }
+
+    if(assetMap.count(relativeKey) == 0) {
         return nullptr;
     }
-    return assetMap.at(key);
+    return assetMap.at(relativeKey);
 }
 
 void AssetManager::addExisting(std::vector<std::shared_ptr<Asset>> assets) {
@@ -110,7 +144,7 @@ void AssetManager::remove(const std::string& key) {
     assetMap.erase(key);
 }
 
-void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint8_t>& storage, std::string prefix) const {
+void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint8_t>& storage) const {
     using namespace std;
 
     for(auto& kv : assetMap) {
@@ -132,7 +166,7 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
         storage.insert(storage.end(), a.data.begin(), a.data.end());
 
         // Add to map the currently added asset
-        mutableAssets.set(prefix + a.key, offset, static_cast<uint32_t>(a.data.size()), a.alignment);
+        mutableAssets.set(rootPath + a.key, offset, static_cast<uint32_t>(a.data.size()), a.alignment);
     }
 }
 
