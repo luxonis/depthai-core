@@ -454,7 +454,7 @@ if(DEPTHAI_USB2_PATCH_ONLY_MODE)
 endif()
 
 # Helper function
-function(add_runtime_dependencies depending_target dependency)
+macro(add_runtime_dependencies depending_target dependency)
     if(WIN32)
         if(TARGET ${dependency})
             get_property(imported_configs TARGET ${dependency} PROPERTY IMPORTED_CONFIGURATIONS)
@@ -465,13 +465,16 @@ function(add_runtime_dependencies depending_target dependency)
             endforeach()
         endif()
         file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
+        # Create a list of required dll files
+        set(required_dll_files ${dlls} ${depthai_dll_libraries})
         # Copy the required dlls
         add_custom_command(TARGET ${depending_target} POST_BUILD COMMAND
-            ${CMAKE_COMMAND} -E copy_if_different ${dlls} ${depthai_dll_libraries} $<TARGET_FILE_DIR:${depending_target}>
+            ${CMAKE_COMMAND} -E copy_if_different ${required_dll_files} $<TARGET_FILE_DIR:${depending_target}>
             COMMAND_EXPAND_LISTS
         )
+        message(STATUS "Required dlls for core are: ${required_dll_files}")
     endif()
-endfunction()
+endmacro()
 # Add libusb dll in build time
 add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
 
@@ -652,6 +655,10 @@ if(DEPTHAI_INSTALL)
     # Install resources if not RC'd
     if(NOT DEPTHAI_BINARIES_RESOURCE_COMPILE)
         install(DIRECTORY "${DEPTHAI_RESOURCES_OUTPUT_DIR}/" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}")
+    endif()
+    # Install any required dll files
+    if(DEFINED required_dll_files)
+        install(FILES ${required_dll_files} DESTINATION "${CMAKE_INSTALL_BINDIR}")
     endif()
 
     # Install export group (information about targets)
