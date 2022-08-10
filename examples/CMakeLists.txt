@@ -211,6 +211,22 @@ hunter_private_data(
     LOCATION person_detection_bin
 )
 
+# yolo xml model for keembay example
+hunter_private_data(
+    URL "https://github.com/luxonis/depthai-model-zoo/raw/main/models/yolov4_tiny_coco_416x416/yolov4_tiny_coco_416x416.xml"
+    SHA1 "423069bdff250643cf080c76e15594cfd72cb816"
+    FILE "yolov4_tiny_coco_416x416.xml"
+    LOCATION tiny-vechicle-detection_xml
+)
+
+# yolo bin model for keembay example
+hunter_private_data(
+    URL "https://robothub.fra1.cdn.digitaloceanspaces.com/models/yolov4_tiny_coco_416x416/yolov4_tiny_coco_416x416.bin"
+    SHA1 "a7627c074ee76ceb9ff9bb8529b67867e3e440bc"
+    FILE "yolov4_tiny_coco_416x416.bin"
+    LOCATION tiny-vechicle-detection_bin
+)
+
 # # message(STATUS "Location of test1.data: ${test1_data}")
 
 # bootloader
@@ -370,4 +386,8 @@ dai_add_example(host_pipeline_opencv host_side/host_pipeline_opencv.cpp ON)
 # TMP
 dai_add_example(tmp_preview tmp/tmp_preview.cpp OFF)
 dai_add_example(webcam_keembay tmp/webcam_keembay.cpp OFF)
+dai_add_example(keembay_detection_parser_mobilenet tmp/keembay_detection_parser_mobilenet.cpp OFF)
+dai_add_example(keembay_detection_parser_yolo tmp/keembay_detection_parser_yolo.cpp OFF)
 target_compile_definitions(webcam_keembay PRIVATE MODEL_XML_PATH="${person_detection_xml}" MODEL_BIN_PATH="${person_detection_bin}")
+target_compile_definitions(keembay_detection_parser_mobilenet PRIVATE MODEL_XML_PATH="${person_detection_xml}" MODEL_BIN_PATH="${person_detection_bin}")
+target_compile_definitions(keembay_detection_parser_yolo PRIVATE MODEL_XML_PATH="${tiny-vechicle-detection_xml}" MODEL_BIN_PATH="${tiny-vechicle-detection_bin}")
