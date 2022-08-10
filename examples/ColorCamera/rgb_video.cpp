@@ -242,12 +242,13 @@ int main(int argc, char** argv) {
                     if (j < w) {
                         int conf = pdaf[k] << 3
                                | ((pdaf[k+1] >> 3) & 0x7);
-                        float pd = ((pdaf[k+1] & 0x3) << 8)
+                        int tmp  = ((pdaf[k+1] & 0x3) << 8)
                                  | ( pdaf[k+2] & 0xC0)
                                  | ((pdaf[k+2] & 0x0F) << 2)
                                  | ( pdaf[k+3] >> 6);
+                        if (pdaf[k+1] & (1 << 2)) tmp |= 0xFC00; // sign, extended to 16 bit
+                        float pd = (int16_t)tmp; // reinterpret (signed)
                         pd /= 16; // 4 subpixel bits
-                        pd *= (pdaf[k+1] & (1 << 2)) ? -1 : 1; // sign
                         printf(" [%4d]%8.4f", conf, pd);
                     }
                     k += 5;
