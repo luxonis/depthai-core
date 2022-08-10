@@ -226,7 +226,7 @@ int main(int argc, char** argv) {
 
             int k = 0; // offset into the packet
             int flex_mask =  pdaf[k];
-            int area_mode = (pdaf[k+1] >> 4) & 0x3;
+            int area_mode = 0;//(pdaf[k+1] >> 4) & 0x3; // FIXME why automatic not working?
             printf("\nPDAF sensor data, flexible ROI bitmask 0x%02x, mode %d, [CONF]valPx\n",
                     flex_mask, area_mode);
             k += 5; // skip over header
