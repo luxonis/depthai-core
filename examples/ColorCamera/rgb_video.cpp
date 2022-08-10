@@ -14,6 +14,7 @@ int main(int argc, char** argv) {
     bool enableNN = 0; // Set 1 for resource allocation test
     bool rotate = 0;
     bool downscale = 1;
+    bool getPdaf = 1;
     int audioSampleSize = 2; // 2, 3, 4. Note: must be 2 for NC
     if(argc > 1) {
         if (std::string(argv[1]) == "uvc") {
@@ -62,6 +63,13 @@ int main(int argc, char** argv) {
         //camRgb->video.link(xoutVideo->input); // Could actually keep this as well
     } else {
         camRgb->video.link(xoutVideo->input);
+    }
+
+    if (getPdaf) {
+        auto xoutRaw = pipeline.create<dai::node::XLinkOut>();
+        xoutRaw->setStreamName("raw");
+
+        camRgb->raw.link(xoutRaw->input);
     }
 
     if (enableToF) {
@@ -169,6 +177,7 @@ int main(int argc, char** argv) {
     bool blocking = false;
     auto video = device.getOutputQueue("video", qsize, blocking);
 
+    auto raw = getPdaf ? device.getOutputQueue("raw", qsize, blocking) : nullptr;
     auto depth = enableToF ? device.getOutputQueue("tof", qsize, blocking) : nullptr;
     auto audio = enableMic ? device.getOutputQueue("mic", qsize, blocking) : nullptr;
     auto audioBack = enableMic ? device.getOutputQueue("micBack", qsize, blocking) : nullptr;
@@ -206,6 +215,44 @@ int main(int argc, char** argv) {
                 printf("FPS: %.3f\n", fps);
                 count = 0;
                 tprev = tnow;
+            }
+        }
+
+        if (getPdaf) {
+            auto rawIn = raw->get<dai::ImgFrame>();
+            // Due to zero-copy, we can't use `rawIn->getData()`
+            uint8_t *pdaf = rawIn->packet->data;
+            uint32_t size = rawIn->packet->length; // note: this includes variable-size ImgFrame metadata!
+
+            int k = 0; // offset into the packet
+            int flex_mask =  pdaf[k];
+            int area_mode = (pdaf[k+1] >> 4) & 0x3;
+            printf("\nPDAF sensor data, flexible ROI bitmask 0x%02x, mode %d, [CONF]valPx\n",
+                    flex_mask, area_mode);
+            k += 5; // skip over header
+            k += 5; // skip over first window (always invalid?)
+
+            int w = (area_mode == 0) ? 16 : 8;
+            int h = (area_mode == 0) ? 12 : 6;
+
+            for (int i = 0; i < h; i++) {
+                printf("%2d:", i);
+                // Note we have 16 windows per 'row', skipping over the invalid ones
+                for (int j = 0; j < 16/*!!!*/; j++) {
+                    if (j < w) {
+                        int conf = pdaf[k] << 3
+                               | ((pdaf[k+1] >> 3) & 0x7);
+                        float pd = ((pdaf[k+1] & 0x3) << 8)
+                                 | ( pdaf[k+2] & 0xC0)
+                                 | ((pdaf[k+2] & 0x0F) << 2)
+                                 | ( pdaf[k+3] >> 6);
+                        pd /= 16; // 4 subpixel bits
+                        pd *= (pdaf[k+1] & (1 << 2)) ? -1 : 1; // sign
+                        printf(" [%4d]%8.4f", conf, pd);
+                    }
+                    k += 5;
+                }
+                printf("\n");
             }
         }
 
