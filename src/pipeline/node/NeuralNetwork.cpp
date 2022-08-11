@@ -52,19 +52,6 @@ void NeuralNetwork::setModelPath(const dai::Path& xmlModelPath, const dai::Path&
     properties.binUri = binAsset->getRelativeUri();
 }
 
-void NeuralNetwork::getXmlModel(dai::Path& xmlModelPath, dai::Path& binModelPath) {
-    auto assetXml = loadResource(properties.xmlUri);
-    auto assetBin = loadResource(properties.binUri);
-
-    // Only works on Linux for now
-    xmlModelPath = "/tmp/depthai_nn_" + std::to_string(id) + "_model.xml";
-    binModelPath = "/tmp/depthai_nn_" + std::to_string(id) + "_model.bin";
-    std::ofstream xmlFile{xmlModelPath, std::ios::out | std::ios::trunc | std::ios::binary};
-    std::ofstream binFile{binModelPath, std::ios::out | std::ios::trunc | std::ios::binary};
-    xmlFile.write(reinterpret_cast<const char*>(assetXml.data()), assetXml.size());
-    binFile.write(reinterpret_cast<const char*>(assetBin.data()), assetBin.size());
-}
-
 void NeuralNetwork::setNumPoolFrames(int numFrames) {
     properties.numFrames = numFrames;
 }
