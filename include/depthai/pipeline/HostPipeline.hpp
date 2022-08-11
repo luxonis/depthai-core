@@ -26,7 +26,7 @@ class HostPipelineImpl : public PipelineImpl {
     friend class Node;
 
    public:
-    HostPipelineImpl(HostPipeline& pipeline) : parent(pipeline) {}
+    HostPipelineImpl(HostPipeline& pipeline) : assetManager("/pipeline/"), parent(pipeline) {}
     HostPipelineImpl(const HostPipelineImpl&) = default;
     ~HostPipelineImpl();
 

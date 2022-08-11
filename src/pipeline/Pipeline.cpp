@@ -121,10 +121,10 @@ void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector
     assetStorage.clear();
     AssetsMutable mutableAssets;
     // Pipeline assets
-    assetManager.serialize(mutableAssets, assetStorage, "/pipeline/");
+    assetManager.serialize(mutableAssets, assetStorage);
     // Node assets
     for(const auto& kv : nodeMap) {
-        kv.second->getAssetManager().serialize(mutableAssets, assetStorage, fmt::format("/node/{}/", kv.second->id));
+        kv.second->getAssetManager().serialize(mutableAssets, assetStorage);
     }
 
     assets = mutableAssets;
