@@ -185,24 +185,24 @@ function(DepthaiDeviceKbDownload)
     endif()
 
 
-    # # Download depthai-device-kb firmware package
-    # message(STATUS "Downloading and checking depthai-device-kb-fwp.tar.xz")
-    # DownloadAndChecksum(
-    #     "${_download_directory_url}/depthai-device-kb-fwp-${_version_commit_identifier}.tar.xz" # File
-    #     "${_download_directory_url}/depthai-device-kb-fwp-${_version_commit_identifier}.tar.xz.sha256" # File checksum
-    #     "${folder}/depthai-device-kb-fwp-${_version_commit_identifier}.tar.xz"
-    #     status
-    # )
-    # if(${status})
-    #     message(STATUS "\nCouldn't download depthai-device-kb-fwp.tar.xz\n")
-    #     PrintErrorMessage(${status})
-    #     message(FATAL_ERROR "Aborting.\n")
-    # endif()
-    # # add depthai-device-kb-fwp.tar.xz to list
-    # list(APPEND "${output_list_var}" "${folder}/depthai-device-kb-fwp-${_version_commit_identifier}.tar.xz")
+    # Download depthai-device-kb firmware package
+    message(STATUS "Downloading and checking depthai-device-kb-fwp.tar.xz")
+    DownloadAndChecksum(
+        "${_download_directory_url}/depthai-device-kb-fwp-${_version_commit_identifier}.tar.xz" # File
+        "${_download_directory_url}/depthai-device-kb-fwp-${_version_commit_identifier}.tar.xz.sha256" # File checksum
+        "${folder}/depthai-device-kb-fwp-${_version_commit_identifier}.tar.xz"
+        status
+    )
+    if(${status})
+        message(STATUS "\nCouldn't download depthai-device-kb-fwp.tar.xz\n")
+        PrintErrorMessage(${status})
+        message(FATAL_ERROR "Aborting.\n")
+    endif()
+    # add depthai-device-kb-fwp.tar.xz to list
+    list(APPEND "${output_list_var}" "${folder}/depthai-device-kb-fwp-${_version_commit_identifier}.tar.xz")
 
 
-    # # Set list of files as output
-    # set("${output_list_var}" "${${output_list_var}}" PARENT_SCOPE)
+    # Set list of files as output
+    set("${output_list_var}" "${${output_list_var}}" PARENT_SCOPE)
 
 endfunction()

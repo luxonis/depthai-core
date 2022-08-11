@@ -385,9 +385,12 @@ dai_add_example(host_pipeline_opencv host_side/host_pipeline_opencv.cpp ON)
 
 # TMP
 dai_add_example(tmp_preview tmp/tmp_preview.cpp OFF)
+
 dai_add_example(webcam_keembay tmp/webcam_keembay.cpp OFF)
 dai_add_example(keembay_detection_parser_mobilenet tmp/keembay_detection_parser_mobilenet.cpp OFF)
 dai_add_example(keembay_detection_parser_yolo tmp/keembay_detection_parser_yolo.cpp OFF)
 target_compile_definitions(webcam_keembay PRIVATE MODEL_XML_PATH="${person_detection_xml}" MODEL_BIN_PATH="${person_detection_bin}")
 target_compile_definitions(keembay_detection_parser_mobilenet PRIVATE MODEL_XML_PATH="${person_detection_xml}" MODEL_BIN_PATH="${person_detection_bin}")
 target_compile_definitions(keembay_detection_parser_yolo PRIVATE MODEL_XML_PATH="${tiny-vechicle-detection_xml}" MODEL_BIN_PATH="${tiny-vechicle-detection_bin}")
+
+dai_add_example(tmp_mono tmp/tmp_mono.cpp OFF)

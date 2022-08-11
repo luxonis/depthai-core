@@ -286,21 +286,12 @@ option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be in
 option(DEPTHAI_BUILD_DOCS "Build documentation - requires doxygen to be installed" OFF)
 option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
 
+# Specify support for FW
+option(DEPTHAI_ENABLE_DEVICE_FW "Enable MyriadX Device FW" ON)
+option(DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW "Enable MyriadX Device Bootloader FW" ON)
+option(DEPTHAI_ENABLE_DEVICE_KB_FW "Enable Keembay Device FW" ON)
 
 option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries into library" ON)
-option(DEPTHAI_USB2_PATCH_ONLY_MODE "Use patch file and full depthai.cmd binary for usb2 mode" ON)
-option(DEPTHAI_CMD_PATH "Use local path for depthai.cmd instead of downloading" OFF)
-if(DEPTHAI_USB2_PATCH_ONLY_MODE)
-    option(DEPTHAI_USB2_PATCH_PATH "Use local path for depthai-usb2-patch.patch instead of downloading" OFF)
-else()
-    option(DEPTHAI_USB2_CMD_PATH "Use local path for depthai-usb2.cmd instead of downloading" OFF)
-endif()
-
-if(DEPTHAI_USB2_PATCH_ONLY_MODE)
-    message(STATUS "Compiling ${TARGET_CORE_NAME} resources in PATCH_ONLY mode")
-else()
-    message(STATUS "Compiling ${TARGET_CORE_NAME} depthai and depthai-usb2 resources")
-endif()
 
 # Set constant
 set(DEPTHAI_RESOURCES_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/resources")
@@ -322,56 +313,46 @@ if($ENV{CI})
     set(DEPTHAI_BOOTLOADER_SHARED_COMMIT_HASH_ENFORCE ON)
 endif()
 
+# No user specified paths, download from server
+message(STATUS "Downloading Depthai device side binaries from server...")
 
-# Then get the Depthai device side binaries (local or download)
-if(DEPTHAI_CMD_PATH OR DEPTHAI_USB2_CMD_PATH OR DEPTHAI_USB2_PATCH_PATH)
-    # Atleast one of the paths is set. include binaries locally
-    message(STATUS "Using local Depthai device side binaries...")
-
-    DepthaiLocal(
-        PATCH_ONLY ${DEPTHAI_USB2_PATCH_ONLY_MODE}
-        "${DEPTHAI_RESOURCES_OUTPUT_DIR}"            # Output folder
-        DEPTHAI_RESOURCE_LIST                       # List of output resources
-        "${DEPTHAI_CMD_PATH}"                       # depthai.cmd
-        "${DEPTHAI_USB2_CMD_PATH}"                  # depthai-usb2.cmd
-        "${DEPTHAI_USB2_PATCH_PATH}"                # depthai-usb2-patch.patch
-    )
-
-else()
-    # No user specified paths, download from server
-    message(STATUS "Downloading Depthai device side binaries from server...")
-
+if(DEPTHAI_ENABLE_DEVICE_FW)
+    # Add device FW
     DepthaiDownload(
         "${DEPTHAI_SHARED_COMMIT_HASH}" "${DEPTHAI_SHARED_COMMIT_HASH_ENFORCE}"
-        PATCH_ONLY ${DEPTHAI_USB2_PATCH_ONLY_MODE}
+        PATCH_ONLY ON
         "${DEPTHAI_RESOURCES_OUTPUT_DIR}"            # Output folder
         DEPTHAI_RESOURCE_LIST                       # List of output resources
         "${DEPTHAI_DEVICE_SIDE_MATURITY}"           # Maturity
         "${DEPTHAI_DEVICE_SIDE_COMMIT}"             # commit hash
         "${DEPTHAI_DEVICE_SIDE_VERSION}"            # Optional version
     )
+    list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_RESOURCE_LIST})
 endif()
-list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_RESOURCE_LIST})
 
-# Add bootloader
-DepthaiBootloaderDownload(
-    "${DEPTHAI_BOOTLOADER_SHARED_COMMIT_HASH}" "${DEPTHAI_BOOTLOADER_SHARED_COMMIT_HASH_ENFORCE}"
-    "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
-    DEPTHAI_BOOTLOADER_RESOURCE_LIST                # List of output resources
-    "${DEPTHAI_BOOTLOADER_MATURITY}"                # Maturity
-    "${DEPTHAI_BOOTLOADER_VERSION}"                 # if maturity == snapshot -> hash else version
-)
-list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_BOOTLOADER_RESOURCE_LIST})
+if(DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW)
+    # Add bootloader FW
+    DepthaiBootloaderDownload(
+        "${DEPTHAI_BOOTLOADER_SHARED_COMMIT_HASH}" "${DEPTHAI_BOOTLOADER_SHARED_COMMIT_HASH_ENFORCE}"
+        "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
+        DEPTHAI_BOOTLOADER_RESOURCE_LIST                # List of output resources
+        "${DEPTHAI_BOOTLOADER_MATURITY}"                # Maturity
+        "${DEPTHAI_BOOTLOADER_VERSION}"                 # if maturity == snapshot -> hash else version
+    )
+    list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_BOOTLOADER_RESOURCE_LIST})
+endif()
 
-# Add device-kb
-DepthaiDeviceKbDownload(
-    "${DEPTHAI_SHARED_COMMIT_HASH}" "${DEPTHAI_SHARED_COMMIT_HASH_ENFORCE}"
-    "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
-    DEPTHAI_DEVICE_KB_RESOURCE_LIST                 # List of output resources
-    "${DEPTHAI_DEVICE_KB_MATURITY}"                # Maturity
-    "${DEPTHAI_DEVICE_KB_VERSION}"
-)
-list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_DEVICE_KB_RESOURCE_LIST})
+if(DEPTHAI_ENABLE_DEVICE_KB_FW)
+    # Add device-kb FW
+    DepthaiDeviceKbDownload(
+        "${DEPTHAI_SHARED_COMMIT_HASH}" "${DEPTHAI_SHARED_COMMIT_HASH_ENFORCE}"
+        "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
+        DEPTHAI_DEVICE_KB_RESOURCE_LIST                 # List of output resources
+        "${DEPTHAI_DEVICE_KB_MATURITY}"                # Maturity
+        "${DEPTHAI_DEVICE_KB_VERSION}"
+    )
+    list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_DEVICE_KB_RESOURCE_LIST})
+endif()
 
 message(STATUS "LIST OF RESOURCE COMPILED FILES: ${RESOURCE_COMPILED_FILES}")
 
@@ -396,7 +377,7 @@ if(DEPTHAI_BINARIES_RESOURCE_COMPILE)
 else()
     # TODO
     # Don't add RC and don't resource compile the binaries
-
+    # Install to share/ instead for instance
 endif()
 
 # Add include directories
@@ -462,16 +443,21 @@ target_compile_definitions(${TARGET_CORE_NAME}
         # Add depthai-device-kb version
         DEPTHAI_DEVICE_KB_VERSION="${DEPTHAI_DEVICE_KB_VERSION}"
 )
+# Specify available FW
+if(DEPTHAI_ENABLE_DEVICE_FW)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_DEVICE_FW)
+endif()
+if(DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW)
+endif()
+if(DEPTHAI_ENABLE_DEVICE_KB_FW)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_DEVICE_KB_FW)
+endif()
 
 # Add Backward dependency if enabled (On by default)
 if(DEPTHAI_ENABLE_BACKWARD)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_BACKWARD)
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE Backward::Backward)
-endif()
-
-# Add patch only mode definition
-if(DEPTHAI_USB2_PATCH_ONLY_MODE)
-    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_PATCH_ONLY_MODE)
 endif()
 
 ########################
