@@ -353,3 +353,4 @@ dai_add_example(host_pipeline_opencv host_side/host_pipeline_opencv.cpp ON)
 
 # TMP
 dai_add_example(tmp_preview tmp/tmp_preview.cpp OFF)
+dai_add_example(tmp_mono tmp/tmp_mono.cpp OFF)
