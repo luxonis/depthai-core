@@ -278,8 +278,8 @@ dai_add_example(mono_camera_control MonoCamera/mono_camera_control.cpp ON)
 dai_add_example(mono_preview MonoCamera/mono_preview.cpp  ON)
 dai_add_example(mono_full_resolution_saver MonoCamera/mono_full_resolution_saver.cpp  ON)
 
-# Multidevice
-dai_add_example(multidevice_example mixed/multidevice_example.cpp OFF)
+# MultiDevice
+dai_add_example(multidevice mixed/multidevice.cpp OFF)
 
 # NeuralNetwork
 dai_add_example(concatenate NeuralNetwork/concat_multi_input.cpp ON)
