@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
         for(int i = 0; i < deviceInfos.size(); i++) {
             const auto& devInfo = deviceInfos[i];
             std::cout << "[" << i << "] " << devInfo.getMxId() << "[" << XLinkProtocolToStr(devInfo.protocol) << "]";
-            if(devInfo.state == X_LINK_BOOTLOADER) {
+            if(devInfo.state == XLINK_BOOTLOADER) {
                 dai::DeviceBootloader bl(devInfo);
                 std::cout << " current bootloader: " << bl.getVersion();
             }
@@ -42,7 +42,7 @@ int main(int argc, char** argv) {
         info = deviceInfos[selected];
     }
 
-    bool hasBootloader = (info.state == X_LINK_BOOTLOADER);
+    bool hasBootloader = (info.state == XLINK_BOOTLOADER);
     if(hasBootloader) {
         std::cout << "Warning! Flashing bootloader can potentially soft brick your device and should be done with caution." << std::endl;
         std::cout << "Do not unplug your device while the bootloader is flashing." << std::endl;

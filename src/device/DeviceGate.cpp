@@ -19,15 +19,15 @@ namespace dai {
 
 // First tries to find UNBOOTED device, then BOOTLOADER device
 std::tuple<bool, DeviceInfo> DeviceGate::getFirstAvailableDevice() {
-    return XLinkConnection::getFirstDevice(X_LINK_GATE);
+    return XLinkConnection::getFirstDevice(XLINK_GATE);
 }
 
 // Returns all devices which aren't already booted
 std::vector<DeviceInfo> DeviceGate::getAllAvailableDevices() {
     std::vector<DeviceInfo> availableDevices;
-    auto connectedDevices = XLinkConnection::getAllConnectedDevices(X_LINK_GATE);
+    auto connectedDevices = XLinkConnection::getAllConnectedDevices(XLINK_GATE);
     for(const auto& d : connectedDevices) {
-        if(d.state != X_LINK_BOOTED) availableDevices.push_back(d);
+        if(d.state != XLINK_BOOTED) availableDevices.push_back(d);
     }
     return availableDevices;
 }
@@ -45,7 +45,7 @@ class DeviceGate::Impl {
 DeviceGate::~DeviceGate() {}
 
 DeviceGate::DeviceGate(const DeviceInfo& deviceInfo) : deviceInfo(deviceInfo) {
-    if(deviceInfo.state != X_LINK_GATE) {
+    if(deviceInfo.state != XLINK_GATE) {
         throw std::invalid_argument("Device is not in Gate state");
     }
 

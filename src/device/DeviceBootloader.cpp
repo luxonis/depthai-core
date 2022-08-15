@@ -41,7 +41,7 @@ std::tuple<bool, DeviceInfo> DeviceBootloader::getFirstAvailableDevice() {
     // Get all connected devices
     auto devices = XLinkConnection::getAllConnectedDevices();
     // Search order - first unbooted, then bootloader and last flash booted
-    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED}) {
+    for(auto searchState : {XLINK_UNBOOTED, XLINK_BOOTLOADER, XLINK_FLASH_BOOTED}) {
         for(const auto& device : devices) {
             if(device.state == searchState) {
                 return {true, device};
@@ -56,7 +56,7 @@ std::vector<DeviceInfo> DeviceBootloader::getAllAvailableDevices() {
     std::vector<DeviceInfo> availableDevices;
     auto connectedDevices = XLinkConnection::getAllConnectedDevices();
     for(const auto& d : connectedDevices) {
-        if(d.state != X_LINK_BOOTED) availableDevices.push_back(d);
+        if(d.state != XLINK_BOOTED) availableDevices.push_back(d);
     }
     return availableDevices;
 }
@@ -261,12 +261,12 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
     bootloaderType = type.value_or(DEFAULT_TYPE);
 
     // Init device (if bootloader, handle correctly - issue USB boot command)
-    if(deviceInfo.state == X_LINK_UNBOOTED) {
+    if(deviceInfo.state == XLINK_UNBOOTED) {
         // Unbooted device found, boot to BOOTLOADER and connect with XLinkConnection constructor
         if(embeddedMvcmd) {
-            connection = std::make_shared<XLinkConnection>(deviceInfo, getEmbeddedBootloaderBinary(bootloaderType), X_LINK_BOOTLOADER);
+            connection = std::make_shared<XLinkConnection>(deviceInfo, getEmbeddedBootloaderBinary(bootloaderType), XLINK_BOOTLOADER);
         } else {
-            connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd, X_LINK_BOOTLOADER);
+            connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd, XLINK_BOOTLOADER);
         }
 
         // prepare bootloader stream
@@ -277,9 +277,9 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
 
         // Device wasn't already in bootloader, that means that embedded bootloader is booted
         isEmbedded = true;
-    } else if(deviceInfo.state == X_LINK_BOOTLOADER || deviceInfo.state == X_LINK_FLASH_BOOTED) {
+    } else if(deviceInfo.state == XLINK_BOOTLOADER || deviceInfo.state == XLINK_FLASH_BOOTED) {
         // If device is in flash booted state, reset to bootloader and then continue by booting appropriate FW
-        if(deviceInfo.state == X_LINK_FLASH_BOOTED) {
+        if(deviceInfo.state == XLINK_FLASH_BOOTED) {
             // Boot bootloader and set current deviceInfo to new device state
             deviceInfo = XLinkConnection::bootBootloader(deviceInfo);
         }
@@ -289,7 +289,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
 
         // Device already in bootloader mode.
         // Connect without booting
-        connection = std::make_shared<XLinkConnection>(deviceInfo, X_LINK_BOOTLOADER);
+        connection = std::make_shared<XLinkConnection>(deviceInfo, XLINK_BOOTLOADER);
 
         // If type is specified, try to boot into that BL type
         stream = std::make_unique<XLinkStream>(connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
@@ -357,7 +357,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
                 connection->close();
 
                 // Now reconnect
-                connection = std::make_shared<XLinkConnection>(deviceInfo, X_LINK_BOOTLOADER);
+                connection = std::make_shared<XLinkConnection>(deviceInfo, XLINK_BOOTLOADER);
 
                 // prepare new bootloader stream
                 stream = std::make_unique<XLinkStream>(connection, bootloader::XLINK_CHANNEL_BOOTLOADER, bootloader::XLINK_STREAM_MAX_SIZE);
@@ -394,9 +394,9 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
                 // Now reconnect
                 // Unbooted device found, boot to BOOTLOADER and connect with XLinkConnection constructor
                 if(embeddedMvcmd) {
-                    connection = std::make_shared<XLinkConnection>(deviceInfo, getEmbeddedBootloaderBinary(desiredBootloaderType), X_LINK_BOOTLOADER);
+                    connection = std::make_shared<XLinkConnection>(deviceInfo, getEmbeddedBootloaderBinary(desiredBootloaderType), XLINK_BOOTLOADER);
                 } else {
-                    connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd, X_LINK_BOOTLOADER);
+                    connection = std::make_shared<XLinkConnection>(deviceInfo, pathToMvcmd, XLINK_BOOTLOADER);
                 }
 
                 // prepare bootloader stream
@@ -423,7 +423,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
         throw std::runtime_error("Device not in UNBOOTED, BOOTLOADER or FLASH_BOOTED state");
     }
 
-    deviceInfo.state = X_LINK_BOOTLOADER;
+    deviceInfo.state = XLINK_BOOTLOADER;
 
     // prepare watchdog thread, which will keep device alive
     watchdogThread = std::thread([this]() {

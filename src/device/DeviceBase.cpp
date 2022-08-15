@@ -138,11 +138,11 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::mill
     DeviceInfo deviceInfo;
     std::unordered_map<std::string, DeviceInfo> invalidDevices;
     do {
-        auto devices = XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, false);
-        for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED, X_LINK_GATE}) {
+        auto devices = XLinkConnection::getAllConnectedDevices(XLINK_ANY_STATE, false);
+        for(auto searchState : {XLINK_UNBOOTED, XLINK_BOOTLOADER, XLINK_FLASH_BOOTED, XLINK_GATE}) {
             for(const auto& device : devices) {
                 if(device.state == searchState) {
-                    if(device.status == X_LINK_SUCCESS) {
+                    if(device.status == XLINK_SUCCESS) {
                         found = true;
                         deviceInfo = device;
                         break;
@@ -172,7 +172,7 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::mill
     // Check if its an invalid device
     for(const auto& invalidDevice : invalidDevices) {
         const auto& invalidDeviceInfo = invalidDevice.second;
-        if(invalidDeviceInfo.status == X_LINK_INSUFFICIENT_PERMISSIONS) {
+        if(invalidDeviceInfo.status == XLINK_INSUFFICIENT_PERMISSIONS) {
             spdlog::warn("Insufficient permissions to communicate with {} device with name \"{}\". Make sure udev rules are set",
                          XLinkDeviceStateToStr(invalidDeviceInfo.state),
                          invalidDeviceInfo.name);
@@ -184,7 +184,7 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::mill
     }
 
     // If none were found, try BOOTED
-    if(!found) std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(X_LINK_BOOTED);
+    if(!found) std::tie(found, deviceInfo) = XLinkConnection::getFirstDevice(XLINK_BOOTED);
 
     return {found, deviceInfo};
 }
@@ -199,9 +199,9 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice() {
 // First tries to find UNBOOTED device, then BOOTLOADER device
 std::tuple<bool, DeviceInfo> DeviceBase::getFirstAvailableDevice(bool skipInvalidDevice) {
     // Get all connected devices
-    auto devices = XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, skipInvalidDevice);
+    auto devices = XLinkConnection::getAllConnectedDevices(XLINK_ANY_STATE, skipInvalidDevice);
     // Search order - first unbooted, then bootloader and last flash booted
-    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED, X_LINK_GATE}) {
+    for(auto searchState : {XLINK_UNBOOTED, XLINK_BOOTLOADER, XLINK_FLASH_BOOTED, XLINK_GATE}) {
         for(const auto& device : devices) {
             if(device.state == searchState) {
                 return {true, device};
@@ -216,7 +216,7 @@ std::vector<DeviceInfo> DeviceBase::getAllAvailableDevices() {
     std::vector<DeviceInfo> availableDevices;
     auto connectedDevices = XLinkConnection::getAllConnectedDevices();
     for(const auto& d : connectedDevices) {
-        if(d.state != X_LINK_BOOTED) availableDevices.push_back(d);
+        if(d.state != XLINK_BOOTED) availableDevices.push_back(d);
     }
     return availableDevices;
 }
@@ -224,7 +224,7 @@ std::vector<DeviceInfo> DeviceBase::getAllAvailableDevices() {
 // First tries to find UNBOOTED device with mxId, then BOOTLOADER device with mxId
 std::tuple<bool, DeviceInfo> DeviceBase::getDeviceByMxId(std::string mxId) {
     std::vector<DeviceInfo> availableDevices;
-    auto states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_GATE};
+    auto states = {XLINK_UNBOOTED, XLINK_BOOTLOADER, XLINK_GATE};
     bool found;
     DeviceInfo dev;
     for(const auto& state : states) {
@@ -468,14 +468,14 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     config = cfg;
 
     // If deviceInfo isn't fully specified (eg ANY_STATE, etc...), try finding it first
-    if(deviceInfo.state == X_LINK_ANY_STATE || deviceInfo.protocol == X_LINK_ANY_PROTOCOL) {
+    if(deviceInfo.state == XLINK_ANY_STATE || deviceInfo.protocol == XLINK_ANY_PROTOCOL) {
         deviceDesc_t foundDesc;
         auto ret = XLinkFindFirstSuitableDevice(deviceInfo.getXLinkDeviceDesc(), &foundDesc);
-        if(ret == X_LINK_SUCCESS) {
+        if(ret == XLINK_SUCCESS) {
             deviceInfo = DeviceInfo(foundDesc);
             spdlog::debug("Found an actual device by given DeviceInfo: {}", deviceInfo.toString());
         } else {
-            deviceInfo.state = X_LINK_ANY_STATE;
+            deviceInfo.state = XLINK_ANY_STATE;
             spdlog::debug("Searched, but no actual device found by given DeviceInfo");
         }
     }
@@ -527,11 +527,11 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     }
 
     // Init device (if bootloader, handle correctly - issue USB boot command)
-    if(deviceInfo.state == X_LINK_UNBOOTED) {
+    if(deviceInfo.state == XLINK_UNBOOTED) {
         // Unbooted device found, boot and connect with XLinkConnection constructor
         std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, pathToMvcmd);
         connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
-    } else if(deviceInfo.state == X_LINK_BOOTLOADER || deviceInfo.state == X_LINK_FLASH_BOOTED) {
+    } else if(deviceInfo.state == XLINK_BOOTLOADER || deviceInfo.state == XLINK_FLASH_BOOTED) {
         std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, pathToMvcmd);
         // Scope so DeviceBootloader is disconnected
         {
@@ -549,25 +549,25 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
                 spdlog::debug("Booting FW with Bootloader. Version {}, Time taken: {}", version.toString(), duration_cast<milliseconds>(t2 - t1));
 
                 // After that the state will be BOOTED
-                deviceInfo.state = X_LINK_BOOTED;
+                deviceInfo.state = XLINK_BOOTED;
             } else {
                 // Boot into USB ROM BOOTLOADER
                 bl.bootUsbRomBootloader();
                 spdlog::debug("Booting FW by jumping to USB ROM Bootloader first. Bootloader Version {}", version.toString());
 
                 // After that the state will be UNBOOTED
-                deviceInfo.state = X_LINK_UNBOOTED;
+                deviceInfo.state = XLINK_UNBOOTED;
             }
         }
 
         // Boot and connect with XLinkConnection constructor
         connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
 
-    } else if(deviceInfo.state == X_LINK_BOOTED) {
+    } else if(deviceInfo.state == XLINK_BOOTED) {
         // Connect without booting
         std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, pathToMvcmd);
         connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
-    } else if(deviceInfo.state == X_LINK_GATE || deviceInfo.state == X_LINK_GATE_BOOTED) {
+    } else if(deviceInfo.state == XLINK_GATE || deviceInfo.state == XLINK_GATE_BOOTED) {
         // Boot FW using DeviceGate then connect directly
         gate = std::make_unique<DeviceGate>(deviceInfo);
 
@@ -576,12 +576,12 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         gate->startSession();
 
         // Connect with XLinkConnection (skip checking if booted)
-        connection = std::make_shared<XLinkConnection>(deviceInfo, X_LINK_ANY_STATE);
+        connection = std::make_shared<XLinkConnection>(deviceInfo, XLINK_ANY_STATE);
     } else {
         throw std::runtime_error("Cannot find any device with given deviceInfo");
     }
 
-    deviceInfo.state = X_LINK_BOOTED;
+    deviceInfo.state = XLINK_BOOTED;
 
     // prepare rpc for both attached and host controlled mode
     pimpl->rpcStream = std::make_shared<XLinkStream>(connection, device::XLINK_CHANNEL_MAIN_RPC, device::XLINK_USB_BUFFER_MAX_SIZE);

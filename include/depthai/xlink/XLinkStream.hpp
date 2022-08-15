@@ -79,7 +79,7 @@ class XLinkStream {
 };
 
 struct XLinkError : public std::runtime_error {
-    const XLinkError_t status = X_LINK_ERROR;
+    const XLinkError_t status = XLINK_ERROR;
     const std::string streamName;
 
     using std::runtime_error::runtime_error;
