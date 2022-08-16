@@ -142,14 +142,26 @@ bool OpenVINO::areVersionsBlobCompatible(OpenVINO::Version v1, OpenVINO::Version
 
 static void blobInit(OpenVINO::Blob& blob, std::vector<uint8_t> data) {
     blob.data = std::move(data);
-    BlobReader reader;
-    reader.parse(blob.data);
-    blob.networkInputs = reader.getNetworkInputs();
-    blob.networkOutputs = reader.getNetworkOutputs();
-    blob.stageCount = reader.getStageCount();
-    blob.numShaves = reader.getNumberOfShaves();
-    blob.numSlices = reader.getNumberOfSlices();
-    blob.version = OpenVINO::getBlobLatestSupportedVersion(reader.getVersionMajor(), reader.getVersionMinor());
+
+    // Check if the blob is for KeemBay
+    std::vector<uint8_t> keemBayHeader{0X18, 0X0, 0X0, 0X0, 0X42, 0X4C, 0X4F, 0X42};
+
+    if(std::equal(keemBayHeader.begin(), keemBayHeader.end(), blob.data.begin())){
+        // Most of the parsing done on device for now
+        blob.device = OpenVINO::Device::KEEMBAY;
+        blob.version = OpenVINO::VERSION_2022_1; // TODO: parse blob to get the version
+    }
+    else {
+        blob.device = OpenVINO::Device::MYRIADX;
+        BlobReader reader;
+        reader.parse(blob.data);
+        blob.networkInputs = reader.getNetworkInputs();
+        blob.networkOutputs = reader.getNetworkOutputs();
+        blob.stageCount = reader.getStageCount();
+        blob.numShaves = reader.getNumberOfShaves();
+        blob.numSlices = reader.getNumberOfSlices();
+        blob.version = OpenVINO::getBlobLatestSupportedVersion(reader.getVersionMajor(), reader.getVersionMinor());
+    }
 }
 
 OpenVINO::Blob::Blob(std::vector<uint8_t> data) {

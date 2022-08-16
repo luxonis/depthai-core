@@ -86,9 +86,9 @@ class NeuralNetwork : public NodeCRTP<DeviceNode, NeuralNetwork, NeuralNetworkPr
      * @param xmlModelPath Path to the .xml model file.
      * @param binModelPath Path to the .bin file of the model. If left empty, it is assumed that the
      *                     name is the same as the xml model with a .bin extension.
-     *
+     * @note If this function is called, the device automatically loads the model from the XML and not the blob
      */
-    void setModelPath(const dai::Path& xmlModelPath, const dai::Path& binModelPath = "");
+    void setXmlModelPath(const dai::Path& xmlModelPath, const dai::Path& binModelPath = "");
 
     /**
      * Specifies how many frames will be available in the pool

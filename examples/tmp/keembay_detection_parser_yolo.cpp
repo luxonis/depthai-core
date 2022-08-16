@@ -29,7 +29,7 @@ int main(int argc, char** argv) {
     auto xin = pipeline.create<dai::node::XLinkIn>();
     auto xout = pipeline.create<dai::node::XLinkOut>();
 
-    nn->setModelPath(MODEL_XML_PATH, MODEL_BIN_PATH);
+    nn->setXmlModelPath(MODEL_XML_PATH, MODEL_BIN_PATH);
 
     xin->setStreamName("nn_in");
     xout->setStreamName("nn_out");
