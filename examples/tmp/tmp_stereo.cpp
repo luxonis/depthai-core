@@ -12,10 +12,12 @@ int main() {
     auto monoRight = pipeline.create<dai::node::MonoCamera>();
     auto xoutLeft = pipeline.create<dai::node::XLinkOut>();
     auto xoutRight = pipeline.create<dai::node::XLinkOut>();
+    auto xoutDepth = pipeline.create<dai::node::XLinkOut>();
     auto stereo = pipeline.create<dai::node::StereoDepth>();
 
     xoutLeft->setStreamName("left");
     xoutRight->setStreamName("right");
+    xoutDepth->setStreamName("depth");
 
     // Properties
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
@@ -29,12 +31,14 @@ int main() {
     monoRight->out.link(stereo->right);
     stereo->syncedLeft.link(xoutLeft->input);
     stereo->syncedRight.link(xoutRight->input);
+    stereo->depth.link(xoutDepth->input);
 
     // Connect to device and start pipeline
     dai::Device device(pipeline);
 
     auto qLeft = device.getOutputQueue("left", 4, false);
     auto qRight = device.getOutputQueue("right", 4, false);
+    auto qDepth = device.getOutputQueue("depth", 4, false);
 
     while(true) {
         auto inLeft = qLeft->get<dai::ImgFrame>();
@@ -44,6 +48,10 @@ int main() {
         auto inRight = qRight->get<dai::ImgFrame>();
         auto frameRight = inRight->getCvFrame();
         cv::imshow("right", frameRight);
+
+        auto inDepth = qDepth->get<dai::ImgFrame>();
+        auto frameDepth = inDepth->getCvFrame();
+        cv::imshow("depth", frameDepth);
 
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q') {
