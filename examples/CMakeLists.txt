@@ -250,6 +250,7 @@ dai_add_example(mono_depth_mobilenetssd mixed/mono_depth_mobilenetssd.cpp ON)
 dai_add_example(rgb_encoding_mono_mobilenet mixed/rgb_encoding_mono_mobilenet.cpp ON)
 dai_add_example(rgb_encoding_mono_mobilenet_depth mixed/rgb_encoding_mono_mobilenet_depth.cpp ON)
 dai_add_example(rgb_encoding_mobilenet mixed/rgb_encoding_mobilenet.cpp ON)
+dai_add_example(multiple_devices mixed/multiple_devices.cpp OFF)
 
 target_compile_definitions(mono_depth_mobilenetssd PRIVATE BLOB_PATH="${mobilenet_blob}")
 target_compile_definitions(rgb_encoding_mono_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}")
@@ -277,9 +278,6 @@ target_compile_definitions(webcam_mobilenet PRIVATE BLOB_PATH="${mobilenet_8shav
 dai_add_example(mono_camera_control MonoCamera/mono_camera_control.cpp ON)
 dai_add_example(mono_preview MonoCamera/mono_preview.cpp  ON)
 dai_add_example(mono_full_resolution_saver MonoCamera/mono_full_resolution_saver.cpp  ON)
-
-# MultiDevice
-dai_add_example(multidevice mixed/multidevice.cpp OFF)
 
 # NeuralNetwork
 dai_add_example(concatenate NeuralNetwork/concat_multi_input.cpp ON)
