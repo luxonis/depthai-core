@@ -144,7 +144,7 @@ static void blobInit(OpenVINO::Blob& blob, std::vector<uint8_t> data) {
     blob.data = std::move(data);
 
     // Check if the blob is for S3
-    std::vector<uint8_t> S3Header{0X18, 0X0, 0X0, 0X0, 0X42, 0X4C, 0X4F, 0X42};
+    std::vector<uint8_t> vpuxBlobHeader{0X18, 0X0, 0X0, 0X0, 0X42, 0X4C, 0X4F, 0X42};
 
     if(std::equal(S3Header.begin(), S3Header.end(), blob.data.begin())) {
         // Most of the parsing done on device for now
