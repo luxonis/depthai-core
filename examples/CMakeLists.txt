@@ -13,24 +13,21 @@ target_link_libraries(utility FP16::fp16 ${OpenCV_LIBS})
 
 # Create environments for usb & poe labels
 set(test_usb_env
-
     # Misc
     "UBSAN_OPTIONS=halt_on_error=1"
-
     # DepthAI
     "DEPTHAI_PROTOCOL=usb"
 )
 set(test_poe_env
-
     # Misc
     "UBSAN_OPTIONS=halt_on_error=1"
-
     # DepthAI
     "DEPTHAI_PROTOCOL=tcpip;DEPTHAI_SEARCH_TIMEOUT=15000"
 )
 
 # Helper for adding new examples
 function(dai_add_example example_name example_src enable_test)
+
     # Add example
     add_executable(${example_name} ${example_src})
     add_default_flags(${example_name} LEAN)
@@ -40,7 +37,6 @@ function(dai_add_example example_name example_src enable_test)
     if(COMMAND add_sanitizers)
         add_sanitizers(${example_name})
     endif()
-
     # Add to clangformat target
     if(COMMAND target_clangformat_setup)
         target_clangformat_setup(${example_name} "")
@@ -68,9 +64,9 @@ function(dai_add_example example_name example_src enable_test)
             -DTIMEOUT_SECONDS=50
             -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake $<TARGET_FILE:${example_name}> ${arguments}
         )
-
         # Add ubsan halt on error
         set_tests_properties(${example_name}_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS poe)
+
     endif()
 
     # Copy over required DLLs (Windows)
@@ -82,7 +78,6 @@ function(dai_add_example example_name example_src enable_test)
         else()
             set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${example_name}>")
         endif()
-
         add_custom_command(TARGET ${example_name} POST_BUILD COMMAND
             ${CMAKE_COMMAND} -E copy_if_different ${depthai_dll_libraries} $<TARGET_FILE_DIR:${example_name}>
             COMMAND_EXPAND_LISTS
@@ -92,14 +87,17 @@ endfunction()
 
 # Create a custom target which runs all examples for 10 seconds max, and check if they executed without errors
 
+
+
 # Add any custom binary data using the following snippet
-# # # Hunter test data download
-# # hunter_private_data(
-# #     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet.blob"
-# #     SHA1 "e89d3ee9f26d80397e44f89c6b375990064a4a42"
-# #     FILE "mobilenet.blob"
-# #     LOCATION mobilenet_blob
-# # )
+## # Hunter test data download
+## hunter_private_data(
+##     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/mobilenet.blob"
+##     SHA1 "e89d3ee9f26d80397e44f89c6b375990064a4a42"
+##     FILE "mobilenet.blob"
+##     LOCATION mobilenet_blob
+## )
+
 
 # Hunter test data download
 
@@ -229,7 +227,7 @@ hunter_private_data(
     LOCATION tiny-vechicle-detection_bin
 )
 
-# # message(STATUS "Location of test1.data: ${test1_data}")
+## message(STATUS "Location of test1.data: ${test1_data}")
 
 # bootloader
 dai_add_example(bootloader_version bootloader/bootloader_version.cpp ON)
@@ -292,17 +290,16 @@ target_compile_definitions(rgb_encoding_mobilenet PRIVATE BLOB_PATH="${mobilenet
 
 # MobileNet
 dai_add_example(camera_mobilenet_sync MobileNet/camera_mobilenet_sync_example.cpp ON)
-dai_add_example(rgb_mobilenet MobileNet/rgb_mobilenet.cpp ON)
+dai_add_example(rgb_mobilenet MobileNet/rgb_mobilenet.cpp  ON)
 dai_add_example(rgb_mobilenet_4k MobileNet/rgb_mobilenet_4k.cpp ON)
-dai_add_example(mono_mobilenet MobileNet/mono_mobilenet.cpp ON)
+dai_add_example(mono_mobilenet MobileNet/mono_mobilenet.cpp  ON)
 dai_add_example(video_mobilenet MobileNet/video_mobilenet.cpp ON)
-
 # Usually not available - removed from tests
 # TODO - add to a separate group if possible
 dai_add_example(webcam_mobilenet MobileNet/webcam_mobilenet_example.cpp OFF)
 
 target_compile_definitions(camera_mobilenet_sync PRIVATE BLOB_PATH="${mobilenet_blob}")
-target_compile_definitions(rgb_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}" ON)
+target_compile_definitions(rgb_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}"  ON)
 target_compile_definitions(rgb_mobilenet_4k PRIVATE BLOB_PATH="${mobilenet_5shaves_blob}")
 target_compile_definitions(mono_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}")
 target_compile_definitions(video_mobilenet PRIVATE BLOB_PATH="${mobilenet_8shaves_blob}" VIDEO_PATH="${construction_vest}")
@@ -310,8 +307,8 @@ target_compile_definitions(webcam_mobilenet PRIVATE BLOB_PATH="${mobilenet_8shav
 
 # MonoCamera
 dai_add_example(mono_camera_control MonoCamera/mono_camera_control.cpp ON)
-dai_add_example(mono_preview MonoCamera/mono_preview.cpp ON)
-dai_add_example(mono_full_resolution_saver MonoCamera/mono_full_resolution_saver.cpp ON)
+dai_add_example(mono_preview MonoCamera/mono_preview.cpp  ON)
+dai_add_example(mono_full_resolution_saver MonoCamera/mono_full_resolution_saver.cpp  ON)
 
 # NeuralNetwork
 dai_add_example(concatenate NeuralNetwork/concat_multi_input.cpp ON)
@@ -353,8 +350,8 @@ target_compile_definitions(spatial_tiny_yolo_v4 PRIVATE BLOB_PATH="${tiny_yolo_v
 
 # StereoDepth
 dai_add_example(depth_crop_control StereoDepth/depth_crop_control.cpp ON)
-dai_add_example(depth_preview StereoDepth/depth_preview.cpp ON)
-dai_add_example(depth_post_processing StereoDepth/depth_post_processing.cpp ON)
+dai_add_example(depth_preview StereoDepth/depth_preview.cpp  ON)
+dai_add_example(depth_post_processing StereoDepth/depth_post_processing.cpp  ON)
 dai_add_example(rgb_depth_aligned StereoDepth/rgb_depth_aligned.cpp ON)
 dai_add_example(rgb_depth_confidence_aligned StereoDepth/rgb_depth_confidence_aligned.cpp ON)
 dai_add_example(stereo_depth_video StereoDepth/stereo_depth_video.cpp ON)
@@ -363,16 +360,16 @@ dai_add_example(stereo_depth_video StereoDepth/stereo_depth_video.cpp ON)
 dai_add_example(system_information SystemLogger/system_information.cpp ON)
 
 # VideoEncoder
-dai_add_example(disparity_encoding VideoEncoder/disparity_encoding.cpp ON)
-dai_add_example(rgb_encoding VideoEncoder/rgb_encoding.cpp ON)
-dai_add_example(rgb_full_resolution_saver VideoEncoder/rgb_full_resolution_saver.cpp ON)
-dai_add_example(rgb_mono_encoding VideoEncoder/rgb_mono_encoding.cpp ON)
+dai_add_example(disparity_encoding VideoEncoder/disparity_encoding.cpp  ON)
+dai_add_example(rgb_encoding VideoEncoder/rgb_encoding.cpp  ON)
+dai_add_example(rgb_full_resolution_saver VideoEncoder/rgb_full_resolution_saver.cpp  ON)
+dai_add_example(rgb_mono_encoding VideoEncoder/rgb_mono_encoding.cpp  ON)
 dai_add_example(encoding_max_limit VideoEncoder/encoding_max_limit.cpp ON)
 dai_add_example(mjpeg_encoding VideoEncoder/mjpeg_encoding_example.cpp ON)
 
 # Yolo
 dai_add_example(tiny_yolo_v4_device_side_decoding Yolo/tiny_yolo.cpp ON)
-dai_add_example(tiny_yolo_v3_device_side_decoding Yolo/tiny_yolo.cpp ON)
+dai_add_example(tiny_yolo_v3_device_side_decoding Yolo/tiny_yolo.cpp  ON)
 target_compile_definitions(tiny_yolo_v4_device_side_decoding PRIVATE BLOB_PATH="${tiny_yolo_v4_blob}")
 target_compile_definitions(tiny_yolo_v3_device_side_decoding PRIVATE BLOB_PATH="${tiny_yolo_v3_blob}")
 dai_add_example(apriltag AprilTag/apriltag.cpp ON)
