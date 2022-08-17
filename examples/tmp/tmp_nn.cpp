@@ -26,11 +26,11 @@ int main(int argc, char** argv) {
     dai::Pipeline pipeline;
 
     // Define sources and outputs
-    // auto nn = pipeline.create<dai::node::NeuralNetwork>();
+    auto nn = pipeline.create<dai::node::NeuralNetwork>();
     auto xin = pipeline.create<dai::node::XLinkIn>();
     auto xout = pipeline.create<dai::node::XLinkOut>();
 
-    // nn->setXmlModelPath(MODEL_XML_PATH, MODEL_BIN_PATH);
+    nn->setXmlModelPath(MODEL_XML_PATH, MODEL_BIN_PATH);
 
     xin->setStreamName("nn_in");
     xout->setStreamName("nn_out");
@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
 
     // Linking
     xin->out.link(xout->input);
-    // nn->out.link(xout->input);
+    nn->out.link(xout->input);
 
     // Open Webcam
     cv::VideoCapture webcam(camId);
