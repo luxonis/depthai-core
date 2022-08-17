@@ -195,7 +195,7 @@ hunter_private_data(
     LOCATION normalization_model
 )
 
-# mobilnet xml model for keembay example
+# mobilnet xml model for S3 example
 hunter_private_data(
     URL "https://download.01.org/opencv/2021/openvinotoolkit/2021.1/open_model_zoo/models_bin/1/person-detection-0202/FP32/person-detection-0202.xml"
     SHA1 "87f9cf8833043162f1b728e9afa6f38ba177d9db"
@@ -203,7 +203,7 @@ hunter_private_data(
     LOCATION person_detection_xml
 )
 
-# mobilnet xml model for keembay example
+# mobilnet xml model for S3 example
 hunter_private_data(
     URL "https://download.01.org/opencv/2021/openvinotoolkit/2021.1/open_model_zoo/models_bin/1/person-detection-0202/FP32/person-detection-0202.bin"
     SHA1 "1560bf2ee372a0640539780ea8bd061278a6cc20"
@@ -211,7 +211,7 @@ hunter_private_data(
     LOCATION person_detection_bin
 )
 
-# yolo xml model for keembay example
+# yolo xml model for S3 example
 hunter_private_data(
     URL "https://github.com/luxonis/depthai-model-zoo/raw/main/models/yolov4_tiny_coco_416x416/yolov4_tiny_coco_416x416.xml"
     SHA1 "423069bdff250643cf080c76e15594cfd72cb816"
@@ -219,7 +219,7 @@ hunter_private_data(
     LOCATION tiny-vechicle-detection_xml
 )
 
-# yolo bin model for keembay example
+# yolo bin model for S3 example
 hunter_private_data(
     URL "https://robothub.fra1.cdn.digitaloceanspaces.com/models/yolov4_tiny_coco_416x416/yolov4_tiny_coco_416x416.bin"
     SHA1 "a7627c074ee76ceb9ff9bb8529b67867e3e440bc"
