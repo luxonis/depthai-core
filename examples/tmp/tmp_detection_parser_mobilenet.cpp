@@ -82,9 +82,7 @@ int main(int argc, char** argv) {
         cv::Mat resized_frame = resizeKeepAspectRatio(frame, cv::Size(MODEL_IN_WIDTH, MODEL_IN_HEIGHT), cv::Scalar(0));
 
         toPlanar(resized_frame, tensor->data);
-        // transform to BGR planar 300x300
 
-        // tensor->data = std::vector<std::uint8_t>(frame.data, frame.data + frame.total());
         in->send(tensor);
 
         auto inDet = detections->tryGet<dai::ImgDetections>();
