@@ -9,10 +9,18 @@
 #define MODEL_IN_WIDTH 416
 #define MODEL_IN_HEIGHT 416
 
-// #define MODEL_IN_WIDTH 640
-// #define MODEL_IN_HEIGHT 640
-
 #define MIN_SCORE 0.3
+
+static const std::vector<std::string> labelMap = {
+    "person",        "bicycle",      "car",           "motorbike",     "aeroplane",   "bus",         "train",       "truck",        "boat",
+    "traffic light", "fire hydrant", "stop sign",     "parking meter", "bench",       "bird",        "cat",         "dog",          "horse",
+    "sheep",         "cow",          "elephant",      "bear",          "zebra",       "giraffe",     "backpack",    "umbrella",     "handbag",
+    "tie",           "suitcase",     "frisbee",       "skis",          "snowboard",   "sports ball", "kite",        "baseball bat", "baseball glove",
+    "skateboard",    "surfboard",    "tennis racket", "bottle",        "wine glass",  "cup",         "fork",        "knife",        "spoon",
+    "bowl",          "banana",       "apple",         "sandwich",      "orange",      "broccoli",    "carrot",      "hot dog",      "pizza",
+    "donut",         "cake",         "chair",         "sofa",          "pottedplant", "bed",         "diningtable", "toilet",       "tvmonitor",
+    "laptop",        "mouse",        "remote",        "keyboard",      "cell phone",  "microwave",   "oven",        "toaster",      "sink",
+    "refrigerator",  "book",         "clock",         "vase",          "scissors",    "teddy bear",  "hair drier",  "toothbrush"};
 
 int main(int argc, char** argv) {
     using namespace std;
@@ -32,18 +40,7 @@ int main(int argc, char** argv) {
     auto xin = pipeline.create<dai::node::XLinkIn>();
     auto xout = pipeline.create<dai::node::XLinkOut>();
 
-    // std::string modelPath = "/home/matevz/Downloads/luxModel/yolov6/yolov6n.xml";
-    // std::string modelPath = "/home/matevz/intel/person-detection-0202/FP32/person-detection-0202.xml";
-    // nn->setXmlModelPath(modelPath);
-    // nn->setXmlModelPath(MODEL_XML_PATH, MODEL_BIN_PATH);
-    // auto& assetManager = nn->getAssetManager();
-    // assetManager.set("__blob", "/home/matevz/Downloads/yolov6n.blob");
-    // nn->setBlobPath("/home/matevz/Downloads/yolov6n.blob");
-
-
-    // nn->setXmlModelPath(MODEL_XML_PATH, MODEL_BIN_PATH);
-    //nn->setBlobPath("/home/matevz/Downloads/luxModel/yolov5/yolov5n.blob");
-    nn->setXmlModelPath("/home/matevz/intel/intel/yolo-v2-tiny-vehicle-detection-0001/FP16-INT8/yolo-v2-tiny-vehicle-detection-0001.xml");
+    nn->setXmlModelPath(MODEL_XML_PATH, MODEL_BIN_PATH);
     nn->setNumInferenceThreads(10);
 
     xin->setStreamName("nn_in");
@@ -56,7 +53,6 @@ int main(int argc, char** argv) {
     xin->out.link(nn->input);
     nn->out.link(xout->input);
 
-
     // Detection network settings
     nn->setConfidenceThreshold(0.5f);
     nn->setNumClasses(80);
@@ -65,8 +61,6 @@ int main(int argc, char** argv) {
     nn->setAnchorMasks({{"side26", {1, 2, 3}}, {"side13", {3, 4, 5}}});
     nn->setIouThreshold(0.5f);
 
-    // nn->setAnchors({10.0, 13.0, 16.0, 30.0, 33.0, 23.0, 30.0, 61.0, 62.0, 45.0, 59.0, 119.0, 116.0, 90.0, 156.0, 198.0, 373.0, 326.0});
-    // nn->setAnchorMasks({{"side52", {0, 1, 2}}, {"side26", {3, 4, 5}}, {"side13", {6, 7, 8}}});
     // Open Webcam
     cv::VideoCapture webcam(camId);
 
@@ -78,7 +72,7 @@ int main(int argc, char** argv) {
     auto detections = device.getOutputQueue("nn_out");
 
     // Add bounding boxes and text to the frame and show it to the user
-    auto displayFrame = [](cv::Mat frame, std::vector<dai::ImgDetection>& detections) {
+    auto displayFrame = [](std::string name, cv::Mat frame, std::vector<dai::ImgDetection>& detections) {
         auto color = cv::Scalar(255, 0, 0);
         // nn data, being the bounding box locations, are in <0..1> range - they need to be normalized with frame width/height
         for(auto& detection : detections) {
@@ -88,11 +82,18 @@ int main(int argc, char** argv) {
             int y2 = detection.ymax * frame.rows;
 
             uint32_t labelIndex = detection.label;
-
+            std::string labelStr = to_string(labelIndex);
+            if(labelIndex < labelMap.size()) {
+                labelStr = labelMap[labelIndex];
+            }
+            cv::putText(frame, labelStr, cv::Point(x1 + 10, y1 + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
+            std::stringstream confStr;
+            confStr << std::fixed << std::setprecision(2) << detection.confidence * 100;
+            cv::putText(frame, confStr.str(), cv::Point(x1 + 10, y1 + 40), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
             cv::rectangle(frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), color, cv::FONT_HERSHEY_SIMPLEX);
         }
         // Show the frame
-        cv::imshow("preview", frame);
+        cv::imshow(name, frame);
     };
 
     std::vector<dai::ImgDetection> vdetections;
@@ -111,13 +112,9 @@ int main(int argc, char** argv) {
 
         // crop and resize
         cv::Mat resized_frame = resizeKeepAspectRatio(frame, cv::Size(MODEL_IN_WIDTH, MODEL_IN_HEIGHT), cv::Scalar(0));
-        // cv::Mat resized_frame;
-        // cv::resize(frame, resized_frame, cv::Size(MODEL_IN_WIDTH, MODEL_IN_HEIGHT));
 
         toPlanar(resized_frame, tensor->data);
-        // transform to BGR planar 300x300
 
-        // tensor->data = std::vector<std::uint8_t>(frame.data, frame.data + frame.total());
         in->send(tensor);
 
         counter++;
@@ -136,8 +133,7 @@ int main(int argc, char** argv) {
             fpsStr << "NN fps: " << std::fixed << std::setprecision(2) << fps;
             cv::putText(resized_frame, fpsStr.str(), cv::Point(2, MODEL_IN_HEIGHT - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, cv::Scalar(255, 255, 255));
         }
-        displayFrame(resized_frame, vdetections);
-        cv::imshow("preview", resized_frame);
+        displayFrame("nn_out", resized_frame, vdetections);
         int key = cv::waitKey(1);
         if(key == 'q') {
             return 0;
