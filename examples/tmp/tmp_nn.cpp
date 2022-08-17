@@ -26,22 +26,21 @@ int main(int argc, char** argv) {
     dai::Pipeline pipeline;
 
     // Define sources and outputs
-    auto nn = pipeline.create<dai::node::NeuralNetwork>();
+    // auto nn = pipeline.create<dai::node::NeuralNetwork>();
     auto xin = pipeline.create<dai::node::XLinkIn>();
     auto xout = pipeline.create<dai::node::XLinkOut>();
 
-    nn->setXmlModelPath(MODEL_XML_PATH, MODEL_BIN_PATH);
+    // nn->setXmlModelPath(MODEL_XML_PATH, MODEL_BIN_PATH);
 
     xin->setStreamName("nn_in");
     xout->setStreamName("nn_out");
-
 
     xin->setMaxDataSize(MODEL_IN_WIDTH * MODEL_IN_HEIGHT * 3);
     xin->setNumFrames(4);
 
     // Linking
-    xin->out.link(nn->input);
-    nn->out.link(xout->input);
+    xin->out.link(xout->input);
+    // nn->out.link(xout->input);
 
     // Open Webcam
     cv::VideoCapture webcam(camId);
@@ -53,9 +52,14 @@ int main(int argc, char** argv) {
     auto in = device.getInputQueue("nn_in");
     auto detections = device.getOutputQueue("nn_out");
 
+    using namespace std::chrono;
+    auto startTime = steady_clock::now();
+    int counter = 0;
+    float fps = 0;
+
     while(true) {
         // data to send further
-        auto tensor = std::make_shared<dai::RawBuffer>();
+        auto tensor = std::make_shared<dai::RawImgFrame>();
 
         // Read frame from webcam
         webcam >> frame;
@@ -66,8 +70,22 @@ int main(int argc, char** argv) {
         toPlanar(resized_frame, tensor->data);
         // transform to BGR planar 300x300
 
+        auto inputFrame = std::make_shared<dai::ImgFrame>(tensor);
+        inputFrame->setType(dai::RawImgFrame::Type::BGR888p);
+        inputFrame->setWidth(MODEL_IN_WIDTH);
+        inputFrame->setHeight(MODEL_IN_HEIGHT);
+
         // tensor->data = std::vector<std::uint8_t>(frame.data, frame.data + frame.total());
         in->send(tensor);
+
+        counter++;
+        auto currentTime = steady_clock::now();
+        auto elapsed = duration_cast<duration<float>>(currentTime - startTime);
+        if(elapsed > seconds(1)) {
+            fps = counter / elapsed.count();
+            counter = 0;
+            startTime = currentTime;
+        }
 
         struct Detection {
             unsigned int label;
@@ -79,6 +97,11 @@ int main(int argc, char** argv) {
         };
 
         vector<Detection> dets;
+        auto outImg = detections->get<dai::ImgFrame>();
+        auto cvframe = outImg->getCvFrame();
+        std::stringstream fpsStr;
+        fpsStr << "NN fps: " << std::fixed << std::setprecision(2) << fps;
+        cv::putText(cvframe, fpsStr.str(), cv::Point(2, MODEL_IN_HEIGHT - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, cv::Scalar(255, 255, 255));
 
         auto det = detections->get<dai::NNData>();
         std::vector<float> detData = det->getFirstLayerFp16();
@@ -119,7 +142,7 @@ int main(int argc, char** argv) {
                    dets[det].y_max);
         }
 
-        cv::imshow("preview", resized_frame);
+        cv::imshow("preview", cvframe);
 
         int key = cv::waitKey(1);
         if(key == 'q') {
