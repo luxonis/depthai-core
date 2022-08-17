@@ -143,16 +143,15 @@ bool OpenVINO::areVersionsBlobCompatible(OpenVINO::Version v1, OpenVINO::Version
 static void blobInit(OpenVINO::Blob& blob, std::vector<uint8_t> data) {
     blob.data = std::move(data);
 
-    // Check if the blob is for KeemBay
-    std::vector<uint8_t> keemBayHeader{0X18, 0X0, 0X0, 0X0, 0X42, 0X4C, 0X4F, 0X42};
+    // Check if the blob is for S3
+    std::vector<uint8_t> S3Header{0X18, 0X0, 0X0, 0X0, 0X42, 0X4C, 0X4F, 0X42};
 
-    if(std::equal(keemBayHeader.begin(), keemBayHeader.end(), blob.data.begin())){
+    if(std::equal(S3Header.begin(), S3Header.end(), blob.data.begin())) {
         // Most of the parsing done on device for now
-        blob.device = OpenVINO::Device::KEEMBAY;
-        blob.version = OpenVINO::VERSION_2022_1; // TODO: parse blob to get the version
-    }
-    else {
-        blob.device = OpenVINO::Device::MYRIADX;
+        blob.device = OpenVINO::Device::VPUX;
+        blob.version = OpenVINO::VERSION_2022_1;  // TODO: parse blob to get the version
+    } else {
+        blob.device = OpenVINO::Device::VPU;
         BlobReader reader;
         reader.parse(blob.data);
         blob.networkInputs = reader.getNetworkInputs();
