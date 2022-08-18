@@ -36,6 +36,7 @@ void NeuralNetwork::setBlob(OpenVINO::Blob blob) {
     auto asset = assetManager.set("__blob", std::move(blob.data));
     properties.blobUri = asset->getRelativeUri();
     properties.blobSize = static_cast<uint32_t>(asset->data.size());
+    properties.modelSource = Properties::ModelSource::BLOB;
 }
 
 void NeuralNetwork::setXmlModelPath(const dai::Path& xmlModelPath, const dai::Path& binModelPath) {
@@ -50,7 +51,7 @@ void NeuralNetwork::setXmlModelPath(const dai::Path& xmlModelPath, const dai::Pa
     auto binAsset = assetManager.set("__binModel", localBinModelPath);
     properties.xmlUri = xmlAsset->getRelativeUri();
     properties.binUri = binAsset->getRelativeUri();
-    properties.modelSource = NeuralNetworkProperties::ModelSource::XML_API;
+    properties.modelSource = Properties::ModelSource::XML;
 }
 
 void NeuralNetwork::setNumPoolFrames(int numFrames) {

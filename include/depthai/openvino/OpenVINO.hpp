@@ -20,7 +20,7 @@ class OpenVINO {
     enum Version { VERSION_2020_3, VERSION_2020_4, VERSION_2021_1, VERSION_2021_2, VERSION_2021_3, VERSION_2021_4, VERSION_2022_1 };
 
     // Device for which the blob is compiled
-    enum Device { VPU, VPUX };
+    enum class Device { VPU, VPUX };
     /// OpenVINO Blob
     struct Blob {
         /**

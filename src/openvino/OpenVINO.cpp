@@ -146,7 +146,7 @@ static void blobInit(OpenVINO::Blob& blob, std::vector<uint8_t> data) {
     // Check if the blob is for S3
     std::vector<uint8_t> vpuxBlobHeader{0X18, 0X0, 0X0, 0X0, 0X42, 0X4C, 0X4F, 0X42};
 
-    if(std::equal(S3Header.begin(), S3Header.end(), blob.data.begin())) {
+    if(std::equal(vpuxBlobHeader.begin(), vpuxBlobHeader.end(), blob.data.begin())) {
         // Most of the parsing done on device for now
         blob.device = OpenVINO::Device::VPUX;
         blob.version = OpenVINO::VERSION_2022_1;  // TODO: parse blob to get the version
