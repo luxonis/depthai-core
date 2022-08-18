@@ -178,21 +178,8 @@ AssetManager& Node::getAssetManager() {
 }
 
 std::vector<uint8_t> Node::loadResource(dai::Path uri) {
-    int colonLocation = uri.string().find(":");
-    std::string resourceType = uri.string().substr(0, colonLocation+1);
-    if (resourceType == "asset:"){
-        dai::Path absAssetUri;
-        if(uri.string()[colonLocation + 1] == '/') {  // Absolute path
-            absAssetUri = uri;
-        } else {  // Relative path
-            std::string cwd = fmt::format("/node/{}/", id);
-            absAssetUri = dai::Path{resourceType + cwd + uri.string().substr(colonLocation + 1)};
-        }
-        return parent.lock()->loadResource(absAssetUri);
-    }
-    else {
-        return parent.lock()->loadResource(uri);
-    }
+    std::string cwd = fmt::format("/node/{}/", id);
+    return parent.lock()->loadResourceCwd(uri, cwd);
 }
 
 Node::OutputMap::OutputMap(std::string name, Node::Output defaultOutput) : defaultOutput(defaultOutput), name(std::move(name)) {}

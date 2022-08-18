@@ -743,7 +743,24 @@ PipelineImpl::~PipelineImpl() {
     // stop();
 }
 
+
 std::vector<uint8_t> PipelineImpl::loadResource(dai::Path uri) {
+    return loadResourceCwd(uri, "/pipeline");
+}
+
+static dai::Path getAbsUri(dai::Path& uri, dai::Path& cwd){
+    int colonLocation = uri.string().find(":");
+    std::string resourceType = uri.string().substr(0, colonLocation+1);
+    dai::Path absAssetUri;
+    if(uri.string()[colonLocation + 1] == '/') {  // Absolute path
+        absAssetUri = uri;
+    } else {  // Relative path
+        absAssetUri = dai::Path{resourceType + cwd.string() + uri.string().substr(colonLocation + 1)};
+    }
+    return absAssetUri;
+}
+
+std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd) {
     struct ProtocolHandler {
         const char* protocol = nullptr;
         std::function<std::vector<uint8_t>(PipelineImpl&, const dai::Path&)> handle = nullptr;
@@ -785,7 +802,13 @@ std::vector<uint8_t> PipelineImpl::loadResource(dai::Path uri) {
             // return handler.handle(this, fullPath.string());
 
             // TODO(themarpe) - use above approach instead
-            dai::Path path(uri.u8string().substr(protocolPrefix.size()));
+            dai::Path path;
+            if(protocolPrefix == "asset:") {
+                auto absUri = getAbsUri(uri, cwd);
+                path = static_cast<dai::Path>(absUri.u8string().substr(protocolPrefix.size()));
+            } else {
+                path = static_cast<dai::Path>(uri.u8string().substr(protocolPrefix.size()));
+            }
             return handler.handle(*this, path.u8string());
         }
     }

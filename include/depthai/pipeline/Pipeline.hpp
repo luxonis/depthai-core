@@ -121,6 +121,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Resource
     std::vector<uint8_t> loadResource(dai::Path uri);
+    std::vector<uint8_t> loadResourceCwd(dai::Path uri, dai::Path cwd);
 };
 
 /**
