@@ -6,21 +6,16 @@
 // Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-#define MODEL_IN_WIDTH 512
-#define MODEL_IN_HEIGHT 512
-
-#define MIN_SCORE 0.3
+static constexpr auto MODEL_IN_WIDTH = 512;
+static constexpr auto MODEL_IN_HEIGHT = 512;
+static constexpr auto MIN_SCORE = 0.3;
 
 int main(int argc, char** argv) {
-    using namespace std;
-
     // If path to blob specified, use that
     int camId = 0;
     if(argc > 1) {
         camId = std::stoi(argv[1]);
     }
-
-    using namespace std;
 
     // Create pipeline
     dai::Pipeline pipeline;
@@ -65,10 +60,9 @@ int main(int argc, char** argv) {
         webcam >> frame;
 
         // crop and resize
-        cv::Mat resized_frame = resizeKeepAspectRatio(frame, cv::Size(MODEL_IN_WIDTH, MODEL_IN_HEIGHT), cv::Scalar(0));
+        cv::Mat resizedFrame = resizeKeepAspectRatio(frame, cv::Size(MODEL_IN_WIDTH, MODEL_IN_HEIGHT), cv::Scalar(0));
 
-        toPlanar(resized_frame, tensor->data);
-        // transform to BGR planar 300x300
+        toPlanar(resizedFrame, tensor->data);
 
         auto inputFrame = std::make_shared<dai::ImgFrame>(tensor);
         inputFrame->setType(dai::RawImgFrame::Type::BGR888p);
@@ -96,7 +90,7 @@ int main(int argc, char** argv) {
             float y_max;
         };
 
-        vector<Detection> dets;
+        std::vector<Detection> dets;
         auto outImg = detections->get<dai::ImgFrame>();
         auto cvframe = outImg->getCvFrame();
         std::stringstream fpsStr;
@@ -123,12 +117,12 @@ int main(int argc, char** argv) {
         }
 
         for(const auto& d : dets) {
-            int x1 = d.x_min * resized_frame.cols;
-            int y1 = d.y_min * resized_frame.rows;
-            int x2 = d.x_max * resized_frame.cols;
-            int y2 = d.y_max * resized_frame.rows;
+            int x1 = d.x_min * resizedFrame.cols;
+            int y1 = d.y_min * resizedFrame.rows;
+            int x2 = d.x_max * resizedFrame.cols;
+            int y2 = d.y_max * resizedFrame.rows;
 
-            cv::rectangle(resized_frame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), cv::Scalar(255, 255, 255));
+            cv::rectangle(resizedFrame, cv::Rect(cv::Point(x1, y1), cv::Point(x2, y2)), cv::Scalar(255, 255, 255));
         }
 
         printf("===================== %lu detection(s) =======================\n", static_cast<unsigned long>(dets.size()));

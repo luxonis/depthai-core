@@ -6,20 +6,14 @@
 // Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-#define MODEL_IN_WIDTH 512
-#define MODEL_IN_HEIGHT 512
-
-#define MIN_SCORE 0.3
+static constexpr auto MODEL_IN_WIDTH = 512;
+static constexpr auto MODEL_IN_HEIGHT = 512;
 
 int main(int argc, char** argv) {
-    using namespace std;
-
     int camId = 0;
     if(argc > 1) {
         camId = std::stoi(argv[1]);
     }
-
-    using namespace std;
 
     // Create pipeline
     dai::Pipeline pipeline;
@@ -73,24 +67,24 @@ int main(int argc, char** argv) {
 
     while(true) {
         // data to send further
-        auto tensor = std::make_shared<dai::RawBuffer>();
+        dai::Buffer tensor;
 
         // Read frame from webcam
         webcam >> frame;
 
         // crop and resize
-        cv::Mat resized_frame = resizeKeepAspectRatio(frame, cv::Size(MODEL_IN_WIDTH, MODEL_IN_HEIGHT), cv::Scalar(0));
+        cv::Mat resizedFrame = resizeKeepAspectRatio(frame, cv::Size(MODEL_IN_WIDTH, MODEL_IN_HEIGHT), cv::Scalar(0));
 
-        toPlanar(resized_frame, tensor->data);
+        toPlanar(resizedFrame, tensor.getData());
 
         in->send(tensor);
 
-        auto inDet = detections->tryGet<dai::ImgDetections>();
+        auto inDet = detections->get<dai::ImgDetections>();
         if(inDet) {
             vdetections = inDet->detections;
         }
-        displayFrame(resized_frame, vdetections);
-        cv::imshow("preview", resized_frame);
+        displayFrame(resizedFrame, vdetections);
+        cv::imshow("preview", resizedFrame);
         int key = cv::waitKey(1);
         if(key == 'q') {
             return 0;

@@ -6,10 +6,8 @@
 // Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-#define MODEL_IN_WIDTH 416
-#define MODEL_IN_HEIGHT 416
-
-#define MIN_SCORE 0.3
+static constexpr auto MODEL_IN_WIDTH = 416;
+static constexpr auto MODEL_IN_HEIGHT = 416;
 
 static const std::vector<std::string> labelMap = {
     "person",        "bicycle",      "car",           "motorbike",     "aeroplane",   "bus",         "train",       "truck",        "boat",
@@ -23,14 +21,10 @@ static const std::vector<std::string> labelMap = {
     "refrigerator",  "book",         "clock",         "vase",          "scissors",    "teddy bear",  "hair drier",  "toothbrush"};
 
 int main(int argc, char** argv) {
-    using namespace std;
-
     int camId = 0;
     if(argc > 1) {
         camId = std::stoi(argv[1]);
     }
-
-    using namespace std;
 
     // Create pipeline
     dai::Pipeline pipeline;
@@ -82,7 +76,7 @@ int main(int argc, char** argv) {
             int y2 = detection.ymax * frame.rows;
 
             uint32_t labelIndex = detection.label;
-            std::string labelStr = to_string(labelIndex);
+            std::string labelStr = std::to_string(labelIndex);
             if(labelIndex < labelMap.size()) {
                 labelStr = labelMap[labelIndex];
             }
@@ -96,7 +90,7 @@ int main(int argc, char** argv) {
         cv::imshow(name, frame);
     };
 
-    std::vector<dai::ImgDetection> vdetections;
+    std::vector<dai::ImgDetection> vDetections;
 
     using namespace std::chrono;
     auto startTime = steady_clock::now();
@@ -105,15 +99,16 @@ int main(int argc, char** argv) {
 
     while(true) {
         // data to send further
-        auto tensor = std::make_shared<dai::RawBuffer>();
+        // auto tensor = std::make_shared<dai::RawBuffer>();
+        dai::Buffer tensor;
 
         // Read frame from webcam
         webcam >> frame;
 
         // crop and resize
-        cv::Mat resized_frame = resizeKeepAspectRatio(frame, cv::Size(MODEL_IN_WIDTH, MODEL_IN_HEIGHT), cv::Scalar(0));
+        cv::Mat resizedFrame = resizeKeepAspectRatio(frame, cv::Size(MODEL_IN_WIDTH, MODEL_IN_HEIGHT), cv::Scalar(0));
 
-        toPlanar(resized_frame, tensor->data);
+        toPlanar(resizedFrame, tensor.getData());
 
         in->send(tensor);
 
@@ -126,14 +121,14 @@ int main(int argc, char** argv) {
             startTime = currentTime;
         }
 
-        auto inDet = detections->tryGet<dai::ImgDetections>();
+        auto inDet = detections->get<dai::ImgDetections>();
         if(inDet) {
-            vdetections = inDet->detections;
+            vDetections = inDet->detections;
             std::stringstream fpsStr;
             fpsStr << "NN fps: " << std::fixed << std::setprecision(2) << fps;
-            cv::putText(resized_frame, fpsStr.str(), cv::Point(2, MODEL_IN_HEIGHT - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, cv::Scalar(255, 255, 255));
+            cv::putText(resizedFrame, fpsStr.str(), cv::Point(2, MODEL_IN_HEIGHT - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, cv::Scalar(255, 255, 255));
         }
-        displayFrame("nn_out", resized_frame, vdetections);
+        displayFrame("nn_out", resizedFrame, vDetections);
         int key = cv::waitKey(1);
         if(key == 'q') {
             return 0;
