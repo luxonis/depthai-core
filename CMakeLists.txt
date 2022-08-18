@@ -27,6 +27,7 @@ else()
     message(STATUS "Using toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
 endif()
 
+set(HUNTER_ROOT ${CMAKE_CURRENT_BINARY_DIR})
 include("cmake/HunterGate.cmake")
 HunterGate(
     URL "https://github.com/cpp-pm/hunter/archive/v0.23.322.tar.gz"
