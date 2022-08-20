@@ -19,10 +19,12 @@ class SystemLogger : public NodeCRTP<DeviceNode, SystemLogger, SystemLoggerPrope
     SystemLogger(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
-     * Outputs SystemInformation message that carries various system information
+     * Outputs SystemInformation[S3] message that carries various system information
      * like memory and CPU usage, temperatures, ...
+     * For series 2 devices outputs SystemInformation message,
+     * for series 3 devices outputs SystemInformationS3 message
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::SystemInformation, false}}};
+    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::SystemInformation, false}, {DatatypeEnum::SystemInformationS3, false}}};
 
     /**
      * Specify logging rate, at which messages will be sent out
