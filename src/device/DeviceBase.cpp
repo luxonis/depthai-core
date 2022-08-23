@@ -1054,6 +1054,42 @@ std::vector<std::uint8_t> DeviceBase::readFactoryCalibrationRaw() {
     return eepromDataRaw;
 }
 
+void DeviceBase::flashEepromClear() {
+    bool factoryPermissions = false;
+    bool protectedPermissions = false;
+    getFlashingPermissions(factoryPermissions, protectedPermissions);
+    spdlog::debug("Clearing User EEPROM contents. Factory permissions {}, Protected permissions {}", factoryPermissions, protectedPermissions);
+
+    if(!protectedPermissions) {
+        throw std::runtime_error("Calling EEPROM clear API is not allowed in current configuration");
+    }
+
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) = pimpl->rpcClient->call("eepromClear", protectedPermissions, factoryPermissions).as<std::tuple<bool, std::string>>();
+    if(!success) {
+        throw std::runtime_error(errorMsg);
+    }
+}
+
+void DeviceBase::flashFactoryEepromClear() {
+    bool factoryPermissions = false;
+    bool protectedPermissions = false;
+    getFlashingPermissions(factoryPermissions, protectedPermissions);
+    spdlog::debug("Clearing User EEPROM contents. Factory permissions {}, Protected permissions {}", factoryPermissions, protectedPermissions);
+
+    if(!protectedPermissions || !factoryPermissions) {
+        throw std::runtime_error("Calling factory EEPROM clear API is not allowed in current configuration");
+    }
+
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) = pimpl->rpcClient->call("eepromFactoryClear", protectedPermissions, factoryPermissions).as<std::tuple<bool, std::string>>();
+    if(!success) {
+        throw std::runtime_error(errorMsg);
+    }
+}
+
 bool DeviceBase::startPipeline() {
     // Deprecated
     return true;

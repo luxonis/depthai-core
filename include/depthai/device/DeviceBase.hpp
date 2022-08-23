@@ -544,6 +544,24 @@ class DeviceBase {
     void flashFactoryCalibration(CalibrationHandler calibrationHandler);
 
     /**
+     * Destructive action, deletes User area EEPROM contents
+     * Requires PROTECTED permissions
+     *
+     * @throws std::runtime_exception if failed to flash the calibration
+     * @return True on successful flash, false on failure
+     */
+    void flashEepromClear();
+
+    /**
+     * Destructive action, deletes Factory area EEPROM contents
+     * Requires FACTORY PROTECTED permissions
+     *
+     * @throws std::runtime_exception if failed to flash the calibration
+     * @return True on successful flash, false on failure
+     */
+    void flashFactoryEepromClear();
+
+    /**
      * Fetches the EEPROM data from Factory area and loads it into CalibrationHandler object
      *
      * @throws std::runtime_exception if no calibration is flashed
