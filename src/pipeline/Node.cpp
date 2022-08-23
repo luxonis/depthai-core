@@ -6,7 +6,7 @@
 namespace dai {
 
 Node::Node(const std::shared_ptr<PipelineImpl>& p, Id nodeId, std::unique_ptr<Properties> props)
-    : parent(p), id(nodeId), propertiesHolder(std::move(props)), properties(*propertiesHolder) {}
+    : parent(p), id(nodeId), assetManager("/node/" + std::to_string(nodeId) + "/"), propertiesHolder(std::move(props)), properties(*propertiesHolder) {}
 
 tl::optional<OpenVINO::Version> Node::getRequiredOpenVINOVersion() {
     return tl::nullopt;
@@ -178,9 +178,7 @@ AssetManager& Node::getAssetManager() {
 }
 
 std::vector<uint8_t> Node::loadResource(dai::Path uri) {
-    // Current node "working directory"
     std::string cwd = fmt::format("/node/{}/", id);
-    // Load resource relative to cwd (if uri path relative)
     return parent.lock()->loadResourceCwd(uri, cwd);
 }
 
