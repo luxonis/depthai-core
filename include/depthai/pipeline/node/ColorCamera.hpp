@@ -177,6 +177,24 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
     void setIspScale(std::tuple<int, int> horizScale, std::tuple<int, int> vertScale);
 
     /**
+     * Set whether to stream only metadata (e.g PDAF data) on `raw` output.
+     * By default will stream the raw image followed by the metadata
+     */
+    void setRawMetadataOnly(bool streamMetadataOnly);
+
+    /**
+     * Set PDAF mode to 8x6 windows when true. By default (false): 16x12 windows
+     */
+    void setPdafMode8x6(bool enable);
+
+    /**
+     * Set PDAF start offset (top-left corner) and window size (for just one window
+     * out of 16x12 or 8x6). By default (or when `windowWidth` = 0) -> auto-computed
+     * to cover whole frame - window width and height multiple of 4, minimum offsets
+     */
+    void setPdafConfig(int offsetX, int offsetY, int windowWidth, int windowHeight);
+
+    /**
      * Set rate at which camera should produce frames
      * @param fps Rate in frames per second
      */

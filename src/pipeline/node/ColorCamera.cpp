@@ -163,6 +163,21 @@ ColorCameraProperties::SensorResolution ColorCamera::getResolution() const {
     return properties.resolution;
 }
 
+void ColorCamera::setRawMetadataOnly(bool streamMetadataOnly) {
+    properties.rawStreamMetadataOnly = streamMetadataOnly;
+}
+
+void ColorCamera::setPdafMode8x6(bool enable) {
+    properties.rawPdafWindows8x6 = enable;
+}
+
+void ColorCamera::setPdafConfig(int offsetX, int offsetY, int windowWidth, int windowHeight) {
+    properties.pdOffX = offsetX;
+    properties.pdOffY = offsetY;
+    properties.pdWinW = windowWidth;
+    properties.pdWinH = windowHeight;
+}
+
 void ColorCamera::setFps(float fps) {
     properties.fps = fps;
 }

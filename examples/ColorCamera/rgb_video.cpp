@@ -46,9 +46,10 @@ int main(int argc, char** argv) {
     if (rotate) camRgb->setImageOrientation(dai::CameraImageOrientation::ROTATE_180_DEG);
 //    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_4_K);
+    // camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_12_MP);
     if (downscale) {
         camRgb->setIspScale(1, 2);
-        camRgb->setVideoSize(1920, 1080);
+        // camRgb->setVideoSize(1920, 1080);
     }
     camRgb->initialControl.setAntiBandingMode(dai::CameraControl::AntiBandingMode::MAINS_60_HZ);
     camRgb->setFps(30);
@@ -65,9 +66,14 @@ int main(int argc, char** argv) {
         camRgb->video.link(xoutVideo->input);
     }
 
+    bool pdafMode8x6 = true; // default: false (16x12)
     if (getPdaf) {
         auto xoutRaw = pipeline.create<dai::node::XLinkOut>();
         xoutRaw->setStreamName("raw");
+
+        camRgb->setRawMetadataOnly(true);
+        camRgb->setPdafMode8x6(pdafMode8x6);
+        // camRgb->setPdafConfig(16, 12, 496, 496);
 
         camRgb->raw.link(xoutRaw->input);
     }
@@ -226,7 +232,7 @@ int main(int argc, char** argv) {
 
             int k = 0; // offset into the packet
             int flex_mask =  pdaf[k];
-            int area_mode = 0;//(pdaf[k+1] >> 4) & 0x3; // FIXME why automatic not working?
+            int area_mode = pdafMode8x6;//(pdaf[k+1] >> 4) & 0x3; // FIXME why automatic not working?
             printf("\nPDAF sensor data, flexible ROI bitmask 0x%02x, mode %d, [CONF]valPx\n",
                     flex_mask, area_mode);
             k += 5; // skip over header
