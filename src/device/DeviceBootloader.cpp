@@ -70,7 +70,7 @@ std::vector<DeviceInfo> DeviceBootloader::getAllAvailableDevices() {
 std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pipeline& pipeline,
                                                                        const dai::Path& pathToCmd,
                                                                        bool compress,
-                                                                       std::string applicationName) {
+                                                                       std::string applicationName, bool checkChecksum) {
     // Serialize the pipeline
     PipelineSchema schema;
     Assets assets;
@@ -158,8 +158,13 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
     sbr_section_set_size(fwSection, static_cast<uint32_t>(deviceFirmware.size()));
     sbr_section_set_checksum(fwSection, sbr_compute_checksum(deviceFirmware.data(), static_cast<uint32_t>(deviceFirmware.size())));
     sbr_section_set_offset(fwSection, SBR_RAW_SIZE);
-    // Ignore checksum to allow faster booting (images are verified after flashing, low risk)
-    sbr_section_set_ignore_checksum(fwSection, true);
+    if(checkChecksum) {
+        // Don't ignore checksum, use it when booting
+        sbr_section_set_ignore_checksum(fwSection, false);
+    } else {
+        // Ignore checksum to allow faster booting (images are verified after flashing, low risk)
+        sbr_section_set_ignore_checksum(fwSection, true);
+    }
     // Set compression flags
     if(compress) {
         sbr_section_set_compression(fwSection, SBR_COMPRESSION_ZLIB);
@@ -226,19 +231,19 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
     return fwPackage;
 }
 
-std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pipeline& pipeline, bool compress, std::string applicationName) {
-    return createDepthaiApplicationPackage(pipeline, "", compress, applicationName);
+std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pipeline& pipeline, bool compress, std::string applicationName, bool checkChecksum) {
+    return createDepthaiApplicationPackage(pipeline, "", compress, applicationName, checkChecksum);
 }
 
 void DeviceBootloader::saveDepthaiApplicationPackage(
-    const dai::Path& path, const Pipeline& pipeline, const dai::Path& pathToCmd, bool compress, std::string applicationName) {
-    auto dap = createDepthaiApplicationPackage(pipeline, pathToCmd, compress, applicationName);
+    const dai::Path& path, const Pipeline& pipeline, const dai::Path& pathToCmd, bool compress, std::string applicationName, bool checkChecksum) {
+    auto dap = createDepthaiApplicationPackage(pipeline, pathToCmd, compress, applicationName, checkChecksum);
     std::ofstream outfile(path, std::ios::binary);
     outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
 }
 
-void DeviceBootloader::saveDepthaiApplicationPackage(const dai::Path& path, const Pipeline& pipeline, bool compress, std::string applicationName) {
-    auto dap = createDepthaiApplicationPackage(pipeline, compress, applicationName);
+void DeviceBootloader::saveDepthaiApplicationPackage(const dai::Path& path, const Pipeline& pipeline, bool compress, std::string applicationName, bool checkChecksum) {
+    auto dap = createDepthaiApplicationPackage(pipeline, compress, applicationName, checkChecksum);
     std::ofstream outfile(path, std::ios::binary);
     outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
 }
@@ -560,12 +565,12 @@ bool DeviceBootloader::isAllowedFlashingBootloader() const {
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flash(
-    std::function<void(float)> progressCb, const Pipeline& pipeline, bool compress, std::string applicationName, Memory memory) {
-    return flashDepthaiApplicationPackage(progressCb, createDepthaiApplicationPackage(pipeline, compress, applicationName), memory);
+    std::function<void(float)> progressCb, const Pipeline& pipeline, bool compress, std::string applicationName, Memory memory, bool checkCheksum) {
+    return flashDepthaiApplicationPackage(progressCb, createDepthaiApplicationPackage(pipeline, compress, applicationName, checkCheksum), memory);
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flash(const Pipeline& pipeline, bool compress, std::string applicationName, Memory memory) {
-    return flashDepthaiApplicationPackage(createDepthaiApplicationPackage(pipeline, compress, applicationName), memory);
+std::tuple<bool, std::string> DeviceBootloader::flash(const Pipeline& pipeline, bool compress, std::string applicationName, Memory memory, bool checkCheksum) {
+    return flashDepthaiApplicationPackage(createDepthaiApplicationPackage(pipeline, compress, applicationName, checkCheksum), memory);
 }
 
 DeviceBootloader::ApplicationInfo DeviceBootloader::readApplicationInfo(Memory mem) {
