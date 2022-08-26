@@ -195,6 +195,38 @@ hunter_private_data(
     LOCATION normalization_model
 )
 
+# mobilnet xml model for S3 example
+hunter_private_data(
+    URL "https://download.01.org/opencv/2021/openvinotoolkit/2021.1/open_model_zoo/models_bin/1/person-detection-0202/FP32/person-detection-0202.xml"
+    SHA1 "87f9cf8833043162f1b728e9afa6f38ba177d9db"
+    FILE "person-detection-0202.xml"
+    LOCATION person_detection_xml
+)
+
+# mobilnet xml model for S3 example
+hunter_private_data(
+    URL "https://download.01.org/opencv/2021/openvinotoolkit/2021.1/open_model_zoo/models_bin/1/person-detection-0202/FP32/person-detection-0202.bin"
+    SHA1 "1560bf2ee372a0640539780ea8bd061278a6cc20"
+    FILE "person-detection-0202.bin"
+    LOCATION person_detection_bin
+)
+
+# yolo xml model for S3 example
+hunter_private_data(
+    URL "https://github.com/luxonis/depthai-model-zoo/raw/main/models/yolov4_tiny_coco_416x416/yolov4_tiny_coco_416x416.xml"
+    SHA1 "423069bdff250643cf080c76e15594cfd72cb816"
+    FILE "yolov4_tiny_coco_416x416.xml"
+    LOCATION tiny-vechicle-detection_xml
+)
+
+# yolo bin model for S3 example
+hunter_private_data(
+    URL "https://robothub.fra1.cdn.digitaloceanspaces.com/models/yolov4_tiny_coco_416x416/yolov4_tiny_coco_416x416.bin"
+    SHA1 "a7627c074ee76ceb9ff9bb8529b67867e3e440bc"
+    FILE "yolov4_tiny_coco_416x416.bin"
+    LOCATION tiny-vechicle-detection_bin
+)
+
 ## message(STATUS "Location of test1.data: ${test1_data}")
 
 # bootloader
@@ -355,3 +387,12 @@ dai_add_example(host_pipeline_opencv host_side/host_pipeline_opencv.cpp ON)
 dai_add_example(tmp_preview tmp/tmp_preview.cpp OFF)
 dai_add_example(tmp_stereo tmp/tmp_stereo.cpp OFF)
 dai_add_example(tmp_stereo_host tmp/tmp_stereo_host.cpp OFF)
+
+dai_add_example(tmp_nn tmp/tmp_nn.cpp OFF)
+dai_add_example(tmp_detection_parser_mobilenet tmp/tmp_detection_parser_mobilenet.cpp OFF)
+dai_add_example(tmp_detection_parser_yolo tmp/tmp_detection_parser_yolo.cpp OFF)
+target_compile_definitions(tmp_nn PRIVATE MODEL_XML_PATH="${person_detection_xml}" MODEL_BIN_PATH="${person_detection_bin}")
+target_compile_definitions(tmp_detection_parser_mobilenet PRIVATE MODEL_XML_PATH="${person_detection_xml}" MODEL_BIN_PATH="${person_detection_bin}")
+target_compile_definitions(tmp_detection_parser_yolo PRIVATE MODEL_XML_PATH="${tiny-vechicle-detection_xml}" MODEL_BIN_PATH="${tiny-vechicle-detection_bin}")
+
+dai_add_example(tmp_mono tmp/tmp_mono.cpp OFF)

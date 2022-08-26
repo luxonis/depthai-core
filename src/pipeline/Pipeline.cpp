@@ -121,10 +121,10 @@ void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector
     assetStorage.clear();
     AssetsMutable mutableAssets;
     // Pipeline assets
-    assetManager.serialize(mutableAssets, assetStorage, "/pipeline/");
+    assetManager.serialize(mutableAssets, assetStorage);
     // Node assets
     for(const auto& kv : nodeMap) {
-        kv.second->getAssetManager().serialize(mutableAssets, assetStorage, fmt::format("/node/{}/", kv.second->id));
+        kv.second->getAssetManager().serialize(mutableAssets, assetStorage);
     }
 
     assets = mutableAssets;
@@ -747,6 +747,18 @@ std::vector<uint8_t> PipelineImpl::loadResource(dai::Path uri) {
     return loadResourceCwd(uri, "/pipeline");
 }
 
+static dai::Path getAbsUri(dai::Path& uri, dai::Path& cwd) {
+    int colonLocation = uri.string().find(":");
+    std::string resourceType = uri.string().substr(0, colonLocation + 1);
+    dai::Path absAssetUri;
+    if(uri.string()[colonLocation + 1] == '/') {  // Absolute path
+        absAssetUri = uri;
+    } else {  // Relative path
+        absAssetUri = dai::Path{resourceType + cwd.string() + uri.string().substr(colonLocation + 1)};
+    }
+    return absAssetUri;
+}
+
 std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd) {
     struct ProtocolHandler {
         const char* protocol = nullptr;
@@ -755,13 +767,25 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd)
 
     const std::vector<ProtocolHandler> protocolHandlers = {
         {"asset",
-         [](PipelineImpl& p, const dai::Path& path) -> std::vector<uint8_t> {
-             auto asset = p.assetManager.get(path);
-             if(asset == nullptr) {
-                 throw std::invalid_argument(fmt::format("No asset with key ({}) found", path));
+         [](PipelineImpl& p, const dai::Path& uri) -> std::vector<uint8_t> {
+             // First check the pipeline asset manager
+             auto asset = p.assetManager.get(std::string{uri});
+             if(asset != nullptr) {
+                 return asset->data;
              }
-
-             return asset->data;
+             // If asset not found in the pipeline asset manager, check all nodes
+             else {
+                 for(auto& kv : p.nodeMap) {
+                     auto& node = kv.second;
+                     auto& assetManager = node->getAssetManager();
+                     auto asset = assetManager.get(uri);
+                     if(asset != nullptr) {
+                         return asset->data;
+                     }
+                 }
+             }
+             // Asset not found anywhere
+             throw std::invalid_argument(fmt::format("No asset with key ({}) found", uri));
          }} /*, TODO (read from filesystem 'file://' or default scheme, ...) */
     };
 
@@ -778,9 +802,14 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd)
             // return handler.handle(this, fullPath.string());
 
             // TODO(themarpe) - use above approach instead
-            dai::Path path(uri.u8string().substr(protocolPrefix.size()));
-            auto fullPath = dai::Path(cwd.u8string() + "/" + path.u8string());
-            return handler.handle(*this, fullPath);
+            dai::Path path;
+            if(protocolPrefix == "asset:") {
+                auto absUri = getAbsUri(uri, cwd);
+                path = static_cast<dai::Path>(absUri.u8string().substr(protocolPrefix.size()));
+            } else {
+                path = static_cast<dai::Path>(uri.u8string().substr(protocolPrefix.size()));
+            }
+            return handler.handle(*this, path.u8string());
         }
     }
 

@@ -26,7 +26,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     friend class Node;
 
    public:
-    PipelineImpl(Pipeline& pipeline) : parent(pipeline) {}
+    PipelineImpl(Pipeline& pipeline) : assetManager("/pipeline/"), parent(pipeline) {}
     PipelineImpl(const PipelineImpl&) = default;
     ~PipelineImpl();
 

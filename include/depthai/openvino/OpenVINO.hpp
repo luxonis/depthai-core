@@ -19,6 +19,8 @@ class OpenVINO {
     /// OpenVINO Version supported version information
     enum Version { VERSION_2020_3, VERSION_2020_4, VERSION_2021_1, VERSION_2021_2, VERSION_2021_3, VERSION_2021_4, VERSION_2022_1 };
 
+    // Device for which the blob is compiled
+    enum class Device { VPU, VPUX };
     /// OpenVINO Blob
     struct Blob {
         /**
@@ -36,6 +38,8 @@ class OpenVINO {
 
         /// OpenVINO version
         Version version;
+        /// Device for which the blob is compiled for
+        Device device;
         /// Map of input names to additional information
         std::unordered_map<std::string, TensorInfo> networkInputs;
         /// Map of output names to additional information
