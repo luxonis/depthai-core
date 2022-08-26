@@ -67,10 +67,8 @@ std::vector<DeviceInfo> DeviceBootloader::getAllAvailableDevices() {
     return availableDevices;
 }
 
-std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pipeline& pipeline,
-                                                                       const dai::Path& pathToCmd,
-                                                                       bool compress,
-                                                                       std::string applicationName, bool checkChecksum) {
+std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(
+    const Pipeline& pipeline, const dai::Path& pathToCmd, bool compress, std::string applicationName, bool checkChecksum) {
     // Serialize the pipeline
     PipelineSchema schema;
     Assets assets;
@@ -231,7 +229,10 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
     return fwPackage;
 }
 
-std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pipeline& pipeline, bool compress, std::string applicationName, bool checkChecksum) {
+std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pipeline& pipeline,
+                                                                       bool compress,
+                                                                       std::string applicationName,
+                                                                       bool checkChecksum) {
     return createDepthaiApplicationPackage(pipeline, "", compress, applicationName, checkChecksum);
 }
 
@@ -242,7 +243,8 @@ void DeviceBootloader::saveDepthaiApplicationPackage(
     outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
 }
 
-void DeviceBootloader::saveDepthaiApplicationPackage(const dai::Path& path, const Pipeline& pipeline, bool compress, std::string applicationName, bool checkChecksum) {
+void DeviceBootloader::saveDepthaiApplicationPackage(
+    const dai::Path& path, const Pipeline& pipeline, bool compress, std::string applicationName, bool checkChecksum) {
     auto dap = createDepthaiApplicationPackage(pipeline, compress, applicationName, checkChecksum);
     std::ofstream outfile(path, std::ios::binary);
     outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
