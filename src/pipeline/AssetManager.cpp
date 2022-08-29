@@ -31,7 +31,7 @@ std::string AssetManager::getRelativeKey(std::string key) const {
             int rootPathLen = rootPath.size();
             relativeKey = key.substr(rootPathLen);
         } else {
-            return nullptr;
+            return "";
         }
     } else {  // Relative path
         relativeKey = key;
