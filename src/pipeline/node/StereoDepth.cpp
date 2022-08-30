@@ -28,7 +28,8 @@ StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
                    &debugExtDispLrCheckIt1,
                    &debugExtDispLrCheckIt2,
                    &debugDispCostDump,
-                   &confidenceMap});
+                   &confidenceMap,
+                   &pixelDescriptors});
 
     setDefaultProfilePreset(presetMode);
 }

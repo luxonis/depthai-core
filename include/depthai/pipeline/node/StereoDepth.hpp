@@ -146,6 +146,8 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      */
     Output confidenceMap{*this, "confidenceMap", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
+    Output pixelDescriptors{*this, "pixelDescriptors", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
     /**
      * Specify that a passthrough/dummy calibration should be used,
      * when input frames are already rectified (e.g. sourced from recordings on the host)
