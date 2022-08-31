@@ -304,6 +304,8 @@ dai_add_example(script_http_server Script/script_http_server.cpp OFF)
 dai_add_example(script_mjpeg_server Script/script_mjpeg_server.cpp OFF)
 dai_add_example(script_nndata_example Script/script_nndata_example.cpp ON)
 dai_add_example(script_json_communication Script/script_json_communication.cpp ON)
+dai_add_example(script_change_pipeline_flow Script/script_change_pipeline_flow.cpp OFF)
+target_compile_definitions(script_change_pipeline_flow PRIVATE BLOB_PATH="${mobilenet_5shaves_blob}")
 
 # SpatialDetection
 dai_add_example(spatial_location_calculator SpatialDetection/spatial_location_calculator.cpp ON)
