@@ -431,13 +431,14 @@ target_link_libraries(${TARGET_CORE_NAME}
         ZLIB::zlib
 )
 
-# Add compile definitions
+# Add compile & CMake definitions
+set(DEPTHAI_DEVICE_VERSION "${DEPTHAI_DEVICE_SIDE_COMMIT}")
 target_compile_definitions(${TARGET_CORE_NAME}
     PRIVATE
         # XLink required define
         __PC__
         # Add depthai-device version
-        DEPTHAI_DEVICE_VERSION="${DEPTHAI_DEVICE_SIDE_COMMIT}"
+        DEPTHAI_DEVICE_VERSION="${DEPTHAI_DEVICE_VERSION}"
         # Add depthai-bootloader version
         DEPTHAI_BOOTLOADER_VERSION="${DEPTHAI_BOOTLOADER_VERSION}"
 )
