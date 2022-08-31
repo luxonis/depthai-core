@@ -17,9 +17,6 @@ on:
       - gen2
       - gen2_develop
 
-env:
-  CMAKE_WINDOWS_SDK_VERSION: '10.0.18362.0'
-
 jobs:
 
   style:
@@ -33,7 +30,6 @@ jobs:
     - name: Install format dependencies
       run: |
         sudo apt-get install clang-format-10
-        sudo apt-get install libusb-1.0-0-dev
 
     - name: configure
       run: cmake . -Bbuild -DDEPTHAI_CLANG_FORMAT=ON -DCLANG_FORMAT_BIN=clang-format-10
@@ -53,7 +49,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt-get update
-        sudo apt-get install libusb-1.0-0-dev clang-tidy-10
+        sudo apt-get install clang-tidy-10
 
     - name: configure
       run: cmake . -Bbuild -DDEPTHAI_CLANG_TIDY=ON -DCLANG_TIDY_BIN=clang-tidy-10
@@ -71,6 +67,7 @@ jobs:
         exclude:
           - os: windows-latest
             cmake: '3.10.x'
+
     steps:
     - name: Cache .hunter folder
       if: matrix.os != 'windows-latest'
@@ -97,27 +94,25 @@ jobs:
     - name: Install dependencies
       if: matrix.os == 'macos-latest'
       run: |
-        brew install libusb opencv
+        brew install opencv
 
     - name: Install dependencies
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        sudo apt-get install libusb-1.0-0-dev libopencv-dev
+        sudo apt-get install libopencv-dev
 
     - name: Install dependencies
       if: matrix.os == 'windows-latest'
       run: |
         choco install opencv
         echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        echo "C:\tools\opencv\build\x64\vc15\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        echo "CMAKE_ARGS=-D'CMAKE_SYSTEM_VERSION=${{ env.CMAKE_WINDOWS_SDK_VERSION }}'" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
     - name: Build (old CMake, gcc/Clang)
       if: matrix.cmake == '3.10.x' && matrix.os != 'windows-latest'
       run: |
-        cmake -H. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON' -D'DEPTHAI_BUILD_TESTS=ON' ${{ env.CMAKE_ARGS }}
-        cmake --build build -- -j4
+        cmake -H. -Bbuild -D'CMAKE_BUILD_TYPE=Release' -D'HUNTER_CONFIGURATION_TYPES=Release' -D'DEPTHAI_BUILD_EXAMPLES=ON' -D'DEPTHAI_BUILD_TESTS=ON' ${{ env.CMAKE_ARGS }}
+        cmake --build build --config Release -- -j4
 
     # CMake binaries unavailable
     # - name: Build (old CMake, MSVC)
@@ -129,8 +124,8 @@ jobs:
     - name: Build (newest CMake)
       if: matrix.cmake != '3.10.x'
       run: |
-        cmake -S . -B build -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON ${{ env.CMAKE_ARGS }}
-        cmake --build build --parallel 4
+        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_CONFIGURATION_TYPES=Release -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON ${{ env.CMAKE_ARGS }}
+        cmake --build build --parallel 4 --config Release
 
   integration:
     runs-on: ${{ matrix.os }}
@@ -138,16 +133,16 @@ jobs:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
         build-type: [Debug, Release]
-        shared: [Shared, Static]
+        shared: [true, false]
         platform: [x64]
         include:
           - platform: Win32
             os: windows-latest
-            shared: Shared
+            shared: true
             build-type: Debug
           - platform: Win32
             os: windows-latest
-            shared: Shared
+            shared: true
             build-type: Release
     steps:
     - name: Cache .hunter folder
@@ -155,13 +150,13 @@ jobs:
       uses: actions/cache@v2
       with:
         path: ~/.hunter/
-        key: hunter-${{ matrix.os }}-${{ matrix.shared }}
+        key: hunter-${{ matrix.os }}-shared_${{ matrix.shared }}
     - name: Cache .hunter folder
       if: matrix.os == 'windows-latest'
       uses: actions/cache@v2
       with:
         path: C:/.hunter/
-        key: hunter-${{ matrix.os }}-${{ matrix.shared }}
+        key: hunter-${{ matrix.os }}-shared_${{ matrix.shared }}
 
     - uses: actions/checkout@v2
       with:
@@ -170,33 +165,24 @@ jobs:
     - name: Install dependencies
       if: matrix.os == 'macos-latest'
       run: |
-        brew install libusb opencv
+        brew install opencv
 
     - name: Install dependencies
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        sudo apt-get install libusb-1.0-0-dev libopencv-dev
+        sudo apt-get install libopencv-dev
 
     - name: Install dependencies
       if: matrix.os == 'windows-latest'
       run: |
         choco install opencv
         echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-        echo "C:\tools\opencv\build\x64\vc15\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-        echo "CMAKE_ARGS=-D'CMAKE_SYSTEM_VERSION=${{ env.CMAKE_WINDOWS_SDK_VERSION }}'" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        echo "CMAKE_GENERATOR=Visual Studio 17 2022" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        echo "CMAKE_GENERATOR_PLATFORM=${{ matrix.platform }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
-    - name: Configure ${{ matrix.build-type }}, ${{ matrix.shared }}, ${{ matrix.platform }}
-      if: matrix.shared == 'Shared' && matrix.os == 'windows-latest'
-      run: cmake -A ${{ matrix.platform }} -S . -B build -D BUILD_SHARED_LIBS=ON -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} -D CMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/depthai_install ${{ env.CMAKE_ARGS }}
-
-    - name: Configure ${{ matrix.build-type }}, ${{ matrix.shared }}
-      if: matrix.shared == 'Shared' && matrix.os != 'windows-latest'
-      run: cmake -S . -B build -D BUILD_SHARED_LIBS=ON -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} -D CMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/depthai_install ${{ env.CMAKE_ARGS }}
-
-    - name: Configure ${{ matrix.build-type }}, ${{ matrix.shared }}
-      if: matrix.shared == 'Static'
-      run: cmake -S . -B build -D BUILD_SHARED_LIBS=OFF -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} -D CMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/depthai_install ${{ env.CMAKE_ARGS }}
+    - name: Configure ${{ matrix.build-type }}, shared ${{ matrix.shared }}, ${{ matrix.platform }}
+      run: cmake -S . -B build -D BUILD_SHARED_LIBS=${{ matrix.shared}} -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} -D CMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/depthai_install ${{ env.CMAKE_ARGS }}
 
     - name: Set path to shared library dll (Windows)
       if: matrix.os == 'windows-latest'
@@ -206,14 +192,14 @@ jobs:
       run: cmake --build build --config ${{ matrix.build-type }} --target install --parallel 4
 
     - name: Upload Win64 shared library
-      if: matrix.os == 'windows-latest' && matrix.shared == 'Shared' && matrix.platform == 'x64'
+      if: matrix.os == 'windows-latest' && matrix.shared && matrix.platform == 'x64'
       uses: actions/upload-artifact@v2.2.4
       with:
         name: windows-prebuilt-win64
         path: ${{ env.GITHUB_WORKSPACE }}/depthai_install/
 
     - name: Upload Win32 shared library
-      if: matrix.os == 'windows-latest' && matrix.shared == 'Shared' && matrix.platform == 'Win32'
+      if: matrix.os == 'windows-latest' && matrix.shared && matrix.platform == 'Win32'
       uses: actions/upload-artifact@v2.2.4
       with:
         name: windows-prebuilt-win32-no-opencv
@@ -224,21 +210,21 @@ jobs:
         cmake -S tests/integration/ -B tests/integration/build_add_subdirectory -D TEST_FIND_PACKAGE=OFF ${{ env.CMAKE_ARGS }}
         cmake --build tests/integration/build_add_subdirectory --config ${{ matrix.build-type }} --parallel 4
         cd tests/integration/build_add_subdirectory
-        ctest -C ${{ matrix.build-type }} --output-on-failure
+        ctest -C ${{ matrix.build-type }} --output-on-failure --no-tests=error
 
     - name: Build and test find_package (installed)
       run: |
         cmake -S tests/integration/ -B tests/integration/build_find_package -D TEST_FIND_PACKAGE=ON -D depthai_DIR=$GITHUB_WORKSPACE/depthai_install/lib/cmake/depthai ${{ env.CMAKE_ARGS }}
         cmake --build tests/integration/build_find_package --config ${{ matrix.build-type }} --parallel 4
         cd tests/integration/build_find_package
-        ctest -C ${{ matrix.build-type }} --output-on-failure
+        ctest -C ${{ matrix.build-type }} --output-on-failure --no-tests=error
 
     - name: Build and test find_package (build directory)
       run: |
         cmake -S tests/integration/ -B tests/integration/build_find_package_2 -D TEST_FIND_PACKAGE=ON -D depthai_DIR=$GITHUB_WORKSPACE/build ${{ env.CMAKE_ARGS }}
         cmake --build tests/integration/build_find_package_2 --config ${{ matrix.build-type }} --parallel 4
         cd tests/integration/build_find_package_2
-        ctest -C ${{ matrix.build-type }} --output-on-failure
+        ctest -C ${{ matrix.build-type }} --output-on-failure --no-tests=error
 
 
   release:

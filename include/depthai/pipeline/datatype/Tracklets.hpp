@@ -29,6 +29,37 @@ class Tracklets : public Buffer {
      * @returns Vector of object tracker data, carrying tracking information.
      */
     std::vector<Tracklet>& tracklets;
+
+    /**
+     * Retrieves image timestamp related to dai::Clock::now()
+     */
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;
+
+    /**
+     * Retrieves image timestamp directly captured from device's monotonic clock,
+     * not synchronized to host time. Used mostly for debugging
+     */
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
+
+    /**
+     * Retrieves image sequence number
+     */
+    int64_t getSequenceNum() const;
+
+    /**
+     * Sets image timestamp related to dai::Clock::now()
+     */
+    Tracklets& setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+
+    /**
+     * Sets image timestamp related to dai::Clock::now()
+     */
+    Tracklets& setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+
+    /**
+     * Retrieves image sequence number
+     */
+    Tracklets& setSequenceNum(int64_t sequenceNum);
 };
 
 }  // namespace dai
