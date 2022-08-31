@@ -12,7 +12,6 @@ int main() {
     // Define a source - color camera
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
     camRgb->setInterleaved(true);
-    camRgb->setIspScale(1, 3);  // 1920x1080 / 3 = 640x360
     camRgb->setPreviewSize(640, 360);
     camRgb->setFps(FPS);
 
@@ -35,21 +34,12 @@ int main() {
     left->out.link(stereo->left);
     right->out.link(stereo->right);
 
-    auto encLeft = pipeline.create<dai::node::VideoEncoder>();
-    encLeft->setDefaultProfilePreset(left->getFps(), dai::VideoEncoderProperties::Profile::H264_MAIN);
-    stereo->syncedLeft.link(encLeft->input);
-
-    auto encRight = pipeline.create<dai::node::VideoEncoder>();
-    encRight->setDefaultProfilePreset(left->getFps(), dai::VideoEncoderProperties::Profile::H264_MAIN);
-    stereo->syncedRight.link(encRight->input);
 
     // Script node will sync high-res frames
     auto script = pipeline.create<dai::node::Script>();
 
     // Send all streams to the Script node so we can sync them
     stereo->disparity.link(script->inputs["disp_in"]);
-    encLeft->bitstream.link(script->inputs["left_in"]);
-    encRight->bitstream.link(script->inputs["right_in"]);
     camRgb->preview.link(script->inputs["rgb_in"]);
 
     script->setScript(R"(
@@ -80,7 +70,7 @@ int main() {
                     else:
                         return False # We don't have synced frames yet
 
-                names = ['disp', 'left', 'right', 'rgb']
+                names = ['disp', 'rgb']
                 frames = dict() # Dict where we store all received frames
                 for name in names:
                     frames[name] = []
@@ -103,30 +93,17 @@ int main() {
                     time.sleep(0.001)  # Avoid lazy looping
                 )");
 
-    std::vector<std::string> scriptOut{"disp", "left", "right"};
+    std::vector<std::string> scriptOut{"disp", "rgb"};
     for(auto& name : scriptOut) {
         auto xout = pipeline.create<dai::node::XLinkOut>();
         xout->setStreamName(name);
         script->outputs[name + "_out"].link(xout->input);
     }
 
-    // Convert color stream RGB->NV12 so we can later encode the stream
-    auto typeManip = pipeline.create<dai::node::ImageManip>();
-    typeManip->initialConfig.setFrameType(dai::RawImgFrame::Type::NV12);
-    script->outputs["rgb_out"].link(typeManip->inputImage);
-
-    auto encRgb = pipeline.create<dai::node::VideoEncoder>();
-    encRgb->setDefaultProfilePreset(camRgb->getFps(), dai::VideoEncoderProperties::Profile::H264_MAIN);
-    typeManip->out.link(encRgb->input);
-    // Send encoded color stream to the host computer
-    auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
-    xoutRgb->setStreamName("rgb");
-    encRgb->bitstream.link(xoutRgb->input);
-
     dai::Device device(pipeline);
     // Rgb should be the first - as we will first.get() that frame, as it will arrive the latest to the host
     // because it first needs to be converted to NV12 and then encoded to H264.
-    std::vector<std::string> names{"rgb", "disp", "left", "right"};
+    std::vector<std::string> names{"rgb", "disp"};
     std::map<std::string, std::shared_ptr<dai::DataOutputQueue>> streams;
     for(auto& name : names) {
         streams[name] = device.getOutputQueue(name);
