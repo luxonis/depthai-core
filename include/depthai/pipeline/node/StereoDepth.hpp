@@ -349,6 +349,9 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      */
     void useHomographyRectification(bool useHomographyRectification);
 
+    //temporary, set vertical stereo
+    void setVerticalStereo(bool verticalStereo);
+
     /**
      * Equivalent to useHomographyRectification(!enableDistortionCorrection)
      */

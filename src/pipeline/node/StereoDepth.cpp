@@ -179,6 +179,10 @@ void StereoDepth::enableDistortionCorrection(bool enableDistortionCorrection) {
     useHomographyRectification(!enableDistortionCorrection);
 }
 
+void StereoDepth::setVerticalStereo(bool verticalStereo) {
+    properties.verticalStereo = verticalStereo;
+}
+
 void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
     presetMode = mode;
     switch(presetMode) {
