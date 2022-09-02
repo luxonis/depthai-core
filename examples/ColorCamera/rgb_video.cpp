@@ -6,6 +6,10 @@
 
 // Pass the argument `uvc` to run in UVC mode
 
+static int clamp(int num, int v0, int v1) {
+    return std::max(v0, std::min(num, v1));
+}
+
 int main(int argc, char** argv) {
     bool enableUVC = 0;
     bool enableToF = 0;
@@ -56,6 +60,10 @@ int main(int argc, char** argv) {
 
     xoutVideo->input.setBlocking(false);
     xoutVideo->input.setQueueSize(1);
+
+    auto controlIn = pipeline.create<dai::node::XLinkIn>();
+    controlIn->setStreamName("control");
+    controlIn->out.link(camRgb->inputControl);
 
     // Linking
     if (enableUVC) {
@@ -192,6 +200,10 @@ int main(int argc, char** argv) {
 
     auto micCfgQ = enableMic ? device.getInputQueue("micCfg") : nullptr;
     auto procCfgQ = enableMicNc ? device.getInputQueue("procCfg") : nullptr;
+
+    auto controlQueue = device.getInputQueue("control");
+
+    int lensPos = 150;
 
     using namespace std::chrono;
     auto tprev = steady_clock::now();
@@ -389,6 +401,18 @@ int main(int argc, char** argv) {
             procCfgQ->send(procConfig);
             // Note: at this step we should preferably reconfigure `micConfig.setMicGain...`
             // as the gain used by AudioProc might be different than direct MIC
+        } else if(key == 'i' || key == 'o' || key == 'k' || key == 'l' || key == ',' || key == '.') {
+            if(key == 'i') lensPos -= 100;
+            if(key == 'o') lensPos += 100;
+            if(key == 'k') lensPos -= 20;
+            if(key == 'l') lensPos += 20;
+            if(key == ',') lensPos -= 3;
+            if(key == '.') lensPos += 3;
+            lensPos = clamp(lensPos, 0, 255);
+            printf("Setting manual focus, lens position: %d\n", lensPos);
+            dai::CameraControl ctrl;
+            ctrl.setManualFocus(lensPos);
+            controlQueue->send(ctrl);
         }
     }
     return 0;
