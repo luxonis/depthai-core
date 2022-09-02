@@ -743,14 +743,13 @@ PipelineImpl::~PipelineImpl() {
     // stop();
 }
 
-
 std::vector<uint8_t> PipelineImpl::loadResource(dai::Path uri) {
     return loadResourceCwd(uri, "/pipeline");
 }
 
-static dai::Path getAbsUri(dai::Path& uri, dai::Path& cwd){
+static dai::Path getAbsUri(dai::Path& uri, dai::Path& cwd) {
     int colonLocation = uri.string().find(":");
-    std::string resourceType = uri.string().substr(0, colonLocation+1);
+    std::string resourceType = uri.string().substr(0, colonLocation + 1);
     dai::Path absAssetUri;
     if(uri.string()[colonLocation + 1] == '/') {  // Absolute path
         absAssetUri = uri;
@@ -776,7 +775,8 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd)
              }
              // If asset not found in the pipeline asset manager, check all nodes
              else {
-                 for(auto& node : p.getAllNodes()) {
+                 for(auto& kv : p.nodeMap) {
+                     auto& node = kv.second;
                      auto& assetManager = node->getAssetManager();
                      auto asset = assetManager.get(uri);
                      if(asset != nullptr) {

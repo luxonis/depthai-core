@@ -6,7 +6,7 @@
 namespace dai {
 
 Node::Node(const std::shared_ptr<PipelineImpl>& p, Id nodeId, std::unique_ptr<Properties> props)
-    : parent(p), id(nodeId), assetManager("/node/" + std::to_string(nodeId) + "/"), propertiesHolder(std::move(props)), properties(*propertiesHolder)  {}
+    : parent(p), id(nodeId), assetManager("/node/" + std::to_string(nodeId) + "/"), propertiesHolder(std::move(props)), properties(*propertiesHolder) {}
 
 tl::optional<OpenVINO::Version> Node::getRequiredOpenVINOVersion() {
     return tl::nullopt;

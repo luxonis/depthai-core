@@ -34,7 +34,10 @@ class AssetManager /*: public Assets*/ {
     std::map<std::string, std::shared_ptr<Asset>> assetMap;
     std::string rootPath;
 
+    std::string getRelativeKey(std::string key) const;
+
    public:
+    AssetManager();
     AssetManager(std::string rootPath);
     /**
      * Adds all assets in an array to the AssetManager
