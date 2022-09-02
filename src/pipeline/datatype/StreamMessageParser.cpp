@@ -26,6 +26,7 @@
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorData.hpp"
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/pipeline/datatype/SystemInformation.hpp"
+#include "depthai/pipeline/datatype/SystemInformationS3.hpp"
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 
@@ -47,6 +48,7 @@
 #include "depthai-shared/datatype/RawSpatialLocations.hpp"
 #include "depthai-shared/datatype/RawStereoDepthConfig.hpp"
 #include "depthai-shared/datatype/RawSystemInformation.hpp"
+#include "depthai-shared/datatype/RawSystemInformationS3.hpp"
 #include "depthai-shared/datatype/RawTracklets.hpp"
 #include "depthai-shared/utility/Serialization.hpp"
 
@@ -121,6 +123,10 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
 
         case DatatypeEnum::SystemInformation:
             return parseDatatype<RawSystemInformation>(metadataStart, serializedObjectSize, data);
+            break;
+
+        case DatatypeEnum::SystemInformationS3:
+            return parseDatatype<RawSystemInformationS3>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::SpatialLocationCalculatorData:
@@ -214,6 +220,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
 
         case DatatypeEnum::SystemInformation:
             return std::make_shared<SystemInformation>(parseDatatype<RawSystemInformation>(metadataStart, serializedObjectSize, data));
+            break;
+
+        case DatatypeEnum::SystemInformationS3:
+            return std::make_shared<SystemInformationS3>(parseDatatype<RawSystemInformationS3>(metadataStart, serializedObjectSize, data));
             break;
 
         case DatatypeEnum::SpatialLocationCalculatorData:
