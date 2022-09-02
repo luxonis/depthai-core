@@ -82,10 +82,10 @@ int main() {
 
                     if check_sync(frames, f.getTimestamp()): # Check if we have any synced frames
                         # Frames synced!
-                        node.warn(f"Synced frame!")
+                        node.info(f"Synced frame!")
                         for name, list in frames.items():
                             syncedF = list.pop(0) # We have removed older (excess) frames, so at positions 0 in dict we have synced frames
-                            node.warn(f"{name}, ts: {str(syncedF.getTimestamp())}, seq {str(syncedF.getSequenceNum())}")
+                            node.info(f"{name}, ts: {str(syncedF.getTimestamp())}, seq {str(syncedF.getSequenceNum())}")
                             node.io[name+'_out'].send(syncedF) # Send synced frames to the host
 
 
