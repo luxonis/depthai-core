@@ -111,8 +111,8 @@ jobs:
     - name: Build (old CMake, gcc/Clang)
       if: matrix.cmake == '3.10.x' && matrix.os != 'windows-latest'
       run: |
-        cmake -H. -Bbuild -D'DEPTHAI_BUILD_EXAMPLES=ON' -D'DEPTHAI_BUILD_TESTS=ON' ${{ env.CMAKE_ARGS }}
-        cmake --build build -- -j4
+        cmake -H. -Bbuild -D'CMAKE_BUILD_TYPE=Release' -D'HUNTER_CONFIGURATION_TYPES=Release' -D'DEPTHAI_BUILD_EXAMPLES=ON' -D'DEPTHAI_BUILD_TESTS=ON' ${{ env.CMAKE_ARGS }}
+        cmake --build build --config Release -- -j4
 
     # CMake binaries unavailable
     # - name: Build (old CMake, MSVC)
@@ -124,8 +124,8 @@ jobs:
     - name: Build (newest CMake)
       if: matrix.cmake != '3.10.x'
       run: |
-        cmake -S . -B build -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON ${{ env.CMAKE_ARGS }}
-        cmake --build build --parallel 4
+        cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_CONFIGURATION_TYPES=Release -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON ${{ env.CMAKE_ARGS }}
+        cmake --build build --parallel 4 --config Release
 
   integration:
     runs-on: ${{ matrix.os }}
@@ -192,14 +192,14 @@ jobs:
       run: cmake --build build --config ${{ matrix.build-type }} --target install --parallel 4
 
     - name: Upload Win64 shared library
-      if: matrix.os == 'windows-latest' && matrix.shared == 'Shared' && matrix.platform == 'x64'
+      if: matrix.os == 'windows-latest' && matrix.shared && matrix.platform == 'x64'
       uses: actions/upload-artifact@v2.2.4
       with:
         name: windows-prebuilt-win64
         path: ${{ env.GITHUB_WORKSPACE }}/depthai_install/
 
     - name: Upload Win32 shared library
-      if: matrix.os == 'windows-latest' && matrix.shared == 'Shared' && matrix.platform == 'Win32'
+      if: matrix.os == 'windows-latest' && matrix.shared && matrix.platform == 'Win32'
       uses: actions/upload-artifact@v2.2.4
       with:
         name: windows-prebuilt-win32-no-opencv

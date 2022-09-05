@@ -705,7 +705,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
         std::string errorMsg;
         std::tie(success, errorMsg) = flashConfigData(configJson);
         if(success) {
-            spdlog::debug("Success flashing the appMem configuration to '{}'", finalAppMem);
+            spdlog::debug("Success flashing the appMem configuration to '{}'", static_cast<std::int32_t>(finalAppMem));
         } else {
             throw std::runtime_error(errorMsg);
         }
@@ -736,6 +736,11 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, T
     // Check if 'allowFlashingBootloader' is set to true.
     if(!allowFlashingBootloader) {
         throw std::invalid_argument("DeviceBootloader wasn't initialized to allow flashing bootloader. Set 'allowFlashingBootloader' in constructor");
+    }
+
+    // Set specific type if AUTO
+    if(type == Type::AUTO) {
+        type = getType();
     }
 
     // Only flash memory is supported for now

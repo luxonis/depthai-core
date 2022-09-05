@@ -43,7 +43,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.17.0" LANGUAGES CXX C)
+project(depthai VERSION "2.17.3" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -456,6 +456,28 @@ endif()
 if(DEPTHAI_USB2_PATCH_ONLY_MODE)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_PATCH_ONLY_MODE)
 endif()
+
+# Helper function
+function(add_runtime_dependencies depending_target dependency)
+    if(WIN32)
+        if(TARGET ${dependency})
+            get_property(imported_configs TARGET ${dependency} PROPERTY IMPORTED_CONFIGURATIONS)
+            set(dlls "")
+            foreach(cfg ${imported_configs})
+                get_property(dll TARGET ${dependency} PROPERTY IMPORTED_LOCATION_${cfg})
+                set(dlls ${depthai_dll_libraries} $<$<CONFIG:${cfg}>:${dll}>)
+            endforeach()
+        endif()
+        file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
+        # Copy the required dlls
+        add_custom_command(TARGET ${depending_target} POST_BUILD COMMAND
+            ${CMAKE_COMMAND} -E copy_if_different ${dlls} ${depthai_dll_libraries} $<TARGET_FILE_DIR:${depending_target}>
+            COMMAND_EXPAND_LISTS
+        )
+    endif()
+endfunction()
+# Add libusb dll in build time
+add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
 
 ########################
 # OpenCV Support

@@ -34,14 +34,13 @@ class Node {
     /// Node identificator. Unique for every node on a single Pipeline
     using Id = std::int64_t;
     struct Connection;
-
-   protected:
     // fwd declare classes
     class Input;
     class Output;
     class InputMap;
     class OutputMap;
 
+   protected:
     std::unordered_map<std::string, Output*> outputRefs;
     std::unordered_map<std::string, Input*> inputRefs;
 
@@ -58,6 +57,7 @@ class Node {
     void setInputMapRefs(std::initializer_list<InputMap*> l);
     void setInputMapRefs(InputMap* inMapRef);
 
+   public:
     struct DatatypeHierarchy {
         DatatypeHierarchy(DatatypeEnum d, bool c) : datatype(d), descendants(c) {}
         DatatypeEnum datatype;
@@ -266,6 +266,20 @@ class Node {
         Input& operator[](const std::string& key);
     };
 
+    /// Connection between an Input and Output
+    struct Connection {
+        friend struct std::hash<Connection>;
+        Connection(Output out, Input in);
+        Id outputId;
+        std::string outputName;
+        std::string outputGroup;
+        Id inputId;
+        std::string inputName;
+        std::string inputGroup;
+        bool operator==(const Connection& rhs) const;
+    };
+
+   protected:
     // when Pipeline tries to serialize and construct on remote, it will check if all connected nodes are on same pipeline
     std::weak_ptr<PipelineImpl> parent;
 
@@ -312,19 +326,7 @@ class Node {
     /// Retrieves reference to node inputs
     std::vector<const Input*> getInputRefs() const;
 
-    /// Connection between an Input and Output
-    struct Connection {
-        friend struct std::hash<Connection>;
-        Connection(Output out, Input in);
-        Id outputId;
-        std::string outputName;
-        std::string outputGroup;
-        Id inputId;
-        std::string inputName;
-        std::string inputGroup;
-        bool operator==(const Connection& rhs) const;
-    };
-
+    /// Constructs Node
     Node(const std::shared_ptr<PipelineImpl>& p, Id nodeId, std::unique_ptr<Properties> props);
     virtual ~Node() = default;
 
