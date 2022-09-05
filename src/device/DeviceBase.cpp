@@ -490,7 +490,10 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     pimpl->setPattern(fmt::format("[{}] [{}] {}", deviceInfo.mxid, deviceInfo.name, LOG_DEFAULT_PATTERN));
 
     // Check if WD env var is set
-    std::chrono::milliseconds watchdogTimeout = device::XLINK_WATCHDOG_TIMEOUT;
+    std::chrono::milliseconds watchdogTimeout = device::XLINK_USB_WATCHDOG_TIMEOUT;
+    if(deviceInfo.protocol == X_LINK_TCP_IP) {
+        watchdogTimeout = device::XLINK_TCP_WATCHDOG_TIMEOUT;
+    }
     auto watchdogMsStr = utility::getEnv("DEPTHAI_WATCHDOG");
     if(!watchdogMsStr.empty()) {
         // Try parsing the string as a number
@@ -637,8 +640,8 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
                     std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
                     prevPingTime = lastWatchdogPingTime;
                 }
-                // Recheck if watchdogRunning wasn't already closed
-                if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout) {
+                // Recheck if watchdogRunning wasn't already closed and close if more than twice of WD passed
+                if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout * 2) {
                     spdlog::warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
                     // ping was missed, reset the device
                     watchdogRunning = false;
