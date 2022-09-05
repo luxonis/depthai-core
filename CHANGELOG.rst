@@ -2,6 +2,25 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+
+2.17.3 (2022-08-05)
+-----------
+* Updated FW - BMI270 IMU improvements
+* Added seq & timestamps for more messages
+* New boards support
+* Windows DLL improvements (install libusb dll alongside libdepthai-core.dll)
+* Updated BL to 0.0.20 (improves upon stuck/unreachable device issues)
+* XLink - improved connecting directly to given IP
+* StereoDepth ImgFrame metadata w/h when decimation filter is enabled
+* Intrinsic read fix #379
+* Fixed XLinkIn large (>5MiB) messages transfer
+* Fixed AssetManager set function to allow overwriting assets
+* Fixed Path.hpp 'filesystem' include issues
+* Reverted: #526 - until the startup bug is resolved
+* PoE device discovery improvements (improves upon stuck/unreachable device issues)
+* Contributors: Alex Bougdan, Szabolcs Gergely, Martin Peterlin, Sachin Guruswamy
+
+
 2.17.0 (2022-07-11)
 -----------
 * Support for new S2/Pro devices
