@@ -96,22 +96,22 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
 
         // Static global handler
         static XLinkGlobalHandler_t xlinkGlobalHandler = {};
-        xlinkGlobalHandler.protocol = XLINK_USB_VSC;
+        xlinkGlobalHandler.protocol = X_LINK_USB_VSC;
         xlinkGlobalHandler.options = javavm;
         auto status = XLinkInitialize(&xlinkGlobalHandler);
         std::string errorMsg;
         const auto ERROR_MSG_USB_TIP = fmt::format("If running in a container, make sure that the following is set: \"{}\"",
                                                    "-v /dev/bus/usb:/dev/bus/usb --device-cgroup-rule='c 189:* rmw'");
-        if(XLINK_SUCCESS != status) {
+        if(X_LINK_SUCCESS != status) {
             std::string errorMsg = fmt::format("Couldn't initialize XLink: {}. ", XLinkErrorToStr(status));
-            if(status == XLINK_INIT_USB_ERROR) {
+            if(status == X_LINK_INIT_USB_ERROR) {
                 errorMsg += ERROR_MSG_USB_TIP;
             }
             spdlog::debug("Initialize failed - {}", errorMsg);
             throw std::runtime_error(errorMsg);
         }
         // Check that USB protocol is available
-        if(!XLinkIsProtocolInitialized(XLINK_USB_VSC)) {
+        if(!XLinkIsProtocolInitialized(X_LINK_USB_VSC)) {
             spdlog::warn("USB protocol not available - {}", ERROR_MSG_USB_TIP);
         }
 
