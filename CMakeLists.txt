@@ -219,6 +219,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/SPIIn.cpp
     src/pipeline/node/FeatureTracker.cpp
     src/pipeline/node/DetectionParser.cpp
+    src/pipeline/node/Sync.cpp
     src/pipeline/node/test/MyProducer.cpp
     src/pipeline/node/test/MyConsumer.cpp
     src/pipeline/datatype/Buffer.cpp
