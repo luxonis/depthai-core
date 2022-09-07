@@ -39,7 +39,7 @@ int main() {
     // Script node will sync high-res frames
     auto script = pipeline.create<dai::node::Script>();
 
-    # Send both streams to the Script node so we can sync them
+    // Send both streams to the Script node so we can sync them
     stereo->disparity.link(script->inputs["disp_in"]);
     camRgb->video.link(script->inputs["rgb_in"]);
 
