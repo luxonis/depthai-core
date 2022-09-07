@@ -4,15 +4,17 @@
 // Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-static constexpr auto FPS = 15;
+static constexpr auto FPS = 30;
 
 int main() {
     dai::Pipeline pipeline;
 
     // Define a source - color camera
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
-    camRgb->setInterleaved(true);
-    camRgb->setPreviewSize(640, 360);
+    // Since we are saving RGB frames in Script node we need to make the
+    // video pool size larger, otherwise the pipeline will freeze because
+    // the ColorCamera won't be able to produce new video frames.
+    camRgb->setVideoNumFramesPool(10);
     camRgb->setFps(FPS);
 
     auto left = pipeline.create<dai::node::MonoCamera>();
@@ -37,17 +39,20 @@ int main() {
     // Script node will sync high-res frames
     auto script = pipeline.create<dai::node::Script>();
 
-    // Send all streams to the Script node so we can sync them
+    # Send both streams to the Script node so we can sync them
     stereo->disparity.link(script->inputs["disp_in"]);
-    camRgb->preview.link(script->inputs["rgb_in"]);
+    camRgb->video.link(script->inputs["rgb_in"]);
 
     script->setScript(R"(
-        FPS=15
+        FPS=30
         import time
         from datetime import timedelta
         import math
 
-        MS_THRESHOL=math.ceil(500 / FPS)  # Timestamp threshold (in miliseconds) under which frames will be considered synced
+        # Timestamp threshold (in miliseconds) under which frames will be considered synced.
+        # Lower number means frames will have less delay between them, which can potentially
+        # lead to dropped frames.
+        MS_THRESHOL=math.ceil(500 / FPS)
 
         def check_sync(queues, timestamp):
             matching_frames = []
@@ -93,6 +98,7 @@ int main() {
         )");
 
     std::vector<std::string> scriptOut{"disp", "rgb"};
+    // Create XLinkOut for disp/rgb streams
     for(auto& name : scriptOut) {
         auto xout = pipeline.create<dai::node::XLinkOut>();
         xout->setStreamName(name);
@@ -100,8 +106,9 @@ int main() {
     }
 
     dai::Device device(pipeline);
-    // Rgb should be the first - as we will first.get() that frame, as it will arrive the latest to the host
-    // because it first needs to be converted to NV12 and then encoded to H264.
+
+    device.setLogOutputLevel(dai::LogLevel::INFO)
+
     std::vector<std::string> names{"rgb", "disp"};
     std::map<std::string, std::shared_ptr<dai::DataOutputQueue>> streams;
     for(auto& name : names) {
@@ -112,6 +119,7 @@ int main() {
             auto name = iter.first;
             auto queue = iter.second;
             auto img = queue->get<dai::ImgFrame>();
+            // Display timestamp/sequence number of two synced frames
             std::cout << "Stream " << name << ", timestamp: " << img->getTimestamp().time_since_epoch().count()
                       << ", sequence number: " << img->getSequenceNum() << std::endl;
         }
