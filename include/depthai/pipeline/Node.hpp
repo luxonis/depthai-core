@@ -340,13 +340,25 @@ class Node {
     /// Retrieves reference to node inputs
     std::vector<const Input*> getInputRefs() const;
 
+    /// Retrieves reference to node outputs
+    std::vector<OutputMap*> getOutputMapRefs();
+
+    /// Retrieves reference to node inputs
+    std::vector<InputMap*> getInputMapRefs();
+
     /// Retrieves reference to specific output
     Output* getOutputRef(std::string name);
     Output* getOutputRef(std::string group, std::string name);
 
-    /// Retrieves reference to specific output
+    /// Retrieves reference to specific input
     Input* getInputRef(std::string name);
     Input* getInputRef(std::string group, std::string name);
+
+    /// Retrieves reference to specific output map
+    OutputMap* getOutputMapRef(std::string group);
+
+    /// Retrieves reference to specific input map
+    InputMap* getInputMapRef(std::string group);
 
     /// Connection between an Input and Output
     struct Connection {

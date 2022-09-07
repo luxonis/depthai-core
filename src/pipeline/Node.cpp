@@ -329,6 +329,42 @@ Node::Input* Node::getInputRef(std::string group, std::string name) {
     return nullptr;
 }
 
+std::vector<Node::InputMap*> Node::getInputMapRefs(){
+    std::vector<Node::InputMap*> tmpInputMapRefs;
+
+    tmpInputMapRefs.reserve(inputMapRefs.size());
+    // Add inputs from Maps
+    for(const auto& kvMap : inputMapRefs) {
+        tmpInputMapRefs.push_back(kvMap.second);
+    }
+    return tmpInputMapRefs;
+}
+
+std::vector<Node::OutputMap*> Node::getOutputMapRefs(){
+    std::vector<Node::OutputMap*> tmpOutputMapRefs;
+
+    tmpOutputMapRefs.reserve(outputMapRefs.size());
+    // Add inputs from Maps
+    for(const auto& kvMap : outputMapRefs) {
+        tmpOutputMapRefs.push_back(kvMap.second);
+    }
+    return tmpOutputMapRefs;
+}
+
+Node::InputMap* Node::getInputMapRef(std::string group){
+    if(inputMapRefs.count(group) == 0) {
+        return nullptr;
+    }
+    return inputMapRefs[group];
+}
+
+Node::OutputMap* Node::getOutputMapRef(std::string group){
+    if(outputMapRefs.count(group) == 0){
+        return nullptr;
+    }
+    return outputMapRefs[group];
+}
+
 void Node::setOutputRefs(std::initializer_list<Node::Output*> l) {
     for(auto& outRef : l) {
         outputRefs[outRef->name] = outRef;
