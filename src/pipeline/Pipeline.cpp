@@ -300,6 +300,10 @@ void PipelineImpl::setXLinkChunkSize(int sizeBytes) {
     globalProperties.xlinkChunkSize = sizeBytes;
 }
 
+void PipelineImpl::setImageManipCmxSizeAdjust(int sizeAdjustBytes) {
+    globalProperties.imageManipAdjustCmxSize = sizeAdjustBytes;
+}
+
 // Remove node capability
 void PipelineImpl::remove(std::shared_ptr<Node> toRemove) {
     // Search for this node in 'nodes' vector.
