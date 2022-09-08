@@ -490,7 +490,10 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     pimpl->setPattern(fmt::format("[{}] [{}] {}", deviceInfo.mxid, deviceInfo.name, LOG_DEFAULT_PATTERN));
 
     // Check if WD env var is set
-    std::chrono::milliseconds watchdogTimeout = device::XLINK_WATCHDOG_TIMEOUT;
+    std::chrono::milliseconds watchdogTimeout = device::XLINK_USB_WATCHDOG_TIMEOUT;
+    if(deviceInfo.protocol == X_LINK_TCP_IP) {
+        watchdogTimeout = device::XLINK_TCP_WATCHDOG_TIMEOUT;
+    }
     auto watchdogMsStr = utility::getEnv("DEPTHAI_WATCHDOG");
     if(!watchdogMsStr.empty()) {
         // Try parsing the string as a number
@@ -532,12 +535,6 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         // Unbooted device found, boot and connect with XLinkConnection constructor
         connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
     } else if(deviceInfo.state == X_LINK_BOOTLOADER || deviceInfo.state == X_LINK_FLASH_BOOTED) {
-        // If device is in flash booted state, reset to bootloader and then continue by booting appropriate FW
-        if(deviceInfo.state == X_LINK_FLASH_BOOTED) {
-            // Boot bootloader and set current deviceInfo to new device state
-            deviceInfo = XLinkConnection::bootBootloader(deviceInfo);
-        }
-
         // Scope so DeviceBootloader is disconnected
         {
             DeviceBootloader bl(deviceInfo);
@@ -643,8 +640,8 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
                     std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
                     prevPingTime = lastWatchdogPingTime;
                 }
-                // Recheck if watchdogRunning wasn't already closed
-                if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout) {
+                // Recheck if watchdogRunning wasn't already closed and close if more than twice of WD passed
+                if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout * 2) {
                     spdlog::warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
                     // ping was missed, reset the device
                     watchdogRunning = false;
@@ -953,9 +950,9 @@ void DeviceBase::flashCalibration2(CalibrationHandler calibrationDataHandler) {
     getFlashingPermissions(factoryPermissions, protectedPermissions);
     spdlog::debug("Flashing calibration. Factory permissions {}, Protected permissions {}", factoryPermissions, protectedPermissions);
 
-    if(!calibrationDataHandler.validateCameraArray()) {
+    /* if(!calibrationDataHandler.validateCameraArray()) {
         throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
-    }
+    } */
 
     bool success;
     std::string errorMsg;
@@ -1001,9 +998,9 @@ void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandl
         throw std::runtime_error("Calling factory API is not allowed in current configuration");
     }
 
-    if(!calibrationDataHandler.validateCameraArray()) {
+    /* if(!calibrationDataHandler.validateCameraArray()) {
         throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
-    }
+    } */
 
     bool success;
     std::string errorMsg;
@@ -1066,6 +1063,42 @@ std::vector<std::uint8_t> DeviceBase::readFactoryCalibrationRaw() {
     return eepromDataRaw;
 }
 
+void DeviceBase::flashEepromClear() {
+    bool factoryPermissions = false;
+    bool protectedPermissions = false;
+    getFlashingPermissions(factoryPermissions, protectedPermissions);
+    spdlog::debug("Clearing User EEPROM contents. Factory permissions {}, Protected permissions {}", factoryPermissions, protectedPermissions);
+
+    if(!protectedPermissions) {
+        throw std::runtime_error("Calling EEPROM clear API is not allowed in current configuration");
+    }
+
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) = pimpl->rpcClient->call("eepromClear", protectedPermissions, factoryPermissions).as<std::tuple<bool, std::string>>();
+    if(!success) {
+        throw std::runtime_error(errorMsg);
+    }
+}
+
+void DeviceBase::flashFactoryEepromClear() {
+    bool factoryPermissions = false;
+    bool protectedPermissions = false;
+    getFlashingPermissions(factoryPermissions, protectedPermissions);
+    spdlog::debug("Clearing User EEPROM contents. Factory permissions {}, Protected permissions {}", factoryPermissions, protectedPermissions);
+
+    if(!protectedPermissions || !factoryPermissions) {
+        throw std::runtime_error("Calling factory EEPROM clear API is not allowed in current configuration");
+    }
+
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) = pimpl->rpcClient->call("eepromFactoryClear", protectedPermissions, factoryPermissions).as<std::tuple<bool, std::string>>();
+    if(!success) {
+        throw std::runtime_error(errorMsg);
+    }
+}
+
 bool DeviceBase::startPipeline() {
     // Deprecated
     return true;
@@ -1107,9 +1140,6 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     if(!assetStorage.empty()) {
         pimpl->rpcClient->call("setAssets", assets);
 
-        // allocate, returns a pointer to memory on device side
-        auto memHandle = pimpl->rpcClient->call("memAlloc", static_cast<std::uint32_t>(assetStorage.size())).as<uint32_t>();
-
         // Transfer the whole assetStorage in a separate thread
         const std::string streamAssetStorage = "__stream_asset_storage";
         std::thread t1([this, &streamAssetStorage, &assetStorage]() {
@@ -1122,12 +1152,8 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
             } while(offset < static_cast<int64_t>(assetStorage.size()));
         });
 
-        // Open a channel to transfer AssetStorage
-        pimpl->rpcClient->call("readFromXLink", streamAssetStorage, memHandle, assetStorage.size());
+        pimpl->rpcClient->call("readAssetStorageFromXLink", streamAssetStorage, assetStorage.size());
         t1.join();
-
-        // After asset storage is transfers, set the asset storage
-        pimpl->rpcClient->call("setAssetStorage", memHandle, assetStorage.size());
     }
 
     // print assets on device side for test
