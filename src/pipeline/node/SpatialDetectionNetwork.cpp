@@ -12,7 +12,11 @@ namespace node {
 // Base Detection Network Class
 //--------------------------------------------------------------------
 SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : SpatialDetectionNetwork(par, nodeId, std::make_unique<Properties>()) {}
+    : NodeCRTP<DetectionNetwork, SpatialDetectionNetwork, SpatialDetectionNetworkProperties>(par, nodeId, std::make_unique<Properties>()) {
+    setInputRefs({&input, &inputDepth});
+    setOutputRefs({&out, &boundingBoxMapping, &passthrough, &passthroughDepth});
+}
+
 SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
     : NodeCRTP<DetectionNetwork, SpatialDetectionNetwork, SpatialDetectionNetworkProperties>(par, nodeId, std::move(props)) {
     setInputRefs({&input, &inputDepth});
