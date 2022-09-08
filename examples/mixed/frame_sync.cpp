@@ -108,7 +108,7 @@ int main() {
     dai::Device device(pipeline);
 
     device.setLogOutputLevel(dai::LogLevel::INFO);
-
+    device.setLogLevel(dai::LogLevel::INFO);
     std::vector<std::string> names{"rgb", "disp"};
     std::map<std::string, std::shared_ptr<dai::DataOutputQueue>> streams;
     for(auto& name : names) {
