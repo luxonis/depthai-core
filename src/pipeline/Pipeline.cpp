@@ -300,6 +300,10 @@ void PipelineImpl::setXLinkChunkSize(int sizeBytes) {
     globalProperties.xlinkChunkSize = sizeBytes;
 }
 
+void PipelineImpl::setImageManipCmxSizeAdjust(int sizeAdjustBytes) {
+    globalProperties.imageManipAdjustCmxSize = sizeAdjustBytes;
+}
+
 void PipelineImpl::setBoardConfig(BoardConfig board) {
     this->board = board;
 }
