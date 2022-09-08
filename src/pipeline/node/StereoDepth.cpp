@@ -15,7 +15,6 @@ StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
       rawConfig(std::make_shared<RawStereoDepthConfig>()),
       initialConfig(rawConfig) {
     // 'properties' defaults already set
-    initialConfig.set(properties.initialConfig);
     setInputRefs({&inputConfig, &left, &right});
     setOutputRefs({&depth,
                    &disparity,
