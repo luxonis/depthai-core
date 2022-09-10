@@ -23,7 +23,7 @@ jobs:
   # Testing
   test:
     runs-on: ['self-hosted', 'hil-stability', 'linux']
-
+    timeout-minutes: 1450 # 24h & 10minutes
     steps:
     - name: Cache .hunter folder
       uses: actions/cache@v2
