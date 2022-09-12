@@ -7,9 +7,8 @@
 namespace dai {
 namespace node {
 
-ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : ColorCamera(par, nodeId, std::make_unique<ColorCamera::Properties>()) {}
-ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(par, nodeId, std::move(props)),
+ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
+    : NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(par, nodeId, std::make_unique<ColorCamera::Properties>()),
       rawControl(std::make_shared<RawCameraControl>()),
       initialControl(rawControl) {
     properties.boardSocket = CameraBoardSocket::AUTO;
@@ -22,6 +21,14 @@ ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
     properties.fps = 30.0;
     properties.previewKeepAspectRatio = true;
 
+    setInputRefs({&inputConfig, &inputControl});
+    setOutputRefs({&video, &preview, &still, &isp, &raw});
+}
+
+ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(par, nodeId, std::move(props)),
+      rawControl(std::make_shared<RawCameraControl>(properties.initialControl)),
+      initialControl(rawControl) {
     setInputRefs({&inputConfig, &inputControl});
     setOutputRefs({&video, &preview, &still, &isp, &raw});
 }

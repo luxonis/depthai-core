@@ -3,10 +3,14 @@
 namespace dai {
 namespace node {
 
-XLinkOut::XLinkOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : XLinkOut(par, nodeId, std::make_unique<XLinkOut::Properties>()) {}
+XLinkOut::XLinkOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
+    : NodeCRTP<DeviceNode, XLinkOut, XLinkOutProperties>(par, nodeId, std::make_unique<XLinkOut::Properties>()) {
+    properties.maxFpsLimit = -1;
+    setInputRefs(&input);
+}
+
 XLinkOut::XLinkOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
     : NodeCRTP<DeviceNode, XLinkOut, XLinkOutProperties>(par, nodeId, std::move(props)) {
-    properties.maxFpsLimit = -1;
     setInputRefs(&input);
 }
 

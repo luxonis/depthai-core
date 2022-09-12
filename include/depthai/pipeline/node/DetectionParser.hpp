@@ -21,9 +21,6 @@ class DetectionParser : public NodeCRTP<DeviceNode, DetectionParser, DetectionPa
    protected:
     Properties& getProperties();
 
-   private:
-    std::shared_ptr<RawEdgeDetectorConfig> rawConfig;
-
    public:
     DetectionParser(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     DetectionParser(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
