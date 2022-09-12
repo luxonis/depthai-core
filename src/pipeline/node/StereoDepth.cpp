@@ -30,6 +30,7 @@ StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
                    &confidenceMap});
 
     setDefaultProfilePreset(presetMode);
+    setLeftRightCheck(false);
 }
 
 StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
@@ -54,6 +55,7 @@ StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
                    &pixelDescriptors});
 
     setDefaultProfilePreset(presetMode);
+    setLeftRightCheck(false);
 }
 
 StereoDepth::Properties& StereoDepth::getProperties() {
