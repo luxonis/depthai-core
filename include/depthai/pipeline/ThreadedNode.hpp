@@ -3,6 +3,7 @@
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/utility/AtomicBool.hpp"
 #include "depthai/utility/JoiningThread.hpp"
+#include <spdlog/async_logger.h>
 
 namespace dai {
 
@@ -25,6 +26,8 @@ class ThreadedNode : public Node {
 
     // check if still running
     bool isRunning() const;
+
+    std::shared_ptr<spdlog::async_logger> logger;
 };
 
 }  // namespace dai
