@@ -821,6 +821,100 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, T
     return {result.success, result.errorMsg};
 }
 
+std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::function<void(float)> progressCb, const dai::Path& path) {
+    // Check if 'allowFlashingBootloader' is set to true.
+    if(!allowFlashingBootloader) {
+        throw std::invalid_argument("DeviceBootloader wasn't initialized to allow flashing bootloader. Set 'allowFlashingBootloader' in constructor");
+    }
+    // Check that type is NETWORK
+    const auto type = Type::NETWORK;
+    if(getType() != Type::NETWORK) {
+        throw std::runtime_error("User Bootloader is only available for NETWORK bootloader");
+    }
+    // Only flash memory is supported for now
+    const auto memory = Memory::FLASH;
+    // if(memory != Memory::FLASH) {
+    //     throw std::invalid_argument("Only FLASH memory is supported for now");
+    // }
+
+    // Check if bootloader version is adequate
+    if(getVersion() < Version("0.0.21")) {
+        throw std::runtime_error("Current bootloader version doesn't support flashing user bootloader");
+    }
+
+    // Retrieve bootloader
+    std::vector<uint8_t> package;
+    if(!path.empty()) {
+        std::ifstream fwStream(path, std::ios::binary);
+        if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash bootloader, binary at path: {} doesn't exist", path));
+        package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
+    } else {
+        package = getEmbeddedBootloaderBinary(type);
+    }
+
+    // Send request to FLASH USER BOOTLOADER
+    Request::UpdateFlashEx2 updateFlashEx2;
+    updateFlashEx2.memory = memory;
+    updateFlashEx2.offset = dai::bootloader::getStructure(type).offset.at(Section::USER_BOOTLOADER);
+    updateFlashEx2.totalSize = static_cast<uint32_t>(package.size());
+    updateFlashEx2.numPackets = ((static_cast<uint32_t>(package.size()) - 1) / bootloader::XLINK_STREAM_MAX_SIZE) + 1;
+    if(!sendRequest(updateFlashEx2)) return {false, "Couldn't send bootloader flash request"};
+
+    // After that send numPackets of data
+    stream->writeSplit(package.data(), package.size(), bootloader::XLINK_STREAM_MAX_SIZE);
+
+    // Then wait for response by bootloader
+    // Wait till FLASH_COMPLETE response
+    Response::FlashComplete result;
+    result.success = 0;  // TODO remove these inits after fix https://github.com/luxonis/depthai-bootloader-shared/issues/4
+    result.errorMsg[0] = 0;
+    do {
+        std::vector<uint8_t> data;
+        if(!receiveResponseData(data)) return {false, "Couldn't receive bootloader response"};
+
+        Response::FlashStatusUpdate update;
+        if(parseResponse(data, update)) {
+            // if progress callback is set
+            if(progressCb != nullptr) {
+                progressCb(update.progress);
+            }
+            // if flash complete response arrived, break from while loop
+        } else if(parseResponse(data, result)) {
+            break;
+        } else {
+            // Unknown response, shouldn't happen
+            return {false, "Unknown response from bootloader while flashing"};
+        }
+
+    } while(true);
+
+    // Calculate checksum and update config
+    // Try reading existing config, or create a new one
+    nlohmann::json configJson;
+    try {
+        configJson = readConfigData();
+    } catch(const std::exception& ex) {
+        spdlog::debug("Error while trying to read existing bootloader configuration: {}", ex.what());
+    }
+    // Set the userBl fields (in forward/backward compat manner)
+    const auto userBlSize = static_cast<std::uint32_t>(package.size());
+    const auto userBlChecksum = sbr_compute_checksum(package.data(), static_cast<uint32_t>(package.size()));
+    configJson["userBlSize"] = userBlSize;
+    configJson["userBlChecksum"] = userBlChecksum;
+    // Flash back the rest of configuration as is
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) = flashConfigData(configJson);
+    if(success) {
+        spdlog::debug("Success flashing the configuration userBlSize to '{}' and userBlChecksum to '{}'", userBlSize, userBlChecksum);
+    } else {
+        throw std::runtime_error(errorMsg);
+    }
+
+    // Return if flashing was successful
+    return {result.success, result.errorMsg};
+}
+
 std::tuple<bool, std::string> DeviceBootloader::flashGpioModeBootHeader(Memory memory, int gpioMode) {
     // TODO(themarpe) - use memory param
     (void)memory;

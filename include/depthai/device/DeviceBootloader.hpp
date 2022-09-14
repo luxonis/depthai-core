@@ -308,6 +308,13 @@ class DeviceBootloader {
     std::tuple<bool, std::string> flashBootloader(Memory memory, Type type, std::function<void(float)> progressCallback, const dai::Path& path = {});
 
     /**
+     * Flashes user bootloader to the current board. Available for NETWORK bootloader type
+     * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
+     * @param path Optional parameter to custom bootloader to flash
+     */
+    std::tuple<bool, std::string> flashUserBootloader(std::function<void(float)> progressCallback, const dai::Path& path = {});
+
+    /**
      * Flash boot header which boots same as equivalent GPIO mode would
      * @param gpioMode GPIO mode equivalent
      */
@@ -557,6 +564,9 @@ inline std::ostream& operator<<(std::ostream& out, const dai::DeviceBootloader::
             break;
         case dai::DeviceBootloader::Section::BOOTLOADER:
             out << "BOOTLOADER";
+            break;
+        case dai::DeviceBootloader::Section::USER_BOOTLOADER:
+            out << "USER_BOOTLOADER";
             break;
         case dai::DeviceBootloader::Section::BOOTLOADER_CONFIG:
             out << "BOOTLOADER_CONFIG";
