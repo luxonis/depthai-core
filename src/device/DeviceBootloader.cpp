@@ -822,14 +822,10 @@ std::tuple<bool, std::string> DeviceBootloader::flashBootloader(Memory memory, T
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::function<void(float)> progressCb, const dai::Path& path) {
-    // Check if 'allowFlashingBootloader' is set to true.
-    if(!allowFlashingBootloader) {
-        throw std::invalid_argument("DeviceBootloader wasn't initialized to allow flashing bootloader. Set 'allowFlashingBootloader' in constructor");
-    }
     // Check that type is NETWORK
     const auto type = Type::NETWORK;
     if(getType() != Type::NETWORK) {
-        throw std::runtime_error("User Bootloader is only available for NETWORK bootloader");
+        throw std::runtime_error("Flashing User Bootloader is only available for NETWORK bootloaders");
     }
     // Only flash memory is supported for now
     const auto memory = Memory::FLASH;
@@ -838,15 +834,15 @@ std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::functio
     // }
 
     // Check if bootloader version is adequate
-    if(getVersion() < Version("0.0.21")) {
-        throw std::runtime_error("Current bootloader version doesn't support flashing user bootloader");
+    if(getVersion().getSemver() < Version("0.0.21")) {
+        throw std::runtime_error("Current bootloader version doesn't support User Bootloader");
     }
 
     // Retrieve bootloader
     std::vector<uint8_t> package;
     if(!path.empty()) {
         std::ifstream fwStream(path, std::ios::binary);
-        if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash bootloader, binary at path: {} doesn't exist", path));
+        if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash User Bootloader, binary at path: {} doesn't exist", path));
         package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
     } else {
         package = getEmbeddedBootloaderBinary(type);
@@ -858,6 +854,13 @@ std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::functio
     updateFlashEx2.offset = dai::bootloader::getStructure(type).offset.at(Section::USER_BOOTLOADER);
     updateFlashEx2.totalSize = static_cast<uint32_t>(package.size());
     updateFlashEx2.numPackets = ((static_cast<uint32_t>(package.size()) - 1) / bootloader::XLINK_STREAM_MAX_SIZE) + 1;
+
+    // Checks first
+    const auto MAX_USER_BOOTLOADER_SIZE = dai::bootloader::getStructure(type).size.at(Section::USER_BOOTLOADER);
+    if(updateFlashEx2.totalSize > MAX_USER_BOOTLOADER_SIZE) {
+        throw std::runtime_error(fmt::format("Selected User Bootloader is too large {} / {}B", updateFlashEx2.totalSize, MAX_USER_BOOTLOADER_SIZE));
+    }
+
     if(!sendRequest(updateFlashEx2)) return {false, "Couldn't send bootloader flash request"};
 
     // After that send numPackets of data
