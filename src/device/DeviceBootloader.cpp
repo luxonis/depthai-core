@@ -438,6 +438,11 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
 
     deviceInfo.state = X_LINK_BOOTLOADER;
 
+    // Specify "last" ping time (5s in the future, for some grace time)
+    {
+        std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
+        lastWatchdogPingTime = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    }
     // prepare watchdog thread, which will keep device alive
     watchdogThread = std::thread([this]() {
         try {
@@ -451,6 +456,10 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
                     stream.write(watchdogKeepalive);
                 } catch(const std::exception&) {
                     break;
+                }
+                {
+                    std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
+                    lastWatchdogPingTime = std::chrono::steady_clock::now();
                 }
                 // Ping with a period half of that of the watchdog timeout
                 std::this_thread::sleep_for(bootloader::XLINK_WATCHDOG_TIMEOUT / 2);
@@ -470,6 +479,28 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
 
         // Sleep a bit, so device isn't available anymore
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    });
+
+    // Start monitor thread for host - makes sure that device is responding to pings, otherwise it disconnects
+    monitorThread = std::thread([this]() {
+        while(watchdogRunning) {
+            // Ping with a period half of that of the watchdog timeout
+            std::this_thread::sleep_for(bootloader::XLINK_WATCHDOG_TIMEOUT);
+            // Check if wd was pinged in the specified watchdogTimeout time.
+            decltype(lastWatchdogPingTime) prevPingTime;
+            {
+                std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
+                prevPingTime = lastWatchdogPingTime;
+            }
+            // Recheck if watchdogRunning wasn't already closed and close if more than twice of WD passed
+            if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > bootloader::XLINK_WATCHDOG_TIMEOUT * 2) {
+                spdlog::warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
+                // ping was missed, reset the device
+                watchdogRunning = false;
+                // close the underlying connection
+                connection->close();
+            }
+        }
     });
 
     // Bootloader device ready, check for version
@@ -499,6 +530,8 @@ void DeviceBootloader::close() {
 
     // Stop watchdog first (this resets and waits for link to fall down)
     if(watchdogThread.joinable()) watchdogThread.join();
+    // At the end stop the monitor thread
+    if(monitorThread.joinable()) monitorThread.join();
 
     // Close stream
     // BUGBUG investigate ownership; can another thread accessing this at the same time?

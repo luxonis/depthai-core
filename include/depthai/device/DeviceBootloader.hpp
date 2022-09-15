@@ -511,6 +511,11 @@ class DeviceBootloader {
     std::thread watchdogThread;
     std::atomic<bool> watchdogRunning{true};
 
+    // Monitor thread
+    std::thread monitorThread;
+    std::mutex lastWatchdogPingTimeMtx;
+    std::chrono::steady_clock::time_point lastWatchdogPingTime;
+
     // bootloader stream
     std::unique_ptr<XLinkStream> stream;
 
