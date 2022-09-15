@@ -664,6 +664,23 @@ DeviceBootloader::MemoryInfo DeviceBootloader::getMemoryInfo(Memory memory) {
     return mem;
 }
 
+bool DeviceBootloader::isUserBootloader() {
+    // Check if bootloader version is adequate
+    if(getVersion().getSemver() < Version(Request::IsUserBootloader::VERSION)) {
+        return false;
+    }
+
+    // Send request to retrieve if user bootloader is loaded
+    Request::IsUserBootloader req{};
+    sendRequestThrow(req);
+
+    // Receive response
+    Response::IsUserBootloader user;
+    receiveResponseThrow(user);
+
+    return user.isUserBootloader;
+}
+
 std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(std::function<void(float)> progressCb,
                                                                                std::vector<uint8_t> package,
                                                                                Memory memory) {

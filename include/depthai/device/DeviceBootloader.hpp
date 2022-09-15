@@ -429,6 +429,11 @@ class DeviceBootloader {
     MemoryInfo getMemoryInfo(Memory memory);
 
     /**
+     * Retrieves whether current bootloader is User Bootloader (B out of A/B configuration)
+     */
+    bool isUserBootloader();
+
+    /**
      * Boots a custom FW in memory
      * @param fw
      * @throws A runtime exception if there are any communication issues
