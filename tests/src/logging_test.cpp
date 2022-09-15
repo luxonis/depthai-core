@@ -52,6 +52,7 @@ int test(dai::LogLevel logLevel) {
         node.info("INFO")
         node.warn("WARN")
         node.error("ERROR")
+        node.critical("CRITICAL")
 
         message = Buffer(10)
         node.io["out"].send(message)
@@ -67,8 +68,8 @@ int test(dai::LogLevel logLevel) {
     device.setLogOutputLevel(logLevel);
     auto spdSetLevel = logLevelToSpdlogLevel(logLevel);
 
-    // -2 below is for critical and no_error, which shouldn't arrive
-    std::array<bool, spdlog::level::n_levels - 2> arrivedLogs;
+    // -1 below is for no_error, which cannot arrive
+    std::array<bool, spdlog::level::n_levels - 1> arrivedLogs;
     for(auto& level: arrivedLogs){
         level = false;
     }
@@ -123,10 +124,9 @@ TEST_CASE("ERROR") {
     test(dai::LogLevel::ERR);
 }
 
-// Not yet implemented in the script node
-// TEST_CASE("CRITICAL") {
-//     test(dai::LogLevel::CRITICAL);
-// }
+TEST_CASE("CRITICAL") {
+    test(dai::LogLevel::CRITICAL);
+}
 
 TEST_CASE("OFF") {
     test(dai::LogLevel::OFF);
