@@ -20,7 +20,6 @@ DetectionNetwork::DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int
     properties.parser.confidenceThreshold = 0.5;
 }
 
-
 DetectionNetwork::DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
     : NodeCRTP<NeuralNetwork, DetectionNetwork, DetectionNetworkProperties>(par, nodeId, std::move(props)) {
     setInputRefs({&input});

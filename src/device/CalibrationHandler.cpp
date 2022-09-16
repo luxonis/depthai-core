@@ -437,6 +437,14 @@ std::vector<std::vector<float>> CalibrationHandler::getImuToCameraExtrinsics(Cam
     }
 }
 
+std::vector<std::vector<float>> CalibrationHandler::getStereoVerticalRectificationRotation() {
+    std::vector<std::vector<float>> rotationMatrix = eepromData.stereoRectificationData.rectifiedRotationVertical;
+    if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3) {
+        throw std::runtime_error("Rectified Rotation Matrix Doesn't exist ");
+    }
+    return rotationMatrix;
+}
+
 std::vector<std::vector<float>> CalibrationHandler::getStereoRightRectificationRotation() {
     std::vector<std::vector<float>> rotationMatrix = eepromData.stereoRectificationData.rectifiedRotationRight;
     if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3) {
@@ -710,6 +718,15 @@ void CalibrationHandler::setImuExtrinsics(CameraBoardSocket destCameraId,
     return;
 }
 
+void CalibrationHandler::setStereoVertical(CameraBoardSocket cameraId, std::vector<std::vector<float>> rectifiedRotation) {
+    if(rectifiedRotation.size() != 3 || rectifiedRotation[0].size() != 3) {
+        throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
+    }
+    eepromData.stereoRectificationData.rectifiedRotationVertical = rectifiedRotation;
+    eepromData.stereoRectificationData.verticalCameraSocket = cameraId;
+    return;
+}
+
 void CalibrationHandler::setStereoLeft(CameraBoardSocket cameraId, std::vector<std::vector<float>> rectifiedRotation) {
     if(rectifiedRotation.size() != 3 || rectifiedRotation[0].size() != 3) {
         throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
@@ -731,7 +748,8 @@ void CalibrationHandler::setStereoRight(CameraBoardSocket cameraId, std::vector<
 bool CalibrationHandler::validateCameraArray() {
     if(eepromData.cameraData.size() > 1) {
         if(eepromData.cameraData.find(dai::CameraBoardSocket::LEFT) != eepromData.cameraData.end()) {
-            return checkSrcLinks(dai::CameraBoardSocket::LEFT) || checkSrcLinks(dai::CameraBoardSocket::RIGHT);
+            return checkSrcLinks(dai::CameraBoardSocket::LEFT) || checkSrcLinks(dai::CameraBoardSocket::RIGHT)
+                   || checkSrcLinks(dai::CameraBoardSocket::VERTICAL);
         } else {
             spdlog::debug(
                 "make sure the head of the Extrinsics is your left camera. Please cross check the data by creating a json file using "

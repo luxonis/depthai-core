@@ -38,7 +38,7 @@ int main() {
 
     while(true) {
         auto sysInfo = qSysInfo->get<dai::SystemInformationS3>();
-        if(sysInfo){
+        if(sysInfo) {
             printSystemInformation(*sysInfo);
         }
     }

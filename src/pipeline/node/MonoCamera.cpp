@@ -21,7 +21,6 @@ MonoCamera::MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId,
     : NodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>(par, nodeId, std::move(props)),
       rawControl(std::make_shared<RawCameraControl>(properties.initialControl)),
       initialControl(rawControl) {
-
     setInputRefs({&inputControl});
     setOutputRefs({&out, &raw});
 }

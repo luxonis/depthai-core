@@ -44,6 +44,10 @@ RawImgFrame::Type ImgFrame::getType() const {
     return img.fb.type;
 }
 
+RawImgFrame ImgFrame::get() const {
+    return img;
+}
+
 // setters
 ImgFrame& ImgFrame::setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
     // Set timestamp from timepoint
