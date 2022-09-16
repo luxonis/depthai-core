@@ -1134,13 +1134,11 @@ std::tuple<bool, std::string> DeviceBootloader::flashConfigFile(const dai::Path&
 
 DeviceBootloader::Config DeviceBootloader::readConfig(Memory memory, Type type) {
     auto json = readConfigData(memory, type);
-    // Implicit parse from json to Config
-    return json;
+    return Config::fromJson(json);
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashConfig(const Config& config, Memory memory, Type type) {
-    // Implicit parse from Config to json
-    return flashConfigData(config, memory, type);
+    return flashConfigData(config.toJson(), memory, type);
 }
 
 // Boot memory
@@ -1403,11 +1401,13 @@ UsbSpeed DeviceBootloader::Config::getUsbMaxSpeed() {
 }
 
 void DeviceBootloader::Config::setMacAddress(std::string mac) {
-    std::array<uint8_t, 6> a;
-    int last = -1;
-    int rc = std::sscanf(mac.c_str(), "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx%n", &a[0], &a[1], &a[2], &a[3], &a[4], &a[5], &last);
-    if(rc != 6 || static_cast<long>(mac.size()) != last) {
-        throw std::invalid_argument("Invalid MAC address format " + mac);
+    std::array<uint8_t, 6> a = {0, 0, 0, 0, 0, 0};
+    if(mac != "") {
+        int last = -1;
+        int rc = std::sscanf(mac.c_str(), "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx%n", &a[0], &a[1], &a[2], &a[3], &a[4], &a[5], &last);
+        if(rc != 6 || static_cast<long>(mac.size()) != last) {
+            throw std::invalid_argument("Invalid MAC address format " + mac);
+        }
     }
 
     // Set the parsed mac address
@@ -1427,6 +1427,22 @@ std::string DeviceBootloader::Config::getMacAddress() {
                   network.mac[5]);
 
     return std::string(macStr.data());
+}
+
+nlohmann::json DeviceBootloader::Config::toJson() const {
+    // Get current config & add data (but don't override)
+    nlohmann::json configValues = *this;
+    auto dataCopy = data;
+    dataCopy.update(configValues);
+    return dataCopy;
+}
+
+DeviceBootloader::Config DeviceBootloader::Config::fromJson(nlohmann::json json) {
+    // Parse out json (implicitly) and
+    Config cfg = json;
+    // save json data as is (to retain unknown values)
+    cfg.data = json;
+    return cfg;
 }
 
 }  // namespace dai

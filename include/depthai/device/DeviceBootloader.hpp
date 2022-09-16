@@ -75,6 +75,15 @@ class DeviceBootloader {
         void setUsbMaxSpeed(UsbSpeed speed);
         /// Get maxUsbSpeed
         UsbSpeed getUsbMaxSpeed();
+
+        /// To JSON
+        nlohmann::json toJson() const;
+
+        /// from JSON
+        static Config fromJson(nlohmann::json);
+
+       private:
+        nlohmann::json data;
     };
 
     /// Bootloader version structure
