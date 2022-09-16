@@ -1,10 +1,10 @@
 #define CATCH_CONFIG_MAIN
-#include <catch2/catch.hpp>
+#include <spdlog/spdlog.h>
 
+#include <catch2/catch.hpp>
 #include <chrono>
 #include <thread>
 
-#include <spdlog/spdlog.h>
 #include "depthai/depthai.hpp"
 
 int test(dai::LogLevel logLevel) {
