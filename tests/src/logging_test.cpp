@@ -7,28 +7,6 @@
 #include <spdlog/spdlog.h>
 #include "depthai/depthai.hpp"
 
-using namespace dai;
-static spdlog::level::level_enum logLevelToSpdlogLevel(LogLevel level, spdlog::level::level_enum defaultValue = spdlog::level::off) {
-    switch(level) {
-        case LogLevel::TRACE:
-            return spdlog::level::trace;
-        case LogLevel::DEBUG:
-            return spdlog::level::debug;
-        case LogLevel::INFO:
-            return spdlog::level::info;
-        case LogLevel::WARN:
-            return spdlog::level::warn;
-        case LogLevel::ERR:
-            return spdlog::level::err;
-        case LogLevel::CRITICAL:
-            return spdlog::level::critical;
-        case LogLevel::OFF:
-            return spdlog::level::off;
-    }
-    // Default
-    return defaultValue;
-}
-
 int test(dai::LogLevel logLevel) {
     // Create pipeline
     dai::Pipeline pipeline;
@@ -66,20 +44,20 @@ int test(dai::LogLevel logLevel) {
 
     device.setLogLevel(logLevel);
     device.setLogOutputLevel(logLevel);
-    auto spdSetLevel = logLevelToSpdlogLevel(logLevel);
 
     // -1 below is for no_error, which cannot arrive
     std::array<bool, spdlog::level::n_levels - 1> arrivedLogs;
-    for(auto& level: arrivedLogs){
+    for(auto& level : arrivedLogs) {
         level = false;
     }
     bool testPassed = true;
-    auto callbackSink = [&testPassed, &arrivedLogs, spdSetLevel](dai::LogMessage message) {
+    auto logLevelConverted = static_cast<typename std::underlying_type<dai::LogLevel>::type>(logLevel);
+    auto callbackSink = [&testPassed, &arrivedLogs, logLevelConverted](dai::LogMessage message) {
         // Convert message to spd for easier comparison
-        auto spdLevel = logLevelToSpdlogLevel(message.level);
-        REQUIRE(spdLevel >= spdSetLevel);
-        if(spdLevel < arrivedLogs.size()) {
-            arrivedLogs[static_cast<int>(spdLevel)] = true;
+        auto messageLevelConverted = static_cast<typename std::underlying_type<dai::LogLevel>::type>(message.level);
+        REQUIRE(messageLevelConverted >= logLevelConverted);
+        if(messageLevelConverted < arrivedLogs.size()) {
+            arrivedLogs[messageLevelConverted] = true;
         } else {
             FAIL();
         }
@@ -92,7 +70,7 @@ int test(dai::LogLevel logLevel) {
     std::this_thread::sleep_for(milliseconds(200));  // Wait for the logs to arrive
 
     for(int i = 0; i < arrivedLogs.size(); i++) {
-        if(i < logLevelToSpdlogLevel(logLevel)){
+        if(i < logLevelConverted) {
             REQUIRE(!arrivedLogs[i]);
         } else {
             REQUIRE(arrivedLogs[i]);
