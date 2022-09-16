@@ -197,6 +197,7 @@ hunter_private_data(
 dai_add_test(color_camera_node_test src/color_camera_node_test.cpp)
 dai_add_test(image_manip_node_test src/image_manip_node_test.cpp)
 dai_add_test(pipeline_test src/pipeline_test.cpp)
+dai_add_test(logging_test src/logging_test.cpp)
 
 dai_add_test(neural_network_test src/neural_network_test.cpp)
 dai_test_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
