@@ -10,7 +10,7 @@ function(clangformat_setup files target)
   endif()
 
   if(NOT EXISTS ${CLANG_FORMAT_BIN})
-    find_program(CLANG_FORMAT_BIN_tmp NAMES clang-format clang-format-10)
+    find_program(CLANG_FORMAT_BIN_tmp NAMES clang-format clang-format-10 clang-format-11 clang-format-12 clang-format-13 clang-format-14)
     if(CLANG_FORMAT_BIN_tmp)
       set(CLANG_FORMAT_BIN ${CLANG_FORMAT_BIN_tmp})
       unset(CLANG_FORMAT_BIN_tmp)
@@ -46,7 +46,7 @@ endfunction()
 
 
 macro(header_directories header_dirs return_list)
-  
+
   foreach(header_dir ${header_dirs})
     file(GLOB_RECURSE new_list "${header_dir}/*.hpp")
     set(file_list "")

@@ -11,6 +11,14 @@
 namespace dai {
 /**
  * CalibrationHandler is an interface to read/load/write structured calibration and device data.
+ * The following fields are protected and aren't allowed to be overriden by default:
+ *  - boardName
+ *  - boardRev
+ *  - boardConf
+ *  - hardwareConf
+ *  - batchName
+ *  - batchTime
+ *  - boardOptions
  */
 class CalibrationHandler {
    public:
@@ -41,6 +49,13 @@ class CalibrationHandler {
     explicit CalibrationHandler(EepromData eepromData);
 
     /**
+     * Construct a new Calibration Handler object from JSON EepromData.
+     *
+     * @param eepromDataJson EepromData as JSON
+     */
+    static CalibrationHandler fromJson(nlohmann::json eepromDataJson);
+
+    /**
      * Get the Eeprom Data object
      *
      * @return EepromData object which contains the raw calibration data
@@ -57,28 +72,8 @@ class CalibrationHandler {
      * respective cropped image
      * @param bottomRightPixelId (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
      * the respective cropped image
-     * @return Represents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
-     *
-     * Matrix representation of intrinsic matrix
-     * \f[ \text{Intrinsic Matrix} = \left [ \begin{matrix}
-     *                                        f_x & 0 & c_x \\
-     *                                        0 & f_y & c_y \\
-     *                                        0 &  0  & 1
-     *                                      \end{matrix} \right ] \f]
-     *
-     */
-    std::vector<std::vector<float>> getCameraIntrinsics(
-        CameraBoardSocket cameraId, int resizeWidth = -1, int resizeHeight = -1, Point2f topLeftPixelId = Point2f(), Point2f bottomRightPixelId = Point2f());
-
-    /**
-     * Get the Camera Intrinsics object
-     *
-     * @param cameraId Uses the cameraId to identify which camera intrinsics to return
-     * @param destShape resized width and height of the image for which intrinsics is requested.
-     * @param topLeftPixelId (x, y) point represents the top left corner coordinates of the cropped image which is used to modify the intrinsics for the
-     * respective cropped image
-     * @param bottomRightPixelId (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
-     * the respective cropped image
+     * @param keepAspectRatio Enabling this will scale on width or height depending on which provides the max resolution and crops the remaning part of the
+     * other side
      * @return Represents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      *
      * Matrix representation of intrinsic matrix
@@ -90,9 +85,11 @@ class CalibrationHandler {
      *
      */
     std::vector<std::vector<float>> getCameraIntrinsics(CameraBoardSocket cameraId,
-                                                        Size2f destShape,
+                                                        int resizeWidth = -1,
+                                                        int resizeHeight = -1,
                                                         Point2f topLeftPixelId = Point2f(),
-                                                        Point2f bottomRightPixelId = Point2f());
+                                                        Point2f bottomRightPixelId = Point2f(),
+                                                        bool keepAspectRatio = true);
 
     /**
      * Get the Camera Intrinsics object
@@ -103,6 +100,32 @@ class CalibrationHandler {
      * respective cropped image
      * @param bottomRightPixelId (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
      * the respective cropped image
+     * @param keepAspectRatio Enabling this will scale on width or height depending on which provides the max resolution and crops the remaning part of the
+     * other side
+     * @return Represents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
+     *
+     * Matrix representation of intrinsic matrix
+     * \f[ \text{Intrinsic Matrix} = \left [ \begin{matrix}
+     *                                        f_x & 0 & c_x \\
+     *                                        0 & f_y & c_y \\
+     *                                        0 &  0  & 1
+     *                                      \end{matrix} \right ] \f]
+     *
+     */
+    std::vector<std::vector<float>> getCameraIntrinsics(
+        CameraBoardSocket cameraId, Size2f destShape, Point2f topLeftPixelId = Point2f(), Point2f bottomRightPixelId = Point2f(), bool keepAspectRatio = true);
+
+    /**
+     * Get the Camera Intrinsics object
+     *
+     * @param cameraId Uses the cameraId to identify which camera intrinsics to return
+     * @param destShape resized width and height of the image for which intrinsics is requested.
+     * @param topLeftPixelId (x, y) point represents the top left corner coordinates of the cropped image which is used to modify the intrinsics for the
+     * respective cropped image
+     * @param bottomRightPixelId (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
+     * the respective cropped image
+     * @param keepAspectRatio Enabling this will scale on width or height depending on which provides the max resolution and crops the remaning part of the
+     * other side
      * @return Represents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      *
      * Matrix representation of intrinsic matrix
@@ -116,7 +139,8 @@ class CalibrationHandler {
     std::vector<std::vector<float>> getCameraIntrinsics(CameraBoardSocket cameraId,
                                                         std::tuple<int, int> destShape,
                                                         Point2f topLeftPixelId = Point2f(),
-                                                        Point2f bottomRightPixelId = Point2f());
+                                                        Point2f bottomRightPixelId = Point2f(),
+                                                        bool keepAspectRatio = true);
 
     /**
      * Get the Default Intrinsics object
@@ -288,6 +312,13 @@ class CalibrationHandler {
     bool eepromToJsonFile(dai::Path destPath) const;
 
     /**
+     * Get JSON representation of calibration data
+     *
+     * @return JSON structure
+     */
+    nlohmann::json eepromToJson() const;
+
+    /**
      * Set the Board Info object
      *
      * @param version Sets the version of the Calibration data(Current version is 6)
@@ -295,6 +326,36 @@ class CalibrationHandler {
      * @param boardRev set your board revision id.
      */
     void setBoardInfo(std::string boardName, std::string boardRev);
+
+    /**
+     * Set the Board Info object. Creates version 7 EEPROM data
+     *
+     * @param productName Sets product name (alias).
+     * @param boardName Sets board name.
+     * @param boardRev Sets board revision id.
+     * @param boardConf Sets board configuration id.
+     * @param hardwareConf Sets hardware configuration id.
+     * @param batchName Sets batch name.
+     * @param batchTime Sets batch time (unix timestamp).
+     * @param boardCustom Sets a custom board (Default empty string).
+     */
+    void setBoardInfo(std::string productName,
+                      std::string boardName,
+                      std::string boardRev,
+                      std::string boardConf,
+                      std::string hardwareConf,
+                      std::string batchName,
+                      uint64_t batchTime,
+                      uint32_t boardOptions,
+                      std::string boardCustom = "");
+
+    /**
+     * Set the productName which acts as alisas for users to identify the device
+     *
+     * @param productName Sets product name (alias).
+     */
+
+    void setProductName(std::string productName);
 
     /**
      * Set the Camera Intrinsics object

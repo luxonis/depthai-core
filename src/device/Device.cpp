@@ -27,6 +27,12 @@ Device::Device(const Pipeline& pipeline) : DeviceBase(pipeline.getOpenVINOVersio
     tryStartPipeline(pipeline);
 }
 
+template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool>>
+Device::Device(const Pipeline& pipeline, T usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), usb2Mode) {
+    tryStartPipeline(pipeline);
+}
+template Device::Device(const Pipeline&, bool);
+
 Device::Device(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) : DeviceBase(pipeline.getOpenVINOVersion(), maxUsbSpeed) {
     tryStartPipeline(pipeline);
 }
@@ -43,6 +49,12 @@ Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::P
     : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, pathToCmd) {
     tryStartPipeline(pipeline);
 }
+
+template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool>>
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, T usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, usb2Mode) {
+    tryStartPipeline(pipeline);
+}
+template Device::Device(const Pipeline&, const DeviceInfo&, bool);
 
 Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, maxUsbSpeed) {
     tryStartPipeline(pipeline);
@@ -267,9 +279,8 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
         }
 
         // Create DataInputQueue's
-        inputQueueMap[xlinkIn->getStreamName()] = std::make_shared<DataInputQueue>(connection, xlinkIn->getStreamName());
         // set max data size, for more verbosity
-        inputQueueMap[xlinkIn->getStreamName()]->setMaxDataSize(xlinkIn->getMaxDataSize());
+        inputQueueMap[xlinkIn->getStreamName()] = std::make_shared<DataInputQueue>(connection, xlinkIn->getStreamName(), 16, true, xlinkIn->getMaxDataSize());
     }
     for(const auto& kv : pipeline.getNodeMap()) {
         const auto& node = kv.second;

@@ -1,7 +1,9 @@
 #pragma once
 #if(__cplusplus >= 201703L) || (_MSVC_LANG >= 201703L)
-    #include <filesystem>
     #define DEPTHAI_NODISCARD [[nodiscard]]
+    #if(defined(_MSC_VER)) || (defined(__has_include) && __has_include(<filesystem>)) || (__cplusplus >= 202002L)
+        #include <filesystem>
+    #endif
 #else
     #define DEPTHAI_NODISCARD
 #endif
