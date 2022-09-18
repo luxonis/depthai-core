@@ -34,19 +34,13 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
         try {
             while(running) {
                 // Blocking -- parse packet and gather timing information
-                std::shared_ptr<dai::ADatatype> data;
-                auto packet{stream.readMove()};
+                auto packet = stream.readMove();
                 const auto t1Parse = std::chrono::steady_clock::now();
-                try {
-                    data = StreamMessageParser::parseMessageToADatatype(&packet);
-                } catch(const std::exception&) {
-                    throw;
-                }
+                const auto data = StreamMessageParser::parseMessageToADatatype(&packet);
+                const auto t2Parse = std::chrono::steady_clock::now();
 
                 // TMP TMP
                 data->packet = std::make_shared<decltype(packet)>(std::move(packet));
-
-                const auto t2Parse = std::chrono::steady_clock::now();
 
                 // Trace level debugging
                 if(spdlog::get_level() == spdlog::level::trace) {
@@ -57,12 +51,14 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                                   name,
                                   std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
                                   data->getRaw()->data.size(),
-                                  type,
+                                  static_cast<std::int32_t>(type),
                                   spdlog::to_hex(metadata));
                 }
 
                 // Add 'data' to queue
-                queue.push(data);
+                if(!queue.push(data)) {
+                    throw std::runtime_error(fmt::format("Underlying queue destructed"));
+                }
 
                 // Increment numPacketsRead
                 numPacketsRead++;
@@ -147,8 +143,8 @@ int DataOutputQueue::addCallback(std::function<void(std::string, std::shared_ptr
     // Get unique id
     int id = uniqueCallbackId++;
 
-    // assign callback
-    callbacks[id] = callback;
+    // move assign callback
+    callbacks[id] = std::move(callback);
 
     // return id assigned to the callback
     return id;
@@ -156,12 +152,12 @@ int DataOutputQueue::addCallback(std::function<void(std::string, std::shared_ptr
 
 int DataOutputQueue::addCallback(std::function<void(std::shared_ptr<ADatatype>)> callback) {
     // Create a wrapper
-    return addCallback([callback](std::string, std::shared_ptr<ADatatype> message) { callback(message); });
+    return addCallback([callback = std::move(callback)](std::string, std::shared_ptr<ADatatype> message) { callback(std::move(message)); });
 }
 
 int DataOutputQueue::addCallback(std::function<void()> callback) {
     // Create a wrapper
-    return addCallback([callback](std::string, std::shared_ptr<ADatatype>) { callback(); });
+    return addCallback([callback = std::move(callback)](std::string, std::shared_ptr<ADatatype>) { callback(); });
 }
 
 bool DataOutputQueue::removeCallback(int callbackId) {
@@ -177,10 +173,11 @@ bool DataOutputQueue::removeCallback(int callbackId) {
 }
 
 // DATA INPUT QUEUE
-DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize, bool blocking)
-    : queue(maxSize, blocking), name(streamName) {
+DataInputQueue::DataInputQueue(
+    const std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize, bool blocking, std::size_t maxDataSize)
+    : queue(maxSize, blocking), name(streamName), maxDataSize(maxDataSize) {
     // open stream with default XLINK_USB_BUFFER_MAX_SIZE write size
-    XLinkStream stream(std::move(conn), name, device::XLINK_USB_BUFFER_MAX_SIZE);
+    XLinkStream stream(std::move(conn), name, maxDataSize + device::XLINK_MESSAGE_METADATA_MAX_SIZE);
 
     writingThread = std::thread([this, stream = std::move(stream)]() mutable {
         std::uint64_t numPacketsSent = 0;
@@ -293,7 +290,9 @@ void DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg) {
         throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize));
     }
 
-    queue.push(rawMsg);
+    if(!queue.push(rawMsg)) {
+        throw std::runtime_error(fmt::format("Underlying queue destructed"));
+    }
 }
 void DataInputQueue::send(const std::shared_ptr<ADatatype>& msg) {
     if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");

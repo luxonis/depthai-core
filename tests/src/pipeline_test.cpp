@@ -1,5 +1,4 @@
 #define CATCH_CONFIG_MAIN
-#define CATCH_CONFIG_NO_WINDOWS_SEH
 #include <catch2/catch.hpp>
 
 // Include depthai library

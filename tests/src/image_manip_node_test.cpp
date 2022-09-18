@@ -31,48 +31,33 @@ int main() {
     xin->out.link(imageManip->inputImage);
     imageManip->out.link(xout->input);
 
-    // Wait 5 seconds for device
-    auto wait = steady_clock::now();
-    bool found;
-    dai::DeviceInfo deviceInfo;
+    // Try connecting to an available device
+    dai::Device d(p);
 
-    do {
-        std::tie(found, deviceInfo) = dai::Device::getFirstAvailableDevice();
+    auto in = d.getInputQueue("in");
+    auto out = d.getOutputQueue("out");
 
-        if(found) {
-            dai::Device d(p, deviceInfo);
+    // Send 10 messages
+    for(int i = 0; i < 10; i++) {
+        // Create 'rgb interleaved' frame
+        dai::ImgFrame inFrame;
+        inFrame.getData().resize(originalWidth * originalHeight * 3);
+        inFrame.setWidth(originalWidth);
+        inFrame.setHeight(originalHeight);
+        inFrame.setType(dai::ImgFrame::Type::RGB888p);
 
-            auto in = d.getInputQueue("in");
-            auto out = d.getOutputQueue("out");
+        // Send the frame
+        in->send(inFrame);
 
-            // Send 10 messages
-            for(int i = 0; i < 10; i++) {
-                // Create 'rgb interleaved' frame
-                dai::ImgFrame inFrame;
-                inFrame.getData().resize(originalWidth * originalHeight * 3);
-                inFrame.setWidth(originalWidth);
-                inFrame.setHeight(originalHeight);
-                inFrame.setType(dai::ImgFrame::Type::RGB888p);
+        // Retrieve the resized frame
+        auto outFrame = out->get<dai::ImgFrame>();
 
-                // Send the frame
-                in->send(inFrame);
-
-                // Retrieve the resized frame
-                auto outFrame = out->get<dai::ImgFrame>();
-
-                // Check that out frame is resized
-                if(outFrame->getWidth() != width || outFrame->getHeight() != height) {
-                    return -1;
-                }
-            }
-
-            // Exit with success error code
-            return 0;
+        // Check that out frame is resized
+        if(outFrame->getWidth() != width || outFrame->getHeight() != height) {
+            return -1;
         }
+    }
 
-        this_thread::sleep_for(1s);
-    } while(!found && steady_clock::now() - wait < 5s);
-
-    // Otherwise exit with error
-    return -1;
+    // Exit with success error code
+    return 0;
 }

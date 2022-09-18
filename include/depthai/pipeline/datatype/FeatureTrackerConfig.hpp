@@ -32,66 +32,66 @@ class FeatureTrackerConfig : public Buffer {
      * Set corner detector algorithm type.
      * @param cornerDetector Corner detector type, HARRIS or SHI_THOMASI
      */
-    void setCornerDetector(dai::FeatureTrackerConfig::CornerDetector::Type cornerDetector);
+    FeatureTrackerConfig& setCornerDetector(dai::FeatureTrackerConfig::CornerDetector::Type cornerDetector);
 
     /**
      * Set corner detector full configuration.
      * @param config Corner detector configuration
      */
-    void setCornerDetector(dai::FeatureTrackerConfig::CornerDetector config);
+    FeatureTrackerConfig& setCornerDetector(dai::FeatureTrackerConfig::CornerDetector config);
 
     /**
      * Set optical flow as motion estimation algorithm type.
      */
-    void setOpticalFlow();
+    FeatureTrackerConfig& setOpticalFlow();
 
     /**
      * Set optical flow full configuration.
      * @param config Optical flow configuration
      */
-    void setOpticalFlow(dai::FeatureTrackerConfig::MotionEstimator::OpticalFlow config);
+    FeatureTrackerConfig& setOpticalFlow(dai::FeatureTrackerConfig::MotionEstimator::OpticalFlow config);
 
     /**
      * Set hardware accelerated motion estimation using block matching.
      * Faster than optical flow (software implementation) but might not be as accurate.
      */
-    void setHwMotionEstimation();
+    FeatureTrackerConfig& setHwMotionEstimation();
 
     /**
      * Set number of target features to detect.
      * @param numTargetFeatures Number of features
      */
-    void setNumTargetFeatures(std::int32_t numTargetFeatures);
+    FeatureTrackerConfig& setNumTargetFeatures(std::int32_t numTargetFeatures);
 
     /**
      * Enable or disable motion estimator.
      * @param enable
      */
-    void setMotionEstimator(bool enable);
+    FeatureTrackerConfig& setMotionEstimator(bool enable);
 
     /**
      * Set motion estimator full configuration.
      * @param config Motion estimator configuration
      */
-    void setMotionEstimator(dai::FeatureTrackerConfig::MotionEstimator config);
+    FeatureTrackerConfig& setMotionEstimator(dai::FeatureTrackerConfig::MotionEstimator config);
 
     /**
      * Enable or disable feature maintainer.
      * @param enable
      */
-    void setFeatureMaintainer(bool enable);
+    FeatureTrackerConfig& setFeatureMaintainer(bool enable);
 
     /**
      * Set feature maintainer full configuration.
      * @param config feature maintainer configuration
      */
-    void setFeatureMaintainer(dai::FeatureTrackerConfig::FeatureMaintainer config);
+    FeatureTrackerConfig& setFeatureMaintainer(dai::FeatureTrackerConfig::FeatureMaintainer config);
 
     /**
      * Set explicit configuration.
      * @param config Explicit configuration
      */
-    void set(dai::RawFeatureTrackerConfig config);
+    FeatureTrackerConfig& set(dai::RawFeatureTrackerConfig config);
 
     /**
      * Retrieve configuration data for FeatureTracker.

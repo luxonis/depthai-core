@@ -21,14 +21,14 @@ class NeuralNetwork : public NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperti
 
    protected:
     tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion() override;
-    OpenVINO::Version networkOpenvinoVersion;
+    tl::optional<OpenVINO::Version> networkOpenvinoVersion;
 
    public:
     NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
-     * Input message with data to be infered upon
+     * Input message with data to be inferred upon
      * Default queue is blocking with size 5
      */
     Input input{*this, "in", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::Buffer, true}}};
@@ -46,7 +46,7 @@ class NeuralNetwork : public NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperti
     Output passthrough{*this, "passthrough", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
 
     /**
-     * Inputs mapped to network inputs. Useful for infering from separate data sources
+     * Inputs mapped to network inputs. Useful for inferring from separate data sources
      * Default input is non-blocking with queue size 1 and waits for messages
      */
     InputMap inputs;
@@ -60,13 +60,28 @@ class NeuralNetwork : public NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperti
     /**
      * Load network blob into assets and use once pipeline is started.
      *
-     * Throws if file doesn't exist or isn't a valid network blob.
+     * @throws Error if file doesn't exist or isn't a valid network blob.
      * @param path Path to network blob
      */
-    void setBlobPath(const std::string& path);
+    void setBlobPath(const dai::Path& path);
 
     /**
-     * Specifies how many frames will be avilable in the pool
+     * Load network blob into assets and use once pipeline is started.
+     *
+     * @param blob Network blob
+     */
+    void setBlob(OpenVINO::Blob blob);
+
+    /**
+     * Same functionality as the setBlobPath(). Load network blob into assets and use once pipeline is started.
+     *
+     * @throws Error if file doesn't exist or isn't a valid network blob.
+     * @param path Path to network blob
+     */
+    void setBlob(const dai::Path& path);
+
+    /**
+     * Specifies how many frames will be available in the pool
      * @param numFrames How many frames will pool have
      */
     void setNumPoolFrames(int numFrames);

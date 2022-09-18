@@ -27,7 +27,7 @@ class SpatialDetectionNetwork : public NodeCRTP<DetectionNetwork, SpatialDetecti
 
    public:
     /**
-     * Input message with data to be infered upon
+     * Input message with data to be inferred upon
      * Default queue is blocking with size 5
      */
     Input input{*this, "in", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::ImgFrame, false}}};
@@ -65,19 +65,26 @@ class SpatialDetectionNetwork : public NodeCRTP<DetectionNetwork, SpatialDetecti
     Output passthroughDepth{*this, "passthroughDepth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
+     * Output of SpatialLocationCalculator node, which is used internally by SpatialDetectionNetwork.
+     * Suitable when extra information is required from SpatialLocationCalculator node, e.g. minimum, maximum distance.
+     */
+    Output spatialLocationCalculatorOutput{
+        *this, "spatialLocationCalculatorOutput", Output::Type::MSender, {{DatatypeEnum::SpatialLocationCalculatorData, false}}};
+
+    /**
      * Specifies scale factor for detected bounding boxes.
      * @param scaleFactor Scale factor must be in the interval (0,1].
      */
     void setBoundingBoxScaleFactor(float scaleFactor);
 
     /**
-     * Specifies lower threshold in milimeters for depth values which will used to calculate spatial data
+     * Specifies lower threshold in depth units (millimeter by default) for depth values which will used to calculate spatial data
      * @param lowerThreshold LowerThreshold must be in the interval [0,upperThreshold] and less than upperThreshold.
      */
     void setDepthLowerThreshold(uint32_t lowerThreshold);
 
     /**
-     * Specifies upper threshold in milimeters for depth values which will used to calculate spatial data
+     * Specifies upper threshold in depth units (millimeter by default) for depth values which will used to calculate spatial data
      * @param upperThreshold UpperThreshold must be in the interval (lowerThreshold,65535].
      */
     void setDepthUpperThreshold(uint32_t upperThreshold);

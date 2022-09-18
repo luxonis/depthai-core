@@ -11,6 +11,7 @@
 #include <utility>
 
 #include "BlobFormat.hpp"
+#include "depthai-shared/common/TensorInfo.hpp"
 
 namespace dai {
 
@@ -20,10 +21,10 @@ public:
 
     void parse(const std::vector<std::uint8_t>& blob);
 
-    //const ie::InputsDataMap& getNetworkInputs() const { return _networkInputs; }
-    //const ie::OutputsDataMap& getNetworkOutputs() const { return _networkOutputs; }
+    const std::unordered_map<std::string, TensorInfo>& getNetworkInputs() const { return networkInputs; }
+    const std::unordered_map<std::string, TensorInfo>& getNetworkOutputs() const { return networkOutputs; }
 
-    //uint32_t getStageCount() const { return blobHeader.stages_count; }
+    uint32_t getStageCount() const { return blobHeader.stages_count; }
 
     uint32_t getMagicNumber() const { return blobHeader.magic_number; }
 
@@ -32,9 +33,6 @@ public:
 
     uint32_t getNumberOfShaves() const { return blobHeader.number_of_shaves; }
     uint32_t getNumberOfSlices() const { return blobHeader.number_of_cmx_slices; }
-
-    //const DataInfo& getInputInfo()  const { return _inputInfo; }
-    //const DataInfo& getOutputInfo() const { return _outputInfo; }
 
     std::pair<const std::uint8_t*, size_t> getHeader() const { return {pBlob, sizeof(ElfN_Ehdr) + sizeof(mv_blob_header)};}
 
@@ -45,12 +43,9 @@ private:
 
     constexpr static std::uint32_t BLOB_MAGIC_NUMBER = 9709;
 
-    // TODO(themarpe) - add additional network information
-    //ie::InputsDataMap  _networkInputs;
-    //ie::OutputsDataMap _networkOutputs;
+    std::unordered_map<std::string, TensorInfo> networkInputs;
+    std::unordered_map<std::string, TensorInfo> networkOutputs;
 
-    //DataInfo _inputInfo;
-    //DataInfo _outputInfo;
 };
 
 }  // namespace dai

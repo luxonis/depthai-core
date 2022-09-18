@@ -1,7 +1,7 @@
 #include <cstdio>
 #include <iostream>
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 // MobilenetSSD label texts
@@ -139,7 +139,7 @@ int main(int argc, char** argv) {
                 int x2 = detection.xmax * monoRight->getResolutionHeight() + offsetX;
                 int y2 = detection.ymax * monoRight->getResolutionHeight();
 
-                int labelIndex = detection.label;
+                uint32_t labelIndex = detection.label;
                 std::string labelStr = to_string(labelIndex);
                 if(labelIndex < labelMap.size()) {
                     labelStr = labelMap[labelIndex];
@@ -161,7 +161,7 @@ int main(int argc, char** argv) {
                 int x2 = detection.xmax * monoRight->getResolutionHeight() + offsetX;
                 int y2 = detection.ymax * monoRight->getResolutionHeight();
 
-                int labelIndex = detection.label;
+                uint32_t labelIndex = detection.label;
                 std::string labelStr = to_string(labelIndex);
                 if(labelIndex < labelMap.size()) {
                     labelStr = labelMap[labelIndex];
@@ -183,7 +183,7 @@ int main(int argc, char** argv) {
                 int x2 = detection.xmax * frameManip.cols;
                 int y2 = detection.ymax * frameManip.rows;
 
-                int labelIndex = detection.label;
+                uint32_t labelIndex = detection.label;
                 std::string labelStr = to_string(labelIndex);
                 if(labelIndex < labelMap.size()) {
                     labelStr = labelMap[labelIndex];

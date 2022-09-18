@@ -2,7 +2,7 @@
 #include <iostream>
 #include <string>
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai-shared/common/CameraBoardSocket.hpp"
 #include "depthai-shared/common/EepromData.hpp"
 #include "depthai/depthai.hpp"

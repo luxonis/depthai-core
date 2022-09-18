@@ -5,11 +5,13 @@
 #include <chrono>
 #include <cstdint>
 #include <list>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
 #include <tuple>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 // libraries

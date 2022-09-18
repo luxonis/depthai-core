@@ -40,7 +40,7 @@ class ImgFrame : public Buffer {
 
     // getters
     /**
-     * Retrieves image timestamp related to steady_clock / time.monotonic
+     * Retrieves image timestamp related to dai::Clock::now()
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;
 
@@ -63,7 +63,7 @@ class ImgFrame : public Buffer {
     /**
      * Retrieves image sequence number
      */
-    unsigned int getSequenceNum() const;
+    int64_t getSequenceNum() const;
 
     /**
      * Retrieves image width in pixels
@@ -82,42 +82,47 @@ class ImgFrame : public Buffer {
 
     // setters
     /**
-     * Specifies current timestamp, related to steady_clock / time.monotonic
+     * Retrieves image timestamp related to dai::Clock::now()
      */
-    void setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+    ImgFrame& setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+
+    /**
+     * Sets image timestamp related to dai::Clock::now()
+     */
+    ImgFrame& setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
 
     /**
      * Instance number relates to the origin of the frame (which camera)
      *
      * @param instance Instance number
      */
-    void setInstanceNum(unsigned int instance);
+    ImgFrame& setInstanceNum(unsigned int instance);
 
     /**
      * @param category Image category
      */
-    void setCategory(unsigned int category);
+    ImgFrame& setCategory(unsigned int category);
 
     /**
      * Specifies sequence number
      *
      * @param seq Sequence number
      */
-    void setSequenceNum(unsigned int seq);
+    ImgFrame& setSequenceNum(int64_t seq);
 
     /**
      * Specifies frame width
      *
      * @param width frame width
      */
-    void setWidth(unsigned int width);
+    ImgFrame& setWidth(unsigned int width);
 
     /**
      * Specifies frame height
      *
      * @param height frame height
      */
-    void setHeight(unsigned int height);
+    ImgFrame& setHeight(unsigned int height);
 
     /**
      * Specifies frame size
@@ -125,21 +130,21 @@ class ImgFrame : public Buffer {
      * @param height frame height
      * @param width frame width
      */
-    void setSize(unsigned int width, unsigned int height);
+    ImgFrame& setSize(unsigned int width, unsigned int height);
 
     /**
      * Specifies frame size
      *
      * @param size frame size
      */
-    void setSize(std::tuple<unsigned int, unsigned int> size);
+    ImgFrame& setSize(std::tuple<unsigned int, unsigned int> size);
 
     /**
      * Specifies frame type, RGB, BGR, ...
      *
      * @param type Type of image
      */
-    void setType(Type type);
+    ImgFrame& setType(Type type);
 
 // Optional - OpenCV support
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -150,7 +155,7 @@ class ImgFrame : public Buffer {
      *
      * @param frame Input cv::Mat frame from which to copy the data
      */
-    void setFrame(cv::Mat frame);
+    ImgFrame& setFrame(cv::Mat frame);
 
     /**
      * @note This API only available if OpenCV support is enabled
@@ -181,8 +186,9 @@ class ImgFrame : public Buffer {
         static constexpr bool value = false;
     };
     template <typename... T>
-    void setFrame(T...) {
+    ImgFrame& setFrame(T...) {
         static_assert(dependent_false<T...>::value, "Library not configured with OpenCV support");
+        return *this;
     }
     template <typename... T>
     void getFrame(T...) {

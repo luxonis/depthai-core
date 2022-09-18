@@ -23,14 +23,17 @@ tl::optional<OpenVINO::Version> NeuralNetwork::getRequiredOpenVINOVersion() {
 }
 
 // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
-void NeuralNetwork::setBlobPath(const std::string& path) {
-    auto asset = assetManager.set("__blob", path);
+void NeuralNetwork::setBlobPath(const dai::Path& path) {
+    setBlob(OpenVINO::Blob(path));
+}
 
-    // Read blobs header to determine openvino version
-    BlobReader reader;
-    reader.parse(asset->data);
-    networkOpenvinoVersion = OpenVINO::getBlobLatestSupportedVersion(reader.getVersionMajor(), reader.getVersionMinor());
+void NeuralNetwork::setBlob(const dai::Path& path) {
+    setBlobPath(path);
+}
 
+void NeuralNetwork::setBlob(OpenVINO::Blob blob) {
+    this->networkOpenvinoVersion = blob.version;
+    auto asset = assetManager.set("__blob", std::move(blob.data));
     properties.blobUri = asset->getRelativeUri();
     properties.blobSize = static_cast<uint32_t>(asset->data.size());
 }

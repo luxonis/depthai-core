@@ -20,14 +20,20 @@ class Buffer : public ADatatype {
 
     // helpers
     /**
+     * @brief Get non-owning reference to internal buffer
      * @returns Reference to internal buffer
      */
-    std::vector<std::uint8_t>& getData();
+    std::vector<std::uint8_t>& getData() const;
 
     /**
      * @param data Copies data to internal buffer
      */
-    void setData(std::vector<std::uint8_t> data);
+    void setData(const std::vector<std::uint8_t>& data);
+
+    /**
+     * @param data Moves data to internal buffer
+     */
+    void setData(std::vector<std::uint8_t>&& data);
 };
 
 }  // namespace dai

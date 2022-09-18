@@ -10,52 +10,79 @@ StereoDepthConfig::StereoDepthConfig() : Buffer(std::make_shared<RawStereoDepthC
 StereoDepthConfig::StereoDepthConfig(std::shared_ptr<RawStereoDepthConfig> ptr)
     : Buffer(std::move(ptr)), cfg(*dynamic_cast<RawStereoDepthConfig*>(raw.get())) {}
 
-void StereoDepthConfig::setDepthAlign(AlgorithmControl::DepthAlign align) {
+StereoDepthConfig& StereoDepthConfig::setDepthAlign(AlgorithmControl::DepthAlign align) {
     cfg.algorithmControl.depthAlign = align;
+    return *this;
 }
 
-void StereoDepthConfig::setConfidenceThreshold(int confThr) {
+StereoDepthConfig& StereoDepthConfig::setConfidenceThreshold(int confThr) {
     cfg.costMatching.confidenceThreshold = confThr;
+    return *this;
 }
 
 int StereoDepthConfig::getConfidenceThreshold() const {
     return cfg.costMatching.confidenceThreshold;
 }
 
-void StereoDepthConfig::setMedianFilter(MedianFilter median) {
+StereoDepthConfig& StereoDepthConfig::setMedianFilter(MedianFilter median) {
     cfg.postProcessing.median = median;
+    return *this;
 }
 
 MedianFilter StereoDepthConfig::getMedianFilter() const {
     return cfg.postProcessing.median;
 }
 
-void StereoDepthConfig::setBilateralFilterSigma(uint16_t sigma) {
+StereoDepthConfig& StereoDepthConfig::setBilateralFilterSigma(uint16_t sigma) {
     cfg.postProcessing.bilateralSigmaValue = sigma;
+    return *this;
 }
 
 uint16_t StereoDepthConfig::getBilateralFilterSigma() const {
     return cfg.postProcessing.bilateralSigmaValue;
 }
 
-void StereoDepthConfig::setLeftRightCheckThreshold(int threshold) {
+StereoDepthConfig& StereoDepthConfig::setLeftRightCheckThreshold(int threshold) {
     cfg.algorithmControl.leftRightCheckThreshold = threshold;
+    return *this;
 }
 
 int StereoDepthConfig::getLeftRightCheckThreshold() const {
     return cfg.algorithmControl.leftRightCheckThreshold;
 }
 
-void StereoDepthConfig::setLeftRightCheck(bool enable) {
+StereoDepthConfig& StereoDepthConfig::setLeftRightCheck(bool enable) {
     cfg.algorithmControl.enableLeftRightCheck = enable;
+    return *this;
 }
 
-void StereoDepthConfig::setExtendedDisparity(bool enable) {
+StereoDepthConfig& StereoDepthConfig::setExtendedDisparity(bool enable) {
     cfg.algorithmControl.enableExtended = enable;
+    return *this;
 }
 
-void StereoDepthConfig::setSubpixel(bool enable) {
+StereoDepthConfig& StereoDepthConfig::setSubpixel(bool enable) {
     cfg.algorithmControl.enableSubpixel = enable;
+    return *this;
+}
+
+StereoDepthConfig& StereoDepthConfig::setSubpixelFractionalBits(int subpixelFractionalBits) {
+    cfg.algorithmControl.subpixelFractionalBits = subpixelFractionalBits;
+    return *this;
+}
+
+StereoDepthConfig& StereoDepthConfig::setDepthUnit(AlgorithmControl::DepthUnit depthUnit) {
+    cfg.algorithmControl.depthUnit = depthUnit;
+    return *this;
+}
+
+StereoDepthConfig& StereoDepthConfig::setDisparityShift(int disparityShift) {
+    cfg.algorithmControl.disparityShift = disparityShift;
+    return *this;
+}
+
+dai::StereoDepthConfig::AlgorithmControl::DepthUnit StereoDepthConfig::getDepthUnit() {
+    return cfg.algorithmControl.depthUnit;
 }
 
 float StereoDepthConfig::getMaxDisparity() const {
@@ -64,6 +91,7 @@ float StereoDepthConfig::getMaxDisparity() const {
         maxDisp = 63;
     }
     if(cfg.costMatching.enableCompanding) maxDisp = 175;
+    maxDisp += cfg.algorithmControl.disparityShift;
     if(cfg.algorithmControl.enableExtended) maxDisp *= 2;
     if(cfg.algorithmControl.enableSubpixel) maxDisp *= (1 << cfg.algorithmControl.subpixelFractionalBits);
     return maxDisp;
@@ -73,8 +101,9 @@ dai::RawStereoDepthConfig StereoDepthConfig::get() const {
     return cfg;
 }
 
-void StereoDepthConfig::set(dai::RawStereoDepthConfig config) {
+StereoDepthConfig& StereoDepthConfig::set(dai::RawStereoDepthConfig config) {
     cfg = config;
+    return *this;
 }
 
 }  // namespace dai

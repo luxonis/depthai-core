@@ -18,11 +18,6 @@ VideoEncoder::VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nod
 }
 // node properties
 void VideoEncoder::setNumFramesPool(int frames) {
-    // 16 is maximum allowed value
-    if(frames > 16) {
-        throw std::invalid_argument("Maximum number of frames in pool for VideoEncoder is 16");
-    }
-
     properties.numFramesPool = frames;
     // Set default input queue size as well
     input.defaultQueueSize = frames;
@@ -80,6 +75,10 @@ void VideoEncoder::setLossless(bool lossless) {
 
 void VideoEncoder::setFrameRate(float frameRate) {
     properties.frameRate = frameRate;
+}
+
+void VideoEncoder::setMaxOutputFrameSize(int maxFrameSize) {
+    properties.outputFrameSize = maxFrameSize;
 }
 
 VideoEncoderProperties::RateControlMode VideoEncoder::getRateControlMode() const {
@@ -175,6 +174,10 @@ void VideoEncoder::setDefaultProfilePreset(std::tuple<int, int> size, float fps,
 
 bool VideoEncoder::getLossless() const {
     return properties.lossless;
+}
+
+int VideoEncoder::getMaxOutputFrameSize() const {
+    return properties.outputFrameSize;
 }
 
 }  // namespace node

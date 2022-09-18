@@ -24,7 +24,7 @@ class SPIOut : public NodeCRTP<Node, SPIOut, SPIOutProperties> {
     SPIOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : SPIOut(par, nodeId, std::make_unique<SPIOut::Properties>()) {}
 
     /**
-     * Input for any type of messages to be transfered over SPI stream
+     * Input for any type of messages to be transferred over SPI stream
      *
      * Default queue is blocking with size 8
      */

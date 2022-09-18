@@ -31,7 +31,7 @@ unsigned int ImgFrame::getInstanceNum() const {
 unsigned int ImgFrame::getCategory() const {
     return img.category;
 }
-unsigned int ImgFrame::getSequenceNum() const {
+int64_t ImgFrame::getSequenceNum() const {
     return img.sequenceNum;
 }
 unsigned int ImgFrame::getWidth() const {
@@ -45,39 +45,56 @@ RawImgFrame::Type ImgFrame::getType() const {
 }
 
 // setters
-void ImgFrame::setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
+ImgFrame& ImgFrame::setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
     // Set timestamp from timepoint
     using namespace std::chrono;
     auto ts = tp.time_since_epoch();
     img.ts.sec = duration_cast<seconds>(ts).count();
     img.ts.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
+    return *this;
 }
-void ImgFrame::setInstanceNum(unsigned int instanceNum) {
+ImgFrame& ImgFrame::setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
+    // Set timestamp from timepoint
+    using namespace std::chrono;
+    auto ts = tp.time_since_epoch();
+    img.tsDevice.sec = duration_cast<seconds>(ts).count();
+    img.tsDevice.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
+    return *this;
+}
+ImgFrame& ImgFrame::setInstanceNum(unsigned int instanceNum) {
     img.instanceNum = instanceNum;
+    return *this;
 }
-void ImgFrame::setCategory(unsigned int category) {
+ImgFrame& ImgFrame::setCategory(unsigned int category) {
     img.category = category;
+    return *this;
 }
-void ImgFrame::setSequenceNum(unsigned int sequenceNum) {
+ImgFrame& ImgFrame::setSequenceNum(int64_t sequenceNum) {
     img.sequenceNum = sequenceNum;
+    return *this;
 }
-void ImgFrame::setWidth(unsigned int width) {
+ImgFrame& ImgFrame::setWidth(unsigned int width) {
     img.fb.width = width;
     img.fb.stride = width;
+    return *this;
 }
-void ImgFrame::setHeight(unsigned int height) {
+ImgFrame& ImgFrame::setHeight(unsigned int height) {
     img.fb.height = height;
+    return *this;
 }
-void ImgFrame::setSize(unsigned int width, unsigned int height) {
+ImgFrame& ImgFrame::setSize(unsigned int width, unsigned int height) {
     setWidth(width);
     setHeight(height);
+    return *this;
 }
-void ImgFrame::setSize(std::tuple<unsigned int, unsigned int> size) {
+ImgFrame& ImgFrame::setSize(std::tuple<unsigned int, unsigned int> size) {
     setSize(std::get<0>(size), std::get<1>(size));
+    return *this;
 }
-void ImgFrame::setType(RawImgFrame::Type type) {
+ImgFrame& ImgFrame::setType(RawImgFrame::Type type) {
     img.fb.type = type;
     img.fb.bytesPP = RawImgFrame::typeToBpp(img.fb.type);
+    return *this;
 }
 
 }  // namespace dai

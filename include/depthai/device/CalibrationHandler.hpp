@@ -6,10 +6,19 @@
 #include "depthai-shared/common/EepromData.hpp"
 #include "depthai-shared/common/Point2f.hpp"
 #include "depthai-shared/common/Size2f.hpp"
+#include "depthai/utility/Path.hpp"
 
 namespace dai {
 /**
  * CalibrationHandler is an interface to read/load/write structured calibration and device data.
+ * The following fields are protected and aren't allowed to be overriden by default:
+ *  - boardName
+ *  - boardRev
+ *  - boardConf
+ *  - hardwareConf
+ *  - batchName
+ *  - batchTime
+ *  - boardOptions
  */
 class CalibrationHandler {
    public:
@@ -21,7 +30,7 @@ class CalibrationHandler {
      *
      * @param eepromDataPath takes the full path to the json file containing the calibration and device info.
      */
-    explicit CalibrationHandler(std::string eepromDataPath);
+    explicit CalibrationHandler(dai::Path eepromDataPath);
 
     /**
      * Construct a new Calibration Handler object using the board
@@ -30,7 +39,7 @@ class CalibrationHandler {
      * @param calibrationDataPath Full Path to the .calib binary file from the gen1 calibration. (Supports only Version 5)
      * @param boardConfigPath Full Path to the board config json file containing device information.
      */
-    CalibrationHandler(std::string calibrationDataPath, std::string boardConfigPath);
+    CalibrationHandler(dai::Path calibrationDataPath, dai::Path boardConfigPath);
 
     /**
      * Construct a new Calibration Handler object from EepromData object.
@@ -38,6 +47,13 @@ class CalibrationHandler {
      * @param eepromData EepromData data structure containing the calibration data.
      */
     explicit CalibrationHandler(EepromData eepromData);
+
+    /**
+     * Construct a new Calibration Handler object from JSON EepromData.
+     *
+     * @param eepromDataJson EepromData as JSON
+     */
+    static CalibrationHandler fromJson(nlohmann::json eepromDataJson);
 
     /**
      * Get the Eeprom Data object
@@ -56,29 +72,9 @@ class CalibrationHandler {
      * respective cropped image
      * @param bottomRightPixelId (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
      * the respective cropped image
-     * @return Repesents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
-     *
-     * Matrix representation of intrinsic matrix
-     * \f[ \text{Intrinsic Matrix} = \left [ \begin{matrix}
-     *                                        f_x & 0 & c_x \\
-     *                                        0 & f_y & c_y \\
-     *                                        0 &  0  & 1
-     *                                      \end{matrix} \right ] \f]
-     *
-     */
-    std::vector<std::vector<float>> getCameraIntrinsics(
-        CameraBoardSocket cameraId, int resizeWidth = -1, int resizeHeight = -1, Point2f topLeftPixelId = Point2f(), Point2f bottomRightPixelId = Point2f());
-
-    /**
-     * Get the Camera Intrinsics object
-     *
-     * @param cameraId Uses the cameraId to identify which camera intrinsics to return
-     * @param destShape resized width and height of the image for which intrinsics is requested.
-     * @param topLeftPixelId (x, y) point represents the top left corner coordinates of the cropped image which is used to modify the intrinsics for the
-     * respective cropped image
-     * @param bottomRightPixelId (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
-     * the respective cropped image
-     * @return Repesents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
+     * @param keepAspectRatio Enabling this will scale on width or height depending on which provides the max resolution and crops the remaning part of the
+     * other side
+     * @return Represents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      *
      * Matrix representation of intrinsic matrix
      * \f[ \text{Intrinsic Matrix} = \left [ \begin{matrix}
@@ -89,9 +85,11 @@ class CalibrationHandler {
      *
      */
     std::vector<std::vector<float>> getCameraIntrinsics(CameraBoardSocket cameraId,
-                                                        Size2f destShape,
+                                                        int resizeWidth = -1,
+                                                        int resizeHeight = -1,
                                                         Point2f topLeftPixelId = Point2f(),
-                                                        Point2f bottomRightPixelId = Point2f());
+                                                        Point2f bottomRightPixelId = Point2f(),
+                                                        bool keepAspectRatio = true);
 
     /**
      * Get the Camera Intrinsics object
@@ -102,7 +100,33 @@ class CalibrationHandler {
      * respective cropped image
      * @param bottomRightPixelId (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
      * the respective cropped image
-     * @return Repesents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
+     * @param keepAspectRatio Enabling this will scale on width or height depending on which provides the max resolution and crops the remaning part of the
+     * other side
+     * @return Represents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
+     *
+     * Matrix representation of intrinsic matrix
+     * \f[ \text{Intrinsic Matrix} = \left [ \begin{matrix}
+     *                                        f_x & 0 & c_x \\
+     *                                        0 & f_y & c_y \\
+     *                                        0 &  0  & 1
+     *                                      \end{matrix} \right ] \f]
+     *
+     */
+    std::vector<std::vector<float>> getCameraIntrinsics(
+        CameraBoardSocket cameraId, Size2f destShape, Point2f topLeftPixelId = Point2f(), Point2f bottomRightPixelId = Point2f(), bool keepAspectRatio = true);
+
+    /**
+     * Get the Camera Intrinsics object
+     *
+     * @param cameraId Uses the cameraId to identify which camera intrinsics to return
+     * @param destShape resized width and height of the image for which intrinsics is requested.
+     * @param topLeftPixelId (x, y) point represents the top left corner coordinates of the cropped image which is used to modify the intrinsics for the
+     * respective cropped image
+     * @param bottomRightPixelId (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
+     * the respective cropped image
+     * @param keepAspectRatio Enabling this will scale on width or height depending on which provides the max resolution and crops the remaning part of the
+     * other side
+     * @return Represents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      *
      * Matrix representation of intrinsic matrix
      * \f[ \text{Intrinsic Matrix} = \left [ \begin{matrix}
@@ -115,13 +139,14 @@ class CalibrationHandler {
     std::vector<std::vector<float>> getCameraIntrinsics(CameraBoardSocket cameraId,
                                                         std::tuple<int, int> destShape,
                                                         Point2f topLeftPixelId = Point2f(),
-                                                        Point2f bottomRightPixelId = Point2f());
+                                                        Point2f bottomRightPixelId = Point2f(),
+                                                        bool keepAspectRatio = true);
 
     /**
      * Get the Default Intrinsics object
      *
      * @param cameraId Uses the cameraId to identify which camera intrinsics to return
-     * @return Repesents the 3x3 intrinsics matrix of the respective camera along with width and height at which it was calibrated.
+     * @return Represents the 3x3 intrinsics matrix of the respective camera along with width and height at which it was calibrated.
      *
      * Matrix representation of intrinsic matrix
      * \f[ \text{Intrinsic Matrix} = \left [ \begin{matrix}
@@ -154,18 +179,26 @@ class CalibrationHandler {
      *  Get the lens position of the given camera
      *
      * @param cameraId of the camera with lens position is requested.
-     * @return lens postion of the camera with given cameraId at which it was calibrated.
+     * @return lens position of the camera with given cameraId at which it was calibrated.
      */
     uint8_t getLensPosition(CameraBoardSocket cameraId);
+
+    /**
+     *  Get the distortion model of the given camera
+     *
+     * @param cameraId of the camera with lens position is requested.
+     * @return lens position of the camera with given cameraId at which it was calibrated.
+     */
+    CameraModel getDistortionModel(CameraBoardSocket cameraId);
 
     /**
      * Get the Camera Extrinsics object between two cameras from the calibration data if there is a linked connection
      *  between any two cameras then the relative rotation and translation (in centimeters) is returned by this function.
      *
-     * @param srcCamera Camera Id of the camera which will be considerd as origin.
+     * @param srcCamera Camera Id of the camera which will be considered as origin.
      * @param dstCamera  Camera Id of the destination camera to which we are fetching the rotation and translation from the SrcCamera
      * @param useSpecTranslation Enabling this bool uses the translation information from the board design data
-     * @return a transformationMatrix which is 4x4 in homogenious coordinate system
+     * @return a transformationMatrix which is 4x4 in homogeneous coordinate system
      *
      * Matrix representation of transformation matrix
      * \f[ \text{Transformation Matrix} = \left [ \begin{matrix}
@@ -181,7 +214,7 @@ class CalibrationHandler {
     /**
      * Get the Camera translation vector between two cameras from the calibration data.
      *
-     * @param srcCamera Camera Id of the camera which will be considerd as origin.
+     * @param srcCamera Camera Id of the camera which will be considered as origin.
      * @param dstCamera  Camera Id of the destination camera to which we are fetching the translation vector from the SrcCamera
      * @param useSpecTranslation Disabling this bool uses the translation information from the calibration data (not the board design data)
      * @return a translation vector like [x, y, z] in centimeters
@@ -206,9 +239,9 @@ class CalibrationHandler {
      * From the data loaded if there is a linked connection between IMU and the given camera then there relative rotation and translation from the camera to IMU
      * is returned.
      *
-     * @param cameraId Camera Id of the camera which will be considerd as origin. from which Transformation matrix to the IMU will be found
+     * @param cameraId Camera Id of the camera which will be considered as origin. from which Transformation matrix to the IMU will be found
      * @param useSpecTranslation Enabling this bool uses the translation information from the board design data
-     * @return Returns a transformationMatrix which is 4x4 in homogenious coordinate system
+     * @return Returns a transformationMatrix which is 4x4 in homogeneous coordinate system
      *
      * Matrix representation of transformation matrix
      * \f[ \text{Transformation Matrix} = \left [ \begin{matrix}
@@ -226,9 +259,9 @@ class CalibrationHandler {
      * between IMU and the given camera then there relative rotation and translation from the IMU to Camera
      * is returned.
      *
-     * @param cameraId Camera Id of the camera which will be considerd as destination. To which Transformation matrix from the IMU will be found.
+     * @param cameraId Camera Id of the camera which will be considered as destination. To which Transformation matrix from the IMU will be found.
      * @param useSpecTranslation Enabling this bool uses the translation information from the board design data
-     * @return Returns a transformationMatrix which is 4x4 in homogenious coordinate system
+     * @return Returns a transformationMatrix which is 4x4 in homogeneous coordinate system
      *
      * Matrix representation of transformation matrix
      * \f[ \text{Transformation Matrix} = \left [ \begin{matrix}
@@ -276,7 +309,14 @@ class CalibrationHandler {
      * @param destPath  Full path to the json file in which raw calibration data will be stored
      * @return True on success, false otherwise
      */
-    bool eepromToJsonFile(std::string destPath) const;
+    bool eepromToJsonFile(dai::Path destPath) const;
+
+    /**
+     * Get JSON representation of calibration data
+     *
+     * @return JSON structure
+     */
+    nlohmann::json eepromToJson() const;
 
     /**
      * Set the Board Info object
@@ -288,11 +328,41 @@ class CalibrationHandler {
     void setBoardInfo(std::string boardName, std::string boardRev);
 
     /**
+     * Set the Board Info object. Creates version 7 EEPROM data
+     *
+     * @param productName Sets product name (alias).
+     * @param boardName Sets board name.
+     * @param boardRev Sets board revision id.
+     * @param boardConf Sets board configuration id.
+     * @param hardwareConf Sets hardware configuration id.
+     * @param batchName Sets batch name.
+     * @param batchTime Sets batch time (unix timestamp).
+     * @param boardCustom Sets a custom board (Default empty string).
+     */
+    void setBoardInfo(std::string productName,
+                      std::string boardName,
+                      std::string boardRev,
+                      std::string boardConf,
+                      std::string hardwareConf,
+                      std::string batchName,
+                      uint64_t batchTime,
+                      uint32_t boardOptions,
+                      std::string boardCustom = "");
+
+    /**
+     * Set the productName which acts as alisas for users to identify the device
+     *
+     * @param productName Sets product name (alias).
+     */
+
+    void setProductName(std::string productName);
+
+    /**
      * Set the Camera Intrinsics object
      *
      * @param cameraId CameraId of the camera for which Camera intrinsics are being loaded
      * @param intrinsics 3x3 intrinsics matrix
-     * @param frameSize repesents the width and height of the image at which intrinsics are calculated.
+     * @param frameSize Represents the width and height of the image at which intrinsics are calculated.
      *
      * Matrix representation of intrinsic matrix
      * \f[ \text{Intrinsic Matrix} = \left [ \begin{matrix}
@@ -309,8 +379,8 @@ class CalibrationHandler {
      *
      * @param cameraId CameraId of the camera for which Camera intrinsics are being loaded
      * @param intrinsics 3x3 intrinsics matrix
-     * @param width repesents the width of the image at which intrinsics are calculated.
-     * @param height repesents the height of the image at which intrinsics are calculated.
+     * @param width Represents the width of the image at which intrinsics are calculated.
+     * @param height Represents the height of the image at which intrinsics are calculated.
      *
      * Matrix representation of intrinsic matrix
      * \f[ \text{Intrinsic Matrix} = \left [ \begin{matrix}
@@ -327,7 +397,7 @@ class CalibrationHandler {
      *
      * @param cameraId CameraId of the camera for which Camera intrinsics are being loaded
      * @param intrinsics 3x3 intrinsics matrix
-     * @param frameSize repesents the width and height of the image at which intrinsics are calculated.
+     * @param frameSize Represents the width and height of the image at which intrinsics are calculated.
      *
      * Matrix representation of intrinsic matrix
      * \f[ \text{Intrinsic Matrix} = \left [ \begin{matrix}
@@ -342,7 +412,7 @@ class CalibrationHandler {
     /**
      * Sets the distortion Coefficients obtained from camera calibration
      *
-     * @param cameraId Camera Id of the camera for which distoriton coefficients are computed
+     * @param cameraId Camera Id of the camera for which distortion coefficients are computed
      * @param distortionCoefficients Distortion Coefficients of the respective Camera.
      */
     void setDistortionCoefficients(CameraBoardSocket cameraId, std::vector<float> distortionCoefficients);
@@ -374,8 +444,8 @@ class CalibrationHandler {
     /**
      * Set the Camera Extrinsics object
      *
-     * @param srcCameraId Camera Id of the camera which will be considerd as relative origin.
-     * @param destCameraId Camera Id of the camera which will be considerd as destination from srcCameraId.
+     * @param srcCameraId Camera Id of the camera which will be considered as relative origin.
+     * @param destCameraId Camera Id of the camera which will be considered as destination from srcCameraId.
      * @param rotationMatrix Rotation between srcCameraId and destCameraId origins.
      * @param translation Translation between srcCameraId and destCameraId origins.
      * @param specTranslation Translation between srcCameraId and destCameraId origins from the design.
@@ -389,7 +459,7 @@ class CalibrationHandler {
     /**
      * Set the Imu to Camera Extrinsics object
      *
-     * @param destCameraId Camera Id of the camera which will be considerd as destination from IMU.
+     * @param destCameraId Camera Id of the camera which will be considered as destination from IMU.
      * @param rotationMatrix Rotation between srcCameraId and destCameraId origins.
      * @param translation Translation between IMU and destCameraId origins.
      * @param specTranslation Translation between IMU and destCameraId origins from the design.

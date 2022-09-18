@@ -3,7 +3,6 @@
 // libraries
 #include "XLink/XLink.h"
 #include "spdlog/fmt/fmt.h"
-#include "spdlog/spdlog.h"
 
 // project
 #include "depthai/xlink/XLinkConnection.hpp"
@@ -22,7 +21,6 @@ XLinkStream::XLinkStream(const std::shared_ptr<XLinkConnection> conn, const std:
 
     for(int retryCount = 0; retryCount < STREAM_OPEN_RETRIES; retryCount++) {
         streamId = XLinkOpenStream(connection->getLinkId(), streamName.c_str(), static_cast<int>(maxWriteSize));
-        spdlog::debug("XLinkStream::XLinkStream() connlinkid={}    streamId={}", connection->getLinkId(), streamId);
         if(streamId == INVALID_STREAM_ID) {
             // Give some time before continuing
             std::this_thread::sleep_for(WAIT_FOR_STREAM_RETRY);
@@ -37,7 +35,7 @@ XLinkStream::XLinkStream(const std::shared_ptr<XLinkConnection> conn, const std:
 // Move constructor
 XLinkStream::XLinkStream(XLinkStream&& other)
     : connection(std::move(other.connection)), streamName(std::exchange(other.streamName, {})), streamId(std::exchange(other.streamId, INVALID_STREAM_ID)) {
-    // Set 'other's streamId to INVALID_STREAM_ID to prevent closing
+    // Set other's streamId to INVALID_STREAM_ID to prevent closing
 }
 
 XLinkStream& XLinkStream::operator=(XLinkStream&& other) {
@@ -127,7 +125,8 @@ streamPacketDesc_t* XLinkStream::readRaw() {
 
 // USE ONLY WHEN COPYING DATA AT LATER STAGES
 void XLinkStream::readRawRelease() {
-    XLinkReleaseData(streamId);
+    XLinkError_t status;
+    if((status = XLinkReleaseData(streamId)) != X_LINK_SUCCESS) throw XLinkReadError(status, streamName);
 }
 
 // SPLIT HELPER

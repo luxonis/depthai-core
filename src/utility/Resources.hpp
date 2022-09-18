@@ -8,9 +8,10 @@
 #include <thread>
 
 // project
-#include <depthai/openvino/OpenVINO.hpp>
 #include <depthai/device/Device.hpp>
 #include <depthai/device/DeviceBootloader.hpp>
+#include <depthai/openvino/OpenVINO.hpp>
+#include <depthai/utility/Path.hpp>
 
 namespace dai {
 
@@ -19,15 +20,17 @@ class Resources {
     Resources();
     ~Resources();
 
-    std::mutex mtxDevice;
+    mutable std::mutex mtxDevice;
+    mutable std::condition_variable cvDevice;
     std::thread lazyThreadDevice;
+    bool readyDevice;
     std::unordered_map<std::string, std::vector<std::uint8_t>> resourceMapDevice;
 
-    std::mutex mtxBootloader;
+    mutable std::mutex mtxBootloader;
+    mutable std::condition_variable cvBootloader;
     std::thread lazyThreadBootloader;
+    bool readyBootloader;
     std::unordered_map<std::string, std::vector<std::uint8_t>> resourceMapBootloader;
-
-    std::vector<std::uint8_t> getDeviceBinary(Device::Config config);
 
 public:
     static Resources& getInstance();
@@ -35,9 +38,9 @@ public:
     void operator=(Resources const&) = delete;
 
     // Available resources
-    std::vector<std::uint8_t> getDeviceFirmware(bool usb2Mode, OpenVINO::Version version = OpenVINO::DEFAULT_VERSION);
-    std::vector<std::uint8_t> getDeviceFirmware(Device::Config config, std::string pathToMvcmd = "");
-    std::vector<std::uint8_t> getBootloaderFirmware(DeviceBootloader::Type type = DeviceBootloader::Type::USB);
+    std::vector<std::uint8_t> getDeviceFirmware(bool usb2Mode, OpenVINO::Version version = OpenVINO::DEFAULT_VERSION) const;
+    std::vector<std::uint8_t> getDeviceFirmware(Device::Config config, dai::Path pathToMvcmd = {}) const;
+    std::vector<std::uint8_t> getBootloaderFirmware(DeviceBootloader::Type type = DeviceBootloader::Type::USB) const;
 
 };
 

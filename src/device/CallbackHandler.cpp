@@ -22,16 +22,11 @@ CallbackHandler::CallbackHandler(std::shared_ptr<XLinkConnection> conn,
 
             while(running) {
                 // Blocking -- parse packet
-                std::shared_ptr<RawBuffer> data;
-                auto packet{stream.readMove()};
-                try {
-                    data = StreamMessageParser::parseMessage(&packet);
-                } catch(const std::exception&) {
-                    throw;
-                }
+                auto packet = stream.readMove();
+                const auto data = StreamMessageParser::parseMessage(&packet);
 
                 // CALLBACK
-                auto toSend = callback(data);
+                auto toSend = callback(std::move(data));
 
                 auto serialized = StreamMessageParser::serializeMessage(toSend);
 

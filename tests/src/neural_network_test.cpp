@@ -1,5 +1,4 @@
 #define CATCH_CONFIG_MAIN
-#define CATCH_CONFIG_NO_WINDOWS_SEH
 #include <catch2/catch.hpp>
 
 // std
@@ -17,14 +16,19 @@ const size_t MOBILENET_DATA_SIZE = MOBILENET_WIDTH * MOBILENET_HEIGHT * MOBILENE
 const auto MOBILENET_INPUT_TENSOR = "data";
 const auto MOBILENET_OUTPUT_TENSOR = "detection_out";
 
-dai::Pipeline createNeuralNetworkPipeline() {
+dai::Pipeline createNeuralNetworkPipeline(bool manualBlob) {
     dai::Pipeline p;
     auto x_in = p.create<dai::node::XLinkIn>();
     auto x_out = p.create<dai::node::XLinkOut>();
     auto nn = p.create<dai::node::NeuralNetwork>();
 
     // Load blob
-    nn->setBlobPath(BLOB_PATH);
+    if(manualBlob) {
+        dai::OpenVINO::Blob blob(BLOB_PATH);
+        nn->setBlob(std::move(blob));
+    } else {
+        nn->setBlobPath(BLOB_PATH);
+    }
     // Set input stream
     x_in->setStreamName("input");
     // Set output stream
@@ -37,11 +41,11 @@ dai::Pipeline createNeuralNetworkPipeline() {
     return p;
 }
 
-TEST_CASE("Neural network node data checks") {
+void test(bool manualBlob) {
     using namespace std::chrono;
     using namespace std::chrono_literals;
 
-    auto pipeline = createNeuralNetworkPipeline();
+    auto pipeline = createNeuralNetworkPipeline(manualBlob);
 
     dai::Device device(pipeline.getOpenVINOVersion());
 
@@ -91,4 +95,11 @@ TEST_CASE("Neural network node data checks") {
 
     // At the end test if any error messages appeared
     REQUIRE(receivedLogMessage == false);
+}
+
+TEST_CASE("Neural network node data checks - setBlobPath") {
+    test(false);
+}
+TEST_CASE("Neural network node data checks - setBlob") {
+    test(true);
 }

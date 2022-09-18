@@ -19,7 +19,19 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
     /**
      * Preset modes for stereo depth.
      */
-    enum class PresetMode : std::uint32_t { HIGH_ACCURACY, HIGH_DENSITY };
+    enum class PresetMode : std::uint32_t {
+        /**
+         * Prefers accuracy over density. More invalid depth values, but less outliers.
+         */
+        HIGH_ACCURACY,
+        /**
+         * Prefers density over accuracy. Less invalid depth values, but more outliers.
+         */
+        HIGH_DENSITY
+    };
+
+   protected:
+    Properties& getProperties();
 
    private:
     PresetMode presetMode = PresetMode::HIGH_DENSITY;
@@ -55,7 +67,7 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
     Input right{*this, "right", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
-     * Outputs ImgFrame message that carries RAW16 encoded (0..65535) depth data in millimeters.
+     * Outputs ImgFrame message that carries RAW16 encoded (0..65535) depth data in depth units (millimeter by default).
      *
      * Non-determined / invalid depth values are set to 0
      */
@@ -65,7 +77,10 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * Outputs ImgFrame message that carries RAW8 / RAW16 encoded disparity data:
      * RAW8 encoded (0..95) for standard mode;
      * RAW8 encoded (0..190) for extended disparity mode;
-     * RAW16 encoded (0..3040) for subpixel disparity mode (32 subpixel levels on top of standard mode).
+     * RAW16 encoded for subpixel disparity mode:
+     * - 0..760 for 3 fractional bits (by default)
+     * - 0..1520 for 4 fractional bits
+     * - 0..3040 for 5 fractional bits
      */
     Output disparity{*this, "disparity", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
@@ -127,35 +142,9 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
     /**
      * Outputs ImgFrame message that carries RAW8 confidence map.
      * Lower values means higher confidence of the calculated disparity value.
-     * RGB aligment, left-right check or any postproccessing (e.g. median filter) is not performed on confidence map.
+     * RGB alignment, left-right check or any postproccessing (e.g. median filter) is not performed on confidence map.
      */
     Output confidenceMap{*this, "confidenceMap", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-
-#if 0  // will be enabled when confidence map RGB aligment/LR-check support will be added
-    /**
-     * Outputs ImgFrame message that carries left-right check first iteration (before combining with second iteration) confidence map.
-     * Useful for debugging/fine tuning.
-     */
-    Output debugConfMapLrCheckIt1{*this, "debugConfMapLrCheckIt1", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-
-    /**
-     * Outputs ImgFrame message that carries left-right check second iteration (before combining with first iteration) confidence map.
-     * Useful for debugging/fine tuning.
-     */
-    Output debugConfMapLrCheckIt2{*this, "debugConfMapLrCheckIt2", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-#endif
-
-    /**
-     * Specify local filesystem path to the calibration file
-     * @param path Path to calibration file. If empty use EEPROM
-     */
-    [[deprecated("Use 'Pipeline::setCalibrationData()' instead")]] void loadCalibrationFile(const std::string& path);
-
-    /**
-     * Specify calibration data as a vector of bytes
-     * @param path Calibration data. If empty use EEPROM
-     */
-    [[deprecated("Use 'Pipeline::setCalibrationData()' instead")]] void loadCalibrationData(const std::vector<std::uint8_t>& data);
 
     /**
      * Specify that a passthrough/dummy calibration should be used,
@@ -167,6 +156,7 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * Specify local filesystem paths to the mesh calibration files for 'left' and 'right' inputs.
      *
      * When a mesh calibration is set, it overrides the camera intrinsics/extrinsics matrices.
+     * Overrides useHomographyRectification behavior.
      * Mesh format: a sequence of (y,x) points as 'float' with coordinates from the input image
      * to be mapped in the output. The mesh can be subsampled, configured by `setMeshStep`.
      *
@@ -176,10 +166,11 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      *
      * height: 800 / 16 + 1 = 51
      */
-    void loadMeshFiles(const std::string& pathLeft, const std::string& pathRight);
+    void loadMeshFiles(const dai::Path& pathLeft, const dai::Path& pathRight);
 
     /**
      * Specify mesh calibration data for 'left' and 'right' inputs, as vectors of bytes.
+     * Overrides useHomographyRectification behavior.
      * See `loadMeshFiles` for the expected data format
      */
     void loadMeshData(const std::vector<std::uint8_t>& dataLeft, const std::vector<std::uint8_t>& dataRight);
@@ -251,11 +242,20 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
     void setLeftRightCheck(bool enable);
 
     /**
-     * Computes disparity with sub-pixel interpolation (5 fractional bits).
+     * Computes disparity with sub-pixel interpolation (3 fractional bits by default).
      *
      * Suitable for long range. Currently incompatible with extended disparity
      */
     void setSubpixel(bool enable);
+
+    /**
+     * Number of fractional bits for subpixel mode.
+     * Default value: 3.
+     * Valid values: 3,4,5.
+     * Defines the number of fractional disparities: 2^x.
+     * Median filter postprocessing is supported only for 3 fractional bits.
+     */
+    void setSubpixelFractionalBits(int subpixelFractionalBits);
 
     /**
      * Disparity range increased from 0-95 to 0-190, combined from full resolution and downscaled images.
@@ -328,6 +328,29 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * @param mode Stereo depth preset mode
      */
     void setDefaultProfilePreset(PresetMode mode);
+
+    /**
+     * Whether to use focal length from calibration intrinsics or calculate based on calibration FOV.
+     * Default value is true.
+     */
+    [[deprecated("setFocalLengthFromCalibration is deprecated. Default value is true.")]] void setFocalLengthFromCalibration(bool focalLengthFromCalibration);
+
+    /**
+     * Use 3x3 homography matrix for stereo rectification instead of sparse mesh generated on device.
+     * Default behaviour is AUTO, for lenses with FOV over 85 degrees sparse mesh is used, otherwise 3x3 homography.
+     * If custom mesh data is provided through loadMeshData or loadMeshFiles this option is ignored.
+     * @param useHomographyRectification true: 3x3 homography matrix generated from calibration data is used for stereo rectification, can't correct lens
+     * distortion.
+     * false: sparse mesh is generated on-device from calibration data with mesh step specified with setMeshStep (Default: (16, 16)), can correct lens
+     * distortion. Implementation for generating the mesh is same as opencv's initUndistortRectifyMap function. Only the first 8 distortion coefficients are
+     * used from calibration data.
+     */
+    void useHomographyRectification(bool useHomographyRectification);
+
+    /**
+     * Equivalent to useHomographyRectification(!enableDistortionCorrection)
+     */
+    void enableDistortionCorrection(bool enableDistortionCorrection);
 };
 
 }  // namespace node

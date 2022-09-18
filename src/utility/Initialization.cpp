@@ -5,6 +5,7 @@
 
 // project
 #include "build/version.hpp"
+#include "utility/Environment.hpp"
 #include "utility/Resources.hpp"
 
 // libraries
@@ -45,12 +46,24 @@ namespace {
 static std::unique_ptr<backward::SignalHandling> signalHandler;
 #endif
 
-bool initialize(std::string additionalInfo, bool installSignalHandler) {
+bool initialize() {
+    return initialize(nullptr, false, nullptr);
+}
+
+bool initialize(void* javavm) {
+    return initialize(nullptr, false, javavm);
+}
+
+bool initialize(std::string additionalInfo, bool installSignalHandler, void* javavm) {
+    return initialize(additionalInfo.c_str(), installSignalHandler, javavm);
+}
+
+bool initialize(const char* additionalInfo, bool installSignalHandler, void* javavm) {
     // singleton for checking whether depthai was already initialized
     static const bool initialized = [&]() {
 #ifdef DEPTHAI_ENABLE_BACKWARD
         // install backward if specified
-        auto envSignalHandler = spdlog::details::os::getenv("DEPTHAI_INSTALL_SIGNAL_HANDLER");
+        auto envSignalHandler = utility::getEnv("DEPTHAI_INSTALL_SIGNAL_HANDLER");
         if(installSignalHandler && envSignalHandler != "0") {
             signalHandler = std::make_unique<backward::SignalHandling>();
         }
@@ -61,17 +74,16 @@ bool initialize(std::string additionalInfo, bool installSignalHandler) {
         // Set global logging level from ENV variable 'DEPTHAI_LEVEL'
         // Taken from spdlog, to replace with DEPTHAI_LEVEL instead of SPDLOG_LEVEL
         // spdlog::cfg::load_env_levels();
-        auto envLevel = spdlog::details::os::getenv("DEPTHAI_LEVEL");
-        auto newLogLevel = spdlog::level::warn;
+        auto envLevel = utility::getEnv("DEPTHAI_LEVEL");
         if(!envLevel.empty()) {
             spdlog::cfg::helpers::load_levels(envLevel);
-            newLogLevel = spdlog::get_level();
-            if(newLogLevel < spdlog::level::info) spdlog::flush_on(newLogLevel);
+        } else {
+            // Otherwise set default level to WARN
+            spdlog::set_level(spdlog::level::warn);
         }
-        spdlog::set_level(newLogLevel);
 
         // Print core commit and build datetime
-        if(!additionalInfo.empty()) {
+        if(additionalInfo != nullptr && additionalInfo[0] != '\0') {
             spdlog::debug("{}", additionalInfo);
         }
         spdlog::debug(
@@ -85,17 +97,26 @@ bool initialize(std::string additionalInfo, bool installSignalHandler) {
         // Static global handler
         static XLinkGlobalHandler_t xlinkGlobalHandler = {};
         xlinkGlobalHandler.protocol = X_LINK_USB_VSC;
+        xlinkGlobalHandler.options = javavm;
         auto status = XLinkInitialize(&xlinkGlobalHandler);
+        std::string errorMsg;
+        const auto ERROR_MSG_USB_TIP = fmt::format("If running in a container, make sure that the following is set: \"{}\"",
+                                                   "-v /dev/bus/usb:/dev/bus/usb --device-cgroup-rule='c 189:* rmw'");
         if(X_LINK_SUCCESS != status) {
-            throw std::runtime_error("Couldn't initialize XLink");
+            std::string errorMsg = fmt::format("Couldn't initialize XLink: {}. ", XLinkErrorToStr(status));
+            if(status == X_LINK_INIT_USB_ERROR) {
+                errorMsg += ERROR_MSG_USB_TIP;
+            }
+            spdlog::debug("Initialize failed - {}", errorMsg);
+            throw std::runtime_error(errorMsg);
+        }
+        // Check that USB protocol is available
+        if(!XLinkIsProtocolInitialized(X_LINK_USB_VSC)) {
+            spdlog::warn("USB protocol not available - {}", ERROR_MSG_USB_TIP);
         }
 
-        // Set/suppress XLink related errors
-        if(newLogLevel < spdlog::level::info) {
-            mvLogDefaultLevelSet(MVLOG_ERROR);
-        } else {
-            mvLogDefaultLevelSet(MVLOG_LAST);
-        }
+        // Suppress XLink related errors
+        mvLogDefaultLevelSet(MVLOG_FATAL);
 
         spdlog::debug("Initialize - finished");
 
