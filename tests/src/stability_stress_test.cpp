@@ -49,6 +49,7 @@ int main(int argc, char** argv) {
 
     // Create pipeline
     dai::Pipeline pipeline;
+    pipeline.setXLinkChunkSize(0);
 
     // Define sources and outputs
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
