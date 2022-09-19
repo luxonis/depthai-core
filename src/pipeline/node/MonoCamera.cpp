@@ -119,5 +119,19 @@ int MonoCamera::getResolutionHeight() const {
     return std::get<1>(getResolutionSize());
 }
 
+void MonoCamera::setNumFramesPool(int num) {
+    properties.numFramesPool = num;
+}
+void MonoCamera::setRawNumFramesPool(int num) {
+    properties.numFramesPoolRaw = num;
+}
+
+int MonoCamera::getNumFramesPool() const {
+    return properties.numFramesPool;
+}
+int MonoCamera::getRawNumFramesPool() const {
+    return properties.numFramesPoolRaw;
+}
+
 }  // namespace node
 }  // namespace dai

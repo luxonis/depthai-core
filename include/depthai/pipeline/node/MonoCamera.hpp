@@ -111,6 +111,16 @@ class MonoCamera : public NodeCRTP<Node, MonoCamera, MonoCameraProperties> {
     int getResolutionWidth() const;
     /// Get sensor resolution height
     int getResolutionHeight() const;
+
+    /// Set number of frames in main (ISP output) pool
+    void setNumFramesPool(int num);
+    /// Set number of frames in raw pool
+    void setRawNumFramesPool(int num);
+
+    /// Get number of frames in main (ISP output) pool
+    int getNumFramesPool() const;
+    /// Get number of frames in raw pool
+    int getRawNumFramesPool() const;
 };
 
 }  // namespace node
