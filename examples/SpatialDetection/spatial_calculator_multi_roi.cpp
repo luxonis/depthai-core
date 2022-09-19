@@ -1,3 +1,4 @@
+#include <cmath>
 #include <iostream>
 
 #include "utility.hpp"
@@ -57,7 +58,7 @@ int main() {
     auto depthQueue = device.getOutputQueue("depth", 4, false);
     auto spatialCalcQueue = device.getOutputQueue("spatialData", 3, false);
 
-    auto color = cv::Scalar(255, 255, 255);
+    auto color = cv::Scalar(0, 200, 40);
 
     while(true) {
         auto inDepth = depthQueue->get<dai::ImgFrame>();
@@ -81,16 +82,13 @@ int main() {
             auto depthMin = depthData.depthMin;
             auto depthMax = depthData.depthMax;
 
+            auto coords = depthData.spatialCoordinates;
+            auto distance = std::sqrt(coords.x * coords.x + coords.y * coords.y + coords.z * coords.z);
+            std::stringstream streamDistance;
+            streamDistance << std::fixed << std::setprecision(1) << distance / 1000.0;
+
             cv::rectangle(depthFrameColor, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
-            std::stringstream depthX;
-            depthX << "X: " << (int)depthData.spatialCoordinates.x << " mm";
-            cv::putText(depthFrameColor, depthX.str(), cv::Point(xmin + 10, ymin + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-            std::stringstream depthY;
-            depthY << "Y: " << (int)depthData.spatialCoordinates.y << " mm";
-            cv::putText(depthFrameColor, depthY.str(), cv::Point(xmin + 10, ymin + 35), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
-            std::stringstream depthZ;
-            depthZ << "Z: " << (int)depthData.spatialCoordinates.z << " mm";
-            cv::putText(depthFrameColor, depthZ.str(), cv::Point(xmin + 10, ymin + 50), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
+            cv::putText(depthFrameColor, streamDistance.str() + " m", cv::Point(xmin + 10, ymin + 20), cv::FONT_HERSHEY_TRIPLEX, 0.5, color);
         }
         // Show the frame
         cv::imshow("depth", depthFrameColor);
