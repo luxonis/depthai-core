@@ -221,6 +221,11 @@ std::vector<DeviceInfo> DeviceBase::getAllAvailableDevices() {
     return availableDevices;
 }
 
+// Returns all devices, also the ones that are already booted
+std::vector<DeviceInfo> DeviceBase::getAllConnectedDevices() {
+    return XLinkConnection::getAllConnectedDevices();
+}
+
 // First tries to find UNBOOTED device with mxId, then BOOTLOADER device with mxId
 std::tuple<bool, DeviceInfo> DeviceBase::getDeviceByMxId(std::string mxId) {
     std::vector<DeviceInfo> availableDevices;
@@ -732,15 +737,9 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
 
     // Below can throw - make sure to gracefully exit threads
     try {
-        // Set logging level (if DEPTHAI_LEVEL lower than warning, then device is configured accordingly as well)
-        if(spdlog::get_level() < spdlog::level::warn) {
-            auto level = spdlogLevelToLogLevel(spdlog::get_level());
-            setLogLevel(level);
-            setLogOutputLevel(level);
-        } else {
-            setLogLevel(LogLevel::WARN);
-            setLogOutputLevel(LogLevel::WARN);
-        }
+        auto level = spdlogLevelToLogLevel(spdlog::get_level());
+        setLogLevel(level);
+        setLogOutputLevel(level);
 
         // Sets system inforation logging rate. By default 1s
         setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);

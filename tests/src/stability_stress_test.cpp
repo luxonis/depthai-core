@@ -1,8 +1,8 @@
 // std
+#include <chrono>
 #include <csignal>
 #include <iostream>
 #include <unordered_map>
-#include <chrono>
 
 // Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
@@ -10,7 +10,7 @@
 // #define DEPTHAI_STABILITY_TEST_SCRIPT
 
 #ifdef DEPTHAI_STABILITY_TEST_DEBUG
-#include <opencv2/opencv.hpp>
+    #include <opencv2/opencv.hpp>
 #endif
 
 static const std::vector<std::string> labelMap = {
@@ -42,13 +42,14 @@ int main(int argc, char** argv) {
     //     nnPath = std::string(argv[1]);
     // }
 
-    seconds TEST_TIMEOUT{24*60*60};
+    seconds TEST_TIMEOUT{24 * 60 * 60};
     if(argc > 1) {
         TEST_TIMEOUT = seconds{stoi(argv[1])};
     }
 
     // Create pipeline
     dai::Pipeline pipeline;
+    pipeline.setXLinkChunkSize(0);
 
     // Define sources and outputs
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
@@ -62,13 +63,13 @@ int main(int argc, char** argv) {
     auto edgeDetectorLeft = pipeline.create<dai::node::EdgeDetector>();
     auto edgeDetectorRight = pipeline.create<dai::node::EdgeDetector>();
     auto edgeDetectorRgb = pipeline.create<dai::node::EdgeDetector>();
-    #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
+#ifdef DEPTHAI_STABILITY_TEST_SCRIPT
     auto script1 = pipeline.create<dai::node::Script>();
     auto script2 = pipeline.create<dai::node::Script>();
     auto script3 = pipeline.create<dai::node::Script>();
     auto script4 = pipeline.create<dai::node::Script>();
     auto scriptBurn = pipeline.create<dai::node::Script>();
-    #endif
+#endif
 
     // TODO(themarpe) - enable specific parts separatelly, to control load
     // auto featureTrackerLeft = pipeline.create<dai::node::FeatureTracker>();
@@ -84,10 +85,10 @@ int main(int argc, char** argv) {
     auto xoutEdgeLeft = pipeline.create<dai::node::XLinkOut>();
     auto xoutEdgeRight = pipeline.create<dai::node::XLinkOut>();
     auto xoutEdgeRgb = pipeline.create<dai::node::XLinkOut>();
-    #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
+#ifdef DEPTHAI_STABILITY_TEST_SCRIPT
     auto scriptOut = pipeline.create<dai::node::XLinkOut>();
     auto scriptOut2 = pipeline.create<dai::node::XLinkOut>();
-    #endif
+#endif
     // auto xoutTrackedFeaturesLeft = pipeline.create<dai::node::XLinkOut>();
     // auto xoutTrackedFeaturesRight = pipeline.create<dai::node::XLinkOut>();
 
@@ -105,13 +106,12 @@ int main(int argc, char** argv) {
     xoutEdgeLeft->setStreamName(edgeLeftStr);
     xoutEdgeRight->setStreamName(edgeRightStr);
     xoutEdgeRgb->setStreamName(edgeRgbStr);
-    #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
+#ifdef DEPTHAI_STABILITY_TEST_SCRIPT
     scriptOut->setStreamName("script");
     scriptOut2->setStreamName("script2");
-    #endif
+#endif
     // xoutTrackedFeaturesLeft->setStreamName("trackedFeaturesLeft");
     // xoutTrackedFeaturesRight->setStreamName("trackedFeaturesRight");
-
 
     // Properties
     camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
@@ -152,7 +152,7 @@ int main(int argc, char** argv) {
 
     edgeDetectorRgb->setMaxOutputFrameSize(8294400);
 
-    #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
+#ifdef DEPTHAI_STABILITY_TEST_SCRIPT
     std::string source1 = R"(
         import time
         import json
@@ -219,7 +219,7 @@ int main(int argc, char** argv) {
             time.sleep(0.001)
     )");
     scriptBurn->setProcessor(dai::ProcessorType::LEON_MSS);
-    #endif
+#endif
 
     // // By default the least mount of resources are allocated
     // // increasing it improves performance when optical flow is enabled
@@ -254,12 +254,12 @@ int main(int argc, char** argv) {
     edgeDetectorLeft->outputImage.link(xoutEdgeLeft->input);
     edgeDetectorRight->outputImage.link(xoutEdgeRight->input);
 
-    #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
+#ifdef DEPTHAI_STABILITY_TEST_SCRIPT
     script1->outputs["out"].link(script2->inputs["in"]);
     script2->outputs["out"].link(scriptOut->input);
     script3->outputs["out"].link(script4->inputs["in"]);
     script4->outputs["out"].link(scriptOut2->input);
-    #endif
+#endif
 
     // monoLeft->out.link(featureTrackerLeft->inputImage);
     // featureTrackerLeft->outputFeatures.link(xoutTrackedFeaturesLeft->input);
@@ -284,10 +284,10 @@ int main(int argc, char** argv) {
     auto edgeRightQueue = device.getOutputQueue(edgeRightStr, 8, false);
     auto edgeRgbQueue = device.getOutputQueue(edgeRgbStr, 8, false);
 
-    #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
+#ifdef DEPTHAI_STABILITY_TEST_SCRIPT
     auto scriptQueue = device.getOutputQueue("script", 8, false);
     auto script2Queue = device.getOutputQueue("script2", 8, false);
-    #endif
+#endif
 
     // auto outputFeaturesLeftQueue = device.getOutputQueue("trackedFeaturesLeft", 8, false);
     // auto outputFeaturesRightQueue = device.getOutputQueue("trackedFeaturesRight", 8, false);
@@ -299,11 +299,10 @@ int main(int argc, char** argv) {
     auto color = cv::Scalar(255, 255, 255);
 #endif
 
-
     mutex countersMtx;
     unordered_map<std::string, int> counters;
 
-    thread countingThread([&countersMtx, &counters, &device, TEST_TIMEOUT](){
+    thread countingThread([&countersMtx, &counters, &device, TEST_TIMEOUT]() {
         // Initial delay
         this_thread::sleep_for(5s);
 
@@ -314,9 +313,10 @@ int main(int argc, char** argv) {
                 unique_lock<mutex> l(countersMtx);
 
                 bool failed = counters.size() == 0;
-                cout << "[" << duration_cast<seconds>(steady_clock::now() - timeoutStopwatch).count() << "s] " << "FPS: ";
-                for(const auto& kv : counters){
-                    if(kv.second == 0){
+                cout << "[" << duration_cast<seconds>(steady_clock::now() - timeoutStopwatch).count() << "s] "
+                     << "FPS: ";
+                for(const auto& kv : counters) {
+                    if(kv.second == 0) {
                         failed = true;
                     }
 
@@ -333,7 +333,7 @@ int main(int argc, char** argv) {
                 fiveFpsCounter = steady_clock::now();
             }
 
-            if(steady_clock::now() - timeoutStopwatch > TEST_TIMEOUT){
+            if(steady_clock::now() - timeoutStopwatch > TEST_TIMEOUT) {
                 alive = false;
                 break;
             }
@@ -357,10 +357,10 @@ int main(int argc, char** argv) {
         auto edgeLefts = edgeLeftQueue->tryGetAll<dai::ImgFrame>();
         auto edgeRights = edgeRightQueue->tryGetAll<dai::ImgFrame>();
 
-        #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
+#ifdef DEPTHAI_STABILITY_TEST_SCRIPT
         auto script = scriptQueue->tryGetAll<dai::Buffer>();
         auto script2 = script2Queue->tryGetAll<dai::Buffer>();
-        #endif
+#endif
 
         // auto edgeRgbs = edgeRgbQueue->getAll<dai::ImgFrame>();
 
@@ -378,15 +378,15 @@ int main(int argc, char** argv) {
             counters["edgeLefts"] += edgeLefts.size();
             counters["edgeRights"] += edgeRights.size();
 
-            #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
+#ifdef DEPTHAI_STABILITY_TEST_SCRIPT
             counters["script"] += script.size();
             counters["script2"] += script2.size();
-            #endif
+#endif
             // counters["trackedLefts"] += trackedLefts.size();
             // counters["trackedRights"] += trackedRigths.size();
         }
 
-        #ifdef DEPTHAI_STABILITY_TEST_DEBUG
+#ifdef DEPTHAI_STABILITY_TEST_DEBUG
 
         /// DISPLAY & OPENCV Section
         for(const auto& edgeLeft : edgeLefts) {
@@ -401,7 +401,6 @@ int main(int argc, char** argv) {
         //     cv::Mat edgeRgbFrame = edgeRgb->getFrame();
         //     cv::imshow(edgeRgbStr, edgeRgbFrame);
         // }
-
 
         cv::Mat frame = imgFrame->getCvFrame();
         cv::Mat depthFrame = depth->getFrame();  // depthFrame values are in millimeters
@@ -475,18 +474,18 @@ int main(int argc, char** argv) {
         cv::imshow("depth", depthFrameColor);
         cv::imshow("rgb", frame);
 
-        #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
+    #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
         for(auto json : script) {
             if(json != nullptr) {
-                std::cout << "Script: " << std::string((const char*) json->getData().data(), json->getData().size()) << std::endl;
+                std::cout << "Script: " << std::string((const char*)json->getData().data(), json->getData().size()) << std::endl;
             }
         }
         for(auto json : script2) {
             if(json != nullptr) {
-                std::cout << "Script2: " << std::string((const char*) json->getData().data(), json->getData().size()) << std::endl;
+                std::cout << "Script2: " << std::string((const char*)json->getData().data(), json->getData().size()) << std::endl;
             }
         }
-        #endif
+    #endif
 
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q') {
@@ -494,8 +493,7 @@ int main(int argc, char** argv) {
             break;
         }
 
-        #endif
-
+#endif
     }
 
     // Clean up the counting thread
