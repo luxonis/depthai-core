@@ -350,6 +350,14 @@ class CalibrationHandler {
                       std::string boardCustom = "");
 
     /**
+     * Set the productName which acts as alisas for users to identify the device
+     *
+     * @param productName Sets product name (alias).
+     */
+
+    void setProductName(std::string productName);
+
+    /**
      * Set the Camera Intrinsics object
      *
      * @param cameraId CameraId of the camera for which Camera intrinsics are being loaded

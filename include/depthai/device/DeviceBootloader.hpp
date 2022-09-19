@@ -75,6 +75,15 @@ class DeviceBootloader {
         void setUsbMaxSpeed(UsbSpeed speed);
         /// Get maxUsbSpeed
         UsbSpeed getUsbMaxSpeed();
+
+        /// To JSON
+        nlohmann::json toJson() const;
+
+        /// from JSON
+        static Config fromJson(nlohmann::json);
+
+       private:
+        nlohmann::json data;
     };
 
     /// Bootloader version structure
@@ -152,10 +161,8 @@ class DeviceBootloader {
      * @param applicationName Optional name the application that is flashed
      * @returns Depthai application package
      */
-    static std::vector<uint8_t> createDepthaiApplicationPackage(const Pipeline& pipeline,
-                                                                const dai::Path& pathToCmd = {},
-                                                                bool compress = false,
-                                                                std::string applicationName = "");
+    static std::vector<uint8_t> createDepthaiApplicationPackage(
+        const Pipeline& pipeline, const dai::Path& pathToCmd = {}, bool compress = false, std::string applicationName = "", bool checkChecksum = false);
 
     /**
      * Creates application package which can be flashed to depthai device.
@@ -164,7 +171,10 @@ class DeviceBootloader {
      * @param applicationName Name the application that is flashed
      * @returns Depthai application package
      */
-    static std::vector<uint8_t> createDepthaiApplicationPackage(const Pipeline& pipeline, bool compress, std::string applicationName = "");
+    static std::vector<uint8_t> createDepthaiApplicationPackage(const Pipeline& pipeline,
+                                                                bool compress,
+                                                                std::string applicationName = "",
+                                                                bool checkChecksum = false);
 
     /**
      * Saves application package to a file which can be flashed to depthai device.
@@ -174,8 +184,12 @@ class DeviceBootloader {
      * @param compress Optional boolean which specifies if contents should be compressed
      * @param applicationName Optional name the application that is flashed
      */
-    static void saveDepthaiApplicationPackage(
-        const dai::Path& path, const Pipeline& pipeline, const dai::Path& pathToCmd = {}, bool compress = false, std::string applicationName = "");
+    static void saveDepthaiApplicationPackage(const dai::Path& path,
+                                              const Pipeline& pipeline,
+                                              const dai::Path& pathToCmd = {},
+                                              bool compress = false,
+                                              std::string applicationName = "",
+                                              bool checkChecksum = false);
 
     /**
      * Saves application package to a file which can be flashed to depthai device.
@@ -184,7 +198,8 @@ class DeviceBootloader {
      * @param compress Specifies if contents should be compressed
      * @param applicationName Optional name the application that is flashed
      */
-    static void saveDepthaiApplicationPackage(const dai::Path& path, const Pipeline& pipeline, bool compress, std::string applicationName = "");
+    static void saveDepthaiApplicationPackage(
+        const dai::Path& path, const Pipeline& pipeline, bool compress, std::string applicationName = "", bool checkChecksum = false);
 
     /**
      * @returns Embedded bootloader version
@@ -246,7 +261,8 @@ class DeviceBootloader {
                                         const Pipeline& pipeline,
                                         bool compress = false,
                                         std::string applicationName = "",
-                                        Memory memory = Memory::AUTO);
+                                        Memory memory = Memory::AUTO,
+                                        bool checkChecksum = false);
 
     /**
      * Flashes a given pipeline to the device.
@@ -254,7 +270,8 @@ class DeviceBootloader {
      * @param compress Compresses application to reduce needed memory size
      * @param applicationName Optional name the application that is flashed
      */
-    std::tuple<bool, std::string> flash(const Pipeline& pipeline, bool compress = false, std::string applicationName = "", Memory memory = Memory::AUTO);
+    std::tuple<bool, std::string> flash(
+        const Pipeline& pipeline, bool compress = false, std::string applicationName = "", Memory memory = Memory::AUTO, bool checkChecksum = false);
 
     /**
      * Reads information about flashed application in specified memory from device

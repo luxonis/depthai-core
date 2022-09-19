@@ -67,10 +67,8 @@ std::vector<DeviceInfo> DeviceBootloader::getAllAvailableDevices() {
     return availableDevices;
 }
 
-std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pipeline& pipeline,
-                                                                       const dai::Path& pathToCmd,
-                                                                       bool compress,
-                                                                       std::string applicationName) {
+std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(
+    const Pipeline& pipeline, const dai::Path& pathToCmd, bool compress, std::string applicationName, bool checkChecksum) {
     // Serialize the pipeline
     PipelineSchema schema;
     Assets assets;
@@ -158,8 +156,13 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
     sbr_section_set_size(fwSection, static_cast<uint32_t>(deviceFirmware.size()));
     sbr_section_set_checksum(fwSection, sbr_compute_checksum(deviceFirmware.data(), static_cast<uint32_t>(deviceFirmware.size())));
     sbr_section_set_offset(fwSection, SBR_RAW_SIZE);
-    // Ignore checksum to allow faster booting (images are verified after flashing, low risk)
-    sbr_section_set_ignore_checksum(fwSection, true);
+    if(checkChecksum) {
+        // Don't ignore checksum, use it when booting
+        sbr_section_set_ignore_checksum(fwSection, false);
+    } else {
+        // Ignore checksum to allow faster booting (images are verified after flashing, low risk)
+        sbr_section_set_ignore_checksum(fwSection, true);
+    }
     // Set compression flags
     if(compress) {
         sbr_section_set_compression(fwSection, SBR_COMPRESSION_ZLIB);
@@ -226,19 +229,23 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pip
     return fwPackage;
 }
 
-std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pipeline& pipeline, bool compress, std::string applicationName) {
-    return createDepthaiApplicationPackage(pipeline, "", compress, applicationName);
+std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(const Pipeline& pipeline,
+                                                                       bool compress,
+                                                                       std::string applicationName,
+                                                                       bool checkChecksum) {
+    return createDepthaiApplicationPackage(pipeline, "", compress, applicationName, checkChecksum);
 }
 
 void DeviceBootloader::saveDepthaiApplicationPackage(
-    const dai::Path& path, const Pipeline& pipeline, const dai::Path& pathToCmd, bool compress, std::string applicationName) {
-    auto dap = createDepthaiApplicationPackage(pipeline, pathToCmd, compress, applicationName);
+    const dai::Path& path, const Pipeline& pipeline, const dai::Path& pathToCmd, bool compress, std::string applicationName, bool checkChecksum) {
+    auto dap = createDepthaiApplicationPackage(pipeline, pathToCmd, compress, applicationName, checkChecksum);
     std::ofstream outfile(path, std::ios::binary);
     outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
 }
 
-void DeviceBootloader::saveDepthaiApplicationPackage(const dai::Path& path, const Pipeline& pipeline, bool compress, std::string applicationName) {
-    auto dap = createDepthaiApplicationPackage(pipeline, compress, applicationName);
+void DeviceBootloader::saveDepthaiApplicationPackage(
+    const dai::Path& path, const Pipeline& pipeline, bool compress, std::string applicationName, bool checkChecksum) {
+    auto dap = createDepthaiApplicationPackage(pipeline, compress, applicationName, checkChecksum);
     std::ofstream outfile(path, std::ios::binary);
     outfile.write(reinterpret_cast<const char*>(dap.data()), dap.size());
 }
@@ -560,12 +567,12 @@ bool DeviceBootloader::isAllowedFlashingBootloader() const {
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flash(
-    std::function<void(float)> progressCb, const Pipeline& pipeline, bool compress, std::string applicationName, Memory memory) {
-    return flashDepthaiApplicationPackage(progressCb, createDepthaiApplicationPackage(pipeline, compress, applicationName), memory);
+    std::function<void(float)> progressCb, const Pipeline& pipeline, bool compress, std::string applicationName, Memory memory, bool checkCheksum) {
+    return flashDepthaiApplicationPackage(progressCb, createDepthaiApplicationPackage(pipeline, compress, applicationName, checkCheksum), memory);
 }
 
-std::tuple<bool, std::string> DeviceBootloader::flash(const Pipeline& pipeline, bool compress, std::string applicationName, Memory memory) {
-    return flashDepthaiApplicationPackage(createDepthaiApplicationPackage(pipeline, compress, applicationName), memory);
+std::tuple<bool, std::string> DeviceBootloader::flash(const Pipeline& pipeline, bool compress, std::string applicationName, Memory memory, bool checkCheksum) {
+    return flashDepthaiApplicationPackage(createDepthaiApplicationPackage(pipeline, compress, applicationName, checkCheksum), memory);
 }
 
 DeviceBootloader::ApplicationInfo DeviceBootloader::readApplicationInfo(Memory mem) {
@@ -1127,13 +1134,11 @@ std::tuple<bool, std::string> DeviceBootloader::flashConfigFile(const dai::Path&
 
 DeviceBootloader::Config DeviceBootloader::readConfig(Memory memory, Type type) {
     auto json = readConfigData(memory, type);
-    // Implicit parse from json to Config
-    return json;
+    return Config::fromJson(json);
 }
 
 std::tuple<bool, std::string> DeviceBootloader::flashConfig(const Config& config, Memory memory, Type type) {
-    // Implicit parse from Config to json
-    return flashConfigData(config, memory, type);
+    return flashConfigData(config.toJson(), memory, type);
 }
 
 // Boot memory
@@ -1396,11 +1401,13 @@ UsbSpeed DeviceBootloader::Config::getUsbMaxSpeed() {
 }
 
 void DeviceBootloader::Config::setMacAddress(std::string mac) {
-    std::array<uint8_t, 6> a;
-    int last = -1;
-    int rc = std::sscanf(mac.c_str(), "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx%n", &a[0], &a[1], &a[2], &a[3], &a[4], &a[5], &last);
-    if(rc != 6 || static_cast<long>(mac.size()) != last) {
-        throw std::invalid_argument("Invalid MAC address format " + mac);
+    std::array<uint8_t, 6> a = {0, 0, 0, 0, 0, 0};
+    if(mac != "") {
+        int last = -1;
+        int rc = std::sscanf(mac.c_str(), "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx%n", &a[0], &a[1], &a[2], &a[3], &a[4], &a[5], &last);
+        if(rc != 6 || static_cast<long>(mac.size()) != last) {
+            throw std::invalid_argument("Invalid MAC address format " + mac);
+        }
     }
 
     // Set the parsed mac address
@@ -1420,6 +1427,22 @@ std::string DeviceBootloader::Config::getMacAddress() {
                   network.mac[5]);
 
     return std::string(macStr.data());
+}
+
+nlohmann::json DeviceBootloader::Config::toJson() const {
+    // Get current config & add data (but don't override)
+    nlohmann::json configValues = *this;
+    auto dataCopy = data;
+    dataCopy.update(configValues);
+    return dataCopy;
+}
+
+DeviceBootloader::Config DeviceBootloader::Config::fromJson(nlohmann::json json) {
+    // Parse out json (implicitly) and
+    Config cfg = json;
+    // save json data as is (to retain unknown values)
+    cfg.data = json;
+    return cfg;
 }
 
 }  // namespace dai
