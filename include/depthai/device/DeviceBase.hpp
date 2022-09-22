@@ -107,10 +107,18 @@ class DeviceBase {
     static std::tuple<bool, DeviceInfo> getDeviceByMxId(std::string mxId);
 
     /**
-     * Returns all connected devices
-     * @returns Vector of connected devices
+     * Returns all available devices
+     * @returns Vector of available devices
      */
     static std::vector<DeviceInfo> getAllAvailableDevices();
+
+    /**
+     * Returns information of all connected devices.
+     * The devices could be both connectable as well as already connected to devices.
+     *
+     * @returns Vector of connected device information
+     */
+    static std::vector<DeviceInfo> getAllConnectedDevices();
 
     /**
      * Gets device firmware binary for a specific OpenVINO version
@@ -542,6 +550,24 @@ class DeviceBase {
      * @return True on successful flash, false on failure
      */
     void flashFactoryCalibration(CalibrationHandler calibrationHandler);
+
+    /**
+     * Destructive action, deletes User area EEPROM contents
+     * Requires PROTECTED permissions
+     *
+     * @throws std::runtime_exception if failed to flash the calibration
+     * @return True on successful flash, false on failure
+     */
+    void flashEepromClear();
+
+    /**
+     * Destructive action, deletes Factory area EEPROM contents
+     * Requires FACTORY PROTECTED permissions
+     *
+     * @throws std::runtime_exception if failed to flash the calibration
+     * @return True on successful flash, false on failure
+     */
+    void flashFactoryEepromClear();
 
     /**
      * Fetches the EEPROM data from Factory area and loads it into CalibrationHandler object

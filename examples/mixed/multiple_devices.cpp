@@ -42,10 +42,10 @@ int main(int argc, char** argv) {
         std::cout << "   >>> MXID:" << mxId << std::endl;
         std::cout << "   >>> Num of cameras:" << cameras.size() << std::endl;
         std::cout << "   >>> USB speed:" << usbSpeed << std::endl;
-        if(eepromData.boardName != ""){
+        if(eepromData.boardName != "") {
             std::cout << "   >>> Board name:" << eepromData.boardName << std::endl;
         }
-        if(eepromData.productName != ""){
+        if(eepromData.productName != "") {
             std::cout << "   >>> Product name:" << eepromData.productName << std::endl;
         }
         auto pipeline = createPipeline();

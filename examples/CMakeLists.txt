@@ -233,6 +233,7 @@ dai_add_example(feature_tracker FeatureTracker/feature_tracker.cpp ON)
 dai_add_example(device_queue_event host_side/device_queue_event.cpp ON)
 dai_add_example(opencv_support host_side/opencv_support.cpp ON)
 dai_add_example(queue_add_callback host_side/queue_add_callback.cpp ON)
+dai_add_example(device_information host_side/device_information.cpp ON)
 
 # ImageManip
 dai_add_example(image_manip ImageManip/image_manip_example.cpp ON)
@@ -307,6 +308,7 @@ dai_add_example(script_nndata_example Script/script_nndata_example.cpp ON)
 dai_add_example(script_json_communication Script/script_json_communication.cpp ON)
 dai_add_example(script_change_pipeline_flow Script/script_change_pipeline_flow.cpp OFF)
 target_compile_definitions(script_change_pipeline_flow PRIVATE BLOB_PATH="${mobilenet_5shaves_blob}")
+dai_add_example(script_get_device_info Script/script_get_device_info.cpp ON)
 
 # SpatialDetection
 dai_add_example(spatial_location_calculator SpatialDetection/spatial_location_calculator.cpp ON)
@@ -314,6 +316,7 @@ dai_add_example(spatial_mobilenet_mono SpatialDetection/spatial_mobilenet_mono.c
 dai_add_example(spatial_mobilenet SpatialDetection/spatial_mobilenet.cpp ON)
 dai_add_example(spatial_tiny_yolo_v3 SpatialDetection/spatial_tiny_yolo.cpp ON)
 dai_add_example(spatial_tiny_yolo_v4 SpatialDetection/spatial_tiny_yolo.cpp ON)
+dai_add_example(spatial_calculator_multi_roi SpatialDetection/spatial_calculator_multi_roi.cpp ON)
 
 target_compile_definitions(spatial_mobilenet_mono PRIVATE BLOB_PATH="${mobilenet_blob}")
 target_compile_definitions(spatial_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}")

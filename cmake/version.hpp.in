@@ -16,5 +16,8 @@ namespace build
     constexpr static const char* COMMIT = "${BUILD_COMMIT}";
     constexpr static const char* COMMIT_DATETIME = "${BUILD_COMMIT_DATETIME}";
     constexpr static const char* BUILD_DATETIME = "${BUILD_DATETIME}";
+
+    constexpr static const char* DEVICE_VERSION = "${DEPTHAI_DEVICE_VERSION}";
+    constexpr static const char* BOOTLOADER_VERSION = "${DEPTHAI_BOOTLOADER_VERSION}";
 } // namespace build
 } // namespace dai
