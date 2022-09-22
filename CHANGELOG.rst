@@ -2,6 +2,21 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.17.4 (2022-09-20)
+-----------
+* DEPTHAI_WATCHDOG=0 bugfix (245fb57)
+* V5 Calibration flashing fix
+* FW log level bugfix (#587)
+* Updated DeviceBootloader::Config to retain existing values
+* PoE watchdog issues addressed (74b699c)
+* XLink - kernel driver detach (fixes some USB connectivity issues) (ba9bd8b)
+* Added EEPROM clear capability
+* Added missing installation of DLL files (#550)
+* Asset RPC refactor
+* Exposed Device::getAllConnectedDevices()
+* Exposed FW & BL versions
+* Contributors: Alex Bougdan, Szabolcs Gergely, Martin Peterlin
+
 
 2.17.3 (2022-08-05)
 -----------
