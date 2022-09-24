@@ -193,6 +193,7 @@ add_library(${TARGET_CORE_NAME}
     src/device/DataQueue.cpp
     src/device/CallbackHandler.cpp
     src/device/CalibrationHandler.cpp
+    src/device/Version.cpp
     src/pipeline/Pipeline.cpp
     src/pipeline/AssetManager.cpp
     src/pipeline/Node.cpp
