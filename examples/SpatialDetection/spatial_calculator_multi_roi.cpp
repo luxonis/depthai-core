@@ -45,7 +45,7 @@ int main() {
         dai::SpatialLocationCalculatorConfigData config;
         config.depthThresholds.lowerThreshold = 200;
         config.depthThresholds.upperThreshold = 10000;
-        config.roi = dai::Rect(dai::Point2f(i*0.1, 0.45), dai::Point2f((i+1)*0.1, 0.55));
+        config.roi = dai::Rect(dai::Point2f(i * 0.1, 0.45), dai::Point2f((i + 1) * 0.1, 0.55));
         spatialLocationCalculator->initialConfig.addROI(config);
     }
 
@@ -95,7 +95,7 @@ int main() {
             cv::rectangle(depthFrameColor, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color);
             std::stringstream depthDistance;
             depthDistance.precision(2);
-            depthDistance << fixed << static_cast<float>(distance/1000.0f) << "m";
+            depthDistance << fixed << static_cast<float>(distance / 1000.0f) << "m";
             cv::putText(depthFrameColor, depthDistance.str(), cv::Point(xmin + 10, ymin + 20), fontType, 0.5, color);
         }
         // Show the frame
@@ -104,7 +104,6 @@ int main() {
         if(cv::waitKey(1) == 'q') {
             break;
         }
-
     }
     return 0;
 }
