@@ -78,5 +78,21 @@ void Warp::setWarpMesh(const std::vector<std::pair<float, float>>& meshData, int
     setWarpMesh(reinterpret_cast<const float*>(meshData.data()), static_cast<int>(meshData.size()), width, height);
 }
 
+void Warp::setHwIds(std::vector<int> ids) {
+    properties.warpHwIds = ids;
+}
+
+std::vector<int> Warp::getHwIds() const {
+    return properties.warpHwIds;
+}
+
+void Warp::setInterpolation(Warp::Properties::Interpolation interpolation) {
+    properties.interpolation = interpolation;
+}
+
+Warp::Properties::Interpolation Warp::getInterpolation() const {
+    return properties.interpolation;
+}
+
 }  // namespace node
 }  // namespace dai

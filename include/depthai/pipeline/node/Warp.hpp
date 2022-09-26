@@ -77,6 +77,22 @@ class Warp : public NodeCRTP<Node, Warp, WarpProperties> {
      * @param maxFrameSize Maximum frame size in bytes
      */
     void setMaxOutputFrameSize(int maxFrameSize);
+
+    /**
+     * Specify which hardware warp engines to use
+     * @param maxFrameSize Maximum frame size in bytes
+     */
+    void setHwIds(std::vector<int> ids);
+    /// Retrieve which hardware warp engines to use
+    std::vector<int> getHwIds() const;
+
+    /**
+     * Specify which interpolation method to use
+     * @param interpolation type of interpolation
+     */
+    void setInterpolation(Properties::Interpolation interpolation);
+    /// Retrieve which interpolation method to use
+    Properties::Interpolation getInterpolation() const;
 };
 
 }  // namespace node

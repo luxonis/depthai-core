@@ -24,9 +24,11 @@ int main() {
     dai::Point2f bl(20, 460);
     dai::Point2f br(460, 460);
     warp1->setWarpMesh({tl, tr, ml, mr, bl, br}, 2, 3);
-    constexpr auto WARP1_OUTPUT_FRAME_SIZE = {992, 500};
+    constexpr std::tuple<int, int> WARP1_OUTPUT_FRAME_SIZE = {992, 500};
     warp1->setOutputSize(WARP1_OUTPUT_FRAME_SIZE);
-    warp1->setMaxOutputFrameSize(WARP1_OUTPUT_FRAME_SIZE[0] * WARP1_OUTPUT_FRAME_SIZE[1] * 3);
+    warp1->setMaxOutputFrameSize(std::get<0>(WARP1_OUTPUT_FRAME_SIZE) * std::get<1>(WARP1_OUTPUT_FRAME_SIZE) * 3);
+    warp1->setInterpolation(dai::node::Warp::Properties::Interpolation::BYPASS);
+    warp1->setHwIds({1});
 
     camRgb->preview.link(warp1->inputImage);
     auto xout1 = pipeline.create<dai::node::XLinkOut>();
@@ -45,6 +47,8 @@ int main() {
     // clang-format on
     warp2->setWarpMesh(mesh2, 3, 3);
     warp2->setMaxOutputFrameSize(maxFrameSize);
+    warp2->setInterpolation(dai::node::Warp::Properties::Interpolation::BICUBIC);
+    warp2->setHwIds({2});
 
     camRgb->preview.link(warp2->inputImage);
     auto xout2 = pipeline.create<dai::node::XLinkOut>();

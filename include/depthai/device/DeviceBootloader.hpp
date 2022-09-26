@@ -567,6 +567,9 @@ inline std::ostream& operator<<(std::ostream& out, const dai::DeviceBootloader::
         case dai::DeviceBootloader::Section::BOOTLOADER:
             out << "BOOTLOADER";
             break;
+        case dai::DeviceBootloader::Section::USER_BOOTLOADER:
+            out << "BOOTLOADER";
+            break;
         case dai::DeviceBootloader::Section::BOOTLOADER_CONFIG:
             out << "BOOTLOADER_CONFIG";
             break;
