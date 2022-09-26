@@ -223,6 +223,16 @@ int main(int argc, char** argv) {
 
     while(true) {
         auto videoIn = video->get<dai::ImgFrame>();
+        if (0) { // focus sweep test
+            static int dir_step = 3;
+            lensPos += dir_step;
+            if (lensPos > 255 || lensPos < 0) dir_step *= -1;
+            lensPos = clamp(lensPos, 0, 255);
+            printf("Setting manual focus, lens position: %d\n", lensPos);
+            dai::CameraControl ctrl;
+            ctrl.setManualFocus(lensPos);
+            controlQueue->send(ctrl);
+        }
 
         if (1) { // FPS calc
             auto tnow = steady_clock::now();
