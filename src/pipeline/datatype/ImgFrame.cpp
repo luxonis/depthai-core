@@ -49,6 +49,9 @@ std::chrono::microseconds ImgFrame::getExposureTime() const {
 int ImgFrame::getSensitivity() const {
     return img.cam.sensitivityIso;
 }
+int ImgFrame::getColorTemperature() const {
+    return img.cam.wbColorTemp;
+}
 int ImgFrame::getLensPosition() const {
     return img.cam.lensPosition;
 }

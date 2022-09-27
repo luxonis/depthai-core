@@ -92,6 +92,11 @@ class ImgFrame : public Buffer {
     int getSensitivity() const;
 
     /**
+     * Retrieves white-balance color temperature of the light source, in kelvins
+     */
+    int getColorTemperature() const;
+
+    /**
      * Retrieves lens position, range 0..255. Returns -1 if not available
      */
     int getLensPosition() const;
