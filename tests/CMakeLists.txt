@@ -184,12 +184,20 @@ hunter_private_data(
     FILE "text-image-super-resolution-0001_2022.1.0_4shave.blob"
     LOCATION openvino_2022_1_blob
 )
+# YoloV4 resource
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/yolo-v4-tiny-tf_openvino_2021.4_4shave.blob"
+    SHA1 "7da2f96f7300e3828940557e6a86ac6f243eef7e"
+    FILE "yolo-v4-tiny-tf_openvino_2021.4_4shave.blob"
+    LOCATION tiny_yolo_v4_2021-4_4shave_blob
+)
 
 
 # Add tests
 dai_add_test(color_camera_node_test src/color_camera_node_test.cpp)
 dai_add_test(image_manip_node_test src/image_manip_node_test.cpp)
 dai_add_test(pipeline_test src/pipeline_test.cpp)
+dai_add_test(logging_test src/logging_test.cpp)
 
 dai_add_test(neural_network_test src/neural_network_test.cpp)
 dai_test_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
@@ -235,3 +243,24 @@ dai_add_test(bootloader_version_test src/bootloader_version_test.cpp)
 
 # XLinkIn -> XLinkOut passthrough with large frames
 dai_add_test(xlink_roundtrip_test src/xlink_roundtrip_test.cpp)
+
+# Stability stress test (OAK-D oriented USB/PoE)
+# TODO
+# # dai_add_test(stability_stress_test src/stability_stress_test.cpp)
+option(DEPTHAI_STABILITY_STRESS_TEST_DEBUG "Enable visualization for stability stress test" OFF)
+add_executable(stability_stress_test src/stability_stress_test.cpp)
+add_default_flags(stability_stress_test LEAN)
+if(COMMAND target_clangformat_setup)
+    target_clangformat_setup(stability_stress_test "")
+endif()
+if(DEPTHAI_STABILITY_TEST_DEBUG)
+    target_link_libraries(stability_stress_test PRIVATE depthai::opencv opencv_highgui)
+    target_compile_definitions(stability_stress_test PRIVATE DEPTHAI_STABILITY_TEST_DEBUG)
+else()
+    target_link_libraries(stability_stress_test PRIVATE depthai::core)
+endif()
+target_compile_definitions(stability_stress_test PRIVATE BLOB_PATH="${tiny_yolo_v4_2021-4_4shave_blob}")
+# add_test(stability_stress_test stability_stress_test)
+# add_test(stability_stress_test_poe stability_stress_test)
+# set_tests_properties(stability_stress_test PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=usb" LABELS stability_usb)
+# set_tests_properties(stability_stress_test_poe PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=poe" LABELS stability_poe)

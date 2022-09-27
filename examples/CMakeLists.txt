@@ -200,6 +200,7 @@ hunter_private_data(
 # bootloader
 dai_add_example(bootloader_version bootloader/bootloader_version.cpp ON)
 dai_add_example(flash_bootloader bootloader/flash_bootloader.cpp OFF)
+dai_add_example(flash_user_bootloader bootloader/flash_user_bootloader.cpp OFF)
 dai_add_example(bootloader_config bootloader/bootloader_config.cpp ON read)
 dai_add_example(poe_set_ip bootloader/poe_set_ip.cpp OFF)
 dai_add_example(read_flash_memory bootloader/read_flash_memory.cpp OFF)
@@ -233,6 +234,7 @@ dai_add_example(feature_tracker FeatureTracker/feature_tracker.cpp ON)
 dai_add_example(device_queue_event host_side/device_queue_event.cpp ON)
 dai_add_example(opencv_support host_side/opencv_support.cpp ON)
 dai_add_example(queue_add_callback host_side/queue_add_callback.cpp ON)
+dai_add_example(device_information host_side/device_information.cpp OFF)
 
 # ImageManip
 dai_add_example(image_manip ImageManip/image_manip_example.cpp ON)
@@ -240,6 +242,9 @@ dai_add_example(image_manip_rotate ImageManip/image_manip_rotate.cpp ON)
 dai_add_example(image_manip_tiling ImageManip/image_manip_tiling.cpp ON)
 dai_add_example(rgb_rotate_warp ImageManip/rgb_rotate_warp.cpp ON)
 dai_add_example(image_manip_warp_mesh ImageManip/image_manip_warp_mesh.cpp ON)
+
+# Warp
+dai_add_example(warp_mesh Warp/warp_mesh.cpp ON)
 
 # IMU
 dai_add_example(imu_gyroscope_accelerometer IMU/imu_gyroscope_accelerometer.cpp ON)
@@ -251,6 +256,7 @@ dai_add_example(rgb_encoding_mono_mobilenet mixed/rgb_encoding_mono_mobilenet.cp
 dai_add_example(rgb_encoding_mono_mobilenet_depth mixed/rgb_encoding_mono_mobilenet_depth.cpp ON)
 dai_add_example(rgb_encoding_mobilenet mixed/rgb_encoding_mobilenet.cpp ON)
 dai_add_example(multiple_devices mixed/multiple_devices.cpp OFF)
+dai_add_example(frame_sync mixed/frame_sync.cpp ON)
 
 target_compile_definitions(mono_depth_mobilenetssd PRIVATE BLOB_PATH="${mobilenet_blob}")
 target_compile_definitions(rgb_encoding_mono_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}")
@@ -304,6 +310,8 @@ dai_add_example(script_http_server Script/script_http_server.cpp OFF)
 dai_add_example(script_mjpeg_server Script/script_mjpeg_server.cpp OFF)
 dai_add_example(script_nndata_example Script/script_nndata_example.cpp ON)
 dai_add_example(script_json_communication Script/script_json_communication.cpp ON)
+dai_add_example(script_change_pipeline_flow Script/script_change_pipeline_flow.cpp OFF)
+target_compile_definitions(script_change_pipeline_flow PRIVATE BLOB_PATH="${mobilenet_5shaves_blob}")
 dai_add_example(script_get_device_info Script/script_get_device_info.cpp ON)
 
 # SpatialDetection
@@ -312,6 +320,7 @@ dai_add_example(spatial_mobilenet_mono SpatialDetection/spatial_mobilenet_mono.c
 dai_add_example(spatial_mobilenet SpatialDetection/spatial_mobilenet.cpp ON)
 dai_add_example(spatial_tiny_yolo_v3 SpatialDetection/spatial_tiny_yolo.cpp ON)
 dai_add_example(spatial_tiny_yolo_v4 SpatialDetection/spatial_tiny_yolo.cpp ON)
+dai_add_example(spatial_calculator_multi_roi SpatialDetection/spatial_calculator_multi_roi.cpp OFF)
 
 target_compile_definitions(spatial_mobilenet_mono PRIVATE BLOB_PATH="${mobilenet_blob}")
 target_compile_definitions(spatial_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}")

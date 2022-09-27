@@ -18,6 +18,7 @@
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
+#include "depthai/device/Version.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
@@ -108,10 +109,18 @@ class DeviceBase {
     static std::tuple<bool, DeviceInfo> getDeviceByMxId(std::string mxId);
 
     /**
-     * Returns all connected devices
-     * @returns Vector of connected devices
+     * Returns all available devices
+     * @returns Vector of available devices
      */
     static std::vector<DeviceInfo> getAllAvailableDevices();
+
+    /**
+     * Returns information of all connected devices.
+     * The devices could be both connectable as well as already connected to devices.
+     *
+     * @returns Vector of connected device information
+     */
+    static std::vector<DeviceInfo> getAllConnectedDevices();
 
     /**
      * Gets device firmware binary for a specific OpenVINO version
@@ -191,7 +200,7 @@ class DeviceBase {
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * Uses OpenVINO version Pipeline::DEFAULT_OPENVINO_VERSION
+     * Uses OpenVINO version OpenVINO::DEFAULT_VERSION
      */
     DeviceBase();
 
@@ -270,10 +279,34 @@ class DeviceBase {
     DeviceBase(Config config, const DeviceInfo& devInfo);
 
     /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * Uses OpenVINO version OpenVINO::DEFAULT_VERSION
+     *
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     */
+    DeviceBase(const DeviceInfo& devInfo);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * Uses OpenVINO version OpenVINO::DEFAULT_VERSION
+     *
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param maxUsbSpeed Maximum allowed USB speed
+     */
+    DeviceBase(const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
+
+    /**
      * Device destructor
      * @note In the destructor of the derived class, remember to call close()
      */
     virtual ~DeviceBase();
+
+    /**
+     * Gets Bootloader version if it was booted through Bootloader
+     *
+     * @returns DeviceBootloader::Version if booted through Bootloader or none otherwise
+     */
+    tl::optional<Version> getBootloaderVersion();
 
     /**
      * Checks if devices pipeline is already running
@@ -675,6 +708,7 @@ class DeviceBase {
     void tryGetDevice();
 
     DeviceInfo deviceInfo = {};
+    tl::optional<Version> bootloaderVersion;
 
     // Log callback
     int uniqueCallbackId = 0;

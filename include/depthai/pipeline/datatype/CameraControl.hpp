@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <unordered_map>
 #include <vector>
 
@@ -14,17 +15,20 @@ namespace dai {
  *
  *  - Still capture
  *
- *  - Auto focus
+ *  - Auto/manual focus
+ *
+ *  - Auto/manual white balance
+ *
+ *  - Auto/manual exposure
  *
  *  - Anti banding
  *
- *  - Auto white balance
- *
- *  - Scene
- *
- *  - Effect
- *
  *  - ...
+ *
+ *  By default the camera enables 3A, with auto-focus in `CONTINUOUS_VIDEO` mode,
+ *  auto-white-balance in `AUTO` mode, and auto-exposure with anti-banding for
+ *  50Hz mains frequency.
+ *
  */
 class CameraControl : public Buffer {
     std::shared_ptr<RawBuffer> serialize() const override;
@@ -96,7 +100,7 @@ class CameraControl : public Buffer {
 
     // Focus
     /**
-     * Set a command to specify autofocus mode
+     * Set a command to specify autofocus mode. Default `CONTINUOUS_VIDEO`
      */
     CameraControl& setAutoFocusMode(AutoFocusMode mode);
 
@@ -106,12 +110,14 @@ class CameraControl : public Buffer {
     CameraControl& setAutoFocusTrigger();
 
     /**
-     * Set autofocus lens range, `infinityPosition < macroPosition`, valid values `0..255`
+     * Set autofocus lens range, `infinityPosition < macroPosition`, valid values `0..255`.
+     * May help to improve autofocus in case the lens adjustment is not typical/tuned
      */
     CameraControl& setAutoFocusLensRange(int infinityPosition, int macroPosition);
 
     /**
-     * Set a command to specify focus region in pixels
+     * Set a command to specify focus region in pixels.
+     * Note: the region should be mapped to the configured sensor resolution, before ISP scaling
      * @param startX X coordinate of top left corner of region
      * @param startY Y coordinate of top left corner of region
      * @param width Region width
@@ -138,7 +144,8 @@ class CameraControl : public Buffer {
     CameraControl& setAutoExposureLock(bool lock);
 
     /**
-     * Set a command to specify auto exposure region in pixels
+     * Set a command to specify auto exposure region in pixels.
+     * Note: the region should be mapped to the configured sensor resolution, before ISP scaling
      * @param startX X coordinate of top left corner of region
      * @param startY Y coordinate of top left corner of region
      * @param width Region width
@@ -148,13 +155,20 @@ class CameraControl : public Buffer {
 
     /**
      * Set a command to specify auto exposure compensation
-     * @param compensation Compensation value between -9..9
+     * @param compensation Compensation value between -9..9, default 0
      */
     CameraControl& setAutoExposureCompensation(int compensation);
 
     /**
-     * Set a command to specify auto banding mode
-     * @param mode Auto banding mode to use
+     * Set a command to specify anti-banding mode. Anti-banding / anti-flicker
+     * works in auto-exposure mode, by controlling the exposure time to be applied
+     * in multiples of half the mains period, for example in multiple of 10ms
+     * for 50Hz (period 20ms) AC-powered illumination sources.
+     *
+     * If the scene would be too bright for the smallest exposure step
+     * (10ms in the example, with ISO at a minimum of 100), anti-banding is not effective.
+     *
+     * @param mode Anti-banding mode to use. Default: `MAINS_50_HZ`
      */
     CameraControl& setAntiBandingMode(AntiBandingMode mode);
 
@@ -165,10 +179,17 @@ class CameraControl : public Buffer {
      */
     CameraControl& setManualExposure(uint32_t exposureTimeUs, uint32_t sensitivityIso);
 
+    /**
+     * Set a command to manually specify exposure
+     * @param exposureTime Exposure time
+     * @param sensitivityIso Sensitivity as ISO value, usual range 100..1600
+     */
+    void setManualExposure(std::chrono::microseconds exposureTime, uint32_t sensitivityIso);
+
     // White Balance
     /**
      * Set a command to specify auto white balance mode
-     * @param mode Auto white balance mode to use
+     * @param mode Auto white balance mode to use. Default `AUTO`
      */
     CameraControl& setAutoWhiteBalanceMode(AutoWhiteBalanceMode mode);
 
@@ -187,37 +208,37 @@ class CameraControl : public Buffer {
     // Other image controls
     /**
      * Set a command to adjust image brightness
-     * @param value Brightness, range -10..10
+     * @param value Brightness, range -10..10, default 0
      */
     CameraControl& setBrightness(int value);
 
     /**
      * Set a command to adjust image contrast
-     * @param value Contrast, range -10..10
+     * @param value Contrast, range -10..10, default 0
      */
     CameraControl& setContrast(int value);
 
     /**
      * Set a command to adjust image saturation
-     * @param value Saturation, range -10..10
+     * @param value Saturation, range -10..10, default 0
      */
     CameraControl& setSaturation(int value);
 
     /**
      * Set a command to adjust image sharpness
-     * @param value Sharpness, range 0..4
+     * @param value Sharpness, range 0..4, default 1
      */
     CameraControl& setSharpness(int value);
 
     /**
      * Set a command to adjust luma denoise amount
-     * @param value Luma denoise amount, range 0..4
+     * @param value Luma denoise amount, range 0..4, default 1
      */
     CameraControl& setLumaDenoise(int value);
 
     /**
      * Set a command to adjust chroma denoise amount
-     * @param value Chroma denoise amount, range 0..4
+     * @param value Chroma denoise amount, range 0..4, default 1
      */
     CameraControl& setChromaDenoise(int value);
 
@@ -239,6 +260,21 @@ class CameraControl : public Buffer {
      * @returns True if capture still command is set
      */
     bool getCaptureStill() const;
+
+    /**
+     * Retrieves exposure time
+     */
+    std::chrono::microseconds getExposureTime() const;
+
+    /**
+     * Retrieves sensitivity, as an ISO value
+     */
+    int getSensitivity() const;
+
+    /**
+     * Retrieves lens position, range 0..255. Returns -1 if not available
+     */
+    int getLensPosition() const;
 };
 
 }  // namespace dai

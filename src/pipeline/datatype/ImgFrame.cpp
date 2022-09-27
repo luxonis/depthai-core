@@ -43,11 +43,14 @@ unsigned int ImgFrame::getHeight() const {
 RawImgFrame::Type ImgFrame::getType() const {
     return img.fb.type;
 }
-int ImgFrame::getExposureTime() const {
-    return img.cam.exposureTimeUs;
+std::chrono::microseconds ImgFrame::getExposureTime() const {
+    return std::chrono::microseconds(img.cam.exposureTimeUs);
 }
 int ImgFrame::getSensitivity() const {
     return img.cam.sensitivityIso;
+}
+int ImgFrame::getColorTemperature() const {
+    return img.cam.wbColorTemp;
 }
 int ImgFrame::getLensPosition() const {
     return img.cam.lensPosition;
