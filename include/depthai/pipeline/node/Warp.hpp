@@ -80,7 +80,7 @@ class Warp : public NodeCRTP<Node, Warp, WarpProperties> {
 
     /**
      * Specify which hardware warp engines to use
-     * @param maxFrameSize Maximum frame size in bytes
+     * @param ids Maximum frame size in bytes
      */
     void setHwIds(std::vector<int> ids);
     /// Retrieve which hardware warp engines to use
