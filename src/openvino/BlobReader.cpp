@@ -7,6 +7,8 @@
 
 #include "BlobReader.hpp"
 
+#include <spdlog/fmt/fmt.h>
+
 #include <cassert>
 #include <memory>
 #include <sstream>
@@ -24,12 +26,18 @@ namespace {
 
 template <typename T>
 T readFromBlob(const std::vector<std::uint8_t>& blob, uint32_t& offset) {
-    assert(offset + sizeof(T) <= blob.size());
+    if(offset + sizeof(T) > blob.size()) {
+        throw std::length_error("BlobReader error: Filesize is less than blob specifies. Likely corrupted");
+    }
 
     auto srcPtr = blob.data() + offset;
     offset += sizeof(T);
 
     return *reinterpret_cast<const T*>(srcPtr);
+}
+
+bool isIOShapeName(std::string name) {
+    return name.find("@shape") != std::string::npos;
 }
 
 }  // namespace
@@ -47,108 +55,77 @@ void BlobReader::parse(const std::vector<std::uint8_t>& blob) {
         throw std::logic_error("BlobReader error: File does not seem to be a supported neural network blob");
     }
 
-    //// TODO(themarpe) - add support for getting back some basic network information
+    if(blob.size() < blobHeader.file_size) {
+        throw std::length_error("BlobReader error: Filesize is less than blob specifies. Likely corrupted");
+    }
 
-    // _inputInfo.totalSize = _blobHeader.inputs_size;
-    // _outputInfo.totalSize = _blobHeader.outputs_size;
-    //
-    // auto inputInfoSecOffset = _blobHeader.input_info_section_offset;
-    // for (uint32_t i = 0; i < _blobHeader.inputs_count; i++) {
-    //     auto ioIdx = readFromBlob<uint32_t>(blob, inputInfoSecOffset);
-    //     assert(ioIdx == i);
-    //
-    //     auto ioBufferOffset = readFromBlob<int32_t>(blob, inputInfoSecOffset);
-    //
-    //     auto nameLength = readFromBlob<uint32_t>(blob, inputInfoSecOffset);
-    //     std::string inputName(nameLength, 0);
-    //     for (auto& c : inputName) {
-    //         c = readFromBlob<char>(blob, inputInfoSecOffset);
-    //     }
-    //
-    //     // Truncate zeros
-    //     inputName = inputName.c_str();
-    //
-    //     auto dataType = readFromBlob<DataType>(blob, inputInfoSecOffset);
-    //     auto orderCode = readFromBlob<uint32_t>(blob, inputInfoSecOffset);
-    //
-    //     auto numDims = readFromBlob<uint32_t>(blob, inputInfoSecOffset);
-    //
-    //     auto dimsOrder = DimsOrder::fromCode(orderCode);
-    //     auto perm = dimsOrder.toPermutation();
-    //     assert(perm.size() == numDims);
-    //
-    //     auto dimsLocation = readFromBlob<Location>(blob, inputInfoSecOffset);
-    //     VPU_THROW_UNLESS(dimsLocation == Location::Blob,
-    //         "BlobReader error while parsing {} input data: only Blob location for input shape is supported, but {} was given",
-    //         inputName, dimsLocation);
-    //     auto dimsOffset = _blobHeader.const_data_section_offset + readFromBlob<uint32_t>(blob, inputInfoSecOffset);
-    //
-    //     // Skip strides' location and offset
-    //     inputInfoSecOffset += 2 * sizeof(uint32_t);
-    //
-    //     DimValues vpuDims;
-    //
-    //     for (int i = 0; i < perm.size(); ++i) {
-    //         vpuDims.set(perm[i], readFromBlob<uint32_t>(blob, dimsOffset));
-    //     }
-    //
-    //     ie::TensorDesc ieDesc = DataDesc(dataType, dimsOrder, vpuDims).toTensorDesc();
-    //     ie::Data inputData(inputName, ieDesc);
-    //
-    //     ie::InputInfo input;
-    //     input.setInputData(std::make_shared<ie::Data>(inputData));
-    //
-    //     _networkInputs[input.name()]    = std::make_shared<ie::InputInfo>(input);
-    //     _inputInfo.offset[input.name()] = ioBufferOffset;
-    // }
-    //
-    // auto outputInfoSecOffset = _blobHeader.output_info_section_offset;
-    // for (size_t i = 0; i < _blobHeader.outputs_count; i++) {
-    //     auto ioIdx = readFromBlob<uint32_t>(blob, outputInfoSecOffset);
-    //     IE_ASSERT(ioIdx == i);
-    //
-    //     auto ioBufferOffset = readFromBlob<int32_t>(blob, outputInfoSecOffset);
-    //
-    //     auto nameLength = readFromBlob<uint32_t>(blob, outputInfoSecOffset);
-    //     std::string outputName(nameLength, 0);
-    //     for (auto& c : outputName) {
-    //         c = readFromBlob<char>(blob, outputInfoSecOffset);
-    //     }
-    //
-    //     // Truncate zeros
-    //     outputName = outputName.c_str();
-    //
-    //     auto dataType = readFromBlob<DataType>(blob, outputInfoSecOffset);
-    //     auto orderCode = readFromBlob<uint32_t>(blob, outputInfoSecOffset);
-    //
-    //     auto numDims = readFromBlob<uint32_t>(blob, outputInfoSecOffset);
-    //
-    //
-    //     auto dimsOrder = DimsOrder::fromCode(orderCode);
-    //     auto perm = dimsOrder.toPermutation();
-    //     IE_ASSERT(perm.size() == numDims);
-    //
-    //     auto dimsLocation = readFromBlob<Location>(blob, outputInfoSecOffset);
-    //     VPU_THROW_UNLESS(dimsLocation == Location::Blob,
-    //         "BlobReader error while parsing {} output data: only Blob location for output shape is supported, but {} was given",
-    //         outputName, dimsLocation);
-    //     auto dimsOffset = _blobHeader.const_data_section_offset + readFromBlob<uint32_t>(blob, outputInfoSecOffset);
-    //
-    //     // Skip strides' location and offset
-    //     outputInfoSecOffset += 2 * sizeof(uint32_t);
-    //
-    //     DimValues vpuDims;
-    //
-    //     for (int i = 0; i < perm.size(); ++i) {
-    //         vpuDims.set(perm[i], readFromBlob<uint32_t>(blob, dimsOffset));
-    //     }
-    //
-    //     ie::TensorDesc ieDesc = DataDesc(dataType, dimsOrder, vpuDims).toTensorDesc();
-    //     ie::Data outputData(outputName, ieDesc);
-    //
-    //     _networkOutputs[outputData.getName()]    = std::make_shared<ie::Data>(outputData);
-    //     _outputInfo.offset[outputData.getName()] = ioBufferOffset;
-    // }
+    const auto readIO = [this, &blob](uint32_t& ioSectionOffset, uint32_t idx) {
+        auto ioIdx = readFromBlob<uint32_t>(blob, ioSectionOffset);
+        if(ioIdx != idx) {
+            throw std::runtime_error(
+                fmt::format("BlobReader failed on I/O processing, its' ioIdx parameter (which is {}) is "
+                            "different from its' processing order (which is {})",
+                            ioIdx,
+                            idx));
+        }
+
+        auto ioBufferOffset = readFromBlob<int32_t>(blob, ioSectionOffset);
+
+        auto nameLength = readFromBlob<uint32_t>(blob, ioSectionOffset);
+        std::string ioName(nameLength, 0);
+        for(auto& c : ioName) {
+            c = readFromBlob<char>(blob, ioSectionOffset);
+        }
+
+        // Truncate zeros
+        ioName = ioName.c_str();
+
+        auto dataType = static_cast<TensorInfo::DataType>(readFromBlob<int32_t>(blob, ioSectionOffset));
+        auto orderCode = static_cast<TensorInfo::StorageOrder>(readFromBlob<uint32_t>(blob, ioSectionOffset));
+
+        auto numDims = readFromBlob<uint32_t>(blob, ioSectionOffset);
+
+        // ignore
+        readFromBlob<int32_t>(blob, ioSectionOffset);
+
+        auto dimsOffset = blobHeader.const_data_section_offset + readFromBlob<uint32_t>(blob, ioSectionOffset);
+
+        // Skip strides' location and offset
+        ioSectionOffset += 2 * sizeof(uint32_t);
+
+        std::vector<unsigned> dims;
+        for(unsigned i = 0; i < numDims; ++i) {
+            dims.push_back(readFromBlob<uint32_t>(blob, dimsOffset));
+        }
+
+        TensorInfo io;
+        io.numDimensions = numDims;
+        io.dims = dims;
+        io.name = ioName;
+        io.offset = ioBufferOffset;
+        io.order = orderCode;
+        io.dataType = dataType;
+
+        return io;
+    };
+
+    auto inputInfoSecOffset = blobHeader.input_info_section_offset;
+    for(uint32_t i = 0; i < blobHeader.inputs_count; i++) {
+        const auto processedInput = readIO(inputInfoSecOffset, i);
+        if(!isIOShapeName(processedInput.name)) {
+            // Add to inputs
+            networkInputs[processedInput.name] = processedInput;
+        }
+    }
+
+    auto outputInfoSecOffset = blobHeader.output_info_section_offset;
+    for(uint32_t i = 0; i < blobHeader.outputs_count; i++) {
+        const auto processedOutput = readIO(outputInfoSecOffset, i);
+        if(!isIOShapeName(processedOutput.name)) {
+            // Add to inputs
+            networkOutputs[processedOutput.name] = processedOutput;
+        }
+    }
 }
 
 }  // namespace dai

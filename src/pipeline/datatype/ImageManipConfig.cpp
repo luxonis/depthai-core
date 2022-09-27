@@ -15,7 +15,7 @@ ImageManipConfig::ImageManipConfig(std::shared_ptr<RawImageManipConfig> ptr) : B
 
 // helpers
 // Functions to set properties
-void ImageManipConfig::setCropRect(float xmin, float ymin, float xmax, float ymax) {
+ImageManipConfig& ImageManipConfig::setCropRect(float xmin, float ymin, float xmax, float ymax) {
     // Enable crop stage
     cfg.enableCrop = true;
 
@@ -27,52 +27,59 @@ void ImageManipConfig::setCropRect(float xmin, float ymin, float xmax, float yma
     cfg.cropConfig.cropRect.ymin = std::max(ymin, 0.0f);
     cfg.cropConfig.cropRect.xmax = std::min(xmax, 1.0f);
     cfg.cropConfig.cropRect.ymax = std::min(ymax, 1.0f);
+    return *this;
 }
 
-void ImageManipConfig::setCropRect(std::tuple<float, float, float, float> coordinates) {
+ImageManipConfig& ImageManipConfig::setCropRect(std::tuple<float, float, float, float> coordinates) {
     setCropRect(std::get<0>(coordinates), std::get<1>(coordinates), std::get<2>(coordinates), std::get<3>(coordinates));
+    return *this;
 }
 
-void ImageManipConfig::setCropRotatedRect(RotatedRect rr, bool normalizedCoords) {
+ImageManipConfig& ImageManipConfig::setCropRotatedRect(RotatedRect rr, bool normalizedCoords) {
     // Enable crop stage and extended flags
     cfg.enableCrop = true;
     cfg.cropConfig.enableRotatedRect = true;
 
     cfg.cropConfig.cropRotatedRect = rr;
     cfg.cropConfig.normalizedCoords = normalizedCoords;
+    return *this;
 }
 
-void ImageManipConfig::setWarpTransformFourPoints(std::vector<Point2f> pt, bool normalizedCoords) {
+ImageManipConfig& ImageManipConfig::setWarpTransformFourPoints(std::vector<Point2f> pt, bool normalizedCoords) {
     // Enable resize stage and extended flags
     cfg.enableResize = true;
     cfg.resizeConfig.enableWarp4pt = true;
     cfg.resizeConfig.warpFourPoints = pt;
     cfg.resizeConfig.normalizedCoords = normalizedCoords;
+    return *this;
 }
 
-void ImageManipConfig::setWarpTransformMatrix3x3(std::vector<float> mat) {
+ImageManipConfig& ImageManipConfig::setWarpTransformMatrix3x3(std::vector<float> mat) {
     // Enable resize stage and extended flags
     cfg.enableResize = true;
     cfg.resizeConfig.enableWarpMatrix = true;
     cfg.resizeConfig.warpMatrix3x3 = mat;
+    return *this;
 }
 
-void ImageManipConfig::setWarpBorderReplicatePixels() {
+ImageManipConfig& ImageManipConfig::setWarpBorderReplicatePixels() {
     // Enable resize stage and extended flags
     cfg.enableResize = true;
     cfg.resizeConfig.warpBorderReplicate = true;
+    return *this;
 }
 
-void ImageManipConfig::setWarpBorderFillColor(int red, int green, int blue) {
+ImageManipConfig& ImageManipConfig::setWarpBorderFillColor(int red, int green, int blue) {
     // Enable resize stage and extended flags
     cfg.enableResize = true;
     cfg.resizeConfig.warpBorderReplicate = false;
     cfg.resizeConfig.bgRed = red;
     cfg.resizeConfig.bgGreen = green;
     cfg.resizeConfig.bgBlue = blue;
+    return *this;
 }
 
-void ImageManipConfig::setCenterCrop(float ratio, float whRatio) {
+ImageManipConfig& ImageManipConfig::setCenterCrop(float ratio, float whRatio) {
     // Enable crop stage
     cfg.enableCrop = true;
 
@@ -87,20 +94,23 @@ void ImageManipConfig::setCenterCrop(float ratio, float whRatio) {
     }
 
     cfg.cropConfig.widthHeightAspectRatio = whRatio;
+    return *this;
 }
 
-void ImageManipConfig::setRotationDegrees(float deg) {
+ImageManipConfig& ImageManipConfig::setRotationDegrees(float deg) {
     cfg.enableResize = true;
     cfg.resizeConfig.rotationAngleDeg = deg;
     cfg.resizeConfig.enableRotation = true;
+    return *this;
 }
 
-void ImageManipConfig::setRotationRadians(float rad) {
+ImageManipConfig& ImageManipConfig::setRotationRadians(float rad) {
     static constexpr float rad2degFactor = static_cast<float>(180 / M_PI);
     setRotationDegrees(rad * rad2degFactor);
+    return *this;
 }
 
-void ImageManipConfig::setResize(int w, int h) {
+ImageManipConfig& ImageManipConfig::setResize(int w, int h) {
     // Enable resize stage
     cfg.enableResize = true;
 
@@ -110,13 +120,15 @@ void ImageManipConfig::setResize(int w, int h) {
     // Set resize config
     cfg.resizeConfig.width = w;
     cfg.resizeConfig.height = h;
+    return *this;
 }
 
-void ImageManipConfig::setResize(std::tuple<int, int> size) {
+ImageManipConfig& ImageManipConfig::setResize(std::tuple<int, int> size) {
     setResize(std::get<0>(size), std::get<1>(size));
+    return *this;
 }
 
-void ImageManipConfig::setResizeThumbnail(int w, int h, int bgRed, int bgGreen, int bgBlue) {
+ImageManipConfig& ImageManipConfig::setResizeThumbnail(int w, int h, int bgRed, int bgGreen, int bgBlue) {
     // Enable resize stage
     cfg.enableResize = true;
 
@@ -131,39 +143,54 @@ void ImageManipConfig::setResizeThumbnail(int w, int h, int bgRed, int bgGreen, 
     cfg.resizeConfig.bgRed = bgRed;
     cfg.resizeConfig.bgGreen = bgGreen;
     cfg.resizeConfig.bgBlue = bgBlue;
+    return *this;
 }
 
-void ImageManipConfig::setResizeThumbnail(std::tuple<int, int> size, int bgRed, int bgGreen, int bgBlue) {
+ImageManipConfig& ImageManipConfig::setResizeThumbnail(std::tuple<int, int> size, int bgRed, int bgGreen, int bgBlue) {
     setResizeThumbnail(std::get<0>(size), std::get<1>(size), bgRed, bgGreen, bgBlue);
+    return *this;
 }
 
-void ImageManipConfig::setFrameType(dai::RawImgFrame::Type type) {
+ImageManipConfig& ImageManipConfig::setFrameType(dai::RawImgFrame::Type type) {
     // Enable format stage
     cfg.enableFormat = true;
 
     // Set type format
     cfg.formatConfig.type = type;
+    return *this;
 }
 
-void ImageManipConfig::setHorizontalFlip(bool flip) {
+ImageManipConfig& ImageManipConfig::setHorizontalFlip(bool flip) {
     // Enable format stage
     cfg.enableFormat = true;
 
     // Set pixel format
     cfg.formatConfig.flipHorizontal = flip;
+    return *this;
 }
 
-void ImageManipConfig::setReusePreviousImage(bool reuse) {
+void ImageManipConfig::setVerticalFlip(bool flip) {
+    // Enable format stage
+    cfg.enableFormat = true;
+
+    // Set pixel format
+    cfg.formatConfig.flipVertical = flip;
+}
+
+ImageManipConfig& ImageManipConfig::setReusePreviousImage(bool reuse) {
     cfg.reusePreviousImage = reuse;
+    return *this;
 }
 
-void ImageManipConfig::setSkipCurrentImage(bool skip) {
+ImageManipConfig& ImageManipConfig::setSkipCurrentImage(bool skip) {
     cfg.skipCurrentImage = skip;
+    return *this;
 }
 
-void ImageManipConfig::setKeepAspectRatio(bool keep) {
+ImageManipConfig& ImageManipConfig::setKeepAspectRatio(bool keep) {
     // Set whether to keep aspect ratio or not
     cfg.resizeConfig.keepAspectRatio = keep;
+    return *this;
 }
 
 // Functions to retrieve properties

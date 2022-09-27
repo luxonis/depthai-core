@@ -2,7 +2,7 @@
 
 #include "utility.hpp"
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 static const std::vector<std::string> labelMap = {"background", "aeroplane", "bicycle",     "bird",  "boat",        "bottle", "bus",
@@ -52,8 +52,11 @@ int main(int argc, char** argv) {
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
-    /// setting node configs
-    stereo->initialConfig.setConfidenceThreshold(255);
+    // setting node configs
+    stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
+    // Align depth map to the perspective of RGB camera, on which inference is done
+    stereo->setDepthAlign(dai::CameraBoardSocket::RGB);
+    stereo->setOutputSize(monoLeft->getResolutionWidth(), monoLeft->getResolutionHeight());
 
     spatialDetectionNetwork->setBlobPath(nnPath);
     spatialDetectionNetwork->setConfidenceThreshold(0.5f);
@@ -63,10 +66,10 @@ int main(int argc, char** argv) {
     spatialDetectionNetwork->setDepthUpperThreshold(5000);
 
     objectTracker->setDetectionLabelsToTrack({15});  // track only person
-    // possible tracking types: ZERO_TERM_COLOR_HISTOGRAM, ZERO_TERM_IMAGELESS
+    // possible tracking types: ZERO_TERM_COLOR_HISTOGRAM, ZERO_TERM_IMAGELESS, SHORT_TERM_IMAGELESS, SHORT_TERM_KCF
     objectTracker->setTrackerType(dai::TrackerType::ZERO_TERM_COLOR_HISTOGRAM);
     // take the smallest ID when new object is tracked, possible options: SMALLEST_ID, UNIQUE_ID
-    objectTracker->setTrackerIdAssigmentPolicy(dai::TrackerIdAssigmentPolicy::SMALLEST_ID);
+    objectTracker->setTrackerIdAssignmentPolicy(dai::TrackerIdAssignmentPolicy::SMALLEST_ID);
 
     // Linking
     monoLeft->out.link(stereo->left);
@@ -123,7 +126,7 @@ int main(int argc, char** argv) {
             int x2 = roi.bottomRight().x;
             int y2 = roi.bottomRight().y;
 
-            int labelIndex = t.label;
+            uint32_t labelIndex = t.label;
             std::string labelStr = to_string(labelIndex);
             if(labelIndex < labelMap.size()) {
                 labelStr = labelMap[labelIndex];

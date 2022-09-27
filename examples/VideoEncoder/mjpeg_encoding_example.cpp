@@ -1,6 +1,6 @@
 #include <iostream>
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 int main() {
@@ -25,7 +25,7 @@ int main() {
     camRgb->setInterleaved(true);
 
     // VideoEncoder
-    videnc->setDefaultProfilePreset(1920, 1080, 30, dai::VideoEncoderProperties::Profile::MJPEG);
+    videnc->setDefaultProfilePreset(30, dai::VideoEncoderProperties::Profile::MJPEG);
 
     // Linking
     camRgb->video.link(videnc->input);

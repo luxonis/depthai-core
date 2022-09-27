@@ -16,6 +16,13 @@ class StereoDepthConfig : public Buffer {
     RawStereoDepthConfig& cfg;
 
    public:
+    using MedianFilter = dai::MedianFilter;
+    using AlgorithmControl = RawStereoDepthConfig::AlgorithmControl;
+    using PostProcessing = RawStereoDepthConfig::PostProcessing;
+    using CensusTransform = RawStereoDepthConfig::CensusTransform;
+    using CostMatching = RawStereoDepthConfig::CostMatching;
+    using CostAggregation = RawStereoDepthConfig::CostAggregation;
+
     /**
      * Construct StereoDepthConfig message.
      */
@@ -24,10 +31,16 @@ class StereoDepthConfig : public Buffer {
     virtual ~StereoDepthConfig() = default;
 
     /**
+     * @param align Set the disparity/depth alignment: centered (between the 'left' and 'right' inputs),
+     * or from the perspective of a rectified output stream
+     */
+    StereoDepthConfig& setDepthAlign(AlgorithmControl::DepthAlign align);
+
+    /**
      * Confidence threshold for disparity calculation
      * @param confThr Confidence threshold value 0..255
      */
-    void setConfidenceThreshold(int confThr);
+    StereoDepthConfig& setConfidenceThreshold(int confThr);
     /**
      * Get confidence threshold for disparity calculation
      */
@@ -36,18 +49,18 @@ class StereoDepthConfig : public Buffer {
     /**
      * @param median Set kernel size for disparity/depth median filtering, or disable
      */
-    void setMedianFilter(dai::MedianFilter median);
+    StereoDepthConfig& setMedianFilter(MedianFilter median);
     /**
      * Get median filter setting
      */
-    dai::MedianFilter getMedianFilter() const;
+    MedianFilter getMedianFilter() const;
 
     /**
      * A larger value of the parameter means that farther colors within the pixel neighborhood will be mixed together,
      * resulting in larger areas of semi-equal color.
      * @param sigma Set sigma value for 5x5 bilateral filter. 0..65535
      */
-    void setBilateralFilterSigma(uint16_t sigma);
+    StereoDepthConfig& setBilateralFilterSigma(uint16_t sigma);
     /**
      * Get sigma value for 5x5 bilateral filter
      */
@@ -56,7 +69,7 @@ class StereoDepthConfig : public Buffer {
     /**
      * @param threshold Set threshold for left-right, right-left disparity map combine, 0..255
      */
-    void setLeftRightCheckThreshold(int threshold);
+    StereoDepthConfig& setLeftRightCheckThreshold(int threshold);
     /**
      * Get threshold for left-right check combine
      */
@@ -67,20 +80,51 @@ class StereoDepthConfig : public Buffer {
      *
      * For better occlusion handling, discarding invalid disparity values
      */
-    void setLeftRightCheck(bool enable);
+    StereoDepthConfig& setLeftRightCheck(bool enable);
 
     /**
      * Disparity range increased from 95 to 190, combined from full resolution and downscaled images.
      * Suitable for short range objects
      */
-    void setExtendedDisparity(bool enable);
+    StereoDepthConfig& setExtendedDisparity(bool enable);
 
     /**
-     * Computes disparity with sub-pixel interpolation (5 fractional bits).
+     * Computes disparity with sub-pixel interpolation (3 fractional bits by default).
      *
      * Suitable for long range. Currently incompatible with extended disparity
      */
-    void setSubpixel(bool enable);
+    StereoDepthConfig& setSubpixel(bool enable);
+
+    /**
+     * Number of fractional bits for subpixel mode.
+     * Default value: 3.
+     * Valid values: 3,4,5.
+     * Defines the number of fractional disparities: 2^x.
+     * Median filter postprocessing is supported only for 3 fractional bits.
+     */
+    StereoDepthConfig& setSubpixelFractionalBits(int subpixelFractionalBits);
+
+    /**
+     * Set depth unit of depth map.
+     *
+     * Meter, centimeter, millimeter, inch, foot or custom unit is available.
+     */
+    StereoDepthConfig& setDepthUnit(AlgorithmControl::DepthUnit depthUnit);
+
+    /**
+     * Shift input frame by a number of pixels to increase minimum depth.
+     * For example shifting by 48 will change effective disparity search range from (0,95] to [48,143].
+     * An alternative approach to reducing the minZ.
+     * We normally only recommend doing this when it is known that there will be no objects
+     * farther away than MaxZ, such as having a depth camera mounted above a table
+     * pointing down at the table surface.
+     */
+    StereoDepthConfig& setDisparityShift(int disparityShift);
+
+    /**
+     * Get depth unit of depth map.
+     */
+    AlgorithmControl::DepthUnit getDepthUnit();
 
     /**
      * Useful for normalization of the disparity map.
@@ -92,7 +136,7 @@ class StereoDepthConfig : public Buffer {
      * Set explicit configuration.
      * @param config Explicit configuration
      */
-    void set(dai::RawStereoDepthConfig config);
+    StereoDepthConfig& set(dai::RawStereoDepthConfig config);
 
     /**
      * Retrieve configuration data for StereoDepth.

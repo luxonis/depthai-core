@@ -1,6 +1,6 @@
 #include <iostream>
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 int main() {
@@ -27,7 +27,7 @@ int main() {
 
     ip = get_ip_address('re0')  # '192.168.0.110'
     node.warn(f'IP of the device: {ip}')
-    node.io['end'].send(Buffer())
+    node.io['end'].send(Buffer(32))
     )");
 
     // XLinkOut

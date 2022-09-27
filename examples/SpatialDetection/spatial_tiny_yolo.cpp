@@ -2,7 +2,7 @@
 
 #include "utility.hpp"
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 static const std::vector<std::string> labelMap = {
@@ -45,11 +45,13 @@ int main(int argc, char** argv) {
     auto xoutNN = pipeline.create<dai::node::XLinkOut>();
     auto xoutBoundingBoxDepthMapping = pipeline.create<dai::node::XLinkOut>();
     auto xoutDepth = pipeline.create<dai::node::XLinkOut>();
+    auto nnNetworkOut = pipeline.create<dai::node::XLinkOut>();
 
     xoutRgb->setStreamName("rgb");
     xoutNN->setStreamName("detections");
     xoutBoundingBoxDepthMapping->setStreamName("boundingBoxDepthMapping");
     xoutDepth->setStreamName("depth");
+    nnNetworkOut->setStreamName("nnNetwork");
 
     // Properties
     camRgb->setPreviewSize(416, 416);
@@ -62,8 +64,11 @@ int main(int argc, char** argv) {
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
 
-    /// setting node configs
-    stereo->initialConfig.setConfidenceThreshold(255);
+    // setting node configs
+    stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
+    // Align depth map to the perspective of RGB camera, on which inference is done
+    stereo->setDepthAlign(dai::CameraBoardSocket::RGB);
+    stereo->setOutputSize(monoLeft->getResolutionWidth(), monoLeft->getResolutionHeight());
 
     spatialDetectionNetwork->setBlobPath(nnPath);
     spatialDetectionNetwork->setConfidenceThreshold(0.5f);
@@ -95,6 +100,7 @@ int main(int argc, char** argv) {
 
     stereo->depth.link(spatialDetectionNetwork->inputDepth);
     spatialDetectionNetwork->passthroughDepth.link(xoutDepth->input);
+    spatialDetectionNetwork->outNetwork.link(nnNetworkOut->input);
 
     // Connect to device and start pipeline
     dai::Device device(pipeline);
@@ -104,19 +110,32 @@ int main(int argc, char** argv) {
     auto detectionNNQueue = device.getOutputQueue("detections", 4, false);
     auto xoutBoundingBoxDepthMappingQueue = device.getOutputQueue("boundingBoxDepthMapping", 4, false);
     auto depthQueue = device.getOutputQueue("depth", 4, false);
+    auto networkQueue = device.getOutputQueue("nnNetwork", 4, false);
 
     auto startTime = steady_clock::now();
     int counter = 0;
     float fps = 0;
     auto color = cv::Scalar(255, 255, 255);
+    bool printOutputLayersOnce = true;
 
     while(true) {
         auto imgFrame = previewQueue->get<dai::ImgFrame>();
         auto inDet = detectionNNQueue->get<dai::SpatialImgDetections>();
         auto depth = depthQueue->get<dai::ImgFrame>();
+        auto inNN = networkQueue->get<dai::NNData>();
+
+        if(printOutputLayersOnce && inNN) {
+            std::cout << "Output layer names: ";
+            for(const auto& ten : inNN->getAllLayerNames()) {
+                std::cout << ten << ", ";
+            }
+            std::cout << std::endl;
+            printOutputLayersOnce = false;
+        }
 
         cv::Mat frame = imgFrame->getCvFrame();
-        cv::Mat depthFrame = depth->getFrame();
+        cv::Mat depthFrame = depth->getFrame();  // depthFrame values are in millimeters
+
         cv::Mat depthFrameColor;
         cv::normalize(depthFrame, depthFrameColor, 255, 0, cv::NORM_INF, CV_8UC1);
         cv::equalizeHist(depthFrameColor, depthFrameColor);
@@ -156,7 +175,7 @@ int main(int argc, char** argv) {
             int x2 = detection.xmax * frame.cols;
             int y2 = detection.ymax * frame.rows;
 
-            int labelIndex = detection.label;
+            uint32_t labelIndex = detection.label;
             std::string labelStr = to_string(labelIndex);
             if(labelIndex < labelMap.size()) {
                 labelStr = labelMap[labelIndex];

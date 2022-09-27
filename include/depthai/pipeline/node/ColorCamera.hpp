@@ -13,26 +13,27 @@ namespace node {
 /**
  * @brief ColorCamera node. For use with color sensors.
  */
-class ColorCamera : public Node {
+class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
    public:
-    using Properties = dai::ColorCameraProperties;
+    constexpr static const char* NAME = "ColorCamera";
+
+   protected:
+    Properties& getProperties();
 
    private:
-    Properties properties;
     std::shared_ptr<RawCameraControl> rawControl;
 
-    std::shared_ptr<Node> clone() override;
-    nlohmann::json getProperties() override;
-
    public:
-    std::string getName() const override;
-
-    int getScaledSize(int input, int num, int denom) const;
-
     /**
      * Constructs ColorCamera node.
      */
     ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+
+    /**
+     * Computes the scaled size given numerator and denominator
+     */
+    int getScaledSize(int input, int num, int denom) const;
 
     /**
      * Initial control options to apply to sensor
@@ -40,7 +41,7 @@ class ColorCamera : public Node {
     CameraControl initialControl;
 
     /**
-     * Input for ImageManipConfig message, which can modify crop paremeters in runtime
+     * Input for ImageManipConfig message, which can modify crop parameters in runtime
      *
      * Default queue is non-blocking with size 8
      */
@@ -136,11 +137,17 @@ class ColorCamera : public Node {
     /// Set preview output size, as a tuple <width, height>
     void setPreviewSize(std::tuple<int, int> size);
 
+    /// Set number of frames in preview pool
+    void setPreviewNumFramesPool(int num);
+
     /// Set video output size
     void setVideoSize(int width, int height);
 
     /// Set video output size, as a tuple <width, height>
     void setVideoSize(std::tuple<int, int> size);
+
+    /// Set number of frames in preview pool
+    void setVideoNumFramesPool(int num);
 
     /// Set still output size
     void setStillSize(int width, int height);
@@ -148,11 +155,23 @@ class ColorCamera : public Node {
     /// Set still output size, as a tuple <width, height>
     void setStillSize(std::tuple<int, int> size);
 
+    /// Set number of frames in preview pool
+    void setStillNumFramesPool(int num);
+
     /// Set sensor resolution
     void setResolution(Properties::SensorResolution resolution);
 
     /// Get sensor resolution
     Properties::SensorResolution getResolution() const;
+
+    /// Set number of frames in raw pool
+    void setRawNumFramesPool(int num);
+
+    /// Set number of frames in isp pool
+    void setIspNumFramesPool(int num);
+
+    /// Set number of frames in all pools
+    void setNumFramesPool(int raw, int isp, int preview, int video, int still);
 
     /**
      * Set 'isp' output scaling (numerator/denominator), preserving the aspect ratio.
@@ -250,13 +269,13 @@ class ColorCamera : public Node {
      * before sending out a frame.
      * @param wait True to wait for inputConfig message, false otherwise
      */
-    void setWaitForConfigInput(bool wait);
+    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] void setWaitForConfigInput(bool wait);
 
     /**
      * @see setWaitForConfigInput
      * @returns True if wait for inputConfig message, false otherwise
      */
-    bool getWaitForConfigInput();
+    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] bool getWaitForConfigInput() const;
 
     /**
      * Specifies whether preview output should preserve aspect ratio,
@@ -272,6 +291,17 @@ class ColorCamera : public Node {
      * @returns Preview keep aspect ratio option
      */
     bool getPreviewKeepAspectRatio();
+
+    /// Get number of frames in preview pool
+    int getPreviewNumFramesPool();
+    /// Get number of frames in video pool
+    int getVideoNumFramesPool();
+    /// Get number of frames in still pool
+    int getStillNumFramesPool();
+    /// Get number of frames in raw pool
+    int getRawNumFramesPool();
+    /// Get number of frames in isp pool
+    int getIspNumFramesPool();
 };
 
 }  // namespace node

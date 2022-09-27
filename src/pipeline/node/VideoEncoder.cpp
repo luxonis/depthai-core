@@ -1,27 +1,21 @@
 #include "depthai/pipeline/node/VideoEncoder.hpp"
 
+// std
+#include <stdexcept>
+
+// libraries
+#include "spdlog/spdlog.h"
+
 namespace dai {
 namespace node {
 
-VideoEncoder::VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Node(par, nodeId) {
-    inputs = {&input};
-    outputs = {&bitstream};
+VideoEncoder::VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
+    : VideoEncoder(par, nodeId, std::make_unique<VideoEncoder::Properties>()) {}
+VideoEncoder::VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+    : NodeCRTP<Node, VideoEncoder, VideoEncoderProperties>(par, nodeId, std::move(props)) {
+    setInputRefs({&input});
+    setOutputRefs({&bitstream});
 }
-
-std::string VideoEncoder::getName() const {
-    return "VideoEncoder";
-}
-
-nlohmann::json VideoEncoder::getProperties() {
-    nlohmann::json j;
-    nlohmann::to_json(j, properties);
-    return j;
-}
-
-std::shared_ptr<Node> VideoEncoder::clone() {
-    return std::make_shared<std::decay<decltype(*this)>::type>(*this);
-}
-
 // node properties
 void VideoEncoder::setNumFramesPool(int frames) {
     properties.numFramesPool = frames;
@@ -38,42 +32,29 @@ void VideoEncoder::setRateControlMode(VideoEncoderProperties::RateControlMode mo
     properties.rateCtrlMode = mode;
 }
 
+void VideoEncoder::setProfile(VideoEncoderProperties::Profile profile) {
+    properties.profile = profile;
+}
+
 void VideoEncoder::setProfile(std::tuple<int, int> size, VideoEncoderProperties::Profile profile) {
-    setProfile(std::get<0>(size), std::get<1>(size), profile);
+    (void)size;
+    spdlog::warn("VideoEncoder {}: passing 'size' is deprecated. It is auto-determined from first frame", __func__);
+    setProfile(profile);
 }
 
 void VideoEncoder::setProfile(int width, int height, VideoEncoderProperties::Profile profile) {
-    // Width & height H26x limitations
-    if(profile != VideoEncoderProperties::Profile::MJPEG) {
-        if(width % 8 != 0 || height % 8 != 0) {
-            throw std::invalid_argument("VideoEncoder - Width and height must be multiple of 8 for H26x encoder profile");
-        }
-        if(width > 4096 || height > 4096) {
-            throw std::invalid_argument("VideoEncoder - Width and height must be smaller than 4096 for H26x encoder profile");
-        }
-    } else {
-        // width & height MJPEG limitations
-        if(width % 16 != 0 || height % 2 != 0) {
-            throw std::invalid_argument("VideoEncoder - Width must be multiple of 16 and height multiple of 2 for MJPEG encoder profile");
-        }
-        if(width > 16384 || height > 8192) {
-            throw std::invalid_argument("VideoEncoder - Width must be smaller or to 16384 and height to 8192");
-        }
-    }
-
-    properties.width = width;
-    properties.height = height;
-    properties.profile = profile;
+    (void)width;
+    (void)height;
+    spdlog::warn("VideoEncoder {}: passing 'width'/ 'height' is deprecated. The size is auto-determined from first frame", __func__);
+    setProfile(profile);
 }
 
 void VideoEncoder::setBitrate(int bitrate) {
     properties.bitrate = bitrate;
-    properties.maxBitrate = bitrate;
 }
 
 void VideoEncoder::setBitrateKbps(int bitrateKbps) {
     properties.bitrate = bitrateKbps * 1000;
-    properties.maxBitrate = bitrateKbps * 1000;
 }
 
 void VideoEncoder::setKeyframeFrequency(int freq) {
@@ -94,6 +75,10 @@ void VideoEncoder::setLossless(bool lossless) {
 
 void VideoEncoder::setFrameRate(float frameRate) {
     properties.frameRate = frameRate;
+}
+
+void VideoEncoder::setMaxOutputFrameSize(int maxFrameSize) {
+    properties.outputFrameSize = maxFrameSize;
 }
 
 VideoEncoderProperties::RateControlMode VideoEncoder::getRateControlMode() const {
@@ -129,26 +114,29 @@ int VideoEncoder::getQuality() const {
 }
 
 std::tuple<int, int> VideoEncoder::getSize() const {
-    return {properties.width, properties.height};
+    spdlog::warn("VideoEncoder {} is deprecated. The size is auto-determined from first frame and not known upfront", __func__);
+    return {0, 0};
 }
 
 int VideoEncoder::getWidth() const {
-    return std::get<0>(getSize());
+    spdlog::warn("VideoEncoder {} is deprecated. The size is auto-determined from first frame and not known upfront", __func__);
+    return 0;
 }
 
 int VideoEncoder::getHeight() const {
-    return std::get<1>(getSize());
+    spdlog::warn("VideoEncoder {} is deprecated. The size is auto-determined from first frame and not known upfront", __func__);
+    return 0;
 }
 
 float VideoEncoder::getFrameRate() const {
     return properties.frameRate;
 }
 
-void VideoEncoder::setDefaultProfilePreset(int width, int height, float fps, VideoEncoderProperties::Profile profile) {
+void VideoEncoder::setDefaultProfilePreset(float fps, VideoEncoderProperties::Profile profile) {
     // Checks
 
     // Set properties
-    setProfile(width, height, profile);
+    setProfile(profile);
     setFrameRate(fps);
 
     switch(profile) {
@@ -159,42 +147,37 @@ void VideoEncoder::setDefaultProfilePreset(int width, int height, float fps, Vid
         case VideoEncoderProperties::Profile::H264_BASELINE:
         case VideoEncoderProperties::Profile::H264_HIGH:
         case VideoEncoderProperties::Profile::H264_MAIN:
-        case VideoEncoderProperties::Profile::H265_MAIN: {
+        case VideoEncoderProperties::Profile::H265_MAIN:
             // By default set keyframe frequency to equal fps
             properties.keyframeFrequency = static_cast<int32_t>(fps);
-
-            // Approximate bitrate on input w/h and fps
-            constexpr float ESTIMATION_FPS = 30.0f;
-            constexpr float AREA_MUL = 1.1f;
-
-            // calculate pixel area
-            const int pixelArea = width * height;
-            if(pixelArea <= 1280 * 720 * AREA_MUL) {
-                // 720p
-                setBitrateKbps(static_cast<int>((4000 / ESTIMATION_FPS) * fps));
-            } else if(pixelArea <= 1920 * 1080 * AREA_MUL) {
-                // 1080p
-                setBitrateKbps(static_cast<int>((8500 / ESTIMATION_FPS) * fps));
-            } else if(pixelArea <= 2560 * 1440 * AREA_MUL) {
-                // 1440p
-                setBitrateKbps(static_cast<int>((14000 / ESTIMATION_FPS) * fps));
-            } else {
-                // 4K
-                setBitrateKbps(static_cast<int>((20000 / ESTIMATION_FPS) * fps));
-            }
-        } break;
+            // A default bitrate computed by firmware based on size and fps
+            setBitrate(0);
+            break;
 
         default:
             break;
     }
 }
 
+void VideoEncoder::setDefaultProfilePreset(int width, int height, float fps, VideoEncoderProperties::Profile profile) {
+    (void)width;
+    (void)height;
+    spdlog::warn("VideoEncoder {}: passing 'width'/ 'height' is deprecated. The size is auto-determined from first frame", __func__);
+    setDefaultProfilePreset(fps, profile);
+}
+
 void VideoEncoder::setDefaultProfilePreset(std::tuple<int, int> size, float fps, VideoEncoderProperties::Profile profile) {
-    setDefaultProfilePreset(std::get<0>(size), std::get<1>(size), fps, profile);
+    (void)size;
+    spdlog::warn("VideoEncoder {}: passing 'width'/ 'height' is deprecated. The size is auto-determined from first frame", __func__);
+    setDefaultProfilePreset(fps, profile);
 }
 
 bool VideoEncoder::getLossless() const {
     return properties.lossless;
+}
+
+int VideoEncoder::getMaxOutputFrameSize() const {
+    return properties.outputFrameSize;
 }
 
 }  // namespace node

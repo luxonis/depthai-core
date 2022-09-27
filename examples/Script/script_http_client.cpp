@@ -1,6 +1,6 @@
 #include <iostream>
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 int main() {
@@ -24,7 +24,7 @@ int main() {
     data1 = r1.read()
     node.warn(f'Public IP: {data1}')
 
-    node.io['end'].send(Buffer())
+    node.io['end'].send(Buffer(32))
     )");
 
     // XLinkOut

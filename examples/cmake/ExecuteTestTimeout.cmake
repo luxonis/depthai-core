@@ -8,7 +8,7 @@ foreach(_arg RANGE ${CMAKE_ARGC})
 
     if("${CMAKE_ARGV${_arg}}" STREQUAL "-P")
         set(append true)
-        message(status "found -P")
+        message(STATUS "found -P")
     endif()
 endforeach()
 list(REMOVE_AT arguments 0)
@@ -40,5 +40,5 @@ elseif(error_variable EQUAL 133 OR error_variable MATCHES "Child killed")
 else()
     # not timeout and error code != 0, not okay
     message(FATAL_ERROR "${PATH_TO_TEST_EXECUTABLE} produced an error (${error_variable}) while running")
-endif() 
+endif()
 

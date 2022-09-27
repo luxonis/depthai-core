@@ -27,19 +27,17 @@ Device::Device(const Pipeline& pipeline) : DeviceBase(pipeline.getOpenVINOVersio
     tryStartPipeline(pipeline);
 }
 
-Device::Device(const Pipeline& pipeline, bool usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), usb2Mode) {
+template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool>>
+Device::Device(const Pipeline& pipeline, T usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), usb2Mode) {
     tryStartPipeline(pipeline);
 }
+template Device::Device(const Pipeline&, bool);
 
 Device::Device(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) : DeviceBase(pipeline.getOpenVINOVersion(), maxUsbSpeed) {
     tryStartPipeline(pipeline);
 }
 
-Device::Device(const Pipeline& pipeline, const char* pathToCmd) : DeviceBase(pipeline.getOpenVINOVersion(), pathToCmd) {
-    tryStartPipeline(pipeline);
-}
-
-Device::Device(const Pipeline& pipeline, const std::string& pathToCmd) : DeviceBase(pipeline.getOpenVINOVersion(), pathToCmd) {
+Device::Device(const Pipeline& pipeline, const dai::Path& pathToCmd) : DeviceBase(pipeline.getOpenVINOVersion(), pathToCmd) {
     tryStartPipeline(pipeline);
 }
 
@@ -47,18 +45,16 @@ Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo) : DeviceBase
     tryStartPipeline(pipeline);
 }
 
-Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, usb2Mode) {
-    tryStartPipeline(pipeline);
-}
-
-Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, pathToCmd) {
-    tryStartPipeline(pipeline);
-}
-
-Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd)
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd)
     : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, pathToCmd) {
     tryStartPipeline(pipeline);
 }
+
+template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool>>
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, T usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, usb2Mode) {
+    tryStartPipeline(pipeline);
+}
+template Device::Device(const Pipeline&, const DeviceInfo&, bool);
 
 Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, maxUsbSpeed) {
     tryStartPipeline(pipeline);
@@ -283,9 +279,8 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
         }
 
         // Create DataInputQueue's
-        inputQueueMap[xlinkIn->getStreamName()] = std::make_shared<DataInputQueue>(connection, xlinkIn->getStreamName());
         // set max data size, for more verbosity
-        inputQueueMap[xlinkIn->getStreamName()]->setMaxDataSize(xlinkIn->getMaxDataSize());
+        inputQueueMap[xlinkIn->getStreamName()] = std::make_shared<DataInputQueue>(connection, xlinkIn->getStreamName(), 16, true, xlinkIn->getMaxDataSize());
     }
     for(const auto& kv : pipeline.getNodeMap()) {
         const auto& node = kv.second;
@@ -300,17 +295,19 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
 
         // Add callback for events
         callbackIdMap[streamName] = outputQueueMap[streamName]->addCallback([this](std::string queueName, std::shared_ptr<ADatatype>) {
-            // Lock first
-            std::unique_lock<std::mutex> lock(eventMtx);
+            {
+                // Lock first
+                std::unique_lock<std::mutex> lock(eventMtx);
 
-            // Check if size is equal or greater than EVENT_QUEUE_MAXIMUM_SIZE
-            if(eventQueue.size() >= EVENT_QUEUE_MAXIMUM_SIZE) {
-                auto numToRemove = eventQueue.size() - EVENT_QUEUE_MAXIMUM_SIZE + 1;
-                eventQueue.erase(eventQueue.begin(), eventQueue.begin() + numToRemove);
+                // Check if size is equal or greater than EVENT_QUEUE_MAXIMUM_SIZE
+                if(eventQueue.size() >= EVENT_QUEUE_MAXIMUM_SIZE) {
+                    auto numToRemove = eventQueue.size() - EVENT_QUEUE_MAXIMUM_SIZE + 1;
+                    eventQueue.erase(eventQueue.begin(), eventQueue.begin() + numToRemove);
+                }
+
+                // Add to the end of event queue
+                eventQueue.push_back(std::move(queueName));
             }
-
-            // Add to the end of event queue
-            eventQueue.push_back(queueName);
 
             // notify the rest
             eventCv.notify_all();

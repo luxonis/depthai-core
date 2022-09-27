@@ -4,7 +4,7 @@
 
 #include "utility.hpp"
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 int main() {
@@ -20,8 +20,11 @@ int main() {
 
     xlinkOut->setStreamName("imu");
 
-    // enable ACCELEROMETER_RAW and GYROSCOPE_RAW at 500 hz rate
-    imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 500);
+    // enable ACCELEROMETER_RAW at 500 hz rate
+    imu->enableIMUSensor(dai::IMUSensor::ACCELEROMETER_RAW, 500);
+    // enable GYROSCOPE_RAW at 400 hz rate
+    imu->enableIMUSensor(dai::IMUSensor::GYROSCOPE_RAW, 400);
+    // it's recommended to set both setBatchReportThreshold and setMaxBatchReports to 20 when integrating in a pipeline with a lot of input/output connections
     // above this threshold packets will be sent in batch of X, if the host is not blocked and USB bandwidth is available
     imu->setBatchReportThreshold(1);
     // maximum number of IMU packets in a batch, if it's reached device will block sending until host can receive it
@@ -58,9 +61,9 @@ int main() {
             auto acceleroTs = acceleroTs1 - baseTs;
             auto gyroTs = gyroTs1 - baseTs;
 
-            printf("Accelerometer timestamp: %ld ms\n", duration_cast<milliseconds>(acceleroTs).count());
+            printf("Accelerometer timestamp: %ld ms\n", static_cast<long>(duration_cast<milliseconds>(acceleroTs).count()));
             printf("Accelerometer [m/s^2]: x: %.3f y: %.3f z: %.3f \n", acceleroValues.x, acceleroValues.y, acceleroValues.z);
-            printf("Gyroscope timestamp: %ld ms\n", duration_cast<milliseconds>(gyroTs).count());
+            printf("Gyroscope timestamp: %ld ms\n", static_cast<long>(duration_cast<milliseconds>(gyroTs).count()));
             printf("Gyroscope [rad/s]: x: %.3f y: %.3f z: %.3f \n", gyroValues.x, gyroValues.y, gyroValues.z);
         }
 

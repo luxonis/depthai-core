@@ -11,69 +11,81 @@ CameraControl::CameraControl(std::shared_ptr<RawCameraControl> ptr) : Buffer(std
 
 // helpers
 // Functions to set properties
-void CameraControl::setCaptureStill(bool capture) {
+CameraControl& CameraControl::setCaptureStill(bool capture) {
     // Enable capture
     cfg.setCommand(RawCameraControl::Command::STILL_CAPTURE, capture);
+    return *this;
 }
 
-void CameraControl::setStartStreaming() {
+CameraControl& CameraControl::setStartStreaming() {
     cfg.setCommand(RawCameraControl::Command::START_STREAM);
+    return *this;
 }
-void CameraControl::setStopStreaming() {
+CameraControl& CameraControl::setStopStreaming() {
     cfg.setCommand(RawCameraControl::Command::STOP_STREAM);
+    return *this;
 }
 
 // Focus
-void CameraControl::setAutoFocusMode(AutoFocusMode mode) {
+CameraControl& CameraControl::setAutoFocusMode(AutoFocusMode mode) {
     cfg.setCommand(RawCameraControl::Command::AF_MODE);
     cfg.autoFocusMode = mode;
+    return *this;
 }
-void CameraControl::setAutoFocusTrigger() {
+CameraControl& CameraControl::setAutoFocusTrigger() {
     cfg.setCommand(RawCameraControl::Command::AF_TRIGGER);
+    return *this;
 }
-void CameraControl::setAutoFocusRegion(uint16_t startX, uint16_t startY, uint16_t width, uint16_t height) {
+CameraControl& CameraControl::setAutoFocusRegion(uint16_t startX, uint16_t startY, uint16_t width, uint16_t height) {
     cfg.setCommand(RawCameraControl::Command::AF_REGION);
     cfg.afRegion.x = startX;
     cfg.afRegion.y = startY;
     cfg.afRegion.width = width;
     cfg.afRegion.height = height;
     cfg.afRegion.priority = 1;  // TODO
+    return *this;
 }
-void CameraControl::setManualFocus(uint8_t lensPosition) {
+CameraControl& CameraControl::setManualFocus(uint8_t lensPosition) {
     cfg.setCommand(RawCameraControl::Command::MOVE_LENS);
     cfg.lensPosition = lensPosition;
+    return *this;
 }
 
 // Exposure
-void CameraControl::setAutoExposureEnable() {
+CameraControl& CameraControl::setAutoExposureEnable() {
     cfg.setCommand(RawCameraControl::Command::AE_AUTO);
+    return *this;
 }
-void CameraControl::setAutoExposureLock(bool lock) {
+CameraControl& CameraControl::setAutoExposureLock(bool lock) {
     cfg.setCommand(RawCameraControl::Command::AE_LOCK);
     cfg.aeLockMode = lock;
+    return *this;
 }
-void CameraControl::setAutoExposureRegion(uint16_t startX, uint16_t startY, uint16_t width, uint16_t height) {
+CameraControl& CameraControl::setAutoExposureRegion(uint16_t startX, uint16_t startY, uint16_t width, uint16_t height) {
     cfg.setCommand(RawCameraControl::Command::AE_REGION);
     cfg.aeRegion.x = startX;
     cfg.aeRegion.y = startY;
     cfg.aeRegion.width = width;
     cfg.aeRegion.height = height;
     cfg.aeRegion.priority = 1;  // TODO
+    return *this;
 }
-void CameraControl::setAutoExposureCompensation(int compensation) {
+CameraControl& CameraControl::setAutoExposureCompensation(int compensation) {
     cfg.setCommand(RawCameraControl::Command::EXPOSURE_COMPENSATION);
     cfg.expCompensation = compensation;
+    return *this;
 }
-void CameraControl::setAntiBandingMode(AntiBandingMode mode) {
+CameraControl& CameraControl::setAntiBandingMode(AntiBandingMode mode) {
     cfg.setCommand(RawCameraControl::Command::ANTIBANDING_MODE);
     cfg.antiBandingMode = mode;
+    return *this;
 }
-
-void CameraControl::setManualExposure(uint32_t exposureTimeUs, uint32_t sensitivityIso) {
+CameraControl& CameraControl::setManualExposure(uint32_t exposureTimeUs, uint32_t sensitivityIso) {
     cfg.setCommand(RawCameraControl::Command::AE_MANUAL);
     cfg.expManual.exposureTimeUs = exposureTimeUs;
     cfg.expManual.sensitivityIso = sensitivityIso;
     cfg.expManual.frameDurationUs = 0;  // TODO
+    return *this;
 }
 
 void CameraControl::setManualExposure(std::chrono::microseconds exposureTime, uint32_t sensitivityIso) {
@@ -81,47 +93,62 @@ void CameraControl::setManualExposure(std::chrono::microseconds exposureTime, ui
 }
 
 // White Balance
-void CameraControl::setAutoWhiteBalanceMode(AutoWhiteBalanceMode mode) {
+CameraControl& CameraControl::setAutoWhiteBalanceMode(AutoWhiteBalanceMode mode) {
     cfg.setCommand(RawCameraControl::Command::AWB_MODE);
     cfg.awbMode = mode;
+    return *this;
 }
-void CameraControl::setAutoWhiteBalanceLock(bool lock) {
+CameraControl& CameraControl::setAutoWhiteBalanceLock(bool lock) {
     cfg.setCommand(RawCameraControl::Command::AWB_LOCK);
     cfg.awbLockMode = lock;
+    return *this;
+}
+CameraControl& CameraControl::setManualWhiteBalance(int colorTemperatureK) {
+    cfg.setCommand(RawCameraControl::Command::WB_COLOR_TEMP);
+    cfg.wbColorTemp = colorTemperatureK;
+    return *this;
 }
 
 // Other image controls
-void CameraControl::setBrightness(int value) {
+CameraControl& CameraControl::setBrightness(int value) {
     cfg.setCommand(RawCameraControl::Command::BRIGHTNESS);
     cfg.brightness = value;
+    return *this;
 }
-void CameraControl::setContrast(int value) {
+CameraControl& CameraControl::setContrast(int value) {
     cfg.setCommand(RawCameraControl::Command::CONTRAST);
     cfg.contrast = value;
+    return *this;
 }
-void CameraControl::setSaturation(int value) {
+CameraControl& CameraControl::setSaturation(int value) {
     cfg.setCommand(RawCameraControl::Command::SATURATION);
     cfg.saturation = value;
+    return *this;
 }
-void CameraControl::setSharpness(int value) {
+CameraControl& CameraControl::setSharpness(int value) {
     cfg.setCommand(RawCameraControl::Command::SHARPNESS);
     cfg.sharpness = value;
+    return *this;
 }
-void CameraControl::setLumaDenoise(int value) {
+CameraControl& CameraControl::setLumaDenoise(int value) {
     cfg.setCommand(RawCameraControl::Command::LUMA_DENOISE);
     cfg.lumaDenoise = value;
+    return *this;
 }
-void CameraControl::setChromaDenoise(int value) {
+CameraControl& CameraControl::setChromaDenoise(int value) {
     cfg.setCommand(RawCameraControl::Command::CHROMA_DENOISE);
     cfg.chromaDenoise = value;
+    return *this;
 }
-void CameraControl::setSceneMode(SceneMode mode) {
+CameraControl& CameraControl::setSceneMode(SceneMode mode) {
     cfg.setCommand(RawCameraControl::Command::SCENE_MODE);
     cfg.sceneMode = mode;
+    return *this;
 }
-void CameraControl::setEffectMode(EffectMode mode) {
+CameraControl& CameraControl::setEffectMode(EffectMode mode) {
     cfg.setCommand(RawCameraControl::Command::EFFECT_MODE);
     cfg.effectMode = mode;
+    return *this;
 }
 
 bool CameraControl::getCaptureStill() const {

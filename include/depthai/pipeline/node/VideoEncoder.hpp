@@ -11,26 +11,18 @@ namespace node {
 /**
  * @brief VideoEncoder node. Encodes frames into MJPEG, H264 or H265.
  */
-class VideoEncoder : public Node {
+class VideoEncoder : public NodeCRTP<Node, VideoEncoder, VideoEncoderProperties> {
    public:
-    using Properties = dai::VideoEncoderProperties;
-
-   private:
-    Properties properties;
-
-    nlohmann::json getProperties() override;
-    std::shared_ptr<Node> clone() override;
-
-   public:
-    std::string getName() const override;
+    constexpr static const char* NAME = "VideoEncoder";
 
     VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Input for NV12 ImgFrame to be encoded
      * Default queue is blocking with size set by 'setNumFramesPool' (4).
      */
-    Input input{*this, "in", Input::Type::SReceiver, true, 4, {{DatatypeEnum::ImgFrame, true}}};
+    Input input{*this, "in", Input::Type::SReceiver, true, 4, true, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
      * Outputs ImgFrame message that carries BITSTREAM encoded (MJPEG, H264 or H265) frame data.
@@ -39,13 +31,23 @@ class VideoEncoder : public Node {
 
     // Sets default options for a specified size and profile
     /**
+     * Sets a default preset based on specified frame rate and profile
+     * @param fps Frame rate in frames per second
+     * @param profile Encoding profile
+     */
+    void setDefaultProfilePreset(float fps, Properties::Profile profile);
+
+    /**
      * Sets a default preset based on specified input size, frame rate and profile
      * @param width Input frame width
      * @param height Input frame height
      * @param fps Frame rate in frames per second
      * @param profile Encoding profile
      */
-    void setDefaultProfilePreset(int width, int height, float fps, Properties::Profile profile);
+    [[deprecated("Input width/height no longer needed, automatically determined from first frame")]] void setDefaultProfilePreset(int width,
+                                                                                                                                  int height,
+                                                                                                                                  float fps,
+                                                                                                                                  Properties::Profile profile);
 
     /**
      * Sets a default preset based on specified input size, frame rate and profile
@@ -53,7 +55,9 @@ class VideoEncoder : public Node {
      * @param fps Frame rate in frames per second
      * @param profile Encoding profile
      */
-    void setDefaultProfilePreset(std::tuple<int, int> size, float fps, Properties::Profile profile);
+    [[deprecated("Input size no longer needed, automatically determined from first frame")]] void setDefaultProfilePreset(std::tuple<int, int> size,
+                                                                                                                          float fps,
+                                                                                                                          Properties::Profile profile);
 
     // node properties
     /**
@@ -72,12 +76,17 @@ class VideoEncoder : public Node {
     /// Set rate control mode
     void setRateControlMode(Properties::RateControlMode mode);
     /// Set encoding profile
-    void setProfile(std::tuple<int, int> size, Properties::Profile profile);
+    void setProfile(Properties::Profile profile);
     /// Set encoding profile
-    void setProfile(int width, int height, Properties::Profile profile);
-    /// Set output bitrate in bps. Final bitrate depends on rate control mode
+    [[deprecated("Input size no longer needed, automatically determined from first frame")]] void setProfile(std::tuple<int, int> size,
+                                                                                                             Properties::Profile profile);
+    /// Set encoding profile
+    [[deprecated("Input width/height no longer needed, automatically determined from first frame")]] void setProfile(int width,
+                                                                                                                     int height,
+                                                                                                                     Properties::Profile profile);
+    /// Set output bitrate in bps, for CBR rate control mode. 0 for auto (based on frame size and FPS)
     void setBitrate(int bitrate);
-    /// Set output bitrate in kbps. Final bitrate depends on rate control mode
+    /// Set output bitrate in kbps, for CBR rate control mode. 0 for auto (based on frame size and FPS)
     void setBitrateKbps(int bitrateKbps);
 
     /**
@@ -115,6 +124,11 @@ class VideoEncoder : public Node {
      */
     void setFrameRate(float frameRate);
 
+    /**
+     * Specifies maximum output encoded frame size
+     */
+    void setMaxOutputFrameSize(int maxFrameSize);
+
     /// Get rate control mode
     Properties::RateControlMode getRateControlMode() const;
     /// Get profile
@@ -131,15 +145,16 @@ class VideoEncoder : public Node {
     /// Get quality
     int getQuality() const;
     /// Get input size
-    std::tuple<int, int> getSize() const;
+    [[deprecated("Input size no longer available, it's determined when first frame arrives")]] std::tuple<int, int> getSize() const;
     /// Get input width
-    int getWidth() const;
+    [[deprecated("Input size no longer available, it's determined when first frame arrives")]] int getWidth() const;
     /// Get input height
-    int getHeight() const;
+    [[deprecated("Input size no longer available, it's determined when first frame arrives")]] int getHeight() const;
     /// Get frame rate
     float getFrameRate() const;
     /// Get lossless mode. Applies only when using [M]JPEG profile.
     bool getLossless() const;
+    int getMaxOutputFrameSize() const;
 };
 
 }  // namespace node

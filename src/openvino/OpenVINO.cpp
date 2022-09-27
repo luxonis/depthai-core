@@ -3,11 +3,14 @@
 
 #include <algorithm>
 #include <exception>
+#include <fstream>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "BlobReader.hpp"
 #include "spdlog/spdlog.h"
+#include "utility/spdlog-fmt.hpp"
 
 namespace dai {
 
@@ -19,25 +22,34 @@ constexpr OpenVINO::Version OpenVINO::DEFAULT_VERSION;
 // major and minor represent openvino NN blob version information
 const std::map<std::pair<std::uint32_t, std::uint32_t>, OpenVINO::Version> OpenVINO::blobVersionToLatestOpenvinoMapping = {
     {{5, 0}, OpenVINO::VERSION_2020_3},
-    {{6, 0}, OpenVINO::VERSION_2021_4},
+    {{6, 0}, OpenVINO::VERSION_2022_1},
     {{2020, 3}, OpenVINO::VERSION_2020_3},
     {{2020, 4}, OpenVINO::VERSION_2020_4},
     {{2021, 1}, OpenVINO::VERSION_2021_1},
     {{2021, 2}, OpenVINO::VERSION_2021_2},
     {{2021, 3}, OpenVINO::VERSION_2021_3},
     {{2021, 4}, OpenVINO::VERSION_2021_4},
+    {{2022, 1}, OpenVINO::VERSION_2022_1},
 
 };
 
 const std::map<std::pair<std::uint32_t, std::uint32_t>, std::vector<OpenVINO::Version>> OpenVINO::blobVersionToOpenvinoMapping = {
     {{5, 0}, {OpenVINO::VERSION_2020_3}},
-    {{6, 0}, {OpenVINO::VERSION_2020_4, OpenVINO::VERSION_2021_1, OpenVINO::VERSION_2021_2, OpenVINO::VERSION_2021_3, OpenVINO::VERSION_2021_4}},
+    {{6, 0},
+     {OpenVINO::VERSION_2020_4,
+      OpenVINO::VERSION_2021_1,
+      OpenVINO::VERSION_2021_2,
+      OpenVINO::VERSION_2021_3,
+      OpenVINO::VERSION_2021_4,
+      OpenVINO::VERSION_2022_1}},
     {{2020, 3}, {OpenVINO::VERSION_2020_3}},
     {{2020, 4}, {OpenVINO::VERSION_2020_4}},
     {{2021, 1}, {OpenVINO::VERSION_2021_1}},
     {{2021, 2}, {OpenVINO::VERSION_2021_2}},
     {{2021, 3}, {OpenVINO::VERSION_2021_3}},
     {{2021, 4}, {OpenVINO::VERSION_2021_4}},
+    {{2022, 1}, {OpenVINO::VERSION_2022_1}},
+
 };
 
 std::vector<OpenVINO::Version> OpenVINO::getVersions() {
@@ -46,7 +58,8 @@ std::vector<OpenVINO::Version> OpenVINO::getVersions() {
             OpenVINO::VERSION_2021_1,
             OpenVINO::VERSION_2021_2,
             OpenVINO::VERSION_2021_3,
-            OpenVINO::VERSION_2021_4};
+            OpenVINO::VERSION_2021_4,
+            OpenVINO::VERSION_2022_1};
 }
 
 std::string OpenVINO::getVersionName(OpenVINO::Version version) {
@@ -63,6 +76,8 @@ std::string OpenVINO::getVersionName(OpenVINO::Version version) {
             return "2021.3";
         case OpenVINO::VERSION_2021_4:
             return "2021.4";
+        case OpenVINO::VERSION_2022_1:
+            return "2022.1";
     }
     throw std::logic_error("OpenVINO - Unknown version enum specified");
 }
@@ -123,6 +138,33 @@ bool OpenVINO::areVersionsBlobCompatible(OpenVINO::Version v1, OpenVINO::Version
     // If versions weren't matched up in any of the above cases, log an error and return false
     spdlog::error("OpenVINO - version compatibility check with invalid values or unknown blob version");
     return false;
+}
+
+static void blobInit(OpenVINO::Blob& blob, std::vector<uint8_t> data) {
+    blob.data = std::move(data);
+    BlobReader reader;
+    reader.parse(blob.data);
+    blob.networkInputs = reader.getNetworkInputs();
+    blob.networkOutputs = reader.getNetworkOutputs();
+    blob.stageCount = reader.getStageCount();
+    blob.numShaves = reader.getNumberOfShaves();
+    blob.numSlices = reader.getNumberOfSlices();
+    blob.version = OpenVINO::getBlobLatestSupportedVersion(reader.getVersionMajor(), reader.getVersionMinor());
+}
+
+OpenVINO::Blob::Blob(std::vector<uint8_t> data) {
+    blobInit(*this, std::move(data));
+}
+
+OpenVINO::Blob::Blob(const dai::Path& path) {
+    // Load binary file at path
+    std::ifstream stream(path, std::ios::in | std::ios::binary);
+    if(!stream.is_open()) {
+        // Throw an error
+        // TODO(themarpe) - Unify exceptions into meaningful groups
+        throw std::runtime_error(fmt::format("Cannot load blob, file at path {} doesn't exist.", path));
+    }
+    blobInit(*this, std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {}));
 }
 
 }  // namespace dai

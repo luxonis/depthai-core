@@ -13,15 +13,14 @@ namespace dai {
 constexpr std::chrono::milliseconds XLinkStream::WAIT_FOR_STREAM_RETRY;
 constexpr int XLinkStream::STREAM_OPEN_RETRIES;
 
-XLinkStream::XLinkStream(const XLinkConnection& conn, const std::string& name, std::size_t maxWriteSize) : streamName(name) {
+XLinkStream::XLinkStream(const std::shared_ptr<XLinkConnection> conn, const std::string& name, std::size_t maxWriteSize) : connection(conn), streamName(name) {
     if(name.empty()) throw std::invalid_argument("Cannot create XLinkStream using empty stream name");
-    if(conn.getLinkId() == -1) throw std::invalid_argument("Cannot create XLinkStream using unconnected XLinkConnection");
+    if(!connection || connection->getLinkId() == -1) throw std::invalid_argument("Cannot create XLinkStream using unconnected XLinkConnection");
 
     streamId = INVALID_STREAM_ID;
 
     for(int retryCount = 0; retryCount < STREAM_OPEN_RETRIES; retryCount++) {
-        streamId = XLinkOpenStream(conn.getLinkId(), streamName.c_str(), static_cast<int>(maxWriteSize));
-
+        streamId = XLinkOpenStream(connection->getLinkId(), streamName.c_str(), static_cast<int>(maxWriteSize));
         if(streamId == INVALID_STREAM_ID) {
             // Give some time before continuing
             std::this_thread::sleep_for(WAIT_FOR_STREAM_RETRY);
@@ -34,13 +33,18 @@ XLinkStream::XLinkStream(const XLinkConnection& conn, const std::string& name, s
 }
 
 // Move constructor
-XLinkStream::XLinkStream(XLinkStream&& stream) : streamName(std::move(stream.streamName)) {
-    // Construct from 'stream' into current
-    // Just copy its streamId
-    streamId = stream.streamId;
+XLinkStream::XLinkStream(XLinkStream&& other)
+    : connection(std::move(other.connection)), streamName(std::exchange(other.streamName, {})), streamId(std::exchange(other.streamId, INVALID_STREAM_ID)) {
+    // Set other's streamId to INVALID_STREAM_ID to prevent closing
+}
 
-    // Set 'stream's streamId to INVALID_STREAM_ID to prevent closing
-    stream.streamId = INVALID_STREAM_ID;
+XLinkStream& XLinkStream::operator=(XLinkStream&& other) {
+    if(this != &other) {
+        connection = std::move(other.connection);
+        streamId = std::exchange(other.streamId, INVALID_STREAM_ID);
+        streamName = std::exchange(other.streamName, {});
+    }
+    return *this;
 }
 
 XLinkStream::~XLinkStream() {
@@ -48,6 +52,23 @@ XLinkStream::~XLinkStream() {
     if(streamId != INVALID_STREAM_ID) {
         XLinkCloseStream(streamId);
     }
+}
+
+StreamPacketDesc::StreamPacketDesc(StreamPacketDesc&& other) noexcept : streamPacketDesc_t{other.data, other.length} {
+    other.data = nullptr;
+    other.length = 0;
+}
+
+StreamPacketDesc& StreamPacketDesc::operator=(StreamPacketDesc&& other) noexcept {
+    if(this != &other) {
+        data = std::exchange(other.data, nullptr);
+        length = std::exchange(other.length, 0);
+    }
+    return *this;
+}
+
+StreamPacketDesc::~StreamPacketDesc() noexcept {
+    XLinkDeallocateMoveData(data, length);
 }
 
 ////////////////////
@@ -69,19 +90,27 @@ void XLinkStream::write(const std::vector<std::uint8_t>& data) {
 }
 
 void XLinkStream::read(std::vector<std::uint8_t>& data) {
-    streamPacketDesc_t* pPacket = nullptr;
-    auto status = XLinkReadData(streamId, &pPacket);
+    StreamPacketDesc packet;
+    const auto status = XLinkReadMoveData(streamId, &packet);
     if(status != X_LINK_SUCCESS) {
         throw XLinkReadError(status, streamName);
     }
-    data = std::vector<std::uint8_t>(pPacket->data, pPacket->data + pPacket->length);
-    XLinkReleaseData(streamId);
+    data = std::vector<std::uint8_t>(packet.data, packet.data + packet.length);
 }
 
 std::vector<std::uint8_t> XLinkStream::read() {
     std::vector<std::uint8_t> data;
     read(data);
     return data;
+}
+
+StreamPacketDesc XLinkStream::readMove() {
+    StreamPacketDesc packet;
+    const auto status = XLinkReadMoveData(streamId, &packet);
+    if(status != X_LINK_SUCCESS) {
+        throw XLinkReadError(status, streamName);
+    }
+    return packet;
 }
 
 // USE ONLY WHEN COPYING DATA AT LATER STAGES
@@ -96,7 +125,8 @@ streamPacketDesc_t* XLinkStream::readRaw() {
 
 // USE ONLY WHEN COPYING DATA AT LATER STAGES
 void XLinkStream::readRawRelease() {
-    XLinkReleaseData(streamId);
+    XLinkError_t status;
+    if((status = XLinkReleaseData(streamId)) != X_LINK_SUCCESS) throw XLinkReadError(status, streamName);
 }
 
 // SPLIT HELPER
@@ -145,18 +175,27 @@ bool XLinkStream::write(const std::vector<std::uint8_t>& data, std::chrono::mill
 }
 
 bool XLinkStream::read(std::vector<std::uint8_t>& data, std::chrono::milliseconds timeout) {
-    streamPacketDesc_t* pPacket = nullptr;
-    auto status = XLinkReadDataWithTimeout(streamId, &pPacket, static_cast<unsigned int>(timeout.count()));
+    StreamPacketDesc packet;
+    const auto status = XLinkReadMoveDataWithTimeout(streamId, &packet, static_cast<unsigned int>(timeout.count()));
     if(status == X_LINK_SUCCESS) {
-        data = std::vector<std::uint8_t>(pPacket->data, pPacket->data + pPacket->length);
-        XLinkReleaseData(streamId);
+        data = std::vector<std::uint8_t>(packet.data, packet.data + packet.length);
         return true;
     } else if(status == X_LINK_TIMEOUT) {
         return false;
     } else {
         throw XLinkReadError(status, streamName);
     }
-    return false;
+}
+
+bool XLinkStream::readMove(StreamPacketDesc& packet, const std::chrono::milliseconds timeout) {
+    const auto status = XLinkReadMoveDataWithTimeout(streamId, &packet, static_cast<unsigned int>(timeout.count()));
+    if(status == X_LINK_SUCCESS) {
+        return true;
+    } else if(status == X_LINK_TIMEOUT) {
+        return false;
+    } else {
+        throw XLinkReadError(status, streamName);
+    }
 }
 
 bool XLinkStream::readRaw(streamPacketDesc_t*& pPacket, std::chrono::milliseconds timeout) {

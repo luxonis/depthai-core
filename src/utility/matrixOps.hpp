@@ -43,12 +43,12 @@ std::vector<std::vector<float>> matMul(std::vector<std::vector<float>>& firstMat
  * Function to get cofactor of A[p][q] in temp. n is current
  * dimension of part of A that we are calculating cofactor for.
  */
-static void getCofactor(std::vector<std::vector<float>>& A, std::vector<std::vector<float>>& temp, int p, int q, int n) {
-    int i = 0, j = 0;
+static void getCofactor(std::vector<std::vector<float>>& A, std::vector<std::vector<float>>& temp, size_t p, size_t q, size_t n) {
+    size_t i = 0, j = 0;
 
     // Looping for each element of the matrix
-    for(int row = 0; row < n; row++) {
-        for(int col = 0; col < n; col++) {
+    for(size_t row = 0; row < n; ++row) {
+        for(size_t col = 0; col < n; ++col) {
             //  Copying into temporary matrix only those element
             //  which are not in given row and column
             if(row != p && col != q) {
@@ -58,7 +58,7 @@ static void getCofactor(std::vector<std::vector<float>>& A, std::vector<std::vec
                 // reset col index
                 if(j == n - 1) {
                     j = 0;
-                    i++;
+                    ++i;
                 }
             }
         }
@@ -67,7 +67,7 @@ static void getCofactor(std::vector<std::vector<float>>& A, std::vector<std::vec
 
 /* Recursive function for finding determinant of matrix.
    n is current dimension of A[][]. */
-static float determinant(std::vector<std::vector<float>>& A, int n) {
+static float determinant(std::vector<std::vector<float>>& A, size_t n) {
     float D = 0;  // Initialize result
 
     //  Base case : if matrix contains single element
@@ -77,7 +77,7 @@ static float determinant(std::vector<std::vector<float>>& A, int n) {
     int sign = 1;                                                       // To store sign multiplier
 
     // Iterate for each element of first row
-    for(int f = 0; f < n; f++) {
+    for(size_t f = 0; f < n; ++f) {
         // Getting Cofactor of A[0][f]
         getCofactor(A, temp, 0, f, n);
         D += sign * A[0][f] * determinant(temp, n - 1);
@@ -100,8 +100,8 @@ static void adjoint(std::vector<std::vector<float>>& A, std::vector<std::vector<
     int sign = 1;
     std::vector<std::vector<float>> temp(A.size(), std::vector<float>(A.size(), 0));
 
-    for(size_t i = 0; i < A.size(); i++) {
-        for(size_t j = 0; j < A.size(); j++) {
+    for(size_t i = 0; i < A.size(); ++i) {
+        for(size_t j = 0; j < A.size(); ++j) {
             // Get cofactor of A[i][j]
             getCofactor(A, temp, i, j, A.size());
 
@@ -121,7 +121,7 @@ static void adjoint(std::vector<std::vector<float>>& A, std::vector<std::vector<
 bool matInv(std::vector<std::vector<float>>& A, std::vector<std::vector<float>>& inverse) {
     // Find determinant of A[][]
     if(A[0].size() != A.size()) {
-        std::runtime_error("Not a Square Matrix ");
+        throw std::runtime_error("Not a Square Matrix ");
     }
 
     float det = determinant(A, A.size());
@@ -136,8 +136,8 @@ bool matInv(std::vector<std::vector<float>>& A, std::vector<std::vector<float>>&
 
     std::vector<float> temp;
     // Find Inverse using formula "inverse(A) = adj(A)/det(A)"
-    for(size_t i = 0; i < A.size(); i++) {
-        for(size_t j = 0; j < A.size(); j++) {
+    for(size_t i = 0; i < A.size(); ++i) {
+        for(size_t j = 0; j < A.size(); ++j) {
             temp.push_back(adj[i][j] / det);
         }
         inverse.push_back(temp);

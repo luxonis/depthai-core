@@ -1,6 +1,7 @@
 #include "depthai/pipeline/AssetManager.hpp"
 
 #include "spdlog/fmt/fmt.h"
+#include "utility/spdlog-fmt.hpp"
 
 // std
 #include <fstream>
@@ -12,8 +13,6 @@ std::string Asset::getRelativeUri() {
 }
 
 std::shared_ptr<dai::Asset> AssetManager::set(Asset asset) {
-    // make sure that key doesn't exist already
-    if(assetMap.count(asset.key) > 0) throw std::logic_error("An Asset with the key: " + asset.key + " already exists.");
     std::string key = asset.key;
     assetMap[key] = std::make_shared<Asset>(std::move(asset));
     return assetMap[key];
@@ -27,7 +26,7 @@ std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, Asset asse
     return set(std::move(a));
 }
 
-std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const std::string& path, int alignment) {
+std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const dai::Path& path, int alignment) {
     // Load binary file at path
     std::ifstream stream(path, std::ios::in | std::ios::binary);
     if(!stream.is_open()) {
@@ -45,6 +44,15 @@ std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const std:
 }
 
 std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, const std::vector<std::uint8_t>& data, int alignment) {
+    // Create an asset
+    Asset binaryAsset(key);
+    binaryAsset.alignment = alignment;
+    binaryAsset.data = std::move(data);
+    // Store asset
+    return set(std::move(binaryAsset));
+}
+
+std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, std::vector<std::uint8_t>&& data, int alignment) {
     // Create an asset
     Asset binaryAsset(key);
     binaryAsset.alignment = alignment;

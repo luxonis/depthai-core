@@ -24,6 +24,23 @@ int createDirectory(std::string directory)
     return ret;
 }
 
+cv::Mat fromPlanarFp16(const std::vector<float>& data, int w, int h, float mean, float scale){
+    cv::Mat frame = cv::Mat(h, w, CV_8UC3);
+
+    for(int i = 0; i < w*h; i++) {
+        auto b = data.data()[i + w*h * 0] * scale + mean;
+        frame.data[i*3+0] = (uint8_t)b;
+    }
+    for(int i = 0; i < w*h; i++) {
+        auto g = data.data()[i + w*h * 1] * scale + mean;
+        frame.data[i*3+1] = (uint8_t)g;
+    }
+    for(int i = 0; i < w*h; i++) {
+        auto r = data.data()[i + w*h * 2] * scale + mean;
+        frame.data[i*3+2] = (uint8_t)r;
+    }
+    return frame;
+}
 
 cv::Mat toMat(const std::vector<uint8_t>& data, int w, int h , int numPlanes, int bpp){
 

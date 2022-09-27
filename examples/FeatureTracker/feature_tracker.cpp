@@ -1,6 +1,6 @@
 #include <iostream>
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 #include "deque"
 #include "unordered_map"
@@ -37,7 +37,7 @@ class FeatureTrackerDrawer {
             std::deque<dai::Point2f>& path = trackedFeaturesPath.at(currentID);
 
             path.push_back(currentFeature.position);
-            while(path.size() > std::max(1, trackedFeaturesPathLength)) {
+            while(path.size() > std::max<unsigned int>(1, trackedFeaturesPathLength)) {
                 path.pop_front();
             }
         }
@@ -61,7 +61,7 @@ class FeatureTrackerDrawer {
 
         for(auto& featurePath : trackedFeaturesPath) {
             std::deque<dai::Point2f>& path = featurePath.second;
-            int j = 0;
+            unsigned int j = 0;
             for(j = 0; j < path.size() - 1; j++) {
                 auto src = cv::Point(path[j].x, path[j].y);
                 auto dst = cv::Point(path[j + 1].x, path[j + 1].y);

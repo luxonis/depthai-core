@@ -1,6 +1,6 @@
 #include <iostream>
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 static std::atomic<bool> withDepth{true};
@@ -47,7 +47,7 @@ int main() {
 
     if(withDepth) {
         // StereoDepth
-        stereo->initialConfig.setConfidenceThreshold(245);
+        stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
         stereo->setRectifyEdgeFillColor(0);  // black, to better see the cutout
         // stereo->setInputResolution(1280, 720);
         stereo->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_5x5);

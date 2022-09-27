@@ -17,20 +17,19 @@ namespace node {
  * @brief FeatureTracker node.
  * Performs feature tracking and reidentification using motion estimation between 2 consecutive frames.
  */
-class FeatureTracker : public Node {
+class FeatureTracker : public NodeCRTP<Node, FeatureTracker, FeatureTrackerProperties> {
    public:
-    using Properties = dai::FeatureTrackerProperties;
+    constexpr static const char* NAME = "FeatureTracker";
+
+   protected:
+    Properties& getProperties();
 
    private:
-    std::string getName() const override;
-    nlohmann::json getProperties() override;
-    std::shared_ptr<Node> clone() override;
-
     std::shared_ptr<RawFeatureTrackerConfig> rawConfig;
-    Properties properties;
 
    public:
     FeatureTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    FeatureTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Initial config to use for feature tracking.
@@ -46,7 +45,7 @@ class FeatureTracker : public Node {
      * Input message with frame data on which feature tracking is performed.
      * Default queue is non-blocking with size 4.
      */
-    Input inputImage{*this, "inputImage", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputImage{*this, "inputImage", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs TrackedFeatures message that carries tracked features results.
@@ -64,7 +63,13 @@ class FeatureTracker : public Node {
      * Specify whether or not wait until configuration message arrives to inputConfig Input.
      * @param wait True to wait for configuration message, false otherwise.
      */
-    void setWaitForConfigInput(bool wait);
+    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] void setWaitForConfigInput(bool wait);
+
+    /**
+     * @see setWaitForConfigInput
+     * @returns True if wait for inputConfig message, false otherwise
+     */
+    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] bool getWaitForConfigInput() const;
 
     /**
      * Specify allocated hardware resources for feature tracking.

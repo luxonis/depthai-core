@@ -3,7 +3,7 @@
 
 #include "utility.hpp"
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 static const std::vector<std::string> labelMap = {"", "person"};
@@ -65,10 +65,10 @@ int main(int argc, char** argv) {
     objectTracker->inputDetectionFrame.setBlocking(true);
     objectTracker->inputDetections.setBlocking(true);
     objectTracker->setDetectionLabelsToTrack({1});  // track only person
-    // possible tracking types: ZERO_TERM_COLOR_HISTOGRAM, ZERO_TERM_IMAGELESS
+    // possible tracking types: ZERO_TERM_COLOR_HISTOGRAM, ZERO_TERM_IMAGELESS, SHORT_TERM_IMAGELESS, SHORT_TERM_KCF
     objectTracker->setTrackerType(dai::TrackerType::ZERO_TERM_COLOR_HISTOGRAM);
     // take the smallest ID when new object is tracked, possible options: SMALLEST_ID, UNIQUE_ID
-    objectTracker->setTrackerIdAssigmentPolicy(dai::TrackerIdAssigmentPolicy::SMALLEST_ID);
+    objectTracker->setTrackerIdAssignmentPolicy(dai::TrackerIdAssignmentPolicy::SMALLEST_ID);
 
     // Linking
     manip->out.link(manipOut->input);
@@ -107,7 +107,7 @@ int main(int argc, char** argv) {
             int x2 = detection.xmax * frame.cols;
             int y2 = detection.ymax * frame.rows;
 
-            int labelIndex = detection.label;
+            uint32_t labelIndex = detection.label;
             std::string labelStr = to_string(labelIndex);
             if(labelIndex < labelMap.size()) {
                 labelStr = labelMap[labelIndex];
@@ -132,12 +132,12 @@ int main(int argc, char** argv) {
         if(frame.empty()) break;
 
         auto img = std::make_shared<dai::ImgFrame>();
-        frame = resizeKeepAspectRatio(frame, cv::Size(1280, 720), cv::Scalar(0));
+        frame = resizeKeepAspectRatio(frame, cv::Size(1920, 1080), cv::Scalar(0));
         toPlanar(frame, img->getData());
         img->setTimestamp(baseTs);
         baseTs += steady_clock::duration(static_cast<int64_t>((1000 * 1000 * 1000 / simulatedFps)));
-        img->setWidth(1280);
-        img->setHeight(720);
+        img->setWidth(1920);
+        img->setHeight(1080);
         img->setType(dai::ImgFrame::Type::BGR888p);
         qIn->send(img);
 
@@ -173,7 +173,7 @@ int main(int argc, char** argv) {
             int x2 = roi.bottomRight().x;
             int y2 = roi.bottomRight().y;
 
-            int labelIndex = t.label;
+            uint32_t labelIndex = t.label;
             std::string labelStr = to_string(labelIndex);
             if(labelIndex < labelMap.size()) {
                 labelStr = labelMap[labelIndex];

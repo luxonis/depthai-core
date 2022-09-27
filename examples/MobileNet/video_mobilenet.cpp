@@ -3,7 +3,7 @@
 
 #include "utility.hpp"
 
-// Inludes common necessary includes for development using depthai library
+// Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
 // MobilenetSSD label texts
@@ -69,7 +69,7 @@ int main(int argc, char** argv) {
             int x2 = detection.xmax * frame.cols;
             int y2 = detection.ymax * frame.rows;
 
-            int labelIndex = detection.label;
+            uint32_t labelIndex = detection.label;
             std::string labelStr = to_string(labelIndex);
             if(labelIndex < labelMap.size()) {
                 labelStr = labelMap[labelIndex];
