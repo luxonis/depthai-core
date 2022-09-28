@@ -25,7 +25,7 @@
 #include "depthai/xlink/XLinkStream.hpp"
 
 // shared
-#include "depthai-shared/common/CameraProperties.hpp"
+#include "depthai-shared/common/CameraFeatures.hpp"
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
@@ -461,9 +461,9 @@ class DeviceBase {
     /**
      * Get cameras that are connected to the device with their features/properties
      *
-     * @returns Vector of connected camera properties
+     * @returns Vector of connected camera features
      */
-    std::vector<CameraProperties> getConnectedCameraProperties();
+    std::vector<CameraFeatures> getConnectedCameraFeatures();
 
     /**
      * Get sensor names for cameras that are connected to the device

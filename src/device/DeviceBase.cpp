@@ -769,10 +769,10 @@ std::vector<CameraBoardSocket> DeviceBase::getConnectedCameras() {
     return pimpl->rpcClient->call("getConnectedCameras").as<std::vector<CameraBoardSocket>>();
 }
 
-std::vector<CameraProperties> DeviceBase::getConnectedCameraProperties() {
+std::vector<CameraFeatures> DeviceBase::getConnectedCameraFeatures() {
     checkClosed();
 
-    return pimpl->rpcClient->call("getConnectedCameraProperties").as<std::vector<CameraProperties>>();
+    return pimpl->rpcClient->call("getConnectedCameraFeatures").as<std::vector<CameraFeatures>>();
 }
 
 std::unordered_map<CameraBoardSocket, std::string> DeviceBase::getCameraSensorNames() {
