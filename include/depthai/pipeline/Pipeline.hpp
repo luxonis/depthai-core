@@ -41,6 +41,7 @@ class PipelineImpl {
     Device::Config getDeviceConfig() const;
     void setCameraTuningBlobPath(const dai::Path& path);
     void setXLinkChunkSize(int sizeBytes);
+    void setImageManipCmxSizeAdjust(int sizeAdjustBytes);
     void setBoardConfig(BoardConfig board);
     BoardConfig getBoardConfig() const;
 
@@ -263,6 +264,15 @@ class Pipeline {
      */
     void setXLinkChunkSize(int sizeBytes) {
         impl()->setXLinkChunkSize(sizeBytes);
+    }
+
+    /**
+     * Temporary, for adjusting (+/-) the CMX buffer size allocated to ImageManip nodes.
+     * Some configurations may require a larger size allocated,
+     * but too much may cause other nodes allocations to fail.
+     */
+    void setImageManipCmxSizeAdjust(int sizeAdjustBytes) {
+        impl()->setImageManipCmxSizeAdjust(sizeAdjustBytes);
     }
 
     /// Checks whether a given OpenVINO version is compatible with the pipeline

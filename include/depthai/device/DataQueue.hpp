@@ -12,6 +12,7 @@
 
 // shared
 #include "depthai-shared/datatype/RawBuffer.hpp"
+#include "depthai-shared/xlink/XLinkConstants.hpp"
 
 namespace dai {
 
@@ -342,10 +343,14 @@ class DataInputQueue {
     std::atomic<bool> running{true};
     std::string exceptionMessage;
     const std::string name;
-    std::size_t maxDataSize;
+    std::size_t maxDataSize = device::XLINK_USB_BUFFER_MAX_SIZE;
 
    public:
-    DataInputQueue(const std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize = 16, bool blocking = true);
+    DataInputQueue(const std::shared_ptr<XLinkConnection> conn,
+                   const std::string& streamName,
+                   unsigned int maxSize = 16,
+                   bool blocking = true,
+                   std::size_t maxDataSize = device::XLINK_USB_BUFFER_MAX_SIZE);
     ~DataInputQueue();
 
     /**
