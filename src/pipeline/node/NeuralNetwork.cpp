@@ -74,6 +74,14 @@ void NeuralNetwork::setNumNCEPerInferenceThread(int numNCEPerThread) {
     properties.numNCEPerThread = numNCEPerThread;
 }
 
+void NeuralNetwork::setNumShavesPerInferenceThread(int numShavesPerThread) {
+    properties.numShavesPerThread = numShavesPerThread;
+}
+
+void NeuralNetwork::setBackend(std::string backend) {
+    properties.backend = backend;
+}
+
 int NeuralNetwork::getNumInferenceThreads() {
     return properties.numThreads;
 }
