@@ -907,7 +907,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::functio
 
     // Checks first
     const auto MAX_USER_BOOTLOADER_SIZE = dai::bootloader::getStructure(type).size.at(Section::USER_BOOTLOADER);
-    if(updateFlashEx2.totalSize > MAX_USER_BOOTLOADER_SIZE) {
+    if(static_cast<long>(updateFlashEx2.totalSize) > MAX_USER_BOOTLOADER_SIZE) {
         throw std::runtime_error(fmt::format("Selected User Bootloader is too large {} / {}B", updateFlashEx2.totalSize, MAX_USER_BOOTLOADER_SIZE));
     }
 
