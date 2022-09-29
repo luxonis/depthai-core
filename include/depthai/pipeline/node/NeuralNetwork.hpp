@@ -109,6 +109,18 @@ class NeuralNetwork : public NodeCRTP<DeviceNode, NeuralNetwork, NeuralNetworkPr
     void setNumNCEPerInferenceThread(int numNCEPerThread);
 
     /**
+     * How many Shaves should a single thread use for inference
+     * @param numShavesPerThread Number of shaves per thread
+     */
+    void setNumShavesPerInferenceThread(int numShavesPerThread);
+
+    /**
+     * Specifies backend to use
+     * @param backend String specifying backend to use
+     */
+    void setBackend(std::string backend);
+
+    /**
      * How many inference threads will be used to run the network
      * @returns Number of threads, 0, 1 or 2. Zero means AUTO
      */
