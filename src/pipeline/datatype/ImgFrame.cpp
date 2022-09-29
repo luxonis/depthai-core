@@ -47,6 +47,13 @@ RawImgFrame::Type ImgFrame::getType() const {
     return img.fb.type;
 }
 
+unsigned int ImgFrame::getSourceWidth() const {
+    return img.sourceFb.width;
+}
+unsigned int ImgFrame::getSourceHeight() const {
+    return img.sourceFb.height;
+}
+
 RawImgFrame ImgFrame::get() const {
     return img;
 }

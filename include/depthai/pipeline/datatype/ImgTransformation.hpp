@@ -14,7 +14,7 @@ class ImgTransformation{
     explicit ImgTransformation(RawImgTransformation& transformation);
     virtual ~ImgTransformation() = default;
 
-    dai::RawImgTransformation get() const;
+    dai::RawImgTransformation& get();
     void setPadding(ImgTransformation sourceFrame, dai::Rect iRoiRect, int topPadding, int bottomPadding, int leftPadding, int rightPadding);
     void setCrop(ImgTransformation sourceFrame, dai::Rect crop);
     void setRotation(ImgTransformation sourceFrame, float rotationAngle);

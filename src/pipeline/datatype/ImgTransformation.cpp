@@ -3,7 +3,7 @@
 namespace dai {
 ImgTransformation::ImgTransformation(RawImgTransformation& transformation) : transformation(transformation){}
 
-dai::RawImgTransformation ImgTransformation::get() const {
+dai::RawImgTransformation& ImgTransformation::get() {
     return transformation;
 }
 

@@ -83,6 +83,16 @@ class ImgFrame : public Buffer {
     unsigned int getHeight() const;
 
     /**
+     * Retrieves image width in pixels
+     */
+    unsigned int getSourceWidth() const;
+
+    /**
+     * Retrieves image height in pixels
+     */
+    unsigned int getSourceHeight() const;
+
+    /**
      * Retrieve raw data for ImgFrame.
      * @returns raw image frame config
      */
