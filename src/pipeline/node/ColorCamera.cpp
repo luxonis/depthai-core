@@ -312,6 +312,10 @@ std::tuple<int, int> ColorCamera::getResolutionSize() const {
             return {2592, 1944};
             break;
 
+        case ColorCameraProperties::SensorResolution::THE_12P0_MP:
+            return {4000, 3000};
+            break;
+
         case ColorCameraProperties::SensorResolution::THE_12_MP:
             return {4056, 3040};
             break;
@@ -328,9 +332,12 @@ std::tuple<int, int> ColorCamera::getResolutionSize() const {
             return {1280, 800};
             break;
 
-        case ColorCameraProperties::SensorResolution::THE_48_MP:
-            // Note: temporarily width is cropped from 8000 to 5312 (ISP limitation)
+        case ColorCameraProperties::SensorResolution::THE_5312X6000:
             return {5312, 6000};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_48_MP:
+            return {8000, 6000};
             break;
     }
 

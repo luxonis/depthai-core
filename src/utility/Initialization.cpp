@@ -82,6 +82,20 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
             spdlog::set_level(spdlog::level::warn);
         }
 
+        auto debugStr = utility::getEnv("DEPTHAI_DEBUG");
+        if(!debugStr.empty()) {
+            // Try parsing the string as a number
+            try {
+                int debug{std::stoi(debugStr)};
+                if(debug && (spdlog::get_level() > spdlog::level::debug)) {
+                    spdlog::set_level(spdlog::level::debug);
+                    spdlog::info("DEPTHAI_DEBUG enabled, lowered DEPTHAI_LEVEL to 'debug'");
+                }
+            } catch(const std::invalid_argument& e) {
+                spdlog::warn("DEPTHAI_DEBUG value invalid: {}, should be a number (non-zero to enable)", e.what());
+            }
+        }
+
         // Print core commit and build datetime
         if(additionalInfo != nullptr && additionalInfo[0] != '\0') {
             spdlog::debug("{}", additionalInfo);
