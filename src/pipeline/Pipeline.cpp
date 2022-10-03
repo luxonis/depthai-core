@@ -657,6 +657,18 @@ CalibrationHandler PipelineImpl::getCalibrationData() const {
     }
 }
 
+void PipelineImpl::setEepromData(EepromData eepromData) {
+    globalProperties.calibData = eepromData;
+}
+
+EepromData PipelineImpl::getEepromData() const {
+    if(globalProperties.calibData) {
+        return globalProperties.calibData.value();
+    } else {
+        return EepromData{};
+    }
+}
+
 bool PipelineImpl::isHostOnly() const {
     // Starts pipeline, go through all nodes and start them
     bool hostOnly = true;

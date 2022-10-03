@@ -65,6 +65,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void unlink(const Node::Output& out, const Node::Input& in);
     void setCalibrationData(CalibrationHandler calibrationDataHandler);
     CalibrationHandler getCalibrationData() const;
+    void setEepromData(EepromData eepromData);
+    EepromData getEepromData() const;
     bool isHostOnly() const;
     bool isDeviceOnly() const;
 
@@ -289,6 +291,24 @@ class Pipeline {
      */
     CalibrationHandler getCalibrationData() const {
         return impl()->getCalibrationData();
+    }
+
+    /**
+     * gets the eeprom data from the pipeline
+     *
+     * @return eepromData from the the pipeline
+     */
+    EepromData getEepromData() const {
+        return impl()->getEepromData();
+    }
+
+    /**
+     * Sets the eeprom data in pipeline
+     *
+     * @param eepromData EepromData object that is loaded in the pipeline.
+     */
+    void setEepromData(EepromData eepromData) {
+        impl()->setEepromData(eepromData);
     }
 
     /// Get possible OpenVINO version to run this pipeline
