@@ -649,6 +649,10 @@ void PipelineImpl::setCalibrationData(CalibrationHandler calibrationDataHandler)
     globalProperties.calibData = calibrationDataHandler.getEepromData();
 }
 
+bool PipelineImpl::isCalibrationDataAvailable() const {
+    return globalProperties.calibData.has_value();
+}
+
 CalibrationHandler PipelineImpl::getCalibrationData() const {
     if(globalProperties.calibData) {
         return CalibrationHandler(globalProperties.calibData.value());
@@ -659,6 +663,10 @@ CalibrationHandler PipelineImpl::getCalibrationData() const {
 
 void PipelineImpl::setEepromData(EepromData eepromData) {
     globalProperties.calibData = eepromData;
+}
+
+bool PipelineImpl::isEepromDataAvailable() const {
+    return globalProperties.calibData.has_value();
 }
 
 EepromData PipelineImpl::getEepromData() const {
