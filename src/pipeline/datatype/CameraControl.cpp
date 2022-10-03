@@ -88,6 +88,10 @@ CameraControl& CameraControl::setManualExposure(uint32_t exposureTimeUs, uint32_
     return *this;
 }
 
+void CameraControl::setManualExposure(std::chrono::microseconds exposureTime, uint32_t sensitivityIso) {
+    setManualExposure(exposureTime.count(), sensitivityIso);
+}
+
 // White Balance
 CameraControl& CameraControl::setAutoWhiteBalanceMode(AutoWhiteBalanceMode mode) {
     cfg.setCommand(RawCameraControl::Command::AWB_MODE);
@@ -149,6 +153,18 @@ CameraControl& CameraControl::setEffectMode(EffectMode mode) {
 
 bool CameraControl::getCaptureStill() const {
     return cfg.getCommand(RawCameraControl::Command::STILL_CAPTURE);
+}
+
+std::chrono::microseconds CameraControl::getExposureTime() const {
+    return std::chrono::microseconds(cfg.expManual.exposureTimeUs);
+}
+
+int CameraControl::getSensitivity() const {
+    return cfg.expManual.sensitivityIso;
+}
+
+int CameraControl::getLensPosition() const {
+    return cfg.lensPosition;
 }
 
 }  // namespace dai
