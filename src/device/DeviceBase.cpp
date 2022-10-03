@@ -572,8 +572,14 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         gate = std::make_unique<DeviceGate>(deviceInfo);
 
         // Create and start session
-        gate->createSession();
-        gate->startSession();
+        // TODO Tie create and start session together. Split for now, since in some cases starting the session works, even if creating failed.
+        if(!gate->createSession()) {
+            spdlog::error("Could not start the session on gate!");
+        }
+
+        if(!gate->startSession()) {
+            spdlog::error("Could not create the session on gate!");
+        }
 
         // Connect with XLinkConnection (skip checking if booted)
         connection = std::make_shared<XLinkConnection>(deviceInfo, X_LINK_ANY_STATE);

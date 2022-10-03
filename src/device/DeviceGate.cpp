@@ -74,6 +74,10 @@ bool DeviceGate::createSession() {
 
     if(auto res = pimpl->cli->Post(sessionsEndpoint.c_str(), createSessionBody.dump(), "application/json")) {
         // Parse response
+        if(res->status != 200) {
+            spdlog::warn("DeviceGate createSession not successful - status: {}, error: {}", res->status, res->body);
+            return false;
+        }
         auto resp = nlohmann::json::parse(res->body);
         spdlog::debug("DeviceGate createSession response: {}", resp.dump());
 
@@ -99,16 +103,23 @@ bool DeviceGate::createSession() {
 
             std::string url = fmt::format("{}/{}/fwp", sessionsEndpoint, sessionId);
             if(auto res = pimpl->cli->Post(url.c_str(), items)) {
-                spdlog::debug("DeviceGate upload fwp successful");
-                return true;
+                if(res.value().status == 200) {
+                    spdlog::debug("DeviceGate upload fwp successful");
+                    return true;
+                } else {
+                    spdlog::warn("DeviceGate upload fwp not successful - status: {}, error: {}", res->status, res->body);
+                    return false;
+                }
+
             } else {
-                spdlog::debug("DeviceGate upload fwp not successful");
+                spdlog::warn("DeviceGate upload fwp not successful - got no response");
+                return false;
             }
         }
+        return true;
     } else {
-        spdlog::debug("DeviceGate createSession not successful");
+        spdlog::warn("DeviceGate createSession not successful - got no response");
     }
-
     return false;
 }
 
@@ -117,11 +128,14 @@ bool DeviceGate::startSession() {
 
     std::string url = fmt::format("{}/{}/start", sessionsEndpoint, sessionId);
     if(auto res = pimpl->cli->Post(url.c_str())) {
+        if(res->status != 200) {
+            spdlog::warn("DeviceGate start fwp not successful - status: {}, error: {}", res->status, res->body);
+            return false;
+        }
         spdlog::debug("DeviceGate start fwp successful");
-
         return true;
     } else {
-        spdlog::debug("DeviceGate start fwp not successful");
+        spdlog::debug("DeviceGate start fwp not successful - got no response");
     }
 
     return false;
