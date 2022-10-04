@@ -665,16 +665,8 @@ void PipelineImpl::setEepromData(EepromData eepromData) {
     globalProperties.calibData = eepromData;
 }
 
-bool PipelineImpl::isEepromDataAvailable() const {
-    return globalProperties.calibData.has_value();
-}
-
-EepromData PipelineImpl::getEepromData() const {
-    if(globalProperties.calibData) {
-        return globalProperties.calibData.value();
-    } else {
-        return EepromData{};
-    }
+tl::optional<EepromData> PipelineImpl::getEepromData() const {
+    return globalProperties.calibData;
 }
 
 bool PipelineImpl::isHostOnly() const {

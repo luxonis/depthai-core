@@ -67,8 +67,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     bool isCalibrationDataAvailable() const;
     CalibrationHandler getCalibrationData() const;
     void setEepromData(EepromData eepromData);
-    bool isEepromDataAvailable() const;
-    EepromData getEepromData() const;
+    tl::optional<EepromData> getEepromData() const;
     bool isHostOnly() const;
     bool isDeviceOnly() const;
 
@@ -301,7 +300,7 @@ class Pipeline {
      * @return false - calib data has not been set - default will be returned
      */
     bool isCalibrationDataAvailable() const {
-        impl()->isCalibrationDataAvailable();
+        return impl()->isCalibrationDataAvailable();
     }
 
     /**
@@ -309,18 +308,10 @@ class Pipeline {
      *
      * @return eepromData from the the pipeline
      */
-    EepromData getEepromData() const {
+    tl::optional<EepromData> getEepromData() const {
         return impl()->getEepromData();
     }
 
-    /**
-     * check if eeprom data has been set or the default will be returned
-     * @return true - eeprom data has been set
-     * @return false - eeprom data has not been set - default will be returned
-     */
-    bool isEepromDataAvailable() const {
-        return impl()->isEepromDataAvailable();
-    }
     /**
      * Sets the eeprom data in pipeline
      *
