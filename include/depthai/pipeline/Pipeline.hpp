@@ -66,7 +66,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setCalibrationData(CalibrationHandler calibrationDataHandler);
     bool isCalibrationDataAvailable() const;
     CalibrationHandler getCalibrationData() const;
-    void setEepromData(EepromData eepromData);
+    void setEepromData(tl::optional<EepromData> eepromData);
     tl::optional<EepromData> getEepromData() const;
     bool isHostOnly() const;
     bool isDeviceOnly() const;
@@ -317,7 +317,7 @@ class Pipeline {
      *
      * @param eepromData EepromData object that is loaded in the pipeline.
      */
-    void setEepromData(EepromData eepromData) {
+    void setEepromData(tl::optional<EepromData> eepromData) {
         impl()->setEepromData(eepromData);
     }
 

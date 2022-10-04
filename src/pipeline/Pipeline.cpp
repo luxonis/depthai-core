@@ -661,7 +661,7 @@ CalibrationHandler PipelineImpl::getCalibrationData() const {
     }
 }
 
-void PipelineImpl::setEepromData(EepromData eepromData) {
+void PipelineImpl::setEepromData(tl::optional<EepromData> eepromData) {
     globalProperties.calibData = eepromData;
 }
 
