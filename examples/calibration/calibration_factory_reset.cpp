@@ -11,7 +11,7 @@ int main() {
     try {
         device.factoryResetCalibration();
         std::cout << "Factory reset calibration OK" << std::endl;
-    } catch (const std::exception& ex) {
+    } catch(const std::exception& ex) {
         std::cout << "Factory reset calibration FAIL: " << ex.what() << std::endl;
     }
 
