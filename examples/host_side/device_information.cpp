@@ -4,7 +4,6 @@
 #include "depthai/depthai.hpp"
 
 int main() {
-
     std::cout << "Searching for all available devices...\n\n";
     auto infos = dai::Device::getAllAvailableDevices();
 

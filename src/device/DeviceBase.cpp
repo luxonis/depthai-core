@@ -321,6 +321,10 @@ DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, con
 
 DeviceBase::DeviceBase() : DeviceBase(OpenVINO::DEFAULT_VERSION) {}
 
+DeviceBase::DeviceBase(const DeviceInfo& devInfo) : DeviceBase(OpenVINO::DEFAULT_VERSION, devInfo) {}
+
+DeviceBase::DeviceBase(const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : DeviceBase(OpenVINO::DEFAULT_VERSION, devInfo, maxUsbSpeed) {}
+
 DeviceBase::DeviceBase(OpenVINO::Version version) {
     tryGetDevice();
     init(version, false, "");
@@ -544,6 +548,8 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         {
             DeviceBootloader bl(deviceInfo);
             auto version = bl.getVersion();
+            // Save DeviceBootloader version, to be able to retrieve later optionally
+            bootloaderVersion = version;
 
             // If version is >= 0.0.12 then boot directly, otherwise jump to USB ROM bootloader
             // Check if version is recent enough for this operation
@@ -816,6 +822,10 @@ UsbSpeed DeviceBase::getUsbSpeed() {
     checkClosed();
 
     return pimpl->rpcClient->call("getUsbSpeed").as<UsbSpeed>();
+}
+
+tl::optional<Version> DeviceBase::getBootloaderVersion() {
+    return bootloaderVersion;
 }
 
 bool DeviceBase::isPipelineRunning() {
