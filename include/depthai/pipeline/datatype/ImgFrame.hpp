@@ -25,7 +25,6 @@ namespace dai {
 class ImgFrame : public Buffer {
     std::shared_ptr<RawBuffer> serialize() const override;
     RawImgFrame& img;
-    ImgTransformation transformation;
 
    public:
     // Raw* mirror
@@ -39,7 +38,7 @@ class ImgFrame : public Buffer {
     ImgFrame();
     explicit ImgFrame(std::shared_ptr<RawImgFrame> ptr);
     virtual ~ImgFrame() = default;
-
+    ImgTransformation transformation;
     // getters
     /**
      * Retrieves image timestamp related to dai::Clock::now()
@@ -51,11 +50,6 @@ class ImgFrame : public Buffer {
      * not synchronized to host time. Used mostly for debugging
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
-
-    /**
-     * Get transformation object
-     */
-    ImgTransformation& getTransformation();
 
     /**
      * Retrieves instance number

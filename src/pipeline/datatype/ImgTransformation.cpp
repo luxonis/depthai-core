@@ -7,6 +7,13 @@ dai::RawImgTransformation& ImgTransformation::get() {
     return transformation;
 }
 
+void ImgTransformation::setSize(int width, int height){
+    transformation.crop.x = 0;
+    transformation.crop.y = 0;
+    transformation.crop.width = width;
+    transformation.crop.height = height;
+}
+
 void ImgTransformation::setPadding(ImgTransformation sourceFrame, dai::Rect iRoiRect, int topPadding, int bottomPadding, int leftPadding, int rightPadding) {
     int sourceTopPadding = sourceFrame.get().topPadding;
     int sourceLeftPadding = sourceFrame.get().leftPadding;
