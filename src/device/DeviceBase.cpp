@@ -107,6 +107,9 @@ static spdlog::level::level_enum logLevelToSpdlogLevel(LogLevel level, spdlog::l
 constexpr std::chrono::seconds DeviceBase::DEFAULT_SEARCH_TIME;
 constexpr float DeviceBase::DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ;
 constexpr UsbSpeed DeviceBase::DEFAULT_USB_SPEED;
+constexpr std::chrono::milliseconds DeviceBase::DEFAULT_TIMESYNC_PERIOD;
+constexpr bool DeviceBase::DEFAULT_TIMESYNC_RANDOM;
+constexpr int DeviceBase::DEFAULT_TIMESYNC_NUM_SAMPLES;
 
 std::chrono::milliseconds DeviceBase::getDefaultSearchTime() {
     std::chrono::milliseconds defaultSearchTime = DEFAULT_SEARCH_TIME;
@@ -767,6 +770,9 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
 
         // Sets system inforation logging rate. By default 1s
         setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
+
+        // Starts and waits for inital timesync
+        setTimesync(DEFAULT_TIMESYNC_PERIOD, DEFAULT_TIMESYNC_NUM_SAMPLES, DEFAULT_TIMESYNC_RANDOM);
     } catch(const std::exception&) {
         // close device (cleanup)
         close();
@@ -938,6 +944,13 @@ bool DeviceBase::removeLogCallback(int callbackId) {
     // Otherwise erase and return true
     logCallbackMap.erase(callbackId);
     return true;
+}
+
+void DeviceBase::setTimesync(std::chrono::milliseconds period, int numSamples, bool random) {
+    checkClosed();
+
+    using namespace std::chrono;
+    pimpl->rpcClient->call("setTimesync", duration_cast<milliseconds>(period).count(), numSamples, random);
 }
 
 void DeviceBase::setSystemInformationLoggingRate(float rateHz) {

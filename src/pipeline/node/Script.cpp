@@ -27,10 +27,14 @@ Script::Script(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::un
     setOutputMapRefs(&outputs);
 }
 
-void Script::setScriptPath(const dai::Path& path) {
+void Script::setScriptPath(const dai::Path& path, const std::string& name) {
     properties.scriptUri = assetManager.set("__script", path)->getRelativeUri();
     scriptPath = path;
-    properties.scriptName = path.u8string();
+    if(name.empty()) {
+        properties.scriptName = path.u8string();
+    } else {
+        properties.scriptName = name;
+    }
 }
 
 void Script::setScript(const std::string& script, const std::string& name) {
