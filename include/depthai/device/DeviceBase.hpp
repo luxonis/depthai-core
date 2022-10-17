@@ -51,6 +51,12 @@ class DeviceBase {
     static constexpr float DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ{1.0f};
     /// Default UsbSpeed for device connection
     static constexpr UsbSpeed DEFAULT_USB_SPEED{UsbSpeed::SUPER};
+    /// Default Timesync period
+    static constexpr std::chrono::milliseconds DEFAULT_TIMESYNC_PERIOD{5000};
+    /// Default Timesync number of samples per sync
+    static constexpr int DEFAULT_TIMESYNC_NUM_SAMPLES{10};
+    /// Default Timesync packet interval randomness
+    static constexpr bool DEFAULT_TIMESYNC_RANDOM{true};
 
     // Structures
 
@@ -640,6 +646,17 @@ class DeviceBase {
      * @returns USB connection speed of connected device if applicable. Unknown otherwise.
      */
     UsbSpeed getUsbSpeed();
+
+    /**
+     * Configures Timesync service on device. It keeps host and device clocks in sync
+     * First time timesync is started it waits until the initial sync is completed
+     * Afterwards the function changes the following parameters
+     *
+     * @param period Interval between timesync runs
+     * @param numSamples Number of timesync samples per run which are used to compute a better value. Set to zero to disable timesync
+     * @param random If true partial timesync requests will be performed at random intervals, otherwise at fixed intervals
+     */
+    void setTimesync(std::chrono::milliseconds period, int numSamples, bool random);
 
     /**
      * Explicitly closes connection to device.
