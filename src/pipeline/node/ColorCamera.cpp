@@ -30,7 +30,7 @@ ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
       rawControl(std::make_shared<RawCameraControl>(properties.initialControl)),
       initialControl(rawControl) {
     setInputRefs({&inputConfig, &inputControl});
-    setOutputRefs({&video, &preview, &still, &isp, &raw});
+    setOutputRefs({&video, &preview, &still, &isp, &raw, &frameEvent});
 }
 
 ColorCamera::Properties& ColorCamera::getProperties() {
