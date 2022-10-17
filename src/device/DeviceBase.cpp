@@ -649,8 +649,14 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
                         std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
                         lastWatchdogPingTime = std::chrono::steady_clock::now();
                     }
-                    // Ping with a period half of that of the watchdog timeout
-                    std::this_thread::sleep_for(watchdogTimeout / 2);
+
+                    if(deviceInfo.protocol == X_LINK_TCP_IP) {
+                        // Ping with a quarter period the watchdog timeout
+                        std::this_thread::sleep_for(watchdogTimeout / 4);
+                    } else {
+                        // Ping with a period half of that of the watchdog timeout
+                        std::this_thread::sleep_for(watchdogTimeout / 2);
+                    }
                 }
             } catch(const std::exception& ex) {
                 // ignore
