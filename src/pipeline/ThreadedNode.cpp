@@ -8,8 +8,9 @@ void ThreadedNode::start() {
     thread = std::thread([this]() {
         try {
             run();
-        } catch(...) {
+        } catch(const std::exception& ex) {
             // catch anything and stop the node
+            logger->error("Node threw exception, stopping the node. Exception message: {}", ex.what());
             running = false;
         }
     });
