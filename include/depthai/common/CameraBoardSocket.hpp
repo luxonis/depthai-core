@@ -19,6 +19,9 @@ inline std::ostream& operator<<(std::ostream& out, const dai::CameraBoardSocket&
         case dai::CameraBoardSocket::RIGHT:
             out << "RIGHT";
             break;
+        case dai::CameraBoardSocket::VERTICAL:
+            out << "VERTICAL";
+            break;
     }
     return out;
 }

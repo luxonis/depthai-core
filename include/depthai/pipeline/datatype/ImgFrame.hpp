@@ -77,6 +77,12 @@ class ImgFrame : public Buffer {
     unsigned int getHeight() const;
 
     /**
+     * Retrieve raw data for ImgFrame.
+     * @returns raw image frame config
+     */
+    dai::RawImgFrame get() const;
+
+    /**
      * Retrieves image type
      */
     Type getType() const;

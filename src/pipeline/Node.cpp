@@ -329,7 +329,7 @@ Node::Input* Node::getInputRef(std::string group, std::string name) {
     return nullptr;
 }
 
-std::vector<Node::InputMap*> Node::getInputMapRefs(){
+std::vector<Node::InputMap*> Node::getInputMapRefs() {
     std::vector<Node::InputMap*> tmpInputMapRefs;
 
     tmpInputMapRefs.reserve(inputMapRefs.size());
@@ -340,7 +340,7 @@ std::vector<Node::InputMap*> Node::getInputMapRefs(){
     return tmpInputMapRefs;
 }
 
-std::vector<Node::OutputMap*> Node::getOutputMapRefs(){
+std::vector<Node::OutputMap*> Node::getOutputMapRefs() {
     std::vector<Node::OutputMap*> tmpOutputMapRefs;
 
     tmpOutputMapRefs.reserve(outputMapRefs.size());
@@ -351,15 +351,15 @@ std::vector<Node::OutputMap*> Node::getOutputMapRefs(){
     return tmpOutputMapRefs;
 }
 
-Node::InputMap* Node::getInputMapRef(std::string group){
+Node::InputMap* Node::getInputMapRef(std::string group) {
     if(inputMapRefs.count(group) == 0) {
         return nullptr;
     }
     return inputMapRefs[group];
 }
 
-Node::OutputMap* Node::getOutputMapRef(std::string group){
-    if(outputMapRefs.count(group) == 0){
+Node::OutputMap* Node::getOutputMapRef(std::string group) {
+    if(outputMapRefs.count(group) == 0) {
         return nullptr;
     }
     return outputMapRefs[group];

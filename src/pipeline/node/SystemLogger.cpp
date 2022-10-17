@@ -10,7 +10,6 @@ SystemLogger::SystemLogger(const std::shared_ptr<PipelineImpl>& par, int64_t nod
     setOutputRefs(&out);
 }
 
-
 SystemLogger::SystemLogger(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
     : NodeCRTP<DeviceNode, SystemLogger, SystemLoggerProperties>(par, nodeId, std::move(props)) {
     setOutputRefs(&out);

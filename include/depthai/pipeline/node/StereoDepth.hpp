@@ -146,6 +146,8 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      */
     Output confidenceMap{*this, "confidenceMap", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
+    Output pixelDescriptors{*this, "pixelDescriptors", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
     /**
      * Specify that a passthrough/dummy calibration should be used,
      * when input frames are already rectified (e.g. sourced from recordings on the host)
@@ -346,6 +348,13 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      * used from calibration data.
      */
     void useHomographyRectification(bool useHomographyRectification);
+
+    /**
+     * Whether to perform vertical stereo matching or not.
+     * Default value is false.
+     * If set to true rectification process includes 90 degree clock wise rotation to perform vertical matching.
+     */
+    void setVerticalStereo(bool verticalStereo);
 
     /**
      * Equivalent to useHomographyRectification(!enableDistortionCorrection)

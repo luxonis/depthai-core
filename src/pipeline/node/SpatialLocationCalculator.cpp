@@ -6,7 +6,8 @@ namespace dai {
 namespace node {
 
 SpatialLocationCalculator::SpatialLocationCalculator(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : NodeCRTP<DeviceNode, SpatialLocationCalculator, SpatialLocationCalculatorProperties>(par, nodeId, std::make_unique<SpatialLocationCalculator::Properties>()),
+    : NodeCRTP<DeviceNode, SpatialLocationCalculator, SpatialLocationCalculatorProperties>(
+        par, nodeId, std::make_unique<SpatialLocationCalculator::Properties>()),
       rawConfig(std::make_shared<RawSpatialLocationCalculatorConfig>()),
       initialConfig(rawConfig) {
     setInputRefs({&inputConfig, &inputDepth});

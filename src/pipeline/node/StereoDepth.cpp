@@ -30,6 +30,7 @@ StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
                    &confidenceMap});
 
     setDefaultProfilePreset(presetMode);
+    setLeftRightCheck(false);
 }
 
 StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
@@ -50,9 +51,11 @@ StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
                    &debugExtDispLrCheckIt1,
                    &debugExtDispLrCheckIt2,
                    &debugDispCostDump,
-                   &confidenceMap});
+                   &confidenceMap,
+                   &pixelDescriptors});
 
     setDefaultProfilePreset(presetMode);
+    setLeftRightCheck(false);
 }
 
 StereoDepth::Properties& StereoDepth::getProperties() {
@@ -198,6 +201,10 @@ void StereoDepth::useHomographyRectification(bool useHomographyRectification) {
 
 void StereoDepth::enableDistortionCorrection(bool enableDistortionCorrection) {
     useHomographyRectification(!enableDistortionCorrection);
+}
+
+void StereoDepth::setVerticalStereo(bool verticalStereo) {
+    properties.verticalStereo = verticalStereo;
 }
 
 void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
