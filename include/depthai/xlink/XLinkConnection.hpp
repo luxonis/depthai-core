@@ -50,9 +50,36 @@ struct DeviceInfo {
 class XLinkConnection {
    public:
     // static API
+
+    /**
+     * Returns information of all connected devices with given state
+     *
+     * @param state State which the devices should be in
+     * @param skipInvalidDevices whether or not to skip over devices that cannot be successfully communicated with
+     * @returns Vector of connected device information
+     */
     static std::vector<DeviceInfo> getAllConnectedDevices(XLinkDeviceState_t state = X_LINK_ANY_STATE, bool skipInvalidDevices = true);
+
+    /**
+     * Returns information of first device with given state
+     * @param state State which the device should be in
+     * @returns Device information
+     */
     static std::tuple<bool, DeviceInfo> getFirstDevice(XLinkDeviceState_t state = X_LINK_ANY_STATE, bool skipInvalidDevices = true);
+
+    /**
+     * Finds a device by MX ID. Example: 14442C10D13EABCE00
+     * @param mxId MyraidX ID which uniquely specifies a device
+     * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
+     */
     static std::tuple<bool, DeviceInfo> getDeviceByMxId(std::string, XLinkDeviceState_t state = X_LINK_ANY_STATE, bool skipInvalidDevice = true);
+
+    /**
+     * Tries booting the given device into bootloader state
+     *
+     * @param devInfo Information of device which it should boot into bootloader state
+     * @returns New device information if successful
+     */
     static DeviceInfo bootBootloader(const DeviceInfo& devInfo);
 
     XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary, XLinkDeviceState_t expectedState = X_LINK_BOOTED);

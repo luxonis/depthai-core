@@ -51,6 +51,7 @@ MobileNetDetectionNetwork::MobileNetDetectionNetwork(const std::shared_ptr<Pipel
 YoloDetectionNetwork::YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     : NodeCRTP<DetectionNetwork, YoloDetectionNetwork, DetectionNetworkProperties>(par, nodeId, std::make_unique<Properties>()) {
     properties.parser.nnFamily = DetectionNetworkType::YOLO;
+    properties.parser.iouThreshold = 0.5f;
 }
 
 YoloDetectionNetwork::YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)

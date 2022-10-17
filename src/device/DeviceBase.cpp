@@ -221,6 +221,11 @@ std::vector<DeviceInfo> DeviceBase::getAllAvailableDevices() {
     return availableDevices;
 }
 
+// Returns all devices, also the ones that are already booted
+std::vector<DeviceInfo> DeviceBase::getAllConnectedDevices() {
+    return XLinkConnection::getAllConnectedDevices();
+}
+
 // First tries to find UNBOOTED device with mxId, then BOOTLOADER device with mxId
 std::tuple<bool, DeviceInfo> DeviceBase::getDeviceByMxId(std::string mxId) {
     std::vector<DeviceInfo> availableDevices;
@@ -315,6 +320,10 @@ DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, con
 }
 
 DeviceBase::DeviceBase() : DeviceBase(OpenVINO::DEFAULT_VERSION) {}
+
+DeviceBase::DeviceBase(const DeviceInfo& devInfo) : DeviceBase(OpenVINO::DEFAULT_VERSION, devInfo) {}
+
+DeviceBase::DeviceBase(const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : DeviceBase(OpenVINO::DEFAULT_VERSION, devInfo, maxUsbSpeed) {}
 
 DeviceBase::DeviceBase(OpenVINO::Version version) {
     tryGetDevice();
@@ -490,7 +499,10 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     pimpl->setPattern(fmt::format("[{}] [{}] {}", deviceInfo.mxid, deviceInfo.name, LOG_DEFAULT_PATTERN));
 
     // Check if WD env var is set
-    std::chrono::milliseconds watchdogTimeout = device::XLINK_WATCHDOG_TIMEOUT;
+    std::chrono::milliseconds watchdogTimeout = device::XLINK_USB_WATCHDOG_TIMEOUT;
+    if(deviceInfo.protocol == X_LINK_TCP_IP) {
+        watchdogTimeout = device::XLINK_TCP_WATCHDOG_TIMEOUT;
+    }
     auto watchdogMsStr = utility::getEnv("DEPTHAI_WATCHDOG");
     if(!watchdogMsStr.empty()) {
         // Try parsing the string as a number
@@ -537,6 +549,8 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         {
             DeviceBootloader bl(deviceInfo);
             auto version = bl.getVersion();
+            // Save DeviceBootloader version, to be able to retrieve later optionally
+            bootloaderVersion = version;
 
             // If version is >= 0.0.12 then boot directly, otherwise jump to USB ROM bootloader
             // Check if version is recent enough for this operation
@@ -655,8 +669,8 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
                     std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
                     prevPingTime = lastWatchdogPingTime;
                 }
-                // Recheck if watchdogRunning wasn't already closed
-                if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout) {
+                // Recheck if watchdogRunning wasn't already closed and close if more than twice of WD passed
+                if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout * 2) {
                     spdlog::warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
                     // ping was missed, reset the device
                     watchdogRunning = false;
@@ -828,6 +842,10 @@ UsbSpeed DeviceBase::getUsbSpeed() {
     return pimpl->rpcClient->call("getUsbSpeed").as<UsbSpeed>();
 }
 
+tl::optional<Version> DeviceBase::getBootloaderVersion() {
+    return bootloaderVersion;
+}
+
 bool DeviceBase::isPipelineRunning() {
     checkClosed();
 
@@ -953,9 +971,9 @@ void DeviceBase::flashCalibration2(CalibrationHandler calibrationDataHandler) {
     getFlashingPermissions(factoryPermissions, protectedPermissions);
     spdlog::debug("Flashing calibration. Factory permissions {}, Protected permissions {}", factoryPermissions, protectedPermissions);
 
-    if(!calibrationDataHandler.validateCameraArray()) {
+    /* if(!calibrationDataHandler.validateCameraArray()) {
         throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
-    }
+    } */
 
     bool success;
     std::string errorMsg;
@@ -1001,9 +1019,9 @@ void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandl
         throw std::runtime_error("Calling factory API is not allowed in current configuration");
     }
 
-    if(!calibrationDataHandler.validateCameraArray()) {
+    /* if(!calibrationDataHandler.validateCameraArray()) {
         throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
-    }
+    } */
 
     bool success;
     std::string errorMsg;
@@ -1064,6 +1082,42 @@ std::vector<std::uint8_t> DeviceBase::readFactoryCalibrationRaw() {
         throw std::runtime_error(errorMsg);
     }
     return eepromDataRaw;
+}
+
+void DeviceBase::flashEepromClear() {
+    bool factoryPermissions = false;
+    bool protectedPermissions = false;
+    getFlashingPermissions(factoryPermissions, protectedPermissions);
+    spdlog::debug("Clearing User EEPROM contents. Factory permissions {}, Protected permissions {}", factoryPermissions, protectedPermissions);
+
+    if(!protectedPermissions) {
+        throw std::runtime_error("Calling EEPROM clear API is not allowed in current configuration");
+    }
+
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) = pimpl->rpcClient->call("eepromClear", protectedPermissions, factoryPermissions).as<std::tuple<bool, std::string>>();
+    if(!success) {
+        throw std::runtime_error(errorMsg);
+    }
+}
+
+void DeviceBase::flashFactoryEepromClear() {
+    bool factoryPermissions = false;
+    bool protectedPermissions = false;
+    getFlashingPermissions(factoryPermissions, protectedPermissions);
+    spdlog::debug("Clearing User EEPROM contents. Factory permissions {}, Protected permissions {}", factoryPermissions, protectedPermissions);
+
+    if(!protectedPermissions || !factoryPermissions) {
+        throw std::runtime_error("Calling factory EEPROM clear API is not allowed in current configuration");
+    }
+
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) = pimpl->rpcClient->call("eepromFactoryClear", protectedPermissions, factoryPermissions).as<std::tuple<bool, std::string>>();
+    if(!success) {
+        throw std::runtime_error(errorMsg);
+    }
 }
 
 bool DeviceBase::startPipeline() {

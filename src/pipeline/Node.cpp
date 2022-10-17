@@ -26,7 +26,7 @@ Properties& Node::getProperties() {
     return properties;
 }
 
-Node::Connection::Connection(const Output& out, const Input& in) {
+Node::Connection::Connection(Output out, Input in) {
     outputId = out.getParent().id;
     outputName = out.name;
     outputGroup = out.group;
