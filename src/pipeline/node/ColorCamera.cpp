@@ -54,6 +54,9 @@ void ColorCamera::setCamId(int64_t id) {
         case 2:
             properties.boardSocket = CameraBoardSocket::RIGHT;
             break;
+        case 3:
+            properties.boardSocket = CameraBoardSocket::CAM_D;
+            break;
         default:
             throw std::invalid_argument(fmt::format("CamId value: {} is invalid.", id));
             break;
@@ -198,9 +201,31 @@ std::tuple<int, int> ColorCamera::getVideoSize() const {
 
         if(properties.resolution == ColorCameraProperties::SensorResolution::THE_4_K
            || properties.resolution == ColorCameraProperties::SensorResolution::THE_12_MP
-           || properties.resolution == ColorCameraProperties::SensorResolution::THE_13_MP) {
+           || properties.resolution == ColorCameraProperties::SensorResolution::THE_12P0_MP
+           || properties.resolution == ColorCameraProperties::SensorResolution::THE_13_MP
+           || properties.resolution == ColorCameraProperties::SensorResolution::THE_5312X6000
+           || properties.resolution == ColorCameraProperties::SensorResolution::THE_48_MP) {
             maxVideoWidth = 3840;
             maxVideoHeight = 2160;
+        }
+
+        if(properties.resolution == ColorCameraProperties::SensorResolution::THE_1200_P) {
+            maxVideoHeight = 1200;
+        }
+
+        if(properties.resolution == ColorCameraProperties::SensorResolution::THE_5_MP) {
+            maxVideoWidth = 2592;
+            maxVideoHeight = 1944;
+        }
+
+        if(properties.resolution == ColorCameraProperties::SensorResolution::THE_720_P) {
+            maxVideoWidth = 1280;
+            maxVideoHeight = 720;
+        }
+
+        if(properties.resolution == ColorCameraProperties::SensorResolution::THE_800_P) {
+            maxVideoWidth = 1280;
+            maxVideoHeight = 800;
         }
 
         // Take into the account the ISP scaling
@@ -236,9 +261,20 @@ std::tuple<int, int> ColorCamera::getStillSize() const {
     if(properties.stillWidth == ColorCameraProperties::AUTO || properties.stillHeight == ColorCameraProperties::AUTO) {
         int maxStillWidth = 1920;
         int maxStillHeight = 1080;
+        if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_1200_P) {
+            maxStillHeight = 1200;
+        }
         if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_4_K) {
             maxStillWidth = 3840;
             maxStillHeight = 2160;
+        }
+        if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_5_MP) {
+            maxStillWidth = 2592;
+            maxStillHeight = 1944;
+        }
+        if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_12P0_MP) {
+            maxStillWidth = 4000;
+            maxStillHeight = 3000;
         }
         if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_12_MP) {
             maxStillWidth = 4032;  // Note not 4056 as full sensor resolution
@@ -247,6 +283,14 @@ std::tuple<int, int> ColorCamera::getStillSize() const {
         if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_13_MP) {
             maxStillWidth = 4192;  // Note not 4208 as full sensor resolution
             maxStillHeight = 3120;
+        }
+        if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_5312X6000) {
+            maxStillWidth = 5312;
+            maxStillHeight = 6000;
+        }
+        if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_48_MP) {
+            maxStillWidth = 8000;
+            maxStillHeight = 6000;
         }
 
         // Take into the account the ISP scaling
@@ -284,8 +328,20 @@ std::tuple<int, int> ColorCamera::getResolutionSize() const {
             return {1920, 1080};
             break;
 
+        case ColorCameraProperties::SensorResolution::THE_1200_P:
+            return {1920, 1200};
+            break;
+
         case ColorCameraProperties::SensorResolution::THE_4_K:
             return {3840, 2160};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_5_MP:
+            return {2592, 1944};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_12P0_MP:
+            return {4000, 3000};
             break;
 
         case ColorCameraProperties::SensorResolution::THE_12_MP:
@@ -302,6 +358,14 @@ std::tuple<int, int> ColorCamera::getResolutionSize() const {
 
         case ColorCameraProperties::SensorResolution::THE_800_P:
             return {1280, 800};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_5312X6000:
+            return {5312, 6000};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_48_MP:
+            return {8000, 6000};
             break;
     }
 
