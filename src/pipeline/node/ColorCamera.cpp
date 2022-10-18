@@ -427,8 +427,8 @@ void ColorCamera::setSensorCrop(float x, float y) {
 std::tuple<float, float> ColorCamera::getSensorCrop() const {
     // AUTO - center crop by default
     if(properties.sensorCropX == ColorCameraProperties::AUTO || properties.sensorCropY == ColorCameraProperties::AUTO) {
-        float x = std::floor(((getResolutionWidth() - getVideoWidth()) / 2.0f) / getResolutionWidth());
-        float y = std::floor(((getResolutionHeight() - getVideoHeight()) / 2.0f) / getResolutionHeight());
+        float x = std::floor(((getResolutionWidth() - getVideoWidth()) / 2.0f)) / getResolutionWidth();
+        float y = std::floor(((getResolutionHeight() - getVideoHeight()) / 2.0f)) / getResolutionHeight();
         return {x, y};
     }
     return {properties.sensorCropX, properties.sensorCropY};
