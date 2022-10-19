@@ -115,6 +115,24 @@ ImgFrame& ImgFrame::setSize(std::tuple<unsigned int, unsigned int> size) {
     setSize(std::get<0>(size), std::get<1>(size));
     return *this;
 }
+ImgFrame& ImgFrame::setSourceWidth(unsigned int width) {
+    img.sourceFb.width = width;
+    img.sourceFb.stride = width;
+    return *this;
+}
+ImgFrame& ImgFrame::setSourceHeight(unsigned int height) {
+    img.sourceFb.height = height;
+    return *this;
+}
+ImgFrame& ImgFrame::setSourceSize(unsigned int width, unsigned int height) {
+    setSourceWidth(width);
+    setSourceHeight(height);
+    return *this;
+}
+ImgFrame& ImgFrame::setSourceSize(std::tuple<unsigned int, unsigned int> size) {
+    setSourceSize(std::get<0>(size), std::get<1>(size));
+    return *this;
+}
 ImgFrame& ImgFrame::setType(RawImgFrame::Type type) {
     img.fb.type = type;
     img.fb.bytesPP = RawImgFrame::typeToBpp(img.fb.type);
