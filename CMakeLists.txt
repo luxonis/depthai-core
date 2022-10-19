@@ -40,7 +40,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.17.2" LANGUAGES CXX C)
+project(depthai VERSION "2.17.4" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -193,6 +193,7 @@ add_library(${TARGET_CORE_NAME}
     src/device/DataQueue.cpp
     src/device/CallbackHandler.cpp
     src/device/CalibrationHandler.cpp
+    src/device/Version.cpp
     src/pipeline/Pipeline.cpp
     src/pipeline/AssetManager.cpp
     src/pipeline/MessageQueue.cpp
@@ -206,6 +207,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/StereoDepth.cpp
     src/pipeline/node/NeuralNetwork.cpp
     src/pipeline/node/ImageManip.cpp
+    src/pipeline/node/Warp.cpp
     src/pipeline/node/VideoEncoder.cpp
     src/pipeline/node/DetectionNetwork.cpp
     src/pipeline/node/Script.cpp
@@ -434,13 +436,14 @@ target_link_libraries(${TARGET_CORE_NAME}
         httplib::httplib
 )
 
-# Add compile definitions
+# Add compile & CMake definitions
+set(DEPTHAI_DEVICE_VERSION "${DEPTHAI_DEVICE_SIDE_COMMIT}")
 target_compile_definitions(${TARGET_CORE_NAME}
     PRIVATE
         # XLink required define
         __PC__
         # Add depthai-device version
-        DEPTHAI_DEVICE_VERSION="${DEPTHAI_DEVICE_SIDE_COMMIT}"
+        DEPTHAI_DEVICE_VERSION="${DEPTHAI_DEVICE_VERSION}"
         # Add depthai-bootloader version
         DEPTHAI_BOOTLOADER_VERSION="${DEPTHAI_BOOTLOADER_VERSION}"
         # Add depthai-device-kb version
@@ -462,6 +465,36 @@ if(DEPTHAI_ENABLE_BACKWARD)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_BACKWARD)
     target_link_libraries(${TARGET_CORE_NAME} PRIVATE Backward::Backward)
 endif()
+
+# Add patch only mode definition
+if(DEPTHAI_USB2_PATCH_ONLY_MODE)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_PATCH_ONLY_MODE)
+endif()
+
+# Helper function
+macro(add_runtime_dependencies depending_target dependency)
+    if(WIN32)
+        if(TARGET ${dependency})
+            get_property(imported_configs TARGET ${dependency} PROPERTY IMPORTED_CONFIGURATIONS)
+            set(dlls "")
+            foreach(cfg ${imported_configs})
+                get_property(dll TARGET ${dependency} PROPERTY IMPORTED_LOCATION_${cfg})
+                set(dlls ${depthai_dll_libraries} $<$<CONFIG:${cfg}>:${dll}>)
+            endforeach()
+        endif()
+        file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
+        # Create a list of required dll files
+        set(required_dll_files ${dlls} ${depthai_dll_libraries})
+        # Copy the required dlls
+        add_custom_command(TARGET ${depending_target} POST_BUILD COMMAND
+            ${CMAKE_COMMAND} -E copy_if_different ${required_dll_files} $<TARGET_FILE_DIR:${depending_target}>
+            COMMAND_EXPAND_LISTS
+        )
+        message(STATUS "Required dlls for core are: ${required_dll_files}")
+    endif()
+endmacro()
+# Add libusb dll in build time
+add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
 
 ########################
 # OpenCV Support
@@ -640,6 +673,10 @@ if(DEPTHAI_INSTALL)
     # Install resources if not RC'd
     if(NOT DEPTHAI_BINARIES_RESOURCE_COMPILE)
         install(DIRECTORY "${DEPTHAI_RESOURCES_OUTPUT_DIR}/" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}")
+    endif()
+    # Install any required dll files
+    if(DEFINED required_dll_files)
+        install(FILES ${required_dll_files} DESTINATION "${CMAKE_INSTALL_BINDIR}")
     endif()
 
     # Install export group (information about targets)

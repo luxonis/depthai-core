@@ -36,9 +36,11 @@ class Script : public NodeCRTP<DeviceNode, Script, ScriptProperties> {
     OutputMap outputs;
 
     /**
-     *  Specify local filesystem path to load the script
+     * Specify local filesystem path to load the script
+     * @param path Filesystem path to load the script
+     * @param name Optionally set a name of this script, otherwise the name defaults to the path
      */
-    void setScriptPath(const dai::Path& path);
+    void setScriptPath(const dai::Path& path, const std::string& name = "");
 
     /**
      * Sets script data to be interpreted
@@ -64,8 +66,8 @@ class Script : public NodeCRTP<DeviceNode, Script, ScriptProperties> {
     /**
      * @brief Get the script name in utf-8.
      *
-     * When name set with setScript(), returns that name.
-     * When script loaded with setScriptPath(), returns the utf-8 string of that path.
+     * When name set with setScript() or setScriptPath(), returns that name.
+     * When script loaded with setScriptPath() with name not provided, returns the utf-8 string of that path.
      * Otherwise, returns "<script>"
      *
      * @return std::string of script name in utf-8

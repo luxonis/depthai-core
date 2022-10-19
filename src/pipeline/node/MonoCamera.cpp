@@ -14,7 +14,7 @@ MonoCamera::MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     properties.fps = 30.0;
 
     setInputRefs({&inputControl});
-    setOutputRefs({&out, &raw});
+    setOutputRefs({&out, &raw, &frameEvent});
 }
 
 MonoCamera::MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
@@ -124,6 +124,20 @@ int MonoCamera::getResolutionWidth() const {
 
 int MonoCamera::getResolutionHeight() const {
     return std::get<1>(getResolutionSize());
+}
+
+void MonoCamera::setNumFramesPool(int num) {
+    properties.numFramesPool = num;
+}
+void MonoCamera::setRawNumFramesPool(int num) {
+    properties.numFramesPoolRaw = num;
+}
+
+int MonoCamera::getNumFramesPool() const {
+    return properties.numFramesPool;
+}
+int MonoCamera::getRawNumFramesPool() const {
+    return properties.numFramesPoolRaw;
 }
 
 }  // namespace node

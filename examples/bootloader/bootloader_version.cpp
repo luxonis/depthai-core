@@ -15,7 +15,7 @@ int main(int argc, char** argv) {
             std::cout << "USB Bootloader - supports only Flash memory" << std::endl;
             supportedMemTypes = {dai::DeviceBootloader::Memory::FLASH};
         } else {
-            std::cout << "NETWORK Bootloader" << std::endl;
+            std::cout << "NETWORK Bootloader, is User Bootloader: " << bl.isUserBootloader() << std::endl;
         }
 
         try {

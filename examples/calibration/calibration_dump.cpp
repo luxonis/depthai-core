@@ -24,5 +24,14 @@ int main() {
         std::cout << "No factory calibration: " << ex.what() << std::endl;
     }
 
+    {
+        nlohmann::json j = device.readCalibrationRaw();
+        std::cout << "User calibration raw: " << j.dump() << std::endl << std::endl;
+    }
+    {
+        nlohmann::json j = device.readFactoryCalibrationRaw();
+        std::cout << "Factory calibration raw: " << j.dump() << std::endl << std::endl;
+    }
+
     return 0;
 }

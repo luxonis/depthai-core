@@ -19,6 +19,7 @@
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/device/DeviceGate.hpp"
+#include "depthai/device/Version.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
@@ -50,6 +51,12 @@ class DeviceBase {
     static constexpr float DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ{1.0f};
     /// Default UsbSpeed for device connection
     static constexpr UsbSpeed DEFAULT_USB_SPEED{UsbSpeed::SUPER};
+    /// Default Timesync period
+    static constexpr std::chrono::milliseconds DEFAULT_TIMESYNC_PERIOD{5000};
+    /// Default Timesync number of samples per sync
+    static constexpr int DEFAULT_TIMESYNC_NUM_SAMPLES{10};
+    /// Default Timesync packet interval randomness
+    static constexpr bool DEFAULT_TIMESYNC_RANDOM{true};
 
     // Structures
 
@@ -108,10 +115,18 @@ class DeviceBase {
     static std::tuple<bool, DeviceInfo> getDeviceByMxId(std::string mxId);
 
     /**
-     * Returns all connected devices
-     * @returns Vector of connected devices
+     * Returns all available devices
+     * @returns Vector of available devices
      */
     static std::vector<DeviceInfo> getAllAvailableDevices();
+
+    /**
+     * Returns information of all connected devices.
+     * The devices could be both connectable as well as already connected to devices.
+     *
+     * @returns Vector of connected device information
+     */
+    static std::vector<DeviceInfo> getAllConnectedDevices();
 
     /**
      * Gets device firmware binary for a specific OpenVINO version
@@ -191,7 +206,7 @@ class DeviceBase {
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * Uses OpenVINO version Pipeline::DEFAULT_OPENVINO_VERSION
+     * Uses OpenVINO version OpenVINO::DEFAULT_VERSION
      */
     DeviceBase();
 
@@ -270,10 +285,34 @@ class DeviceBase {
     DeviceBase(Config config, const DeviceInfo& devInfo);
 
     /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * Uses OpenVINO version OpenVINO::DEFAULT_VERSION
+     *
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     */
+    DeviceBase(const DeviceInfo& devInfo);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * Uses OpenVINO version OpenVINO::DEFAULT_VERSION
+     *
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param maxUsbSpeed Maximum allowed USB speed
+     */
+    DeviceBase(const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
+
+    /**
      * Device destructor
      * @note In the destructor of the derived class, remember to call close()
      */
     virtual ~DeviceBase();
+
+    /**
+     * Gets Bootloader version if it was booted through Bootloader
+     *
+     * @returns DeviceBootloader::Version if booted through Bootloader or none otherwise
+     */
+    tl::optional<Version> getBootloaderVersion();
 
     /**
      * Checks if devices pipeline is already running
@@ -545,6 +584,24 @@ class DeviceBase {
     void flashFactoryCalibration(CalibrationHandler calibrationHandler);
 
     /**
+     * Destructive action, deletes User area EEPROM contents
+     * Requires PROTECTED permissions
+     *
+     * @throws std::runtime_exception if failed to flash the calibration
+     * @return True on successful flash, false on failure
+     */
+    void flashEepromClear();
+
+    /**
+     * Destructive action, deletes Factory area EEPROM contents
+     * Requires FACTORY PROTECTED permissions
+     *
+     * @throws std::runtime_exception if failed to flash the calibration
+     * @return True on successful flash, false on failure
+     */
+    void flashFactoryEepromClear();
+
+    /**
      * Fetches the EEPROM data from Factory area and loads it into CalibrationHandler object
      *
      * @throws std::runtime_exception if no calibration is flashed
@@ -582,6 +639,17 @@ class DeviceBase {
      * @returns USB connection speed of connected device if applicable. Unknown otherwise.
      */
     UsbSpeed getUsbSpeed();
+
+    /**
+     * Configures Timesync service on device. It keeps host and device clocks in sync
+     * First time timesync is started it waits until the initial sync is completed
+     * Afterwards the function changes the following parameters
+     *
+     * @param period Interval between timesync runs
+     * @param numSamples Number of timesync samples per run which are used to compute a better value. Set to zero to disable timesync
+     * @param random If true partial timesync requests will be performed at random intervals, otherwise at fixed intervals
+     */
+    void setTimesync(std::chrono::milliseconds period, int numSamples, bool random);
 
     /**
      * Explicitly closes connection to device.
@@ -650,6 +718,7 @@ class DeviceBase {
     void tryGetDevice();
 
     DeviceInfo deviceInfo = {};
+    tl::optional<Version> bootloaderVersion;
 
     // Log callback
     int uniqueCallbackId = 0;
