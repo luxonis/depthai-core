@@ -22,7 +22,7 @@ MonoCamera::MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId,
       rawControl(std::make_shared<RawCameraControl>(properties.initialControl)),
       initialControl(rawControl) {
     setInputRefs({&inputControl});
-    setOutputRefs({&out, &raw});
+    setOutputRefs({&out, &raw, &frameEvent});
 }
 
 MonoCamera::Properties& MonoCamera::getProperties() {
