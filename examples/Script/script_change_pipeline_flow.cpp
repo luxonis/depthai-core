@@ -3,7 +3,7 @@
 // Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-int main(){
+int main() {
     dai::Pipeline pipeline;
 
     auto cam = pipeline.create<dai::node::ColorCamera>();
@@ -54,7 +54,7 @@ int main(){
 
     auto color = cv::Scalar(255, 127, 0);
 
-    auto drawDetections = [color](cv::Mat frame, std::vector<dai::ImgDetection>& detections){
+    auto drawDetections = [color](cv::Mat frame, std::vector<dai::ImgDetection>& detections) {
         for(auto& detection : detections) {
             int x1 = detection.xmin * frame.cols;
             int y1 = detection.ymin * frame.rows;
@@ -71,12 +71,12 @@ int main(){
     while(true) {
         auto frame = qRgb->get<dai::ImgFrame>()->getCvFrame();
         auto imgDetections = qNn->tryGet<dai::ImgDetections>();
-        if(imgDetections != nullptr){
+        if(imgDetections != nullptr) {
             auto detections = imgDetections->detections;
             drawDetections(frame, detections);
         }
         std::string frameText = "NN inferencing: ";
-        if(runNn){
+        if(runNn) {
             frameText += "On";
         } else {
             frameText += "Off";
@@ -88,7 +88,7 @@ int main(){
         if(key == 'q') {
             return 0;
         } else if(key == 't') {
-            if(runNn){
+            if(runNn) {
                 std::cout << "Disabling\n";
             } else {
                 std::cout << "Enabling\n";

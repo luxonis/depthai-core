@@ -18,12 +18,14 @@
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
+#include "depthai/device/Version.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 
 // shared
+#include "depthai-shared/common/CameraFeatures.hpp"
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
@@ -49,6 +51,12 @@ class DeviceBase {
     static constexpr float DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ{1.0f};
     /// Default UsbSpeed for device connection
     static constexpr UsbSpeed DEFAULT_USB_SPEED{UsbSpeed::SUPER};
+    /// Default Timesync period
+    static constexpr std::chrono::milliseconds DEFAULT_TIMESYNC_PERIOD{5000};
+    /// Default Timesync number of samples per sync
+    static constexpr int DEFAULT_TIMESYNC_NUM_SAMPLES{10};
+    /// Default Timesync packet interval randomness
+    static constexpr bool DEFAULT_TIMESYNC_RANDOM{true};
 
     // Structures
 
@@ -198,7 +206,7 @@ class DeviceBase {
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * Uses OpenVINO version Pipeline::DEFAULT_OPENVINO_VERSION
+     * Uses OpenVINO version OpenVINO::DEFAULT_VERSION
      */
     DeviceBase();
 
@@ -277,10 +285,34 @@ class DeviceBase {
     DeviceBase(Config config, const DeviceInfo& devInfo);
 
     /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * Uses OpenVINO version OpenVINO::DEFAULT_VERSION
+     *
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     */
+    DeviceBase(const DeviceInfo& devInfo);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * Uses OpenVINO version OpenVINO::DEFAULT_VERSION
+     *
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param maxUsbSpeed Maximum allowed USB speed
+     */
+    DeviceBase(const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
+
+    /**
      * Device destructor
      * @note In the destructor of the derived class, remember to call close()
      */
     virtual ~DeviceBase();
+
+    /**
+     * Gets Bootloader version if it was booted through Bootloader
+     *
+     * @returns DeviceBootloader::Version if booted through Bootloader or none otherwise
+     */
+    tl::optional<Version> getBootloaderVersion();
 
     /**
      * Checks if devices pipeline is already running
@@ -431,6 +463,13 @@ class DeviceBase {
      * @returns Vector of connected cameras
      */
     std::vector<CameraBoardSocket> getConnectedCameras();
+
+    /**
+     * Get cameras that are connected to the device with their features/properties
+     *
+     * @returns Vector of connected camera features
+     */
+    std::vector<CameraFeatures> getConnectedCameraFeatures();
 
     /**
      * Get sensor names for cameras that are connected to the device
@@ -609,6 +648,17 @@ class DeviceBase {
     UsbSpeed getUsbSpeed();
 
     /**
+     * Configures Timesync service on device. It keeps host and device clocks in sync
+     * First time timesync is started it waits until the initial sync is completed
+     * Afterwards the function changes the following parameters
+     *
+     * @param period Interval between timesync runs
+     * @param numSamples Number of timesync samples per run which are used to compute a better value. Set to zero to disable timesync
+     * @param random If true partial timesync requests will be performed at random intervals, otherwise at fixed intervals
+     */
+    void setTimesync(std::chrono::milliseconds period, int numSamples, bool random);
+
+    /**
      * Explicitly closes connection to device.
      * @note This function does not need to be explicitly called
      * as destructor closes the device automatically
@@ -675,6 +725,7 @@ class DeviceBase {
     void tryGetDevice();
 
     DeviceInfo deviceInfo = {};
+    tl::optional<Version> bootloaderVersion;
 
     // Log callback
     int uniqueCallbackId = 0;

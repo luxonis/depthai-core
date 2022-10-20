@@ -107,6 +107,9 @@ static spdlog::level::level_enum logLevelToSpdlogLevel(LogLevel level, spdlog::l
 constexpr std::chrono::seconds DeviceBase::DEFAULT_SEARCH_TIME;
 constexpr float DeviceBase::DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ;
 constexpr UsbSpeed DeviceBase::DEFAULT_USB_SPEED;
+constexpr std::chrono::milliseconds DeviceBase::DEFAULT_TIMESYNC_PERIOD;
+constexpr bool DeviceBase::DEFAULT_TIMESYNC_RANDOM;
+constexpr int DeviceBase::DEFAULT_TIMESYNC_NUM_SAMPLES;
 
 std::chrono::milliseconds DeviceBase::getDefaultSearchTime() {
     std::chrono::milliseconds defaultSearchTime = DEFAULT_SEARCH_TIME;
@@ -321,6 +324,10 @@ DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, con
 
 DeviceBase::DeviceBase() : DeviceBase(OpenVINO::DEFAULT_VERSION) {}
 
+DeviceBase::DeviceBase(const DeviceInfo& devInfo) : DeviceBase(OpenVINO::DEFAULT_VERSION, devInfo) {}
+
+DeviceBase::DeviceBase(const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : DeviceBase(OpenVINO::DEFAULT_VERSION, devInfo, maxUsbSpeed) {}
+
 DeviceBase::DeviceBase(OpenVINO::Version version) {
     tryGetDevice();
     init(version, false, "");
@@ -528,6 +535,17 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         }
     }
 
+    auto deviceDebugStr = utility::getEnv("DEPTHAI_DEBUG");
+    if(!deviceDebugStr.empty()) {
+        // Try parsing the string as a number
+        try {
+            int deviceDebug{std::stoi(deviceDebugStr)};
+            config.board.logDevicePrints = deviceDebug;
+        } catch(const std::invalid_argument& e) {
+            spdlog::warn("DEPTHAI_DEBUG value invalid: {}, should be a number (non-zero to enable)", e.what());
+        }
+    }
+
     // Get embedded mvcmd or external with applied config
     if(spdlog::get_level() == spdlog::level::debug) {
         nlohmann::json jBoardConfig = config.board;
@@ -544,6 +562,8 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         {
             DeviceBootloader bl(deviceInfo);
             auto version = bl.getVersion();
+            // Save DeviceBootloader version, to be able to retrieve later optionally
+            bootloaderVersion = version;
 
             // If version is >= 0.0.12 then boot directly, otherwise jump to USB ROM bootloader
             // Check if version is recent enough for this operation
@@ -743,6 +763,9 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
 
         // Sets system inforation logging rate. By default 1s
         setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
+
+        // Starts and waits for inital timesync
+        setTimesync(DEFAULT_TIMESYNC_PERIOD, DEFAULT_TIMESYNC_NUM_SAMPLES, DEFAULT_TIMESYNC_RANDOM);
     } catch(const std::exception&) {
         // close device (cleanup)
         close();
@@ -761,6 +784,12 @@ std::vector<CameraBoardSocket> DeviceBase::getConnectedCameras() {
     checkClosed();
 
     return pimpl->rpcClient->call("getConnectedCameras").as<std::vector<CameraBoardSocket>>();
+}
+
+std::vector<CameraFeatures> DeviceBase::getConnectedCameraFeatures() {
+    checkClosed();
+
+    return pimpl->rpcClient->call("getConnectedCameraFeatures").as<std::vector<CameraFeatures>>();
 }
 
 std::unordered_map<CameraBoardSocket, std::string> DeviceBase::getCameraSensorNames() {
@@ -816,6 +845,10 @@ UsbSpeed DeviceBase::getUsbSpeed() {
     checkClosed();
 
     return pimpl->rpcClient->call("getUsbSpeed").as<UsbSpeed>();
+}
+
+tl::optional<Version> DeviceBase::getBootloaderVersion() {
+    return bootloaderVersion;
 }
 
 bool DeviceBase::isPipelineRunning() {
@@ -910,6 +943,13 @@ bool DeviceBase::removeLogCallback(int callbackId) {
     // Otherwise erase and return true
     logCallbackMap.erase(callbackId);
     return true;
+}
+
+void DeviceBase::setTimesync(std::chrono::milliseconds period, int numSamples, bool random) {
+    checkClosed();
+
+    using namespace std::chrono;
+    pimpl->rpcClient->call("setTimesync", duration_cast<milliseconds>(period).count(), numSamples, random);
 }
 
 void DeviceBase::setSystemInformationLoggingRate(float rateHz) {
