@@ -222,6 +222,10 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
      */
     void setFps(float fps);
 
+    void setFrameEventFilter(const std::vector<dai::FrameEvent>& events);
+
+    std::vector<dai::FrameEvent> getFrameEventFilter() const;
+
     /**
      * Get rate at which camera should produce frames
      * @returns Rate in frames per second

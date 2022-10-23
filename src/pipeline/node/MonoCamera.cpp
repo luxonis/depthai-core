@@ -87,6 +87,14 @@ MonoCameraProperties::SensorResolution MonoCamera::getResolution() const {
     return properties.resolution;
 }
 
+void MonoCamera::setFrameEventFilter(const std::vector<dai::FrameEvent>& events) {
+    properties.filterEvents = events;
+}
+
+std::vector<dai::FrameEvent> MonoCamera::getFrameEventFilter() const {
+    return properties.filterEvents;
+}
+
 void MonoCamera::setFps(float fps) {
     properties.fps = fps;
 }
