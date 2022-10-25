@@ -40,6 +40,7 @@ class ImgFrame : public Buffer {
     explicit ImgFrame(std::shared_ptr<RawImgFrame> ptr);
     virtual ~ImgFrame() = default;
     ImgTransformation transformation;
+
     // getters
     /**
      * Retrieves image timestamp related to dai::Clock::now()
@@ -78,12 +79,12 @@ class ImgFrame : public Buffer {
     unsigned int getHeight() const;
 
     /**
-     * Retrieves image width in pixels
+     * Retrieves source image width in pixels
      */
     unsigned int getSourceWidth() const;
 
     /**
-     * Retrieves image height in pixels
+     * Retrieves source image height in pixels
      */
     unsigned int getSourceHeight() const;
 
@@ -178,14 +179,14 @@ class ImgFrame : public Buffer {
     ImgFrame& setSize(std::tuple<unsigned int, unsigned int> size);
 
     /**
-     * Specifies frame width
+     * Specifies source frame width
      *
      * @param width frame width
      */
     ImgFrame& setSourceWidth(unsigned int width);
 
     /**
-     * Specifies frame height
+     * Specifies source frame height
      *
      * @param height frame height
      */

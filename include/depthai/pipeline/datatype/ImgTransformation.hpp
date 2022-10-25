@@ -7,7 +7,6 @@
 
 namespace dai {
 class ImgTransformation{
-    // std::shared_ptr<RawBuffer> serialize() const override;
     RawImgTransformation& transformation;
    public:
     ImgTransformation() = delete;
