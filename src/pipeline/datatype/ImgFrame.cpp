@@ -8,11 +8,12 @@ std::shared_ptr<RawBuffer> ImgFrame::serialize() const {
     return raw;
 }
 
-ImgFrame::ImgFrame() : Buffer(std::make_shared<RawImgFrame>()), img(*dynamic_cast<RawImgFrame*>(raw.get())) {
+ImgFrame::ImgFrame() : Buffer(std::make_shared<RawImgFrame>()), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformation(img.transformation) {
     // set timestamp to now
     setTimestamp(std::chrono::steady_clock::now());
 }
-ImgFrame::ImgFrame(std::shared_ptr<RawImgFrame> ptr) : Buffer(std::move(ptr)), img(*dynamic_cast<RawImgFrame*>(raw.get())) {}
+ImgFrame::ImgFrame(std::shared_ptr<RawImgFrame> ptr)
+    : Buffer(std::move(ptr)), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformation(img.transformation) {}
 
 // helpers
 
@@ -54,6 +55,13 @@ int ImgFrame::getColorTemperature() const {
 }
 int ImgFrame::getLensPosition() const {
     return img.cam.lensPosition;
+}
+
+unsigned int ImgFrame::getSourceWidth() const {
+    return img.sourceFb.width;
+}
+unsigned int ImgFrame::getSourceHeight() const {
+    return img.sourceFb.height;
 }
 
 RawImgFrame ImgFrame::get() const {
@@ -105,6 +113,24 @@ ImgFrame& ImgFrame::setSize(unsigned int width, unsigned int height) {
 }
 ImgFrame& ImgFrame::setSize(std::tuple<unsigned int, unsigned int> size) {
     setSize(std::get<0>(size), std::get<1>(size));
+    return *this;
+}
+ImgFrame& ImgFrame::setSourceWidth(unsigned int width) {
+    img.sourceFb.width = width;
+    img.sourceFb.stride = width;
+    return *this;
+}
+ImgFrame& ImgFrame::setSourceHeight(unsigned int height) {
+    img.sourceFb.height = height;
+    return *this;
+}
+ImgFrame& ImgFrame::setSourceSize(unsigned int width, unsigned int height) {
+    setSourceWidth(width);
+    setSourceHeight(height);
+    return *this;
+}
+ImgFrame& ImgFrame::setSourceSize(std::tuple<unsigned int, unsigned int> size) {
+    setSourceSize(std::get<0>(size), std::get<1>(size));
     return *this;
 }
 ImgFrame& ImgFrame::setType(RawImgFrame::Type type) {

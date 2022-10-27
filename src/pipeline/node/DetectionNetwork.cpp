@@ -14,7 +14,7 @@ namespace node {
 DetectionNetwork::DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
     : NodeCRTP<NeuralNetwork, DetectionNetwork, DetectionNetworkProperties>(par, nodeId, std::make_unique<Properties>()) {
     setInputRefs({&input});
-    setOutputRefs({&out, &passthrough});
+    setOutputRefs({&out, &passthrough, &outNetwork});
 
     // Default confidence threshold
     properties.parser.confidenceThreshold = 0.5;
@@ -23,7 +23,7 @@ DetectionNetwork::DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int
 DetectionNetwork::DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
     : NodeCRTP<NeuralNetwork, DetectionNetwork, DetectionNetworkProperties>(par, nodeId, std::move(props)) {
     setInputRefs({&input});
-    setOutputRefs({&out, &passthrough});
+    setOutputRefs({&out, &passthrough, &outNetwork});
 }
 
 void DetectionNetwork::setConfidenceThreshold(float thresh) {

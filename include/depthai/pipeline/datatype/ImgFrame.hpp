@@ -38,6 +38,7 @@ class ImgFrame : public Buffer {
     ImgFrame();
     explicit ImgFrame(std::shared_ptr<RawImgFrame> ptr);
     virtual ~ImgFrame() = default;
+    ImgTransformation& transformation;
 
     // getters
     /**
@@ -75,6 +76,16 @@ class ImgFrame : public Buffer {
      * Retrieves image height in pixels
      */
     unsigned int getHeight() const;
+
+    /**
+     * Retrieves source image width in pixels
+     */
+    unsigned int getSourceWidth() const;
+
+    /**
+     * Retrieves source image height in pixels
+     */
+    unsigned int getSourceHeight() const;
 
     /**
      * Retrieve raw data for ImgFrame.
@@ -165,6 +176,35 @@ class ImgFrame : public Buffer {
      * @param size frame size
      */
     ImgFrame& setSize(std::tuple<unsigned int, unsigned int> size);
+
+    /**
+     * Specifies source frame width
+     *
+     * @param width frame width
+     */
+    ImgFrame& setSourceWidth(unsigned int width);
+
+    /**
+     * Specifies source frame height
+     *
+     * @param height frame height
+     */
+    ImgFrame& setSourceHeight(unsigned int height);
+
+    /**
+     * Specifies source frame size
+     *
+     * @param height frame height
+     * @param width frame width
+     */
+    ImgFrame& setSourceSize(unsigned int width, unsigned int height);
+
+    /**
+     * Specifies source frame size
+     *
+     * @param size frame size
+     */
+    ImgFrame& setSourceSize(std::tuple<unsigned int, unsigned int> size);
 
     /**
      * Specifies frame type, RGB, BGR, ...
