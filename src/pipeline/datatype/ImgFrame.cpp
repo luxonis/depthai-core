@@ -8,12 +8,12 @@ std::shared_ptr<RawBuffer> ImgFrame::serialize() const {
     return raw;
 }
 
-ImgFrame::ImgFrame() : Buffer(std::make_shared<RawImgFrame>()), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformation(img.transformationData) {
+ImgFrame::ImgFrame() : Buffer(std::make_shared<RawImgFrame>()), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformation(img.transformation) {
     // set timestamp to now
     setTimestamp(std::chrono::steady_clock::now());
 }
 ImgFrame::ImgFrame(std::shared_ptr<RawImgFrame> ptr)
-    : Buffer(std::move(ptr)), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformation(img.transformationData) {}
+    : Buffer(std::move(ptr)), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformation(img.transformation) {}
 
 // helpers
 

@@ -7,7 +7,6 @@
 // project
 #include "depthai/build/config.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
-#include "depthai/pipeline/datatype/ImgTransformation.hpp"
 
 // shared
 #include "depthai-shared/datatype/RawImgFrame.hpp"
@@ -39,7 +38,7 @@ class ImgFrame : public Buffer {
     ImgFrame();
     explicit ImgFrame(std::shared_ptr<RawImgFrame> ptr);
     virtual ~ImgFrame() = default;
-    ImgTransformation transformation;
+    ImgTransformation& transformation;
 
     // getters
     /**
