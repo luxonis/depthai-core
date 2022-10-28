@@ -659,6 +659,13 @@ class DeviceBase {
     void setTimesync(std::chrono::milliseconds period, int numSamples, bool random);
 
     /**
+     * Enables or disables Timesync service on device. It keeps host and device clocks in sync.
+     *
+     * @param enable Enables or disables consistent timesyncing
+     */
+    void setTimesync(bool enable);
+
+    /**
      * Explicitly closes connection to device.
      * @note This function does not need to be explicitly called
      * as destructor closes the device automatically
