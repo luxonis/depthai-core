@@ -309,7 +309,14 @@ void DeviceBase::tryGetDevice() {
     std::tie(found, deviceInfo) = getAnyAvailableDevice();
 
     // If no device found, throw
-    if(!found) throw std::runtime_error("No available devices");
+    if(!found) {
+        auto numConnected = getAllAvailableDevices().size();
+        if(numConnected > 0) {
+            throw std::runtime_error(fmt::format("No available devices ({} connected, but in use)", numConnected));
+        } else {
+            throw std::runtime_error("No available devices");
+        }
+    }
 }
 
 DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo) : DeviceBase(version, devInfo, DeviceBase::DEFAULT_USB_SPEED) {}
