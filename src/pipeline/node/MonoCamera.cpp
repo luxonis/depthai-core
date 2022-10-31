@@ -15,7 +15,7 @@ MonoCamera::MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId,
     properties.fps = 30.0;
 
     setInputRefs({&inputControl});
-    setOutputRefs({&out, &raw});
+    setOutputRefs({&out, &raw, &frameEvent});
 }
 
 MonoCamera::Properties& MonoCamera::getProperties() {
@@ -45,6 +45,9 @@ void MonoCamera::setCamId(int64_t id) {
             break;
         case 2:
             properties.boardSocket = CameraBoardSocket::RIGHT;
+            break;
+        case 3:
+            properties.boardSocket = CameraBoardSocket::CAM_D;
             break;
         default:
             throw std::invalid_argument(fmt::format("CamId value: {} is invalid.", id));
@@ -107,6 +110,10 @@ std::tuple<int, int> MonoCamera::getResolutionSize() const {
         case MonoCameraProperties::SensorResolution::THE_480_P:
             return {640, 480};
             break;
+
+        case MonoCameraProperties::SensorResolution::THE_1200_P:
+            return {1920, 1200};
+            break;
     }
     return {1280, 720};
 }
@@ -117,6 +124,20 @@ int MonoCamera::getResolutionWidth() const {
 
 int MonoCamera::getResolutionHeight() const {
     return std::get<1>(getResolutionSize());
+}
+
+void MonoCamera::setNumFramesPool(int num) {
+    properties.numFramesPool = num;
+}
+void MonoCamera::setRawNumFramesPool(int num) {
+    properties.numFramesPoolRaw = num;
+}
+
+int MonoCamera::getNumFramesPool() const {
+    return properties.numFramesPool;
+}
+int MonoCamera::getRawNumFramesPool() const {
+    return properties.numFramesPoolRaw;
 }
 
 }  // namespace node

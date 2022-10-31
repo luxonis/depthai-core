@@ -20,5 +20,6 @@
 #include "node/StereoDepth.hpp"
 #include "node/SystemLogger.hpp"
 #include "node/VideoEncoder.hpp"
+#include "node/Warp.hpp"
 #include "node/XLinkIn.hpp"
 #include "node/XLinkOut.hpp"
