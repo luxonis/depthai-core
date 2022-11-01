@@ -405,6 +405,12 @@ class DeviceBootloader {
     MemoryInfo getMemoryInfo(Memory memory);
 
     /**
+     * Checks whether User Bootloader is supported with current bootloader
+     * @returns true of User Bootloader is supported, false otherwise
+     */
+    bool isUserBootloaderSupported();
+
+    /**
      * Retrieves whether current bootloader is User Bootloader (B out of A/B configuration)
      */
     bool isUserBootloader();
