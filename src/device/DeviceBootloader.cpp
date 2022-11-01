@@ -666,7 +666,6 @@ DeviceBootloader::MemoryInfo DeviceBootloader::getMemoryInfo(Memory memory) {
 
 bool DeviceBootloader::isUserBootloaderSupported() {
     // Check that type is NETWORK
-    const auto type = Type::NETWORK;
     if(getType() != Type::NETWORK) {
         return false;
     }
