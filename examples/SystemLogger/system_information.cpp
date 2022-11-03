@@ -23,15 +23,15 @@ int main() {
 
     // Define source and output
     auto sysLog = pipeline.create<dai::node::SystemLogger>();
-    auto xout = pipeline.create<dai::node::XLinkOut>();
+    auto xoutSysLog = pipeline.create<dai::node::XLinkOut>();
 
-    xout->setStreamName("sysinfo");
+    xoutSysLog->setStreamName("sysinfo");
 
     // Properties
     sysLog->setRate(1.0f);  // 1 hz updates
 
     // Linking
-    sysLog->out.link(xout->input);
+    sysLog->out.link(xoutSysLog->input);
 
     // Connect to device and start pipeline
     dai::Device device(pipeline);

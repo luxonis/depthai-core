@@ -13,6 +13,21 @@
     #include <opencv2/opencv.hpp>
 #endif
 
+void printSystemInformation(dai::SystemInformation info) {
+    printf("Ddr used / total - %.2f / %.2f MiB\n", info.ddrMemoryUsage.used / (1024.0f * 1024.0f), info.ddrMemoryUsage.total / (1024.0f * 1024.0f));
+    printf("Cmx used / total - %.2f / %.2f MiB\n", info.cmxMemoryUsage.used / (1024.0f * 1024.0f), info.cmxMemoryUsage.total / (1024.0f * 1024.0f));
+    printf("LeonCss heap used / total - %.2f / %.2f MiB\n",
+           info.leonCssMemoryUsage.used / (1024.0f * 1024.0f),
+           info.leonCssMemoryUsage.total / (1024.0f * 1024.0f));
+    printf("LeonMss heap used / total - %.2f / %.2f MiB\n",
+           info.leonMssMemoryUsage.used / (1024.0f * 1024.0f),
+           info.leonMssMemoryUsage.total / (1024.0f * 1024.0f));
+    const auto& t = info.chipTemperature;
+    printf("Chip temperature - average: %.2f, css: %.2f, mss: %.2f, upa: %.2f, dss: %.2f\n", t.average, t.css, t.mss, t.upa, t.dss);
+    printf("Cpu usage - Leon CSS: %.2f %%, Leon MSS: %.2f %%\n", info.leonCssCpuUsage.average * 100, info.leonMssCpuUsage.average * 100);
+    printf("----------------------------------------\n");
+}
+
 static const std::vector<std::string> labelMap = {
     "person",        "bicycle",      "car",           "motorbike",     "aeroplane",   "bus",         "train",       "truck",        "boat",
     "traffic light", "fire hydrant", "stop sign",     "parking meter", "bench",       "bird",        "cat",         "dog",          "horse",
@@ -63,6 +78,7 @@ int main(int argc, char** argv) {
     auto edgeDetectorLeft = pipeline.create<dai::node::EdgeDetector>();
     auto edgeDetectorRight = pipeline.create<dai::node::EdgeDetector>();
     auto edgeDetectorRgb = pipeline.create<dai::node::EdgeDetector>();
+    auto sysLog = pipeline.create<dai::node::SystemLogger>();
 #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
     auto script1 = pipeline.create<dai::node::Script>();
     auto script2 = pipeline.create<dai::node::Script>();
@@ -84,6 +100,7 @@ int main(int argc, char** argv) {
     auto xoutEdgeLeft = pipeline.create<dai::node::XLinkOut>();
     auto xoutEdgeRight = pipeline.create<dai::node::XLinkOut>();
     auto xoutEdgeRgb = pipeline.create<dai::node::XLinkOut>();
+    auto xoutSysLog = pipeline.create<dai::node::XLinkOut>();
 #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
     auto scriptOut = pipeline.create<dai::node::XLinkOut>();
     auto scriptOut2 = pipeline.create<dai::node::XLinkOut>();
@@ -97,6 +114,7 @@ int main(int argc, char** argv) {
     xoutDepth->setStreamName("depth");
     xoutNN->setStreamName("detections");
     xoutRgb->setStreamName("rgb");
+    xoutSysLog->setStreamName("sysinfo");
     const auto edgeLeftStr = "edge left";
     const auto edgeRightStr = "edge right";
     const auto edgeRgbStr = "edge rgb";
@@ -149,6 +167,8 @@ int main(int argc, char** argv) {
     spatialDetectionNetwork->setIouThreshold(0.5f);
 
     edgeDetectorRgb->setMaxOutputFrameSize(8294400);
+
+    sysLog->setRate(0.2f);
 
 #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
     std::string source1 = R"(
@@ -250,6 +270,9 @@ int main(int argc, char** argv) {
     camRgb->video.link(edgeDetectorRgb->inputImage);
     edgeDetectorLeft->outputImage.link(xoutEdgeLeft->input);
     edgeDetectorRight->outputImage.link(xoutEdgeRight->input);
+    sysLog->out.link(xoutSysLog->input);
+    xoutSysLog->input.setBlocking(false);
+    xoutSysLog->input.setQueueSize(1);
 
 #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
     script1->outputs["out"].link(script2->inputs["in"]);
@@ -279,7 +302,7 @@ int main(int argc, char** argv) {
     auto edgeLeftQueue = device.getOutputQueue(edgeLeftStr, 8, false);
     auto edgeRightQueue = device.getOutputQueue(edgeRightStr, 8, false);
     auto edgeRgbQueue = device.getOutputQueue(edgeRgbStr, 8, false);
-
+    auto qSysInfo = device.getOutputQueue("sysinfo", 4, false);
 #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
     auto scriptQueue = device.getOutputQueue("script", 8, false);
     auto script2Queue = device.getOutputQueue("script2", 8, false);
@@ -353,6 +376,10 @@ int main(int argc, char** argv) {
         auto edgeLefts = edgeLeftQueue->tryGetAll<dai::ImgFrame>();
         auto edgeRights = edgeRightQueue->tryGetAll<dai::ImgFrame>();
 
+        auto sysInfo = qSysInfo->tryGet<dai::SystemInformation>();
+        if(sysInfo) {
+            printSystemInformation(*sysInfo);
+        }
 #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
         auto script = scriptQueue->tryGetAll<dai::Buffer>();
         auto script2 = script2Queue->tryGetAll<dai::Buffer>();
