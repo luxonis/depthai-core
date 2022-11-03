@@ -86,41 +86,8 @@ class DeviceBootloader {
         nlohmann::json data;
     };
 
-    /// Bootloader version structure
-    struct Version {
-        /// Construct Version from string
-        explicit Version(const std::string& v);
-        /// Construct Version major, minor and patch numbers
-        Version(unsigned major, unsigned minor, unsigned patch);
-        /// Construct Version major, minor and patch numbers with buildInfo
-        Version(unsigned major, unsigned minor, unsigned patch, std::string buildInfo);
-        bool operator==(const Version& other) const;
-        bool operator<(const Version& other) const;
-        inline bool operator!=(const Version& rhs) const {
-            return !(*this == rhs);
-        }
-        inline bool operator>(const Version& rhs) const {
-            return rhs < *this;
-        }
-        inline bool operator<=(const Version& rhs) const {
-            return !(*this > rhs);
-        }
-        inline bool operator>=(const Version& rhs) const {
-            return !(*this < rhs);
-        }
-        /// Convert Version to string
-        std::string toString() const;
-        /// Convert Version to semver string
-        std::string toStringSemver() const;
-        /// Get build info
-        std::string getBuildInfo() const;
-        /// Retrieves semver version (no build information)
-        Version getSemver() const;
-
-       private:
-        unsigned versionMajor, versionMinor, versionPatch;
-        std::string buildInfo;
-    };
+    // Add an alias to Version
+    using Version = dai::Version;
 
     struct ApplicationInfo {
         Memory memory;
@@ -317,6 +284,13 @@ class DeviceBootloader {
     std::tuple<bool, std::string> flashBootloader(Memory memory, Type type, std::function<void(float)> progressCallback, const dai::Path& path = {});
 
     /**
+     * Flashes user bootloader to the current board. Available for NETWORK bootloader type
+     * @param progressCallback Callback that sends back a value between 0..1 which signifies current flashing progress
+     * @param path Optional parameter to custom bootloader to flash
+     */
+    std::tuple<bool, std::string> flashUserBootloader(std::function<void(float)> progressCallback, const dai::Path& path = {});
+
+    /**
      * Flash boot header which boots same as equivalent GPIO mode would
      * @param gpioMode GPIO mode equivalent
      */
@@ -431,6 +405,17 @@ class DeviceBootloader {
     MemoryInfo getMemoryInfo(Memory memory);
 
     /**
+     * Checks whether User Bootloader is supported with current bootloader
+     * @returns true of User Bootloader is supported, false otherwise
+     */
+    bool isUserBootloaderSupported();
+
+    /**
+     * Retrieves whether current bootloader is User Bootloader (B out of A/B configuration)
+     */
+    bool isUserBootloader();
+
+    /**
      * Boots a custom FW in memory
      * @param fw
      * @throws A runtime exception if there are any communication issues
@@ -513,6 +498,11 @@ class DeviceBootloader {
     std::thread watchdogThread;
     std::atomic<bool> watchdogRunning{true};
 
+    // Monitor thread
+    std::thread monitorThread;
+    std::mutex lastWatchdogPingTimeMtx;
+    std::chrono::steady_clock::time_point lastWatchdogPingTime;
+
     // bootloader stream
     std::unique_ptr<XLinkStream> stream;
 
@@ -566,6 +556,9 @@ inline std::ostream& operator<<(std::ostream& out, const dai::DeviceBootloader::
             break;
         case dai::DeviceBootloader::Section::BOOTLOADER:
             out << "BOOTLOADER";
+            break;
+        case dai::DeviceBootloader::Section::USER_BOOTLOADER:
+            out << "USER_BOOTLOADER";
             break;
         case dai::DeviceBootloader::Section::BOOTLOADER_CONFIG:
             out << "BOOTLOADER_CONFIG";

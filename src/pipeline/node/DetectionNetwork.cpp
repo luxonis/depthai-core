@@ -47,6 +47,7 @@ YoloDetectionNetwork::YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& 
 YoloDetectionNetwork::YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
     : NodeCRTP<DetectionNetwork, YoloDetectionNetwork, DetectionNetworkProperties>(par, nodeId, std::move(props)) {
     properties.parser.nnFamily = DetectionNetworkType::YOLO;
+    properties.parser.iouThreshold = 0.5f;
 }
 
 void YoloDetectionNetwork::setNumClasses(const int numClasses) {

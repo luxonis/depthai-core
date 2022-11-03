@@ -36,6 +36,11 @@ int main() {
     // Print USB speed
     cout << "Usb speed: " << device.getUsbSpeed() << endl;
 
+    // Bootloader version
+    if(device.getBootloaderVersion()) {
+        cout << "Bootloader version: " << device.getBootloaderVersion()->toString() << endl;
+    }
+
     // Output queue will be used to get the rgb frames from the output defined above
     auto qRgb = device.getOutputQueue("rgb", 4, false);
 
