@@ -2,6 +2,23 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+
+2.19.0 (2022-09-20)
+-----------
+* Stability improvements #616
+* isUserBootloaderSupported API
+* Device.setTimesync(true/false) convenience function to enable or disable subsequent timesyncing
+* Windows improvements with listing BOOTED devices ("udev permissions" issue)
+* Fix OV9282 as MonoCamera on RGB socket (issue was black image)
+* Fix crash under high load (regression with camera events streaming)
+* Fix YOLOv5/7 decoding in case of a single class
+* Fix image size when decimation filter is enabled
+* Fix for certain OV9782 and OV9282 permutations/configs
+* Reset Device timestamp on boot to zero
+* Reworded "No available devices" error message when there are other connected devices connected.
+* Update CI to Node16 compatible actions
+
+
 2.17.4 (2022-09-20)
 -----------
 * DEPTHAI_WATCHDOG=0 bugfix (245fb57)
