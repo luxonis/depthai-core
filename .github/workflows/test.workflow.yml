@@ -36,11 +36,11 @@ jobs:
 
     steps:
     - name: Cache .hunter folder
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: $HOME/.hun2_${{ matrix.flavor }}
         key: hunter-${{ matrix.os }}-${{ matrix.cmake }}
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: 'recursive'
 
