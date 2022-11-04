@@ -13,8 +13,8 @@
     #include <opencv2/opencv.hpp>
 #endif
 
-static constexpr int RGB_FPS = 10;
-static constexpr int MONO_FPS = 10;
+static constexpr int RGB_FPS = 20;
+static constexpr int MONO_FPS = 20;
 static constexpr int ENCODER_FPS = 10;
 
 void printSystemInformation(dai::SystemInformation info) {
