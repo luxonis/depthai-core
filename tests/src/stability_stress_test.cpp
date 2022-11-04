@@ -13,6 +13,10 @@
     #include <opencv2/opencv.hpp>
 #endif
 
+static constexpr int RGB_FPS = 10;
+static constexpr int MONO_FPS = 10;
+static constexpr int ENCODER_FPS = 10;
+
 void printSystemInformation(dai::SystemInformation info) {
     printf("Ddr used / total - %.2f / %.2f MiB\n", info.ddrMemoryUsage.used / (1024.0f * 1024.0f), info.ddrMemoryUsage.total / (1024.0f * 1024.0f));
     printf("Cmx used / total - %.2f / %.2f MiB\n", info.cmxMemoryUsage.used / (1024.0f * 1024.0f), info.cmxMemoryUsage.total / (1024.0f * 1024.0f));
@@ -25,7 +29,6 @@ void printSystemInformation(dai::SystemInformation info) {
     const auto& t = info.chipTemperature;
     printf("Chip temperature - average: %.2f, css: %.2f, mss: %.2f, upa: %.2f, dss: %.2f\n", t.average, t.css, t.mss, t.upa, t.dss);
     printf("Cpu usage - Leon CSS: %.2f %%, Leon MSS: %.2f %%\n", info.leonCssCpuUsage.average * 100, info.leonMssCpuUsage.average * 100);
-    printf("----------------------------------------\n");
 }
 
 static const std::vector<std::string> labelMap = {
@@ -135,17 +138,20 @@ int main(int argc, char** argv) {
     camRgb->setPreviewSize(416, 416);
     camRgb->setInterleaved(false);
     camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
+    camRgb->setFps(RGB_FPS);
 
     monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    monoLeft->setFps(MONO_FPS);
 
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    monoRight->setFps(MONO_FPS);
 
     // Setting to 26fps will trigger error
-    ve1->setDefaultProfilePreset(25, dai::VideoEncoderProperties::Profile::H264_MAIN);
-    ve2->setDefaultProfilePreset(25, dai::VideoEncoderProperties::Profile::H265_MAIN);
-    ve3->setDefaultProfilePreset(25, dai::VideoEncoderProperties::Profile::H264_MAIN);
+    ve1->setDefaultProfilePreset(ENCODER_FPS, dai::VideoEncoderProperties::Profile::H264_MAIN);
+    ve2->setDefaultProfilePreset(ENCODER_FPS, dai::VideoEncoderProperties::Profile::H265_MAIN);
+    ve3->setDefaultProfilePreset(ENCODER_FPS, dai::VideoEncoderProperties::Profile::H264_MAIN);
 
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     // Align depth map to the perspective of RGB camera, on which inference is done
@@ -292,6 +298,8 @@ int main(int argc, char** argv) {
     // Connect to device and start pipeline
     dai::Device device(pipeline);
 
+    auto usb_speed = device.getUsbSpeed();
+
     // Output queues will be used to get the encoded data from the output defined above
     auto outQ1 = device.getOutputQueue("ve1Out", 30, false);
     auto outQ2 = device.getOutputQueue("ve2Out", 30, false);
@@ -321,7 +329,7 @@ int main(int argc, char** argv) {
     mutex countersMtx;
     unordered_map<std::string, int> counters;
 
-    thread countingThread([&countersMtx, &counters, &device, TEST_TIMEOUT]() {
+    thread countingThread([&countersMtx, &counters, &device, &usb_speed, TEST_TIMEOUT]() {
         // Initial delay
         this_thread::sleep_for(5s);
 
@@ -333,6 +341,7 @@ int main(int argc, char** argv) {
 
                 bool failed = counters.size() == 0;
                 cout << "[" << duration_cast<seconds>(steady_clock::now() - timeoutStopwatch).count() << "s] "
+                     << "Usb speed " << usb_speed << " "
                      << "FPS: ";
                 for(const auto& kv : counters) {
                     if(kv.second == 0) {
@@ -378,7 +387,10 @@ int main(int argc, char** argv) {
 
         auto sysInfo = qSysInfo->tryGet<dai::SystemInformation>();
         if(sysInfo) {
+            printf("----------------------------------------\n");
+            std::cout << "Usb speed: " << usb_speed << std::endl;
             printSystemInformation(*sysInfo);
+            printf("----------------------------------------\n");
         }
 #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
         auto script = scriptQueue->tryGetAll<dai::Buffer>();
