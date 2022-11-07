@@ -892,6 +892,21 @@ DeviceInfo DeviceBase::getDeviceInfo() const {
     return deviceInfo;
 }
 
+std::string DeviceBase::getProductName() {
+    checkClosed();
+
+    std::string productName;
+    if((productName = readFactoryCalibrationOrDefault().getEepromData().productName).empty()) {
+        productName = readCalibrationOrDefault().getEepromData().productName;
+    }
+
+    // Convert to product naming from display naming
+    std::transform(productName.begin(), productName.end(), productName.begin(), std::ptr_fun<int, int>(std::toupper));
+    std::replace(productName.begin(), productName.end(), ' ', '-');
+
+    return productName;
+}
+
 void DeviceBase::setLogOutputLevel(LogLevel level) {
     checkClosed();
 
