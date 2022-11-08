@@ -303,5 +303,4 @@ NNData& NNData::setSequenceNum(int64_t sequenceNum) {
     rawNn.sequenceNum = sequenceNum;
     return *this;
 }
-
 }  // namespace dai

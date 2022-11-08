@@ -21,6 +21,7 @@ else()
         hunter_add_package(Backward)
     endif()
     hunter_add_package(libnop)
+    hunter_add_package(Eigen)
 endif()
 
 # If library was build as static, find all dependencies
@@ -49,8 +50,10 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
         find_package(Backward ${_QUIET} CONFIG REQUIRED)
         unset(STACK_DETAILS_AUTO_DETECT)
     endif()
-
 endif()
+
+# Eigen
+find_package(Eigen3 CONFIG REQUIRED)
 
 # Add threads (c++)
 find_package(Threads ${_QUIET} REQUIRED)
