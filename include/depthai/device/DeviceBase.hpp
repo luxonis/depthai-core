@@ -376,7 +376,7 @@ class DeviceBase {
     /**
      * Get device name if available
      * @returns device name or empty string if not available
-    */
+     */
     std::string getDeviceName();
 
     /**
