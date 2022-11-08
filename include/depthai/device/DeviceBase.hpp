@@ -374,10 +374,10 @@ class DeviceBase {
     DeviceInfo getDeviceInfo() const;
 
     /**
-     * Get product name if available
-     * @returns product name or empty string if not available
+     * Get device name if available
+     * @returns device name or empty string if not available
     */
-    std::string getProductName();
+    std::string getDeviceName();
 
     /**
      * Get MxId of device
