@@ -19,6 +19,7 @@ namespace dai {
  *  - batchName
  *  - batchTime
  *  - boardOptions
+ *  - productName
  */
 class CalibrationHandler {
    public:
