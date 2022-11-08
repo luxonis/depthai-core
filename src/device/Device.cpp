@@ -17,6 +17,7 @@
 #include "pipeline/Pipeline.hpp"
 #include "utility/Initialization.hpp"
 #include "utility/Resources.hpp"
+#include "spdlog/spdlog.h"
 
 namespace dai {
 
@@ -306,6 +307,7 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
                 }
 
                 // Add to the end of event queue
+                spdlog::debug("Got an event on queue with name: {}", queueName);
                 eventQueue.push_back(std::move(queueName));
             }
 
