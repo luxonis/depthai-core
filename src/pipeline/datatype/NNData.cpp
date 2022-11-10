@@ -105,6 +105,11 @@ std::shared_ptr<RawBuffer> NNData::serialize() const {
     return raw;
 }
 
+uint16_t NNData::fp32_to_fp16(float value)
+{
+    return fp16_ieee_from_fp32_value(value);
+};
+
 // setters
 // uint8_t
 NNData& NNData::setLayer(const std::string& name, std::vector<std::uint8_t> data) {
