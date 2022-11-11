@@ -10,7 +10,7 @@ DetectionParser::DetectionParser(const std::shared_ptr<PipelineImpl>& par, int64
 DetectionParser::DetectionParser(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
     : NodeCRTP<Node, DetectionParser, DetectionParserProperties>(par, nodeId, std::move(props)), rawConfig(std::make_shared<RawEdgeDetectorConfig>()) {
     setInputRefs({&input});
-    setOutputRefs({&out});
+    setOutputRefs({&out, &outSegmentation});
 }
 
 DetectionParser::Properties& DetectionParser::getProperties() {

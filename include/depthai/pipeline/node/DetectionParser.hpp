@@ -40,6 +40,11 @@ class DetectionParser : public NodeCRTP<Node, DetectionParser, DetectionParserPr
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgDetections, false}}};
 
     /**
+     * Outputs image frame segmentation
+     */
+    Output outSegmentation{*this, "outSegmentation", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
      * Specify number of frames in pool.
      * @param numFramesPool How many frames should the pool have
      */

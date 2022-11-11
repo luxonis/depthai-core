@@ -33,6 +33,11 @@ class DetectionNetwork : public NodeCRTP<NeuralNetwork, DetectionNetwork, Detect
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgDetections, false}}};
 
     /**
+     * Outputs image frame segmentation
+     */
+    Output outSegmentation{*this, "outSegmentation", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
      * Outputs unparsed inference results.
      */
     Output outNetwork{*this, "outNetwork", Output::Type::MSender, {{DatatypeEnum::NNData, false}}};

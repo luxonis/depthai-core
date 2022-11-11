@@ -16,7 +16,7 @@ SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<PipelineI
 SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
     : NodeCRTP<DetectionNetwork, SpatialDetectionNetwork, SpatialDetectionNetworkProperties>(par, nodeId, std::move(props)) {
     setInputRefs({&input, &inputDepth});
-    setOutputRefs({&out, &boundingBoxMapping, &passthrough, &passthroughDepth});
+    setOutputRefs({&out, &boundingBoxMapping, &passthrough, &passthroughDepth, &outSegmentation});
 }
 
 void SpatialDetectionNetwork::setBoundingBoxScaleFactor(float scaleFactor) {

@@ -44,6 +44,11 @@ class SpatialDetectionNetwork : public NodeCRTP<DetectionNetwork, SpatialDetecti
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::SpatialImgDetections, false}}};
 
     /**
+     * Outputs image frame segmentation
+     */
+    Output outSegmentation{*this, "outSegmentation", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
      * Outputs mapping of detected bounding boxes relative to depth map
      *
      * Suitable for when displaying remapped bounding boxes on depth frame
