@@ -70,9 +70,11 @@ class XLinkConnection {
     /**
      * Finds a device by MX ID. Example: 14442C10D13EABCE00
      * @param mxId MyraidX ID which uniquely specifies a device
+     * @param state Which state should the device be in
+     * @param skipInvalidDevices Whether or not to skip devices that cannot be fully detected
      * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
-    static std::tuple<bool, DeviceInfo> getDeviceByMxId(std::string, XLinkDeviceState_t state = X_LINK_ANY_STATE, bool skipInvalidDevice = true);
+    static std::tuple<bool, DeviceInfo> getDeviceByMxId(std::string mxId, XLinkDeviceState_t state = X_LINK_ANY_STATE, bool skipInvalidDevice = true);
 
     /**
      * Tries booting the given device into bootloader state

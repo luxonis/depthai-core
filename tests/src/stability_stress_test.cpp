@@ -13,6 +13,24 @@
     #include <opencv2/opencv.hpp>
 #endif
 
+static constexpr int RGB_FPS = 20;
+static constexpr int MONO_FPS = 20;
+static constexpr int ENCODER_FPS = 10;
+
+void printSystemInformation(dai::SystemInformation info) {
+    printf("Ddr used / total - %.2f / %.2f MiB\n", info.ddrMemoryUsage.used / (1024.0f * 1024.0f), info.ddrMemoryUsage.total / (1024.0f * 1024.0f));
+    printf("Cmx used / total - %.2f / %.2f MiB\n", info.cmxMemoryUsage.used / (1024.0f * 1024.0f), info.cmxMemoryUsage.total / (1024.0f * 1024.0f));
+    printf("LeonCss heap used / total - %.2f / %.2f MiB\n",
+           info.leonCssMemoryUsage.used / (1024.0f * 1024.0f),
+           info.leonCssMemoryUsage.total / (1024.0f * 1024.0f));
+    printf("LeonMss heap used / total - %.2f / %.2f MiB\n",
+           info.leonMssMemoryUsage.used / (1024.0f * 1024.0f),
+           info.leonMssMemoryUsage.total / (1024.0f * 1024.0f));
+    const auto& t = info.chipTemperature;
+    printf("Chip temperature - average: %.2f, css: %.2f, mss: %.2f, upa: %.2f, dss: %.2f\n", t.average, t.css, t.mss, t.upa, t.dss);
+    printf("Cpu usage - Leon CSS: %.2f %%, Leon MSS: %.2f %%\n", info.leonCssCpuUsage.average * 100, info.leonMssCpuUsage.average * 100);
+}
+
 static const std::vector<std::string> labelMap = {
     "person",        "bicycle",      "car",           "motorbike",     "aeroplane",   "bus",         "train",       "truck",        "boat",
     "traffic light", "fire hydrant", "stop sign",     "parking meter", "bench",       "bird",        "cat",         "dog",          "horse",
@@ -63,6 +81,7 @@ int main(int argc, char** argv) {
     auto edgeDetectorLeft = pipeline.create<dai::node::EdgeDetector>();
     auto edgeDetectorRight = pipeline.create<dai::node::EdgeDetector>();
     auto edgeDetectorRgb = pipeline.create<dai::node::EdgeDetector>();
+    auto sysLog = pipeline.create<dai::node::SystemLogger>();
 #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
     auto script1 = pipeline.create<dai::node::Script>();
     auto script2 = pipeline.create<dai::node::Script>();
@@ -78,13 +97,13 @@ int main(int argc, char** argv) {
     auto ve1Out = pipeline.create<dai::node::XLinkOut>();
     auto ve2Out = pipeline.create<dai::node::XLinkOut>();
     auto ve3Out = pipeline.create<dai::node::XLinkOut>();
-    auto xoutBoundingBoxDepthMapping = pipeline.create<dai::node::XLinkOut>();
     auto xoutDepth = pipeline.create<dai::node::XLinkOut>();
     auto xoutNN = pipeline.create<dai::node::XLinkOut>();
     auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
     auto xoutEdgeLeft = pipeline.create<dai::node::XLinkOut>();
     auto xoutEdgeRight = pipeline.create<dai::node::XLinkOut>();
     auto xoutEdgeRgb = pipeline.create<dai::node::XLinkOut>();
+    auto xoutSysLog = pipeline.create<dai::node::XLinkOut>();
 #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
     auto scriptOut = pipeline.create<dai::node::XLinkOut>();
     auto scriptOut2 = pipeline.create<dai::node::XLinkOut>();
@@ -95,10 +114,10 @@ int main(int argc, char** argv) {
     ve1Out->setStreamName("ve1Out");
     ve2Out->setStreamName("ve2Out");
     ve3Out->setStreamName("ve3Out");
-    xoutBoundingBoxDepthMapping->setStreamName("boundingBoxDepthMapping");
     xoutDepth->setStreamName("depth");
     xoutNN->setStreamName("detections");
     xoutRgb->setStreamName("rgb");
+    xoutSysLog->setStreamName("sysinfo");
     const auto edgeLeftStr = "edge left";
     const auto edgeRightStr = "edge right";
     const auto edgeRgbStr = "edge rgb";
@@ -119,17 +138,20 @@ int main(int argc, char** argv) {
     camRgb->setPreviewSize(416, 416);
     camRgb->setInterleaved(false);
     camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
+    camRgb->setFps(RGB_FPS);
 
     monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    monoLeft->setFps(MONO_FPS);
 
     monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
+    monoRight->setFps(MONO_FPS);
 
     // Setting to 26fps will trigger error
-    ve1->setDefaultProfilePreset(25, dai::VideoEncoderProperties::Profile::H264_MAIN);
-    ve2->setDefaultProfilePreset(25, dai::VideoEncoderProperties::Profile::H265_MAIN);
-    ve3->setDefaultProfilePreset(25, dai::VideoEncoderProperties::Profile::H264_MAIN);
+    ve1->setDefaultProfilePreset(ENCODER_FPS, dai::VideoEncoderProperties::Profile::H264_MAIN);
+    ve2->setDefaultProfilePreset(ENCODER_FPS, dai::VideoEncoderProperties::Profile::H265_MAIN);
+    ve3->setDefaultProfilePreset(ENCODER_FPS, dai::VideoEncoderProperties::Profile::H264_MAIN);
 
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     // Align depth map to the perspective of RGB camera, on which inference is done
@@ -151,6 +173,8 @@ int main(int argc, char** argv) {
     spatialDetectionNetwork->setIouThreshold(0.5f);
 
     edgeDetectorRgb->setMaxOutputFrameSize(8294400);
+
+    sysLog->setRate(0.2f);
 
 #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
     std::string source1 = R"(
@@ -243,7 +267,6 @@ int main(int argc, char** argv) {
     camRgb->preview.link(spatialDetectionNetwork->input);
     camRgb->preview.link(xoutRgb->input);
     spatialDetectionNetwork->out.link(xoutNN->input);
-    spatialDetectionNetwork->boundingBoxMapping.link(xoutBoundingBoxDepthMapping->input);
 
     stereo->depth.link(spatialDetectionNetwork->inputDepth);
     spatialDetectionNetwork->passthroughDepth.link(xoutDepth->input);
@@ -253,6 +276,9 @@ int main(int argc, char** argv) {
     camRgb->video.link(edgeDetectorRgb->inputImage);
     edgeDetectorLeft->outputImage.link(xoutEdgeLeft->input);
     edgeDetectorRight->outputImage.link(xoutEdgeRight->input);
+    sysLog->out.link(xoutSysLog->input);
+    xoutSysLog->input.setBlocking(false);
+    xoutSysLog->input.setQueueSize(1);
 
 #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
     script1->outputs["out"].link(script2->inputs["in"]);
@@ -272,18 +298,19 @@ int main(int argc, char** argv) {
     // Connect to device and start pipeline
     dai::Device device(pipeline);
 
+    auto usb_speed = device.getUsbSpeed();
+
     // Output queues will be used to get the encoded data from the output defined above
     auto outQ1 = device.getOutputQueue("ve1Out", 30, false);
     auto outQ2 = device.getOutputQueue("ve2Out", 30, false);
     auto outQ3 = device.getOutputQueue("ve3Out", 30, false);
     auto previewQueue = device.getOutputQueue("rgb", 4, false);
-    auto xoutBoundingBoxDepthMappingQueue = device.getOutputQueue("boundingBoxDepthMapping", 4, false);
     auto depthQueue = device.getOutputQueue("depth", 4, false);
     auto detectionNNQueue = device.getOutputQueue("detections", 4, false);
     auto edgeLeftQueue = device.getOutputQueue(edgeLeftStr, 8, false);
     auto edgeRightQueue = device.getOutputQueue(edgeRightStr, 8, false);
     auto edgeRgbQueue = device.getOutputQueue(edgeRgbStr, 8, false);
-
+    auto qSysInfo = device.getOutputQueue("sysinfo", 4, false);
 #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
     auto scriptQueue = device.getOutputQueue("script", 8, false);
     auto script2Queue = device.getOutputQueue("script2", 8, false);
@@ -302,7 +329,7 @@ int main(int argc, char** argv) {
     mutex countersMtx;
     unordered_map<std::string, int> counters;
 
-    thread countingThread([&countersMtx, &counters, &device, TEST_TIMEOUT]() {
+    thread countingThread([&countersMtx, &counters, &device, &usb_speed, TEST_TIMEOUT]() {
         // Initial delay
         this_thread::sleep_for(5s);
 
@@ -314,6 +341,7 @@ int main(int argc, char** argv) {
 
                 bool failed = counters.size() == 0;
                 cout << "[" << duration_cast<seconds>(steady_clock::now() - timeoutStopwatch).count() << "s] "
+                     << "Usb speed " << usb_speed << " "
                      << "FPS: ";
                 for(const auto& kv : counters) {
                     if(kv.second == 0) {
@@ -357,6 +385,13 @@ int main(int argc, char** argv) {
         auto edgeLefts = edgeLeftQueue->tryGetAll<dai::ImgFrame>();
         auto edgeRights = edgeRightQueue->tryGetAll<dai::ImgFrame>();
 
+        auto sysInfo = qSysInfo->tryGet<dai::SystemInformation>();
+        if(sysInfo) {
+            printf("----------------------------------------\n");
+            std::cout << "Usb speed: " << usb_speed << std::endl;
+            printSystemInformation(*sysInfo);
+            printf("----------------------------------------\n");
+        }
 #ifdef DEPTHAI_STABILITY_TEST_SCRIPT
         auto script = scriptQueue->tryGetAll<dai::Buffer>();
         auto script2 = script2Queue->tryGetAll<dai::Buffer>();
@@ -420,25 +455,19 @@ int main(int argc, char** argv) {
         }
 
         auto detections = inDet->detections;
-        if(!detections.empty()) {
-            auto boundingBoxMapping = xoutBoundingBoxDepthMappingQueue->get<dai::SpatialLocationCalculatorConfig>();
-            auto roiDatas = boundingBoxMapping->getConfigData();
-
-            for(auto roiData : roiDatas) {
-                auto roi = roiData.roi;
-                roi = roi.denormalize(depthFrameColor.cols, depthFrameColor.rows);
-                auto topLeft = roi.topLeft();
-                auto bottomRight = roi.bottomRight();
-                auto xmin = (int)topLeft.x;
-                auto ymin = (int)topLeft.y;
-                auto xmax = (int)bottomRight.x;
-                auto ymax = (int)bottomRight.y;
-
-                cv::rectangle(depthFrameColor, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
-            }
-        }
 
         for(const auto& detection : detections) {
+            auto roiData = detection.boundingBoxMapping;
+            auto roi = roiData.roi;
+            roi = roi.denormalize(depthFrameColor.cols, depthFrameColor.rows);
+            auto topLeft = roi.topLeft();
+            auto bottomRight = roi.bottomRight();
+            auto xmin = (int)topLeft.x;
+            auto ymin = (int)topLeft.y;
+            auto xmax = (int)bottomRight.x;
+            auto ymax = (int)bottomRight.y;
+            cv::rectangle(depthFrameColor, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
+
             int x1 = detection.xmin * frame.cols;
             int y1 = detection.ymin * frame.rows;
             int x2 = detection.xmax * frame.cols;

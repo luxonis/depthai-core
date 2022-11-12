@@ -107,6 +107,9 @@ static spdlog::level::level_enum logLevelToSpdlogLevel(LogLevel level, spdlog::l
 constexpr std::chrono::seconds DeviceBase::DEFAULT_SEARCH_TIME;
 constexpr float DeviceBase::DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ;
 constexpr UsbSpeed DeviceBase::DEFAULT_USB_SPEED;
+constexpr std::chrono::milliseconds DeviceBase::DEFAULT_TIMESYNC_PERIOD;
+constexpr bool DeviceBase::DEFAULT_TIMESYNC_RANDOM;
+constexpr int DeviceBase::DEFAULT_TIMESYNC_NUM_SAMPLES;
 
 std::chrono::milliseconds DeviceBase::getDefaultSearchTime() {
     std::chrono::milliseconds defaultSearchTime = DEFAULT_SEARCH_TIME;
@@ -306,7 +309,14 @@ void DeviceBase::tryGetDevice() {
     std::tie(found, deviceInfo) = getAnyAvailableDevice();
 
     // If no device found, throw
-    if(!found) throw std::runtime_error("No available devices");
+    if(!found) {
+        auto numConnected = getAllAvailableDevices().size();
+        if(numConnected > 0) {
+            throw std::runtime_error(fmt::format("No available devices ({} connected, but in use)", numConnected));
+        } else {
+            throw std::runtime_error("No available devices");
+        }
+    }
 }
 
 DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo) : DeviceBase(version, devInfo, DeviceBase::DEFAULT_USB_SPEED) {}
@@ -532,6 +542,17 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         }
     }
 
+    auto deviceDebugStr = utility::getEnv("DEPTHAI_DEBUG");
+    if(!deviceDebugStr.empty()) {
+        // Try parsing the string as a number
+        try {
+            int deviceDebug{std::stoi(deviceDebugStr)};
+            config.board.logDevicePrints = deviceDebug;
+        } catch(const std::invalid_argument& e) {
+            spdlog::warn("DEPTHAI_DEBUG value invalid: {}, should be a number (non-zero to enable)", e.what());
+        }
+    }
+
     // Get embedded mvcmd or external with applied config
     if(spdlog::get_level() == spdlog::level::debug) {
         nlohmann::json jBoardConfig = config.board;
@@ -749,6 +770,9 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
 
         // Sets system inforation logging rate. By default 1s
         setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
+
+        // Starts and waits for inital timesync
+        setTimesync(DEFAULT_TIMESYNC_PERIOD, DEFAULT_TIMESYNC_NUM_SAMPLES, DEFAULT_TIMESYNC_RANDOM);
     } catch(const std::exception&) {
         // close device (cleanup)
         close();
@@ -868,6 +892,34 @@ DeviceInfo DeviceBase::getDeviceInfo() const {
     return deviceInfo;
 }
 
+std::string DeviceBase::getDeviceName() {
+    checkClosed();
+
+    std::string deviceName;
+    EepromData eeprom = readFactoryCalibrationOrDefault().getEepromData();
+    if((deviceName = eeprom.productName).empty()) {
+        eeprom = readCalibrationOrDefault().getEepromData();
+        if((deviceName = eeprom.productName).empty()) {
+            deviceName = eeprom.boardName;
+        }
+    }
+
+    // Convert to device naming from display/product naming
+    std::transform(deviceName.begin(), deviceName.end(), deviceName.begin(), std::ptr_fun<int, int>(std::toupper));
+    std::replace(deviceName.begin(), deviceName.end(), ' ', '-');
+
+    // Handle some known legacy cases
+    if(deviceName == "BW1098OBC") {
+        deviceName = "OAK-D";
+    } else if(deviceName == "DM2097") {
+        deviceName = "OAK-D-CM4-POE";
+    } else if(deviceName == "BW1097") {
+        deviceName = "OAK-D-CM3";
+    }
+
+    return deviceName;
+}
+
 void DeviceBase::setLogOutputLevel(LogLevel level) {
     checkClosed();
 
@@ -926,6 +978,25 @@ bool DeviceBase::removeLogCallback(int callbackId) {
     // Otherwise erase and return true
     logCallbackMap.erase(callbackId);
     return true;
+}
+
+void DeviceBase::setTimesync(std::chrono::milliseconds period, int numSamples, bool random) {
+    checkClosed();
+
+    if(period < std::chrono::milliseconds(10)) {
+        throw std::invalid_argument("Period must be greater or equal than 10ms");
+    }
+
+    using namespace std::chrono;
+    pimpl->rpcClient->call("setTimesync", duration_cast<milliseconds>(period).count(), numSamples, random);
+}
+
+void DeviceBase::setTimesync(bool enable) {
+    if(enable) {
+        setTimesync(DEFAULT_TIMESYNC_PERIOD, DEFAULT_TIMESYNC_NUM_SAMPLES, DEFAULT_TIMESYNC_RANDOM);
+    } else {
+        setTimesync(std::chrono::milliseconds(1000), 0, false);
+    }
 }
 
 void DeviceBase::setSystemInformationLoggingRate(float rateHz) {

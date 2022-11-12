@@ -213,6 +213,7 @@ dai_add_example(calibration_flash_version5 calibration/calibration_flash_v5.cpp 
 dai_add_example(calibration_load calibration/calibration_load.cpp ON)
 dai_add_example(calibration_reader calibration/calibration_reader.cpp ON)
 dai_add_example(calibration_dump calibration/calibration_dump.cpp ON)
+dai_add_example(calibration_factory_reset calibration/calibration_factory_reset.cpp OFF)
 
 target_compile_definitions(calibration_flash PRIVATE CALIB_PATH="${calib_v6}")
 target_compile_definitions(calibration_flash_version5 PRIVATE CALIB_PATH="${calib_v5}" BOARD_PATH="${device_config}")
