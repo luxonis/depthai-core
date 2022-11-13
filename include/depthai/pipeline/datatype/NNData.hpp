@@ -5,7 +5,6 @@
 #include <unordered_map>
 #include <vector>
 #include <algorithm>
-#include <variant>
 
 #include "Buffer.hpp"
 #include "depthai-shared/datatype/RawNNData.hpp"

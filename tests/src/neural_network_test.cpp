@@ -129,8 +129,8 @@ void test(bool manualBlob) {
         return 1;
         }());
 
-    // // At the end test if any error messages appeared
-    // REQUIRE(receivedLogMessage == false);
+    // At the end test if any error messages appeared
+    REQUIRE(receivedLogMessage == false);
 }
 
 TEST_CASE("Neural network node data checks - setBlobPath") {
