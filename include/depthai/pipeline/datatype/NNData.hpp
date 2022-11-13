@@ -5,10 +5,12 @@
 #include <unordered_map>
 #include <vector>
 #include <algorithm>
+#include <variant>
 
 #include "Buffer.hpp"
 #include "depthai-shared/datatype/RawNNData.hpp"
-#include <eigen3/Eigen/Dense>
+#include "xtensor/xarray.hpp"
+#include "xtensor/xadapt.hpp"
 
 namespace dai {
 
@@ -20,6 +22,7 @@ class NNData : public Buffer {
     [[deprecated("Use 'addTensor()' instead")]]
     std::shared_ptr<RawBuffer> serialize() const override;
     static uint16_t fp32_to_fp16(float);
+    static float fp16_to_fp32(uint16_t);
     RawNNData& rawNn;
 
     // store the data
@@ -194,7 +197,7 @@ class NNData : public Buffer {
     template<typename _Ty = double>
     NNData& addTensor(const std::string& name, const std::vector<_Ty>& data)
     {
-        return addTensor(name, (const Eigen::Matrix<_Ty, Eigen::Dynamic, 1>)Eigen::Map<const Eigen::Matrix<_Ty, Eigen::Dynamic, 1>>(data.data(), data.size(), 1));
+        return addTensor<_Ty>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}));
     };
 
     /**
@@ -202,15 +205,13 @@ class NNData : public Buffer {
      * @param name Name of the tensor
      * @param tensor Tensor to store
      */
-    template<typename _Ty = double, int _X = Eigen::Dynamic, int _Y = Eigen::Dynamic>
-    NNData& addTensor(const std::string& name, const Eigen::Matrix<_Ty, _X, _Y>& tensor)
+    template<typename _Ty = double>
+    NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& tensor)
     {
         static_assert(std::is_integral<_Ty>::value || std::is_floating_point<_Ty>::value, "Tensor type needs to be integral or floating point");
-        const size_t rows = _X == Eigen::Dynamic ? tensor.rows() : _X;
-        const size_t cols = _Y == Eigen::Dynamic ? tensor.cols() : _Y;
 
         // Get size in bytes of the converted tensor data, u8 for integral and fp16 for floating point
-        const size_t sConvertedData = std::is_integral<_Ty>::value ? rows * cols : 2 * rows * cols;
+        const size_t sConvertedData = std::is_integral<_Ty>::value ? tensor.size() : 2 * tensor.size();
 
         // Append bytes so that each new tensor is DATA_ALIGNMENT aligned
         const size_t offset = rawNn.data.size() + ((rawNn.data.end() - rawNn.data.begin() + DATA_ALIGNMENT - 1) / DATA_ALIGNMENT) * DATA_ALIGNMENT;
@@ -218,13 +219,13 @@ class NNData : public Buffer {
 
         // Convert data to u8 or fp16 and write to rawNn.data
         if(std::is_integral<_Ty>::value) {
-            for(uint32_t i = 0; i < rows * cols; i++) {
-                rawNn.data.data()[i + offset] = static_cast<std::uint8_t>(tensor.data()[i]);
+            for(uint32_t i = 0; i < tensor.size(); i++) {
+                rawNn.data.data()[i + offset] = (uint8_t)tensor.data()[i];
             }
         }
         else {
-            for(uint32_t i = 0; i < rows * cols; i++) {
-                rawNn.data.data()[2*i + offset] = fp32_to_fp16(static_cast<float>(tensor.data()[i]));
+            for(uint32_t i = 0; i < tensor.size(); i++) {
+                *(uint16_t*)(&rawNn.data.data()[2 * i + offset]) = fp32_to_fp16(tensor.data()[i]);
             }
         }
 
@@ -232,17 +233,12 @@ class NNData : public Buffer {
         TensorInfo info;
         info.name = name;
         info.offset = static_cast<unsigned int>(offset);
-        if(std::is_integral<_Ty>::value)
+        info.dataType = std::is_integral<_Ty>::value ? TensorInfo::DataType::U8F : TensorInfo::DataType::FP16;
+        info.numDimensions = tensor.dimension();
+        for(uint32_t i = 0; i < tensor.dimension(); i++)
         {
-            info.dataType = TensorInfo::DataType::U8F;
-        } else {
-            info.dataType = TensorInfo::DataType::FP16;
-        }
-        info.numDimensions = cols;
-        for(uint32_t i = 0; i < cols; i++)
-        {
-            info.dims.push_back(rows);
-            info.strides.push_back(sizeof(_Ty) * cols);
+            info.dims.push_back(tensor.shape()[i]);
+            info.strides.push_back(tensor.strides()[i]);
         }
 
         rawNn.tensors.push_back(info);
@@ -251,10 +247,10 @@ class NNData : public Buffer {
 
     /**
      * Convenience function to retrieve values from a tensor
-     * @returns Eigen::Matrix<_Ty, _X, _Y> tensor
+     * @returns xt::xarray<_Ty> tensor
      */
-    template<typename _Ty, int _X = Eigen::Dynamic, int _Y = Eigen::Dynamic>
-    Eigen::Matrix<_Ty, _X, _Y> getTensor(const std::string& name)
+    template<typename _Ty>
+    xt::xarray<_Ty> getTensor(const std::string& name)
     {
         const auto it = std::find_if(rawNn.tensors.begin(), rawNn.tensors.end(), [&name](const TensorInfo& ti){
             return ti.name == name;
@@ -263,32 +259,51 @@ class NNData : public Buffer {
         if(it == rawNn.tensors.end())
             throw std::runtime_error("Tensor does not exist");
         
-        Eigen::Matrix<_Ty, _X, _Y> mat(it->dims[0], it->numDimensions);
-        Eigen::Matrix2i mati;
 
+        std::vector<size_t> dims;
+        for(const auto v : it->dims)
+        {
+            dims.push_back(v);
+        }
+
+        std::vector<size_t> strides;
+        for(const auto v : it->strides)
+        {
+            strides.push_back(v);
+        }
+
+        xt::xarray<_Ty, xt::layout_type::row_major> tensor(dims);
         if (it->dataType == TensorInfo::DataType::U8F) {
-            for(uint32_t i = 0; i < it->numDimensions * it->dims[0]; i++) {
-                mat.data()[i] = rawNn.data.data()[it->offset + i];
+            for(uint32_t i = 0; i < tensor.size(); i++)
+            {
+                tensor.data()[i] = rawNn.data.data()[it->offset + i];
             }
         }
         else {
-            for(uint32_t i = 0; i < it->numDimensions * it->dims[0]; i++) { // NOTE : This will probably convert ints and floats in a weird way
-                mat.data()[i] = reinterpret_cast<uint16_t*>(rawNn.data.data())[it->offset + i];
+            for(uint32_t i = 0; i < tensor.size(); i++)
+            {
+                tensor.data()[i] = fp16_to_fp32(*(uint16_t*)&rawNn.data.data()[it->offset + 2 * i]);    
             }
         }
 
-        return mat;
+        return tensor;
     }
+
+    /**
+     * Get the datatype of a given tensor
+     * @returns TensorInfo::DataType tensor datatype
+     */
+    TensorInfo::DataType getTensorDatatype(const std::string& name);
 
      /**
      * Convenience function to retrieve values from the first tensor
-     * @returns Eigen::Matrix<_Ty, _X, _Y> tensor
+     * @returns xt::xarray<_Ty> tensor
      */
-    template<typename _Ty, int _X = Eigen::Dynamic, int _Y = Eigen::Dynamic>
-    Eigen::Matrix<_Ty, _X, _Y> getFirstTensor()
+    template<typename _Ty>
+    xt::xarray<_Ty> getFirstTensor()
     {
         if(!rawNn.tensors.empty()) {
-            return getTensor<_Ty, _X, _Y>(rawNn.tensors[0].name);
+            return getTensor<_Ty>(rawNn.tensors[0].name);
         }
 
         return {};

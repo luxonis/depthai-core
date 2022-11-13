@@ -421,7 +421,9 @@ target_link_libraries(${TARGET_CORE_NAME}
     PUBLIC
         nlohmann_json::nlohmann_json
         libnop
-        Eigen3::Eigen
+        xtensor
+        xtensor::optimize
+        xtensor::use_xsimd
     INTERFACE
         XLinkPublic
     PRIVATE
