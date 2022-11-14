@@ -15,8 +15,10 @@ class SystemLogger : public NodeCRTP<DeviceNode, SystemLogger, SystemLoggerPrope
    public:
     constexpr static const char* NAME = "SystemLogger";
 
-    SystemLogger(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    SystemLogger(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    /// Creates a SystemLogger node with default properties
+    SystemLogger();
+    /// Creates a SystemLogger node with given properties
+    SystemLogger(std::unique_ptr<Properties> props);
 
     /**
      * Outputs SystemInformation[S3] message that carries various system information

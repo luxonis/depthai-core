@@ -82,9 +82,13 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Optimized for adding, searching and removing connections
     using NodeMap = std::unordered_map<Node::Id, std::shared_ptr<Node>>;
     NodeMap nodeMap;
+
+    // TODO(themarpe) - refactor, connections are now carried by nodes instead
     using NodeConnectionMap = std::unordered_map<Node::Id, std::unordered_set<Node::Connection>>;
-    // Connection map, NodeId represents id of node connected TO (input)
-    NodeConnectionMap nodeConnectionMap;
+    // // Connection map, NodeId represents id of node connected TO (input)
+    // NodeConnectionMap nodeConnectionMap;
+    /// Get a reference to internal connection representation
+    NodeConnectionMap getConnectionMap() const;
 
     // Board configuration
     BoardConfig board;
@@ -104,11 +108,10 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     std::shared_ptr<N> create(const std::shared_ptr<PipelineImpl>& itself) {
         // Check that passed type 'N' is subclass of Node
         static_assert(std::is_base_of<Node, N>::value, "Specified class is not a subclass of Node");
-        // Get unique id for this new node
-        auto id = getNextUniqueId();
         // Create and store the node in the map
-        auto node = std::make_shared<N>(itself, id);
-        nodeMap[id] = node;
+        auto node = std::make_shared<N>();
+        // Add
+        add(node);
         // Return shared pointer to this node
         return node;
     }
@@ -227,8 +230,8 @@ class Pipeline {
 
     using NodeConnectionMap = PipelineImpl::NodeConnectionMap;
     /// Get a reference to internal connection representation
-    const NodeConnectionMap& getConnectionMap() const {
-        return impl()->nodeConnectionMap;
+    NodeConnectionMap getConnectionMap() const {
+        return impl()->getConnectionMap();
     }
 
     using NodeMap = PipelineImpl::NodeMap;
@@ -237,29 +240,29 @@ class Pipeline {
         return impl()->nodeMap;
     }
 
-    /**
-     * Link output to an input. Both nodes must be on the same pipeline
-     *
-     * Throws an error if they aren't or cannot be connected
-     *
-     * @param out Nodes output to connect from
-     * @param in Nodes input to connect to
-     */
-    void link(const Node::Output& out, const Node::Input& in) {
-        impl()->link(out, in);
-    }
+    // /**
+    //  * Link output to an input. Both nodes must be on the same pipeline
+    //  *
+    //  * Throws an error if they aren't or cannot be connected
+    //  *
+    //  * @param out Nodes output to connect from
+    //  * @param in Nodes input to connect to
+    //  */
+    // void link(const Node::Output& out, const Node::Input& in) {
+    //     impl()->link(out, in);
+    // }
 
-    /**
-     * Unlink output from an input.
-     *
-     * Throws an error if link doesn't exists
-     *
-     * @param out Nodes output to unlink from
-     * @param in Nodes input to unlink to
-     */
-    void unlink(const Node::Output& out, const Node::Input& in) {
-        impl()->unlink(out, in);
-    }
+    // /**
+    //  * Unlink output from an input.
+    //  *
+    //  * Throws an error if link doesn't exists
+    //  *
+    //  * @param out Nodes output to unlink from
+    //  * @param in Nodes input to unlink to
+    //  */
+    // void unlink(const Node::Output& out, const Node::Input& in) {
+    //     impl()->unlink(out, in);
+    // }
 
     /// Get pipelines AssetManager as reference
     const AssetManager& getAssetManager() const {

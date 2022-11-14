@@ -147,6 +147,24 @@ nlohmann::json PipelineImpl::serializeToJson() const {
     return j;
 }
 
+PipelineImpl::NodeConnectionMap PipelineImpl::getConnectionMap() const {
+    NodeConnectionMap map;
+
+    for(const auto& kv : nodeMap) {
+        const auto& id = kv.first;
+        const auto& node = kv.second;
+
+        std::unordered_set<Node::Connection> connset;
+        for(const auto& conn : node->connections) {
+            connset.insert(conn);
+        }
+        map[id] = connset;
+    }
+
+    return map;
+}
+
+
 PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
     PipelineSchema schema;
     schema.globalProperties = globalProperties;
@@ -250,6 +268,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
     };
     Node::Id xLinkBridgeId = latestId;
 
+    auto nodeConnectionMap = getConnectionMap();
     for(const auto& kv : nodeConnectionMap) {
         const auto& connections = kv.second;
 
@@ -278,7 +297,9 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
                 // Create a map entry, only one bridge is required for multiple connections
                 auto xlinkConnection = c;
 
-                auto nodeTmp = std::make_shared<node::XLinkIn>(parent.pimpl, xLinkBridgeId++);
+                auto nodeTmp = std::make_shared<node::XLinkIn>();
+                nodeTmp->parent = parent.pimpl;
+                nodeTmp->id = xLinkBridgeId++;
                 xlinkConnection.node1Id = xLinkBridgeId;
                 xlinkConnection.node1Output = nodeTmp->out.name;
                 xlinkConnection.node1OutputGroup = nodeTmp->out.group;
@@ -313,7 +334,9 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
                 if(deviceHostXLinkBridge.count(xlinkConnection) <= 0) {
                     // create it
                     deviceHostXLinkBridge[xlinkConnection] = true;
-                    auto nodeTmp = std::make_shared<node::XLinkOut>(parent.pimpl, xLinkBridgeId++);
+                    auto nodeTmp = std::make_shared<node::XLinkOut>();
+                    nodeTmp->parent = parent.pimpl;
+                    nodeTmp->id = xLinkBridgeId++;
                     nodeTmp->setStreamName(streamName(c.node1Id, c.node1OutputGroup, c.node1Output));
 
                     c.node2Id = nodeTmp->id;
@@ -516,36 +539,62 @@ void PipelineImpl::remove(std::shared_ptr<Node> toRemove) {
     // Search for this node in 'nodes' vector.
     // If found, remove from vector
 
-    // First check if node is on this pipeline (and that they are the same)
-    if(nodeMap.count(toRemove->id) > 0) {
-        if(nodeMap.at(toRemove->id) == toRemove) {
-            // its same object, (not same id but from different pipeline)
 
-            // Steps to remove
-            // 1. Iterate and remove this nodes output connections
-            // 2. Remove this nodes entry in 'nodeConnectionMap'
-            // 3. Remove node from 'nodeMap'
+    // // Go through and modify nodes and its children
+    // // that they are now part of this pipeline
+    // std::weak_ptr<PipelineImpl> curParent;
+    // std::queue<std::shared_ptr<Node>> search;
+    // search.push(toRemove);
+    // while(!search.empty()) {
+    //     auto curNode = search.front();
 
-            // 1. Iterate and remove this nodes output connections
-            for(auto& kv : nodeConnectionMap) {
-                for(auto it = kv.second.begin(); it != kv.second.end();) {
-                    // check if output belongs to 'toRemove' node
-                    if(it->outputId == toRemove->id) {
-                        // remove this connection from set
-                        it = kv.second.erase(it);
-                    } else {
-                        ++it;
-                    }
-                }
-            }
+    //     if(curNode->parent.lock() == nullptr) {
+    //         // pass
+    //     } else if(curNode->parent.lock() != parent.pimpl) {
+    //         throw std::invalid_argument("Cannot remove a node that is a part of another pipeline");
+    //     } else {
+    //         curNode->parent = nullptr;
+    //     }
 
-            // 2. Remove this nodes entry in 'nodeConnectionMap'
-            nodeConnectionMap.erase(toRemove->id);
+    //     for(auto& n : curNode->nodeMap) {
+    //         search.push(n.second);
+    //     }
+    // }
 
-            // 3. Remove node from 'nodeMap'
-            nodeMap.erase(toRemove->id);
-        }
-    }
+    // nodeMap.count(toRemove->id) {
+    // }
+
+
+    // // First check if node is on this pipeline (and that they are the same)
+    // if(nodeMap.count(toRemove->id) > 0) {
+    //     if(nodeMap.at(toRemove->id) == toRemove) {
+    //         // its same object, (not same id but from different pipeline)
+
+    //         // Steps to remove
+    //         // 1. Iterate and remove this nodes output connections
+    //         // 2. Remove this nodes entry in 'nodeConnectionMap'
+    //         // 3. Remove node from 'nodeMap'
+
+    //         // 1. Iterate and remove this nodes output connections
+    //         for(auto& kv : nodeConnectionMap) {
+    //             for(auto it = kv.second.begin(); it != kv.second.end();) {
+    //                 // check if output belongs to 'toRemove' node
+    //                 if(it->outputId == toRemove->id) {
+    //                     // remove this connection from set
+    //                     it = kv.second.erase(it);
+    //                 } else {
+    //                     ++it;
+    //                 }
+    //             }
+    //         }
+
+    //         // 2. Remove this nodes entry in 'nodeConnectionMap'
+    //         nodeConnectionMap.erase(toRemove->id);
+
+    //         // 3. Remove node from 'nodeMap'
+    //         nodeMap.erase(toRemove->id);
+    //     }
+    // }
 }
 
 bool PipelineImpl::isSamePipeline(const Node::Output& out, const Node::Input& in) {
@@ -588,7 +637,7 @@ bool PipelineImpl::canConnect(const Node::Output& out, const Node::Input& in) {
 
 std::vector<Node::Connection> PipelineImpl::getConnections() const {
     std::vector<Node::Connection> connections;
-    for(const auto& kv : nodeConnectionMap) {
+    for(const auto& kv : getConnectionMap()) {
         for(const auto& conn : kv.second) {
             connections.push_back(conn);
         }
@@ -596,51 +645,51 @@ std::vector<Node::Connection> PipelineImpl::getConnections() const {
     return connections;
 }
 
-void PipelineImpl::link(const Node::Output& out, const Node::Input& in) {
-    // First check if on same pipeline
-    if(!isSamePipeline(out, in)) {
-        throw std::logic_error(fmt::format("Nodes are not on same pipeline or one of nodes parent pipeline doesn't exists anymore"));
-    }
+// void PipelineImpl::link(const Node::Output& out, const Node::Input& in) {
+//     // First check if on same pipeline
+//     if(!isSamePipeline(out, in)) {
+//         throw std::logic_error(fmt::format("Nodes are not on same pipeline or one of nodes parent pipeline doesn't exists anymore"));
+//     }
 
-    // First check if can connect (must be on same pipeline and correct types)
-    if(!canConnect(out, in)) {
-        throw std::runtime_error(
-            fmt::format("Cannot link '{}.{}' to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
-    }
+//     // First check if can connect (must be on same pipeline and correct types)
+//     if(!canConnect(out, in)) {
+//         throw std::runtime_error(
+//             fmt::format("Cannot link '{}.{}' to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
+//     }
 
-    // Create 'Connection' object between 'out' and 'in'
-    Node::Connection connection(out, in);
+//     // Create 'Connection' object between 'out' and 'in'
+//     Node::Connection connection(out, in);
 
-    // Check if connection was already made - the following is possible as operator[] constructs the underlying set if it doesn't exist.
-    if(nodeConnectionMap[in.getParent().id].count(connection) > 0) {
-        // this means a connection was already made.
-        throw std::logic_error(
-            fmt::format("'{}.{}' already linked to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
-    }
+//     // Check if connection was already made - the following is possible as operator[] constructs the underlying set if it doesn't exist.
+//     if(nodeConnectionMap[in.getParent().id].count(connection) > 0) {
+//         // this means a connection was already made.
+//         throw std::logic_error(
+//             fmt::format("'{}.{}' already linked to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
+//     }
 
-    // Otherwise all is set to add a new connection into nodeConnectionMap[in.getParent().id]
-    nodeConnectionMap[in.getParent().id].insert(connection);
-}
+//     // Otherwise all is set to add a new connection into nodeConnectionMap[in.getParent().id]
+//     nodeConnectionMap[in.getParent().id].insert(connection);
+// }
 
-void PipelineImpl::unlink(const Node::Output& out, const Node::Input& in) {
-    // First check if on same pipeline
-    if(!isSamePipeline(out, in)) {
-        throw std::logic_error(fmt::format("Nodes are not on same pipeline or one of nodes parent pipeline doesn't exists anymore"));
-    }
+// void PipelineImpl::unlink(const Node::Output& out, const Node::Input& in) {
+//     // First check if on same pipeline
+//     if(!isSamePipeline(out, in)) {
+//         throw std::logic_error(fmt::format("Nodes are not on same pipeline or one of nodes parent pipeline doesn't exists anymore"));
+//     }
 
-    // Create 'Connection' object
-    Node::Connection connection(out, in);
+//     // Create 'Connection' object
+//     Node::Connection connection(out, in);
 
-    // Check if not connected (connection object doesn't exist in nodeConnectionMap)
-    if(nodeConnectionMap[in.getParent().id].count(connection) <= 0) {
-        // not connected
-        throw std::logic_error(
-            fmt::format("'{}.{}' not linked to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
-    }
+//     // Check if not connected (connection object doesn't exist in nodeConnectionMap)
+//     if(nodeConnectionMap[in.getParent().id].count(connection) <= 0) {
+//         // not connected
+//         throw std::logic_error(
+//             fmt::format("'{}.{}' not linked to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
+//     }
 
-    // Otherwise if exists, remove this connection
-    nodeConnectionMap[in.getParent().id].erase(connection);
-}
+//     // Otherwise if exists, remove this connection
+//     nodeConnectionMap[in.getParent().id].erase(connection);
+// }
 
 void PipelineImpl::setCalibrationData(CalibrationHandler calibrationDataHandler) {
     /* if(!calibrationDataHandler.validateCameraArray()) {
@@ -697,11 +746,32 @@ void PipelineImpl::add(std::shared_ptr<Node> node) {
     if(node == nullptr) {
         throw std::invalid_argument(fmt::format("Given node pointer is null"));
     }
-    if(nodeMap.count(node->id) > 0) {
-        throw std::invalid_argument(fmt::format("Node with id: {} already exists", node->id));
+
+    // Go through and modify nodes and its children
+    // that they are now part of this pipeline
+    std::weak_ptr<PipelineImpl> curParent;
+    std::queue<std::shared_ptr<Node>> search;
+    search.push(node);
+    while(!search.empty()) {
+        auto curNode = search.front();
+        search.pop();
+
+        if(curNode->parent.lock() == nullptr) {
+            curNode->parent = parent.pimpl;
+        } else if(curNode->parent.lock() != parent.pimpl) {
+            throw std::invalid_argument("Cannot add a node that is already part of another pipeline");
+        }
+
+        for(auto& n : curNode->nodeMap) {
+            search.push(n.second);
+        }
     }
 
-    // Add to the map
+    // Assign an ID to the node
+    auto id = getNextUniqueId();
+    node->id = id;
+
+    // Add to the map (node holds its children itself)
     nodeMap[node->id] = node;
 }
 

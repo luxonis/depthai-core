@@ -16,8 +16,10 @@ class XLinkOut : public NodeCRTP<DeviceNode, XLinkOut, XLinkOutProperties> {
     constexpr static const char* NAME = "XLinkOut";
 
    public:
-    XLinkOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    XLinkOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    /// Creates an XLinkOut node with default properties
+    XLinkOut();
+    /// Creates an XLinkOut node with given properties
+    XLinkOut(std::unique_ptr<Properties> props);
 
     /**
      * Input for any type of messages to be transferred over XLink stream

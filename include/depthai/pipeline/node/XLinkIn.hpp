@@ -16,8 +16,8 @@ class XLinkIn : public NodeCRTP<DeviceNode, XLinkIn, XLinkInProperties> {
     constexpr static const char* NAME = "XLinkIn";
 
    public:
-    XLinkIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    XLinkIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    XLinkIn();
+    XLinkIn(std::unique_ptr<Properties> props);
     virtual ~XLinkIn() = default;
 
     /**

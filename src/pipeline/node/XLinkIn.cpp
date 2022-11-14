@@ -3,13 +3,13 @@
 namespace dai {
 namespace node {
 
-XLinkIn::XLinkIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : NodeCRTP<DeviceNode, XLinkIn, XLinkInProperties>(par, nodeId, std::make_unique<XLinkIn::Properties>()) {
+XLinkIn::XLinkIn()
+    : NodeCRTP<DeviceNode, XLinkIn, XLinkInProperties>(std::make_unique<XLinkIn::Properties>()) {
     setOutputRefs(&out);
 }
 
-XLinkIn::XLinkIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, XLinkIn, XLinkInProperties>(par, nodeId, std::move(props)) {
+XLinkIn::XLinkIn(std::unique_ptr<Properties> props)
+    : NodeCRTP<DeviceNode, XLinkIn, XLinkInProperties>(std::move(props)) {
     setOutputRefs(&out);
 }
 

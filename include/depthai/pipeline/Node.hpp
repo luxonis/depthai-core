@@ -5,6 +5,7 @@
 #include <set>
 #include <string>
 #include <tuple>
+#include <unordered_set>
 
 // project
 #include "depthai/openvino/OpenVINO.hpp"
@@ -27,7 +28,7 @@ class PipelineImpl;
 /**
  * @brief Abstract Node
  */
-class Node {
+class Node : public std::enable_shared_from_this<Node> {
     friend class Pipeline;
     friend class PipelineImpl;
 
@@ -118,7 +119,7 @@ class Node {
          *
          * @param in Input to link to
          */
-        void link(const Input& in);
+        void link(Input& in);
 
         /**
          * Unlink a previously linked connection
@@ -127,7 +128,7 @@ class Node {
          *
          * @param in Input from which to unlink from
          */
-        void unlink(const Input& in);
+        void unlink(Input& in);
 
         /**
          * Sends a Message to all connected inputs
@@ -282,10 +283,26 @@ class Node {
         Input& operator[](const std::string& key);
     };
 
+    /// Connection between an Input and Output internal
+    struct ConnectionInternal {
+        ConnectionInternal(Output& out, Input& in);
+        std::weak_ptr<Node> outputNode;
+        std::string outputName;
+        std::string outputGroup;
+        std::weak_ptr<Node> inputNode;
+        std::string inputName;
+        std::string inputGroup;
+        bool operator==(const ConnectionInternal& rhs) const;
+        struct Hash {
+            size_t operator()(const dai::Node::ConnectionInternal& obj) const;
+        };
+    };
+
     /// Connection between an Input and Output
     struct Connection {
         friend struct std::hash<Connection>;
         Connection(Output out, Input in);
+        Connection(ConnectionInternal c);
         Id outputId;
         std::string outputName;
         std::string outputGroup;
@@ -301,8 +318,10 @@ class Node {
     std::weak_ptr<Node> parentNode;
 
    public:
-    /// Id of node
-    const Id id;
+
+    // TODO(themarpe) - restrict access
+    /// Id of node. Assigned after being placed on the pipeline
+    Id id{-1};
     /// Marker if the node can run on host
     bool hostNode{false};
 
@@ -318,8 +337,8 @@ class Node {
 
     // Connection map, NodeId represents id of node connected TO (input)
     // using NodeConnectionMap = std::unordered_map<Node::Id, std::unordered_set<Node::Connection>>;
-    using NodeConnectionMap = std::unordered_map<Node::Id, std::unordered_set<Node::Connection>>;
-    NodeConnectionMap nodeConnectionMap;
+    using SetConnectionInternal = std::unordered_set<ConnectionInternal, ConnectionInternal::Hash>;
+    SetConnectionInternal connections;
 
     // Properties
     copyable_unique_ptr<Properties> propertiesHolder;
@@ -386,21 +405,8 @@ class Node {
     /// Retrieves reference to specific input map
     InputMap* getInputMapRef(std::string group);
 
-    /// Connection between an Input and Output
-    struct Connection {
-        friend struct std::hash<Connection>;
-        Connection(const Output& out, const Input& in);
-        std::weak_ptr<Node> outputNode;
-        std::string outputName;
-        std::string outputGroup;
-        std::weak_ptr<Node> inputNode;
-        std::string inputName;
-        std::string inputGroup;
-        bool operator==(const Connection& rhs) const;
-    };
-
-    Node(const std::shared_ptr<PipelineImpl>& p, Id nodeId, std::unique_ptr<Properties> props);
-    Node(const std::shared_ptr<Node>& parentNode, Id nodeId, std::unique_ptr<Properties> props);
+    Node();
+    Node(std::unique_ptr<Properties> props);
     virtual ~Node() = default;
 
     /// Get node AssetManager as a const reference
@@ -417,11 +423,10 @@ class Node {
     std::shared_ptr<N> create() {
         // Check that passed type 'N' is subclass of Node
         static_assert(std::is_base_of<Node, N>::value, "Specified class is not a subclass of Node");
-        // Get unique id for this new node/group
-        auto id = getNextUniqueId();
         // Create and store the node in the map
-        auto node = std::make_shared<N>(this, id);
-        nodeMap[id] = node;
+        auto node = std::make_shared<N>();
+        // Add
+        add(node);
         // Return shared pointer to this node
         return node;
     }
@@ -460,12 +465,9 @@ class NodeCRTP : public Base {
     };
 
    private:
-    NodeCRTP(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-        : Base(par, nodeId, std::move(props)), properties(static_cast<Properties&>(Node::properties)) {}
-    NodeCRTP(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : NodeCRTP(par, nodeId, std::make_unique<Props>()) {}
-    NodeCRTP(const std::shared_ptr<Node>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-        : Base(par, nodeId, std::move(props)), properties(static_cast<Properties&>(Node::properties)) {}
-    NodeCRTP(const std::shared_ptr<Node>& par, int64_t nodeId) : NodeCRTP(par, nodeId, std::make_unique<Props>()) {}
+    NodeCRTP(std::unique_ptr<Properties> props)
+        : Base(std::move(props)), properties(static_cast<Properties&>(Node::properties)) {}
+    NodeCRTP() : NodeCRTP(std::make_unique<Props>()) {}
 
     friend Derived;
     friend Base;

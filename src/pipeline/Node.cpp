@@ -5,12 +5,9 @@
 
 namespace dai {
 
-Node::Node(const std::shared_ptr<PipelineImpl>& p, Id nodeId, std::unique_ptr<Properties> props)
-    : parent(p), id(nodeId), assetManager("/node/" + std::to_string(nodeId) + "/"), propertiesHolder(std::move(props)), properties(*propertiesHolder) {}
 
-// TODO (themarpe) - asset manager change to -> /{id1}/{id2}/{id3}/.../[assetName]
-Node::Node(const std::shared_ptr<Node>& p, Id nodeId, std::unique_ptr<Properties> props)
-    : parentNode(p), id(nodeId), assetManager("/node/" + std::to_string(nodeId) + "/"), propertiesHolder(std::move(props)), properties(*propertiesHolder) {}
+Node::Node(std::unique_ptr<Properties> props)
+    : propertiesHolder(std::move(props)), properties(*propertiesHolder) {}
 
 tl::optional<OpenVINO::Version> Node::getRequiredOpenVINOVersion() {
     return tl::nullopt;
@@ -37,6 +34,15 @@ Node::Connection::Connection(Output out, Input in) {
     inputId = in.getParent().id;
     inputName = in.name;
     inputGroup = in.group;
+}
+
+Node::Connection::Connection(ConnectionInternal c) {
+    outputId = c.outputNode.lock()->id;
+    outputName = c.outputName;
+    outputGroup = c.outputGroup;
+    inputId = c.inputNode.lock()->id;
+    inputName = c.inputName;
+    inputGroup = c.inputGroup;
 }
 
 bool Node::Connection::operator==(const Node::Connection& rhs) const {
@@ -81,18 +87,84 @@ bool Node::Output::isSamePipeline(const Input& in) {
     return false;
 }
 
+static bool isDatatypeMatch(const Node::Output& out, const Node::Input& in) {
+    // Check that datatypes match up
+    for(const auto& outHierarchy : out.possibleDatatypes) {
+        for(const auto& inHierarchy : in.possibleDatatypes) {
+            // Check if datatypes match for current datatype
+            if(outHierarchy.datatype == inHierarchy.datatype) return true;
+
+            // If output can produce descendants
+            if(outHierarchy.descendants && isDatatypeSubclassOf(outHierarchy.datatype, inHierarchy.datatype)) return true;
+
+            // If input allows descendants
+            if(inHierarchy.descendants && isDatatypeSubclassOf(inHierarchy.datatype, outHierarchy.datatype)) return true;
+        }
+    }
+    // otherwise return false
+    return false;
+}
+
 bool Node::Output::canConnect(const Input& in) {
-    return PipelineImpl::canConnect(*this, in);
+    // Check that IoType match up
+    if(type == Output::Type::MSender && in.type == Input::Type::MReceiver) return false;
+    if(type == Output::Type::SSender && in.type == Input::Type::SReceiver) return false;
+
+    // Check that datatypes match up
+    if(!isDatatypeMatch(*this, in)) {
+        return false;
+    }
+
+    // All checks pass
+    return true;
 }
 
-void Node::Output::link(const Input& in) {
-    // Call link of pipeline
-    parent.getParentPipeline().link(*this, in);
+void Node::Output::link(Input& in) {
+    // First check if can connect
+    if(!canConnect(in)) {
+        throw std::runtime_error(
+            fmt::format("Cannot link '{}.{}' to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
+    }
+
+    // Create 'Connection' object between 'out' and 'in'
+    Node::ConnectionInternal connection(*this, in);
+
+    // Check if connection was already made - the following is possible as operator[] constructs the underlying set if it doesn't exist.
+    if(parent.connections.count(connection) > 0) {
+        // this means a connection was already made.
+        throw std::logic_error(
+            fmt::format("'{}.{}' already linked to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
+    }
+
+    // Otherwise all is set to add a new connection
+    parent.connections.insert(connection);
 }
 
-void Node::Output::unlink(const Input& in) {
-    // Call unlink of pipeline parents pipeline
-    parent.getParentPipeline().unlink(*this, in);
+Node::ConnectionInternal::ConnectionInternal(Output& out, Input& in) {
+    outputNode = out.getParent().shared_from_this();
+    outputName = out.name;
+    outputGroup = out.group;
+    inputNode = in.getParent().shared_from_this();
+    inputName = in.name;
+    inputGroup = in.group;
+}
+
+bool Node::ConnectionInternal::operator==(const Node::ConnectionInternal& rhs) const {
+    return (outputNode.lock() == rhs.outputNode.lock() && outputName == rhs.outputName && outputGroup == rhs.outputGroup && inputNode.lock() == rhs.inputNode.lock() && inputName == rhs.inputName
+            && inputGroup == rhs.inputGroup);
+}
+
+void Node::Output::unlink(Input& in) {
+    // Create 'Connection' object between 'out' and 'in'
+    Node::ConnectionInternal connection(*this, in);
+    if(parent.connections.count(connection) == 0) {
+        // this means a connection was not present already made.
+        throw std::logic_error(
+            fmt::format("'{}.{}' not linked to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
+    }
+
+    // Unlink
+    parent.connections.erase(connection);
 }
 
 void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
@@ -403,7 +475,16 @@ void Node::setInputMapRefs(Node::InputMap* inMapRef) {
 }
 
 
+void Node::add(std::shared_ptr<Node> node) {
 
+    // TODO(themarpe) - check if node is already added somewhere else, etc... (as in Pipeline)
+    node->parentNode = shared_from_this();
+
+    // Add to the map (node holds its children itself)
+    nodeMap[node->id] = node;
+}
+
+/*
 // Remove node capability
 void Node::remove(std::shared_ptr<Node> toRemove) {
     // Search for this node in 'nodes' vector.
@@ -441,39 +522,8 @@ void Node::remove(std::shared_ptr<Node> toRemove) {
     }
 }
 
-static bool isDatatypeMatch(const Node::Output& out, const Node::Input& in) {
-    // Check that datatypes match up
-    for(const auto& outHierarchy : out.possibleDatatypes) {
-        for(const auto& inHierarchy : in.possibleDatatypes) {
-            // Check if datatypes match for current datatype
-            if(outHierarchy.datatype == inHierarchy.datatype) return true;
-
-            // If output can produce descendants
-            if(outHierarchy.descendants && isDatatypeSubclassOf(outHierarchy.datatype, inHierarchy.datatype)) return true;
-
-            // If input allows descendants
-            if(inHierarchy.descendants && isDatatypeSubclassOf(inHierarchy.datatype, outHierarchy.datatype)) return true;
-        }
-    }
-    // otherwise return false
-    return false;
-}
-
 bool Node::canConnect(const Output& out, const Input& in) {
-    // Check that IoType match up
-    if(out.type == Output::Type::MSender && in.type == Input::Type::MReceiver) return false;
-    if(out.type == Output::Type::SSender && in.type == Input::Type::SReceiver) return false;
 
-    // Check that datatypes match up
-    if(!isDatatypeMatch(out, in)) {
-        return false;
-    }
-
-    // Check that nodes are placed on a common parent
-
-
-    // All checks pass
-    return true;
 }
 
 std::vector<Node::Connection> Node::getConnections() const {
@@ -487,10 +537,10 @@ std::vector<Node::Connection> Node::getConnections() const {
 }
 
 void Node::link(const Node::Output& out, const Node::Input& in) {
-    // First check if on same pipeline
-    if(!isSamePipeline(out, in)) {
-        throw std::logic_error(fmt::format("Nodes are not on same pipeline or one of nodes parent pipeline doesn't exists anymore"));
-    }
+    // // First check if on same pipeline
+    // if(!isSamePipeline(out, in)) {
+    //     throw std::logic_error(fmt::format("Nodes are not on same pipeline or one of nodes parent pipeline doesn't exists anymore"));
+    // }
 
     // First check if can connect (must be on same pipeline and correct types)
     if(!canConnect(out, in)) {
@@ -532,6 +582,19 @@ void Node::unlink(const Node::Output& out, const Node::Input& in) {
     nodeConnectionMap[in.getParent().id].erase(connection);
 }
 
+
+*/
+
+size_t Node::ConnectionInternal::Hash::operator()(const dai::Node::ConnectionInternal& obj) const {
+    size_t seed = 0;
+    std::hash<std::shared_ptr<Node>> hId;
+    std::hash<std::string> hStr;
+    seed ^= hId(obj.outputNode.lock()) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    seed ^= hStr(obj.outputName) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    seed ^= hId(obj.inputNode.lock()) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    seed ^= hStr(obj.outputName) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    return seed;
+}
 
 
 }  // namespace dai

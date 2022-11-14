@@ -26,8 +26,8 @@ class ColorCamera : public NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperti
     /**
      * Constructs ColorCamera node.
      */
-    ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    ColorCamera();
+    ColorCamera(std::unique_ptr<Properties> props);
 
     /**
      * Computes the scaled size given numerator and denominator
