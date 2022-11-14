@@ -8,6 +8,10 @@ namespace dai {
 Node::Node(const std::shared_ptr<PipelineImpl>& p, Id nodeId, std::unique_ptr<Properties> props)
     : parent(p), id(nodeId), assetManager("/node/" + std::to_string(nodeId) + "/"), propertiesHolder(std::move(props)), properties(*propertiesHolder) {}
 
+// TODO (themarpe) - asset manager change to -> /{id1}/{id2}/{id3}/.../[assetName]
+Node::Node(const std::shared_ptr<Node>& p, Id nodeId, std::unique_ptr<Properties> props)
+    : parentNode(p), id(nodeId), assetManager("/node/" + std::to_string(nodeId) + "/"), propertiesHolder(std::move(props)), properties(*propertiesHolder) {}
+
 tl::optional<OpenVINO::Version> Node::getRequiredOpenVINOVersion() {
     return tl::nullopt;
 }
@@ -397,5 +401,137 @@ void Node::setInputMapRefs(std::initializer_list<Node::InputMap*> l) {
 void Node::setInputMapRefs(Node::InputMap* inMapRef) {
     inputMapRefs[inMapRef->name] = inMapRef;
 }
+
+
+
+// Remove node capability
+void Node::remove(std::shared_ptr<Node> toRemove) {
+    // Search for this node in 'nodes' vector.
+    // If found, remove from vector
+
+    // First check if node is on this node (and that they are the same)
+    if(nodeMap.count(toRemove->id) > 0) {
+        if(nodeMap.at(toRemove->id) == toRemove) {
+            // its same object, (not same id but from different pipeline)
+
+            // Steps to remove
+            // 1. Iterate and remove this nodes output connections
+            // 2. Remove this nodes entry in 'nodeConnectionMap'
+            // 3. Remove node from 'nodeMap'
+
+            // 1. Iterate and remove this nodes output connections
+            for(auto& kv : nodeConnectionMap) {
+                for(auto it = kv.second.begin(); it != kv.second.end();) {
+                    // check if output belongs to 'toRemove' node
+                    if(it->outputId == toRemove->id) {
+                        // remove this connection from set
+                        it = kv.second.erase(it);
+                    } else {
+                        ++it;
+                    }
+                }
+            }
+
+            // 2. Remove this nodes entry in 'nodeConnectionMap'
+            nodeConnectionMap.erase(toRemove->id);
+
+            // 3. Remove node from 'nodeMap'
+            nodeMap.erase(toRemove->id);
+        }
+    }
+}
+
+static bool isDatatypeMatch(const Node::Output& out, const Node::Input& in) {
+    // Check that datatypes match up
+    for(const auto& outHierarchy : out.possibleDatatypes) {
+        for(const auto& inHierarchy : in.possibleDatatypes) {
+            // Check if datatypes match for current datatype
+            if(outHierarchy.datatype == inHierarchy.datatype) return true;
+
+            // If output can produce descendants
+            if(outHierarchy.descendants && isDatatypeSubclassOf(outHierarchy.datatype, inHierarchy.datatype)) return true;
+
+            // If input allows descendants
+            if(inHierarchy.descendants && isDatatypeSubclassOf(inHierarchy.datatype, outHierarchy.datatype)) return true;
+        }
+    }
+    // otherwise return false
+    return false;
+}
+
+bool Node::canConnect(const Output& out, const Input& in) {
+    // Check that IoType match up
+    if(out.type == Output::Type::MSender && in.type == Input::Type::MReceiver) return false;
+    if(out.type == Output::Type::SSender && in.type == Input::Type::SReceiver) return false;
+
+    // Check that datatypes match up
+    if(!isDatatypeMatch(out, in)) {
+        return false;
+    }
+
+    // Check that nodes are placed on a common parent
+
+
+    // All checks pass
+    return true;
+}
+
+std::vector<Node::Connection> Node::getConnections() const {
+    std::vector<Node::Connection> connections;
+    for(const auto& kv : nodeConnectionMap) {
+        for(const auto& conn : kv.second) {
+            connections.push_back(conn);
+        }
+    }
+    return connections;
+}
+
+void Node::link(const Node::Output& out, const Node::Input& in) {
+    // First check if on same pipeline
+    if(!isSamePipeline(out, in)) {
+        throw std::logic_error(fmt::format("Nodes are not on same pipeline or one of nodes parent pipeline doesn't exists anymore"));
+    }
+
+    // First check if can connect (must be on same pipeline and correct types)
+    if(!canConnect(out, in)) {
+        throw std::runtime_error(
+            fmt::format("Cannot link '{}.{}' to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
+    }
+
+    // Create 'Connection' object between 'out' and 'in'
+    Node::Connection connection(out, in);
+
+    // Check if connection was already made - the following is possible as operator[] constructs the underlying set if it doesn't exist.
+    if(nodeConnectionMap[in.getParent().id].count(connection) > 0) {
+        // this means a connection was already made.
+        throw std::logic_error(
+            fmt::format("'{}.{}' already linked to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
+    }
+
+    // Otherwise all is set to add a new connection into nodeConnectionMap[in.getParent().id]
+    nodeConnectionMap[in.getParent().id].insert(connection);
+}
+
+void Node::unlink(const Node::Output& out, const Node::Input& in) {
+    // First check if on same pipeline
+    if(!isSamePipeline(out, in)) {
+        throw std::logic_error(fmt::format("Nodes are not on same pipeline or one of nodes parent pipeline doesn't exists anymore"));
+    }
+
+    // Create 'Connection' object
+    Node::Connection connection(out, in);
+
+    // Check if not connected (connection object doesn't exist in nodeConnectionMap)
+    if(nodeConnectionMap[in.getParent().id].count(connection) <= 0) {
+        // not connected
+        throw std::logic_error(
+            fmt::format("'{}.{}' not linked to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
+    }
+
+    // Otherwise if exists, remove this connection
+    nodeConnectionMap[in.getParent().id].erase(connection);
+}
+
+
 
 }  // namespace dai

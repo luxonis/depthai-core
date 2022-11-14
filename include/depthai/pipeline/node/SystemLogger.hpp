@@ -27,6 +27,13 @@ class SystemLogger : public NodeCRTP<DeviceNode, SystemLogger, SystemLoggerPrope
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::SystemInformation, false}, {DatatypeEnum::SystemInformationS3, false}}};
 
     /**
+     * Optional - consumes an SystemInformation message from pool to send outwards
+     * Otherwise uses dynamic allocation and/or default pool
+     */
+    Input inputPool{
+        *this, "inputPool", Input::Type::MReceiver, false, 4, {{DatatypeEnum::SystemInformation, false}, {DatatypeEnum::SystemInformationS3, false}}};
+
+    /**
      * Specify logging rate, at which messages will be sent out
      * @param hz Sending rate in hertz (messages per second)
      */

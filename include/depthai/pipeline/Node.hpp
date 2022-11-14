@@ -298,6 +298,7 @@ class Node {
    protected:
     // when Pipeline tries to serialize and construct on remote, it will check if all connected nodes are on same pipeline
     std::weak_ptr<PipelineImpl> parent;
+    std::weak_ptr<Node> parentNode;
 
    public:
     /// Id of node
@@ -310,6 +311,17 @@ class Node {
 
     virtual Properties& getProperties();
     virtual tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion();
+
+    // Optimized for adding, searching and removing connections
+    using NodeMap = std::unordered_map<Node::Id, std::shared_ptr<Node>>;
+    NodeMap nodeMap;
+
+    // Connection map, NodeId represents id of node connected TO (input)
+    // using NodeConnectionMap = std::unordered_map<Node::Id, std::unordered_set<Node::Connection>>;
+    using NodeConnectionMap = std::unordered_map<Node::Id, std::unordered_set<Node::Connection>>;
+    NodeConnectionMap nodeConnectionMap;
+
+    // Properties
     copyable_unique_ptr<Properties> propertiesHolder;
 
    public:
@@ -374,7 +386,21 @@ class Node {
     /// Retrieves reference to specific input map
     InputMap* getInputMapRef(std::string group);
 
+    /// Connection between an Input and Output
+    struct Connection {
+        friend struct std::hash<Connection>;
+        Connection(const Output& out, const Input& in);
+        std::weak_ptr<Node> outputNode;
+        std::string outputName;
+        std::string outputGroup;
+        std::weak_ptr<Node> inputNode;
+        std::string inputName;
+        std::string inputGroup;
+        bool operator==(const Connection& rhs) const;
+    };
+
     Node(const std::shared_ptr<PipelineImpl>& p, Id nodeId, std::unique_ptr<Properties> props);
+    Node(const std::shared_ptr<Node>& parentNode, Id nodeId, std::unique_ptr<Properties> props);
     virtual ~Node() = default;
 
     /// Get node AssetManager as a const reference
@@ -385,6 +411,37 @@ class Node {
 
     /// Loads resource specified by URI and returns its data
     std::vector<uint8_t> loadResource(dai::Path uri);
+
+    /// Create and place Node to this Node
+    template <class N>
+    std::shared_ptr<N> create() {
+        // Check that passed type 'N' is subclass of Node
+        static_assert(std::is_base_of<Node, N>::value, "Specified class is not a subclass of Node");
+        // Get unique id for this new node/group
+        auto id = getNextUniqueId();
+        // Create and store the node in the map
+        auto node = std::make_shared<N>(this, id);
+        nodeMap[id] = node;
+        // Return shared pointer to this node
+        return node;
+    }
+
+    /// Add existing node to nodeMap
+    void add(std::shared_ptr<Node> node);
+
+    // Access to nodes
+    std::vector<std::shared_ptr<const Node>> getAllNodes() const;
+    std::vector<std::shared_ptr<Node>> getAllNodes();
+    std::shared_ptr<const Node> getNode(Node::Id id) const;
+    std::shared_ptr<Node> getNode(Node::Id id);
+    void remove(std::shared_ptr<Node> node);
+    std::vector<Node::Connection> getConnections() const;
+    void link(const Node::Output& out, const Node::Input& in);
+    void unlink(const Node::Output& out, const Node::Input& in);
+    /// Get a reference to internal node map
+    const NodeMap& getNodeMap() const {
+        return nodeMap;
+    }
 };
 
 // Node CRTP class
@@ -406,6 +463,10 @@ class NodeCRTP : public Base {
     NodeCRTP(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
         : Base(par, nodeId, std::move(props)), properties(static_cast<Properties&>(Node::properties)) {}
     NodeCRTP(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : NodeCRTP(par, nodeId, std::make_unique<Props>()) {}
+    NodeCRTP(const std::shared_ptr<Node>& par, int64_t nodeId, std::unique_ptr<Properties> props)
+        : Base(par, nodeId, std::move(props)), properties(static_cast<Properties&>(Node::properties)) {}
+    NodeCRTP(const std::shared_ptr<Node>& par, int64_t nodeId) : NodeCRTP(par, nodeId, std::make_unique<Props>()) {}
+
     friend Derived;
     friend Base;
     friend class PipelineImpl;
