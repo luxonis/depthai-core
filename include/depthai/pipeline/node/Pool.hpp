@@ -17,10 +17,6 @@ class Pool : public NodeCRTP<DeviceNode, Pool, PoolProperties> {
    public:
     constexpr static const char* NAME = "Pool";
 
-   public:
-    Pool(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    Pool(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
-
     /**
      *  Inputs to Script node. Can be accessed using subscript operator (Eg: inputs['in1'])
      *  By default inputs are set to blocking with queue size 8

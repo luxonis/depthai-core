@@ -25,12 +25,16 @@ namespace dai {
 class Pipeline;
 class PipelineImpl;
 
+// template <typename Base, typename Derived, typename Props> class NodeCRTP;
+
 /**
  * @brief Abstract Node
  */
 class Node : public std::enable_shared_from_this<Node> {
+    // protected:
     friend class Pipeline;
     friend class PipelineImpl;
+    // template <typename Base, typename Derived, typename Props> friend class NodeCRTP;
 
    public:
     /// Node identificator. Unique for every node on a single Pipeline
@@ -45,9 +49,9 @@ class Node : public std::enable_shared_from_this<Node> {
    protected:
     std::unordered_map<std::string, Output*> outputRefs;
     std::unordered_map<std::string, Input*> inputRefs;
-
     std::unordered_map<std::string, OutputMap*> outputMapRefs;
     std::unordered_map<std::string, InputMap*> inputMapRefs;
+    std::unordered_map<std::string, std::shared_ptr<Node>*> nodeRefs;
 
     // helpers for setting refs
     void setOutputRefs(std::initializer_list<Output*> l);
@@ -58,6 +62,64 @@ class Node : public std::enable_shared_from_this<Node> {
     void setOutputMapRefs(OutputMap* outMapRef);
     void setInputMapRefs(std::initializer_list<InputMap*> l);
     void setInputMapRefs(InputMap* inMapRef);
+    void setNodeRefs(std::initializer_list<std::pair<std::string, std::shared_ptr<Node>*>> l);
+    void setNodeRefs(std::pair<std::string, std::shared_ptr<Node>*> nodeRef);
+    void setNodeRefs(std::string alias, std::shared_ptr<Node>* nodeRef);
+
+    // template<typename T>
+    // struct Holder : std::shared_ptr<T> {
+    //     Holder(Node& parent, std::string alias) {
+    //         nodeRefs[alias] = this;
+    //     }
+    // };
+
+    template<typename T>
+    class Subnode {
+        std::shared_ptr<Node> node;
+       public:
+        Subnode(Node& parent, std::string alias) {
+            if(!parent.configureMode) {
+                // Create node as well
+                node = std::make_shared<T>();
+                node->setAlias(alias);
+                node->parentNode = node;
+                // Add node to parents map
+                parent.nodeMap.push_back(node);
+            }
+            // Add reference
+            parent.nodeRefs[alias] = &node;
+        }
+        T& operator*() const noexcept {
+            return *std::static_pointer_cast<T>(node).get();
+        }
+        T* operator->() const noexcept {
+            return std::static_pointer_cast<T>(node).get();
+        }
+    };
+
+    // template<typename T>
+    // class Subnode : public std::shared_ptr<T> {
+    //     using std::shared_ptr<T>::shared_ptr;
+    //    public:
+    //     Subnode(Node& parent, std::string alias) {
+    //         if(!parent.configureMode) {
+    //             // Create node as well
+    //             *this = Subnode(new T());
+    //             (*(*this)).setAlias(alias);
+    //             (*(*this)).parentNode = *this;
+    //             // Add node to parents map
+    //             parent.nodeMap.push_back(*this);
+    //         }
+    //         // Add reference
+    //         parent.nodeRefs[alias] = this;
+    //     }
+    //     // T& operator*() const noexcept {
+    //     //     return *std::static_pointer_cast<T>(node).get();
+    //     // }
+    //     // T* operator->() const noexcept {
+    //     //     return std::static_pointer_cast<T>(node).get();
+    //     // }
+    // };
 
    public:
     struct DatatypeHierarchy {
@@ -77,9 +139,15 @@ class Node : public std::enable_shared_from_this<Node> {
         // Which types and do descendants count as well?
         std::vector<DatatypeHierarchy> possibleDatatypes;
         Output(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types)
-            : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {}
+            : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {
+                // Place oneself to the parents references
+                parent.setOutputRefs(this);
+            }
         Output(Node& par, std::string group, std::string n, Type t, std::vector<DatatypeHierarchy> types)
-            : parent(par), group(std::move(group)), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {}
+            : parent(par), group(std::move(group)), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {
+                // Place oneself to the parents references
+                parent.setOutputRefs(this);
+            }
 
         Node& getParent() {
             return parent;
@@ -144,19 +212,28 @@ class Node : public std::enable_shared_from_this<Node> {
         bool trySend(const std::shared_ptr<ADatatype>& msg);
     };
 
+    struct PairHash
+    {
+        template <class T1, class T2>
+        std::size_t operator() (const std::pair<T1, T2> &pair) const {
+            return std::hash<T1>()(pair.first) ^ std::hash<T2>()(pair.second);
+        }
+    };
     /**
      * Output map which keeps track of extra outputs assigned to a node
      * Extends std::unordered_map<std::string, dai::Node::Output>
      */
-    class OutputMap : public std::unordered_map<std::string, Output> {
+    class OutputMap : public std::unordered_map<std::pair<std::string, std::string>, Output, PairHash> {
         Output defaultOutput;
 
        public:
         std::string name;
-        OutputMap(std::string name, Output defaultOutput);
-        OutputMap(Output defaultOutput);
-        /// Create or modify an input
+        OutputMap(Node& parent, std::string name, Output defaultOutput);
+        OutputMap(Node& parent, Output defaultOutput);
+        /// Create or modify an output
         Output& operator[](const std::string& key);
+        /// Create or modify an output with specified group
+        Output& operator[](std::pair<std::string, std::string> groupKey);
     };
 
     class Input {
@@ -181,11 +258,17 @@ class Node : public std::enable_shared_from_this<Node> {
 
         /// Constructs Input with default blocking and queueSize options
         Input(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types)
-            : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {}
+            : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {
+                // Place oneself to the parents references
+                parent.setInputRefs(this);
+            }
 
         /// Constructs Input with specified blocking and queueSize options
         Input(Node& par, std::string n, Type t, bool blocking, int queueSize, std::vector<DatatypeHierarchy> types)
-            : parent(par), name(std::move(n)), type(t), defaultBlocking(blocking), defaultQueueSize(queueSize), possibleDatatypes(std::move(types)) {}
+            : parent(par), name(std::move(n)), type(t), defaultBlocking(blocking), defaultQueueSize(queueSize), possibleDatatypes(std::move(types)) {
+                // Place oneself to the parents references
+                parent.setInputRefs(this);
+            }
 
         /// Constructs Input with specified blocking and queueSize as well as additional options
         Input(Node& par, std::string n, Type t, bool blocking, int queueSize, bool waitForMessage, std::vector<DatatypeHierarchy> types)
@@ -195,7 +278,10 @@ class Node : public std::enable_shared_from_this<Node> {
               defaultBlocking(blocking),
               defaultQueueSize(queueSize),
               defaultWaitForMessage(waitForMessage),
-              possibleDatatypes(std::move(types)) {}
+              possibleDatatypes(std::move(types)) {
+                // Place oneself to the parents references
+                parent.setInputRefs(this);
+              }
 
         /// Constructs Input with specified blocking and queueSize as well as additional options
         Input(Node& par, std::string group, std::string n, Type t, bool blocking, int queueSize, bool waitForMessage, std::vector<DatatypeHierarchy> types)
@@ -206,7 +292,10 @@ class Node : public std::enable_shared_from_this<Node> {
               defaultBlocking(blocking),
               defaultQueueSize(queueSize),
               defaultWaitForMessage(waitForMessage),
-              possibleDatatypes(std::move(types)) {}
+              possibleDatatypes(std::move(types)) {
+                // Place oneself to the parents references
+                parent.setInputRefs(this);
+              }
 
         Node& getParent() {
             return parent;
@@ -272,15 +361,17 @@ class Node : public std::enable_shared_from_this<Node> {
      * Input map which keeps track of inputs assigned to a node
      * Extends std::unordered_map<std::string, dai::Node::Input>
      */
-    class InputMap : public std::unordered_map<std::string, Input> {
+    class InputMap : public std::unordered_map<std::pair<std::string, std::string>, Input, PairHash> {
         Input defaultInput;
 
        public:
         std::string name;
-        InputMap(Input defaultInput);
-        InputMap(std::string name, Input defaultInput);
+        InputMap(Node& parent, Input defaultInput);
+        InputMap(Node& parent, std::string name, Input defaultInput);
         /// Create or modify an input
         Input& operator[](const std::string& key);
+        /// Create or modify an input with specified group
+        Input& operator[](std::pair<std::string, std::string> groupKey);
     };
 
     /// Connection between an Input and Output internal
@@ -312,6 +403,9 @@ class Node : public std::enable_shared_from_this<Node> {
         bool operator==(const Connection& rhs) const;
     };
 
+   private:
+    bool configureMode{false};
+
    protected:
     // when Pipeline tries to serialize and construct on remote, it will check if all connected nodes are on same pipeline
     std::weak_ptr<PipelineImpl> parent;
@@ -324,6 +418,8 @@ class Node : public std::enable_shared_from_this<Node> {
     Id id{-1};
     /// Marker if the node can run on host
     bool hostNode{false};
+    /// alias or name
+    std::string alias;
 
    protected:
     AssetManager assetManager;
@@ -332,7 +428,8 @@ class Node : public std::enable_shared_from_this<Node> {
     virtual tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion();
 
     // Optimized for adding, searching and removing connections
-    using NodeMap = std::unordered_map<Node::Id, std::shared_ptr<Node>>;
+    // using NodeMap = std::unordered_map<Node::Id, std::shared_ptr<Node>>;
+    using NodeMap = std::vector<std::shared_ptr<Node>>;
     NodeMap nodeMap;
 
     // Connection map, NodeId represents id of node connected TO (input)
@@ -343,13 +440,36 @@ class Node : public std::enable_shared_from_this<Node> {
     // Properties
     copyable_unique_ptr<Properties> propertiesHolder;
 
+
+    // /// Create and place Node with an alias this Node
+    // template <class N>
+    // void place(std::string alias, std::shared_ptr<Node>& node) {
+    //     // Check that passed type 'N' is subclass of Node
+    //     static_assert(std::is_base_of<Node, N>::value, "Specified class is not a subclass of Node");
+    //     // Create and store the node in the map
+    //     auto node = std::make_shared<N>();
+    //     // Set alias
+    //     node->setAlias(alias);
+    //     // Add ref
+    //     setNodeRefs({alias, &node});
+    //     // Add
+    //     add(node);
+    //     // Return shared pointer to this node
+    //     return node;
+    // }
+
    public:
-    // Underlying properties
-    Properties& properties;
+    // // Underlying properties
+    // Properties& properties;
 
     // access
     Pipeline getParentPipeline();
     const Pipeline getParentPipeline() const;
+
+    /// Get alias
+    std::string getAlias() const { return alias; }
+    /// Set alias
+    void setAlias(std::string alias) { this->alias = std::move(alias); }
 
     /// Deep copy the node
     virtual std::unique_ptr<Node> clone() const = 0;
@@ -405,8 +525,12 @@ class Node : public std::enable_shared_from_this<Node> {
     /// Retrieves reference to specific input map
     InputMap* getInputMapRef(std::string group);
 
-    Node();
-    Node(std::unique_ptr<Properties> props);
+    // private:
+   protected:
+    Node() = default;
+    Node(std::unique_ptr<Properties> props, bool conf);
+    void build();
+   public:
     virtual ~Node() = default;
 
     /// Get node AssetManager as a const reference
@@ -463,15 +587,34 @@ class NodeCRTP : public Base {
     std::unique_ptr<Node> clone() const override {
         return std::make_unique<Derived>(static_cast<const Derived&>(*this));
     };
+    void build() {}
+
+    // No public constructor, only a factory function.
+    [[nodiscard]] static std::shared_ptr<Derived> create() {
+        auto n = std::make_shared<Derived>();
+        n->build();
+        return n;
+    }
+    [[nodiscard]] static std::shared_ptr<Derived> create(std::unique_ptr<Properties> props) {
+        auto n = std::shared_ptr<Derived>(new Derived(props));
+        // Configure mode, don't build
+        // n->build();
+        return n;
+    }
+
+//    protected:
+//     static std::unique_ptr<Properties> makeDefaultProperties() {
+//         return std::make_unique<Props>();
+//     };
 
    private:
+    NodeCRTP() : Base(std::make_unique<Props>(), false), properties(static_cast<Properties&>(*Node::propertiesHolder)) {}
     NodeCRTP(std::unique_ptr<Properties> props)
-        : Base(std::move(props)), properties(static_cast<Properties&>(Node::properties)) {}
-    NodeCRTP() : NodeCRTP(std::make_unique<Props>()) {}
+        : Base(std::move(props), true), properties(static_cast<Properties&>(*Node::propertiesHolder)) {}
 
     friend Derived;
     friend Base;
-    friend class PipelineImpl;
+    // friend class PipelineImpl;
 };
 
 }  // namespace dai

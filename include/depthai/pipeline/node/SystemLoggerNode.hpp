@@ -1,7 +1,6 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
-#include <depthai/pipeline/node/Pool.hpp>
 
 // shared
 #include <depthai-shared/properties/SystemLoggerProperties.hpp>
@@ -10,12 +9,16 @@ namespace dai {
 namespace node {
 
 /**
- * @brief SystemLogger node. Send system information periodically.
+ * @brief SystemLoggerNode. Send system information periodically.
  */
-class SystemLogger : public NodeCRTP<DeviceNode, SystemLogger, SystemLoggerProperties> {
+class SystemLoggerNode : public NodeGroup<DeviceNode, SystemLogger, SystemLoggerProperties> {
    public:
     constexpr static const char* NAME = "SystemLogger";
-    void build();
+
+    /// Creates a SystemLogger node with default properties
+    SystemLoggerNode();
+    /// Creates a SystemLogger node with given properties
+    SystemLoggerNode(std::unique_ptr<Properties> props);
 
     /**
      * Outputs SystemInformation[S3] message that carries various system information
@@ -31,11 +34,6 @@ class SystemLogger : public NodeCRTP<DeviceNode, SystemLogger, SystemLoggerPrope
      */
     Input inputPool{
         *this, "inputPool", Input::Type::MReceiver, false, 4, {{DatatypeEnum::SystemInformation, false}, {DatatypeEnum::SystemInformationS3, false}}};
-
-    /**
-     * Default pool that is linked to inputPool input
-    */
-    Subnode<Pool> pool{*this, "pool"};
 
     /**
      * Specify logging rate, at which messages will be sent out

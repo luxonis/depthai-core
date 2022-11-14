@@ -109,7 +109,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
         // Check that passed type 'N' is subclass of Node
         static_assert(std::is_base_of<Node, N>::value, "Specified class is not a subclass of Node");
         // Create and store the node in the map
-        auto node = std::make_shared<N>();
+        auto node = N::create();
         // Add
         add(node);
         // Return shared pointer to this node

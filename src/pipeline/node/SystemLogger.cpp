@@ -3,14 +3,10 @@
 namespace dai {
 namespace node {
 
-SystemLogger::SystemLogger() : NodeCRTP<DeviceNode, SystemLogger, SystemLoggerProperties>() {
+void SystemLogger::build() {
     properties.rateHz = 1.0f;
-    setOutputRefs(&out);
-}
-
-SystemLogger::SystemLogger(std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, SystemLogger, SystemLoggerProperties>(std::move(props)) {
-    setOutputRefs(&out);
+    // Link pool to inputPool
+    pool->out.link(inputPool);
 }
 
 void SystemLogger::setRate(float hz) {

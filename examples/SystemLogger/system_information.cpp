@@ -1,7 +1,14 @@
 #include <iostream>
 
 // Includes common necessary includes for development using depthai library
-#include "depthai/depthai.hpp"
+// #include "depthai/depthai.hpp"
+#include <depthai/pipeline/node/SystemLogger.hpp>
+#include <depthai/pipeline/node/XLinkOut.hpp>
+#include <depthai/pipeline/Pipeline.hpp>
+#include <depthai/device/Device.hpp>
+#include <depthai/pipeline/datatype/ImgFrame.hpp>
+#include <depthai/pipeline/datatype/SystemInformation.hpp>
+
 void printSystemInformation(dai::SystemInformation info) {
     printf("Ddr used / total - %.2f / %.2f MiB\n", info.ddrMemoryUsage.used / (1024.0f * 1024.0f), info.ddrMemoryUsage.total / (1024.0f * 1024.0f));
     printf("Cmx used / total - %.2f / %.2f MiB\n", info.cmxMemoryUsage.used / (1024.0f * 1024.0f), info.cmxMemoryUsage.total / (1024.0f * 1024.0f));

@@ -763,7 +763,7 @@ void PipelineImpl::add(std::shared_ptr<Node> node) {
         }
 
         for(auto& n : curNode->nodeMap) {
-            search.push(n.second);
+            search.push(n);
         }
     }
 

@@ -5,9 +5,8 @@
 
 namespace dai {
 
-
-Node::Node(std::unique_ptr<Properties> props)
-    : propertiesHolder(std::move(props)), properties(*propertiesHolder) {}
+Node::Node(std::unique_ptr<Properties> props, bool conf)
+    : configureMode{conf}, propertiesHolder(std::move(props)) {}
 
 tl::optional<OpenVINO::Version> Node::getRequiredOpenVINOVersion() {
     return tl::nullopt;
@@ -24,7 +23,7 @@ Pipeline Node::getParentPipeline() {
 }
 
 Properties& Node::getProperties() {
-    return properties;
+    return *propertiesHolder;
 }
 
 Node::Connection::Connection(Output out, Input in) {
@@ -258,32 +257,70 @@ std::vector<uint8_t> Node::loadResource(dai::Path uri) {
     return parent.lock()->loadResourceCwd(uri, cwd);
 }
 
-Node::OutputMap::OutputMap(std::string name, Node::Output defaultOutput) : defaultOutput(defaultOutput), name(std::move(name)) {}
-Node::OutputMap::OutputMap(Node::Output defaultOutput) : defaultOutput(defaultOutput) {}
+Node::OutputMap::OutputMap(Node& parent, std::string name, Node::Output defaultOutput) : defaultOutput(defaultOutput), name(std::move(name)) {
+    // Place oneself to the parents references
+    parent.setOutputMapRefs(this);
+}
+Node::OutputMap::OutputMap(Node& parent, Node::Output defaultOutput) : defaultOutput(defaultOutput) {
+    // Place oneself to the parents references
+    parent.setOutputMapRefs(this);
+}
 Node::Output& Node::OutputMap::operator[](const std::string& key) {
-    if(count(key) == 0) {
+    if(count({name, key}) == 0) {
         // Create using default and rename with group and key
         Output output(defaultOutput);
         output.group = name;
         output.name = key;
-        insert(std::make_pair(key, output));
+        insert({{name, key}, output});
     }
     // otherwise just return reference to existing
-    return at(key);
+    return at({name, key});
+}
+Node::Output& Node::OutputMap::operator[](std::pair<std::string, std::string> groupKey) {
+    if(count(groupKey) == 0) {
+        // Create using default and rename with group and key
+        Output output(defaultOutput);
+
+        // Uses \t (tab) as a special character to parse out as subgroup name
+        output.group = fmt::format("{}\t{}", name, groupKey.first);
+        output.name = groupKey.second;
+        insert(std::make_pair(groupKey, output));
+    }
+    // otherwise just return reference to existing
+    return at(groupKey);
 }
 
-Node::InputMap::InputMap(std::string name, Node::Input defaultInput) : defaultInput(defaultInput), name(std::move(name)) {}
-Node::InputMap::InputMap(Node::Input defaultInput) : defaultInput(defaultInput) {}
+Node::InputMap::InputMap(Node& parent, std::string name, Node::Input defaultInput) : defaultInput(defaultInput), name(std::move(name)) {
+    // Place oneself to the parents references
+    parent.setInputMapRefs(this);
+}
+Node::InputMap::InputMap(Node& parent, Node::Input defaultInput) : defaultInput(defaultInput) {
+    // Place oneself to the parents references
+    parent.setInputMapRefs(this);
+}
 Node::Input& Node::InputMap::operator[](const std::string& key) {
-    if(count(key) == 0) {
+    if(count({name, key}) == 0) {
         // Create using default and rename with group and key
         Input input(defaultInput);
         input.group = name;
         input.name = key;
-        insert(std::make_pair(key, input));
+        insert({{name, key}, input});
     }
     // otherwise just return reference to existing
-    return at(key);
+    return at({name, key});
+}
+Node::Input& Node::InputMap::operator[](std::pair<std::string, std::string> groupKey) {
+    if(count(groupKey) == 0) {
+        // Create using default and rename with group and key
+        Input input(defaultInput);
+
+        // Uses \t (tab) as a special character to parse out as subgroup name
+        input.group = fmt::format("{}\t{}", name, groupKey.first);
+        input.name = groupKey.second;
+        insert(std::make_pair(groupKey, input));
+    }
+    // otherwise just return reference to existing
+    return at(groupKey);
 }
 
 /// Retrieves all nodes outputs
@@ -474,6 +511,18 @@ void Node::setInputMapRefs(Node::InputMap* inMapRef) {
     inputMapRefs[inMapRef->name] = inMapRef;
 }
 
+void Node::setNodeRefs(std::initializer_list<std::pair<std::string, std::shared_ptr<Node>*>> l) {
+    for(auto& nodeRef : l) {
+        nodeRefs[nodeRef.first] = nodeRef.second;
+    }
+}
+void Node::setNodeRefs(std::pair<std::string, std::shared_ptr<Node>*> nodeRef) {
+    setNodeRefs({nodeRef});
+}
+void Node::setNodeRefs(std::string alias, std::shared_ptr<Node>* nodeRef) {
+    setNodeRefs({alias, nodeRef});
+}
+
 
 void Node::add(std::shared_ptr<Node> node) {
 
@@ -481,7 +530,8 @@ void Node::add(std::shared_ptr<Node> node) {
     node->parentNode = shared_from_this();
 
     // Add to the map (node holds its children itself)
-    nodeMap[node->id] = node;
+    // nodeMap[node->id] = node;
+    nodeMap.push_back(node);
 }
 
 /*
