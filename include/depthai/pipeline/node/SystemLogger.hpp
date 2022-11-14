@@ -34,7 +34,7 @@ class SystemLogger : public NodeCRTP<DeviceNode, SystemLogger, SystemLoggerPrope
 
     /**
      * Default pool that is linked to inputPool input
-    */
+     */
     Subnode<Pool> pool{*this, "pool"};
 
     /**

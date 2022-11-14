@@ -73,9 +73,10 @@ class Node : public std::enable_shared_from_this<Node> {
     //     }
     // };
 
-    template<typename T>
+    template <typename T>
     class Subnode {
         std::shared_ptr<Node> node;
+
        public:
         Subnode(Node& parent, std::string alias) {
             if(!parent.configureMode) {
@@ -140,14 +141,14 @@ class Node : public std::enable_shared_from_this<Node> {
         std::vector<DatatypeHierarchy> possibleDatatypes;
         Output(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types)
             : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {
-                // Place oneself to the parents references
-                parent.setOutputRefs(this);
-            }
+            // Place oneself to the parents references
+            parent.setOutputRefs(this);
+        }
         Output(Node& par, std::string group, std::string n, Type t, std::vector<DatatypeHierarchy> types)
             : parent(par), group(std::move(group)), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {
-                // Place oneself to the parents references
-                parent.setOutputRefs(this);
-            }
+            // Place oneself to the parents references
+            parent.setOutputRefs(this);
+        }
 
         Node& getParent() {
             return parent;
@@ -212,10 +213,9 @@ class Node : public std::enable_shared_from_this<Node> {
         bool trySend(const std::shared_ptr<ADatatype>& msg);
     };
 
-    struct PairHash
-    {
+    struct PairHash {
         template <class T1, class T2>
-        std::size_t operator() (const std::pair<T1, T2> &pair) const {
+        std::size_t operator()(const std::pair<T1, T2>& pair) const {
             return std::hash<T1>()(pair.first) ^ std::hash<T2>()(pair.second);
         }
     };
@@ -259,16 +259,16 @@ class Node : public std::enable_shared_from_this<Node> {
         /// Constructs Input with default blocking and queueSize options
         Input(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types)
             : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {
-                // Place oneself to the parents references
-                parent.setInputRefs(this);
-            }
+            // Place oneself to the parents references
+            parent.setInputRefs(this);
+        }
 
         /// Constructs Input with specified blocking and queueSize options
         Input(Node& par, std::string n, Type t, bool blocking, int queueSize, std::vector<DatatypeHierarchy> types)
             : parent(par), name(std::move(n)), type(t), defaultBlocking(blocking), defaultQueueSize(queueSize), possibleDatatypes(std::move(types)) {
-                // Place oneself to the parents references
-                parent.setInputRefs(this);
-            }
+            // Place oneself to the parents references
+            parent.setInputRefs(this);
+        }
 
         /// Constructs Input with specified blocking and queueSize as well as additional options
         Input(Node& par, std::string n, Type t, bool blocking, int queueSize, bool waitForMessage, std::vector<DatatypeHierarchy> types)
@@ -279,9 +279,9 @@ class Node : public std::enable_shared_from_this<Node> {
               defaultQueueSize(queueSize),
               defaultWaitForMessage(waitForMessage),
               possibleDatatypes(std::move(types)) {
-                // Place oneself to the parents references
-                parent.setInputRefs(this);
-              }
+            // Place oneself to the parents references
+            parent.setInputRefs(this);
+        }
 
         /// Constructs Input with specified blocking and queueSize as well as additional options
         Input(Node& par, std::string group, std::string n, Type t, bool blocking, int queueSize, bool waitForMessage, std::vector<DatatypeHierarchy> types)
@@ -293,9 +293,9 @@ class Node : public std::enable_shared_from_this<Node> {
               defaultQueueSize(queueSize),
               defaultWaitForMessage(waitForMessage),
               possibleDatatypes(std::move(types)) {
-                // Place oneself to the parents references
-                parent.setInputRefs(this);
-              }
+            // Place oneself to the parents references
+            parent.setInputRefs(this);
+        }
 
         Node& getParent() {
             return parent;
@@ -412,7 +412,6 @@ class Node : public std::enable_shared_from_this<Node> {
     std::weak_ptr<Node> parentNode;
 
    public:
-
     // TODO(themarpe) - restrict access
     /// Id of node. Assigned after being placed on the pipeline
     Id id{-1};
@@ -438,10 +437,8 @@ class Node : public std::enable_shared_from_this<Node> {
     SetConnectionInternal connections;
     using ConnectionMap = std::unordered_map<std::shared_ptr<Node>, SetConnectionInternal>;
 
-
     // Properties
     copyable_unique_ptr<Properties> propertiesHolder;
-
 
     // /// Create and place Node with an alias this Node
     // template <class N>
@@ -469,9 +466,13 @@ class Node : public std::enable_shared_from_this<Node> {
     const Pipeline getParentPipeline() const;
 
     /// Get alias
-    std::string getAlias() const { return alias; }
+    std::string getAlias() const {
+        return alias;
+    }
     /// Set alias
-    void setAlias(std::string alias) { this->alias = std::move(alias); }
+    void setAlias(std::string alias) {
+        this->alias = std::move(alias);
+    }
 
     /// Deep copy the node
     virtual std::unique_ptr<Node> clone() const = 0;
@@ -532,6 +533,7 @@ class Node : public std::enable_shared_from_this<Node> {
     Node() = default;
     Node(std::unique_ptr<Properties> props, bool conf);
     void build();
+
    public:
     virtual ~Node() = default;
 
@@ -603,15 +605,14 @@ class NodeCRTP : public Base {
         return n;
     }
 
-//    protected:
-//     static std::unique_ptr<Properties> makeDefaultProperties() {
-//         return std::make_unique<Props>();
-//     };
+    //    protected:
+    //     static std::unique_ptr<Properties> makeDefaultProperties() {
+    //         return std::make_unique<Props>();
+    //     };
 
    private:
     NodeCRTP() : Base(std::make_unique<Props>(), false), properties(static_cast<Properties&>(*Node::propertiesHolder)) {}
-    NodeCRTP(std::unique_ptr<Properties> props)
-        : Base(std::move(props), true), properties(static_cast<Properties&>(*Node::propertiesHolder)) {}
+    NodeCRTP(std::unique_ptr<Properties> props) : Base(std::move(props), true), properties(static_cast<Properties&>(*Node::propertiesHolder)) {}
 
     friend Derived;
     friend Base;

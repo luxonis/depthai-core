@@ -7,9 +7,8 @@
 namespace dai {
 namespace node {
 
-ColorCamera::ColorCamera() : NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(),
-      rawControl(std::make_shared<RawCameraControl>()),
-      initialControl(rawControl) {
+ColorCamera::ColorCamera()
+    : NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(), rawControl(std::make_shared<RawCameraControl>()), initialControl(rawControl) {
     properties.boardSocket = CameraBoardSocket::AUTO;
     properties.imageOrientation = CameraImageOrientation::AUTO;
     properties.colorOrder = ColorCameraProperties::ColorOrder::BGR;

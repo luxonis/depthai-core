@@ -40,6 +40,27 @@ class Pool : public NodeCRTP<DeviceNode, Pool, PoolProperties> {
 
     /// Retrieves pool size
     std::int64_t getMaxMessageSize() const;
+
+    /**
+     * Sets optional type of the pool. TODO(themarpe) - might be required
+     * @param datatype Type of the pool messages
+     */
+    void setDatatype(tl::optional<DatatypeEnum> type);
+
+    /// Retrieves optional pool type
+    tl::optional<DatatypeEnum> getDatatype() const;
+
+    /**
+     * Set on which processor the pool should be placed
+     * @param type Processor type - Leon CSS or Leon MSS
+     */
+    void setProcessor(ProcessorType type);
+
+    /**
+     * Get on which processor the pool should be placed
+     * @returns Processor type - Leon CSS or Leon MSS
+     */
+    ProcessorType getProcessor() const;
 };
 
 }  // namespace node

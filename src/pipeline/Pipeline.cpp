@@ -177,7 +177,6 @@ PipelineImpl::NodeConnectionMap PipelineImpl::getConnectionMap() const {
     return map;
 }
 
-
 PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
     PipelineSchema schema;
     schema.globalProperties = globalProperties;
@@ -475,7 +474,6 @@ tl::optional<OpenVINO::Version> PipelineImpl::getPipelineOpenVINOVersion() const
     Node::Id lastNodeIdWithRequiredVersion = -1;
 
     for(const auto& node : nodes) {
-
         // Check the required openvino version
         auto requiredVersion = node->getRequiredOpenVINOVersion();
         if(requiredVersion) {
@@ -553,7 +551,6 @@ void PipelineImpl::remove(std::shared_ptr<Node> toRemove) {
     // Search for this node in 'nodes' vector.
     // If found, remove from vector
 
-
     // // Go through and modify nodes and its children
     // // that they are now part of this pipeline
     // std::weak_ptr<PipelineImpl> curParent;
@@ -577,7 +574,6 @@ void PipelineImpl::remove(std::shared_ptr<Node> toRemove) {
 
     // nodeMap.count(toRemove->id) {
     // }
-
 
     // // First check if node is on this pipeline (and that they are the same)
     // if(nodeMap.count(toRemove->id) > 0) {

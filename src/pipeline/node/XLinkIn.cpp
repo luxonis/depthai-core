@@ -3,13 +3,11 @@
 namespace dai {
 namespace node {
 
-XLinkIn::XLinkIn()
-    : NodeCRTP<DeviceNode, XLinkIn, XLinkInProperties>(std::make_unique<XLinkIn::Properties>()) {
+XLinkIn::XLinkIn() : NodeCRTP<DeviceNode, XLinkIn, XLinkInProperties>(std::make_unique<XLinkIn::Properties>()) {
     setOutputRefs(&out);
 }
 
-XLinkIn::XLinkIn(std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, XLinkIn, XLinkInProperties>(std::move(props)) {
+XLinkIn::XLinkIn(std::unique_ptr<Properties> props) : NodeCRTP<DeviceNode, XLinkIn, XLinkInProperties>(std::move(props)) {
     setOutputRefs(&out);
 }
 

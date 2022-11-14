@@ -3,11 +3,11 @@
 // // Includes common necessary includes for development using depthai library
 // #include "depthai/depthai.hpp"
 
+#include <depthai/device/Device.hpp>
+#include <depthai/pipeline/Pipeline.hpp>
+#include <depthai/pipeline/datatype/ImgFrame.hpp>
 #include <depthai/pipeline/node/ColorCamera.hpp>
 #include <depthai/pipeline/node/XLinkOut.hpp>
-#include <depthai/pipeline/Pipeline.hpp>
-#include <depthai/device/Device.hpp>
-#include <depthai/pipeline/datatype/ImgFrame.hpp>
 
 int main() {
     using namespace std;

@@ -5,8 +5,7 @@
 
 namespace dai {
 
-Node::Node(std::unique_ptr<Properties> props, bool conf)
-    : configureMode{conf}, propertiesHolder(std::move(props)) {}
+Node::Node(std::unique_ptr<Properties> props, bool conf) : configureMode{conf}, propertiesHolder(std::move(props)) {}
 
 tl::optional<OpenVINO::Version> Node::getRequiredOpenVINOVersion() {
     return tl::nullopt;
@@ -65,7 +64,6 @@ std::string Node::Input::toString() const {
     }
 }
 
-
 bool Node::Output::isSamePipeline(const Input& in) {
     // Check whether current output and 'in' are on same pipeline.
     // By checking parent of node
@@ -111,8 +109,7 @@ bool Node::Output::canConnect(const Input& in) {
 void Node::Output::link(Input& in) {
     // First check if can connect
     if(!canConnect(in)) {
-        throw std::runtime_error(
-            fmt::format("Cannot link '{}.{}' to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
+        throw std::runtime_error(fmt::format("Cannot link '{}.{}' to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
     }
 
     // Create 'Connection' object between 'out' and 'in'
@@ -121,8 +118,7 @@ void Node::Output::link(Input& in) {
     // Check if connection was already made - the following is possible as operator[] constructs the underlying set if it doesn't exist.
     if(parent.connections.count(connection) > 0) {
         // this means a connection was already made.
-        throw std::logic_error(
-            fmt::format("'{}.{}' already linked to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
+        throw std::logic_error(fmt::format("'{}.{}' already linked to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
     }
 
     // Otherwise all is set to add a new connection
@@ -139,8 +135,8 @@ Node::ConnectionInternal::ConnectionInternal(Output& out, Input& in) {
 }
 
 bool Node::ConnectionInternal::operator==(const Node::ConnectionInternal& rhs) const {
-    return (outputNode.lock() == rhs.outputNode.lock() && outputName == rhs.outputName && outputGroup == rhs.outputGroup && inputNode.lock() == rhs.inputNode.lock() && inputName == rhs.inputName
-            && inputGroup == rhs.inputGroup);
+    return (outputNode.lock() == rhs.outputNode.lock() && outputName == rhs.outputName && outputGroup == rhs.outputGroup
+            && inputNode.lock() == rhs.inputNode.lock() && inputName == rhs.inputName && inputGroup == rhs.inputGroup);
 }
 
 void Node::Output::unlink(Input& in) {
@@ -148,8 +144,7 @@ void Node::Output::unlink(Input& in) {
     Node::ConnectionInternal connection(*this, in);
     if(parent.connections.count(connection) == 0) {
         // this means a connection was not present already made.
-        throw std::logic_error(
-            fmt::format("'{}.{}' not linked to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
+        throw std::logic_error(fmt::format("'{}.{}' not linked to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
     }
 
     // Unlink
@@ -511,9 +506,7 @@ void Node::setNodeRefs(std::string alias, std::shared_ptr<Node>* nodeRef) {
     setNodeRefs({alias, nodeRef});
 }
 
-
 void Node::add(std::shared_ptr<Node> node) {
-
     // TODO(themarpe) - check if node is already added somewhere else, etc... (as in Pipeline)
     node->parentNode = shared_from_this();
 
@@ -574,7 +567,6 @@ std::vector<std::shared_ptr<Node>> Node::getAllNodes() const {
     }
     return nodes;
 }
-
 
 /*
 // Remove node capability
@@ -687,6 +679,5 @@ size_t Node::ConnectionInternal::Hash::operator()(const dai::Node::ConnectionInt
     seed ^= hStr(obj.outputName) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     return seed;
 }
-
 
 }  // namespace dai
