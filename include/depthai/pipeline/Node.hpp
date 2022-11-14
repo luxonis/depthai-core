@@ -436,6 +436,8 @@ class Node : public std::enable_shared_from_this<Node> {
     // using NodeConnectionMap = std::unordered_map<Node::Id, std::unordered_set<Node::Connection>>;
     using SetConnectionInternal = std::unordered_set<ConnectionInternal, ConnectionInternal::Hash>;
     SetConnectionInternal connections;
+    using ConnectionMap = std::unordered_map<std::shared_ptr<Node>, SetConnectionInternal>;
+
 
     // Properties
     copyable_unique_ptr<Properties> propertiesHolder;
@@ -559,12 +561,11 @@ class Node : public std::enable_shared_from_this<Node> {
     void add(std::shared_ptr<Node> node);
 
     // Access to nodes
-    std::vector<std::shared_ptr<const Node>> getAllNodes() const;
-    std::vector<std::shared_ptr<Node>> getAllNodes();
+    std::vector<std::shared_ptr<Node>> getAllNodes() const;
     std::shared_ptr<const Node> getNode(Node::Id id) const;
     std::shared_ptr<Node> getNode(Node::Id id);
     void remove(std::shared_ptr<Node> node);
-    std::vector<Node::Connection> getConnections() const;
+    ConnectionMap getConnectionMap();
     void link(const Node::Output& out, const Node::Input& in);
     void unlink(const Node::Output& out, const Node::Input& in);
     /// Get a reference to internal node map

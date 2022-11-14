@@ -51,10 +51,10 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     BoardConfig getBoardConfig() const;
 
     // Access to nodes
-    std::vector<std::shared_ptr<const Node>> getAllNodes() const;
-    std::vector<std::shared_ptr<Node>> getAllNodes();
-    std::shared_ptr<const Node> getNode(Node::Id id) const;
-    std::shared_ptr<Node> getNode(Node::Id id);
+    std::vector<std::shared_ptr<Node>> getAllNodes() const;
+    // std::vector<std::shared_ptr<Node>> getAllNodes();
+    std::shared_ptr<Node> getNode(Node::Id id) const;
+    // std::shared_ptr<Node> getNode(Node::Id id);
 
     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
     nlohmann::json serializeToJson() const;
@@ -79,12 +79,13 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     tl::optional<OpenVINO::Version> forceRequiredOpenVINOVersion;
     // Global pipeline properties
     GlobalProperties globalProperties;
-    // Optimized for adding, searching and removing connections
-    using NodeMap = std::unordered_map<Node::Id, std::shared_ptr<Node>>;
-    NodeMap nodeMap;
+    // // Optimized for adding, searching and removing connections
+    // using NodeMap = std::unordered_map<Node::Id, std::shared_ptr<Node>>;
+    // NodeMap nodeMap;
+    std::vector<std::shared_ptr<Node>> nodes;
 
     // TODO(themarpe) - refactor, connections are now carried by nodes instead
-    using NodeConnectionMap = std::unordered_map<Node::Id, std::unordered_set<Node::Connection>>;
+    using NodeConnectionMap = std::unordered_map<Node::Id, std::unordered_set<Node::ConnectionInternal, Node::ConnectionInternal::Hash>>;
     // // Connection map, NodeId represents id of node connected TO (input)
     // NodeConnectionMap nodeConnectionMap;
     /// Get a reference to internal connection representation
@@ -206,13 +207,13 @@ class Pipeline {
     }
 
     /// Get a vector of all nodes
-    std::vector<std::shared_ptr<const Node>> getAllNodes() const {
+    std::vector<std::shared_ptr<Node>> getAllNodes() const {
         return impl()->getAllNodes();
     }
-    /// Get a vector of all nodes
-    std::vector<std::shared_ptr<Node>> getAllNodes() {
-        return impl()->getAllNodes();
-    }
+    // /// Get a vector of all nodes
+    // std::vector<std::shared_ptr<Node>> getAllNodes() {
+    //     return impl()->getAllNodes();
+    // }
 
     /// Get node with id if it exists, nullptr otherwise
     std::shared_ptr<const Node> getNode(Node::Id id) const {
@@ -223,22 +224,22 @@ class Pipeline {
         return impl()->getNode(id);
     }
 
-    /// Get all connections
-    std::vector<Node::Connection> getConnections() const {
-        return impl()->getConnections();
-    }
+    // /// Get all connections
+    // std::vector<Node::Connection> getConnections() const {
+    //     return impl()->getConnections();
+    // }
 
     using NodeConnectionMap = PipelineImpl::NodeConnectionMap;
-    /// Get a reference to internal connection representation
-    NodeConnectionMap getConnectionMap() const {
-        return impl()->getConnectionMap();
-    }
+    // /// Get a reference to internal connection representation
+    // NodeConnectionMap getConnectionMap() const {
+    //     return impl()->getConnectionMap();
+    // }
 
-    using NodeMap = PipelineImpl::NodeMap;
-    /// Get a reference to internal node map
-    const NodeMap& getNodeMap() const {
-        return impl()->nodeMap;
-    }
+    // // using NodeMap = PipelineImpl::NodeMap;
+    // /// Get a reference to internal node map
+    // const NodeMap& getNodeMap() const {
+    //     return impl()->nodeMap;
+    // }
 
     // /**
     //  * Link output to an input. Both nodes must be on the same pipeline

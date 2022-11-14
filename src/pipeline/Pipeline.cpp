@@ -57,13 +57,16 @@ Pipeline Pipeline::clone() const {
 
     // All IDs remain the same, just switch out the actual nodes with copies
     // Copy all nodes
-    for(const auto& kv : impl()->nodeMap) {
-        const auto& id = kv.first;
+    for(const auto& node : impl()->nodes) {
+        // const auto& id = kv.first;
 
         // Swap out with a copy
-        clone.pimpl->nodeMap[id] = impl()->nodeMap.at(id)->clone();
+        auto nodeClone = node->clone();
         // Set parent to be the new pipeline
-        clone.pimpl->nodeMap[id]->parent = std::weak_ptr<PipelineImpl>(clone.pimpl);
+        nodeClone->parent = std::weak_ptr<PipelineImpl>(clone.pimpl);
+
+        // Add the new copy
+        clone.pimpl->nodes.push_back(node->clone());
     }
 
     return clone;
@@ -85,32 +88,45 @@ void PipelineImpl::setGlobalProperties(GlobalProperties globalProperties) {
     this->globalProperties = globalProperties;
 }
 
-std::shared_ptr<const Node> PipelineImpl::getNode(Node::Id id) const {
-    if(nodeMap.count(id) > 0) {
-        return nodeMap.at(id);
+std::shared_ptr<Node> PipelineImpl::getNode(Node::Id id) const {
+    // Search all nodes
+    for(const auto& node : nodes) {
+        auto n = node->getNode(id);
+        if(n != nullptr) {
+            return n;
+        }
     }
     return nullptr;
 }
-std::shared_ptr<Node> PipelineImpl::getNode(Node::Id id) {
-    if(nodeMap.count(id) > 0) {
-        return nodeMap.at(id);
-    }
-    return nullptr;
-}
+// std::shared_ptr<Node> PipelineImpl::getNode(Node::Id id) {
+//     // Search all nodes
+//     for(auto& node : nodes) {
+//         auto n = node->getNode(id);
+//         if(n != nullptr) {
+//             return n;
+//         }
+//     }
+//     return nullptr;
+// }
 
-std::vector<std::shared_ptr<const Node>> PipelineImpl::getAllNodes() const {
-    std::vector<std::shared_ptr<const Node>> nodes;
-    for(const auto& kv : nodeMap) {
-        nodes.push_back(kv.second);
+// std::vector<std::shared_ptr<const Node>> PipelineImpl::getAllNodes() const {
+//     std::vector<std::shared_ptr<const Node>> nodes;
+//     for(const auto& node : nodes) {
+//         auto n = node->getAllNodes();
+//         nodes.insert(nodes.end(), n.begin(), n.end());
+//     }
+//     return nodes;
+// }
+std::vector<std::shared_ptr<Node>> PipelineImpl::getAllNodes() const {
+    std::vector<std::shared_ptr<Node>> allNodes;
+    for(auto& node : nodes) {
+        // Insert the node in question
+        allNodes.push_back(node);
+        // And its subnodes
+        auto n = node->getAllNodes();
+        allNodes.insert(allNodes.end(), n.begin(), n.end());
     }
-    return nodes;
-}
-std::vector<std::shared_ptr<Node>> PipelineImpl::getAllNodes() {
-    std::vector<std::shared_ptr<Node>> nodes;
-    for(const auto& kv : nodeMap) {
-        nodes.push_back(kv.second);
-    }
-    return nodes;
+    return allNodes;
 }
 
 void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type) const {
@@ -123,8 +139,8 @@ void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector
     // Pipeline assets
     assetManager.serialize(mutableAssets, assetStorage);
     // Node assets
-    for(const auto& kv : nodeMap) {
-        kv.second->getAssetManager().serialize(mutableAssets, assetStorage);
+    for(auto& node : nodes) {
+        node->getAssetManager().serialize(mutableAssets, assetStorage);
     }
 
     assets = mutableAssets;
@@ -150,15 +166,12 @@ nlohmann::json PipelineImpl::serializeToJson() const {
 PipelineImpl::NodeConnectionMap PipelineImpl::getConnectionMap() const {
     NodeConnectionMap map;
 
-    for(const auto& kv : nodeMap) {
-        const auto& id = kv.first;
-        const auto& node = kv.second;
-
-        std::unordered_set<Node::Connection> connset;
-        for(const auto& conn : node->connections) {
-            connset.insert(conn);
+    for(const auto& node : nodes) {
+        auto nodeConnMap = node->getConnectionMap();
+        for(auto& kv : nodeConnMap) {
+            auto& n = kv.first;
+            map[n->id] = kv.second;
         }
-        map[id] = connset;
     }
 
     return map;
@@ -169,9 +182,9 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
     PipelineSchema schema;
     schema.globalProperties = globalProperties;
 
-    // Loop over nodes, and add them to schema
-    for(const auto& kv : nodeMap) {
-        const auto& node = kv.second;
+    // Loop over all nodes, and add them to schema
+    for(const auto& node : getAllNodes()) {
+        // const auto& node = kv.second;
 
         // Check if its a host node or device node
         if(node->hostNode) {
@@ -274,15 +287,17 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
 
         for(const auto& conn : connections) {
             NodeConnectionSchema c;
-            c.node1Id = conn.outputId;
+            auto outNode = conn.outputNode.lock();
+            auto inNode = conn.inputNode.lock();
+            c.node1Id = outNode->id;
             c.node1Output = conn.outputName;
             c.node1OutputGroup = conn.outputGroup;
-            c.node2Id = conn.inputId;
+            c.node2Id = inNode->id;
             c.node2Input = conn.inputName;
             c.node2InputGroup = conn.inputGroup;
 
-            bool outputHost = nodeMap.at(conn.outputId)->hostNode;
-            bool inputHost = nodeMap.at(conn.inputId)->hostNode;
+            bool outputHost = outNode->hostNode;
+            bool inputHost = inNode->hostNode;
 
             std::shared_ptr<Node> node;
 
@@ -459,8 +474,7 @@ tl::optional<OpenVINO::Version> PipelineImpl::getPipelineOpenVINOVersion() const
     std::string lastNodeNameWithRequiredVersion = "";
     Node::Id lastNodeIdWithRequiredVersion = -1;
 
-    for(const auto& kv : nodeMap) {
-        const auto& node = kv.second;
+    for(const auto& node : nodes) {
 
         // Check the required openvino version
         auto requiredVersion = node->getRequiredOpenVINOVersion();
@@ -635,15 +649,15 @@ bool PipelineImpl::canConnect(const Node::Output& out, const Node::Input& in) {
     return false;
 }
 
-std::vector<Node::Connection> PipelineImpl::getConnections() const {
-    std::vector<Node::Connection> connections;
-    for(const auto& kv : getConnectionMap()) {
-        for(const auto& conn : kv.second) {
-            connections.push_back(conn);
-        }
-    }
-    return connections;
-}
+// std::vector<Node::Connection> PipelineImpl::getConnections() const {
+//     std::vector<Node::Connection> connections;
+//     for(const auto& kv : getConnectionMap()) {
+//         for(const auto& conn : kv.second) {
+//             connections.push_back(conn);
+//         }
+//     }
+//     return connections;
+// }
 
 // void PipelineImpl::link(const Node::Output& out, const Node::Input& in) {
 //     // First check if on same pipeline
@@ -721,8 +735,8 @@ tl::optional<EepromData> PipelineImpl::getEepromData() const {
 bool PipelineImpl::isHostOnly() const {
     // Starts pipeline, go through all nodes and start them
     bool hostOnly = true;
-    for(const auto& kv : nodeMap) {
-        if(!kv.second->hostNode) {
+    for(const auto& node : nodes) {
+        if(!node->hostNode) {
             hostOnly = false;
             break;
         }
@@ -733,8 +747,8 @@ bool PipelineImpl::isHostOnly() const {
 bool PipelineImpl::isDeviceOnly() const {
     // Starts pipeline, go through all nodes and start them
     bool deviceOnly = true;
-    for(const auto& kv : nodeMap) {
-        if(kv.second->hostNode) {
+    for(const auto& node : nodes) {
+        if(node->hostNode) {
             deviceOnly = false;
             break;
         }
@@ -756,6 +770,11 @@ void PipelineImpl::add(std::shared_ptr<Node> node) {
         auto curNode = search.front();
         search.pop();
 
+        // Assign an ID to the node
+        if(curNode->id == -1) {
+            curNode->id = getNextUniqueId();
+        }
+
         if(curNode->parent.lock() == nullptr) {
             curNode->parent = parent.pimpl;
         } else if(curNode->parent.lock() != parent.pimpl) {
@@ -767,12 +786,8 @@ void PipelineImpl::add(std::shared_ptr<Node> node) {
         }
     }
 
-    // Assign an ID to the node
-    auto id = getNextUniqueId();
-    node->id = id;
-
     // Add to the map (node holds its children itself)
-    nodeMap[node->id] = node;
+    nodes.push_back(node);
 }
 
 bool PipelineImpl::isRunning() const {
@@ -797,22 +812,22 @@ void PipelineImpl::start() {
     running = true;
 
     // Starts pipeline, go through all nodes and start them
-    for(const auto& kv : nodeMap) {
-        kv.second->start();
+    for(const auto& node : nodes) {
+        node->start();
     }
 }
 
 void PipelineImpl::wait() {
     // Waits for all nodes to finish the execution
-    for(const auto& kv : nodeMap) {
-        kv.second->wait();
+    for(const auto& node : nodes) {
+        node->wait();
     }
 }
 
 void PipelineImpl::stop() {
     // Stops the pipeline execution
-    for(const auto& kv : nodeMap) {
-        kv.second->stop();
+    for(const auto& node : nodes) {
+        node->stop();
     }
 
     // Indicate that pipeline is not runnin
@@ -857,8 +872,7 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd)
              }
              // If asset not found in the pipeline asset manager, check all nodes
              else {
-                 for(auto& kv : p.nodeMap) {
-                     auto& node = kv.second;
+                 for(auto& node : p.nodes) {
                      auto& assetManager = node->getAssetManager();
                      auto asset = assetManager.get(uri);
                      if(asset != nullptr) {

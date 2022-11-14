@@ -65,16 +65,6 @@ std::string Node::Input::toString() const {
     }
 }
 
-std::vector<Node::Connection> Node::Output::getConnections() {
-    std::vector<Node::Connection> myConnections;
-    auto allConnections = parent.getParentPipeline().getConnections();
-    for(const auto& conn : allConnections) {
-        if(conn.outputId == parent.id && conn.outputName == name && conn.outputGroup == group) {
-            myConnections.push_back(conn);
-        }
-    }
-    return myConnections;
-}
 
 bool Node::Output::isSamePipeline(const Input& in) {
     // Check whether current output and 'in' are on same pipeline.
@@ -167,10 +157,9 @@ void Node::Output::unlink(Input& in) {
 }
 
 void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
-    auto conns = getConnections();
-    for(auto& conn : conns) {
+    for(auto& conn : parent.connections) {
         // Get node AND hold a reference to it.
-        auto node = parent.getParentPipeline().getNode(conn.inputId);
+        auto node = conn.inputNode.lock();
         // Safe, as long as we also hold 'node' shared_ptr
         auto inputs = node->getInputRefs();
         // Find the corresponding inputs
@@ -187,10 +176,9 @@ void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
 bool Node::Output::trySend(const std::shared_ptr<ADatatype>& msg) {
     bool success = true;
 
-    auto conns = getConnections();
-    for(auto& conn : conns) {
+    for(auto& conn : parent.connections) {
         // Get node AND hold a reference to it.
-        auto node = parent.getParentPipeline().getNode(conn.inputId);
+        auto node = conn.inputNode.lock();
         // Safe, as long as we also hold 'node' shared_ptr
         auto inputs = node->getInputRefs();
         // Find the corresponding inputs
@@ -533,6 +521,60 @@ void Node::add(std::shared_ptr<Node> node) {
     // nodeMap[node->id] = node;
     nodeMap.push_back(node);
 }
+
+// Recursive helpers for pipelines
+Node::ConnectionMap Node::getConnectionMap() {
+    ConnectionMap map;
+    // self first
+    map[shared_from_this()] = connections;
+    // then subnodes
+    for(const auto& node : nodeMap) {
+        auto nodeConnMap = node->getConnectionMap();
+        for(auto& kv : nodeConnMap) {
+            auto& n = kv.first;
+            map[n] = kv.second;
+        }
+    }
+    return map;
+}
+std::shared_ptr<Node> Node::getNode(Node::Id id) {
+    // Edge case
+    if(this->id == id) return shared_from_this();
+
+    // Search all nodes
+    for(auto& node : nodeMap) {
+        auto n = node->getNode(id);
+        if(n != nullptr) {
+            return n;
+        }
+    }
+    return nullptr;
+}
+std::shared_ptr<const Node> Node::getNode(Node::Id id) const {
+    // Edge case
+    if(this->id == id) return shared_from_this();
+
+    // Search all nodes
+    for(auto& node : nodeMap) {
+        auto n = node->getNode(id);
+        if(n != nullptr) {
+            return n;
+        }
+    }
+    return nullptr;
+}
+std::vector<std::shared_ptr<Node>> Node::getAllNodes() const {
+    std::vector<std::shared_ptr<Node>> nodes;
+    for(auto& node : nodeMap) {
+        // Add one own nodes first
+        nodes.push_back(node);
+        // And its subnodes
+        auto n = node->getAllNodes();
+        nodes.insert(nodes.end(), n.begin(), n.end());
+    }
+    return nodes;
+}
+
 
 /*
 // Remove node capability
