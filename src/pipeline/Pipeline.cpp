@@ -194,6 +194,13 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
             NodeObjInfo info;
             info.id = node->id;
             info.name = node->getName();
+            info.alias = node->getAlias();
+            auto parentNode = node->parentNode.lock();
+            if(parentNode) {
+                info.parentId = parentNode->id;
+            } else {
+                info.parentId = -1;
+            }
             node->getProperties().serialize(info.properties, type);
 
             // Create Io information

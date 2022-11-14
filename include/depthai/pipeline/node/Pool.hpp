@@ -27,19 +27,19 @@ class Pool : public NodeCRTP<DeviceNode, Pool, PoolProperties> {
      * Sets number of messages in pool
      * @param num number of messages in pool
      */
-    void setNumMessages(int num);
+    void setNumMessages(tl::optional<int> num);
 
     /// Retrieves pool size
-    int getNumMessages() const;
+    tl::optional<int> getNumMessages() const;
 
     /**
      * Sets reserved data size of each message in the pool
      * @param size data size allocated for each message
      */
-    void setMaxMessageSize(std::int64_t size);
+    void setMaxMessageSize(tl::optional<std::int64_t> size);
 
     /// Retrieves pool size
-    std::int64_t getMaxMessageSize() const;
+    tl::optional<std::int64_t> getMaxMessageSize() const;
 
     /**
      * Sets optional type of the pool. TODO(themarpe) - might be required
@@ -54,13 +54,13 @@ class Pool : public NodeCRTP<DeviceNode, Pool, PoolProperties> {
      * Set on which processor the pool should be placed
      * @param type Processor type - Leon CSS or Leon MSS
      */
-    void setProcessor(ProcessorType type);
+    void setProcessor(tl::optional<ProcessorType> type);
 
     /**
      * Get on which processor the pool should be placed
      * @returns Processor type - Leon CSS or Leon MSS
      */
-    ProcessorType getProcessor() const;
+    tl::optional<ProcessorType> getProcessor() const;
 };
 
 }  // namespace node
