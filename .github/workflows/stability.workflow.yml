@@ -26,11 +26,11 @@ jobs:
     timeout-minutes: 1450 # 24h & 10minutes
     steps:
     - name: Cache .hunter folder
-      uses: actions/cache@v2
+      uses: actions/cache@v3
       with:
         path: $HOME/.hun_vanilla
         key: hunter-linux-stability-vanilla
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
       with:
         submodules: 'recursive'
 

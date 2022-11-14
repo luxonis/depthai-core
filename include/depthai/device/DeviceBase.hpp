@@ -26,6 +26,7 @@
 #include "depthai/xlink/XLinkStream.hpp"
 
 // shared
+#include "depthai-shared/common/CameraFeatures.hpp"
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
@@ -374,6 +375,12 @@ class DeviceBase {
     DeviceInfo getDeviceInfo() const;
 
     /**
+     * Get device name if available
+     * @returns device name or empty string if not available
+     */
+    std::string getDeviceName();
+
+    /**
      * Get MxId of device
      *
      * @returns MxId of connected device
@@ -463,6 +470,13 @@ class DeviceBase {
      * @returns Vector of connected cameras
      */
     std::vector<CameraBoardSocket> getConnectedCameras();
+
+    /**
+     * Get cameras that are connected to the device with their features/properties
+     *
+     * @returns Vector of connected camera features
+     */
+    std::vector<CameraFeatures> getConnectedCameraFeatures();
 
     /**
      * Get sensor names for cameras that are connected to the device
@@ -650,6 +664,13 @@ class DeviceBase {
      * @param random If true partial timesync requests will be performed at random intervals, otherwise at fixed intervals
      */
     void setTimesync(std::chrono::milliseconds period, int numSamples, bool random);
+
+    /**
+     * Enables or disables Timesync service on device. It keeps host and device clocks in sync.
+     *
+     * @param enable Enables or disables consistent timesyncing
+     */
+    void setTimesync(bool enable);
 
     /**
      * Explicitly closes connection to device.

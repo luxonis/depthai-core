@@ -40,6 +40,7 @@ class CameraControl : public Buffer {
     using AutoWhiteBalanceMode = RawCameraControl::AutoWhiteBalanceMode;
     using SceneMode = RawCameraControl::SceneMode;
     using EffectMode = RawCameraControl::EffectMode;
+    using FrameSyncMode = RawCameraControl::FrameSyncMode;
 
     /// Construct CameraControl message
     CameraControl();
@@ -61,6 +62,42 @@ class CameraControl : public Buffer {
      */
     CameraControl& setStopStreaming();
 
+    /**
+     * Set a command to enable external trigger snapshot mode
+     *
+     * A rising edge on the sensor FSIN pin will make it capture a sequence of
+     * `numFramesBurst` frames. First `numFramesDiscard` will be skipped as
+     * configured (can be set to 0 as well), as they may have degraded quality
+     */
+    CameraControl& setExternalTrigger(int numFramesBurst, int numFramesDiscard);
+
+    /**
+     * Set the frame sync mode for continuous streaming operation mode,
+     * translating to how the camera pin FSIN/FSYNC is used: input/output/disabled
+     */
+    CameraControl& setFrameSyncMode(FrameSyncMode mode);
+
+    /**
+     * Enable STROBE output on sensor pin, optionally configuring the polarity.
+     * Note: for many sensors the polarity is high-active and not configurable
+     */
+    CameraControl& setStrobeSensor(int activeLevel = 1);
+
+    /**
+     * Enable STROBE output driven by a MyriadX GPIO, optionally configuring the polarity
+     * This normally requires a FSIN/FSYNC/trigger input for MyriadX (usually GPIO 41),
+     * to generate timings
+     */
+    CameraControl& setStrobeExternal(int gpioNumber, int activeLevel = 1);
+
+    // TODO API to set strobe line directly high/low (not following the exposure window)
+    // TODO API to set strobe timings, as offsets in relation to exposure window, or fixed duration
+
+    /**
+     * Disable STROBE output
+     */
+    CameraControl& setStrobeDisable();
+
     // Focus
     /**
      * Set a command to specify autofocus mode. Default `CONTINUOUS_VIDEO`
@@ -71,6 +108,12 @@ class CameraControl : public Buffer {
      * Set a command to trigger autofocus
      */
     CameraControl& setAutoFocusTrigger();
+
+    /**
+     * Set autofocus lens range, `infinityPosition < macroPosition`, valid values `0..255`.
+     * May help to improve autofocus in case the lens adjustment is not typical/tuned
+     */
+    CameraControl& setAutoFocusLensRange(int infinityPosition, int macroPosition);
 
     /**
      * Set a command to specify focus region in pixels.

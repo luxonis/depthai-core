@@ -658,6 +658,20 @@ DeviceBootloader::MemoryInfo DeviceBootloader::getMemoryInfo(Memory memory) {
     return mem;
 }
 
+bool DeviceBootloader::isUserBootloaderSupported() {
+    // Check that type is NETWORK
+    if(getType() != Type::NETWORK) {
+        return false;
+    }
+
+    // Check if bootloader version is adequate
+    if(getVersion().getSemver() < Version(Request::IsUserBootloader::VERSION)) {
+        return false;
+    }
+
+    return true;
+}
+
 bool DeviceBootloader::isUserBootloader() {
     // Check if bootloader version is adequate
     if(getVersion().getSemver() < Version(Request::IsUserBootloader::VERSION)) {
@@ -878,7 +892,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::functio
     // }
 
     // Check if bootloader version is adequate
-    if(getVersion().getSemver() < Version("0.0.21")) {
+    if(getVersion().getSemver() < Version(Request::IsUserBootloader::VERSION)) {
         throw std::runtime_error("Current bootloader version doesn't support User Bootloader");
     }
 
