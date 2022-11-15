@@ -25,8 +25,8 @@ class ImageManip : public NodeCRTP<DeviceNode, ImageManip, ImageManipProperties>
     void setWarpMesh(const float* meshData, int numMeshPoints, int width, int height);
 
    public:
-    ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    ImageManip();
+    ImageManip(std::unique_ptr<Properties> props);
 
     /**
      * Initial config to use when manipulating frames
@@ -37,18 +37,18 @@ class ImageManip : public NodeCRTP<DeviceNode, ImageManip, ImageManipProperties>
      * Input ImageManipConfig message with ability to modify parameters in runtime
      * Default queue is blocking with size 8
      */
-    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImageManipConfig, true}}};
+    Input inputConfig{true, *this, "inputConfig", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImageManipConfig, true}}};
 
     /**
      * Input image to be modified
      * Default queue is blocking with size 8
      */
-    Input inputImage{*this, "inputImage", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::ImgFrame, true}}};
+    Input inputImage{true, *this, "inputImage", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
      * Outputs ImgFrame message that carries modified image.
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
+    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
 
     // Functions to set ImageManipConfig - deprecated
     [[deprecated("Use 'initialConfig.setCropRect()' instead")]] void setCropRect(float xmin, float ymin, float xmax, float ymax);

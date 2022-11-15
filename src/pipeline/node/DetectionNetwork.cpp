@@ -11,19 +11,10 @@ namespace node {
 //--------------------------------------------------------------------
 // Base Detection Network Class
 //--------------------------------------------------------------------
-DetectionNetwork::DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : NodeCRTP<NeuralNetwork, DetectionNetwork, DetectionNetworkProperties>(par, nodeId, std::make_unique<Properties>()) {
-    setInputRefs({&input});
-    setOutputRefs({&out, &passthrough, &outNetwork});
 
+void DetectionNetwork::build() {
     // Default confidence threshold
     properties.parser.confidenceThreshold = 0.5;
-}
-
-DetectionNetwork::DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<NeuralNetwork, DetectionNetwork, DetectionNetworkProperties>(par, nodeId, std::move(props)) {
-    setInputRefs({&input});
-    setOutputRefs({&out, &passthrough, &outNetwork});
 }
 
 void DetectionNetwork::setConfidenceThreshold(float thresh) {
@@ -37,24 +28,17 @@ float DetectionNetwork::getConfidenceThreshold() const {
 //--------------------------------------------------------------------
 // MobileNet
 //--------------------------------------------------------------------
-MobileNetDetectionNetwork::MobileNetDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : NodeCRTP<DetectionNetwork, MobileNetDetectionNetwork, DetectionNetworkProperties>(par, nodeId, std::make_unique<Properties>()) {
+void MobileNetDetectionNetwork::build() {
     properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
 }
-MobileNetDetectionNetwork::MobileNetDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<DetectionNetwork, MobileNetDetectionNetwork, DetectionNetworkProperties>(par, nodeId, std::move(props)) {}
 
 //--------------------------------------------------------------------
 // YOLO
 //--------------------------------------------------------------------
-YoloDetectionNetwork::YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : NodeCRTP<DetectionNetwork, YoloDetectionNetwork, DetectionNetworkProperties>(par, nodeId, std::make_unique<Properties>()) {
+void YoloDetectionNetwork::build() {
     properties.parser.nnFamily = DetectionNetworkType::YOLO;
     properties.parser.iouThreshold = 0.5f;
 }
-
-YoloDetectionNetwork::YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<DetectionNetwork, YoloDetectionNetwork, DetectionNetworkProperties>(par, nodeId, std::move(props)) {}
 
 void YoloDetectionNetwork::setNumClasses(const int numClasses) {
     properties.parser.classes = numClasses;

@@ -11,18 +11,6 @@ namespace node {
 //--------------------------------------------------------------------
 // Base Detection Network Class
 //--------------------------------------------------------------------
-SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : NodeCRTP<DetectionNetwork, SpatialDetectionNetwork, SpatialDetectionNetworkProperties>(par, nodeId, std::make_unique<Properties>()) {
-    setInputRefs({&input, &inputDepth});
-    setOutputRefs({&out, &boundingBoxMapping, &passthrough, &passthroughDepth});
-}
-
-SpatialDetectionNetwork::SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<DetectionNetwork, SpatialDetectionNetwork, SpatialDetectionNetworkProperties>(par, nodeId, std::move(props)) {
-    setInputRefs({&input, &inputDepth});
-    setOutputRefs({&out, &boundingBoxMapping, &passthrough, &passthroughDepth});
-}
-
 void SpatialDetectionNetwork::setBoundingBoxScaleFactor(float scaleFactor) {
     properties.detectedBBScaleFactor = scaleFactor;
 }
@@ -42,16 +30,14 @@ void SpatialDetectionNetwork::setSpatialCalculationAlgorithm(dai::SpatialLocatio
 //--------------------------------------------------------------------
 // MobileNet
 //--------------------------------------------------------------------
-MobileNetSpatialDetectionNetwork::MobileNetSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : NodeCRTP<SpatialDetectionNetwork, MobileNetSpatialDetectionNetwork, SpatialDetectionNetworkProperties>(par, nodeId) {
+void MobileNetSpatialDetectionNetwork::build() {
     properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
 }
 
 //--------------------------------------------------------------------
 // YOLO
 //--------------------------------------------------------------------
-YoloSpatialDetectionNetwork::YoloSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : NodeCRTP<SpatialDetectionNetwork, YoloSpatialDetectionNetwork, SpatialDetectionNetworkProperties>(par, nodeId) {
+void YoloSpatialDetectionNetwork::build() {
     properties.parser.nnFamily = DetectionNetworkType::YOLO;
 }
 

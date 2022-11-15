@@ -27,8 +27,8 @@ class EdgeDetector : public NodeCRTP<DeviceNode, EdgeDetector, EdgeDetectorPrope
     std::shared_ptr<RawEdgeDetectorConfig> rawConfig;
 
    public:
-    EdgeDetector(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    EdgeDetector(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    EdgeDetector();
+    EdgeDetector(std::unique_ptr<Properties> props);
 
     /**
      * Initial config to use for edge detection.
@@ -39,22 +39,22 @@ class EdgeDetector : public NodeCRTP<DeviceNode, EdgeDetector, EdgeDetectorPrope
      * Input EdgeDetectorConfig message with ability to modify parameters in runtime.
      * Default queue is non-blocking with size 4.
      */
-    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::EdgeDetectorConfig, false}}};
+    Input inputConfig{true, *this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::EdgeDetectorConfig, false}}};
     /**
      * Input image on which edge detection is performed.
      * Default queue is non-blocking with size 4.
      */
-    Input inputImage{*this, "inputImage", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputImage{true, *this, "inputImage", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs image frame with detected edges
      */
-    Output outputImage{*this, "outputImage", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output outputImage{true, *this, "outputImage", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Passthrough message on which the calculation was performed.
      */
-    Output passthroughInputImage{*this, "passthroughInputImage", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output passthroughInputImage{true, *this, "passthroughInputImage", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     // Functions to set properties
     /**

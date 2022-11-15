@@ -52,9 +52,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Access to nodes
     std::vector<std::shared_ptr<Node>> getAllNodes() const;
-    // std::vector<std::shared_ptr<Node>> getAllNodes();
     std::shared_ptr<Node> getNode(Node::Id id) const;
-    // std::shared_ptr<Node> getNode(Node::Id id);
 
     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
     nlohmann::json serializeToJson() const;
@@ -210,10 +208,6 @@ class Pipeline {
     std::vector<std::shared_ptr<Node>> getAllNodes() const {
         return impl()->getAllNodes();
     }
-    // /// Get a vector of all nodes
-    // std::vector<std::shared_ptr<Node>> getAllNodes() {
-    //     return impl()->getAllNodes();
-    // }
 
     /// Get node with id if it exists, nullptr otherwise
     std::shared_ptr<const Node> getNode(Node::Id id) const {
@@ -224,46 +218,15 @@ class Pipeline {
         return impl()->getNode(id);
     }
 
-    // /// Get all connections
-    // std::vector<Node::Connection> getConnections() const {
-    //     return impl()->getConnections();
-    // }
+    /// Get all connections
+    std::vector<Node::Connection> getConnections() const {
+        return impl()->getConnections();
+    }
 
     using NodeConnectionMap = PipelineImpl::NodeConnectionMap;
-    // /// Get a reference to internal connection representation
-    // NodeConnectionMap getConnectionMap() const {
-    //     return impl()->getConnectionMap();
-    // }
-
-    // // using NodeMap = PipelineImpl::NodeMap;
-    // /// Get a reference to internal node map
-    // const NodeMap& getNodeMap() const {
-    //     return impl()->nodeMap;
-    // }
-
-    // /**
-    //  * Link output to an input. Both nodes must be on the same pipeline
-    //  *
-    //  * Throws an error if they aren't or cannot be connected
-    //  *
-    //  * @param out Nodes output to connect from
-    //  * @param in Nodes input to connect to
-    //  */
-    // void link(const Node::Output& out, const Node::Input& in) {
-    //     impl()->link(out, in);
-    // }
-
-    // /**
-    //  * Unlink output from an input.
-    //  *
-    //  * Throws an error if link doesn't exists
-    //  *
-    //  * @param out Nodes output to unlink from
-    //  * @param in Nodes input to unlink to
-    //  */
-    // void unlink(const Node::Output& out, const Node::Input& in) {
-    //     impl()->unlink(out, in);
-    // }
+    NodeConnectionMap getConnectionMap() const {
+        return impl()->getConnectionMap();
+    }
 
     /// Get pipelines AssetManager as reference
     const AssetManager& getAssetManager() const {

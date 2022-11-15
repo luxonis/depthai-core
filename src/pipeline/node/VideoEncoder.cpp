@@ -9,17 +9,6 @@
 namespace dai {
 namespace node {
 
-VideoEncoder::VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : NodeCRTP<DeviceNode, VideoEncoder, VideoEncoderProperties>(par, nodeId, std::make_unique<VideoEncoder::Properties>()) {
-    setInputRefs({&input});
-    setOutputRefs({&bitstream});
-}
-
-VideoEncoder::VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, VideoEncoder, VideoEncoderProperties>(par, nodeId, std::move(props)) {
-    setInputRefs({&input});
-    setOutputRefs({&bitstream});
-}
 // node properties
 void VideoEncoder::setNumFramesPool(int frames) {
     properties.numFramesPool = frames;

@@ -16,14 +16,12 @@ class XLinkIn : public NodeCRTP<DeviceNode, XLinkIn, XLinkInProperties> {
     constexpr static const char* NAME = "XLinkIn";
 
    public:
-    XLinkIn();
-    XLinkIn(std::unique_ptr<Properties> props);
     virtual ~XLinkIn() = default;
 
     /**
      * Outputs message of same type as send from host.
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
+    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
 
     /**
      * Specifies XLink stream name to use.

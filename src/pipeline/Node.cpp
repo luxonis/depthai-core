@@ -240,13 +240,19 @@ std::vector<uint8_t> Node::loadResource(dai::Path uri) {
     return parent.lock()->loadResourceCwd(uri, cwd);
 }
 
-Node::OutputMap::OutputMap(Node& parent, std::string name, Node::Output defaultOutput) : defaultOutput(defaultOutput), name(std::move(name)) {
+Node::OutputMap::OutputMap(Node& parent, std::string name, Node::Output defaultOutput) : defaultOutput(defaultOutput), name(std::move(name)) {}
+Node::OutputMap::OutputMap(Node& parent, Node::Output defaultOutput) : defaultOutput(defaultOutput) {}
+Node::OutputMap::OutputMap(bool ref, Node& parent, std::string name, Node::Output defaultOutput) : defaultOutput(defaultOutput), name(std::move(name)) {
     // Place oneself to the parents references
-    parent.setOutputMapRefs(this);
+    if(ref) {
+        parent.setOutputMapRefs(this);
+    }
 }
-Node::OutputMap::OutputMap(Node& parent, Node::Output defaultOutput) : defaultOutput(defaultOutput) {
+Node::OutputMap::OutputMap(bool ref, Node& parent, Node::Output defaultOutput) : defaultOutput(defaultOutput) {
     // Place oneself to the parents references
-    parent.setOutputMapRefs(this);
+    if(ref) {
+        parent.setOutputMapRefs(this);
+    }
 }
 Node::Output& Node::OutputMap::operator[](const std::string& key) {
     if(count({name, key}) == 0) {
@@ -272,14 +278,19 @@ Node::Output& Node::OutputMap::operator[](std::pair<std::string, std::string> gr
     // otherwise just return reference to existing
     return at(groupKey);
 }
-
-Node::InputMap::InputMap(Node& parent, std::string name, Node::Input defaultInput) : defaultInput(defaultInput), name(std::move(name)) {
+Node::InputMap::InputMap(Node& parent, std::string name, Node::Input defaultInput) : defaultInput(defaultInput), name(std::move(name)) {}
+Node::InputMap::InputMap(Node& parent, Node::Input defaultInput) : defaultInput(defaultInput) {}
+Node::InputMap::InputMap(bool ref, Node& parent, std::string name, Node::Input defaultInput) : defaultInput(defaultInput), name(std::move(name)) {
     // Place oneself to the parents references
-    parent.setInputMapRefs(this);
+    if(ref) {
+        parent.setInputMapRefs(this);
+    }
 }
-Node::InputMap::InputMap(Node& parent, Node::Input defaultInput) : defaultInput(defaultInput) {
+Node::InputMap::InputMap(bool ref, Node& parent, Node::Input defaultInput) : defaultInput(defaultInput) {
     // Place oneself to the parents references
-    parent.setInputMapRefs(this);
+    if(ref) {
+        parent.setInputMapRefs(this);
+    }
 }
 Node::Input& Node::InputMap::operator[](const std::string& key) {
     if(count({name, key}) == 0) {
@@ -309,7 +320,8 @@ Node::Input& Node::InputMap::operator[](std::pair<std::string, std::string> grou
 /// Retrieves all nodes outputs
 std::vector<Node::Output> Node::getOutputs() {
     std::vector<Node::Output> result;
-    for(auto* x : getOutputRefs()) {
+    auto refs = getOutputRefs();
+    for(auto* x : refs) {
         result.push_back(*x);
     }
     return result;
@@ -318,7 +330,8 @@ std::vector<Node::Output> Node::getOutputs() {
 /// Retrieves all nodes inputs
 std::vector<Node::Input> Node::getInputs() {
     std::vector<Node::Input> result;
-    for(auto* x : getInputRefs()) {
+    auto refs = getInputRefs();
+    for(auto* x : refs) {
         result.push_back(*x);
     }
     return result;
@@ -567,107 +580,6 @@ std::vector<std::shared_ptr<Node>> Node::getAllNodes() const {
     }
     return nodes;
 }
-
-/*
-// Remove node capability
-void Node::remove(std::shared_ptr<Node> toRemove) {
-    // Search for this node in 'nodes' vector.
-    // If found, remove from vector
-
-    // First check if node is on this node (and that they are the same)
-    if(nodeMap.count(toRemove->id) > 0) {
-        if(nodeMap.at(toRemove->id) == toRemove) {
-            // its same object, (not same id but from different pipeline)
-
-            // Steps to remove
-            // 1. Iterate and remove this nodes output connections
-            // 2. Remove this nodes entry in 'nodeConnectionMap'
-            // 3. Remove node from 'nodeMap'
-
-            // 1. Iterate and remove this nodes output connections
-            for(auto& kv : nodeConnectionMap) {
-                for(auto it = kv.second.begin(); it != kv.second.end();) {
-                    // check if output belongs to 'toRemove' node
-                    if(it->outputId == toRemove->id) {
-                        // remove this connection from set
-                        it = kv.second.erase(it);
-                    } else {
-                        ++it;
-                    }
-                }
-            }
-
-            // 2. Remove this nodes entry in 'nodeConnectionMap'
-            nodeConnectionMap.erase(toRemove->id);
-
-            // 3. Remove node from 'nodeMap'
-            nodeMap.erase(toRemove->id);
-        }
-    }
-}
-
-bool Node::canConnect(const Output& out, const Input& in) {
-
-}
-
-std::vector<Node::Connection> Node::getConnections() const {
-    std::vector<Node::Connection> connections;
-    for(const auto& kv : nodeConnectionMap) {
-        for(const auto& conn : kv.second) {
-            connections.push_back(conn);
-        }
-    }
-    return connections;
-}
-
-void Node::link(const Node::Output& out, const Node::Input& in) {
-    // // First check if on same pipeline
-    // if(!isSamePipeline(out, in)) {
-    //     throw std::logic_error(fmt::format("Nodes are not on same pipeline or one of nodes parent pipeline doesn't exists anymore"));
-    // }
-
-    // First check if can connect (must be on same pipeline and correct types)
-    if(!canConnect(out, in)) {
-        throw std::runtime_error(
-            fmt::format("Cannot link '{}.{}' to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
-    }
-
-    // Create 'Connection' object between 'out' and 'in'
-    Node::Connection connection(out, in);
-
-    // Check if connection was already made - the following is possible as operator[] constructs the underlying set if it doesn't exist.
-    if(nodeConnectionMap[in.getParent().id].count(connection) > 0) {
-        // this means a connection was already made.
-        throw std::logic_error(
-            fmt::format("'{}.{}' already linked to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
-    }
-
-    // Otherwise all is set to add a new connection into nodeConnectionMap[in.getParent().id]
-    nodeConnectionMap[in.getParent().id].insert(connection);
-}
-
-void Node::unlink(const Node::Output& out, const Node::Input& in) {
-    // First check if on same pipeline
-    if(!isSamePipeline(out, in)) {
-        throw std::logic_error(fmt::format("Nodes are not on same pipeline or one of nodes parent pipeline doesn't exists anymore"));
-    }
-
-    // Create 'Connection' object
-    Node::Connection connection(out, in);
-
-    // Check if not connected (connection object doesn't exist in nodeConnectionMap)
-    if(nodeConnectionMap[in.getParent().id].count(connection) <= 0) {
-        // not connected
-        throw std::logic_error(
-            fmt::format("'{}.{}' not linked to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
-    }
-
-    // Otherwise if exists, remove this connection
-    nodeConnectionMap[in.getParent().id].erase(connection);
-}
-
-
-*/
 
 size_t Node::ConnectionInternal::Hash::operator()(const dai::Node::ConnectionInternal& obj) const {
     size_t seed = 0;

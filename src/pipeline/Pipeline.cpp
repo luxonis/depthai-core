@@ -98,25 +98,7 @@ std::shared_ptr<Node> PipelineImpl::getNode(Node::Id id) const {
     }
     return nullptr;
 }
-// std::shared_ptr<Node> PipelineImpl::getNode(Node::Id id) {
-//     // Search all nodes
-//     for(auto& node : nodes) {
-//         auto n = node->getNode(id);
-//         if(n != nullptr) {
-//             return n;
-//         }
-//     }
-//     return nullptr;
-// }
 
-// std::vector<std::shared_ptr<const Node>> PipelineImpl::getAllNodes() const {
-//     std::vector<std::shared_ptr<const Node>> nodes;
-//     for(const auto& node : nodes) {
-//         auto n = node->getAllNodes();
-//         nodes.insert(nodes.end(), n.begin(), n.end());
-//     }
-//     return nodes;
-// }
 std::vector<std::shared_ptr<Node>> PipelineImpl::getAllNodes() const {
     std::vector<std::shared_ptr<Node>> allNodes;
     for(auto& node : nodes) {
@@ -175,6 +157,18 @@ PipelineImpl::NodeConnectionMap PipelineImpl::getConnectionMap() const {
     }
 
     return map;
+}
+
+std::vector<Node::Connection> PipelineImpl::getConnections() const {
+    std::vector<Node::Connection> conns;
+    auto nodeConnectionMap = getConnectionMap();
+    for(const auto& kv : nodeConnectionMap) {
+        const auto& connections = kv.second;
+        for(const auto& conn : connections) {
+            conns.push_back(conn);
+        }
+    }
+    return conns;
 }
 
 PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
@@ -651,62 +645,6 @@ bool PipelineImpl::canConnect(const Node::Output& out, const Node::Input& in) {
     // If datatypes don't match up, return false
     return false;
 }
-
-// std::vector<Node::Connection> PipelineImpl::getConnections() const {
-//     std::vector<Node::Connection> connections;
-//     for(const auto& kv : getConnectionMap()) {
-//         for(const auto& conn : kv.second) {
-//             connections.push_back(conn);
-//         }
-//     }
-//     return connections;
-// }
-
-// void PipelineImpl::link(const Node::Output& out, const Node::Input& in) {
-//     // First check if on same pipeline
-//     if(!isSamePipeline(out, in)) {
-//         throw std::logic_error(fmt::format("Nodes are not on same pipeline or one of nodes parent pipeline doesn't exists anymore"));
-//     }
-
-//     // First check if can connect (must be on same pipeline and correct types)
-//     if(!canConnect(out, in)) {
-//         throw std::runtime_error(
-//             fmt::format("Cannot link '{}.{}' to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
-//     }
-
-//     // Create 'Connection' object between 'out' and 'in'
-//     Node::Connection connection(out, in);
-
-//     // Check if connection was already made - the following is possible as operator[] constructs the underlying set if it doesn't exist.
-//     if(nodeConnectionMap[in.getParent().id].count(connection) > 0) {
-//         // this means a connection was already made.
-//         throw std::logic_error(
-//             fmt::format("'{}.{}' already linked to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
-//     }
-
-//     // Otherwise all is set to add a new connection into nodeConnectionMap[in.getParent().id]
-//     nodeConnectionMap[in.getParent().id].insert(connection);
-// }
-
-// void PipelineImpl::unlink(const Node::Output& out, const Node::Input& in) {
-//     // First check if on same pipeline
-//     if(!isSamePipeline(out, in)) {
-//         throw std::logic_error(fmt::format("Nodes are not on same pipeline or one of nodes parent pipeline doesn't exists anymore"));
-//     }
-
-//     // Create 'Connection' object
-//     Node::Connection connection(out, in);
-
-//     // Check if not connected (connection object doesn't exist in nodeConnectionMap)
-//     if(nodeConnectionMap[in.getParent().id].count(connection) <= 0) {
-//         // not connected
-//         throw std::logic_error(
-//             fmt::format("'{}.{}' not linked to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
-//     }
-
-//     // Otherwise if exists, remove this connection
-//     nodeConnectionMap[in.getParent().id].erase(connection);
-// }
 
 void PipelineImpl::setCalibrationData(CalibrationHandler calibrationDataHandler) {
     /* if(!calibrationDataHandler.validateCameraArray()) {

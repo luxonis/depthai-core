@@ -18,10 +18,9 @@ class Pool : public NodeCRTP<DeviceNode, Pool, PoolProperties> {
     constexpr static const char* NAME = "Pool";
 
     /**
-     *  Inputs to Script node. Can be accessed using subscript operator (Eg: inputs['in1'])
-     *  By default inputs are set to blocking with queue size 8
+     *  Pool output in pull orientation
      */
-    Output out{*this, "out", Output::Type::SSender, {{DatatypeEnum::Buffer, true}}};
+    Output out{true, *this, "out", Output::Type::SSender, {{DatatypeEnum::Buffer, true}}};
 
     /**
      * Sets number of messages in pool

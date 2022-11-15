@@ -23,7 +23,7 @@ class SystemLogger : public NodeCRTP<DeviceNode, SystemLogger, SystemLoggerPrope
      * For series 2 devices outputs SystemInformation message,
      * for series 3 devices outputs SystemInformationS3 message
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::SystemInformation, false}, {DatatypeEnum::SystemInformationS3, false}}};
+    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::SystemInformation, false}, {DatatypeEnum::SystemInformationS3, false}}};
 
     /**
      * Optional - consumes an SystemInformation message from pool to send outwards

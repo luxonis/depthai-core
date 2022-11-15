@@ -18,17 +18,15 @@ namespace test {
 class MyConsumer : public NodeCRTP<ThreadedNode, MyConsumer, XLinkOutProperties> {
    public:
     constexpr static const char* NAME = "MyConsumer";
+    void build();
 
    public:
-    MyConsumer(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    MyConsumer(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
-
     /**
      * Input for any type of messages to be transferred over XLink stream
      *
      * Default queue is blocking with size 8
      */
-    Input input{*this, "in", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::Buffer, true}}};
+    Input input{true, *this, "in", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::Buffer, true}}};
 
     void run() override {
         while(isRunning()) {

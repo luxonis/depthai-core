@@ -10,10 +10,8 @@ namespace dai {
 namespace node {
 namespace test {
 
-MyProducer::MyProducer(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : MyProducer(par, nodeId, std::make_unique<MyProducer::Properties>()) {}
-MyProducer::MyProducer(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<ThreadedNode, MyProducer, XLinkOutProperties>(par, nodeId, std::move(props)) {
-    setOutputRefs(&out);
+void MyProducer::build() {
+    hostNode = true;
 }
 
 void MyProducer::run() {

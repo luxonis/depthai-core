@@ -3,13 +3,9 @@
 namespace dai {
 namespace node {
 
-XLinkOut::XLinkOut() : NodeCRTP<DeviceNode, XLinkOut, XLinkOutProperties>(std::make_unique<XLinkOut::Properties>()) {
+void XLinkOut::build() {
+    // set some default properties
     properties.maxFpsLimit = -1;
-    setInputRefs(&input);
-}
-
-XLinkOut::XLinkOut(std::unique_ptr<Properties> props) : NodeCRTP<DeviceNode, XLinkOut, XLinkOutProperties>(std::move(props)) {
-    setInputRefs(&input);
 }
 
 void XLinkOut::setStreamName(const std::string& name) {

@@ -4,6 +4,7 @@ namespace dai {
 namespace node {
 
 void SystemLogger::build() {
+    // Set some default properties
     properties.rateHz = 1.0f;
     // Link pool to inputPool
     pool->out.link(inputPool);

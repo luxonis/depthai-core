@@ -17,6 +17,7 @@ namespace node {
 class MonoCamera : public NodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties> {
    public:
     constexpr static const char* NAME = "MonoCamera";
+    void build();
 
    private:
     std::shared_ptr<RawCameraControl> rawControl;
@@ -25,8 +26,8 @@ class MonoCamera : public NodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>
     Properties& getProperties();
 
    public:
-    MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    MonoCamera();
+    MonoCamera(std::unique_ptr<Properties> props);
 
     /**
      * Initial control options to apply to sensor
@@ -37,21 +38,21 @@ class MonoCamera : public NodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>
      * Input for CameraControl message, which can modify camera parameters in runtime
      * Default queue is blocking with size 8
      */
-    Input inputControl{*this, "inputControl", Input::Type::SReceiver, true, 8, {{DatatypeEnum::CameraControl, false}}};
+    Input inputControl{true, *this, "inputControl", Input::Type::SReceiver, true, 8, {{DatatypeEnum::CameraControl, false}}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 encoded (grayscale) frame data.
      *
      * Suitable for use StereoDepth node. Processed by ISP
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs ImgFrame message that carries RAW10-packed (MIPI CSI-2 format) frame data.
      *
      * Captured directly from the camera sensor
      */
-    Output raw{*this, "raw", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output raw{true, *this, "raw", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs metadata-only ImgFrame message as an early indicator of an incoming frame.
@@ -61,7 +62,7 @@ class MonoCamera : public NodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>
      * Could be used to synchronize various processes with camera capture.
      * Fields populated: camera id, sequence number, timestamp
      */
-    Output frameEvent{*this, "frameEvent", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output frameEvent{true, *this, "frameEvent", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Specify which board socket to use

@@ -9,54 +9,18 @@
 namespace dai {
 namespace node {
 
-StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties>(par, nodeId, std::make_unique<StereoDepth::Properties>()),
-      rawConfig(std::make_shared<RawStereoDepthConfig>()),
-      initialConfig(rawConfig) {
-    // 'properties' defaults already set
-    setInputRefs({&inputConfig, &left, &right});
-    setOutputRefs({&depth,
-                   &disparity,
-                   &syncedLeft,
-                   &syncedRight,
-                   &rectifiedLeft,
-                   &rectifiedRight,
-                   &outConfig,
-                   &debugDispLrCheckIt1,
-                   &debugDispLrCheckIt2,
-                   &debugExtDispLrCheckIt1,
-                   &debugExtDispLrCheckIt2,
-                   &debugDispCostDump,
-                   &confidenceMap});
-
+void StereoDepth::build() {
     setDefaultProfilePreset(presetMode);
     setLeftRightCheck(false);
 }
 
-StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties>(par, nodeId, std::move(props)),
+StereoDepth::StereoDepth()
+    : NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties>(), rawConfig(std::make_shared<RawStereoDepthConfig>()), initialConfig(rawConfig) {}
+
+StereoDepth::StereoDepth(std::unique_ptr<Properties> props)
+    : NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties>(std::move(props)),
       rawConfig(std::make_shared<RawStereoDepthConfig>(properties.initialConfig)),
-      initialConfig(rawConfig) {
-    // 'properties' defaults already set
-    setInputRefs({&inputConfig, &left, &right});
-    setOutputRefs({&depth,
-                   &disparity,
-                   &syncedLeft,
-                   &syncedRight,
-                   &rectifiedLeft,
-                   &rectifiedRight,
-                   &outConfig,
-                   &debugDispLrCheckIt1,
-                   &debugDispLrCheckIt2,
-                   &debugExtDispLrCheckIt1,
-                   &debugExtDispLrCheckIt2,
-                   &debugDispCostDump,
-                   &confidenceMap,
-                   &pixelDescriptors});
-
-    setDefaultProfilePreset(presetMode);
-    setLeftRightCheck(false);
-}
+      initialConfig(rawConfig) {}
 
 StereoDepth::Properties& StereoDepth::getProperties() {
     properties.initialConfig = *rawConfig;

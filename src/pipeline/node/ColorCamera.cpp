@@ -8,7 +8,15 @@ namespace dai {
 namespace node {
 
 ColorCamera::ColorCamera()
-    : NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(), rawControl(std::make_shared<RawCameraControl>()), initialControl(rawControl) {
+    : NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(), rawControl(std::make_shared<RawCameraControl>()), initialControl(rawControl) {}
+
+ColorCamera::ColorCamera(std::unique_ptr<Properties> props)
+    : NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(std::move(props)),
+      rawControl(std::make_shared<RawCameraControl>(properties.initialControl)),
+      initialControl(rawControl) {}
+
+void ColorCamera::build() {
+    // Set some default properties
     properties.boardSocket = CameraBoardSocket::AUTO;
     properties.imageOrientation = CameraImageOrientation::AUTO;
     properties.colorOrder = ColorCameraProperties::ColorOrder::BGR;
@@ -18,17 +26,6 @@ ColorCamera::ColorCamera()
     properties.resolution = ColorCameraProperties::SensorResolution::THE_1080_P;
     properties.fps = 30.0;
     properties.previewKeepAspectRatio = true;
-
-    setInputRefs({&inputConfig, &inputControl});
-    setOutputRefs({&video, &preview, &still, &isp, &raw, &frameEvent});
-}
-
-ColorCamera::ColorCamera(std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(std::move(props)),
-      rawControl(std::make_shared<RawCameraControl>(properties.initialControl)),
-      initialControl(rawControl) {
-    setInputRefs({&inputConfig, &inputControl});
-    setOutputRefs({&video, &preview, &still, &isp, &raw, &frameEvent});
 }
 
 ColorCamera::Properties& ColorCamera::getProperties() {

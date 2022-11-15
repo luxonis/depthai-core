@@ -5,25 +5,19 @@
 namespace dai {
 namespace node {
 
-MonoCamera::MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : NodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>(par, nodeId, std::make_unique<MonoCamera::Properties>()),
-      rawControl(std::make_shared<RawCameraControl>()),
-      initialControl(rawControl) {
+void MonoCamera::build() {
     properties.boardSocket = CameraBoardSocket::AUTO;
     properties.resolution = MonoCameraProperties::SensorResolution::THE_720_P;
     properties.fps = 30.0;
-
-    setInputRefs({&inputControl});
-    setOutputRefs({&out, &raw, &frameEvent});
 }
 
-MonoCamera::MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>(par, nodeId, std::move(props)),
+MonoCamera::MonoCamera()
+    : NodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>(), rawControl(std::make_shared<RawCameraControl>()), initialControl(rawControl) {}
+
+MonoCamera::MonoCamera(std::unique_ptr<Properties> props)
+    : NodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>(std::move(props)),
       rawControl(std::make_shared<RawCameraControl>(properties.initialControl)),
-      initialControl(rawControl) {
-    setInputRefs({&inputControl});
-    setOutputRefs({&out, &raw, &frameEvent});
-}
+      initialControl(rawControl) {}
 
 MonoCamera::Properties& MonoCamera::getProperties() {
     properties.initialControl = *rawControl;
