@@ -120,7 +120,7 @@ class AssetManager /*: public Assets*/ {
     void remove(const std::string& key);
 
     /// Serializes
-    void serialize(AssetsMutable& assets, std::vector<std::uint8_t>& assetStorage) const;
+    void serialize(AssetsMutable& assets, std::vector<std::uint8_t>& assetStorage, std::string prefix = "") const;
 };
 
 }  // namespace dai

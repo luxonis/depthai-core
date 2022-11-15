@@ -138,8 +138,12 @@ void AssetManager::remove(const std::string& key) {
     assetMap.erase(key);
 }
 
-void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint8_t>& storage) const {
+void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint8_t>& storage, std::string prefix) const {
     using namespace std;
+
+    if(prefix.empty()) {
+        prefix = rootPath;
+    }
 
     for(auto& kv : assetMap) {
         auto& a = *kv.second;
@@ -160,7 +164,7 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
         storage.insert(storage.end(), a.data.begin(), a.data.end());
 
         // Add to map the currently added asset
-        mutableAssets.set(rootPath + a.key, offset, static_cast<uint32_t>(a.data.size()), a.alignment);
+        mutableAssets.set(prefix + a.key, offset, static_cast<uint32_t>(a.data.size()), a.alignment);
     }
 }
 
