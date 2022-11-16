@@ -18,39 +18,32 @@ class Sync : public NodeCRTP<DeviceNode, Sync, SyncProperties> {
    public:
     constexpr static const char* NAME = "Sync";
 
-   protected:
-    Properties& getProperties();
-
-   private:
    public:
-    Sync(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    Sync(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
-
     /**
      * Input image
      */
-    Input input1{*this, "input1", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
+    Input input1{true, *this, "input1", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
     /**
      * Input image
      */
-    Input input2{*this, "input2", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
+    Input input2{true, *this, "input2", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
     /**
      * Input image
      */
-    Input input3{*this, "input3", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
+    Input input3{true, *this, "input3", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Output image
      */
-    Output output1{*this, "output1", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output output1{true, *this, "output1", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
     /**
      * Output image
      */
-    Output output2{*this, "output2", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output output2{true, *this, "output2", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
     /**
      * Output image
      */
-    Output output3{*this, "output3", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output output3{true, *this, "output3", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 };
 
 }  // namespace node

@@ -3,14 +3,9 @@
 namespace dai {
 namespace node {
 
-SPIIn::SPIIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : NodeCRTP<DeviceNode, SPIIn, SPIInProperties>(par, nodeId, std::make_unique<SPIIn::Properties>()) {
+void SPIIn::build() {
+    // set some default properties
     properties.busId = 0;
-    setOutputRefs({&out});
-}
-SPIIn::SPIIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, SPIIn, SPIInProperties>(par, nodeId, std::move(props)) {
-    setOutputRefs({&out});
 }
 
 void SPIIn::setStreamName(const std::string& name) {

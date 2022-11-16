@@ -57,13 +57,16 @@ Pipeline Pipeline::clone() const {
 
     // All IDs remain the same, just switch out the actual nodes with copies
     // Copy all nodes
-    for(const auto& kv : impl()->nodeMap) {
-        const auto& id = kv.first;
+    for(const auto& node : impl()->nodes) {
+        // const auto& id = kv.first;
 
         // Swap out with a copy
-        clone.pimpl->nodeMap[id] = impl()->nodeMap.at(id)->clone();
+        auto nodeClone = node->clone();
         // Set parent to be the new pipeline
-        clone.pimpl->nodeMap[id]->parent = std::weak_ptr<PipelineImpl>(clone.pimpl);
+        nodeClone->parent = std::weak_ptr<PipelineImpl>(clone.pimpl);
+
+        // Add the new copy
+        clone.pimpl->nodes.push_back(node->clone());
     }
 
     return clone;
@@ -85,32 +88,27 @@ void PipelineImpl::setGlobalProperties(GlobalProperties globalProperties) {
     this->globalProperties = globalProperties;
 }
 
-std::shared_ptr<const Node> PipelineImpl::getNode(Node::Id id) const {
-    if(nodeMap.count(id) > 0) {
-        return nodeMap.at(id);
-    }
-    return nullptr;
-}
-std::shared_ptr<Node> PipelineImpl::getNode(Node::Id id) {
-    if(nodeMap.count(id) > 0) {
-        return nodeMap.at(id);
+std::shared_ptr<Node> PipelineImpl::getNode(Node::Id id) const {
+    // Search all nodes
+    for(const auto& node : nodes) {
+        auto n = node->getNode(id);
+        if(n != nullptr) {
+            return n;
+        }
     }
     return nullptr;
 }
 
-std::vector<std::shared_ptr<const Node>> PipelineImpl::getAllNodes() const {
-    std::vector<std::shared_ptr<const Node>> nodes;
-    for(const auto& kv : nodeMap) {
-        nodes.push_back(kv.second);
+std::vector<std::shared_ptr<Node>> PipelineImpl::getAllNodes() const {
+    std::vector<std::shared_ptr<Node>> allNodes;
+    for(auto& node : nodes) {
+        // Insert the node in question
+        allNodes.push_back(node);
+        // And its subnodes
+        auto n = node->getAllNodes();
+        allNodes.insert(allNodes.end(), n.begin(), n.end());
     }
-    return nodes;
-}
-std::vector<std::shared_ptr<Node>> PipelineImpl::getAllNodes() {
-    std::vector<std::shared_ptr<Node>> nodes;
-    for(const auto& kv : nodeMap) {
-        nodes.push_back(kv.second);
-    }
-    return nodes;
+    return allNodes;
 }
 
 void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type) const {
@@ -121,10 +119,10 @@ void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector
     assetStorage.clear();
     AssetsMutable mutableAssets;
     // Pipeline assets
-    assetManager.serialize(mutableAssets, assetStorage);
+    assetManager.serialize(mutableAssets, assetStorage, "/pipeline/");
     // Node assets
-    for(const auto& kv : nodeMap) {
-        kv.second->getAssetManager().serialize(mutableAssets, assetStorage);
+    for(auto& node : nodes) {
+        node->getAssetManager().serialize(mutableAssets, assetStorage, fmt::format("/node/{}/", node->id));
     }
 
     assets = mutableAssets;
@@ -147,13 +145,39 @@ nlohmann::json PipelineImpl::serializeToJson() const {
     return j;
 }
 
+PipelineImpl::NodeConnectionMap PipelineImpl::getConnectionMap() const {
+    NodeConnectionMap map;
+
+    for(const auto& node : nodes) {
+        auto nodeConnMap = node->getConnectionMap();
+        for(auto& kv : nodeConnMap) {
+            auto& n = kv.first;
+            map[n->id] = kv.second;
+        }
+    }
+
+    return map;
+}
+
+std::vector<Node::Connection> PipelineImpl::getConnections() const {
+    std::vector<Node::Connection> conns;
+    auto nodeConnectionMap = getConnectionMap();
+    for(const auto& kv : nodeConnectionMap) {
+        const auto& connections = kv.second;
+        for(const auto& conn : connections) {
+            conns.push_back(conn);
+        }
+    }
+    return conns;
+}
+
 PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
     PipelineSchema schema;
     schema.globalProperties = globalProperties;
 
-    // Loop over nodes, and add them to schema
-    for(const auto& kv : nodeMap) {
-        const auto& node = kv.second;
+    // Loop over all nodes, and add them to schema
+    for(const auto& node : getAllNodes()) {
+        // const auto& node = kv.second;
 
         // Check if its a host node or device node
         if(node->hostNode) {
@@ -164,6 +188,13 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
             NodeObjInfo info;
             info.id = node->id;
             info.name = node->getName();
+            info.alias = node->getAlias();
+            auto parentNode = node->parentNode.lock();
+            if(parentNode) {
+                info.parentId = parentNode->id;
+            } else {
+                info.parentId = -1;
+            }
             node->getProperties().serialize(info.properties, type);
 
             // Create Io information
@@ -250,20 +281,23 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
     };
     Node::Id xLinkBridgeId = latestId;
 
+    auto nodeConnectionMap = getConnectionMap();
     for(const auto& kv : nodeConnectionMap) {
         const auto& connections = kv.second;
 
         for(const auto& conn : connections) {
             NodeConnectionSchema c;
-            c.node1Id = conn.outputId;
+            auto outNode = conn.outputNode.lock();
+            auto inNode = conn.inputNode.lock();
+            c.node1Id = outNode->id;
             c.node1Output = conn.outputName;
             c.node1OutputGroup = conn.outputGroup;
-            c.node2Id = conn.inputId;
+            c.node2Id = inNode->id;
             c.node2Input = conn.inputName;
             c.node2InputGroup = conn.inputGroup;
 
-            bool outputHost = nodeMap.at(conn.outputId)->hostNode;
-            bool inputHost = nodeMap.at(conn.inputId)->hostNode;
+            bool outputHost = outNode->hostNode;
+            bool inputHost = inNode->hostNode;
 
             std::shared_ptr<Node> node;
 
@@ -278,7 +312,9 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
                 // Create a map entry, only one bridge is required for multiple connections
                 auto xlinkConnection = c;
 
-                auto nodeTmp = std::make_shared<node::XLinkIn>(parent.pimpl, xLinkBridgeId++);
+                auto nodeTmp = std::make_shared<node::XLinkIn>();
+                nodeTmp->parent = parent.pimpl;
+                nodeTmp->id = xLinkBridgeId++;
                 xlinkConnection.node1Id = xLinkBridgeId;
                 xlinkConnection.node1Output = nodeTmp->out.name;
                 xlinkConnection.node1OutputGroup = nodeTmp->out.group;
@@ -313,7 +349,9 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
                 if(deviceHostXLinkBridge.count(xlinkConnection) <= 0) {
                     // create it
                     deviceHostXLinkBridge[xlinkConnection] = true;
-                    auto nodeTmp = std::make_shared<node::XLinkOut>(parent.pimpl, xLinkBridgeId++);
+                    auto nodeTmp = std::make_shared<node::XLinkOut>();
+                    nodeTmp->parent = parent.pimpl;
+                    nodeTmp->id = xLinkBridgeId++;
                     nodeTmp->setStreamName(streamName(c.node1Id, c.node1OutputGroup, c.node1Output));
 
                     c.node2Id = nodeTmp->id;
@@ -436,9 +474,7 @@ tl::optional<OpenVINO::Version> PipelineImpl::getPipelineOpenVINOVersion() const
     std::string lastNodeNameWithRequiredVersion = "";
     Node::Id lastNodeIdWithRequiredVersion = -1;
 
-    for(const auto& kv : nodeMap) {
-        const auto& node = kv.second;
-
+    for(const auto& node : nodes) {
         // Check the required openvino version
         auto requiredVersion = node->getRequiredOpenVINOVersion();
         if(requiredVersion) {
@@ -516,36 +552,60 @@ void PipelineImpl::remove(std::shared_ptr<Node> toRemove) {
     // Search for this node in 'nodes' vector.
     // If found, remove from vector
 
-    // First check if node is on this pipeline (and that they are the same)
-    if(nodeMap.count(toRemove->id) > 0) {
-        if(nodeMap.at(toRemove->id) == toRemove) {
-            // its same object, (not same id but from different pipeline)
+    // // Go through and modify nodes and its children
+    // // that they are now part of this pipeline
+    // std::weak_ptr<PipelineImpl> curParent;
+    // std::queue<std::shared_ptr<Node>> search;
+    // search.push(toRemove);
+    // while(!search.empty()) {
+    //     auto curNode = search.front();
 
-            // Steps to remove
-            // 1. Iterate and remove this nodes output connections
-            // 2. Remove this nodes entry in 'nodeConnectionMap'
-            // 3. Remove node from 'nodeMap'
+    //     if(curNode->parent.lock() == nullptr) {
+    //         // pass
+    //     } else if(curNode->parent.lock() != parent.pimpl) {
+    //         throw std::invalid_argument("Cannot remove a node that is a part of another pipeline");
+    //     } else {
+    //         curNode->parent = nullptr;
+    //     }
 
-            // 1. Iterate and remove this nodes output connections
-            for(auto& kv : nodeConnectionMap) {
-                for(auto it = kv.second.begin(); it != kv.second.end();) {
-                    // check if output belongs to 'toRemove' node
-                    if(it->outputId == toRemove->id) {
-                        // remove this connection from set
-                        it = kv.second.erase(it);
-                    } else {
-                        ++it;
-                    }
-                }
-            }
+    //     for(auto& n : curNode->nodeMap) {
+    //         search.push(n.second);
+    //     }
+    // }
 
-            // 2. Remove this nodes entry in 'nodeConnectionMap'
-            nodeConnectionMap.erase(toRemove->id);
+    // nodeMap.count(toRemove->id) {
+    // }
 
-            // 3. Remove node from 'nodeMap'
-            nodeMap.erase(toRemove->id);
-        }
-    }
+    // // First check if node is on this pipeline (and that they are the same)
+    // if(nodeMap.count(toRemove->id) > 0) {
+    //     if(nodeMap.at(toRemove->id) == toRemove) {
+    //         // its same object, (not same id but from different pipeline)
+
+    //         // Steps to remove
+    //         // 1. Iterate and remove this nodes output connections
+    //         // 2. Remove this nodes entry in 'nodeConnectionMap'
+    //         // 3. Remove node from 'nodeMap'
+
+    //         // 1. Iterate and remove this nodes output connections
+    //         for(auto& kv : nodeConnectionMap) {
+    //             for(auto it = kv.second.begin(); it != kv.second.end();) {
+    //                 // check if output belongs to 'toRemove' node
+    //                 if(it->outputId == toRemove->id) {
+    //                     // remove this connection from set
+    //                     it = kv.second.erase(it);
+    //                 } else {
+    //                     ++it;
+    //                 }
+    //             }
+    //         }
+
+    //         // 2. Remove this nodes entry in 'nodeConnectionMap'
+    //         nodeConnectionMap.erase(toRemove->id);
+
+    //         // 3. Remove node from 'nodeMap'
+    //         nodeMap.erase(toRemove->id);
+    //     }
+    // }
 }
 
 bool PipelineImpl::isSamePipeline(const Node::Output& out, const Node::Input& in) {
@@ -586,62 +646,6 @@ bool PipelineImpl::canConnect(const Node::Output& out, const Node::Input& in) {
     return false;
 }
 
-std::vector<Node::Connection> PipelineImpl::getConnections() const {
-    std::vector<Node::Connection> connections;
-    for(const auto& kv : nodeConnectionMap) {
-        for(const auto& conn : kv.second) {
-            connections.push_back(conn);
-        }
-    }
-    return connections;
-}
-
-void PipelineImpl::link(const Node::Output& out, const Node::Input& in) {
-    // First check if on same pipeline
-    if(!isSamePipeline(out, in)) {
-        throw std::logic_error(fmt::format("Nodes are not on same pipeline or one of nodes parent pipeline doesn't exists anymore"));
-    }
-
-    // First check if can connect (must be on same pipeline and correct types)
-    if(!canConnect(out, in)) {
-        throw std::runtime_error(
-            fmt::format("Cannot link '{}.{}' to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
-    }
-
-    // Create 'Connection' object between 'out' and 'in'
-    Node::Connection connection(out, in);
-
-    // Check if connection was already made - the following is possible as operator[] constructs the underlying set if it doesn't exist.
-    if(nodeConnectionMap[in.getParent().id].count(connection) > 0) {
-        // this means a connection was already made.
-        throw std::logic_error(
-            fmt::format("'{}.{}' already linked to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
-    }
-
-    // Otherwise all is set to add a new connection into nodeConnectionMap[in.getParent().id]
-    nodeConnectionMap[in.getParent().id].insert(connection);
-}
-
-void PipelineImpl::unlink(const Node::Output& out, const Node::Input& in) {
-    // First check if on same pipeline
-    if(!isSamePipeline(out, in)) {
-        throw std::logic_error(fmt::format("Nodes are not on same pipeline or one of nodes parent pipeline doesn't exists anymore"));
-    }
-
-    // Create 'Connection' object
-    Node::Connection connection(out, in);
-
-    // Check if not connected (connection object doesn't exist in nodeConnectionMap)
-    if(nodeConnectionMap[in.getParent().id].count(connection) <= 0) {
-        // not connected
-        throw std::logic_error(
-            fmt::format("'{}.{}' not linked to '{}.{}'", out.getParent().getName(), out.toString(), in.getParent().getName(), in.toString()));
-    }
-
-    // Otherwise if exists, remove this connection
-    nodeConnectionMap[in.getParent().id].erase(connection);
-}
-
 void PipelineImpl::setCalibrationData(CalibrationHandler calibrationDataHandler) {
     /* if(!calibrationDataHandler.validateCameraArray()) {
         throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
@@ -672,8 +676,8 @@ tl::optional<EepromData> PipelineImpl::getEepromData() const {
 bool PipelineImpl::isHostOnly() const {
     // Starts pipeline, go through all nodes and start them
     bool hostOnly = true;
-    for(const auto& kv : nodeMap) {
-        if(!kv.second->hostNode) {
+    for(const auto& node : nodes) {
+        if(!node->hostNode) {
             hostOnly = false;
             break;
         }
@@ -684,8 +688,8 @@ bool PipelineImpl::isHostOnly() const {
 bool PipelineImpl::isDeviceOnly() const {
     // Starts pipeline, go through all nodes and start them
     bool deviceOnly = true;
-    for(const auto& kv : nodeMap) {
-        if(kv.second->hostNode) {
+    for(const auto& node : nodes) {
+        if(node->hostNode) {
             deviceOnly = false;
             break;
         }
@@ -697,12 +701,34 @@ void PipelineImpl::add(std::shared_ptr<Node> node) {
     if(node == nullptr) {
         throw std::invalid_argument(fmt::format("Given node pointer is null"));
     }
-    if(nodeMap.count(node->id) > 0) {
-        throw std::invalid_argument(fmt::format("Node with id: {} already exists", node->id));
+
+    // Go through and modify nodes and its children
+    // that they are now part of this pipeline
+    std::weak_ptr<PipelineImpl> curParent;
+    std::queue<std::shared_ptr<Node>> search;
+    search.push(node);
+    while(!search.empty()) {
+        auto curNode = search.front();
+        search.pop();
+
+        // Assign an ID to the node
+        if(curNode->id == -1) {
+            curNode->id = getNextUniqueId();
+        }
+
+        if(curNode->parent.lock() == nullptr) {
+            curNode->parent = parent.pimpl;
+        } else if(curNode->parent.lock() != parent.pimpl) {
+            throw std::invalid_argument("Cannot add a node that is already part of another pipeline");
+        }
+
+        for(auto& n : curNode->nodeMap) {
+            search.push(n);
+        }
     }
 
-    // Add to the map
-    nodeMap[node->id] = node;
+    // Add to the map (node holds its children itself)
+    nodes.push_back(node);
 }
 
 bool PipelineImpl::isRunning() const {
@@ -727,22 +753,22 @@ void PipelineImpl::start() {
     running = true;
 
     // Starts pipeline, go through all nodes and start them
-    for(const auto& kv : nodeMap) {
-        kv.second->start();
+    for(const auto& node : nodes) {
+        node->start();
     }
 }
 
 void PipelineImpl::wait() {
     // Waits for all nodes to finish the execution
-    for(const auto& kv : nodeMap) {
-        kv.second->wait();
+    for(const auto& node : nodes) {
+        node->wait();
     }
 }
 
 void PipelineImpl::stop() {
     // Stops the pipeline execution
-    for(const auto& kv : nodeMap) {
-        kv.second->stop();
+    for(const auto& node : nodes) {
+        node->stop();
     }
 
     // Indicate that pipeline is not runnin
@@ -787,8 +813,7 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd)
              }
              // If asset not found in the pipeline asset manager, check all nodes
              else {
-                 for(auto& kv : p.nodeMap) {
-                     auto& node = kv.second;
+                 for(auto& node : p.nodes) {
                      auto& assetManager = node->getAssetManager();
                      auto asset = assetManager.get(uri);
                      if(asset != nullptr) {

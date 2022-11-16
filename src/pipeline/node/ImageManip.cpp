@@ -2,21 +2,13 @@
 namespace dai {
 namespace node {
 
-ImageManip::ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : NodeCRTP<DeviceNode, ImageManip, ImageManipProperties>(par, nodeId, std::make_unique<ImageManip::Properties>()),
-      rawConfig(std::make_shared<RawImageManipConfig>()),
-      initialConfig(rawConfig) {
-    setInputRefs({&inputConfig, &inputImage});
-    setOutputRefs({&out});
-}
+ImageManip::ImageManip()
+    : NodeCRTP<DeviceNode, ImageManip, ImageManipProperties>(), rawConfig(std::make_shared<RawImageManipConfig>()), initialConfig(rawConfig) {}
 
-ImageManip::ImageManip(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, ImageManip, ImageManipProperties>(par, nodeId, std::move(props)),
+ImageManip::ImageManip(std::unique_ptr<Properties> props)
+    : NodeCRTP<DeviceNode, ImageManip, ImageManipProperties>(std::move(props)),
       rawConfig(std::make_shared<RawImageManipConfig>(properties.initialConfig)),
-      initialConfig(rawConfig) {
-    setInputRefs({&inputConfig, &inputImage});
-    setOutputRefs({&out});
-}
+      initialConfig(rawConfig) {}
 
 ImageManip::Properties& ImageManip::getProperties() {
     properties.initialConfig = *rawConfig;

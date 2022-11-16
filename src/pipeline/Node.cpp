@@ -5,8 +5,7 @@
 
 namespace dai {
 
-Node::Node(const std::shared_ptr<PipelineImpl>& p, Id nodeId, std::unique_ptr<Properties> props)
-    : parent(p), id(nodeId), assetManager("/node/" + std::to_string(nodeId) + "/"), propertiesHolder(std::move(props)), properties(*propertiesHolder) {}
+Node::Node(std::unique_ptr<Properties> props, bool conf) : configureMode{conf}, propertiesHolder(std::move(props)) {}
 
 tl::optional<OpenVINO::Version> Node::getRequiredOpenVINOVersion() {
     return tl::nullopt;
@@ -23,7 +22,7 @@ Pipeline Node::getParentPipeline() {
 }
 
 Properties& Node::getProperties() {
-    return properties;
+    return *propertiesHolder;
 }
 
 Node::Connection::Connection(Output out, Input in) {
@@ -33,6 +32,15 @@ Node::Connection::Connection(Output out, Input in) {
     inputId = in.getParent().id;
     inputName = in.name;
     inputGroup = in.group;
+}
+
+Node::Connection::Connection(ConnectionInternal c) {
+    outputId = c.outputNode.lock()->id;
+    outputName = c.outputName;
+    outputGroup = c.outputGroup;
+    inputId = c.inputNode.lock()->id;
+    inputName = c.inputName;
+    inputGroup = c.inputGroup;
 }
 
 bool Node::Connection::operator==(const Node::Connection& rhs) const {
@@ -56,17 +64,6 @@ std::string Node::Input::toString() const {
     }
 }
 
-std::vector<Node::Connection> Node::Output::getConnections() {
-    std::vector<Node::Connection> myConnections;
-    auto allConnections = parent.getParentPipeline().getConnections();
-    for(const auto& conn : allConnections) {
-        if(conn.outputId == parent.id && conn.outputName == name && conn.outputGroup == group) {
-            myConnections.push_back(conn);
-        }
-    }
-    return myConnections;
-}
-
 bool Node::Output::isSamePipeline(const Input& in) {
     // Check whether current output and 'in' are on same pipeline.
     // By checking parent of node
@@ -77,25 +74,87 @@ bool Node::Output::isSamePipeline(const Input& in) {
     return false;
 }
 
+static bool isDatatypeMatch(const Node::Output& out, const Node::Input& in) {
+    // Check that datatypes match up
+    for(const auto& outHierarchy : out.possibleDatatypes) {
+        for(const auto& inHierarchy : in.possibleDatatypes) {
+            // Check if datatypes match for current datatype
+            if(outHierarchy.datatype == inHierarchy.datatype) return true;
+
+            // If output can produce descendants
+            if(outHierarchy.descendants && isDatatypeSubclassOf(outHierarchy.datatype, inHierarchy.datatype)) return true;
+
+            // If input allows descendants
+            if(inHierarchy.descendants && isDatatypeSubclassOf(inHierarchy.datatype, outHierarchy.datatype)) return true;
+        }
+    }
+    // otherwise return false
+    return false;
+}
+
 bool Node::Output::canConnect(const Input& in) {
-    return PipelineImpl::canConnect(*this, in);
+    // Check that IoType match up
+    if(type == Output::Type::MSender && in.type == Input::Type::MReceiver) return false;
+    if(type == Output::Type::SSender && in.type == Input::Type::SReceiver) return false;
+
+    // Check that datatypes match up
+    if(!isDatatypeMatch(*this, in)) {
+        return false;
+    }
+
+    // All checks pass
+    return true;
 }
 
-void Node::Output::link(const Input& in) {
-    // Call link of pipeline
-    parent.getParentPipeline().link(*this, in);
+void Node::Output::link(Input& in) {
+    // First check if can connect
+    if(!canConnect(in)) {
+        throw std::runtime_error(fmt::format("Cannot link '{}.{}' to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
+    }
+
+    // Create 'Connection' object between 'out' and 'in'
+    Node::ConnectionInternal connection(*this, in);
+
+    // Check if connection was already made - the following is possible as operator[] constructs the underlying set if it doesn't exist.
+    if(parent.connections.count(connection) > 0) {
+        // this means a connection was already made.
+        throw std::logic_error(fmt::format("'{}.{}' already linked to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
+    }
+
+    // Otherwise all is set to add a new connection
+    parent.connections.insert(connection);
 }
 
-void Node::Output::unlink(const Input& in) {
-    // Call unlink of pipeline parents pipeline
-    parent.getParentPipeline().unlink(*this, in);
+Node::ConnectionInternal::ConnectionInternal(Output& out, Input& in) {
+    outputNode = out.getParent().shared_from_this();
+    outputName = out.name;
+    outputGroup = out.group;
+    inputNode = in.getParent().shared_from_this();
+    inputName = in.name;
+    inputGroup = in.group;
+}
+
+bool Node::ConnectionInternal::operator==(const Node::ConnectionInternal& rhs) const {
+    return (outputNode.lock() == rhs.outputNode.lock() && outputName == rhs.outputName && outputGroup == rhs.outputGroup
+            && inputNode.lock() == rhs.inputNode.lock() && inputName == rhs.inputName && inputGroup == rhs.inputGroup);
+}
+
+void Node::Output::unlink(Input& in) {
+    // Create 'Connection' object between 'out' and 'in'
+    Node::ConnectionInternal connection(*this, in);
+    if(parent.connections.count(connection) == 0) {
+        // this means a connection was not present already made.
+        throw std::logic_error(fmt::format("'{}.{}' not linked to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
+    }
+
+    // Unlink
+    parent.connections.erase(connection);
 }
 
 void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
-    auto conns = getConnections();
-    for(auto& conn : conns) {
+    for(auto& conn : parent.connections) {
         // Get node AND hold a reference to it.
-        auto node = parent.getParentPipeline().getNode(conn.inputId);
+        auto node = conn.inputNode.lock();
         // Safe, as long as we also hold 'node' shared_ptr
         auto inputs = node->getInputRefs();
         // Find the corresponding inputs
@@ -112,10 +171,9 @@ void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
 bool Node::Output::trySend(const std::shared_ptr<ADatatype>& msg) {
     bool success = true;
 
-    auto conns = getConnections();
-    for(auto& conn : conns) {
+    for(auto& conn : parent.connections) {
         // Get node AND hold a reference to it.
-        auto node = parent.getParentPipeline().getNode(conn.inputId);
+        auto node = conn.inputNode.lock();
         // Safe, as long as we also hold 'node' shared_ptr
         auto inputs = node->getInputRefs();
         // Find the corresponding inputs
@@ -182,38 +240,88 @@ std::vector<uint8_t> Node::loadResource(dai::Path uri) {
     return parent.lock()->loadResourceCwd(uri, cwd);
 }
 
-Node::OutputMap::OutputMap(std::string name, Node::Output defaultOutput) : defaultOutput(defaultOutput), name(std::move(name)) {}
-Node::OutputMap::OutputMap(Node::Output defaultOutput) : defaultOutput(defaultOutput) {}
+Node::OutputMap::OutputMap(Node& parent, std::string name, Node::Output defaultOutput) : defaultOutput(defaultOutput), name(std::move(name)) {}
+Node::OutputMap::OutputMap(Node& parent, Node::Output defaultOutput) : defaultOutput(defaultOutput) {}
+Node::OutputMap::OutputMap(bool ref, Node& parent, std::string name, Node::Output defaultOutput) : defaultOutput(defaultOutput), name(std::move(name)) {
+    // Place oneself to the parents references
+    if(ref) {
+        parent.setOutputMapRefs(this);
+    }
+}
+Node::OutputMap::OutputMap(bool ref, Node& parent, Node::Output defaultOutput) : defaultOutput(defaultOutput) {
+    // Place oneself to the parents references
+    if(ref) {
+        parent.setOutputMapRefs(this);
+    }
+}
 Node::Output& Node::OutputMap::operator[](const std::string& key) {
-    if(count(key) == 0) {
+    if(count({name, key}) == 0) {
         // Create using default and rename with group and key
         Output output(defaultOutput);
         output.group = name;
         output.name = key;
-        insert(std::make_pair(key, output));
+        insert({{name, key}, output});
     }
     // otherwise just return reference to existing
-    return at(key);
+    return at({name, key});
 }
+Node::Output& Node::OutputMap::operator[](std::pair<std::string, std::string> groupKey) {
+    if(count(groupKey) == 0) {
+        // Create using default and rename with group and key
+        Output output(defaultOutput);
 
-Node::InputMap::InputMap(std::string name, Node::Input defaultInput) : defaultInput(defaultInput), name(std::move(name)) {}
-Node::InputMap::InputMap(Node::Input defaultInput) : defaultInput(defaultInput) {}
+        // Uses \t (tab) as a special character to parse out as subgroup name
+        output.group = fmt::format("{}\t{}", name, groupKey.first);
+        output.name = groupKey.second;
+        insert(std::make_pair(groupKey, output));
+    }
+    // otherwise just return reference to existing
+    return at(groupKey);
+}
+Node::InputMap::InputMap(Node& parent, std::string name, Node::Input defaultInput) : defaultInput(defaultInput), name(std::move(name)) {}
+Node::InputMap::InputMap(Node& parent, Node::Input defaultInput) : defaultInput(defaultInput) {}
+Node::InputMap::InputMap(bool ref, Node& parent, std::string name, Node::Input defaultInput) : defaultInput(defaultInput), name(std::move(name)) {
+    // Place oneself to the parents references
+    if(ref) {
+        parent.setInputMapRefs(this);
+    }
+}
+Node::InputMap::InputMap(bool ref, Node& parent, Node::Input defaultInput) : defaultInput(defaultInput) {
+    // Place oneself to the parents references
+    if(ref) {
+        parent.setInputMapRefs(this);
+    }
+}
 Node::Input& Node::InputMap::operator[](const std::string& key) {
-    if(count(key) == 0) {
+    if(count({name, key}) == 0) {
         // Create using default and rename with group and key
         Input input(defaultInput);
         input.group = name;
         input.name = key;
-        insert(std::make_pair(key, input));
+        insert({{name, key}, input});
     }
     // otherwise just return reference to existing
-    return at(key);
+    return at({name, key});
+}
+Node::Input& Node::InputMap::operator[](std::pair<std::string, std::string> groupKey) {
+    if(count(groupKey) == 0) {
+        // Create using default and rename with group and key
+        Input input(defaultInput);
+
+        // Uses \t (tab) as a special character to parse out as subgroup name
+        input.group = fmt::format("{}\t{}", name, groupKey.first);
+        input.name = groupKey.second;
+        insert(std::make_pair(groupKey, input));
+    }
+    // otherwise just return reference to existing
+    return at(groupKey);
 }
 
 /// Retrieves all nodes outputs
 std::vector<Node::Output> Node::getOutputs() {
     std::vector<Node::Output> result;
-    for(auto* x : getOutputRefs()) {
+    auto refs = getOutputRefs();
+    for(auto* x : refs) {
         result.push_back(*x);
     }
     return result;
@@ -222,7 +330,8 @@ std::vector<Node::Output> Node::getOutputs() {
 /// Retrieves all nodes inputs
 std::vector<Node::Input> Node::getInputs() {
     std::vector<Node::Input> result;
-    for(auto* x : getInputRefs()) {
+    auto refs = getInputRefs();
+    for(auto* x : refs) {
         result.push_back(*x);
     }
     return result;
@@ -396,6 +505,91 @@ void Node::setInputMapRefs(std::initializer_list<Node::InputMap*> l) {
 }
 void Node::setInputMapRefs(Node::InputMap* inMapRef) {
     inputMapRefs[inMapRef->name] = inMapRef;
+}
+
+void Node::setNodeRefs(std::initializer_list<std::pair<std::string, std::shared_ptr<Node>*>> l) {
+    for(auto& nodeRef : l) {
+        nodeRefs[nodeRef.first] = nodeRef.second;
+    }
+}
+void Node::setNodeRefs(std::pair<std::string, std::shared_ptr<Node>*> nodeRef) {
+    setNodeRefs({nodeRef});
+}
+void Node::setNodeRefs(std::string alias, std::shared_ptr<Node>* nodeRef) {
+    setNodeRefs({alias, nodeRef});
+}
+
+void Node::add(std::shared_ptr<Node> node) {
+    // TODO(themarpe) - check if node is already added somewhere else, etc... (as in Pipeline)
+    node->parentNode = shared_from_this();
+
+    // Add to the map (node holds its children itself)
+    // nodeMap[node->id] = node;
+    nodeMap.push_back(node);
+}
+
+// Recursive helpers for pipelines
+Node::ConnectionMap Node::getConnectionMap() {
+    ConnectionMap map;
+    // self first
+    map[shared_from_this()] = connections;
+    // then subnodes
+    for(const auto& node : nodeMap) {
+        auto nodeConnMap = node->getConnectionMap();
+        for(auto& kv : nodeConnMap) {
+            auto& n = kv.first;
+            map[n] = kv.second;
+        }
+    }
+    return map;
+}
+std::shared_ptr<Node> Node::getNode(Node::Id id) {
+    // Edge case
+    if(this->id == id) return shared_from_this();
+
+    // Search all nodes
+    for(auto& node : nodeMap) {
+        auto n = node->getNode(id);
+        if(n != nullptr) {
+            return n;
+        }
+    }
+    return nullptr;
+}
+std::shared_ptr<const Node> Node::getNode(Node::Id id) const {
+    // Edge case
+    if(this->id == id) return shared_from_this();
+
+    // Search all nodes
+    for(auto& node : nodeMap) {
+        auto n = node->getNode(id);
+        if(n != nullptr) {
+            return n;
+        }
+    }
+    return nullptr;
+}
+std::vector<std::shared_ptr<Node>> Node::getAllNodes() const {
+    std::vector<std::shared_ptr<Node>> nodes;
+    for(auto& node : nodeMap) {
+        // Add one own nodes first
+        nodes.push_back(node);
+        // And its subnodes
+        auto n = node->getAllNodes();
+        nodes.insert(nodes.end(), n.begin(), n.end());
+    }
+    return nodes;
+}
+
+size_t Node::ConnectionInternal::Hash::operator()(const dai::Node::ConnectionInternal& obj) const {
+    size_t seed = 0;
+    std::hash<std::shared_ptr<Node>> hId;
+    std::hash<std::string> hStr;
+    seed ^= hId(obj.outputNode.lock()) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    seed ^= hStr(obj.outputName) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    seed ^= hId(obj.inputNode.lock()) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    seed ^= hStr(obj.outputName) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    return seed;
 }
 
 }  // namespace dai

@@ -14,14 +14,12 @@ namespace node {
 class SPIIn : public NodeCRTP<DeviceNode, SPIIn, SPIInProperties> {
    public:
     constexpr static const char* NAME = "SPIIn";
-
-    SPIIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    SPIIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    void build();
 
     /**
      * Outputs message of same type as send from host.
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
+    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
 
     /**
      * Specifies stream name over which the node will receive data

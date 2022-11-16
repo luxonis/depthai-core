@@ -5,21 +5,13 @@
 namespace dai {
 namespace node {
 
-EdgeDetector::EdgeDetector(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : NodeCRTP<DeviceNode, EdgeDetector, EdgeDetectorProperties>(par, nodeId, std::make_unique<EdgeDetector::Properties>()),
-      rawConfig(std::make_shared<RawEdgeDetectorConfig>()),
-      initialConfig(rawConfig) {
-    setInputRefs({&inputConfig, &inputImage});
-    setOutputRefs({&outputImage, &passthroughInputImage});
-}
+EdgeDetector::EdgeDetector()
+    : NodeCRTP<DeviceNode, EdgeDetector, EdgeDetectorProperties>(), rawConfig(std::make_shared<RawEdgeDetectorConfig>()), initialConfig(rawConfig) {}
 
-EdgeDetector::EdgeDetector(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, EdgeDetector, EdgeDetectorProperties>(par, nodeId, std::move(props)),
+EdgeDetector::EdgeDetector(std::unique_ptr<Properties> props)
+    : NodeCRTP<DeviceNode, EdgeDetector, EdgeDetectorProperties>(std::move(props)),
       rawConfig(std::make_shared<RawEdgeDetectorConfig>(properties.initialConfig)),
-      initialConfig(rawConfig) {
-    setInputRefs({&inputConfig, &inputImage});
-    setOutputRefs({&outputImage, &passthroughInputImage});
-}
+      initialConfig(rawConfig) {}
 
 EdgeDetector::Properties& EdgeDetector::getProperties() {
     properties.initialConfig = *rawConfig;

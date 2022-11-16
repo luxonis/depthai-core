@@ -14,17 +14,15 @@ namespace node {
 class XLinkOut : public NodeCRTP<DeviceNode, XLinkOut, XLinkOutProperties> {
    public:
     constexpr static const char* NAME = "XLinkOut";
+    void build();
 
    public:
-    XLinkOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    XLinkOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
-
     /**
      * Input for any type of messages to be transferred over XLink stream
      *
      * Default queue is blocking with size 8
      */
-    Input input{*this, "in", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::Buffer, true}}};
+    Input input{true, *this, "in", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::Buffer, true}}};
 
     /**
      * Specifies XLink stream name to use.
