@@ -16,6 +16,7 @@
 
 // project
 #include "DeviceLogger.hpp"
+#include "depthai/device/EepromError.hpp"
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "pipeline/Pipeline.hpp"
@@ -1012,19 +1013,23 @@ float DeviceBase::getSystemInformationLoggingRate() {
 }
 
 bool DeviceBase::isEepromAvailable() {
+    checkClosed();
+
     return pimpl->rpcClient->call("isEepromAvailable").as<bool>();
 }
 
 bool DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
     try {
         flashCalibration2(calibrationDataHandler);
-    } catch(const std::exception& ex) {
+    } catch(const EepromError& ex) {
         return false;
     }
     return true;
 }
 
 void DeviceBase::flashCalibration2(CalibrationHandler calibrationDataHandler) {
+    checkClosed();
+
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
@@ -1048,18 +1053,20 @@ CalibrationHandler DeviceBase::readCalibration() {
     dai::EepromData eepromData{};
     try {
         return readCalibration2();
-    } catch(const std::exception& ex) {
+    } catch(const EepromError& ex) {
         // ignore - use default
     }
     return CalibrationHandler(eepromData);
 }
 CalibrationHandler DeviceBase::readCalibration2() {
+    checkClosed();
+
     bool success;
     std::string errorMsg;
     dai::EepromData eepromData;
     std::tie(success, errorMsg, eepromData) = pimpl->rpcClient->call("readFromEeprom").as<std::tuple<bool, std::string, dai::EepromData>>();
     if(!success) {
-        throw std::runtime_error(errorMsg);
+        throw EepromError(errorMsg);
     }
     return CalibrationHandler(eepromData);
 }
@@ -1069,6 +1076,8 @@ CalibrationHandler DeviceBase::readCalibrationOrDefault() {
 }
 
 void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandler) {
+    checkClosed();
+
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
@@ -1088,17 +1097,19 @@ void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandl
         pimpl->rpcClient->call("storeToEepromFactory", calibrationDataHandler.getEepromData(), factoryPermissions, protectedPermissions)
             .as<std::tuple<bool, std::string>>();
     if(!success) {
-        throw std::runtime_error(errorMsg);
+        throw EepromError(errorMsg);
     }
 }
 
 CalibrationHandler DeviceBase::readFactoryCalibration() {
+    checkClosed();
+
     bool success;
     std::string errorMsg;
     dai::EepromData eepromData;
     std::tie(success, errorMsg, eepromData) = pimpl->rpcClient->call("readFromEepromFactory").as<std::tuple<bool, std::string, dai::EepromData>>();
     if(!success) {
-        throw std::runtime_error(errorMsg);
+        throw EepromError(errorMsg);
     }
     return CalibrationHandler(eepromData);
 }
@@ -1106,44 +1117,52 @@ CalibrationHandler DeviceBase::readFactoryCalibrationOrDefault() {
     dai::EepromData eepromData{};
     try {
         return readFactoryCalibration();
-    } catch(const std::exception& ex) {
+    } catch(const EepromError& ex) {
         // ignore - use default
     }
     return CalibrationHandler(eepromData);
 }
 
 void DeviceBase::factoryResetCalibration() {
+    checkClosed();
+
     bool success;
     std::string errorMsg;
     std::tie(success, errorMsg) = pimpl->rpcClient->call("eepromFactoryReset").as<std::tuple<bool, std::string>>();
     if(!success) {
-        throw std::runtime_error(errorMsg);
+        throw EepromError(errorMsg);
     }
 }
 
 std::vector<std::uint8_t> DeviceBase::readCalibrationRaw() {
+    checkClosed();
+
     bool success;
     std::string errorMsg;
     std::vector<uint8_t> eepromDataRaw;
     std::tie(success, errorMsg, eepromDataRaw) = pimpl->rpcClient->call("readFromEepromRaw").as<std::tuple<bool, std::string, std::vector<uint8_t>>>();
     if(!success) {
-        throw std::runtime_error(errorMsg);
+        throw EepromError(errorMsg);
     }
     return eepromDataRaw;
 }
 
 std::vector<std::uint8_t> DeviceBase::readFactoryCalibrationRaw() {
+    checkClosed();
+
     bool success;
     std::string errorMsg;
     std::vector<uint8_t> eepromDataRaw;
     std::tie(success, errorMsg, eepromDataRaw) = pimpl->rpcClient->call("readFromEepromFactoryRaw").as<std::tuple<bool, std::string, std::vector<uint8_t>>>();
     if(!success) {
-        throw std::runtime_error(errorMsg);
+        throw EepromError(errorMsg);
     }
     return eepromDataRaw;
 }
 
 void DeviceBase::flashEepromClear() {
+    checkClosed();
+
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
@@ -1157,11 +1176,13 @@ void DeviceBase::flashEepromClear() {
     std::string errorMsg;
     std::tie(success, errorMsg) = pimpl->rpcClient->call("eepromClear", protectedPermissions, factoryPermissions).as<std::tuple<bool, std::string>>();
     if(!success) {
-        throw std::runtime_error(errorMsg);
+        throw EepromError(errorMsg);
     }
 }
 
 void DeviceBase::flashFactoryEepromClear() {
+    checkClosed();
+
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
@@ -1175,7 +1196,7 @@ void DeviceBase::flashFactoryEepromClear() {
     std::string errorMsg;
     std::tie(success, errorMsg) = pimpl->rpcClient->call("eepromFactoryClear", protectedPermissions, factoryPermissions).as<std::tuple<bool, std::string>>();
     if(!success) {
-        throw std::runtime_error(errorMsg);
+        throw EepromError(errorMsg);
     }
 }
 
