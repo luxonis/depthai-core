@@ -493,7 +493,9 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
                 prevPingTime = lastWatchdogPingTime;
             }
             // Recheck if watchdogRunning wasn't already closed and close if more than twice of WD passed
-            if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > bootloader::XLINK_WATCHDOG_TIMEOUT * 2) {
+            // Bump checking thread to not cause spurious warnings/closes
+            std::chrono::milliseconds watchdogTimeout = std::chrono::milliseconds(3000);
+            if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout * 2) {
                 spdlog::warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
                 // ping was missed, reset the device
                 watchdogRunning = false;
