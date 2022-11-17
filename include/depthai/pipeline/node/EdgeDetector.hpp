@@ -19,6 +19,7 @@ namespace node {
 class EdgeDetector : public NodeCRTP<DeviceNode, EdgeDetector, EdgeDetectorProperties> {
    public:
     constexpr static const char* NAME = "EdgeDetector";
+    using NodeCRTP::NodeCRTP;
 
    protected:
     Properties& getProperties();

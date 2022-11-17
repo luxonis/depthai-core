@@ -14,6 +14,7 @@ namespace node {
 class IMU : public NodeCRTP<DeviceNode, IMU, IMUProperties> {
    public:
     constexpr static const char* NAME = "IMU";
+    using NodeCRTP::NodeCRTP;
 
     /**
      * Outputs IMUData message that carries IMU packets.

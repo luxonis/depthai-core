@@ -15,6 +15,7 @@ namespace node {
 class SystemLogger : public NodeCRTP<DeviceNode, SystemLogger, SystemLoggerProperties> {
    public:
     constexpr static const char* NAME = "SystemLogger";
+    using NodeCRTP::NodeCRTP;
     void build();
 
     /**

@@ -14,6 +14,7 @@ namespace node {
 class SPIOut : public NodeCRTP<DeviceNode, SPIOut, SPIOutProperties> {
    public:
     constexpr static const char* NAME = "SPIOut";
+    using NodeCRTP::NodeCRTP;
     void build() {
         properties.busId = 0;
     }

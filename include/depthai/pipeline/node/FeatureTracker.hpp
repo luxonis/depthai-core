@@ -20,6 +20,7 @@ namespace node {
 class FeatureTracker : public NodeCRTP<DeviceNode, FeatureTracker, FeatureTrackerProperties> {
    public:
     constexpr static const char* NAME = "FeatureTracker";
+    using NodeCRTP::NodeCRTP;
 
    protected:
     Properties& getProperties();

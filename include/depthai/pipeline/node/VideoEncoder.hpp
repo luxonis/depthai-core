@@ -14,6 +14,7 @@ namespace node {
 class VideoEncoder : public NodeCRTP<DeviceNode, VideoEncoder, VideoEncoderProperties> {
    public:
     constexpr static const char* NAME = "VideoEncoder";
+    using NodeCRTP::NodeCRTP;
 
     /**
      * Input for NV12 ImgFrame to be encoded

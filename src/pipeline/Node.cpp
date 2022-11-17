@@ -64,6 +64,17 @@ std::string Node::Input::toString() const {
     }
 }
 
+std::vector<Node::Connection> Node::Output::getConnections() {
+    std::vector<Node::Connection> myConnections;
+    auto allConnections = parent.getParentPipeline().getConnections();
+    for(const auto& conn : allConnections) {
+        if(conn.outputId == parent.id && conn.outputName == name && conn.outputGroup == group) {
+            myConnections.push_back(conn);
+        }
+    }
+    return myConnections;
+}
+
 bool Node::Output::isSamePipeline(const Input& in) {
     // Check whether current output and 'in' are on same pipeline.
     // By checking parent of node

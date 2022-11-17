@@ -14,6 +14,7 @@ namespace node {
 class SPIIn : public NodeCRTP<DeviceNode, SPIIn, SPIInProperties> {
    public:
     constexpr static const char* NAME = "SPIIn";
+    using NodeCRTP::NodeCRTP;
     void build();
 
     /**

@@ -16,6 +16,7 @@ namespace node {
 class Warp : public NodeCRTP<DeviceNode, Warp, WarpProperties> {
    public:
     constexpr static const char* NAME = "Warp";
+    using NodeCRTP::NodeCRTP;
 
    private:
     void setWarpMesh(const float* meshData, int numMeshPoints, int width, int height);

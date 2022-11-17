@@ -16,6 +16,7 @@ namespace node {
 class AprilTag : public NodeCRTP<DeviceNode, AprilTag, AprilTagProperties> {
    public:
     constexpr static const char* NAME = "AprilTag";
+    using NodeCRTP::NodeCRTP;
 
    protected:
     Properties& getProperties();
