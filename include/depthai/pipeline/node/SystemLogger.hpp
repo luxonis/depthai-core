@@ -29,7 +29,7 @@ class SystemLogger : public NodeCRTP<DeviceNode, SystemLogger, SystemLoggerPrope
      * Optional - consumes an SystemInformation message from pool to send outwards
      * Otherwise uses dynamic allocation and/or default pool
      */
-    Input inputPool{
+    Input inputPool{true,
         *this, "inputPool", Input::Type::MReceiver, false, 4, {{DatatypeEnum::SystemInformation, false}, {DatatypeEnum::SystemInformationS3, false}}};
 
     /**
