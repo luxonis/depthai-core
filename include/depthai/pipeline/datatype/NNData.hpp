@@ -8,8 +8,26 @@
 
 #include "Buffer.hpp"
 #include "depthai-shared/datatype/RawNNData.hpp"
+
+#if defined(__clang__) && __has_warning("-Wswitch-enum")
+    #pragma clang diagnostic push
+    #pragma clang diagnostic ignored "-Wswitch-enum"
+#elif defined(__GNUC__)
+    #pragma GCC diagnostic push
+    #pragma GCC diagnostic ignored "-Wswitch-enum"
+#elif defined(_MSC_VER)
+    #pragma warning(push)
+    #pragma warning(disable: 4061)
+#endif
 #include "xtensor/xarray.hpp"
 #include "xtensor/xadapt.hpp"
+#if defined(__clang__) && __has_warning("-Wswitch-enum")
+#   pragma clang diagnostic pop
+#elif defined(__GNUC__)
+    #pragma GCC diagnostic pop
+#elif defined(_MSC_VER)
+    #pragma warning(pop)
+#endif
 
 namespace dai {
 
