@@ -781,7 +781,7 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd)
         {"asset",
          [](PipelineImpl& p, const dai::Path& uri) -> std::vector<uint8_t> {
              // First check the pipeline asset manager
-             auto asset = p.assetManager.get(std::string{uri});
+             auto asset = p.assetManager.get(uri.u8string());
              if(asset != nullptr) {
                  return asset->data;
              }
@@ -790,7 +790,7 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd)
                  for(auto& kv : p.nodeMap) {
                      auto& node = kv.second;
                      auto& assetManager = node->getAssetManager();
-                     auto asset = assetManager.get(uri);
+                     auto asset = assetManager.get(uri.u8string());
                      if(asset != nullptr) {
                          return asset->data;
                      }

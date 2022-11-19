@@ -128,9 +128,9 @@ hunter_config(
 # cpp-httplib
 hunter_config(
     httplib
-    VERSION "0.11.0"
-    URL "https://github.com/yhirose/cpp-httplib/archive/refs/tags/v0.11.0.tar.gz"
-    SHA1 "c26ce2539f8c43d3ce1179113ccb1f2e12bf553c"
+    VERSION "0.11.2"
+    URL "https://github.com/luxonis/cpp-httplib/archive/3ba99c06f655a52e701c9a7ae5dc48850582d95b.tar.gz"
+    SHA1 "84ddd5d58a210b6203c50760d2ebde75b0ff6376"
     CMAKE_ARGS
         HTTPLIB_USE_OPENSSL_IF_AVAILABLE=OFF
         HTTPLIB_USE_BROTLI_IF_AVAILABLE=OFF
