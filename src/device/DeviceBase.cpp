@@ -606,14 +606,20 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         // Boot FW using DeviceGate then connect directly
         gate = std::make_unique<DeviceGate>(deviceInfo);
 
+        // Get version for debug
+        if(spdlog::get_level() <= spdlog::level::debug) {
+            auto info = gate->getAllVersion();
+            spdlog::debug("OS version: {}, Gate version: {}", info.os, info.gate);
+        }
+
         // Create and start session
         // TODO Tie create and start session together. Split for now, since in some cases starting the session works, even if creating failed.
         if(!gate->createSession()) {
-            spdlog::error("Could not start the session on gate!");
+            spdlog::error("Could not create the session on gate!");
         }
 
         if(!gate->startSession()) {
-            spdlog::error("Could not create the session on gate!");
+            spdlog::error("Could not start the session on gate!");
         }
 
         // Connect with XLinkConnection (skip checking if booted)
