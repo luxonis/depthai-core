@@ -22,13 +22,13 @@
     #pragma warning(disable : 4061)
 #endif
 #if defined(ON)
-#define _ON_DEF ON
-#undef ON
+    #define _ON_DEF ON
+    #undef ON
 #endif
 #include "xtensor/xadapt.hpp"
 #include "xtensor/xarray.hpp"
 #if defined(_ON_DEF)
-#define ON _ON_DEF
+    #define ON _ON_DEF
 #endif
 #if defined(__clang__)
     #if __has_warning("-Wswitch-enum")
