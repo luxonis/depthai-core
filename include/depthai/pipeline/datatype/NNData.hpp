@@ -1,10 +1,10 @@
 #pragma once
 
+#include <algorithm>
 #include <chrono>
 #include <limits>
 #include <unordered_map>
 #include <vector>
-#include <algorithm>
 
 #include "Buffer.hpp"
 #include "depthai-shared/datatype/RawNNData.hpp"
@@ -19,10 +19,10 @@
     #pragma GCC diagnostic ignored "-Wswitch-enum"
 #elif defined(_MSC_VER)
     #pragma warning(push)
-    #pragma warning(disable: 4061)
+    #pragma warning(disable : 4061)
 #endif
-#include "xtensor/xarray.hpp"
 #include "xtensor/xadapt.hpp"
+#include "xtensor/xarray.hpp"
 #if defined(__clang__)
     #if __has_warning("-Wswitch-enum")
         #pragma clang diagnostic pop
@@ -40,8 +40,7 @@ namespace dai {
  */
 class NNData : public Buffer {
     static constexpr int DATA_ALIGNMENT = 64;
-    [[deprecated("Use 'addTensor()' instead")]]
-    std::shared_ptr<RawBuffer> serialize() const override;
+    [[deprecated("Use 'addTensor()' instead")]] std::shared_ptr<RawBuffer> serialize() const override;
     static uint16_t fp32_to_fp16(float);
     static float fp16_to_fp32(uint16_t);
     RawNNData& rawNn;
@@ -67,16 +66,14 @@ class NNData : public Buffer {
      * @param name Name of the layer
      * @param data Data to store
      */
-    [[deprecated("Use 'addTensor()' instead")]]
-    NNData& setLayer(const std::string& name, std::vector<std::uint8_t> data);
+    [[deprecated("Use 'addTensor()' instead")]] NNData& setLayer(const std::string& name, std::vector<std::uint8_t> data);
 
     /**
      * Set a layer with datatype U8. Integers are cast to bytes.
      * @param name Name of the layer
      * @param data Data to store
      */
-    [[deprecated("Use 'addTensor()' instead")]]
-    NNData& setLayer(const std::string& name, const std::vector<int>& data);
+    [[deprecated("Use 'addTensor()' instead")]] NNData& setLayer(const std::string& name, const std::vector<int>& data);
 
     // fp16
     /**
@@ -84,16 +81,14 @@ class NNData : public Buffer {
      * @param name Name of the layer
      * @param data Data to store
      */
-    [[deprecated("Use 'addTensor()' instead")]]
-    NNData& setLayer(const std::string& name, std::vector<float> data);
+    [[deprecated("Use 'addTensor()' instead")]] NNData& setLayer(const std::string& name, std::vector<float> data);
 
     /**
      * Set a layer with datatype FP16. Double values are converted to FP16.
      * @param name Name of the layer
      * @param data Data to store
      */
-    [[deprecated("Use 'addTensor()' instead")]]
-    NNData& setLayer(const std::string& name, std::vector<double> data);
+    [[deprecated("Use 'addTensor()' instead")]] NNData& setLayer(const std::string& name, std::vector<double> data);
 
     // getters
     /**
@@ -112,8 +107,7 @@ class NNData : public Buffer {
      * @param[out] tensor Outputs tensor information of that layer
      * @returns True if layer exists, false otherwise
      */
-    [[deprecated("Use 'getTensor()' instead")]]
-    bool getLayer(const std::string& name, TensorInfo& tensor) const;
+    [[deprecated("Use 'getTensor()' instead")]] bool getLayer(const std::string& name, TensorInfo& tensor) const;
 
     /**
      * Checks if given layer exists
@@ -136,8 +130,7 @@ class NNData : public Buffer {
      * @param name Name of the layer
      * @returns U8 binary data
      */
-    [[deprecated("Use 'getTensor()' instead")]]
-    std::vector<std::uint8_t> getLayerUInt8(const std::string& name) const;
+    [[deprecated("Use 'getTensor()' instead")]] std::vector<std::uint8_t> getLayerUInt8(const std::string& name) const;
 
     // fp16
     /**
@@ -145,8 +138,7 @@ class NNData : public Buffer {
      * @param name Name of the layer
      * @returns Float data
      */
-    [[deprecated("Use 'getTensor()' instead")]]
-    std::vector<float> getLayerFp16(const std::string& name) const;
+    [[deprecated("Use 'getTensor()' instead")]] std::vector<float> getLayerFp16(const std::string& name) const;
 
     // int32
     /**
@@ -154,30 +146,26 @@ class NNData : public Buffer {
      * @param name Name of the layer
      * @returns INT32 data
      */
-    [[deprecated("Use 'getTensor()' instead")]]
-    std::vector<std::int32_t> getLayerInt32(const std::string& name) const;
+    [[deprecated("Use 'getTensor()' instead")]] std::vector<std::int32_t> getLayerInt32(const std::string& name) const;
 
     // first layer
     /**
      * Convenience function to retrieve U8 data from first layer
      * @returns U8 binary data
      */
-    [[deprecated("Use 'getTensor()' instead")]]
-    std::vector<std::uint8_t> getFirstLayerUInt8() const;
+    [[deprecated("Use 'getTensor()' instead")]] std::vector<std::uint8_t> getFirstLayerUInt8() const;
 
     /**
      * Convenience function to retrieve float values from first layers FP16 tensor
      * @returns Float data
      */
-    [[deprecated("Use 'getTensor()' instead")]]
-    std::vector<float> getFirstLayerFp16() const;
+    [[deprecated("Use 'getTensor()' instead")]] std::vector<float> getFirstLayerFp16() const;
 
     /**
      * Convenience function to retrieve INT32 values from first layers tensor
      * @returns INT32 data
      */
-    [[deprecated("Use 'getTensor()' instead")]]
-    std::vector<std::int32_t> getFirstLayerInt32() const;
+    [[deprecated("Use 'getTensor()' instead")]] std::vector<std::int32_t> getFirstLayerInt32() const;
 
     /**
      * Retrieves image timestamp related to dai::Clock::now()
@@ -215,9 +203,8 @@ class NNData : public Buffer {
      * @param name Name of the layer
      * @param data Data to store
      */
-    template<typename _Ty = double>
-    NNData& addTensor(const std::string& name, const std::vector<_Ty>& data)
-    {
+    template <typename _Ty = double>
+    NNData& addTensor(const std::string& name, const std::vector<_Ty>& data) {
         return addTensor<_Ty>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}));
     };
 
@@ -226,9 +213,8 @@ class NNData : public Buffer {
      * @param name Name of the tensor
      * @param tensor Tensor to store
      */
-    template<typename _Ty = double>
-    NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& tensor)
-    {
+    template <typename _Ty = double>
+    NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& tensor) {
         static_assert(std::is_integral<_Ty>::value || std::is_floating_point<_Ty>::value, "Tensor type needs to be integral or floating point");
 
         // Get size in bytes of the converted tensor data, u8 for integral and fp16 for floating point
@@ -243,8 +229,7 @@ class NNData : public Buffer {
             for(uint32_t i = 0; i < tensor.size(); i++) {
                 rawNn.data.data()[i + offset] = (uint8_t)tensor.data()[i];
             }
-        }
-        else {
+        } else {
             for(uint32_t i = 0; i < tensor.size(); i++) {
                 *(uint16_t*)(&rawNn.data.data()[2 * i + offset]) = fp32_to_fp16(tensor.data()[i]);
             }
@@ -256,8 +241,7 @@ class NNData : public Buffer {
         info.offset = static_cast<unsigned int>(offset);
         info.dataType = std::is_integral<_Ty>::value ? TensorInfo::DataType::U8F : TensorInfo::DataType::FP16;
         info.numDimensions = tensor.dimension();
-        for(uint32_t i = 0; i < tensor.dimension(); i++)
-        {
+        for(uint32_t i = 0; i < tensor.dimension(); i++) {
             info.dims.push_back(tensor.shape()[i]);
             info.strides.push_back(tensor.strides()[i]);
         }
@@ -270,40 +254,30 @@ class NNData : public Buffer {
      * Convenience function to retrieve values from a tensor
      * @returns xt::xarray<_Ty> tensor
      */
-    template<typename _Ty>
-    xt::xarray<_Ty> getTensor(const std::string& name)
-    {
-        const auto it = std::find_if(rawNn.tensors.begin(), rawNn.tensors.end(), [&name](const TensorInfo& ti){
-            return ti.name == name;
-        });
+    template <typename _Ty>
+    xt::xarray<_Ty> getTensor(const std::string& name) {
+        const auto it = std::find_if(rawNn.tensors.begin(), rawNn.tensors.end(), [&name](const TensorInfo& ti) { return ti.name == name; });
 
-        if(it == rawNn.tensors.end())
-            throw std::runtime_error("Tensor does not exist");
-        
+        if(it == rawNn.tensors.end()) throw std::runtime_error("Tensor does not exist");
 
         std::vector<size_t> dims;
-        for(const auto v : it->dims)
-        {
+        for(const auto v : it->dims) {
             dims.push_back(v);
         }
 
         std::vector<size_t> strides;
-        for(const auto v : it->strides)
-        {
+        for(const auto v : it->strides) {
             strides.push_back(v);
         }
 
         xt::xarray<_Ty, xt::layout_type::row_major> tensor(dims);
-        if (it->dataType == TensorInfo::DataType::U8F) {
-            for(uint32_t i = 0; i < tensor.size(); i++)
-            {
+        if(it->dataType == TensorInfo::DataType::U8F) {
+            for(uint32_t i = 0; i < tensor.size(); i++) {
                 tensor.data()[i] = rawNn.data.data()[it->offset + i];
             }
-        }
-        else {
-            for(uint32_t i = 0; i < tensor.size(); i++)
-            {
-                tensor.data()[i] = fp16_to_fp32(*(uint16_t*)&rawNn.data.data()[it->offset + 2 * i]);    
+        } else {
+            for(uint32_t i = 0; i < tensor.size(); i++) {
+                tensor.data()[i] = fp16_to_fp32(*(uint16_t*)&rawNn.data.data()[it->offset + 2 * i]);
             }
         }
 
@@ -316,19 +290,18 @@ class NNData : public Buffer {
      */
     TensorInfo::DataType getTensorDatatype(const std::string& name);
 
-     /**
+    /**
      * Convenience function to retrieve values from the first tensor
      * @returns xt::xarray<_Ty> tensor
      */
-    template<typename _Ty>
-    xt::xarray<_Ty> getFirstTensor()
-    {
+    template <typename _Ty>
+    xt::xarray<_Ty> getFirstTensor() {
         if(!rawNn.tensors.empty()) {
             return getTensor<_Ty>(rawNn.tensors[0].name);
         }
 
         return {};
     }
-    };
+};
 
 }  // namespace dai

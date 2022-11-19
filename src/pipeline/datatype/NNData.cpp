@@ -105,13 +105,11 @@ std::shared_ptr<RawBuffer> NNData::serialize() const {
     return raw;
 }
 
-uint16_t NNData::fp32_to_fp16(float value)
-{
+uint16_t NNData::fp32_to_fp16(float value) {
     return fp16_ieee_from_fp32_value(value);
 };
 
-float NNData::fp16_to_fp32(uint16_t value)
-{
+float NNData::fp16_to_fp32(uint16_t value) {
     return fp16_ieee_to_fp32_value(value);
 };
 
@@ -314,14 +312,10 @@ NNData& NNData::setSequenceNum(int64_t sequenceNum) {
     return *this;
 }
 
-TensorInfo::DataType NNData::getTensorDatatype(const std::string& name)
-{
-    const auto it = std::find_if(rawNn.tensors.begin(), rawNn.tensors.end(), [&name](const TensorInfo& ti){
-        return ti.name == name;
-    });
+TensorInfo::DataType NNData::getTensorDatatype(const std::string& name) {
+    const auto it = std::find_if(rawNn.tensors.begin(), rawNn.tensors.end(), [&name](const TensorInfo& ti) { return ti.name == name; });
 
-    if(it == rawNn.tensors.end())
-        throw std::runtime_error("Tensor does not exist");
+    if(it == rawNn.tensors.end()) throw std::runtime_error("Tensor does not exist");
 
     return it->dataType;
 };
