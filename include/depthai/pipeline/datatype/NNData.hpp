@@ -9,9 +9,11 @@
 #include "Buffer.hpp"
 #include "depthai-shared/datatype/RawNNData.hpp"
 
-#if defined(__clang__) && __has_warning("-Wswitch-enum")
-    #pragma clang diagnostic push
-    #pragma clang diagnostic ignored "-Wswitch-enum"
+#if defined(__clang__)
+    #if __has_warning("-Wswitch-enum")
+        #pragma clang diagnostic push
+        #pragma clang diagnostic ignored "-Wswitch-enum"
+    #endif
 #elif defined(__GNUC__)
     #pragma GCC diagnostic push
     #pragma GCC diagnostic ignored "-Wswitch-enum"
@@ -21,8 +23,10 @@
 #endif
 #include "xtensor/xarray.hpp"
 #include "xtensor/xadapt.hpp"
-#if defined(__clang__) && __has_warning("-Wswitch-enum")
-#   pragma clang diagnostic pop
+#if defined(__clang__)
+    #if __has_warning("-Wswitch-enum")
+        #pragma clang diagnostic pop
+    #endif
 #elif defined(__GNUC__)
     #pragma GCC diagnostic pop
 #elif defined(_MSC_VER)
