@@ -26,12 +26,11 @@ if(NOT "@CMAKE_TOOLCHAIN_FILE@" STREQUAL "")
   if("@_INTERNAL_DEPTHAI_ORIGINAL_CMAKE_TOOLCHAIN_FILE@" STREQUAL "")
     # Variable not set, initial project configuration.
     # Path to original toolchain saved in CMAKE_TOOLCHAIN_FILE.
-    if(NOT EXISTS "@CMAKE_TOOLCHAIN_FILE@")
-      message(
-          FATAL_ERROR "File not found: '@CMAKE_TOOLCHAIN_FILE@'"
-      )
-    endif()
-    set(_original_toolchain_file "@CMAKE_TOOLCHAIN_FILE@")
+    
+    get_filename_component(
+      _original_toolchain_file "@CMAKE_TOOLCHAIN_FILE@"
+      ABSOLUTE BASE_DIR @CMAKE_CURRENT_SOURCE_DIR@
+    )
   else()
     set(_original_toolchain_file "@_INTERNAL_DEPTHAI_ORIGINAL_CMAKE_TOOLCHAIN_FILE@")
   endif()
