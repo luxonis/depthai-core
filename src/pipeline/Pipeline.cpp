@@ -726,6 +726,19 @@ void PipelineImpl::start() {
     // Indicate that pipeline is running
     running = true;
 
+    // Go through the build stages sequentially
+    for(const auto& kv : nodeMap) {
+        kv.second->buildStage1();
+    }
+
+    for(const auto& kv : nodeMap) {
+        kv.second->buildStage2();
+    }
+
+    for(const auto& kv : nodeMap) {
+        kv.second->buildStage3();
+    }
+
     // Starts pipeline, go through all nodes and start them
     for(const auto& kv : nodeMap) {
         kv.second->start();

@@ -397,5 +397,14 @@ void Node::setInputMapRefs(std::initializer_list<Node::InputMap*> l) {
 void Node::setInputMapRefs(Node::InputMap* inMapRef) {
     inputMapRefs[inMapRef->name] = inMapRef;
 }
+void Node::buildStage1() {
+    return;
+};
+void Node::buildStage2() {
+    return;
+};
+void Node::buildStage3() {
+    return;
+};
 
 }  // namespace dai

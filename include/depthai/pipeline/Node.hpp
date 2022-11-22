@@ -336,6 +336,11 @@ class Node {
     /// Stop node execution
     virtual void stop() = 0;
 
+    /// Build stages;
+    virtual void buildStage1();
+    virtual void buildStage2();
+    virtual void buildStage3();
+
     /// Retrieves all nodes outputs
     std::vector<Output> getOutputs();
 
