@@ -15,6 +15,7 @@ namespace node {
 class ImageManip : public NodeCRTP<DeviceNode, ImageManip, ImageManipProperties> {
    public:
     constexpr static const char* NAME = "ImageManip";
+    using NodeCRTP::NodeCRTP;
 
    protected:
     Properties& getProperties();

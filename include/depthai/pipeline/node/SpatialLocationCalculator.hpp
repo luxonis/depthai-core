@@ -19,6 +19,7 @@ namespace node {
 class SpatialLocationCalculator : public NodeCRTP<DeviceNode, SpatialLocationCalculator, SpatialLocationCalculatorProperties> {
    public:
     constexpr static const char* NAME = "SpatialLocationCalculator";
+    using NodeCRTP::NodeCRTP;
 
    protected:
     Properties& getProperties();

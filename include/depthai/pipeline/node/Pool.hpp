@@ -16,6 +16,7 @@ namespace node {
 class Pool : public NodeCRTP<DeviceNode, Pool, PoolProperties> {
    public:
     constexpr static const char* NAME = "Pool";
+    using NodeCRTP::NodeCRTP;
 
     /**
      *  Pool output in pull orientation

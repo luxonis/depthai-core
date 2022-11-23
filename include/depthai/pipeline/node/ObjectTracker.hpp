@@ -19,7 +19,7 @@ namespace node {
 class ObjectTracker : public NodeCRTP<DeviceNode, ObjectTracker, ObjectTrackerProperties> {
    public:
     constexpr static const char* NAME = "ObjectTracker";
-
+    using NodeCRTP::NodeCRTP;
     /**
      * Input ImgFrame message on which tracking will be performed. RGBp, BGRp, NV12, YUV420p types are supported.
      * Default queue is non-blocking with size 4.

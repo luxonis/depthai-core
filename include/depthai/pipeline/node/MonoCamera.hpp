@@ -17,6 +17,7 @@ namespace node {
 class MonoCamera : public NodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties> {
    public:
     constexpr static const char* NAME = "MonoCamera";
+    using NodeCRTP::NodeCRTP;
     void build();
 
    private:

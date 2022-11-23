@@ -15,6 +15,7 @@ namespace node {
 class ColorCamera : public NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties> {
    public:
     constexpr static const char* NAME = "ColorCamera";
+    using NodeCRTP::NodeCRTP;
     void build();
 
    protected:

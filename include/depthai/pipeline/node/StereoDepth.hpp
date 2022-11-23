@@ -15,6 +15,7 @@ namespace node {
 class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties> {
    public:
     constexpr static const char* NAME = "StereoDepth";
+    using NodeCRTP::NodeCRTP;
     void build();
 
     /**

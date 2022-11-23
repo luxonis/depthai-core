@@ -16,6 +16,7 @@ namespace node {
 class Script : public NodeCRTP<DeviceNode, Script, ScriptProperties> {
    public:
     constexpr static const char* NAME = "Script";
+    using NodeCRTP::NodeCRTP;
     void build();
 
    private:

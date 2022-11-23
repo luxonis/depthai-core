@@ -14,7 +14,7 @@ namespace node {
 class XLinkIn : public NodeCRTP<DeviceNode, XLinkIn, XLinkInProperties> {
    public:
     constexpr static const char* NAME = "XLinkIn";
-
+    using NodeCRTP::NodeCRTP;
    public:
     virtual ~XLinkIn() = default;
 

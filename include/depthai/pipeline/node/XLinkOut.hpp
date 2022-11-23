@@ -14,6 +14,7 @@ namespace node {
 class XLinkOut : public NodeCRTP<DeviceNode, XLinkOut, XLinkOutProperties> {
    public:
     constexpr static const char* NAME = "XLinkOut";
+    using NodeCRTP::NodeCRTP;
     void build();
 
    public:

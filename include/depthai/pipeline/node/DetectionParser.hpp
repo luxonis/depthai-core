@@ -17,6 +17,7 @@ namespace node {
 class DetectionParser : public NodeCRTP<DeviceNode, DetectionParser, DetectionParserProperties> {
    public:
     constexpr static const char* NAME = "DetectionParser";
+    using NodeCRTP::NodeCRTP;
 
     /**
      * Input NN results with detection data to parse
