@@ -164,6 +164,9 @@ void Node::Output::unlink(Input& in) {
 
 void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
     for(auto& conn : parent.connections) {
+        if((conn.outputGroup != group) || (conn.outputName != name)){
+            continue; // Only send if connection is from this output
+        }
         // Get node AND hold a reference to it.
         auto node = conn.inputNode.lock();
         // Safe, as long as we also hold 'node' shared_ptr
