@@ -111,6 +111,18 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
      */
     CameraBoardSocket getBoardSocket() const;
 
+    /**
+     * Specify which camera to use by name
+     * @param name Name of the camera to use
+     */
+    void setCamera(std::string name);
+
+    /**
+     * Retrieves which camera to use by name
+     * @returns Name of the camera to use
+     */
+    std::string getCamera() const;
+
     /// Set which color camera to use
     [[deprecated("Use 'setBoardSocket()' instead")]] void setCamId(int64_t id);
 
