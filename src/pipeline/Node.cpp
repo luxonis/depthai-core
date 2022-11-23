@@ -64,11 +64,10 @@ std::string Node::Input::toString() const {
     }
 }
 
-std::vector<Node::Connection> Node::Output::getConnections() {
-    std::vector<Node::Connection> myConnections;
-    auto allConnections = parent.getParentPipeline().getConnections();
-    for(const auto& conn : allConnections) {
-        if(conn.outputId == parent.id && conn.outputName == name && conn.outputGroup == group) {
+std::vector<Node::ConnectionInternal> Node::Output::getConnections() {
+    std::vector<Node::ConnectionInternal> myConnections;
+    for(const auto& conn : parent.connections) {
+        if(conn.outputName == name && conn.outputGroup == group) {
             myConnections.push_back(conn);
         }
     }
@@ -163,7 +162,7 @@ void Node::Output::unlink(Input& in) {
 }
 
 void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
-    for(auto& conn : parent.connections) {
+    for(auto& conn : getConnections()) {
         // Get node AND hold a reference to it.
         auto node = conn.inputNode.lock();
         // Safe, as long as we also hold 'node' shared_ptr
@@ -182,7 +181,7 @@ void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
 bool Node::Output::trySend(const std::shared_ptr<ADatatype>& msg) {
     bool success = true;
 
-    for(auto& conn : parent.connections) {
+    for(auto& conn : getConnections()) {
         // Get node AND hold a reference to it.
         auto node = conn.inputNode.lock();
         // Safe, as long as we also hold 'node' shared_ptr

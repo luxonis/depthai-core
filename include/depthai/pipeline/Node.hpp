@@ -36,6 +36,7 @@ class Node : public std::enable_shared_from_this<Node> {
     /// Node identificator. Unique for every node on a single Pipeline
     using Id = std::int64_t;
     struct Connection;
+    struct ConnectionInternal;
     // fwd declare classes
     class Input;
     class Output;
@@ -151,7 +152,7 @@ class Node : public std::enable_shared_from_this<Node> {
          * Retrieve all connections from this output
          * @returns Vector of connections
          */
-        std::vector<Connection> getConnections();
+        std::vector<ConnectionInternal> getConnections();
 
         /**
          * Link current output to input.
