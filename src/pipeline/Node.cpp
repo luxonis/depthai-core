@@ -64,8 +64,8 @@ std::string Node::Input::toString() const {
     }
 }
 
-std::vector<Node::Connection> Node::Output::getConnections() {
-    std::vector<Node::Connection> myConnections;
+std::vector<Node::ConnectionInternal> Node::Output::getConnections() {
+    std::vector<Node::ConnectionInternal> myConnections;
     for(const auto& conn : parent.connections) {
         if(conn.outputName == name && conn.outputGroup == group) {
             myConnections.push_back(conn);
