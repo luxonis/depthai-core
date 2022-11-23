@@ -20,22 +20,20 @@ namespace node {
 class DetectionNetwork : public NodeCRTP<NeuralNetwork, DetectionNetwork, DetectionNetworkProperties> {
    public:
     constexpr static const char* NAME = "DetectionNetwork";
-
-   protected:
-    DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    DetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    void build();
+    using NodeCRTP::NodeCRTP;
 
    public:
     /**
      * Outputs ImgDetections message that carries parsed detection results.
      * Overrides NeuralNetwork 'out' with ImgDetections output message type.
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgDetections, false}}};
+    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::ImgDetections, false}}};
 
     /**
      * Outputs unparsed inference results.
      */
-    Output outNetwork{*this, "outNetwork", Output::Type::MSender, {{DatatypeEnum::NNData, false}}};
+    Output outNetwork{true, *this, "outNetwork", Output::Type::MSender, {{DatatypeEnum::NNData, false}}};
 
     /**
      * Specifies confidence threshold at which to filter the rest of the detections.
@@ -55,8 +53,7 @@ class DetectionNetwork : public NodeCRTP<NeuralNetwork, DetectionNetwork, Detect
  */
 class MobileNetDetectionNetwork : public NodeCRTP<DetectionNetwork, MobileNetDetectionNetwork, DetectionNetworkProperties> {
    public:
-    MobileNetDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    MobileNetDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    void build();
 };
 
 /**
@@ -64,8 +61,7 @@ class MobileNetDetectionNetwork : public NodeCRTP<DetectionNetwork, MobileNetDet
  */
 class YoloDetectionNetwork : public NodeCRTP<DetectionNetwork, YoloDetectionNetwork, DetectionNetworkProperties> {
    public:
-    YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    YoloDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    void build();
 
     /// Set num classes
     void setNumClasses(int numClasses);

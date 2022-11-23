@@ -16,17 +16,12 @@ namespace node {
 class Warp : public NodeCRTP<DeviceNode, Warp, WarpProperties> {
    public:
     constexpr static const char* NAME = "Warp";
-
-   protected:
-    Properties& getProperties();
+    using NodeCRTP::NodeCRTP;
 
    private:
     void setWarpMesh(const float* meshData, int numMeshPoints, int width, int height);
 
    public:
-    Warp(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    Warp(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
-
     // /**
     //  * Initial config to use when manipulating frames
     //  */
@@ -36,18 +31,18 @@ class Warp : public NodeCRTP<DeviceNode, Warp, WarpProperties> {
     //  * Input WarpConfig message with ability to modify parameters in runtime
     //  * Default queue is blocking with size 8
     //  */
-    // Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, true, 8, {{DatatypeEnum::WarpConfig, true}}};
+    // Input inputConfig{true, *this, "inputConfig", Input::Type::SReceiver, true, 8, {{DatatypeEnum::WarpConfig, true}}};
 
     /**
      * Input image to be modified
      * Default queue is blocking with size 8
      */
-    Input inputImage{*this, "inputImage", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::ImgFrame, true}}};
+    Input inputImage{true, *this, "inputImage", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
      * Outputs ImgFrame message that carries warped image.
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
+    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
      * Sets output frame size in pixels

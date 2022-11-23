@@ -5,22 +5,6 @@
 namespace dai {
 namespace node {
 
-DetectionParser::DetectionParser(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : NodeCRTP<DeviceNode, DetectionParser, DetectionParserProperties>(par, nodeId, std::make_unique<DetectionParser::Properties>()) {
-    setInputRefs({&input});
-    setOutputRefs({&out});
-}
-
-DetectionParser::DetectionParser(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, DetectionParser, DetectionParserProperties>(par, nodeId, std::move(props)) {
-    setInputRefs({&input});
-    setOutputRefs({&out});
-}
-
-DetectionParser::Properties& DetectionParser::getProperties() {
-    return properties;
-}
-
 void DetectionParser::setBlob(const OpenVINO::Blob& blob) {
     properties.networkInputs = blob.networkOutputs;
 }

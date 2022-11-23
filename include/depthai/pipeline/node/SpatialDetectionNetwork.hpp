@@ -20,55 +20,52 @@ namespace node {
 class SpatialDetectionNetwork : public NodeCRTP<DetectionNetwork, SpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
     constexpr static const char* NAME = "SpatialDetectionNetwork";
-
-   protected:
-    SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    SpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    using NodeCRTP::NodeCRTP;
 
    public:
     /**
      * Input message with data to be inferred upon
      * Default queue is blocking with size 5
      */
-    Input input{*this, "in", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::ImgFrame, false}}};
+    Input input{true, *this, "in", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Input message with depth data used to retrieve spatial information about detected object
      * Default queue is non-blocking with size 4
      */
-    Input inputDepth{*this, "inputDepth", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputDepth{true, *this, "inputDepth", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs ImgDetections message that carries parsed detection results.
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::SpatialImgDetections, false}}};
+    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::SpatialImgDetections, false}}};
 
     /**
      * Outputs mapping of detected bounding boxes relative to depth map
      *
      * Suitable for when displaying remapped bounding boxes on depth frame
      */
-    Output boundingBoxMapping{*this, "boundingBoxMapping", Output::Type::MSender, {{DatatypeEnum::SpatialLocationCalculatorConfig, false}}};
+    Output boundingBoxMapping{true, *this, "boundingBoxMapping", Output::Type::MSender, {{DatatypeEnum::SpatialLocationCalculatorConfig, false}}};
 
     /**
      * Passthrough message on which the inference was performed.
      *
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthrough{*this, "passthrough", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output passthrough{true, *this, "passthrough", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Passthrough message for depth frame on which the spatial location calculation was performed.
      *
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughDepth{*this, "passthroughDepth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output passthroughDepth{true, *this, "passthroughDepth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Output of SpatialLocationCalculator node, which is used internally by SpatialDetectionNetwork.
      * Suitable when extra information is required from SpatialLocationCalculator node, e.g. minimum, maximum distance.
      */
-    Output spatialLocationCalculatorOutput{
+    Output spatialLocationCalculatorOutput{true,
         *this, "spatialLocationCalculatorOutput", Output::Type::MSender, {{DatatypeEnum::SpatialLocationCalculatorData, false}}};
 
     /**
@@ -101,7 +98,7 @@ class SpatialDetectionNetwork : public NodeCRTP<DetectionNetwork, SpatialDetecti
  */
 class MobileNetSpatialDetectionNetwork : public NodeCRTP<SpatialDetectionNetwork, MobileNetSpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
-    MobileNetSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    void build();
 };
 
 /**
@@ -109,7 +106,7 @@ class MobileNetSpatialDetectionNetwork : public NodeCRTP<SpatialDetectionNetwork
  */
 class YoloSpatialDetectionNetwork : public NodeCRTP<SpatialDetectionNetwork, YoloSpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
-    YoloSpatialDetectionNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    void build();
 
     /// Set num classes
     void setNumClasses(const int numClasses);

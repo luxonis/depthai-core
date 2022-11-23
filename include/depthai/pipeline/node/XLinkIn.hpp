@@ -14,16 +14,14 @@ namespace node {
 class XLinkIn : public NodeCRTP<DeviceNode, XLinkIn, XLinkInProperties> {
    public:
     constexpr static const char* NAME = "XLinkIn";
-
+    using NodeCRTP::NodeCRTP;
    public:
-    XLinkIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    XLinkIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
     virtual ~XLinkIn() = default;
 
     /**
      * Outputs message of same type as send from host.
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
+    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
 
     /**
      * Specifies XLink stream name to use.

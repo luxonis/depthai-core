@@ -27,12 +27,8 @@ std::string AssetManager::getRelativeKey(std::string key) const {
     }
 
     if(key[0] == '/') {                // Absolute path
-        if(key.find(rootPath) == 0) {  // Root path of the node is contained in the key
-            int rootPathLen = rootPath.size();
-            relativeKey = key.substr(rootPathLen);
-        } else {
-            return "";
-        }
+        auto pos = key.find_last_of('/');
+        relativeKey = key.substr(pos + 1);
     } else {  // Relative path
         relativeKey = key;
     }
@@ -138,8 +134,12 @@ void AssetManager::remove(const std::string& key) {
     assetMap.erase(key);
 }
 
-void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint8_t>& storage) const {
+void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint8_t>& storage, std::string prefix) const {
     using namespace std;
+
+    if(prefix.empty()) {
+        prefix = rootPath;
+    }
 
     for(auto& kv : assetMap) {
         auto& a = *kv.second;
@@ -160,7 +160,7 @@ void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint
         storage.insert(storage.end(), a.data.begin(), a.data.end());
 
         // Add to map the currently added asset
-        mutableAssets.set(rootPath + a.key, offset, static_cast<uint32_t>(a.data.size()), a.alignment);
+        mutableAssets.set(prefix + a.key, offset, static_cast<uint32_t>(a.data.size()), a.alignment);
     }
 }
 

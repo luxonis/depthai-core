@@ -15,6 +15,8 @@ namespace node {
 class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties> {
    public:
     constexpr static const char* NAME = "StereoDepth";
+    using NodeCRTP::NodeCRTP;
+    void build();
 
     /**
      * Preset modes for stereo depth.
@@ -38,8 +40,8 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
     std::shared_ptr<RawStereoDepthConfig> rawConfig;
 
    public:
-    StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    StereoDepth();
+    StereoDepth(std::unique_ptr<Properties> props);
 
     /**
      * Initial config to use for StereoDepth.
@@ -50,28 +52,28 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      * Input StereoDepthConfig message with ability to modify parameters in runtime.
      * Default queue is non-blocking with size 4.
      */
-    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::StereoDepthConfig, false}}};
+    Input inputConfig{true, *this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::StereoDepthConfig, false}}};
 
     /**
      * Input for left ImgFrame of left-right pair
      *
      * Default queue is non-blocking with size 8
      */
-    Input left{*this, "left", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
+    Input left{true, *this, "left", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
      * Input for right ImgFrame of left-right pair
      *
      * Default queue is non-blocking with size 8
      */
-    Input right{*this, "right", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
+    Input right{true, *this, "right", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
      * Outputs ImgFrame message that carries RAW16 encoded (0..65535) depth data in depth units (millimeter by default).
      *
      * Non-determined / invalid depth values are set to 0
      */
-    Output depth{*this, "depth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output depth{true, *this, "depth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 / RAW16 encoded disparity data:
@@ -82,71 +84,71 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      * - 0..1520 for 4 fractional bits
      * - 0..3040 for 5 fractional bits
      */
-    Output disparity{*this, "disparity", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output disparity{true, *this, "disparity", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Passthrough ImgFrame message from 'left' Input.
      */
-    Output syncedLeft{*this, "syncedLeft", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output syncedLeft{true, *this, "syncedLeft", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Passthrough ImgFrame message from 'right' Input.
      */
-    Output syncedRight{*this, "syncedRight", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output syncedRight{true, *this, "syncedRight", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 encoded (grayscale) rectified frame data.
      */
-    Output rectifiedLeft{*this, "rectifiedLeft", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output rectifiedLeft{true, *this, "rectifiedLeft", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 encoded (grayscale) rectified frame data.
      */
-    Output rectifiedRight{*this, "rectifiedRight", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output rectifiedRight{true, *this, "rectifiedRight", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs StereoDepthConfig message that contains current stereo configuration.
      */
-    Output outConfig{*this, "outConfig", Output::Type::MSender, {{DatatypeEnum::StereoDepthConfig, false}}};
+    Output outConfig{true, *this, "outConfig", Output::Type::MSender, {{DatatypeEnum::StereoDepthConfig, false}}};
 
     /**
      * Outputs ImgFrame message that carries left-right check first iteration (before combining with second iteration) disparity map.
      * Useful for debugging/fine tuning.
      */
-    Output debugDispLrCheckIt1{*this, "debugDispLrCheckIt1", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output debugDispLrCheckIt1{true, *this, "debugDispLrCheckIt1", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs ImgFrame message that carries left-right check second iteration (before combining with first iteration) disparity map.
      * Useful for debugging/fine tuning.
      */
-    Output debugDispLrCheckIt2{*this, "debugDispLrCheckIt2", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output debugDispLrCheckIt2{true, *this, "debugDispLrCheckIt2", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs ImgFrame message that carries extended left-right check first iteration (downscaled frame, before combining with second iteration) disparity map.
      * Useful for debugging/fine tuning.
      */
-    Output debugExtDispLrCheckIt1{*this, "debugExtDispLrCheckIt1", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output debugExtDispLrCheckIt1{true, *this, "debugExtDispLrCheckIt1", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs ImgFrame message that carries extended left-right check second iteration (downscaled frame, before combining with first iteration) disparity map.
      * Useful for debugging/fine tuning.
      */
-    Output debugExtDispLrCheckIt2{*this, "debugExtDispLrCheckIt2", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output debugExtDispLrCheckIt2{true, *this, "debugExtDispLrCheckIt2", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs ImgFrame message that carries cost dump of disparity map.
      * Useful for debugging/fine tuning.
      */
-    Output debugDispCostDump{*this, "debugDispCostDump", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output debugDispCostDump{true, *this, "debugDispCostDump", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 confidence map.
      * Lower values means higher confidence of the calculated disparity value.
      * RGB alignment, left-right check or any postproccessing (e.g. median filter) is not performed on confidence map.
      */
-    Output confidenceMap{*this, "confidenceMap", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output confidenceMap{true, *this, "confidenceMap", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
-    Output pixelDescriptors{*this, "pixelDescriptors", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output pixelDescriptors{true, *this, "pixelDescriptors", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Specify that a passthrough/dummy calibration should be used,

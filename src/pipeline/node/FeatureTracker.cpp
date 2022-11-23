@@ -5,21 +5,13 @@
 namespace dai {
 namespace node {
 
-FeatureTracker::FeatureTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : NodeCRTP<DeviceNode, FeatureTracker, FeatureTrackerProperties>(par, nodeId, std::make_unique<FeatureTracker::Properties>()),
-      rawConfig(std::make_shared<RawFeatureTrackerConfig>()),
-      initialConfig(rawConfig) {
-    setInputRefs({&inputConfig, &inputImage});
-    setOutputRefs({&outputFeatures, &passthroughInputImage});
-}
+FeatureTracker::FeatureTracker()
+    : NodeCRTP<DeviceNode, FeatureTracker, FeatureTrackerProperties>(), rawConfig(std::make_shared<RawFeatureTrackerConfig>()), initialConfig(rawConfig) {}
 
-FeatureTracker::FeatureTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, FeatureTracker, FeatureTrackerProperties>(par, nodeId, std::move(props)),
+FeatureTracker::FeatureTracker(std::unique_ptr<Properties> props)
+    : NodeCRTP<DeviceNode, FeatureTracker, FeatureTrackerProperties>(std::move(props)),
       rawConfig(std::make_shared<RawFeatureTrackerConfig>(properties.initialConfig)),
-      initialConfig(rawConfig) {
-    setInputRefs({&inputConfig, &inputImage});
-    setOutputRefs({&outputFeatures, &passthroughInputImage});
-}
+      initialConfig(rawConfig) {}
 
 FeatureTracker::Properties& FeatureTracker::getProperties() {
     properties.initialConfig = *rawConfig;
