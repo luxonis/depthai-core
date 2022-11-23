@@ -53,8 +53,11 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
         find_package(Backward ${_QUIET} CONFIG REQUIRED)
         unset(STACK_DETAILS_AUTO_DETECT)
     endif()
-
 endif()
+
+# Xtensor
+add_subdirectory("${PROJECT_SOURCE_DIR}/3rdparty/xtl")
+add_subdirectory("${PROJECT_SOURCE_DIR}/3rdparty/xtensor")
 
 # Add threads (c++)
 find_package(Threads ${_QUIET} REQUIRED)

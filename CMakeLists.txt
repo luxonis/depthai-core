@@ -423,6 +423,7 @@ target_link_libraries(${TARGET_CORE_NAME}
     PUBLIC
         nlohmann_json::nlohmann_json
         libnop
+        xtensor
     INTERFACE
         XLinkPublic
     PRIVATE
