@@ -34,13 +34,19 @@ static std::size_t sizeofTensorInfoDataType(TensorInfo::DataType type) {
 }
 
 static std::size_t getTensorDataSize(const TensorInfo& tensor) {
-    return tensor.dims[0] * tensor.strides[0];
+    uint32_t i;
+
+    // Use the first non zero stride
+    for(i = 0; i < tensor.strides.size(); i++){
+        if(tensor.strides[i] > 0){
+            break;
+        }
+    }
+    return tensor.dims[i] * tensor.strides[i];
 }
 
 std::shared_ptr<RawBuffer> NNData::serialize() const {
     // get data from u8Data and fp16Data and place properly into the underlying raw buffer
-    rawNn.tensors = {};
-    rawNn.data.clear();
 
     // U8 tensors
     for(const auto& kv : u8Data) {

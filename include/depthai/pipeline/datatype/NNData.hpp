@@ -228,8 +228,16 @@ class NNData : public Buffer {
         const size_t sConvertedData = std::is_integral<_Ty>::value ? tensor.size() : 2 * tensor.size();
 
         // Append bytes so that each new tensor is DATA_ALIGNMENT aligned
-        const size_t offset = rawNn.data.size() + ((rawNn.data.end() - rawNn.data.begin() + DATA_ALIGNMENT - 1) / DATA_ALIGNMENT) * DATA_ALIGNMENT;
-        rawNn.data.insert(rawNn.data.end(), offset + sConvertedData, 0);
+        size_t remainder = (rawNn.data.end() - rawNn.data.begin()) % DATA_ALIGNMENT;
+        if(remainder > 0) {
+            rawNn.data.insert(rawNn.data.end(), DATA_ALIGNMENT - remainder, 0);
+        }
+
+        // Then get offset to beginning of data
+        size_t offset = rawNn.data.end() - rawNn.data.begin();
+
+        // Reserve space
+        rawNn.data.resize(offset + sConvertedData);
 
         // Convert data to u8 or fp16 and write to rawNn.data
         if(std::is_integral<_Ty>::value) {
