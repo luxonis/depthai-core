@@ -19,6 +19,10 @@ std::string AssetManager::getRootPath() {
     return rootPath;
 }
 
+void AssetManager::setRootPath(const std::string& rootPath) {
+    this->rootPath = rootPath;
+}
+
 std::string AssetManager::getRelativeKey(std::string key) const {
     // Check if asset key is absolute or relative
     std::string relativeKey = "";
@@ -27,8 +31,12 @@ std::string AssetManager::getRelativeKey(std::string key) const {
     }
 
     if(key[0] == '/') {                // Absolute path
-        auto pos = key.find_last_of('/');
-        relativeKey = key.substr(pos + 1);
+        if(key.find(rootPath) == 0) {  // Root path of the node is contained in the key
+            int rootPathLen = rootPath.size();
+            relativeKey = key.substr(rootPathLen);
+        } else {
+            return "";
+        }
     } else {  // Relative path
         relativeKey = key;
     }
