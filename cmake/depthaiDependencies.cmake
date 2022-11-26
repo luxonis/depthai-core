@@ -52,8 +52,9 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
 endif()
 
 # Xtensor
-add_subdirectory("${PROJECT_SOURCE_DIR}/3rdparty/xtl")
-add_subdirectory("${PROJECT_SOURCE_DIR}/3rdparty/xtensor")
+get_filename_component(PARENT_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/.. ABSOLUTE)
+add_subdirectory("${PARENT_DIRECTORY}/3rdparty/xtl")
+add_subdirectory("${PARENT_DIRECTORY}/3rdparty/xtensor")
 
 # Add threads (c++)
 find_package(Threads ${_QUIET} REQUIRED)
