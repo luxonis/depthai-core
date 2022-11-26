@@ -210,6 +210,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/Warp.cpp
     src/pipeline/node/VideoEncoder.cpp
     src/pipeline/node/DetectionNetwork.cpp
+    src/pipeline/node/DetectionNetworkSub.cpp
     src/pipeline/node/Script.cpp
     src/pipeline/node/Pool.cpp
     src/pipeline/node/SpatialDetectionNetwork.cpp

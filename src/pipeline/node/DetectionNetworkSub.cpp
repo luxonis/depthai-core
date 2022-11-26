@@ -1,4 +1,4 @@
-#include "depthai/pipeline/node/DetectionNetwork.hpp"
+#include "depthai/pipeline/node/DetectionNetworkSub.hpp"
 
 #include <sstream>
 
@@ -12,77 +12,81 @@ namespace node {
 // Base Detection Network Class
 //--------------------------------------------------------------------
 
-void DetectionNetwork::build() {
+void DetectionNetworkSub::build() {
     // Default confidence threshold
-    properties.parser.confidenceThreshold = 0.5;
+    detectionParser->properties.parser.confidenceThreshold = 0.5;
+    neuralNetwork->out.link(detectionParser->input);
+    properties = neuralNetwork->properties;
 }
 
-void DetectionNetwork::setConfidenceThreshold(float thresh) {
-    properties.parser.confidenceThreshold = thresh;
+void DetectionNetworkSub::setConfidenceThreshold(float thresh) {
+    detectionParser->properties.parser.confidenceThreshold = thresh;
 }
 
-float DetectionNetwork::getConfidenceThreshold() const {
-    return properties.parser.confidenceThreshold;
+float DetectionNetworkSub::getConfidenceThreshold() const {
+    return detectionParser->properties.parser.confidenceThreshold;
 }
 
 //--------------------------------------------------------------------
 // MobileNet
 //--------------------------------------------------------------------
-void MobileNetDetectionNetwork::build() {
-    properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
+void MobileNetDetectionNetworkSub::build() {
+    DetectionNetworkSub::build();
+    detectionParser->properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
 }
 
 //--------------------------------------------------------------------
 // YOLO
 //--------------------------------------------------------------------
-void YoloDetectionNetwork::build() {
-    properties.parser.nnFamily = DetectionNetworkType::YOLO;
-    properties.parser.iouThreshold = 0.5f;
+void YoloDetectionNetworkSub::build() {
+    DetectionNetworkSub::build();
+    detectionParser->properties.parser.nnFamily = DetectionNetworkType::YOLO;
+    detectionParser->properties.parser.iouThreshold = 0.5f;
 }
 
-void YoloDetectionNetwork::setNumClasses(const int numClasses) {
-    properties.parser.classes = numClasses;
+void YoloDetectionNetworkSub::setNumClasses(const int numClasses) {
+    detectionParser->properties.parser.classes = numClasses;
 }
 
-void YoloDetectionNetwork::setCoordinateSize(const int coordinates) {
-    properties.parser.coordinates = coordinates;
+void YoloDetectionNetworkSub::setCoordinateSize(const int coordinates) {
+    detectionParser->properties.parser.coordinates = coordinates;
 }
 
-void YoloDetectionNetwork::setAnchors(std::vector<float> anchors) {
-    properties.parser.anchors = anchors;
+void YoloDetectionNetworkSub::setAnchors(std::vector<float> anchors) {
+    detectionParser->properties.parser.anchors = anchors;
 }
 
-void YoloDetectionNetwork::setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks) {
-    properties.parser.anchorMasks = anchorMasks;
+void YoloDetectionNetworkSub::setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks) {
+    detectionParser->properties.parser.anchorMasks = anchorMasks;
 }
 
-void YoloDetectionNetwork::setIouThreshold(float thresh) {
-    properties.parser.iouThreshold = thresh;
+void YoloDetectionNetworkSub::setIouThreshold(float thresh) {
+    detectionParser->properties.parser.iouThreshold = thresh;
 }
 
 /// Get num classes
-int YoloDetectionNetwork::getNumClasses() const {
-    return properties.parser.classes;
+int YoloDetectionNetworkSub::getNumClasses() const {
+    return detectionParser->properties.parser.classes;
 }
 
 /// Get coordianate size
-int YoloDetectionNetwork::getCoordinateSize() const {
-    return properties.parser.coordinates;
+int YoloDetectionNetworkSub::getCoordinateSize() const {
+    return detectionParser->properties.parser.coordinates;
 }
 
 /// Get anchors
-std::vector<float> YoloDetectionNetwork::getAnchors() const {
-    return properties.parser.anchors;
+std::vector<float> YoloDetectionNetworkSub::getAnchors() const {
+    return detectionParser->properties.parser.anchors;
 }
 
 /// Get anchor masks
-std::map<std::string, std::vector<int>> YoloDetectionNetwork::getAnchorMasks() const {
-    return properties.parser.anchorMasks;
+std::map<std::string, std::vector<int>> YoloDetectionNetworkSub::getAnchorMasks() const {
+    return detectionParser->properties.parser.anchorMasks;
 }
 
 /// Get Iou threshold
-float YoloDetectionNetwork::getIouThreshold() const {
-    return properties.parser.iouThreshold;
+float YoloDetectionNetworkSub::getIouThreshold() const {
+    return detectionParser->properties.parser.iouThreshold;
 }
 
 }  // namespace node

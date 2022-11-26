@@ -1,6 +1,7 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
+#include <depthai/pipeline/node/DetectionParser.hpp>
 #include <depthai/pipeline/node/NeuralNetwork.hpp>
 
 #include "depthai/openvino/OpenVINO.hpp"
@@ -8,32 +9,54 @@
 // standard
 #include <fstream>
 
-// shared
-#include <depthai-shared/properties/DetectionNetworkProperties.hpp>
-
 namespace dai {
 namespace node {
 
 /**
- * @brief DetectionNetwork, base for different network specializations
+ * @brief DetectionNetworkSub, base for different network specializations
  */
-class DetectionNetwork : public NodeCRTP<NeuralNetwork, DetectionNetwork, DetectionNetworkProperties> {
+class DetectionNetworkSub : public NeuralNetwork {
    public:
-    constexpr static const char* NAME = "DetectionNetwork";
+    constexpr static const char* NAME = "DetectionNetworkSub";
     void build();
-    using NodeCRTP::NodeCRTP;
+    DetectionNetworkSub()
+        : out{detectionParser->out},
+          outNetwork{neuralNetwork->out},
+          input{neuralNetwork->input},
+          passthrough{neuralNetwork->passthrough} {};
+    // No public constructor, only a factory function.
+    [[nodiscard]] static std::shared_ptr<DetectionNetworkSub> create() {
+        auto n = std::make_shared<DetectionNetworkSub>();
+        n->build();
+        return n;
+    }
 
    public:
+    Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
+    Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
     /**
      * Outputs ImgDetections message that carries parsed detection results.
      * Overrides NeuralNetwork 'out' with ImgDetections output message type.
      */
-    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::ImgDetections, false}}};
+    Output& out;
 
     /**
      * Outputs unparsed inference results.
      */
-    Output outNetwork{true, *this, "outNetwork", Output::Type::MSender, {{DatatypeEnum::NNData, false}}};
+    Output& outNetwork;
+
+    /**
+     * Input message with data to be inferred upon
+     * Default queue is blocking with size 5
+     */
+    Input& input;
+
+    /**
+     * Passthrough message on which the inference was performed.
+     *
+     * Suitable for when input queue is set to non-blocking behavior.
+     */
+    Output& passthrough;
 
     /**
      * Specifies confidence threshold at which to filter the rest of the detections.
@@ -49,19 +72,29 @@ class DetectionNetwork : public NodeCRTP<NeuralNetwork, DetectionNetwork, Detect
 };
 
 /**
- * @brief MobileNetDetectionNetwork node. Parses MobileNet results
+ * @brief MobileNetDetectionNetworkSub node. Parses MobileNet results
  */
-class MobileNetDetectionNetwork : public NodeCRTP<DetectionNetwork, MobileNetDetectionNetwork, DetectionNetworkProperties> {
+class MobileNetDetectionNetworkSub : public DetectionNetworkSub {
    public:
+    [[nodiscard]] static std::shared_ptr<MobileNetDetectionNetworkSub> create() {
+        auto n = std::make_shared<MobileNetDetectionNetworkSub>();
+        n->build();
+        return n;
+    }
     void build();
 };
 
 /**
- * @brief YoloDetectionNetwork node. Parses Yolo results
+ * @brief YoloDetectionNetworkSub node. Parses Yolo results
  */
-class YoloDetectionNetwork : public NodeCRTP<DetectionNetwork, YoloDetectionNetwork, DetectionNetworkProperties> {
+class YoloDetectionNetworkSub : public DetectionNetworkSub {
    public:
     void build();
+    [[nodiscard]] static std::shared_ptr<YoloDetectionNetworkSub> create() {
+        auto n = std::make_shared<YoloDetectionNetworkSub>();
+        n->build();
+        return n;
+    }
 
     /// Set num classes
     void setNumClasses(int numClasses);
