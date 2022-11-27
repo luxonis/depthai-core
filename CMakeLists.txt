@@ -27,6 +27,11 @@ else()
     message(STATUS "Using toolchain file: ${CMAKE_TOOLCHAIN_FILE}")
 endif()
 
+# Move binary dir if windows, to shorten the path
+if(WIN32)
+    set(HUNTER_BINARY_DIR "${HUNTER_GATE_ROOT}/_bin" CACHE STRING "Hunter binary directory")
+endif()
+
 set(HUNTER_ROOT ${CMAKE_CURRENT_BINARY_DIR}/hunter)
 include("cmake/HunterGate.cmake")
 HunterGate(
@@ -35,10 +40,6 @@ HunterGate(
     LOCAL # Local config for dependencies
 )
 
-# Move binary dir if windows, to shorten the path
-if(WIN32)
-    set(HUNTER_BINARY_DIR "${HUNTER_GATE_ROOT}/_bin" CACHE STRING "Hunter binary directory")
-endif()
 
 # Create depthai project
 project(depthai VERSION "2.19.1" LANGUAGES CXX C)
