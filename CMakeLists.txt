@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.4) # For Hunter
 
+set(DEPTHAI_CORE_3RDPARTY_PATH "${CMAKE_CURRENT_LIST_DIR}/3rdparty")
+
 # MSVC variable isn't available before 'project' call
 # Generalize to Win32 platform for now
 if(NOT WIN32)
