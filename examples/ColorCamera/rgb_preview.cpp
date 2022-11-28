@@ -41,6 +41,9 @@ int main() {
         cout << "Bootloader version: " << device.getBootloaderVersion()->toString() << endl;
     }
 
+    // Device name
+    cout << "Device name: " << device.getDeviceName() << endl;
+
     // Output queue will be used to get the rgb frames from the output defined above
     auto qRgb = device.getOutputQueue("rgb", 4, false);
 
