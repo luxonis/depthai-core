@@ -2,6 +2,14 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.19.1 (2022-11-28)
+-----------
+* Added Device getDeviceName API
+* OAK-FFC 4P (R5M1E5) IR/Dot support
+* Additional Stability bugfixes to go along with 2.19.0 for PoE devices
+* Protected productName field in EEPROM
+* Contributors: Alex Bougdan, Szabolcs Gergely, Martin Peterlin
+
 
 2.19.0 (2022-09-20)
 -----------
