@@ -892,6 +892,34 @@ DeviceInfo DeviceBase::getDeviceInfo() const {
     return deviceInfo;
 }
 
+std::string DeviceBase::getDeviceName() {
+    checkClosed();
+
+    std::string deviceName;
+    EepromData eeprom = readFactoryCalibrationOrDefault().getEepromData();
+    if((deviceName = eeprom.productName).empty()) {
+        eeprom = readCalibrationOrDefault().getEepromData();
+        if((deviceName = eeprom.productName).empty()) {
+            deviceName = eeprom.boardName;
+        }
+    }
+
+    // Convert to device naming from display/product naming
+    std::transform(deviceName.begin(), deviceName.end(), deviceName.begin(), std::ptr_fun<int, int>(std::toupper));
+    std::replace(deviceName.begin(), deviceName.end(), ' ', '-');
+
+    // Handle some known legacy cases
+    if(deviceName == "BW1098OBC") {
+        deviceName = "OAK-D";
+    } else if(deviceName == "DM2097") {
+        deviceName = "OAK-D-CM4-POE";
+    } else if(deviceName == "BW1097") {
+        deviceName = "OAK-D-CM3";
+    }
+
+    return deviceName;
+}
+
 void DeviceBase::setLogOutputLevel(LogLevel level) {
     checkClosed();
 
