@@ -44,6 +44,9 @@ int main() {
     // Device name
     cout << "Device name: " << device.getDeviceName() << endl;
 
+    // Information about connected camera
+    cout << "Cameras: " << device.getConnectedCameraFeatures() << endl;
+
     // Output queue will be used to get the rgb frames from the output defined above
     auto qRgb = device.getOutputQueue("rgb", 4, false);
 
