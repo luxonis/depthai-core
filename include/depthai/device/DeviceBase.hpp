@@ -16,6 +16,7 @@
 
 // project
 #include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/CameraFeatures.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/device/Version.hpp"
@@ -25,7 +26,6 @@
 #include "depthai/xlink/XLinkStream.hpp"
 
 // shared
-#include "depthai-shared/common/CameraFeatures.hpp"
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
