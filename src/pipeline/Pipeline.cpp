@@ -121,7 +121,7 @@ void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector
     // Pipeline assets
     assetManager.serialize(mutableAssets, assetStorage, "/pipeline/");
     // Node assets
-    for(auto& node : nodes) {
+    for(auto& node : getAllNodes()) {
         node->getAssetManager().serialize(mutableAssets, assetStorage, fmt::format("/node/{}/", node->id));
     }
 
@@ -178,7 +178,9 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
     // Loop over all nodes, and add them to schema
     for(const auto& node : getAllNodes()) {
         // const auto& node = kv.second;
-
+        if(std::string(node->getName()) == std::string("NodeGroup")){
+            continue;
+        }
         // Check if its a host node or device node
         if(node->hostNode) {
             // host node, no need to serialize to a schema
