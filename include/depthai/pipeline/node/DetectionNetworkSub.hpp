@@ -23,12 +23,6 @@ class DetectionNetworkSub : public NodeGroup {
           outNetwork{neuralNetwork->out},
           input{neuralNetwork->input},
           passthrough{neuralNetwork->passthrough} {};
-    // No public constructor, only a factory function.
-    [[nodiscard]] static std::shared_ptr<DetectionNetworkSub> create() {
-        auto n = std::make_shared<DetectionNetworkSub>();
-        n->build();
-        return n;
-    }
 
    public:
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
