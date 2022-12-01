@@ -9,6 +9,17 @@ void DetectionParser::setBlob(const OpenVINO::Blob& blob) {
     properties.networkInputs = blob.networkOutputs;
 }
 
+void DetectionParser::setInputImgSize(std::vector<unsigned> size) {
+    dai::TensorInfo tensorInfo{};
+    tensorInfo.dims = size;
+    tensorInfo.numDimensions = size.size();
+    if(properties.networkInputs.size() != 0){
+        logger->error("setInputImgSize(...) can only be used if setBlob(...) is not in use. Otherwise input sizes are parsed from the blob.");
+        return;
+    }
+    properties.networkInputs.emplace("input", tensorInfo);
+}
+
 void DetectionParser::setNumFramesPool(int numFramesPool) {
     properties.numFramesPool = numFramesPool;
 }

@@ -62,6 +62,10 @@ void NeuralNetwork::setBackend(std::string backend) {
     properties.backend = backend;
 }
 
+void NeuralNetwork::setCustomSettings(std::map<std::string, std::string> settings) {
+    properties.customSettings = settings;
+}
+
 int NeuralNetwork::getNumInferenceThreads() {
     return properties.numThreads;
 }

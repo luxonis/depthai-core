@@ -50,6 +50,14 @@ class DetectionParser : public NodeCRTP<DeviceNode, DetectionParser, DetectionPa
     void setBlob(const OpenVINO::Blob& blob);
 
     /**
+     * Set input image size
+     *
+     * This should only be used instead of setBlob, not besides it
+     * @param size Size of the input image (needed for yolo)
+    */
+   void setInputImgSize(std::vector<unsigned> size);
+
+    /**
      * Sets NN Family to parse
      */
     void setNNFamily(DetectionNetworkType type);
