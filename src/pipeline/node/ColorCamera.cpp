@@ -43,6 +43,14 @@ CameraBoardSocket ColorCamera::getBoardSocket() const {
     return properties.boardSocket;
 }
 
+void ColorCamera::setCamera(std::string name) {
+    properties.cameraName = name;
+}
+
+std::string ColorCamera::getCamera() const {
+    return properties.cameraName;
+}
+
 // Set which color camera to use
 void ColorCamera::setCamId(int64_t id) {
     // cast to board socket

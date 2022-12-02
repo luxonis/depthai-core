@@ -23,9 +23,9 @@ namespace dai {
  */
 class ImgFrame : public Buffer {
     std::shared_ptr<RawBuffer> serialize() const override;
-    RawImgFrame& img;
 
    public:
+    RawImgFrame& img;
     // Raw* mirror
     using Type = RawImgFrame::Type;
     using Specs = RawImgFrame::Specs;

@@ -28,8 +28,9 @@ bool MessageQueue::isClosed() const {
 void MessageQueue::close() {
     // Destroy queue
     queue.destruct();
-    // Log
-    spdlog::debug("MessageQueue ({}) closed", name);
+
+    // Log if name not empty
+    if(!name.empty()) spdlog::debug("MessageQueue ({}) closed", name);
 }
 
 MessageQueue::~MessageQueue() {

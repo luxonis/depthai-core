@@ -9,6 +9,7 @@
 // project
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
+#include "depthai/device/Version.hpp"
 
 namespace dai {
 
@@ -39,6 +40,12 @@ class DeviceGate {
     bool isOkay();
     bool createSession();
     bool startSession();
+
+    struct VersionInfo {
+        std::string gate, os;
+    };
+    Version getVersion();
+    VersionInfo getAllVersion();
 
    private:
     // private
