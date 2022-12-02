@@ -312,7 +312,9 @@ include(DepthaiBootloaderDownloader)        # Depthai bootloader binary download
 
 # depthai-shared enforce commit hash match if CI
 if($ENV{CI})
-    set(DEPTHAI_SHARED_COMMIT_HASH_ENFORCE ON)
+    # TODO(themarpe) - Disable before final merge
+    # set(DEPTHAI_SHARED_COMMIT_HASH_ENFORCE ON)
+    set(DEPTHAI_SHARED_COMMIT_HASH_ENFORCE OFF)
     set(DEPTHAI_BOOTLOADER_SHARED_COMMIT_HASH_ENFORCE ON)
 endif()
 
