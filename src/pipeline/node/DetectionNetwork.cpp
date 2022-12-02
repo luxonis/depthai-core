@@ -14,75 +14,132 @@ namespace node {
 
 void DetectionNetwork::build() {
     // Default confidence threshold
-    properties.parser.confidenceThreshold = 0.5;
+    detectionParser->properties.parser.confidenceThreshold = 0.5;
+    neuralNetwork->out.link(detectionParser->input);
+    neuralNetwork->passthrough.link(detectionParser->imageIn);
+
+    // No "internal" buffering to keep interface similar
+    detectionParser->input.setBlocking(true);
+    detectionParser->input.setQueueSize(1);
+    detectionParser->imageIn.setBlocking(false);
+    detectionParser->imageIn.setQueueSize(1);
+}
+
+// -------------------------------------------------------------------
+// Neural Network API
+// -------------------------------------------------------------------
+void DetectionNetwork::setBlobPath(const dai::Path& path) {
+    neuralNetwork->setBlobPath(path);
+}
+
+void DetectionNetwork::setBlob(OpenVINO::Blob blob) {
+    neuralNetwork->setBlob(blob);
+}
+
+void DetectionNetwork::setBlob(const dai::Path& path) {
+    neuralNetwork->setBlob(path);
+}
+
+void DetectionNetwork::setXmlModelPath(const dai::Path& xmlModelPath, const dai::Path& binModelPath) {
+    neuralNetwork->setXmlModelPath(xmlModelPath, binModelPath);
+}
+
+void DetectionNetwork::setNumPoolFrames(int numFrames) {
+    neuralNetwork->setNumPoolFrames(numFrames);
+}
+
+void DetectionNetwork::setNumInferenceThreads(int numThreads) {
+    neuralNetwork->setNumInferenceThreads(numThreads);
+}
+
+void DetectionNetwork::setNumNCEPerInferenceThread(int numNCEPerThread) {
+    neuralNetwork->setNumNCEPerInferenceThread(numNCEPerThread);
+}
+
+void DetectionNetwork::setNumShavesPerInferenceThread(int numShavesPerThread) {
+    neuralNetwork->setNumShavesPerInferenceThread(numShavesPerThread);
+}
+
+void DetectionNetwork::setBackend(std::string backend) {
+    neuralNetwork->setBackend(backend);
+}
+
+void DetectionNetwork::setCustomSettings(std::map<std::string, std::string> settings) {
+    neuralNetwork->setCustomSettings(settings);
+}
+
+int DetectionNetwork::getNumInferenceThreads() {
+    return neuralNetwork->getNumInferenceThreads();
 }
 
 void DetectionNetwork::setConfidenceThreshold(float thresh) {
-    properties.parser.confidenceThreshold = thresh;
+    detectionParser->setConfidenceThreshold(thresh);
 }
 
 float DetectionNetwork::getConfidenceThreshold() const {
-    return properties.parser.confidenceThreshold;
+    return detectionParser->getConfidenceThreshold();
 }
 
 //--------------------------------------------------------------------
 // MobileNet
 //--------------------------------------------------------------------
 void MobileNetDetectionNetwork::build() {
-    properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
+    DetectionNetwork::build();
+    detectionParser->properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
 }
 
 //--------------------------------------------------------------------
 // YOLO
 //--------------------------------------------------------------------
 void YoloDetectionNetwork::build() {
-    properties.parser.nnFamily = DetectionNetworkType::YOLO;
-    properties.parser.iouThreshold = 0.5f;
+    DetectionNetwork::build();
+    detectionParser->properties.parser.nnFamily = DetectionNetworkType::YOLO;
+    detectionParser->properties.parser.iouThreshold = 0.5f;
 }
 
 void YoloDetectionNetwork::setNumClasses(const int numClasses) {
-    properties.parser.classes = numClasses;
+    detectionParser->setNumClasses(numClasses);
 }
 
 void YoloDetectionNetwork::setCoordinateSize(const int coordinates) {
-    properties.parser.coordinates = coordinates;
+    detectionParser->setCoordinateSize(coordinates);
 }
 
 void YoloDetectionNetwork::setAnchors(std::vector<float> anchors) {
-    properties.parser.anchors = anchors;
+    detectionParser->setAnchors(anchors);
 }
 
 void YoloDetectionNetwork::setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks) {
-    properties.parser.anchorMasks = anchorMasks;
+    detectionParser->setAnchorMasks(anchorMasks);
 }
 
 void YoloDetectionNetwork::setIouThreshold(float thresh) {
-    properties.parser.iouThreshold = thresh;
+    detectionParser->setIouThreshold(thresh);
 }
 
 /// Get num classes
 int YoloDetectionNetwork::getNumClasses() const {
-    return properties.parser.classes;
+    return detectionParser->getNumClasses();
 }
 
 /// Get coordianate size
 int YoloDetectionNetwork::getCoordinateSize() const {
-    return properties.parser.coordinates;
+    return detectionParser->getCoordinateSize();
 }
 
 /// Get anchors
 std::vector<float> YoloDetectionNetwork::getAnchors() const {
-    return properties.parser.anchors;
+    return detectionParser->getAnchors();
 }
 
 /// Get anchor masks
 std::map<std::string, std::vector<int>> YoloDetectionNetwork::getAnchorMasks() const {
-    return properties.parser.anchorMasks;
+    return detectionParser->getAnchorMasks();
 }
 
 /// Get Iou threshold
 float YoloDetectionNetwork::getIouThreshold() const {
-    return properties.parser.iouThreshold;
+    return detectionParser->getIouThreshold();
 }
 
 }  // namespace node
