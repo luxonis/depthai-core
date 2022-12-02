@@ -16,6 +16,13 @@ void DetectionNetworkSub::build() {
     // Default confidence threshold
     detectionParser->properties.parser.confidenceThreshold = 0.5;
     neuralNetwork->out.link(detectionParser->input);
+    neuralNetwork->passthrough.link(detectionParser->imageIn);
+
+    // No "internal" buffering to keep interface similar
+    detectionParser->input.setBlocking(true);
+    detectionParser->input.setQueueSize(1);
+    detectionParser->imageIn.setBlocking(false);
+    detectionParser->imageIn.setQueueSize(1);
 }
 
 // -------------------------------------------------------------------

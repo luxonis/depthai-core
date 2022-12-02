@@ -31,6 +31,11 @@ class DetectionParser : public NodeCRTP<DeviceNode, DetectionParser, DetectionPa
     Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::ImgDetections, false}}};
 
     /**
+     * Input for image that produced the detection - image size can be taken from here
+     */
+    Input imageIn{true, *this, "imageIn", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
      * Specify number of frames in pool.
      * @param numFramesPool How many frames should the pool have
      */
