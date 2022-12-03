@@ -33,7 +33,7 @@ class DetectionParser : public NodeCRTP<DeviceNode, DetectionParser, DetectionPa
     /**
      * Input for image that produced the detection - image size can be taken from here
      */
-    Input imageIn{true, *this, "imageIn", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, false}}};
+    Input imageIn{true, *this, "imageIn", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Specify number of frames in pool.
@@ -58,9 +58,13 @@ class DetectionParser : public NodeCRTP<DeviceNode, DetectionParser, DetectionPa
      * Set input image size
      *
      * This should only be used instead of setBlob, not besides it
-     * @param size Size of the input image (needed for yolo)
-    */
-   void setInputImgSize(std::vector<unsigned> size);
+     */
+    void setInputImageSize(int width, int height);
+
+    /*
+     * Set preview output size, as a tuple<width, height>
+     */
+    void setInputImageSize(std::tuple<int, int> size);
 
     /**
      * Sets NN Family to parse
