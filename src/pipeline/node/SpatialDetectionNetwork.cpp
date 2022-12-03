@@ -20,11 +20,13 @@ void SpatialDetectionNetwork::build() {
     neuralNetwork->passthrough.link(inputImg);
     detectionParser->out.link(inputDetections);
 
-    // No "internal" buffering to keep interface similar
+    // No "internal" buffering to keep interface similar to monolithic nodes
     detectionParser->input.setBlocking(true);
     detectionParser->input.setQueueSize(1);
     detectionParser->imageIn.setBlocking(false);
     detectionParser->imageIn.setQueueSize(1);
+    inputDetections.setQueueSize(1);
+    inputDetections.setBlocking(true);
 }
 
 

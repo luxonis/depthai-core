@@ -62,7 +62,7 @@ class SpatialDetectionNetwork : public NodeCRTP<DeviceNode, SpatialDetectionNetw
      * Input message with input detections object
      * Default queue is blocking with size 1
      */
-    Input inputDetections{true, *this, "inputDetections", Input::Type::SReceiver, true, 1, true, {{DatatypeEnum::ImgDetections, false}}};
+    Input inputDetections{true, *this, "inputDetections", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::ImgDetections, false}}};
 
     /**
      * Outputs ImgDetections message that carries parsed detection results.

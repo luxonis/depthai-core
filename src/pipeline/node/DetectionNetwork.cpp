@@ -18,7 +18,7 @@ void DetectionNetwork::build() {
     neuralNetwork->out.link(detectionParser->input);
     neuralNetwork->passthrough.link(detectionParser->imageIn);
 
-    // No "internal" buffering to keep interface similar
+    // No "internal" buffering to keep interface similar to monolithic nodes
     detectionParser->input.setBlocking(true);
     detectionParser->input.setQueueSize(1);
     detectionParser->imageIn.setBlocking(false);
