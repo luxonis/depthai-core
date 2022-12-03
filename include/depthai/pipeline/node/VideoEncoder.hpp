@@ -14,20 +14,18 @@ namespace node {
 class VideoEncoder : public NodeCRTP<DeviceNode, VideoEncoder, VideoEncoderProperties> {
    public:
     constexpr static const char* NAME = "VideoEncoder";
-
-    VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    using NodeCRTP::NodeCRTP;
 
     /**
      * Input for NV12 ImgFrame to be encoded
      * Default queue is blocking with size set by 'setNumFramesPool' (4).
      */
-    Input input{*this, "in", Input::Type::SReceiver, true, 4, true, {{DatatypeEnum::ImgFrame, true}}};
+    Input input{true, *this, "in", Input::Type::SReceiver, true, 4, true, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
      * Outputs ImgFrame message that carries BITSTREAM encoded (MJPEG, H264 or H265) frame data.
      */
-    Output bitstream{*this, "bitstream", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output bitstream{true, *this, "bitstream", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     // Sets default options for a specified size and profile
     /**

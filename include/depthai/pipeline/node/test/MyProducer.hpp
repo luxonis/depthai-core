@@ -15,15 +15,13 @@ namespace test {
 class MyProducer : public NodeCRTP<ThreadedNode, MyProducer, XLinkOutProperties> {
    public:
     constexpr static const char* NAME = "MyProducer";
+    void build();
 
    public:
-    MyProducer(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    MyProducer(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
-
     /**
      * Outputs message of same type as send from host.
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
+    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
 
     void run() override;
 };

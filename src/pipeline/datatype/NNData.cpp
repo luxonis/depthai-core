@@ -34,13 +34,19 @@ static std::size_t sizeofTensorInfoDataType(TensorInfo::DataType type) {
 }
 
 static std::size_t getTensorDataSize(const TensorInfo& tensor) {
-    return tensor.dims[0] * tensor.strides[0];
+    uint32_t i;
+
+    // Use the first non zero stride
+    for(i = 0; i < tensor.strides.size(); i++){
+        if(tensor.strides[i] > 0){
+            break;
+        }
+    }
+    return tensor.dims[i] * tensor.strides[i];
 }
 
 std::shared_ptr<RawBuffer> NNData::serialize() const {
     // get data from u8Data and fp16Data and place properly into the underlying raw buffer
-    rawNn.tensors = {};
-    rawNn.data.clear();
 
     // U8 tensors
     for(const auto& kv : u8Data) {
@@ -104,6 +110,14 @@ std::shared_ptr<RawBuffer> NNData::serialize() const {
 
     return raw;
 }
+
+uint16_t NNData::fp32_to_fp16(float value) {
+    return fp16_ieee_from_fp32_value(value);
+};
+
+float NNData::fp16_to_fp32(uint16_t value) {
+    return fp16_ieee_to_fp32_value(value);
+};
 
 // setters
 // uint8_t
@@ -304,4 +318,11 @@ NNData& NNData::setSequenceNum(int64_t sequenceNum) {
     return *this;
 }
 
+TensorInfo::DataType NNData::getTensorDatatype(const std::string& name) {
+    const auto it = std::find_if(rawNn.tensors.begin(), rawNn.tensors.end(), [&name](const TensorInfo& ti) { return ti.name == name; });
+
+    if(it == rawNn.tensors.end()) throw std::runtime_error("Tensor does not exist");
+
+    return it->dataType;
+};
 }  // namespace dai

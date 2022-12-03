@@ -2,6 +2,7 @@
 
 // Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
+
 void printSystemInformation(dai::SystemInformation info) {
     printf("Ddr used / total - %.2f / %.2f MiB\n", info.ddrMemoryUsage.used / (1024.0f * 1024.0f), info.ddrMemoryUsage.total / (1024.0f * 1024.0f));
     printf("Cmx used / total - %.2f / %.2f MiB\n", info.cmxMemoryUsage.used / (1024.0f * 1024.0f), info.cmxMemoryUsage.total / (1024.0f * 1024.0f));

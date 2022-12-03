@@ -214,6 +214,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/VideoEncoder.cpp
     src/pipeline/node/DetectionNetwork.cpp
     src/pipeline/node/Script.cpp
+    src/pipeline/node/Pool.cpp
     src/pipeline/node/SpatialDetectionNetwork.cpp
     src/pipeline/node/SystemLogger.cpp
     src/pipeline/node/SpatialLocationCalculator.cpp
@@ -427,6 +428,7 @@ target_link_libraries(${TARGET_CORE_NAME}
     PUBLIC
         nlohmann_json::nlohmann_json
         libnop
+        xtensor
     INTERFACE
         XLinkPublic
     PRIVATE
@@ -674,6 +676,8 @@ if(DEPTHAI_INSTALL)
     install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
     # Install Hunter dependencies
     install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}/dependencies")
+    # Install depthai-core dependencies
+    install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/3rdparty" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake")
     # Install resources if not RC'd
     if(NOT DEPTHAI_BINARIES_RESOURCE_COMPILE)
         install(DIRECTORY "${DEPTHAI_RESOURCES_OUTPUT_DIR}/" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}")

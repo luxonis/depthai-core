@@ -5,24 +5,23 @@
 namespace dai {
 namespace node {
 
-DetectionParser::DetectionParser(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : NodeCRTP<DeviceNode, DetectionParser, DetectionParserProperties>(par, nodeId, std::make_unique<DetectionParser::Properties>()) {
-    setInputRefs({&input});
-    setOutputRefs({&out});
-}
-
-DetectionParser::DetectionParser(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, DetectionParser, DetectionParserProperties>(par, nodeId, std::move(props)) {
-    setInputRefs({&input});
-    setOutputRefs({&out});
-}
-
-DetectionParser::Properties& DetectionParser::getProperties() {
-    return properties;
-}
-
 void DetectionParser::setBlob(const OpenVINO::Blob& blob) {
     properties.networkInputs = blob.networkOutputs;
+}
+
+void DetectionParser::setInputImageSize(std::tuple<int, int> size) {
+    setInputImageSize(std::get<0>(size), std::get<1>(size));
+}
+
+void DetectionParser::setInputImageSize(int width, int height) {
+    dai::TensorInfo tensorInfo{};
+    tensorInfo.dims = std::vector<unsigned int>{static_cast<unsigned int>(width), static_cast<unsigned int>(height)};
+    tensorInfo.numDimensions = 2;
+    if(properties.networkInputs.size() != 0){
+        logger->error("setInputImageSize(...) can only be used if setBlob(...) is not in use. Otherwise input sizes are parsed from the blob.");
+        return;
+    }
+    properties.networkInputs.emplace("input", tensorInfo);
 }
 
 void DetectionParser::setNumFramesPool(int numFramesPool) {

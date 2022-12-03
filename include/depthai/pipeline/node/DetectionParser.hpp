@@ -17,24 +17,23 @@ namespace node {
 class DetectionParser : public NodeCRTP<DeviceNode, DetectionParser, DetectionParserProperties> {
    public:
     constexpr static const char* NAME = "DetectionParser";
-
-   protected:
-    Properties& getProperties();
-
-   public:
-    DetectionParser(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    DetectionParser(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    using NodeCRTP::NodeCRTP;
 
     /**
      * Input NN results with detection data to parse
      * Default queue is blocking with size 5
      */
-    Input input{*this, "in", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::NNData, true}}};
+    Input input{true, *this, "in", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::NNData, true}}};
 
     /**
      * Outputs image frame with detected edges
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgDetections, false}}};
+    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::ImgDetections, false}}};
+
+    /**
+     * Input for image that produced the detection - image size can be taken from here
+     */
+    Input imageIn{true, *this, "imageIn", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Specify number of frames in pool.
@@ -54,6 +53,18 @@ class DetectionParser : public NodeCRTP<DeviceNode, DetectionParser, DetectionPa
      * @param blob OpenVINO blob to retrieve the information from
      */
     void setBlob(const OpenVINO::Blob& blob);
+
+    /**
+     * Set input image size
+     *
+     * This should only be used instead of setBlob, not besides it
+     */
+    void setInputImageSize(int width, int height);
+
+    /*
+     * Set preview output size, as a tuple<width, height>
+     */
+    void setInputImageSize(std::tuple<int, int> size);
 
     /**
      * Sets NN Family to parse

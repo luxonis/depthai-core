@@ -6,26 +6,6 @@
 namespace dai {
 namespace node {
 
-NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : NodeCRTP<DeviceNode, NeuralNetwork, NeuralNetworkProperties>(par, nodeId, std::make_unique<NeuralNetwork::Properties>()),
-      inputs("inputs", Input(*this, "", Input::Type::SReceiver, false, 1, true, {{DatatypeEnum::Buffer, true}})),
-      passthroughs("passthroughs", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}})) {
-    setInputRefs({&input});
-    setOutputRefs({&out, &passthrough});
-    setInputMapRefs({&inputs});
-    setOutputMapRefs({&passthroughs});
-}
-
-NeuralNetwork::NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, NeuralNetwork, NeuralNetworkProperties>(par, nodeId, std::move(props)),
-      inputs("inputs", Input(*this, "", Input::Type::SReceiver, false, 1, true, {{DatatypeEnum::Buffer, true}})),
-      passthroughs("passthroughs", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}})) {
-    setInputRefs({&input});
-    setOutputRefs({&out, &passthrough});
-    setInputMapRefs({&inputs});
-    setOutputMapRefs({&passthroughs});
-}
-
 tl::optional<OpenVINO::Version> NeuralNetwork::getRequiredOpenVINOVersion() {
     return networkOpenvinoVersion;
 }
@@ -80,6 +60,10 @@ void NeuralNetwork::setNumShavesPerInferenceThread(int numShavesPerThread) {
 
 void NeuralNetwork::setBackend(std::string backend) {
     properties.backend = backend;
+}
+
+void NeuralNetwork::setBackendProperties(std::map<std::string, std::string> props) {
+    properties.backendProperties = props;
 }
 
 int NeuralNetwork::getNumInferenceThreads() {

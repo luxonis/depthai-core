@@ -18,10 +18,7 @@ class Display : public dai::NodeCRTP<dai::ThreadedNode, Display, dai::XLinkOutPr
     constexpr static const char* NAME = "Display";
 
    public:
-    Display(const std::shared_ptr<dai::PipelineImpl>& par, int64_t nodeId) : Display(par, nodeId, std::make_unique<Display::Properties>()) {}
-    Display(const std::shared_ptr<dai::PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-        : dai::NodeCRTP<dai::ThreadedNode, Display, dai::XLinkOutProperties>(par, nodeId, std::move(std::move(props))) {
-        setInputRefs(&input);
+    void build() {
         hostNode = true;
     }
 
@@ -29,7 +26,7 @@ class Display : public dai::NodeCRTP<dai::ThreadedNode, Display, dai::XLinkOutPr
      * Input for any ImgFrame messages to be displayed
      * Default queue is blocking with size 8
      */
-    Input input{*this, "in", Input::Type::SReceiver, true, 8, true, {{dai::DatatypeEnum::Buffer, true}}};
+    Input input{true, *this, "in", Input::Type::SReceiver, true, 8, true, {{dai::DatatypeEnum::Buffer, true}}};
 
     void run() override {
         while(isRunning()) {
@@ -51,6 +48,7 @@ int main() {
     auto display = pipeline.create<Display>();
     camRgb->preview.link(display->input);
     pipeline.start();
+    pipeline.wait();
 
     return 0;
 }

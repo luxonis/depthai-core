@@ -5,22 +5,15 @@
 namespace dai {
 namespace node {
 
-SpatialLocationCalculator::SpatialLocationCalculator(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : NodeCRTP<DeviceNode, SpatialLocationCalculator, SpatialLocationCalculatorProperties>(
-        par, nodeId, std::make_unique<SpatialLocationCalculator::Properties>()),
+SpatialLocationCalculator::SpatialLocationCalculator()
+    : NodeCRTP<DeviceNode, SpatialLocationCalculator, SpatialLocationCalculatorProperties>(),
       rawConfig(std::make_shared<RawSpatialLocationCalculatorConfig>()),
-      initialConfig(rawConfig) {
-    setInputRefs({&inputConfig, &inputDepth});
-    setOutputRefs({&out, &passthroughDepth});
-}
+      initialConfig(rawConfig) {}
 
-SpatialLocationCalculator::SpatialLocationCalculator(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, SpatialLocationCalculator, SpatialLocationCalculatorProperties>(par, nodeId, std::move(props)),
+SpatialLocationCalculator::SpatialLocationCalculator(std::unique_ptr<Properties> props)
+    : NodeCRTP<DeviceNode, SpatialLocationCalculator, SpatialLocationCalculatorProperties>(std::move(props)),
       rawConfig(std::make_shared<RawSpatialLocationCalculatorConfig>(properties.roiConfig)),
-      initialConfig(rawConfig) {
-    setInputRefs({&inputConfig, &inputDepth});
-    setOutputRefs({&out, &passthroughDepth});
-}
+      initialConfig(rawConfig) {}
 
 SpatialLocationCalculator::Properties& SpatialLocationCalculator::getProperties() {
     properties.roiConfig = *rawConfig;
