@@ -67,8 +67,8 @@ void SpatialDetectionNetwork::setBackend(std::string backend) {
     neuralNetwork->setBackend(backend);
 }
 
-void SpatialDetectionNetwork::setCustomSettings(std::map<std::string, std::string> settings) {
-    neuralNetwork->setCustomSettings(settings);
+void SpatialDetectionNetwork::setBackendProperties(std::map<std::string, std::string> props) {
+    neuralNetwork->setBackendProperties(props);
 }
 
 int SpatialDetectionNetwork::getNumInferenceThreads() {

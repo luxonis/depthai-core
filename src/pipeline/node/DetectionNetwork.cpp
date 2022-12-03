@@ -64,8 +64,8 @@ void DetectionNetwork::setBackend(std::string backend) {
     neuralNetwork->setBackend(backend);
 }
 
-void DetectionNetwork::setCustomSettings(std::map<std::string, std::string> settings) {
-    neuralNetwork->setCustomSettings(settings);
+void DetectionNetwork::setBackendProperties(std::map<std::string, std::string> props) {
+    neuralNetwork->setBackendProperties(props);
 }
 
 int DetectionNetwork::getNumInferenceThreads() {

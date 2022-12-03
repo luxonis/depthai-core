@@ -111,10 +111,10 @@ class DetectionNetwork : public NodeGroup {
     void setBackend(std::string backend);
 
     /**
-     * Set custom settings
-     * @param settings Settings map
+     * Set backend properties
+     * @param backendProperties backend properties map
      */
-    void setCustomSettings(std::map<std::string, std::string> settings);
+    void setBackendProperties(std::map<std::string, std::string> properties);
 
     /**
      * How many inference threads will be used to run the network
