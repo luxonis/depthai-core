@@ -37,8 +37,8 @@ static std::size_t getTensorDataSize(const TensorInfo& tensor) {
     uint32_t i;
 
     // Use the first non zero stride
-    for(i = 0; i < tensor.strides.size(); i++){
-        if(tensor.strides[i] > 0){
+    for(i = 0; i < tensor.strides.size(); i++) {
+        if(tensor.strides[i] > 0) {
             break;
         }
     }
