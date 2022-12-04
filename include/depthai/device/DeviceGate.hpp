@@ -7,9 +7,9 @@
 #include <type_traits>
 
 // project
+#include "depthai/device/Version.hpp"
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
-#include "depthai/device/Version.hpp"
 
 namespace dai {
 
