@@ -21,7 +21,7 @@ namespace dai {
  *  - ...
  */
 class ImageManipConfig : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
+    Serialized serialize() const override;
     RawImageManipConfig& cfg;
 
    public:

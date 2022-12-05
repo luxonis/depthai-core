@@ -13,7 +13,7 @@ namespace dai {
  * SpatialImgDetections message. Carries detection results together with spatial location data
  */
 class SpatialImgDetections : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
+    Serialized serialize() const override;
     RawSpatialImgDetections& dets;
 
    public:

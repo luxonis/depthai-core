@@ -31,7 +31,7 @@ class MyConsumer : public NodeCRTP<ThreadedNode, MyConsumer, XLinkOutProperties>
     void run() override {
         while(isRunning()) {
             auto msg = input.queue.get<dai::Buffer>();
-            std::cout << "got message (ptr: " << msg.get() << ", raw: " << msg->getRaw().get() << "), data (size: " << msg->getRaw()->data.size() << "): ";
+            std::cout << "got message (ptr: " << msg.get() << ", raw: " << msg->getRaw().get() << "), data (size: " << msg->data->getData().size() << "): ";
 
             for(int b : msg->getData()) {
                 std::cout << b;

@@ -2,8 +2,8 @@
 
 namespace dai {
 
-std::shared_ptr<RawBuffer> StereoDepthConfig::serialize() const {
-    return raw;
+StereoDepthConfig::Serialized StereoDepthConfig::serialize() const {
+    return {data, raw};
 }
 
 StereoDepthConfig::StereoDepthConfig() : Buffer(std::make_shared<RawStereoDepthConfig>()), cfg(*dynamic_cast<RawStereoDepthConfig*>(raw.get())) {}

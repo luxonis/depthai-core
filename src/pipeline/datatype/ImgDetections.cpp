@@ -2,8 +2,8 @@
 
 namespace dai {
 
-std::shared_ptr<RawBuffer> ImgDetections::serialize() const {
-    return raw;
+ImgDetections::Serialized ImgDetections::serialize() const {
+    return {data, raw};
 }
 
 ImgDetections::ImgDetections() : Buffer(std::make_shared<RawImgDetections>()), dets(*dynamic_cast<RawImgDetections*>(raw.get())), detections(dets.detections) {}

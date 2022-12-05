@@ -2,8 +2,8 @@
 
 namespace dai {
 
-std::shared_ptr<RawBuffer> TrackedFeatures::serialize() const {
-    return raw;
+TrackedFeatures::Serialized TrackedFeatures::serialize() const {
+    return {data, raw};
 }
 
 TrackedFeatures::TrackedFeatures()

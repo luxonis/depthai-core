@@ -19,6 +19,8 @@
 
 // project
 #include "depthai/xlink/XLinkConnection.hpp"
+#include "depthai/utility/span.hpp"
+#include "depthai/utility/Memory.hpp"
 
 namespace dai {
 
@@ -30,6 +32,25 @@ class StreamPacketDesc : public streamPacketDesc_t {
     StreamPacketDesc& operator=(const StreamPacketDesc&) = delete;
     StreamPacketDesc& operator=(StreamPacketDesc&& other) noexcept;
     ~StreamPacketDesc() noexcept;
+};
+
+class StreamPacketMemory : public StreamPacketDesc, public Memory {
+    public:
+    StreamPacketMemory() = default;
+    StreamPacketMemory(StreamPacketDesc&& d) : StreamPacketDesc(std::move(d)) {}
+    StreamPacketMemory& operator=(StreamPacketDesc&& d) { StreamPacketDesc::operator=(std::move(d)); return *this; }
+    span<std::uint8_t> getData() override {
+        return {data, length};
+    }
+    span<const std::uint8_t> getData() const override {
+        return {data, length};
+    }
+    std::size_t getMaxSize() const {
+        return length;
+    }
+    std::size_t getOffset() const {
+        return 0;
+    }
 };
 
 class XLinkStream {
@@ -50,9 +71,9 @@ class XLinkStream {
     ~XLinkStream();
 
     // Blocking
+    void write(span<const uint8_t> data, span<const uint8_t> data2);
+    void write(span<const uint8_t> data);
     void write(const void* data, std::size_t size);
-    void write(const std::uint8_t* data, std::size_t size);
-    void write(const std::vector<std::uint8_t>& data);
     std::vector<std::uint8_t> read();
     void read(std::vector<std::uint8_t>& data);
     // split write helper

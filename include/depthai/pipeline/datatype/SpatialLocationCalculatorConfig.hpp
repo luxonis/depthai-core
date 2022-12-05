@@ -12,7 +12,7 @@ namespace dai {
  * SpatialLocationCalculatorConfig message. Carries ROI (region of interest) and threshold for depth calculation
  */
 class SpatialLocationCalculatorConfig : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
+    Serialized serialize() const override;
     RawSpatialLocationCalculatorConfig& cfg;
 
    public:

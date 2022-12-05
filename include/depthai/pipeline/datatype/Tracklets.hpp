@@ -13,7 +13,7 @@ namespace dai {
  * Tracklets message. Carries object tracking information.
  */
 class Tracklets : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
+    Serialized serialize() const override;
     RawTracklets& rawdata;
 
    public:

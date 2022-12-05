@@ -2,8 +2,8 @@
 
 namespace dai {
 
-std::shared_ptr<RawBuffer> CameraControl::serialize() const {
-    return raw;
+CameraControl::Serialized CameraControl::serialize() const {
+    return {data, raw};
 }
 
 CameraControl::CameraControl() : Buffer(std::make_shared<RawCameraControl>()), cfg(*dynamic_cast<RawCameraControl*>(raw.get())) {}

@@ -15,7 +15,7 @@ namespace dai {
  */
 class NNData : public Buffer {
     static constexpr int DATA_ALIGNMENT = 64;
-    std::shared_ptr<RawBuffer> serialize() const override;
+    Serialized serialize() const override;
     RawNNData& rawNn;
 
     // store the data

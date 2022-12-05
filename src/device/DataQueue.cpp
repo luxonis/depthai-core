@@ -36,21 +36,21 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                 // Blocking -- parse packet and gather timing information
                 auto packet = stream.readMove();
                 const auto t1Parse = std::chrono::steady_clock::now();
-                const auto data = StreamMessageParser::parseMessageToADatatype(&packet);
+                const auto data = StreamMessageParser::parseMessage(std::move(packet));
                 const auto t2Parse = std::chrono::steady_clock::now();
 
-                // Trace level debugging
-                if(spdlog::get_level() == spdlog::level::trace) {
-                    std::vector<std::uint8_t> metadata;
-                    DatatypeEnum type;
-                    data->getRaw()->serialize(metadata, type);
-                    spdlog::trace("Received message from device ({}) - parsing time: {}, data size: {}, object type: {} object data: {}",
-                                  name,
-                                  std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
-                                  data->getRaw()->data.size(),
-                                  static_cast<std::int32_t>(type),
-                                  spdlog::to_hex(metadata));
-                }
+                // // Trace level debugging
+                // if(spdlog::get_level() == spdlog::level::trace) {
+                //     std::vector<std::uint8_t> metadata;
+                //     DatatypeEnum type;
+                //     data->getRaw()->serialize(metadata, type);
+                //     spdlog::trace("Received message from device ({}) - parsing time: {}, data size: {}, object type: {} object data: {}",
+                //                   name,
+                //                   std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
+                //                   data->getRaw()->data.size(),
+                //                   static_cast<std::int32_t>(type),
+                //                   spdlog::to_hex(metadata));
+                // }
 
                 // Add 'data' to queue
                 if(!queue.push(data)) {
@@ -181,33 +181,13 @@ DataInputQueue::DataInputQueue(
         try {
             while(running) {
                 // get data from queue
-                std::shared_ptr<RawBuffer> data;
-                if(!queue.waitAndPop(data)) {
+                OutgoingMessage outgoing;
+                if(!queue.waitAndPop(outgoing)) {
                     continue;
                 }
 
-                // serialize
-                auto t1Parse = std::chrono::steady_clock::now();
-
-                // TODO(themarpe) - part of zerocopy - refactor to use multipart/XLinkWriteData2 instead
-                auto serialized = StreamMessageParser::serializeMessage(data);
-                auto t2Parse = std::chrono::steady_clock::now();
-
-                // Trace level debugging
-                if(spdlog::get_level() == spdlog::level::trace) {
-                    std::vector<std::uint8_t> metadata;
-                    DatatypeEnum type;
-                    data->serialize(metadata, type);
-                    spdlog::trace("Sending message to device ({}) - serialize time: {}, data size: {}, object type: {} object data: {}",
-                                  name,
-                                  std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
-                                  data->data.size(),
-                                  type,
-                                  spdlog::to_hex(metadata));
-                }
-
                 // Blocking
-                stream.write(serialized);
+                stream.write(outgoing.data->getData(), outgoing.metadata);
 
                 // Increment num packets sent
                 numPacketsSent++;
@@ -280,16 +260,39 @@ std::string DataInputQueue::getName() const {
     return name;
 }
 
-void DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg) {
+void DataInputQueue::send(const ADatatype::Serialized& serialized) {
+    send(serialized.metadata, serialized.data);
+}
+
+void DataInputQueue::send(const std::shared_ptr<RawBuffer>& metadata, std::shared_ptr<Memory> data) {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
-    if(!rawMsg) throw std::invalid_argument("Message passed is not valid (nullptr)");
+    if(!metadata) throw std::invalid_argument("Message passed is not valid (nullptr)");
 
     // Check if stream receiver has enough space for this message
-    if(rawMsg->data.size() > maxDataSize) {
-        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize));
+    if(data->getSize() > maxDataSize) {
+        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", data->getSize(), maxDataSize));
     }
 
-    if(!queue.push(rawMsg)) {
+    // Create outgoing message and serialize
+    OutgoingMessage outgoing;
+    // serialize
+    auto t1Parse = std::chrono::steady_clock::now();
+    outgoing.metadata = StreamMessageParser::serializeMetadata(*metadata);
+    auto t2Parse = std::chrono::steady_clock::now();
+    // Trace level debugging
+    if(spdlog::get_level() == spdlog::level::trace) {
+        std::vector<std::uint8_t> meta;
+        DatatypeEnum type;
+        metadata->serialize(meta, type);
+        spdlog::trace("Sending message to device ({}) - serialize time: {}, data size: {}, object type: {} object data: {}",
+                      name,
+                      std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
+                      data->getSize(),
+                      type,
+                      spdlog::to_hex(meta));
+    }
+
+    if(!queue.push(std::move(outgoing))) {
         throw std::runtime_error(fmt::format("Underlying queue destructed"));
     }
 }
@@ -302,16 +305,39 @@ void DataInputQueue::send(const ADatatype& msg) {
     send(msg.serialize());
 }
 
-bool DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg, std::chrono::milliseconds timeout) {
+bool DataInputQueue::send(const ADatatype::Serialized& serialized, std::chrono::milliseconds timeout) {
+    return send(serialized.metadata, serialized.data, timeout);
+}
+
+bool DataInputQueue::send(const std::shared_ptr<RawBuffer>& metadata, std::shared_ptr<Memory> data, std::chrono::milliseconds timeout) {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
-    if(!rawMsg) throw std::invalid_argument("Message passed is not valid (nullptr)");
+    if(!metadata) throw std::invalid_argument("Message passed is not valid (nullptr)");
 
     // Check if stream receiver has enough space for this message
-    if(rawMsg->data.size() > maxDataSize) {
-        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize));
+    if(data->getSize() > maxDataSize) {
+        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", data->getSize(), maxDataSize));
     }
 
-    return queue.tryWaitAndPush(rawMsg, timeout);
+    // Create outgoing message and serialize
+    OutgoingMessage outgoing;
+    // serialize
+    auto t1Parse = std::chrono::steady_clock::now();
+    outgoing.metadata = StreamMessageParser::serializeMetadata(*metadata);
+    auto t2Parse = std::chrono::steady_clock::now();
+    // Trace level debugging
+    if(spdlog::get_level() == spdlog::level::trace) {
+        std::vector<std::uint8_t> meta;
+        DatatypeEnum type;
+        metadata->serialize(meta, type);
+        spdlog::trace("Sending message to device ({}) - serialize time: {}, data size: {}, object type: {} object data: {}",
+                      name,
+                      std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
+                      data->getSize(),
+                      type,
+                      spdlog::to_hex(meta));
+    }
+
+    return queue.tryWaitAndPush(std::move(outgoing), timeout);
 }
 
 bool DataInputQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::milliseconds timeout) {

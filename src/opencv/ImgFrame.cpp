@@ -67,7 +67,11 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
 
     // Check if enough data
     long requiredSize = CV_ELEM_SIZE(type) * size.area();
-    long actualSize = static_cast<long>(img.data.size());
+
+    // TMP TMP
+    // long actualSize = static_cast<long>(img.data.size());
+    long actualSize = static_cast<long>(packet->length);
+
     if(actualSize < requiredSize) {
         throw std::runtime_error("ImgFrame doesn't have enough data to encode specified frame, required " + std::to_string(requiredSize) + ", actual "
                                  + std::to_string(actualSize) + ". Maybe metadataOnly transfer was made?");
@@ -83,10 +87,15 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
     if(deepCopy) {
         // Create new image data
         mat.create(size, type);
+
+        // TMPTMP
         // Copy number of bytes that are available by Mat space or by img data size
-        std::memcpy(mat.data, img.data.data(), std::min((long)(img.data.size()), (long)(mat.dataend - mat.datastart)));
+        // std::memcpy(mat.data, img.data.data(), std::min((long)(img.data.size()), (long)(mat.dataend - mat.datastart)));
+        std::memcpy(mat.data, packet->data, std::min((long)(packet->length), (long)(mat.dataend - mat.datastart)));
     } else {
-        mat = cv::Mat(size, type, img.data.data());
+        // TMP TMP
+        // mat = cv::Mat(size, type, img.data.data());
+        mat = cv::Mat(size, type, packet->data);
     }
 
     return mat;

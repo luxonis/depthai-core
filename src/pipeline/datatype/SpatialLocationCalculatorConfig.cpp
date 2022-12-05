@@ -2,8 +2,8 @@
 
 namespace dai {
 
-std::shared_ptr<RawBuffer> SpatialLocationCalculatorConfig::serialize() const {
-    return raw;
+SpatialLocationCalculatorConfig::Serialized SpatialLocationCalculatorConfig::serialize() const {
+    return {data, raw};
 }
 
 SpatialLocationCalculatorConfig::SpatialLocationCalculatorConfig()

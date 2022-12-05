@@ -68,8 +68,8 @@ inline std::shared_ptr<T> parseDatatype(std::uint8_t* metadata, size_t size, std
 
     // deserialize
     utility::deserialize(metadata, size, *tmp);
-    // Move data
-    tmp->data = std::move(data);
+    // // Move data
+    // tmp->data = std::move(data);
 
     return tmp;
 }
@@ -93,7 +93,7 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::Buffer: {
             // RawBuffer is special case, no metadata is actually serialized
             auto pBuf = std::make_shared<RawBuffer>();
-            pBuf->data = std::move(data);
+            // pBuf->data = std::move(data);
             return pBuf;
         } break;
 
@@ -173,6 +173,25 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
     throw std::runtime_error("Bad packet, couldn't parse");
 }
 
+std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(StreamPacketDesc packet) {
+    auto message = parseMessageToADatatype(&packet);
+
+    // Create memory out of StreamPacketDesc
+    const int serializedObjectSize = readIntLE(packet.data + packet.length - 4);
+    if(serializedObjectSize < 0) {
+        throw std::runtime_error("Bad packet, couldn't parse");
+    }
+    const std::uint32_t bufferLength = packet.length - 8 - serializedObjectSize;
+
+    // TODO(themarpe) - revisit fix with better memory interface
+    packet.length = bufferLength;
+
+    // Construct Memory object
+    message->data = std::make_shared<StreamPacketMemory>(std::move(packet));
+
+    return message;
+}
+
 std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPacketDesc_t* const packet) {
     const int serializedObjectSize = readIntLE(packet->data + packet->length - 4);
     const auto objectType = static_cast<DatatypeEnum>(readIntLE(packet->data + packet->length - 8));
@@ -183,14 +202,16 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
     const std::uint32_t bufferLength = packet->length - 8 - serializedObjectSize;
     auto* const metadataStart = packet->data + bufferLength;
 
-    // copy data part
-    std::vector<uint8_t> data(packet->data, packet->data + bufferLength);
+    // // copy data part
+    // TMPTMP
+    // std::vector<uint8_t> data(packet->data, packet->data + bufferLength);
+    std::vector<uint8_t> data;
 
     switch(objectType) {
         case DatatypeEnum::Buffer: {
             // RawBuffer is special case, no metadata is actually serialized
             auto pBuf = std::make_shared<RawBuffer>();
-            pBuf->data = std::move(data);
+            // pBuf->data = std::move(data);
             return std::make_shared<Buffer>(pBuf);
         } break;
 
@@ -271,7 +292,8 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
     throw std::runtime_error("Bad packet, couldn't parse");
 }
 
-std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer& data) {
+
+std::vector<std::uint8_t> StreamMessageParser::serializeMetadata(const RawBuffer& data) {
     // Serialization:
     // 1. fill vector with bytes from data.data
     // 2. serialize and append metadata
@@ -290,8 +312,7 @@ std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer&
     for(int i = 0; i < 4; i++) leMetadataSize[i] = (metadataSize >> i * 8) & 0xFF;
 
     std::vector<std::uint8_t> ser;
-    ser.reserve(data.data.size() + metadata.size() + leDatatype.size() + leMetadataSize.size());
-    ser.insert(ser.end(), data.data.begin(), data.data.end());
+    ser.reserve(metadata.size() + leDatatype.size() + leMetadataSize.size());
     ser.insert(ser.end(), metadata.begin(), metadata.end());
     ser.insert(ser.end(), leDatatype.begin(), leDatatype.end());
     ser.insert(ser.end(), leMetadataSize.begin(), leMetadataSize.end());
@@ -299,18 +320,40 @@ std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer&
     return ser;
 }
 
-std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const std::shared_ptr<const RawBuffer>& data) {
-    if(!data) return {};
-    return serializeMessage(*data);
+
+std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer& data) {
+    // Serialization:
+    // 1. fill vector with bytes from data.data
+    // 2. serialize and append metadata
+    // 3. append datatype enum (4B LE)
+    // 4. append size (4B LE) of serialized metadata
+
+    throw std::invalid_argument("TODO");
+
+    std::vector<std::uint8_t> metadata = serializeMetadata(data);
+    return metadata;
+
+    // std::vector<std::uint8_t> ser;
+    // ser.reserve(data.data.size() + metadata.size() + leDatatype.size() + leMetadataSize.size());
+    // ser.insert(ser.end(), data.data.begin(), data.data.end());
+    // ser.insert(ser.end(), metadata.begin(), metadata.end());
+    // ser.insert(ser.end(), leDatatype.begin(), leDatatype.end());
+    // ser.insert(ser.end(), leMetadataSize.begin(), leMetadataSize.end());
+    // return ser;
 }
 
-std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const ADatatype& data) {
-    return serializeMessage(data.serialize());
-}
+// std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const std::shared_ptr<const RawBuffer>& data) {
+//     if(!data) return {};
+//     return serializeMessage(*data);
+// }
 
-std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const std::shared_ptr<const ADatatype>& data) {
-    if(!data) return {};
-    return serializeMessage(*data);
-}
+// std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const ADatatype& data) {
+//     return serializeMessage(data.serialize());
+// }
+
+// std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const std::shared_ptr<const ADatatype>& data) {
+//     if(!data) return {};
+//     return serializeMessage(*data);
+// }
 
 }  // namespace dai

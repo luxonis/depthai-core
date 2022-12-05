@@ -6,8 +6,8 @@
 
 namespace dai {
 
-std::shared_ptr<RawBuffer> ImageManipConfig::serialize() const {
-    return raw;
+ImageManipConfig::Serialized ImageManipConfig::serialize() const {
+    return {data, raw};
 }
 
 ImageManipConfig::ImageManipConfig() : Buffer(std::make_shared<RawImageManipConfig>()), cfg(*dynamic_cast<RawImageManipConfig*>(raw.get())) {}

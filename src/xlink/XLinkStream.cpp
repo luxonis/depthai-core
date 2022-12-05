@@ -75,18 +75,22 @@ StreamPacketDesc::~StreamPacketDesc() noexcept {
 // BLOCKING VERSIONS
 ////////////////////
 
-void XLinkStream::write(const std::uint8_t* data, std::size_t size) {
-    auto status = XLinkWriteData(streamId, data, static_cast<int>(size));
+
+void XLinkStream::write(span<const uint8_t> data, span<const uint8_t> data2) {
+    auto status = XLinkWriteData2(streamId, data.data(), static_cast<int>(data.size()), data2.data(), data2.size());
+    if(status != X_LINK_SUCCESS) {
+        throw XLinkWriteError(status, streamName);
+    }
+}
+
+void XLinkStream::write(span<const uint8_t> data) {
+    auto status = XLinkWriteData(streamId, data.data(), static_cast<int>(data.size()));
     if(status != X_LINK_SUCCESS) {
         throw XLinkWriteError(status, streamName);
     }
 }
 void XLinkStream::write(const void* data, std::size_t size) {
-    write(reinterpret_cast<const uint8_t*>(data), size);
-}
-
-void XLinkStream::write(const std::vector<std::uint8_t>& data) {
-    write(data.data(), data.size());
+    write(span<const uint8_t>(reinterpret_cast<const uint8_t*>(data), size));
 }
 
 void XLinkStream::read(std::vector<std::uint8_t>& data) {

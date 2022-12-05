@@ -2,8 +2,8 @@
 
 namespace dai {
 
-std::shared_ptr<RawBuffer> AprilTags::serialize() const {
-    return raw;
+AprilTags::Serialized AprilTags::serialize() const {
+    return {data, raw};
 }
 
 AprilTags::AprilTags() : Buffer(std::make_shared<RawAprilTags>()), rawdata(*dynamic_cast<RawAprilTags*>(raw.get())), aprilTags(rawdata.aprilTags) {}

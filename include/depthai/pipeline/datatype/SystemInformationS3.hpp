@@ -13,7 +13,7 @@ namespace dai {
  * Carries memory usage, cpu usage and chip temperatures.
  */
 class SystemInformationS3 : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
+    Serialized serialize() const override;
     RawSystemInformationS3& systemInformation;
 
    public:
