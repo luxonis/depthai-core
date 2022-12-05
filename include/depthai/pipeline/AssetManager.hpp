@@ -52,6 +52,12 @@ class AssetManager /*: public Assets*/ {
     std::string getRootPath();
 
     /**
+     * Set root path of the asset manager
+     * @param rootPath Root path
+     */
+    void setRootPath(const std::string& rootPath);
+
+    /**
      * Adds or overwrites an asset object to AssetManager.
      * @param asset Asset to add
      * @returns Shared pointer to asset

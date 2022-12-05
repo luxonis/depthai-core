@@ -31,6 +31,11 @@ class DetectionParser : public NodeCRTP<DeviceNode, DetectionParser, DetectionPa
     Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::ImgDetections, false}}};
 
     /**
+     * Input for image that produced the detection - image size can be taken from here
+     */
+    Input imageIn{true, *this, "imageIn", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
      * Specify number of frames in pool.
      * @param numFramesPool How many frames should the pool have
      */
@@ -48,6 +53,18 @@ class DetectionParser : public NodeCRTP<DeviceNode, DetectionParser, DetectionPa
      * @param blob OpenVINO blob to retrieve the information from
      */
     void setBlob(const OpenVINO::Blob& blob);
+
+    /**
+     * Set input image size
+     *
+     * This should only be used instead of setBlob, not besides it
+     */
+    void setInputImageSize(int width, int height);
+
+    /*
+     * Set preview output size, as a tuple<width, height>
+     */
+    void setInputImageSize(std::tuple<int, int> size);
 
     /**
      * Sets NN Family to parse

@@ -17,6 +17,6 @@ class NodeGroup : public Node {
         return std::make_unique<NodeGroup>(static_cast<const NodeGroup&>(*this));
     };
     friend class PipelineImpl;
-}
+};
 
 }  // namespace dai

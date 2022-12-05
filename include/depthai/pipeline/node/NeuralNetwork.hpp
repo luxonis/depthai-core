@@ -119,6 +119,12 @@ class NeuralNetwork : public NodeCRTP<DeviceNode, NeuralNetwork, NeuralNetworkPr
     void setBackend(std::string backend);
 
     /**
+     * Set backend properties
+     * @param backendProperties backend properties map
+     */
+    void setBackendProperties(std::map<std::string, std::string> properties);
+
+    /**
      * How many inference threads will be used to run the network
      * @returns Number of threads, 0, 1 or 2. Zero means AUTO
      */

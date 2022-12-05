@@ -487,13 +487,18 @@ class Node : public std::enable_shared_from_this<Node> {
 
     // TBD - might be an default impl instead
     /// Start node execution
-    virtual void start() = 0;
+    virtual void start(){};
 
     /// Wait for node to finish execution
-    virtual void wait() = 0;
+    virtual void wait(){};
 
     /// Stop node execution
-    virtual void stop() = 0;
+    virtual void stop(){};
+
+    /// Build stages;
+    virtual void buildStage1();
+    virtual void buildStage2();
+    virtual void buildStage3();
 
     /// Retrieves all nodes outputs
     std::vector<Output> getOutputs();

@@ -22,9 +22,9 @@ namespace dai {
  */
 class ImageManipConfig : public Buffer {
     Serialized serialize() const override;
-    RawImageManipConfig& cfg;
 
    public:
+    RawImageManipConfig& cfg;
     // Alias
     using CropConfig = RawImageManipConfig::CropConfig;
     using ResizeConfig = RawImageManipConfig::ResizeConfig;
@@ -229,6 +229,18 @@ class ImageManipConfig : public Buffer {
      * @returns True if resize thumbnail mode is set, false otherwise
      */
     bool isResizeThumbnail() const;
+
+    /**
+     * Instruct ImageManip to not remove current image from its queue and use the same for next message.
+     * @returns True to enable reuse, false otherwise
+     */
+    bool getReusePreviousImage() const;
+
+    /**
+     * Instructs ImageManip to skip current image and wait for next in queue.
+     * @returns True to skip current image, false otherwise
+     */
+    bool getSkipCurrentImage() const;
 };
 
 }  // namespace dai

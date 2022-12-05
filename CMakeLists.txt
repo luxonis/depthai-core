@@ -6,6 +6,9 @@ if(NOT WIN32)
     set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
 endif()
 
+# Set type to canonicalize relative paths for user-provided toolchain
+set(CMAKE_TOOLCHAIN_FILE "" CACHE FILEPATH "CMake toolchain path")
+
 # Create a custom toolchain to pass certain options to dependencies
 set(gen_toolchain "${CMAKE_CURRENT_BINARY_DIR}/generated/toolchain.cmake")
 
@@ -314,7 +317,9 @@ include(DepthaiDeviceKbDownloader)          # depthai-device-kb fwp downloader
 
 # depthai-shared enforce commit hash match if CI
 if($ENV{CI})
-    set(DEPTHAI_SHARED_COMMIT_HASH_ENFORCE ON)
+    # TODO(themarpe) - Disable before final merge
+    # set(DEPTHAI_SHARED_COMMIT_HASH_ENFORCE ON)
+    set(DEPTHAI_SHARED_COMMIT_HASH_ENFORCE OFF)
     set(DEPTHAI_BOOTLOADER_SHARED_COMMIT_HASH_ENFORCE ON)
 endif()
 
@@ -423,6 +428,7 @@ target_link_libraries(${TARGET_CORE_NAME}
     PUBLIC
         nlohmann_json::nlohmann_json
         libnop
+        xtensor
     INTERFACE
         XLinkPublic
     PRIVATE
@@ -670,6 +676,8 @@ if(DEPTHAI_INSTALL)
     install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
     # Install Hunter dependencies
     install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}/dependencies")
+    # Install depthai-core dependencies
+    install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/3rdparty" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake")
     # Install resources if not RC'd
     if(NOT DEPTHAI_BINARIES_RESOURCE_COMPILE)
         install(DIRECTORY "${DEPTHAI_RESOURCES_OUTPUT_DIR}/" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}")

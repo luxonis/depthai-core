@@ -61,6 +61,28 @@ bool DeviceGate::isOkay() {
     return false;
 }
 
+Version DeviceGate::getVersion() {
+    httplib::Result res = pimpl->cli->Get("/api/v1/version");
+    if(res && res->status == 200) {
+        auto versionStr = nlohmann::json::parse(res->body)["version_gate"].get<std::string>();
+        return Version{versionStr};
+    }
+    return Version{0,0,0};
+}
+
+DeviceGate::VersionInfo DeviceGate::getAllVersion() {
+    httplib::Result res = pimpl->cli->Get("/api/v1/version");
+    if(res && res->status == 200) {
+        auto result = nlohmann::json::parse(res->body);
+
+        VersionInfo info;
+        info.gate = result.value("version_gate", "");
+        info.os = result.value("version_os", "");
+        return info;
+    }
+    return {};
+}
+
 bool DeviceGate::createSession() {
     const auto sessionsEndpoint = API_ROOT + "/sessions";
 

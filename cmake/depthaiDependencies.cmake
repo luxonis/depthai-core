@@ -53,8 +53,12 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
         find_package(Backward ${_QUIET} CONFIG REQUIRED)
         unset(STACK_DETAILS_AUTO_DETECT)
     endif()
-
 endif()
+
+# Xtensor
+get_filename_component(PARENT_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/.. ABSOLUTE)
+add_subdirectory("${PARENT_DIRECTORY}/3rdparty/xtl" xtl)
+add_subdirectory("${PARENT_DIRECTORY}/3rdparty/xtensor" xtensor)
 
 # Add threads (c++)
 find_package(Threads ${_QUIET} REQUIRED)

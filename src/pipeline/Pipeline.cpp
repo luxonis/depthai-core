@@ -121,7 +121,7 @@ void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector
     // Pipeline assets
     assetManager.serialize(mutableAssets, assetStorage, "/pipeline/");
     // Node assets
-    for(auto& node : nodes) {
+    for(auto& node : getAllNodes()) {
         node->getAssetManager().serialize(mutableAssets, assetStorage, fmt::format("/node/{}/", node->id));
     }
 
@@ -178,7 +178,9 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
     // Loop over all nodes, and add them to schema
     for(const auto& node : getAllNodes()) {
         // const auto& node = kv.second;
-
+        if(std::string(node->getName()) == std::string("NodeGroup")){
+            continue;
+        }
         // Check if its a host node or device node
         if(node->hostNode) {
             // host node, no need to serialize to a schema
@@ -752,6 +754,19 @@ void PipelineImpl::start() {
     // Indicate that pipeline is running
     running = true;
 
+    // Go through the build stages sequentially
+    for(const auto& node : nodes) {
+        node->buildStage1();
+    }
+
+    for(const auto& node : nodes) {
+        node->buildStage2();
+    }
+
+    for(const auto& node : nodes) {
+        node->buildStage3();
+    }
+
     // Starts pipeline, go through all nodes and start them
     for(const auto& node : nodes) {
         node->start();
@@ -807,7 +822,7 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd)
         {"asset",
          [](PipelineImpl& p, const dai::Path& uri) -> std::vector<uint8_t> {
              // First check the pipeline asset manager
-             auto asset = p.assetManager.get(std::string{uri});
+             auto asset = p.assetManager.get(uri.u8string());
              if(asset != nullptr) {
                  return asset->data;
              }
@@ -815,7 +830,7 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd)
              else {
                  for(auto& node : p.nodes) {
                      auto& assetManager = node->getAssetManager();
-                     auto asset = assetManager.get(uri);
+                     auto asset = assetManager.get(uri.u8string());
                      if(asset != nullptr) {
                          return asset->data;
                      }

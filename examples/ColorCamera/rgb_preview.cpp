@@ -27,11 +27,7 @@ int main() {
     // Connect to device and start pipeline
     dai::Device device(pipeline, dai::UsbSpeed::SUPER);
 
-    cout << "Connected cameras: ";
-    for(const auto& cam : device.getConnectedCameras()) {
-        cout << cam << " ";
-    }
-    cout << endl;
+    cout << "Connected cameras: " << device.getConnectedCameraFeatures() << endl;
 
     // Print USB speed
     cout << "Usb speed: " << device.getUsbSpeed() << endl;

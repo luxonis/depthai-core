@@ -516,6 +516,15 @@ void Node::setInputMapRefs(std::initializer_list<Node::InputMap*> l) {
 void Node::setInputMapRefs(Node::InputMap* inMapRef) {
     inputMapRefs[inMapRef->name] = inMapRef;
 }
+void Node::buildStage1() {
+    return;
+};
+void Node::buildStage2() {
+    return;
+};
+void Node::buildStage3() {
+    return;
+};
 
 void Node::setNodeRefs(std::initializer_list<std::pair<std::string, std::shared_ptr<Node>*>> l) {
     for(auto& nodeRef : l) {

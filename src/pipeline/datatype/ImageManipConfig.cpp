@@ -234,4 +234,12 @@ bool ImageManipConfig::isResizeThumbnail() const {
     return cfg.resizeConfig.lockAspectRatioFill;
 }
 
+bool ImageManipConfig::getReusePreviousImage() const {
+    return cfg.reusePreviousImage;
+}
+
+bool ImageManipConfig::getSkipCurrentImage() const {
+    return cfg.skipCurrentImage;
+}
+
 }  // namespace dai
