@@ -178,11 +178,11 @@ void ColorCamera::setFps(float fps) {
 }
 
 void ColorCamera::setFrameEventFilter(const std::vector<dai::FrameEvent>& events) {
-    properties.filterEvents = events;
+    properties.eventFilter = events;
 }
 
 std::vector<dai::FrameEvent> ColorCamera::getFrameEventFilter() const {
-    return properties.filterEvents;
+    return properties.eventFilter;
 }
 
 float ColorCamera::getFps() const {
