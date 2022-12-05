@@ -70,6 +70,7 @@ inline std::shared_ptr<T> parseDatatype(std::uint8_t* metadata, size_t size, std
     utility::deserialize(metadata, size, *tmp);
     // // Move data
     // tmp->data = std::move(data);
+    (void) data;
 
     return tmp;
 }
