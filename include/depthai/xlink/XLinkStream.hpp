@@ -18,9 +18,9 @@
 #include <XLink/XLinkPublicDefines.h>
 
 // project
-#include "depthai/xlink/XLinkConnection.hpp"
-#include "depthai/utility/span.hpp"
 #include "depthai/utility/Memory.hpp"
+#include "depthai/utility/span.hpp"
+#include "depthai/xlink/XLinkConnection.hpp"
 
 namespace dai {
 
@@ -35,10 +35,13 @@ class StreamPacketDesc : public streamPacketDesc_t {
 };
 
 class StreamPacketMemory : public StreamPacketDesc, public Memory {
-    public:
+   public:
     StreamPacketMemory() = default;
     StreamPacketMemory(StreamPacketDesc&& d) : StreamPacketDesc(std::move(d)) {}
-    StreamPacketMemory& operator=(StreamPacketDesc&& d) { StreamPacketDesc::operator=(std::move(d)); return *this; }
+    StreamPacketMemory& operator=(StreamPacketDesc&& d) {
+        StreamPacketDesc::operator=(std::move(d));
+        return *this;
+    }
     span<std::uint8_t> getData() override {
         return {data, length};
     }

@@ -292,7 +292,6 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
     throw std::runtime_error("Bad packet, couldn't parse");
 }
 
-
 std::vector<std::uint8_t> StreamMessageParser::serializeMetadata(const RawBuffer& data) {
     // Serialization:
     // 1. fill vector with bytes from data.data
@@ -319,7 +318,6 @@ std::vector<std::uint8_t> StreamMessageParser::serializeMetadata(const RawBuffer
 
     return ser;
 }
-
 
 std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer& data) {
     // Serialization:

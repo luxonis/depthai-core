@@ -5,9 +5,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "depthai/utility/VectorMemory.hpp"
 #include "depthai-shared/datatype/RawNNData.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
+#include "depthai/utility/VectorMemory.hpp"
 #include "fp16/fp16.h"
 
 namespace dai {

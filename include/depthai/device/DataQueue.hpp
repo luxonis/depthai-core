@@ -422,7 +422,6 @@ class DataInputQueue {
      */
     std::string getName() const;
 
-
     /**
      * Adds a serialized message to the queue, which will be picked up and sent to the device.
      * Can either block if 'blocking' behavior is true or overwrite oldest

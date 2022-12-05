@@ -27,6 +27,5 @@ class StreamMessageParser {
     static std::vector<std::uint8_t> serializeMessage(const ADatatype& data);
 
     static std::vector<std::uint8_t> serializeMetadata(const RawBuffer& data);
-
 };
 }  // namespace dai

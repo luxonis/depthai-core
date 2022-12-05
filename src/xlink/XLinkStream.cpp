@@ -75,7 +75,6 @@ StreamPacketDesc::~StreamPacketDesc() noexcept {
 // BLOCKING VERSIONS
 ////////////////////
 
-
 void XLinkStream::write(span<const uint8_t> data, span<const uint8_t> data2) {
     auto status = XLinkWriteData2(streamId, data.data(), static_cast<int>(data.size()), data2.data(), data2.size());
     if(status != X_LINK_SUCCESS) {

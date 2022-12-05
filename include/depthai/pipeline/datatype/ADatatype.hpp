@@ -3,11 +3,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "depthai/xlink/XLinkStream.hpp"
-
-#include "depthai/utility/Memory.hpp"
-
 #include "depthai-shared/datatype/RawBuffer.hpp"
+#include "depthai/utility/Memory.hpp"
+#include "depthai/xlink/XLinkStream.hpp"
 
 namespace dai {
 
@@ -19,7 +17,6 @@ class ADatatype {
     std::shared_ptr<RawBuffer> raw;
 
    public:
-
     struct Serialized {
         std::shared_ptr<Memory> data;
         std::shared_ptr<RawBuffer> metadata;

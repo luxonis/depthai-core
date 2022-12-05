@@ -26,7 +26,7 @@ std::string AssetManager::getRelativeKey(std::string key) const {
         return relativeKey;
     }
 
-    if(key[0] == '/') {                // Absolute path
+    if(key[0] == '/') {  // Absolute path
         auto pos = key.find_last_of('/');
         relativeKey = key.substr(pos + 1);
     } else {  // Relative path

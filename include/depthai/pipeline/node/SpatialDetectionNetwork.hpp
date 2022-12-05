@@ -65,8 +65,8 @@ class SpatialDetectionNetwork : public NodeCRTP<DetectionNetwork, SpatialDetecti
      * Output of SpatialLocationCalculator node, which is used internally by SpatialDetectionNetwork.
      * Suitable when extra information is required from SpatialLocationCalculator node, e.g. minimum, maximum distance.
      */
-    Output spatialLocationCalculatorOutput{true,
-        *this, "spatialLocationCalculatorOutput", Output::Type::MSender, {{DatatypeEnum::SpatialLocationCalculatorData, false}}};
+    Output spatialLocationCalculatorOutput{
+        true, *this, "spatialLocationCalculatorOutput", Output::Type::MSender, {{DatatypeEnum::SpatialLocationCalculatorData, false}}};
 
     /**
      * Specifies scale factor for detected bounding boxes.

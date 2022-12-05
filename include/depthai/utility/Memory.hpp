@@ -2,8 +2,8 @@
 
 // std
 #include <cstdint>
-#include <functional>
 #include <cstring>
+#include <functional>
 
 // project
 #include "depthai/utility/span.hpp"
@@ -29,11 +29,11 @@ class Memory {
     ~Memory() = default;
 
     Memory(uint8_t* data, size_t offset, size_t size, size_t maxSize) : data(data), offset(offset), size(size), maxSize(maxSize) {}
-    Memory(uint8_t* data, size_t offset, size_t size, size_t maxSize, linb::any holder) : data(data), offset(offset), size(size), maxSize(maxSize), holder(std::move(holder)) {}
+    Memory(uint8_t* data, size_t offset, size_t size, size_t maxSize, linb::any holder) : data(data), offset(offset), size(size), maxSize(maxSize),
+holder(std::move(holder)) {}
     // Memory(linb::any holder, uint8_t* data, size_t size, size_t maxSize) : holder(holder), data(data), size(size), maxSize(maxSize) {}
-    // Memory(linb::any holder, uint8_t* data, size_t size, size_t maxSize, void* pool) : holder(holder), data(data), size(size), maxSize(maxSize), pool(pool) {}
-    Memory(Memory&&) = default;
-    Memory& operator=(Memory&&) = default;
+    // Memory(linb::any holder, uint8_t* data, size_t size, size_t maxSize, void* pool) : holder(holder), data(data), size(size), maxSize(maxSize), pool(pool)
+{} Memory(Memory&&) = default; Memory& operator=(Memory&&) = default;
 
     // public:
     static std::shared_ptr<Memory> create(uint8_t* data, size_t offset, size_t size, size_t maxSize) {
@@ -109,7 +109,7 @@ class Memory {
 
 // memory as interface
 class Memory {
-    public:
+   public:
     virtual ~Memory(){};
     virtual span<std::uint8_t> getData() = 0;
     virtual span<const std::uint8_t> getData() const = 0;
@@ -120,5 +120,4 @@ class Memory {
     };
 };
 
-
-}
+}  // namespace dai
