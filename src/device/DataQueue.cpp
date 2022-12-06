@@ -277,6 +277,7 @@ void DataInputQueue::send(const std::shared_ptr<RawBuffer>& metadata, std::share
     OutgoingMessage outgoing;
     // serialize
     auto t1Parse = std::chrono::steady_clock::now();
+    outgoing.data = data;
     outgoing.metadata = StreamMessageParser::serializeMetadata(*metadata);
     auto t2Parse = std::chrono::steady_clock::now();
     // Trace level debugging
@@ -322,6 +323,7 @@ bool DataInputQueue::send(const std::shared_ptr<RawBuffer>& metadata, std::share
     OutgoingMessage outgoing;
     // serialize
     auto t1Parse = std::chrono::steady_clock::now();
+    outgoing.data = data;
     outgoing.metadata = StreamMessageParser::serializeMetadata(*metadata);
     auto t2Parse = std::chrono::steady_clock::now();
     // Trace level debugging
