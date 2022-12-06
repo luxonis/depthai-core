@@ -35,24 +35,35 @@ class StreamPacketDesc : public streamPacketDesc_t {
 };
 
 class StreamPacketMemory : public StreamPacketDesc, public Memory {
+    size_t size;
+
    public:
     StreamPacketMemory() = default;
-    StreamPacketMemory(StreamPacketDesc&& d) : StreamPacketDesc(std::move(d)) {}
+    StreamPacketMemory(StreamPacketDesc&& d) : StreamPacketDesc(std::move(d)) {
+        size = length;
+    }
     StreamPacketMemory& operator=(StreamPacketDesc&& d) {
         StreamPacketDesc::operator=(std::move(d));
+        size = length;
         return *this;
     }
     span<std::uint8_t> getData() override {
-        return {data, length};
+        return {data, size};
     }
     span<const std::uint8_t> getData() const override {
-        return {data, length};
+        return {data, size};
     }
     std::size_t getMaxSize() const {
         return length;
     }
     std::size_t getOffset() const {
         return 0;
+    }
+    void setSize(size_t size) override {
+        if(size > getMaxSize()) {
+            throw std::invalid_argument("Cannot set size larger than max size");
+        }
+        this->size = size;
     }
 };
 

@@ -115,6 +115,8 @@ class Memory {
     virtual span<const std::uint8_t> getData() const = 0;
     virtual std::size_t getMaxSize() const = 0;
     virtual std::size_t getOffset() const = 0;
+    virtual void setSize(std::size_t) = 0;
+
     std::size_t getSize() const {
         return getData().size();
     };

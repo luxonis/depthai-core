@@ -34,6 +34,9 @@ class VectorMemory : public std::vector<std::uint8_t>, public Memory {
     std::size_t getOffset() const {
         return 0;
     }
+    void setSize(std::size_t size) override {
+        resize(size);
+    }
 };
 
 }  // namespace dai
