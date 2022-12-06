@@ -36,24 +36,24 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                 // Blocking -- parse packet and gather timing information
                 auto packet = stream.readMove();
                 const auto t1Parse = std::chrono::steady_clock::now();
-                const auto data = StreamMessageParser::parseMessage(std::move(packet));
+                const auto msg = StreamMessageParser::parseMessage(std::move(packet));
                 const auto t2Parse = std::chrono::steady_clock::now();
 
-                // // Trace level debugging
-                // if(spdlog::get_level() == spdlog::level::trace) {
-                //     std::vector<std::uint8_t> metadata;
-                //     DatatypeEnum type;
-                //     data->getRaw()->serialize(metadata, type);
-                //     spdlog::trace("Received message from device ({}) - parsing time: {}, data size: {}, object type: {} object data: {}",
-                //                   name,
-                //                   std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
-                //                   data->getRaw()->data.size(),
-                //                   static_cast<std::int32_t>(type),
-                //                   spdlog::to_hex(metadata));
-                // }
+                // Trace level debugging
+                if(spdlog::get_level() == spdlog::level::trace) {
+                    std::vector<std::uint8_t> metadata;
+                    DatatypeEnum type;
+                    msg->getRaw()->serialize(metadata, type);
+                    spdlog::trace("Received message from device ({}) - parsing time: {}, data size: {}, object type: {} object data: {}",
+                                  name,
+                                  std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
+                                  msg->data->getSize(),
+                                  static_cast<std::int32_t>(type),
+                                  spdlog::to_hex(metadata));
+                }
 
                 // Add 'data' to queue
-                if(!queue.push(data)) {
+                if(!queue.push(msg)) {
                     throw std::runtime_error(fmt::format("Underlying queue destructed"));
                 }
 
@@ -66,7 +66,7 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                     for(const auto& kv : callbacks) {
                         const auto& callback = kv.second;
                         try {
-                            callback(name, data);
+                            callback(name, msg);
                         } catch(const std::exception& ex) {
                             spdlog::error("Callback with id: {} throwed an exception: {}", kv.first, ex.what());
                         }
@@ -177,6 +177,7 @@ DataInputQueue::DataInputQueue(
     XLinkStream stream(std::move(conn), name, maxDataSize + device::XLINK_MESSAGE_METADATA_MAX_SIZE);
 
     writingThread = std::thread([this, stream = std::move(stream)]() mutable {
+        using namespace std::chrono;
         std::uint64_t numPacketsSent = 0;
         try {
             while(running) {
@@ -187,7 +188,17 @@ DataInputQueue::DataInputQueue(
                 }
 
                 // Blocking
+                auto t1 = steady_clock::now();
                 stream.write(outgoing.data->getData(), outgoing.metadata);
+                auto t2 = steady_clock::now();
+
+                // Log
+                if(spdlog::get_level() == spdlog::level::trace) {
+                    spdlog::trace("Sent message to device ({}) - data size: {}, metadata: {}, sending time: {}",
+                        stream.getStreamName(), outgoing.data->getSize(),
+                        spdlog::to_hex(outgoing.metadata),
+                        duration_cast<microseconds>(t2 - t1));
+                }
 
                 // Increment num packets sent
                 numPacketsSent++;

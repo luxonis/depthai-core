@@ -216,6 +216,10 @@ streamId_t XLinkStream::getStreamId() const {
     return streamId;
 }
 
+std::string XLinkStream::getStreamName() const {
+    return streamName;
+}
+
 XLinkReadError::XLinkReadError(XLinkError_t status, const std::string& streamName)
     : XLinkError(status, streamName, fmt::format("Couldn't read data from stream: '{}' ({})", streamName, XLinkConnection::convertErrorCodeToString(status))) {}
 

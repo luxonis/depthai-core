@@ -111,6 +111,7 @@ class XLinkStream {
     [[deprecated]] void readRawRelease();
 
     streamId_t getStreamId() const;
+    std::string getStreamName() const;
 };
 
 struct XLinkError : public std::runtime_error {
