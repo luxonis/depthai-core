@@ -11,7 +11,6 @@ namespace node {
 
 void StereoDepth::build() {
     setDefaultProfilePreset(presetMode);
-    setLeftRightCheck(false);
 }
 
 StereoDepth::StereoDepth()
