@@ -163,6 +163,33 @@ class LockingQueue {
         return true;
     }
 
+    bool push(T&& data) {
+        {
+            std::unique_lock<std::mutex> lock(guard);
+            if(maxSize == 0) {
+                // necessary if maxSize was changed
+                while(!queue.empty()) {
+                    queue.pop();
+                }
+                return true;
+            }
+            if(!blocking) {
+                // if non blocking, remove as many oldest elements as necessary, so next one will fit
+                // necessary if maxSize was changed
+                while(queue.size() >= maxSize) {
+                    queue.pop();
+                }
+            } else {
+                signalPop.wait(lock, [this]() { return queue.size() < maxSize || destructed; });
+                if(destructed) return false;
+            }
+
+            queue.push(std::move(data));
+        }
+        signalPush.notify_all();
+        return true;
+    }
+
     template <typename Rep, typename Period>
     bool tryWaitAndPush(T const& data, std::chrono::duration<Rep, Period> timeout) {
         {
@@ -188,6 +215,36 @@ class LockingQueue {
             }
 
             queue.push(data);
+        }
+        signalPush.notify_all();
+        return true;
+    }
+
+    template <typename Rep, typename Period>
+    bool tryWaitAndPush(T&& data, std::chrono::duration<Rep, Period> timeout) {
+        {
+            std::unique_lock<std::mutex> lock(guard);
+            if(maxSize == 0) {
+                // necessary if maxSize was changed
+                while(!queue.empty()) {
+                    queue.pop();
+                }
+                return true;
+            }
+            if(!blocking) {
+                // if non blocking, remove as many oldest elements as necessary, so next one will fit
+                // necessary if maxSize was changed
+                while(queue.size() >= maxSize) {
+                    queue.pop();
+                }
+            } else {
+                // First checks predicate, then waits
+                bool pred = signalPop.wait_for(lock, timeout, [this]() { return queue.size() < maxSize || destructed; });
+                if(!pred) return false;
+                if(destructed) return false;
+            }
+
+            queue.push(std::move(data));
         }
         signalPush.notify_all();
         return true;

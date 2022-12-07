@@ -12,7 +12,7 @@ namespace dai {
  * TrackedFeatures message. Carries position (X, Y) of tracked features and their ID.
  */
 class TrackedFeatures : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
+    Serialized serialize() const override;
     RawTrackedFeatures& rawdata;
 
    public:

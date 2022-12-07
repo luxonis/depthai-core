@@ -36,24 +36,24 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                 // Blocking -- parse packet and gather timing information
                 auto packet = stream.readMove();
                 const auto t1Parse = std::chrono::steady_clock::now();
-                const auto data = StreamMessageParser::parseMessageToADatatype(&packet);
+                const auto msg = StreamMessageParser::parseMessage(std::move(packet));
                 const auto t2Parse = std::chrono::steady_clock::now();
 
                 // Trace level debugging
                 if(spdlog::get_level() == spdlog::level::trace) {
                     std::vector<std::uint8_t> metadata;
                     DatatypeEnum type;
-                    data->getRaw()->serialize(metadata, type);
+                    msg->getRaw()->serialize(metadata, type);
                     spdlog::trace("Received message from device ({}) - parsing time: {}, data size: {}, object type: {} object data: {}",
                                   name,
                                   std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
-                                  data->getRaw()->data.size(),
+                                  msg->data->getSize(),
                                   static_cast<std::int32_t>(type),
                                   spdlog::to_hex(metadata));
                 }
 
                 // Add 'data' to queue
-                if(!queue.push(data)) {
+                if(!queue.push(msg)) {
                     throw std::runtime_error(fmt::format("Underlying queue destructed"));
                 }
 
@@ -66,7 +66,7 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                     for(const auto& kv : callbacks) {
                         const auto& callback = kv.second;
                         try {
-                            callback(name, data);
+                            callback(name, msg);
                         } catch(const std::exception& ex) {
                             spdlog::error("Callback with id: {} throwed an exception: {}", kv.first, ex.what());
                         }
@@ -177,37 +177,28 @@ DataInputQueue::DataInputQueue(
     XLinkStream stream(std::move(conn), name, maxDataSize + device::XLINK_MESSAGE_METADATA_MAX_SIZE);
 
     writingThread = std::thread([this, stream = std::move(stream)]() mutable {
+        using namespace std::chrono;
         std::uint64_t numPacketsSent = 0;
         try {
             while(running) {
                 // get data from queue
-                std::shared_ptr<RawBuffer> data;
-                if(!queue.waitAndPop(data)) {
+                OutgoingMessage outgoing;
+                if(!queue.waitAndPop(outgoing)) {
                     continue;
                 }
 
-                // serialize
-                auto t1Parse = std::chrono::steady_clock::now();
-
-                // TODO(themarpe) - part of zerocopy - refactor to use multipart/XLinkWriteData2 instead
-                auto serialized = StreamMessageParser::serializeMessage(data);
-                auto t2Parse = std::chrono::steady_clock::now();
-
-                // Trace level debugging
-                if(spdlog::get_level() == spdlog::level::trace) {
-                    std::vector<std::uint8_t> metadata;
-                    DatatypeEnum type;
-                    data->serialize(metadata, type);
-                    spdlog::trace("Sending message to device ({}) - serialize time: {}, data size: {}, object type: {} object data: {}",
-                                  name,
-                                  std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
-                                  data->data.size(),
-                                  type,
-                                  spdlog::to_hex(metadata));
-                }
-
                 // Blocking
-                stream.write(serialized);
+                auto t1 = steady_clock::now();
+                stream.write(outgoing.data->getData(), outgoing.metadata);
+                auto t2 = steady_clock::now();
+
+                // Log
+                if(spdlog::get_level() == spdlog::level::trace) {
+                    spdlog::trace("Sent message to device ({}) - data size: {}, metadata: {}, sending time: {}",
+                        stream.getStreamName(), outgoing.data->getSize(),
+                        spdlog::to_hex(outgoing.metadata),
+                        duration_cast<microseconds>(t2 - t1));
+                }
 
                 // Increment num packets sent
                 numPacketsSent++;
@@ -280,16 +271,27 @@ std::string DataInputQueue::getName() const {
     return name;
 }
 
-void DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg) {
+void DataInputQueue::send(const ADatatype::Serialized& serialized) {
+    send(serialized.metadata, serialized.data);
+}
+
+void DataInputQueue::send(const std::shared_ptr<RawBuffer>& metadata, std::shared_ptr<Memory> data) {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
-    if(!rawMsg) throw std::invalid_argument("Message passed is not valid (nullptr)");
+    if(!metadata) throw std::invalid_argument("Message passed is not valid (nullptr)");
 
     // Check if stream receiver has enough space for this message
-    if(rawMsg->data.size() > maxDataSize) {
-        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize));
+    if(data->getSize() > maxDataSize) {
+        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", data->getSize(), maxDataSize));
     }
 
-    if(!queue.push(rawMsg)) {
+    // TODO(themarpe) - move serialization to be the last step
+    // Create outgoing message and serialize
+    OutgoingMessage outgoing;
+    // serialize
+    outgoing.data = data;
+    outgoing.metadata = StreamMessageParser::serializeMetadata(*metadata);
+
+    if(!queue.push(std::move(outgoing))) {
         throw std::runtime_error(fmt::format("Underlying queue destructed"));
     }
 }
@@ -302,16 +304,27 @@ void DataInputQueue::send(const ADatatype& msg) {
     send(msg.serialize());
 }
 
-bool DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg, std::chrono::milliseconds timeout) {
+bool DataInputQueue::send(const ADatatype::Serialized& serialized, std::chrono::milliseconds timeout) {
+    return send(serialized.metadata, serialized.data, timeout);
+}
+
+bool DataInputQueue::send(const std::shared_ptr<RawBuffer>& metadata, std::shared_ptr<Memory> data, std::chrono::milliseconds timeout) {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
-    if(!rawMsg) throw std::invalid_argument("Message passed is not valid (nullptr)");
+    if(!metadata) throw std::invalid_argument("Message passed is not valid (nullptr)");
 
     // Check if stream receiver has enough space for this message
-    if(rawMsg->data.size() > maxDataSize) {
-        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize));
+    if(data->getSize() > maxDataSize) {
+        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", data->getSize(), maxDataSize));
     }
 
-    return queue.tryWaitAndPush(rawMsg, timeout);
+    // TODO(themarpe) - move serialization to be the last step
+    // Create outgoing message and serialize
+    OutgoingMessage outgoing;
+    // serialize
+    outgoing.data = data;
+    outgoing.metadata = StreamMessageParser::serializeMetadata(*metadata);
+
+    return queue.tryWaitAndPush(std::move(outgoing), timeout);
 }
 
 bool DataInputQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::milliseconds timeout) {

@@ -4,6 +4,8 @@
 #include <vector>
 
 #include "depthai-shared/datatype/RawBuffer.hpp"
+#include "depthai/utility/Memory.hpp"
+#include "depthai/xlink/XLinkStream.hpp"
 
 namespace dai {
 
@@ -15,12 +17,20 @@ class ADatatype {
     std::shared_ptr<RawBuffer> raw;
 
    public:
+    struct Serialized {
+        std::shared_ptr<Memory> data;
+        std::shared_ptr<RawBuffer> metadata;
+    };
+
     explicit ADatatype(std::shared_ptr<RawBuffer> r) : raw(std::move(r)) {}
     virtual ~ADatatype() = default;
-    virtual std::shared_ptr<dai::RawBuffer> serialize() const = 0;
+    // TBD
+    virtual Serialized serialize() const = 0;
     std::shared_ptr<RawBuffer> getRaw() const {
         return raw;
     }
+
+    std::shared_ptr<Memory> data;
 };
 
 }  // namespace dai

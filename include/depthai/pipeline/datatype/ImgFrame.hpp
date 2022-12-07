@@ -22,7 +22,7 @@ namespace dai {
  * ImgFrame message. Carries image data and metadata.
  */
 class ImgFrame : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
+    Serialized serialize() const override;
 
    public:
     RawImgFrame& img;

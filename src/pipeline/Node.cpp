@@ -35,10 +35,15 @@ Node::Connection::Connection(Output out, Input in) {
 }
 
 Node::Connection::Connection(ConnectionInternal c) {
-    outputId = c.outputNode.lock()->id;
+    auto out = c.outputNode.lock();
+    auto in = c.inputNode.lock();
+    if(out == nullptr || in == nullptr) {
+        throw std::invalid_argument("Connection points to non existing node");
+    }
+    outputId = out->id;
     outputName = c.outputName;
     outputGroup = c.outputGroup;
-    inputId = c.inputNode.lock()->id;
+    inputId = in->id;
     inputName = c.inputName;
     inputGroup = c.inputGroup;
 }

@@ -2,8 +2,8 @@
 
 namespace dai {
 
-std::shared_ptr<RawBuffer> SystemInformationS3::serialize() const {
-    return raw;
+SystemInformationS3::Serialized SystemInformationS3::serialize() const {
+    return {data, raw};
 }
 
 SystemInformationS3::SystemInformationS3()

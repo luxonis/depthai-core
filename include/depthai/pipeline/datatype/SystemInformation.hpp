@@ -12,7 +12,7 @@ namespace dai {
  * SystemInformation message. Carries memory usage, cpu usage and chip temperatures.
  */
 class SystemInformation : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
+    Serialized serialize() const override;
     RawSystemInformation& systemInformation;
 
    public:

@@ -573,7 +573,7 @@ DeviceBootloader::Version DeviceBootloader::requestVersion() {
     if(blVersion >= Version(Request::GetBootloaderCommit::VERSION)) {
         // Send request to retrieve bootloader commit (skip version check)
         Request::GetBootloaderCommit request{};
-        stream->write((uint8_t*)&request, sizeof(request));
+        stream->write({(uint8_t*)&request, sizeof(request)});
 
         // Receive response
         Response::BootloaderCommit commit;
@@ -1352,7 +1352,7 @@ bool DeviceBootloader::sendRequest(const T& request) {
     }
 
     try {
-        stream->write((uint8_t*)&request, sizeof(T));
+        stream->write({(uint8_t*)&request, sizeof(T)});
     } catch(const std::exception&) {
         return false;
     }
@@ -1371,7 +1371,7 @@ void DeviceBootloader::sendRequestThrow(const T& request) {
     }
 
     try {
-        stream->write((uint8_t*)&request, sizeof(T));
+        stream->write({(uint8_t*)&request, sizeof(T)});
     } catch(const std::exception&) {
         throw std::runtime_error("Couldn't send " + std::string(T::NAME) + " request");
     }

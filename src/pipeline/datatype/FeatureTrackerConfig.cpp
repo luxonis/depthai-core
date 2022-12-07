@@ -2,8 +2,8 @@
 
 namespace dai {
 
-std::shared_ptr<RawBuffer> FeatureTrackerConfig::serialize() const {
-    return raw;
+FeatureTrackerConfig::Serialized FeatureTrackerConfig::serialize() const {
+    return {data, raw};
 }
 
 FeatureTrackerConfig::FeatureTrackerConfig() : Buffer(std::make_shared<RawFeatureTrackerConfig>()), cfg(*dynamic_cast<RawFeatureTrackerConfig*>(raw.get())) {}

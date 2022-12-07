@@ -8,6 +8,7 @@
 
 #include "Buffer.hpp"
 #include "depthai-shared/datatype/RawNNData.hpp"
+#include "depthai/utility/VectorMemory.hpp"
 
 #if defined(__clang__)
     #if __has_warning("-Wswitch-enum")
@@ -47,7 +48,7 @@ namespace dai {
  */
 class NNData : public Buffer {
     static constexpr int DATA_ALIGNMENT = 64;
-    [[deprecated("Use 'addTensor()' instead")]] std::shared_ptr<RawBuffer> serialize() const override;
+    Serialized serialize() const override;
     static uint16_t fp32_to_fp16(float);
     static float fp16_to_fp32(uint16_t);
     RawNNData& rawNn;
@@ -224,29 +225,36 @@ class NNData : public Buffer {
     NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& tensor) {
         static_assert(std::is_integral<_Ty>::value || std::is_floating_point<_Ty>::value, "Tensor type needs to be integral or floating point");
 
+        // Check if data is vector type of data
+        if(std::dynamic_pointer_cast<VectorMemory>(data) == nullptr) {
+            auto prev = std::vector<uint8_t>(data->getData().begin(), data->getData().end());
+            data = std::make_shared<VectorMemory>(std::move(prev));
+        }
+        auto vecData = std::dynamic_pointer_cast<VectorMemory>(data);
+
         // Get size in bytes of the converted tensor data, u8 for integral and fp16 for floating point
         const size_t sConvertedData = std::is_integral<_Ty>::value ? tensor.size() : 2 * tensor.size();
 
         // Append bytes so that each new tensor is DATA_ALIGNMENT aligned
-        size_t remainder = (rawNn.data.end() - rawNn.data.begin()) % DATA_ALIGNMENT;
+        size_t remainder = (vecData->end() - vecData->begin()) % DATA_ALIGNMENT;
         if(remainder > 0) {
-            rawNn.data.insert(rawNn.data.end(), DATA_ALIGNMENT - remainder, 0);
+            vecData->insert(vecData->end(), DATA_ALIGNMENT - remainder, 0);
         }
 
         // Then get offset to beginning of data
-        size_t offset = rawNn.data.end() - rawNn.data.begin();
+        size_t offset = vecData->end() - vecData->begin();
 
         // Reserve space
-        rawNn.data.resize(offset + sConvertedData);
+        vecData->resize(offset + sConvertedData);
 
         // Convert data to u8 or fp16 and write to rawNn.data
         if(std::is_integral<_Ty>::value) {
             for(uint32_t i = 0; i < tensor.size(); i++) {
-                rawNn.data.data()[i + offset] = (uint8_t)tensor.data()[i];
+                vecData->data()[i + offset] = (uint8_t)tensor.data()[i];
             }
         } else {
             for(uint32_t i = 0; i < tensor.size(); i++) {
-                *(uint16_t*)(&rawNn.data.data()[2 * i + offset]) = fp32_to_fp16(tensor.data()[i]);
+                *(uint16_t*)(&vecData->data()[2 * i + offset]) = fp32_to_fp16(tensor.data()[i]);
             }
         }
 
@@ -288,11 +296,11 @@ class NNData : public Buffer {
         xt::xarray<_Ty, xt::layout_type::row_major> tensor(dims);
         if(it->dataType == TensorInfo::DataType::U8F) {
             for(uint32_t i = 0; i < tensor.size(); i++) {
-                tensor.data()[i] = rawNn.data.data()[it->offset + i];
+                tensor.data()[i] = data->getData().data()[it->offset + i];
             }
         } else {
             for(uint32_t i = 0; i < tensor.size(); i++) {
-                tensor.data()[i] = fp16_to_fp32(*(uint16_t*)&rawNn.data.data()[it->offset + 2 * i]);
+                tensor.data()[i] = fp16_to_fp32(*(uint16_t*)&data->getData().data()[it->offset + 2 * i]);
             }
         }
 

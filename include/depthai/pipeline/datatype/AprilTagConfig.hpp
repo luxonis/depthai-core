@@ -12,7 +12,7 @@ namespace dai {
  * AprilTagConfig message.
  */
 class AprilTagConfig : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
+    Serialized serialize() const override;
     RawAprilTagConfig& cfg;
 
    public:

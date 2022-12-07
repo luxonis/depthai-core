@@ -12,7 +12,7 @@ namespace dai {
  * FeatureTrackerConfig message. Carries config for feature tracking algorithm
  */
 class FeatureTrackerConfig : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
+    Serialized serialize() const override;
     RawFeatureTrackerConfig& cfg;
 
    public:

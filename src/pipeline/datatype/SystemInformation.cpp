@@ -2,8 +2,8 @@
 
 namespace dai {
 
-std::shared_ptr<RawBuffer> SystemInformation::serialize() const {
-    return raw;
+SystemInformation::Serialized SystemInformation::serialize() const {
+    return {data, raw};
 }
 
 SystemInformation::SystemInformation()

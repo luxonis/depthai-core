@@ -12,7 +12,7 @@ namespace dai {
  * IMUData message. Carries normalized detection results
  */
 class IMUData : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
+    Serialized serialize() const override;
     RawIMUData& rawIMU;
 
    public:

@@ -338,7 +338,17 @@ class DataOutputQueue {
  * Access to send messages through XLink stream
  */
 class DataInputQueue {
-    LockingQueue<std::shared_ptr<RawBuffer>> queue;
+    struct OutgoingMessage {
+        std::vector<uint8_t> metadata;
+        std::shared_ptr<Memory> data;
+        OutgoingMessage() = default;
+        OutgoingMessage(OutgoingMessage&&) = default;
+        OutgoingMessage& operator=(OutgoingMessage&&) = default;
+        // Delete copy operations
+        OutgoingMessage(const OutgoingMessage&) = delete;
+        OutgoingMessage& operator=(const OutgoingMessage&) = delete;
+    };
+    LockingQueue<OutgoingMessage> queue;
     std::thread writingThread;
     std::atomic<bool> running{true};
     std::string exceptionMessage;
@@ -413,11 +423,18 @@ class DataInputQueue {
     std::string getName() const;
 
     /**
+     * Adds a serialized message to the queue, which will be picked up and sent to the device.
+     * Can either block if 'blocking' behavior is true or overwrite oldest
+     * @param serialized Serialized message to add to the queue
+     */
+    void send(const ADatatype::Serialized& serialized);
+
+    /**
      * Adds a raw message to the queue, which will be picked up and sent to the device.
      * Can either block if 'blocking' behavior is true or overwrite oldest
      * @param rawMsg Message to add to the queue
      */
-    void send(const std::shared_ptr<RawBuffer>& rawMsg);
+    void send(const std::shared_ptr<RawBuffer>& metadata, std::shared_ptr<Memory> data);
 
     /**
      * Adds a message to the queue, which will be picked up and sent to the device.
@@ -434,13 +451,22 @@ class DataInputQueue {
     void send(const ADatatype& msg);
 
     /**
+     * Adds serialized message to the queue, which will be picked up and sent to the device.
+     * Can either block until timeout if 'blocking' behavior is true or overwrite oldest
+     *
+     * @param serialized Serialized message to add to the queue
+     * @param timeout Maximum duration to block in milliseconds
+     */
+    bool send(const ADatatype::Serialized& serialized, std::chrono::milliseconds timeout);
+
+    /**
      * Adds message to the queue, which will be picked up and sent to the device.
      * Can either block until timeout if 'blocking' behavior is true or overwrite oldest
      *
      * @param rawMsg Message to add to the queue
      * @param timeout Maximum duration to block in milliseconds
      */
-    bool send(const std::shared_ptr<RawBuffer>& rawMsg, std::chrono::milliseconds timeout);
+    bool send(const std::shared_ptr<RawBuffer>& metadata, std::shared_ptr<Memory> data, std::chrono::milliseconds timeout);
 
     /**
      * Adds message to the queue, which will be picked up and sent to the device.

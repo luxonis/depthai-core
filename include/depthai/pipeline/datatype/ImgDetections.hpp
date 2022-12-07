@@ -12,7 +12,7 @@ namespace dai {
  * ImgDetections message. Carries normalized detection results
  */
 class ImgDetections : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
+    Serialized serialize() const override;
     RawImgDetections& dets;
 
    public:

@@ -12,7 +12,7 @@ namespace dai {
  * EdgeDetectorConfig message. Carries sobel edge filter config.
  */
 class EdgeDetectorConfig : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
+    Serialized serialize() const override;
     RawEdgeDetectorConfig& cfg;
 
    public:

@@ -7,6 +7,7 @@
 
 #include "depthai-shared/datatype/RawNNData.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
+#include "depthai/utility/VectorMemory.hpp"
 #include "fp16/fp16.h"
 
 namespace dai {
@@ -45,8 +46,12 @@ static std::size_t getTensorDataSize(const TensorInfo& tensor) {
     return tensor.dims[i] * tensor.strides[i];
 }
 
-std::shared_ptr<RawBuffer> NNData::serialize() const {
+NNData::Serialized NNData::serialize() const {
     // get data from u8Data and fp16Data and place properly into the underlying raw buffer
+    rawNn.tensors = {};
+    auto mem = std::make_shared<VectorMemory>();
+    std::vector<uint8_t>& temporary = *mem;
+    // data = mem;
 
     // U8 tensors
     for(const auto& kv : u8Data) {
@@ -55,16 +60,16 @@ std::shared_ptr<RawBuffer> NNData::serialize() const {
 
         // First add any required padding bytes
         // calculate how many alignment bytes to add for next tensor
-        size_t remainder = (rawNn.data.end() - rawNn.data.begin()) % DATA_ALIGNMENT;
+        size_t remainder = (temporary.end() - temporary.begin()) % DATA_ALIGNMENT;
         if(remainder > 0) {
-            rawNn.data.insert(rawNn.data.end(), DATA_ALIGNMENT - remainder, 0);
+            temporary.insert(temporary.end(), DATA_ALIGNMENT - remainder, 0);
         }
 
         // Then get offset to beginning of data
-        size_t offset = rawNn.data.end() - rawNn.data.begin();
+        size_t offset = temporary.end() - temporary.begin();
 
         const auto* data = reinterpret_cast<const std::uint8_t*>(kv.second.data());
-        rawNn.data.insert(rawNn.data.end(), data, data + dataSize);
+        temporary.insert(temporary.end(), data, data + dataSize);
 
         // Add entry in tensors
         // TODO(themarpe) - refactor with proper way off specifying tensors
@@ -85,16 +90,16 @@ std::shared_ptr<RawBuffer> NNData::serialize() const {
 
         // First add any required padding bytes
         // calculate how many alignment bytes to add for next tensor
-        size_t remainder = (rawNn.data.end() - rawNn.data.begin()) % DATA_ALIGNMENT;
+        size_t remainder = (temporary.end() - temporary.begin()) % DATA_ALIGNMENT;
         if(remainder > 0) {
-            rawNn.data.insert(rawNn.data.end(), DATA_ALIGNMENT - remainder, 0);
+            temporary.insert(temporary.end(), DATA_ALIGNMENT - remainder, 0);
         }
 
         // Then get offset to beginning of data
-        size_t offset = rawNn.data.end() - rawNn.data.begin();
+        size_t offset = temporary.end() - temporary.begin();
 
         const auto* data = reinterpret_cast<const std::uint8_t*>(kv.second.data());
-        rawNn.data.insert(rawNn.data.end(), data, data + dataSize);
+        temporary.insert(temporary.end(), data, data + dataSize);
 
         // Add entry in tensors
         // TODO(themarpe) - refactor with proper way off specifying tensors
@@ -108,7 +113,7 @@ std::shared_ptr<RawBuffer> NNData::serialize() const {
         rawNn.tensors.push_back(info);
     }
 
-    return raw;
+    return {mem, raw};
 }
 
 uint16_t NNData::fp32_to_fp16(float value) {
@@ -198,7 +203,7 @@ std::vector<std::uint8_t> NNData::getLayerUInt8(const std::string& name) const {
             // Total data size = last dimension * last stride
             if(tensor.numDimensions > 0) {
                 size_t size = getTensorDataSize(tensor);
-                auto beg = rawNn.data.begin() + tensor.offset;
+                auto beg = data->getData().begin() + tensor.offset;
                 auto end = beg + size;
                 return {beg, end};
             }
@@ -220,7 +225,7 @@ std::vector<std::int32_t> NNData::getLayerInt32(const std::string& name) const {
 
                 std::vector<std::int32_t> data;
                 data.reserve(numElements);
-                auto* pInt32Data = reinterpret_cast<std::int32_t*>(&rawNn.data[tensor.offset]);
+                auto* pInt32Data = reinterpret_cast<std::int32_t*>(&this->data->getData()[tensor.offset]);
                 for(std::size_t i = 0; i < numElements; i++) {
                     data.push_back(pInt32Data[i]);
                 }
@@ -244,7 +249,7 @@ std::vector<float> NNData::getLayerFp16(const std::string& name) const {
 
                 std::vector<float> data;
                 data.reserve(numElements);
-                auto* pFp16Data = reinterpret_cast<std::uint16_t*>(&rawNn.data[tensor.offset]);
+                auto* pFp16Data = reinterpret_cast<std::uint16_t*>(&this->data->getData()[tensor.offset]);
                 for(std::size_t i = 0; i < numElements; i++) {
                     data.push_back(fp16_ieee_to_fp32_value(pFp16Data[i]));
                 }

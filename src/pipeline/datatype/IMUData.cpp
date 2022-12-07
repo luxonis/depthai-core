@@ -2,8 +2,8 @@
 
 namespace dai {
 
-std::shared_ptr<RawBuffer> IMUData::serialize() const {
-    return raw;
+IMUData::Serialized IMUData::serialize() const {
+    return {data, raw};
 }
 
 IMUData::IMUData() : Buffer(std::make_shared<RawIMUData>()), rawIMU(*dynamic_cast<RawIMUData*>(raw.get())), packets(rawIMU.packets) {}

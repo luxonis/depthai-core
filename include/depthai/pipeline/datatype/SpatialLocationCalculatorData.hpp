@@ -12,7 +12,7 @@ namespace dai {
  * SpatialLocationCalculatorData message. Carries spatial information (X,Y,Z) and their configuration parameters
  */
 class SpatialLocationCalculatorData : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
+    Serialized serialize() const override;
     RawSpatialLocations& rawdata;
 
    public:

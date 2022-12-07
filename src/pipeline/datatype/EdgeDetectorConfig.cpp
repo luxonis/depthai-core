@@ -2,8 +2,8 @@
 
 namespace dai {
 
-std::shared_ptr<RawBuffer> EdgeDetectorConfig::serialize() const {
-    return raw;
+EdgeDetectorConfig::Serialized EdgeDetectorConfig::serialize() const {
+    return {data, raw};
 }
 
 EdgeDetectorConfig::EdgeDetectorConfig() : Buffer(std::make_shared<RawEdgeDetectorConfig>()), cfg(*dynamic_cast<RawEdgeDetectorConfig*>(raw.get())) {}

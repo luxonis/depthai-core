@@ -4,8 +4,8 @@
 
 namespace dai {
 
-std::shared_ptr<RawBuffer> ImgFrame::serialize() const {
-    return raw;
+ImgFrame::Serialized ImgFrame::serialize() const {
+    return {data, raw};
 }
 
 ImgFrame::ImgFrame() : Buffer(std::make_shared<RawImgFrame>()), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformation(img.transformation) {

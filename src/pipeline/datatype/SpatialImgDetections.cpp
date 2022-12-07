@@ -2,8 +2,8 @@
 
 namespace dai {
 
-std::shared_ptr<RawBuffer> SpatialImgDetections::serialize() const {
-    return raw;
+SpatialImgDetections::Serialized SpatialImgDetections::serialize() const {
+    return {data, raw};
 }
 
 SpatialImgDetections::SpatialImgDetections()
