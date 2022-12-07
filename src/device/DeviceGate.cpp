@@ -67,7 +67,7 @@ Version DeviceGate::getVersion() {
         auto versionStr = nlohmann::json::parse(res->body)["version_gate"].get<std::string>();
         return Version{versionStr};
     }
-    return Version{0,0,0};
+    return Version{0, 0, 0};
 }
 
 DeviceGate::VersionInfo DeviceGate::getAllVersion() {

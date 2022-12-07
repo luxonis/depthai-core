@@ -20,13 +20,16 @@ namespace node {
 class SpatialDetectionNetwork : public NodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
     SpatialDetectionNetwork() : input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {};
-    SpatialDetectionNetwork(std::unique_ptr<Properties> props) : NodeCRTP(std::move(props)), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {};
-    SpatialDetectionNetwork(std::unique_ptr<Properties> props, bool confMode) : NodeCRTP(std::move(props), confMode), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {};
+    SpatialDetectionNetwork(std::unique_ptr<Properties> props)
+        : NodeCRTP(std::move(props)), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {};
+    SpatialDetectionNetwork(std::unique_ptr<Properties> props, bool confMode)
+        : NodeCRTP(std::move(props), confMode), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {};
 
     constexpr static const char* NAME = "SpatialDetectionNetwork";
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
     void build();
+
    public:
     /**
      * Input message with data to be inferred upon
@@ -87,8 +90,8 @@ class SpatialDetectionNetwork : public NodeCRTP<DeviceNode, SpatialDetectionNetw
      * Output of SpatialLocationCalculator node, which is used internally by SpatialDetectionNetwork.
      * Suitable when extra information is required from SpatialLocationCalculator node, e.g. minimum, maximum distance.
      */
-    Output spatialLocationCalculatorOutput{true,
-        *this, "spatialLocationCalculatorOutput", Output::Type::MSender, {{DatatypeEnum::SpatialLocationCalculatorData, false}}};
+    Output spatialLocationCalculatorOutput{
+        true, *this, "spatialLocationCalculatorOutput", Output::Type::MSender, {{DatatypeEnum::SpatialLocationCalculatorData, false}}};
 
     /** Backwards compatibility interface **/
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)

@@ -29,7 +29,6 @@ void SpatialDetectionNetwork::build() {
     inputDetections.setBlocking(true);
 }
 
-
 // -------------------------------------------------------------------
 // Neural Network API
 // -------------------------------------------------------------------
@@ -84,7 +83,6 @@ void SpatialDetectionNetwork::setConfidenceThreshold(float thresh) {
 float SpatialDetectionNetwork::getConfidenceThreshold() const {
     return detectionParser->getConfidenceThreshold();
 }
-
 
 void SpatialDetectionNetwork::setBoundingBoxScaleFactor(float scaleFactor) {
     properties.detectedBBScaleFactor = scaleFactor;
