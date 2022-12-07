@@ -88,7 +88,7 @@ bool DeviceGate::createSession() {
 
     nlohmann::json createSessionBody = {{"name", "depthai_session"},
                                         // {"fwp_checksum", fwpChecksum},
-                                        {"fwp_version", DEPTHAI_DEVICE_KB_VERSION},
+                                        {"fwp_version", DEPTHAI_DEVICE_RVC3_VERSION},
                                         {"library_version", build::VERSION},
                                         {"protected", false}};
 

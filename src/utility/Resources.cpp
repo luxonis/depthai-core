@@ -255,11 +255,11 @@ std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type
     }
 }
 
-constexpr static auto CMRC_DEPTHAI_DEVICE_KB_FWP_TAR_XZ = "depthai-device-kb-fwp-" DEPTHAI_DEVICE_KB_VERSION ".tar.xz";
+constexpr static auto CMRC_DEPTHAI_DEVICE_KB_FWP_TAR_XZ = "depthai-device-kb-fwp-" DEPTHAI_DEVICE_RVC3_VERSION ".tar.xz";
 std::vector<std::uint8_t> Resources::getDeviceKbFwp() const {
 // First check if device bootloader fw is enabled
-#ifndef DEPTHAI_ENABLE_DEVICE_KB_FW
-    throw std::invalid_argument("DepthAI compiled without support for MyriadX Device Bootloader FW");
+#ifndef DEPTHAI_ENABLE_DEVICE_RVC3_FW
+    throw std::invalid_argument("DepthAI compiled without support for RVC3 Device FW");
 #endif
 
     // tmp

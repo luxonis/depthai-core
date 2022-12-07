@@ -112,22 +112,22 @@ void test(bool manualBlob) {
 
     REQUIRE((tensorA1 == tensorA2));
     REQUIRE((tensorB1 == tensorB2));
-    REQUIRE([&](){
+    REQUIRE([&]() {
         for(uint32_t i = 0; i < tensorC1.size(); i++) {
             if(tensorC1[i] != tensorC2[i]) {
                 return 0;
             }
         }
         return 1;
-        }());
-    REQUIRE([&](){
+    }());
+    REQUIRE([&]() {
         for(uint32_t i = 0; i < tensorD1.size(); i++) {
             if(tensorD1[i] != tensorD2[i]) {
                 return 0;
             }
         }
         return 1;
-        }());
+    }());
 
     // At the end test if any error messages appeared
     REQUIRE(receivedLogMessage == false);

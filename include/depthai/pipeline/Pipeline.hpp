@@ -105,6 +105,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Template create function
     template <class N>
     std::shared_ptr<N> create(const std::shared_ptr<PipelineImpl>& itself) {
+        (void)itself;
         // Check that passed type 'N' is subclass of Node
         static_assert(std::is_base_of<Node, N>::value, "Specified class is not a subclass of Node");
         // Create and store the node in the map
