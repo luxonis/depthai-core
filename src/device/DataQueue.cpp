@@ -284,25 +284,12 @@ void DataInputQueue::send(const std::shared_ptr<RawBuffer>& metadata, std::share
         throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", data->getSize(), maxDataSize));
     }
 
+    // TODO(themarpe) - move serialization to be the last step
     // Create outgoing message and serialize
     OutgoingMessage outgoing;
     // serialize
-    auto t1Parse = std::chrono::steady_clock::now();
     outgoing.data = data;
     outgoing.metadata = StreamMessageParser::serializeMetadata(*metadata);
-    auto t2Parse = std::chrono::steady_clock::now();
-    // Trace level debugging
-    if(spdlog::get_level() == spdlog::level::trace) {
-        std::vector<std::uint8_t> meta;
-        DatatypeEnum type;
-        metadata->serialize(meta, type);
-        spdlog::trace("Sending message to device ({}) - serialize time: {}, data size: {}, object type: {} object data: {}",
-                      name,
-                      std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
-                      data->getSize(),
-                      type,
-                      spdlog::to_hex(meta));
-    }
 
     if(!queue.push(std::move(outgoing))) {
         throw std::runtime_error(fmt::format("Underlying queue destructed"));
@@ -330,25 +317,12 @@ bool DataInputQueue::send(const std::shared_ptr<RawBuffer>& metadata, std::share
         throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", data->getSize(), maxDataSize));
     }
 
+    // TODO(themarpe) - move serialization to be the last step
     // Create outgoing message and serialize
     OutgoingMessage outgoing;
     // serialize
-    auto t1Parse = std::chrono::steady_clock::now();
     outgoing.data = data;
     outgoing.metadata = StreamMessageParser::serializeMetadata(*metadata);
-    auto t2Parse = std::chrono::steady_clock::now();
-    // Trace level debugging
-    if(spdlog::get_level() == spdlog::level::trace) {
-        std::vector<std::uint8_t> meta;
-        DatatypeEnum type;
-        metadata->serialize(meta, type);
-        spdlog::trace("Sending message to device ({}) - serialize time: {}, data size: {}, object type: {} object data: {}",
-                      name,
-                      std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
-                      data->getSize(),
-                      type,
-                      spdlog::to_hex(meta));
-    }
 
     return queue.tryWaitAndPush(std::move(outgoing), timeout);
 }
