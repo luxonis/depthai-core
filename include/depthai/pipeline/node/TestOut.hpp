@@ -3,12 +3,12 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
-#include <depthai-shared/properties/Properties.hpp>
+#include <depthai-shared/properties/TestInProperties.hpp>
 
 namespace dai {
 namespace node {
 
-class TestOut : public NodeCRTP<DeviceNode, TestOut, Properties> {
+class TestOut : public NodeCRTP<DeviceNode, TestOut, TestInProperties> {
    public:
     constexpr static const char* NAME = "TestOut";
     using NodeCRTP::NodeCRTP;
@@ -16,7 +16,7 @@ class TestOut : public NodeCRTP<DeviceNode, TestOut, Properties> {
     /**
      * Receive messages as fast as possible
     */
-    Input in{true, *this, "in", Input::Type::SReceiver, true, 4, {{DatatypeEnum::Buffer, true}}};
+    Input input{true, *this, "input", Input::Type::SReceiver, true, 4, {{DatatypeEnum::Buffer, true}}};
 
 };
 

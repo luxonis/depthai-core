@@ -21,7 +21,7 @@ class TestIn : public NodeCRTP<DeviceNode, TestIn, TestInProperties> {
     /**
      * Message to send
     */
-    Input in{true, *this, "in", Input::Type::SReceiver, true, 1, {{DatatypeEnum::Buffer, true}}};
+    Input input{true, *this, "input", Input::Type::SReceiver, true, 1, {{DatatypeEnum::Buffer, true}}};
 
     /**
      * Sets number of messages in pool
