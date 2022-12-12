@@ -3,14 +3,14 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
-#include <depthai-shared/properties/TestInProperties.hpp>
+#include <depthai-shared/properties/BenchmarkProperties.hpp>
 
 namespace dai {
 namespace node {
 
-class TestIn : public NodeCRTP<DeviceNode, TestIn, TestInProperties> {
+class BenchmarkOut : public NodeCRTP<DeviceNode, BenchmarkOut, BenchmarkProperties> {
    public:
-    constexpr static const char* NAME = "TestIn";
+    constexpr static const char* NAME = "BenchmarkOut";
     using NodeCRTP::NodeCRTP;
 
     /**
@@ -20,7 +20,7 @@ class TestIn : public NodeCRTP<DeviceNode, TestIn, TestInProperties> {
 
     /**
      * Message to send
-    */
+     */
     Input input{true, *this, "input", Input::Type::SReceiver, true, 1, {{DatatypeEnum::Buffer, true}}};
 
     /**
