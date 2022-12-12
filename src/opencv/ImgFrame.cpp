@@ -7,8 +7,9 @@
 namespace dai {
 
 ImgFrame& ImgFrame::setFrame(cv::Mat frame) {
-    img.data.clear();
-    img.data.insert(img.data.begin(), frame.datastart, frame.dataend);
+    std::vector<uint8_t> dataVec;
+    dataVec.insert(dataVec.begin(), frame.datastart, frame.dataend);
+    setData(dataVec);
     return *this;
 }
 
@@ -70,7 +71,7 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
 
     // TMP TMP
     // long actualSize = static_cast<long>(img.data.size());
-    long actualSize = static_cast<long>(packet->length);
+    long actualSize = static_cast<long>(data->getSize());
 
     if(actualSize < requiredSize) {
         throw std::runtime_error("ImgFrame doesn't have enough data to encode specified frame, required " + std::to_string(requiredSize) + ", actual "
@@ -91,11 +92,11 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
         // TMPTMP
         // Copy number of bytes that are available by Mat space or by img data size
         // std::memcpy(mat.data, img.data.data(), std::min((long)(img.data.size()), (long)(mat.dataend - mat.datastart)));
-        std::memcpy(mat.data, packet->data, std::min((long)(packet->length), (long)(mat.dataend - mat.datastart)));
+        std::memcpy(mat.data, data->getData().data(), std::min((long)(data->getSize()), (long)(mat.dataend - mat.datastart)));
     } else {
         // TMP TMP
         // mat = cv::Mat(size, type, img.data.data());
-        mat = cv::Mat(size, type, packet->data);
+        mat = cv::Mat(size, type, data->getData().data());
     }
 
     return mat;
@@ -118,9 +119,9 @@ cv::Mat ImgFrame::getCvFrame() {
             cv::Size s(getWidth(), getHeight());
             std::vector<cv::Mat> channels;
             // RGB
-            channels.push_back(cv::Mat(s, CV_8UC1, getData().data() + s.area() * 2));
-            channels.push_back(cv::Mat(s, CV_8UC1, getData().data() + s.area() * 1));
-            channels.push_back(cv::Mat(s, CV_8UC1, getData().data() + s.area() * 0));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t *)getData().data() + s.area() * 2));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t *)getData().data() + s.area() * 1));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t *)getData().data() + s.area() * 0));
             cv::merge(channels, output);
         } break;
 
@@ -128,9 +129,9 @@ cv::Mat ImgFrame::getCvFrame() {
             cv::Size s(getWidth(), getHeight());
             std::vector<cv::Mat> channels;
             // BGR
-            channels.push_back(cv::Mat(s, CV_8UC1, getData().data() + s.area() * 0));
-            channels.push_back(cv::Mat(s, CV_8UC1, getData().data() + s.area() * 1));
-            channels.push_back(cv::Mat(s, CV_8UC1, getData().data() + s.area() * 2));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t *)getData().data() + s.area() * 0));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t *)getData().data() + s.area() * 1));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t *)getData().data() + s.area() * 2));
             cv::merge(channels, output);
         } break;
 
