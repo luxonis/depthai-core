@@ -5,6 +5,7 @@
 
 #include "depthai-shared/datatype/RawBuffer.hpp"
 #include "depthai/utility/Memory.hpp"
+#include "depthai/utility/VectorMemory.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 
 namespace dai {
@@ -21,8 +22,8 @@ class ADatatype {
         std::shared_ptr<Memory> data;
         std::shared_ptr<RawBuffer> metadata;
     };
-
-    explicit ADatatype(std::shared_ptr<RawBuffer> r) : raw(std::move(r)) {}
+    // TODO - XLink throws and error if data is initialised with an empty vector
+    explicit ADatatype(std::shared_ptr<RawBuffer> r) : raw(std::move(r)), data{std::make_shared<VectorMemory>(std::vector<uint8_t>{1})} {}
     virtual ~ADatatype() = default;
     // TBD
     virtual Serialized serialize() const = 0;
