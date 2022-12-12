@@ -53,8 +53,8 @@ endif()
 
 # Xtensor
 get_filename_component(PARENT_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/.. ABSOLUTE)
-add_subdirectory("${PARENT_DIRECTORY}/3rdparty/xtl" xtl)
-add_subdirectory("${PARENT_DIRECTORY}/3rdparty/xtensor" xtensor)
+add_subdirectory("${PARENT_DIRECTORY}/external/xtl" xtl)
+add_subdirectory("${PARENT_DIRECTORY}/external/xtensor" xtensor)
 
 # Add threads (c++)
 find_package(Threads ${_QUIET} REQUIRED)
