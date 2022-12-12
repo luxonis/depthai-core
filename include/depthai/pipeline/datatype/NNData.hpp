@@ -210,9 +210,9 @@ class NNData : public Buffer {
      * @param name Name of the layer
      * @param data Data to store
      */
-    template <typename _Ty = double>
-    NNData& addTensor(const std::string& name, const std::vector<_Ty>& data) {
-        return addTensor<_Ty>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}));
+    template <typename T = double>
+    NNData& addTensor(const std::string& name, const std::vector<T>& data) {
+        return addTensor<T>(name, xt::adapt(data, std::vector<size_t>{1, data.size()}));
     };
 
     /**
@@ -220,12 +220,12 @@ class NNData : public Buffer {
      * @param name Name of the tensor
      * @param tensor Tensor to store
      */
-    template <typename _Ty = double>
-    NNData& addTensor(const std::string& name, const xt::xarray<_Ty>& tensor) {
-        static_assert(std::is_integral<_Ty>::value || std::is_floating_point<_Ty>::value, "Tensor type needs to be integral or floating point");
+    template <typename T = double>
+    NNData& addTensor(const std::string& name, const xt::xarray<T>& tensor) {
+        static_assert(std::is_integral<T>::value || std::is_floating_point<T>::value, "Tensor type needs to be integral or floating point");
 
         // Get size in bytes of the converted tensor data, u8 for integral and fp16 for floating point
-        const size_t sConvertedData = std::is_integral<_Ty>::value ? tensor.size() : 2 * tensor.size();
+        const size_t sConvertedData = std::is_integral<T>::value ? tensor.size() : 2 * tensor.size();
 
         // Append bytes so that each new tensor is DATA_ALIGNMENT aligned
         size_t remainder = (rawNn.data.end() - rawNn.data.begin()) % DATA_ALIGNMENT;
@@ -240,7 +240,7 @@ class NNData : public Buffer {
         rawNn.data.resize(offset + sConvertedData);
 
         // Convert data to u8 or fp16 and write to rawNn.data
-        if(std::is_integral<_Ty>::value) {
+        if(std::is_integral<T>::value) {
             for(uint32_t i = 0; i < tensor.size(); i++) {
                 rawNn.data.data()[i + offset] = (uint8_t)tensor.data()[i];
             }
@@ -254,7 +254,7 @@ class NNData : public Buffer {
         TensorInfo info;
         info.name = name;
         info.offset = static_cast<unsigned int>(offset);
-        info.dataType = std::is_integral<_Ty>::value ? TensorInfo::DataType::U8F : TensorInfo::DataType::FP16;
+        info.dataType = std::is_integral<T>::value ? TensorInfo::DataType::U8F : TensorInfo::DataType::FP16;
         info.numDimensions = tensor.dimension();
         for(uint32_t i = 0; i < tensor.dimension(); i++) {
             info.dims.push_back(tensor.shape()[i]);
@@ -267,10 +267,10 @@ class NNData : public Buffer {
 
     /**
      * Convenience function to retrieve values from a tensor
-     * @returns xt::xarray<_Ty> tensor
+     * @returns xt::xarray<T> tensor
      */
-    template <typename _Ty>
-    xt::xarray<_Ty> getTensor(const std::string& name) {
+    template <typename T>
+    xt::xarray<T> getTensor(const std::string& name) {
         const auto it = std::find_if(rawNn.tensors.begin(), rawNn.tensors.end(), [&name](const TensorInfo& ti) { return ti.name == name; });
 
         if(it == rawNn.tensors.end()) throw std::runtime_error("Tensor does not exist");
@@ -285,7 +285,7 @@ class NNData : public Buffer {
             strides.push_back(v);
         }
 
-        xt::xarray<_Ty, xt::layout_type::row_major> tensor(dims);
+        xt::xarray<T, xt::layoutTpe::row_major> tensor(dims);
         if(it->dataType == TensorInfo::DataType::U8F) {
             for(uint32_t i = 0; i < tensor.size(); i++) {
                 tensor.data()[i] = rawNn.data.data()[it->offset + i];
@@ -307,12 +307,12 @@ class NNData : public Buffer {
 
     /**
      * Convenience function to retrieve values from the first tensor
-     * @returns xt::xarray<_Ty> tensor
+     * @returns xt::xarray<T> tensor
      */
-    template <typename _Ty>
-    xt::xarray<_Ty> getFirstTensor() {
+    template <typename T>
+    xt::xarray<T> getFirstTensor() {
         if(!rawNn.tensors.empty()) {
-            return getTensor<_Ty>(rawNn.tensors[0].name);
+            return getTensor<T>(rawNn.tensors[0].name);
         }
 
         return {};
