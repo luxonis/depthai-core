@@ -249,6 +249,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/EdgeDetectorConfig.cpp
     src/pipeline/datatype/TrackedFeatures.cpp
     src/pipeline/datatype/FeatureTrackerConfig.cpp
+    src/pipeline/datatype/BenchmarkReport.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/utility/Path.cpp

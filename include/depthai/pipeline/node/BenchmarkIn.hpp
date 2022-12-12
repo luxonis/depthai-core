@@ -17,6 +17,11 @@ class BenchmarkIn : public NodeCRTP<DeviceNode, BenchmarkIn, BenchmarkProperties
      * Receive messages as fast as possible
      */
     Input input{true, *this, "input", Input::Type::SReceiver, true, 4, {{DatatypeEnum::Buffer, true}}};
+
+    /**
+     * Send a benchmark report at the end
+     */
+    Output report{true, *this, "report", Output::Type::MSender, {{DatatypeEnum::BenchmarkReport, false}}};
     void setNumMessagesToGet(int num);
 };
 
