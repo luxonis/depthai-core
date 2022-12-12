@@ -285,7 +285,7 @@ class NNData : public Buffer {
             strides.push_back(v);
         }
 
-        xt::xarray<T, xt::Layout_Type::row_major> tensor(dims);
+        xt::xarray<T, xt::layout_type::row_major> tensor(dims);
         if(it->dataType == TensorInfo::DataType::U8F) {
             for(uint32_t i = 0; i < tensor.size(); i++) {
                 tensor.data()[i] = rawNn.data.data()[it->offset + i];
