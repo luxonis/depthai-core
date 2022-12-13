@@ -281,6 +281,7 @@ option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
 option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
 option(DEPTHAI_BUILD_DOCS "Build documentation - requires doxygen to be installed" OFF)
 option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
+option(DEPTHAI_XTENSOR_SUPPORT "Enable optional XTensor support" ON)
 
 
 option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries into library" ON)
@@ -423,7 +424,6 @@ target_link_libraries(${TARGET_CORE_NAME}
     PUBLIC
         nlohmann_json::nlohmann_json
         libnop
-        xtensor
     INTERFACE
         XLinkPublic
     PRIVATE
@@ -435,6 +435,13 @@ target_link_libraries(${TARGET_CORE_NAME}
         spdlog::spdlog
         ZLIB::zlib
 )
+
+if(DEPTHAI_XTENSOR_SUPPORT)
+    target_link_libraries(${TARGET_CORE_NAME}
+        PUBLIC
+            xtensor
+    )
+endif()
 
 # Add compile & CMake definitions
 set(DEPTHAI_DEVICE_VERSION "${DEPTHAI_DEVICE_SIDE_COMMIT}")
@@ -483,6 +490,14 @@ macro(add_runtime_dependencies depending_target dependency)
 endmacro()
 # Add libusb dll in build time
 add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
+
+########################
+# XTensor Support
+########################
+if(DEPTHAI_XTENSOR_SUPPORT)
+    # Add public compile definition indicating that XTensor support is available
+    set(DEPTHAI_HAVE_XTENSOR_SUPPORT ON)
+endif()
 
 ########################
 # OpenCV Support
@@ -659,7 +674,9 @@ if(DEPTHAI_INSTALL)
     # Install Hunter dependencies
     install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}/dependencies")
     # Install depthai-core dependencies
-    install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/external" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake")
+    if(DEPTHAI_XTENSOR_SUPPORT)
+        install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/external" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake")
+    endif()
     # Install resources if not RC'd
     if(NOT DEPTHAI_BINARIES_RESOURCE_COMPILE)
         install(DIRECTORY "${DEPTHAI_RESOURCES_OUTPUT_DIR}/" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}")
