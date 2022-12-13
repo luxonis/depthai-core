@@ -24,7 +24,7 @@ class BenchmarkIn : public NodeCRTP<DeviceNode, BenchmarkIn, BenchmarkProperties
     Output passthrough{true, *this, "passthrough", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
 
     /**
-     * Send a benchmark report at the end
+     * Send a benchmark report when the set number of messages are received
      */
     Output report{true, *this, "report", Output::Type::MSender, {{DatatypeEnum::BenchmarkReport, false}}};
 

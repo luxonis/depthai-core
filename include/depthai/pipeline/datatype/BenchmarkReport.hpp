@@ -5,7 +5,7 @@
 namespace dai {
 
 /**
- * BenchmarkReport message. Carries fps recorded.
+ * BenchmarkReport message.
  */
 class BenchmarkReport : public Buffer {
     Serialized serialize() const override;
