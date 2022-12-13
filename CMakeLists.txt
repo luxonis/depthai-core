@@ -84,6 +84,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/sanitizers")
 option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON)
 option(DEPTHAI_CLANG_TIDY "Enable clang-tidy checks during compilation" OFF)
 option(DEPTHAI_SANITIZE "Enable Address and Undefined sanitizers for library, examples and tests" OFF)
+option(DEPTHAI_XTENSOR_SUPPORT "Enable optional XTensor support" ON)
 
 # Should install depthai core libraries
 option(DEPTHAI_INSTALL   "Enable install target for depthai-core targets" ON)
@@ -281,7 +282,6 @@ option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
 option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
 option(DEPTHAI_BUILD_DOCS "Build documentation - requires doxygen to be installed" OFF)
 option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
-option(DEPTHAI_XTENSOR_SUPPORT "Enable optional XTensor support" ON)
 
 
 option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries into library" ON)

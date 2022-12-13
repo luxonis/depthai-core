@@ -53,7 +53,6 @@ endif()
 
 # Xtensor
 if(DEPTHAI_XTENSOR_SUPPORT)
-    message("SUBDIRECTORY XTENSOR")
     get_filename_component(PARENT_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/.. ABSOLUTE)
     add_subdirectory("${PARENT_DIRECTORY}/external/xtl" xtl)
     add_subdirectory("${PARENT_DIRECTORY}/external/xtensor" xtensor)
