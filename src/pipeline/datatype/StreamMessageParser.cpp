@@ -341,10 +341,10 @@ std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer&
     // return ser;
 }
 
-// std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const std::shared_ptr<const RawBuffer>& data) {
-//     if(!data) return {};
-//     return serializeMessage(*data);
-// }
+std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const std::shared_ptr<const RawBuffer>& data) {
+    if(!data) return {};
+    return serializeMessage(*data);
+}
 
 // std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const ADatatype& data) {
 //     return serializeMessage(data.serialize());
