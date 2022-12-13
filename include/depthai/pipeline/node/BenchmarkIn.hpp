@@ -3,12 +3,12 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
-#include <depthai-shared/properties/BenchmarkProperties.hpp>
+#include <depthai-shared/properties/BenchmarkPropertiesIn.hpp>
 
 namespace dai {
 namespace node {
 
-class BenchmarkIn : public NodeCRTP<DeviceNode, BenchmarkIn, BenchmarkProperties> {
+class BenchmarkIn : public NodeCRTP<DeviceNode, BenchmarkIn, BenchmarkPropertiesIn> {
    public:
     constexpr static const char* NAME = "BenchmarkIn";
     using NodeCRTP::NodeCRTP;

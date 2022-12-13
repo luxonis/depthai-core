@@ -3,12 +3,12 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
-#include <depthai-shared/properties/BenchmarkProperties.hpp>
+#include <depthai-shared/properties/BenchmarkPropertiesOut.hpp>
 
 namespace dai {
 namespace node {
 
-class BenchmarkOut : public NodeCRTP<DeviceNode, BenchmarkOut, BenchmarkProperties> {
+class BenchmarkOut : public NodeCRTP<DeviceNode, BenchmarkOut, BenchmarkPropertiesOut> {
    public:
     constexpr static const char* NAME = "BenchmarkOut";
     using NodeCRTP::NodeCRTP;
@@ -32,6 +32,11 @@ class BenchmarkOut : public NodeCRTP<DeviceNode, BenchmarkOut, BenchmarkProperti
      * @param num number of messages to send
      */
     void setNumMessagesToSend(int num);
+
+    /**
+     * Set FPS at which the node is sending out messages. 0 means as fast as possible
+     */
+    void setFps(float fps);
 };
 
 }  // namespace node
