@@ -218,7 +218,7 @@ class NNData : public Buffer {
 #ifdef DEPTHAI_HAVE_XTENSOR_SUPPORT
     /**
      * @note This API is only available if XTensor support is enabled
-     * 
+     *
      * Set a layer with datatype FP16. Double values are converted to FP16.
      * @param name Name of the layer
      * @param data Data to store
@@ -230,7 +230,7 @@ class NNData : public Buffer {
 
     /**
      * @note This API is only available if XTensor support is enabled
-     * 
+     *
      * Add a tensor. Float values are converted to FP16 and integers are cast to bytes.
      * @param name Name of the tensor
      * @param tensor Tensor to store
@@ -282,7 +282,7 @@ class NNData : public Buffer {
 
     /**
      * @note This API is only available if XTensor support is enabled
-     * 
+     *
      * Convenience function to retrieve values from a tensor
      * @returns xt::xarray<T> tensor
      */
@@ -318,7 +318,7 @@ class NNData : public Buffer {
 
     /**
      * @note This API is only available if XTensor support is enabled
-     * 
+     *
      * Convenience function to retrieve values from the first tensor
      * @returns xt::xarray<T> tensor
      */
