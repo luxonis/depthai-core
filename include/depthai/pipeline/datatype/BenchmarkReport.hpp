@@ -8,7 +8,7 @@ namespace dai {
  * BenchmarkReport message. Carries fps recorded.
  */
 class BenchmarkReport : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
+    Serialized serialize() const override;
     RawBenchmarkReport& benchmarkReport;
 
    public:
@@ -22,6 +22,8 @@ class BenchmarkReport : public Buffer {
     float& fps;
     float& timeTotal;  // seconds
     float& numMessagesReceived;
+    float& averageLatency;
+    std::vector<float>& latencies;
 };
 
 }  // namespace dai

@@ -2,8 +2,8 @@
 
 namespace dai {
 
-std::shared_ptr<RawBuffer> BenchmarkReport::serialize() const {
-    return raw;
+BenchmarkReport::Serialized BenchmarkReport::serialize() const {
+    return {data, raw};
 }
 
 BenchmarkReport::BenchmarkReport()
@@ -11,13 +11,17 @@ BenchmarkReport::BenchmarkReport()
       benchmarkReport(*dynamic_cast<RawBenchmarkReport*>(raw.get())),
       fps(benchmarkReport.fps),
       timeTotal(benchmarkReport.timeTotal),
-      numMessagesReceived(benchmarkReport.numMessagesReceived) {}
+      numMessagesReceived(benchmarkReport.numMessagesReceived),
+      averageLatency(benchmarkReport.averageLatency),
+      latencies(benchmarkReport.latencies) {}
 
 BenchmarkReport::BenchmarkReport(std::shared_ptr<RawBenchmarkReport> ptr)
     : Buffer(std::move(ptr)),
       benchmarkReport(*dynamic_cast<RawBenchmarkReport*>(raw.get())),
       fps(benchmarkReport.fps),
       timeTotal(benchmarkReport.timeTotal),
-      numMessagesReceived(benchmarkReport.numMessagesReceived) {}
+      numMessagesReceived(benchmarkReport.numMessagesReceived),
+      averageLatency(benchmarkReport.averageLatency),
+      latencies(benchmarkReport.latencies) {}
 
 }  // namespace dai
