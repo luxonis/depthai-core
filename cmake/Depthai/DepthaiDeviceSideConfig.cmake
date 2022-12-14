@@ -2,7 +2,7 @@
 set(DEPTHAI_DEVICE_SIDE_MATURITY "snapshot")
 
 # "full commit hash of device side binary"
-set(DEPTHAI_DEVICE_SIDE_COMMIT "9b7215215162600304b1cd0c302f830de5fd8d54")
+set(DEPTHAI_DEVICE_SIDE_COMMIT "4ea30b84fc77078c88e1ddb4bb61a24c6dea6ed9")
 
 # "version if applicable"
 set(DEPTHAI_DEVICE_SIDE_VERSION "")
