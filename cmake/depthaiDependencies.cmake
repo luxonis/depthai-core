@@ -52,10 +52,13 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
 endif()
 
 # Xtensor
-if(DEPTHAI_XTENSOR_SUPPORT)
+if(DEPTHAI_XTENSOR_SUPPORT AND (NOT CONFIG_MODE))
     get_filename_component(PARENT_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/.. ABSOLUTE)
     add_subdirectory("${PARENT_DIRECTORY}/external/xtl" xtl)
     add_subdirectory("${PARENT_DIRECTORY}/external/xtensor" xtensor)
+else()
+    find_package(xtl ${_QUIET} REQUIRED)
+    find_package(xtensor ${_QUIET} REQUIRED)
 endif()
 
 # Add threads (c++)

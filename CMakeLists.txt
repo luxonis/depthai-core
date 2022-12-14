@@ -676,6 +676,8 @@ if(DEPTHAI_INSTALL)
     # Install depthai-core dependencies
     if(DEPTHAI_XTENSOR_SUPPORT)
         install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/external" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake")
+        install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/xtl" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/depthai/dependencies")
+        install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/xtensor" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/depthai/dependencies")
     endif()
     # Install resources if not RC'd
     if(NOT DEPTHAI_BINARIES_RESOURCE_COMPILE)
