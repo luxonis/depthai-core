@@ -280,14 +280,6 @@ class CalibrationHandler {
 
     /**
      *
-     * Get the Stereo Vertical Rectification Rotation object
-     *
-     * @return returns a 3x3 rectification rotation matrix
-     */
-    std::vector<std::vector<float>> getStereoVerticalRectificationRotation() const;
-
-    /**
-     *
      * Get the Stereo Right Rectification Rotation object
      *
      * @return returns a 3x3 rectification rotation matrix
@@ -480,16 +472,6 @@ class CalibrationHandler {
                           std::vector<std::vector<float>> rotationMatrix,
                           std::vector<float> translation,
                           std::vector<float> specTranslation = {0, 0, 0});
-
-    /**
-     * Set the Stereo Vertical Rectification object
-     *
-     * @param cameraId CameraId of the camera which will be used as Vertical Camera of stereo Setup
-     * @param rectifiedRotation Rectification rotation of the Vertical camera required for feature matching
-     *
-     * Homography of the Vertical Rectification = Intrinsics_right * rectifiedRotation * inv(Intrinsics_left)
-     */
-    void setStereoVertical(CameraBoardSocket cameraId, std::vector<std::vector<float>> rectifiedRotation);
 
     /**
      * Set the Stereo Left Rectification object
