@@ -396,6 +396,18 @@ std::vector<float> CalibrationHandler::getCameraTranslationVector(CameraBoardSoc
     return translationVector;
 }
 
+std::vector<std::vector<float>> CalibrationHandler::getCameraRotationMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera) const {
+    std::vector<std::vector<float>> extrinsics = getCameraExtrinsics(srcCamera, dstCamera, false);
+
+    std::vector<std::vector<float>> rotationMatrix = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
+    for(auto i = 0; i < 3; i++) {
+        for(auto j = 0; j < 3; j++) {
+            rotationMatrix[i][j] = extrinsics[i][j];
+        }
+    }
+    return rotationMatrix;
+}
+
 float CalibrationHandler::getBaselineDistance(CameraBoardSocket cam1, CameraBoardSocket cam2, bool useSpecTranslation) const {
     std::vector<float> translationVector = getCameraTranslationVector(cam1, cam2, useSpecTranslation);
     float sum = 0;
