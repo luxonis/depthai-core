@@ -24,7 +24,7 @@ ImgDetections& ImgDetections::setTimestampDevice(std::chrono::time_point<std::ch
     using namespace std::chrono;
     auto ts = tp.time_since_epoch();
     dets.tsDevice.sec = duration_cast<seconds>(ts).count();
-    dets.ts.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
+    dets.tsDevice.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
     return *this;
 }
 ImgDetections& ImgDetections::setSequenceNum(int64_t sequenceNum) {

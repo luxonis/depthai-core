@@ -207,6 +207,11 @@ class NNData : public Buffer {
     NNData& setSequenceNum(int64_t sequenceNum);
 
     /**
+     * Set a tensor in place
+     */
+    NNData& setLayerInPlace(TensorInfo& tensor, uint8_t*& data, size_t& size);
+
+    /**
      * Set a layer with datatype FP16. Double values are converted to FP16.
      * @param name Name of the layer
      * @param data Data to store

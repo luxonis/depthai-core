@@ -138,6 +138,31 @@ NNData& NNData::setLayer(const std::string& name, const std::vector<int>& data) 
     return *this;
 }
 
+NNData& NNData::setLayerInPlace(TensorInfo& tensor, uint8_t*& dataIn, size_t& size){
+    auto vecData = std::dynamic_pointer_cast<dai::VectorMemory>(data);
+    if (!vecData){
+        // TODO Generally this shouldn't be a requirement
+        std::cout << "Set Layer in place only works on vector memory";
+        return *this;
+    }
+    size_t offset = vecData->getSize();
+    auto tensorSize = getTensorDataSize(tensor);
+    size = tensorSize;
+    size_t reminder = tensorSize % DATA_ALIGNMENT;
+    auto tensorSizeAligned = tensorSize;
+    if(reminder != 0){
+        tensorSizeAligned += DATA_ALIGNMENT - reminder;
+    }
+    vecData->setSize(offset + tensorSizeAligned);
+    // std::cout << "Total size set is " << vecData->getSize() << std::endl;
+    // std::cout << "Offset is " << offset << std::endl;
+    // std::cout << "Tensor size is " << tensorSize << std::endl;
+    dataIn = &vecData->getData()[offset];
+    tensor.offset = offset;
+    rawNn.tensors.push_back(tensor);
+    return *this;
+}
+
 // fp16
 NNData& NNData::setLayer(const std::string& name, std::vector<float> data) {
     fp16Data[name] = std::vector<std::uint16_t>(data.size());
