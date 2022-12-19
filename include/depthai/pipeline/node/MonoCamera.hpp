@@ -105,6 +105,12 @@ class MonoCamera : public NodeCRTP<Node, MonoCamera, MonoCameraProperties> {
     /// Get sensor resolution
     Properties::SensorResolution getResolution() const;
 
+    // Set events on which frames will be received
+    void setFrameEventFilter(const std::vector<dai::FrameEvent>& events);
+
+    // Get events on which frames will be received
+    std::vector<dai::FrameEvent> getFrameEventFilter() const;
+
     /**
      * Set rate at which camera should produce frames
      * @param fps Rate in frames per second
