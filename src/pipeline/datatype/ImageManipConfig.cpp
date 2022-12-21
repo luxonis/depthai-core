@@ -160,6 +160,17 @@ ImageManipConfig& ImageManipConfig::setFrameType(dai::RawImgFrame::Type type) {
     return *this;
 }
 
+ImageManipConfig& ImageManipConfig::setColormap(dai::Colormap colormap, int min, int max) {
+    // Enable format stage
+    cfg.enableFormat = true;
+
+    // Set type format
+    cfg.formatConfig.colormap = colormap;
+    cfg.formatConfig.colormapMin = min;
+    cfg.formatConfig.colormapMax = max;
+    return *this;
+}
+
 ImageManipConfig& ImageManipConfig::setHorizontalFlip(bool flip) {
     // Enable format stage
     cfg.enableFormat = true;
@@ -232,6 +243,10 @@ ImageManipConfig::FormatConfig ImageManipConfig::getFormatConfig() const {
 
 bool ImageManipConfig::isResizeThumbnail() const {
     return cfg.resizeConfig.lockAspectRatioFill;
+}
+
+dai::Colormap ImageManipConfig::getColormap() const {
+    return cfg.formatConfig.colormap;
 }
 
 }  // namespace dai

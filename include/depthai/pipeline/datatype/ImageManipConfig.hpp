@@ -151,6 +151,12 @@ class ImageManipConfig : public Buffer {
     ImageManipConfig& setFrameType(ImgFrame::Type name);
 
     /**
+     * Specify gray to color conversion map
+     * @param colormap map from Colormap enum or Colormap::NONE to disable
+     */
+    ImageManipConfig& setColormap(Colormap colormap, int min = 0, int max = 255);
+
+    /**
      * Specify horizontal flip
      * @param flip True to enable flip, false otherwise
      */
@@ -229,6 +235,11 @@ class ImageManipConfig : public Buffer {
      * @returns True if resize thumbnail mode is set, false otherwise
      */
     bool isResizeThumbnail() const;
+
+    /**
+     * @returns specified colormap
+     */
+    Colormap getColormap() const;
 };
 
 }  // namespace dai
