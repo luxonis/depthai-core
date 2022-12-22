@@ -4,7 +4,7 @@ option(DEPTHAI_TEST_EXAMPLES "Test examples - examples will be ran as a part of 
 # Dependencies
 find_package(OpenCV REQUIRED)
 find_package(Sanitizers)
-
+find_package(Eigen3 REQUIRED)
 # Create utility library
 add_library(utility utility/utility.cpp)
 target_include_directories(utility PUBLIC "utility")
@@ -31,7 +31,7 @@ function(dai_add_example example_name example_src enable_test)
     # Add example
     add_executable(${example_name} ${example_src})
     add_default_flags(${example_name} LEAN)
-    target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS} Threads::Threads)
+    target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS} Threads::Threads Eigen3::Eigen)
 
     # Add sanitizers for example
     if(COMMAND add_sanitizers)
@@ -223,6 +223,7 @@ target_compile_definitions(calibration_load PRIVATE CALIB_PATH="${calib_v6}")
 dai_add_example(rgb_camera_control ColorCamera/rgb_camera_control.cpp ON)
 dai_add_example(rgb_preview ColorCamera/rgb_preview.cpp ON)
 dai_add_example(rgb_video ColorCamera/rgb_video.cpp ON)
+dai_add_example(cameraMatrixTest ColorCamera/newCameraMatrixTest.cpp ON)
 
 # EdgeDetector
 dai_add_example(edge_detector EdgeDetector/edge_detector.cpp ON)
