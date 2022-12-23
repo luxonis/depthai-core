@@ -7,7 +7,7 @@
 
 #include <Eigen/Core>
 #include <Eigen/Eigen>
-int TERM_COUNT = 6;
+int TERM_COUNT = 5;
 
 // template<typename Scalar, typename Container>
 // inline static Eigen::Matrix<Scalar,-1,-1> toEigenMatrix( const Container& vectors ){
@@ -19,6 +19,42 @@ int TERM_COUNT = 6;
 // 			M(i,j) = vectors[i][j];
 // 	return M;
 // }
+class  TermCriteria
+{
+public:
+    /**
+      Criteria type, can be one of: COUNT, EPS or COUNT + EPS
+    */
+    enum Type
+    {
+        COUNT=1, //!< the maximum number of iterations or elements to compute
+        MAX_ITER=COUNT, //!< ditto
+        EPS=2 //!< the desired accuracy or change in parameters at which the iterative algorithm stops
+    };
+
+    //! default constructor
+    TermCriteria() : type(0), maxCount(0), epsilon(0) {}
+    /**
+    @param type The type of termination criteria, one of TermCriteria::Type
+    @param maxCount The maximum number of iterations or elements to compute.
+    @param epsilon The desired accuracy or change in parameters at which the iterative algorithm stops.
+    */
+    TermCriteria(int _type, int _maxCount, double _epsilon) : type(_type), maxCount(_maxCount), epsilon(_epsilon) {}
+
+    inline bool isValid() const
+    {
+        const bool isCount = (type & COUNT) && maxCount > 0;
+        const bool isEps = (type & EPS) && !cvIsNaN(epsilon);
+        return isCount || isEps;
+    }
+
+    int type; //!< the type of termination criteria: COUNT, EPS or COUNT + EPS
+    int maxCount; //!< the maximum number of iterations/elements
+    double epsilon; //!< the desired accuracy
+};
+
+
+
 
 struct Rect{
     float x, y; // Center of the rectangle
@@ -38,9 +74,22 @@ struct Rect{
     }
 };
 
-void undistortPoints(std::vector<dai::Point2f>& src, std::vector<dai::Point2f>& dst, 
-                Eigen::Matrix3d& M, Eigen::VectorXd& d, Eigen::Matrix3d& R, Eigen::Matrix3d& Mp){
+inline Rect& operator&=(Rect& lhs, const Rect& rhs)
+{
+    int x1 = std::max(lhs.x, rhs.x);
+    int y1 = std::max(lhs.y, rhs.y);
+    lhs.width  = std::min(lhs.x + lhs.width,  rhs.x + rhs.width) -  x1;
+    lhs.height = std::min(lhs.y + lhs.height, rhs.y + rhs.height) - y1;
+    lhs.x = x1;
+    lhs.y = y1;
+    if( lhs.width <= 0 || lhs.height <= 0 )
+        lhs = Rect();
+    return lhs;
+}
 
+void undistortPoints(std::vector<dai::Point2f>& src, std::vector<dai::Point2f>& dst, 
+                Eigen::Matrix3d& M, Eigen::VectorXd& d, Eigen::Matrix3d& R, Eigen::Matrix3d& Mp, TermCriteria criteria){
+ 
     if (src.size() == 0)  throw std::runtime_error("Input Points were empty");
     if (M(0, 0) == 0 || M(1, 1) == 0 || M(0, 2) == 0 || M(1, 2) == 0)  throw std::runtime_error("fx, fy, cx or cy is zero. Please cross check your Camera/Intrinsics Matrix");
     if (d.size() == 14){
@@ -65,7 +114,6 @@ void undistortPoints(std::vector<dai::Point2f>& src, std::vector<dai::Point2f>& 
     Eigen::Matrix3d proj;
     if (Mp != Eigen::Matrix3d::Identity()) proj = Mp*R;
     else proj = R;
-
 
     double fx = M(0, 0);
     double fy = M(1, 1);
@@ -100,8 +148,10 @@ void undistortPoints(std::vector<dai::Point2f>& src, std::vector<dai::Point2f>& 
             // compensate distortion iteratively. WHy iteratively ? We do it iteratively over x0 and y0 to get beter r^2
             for(int j = 0; ; j++){
                 
-                if (j >= TERM_COUNT) break;
-
+                if ((criteria.type & TermCriteria::COUNT) && j >= criteria.maxCount)
+                    break;
+                if ((criteria.type & TermCriteria::EPS) && error < criteria.epsilon)
+                    break;
                 // Issue with direct method is r is comuted using distorted x and y instead of undistorted x and y.
                 double r2 = x*x + y*y; 
                 double icdist = (1 + ((d(7)*r2 + d(6))*r2 + d(5))*r2)/(1 + ((d(4)*r2 + d(1))*r2 + d(0))*r2);
@@ -117,7 +167,7 @@ void undistortPoints(std::vector<dai::Point2f>& src, std::vector<dai::Point2f>& 
                 x = (x0 - deltaX)*icdist;
                 y = (y0 - deltaY)*icdist;
 
-                if(0) // Iterative way till we reach defined low error.
+                if(criteria.type & TermCriteria::EPS) // Iterative way till we reach defined low error.
                 {
                     double r4, r6, a1, a2, a3, cdist, icdist2;
                     double xd, yd, xd0, yd0;
@@ -158,16 +208,12 @@ void undistortPoints(std::vector<dai::Point2f>& src, std::vector<dai::Point2f>& 
 
 void icvGetRectangles(Eigen::Matrix3d& cameraMatrix, Eigen::VectorXd& distCoeffs,
                   Eigen::Matrix3d& R,  Eigen::Matrix3d& newCameraMatrix, int width, 
-                  int height, Rect& inner, Rect outer ) {
-
-
+                  int height, Rect& inner, Rect& outer ) {
     // icvGetRectangles  https://sourcegraph.com/github.com/opencv/opencv@a08c98cdfb781af95dcf481c6ac38ad26ff945c3/-/blob/modules/calib3d/src/calibration.cpp?L2515:1-2515:17
     const int N = 9;
     std::vector<dai::Point2f> pts;
     pts.reserve(N*N);
     int x, y, k; 
-    std::cout << "Size of pts: " << pts.size() << std::endl;
-
     
     for (y = k = 0; y < N; y++){
         for (x = 0; x < N; x++){
@@ -175,11 +221,12 @@ void icvGetRectangles(Eigen::Matrix3d& cameraMatrix, Eigen::VectorXd& distCoeffs
         }
     }
     
-    // TODO(saching): Is Mr projection assigned ? or are we getting normalized points ?
-    undistortPoints(pts, pts, cameraMatrix, distCoeffs, R, newCameraMatrix);
+    // Normalized undistorted Points
+    undistortPoints(pts, pts, cameraMatrix, distCoeffs, R, newCameraMatrix, TermCriteria(cv::TermCriteria::COUNT, 5, 0.01));
 
-    float iX0=-FLT_MAX, iX1=FLT_MAX, iY0=-FLT_MAX, iY1=FLT_MAX;
-    float oX0=FLT_MAX, oX1=-FLT_MAX, oY0=FLT_MAX, oY1=-FLT_MAX;
+    float iX0 = -FLT_MAX, iX1 = FLT_MAX,  iY0 = -FLT_MAX, iY1 = FLT_MAX;
+    float oX0 = FLT_MAX,  oX1 = -FLT_MAX, oY0 = FLT_MAX,  oY1 = -FLT_MAX;
+
     // find the inscribed rectangle.
     // the code will likely not work with extreme rotation matrices (R) (>45%)
     for( y = k = 0; y < N; y++ ){
@@ -192,7 +239,7 @@ void icvGetRectangles(Eigen::Matrix3d& cameraMatrix, Eigen::VectorXd& distCoeffs
             oY1 = std::max(oY1, p.y);
 
             if( x == 0 )
-                iX0 = std::max(iX0, p.x); // FLT_MAX and p.x ?
+                iX0 = std::max(iX0, p.x);
             if( x == N-1 )
                 iX1 = std::min(iX1, p.x);
             if( y == 0 )
@@ -201,15 +248,13 @@ void icvGetRectangles(Eigen::Matrix3d& cameraMatrix, Eigen::VectorXd& distCoeffs
                 iY1 = std::min(iY1, p.y);
         }
     }
+
     inner = Rect(iX0, iY0, iX1-iX0, iY1-iY0);
     outer = Rect(oX0, oY0, oX1-oX0, oY1-oY0);
     return;
 }
 
-
-
-
-Eigen::Matrix3d customOptimalCameraMatrix(Eigen::Matrix3d cameraMatrix, Eigen::VectorXd distCoeffs, int imgWidth, int imgHeight, double alpha){
+Eigen::Matrix3d customOptimalCameraMatrix(Eigen::Matrix3d cameraMatrix, Eigen::VectorXd distCoeffs, int imgWidth, int imgHeight, double alpha, Rect& validRoi){
 
     Eigen::Matrix3d newCameraMatrix = Eigen::Matrix3d::Identity();
     Eigen::Matrix3d R = Eigen::Matrix3d::Identity();
@@ -217,16 +262,6 @@ Eigen::Matrix3d customOptimalCameraMatrix(Eigen::Matrix3d cameraMatrix, Eigen::V
     // Get inscribed and circumscribed rectangles in normalized
     // (independent of camera matrix) coordinates
     icvGetRectangles(cameraMatrix, distCoeffs, R, newCameraMatrix, imgWidth, imgHeight, inner, outer);
-    std::cout << "Inner x -> "      << inner.x      << std::endl;
-    std::cout << "Inner y -> "      << inner.y      << std::endl;
-    std::cout << "Inner width -> "  << inner.width  << std::endl;
-    std::cout << "Inner height -> " << inner.height << std::endl;
-    std::cout << "-------------------xxxxxx----------------" << std::endl;
-    std::cout << "Outer x -> "      << outer.x << std::endl;
-    std::cout << "Outer y -> "      << outer.y << std::endl;
-    std::cout << "Outer width -> "  << outer.width << std::endl;
-    std::cout << "Outer height -> " << outer.height << std::endl;
-    std::cout << "-------------------xxxxxx----------------" << std::endl;
     
     // Projection mapping inner rectangle to viewport
     double fx0 = (imgWidth  - 1) / inner.width;
@@ -240,44 +275,52 @@ Eigen::Matrix3d customOptimalCameraMatrix(Eigen::Matrix3d cameraMatrix, Eigen::V
     double cx1 = -fx1 * outer.x;
     double cy1 = -fy1 * outer.y;
 
-    std::cout << "fx0 from inner  -> " << fx0 << std::endl;
-    std::cout << "fy0 from inner  -> " << fy0 << std::endl;
-    std::cout << "cx0 from inner  -> " << cx0 << std::endl;
-    std::cout << "cy0 from inner  -> " << cy0 << std::endl;
-    std::cout << "-------------------xxxxxx----------------" << std::endl;
-
-    std::cout << "fx1 from outer -> " << fx1 << std::endl;
-    std::cout << "fy1 from outer -> " << fy1 << std::endl;
-    std::cout << "cx1 from outer -> " << cx1 << std::endl;
-    std::cout << "cy1 from outer -> " << cy1 << std::endl;
-    std::cout << "-------------------xxxxxx----------------" << std::endl;
-
     // Interpolate between the two optimal projections
     newCameraMatrix(0, 0) = fx0*(1 - alpha) + fx1*alpha;
     newCameraMatrix(1, 1) = fy0*(1 - alpha) + fy1*alpha;
     newCameraMatrix(0, 2) = cx0*(1 - alpha) + cx1*alpha;
     newCameraMatrix(1, 2) = cy0*(1 - alpha) + cy1*alpha;
 
-    /* if( validPixROI )
-    {
-        icvGetRectangles(M, d, R, Mr, imgWidth, imgHeight, inner, outer);
-        cv::Rect r = inner;
-        r &= cv::Rect(0, 0, imgWidth, imgHeight);
-        *validPixROI = cvRect(r);
-    } */
+    icvGetRectangles(cameraMatrix, distCoeffs, R, newCameraMatrix, imgWidth, imgHeight, inner, outer);
+    Rect r = inner;
+    r &= Rect(0, 0, imgWidth, imgHeight);
+    validRoi = r;
 
     return newCameraMatrix;
     // cvConvert(&matM, newCameraMatrix);
 
 }
 
-
+// additioanlTuning(){
+// }
 
 int main(int argc, char** argv) {
     // Create pipeline  
     std::cout << "Start device" << std::endl;
+
+    dai::Pipeline pipeline;
+
+    // Define source and output
+    auto camRgb = pipeline.create<dai::node::ColorCamera>();
+    auto xoutVideo = pipeline.create<dai::node::XLinkOut>();
+
+    xoutVideo->setStreamName("video");
+
+    // Properties
+    camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
+    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_4_K);
+    // camRgb->setVideoSize(1920, 1080);
+
+    xoutVideo->input.setBlocking(false);
+    xoutVideo->input.setQueueSize(1);
+
+    // Linking
+    camRgb->video.link(xoutVideo->input);
+
     dai::Device device;
     dai::CalibrationHandler calibData = device.readCalibration();
+
+    device.startPipeline(pipeline);
 
     std::cout << "Read device" << std::endl;
 
@@ -287,10 +330,9 @@ int main(int argc, char** argv) {
     std::vector<float> d = calibData.getDistortionCoefficients(dai::CameraBoardSocket::RGB);
     cv::Size imgSize(width, height);
     double alpha = 0;
-    std::cout << "assigned coeffs" << std::endl;
+    double alphab = 1;
 
     Eigen::VectorXd dE = Eigen::Map<Eigen::VectorXf, Eigen::Unaligned>(d.data(), d.size()).cast<double>();
-    // Eigen::Matrix3d intrinsicsE = toEigenMatrix(intrinsics);
     Eigen::Matrix3d intrinsicsE;
 
     for(int i = 0; i < 3; i++) {
@@ -299,41 +341,95 @@ int main(int argc, char** argv) {
         }
     }
 
-    std::cout << "Printing Original Intrinsics ->" << std::endl;
-    for(int i = 0; i < intrinsics.size(); i++) {
-        for (int j = 0; j < intrinsics.front().size(); j++) {
-            std::cout << intrinsics[i][j] << " " ;
+    if (0){
+        std::cout << "Printing Original Intrinsics ->" << std::endl;
+        for(int i = 0; i < intrinsics.size(); i++) {
+            for (int j = 0; j < intrinsics.front().size(); j++) {
+                std::cout << intrinsics[i][j] << " " ;
+            }
+            std::cout << std::endl;
+        }
+
+        std::cout << "Printing intrinsics from Eigen for validation ->" << std::endl;
+        std::cout << intrinsicsE << std::endl;
+
+        std::cout << "-------------------xxxxxx----------------" << std::endl;
+
+        std::cout << "Printing original DistortionCoefficients ->" << std::endl;
+        for (int i = 0; i < d.size(); i++) {
+            std::cout << d[i] << " " ; 
         }
         std::cout << std::endl;
+        
+        std::cout << "Printing Distortion Coeffs from Eigen for validation ->" << std::endl;
+        std::cout << dE << std::endl;
+
+        std::cout << "-------------------xxxxxx----------------" << std::endl;
     }
 
-    std::cout << "Printing intrinsics from Eigen for validation ->" << std::endl;
-    std::cout << intrinsicsE << std::endl;
+    cv::Mat K = (cv::Mat_<double>(3,3) << intrinsics[0][0], intrinsics[0][1], intrinsics[0][2],
+                                          intrinsics[1][0], intrinsics[1][1], intrinsics[1][2],
+                                          intrinsics[2][0], intrinsics[2][1], intrinsics[2][2]);
 
-    std::cout << "-------------------xxxxxx----------------" << std::endl;
+    cv::Rect validRoi;
+    Rect roiRectLocal;
+    auto newIntrinsicsE = customOptimalCameraMatrix(intrinsicsE, dE, width, height, alpha, roiRectLocal);
+    cv::Mat finalKalpha = (cv::Mat_<double>(3,3) << newIntrinsicsE(0, 0), newIntrinsicsE(0, 1), newIntrinsicsE(0, 2),
+                                                    newIntrinsicsE(1, 0), newIntrinsicsE(1, 1), newIntrinsicsE(1, 2),
+                                                    newIntrinsicsE(2, 0), newIntrinsicsE(2, 1), newIntrinsicsE(2, 2));
 
-    std::cout << "Printing original DistortionCoefficients ->" << std::endl;
-    for (int i = 0; i < d.size(); i++) {
-        std::cout << d[i] << " " ; 
+    // ---------------- Additional Scaling from https://github.com/opencv/opencv/issues/7240 -------------
+
+    // -------------------------------------------- ~~ END ~~ ----------------------------------------------------
+
+    if (0){
+        std::cout << "-------------------xxxxxx----------------" << std::endl;
+
+        std::cout << "newIntrinsicsEigen --> " << newIntrinsicsE << std::endl;
+
+        std::cout << "-------------------xxxxxx----------------" << std::endl;
+
+        std::cout << "validRoi Local --> " << roiRectLocal.x << " " << roiRectLocal.y << " " << roiRectLocal.width << " " << roiRectLocal.height << std::endl;
+
+        std::cout << "width --> " << width << std::endl;
+        std::cout << "height --> " << height << std::endl;
+
+        std::cout << "-------------xxxxxx---xxxxxx---xxxxxx---xxxxxx---xxxxxx----------" << std::endl;
     }
-    std::cout << std::endl;
-    
-    std::cout << "Printing Distortion Coeffs from Eigen for validation ->" << std::endl;
-    std::cout << dE << std::endl;
 
+    auto video = device.getOutputQueue("video");
 
-    std::cout << "-------------------xxxxxx----------------" << std::endl;
+    cv::Mat xMapd, yMapd;
+    cv::Mat R = cv::Mat::eye(3, 3, CV_32F);
+    cv::initUndistortRectifyMap(K, d, R, finalKalpha, imgSize, CV_16SC2, xMapd, yMapd);
 
+    auto newIntrinsicsEx = customOptimalCameraMatrix(intrinsicsE, dE, width, height, alphab, roiRectLocal);
+    cv::Mat finalKalphaOne = (cv::Mat_<double>(3,3) << newIntrinsicsEx(0, 0), newIntrinsicsEx(0, 1), newIntrinsicsEx(0, 2),
+                                                       newIntrinsicsEx(1, 0), newIntrinsicsEx(1, 1), newIntrinsicsEx(1, 2),
+                                                       newIntrinsicsEx(2, 0), newIntrinsicsEx(2, 1), newIntrinsicsEx(2, 2));
 
-    auto newIntrinsicsCv = cv::getOptimalNewCameraMatrix(intrinsics, d, imgSize, alpha);
-    auto newIntrinsicsE = customOptimalCameraMatrix(intrinsicsE, dE, width, height, alpha);
+    cv::Mat xMapOne, yMapOne;
+    cv::initUndistortRectifyMap(K, d, R, finalKalphaOne, imgSize, CV_16SC2, xMapOne, yMapOne);
 
-    std::cout << "-------------------xxxxxx----------------" << std::endl;
+    while(true) {
+        auto videoIn = video->get<dai::ImgFrame>();
 
+        // Get BGR frame from NV12 encoded video frame to show with opencv
+        // Visualizing the frame on slower hosts might have overhead
+        cv::Mat imgFrame = videoIn->getCvFrame();
+        cv::imshow("video", imgFrame);
+        
+        cv::Mat undistortedImageOne;
+        cv::remap(imgFrame, undistortedImageOne, xMapOne, yMapOne, cv::INTER_LINEAR);
+        cv::imshow("undistored finalKalphaOne Video", undistortedImageOne);
 
-    std::cout << "newIntrinsicsCv --> " << newIntrinsicsCv << std::endl;
-    std::cout << "newIntrinsicsEigen --> " << newIntrinsicsE << std::endl;
-
-
-
+        cv::Mat undistortedImaged;
+        cv::remap(imgFrame, undistortedImaged, xMapd, yMapd, cv::INTER_LINEAR);
+        cv::imshow("undistored finalKalpha Video", undistortedImaged);
+        int key = cv::waitKey(1);
+        if(key == 'q' || key == 'Q') {
+            return 0;
+        }
+    }
+    return 0;
 }
