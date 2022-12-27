@@ -12,7 +12,7 @@ namespace dai {
 namespace node {
 
 /**
- * @brief DetectionParser node. Performs edge detection using 3x3 Sobel filter
+ * @brief DetectionParser node. Parses detection results from different neural networks and is being used internally by MobileNetDetectionNetwork and YoloDetectionNetwork.
  */
 class DetectionParser : public NodeCRTP<Node, DetectionParser, DetectionParserProperties> {
    public:
