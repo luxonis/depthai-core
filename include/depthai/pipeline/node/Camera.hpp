@@ -3,6 +3,7 @@
 #include <depthai/pipeline/datatype/CameraControl.hpp>
 
 #include "depthai/pipeline/Node.hpp"
+#include "depthai/datatype/ImgFrame.hpp"
 
 // shared
 #include <depthai-shared/properties/CameraProperties.hpp>
@@ -33,7 +34,7 @@ class Camera : public NodeCRTP<Node, Camera, CameraProperties> {
     /**
      * Computes the scaled size given numerator and denominator
      */
-    int getScaledSize(int input, int num, int denom) const;
+    static int getScaledSize(int input, int num, int denom) const;
 
     /**
      * Initial control options to apply to sensor
@@ -123,35 +124,27 @@ class Camera : public NodeCRTP<Node, Camera, CameraProperties> {
      */
     std::string getCamera() const;
 
-    /// Set which color camera to use
-    [[deprecated("Use 'setBoardSocket()' instead")]] void setCamId(int64_t id);
-
-    /// Get which color camera to use
-    [[deprecated("Use 'setBoardSocket()' instead")]] int64_t getCamId() const;
-
     /// Set camera image orientation
     void setImageOrientation(CameraImageOrientation imageOrientation);
 
     /// Get camera image orientation
     CameraImageOrientation getImageOrientation() const;
 
-    /// Set color order of preview output images. RGB or BGR
-    void setColorOrder(CameraProperties::ColorOrder colorOrder);
+    // TODO(themarpe) - add back
+    // /// Set image type of preview output images.
+    // void setPreviewType(ImgFrame::Type type);
+    // /// Get image type of preview output frames.
+    // ImgFrame::Type getPreviewType() const;
+    // /// Set image type of video output images. Supported AUTO, GRAY, YUV420 and NV12.
+    // void setVideoType(ImgFrame::Type type);
+    // /// Get image type of video output frames. Supported AUTO, GRAY, YUV420 and NV12.
+    // ImgFrame::Type getVideoType() const;
 
-    /// Get color order of preview output frames. RGB or BGR
-    CameraProperties::ColorOrder getColorOrder() const;
 
-    /// Set planar or interleaved data of preview output frames
-    void setInterleaved(bool interleaved);
-
-    /// Get planar or interleaved data of preview output frames
-    bool getInterleaved() const;
-
-    /// Set fp16 (0..255) data type of preview output frames
-    void setFp16(bool fp16);
-
-    /// Get fp16 (0..255) data of preview output frames
-    bool getFp16() const;
+    /// Set desired resolution. Sets sensor size to best fit and specifies video to be of this size
+    void setSize(std::tuple<int, int> size);
+    /// Set desired resolution. Sets sensor size to best fit and specifies video to be of this size
+    void setSize(int width, int height);
 
     /// Set preview output size
     void setPreviewSize(int width, int height);
@@ -159,17 +152,11 @@ class Camera : public NodeCRTP<Node, Camera, CameraProperties> {
     /// Set preview output size, as a tuple <width, height>
     void setPreviewSize(std::tuple<int, int> size);
 
-    /// Set number of frames in preview pool
-    void setPreviewNumFramesPool(int num);
-
     /// Set video output size
     void setVideoSize(int width, int height);
 
     /// Set video output size, as a tuple <width, height>
     void setVideoSize(std::tuple<int, int> size);
-
-    /// Set number of frames in preview pool
-    void setVideoNumFramesPool(int num);
 
     /// Set still output size
     void setStillSize(int width, int height);
@@ -177,26 +164,6 @@ class Camera : public NodeCRTP<Node, Camera, CameraProperties> {
     /// Set still output size, as a tuple <width, height>
     void setStillSize(std::tuple<int, int> size);
 
-    /// Set number of frames in preview pool
-    void setStillNumFramesPool(int num);
-
-    /// Set sensor resolution
-    void setSensorSize(std::tuple<int, int> size);
-
-    /// Set sensor resolution
-    void setSensorSize(int width, int height);
-
-    // /// Get sensor resolution
-    // Properties::SensorResolution getResolution() const;
-
-    /// Set number of frames in raw pool
-    void setRawNumFramesPool(int num);
-
-    /// Set number of frames in isp pool
-    void setIspNumFramesPool(int num);
-
-    /// Set number of frames in all pools
-    void setNumFramesPool(int raw, int isp, int preview, int video, int still);
 
     /**
      * Set 'isp' output scaling (numerator/denominator), preserving the aspect ratio.
@@ -253,18 +220,18 @@ class Camera : public NodeCRTP<Node, Camera, CameraProperties> {
     int getStillHeight() const;
 
     /// Get sensor resolution as size
-    std::tuple<int, int> getResolutionSize() const;
+    std::tuple<int, int> getSize() const;
     /// Get sensor resolution width
-    int getResolutionWidth() const;
+    int getWidth() const;
     /// Get sensor resolution height
-    int getResolutionHeight() const;
+    int getHeight() const;
 
-    /// Get 'isp' output resolution as size, after scaling
-    std::tuple<int, int> getIspSize() const;
-    /// Get 'isp' output width
-    int getIspWidth() const;
-    /// Get 'isp' output height
-    int getIspHeight() const;
+    // /// Get 'isp' output resolution as size, after scaling
+    // std::tuple<int, int> getIspSize() const;
+    // /// Get 'isp' output width
+    // int getIspWidth() const;
+    // /// Get 'isp' output height
+    // int getIspHeight() const;
 
     /**
      * Specify sensor center crop.
@@ -288,45 +255,31 @@ class Camera : public NodeCRTP<Node, Camera, CameraProperties> {
     /// Get sensor top left y crop coordinate
     float getSensorCropY() const;
 
-    // Node properties configuration
-    /**
-     * Specify to wait until inputConfig receives a configuration message,
-     * before sending out a frame.
-     * @param wait True to wait for inputConfig message, false otherwise
-     */
-    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] void setWaitForConfigInput(bool wait);
+    // /**
+    //  * Specifies whether preview output should preserve aspect ratio,
+    //  * after downscaling from video size or not.
+    //  *
+    //  * @param keep If true, a larger crop region will be considered to still be able to
+    //  * create the final image in the specified aspect ratio. Otherwise video size is resized to fit preview size
+    //  */
+    // void setPreviewKeepAspectRatio(bool keep);
 
-    /**
-     * @see setWaitForConfigInput
-     * @returns True if wait for inputConfig message, false otherwise
-     */
-    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] bool getWaitForConfigInput() const;
+    // /**
+    //  * @see setPreviewKeepAspectRatio
+    //  * @returns Preview keep aspect ratio option
+    //  */
+    // bool getPreviewKeepAspectRatio();
 
-    /**
-     * Specifies whether preview output should preserve aspect ratio,
-     * after downscaling from video size or not.
-     *
-     * @param keep If true, a larger crop region will be considered to still be able to
-     * create the final image in the specified aspect ratio. Otherwise video size is resized to fit preview size
-     */
-    void setPreviewKeepAspectRatio(bool keep);
-
-    /**
-     * @see setPreviewKeepAspectRatio
-     * @returns Preview keep aspect ratio option
-     */
-    bool getPreviewKeepAspectRatio();
-
-    /// Get number of frames in preview pool
-    int getPreviewNumFramesPool();
-    /// Get number of frames in video pool
-    int getVideoNumFramesPool();
-    /// Get number of frames in still pool
-    int getStillNumFramesPool();
-    /// Get number of frames in raw pool
-    int getRawNumFramesPool();
-    /// Get number of frames in isp pool
-    int getIspNumFramesPool();
+    // /// Get number of frames in preview pool
+    // int getPreviewNumFramesPool();
+    // /// Get number of frames in video pool
+    // int getVideoNumFramesPool();
+    // /// Get number of frames in still pool
+    // int getStillNumFramesPool();
+    // /// Get number of frames in raw pool
+    // int getRawNumFramesPool();
+    // /// Get number of frames in isp pool
+    // int getIspNumFramesPool();
 };
 
 }  // namespace node
