@@ -46,33 +46,6 @@ std::string Camera::getCamera() const {
     return properties.cameraName;
 }
 
-// Set which color camera to use
-void Camera::setCamId(int64_t id) {
-    // cast to board socket
-    switch(id) {
-        case 0:
-            properties.boardSocket = CameraBoardSocket::RGB;
-            break;
-        case 1:
-            properties.boardSocket = CameraBoardSocket::LEFT;
-            break;
-        case 2:
-            properties.boardSocket = CameraBoardSocket::RIGHT;
-            break;
-        case 3:
-            properties.boardSocket = CameraBoardSocket::CAM_D;
-            break;
-        default:
-            throw std::invalid_argument(fmt::format("CamId value: {} is invalid.", id));
-            break;
-    }
-}
-
-// Get which color camera to use
-int64_t Camera::getCamId() const {
-    return (int64_t)properties.boardSocket;
-}
-
 // Set camera image orientation
 void Camera::setImageOrientation(CameraImageOrientation imageOrientation) {
     properties.imageOrientation = imageOrientation;
@@ -82,36 +55,6 @@ void Camera::setImageOrientation(CameraImageOrientation imageOrientation) {
 CameraImageOrientation Camera::getImageOrientation() const {
     // TODO: in case of AUTO, see if possible to return actual value determined by device?
     return properties.imageOrientation;
-}
-
-// setColorOrder - RGB or BGR
-void Camera::setColorOrder(CameraProperties::ColorOrder colorOrder) {
-    properties.colorOrder = colorOrder;
-}
-
-// getColorOrder - returns color order
-CameraProperties::ColorOrder Camera::getColorOrder() const {
-    return properties.colorOrder;
-}
-
-// setInterleaved
-void Camera::setInterleaved(bool interleaved) {
-    properties.interleaved = interleaved;
-}
-
-// getInterleaved
-bool Camera::getInterleaved() const {
-    return properties.interleaved;
-}
-
-// setFp16
-void Camera::setFp16(bool fp16) {
-    properties.fp16 = fp16;
-}
-
-// getFp16
-bool Camera::getFp16() const {
-    return properties.fp16;
 }
 
 // set preview output size
@@ -135,13 +78,13 @@ void Camera::setVideoSize(std::tuple<int, int> size) {
 }
 
 // set still output size
-void Camera::setSensorSize(int width, int height) {
+void Camera::setSize(int width, int height) {
     properties.resolutionWidth = width;
     properties.resolutionHeight = height;
 }
 
-void Camera::setSensorSize(std::tuple<int, int> size) {
-    setSensorSize(std::get<0>(size), std::get<1>(size));
+void Camera::setSize(std::tuple<int, int> size) {
+    setSize(std::get<0>(size), std::get<1>(size));
 }
 
 // set still output size
@@ -237,45 +180,17 @@ int Camera::getStillHeight() const {
 }
 
 // Returns sensor size
-std::tuple<int, int> Camera::getResolutionSize() const {
+std::tuple<int, int> Camera::getSize() const {
     // TODO(themarpe) - revisit
     return {properties.resolutionWidth, properties.resolutionHeight};
 }
 
-int Camera::getResolutionWidth() const {
-    return std::get<0>(getResolutionSize());
+int Camera::getWidth() const {
+    return std::get<0>(getSize());
 }
 
-int Camera::getResolutionHeight() const {
-    return std::get<1>(getResolutionSize());
-}
-
-int Camera::getScaledSize(int input, int num, int denom) const {
-    return (input * num - 1) / denom + 1;
-}
-
-int Camera::getIspWidth() const {
-    int inW = getResolutionWidth();
-    int num = properties.ispScale.horizNumerator;
-    int den = properties.ispScale.horizDenominator;
-    if(num > 0 && den > 0) {
-        return getScaledSize(inW, num, den);
-    }
-    return inW;
-}
-
-int Camera::getIspHeight() const {
-    int inH = getResolutionHeight();
-    int num = properties.ispScale.vertNumerator;
-    int den = properties.ispScale.vertDenominator;
-    if(num > 0 && den > 0) {
-        return getScaledSize(inH, num, den);
-    }
-    return inH;
-}
-
-std::tuple<int, int> Camera::getIspSize() const {
-    return {getIspWidth(), getIspHeight()};
+int Camera::getHeight() const {
+    return std::get<1>(getSize());
 }
 
 void Camera::sensorCenterCrop() {
@@ -306,61 +221,6 @@ float Camera::getSensorCropY() const {
     return std::get<1>(getSensorCrop());
 }
 
-void Camera::setWaitForConfigInput(bool wait) {
-    inputConfig.setWaitForMessage(wait);
-}
-
-bool Camera::getWaitForConfigInput() const {
-    return inputConfig.getWaitForMessage();
-}
-
-void Camera::setPreviewKeepAspectRatio(bool keep) {
-    properties.previewKeepAspectRatio = keep;
-}
-
-bool Camera::getPreviewKeepAspectRatio() {
-    return properties.previewKeepAspectRatio;
-}
-
-void Camera::setNumFramesPool(int raw, int isp, int preview, int video, int still) {
-    properties.numFramesPoolRaw = raw;
-    properties.numFramesPoolIsp = isp;
-    properties.numFramesPoolPreview = preview;
-    properties.numFramesPoolVideo = video;
-    properties.numFramesPoolStill = still;
-}
-
-void Camera::setPreviewNumFramesPool(int num) {
-    properties.numFramesPoolPreview = num;
-}
-void Camera::setVideoNumFramesPool(int num) {
-    properties.numFramesPoolVideo = num;
-}
-void Camera::setStillNumFramesPool(int num) {
-    properties.numFramesPoolStill = num;
-}
-void Camera::setRawNumFramesPool(int num) {
-    properties.numFramesPoolRaw = num;
-}
-void Camera::setIspNumFramesPool(int num) {
-    properties.numFramesPoolIsp = num;
-}
-
-int Camera::getPreviewNumFramesPool() {
-    return properties.numFramesPoolPreview;
-}
-int Camera::getVideoNumFramesPool() {
-    return properties.numFramesPoolVideo;
-}
-int Camera::getStillNumFramesPool() {
-    return properties.numFramesPoolStill;
-}
-int Camera::getRawNumFramesPool() {
-    return properties.numFramesPoolRaw;
-}
-int Camera::getIspNumFramesPool() {
-    return properties.numFramesPoolIsp;
-}
 
 }  // namespace node
 }  // namespace dai

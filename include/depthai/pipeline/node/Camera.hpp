@@ -3,7 +3,7 @@
 #include <depthai/pipeline/datatype/CameraControl.hpp>
 
 #include "depthai/pipeline/Node.hpp"
-#include "depthai/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
 
 // shared
 #include <depthai-shared/properties/CameraProperties.hpp>
@@ -34,7 +34,7 @@ class Camera : public NodeCRTP<Node, Camera, CameraProperties> {
     /**
      * Computes the scaled size given numerator and denominator
      */
-    static int getScaledSize(int input, int num, int denom) const;
+    static int getScaledSize(int input, int num, int denom);
 
     /**
      * Initial control options to apply to sensor
