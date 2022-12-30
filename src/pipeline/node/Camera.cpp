@@ -221,6 +221,5 @@ float Camera::getSensorCropY() const {
     return std::get<1>(getSensorCrop());
 }
 
-
 }  // namespace node
 }  // namespace dai
