@@ -4,6 +4,7 @@
 
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/utility/span.hpp"
 
 // shared
 #include <depthai-shared/properties/CameraProperties.hpp>
@@ -278,6 +279,45 @@ class Camera : public NodeCRTP<Node, Camera, CameraProperties> {
     // int getRawNumFramesPool();
     // /// Get number of frames in isp pool
     // int getIspNumFramesPool();
+
+    /// Set the source of the warp mesh or disable
+    void setMeshSource(Properties::WarpMeshSource source);
+    /// Gets the source of the warp mesh
+    Properties::WarpMeshSource getMeshSource() const;
+
+    /**
+     * Specify local filesystem paths to the undistort mesh calibration files.
+     *
+     * When a mesh calibration is set, it overrides the camera intrinsics/extrinsics matrices.
+     * Overrides useHomographyRectification behavior.
+     * Mesh format: a sequence of (y,x) points as 'float' with coordinates from the input image
+     * to be mapped in the output. The mesh can be subsampled, configured by `setMeshStep`.
+     *
+     * With a 1280x800 resolution and the default (16,16) step, the required mesh size is:
+     *
+     * width: 1280 / 16 + 1 = 81
+     *
+     * height: 800 / 16 + 1 = 51
+     */
+    void loadMeshFile(const dai::Path& warpMesh);
+
+    /**
+     * Specify mesh calibration data for undistortion
+     * See `loadMeshFiles` for the expected data format
+     */
+    void loadMeshData(span<const std::uint8_t> warpMesh);
+
+    /**
+     * Set the distance between mesh points. Default: (32, 32)
+     */
+    void setMeshStep(int width, int height);
+    /// Gets the distance between mesh points
+    std::tuple<int, int> getMeshStep() const;
+
+    /// Set calibration alpha parameter that determines FOV of undistorted frames
+    void setCalibrationAlpha(float alpha);
+    /// Get calibration alpha parameter that determines FOV of undistorted frames
+    float getCalibrationAlpha() const;
 };
 
 }  // namespace node

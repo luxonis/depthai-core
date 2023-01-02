@@ -1,7 +1,10 @@
 #include "depthai/pipeline/node/Camera.hpp"
 
+// std
 #include <cmath>
+#include <fstream>
 
+// libraries
 #include "spdlog/fmt/fmt.h"
 
 namespace dai {
@@ -219,6 +222,53 @@ float Camera::getSensorCropX() const {
 
 float Camera::getSensorCropY() const {
     return std::get<1>(getSensorCrop());
+}
+
+void Camera::setMeshSource(Camera::Properties::WarpMeshSource source) {
+    properties.warpMeshSource = source;
+}
+Camera::Properties::WarpMeshSource Camera::getMeshSource() const {
+    return properties.warpMeshSource;
+}
+
+void Camera::loadMeshData(span<const std::uint8_t> data) {
+    if(data.size() <= 0) {
+        throw std::runtime_error("Camera | mesh data must not be empty");
+    }
+
+    Asset meshAsset;
+    std::string assetKey;
+    meshAsset.alignment = 64;
+
+    meshAsset.data = std::vector<uint8_t>(data.begin(), data.end());
+    assetKey = "warpMesh";
+    properties.warpMeshUri = assetManager.set(assetKey, meshAsset)->getRelativeUri();
+}
+
+void Camera::loadMeshFile(const dai::Path& warpMesh) {
+    std::ifstream streamMesh(warpMesh, std::ios::binary);
+    if(!streamMesh.is_open()) {
+        throw std::runtime_error(fmt::format("Camera | Cannot open mesh at path: {}", warpMesh.u8string()));
+    }
+    std::vector<std::uint8_t> data = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(streamMesh), {});
+
+    loadMeshData(data);
+}
+
+void Camera::setMeshStep(int width, int height) {
+    properties.warpMeshStepWidth = width;
+    properties.warpMeshStepHeight = height;
+}
+std::tuple<int, int> Camera::getMeshStep() const {
+    return {properties.warpMeshStepWidth, properties.warpMeshStepHeight};
+}
+
+void Camera::setCalibrationAlpha(float alpha) {
+    properties.calibAlpha = alpha;
+}
+
+float Camera::getCalibrationAlpha() const {
+    return properties.calibAlpha;
 }
 
 }  // namespace node
