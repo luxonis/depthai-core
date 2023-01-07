@@ -35,12 +35,10 @@ int main(int argc, char** argv) {
 
     auto xoutManip = pipeline.create<dai::node::XLinkOut>();
     auto nnOut = pipeline.create<dai::node::XLinkOut>();
-    auto depthRoiMap = pipeline.create<dai::node::XLinkOut>();
     auto xoutDepth = pipeline.create<dai::node::XLinkOut>();
 
     xoutManip->setStreamName("right");
     nnOut->setStreamName("detections");
-    depthRoiMap->setStreamName("boundingBoxDepthMapping");
     xoutDepth->setStreamName("depth");
 
     // Properties
@@ -76,7 +74,6 @@ int main(int argc, char** argv) {
     }
 
     spatialDetectionNetwork->out.link(nnOut->input);
-    spatialDetectionNetwork->boundingBoxMapping.link(depthRoiMap->input);
 
     stereo->rectifiedRight.link(imageManip->inputImage);
     stereo->depth.link(spatialDetectionNetwork->inputDepth);
@@ -88,7 +85,6 @@ int main(int argc, char** argv) {
     // Output queues will be used to get the rgb frames and nn data from the outputs defined above
     auto previewQueue = device.getOutputQueue("right", 4, false);
     auto detectionNNQueue = device.getOutputQueue("detections", 4, false);
-    auto depthRoiMapQueue = device.getOutputQueue("boundingBoxDepthMapping", 4, false);
     auto depthQueue = device.getOutputQueue("depth", 4, false);
 
     auto startTime = steady_clock::now();
@@ -120,24 +116,19 @@ int main(int argc, char** argv) {
         cv::applyColorMap(depthFrameColor, depthFrameColor, cv::COLORMAP_HOT);
 
         auto detections = inDet->detections;
-        if(!detections.empty()) {
-            auto boundingBoxMapping = depthRoiMapQueue->get<dai::SpatialLocationCalculatorConfig>();
-            auto roiDatas = boundingBoxMapping->getConfigData();
-
-            for(auto roiData : roiDatas) {
-                auto roi = roiData.roi;
-                roi = roi.denormalize(depthFrameColor.cols, depthFrameColor.rows);
-                auto topLeft = roi.topLeft();
-                auto bottomRight = roi.bottomRight();
-                auto xmin = (int)topLeft.x;
-                auto ymin = (int)topLeft.y;
-                auto xmax = (int)bottomRight.x;
-                auto ymax = (int)bottomRight.y;
-                cv::rectangle(depthFrameColor, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
-            }
-        }
 
         for(auto& detection : detections) {
+            auto roiData = detection.boundingBoxMapping;
+            auto roi = roiData.roi;
+            roi = roi.denormalize(depthFrameColor.cols, depthFrameColor.rows);
+            auto topLeft = roi.topLeft();
+            auto bottomRight = roi.bottomRight();
+            auto xmin = (int)topLeft.x;
+            auto ymin = (int)topLeft.y;
+            auto xmax = (int)bottomRight.x;
+            auto ymax = (int)bottomRight.y;
+            cv::rectangle(depthFrameColor, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
+
             int x1 = detection.xmin * rectifiedRight.cols;
             int y1 = detection.ymin * rectifiedRight.rows;
             int x2 = detection.xmax * rectifiedRight.cols;

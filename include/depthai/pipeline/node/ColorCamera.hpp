@@ -90,6 +90,16 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
     Output raw{*this, "raw", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
+     * Outputs metadata-only ImgFrame message as an early indicator of an incoming frame.
+     *
+     * It's sent on the MIPI SoF (start-of-frame) event, just after the exposure of the current frame
+     * has finished and before the exposure for next frame starts.
+     * Could be used to synchronize various processes with camera capture.
+     * Fields populated: camera id, sequence number, timestamp
+     */
+    Output frameEvent{*this, "frameEvent", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
      * Specify which board socket to use
      * @param boardSocket Board socket to use
      */
@@ -100,6 +110,18 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
      * @returns Board socket to use
      */
     CameraBoardSocket getBoardSocket() const;
+
+    /**
+     * Specify which camera to use by name
+     * @param name Name of the camera to use
+     */
+    void setCamera(std::string name);
+
+    /**
+     * Retrieves which camera to use by name
+     * @returns Name of the camera to use
+     */
+    std::string getCamera() const;
 
     /// Set which color camera to use
     [[deprecated("Use 'setBoardSocket()' instead")]] void setCamId(int64_t id);
@@ -199,6 +221,12 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
      * @param fps Rate in frames per second
      */
     void setFps(float fps);
+
+    // Set events on which frames will be received
+    void setFrameEventFilter(const std::vector<dai::FrameEvent>& events);
+
+    // Get events on which frames will be received
+    std::vector<dai::FrameEvent> getFrameEventFilter() const;
 
     /**
      * Get rate at which camera should produce frames

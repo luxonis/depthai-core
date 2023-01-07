@@ -1,6 +1,6 @@
 if(CONFIG_MODE)
-    set(_CMAKE_PREFIX_PATH_ORIGINAL ${CMAKE_PREFIX_PATH})
-    set(_CMAKE_FIND_ROOT_PATH_MODE_PACKAGE_ORIGINAL ${CMAKE_FIND_ROOT_PATH_MODE_PACKAGE})
+    set(_DEPTHAI_PREFIX_PATH_ORIGINAL ${CMAKE_PREFIX_PATH})
+    set(_DEPTHAI_FIND_ROOT_PATH_MODE_PACKAGE_ORIGINAL ${CMAKE_FIND_ROOT_PATH_MODE_PACKAGE})
     # Fixes Android NDK build, where prefix path is ignored as its not inside sysroot
     set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE "BOTH")
     # Sets where to search for packages about to follow
@@ -45,9 +45,9 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     if(DEPTHAI_ENABLE_BACKWARD)
         # Disable automatic check for additional stack unwinding libraries
         # Just use the default compiler one
-        set(STACK_DETAILS_AUTO_DETECT FALSE)
+        set(STACK_DETAILS_AUTO_DETECT FALSE CACHE BOOL "Auto detect backward's stack details dependencies")
         find_package(Backward ${_QUIET} CONFIG REQUIRED)
-        set(STACK_DETAILS_AUTO_DETECT)
+        unset(STACK_DETAILS_AUTO_DETECT)
     endif()
 
 endif()
@@ -83,11 +83,11 @@ endif()
 
 # Cleanup
 if(CONFIG_MODE)
-    set(CMAKE_PREFIX_PATH ${_CMAKE_PREFIX_PATH_ORIGINAL})
-    set(_CMAKE_PREFIX_PATH_ORIGINAL)
-    set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ${_CMAKE_FIND_ROOT_PATH_MODE_PACKAGE_ORIGINAL})
-    set(_CMAKE_FIND_ROOT_PATH_MODE_PACKAGE_ORIGINAL)
-    set(_QUIET)
+    set(CMAKE_PREFIX_PATH ${_DEPTHAI_PREFIX_PATH_ORIGINAL})
+    set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ${_DEPTHAI_FIND_ROOT_PATH_MODE_PACKAGE_ORIGINAL})
+    unset(_DEPTHAI_PREFIX_PATH_ORIGINAL)
+    unset(_DEPTHAI_FIND_ROOT_PATH_MODE_PACKAGE_ORIGINAL)
+    unset(_QUIET)
 else()
     set(DEPTHAI_SHARED_LIBS)
 endif()

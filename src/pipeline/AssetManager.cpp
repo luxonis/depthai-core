@@ -13,8 +13,6 @@ std::string Asset::getRelativeUri() {
 }
 
 std::shared_ptr<dai::Asset> AssetManager::set(Asset asset) {
-    // make sure that key doesn't exist already
-    if(assetMap.count(asset.key) > 0) throw std::logic_error("An Asset with the key: " + asset.key + " already exists.");
     std::string key = asset.key;
     assetMap[key] = std::make_shared<Asset>(std::move(asset));
     return assetMap[key];

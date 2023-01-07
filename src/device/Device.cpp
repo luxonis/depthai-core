@@ -279,9 +279,8 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
         }
 
         // Create DataInputQueue's
-        inputQueueMap[xlinkIn->getStreamName()] = std::make_shared<DataInputQueue>(connection, xlinkIn->getStreamName());
         // set max data size, for more verbosity
-        inputQueueMap[xlinkIn->getStreamName()]->setMaxDataSize(xlinkIn->getMaxDataSize());
+        inputQueueMap[xlinkIn->getStreamName()] = std::make_shared<DataInputQueue>(connection, xlinkIn->getStreamName(), 16, true, xlinkIn->getMaxDataSize());
     }
     for(const auto& kv : pipeline.getNodeMap()) {
         const auto& node = kv.second;

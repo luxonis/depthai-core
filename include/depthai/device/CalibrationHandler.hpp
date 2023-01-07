@@ -19,6 +19,7 @@ namespace dai {
  *  - batchName
  *  - batchTime
  *  - boardOptions
+ *  - productName
  */
 class CalibrationHandler {
    public:
@@ -72,6 +73,8 @@ class CalibrationHandler {
      * respective cropped image
      * @param bottomRightPixelId (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
      * the respective cropped image
+     * @param keepAspectRatio Enabling this will scale on width or height depending on which provides the max resolution and crops the remaning part of the
+     * other side
      * @return Represents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      *
      * Matrix representation of intrinsic matrix
@@ -82,8 +85,12 @@ class CalibrationHandler {
      *                                      \end{matrix} \right ] \f]
      *
      */
-    std::vector<std::vector<float>> getCameraIntrinsics(
-        CameraBoardSocket cameraId, int resizeWidth = -1, int resizeHeight = -1, Point2f topLeftPixelId = Point2f(), Point2f bottomRightPixelId = Point2f());
+    std::vector<std::vector<float>> getCameraIntrinsics(CameraBoardSocket cameraId,
+                                                        int resizeWidth = -1,
+                                                        int resizeHeight = -1,
+                                                        Point2f topLeftPixelId = Point2f(),
+                                                        Point2f bottomRightPixelId = Point2f(),
+                                                        bool keepAspectRatio = true) const;
 
     /**
      * Get the Camera Intrinsics object
@@ -94,6 +101,8 @@ class CalibrationHandler {
      * respective cropped image
      * @param bottomRightPixelId (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
      * the respective cropped image
+     * @param keepAspectRatio Enabling this will scale on width or height depending on which provides the max resolution and crops the remaning part of the
+     * other side
      * @return Represents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      *
      * Matrix representation of intrinsic matrix
@@ -107,7 +116,8 @@ class CalibrationHandler {
     std::vector<std::vector<float>> getCameraIntrinsics(CameraBoardSocket cameraId,
                                                         Size2f destShape,
                                                         Point2f topLeftPixelId = Point2f(),
-                                                        Point2f bottomRightPixelId = Point2f());
+                                                        Point2f bottomRightPixelId = Point2f(),
+                                                        bool keepAspectRatio = true) const;
 
     /**
      * Get the Camera Intrinsics object
@@ -118,6 +128,8 @@ class CalibrationHandler {
      * respective cropped image
      * @param bottomRightPixelId (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
      * the respective cropped image
+     * @param keepAspectRatio Enabling this will scale on width or height depending on which provides the max resolution and crops the remaning part of the
+     * other side
      * @return Represents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      *
      * Matrix representation of intrinsic matrix
@@ -131,7 +143,8 @@ class CalibrationHandler {
     std::vector<std::vector<float>> getCameraIntrinsics(CameraBoardSocket cameraId,
                                                         std::tuple<int, int> destShape,
                                                         Point2f topLeftPixelId = Point2f(),
-                                                        Point2f bottomRightPixelId = Point2f());
+                                                        Point2f bottomRightPixelId = Point2f(),
+                                                        bool keepAspectRatio = true) const;
 
     /**
      * Get the Default Intrinsics object
@@ -147,7 +160,7 @@ class CalibrationHandler {
      *                                      \end{matrix} \right ] \f]
      *
      */
-    std::tuple<std::vector<std::vector<float>>, int, int> getDefaultIntrinsics(CameraBoardSocket cameraId);
+    std::tuple<std::vector<std::vector<float>>, int, int> getDefaultIntrinsics(CameraBoardSocket cameraId) const;
 
     /**
      * Get the Distortion Coefficients object
@@ -155,7 +168,7 @@ class CalibrationHandler {
      * @param cameraId Uses the cameraId to identify which distortion Coefficients to return.
      * @return the distortion coefficients of the requested camera in this order: [k1,k2,p1,p2,k3,k4,k5,k6,s1,s2,s3,s4,τx,τy]
      */
-    std::vector<float> getDistortionCoefficients(CameraBoardSocket cameraId);
+    std::vector<float> getDistortionCoefficients(CameraBoardSocket cameraId) const;
 
     /**
      *  Get the Fov of the camera
@@ -164,7 +177,7 @@ class CalibrationHandler {
      * @param useSpec Disabling this bool will calculate the fov based on intrinsics (focal length, image width), instead of getting it from the camera specs
      * @return field of view of the camera with given cameraId.
      */
-    float getFov(CameraBoardSocket cameraId, bool useSpec = true);
+    float getFov(CameraBoardSocket cameraId, bool useSpec = true) const;
 
     /**
      *  Get the lens position of the given camera
@@ -172,7 +185,7 @@ class CalibrationHandler {
      * @param cameraId of the camera with lens position is requested.
      * @return lens position of the camera with given cameraId at which it was calibrated.
      */
-    uint8_t getLensPosition(CameraBoardSocket cameraId);
+    uint8_t getLensPosition(CameraBoardSocket cameraId) const;
 
     /**
      *  Get the distortion model of the given camera
@@ -180,7 +193,7 @@ class CalibrationHandler {
      * @param cameraId of the camera with lens position is requested.
      * @return lens position of the camera with given cameraId at which it was calibrated.
      */
-    CameraModel getDistortionModel(CameraBoardSocket cameraId);
+    CameraModel getDistortionModel(CameraBoardSocket cameraId) const;
 
     /**
      * Get the Camera Extrinsics object between two cameras from the calibration data if there is a linked connection
@@ -200,7 +213,7 @@ class CalibrationHandler {
      *                                            \end{matrix} \right ] \f]
      *
      */
-    std::vector<std::vector<float>> getCameraExtrinsics(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = false);
+    std::vector<std::vector<float>> getCameraExtrinsics(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = false) const;
 
     /**
      * Get the Camera translation vector between two cameras from the calibration data.
@@ -210,7 +223,7 @@ class CalibrationHandler {
      * @param useSpecTranslation Disabling this bool uses the translation information from the calibration data (not the board design data)
      * @return a translation vector like [x, y, z] in centimeters
      */
-    std::vector<float> getCameraTranslationVector(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = true);
+    std::vector<float> getCameraTranslationVector(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = true) const;
 
     /**
      * Get the baseline distance between two specified cameras. By default it will get the baseline between CameraBoardSocket.RIGHT
@@ -223,7 +236,7 @@ class CalibrationHandler {
      */
     float getBaselineDistance(CameraBoardSocket cam1 = CameraBoardSocket::RIGHT,
                               CameraBoardSocket cam2 = CameraBoardSocket::LEFT,
-                              bool useSpecTranslation = true);
+                              bool useSpecTranslation = true) const;
 
     /**
      * Get the Camera To Imu Extrinsics object
@@ -243,7 +256,7 @@ class CalibrationHandler {
      *                                            \end{matrix} \right ] \f]
      *
      */
-    std::vector<std::vector<float>> getCameraToImuExtrinsics(CameraBoardSocket cameraId, bool useSpecTranslation = false);
+    std::vector<std::vector<float>> getCameraToImuExtrinsics(CameraBoardSocket cameraId, bool useSpecTranslation = false) const;
 
     /**
      * Get the Imu To Camera Extrinsics object from the data loaded if there is a linked connection
@@ -263,7 +276,7 @@ class CalibrationHandler {
      *                                            \end{matrix} \right ] \f]
      *
      */
-    std::vector<std::vector<float>> getImuToCameraExtrinsics(CameraBoardSocket cameraId, bool useSpecTranslation = false);
+    std::vector<std::vector<float>> getImuToCameraExtrinsics(CameraBoardSocket cameraId, bool useSpecTranslation = false) const;
 
     /**
      *
@@ -271,28 +284,28 @@ class CalibrationHandler {
      *
      * @return returns a 3x3 rectification rotation matrix
      */
-    std::vector<std::vector<float>> getStereoRightRectificationRotation();
+    std::vector<std::vector<float>> getStereoRightRectificationRotation() const;
 
     /**
      * Get the Stereo Left Rectification Rotation object
      *
      * @return returns a 3x3 rectification rotation matrix
      */
-    std::vector<std::vector<float>> getStereoLeftRectificationRotation();
+    std::vector<std::vector<float>> getStereoLeftRectificationRotation() const;
 
     /**
      * Get the camera id of the camera which is used as left camera of the stereo setup
      *
      * @return cameraID of the camera used as left camera
      */
-    dai::CameraBoardSocket getStereoLeftCameraId();
+    dai::CameraBoardSocket getStereoLeftCameraId() const;
 
     /**
      * Get the camera id of the camera which is used as right camera of the stereo setup
      *
      * @return cameraID of the camera used as right camera
      */
-    dai::CameraBoardSocket getStereoRightCameraId();
+    dai::CameraBoardSocket getStereoRightCameraId() const;
 
     /**
      * Write raw calibration/board data to json file.
@@ -339,6 +352,14 @@ class CalibrationHandler {
                       uint64_t batchTime,
                       uint32_t boardOptions,
                       std::string boardCustom = "");
+
+    /**
+     * Set the productName which acts as alisas for users to identify the device
+     *
+     * @param productName Sets product name (alias).
+     */
+
+    void setProductName(std::string productName);
 
     /**
      * Set the Camera Intrinsics object
@@ -478,7 +499,7 @@ class CalibrationHandler {
      *
      * @return true on proper connection with no loops.
      */
-    bool validateCameraArray();
+    bool validateCameraArray() const;
 
    private:
     /** when the user is writing extrinsics do we validate if
@@ -490,9 +511,9 @@ class CalibrationHandler {
      */
     // bool isCameraArrayConnected;
     dai::EepromData eepromData;
-    std::vector<std::vector<float>> computeExtrinsicMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = false);
-    bool checkExtrinsicsLink(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera);
-    bool checkSrcLinks(CameraBoardSocket headSocket);
+    std::vector<std::vector<float>> computeExtrinsicMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = false) const;
+    bool checkExtrinsicsLink(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera) const;
+    bool checkSrcLinks(CameraBoardSocket headSocket) const;
 };
 
 }  // namespace dai
