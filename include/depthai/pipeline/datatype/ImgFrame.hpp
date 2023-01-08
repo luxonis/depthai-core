@@ -41,15 +41,37 @@ class ImgFrame : public Buffer {
 
     // getters
     /**
-     * Retrieves image timestamp related to dai::Clock::now()
+     * Retrieves image timestamp (end of exposure) related to dai::Clock::now()
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;
 
     /**
-     * Retrieves image timestamp directly captured from device's monotonic clock,
+     * Retrieves image timestamp (end of exposure) directly captured from device's monotonic clock,
      * not synchronized to host time. Used mostly for debugging
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
+
+     /**
+     * Retrieves image timestamp (middle of exposure) related to dai::Clock::now()
+     */
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampExposureMiddle() const;
+
+    /**
+     * Retrieves image timestamp (middle of exposure) directly captured from device's monotonic clock,
+     * not synchronized to host time. Used mostly for debugging
+     */
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDeviceExposureMiddle() const;
+
+     /**
+     * Retrieves image timestamp (start of exposure) related to dai::Clock::now()
+     */
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampExposureStart() const;
+
+    /**
+     * Retrieves image timestamp (start of exposure) directly captured from device's monotonic clock,
+     * not synchronized to host time. Used mostly for debugging
+     */
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDeviceExposureStart() const;
 
     /**
      * Retrieves instance number

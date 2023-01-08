@@ -25,6 +25,27 @@ std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::du
     using namespace std::chrono;
     return time_point<steady_clock, steady_clock::duration>{seconds(img.tsDevice.sec) + nanoseconds(img.tsDevice.nsec)};
 }
+std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> ImgFrame::getTimestampExposureMiddle() const {
+    auto ts = getTimestamp();
+    auto expTime = getExposureTime();
+    return ts - expTime / 2;
+}
+std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> ImgFrame::getTimestampDeviceExposureMiddle() const {
+    auto ts = getTimestampDevice();
+    auto expTime = getExposureTime();
+    return ts - expTime / 2;
+}
+std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> ImgFrame::getTimestampExposureStart() const {
+    auto ts = getTimestamp();
+    auto expTime = getExposureTime();
+    return ts - expTime;
+}
+std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> ImgFrame::getTimestampDeviceExposureStart() const {
+    auto ts = getTimestampDevice();
+    auto expTime = getExposureTime();
+    return ts - expTime;
+}
+
 unsigned int ImgFrame::getInstanceNum() const {
     return img.instanceNum;
 }
