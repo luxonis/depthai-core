@@ -16,6 +16,7 @@ class Buffer : public ADatatype {
    public:
     /// Creates Buffer message
     Buffer();
+    Buffer(size_t size);
     explicit Buffer(std::shared_ptr<dai::RawBuffer> ptr);
     virtual ~Buffer() = default;
 
