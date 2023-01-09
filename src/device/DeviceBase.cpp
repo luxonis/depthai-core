@@ -1226,8 +1226,8 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     std::vector<std::uint8_t> assetStorage;
     pipeline.serialize(schema, assets, assetStorage);
 
-    // if debug
-    if(spdlog::get_level() == spdlog::level::debug) {
+    // if debug or lower
+    if(spdlog::get_level() <= spdlog::level::debug) {
         nlohmann::json jSchema = schema;
         spdlog::debug("Schema dump: {}", jSchema.dump());
         nlohmann::json jAssets = assets;
