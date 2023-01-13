@@ -83,14 +83,14 @@ DeviceGate::VersionInfo DeviceGate::getAllVersion() {
     return {};
 }
 
-bool DeviceGate::createSession() {
+bool DeviceGate::createSession(bool exclusive) {
     const auto sessionsEndpoint = API_ROOT + "/sessions";
 
     nlohmann::json createSessionBody = {{"name", "depthai_session"},
                                         // {"fwp_checksum", fwpChecksum},
                                         {"fwp_version", DEPTHAI_DEVICE_RVC3_VERSION},
                                         {"library_version", build::VERSION},
-                                        {"protected", false}};
+                                        {"protected", exclusive}};
 
     spdlog::debug("DeviceGate createSession: {}", createSessionBody.dump());
 
@@ -161,6 +161,11 @@ bool DeviceGate::startSession() {
     }
 
     return false;
+}
+
+// TODO(themarpe) - get all sessions, check if only one and not protected
+bool DeviceGate::isBootedNonExclusive() {
+
 }
 
 }  // namespace dai
