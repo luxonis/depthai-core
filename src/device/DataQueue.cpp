@@ -195,9 +195,10 @@ DataInputQueue::DataInputQueue(
                 // Log
                 if(spdlog::get_level() == spdlog::level::trace) {
                     spdlog::trace("Sent message to device ({}) - data size: {}, metadata: {}, sending time: {}",
-                        stream.getStreamName(), outgoing.data->getSize(),
-                        spdlog::to_hex(outgoing.metadata),
-                        duration_cast<microseconds>(t2 - t1));
+                                  stream.getStreamName(),
+                                  outgoing.data->getSize(),
+                                  spdlog::to_hex(outgoing.metadata),
+                                  duration_cast<microseconds>(t2 - t1));
                 }
 
                 // Increment num packets sent

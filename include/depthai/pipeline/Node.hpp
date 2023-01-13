@@ -377,7 +377,6 @@ class Node : public std::enable_shared_from_this<Node> {
          */
         bool getReusePreviousMessage() const;
 
-
         // TODO(themarpe) - refactor, rather extend from MessageQueue
 
         /**
@@ -541,7 +540,6 @@ class Node : public std::enable_shared_from_this<Node> {
         std::vector<std::shared_ptr<ADatatype>> getAll(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
             return getAll<ADatatype>(timeout, hasTimedout);
         }
-
     };
 
     /**

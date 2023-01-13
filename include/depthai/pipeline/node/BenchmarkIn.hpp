@@ -32,7 +32,7 @@ class BenchmarkIn : public NodeCRTP<DeviceNode, BenchmarkIn, BenchmarkProperties
      * Set number of messages that the nodes retrieves before sending the report
      * The passthrough keeps getting forwarded after the report is sent
      * @param num of messages to get for report
-    */
+     */
     void setNumMessagesToGet(int num);
 };
 
