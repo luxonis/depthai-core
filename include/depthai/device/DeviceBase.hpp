@@ -66,6 +66,7 @@ class DeviceBase {
     struct Config {
         OpenVINO::Version version;
         BoardConfig board;
+        bool nonExclusiveMode = false;
     };
 
     // static API

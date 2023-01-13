@@ -6,14 +6,21 @@
 #include "depthai/xlink/XLinkConnection.hpp"
 
 static const char* ProtocolToStr(XLinkProtocol_t val) {
-    switch (val) {
-        case X_LINK_USB_VSC: return "X_LINK_USB_VSC";
-        case X_LINK_USB_CDC: return "X_LINK_USB_CDC";
-        case X_LINK_PCIE: return "X_LINK_PCIE";
-        case X_LINK_IPC: return "X_LINK_IPC";
-        case X_LINK_TCP_IP: return "X_LINK_TCP_IP";
-        case X_LINK_NMB_OF_PROTOCOLS: return "X_LINK_NMB_OF_PROTOCOLS";
-        case X_LINK_ANY_PROTOCOL: return "X_LINK_ANY_PROTOCOL";
+    switch(val) {
+        case X_LINK_USB_VSC:
+            return "X_LINK_USB_VSC";
+        case X_LINK_USB_CDC:
+            return "X_LINK_USB_CDC";
+        case X_LINK_PCIE:
+            return "X_LINK_PCIE";
+        case X_LINK_IPC:
+            return "X_LINK_IPC";
+        case X_LINK_TCP_IP:
+            return "X_LINK_TCP_IP";
+        case X_LINK_NMB_OF_PROTOCOLS:
+            return "X_LINK_NMB_OF_PROTOCOLS";
+        case X_LINK_ANY_PROTOCOL:
+            return "X_LINK_ANY_PROTOCOL";
         default:
             return "INVALID_ENUM_VALUE";
             break;

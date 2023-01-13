@@ -487,6 +487,15 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     // Specify cfg
     config = cfg;
 
+    // Apply nonExclusiveMode
+    config.board.nonExclusiveMode = config.nonExclusiveMode;
+
+    // Specify expected running mode
+    XLinkDeviceState_t expectedBootState = X_LINK_BOOTED;
+    if(config.nonExclusiveMode) {
+        expectedBootState = X_LINK_BOOTED_NON_EXCLUSIVE;
+    }
+
     // If deviceInfo isn't fully specified (eg ANY_STATE, etc...), try finding it first
     if(deviceInfo.state == X_LINK_ANY_STATE || deviceInfo.protocol == X_LINK_ANY_PROTOCOL) {
         deviceDesc_t foundDesc;
@@ -583,8 +592,8 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
                 auto t2 = steady_clock::now();
                 spdlog::debug("Booting FW with Bootloader. Version {}, Time taken: {}", version.toString(), duration_cast<milliseconds>(t2 - t1));
 
-                // After that the state will be BOOTED
-                deviceInfo.state = X_LINK_BOOTED;
+                // After that the state will be expectedBootState
+                deviceInfo.state = expectedBootState;
             } else {
                 // Boot into USB ROM BOOTLOADER
                 bl.bootUsbRomBootloader();
@@ -596,16 +605,16 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         }
 
         // Boot and connect with XLinkConnection constructor
-        connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
+        connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig, expectedBootState);
 
     } else if(deviceInfo.state == X_LINK_BOOTED) {
         // Connect without booting
-        connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
+        connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig, expectedBootState);
     } else {
         throw std::runtime_error("Cannot find any device with given deviceInfo");
     }
 
-    deviceInfo.state = X_LINK_BOOTED;
+    deviceInfo.state = expectedBootState;
 
     // prepare rpc for both attached and host controlled mode
     pimpl->rpcStream = std::make_shared<XLinkStream>(connection, device::XLINK_CHANNEL_MAIN_RPC, device::XLINK_USB_BUFFER_MAX_SIZE);
