@@ -154,7 +154,9 @@ class ImageManipConfig : public Buffer {
      * Specify gray to color conversion map
      * @param colormap map from Colormap enum or Colormap::NONE to disable
      */
-    ImageManipConfig& setColormap(Colormap colormap, int min = 0, int max = 255);
+    ImageManipConfig& setColormap(Colormap colormap, int min, int max);
+    ImageManipConfig& setColormap(Colormap colormap, float maxf);
+    ImageManipConfig& setColormap(Colormap colormap, int max = 255);
 
     /**
      * Specify horizontal flip
