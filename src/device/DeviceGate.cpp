@@ -164,6 +164,8 @@ bool DeviceGate::startSession() {
 }
 
 // TODO(themarpe) - get all sessions, check if only one and not protected
-bool DeviceGate::isBootedNonExclusive() {}
+bool DeviceGate::isBootedNonExclusive() {
+    return true;
+}
 
 }  // namespace dai
