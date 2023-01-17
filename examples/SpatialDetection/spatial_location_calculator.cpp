@@ -49,6 +49,8 @@ int main() {
     dai::SpatialLocationCalculatorConfigData config;
     config.depthThresholds.lowerThreshold = 100;
     config.depthThresholds.upperThreshold = 10000;
+    auto calculationAlgorithm = dai::SpatialLocationCalculatorAlgorithm::MEDIAN;
+    config.calculationAlgorithm = calculationAlgorithm;
     config.roi = dai::Rect(topLeft, bottomRight);
 
     spatialDataCalculator->inputConfig.setWaitForMessage(false);
@@ -144,12 +146,38 @@ int main() {
                     newConfig = true;
                 }
                 break;
+            case '1':
+                calculationAlgorithm = dai::SpatialLocationCalculatorAlgorithm::MEAN;
+                newConfig = true;
+                std::cout << "Switching calculation algorithm to MEAN!" << std::endl;
+                break;
+            case '2':
+                calculationAlgorithm = dai::SpatialLocationCalculatorAlgorithm::MIN;
+                newConfig = true;
+                std::cout << "Switching calculation algorithm to MIN!" << std::endl;
+                break;
+            case '3':
+                calculationAlgorithm = dai::SpatialLocationCalculatorAlgorithm::MAX;
+                newConfig = true;
+                std::cout << "Switching calculation algorithm to MAX!" << std::endl;
+                break;
+            case '4':
+                calculationAlgorithm = dai::SpatialLocationCalculatorAlgorithm::MODE;
+                newConfig = true;
+                std::cout << "Switching calculation algorithm to MODE!" << std::endl;
+                break;
+            case '5':
+                calculationAlgorithm = dai::SpatialLocationCalculatorAlgorithm::MEDIAN;
+                newConfig = true;
+                std::cout << "Switching calculation algorithm to MEDIAN!" << std::endl;
+                break;
             default:
                 break;
         }
 
         if(newConfig) {
             config.roi = dai::Rect(topLeft, bottomRight);
+            config.calculationAlgorithm = calculationAlgorithm;
             dai::SpatialLocationCalculatorConfig cfg;
             cfg.addROI(config);
             spatialCalcConfigInQueue->send(cfg);
