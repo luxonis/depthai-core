@@ -51,7 +51,7 @@ class ImgFrame : public Buffer {
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
 
-     /**
+    /**
      * Retrieves image timestamp (middle of exposure) related to dai::Clock::now()
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampExposureMiddle() const;
@@ -62,7 +62,7 @@ class ImgFrame : public Buffer {
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDeviceExposureMiddle() const;
 
-     /**
+    /**
      * Retrieves image timestamp (start of exposure) related to dai::Clock::now()
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampExposureStart() const;
