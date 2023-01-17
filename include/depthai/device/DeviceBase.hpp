@@ -301,6 +301,24 @@ class DeviceBase {
      */
     DeviceBase(const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
 
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * Uses OpenVINO version OpenVINO::DEFAULT_VERSION
+     *
+     * @param nameOrDeviceId Creates DeviceInfo with nameOrDeviceId to connect to
+     */
+    DeviceBase(std::string nameOrDeviceId);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * Uses OpenVINO version OpenVINO::DEFAULT_VERSION
+     *
+     * @param nameOrDeviceId Creates DeviceInfo with nameOrDeviceId to connect to
+     * @param maxUsbSpeed Maximum allowed USB speed
+     */
+    DeviceBase(std::string nameOrDeviceId, UsbSpeed maxUsbSpeed);
+
     /**
      * Device destructor
      * @note In the destructor of the derived class, remember to call close()
