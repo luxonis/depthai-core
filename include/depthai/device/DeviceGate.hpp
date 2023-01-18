@@ -38,7 +38,7 @@ class DeviceGate {
     DeviceGate(const DeviceInfo& deviceInfo);
     ~DeviceGate();
     bool isOkay();
-    bool createSession();
+    bool createSession(bool exclusive = true);
     bool startSession();
 
     struct VersionInfo {
@@ -46,6 +46,8 @@ class DeviceGate {
     };
     Version getVersion();
     VersionInfo getAllVersion();
+
+    bool isBootedNonExclusive();
 
    private:
     // private

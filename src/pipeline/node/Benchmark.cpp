@@ -1,7 +1,6 @@
-#include "depthai/pipeline/node/BenchmarkOut.hpp"
-
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/BenchmarkIn.hpp"
+#include "depthai/pipeline/node/BenchmarkOut.hpp"
 
 namespace dai {
 namespace node {

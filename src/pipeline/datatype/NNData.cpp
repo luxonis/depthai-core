@@ -48,8 +48,13 @@ static std::size_t getTensorDataSize(const TensorInfo& tensor) {
 
 NNData::Serialized NNData::serialize() const {
     // get data from u8Data and fp16Data and place properly into the underlying raw buffer
-    rawNn.tensors = {};
-    auto mem = std::make_shared<VectorMemory>();
+    std::shared_ptr<VectorMemory> mem;
+    if(std::dynamic_pointer_cast<VectorMemory>(data) == nullptr) {
+        auto prev = std::vector<uint8_t>(data->getData().begin(), data->getData().end());
+        mem = std::make_shared<VectorMemory>(std::move(prev));
+    } else {
+        mem = std::dynamic_pointer_cast<VectorMemory>(data);
+    }
     std::vector<uint8_t>& temporary = *mem;
     // data = mem;
 
