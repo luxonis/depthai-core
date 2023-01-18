@@ -100,24 +100,24 @@ void Camera::setStillSize(std::tuple<int, int> size) {
     setStillSize(std::get<0>(size), std::get<1>(size));
 }
 
-void Camera::setIspScale(int horizNum, int horizDenom, int vertNum, int vertDenom) {
-    properties.ispScale.horizNumerator = horizNum;
-    properties.ispScale.horizDenominator = horizDenom;
-    properties.ispScale.vertNumerator = vertNum;
-    properties.ispScale.vertDenominator = vertDenom;
-}
+// void Camera::setIspScale(int horizNum, int horizDenom, int vertNum, int vertDenom) {
+//     properties.ispScale.horizNumerator = horizNum;
+//     properties.ispScale.horizDenominator = horizDenom;
+//     properties.ispScale.vertNumerator = vertNum;
+//     properties.ispScale.vertDenominator = vertDenom;
+// }
 
-void Camera::setIspScale(int numerator, int denominator) {
-    setIspScale(numerator, denominator, numerator, denominator);
-}
+// void Camera::setIspScale(int numerator, int denominator) {
+//     setIspScale(numerator, denominator, numerator, denominator);
+// }
 
-void Camera::setIspScale(std::tuple<int, int> scale) {
-    setIspScale(std::get<0>(scale), std::get<1>(scale));
-}
+// void Camera::setIspScale(std::tuple<int, int> scale) {
+//     setIspScale(std::get<0>(scale), std::get<1>(scale));
+// }
 
-void Camera::setIspScale(std::tuple<int, int> horizScale, std::tuple<int, int> vertScale) {
-    setIspScale(std::get<0>(horizScale), std::get<1>(horizScale), std::get<0>(vertScale), std::get<1>(vertScale));
-}
+// void Camera::setIspScale(std::tuple<int, int> horizScale, std::tuple<int, int> vertScale) {
+//     setIspScale(std::get<0>(horizScale), std::get<1>(horizScale), std::get<0>(vertScale), std::get<1>(vertScale));
+// }
 
 // void Camera::setResolution(CameraProperties::SensorResolution resolution) {
 //     properties.resolution = resolution;
@@ -196,33 +196,33 @@ int Camera::getHeight() const {
     return std::get<1>(getSize());
 }
 
-void Camera::sensorCenterCrop() {
-    properties.sensorCropX = CameraProperties::AUTO;
-    properties.sensorCropY = CameraProperties::AUTO;
-}
+// void Camera::sensorCenterCrop() {
+//     properties.sensorCropX = CameraProperties::AUTO;
+//     properties.sensorCropY = CameraProperties::AUTO;
+// }
 
-void Camera::setSensorCrop(float x, float y) {
-    if(x < 0 || x >= 1) {
-        throw std::invalid_argument("Sensor crop x must be specified as normalized value [0:1)");
-    }
-    if(y < 0 || y >= 1) {
-        throw std::invalid_argument("Sensor crop y must be specified as normalized value [0:1)");
-    }
-    properties.sensorCropX = x;
-    properties.sensorCropY = y;
-}
+// void Camera::setSensorCrop(float x, float y) {
+//     if(x < 0 || x >= 1) {
+//         throw std::invalid_argument("Sensor crop x must be specified as normalized value [0:1)");
+//     }
+//     if(y < 0 || y >= 1) {
+//         throw std::invalid_argument("Sensor crop y must be specified as normalized value [0:1)");
+//     }
+//     properties.sensorCropX = x;
+//     properties.sensorCropY = y;
+// }
 
-std::tuple<float, float> Camera::getSensorCrop() const {
-    return {properties.sensorCropX, properties.sensorCropY};
-}
+// std::tuple<float, float> Camera::getSensorCrop() const {
+//     return {properties.sensorCropX, properties.sensorCropY};
+// }
 
-float Camera::getSensorCropX() const {
-    return std::get<0>(getSensorCrop());
-}
+// float Camera::getSensorCropX() const {
+//     return std::get<0>(getSensorCrop());
+// }
 
-float Camera::getSensorCropY() const {
-    return std::get<1>(getSensorCrop());
-}
+// float Camera::getSensorCropY() const {
+//     return std::get<1>(getSensorCrop());
+// }
 
 void Camera::setMeshSource(Camera::Properties::WarpMeshSource source) {
     properties.warpMeshSource = source;

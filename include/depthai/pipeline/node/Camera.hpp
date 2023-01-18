@@ -13,7 +13,7 @@ namespace dai {
 namespace node {
 
 /**
- * @brief Camera node. For use with color sensors.
+ * @brief Camera node. Experimental node, for both mono and color types of sensors
  */
 class Camera : public NodeCRTP<Node, Camera, CameraProperties> {
    public:
@@ -101,12 +101,12 @@ class Camera : public NodeCRTP<Node, Camera, CameraProperties> {
      */
     Output frameEvent{*this, "frameEvent", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
-    /**
-     * Input for mocking 'isp' functionality.
-     *
-     * Default queue is non-blocking with size 8
-     */
-    Input mockIsp{*this, "mockIsp", Input::Type::SReceiver, false, 8, {{DatatypeEnum::ImgFrame, false}}};
+    // /**
+    //  * Input for mocking 'isp' functionality.
+    //  *
+    //  * Default queue is non-blocking with size 8
+    //  */
+    // Input mockIsp{*this, "mockIsp", Input::Type::SReceiver, false, 8, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Specify which board socket to use
@@ -148,9 +148,9 @@ class Camera : public NodeCRTP<Node, Camera, CameraProperties> {
     // /// Get image type of video output frames. Supported AUTO, GRAY, YUV420 and NV12.
     // ImgFrame::Type getVideoType() const;
 
-    /// Set desired resolution. Sets sensor size to best fit and specifies video to be of this size
+    /// Set desired resolution. Sets sensor size to best fit
     void setSize(std::tuple<int, int> size);
-    /// Set desired resolution. Sets sensor size to best fit and specifies video to be of this size
+    /// Set desired resolution. Sets sensor size to best fit
     void setSize(int width, int height);
 
     /// Set preview output size
@@ -171,26 +171,26 @@ class Camera : public NodeCRTP<Node, Camera, CameraProperties> {
     /// Set still output size, as a tuple <width, height>
     void setStillSize(std::tuple<int, int> size);
 
-    /**
-     * Set 'isp' output scaling (numerator/denominator), preserving the aspect ratio.
-     * The fraction numerator/denominator is simplified first to a irreducible form,
-     * then a set of hardware scaler constraints applies:
-     * max numerator = 16, max denominator = 63
-     */
-    void setIspScale(int numerator, int denominator);
+    // /**
+    //  * Set 'isp' output scaling (numerator/denominator), preserving the aspect ratio.
+    //  * The fraction numerator/denominator is simplified first to a irreducible form,
+    //  * then a set of hardware scaler constraints applies:
+    //  * max numerator = 16, max denominator = 63
+    //  */
+    // void setIspScale(int numerator, int denominator);
 
-    /// Set 'isp' output scaling, as a tuple <numerator, denominator>
-    void setIspScale(std::tuple<int, int> scale);
+    // /// Set 'isp' output scaling, as a tuple <numerator, denominator>
+    // void setIspScale(std::tuple<int, int> scale);
 
-    /**
-     * Set 'isp' output scaling, per each direction. If the horizontal scaling factor
-     * (horizNum/horizDen) is different than the vertical scaling factor
-     * (vertNum/vertDen), a distorted (stretched or squished) image is generated
-     */
-    void setIspScale(int horizNum, int horizDenom, int vertNum, int vertDenom);
+    // /**
+    //  * Set 'isp' output scaling, per each direction. If the horizontal scaling factor
+    //  * (horizNum/horizDen) is different than the vertical scaling factor
+    //  * (vertNum/vertDen), a distorted (stretched or squished) image is generated
+    //  */
+    // void setIspScale(int horizNum, int horizDenom, int vertNum, int vertDenom);
 
-    /// Set 'isp' output scaling, per each direction, as <numerator, denominator> tuples
-    void setIspScale(std::tuple<int, int> horizScale, std::tuple<int, int> vertScale);
+    // /// Set 'isp' output scaling, per each direction, as <numerator, denominator> tuples
+    // void setIspScale(std::tuple<int, int> horizScale, std::tuple<int, int> vertScale);
 
     /**
      * Set rate at which camera should produce frames
@@ -239,27 +239,27 @@ class Camera : public NodeCRTP<Node, Camera, CameraProperties> {
     // /// Get 'isp' output height
     // int getIspHeight() const;
 
-    /**
-     * Specify sensor center crop.
-     * Resolution size / video size
-     */
-    void sensorCenterCrop();
+    // /**
+    //  * Specify sensor center crop.
+    //  * Resolution size / video size
+    //  */
+    // void sensorCenterCrop();
 
-    /**
-     * Specifies sensor crop rectangle
-     * @param x Top left X coordinate
-     * @param y Top left Y coordinate
-     */
-    void setSensorCrop(float x, float y);
+    // /**
+    //  * Specifies sensor crop rectangle
+    //  * @param x Top left X coordinate
+    //  * @param y Top left Y coordinate
+    //  */
+    // void setSensorCrop(float x, float y);
 
-    /**
-     * @returns Sensor top left crop coordinates
-     */
-    std::tuple<float, float> getSensorCrop() const;
-    /// Get sensor top left x crop coordinate
-    float getSensorCropX() const;
-    /// Get sensor top left y crop coordinate
-    float getSensorCropY() const;
+    // /**
+    //  * @returns Sensor top left crop coordinates
+    //  */
+    // std::tuple<float, float> getSensorCrop() const;
+    // /// Get sensor top left x crop coordinate
+    // float getSensorCropX() const;
+    // /// Get sensor top left y crop coordinate
+    // float getSensorCropY() const;
 
     // /**
     //  * Specifies whether preview output should preserve aspect ratio,
