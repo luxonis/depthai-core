@@ -16,6 +16,7 @@
 
 // project
 #include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/CameraFeatures.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/device/Version.hpp"
@@ -25,7 +26,6 @@
 #include "depthai/xlink/XLinkStream.hpp"
 
 // shared
-#include "depthai-shared/common/CameraFeatures.hpp"
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
@@ -66,6 +66,7 @@ class DeviceBase {
     struct Config {
         OpenVINO::Version version;
         BoardConfig board;
+        bool nonExclusiveMode = false;
     };
 
     // static API
@@ -301,6 +302,24 @@ class DeviceBase {
      */
     DeviceBase(const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
 
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * Uses OpenVINO version OpenVINO::DEFAULT_VERSION
+     *
+     * @param nameOrDeviceId Creates DeviceInfo with nameOrDeviceId to connect to
+     */
+    DeviceBase(std::string nameOrDeviceId);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * Uses OpenVINO version OpenVINO::DEFAULT_VERSION
+     *
+     * @param nameOrDeviceId Creates DeviceInfo with nameOrDeviceId to connect to
+     * @param maxUsbSpeed Maximum allowed USB speed
+     */
+    DeviceBase(std::string nameOrDeviceId, UsbSpeed maxUsbSpeed);
+
     /**
      * Device destructor
      * @note In the destructor of the derived class, remember to call close()
@@ -372,6 +391,12 @@ class DeviceBase {
      * @return DeviceInfo of the current device in execution
      */
     DeviceInfo getDeviceInfo() const;
+
+    /**
+     * Get device name if available
+     * @returns device name or empty string if not available
+     */
+    std::string getDeviceName();
 
     /**
      * Get MxId of device

@@ -41,6 +41,14 @@ CameraBoardSocket ColorCamera::getBoardSocket() const {
     return properties.boardSocket;
 }
 
+void ColorCamera::setCamera(std::string name) {
+    properties.cameraName = name;
+}
+
+std::string ColorCamera::getCamera() const {
+    return properties.cameraName;
+}
+
 // Set which color camera to use
 void ColorCamera::setCamId(int64_t id) {
     // cast to board socket
@@ -167,6 +175,14 @@ ColorCameraProperties::SensorResolution ColorCamera::getResolution() const {
 
 void ColorCamera::setFps(float fps) {
     properties.fps = fps;
+}
+
+void ColorCamera::setFrameEventFilter(const std::vector<dai::FrameEvent>& events) {
+    properties.eventFilter = events;
+}
+
+std::vector<dai::FrameEvent> ColorCamera::getFrameEventFilter() const {
+    return properties.eventFilter;
 }
 
 float ColorCamera::getFps() const {

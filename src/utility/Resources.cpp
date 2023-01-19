@@ -42,12 +42,11 @@ static std::vector<std::uint8_t> createPrebootHeader(const std::vector<uint8_t>&
 constexpr static auto CMRC_DEPTHAI_DEVICE_TAR_XZ = "depthai-device-fwp-" DEPTHAI_DEVICE_VERSION ".tar.xz";
 
 // Main FW
-constexpr static auto DEPTHAI_CMD_OPENVINO_2022_1_PATH = "depthai-device-openvino-2022.1-" DEPTHAI_DEVICE_VERSION ".cmd";
-constexpr static auto MAIN_FW_PATH = DEPTHAI_CMD_OPENVINO_2022_1_PATH;
+constexpr static auto DEPTHAI_CMD_OPENVINO_UNIVERSAL_PATH = "depthai-device-openvino-universal-" DEPTHAI_DEVICE_VERSION ".cmd";
+constexpr static auto MAIN_FW_PATH = DEPTHAI_CMD_OPENVINO_UNIVERSAL_PATH;
 constexpr static auto& MAIN_FW_VERSION = OpenVINO::DEFAULT_VERSION;
 
 // Patches from Main FW
-constexpr static auto DEPTHAI_CMD_OPENVINO_2020_3_PATCH_PATH = "depthai-device-openvino-2020.3-" DEPTHAI_DEVICE_VERSION ".patch";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_4_PATCH_PATH = "depthai-device-openvino-2020.4-" DEPTHAI_DEVICE_VERSION ".patch";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2021_1_PATCH_PATH = "depthai-device-openvino-2021.1-" DEPTHAI_DEVICE_VERSION ".patch";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH = "depthai-device-openvino-2021.2-" DEPTHAI_DEVICE_VERSION ".patch";
@@ -59,8 +58,7 @@ static constexpr auto array_of(T&&... t) -> std::array<V, sizeof...(T)> {
     return {{std::forward<T>(t)...}};
 }
 
-constexpr static auto RESOURCE_LIST_DEVICE = array_of<const char*>(DEPTHAI_CMD_OPENVINO_2022_1_PATH,
-                                                                   DEPTHAI_CMD_OPENVINO_2020_3_PATCH_PATH,
+constexpr static auto RESOURCE_LIST_DEVICE = array_of<const char*>(DEPTHAI_CMD_OPENVINO_UNIVERSAL_PATH,
                                                                    DEPTHAI_CMD_OPENVINO_2020_4_PATCH_PATH,
                                                                    DEPTHAI_CMD_OPENVINO_2021_1_PATCH_PATH,
                                                                    DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH,
@@ -119,7 +117,7 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, da
 
         switch(version) {
             case OpenVINO::VERSION_2020_3:
-                depthaiPatch = resourceMapDevice.at(DEPTHAI_CMD_OPENVINO_2020_3_PATCH_PATH);
+                throw std::runtime_error(fmt::format("OpenVINO {} is not available anymore", OpenVINO::getVersionName(version)));
                 break;
 
             case OpenVINO::VERSION_2020_4:
@@ -139,6 +137,7 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, da
                 break;
 
             case OpenVINO::VERSION_2021_4:
+            case OpenVINO::VERSION_2022_1:
             case MAIN_FW_VERSION:
                 depthaiBinary = resourceMapDevice.at(MAIN_FW_PATH);
                 break;
