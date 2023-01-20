@@ -144,13 +144,11 @@ NNData& NNData::setLayer(const std::string& name, const std::vector<int>& data) 
 }
 
 NNData& NNData::setLayerInPlace(TensorInfo& tensor, uint8_t*& dataIn, size_t& size){
-    auto vecData = std::dynamic_pointer_cast<dai::VectorMemory>(data);
-    if (!vecData){
-        // TODO Generally this shouldn't be a requirement
-        std::cout << "Set Layer in place only works on vector memory";
-        return *this;
-    }
-    size_t offset = vecData->getSize();
+    // auto vecData = std::dynamic_pointer_cast<dai::VectorMemory>(data);
+    // if (!vecData){
+    //     std::cout << "DEBUG: Underlying data is not vector memory";
+    // }
+    size_t offset = data->getSize();
     auto tensorSize = getTensorDataSize(tensor);
     size = tensorSize;
     size_t reminder = tensorSize % DATA_ALIGNMENT;
@@ -158,11 +156,9 @@ NNData& NNData::setLayerInPlace(TensorInfo& tensor, uint8_t*& dataIn, size_t& si
     if(reminder != 0){
         tensorSizeAligned += DATA_ALIGNMENT - reminder;
     }
-    vecData->setSize(offset + tensorSizeAligned);
-    // std::cout << "Total size set is " << vecData->getSize() << std::endl;
-    // std::cout << "Offset is " << offset << std::endl;
-    // std::cout << "Tensor size is " << tensorSize << std::endl;
-    dataIn = &vecData->getData()[offset];
+    // TODO - this might not be safe with all types of memory
+    data->setSize(offset + tensorSizeAligned);
+    dataIn = &data->getData()[offset];
     tensor.offset = offset;
     rawNn.tensors.push_back(tensor);
     return *this;
