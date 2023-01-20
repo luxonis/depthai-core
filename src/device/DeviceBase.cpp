@@ -338,7 +338,8 @@ DeviceBase::DeviceBase(const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : Device
 
 DeviceBase::DeviceBase(std::string nameOrDeviceId) : DeviceBase(OpenVINO::DEFAULT_VERSION, dai::DeviceInfo(std::move(nameOrDeviceId))) {}
 
-DeviceBase::DeviceBase(std::string nameOrDeviceId, UsbSpeed maxUsbSpeed) : DeviceBase(OpenVINO::DEFAULT_VERSION, dai::DeviceInfo(std::move(nameOrDeviceId)), maxUsbSpeed) {}
+DeviceBase::DeviceBase(std::string nameOrDeviceId, UsbSpeed maxUsbSpeed)
+    : DeviceBase(OpenVINO::DEFAULT_VERSION, dai::DeviceInfo(std::move(nameOrDeviceId)), maxUsbSpeed) {}
 
 DeviceBase::DeviceBase(OpenVINO::Version version) {
     tryGetDevice();

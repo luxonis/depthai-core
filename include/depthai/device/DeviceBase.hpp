@@ -302,7 +302,6 @@ class DeviceBase {
      */
     DeviceBase(const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
 
-
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * Uses OpenVINO version OpenVINO::DEFAULT_VERSION

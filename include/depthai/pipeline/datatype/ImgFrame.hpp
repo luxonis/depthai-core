@@ -6,8 +6,8 @@
 
 // project
 #include "depthai/build/config.hpp"
-#include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/common/CameraExposureOffset.hpp"
+#include "depthai/pipeline/datatype/Buffer.hpp"
 
 // shared
 #include "depthai-shared/datatype/RawImgFrame.hpp"
