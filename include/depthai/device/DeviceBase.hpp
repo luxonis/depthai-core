@@ -302,7 +302,6 @@ class DeviceBase {
      */
     DeviceBase(const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
 
-
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * Uses OpenVINO version OpenVINO::DEFAULT_VERSION
@@ -652,7 +651,7 @@ class DeviceBase {
     /**
      * Fetches the raw EEPROM data from User area
      *
-     * @throws std::runtime_exception if any error occured
+     * @throws std::runtime_exception if any error occurred
      * @returns Binary dump of User area EEPROM data
      */
     std::vector<std::uint8_t> readCalibrationRaw();
@@ -660,7 +659,7 @@ class DeviceBase {
     /**
      * Fetches the raw EEPROM data from Factory area
      *
-     * @throws std::runtime_exception if any error occured
+     * @throws std::runtime_exception if any error occurred
      * @returns Binary dump of Factory area EEPROM data
      */
     std::vector<std::uint8_t> readFactoryCalibrationRaw();

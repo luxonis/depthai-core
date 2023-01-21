@@ -43,7 +43,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.19.1" LANGUAGES CXX C)
+project(depthai VERSION "2.20.0" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -323,7 +323,7 @@ endif()
 
 # Then get the Depthai device side binaries (local or download)
 if(DEPTHAI_CMD_PATH OR DEPTHAI_USB2_CMD_PATH OR DEPTHAI_USB2_PATCH_PATH)
-    # Atleast one of the paths is set. include binaries locally
+    # At least one of the paths is set. include binaries locally
     message(STATUS "Using local Depthai device side binaries...")
 
     DepthaiLocal(
