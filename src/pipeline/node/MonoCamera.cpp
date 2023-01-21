@@ -33,6 +33,14 @@ CameraBoardSocket MonoCamera::getBoardSocket() const {
     return properties.boardSocket;
 }
 
+void MonoCamera::setCamera(std::string name) {
+    properties.cameraName = name;
+}
+
+std::string MonoCamera::getCamera() const {
+    return properties.cameraName;
+}
+
 // Set which color camera to use
 void MonoCamera::setCamId(int64_t id) {
     // cast to board socket
@@ -77,6 +85,14 @@ void MonoCamera::setResolution(MonoCameraProperties::SensorResolution resolution
 
 MonoCameraProperties::SensorResolution MonoCamera::getResolution() const {
     return properties.resolution;
+}
+
+void MonoCamera::setFrameEventFilter(const std::vector<dai::FrameEvent>& events) {
+    properties.eventFilter = events;
+}
+
+std::vector<dai::FrameEvent> MonoCamera::getFrameEventFilter() const {
+    return properties.eventFilter;
 }
 
 void MonoCamera::setFps(float fps) {

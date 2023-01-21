@@ -129,8 +129,24 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
             spdlog::warn("USB protocol not available - {}", ERROR_MSG_USB_TIP);
         }
 
-        // Suppress XLink related errors
-        mvLogDefaultLevelSet(MVLOG_FATAL);
+        // TODO(themarpe), move into XLink library
+        auto xlinkEnvLevel = utility::getEnv("XLINK_LEVEL");
+        if(xlinkEnvLevel == "debug") {
+            mvLogDefaultLevelSet(MVLOG_DEBUG);
+        } else if(xlinkEnvLevel == "info") {
+            mvLogDefaultLevelSet(MVLOG_INFO);
+        } else if(xlinkEnvLevel == "warn") {
+            mvLogDefaultLevelSet(MVLOG_WARN);
+        } else if(xlinkEnvLevel == "error") {
+            mvLogDefaultLevelSet(MVLOG_ERROR);
+        } else if(xlinkEnvLevel == "fatal") {
+            mvLogDefaultLevelSet(MVLOG_FATAL);
+        } else if(xlinkEnvLevel == "off") {
+            mvLogDefaultLevelSet(MVLOG_LAST);
+        } else {
+            // Suppress XLink related errors by default
+            mvLogDefaultLevelSet(MVLOG_FATAL);
+        }
 
         spdlog::debug("Initialize - finished");
 

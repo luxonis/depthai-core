@@ -6,6 +6,9 @@ if(NOT WIN32)
     set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
 endif()
 
+# Set type to canonicalize relative paths for user-provided toolchain
+set(CMAKE_TOOLCHAIN_FILE "" CACHE FILEPATH "CMake toolchain path")
+
 # Create a custom toolchain to pass certain options to dependencies
 set(gen_toolchain "${CMAKE_CURRENT_BINARY_DIR}/generated/toolchain.cmake")
 
@@ -40,7 +43,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.19.1" LANGUAGES CXX C)
+project(depthai VERSION "2.20.0" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -200,6 +203,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/XLinkIn.cpp
     src/pipeline/node/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
+    src/pipeline/node/Camera.cpp
     src/pipeline/node/MonoCamera.cpp
     src/pipeline/node/StereoDepth.cpp
     src/pipeline/node/NeuralNetwork.cpp
