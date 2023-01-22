@@ -36,6 +36,7 @@ class ImgFrame : public Buffer {
      * Timestamp is set to now
      */
     ImgFrame();
+    ImgFrame(size_t size);
     explicit ImgFrame(std::shared_ptr<RawImgFrame> ptr);
     virtual ~ImgFrame() = default;
     ImgTransformation& transformation;
