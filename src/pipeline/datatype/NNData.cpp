@@ -13,6 +13,12 @@
 namespace dai {
 
 NNData::NNData() : Buffer(std::make_shared<RawNNData>()), rawNn(*dynamic_cast<RawNNData*>(raw.get())) {}
+NNData::NNData(size_t size) : NNData() {
+    auto mem = std::make_shared<VectorMemory>();
+    mem->resize(size);
+    data = mem;
+}
+
 NNData::NNData(std::shared_ptr<RawNNData> ptr) : Buffer(ptr), rawNn(*ptr.get()) {}
 
 static std::size_t sizeofTensorInfoDataType(TensorInfo::DataType type) {

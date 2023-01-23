@@ -64,6 +64,7 @@ class NNData : public Buffer {
      * Construct NNData message.
      */
     NNData();
+    NNData(size_t size);
     explicit NNData(std::shared_ptr<RawNNData> ptr);
     virtual ~NNData() = default;
 
