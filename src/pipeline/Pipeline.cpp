@@ -286,7 +286,7 @@ tl::optional<OpenVINO::Version> PipelineImpl::getPipelineOpenVINOVersion() const
 
 Device::Config PipelineImpl::getDeviceConfig() const {
     Device::Config config;
-    config.version = getPipelineOpenVINOVersion().value_or(OpenVINO::DEFAULT_VERSION);
+    config.version = getPipelineOpenVINOVersion().value_or(OpenVINO::VERSION_UNIVERSAL);
     config.board = board;
     return config;
 }
