@@ -13,7 +13,7 @@ int main(int argc, char** argv) {
     }
 
     // Connect device
-    dai::Device device(dai::UsbSpeed::HIGH);
+    dai::Device device(dai::OpenVINO::VERSION_UNIVERSAL, dai::UsbSpeed::HIGH);
 
     dai::CalibrationHandler deviceCalib = device.readCalibration();
     deviceCalib.eepromToJsonFile(calibBackUpFile);
