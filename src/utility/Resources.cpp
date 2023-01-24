@@ -44,7 +44,7 @@ constexpr static auto CMRC_DEPTHAI_DEVICE_TAR_XZ = "depthai-device-fwp-" DEPTHAI
 // Main FW
 constexpr static auto DEPTHAI_CMD_OPENVINO_UNIVERSAL_PATH = "depthai-device-openvino-universal-" DEPTHAI_DEVICE_VERSION ".cmd";
 constexpr static auto MAIN_FW_PATH = DEPTHAI_CMD_OPENVINO_UNIVERSAL_PATH;
-constexpr static auto& MAIN_FW_VERSION = OpenVINO::DEFAULT_VERSION;
+constexpr static auto MAIN_FW_VERSION = OpenVINO::VERSION_UNIVERSAL;
 
 // Patches from Main FW
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_4_PATCH_PATH = "depthai-device-openvino-2020.4-" DEPTHAI_DEVICE_VERSION ".patch";

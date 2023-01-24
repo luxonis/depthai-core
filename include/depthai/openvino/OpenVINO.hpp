@@ -51,7 +51,7 @@ class OpenVINO {
     };
 
     /// Main OpenVINO version
-    constexpr static const Version DEFAULT_VERSION = VERSION_UNIVERSAL;
+    constexpr static const Version DEFAULT_VERSION = VERSION_2022_1;
 
     /**
      * @returns Supported versions
