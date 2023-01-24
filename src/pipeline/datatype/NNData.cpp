@@ -288,6 +288,20 @@ std::vector<float> NNData::getLayerFp16(const std::string& name) const {
                 return data;
             }
         }
+        else if(tensor.dataType == TensorInfo::DataType::FP32) {
+            if(tensor.numDimensions > 0) {
+                std::size_t size = getTensorDataSize(tensor);
+                std::size_t numElements = size / sizeof(float_t);
+
+                std::vector<float> data;
+                data.reserve(numElements);
+                auto* pFp32Data = reinterpret_cast<float_t*>(&this->data->getData()[tensor.offset]);
+                for(std::size_t i = 0; i < numElements; i++) {
+                    data.push_back(pFp32Data[i]);
+                }
+                return data;
+            }
+        }
     }
     return {};
 }
