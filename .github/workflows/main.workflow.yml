@@ -62,7 +62,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-11, windows-latest, ubuntu-latest]
+        os: [macos-latest, windows-latest, ubuntu-latest]
         cmake: ['3.10.x', ''] # Older version (Ubuntu 18.04) and newest
         exclude:
           - os: windows-latest
@@ -92,7 +92,7 @@ jobs:
         cmake-version: ${{ matrix.cmake }}
 
     - name: Install dependencies
-      if: matrix.os == 'macos-11'
+      if: matrix.os == 'macos-latest'
       run: |
         brew install opencv
 
@@ -131,7 +131,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-11, windows-latest, ubuntu-latest]
+        os: [macos-latest, windows-latest, ubuntu-latest]
         build-type: [Debug, Release]
         shared: [true, false]
         platform: [x64]
@@ -163,7 +163,7 @@ jobs:
         submodules: 'recursive'
 
     - name: Install dependencies
-      if: matrix.os == 'macos-11'
+      if: matrix.os == 'macos-latest'
       run: |
         brew install opencv
 
