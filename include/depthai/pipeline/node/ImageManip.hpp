@@ -50,6 +50,18 @@ class ImageManip : public NodeCRTP<Node, ImageManip, ImageManipProperties> {
      */
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
 
+    /**
+     * Output configuration message with which the manipulation was performed.
+     */
+    Output outConfig{*this, "outConfig", Output::Type::MSender, {{DatatypeEnum::ImageManipConfig, true}}};
+
+    /**
+     * Passthrough image message on which the manipulation was performed.
+     *
+     * Suitable for when input queue is set to non-blocking behavior.
+     */
+    Output passthroughImage{*this, "passthroughImage", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
+
     // Functions to set ImageManipConfig - deprecated
     [[deprecated("Use 'initialConfig.setCropRect()' instead")]] void setCropRect(float xmin, float ymin, float xmax, float ymax);
     [[deprecated("Use 'initialConfig.setCenterCrop()' instead")]] void setCenterCrop(float ratio, float whRatio = 1.0f);
