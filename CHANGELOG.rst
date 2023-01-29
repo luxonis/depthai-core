@@ -2,7 +2,7 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-2.19.1 (2022-01-29)
+2.20.1 (2022-01-29)
 -----------
 * Modified OpenVINO::VERSION_UNIVERSAL API improvements / backward compatibility
 * Bootloader version 0.0.24 (fixes for standalone / flashed usecases)
