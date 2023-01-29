@@ -2,6 +2,13 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.19.1 (2022-01-29)
+-----------
+* Modified OpenVINO::VERSION_UNIVERSAL API improvements / backward compatibility
+* Bootloader version 0.0.24 (fixes for standalone / flashed usecases)
+* [FW] Status LEDs on some additional devices
+* Contributors: Alex Bougdan, Szabolcs Gergely, Martin Peterlin
+
 2.19.1 (2022-11-28)
 -----------
 * Added Device getDeviceName API
