@@ -160,6 +160,47 @@ ImageManipConfig& ImageManipConfig::setFrameType(dai::RawImgFrame::Type type) {
     return *this;
 }
 
+ImageManipConfig& ImageManipConfig::setColormap(dai::Colormap colormap, float maxf) {
+    int max = maxf;
+    if(max < 0 || max >= 256) throw std::invalid_argument("Colormap max argument must be between 0 and 255");
+
+    // Enable format stage
+    cfg.enableFormat = true;
+
+    // Set type format
+    cfg.formatConfig.colormap = colormap;
+    cfg.formatConfig.colormapMin = 0;
+    cfg.formatConfig.colormapMax = max;
+    return *this;
+}
+
+ImageManipConfig& ImageManipConfig::setColormap(dai::Colormap colormap, int max) {
+    if(max < 0 || max >= 256) throw std::invalid_argument("Colormap max argument must be between 0 and 255");
+
+    // Enable format stage
+    cfg.enableFormat = true;
+
+    // Set type format
+    cfg.formatConfig.colormap = colormap;
+    cfg.formatConfig.colormapMin = 0;
+    cfg.formatConfig.colormapMax = max;
+    return *this;
+}
+
+ImageManipConfig& ImageManipConfig::setColormap(dai::Colormap colormap, int min, int max) {
+    if(max < 0 || max >= 256) throw std::invalid_argument("Colormap max argument must be between 0 and 255");
+    if(min < 0 || min >= 256) throw std::invalid_argument("Colormap min argument must be between 0 and 255");
+
+    // Enable format stage
+    cfg.enableFormat = true;
+
+    // Set type format
+    cfg.formatConfig.colormap = colormap;
+    cfg.formatConfig.colormapMin = min;
+    cfg.formatConfig.colormapMax = max;
+    return *this;
+}
+
 ImageManipConfig& ImageManipConfig::setHorizontalFlip(bool flip) {
     // Enable format stage
     cfg.enableFormat = true;
@@ -232,6 +273,10 @@ ImageManipConfig::FormatConfig ImageManipConfig::getFormatConfig() const {
 
 bool ImageManipConfig::isResizeThumbnail() const {
     return cfg.resizeConfig.lockAspectRatioFill;
+}
+
+dai::Colormap ImageManipConfig::getColormap() const {
+    return cfg.formatConfig.colormap;
 }
 
 }  // namespace dai

@@ -8,6 +8,8 @@ endif()
 
 set(HUNTER_SKIP_PACKAGE_nlohmann_json OFF)
 set(BUILD_SHARED_LIBS ON)
+# Set type to canonicalize relative paths for user-provided toolchain
+set(CMAKE_TOOLCHAIN_FILE "" CACHE FILEPATH "CMake toolchain path")
 
 # Create a custom toolchain to pass certain options to dependencies
 set(gen_toolchain "${CMAKE_CURRENT_BINARY_DIR}/generated/toolchain.cmake")
@@ -43,7 +45,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.19.1" LANGUAGES CXX C)
+project(depthai VERSION "2.20.1" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -204,6 +206,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/XLinkIn.cpp
     src/pipeline/node/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
+    src/pipeline/node/Camera.cpp
     src/pipeline/node/MonoCamera.cpp
     src/pipeline/node/StereoDepth.cpp
     src/pipeline/node/NeuralNetwork.cpp
@@ -323,7 +326,7 @@ endif()
 
 # Then get the Depthai device side binaries (local or download)
 if(DEPTHAI_CMD_PATH OR DEPTHAI_USB2_CMD_PATH OR DEPTHAI_USB2_PATCH_PATH)
-    # Atleast one of the paths is set. include binaries locally
+    # At least one of the paths is set. include binaries locally
     message(STATUS "Using local Depthai device side binaries...")
 
     DepthaiLocal(
