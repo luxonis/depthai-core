@@ -16,6 +16,7 @@
 
 // project
 #include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/CameraFeatures.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/device/Version.hpp"
@@ -66,6 +67,7 @@ class DeviceBase {
     struct Config {
         OpenVINO::Version version;
         BoardConfig board;
+        bool nonExclusiveMode = false;
     };
 
     // static API
@@ -134,7 +136,7 @@ class DeviceBase {
      * @param version Version of OpenVINO which firmware will support
      * @returns Firmware binary
      */
-    static std::vector<std::uint8_t> getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version = OpenVINO::DEFAULT_VERSION);
+    static std::vector<std::uint8_t> getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version = OpenVINO::VERSION_UNIVERSAL);
 
     /**
      * Gets device firmware binary for a specific configuration
@@ -206,7 +208,7 @@ class DeviceBase {
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * Uses OpenVINO version OpenVINO::DEFAULT_VERSION
+     * Uses OpenVINO version OpenVINO::VERSION_UNIVERSAL
      */
     DeviceBase();
 
@@ -286,7 +288,7 @@ class DeviceBase {
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * Uses OpenVINO version OpenVINO::DEFAULT_VERSION
+     * Uses OpenVINO version OpenVINO::VERSION_UNIVERSAL
      *
      * @param devInfo DeviceInfo which specifies which device to connect to
      */
@@ -294,12 +296,29 @@ class DeviceBase {
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * Uses OpenVINO version OpenVINO::DEFAULT_VERSION
+     * Uses OpenVINO version OpenVINO::VERSION_UNIVERSAL
      *
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param maxUsbSpeed Maximum allowed USB speed
      */
     DeviceBase(const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * Uses OpenVINO version OpenVINO::VERSION_UNIVERSAL
+     *
+     * @param nameOrDeviceId Creates DeviceInfo with nameOrDeviceId to connect to
+     */
+    DeviceBase(std::string nameOrDeviceId);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * Uses OpenVINO version OpenVINO::VERSION_UNIVERSAL
+     *
+     * @param nameOrDeviceId Creates DeviceInfo with nameOrDeviceId to connect to
+     * @param maxUsbSpeed Maximum allowed USB speed
+     */
+    DeviceBase(std::string nameOrDeviceId, UsbSpeed maxUsbSpeed);
 
     /**
      * Device destructor
@@ -633,7 +652,7 @@ class DeviceBase {
     /**
      * Fetches the raw EEPROM data from User area
      *
-     * @throws std::runtime_exception if any error occured
+     * @throws std::runtime_exception if any error occurred
      * @returns Binary dump of User area EEPROM data
      */
     std::vector<std::uint8_t> readCalibrationRaw();
@@ -641,7 +660,7 @@ class DeviceBase {
     /**
      * Fetches the raw EEPROM data from Factory area
      *
-     * @throws std::runtime_exception if any error occured
+     * @throws std::runtime_exception if any error occurred
      * @returns Binary dump of Factory area EEPROM data
      */
     std::vector<std::uint8_t> readFactoryCalibrationRaw();

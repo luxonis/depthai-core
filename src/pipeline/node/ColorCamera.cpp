@@ -41,6 +41,14 @@ CameraBoardSocket ColorCamera::getBoardSocket() const {
     return properties.boardSocket;
 }
 
+void ColorCamera::setCamera(std::string name) {
+    properties.cameraName = name;
+}
+
+std::string ColorCamera::getCamera() const {
+    return properties.cameraName;
+}
+
 // Set which color camera to use
 void ColorCamera::setCamId(int64_t id) {
     // cast to board socket
@@ -169,6 +177,14 @@ void ColorCamera::setFps(float fps) {
     properties.fps = fps;
 }
 
+void ColorCamera::setFrameEventFilter(const std::vector<dai::FrameEvent>& events) {
+    properties.eventFilter = events;
+}
+
+std::vector<dai::FrameEvent> ColorCamera::getFrameEventFilter() const {
+    return properties.eventFilter;
+}
+
 float ColorCamera::getFps() const {
     // if AUTO
     if(properties.fps == ColorCameraProperties::AUTO || properties.fps == 0) {
@@ -226,6 +242,10 @@ std::tuple<int, int> ColorCamera::getVideoSize() const {
         if(properties.resolution == ColorCameraProperties::SensorResolution::THE_800_P) {
             maxVideoWidth = 1280;
             maxVideoHeight = 800;
+        }
+
+        if(properties.resolution == ColorCameraProperties::SensorResolution::THE_1440X1080) {
+            maxVideoWidth = 1440;
         }
 
         // Take into the account the ISP scaling
@@ -291,6 +311,10 @@ std::tuple<int, int> ColorCamera::getStillSize() const {
         if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_48_MP) {
             maxStillWidth = 8000;
             maxStillHeight = 6000;
+        }
+        if(properties.resolution == dai::ColorCameraProperties::SensorResolution::THE_1440X1080) {
+            maxStillWidth = 1440;
+            maxStillHeight = 1080;
         }
 
         // Take into the account the ISP scaling
@@ -366,6 +390,10 @@ std::tuple<int, int> ColorCamera::getResolutionSize() const {
 
         case ColorCameraProperties::SensorResolution::THE_48_MP:
             return {8000, 6000};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_1440X1080:
+            return {1440, 1080};
             break;
     }
 
