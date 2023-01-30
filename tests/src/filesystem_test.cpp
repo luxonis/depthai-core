@@ -1,5 +1,7 @@
-#define CATCH_CONFIG_MAIN
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
+#include <catch2/matchers/catch_matchers_all.hpp>
+
+using namespace Catch::Matchers;
 
 // Include depthai library
 #include <cstdio>
@@ -150,15 +152,15 @@ TEST_CASE("dai::Path with NN blobs") {
 
     // attempt to use a non-existing blob at a utf-8 path
 #if defined(_WIN32) && defined(_MSC_VER)
-    REQUIRE_THROWS_WITH(nn->setBlobPath(PATH4), Catch::Matchers::Contains("Cannot load blob") && Catch::Matchers::Contains("not convertible"));
-    REQUIRE_THROWS_WITH(nn->setBlobPath(strPath), Catch::Matchers::Contains("Cannot load blob") && Catch::Matchers::Contains("not convertible"));
-    REQUIRE_THROWS_WITH(nn->setBlobPath(daiPath), Catch::Matchers::Contains("Cannot load blob") && Catch::Matchers::Contains("not convertible"));
+    REQUIRE_THROWS_WITH(nn->setBlobPath(PATH4), ContainsSubstring("Cannot load blob") && ContainsSubstring("not convertible"));
+    REQUIRE_THROWS_WITH(nn->setBlobPath(strPath), ContainsSubstring("Cannot load blob") && ContainsSubstring("not convertible"));
+    REQUIRE_THROWS_WITH(nn->setBlobPath(daiPath), ContainsSubstring("Cannot load blob") && ContainsSubstring("not convertible"));
 #else
-    REQUIRE_THROWS_WITH(nn->setBlobPath(PATH4), Catch::Matchers::Contains("Cannot load blob") && Catch::Matchers::Contains(dai::Path(PATH4).string()));
+    REQUIRE_THROWS_WITH(nn->setBlobPath(PATH4), ContainsSubstring(std::string("Cannot load blob")) && ContainsSubstring(dai::Path(PATH4).string()));
     REQUIRE_THROWS_WITH(
         nn->setBlobPath(strPath),
-        Catch::Matchers::Contains("Cannot load blob") && Catch::Matchers::Contains(std::string{reinterpret_cast<const char*>(strPath.c_str())}));
-    REQUIRE_THROWS_WITH(nn->setBlobPath(daiPath), Catch::Matchers::Contains("Cannot load blob") && Catch::Matchers::Contains(daiPath.string()));
+        ContainsSubstring("Cannot load blob") && ContainsSubstring(std::string{reinterpret_cast<const char*>(strPath.c_str())}));
+    REQUIRE_THROWS_WITH(nn->setBlobPath(daiPath), ContainsSubstring("Cannot load blob") && ContainsSubstring(daiPath.string()));
 #endif
 
     // use blob at known test path
@@ -192,24 +194,24 @@ TEST_CASE("dai::Path with Device") {
     dai::Pipeline pipeline;
     auto nn = pipeline.create<dai::node::NeuralNetwork>();
     REQUIRE_NOTHROW(nn->setBlobPath(BLOB_PATH));
-    REQUIRE_THROWS_WITH(dai::Device(pipeline, PATH5), Catch::Matchers::Contains(PATH5));
-    REQUIRE_THROWS_WITH(dai::Device(pipeline, &badfile[0]), Catch::Matchers::Contains(PATH5));
-    REQUIRE_THROWS_WITH(dai::Device(pipeline, strBadfile), Catch::Matchers::Contains(PATH5));
-    REQUIRE_THROWS_WITH(dai::Device(pipeline, diaBadFile), Catch::Matchers::Contains(PATH5));
+    REQUIRE_THROWS_WITH(dai::Device(pipeline, PATH5), ContainsSubstring(PATH5));
+    REQUIRE_THROWS_WITH(dai::Device(pipeline, &badfile[0]), ContainsSubstring(PATH5));
+    REQUIRE_THROWS_WITH(dai::Device(pipeline, strBadfile), ContainsSubstring(PATH5));
+    REQUIRE_THROWS_WITH(dai::Device(pipeline, diaBadFile), ContainsSubstring(PATH5));
 
 #if defined(_WIN32) && defined(_MSC_VER)
     const wchar_t wideBadfile[] = LPATH5;
     const std::wstring wstrBadfile(LPATH5);
     const dai::Path diaFileFromWide(LPATH5);
-    REQUIRE_THROWS_WITH(dai::Device(pipeline, LPATH5), Catch::Matchers::Contains(PATH5));
-    REQUIRE_THROWS_WITH(dai::Device(pipeline, &wideBadfile[0]), Catch::Matchers::Contains(PATH5));
-    REQUIRE_THROWS_WITH(dai::Device(pipeline, wstrBadfile), Catch::Matchers::Contains(PATH5));
-    REQUIRE_THROWS_WITH(dai::Device(pipeline, diaFileFromWide), Catch::Matchers::Contains(PATH5));
+    REQUIRE_THROWS_WITH(dai::Device(pipeline, LPATH5), ContainsSubstring(PATH5));
+    REQUIRE_THROWS_WITH(dai::Device(pipeline, &wideBadfile[0]), ContainsSubstring(PATH5));
+    REQUIRE_THROWS_WITH(dai::Device(pipeline, wstrBadfile), ContainsSubstring(PATH5));
+    REQUIRE_THROWS_WITH(dai::Device(pipeline, diaFileFromWide), ContainsSubstring(PATH5));
 #endif
 
 #if defined(__cpp_lib_filesystem)
     std::filesystem::path stdBadfile(PATH5);
-    REQUIRE_THROWS_WITH(dai::Device(pipeline, stdBadfile), Catch::Matchers::Contains(PATH5));
+    REQUIRE_THROWS_WITH(dai::Device(pipeline, stdBadfile), ContainsSubstring(PATH5));
 #endif
 
     dai::Device d(pipeline);
@@ -263,38 +265,38 @@ TEST_CASE("dai::Path with DeviceBootloader") {
                 dai::DeviceBootloader bl(deviceInfo, &badfile[0]);
                 auto currentBlType = bl.getType();
             }(),
-            Catch::Matchers::Contains("doesn't exist"));
+            ContainsSubstring("doesn't exist"));
         REQUIRE_THROWS_WITH(
             [&]() {
                 dai::DeviceBootloader bl(deviceInfo, strBadfile);
                 auto currentBlType = bl.getType();
             }(),
-            Catch::Matchers::Contains("doesn't exist"));
+            ContainsSubstring("doesn't exist"));
         REQUIRE_THROWS_WITH(
             [&]() {
                 dai::DeviceBootloader bl(deviceInfo, diaBadfile);
                 auto currentBlType = bl.getType();
             }(),
-            Catch::Matchers::Contains("doesn't exist"));
+            ContainsSubstring("doesn't exist"));
 #if defined(_WIN32) && defined(_MSC_VER)
         REQUIRE_THROWS_WITH(
             [&]() {
                 dai::DeviceBootloader bl(deviceInfo, &wideBadfile[0]);
                 auto currentBlType = bl.getType();
             }(),
-            Catch::Matchers::Contains("doesn't exist"));
+            ContainsSubstring("doesn't exist"));
         REQUIRE_THROWS_WITH(
             [&]() {
                 dai::DeviceBootloader bl(deviceInfo, wstrBadfile);
                 auto currentBlType = bl.getType();
             }(),
-            Catch::Matchers::Contains("doesn't exist"));
+            ContainsSubstring("doesn't exist"));
         REQUIRE_THROWS_WITH(
             [&]() {
                 dai::DeviceBootloader bl(deviceInfo, diaBadWide);
                 auto currentBlType = bl.getType();
             }(),
-            Catch::Matchers::Contains("doesn't exist"));
+            ContainsSubstring("doesn't exist"));
 #endif
 #if defined(__cpp_lib_filesystem)
     #if defined(__cpp_lib_char8_t)
@@ -307,7 +309,7 @@ TEST_CASE("dai::Path with DeviceBootloader") {
                 dai::DeviceBootloader bl(deviceInfo, stdBadpath);
                 auto currentBlType = bl.getType();
             }(),
-            Catch::Matchers::Contains("doesn't exist"));
+            ContainsSubstring("doesn't exist"));
 #endif
     } else {
         std::cout << "No devices found" << std::endl;
