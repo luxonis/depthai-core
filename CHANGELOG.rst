@@ -1,8 +1,14 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+2.20.1 (2023-01-31)
+-----------
+* Fix for ColorCamera at high resolution while using isp scaling
+* Fix for OV9282 SW sync on devices with OV9782 RGB camera
+* Fix for IMX378/477/577 on sockets other than CAM_A (RGB)
+* Contributors: Alex Bougdan, Szabolcs Gergely, Martin Peterlin
 
-2.20.1 (2022-01-29)
+2.20.1 (2023-01-29)
 -----------
 * Modified OpenVINO::VERSION_UNIVERSAL API improvements / backward compatibility
 * Bootloader version 0.0.24 (fixes for standalone / flashed usecases)
