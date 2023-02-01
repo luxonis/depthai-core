@@ -6,10 +6,19 @@
 #include "depthai-shared/common/EepromData.hpp"
 #include "depthai-shared/common/Point2f.hpp"
 #include "depthai-shared/common/Size2f.hpp"
+#include "depthai/utility/Path.hpp"
 
 namespace dai {
 /**
  * CalibrationHandler is an interface to read/load/write structured calibration and device data.
+ * The following fields are protected and aren't allowed to be overriden by default:
+ *  - boardName
+ *  - boardRev
+ *  - boardConf
+ *  - hardwareConf
+ *  - batchName
+ *  - batchTime
+ *  - boardOptions
  */
 class CalibrationHandler {
    public:
@@ -26,7 +35,7 @@ class CalibrationHandler {
      *
      * @param eepromDataPath takes the full path to the json file containing the calibration and device info.
      */
-    explicit CalibrationHandler(std::string eepromDataPath);
+    explicit CalibrationHandler(dai::Path eepromDataPath);
 
     /**
      * Construct a new Calibration Handler object using the board
@@ -35,7 +44,7 @@ class CalibrationHandler {
      * @param calibrationDataPath Full Path to the .calib binary file from the gen1 calibration. (Supports only Version 5)
      * @param boardConfigPath Full Path to the board config json file containing device information.
      */
-    CalibrationHandler(std::string calibrationDataPath, std::string boardConfigPath);
+    CalibrationHandler(dai::Path calibrationDataPath, dai::Path boardConfigPath);
 
     /**
      * Construct a new Calibration Handler object from EepromData object.
@@ -43,6 +52,13 @@ class CalibrationHandler {
      * @param eepromData EepromData data structure containing the calibration data.
      */
     explicit CalibrationHandler(EepromData eepromData);
+
+    /**
+     * Construct a new Calibration Handler object from JSON EepromData.
+     *
+     * @param eepromDataJson EepromData as JSON
+     */
+    static CalibrationHandler fromJson(nlohmann::json eepromDataJson);
 
     /**
      * Get the Eeprom Data object
@@ -164,6 +180,14 @@ class CalibrationHandler {
     uint8_t getLensPosition(CameraBoardSocket cameraId);
 
     /**
+     *  Get the distortion model of the given camera
+     *
+     * @param cameraId of the camera with lens position is requested.
+     * @return lens position of the camera with given cameraId at which it was calibrated.
+     */
+    CameraModel getDistortionModel(CameraBoardSocket cameraId);
+
+    /**
      * Get the Camera Extrinsics object between two cameras from the calibration data if there is a linked connection
      *  between any two cameras then the relative rotation and translation (in centimeters) is returned by this function.
      *
@@ -281,7 +305,14 @@ class CalibrationHandler {
      * @param destPath  Full path to the json file in which raw calibration data will be stored
      * @return True on success, false otherwise
      */
-    bool eepromToJsonFile(std::string destPath) const;
+    bool eepromToJsonFile(dai::Path destPath) const;
+
+    /**
+     * Get JSON representation of calibration data
+     *
+     * @return JSON structure
+     */
+    nlohmann::json eepromToJson() const;
 
     /**
      * Set the Board Info object
@@ -291,6 +322,28 @@ class CalibrationHandler {
      * @param boardRev set your board revision id.
      */
     void setBoardInfo(std::string boardName, std::string boardRev);
+
+    /**
+     * Set the Board Info object. Creates version 7 EEPROM data
+     *
+     * @param productName Sets product name (alias).
+     * @param boardName Sets board name.
+     * @param boardRev Sets board revision id.
+     * @param boardConf Sets board configuration id.
+     * @param hardwareConf Sets hardware configuration id.
+     * @param batchName Sets batch name.
+     * @param batchTime Sets batch time (unix timestamp).
+     * @param boardCustom Sets a custom board (Default empty string).
+     */
+    void setBoardInfo(std::string productName,
+                      std::string boardName,
+                      std::string boardRev,
+                      std::string boardConf,
+                      std::string hardwareConf,
+                      std::string batchName,
+                      uint64_t batchTime,
+                      uint32_t boardOptions,
+                      std::string boardCustom = "");
 
     /**
      * Set the Camera Intrinsics object

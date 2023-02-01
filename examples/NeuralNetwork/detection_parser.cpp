@@ -12,7 +12,7 @@ static const std::vector<std::string> labelMap = {"background", "aeroplane", "bi
                                                   "car",        "cat",       "chair",       "cow",   "diningtable", "dog",    "horse",
                                                   "motorbike",  "person",    "pottedplant", "sheep", "sofa",        "train",  "tvmonitor"};
 
-static std::atomic<bool> syncNN{false};
+static std::atomic<bool> syncNN{true};
 
 int main(int argc, char** argv) {
     using namespace std;
@@ -34,26 +34,27 @@ int main(int argc, char** argv) {
 
     // Define sources and outputs
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
-    auto nn = pipeline.create<dai::node::MobileNetDetectionNetwork>();
+    auto nn = pipeline.create<dai::node::NeuralNetwork>();
+    auto det = pipeline.create<dai::node::DetectionParser>();
     auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
     auto nnOut = pipeline.create<dai::node::XLinkOut>();
-    auto nnNetworkOut = pipeline.create<dai::node::XLinkOut>();
-    auto nnNetworkConfig = pipeline.create<dai::node::XLinkIn>();
 
     xoutRgb->setStreamName("rgb");
     nnOut->setStreamName("nn");
-    nnNetworkOut->setStreamName("nnNetwork");
-    nnNetworkConfig->setStreamName("nnNetworkConfig");
 
     // Properties
     camRgb->setPreviewSize(300, 300);  // NN input
     camRgb->setInterleaved(false);
     camRgb->setFps(40);
     // Define a neural network that will make predictions based on the source frames
-    nn->setConfidenceThreshold(0.5);
-    nn->setBlobPath(nnPath);
     nn->setNumInferenceThreads(2);
     nn->input.setBlocking(false);
+
+    dai::OpenVINO::Blob blob(nnPath);
+    nn->setBlob(blob);
+    det->setBlob(blob);
+    det->setNNFamily(DetectionNetworkType::MOBILENET);
+    det->setConfidenceThreshold(0.5);
 
     // Linking
     if(syncNN) {
@@ -63,9 +64,8 @@ int main(int argc, char** argv) {
     }
 
     camRgb->preview.link(nn->input);
-    nn->out.link(nnOut->input);
-    nn->outNetwork.link(nnNetworkOut->input);
-    nnNetworkConfig->out.link(nn->inputConfig);
+    nn->out.link(det->input);
+    det->out.link(nnOut->input);
 
     // Connect to device and start pipeline
     dai::Device device(pipeline);
@@ -73,8 +73,6 @@ int main(int argc, char** argv) {
     // Output queues will be used to get the rgb frames and nn data from the outputs defined above
     auto qRgb = device.getOutputQueue("rgb", 4, false);
     auto qDet = device.getOutputQueue("nn", 4, false);
-    auto qNN = device.getOutputQueue("nnNetwork", 4, false);
-    auto qNNCfg = device.getInputQueue("nnNetworkConfig");
 
     cv::Mat frame;
     std::vector<dai::ImgDetection> detections;
@@ -108,21 +106,16 @@ int main(int argc, char** argv) {
         cv::imshow(name, frame);
     };
 
-    bool printOutputLayersOnce = true;
-
     while(true) {
         std::shared_ptr<dai::ImgFrame> inRgb;
         std::shared_ptr<dai::ImgDetections> inDet;
-        std::shared_ptr<dai::NNData> inNN;
 
         if(syncNN) {
             inRgb = qRgb->get<dai::ImgFrame>();
             inDet = qDet->get<dai::ImgDetections>();
-            inNN = qNN->get<dai::NNData>();
         } else {
             inRgb = qRgb->tryGet<dai::ImgFrame>();
             inDet = qDet->tryGet<dai::ImgDetections>();
-            inNN = qNN->tryGet<dai::NNData>();
         }
 
         counter++;
@@ -145,15 +138,6 @@ int main(int argc, char** argv) {
             detections = inDet->detections;
         }
 
-        if(printOutputLayersOnce && inNN) {
-            std::cout << "Output layer names: ";
-            for(const auto& ten : inNN->getAllLayerNames()) {
-                std::cout << ten << ", ";
-            }
-            std::cout << std::endl;
-            printOutputLayersOnce = false;
-        }
-
         if(!frame.empty()) {
             displayFrame("video", frame, detections);
         }
@@ -161,14 +145,6 @@ int main(int argc, char** argv) {
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q') {
             return 0;
-        } else if(key == 's') {
-            dai::NNConfig cfg;
-            cfg.setProcessInputs(true);
-            qNNCfg->send(cfg);
-        } else if(key == 'd') {
-            dai::NNConfig cfg;
-            cfg.setProcessInputs(false);
-            qNNCfg->send(cfg);
         }
     }
     return 0;

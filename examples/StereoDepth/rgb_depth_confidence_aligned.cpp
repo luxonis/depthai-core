@@ -143,12 +143,11 @@ int main() {
 
             float sumWeight = rgbWeight + depthWeight + confWeight;
             // Normalize the weights so their sum to be <= 1.0
-            if (sumWeight <= 1.0) {
+            if(sumWeight <= 1.0) {
                 rgbWeightNorm = rgbWeight;
                 depthWeightNorm = depthWeight;
                 confWeightNorm = confWeight;
-            }
-            else {
+            } else {
                 rgbWeightNorm = rgbWeight / sumWeight;
                 depthWeightNorm = depthWeight / sumWeight;
                 confWeightNorm = confWeight / sumWeight;

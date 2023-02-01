@@ -36,12 +36,21 @@ int main(int argc, char** argv) {
     std::tie(res, info) = dai::DeviceBootloader::getFirstAvailableDevice();
 
     if(res) {
-        std::cout << "Found device with name: " << info.desc.name << std::endl;
+        std::cout << "Found device with name: " << info.name << std::endl;
         dai::DeviceBootloader bl(info);
 
         if(read) {
             std::cout << "Current flashed configuration\n" << bl.readConfigData().dump(4) << std::endl;
         } else {
+            std::cout << "Warning! Flashing bootloader config can potentially soft brick your device and should be done with caution." << std::endl;
+            std::cout << "Do not unplug your device while the bootloader config is flashing." << std::endl;
+            std::cout << "Type 'y' and press enter to proceed, otherwise exits: ";
+            std::cin.ignore();
+            if(std::cin.get() != 'y') {
+                std::cout << "Prompt declined, exiting..." << std::endl;
+                return -1;
+            }
+
             bool success;
             std::string error;
             if(clear) {

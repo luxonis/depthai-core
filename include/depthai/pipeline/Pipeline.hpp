@@ -39,7 +39,7 @@ class PipelineImpl {
     tl::optional<OpenVINO::Version> getPipelineOpenVINOVersion() const;
     bool isOpenVINOVersionCompatible(OpenVINO::Version version) const;
     Device::Config getDeviceConfig() const;
-    void setCameraTuningBlobPath(const std::string& path);
+    void setCameraTuningBlobPath(const dai::Path& path);
     void setXLinkChunkSize(int sizeBytes);
     void setImageManipCmxSizeAdjust(int sizeAdjustBytes);
 
@@ -249,7 +249,7 @@ class Pipeline {
     }
 
     /// Set a camera IQ (Image Quality) tuning blob, used for all cameras
-    void setCameraTuningBlobPath(const std::string& path) {
+    void setCameraTuningBlobPath(const dai::Path& path) {
         impl()->setCameraTuningBlobPath(path);
     }
 
