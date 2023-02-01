@@ -6,6 +6,7 @@
 
 // project
 #include "depthai/build/config.hpp"
+#include "depthai/common/CameraExposureOffset.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 // shared
@@ -42,15 +43,27 @@ class ImgFrame : public Buffer {
 
     // getters
     /**
-     * Retrieves image timestamp related to dai::Clock::now()
+     * Retrieves image timestamp (end of exposure) related to dai::Clock::now()
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;
 
     /**
-     * Retrieves image timestamp directly captured from device's monotonic clock,
-     * not synchronized to host time. Used mostly for debugging
+     * Retrieves image timestamp (end of exposure) directly captured from device's monotonic clock,
+     * not synchronized to host time. Used when monotonicity is required.
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
+
+    // getters
+    /**
+     * Retrieves image timestamp (at the specified offset of exposure) related to dai::Clock::now()
+     */
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp(CameraExposureOffset offset) const;
+
+    /**
+     * Retrieves image timestamp (at the specified offset of exposure) directly captured from device's monotonic clock,
+     * not synchronized to host time. Used when monotonicity is required.
+     */
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice(CameraExposureOffset offset) const;
 
     /**
      * Retrieves instance number
@@ -83,14 +96,19 @@ class ImgFrame : public Buffer {
     Type getType() const;
 
     /**
-     * Retrieves exposure time, in microseconds
+     * Retrieves exposure time
      */
-    int getExposureTime() const;
+    std::chrono::microseconds getExposureTime() const;
 
     /**
      * Retrieves sensitivity, as an ISO value
      */
     int getSensitivity() const;
+
+    /**
+     * Retrieves white-balance color temperature of the light source, in kelvins
+     */
+    int getColorTemperature() const;
 
     /**
      * Retrieves lens position, range 0..255. Returns -1 if not available

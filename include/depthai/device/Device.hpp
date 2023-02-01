@@ -84,7 +84,7 @@ class Device : public DeviceBase {
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * Uses OpenVINO version Pipeline::DEFAULT_OPENVINO_VERSION
+     * Uses OpenVINO version OpenVINO::VERSION_UNIVERSAL
      */
     Device();
 

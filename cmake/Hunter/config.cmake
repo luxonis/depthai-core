@@ -8,8 +8,8 @@ hunter_config(
 hunter_config(
     XLink
     VERSION "luxonis-2021.4.2-develop"
-    URL "https://github.com/luxonis/XLink/archive/5a0c118ef4710d27bc9e99415b526f22b3af56db.tar.gz"
-    SHA1 "9ac40df4ed8d6d6911548d951ecf4c0fb11f60f5"
+    URL "https://github.com/luxonis/XLink/archive/1ef2f960eec66540891434c9a3341c11e66e4360.tar.gz"
+    SHA1 "23641bb9ae698d0e016abcce349094a38577838b"
 )
 
 hunter_config(
@@ -100,8 +100,8 @@ hunter_config(
 hunter_config(
     Catch2
     VERSION "2.13.7"
-    URL "https://github.com/catchorg/Catch2/archive/refs/tags/v2.13.7.tar.gz"
-    SHA1 "fa8f14ccf852413d3c6d3999145ada934d37d773"
+    URL "https://github.com/catchorg/Catch2/archive/refs/tags/v3.2.1.tar.gz"
+    SHA1 "acfba7f71cbbbbf60bc1bc4c0e3efca4a9c70df7"
 )
 
 # ZLib - Luxonis fix for alias on imported target for old CMake versions

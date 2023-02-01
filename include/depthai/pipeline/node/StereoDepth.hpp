@@ -346,6 +346,25 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * used from calibration data.
      */
     void useHomographyRectification(bool useHomographyRectification);
+
+    /**
+     * Equivalent to useHomographyRectification(!enableDistortionCorrection)
+     */
+    void enableDistortionCorrection(bool enableDistortionCorrection);
+
+    /**
+     * Override baseline from calibration.
+     * Used only in disparity to depth conversion.
+     * Units are centimeters.
+     */
+    void setBaseline(float baseline);
+
+    /**
+     * Override focal length from calibration.
+     * Used only in disparity to depth conversion.
+     * Units are pixels.
+     */
+    void setFocalLength(float focalLength);
 };
 
 }  // namespace node

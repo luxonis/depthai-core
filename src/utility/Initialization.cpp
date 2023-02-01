@@ -82,6 +82,20 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
             spdlog::set_level(spdlog::level::warn);
         }
 
+        auto debugStr = utility::getEnv("DEPTHAI_DEBUG");
+        if(!debugStr.empty()) {
+            // Try parsing the string as a number
+            try {
+                int debug{std::stoi(debugStr)};
+                if(debug && (spdlog::get_level() > spdlog::level::debug)) {
+                    spdlog::set_level(spdlog::level::debug);
+                    spdlog::info("DEPTHAI_DEBUG enabled, lowered DEPTHAI_LEVEL to 'debug'");
+                }
+            } catch(const std::invalid_argument& e) {
+                spdlog::warn("DEPTHAI_DEBUG value invalid: {}, should be a number (non-zero to enable)", e.what());
+            }
+        }
+
         // Print core commit and build datetime
         if(additionalInfo != nullptr && additionalInfo[0] != '\0') {
             spdlog::debug("{}", additionalInfo);
@@ -99,13 +113,40 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
         xlinkGlobalHandler.protocol = X_LINK_USB_VSC;
         xlinkGlobalHandler.options = javavm;
         auto status = XLinkInitialize(&xlinkGlobalHandler);
+        std::string errorMsg;
+        const auto ERROR_MSG_USB_TIP = fmt::format("If running in a container, make sure that the following is set: \"{}\"",
+                                                   "-v /dev/bus/usb:/dev/bus/usb --device-cgroup-rule='c 189:* rmw'");
         if(X_LINK_SUCCESS != status) {
-            std::string errorMsg = fmt::format("Couldn't initialize XLink: {}", XLinkErrorToStr(status));
+            std::string errorMsg = fmt::format("Couldn't initialize XLink: {}. ", XLinkErrorToStr(status));
+            if(status == X_LINK_INIT_USB_ERROR) {
+                errorMsg += ERROR_MSG_USB_TIP;
+            }
             spdlog::debug("Initialize failed - {}", errorMsg);
             throw std::runtime_error(errorMsg);
         }
-        // Suppress XLink related errors
-        mvLogDefaultLevelSet(MVLOG_FATAL);
+        // Check that USB protocol is available
+        if(!XLinkIsProtocolInitialized(X_LINK_USB_VSC)) {
+            spdlog::warn("USB protocol not available - {}", ERROR_MSG_USB_TIP);
+        }
+
+        // TODO(themarpe), move into XLink library
+        auto xlinkEnvLevel = utility::getEnv("XLINK_LEVEL");
+        if(xlinkEnvLevel == "debug") {
+            mvLogDefaultLevelSet(MVLOG_DEBUG);
+        } else if(xlinkEnvLevel == "info") {
+            mvLogDefaultLevelSet(MVLOG_INFO);
+        } else if(xlinkEnvLevel == "warn") {
+            mvLogDefaultLevelSet(MVLOG_WARN);
+        } else if(xlinkEnvLevel == "error") {
+            mvLogDefaultLevelSet(MVLOG_ERROR);
+        } else if(xlinkEnvLevel == "fatal") {
+            mvLogDefaultLevelSet(MVLOG_FATAL);
+        } else if(xlinkEnvLevel == "off") {
+            mvLogDefaultLevelSet(MVLOG_LAST);
+        } else {
+            // Suppress XLink related errors by default
+            mvLogDefaultLevelSet(MVLOG_FATAL);
+        }
 
         spdlog::debug("Initialize - finished");
 

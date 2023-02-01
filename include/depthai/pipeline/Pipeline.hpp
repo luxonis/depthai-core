@@ -41,7 +41,8 @@ class PipelineImpl {
     Device::Config getDeviceConfig() const;
     void setCameraTuningBlobPath(const dai::Path& path);
     void setXLinkChunkSize(int sizeBytes);
-    void setImageManipCmxSizeAdjust(int sizeAdjustBytes);
+    void setBoardConfig(BoardConfig board);
+    BoardConfig getBoardConfig() const;
 
     // Access to nodes
     std::vector<std::shared_ptr<const Node>> getAllNodes() const;
@@ -73,6 +74,8 @@ class PipelineImpl {
     using NodeConnectionMap = std::unordered_map<Node::Id, std::unordered_set<Node::Connection>>;
     // Connection map, NodeId represents id of node connected TO (input)
     NodeConnectionMap nodeConnectionMap;
+    // Board configuration
+    BoardConfig board;
 
     // Template create function
     template <class N>
@@ -262,18 +265,19 @@ class Pipeline {
         impl()->setXLinkChunkSize(sizeBytes);
     }
 
-    /**
-     * Temporary, for adjusting (+/-) the CMX buffer size allocated to ImageManip nodes.
-     * Some configurations may require a larger size allocated,
-     * but too much may cause other nodes allocations to fail.
-     */
-    void setImageManipCmxSizeAdjust(int sizeAdjustBytes) {
-        impl()->setImageManipCmxSizeAdjust(sizeAdjustBytes);
-    }
-
     /// Checks whether a given OpenVINO version is compatible with the pipeline
     bool isOpenVINOVersionCompatible(OpenVINO::Version version) const {
         return impl()->isOpenVINOVersionCompatible(version);
+    }
+
+    /// Sets board configuration
+    void setBoardConfig(BoardConfig board) {
+        impl()->setBoardConfig(board);
+    }
+
+    /// Gets board configuration
+    BoardConfig getBoardConfig() const {
+        return impl()->getBoardConfig();
     }
 
     /// Get device configuration needed for this pipeline

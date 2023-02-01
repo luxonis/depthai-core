@@ -42,9 +42,11 @@ class LockingQueue {
     }
 
     void destruct() {
-        if(!destructed.exchange(true)) {
+        std::unique_lock<std::mutex> lock(guard);
+        if(!destructed) {
             signalPop.notify_all();
             signalPush.notify_all();
+            destructed = true;
         }
     }
     ~LockingQueue() = default;
@@ -57,6 +59,7 @@ class LockingQueue {
             // First checks predicate, then waits
             bool pred = signalPush.wait_for(lock, timeout, [this]() { return !queue.empty() || destructed; });
             if(!pred) return false;
+            if(destructed) return false;
 
             // Continue here if and only if queue has any elements
             while(!queue.empty()) {
@@ -75,6 +78,7 @@ class LockingQueue {
 
             signalPush.wait(lock, [this]() { return !queue.empty() || destructed; });
             if(queue.empty()) return false;
+            if(destructed) return false;
 
             while(!queue.empty()) {
                 callback(queue.front());
@@ -120,6 +124,7 @@ class LockingQueue {
                 }
             } else {
                 signalPop.wait(lock, [this]() { return queue.size() < maxSize || destructed; });
+                if(destructed) return false;
             }
 
             queue.push(data);
@@ -149,6 +154,7 @@ class LockingQueue {
                 // First checks predicate, then waits
                 bool pred = signalPop.wait_for(lock, timeout, [this]() { return queue.size() < maxSize || destructed; });
                 if(!pred) return false;
+                if(destructed) return false;
             }
 
             queue.push(data);
@@ -192,6 +198,7 @@ class LockingQueue {
 
             signalPush.wait(lock, [this]() { return (!queue.empty() || destructed); });
             if(queue.empty()) return false;
+            if(destructed) return false;
 
             value = std::move(queue.front());
             queue.pop();
@@ -208,6 +215,7 @@ class LockingQueue {
             // First checks predicate, then waits
             bool pred = signalPush.wait_for(lock, timeout, [this]() { return !queue.empty() || destructed; });
             if(!pred) return false;
+            if(destructed) return false;
 
             value = std::move(queue.front());
             queue.pop();
@@ -226,7 +234,7 @@ class LockingQueue {
     bool blocking = true;
     std::queue<T> queue;
     mutable std::mutex guard;
-    std::atomic<bool> destructed{false};
+    bool destructed{false};
     std::condition_variable signalPop;
     std::condition_variable signalPush;
 };

@@ -16,6 +16,7 @@
 
 // project
 #include "DeviceLogger.hpp"
+#include "depthai/device/EepromError.hpp"
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "pipeline/Pipeline.hpp"
@@ -107,6 +108,9 @@ static spdlog::level::level_enum logLevelToSpdlogLevel(LogLevel level, spdlog::l
 constexpr std::chrono::seconds DeviceBase::DEFAULT_SEARCH_TIME;
 constexpr float DeviceBase::DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ;
 constexpr UsbSpeed DeviceBase::DEFAULT_USB_SPEED;
+constexpr std::chrono::milliseconds DeviceBase::DEFAULT_TIMESYNC_PERIOD;
+constexpr bool DeviceBase::DEFAULT_TIMESYNC_RANDOM;
+constexpr int DeviceBase::DEFAULT_TIMESYNC_NUM_SAMPLES;
 
 std::chrono::milliseconds DeviceBase::getDefaultSearchTime() {
     std::chrono::milliseconds defaultSearchTime = DEFAULT_SEARCH_TIME;
@@ -221,6 +225,11 @@ std::vector<DeviceInfo> DeviceBase::getAllAvailableDevices() {
     return availableDevices;
 }
 
+// Returns all devices, also the ones that are already booted
+std::vector<DeviceInfo> DeviceBase::getAllConnectedDevices() {
+    return XLinkConnection::getAllConnectedDevices();
+}
+
 // First tries to find UNBOOTED device with mxId, then BOOTLOADER device with mxId
 std::tuple<bool, DeviceInfo> DeviceBase::getDeviceByMxId(std::string mxId) {
     std::vector<DeviceInfo> availableDevices;
@@ -301,7 +310,14 @@ void DeviceBase::tryGetDevice() {
     std::tie(found, deviceInfo) = getAnyAvailableDevice();
 
     // If no device found, throw
-    if(!found) throw std::runtime_error("No available devices");
+    if(!found) {
+        auto numConnected = getAllAvailableDevices().size();
+        if(numConnected > 0) {
+            throw std::runtime_error(fmt::format("No available devices ({} connected, but in use)", numConnected));
+        } else {
+            throw std::runtime_error("No available devices");
+        }
+    }
 }
 
 DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo) : DeviceBase(version, devInfo, DeviceBase::DEFAULT_USB_SPEED) {}
@@ -314,7 +330,16 @@ DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, con
     init(version, false, pathToCmd);
 }
 
-DeviceBase::DeviceBase() : DeviceBase(OpenVINO::DEFAULT_VERSION) {}
+DeviceBase::DeviceBase() : DeviceBase(OpenVINO::VERSION_UNIVERSAL) {}
+
+DeviceBase::DeviceBase(const DeviceInfo& devInfo) : DeviceBase(OpenVINO::VERSION_UNIVERSAL, devInfo) {}
+
+DeviceBase::DeviceBase(const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : DeviceBase(OpenVINO::VERSION_UNIVERSAL, devInfo, maxUsbSpeed) {}
+
+DeviceBase::DeviceBase(std::string nameOrDeviceId) : DeviceBase(OpenVINO::VERSION_UNIVERSAL, dai::DeviceInfo(std::move(nameOrDeviceId))) {}
+
+DeviceBase::DeviceBase(std::string nameOrDeviceId, UsbSpeed maxUsbSpeed)
+    : DeviceBase(OpenVINO::VERSION_UNIVERSAL, dai::DeviceInfo(std::move(nameOrDeviceId)), maxUsbSpeed) {}
 
 DeviceBase::DeviceBase(OpenVINO::Version version) {
     tryGetDevice();
@@ -366,10 +391,11 @@ DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo) : deviceInfo(de
 }
 
 void DeviceBase::close() {
-    // Only allow to close once
-    if(closed.exchange(true)) return;
-
-    closeImpl();
+    std::unique_lock<std::mutex> lock(closedMtx);
+    if(!closed) {
+        closeImpl();
+        closed = true;
+    }
 }
 
 void DeviceBase::closeImpl() {
@@ -395,6 +421,8 @@ void DeviceBase::closeImpl() {
     if(timesyncThread.joinable()) timesyncThread.join();
     // And at the end stop logging thread
     if(loggingThread.joinable()) loggingThread.join();
+    // At the end stop the monitor thread
+    if(monitorThread.joinable()) monitorThread.join();
 
     // Close rpcStream
     pimpl->rpcStream = nullptr;
@@ -403,6 +431,7 @@ void DeviceBase::closeImpl() {
 }
 
 bool DeviceBase::isClosed() const {
+    std::unique_lock<std::mutex> lock(closedMtx);
     return closed || !watchdogRunning;
 }
 
@@ -463,6 +492,15 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     // Specify cfg
     config = cfg;
 
+    // Apply nonExclusiveMode
+    config.board.nonExclusiveMode = config.nonExclusiveMode;
+
+    // Specify expected running mode
+    XLinkDeviceState_t expectedBootState = X_LINK_BOOTED;
+    if(config.nonExclusiveMode) {
+        expectedBootState = X_LINK_BOOTED_NON_EXCLUSIVE;
+    }
+
     // If deviceInfo isn't fully specified (eg ANY_STATE, etc...), try finding it first
     if(deviceInfo.state == X_LINK_ANY_STATE || deviceInfo.protocol == X_LINK_ANY_PROTOCOL) {
         deviceDesc_t foundDesc;
@@ -486,7 +524,10 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     pimpl->setPattern(fmt::format("[{}] [{}] {}", deviceInfo.mxid, deviceInfo.name, LOG_DEFAULT_PATTERN));
 
     // Check if WD env var is set
-    std::chrono::milliseconds watchdogTimeout = device::XLINK_WATCHDOG_TIMEOUT;
+    std::chrono::milliseconds watchdogTimeout = device::XLINK_USB_WATCHDOG_TIMEOUT;
+    if(deviceInfo.protocol == X_LINK_TCP_IP) {
+        watchdogTimeout = device::XLINK_TCP_WATCHDOG_TIMEOUT;
+    }
     auto watchdogMsStr = utility::getEnv("DEPTHAI_WATCHDOG");
     if(!watchdogMsStr.empty()) {
         // Try parsing the string as a number
@@ -516,6 +557,17 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         }
     }
 
+    auto deviceDebugStr = utility::getEnv("DEPTHAI_DEBUG");
+    if(!deviceDebugStr.empty()) {
+        // Try parsing the string as a number
+        try {
+            int deviceDebug{std::stoi(deviceDebugStr)};
+            config.board.logDevicePrints = deviceDebug;
+        } catch(const std::invalid_argument& e) {
+            spdlog::warn("DEPTHAI_DEBUG value invalid: {}, should be a number (non-zero to enable)", e.what());
+        }
+    }
+
     // Get embedded mvcmd or external with applied config
     if(spdlog::get_level() == spdlog::level::debug) {
         nlohmann::json jBoardConfig = config.board;
@@ -528,16 +580,12 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         // Unbooted device found, boot and connect with XLinkConnection constructor
         connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
     } else if(deviceInfo.state == X_LINK_BOOTLOADER || deviceInfo.state == X_LINK_FLASH_BOOTED) {
-        // If device is in flash booted state, reset to bootloader and then continue by booting appropriate FW
-        if(deviceInfo.state == X_LINK_FLASH_BOOTED) {
-            // Boot bootloader and set current deviceInfo to new device state
-            deviceInfo = XLinkConnection::bootBootloader(deviceInfo);
-        }
-
         // Scope so DeviceBootloader is disconnected
         {
             DeviceBootloader bl(deviceInfo);
             auto version = bl.getVersion();
+            // Save DeviceBootloader version, to be able to retrieve later optionally
+            bootloaderVersion = version;
 
             // If version is >= 0.0.12 then boot directly, otherwise jump to USB ROM bootloader
             // Check if version is recent enough for this operation
@@ -549,8 +597,8 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
                 auto t2 = steady_clock::now();
                 spdlog::debug("Booting FW with Bootloader. Version {}, Time taken: {}", version.toString(), duration_cast<milliseconds>(t2 - t1));
 
-                // After that the state will be BOOTED
-                deviceInfo.state = X_LINK_BOOTED;
+                // After that the state will be expectedBootState
+                deviceInfo.state = expectedBootState;
             } else {
                 // Boot into USB ROM BOOTLOADER
                 bl.bootUsbRomBootloader();
@@ -562,16 +610,16 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         }
 
         // Boot and connect with XLinkConnection constructor
-        connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
+        connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig, expectedBootState);
 
     } else if(deviceInfo.state == X_LINK_BOOTED) {
         // Connect without booting
-        connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
+        connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig, expectedBootState);
     } else {
         throw std::runtime_error("Cannot find any device with given deviceInfo");
     }
 
-    deviceInfo.state = X_LINK_BOOTED;
+    deviceInfo.state = expectedBootState;
 
     // prepare rpc for both attached and host controlled mode
     pimpl->rpcStream = std::make_shared<XLinkStream>(connection, device::XLINK_CHANNEL_MAIN_RPC, device::XLINK_USB_BUFFER_MAX_SIZE);
@@ -599,12 +647,23 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     // separate stream so it doesn't miss between potentially long RPC calls
     // Only create the thread if watchdog is enabled
     if(watchdogTimeout > std::chrono::milliseconds(0)) {
+        // Specify "last" ping time (5s in the future, for some grace time)
+        {
+            std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
+            lastWatchdogPingTime = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+        }
+
+        // Start watchdog thread for device
         watchdogThread = std::thread([this, watchdogTimeout]() {
             try {
                 XLinkStream stream(connection, device::XLINK_CHANNEL_WATCHDOG, 128);
                 std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
                 while(watchdogRunning) {
                     stream.write(watchdogKeepalive);
+                    {
+                        std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
+                        lastWatchdogPingTime = std::chrono::steady_clock::now();
+                    }
                     // Ping with a period half of that of the watchdog timeout
                     std::this_thread::sleep_for(watchdogTimeout / 2);
                 }
@@ -616,6 +675,29 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
             // Watchdog ended. Useful for checking disconnects
             watchdogRunning = false;
         });
+
+        // Start monitor thread for host - makes sure that device is responding to pings, otherwise it disconnects
+        monitorThread = std::thread([this, watchdogTimeout]() {
+            while(watchdogRunning) {
+                // Ping with a period half of that of the watchdog timeout
+                std::this_thread::sleep_for(watchdogTimeout);
+                // Check if wd was pinged in the specified watchdogTimeout time.
+                decltype(lastWatchdogPingTime) prevPingTime;
+                {
+                    std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
+                    prevPingTime = lastWatchdogPingTime;
+                }
+                // Recheck if watchdogRunning wasn't already closed and close if more than twice of WD passed
+                if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout * 2) {
+                    spdlog::warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
+                    // ping was missed, reset the device
+                    watchdogRunning = false;
+                    // close the underlying connection
+                    connection->close();
+                }
+            }
+        });
+
     } else {
         // Still set watchdogRunning explictitly
         // as it indicates device not being closed
@@ -697,18 +779,15 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
 
     // Below can throw - make sure to gracefully exit threads
     try {
-        // Set logging level (if DEPTHAI_LEVEL lower than warning, then device is configured accordingly as well)
-        if(spdlog::get_level() < spdlog::level::warn) {
-            auto level = spdlogLevelToLogLevel(spdlog::get_level());
-            setLogLevel(level);
-            setLogOutputLevel(level);
-        } else {
-            setLogLevel(LogLevel::WARN);
-            setLogOutputLevel(LogLevel::WARN);
-        }
+        auto level = spdlogLevelToLogLevel(spdlog::get_level());
+        setLogLevel(level);
+        setLogOutputLevel(level);
 
         // Sets system inforation logging rate. By default 1s
         setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
+
+        // Starts and waits for inital timesync
+        setTimesync(DEFAULT_TIMESYNC_PERIOD, DEFAULT_TIMESYNC_NUM_SAMPLES, DEFAULT_TIMESYNC_RANDOM);
     } catch(const std::exception&) {
         // close device (cleanup)
         close();
@@ -790,6 +869,10 @@ UsbSpeed DeviceBase::getUsbSpeed() {
     return pimpl->rpcClient->call("getUsbSpeed").as<UsbSpeed>();
 }
 
+tl::optional<Version> DeviceBase::getBootloaderVersion() {
+    return bootloaderVersion;
+}
+
 bool DeviceBase::isPipelineRunning() {
     checkClosed();
 
@@ -822,6 +905,34 @@ int DeviceBase::getXLinkChunkSize() {
 
 DeviceInfo DeviceBase::getDeviceInfo() const {
     return deviceInfo;
+}
+
+std::string DeviceBase::getDeviceName() {
+    checkClosed();
+
+    std::string deviceName;
+    EepromData eeprom = readFactoryCalibrationOrDefault().getEepromData();
+    if((deviceName = eeprom.productName).empty()) {
+        eeprom = readCalibrationOrDefault().getEepromData();
+        if((deviceName = eeprom.productName).empty()) {
+            deviceName = eeprom.boardName;
+        }
+    }
+
+    // Convert to device naming from display/product naming
+    std::transform(deviceName.begin(), deviceName.end(), deviceName.begin(), std::ptr_fun<int, int>(std::toupper));
+    std::replace(deviceName.begin(), deviceName.end(), ' ', '-');
+
+    // Handle some known legacy cases
+    if(deviceName == "BW1098OBC") {
+        deviceName = "OAK-D";
+    } else if(deviceName == "DM2097") {
+        deviceName = "OAK-D-CM4-POE";
+    } else if(deviceName == "BW1097") {
+        deviceName = "OAK-D-CM3";
+    }
+
+    return deviceName;
 }
 
 void DeviceBase::setLogOutputLevel(LogLevel level) {
@@ -884,6 +995,25 @@ bool DeviceBase::removeLogCallback(int callbackId) {
     return true;
 }
 
+void DeviceBase::setTimesync(std::chrono::milliseconds period, int numSamples, bool random) {
+    checkClosed();
+
+    if(period < std::chrono::milliseconds(10)) {
+        throw std::invalid_argument("Period must be greater or equal than 10ms");
+    }
+
+    using namespace std::chrono;
+    pimpl->rpcClient->call("setTimesync", duration_cast<milliseconds>(period).count(), numSamples, random);
+}
+
+void DeviceBase::setTimesync(bool enable) {
+    if(enable) {
+        setTimesync(DEFAULT_TIMESYNC_PERIOD, DEFAULT_TIMESYNC_NUM_SAMPLES, DEFAULT_TIMESYNC_RANDOM);
+    } else {
+        setTimesync(std::chrono::milliseconds(1000), 0, false);
+    }
+}
+
 void DeviceBase::setSystemInformationLoggingRate(float rateHz) {
     checkClosed();
 
@@ -897,27 +1027,31 @@ float DeviceBase::getSystemInformationLoggingRate() {
 }
 
 bool DeviceBase::isEepromAvailable() {
+    checkClosed();
+
     return pimpl->rpcClient->call("isEepromAvailable").as<bool>();
 }
 
 bool DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
     try {
         flashCalibration2(calibrationDataHandler);
-    } catch(const std::exception& ex) {
+    } catch(const EepromError& ex) {
         return false;
     }
     return true;
 }
 
 void DeviceBase::flashCalibration2(CalibrationHandler calibrationDataHandler) {
+    checkClosed();
+
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
     spdlog::debug("Flashing calibration. Factory permissions {}, Protected permissions {}", factoryPermissions, protectedPermissions);
 
-    if(!calibrationDataHandler.validateCameraArray()) {
+    /* if(!calibrationDataHandler.validateCameraArray()) {
         throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
-    }
+    } */
 
     bool success;
     std::string errorMsg;
@@ -933,18 +1067,20 @@ CalibrationHandler DeviceBase::readCalibration() {
     dai::EepromData eepromData{};
     try {
         return readCalibration2();
-    } catch(const std::exception& ex) {
+    } catch(const EepromError& ex) {
         // ignore - use default
     }
     return CalibrationHandler(eepromData);
 }
 CalibrationHandler DeviceBase::readCalibration2() {
+    checkClosed();
+
     bool success;
     std::string errorMsg;
     dai::EepromData eepromData;
     std::tie(success, errorMsg, eepromData) = pimpl->rpcClient->call("readFromEeprom").as<std::tuple<bool, std::string, dai::EepromData>>();
     if(!success) {
-        throw std::runtime_error(errorMsg);
+        throw EepromError(errorMsg);
     }
     return CalibrationHandler(eepromData);
 }
@@ -954,6 +1090,8 @@ CalibrationHandler DeviceBase::readCalibrationOrDefault() {
 }
 
 void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandler) {
+    checkClosed();
+
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
@@ -963,9 +1101,9 @@ void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandl
         throw std::runtime_error("Calling factory API is not allowed in current configuration");
     }
 
-    if(!calibrationDataHandler.validateCameraArray()) {
+    /* if(!calibrationDataHandler.validateCameraArray()) {
         throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
-    }
+    } */
 
     bool success;
     std::string errorMsg;
@@ -973,17 +1111,19 @@ void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandl
         pimpl->rpcClient->call("storeToEepromFactory", calibrationDataHandler.getEepromData(), factoryPermissions, protectedPermissions)
             .as<std::tuple<bool, std::string>>();
     if(!success) {
-        throw std::runtime_error(errorMsg);
+        throw EepromError(errorMsg);
     }
 }
 
 CalibrationHandler DeviceBase::readFactoryCalibration() {
+    checkClosed();
+
     bool success;
     std::string errorMsg;
     dai::EepromData eepromData;
     std::tie(success, errorMsg, eepromData) = pimpl->rpcClient->call("readFromEepromFactory").as<std::tuple<bool, std::string, dai::EepromData>>();
     if(!success) {
-        throw std::runtime_error(errorMsg);
+        throw EepromError(errorMsg);
     }
     return CalibrationHandler(eepromData);
 }
@@ -991,18 +1131,86 @@ CalibrationHandler DeviceBase::readFactoryCalibrationOrDefault() {
     dai::EepromData eepromData{};
     try {
         return readFactoryCalibration();
-    } catch(const std::exception& ex) {
+    } catch(const EepromError& ex) {
         // ignore - use default
     }
     return CalibrationHandler(eepromData);
 }
 
 void DeviceBase::factoryResetCalibration() {
+    checkClosed();
+
     bool success;
     std::string errorMsg;
     std::tie(success, errorMsg) = pimpl->rpcClient->call("eepromFactoryReset").as<std::tuple<bool, std::string>>();
     if(!success) {
-        throw std::runtime_error(errorMsg);
+        throw EepromError(errorMsg);
+    }
+}
+
+std::vector<std::uint8_t> DeviceBase::readCalibrationRaw() {
+    checkClosed();
+
+    bool success;
+    std::string errorMsg;
+    std::vector<uint8_t> eepromDataRaw;
+    std::tie(success, errorMsg, eepromDataRaw) = pimpl->rpcClient->call("readFromEepromRaw").as<std::tuple<bool, std::string, std::vector<uint8_t>>>();
+    if(!success) {
+        throw EepromError(errorMsg);
+    }
+    return eepromDataRaw;
+}
+
+std::vector<std::uint8_t> DeviceBase::readFactoryCalibrationRaw() {
+    checkClosed();
+
+    bool success;
+    std::string errorMsg;
+    std::vector<uint8_t> eepromDataRaw;
+    std::tie(success, errorMsg, eepromDataRaw) = pimpl->rpcClient->call("readFromEepromFactoryRaw").as<std::tuple<bool, std::string, std::vector<uint8_t>>>();
+    if(!success) {
+        throw EepromError(errorMsg);
+    }
+    return eepromDataRaw;
+}
+
+void DeviceBase::flashEepromClear() {
+    checkClosed();
+
+    bool factoryPermissions = false;
+    bool protectedPermissions = false;
+    getFlashingPermissions(factoryPermissions, protectedPermissions);
+    spdlog::debug("Clearing User EEPROM contents. Factory permissions {}, Protected permissions {}", factoryPermissions, protectedPermissions);
+
+    if(!protectedPermissions) {
+        throw std::runtime_error("Calling EEPROM clear API is not allowed in current configuration");
+    }
+
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) = pimpl->rpcClient->call("eepromClear", protectedPermissions, factoryPermissions).as<std::tuple<bool, std::string>>();
+    if(!success) {
+        throw EepromError(errorMsg);
+    }
+}
+
+void DeviceBase::flashFactoryEepromClear() {
+    checkClosed();
+
+    bool factoryPermissions = false;
+    bool protectedPermissions = false;
+    getFlashingPermissions(factoryPermissions, protectedPermissions);
+    spdlog::debug("Clearing User EEPROM contents. Factory permissions {}, Protected permissions {}", factoryPermissions, protectedPermissions);
+
+    if(!protectedPermissions || !factoryPermissions) {
+        throw std::runtime_error("Calling factory EEPROM clear API is not allowed in current configuration");
+    }
+
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) = pimpl->rpcClient->call("eepromFactoryClear", protectedPermissions, factoryPermissions).as<std::tuple<bool, std::string>>();
+    if(!success) {
+        throw EepromError(errorMsg);
     }
 }
 
@@ -1032,8 +1240,8 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     std::vector<std::uint8_t> assetStorage;
     pipeline.serialize(schema, assets, assetStorage);
 
-    // if debug
-    if(spdlog::get_level() == spdlog::level::debug) {
+    // if debug or lower
+    if(spdlog::get_level() <= spdlog::level::debug) {
         nlohmann::json jSchema = schema;
         spdlog::debug("Schema dump: {}", jSchema.dump());
         nlohmann::json jAssets = assets;
@@ -1047,9 +1255,6 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     if(!assetStorage.empty()) {
         pimpl->rpcClient->call("setAssets", assets);
 
-        // allocate, returns a pointer to memory on device side
-        auto memHandle = pimpl->rpcClient->call("memAlloc", static_cast<std::uint32_t>(assetStorage.size())).as<uint32_t>();
-
         // Transfer the whole assetStorage in a separate thread
         const std::string streamAssetStorage = "__stream_asset_storage";
         std::thread t1([this, &streamAssetStorage, &assetStorage]() {
@@ -1062,12 +1267,8 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
             } while(offset < static_cast<int64_t>(assetStorage.size()));
         });
 
-        // Open a channel to transfer AssetStorage
-        pimpl->rpcClient->call("readFromXLink", streamAssetStorage, memHandle, assetStorage.size());
+        pimpl->rpcClient->call("readAssetStorageFromXLink", streamAssetStorage, assetStorage.size());
         t1.join();
-
-        // After asset storage is transfers, set the asset storage
-        pimpl->rpcClient->call("setAssetStorage", memHandle, assetStorage.size());
     }
 
     // print assets on device side for test

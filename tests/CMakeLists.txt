@@ -6,24 +6,14 @@ enable_testing()
 hunter_add_package(Catch2)
 find_package(Catch2 CONFIG REQUIRED)
 
-# Specify path separator
-set(SYS_PATH_SEPARATOR ";")
-if(UNIX)
-    set(SYS_PATH_SEPARATOR ":")
-endif()
-
 # Create environments for usb & poe labels
 set(test_usb_env
-    # PATH (dlls)
-    "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
     # Misc
     "UBSAN_OPTIONS=halt_on_error=1"
     # DepthAI
     "DEPTHAI_PROTOCOL=usb"
 )
 set(test_poe_env
-    # PATH (dlls)
-    "PATH=${HUNTER_INSTALL_PREFIX}/bin${SYS_PATH_SEPARATOR}$ENV{PATH}"
     # Misc
     "UBSAN_OPTIONS=halt_on_error=1"
     # DepthAI
@@ -56,7 +46,7 @@ function(dai_add_test test_name test_src)
     endif()
 
     # Link to core and Catch2 testing framework
-    target_link_libraries(${test_name} PRIVATE depthai-core Catch2::Catch2)
+    target_link_libraries(${test_name} PRIVATE depthai-core Catch2::Catch2WithMain Threads::Threads)
 
     # Add sanitizers for tests as well
     if(COMMAND add_sanitizers)
@@ -78,7 +68,7 @@ function(dai_add_test test_name test_src)
         add_default_flags(${test_name}_conforming LEAN)
 
         # Link to core and Catch2 testing framework
-        target_link_libraries(${test_name}_conforming PRIVATE depthai-core Catch2::Catch2)
+        target_link_libraries(${test_name}_conforming PRIVATE depthai-core Catch2::Catch2WithMain Threads::Threads)
 
         # Set compiler c++ standard
         target_compile_options(${test_name}_conforming PRIVATE "${CMAKE_CXX${DAT_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
@@ -107,6 +97,20 @@ function(dai_add_test test_name test_src)
         set_tests_properties(${test_name}_conforming_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS poe)
     endif()
 
+    # Copy over required DLLs (Windows)
+    if(WIN32)
+        # Copy dlls to target directory - Windows only
+        # TARGET_RUNTIME_DLLS generator expression available since CMake 3.21
+        if(CMAKE_VERSION VERSION_LESS "3.21")
+            file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
+        else()
+            set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${test_name}>")
+        endif()
+        add_custom_command(TARGET ${test_name} POST_BUILD COMMAND
+            ${CMAKE_COMMAND} -E copy_if_different ${depthai_dll_libraries} $<TARGET_FILE_DIR:${test_name}>
+            COMMAND_EXPAND_LISTS
+        )
+    endif()
 endfunction()
 
 # Function for adding compile definitions to tests
@@ -180,12 +184,20 @@ hunter_private_data(
     FILE "text-image-super-resolution-0001_2022.1.0_4shave.blob"
     LOCATION openvino_2022_1_blob
 )
+# YoloV4 resource
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/yolo-v4-tiny-tf_openvino_2021.4_4shave.blob"
+    SHA1 "7da2f96f7300e3828940557e6a86ac6f243eef7e"
+    FILE "yolo-v4-tiny-tf_openvino_2021.4_4shave.blob"
+    LOCATION tiny_yolo_v4_2021-4_4shave_blob
+)
 
 
 # Add tests
 dai_add_test(color_camera_node_test src/color_camera_node_test.cpp)
 dai_add_test(image_manip_node_test src/image_manip_node_test.cpp)
 dai_add_test(pipeline_test src/pipeline_test.cpp)
+dai_add_test(logging_test src/logging_test.cpp)
 
 dai_add_test(neural_network_test src/neural_network_test.cpp)
 dai_test_compile_definitions(neural_network_test PRIVATE BLOB_PATH="${mobilenet_blob}")
@@ -228,3 +240,27 @@ dai_test_compile_definitions(filesystem_test_20 PRIVATE BLOB_PATH="${mobilenet_b
 
 # Bootloader version tests
 dai_add_test(bootloader_version_test src/bootloader_version_test.cpp)
+
+# XLinkIn -> XLinkOut passthrough with large frames
+dai_add_test(xlink_roundtrip_test src/xlink_roundtrip_test.cpp)
+
+# Stability stress test (OAK-D oriented USB/PoE)
+# TODO
+# # dai_add_test(stability_stress_test src/stability_stress_test.cpp)
+option(DEPTHAI_STABILITY_STRESS_TEST_DEBUG "Enable visualization for stability stress test" OFF)
+add_executable(stability_stress_test src/stability_stress_test.cpp)
+add_default_flags(stability_stress_test LEAN)
+if(COMMAND target_clangformat_setup)
+    target_clangformat_setup(stability_stress_test "")
+endif()
+if(DEPTHAI_STABILITY_TEST_DEBUG)
+    target_link_libraries(stability_stress_test PRIVATE depthai::opencv opencv_highgui)
+    target_compile_definitions(stability_stress_test PRIVATE DEPTHAI_STABILITY_TEST_DEBUG)
+else()
+    target_link_libraries(stability_stress_test PRIVATE depthai::core)
+endif()
+target_compile_definitions(stability_stress_test PRIVATE BLOB_PATH="${tiny_yolo_v4_2021-4_4shave_blob}")
+# add_test(stability_stress_test stability_stress_test)
+# add_test(stability_stress_test_poe stability_stress_test)
+# set_tests_properties(stability_stress_test PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=usb" LABELS stability_usb)
+# set_tests_properties(stability_stress_test_poe PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=poe" LABELS stability_poe)

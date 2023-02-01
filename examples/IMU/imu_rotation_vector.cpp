@@ -45,7 +45,7 @@ int main() {
         for(auto& imuPacket : imuPackets) {
             auto& rVvalues = imuPacket.rotationVector;
 
-            auto rvTs = rVvalues.timestamp.get() - baseTs;
+            auto rvTs = rVvalues.getTimestampDevice() - baseTs;
             printf("Rotation vector timestamp: %ld ms\n", static_cast<long>(duration_cast<milliseconds>(rvTs).count()));
 
             printf(

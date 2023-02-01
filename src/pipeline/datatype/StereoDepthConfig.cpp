@@ -76,6 +76,11 @@ StereoDepthConfig& StereoDepthConfig::setDepthUnit(AlgorithmControl::DepthUnit d
     return *this;
 }
 
+StereoDepthConfig& StereoDepthConfig::setDisparityShift(int disparityShift) {
+    cfg.algorithmControl.disparityShift = disparityShift;
+    return *this;
+}
+
 dai::StereoDepthConfig::AlgorithmControl::DepthUnit StereoDepthConfig::getDepthUnit() {
     return cfg.algorithmControl.depthUnit;
 }
@@ -86,6 +91,7 @@ float StereoDepthConfig::getMaxDisparity() const {
         maxDisp = 63;
     }
     if(cfg.costMatching.enableCompanding) maxDisp = 175;
+    maxDisp += cfg.algorithmControl.disparityShift;
     if(cfg.algorithmControl.enableExtended) maxDisp *= 2;
     if(cfg.algorithmControl.enableSubpixel) maxDisp *= (1 << cfg.algorithmControl.subpixelFractionalBits);
     return maxDisp;
