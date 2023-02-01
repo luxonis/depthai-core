@@ -1,7 +1,7 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-2.20.1 (2023-01-31)
+2.20.2 (2023-01-31)
 -----------
 * Fix for ColorCamera at high resolution while using isp scaling
 * Fix for OV9282 SW sync on devices with OV9782 RGB camera
