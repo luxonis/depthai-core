@@ -8,8 +8,8 @@ hunter_config(
 hunter_config(
     XLink
     VERSION "luxonis-2021.4.2-develop"
-    URL "https://github.com/luxonis/XLink/archive/b7d8e6009ceb5b2278212e3f2a57f5f76e8df5d9.tar.gz"
-    SHA1 "5c5ebed8ae8ee8e289003ec6408c802d66df2fc3"
+    URL "https://github.com/luxonis/XLink/archive/1ef2f960eec66540891434c9a3341c11e66e4360.tar.gz"
+    SHA1 "23641bb9ae698d0e016abcce349094a38577838b"
 )
 
 hunter_config(
@@ -32,9 +32,9 @@ hunter_config(
 # libarchive, luxonis fork
 hunter_config(
     libarchive-luxonis
-    VERSION "3.4.2-p2"
-    URL "https://github.com/luxonis/libarchive/archive/cf2caf0588fc5e2af22cae37027d3ff6902e096f.tar.gz"
-    SHA1 "e99477d32ce14292fe652dc5f4f460d3af8fbc93"
+    VERSION "hunter-3.5.2"
+    URL "https://github.com/luxonis/libarchive/archive/45baa3a3e57104519e1165bcd5ac29c3bd8c9f3a.tar.gz"
+    SHA1 "ca5cd0f1c31b9c187d7119cb1aa7467f8c231d29"
     CMAKE_ARGS
         ENABLE_ACL=OFF
         ENABLE_BZip2=OFF
@@ -92,16 +92,16 @@ hunter_config(
 hunter_config(
     libnop
     VERSION "1.0-ec8f75a"
-    URL "https://github.com/luxonis/libnop/archive/ec8f75aa4df3454f73b5d7a7fe0680f3701b1744.tar.gz"
-    SHA1 "261b8bfe734aff0456793416bbe4c4503dafbfdb"
+    URL "https://github.com/luxonis/libnop/archive/ab842f51dc2eb13916dc98417c2186b78320ed10.tar.gz"
+    SHA1 "32f40f084615ba7940ce9d29f05f3294371aabeb"
 )
 
 # Specific Catch2 version
 hunter_config(
     Catch2
     VERSION "2.13.7"
-    URL "https://github.com/catchorg/Catch2/archive/refs/tags/v2.13.7.tar.gz"
-    SHA1 "fa8f14ccf852413d3c6d3999145ada934d37d773"
+    URL "https://github.com/catchorg/Catch2/archive/refs/tags/v3.2.1.tar.gz"
+    SHA1 "acfba7f71cbbbbf60bc1bc4c0e3efca4a9c70df7"
 )
 
 # ZLib - Luxonis fix for alias on imported target for old CMake versions
@@ -110,4 +110,17 @@ hunter_config(
     VERSION "1.2.11-p2"
     URL "https://github.com/luxonis/zlib/archive/refs/tags/v1.2.11-p2.tar.gz"
     SHA1 "fb8b6486183b13a86040f793a939b128f6d27095"
+)
+
+# TMP, could be read from XLink
+# libusb without udev
+hunter_config(
+    libusb-luxonis
+    VERSION "1.0.24-cmake"
+    URL "https://github.com/luxonis/libusb/archive/b7e4548958325b18feb73977163ad44398099534.tar.gz"
+    SHA1 "2d79573d57628fe56d2868d2f6ce756d40906cf4"
+    CMAKE_ARGS
+        WITH_UDEV=OFF
+        # Build shared libs by default to not cause licensing issues
+        BUILD_SHARED_LIBS=ON
 )

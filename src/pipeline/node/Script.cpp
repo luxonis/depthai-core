@@ -19,16 +19,20 @@ Script::Script(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::un
     setOutputMapRefs(&outputs);
 }
 
-void Script::setScriptPath(const std::string& path) {
+void Script::setScriptPath(const dai::Path& path, const std::string& name) {
     properties.scriptUri = assetManager.set("__script", path)->getRelativeUri();
     scriptPath = path;
-    properties.scriptName = path;
+    if(name.empty()) {
+        properties.scriptName = path.u8string();
+    } else {
+        properties.scriptName = name;
+    }
 }
 
 void Script::setScript(const std::string& script, const std::string& name) {
     std::vector<std::uint8_t> data{script.begin(), script.end()};
     properties.scriptUri = assetManager.set("__script", std::move(data))->getRelativeUri();
-    scriptPath = "";
+    scriptPath = {};
     if(name.empty()) {
         properties.scriptName = "<script>";
     } else {
@@ -38,7 +42,7 @@ void Script::setScript(const std::string& script, const std::string& name) {
 
 void Script::setScript(const std::vector<std::uint8_t>& data, const std::string& name) {
     properties.scriptUri = assetManager.set("__script", std::move(data))->getRelativeUri();
-    scriptPath = "";
+    scriptPath = {};
     if(name.empty()) {
         properties.scriptName = "<script>";
     } else {
@@ -50,7 +54,7 @@ void Script::setProcessor(ProcessorType proc) {
     properties.processor = proc;
 }
 
-std::string Script::getScriptPath() const {
+dai::Path Script::getScriptPath() const {
     return scriptPath;
 }
 

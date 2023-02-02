@@ -35,12 +35,10 @@ int main(int argc, char** argv) {
 
     auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
     auto xoutNN = pipeline.create<dai::node::XLinkOut>();
-    auto xoutBoundingBoxDepthMapping = pipeline.create<dai::node::XLinkOut>();
     auto xoutDepth = pipeline.create<dai::node::XLinkOut>();
 
     xoutRgb->setStreamName("rgb");
     xoutNN->setStreamName("detections");
-    xoutBoundingBoxDepthMapping->setStreamName("boundingBoxDepthMapping");
     xoutDepth->setStreamName("depth");
 
     // Properties
@@ -56,6 +54,9 @@ int main(int argc, char** argv) {
 
     // Setting node configs
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
+    // Align depth map to the perspective of RGB camera, on which inference is done
+    stereo->setDepthAlign(dai::CameraBoardSocket::RGB);
+    stereo->setOutputSize(monoLeft->getResolutionWidth(), monoLeft->getResolutionHeight());
 
     spatialDetectionNetwork->setBlobPath(nnPath);
     spatialDetectionNetwork->setConfidenceThreshold(0.5f);
@@ -76,7 +77,6 @@ int main(int argc, char** argv) {
     }
 
     spatialDetectionNetwork->out.link(xoutNN->input);
-    spatialDetectionNetwork->boundingBoxMapping.link(xoutBoundingBoxDepthMapping->input);
 
     stereo->depth.link(spatialDetectionNetwork->inputDepth);
     spatialDetectionNetwork->passthroughDepth.link(xoutDepth->input);
@@ -86,7 +86,6 @@ int main(int argc, char** argv) {
 
     auto previewQueue = device.getOutputQueue("rgb", 4, false);
     auto detectionNNQueue = device.getOutputQueue("detections", 4, false);
-    auto xoutBoundingBoxDepthMappingQueue = device.getOutputQueue("boundingBoxDepthMapping", 4, false);
     auto depthQueue = device.getOutputQueue("depth", 4, false);
 
     auto startTime = steady_clock::now();
@@ -117,25 +116,19 @@ int main(int argc, char** argv) {
         cv::applyColorMap(depthFrameColor, depthFrameColor, cv::COLORMAP_HOT);
 
         auto detections = inDet->detections;
-        if(!detections.empty()) {
-            auto boundingBoxMapping = xoutBoundingBoxDepthMappingQueue->get<dai::SpatialLocationCalculatorConfig>();
-            auto roiDatas = boundingBoxMapping->getConfigData();
-
-            for(auto roiData : roiDatas) {
-                auto roi = roiData.roi;
-                roi = roi.denormalize(depthFrameColor.cols, depthFrameColor.rows);
-                auto topLeft = roi.topLeft();
-                auto bottomRight = roi.bottomRight();
-                auto xmin = (int)topLeft.x;
-                auto ymin = (int)topLeft.y;
-                auto xmax = (int)bottomRight.x;
-                auto ymax = (int)bottomRight.y;
-
-                cv::rectangle(depthFrameColor, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
-            }
-        }
 
         for(const auto& detection : detections) {
+            auto roiData = detection.boundingBoxMapping;
+            auto roi = roiData.roi;
+            roi = roi.denormalize(depthFrameColor.cols, depthFrameColor.rows);
+            auto topLeft = roi.topLeft();
+            auto bottomRight = roi.bottomRight();
+            auto xmin = (int)topLeft.x;
+            auto ymin = (int)topLeft.y;
+            auto xmax = (int)bottomRight.x;
+            auto ymax = (int)bottomRight.y;
+            cv::rectangle(depthFrameColor, cv::Rect(cv::Point(xmin, ymin), cv::Point(xmax, ymax)), color, cv::FONT_HERSHEY_SIMPLEX);
+
             int x1 = detection.xmin * frame.cols;
             int y1 = detection.ymin * frame.rows;
             int x2 = detection.xmax * frame.cols;

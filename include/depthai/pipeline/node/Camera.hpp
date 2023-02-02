@@ -3,6 +3,8 @@
 #include <depthai/pipeline/datatype/CameraControl.hpp>
 
 #include "depthai/pipeline/Node.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/utility/span.hpp"
 
 // shared
 #include <depthai-shared/properties/CameraProperties.hpp>
@@ -11,7 +13,7 @@ namespace dai {
 namespace node {
 
 /**
- * @brief ColorCamera node. For use with color sensors.
+ * @brief Camera node. Experimental node, for both mono and color types of sensors
  */
 class Camera : public NodeCRTP<Node, Camera, CameraProperties> {
    public:
@@ -33,7 +35,7 @@ class Camera : public NodeCRTP<Node, Camera, CameraProperties> {
     /**
      * Computes the scaled size given numerator and denominator
      */
-    int getScaledSize(int input, int num, int denom) const;
+    static int getScaledSize(int input, int num, int denom);
 
     /**
      * Initial control options to apply to sensor
@@ -41,7 +43,7 @@ class Camera : public NodeCRTP<Node, Camera, CameraProperties> {
     CameraControl initialControl;
 
     /**
-     * Input for ImageManipConfig message, which can modify crop paremeters in runtime
+     * Input for ImageManipConfig message, which can modify crop parameters in runtime
      *
      * Default queue is non-blocking with size 8
      */
@@ -90,6 +92,23 @@ class Camera : public NodeCRTP<Node, Camera, CameraProperties> {
     Output raw{*this, "raw", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
+     * Outputs metadata-only ImgFrame message as an early indicator of an incoming frame.
+     *
+     * It's sent on the MIPI SoF (start-of-frame) event, just after the exposure of the current frame
+     * has finished and before the exposure for next frame starts.
+     * Could be used to synchronize various processes with camera capture.
+     * Fields populated: camera id, sequence number, timestamp
+     */
+    Output frameEvent{*this, "frameEvent", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    // /**
+    //  * Input for mocking 'isp' functionality.
+    //  *
+    //  * Default queue is non-blocking with size 8
+    //  */
+    // Input mockIsp{*this, "mockIsp", Input::Type::SReceiver, false, 8, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
      * Specify which board socket to use
      * @param boardSocket Board socket to use
      */
@@ -101,11 +120,17 @@ class Camera : public NodeCRTP<Node, Camera, CameraProperties> {
      */
     CameraBoardSocket getBoardSocket() const;
 
-    /// Set which color camera to use
-    [[deprecated("Use 'setBoardSocket()' instead")]] void setCamId(int64_t id);
+    /**
+     * Specify which camera to use by name
+     * @param name Name of the camera to use
+     */
+    void setCamera(std::string name);
 
-    /// Get which color camera to use
-    [[deprecated("Use 'setBoardSocket()' instead")]] int64_t getCamId() const;
+    /**
+     * Retrieves which camera to use by name
+     * @returns Name of the camera to use
+     */
+    std::string getCamera() const;
 
     /// Set camera image orientation
     void setImageOrientation(CameraImageOrientation imageOrientation);
@@ -113,23 +138,20 @@ class Camera : public NodeCRTP<Node, Camera, CameraProperties> {
     /// Get camera image orientation
     CameraImageOrientation getImageOrientation() const;
 
-    /// Set color order of preview output images. RGB or BGR
-    void setColorOrder(CameraProperties::ColorOrder colorOrder);
+    // TODO(themarpe) - add back
+    // /// Set image type of preview output images.
+    // void setPreviewType(ImgFrame::Type type);
+    // /// Get image type of preview output frames.
+    // ImgFrame::Type getPreviewType() const;
+    // /// Set image type of video output images. Supported AUTO, GRAY, YUV420 and NV12.
+    // void setVideoType(ImgFrame::Type type);
+    // /// Get image type of video output frames. Supported AUTO, GRAY, YUV420 and NV12.
+    // ImgFrame::Type getVideoType() const;
 
-    /// Get color order of preview output frames. RGB or BGR
-    CameraProperties::ColorOrder getColorOrder() const;
-
-    /// Set planar or interleaved data of preview output frames
-    void setInterleaved(bool interleaved);
-
-    /// Get planar or interleaved data of preview output frames
-    bool getInterleaved() const;
-
-    /// Set fp16 (0..255) data type of preview output frames
-    void setFp16(bool fp16);
-
-    /// Get fp16 (0..255) data of preview output frames
-    bool getFp16() const;
+    /// Set desired resolution. Sets sensor size to best fit
+    void setSize(std::tuple<int, int> size);
+    /// Set desired resolution. Sets sensor size to best fit
+    void setSize(int width, int height);
 
     /// Set preview output size
     void setPreviewSize(int width, int height);
@@ -149,32 +171,26 @@ class Camera : public NodeCRTP<Node, Camera, CameraProperties> {
     /// Set still output size, as a tuple <width, height>
     void setStillSize(std::tuple<int, int> size);
 
-    /// Set sensor resolution
-    void setResolution(Properties::SensorResolution resolution);
+    // /**
+    //  * Set 'isp' output scaling (numerator/denominator), preserving the aspect ratio.
+    //  * The fraction numerator/denominator is simplified first to a irreducible form,
+    //  * then a set of hardware scaler constraints applies:
+    //  * max numerator = 16, max denominator = 63
+    //  */
+    // void setIspScale(int numerator, int denominator);
 
-    /// Get sensor resolution
-    Properties::SensorResolution getResolution() const;
+    // /// Set 'isp' output scaling, as a tuple <numerator, denominator>
+    // void setIspScale(std::tuple<int, int> scale);
 
-    /**
-     * Set 'isp' output scaling (numerator/denominator), preserving the aspect ratio.
-     * The fraction numerator/denominator is simplified first to a irreducible form,
-     * then a set of hardware scaler constraints applies:
-     * max numerator = 16, max denominator = 63
-     */
-    void setIspScale(int numerator, int denominator);
+    // /**
+    //  * Set 'isp' output scaling, per each direction. If the horizontal scaling factor
+    //  * (horizNum/horizDen) is different than the vertical scaling factor
+    //  * (vertNum/vertDen), a distorted (stretched or squished) image is generated
+    //  */
+    // void setIspScale(int horizNum, int horizDenom, int vertNum, int vertDenom);
 
-    /// Set 'isp' output scaling, as a tuple <numerator, denominator>
-    void setIspScale(std::tuple<int, int> scale);
-
-    /**
-     * Set 'isp' output scaling, per each direction. If the horizontal scaling factor
-     * (horizNum/horizDen) is different than the vertical scaling factor
-     * (vertNum/vertDen), a distorted (stretched or squished) image is generated
-     */
-    void setIspScale(int horizNum, int horizDenom, int vertNum, int vertDenom);
-
-    /// Set 'isp' output scaling, per each direction, as <numerator, denominator> tuples
-    void setIspScale(std::tuple<int, int> horizScale, std::tuple<int, int> vertScale);
+    // /// Set 'isp' output scaling, per each direction, as <numerator, denominator> tuples
+    // void setIspScale(std::tuple<int, int> horizScale, std::tuple<int, int> vertScale);
 
     /**
      * Set rate at which camera should produce frames
@@ -210,69 +226,105 @@ class Camera : public NodeCRTP<Node, Camera, CameraProperties> {
     int getStillHeight() const;
 
     /// Get sensor resolution as size
-    std::tuple<int, int> getResolutionSize() const;
+    std::tuple<int, int> getSize() const;
     /// Get sensor resolution width
-    int getResolutionWidth() const;
+    int getWidth() const;
     /// Get sensor resolution height
-    int getResolutionHeight() const;
+    int getHeight() const;
 
-    /// Get 'isp' output resolution as size, after scaling
-    std::tuple<int, int> getIspSize() const;
-    /// Get 'isp' output width
-    int getIspWidth() const;
-    /// Get 'isp' output height
-    int getIspHeight() const;
+    // /// Get 'isp' output resolution as size, after scaling
+    // std::tuple<int, int> getIspSize() const;
+    // /// Get 'isp' output width
+    // int getIspWidth() const;
+    // /// Get 'isp' output height
+    // int getIspHeight() const;
+
+    // /**
+    //  * Specify sensor center crop.
+    //  * Resolution size / video size
+    //  */
+    // void sensorCenterCrop();
+
+    // /**
+    //  * Specifies sensor crop rectangle
+    //  * @param x Top left X coordinate
+    //  * @param y Top left Y coordinate
+    //  */
+    // void setSensorCrop(float x, float y);
+
+    // /**
+    //  * @returns Sensor top left crop coordinates
+    //  */
+    // std::tuple<float, float> getSensorCrop() const;
+    // /// Get sensor top left x crop coordinate
+    // float getSensorCropX() const;
+    // /// Get sensor top left y crop coordinate
+    // float getSensorCropY() const;
+
+    // /**
+    //  * Specifies whether preview output should preserve aspect ratio,
+    //  * after downscaling from video size or not.
+    //  *
+    //  * @param keep If true, a larger crop region will be considered to still be able to
+    //  * create the final image in the specified aspect ratio. Otherwise video size is resized to fit preview size
+    //  */
+    // void setPreviewKeepAspectRatio(bool keep);
+
+    // /**
+    //  * @see setPreviewKeepAspectRatio
+    //  * @returns Preview keep aspect ratio option
+    //  */
+    // bool getPreviewKeepAspectRatio();
+
+    // /// Get number of frames in preview pool
+    // int getPreviewNumFramesPool();
+    // /// Get number of frames in video pool
+    // int getVideoNumFramesPool();
+    // /// Get number of frames in still pool
+    // int getStillNumFramesPool();
+    // /// Get number of frames in raw pool
+    // int getRawNumFramesPool();
+    // /// Get number of frames in isp pool
+    // int getIspNumFramesPool();
+
+    /// Set the source of the warp mesh or disable
+    void setMeshSource(Properties::WarpMeshSource source);
+    /// Gets the source of the warp mesh
+    Properties::WarpMeshSource getMeshSource() const;
 
     /**
-     * Specify sensor center crop.
-     * Resolution size / video size
-     */
-    void sensorCenterCrop();
-
-    /**
-     * Specifies sensor crop rectangle
-     * @param x Top left X coordinate
-     * @param y Top left Y coordinate
-     */
-    void setSensorCrop(float x, float y);
-
-    /**
-     * @returns Sensor top left crop coordinates
-     */
-    std::tuple<float, float> getSensorCrop() const;
-    /// Get sensor top left x crop coordinate
-    float getSensorCropX() const;
-    /// Get sensor top left y crop coordinate
-    float getSensorCropY() const;
-
-    // Node properties configuration
-    /**
-     * Specify to wait until inputConfig receives a configuration message,
-     * before sending out a frame.
-     * @param wait True to wait for inputConfig message, false otherwise
-     */
-    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] void setWaitForConfigInput(bool wait);
-
-    /**
-     * @see setWaitForConfigInput
-     * @returns True if wait for inputConfig message, false otherwise
-     */
-    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] bool getWaitForConfigInput() const;
-
-    /**
-     * Specifies whether preview output should preserve aspect ratio,
-     * after downscaling from video size or not.
+     * Specify local filesystem paths to the undistort mesh calibration files.
      *
-     * @param keep If true, a larger crop region will be considered to still be able to
-     * create the final image in the specified aspect ratio. Otherwise video size is resized to fit preview size
+     * When a mesh calibration is set, it overrides the camera intrinsics/extrinsics matrices.
+     * Overrides useHomographyRectification behavior.
+     * Mesh format: a sequence of (y,x) points as 'float' with coordinates from the input image
+     * to be mapped in the output. The mesh can be subsampled, configured by `setMeshStep`.
+     *
+     * With a 1280x800 resolution and the default (16,16) step, the required mesh size is:
+     *
+     * width: 1280 / 16 + 1 = 81
+     *
+     * height: 800 / 16 + 1 = 51
      */
-    void setPreviewKeepAspectRatio(bool keep);
+    void loadMeshFile(const dai::Path& warpMesh);
 
     /**
-     * @see setPreviewKeepAspectRatio
-     * @returns Preview keep aspect ratio option
+     * Specify mesh calibration data for undistortion
+     * See `loadMeshFiles` for the expected data format
      */
-    bool getPreviewKeepAspectRatio();
+    void loadMeshData(span<const std::uint8_t> warpMesh);
+
+    /**
+     * Set the distance between mesh points. Default: (32, 32)
+     */
+    void setMeshStep(int width, int height);
+    /// Gets the distance between mesh points
+    std::tuple<int, int> getMeshStep() const;
+
+    /// Set calibration alpha parameter that determines FOV of undistorted frames
+    void setCalibrationAlpha(float alpha);
+    /// Get calibration alpha parameter that determines FOV of undistorted frames
+    float getCalibrationAlpha() const;
 };
 
 }  // namespace node

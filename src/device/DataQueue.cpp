@@ -48,12 +48,14 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                                   name,
                                   std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
                                   data->getRaw()->data.size(),
-                                  type,
+                                  static_cast<std::int32_t>(type),
                                   spdlog::to_hex(metadata));
                 }
 
                 // Add 'data' to queue
-                queue.push(data);
+                if(!queue.push(data)) {
+                    throw std::runtime_error(fmt::format("Underlying queue destructed"));
+                }
 
                 // Increment numPacketsRead
                 numPacketsRead++;
@@ -168,10 +170,11 @@ bool DataOutputQueue::removeCallback(int callbackId) {
 }
 
 // DATA INPUT QUEUE
-DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize, bool blocking)
-    : queue(maxSize, blocking), name(streamName) {
+DataInputQueue::DataInputQueue(
+    const std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize, bool blocking, std::size_t maxDataSize)
+    : queue(maxSize, blocking), name(streamName), maxDataSize(maxDataSize) {
     // open stream with default XLINK_USB_BUFFER_MAX_SIZE write size
-    XLinkStream stream(std::move(conn), name, device::XLINK_USB_BUFFER_MAX_SIZE);
+    XLinkStream stream(std::move(conn), name, maxDataSize + device::XLINK_MESSAGE_METADATA_MAX_SIZE);
 
     writingThread = std::thread([this, stream = std::move(stream)]() mutable {
         std::uint64_t numPacketsSent = 0;
@@ -284,7 +287,9 @@ void DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg) {
         throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize));
     }
 
-    queue.push(rawMsg);
+    if(!queue.push(rawMsg)) {
+        throw std::runtime_error(fmt::format("Underlying queue destructed"));
+    }
 }
 void DataInputQueue::send(const std::shared_ptr<ADatatype>& msg) {
     if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");

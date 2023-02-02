@@ -13,17 +13,18 @@ int main(int argc, char** argv) {
     }
 
     // Connect device
-    dai::Device device;
+    dai::Device device(dai::OpenVINO::VERSION_UNIVERSAL, dai::UsbSpeed::HIGH);
 
     dai::CalibrationHandler deviceCalib = device.readCalibration();
     deviceCalib.eepromToJsonFile(calibBackUpFile);
     std::cout << "Calibration Data on the device is backed up at:" << calibBackUpFile << std::endl;
     dai::CalibrationHandler calibData(calibJsonFile);
 
-    if(device.flashCalibration(calibData)) {
-        std::cout << "Calibration Flash Successful" << std::endl;
-    } else {
-        std::cout << "Calibration Flash Failed!!!" << std::endl;
+    try {
+        device.flashCalibration2(calibData);
+        std::cout << "Successfully flashed calibration" << std::endl;
+    } catch(const std::exception& ex) {
+        std::cout << "Failed flashing calibration: " << ex.what() << std::endl;
     }
 
     return 0;

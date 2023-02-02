@@ -27,14 +27,18 @@ int main() {
     // Connect to device and start pipeline
     dai::Device device(pipeline, dai::UsbSpeed::SUPER);
 
-    cout << "Connected cameras: ";
-    for(const auto& cam : device.getConnectedCameras()) {
-        cout << cam << " ";
-    }
-    cout << endl;
+    cout << "Connected cameras: " << device.getConnectedCameraFeatures() << endl;
 
     // Print USB speed
     cout << "Usb speed: " << device.getUsbSpeed() << endl;
+
+    // Bootloader version
+    if(device.getBootloaderVersion()) {
+        cout << "Bootloader version: " << device.getBootloaderVersion()->toString() << endl;
+    }
+
+    // Device name
+    cout << "Device name: " << device.getDeviceName() << endl;
 
     // Output queue will be used to get the rgb frames from the output defined above
     auto qRgb = device.getOutputQueue("rgb", 4, false);

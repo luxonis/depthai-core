@@ -11,13 +11,27 @@ target_include_directories(utility PUBLIC "utility")
 add_default_flags(utility LEAN)
 target_link_libraries(utility FP16::fp16 ${OpenCV_LIBS})
 
+# Create environments for usb & poe labels
+set(test_usb_env
+    # Misc
+    "UBSAN_OPTIONS=halt_on_error=1"
+    # DepthAI
+    "DEPTHAI_PROTOCOL=usb"
+)
+set(test_poe_env
+    # Misc
+    "UBSAN_OPTIONS=halt_on_error=1"
+    # DepthAI
+    "DEPTHAI_PROTOCOL=tcpip;DEPTHAI_SEARCH_TIMEOUT=15000"
+)
+
 # Helper for adding new examples
 function(dai_add_example example_name example_src enable_test)
 
     # Add example
     add_executable(${example_name} ${example_src})
     add_default_flags(${example_name} LEAN)
-    target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS})
+    target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS} Threads::Threads)
 
     # Add sanitizers for example
     if(COMMAND add_sanitizers)
@@ -43,7 +57,7 @@ function(dai_add_example example_name example_src enable_test)
         set_tests_properties(${example_name} PROPERTIES FAIL_REGULAR_EXPRESSION "\\[warning\\];\\[error\\];\\[critical\\]")
 
         # Add ubsan halt on error
-        set_tests_properties(${example_name} PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=usb" LABELS usb)
+        set_tests_properties(${example_name} PROPERTIES ENVIRONMENT "${test_usb_env}" LABELS usb)
 
         # Add PoE test variants
         add_test(NAME ${example_name}_poe COMMAND ${CMAKE_COMMAND}
@@ -51,8 +65,23 @@ function(dai_add_example example_name example_src enable_test)
             -P ${CMAKE_CURRENT_LIST_DIR}/cmake/ExecuteTestTimeout.cmake $<TARGET_FILE:${example_name}> ${arguments}
         )
         # Add ubsan halt on error
-        set_tests_properties(${example_name}_poe PROPERTIES ENVIRONMENT "UBSAN_OPTIONS=halt_on_error=1;DEPTHAI_PROTOCOL=tcpip;DEPTHAI_SEARCH_TIMEOUT=15000" LABELS poe)
+        set_tests_properties(${example_name}_poe PROPERTIES ENVIRONMENT "${test_poe_env}" LABELS poe)
 
+    endif()
+
+    # Copy over required DLLs (Windows)
+    if(WIN32)
+        # Copy dlls to target directory - Windows only
+        # TARGET_RUNTIME_DLLS generator expression available since CMake 3.21
+        if(CMAKE_VERSION VERSION_LESS "3.21")
+            file(GLOB depthai_dll_libraries "${HUNTER_INSTALL_PREFIX}/bin/*.dll")
+        else()
+            set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${example_name}>")
+        endif()
+        add_custom_command(TARGET ${example_name} POST_BUILD COMMAND
+            ${CMAKE_COMMAND} -E copy_if_different ${depthai_dll_libraries} $<TARGET_FILE_DIR:${example_name}>
+            COMMAND_EXPAND_LISTS
+        )
     endif()
 endfunction()
 
@@ -171,14 +200,20 @@ hunter_private_data(
 # bootloader
 dai_add_example(bootloader_version bootloader/bootloader_version.cpp ON)
 dai_add_example(flash_bootloader bootloader/flash_bootloader.cpp OFF)
-dai_add_example(bootloader_config bootloader/bootloader_config.cpp OFF)
+dai_add_example(flash_user_bootloader bootloader/flash_user_bootloader.cpp OFF)
+dai_add_example(bootloader_config bootloader/bootloader_config.cpp ON read)
 dai_add_example(poe_set_ip bootloader/poe_set_ip.cpp OFF)
+dai_add_example(read_flash_memory bootloader/read_flash_memory.cpp OFF)
+dai_add_example(write_flash_memory bootloader/write_flash_memory.cpp OFF)
+dai_add_example(flash_boot_header bootloader/flash_boot_header.cpp OFF)
 
 # calibration
 dai_add_example(calibration_flash calibration/calibration_flash.cpp OFF)
 dai_add_example(calibration_flash_version5 calibration/calibration_flash_v5.cpp OFF)
-dai_add_example(calibration_load calibration/calibration_load.cpp OFF)
-dai_add_example(calibration_reader calibration/calibration_reader.cpp OFF)
+dai_add_example(calibration_load calibration/calibration_load.cpp ON)
+dai_add_example(calibration_reader calibration/calibration_reader.cpp ON)
+dai_add_example(calibration_dump calibration/calibration_dump.cpp ON)
+dai_add_example(calibration_factory_reset calibration/calibration_factory_reset.cpp OFF)
 
 target_compile_definitions(calibration_flash PRIVATE CALIB_PATH="${calib_v6}")
 target_compile_definitions(calibration_flash_version5 PRIVATE CALIB_PATH="${calib_v5}" BOARD_PATH="${device_config}")
@@ -188,6 +223,7 @@ target_compile_definitions(calibration_load PRIVATE CALIB_PATH="${calib_v6}")
 dai_add_example(rgb_camera_control ColorCamera/rgb_camera_control.cpp ON)
 dai_add_example(rgb_preview ColorCamera/rgb_preview.cpp ON)
 dai_add_example(rgb_video ColorCamera/rgb_video.cpp ON)
+dai_add_example(rgb_isp_scale ColorCamera/rgb_isp_scale.cpp ON)
 
 # EdgeDetector
 dai_add_example(edge_detector EdgeDetector/edge_detector.cpp ON)
@@ -200,12 +236,17 @@ dai_add_example(feature_tracker FeatureTracker/feature_tracker.cpp ON)
 dai_add_example(device_queue_event host_side/device_queue_event.cpp ON)
 dai_add_example(opencv_support host_side/opencv_support.cpp ON)
 dai_add_example(queue_add_callback host_side/queue_add_callback.cpp ON)
+dai_add_example(device_information host_side/device_information.cpp OFF)
 
 # ImageManip
 dai_add_example(image_manip ImageManip/image_manip_example.cpp ON)
 dai_add_example(image_manip_rotate ImageManip/image_manip_rotate.cpp ON)
 dai_add_example(image_manip_tiling ImageManip/image_manip_tiling.cpp ON)
 dai_add_example(rgb_rotate_warp ImageManip/rgb_rotate_warp.cpp ON)
+dai_add_example(image_manip_warp_mesh ImageManip/image_manip_warp_mesh.cpp ON)
+
+# Warp
+dai_add_example(warp_mesh Warp/warp_mesh.cpp ON)
 
 # IMU
 dai_add_example(imu_gyroscope_accelerometer IMU/imu_gyroscope_accelerometer.cpp ON)
@@ -216,6 +257,8 @@ dai_add_example(mono_depth_mobilenetssd mixed/mono_depth_mobilenetssd.cpp ON)
 dai_add_example(rgb_encoding_mono_mobilenet mixed/rgb_encoding_mono_mobilenet.cpp ON)
 dai_add_example(rgb_encoding_mono_mobilenet_depth mixed/rgb_encoding_mono_mobilenet_depth.cpp ON)
 dai_add_example(rgb_encoding_mobilenet mixed/rgb_encoding_mobilenet.cpp ON)
+dai_add_example(multiple_devices mixed/multiple_devices.cpp OFF)
+dai_add_example(frame_sync mixed/frame_sync.cpp ON)
 
 target_compile_definitions(mono_depth_mobilenetssd PRIVATE BLOB_PATH="${mobilenet_blob}")
 target_compile_definitions(rgb_encoding_mono_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}")
@@ -270,6 +313,9 @@ dai_add_example(script_http_server Script/script_http_server.cpp OFF)
 dai_add_example(script_mjpeg_server Script/script_mjpeg_server.cpp OFF)
 dai_add_example(script_nndata_example Script/script_nndata_example.cpp ON)
 dai_add_example(script_json_communication Script/script_json_communication.cpp ON)
+dai_add_example(script_change_pipeline_flow Script/script_change_pipeline_flow.cpp OFF)
+target_compile_definitions(script_change_pipeline_flow PRIVATE BLOB_PATH="${mobilenet_5shaves_blob}")
+dai_add_example(script_get_device_info Script/script_get_device_info.cpp ON)
 
 # SpatialDetection
 dai_add_example(spatial_location_calculator SpatialDetection/spatial_location_calculator.cpp ON)
@@ -277,6 +323,7 @@ dai_add_example(spatial_mobilenet_mono SpatialDetection/spatial_mobilenet_mono.c
 dai_add_example(spatial_mobilenet SpatialDetection/spatial_mobilenet.cpp ON)
 dai_add_example(spatial_tiny_yolo_v3 SpatialDetection/spatial_tiny_yolo.cpp ON)
 dai_add_example(spatial_tiny_yolo_v4 SpatialDetection/spatial_tiny_yolo.cpp ON)
+dai_add_example(spatial_calculator_multi_roi SpatialDetection/spatial_calculator_multi_roi.cpp OFF)
 
 target_compile_definitions(spatial_mobilenet_mono PRIVATE BLOB_PATH="${mobilenet_blob}")
 target_compile_definitions(spatial_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}")
@@ -309,3 +356,7 @@ target_compile_definitions(tiny_yolo_v4_device_side_decoding PRIVATE BLOB_PATH="
 target_compile_definitions(tiny_yolo_v3_device_side_decoding PRIVATE BLOB_PATH="${tiny_yolo_v3_blob}")
 dai_add_example(apriltag AprilTag/apriltag.cpp ON)
 dai_add_example(apriltag_rgb AprilTag/apriltag_rgb.cpp ON)
+
+# DetectionParser
+dai_add_example(detection_parser NeuralNetwork/detection_parser.cpp ON)
+target_compile_definitions(detection_parser PRIVATE BLOB_PATH="${mobilenet_blob}")

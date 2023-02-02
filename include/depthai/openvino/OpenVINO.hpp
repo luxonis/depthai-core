@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "depthai-shared/common/TensorInfo.hpp"
+#include "depthai/utility/Path.hpp"
 
 namespace dai {
 
@@ -16,7 +17,7 @@ namespace dai {
 class OpenVINO {
    public:
     /// OpenVINO Version supported version information
-    enum Version { VERSION_2020_3, VERSION_2020_4, VERSION_2021_1, VERSION_2021_2, VERSION_2021_3, VERSION_2021_4 };
+    enum Version { VERSION_2020_3, VERSION_2020_4, VERSION_2021_1, VERSION_2021_2, VERSION_2021_3, VERSION_2021_4, VERSION_2022_1, VERSION_UNIVERSAL };
 
     /// OpenVINO Blob
     struct Blob {
@@ -31,7 +32,7 @@ class OpenVINO {
          *
          * @param path Filesystem path to the blob
          */
-        Blob(const std::string& path);
+        Blob(const dai::Path& path);
 
         /// OpenVINO version
         Version version;
@@ -50,7 +51,7 @@ class OpenVINO {
     };
 
     /// Main OpenVINO version
-    constexpr static const Version DEFAULT_VERSION = VERSION_2021_4;
+    constexpr static const Version DEFAULT_VERSION = VERSION_2022_1;
 
     /**
      * @returns Supported versions
@@ -89,12 +90,20 @@ class OpenVINO {
     static Version getBlobLatestSupportedVersion(std::uint32_t majorVersion, std::uint32_t minorVersion);
 
     /**
+     * Returns OpenVINO version of a given blob minor/major revision.
+     * @param majorVersion Major version from OpenVINO blob
+     * @param minorVersion Minor version from OpenVINO blob
+     * @returns Latest potentially supported version
+     */
+    static Version getBlobVersion(std::uint32_t majorVersion, std::uint32_t minorVersion);
+
+    /**
      * Checks whether two blob versions are compatible
      */
     static bool areVersionsBlobCompatible(Version v1, Version v2);
 
    private:
-    static const std::map<std::pair<std::uint32_t, std::uint32_t>, Version> blobVersionToLatestOpenvinoMapping;
+    static const std::map<std::pair<std::uint32_t, std::uint32_t>, Version> blobVersionToOpenvinoGuessMapping;
     static const std::map<std::pair<std::uint32_t, std::uint32_t>, std::vector<Version>> blobVersionToOpenvinoMapping;
 };
 

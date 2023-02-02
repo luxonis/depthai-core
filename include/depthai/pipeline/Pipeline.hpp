@@ -35,12 +35,14 @@ class PipelineImpl {
 
     // Functions
     Node::Id getNextUniqueId();
-    PipelineSchema getPipelineSchema() const;
+    PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
     tl::optional<OpenVINO::Version> getPipelineOpenVINOVersion() const;
     bool isOpenVINOVersionCompatible(OpenVINO::Version version) const;
     Device::Config getDeviceConfig() const;
-    void setCameraTuningBlobPath(const std::string& path);
+    void setCameraTuningBlobPath(const dai::Path& path);
     void setXLinkChunkSize(int sizeBytes);
+    void setBoardConfig(BoardConfig board);
+    BoardConfig getBoardConfig() const;
 
     // Access to nodes
     std::vector<std::shared_ptr<const Node>> getAllNodes() const;
@@ -48,7 +50,8 @@ class PipelineImpl {
     std::shared_ptr<const Node> getNode(Node::Id id) const;
     std::shared_ptr<Node> getNode(Node::Id id);
 
-    void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage) const;
+    void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
+    nlohmann::json serializeToJson() const;
     void remove(std::shared_ptr<Node> node);
 
     std::vector<Node::Connection> getConnections() const;
@@ -71,6 +74,8 @@ class PipelineImpl {
     using NodeConnectionMap = std::unordered_map<Node::Id, std::unordered_set<Node::Connection>>;
     // Connection map, NodeId represents id of node connected TO (input)
     NodeConnectionMap nodeConnectionMap;
+    // Board configuration
+    BoardConfig board;
 
     // Template create function
     template <class N>
@@ -117,11 +122,16 @@ class Pipeline {
     /**
      * @returns Pipeline schema
      */
-    PipelineSchema getPipelineSchema() const;
+    PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
 
     // void loadAssets(AssetManager& assetManager);
     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage) const {
         impl()->serialize(schema, assets, assetStorage);
+    }
+
+    /// Returns whole pipeline represented as JSON
+    nlohmann::json serializeToJson() const {
+        return impl()->serializeToJson();
     }
 
     /**
@@ -242,7 +252,7 @@ class Pipeline {
     }
 
     /// Set a camera IQ (Image Quality) tuning blob, used for all cameras
-    void setCameraTuningBlobPath(const std::string& path) {
+    void setCameraTuningBlobPath(const dai::Path& path) {
         impl()->setCameraTuningBlobPath(path);
     }
 
@@ -258,6 +268,16 @@ class Pipeline {
     /// Checks whether a given OpenVINO version is compatible with the pipeline
     bool isOpenVINOVersionCompatible(OpenVINO::Version version) const {
         return impl()->isOpenVINOVersionCompatible(version);
+    }
+
+    /// Sets board configuration
+    void setBoardConfig(BoardConfig board) {
+        impl()->setBoardConfig(board);
+    }
+
+    /// Gets board configuration
+    BoardConfig getBoardConfig() const {
+        return impl()->getBoardConfig();
     }
 
     /// Get device configuration needed for this pipeline

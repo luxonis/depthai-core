@@ -21,7 +21,7 @@ class NeuralNetwork : public NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperti
 
    protected:
     tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion() override;
-    OpenVINO::Version networkOpenvinoVersion;
+    tl::optional<OpenVINO::Version> networkOpenvinoVersion;
 
    public:
     NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
@@ -32,6 +32,8 @@ class NeuralNetwork : public NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperti
      * Default queue is blocking with size 5
      */
     Input input{*this, "in", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::Buffer, true}}};
+
+    Input inputConfig{*this, "inConfig", Input::Type::SReceiver, false, 5, false, {{DatatypeEnum::NNConfig, false}}};
 
     /**
      * Outputs NNData message that carries inference results
@@ -63,7 +65,7 @@ class NeuralNetwork : public NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperti
      * @throws Error if file doesn't exist or isn't a valid network blob.
      * @param path Path to network blob
      */
-    void setBlobPath(const std::string& path);
+    void setBlobPath(const dai::Path& path);
 
     /**
      * Load network blob into assets and use once pipeline is started.
@@ -71,6 +73,14 @@ class NeuralNetwork : public NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperti
      * @param blob Network blob
      */
     void setBlob(OpenVINO::Blob blob);
+
+    /**
+     * Same functionality as the setBlobPath(). Load network blob into assets and use once pipeline is started.
+     *
+     * @throws Error if file doesn't exist or isn't a valid network blob.
+     * @param path Path to network blob
+     */
+    void setBlob(const dai::Path& path);
 
     /**
      * Specifies how many frames will be available in the pool

@@ -17,7 +17,7 @@ class Script : public NodeCRTP<Node, Script, ScriptProperties> {
     constexpr static const char* NAME = "Script";
 
    private:
-    std::string scriptPath = "";
+    dai::Path scriptPath;
 
    public:
     Script(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
@@ -35,9 +35,11 @@ class Script : public NodeCRTP<Node, Script, ScriptProperties> {
     OutputMap outputs;
 
     /**
-     *  Specify local filesystem path to load the script
+     * Specify local filesystem path to load the script
+     * @param path Filesystem path to load the script
+     * @param name Optionally set a name of this script, otherwise the name defaults to the path
      */
-    void setScriptPath(const std::string& path);
+    void setScriptPath(const dai::Path& path, const std::string& name = "");
 
     /**
      * Sets script data to be interpreted
@@ -54,14 +56,20 @@ class Script : public NodeCRTP<Node, Script, ScriptProperties> {
     void setScript(const std::vector<std::uint8_t>& data, const std::string& name = "");
 
     /**
-     * Get filesystem path from where script was loaded.
-     * If script wasn't set by path, function returns empty string
+     * @brief Get filesystem path from where script was loaded.
+     *
+     * @return dai::Path from where script was loaded, otherwise returns empty path
      */
-    std::string getScriptPath() const;
+    dai::Path getScriptPath() const;
 
     /**
-     * Get filesystem path from where script was loaded.
-     * If script wasn't set by path, function returns empty string
+     * @brief Get the script name in utf-8.
+     *
+     * When name set with setScript() or setScriptPath(), returns that name.
+     * When script loaded with setScriptPath() with name not provided, returns the utf-8 string of that path.
+     * Otherwise, returns "<script>"
+     *
+     * @return std::string of script name in utf-8
      */
     std::string getScriptName() const;
 

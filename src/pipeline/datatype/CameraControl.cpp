@@ -38,6 +38,28 @@ CameraControl& CameraControl::setFrameSyncMode(FrameSyncMode mode) {
     return *this;
 }
 
+CameraControl& CameraControl::setStrobeSensor(int activeLevel) {
+    cfg.setCommand(RawCameraControl::Command::STROBE_CONFIG);
+    cfg.strobeConfig.enable = true;
+    cfg.strobeConfig.activeLevel = activeLevel;
+    cfg.strobeConfig.gpioNumber = -1;
+    return *this;
+}
+
+CameraControl& CameraControl::setStrobeExternal(int gpioNumber, int activeLevel) {
+    cfg.setCommand(RawCameraControl::Command::STROBE_CONFIG);
+    cfg.strobeConfig.enable = true;
+    cfg.strobeConfig.activeLevel = activeLevel;
+    cfg.strobeConfig.gpioNumber = gpioNumber;
+    return *this;
+}
+
+CameraControl& CameraControl::setStrobeDisable() {
+    cfg.setCommand(RawCameraControl::Command::STROBE_CONFIG);
+    cfg.strobeConfig.enable = false;
+    return *this;
+}
+
 // Focus
 CameraControl& CameraControl::setAutoFocusMode(AutoFocusMode mode) {
     cfg.setCommand(RawCameraControl::Command::AF_MODE);
@@ -112,6 +134,10 @@ CameraControl& CameraControl::setManualExposure(uint32_t exposureTimeUs, uint32_
     return *this;
 }
 
+void CameraControl::setManualExposure(std::chrono::microseconds exposureTime, uint32_t sensitivityIso) {
+    setManualExposure(exposureTime.count(), sensitivityIso);
+}
+
 // White Balance
 CameraControl& CameraControl::setAutoWhiteBalanceMode(AutoWhiteBalanceMode mode) {
     cfg.setCommand(RawCameraControl::Command::AWB_MODE);
@@ -170,9 +196,31 @@ CameraControl& CameraControl::setEffectMode(EffectMode mode) {
     cfg.effectMode = mode;
     return *this;
 }
+CameraControl& CameraControl::setControlMode(ControlMode mode) {
+    cfg.setCommand(RawCameraControl::Command::CONTROL_MODE);
+    cfg.controlMode = mode;
+    return *this;
+}
+CameraControl& CameraControl::setCaptureIntent(CaptureIntent mode) {
+    cfg.setCommand(RawCameraControl::Command::CAPTURE_INTENT);
+    cfg.captureIntent = mode;
+    return *this;
+}
 
 bool CameraControl::getCaptureStill() const {
     return cfg.getCommand(RawCameraControl::Command::STILL_CAPTURE);
+}
+
+std::chrono::microseconds CameraControl::getExposureTime() const {
+    return std::chrono::microseconds(cfg.expManual.exposureTimeUs);
+}
+
+int CameraControl::getSensitivity() const {
+    return cfg.expManual.sensitivityIso;
+}
+
+int CameraControl::getLensPosition() const {
+    return cfg.lensPosition;
 }
 
 }  // namespace dai

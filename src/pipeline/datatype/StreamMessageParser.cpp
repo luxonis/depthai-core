@@ -20,6 +20,7 @@
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/NNConfig.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
@@ -41,6 +42,7 @@
 #include "depthai-shared/datatype/RawImageManipConfig.hpp"
 #include "depthai-shared/datatype/RawImgDetections.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
+#include "depthai-shared/datatype/RawNNConfig.hpp"
 #include "depthai-shared/datatype/RawNNData.hpp"
 #include "depthai-shared/datatype/RawSpatialImgDetections.hpp"
 #include "depthai-shared/datatype/RawSpatialLocationCalculatorConfig.hpp"
@@ -101,6 +103,10 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
 
         case DatatypeEnum::NNData:
             return parseDatatype<RawNNData>(metadataStart, serializedObjectSize, data);
+            break;
+
+        case DatatypeEnum::NNConfig:
+            return parseDatatype<RawNNConfig>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::ImageManipConfig:
@@ -194,6 +200,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
 
         case DatatypeEnum::NNData:
             return std::make_shared<NNData>(parseDatatype<RawNNData>(metadataStart, serializedObjectSize, data));
+            break;
+
+        case DatatypeEnum::NNConfig:
+            return std::make_shared<NNConfig>(parseDatatype<RawNNConfig>(metadataStart, serializedObjectSize, data));
             break;
 
         case DatatypeEnum::ImageManipConfig:

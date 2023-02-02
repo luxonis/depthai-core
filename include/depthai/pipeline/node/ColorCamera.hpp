@@ -90,6 +90,16 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
     Output raw{*this, "raw", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
+     * Outputs metadata-only ImgFrame message as an early indicator of an incoming frame.
+     *
+     * It's sent on the MIPI SoF (start-of-frame) event, just after the exposure of the current frame
+     * has finished and before the exposure for next frame starts.
+     * Could be used to synchronize various processes with camera capture.
+     * Fields populated: camera id, sequence number, timestamp
+     */
+    Output frameEvent{*this, "frameEvent", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
      * Specify which board socket to use
      * @param boardSocket Board socket to use
      */
@@ -100,6 +110,18 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
      * @returns Board socket to use
      */
     CameraBoardSocket getBoardSocket() const;
+
+    /**
+     * Specify which camera to use by name
+     * @param name Name of the camera to use
+     */
+    void setCamera(std::string name);
+
+    /**
+     * Retrieves which camera to use by name
+     * @returns Name of the camera to use
+     */
+    std::string getCamera() const;
 
     /// Set which color camera to use
     [[deprecated("Use 'setBoardSocket()' instead")]] void setCamId(int64_t id);
@@ -137,11 +159,17 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
     /// Set preview output size, as a tuple <width, height>
     void setPreviewSize(std::tuple<int, int> size);
 
+    /// Set number of frames in preview pool
+    void setPreviewNumFramesPool(int num);
+
     /// Set video output size
     void setVideoSize(int width, int height);
 
     /// Set video output size, as a tuple <width, height>
     void setVideoSize(std::tuple<int, int> size);
+
+    /// Set number of frames in preview pool
+    void setVideoNumFramesPool(int num);
 
     /// Set still output size
     void setStillSize(int width, int height);
@@ -149,11 +177,23 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
     /// Set still output size, as a tuple <width, height>
     void setStillSize(std::tuple<int, int> size);
 
+    /// Set number of frames in preview pool
+    void setStillNumFramesPool(int num);
+
     /// Set sensor resolution
     void setResolution(Properties::SensorResolution resolution);
 
     /// Get sensor resolution
     Properties::SensorResolution getResolution() const;
+
+    /// Set number of frames in raw pool
+    void setRawNumFramesPool(int num);
+
+    /// Set number of frames in isp pool
+    void setIspNumFramesPool(int num);
+
+    /// Set number of frames in all pools
+    void setNumFramesPool(int raw, int isp, int preview, int video, int still);
 
     /**
      * Set 'isp' output scaling (numerator/denominator), preserving the aspect ratio.
@@ -177,10 +217,34 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
     void setIspScale(std::tuple<int, int> horizScale, std::tuple<int, int> vertScale);
 
     /**
+     * Set whether to stream only metadata (e.g PDAF data) on `raw` output.
+     * By default will stream the raw image followed by the metadata
+     */
+    void setRawMetadataOnly(bool streamMetadataOnly);
+
+    /**
+     * Set PDAF mode to 8x6 windows when true. By default (false): 16x12 windows
+     */
+    void setPdafMode8x6(bool enable);
+
+    /**
+     * Set PDAF start offset (top-left corner) and window size (for just one window
+     * out of 16x12 or 8x6). By default (or when `windowWidth` = 0) -> auto-computed
+     * to cover whole frame - window width and height multiple of 4, minimum offsets
+     */
+    void setPdafConfig(int offsetX, int offsetY, int windowWidth, int windowHeight);
+
+    /**
      * Set rate at which camera should produce frames
      * @param fps Rate in frames per second
      */
     void setFps(float fps);
+
+    // Set events on which frames will be received
+    void setFrameEventFilter(const std::vector<dai::FrameEvent>& events);
+
+    // Get events on which frames will be received
+    std::vector<dai::FrameEvent> getFrameEventFilter() const;
 
     /**
      * Get rate at which camera should produce frames
@@ -273,6 +337,17 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
      * @returns Preview keep aspect ratio option
      */
     bool getPreviewKeepAspectRatio();
+
+    /// Get number of frames in preview pool
+    int getPreviewNumFramesPool();
+    /// Get number of frames in video pool
+    int getVideoNumFramesPool();
+    /// Get number of frames in still pool
+    int getStillNumFramesPool();
+    /// Get number of frames in raw pool
+    int getRawNumFramesPool();
+    /// Get number of frames in isp pool
+    int getIspNumFramesPool();
 };
 
 }  // namespace node

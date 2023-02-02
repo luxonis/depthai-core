@@ -22,6 +22,7 @@ int main() {
 
     // enable ROTATION_VECTOR at 400 hz rate
     imu->enableIMUSensor(dai::IMUSensor::ROTATION_VECTOR, 400);
+    // it's recommended to set both setBatchReportThreshold and setMaxBatchReports to 20 when integrating in a pipeline with a lot of input/output connections
     // above this threshold packets will be sent in batch of X, if the host is not blocked and USB bandwidth is available
     imu->setBatchReportThreshold(1);
     // maximum number of IMU packets in a batch, if it's reached device will block sending until host can receive it
@@ -44,7 +45,7 @@ int main() {
         for(auto& imuPacket : imuPackets) {
             auto& rVvalues = imuPacket.rotationVector;
 
-            auto rvTs = rVvalues.timestamp.get() - baseTs;
+            auto rvTs = rVvalues.getTimestampDevice() - baseTs;
             printf("Rotation vector timestamp: %ld ms\n", static_cast<long>(duration_cast<milliseconds>(rvTs).count()));
 
             printf(
