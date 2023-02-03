@@ -157,9 +157,8 @@ TEST_CASE("dai::Path with NN blobs") {
     REQUIRE_THROWS_WITH(nn->setBlobPath(daiPath), ContainsSubstring("Cannot load blob") && ContainsSubstring("not convertible"));
 #else
     REQUIRE_THROWS_WITH(nn->setBlobPath(PATH4), ContainsSubstring(std::string("Cannot load blob")) && ContainsSubstring(dai::Path(PATH4).string()));
-    REQUIRE_THROWS_WITH(
-        nn->setBlobPath(strPath),
-        ContainsSubstring("Cannot load blob") && ContainsSubstring(std::string{reinterpret_cast<const char*>(strPath.c_str())}));
+    REQUIRE_THROWS_WITH(nn->setBlobPath(strPath),
+                        ContainsSubstring("Cannot load blob") && ContainsSubstring(std::string{reinterpret_cast<const char*>(strPath.c_str())}));
     REQUIRE_THROWS_WITH(nn->setBlobPath(daiPath), ContainsSubstring("Cannot load blob") && ContainsSubstring(daiPath.string()));
 #endif
 

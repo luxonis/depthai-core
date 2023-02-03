@@ -365,6 +365,25 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * Units are pixels.
      */
     void setFocalLength(float focalLength);
+
+    /**
+     * Use baseline information for disparity to depth conversion from specs (design data) or from calibration.
+     * Default: true
+     */
+    void setDisparityToDepthUseSpecTranslation(bool specTranslation);
+
+    /**
+     * Obtain rectification matrices using spec translation (design data) or from calibration in calculations.
+     * Should be used only for debugging.
+     * Default: false
+     */
+    void setRectificationUseSpecTranslation(bool specTranslation);
+
+    /**
+     * Use baseline information for depth alignment from specs (design data) or from calibration.
+     * Default: true
+     */
+    void setDepthAlignmentuseSpecTranslation(bool specTranslation);
 };
 
 }  // namespace node

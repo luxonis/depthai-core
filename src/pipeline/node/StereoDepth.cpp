@@ -186,6 +186,18 @@ void StereoDepth::setFocalLength(float focalLength) {
     properties.focalLength = focalLength;
 }
 
+void StereoDepth::setDisparityToDepthUseSpecTranslation(bool specTranslation) {
+    properties.disparityToDepthUseSpecTranslation = specTranslation;
+}
+
+void StereoDepth::setRectificationUseSpecTranslation(bool specTranslation) {
+    properties.rectificationUseSpecTranslation = specTranslation;
+}
+
+void StereoDepth::setDepthAlignmentuseSpecTranslation(bool specTranslation) {
+    properties.depthAlignmentuseSpecTranslation = specTranslation;
+}
+
 void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
     presetMode = mode;
     switch(presetMode) {
