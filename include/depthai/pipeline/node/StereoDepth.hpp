@@ -383,7 +383,7 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * Use baseline information for depth alignment from specs (design data) or from calibration.
      * Default: true
      */
-    void setDepthAlignmentuseSpecTranslation(bool specTranslation);
+    void setDepthAlignmentUseSpecTranslation(bool specTranslation);
 };
 
 }  // namespace node

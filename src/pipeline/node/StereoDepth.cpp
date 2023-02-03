@@ -194,8 +194,8 @@ void StereoDepth::setRectificationUseSpecTranslation(bool specTranslation) {
     properties.rectificationUseSpecTranslation = specTranslation;
 }
 
-void StereoDepth::setDepthAlignmentuseSpecTranslation(bool specTranslation) {
-    properties.depthAlignmentuseSpecTranslation = specTranslation;
+void StereoDepth::setDepthAlignmentUseSpecTranslation(bool specTranslation) {
+    properties.depthAlignmentUseSpecTranslation = specTranslation;
 }
 
 void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
