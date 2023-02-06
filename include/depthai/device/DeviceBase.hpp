@@ -64,7 +64,7 @@ class DeviceBase {
      * Device specific configuration
      */
     struct Config {
-        OpenVINO::Version version;
+        OpenVINO::Version version = OpenVINO::VERSION_UNIVERSAL;
         BoardConfig board;
         bool nonExclusiveMode = false;
     };
