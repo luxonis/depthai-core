@@ -198,6 +198,10 @@ void StereoDepth::setDepthAlignmentUseSpecTranslation(bool specTranslation) {
     properties.depthAlignmentUseSpecTranslation = specTranslation;
 }
 
+void StereoDepth::setAlphaScaling(float alpha) {
+    properties.alphaScaling = alpha;
+}
+
 void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
     presetMode = mode;
     switch(presetMode) {

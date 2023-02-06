@@ -384,6 +384,13 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * Default: true
      */
     void setDepthAlignmentUseSpecTranslation(bool specTranslation);
+
+    /**
+     * Free scaling parameter between 0 (when all the pixels in the undistorted image are valid)
+     * and 1 (when all the source image pixels are retained in the undistorted image).
+     * See getOptimalNewCameraMatrix from opencv for more details.
+     */
+    void setAlphaScaling(float alpha);
 };
 
 }  // namespace node
