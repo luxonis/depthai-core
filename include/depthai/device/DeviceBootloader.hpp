@@ -212,6 +212,14 @@ class DeviceBootloader {
     DeviceBootloader(const DeviceInfo& devInfo, const dai::Path& pathToBootloader, bool allowFlashingBootloader = false);
 
     /**
+     * Connects to device with specified name/device id
+     *
+     * @param nameOrDeviceId Creates DeviceInfo with nameOrDeviceId to connect to
+     * @param allowFlashingBootloader Set to true to allow flashing the devices bootloader. Defaults to false
+     */
+    DeviceBootloader(std::string nameOrDeviceId, bool allowFlashingBootloader = false);
+
+    /**
      * @brief Destroy the Device Bootloader object
      *
      */
