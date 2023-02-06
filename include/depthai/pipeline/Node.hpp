@@ -376,6 +376,170 @@ class Node : public std::enable_shared_from_this<Node> {
          * Equivalent to getWaitForMessage but with inverted logic.
          */
         bool getReusePreviousMessage() const;
+
+        // TODO(themarpe) - refactor, rather extend from MessageQueue
+
+        /**
+         * Check whether front of the queue has message of type T
+         * @returns True if queue isn't empty and the first element is of type T, false otherwise
+         */
+        template <class T>
+        bool has() {
+            return queue.has<T>();
+        }
+
+        /**
+         * Check whether front of the queue has a message (isn't empty)
+         * @returns True if queue isn't empty, false otherwise
+         */
+        bool has() {
+            return queue.has();
+        }
+
+        /**
+         * Try to retrieve message T from queue. If message isn't of type T it returns nullptr
+         *
+         * @returns Message of type T or nullptr if no message available
+         */
+        template <class T>
+        std::shared_ptr<T> tryGet() {
+            return queue.tryGet<T>();
+        }
+
+        /**
+         * Try to retrieve message from queue. If no message available, return immediately with nullptr
+         *
+         * @returns Message or nullptr if no message available
+         */
+        std::shared_ptr<ADatatype> tryGet() {
+            return tryGet<ADatatype>();
+        }
+
+        /**
+         * Block until a message is available.
+         *
+         * @returns Message of type T or nullptr if no message available
+         */
+        template <class T>
+        std::shared_ptr<T> get() {
+            return queue.get<T>();
+        }
+
+        /**
+         * Block until a message is available.
+         *
+         * @returns Message or nullptr if no message available
+         */
+        std::shared_ptr<ADatatype> get() {
+            return get<ADatatype>();
+        }
+
+        /**
+         * Gets first message in the queue.
+         *
+         * @returns Message of type T or nullptr if no message available
+         */
+        template <class T>
+        std::shared_ptr<T> front() {
+            return queue.front<T>();
+        }
+
+        /**
+         * Gets first message in the queue.
+         *
+         * @returns Message or nullptr if no message available
+         */
+        std::shared_ptr<ADatatype> front() {
+            return front<ADatatype>();
+        }
+
+        /**
+         * Block until a message is available with a timeout.
+         *
+         * @param timeout Duration for which the function should block
+         * @param[out] hasTimedout Outputs true if timeout occurred, false otherwise
+         * @returns Message of type T otherwise nullptr if message isn't type T or timeout occurred
+         */
+        template <class T, typename Rep, typename Period>
+        std::shared_ptr<T> get(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
+            return queue.get<T, Rep, Period>(timeout, hasTimedout);
+        }
+
+        /**
+         * Block until a message is available with a timeout.
+         *
+         * @param timeout Duration for which the function should block
+         * @param[out] hasTimedout Outputs true if timeout occurred, false otherwise
+         * @returns Message of type T otherwise nullptr if message isn't type T or timeout occurred
+         */
+        template <typename Rep, typename Period>
+        std::shared_ptr<ADatatype> get(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
+            return get<ADatatype>(timeout, hasTimedout);
+        }
+
+        /**
+         * Try to retrieve all messages in the queue.
+         *
+         * @returns Vector of messages which can either be of type T or nullptr
+         */
+        template <class T>
+        std::vector<std::shared_ptr<T>> tryGetAll() {
+            return queue.tryGetAll<T>();
+        }
+
+        /**
+         * Try to retrieve all messages in the queue.
+         *
+         * @returns Vector of messages
+         */
+        std::vector<std::shared_ptr<ADatatype>> tryGetAll() {
+            return tryGetAll<ADatatype>();
+        }
+
+        /**
+         * Block until at least one message in the queue.
+         * Then return all messages from the queue.
+         *
+         * @returns Vector of messages which can either be of type T or nullptr
+         */
+        template <class T>
+        std::vector<std::shared_ptr<T>> getAll() {
+            return queue.getAll<T>();
+        }
+
+        /**
+         * Block until at least one message in the queue.
+         * Then return all messages from the queue.
+         *
+         * @returns Vector of messages
+         */
+        std::vector<std::shared_ptr<ADatatype>> getAll() {
+            return getAll<ADatatype>();
+        }
+
+        /**
+         * Block for maximum timeout duration.
+         * Then return all messages from the queue.
+         * @param timeout Maximum duration to block
+         * @param[out] hasTimedout Outputs true if timeout occurred, false otherwise
+         * @returns Vector of messages which can either be of type T or nullptr
+         */
+        template <class T, typename Rep, typename Period>
+        std::vector<std::shared_ptr<T>> getAll(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
+            return queue.getAll<T, Rep, Period>(timeout, hasTimedout);
+        }
+
+        /**
+         * Block for maximum timeout duration.
+         * Then return all messages from the queue.
+         * @param timeout Maximum duration to block
+         * @param[out] hasTimedout Outputs true if timeout occurred, false otherwise
+         * @returns Vector of messages
+         */
+        template <typename Rep, typename Period>
+        std::vector<std::shared_ptr<ADatatype>> getAll(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
+            return getAll<ADatatype>(timeout, hasTimedout);
+        }
     };
 
     /**

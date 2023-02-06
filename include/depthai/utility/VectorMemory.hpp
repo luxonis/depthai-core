@@ -28,10 +28,10 @@ class VectorMemory : public std::vector<std::uint8_t>, public Memory {
     span<const std::uint8_t> getData() const override {
         return {data(), size()};
     }
-    std::size_t getMaxSize() const {
+    std::size_t getMaxSize() const override {
         return capacity();
     }
-    std::size_t getOffset() const {
+    std::size_t getOffset() const override {
         return 0;
     }
     void setSize(std::size_t size) override {

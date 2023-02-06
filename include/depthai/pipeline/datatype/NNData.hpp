@@ -64,6 +64,7 @@ class NNData : public Buffer {
      * Construct NNData message.
      */
     NNData();
+    NNData(size_t size);
     explicit NNData(std::shared_ptr<RawNNData> ptr);
     virtual ~NNData() = default;
 
@@ -266,7 +267,7 @@ class NNData : public Buffer {
         info.numDimensions = tensor.dimension();
         for(uint32_t i = 0; i < tensor.dimension(); i++) {
             info.dims.push_back(tensor.shape()[i]);
-            info.strides.push_back(tensor.strides()[i]);
+            info.strides.push_back(tensor.strides()[i] * sizeof(uint16_t));
         }
 
         rawNn.tensors.push_back(info);

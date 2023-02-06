@@ -9,6 +9,11 @@ Buffer::Serialized Buffer::serialize() const {
 }
 
 Buffer::Buffer() : ADatatype(std::make_shared<dai::RawBuffer>()) {}
+Buffer::Buffer(size_t size) : Buffer() {
+    auto mem = std::make_shared<VectorMemory>();
+    mem->resize(size);
+    data = mem;
+}
 Buffer::Buffer(std::shared_ptr<dai::RawBuffer> ptr) : ADatatype(std::move(ptr)) {}
 
 // helpers
