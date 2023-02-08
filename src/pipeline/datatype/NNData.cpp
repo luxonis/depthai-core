@@ -149,25 +149,20 @@ NNData& NNData::setLayer(const std::string& name, const std::vector<int>& data) 
     return *this;
 }
 
-NNData& NNData::setLayerInPlace(TensorInfo& tensor, uint8_t*& dataIn, size_t& size){
-    // auto vecData = std::dynamic_pointer_cast<dai::VectorMemory>(data);
-    // if (!vecData){
-    //     std::cout << "DEBUG: Underlying data is not vector memory";
-    // }
+span<std::uint8_t> NNData::setLayerInPlace(TensorInfo& tensor){
     size_t offset = data->getSize();
     auto tensorSize = getTensorDataSize(tensor);
-    size = tensorSize;
     size_t reminder = tensorSize % DATA_ALIGNMENT;
     auto tensorSizeAligned = tensorSize;
     if(reminder != 0){
         tensorSizeAligned += DATA_ALIGNMENT - reminder;
     }
-    // TODO - this might not be safe with all types of memory
-    data->setSize(offset + tensorSizeAligned);
-    dataIn = &data->getData()[offset];
     tensor.offset = offset;
     rawNn.tensors.push_back(tensor);
-    return *this;
+    // TODO - this might not be safe/viable with all types of memory
+    data->setSize(offset + tensorSizeAligned);
+    auto dataStart = &data->getData()[offset];
+    return data->getData().subspan(offset, tensorSize);
 }
 
 // fp16

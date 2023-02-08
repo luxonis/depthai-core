@@ -9,6 +9,7 @@
 #include "Buffer.hpp"
 #include "depthai-shared/datatype/RawNNData.hpp"
 #include "depthai/utility/VectorMemory.hpp"
+#include "depthai/utility/span.hpp"
 
 #if defined(__clang__)
     #if __has_warning("-Wswitch-enum")
@@ -210,7 +211,7 @@ class NNData : public Buffer {
     /**
      * Set a tensor in place
      */
-    NNData& setLayerInPlace(TensorInfo& tensor, uint8_t*& data, size_t& size);
+    span<std::uint8_t> setLayerInPlace(TensorInfo& tensor);
 
     /**
      * Set a layer with datatype FP16. Double values are converted to FP16.
