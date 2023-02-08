@@ -150,6 +150,7 @@ NNData& NNData::setLayer(const std::string& name, const std::vector<int>& data) 
 }
 
 span<std::uint8_t> NNData::emplaceTensor(TensorInfo& tensor) {
+    // TODO - look into returning an xtensor adaptor pre RVC3 merge
     size_t offset = data->getSize();
     auto tensorSize = getTensorDataSize(tensor);
     size_t reminder = tensorSize % DATA_ALIGNMENT;
