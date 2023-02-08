@@ -149,7 +149,7 @@ NNData& NNData::setLayer(const std::string& name, const std::vector<int>& data) 
     return *this;
 }
 
-span<std::uint8_t> NNData::setLayerInPlace(TensorInfo& tensor){
+span<std::uint8_t> NNData::emplaceTensor(TensorInfo& tensor) {
     size_t offset = data->getSize();
     auto tensorSize = getTensorDataSize(tensor);
     size_t reminder = tensorSize % DATA_ALIGNMENT;

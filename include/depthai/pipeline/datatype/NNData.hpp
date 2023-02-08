@@ -209,9 +209,12 @@ class NNData : public Buffer {
     NNData& setSequenceNum(int64_t sequenceNum);
 
     /**
-     * Set a tensor in place
+     * Emplace a tensor
+     * This function allocates memory for the tensor and return over the said memory.
+     * It is up to the caller to fill the memory out with meaningful data.
+     * @return Span over the allocated memory
      */
-    span<std::uint8_t> setLayerInPlace(TensorInfo& tensor);
+    span<std::uint8_t> emplaceTensor(TensorInfo& tensor);
 
     /**
      * Set a layer with datatype FP16. Double values are converted to FP16.
