@@ -737,9 +737,12 @@ bool PipelineImpl::isRunning() const {
     return running;
 }
 
-void PipelineImpl::start() {
+void PipelineImpl::build() {
     // TODO(themarpe) - add mutex and set running up ahead
+    if(isBuild) return;
+    isBuild = true;
 
+    // Build
     if(!isHostOnly()) {
         // throw std::invalid_argument("Pipeline contains device nodes");
         device = std::make_shared<Device>(Pipeline(shared_from_this()));
@@ -750,9 +753,6 @@ void PipelineImpl::start() {
             device->getInputQueue(inQ, 0, false);
         }
     }
-
-    // Indicate that pipeline is running
-    running = true;
 
     // Go through the build stages sequentially
     for(const auto& node : nodes) {
@@ -766,6 +766,17 @@ void PipelineImpl::start() {
     for(const auto& node : nodes) {
         node->buildStage3();
     }
+
+}
+
+void PipelineImpl::start() {
+    // TODO(themarpe) - add mutex and set running up ahead
+
+    // Implicitly build (if not already)
+    build();
+
+    // Indicate that pipeline is running
+    running = true;
 
     // Starts pipeline, go through all nodes and start them
     for(const auto& node : nodes) {

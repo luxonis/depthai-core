@@ -96,7 +96,10 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     Pipeline& parent;
 
     // is pipeline running
-    AtomicBool running;
+    AtomicBool running{false};
+
+    // was pipeline built
+    AtomicBool isBuild{false};
 
     // TMP TMP - to be moved
     // DeviceBase for hybrid pipelines
@@ -121,6 +124,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Run only host side, if any device nodes are present, error out
     bool isRunning() const;
+    void build();
     void start();
     void wait();
     void stop();
@@ -335,6 +339,9 @@ class Pipeline {
 
     bool isRunning() const {
         return impl()->isRunning();
+    }
+    void build() {
+        impl()->build();
     }
     void start() {
         impl()->start();
