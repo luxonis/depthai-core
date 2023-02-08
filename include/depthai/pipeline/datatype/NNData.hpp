@@ -9,6 +9,7 @@
 #include "Buffer.hpp"
 #include "depthai-shared/datatype/RawNNData.hpp"
 #include "depthai/utility/VectorMemory.hpp"
+#include "depthai/utility/span.hpp"
 
 #if defined(__clang__)
     #if __has_warning("-Wswitch-enum")
@@ -208,6 +209,14 @@ class NNData : public Buffer {
     NNData& setSequenceNum(int64_t sequenceNum);
 
     /**
+     * Emplace a tensor
+     * This function allocates memory for the tensor and return over the said memory.
+     * It is up to the caller to fill the memory out with meaningful data.
+     * @return Span over the allocated memory
+     */
+    span<std::uint8_t> emplaceTensor(TensorInfo& tensor);
+
+    /**
      * Set a layer with datatype FP16. Double values are converted to FP16.
      * @param name Name of the layer
      * @param data Data to store
@@ -295,14 +304,33 @@ class NNData : public Buffer {
         }
 
         xt::xarray<_Ty, xt::layout_type::row_major> tensor(dims);
-        if(it->dataType == TensorInfo::DataType::U8F) {
-            for(uint32_t i = 0; i < tensor.size(); i++) {
-                tensor.data()[i] = data->getData().data()[it->offset + i];
-            }
-        } else {
-            for(uint32_t i = 0; i < tensor.size(); i++) {
-                tensor.data()[i] = fp16_to_fp32(*(uint16_t*)&data->getData().data()[it->offset + 2 * i]);
-            }
+
+        switch(it->dataType) {
+            case TensorInfo::DataType::U8F:
+                for(uint32_t i = 0; i < tensor.size(); i++) {
+                    tensor.data()[i] = data->getData().data()[it->offset + i];
+                }
+                break;
+            case TensorInfo::DataType::I8:
+                for(uint32_t i = 0; i < tensor.size(); i++) {
+                    tensor.data()[i] = reinterpret_cast<int8_t*>(data->getData().data())[it->offset + i];
+                }
+                break;
+            case TensorInfo::DataType::INT:
+                for(uint32_t i = 0; i < tensor.size(); i++) {
+                    tensor.data()[i] = reinterpret_cast<int32_t*>(data->getData().data())[it->offset / sizeof(int32_t) + i];
+                }
+                break;
+            case TensorInfo::DataType::FP16:
+                for(uint32_t i = 0; i < tensor.size(); i++) {
+                    tensor.data()[i] = fp16_to_fp32(reinterpret_cast<uint16_t*>(data->getData().data())[it->offset / sizeof(uint16_t) +  i]);
+                }
+                break;
+            case TensorInfo::DataType::FP32:
+                for(uint32_t i = 0; i < tensor.size(); i++) {
+                    tensor.data()[i] = reinterpret_cast<float_t*>(data->getData().data())[it->offset / sizeof(float_t) + i];
+                }
+                break;
         }
 
         return tensor;

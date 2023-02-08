@@ -149,6 +149,23 @@ NNData& NNData::setLayer(const std::string& name, const std::vector<int>& data) 
     return *this;
 }
 
+span<std::uint8_t> NNData::emplaceTensor(TensorInfo& tensor) {
+    // TODO - look into returning an xtensor adaptor pre RVC3 merge
+    size_t offset = data->getSize();
+    auto tensorSize = getTensorDataSize(tensor);
+    size_t reminder = tensorSize % DATA_ALIGNMENT;
+    auto tensorSizeAligned = tensorSize;
+    if(reminder != 0){
+        tensorSizeAligned += DATA_ALIGNMENT - reminder;
+    }
+    tensor.offset = offset;
+    rawNn.tensors.push_back(tensor);
+    // TODO - this might not be safe/viable with all types of memory
+    data->setSize(offset + tensorSizeAligned);
+    auto dataStart = &data->getData()[offset];
+    return data->getData().subspan(offset, tensorSize);
+}
+
 // fp16
 NNData& NNData::setLayer(const std::string& name, std::vector<float> data) {
     fp16Data[name] = std::vector<std::uint16_t>(data.size());
@@ -263,6 +280,20 @@ std::vector<float> NNData::getLayerFp16(const std::string& name) const {
                 auto* pFp16Data = reinterpret_cast<std::uint16_t*>(&this->data->getData()[tensor.offset]);
                 for(std::size_t i = 0; i < numElements; i++) {
                     data.push_back(fp16_ieee_to_fp32_value(pFp16Data[i]));
+                }
+                return data;
+            }
+        }
+        else if(tensor.dataType == TensorInfo::DataType::FP32) {
+            if(tensor.numDimensions > 0) {
+                std::size_t size = getTensorDataSize(tensor);
+                std::size_t numElements = size / sizeof(float_t);
+
+                std::vector<float> data;
+                data.reserve(numElements);
+                auto* pFp32Data = reinterpret_cast<float_t*>(&this->data->getData()[tensor.offset]);
+                for(std::size_t i = 0; i < numElements; i++) {
+                    data.push_back(pFp32Data[i]);
                 }
                 return data;
             }

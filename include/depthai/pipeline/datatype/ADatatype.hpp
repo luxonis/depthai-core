@@ -23,7 +23,7 @@ class ADatatype {
         std::shared_ptr<RawBuffer> metadata;
     };
     // TODO - XLink throws and error if data is initialised with an empty vector
-    explicit ADatatype(std::shared_ptr<RawBuffer> r) : raw(std::move(r)), data{std::make_shared<VectorMemory>(std::vector<uint8_t>{1})} {}
+    explicit ADatatype(std::shared_ptr<RawBuffer> r) : raw(std::move(r)), data{std::make_shared<VectorMemory>(std::vector<uint8_t>())} {}
     virtual ~ADatatype() = default;
     // TBD
     virtual Serialized serialize() const = 0;
