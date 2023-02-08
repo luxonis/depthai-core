@@ -396,6 +396,18 @@ std::vector<float> CalibrationHandler::getCameraTranslationVector(CameraBoardSoc
     return translationVector;
 }
 
+std::vector<std::vector<float>> CalibrationHandler::getCameraRotationMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera) const {
+    std::vector<std::vector<float>> extrinsics = getCameraExtrinsics(srcCamera, dstCamera, false);
+
+    std::vector<std::vector<float>> rotationMatrix = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
+    for(auto i = 0; i < 3; i++) {
+        for(auto j = 0; j < 3; j++) {
+            rotationMatrix[i][j] = extrinsics[i][j];
+        }
+    }
+    return rotationMatrix;
+}
+
 float CalibrationHandler::getBaselineDistance(CameraBoardSocket cam1, CameraBoardSocket cam2, bool useSpecTranslation) const {
     std::vector<float> translationVector = getCameraTranslationVector(cam1, cam2, useSpecTranslation);
     float sum = 0;
@@ -437,14 +449,6 @@ std::vector<std::vector<float>> CalibrationHandler::getImuToCameraExtrinsics(Cam
         std::vector<std::vector<float>> localTransformationMatrix = getCameraExtrinsics(eepromData.imuExtrinsics.toCameraSocket, cameraId, useSpecTranslation);
         return matMul(transformationMatrix, localTransformationMatrix);
     }
-}
-
-std::vector<std::vector<float>> CalibrationHandler::getStereoVerticalRectificationRotation() const {
-    std::vector<std::vector<float>> rotationMatrix = eepromData.stereoRectificationData.rectifiedRotationVertical;
-    if(rotationMatrix.size() != 3 || rotationMatrix[0].size() != 3) {
-        throw std::runtime_error("Rectified Rotation Matrix Doesn't exist ");
-    }
-    return rotationMatrix;
 }
 
 std::vector<std::vector<float>> CalibrationHandler::getStereoRightRectificationRotation() const {
@@ -729,15 +733,6 @@ void CalibrationHandler::setImuExtrinsics(CameraBoardSocket destCameraId,
     return;
 }
 
-void CalibrationHandler::setStereoVertical(CameraBoardSocket cameraId, std::vector<std::vector<float>> rectifiedRotation) {
-    if(rectifiedRotation.size() != 3 || rectifiedRotation[0].size() != 3) {
-        throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
-    }
-    eepromData.stereoRectificationData.rectifiedRotationVertical = rectifiedRotation;
-    eepromData.stereoRectificationData.verticalCameraSocket = cameraId;
-    return;
-}
-
 void CalibrationHandler::setStereoLeft(CameraBoardSocket cameraId, std::vector<std::vector<float>> rectifiedRotation) {
     if(rectifiedRotation.size() != 3 || rectifiedRotation[0].size() != 3) {
         throw std::runtime_error("Rotation Matrix size should always be 3x3 ");
@@ -759,8 +754,7 @@ void CalibrationHandler::setStereoRight(CameraBoardSocket cameraId, std::vector<
 bool CalibrationHandler::validateCameraArray() const {
     if(eepromData.cameraData.size() > 1) {
         if(eepromData.cameraData.find(dai::CameraBoardSocket::LEFT) != eepromData.cameraData.end()) {
-            return checkSrcLinks(dai::CameraBoardSocket::LEFT) || checkSrcLinks(dai::CameraBoardSocket::RIGHT)
-                   || checkSrcLinks(dai::CameraBoardSocket::VERTICAL);
+            return checkSrcLinks(dai::CameraBoardSocket::LEFT) || checkSrcLinks(dai::CameraBoardSocket::RIGHT);
         } else {
             spdlog::debug(
                 "make sure the head of the Extrinsics is your left camera. Please cross check the data by creating a json file using "

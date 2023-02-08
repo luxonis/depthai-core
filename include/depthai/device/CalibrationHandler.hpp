@@ -226,6 +226,21 @@ class CalibrationHandler {
     std::vector<float> getCameraTranslationVector(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = true) const;
 
     /**
+     * Get the Camera rotation matrix between two cameras from the calibration data.
+     *
+     * @param srcCamera Camera Id of the camera which will be considered as origin.
+     * @param dstCamera  Camera Id of the destination camera to which we are fetching the rotation vector from the SrcCamera
+     * @return a 3x3 rotation matrix
+     * Matrix representation of rotation matrix
+     * \f[ \text{Rotation Matrix} = \left [ \begin{matrix}
+     *                                             r_{00} & r_{01} & r_{02}\\
+     *                                             r_{10} & r_{11} & r_{12}\\
+     *                                             r_{20} & r_{21} & r_{22}\\
+     *                                            \end{matrix} \right ] \f]
+     */
+    std::vector<std::vector<float>> getCameraRotationMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera) const;
+
+    /**
      * Get the baseline distance between two specified cameras. By default it will get the baseline between CameraBoardSocket.RIGHT
      * and CameraBoardSocket.LEFT.
      *
@@ -277,14 +292,6 @@ class CalibrationHandler {
      *
      */
     std::vector<std::vector<float>> getImuToCameraExtrinsics(CameraBoardSocket cameraId, bool useSpecTranslation = false) const;
-
-    /**
-     *
-     * Get the Stereo Vertical Rectification Rotation object
-     *
-     * @return returns a 3x3 rectification rotation matrix
-     */
-    std::vector<std::vector<float>> getStereoVerticalRectificationRotation() const;
 
     /**
      *
@@ -480,16 +487,6 @@ class CalibrationHandler {
                           std::vector<std::vector<float>> rotationMatrix,
                           std::vector<float> translation,
                           std::vector<float> specTranslation = {0, 0, 0});
-
-    /**
-     * Set the Stereo Vertical Rectification object
-     *
-     * @param cameraId CameraId of the camera which will be used as Vertical Camera of stereo Setup
-     * @param rectifiedRotation Rectification rotation of the Vertical camera required for feature matching
-     *
-     * Homography of the Vertical Rectification = Intrinsics_right * rectifiedRotation * inv(Intrinsics_left)
-     */
-    void setStereoVertical(CameraBoardSocket cameraId, std::vector<std::vector<float>> rectifiedRotation);
 
     /**
      * Set the Stereo Left Rectification object
