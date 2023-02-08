@@ -766,7 +766,6 @@ void PipelineImpl::build() {
     for(const auto& node : nodes) {
         node->buildStage3();
     }
-
 }
 
 void PipelineImpl::start() {
