@@ -966,10 +966,10 @@ std::vector<std::tuple<std::string, int, int>> DeviceBase::getIrDrivers() {
     return pimpl->rpcClient->call("getIrDrivers");
 }
 
-std::vector<dai::CrashDump> DeviceBase::getCrashDump() {
+dai::CrashDump DeviceBase::getCrashDump() {
     checkClosed();
 
-    return pimpl->rpcClient->call("getCrashDump").as<std::vector<dai::CrashDump>>();
+    return pimpl->rpcClient->call("getCrashDump").as<dai::CrashDump>();
 }
 
 int DeviceBase::addLogCallback(std::function<void(LogMessage)> callback) {

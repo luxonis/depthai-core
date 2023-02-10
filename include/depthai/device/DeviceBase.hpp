@@ -454,7 +454,7 @@ class DeviceBase {
     /**
      * Retrieves crash dump for debugging.
      */
-    std::vector<dai::CrashDump> getCrashDump();
+    dai::CrashDump getCrashDump();
 
     /**
      * Add a callback for device logging. The callback will be called from a separate thread with the LogMessage being passed.
