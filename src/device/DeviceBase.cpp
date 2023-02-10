@@ -7,6 +7,7 @@
 #include "depthai-bootloader-shared/Bootloader.hpp"
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
+#include "depthai-shared/device/CrashDump.hpp"
 #include "depthai-shared/log/LogConstants.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
@@ -963,6 +964,12 @@ std::vector<std::tuple<std::string, int, int>> DeviceBase::getIrDrivers() {
     checkClosed();
 
     return pimpl->rpcClient->call("getIrDrivers");
+}
+
+std::vector<dai::CrashDump> DeviceBase::getCrashDump() {
+    checkClosed();
+
+    return pimpl->rpcClient->call("getCrashDump").as<std::vector<dai::CrashDump>>();
 }
 
 int DeviceBase::addLogCallback(std::function<void(LogMessage)> callback) {
