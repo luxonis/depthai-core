@@ -457,6 +457,11 @@ class DeviceBase {
     dai::CrashDump getCrashDump();
 
     /**
+     * Retrieves whether the is crash dump stored on device or not.
+     */
+    bool hasCrashDump();
+
+    /**
      * Add a callback for device logging. The callback will be called from a separate thread with the LogMessage being passed.
      *
      * @param callback Callback to call whenever a log message arrives

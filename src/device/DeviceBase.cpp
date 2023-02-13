@@ -972,6 +972,11 @@ dai::CrashDump DeviceBase::getCrashDump() {
     return pimpl->rpcClient->call("getCrashDump").as<dai::CrashDump>();
 }
 
+bool DeviceBase::hasCrashDump() {
+    dai::CrashDump crashDump = getCrashDump();
+    return !crashDump.crashReports.empty();
+}
+
 int DeviceBase::addLogCallback(std::function<void(LogMessage)> callback) {
     checkClosed();
 
