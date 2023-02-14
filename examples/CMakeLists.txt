@@ -359,3 +359,6 @@ dai_add_example(apriltag_rgb AprilTag/apriltag_rgb.cpp ON)
 # DetectionParser
 dai_add_example(detection_parser NeuralNetwork/detection_parser.cpp ON)
 target_compile_definitions(detection_parser PRIVATE BLOB_PATH="${mobilenet_blob}")
+
+# DetectionParser
+dai_add_example(crash_report CrashReport/crash_report.cpp OFF)
