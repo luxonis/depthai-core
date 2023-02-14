@@ -21,6 +21,7 @@
 #include "utility/spdlog-fmt.hpp"
 
 // libraries
+#include "XLink/XLink.h"
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/spdlog.h"
 #include "zlib.h"
@@ -267,11 +268,27 @@ DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, const dai::Path& p
     init(false, pathToBootloader, tl::nullopt, allowFlashingBootloader);
 }
 
+DeviceBootloader::DeviceBootloader(std::string nameOrDeviceId, bool allowFlashingBootloader) : deviceInfo(std::move(nameOrDeviceId)) {
+    init(true, {}, tl::nullopt, allowFlashingBootloader);
+}
+
 void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl::optional<bootloader::Type> type, bool allowBlFlash) {
     stream = nullptr;
     allowFlashingBootloader = allowBlFlash;
 
     bootloaderType = type.value_or(DEFAULT_TYPE);
+
+    // If deviceInfo isn't fully specified (eg ANY_STATE, etc...), but id or name is - try finding it first
+    if((deviceInfo.state == X_LINK_ANY_STATE || deviceInfo.protocol == X_LINK_ANY_PROTOCOL) && (!deviceInfo.mxid.empty() || !deviceInfo.name.empty())) {
+        deviceDesc_t foundDesc;
+        auto ret = XLinkFindFirstSuitableDevice(deviceInfo.getXLinkDeviceDesc(), &foundDesc);
+        if(ret == X_LINK_SUCCESS) {
+            deviceInfo = DeviceInfo(foundDesc);
+            spdlog::debug("Found an actual device by given DeviceInfo: {}", deviceInfo.toString());
+        } else {
+            throw std::runtime_error("Specified device not found");
+        }
+    }
 
     // Init device (if bootloader, handle correctly - issue USB boot command)
     if(deviceInfo.state == X_LINK_UNBOOTED) {
@@ -493,7 +510,9 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
                 prevPingTime = lastWatchdogPingTime;
             }
             // Recheck if watchdogRunning wasn't already closed and close if more than twice of WD passed
-            if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > bootloader::XLINK_WATCHDOG_TIMEOUT * 2) {
+            // Bump checking thread to not cause spurious warnings/closes
+            std::chrono::milliseconds watchdogTimeout = std::chrono::milliseconds(3000);
+            if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout * 2) {
                 spdlog::warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
                 // ping was missed, reset the device
                 watchdogRunning = false;

@@ -121,6 +121,8 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
     PipelineSchema schema;
     schema.globalProperties = globalProperties;
 
+    std::uint32_t latestIoId = 0;
+
     // Loop over nodes, and add them to schema
     for(const auto& kv : nodeMap) {
         const auto& node = kv.second;
@@ -139,6 +141,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
         // Add inputs
         for(const auto& input : inputs) {
             NodeIoInfo io;
+            io.id = ++latestIoId;
             io.blocking = input.getBlocking();
             io.queueSize = input.getQueueSize();
             io.name = input.name;
@@ -169,6 +172,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
         // Add outputs
         for(const auto& output : outputs) {
             NodeIoInfo io;
+            io.id = ++latestIoId;
             io.blocking = false;
             io.name = output.name;
             io.group = output.group;
@@ -282,7 +286,7 @@ tl::optional<OpenVINO::Version> PipelineImpl::getPipelineOpenVINOVersion() const
 
 Device::Config PipelineImpl::getDeviceConfig() const {
     Device::Config config;
-    config.version = getPipelineOpenVINOVersion().value_or(OpenVINO::DEFAULT_VERSION);
+    config.version = getPipelineOpenVINOVersion().value_or(OpenVINO::VERSION_UNIVERSAL);
     config.board = board;
     return config;
 }

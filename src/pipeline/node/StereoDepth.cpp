@@ -178,6 +178,30 @@ void StereoDepth::enableDistortionCorrection(bool enableDistortionCorrection) {
     useHomographyRectification(!enableDistortionCorrection);
 }
 
+void StereoDepth::setBaseline(float baseline) {
+    properties.baseline = baseline;
+}
+
+void StereoDepth::setFocalLength(float focalLength) {
+    properties.focalLength = focalLength;
+}
+
+void StereoDepth::setDisparityToDepthUseSpecTranslation(bool specTranslation) {
+    properties.disparityToDepthUseSpecTranslation = specTranslation;
+}
+
+void StereoDepth::setRectificationUseSpecTranslation(bool specTranslation) {
+    properties.rectificationUseSpecTranslation = specTranslation;
+}
+
+void StereoDepth::setDepthAlignmentUseSpecTranslation(bool specTranslation) {
+    properties.depthAlignmentUseSpecTranslation = specTranslation;
+}
+
+void StereoDepth::setAlphaScaling(float alpha) {
+    properties.alphaScaling = alpha;
+}
+
 void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
     presetMode = mode;
     switch(presetMode) {

@@ -47,6 +47,29 @@ cmake -S. -Bbuild -D'BUILD_SHARED_LIBS=ON'
 cmake --build build
 ```
 
+
+### Android
+
+Android is supported to some extent but not actively pursued nor tested. PRs with any improvements are welcome.
+
+Steps:
+
+ - Install Android NDK (for example via Android Studio).
+ - Set the NDK path:
+```
+export ANDROID_HOME=$HOME/.local/lib/Android
+export PATH=$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
+export NDK=$ANDROID_HOME/ndk/23.1.7779620/ # Check version
+```
+ - Ensure a recent version of cmake (apt version is outdated, install snap install cmake --classic)
+ - Run cmake, set your ABI and Platform as needed:
+
+```
+cmake -S. -Bbuild -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DANDROID_PLATFORM=android-25
+cmake --build build
+```
+
+
 ## Running examples
 
 To build the examples configure with following option added
@@ -146,6 +169,7 @@ The following environment variables can be set to alter default behavior of the 
 | Environment variable  | Description   |
 |--------------|-----------|
 | DEPTHAI_LEVEL | Sets logging verbosity, 'trace', 'debug', 'warn', 'error' and 'off' |
+| XLINK_LEVEL | Sets logging verbosity of XLink library, 'debug'. 'info', 'warn', 'error', 'fatal' and 'off' |
 | DEPTHAI_INSTALL_SIGNAL_HANDLER | Set to 0 to disable installing Backward signal handler for stack trace printing |
 | DEPTHAI_WATCHDOG | Sets device watchdog timeout. Useful for debugging (`DEPTHAI_WATCHDOG=0`), to prevent device reset while the process is paused. |
 | DEPTHAI_WATCHDOG_INITIAL_DELAY | Specifies delay after which the device watchdog starts. |

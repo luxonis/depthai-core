@@ -223,6 +223,7 @@ target_compile_definitions(calibration_load PRIVATE CALIB_PATH="${calib_v6}")
 dai_add_example(rgb_camera_control ColorCamera/rgb_camera_control.cpp ON)
 dai_add_example(rgb_preview ColorCamera/rgb_preview.cpp ON)
 dai_add_example(rgb_video ColorCamera/rgb_video.cpp ON)
+dai_add_example(rgb_isp_scale ColorCamera/rgb_isp_scale.cpp ON)
 
 # EdgeDetector
 dai_add_example(edge_detector EdgeDetector/edge_detector.cpp ON)
@@ -358,3 +359,6 @@ dai_add_example(apriltag_rgb AprilTag/apriltag_rgb.cpp ON)
 # DetectionParser
 dai_add_example(detection_parser NeuralNetwork/detection_parser.cpp ON)
 target_compile_definitions(detection_parser PRIVATE BLOB_PATH="${mobilenet_blob}")
+
+# DetectionParser
+dai_add_example(crash_report CrashReport/crash_report.cpp OFF)
