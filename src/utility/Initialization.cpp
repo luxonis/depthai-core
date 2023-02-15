@@ -76,7 +76,7 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
         // spdlog::cfg::load_env_levels();
         auto envLevel = utility::getEnv("DEPTHAI_LEVEL");
         if(!envLevel.empty()) {
-            spdlog::cfg::helpers::load_levels(envLevel);
+            utility::spdlogLoadLevels(envLevel);
         } else {
             // Otherwise set default level to WARN
             spdlog::set_level(spdlog::level::warn);

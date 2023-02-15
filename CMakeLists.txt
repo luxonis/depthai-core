@@ -6,7 +6,8 @@ if(NOT WIN32)
     set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
 endif()
 
-set(HUNTER_SKIP_PACKAGE_nlohmann_json OFF)
+option(HUNTER_SKIP_PACKAGE_nlohmann_json "Use system/external nlomann_json package" OFF)
+option(HUNTER_SKIP_PACKAGE_spdlog "Use system/external spdlog package" OFF)
 set(BUILD_SHARED_LIBS ON)
 # Set type to canonicalize relative paths for user-provided toolchain
 set(CMAKE_TOOLCHAIN_FILE "" CACHE FILEPATH "CMake toolchain path")
@@ -439,6 +440,19 @@ target_link_libraries(${TARGET_CORE_NAME}
         spdlog::spdlog
         ZLIB::zlib
 )
+
+# link libraries (special cases)
+if(HUNTER_SKIP_PACKAGE_spdlog)
+    target_link_libraries(${TARGET_CORE_NAME}
+        PRIVATE
+            fmt::fmt
+    )
+    target_compile_definitions(${TARGET_CORE_NAME}
+        PRIVATE
+            # External fmt
+            SPDLOG_FMT_EXTERNAL
+    )
+endif()
 
 # Add compile & CMake definitions
 set(DEPTHAI_DEVICE_VERSION "${DEPTHAI_DEVICE_SIDE_COMMIT}")
