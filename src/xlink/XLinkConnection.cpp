@@ -104,6 +104,25 @@ static XLinkProtocol_t getDefaultProtocol() {
     return defaultProtocol;
 }
 
+static XLinkPlatform_t getDefaultPlatform() {
+    XLinkPlatform_t defaultPlatform = X_LINK_ANY_PLATFORM;
+
+    auto protocolStr = utility::getEnv("DEPTHAI_PLATFORM");
+
+    std::transform(protocolStr.begin(), protocolStr.end(), protocolStr.begin(), ::tolower);
+    if(protocolStr.empty() || protocolStr == "any") {
+        defaultPlatform = X_LINK_ANY_PLATFORM;
+    } else if(protocolStr == "rvc2" || protocolStr == "myriadx") {
+        defaultPlatform = X_LINK_MYRIAD_X;
+    } else if(protocolStr == "rvc3") {
+        defaultPlatform = X_LINK_RVC3;
+    } else {
+        spdlog::warn("Unsupported platform specified");
+    }
+
+    return defaultPlatform;
+}
+
 // STATIC
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT;
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_CONNECT_TIMEOUT;
@@ -118,7 +137,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
     std::array<deviceDesc_t, 32> deviceDescAll = {};
     deviceDesc_t suitableDevice = {};
     suitableDevice.protocol = getDefaultProtocol();
-    suitableDevice.platform = X_LINK_ANY_PLATFORM;
+    suitableDevice.platform = getDefaultPlatform();
     suitableDevice.state = state;
 
     auto allowedDeviceIds = utility::getEnv("DEPTHAI_DEVICE_MXID_LIST");
