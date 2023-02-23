@@ -222,6 +222,13 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
      */
     void setFps(float fps);
 
+    /**
+     * Image tuning, 3A rate.
+     * Default (0) matches the camera FPS, meaning that statistics for auto exposure are collected on each frame.
+     * Reducing the rate of 3A reduces the CPU usage on MSS, but also reduces the convergence rate of 3A.
+     */
+    void set3AFpsDenominator(int denominator);
+
     // Set events on which frames will be received
     void setFrameEventFilter(const std::vector<dai::FrameEvent>& events);
 

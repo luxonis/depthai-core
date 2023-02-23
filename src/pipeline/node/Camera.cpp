@@ -130,6 +130,10 @@ void Camera::setFps(float fps) {
     properties.fps = fps;
 }
 
+void Camera::set3AFpsDenominator(int denominator) {
+    properties.imageTuningFpsDenominator = denominator;
+}
+
 float Camera::getFps() const {
     // if AUTO
     if(properties.fps == CameraProperties::AUTO || properties.fps == 0) {

@@ -177,6 +177,10 @@ void ColorCamera::setFps(float fps) {
     properties.fps = fps;
 }
 
+void ColorCamera::set3AFpsDenominator(int denominator) {
+    properties.imageTuningFpsDenominator = denominator;
+}
+
 void ColorCamera::setFrameEventFilter(const std::vector<dai::FrameEvent>& events) {
     properties.eventFilter = events;
 }

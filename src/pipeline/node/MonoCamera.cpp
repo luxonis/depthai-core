@@ -99,6 +99,10 @@ void MonoCamera::setFps(float fps) {
     properties.fps = fps;
 }
 
+void MonoCamera::set3AFpsDenominator(int denominator) {
+    properties.imageTuningFpsDenominator = denominator;
+}
+
 float MonoCamera::getFps() const {
     // if AUTO
     if(properties.fps == -1 || properties.fps == 0) {
