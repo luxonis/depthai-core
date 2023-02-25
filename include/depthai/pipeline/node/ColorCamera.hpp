@@ -223,11 +223,13 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
     void setFps(float fps);
 
     /**
-     * Image tuning, 3A rate.
-     * Default (0) matches the camera FPS, meaning that statistics for auto exposure are collected on each frame.
-     * Reducing the rate of 3A reduces the CPU usage on MSS, but also reduces the convergence rate of 3A.
+     * Isp 3A rate (auto focus, auto exposure, auto white balance).
+     * Value (-1) is auto-mode. For USB devices will set 3A fps to maximum 30 fps, for POE devices to maximum 20 fps.
+     * Can be overriden by setting explicitly.
+     * Default (0) matches the camera FPS, meaning that 3A is running on each frame.
+     * Reducing the rate of 3A reduces the CPU usage on CSS, but also increases the convergence rate of 3A.
      */
-    void set3AFpsDenominator(int denominator);
+    void setIsp3aFps(int isp3aFps);
 
     // Set events on which frames will be received
     void setFrameEventFilter(const std::vector<dai::FrameEvent>& events);
