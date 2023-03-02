@@ -74,6 +74,11 @@ class ImgFrame : public Buffer {
     unsigned int getWidth() const;
 
     /**
+     * Retrieves image stride in pixels
+     */
+    unsigned int getStride() const;
+
+    /**
      * Retrieves image height in pixels
      */
     unsigned int getHeight() const;

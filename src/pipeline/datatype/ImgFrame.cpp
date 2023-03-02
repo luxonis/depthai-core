@@ -45,6 +45,9 @@ int64_t ImgFrame::getSequenceNum() const {
 unsigned int ImgFrame::getWidth() const {
     return img.fb.width;
 }
+unsigned int ImgFrame::getStride() const {
+    return img.fb.stride;
+}
 unsigned int ImgFrame::getHeight() const {
     return img.fb.height;
 }
