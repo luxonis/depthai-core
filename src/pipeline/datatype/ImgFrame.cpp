@@ -8,7 +8,7 @@ ImgFrame::Serialized ImgFrame::serialize() const {
     return {data, raw};
 }
 
-ImgFrame::ImgFrame() : Buffer(std::make_shared<RawImgFrame>()), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformation(img.transformation) {
+ImgFrame::ImgFrame() : Buffer(std::make_shared<RawImgFrame>()), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformation(img.transformationData) {
     // set timestamp to now
     setTimestamp(std::chrono::steady_clock::now());
 }
@@ -20,7 +20,7 @@ ImgFrame::ImgFrame(size_t size) : ImgFrame() {
 }
 
 ImgFrame::ImgFrame(std::shared_ptr<RawImgFrame> ptr)
-    : Buffer(std::move(ptr)), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformation(img.transformation) {}
+    : Buffer(std::move(ptr)), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformation(img.transformationData) {}
 
 // helpers
 
