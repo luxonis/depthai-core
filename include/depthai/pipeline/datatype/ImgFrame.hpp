@@ -100,6 +100,11 @@ class ImgFrame : public Buffer {
     Type getType() const;
 
     /**
+     * Retrieves image bytes per pixel
+     */
+    float getBytesPerPixel() const;
+
+    /**
      * Retrieves exposure time
      */
     std::chrono::microseconds getExposureTime() const;

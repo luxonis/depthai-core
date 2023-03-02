@@ -51,6 +51,9 @@ unsigned int ImgFrame::getHeight() const {
 RawImgFrame::Type ImgFrame::getType() const {
     return img.fb.type;
 }
+float ImgFrame::getBytesPerPixel() const {
+    return img.typeToBpp(getType());
+}
 std::chrono::microseconds ImgFrame::getExposureTime() const {
     return std::chrono::microseconds(img.cam.exposureTimeUs);
 }
