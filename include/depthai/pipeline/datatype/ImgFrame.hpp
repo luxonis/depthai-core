@@ -224,6 +224,11 @@ class ImgFrame : public Buffer {
      */
     ImgFrame& setType(Type type);
 
+    /**
+     * Set raw data for ImgFrame.
+     */
+    void set(dai::RawImgFrame rawImgFrame);
+
 // Optional - OpenCV support
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     /**

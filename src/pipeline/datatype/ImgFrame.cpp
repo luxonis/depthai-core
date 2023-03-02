@@ -152,4 +152,8 @@ ImgFrame& ImgFrame::setType(RawImgFrame::Type type) {
     return *this;
 }
 
+void ImgFrame::set(RawImgFrame rawImgFrame) {
+    img = rawImgFrame;
+}
+
 }  // namespace dai
