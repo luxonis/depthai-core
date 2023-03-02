@@ -3,17 +3,15 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 // shared
-#include "depthai-shared/datatype/RawImgTransformation.hpp"
+#include "depthai-shared/common/ImgTransformation.hpp"
 
 namespace dai {
 class ImgTransformation{
-    RawImgTransformation& transformation;
    public:
     ImgTransformation() = delete;
-    explicit ImgTransformation(RawImgTransformation& transformation);
+    ImgTransformation(std::vector<RawImgTransformation> rawTransformations);
     virtual ~ImgTransformation() = default;
 
-    dai::RawImgTransformation& get();
     void setSize(int width, int height);
     void setPadding(ImgTransformation sourceFrame, dai::Rect iRoiRect, int topPadding, int bottomPadding, int leftPadding, int rightPadding);
     void setCrop(ImgTransformation sourceFrame, dai::Rect crop);
