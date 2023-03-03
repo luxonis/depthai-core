@@ -74,6 +74,11 @@ class ImgFrame : public Buffer {
     unsigned int getWidth() const;
 
     /**
+     * Retrieves image stride in pixels
+     */
+    unsigned int getStride() const;
+
+    /**
      * Retrieves image height in pixels
      */
     unsigned int getHeight() const;
@@ -98,6 +103,11 @@ class ImgFrame : public Buffer {
      * Retrieves image type
      */
     Type getType() const;
+
+    /**
+     * Retrieves image bytes per pixel
+     */
+    float getBytesPerPixel() const;
 
     /**
      * Retrieves exposure time
@@ -213,6 +223,11 @@ class ImgFrame : public Buffer {
      * @param type Type of image
      */
     ImgFrame& setType(Type type);
+
+    /**
+     * Set raw data for ImgFrame.
+     */
+    void set(dai::RawImgFrame rawImgFrame);
 
 // Optional - OpenCV support
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT

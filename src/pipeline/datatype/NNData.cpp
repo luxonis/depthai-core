@@ -155,7 +155,7 @@ span<std::uint8_t> NNData::emplaceTensor(TensorInfo& tensor) {
     auto tensorSize = getTensorDataSize(tensor);
     size_t reminder = tensorSize % DATA_ALIGNMENT;
     auto tensorSizeAligned = tensorSize;
-    if(reminder != 0){
+    if(reminder != 0) {
         tensorSizeAligned += DATA_ALIGNMENT - reminder;
     }
     tensor.offset = offset;
@@ -283,8 +283,7 @@ std::vector<float> NNData::getLayerFp16(const std::string& name) const {
                 }
                 return data;
             }
-        }
-        else if(tensor.dataType == TensorInfo::DataType::FP32) {
+        } else if(tensor.dataType == TensorInfo::DataType::FP32) {
             if(tensor.numDimensions > 0) {
                 std::size_t size = getTensorDataSize(tensor);
                 std::size_t numElements = size / sizeof(float_t);
