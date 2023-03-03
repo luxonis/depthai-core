@@ -93,6 +93,11 @@ class ObjectTracker : public NodeCRTP<Node, ObjectTracker, ObjectTrackerProperti
      * @param type Tracker ID assignment policy.
      */
     void setTrackerIdAssignmentPolicy(TrackerIdAssignmentPolicy type);
+
+    /**
+     * Whether tracker should take into consideration class label for tracking.
+     */
+    void setTrackingPerClass(bool trackingPerClass);
 };
 
 }  // namespace node
