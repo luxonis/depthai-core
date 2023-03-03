@@ -8,7 +8,7 @@ ImgFrame::Serialized ImgFrame::serialize() const {
     return {data, raw};
 }
 
-ImgFrame::ImgFrame() : Buffer(std::make_shared<RawImgFrame>()), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformation(img.transformations) {
+ImgFrame::ImgFrame() : Buffer(std::make_shared<RawImgFrame>()), img(*dynamic_cast<RawImgFrame*>(raw.get())) {
     // set timestamp to now
     setTimestamp(std::chrono::steady_clock::now());
 }
@@ -19,9 +19,26 @@ ImgFrame::ImgFrame(size_t size) : ImgFrame() {
     data = mem;
 }
 
-ImgFrame::ImgFrame(std::shared_ptr<RawImgFrame> ptr)
-    : Buffer(std::move(ptr)), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformation(img.transformations) {}
-
+ImgFrame::ImgFrame(std::shared_ptr<RawImgFrame> ptr) : Buffer(std::move(ptr)), img(*dynamic_cast<RawImgFrame*>(raw.get())) {
+    for(auto transformation : img.transformations) {
+        switch(transformation.transformationType) {
+            case RawImgTransformation::Transformation::Crop:
+                transformations.emplace_back(std::make_shared<CropTransformation>(transformation));
+                break;
+            case RawImgTransformation::Transformation::Scale:
+                transformations.emplace_back(std::make_shared<ScaleTransformation>(transformation));
+                break;
+            case RawImgTransformation::Transformation::Flip:
+                break; // TODO
+            case RawImgTransformation::Transformation::Pad:
+                break; // TODO
+            case RawImgTransformation::Transformation::Rotation:
+                break; // TODO
+            default:
+                break;
+        }
+    }
+}
 // helpers
 
 // getters
@@ -144,6 +161,94 @@ ImgFrame& ImgFrame::setType(RawImgFrame::Type type) {
     img.fb.type = type;
     img.fb.bytesPP = RawImgFrame::typeToBpp(img.fb.type);
     return *this;
+}
+
+void ImgFrame::copyTransformationsFrom(std::shared_ptr<dai::ImgFrame> sourceFrame) {
+    transformations = sourceFrame->transformations;
+    img.transformations = sourceFrame->get().transformations;
+}
+
+void ImgFrame::transSetPadding(float topPadding, float bottomPadding, float leftPadding, float rightPadding) {
+    ;
+}
+void ImgFrame::transSetCrop(dai::Rect crop) {
+    // Add a crop
+    RawImgTransformation cropTransformation;
+    auto cropNormalized = crop.normalize(getWidth(), getHeight());
+    cropTransformation.crop = cropNormalized;
+    cropTransformation.transformationType = RawImgTransformation::Transformation::Crop;
+
+    // Add the transformation
+    img.transformations.push_back(cropTransformation);
+    transformations.emplace_back(std::make_shared<CropTransformation>(cropTransformation));
+
+    // Set image size correctly
+    auto cropDenormalized = crop.denormalize(getWidth(), getHeight());
+    setWidth(cropDenormalized.width);
+    setHeight(cropDenormalized.height);
+}
+void ImgFrame::transSetRotation(float rotationAngle, dai::Point2f rotationPoint) {}
+
+void ImgFrame::transSetScale(float scaleFactorX, float scaleFactorY) {
+    RawImgTransformation scaleTransformation;
+    scaleTransformation.scaleFactorX = scaleFactorX;
+    scaleTransformation.scaleFactorY = scaleFactorY;
+    scaleTransformation.transformationType = RawImgTransformation::Transformation::Scale;
+
+    // Add the transformation
+    img.transformations.push_back(scaleTransformation);
+    transformations.emplace_back(std::make_shared<ScaleTransformation>(scaleTransformation));
+
+    // Correct the image sizes
+    setWidth(getWidth() * scaleFactorX);
+    setHeight(getHeight() * scaleFactorY);
+}
+
+dai::Point2f ScaleTransformation::trans(dai::Point2f point) {
+    // Since we are dealing with relative coordinates, there is nothing to be done
+    return point;
+}
+
+dai::Point2f ScaleTransformation::invTrans(dai::Point2f point) {
+    // Since we are dealing with relative coordinates, there is nothing to be done
+    return point;
+}
+
+dai::Point2f CropTransformation::trans(dai::Point2f point) {
+    dai::Point2f returnPoint;
+    float cropStartX = rawImgTransformation.crop.topLeft().x;
+    float cropEndX = rawImgTransformation.crop.bottomRight().x;
+    if(point.x < cropStartX) {
+        returnPoint.x = 0;
+    } else if(point.x > cropEndX) {
+        returnPoint.x = 1;
+    } else {
+        returnPoint.x = (point.x - cropStartX) / (cropEndX - cropStartX);
+    }
+
+    float cropStartY = rawImgTransformation.crop.topLeft().y;
+    float cropEndY = rawImgTransformation.crop.bottomRight().y;
+    if(point.y < cropStartY) {
+        returnPoint.y = 0;
+    } else if(point.y > cropEndY) {
+        returnPoint.y = 1;
+    } else {
+        returnPoint.y = (point.y - cropStartY) / (cropEndY - cropStartY);
+    }
+    return returnPoint;
+}
+
+dai::Point2f CropTransformation::invTrans(dai::Point2f point) {
+    dai::Point2f returnPoint;
+    float cropStartX = rawImgTransformation.crop.topLeft().x;
+    float cropEndX = rawImgTransformation.crop.bottomRight().x;
+    returnPoint.x = (point.x) * (cropEndX - cropStartX) + cropStartX;
+
+    float cropStartY = rawImgTransformation.crop.topLeft().y;
+    float cropEndY = rawImgTransformation.crop.bottomRight().y;
+    returnPoint.y = (point.y) * (cropEndY - cropStartY) + cropStartY;
+
+    return returnPoint;
 }
 
 }  // namespace dai

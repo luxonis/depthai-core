@@ -231,7 +231,6 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/test/MyConsumer.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
-    src/pipeline/datatype/ImgTransformation.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
     src/pipeline/datatype/CameraControl.cpp
     src/pipeline/datatype/NNData.cpp

@@ -7,7 +7,6 @@
 // project
 #include "depthai/build/config.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
-#include "depthai/pipeline/datatype/ImgTransformation.hpp"
 
 // shared
 #include "depthai-shared/datatype/RawImgFrame.hpp"
@@ -18,6 +17,28 @@
 #endif
 
 namespace dai {
+
+class BaseTransformation {
+   protected:
+    RawImgTransformation rawImgTransformation;
+   public:
+    BaseTransformation(RawImgTransformation rawImgTransformation) : rawImgTransformation(rawImgTransformation) {};
+    virtual dai::Point2f trans(dai::Point2f point) = 0;
+    virtual dai::Point2f invTrans(dai::Point2f point) = 0;
+    virtual ~BaseTransformation() = default;
+};
+
+class ScaleTransformation : public BaseTransformation {
+    using BaseTransformation::BaseTransformation;
+    dai::Point2f trans(dai::Point2f point);
+    dai::Point2f invTrans(dai::Point2f point);
+};
+
+class CropTransformation : public BaseTransformation {
+    using BaseTransformation::BaseTransformation;
+    dai::Point2f trans(dai::Point2f point);
+    dai::Point2f invTrans(dai::Point2f point);
+};
 
 /**
  * ImgFrame message. Carries image data and metadata.
@@ -40,8 +61,8 @@ class ImgFrame : public Buffer {
     ImgFrame(size_t size);
     explicit ImgFrame(std::shared_ptr<RawImgFrame> ptr);
     virtual ~ImgFrame() = default;
-    ImgTransformation transformation;
 
+    std::vector<std::shared_ptr<BaseTransformation>> transformations;
     // getters
     /**
      * Retrieves image timestamp related to dai::Clock::now()
@@ -214,6 +235,13 @@ class ImgFrame : public Buffer {
      * @param type Type of image
      */
     ImgFrame& setType(Type type);
+
+    /* TODO add comments */
+    void copyTransformationsFrom(std::shared_ptr<dai::ImgFrame> sourceFrame);
+    void transSetPadding(float topPadding, float bottomPadding, float leftPadding, float rightPadding);
+    void transSetCrop(dai::Rect crop);
+    void transSetRotation(float rotationAngle, dai::Point2f rotationPoint = {0.5, 0.5});
+    void transSetScale(float scaleFactorX, float scaleFactorY);
 
 // Optional - OpenCV support
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
