@@ -40,6 +40,25 @@ class CropTransformation : public BaseTransformation {
     dai::Point2f invTrans(dai::Point2f point);
 };
 
+class PadTransformation : public BaseTransformation {
+    using BaseTransformation::BaseTransformation;
+    dai::Point2f trans(dai::Point2f point);
+    dai::Point2f invTrans(dai::Point2f point);
+};
+
+
+class FlipTransformation : public BaseTransformation {
+    using BaseTransformation::BaseTransformation;
+    dai::Point2f trans(dai::Point2f point);
+    dai::Point2f invTrans(dai::Point2f point);
+};
+
+class RotateTransformation : public BaseTransformation {
+    using BaseTransformation::BaseTransformation;
+    dai::Point2f trans(dai::Point2f point);
+    dai::Point2f invTrans(dai::Point2f point);
+};
+
 /**
  * ImgFrame message. Carries image data and metadata.
  */
@@ -238,9 +257,15 @@ class ImgFrame : public Buffer {
 
     /* TODO add comments */
     void copyTransformationsFrom(std::shared_ptr<dai::ImgFrame> sourceFrame);
+
+    void transSetFlip(bool horizontalFlip, bool verticalFlip);
+
     void transSetPadding(float topPadding, float bottomPadding, float leftPadding, float rightPadding);
+
     void transSetCrop(dai::Rect crop);
+
     void transSetRotation(float rotationAngle, dai::Point2f rotationPoint = {0.5, 0.5});
+
     void transSetScale(float scaleFactorX, float scaleFactorY);
 
 // Optional - OpenCV support

@@ -168,8 +168,42 @@ void ImgFrame::copyTransformationsFrom(std::shared_ptr<dai::ImgFrame> sourceFram
     img.transformations = sourceFrame->get().transformations;
 }
 
+void ImgFrame::transSetFlip(bool horizontalFlip, bool verticalFlip) {
+    RawImgTransformation flipTransformation;
+    flipTransformation.horizontalFlip = horizontalFlip;
+    flipTransformation.verticalFlip = verticalFlip;
+    flipTransformation.transformationType = RawImgTransformation::Transformation::Flip;
+
+    // Add the transformation
+    img.transformations.push_back(flipTransformation);
+    transformations.emplace_back(std::make_shared<FlipTransformation>(flipTransformation));
+
+    // Image sizes stay the same
+}
+
 void ImgFrame::transSetPadding(float topPadding, float bottomPadding, float leftPadding, float rightPadding) {
-    ;
+    RawImgTransformation padTransformation;
+    if(topPadding > 1 || bottomPadding > 1 || leftPadding > 1 || rightPadding > 1) {
+        // Set padding relative to the padded image
+        padTransformation.leftPadding = leftPadding / (getWidth() + leftPadding + rightPadding);
+        padTransformation.rightPadding = rightPadding / (getWidth() + leftPadding + rightPadding);
+        padTransformation.topPadding = topPadding / (getHeight() + topPadding + bottomPadding);
+        padTransformation.bottomPadding = bottomPadding / (getHeight() + topPadding + bottomPadding);
+    } else {
+        padTransformation.topPadding = topPadding;
+        padTransformation.bottomPadding = bottomPadding;
+        padTransformation.leftPadding = leftPadding;
+        padTransformation.rightPadding = rightPadding;
+    }
+    padTransformation.transformationType = RawImgTransformation::Transformation::Pad;
+
+    // Add the transformation
+    img.transformations.push_back(padTransformation);
+    transformations.emplace_back(std::make_shared<PadTransformation>(padTransformation));
+
+    // Set image size
+    setWidth(getWidth() / (1 - padTransformation.leftPadding - padTransformation.rightPadding));
+    setHeight(getHeight() / (1 - padTransformation.bottomPadding - padTransformation.topPadding));
 }
 void ImgFrame::transSetCrop(dai::Rect crop) {
     // Add a crop
@@ -187,7 +221,18 @@ void ImgFrame::transSetCrop(dai::Rect crop) {
     setWidth(cropDenormalized.width);
     setHeight(cropDenormalized.height);
 }
-void ImgFrame::transSetRotation(float rotationAngle, dai::Point2f rotationPoint) {}
+void ImgFrame::transSetRotation(float rotationAngle, dai::Point2f rotationPoint) {
+    RawImgTransformation rotateTransformation;
+    rotateTransformation.rotationAngle = rotationAngle;
+    rotateTransformation.rotationTurnPoint = rotationPoint;
+    rotateTransformation.transformationType = RawImgTransformation::Transformation::Rotation;
+
+    // Add the transformation
+    img.transformations.push_back(rotateTransformation);
+    transformations.emplace_back(std::make_shared<RotateTransformation>(rotateTransformation));
+
+    // TODO what happens with image dimensions -> check with ImageManip
+}
 
 void ImgFrame::transSetScale(float scaleFactorX, float scaleFactorY) {
     RawImgTransformation scaleTransformation;
@@ -249,6 +294,53 @@ dai::Point2f CropTransformation::invTrans(dai::Point2f point) {
     returnPoint.y = (point.y) * (cropEndY - cropStartY) + cropStartY;
 
     return returnPoint;
+}
+
+dai::Point2f PadTransformation::trans(dai::Point2f point) {
+    dai::Point2f returnPoint;
+    returnPoint.x = point.x * (1 - rawImgTransformation.leftPadding - rawImgTransformation.rightPadding) + rawImgTransformation.leftPadding;
+    returnPoint.y = point.y * (1 - rawImgTransformation.topPadding - rawImgTransformation.bottomPadding) + rawImgTransformation.topPadding;
+    return returnPoint;
+}
+
+dai::Point2f PadTransformation::invTrans(dai::Point2f point) {
+    dai::Point2f returnPoint;
+
+    returnPoint.x = (point.x - rawImgTransformation.leftPadding) / (1 - rawImgTransformation.leftPadding - rawImgTransformation.rightPadding);
+    returnPoint.y = (point.y - rawImgTransformation.topPadding) / (1 - rawImgTransformation.topPadding - rawImgTransformation.bottomPadding);
+
+    // If point is not in the padded area, it's not between 0 and 1
+    returnPoint.x = std::max(0.0f, std::min(returnPoint.x, 1.0f));
+    returnPoint.y = std::max(0.0f, std::min(returnPoint.y, 1.0f));
+
+    return returnPoint;
+}
+
+dai::Point2f RotateTransformation::trans(dai::Point2f point) {
+    // TODO implementation
+    throw std::runtime_error("Rotate transformation not yet implemented");
+    return point;
+}
+
+dai::Point2f RotateTransformation::invTrans(dai::Point2f point) {
+    // TODO implementation
+    throw std::runtime_error("Rotate transformation not yet implemented");
+    return point;
+}
+
+dai::Point2f FlipTransformation::trans(dai::Point2f point) {
+    dai::Point2f returnPoint;
+    if(rawImgTransformation.horizontalFlip) {
+        returnPoint.x = 1.0f - point.x;
+    }
+    if(rawImgTransformation.verticalFlip) {
+        returnPoint.y = 1.0f - point.y;
+    }
+    return returnPoint;
+}
+
+dai::Point2f FlipTransformation::invTrans(dai::Point2f point) {
+    return trans(point);  // The operation is the same in both ways
 }
 
 }  // namespace dai
