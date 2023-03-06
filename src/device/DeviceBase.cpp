@@ -821,6 +821,21 @@ std::unordered_map<CameraBoardSocket, std::string> DeviceBase::getCameraSensorNa
     return pimpl->rpcClient->call("getCameraSensorNames").as<std::unordered_map<CameraBoardSocket, std::string>>();
 }
 
+IMUVersion DeviceBase::getConnectedIMUVersion() {
+    checkClosed();
+    return pimpl->rpcClient->call("getConnectedIMUVersion").as<IMUVersion>();
+}
+
+std::string DeviceBase::getIMUFirmwareVersion() {
+    checkClosed();
+    return pimpl->rpcClient->call("getIMUFirmwareVersion").as<std::string>();
+}
+
+std::tuple<bool, float> DeviceBase::getIMUFirmwareUpdateStatus() {
+    checkClosed();
+    return pimpl->rpcClient->call("getIMUFirmwareUpdateStatus").as<std::tuple<bool, float>>();
+}
+
 // Convenience functions for querying current system information
 MemoryInfo DeviceBase::getDdrMemoryUsage() {
     checkClosed();
