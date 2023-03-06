@@ -30,6 +30,7 @@
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
+#include "depthai-shared/datatype/RawIMUData.hpp"
 #include "depthai-shared/device/BoardConfig.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
@@ -484,6 +485,28 @@ class DeviceBase {
      * @returns Map/dictionary with camera sensor names, indexed by socket
      */
     std::unordered_map<CameraBoardSocket, std::string> getCameraSensorNames();
+
+    /**
+     * Get connected IMU version
+     *
+     * @returns IMU version
+     */
+    IMUVersion getConnectedIMUVersion();
+
+    /**
+     * Get connected IMU firmware version
+     *
+     * @returns IMU firmware version
+     */
+    std::string getIMUFirmwareVersion();
+
+    /**
+     * Get IMU firmware update status
+     *
+     * @returns Whether IMU firmware update is still running and last firmware update progress as percentage.
+     * 100% means that the update was successful
+     */
+    std::tuple<bool, float> getIMUFirmwareUpdateStatus();
 
     /**
      * Retrieves current DDR memory information from device
