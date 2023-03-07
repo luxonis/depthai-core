@@ -491,20 +491,39 @@ class DeviceBase {
      *
      * @returns IMU version
      */
-    IMUVersion getConnectedIMUVersion();
+    std::string getConnectedIMU();
 
     /**
      * Get connected IMU firmware version
      *
      * @returns IMU firmware version
      */
-    std::string getIMUFirmwareVersion();
+    dai::Version getIMUFirmwareVersion();
+
+    /**
+     * Get latest available IMU firmware version to which IMU can be upgraded
+     *
+     * @returns Get latest available IMU firmware version to which IMU can be upgraded.
+     */
+    dai::Version getLatestAvailableIMUFirmwareVersion();
+
+    /**
+     * Starts IMU firmware update asynchronously only if IMU node is not running.
+     * If current firmware version is the same as latest available firmware version that it's no-op. Can be overridden by forceUpdate parameter.
+     * State of firmware update can be monitored using getIMUFirmwareUpdateStatus API.
+     *
+     * @param forceUpdate Force firmware update or not. Will perform FW update regardless of current version and latest available firmware version.
+     *
+     * @returns Returns whether firmware update can be started. Returns false if IMU node is started.
+     */
+    bool startIMUFirmwareUpdate(bool forceUpdate = false);
 
     /**
      * Get IMU firmware update status
      *
-     * @returns Whether IMU firmware update is still running and last firmware update progress as percentage.
-     * 100% means that the update was successful
+     * @returns Whether IMU firmware update is pending and last firmware update progress as percentage.
+     * return value false and 100 means that the update was successful
+     * return value false and other than 100 means that the update failed
      */
     std::tuple<bool, float> getIMUFirmwareUpdateStatus();
 

@@ -836,14 +836,38 @@ std::unordered_map<CameraBoardSocket, std::string> DeviceBase::getCameraSensorNa
     return pimpl->rpcClient->call("getCameraSensorNames").as<std::unordered_map<CameraBoardSocket, std::string>>();
 }
 
-IMUVersion DeviceBase::getConnectedIMUVersion() {
+std::string DeviceBase::getConnectedIMU() {
     checkClosed();
-    return pimpl->rpcClient->call("getConnectedIMUVersion").as<IMUVersion>();
+    return pimpl->rpcClient->call("getConnectedIMU").as<std::string>();
 }
 
-std::string DeviceBase::getIMUFirmwareVersion() {
+dai::Version DeviceBase::getIMUFirmwareVersion() {
     checkClosed();
-    return pimpl->rpcClient->call("getIMUFirmwareVersion").as<std::string>();
+    std::string versionStr = pimpl->rpcClient->call("getIMUFirmwareVersion").as<std::string>();
+    try {
+        dai::Version version = dai::Version(versionStr);
+        return version;
+    } catch(const std::exception& ex) {
+        dai::Version version = dai::Version(0, 0, 0);
+        return version;
+    }
+}
+
+dai::Version DeviceBase::getLatestAvailableIMUFirmwareVersion() {
+    checkClosed();
+    std::string versionStr = pimpl->rpcClient->call("getLatestAvailableIMUFirmwareVersion").as<std::string>();
+    try {
+        dai::Version version = dai::Version(versionStr);
+        return version;
+    } catch(const std::exception& ex) {
+        dai::Version version = dai::Version(0, 0, 0);
+        return version;
+    }
+}
+
+bool DeviceBase::startIMUFirmwareUpdate(bool forceUpdate) {
+    checkClosed();
+    return pimpl->rpcClient->call("startIMUFirmwareUpdate", forceUpdate).as<bool>();
 }
 
 std::tuple<bool, float> DeviceBase::getIMUFirmwareUpdateStatus() {
