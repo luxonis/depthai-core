@@ -13,10 +13,10 @@ int main() {
 
     dai::Device device;
 
-    auto imuVersion = device.getConnectedIMU();
+    auto imuType = device.getConnectedIMU();
     auto imuFirmwareVersion = device.getIMUFirmwareVersion();
-    auto latestImuFirmwareVersion = device.getLatestAvailableIMUFirmwareVersion();
-    std::cout << "IMU version: " << imuVersion << " firmware version: " << imuFirmwareVersion
+    auto latestImuFirmwareVersion = device.getEmbeddedIMUFirmwareVersion();
+    std::cout << "IMU version: " << imuType << " firmware version: " << imuFirmwareVersion
               << " latest available firmware version: " << latestImuFirmwareVersion << std::endl;
 
     std::cout << "Warning! Flashing IMU firmware can potentially soft brick your device and should be done with caution." << std::endl;
@@ -35,16 +35,16 @@ int main() {
     }
 
     while(true) {
-        bool fwUpdatePending;
+        bool fwUpdateFinished;
         float percentage;
-        std::tie(fwUpdatePending, percentage) = device.getIMUFirmwareUpdateStatus();
+        std::tie(fwUpdateFinished, percentage) = device.getIMUFirmwareUpdateStatus();
         std::cout << "IMU FW update status: " << std::setprecision(1) << percentage << std::endl;
-        if(fwUpdatePending == false && percentage == 100) {
-            std::cout << "Firmware update successful!" << std::endl;
-            break;
-        }
-        if(fwUpdatePending == false && percentage != 100) {
-            std::cout << "Firmware update failed!" << std::endl;
+        if(fwUpdateFinished) {
+            if(percentage == 100) {
+                std::cout << "Firmware update successful!" << std::endl;
+            } else {
+                std::cout << "Firmware update failed!" << std::endl;
+            }
             break;
         }
         std::this_thread::sleep_for(1s);
