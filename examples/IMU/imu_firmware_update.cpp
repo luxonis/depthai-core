@@ -15,9 +15,9 @@ int main() {
 
     auto imuType = device.getConnectedIMU();
     auto imuFirmwareVersion = device.getIMUFirmwareVersion();
-    auto latestImuFirmwareVersion = device.getEmbeddedIMUFirmwareVersion();
+    auto embeddedIMUFirmwareVersion = device.getEmbeddedIMUFirmwareVersion();
     std::cout << "IMU version: " << imuType << " firmware version: " << imuFirmwareVersion
-              << " latest available firmware version: " << latestImuFirmwareVersion << std::endl;
+              << " latest available firmware version: " << embeddedIMUFirmwareVersion << std::endl;
 
     std::cout << "Warning! Flashing IMU firmware can potentially soft brick your device and should be done with caution." << std::endl;
     std::cout << "Do not unplug your device while the IMU firmware is flashing." << std::endl;
