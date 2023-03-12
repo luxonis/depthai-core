@@ -29,7 +29,7 @@ int main() {
             ob << std::setw(4) << json << std::endl;
 
             std::cout << "Crash dump found on your device!" << std::endl;
-            std::cout << "Saved to " << std::string(destPath) << std::endl;
+            std::cout << "Saved to " << destPath.string() << std::endl;
             std::cout << "Please report to developers!" << std::endl;
             break;
         }
