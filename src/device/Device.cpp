@@ -85,8 +85,6 @@ void Device::closeImpl() {
 }
 
 std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name) {
-    checkClosed();
-
     // Throw if queue not created
     // all queues for xlink streams are created upfront
     if(outputQueueMap.count(name) == 0) {
@@ -97,8 +95,6 @@ std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name)
 }
 
 std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name, unsigned int maxSize, bool blocking) {
-    checkClosed();
-
     // Throw if queue not created
     // all queues for xlink streams are created upfront
     if(outputQueueMap.count(name) == 0) {
@@ -114,8 +110,6 @@ std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name,
 }
 
 std::vector<std::string> Device::getOutputQueueNames() const {
-    checkClosed();
-
     std::vector<std::string> names;
     names.reserve(outputQueueMap.size());
     for(const auto& kv : outputQueueMap) {
@@ -125,8 +119,6 @@ std::vector<std::string> Device::getOutputQueueNames() const {
 }
 
 std::shared_ptr<DataInputQueue> Device::getInputQueue(const std::string& name) {
-    checkClosed();
-
     // Throw if queue not created
     // all queues for xlink streams are created upfront
     if(inputQueueMap.count(name) == 0) {
@@ -137,8 +129,6 @@ std::shared_ptr<DataInputQueue> Device::getInputQueue(const std::string& name) {
 }
 
 std::shared_ptr<DataInputQueue> Device::getInputQueue(const std::string& name, unsigned int maxSize, bool blocking) {
-    checkClosed();
-
     // Throw if queue not created
     // all queues for xlink streams are created upfront
     if(inputQueueMap.count(name) == 0) {
@@ -154,8 +144,6 @@ std::shared_ptr<DataInputQueue> Device::getInputQueue(const std::string& name, u
 }
 
 std::vector<std::string> Device::getInputQueueNames() const {
-    checkClosed();
-
     std::vector<std::string> names;
     names.reserve(inputQueueMap.size());
     for(const auto& kv : inputQueueMap) {
@@ -175,8 +163,6 @@ std::vector<std::string> Device::getInputQueueNames() const {
 // }
 
 std::vector<std::string> Device::getQueueEvents(const std::vector<std::string>& queueNames, std::size_t maxNumEvents, std::chrono::microseconds timeout) {
-    checkClosed();
-
     // First check if specified queues names are actually opened
     auto availableQueueNames = getOutputQueueNames();
     for(const auto& outputQueue : queueNames) {
