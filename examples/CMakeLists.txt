@@ -32,6 +32,10 @@ function(dai_add_example example_name example_src enable_test)
     add_executable(${example_name} ${example_src})
     add_default_flags(${example_name} LEAN)
     target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS} Threads::Threads)
+    # Set compiler features (c++14), and disables extensions (g++14)
+    set_property(TARGET ${example_name} PROPERTY CXX_STANDARD 14)
+    set_property(TARGET ${example_name} PROPERTY CXX_STANDARD_REQUIRED ON)
+    set_property(TARGET ${example_name} PROPERTY CXX_EXTENSIONS OFF)
 
     # Add sanitizers for example
     if(COMMAND add_sanitizers)
