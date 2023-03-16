@@ -25,7 +25,7 @@ int testPadding() {
     sourceImageFrame->setHeight(1080);
     sourceImageFrame->setSourceHeight(1080);
     sourceImageFrame->setSourceWidth(1920);
-    sourceImageFrame->transSetPadding(100, 200, 300, 400);
+    sourceImageFrame->transformSetPadding(100, 200, 300, 400);
 
     dai::Rect sourceRect{0.3, 0.7, 0.1, 0.1};
     auto outRect = sourceImageFrame->transformRectToSource(sourceRect);
@@ -53,7 +53,7 @@ int testCropping() {
     float width = 0.3;
     float height = 0.7;
 
-    sourceImageFrame->transSetCrop({x, y, width, height});
+    sourceImageFrame->transformSetCrop({x, y, width, height});
     // std::cout << "ImageHeight " << sourceImageFrame->getWidth() << std::endl;
     // std::cout << "ImageWidth " << sourceImageFrame->getHeight() << std::endl;
 
@@ -83,7 +83,7 @@ int testFlipping() {
     float width = 0.3;
     float height = 0.7;
 
-    sourceImageFrame->transSetFlip(true, true);
+    sourceImageFrame->transformSetFlip(true, true);
     // std::cout << "ImageHeight " << sourceImageFrame->getWidth() << std::endl;
     // std::cout << "ImageWidth " << sourceImageFrame->getHeight() << std::endl;
 
@@ -113,7 +113,7 @@ int testScale() {
     float width = 0.3;
     float height = 0.7;
 
-    sourceImageFrame->transSetScale(12, 0.3);
+    sourceImageFrame->transformSetScale(12, 0.3);
     // std::cout << "ImageHeight " << sourceImageFrame->getWidth() << std::endl;
     // std::cout << "ImageWidth " << sourceImageFrame->getHeight() << std::endl;
 

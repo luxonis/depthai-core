@@ -172,7 +172,7 @@ void ImgFrame::copyTransformationsFrom(std::shared_ptr<dai::ImgFrame> sourceFram
     setSourceHFov(sourceFrame->getSourceHFov());
 }
 
-void ImgFrame::transSetFlip(bool horizontalFlip, bool verticalFlip) {
+void ImgFrame::transformSetFlip(bool horizontalFlip, bool verticalFlip) {
     RawImgTransformation flipTransformation;
     flipTransformation.horizontalFlip = horizontalFlip;
     flipTransformation.verticalFlip = verticalFlip;
@@ -185,7 +185,7 @@ void ImgFrame::transSetFlip(bool horizontalFlip, bool verticalFlip) {
     // Image sizes stay the same
 }
 
-void ImgFrame::transSetPadding(float topPadding, float bottomPadding, float leftPadding, float rightPadding) {
+void ImgFrame::transformSetPadding(float topPadding, float bottomPadding, float leftPadding, float rightPadding) {
     RawImgTransformation padTransformation;
     if(topPadding > 1 || bottomPadding > 1 || leftPadding > 1 || rightPadding > 1) {
         // Set padding relative to the padded image
@@ -209,7 +209,7 @@ void ImgFrame::transSetPadding(float topPadding, float bottomPadding, float left
     setWidth(getWidth() / (1 - padTransformation.leftPadding - padTransformation.rightPadding));
     setHeight(getHeight() / (1 - padTransformation.bottomPadding - padTransformation.topPadding));
 }
-void ImgFrame::transSetCrop(dai::Rect crop) {
+void ImgFrame::transformSetCrop(dai::Rect crop) {
     // Add a crop
     RawImgTransformation cropTransformation;
     auto cropNormalized = crop.normalize(getWidth(), getHeight());
@@ -225,7 +225,7 @@ void ImgFrame::transSetCrop(dai::Rect crop) {
     setWidth(cropDenormalized.width);
     setHeight(cropDenormalized.height);
 }
-void ImgFrame::transSetRotation(float rotationAngle, dai::Point2f rotationPoint) {
+void ImgFrame::transformSetRotation(float rotationAngle, dai::Point2f rotationPoint) {
     RawImgTransformation rotateTransformation;
     rotateTransformation.rotationAngle = rotationAngle;
     rotateTransformation.rotationTurnPoint = rotationPoint;
@@ -238,7 +238,7 @@ void ImgFrame::transSetRotation(float rotationAngle, dai::Point2f rotationPoint)
     // TODO what happens with image dimensions -> check with ImageManip
 }
 
-void ImgFrame::transSetScale(float scaleFactorX, float scaleFactorY) {
+void ImgFrame::transformSetScale(float scaleFactorX, float scaleFactorY) {
     RawImgTransformation scaleTransformation;
     scaleTransformation.scaleFactorX = scaleFactorX;
     scaleTransformation.scaleFactorY = scaleFactorY;

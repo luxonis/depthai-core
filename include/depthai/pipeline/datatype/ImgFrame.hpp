@@ -267,7 +267,7 @@ class ImgFrame : public Buffer {
      * @param horizontalFlip horizontal flip
      * @param verticalFlip vertical flip
      */
-    void transSetFlip(bool horizontalFlip, bool verticalFlip);
+    void transformSetFlip(bool horizontalFlip, bool verticalFlip);
 
     /**
      * Add a padding transformation to the frame.
@@ -280,7 +280,7 @@ class ImgFrame : public Buffer {
      * @param leftPadding left padding
      * @param rightPadding right padding
      */
-    void transSetPadding(float topPadding, float bottomPadding, float leftPadding, float rightPadding);
+    void transformSetPadding(float topPadding, float bottomPadding, float leftPadding, float rightPadding);
 
     /**
      * Add a crop transformation to the frame.
@@ -288,7 +288,7 @@ class ImgFrame : public Buffer {
      *
      * @param crop crop rectangle - can be either relative or absolute
      */
-    void transSetCrop(dai::Rect crop);
+    void transformSetCrop(dai::Rect crop);
 
     /**
      * Add a rotation transformation to the frame.
@@ -297,7 +297,7 @@ class ImgFrame : public Buffer {
      * @param rotationAngle rotation angle in degrees
      * @param rotationPoint point around which the rotation was performed
      */
-    void transSetRotation(float rotationAngle, dai::Point2f rotationPoint = {0.5, 0.5});
+    void transformSetRotation(float rotationAngle, dai::Point2f rotationPoint = {0.5, 0.5});
 
     /**
      * Add a scale transformation to the frame.
@@ -306,7 +306,7 @@ class ImgFrame : public Buffer {
      * @param scaleFactorX scale factor in X direction
      * @param scaleFactorY scale factor in Y direction
      */
-    void transSetScale(float scaleFactorX, float scaleFactorY);
+    void transformSetScale(float scaleFactorX, float scaleFactorY);
 
     /**
      * Transform a point from the current frame to the source frame
@@ -340,13 +340,15 @@ class ImgFrame : public Buffer {
     dai::Rect transformRectToSource(dai::Rect rect);
 
     /**
-    * Set the source diagnoal field of view
+    * @note Fov API works correctly only on rectilinear frames
+    * Set the source horizontal field of view
     *
     * @param degrees field of view in degrees
     */
     void setSourceHFov(float degrees);
 
     /**
+     * @note Fov API works correctly only on rectilinear frames
      * Get the source diagonal field of view in degrees
      *
      * @returns field of view in degrees
@@ -354,6 +356,7 @@ class ImgFrame : public Buffer {
     float getSourceDFov();
 
     /**
+     * @note Fov API works correctly only on rectilinear frames
      * Get the source horizontal field of view
      *
      * @param degrees field of view in degrees
@@ -361,6 +364,7 @@ class ImgFrame : public Buffer {
     float getSourceHFov();
 
     /**
+     * @note Fov API works correctly only on rectilinear frames
      * Get the source vertical field of view
      *
      * @param degrees field of view in degrees
