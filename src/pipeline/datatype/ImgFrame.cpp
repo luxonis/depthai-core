@@ -166,6 +166,10 @@ ImgFrame& ImgFrame::setType(RawImgFrame::Type type) {
 void ImgFrame::copyTransformationsFrom(std::shared_ptr<dai::ImgFrame> sourceFrame) {
     transformations = sourceFrame->transformations;
     img.transformations = sourceFrame->get().transformations;
+
+    // Copy over origin data as well
+    setSourceSize(sourceFrame->getSourceWidth(), sourceFrame->getSourceHeight());
+    setSourceHFov(sourceFrame->getSourceHFov());
 }
 
 void ImgFrame::transSetFlip(bool horizontalFlip, bool verticalFlip) {
