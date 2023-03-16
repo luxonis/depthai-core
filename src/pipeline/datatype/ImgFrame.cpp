@@ -66,11 +66,17 @@ int64_t ImgFrame::getSequenceNum() const {
 unsigned int ImgFrame::getWidth() const {
     return img.fb.width;
 }
+unsigned int ImgFrame::getStride() const {
+    return img.fb.stride;
+}
 unsigned int ImgFrame::getHeight() const {
     return img.fb.height;
 }
 RawImgFrame::Type ImgFrame::getType() const {
     return img.fb.type;
+}
+float ImgFrame::getBytesPerPixel() const {
+    return img.typeToBpp(getType());
 }
 std::chrono::microseconds ImgFrame::getExposureTime() const {
     return std::chrono::microseconds(img.cam.exposureTimeUs);
@@ -165,6 +171,10 @@ ImgFrame& ImgFrame::setType(RawImgFrame::Type type) {
     img.fb.type = type;
     img.fb.bytesPP = RawImgFrame::typeToBpp(img.fb.type);
     return *this;
+}
+
+void ImgFrame::set(RawImgFrame rawImgFrame) {
+    img = rawImgFrame;
 }
 
 ImgFrame& ImgFrame::copyTransformationsFrom(std::shared_ptr<dai::ImgFrame> sourceFrame) {
