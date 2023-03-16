@@ -343,4 +343,118 @@ dai::Point2f FlipTransformation::invTrans(dai::Point2f point) {
     return trans(point);  // The operation is the same in both ways
 }
 
+dai::Point2f ImgFrame::transformPointFromSource(dai::Point2f point) {
+    dai::Point2f transformedPoint = point;
+    for(auto& transformation : transformations) {
+        transformedPoint = transformation->trans(transformedPoint);
+    }
+    return transformedPoint;
+}
+
+dai::Point2f ImgFrame::transformPointToSource(dai::Point2f point) {
+    dai::Point2f transformedPoint = point;
+
+    // Do the loop in reverse order
+    for(auto it = transformations.rbegin(); it != transformations.rend(); ++it) {
+        transformedPoint = (*it)->invTrans(transformedPoint);
+    }
+    return transformedPoint;
+}
+
+dai::Rect ImgFrame::transformRectFromSource(dai::Rect rect) {
+    auto topLeftTransformed = transformPointFromSource(rect.topLeft());
+    auto bottomRightTransformed = transformPointFromSource(rect.bottomRight());
+    return dai::Rect{topLeftTransformed, bottomRightTransformed};
+}
+
+dai::Rect ImgFrame::transformRectToSource(dai::Rect rect) {
+    auto topLeftTransformed = transformPointToSource(rect.topLeft());
+    auto bottomRightTransformed = transformPointToSource(rect.bottomRight());
+    return dai::Rect{topLeftTransformed, bottomRightTransformed};
+}
+
+void ImgFrame::setSourceDFov(float degrees) {
+    img.DFovDegrees = degrees;
+}
+
+float ImgFrame::getSourceDFov() {
+    return img.DFovDegrees;
+}
+
+float ImgFrame::getSourceHFov() {
+    // TODO only works rectlinear lenses (rectified frames).
+    // Calculate the horizontal FOV from the source dimensions and the source DFov
+    float sourceWidth = getSourceWidth();
+    float sourceHeight = getSourceHeight();
+
+    if(sourceHeight <= 0){
+        throw std::runtime_error(fmt::format("Source height is invalid. Height: {}", sourceHeight));
+    }
+    if(sourceWidth <= 0){
+        throw std::runtime_error(fmt::format("Source width is invalid. Width: {}", sourceWidth));
+    }
+
+    float diagonalFovDegrees = getSourceDFov();
+    // Validate the diagonal FOV
+    if(diagonalFovDegrees <= 0 || diagonalFovDegrees >= 180){
+        throw std::runtime_error(fmt::format("Diagonal FOV is invalid. Diagonal FOV: {}", diagonalFovDegrees));
+    }
+
+    float diagonalFovRadians = diagonalFovDegrees * (static_cast<float>(M_PI) / 180.0f);
+
+    // Calculate the diagonal ratio (DR)
+    float dr = std::sqrt(std::pow(sourceWidth, 2) + std::pow(sourceHeight, 2));
+
+    // Calculate the tangent of half of the DFOV
+    float tanDiagonalFovHalf = std::tan(diagonalFovRadians / 2);
+
+    // Calculate the tangent of half of the HFOV
+    float tanHorizontalFovHalf = (sourceWidth / dr) * tanDiagonalFovHalf;
+
+    // Calculate the HFOV in radians
+    float horizontalFovRadians = 2 * std::atan(tanHorizontalFovHalf);
+
+    // Convert HFOV to degrees
+    float horizontalFovDegrees = horizontalFovRadians * (180.0f / static_cast<float>(M_PI));
+    return horizontalFovDegrees;
+}
+
+float ImgFrame::getSourceVFov() {
+    // TODO only works rectlinear lenses (rectified frames).
+    // Calculate the vertical FOV from the source dimensions and the source DFov
+    float sourceWidth = getSourceWidth();
+    float sourceHeight = getSourceHeight();
+
+    if(sourceHeight <= 0){
+        throw std::runtime_error(fmt::format("Source height is invalid. Height: {}", sourceHeight));
+    }
+    if(sourceWidth <= 0){
+        throw std::runtime_error(fmt::format("Source width is invalid. Width: {}", sourceWidth));
+    }
+    float diagonalFovDegrees = getSourceDFov();
+
+    // Validate the diagonal FOV
+    if(diagonalFovDegrees <= 0 || diagonalFovDegrees >= 180){
+        throw std::runtime_error(fmt::format("Diagonal FOV is invalid. Diagonal FOV: {}", diagonalFovDegrees));
+    }
+
+    float diagonalFovRadians = diagonalFovDegrees * (static_cast<float>(M_PI) / 180.0f);
+
+    // Calculate the diagonal ratio (DR)
+    float dr = std::sqrt(std::pow(sourceWidth, 2) + std::pow(sourceHeight, 2));
+
+    // Calculate the tangent of half of the DFOV
+    float tanDiagonalFovHalf = std::tan(diagonalFovRadians / 2);
+
+    // Calculate the tangent of half of the VFOV
+    float tanVerticalFovHalf = (sourceHeight / dr) * tanDiagonalFovHalf;
+
+    // Calculate the VFOV in radians
+    float verticalFovRadians = 2 * std::atan(tanVerticalFovHalf);
+
+    // Convert VFOV to degrees
+    float verticalFovDegrees = verticalFovRadians * (180.0f / static_cast<float>(M_PI));
+    return verticalFovDegrees;
+}
+
 }  // namespace dai

@@ -255,18 +255,118 @@ class ImgFrame : public Buffer {
      */
     ImgFrame& setType(Type type);
 
-    /* TODO add comments */
+    /**
+     * Copy over image tranformations and information about the source frame from a frame
+     * @param sourceFrame source frame from which the transformations are copied from
+     */
     void copyTransformationsFrom(std::shared_ptr<dai::ImgFrame> sourceFrame);
 
+    /**
+     * Add a flip transformation to the frame
+     * This doesn't transform the image, but rather just saves the fact that it has been done.
+     * @param horizontalFlip horizontal flip
+     * @param verticalFlip vertical flip
+     */
     void transSetFlip(bool horizontalFlip, bool verticalFlip);
 
+    /**
+     * Add a padding transformation to the frame.
+     * This doesn't transform the image, but rather just saves the fact that it has been done.
+     *
+     * Padding either has to be relative to padded image or absolute in pixels.
+     *
+     * @param topPadding top padding
+     * @param bottomPadding bottom padding
+     * @param leftPadding left padding
+     * @param rightPadding right padding
+     */
     void transSetPadding(float topPadding, float bottomPadding, float leftPadding, float rightPadding);
 
+    /**
+     * Add a crop transformation to the frame.
+     * This doesn't transform the image, but rather just saves the fact that it has been done.
+     *
+     * @param crop crop rectangle - can be either relative or absolute
+     */
     void transSetCrop(dai::Rect crop);
 
+    /**
+     * Add a rotation transformation to the frame.
+     * This doesn't transform the image, but rather just saves the fact that it has been done.
+     *
+     * @param rotationAngle rotation angle in degrees
+     * @param rotationPoint point around which the rotation was performed
+     */
     void transSetRotation(float rotationAngle, dai::Point2f rotationPoint = {0.5, 0.5});
 
+    /**
+     * Add a scale transformation to the frame.
+     *
+     * This doesn't transform the image, but rather just saves the fact that it has been done.
+     * @param scaleFactorX scale factor in X direction
+     * @param scaleFactorY scale factor in Y direction
+     */
     void transSetScale(float scaleFactorX, float scaleFactorY);
+
+    /**
+     * Transform a point from the current frame to the source frame
+     * @param point point to transform
+     * @returns transformed point
+     */
+    dai::Point2f transformPointFromSource(dai::Point2f point);
+
+    /**
+     * Transform a point from the source frame to the current frame
+     * @param point point to transform
+     * @returns transformed point
+     */
+    dai::Point2f transformPointToSource(dai::Point2f point);
+
+
+    /**
+     * Transform a rectangle from the source frame to the current frame
+     *
+     * @param rect rectangle to transform
+     * @returns transformed rectangle
+    */
+    dai::Rect transformRectFromSource(dai::Rect rect);
+
+    /**
+     * Transform a rectangle from the current frame to the source frame
+     *
+     * @param rect rectangle to transform
+     * @returns transformed rectangle
+    */
+    dai::Rect transformRectToSource(dai::Rect rect);
+
+    /**
+    * Set the source diagnoal field of view
+    *
+    * @param degrees field of view in degrees
+    */
+    void setSourceDFov(float degrees);
+
+    /**
+     * Get the source diagonal field of view in degrees
+     *
+     * @returns field of view in degrees
+     */
+    float getSourceDFov();
+
+    /**
+     * Get the source horizontal field of view
+     *
+     * @param degrees field of view in degrees
+     */
+    float getSourceHFov();
+
+    /**
+     * Get the source vertical field of view
+     *
+     * @param degrees field of view in degrees
+     */
+    float getSourceVFov();
+
 
 // Optional - OpenCV support
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
