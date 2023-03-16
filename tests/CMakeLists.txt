@@ -39,6 +39,10 @@ function(dai_add_test test_name test_src)
     # Create test executable
     add_executable(${test_name} ${test_src})
     add_default_flags(${test_name} LEAN)
+     # Set compiler features (c++14), and disables extensions (g++14)
+    set_property(TARGET ${test_name} PROPERTY CXX_STANDARD 14)
+    set_property(TARGET ${test_name} PROPERTY CXX_STANDARD_REQUIRED ON)
+    set_property(TARGET ${test_name} PROPERTY CXX_EXTENSIONS OFF)
 
     # Add to clangformat target
     if(COMMAND target_clangformat_setup)
@@ -66,6 +70,10 @@ function(dai_add_test test_name test_src)
         # Create test executable with MSVC conforming preprocessor
         add_executable(${test_name}_conforming ${test_src})
         add_default_flags(${test_name}_conforming LEAN)
+        # Set compiler features (c++14), and disables extensions (g++14)
+        set_property(TARGET ${test_name}_conforming PROPERTY CXX_STANDARD 14)
+        set_property(TARGET ${test_name}_conforming PROPERTY CXX_STANDARD_REQUIRED ON)
+        set_property(TARGET ${test_name}_conforming PROPERTY CXX_EXTENSIONS OFF)
 
         # Link to core and Catch2 testing framework
         target_link_libraries(${test_name}_conforming PRIVATE depthai-core Catch2::Catch2WithMain Threads::Threads)
@@ -249,6 +257,11 @@ dai_add_test(xlink_roundtrip_test src/xlink_roundtrip_test.cpp)
 # # dai_add_test(stability_stress_test src/stability_stress_test.cpp)
 option(DEPTHAI_STABILITY_STRESS_TEST_DEBUG "Enable visualization for stability stress test" OFF)
 add_executable(stability_stress_test src/stability_stress_test.cpp)
+# Set compiler features (c++14), and disables extensions (g++14)
+set_property(TARGET stability_stress_test PROPERTY CXX_STANDARD 14)
+set_property(TARGET stability_stress_test PROPERTY CXX_STANDARD_REQUIRED ON)
+set_property(TARGET stability_stress_test PROPERTY CXX_EXTENSIONS OFF)
+
 add_default_flags(stability_stress_test LEAN)
 if(COMMAND target_clangformat_setup)
     target_clangformat_setup(stability_stress_test "")

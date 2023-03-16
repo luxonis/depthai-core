@@ -7,6 +7,7 @@
 #include "depthai-bootloader-shared/Bootloader.hpp"
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
+#include "depthai-shared/device/CrashDump.hpp"
 #include "depthai-shared/log/LogConstants.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
@@ -820,6 +821,45 @@ std::unordered_map<CameraBoardSocket, std::string> DeviceBase::getCameraSensorNa
     return pimpl->rpcClient->call("getCameraSensorNames").as<std::unordered_map<CameraBoardSocket, std::string>>();
 }
 
+std::string DeviceBase::getConnectedIMU() {
+    checkClosed();
+    return pimpl->rpcClient->call("getConnectedIMU").as<std::string>();
+}
+
+dai::Version DeviceBase::getIMUFirmwareVersion() {
+    checkClosed();
+    std::string versionStr = pimpl->rpcClient->call("getIMUFirmwareVersion").as<std::string>();
+    try {
+        dai::Version version = dai::Version(versionStr);
+        return version;
+    } catch(const std::exception& ex) {
+        dai::Version version = dai::Version(0, 0, 0);
+        return version;
+    }
+}
+
+dai::Version DeviceBase::getEmbeddedIMUFirmwareVersion() {
+    checkClosed();
+    std::string versionStr = pimpl->rpcClient->call("getEmbeddedIMUFirmwareVersion").as<std::string>();
+    try {
+        dai::Version version = dai::Version(versionStr);
+        return version;
+    } catch(const std::exception& ex) {
+        dai::Version version = dai::Version(0, 0, 0);
+        return version;
+    }
+}
+
+bool DeviceBase::startIMUFirmwareUpdate(bool forceUpdate) {
+    checkClosed();
+    return pimpl->rpcClient->call("startIMUFirmwareUpdate", forceUpdate).as<bool>();
+}
+
+std::tuple<bool, float> DeviceBase::getIMUFirmwareUpdateStatus() {
+    checkClosed();
+    return pimpl->rpcClient->call("getIMUFirmwareUpdateStatus").as<std::tuple<bool, float>>();
+}
+
 // Convenience functions for querying current system information
 MemoryInfo DeviceBase::getDdrMemoryUsage() {
     checkClosed();
@@ -963,6 +1003,17 @@ std::vector<std::tuple<std::string, int, int>> DeviceBase::getIrDrivers() {
     checkClosed();
 
     return pimpl->rpcClient->call("getIrDrivers");
+}
+
+dai::CrashDump DeviceBase::getCrashDump() {
+    checkClosed();
+
+    return pimpl->rpcClient->call("getCrashDump").as<dai::CrashDump>();
+}
+
+bool DeviceBase::hasCrashDump() {
+    dai::CrashDump crashDump = getCrashDump();
+    return !crashDump.crashReports.empty();
 }
 
 int DeviceBase::addLogCallback(std::function<void(LogMessage)> callback) {

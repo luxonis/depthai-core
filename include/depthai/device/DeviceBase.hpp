@@ -29,7 +29,9 @@
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
+#include "depthai-shared/datatype/RawIMUData.hpp"
 #include "depthai-shared/device/BoardConfig.hpp"
+#include "depthai-shared/device/CrashDump.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
 
@@ -451,6 +453,16 @@ class DeviceBase {
     std::vector<std::tuple<std::string, int, int>> getIrDrivers();
 
     /**
+     * Retrieves crash dump for debugging.
+     */
+    dai::CrashDump getCrashDump();
+
+    /**
+     * Retrieves whether the is crash dump stored on device or not.
+     */
+    bool hasCrashDump();
+
+    /**
      * Add a callback for device logging. The callback will be called from a separate thread with the LogMessage being passed.
      *
      * @param callback Callback to call whenever a log message arrives
@@ -501,6 +513,47 @@ class DeviceBase {
      * @returns Map/dictionary with camera sensor names, indexed by socket
      */
     std::unordered_map<CameraBoardSocket, std::string> getCameraSensorNames();
+
+    /**
+     * Get connected IMU type
+     *
+     * @returns IMU type
+     */
+    std::string getConnectedIMU();
+
+    /**
+     * Get connected IMU firmware version
+     *
+     * @returns IMU firmware version
+     */
+    dai::Version getIMUFirmwareVersion();
+
+    /**
+     * Get embedded IMU firmware version to which IMU can be upgraded
+     *
+     * @returns Get embedded IMU firmware version to which IMU can be upgraded.
+     */
+    dai::Version getEmbeddedIMUFirmwareVersion();
+
+    /**
+     * Starts IMU firmware update asynchronously only if IMU node is not running.
+     * If current firmware version is the same as embedded firmware version then it's no-op. Can be overridden by forceUpdate parameter.
+     * State of firmware update can be monitored using getIMUFirmwareUpdateStatus API.
+     *
+     * @param forceUpdate Force firmware update or not. Will perform FW update regardless of current version and embedded firmware version.
+     *
+     * @returns Returns whether firmware update can be started. Returns false if IMU node is started.
+     */
+    bool startIMUFirmwareUpdate(bool forceUpdate = false);
+
+    /**
+     * Get IMU firmware update status
+     *
+     * @returns Whether IMU firmware update is done and last firmware update progress as percentage.
+     * return value true and 100 means that the update was successful
+     * return value true and other than 100 means that the update failed
+     */
+    std::tuple<bool, float> getIMUFirmwareUpdateStatus();
 
     /**
      * Retrieves current DDR memory information from device

@@ -99,6 +99,10 @@ void MonoCamera::setFps(float fps) {
     properties.fps = fps;
 }
 
+void MonoCamera::setIsp3aFps(int isp3aFps) {
+    properties.isp3aFps = isp3aFps;
+}
+
 float MonoCamera::getFps() const {
     // if AUTO
     if(properties.fps == -1 || properties.fps == 0) {
