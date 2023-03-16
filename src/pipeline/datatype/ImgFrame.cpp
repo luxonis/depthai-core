@@ -29,12 +29,16 @@ ImgFrame::ImgFrame(std::shared_ptr<RawImgFrame> ptr) : Buffer(std::move(ptr)), i
                 transformations.emplace_back(std::make_shared<ScaleTransformation>(transformation));
                 break;
             case RawImgTransformation::Transformation::Flip:
-                break; // TODO
+                transformations.emplace_back(std::make_shared<FlipTransformation>(transformation));
+                break;
             case RawImgTransformation::Transformation::Pad:
-                break; // TODO
+                transformations.emplace_back(std::make_shared<PadTransformation>(transformation));
+                break;
             case RawImgTransformation::Transformation::Rotation:
-                break; // TODO
+                transformations.emplace_back(std::make_shared<RotateTransformation>(transformation));
+                break;
             default:
+                throw std::runtime_error("Unknown transformation!");
                 break;
         }
     }
@@ -163,16 +167,17 @@ ImgFrame& ImgFrame::setType(RawImgFrame::Type type) {
     return *this;
 }
 
-void ImgFrame::copyTransformationsFrom(std::shared_ptr<dai::ImgFrame> sourceFrame) {
+ImgFrame& ImgFrame::copyTransformationsFrom(std::shared_ptr<dai::ImgFrame> sourceFrame) {
     transformations = sourceFrame->transformations;
     img.transformations = sourceFrame->get().transformations;
 
     // Copy over origin data as well
     setSourceSize(sourceFrame->getSourceWidth(), sourceFrame->getSourceHeight());
     setSourceHFov(sourceFrame->getSourceHFov());
+    return *this;
 }
 
-void ImgFrame::transformSetFlip(bool horizontalFlip, bool verticalFlip) {
+ImgFrame& ImgFrame::transformSetFlip(bool horizontalFlip, bool verticalFlip) {
     RawImgTransformation flipTransformation;
     flipTransformation.horizontalFlip = horizontalFlip;
     flipTransformation.verticalFlip = verticalFlip;
@@ -183,9 +188,10 @@ void ImgFrame::transformSetFlip(bool horizontalFlip, bool verticalFlip) {
     transformations.emplace_back(std::make_shared<FlipTransformation>(flipTransformation));
 
     // Image sizes stay the same
+    return *this;
 }
 
-void ImgFrame::transformSetPadding(float topPadding, float bottomPadding, float leftPadding, float rightPadding) {
+ImgFrame& ImgFrame::transformSetPadding(float topPadding, float bottomPadding, float leftPadding, float rightPadding) {
     RawImgTransformation padTransformation;
     if(topPadding > 1 || bottomPadding > 1 || leftPadding > 1 || rightPadding > 1) {
         // Set padding relative to the padded image
@@ -208,8 +214,9 @@ void ImgFrame::transformSetPadding(float topPadding, float bottomPadding, float 
     // Set image size
     setWidth(getWidth() / (1 - padTransformation.leftPadding - padTransformation.rightPadding));
     setHeight(getHeight() / (1 - padTransformation.bottomPadding - padTransformation.topPadding));
+    return *this;
 }
-void ImgFrame::transformSetCrop(dai::Rect crop) {
+ImgFrame& ImgFrame::transformSetCrop(dai::Rect crop) {
     // Add a crop
     RawImgTransformation cropTransformation;
     auto cropNormalized = crop.normalize(getWidth(), getHeight());
@@ -224,8 +231,9 @@ void ImgFrame::transformSetCrop(dai::Rect crop) {
     auto cropDenormalized = crop.denormalize(getWidth(), getHeight());
     setWidth(cropDenormalized.width);
     setHeight(cropDenormalized.height);
+    return *this;
 }
-void ImgFrame::transformSetRotation(float rotationAngle, dai::Point2f rotationPoint) {
+ImgFrame& ImgFrame::transformSetRotation(float rotationAngle, dai::Point2f rotationPoint) {
     RawImgTransformation rotateTransformation;
     rotateTransformation.rotationAngle = rotationAngle;
     rotateTransformation.rotationTurnPoint = rotationPoint;
@@ -236,9 +244,10 @@ void ImgFrame::transformSetRotation(float rotationAngle, dai::Point2f rotationPo
     transformations.emplace_back(std::make_shared<RotateTransformation>(rotateTransformation));
 
     // TODO what happens with image dimensions -> check with ImageManip
+    return *this;
 }
 
-void ImgFrame::transformSetScale(float scaleFactorX, float scaleFactorY) {
+ImgFrame& ImgFrame::transformSetScale(float scaleFactorX, float scaleFactorY) {
     RawImgTransformation scaleTransformation;
     scaleTransformation.scaleFactorX = scaleFactorX;
     scaleTransformation.scaleFactorY = scaleFactorY;
@@ -251,6 +260,7 @@ void ImgFrame::transformSetScale(float scaleFactorX, float scaleFactorY) {
     // Correct the image sizes
     setWidth(getWidth() * scaleFactorX);
     setHeight(getHeight() * scaleFactorY);
+    return *this;
 }
 
 dai::Point2f ScaleTransformation::trans(dai::Point2f point) {
@@ -377,8 +387,9 @@ dai::Rect ImgFrame::transformRectToSource(dai::Rect rect) {
     return dai::Rect{topLeftTransformed, bottomRightTransformed};
 }
 
-void ImgFrame::setSourceHFov(float degrees) {
+ImgFrame& ImgFrame::setSourceHFov(float degrees) {
     img.HFovDegrees = degrees;
+    return *this;
 }
 
 float ImgFrame::getSourceHFov() {

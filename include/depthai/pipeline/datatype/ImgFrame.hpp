@@ -259,7 +259,7 @@ class ImgFrame : public Buffer {
      * Copy over image tranformations and information about the source frame from a frame
      * @param sourceFrame source frame from which the transformations are copied from
      */
-    void copyTransformationsFrom(std::shared_ptr<dai::ImgFrame> sourceFrame);
+    ImgFrame& copyTransformationsFrom(std::shared_ptr<dai::ImgFrame> sourceFrame);
 
     /**
      * Add a flip transformation to the frame
@@ -267,7 +267,7 @@ class ImgFrame : public Buffer {
      * @param horizontalFlip horizontal flip
      * @param verticalFlip vertical flip
      */
-    void transformSetFlip(bool horizontalFlip, bool verticalFlip);
+    ImgFrame& transformSetFlip(bool horizontalFlip, bool verticalFlip);
 
     /**
      * Add a padding transformation to the frame.
@@ -280,7 +280,7 @@ class ImgFrame : public Buffer {
      * @param leftPadding left padding
      * @param rightPadding right padding
      */
-    void transformSetPadding(float topPadding, float bottomPadding, float leftPadding, float rightPadding);
+    ImgFrame& transformSetPadding(float topPadding, float bottomPadding, float leftPadding, float rightPadding);
 
     /**
      * Add a crop transformation to the frame.
@@ -288,7 +288,7 @@ class ImgFrame : public Buffer {
      *
      * @param crop crop rectangle - can be either relative or absolute
      */
-    void transformSetCrop(dai::Rect crop);
+    ImgFrame& transformSetCrop(dai::Rect crop);
 
     /**
      * Add a rotation transformation to the frame.
@@ -297,7 +297,7 @@ class ImgFrame : public Buffer {
      * @param rotationAngle rotation angle in degrees
      * @param rotationPoint point around which the rotation was performed
      */
-    void transformSetRotation(float rotationAngle, dai::Point2f rotationPoint = {0.5, 0.5});
+    ImgFrame& transformSetRotation(float rotationAngle, dai::Point2f rotationPoint = {0.5, 0.5});
 
     /**
      * Add a scale transformation to the frame.
@@ -306,7 +306,7 @@ class ImgFrame : public Buffer {
      * @param scaleFactorX scale factor in X direction
      * @param scaleFactorY scale factor in Y direction
      */
-    void transformSetScale(float scaleFactorX, float scaleFactorY);
+    ImgFrame& transformSetScale(float scaleFactorX, float scaleFactorY);
 
     /**
      * Transform a point from the current frame to the source frame
@@ -345,7 +345,7 @@ class ImgFrame : public Buffer {
     *
     * @param degrees field of view in degrees
     */
-    void setSourceHFov(float degrees);
+    ImgFrame& setSourceHFov(float degrees);
 
     /**
      * @note Fov API works correctly only on rectilinear frames
