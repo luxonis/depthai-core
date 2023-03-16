@@ -373,17 +373,17 @@ dai::Rect ImgFrame::transformRectToSource(dai::Rect rect) {
     return dai::Rect{topLeftTransformed, bottomRightTransformed};
 }
 
-void ImgFrame::setSourceDFov(float degrees) {
-    img.DFovDegrees = degrees;
-}
-
-float ImgFrame::getSourceDFov() {
-    return img.DFovDegrees;
+void ImgFrame::setSourceHFov(float degrees) {
+    img.HFovDegrees = degrees;
 }
 
 float ImgFrame::getSourceHFov() {
+    return img.HFovDegrees;
+}
+
+float ImgFrame::getSourceDFov() {
     // TODO only works rectlinear lenses (rectified frames).
-    // Calculate the horizontal FOV from the source dimensions and the source DFov
+    // Calculate the vertical FOV from the source dimensions and the source DFov
     float sourceWidth = getSourceWidth();
     float sourceHeight = getSourceHeight();
 
@@ -393,30 +393,30 @@ float ImgFrame::getSourceHFov() {
     if(sourceWidth <= 0){
         throw std::runtime_error(fmt::format("Source width is invalid. Width: {}", sourceWidth));
     }
-
-    float diagonalFovDegrees = getSourceDFov();
-    // Validate the diagonal FOV
-    if(diagonalFovDegrees <= 0 || diagonalFovDegrees >= 180){
-        throw std::runtime_error(fmt::format("Diagonal FOV is invalid. Diagonal FOV: {}", diagonalFovDegrees));
-    }
-
-    float diagonalFovRadians = diagonalFovDegrees * (static_cast<float>(M_PI) / 180.0f);
+    float HFovDegrees = getSourceHFov();
 
     // Calculate the diagonal ratio (DR)
     float dr = std::sqrt(std::pow(sourceWidth, 2) + std::pow(sourceHeight, 2));
 
-    // Calculate the tangent of half of the DFOV
-    float tanDiagonalFovHalf = std::tan(diagonalFovRadians / 2);
+    // Validate the horizontal FOV
+    if(HFovDegrees <= 0 || HFovDegrees >= 180){
+        throw std::runtime_error(fmt::format("Horizontal FOV is invalid. Horizontal FOV: {}", HFovDegrees));
+    }
+
+    float HFovRadians = HFovDegrees * (static_cast<float>(M_PI) / 180.0f);
 
     // Calculate the tangent of half of the HFOV
-    float tanHorizontalFovHalf = (sourceWidth / dr) * tanDiagonalFovHalf;
+    float tanHFovHalf = std::tan(HFovRadians / 2);
 
-    // Calculate the HFOV in radians
-    float horizontalFovRadians = 2 * std::atan(tanHorizontalFovHalf);
+    // Calculate the tangent of half of the VFOV
+    float tanDiagonalFovHalf = (dr / sourceWidth) * tanHFovHalf;
 
-    // Convert HFOV to degrees
-    float horizontalFovDegrees = horizontalFovRadians * (180.0f / static_cast<float>(M_PI));
-    return horizontalFovDegrees;
+    // Calculate the VFOV in radians
+    float diagonalFovRadians = 2 * std::atan(tanDiagonalFovHalf);
+
+    // Convert VFOV to degrees
+    float diagonalFovDegrees = diagonalFovRadians * (180.0f / static_cast<float>(M_PI));
+    return diagonalFovDegrees;
 }
 
 float ImgFrame::getSourceVFov() {
@@ -431,23 +431,20 @@ float ImgFrame::getSourceVFov() {
     if(sourceWidth <= 0){
         throw std::runtime_error(fmt::format("Source width is invalid. Width: {}", sourceWidth));
     }
-    float diagonalFovDegrees = getSourceDFov();
+    float HFovDegrees = getSourceHFov();
 
-    // Validate the diagonal FOV
-    if(diagonalFovDegrees <= 0 || diagonalFovDegrees >= 180){
-        throw std::runtime_error(fmt::format("Diagonal FOV is invalid. Diagonal FOV: {}", diagonalFovDegrees));
+    // Validate the horizontal FOV
+    if(HFovDegrees <= 0 || HFovDegrees >= 180){
+        throw std::runtime_error(fmt::format("Horizontal FOV is invalid. Horizontal FOV: {}", HFovDegrees));
     }
 
-    float diagonalFovRadians = diagonalFovDegrees * (static_cast<float>(M_PI) / 180.0f);
+    float HFovRadians = HFovDegrees * (static_cast<float>(M_PI) / 180.0f);
 
-    // Calculate the diagonal ratio (DR)
-    float dr = std::sqrt(std::pow(sourceWidth, 2) + std::pow(sourceHeight, 2));
-
-    // Calculate the tangent of half of the DFOV
-    float tanDiagonalFovHalf = std::tan(diagonalFovRadians / 2);
+    // Calculate the tangent of half of the HFOV
+    float tanHFovHalf = std::tan(HFovRadians / 2);
 
     // Calculate the tangent of half of the VFOV
-    float tanVerticalFovHalf = (sourceHeight / dr) * tanDiagonalFovHalf;
+    float tanVerticalFovHalf = (sourceHeight / sourceWidth) * tanHFovHalf;
 
     // Calculate the VFOV in radians
     float verticalFovRadians = 2 * std::atan(tanVerticalFovHalf);

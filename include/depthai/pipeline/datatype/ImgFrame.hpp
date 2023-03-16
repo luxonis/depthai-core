@@ -344,7 +344,7 @@ class ImgFrame : public Buffer {
     *
     * @param degrees field of view in degrees
     */
-    void setSourceDFov(float degrees);
+    void setSourceHFov(float degrees);
 
     /**
      * Get the source diagonal field of view in degrees

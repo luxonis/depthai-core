@@ -12,7 +12,7 @@
 int testFov() {
     dai::ImgFrame frame;
     frame.setSourceSize(1280, 800);
-    frame.setSourceDFov(82);
+    frame.setSourceHFov(72.79);
     REQUIRE_THAT(82.0, Catch::Matchers::WithinAbs(frame.getSourceDFov(), 0.1));
     REQUIRE_THAT(72.79, Catch::Matchers::WithinAbs(frame.getSourceHFov(), 0.1));
     REQUIRE_THAT(49.47, Catch::Matchers::WithinAbs(frame.getSourceVFov(), 0.1));
