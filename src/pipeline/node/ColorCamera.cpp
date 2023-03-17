@@ -530,5 +530,9 @@ int ColorCamera::getIspNumFramesPool() {
     return properties.numFramesPoolIsp;
 }
 
+void ColorCamera::setRawOutputPacked(bool packed) {
+    properties.rawPacked = packed;
+}
+
 }  // namespace node
 }  // namespace dai
