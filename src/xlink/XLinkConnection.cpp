@@ -277,33 +277,24 @@ DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
     return DeviceInfo(foundDeviceDesc);
 }
 
-XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary, XLinkDeviceState_t expectedState) {
+XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary, XLinkDeviceState_t expectedState)
+    : bootWithPath(false), mvcmd(std::move(mvcmdBinary)) {
     initialize();
-
-    bootDevice = true;
-    bootWithPath = false;
-    this->mvcmd = std::move(mvcmdBinary);
     initDevice(deviceDesc, expectedState);
 }
 
-XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, dai::Path pathToMvcmd, XLinkDeviceState_t expectedState) {
+XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, dai::Path mvcmdPath, XLinkDeviceState_t expectedState) : pathToMvcmd(std::move(mvcmdPath)) {
     initialize();
-
     if(!pathToMvcmd.empty()) {
-        std::ifstream f(pathToMvcmd);
-        if(!f.good()) throw std::runtime_error("Error path doesn't exist. Note: Environment variables in path are not expanded. (E.g. '~', '$PATH').");
+        std::ifstream testStream(pathToMvcmd);
+        if(!testStream.good()) throw std::runtime_error("Error path doesn't exist. Note: Environment variables in path are not expanded. (E.g. '~', '$PATH').");
     }
-    bootDevice = true;
-    bootWithPath = true;
-    this->pathToMvcmd = std::move(pathToMvcmd);
     initDevice(deviceDesc, expectedState);
 }
 
 // Skip boot
-XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, XLinkDeviceState_t expectedState) {
+XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, XLinkDeviceState_t expectedState) : bootDevice(false) {
     initialize();
-
-    bootDevice = false;
     initDevice(deviceDesc, expectedState);
 }
 
@@ -325,7 +316,7 @@ void XLinkConnection::close() {
     constexpr auto BOOTUP_SEARCH = seconds(5);
 
     if(deviceLinkId != -1 && rebootOnDestruction) {
-        auto tmp = deviceLinkId;
+        auto previousLinkId = deviceLinkId;
 
         auto ret = XLinkResetRemoteTimeout(deviceLinkId, duration_cast<milliseconds>(RESET_TIMEOUT).count());
         if(ret != X_LINK_SUCCESS) {
@@ -342,17 +333,17 @@ void XLinkConnection::close() {
             auto t1 = steady_clock::now();
             bool found = false;
             do {
-                DeviceInfo tmp;
-                std::tie(found, tmp) = XLinkConnection::getDeviceByMxId(deviceInfo.getMxId(), X_LINK_ANY_STATE, false);
+                DeviceInfo rebootingDeviceInfo;
+                std::tie(found, rebootingDeviceInfo) = XLinkConnection::getDeviceByMxId(deviceInfo.getMxId(), X_LINK_ANY_STATE, false);
                 if(found) {
-                    if(tmp.state == X_LINK_UNBOOTED || tmp.state == X_LINK_BOOTLOADER) {
+                    if(rebootingDeviceInfo.state == X_LINK_UNBOOTED || rebootingDeviceInfo.state == X_LINK_BOOTLOADER) {
                         break;
                     }
                 }
             } while(!found && steady_clock::now() - t1 < BOOTUP_SEARCH);
         }
 
-        spdlog::debug("XLinkResetRemote of linkId: ({})", tmp);
+        spdlog::debug("XLinkResetRemote of linkId: ({})", previousLinkId);
     }
 
     closed = true;
