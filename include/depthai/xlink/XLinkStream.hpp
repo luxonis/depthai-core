@@ -12,6 +12,7 @@
 #include <tuple>
 #include <unordered_map>
 #include <vector>
+#include <stdexcept>
 
 // libraries
 #include <XLink/XLinkPublicDefines.h>
