@@ -832,7 +832,7 @@ dai::Version DeviceBase::getIMUFirmwareVersion() {
     try {
         dai::Version version = dai::Version(versionStr);
         return version;
-    } catch(const std::exception& ex) {
+    } catch(const std::exception&) {
         dai::Version version = dai::Version(0, 0, 0);
         return version;
     }
@@ -844,7 +844,7 @@ dai::Version DeviceBase::getEmbeddedIMUFirmwareVersion() {
     try {
         dai::Version version = dai::Version(versionStr);
         return version;
-    } catch(const std::exception& ex) {
+    } catch(const std::exception&) {
         dai::Version version = dai::Version(0, 0, 0);
         return version;
     }
@@ -1086,7 +1086,7 @@ bool DeviceBase::isEepromAvailable() {
 bool DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
     try {
         flashCalibration2(calibrationDataHandler);
-    } catch(const EepromError& ex) {
+    } catch(const EepromError&) {
         return false;
     }
     return true;
@@ -1118,7 +1118,7 @@ CalibrationHandler DeviceBase::readCalibration() {
     dai::EepromData eepromData{};
     try {
         return readCalibration2();
-    } catch(const EepromError& ex) {
+    } catch(const EepromError&) {
         // ignore - use default
     }
     return CalibrationHandler(eepromData);
@@ -1182,7 +1182,7 @@ CalibrationHandler DeviceBase::readFactoryCalibrationOrDefault() {
     dai::EepromData eepromData{};
     try {
         return readFactoryCalibration();
-    } catch(const EepromError& ex) {
+    } catch(const EepromError&) {
         // ignore - use default
     }
     return CalibrationHandler(eepromData);
