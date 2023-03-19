@@ -788,7 +788,9 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
 
         // Starts and waits for inital timesync
+        spdlog::debug("Setting Timesync to - period: {}, num samples: {}, random: {}, waiting to sync...", DEFAULT_TIMESYNC_PERIOD, DEFAULT_TIMESYNC_NUM_SAMPLES, DEFAULT_TIMESYNC_RANDOM);
         setTimesync(DEFAULT_TIMESYNC_PERIOD, DEFAULT_TIMESYNC_NUM_SAMPLES, DEFAULT_TIMESYNC_RANDOM);
+        spdlog::debug("Timesync done!");
     } catch(const std::exception&) {
         // close device (cleanup)
         close();

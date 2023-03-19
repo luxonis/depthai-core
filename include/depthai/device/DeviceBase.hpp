@@ -56,7 +56,7 @@ class DeviceBase {
     /// Default Timesync period
     static constexpr std::chrono::milliseconds DEFAULT_TIMESYNC_PERIOD{5000};
     /// Default Timesync number of samples per sync
-    static constexpr int DEFAULT_TIMESYNC_NUM_SAMPLES{10};
+    static constexpr int DEFAULT_TIMESYNC_NUM_SAMPLES{100};
     /// Default Timesync packet interval randomness
     static constexpr bool DEFAULT_TIMESYNC_RANDOM{true};
 
