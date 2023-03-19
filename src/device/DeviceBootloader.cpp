@@ -559,12 +559,12 @@ void DeviceBootloader::close() {
     spdlog::debug("DeviceBootloader closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
 }
 
+// This function is thread-unsafe. The idea of "isClosed" is ephemerial and
+// is invalid even within this function between the evaluation of the logical OR.
+// The calculated boolean and then then return by value continue to degrade in
+// validity to the caller
 bool DeviceBootloader::isClosed() const {
     return closed || !watchdogRunning;
-}
-
-void DeviceBootloader::checkClosed() const {
-    if(isClosed()) throw std::invalid_argument("DeviceBootloader already closed or disconnected");
 }
 
 DeviceBootloader::~DeviceBootloader() {
