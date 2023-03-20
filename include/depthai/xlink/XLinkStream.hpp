@@ -7,13 +7,13 @@
 #include <list>
 #include <memory>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <tuple>
 #include <unordered_map>
 #include <utility>
 #include <vector>
-#include <stdexcept>
 
 // libraries
 #include <XLink/XLinkPublicDefines.h>
