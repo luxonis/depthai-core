@@ -104,6 +104,10 @@ class XLinkConnection {
 
     /**
      * Is the connection already closed (or disconnected)
+     *
+     * @warning This function is thread-unsafe and may return outdated incorrect values. It is
+     * only meant for use in simple single-threaded code. Well written code should handle
+     * exceptions when calling any DepthAI apis to handle hardware events and multithreaded use.
      */
     bool isClosed() const;
 
@@ -116,7 +120,6 @@ class XLinkConnection {
     static std::string convertErrorCodeToString(XLinkError_t errorCode);
 
     void initDevice(const DeviceInfo& deviceToInit, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
-    void checkClosed() const;
 
     bool bootDevice = true;
     bool bootWithPath = true;

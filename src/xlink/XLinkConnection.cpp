@@ -298,17 +298,16 @@ XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, XLinkDeviceState_
     initDevice(deviceDesc, expectedState);
 }
 
+// This function is thread-unsafe. The `closed` value is only known and valid
+// within the context of the lock_guard. The value is immediately invalid and outdated
+// when it is returned by value to the caller
 bool XLinkConnection::isClosed() const {
-    std::unique_lock<std::mutex> lock(closedMtx);
+    std::lock_guard<std::mutex> lock(closedMtx);
     return closed;
 }
 
-void XLinkConnection::checkClosed() const {
-    if(isClosed()) throw std::invalid_argument("XLinkConnection already closed or disconnected");
-}
-
 void XLinkConnection::close() {
-    std::unique_lock<std::mutex> lock(closedMtx);
+    std::lock_guard<std::mutex> lock(closedMtx);
     if(closed) return;
 
     using namespace std::chrono;

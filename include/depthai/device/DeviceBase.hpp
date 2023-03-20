@@ -751,6 +751,10 @@ class DeviceBase {
 
     /**
      * Is the device already closed (or disconnected)
+     *
+     * @warning This function is thread-unsafe and may return outdated incorrect values. It is
+     * only meant for use in simple single-threaded code. Well written code should handle
+     * exceptions when calling any DepthAI apis to handle hardware events and multithreaded use.
      */
     bool isClosed() const;
 
@@ -775,11 +779,6 @@ class DeviceBase {
      * @brief a safe way to start a pipeline, which is closed if any exception occurs
      */
     void tryStartPipeline(const Pipeline& pipeline);
-
-    /**
-     * throws an error if the device has been closed or the watchdog has died
-     */
-    void checkClosed() const;
 
     /**
      * Allows the derived classes to handle custom setup for starting the pipeline
@@ -832,9 +831,6 @@ class DeviceBase {
     std::thread monitorThread;
     std::mutex lastWatchdogPingTimeMtx;
     std::chrono::steady_clock::time_point lastWatchdogPingTime;
-
-    // RPC stream
-    std::unique_ptr<XLinkStream> rpcStream;
 
     // closed
     mutable std::mutex closedMtx;
