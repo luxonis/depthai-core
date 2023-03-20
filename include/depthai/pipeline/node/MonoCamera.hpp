@@ -119,8 +119,6 @@ class MonoCamera : public NodeCRTP<Node, MonoCamera, MonoCameraProperties> {
 
     /**
      * Isp 3A rate (auto focus, auto exposure, auto white balance, camera controls etc.).
-     * Value (-1) is auto-mode. For USB devices will set 3A fps to maximum 30 fps, for POE devices to maximum 20 fps.
-     * Can be overriden by setting explicitly.
      * Default (0) matches the camera FPS, meaning that 3A is running on each frame.
      * Reducing the rate of 3A reduces the CPU usage on CSS, but also increases the convergence rate of 3A.
      * Note that camera controls will be processed at this rate. E.g. if camera is running at 30 fps, and camera control is sent at every frame,

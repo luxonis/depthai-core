@@ -304,6 +304,14 @@ void PipelineImpl::setXLinkChunkSize(int sizeBytes) {
     globalProperties.xlinkChunkSize = sizeBytes;
 }
 
+void PipelineImpl::setSippBufferSize(int sizeBytes) {
+    globalProperties.sippBufferSize = sizeBytes;
+}
+
+void PipelineImpl::setSippDmaBufferSize(int sizeBytes) {
+    globalProperties.sippDmaBufferSize = sizeBytes;
+}
+
 void PipelineImpl::setBoardConfig(BoardConfig boardCfg) {
     board = boardCfg;
 }
