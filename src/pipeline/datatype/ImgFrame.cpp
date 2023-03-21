@@ -201,7 +201,7 @@ ImgFrame& ImgFrame::transformSetFlip(bool horizontalFlip, bool verticalFlip) {
     return *this;
 }
 
-ImgFrame& ImgFrame::transformSetPadding(float topPadding, float bottomPadding, float leftPadding, float rightPadding) {
+ImgFrame& ImgFrame::transformSetPadding(float topPadding, float bottomPadding, float leftPadding, float rightPadding, bool setImageDimensions) {
     RawImgTransformation padTransformation;
     if(topPadding > 1 || bottomPadding > 1 || leftPadding > 1 || rightPadding > 1) {
         // Set padding relative to the padded image
@@ -220,13 +220,14 @@ ImgFrame& ImgFrame::transformSetPadding(float topPadding, float bottomPadding, f
     // Add the transformation
     img.transformations.push_back(padTransformation);
     transformations.emplace_back(std::make_shared<PadTransformation>(padTransformation));
-
-    // Set image size
-    setWidth(getWidth() / (1 - padTransformation.leftPadding - padTransformation.rightPadding));
-    setHeight(getHeight() / (1 - padTransformation.bottomPadding - padTransformation.topPadding));
+    if(setImageDimensions){
+        // Set image size
+        setWidth(getWidth() / (1 - padTransformation.leftPadding - padTransformation.rightPadding));
+        setHeight(getHeight() / (1 - padTransformation.bottomPadding - padTransformation.topPadding));
+    }
     return *this;
 }
-ImgFrame& ImgFrame::transformSetCrop(dai::Rect crop) {
+ImgFrame& ImgFrame::transformSetCrop(dai::Rect crop, bool setImageDimensions) {
     // Add a crop
     RawImgTransformation cropTransformation;
     auto cropNormalized = crop.normalize(getWidth(), getHeight());
@@ -237,10 +238,12 @@ ImgFrame& ImgFrame::transformSetCrop(dai::Rect crop) {
     img.transformations.push_back(cropTransformation);
     transformations.emplace_back(std::make_shared<CropTransformation>(cropTransformation));
 
-    // Set image size correctly
-    auto cropDenormalized = crop.denormalize(getWidth(), getHeight());
-    setWidth(cropDenormalized.width);
-    setHeight(cropDenormalized.height);
+    if(setImageDimensions) {
+        // Set image size correctly
+        auto cropDenormalized = crop.denormalize(getWidth(), getHeight());
+        setWidth(cropDenormalized.width);
+        setHeight(cropDenormalized.height);
+    }
     return *this;
 }
 ImgFrame& ImgFrame::transformSetRotation(float rotationAngle, dai::Point2f rotationPoint) {
@@ -257,7 +260,7 @@ ImgFrame& ImgFrame::transformSetRotation(float rotationAngle, dai::Point2f rotat
     return *this;
 }
 
-ImgFrame& ImgFrame::transformSetScale(float scaleFactorX, float scaleFactorY) {
+ImgFrame& ImgFrame::transformSetScale(float scaleFactorX, float scaleFactorY, bool setImageDimensions) {
     RawImgTransformation scaleTransformation;
     scaleTransformation.scaleFactorX = scaleFactorX;
     scaleTransformation.scaleFactorY = scaleFactorY;
@@ -267,9 +270,11 @@ ImgFrame& ImgFrame::transformSetScale(float scaleFactorX, float scaleFactorY) {
     img.transformations.push_back(scaleTransformation);
     transformations.emplace_back(std::make_shared<ScaleTransformation>(scaleTransformation));
 
-    // Correct the image sizes
-    setWidth(getWidth() * scaleFactorX);
-    setHeight(getHeight() * scaleFactorY);
+    if(setImageDimensions) {
+        // Set image size
+        setWidth(getWidth() * scaleFactorX);
+        setHeight(getHeight() * scaleFactorY);
+    }
     return *this;
 }
 

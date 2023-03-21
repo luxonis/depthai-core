@@ -295,7 +295,7 @@ class ImgFrame : public Buffer {
      * @param leftPadding left padding
      * @param rightPadding right padding
      */
-    ImgFrame& transformSetPadding(float topPadding, float bottomPadding, float leftPadding, float rightPadding);
+    ImgFrame& transformSetPadding(float topPadding, float bottomPadding, float leftPadding, float rightPadding, bool setImageDimensions = true);
 
     /**
      * Add a crop transformation to the frame.
@@ -303,7 +303,7 @@ class ImgFrame : public Buffer {
      *
      * @param crop crop rectangle - can be either relative or absolute
      */
-    ImgFrame& transformSetCrop(dai::Rect crop);
+    ImgFrame& transformSetCrop(dai::Rect crop, bool setImageDimensions = true);
 
     /**
      * Add a rotation transformation to the frame.
@@ -321,7 +321,7 @@ class ImgFrame : public Buffer {
      * @param scaleFactorX scale factor in X direction
      * @param scaleFactorY scale factor in Y direction
      */
-    ImgFrame& transformSetScale(float scaleFactorX, float scaleFactorY);
+    ImgFrame& transformSetScale(float scaleFactorX, float scaleFactorY, bool setImageDimensions = true);
 
     /**
      * Transform a point from the current frame to the source frame
