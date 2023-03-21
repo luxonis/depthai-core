@@ -31,6 +31,11 @@ class DetectionParser : public NodeCRTP<DeviceNode, DetectionParser, DetectionPa
     Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::ImgDetections, false}}};
 
     /**
+     * Outputs image frame segmentation
+     */
+    Output outSegmentation{true, *this, "outSegmentation", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
      * Input for image that produced the detection - image size can be taken from here
      */
     Input imageIn{true, *this, "imageIn", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::ImgFrame, false}}};
