@@ -500,7 +500,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
     });
 
     // Start monitor thread for host - makes sure that device is responding to pings, otherwise it disconnects
-    monitorThread = std::thread([this]() {
+    monitorThread = std::thread([this, watchdogDisabled]() {
         while(watchdogRunning) {
             // Ping with a period half of that of the watchdog timeout
             std::this_thread::sleep_for(bootloader::XLINK_WATCHDOG_TIMEOUT);
@@ -514,13 +514,18 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
             // Bump checking thread to not cause spurious warnings/closes
             std::chrono::milliseconds watchdogTimeout = std::chrono::milliseconds(3000);
             if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout * 2) {
-                spdlog::warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
-                // ping was missed, reset the device
-                watchdogRunning = false;
-                // close the underlying connection
-                connection->close();
-            }
-        }
+                if (watchdogDisabled) {
+                    spdlog::warn("Monitor thread (device: {} [{}]) - ping was missed, but watchdog is disabled, connection maintained", deviceInfo.mxid, deviceInfo.name);
+                }
+                else {
+                    spdlog::warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
+                    // ping was missed, reset the device
+                    watchdogRunning = false;
+                    // close the underlying connection
+                    connection->close();
+                }
+         }
+    }
     });
 
     // Bootloader device ready, check for version
