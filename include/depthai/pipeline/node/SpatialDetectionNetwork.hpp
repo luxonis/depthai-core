@@ -73,6 +73,11 @@ class SpatialDetectionNetwork : public NodeCRTP<DeviceNode, SpatialDetectionNetw
     Input inputDetections{true, *this, "inputDetections", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::ImgDetections, false}}};
 
     /**
+     * Input mask
+    */
+    Input inputMask{true, *this, "inputMask", Input::Type::SReceiver, true, 1, true, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
      * Outputs ImgDetections message that carries parsed detection results.
      */
     Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::SpatialImgDetections, false}}};
