@@ -125,11 +125,23 @@ CameraControl& CameraControl::setManualExposure(uint32_t exposureTimeUs, uint32_
     cfg.expManual.exposureTimeUs = exposureTimeUs;
     cfg.expManual.sensitivityIso = sensitivityIso;
     cfg.expManual.frameDurationUs = 0;  // TODO
+    cfg.expManual.setDirect = false;
+    return *this;
+}
+CameraControl& CameraControl::setManualExposureDirect(uint32_t exposureTimeUs, uint32_t sensitivityIso) {
+    cfg.setCommand(RawCameraControl::Command::AE_MANUAL);
+    cfg.expManual.exposureTimeUs = exposureTimeUs;
+    cfg.expManual.sensitivityIso = sensitivityIso;
+    cfg.expManual.frameDurationUs = 0;  // TODO
+    cfg.expManual.setDirect = true;
     return *this;
 }
 
-void CameraControl::setManualExposure(std::chrono::microseconds exposureTime, uint32_t sensitivityIso) {
-    setManualExposure(exposureTime.count(), sensitivityIso);
+CameraControl& CameraControl::setManualExposure(std::chrono::microseconds exposureTime, uint32_t sensitivityIso) {
+    return setManualExposure(exposureTime.count(), sensitivityIso);
+}
+CameraControl& CameraControl::setManualExposureDirect(std::chrono::microseconds exposureTime, uint32_t sensitivityIso) {
+    return setManualExposureDirect(exposureTime.count(), sensitivityIso);
 }
 
 // White Balance

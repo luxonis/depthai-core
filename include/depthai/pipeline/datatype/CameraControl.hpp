@@ -184,7 +184,21 @@ class CameraControl : public Buffer {
      * @param exposureTime Exposure time
      * @param sensitivityIso Sensitivity as ISO value, usual range 100..1600
      */
-    void setManualExposure(std::chrono::microseconds exposureTime, uint32_t sensitivityIso);
+    CameraControl& setManualExposure(std::chrono::microseconds exposureTime, uint32_t sensitivityIso);
+
+    /**
+     * Set a command to manually specify exposure, set directly, bypassing 3A. Experimental
+     * @param exposureTimeUs Exposure time in microseconds
+     * @param sensitivityIso Sensitivity as ISO value, usual range 100..1600
+     */
+    CameraControl& setManualExposureDirect(uint32_t exposureTimeUs, uint32_t sensitivityIso);
+
+    /**
+     * Set a command to manually specify exposure, set directly, bypassing 3A. Experimental
+     * @param exposureTime Exposure time
+     * @param sensitivityIso Sensitivity as ISO value, usual range 100..1600
+     */
+    CameraControl& setManualExposureDirect(std::chrono::microseconds exposureTime, uint32_t sensitivityIso);
 
     // White Balance
     /**
