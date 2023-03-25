@@ -13,14 +13,14 @@ namespace dai {
 constexpr std::chrono::milliseconds XLinkStream::WAIT_FOR_STREAM_RETRY;
 constexpr int XLinkStream::STREAM_OPEN_RETRIES;
 
-XLinkStream::XLinkStream(const std::shared_ptr<XLinkConnection> conn, const std::string& name, std::size_t maxWriteSize) : connection(conn), streamName(name) {
+XLinkStream::XLinkStream(const std::shared_ptr<XLinkConnection> conn, const std::string& name, std::size_t initialWriteSize) : connection(conn), streamName(name), lastWriteSize(initialWriteSize) {
     if(name.empty()) throw std::invalid_argument("Cannot create XLinkStream using empty stream name");
     if(!connection || connection->getLinkId() == -1) throw std::invalid_argument("Cannot create XLinkStream using unconnected XLinkConnection");
 
     streamId = INVALID_STREAM_ID;
 
     for(int retryCount = 0; retryCount < STREAM_OPEN_RETRIES; retryCount++) {
-        streamId = XLinkOpenStream(connection->getLinkId(), streamName.c_str(), static_cast<int>(maxWriteSize));
+        streamId = XLinkOpenStream(connection->getLinkId(), streamName.c_str(), static_cast<int>(initialWriteSize));
         if(streamId == INVALID_STREAM_ID) {
             // Give some time before continuing
             std::this_thread::sleep_for(WAIT_FOR_STREAM_RETRY);
@@ -34,7 +34,7 @@ XLinkStream::XLinkStream(const std::shared_ptr<XLinkConnection> conn, const std:
 
 // Move constructor
 XLinkStream::XLinkStream(XLinkStream&& other)
-    : connection(std::move(other.connection)), streamName(std::exchange(other.streamName, {})), streamId(std::exchange(other.streamId, INVALID_STREAM_ID)) {
+    : connection(std::move(other.connection)), streamName(std::exchange(other.streamName, {})), streamId(std::exchange(other.streamId, INVALID_STREAM_ID)), lastWriteSize(std::exchange(other.lastWriteSize, 0)) {
     // Set other's streamId to INVALID_STREAM_ID to prevent closing
 }
 
@@ -43,6 +43,7 @@ XLinkStream& XLinkStream::operator=(XLinkStream&& other) {
         connection = std::move(other.connection);
         streamId = std::exchange(other.streamId, INVALID_STREAM_ID);
         streamName = std::exchange(other.streamName, {});
+        lastWriteSize = std::exchange(other.lastWriteSize, 0);
     }
     return *this;
 }
@@ -71,12 +72,25 @@ StreamPacketDesc::~StreamPacketDesc() noexcept {
     XLinkDeallocateMoveData(data, length);
 }
 
+// Wrapper XLink
+XLinkError_t XLinkStream::writeData(streamId_t const streamId, const uint8_t* buffer, size_t size) {
+    if(size > lastWriteSize) {
+        // Dynamically reconfigure the size
+        lastWriteSize = size;
+        auto ret = XLinkOpenStream(connection->getLinkId(), streamName.c_str(), static_cast<int>(size));
+        if(ret == INVALID_STREAM_ID || ret != streamId) {
+            return X_LINK_COMMUNICATION_FAIL;
+        }
+    }
+    return XLinkWriteData(streamId, buffer, static_cast<int>(size));
+}
+
 ////////////////////
 // BLOCKING VERSIONS
 ////////////////////
 
 void XLinkStream::write(const std::uint8_t* data, std::size_t size) {
-    auto status = XLinkWriteData(streamId, data, static_cast<int>(size));
+    auto status = writeData(streamId, data, size);
     if(status != X_LINK_SUCCESS) {
         throw XLinkWriteError(status, streamName);
     }
@@ -138,7 +152,7 @@ void XLinkStream::writeSplit(const void* d, std::size_t size, std::size_t split)
     XLinkError_t ret = X_LINK_SUCCESS;
     while(remaining > 0) {
         sizeToTransmit = remaining > split ? split : remaining;
-        ret = XLinkWriteData(streamId, data + currentOffset, static_cast<int>(sizeToTransmit));
+        ret = writeData(streamId, data + currentOffset, sizeToTransmit);
         if(ret != X_LINK_SUCCESS) {
             throw XLinkWriteError(ret, streamName);
         }

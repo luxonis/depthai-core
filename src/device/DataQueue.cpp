@@ -282,10 +282,10 @@ void DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg) {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
     if(!rawMsg) throw std::invalid_argument("Message passed is not valid (nullptr)");
 
-    // Check if stream receiver has enough space for this message
-    if(rawMsg->data.size() > maxDataSize) {
-        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize));
-    }
+    // // Check if stream receiver has enough space for this message
+    // if(rawMsg->data.size() > maxDataSize) {
+    //     throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize));
+    // }
 
     if(!queue.push(rawMsg)) {
         throw std::runtime_error(fmt::format("Underlying queue destructed"));
@@ -304,10 +304,10 @@ bool DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg, std::chrono:
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
     if(!rawMsg) throw std::invalid_argument("Message passed is not valid (nullptr)");
 
-    // Check if stream receiver has enough space for this message
-    if(rawMsg->data.size() > maxDataSize) {
-        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize));
-    }
+    // // Check if stream receiver has enough space for this message
+    // if(rawMsg->data.size() > maxDataSize) {
+    //     throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize));
+    // }
 
     return queue.tryWaitAndPush(rawMsg, timeout);
 }

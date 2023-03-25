@@ -40,9 +40,13 @@ class XLinkStream {
     std::shared_ptr<XLinkConnection> connection;
     std::string streamName;
     streamId_t streamId{INVALID_STREAM_ID};
+    std::size_t lastWriteSize;
+
+    // Wrapper over XLink
+    XLinkError_t writeData(streamId_t const streamId, const uint8_t* buffer, std::size_t size);
 
    public:
-    XLinkStream(const std::shared_ptr<XLinkConnection> conn, const std::string& name, std::size_t maxWriteSize);
+    XLinkStream(const std::shared_ptr<XLinkConnection> conn, const std::string& name, std::size_t initialWriteSize);
     XLinkStream(const XLinkStream&) = delete;
     XLinkStream(XLinkStream&& stream);
     XLinkStream& operator=(const XLinkStream&) = delete;
