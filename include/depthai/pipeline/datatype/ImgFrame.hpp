@@ -18,6 +18,47 @@
 
 namespace dai {
 
+class BaseTransformation {
+   protected:
+    RawImgTransformation rawImgTransformation;
+   public:
+    BaseTransformation(RawImgTransformation rawImgTransformation) : rawImgTransformation(rawImgTransformation) {};
+    virtual dai::Point2f trans(dai::Point2f point) = 0;
+    virtual dai::Point2f invTrans(dai::Point2f point) = 0;
+    virtual ~BaseTransformation() = default;
+};
+
+class ScaleTransformation : public BaseTransformation {
+    using BaseTransformation::BaseTransformation;
+    dai::Point2f trans(dai::Point2f point);
+    dai::Point2f invTrans(dai::Point2f point);
+};
+
+class CropTransformation : public BaseTransformation {
+    using BaseTransformation::BaseTransformation;
+    dai::Point2f trans(dai::Point2f point);
+    dai::Point2f invTrans(dai::Point2f point);
+};
+
+class PadTransformation : public BaseTransformation {
+    using BaseTransformation::BaseTransformation;
+    dai::Point2f trans(dai::Point2f point);
+    dai::Point2f invTrans(dai::Point2f point);
+};
+
+
+class FlipTransformation : public BaseTransformation {
+    using BaseTransformation::BaseTransformation;
+    dai::Point2f trans(dai::Point2f point);
+    dai::Point2f invTrans(dai::Point2f point);
+};
+
+class RotateTransformation : public BaseTransformation {
+    using BaseTransformation::BaseTransformation;
+    dai::Point2f trans(dai::Point2f point);
+    dai::Point2f invTrans(dai::Point2f point);
+};
+
 /**
  * ImgFrame message. Carries image data and metadata.
  */
@@ -39,8 +80,8 @@ class ImgFrame : public Buffer {
     ImgFrame(size_t size);
     explicit ImgFrame(std::shared_ptr<RawImgFrame> ptr);
     virtual ~ImgFrame() = default;
-    ImgTransformation& transformation;
 
+    std::vector<std::shared_ptr<BaseTransformation>> transformations;
     // getters
     /**
      * Retrieves image timestamp related to dai::Clock::now()
@@ -228,6 +269,122 @@ class ImgFrame : public Buffer {
      * Set raw data for ImgFrame.
      */
     void set(dai::RawImgFrame rawImgFrame);
+
+    /**
+     * Copy over image tranformations and information about the source frame from a frame
+     * @param sourceFrame source frame from which the transformations are copied from
+     */
+    ImgFrame& copyTransformationsFrom(std::shared_ptr<dai::ImgFrame> sourceFrame);
+
+    /**
+     * Add a flip transformation to the frame
+     * This doesn't transform the image, but rather just saves the fact that it has been done.
+     * @param horizontalFlip horizontal flip
+     * @param verticalFlip vertical flip
+     */
+    ImgFrame& transformSetFlip(bool horizontalFlip, bool verticalFlip);
+
+    /**
+     * Add a padding transformation to the frame.
+     * This doesn't transform the image, but rather just saves the fact that it has been done.
+     *
+     * Padding either has to be relative to padded image or absolute in pixels.
+     *
+     * @param topPadding top padding
+     * @param bottomPadding bottom padding
+     * @param leftPadding left padding
+     * @param rightPadding right padding
+     */
+    ImgFrame& transformSetPadding(float topPadding, float bottomPadding, float leftPadding, float rightPadding, bool setImageDimensions = true);
+
+    /**
+     * Add a crop transformation to the frame.
+     * This doesn't transform the image, but rather just saves the fact that it has been done.
+     *
+     * @param crop crop rectangle - can be either relative or absolute
+     */
+    ImgFrame& transformSetCrop(dai::Rect crop, bool setImageDimensions = true);
+
+    /**
+     * Add a rotation transformation to the frame.
+     * This doesn't transform the image, but rather just saves the fact that it has been done.
+     *
+     * @param rotationAngle rotation angle in degrees
+     * @param rotationPoint point around which the rotation was performed
+     */
+    ImgFrame& transformSetRotation(float rotationAngle, dai::Point2f rotationPoint = {0.5, 0.5});
+
+    /**
+     * Add a scale transformation to the frame.
+     *
+     * This doesn't transform the image, but rather just saves the fact that it has been done.
+     * @param scaleFactorX scale factor in X direction
+     * @param scaleFactorY scale factor in Y direction
+     */
+    ImgFrame& transformSetScale(float scaleFactorX, float scaleFactorY, bool setImageDimensions = true);
+
+    /**
+     * Transform a point from the current frame to the source frame
+     * @param point point to transform
+     * @returns transformed point
+     */
+    dai::Point2f transformPointFromSource(dai::Point2f point);
+
+    /**
+     * Transform a point from the source frame to the current frame
+     * @param point point to transform
+     * @returns transformed point
+     */
+    dai::Point2f transformPointToSource(dai::Point2f point);
+
+
+    /**
+     * Transform a rectangle from the source frame to the current frame
+     *
+     * @param rect rectangle to transform
+     * @returns transformed rectangle
+    */
+    dai::Rect transformRectFromSource(dai::Rect rect);
+
+    /**
+     * Transform a rectangle from the current frame to the source frame
+     *
+     * @param rect rectangle to transform
+     * @returns transformed rectangle
+    */
+    dai::Rect transformRectToSource(dai::Rect rect);
+
+    /**
+    * @note Fov API works correctly only on rectilinear frames
+    * Set the source horizontal field of view
+    *
+    * @param degrees field of view in degrees
+    */
+    ImgFrame& setSourceHFov(float degrees);
+
+    /**
+     * @note Fov API works correctly only on rectilinear frames
+     * Get the source diagonal field of view in degrees
+     *
+     * @returns field of view in degrees
+     */
+    float getSourceDFov();
+
+    /**
+     * @note Fov API works correctly only on rectilinear frames
+     * Get the source horizontal field of view
+     *
+     * @param degrees field of view in degrees
+     */
+    float getSourceHFov();
+
+    /**
+     * @note Fov API works correctly only on rectilinear frames
+     * Get the source vertical field of view
+     *
+     * @param degrees field of view in degrees
+     */
+    float getSourceVFov();
 
 // Optional - OpenCV support
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT

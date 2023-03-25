@@ -19,11 +19,11 @@ namespace node {
  */
 class SpatialDetectionNetwork : public NodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
-    SpatialDetectionNetwork() : input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {};
+    SpatialDetectionNetwork() : input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough}, outSegmentation{detectionParser->outSegmentation} {};
     SpatialDetectionNetwork(std::unique_ptr<Properties> props)
-        : NodeCRTP(std::move(props)), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {};
+        : NodeCRTP(std::move(props)), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough}, outSegmentation{detectionParser->outSegmentation} {};
     SpatialDetectionNetwork(std::unique_ptr<Properties> props, bool confMode)
-        : NodeCRTP(std::move(props), confMode), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {};
+        : NodeCRTP(std::move(props), confMode), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough}, outSegmentation{detectionParser->outSegmentation} {};
 
     constexpr static const char* NAME = "SpatialDetectionNetwork";
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
@@ -50,6 +50,11 @@ class SpatialDetectionNetwork : public NodeCRTP<DeviceNode, SpatialDetectionNetw
     Output& passthrough;
 
     /**
+     * Outputs image frame segmentation
+     */
+    Output& outSegmentation;
+
+    /**
      * Input message with depth data used to retrieve spatial information about detected object
      * Default queue is non-blocking with size 4
      */
@@ -66,6 +71,11 @@ class SpatialDetectionNetwork : public NodeCRTP<DeviceNode, SpatialDetectionNetw
      * Default queue is blocking with size 1
      */
     Input inputDetections{true, *this, "inputDetections", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::ImgDetections, false}}};
+
+    /**
+     * Input mask
+    */
+    Input inputMask{true, *this, "inputMask", Input::Type::SReceiver, true, 1, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs ImgDetections message that carries parsed detection results.

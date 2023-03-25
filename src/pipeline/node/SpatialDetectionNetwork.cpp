@@ -19,6 +19,7 @@ void SpatialDetectionNetwork::build() {
     neuralNetwork->passthrough.link(detectionParser->imageIn);
     neuralNetwork->passthrough.link(inputImg);
     detectionParser->out.link(inputDetections);
+    detectionParser->outSegmentation.link(inputMask);
 
     // No "internal" buffering to keep interface similar to monolithic nodes
     detectionParser->input.setBlocking(true);

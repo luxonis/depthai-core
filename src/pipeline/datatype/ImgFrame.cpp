@@ -8,7 +8,7 @@ ImgFrame::Serialized ImgFrame::serialize() const {
     return {data, raw};
 }
 
-ImgFrame::ImgFrame() : Buffer(std::make_shared<RawImgFrame>()), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformation(img.transformation) {
+ImgFrame::ImgFrame() : Buffer(std::make_shared<RawImgFrame>()), img(*dynamic_cast<RawImgFrame*>(raw.get())) {
     // set timestamp to now
     setTimestamp(std::chrono::steady_clock::now());
 }
@@ -19,9 +19,30 @@ ImgFrame::ImgFrame(size_t size) : ImgFrame() {
     data = mem;
 }
 
-ImgFrame::ImgFrame(std::shared_ptr<RawImgFrame> ptr)
-    : Buffer(std::move(ptr)), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformation(img.transformation) {}
-
+ImgFrame::ImgFrame(std::shared_ptr<RawImgFrame> ptr) : Buffer(std::move(ptr)), img(*dynamic_cast<RawImgFrame*>(raw.get())) {
+    for(auto transformation : img.transformations) {
+        switch(transformation.transformationType) {
+            case RawImgTransformation::Transformation::Crop:
+                transformations.emplace_back(std::make_shared<CropTransformation>(transformation));
+                break;
+            case RawImgTransformation::Transformation::Scale:
+                transformations.emplace_back(std::make_shared<ScaleTransformation>(transformation));
+                break;
+            case RawImgTransformation::Transformation::Flip:
+                transformations.emplace_back(std::make_shared<FlipTransformation>(transformation));
+                break;
+            case RawImgTransformation::Transformation::Pad:
+                transformations.emplace_back(std::make_shared<PadTransformation>(transformation));
+                break;
+            case RawImgTransformation::Transformation::Rotation:
+                transformations.emplace_back(std::make_shared<RotateTransformation>(transformation));
+                break;
+            default:
+                throw std::runtime_error("Unknown transformation!");
+                break;
+        }
+    }
+}
 // helpers
 
 // getters
@@ -154,6 +175,313 @@ ImgFrame& ImgFrame::setType(RawImgFrame::Type type) {
 
 void ImgFrame::set(RawImgFrame rawImgFrame) {
     img = rawImgFrame;
+}
+
+ImgFrame& ImgFrame::copyTransformationsFrom(std::shared_ptr<dai::ImgFrame> sourceFrame) {
+    transformations = sourceFrame->transformations;
+    img.transformations = sourceFrame->get().transformations;
+
+    // Copy over origin data as well
+    setSourceSize(sourceFrame->getSourceWidth(), sourceFrame->getSourceHeight());
+    setSourceHFov(sourceFrame->getSourceHFov());
+    return *this;
+}
+
+ImgFrame& ImgFrame::transformSetFlip(bool horizontalFlip, bool verticalFlip) {
+    RawImgTransformation flipTransformation;
+    flipTransformation.horizontalFlip = horizontalFlip;
+    flipTransformation.verticalFlip = verticalFlip;
+    flipTransformation.transformationType = RawImgTransformation::Transformation::Flip;
+
+    // Add the transformation
+    img.transformations.push_back(flipTransformation);
+    transformations.emplace_back(std::make_shared<FlipTransformation>(flipTransformation));
+
+    // Image sizes stay the same
+    return *this;
+}
+
+ImgFrame& ImgFrame::transformSetPadding(float topPadding, float bottomPadding, float leftPadding, float rightPadding, bool setImageDimensions) {
+    RawImgTransformation padTransformation;
+    if(topPadding > 1 || bottomPadding > 1 || leftPadding > 1 || rightPadding > 1) {
+        // Set padding relative to the padded image
+        padTransformation.leftPadding = leftPadding / (getWidth() + leftPadding + rightPadding);
+        padTransformation.rightPadding = rightPadding / (getWidth() + leftPadding + rightPadding);
+        padTransformation.topPadding = topPadding / (getHeight() + topPadding + bottomPadding);
+        padTransformation.bottomPadding = bottomPadding / (getHeight() + topPadding + bottomPadding);
+    } else {
+        padTransformation.topPadding = topPadding;
+        padTransformation.bottomPadding = bottomPadding;
+        padTransformation.leftPadding = leftPadding;
+        padTransformation.rightPadding = rightPadding;
+    }
+    padTransformation.transformationType = RawImgTransformation::Transformation::Pad;
+
+    // Add the transformation
+    img.transformations.push_back(padTransformation);
+    transformations.emplace_back(std::make_shared<PadTransformation>(padTransformation));
+    if(setImageDimensions){
+        // Set image size
+        setWidth(getWidth() / (1 - padTransformation.leftPadding - padTransformation.rightPadding));
+        setHeight(getHeight() / (1 - padTransformation.bottomPadding - padTransformation.topPadding));
+    }
+    return *this;
+}
+ImgFrame& ImgFrame::transformSetCrop(dai::Rect crop, bool setImageDimensions) {
+    // Add a crop
+    RawImgTransformation cropTransformation;
+    auto cropNormalized = crop.normalize(getWidth(), getHeight());
+    cropTransformation.crop = cropNormalized;
+    cropTransformation.transformationType = RawImgTransformation::Transformation::Crop;
+
+    // Add the transformation
+    img.transformations.push_back(cropTransformation);
+    transformations.emplace_back(std::make_shared<CropTransformation>(cropTransformation));
+
+    if(setImageDimensions) {
+        // Set image size correctly
+        auto cropDenormalized = crop.denormalize(getWidth(), getHeight());
+        setWidth(cropDenormalized.width);
+        setHeight(cropDenormalized.height);
+    }
+    return *this;
+}
+ImgFrame& ImgFrame::transformSetRotation(float rotationAngle, dai::Point2f rotationPoint) {
+    RawImgTransformation rotateTransformation;
+    rotateTransformation.rotationAngle = rotationAngle;
+    rotateTransformation.rotationTurnPoint = rotationPoint;
+    rotateTransformation.transformationType = RawImgTransformation::Transformation::Rotation;
+
+    // Add the transformation
+    img.transformations.push_back(rotateTransformation);
+    transformations.emplace_back(std::make_shared<RotateTransformation>(rotateTransformation));
+
+    // TODO what happens with image dimensions -> check with ImageManip
+    return *this;
+}
+
+ImgFrame& ImgFrame::transformSetScale(float scaleFactorX, float scaleFactorY, bool setImageDimensions) {
+    RawImgTransformation scaleTransformation;
+    scaleTransformation.scaleFactorX = scaleFactorX;
+    scaleTransformation.scaleFactorY = scaleFactorY;
+    scaleTransformation.transformationType = RawImgTransformation::Transformation::Scale;
+
+    // Add the transformation
+    img.transformations.push_back(scaleTransformation);
+    transformations.emplace_back(std::make_shared<ScaleTransformation>(scaleTransformation));
+
+    if(setImageDimensions) {
+        // Set image size
+        setWidth(getWidth() * scaleFactorX);
+        setHeight(getHeight() * scaleFactorY);
+    }
+    return *this;
+}
+
+dai::Point2f ScaleTransformation::trans(dai::Point2f point) {
+    // Since we are dealing with relative coordinates, there is nothing to be done
+    return point;
+}
+
+dai::Point2f ScaleTransformation::invTrans(dai::Point2f point) {
+    // Since we are dealing with relative coordinates, there is nothing to be done
+    return point;
+}
+
+dai::Point2f CropTransformation::trans(dai::Point2f point) {
+    dai::Point2f returnPoint;
+    float cropStartX = rawImgTransformation.crop.topLeft().x;
+    float cropEndX = rawImgTransformation.crop.bottomRight().x;
+    if(point.x < cropStartX) {
+        returnPoint.x = 0;
+    } else if(point.x > cropEndX) {
+        returnPoint.x = 1;
+    } else {
+        returnPoint.x = (point.x - cropStartX) / (cropEndX - cropStartX);
+    }
+
+    float cropStartY = rawImgTransformation.crop.topLeft().y;
+    float cropEndY = rawImgTransformation.crop.bottomRight().y;
+    if(point.y < cropStartY) {
+        returnPoint.y = 0;
+    } else if(point.y > cropEndY) {
+        returnPoint.y = 1;
+    } else {
+        returnPoint.y = (point.y - cropStartY) / (cropEndY - cropStartY);
+    }
+    return returnPoint;
+}
+
+dai::Point2f CropTransformation::invTrans(dai::Point2f point) {
+    dai::Point2f returnPoint;
+    float cropStartX = rawImgTransformation.crop.topLeft().x;
+    float cropEndX = rawImgTransformation.crop.bottomRight().x;
+    returnPoint.x = (point.x) * (cropEndX - cropStartX) + cropStartX;
+
+    float cropStartY = rawImgTransformation.crop.topLeft().y;
+    float cropEndY = rawImgTransformation.crop.bottomRight().y;
+    returnPoint.y = (point.y) * (cropEndY - cropStartY) + cropStartY;
+
+    return returnPoint;
+}
+
+dai::Point2f PadTransformation::trans(dai::Point2f point) {
+    dai::Point2f returnPoint;
+    returnPoint.x = point.x * (1 - rawImgTransformation.leftPadding - rawImgTransformation.rightPadding) + rawImgTransformation.leftPadding;
+    returnPoint.y = point.y * (1 - rawImgTransformation.topPadding - rawImgTransformation.bottomPadding) + rawImgTransformation.topPadding;
+    return returnPoint;
+}
+
+dai::Point2f PadTransformation::invTrans(dai::Point2f point) {
+    dai::Point2f returnPoint;
+
+    returnPoint.x = (point.x - rawImgTransformation.leftPadding) / (1 - rawImgTransformation.leftPadding - rawImgTransformation.rightPadding);
+    returnPoint.y = (point.y - rawImgTransformation.topPadding) / (1 - rawImgTransformation.topPadding - rawImgTransformation.bottomPadding);
+
+    // If point is not in the padded area, it's not between 0 and 1
+    returnPoint.x = std::max(0.0f, std::min(returnPoint.x, 1.0f));
+    returnPoint.y = std::max(0.0f, std::min(returnPoint.y, 1.0f));
+
+    return returnPoint;
+}
+
+dai::Point2f RotateTransformation::trans(dai::Point2f point) {
+    // TODO implementation
+    throw std::runtime_error("Rotate transformation not yet implemented");
+    return point;
+}
+
+dai::Point2f RotateTransformation::invTrans(dai::Point2f point) {
+    // TODO implementation
+    throw std::runtime_error("Rotate transformation not yet implemented");
+    return point;
+}
+
+dai::Point2f FlipTransformation::trans(dai::Point2f point) {
+    dai::Point2f returnPoint;
+    if(rawImgTransformation.horizontalFlip) {
+        returnPoint.x = 1.0f - point.x;
+    }
+    if(rawImgTransformation.verticalFlip) {
+        returnPoint.y = 1.0f - point.y;
+    }
+    return returnPoint;
+}
+
+dai::Point2f FlipTransformation::invTrans(dai::Point2f point) {
+    return trans(point);  // The operation is the same in both ways
+}
+
+dai::Point2f ImgFrame::transformPointFromSource(dai::Point2f point) {
+    dai::Point2f transformedPoint = point;
+    for(auto& transformation : transformations) {
+        transformedPoint = transformation->trans(transformedPoint);
+    }
+    return transformedPoint;
+}
+
+dai::Point2f ImgFrame::transformPointToSource(dai::Point2f point) {
+    dai::Point2f transformedPoint = point;
+
+    // Do the loop in reverse order
+    for(auto it = transformations.rbegin(); it != transformations.rend(); ++it) {
+        transformedPoint = (*it)->invTrans(transformedPoint);
+    }
+    return transformedPoint;
+}
+
+dai::Rect ImgFrame::transformRectFromSource(dai::Rect rect) {
+    auto topLeftTransformed = transformPointFromSource(rect.topLeft());
+    auto bottomRightTransformed = transformPointFromSource(rect.bottomRight());
+    return dai::Rect{topLeftTransformed, bottomRightTransformed};
+}
+
+dai::Rect ImgFrame::transformRectToSource(dai::Rect rect) {
+    auto topLeftTransformed = transformPointToSource(rect.topLeft());
+    auto bottomRightTransformed = transformPointToSource(rect.bottomRight());
+    return dai::Rect{topLeftTransformed, bottomRightTransformed};
+}
+
+ImgFrame& ImgFrame::setSourceHFov(float degrees) {
+    img.HFovDegrees = degrees;
+    return *this;
+}
+
+float ImgFrame::getSourceHFov() {
+    return img.HFovDegrees;
+}
+
+float ImgFrame::getSourceDFov() {
+    // TODO only works rectlinear lenses (rectified frames).
+    // Calculate the vertical FOV from the source dimensions and the source DFov
+    float sourceWidth = getSourceWidth();
+    float sourceHeight = getSourceHeight();
+
+    if(sourceHeight <= 0){
+        throw std::runtime_error(fmt::format("Source height is invalid. Height: {}", sourceHeight));
+    }
+    if(sourceWidth <= 0){
+        throw std::runtime_error(fmt::format("Source width is invalid. Width: {}", sourceWidth));
+    }
+    float HFovDegrees = getSourceHFov();
+
+    // Calculate the diagonal ratio (DR)
+    float dr = std::sqrt(std::pow(sourceWidth, 2) + std::pow(sourceHeight, 2));
+
+    // Validate the horizontal FOV
+    if(HFovDegrees <= 0 || HFovDegrees >= 180){
+        throw std::runtime_error(fmt::format("Horizontal FOV is invalid. Horizontal FOV: {}", HFovDegrees));
+    }
+
+    float HFovRadians = HFovDegrees * (static_cast<float>(M_PI) / 180.0f);
+
+    // Calculate the tangent of half of the HFOV
+    float tanHFovHalf = std::tan(HFovRadians / 2);
+
+    // Calculate the tangent of half of the VFOV
+    float tanDiagonalFovHalf = (dr / sourceWidth) * tanHFovHalf;
+
+    // Calculate the VFOV in radians
+    float diagonalFovRadians = 2 * std::atan(tanDiagonalFovHalf);
+
+    // Convert VFOV to degrees
+    float diagonalFovDegrees = diagonalFovRadians * (180.0f / static_cast<float>(M_PI));
+    return diagonalFovDegrees;
+}
+
+float ImgFrame::getSourceVFov() {
+    // TODO only works rectlinear lenses (rectified frames).
+    // Calculate the vertical FOV from the source dimensions and the source DFov
+    float sourceWidth = getSourceWidth();
+    float sourceHeight = getSourceHeight();
+
+    if(sourceHeight <= 0){
+        throw std::runtime_error(fmt::format("Source height is invalid. Height: {}", sourceHeight));
+    }
+    if(sourceWidth <= 0){
+        throw std::runtime_error(fmt::format("Source width is invalid. Width: {}", sourceWidth));
+    }
+    float HFovDegrees = getSourceHFov();
+
+    // Validate the horizontal FOV
+    if(HFovDegrees <= 0 || HFovDegrees >= 180){
+        throw std::runtime_error(fmt::format("Horizontal FOV is invalid. Horizontal FOV: {}", HFovDegrees));
+    }
+
+    float HFovRadians = HFovDegrees * (static_cast<float>(M_PI) / 180.0f);
+
+    // Calculate the tangent of half of the HFOV
+    float tanHFovHalf = std::tan(HFovRadians / 2);
+
+    // Calculate the tangent of half of the VFOV
+    float tanVerticalFovHalf = (sourceHeight / sourceWidth) * tanHFovHalf;
+
+    // Calculate the VFOV in radians
+    float verticalFovRadians = 2 * std::atan(tanVerticalFovHalf);
+
+    // Convert VFOV to degrees
+    float verticalFovDegrees = verticalFovRadians * (180.0f / static_cast<float>(M_PI));
+    return verticalFovDegrees;
 }
 
 }  // namespace dai
