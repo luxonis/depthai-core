@@ -113,7 +113,6 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
         xlinkGlobalHandler.protocol = X_LINK_USB_VSC;
         xlinkGlobalHandler.options = javavm;
         auto status = XLinkInitialize(&xlinkGlobalHandler);
-        std::string errorMsg;
         const auto ERROR_MSG_USB_TIP = fmt::format("If running in a container, make sure that the following is set: \"{}\"",
                                                    "-v /dev/bus/usb:/dev/bus/usb --device-cgroup-rule='c 189:* rmw'");
         if(X_LINK_SUCCESS != status) {

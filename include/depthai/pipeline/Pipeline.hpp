@@ -41,6 +41,8 @@ class PipelineImpl {
     Device::Config getDeviceConfig() const;
     void setCameraTuningBlobPath(const dai::Path& path);
     void setXLinkChunkSize(int sizeBytes);
+    void setSippBufferSize(int sizeBytes);
+    void setSippDmaBufferSize(int sizeBytes);
     void setBoardConfig(BoardConfig board);
     BoardConfig getBoardConfig() const;
 
@@ -263,6 +265,28 @@ class Pipeline {
      */
     void setXLinkChunkSize(int sizeBytes) {
         impl()->setXLinkChunkSize(sizeBytes);
+    }
+
+    /**
+     * SIPP (Signal Image Processing Pipeline) internal memory pool.
+     * SIPP is a framework used to schedule HW filters, e.g. ISP, Warp, Median filter etc.
+     * Changing the size of this pool is meant for advanced use cases, pushing the limits of the HW.
+     * By default memory is allocated in high speed CMX memory. Setting to 0 will allocate in DDR 256 kilobytes.
+     * Units are bytes.
+     */
+    void setSippBufferSize(int sizeBytes) {
+        impl()->setSippBufferSize(sizeBytes);
+    }
+
+    /**
+     * SIPP (Signal Image Processing Pipeline) internal DMA memory pool.
+     * SIPP is a framework used to schedule HW filters, e.g. ISP, Warp, Median filter etc.
+     * Changing the size of this pool is meant for advanced use cases, pushing the limits of the HW.
+     * Memory is allocated in high speed CMX memory
+     * Units are bytes.
+     */
+    void setSippDmaBufferSize(int sizeBytes) {
+        impl()->setSippDmaBufferSize(sizeBytes);
     }
 
     /// Checks whether a given OpenVINO version is compatible with the pipeline
