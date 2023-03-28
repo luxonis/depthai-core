@@ -234,6 +234,11 @@ ImageManipConfig& ImageManipConfig::setKeepAspectRatio(bool keep) {
     return *this;
 }
 
+ImageManipConfig& ImageManipConfig::setInterpolation(RawImageManipConfig::Interpolation interpolation) {
+    cfg.interpolation = interpolation;
+    return *this;
+}
+
 // Functions to retrieve properties
 float ImageManipConfig::getCropXMin() const {
     return cfg.cropConfig.cropRect.xmin;
@@ -277,6 +282,10 @@ bool ImageManipConfig::isResizeThumbnail() const {
 
 dai::Colormap ImageManipConfig::getColormap() const {
     return cfg.formatConfig.colormap;
+}
+
+RawImageManipConfig::Interpolation ImageManipConfig::getInterpolation() const {
+    return cfg.interpolation;
 }
 
 }  // namespace dai
