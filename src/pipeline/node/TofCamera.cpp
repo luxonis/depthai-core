@@ -28,5 +28,42 @@ bool TofCamera::getWaitForConfigInput() const {
 }
 
 
+// set raw output size
+void TofCamera::setRawSize(int width, int height) {
+    properties.rawWidth = width;
+    properties.rawHeight = height;
+}
+
+int TofCamera::getRawWidth() const {
+    return properties.rawWidth;
+}
+
+int TofCamera::getRawHeight() const {
+    return properties.rawHeight;
+}
+
+// set depth output size
+void TofCamera::setDepthSize(int width, int height) {
+    properties.depthWidth = width;
+    properties.depthHeight = height;
+}
+
+int TofCamera::getDepthWidth() const {
+    return properties.rawWidth;
+}
+
+int TofCamera::getDepthHeight() const {
+    return properties.depthHeight;
+}
+
+TofSensorModel TofCamera::getTofModel() {
+    return properties.tofModel;
+}
+
+void TofCamera::setTofModel(TofSensorModel model) {
+    properties.tofModel = model;
+}
+
+
 }  // namespace node
 }  // namespace dai

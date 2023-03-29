@@ -71,6 +71,16 @@ class TofCamera : public NodeCRTP<DeviceNode, TofCamera, TofCameraProperties> {
      * @returns True if wait for inputConfig message, false otherwise
      */
     [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] bool getWaitForConfigInput() const;
+
+    void setRawSize(int width, int height);
+    int getRawWidth() const;
+    int getRawHeight() const;
+
+    void setDepthSize(int width, int height);
+    int getDepthWidth() const;
+    int getDepthHeight() const;
+    TofSensorModel getTofModel();
+    void setTofModel(TofSensorModel model);
 };
 
 }  // namespace node
