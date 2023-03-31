@@ -81,6 +81,11 @@ StereoDepthConfig& StereoDepthConfig::setDisparityShift(int disparityShift) {
     return *this;
 }
 
+StereoDepthConfig& StereoDepthConfig::setNumInvalidateEdgePixels(int32_t numInvalidateEdgePixels) {
+    cfg.algorithmControl.numInvalidateEdgePixels = numInvalidateEdgePixels;
+    return *this;
+}
+
 dai::StereoDepthConfig::AlgorithmControl::DepthUnit StereoDepthConfig::getDepthUnit() {
     return cfg.algorithmControl.depthUnit;
 }
