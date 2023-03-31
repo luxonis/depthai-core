@@ -48,7 +48,7 @@ void TofCamera::setDepthSize(int width, int height) {
 }
 
 int TofCamera::getDepthWidth() const {
-    return properties.rawWidth;
+    return properties.depthWidth;
 }
 
 int TofCamera::getDepthHeight() const {
