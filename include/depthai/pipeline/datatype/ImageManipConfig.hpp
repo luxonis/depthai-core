@@ -29,7 +29,6 @@ class ImageManipConfig : public Buffer {
     using CropConfig = RawImageManipConfig::CropConfig;
     using ResizeConfig = RawImageManipConfig::ResizeConfig;
     using FormatConfig = RawImageManipConfig::FormatConfig;
-    using Interpolation = RawImageManipConfig::Interpolation;
 
     /// Construct ImageManipConfig message
     ImageManipConfig();
@@ -192,7 +191,7 @@ class ImageManipConfig : public Buffer {
      * Specify which interpolation method to use
      * @param interpolation type of interpolation
      */
-    ImageManipConfig& setInterpolation(RawImageManipConfig::Interpolation interpolation);
+    ImageManipConfig& setInterpolation(dai::Interpolation interpolation);
 
     // Functions to retrieve properties
     /**
@@ -251,7 +250,7 @@ class ImageManipConfig : public Buffer {
     Colormap getColormap() const;
 
     /// Retrieve which interpolation method to use
-    RawImageManipConfig::Interpolation getInterpolation() const;
+    dai::Interpolation getInterpolation() const;
 };
 
 }  // namespace dai

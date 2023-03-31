@@ -27,7 +27,7 @@ int main() {
     constexpr std::tuple<int, int> WARP1_OUTPUT_FRAME_SIZE = {992, 500};
     warp1->setOutputSize(WARP1_OUTPUT_FRAME_SIZE);
     warp1->setMaxOutputFrameSize(std::get<0>(WARP1_OUTPUT_FRAME_SIZE) * std::get<1>(WARP1_OUTPUT_FRAME_SIZE) * 3);
-    warp1->setInterpolation(dai::node::Warp::Properties::Interpolation::BYPASS);
+    warp1->setInterpolation(dai::Interpolation::NEAREST_NEIGHBOR);
     warp1->setHwIds({1});
 
     camRgb->preview.link(warp1->inputImage);
@@ -47,7 +47,7 @@ int main() {
     // clang-format on
     warp2->setWarpMesh(mesh2, 3, 3);
     warp2->setMaxOutputFrameSize(maxFrameSize);
-    warp2->setInterpolation(dai::node::Warp::Properties::Interpolation::BICUBIC);
+    warp2->setInterpolation(dai::Interpolation::BICUBIC);
     warp2->setHwIds({2});
 
     camRgb->preview.link(warp2->inputImage);

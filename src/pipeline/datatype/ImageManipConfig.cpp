@@ -234,7 +234,7 @@ ImageManipConfig& ImageManipConfig::setKeepAspectRatio(bool keep) {
     return *this;
 }
 
-ImageManipConfig& ImageManipConfig::setInterpolation(RawImageManipConfig::Interpolation interpolation) {
+ImageManipConfig& ImageManipConfig::setInterpolation(dai::Interpolation interpolation) {
     cfg.interpolation = interpolation;
     return *this;
 }
@@ -284,7 +284,7 @@ dai::Colormap ImageManipConfig::getColormap() const {
     return cfg.formatConfig.colormap;
 }
 
-RawImageManipConfig::Interpolation ImageManipConfig::getInterpolation() const {
+dai::Interpolation ImageManipConfig::getInterpolation() const {
     return cfg.interpolation;
 }
 
