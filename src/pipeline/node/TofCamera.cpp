@@ -27,7 +27,6 @@ bool TofCamera::getWaitForConfigInput() const {
     return inputConfig.getWaitForMessage();
 }
 
-
 // set raw output size
 void TofCamera::setRawSize(int width, int height) {
     properties.rawWidth = width;
@@ -56,11 +55,11 @@ int TofCamera::getDepthHeight() const {
     return properties.depthHeight;
 }
 
-TofSensorModel TofCamera::getTofModel() {
+dai::TofCameraProperties::TofSensorModel TofCamera::getTofModel() {
     return properties.tofModel;
 }
 
-void TofCamera::setTofModel(TofSensorModel model) {
+void TofCamera::setTofModel(dai::TofCameraProperties::TofSensorModel model) {
     properties.tofModel = model;
 }
 

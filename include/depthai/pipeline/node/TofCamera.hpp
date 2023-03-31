@@ -53,6 +53,9 @@ class TofCamera : public NodeCRTP<DeviceNode, TofCamera, TofCameraProperties> {
      */
     Output depth{true, *this, "depth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
+    //TODO add amplitude
+    //Output depth{true, *this, "depth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
     /**
      * Passthrough message on which the calculation was performed.
      * Suitable for when input queue is set to non-blocking behavior.
@@ -79,8 +82,8 @@ class TofCamera : public NodeCRTP<DeviceNode, TofCamera, TofCameraProperties> {
     void setDepthSize(int width, int height);
     int getDepthWidth() const;
     int getDepthHeight() const;
-    TofSensorModel getTofModel();
-    void setTofModel(TofSensorModel model);
+    dai::TofCameraProperties::TofSensorModel getTofModel();
+    void setTofModel(dai::TofCameraProperties::TofSensorModel model);
 };
 
 }  // namespace node
