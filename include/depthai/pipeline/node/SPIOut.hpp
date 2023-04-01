@@ -43,8 +43,8 @@ class SPIOut : public NodeCRTP<Node, SPIOut, SPIOutProperties> {
      * Specifies SPI Bus number to use
      * @param id SPI Bus id
      */
-    void setBusId(int newId) {
-        properties.busId = newId;
+    void setBusId(int busId) {
+        properties.busId = busId;
     }
 };
 

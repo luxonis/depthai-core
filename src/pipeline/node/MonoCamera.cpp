@@ -42,9 +42,9 @@ std::string MonoCamera::getCamera() const {
 }
 
 // Set which color camera to use
-void MonoCamera::setCamId(int64_t id) {
+void MonoCamera::setCamId(int64_t camId) {
     // cast to board socket
-    switch(id) {
+    switch(camId) {
         case 0:
             properties.boardSocket = CameraBoardSocket::RGB;
             break;
@@ -58,7 +58,7 @@ void MonoCamera::setCamId(int64_t id) {
             properties.boardSocket = CameraBoardSocket::CAM_D;
             break;
         default:
-            throw std::invalid_argument(fmt::format("CamId value: {} is invalid.", id));
+            throw std::invalid_argument(fmt::format("CamId value: {} is invalid.", camId));
             break;
     }
 }
@@ -97,6 +97,10 @@ std::vector<dai::FrameEvent> MonoCamera::getFrameEventFilter() const {
 
 void MonoCamera::setFps(float fps) {
     properties.fps = fps;
+}
+
+void MonoCamera::setIsp3aFps(int isp3aFps) {
+    properties.isp3aFps = isp3aFps;
 }
 
 float MonoCamera::getFps() const {

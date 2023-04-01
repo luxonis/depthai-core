@@ -46,7 +46,7 @@ function(dai_add_test test_name test_src)
     endif()
 
     # Link to core and Catch2 testing framework
-    target_link_libraries(${test_name} PRIVATE depthai-core Catch2::Catch2 Threads::Threads)
+    target_link_libraries(${test_name} PRIVATE depthai-core Catch2::Catch2WithMain Threads::Threads)
 
     # Add sanitizers for tests as well
     if(COMMAND add_sanitizers)
@@ -68,7 +68,7 @@ function(dai_add_test test_name test_src)
         add_default_flags(${test_name}_conforming LEAN)
 
         # Link to core and Catch2 testing framework
-        target_link_libraries(${test_name}_conforming PRIVATE depthai-core Catch2::Catch2 Threads::Threads)
+        target_link_libraries(${test_name}_conforming PRIVATE depthai-core Catch2::Catch2WithMain Threads::Threads)
 
         # Set compiler c++ standard
         target_compile_options(${test_name}_conforming PRIVATE "${CMAKE_CXX${DAT_CXX_STANDARD}_STANDARD_COMPILE_OPTION}")
@@ -249,15 +249,20 @@ dai_add_test(xlink_roundtrip_test src/xlink_roundtrip_test.cpp)
 # # dai_add_test(stability_stress_test src/stability_stress_test.cpp)
 option(DEPTHAI_STABILITY_STRESS_TEST_DEBUG "Enable visualization for stability stress test" OFF)
 add_executable(stability_stress_test src/stability_stress_test.cpp)
+# Set compiler features (c++14), and disables extensions (g++14)
+set_property(TARGET stability_stress_test PROPERTY CXX_STANDARD 14)
+set_property(TARGET stability_stress_test PROPERTY CXX_STANDARD_REQUIRED ON)
+set_property(TARGET stability_stress_test PROPERTY CXX_EXTENSIONS OFF)
+
 add_default_flags(stability_stress_test LEAN)
 if(COMMAND target_clangformat_setup)
     target_clangformat_setup(stability_stress_test "")
 endif()
 if(DEPTHAI_STABILITY_TEST_DEBUG)
-    target_link_libraries(stability_stress_test PRIVATE depthai::opencv opencv_highgui)
+    target_link_libraries(stability_stress_test PRIVATE depthai::opencv opencv_highgui Threads::Threads)
     target_compile_definitions(stability_stress_test PRIVATE DEPTHAI_STABILITY_TEST_DEBUG)
 else()
-    target_link_libraries(stability_stress_test PRIVATE depthai::core)
+    target_link_libraries(stability_stress_test PRIVATE depthai::core Threads::Threads)
 endif()
 target_compile_definitions(stability_stress_test PRIVATE BLOB_PATH="${tiny_yolo_v4_2021-4_4shave_blob}")
 # add_test(stability_stress_test stability_stress_test)
