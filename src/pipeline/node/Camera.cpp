@@ -130,6 +130,10 @@ void Camera::setFps(float fps) {
     properties.fps = fps;
 }
 
+void Camera::setIsp3aFps(int isp3aFps) {
+    properties.isp3aFps = isp3aFps;
+}
+
 float Camera::getFps() const {
     // if AUTO
     if(properties.fps == CameraProperties::AUTO || properties.fps == 0) {

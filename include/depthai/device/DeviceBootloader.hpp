@@ -212,6 +212,14 @@ class DeviceBootloader {
     DeviceBootloader(const DeviceInfo& devInfo, const dai::Path& pathToBootloader, bool allowFlashingBootloader = false);
 
     /**
+     * Connects to device with specified name/device id
+     *
+     * @param nameOrDeviceId Creates DeviceInfo with nameOrDeviceId to connect to
+     * @param allowFlashingBootloader Set to true to allow flashing the devices bootloader. Defaults to false
+     */
+    DeviceBootloader(std::string nameOrDeviceId, bool allowFlashingBootloader = false);
+
+    /**
      * @brief Destroy the Device Bootloader object
      *
      */
@@ -458,6 +466,10 @@ class DeviceBootloader {
 
     /**
      * Is the device already closed (or disconnected)
+     *
+     * @warning This function is thread-unsafe and may return outdated incorrect values. It is
+     * only meant for use in simple single-threaded code. Well written code should handle
+     * exceptions when calling any DepthAI apis to handle hardware events and multithreaded use.
      */
     bool isClosed() const;
 
@@ -466,7 +478,6 @@ class DeviceBootloader {
 
     // private methods
     void init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl::optional<bootloader::Type> type, bool allowBlFlash);
-    void checkClosed() const;
     template <typename T>
     bool sendRequest(const T& request);
     template <typename T>
