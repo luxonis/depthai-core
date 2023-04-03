@@ -43,8 +43,8 @@ Pipeline Pipeline::clone() const {
     return clone;
 }
 
-Pipeline::Pipeline(const std::shared_ptr<PipelineImpl>& pimpl) {
-    this->pimpl = pimpl;
+Pipeline::Pipeline(const std::shared_ptr<PipelineImpl>& newPimpl) {
+    pimpl = newPimpl;
 }
 
 GlobalProperties Pipeline::getGlobalProperties() const {
@@ -304,8 +304,16 @@ void PipelineImpl::setXLinkChunkSize(int sizeBytes) {
     globalProperties.xlinkChunkSize = sizeBytes;
 }
 
-void PipelineImpl::setBoardConfig(BoardConfig board) {
-    this->board = board;
+void PipelineImpl::setSippBufferSize(int sizeBytes) {
+    globalProperties.sippBufferSize = sizeBytes;
+}
+
+void PipelineImpl::setSippDmaBufferSize(int sizeBytes) {
+    globalProperties.sippDmaBufferSize = sizeBytes;
+}
+
+void PipelineImpl::setBoardConfig(BoardConfig boardCfg) {
+    board = boardCfg;
 }
 
 BoardConfig PipelineImpl::getBoardConfig() const {

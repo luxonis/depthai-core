@@ -21,6 +21,7 @@
 #include "utility/spdlog-fmt.hpp"
 
 // libraries
+#include "XLink/XLink.h"
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/spdlog.h"
 #include "zlib.h"
@@ -267,11 +268,27 @@ DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, const dai::Path& p
     init(false, pathToBootloader, tl::nullopt, allowFlashingBootloader);
 }
 
+DeviceBootloader::DeviceBootloader(std::string nameOrDeviceId, bool allowFlashingBootloader) : deviceInfo(std::move(nameOrDeviceId)) {
+    init(true, {}, tl::nullopt, allowFlashingBootloader);
+}
+
 void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl::optional<bootloader::Type> type, bool allowBlFlash) {
     stream = nullptr;
     allowFlashingBootloader = allowBlFlash;
 
     bootloaderType = type.value_or(DEFAULT_TYPE);
+
+    // If deviceInfo isn't fully specified (eg ANY_STATE, etc...), but id or name is - try finding it first
+    if((deviceInfo.state == X_LINK_ANY_STATE || deviceInfo.protocol == X_LINK_ANY_PROTOCOL) && (!deviceInfo.mxid.empty() || !deviceInfo.name.empty())) {
+        deviceDesc_t foundDesc;
+        auto ret = XLinkFindFirstSuitableDevice(deviceInfo.getXLinkDeviceDesc(), &foundDesc);
+        if(ret == X_LINK_SUCCESS) {
+            deviceInfo = DeviceInfo(foundDesc);
+            spdlog::debug("Found an actual device by given DeviceInfo: {}", deviceInfo.toString());
+        } else {
+            throw std::runtime_error("Specified device not found");
+        }
+    }
 
     // Init device (if bootloader, handle correctly - issue USB boot command)
     if(deviceInfo.state == X_LINK_UNBOOTED) {
@@ -542,12 +559,12 @@ void DeviceBootloader::close() {
     spdlog::debug("DeviceBootloader closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
 }
 
+// This function is thread-unsafe. The idea of "isClosed" is ephemerial and
+// is invalid even within this function between the evaluation of the logical OR.
+// The calculated boolean and then then return by value continue to degrade in
+// validity to the caller
 bool DeviceBootloader::isClosed() const {
     return closed || !watchdogRunning;
-}
-
-void DeviceBootloader::checkClosed() const {
-    if(isClosed()) throw std::invalid_argument("DeviceBootloader already closed or disconnected");
 }
 
 DeviceBootloader::~DeviceBootloader() {
@@ -701,9 +718,10 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
                                                                                std::vector<uint8_t> package,
                                                                                Memory memory) {
     // Bug in NETWORK bootloader in version 0.0.12 < 0.0.14 - flashing can cause a soft brick
-    auto version = getVersion();
-    if(bootloaderType == Type::NETWORK && version < Version(0, 0, 14)) {
-        throw std::invalid_argument("Network bootloader requires version 0.0.14 or higher to flash applications. Current version: " + version.toString());
+    auto bootloaderVersion = getVersion();
+    if(bootloaderType == Type::NETWORK && bootloaderVersion < Version(0, 0, 14)) {
+        throw std::invalid_argument("Network bootloader requires version 0.0.14 or higher to flash applications. Current version: "
+                                    + bootloaderVersion.toString());
     }
 
     std::tuple<bool, std::string> ret;
@@ -1085,8 +1103,8 @@ std::tuple<bool, std::string> DeviceBootloader::flashCustom(
     std::vector<uint8_t> optFileData;
     if(!filename.empty()) {
         // Read file into memory first
-        std::ifstream stream(filename, std::ios::in | std::ios::binary);
-        optFileData = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
+        std::ifstream optFile(filename, std::ios::in | std::ios::binary);
+        optFileData = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(optFile), {});
         data = optFileData.data();
         size = optFileData.size();
     }
@@ -1108,17 +1126,17 @@ std::tuple<bool, std::string> DeviceBootloader::flashCustom(
     result.success = 0;  // TODO remove these inits after fix https://github.com/luxonis/depthai-bootloader-shared/issues/4
     result.errorMsg[0] = 0;
     do {
-        std::vector<uint8_t> data;
-        if(!receiveResponseData(data)) return {false, "Couldn't receive bootloader response"};
+        std::vector<uint8_t> responseData;
+        if(!receiveResponseData(responseData)) return {false, "Couldn't receive bootloader response"};
 
         Response::FlashStatusUpdate update;
-        if(parseResponse(data, update)) {
+        if(parseResponse(responseData, update)) {
             // if progress callback is set
             if(progressCb != nullptr) {
                 progressCb(update.progress);
             }
             // if flash complete response arrived, break from while loop
-        } else if(parseResponse(data, result)) {
+        } else if(parseResponse(responseData, result)) {
             break;
         } else {
             // Unknown response, shouldn't happen

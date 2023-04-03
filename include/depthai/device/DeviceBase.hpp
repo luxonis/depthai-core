@@ -30,7 +30,9 @@
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
+#include "depthai-shared/datatype/RawIMUData.hpp"
 #include "depthai-shared/device/BoardConfig.hpp"
+#include "depthai-shared/device/CrashDump.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
 
@@ -65,7 +67,7 @@ class DeviceBase {
      * Device specific configuration
      */
     struct Config {
-        OpenVINO::Version version;
+        OpenVINO::Version version = OpenVINO::VERSION_UNIVERSAL;
         BoardConfig board;
         bool nonExclusiveMode = false;
     };
@@ -452,6 +454,16 @@ class DeviceBase {
     std::vector<std::tuple<std::string, int, int>> getIrDrivers();
 
     /**
+     * Retrieves crash dump for debugging.
+     */
+    dai::CrashDump getCrashDump();
+
+    /**
+     * Retrieves whether the is crash dump stored on device or not.
+     */
+    bool hasCrashDump();
+
+    /**
      * Add a callback for device logging. The callback will be called from a separate thread with the LogMessage being passed.
      *
      * @param callback Callback to call whenever a log message arrives
@@ -502,6 +514,47 @@ class DeviceBase {
      * @returns Map/dictionary with camera sensor names, indexed by socket
      */
     std::unordered_map<CameraBoardSocket, std::string> getCameraSensorNames();
+
+    /**
+     * Get connected IMU type
+     *
+     * @returns IMU type
+     */
+    std::string getConnectedIMU();
+
+    /**
+     * Get connected IMU firmware version
+     *
+     * @returns IMU firmware version
+     */
+    dai::Version getIMUFirmwareVersion();
+
+    /**
+     * Get embedded IMU firmware version to which IMU can be upgraded
+     *
+     * @returns Get embedded IMU firmware version to which IMU can be upgraded.
+     */
+    dai::Version getEmbeddedIMUFirmwareVersion();
+
+    /**
+     * Starts IMU firmware update asynchronously only if IMU node is not running.
+     * If current firmware version is the same as embedded firmware version then it's no-op. Can be overridden by forceUpdate parameter.
+     * State of firmware update can be monitored using getIMUFirmwareUpdateStatus API.
+     *
+     * @param forceUpdate Force firmware update or not. Will perform FW update regardless of current version and embedded firmware version.
+     *
+     * @returns Returns whether firmware update can be started. Returns false if IMU node is started.
+     */
+    bool startIMUFirmwareUpdate(bool forceUpdate = false);
+
+    /**
+     * Get IMU firmware update status
+     *
+     * @returns Whether IMU firmware update is done and last firmware update progress as percentage.
+     * return value true and 100 means that the update was successful
+     * return value true and other than 100 means that the update failed
+     */
+    std::tuple<bool, float> getIMUFirmwareUpdateStatus();
 
     /**
      * Retrieves current DDR memory information from device
@@ -699,6 +752,10 @@ class DeviceBase {
 
     /**
      * Is the device already closed (or disconnected)
+     *
+     * @warning This function is thread-unsafe and may return outdated incorrect values. It is
+     * only meant for use in simple single-threaded code. Well written code should handle
+     * exceptions when calling any DepthAI apis to handle hardware events and multithreaded use.
      */
     bool isClosed() const;
 
@@ -723,11 +780,6 @@ class DeviceBase {
      * @brief a safe way to start a pipeline, which is closed if any exception occurs
      */
     void tryStartPipeline(const Pipeline& pipeline);
-
-    /**
-     * throws an error if the device has been closed or the watchdog has died
-     */
-    void checkClosed() const;
 
     /**
      * Allows the derived classes to handle custom setup for starting the pipeline
@@ -780,9 +832,6 @@ class DeviceBase {
     std::thread monitorThread;
     std::mutex lastWatchdogPingTimeMtx;
     std::chrono::steady_clock::time_point lastWatchdogPingTime;
-
-    // RPC stream
-    std::unique_ptr<XLinkStream> rpcStream;
 
     // closed
     mutable std::mutex closedMtx;
