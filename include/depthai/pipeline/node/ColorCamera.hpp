@@ -222,12 +222,6 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
      */
     void setFps(float fps);
 
-    // Set events on which frames will be received
-    void setFrameEventFilter(const std::vector<dai::FrameEvent>& events);
-
-    // Get events on which frames will be received
-    std::vector<dai::FrameEvent> getFrameEventFilter() const;
-
     /**
      * Isp 3A rate (auto focus, auto exposure, auto white balance, camera controls etc.).
      * Default (0) matches the camera FPS, meaning that 3A is running on each frame.

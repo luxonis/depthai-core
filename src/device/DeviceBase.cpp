@@ -1020,8 +1020,6 @@ float DeviceBase::getSystemInformationLoggingRate() {
 }
 
 bool DeviceBase::isEepromAvailable() {
-    checkClosed();
-
     return pimpl->rpcClient->call("isEepromAvailable").as<bool>();
 }
 
@@ -1035,8 +1033,6 @@ bool DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
 }
 
 void DeviceBase::flashCalibration2(CalibrationHandler calibrationDataHandler) {
-    checkClosed();
-
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
@@ -1066,8 +1062,6 @@ CalibrationHandler DeviceBase::readCalibration() {
     return CalibrationHandler(eepromData);
 }
 CalibrationHandler DeviceBase::readCalibration2() {
-    checkClosed();
-
     bool success;
     std::string errorMsg;
     dai::EepromData eepromData;
@@ -1083,8 +1077,6 @@ CalibrationHandler DeviceBase::readCalibrationOrDefault() {
 }
 
 void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandler) {
-    checkClosed();
-
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
@@ -1109,8 +1101,6 @@ void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandl
 }
 
 CalibrationHandler DeviceBase::readFactoryCalibration() {
-    checkClosed();
-
     bool success;
     std::string errorMsg;
     dai::EepromData eepromData;
@@ -1131,8 +1121,6 @@ CalibrationHandler DeviceBase::readFactoryCalibrationOrDefault() {
 }
 
 void DeviceBase::factoryResetCalibration() {
-    checkClosed();
-
     bool success;
     std::string errorMsg;
     std::tie(success, errorMsg) = pimpl->rpcClient->call("eepromFactoryReset").as<std::tuple<bool, std::string>>();
@@ -1142,8 +1130,6 @@ void DeviceBase::factoryResetCalibration() {
 }
 
 std::vector<std::uint8_t> DeviceBase::readCalibrationRaw() {
-    checkClosed();
-
     bool success;
     std::string errorMsg;
     std::vector<uint8_t> eepromDataRaw;
@@ -1155,8 +1141,6 @@ std::vector<std::uint8_t> DeviceBase::readCalibrationRaw() {
 }
 
 std::vector<std::uint8_t> DeviceBase::readFactoryCalibrationRaw() {
-    checkClosed();
-
     bool success;
     std::string errorMsg;
     std::vector<uint8_t> eepromDataRaw;
@@ -1168,8 +1152,6 @@ std::vector<std::uint8_t> DeviceBase::readFactoryCalibrationRaw() {
 }
 
 void DeviceBase::flashEepromClear() {
-    checkClosed();
-
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
@@ -1188,8 +1170,6 @@ void DeviceBase::flashEepromClear() {
 }
 
 void DeviceBase::flashFactoryEepromClear() {
-    checkClosed();
-
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
