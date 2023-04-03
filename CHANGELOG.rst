@@ -1,6 +1,33 @@
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+2.21.0 (2023-04-03)
+-----------
+* Improved x/y accuracy for SpatialLocationCalculator/SpatialDetectionNetwork 
+* Support for median and mode, default changed to median in SpatialLocationCalculator/SpatialDetectionNetwork
+* Multi stereo support, ability to run stereo between any 2 calibrated cameras
+* Support for LEFT/RIGHT alignment in stereo node
+* Support to invalidate edge pixels: setNumInvalidateEdgePixels in Stereo Node
+* BrightnessFilter - If the input frame pixel is too dark or too bright, the disparity will be invalidated. Default pixels with value 0 are invalidated in Stereo Node
+* Added disparityToDepthUseSpecTranslation, rectificationUseSpecTranslation, and depthAlignmentUseSpecTranslation options for advanced usage in Stereo Node
+* Fix for RGB-depth alignment when RGB is configured to 12 MP
+* Crash dump support - support to retrieve crash context from the device which can be shared with developers
+* Configurable 3A fps - setIsp3aFps
+* IMU - support to retrieve connected IMU type, and firmware version. Refactored firmware update API
+* BMI270 - enable interrupt mode, timestamps are more consistent now
+* BNO086* - fix for sequence number
+* AR0234 improved AE smoothness, increased max gain to 400x (first 25.6x analog),
+* OV9782 on RGB/CAM-A socket max FPS: 120 (previously was only for OV9282), also improves image quality in very bright light,
+* OV9782/9282 minimum exposure time decreased: 20us -> 10us, helps in very bright light. TODO update tuning to make use of it, currently only possible to use with manual exposure
+* HW sync (trigger mode) enabled for OAK-D-LR, for cameras with matching FPS
+* FW: fix for UART0 / '/dev/ttyS0' init failure in Script node
+* POE power cycle fix - in rare occasions POE devices got stuck after reboot, requiring a manual power cycle
+* [XLink] Increased max number of links from 32 to 64
+* Update FW with performance metrics when DEPTHAI_LEVEL=info is enabled
+* Handle EEPROM boardOptions bit 7 for separate I2C on L/R cameras
+* Contributors: Alex Bougdan, Szabolcs Gergely, Martin Peterlin
+
 2.20.2 (2023-01-31)
 -----------
 * Fix for ColorCamera at high resolution while using isp scaling
