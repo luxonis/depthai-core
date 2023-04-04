@@ -43,7 +43,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.21.0" LANGUAGES CXX C)
+project(depthai VERSION "2.21.1" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
