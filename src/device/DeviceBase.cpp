@@ -427,6 +427,7 @@ void DeviceBase::closeImpl() {
 
     // Close rpcStream
     pimpl->rpcStream = nullptr;
+    pimpl->rpcClient = nullptr;
 
     spdlog::debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
 }
