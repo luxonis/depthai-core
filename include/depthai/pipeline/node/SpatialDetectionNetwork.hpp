@@ -117,7 +117,7 @@ class MobileNetSpatialDetectionNetwork : public NodeCRTP<SpatialDetectionNetwork
 };
 
 /**
- * YoloSpatialDetectionNetwork node. (tiny)Yolov3/v4 based network with spatial location data.
+ * YoloSpatialDetectionNetwork node. Yolo-based network with spatial location data.
  */
 class YoloSpatialDetectionNetwork : public NodeCRTP<SpatialDetectionNetwork, YoloSpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
