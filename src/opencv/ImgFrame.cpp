@@ -47,6 +47,9 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
             break;
 
         case Type::RAW16:
+        case Type::RAW14:
+        case Type::RAW12:
+        case Type::RAW10:
             size = cv::Size(getWidth(), getHeight());
             type = CV_16UC1;
             break;
@@ -149,6 +152,9 @@ cv::Mat ImgFrame::getCvFrame() {
 
         case Type::RAW8:
         case Type::RAW16:
+        case Type::RAW14:
+        case Type::RAW12:
+        case Type::RAW10:
         case Type::GRAY8:
         case Type::GRAYF16:
             output = frame.clone();

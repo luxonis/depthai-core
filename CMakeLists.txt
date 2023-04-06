@@ -225,6 +225,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/EdgeDetector.cpp
     src/pipeline/node/SPIIn.cpp
     src/pipeline/node/FeatureTracker.cpp
+    src/pipeline/node/TofCamera.cpp
     src/pipeline/node/DetectionParser.cpp
     src/pipeline/node/Sync.cpp
     src/pipeline/node/test/MyProducer.cpp
@@ -249,6 +250,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/EdgeDetectorConfig.cpp
     src/pipeline/datatype/TrackedFeatures.cpp
     src/pipeline/datatype/FeatureTrackerConfig.cpp
+    src/pipeline/datatype/TofCameraConfig.cpp
     src/pipeline/datatype/BenchmarkReport.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp

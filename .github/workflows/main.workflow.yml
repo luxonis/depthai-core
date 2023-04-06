@@ -63,10 +63,10 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, windows-latest, ubuntu-latest]
-        cmake: ['3.10.x', ''] # Older version (Ubuntu 18.04) and newest
+        cmake: ['3.14.x', ''] # Older version (Ubuntu 18.04) and newest
         exclude:
           - os: windows-latest
-            cmake: '3.10.x'
+            cmake: '3.14.x'
 
     steps:
     - name: Cache .hunter folder
@@ -109,7 +109,7 @@ jobs:
         echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
     - name: Build (old CMake, gcc/Clang)
-      if: matrix.cmake == '3.10.x' && matrix.os != 'windows-latest'
+      if: matrix.cmake == '3.14.x' && matrix.os != 'windows-latest'
       run: |
         cmake -H. -Bbuild -D'CMAKE_BUILD_TYPE=Release' -D'HUNTER_CONFIGURATION_TYPES=Release' -D'DEPTHAI_BUILD_EXAMPLES=ON' -D'DEPTHAI_BUILD_TESTS=ON' ${{ env.CMAKE_ARGS }}
         cmake --build build --config Release -- -j4
@@ -122,7 +122,7 @@ jobs:
     #     cmake --build build
 
     - name: Build (newest CMake)
-      if: matrix.cmake != '3.10.x'
+      if: matrix.cmake != '3.14.x'
       run: |
         cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D HUNTER_CONFIGURATION_TYPES=Release -D DEPTHAI_BUILD_EXAMPLES=ON -D DEPTHAI_BUILD_TESTS=ON ${{ env.CMAKE_ARGS }}
         cmake --build build --parallel 4 --config Release
