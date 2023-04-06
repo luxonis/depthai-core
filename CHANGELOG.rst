@@ -2,6 +2,11 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.21.2 (2023-04-05)
+-----------
+* UPDATE: Use v2.21.2 due to issues this version carries
+* Contributors: Alex Bougdan, Szabolcs Gergely, Martin Peterlin
+
 2.21.0 (2023-04-03)
 -----------
 * Improved x/y accuracy for SpatialLocationCalculator/SpatialDetectionNetwork 
