@@ -18,14 +18,5 @@ ToF::Properties& ToF::getProperties() {
     return properties;
 }
 
-// Node properties configuration
-void ToF::setWaitForConfigInput(bool wait) {
-    inputConfig.setWaitForMessage(wait);
-}
-
-bool ToF::getWaitForConfigInput() const {
-    return inputConfig.getWaitForMessage();
-}
-
 }  // namespace node
 }  // namespace dai

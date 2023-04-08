@@ -61,20 +61,6 @@ class ToF : public NodeCRTP<DeviceNode, ToF, ToFProperties> {
      * Suitable for when input queue is set to non-blocking behavior.
      */
     Output passthroughInputRaw{true, *this, "passthroughInputRaw", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-
-    // Functions to set properties
-    /**
-     * Specify whether or not wait until configuration message arrives to inputConfig Input.
-     * @param wait True to wait for configuration message, false otherwise.
-     */
-    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] void setWaitForConfigInput(bool wait);
-
-    /**
-     * @see setWaitForConfigInput
-     * @returns True if wait for inputConfig message, false otherwise
-     */
-    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] bool getWaitForConfigInput() const;
-
 };
 
 }  // namespace node
