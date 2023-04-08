@@ -16,7 +16,6 @@ class ToFConfig : public Buffer {
     RawToFConfig& cfg;
 
    public:
-
     /**
      * Construct ToFConfig message.
      */

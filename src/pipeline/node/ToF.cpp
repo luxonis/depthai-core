@@ -5,8 +5,7 @@
 namespace dai {
 namespace node {
 
-ToF::ToF()
-    : NodeCRTP<DeviceNode, ToF, ToFProperties>(), rawConfig(std::make_shared<RawToFConfig>()), initialConfig(rawConfig) {}
+ToF::ToF() : NodeCRTP<DeviceNode, ToF, ToFProperties>(), rawConfig(std::make_shared<RawToFConfig>()), initialConfig(rawConfig) {}
 
 ToF::ToF(std::unique_ptr<Properties> props)
     : NodeCRTP<DeviceNode, ToF, ToFProperties>(std::move(props)),

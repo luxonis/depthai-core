@@ -53,8 +53,8 @@ class ToF : public NodeCRTP<DeviceNode, ToF, ToFProperties> {
      */
     Output depth{true, *this, "depth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
-    //TODO add amplitude
-    //Output depth{true, *this, "depth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    // TODO add amplitude
+    // Output depth{true, *this, "depth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Passthrough message on which the calculation was performed.
