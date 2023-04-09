@@ -204,6 +204,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
     src/pipeline/node/Camera.cpp
+    src/pipeline/node/ToF.cpp
     src/pipeline/node/MonoCamera.cpp
     src/pipeline/node/StereoDepth.cpp
     src/pipeline/node/NeuralNetwork.cpp
