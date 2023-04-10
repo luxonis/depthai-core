@@ -466,6 +466,10 @@ class DeviceBootloader {
 
     /**
      * Is the device already closed (or disconnected)
+     *
+     * @warning This function is thread-unsafe and may return outdated incorrect values. It is
+     * only meant for use in simple single-threaded code. Well written code should handle
+     * exceptions when calling any DepthAI apis to handle hardware events and multithreaded use.
      */
     bool isClosed() const;
 
@@ -474,7 +478,6 @@ class DeviceBootloader {
 
     // private methods
     void init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl::optional<bootloader::Type> type, bool allowBlFlash);
-    void checkClosed() const;
     template <typename T>
     bool sendRequest(const T& request);
     template <typename T>

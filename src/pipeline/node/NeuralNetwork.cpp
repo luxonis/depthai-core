@@ -32,7 +32,7 @@ void NeuralNetwork::setBlob(const dai::Path& path) {
 }
 
 void NeuralNetwork::setBlob(OpenVINO::Blob blob) {
-    this->networkOpenvinoVersion = blob.version;
+    networkOpenvinoVersion = blob.version;
     auto asset = assetManager.set("__blob", std::move(blob.data));
     properties.blobUri = asset->getRelativeUri();
     properties.blobSize = static_cast<uint32_t>(asset->data.size());

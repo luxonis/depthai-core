@@ -192,8 +192,8 @@ CalibrationHandler::CalibrationHandler(dai::Path calibrationDataPath, dai::Path 
     camera.extrinsics.rotationMatrix[2][1] = temp;
 }
 
-CalibrationHandler::CalibrationHandler(EepromData eepromData) {
-    this->eepromData = eepromData;
+CalibrationHandler::CalibrationHandler(EepromData newEepromData) {
+    eepromData = newEepromData;
 }
 
 dai::EepromData CalibrationHandler::getEepromData() const {
