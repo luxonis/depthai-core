@@ -12,7 +12,7 @@ Documentation is available over at [Luxonis DepthAI API](https://docs.luxonis.co
 DepthAI library doesn't yet provide API stability guarantees. While we take care to properly deprecate old functions, some changes might still be breaking. We expect to provide API stability from version 3.0.0 onwards.
 
 ## Dependencies
-- CMake >= 3.10
+- CMake >= 3.14
 - C/C++14 compiler
 - [optional] OpenCV 4 (required if building examples)
 
@@ -145,14 +145,15 @@ The following environment variables can be set to alter default behavior of the 
 
 | Environment variable  | Description   |
 |--------------|-----------|
-| DEPTHAI_LEVEL | Sets logging verbosity, 'trace', 'debug', 'warn', 'error' and 'off' |
+| DEPTHAI_LEVEL | Sets logging verbosity, `trace`, `debug`, `warn`, `error` and `off` |
 | DEPTHAI_INSTALL_SIGNAL_HANDLER | Set to 0 to disable installing Backward signal handler for stack trace printing |
 | DEPTHAI_WATCHDOG | Sets device watchdog timeout. Useful for debugging (`DEPTHAI_WATCHDOG=0`), to prevent device reset while the process is paused. |
 | DEPTHAI_WATCHDOG_INITIAL_DELAY | Specifies delay after which the device watchdog starts. |
 | DEPTHAI_SEARCH_TIMEOUT | Specifies timeout in milliseconds for device searching in blocking functions. |
 | DEPTHAI_CONNECT_TIMEOUT | Specifies timeout in milliseconds for establishing a connection to a given device. |
 | DEPTHAI_BOOTUP_TIMEOUT | Specifies timeout in milliseconds for waiting the device to boot after sending the binary. |
-| DEPTHAI_PROTOCOL | Restricts default search to the specified protocol. Options: any, usb, tcpip. |
+| DEPTHAI_PROTOCOL | Restricts default search to the specified protocol. Options: `any`, `usb`, `tcpip`. |
+| DEPTHAI_PLATFORM | Restricts default search to the specified platform. Options: `any`, `rvc2`, `rvc3`. |
 | DEPTHAI_DEVICE_MXID_LIST | Restricts default search to the specified MXIDs. Accepts comma separated list of MXIDs |
 | DEPTHAI_DEVICE_BINARY | Overrides device Firmware binary. Mostly for internal debugging purposes. |
 | DEPTHAI_BOOTLOADER_BINARY_USB | Overrides device USB Bootloader binary. Mostly for internal debugging purposes. |

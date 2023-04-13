@@ -17,6 +17,10 @@ Buffer::Buffer(size_t size) : Buffer() {
 Buffer::Buffer(std::shared_ptr<dai::RawBuffer> ptr) : ADatatype(std::move(ptr)) {}
 
 // helpers
+span<uint8_t> Buffer::getData() {
+    return data->getData();
+}
+
 span<const uint8_t> Buffer::getData() const {
     return data->getData();
 }

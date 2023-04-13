@@ -225,6 +225,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/EdgeDetector.cpp
     src/pipeline/node/SPIIn.cpp
     src/pipeline/node/FeatureTracker.cpp
+    src/pipeline/node/ToF.cpp
     src/pipeline/node/DetectionParser.cpp
     src/pipeline/node/Sync.cpp
     src/pipeline/node/test/MyProducer.cpp
@@ -249,6 +250,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/EdgeDetectorConfig.cpp
     src/pipeline/datatype/TrackedFeatures.cpp
     src/pipeline/datatype/FeatureTrackerConfig.cpp
+    src/pipeline/datatype/ToFConfig.cpp
     src/pipeline/datatype/BenchmarkReport.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
@@ -431,6 +433,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         nlohmann_json::nlohmann_json
         libnop
         xtensor
+        spdlog::spdlog
     INTERFACE
         XLinkPublic
     PRIVATE
@@ -439,7 +442,6 @@ target_link_libraries(${TARGET_CORE_NAME}
         BZip2::bz2
         FP16::fp16
         archive_static
-        spdlog::spdlog
         ZLIB::zlib
         httplib::httplib
 )

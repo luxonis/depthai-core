@@ -323,7 +323,7 @@ class NNData : public Buffer {
                 break;
             case TensorInfo::DataType::FP16:
                 for(uint32_t i = 0; i < tensor.size(); i++) {
-                    tensor.data()[i] = fp16_to_fp32(reinterpret_cast<uint16_t*>(data->getData().data())[it->offset / sizeof(uint16_t) +  i]);
+                    tensor.data()[i] = fp16_to_fp32(reinterpret_cast<uint16_t*>(data->getData().data())[it->offset / sizeof(uint16_t) + i]);
                 }
                 break;
             case TensorInfo::DataType::FP32:
