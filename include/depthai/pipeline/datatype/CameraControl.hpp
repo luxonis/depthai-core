@@ -32,9 +32,9 @@ namespace dai {
  */
 class CameraControl : public Buffer {
     Serialized serialize() const override;
-    RawCameraControl& cfg;
 
    public:
+    RawCameraControl& cfg;
     using AutoFocusMode = RawCameraControl::AutoFocusMode;
     using AntiBandingMode = RawCameraControl::AntiBandingMode;
     using AutoWhiteBalanceMode = RawCameraControl::AutoWhiteBalanceMode;
