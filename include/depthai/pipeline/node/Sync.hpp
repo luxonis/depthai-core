@@ -12,7 +12,7 @@ namespace dai {
 namespace node {
 
 /**
- * @brief Sync node. Performs syncing between images
+ * @brief Sync node. Performs syncing between image frames
  */
 class Sync : public NodeCRTP<DeviceNode, Sync, SyncProperties> {
    public:
@@ -21,30 +21,26 @@ class Sync : public NodeCRTP<DeviceNode, Sync, SyncProperties> {
 
    public:
     /**
-     * Input image
+     *  Inputs to Sync node. Can be accessed using subscript operator (Eg: inputs['in1'])
+     *  By default inputs are set to blocking with queue size 8
      */
-    Input input1{true, *this, "input1", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
-    /**
-     * Input image
-     */
-    Input input2{true, *this, "input2", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
-    /**
-     * Input image
-     */
-    Input input3{true, *this, "input3", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
+    InputMap inputs{true, *this, "inputs", Input(*this, "", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, false}})};
 
     /**
-     * Output image
+     * Outputs from Sync node. Can be accessed subscript operator (Eg: outputs['out1'])
      */
-    Output output1{true, *this, "output1", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    OutputMap outputs{true, *this, "outputs", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}})};
+
     /**
-     * Output image
+     * Optional manual sync threshold.
+     * If not specified default threshold is obtained as:
+     * thresholdMS = 1000.f / (minimum FPS of input frames) / 2
+     * Frame timestamp difference below this threshold are considered synced.
+     * 0 is not recommended in real time system, as frame interrupts are received
+     * at slightly different time, even with perfect hardware sync.
+     * 0 can be used when replaying frames.
      */
-    Output output2{true, *this, "output2", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-    /**
-     * Output image
-     */
-    Output output3{true, *this, "output3", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    void setSyncThresholdMs(float thresholdMs);
 };
 
 }  // namespace node

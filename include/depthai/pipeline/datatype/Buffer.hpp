@@ -25,6 +25,7 @@ class Buffer : public ADatatype {
      * @brief Get non-owning reference to internal buffer
      * @returns Reference to internal buffer
      */
+    span<uint8_t> getData();
     span<const uint8_t> getData() const;
 
     /**

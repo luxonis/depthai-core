@@ -5,7 +5,9 @@
 namespace dai {
 namespace node {
 
-// TODO - clean
+void Sync::setSyncThresholdMs(float thresholdMs) {
+    properties.syncThresholdMs = thresholdMs;
+}
 
 }  // namespace node
 }  // namespace dai
