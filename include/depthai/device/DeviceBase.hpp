@@ -487,9 +487,9 @@ class DeviceBase {
     std::unordered_map<CameraBoardSocket, std::string> getCameraSensorNames();
 
     /**
-     * Get connected IMU version
+     * Get connected IMU type
      *
-     * @returns IMU version
+     * @returns IMU type
      */
     std::string getConnectedIMU();
 
@@ -501,18 +501,18 @@ class DeviceBase {
     dai::Version getIMUFirmwareVersion();
 
     /**
-     * Get latest available IMU firmware version to which IMU can be upgraded
+     * Get embedded IMU firmware version to which IMU can be upgraded
      *
-     * @returns Get latest available IMU firmware version to which IMU can be upgraded.
+     * @returns Get embedded IMU firmware version to which IMU can be upgraded.
      */
-    dai::Version getLatestAvailableIMUFirmwareVersion();
+    dai::Version getEmbeddedIMUFirmwareVersion();
 
     /**
      * Starts IMU firmware update asynchronously only if IMU node is not running.
-     * If current firmware version is the same as latest available firmware version that it's no-op. Can be overridden by forceUpdate parameter.
+     * If current firmware version is the same as embedded firmware version then it's no-op. Can be overridden by forceUpdate parameter.
      * State of firmware update can be monitored using getIMUFirmwareUpdateStatus API.
      *
-     * @param forceUpdate Force firmware update or not. Will perform FW update regardless of current version and latest available firmware version.
+     * @param forceUpdate Force firmware update or not. Will perform FW update regardless of current version and embedded firmware version.
      *
      * @returns Returns whether firmware update can be started. Returns false if IMU node is started.
      */
@@ -521,9 +521,9 @@ class DeviceBase {
     /**
      * Get IMU firmware update status
      *
-     * @returns Whether IMU firmware update is pending and last firmware update progress as percentage.
-     * return value false and 100 means that the update was successful
-     * return value false and other than 100 means that the update failed
+     * @returns Whether IMU firmware update is done and last firmware update progress as percentage.
+     * return value true and 100 means that the update was successful
+     * return value true and other than 100 means that the update failed
      */
     std::tuple<bool, float> getIMUFirmwareUpdateStatus();
 

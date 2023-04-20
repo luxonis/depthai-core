@@ -853,9 +853,9 @@ dai::Version DeviceBase::getIMUFirmwareVersion() {
     }
 }
 
-dai::Version DeviceBase::getLatestAvailableIMUFirmwareVersion() {
+dai::Version DeviceBase::getEmbeddedIMUFirmwareVersion() {
     checkClosed();
-    std::string versionStr = pimpl->rpcClient->call("getLatestAvailableIMUFirmwareVersion").as<std::string>();
+    std::string versionStr = pimpl->rpcClient->call("getEmbeddedIMUFirmwareVersion").as<std::string>();
     try {
         dai::Version version = dai::Version(versionStr);
         return version;
