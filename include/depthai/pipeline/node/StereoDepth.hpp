@@ -365,6 +365,34 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * Units are pixels.
      */
     void setFocalLength(float focalLength);
+
+    /**
+     * Use baseline information for disparity to depth conversion from specs (design data) or from calibration.
+     * Default: true
+     */
+    void setDisparityToDepthUseSpecTranslation(bool specTranslation);
+
+    /**
+     * Obtain rectification matrices using spec translation (design data) or from calibration in calculations.
+     * Should be used only for debugging.
+     * Default: false
+     */
+    void setRectificationUseSpecTranslation(bool specTranslation);
+
+    /**
+     * Use baseline information for depth alignment from specs (design data) or from calibration.
+     * Default: true
+     */
+    void setDepthAlignmentUseSpecTranslation(bool specTranslation);
+
+    /**
+     * Free scaling parameter between 0 (when all the pixels in the undistorted image are valid)
+     * and 1 (when all the source image pixels are retained in the undistorted image).
+     * On some high distortion lenses, and/or due to rectification (image rotated) invalid areas may appear even with alpha=0,
+     * in these cases alpha < 0.0 helps removing invalid areas.
+     * See getOptimalNewCameraMatrix from opencv for more details.
+     */
+    void setAlphaScaling(float alpha);
 };
 
 }  // namespace node

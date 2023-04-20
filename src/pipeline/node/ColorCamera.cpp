@@ -50,9 +50,9 @@ std::string ColorCamera::getCamera() const {
 }
 
 // Set which color camera to use
-void ColorCamera::setCamId(int64_t id) {
+void ColorCamera::setCamId(int64_t camId) {
     // cast to board socket
-    switch(id) {
+    switch(camId) {
         case 0:
             properties.boardSocket = CameraBoardSocket::RGB;
             break;
@@ -66,7 +66,7 @@ void ColorCamera::setCamId(int64_t id) {
             properties.boardSocket = CameraBoardSocket::CAM_D;
             break;
         default:
-            throw std::invalid_argument(fmt::format("CamId value: {} is invalid.", id));
+            throw std::invalid_argument(fmt::format("CamId value: {} is invalid.", camId));
             break;
     }
 }
@@ -175,6 +175,10 @@ ColorCameraProperties::SensorResolution ColorCamera::getResolution() const {
 
 void ColorCamera::setFps(float fps) {
     properties.fps = fps;
+}
+
+void ColorCamera::setIsp3aFps(int isp3aFps) {
+    properties.isp3aFps = isp3aFps;
 }
 
 void ColorCamera::setFrameEventFilter(const std::vector<dai::FrameEvent>& events) {
@@ -486,12 +490,12 @@ bool ColorCamera::getPreviewKeepAspectRatio() {
     return properties.previewKeepAspectRatio;
 }
 
-void ColorCamera::setNumFramesPool(int raw, int isp, int preview, int video, int still) {
-    properties.numFramesPoolRaw = raw;
-    properties.numFramesPoolIsp = isp;
-    properties.numFramesPoolPreview = preview;
-    properties.numFramesPoolVideo = video;
-    properties.numFramesPoolStill = still;
+void ColorCamera::setNumFramesPool(int numRaw, int numIsp, int numPreview, int numVideo, int numStill) {
+    properties.numFramesPoolRaw = numRaw;
+    properties.numFramesPoolIsp = numIsp;
+    properties.numFramesPoolPreview = numPreview;
+    properties.numFramesPoolVideo = numVideo;
+    properties.numFramesPoolStill = numStill;
 }
 
 void ColorCamera::setPreviewNumFramesPool(int num) {

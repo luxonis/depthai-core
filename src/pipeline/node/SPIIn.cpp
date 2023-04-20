@@ -14,8 +14,8 @@ void SPIIn::setStreamName(const std::string& name) {
     properties.streamName = name;
 }
 
-void SPIIn::setBusId(int id) {
-    properties.busId = id;
+void SPIIn::setBusId(int busId) {
+    properties.busId = busId;
 }
 
 void SPIIn::setMaxDataSize(std::uint32_t maxDataSize) {

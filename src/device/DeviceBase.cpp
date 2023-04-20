@@ -8,6 +8,7 @@
 #include "depthai-bootloader-shared/Bootloader.hpp"
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
+#include "depthai-shared/device/CrashDump.hpp"
 #include "depthai-shared/log/LogConstants.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
@@ -433,17 +434,17 @@ void DeviceBase::closeImpl() {
 
     // Close rpcStream
     pimpl->rpcStream = nullptr;
+    pimpl->rpcClient = nullptr;
 
     spdlog::debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
 }
 
+// This function is thread-unsafe. The idea of "isClosed" is ephemerial and
+// is invalidated during the return by value and continues to degrade in
+// validity to the caller
 bool DeviceBase::isClosed() const {
     std::unique_lock<std::mutex> lock(closedMtx);
     return closed || !watchdogRunning;
-}
-
-void DeviceBase::checkClosed() const {
-    if(isClosed()) throw std::invalid_argument("Device already closed or disconnected");
 }
 
 DeviceBase::~DeviceBase() {
@@ -642,12 +643,18 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
             spdlog::trace("RPC: {}", nlohmann::json::from_msgpack(request).dump());
         }
 
-        // Send request to device
-        rpcStream->write(std::move(request));
+        try {
+            // Send request to device
+            rpcStream->write(std::move(request));
 
-        // Receive response back
-        // Send to nanorpc to parse
-        return rpcStream->read();
+            // Receive response back
+            // Send to nanorpc to parse
+            return rpcStream->read();
+        } catch(const std::exception& e) {
+            // If any exception is thrown, log it and rethrow
+            spdlog::debug("RPC error: {}", e.what());
+            throw std::system_error(std::make_error_code(std::errc::io_error), "Device already closed or disconnected");
+        }
     });
 
     // prepare watchdog thread, which will keep device alive
@@ -809,75 +816,85 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
 }
 
 std::string DeviceBase::getMxId() {
-    checkClosed();
-
     return pimpl->rpcClient->call("getMxId").as<std::string>();
 }
 
 std::vector<CameraBoardSocket> DeviceBase::getConnectedCameras() {
-    checkClosed();
-
     return pimpl->rpcClient->call("getConnectedCameras").as<std::vector<CameraBoardSocket>>();
 }
 
 std::vector<CameraFeatures> DeviceBase::getConnectedCameraFeatures() {
-    checkClosed();
-
     return pimpl->rpcClient->call("getConnectedCameraFeatures").as<std::vector<CameraFeatures>>();
 }
 
 std::unordered_map<CameraBoardSocket, std::string> DeviceBase::getCameraSensorNames() {
-    checkClosed();
-
     return pimpl->rpcClient->call("getCameraSensorNames").as<std::unordered_map<CameraBoardSocket, std::string>>();
+}
+
+std::string DeviceBase::getConnectedIMU() {
+    return pimpl->rpcClient->call("getConnectedIMU").as<std::string>();
+}
+
+dai::Version DeviceBase::getIMUFirmwareVersion() {
+    std::string versionStr = pimpl->rpcClient->call("getIMUFirmwareVersion").as<std::string>();
+    try {
+        dai::Version version = dai::Version(versionStr);
+        return version;
+    } catch(const std::exception&) {
+        dai::Version version = dai::Version(0, 0, 0);
+        return version;
+    }
+}
+
+dai::Version DeviceBase::getEmbeddedIMUFirmwareVersion() {
+    std::string versionStr = pimpl->rpcClient->call("getEmbeddedIMUFirmwareVersion").as<std::string>();
+    try {
+        dai::Version version = dai::Version(versionStr);
+        return version;
+    } catch(const std::exception&) {
+        dai::Version version = dai::Version(0, 0, 0);
+        return version;
+    }
+}
+
+bool DeviceBase::startIMUFirmwareUpdate(bool forceUpdate) {
+    return pimpl->rpcClient->call("startIMUFirmwareUpdate", forceUpdate).as<bool>();
+}
+
+std::tuple<bool, float> DeviceBase::getIMUFirmwareUpdateStatus() {
+    return pimpl->rpcClient->call("getIMUFirmwareUpdateStatus").as<std::tuple<bool, float>>();
 }
 
 // Convenience functions for querying current system information
 MemoryInfo DeviceBase::getDdrMemoryUsage() {
-    checkClosed();
-
     return pimpl->rpcClient->call("getDdrUsage").as<MemoryInfo>();
 }
 
 MemoryInfo DeviceBase::getCmxMemoryUsage() {
-    checkClosed();
-
     return pimpl->rpcClient->call("getCmxUsage").as<MemoryInfo>();
 }
 
 MemoryInfo DeviceBase::getLeonCssHeapUsage() {
-    checkClosed();
-
     return pimpl->rpcClient->call("getLeonCssHeapUsage").as<MemoryInfo>();
 }
 
 MemoryInfo DeviceBase::getLeonMssHeapUsage() {
-    checkClosed();
-
     return pimpl->rpcClient->call("getLeonMssHeapUsage").as<MemoryInfo>();
 }
 
 ChipTemperature DeviceBase::getChipTemperature() {
-    checkClosed();
-
     return pimpl->rpcClient->call("getChipTemperature").as<ChipTemperature>();
 }
 
 CpuUsage DeviceBase::getLeonCssCpuUsage() {
-    checkClosed();
-
     return pimpl->rpcClient->call("getLeonCssCpuUsage").as<CpuUsage>();
 }
 
 CpuUsage DeviceBase::getLeonMssCpuUsage() {
-    checkClosed();
-
     return pimpl->rpcClient->call("getLeonMssCpuUsage").as<CpuUsage>();
 }
 
 UsbSpeed DeviceBase::getUsbSpeed() {
-    checkClosed();
-
     return pimpl->rpcClient->call("getUsbSpeed").as<UsbSpeed>();
 }
 
@@ -886,32 +903,22 @@ tl::optional<Version> DeviceBase::getBootloaderVersion() {
 }
 
 bool DeviceBase::isPipelineRunning() {
-    checkClosed();
-
     return pimpl->rpcClient->call("isPipelineRunning").as<bool>();
 }
 
 void DeviceBase::setLogLevel(LogLevel level) {
-    checkClosed();
-
     pimpl->rpcClient->call("setLogLevel", level);
 }
 
 LogLevel DeviceBase::getLogLevel() {
-    checkClosed();
-
     return pimpl->rpcClient->call("getLogLevel").as<LogLevel>();
 }
 
 void DeviceBase::setXLinkChunkSize(int sizeBytes) {
-    checkClosed();
-
     pimpl->rpcClient->call("setXLinkChunkSize", sizeBytes);
 }
 
 int DeviceBase::getXLinkChunkSize() {
-    checkClosed();
-
     return pimpl->rpcClient->call("getXLinkChunkSize").as<int>();
 }
 
@@ -920,8 +927,6 @@ DeviceInfo DeviceBase::getDeviceInfo() const {
 }
 
 std::string DeviceBase::getDeviceName() {
-    checkClosed();
-
     std::string deviceName;
     EepromData eeprom = readFactoryCalibrationOrDefault().getEepromData();
     if((deviceName = eeprom.productName).empty()) {
@@ -948,38 +953,35 @@ std::string DeviceBase::getDeviceName() {
 }
 
 void DeviceBase::setLogOutputLevel(LogLevel level) {
-    checkClosed();
-
     pimpl->setLogLevel(level);
 }
 
 LogLevel DeviceBase::getLogOutputLevel() {
-    checkClosed();
-
     return pimpl->getLogLevel();
 }
 
 bool DeviceBase::setIrLaserDotProjectorBrightness(float mA, int mask) {
-    checkClosed();
-
     return pimpl->rpcClient->call("setIrLaserDotProjectorBrightness", mA, mask);
 }
 
 bool DeviceBase::setIrFloodLightBrightness(float mA, int mask) {
-    checkClosed();
-
     return pimpl->rpcClient->call("setIrFloodLightBrightness", mA, mask);
 }
 
 std::vector<std::tuple<std::string, int, int>> DeviceBase::getIrDrivers() {
-    checkClosed();
-
     return pimpl->rpcClient->call("getIrDrivers");
 }
 
-int DeviceBase::addLogCallback(std::function<void(LogMessage)> callback) {
-    checkClosed();
+dai::CrashDump DeviceBase::getCrashDump() {
+    return pimpl->rpcClient->call("getCrashDump").as<dai::CrashDump>();
+}
 
+bool DeviceBase::hasCrashDump() {
+    dai::CrashDump crashDump = getCrashDump();
+    return !crashDump.crashReports.empty();
+}
+
+int DeviceBase::addLogCallback(std::function<void(LogMessage)> callback) {
     // Lock first
     std::unique_lock<std::mutex> l(logCallbackMapMtx);
 
@@ -994,8 +996,6 @@ int DeviceBase::addLogCallback(std::function<void(LogMessage)> callback) {
 }
 
 bool DeviceBase::removeLogCallback(int callbackId) {
-    checkClosed();
-
     // Lock first
     std::unique_lock<std::mutex> l(logCallbackMapMtx);
 
@@ -1008,8 +1008,6 @@ bool DeviceBase::removeLogCallback(int callbackId) {
 }
 
 void DeviceBase::setTimesync(std::chrono::milliseconds period, int numSamples, bool random) {
-    checkClosed();
-
     if(period < std::chrono::milliseconds(10)) {
         throw std::invalid_argument("Period must be greater or equal than 10ms");
     }
@@ -1027,35 +1025,27 @@ void DeviceBase::setTimesync(bool enable) {
 }
 
 void DeviceBase::setSystemInformationLoggingRate(float rateHz) {
-    checkClosed();
-
     pimpl->rpcClient->call("setSystemInformationLoggingRate", rateHz);
 }
 
 float DeviceBase::getSystemInformationLoggingRate() {
-    checkClosed();
-
     return pimpl->rpcClient->call("getSystemInformationLoggingrate").as<float>();
 }
 
 bool DeviceBase::isEepromAvailable() {
-    checkClosed();
-
     return pimpl->rpcClient->call("isEepromAvailable").as<bool>();
 }
 
 bool DeviceBase::flashCalibration(CalibrationHandler calibrationDataHandler) {
     try {
         flashCalibration2(calibrationDataHandler);
-    } catch(const EepromError& ex) {
+    } catch(const EepromError&) {
         return false;
     }
     return true;
 }
 
 void DeviceBase::flashCalibration2(CalibrationHandler calibrationDataHandler) {
-    checkClosed();
-
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
@@ -1079,14 +1069,12 @@ CalibrationHandler DeviceBase::readCalibration() {
     dai::EepromData eepromData{};
     try {
         return readCalibration2();
-    } catch(const EepromError& ex) {
+    } catch(const EepromError&) {
         // ignore - use default
     }
     return CalibrationHandler(eepromData);
 }
 CalibrationHandler DeviceBase::readCalibration2() {
-    checkClosed();
-
     bool success;
     std::string errorMsg;
     dai::EepromData eepromData;
@@ -1102,8 +1090,6 @@ CalibrationHandler DeviceBase::readCalibrationOrDefault() {
 }
 
 void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandler) {
-    checkClosed();
-
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
@@ -1128,8 +1114,6 @@ void DeviceBase::flashFactoryCalibration(CalibrationHandler calibrationDataHandl
 }
 
 CalibrationHandler DeviceBase::readFactoryCalibration() {
-    checkClosed();
-
     bool success;
     std::string errorMsg;
     dai::EepromData eepromData;
@@ -1143,15 +1127,13 @@ CalibrationHandler DeviceBase::readFactoryCalibrationOrDefault() {
     dai::EepromData eepromData{};
     try {
         return readFactoryCalibration();
-    } catch(const EepromError& ex) {
+    } catch(const EepromError&) {
         // ignore - use default
     }
     return CalibrationHandler(eepromData);
 }
 
 void DeviceBase::factoryResetCalibration() {
-    checkClosed();
-
     bool success;
     std::string errorMsg;
     std::tie(success, errorMsg) = pimpl->rpcClient->call("eepromFactoryReset").as<std::tuple<bool, std::string>>();
@@ -1161,8 +1143,6 @@ void DeviceBase::factoryResetCalibration() {
 }
 
 std::vector<std::uint8_t> DeviceBase::readCalibrationRaw() {
-    checkClosed();
-
     bool success;
     std::string errorMsg;
     std::vector<uint8_t> eepromDataRaw;
@@ -1174,8 +1154,6 @@ std::vector<std::uint8_t> DeviceBase::readCalibrationRaw() {
 }
 
 std::vector<std::uint8_t> DeviceBase::readFactoryCalibrationRaw() {
-    checkClosed();
-
     bool success;
     std::string errorMsg;
     std::vector<uint8_t> eepromDataRaw;
@@ -1187,8 +1165,6 @@ std::vector<std::uint8_t> DeviceBase::readFactoryCalibrationRaw() {
 }
 
 void DeviceBase::flashEepromClear() {
-    checkClosed();
-
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);
@@ -1207,8 +1183,6 @@ void DeviceBase::flashEepromClear() {
 }
 
 void DeviceBase::flashFactoryEepromClear() {
-    checkClosed();
-
     bool factoryPermissions = false;
     bool protectedPermissions = false;
     getFlashingPermissions(factoryPermissions, protectedPermissions);

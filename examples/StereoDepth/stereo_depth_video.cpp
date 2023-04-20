@@ -98,7 +98,6 @@ int main() {
         cv::imshow("right", right->getFrame());
 
         if(withDepth) {
-            // Note: in some configurations (if depth is enabled), disparity may output garbage data
             auto disparity = dispQueue->get<dai::ImgFrame>();
             cv::Mat disp(disparity->getCvFrame());
             disp.convertTo(disp, CV_8UC1, disparityMultiplier);  // Extend disparity range

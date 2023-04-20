@@ -32,6 +32,9 @@ void ObjectTracker::setTrackerType(TrackerType type) {
 void ObjectTracker::setTrackerIdAssignmentPolicy(TrackerIdAssignmentPolicy type) {
     properties.trackerIdAssignmentPolicy = type;
 }
+void ObjectTracker::setTrackingPerClass(bool trackingPerClass) {
+    properties.trackingPerClass = trackingPerClass;
+}
 
 }  // namespace node
 }  // namespace dai
