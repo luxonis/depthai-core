@@ -802,7 +802,7 @@ class DeviceBase {
     // protected functions
     void init(OpenVINO::Version version);
     void init(OpenVINO::Version version, const dai::Path& pathToCmd);
-    void init(OpenVINO::Version version, UsbSpeed maxUsbSpeed);;
+    void init(OpenVINO::Version version, UsbSpeed maxUsbSpeed);
     void init(OpenVINO::Version version, bool usb2Mode, const dai::Path& pathToMvcmd);
     void init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
     void init(const Pipeline& pipeline);
