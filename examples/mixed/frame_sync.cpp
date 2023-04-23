@@ -19,12 +19,12 @@ int main() {
 
     auto left = pipeline.create<dai::node::MonoCamera>();
     left->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-    left->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    left->setCamera("left");
     left->setFps(FPS);
 
     auto right = pipeline.create<dai::node::MonoCamera>();
     right->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-    right->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    right->setCamera("right");
     right->setFps(FPS);
 
     auto stereo = pipeline.create<dai::node::StereoDepth>();
@@ -32,7 +32,7 @@ int main() {
     stereo->setLeftRightCheck(true);
     stereo->setExtendedDisparity(false);
     stereo->setSubpixel(false);
-    stereo->setDepthAlign(dai::CameraBoardSocket::RGB);
+    stereo->setDepthAlign(dai::CameraBoardSocket::CAM_A);
     left->out.link(stereo->left);
     right->out.link(stereo->right);
 

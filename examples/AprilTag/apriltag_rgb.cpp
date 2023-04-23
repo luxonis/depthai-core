@@ -24,7 +24,7 @@ int main() {
 
     // Properties
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-    camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
+    camRgb->setCamera("center");
 
     manip->initialConfig.setResize(480, 270);
     manip->initialConfig.setFrameType(dai::ImgFrame::Type::GRAY8);
