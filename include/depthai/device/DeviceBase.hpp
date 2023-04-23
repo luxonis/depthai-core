@@ -322,6 +322,53 @@ class DeviceBase {
     DeviceBase(std::string nameOrDeviceId, UsbSpeed maxUsbSpeed);
 
     /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param config Config with which the device will be booted with
+     * @param usb2Mode Boot device using USB2 mode firmware
+     */
+    template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
+    DeviceBase(Config config, T usb2Mode) : DeviceBase(config, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param config Config with which the device will be booted with
+     * @param maxUsbSpeed Maximum allowed USB speed
+     */
+    DeviceBase(Config config, UsbSpeed maxUsbSpeed);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param config Config with which the device will be booted with
+     * @param pathToCmd Path to custom device firmware
+     */
+    DeviceBase(Config config, const dai::Path& pathToCmd);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param config Config with which the device will be booted with
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param usb2Mode Boot device using USB2 mode firmware
+     */
+    template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
+    DeviceBase(Config config, const DeviceInfo& devInfo, T usb2Mode) : DeviceBase(config, devInfo, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param version OpenVINO version which the device will be booted with
+     * @param config Config with which specifies which device to connect to
+     * @param maxUsbSpeed Maximum allowed USB speed
+     */
+    DeviceBase(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param config Config with which the device will be booted with
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param pathToCmd Path to custom device firmware
+     */
+    DeviceBase(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
+
+    /**
      * Device destructor
      * @note In the destructor of the derived class, remember to call close()
      */
@@ -814,6 +861,12 @@ class DeviceBase {
     void init(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
     void init(const Pipeline& pipeline, bool usb2Mode, const dai::Path& pathToMvcmd);
     void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
+    void init(Config config, bool usb2Mode, const dai::Path& pathToMvcmd);
+    void init(Config config, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
+    void init(Config config, UsbSpeed maxUsbSpeed);
+    void init(Config config, const dai::Path& pathToCmd);
+    void init(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
+    void init(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
 
    private:
     // private functions
