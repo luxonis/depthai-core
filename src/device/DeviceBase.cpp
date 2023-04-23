@@ -343,43 +343,90 @@ DeviceBase::DeviceBase(std::string nameOrDeviceId, UsbSpeed maxUsbSpeed)
     : DeviceBase(OpenVINO::VERSION_UNIVERSAL, dai::DeviceInfo(std::move(nameOrDeviceId)), maxUsbSpeed) {}
 
 DeviceBase::DeviceBase(OpenVINO::Version version) {
+    init(version);
+}
+
+DeviceBase::DeviceBase(OpenVINO::Version version, const dai::Path& pathToCmd) {
+    init(version, pathToCmd);
+}
+
+DeviceBase::DeviceBase(OpenVINO::Version version, UsbSpeed maxUsbSpeed) {
+    init(version, maxUsbSpeed);
+}
+
+DeviceBase::DeviceBase(const Pipeline& pipeline) {
+    init(pipeline);
+    tryStartPipeline(pipeline);
+}
+
+DeviceBase::DeviceBase(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) {
+    init(pipeline, maxUsbSpeed);
+    tryStartPipeline(pipeline);
+}
+
+DeviceBase::DeviceBase(const Pipeline& pipeline, const dai::Path& pathToCmd) {
+    init(pipeline, pathToCmd);
+    tryStartPipeline(pipeline);
+}
+
+DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo) : deviceInfo(devInfo) {
+    init(pipeline, devInfo);
+    tryStartPipeline(pipeline);
+}
+
+DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : deviceInfo(devInfo) {
+    init(pipeline, devInfo, maxUsbSpeed);
+    tryStartPipeline(pipeline);
+}
+
+DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd) : deviceInfo(devInfo) {
+    init(pipeline, devInfo, pathToCmd);
+    tryStartPipeline(pipeline);
+}
+
+void DeviceBase::init(OpenVINO::Version version) {
     tryGetDevice();
     init(version, false, "");
 }
 
-DeviceBase::DeviceBase(OpenVINO::Version version, const dai::Path& pathToCmd) {
+void DeviceBase::init(OpenVINO::Version version, const dai::Path& pathToCmd) {
     tryGetDevice();
     init(version, false, pathToCmd);
 }
 
-DeviceBase::DeviceBase(OpenVINO::Version version, UsbSpeed maxUsbSpeed) {
+void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed) {
     tryGetDevice();
     init(version, maxUsbSpeed, "");
 }
 
-DeviceBase::DeviceBase(const Pipeline& pipeline) : DeviceBase(pipeline.getOpenVINOVersion()) {
-    tryStartPipeline(pipeline);
+void DeviceBase::init(const Pipeline& pipeline) {
+    tryGetDevice();
+    init(pipeline, false, "");
 }
 
-DeviceBase::DeviceBase(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) : DeviceBase(pipeline.getOpenVINOVersion(), maxUsbSpeed) {
-    tryStartPipeline(pipeline);
+void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) {
+    tryGetDevice();
+    init(pipeline, maxUsbSpeed, "");
 }
 
-DeviceBase::DeviceBase(const Pipeline& pipeline, const dai::Path& pathToCmd) : DeviceBase(pipeline.getOpenVINOVersion(), pathToCmd) {
-    tryStartPipeline(pipeline);
+void DeviceBase::init(const Pipeline& pipeline, const dai::Path& pathToCmd) {
+    tryGetDevice();
+    init(pipeline, false, pathToCmd);
 }
 
-DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo)
-    : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, DeviceBase::DEFAULT_USB_SPEED) {}
-
-DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed)
-    : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, maxUsbSpeed) {
-    tryStartPipeline(pipeline);
+void DeviceBase::init(const Pipeline& pipeline, const DeviceInfo& devInfo) {
+    deviceInfo = devInfo;
+    init(pipeline, false, "");
 }
 
-DeviceBase::DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd)
-    : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, pathToCmd) {
-    tryStartPipeline(pipeline);
+void DeviceBase::init(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) {
+    deviceInfo = devInfo;
+    init(pipeline, maxUsbSpeed, "");
+}
+
+void DeviceBase::init(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd) {
+    deviceInfo = devInfo;
+    init(pipeline, false, pathToCmd);
 }
 
 DeviceBase::DeviceBase(Config config) {

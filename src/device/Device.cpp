@@ -23,40 +23,47 @@ namespace dai {
 // Common explicit instantiation, to remove the need to define in header
 constexpr std::size_t Device::EVENT_QUEUE_MAXIMUM_SIZE;
 
-Device::Device(const Pipeline& pipeline) : DeviceBase(pipeline.getOpenVINOVersion()) {
+Device::Device(const Pipeline& pipeline) {
+    init(pipeline);
     tryStartPipeline(pipeline);
 }
 
 template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool>>
-Device::Device(const Pipeline& pipeline, T usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), usb2Mode) {
+Device::Device(const Pipeline& pipeline, T usb2Mode) {
+    init(pipeline, usb2Mode ? UsbSpeed::HIGH : DEFAULT_USB_SPEED);
     tryStartPipeline(pipeline);
 }
 template Device::Device(const Pipeline&, bool);
 
-Device::Device(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) : DeviceBase(pipeline.getOpenVINOVersion(), maxUsbSpeed) {
+Device::Device(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) {
+    init(pipeline, maxUsbSpeed);
     tryStartPipeline(pipeline);
 }
 
-Device::Device(const Pipeline& pipeline, const dai::Path& pathToCmd) : DeviceBase(pipeline.getOpenVINOVersion(), pathToCmd) {
+Device::Device(const Pipeline& pipeline, const dai::Path& pathToCmd) {
+    init(pipeline, pathToCmd);
     tryStartPipeline(pipeline);
 }
 
-Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, false) {
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo) {
+    init(pipeline, devInfo);
     tryStartPipeline(pipeline);
 }
 
-Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd)
-    : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, pathToCmd) {
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd) {
+    init(pipeline, devInfo, pathToCmd);
     tryStartPipeline(pipeline);
 }
 
 template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool>>
-Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, T usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, usb2Mode) {
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, T usb2Mode) {
+    init(pipeline, devInfo, usb2Mode ? UsbSpeed::HIGH : DEFAULT_USB_SPEED);
     tryStartPipeline(pipeline);
 }
 template Device::Device(const Pipeline&, const DeviceInfo&, bool);
 
-Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, maxUsbSpeed) {
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : DeviceBase(pipeline, devInfo, maxUsbSpeed) {
+    init(pipeline, devInfo, maxUsbSpeed);
     tryStartPipeline(pipeline);
 }
 

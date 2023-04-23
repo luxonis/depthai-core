@@ -798,12 +798,25 @@ class DeviceBase {
      */
     virtual void closeImpl();
 
+   protected:
+    // protected functions
+    void init(OpenVINO::Version version);
+    void init(OpenVINO::Version version, const dai::Path& pathToCmd);
+    void init(OpenVINO::Version version, UsbSpeed maxUsbSpeed);;
+    void init(OpenVINO::Version version, bool usb2Mode, const dai::Path& pathToMvcmd);
+    void init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
+    void init(const Pipeline& pipeline);
+    void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed);
+    void init(const Pipeline& pipeline, const dai::Path& pathToCmd);
+    void init(const Pipeline& pipeline, const DeviceInfo& devInfo);
+    void init(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode);
+    void init(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
+    void init(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
+    void init(const Pipeline& pipeline, bool usb2Mode, const dai::Path& pathToMvcmd);
+    void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
+
    private:
     // private functions
-    void init(OpenVINO::Version version, bool usb2Mode, const dai::Path& pathToMvcmd);
-    void init(const Pipeline& pipeline, bool usb2Mode, const dai::Path& pathToMvcmd);
-    void init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
-    void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
     void init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<const Pipeline&> pipeline);
     void tryGetDevice();
 
