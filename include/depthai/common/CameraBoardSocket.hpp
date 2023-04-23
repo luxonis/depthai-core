@@ -34,6 +34,12 @@ inline std::ostream& operator<<(std::ostream& out, const dai::CameraBoardSocket&
         case dai::CameraBoardSocket::CAM_H:
             out << "CAM_H";
             break;
+        case dai::CameraBoardSocket::CAM_I:
+            out << "CAM_I";
+            break;
+        case dai::CameraBoardSocket::CAM_J:
+            out << "CAM_J";
+            break;
     }
     return out;
 }
