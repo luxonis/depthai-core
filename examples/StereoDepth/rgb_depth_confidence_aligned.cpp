@@ -51,7 +51,7 @@ int main() {
     queueNames.push_back("conf");
 
     // Properties
-    camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
+    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_A);
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     camRgb->setFps(fps);
     if(downscaleColor) camRgb->setIspScale(2, 3);
@@ -59,7 +59,7 @@ int main() {
     // This value was used during calibration
     try {
         auto calibData = device.readCalibration2();
-        auto lensPosition = calibData.getLensPosition(dai::CameraBoardSocket::RGB);
+        auto lensPosition = calibData.getLensPosition(dai::CameraBoardSocket::CAM_A);
         if(lensPosition) {
             camRgb->initialControl.setManualFocus(lensPosition);
         }
@@ -69,16 +69,16 @@ int main() {
     }
 
     left->setResolution(monoRes);
-    left->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    left->setCamera("left");
     left->setFps(fps);
     right->setResolution(monoRes);
-    right->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    right->setCamera("right");
     right->setFps(fps);
 
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     // LR-check is required for depth alignment
     stereo->setLeftRightCheck(true);
-    stereo->setDepthAlign(dai::CameraBoardSocket::RGB);
+    stereo->setDepthAlign(dai::CameraBoardSocket::CAM_A);
 
     // Linking
     camRgb->isp.link(rgbOut->input);
