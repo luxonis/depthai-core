@@ -264,8 +264,10 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
         }
 
         // Create DataInputQueue's
+        auto streamName = xlinkIn->getStreamName();
+        if(inputQueueMap.count(streamName) != 0) throw std::invalid_argument(fmt::format("Streams have duplicate name '{}'", streamName));
         // set max data size, for more verbosity
-        inputQueueMap[xlinkIn->getStreamName()] = std::make_shared<DataInputQueue>(connection, xlinkIn->getStreamName(), 16, true, xlinkIn->getMaxDataSize());
+        inputQueueMap[std::move(streamName)] = std::make_shared<DataInputQueue>(connection, xlinkIn->getStreamName(), 16, true, xlinkIn->getMaxDataSize());
     }
     for(const auto& kv : pipeline.getNodeMap()) {
         const auto& node = kv.second;
@@ -274,29 +276,31 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
             continue;
         }
 
-        auto streamName = xlinkOut->getStreamName();
         // Create DataOutputQueue's
+        auto streamName = xlinkOut->getStreamName();
+        if(outputQueueMap.count(streamName) != 0) throw std::invalid_argument(fmt::format("Streams have duplicate name '{}'", streamName));
         outputQueueMap[streamName] = std::make_shared<DataOutputQueue>(connection, streamName);
 
         // Add callback for events
-        callbackIdMap[streamName] = outputQueueMap[streamName]->addCallback([this](std::string queueName, std::shared_ptr<ADatatype>) {
-            {
-                // Lock first
-                std::unique_lock<std::mutex> lock(eventMtx);
+        callbackIdMap[std::move(streamName)] =
+            outputQueueMap[xlinkOut->getStreamName()]->addCallback([this](std::string queueName, std::shared_ptr<ADatatype>) {
+                {
+                    // Lock first
+                    std::unique_lock<std::mutex> lock(eventMtx);
 
-                // Check if size is equal or greater than EVENT_QUEUE_MAXIMUM_SIZE
-                if(eventQueue.size() >= EVENT_QUEUE_MAXIMUM_SIZE) {
-                    auto numToRemove = eventQueue.size() - EVENT_QUEUE_MAXIMUM_SIZE + 1;
-                    eventQueue.erase(eventQueue.begin(), eventQueue.begin() + numToRemove);
+                    // Check if size is equal or greater than EVENT_QUEUE_MAXIMUM_SIZE
+                    if(eventQueue.size() >= EVENT_QUEUE_MAXIMUM_SIZE) {
+                        auto numToRemove = eventQueue.size() - EVENT_QUEUE_MAXIMUM_SIZE + 1;
+                        eventQueue.erase(eventQueue.begin(), eventQueue.begin() + numToRemove);
+                    }
+
+                    // Add to the end of event queue
+                    eventQueue.push_back(std::move(queueName));
                 }
 
-                // Add to the end of event queue
-                eventQueue.push_back(std::move(queueName));
-            }
-
-            // notify the rest
-            eventCv.notify_all();
-        });
+                // notify the rest
+                eventCv.notify_all();
+            });
     }
     return DeviceBase::startPipelineImpl(pipeline);
 }
