@@ -281,8 +281,6 @@ class DeviceBase::Impl {
     DeviceLogger logger{"host", stdoutColorSink};
 
     // RPC
-    std::mutex rpcMutex;
-    std::shared_ptr<XLinkStream> rpcStream;
     std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> rpcClient;
 
     void setLogLevel(LogLevel level);
@@ -516,10 +514,6 @@ void DeviceBase::closeImpl() {
     // At the end stop the monitor thread
     if(monitorThread.joinable()) monitorThread.join();
 
-    // Close rpcStream
-    pimpl->rpcStream = nullptr;
-    pimpl->rpcClient = nullptr;
-
     pimpl->logger.debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
 }
 
@@ -542,8 +536,10 @@ void DeviceBase::tryStartPipeline(const Pipeline& pipeline) {
         }
     } catch(const std::exception&) {
         // close device (cleanup)
+        // can throw within itself, e.g. from the rpcclient lambda with an xlink error
         close();
-        // Rethrow original exception
+
+        // Rethrow original exception when close() itself doesn't throw
         throw;
     }
 }
@@ -726,32 +722,32 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     deviceInfo.state = expectedBootState;
 
     // prepare rpc for both attached and host controlled mode
-    pimpl->rpcStream = std::make_shared<XLinkStream>(connection, device::XLINK_CHANNEL_MAIN_RPC, device::XLINK_USB_BUFFER_MAX_SIZE);
-    auto rpcStream = pimpl->rpcStream;
+    pimpl->rpcClient = std::make_unique<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>(
+        [rpcMutex = std::make_shared<std::mutex>(),
+         rpcStream = std::make_shared<XLinkStream>(connection, device::XLINK_CHANNEL_MAIN_RPC, device::XLINK_USB_BUFFER_MAX_SIZE),
+         &implLogger = this->pimpl->logger](nanorpc::core::type::buffer request) {
+            // Lock for time of the RPC call, to not mix the responses between calling threads.
+            // Note: might cause issues on Windows on incorrect shutdown. To be investigated
+            std::lock_guard<std::mutex> lock(*rpcMutex);
 
-    pimpl->rpcClient = std::make_unique<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>([this, rpcStream](nanorpc::core::type::buffer request) {
-        // Lock for time of the RPC call, to not mix the responses between calling threads.
-        // Note: might cause issues on Windows on incorrect shutdown. To be investigated
-        std::unique_lock<std::mutex> lock(pimpl->rpcMutex);
+            // Log the request data
+            if(logger::get_level() == spdlog::level::trace) {
+                implLogger.trace("RPC: {}", nlohmann::json::from_msgpack(request).dump());
+            }
 
-        // Log the request data
-        if(logger::get_level() == spdlog::level::trace) {
-            pimpl->logger.trace("RPC: {}", nlohmann::json::from_msgpack(request).dump());
-        }
+            try {
+                // Send request to device
+                rpcStream->write(std::move(request));
 
-        try {
-            // Send request to device
-            rpcStream->write(std::move(request));
-
-            // Receive response back
-            // Send to nanorpc to parse
-            return rpcStream->read();
-        } catch(const std::exception& e) {
-            // If any exception is thrown, log it and rethrow
-            pimpl->logger.debug("RPC error: {}", e.what());
-            throw std::system_error(std::make_error_code(std::errc::io_error), "Device already closed or disconnected");
-        }
-    });
+                // Receive response back
+                // Send to nanorpc to parse
+                return rpcStream->read();
+            } catch(const std::exception& e) {
+                // If any exception is thrown, log it and rethrow
+                implLogger.debug("RPC error: {}", e.what());
+                throw std::system_error(std::make_error_code(std::errc::io_error), "Device already closed or disconnected");
+            }
+        });
 
     // prepare watchdog thread, which will keep device alive
     // separate stream so it doesn't miss between potentially long RPC calls
@@ -1406,7 +1402,6 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
         pimpl->rpcClient->call("startPipeline");
     } else {
         throw std::runtime_error(errorMsg);
-        return false;
     }
 
     return true;
