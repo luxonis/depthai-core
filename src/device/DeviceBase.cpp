@@ -737,7 +737,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
 
             try {
                 // Send request to device
-                rpcStream->write(std::move(request));
+                rpcStream->write(request);
 
                 // Receive response back
                 // Send to nanorpc to parse
@@ -908,10 +908,8 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
                 float rate = 1.0f;
                 while(profilingRunning) {
                     ProfilingData data = getProfilingData();
-                    long long w = data.numBytesWritten - lastData.numBytesWritten;
-                    long long r = data.numBytesRead - lastData.numBytesRead;
-                    w /= rate;
-                    r /= rate;
+                    float w = (data.numBytesWritten - lastData.numBytesWritten) / rate;
+                    float r = (data.numBytesRead - lastData.numBytesRead) / rate;
 
                     lastData = data;
 
@@ -1379,6 +1377,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
         const std::string streamAssetStorage = "__stream_asset_storage";
         std::thread t1([this, &streamAssetStorage, &assetStorage]() {
             XLinkStream stream(connection, streamAssetStorage, device::XLINK_USB_BUFFER_MAX_SIZE);
+            // TODO replace this code with XLinkStream::writeSplit()
             int64_t offset = 0;
             do {
                 int64_t toTransfer = std::min(static_cast<int64_t>(device::XLINK_USB_BUFFER_MAX_SIZE), static_cast<int64_t>(assetStorage.size() - offset));

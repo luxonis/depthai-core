@@ -26,7 +26,7 @@ namespace dai {
 class Logging {
     // private constructor
     Logging();
-    ~Logging() {}
+    ~Logging() = default;
 
 public:
     static Logging& getInstance() {
@@ -38,7 +38,7 @@ public:
 
     // Public API
     spdlog::logger logger;
-    spdlog::level::level_enum parseLevel(std::string lvl);
+    static spdlog::level::level_enum parseLevel(std::string lvl);
 };
 
 

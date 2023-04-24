@@ -14,7 +14,7 @@ Pimpl<T>::Pimpl( Args&& ...args )
     : m{ new T{ std::forward<Args>(args)... } } { }
 
 template<typename T>
-Pimpl<T>::~Pimpl() { }
+Pimpl<T>::~Pimpl() = default;
 
 template<typename T>
 T* Pimpl<T>::operator->() { return m.get(); }
