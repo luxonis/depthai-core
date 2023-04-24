@@ -69,6 +69,8 @@ class DeviceBase {
         OpenVINO::Version version = OpenVINO::VERSION_UNIVERSAL;
         BoardConfig board;
         bool nonExclusiveMode = false;
+        tl::optional<LogLevel> outputLogLevel;
+        tl::optional<LogLevel> logLevel;
     };
 
     // static API
