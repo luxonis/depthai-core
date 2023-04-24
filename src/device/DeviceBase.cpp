@@ -478,11 +478,10 @@ DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo) : deviceInfo(de
 }
 
 void DeviceBase::close() {
-    std::unique_lock<std::mutex> lock(closedMtx);
-    if(!closed) {
-        closeImpl();
-        closed = true;
-    }
+    // Only allow to close once
+    if(closed.exchange(true)) return;
+
+    closeImpl();
 }
 
 void DeviceBase::closeImpl() {
@@ -521,7 +520,6 @@ void DeviceBase::closeImpl() {
 // is invalidated during the return by value and continues to degrade in
 // validity to the caller
 bool DeviceBase::isClosed() const {
-    std::unique_lock<std::mutex> lock(closedMtx);
     return closed || !watchdogRunning;
 }
 

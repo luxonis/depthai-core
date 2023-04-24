@@ -297,13 +297,11 @@ XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, XLinkDeviceState_
 // within the context of the lock_guard. The value is immediately invalid and outdated
 // when it is returned by value to the caller
 bool XLinkConnection::isClosed() const {
-    std::lock_guard<std::mutex> lock(closedMtx);
     return closed;
 }
 
 void XLinkConnection::close() {
-    std::lock_guard<std::mutex> lock(closedMtx);
-    if(closed) return;
+    if(closed.exchange(true)) return;
 
     constexpr auto RESET_TIMEOUT = 2s;
     constexpr auto BOOTUP_SEARCH = 5s;
@@ -338,8 +336,6 @@ void XLinkConnection::close() {
 
         logger::debug("XLinkResetRemote of linkId: ({})", previousLinkId);
     }
-
-    closed = true;
 }
 
 XLinkConnection::~XLinkConnection() {

@@ -920,8 +920,7 @@ class DeviceBase {
     std::chrono::steady_clock::time_point lastWatchdogPingTime;
 
     // closed
-    mutable std::mutex closedMtx;
-    bool closed{false};
+    std::atomic<bool> closed{false};
 
     // pimpl
     class Impl;
