@@ -16,6 +16,7 @@
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
+#include "depthai/pipeline/datatype/ToFConfig.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
@@ -37,6 +38,7 @@
 #include "depthai-shared/datatype/RawCameraControl.hpp"
 #include "depthai-shared/datatype/RawEdgeDetectorConfig.hpp"
 #include "depthai-shared/datatype/RawFeatureTrackerConfig.hpp"
+#include "depthai-shared/datatype/RawToFConfig.hpp"
 #include "depthai-shared/datatype/RawIMUData.hpp"
 #include "depthai-shared/datatype/RawImageManipConfig.hpp"
 #include "depthai-shared/datatype/RawImgDetections.hpp"
@@ -162,6 +164,10 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::FeatureTrackerConfig:
             return parseDatatype<RawFeatureTrackerConfig>(metadataStart, serializedObjectSize, data);
             break;
+
+        case DatatypeEnum::ToFConfig:
+            return parseDatatype<RawToFConfig>(metadataStart, serializedObjectSize, data);
+            break;
     }
 
     throw std::runtime_error("Bad packet, couldn't parse");
@@ -255,6 +261,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
 
         case DatatypeEnum::FeatureTrackerConfig:
             return std::make_shared<FeatureTrackerConfig>(parseDatatype<RawFeatureTrackerConfig>(metadataStart, serializedObjectSize, data));
+            break;
+
+        case DatatypeEnum::ToFConfig:
+            return std::make_shared<ToFConfig>(parseDatatype<RawToFConfig>(metadataStart, serializedObjectSize, data));
             break;
     }
 

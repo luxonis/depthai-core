@@ -4,6 +4,7 @@
 
 // shared
 #include <depthai-shared/properties/ToFProperties.hpp>
+#include "depthai/pipeline/datatype/ToFConfig.hpp"
 
 namespace dai {
 namespace node {
@@ -15,16 +16,23 @@ class ToF : public NodeCRTP<Node, ToF, ToFProperties> {
    public:
     constexpr static const char* NAME = "ToF";
 
+   protected:
+    Properties& getProperties();
+
+    private:
+    std::shared_ptr<RawToFConfig> rawConfig;
+
     /**
      * Constructs ToF node.
      */
+   public:
     ToF(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
     ToF(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Initial config to use for depth calculation.
      */
-    RawToFConfig initialConfig;
+    ToFConfig initialConfig;
 
     /**
      * Input ToF message with ability to modify parameters in runtime.

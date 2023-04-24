@@ -29,7 +29,7 @@ class ToFConfig : public Buffer {
 
     ToFConfig& setDepthParams(dai::ToFConfig::DepthParams config);
     ToFConfig& setFreqModUsed(dai::ToFConfig::DepthParams::TypeFMod fmod);
-    ToFConfig& SetAvgPhaseShuffle(bool enable);
+    ToFConfig& setAvgPhaseShuffle(bool enable);
     ToFConfig& setMinAmplitude(float minamp);
 
     /**

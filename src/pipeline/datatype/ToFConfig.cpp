@@ -24,7 +24,7 @@ ToFConfig& ToFConfig::setFreqModUsed(dai::ToFConfig::DepthParams::TypeFMod fmod)
     return *this;
 }
 
-ToFConfig& ToFConfig::SetAvgPhaseShuffle(bool enable) {
+ToFConfig& ToFConfig::setAvgPhaseShuffle(bool enable) {
     cfg.depthParams.avgPhaseShuffle = enable;
     return *this;
 }
