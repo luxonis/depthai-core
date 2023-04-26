@@ -150,6 +150,13 @@ class DeviceBase {
     static std::vector<std::uint8_t> getEmbeddedDeviceBinary(Config config);
 
     /**
+     * Get current global accumulated profiling data
+     *
+     * @returns ProfilingData from all devices
+     */
+    static ProfilingData getGlobalProfilingData();
+
+    /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
      * @param pipeline Pipeline to be executed on the device
      */

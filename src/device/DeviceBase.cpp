@@ -253,6 +253,10 @@ std::vector<std::uint8_t> DeviceBase::getEmbeddedDeviceBinary(Config config) {
     return Resources::getInstance().getDeviceFirmware(config);
 }
 
+ProfilingData DeviceBase::getGlobalProfilingData() {
+    return XLinkConnection::getGlobalProfilingData();
+}
+
 /*
 std::vector<DeviceInfo> DeviceBase::getAllConnectedDevices(){
     return XLinkConnection::getAllConnectedDevices();

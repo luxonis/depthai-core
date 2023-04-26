@@ -85,6 +85,13 @@ class XLinkConnection {
      */
     static DeviceInfo bootBootloader(const DeviceInfo& devInfo);
 
+    /**
+     * Get current accumulated profiling data
+     *
+     * @returns ProfilingData from the specific connection
+     */
+    static ProfilingData getGlobalProfilingData();
+
     XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
     XLinkConnection(const DeviceInfo& deviceDesc, dai::Path pathToMvcmd, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
     explicit XLinkConnection(const DeviceInfo& deviceDesc, XLinkDeviceState_t expectedState = X_LINK_BOOTED);

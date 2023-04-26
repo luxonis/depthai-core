@@ -500,6 +500,17 @@ std::string XLinkConnection::convertErrorCodeToString(XLinkError_t errorCode) {
     return XLinkErrorToStr(errorCode);
 }
 
+ProfilingData XLinkConnection::getGlobalProfilingData() {
+    ProfilingData data;
+    XLinkProf_t prof;
+    if(XLinkGetGlobalProfilingData(&prof) != X_LINK_SUCCESS) {
+        throw std::runtime_error("Couldn't retrieve profiling data");
+    }
+    data.numBytesRead = prof.totalReadBytes;
+    data.numBytesWritten = prof.totalWriteBytes;
+    return data;
+}
+
 ProfilingData XLinkConnection::getProfilingData() {
     ProfilingData data;
     XLinkProf_t prof;
