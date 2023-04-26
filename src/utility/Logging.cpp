@@ -11,7 +11,7 @@ Logging::Logging() : logger("depthai", {std::make_shared<spdlog::sinks::stdout_c
         logger.set_level(parseLevel(envLevel));
     } else {
         // Otherwise set default level to WARN
-        logger.set_level(spdlog::level::debug);
+        logger.set_level(spdlog::level::warn);
     }
 
     auto debugStr = utility::getEnv("DEPTHAI_DEBUG", logger);
