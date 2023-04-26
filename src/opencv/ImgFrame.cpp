@@ -73,7 +73,7 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
                                  + std::to_string(actualSize) + ". Maybe metadataOnly transfer was made?");
     } else if(actualSize > requiredSize) {
         // FIXME doesn't build on Windows (multiple definitions during link)
-        // spdlog::warn("ImgFrame has excess data: actual {}, expected {}", actualSize, requiredSize);
+        // logger::warn("ImgFrame has excess data: actual {}, expected {}", actualSize, requiredSize);
     }
     if(getWidth() <= 0 || getHeight() <= 0) {
         throw std::runtime_error("ImgFrame metadata not valid (width or height = 0)");

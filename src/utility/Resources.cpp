@@ -15,6 +15,7 @@
 #include "spdlog/details/os.h"
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/spdlog.h"
+#include "utility/Logging.hpp"
 
 // shared
 #include "depthai-shared/device/BoardConfig.hpp"
@@ -96,7 +97,7 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, da
             throw std::runtime_error(
                 fmt::format("File at path {}{} doesn't exist.", finalFwBinaryPath, !fwBinaryPath.empty() ? " pointed to by DEPTHAI_DEVICE_BINARY" : ""));
         }
-        spdlog::warn("Overriding firmware: {}", finalFwBinaryPath);
+        logger::warn("Overriding firmware: {}", finalFwBinaryPath);
         // Read the file and return its contents
         finalFwBinary = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
     } else {
@@ -107,7 +108,7 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, da
             {OpenVINO::VERSION_2020_4, OpenVINO::VERSION_2021_1, OpenVINO::VERSION_2021_2, OpenVINO::VERSION_2021_3});
 
         if(deprecatedVersions.count(version)) {
-            spdlog::warn("OpenVINO {} is deprecated!", OpenVINO::getVersionName(version));
+            logger::warn("OpenVINO {} is deprecated!", OpenVINO::getVersionName(version));
         }
 
         // Main FW
@@ -145,7 +146,7 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, da
 
         // is patching required?
         if(!depthaiPatch.empty()) {
-            spdlog::debug("Patching OpenVINO FW version from {} to {}", OpenVINO::getVersionName(MAIN_FW_VERSION), OpenVINO::getVersionName(version));
+            logger::debug("Patching OpenVINO FW version from {} to {}", OpenVINO::getVersionName(MAIN_FW_VERSION), OpenVINO::getVersionName(version));
 
             // Load full binary for patch
             depthaiBinary = resourceMapDevice.at(MAIN_FW_PATH);
@@ -220,7 +221,7 @@ std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type
             // TODO(themarpe) - Unify exceptions into meaningful groups
             throw std::runtime_error(fmt::format("File at path {} pointed to by {} doesn't exist.", blBinaryPath, blEnvVar));
         }
-        spdlog::warn("Overriding bootloader {}: {}", blEnvVar, blBinaryPath);
+        logger::warn("Overriding bootloader {}: {}", blEnvVar, blBinaryPath);
         // Read the file and return its content
         return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
     }
@@ -330,7 +331,7 @@ std::function<void()> getLazyTarXzFunction(MTX& mtx, CV& cv, BOOL& ready, PATH c
         auto t3 = steady_clock::now();
 
         // Debug - logs loading times
-        spdlog::debug(
+        logger::debug(
             "Resources - Archive '{}' open: {}, archive read: {}", cmrcPath, duration_cast<milliseconds>(t2 - t1), duration_cast<milliseconds>(t3 - t2));
 
         // Notify that that preload is finished

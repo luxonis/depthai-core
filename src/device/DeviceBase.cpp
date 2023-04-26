@@ -35,6 +35,7 @@
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
+#include "utility/Logging.hpp"
 
 namespace dai {
 
@@ -122,7 +123,7 @@ std::chrono::milliseconds DeviceBase::getDefaultSearchTime() {
         try {
             defaultSearchTime = std::chrono::milliseconds{std::stoi(searchTimeStr)};
         } catch(const std::invalid_argument& e) {
-            spdlog::warn("DEPTHAI_SEARCH_TIMEOUT value invalid: {}", e.what());
+            logger::warn("DEPTHAI_SEARCH_TIMEOUT value invalid: {}", e.what());
         }
     }
 
@@ -178,12 +179,12 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::mill
     for(const auto& invalidDevice : invalidDevices) {
         const auto& invalidDeviceInfo = invalidDevice.second;
         if(invalidDeviceInfo.status == X_LINK_INSUFFICIENT_PERMISSIONS) {
-            spdlog::warn("Insufficient permissions to communicate with {} device with name \"{}\". Make sure udev rules are set",
+            logger::warn("Insufficient permissions to communicate with {} device with name \"{}\". Make sure udev rules are set",
                          XLinkDeviceStateToStr(invalidDeviceInfo.state),
                          invalidDeviceInfo.name);
         } else {
             // Warn
-            spdlog::warn(
+            logger::warn(
                 "Skipping {} device with name \"{}\" ({})", XLinkDeviceStateToStr(invalidDeviceInfo.state), invalidDeviceInfo.name, invalidDeviceInfo.mxid);
         }
     }
@@ -498,6 +499,7 @@ void DeviceBase::closeImpl() {
     watchdogRunning = false;
     timesyncRunning = false;
     loggingRunning = false;
+    profilingRunning = false;
 
     // Stop watchdog first (this resets and waits for link to fall down)
     if(watchdogThread.joinable()) watchdogThread.join();
@@ -505,6 +507,8 @@ void DeviceBase::closeImpl() {
     if(timesyncThread.joinable()) timesyncThread.join();
     // And at the end stop logging thread
     if(loggingThread.joinable()) loggingThread.join();
+    // And at the end stop profiling thread
+    if(profilingThread.joinable()) profilingThread.join();
     // At the end stop the monitor thread
     if(monitorThread.joinable()) monitorThread.join();
 
@@ -665,7 +669,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     }
 
     // Get embedded mvcmd or external with applied config
-    if(spdlog::get_level() == spdlog::level::debug) {
+    if(logger::get_level() == spdlog::level::debug) {
         nlohmann::json jBoardConfig = config.board;
         pimpl->logger.debug("Device - BoardConfig: {} \nlibnop:{}", jBoardConfig.dump(), spdlog::to_hex(utility::serialize(config.board)));
     }
@@ -727,7 +731,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         std::unique_lock<std::mutex> lock(pimpl->rpcMutex);
 
         // Log the request data
-        if(spdlog::get_level() == spdlog::level::trace) {
+        if(logger::get_level() == spdlog::level::trace) {
             pimpl->logger.trace("RPC: {}", nlohmann::json::from_msgpack(request).dump());
         }
 
@@ -808,7 +812,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
 
     // Below can throw - make sure to gracefully exit threads
     try {
-        auto level = spdlogLevelToLogLevel(spdlog::get_level());
+        auto level = spdlogLevelToLogLevel(logger::get_level());
         setLogLevel(config.logLevel.value_or(level));
         setLogOutputLevel(config.outputLogLevel.value_or(level));
 
@@ -893,6 +897,40 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
 
         loggingRunning = false;
     });
+
+    if(utility::getEnv("DEPTHAI_PROFILING") == "1") {
+        // prepare profiling thread, which will log device messages
+        profilingThread = std::thread([this]() {
+            using namespace std::chrono;
+            try {
+                ProfilingData lastData = {};
+                // TODO(themarpe) - expose
+                float rate = 1.0f;
+                while(profilingRunning) {
+                    ProfilingData data = getProfilingData();
+                    long long w = data.numBytesWritten - lastData.numBytesWritten;
+                    long long r = data.numBytesRead - lastData.numBytesRead;
+                    w /= rate;
+                    r /= rate;
+
+                    lastData = data;
+
+                    pimpl->logger.debug("Profiling write speed: {:.2f} MiB/s, read speed: {:.2f} MiB/s, total written: {:.2f} MiB, read: {:.2f} MiB",
+                                        w / 1024.0f / 1024.0f,
+                                        r / 1024.0f / 1024.0f,
+                                        data.numBytesWritten / 1024.0f / 1024.0f,
+                                        data.numBytesRead / 1024.0f / 1024.0f);
+
+                    std::this_thread::sleep_for(duration<float>(1) / rate);
+                }
+            } catch(const std::exception& ex) {
+                // ignore exception from logging
+                pimpl->logger.debug("Profiling thread exception caught: {}", ex.what());
+            }
+
+            profilingRunning = false;
+        });
+    }
 
     // Below can throw - make sure to gracefully exit threads
     try {
@@ -1071,6 +1109,10 @@ dai::CrashDump DeviceBase::getCrashDump() {
 bool DeviceBase::hasCrashDump() {
     dai::CrashDump crashDump = getCrashDump();
     return !crashDump.crashReports.empty();
+}
+
+ProfilingData DeviceBase::getProfilingData() {
+    return connection->getProfilingData();
 }
 
 int DeviceBase::addLogCallback(std::function<void(LogMessage)> callback) {
@@ -1319,7 +1361,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     pipeline.serialize(schema, assets, assetStorage);
 
     // if debug or lower
-    if(spdlog::get_level() <= spdlog::level::debug) {
+    if(logger::get_level() <= spdlog::level::debug) {
         nlohmann::json jSchema = schema;
         pimpl->logger.debug("Schema dump: {}", jSchema.dump());
         nlohmann::json jAssets = assets;

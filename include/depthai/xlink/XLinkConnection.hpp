@@ -14,6 +14,7 @@
 
 // project
 #include "depthai/utility/Path.hpp"
+#include "depthai/utility/ProfilingData.hpp"
 
 // Libraries
 #include <XLink/XLinkPublicDefines.h>
@@ -110,6 +111,13 @@ class XLinkConnection {
      * exceptions when calling any DepthAI apis to handle hardware events and multithreaded use.
      */
     bool isClosed() const;
+
+    /**
+     * Get current accumulated profiling data
+     *
+     * @returns ProfilingData from the specific connection
+     */
+    ProfilingData getProfilingData();
 
    private:
     friend struct XLinkReadError;

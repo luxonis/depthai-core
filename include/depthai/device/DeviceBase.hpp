@@ -22,6 +22,7 @@
 #include "depthai/device/Version.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/utility/Pimpl.hpp"
+#include "depthai/utility/ProfilingData.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 
@@ -512,6 +513,13 @@ class DeviceBase {
     bool hasCrashDump();
 
     /**
+     * Get current accumulated profiling data
+     *
+     * @returns ProfilingData from the specific device
+     */
+    ProfilingData getProfilingData();
+
+    /**
      * Add a callback for device logging. The callback will be called from a separate thread with the LogMessage being passed.
      *
      * @param callback Callback to call whenever a log message arrives
@@ -894,6 +902,10 @@ class DeviceBase {
     // Logging thread
     std::thread loggingThread;
     std::atomic<bool> loggingRunning{true};
+
+    // Profiling thread
+    std::thread profilingThread;
+    std::atomic<bool> profilingRunning{true};
 
     // Monitor thread
     std::thread monitorThread;
