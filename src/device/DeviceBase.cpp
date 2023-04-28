@@ -1064,6 +1064,20 @@ bool DeviceBase::hasCrashDump() {
     return !crashDump.crashReports.empty();
 }
 
+int DeviceBase::customRPC(std::string rpc, int p1, int p2, int p3, int p4) {
+    int ret = 0;
+    // Ignore Empty stream
+    try {
+        ret = pimpl->rpcClient->call(rpc, p1, p2, p3, p4);
+    } catch(const std::runtime_error& e) {
+        if (std::string(e.what()).find("[nanorpc::packer::nlohmann_msgpack::deserializer] Empty stream") == std::string::npos) {
+            // If not the one filtered above (empty return for some RPCs), forward exception
+            throw;
+        }
+    }
+    return ret;
+}
+
 int DeviceBase::addLogCallback(std::function<void(LogMessage)> callback) {
     // Lock first
     std::unique_lock<std::mutex> l(logCallbackMapMtx);

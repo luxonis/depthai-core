@@ -510,6 +510,11 @@ class DeviceBase {
     bool hasCrashDump();
 
     /**
+     * For internal use / testing
+     */
+    int customRPC(std::string rpc, int p1 = 0, int p2 = 0, int p3 = 0, int p4 = 0);
+
+    /**
      * Add a callback for device logging. The callback will be called from a separate thread with the LogMessage being passed.
      *
      * @param callback Callback to call whenever a log message arrives
