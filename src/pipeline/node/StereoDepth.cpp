@@ -170,6 +170,10 @@ void StereoDepth::setVerticalStereo(bool verticalStereo) {
     properties.verticalStereo = verticalStereo;
 }
 
+void StereoDepth::setCustomPixelDescriptors(bool customPixelDescriptors) {
+    properties.customPixelDescriptors = customPixelDescriptors;
+}
+
 void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
     presetMode = mode;
     switch(presetMode) {

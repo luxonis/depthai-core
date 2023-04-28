@@ -69,6 +69,20 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
     Input right{true, *this, "right", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
+     * Input pixel descriptor for left ImgFrame.
+     * Input type must be 4 bytes per pixel
+     * Default queue is non-blocking with size 8
+     */
+    Input inputLeftPixelDescriptor{true, *this, "inputLeftPixelDescriptor", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
+
+    /**
+     * Input pixel descriptor for right ImgFrame.
+     * Input type must be 4 bytes per pixel
+     * Default queue is non-blocking with size 8
+     */
+    Input inputRightPixelDescriptor{true, *this, "inputRightPixelDescriptor", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
+
+    /**
      * Outputs ImgFrame message that carries RAW16 encoded (0..65535) depth data in depth units (millimeter by default).
      *
      * Non-determined / invalid depth values are set to 0
@@ -357,6 +371,12 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      * If set to true rectification process includes 90 degree clock wise rotation to perform vertical matching.
      */
     void setVerticalStereo(bool verticalStereo);
+
+    /**
+     * Whether to use custom pixel descriptors sent from host to device for debugging purposes.
+     * Default value is false.
+     */
+    void setCustomPixelDescriptors(bool customPixelDescriptors);
 
     /**
      * Equivalent to useHomographyRectification(!enableDistortionCorrection)
