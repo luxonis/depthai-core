@@ -31,7 +31,7 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
         case Type::YUV420p:
         case Type::NV12:
         case Type::NV21:
-            size = cv::Size(getWidth(), getHeight() * 3 / 2);
+            size = cv::Size(getWidth(), getPlaneHeight() * 3 / 2);
             type = CV_8UC1;
             break;
 
@@ -96,10 +96,11 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
         // Copy number of bytes that are available by Mat space or by img data size
         // std::memcpy(mat.data, img.data.data(), std::min((long)(img.data.size()), (long)(mat.dataend - mat.datastart)));
         std::memcpy(mat.data, data->getData().data(), std::min((long)(data->getSize()), (long)(mat.dataend - mat.datastart)));
+        // TODO stride handling
     } else {
         // TMP TMP
         // mat = cv::Mat(size, type, img.data.data());
-        mat = cv::Mat(size, type, data->getData().data());
+        mat = cv::Mat(size, type, data->getData().data(), getStride());
     }
 
     return mat;
@@ -143,12 +144,19 @@ cv::Mat ImgFrame::getCvFrame() {
             break;
 
         case Type::NV12:
-            cv::cvtColor(frame, output, cv::ColorConversionCodes::COLOR_YUV2BGR_NV12);
-            break;
-
-        case Type::NV21:
-            cv::cvtColor(frame, output, cv::ColorConversionCodes::COLOR_YUV2BGR_NV21);
-            break;
+        case Type::NV21: {
+            int code = (getType() == Type::NV12) ? cv::ColorConversionCodes::COLOR_YUV2BGR_NV12 : cv::ColorConversionCodes::COLOR_YUV2BGR_NV21;
+            if(getPlaneHeight() <= getHeight()) {
+                cv::cvtColor(frame, output, code);
+            } else {
+                cv::Size s(getWidth(), getHeight());
+                int type = CV_8UC1;
+                int step = getStride();
+                cv::Mat frameY(s, type, getData().data(), step);
+                cv::Mat frameUV(s / 2, type, getData().data() + getPlaneStride(), step);
+                cv::cvtColorTwoPlane(frameY, frameUV, output, code);
+            }
+        } break;
 
         case Type::RAW8:
         case Type::RAW16:
