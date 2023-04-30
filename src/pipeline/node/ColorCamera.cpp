@@ -385,6 +385,18 @@ std::tuple<int, int> ColorCamera::getResolutionSize() const {
         case ColorCameraProperties::SensorResolution::THE_1280X962:
             return {1280, 962};
             break;
+
+        case ColorCameraProperties::SensorResolution::THE_2000X1500:
+            return {2000, 1500};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_2028X1520:
+            return {2028, 1520};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_2104X1560:
+            return {2104, 1560};
+            break;
     }
 
     return {1920, 1080};
