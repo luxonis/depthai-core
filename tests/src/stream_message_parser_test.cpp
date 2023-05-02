@@ -2,13 +2,11 @@
 
 // Include depthai library
 #include <depthai/depthai.hpp>
-
 #include <depthai/pipeline/datatype/StreamMessageParser.hpp>
 
 // TODO(themarpe) - fuzz me instead
 
 TEST_CASE("Correct message") {
-
     dai::ImgFrame frm;
     auto ser = dai::StreamMessageParser::serializeMessage(frm);
 
@@ -27,7 +25,7 @@ TEST_CASE("Incorrect message bad size") {
     auto ser = dai::StreamMessageParser::serializeMessage(frm);
 
     // wreak havoc on serialized data
-    ser[ser.size()-1] = 100;
+    ser[ser.size() - 1] = 100;
 
     streamPacketDesc_t packet;
     packet.data = ser.data();
@@ -41,7 +39,7 @@ TEST_CASE("Incorrect message negative size") {
     auto ser = dai::StreamMessageParser::serializeMessage(frm);
 
     // wreak havoc on serialized data
-    ser[ser.size()-1] = 200;
+    ser[ser.size() - 1] = 200;
 
     streamPacketDesc_t packet;
     packet.data = ser.data();
@@ -51,7 +49,7 @@ TEST_CASE("Incorrect message negative size") {
 }
 
 TEST_CASE("Incorrect message too small size") {
-    std::vector<uint8_t> ser = {0,1,2};
+    std::vector<uint8_t> ser = {0, 1, 2};
 
     streamPacketDesc_t packet;
     packet.data = ser.data();
@@ -61,7 +59,7 @@ TEST_CASE("Incorrect message too small size") {
 }
 
 TEST_CASE("Incorrect message too small size 2") {
-    std::vector<uint8_t> ser = {0,1,1};
+    std::vector<uint8_t> ser = {0, 1, 1};
 
     streamPacketDesc_t packet;
     packet.data = ser.data();
@@ -70,10 +68,7 @@ TEST_CASE("Incorrect message too small size 2") {
     REQUIRE_THROWS(dai::StreamMessageParser::parseMessageToADatatype(&packet));
 }
 
-
-
 TEST_CASE("Raw - Correct message") {
-
     dai::ImgFrame frm;
     auto ser = dai::StreamMessageParser::serializeMessage(frm);
 
@@ -92,7 +87,7 @@ TEST_CASE("Raw - Incorrect message bad size") {
     auto ser = dai::StreamMessageParser::serializeMessage(frm);
 
     // wreak havoc on serialized data
-    ser[ser.size()-1] = 100;
+    ser[ser.size() - 1] = 100;
 
     streamPacketDesc_t packet;
     packet.data = ser.data();
@@ -106,7 +101,7 @@ TEST_CASE("Raw - Incorrect message negative size") {
     auto ser = dai::StreamMessageParser::serializeMessage(frm);
 
     // wreak havoc on serialized data
-    ser[ser.size()-1] = 200;
+    ser[ser.size() - 1] = 200;
 
     streamPacketDesc_t packet;
     packet.data = ser.data();
@@ -116,7 +111,7 @@ TEST_CASE("Raw - Incorrect message negative size") {
 }
 
 TEST_CASE("Raw - Incorrect message too small size") {
-    std::vector<uint8_t> ser = {0,1,2};
+    std::vector<uint8_t> ser = {0, 1, 2};
 
     streamPacketDesc_t packet;
     packet.data = ser.data();
@@ -126,7 +121,7 @@ TEST_CASE("Raw - Incorrect message too small size") {
 }
 
 TEST_CASE("Raw - Incorrect message too small size 2") {
-    std::vector<uint8_t> ser = {0,1,1};
+    std::vector<uint8_t> ser = {0, 1, 1};
 
     streamPacketDesc_t packet;
     packet.data = ser.data();

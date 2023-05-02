@@ -93,7 +93,7 @@ static std::tuple<DatatypeEnum, size_t, size_t> parseHeader(streamPacketDesc_t* 
     }
     auto* const metadataStart = packet->data + bufferLength;
 
-    if(metadataStart < packet->data || metadataStart >= packet->data+packet->length) {
+    if(metadataStart < packet->data || metadataStart >= packet->data + packet->length) {
         throw std::runtime_error("Bad packet, couldn't parse (metadata out of bounds)");
     }
 
