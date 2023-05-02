@@ -189,7 +189,11 @@ DataInputQueue::DataInputQueue(
 
                 // Blocking
                 auto t1 = steady_clock::now();
-                stream.write(outgoing.data->getData(), outgoing.metadata);
+                if(outgoing.data->getSize() > 0) {
+                    stream.write(outgoing.data->getData(), outgoing.metadata);
+                } else {
+                    stream.write(outgoing.metadata);
+                }
                 auto t2 = steady_clock::now();
 
                 // Log
