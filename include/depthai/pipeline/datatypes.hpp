@@ -8,6 +8,7 @@
 #include "datatype/CameraControl.hpp"
 #include "datatype/EdgeDetectorConfig.hpp"
 #include "datatype/FeatureTrackerConfig.hpp"
+#include "datatype/ToFConfig.hpp"
 #include "datatype/IMUData.hpp"
 #include "datatype/ImageManipConfig.hpp"
 #include "datatype/ImgDetections.hpp"
