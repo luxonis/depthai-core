@@ -23,6 +23,7 @@ extern "C" {
 #include "spdlog/details/os.h"
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/spdlog.h"
+#include "utility/Logging.hpp"
 
 namespace dai {
 
@@ -98,7 +99,7 @@ static XLinkProtocol_t getDefaultProtocol() {
     } else if(protocolStr == "tcpip") {
         defaultProtocol = X_LINK_TCP_IP;
     } else {
-        spdlog::warn("Unsupported protocol specified");
+        logger::warn("Unsupported protocol specified");
     }
 
     return defaultProtocol;
@@ -133,12 +134,12 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
             if(info.status == X_LINK_SUCCESS) {
                 // device is okay
             } else if(info.status == X_LINK_INSUFFICIENT_PERMISSIONS) {
-                spdlog::warn("Insufficient permissions to communicate with {} device having name \"{}\". Make sure udev rules are set",
+                logger::warn("Insufficient permissions to communicate with {} device having name \"{}\". Make sure udev rules are set",
                              XLinkDeviceStateToStr(info.state),
                              info.name);
                 continue;
             } else {
-                spdlog::warn("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(info.state), info.name);
+                logger::warn("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(info.state), info.name);
                 continue;
             }
         }
@@ -169,12 +170,12 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getFirstDevice(XLinkDeviceState_t 
             if(desc.status == X_LINK_SUCCESS) {
                 // device is okay
             } else if(desc.status == X_LINK_INSUFFICIENT_PERMISSIONS) {
-                spdlog::warn("Insufficient permissions to communicate with {} device having name \"{}\". Make sure udev rules are set",
+                logger::warn("Insufficient permissions to communicate with {} device having name \"{}\". Make sure udev rules are set",
                              XLinkDeviceStateToStr(desc.state),
                              desc.name);
                 return {false, {}};
             } else {
-                spdlog::warn("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(desc.state), desc.name);
+                logger::warn("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(desc.state), desc.name);
                 return {false, {}};
             }
         }
@@ -198,12 +199,12 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceByMxId(std::string mxId, 
             if(desc.status == X_LINK_SUCCESS) {
                 // device is okay
             } else if(desc.status == X_LINK_INSUFFICIENT_PERMISSIONS) {
-                spdlog::warn("Insufficient permissions to communicate with {} device having name \"{}\". Make sure udev rules are set",
+                logger::warn("Insufficient permissions to communicate with {} device having name \"{}\". Make sure udev rules are set",
                              XLinkDeviceStateToStr(desc.state),
                              desc.name);
                 return {false, {}};
             } else {
-                spdlog::warn("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(desc.state), desc.name);
+                logger::warn("skipping {} device having name \"{}\"", XLinkDeviceStateToStr(desc.state), desc.name);
                 return {false, {}};
             }
         }
@@ -255,9 +256,9 @@ DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
                 std::chrono::milliseconds value{std::stoi(valstr)};
                 *ev.second = value;
                 // auto initial = *ev.second;
-                // spdlog::warn("{} override: {} -> {}", name, initial, value);
+                // logger::warn("{} override: {} -> {}", name, initial, value);
             } catch(const std::invalid_argument& e) {
-                spdlog::warn("{} value invalid: {}", name, e.what());
+                logger::warn("{} value invalid: {}", name, e.what());
             }
         }
     }
@@ -319,7 +320,7 @@ void XLinkConnection::close() {
 
         auto ret = XLinkResetRemoteTimeout(deviceLinkId, duration_cast<milliseconds>(RESET_TIMEOUT).count());
         if(ret != X_LINK_SUCCESS) {
-            spdlog::debug("XLinkResetRemoteTimeout returned: {}", XLinkErrorToStr(ret));
+            logger::debug("XLinkResetRemoteTimeout returned: {}", XLinkErrorToStr(ret));
         }
 
         deviceLinkId = -1;
@@ -342,7 +343,7 @@ void XLinkConnection::close() {
             } while(!found && steady_clock::now() - t1 < BOOTUP_SEARCH);
         }
 
-        spdlog::debug("XLinkResetRemote of linkId: ({})", previousLinkId);
+        logger::debug("XLinkResetRemote of linkId: ({})", previousLinkId);
     }
 
     closed = true;
@@ -402,7 +403,7 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
                 *ev.second = value;
                 // auto initial = *ev.second;
             } catch(const std::invalid_argument& e) {
-                spdlog::warn("{} value invalid: {}", name, e.what());
+                logger::warn("{} value invalid: {}", name, e.what());
             }
         }
     }
@@ -452,7 +453,7 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
         // Use "name" as hint only, but might still change
         bootedDescInfo.nameHintOnly = true;
 
-        spdlog::debug("Searching for booted device: {}, name used as hint only", bootedDeviceInfo.toString());
+        logger::debug("Searching for booted device: {}, name used as hint only", bootedDeviceInfo.toString());
 
         // Find booted device
         deviceDesc_t foundDeviceDesc = {};
@@ -497,6 +498,28 @@ int XLinkConnection::getLinkId() const {
 
 std::string XLinkConnection::convertErrorCodeToString(XLinkError_t errorCode) {
     return XLinkErrorToStr(errorCode);
+}
+
+ProfilingData XLinkConnection::getGlobalProfilingData() {
+    ProfilingData data;
+    XLinkProf_t prof;
+    if(XLinkGetGlobalProfilingData(&prof) != X_LINK_SUCCESS) {
+        throw std::runtime_error("Couldn't retrieve profiling data");
+    }
+    data.numBytesRead = prof.totalReadBytes;
+    data.numBytesWritten = prof.totalWriteBytes;
+    return data;
+}
+
+ProfilingData XLinkConnection::getProfilingData() {
+    ProfilingData data;
+    XLinkProf_t prof;
+    if(XLinkGetProfilingData(deviceLinkId, &prof) != X_LINK_SUCCESS) {
+        throw std::runtime_error("Couldn't retrieve profiling data");
+    }
+    data.numBytesRead = prof.totalReadBytes;
+    data.numBytesWritten = prof.totalWriteBytes;
+    return data;
 }
 
 }  // namespace dai

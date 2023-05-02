@@ -10,6 +10,7 @@
 
 #include "BlobReader.hpp"
 #include "spdlog/spdlog.h"
+#include "utility/Logging.hpp"
 #include "utility/spdlog-fmt.hpp"
 
 namespace dai {
@@ -151,7 +152,7 @@ bool OpenVINO::areVersionsBlobCompatible(OpenVINO::Version v1, OpenVINO::Version
     }
 
     // If versions weren't matched up in any of the above cases, log an error and return false
-    spdlog::error("OpenVINO - version compatibility check with invalid values or unknown blob version");
+    logger::error("OpenVINO - version compatibility check with invalid values or unknown blob version");
     return false;
 }
 

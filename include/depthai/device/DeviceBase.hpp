@@ -22,6 +22,7 @@
 #include "depthai/device/Version.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/utility/Pimpl.hpp"
+#include "depthai/utility/ProfilingData.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 
@@ -69,6 +70,8 @@ class DeviceBase {
         OpenVINO::Version version = OpenVINO::VERSION_UNIVERSAL;
         BoardConfig board;
         bool nonExclusiveMode = false;
+        tl::optional<LogLevel> outputLogLevel;
+        tl::optional<LogLevel> logLevel;
     };
 
     // static API
@@ -145,6 +148,13 @@ class DeviceBase {
      * @returns Firmware binary
      */
     static std::vector<std::uint8_t> getEmbeddedDeviceBinary(Config config);
+
+    /**
+     * Get current global accumulated profiling data
+     *
+     * @returns ProfilingData from all devices
+     */
+    static ProfilingData getGlobalProfilingData();
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
@@ -508,6 +518,13 @@ class DeviceBase {
      * Retrieves whether the is crash dump stored on device or not.
      */
     bool hasCrashDump();
+
+    /**
+     * Get current accumulated profiling data
+     *
+     * @returns ProfilingData from the specific device
+     */
+    ProfilingData getProfilingData();
 
     /**
      * Add a callback for device logging. The callback will be called from a separate thread with the LogMessage being passed.
@@ -892,6 +909,10 @@ class DeviceBase {
     // Logging thread
     std::thread loggingThread;
     std::atomic<bool> loggingRunning{true};
+
+    // Profiling thread
+    std::thread profilingThread;
+    std::atomic<bool> profilingRunning{true};
 
     // Monitor thread
     std::thread monitorThread;

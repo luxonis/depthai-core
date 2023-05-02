@@ -15,6 +15,7 @@
 #include "depthai-shared/common/Point3f.hpp"
 #include "nlohmann/json.hpp"
 #include "spdlog/spdlog.h"
+#include "utility/Logging.hpp"
 #include "utility/matrixOps.hpp"
 
 namespace dai {
@@ -744,7 +745,7 @@ bool CalibrationHandler::validateCameraArray() const {
         if(eepromData.cameraData.find(dai::CameraBoardSocket::CAM_B) != eepromData.cameraData.end()) {
             return checkSrcLinks(dai::CameraBoardSocket::CAM_B) || checkSrcLinks(dai::CameraBoardSocket::CAM_C);
         } else {
-            spdlog::debug(
+            logger::debug(
                 "make sure the head of the Extrinsics is your left camera. Please cross check the data by creating a json file using "
                 "eepromToJsonFile(). ");
             return false;
@@ -760,14 +761,14 @@ bool CalibrationHandler::checkSrcLinks(CameraBoardSocket headSocket) const {
 
     while(headSocket != CameraBoardSocket::AUTO) {
         if(eepromData.cameraData.find(headSocket) == eepromData.cameraData.end()) {
-            spdlog::debug(
+            logger::debug(
                 "Found link to a CameraID whose camera calibration is not loaded. Please cross check the connection by creating a json file using "
                 "eepromToJsonFile(). ");
             isConnectionValidated = false;
             break;
         }
         if(marked.find(headSocket) != marked.end()) {
-            spdlog::debug(
+            logger::debug(
                 "Loop found in extrinsics connection. Please cross check that the extrinsics are connected in an array in single direction by creating "
                 "a json file using eepromToJsonFile(). ");
             isConnectionValidated = false;
@@ -779,7 +780,7 @@ bool CalibrationHandler::checkSrcLinks(CameraBoardSocket headSocket) const {
 
     if(isConnectionValidated && eepromData.cameraData.size() != marked.size()) {
         isConnectionValidated = false;
-        spdlog::debug("Extrinsics between all the cameras is not found with single head and a tail");
+        logger::debug("Extrinsics between all the cameras is not found with single head and a tail");
     }
     return isConnectionValidated;
 }
