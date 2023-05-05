@@ -254,6 +254,41 @@ class CameraControl : public Buffer {
      */
     CameraControl& setEffectMode(EffectMode mode);
 
+    /**
+     * Set a miscellaneous control. The controls set by this function get appended
+     * to a list, processed after the standard controls
+     * @param control Control name
+     * @param value Value as a string
+     */
+    CameraControl& setMisc(std::string control, std::string value);
+
+    /**
+     * Set a miscellaneous control. The controls set by this function get appended
+     * to a list, processed after the standard controls
+     * @param control Control name
+     * @param value Value as an integer number
+     */
+    CameraControl& setMisc(std::string control, int value);
+
+    /**
+     * Set a miscellaneous control. The controls set by this function get appended
+     * to a list, processed after the standard controls
+     * @param control Control name
+     * @param value Value as a floating point number
+     */
+    CameraControl& setMisc(std::string control, float value);
+
+    /**
+     * Clear the list of miscellaneous controls set by `setControl`
+     */
+    void clearMiscControls();
+
+    /**
+     * Get the list of miscellaneous controls set by `setControl`
+     * @returns A list of <key, value> pairs as strings
+     */
+    std::vector<std::pair<std::string, std::string>> getMiscControls();
+
     // Functions to retrieve properties
     /**
      * Check whether command to capture a still is set
