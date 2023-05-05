@@ -36,6 +36,8 @@ spdlog::level::level_enum Logging::parseLevel(std::string lvl) {
         return spdlog::level::trace;
     } else if(lvl == "debug") {
         return spdlog::level::debug;
+    } else if(lvl == "info") {
+        return spdlog::level::info;
     } else if(lvl == "warn") {
         return spdlog::level::warn;
     } else if(lvl == "error") {
