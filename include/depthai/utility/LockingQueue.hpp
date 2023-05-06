@@ -12,10 +12,7 @@ template <typename T>
 class LockingQueue {
    public:
     LockingQueue() = default;
-    explicit LockingQueue(unsigned maxSize, bool blocking = true) {
-        this->maxSize = maxSize;
-        this->blocking = blocking;
-    }
+    explicit LockingQueue(unsigned maxSize, bool blocking = true) : maxSize(maxSize), blocking(blocking) {}
 
     void setMaxSize(unsigned sz) {
         // Lock first

@@ -43,7 +43,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.19.1" LANGUAGES CXX C)
+project(depthai VERSION "2.21.2" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -203,6 +203,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/XLinkIn.cpp
     src/pipeline/node/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
+    src/pipeline/node/Camera.cpp
     src/pipeline/node/MonoCamera.cpp
     src/pipeline/node/StereoDepth.cpp
     src/pipeline/node/NeuralNetwork.cpp
@@ -246,6 +247,8 @@ add_library(${TARGET_CORE_NAME}
     src/utility/Path.cpp
     src/utility/Platform.cpp
     src/utility/Environment.cpp
+    src/utility/XLinkGlobalProfilingLogger.cpp
+    src/utility/Logging.cpp
     src/xlink/XLinkConnection.cpp
     src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp
@@ -323,7 +326,7 @@ endif()
 
 # Then get the Depthai device side binaries (local or download)
 if(DEPTHAI_CMD_PATH OR DEPTHAI_USB2_CMD_PATH OR DEPTHAI_USB2_PATCH_PATH)
-    # Atleast one of the paths is set. include binaries locally
+    # At least one of the paths is set. include binaries locally
     message(STATUS "Using local Depthai device side binaries...")
 
     DepthaiLocal(

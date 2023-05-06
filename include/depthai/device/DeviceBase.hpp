@@ -22,6 +22,7 @@
 #include "depthai/device/Version.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/utility/Pimpl.hpp"
+#include "depthai/utility/ProfilingData.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 
@@ -29,7 +30,9 @@
 #include "depthai-shared/common/ChipTemperature.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
+#include "depthai-shared/datatype/RawIMUData.hpp"
 #include "depthai-shared/device/BoardConfig.hpp"
+#include "depthai-shared/device/CrashDump.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
 
@@ -64,8 +67,11 @@ class DeviceBase {
      * Device specific configuration
      */
     struct Config {
-        OpenVINO::Version version;
+        OpenVINO::Version version = OpenVINO::VERSION_UNIVERSAL;
         BoardConfig board;
+        bool nonExclusiveMode = false;
+        tl::optional<LogLevel> outputLogLevel;
+        tl::optional<LogLevel> logLevel;
     };
 
     // static API
@@ -134,7 +140,7 @@ class DeviceBase {
      * @param version Version of OpenVINO which firmware will support
      * @returns Firmware binary
      */
-    static std::vector<std::uint8_t> getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version = OpenVINO::DEFAULT_VERSION);
+    static std::vector<std::uint8_t> getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version = OpenVINO::VERSION_UNIVERSAL);
 
     /**
      * Gets device firmware binary for a specific configuration
@@ -142,6 +148,13 @@ class DeviceBase {
      * @returns Firmware binary
      */
     static std::vector<std::uint8_t> getEmbeddedDeviceBinary(Config config);
+
+    /**
+     * Get current global accumulated profiling data
+     *
+     * @returns ProfilingData from all devices
+     */
+    static ProfilingData getGlobalProfilingData();
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
@@ -206,7 +219,7 @@ class DeviceBase {
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * Uses OpenVINO version OpenVINO::DEFAULT_VERSION
+     * Uses OpenVINO version OpenVINO::VERSION_UNIVERSAL
      */
     DeviceBase();
 
@@ -286,7 +299,7 @@ class DeviceBase {
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * Uses OpenVINO version OpenVINO::DEFAULT_VERSION
+     * Uses OpenVINO version OpenVINO::VERSION_UNIVERSAL
      *
      * @param devInfo DeviceInfo which specifies which device to connect to
      */
@@ -294,12 +307,76 @@ class DeviceBase {
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * Uses OpenVINO version OpenVINO::DEFAULT_VERSION
+     * Uses OpenVINO version OpenVINO::VERSION_UNIVERSAL
      *
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param maxUsbSpeed Maximum allowed USB speed
      */
     DeviceBase(const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * Uses OpenVINO version OpenVINO::VERSION_UNIVERSAL
+     *
+     * @param nameOrDeviceId Creates DeviceInfo with nameOrDeviceId to connect to
+     */
+    DeviceBase(std::string nameOrDeviceId);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * Uses OpenVINO version OpenVINO::VERSION_UNIVERSAL
+     *
+     * @param nameOrDeviceId Creates DeviceInfo with nameOrDeviceId to connect to
+     * @param maxUsbSpeed Maximum allowed USB speed
+     */
+    DeviceBase(std::string nameOrDeviceId, UsbSpeed maxUsbSpeed);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param config Config with which the device will be booted with
+     * @param usb2Mode Boot device using USB2 mode firmware
+     */
+    template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
+    DeviceBase(Config config, T usb2Mode) : DeviceBase(config, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param config Config with which the device will be booted with
+     * @param maxUsbSpeed Maximum allowed USB speed
+     */
+    DeviceBase(Config config, UsbSpeed maxUsbSpeed);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param config Config with which the device will be booted with
+     * @param pathToCmd Path to custom device firmware
+     */
+    DeviceBase(Config config, const dai::Path& pathToCmd);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param config Config with which the device will be booted with
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param usb2Mode Boot device using USB2 mode firmware
+     */
+    template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
+    DeviceBase(Config config, const DeviceInfo& devInfo, T usb2Mode) : DeviceBase(config, devInfo, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param version OpenVINO version which the device will be booted with
+     * @param config Config with which specifies which device to connect to
+     * @param maxUsbSpeed Maximum allowed USB speed
+     */
+    DeviceBase(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param config Config with which the device will be booted with
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param pathToCmd Path to custom device firmware
+     */
+    DeviceBase(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
 
     /**
      * Device destructor
@@ -433,6 +510,23 @@ class DeviceBase {
     std::vector<std::tuple<std::string, int, int>> getIrDrivers();
 
     /**
+     * Retrieves crash dump for debugging.
+     */
+    dai::CrashDump getCrashDump();
+
+    /**
+     * Retrieves whether the is crash dump stored on device or not.
+     */
+    bool hasCrashDump();
+
+    /**
+     * Get current accumulated profiling data
+     *
+     * @returns ProfilingData from the specific device
+     */
+    ProfilingData getProfilingData();
+
+    /**
      * Add a callback for device logging. The callback will be called from a separate thread with the LogMessage being passed.
      *
      * @param callback Callback to call whenever a log message arrives
@@ -483,6 +577,47 @@ class DeviceBase {
      * @returns Map/dictionary with camera sensor names, indexed by socket
      */
     std::unordered_map<CameraBoardSocket, std::string> getCameraSensorNames();
+
+    /**
+     * Get connected IMU type
+     *
+     * @returns IMU type
+     */
+    std::string getConnectedIMU();
+
+    /**
+     * Get connected IMU firmware version
+     *
+     * @returns IMU firmware version
+     */
+    dai::Version getIMUFirmwareVersion();
+
+    /**
+     * Get embedded IMU firmware version to which IMU can be upgraded
+     *
+     * @returns Get embedded IMU firmware version to which IMU can be upgraded.
+     */
+    dai::Version getEmbeddedIMUFirmwareVersion();
+
+    /**
+     * Starts IMU firmware update asynchronously only if IMU node is not running.
+     * If current firmware version is the same as embedded firmware version then it's no-op. Can be overridden by forceUpdate parameter.
+     * State of firmware update can be monitored using getIMUFirmwareUpdateStatus API.
+     *
+     * @param forceUpdate Force firmware update or not. Will perform FW update regardless of current version and embedded firmware version.
+     *
+     * @returns Returns whether firmware update can be started. Returns false if IMU node is started.
+     */
+    bool startIMUFirmwareUpdate(bool forceUpdate = false);
+
+    /**
+     * Get IMU firmware update status
+     *
+     * @returns Whether IMU firmware update is done and last firmware update progress as percentage.
+     * return value true and 100 means that the update was successful
+     * return value true and other than 100 means that the update failed
+     */
+    std::tuple<bool, float> getIMUFirmwareUpdateStatus();
 
     /**
      * Retrieves current DDR memory information from device
@@ -633,7 +768,7 @@ class DeviceBase {
     /**
      * Fetches the raw EEPROM data from User area
      *
-     * @throws std::runtime_exception if any error occured
+     * @throws std::runtime_exception if any error occurred
      * @returns Binary dump of User area EEPROM data
      */
     std::vector<std::uint8_t> readCalibrationRaw();
@@ -641,7 +776,7 @@ class DeviceBase {
     /**
      * Fetches the raw EEPROM data from Factory area
      *
-     * @throws std::runtime_exception if any error occured
+     * @throws std::runtime_exception if any error occurred
      * @returns Binary dump of Factory area EEPROM data
      */
     std::vector<std::uint8_t> readFactoryCalibrationRaw();
@@ -680,6 +815,10 @@ class DeviceBase {
 
     /**
      * Is the device already closed (or disconnected)
+     *
+     * @warning This function is thread-unsafe and may return outdated incorrect values. It is
+     * only meant for use in simple single-threaded code. Well written code should handle
+     * exceptions when calling any DepthAI apis to handle hardware events and multithreaded use.
      */
     bool isClosed() const;
 
@@ -706,11 +845,6 @@ class DeviceBase {
     void tryStartPipeline(const Pipeline& pipeline);
 
     /**
-     * throws an error if the device has been closed or the watchdog has died
-     */
-    void checkClosed() const;
-
-    /**
      * Allows the derived classes to handle custom setup for starting the pipeline
      *
      * @param pipeline OpenVINO version of the pipeline must match the one which the device was booted with
@@ -728,12 +862,31 @@ class DeviceBase {
      */
     virtual void closeImpl();
 
+   protected:
+    // protected functions
+    void init(OpenVINO::Version version);
+    void init(OpenVINO::Version version, const dai::Path& pathToCmd);
+    void init(OpenVINO::Version version, UsbSpeed maxUsbSpeed);
+    void init(OpenVINO::Version version, bool usb2Mode, const dai::Path& pathToMvcmd);
+    void init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
+    void init(const Pipeline& pipeline);
+    void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed);
+    void init(const Pipeline& pipeline, const dai::Path& pathToCmd);
+    void init(const Pipeline& pipeline, const DeviceInfo& devInfo);
+    void init(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode);
+    void init(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
+    void init(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
+    void init(const Pipeline& pipeline, bool usb2Mode, const dai::Path& pathToMvcmd);
+    void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
+    void init(Config config, bool usb2Mode, const dai::Path& pathToMvcmd);
+    void init(Config config, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
+    void init(Config config, UsbSpeed maxUsbSpeed);
+    void init(Config config, const dai::Path& pathToCmd);
+    void init(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
+    void init(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
+
    private:
     // private functions
-    void init(OpenVINO::Version version, bool usb2Mode, const dai::Path& pathToMvcmd);
-    void init(const Pipeline& pipeline, bool usb2Mode, const dai::Path& pathToMvcmd);
-    void init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
-    void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
     void init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<const Pipeline&> pipeline);
     void tryGetDevice();
 
@@ -757,13 +910,14 @@ class DeviceBase {
     std::thread loggingThread;
     std::atomic<bool> loggingRunning{true};
 
+    // Profiling thread
+    std::thread profilingThread;
+    std::atomic<bool> profilingRunning{true};
+
     // Monitor thread
     std::thread monitorThread;
     std::mutex lastWatchdogPingTimeMtx;
     std::chrono::steady_clock::time_point lastWatchdogPingTime;
-
-    // RPC stream
-    std::unique_ptr<XLinkStream> rpcStream;
 
     // closed
     mutable std::mutex closedMtx;

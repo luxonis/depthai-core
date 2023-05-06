@@ -13,7 +13,7 @@
 #include "depthai-shared/xlink/XLinkConstants.hpp"
 
 // libraries
-#include "spdlog/spdlog.h"
+#include "utility/Logging.hpp"
 
 // Additions
 #include "spdlog/fmt/bin_to_hex.h"
@@ -40,11 +40,11 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                 const auto t2Parse = std::chrono::steady_clock::now();
 
                 // Trace level debugging
-                if(spdlog::get_level() == spdlog::level::trace) {
+                if(logger::get_level() == spdlog::level::trace) {
                     std::vector<std::uint8_t> metadata;
                     DatatypeEnum type;
                     data->getRaw()->serialize(metadata, type);
-                    spdlog::trace("Received message from device ({}) - parsing time: {}, data size: {}, object type: {} object data: {}",
+                    logger::trace("Received message from device ({}) - parsing time: {}, data size: {}, object type: {} object data: {}",
                                   name,
                                   std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
                                   data->getRaw()->data.size(),
@@ -68,7 +68,7 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                         try {
                             callback(name, data);
                         } catch(const std::exception& ex) {
-                            spdlog::error("Callback with id: {} throwed an exception: {}", kv.first, ex.what());
+                            logger::error("Callback with id: {} throwed an exception: {}", kv.first, ex.what());
                         }
                     }
                 }
@@ -83,6 +83,10 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
     });
 }
 
+// This function is thread-unsafe. The idea of "isClosed" is ephemerial and
+// since there is no mutex lock, its state is outdated and invalid even before
+// the logical NOT in this function. This calculated boolean then continues to degrade
+// in validity as it is returned by value to the caller
 bool DataOutputQueue::isClosed() const {
     return !running;
 }
@@ -98,7 +102,7 @@ void DataOutputQueue::close() {
     if((readingThread.get_id() != std::this_thread::get_id()) && readingThread.joinable()) readingThread.join();
 
     // Log
-    spdlog::debug("DataOutputQueue ({}) closed", name);
+    logger::debug("DataOutputQueue ({}) closed", name);
 }
 
 DataOutputQueue::~DataOutputQueue() {
@@ -173,7 +177,7 @@ bool DataOutputQueue::removeCallback(int callbackId) {
 DataInputQueue::DataInputQueue(
     const std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize, bool blocking, std::size_t maxDataSize)
     : queue(maxSize, blocking), name(streamName), maxDataSize(maxDataSize) {
-    // open stream with default XLINK_USB_BUFFER_MAX_SIZE write size
+    // open stream with maxDataSize write size
     XLinkStream stream(std::move(conn), name, maxDataSize + device::XLINK_MESSAGE_METADATA_MAX_SIZE);
 
     writingThread = std::thread([this, stream = std::move(stream)]() mutable {
@@ -192,11 +196,11 @@ DataInputQueue::DataInputQueue(
                 auto t2Parse = std::chrono::steady_clock::now();
 
                 // Trace level debugging
-                if(spdlog::get_level() == spdlog::level::trace) {
+                if(logger::get_level() == spdlog::level::trace) {
                     std::vector<std::uint8_t> metadata;
                     DatatypeEnum type;
                     data->serialize(metadata, type);
-                    spdlog::trace("Sending message to device ({}) - serialize time: {}, data size: {}, object type: {} object data: {}",
+                    logger::trace("Sending message to device ({}) - serialize time: {}, data size: {}, object type: {} object data: {}",
                                   name,
                                   std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
                                   data->data.size(),
@@ -220,6 +224,10 @@ DataInputQueue::DataInputQueue(
     });
 }
 
+// This function is thread-unsafe. The idea of "isClosed" is ephemerial and
+// since there is no mutex lock, its state is outdated and invalid even before
+// the logical NOT in this function. This calculated boolean then continues to degrade
+// in validity as it is returned by value to the caller
 bool DataInputQueue::isClosed() const {
     return !running;
 }
@@ -235,7 +243,7 @@ void DataInputQueue::close() {
     if((writingThread.get_id() != std::this_thread::get_id()) && writingThread.joinable()) writingThread.join();
 
     // Log
-    spdlog::debug("DataInputQueue ({}) closed", name);
+    logger::debug("DataInputQueue ({}) closed", name);
 }
 
 DataInputQueue::~DataInputQueue() {
@@ -266,6 +274,7 @@ unsigned int DataInputQueue::getMaxSize() const {
     return queue.getMaxSize();
 }
 
+// BUGBUG https://github.com/luxonis/depthai-core/issues/762
 void DataInputQueue::setMaxDataSize(std::size_t maxSize) {
     maxDataSize = maxSize;
 }
@@ -288,7 +297,7 @@ void DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg) {
     }
 
     if(!queue.push(rawMsg)) {
-        throw std::runtime_error(fmt::format("Underlying queue destructed"));
+        throw std::runtime_error("Underlying queue destructed");
     }
 }
 void DataInputQueue::send(const std::shared_ptr<ADatatype>& msg) {

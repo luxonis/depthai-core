@@ -94,6 +94,13 @@ class SpatialDetectionNetwork : public NodeCRTP<DetectionNetwork, SpatialDetecti
      * @param calculationAlgorithm Calculation algorithm.
      */
     void setSpatialCalculationAlgorithm(dai::SpatialLocationCalculatorAlgorithm calculationAlgorithm);
+
+    /**
+     * Specifies spatial location calculator step size for depth calculation.
+     * Step size 1 means that every pixel is taken into calculation, size 2 means every second etc.
+     * @param stepSize Step size.
+     */
+    void setSpatialCalculationStepSize(int stepSize);
 };
 
 /**
@@ -105,7 +112,7 @@ class MobileNetSpatialDetectionNetwork : public NodeCRTP<SpatialDetectionNetwork
 };
 
 /**
- * YoloSpatialDetectionNetwork node. (tiny)Yolov3/v4 based network with spatial location data.
+ * YoloSpatialDetectionNetwork node. Yolo-based network with spatial location data.
  */
 class YoloSpatialDetectionNetwork : public NodeCRTP<SpatialDetectionNetwork, YoloSpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:

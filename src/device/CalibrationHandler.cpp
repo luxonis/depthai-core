@@ -15,6 +15,7 @@
 #include "depthai-shared/common/Point3f.hpp"
 #include "nlohmann/json.hpp"
 #include "spdlog/spdlog.h"
+#include "utility/Logging.hpp"
 #include "utility/matrixOps.hpp"
 
 namespace dai {
@@ -94,8 +95,8 @@ CalibrationHandler::CalibrationHandler(dai::Path calibrationDataPath, dai::Path 
     }
 
     nlohmann::json boardConfigData = nlohmann::json::parse(boardConfigStream);
-    CameraBoardSocket left = CameraBoardSocket::LEFT;
-    CameraBoardSocket right = CameraBoardSocket::RIGHT;
+    CameraBoardSocket left = CameraBoardSocket::CAM_B;
+    CameraBoardSocket right = CameraBoardSocket::CAM_C;
 
     if(boardConfigData.contains("board_config")) {
         eepromData.boardName = boardConfigData.at("board_config").at("name").get<std::string>();
@@ -104,13 +105,13 @@ CalibrationHandler::CalibrationHandler(dai::Path calibrationDataPath, dai::Path 
         eepromData.version = 6;
 
         if(!swapLeftRightCam) {
-            right = CameraBoardSocket::LEFT;
-            left = CameraBoardSocket::RIGHT;
+            right = CameraBoardSocket::CAM_B;
+            left = CameraBoardSocket::CAM_C;
         }
 
         eepromData.cameraData[right].specHfovDeg = boardConfigData.at("board_config").at("left_fov_deg").get<float>();
         eepromData.cameraData[left].specHfovDeg = boardConfigData.at("board_config").at("left_fov_deg").get<float>();
-        eepromData.cameraData[CameraBoardSocket::RGB].specHfovDeg = boardConfigData.at("board_config").at("rgb_fov_deg").get<float>();
+        eepromData.cameraData[CameraBoardSocket::CAM_A].specHfovDeg = boardConfigData.at("board_config").at("rgb_fov_deg").get<float>();
 
         eepromData.cameraData[left].extrinsics.specTranslation.x = -boardConfigData.at("board_config").at("left_to_right_distance_cm").get<float>();
         eepromData.cameraData[left].extrinsics.specTranslation.y = 0;
@@ -143,11 +144,11 @@ CalibrationHandler::CalibrationHandler(dai::Path calibrationDataPath, dai::Path 
 
     eepromData.cameraData[left].intrinsicMatrix = matrixConv(calibrationBuff, 18);
     eepromData.cameraData[right].intrinsicMatrix = matrixConv(calibrationBuff, 27);
-    eepromData.cameraData[CameraBoardSocket::RGB].intrinsicMatrix = matrixConv(calibrationBuff, 48);  // 9*5 + 3
+    eepromData.cameraData[CameraBoardSocket::CAM_A].intrinsicMatrix = matrixConv(calibrationBuff, 48);  // 9*5 + 3
 
     eepromData.cameraData[left].cameraType = CameraModel::Perspective;
     eepromData.cameraData[right].cameraType = CameraModel::Perspective;
-    eepromData.cameraData[CameraBoardSocket::RGB].cameraType = CameraModel::Perspective;  // 9*5 + 3
+    eepromData.cameraData[CameraBoardSocket::CAM_A].cameraType = CameraModel::Perspective;  // 9*5 + 3
 
     eepromData.cameraData[left].width = 1280;
     eepromData.cameraData[left].height = 800;
@@ -155,12 +156,12 @@ CalibrationHandler::CalibrationHandler(dai::Path calibrationDataPath, dai::Path 
     eepromData.cameraData[right].width = 1280;
     eepromData.cameraData[right].height = 800;
 
-    eepromData.cameraData[CameraBoardSocket::RGB].width = 1920;
-    eepromData.cameraData[CameraBoardSocket::RGB].height = 1080;
+    eepromData.cameraData[CameraBoardSocket::CAM_A].width = 1920;
+    eepromData.cameraData[CameraBoardSocket::CAM_A].height = 1080;
 
     eepromData.cameraData[left].distortionCoeff = std::vector<float>(calibrationBuff.begin() + 69, calibrationBuff.begin() + 83);  // 69 + 14
     eepromData.cameraData[right].distortionCoeff = std::vector<float>(calibrationBuff.begin() + 83, calibrationBuff.begin() + 69 + (2 * 14));
-    eepromData.cameraData[CameraBoardSocket::RGB].distortionCoeff =
+    eepromData.cameraData[CameraBoardSocket::CAM_A].distortionCoeff =
         std::vector<float>(calibrationBuff.begin() + 69 + (2 * 14), calibrationBuff.begin() + 69 + (3 * 14));
 
     eepromData.cameraData[left].extrinsics.rotationMatrix = matrixConv(calibrationBuff, 36);
@@ -171,7 +172,7 @@ CalibrationHandler::CalibrationHandler(dai::Path calibrationDataPath, dai::Path 
     eepromData.cameraData[left].extrinsics.translation.z = calibrationBuff[47];
 
     eepromData.cameraData[right].extrinsics.rotationMatrix = matrixConv(calibrationBuff, 57);
-    eepromData.cameraData[right].extrinsics.toCameraSocket = CameraBoardSocket::RGB;
+    eepromData.cameraData[right].extrinsics.toCameraSocket = CameraBoardSocket::CAM_A;
 
     eepromData.cameraData[right].extrinsics.translation.x = -calibrationBuff[66];
     eepromData.cameraData[right].extrinsics.translation.y = -calibrationBuff[67];
@@ -192,8 +193,8 @@ CalibrationHandler::CalibrationHandler(dai::Path calibrationDataPath, dai::Path 
     camera.extrinsics.rotationMatrix[2][1] = temp;
 }
 
-CalibrationHandler::CalibrationHandler(EepromData eepromData) {
-    this->eepromData = eepromData;
+CalibrationHandler::CalibrationHandler(EepromData newEepromData) {
+    eepromData = newEepromData;
 }
 
 dai::EepromData CalibrationHandler::getEepromData() const {
@@ -741,10 +742,10 @@ void CalibrationHandler::setStereoRight(CameraBoardSocket cameraId, std::vector<
 
 bool CalibrationHandler::validateCameraArray() const {
     if(eepromData.cameraData.size() > 1) {
-        if(eepromData.cameraData.find(dai::CameraBoardSocket::LEFT) != eepromData.cameraData.end()) {
-            return checkSrcLinks(dai::CameraBoardSocket::LEFT) || checkSrcLinks(dai::CameraBoardSocket::RIGHT);
+        if(eepromData.cameraData.find(dai::CameraBoardSocket::CAM_B) != eepromData.cameraData.end()) {
+            return checkSrcLinks(dai::CameraBoardSocket::CAM_B) || checkSrcLinks(dai::CameraBoardSocket::CAM_C);
         } else {
-            spdlog::debug(
+            logger::debug(
                 "make sure the head of the Extrinsics is your left camera. Please cross check the data by creating a json file using "
                 "eepromToJsonFile(). ");
             return false;
@@ -760,14 +761,14 @@ bool CalibrationHandler::checkSrcLinks(CameraBoardSocket headSocket) const {
 
     while(headSocket != CameraBoardSocket::AUTO) {
         if(eepromData.cameraData.find(headSocket) == eepromData.cameraData.end()) {
-            spdlog::debug(
+            logger::debug(
                 "Found link to a CameraID whose camera calibration is not loaded. Please cross check the connection by creating a json file using "
                 "eepromToJsonFile(). ");
             isConnectionValidated = false;
             break;
         }
         if(marked.find(headSocket) != marked.end()) {
-            spdlog::debug(
+            logger::debug(
                 "Loop found in extrinsics connection. Please cross check that the extrinsics are connected in an array in single direction by creating "
                 "a json file using eepromToJsonFile(). ");
             isConnectionValidated = false;
@@ -779,7 +780,7 @@ bool CalibrationHandler::checkSrcLinks(CameraBoardSocket headSocket) const {
 
     if(isConnectionValidated && eepromData.cameraData.size() != marked.size()) {
         isConnectionValidated = false;
-        spdlog::debug("Extrinsics between all the cameras is not found with single head and a tail");
+        logger::debug("Extrinsics between all the cameras is not found with single head and a tail");
     }
     return isConnectionValidated;
 }

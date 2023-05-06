@@ -11,7 +11,7 @@
 namespace dai {
 /**
  * CalibrationHandler is an interface to read/load/write structured calibration and device data.
- * The following fields are protected and aren't allowed to be overriden by default:
+ * The following fields are protected and aren't allowed to be overridden by default:
  *  - boardName
  *  - boardRev
  *  - boardConf
@@ -73,7 +73,7 @@ class CalibrationHandler {
      * respective cropped image
      * @param bottomRightPixelId (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
      * the respective cropped image
-     * @param keepAspectRatio Enabling this will scale on width or height depending on which provides the max resolution and crops the remaning part of the
+     * @param keepAspectRatio Enabling this will scale on width or height depending on which provides the max resolution and crops the remaining part of the
      * other side
      * @return Represents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      *
@@ -101,7 +101,7 @@ class CalibrationHandler {
      * respective cropped image
      * @param bottomRightPixelId (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
      * the respective cropped image
-     * @param keepAspectRatio Enabling this will scale on width or height depending on which provides the max resolution and crops the remaning part of the
+     * @param keepAspectRatio Enabling this will scale on width or height depending on which provides the max resolution and crops the remaining part of the
      * other side
      * @return Represents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      *
@@ -128,7 +128,7 @@ class CalibrationHandler {
      * respective cropped image
      * @param bottomRightPixelId (x, y) point represents the bottom right corner coordinates of the cropped image which is used to modify the intrinsics for
      * the respective cropped image
-     * @param keepAspectRatio Enabling this will scale on width or height depending on which provides the max resolution and crops the remaning part of the
+     * @param keepAspectRatio Enabling this will scale on width or height depending on which provides the max resolution and crops the remaining part of the
      * other side
      * @return Represents the 3x3 intrinsics matrix of the respective camera at the requested size and crop dimensions.
      *
@@ -226,16 +226,16 @@ class CalibrationHandler {
     std::vector<float> getCameraTranslationVector(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = true) const;
 
     /**
-     * Get the baseline distance between two specified cameras. By default it will get the baseline between CameraBoardSocket.RIGHT
-     * and CameraBoardSocket.LEFT.
+     * Get the baseline distance between two specified cameras. By default it will get the baseline between CameraBoardSocket.CAM_C
+     * and CameraBoardSocket.CAM_B.
      *
      * @param cam1 First camera
      * @param cam2 Second camera
      * @param useSpecTranslation Enabling this bool uses the translation information from the board design data (not the calibration data)
      * @return baseline distance in centimeters
      */
-    float getBaselineDistance(CameraBoardSocket cam1 = CameraBoardSocket::RIGHT,
-                              CameraBoardSocket cam2 = CameraBoardSocket::LEFT,
+    float getBaselineDistance(CameraBoardSocket cam1 = CameraBoardSocket::CAM_C,
+                              CameraBoardSocket cam2 = CameraBoardSocket::CAM_B,
                               bool useSpecTranslation = true) const;
 
     /**

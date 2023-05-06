@@ -72,9 +72,7 @@ class FeatureTrackerDrawer {
         }
     }
 
-    FeatureTrackerDrawer(std::string trackbarName, std::string windowName) {
-        this->trackbarName = trackbarName;
-        this->windowName = windowName;
+    FeatureTrackerDrawer(std::string trackbarName, std::string windowName) : trackbarName(trackbarName), windowName(windowName) {
         cv::namedWindow(windowName.c_str());
         cv::createTrackbar(trackbarName.c_str(), windowName.c_str(), &trackedFeaturesPathLength, maxTrackedFeaturesPathLength, nullptr);
     }
@@ -108,9 +106,9 @@ int main() {
 
     // Properties
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    monoLeft->setCamera("left");
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    monoRight->setCamera("right");
 
     // Linking
     monoLeft->out.link(featureTrackerLeft->inputImage);
