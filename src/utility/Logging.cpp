@@ -3,23 +3,22 @@
 namespace dai {
 
 Logging::Logging() : logger("depthai", {std::make_shared<spdlog::sinks::stdout_color_sink_mt>()}) {
-    // Set global logging level from ENV variable 'DEPTHAI_LEVEL'
+    // Default global logging level set to WARN; override with ENV variable 'DEPTHAI_LEVEL'
     // Taken from spdlog, to replace with DEPTHAI_LEVEL instead of SPDLOG_LEVEL
     // spdlog::cfg::load_env_levels();
+    auto level = spdlog::level::warn;
     auto envLevel = utility::getEnv("DEPTHAI_LEVEL", logger);
     if(!envLevel.empty()) {
-        logger.set_level(parseLevel(envLevel));
-    } else {
-        // Otherwise set default level to WARN
-        logger.set_level(spdlog::level::warn);
+        level = parseLevel(envLevel);
     }
+    logger.set_level(level);
 
     auto debugStr = utility::getEnv("DEPTHAI_DEBUG", logger);
     if(!debugStr.empty()) {
         // Try parsing the string as a number
         try {
             int debug{std::stoi(debugStr)};
-            if(debug && (logger::get_level() > spdlog::level::debug)) {
+            if(debug && (level > spdlog::level::debug)) {
                 logger.set_level(spdlog::level::debug);
                 logger.info("DEPTHAI_DEBUG enabled, lowered DEPTHAI_LEVEL to 'debug'");
             }
