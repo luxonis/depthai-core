@@ -191,6 +191,23 @@ CameraControl& CameraControl::setEffectMode(EffectMode mode) {
     return *this;
 }
 
+CameraControl& CameraControl::setMisc(std::string control, std::string value) {
+    cfg.miscControls.push_back(std::make_pair(control, value));
+    return *this;
+}
+CameraControl& CameraControl::setMisc(std::string control, int value) {
+    return setMisc(control, std::to_string(value));
+}
+CameraControl& CameraControl::setMisc(std::string control, float value) {
+    return setMisc(control, std::to_string(value));
+}
+void CameraControl::clearMiscControls() {
+    cfg.miscControls.clear();
+}
+std::vector<std::pair<std::string, std::string>> CameraControl::getMiscControls() {
+    return cfg.miscControls;
+}
+
 bool CameraControl::getCaptureStill() const {
     return cfg.getCommand(RawCameraControl::Command::STILL_CAPTURE);
 }
