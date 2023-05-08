@@ -46,10 +46,27 @@ unsigned int ImgFrame::getWidth() const {
     return img.fb.width;
 }
 unsigned int ImgFrame::getStride() const {
+    if(img.fb.stride == 0) return getWidth();
     return img.fb.stride;
+}
+unsigned int ImgFrame::getPlaneStride(int planeIndex) const {
+    int planeStride = 0;
+    switch(planeIndex) {
+        case 0:
+            planeStride = img.fb.p2Offset - img.fb.p1Offset;
+            break;
+        case 1:
+            planeStride = img.fb.p3Offset - img.fb.p2Offset;
+            break;
+    }
+    if(planeStride <= 0) planeStride = getStride() * getHeight();
+    return planeStride;
 }
 unsigned int ImgFrame::getHeight() const {
     return img.fb.height;
+}
+unsigned int ImgFrame::getPlaneHeight() const {
+    return getPlaneStride() / getStride();
 }
 RawImgFrame::Type ImgFrame::getType() const {
     return img.fb.type;

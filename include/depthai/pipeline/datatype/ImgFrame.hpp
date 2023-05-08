@@ -74,14 +74,26 @@ class ImgFrame : public Buffer {
     unsigned int getWidth() const;
 
     /**
-     * Retrieves image stride in pixels
+     * Retrieves image line stride in bytes
      */
     unsigned int getStride() const;
+
+    /**
+     * Retrieves image plane stride (offset to next plane) in bytes
+     *
+     * @param current plane index, 0 or 1
+     */
+    unsigned int getPlaneStride(int planeIndex = 0) const;
 
     /**
      * Retrieves image height in pixels
      */
     unsigned int getHeight() const;
+
+    /**
+     * Retrieves image plane height in lines
+     */
+    unsigned int getPlaneHeight() const;
 
     /**
      * Retrieves source image width in pixels
