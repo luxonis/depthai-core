@@ -516,5 +516,61 @@ int ColorCamera::getIspNumFramesPool() {
     return properties.numFramesPoolIsp;
 }
 
+void ColorCamera::setMeshSource(ColorCamera::Properties::WarpMeshSource source) {
+    properties.warpMeshSource = source;
+}
+ColorCamera::Properties::WarpMeshSource ColorCamera::getMeshSource() const {
+    return properties.warpMeshSource;
+}
+
+void ColorCamera::loadMeshData(const std::vector<std::uint8_t> data) {
+    if(data.size() <= 0) {
+        throw std::runtime_error("Camera | mesh data must not be empty");
+    }
+
+    Asset meshAsset;
+    std::string assetKey;
+    meshAsset.alignment = 64;
+
+    meshAsset.data = data;
+    assetKey = "warpMesh";
+    properties.warpMeshUri = assetManager.set(assetKey, meshAsset)->getRelativeUri();
+
+    setMeshSource(ColorCamera::Properties::WarpMeshSource::URI);
+}
+
+// void ColorCamera::loadMeshFile(const dai::Path& warpMesh) {
+//     std::ifstream streamMesh(warpMesh, std::ios::binary);
+//     if(!streamMesh.is_open()) {
+//         throw std::runtime_error(fmt::format("Camera | Cannot open mesh at path: {}", warpMesh.u8string()));
+//     }
+//     std::vector<std::uint8_t> data = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(streamMesh), {});
+
+//     loadMeshData(data);
+// }
+
+void ColorCamera::setMeshStep(int width, int height) {
+    properties.warpMeshStepWidth = width;
+    properties.warpMeshStepHeight = height;
+}
+void ColorCamera::setMeshSize(int width, int height) {
+    properties.warpMeshWidth = width;
+    properties.warpMeshHeight = height;
+}
+std::tuple<int, int> ColorCamera::getMeshStep() const {
+    return {properties.warpMeshStepWidth, properties.warpMeshStepHeight};
+}
+std::tuple<int, int> ColorCamera::getMeshSize() const {
+    return {properties.warpMeshWidth, properties.warpMeshHeight};
+}
+
+void ColorCamera::setCalibrationAlpha(float alpha) {
+    properties.calibAlpha = alpha;
+}
+
+float ColorCamera::getCalibrationAlpha() const {
+    return properties.calibAlpha;
+}
+
 }  // namespace node
 }  // namespace dai
