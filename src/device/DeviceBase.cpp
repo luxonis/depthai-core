@@ -1106,13 +1106,12 @@ std::vector<std::tuple<std::string, int, int>> DeviceBase::getIrDrivers() {
     return pimpl->rpcClient->call("getIrDrivers");
 }
 
-dai::CrashDump DeviceBase::getCrashDump() {
-    return pimpl->rpcClient->call("getCrashDump").as<dai::CrashDump>();
+dai::CrashDump DeviceBase::getCrashDump(bool clearCrashDump) {
+    return pimpl->rpcClient->call("getCrashDump", clearCrashDump).as<dai::CrashDump>();
 }
 
 bool DeviceBase::hasCrashDump() {
-    dai::CrashDump crashDump = getCrashDump();
-    return !crashDump.crashReports.empty();
+    return pimpl->rpcClient->call("hasCrashDump").as<bool>();
 }
 
 ProfilingData DeviceBase::getProfilingData() {
