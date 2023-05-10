@@ -21,8 +21,9 @@ namespace dai {
 class BaseTransformation {
    protected:
     RawImgTransformation rawImgTransformation;
+
    public:
-    BaseTransformation(RawImgTransformation rawImgTransformation) : rawImgTransformation(rawImgTransformation) {};
+    BaseTransformation(RawImgTransformation rawImgTransformation) : rawImgTransformation(rawImgTransformation){};
     virtual dai::Point2f trans(dai::Point2f point) = 0;
     virtual dai::Point2f invTrans(dai::Point2f point) = 0;
     virtual ~BaseTransformation() = default;
@@ -45,7 +46,6 @@ class PadTransformation : public BaseTransformation {
     dai::Point2f trans(dai::Point2f point);
     dai::Point2f invTrans(dai::Point2f point);
 };
-
 
 class FlipTransformation : public BaseTransformation {
     using BaseTransformation::BaseTransformation;
@@ -349,13 +349,12 @@ class ImgFrame : public Buffer {
      */
     dai::Point2f transformPointToSource(dai::Point2f point);
 
-
     /**
      * Transform a rectangle from the source frame to the current frame
      *
      * @param rect rectangle to transform
      * @returns transformed rectangle
-    */
+     */
     dai::Rect transformRectFromSource(dai::Rect rect);
 
     /**
@@ -363,15 +362,15 @@ class ImgFrame : public Buffer {
      *
      * @param rect rectangle to transform
      * @returns transformed rectangle
-    */
+     */
     dai::Rect transformRectToSource(dai::Rect rect);
 
     /**
-    * @note Fov API works correctly only on rectilinear frames
-    * Set the source horizontal field of view
-    *
-    * @param degrees field of view in degrees
-    */
+     * @note Fov API works correctly only on rectilinear frames
+     * Set the source horizontal field of view
+     *
+     * @param degrees field of view in degrees
+     */
     ImgFrame& setSourceHFov(float degrees);
 
     /**

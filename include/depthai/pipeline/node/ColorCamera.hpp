@@ -370,8 +370,6 @@ class ColorCamera : public NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperti
     void setCalibrationAlpha(float alpha);
     /// Get calibration alpha parameter that determines FOV of undistorted frames
     float getCalibrationAlpha() const;
-
-
 };
 
 }  // namespace node

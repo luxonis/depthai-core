@@ -18,7 +18,12 @@ namespace node {
 class DetectionNetwork : public NodeGroup {
    public:
     void build();
-    DetectionNetwork() : out{detectionParser->out}, outNetwork{neuralNetwork->out}, input{neuralNetwork->input}, passthrough{neuralNetwork->passthrough}, outSegmentation{detectionParser->outSegmentation} {};
+    DetectionNetwork()
+        : out{detectionParser->out},
+          outNetwork{neuralNetwork->out},
+          input{neuralNetwork->input},
+          passthrough{neuralNetwork->passthrough},
+          outSegmentation{detectionParser->outSegmentation} {};
 
    public:
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
@@ -51,7 +56,6 @@ class DetectionNetwork : public NodeGroup {
      * Outputs image frame segmentation
      */
     Output& outSegmentation;
-
 
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**

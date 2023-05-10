@@ -237,7 +237,7 @@ ImgFrame& ImgFrame::transformSetPadding(float topPadding, float bottomPadding, f
     // Add the transformation
     img.transformations.push_back(padTransformation);
     transformations.emplace_back(std::make_shared<PadTransformation>(padTransformation));
-    if(setImageDimensions){
+    if(setImageDimensions) {
         // Set image size
         setWidth(getWidth() / (1 - padTransformation.leftPadding - padTransformation.rightPadding));
         setHeight(getHeight() / (1 - padTransformation.bottomPadding - padTransformation.topPadding));
@@ -434,10 +434,10 @@ float ImgFrame::getSourceDFov() {
     float sourceWidth = getSourceWidth();
     float sourceHeight = getSourceHeight();
 
-    if(sourceHeight <= 0){
+    if(sourceHeight <= 0) {
         throw std::runtime_error(fmt::format("Source height is invalid. Height: {}", sourceHeight));
     }
-    if(sourceWidth <= 0){
+    if(sourceWidth <= 0) {
         throw std::runtime_error(fmt::format("Source width is invalid. Width: {}", sourceWidth));
     }
     float HFovDegrees = getSourceHFov();
@@ -446,7 +446,7 @@ float ImgFrame::getSourceDFov() {
     float dr = std::sqrt(std::pow(sourceWidth, 2) + std::pow(sourceHeight, 2));
 
     // Validate the horizontal FOV
-    if(HFovDegrees <= 0 || HFovDegrees >= 180){
+    if(HFovDegrees <= 0 || HFovDegrees >= 180) {
         throw std::runtime_error(fmt::format("Horizontal FOV is invalid. Horizontal FOV: {}", HFovDegrees));
     }
 
@@ -472,16 +472,16 @@ float ImgFrame::getSourceVFov() {
     float sourceWidth = getSourceWidth();
     float sourceHeight = getSourceHeight();
 
-    if(sourceHeight <= 0){
+    if(sourceHeight <= 0) {
         throw std::runtime_error(fmt::format("Source height is invalid. Height: {}", sourceHeight));
     }
-    if(sourceWidth <= 0){
+    if(sourceWidth <= 0) {
         throw std::runtime_error(fmt::format("Source width is invalid. Width: {}", sourceWidth));
     }
     float HFovDegrees = getSourceHFov();
 
     // Validate the horizontal FOV
-    if(HFovDegrees <= 0 || HFovDegrees >= 180){
+    if(HFovDegrees <= 0 || HFovDegrees >= 180) {
         throw std::runtime_error(fmt::format("Horizontal FOV is invalid. Horizontal FOV: {}", HFovDegrees));
     }
 

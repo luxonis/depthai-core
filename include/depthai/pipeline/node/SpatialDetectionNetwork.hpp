@@ -19,11 +19,23 @@ namespace node {
  */
 class SpatialDetectionNetwork : public NodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
-    SpatialDetectionNetwork() : input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough}, outSegmentation{detectionParser->outSegmentation} {};
+    SpatialDetectionNetwork()
+        : input{neuralNetwork->input},
+          outNetwork{neuralNetwork->out},
+          passthrough{neuralNetwork->passthrough},
+          outSegmentation{detectionParser->outSegmentation} {};
     SpatialDetectionNetwork(std::unique_ptr<Properties> props)
-        : NodeCRTP(std::move(props)), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough}, outSegmentation{detectionParser->outSegmentation} {};
+        : NodeCRTP(std::move(props)),
+          input{neuralNetwork->input},
+          outNetwork{neuralNetwork->out},
+          passthrough{neuralNetwork->passthrough},
+          outSegmentation{detectionParser->outSegmentation} {};
     SpatialDetectionNetwork(std::unique_ptr<Properties> props, bool confMode)
-        : NodeCRTP(std::move(props), confMode), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough}, outSegmentation{detectionParser->outSegmentation} {};
+        : NodeCRTP(std::move(props), confMode),
+          input{neuralNetwork->input},
+          outNetwork{neuralNetwork->out},
+          passthrough{neuralNetwork->passthrough},
+          outSegmentation{detectionParser->outSegmentation} {};
 
     constexpr static const char* NAME = "SpatialDetectionNetwork";
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
@@ -74,7 +86,7 @@ class SpatialDetectionNetwork : public NodeCRTP<DeviceNode, SpatialDetectionNetw
 
     /**
      * Input mask
-    */
+     */
     Input inputMask{true, *this, "inputMask", Input::Type::SReceiver, true, 1, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
