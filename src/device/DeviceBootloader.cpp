@@ -220,7 +220,7 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(
     for(std::size_t i = 0; i < assetStorage.size(); i++) fwPackage[assetStorageSection->offset + i] = assetStorage[i];
 
     // Debug
-    if(logger::get_level() == spdlog::level::debug) {
+    if(logger::get_level() <= spdlog::level::debug) {
         SBR_SECTION* cur = &sbr.sections[0];
         logger::debug("DepthAI Application Package");
         for(; cur != lastSection + 1; cur++) {

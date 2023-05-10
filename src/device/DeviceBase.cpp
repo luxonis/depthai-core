@@ -667,7 +667,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     }
 
     // Get embedded mvcmd or external with applied config
-    if(logger::get_level() == spdlog::level::debug) {
+    if(logger::get_level() <= spdlog::level::debug) {
         nlohmann::json jBoardConfig = config.board;
         pimpl->logger.debug("Device - BoardConfig: {} \nlibnop:{}", jBoardConfig.dump(), spdlog::to_hex(utility::serialize(config.board)));
     }
