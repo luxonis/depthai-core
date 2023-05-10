@@ -311,7 +311,7 @@ void XLinkConnection::close() {
 
         const auto ret = XLinkResetRemoteTimeout(deviceLinkId, static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(RESET_TIMEOUT).count()));
         if(ret != X_LINK_SUCCESS) {
-            logger::debug("XLinkResetRemoteTimeout returned: {}", XLinkErrorToStr(ret));
+            logger::debug("XLinkResetRemoteTimeout({}) returned: {}", previousLinkId, XLinkErrorToStr(ret));
         }
 
         deviceLinkId = -1;
@@ -322,19 +322,29 @@ void XLinkConnection::close() {
         // Only in case if device was booted to begin with
         if(bootDevice) {
             const auto t1 = steady_clock::now();
-            bool found = false;
-            do {
+            while(true) {
+                bool found = false;
                 DeviceInfo rebootingDeviceInfo;
                 std::tie(found, rebootingDeviceInfo) = XLinkConnection::getDeviceByMxId(deviceInfo.getMxId(), X_LINK_ANY_STATE, false);
-                if(found) {
-                    if(rebootingDeviceInfo.state == X_LINK_UNBOOTED || rebootingDeviceInfo.state == X_LINK_BOOTLOADER) {
-                        break;
-                    }
+                if(found && (rebootingDeviceInfo.state == X_LINK_UNBOOTED || rebootingDeviceInfo.state == X_LINK_BOOTLOADER)) {
+                    break;
                 }
-            } while(!found && steady_clock::now() - t1 < BOOTUP_SEARCH);
+                if(steady_clock::now() - t1 >= BOOTUP_SEARCH) {
+                    if(found) {
+                        logger::debug("XLinkResetRemoteTimeout({}) post-reboot({}s) unusable state {}",
+                                      previousLinkId,
+                                      BOOTUP_SEARCH.count(),
+                                      rebootingDeviceInfo.toString());
+                    } else {
+                        logger::debug("XLinkResetRemoteTimeout({}) post-reboot({}s) can't find device", previousLinkId, BOOTUP_SEARCH.count());
+                    }
+                    break;
+                }
+                std::this_thread::sleep_for(POLLING_DELAY_TIME);
+            };
         }
 
-        logger::debug("XLinkResetRemote of linkId: ({})", previousLinkId);
+        logger::debug("XLinkResetRemoteTimeout({})", previousLinkId);
     }
 }
 
