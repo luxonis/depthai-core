@@ -25,10 +25,9 @@ void XLinkGlobalProfilingLogger::enable(bool en) {
                 XLinkProf_t prof;
                 XLinkGetGlobalProfilingData(&prof);
 
-                long long w = prof.totalWriteBytes - lastProf.totalWriteBytes;
-                long long r = prof.totalReadBytes - lastProf.totalReadBytes;
-                w /= rate.load();
-                r /= rate.load();
+                const auto rateSnapshot = rate.load();
+                const float w = (prof.totalWriteBytes - lastProf.totalWriteBytes) / rateSnapshot;
+                const float r = (prof.totalReadBytes - lastProf.totalReadBytes) / rateSnapshot;
 
                 logger::debug("Profiling global write speed: {:.2f} MiB/s, read speed: {:.2f} MiB/s, total written: {:.2f} MiB, read: {:.2f} MiB",
                               w / 1024.0f / 1024.0f,
@@ -36,8 +35,8 @@ void XLinkGlobalProfilingLogger::enable(bool en) {
                               prof.totalWriteBytes / 1024.0f / 1024.0f,
                               prof.totalReadBytes / 1024.0f / 1024.0f);
 
-                lastProf = prof;
-                this_thread::sleep_for(duration<float>(1) / rate.load());
+                lastProf = std::move(prof);
+                this_thread::sleep_for(duration<float>(1) / rateSnapshot);
             }
         });
     }

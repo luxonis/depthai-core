@@ -908,10 +908,8 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
                 float rate = 1.0f;
                 while(profilingRunning) {
                     ProfilingData data = getProfilingData();
-                    float w = (data.numBytesWritten - lastData.numBytesWritten) / rate;
-                    float r = (data.numBytesRead - lastData.numBytesRead) / rate;
-
-                    lastData = data;
+                    const float w = (data.numBytesWritten - lastData.numBytesWritten) / rate;
+                    const float r = (data.numBytesRead - lastData.numBytesRead) / rate;
 
                     pimpl->logger.debug("Profiling write speed: {:.2f} MiB/s, read speed: {:.2f} MiB/s, total written: {:.2f} MiB, read: {:.2f} MiB",
                                         w / 1024.0f / 1024.0f,
@@ -919,6 +917,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
                                         data.numBytesWritten / 1024.0f / 1024.0f,
                                         data.numBytesRead / 1024.0f / 1024.0f);
 
+                    lastData = std::move(data);
                     std::this_thread::sleep_for(duration<float>(1) / rate);
                 }
             } catch(const std::exception& ex) {
