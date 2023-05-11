@@ -1387,9 +1387,6 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
         t1.join();
     }
 
-    // print assets on device side for test
-    pimpl->rpcClient->call("printAssets");
-
     // Build and start the pipeline
     bool success = false;
     std::string errorMsg;
