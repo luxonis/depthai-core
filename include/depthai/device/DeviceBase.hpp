@@ -512,7 +512,7 @@ class DeviceBase {
     /**
      * Retrieves crash dump for debugging.
      */
-    dai::CrashDump getCrashDump();
+    dai::CrashDump getCrashDump(bool clearCrashDump = true);
 
     /**
      * Retrieves whether the is crash dump stored on device or not.
