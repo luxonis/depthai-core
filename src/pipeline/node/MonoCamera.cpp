@@ -160,5 +160,9 @@ int MonoCamera::getRawNumFramesPool() const {
     return properties.numFramesPoolRaw;
 }
 
+void MonoCamera::setRawOutputPacked(bool packed) {
+    properties.rawPacked = packed;
+}
+
 }  // namespace node
 }  // namespace dai
