@@ -16,7 +16,6 @@
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
-#include "depthai/pipeline/datatype/ToFConfig.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
@@ -27,6 +26,7 @@
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorData.hpp"
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/pipeline/datatype/SystemInformation.hpp"
+#include "depthai/pipeline/datatype/ToFConfig.hpp"
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 
@@ -38,7 +38,6 @@
 #include "depthai-shared/datatype/RawCameraControl.hpp"
 #include "depthai-shared/datatype/RawEdgeDetectorConfig.hpp"
 #include "depthai-shared/datatype/RawFeatureTrackerConfig.hpp"
-#include "depthai-shared/datatype/RawToFConfig.hpp"
 #include "depthai-shared/datatype/RawIMUData.hpp"
 #include "depthai-shared/datatype/RawImageManipConfig.hpp"
 #include "depthai-shared/datatype/RawImgDetections.hpp"
@@ -49,6 +48,7 @@
 #include "depthai-shared/datatype/RawSpatialLocations.hpp"
 #include "depthai-shared/datatype/RawStereoDepthConfig.hpp"
 #include "depthai-shared/datatype/RawSystemInformation.hpp"
+#include "depthai-shared/datatype/RawToFConfig.hpp"
 #include "depthai-shared/datatype/RawTracklets.hpp"
 #include "depthai-shared/utility/Serialization.hpp"
 

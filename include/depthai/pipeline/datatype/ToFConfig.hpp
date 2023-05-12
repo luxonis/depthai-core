@@ -26,7 +26,6 @@ class ToFConfig : public Buffer {
     explicit ToFConfig(std::shared_ptr<RawToFConfig> ptr);
     virtual ~ToFConfig() = default;
 
-
     ToFConfig& setDepthParams(dai::ToFConfig::DepthParams config);
     ToFConfig& setFreqModUsed(dai::ToFConfig::DepthParams::TypeFMod fmod);
     ToFConfig& setAvgPhaseShuffle(bool enable);

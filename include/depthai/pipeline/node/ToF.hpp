@@ -4,6 +4,7 @@
 
 // shared
 #include <depthai-shared/properties/ToFProperties.hpp>
+
 #include "depthai/pipeline/datatype/ToFConfig.hpp"
 
 namespace dai {
@@ -19,7 +20,7 @@ class ToF : public NodeCRTP<Node, ToF, ToFProperties> {
    protected:
     Properties& getProperties();
 
-    private:
+   private:
     std::shared_ptr<RawToFConfig> rawConfig;
 
     /**
@@ -39,7 +40,7 @@ class ToF : public NodeCRTP<Node, ToF, ToFProperties> {
      * Default queue is non-blocking with size 4.
      */
     Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ToFConfig, false}}};
- 
+
     Input input{*this, "input", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
@@ -47,7 +48,7 @@ class ToF : public NodeCRTP<Node, ToF, ToFProperties> {
      */
     Output depth{*this, "depth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
     Output amplitude{*this, "amplitude", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
-    Output error{*this, "error", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};  
+    Output error{*this, "error", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
 };
 
 }  // namespace node
