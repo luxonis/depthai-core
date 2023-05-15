@@ -23,7 +23,7 @@ namespace dai {
 // Common explicit instantiation, to remove the need to define in header
 constexpr std::size_t Device::EVENT_QUEUE_MAXIMUM_SIZE;
 
-Device::Device(const Pipeline& pipeline) : DeviceBase(pipeline.getOpenVINOVersion()) {
+Device::Device(const Pipeline& pipeline) : DeviceBase(pipeline.getDeviceConfig()) {
     tryStartPipeline(pipeline);
 }
 
@@ -50,12 +50,12 @@ Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::P
 }
 
 template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool>>
-Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, T usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, usb2Mode) {
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, T usb2Mode) : DeviceBase(pipeline.getDeviceConfig(), devInfo, usb2Mode) {
     tryStartPipeline(pipeline);
 }
 template Device::Device(const Pipeline&, const DeviceInfo&, bool);
 
-Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, maxUsbSpeed) {
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : DeviceBase(pipeline.getDeviceConfig(), devInfo, maxUsbSpeed) {
     tryStartPipeline(pipeline);
 }
 
