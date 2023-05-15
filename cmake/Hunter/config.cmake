@@ -7,9 +7,9 @@ hunter_config(
 
 hunter_config(
     XLink
-    VERSION "luxonis-2021.4.2-develop"
-    URL "https://github.com/luxonis/XLink/archive/88d81da8f0f5c1c6e79b9ff7d94f335ce16e036a.tar.gz"
-    SHA1 "742fcf047079b91c29f671b2ce3c59f57d35cdf2"
+    VERSION "diablodale-2021.4.2-develop"
+    URL "https://github.com/diablodale/XLink/archive/bdab3a0dd952fd09d08e8b9ea2ed7c6c5b20fcd5.tar.gz"
+    SHA1 "7afab05925b670d5dc0e626cc9bebe0df245d02b"
 )
 
 hunter_config(
