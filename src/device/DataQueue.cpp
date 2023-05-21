@@ -13,7 +13,7 @@
 #include "depthai-shared/xlink/XLinkConstants.hpp"
 
 // libraries
-#include "spdlog/spdlog.h"
+#include "utility/Logging.hpp"
 
 // Additions
 #include "spdlog/fmt/bin_to_hex.h"
@@ -40,11 +40,11 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                 const auto t2Parse = std::chrono::steady_clock::now();
 
                 // Trace level debugging
-                if(spdlog::get_level() == spdlog::level::trace) {
+                if(logger::get_level() == spdlog::level::trace) {
                     std::vector<std::uint8_t> metadata;
                     DatatypeEnum type;
                     data->getRaw()->serialize(metadata, type);
-                    spdlog::trace("Received message from device ({}) - parsing time: {}, data size: {}, object type: {} object data: {}",
+                    logger::trace("Received message from device ({}) - parsing time: {}, data size: {}, object type: {} object data: {}",
                                   name,
                                   std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
                                   data->getRaw()->data.size(),
@@ -68,7 +68,7 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                         try {
                             callback(name, data);
                         } catch(const std::exception& ex) {
-                            spdlog::error("Callback with id: {} throwed an exception: {}", kv.first, ex.what());
+                            logger::error("Callback with id: {} throwed an exception: {}", kv.first, ex.what());
                         }
                     }
                 }
@@ -102,7 +102,7 @@ void DataOutputQueue::close() {
     if((readingThread.get_id() != std::this_thread::get_id()) && readingThread.joinable()) readingThread.join();
 
     // Log
-    spdlog::debug("DataOutputQueue ({}) closed", name);
+    logger::debug("DataOutputQueue ({}) closed", name);
 }
 
 DataOutputQueue::~DataOutputQueue() {
@@ -196,11 +196,11 @@ DataInputQueue::DataInputQueue(
                 auto t2Parse = std::chrono::steady_clock::now();
 
                 // Trace level debugging
-                if(spdlog::get_level() == spdlog::level::trace) {
+                if(logger::get_level() == spdlog::level::trace) {
                     std::vector<std::uint8_t> metadata;
                     DatatypeEnum type;
                     data->serialize(metadata, type);
-                    spdlog::trace("Sending message to device ({}) - serialize time: {}, data size: {}, object type: {} object data: {}",
+                    logger::trace("Sending message to device ({}) - serialize time: {}, data size: {}, object type: {} object data: {}",
                                   name,
                                   std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
                                   data->data.size(),
@@ -243,7 +243,7 @@ void DataInputQueue::close() {
     if((writingThread.get_id() != std::this_thread::get_id()) && writingThread.joinable()) writingThread.join();
 
     // Log
-    spdlog::debug("DataInputQueue ({}) closed", name);
+    logger::debug("DataInputQueue ({}) closed", name);
 }
 
 DataInputQueue::~DataInputQueue() {

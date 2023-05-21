@@ -3,7 +3,7 @@
 #include <spdlog/spdlog.h>
 
 namespace dai {
-    
+
 class DeviceLogger : public spdlog::logger {
     using spdlog::logger::logger;
 
@@ -33,7 +33,7 @@ public:
             return;
         }
 
-        
+
         // Continue with other fields
         // logger name
         log.logger_name = msg.nodeIdName;
@@ -46,9 +46,9 @@ public:
         log.color_range_end = msg.colorRangeEnd;
 
         // actual log message
-        log.payload = msg.payload;    
+        log.payload = msg.payload;
 
-        // Call the internal log_it_ method        
+        // Call the internal log_it_ method
         log_it_(log, logEnabled, tracebackEnabled);
 
     }

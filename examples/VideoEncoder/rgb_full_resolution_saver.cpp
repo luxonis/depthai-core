@@ -21,7 +21,7 @@ int main() {
     xoutRgb->setStreamName("rgb");
 
     // Properties
-    camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
+    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_A);
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_4_K);
     videoEnc->setDefaultProfilePreset(camRgb->getFps(), dai::VideoEncoderProperties::Profile::MJPEG);
 

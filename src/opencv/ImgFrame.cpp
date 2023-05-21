@@ -46,6 +46,9 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
             break;
 
         case Type::RAW16:
+        case Type::RAW14:
+        case Type::RAW12:
+        case Type::RAW10:
             size = cv::Size(getWidth(), getHeight());
             type = CV_16UC1;
             break;
@@ -73,7 +76,7 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
                                  + std::to_string(actualSize) + ". Maybe metadataOnly transfer was made?");
     } else if(actualSize > requiredSize) {
         // FIXME doesn't build on Windows (multiple definitions during link)
-        // spdlog::warn("ImgFrame has excess data: actual {}, expected {}", actualSize, requiredSize);
+        // logger::warn("ImgFrame has excess data: actual {}, expected {}", actualSize, requiredSize);
     }
     if(getWidth() <= 0 || getHeight() <= 0) {
         throw std::runtime_error("ImgFrame metadata not valid (width or height = 0)");
@@ -139,6 +142,9 @@ cv::Mat ImgFrame::getCvFrame() {
 
         case Type::RAW8:
         case Type::RAW16:
+        case Type::RAW14:
+        case Type::RAW12:
+        case Type::RAW10:
         case Type::GRAY8:
         case Type::GRAYF16:
             output = frame.clone();
