@@ -275,5 +275,9 @@ float Camera::getCalibrationAlpha() const {
     return properties.calibAlpha;
 }
 
+void Camera::setRawOutputPacked(bool packed) {
+    properties.rawPacked = packed;
+}
+
 }  // namespace node
 }  // namespace dai

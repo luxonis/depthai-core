@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
     camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
 
     auto right = pipeline.create<dai::node::MonoCamera>();
-    right->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    right->setCamera("right");
     right->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
 
     auto manipRight = pipeline.create<dai::node::ImageManip>();
@@ -40,7 +40,7 @@ int main(int argc, char** argv) {
     right->out.link(manipRight->inputImage);
 
     auto left = pipeline.create<dai::node::MonoCamera>();
-    left->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    left->setCamera("left");
     left->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
 
     auto manipLeft = pipeline.create<dai::node::ImageManip>();

@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
     int width, height;
 
     cout << "Intrinsics from defaultIntrinsics function:" << endl;
-    std::tie(intrinsics, width, height) = calibData.getDefaultIntrinsics(dai::CameraBoardSocket::RIGHT);
+    std::tie(intrinsics, width, height) = calibData.getDefaultIntrinsics(dai::CameraBoardSocket::CAM_C);
     printMatrix(intrinsics);
 
     cout << "Width: " << width << endl;
@@ -39,45 +39,45 @@ int main(int argc, char** argv) {
 
     cout << "Stereo baseline distance: " << calibData.getBaselineDistance() << " cm" << endl;
 
-    cout << "Mono FOV from camera specs: " << calibData.getFov(dai::CameraBoardSocket::LEFT)
-         << ", calculated FOV: " << calibData.getFov(dai::CameraBoardSocket::LEFT, false) << endl;
+    cout << "Mono FOV from camera specs: " << calibData.getFov(dai::CameraBoardSocket::CAM_B)
+         << ", calculated FOV: " << calibData.getFov(dai::CameraBoardSocket::CAM_B, false) << endl;
 
     cout << "Intrinsics from getCameraIntrinsics function full resolution:" << endl;
-    intrinsics = calibData.getCameraIntrinsics(dai::CameraBoardSocket::RIGHT);
+    intrinsics = calibData.getCameraIntrinsics(dai::CameraBoardSocket::CAM_C);
     printMatrix(intrinsics);
 
     cout << "Intrinsics from getCameraIntrinsics function 1280 x 720:" << endl;
-    intrinsics = calibData.getCameraIntrinsics(dai::CameraBoardSocket::RIGHT, 1280, 720);
+    intrinsics = calibData.getCameraIntrinsics(dai::CameraBoardSocket::CAM_C, 1280, 720);
     printMatrix(intrinsics);
 
     cout << "Intrinsics from getCameraIntrinsics function 720 x 450:" << endl;
-    intrinsics = calibData.getCameraIntrinsics(dai::CameraBoardSocket::RIGHT, 720);
+    intrinsics = calibData.getCameraIntrinsics(dai::CameraBoardSocket::CAM_C, 720);
     printMatrix(intrinsics);
 
     cout << "Intrinsics from getCameraIntrinsics function 600 x 1280:" << endl;
-    intrinsics = calibData.getCameraIntrinsics(dai::CameraBoardSocket::RIGHT, 600, 1280);
+    intrinsics = calibData.getCameraIntrinsics(dai::CameraBoardSocket::CAM_C, 600, 1280);
     printMatrix(intrinsics);
 
     std::vector<std::vector<float>> extrinsics;
 
     cout << "Extrinsics from left->right test:" << endl;
-    extrinsics = calibData.getCameraExtrinsics(dai::CameraBoardSocket::LEFT, dai::CameraBoardSocket::RIGHT);
+    extrinsics = calibData.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_C);
     printMatrix(extrinsics);
 
     cout << "Extrinsics from right->left test:" << endl;
-    extrinsics = calibData.getCameraExtrinsics(dai::CameraBoardSocket::RIGHT, dai::CameraBoardSocket::LEFT);
+    extrinsics = calibData.getCameraExtrinsics(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_B);
     printMatrix(extrinsics);
 
     cout << "Extrinsics from right->rgb test:" << endl;
-    extrinsics = calibData.getCameraExtrinsics(dai::CameraBoardSocket::RIGHT, dai::CameraBoardSocket::RGB);
+    extrinsics = calibData.getCameraExtrinsics(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_A);
     printMatrix(extrinsics);
 
     cout << "Extrinsics from rgb->right test:" << endl;
-    extrinsics = calibData.getCameraExtrinsics(dai::CameraBoardSocket::RGB, dai::CameraBoardSocket::RIGHT);
+    extrinsics = calibData.getCameraExtrinsics(dai::CameraBoardSocket::CAM_A, dai::CameraBoardSocket::CAM_C);
     printMatrix(extrinsics);
 
     cout << "Extrinsics from left->rgb test:" << endl;
-    extrinsics = calibData.getCameraExtrinsics(dai::CameraBoardSocket::LEFT, dai::CameraBoardSocket::RGB);
+    extrinsics = calibData.getCameraExtrinsics(dai::CameraBoardSocket::CAM_B, dai::CameraBoardSocket::CAM_A);
     printMatrix(extrinsics);
 
     return 0;

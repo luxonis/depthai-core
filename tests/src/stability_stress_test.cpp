@@ -133,18 +133,18 @@ int main(int argc, char** argv) {
     // xoutTrackedFeaturesRight->setStreamName("trackedFeaturesRight");
 
     // Properties
-    camRgb->setBoardSocket(dai::CameraBoardSocket::RGB);
+    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_A);
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_4_K);
     camRgb->setPreviewSize(416, 416);
     camRgb->setInterleaved(false);
     camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
     camRgb->setFps(RGB_FPS);
 
-    monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    monoLeft->setCamera("left");
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoLeft->setFps(MONO_FPS);
 
-    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    monoRight->setCamera("right");
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     monoRight->setFps(MONO_FPS);
 
@@ -155,7 +155,7 @@ int main(int argc, char** argv) {
 
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     // Align depth map to the perspective of RGB camera, on which inference is done
-    stereo->setDepthAlign(dai::CameraBoardSocket::RGB);
+    stereo->setDepthAlign(dai::CameraBoardSocket::CAM_A);
     stereo->setOutputSize(monoLeft->getResolutionWidth(), monoLeft->getResolutionHeight());
 
     spatialDetectionNetwork->setBlobPath(nnPath);

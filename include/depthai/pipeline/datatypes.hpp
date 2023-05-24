@@ -18,5 +18,6 @@
 #include "datatype/SpatialLocationCalculatorData.hpp"
 #include "datatype/StereoDepthConfig.hpp"
 #include "datatype/SystemInformation.hpp"
+#include "datatype/ToFConfig.hpp"
 #include "datatype/TrackedFeatures.hpp"
 #include "datatype/Tracklets.hpp"
