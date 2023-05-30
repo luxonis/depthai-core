@@ -32,6 +32,7 @@
 #include "depthai-shared/common/MemoryInfo.hpp"
 #include "depthai-shared/datatype/RawIMUData.hpp"
 #include "depthai-shared/device/BoardConfig.hpp"
+#include "depthai-shared/device/CrashDump.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
 
@@ -433,6 +434,16 @@ class DeviceBase {
      * For OAK-D-Pro it should be `[{"LM3644", 2, 0x63}]`
      */
     std::vector<std::tuple<std::string, int, int>> getIrDrivers();
+
+    /**
+     * Retrieves crash dump for debugging.
+     */
+    dai::CrashDump getCrashDump(bool clearCrashDump = true);
+
+    /**
+     * Retrieves whether the is crash dump stored on device or not.
+     */
+    bool hasCrashDump();
 
     /**
      * Add a callback for device logging. The callback will be called from a separate thread with the LogMessage being passed.
