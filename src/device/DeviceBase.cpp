@@ -1020,6 +1020,14 @@ std::vector<std::tuple<std::string, int, int>> DeviceBase::getIrDrivers() {
     return pimpl->rpcClient->call("getIrDrivers");
 }
 
+dai::CrashDump DeviceBase::getCrashDump(bool clearCrashDump) {
+    return pimpl->rpcClient->call("getCrashDump", clearCrashDump).as<dai::CrashDump>();
+}
+
+bool DeviceBase::hasCrashDump() {
+    return pimpl->rpcClient->call("hasCrashDump").as<bool>();
+}
+
 int DeviceBase::addLogCallback(std::function<void(LogMessage)> callback) {
     checkClosed();
 
