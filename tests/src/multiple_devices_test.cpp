@@ -103,7 +103,7 @@ TEST_CASE("Multiple devices with 50 messages each") {
     REQUIRE(finished);
 }
 
-TEST_CASE("Multiple devices created and destroyed in parallel") {
+TEST_CASE("Multiple devices created and destroyed in parallel", "[.][multi_test_devices]") {
     constexpr auto TEST_TIMEOUT = 30s;
     constexpr auto COLOR_FPS = 30;
     constexpr auto MONO_FPS = 30;

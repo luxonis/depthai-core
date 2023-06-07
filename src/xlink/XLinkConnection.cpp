@@ -304,7 +304,7 @@ void XLinkConnection::close() {
     if(closed.exchange(true)) return;
 
     constexpr auto RESET_TIMEOUT = 2s;
-    constexpr auto BOOTUP_SEARCH = 5s;
+    constexpr auto BOOTUP_SEARCH = 5s;  // majority of usb reboots on Windows need more than 5 seconds; this leads to a cascade failure
 
     if(deviceLinkId != -1 && rebootOnDestruction) {
         auto previousLinkId = deviceLinkId;
@@ -428,7 +428,8 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
 
         const bool bootStatus = bootWithPath ? bootAvailableDevice(foundDeviceDesc, pathToMvcmd) : bootAvailableDevice(foundDeviceDesc, mvcmd);
         if(!bootStatus) {
-            throw std::runtime_error("Failed to boot device!");
+            // this throw will cause an app to crash if not caught by a try/catch around the app's `Device` constructor
+            throw std::runtime_error("Failed to begin the boot of a device!");
         }
     }
 
@@ -444,7 +445,7 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
         // Use "name" as hint only, but might still change
         bootedDescInfo.nameHintOnly = true;
 
-        logger::debug("Searching for booted device: {}, name used as hint only", bootedDeviceInfo.toString());
+        logger::debug("Searching for booted device: {}, name/path used as hint only", bootedDeviceInfo.toString());
 
         // Find booted device
         deviceDesc_t foundDeviceDesc = {};
