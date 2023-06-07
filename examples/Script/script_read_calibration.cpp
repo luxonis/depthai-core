@@ -11,7 +11,10 @@ int main() {
 
     // Script node
     auto script = pipeline.create<dai::node::Script>();
+    script->setProcessor(dai::ProcessorType::LEON_CSS);
     script->setScript(R"(
+        import time
+
         cal = Device.readCalibration2()
         left_camera_id = cal.getStereoLeftCameraId()
         right_camera_id = cal.getStereoRightCameraId()
@@ -21,11 +24,20 @@ int main() {
 
         print(extrinsics)
         print(intrinsics_left)
+
+        time.sleep(1)
+        node.io['end'].send(Buffer(32))
     )");
+
+    auto xout = pipeline.create<dai::node::XLinkOut>();
+    xout->setStreamName("end");
+    
+    script->outputs["end"].link(xout->input);
 
     // Connect to device with pipeline
     dai::Device device(pipeline);
-    while(true) {}
+
+    device.getOutputQueue("end")->get();
 
     return 0;
 }
