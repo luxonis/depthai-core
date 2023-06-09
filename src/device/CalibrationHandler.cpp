@@ -592,7 +592,7 @@ void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, std::ve
         throw std::runtime_error("Intrinsic Matrix size should always be 3x3 ");
     }
 
-    if(intrinsics[0][1] != 0 || intrinsics[1][0] != 0 || intrinsics[2][0] != 0 || intrinsics[2][1] != 0) {
+    if(intrinsics[1][0] != 0 || intrinsics[2][0] != 0 || intrinsics[2][1] != 0) {
         throw std::runtime_error("Invalid Intrinsic Matrix entered!!");
     }
 
