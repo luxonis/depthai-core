@@ -37,7 +37,7 @@ Tracklets& Tracklets::setTimestampDevice(std::chrono::time_point<std::chrono::st
     using namespace std::chrono;
     auto ts = tp.time_since_epoch();
     rawdata.tsDevice.sec = duration_cast<seconds>(ts).count();
-    rawdata.ts.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
+    rawdata.tsDevice.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
     return *this;
 }
 Tracklets& Tracklets::setSequenceNum(int64_t sequenceNum) {

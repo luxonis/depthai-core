@@ -383,6 +383,11 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      * Equivalent to useHomographyRectification(!enableDistortionCorrection)
      */
     void enableDistortionCorrection(bool enableDistortionCorrection);
+
+    /**
+     * Whether to enable frame syncing inside stereo node or not. Suitable if inputs are known to be synced.
+     */
+    void setFrameSync(bool enableFrameSync);
 };
 
 }  // namespace node

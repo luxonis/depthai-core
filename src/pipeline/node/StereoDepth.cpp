@@ -190,5 +190,9 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
     }
 }
 
+void StereoDepth::setFrameSync(bool enableFrameSync) {
+    properties.enableFrameSync = enableFrameSync;
+}
+
 }  // namespace node
 }  // namespace dai

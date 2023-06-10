@@ -2,7 +2,7 @@
 
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/datatype/CameraControl.hpp>
-
+#include <depthai/pipeline/datatype/ImgFrame.hpp>
 // shared
 #include <depthai-shared/properties/ColorCameraProperties.hpp>
 
@@ -147,6 +147,12 @@ class ColorCamera : public NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperti
 
     /// Get planar or interleaved data of preview output frames
     bool getInterleaved() const;
+
+    /// Set type of preview output images.
+    void setPreviewType(ImgFrame::Type type);
+
+    /// Get the preview type
+    ImgFrame::Type getPreviewType() const;
 
     /// Set fp16 (0..255) data type of preview output frames
     void setFp16(bool fp16);
