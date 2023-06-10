@@ -1,14 +1,14 @@
+#define _USE_MATH_DEFINES
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
 #include "spdlog/fmt/fmt.h"
-
 namespace dai {
 
 ImgFrame::Serialized ImgFrame::serialize() const {
     return {data, raw};
 }
 
-ImgFrame::ImgFrame() : Buffer(std::make_shared<RawImgFrame>()), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformation(img.transformation) {
+ImgFrame::ImgFrame() : Buffer(std::make_shared<RawImgFrame>()), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformations(img.transformations){
     // set timestamp to now
     setTimestamp(std::chrono::steady_clock::now());
 }
@@ -20,7 +20,7 @@ ImgFrame::ImgFrame(size_t size) : ImgFrame() {
 }
 
 ImgFrame::ImgFrame(std::shared_ptr<RawImgFrame> ptr)
-    : Buffer(std::move(ptr)), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformation(img.transformation) {}
+    : Buffer(std::move(ptr)), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformations(img.transformations) {}
 
 // helpers
 
@@ -171,6 +171,123 @@ ImgFrame& ImgFrame::setType(RawImgFrame::Type type) {
 
 void ImgFrame::set(RawImgFrame rawImgFrame) {
     img = rawImgFrame;
+}
+
+ImgFrame& ImgFrame::initMetadata(std::shared_ptr<dai::ImgFrame> sourceFrame) {
+    set(sourceFrame->get());
+    return *this;
+}
+
+dai::Point2f ImgFrame::transformPointFromSource(dai::Point2f point) {
+    dai::Point2f transformedPoint = point;
+    for(auto& transformation : transformations.transformations) {
+        transformedPoint = transformations.transformPoint(transformation, transformedPoint);
+    }
+    return transformedPoint;
+}
+
+dai::Point2f ImgFrame::transformPointToSource(dai::Point2f point) {
+    dai::Point2f transformedPoint = point;
+
+    // Do the loop in reverse order
+    for(auto it = transformations.transformations.rbegin(); it != transformations.transformations.rend(); ++it) {
+        transformedPoint = transformations.transformPoint(*it, transformedPoint);
+    }
+    return transformedPoint;
+}
+
+dai::Rect ImgFrame::transformRectFromSource(dai::Rect rect) {
+    auto topLeftTransformed = transformPointFromSource(rect.topLeft());
+    auto bottomRightTransformed = transformPointFromSource(rect.bottomRight());
+    return dai::Rect{topLeftTransformed, bottomRightTransformed};
+}
+
+dai::Rect ImgFrame::transformRectToSource(dai::Rect rect) {
+    auto topLeftTransformed = transformPointToSource(rect.topLeft());
+    auto bottomRightTransformed = transformPointToSource(rect.bottomRight());
+    return dai::Rect{topLeftTransformed, bottomRightTransformed};
+}
+
+ImgFrame& ImgFrame::setSourceHFov(float degrees) {
+    img.HFovDegrees = degrees;
+    return *this;
+}
+
+float ImgFrame::getSourceHFov() {
+    return img.HFovDegrees;
+}
+
+float ImgFrame::getSourceDFov() {
+    // TODO only works rectlinear lenses (rectified frames).
+    // Calculate the vertical FOV from the source dimensions and the source DFov
+    float sourceWidth = getSourceWidth();
+    float sourceHeight = getSourceHeight();
+
+    if(sourceHeight <= 0) {
+        throw std::runtime_error(fmt::format("Source height is invalid. Height: {}", sourceHeight));
+    }
+    if(sourceWidth <= 0) {
+        throw std::runtime_error(fmt::format("Source width is invalid. Width: {}", sourceWidth));
+    }
+    float HFovDegrees = getSourceHFov();
+
+    // Calculate the diagonal ratio (DR)
+    float dr = std::sqrt(std::pow(sourceWidth, 2) + std::pow(sourceHeight, 2));
+
+    // Validate the horizontal FOV
+    if(HFovDegrees <= 0 || HFovDegrees >= 180) {
+        throw std::runtime_error(fmt::format("Horizontal FOV is invalid. Horizontal FOV: {}", HFovDegrees));
+    }
+
+    float HFovRadians = HFovDegrees * (static_cast<float>(M_PI) / 180.0f);
+
+    // Calculate the tangent of half of the HFOV
+    float tanHFovHalf = std::tan(HFovRadians / 2);
+
+    // Calculate the tangent of half of the VFOV
+    float tanDiagonalFovHalf = (dr / sourceWidth) * tanHFovHalf;
+
+    // Calculate the VFOV in radians
+    float diagonalFovRadians = 2 * std::atan(tanDiagonalFovHalf);
+
+    // Convert VFOV to degrees
+    float diagonalFovDegrees = diagonalFovRadians * (180.0f / static_cast<float>(M_PI));
+    return diagonalFovDegrees;
+}
+
+float ImgFrame::getSourceVFov() {
+    // TODO only works rectlinear lenses (rectified frames).
+    // Calculate the vertical FOV from the source dimensions and the source DFov
+    float sourceWidth = getSourceWidth();
+    float sourceHeight = getSourceHeight();
+
+    if(sourceHeight <= 0) {
+        throw std::runtime_error(fmt::format("Source height is invalid. Height: {}", sourceHeight));
+    }
+    if(sourceWidth <= 0) {
+        throw std::runtime_error(fmt::format("Source width is invalid. Width: {}", sourceWidth));
+    }
+    float HFovDegrees = getSourceHFov();
+
+    // Validate the horizontal FOV
+    if(HFovDegrees <= 0 || HFovDegrees >= 180) {
+        throw std::runtime_error(fmt::format("Horizontal FOV is invalid. Horizontal FOV: {}", HFovDegrees));
+    }
+
+    float HFovRadians = HFovDegrees * (static_cast<float>(M_PI) / 180.0f);
+
+    // Calculate the tangent of half of the HFOV
+    float tanHFovHalf = std::tan(HFovRadians / 2);
+
+    // Calculate the tangent of half of the VFOV
+    float tanVerticalFovHalf = (sourceHeight / sourceWidth) * tanHFovHalf;
+
+    // Calculate the VFOV in radians
+    float verticalFovRadians = 2 * std::atan(tanVerticalFovHalf);
+
+    // Convert VFOV to degrees
+    float verticalFovDegrees = verticalFovRadians * (180.0f / static_cast<float>(M_PI));
+    return verticalFovDegrees;
 }
 
 }  // namespace dai

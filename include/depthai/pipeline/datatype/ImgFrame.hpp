@@ -10,6 +10,7 @@
 
 // shared
 #include "depthai-shared/datatype/RawImgFrame.hpp"
+#include "depthai-shared/common/Rect.hpp"
 
 // optional
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -39,7 +40,7 @@ class ImgFrame : public Buffer {
     ImgFrame(size_t size);
     explicit ImgFrame(std::shared_ptr<RawImgFrame> ptr);
     virtual ~ImgFrame() = default;
-    ImgTransformation& transformation;
+    ImgTransformations& transformations;
 
     // getters
     /**
@@ -240,6 +241,74 @@ class ImgFrame : public Buffer {
      * Set raw data for ImgFrame.
      */
     void set(dai::RawImgFrame rawImgFrame);
+    /**
+     * Transform a point from the current frame to the source frame
+     * @param point point to transform
+     * @returns transformed point
+     */
+    dai::Point2f transformPointFromSource(dai::Point2f point);
+
+    /**
+     * Transform a point from the source frame to the current frame
+     * @param point point to transform
+     * @returns transformed point
+     */
+    dai::Point2f transformPointToSource(dai::Point2f point);
+
+    /**
+     * Transform a rectangle from the source frame to the current frame
+     *
+     * @param rect rectangle to transform
+     * @returns transformed rectangle
+     */
+    dai::Rect transformRectFromSource(dai::Rect rect);
+
+    /**
+     * Transform a rectangle from the current frame to the source frame
+     *
+     * @param rect rectangle to transform
+     * @returns transformed rectangle
+     */
+    dai::Rect transformRectToSource(dai::Rect rect);
+
+    /**
+     * Convience function to initialize meta data from another frame
+     * Copies over timestamps, transformations done on the image, etc.
+     * @param sourceFrame source frame from which the metadata is taken from
+     */
+    ImgFrame& initMetadata(std::shared_ptr<dai::ImgFrame> sourceFrame);
+
+    /**
+     * @note Fov API works correctly only on rectilinear frames
+     * Set the source horizontal field of view
+     *
+     * @param degrees field of view in degrees
+     */
+    ImgFrame& setSourceHFov(float degrees);
+
+    /**
+     * @note Fov API works correctly only on rectilinear frames
+     * Get the source diagonal field of view in degrees
+     *
+     * @returns field of view in degrees
+     */
+    float getSourceDFov();
+
+    /**
+     * @note Fov API works correctly only on rectilinear frames
+     * Get the source horizontal field of view
+     *
+     * @param degrees field of view in degrees
+     */
+    float getSourceHFov();
+
+    /**
+     * @note Fov API works correctly only on rectilinear frames
+     * Get the source vertical field of view
+     *
+     * @param degrees field of view in degrees
+     */
+    float getSourceVFov();
 
 // Optional - OpenCV support
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
