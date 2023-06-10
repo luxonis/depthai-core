@@ -15,7 +15,7 @@
 #include "depthai-shared/common/Point3f.hpp"
 #include "nlohmann/json.hpp"
 #include "spdlog/spdlog.h"
-#include "utility/matrixOps.hpp"
+#include "depthai-shared/utility/matrixOps.hpp"
 
 namespace dai {
 
