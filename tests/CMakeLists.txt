@@ -244,7 +244,7 @@ dai_add_test(bootloader_version_test src/bootloader_version_test.cpp)
 # XLinkIn -> XLinkOut passthrough with large frames
 dai_add_test(xlink_roundtrip_test src/xlink_roundtrip_test.cpp)
 
-dai_add_test(image_transformation src/image_transformations.cpp)
+dai_add_test(image_transformations_test src/image_transformations_test.cpp)
 
 # Stability stress test (OAK-D oriented USB/PoE)
 # TODO

@@ -179,33 +179,57 @@ ImgFrame& ImgFrame::initMetadata(std::shared_ptr<dai::ImgFrame> sourceFrame) {
 }
 
 dai::Point2f ImgFrame::transformPointFromSource(dai::Point2f point) {
-    dai::Point2f transformedPoint = point;
+    bool isNormalized = point.isNormalized();
+    dai::Point2f transformedPoint = point.denormalize(getSourceWidth(), getSourceHeight());
     for(auto& transformation : transformations.transformations) {
         transformedPoint = transformations.transformPoint(transformation, transformedPoint);
+    }
+    if(isNormalized) {
+        transformedPoint = transformedPoint.normalize(getWidth(), getHeight());
     }
     return transformedPoint;
 }
 
 dai::Point2f ImgFrame::transformPointToSource(dai::Point2f point) {
-    dai::Point2f transformedPoint = point;
-
+    bool isNormalized = point.isNormalized();
+    dai::Point2f transformedPoint = point.denormalize(getWidth(), getHeight());
     // Do the loop in reverse order
     for(auto it = transformations.transformations.rbegin(); it != transformations.transformations.rend(); ++it) {
         transformedPoint = transformations.transformPoint(*it, transformedPoint);
+    }
+    if(isNormalized) {
+        transformedPoint = transformedPoint.normalize(getSourceWidth(), getSourceHeight());
     }
     return transformedPoint;
 }
 
 dai::Rect ImgFrame::transformRectFromSource(dai::Rect rect) {
+    bool isNormalized = rect.isNormalized();
+    if(!isNormalized) {
+        rect = rect.denormalize(getSourceWidth(), getSourceHeight());
+    }
     auto topLeftTransformed = transformPointFromSource(rect.topLeft());
     auto bottomRightTransformed = transformPointFromSource(rect.bottomRight());
-    return dai::Rect{topLeftTransformed, bottomRightTransformed};
+    dai::Rect returnRect(topLeftTransformed, bottomRightTransformed);
+    if(isNormalized) {
+        returnRect = returnRect.normalize(getWidth(), getHeight());
+    }
+    return returnRect;
 }
 
 dai::Rect ImgFrame::transformRectToSource(dai::Rect rect) {
+    bool isNormalized = rect.isNormalized();
+    if(!isNormalized) {
+        rect = rect.denormalize(getWidth(), getHeight());
+    }
     auto topLeftTransformed = transformPointToSource(rect.topLeft());
     auto bottomRightTransformed = transformPointToSource(rect.bottomRight());
-    return dai::Rect{topLeftTransformed, bottomRightTransformed};
+
+    dai::Rect returnRect(topLeftTransformed, bottomRightTransformed);
+    if(isNormalized) {
+        returnRect = returnRect.normalize(getSourceWidth(), getSourceHeight());
+    }
+    return returnRect;
 }
 
 ImgFrame& ImgFrame::setSourceHFov(float degrees) {
