@@ -202,20 +202,6 @@ class ImgFrame : public Buffer {
     ImgFrame& setSize(std::tuple<unsigned int, unsigned int> size);
 
     /**
-     * Specifies source frame width
-     *
-     * @param width frame width
-     */
-    ImgFrame& setSourceWidth(unsigned int width);
-
-    /**
-     * Specifies source frame height
-     *
-     * @param height frame height
-     */
-    ImgFrame& setSourceHeight(unsigned int height);
-
-    /**
      * Specifies source frame size
      *
      * @param height frame height

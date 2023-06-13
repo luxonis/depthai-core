@@ -145,20 +145,15 @@ ImgFrame& ImgFrame::setSize(std::tuple<unsigned int, unsigned int> size) {
     setSize(std::get<0>(size), std::get<1>(size));
     return *this;
 }
-ImgFrame& ImgFrame::setSourceWidth(unsigned int width) {
+
+ImgFrame& ImgFrame::setSourceSize(unsigned int width, unsigned int height) {
     img.sourceFb.width = width;
     img.sourceFb.stride = width;
-    return *this;
-}
-ImgFrame& ImgFrame::setSourceHeight(unsigned int height) {
     img.sourceFb.height = height;
+    transformations.setInitTransformation(width, height);
     return *this;
 }
-ImgFrame& ImgFrame::setSourceSize(unsigned int width, unsigned int height) {
-    setSourceWidth(width);
-    setSourceHeight(height);
-    return *this;
-}
+
 ImgFrame& ImgFrame::setSourceSize(std::tuple<unsigned int, unsigned int> size) {
     setSourceSize(std::get<0>(size), std::get<1>(size));
     return *this;
@@ -181,8 +176,9 @@ ImgFrame& ImgFrame::initMetadata(std::shared_ptr<dai::ImgFrame> sourceFrame) {
 dai::Point2f ImgFrame::transformPointFromSource(dai::Point2f point) {
     bool isNormalized = point.isNormalized();
     dai::Point2f transformedPoint = point.denormalize(getSourceWidth(), getSourceHeight());
+    bool isClipped = false;
     for(auto& transformation : transformations.transformations) {
-        transformedPoint = transformations.transformPoint(transformation, transformedPoint);
+        transformedPoint = transformations.transformPoint(transformation, transformedPoint, isClipped);
     }
     if(isNormalized) {
         transformedPoint = transformedPoint.normalize(getWidth(), getHeight());
@@ -193,9 +189,10 @@ dai::Point2f ImgFrame::transformPointFromSource(dai::Point2f point) {
 dai::Point2f ImgFrame::transformPointToSource(dai::Point2f point) {
     bool isNormalized = point.isNormalized();
     dai::Point2f transformedPoint = point.denormalize(getWidth(), getHeight());
+    bool isClipped = false;
     // Do the loop in reverse order
     for(auto it = transformations.transformations.rbegin(); it != transformations.transformations.rend(); ++it) {
-        transformedPoint = transformations.transformPoint(*it, transformedPoint);
+        transformedPoint = transformations.invTransformPoint(*it, transformedPoint, isClipped);
     }
     if(isNormalized) {
         transformedPoint = transformedPoint.normalize(getSourceWidth(), getSourceHeight());
@@ -205,7 +202,7 @@ dai::Point2f ImgFrame::transformPointToSource(dai::Point2f point) {
 
 dai::Rect ImgFrame::transformRectFromSource(dai::Rect rect) {
     bool isNormalized = rect.isNormalized();
-    if(!isNormalized) {
+    if(isNormalized) {
         rect = rect.denormalize(getSourceWidth(), getSourceHeight());
     }
     auto topLeftTransformed = transformPointFromSource(rect.topLeft());
@@ -219,9 +216,10 @@ dai::Rect ImgFrame::transformRectFromSource(dai::Rect rect) {
 
 dai::Rect ImgFrame::transformRectToSource(dai::Rect rect) {
     bool isNormalized = rect.isNormalized();
-    if(!isNormalized) {
+    if(isNormalized) {
         rect = rect.denormalize(getWidth(), getHeight());
     }
+    // std::cout << "rect.x: " << rect.x << std::endl;
     auto topLeftTransformed = transformPointToSource(rect.topLeft());
     auto bottomRightTransformed = transformPointToSource(rect.bottomRight());
 

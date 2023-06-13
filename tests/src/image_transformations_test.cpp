@@ -23,15 +23,13 @@ int testPadding() {
     auto sourceImageFrame = std::make_shared<dai::ImgFrame>();
     sourceImageFrame->setWidth(1920);
     sourceImageFrame->setHeight(1080);
-    sourceImageFrame->setSourceHeight(1080);
-    sourceImageFrame->setSourceWidth(1920);
+    sourceImageFrame->setSourceSize(1920, 1080);
     sourceImageFrame->transformations.setPadding(100, 200, 300, 400);
     sourceImageFrame->setWidth(2620);
     sourceImageFrame->setHeight(1380);
 
     dai::Rect sourceRect{0.3, 0.7, 0.1, 0.1};
     auto outRect = sourceImageFrame->transformRectToSource(sourceRect);
-    std::cout << "x " << outRect.x << " y " << outRect.y << " width " << outRect.width << " height " << outRect.height << std::endl;
     REQUIRE_THAT(0.25, Catch::Matchers::WithinAbs(outRect.x, 0.01));
     REQUIRE_THAT(0.80, Catch::Matchers::WithinAbs(outRect.y, 0.01));
     REQUIRE_THAT(0.13, Catch::Matchers::WithinAbs(outRect.width, 0.01));
@@ -48,23 +46,19 @@ int testCropping() {
     auto sourceImageFrame = std::make_shared<dai::ImgFrame>();
     sourceImageFrame->setWidth(1920);
     sourceImageFrame->setHeight(1080);
-    sourceImageFrame->setSourceHeight(1080);
-    sourceImageFrame->setSourceWidth(1920);
+    sourceImageFrame->setSourceSize(1920, 1080);
     float x = 100;
     float y = 200;
     float width = 300;
     float height = 400;
 
     sourceImageFrame->transformations.setCrop(x, y, x + width, y + width);
-    sourceImageFrame->setSize(200, 200);
-    // std::cout << "ImageHeight " << sourceImageFrame->getWidth() << std::endl;
-    // std::cout << "ImageWidth " << sourceImageFrame->getHeight() << std::endl;
+    sourceImageFrame->setSize(300, 400);
 
     dai::Rect sourceRect{150, 250, 50, 50};
     auto outRect = sourceImageFrame->transformRectToSource(sourceRect);
-    // std::cout << "x " << outRect.x << " y " << outRect.y << " width " << outRect.width << " height " << outRect.height << std::endl;
-    REQUIRE_THAT(50, Catch::Matchers::WithinAbs(outRect.x, 0.01));
-    REQUIRE_THAT(50, Catch::Matchers::WithinAbs(outRect.y, 0.01));
+    REQUIRE_THAT(250, Catch::Matchers::WithinAbs(outRect.x, 0.01));
+    REQUIRE_THAT(450, Catch::Matchers::WithinAbs(outRect.y, 0.01));
     REQUIRE_THAT(50, Catch::Matchers::WithinAbs(outRect.width, 0.01));
     REQUIRE_THAT(50, Catch::Matchers::WithinAbs(outRect.height, 0.01));
     auto reverseBackRect = sourceImageFrame->transformRectFromSource(outRect);
@@ -79,25 +73,15 @@ int testFlipping() {
     auto sourceImageFrame = std::make_shared<dai::ImgFrame>();
     sourceImageFrame->setWidth(1920);
     sourceImageFrame->setHeight(1080);
-    sourceImageFrame->setSourceHeight(1080);
-    sourceImageFrame->setSourceWidth(1920);
-    float x = 0.44;
-    float y = 0.2;
-    float width = 0.3;
-    float height = 0.7;
-
+    sourceImageFrame->setSourceSize(1920, 1080);
     sourceImageFrame->transformations.setFlipHorizontal();
-    sourceImageFrame->transformations.setFlipVertical();
-    // std::cout << "ImageHeight " << sourceImageFrame->getWidth() << std::endl;
-    // std::cout << "ImageWidth " << sourceImageFrame->getHeight() << std::endl;
 
-    dai::Rect sourceRect{0.3, 0.7, 0.1, 0.1};
+    dai::Rect sourceRect{100, 0, 300, 300};
     auto outRect = sourceImageFrame->transformRectToSource(sourceRect);
-    // std::cout << "x " << outRect.x << " y " << outRect.y << " width " << outRect.width << " height " << outRect.height << std::endl;
-    REQUIRE_THAT(0.6, Catch::Matchers::WithinAbs(outRect.x, 0.01));
-    REQUIRE_THAT(0.2, Catch::Matchers::WithinAbs(outRect.y, 0.01));
-    REQUIRE_THAT(0.1, Catch::Matchers::WithinAbs(outRect.width, 0.01));
-    REQUIRE_THAT(0.1, Catch::Matchers::WithinAbs(outRect.height, 0.01));
+    REQUIRE_THAT(1520, Catch::Matchers::WithinAbs(outRect.x, 0.01));
+    REQUIRE_THAT(0, Catch::Matchers::WithinAbs(outRect.y, 0.01));
+    REQUIRE_THAT(300, Catch::Matchers::WithinAbs(outRect.width, 0.01));
+    REQUIRE_THAT(300, Catch::Matchers::WithinAbs(outRect.height, 0.01));
     auto reverseBackRect = sourceImageFrame->transformRectFromSource(outRect);
     REQUIRE_THAT(reverseBackRect.x, Catch::Matchers::WithinAbs(sourceRect.x, 0.01));
     REQUIRE_THAT(reverseBackRect.y, Catch::Matchers::WithinAbs(sourceRect.y, 0.01));
@@ -110,22 +94,14 @@ int testScale() {
     auto sourceImageFrame = std::make_shared<dai::ImgFrame>();
     sourceImageFrame->setWidth(1920);
     sourceImageFrame->setHeight(1080);
-    sourceImageFrame->setSourceHeight(1080);
-    sourceImageFrame->setSourceWidth(1920);
-    float x = 0.44;
-    float y = 0.2;
-    float width = 0.3;
-    float height = 0.7;
+    sourceImageFrame->setSourceSize(1920, 1080);
 
     sourceImageFrame->transformations.setScale(12, 0.3);
     sourceImageFrame->setWidth(static_cast<int>(12 * 1920));
-    sourceImageFrame->setHeight(static_cast<int>(0.3 * height));
-    // std::cout << "ImageHeight " << sourceImageFrame->getWidth() << std::endl;
-    // std::cout << "ImageWidth " << sourceImageFrame->getHeight() << std::endl;
+    sourceImageFrame->setHeight(static_cast<int>(0.3 * 1080));
 
     dai::Rect sourceRect{0.3, 0.7, 0.1, 0.1};
     auto outRect = sourceImageFrame->transformRectToSource(sourceRect);
-    // std::cout << "x " << outRect.x << " y " << outRect.y << " width " << outRect.width << " height " << outRect.height << std::endl;
     REQUIRE_THAT(0.3, Catch::Matchers::WithinAbs(outRect.x, 0.01));
     REQUIRE_THAT(0.7, Catch::Matchers::WithinAbs(outRect.y, 0.01));
     REQUIRE_THAT(0.1, Catch::Matchers::WithinAbs(outRect.width, 0.01));
@@ -135,6 +111,29 @@ int testScale() {
     REQUIRE_THAT(reverseBackRect.y, Catch::Matchers::WithinAbs(sourceRect.y, 0.01));
     REQUIRE_THAT(reverseBackRect.width, Catch::Matchers::WithinAbs(sourceRect.width, 0.01));
     REQUIRE_THAT(reverseBackRect.height, Catch::Matchers::WithinAbs(sourceRect.height, 0.01));
+    return 0;
+}
+
+int testRotation(dai::Point2f inPoint,
+                 float angle,
+                 dai::Point2f outPointCheck,
+                 dai::Point2f rotationPoint = dai::Point2f(960, 540),
+                 dai::Point2f backPointCheck = dai::Point2f(0, 0)) {
+    auto sourceImageFrame = std::make_shared<dai::ImgFrame>();
+    sourceImageFrame->setWidth(1920);
+    sourceImageFrame->setHeight(1080);
+    sourceImageFrame->setSourceSize(1920, 1080);
+
+    sourceImageFrame->transformations.setRotation(angle, rotationPoint, sourceImageFrame->getWidth(), sourceImageFrame->getHeight());
+    auto outPoint = sourceImageFrame->transformPointToSource(inPoint);
+    REQUIRE_THAT(outPointCheck.x, Catch::Matchers::WithinAbs(outPoint.x, 0.01));
+    REQUIRE_THAT(outPointCheck.y, Catch::Matchers::WithinAbs(outPoint.y, 0.01));
+    auto reverseBackPoint = sourceImageFrame->transformPointFromSource(outPoint);
+    if(backPointCheck.x != 0 || backPointCheck.y != 0) {
+        inPoint = backPointCheck;
+    }
+    REQUIRE_THAT(reverseBackPoint.x, Catch::Matchers::WithinAbs(inPoint.x, 0.01));
+    REQUIRE_THAT(reverseBackPoint.y, Catch::Matchers::WithinAbs(inPoint.y, 0.01));
     return 0;
 }
 
@@ -154,9 +153,14 @@ TEST_CASE("testFlip") {
     testFlipping();
 }
 
-// TODO When implementation is done
-// TEST_CASE("testRotation"){
-// }
+TEST_CASE("testRotation") {
+    testRotation(dai::Point2f(960, 540), 0, dai::Point2f(960, 540));
+    testRotation(dai::Point2f(0, 0), 0, dai::Point2f(0, 0));
+    testRotation(dai::Point2f(1000, 1000), 0, dai::Point2f(1000, 1000));
+    testRotation(dai::Point2f(420, 1080), -90, dai::Point2f(420, 0));
+    testRotation(dai::Point2f(420, 1080), 90, dai::Point2f(1500, 1080));
+    testRotation(dai::Point2f(1920, 0), 90, dai::Point2f(420, 0), dai::Point2f(960, 540), dai::Point2f(1500, 0));
+}
 
 TEST_CASE("testFOV") {
     testFov();
