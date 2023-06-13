@@ -14,6 +14,7 @@
 
 // project
 #include "depthai/utility/Path.hpp"
+#include "depthai/utility/ProfilingData.hpp"
 
 // Libraries
 #include <XLink/XLinkPublicDefines.h>
@@ -84,6 +85,13 @@ class XLinkConnection {
      */
     static DeviceInfo bootBootloader(const DeviceInfo& devInfo);
 
+    /**
+     * Get current accumulated profiling data
+     *
+     * @returns ProfilingData from the specific connection
+     */
+    static ProfilingData getGlobalProfilingData();
+
     XLinkConnection(const DeviceInfo& deviceDesc, std::vector<std::uint8_t> mvcmdBinary, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
     XLinkConnection(const DeviceInfo& deviceDesc, dai::Path pathToMvcmd, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
     explicit XLinkConnection(const DeviceInfo& deviceDesc, XLinkDeviceState_t expectedState = X_LINK_BOOTED);
@@ -110,6 +118,13 @@ class XLinkConnection {
      * exceptions when calling any DepthAI apis to handle hardware events and multithreaded use.
      */
     bool isClosed() const;
+
+    /**
+     * Get current accumulated profiling data
+     *
+     * @returns ProfilingData from the specific connection
+     */
+    ProfilingData getProfilingData();
 
    private:
     friend struct XLinkReadError;

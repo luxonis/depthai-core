@@ -43,7 +43,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.21.2" LANGUAGES CXX C)
+project(depthai VERSION "2.22.0" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -204,6 +204,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
     src/pipeline/node/Camera.cpp
+    src/pipeline/node/ToF.cpp
     src/pipeline/node/MonoCamera.cpp
     src/pipeline/node/StereoDepth.cpp
     src/pipeline/node/NeuralNetwork.cpp
@@ -222,6 +223,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/SPIIn.cpp
     src/pipeline/node/FeatureTracker.cpp
     src/pipeline/node/DetectionParser.cpp
+    src/pipeline/node/UVC.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
@@ -241,11 +243,14 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/EdgeDetectorConfig.cpp
     src/pipeline/datatype/TrackedFeatures.cpp
     src/pipeline/datatype/FeatureTrackerConfig.cpp
+    src/pipeline/datatype/ToFConfig.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/utility/Path.cpp
     src/utility/Platform.cpp
     src/utility/Environment.cpp
+    src/utility/XLinkGlobalProfilingLogger.cpp
+    src/utility/Logging.cpp
     src/xlink/XLinkConnection.cpp
     src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp
