@@ -8,7 +8,7 @@ ImgFrame::Serialized ImgFrame::serialize() const {
     return {data, raw};
 }
 
-ImgFrame::ImgFrame() : Buffer(std::make_shared<RawImgFrame>()), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformations(img.transformations){
+ImgFrame::ImgFrame() : Buffer(std::make_shared<RawImgFrame>()), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformations(img.transformations) {
     // set timestamp to now
     setTimestamp(std::chrono::steady_clock::now());
 }
@@ -173,40 +173,38 @@ ImgFrame& ImgFrame::initMetadata(std::shared_ptr<dai::ImgFrame> sourceFrame) {
     return *this;
 }
 
-dai::Point2f ImgFrame::transformPointFromSource(dai::Point2f point) {
-    bool isNormalized = point.isNormalized();
-    dai::Point2f transformedPoint = point.denormalize(getSourceWidth(), getSourceHeight());
+dai::Point2f ImgFrame::remapPointFromSource(dai::Point2f point) const {
+    if(point.isNormalized()) {
+        throw std::runtime_error("Point must be denormalized");
+    }
+    dai::Point2f transformedPoint = point;
     bool isClipped = false;
     for(auto& transformation : transformations.transformations) {
         transformedPoint = transformations.transformPoint(transformation, transformedPoint, isClipped);
     }
-    if(isNormalized) {
-        transformedPoint = transformedPoint.normalize(getWidth(), getHeight());
-    }
     return transformedPoint;
 }
 
-dai::Point2f ImgFrame::transformPointToSource(dai::Point2f point) {
-    bool isNormalized = point.isNormalized();
-    dai::Point2f transformedPoint = point.denormalize(getWidth(), getHeight());
+dai::Point2f ImgFrame::remapPointToSource(dai::Point2f point) const {
+    if(point.isNormalized()) {
+        throw std::runtime_error("Point must be denormalized");
+    }
+    dai::Point2f transformedPoint = point;
     bool isClipped = false;
     // Do the loop in reverse order
     for(auto it = transformations.transformations.rbegin(); it != transformations.transformations.rend(); ++it) {
         transformedPoint = transformations.invTransformPoint(*it, transformedPoint, isClipped);
     }
-    if(isNormalized) {
-        transformedPoint = transformedPoint.normalize(getSourceWidth(), getSourceHeight());
-    }
     return transformedPoint;
 }
 
-dai::Rect ImgFrame::transformRectFromSource(dai::Rect rect) {
+dai::Rect ImgFrame::remapRectFromSource(dai::Rect rect) const {
     bool isNormalized = rect.isNormalized();
     if(isNormalized) {
         rect = rect.denormalize(getSourceWidth(), getSourceHeight());
     }
-    auto topLeftTransformed = transformPointFromSource(rect.topLeft());
-    auto bottomRightTransformed = transformPointFromSource(rect.bottomRight());
+    auto topLeftTransformed = remapPointFromSource(rect.topLeft());
+    auto bottomRightTransformed = remapPointFromSource(rect.bottomRight());
     dai::Rect returnRect(topLeftTransformed, bottomRightTransformed);
     if(isNormalized) {
         returnRect = returnRect.normalize(getWidth(), getHeight());
@@ -214,14 +212,13 @@ dai::Rect ImgFrame::transformRectFromSource(dai::Rect rect) {
     return returnRect;
 }
 
-dai::Rect ImgFrame::transformRectToSource(dai::Rect rect) {
+dai::Rect ImgFrame::remapRectToSource(dai::Rect rect) const {
     bool isNormalized = rect.isNormalized();
     if(isNormalized) {
         rect = rect.denormalize(getWidth(), getHeight());
     }
-    // std::cout << "rect.x: " << rect.x << std::endl;
-    auto topLeftTransformed = transformPointToSource(rect.topLeft());
-    auto bottomRightTransformed = transformPointToSource(rect.bottomRight());
+    auto topLeftTransformed = remapPointToSource(rect.topLeft());
+    auto bottomRightTransformed = remapPointToSource(rect.bottomRight());
 
     dai::Rect returnRect(topLeftTransformed, bottomRightTransformed);
     if(isNormalized) {
@@ -310,6 +307,31 @@ float ImgFrame::getSourceVFov() {
     // Convert VFOV to degrees
     float verticalFovDegrees = verticalFovRadians * (180.0f / static_cast<float>(M_PI));
     return verticalFovDegrees;
+}
+
+bool ImgFrame::validateTransformations() const {
+    // TODO Implementation
+    return true;
+}
+
+dai::Point2f ImgFrame::remapPointBetweenSourceFrames(dai::Point2f point, std::shared_ptr<dai::ImgFrame> sourceImage, std::shared_ptr<dai::ImgFrame> destImage) {
+    auto hFovDegreeDest = destImage->getSourceHFov();
+    auto vFovDegreeDest = destImage->getSourceVFov();
+
+    auto hFovDegreeOrigin = sourceImage->getSourceHFov();
+    auto vFovDegreeOrigin = sourceImage->getSourceVFov();
+    // TODO Implementation
+    return point;
+}
+
+dai::Point2f ImgFrame::remapPointBetweenFrames(dai::Point2f originPoint, std::shared_ptr<dai::ImgFrame> originFrame, std::shared_ptr<dai::ImgFrame> destFrame) {
+    // TODO Implementation
+    return originPoint;
+}
+
+dai::Rect ImgFrame::remapRectangleBetweenFrames(dai::Rect originRect, std::shared_ptr<dai::ImgFrame> originFrame, std::shared_ptr<dai::ImgFrame> destFrame) {
+    // TODO Implementation
+    return originRect;
 }
 
 }  // namespace dai

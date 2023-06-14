@@ -228,34 +228,34 @@ class ImgFrame : public Buffer {
      */
     void set(dai::RawImgFrame rawImgFrame);
     /**
-     * Transform a point from the current frame to the source frame
-     * @param point point to transform
-     * @returns transformed point
+     * Remap a point from the current frame to the source frame
+     * @param point point to remap
+     * @returns remapped point
      */
-    dai::Point2f transformPointFromSource(dai::Point2f point);
+    dai::Point2f remapPointFromSource(dai::Point2f point) const;
 
     /**
-     * Transform a point from the source frame to the current frame
-     * @param point point to transform
-     * @returns transformed point
+     * Remap a point from the source frame to the current frame
+     * @param point point to remap
+     * @returns remapped point
      */
-    dai::Point2f transformPointToSource(dai::Point2f point);
+    dai::Point2f remapPointToSource(dai::Point2f point) const;
 
     /**
-     * Transform a rectangle from the source frame to the current frame
+     * Remap a rectangle from the source frame to the current frame
      *
-     * @param rect rectangle to transform
-     * @returns transformed rectangle
+     * @param rect rectangle to remap
+     * @returns remapped rectangle
      */
-    dai::Rect transformRectFromSource(dai::Rect rect);
+    dai::Rect remapRectFromSource(dai::Rect rect) const;
 
     /**
-     * Transform a rectangle from the current frame to the source frame
+     * Remap a rectangle from the current frame to the source frame
      *
-     * @param rect rectangle to transform
-     * @returns transformed rectangle
+     * @param rect rectangle to remap
+     * @returns remapped rectangle
      */
-    dai::Rect transformRectToSource(dai::Rect rect);
+    dai::Rect remapRectToSource(dai::Rect rect) const;
 
     /**
      * Convience function to initialize meta data from another frame
@@ -295,6 +295,41 @@ class ImgFrame : public Buffer {
      * @param degrees field of view in degrees
      */
     float getSourceVFov();
+
+    /**
+     * Check that the image transformation match the image size
+     */
+    bool validateTransformations() const;
+
+    /**
+     * Remap point between two source frames
+     * @param point point to remap
+     * @param sourceImage source image
+     * @param destImage destination image
+     *
+     * @returns remapped point
+     */
+    static dai::Point2f remapPointBetweenSourceFrames(dai::Point2f point, std::shared_ptr<dai::ImgFrame> sourceImage, std::shared_ptr<dai::ImgFrame> destImage);
+
+    /**
+     * Remap point between two frames
+     * @param originPoint point to remap
+     * @param originFrame origin frame
+     * @param destFrame destination frame
+     *
+     * @returns remapped point
+     */
+    static dai::Point2f remapPointBetweenFrames(dai::Point2f originPoint, std::shared_ptr<dai::ImgFrame> originFrame, std::shared_ptr<dai::ImgFrame> destFrame);
+
+    /**
+     * Remap rectangle between two frames
+     * @param originRect rectangle to remap
+     * @param originFrame origin frame
+     * @param destFrame destination frame
+     *
+     * @returns remapped rectangle
+     */
+    static dai::Rect remapRectangleBetweenFrames(dai::Rect originRect, std::shared_ptr<dai::ImgFrame> originFrame, std::shared_ptr<dai::ImgFrame> destFrame);
 
 // Optional - OpenCV support
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT

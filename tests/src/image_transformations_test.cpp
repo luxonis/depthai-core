@@ -29,12 +29,12 @@ int testPadding() {
     sourceImageFrame->setHeight(1380);
 
     dai::Rect sourceRect{0.3, 0.7, 0.1, 0.1};
-    auto outRect = sourceImageFrame->transformRectToSource(sourceRect);
+    auto outRect = sourceImageFrame->remapRectToSource(sourceRect);
     REQUIRE_THAT(0.25, Catch::Matchers::WithinAbs(outRect.x, 0.01));
     REQUIRE_THAT(0.80, Catch::Matchers::WithinAbs(outRect.y, 0.01));
     REQUIRE_THAT(0.13, Catch::Matchers::WithinAbs(outRect.width, 0.01));
     REQUIRE_THAT(0.12, Catch::Matchers::WithinAbs(outRect.height, 0.01));
-    auto reverseBackRect = sourceImageFrame->transformRectFromSource(outRect);
+    auto reverseBackRect = sourceImageFrame->remapRectFromSource(outRect);
     REQUIRE_THAT(reverseBackRect.x, Catch::Matchers::WithinAbs(sourceRect.x, 0.01));
     REQUIRE_THAT(reverseBackRect.y, Catch::Matchers::WithinAbs(sourceRect.y, 0.01));
     REQUIRE_THAT(reverseBackRect.width, Catch::Matchers::WithinAbs(sourceRect.width, 0.01));
@@ -56,12 +56,12 @@ int testCropping() {
     sourceImageFrame->setSize(300, 400);
 
     dai::Rect sourceRect{150, 250, 50, 50};
-    auto outRect = sourceImageFrame->transformRectToSource(sourceRect);
+    auto outRect = sourceImageFrame->remapRectToSource(sourceRect);
     REQUIRE_THAT(250, Catch::Matchers::WithinAbs(outRect.x, 0.01));
     REQUIRE_THAT(450, Catch::Matchers::WithinAbs(outRect.y, 0.01));
     REQUIRE_THAT(50, Catch::Matchers::WithinAbs(outRect.width, 0.01));
     REQUIRE_THAT(50, Catch::Matchers::WithinAbs(outRect.height, 0.01));
-    auto reverseBackRect = sourceImageFrame->transformRectFromSource(outRect);
+    auto reverseBackRect = sourceImageFrame->remapRectFromSource(outRect);
     REQUIRE_THAT(reverseBackRect.x, Catch::Matchers::WithinAbs(sourceRect.x, 0.01));
     REQUIRE_THAT(reverseBackRect.y, Catch::Matchers::WithinAbs(sourceRect.y, 0.01));
     REQUIRE_THAT(reverseBackRect.width, Catch::Matchers::WithinAbs(sourceRect.width, 0.01));
@@ -77,12 +77,12 @@ int testFlipping() {
     sourceImageFrame->transformations.setFlipHorizontal();
 
     dai::Rect sourceRect{100, 0, 300, 300};
-    auto outRect = sourceImageFrame->transformRectToSource(sourceRect);
+    auto outRect = sourceImageFrame->remapRectToSource(sourceRect);
     REQUIRE_THAT(1520, Catch::Matchers::WithinAbs(outRect.x, 0.01));
     REQUIRE_THAT(0, Catch::Matchers::WithinAbs(outRect.y, 0.01));
     REQUIRE_THAT(300, Catch::Matchers::WithinAbs(outRect.width, 0.01));
     REQUIRE_THAT(300, Catch::Matchers::WithinAbs(outRect.height, 0.01));
-    auto reverseBackRect = sourceImageFrame->transformRectFromSource(outRect);
+    auto reverseBackRect = sourceImageFrame->remapRectFromSource(outRect);
     REQUIRE_THAT(reverseBackRect.x, Catch::Matchers::WithinAbs(sourceRect.x, 0.01));
     REQUIRE_THAT(reverseBackRect.y, Catch::Matchers::WithinAbs(sourceRect.y, 0.01));
     REQUIRE_THAT(reverseBackRect.width, Catch::Matchers::WithinAbs(sourceRect.width, 0.01));
@@ -101,12 +101,12 @@ int testScale() {
     sourceImageFrame->setHeight(static_cast<int>(0.3 * 1080));
 
     dai::Rect sourceRect{0.3, 0.7, 0.1, 0.1};
-    auto outRect = sourceImageFrame->transformRectToSource(sourceRect);
+    auto outRect = sourceImageFrame->remapRectToSource(sourceRect);
     REQUIRE_THAT(0.3, Catch::Matchers::WithinAbs(outRect.x, 0.01));
     REQUIRE_THAT(0.7, Catch::Matchers::WithinAbs(outRect.y, 0.01));
     REQUIRE_THAT(0.1, Catch::Matchers::WithinAbs(outRect.width, 0.01));
     REQUIRE_THAT(0.1, Catch::Matchers::WithinAbs(outRect.height, 0.01));
-    auto reverseBackRect = sourceImageFrame->transformRectFromSource(outRect);
+    auto reverseBackRect = sourceImageFrame->remapRectFromSource(outRect);
     REQUIRE_THAT(reverseBackRect.x, Catch::Matchers::WithinAbs(sourceRect.x, 0.01));
     REQUIRE_THAT(reverseBackRect.y, Catch::Matchers::WithinAbs(sourceRect.y, 0.01));
     REQUIRE_THAT(reverseBackRect.width, Catch::Matchers::WithinAbs(sourceRect.width, 0.01));
@@ -125,10 +125,10 @@ int testRotation(dai::Point2f inPoint,
     sourceImageFrame->setSourceSize(1920, 1080);
 
     sourceImageFrame->transformations.setRotation(angle, rotationPoint, sourceImageFrame->getWidth(), sourceImageFrame->getHeight());
-    auto outPoint = sourceImageFrame->transformPointToSource(inPoint);
+    auto outPoint = sourceImageFrame->remapPointToSource(inPoint);
     REQUIRE_THAT(outPointCheck.x, Catch::Matchers::WithinAbs(outPoint.x, 0.01));
     REQUIRE_THAT(outPointCheck.y, Catch::Matchers::WithinAbs(outPoint.y, 0.01));
-    auto reverseBackPoint = sourceImageFrame->transformPointFromSource(outPoint);
+    auto reverseBackPoint = sourceImageFrame->remapPointFromSource(outPoint);
     if(backPointCheck.x != 0 || backPointCheck.y != 0) {
         inPoint = backPointCheck;
     }
