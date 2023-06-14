@@ -160,6 +160,7 @@ TEST_CASE("testRotation") {
     testRotation(dai::Point2f(420, 1080), -90, dai::Point2f(420, 0));
     testRotation(dai::Point2f(420, 1080), 90, dai::Point2f(1500, 1080));
     testRotation(dai::Point2f(1920, 0), 90, dai::Point2f(420, 0), dai::Point2f(960, 540), dai::Point2f(1500, 0));
+    testRotation(dai::Point2f(0, 0), 90, dai::Point2f(0, 0), dai::Point2f(0, 0), dai::Point2f(0, 0));
 }
 
 TEST_CASE("testFOV") {
