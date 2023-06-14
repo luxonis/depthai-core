@@ -24,7 +24,7 @@ namespace dai {
  */
 class ImgFrame : public Buffer {
     std::shared_ptr<RawBuffer> serialize() const override;
-    RawImgFrame& img;
+    RawImgFrame* img;
 
    public:
     // Raw* mirror
@@ -39,6 +39,14 @@ class ImgFrame : public Buffer {
     ImgFrame();
     explicit ImgFrame(std::shared_ptr<RawImgFrame> ptr);
     virtual ~ImgFrame() = default;
+
+    ImgFrame& operator=(const ImgFrame&) = delete;
+
+    // helpers
+    /**
+     * Clears the contents of this class.
+     */
+    void clear();
 
     // getters
     /**
