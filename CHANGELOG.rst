@@ -2,6 +2,27 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.22.0 (2023-06-15)
+-----------
+* UVC Node - Capability to create a pipeline that sends data over UVC (or flash it)
+* ToF Node - Capability to decode ToF data into a depth map
+* New devices: OAK-D-SR (fixes), OAK-D-LR R1, OAK-D SR PoE
+* Reorganized CameraBoardSocket naming
+* Logging improvements
+* Added data throughput profiling, per device and globally
+* Added DEPTHAI_DEVICE_NAME_LIST env var to filter devices by name
+* Bootloader v0.0.26 - Fix for bootloader crash (USB variant)
+* Fix for 4 cameras via ETH
+* Device constructor bugfixes (when taking pipeline, or pipeline with config preapplied, etc...)
+* XLink - Bugfix for wrongly discovered usb path on Windows
+* OV9782 startup stream issue fix
+* #779 - Fixes a parsing issue
+* #469 - Fixes a stuck case if same stream names are used
+* Deprecated RGB/LEFT/RIGHT/... CamerBoardSocket naming. Rely on CAM_[A-H] or setName API
+* Add option to clear crash dump
+* XLink - Added 255.255.255.255 discovery and increased PoE search time
+* Contributors: Alex Bougdan, Szabolcs Gergely, Martin Peterlin
+
 2.21.2 (2023-04-05)
 -----------
 * UPDATE: Use v2.21.2 due to issues this version carries
