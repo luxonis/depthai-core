@@ -2,6 +2,7 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
 #include "spdlog/fmt/fmt.h"
+#include "spdlog/spdlog.h"
 namespace dai {
 
 ImgFrame::Serialized ImgFrame::serialize() const {
@@ -311,20 +312,32 @@ float ImgFrame::getSourceVFov() {
 
 bool ImgFrame::validateTransformations() const {
     if(!transformations.validateTransformationSizes()) {
+        spdlog::warn("Transformation sizes are invalid");
         return false;
     }
 
     // Initial transformation always has to be set
     if(transformations.transformations.size() == 0) {
+        spdlog::warn("No transformations set");
         return false;
     }
 
     if(getSourceHeight() != transformations.transformations[0].beforeTransformHeight
        || getSourceWidth() != transformations.transformations[0].beforeTransformWidth) {
+        spdlog::warn("Initial transformation size is {}x{} - while source image size is {}x{}",
+                     transformations.transformations[0].beforeTransformWidth,
+                     transformations.transformations[0].beforeTransformHeight,
+                     getSourceWidth(),
+                     getSourceHeight());
         return false;
     }
 
     if(getHeight() != transformations.getLastHeight() || getWidth() != transformations.getLastWidth()) {
+        spdlog::warn("Last transformation size is {}x{} while current transformation size is {}x{}",
+                     transformations.getLastWidth(),
+                     transformations.getLastHeight(),
+                     getWidth(),
+                     getHeight());
         return false;
     }
 
@@ -341,15 +354,43 @@ dai::Point2f ImgFrame::remapPointBetweenSourceFrames(dai::Point2f point, std::sh
     float vFovRadiansDest = (vFovDegreeDest * ((float)M_PI / 180.0f));
     float hFovRadiansOrigin = (hFovDegreeOrigin * ((float)M_PI / 180.0f));
     float vFovRadiansOrigin = (vFovDegreeOrigin * ((float)M_PI / 180.0f));
+    if(point.isNormalized()) {
+        throw std::runtime_error("Point is normalized. Cannot remap normalized points");
+    }
 
-    // Horizontal
-    // diffX is the normalized difference between the two images
-    // if diffX is 0.2, tha destination image sees 20% more than the origin image
-    float diffX = ((std::tan(hFovRadiansDest / 2) / std::tan(hFovRadiansOrigin / 2)) - 1);
-    float diffY = ((std::tan(vFovRadiansDest / 2) / std::tan(vFovRadiansOrigin / 2)) - 1);
-    int diffXPixels = std::round(diffX * destImage->getSourceWidth());
-    int diffYPixels = std::round(diffY * destImage->getSourceHeight());
-    dai::Point2f returnPoint(point.x + diffXPixels, point.y + diffYPixels);
+    if(sourceImage->getSourceWidth() == 0 || sourceImage->getSourceHeight() == 0 || destImage->getSourceWidth() == 0 || destImage->getSourceHeight() == 0) {
+        throw std::runtime_error("Source image has invalid dimensions - all dimensions need to be set before remapping");
+    }
+
+    if(!(sourceImage->getSourceHFov() > 0)) {
+        throw std::runtime_error("Source image has invalid horizontal FOV - horizontal FOV needs to be set before remapping");
+    }
+
+    if(!(destImage->getSourceHFov() > 0)) {
+        throw std::runtime_error("Destination image has invalid horizontal FOV - horizontal FOV needs to be set before remapping");
+    }
+
+    // Calculate the factor between the FOVs
+    // kX of 1.2 would mean that the destination image has 1.2 times wider FOV than the source image
+    float kX = ((std::tan(hFovRadiansDest / 2) / std::tan(hFovRadiansOrigin / 2)));
+    float kY = ((std::tan(vFovRadiansDest / 2) / std::tan(vFovRadiansOrigin / 2)));
+
+    // Scale the point to the destination image
+    point.x = std::round(point.x * (static_cast<float>(destImage->getSourceWidth()) / sourceImage->getSourceWidth()));
+    point.y = std::round(point.y * (static_cast<float>(destImage->getSourceHeight()) / sourceImage->getSourceHeight()));
+
+    // Adjust the point to the destination image
+    uint adjustedWidth = std::round(destImage->getSourceWidth() * kX);
+    uint adjustedHeight = std::round(destImage->getSourceHeight() * kY);
+
+    int diffX = (adjustedWidth - destImage->getSourceWidth()) / 2;
+    int diffY = (adjustedHeight - destImage->getSourceHeight()) / 2;
+
+    int adjustedFrameX = point.x + diffX;
+    int adjustedFrameY = point.y + diffY;
+
+    // Scale the point back to the destination frame
+    dai::Point2f returnPoint(std::round(adjustedFrameX / kX), std::round(adjustedFrameY / kY));
     bool pointClipped = false;
     returnPoint = ImgTransformations::clipPoint(returnPoint, destImage->getSourceWidth(), destImage->getSourceHeight(), pointClipped);
 
@@ -364,17 +405,26 @@ dai::Point2f ImgFrame::remapPointBetweenFrames(dai::Point2f originPoint, std::sh
     transformedPoint = originFrame->remapPointToSource(transformedPoint);
     if(originFrame->getInstanceNum() != destFrame->getInstanceNum()) {
         transformedPoint = remapPointBetweenSourceFrames(transformedPoint, originFrame, destFrame);
+    } else {
+        if((originFrame->getSourceHeight() != destFrame->getSourceHeight()) || (originFrame->getSourceWidth() != destFrame->getSourceWidth())
+           || (originFrame->getSourceHFov() != destFrame->getSourceHFov()) || (originFrame->getSourceVFov() != destFrame->getSourceVFov())) {
+            throw std::runtime_error("Frames have the same instance numbers, but different source dimensions and/or FOVs.");
+        }
     }
     transformedPoint = destFrame->remapPointFromSource(transformedPoint);
 
     return transformedPoint;
-    return originPoint;
 }
 
 dai::Rect ImgFrame::remapRectangleBetweenFrames(dai::Rect originRect, std::shared_ptr<dai::ImgFrame> originFrame, std::shared_ptr<dai::ImgFrame> destFrame) {
+    bool normalized = originRect.isNormalized();
     originRect = originRect.denormalize(originFrame->getWidth(), originFrame->getHeight());
     auto topLeftTransformed = remapPointBetweenFrames(originRect.topLeft(), originFrame, destFrame);
     auto bottomRightTransformed = remapPointBetweenFrames(originRect.bottomRight(), originFrame, destFrame);
+    dai::Rect returnRect = dai::Rect{topLeftTransformed, bottomRightTransformed};
+    if(normalized) {
+        returnRect = returnRect.normalize(destFrame->getWidth(), destFrame->getHeight());
+    }
     return dai::Rect{topLeftTransformed, bottomRightTransformed};
 }
 
