@@ -54,13 +54,16 @@ void ColorCamera::setCamId(int64_t camId) {
     // cast to board socket
     switch(camId) {
         case 0:
-            properties.boardSocket = CameraBoardSocket::RGB;
+            properties.boardSocket = CameraBoardSocket::CAM_A;
             break;
         case 1:
-            properties.boardSocket = CameraBoardSocket::LEFT;
+            properties.boardSocket = CameraBoardSocket::CAM_B;
             break;
         case 2:
-            properties.boardSocket = CameraBoardSocket::RIGHT;
+            properties.boardSocket = CameraBoardSocket::CAM_C;
+            break;
+        case 3:
+            properties.boardSocket = CameraBoardSocket::CAM_D;
             break;
         case 3:
             properties.boardSocket = CameraBoardSocket::CAM_D;
@@ -528,6 +531,10 @@ int ColorCamera::getRawNumFramesPool() {
 }
 int ColorCamera::getIspNumFramesPool() {
     return properties.numFramesPoolIsp;
+}
+
+void ColorCamera::setRawOutputPacked(bool packed) {
+    properties.rawPacked = packed;
 }
 
 }  // namespace node

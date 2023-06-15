@@ -50,8 +50,8 @@ int main() {
     dai::Point2f bottomRight(0.8f, 0.8f);
 
     // Properties
-    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
-    monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    monoRight->setCamera("right");
+    monoLeft->setCamera("left");
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
     manipRight->initialConfig.setCropRect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);

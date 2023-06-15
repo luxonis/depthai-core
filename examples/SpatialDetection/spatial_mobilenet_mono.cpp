@@ -47,9 +47,9 @@ int main(int argc, char** argv) {
     imageManip->initialConfig.setFrameType(dai::ImgFrame::Type::BGR888p);
 
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-    monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    monoLeft->setCamera("left");
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    monoRight->setCamera("right");
 
     // StereoDepth
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
