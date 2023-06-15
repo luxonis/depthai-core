@@ -149,6 +149,17 @@ class MonoCamera : public NodeCRTP<Node, MonoCamera, MonoCameraProperties> {
     int getNumFramesPool() const;
     /// Get number of frames in raw pool
     int getRawNumFramesPool() const;
+
+    /**
+     * Configures whether the camera `raw` frames are saved as MIPI-packed to memory.
+     * The packed format is more efficient, consuming less memory on device, and less data
+     * to send to host: RAW10: 4 pixels saved on 5 bytes, RAW12: 2 pixels saved on 3 bytes.
+     * When packing is disabled (`false`), data is saved lsb-aligned, e.g. a RAW10 pixel
+     * will be stored as uint16, on bits 9..0: 0b0000'00pp'pppp'pppp.
+     * Default is auto: enabled for standard color/monochrome cameras where ISP can work
+     * with both packed/unpacked, but disabled for other cameras like ToF.
+     */
+    void setRawOutputPacked(bool packed);
 };
 
 }  // namespace node

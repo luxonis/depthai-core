@@ -242,6 +242,18 @@ class ImageManipConfig : public Buffer {
      * @returns specified colormap
      */
     Colormap getColormap() const;
+
+    /**
+     * Set explicit configuration.
+     * @param config Explicit configuration
+     */
+    ImageManipConfig& set(dai::RawImageManipConfig config);
+
+    /**
+     * Retrieve configuration data for ImageManip.
+     * @returns config for ImageManip
+     */
+    dai::RawImageManipConfig get() const;
 };
 
 }  // namespace dai

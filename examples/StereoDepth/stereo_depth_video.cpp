@@ -41,9 +41,9 @@ int main() {
 
     // Properties
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    monoLeft->setCamera("left");
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    monoRight->setCamera("right");
 
     if(withDepth) {
         // StereoDepth
