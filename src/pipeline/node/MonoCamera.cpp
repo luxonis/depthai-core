@@ -57,9 +57,6 @@ void MonoCamera::setCamId(int64_t camId) {
         case 3:
             properties.boardSocket = CameraBoardSocket::CAM_D;
             break;
-        case 3:
-            properties.boardSocket = CameraBoardSocket::CAM_D;
-            break;
         default:
             throw std::invalid_argument(fmt::format("CamId value: {} is invalid.", camId));
             break;
