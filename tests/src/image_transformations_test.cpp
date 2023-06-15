@@ -27,6 +27,7 @@ int testPadding() {
     sourceImageFrame->transformations.setPadding(100, 200, 300, 400);
     sourceImageFrame->setWidth(2620);
     sourceImageFrame->setHeight(1380);
+    REQUIRE(sourceImageFrame->validateTransformations());
 
     dai::Rect sourceRect{0.3, 0.7, 0.1, 0.1};
     auto outRect = sourceImageFrame->remapRectToSource(sourceRect);
@@ -52,8 +53,9 @@ int testCropping() {
     float width = 300;
     float height = 400;
 
-    sourceImageFrame->transformations.setCrop(x, y, x + width, y + width);
+    sourceImageFrame->transformations.setCrop(x, y, x + width, y + height);
     sourceImageFrame->setSize(300, 400);
+    REQUIRE(sourceImageFrame->validateTransformations());
 
     dai::Rect sourceRect{150, 250, 50, 50};
     auto outRect = sourceImageFrame->remapRectToSource(sourceRect);
@@ -75,7 +77,7 @@ int testFlipping() {
     sourceImageFrame->setHeight(1080);
     sourceImageFrame->setSourceSize(1920, 1080);
     sourceImageFrame->transformations.setFlipHorizontal();
-
+    REQUIRE(sourceImageFrame->validateTransformations());
     dai::Rect sourceRect{100, 0, 300, 300};
     auto outRect = sourceImageFrame->remapRectToSource(sourceRect);
     REQUIRE_THAT(1520, Catch::Matchers::WithinAbs(outRect.x, 0.01));
@@ -97,8 +99,9 @@ int testScale() {
     sourceImageFrame->setSourceSize(1920, 1080);
 
     sourceImageFrame->transformations.setScale(12, 0.3);
-    sourceImageFrame->setWidth(static_cast<int>(12 * 1920));
-    sourceImageFrame->setHeight(static_cast<int>(0.3 * 1080));
+    sourceImageFrame->setWidth(std::round(12 * 1920));
+    sourceImageFrame->setHeight(std::round(0.3 * 1080));
+    REQUIRE(sourceImageFrame->validateTransformations());
 
     dai::Rect sourceRect{0.3, 0.7, 0.1, 0.1};
     auto outRect = sourceImageFrame->remapRectToSource(sourceRect);
@@ -123,6 +126,7 @@ int testRotation(dai::Point2f inPoint,
     sourceImageFrame->setWidth(1920);
     sourceImageFrame->setHeight(1080);
     sourceImageFrame->setSourceSize(1920, 1080);
+    REQUIRE(sourceImageFrame->validateTransformations());
 
     sourceImageFrame->transformations.setRotation(angle, rotationPoint, sourceImageFrame->getWidth(), sourceImageFrame->getHeight());
     auto outPoint = sourceImageFrame->remapPointToSource(inPoint);
