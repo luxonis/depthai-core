@@ -298,6 +298,8 @@ class ImgFrame : public Buffer {
 
     /**
      * Check that the image transformation match the image size
+     * 
+     * @returns true if the transformations are valid
      */
     bool validateTransformations() const;
 

@@ -310,28 +310,72 @@ float ImgFrame::getSourceVFov() {
 }
 
 bool ImgFrame::validateTransformations() const {
-    // TODO Implementation
+    if(!transformations.validateTransformationSizes()) {
+        return false;
+    }
+
+    // Initial transformation always has to be set
+    if(transformations.transformations.size() == 0) {
+        return false;
+    }
+
+    if(getSourceHeight() != transformations.transformations[0].beforeTransformHeight
+       || getSourceWidth() != transformations.transformations[0].beforeTransformWidth) {
+        return false;
+    }
+
+    if(getHeight() != transformations.getLastHeight() || getWidth() != transformations.getLastWidth()) {
+        return false;
+    }
+
     return true;
 }
 
 dai::Point2f ImgFrame::remapPointBetweenSourceFrames(dai::Point2f point, std::shared_ptr<dai::ImgFrame> sourceImage, std::shared_ptr<dai::ImgFrame> destImage) {
     auto hFovDegreeDest = destImage->getSourceHFov();
     auto vFovDegreeDest = destImage->getSourceVFov();
-
     auto hFovDegreeOrigin = sourceImage->getSourceHFov();
     auto vFovDegreeOrigin = sourceImage->getSourceVFov();
-    // TODO Implementation
-    return point;
+
+    float hFovRadiansDest = (hFovDegreeDest * ((float)M_PI / 180.0f));
+    float vFovRadiansDest = (vFovDegreeDest * ((float)M_PI / 180.0f));
+    float hFovRadiansOrigin = (hFovDegreeOrigin * ((float)M_PI / 180.0f));
+    float vFovRadiansOrigin = (vFovDegreeOrigin * ((float)M_PI / 180.0f));
+
+    // Horizontal
+    // diffX is the normalized difference between the two images
+    // if diffX is 0.2, tha destination image sees 20% more than the origin image
+    float diffX = ((std::tan(hFovRadiansDest / 2) / std::tan(hFovRadiansOrigin / 2)) - 1);
+    float diffY = ((std::tan(vFovRadiansDest / 2) / std::tan(vFovRadiansOrigin / 2)) - 1);
+    int diffXPixels = std::round(diffX * destImage->getSourceWidth());
+    int diffYPixels = std::round(diffY * destImage->getSourceHeight());
+    dai::Point2f returnPoint(point.x + diffXPixels, point.y + diffYPixels);
+    bool pointClipped = false;
+    returnPoint = ImgTransformations::clipPoint(returnPoint, destImage->getSourceWidth(), destImage->getSourceHeight(), pointClipped);
+
+    return returnPoint;
 }
 
 dai::Point2f ImgFrame::remapPointBetweenFrames(dai::Point2f originPoint, std::shared_ptr<dai::ImgFrame> originFrame, std::shared_ptr<dai::ImgFrame> destFrame) {
-    // TODO Implementation
+    // First get the origin to the origin image
+    // For example if this is a RGB image that was cropped and rotated and the detection was done there,
+    // you remap it back as it was taken on the camera
+    dai::Point2f transformedPoint = originPoint;
+    transformedPoint = originFrame->remapPointToSource(transformedPoint);
+    if(originFrame->getInstanceNum() != destFrame->getInstanceNum()) {
+        transformedPoint = remapPointBetweenSourceFrames(transformedPoint, originFrame, destFrame);
+    }
+    transformedPoint = destFrame->remapPointFromSource(transformedPoint);
+
+    return transformedPoint;
     return originPoint;
 }
 
 dai::Rect ImgFrame::remapRectangleBetweenFrames(dai::Rect originRect, std::shared_ptr<dai::ImgFrame> originFrame, std::shared_ptr<dai::ImgFrame> destFrame) {
-    // TODO Implementation
-    return originRect;
+    originRect = originRect.denormalize(originFrame->getWidth(), originFrame->getHeight());
+    auto topLeftTransformed = remapPointBetweenFrames(originRect.topLeft(), originFrame, destFrame);
+    auto bottomRightTransformed = remapPointBetweenFrames(originRect.bottomRight(), originFrame, destFrame);
+    return dai::Rect{topLeftTransformed, bottomRightTransformed};
 }
 
 }  // namespace dai
