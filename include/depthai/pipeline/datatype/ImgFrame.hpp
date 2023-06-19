@@ -9,8 +9,8 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 // shared
-#include "depthai-shared/datatype/RawImgFrame.hpp"
 #include "depthai-shared/common/Rect.hpp"
+#include "depthai-shared/datatype/RawImgFrame.hpp"
 
 // optional
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -298,7 +298,7 @@ class ImgFrame : public Buffer {
 
     /**
      * Check that the image transformation match the image size
-     * 
+     *
      * @returns true if the transformations are valid
      */
     bool validateTransformations() const;
@@ -331,7 +331,7 @@ class ImgFrame : public Buffer {
      *
      * @returns remapped rectangle
      */
-    static dai::Rect remapRectangleBetweenFrames(dai::Rect originRect, std::shared_ptr<dai::ImgFrame> originFrame, std::shared_ptr<dai::ImgFrame> destFrame);
+    static dai::Rect remapRectBetweenFrames(dai::Rect originRect, std::shared_ptr<dai::ImgFrame> originFrame, std::shared_ptr<dai::ImgFrame> destFrame);
 
 // Optional - OpenCV support
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT

@@ -416,7 +416,7 @@ dai::Point2f ImgFrame::remapPointBetweenFrames(dai::Point2f originPoint, std::sh
     return transformedPoint;
 }
 
-dai::Rect ImgFrame::remapRectangleBetweenFrames(dai::Rect originRect, std::shared_ptr<dai::ImgFrame> originFrame, std::shared_ptr<dai::ImgFrame> destFrame) {
+dai::Rect ImgFrame::remapRectBetweenFrames(dai::Rect originRect, std::shared_ptr<dai::ImgFrame> originFrame, std::shared_ptr<dai::ImgFrame> destFrame) {
     bool normalized = originRect.isNormalized();
     originRect = originRect.denormalize(originFrame->getWidth(), originFrame->getHeight());
     auto topLeftTransformed = remapPointBetweenFrames(originRect.topLeft(), originFrame, destFrame);
@@ -425,7 +425,7 @@ dai::Rect ImgFrame::remapRectangleBetweenFrames(dai::Rect originRect, std::share
     if(normalized) {
         returnRect = returnRect.normalize(destFrame->getWidth(), destFrame->getHeight());
     }
-    return dai::Rect{topLeftTransformed, bottomRightTransformed};
+    return returnRect;
 }
 
 }  // namespace dai
