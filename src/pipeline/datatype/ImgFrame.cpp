@@ -380,8 +380,8 @@ dai::Point2f ImgFrame::remapPointBetweenSourceFrames(dai::Point2f point, std::sh
     point.y = std::round(point.y * (static_cast<float>(destImage->getSourceHeight()) / sourceImage->getSourceHeight()));
 
     // Adjust the point to the destination image
-    uint adjustedWidth = std::round(destImage->getSourceWidth() * kX);
-    uint adjustedHeight = std::round(destImage->getSourceHeight() * kY);
+    unsigned adjustedWidth = std::round(destImage->getSourceWidth() * kX);
+    unsigned adjustedHeight = std::round(destImage->getSourceHeight() * kY);
 
     int diffX = (adjustedWidth - destImage->getSourceWidth()) / 2;
     int diffY = (adjustedHeight - destImage->getSourceHeight()) / 2;
