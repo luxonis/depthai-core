@@ -214,6 +214,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/DetectionNetwork.cpp
     src/pipeline/node/Script.cpp
     src/pipeline/node/SpatialDetectionNetwork.cpp
+    src/pipeline/node/DepthAlign.cpp
     src/pipeline/node/SystemLogger.cpp
     src/pipeline/node/SpatialLocationCalculator.cpp
     src/pipeline/node/AprilTag.cpp
@@ -243,6 +244,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/EdgeDetectorConfig.cpp
     src/pipeline/datatype/TrackedFeatures.cpp
     src/pipeline/datatype/FeatureTrackerConfig.cpp
+    src/pipeline/datatype/DepthAlignConfig.cpp
     src/pipeline/datatype/ToFConfig.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp

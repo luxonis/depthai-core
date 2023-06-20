@@ -18,6 +18,7 @@
 #include "node/Script.hpp"
 #include "node/SpatialDetectionNetwork.hpp"
 #include "node/SpatialLocationCalculator.hpp"
+#include "node/DepthAlign.hpp"
 #include "node/StereoDepth.hpp"
 #include "node/SystemLogger.hpp"
 #include "node/ToF.hpp"

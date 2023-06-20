@@ -236,6 +236,8 @@ dai_add_example(edge_detector EdgeDetector/edge_detector.cpp ON)
 dai_add_example(feature_detector FeatureTracker/feature_detector.cpp ON)
 dai_add_example(feature_tracker FeatureTracker/feature_tracker.cpp ON)
 
+dai_add_example(depth_align DepthAlign/rgb_depth_align.cpp ON)
+
 # host_side
 dai_add_example(device_queue_event host_side/device_queue_event.cpp ON)
 dai_add_example(opencv_support host_side/opencv_support.cpp ON)
