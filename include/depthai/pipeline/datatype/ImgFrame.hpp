@@ -232,14 +232,14 @@ class ImgFrame : public Buffer {
      * @param point point to remap
      * @returns remapped point
      */
-    dai::Point2f remapPointFromSource(dai::Point2f point) const;
+    dai::Point2f remapPointFromSource(const dai::Point2f& point) const;
 
     /**
      * Remap a point from the source frame to the current frame
      * @param point point to remap
      * @returns remapped point
      */
-    dai::Point2f remapPointToSource(dai::Point2f point) const;
+    dai::Point2f remapPointToSource(const dai::Point2f& point) const;
 
     /**
      * Remap a rectangle from the source frame to the current frame
@@ -247,7 +247,7 @@ class ImgFrame : public Buffer {
      * @param rect rectangle to remap
      * @returns remapped rectangle
      */
-    dai::Rect remapRectFromSource(dai::Rect rect) const;
+    dai::Rect remapRectFromSource(const dai::Rect& rect) const;
 
     /**
      * Remap a rectangle from the current frame to the source frame
@@ -255,14 +255,14 @@ class ImgFrame : public Buffer {
      * @param rect rectangle to remap
      * @returns remapped rectangle
      */
-    dai::Rect remapRectToSource(dai::Rect rect) const;
+    dai::Rect remapRectToSource(const dai::Rect& rect) const;
 
     /**
      * Convience function to initialize meta data from another frame
      * Copies over timestamps, transformations done on the image, etc.
      * @param sourceFrame source frame from which the metadata is taken from
      */
-    ImgFrame& initMetadata(std::shared_ptr<dai::ImgFrame> sourceFrame);
+    ImgFrame& setMetadata(const dai::ImgFrame& sourceFrame);
 
     /**
      * @note Fov API works correctly only on rectilinear frames
@@ -278,7 +278,7 @@ class ImgFrame : public Buffer {
      *
      * @returns field of view in degrees
      */
-    float getSourceDFov();
+    float getSourceDFov() const;
 
     /**
      * @note Fov API works correctly only on rectilinear frames
@@ -286,7 +286,7 @@ class ImgFrame : public Buffer {
      *
      * @param degrees field of view in degrees
      */
-    float getSourceHFov();
+    float getSourceHFov() const;
 
     /**
      * @note Fov API works correctly only on rectilinear frames
@@ -294,7 +294,7 @@ class ImgFrame : public Buffer {
      *
      * @param degrees field of view in degrees
      */
-    float getSourceVFov();
+    float getSourceVFov() const;
 
     /**
      * Check that the image transformation match the image size
@@ -311,7 +311,7 @@ class ImgFrame : public Buffer {
      *
      * @returns remapped point
      */
-    static dai::Point2f remapPointBetweenSourceFrames(dai::Point2f point, std::shared_ptr<dai::ImgFrame> sourceImage, std::shared_ptr<dai::ImgFrame> destImage);
+    static dai::Point2f remapPointBetweenSourceFrames(const dai::Point2f& originPoint, const dai::ImgFrame& sourceImage, const dai::ImgFrame& destImage);
 
     /**
      * Remap point between two frames
@@ -321,7 +321,7 @@ class ImgFrame : public Buffer {
      *
      * @returns remapped point
      */
-    static dai::Point2f remapPointBetweenFrames(dai::Point2f originPoint, std::shared_ptr<dai::ImgFrame> originFrame, std::shared_ptr<dai::ImgFrame> destFrame);
+    static dai::Point2f remapPointBetweenFrames(const dai::Point2f& originPoint, const dai::ImgFrame& originFrame, const dai::ImgFrame& destFrame);
 
     /**
      * Remap rectangle between two frames
@@ -331,7 +331,7 @@ class ImgFrame : public Buffer {
      *
      * @returns remapped rectangle
      */
-    static dai::Rect remapRectBetweenFrames(dai::Rect originRect, std::shared_ptr<dai::ImgFrame> originFrame, std::shared_ptr<dai::ImgFrame> destFrame);
+    static dai::Rect remapRectBetweenFrames(const dai::Rect& originRect, const dai::ImgFrame& originFrame, const dai::ImgFrame& destFrame);
 
 // Optional - OpenCV support
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT

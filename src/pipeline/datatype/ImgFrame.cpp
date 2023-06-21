@@ -169,12 +169,12 @@ void ImgFrame::set(RawImgFrame rawImgFrame) {
     img = rawImgFrame;
 }
 
-ImgFrame& ImgFrame::initMetadata(std::shared_ptr<dai::ImgFrame> sourceFrame) {
-    set(sourceFrame->get());
+ImgFrame& ImgFrame::setMetadata(const dai::ImgFrame& sourceFrame) {
+    set(sourceFrame.get());
     return *this;
 }
 
-dai::Point2f ImgFrame::remapPointFromSource(dai::Point2f point) const {
+dai::Point2f ImgFrame::remapPointFromSource(const dai::Point2f& point) const {
     if(point.isNormalized()) {
         throw std::runtime_error("Point must be denormalized");
     }
@@ -186,7 +186,7 @@ dai::Point2f ImgFrame::remapPointFromSource(dai::Point2f point) const {
     return transformedPoint;
 }
 
-dai::Point2f ImgFrame::remapPointToSource(dai::Point2f point) const {
+dai::Point2f ImgFrame::remapPointToSource(const dai::Point2f& point) const {
     if(point.isNormalized()) {
         throw std::runtime_error("Point must be denormalized");
     }
@@ -199,29 +199,31 @@ dai::Point2f ImgFrame::remapPointToSource(dai::Point2f point) const {
     return transformedPoint;
 }
 
-dai::Rect ImgFrame::remapRectFromSource(dai::Rect rect) const {
+dai::Rect ImgFrame::remapRectFromSource(const dai::Rect& rect) const {
     bool isNormalized = rect.isNormalized();
+    auto returnRect = rect;
     if(isNormalized) {
-        rect = rect.denormalize(getSourceWidth(), getSourceHeight());
+        returnRect = returnRect.denormalize(getSourceWidth(), getSourceHeight());
     }
-    auto topLeftTransformed = remapPointFromSource(rect.topLeft());
-    auto bottomRightTransformed = remapPointFromSource(rect.bottomRight());
-    dai::Rect returnRect(topLeftTransformed, bottomRightTransformed);
+    auto topLeftTransformed = remapPointFromSource(returnRect.topLeft());
+    auto bottomRightTransformed = remapPointFromSource(returnRect.bottomRight());
+    returnRect = dai::Rect(topLeftTransformed, bottomRightTransformed);
     if(isNormalized) {
         returnRect = returnRect.normalize(getWidth(), getHeight());
     }
     return returnRect;
 }
 
-dai::Rect ImgFrame::remapRectToSource(dai::Rect rect) const {
+dai::Rect ImgFrame::remapRectToSource(const dai::Rect& rect) const {
     bool isNormalized = rect.isNormalized();
+    auto returnRect = rect;
     if(isNormalized) {
-        rect = rect.denormalize(getWidth(), getHeight());
+        returnRect = returnRect.denormalize(getWidth(), getHeight());
     }
-    auto topLeftTransformed = remapPointToSource(rect.topLeft());
-    auto bottomRightTransformed = remapPointToSource(rect.bottomRight());
+    auto topLeftTransformed = remapPointToSource(returnRect.topLeft());
+    auto bottomRightTransformed = remapPointToSource(returnRect.bottomRight());
 
-    dai::Rect returnRect(topLeftTransformed, bottomRightTransformed);
+    returnRect= dai::Rect(topLeftTransformed, bottomRightTransformed);
     if(isNormalized) {
         returnRect = returnRect.normalize(getSourceWidth(), getSourceHeight());
     }
@@ -233,11 +235,11 @@ ImgFrame& ImgFrame::setSourceHFov(float degrees) {
     return *this;
 }
 
-float ImgFrame::getSourceHFov() {
+float ImgFrame::getSourceHFov() const {
     return img.HFovDegrees;
 }
 
-float ImgFrame::getSourceDFov() {
+float ImgFrame::getSourceDFov() const {
     // TODO only works rectlinear lenses (rectified frames).
     // Calculate the vertical FOV from the source dimensions and the source DFov
     float sourceWidth = getSourceWidth();
@@ -275,7 +277,7 @@ float ImgFrame::getSourceDFov() {
     return diagonalFovDegrees;
 }
 
-float ImgFrame::getSourceVFov() {
+float ImgFrame::getSourceVFov() const {
     // TODO only works rectlinear lenses (rectified frames).
     // Calculate the vertical FOV from the source dimensions and the source DFov
     float sourceWidth = getSourceWidth();
@@ -344,11 +346,11 @@ bool ImgFrame::validateTransformations() const {
     return true;
 }
 
-dai::Point2f ImgFrame::remapPointBetweenSourceFrames(dai::Point2f point, std::shared_ptr<dai::ImgFrame> sourceImage, std::shared_ptr<dai::ImgFrame> destImage) {
-    auto hFovDegreeDest = destImage->getSourceHFov();
-    auto vFovDegreeDest = destImage->getSourceVFov();
-    auto hFovDegreeOrigin = sourceImage->getSourceHFov();
-    auto vFovDegreeOrigin = sourceImage->getSourceVFov();
+dai::Point2f ImgFrame::remapPointBetweenSourceFrames(const dai::Point2f& point, const dai::ImgFrame& sourceImage, const dai::ImgFrame& destImage) {
+    auto hFovDegreeDest = destImage.getSourceHFov();
+    auto vFovDegreeDest = destImage.getSourceVFov();
+    auto hFovDegreeOrigin = sourceImage.getSourceHFov();
+    auto vFovDegreeOrigin = sourceImage.getSourceVFov();
 
     float hFovRadiansDest = (hFovDegreeDest * ((float)M_PI / 180.0f));
     float vFovRadiansDest = (vFovDegreeDest * ((float)M_PI / 180.0f));
@@ -358,15 +360,15 @@ dai::Point2f ImgFrame::remapPointBetweenSourceFrames(dai::Point2f point, std::sh
         throw std::runtime_error("Point is normalized. Cannot remap normalized points");
     }
 
-    if(sourceImage->getSourceWidth() == 0 || sourceImage->getSourceHeight() == 0 || destImage->getSourceWidth() == 0 || destImage->getSourceHeight() == 0) {
+    if(sourceImage.getSourceWidth() == 0 || sourceImage.getSourceHeight() == 0 || destImage.getSourceWidth() == 0 || destImage.getSourceHeight() == 0) {
         throw std::runtime_error("Source image has invalid dimensions - all dimensions need to be set before remapping");
     }
 
-    if(!(sourceImage->getSourceHFov() > 0)) {
+    if(!(sourceImage.getSourceHFov() > 0)) {
         throw std::runtime_error("Source image has invalid horizontal FOV - horizontal FOV needs to be set before remapping");
     }
 
-    if(!(destImage->getSourceHFov() > 0)) {
+    if(!(destImage.getSourceHFov() > 0)) {
         throw std::runtime_error("Destination image has invalid horizontal FOV - horizontal FOV needs to be set before remapping");
     }
 
@@ -375,55 +377,58 @@ dai::Point2f ImgFrame::remapPointBetweenSourceFrames(dai::Point2f point, std::sh
     float kX = ((std::tan(hFovRadiansDest / 2) / std::tan(hFovRadiansOrigin / 2)));
     float kY = ((std::tan(vFovRadiansDest / 2) / std::tan(vFovRadiansOrigin / 2)));
 
+    auto returnPoint = point;
+
     // Scale the point to the destination image
-    point.x = std::round(point.x * (static_cast<float>(destImage->getSourceWidth()) / sourceImage->getSourceWidth()));
-    point.y = std::round(point.y * (static_cast<float>(destImage->getSourceHeight()) / sourceImage->getSourceHeight()));
+    returnPoint.x = std::round(point.x * (static_cast<float>(destImage.getSourceWidth()) / sourceImage.getSourceWidth()));
+    returnPoint.y = std::round(point.y * (static_cast<float>(destImage.getSourceHeight()) / sourceImage.getSourceHeight()));
 
     // Adjust the point to the destination image
-    unsigned adjustedWidth = std::round(destImage->getSourceWidth() * kX);
-    unsigned adjustedHeight = std::round(destImage->getSourceHeight() * kY);
+    unsigned adjustedWidth = std::round(destImage.getSourceWidth() * kX);
+    unsigned adjustedHeight = std::round(destImage.getSourceHeight() * kY);
 
-    int diffX = (adjustedWidth - destImage->getSourceWidth()) / 2;
-    int diffY = (adjustedHeight - destImage->getSourceHeight()) / 2;
+    int diffX = (adjustedWidth - destImage.getSourceWidth()) / 2;
+    int diffY = (adjustedHeight - destImage.getSourceHeight()) / 2;
 
-    int adjustedFrameX = point.x + diffX;
-    int adjustedFrameY = point.y + diffY;
+    int adjustedFrameX = returnPoint.x + diffX;
+    int adjustedFrameY = returnPoint.y + diffY;
 
     // Scale the point back to the destination frame
-    dai::Point2f returnPoint(std::round(adjustedFrameX / kX), std::round(adjustedFrameY / kY));
+    returnPoint = dai::Point2f(std::round(adjustedFrameX / kX), std::round(adjustedFrameY / kY));
     bool pointClipped = false;
-    returnPoint = ImgTransformations::clipPoint(returnPoint, destImage->getSourceWidth(), destImage->getSourceHeight(), pointClipped);
+    returnPoint = ImgTransformations::clipPoint(returnPoint, destImage.getSourceWidth(), destImage.getSourceHeight(), pointClipped);
 
     return returnPoint;
 }
 
-dai::Point2f ImgFrame::remapPointBetweenFrames(dai::Point2f originPoint, std::shared_ptr<dai::ImgFrame> originFrame, std::shared_ptr<dai::ImgFrame> destFrame) {
+dai::Point2f ImgFrame::remapPointBetweenFrames(const dai::Point2f& originPoint, const ImgFrame& originFrame, const ImgFrame& destFrame) {
     // First get the origin to the origin image
     // For example if this is a RGB image that was cropped and rotated and the detection was done there,
     // you remap it back as it was taken on the camera
     dai::Point2f transformedPoint = originPoint;
-    transformedPoint = originFrame->remapPointToSource(transformedPoint);
-    if(originFrame->getInstanceNum() != destFrame->getInstanceNum()) {
+    transformedPoint = originFrame.remapPointToSource(transformedPoint);
+    if(originFrame.getInstanceNum() != destFrame.getInstanceNum()) {
         transformedPoint = remapPointBetweenSourceFrames(transformedPoint, originFrame, destFrame);
     } else {
-        if((originFrame->getSourceHeight() != destFrame->getSourceHeight()) || (originFrame->getSourceWidth() != destFrame->getSourceWidth())
-           || (originFrame->getSourceHFov() != destFrame->getSourceHFov()) || (originFrame->getSourceVFov() != destFrame->getSourceVFov())) {
+        if((originFrame.getSourceHeight() != destFrame.getSourceHeight()) || (originFrame.getSourceWidth() != destFrame.getSourceWidth())
+           || (originFrame.getSourceHFov() != destFrame.getSourceHFov()) || (originFrame.getSourceVFov() != destFrame.getSourceVFov())) {
             throw std::runtime_error("Frames have the same instance numbers, but different source dimensions and/or FOVs.");
         }
     }
-    transformedPoint = destFrame->remapPointFromSource(transformedPoint);
+    transformedPoint = destFrame.remapPointFromSource(transformedPoint);
 
     return transformedPoint;
 }
 
-dai::Rect ImgFrame::remapRectBetweenFrames(dai::Rect originRect, std::shared_ptr<dai::ImgFrame> originFrame, std::shared_ptr<dai::ImgFrame> destFrame) {
+dai::Rect ImgFrame::remapRectBetweenFrames(const dai::Rect& originRect, const dai::ImgFrame& originFrame, const dai::ImgFrame& destFrame) {
     bool normalized = originRect.isNormalized();
-    originRect = originRect.denormalize(originFrame->getWidth(), originFrame->getHeight());
-    auto topLeftTransformed = remapPointBetweenFrames(originRect.topLeft(), originFrame, destFrame);
-    auto bottomRightTransformed = remapPointBetweenFrames(originRect.bottomRight(), originFrame, destFrame);
-    dai::Rect returnRect = dai::Rect{topLeftTransformed, bottomRightTransformed};
+    auto returnRect = originRect;
+    returnRect = returnRect.denormalize(originFrame.getWidth(), originFrame.getHeight());
+    auto topLeftTransformed = remapPointBetweenFrames(returnRect.topLeft(), originFrame, destFrame);
+    auto bottomRightTransformed = remapPointBetweenFrames(returnRect.bottomRight(), originFrame, destFrame);
+    returnRect = dai::Rect{topLeftTransformed, bottomRightTransformed};
     if(normalized) {
-        returnRect = returnRect.normalize(destFrame->getWidth(), destFrame->getHeight());
+        returnRect = returnRect.normalize(destFrame.getWidth(), destFrame.getHeight());
     }
     return returnRect;
 }
