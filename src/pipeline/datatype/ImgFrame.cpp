@@ -223,7 +223,7 @@ dai::Rect ImgFrame::remapRectToSource(const dai::Rect& rect) const {
     auto topLeftTransformed = remapPointToSource(returnRect.topLeft());
     auto bottomRightTransformed = remapPointToSource(returnRect.bottomRight());
 
-    returnRect= dai::Rect(topLeftTransformed, bottomRightTransformed);
+    returnRect = dai::Rect(topLeftTransformed, bottomRightTransformed);
     if(isNormalized) {
         returnRect = returnRect.normalize(getSourceWidth(), getSourceHeight());
     }
