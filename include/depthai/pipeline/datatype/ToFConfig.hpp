@@ -30,6 +30,10 @@ class ToFConfig : public Buffer {
     ToFConfig& setFreqModUsed(dai::ToFConfig::DepthParams::TypeFMod fmod);
     ToFConfig& setAvgPhaseShuffle(bool enable);
     ToFConfig& setMinAmplitude(float minamp);
+    /**
+     * @param median Set kernel size for median filtering, or disable
+     */
+    ToFConfig& setMedianFilter(MedianFilter median);
 
     /**
      * Set explicit configuration.

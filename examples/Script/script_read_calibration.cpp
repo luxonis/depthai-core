@@ -31,7 +31,7 @@ int main() {
 
     auto xout = pipeline.create<dai::node::XLinkOut>();
     xout->setStreamName("end");
-    
+
     script->outputs["end"].link(xout->input);
 
     // Connect to device with pipeline
