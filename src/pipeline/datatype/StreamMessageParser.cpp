@@ -28,6 +28,7 @@
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/pipeline/datatype/SystemInformation.hpp"
 #include "depthai/pipeline/datatype/SystemInformationS3.hpp"
+#include "depthai/pipeline/datatype/TraceEvent.hpp"
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 
@@ -51,6 +52,7 @@
 #include "depthai-shared/datatype/RawStereoDepthConfig.hpp"
 #include "depthai-shared/datatype/RawSystemInformation.hpp"
 #include "depthai-shared/datatype/RawSystemInformationS3.hpp"
+#include "depthai-shared/datatype/RawTraceEvent.hpp"
 #include "depthai-shared/datatype/RawTracklets.hpp"
 #include "depthai-shared/utility/Serialization.hpp"
 
@@ -171,8 +173,13 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::FeatureTrackerConfig:
             return parseDatatype<RawFeatureTrackerConfig>(metadataStart, serializedObjectSize, data);
             break;
+
         case DatatypeEnum::BenchmarkReport:
             return parseDatatype<RawBenchmarkReport>(metadataStart, serializedObjectSize, data);
+            break;
+
+        case DatatypeEnum::TraceEvent:
+            return parseDatatype<RawTraceEvent>(metadataStart, serializedObjectSize, data);
             break;
     }
 
@@ -293,8 +300,13 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
         case DatatypeEnum::FeatureTrackerConfig:
             return std::make_shared<FeatureTrackerConfig>(parseDatatype<RawFeatureTrackerConfig>(metadataStart, serializedObjectSize, data));
             break;
+
         case DatatypeEnum::BenchmarkReport:
             return std::make_shared<BenchmarkReport>(parseDatatype<RawBenchmarkReport>(metadataStart, serializedObjectSize, data));
+            break;
+
+        case DatatypeEnum::TraceEvent:
+            return std::make_shared<TraceEvent>(parseDatatype<RawTraceEvent>(metadataStart, serializedObjectSize, data));
             break;
     }
 

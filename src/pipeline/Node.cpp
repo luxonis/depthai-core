@@ -1,6 +1,8 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 
 #include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/pipeline/SideChannel.hpp"
+#include "depthai/pipeline/datatype/TraceEvent.hpp"
 #include "spdlog/fmt/fmt.h"
 
 namespace dai {
@@ -178,6 +180,18 @@ void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
                 // Corresponding input to a given connection
                 // Send the message
                 input->queue.send(msg);
+                using namespace std::chrono;
+                auto traceEvent = std::make_shared<dai::TraceEvent>();
+                RawTraceEvent rawTraceEvent;
+                rawTraceEvent.dstId = input->getId();
+                rawTraceEvent.srcId = getId();
+                rawTraceEvent.event = RawTraceEvent::Event::SEND;
+                rawTraceEvent.status = RawTraceEvent::Status::START;
+                auto ts = steady_clock::now().time_since_epoch();
+                rawTraceEvent.timestamp.sec = duration_cast<seconds>(ts).count();
+                rawTraceEvent.timestamp.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
+                traceEvent->set(rawTraceEvent);
+                getParent().sideChannel->sendMessage(traceEvent);
             }
         }
     }

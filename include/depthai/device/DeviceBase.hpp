@@ -795,9 +795,14 @@ class DeviceBase {
     tl::optional<Version> bootloaderVersion;
 
     // Log callback
-    int uniqueCallbackId = 0;
+    int uniqueLogCallbackId = 0;
     std::mutex logCallbackMapMtx;
     std::unordered_map<int, std::function<void(LogMessage)>> logCallbackMap;
+
+    // Side channel callback
+    int traceEventsCallbackId = 0;
+    std::mutex traceEventsCallbackMapMtx;
+    std::unordered_map<int, std::function<void(LogMessage)>> traceEventsCallbackMap;
 
     // Watchdog thread
     std::thread watchdogThread;
@@ -810,6 +815,10 @@ class DeviceBase {
     // Logging thread
     std::thread loggingThread;
     std::atomic<bool> loggingRunning{true};
+
+    // Side channel thread
+    std::thread sideChannelThread;
+    std::atomic<bool> sideChannelRunning{true};
 
     // Monitor thread
     std::thread monitorThread;

@@ -20,6 +20,8 @@
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "pipeline/Pipeline.hpp"
+#include "pipeline/datatype/StreamMessageParser.hpp"
+#include "pipeline/datatype/TraceEvent.hpp"
 #include "utility/Environment.hpp"
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
@@ -408,14 +410,17 @@ void DeviceBase::closeImpl() {
     // Stop various threads
     watchdogRunning = false;
     timesyncRunning = false;
+    sideChannelRunning = false;
     loggingRunning = false;
 
     // Stop watchdog first (this resets and waits for link to fall down)
     if(watchdogThread.joinable()) watchdogThread.join();
     // Then stop timesync
     if(timesyncThread.joinable()) timesyncThread.join();
-    // And at the end stop logging thread
+    // Stop the end stop logging thread
     if(loggingThread.joinable()) loggingThread.join();
+    // Stop the side channel thread
+    if(sideChannelThread.joinable()) sideChannelThread.join();
     // At the end stop the monitor thread
     if(monitorThread.joinable()) monitorThread.join();
 
@@ -719,6 +724,47 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         // as it indicates device not being closed
         watchdogRunning = true;
     }
+
+    sideChannelThread = std::thread([this]() {
+        using namespace std::chrono;
+        try {
+            XLinkStream stream(connection, device::XLINK_CHANNEL_SIDE_CHANNEL, 128);
+            while(sideChannelRunning) {
+                // Block
+                auto packet = stream.readMove();
+                const auto t1Parse = std::chrono::steady_clock::now();
+                const auto msg = StreamMessageParser::parseMessage(std::move(packet));
+                const auto t2Parse = std::chrono::steady_clock::now();
+
+                auto traceEvent = std::dynamic_pointer_cast<dai::TraceEvent>(msg);
+                if(traceEvent) {
+                    auto rawTraceEvent = traceEvent->get();
+                    spdlog::debug("Got a trace event!");
+                    spdlog::trace("EV:{},S:{},IDS:{},IDD:{},TSS:{},TSN:{}",
+                                  static_cast<std::uint8_t>(rawTraceEvent.event),
+                                  static_cast<std::uint8_t>(rawTraceEvent.status),
+                                  rawTraceEvent.srcId,
+                                  rawTraceEvent.dstId,
+                                  rawTraceEvent.timestamp.sec,
+                                  rawTraceEvent.timestamp.nsec);
+                }
+                // // Send messages to callbacks
+                // {
+                //     // lock mtx to callback map (shared)
+                //     std::unique_lock<std::mutex> l(logCallbackMapMtx);
+                //     for(const auto& kv : logCallbackMap) {
+                //         const auto& cb = kv.second;
+                //         // If available, callback with msg
+                //         if(cb) cb(msg);
+                //     }
+                // }
+            }
+        } catch(const std::exception& ex) {
+            spdlog::debug("Side channel thread exception caught: {}", ex.what());
+        }
+
+        sideChannelRunning = false;
+    });
 
     // prepare timesync thread, which will keep device synchronized
     timesyncThread = std::thread([this]() {
@@ -1035,7 +1081,7 @@ int DeviceBase::addLogCallback(std::function<void(LogMessage)> callback) {
     std::unique_lock<std::mutex> l(logCallbackMapMtx);
 
     // Get unique id
-    int id = uniqueCallbackId++;
+    int id = uniqueLogCallbackId++;
 
     // assign callback
     logCallbackMap[id] = callback;

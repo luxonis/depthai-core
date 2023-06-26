@@ -6,7 +6,9 @@
 #include <vector>
 
 // project
+#include "depthai/pipeline/SideChannel.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
+#include "depthai/pipeline/datatype/TraceEvent.hpp"
 #include "depthai/utility/LockingQueue.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
@@ -30,6 +32,8 @@ class MessageQueue {
     std::unordered_map<CallbackId, std::function<void(std::string, std::shared_ptr<ADatatype>)>> callbacks;
     CallbackId uniqueCallbackId{0};
     const std::string exceptionMessage{"MessageQueue was closed"};
+    std::shared_ptr<SideChannel> sideChannel;
+    int id{-1};
 
    public:
     // DataOutputQueue constructor
@@ -175,6 +179,19 @@ class MessageQueue {
         if(!queue.waitAndPop(val)) {
             throw std::runtime_error(exceptionMessage.c_str());
         }
+
+        using namespace std::chrono;
+        auto traceEvent = std::make_shared<dai::TraceEvent>();
+        RawTraceEvent rawTraceEvent;
+        rawTraceEvent.srcId = id;
+        rawTraceEvent.dstId = id;
+        rawTraceEvent.event = RawTraceEvent::Event::RECEIVE;
+        rawTraceEvent.status = RawTraceEvent::Status::END;
+        auto ts = steady_clock::now().time_since_epoch();
+        rawTraceEvent.timestamp.sec = duration_cast<seconds>(ts).count();
+        rawTraceEvent.timestamp.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
+        traceEvent->set(rawTraceEvent);
+        sideChannel->sendMessage(traceEvent);
         return std::dynamic_pointer_cast<T>(val);
     }
 
@@ -380,6 +397,18 @@ class MessageQueue {
      */
     bool trySend(const std::shared_ptr<ADatatype>& msg);
     // bool trySend(const ADatatype& msg);
+
+    /**
+     * Set the side channel
+     */
+    void setSideChannel(std::shared_ptr<SideChannel> sideChannel);
+
+    /**
+     * Set the queue id
+    */
+    void setId(int id){
+        this->id = id;
+    }
 };
 
 }  // namespace dai

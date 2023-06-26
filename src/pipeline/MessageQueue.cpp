@@ -6,6 +6,7 @@
 
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
+#include "depthai/pipeline/datatype/TraceEvent.hpp"
 #include "pipeline/datatype/StreamMessageParser.hpp"
 
 // libraries
@@ -120,5 +121,9 @@ bool MessageQueue::trySend(const std::shared_ptr<ADatatype>& msg) {
 // bool MessageQueue::trySend(const ADatatype& msg) {
 //     return trySend(std::make_shared<ADatatype>(msg.serialize()));
 // }
+
+void MessageQueue::setSideChannel(std::shared_ptr<SideChannel> sideChannel){
+    this->sideChannel = sideChannel;
+}
 
 }  // namespace dai
