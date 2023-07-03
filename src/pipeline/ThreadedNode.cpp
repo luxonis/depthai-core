@@ -8,8 +8,11 @@ void ThreadedNode::start() {
     thread = std::thread([this]() {
         try {
             run();
-        } catch(const std::exception& ex) {
+        } catch(const MessageQueue::QueueException& ex) {
             // catch anything and stop the node
+            logger->info("Node closing: {}", ex.what());
+            running = false;
+        } catch(const std::runtime_error& ex){
             logger->error("Node threw exception, stopping the node. Exception message: {}", ex.what());
             running = false;
         }
@@ -30,7 +33,7 @@ void ThreadedNode::stop() {
     }
     // for(auto& rout : getOutputRefs()) {
     // }
-    wait();
+    // wait();
 }
 
 bool ThreadedNode::isRunning() const {
