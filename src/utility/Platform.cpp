@@ -13,6 +13,10 @@
     #include <arpa/inet.h>
 #endif
 
+#ifdef __linux__
+    #include <pthread.h>
+#endif
+
 namespace dai {
 namespace platform {
 
@@ -46,6 +50,14 @@ std::string getIPv4AddressAsString(std::uint32_t binary) {
 #endif
 
     return {address};
+}
+
+void setThreadName(JoiningThread& thread, const std::string& name) {
+#ifdef __linux__
+    auto handle = thread.native_handle();
+    pthread_setname_np(handle, name.c_str());
+#endif
+    return;
 }
 
 }  // namespace platform
