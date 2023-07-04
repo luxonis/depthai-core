@@ -9,6 +9,8 @@ namespace platform {
 
 uint32_t getIPv4AddressAsBinary(std::string address);
 std::string getIPv4AddressAsString(std::uint32_t binary);
+
+// TODO change this to std::thread
 void setThreadName(JoiningThread& thread, const std::string& name);
 
 }
