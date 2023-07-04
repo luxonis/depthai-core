@@ -1,5 +1,11 @@
 #include "depthai/pipeline/ThreadedNode.hpp"
 
+#include <spdlog/spdlog.h>
+
+#ifdef __linux__
+    #include <pthread.h>
+#endif
+
 namespace dai {
 
 void ThreadedNode::start() {
@@ -17,6 +23,10 @@ void ThreadedNode::start() {
             running = false;
         }
     });
+#ifdef __linux__
+    auto handle = thread.native_handle();
+    pthread_setname_np(handle, fmt::format("{}-{}", getName(), id).c_str());
+#endif
 }
 
 void ThreadedNode::wait() {
