@@ -25,6 +25,10 @@ class MessageQueue {
     /// Alias for callback id
     using CallbackId = int;
 
+    class QueueException : public std::runtime_error {
+       public:
+        explicit QueueException(const std::string& message) : std::runtime_error(message) {}
+    };
    private:
     LockingQueue<std::shared_ptr<ADatatype>> queue;
     const std::string name{""};
@@ -177,7 +181,7 @@ class MessageQueue {
     std::shared_ptr<T> get() {
         std::shared_ptr<ADatatype> val = nullptr;
         if(!queue.waitAndPop(val)) {
-            throw std::runtime_error(exceptionMessage.c_str());
+            throw QueueException(exceptionMessage.c_str());
         }
 
         using namespace std::chrono;
