@@ -23,7 +23,7 @@ int main() {
 
     // Properties
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-    monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    monoLeft->setCamera("left");
 
     aprilTag->initialConfig.setFamily(dai::AprilTagConfig::Family::TAG_36H11);
 

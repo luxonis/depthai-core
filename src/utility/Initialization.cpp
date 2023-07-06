@@ -6,7 +6,9 @@
 // project
 #include "build/version.hpp"
 #include "utility/Environment.hpp"
+#include "utility/Logging.hpp"
 #include "utility/Resources.hpp"
+#include "utility/XLinkGlobalProfilingLogger.hpp"
 
 // libraries
 #include "XLink/XLink.h"
@@ -14,6 +16,7 @@
 #include "spdlog/cfg/helpers.h"
 #include "spdlog/details/os.h"
 #include "spdlog/spdlog.h"
+#include "utility/Logging.hpp"
 extern "C" {
 #include "XLink/XLinkLog.h"
 }
@@ -61,6 +64,9 @@ bool initialize(std::string additionalInfo, bool installSignalHandler, void* jav
 bool initialize(const char* additionalInfo, bool installSignalHandler, void* javavm) {
     // singleton for checking whether depthai was already initialized
     static const bool initialized = [&]() {
+        // Initialize logging
+        Logging::getInstance();
+
 #ifdef DEPTHAI_ENABLE_BACKWARD
         // install backward if specified
         auto envSignalHandler = utility::getEnv("DEPTHAI_INSTALL_SIGNAL_HANDLER");
@@ -71,36 +77,11 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
         (void)installSignalHandler;
 #endif
 
-        // Set global logging level from ENV variable 'DEPTHAI_LEVEL'
-        // Taken from spdlog, to replace with DEPTHAI_LEVEL instead of SPDLOG_LEVEL
-        // spdlog::cfg::load_env_levels();
-        auto envLevel = utility::getEnv("DEPTHAI_LEVEL");
-        if(!envLevel.empty()) {
-            spdlog::cfg::helpers::load_levels(envLevel);
-        } else {
-            // Otherwise set default level to WARN
-            spdlog::set_level(spdlog::level::warn);
-        }
-
-        auto debugStr = utility::getEnv("DEPTHAI_DEBUG");
-        if(!debugStr.empty()) {
-            // Try parsing the string as a number
-            try {
-                int debug{std::stoi(debugStr)};
-                if(debug && (spdlog::get_level() > spdlog::level::debug)) {
-                    spdlog::set_level(spdlog::level::debug);
-                    spdlog::info("DEPTHAI_DEBUG enabled, lowered DEPTHAI_LEVEL to 'debug'");
-                }
-            } catch(const std::invalid_argument& e) {
-                spdlog::warn("DEPTHAI_DEBUG value invalid: {}, should be a number (non-zero to enable)", e.what());
-            }
-        }
-
         // Print core commit and build datetime
         if(additionalInfo != nullptr && additionalInfo[0] != '\0') {
-            spdlog::debug("{}", additionalInfo);
+            logger::debug("{}", additionalInfo);
         }
-        spdlog::debug(
+        logger::debug(
             "Library information - version: {}, commit: {} from {}, build: {}", build::VERSION, build::COMMIT, build::COMMIT_DATETIME, build::BUILD_DATETIME);
 
         // Executed at library load time
@@ -120,12 +101,19 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
             if(status == X_LINK_INIT_USB_ERROR) {
                 errorMsg += ERROR_MSG_USB_TIP;
             }
-            spdlog::debug("Initialize failed - {}", errorMsg);
+            logger::debug("Initialize failed - {}", errorMsg);
             throw std::runtime_error(errorMsg);
         }
         // Check that USB protocol is available
         if(!XLinkIsProtocolInitialized(X_LINK_USB_VSC)) {
-            spdlog::warn("USB protocol not available - {}", ERROR_MSG_USB_TIP);
+            logger::warn("USB protocol not available - {}", ERROR_MSG_USB_TIP);
+        }
+
+        // Enable Global XLink profiling
+        XLinkProfStart();
+        auto profilingEnvLevel = utility::getEnv("DEPTHAI_PROFILING");
+        if(profilingEnvLevel == "1") {
+            XLinkGlobalProfilingLogger::getInstance().enable(true);
         }
 
         // TODO(themarpe), move into XLink library
@@ -147,7 +135,7 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
             mvLogDefaultLevelSet(MVLOG_FATAL);
         }
 
-        spdlog::debug("Initialize - finished");
+        logger::debug("Initialize - finished");
 
         return true;
     }();

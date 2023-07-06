@@ -34,7 +34,7 @@ class Device : public DeviceBase {
      * @param usb2Mode (bool) Boot device using USB2 mode firmware
      */
     template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
-    Device(const Pipeline& pipeline, T usb2Mode);
+    [[deprecated("Use constructor taking 'UsbSpeed' instead")]] Device(const Pipeline& pipeline, T usb2Mode);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
@@ -64,7 +64,7 @@ class Device : public DeviceBase {
      * @param usb2Mode (bool) Boot device using USB2 mode firmware
      */
     template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
-    Device(const Pipeline& pipeline, const DeviceInfo& devInfo, T usb2Mode);
+    [[deprecated("Use constructor taking 'UsbSpeed' instead")]] Device(const Pipeline& pipeline, const DeviceInfo& devInfo, T usb2Mode);
 
     /**
      * Connects to device specified by devInfo.

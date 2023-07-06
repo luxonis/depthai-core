@@ -241,6 +241,7 @@ dai_add_example(device_queue_event host_side/device_queue_event.cpp ON)
 dai_add_example(opencv_support host_side/opencv_support.cpp ON)
 dai_add_example(queue_add_callback host_side/queue_add_callback.cpp ON)
 dai_add_example(device_information host_side/device_information.cpp OFF)
+dai_add_example(device_logging host_side/device_logging.cpp OFF)
 
 # ImageManip
 dai_add_example(image_manip ImageManip/image_manip_example.cpp ON)
@@ -319,6 +320,7 @@ dai_add_example(script_json_communication Script/script_json_communication.cpp O
 dai_add_example(script_change_pipeline_flow Script/script_change_pipeline_flow.cpp OFF)
 target_compile_definitions(script_change_pipeline_flow PRIVATE BLOB_PATH="${mobilenet_5shaves_blob}")
 dai_add_example(script_get_device_info Script/script_get_device_info.cpp ON)
+dai_add_example(script_read_calibration Script/script_read_calibration.cpp ON)
 
 # SpatialDetection
 dai_add_example(spatial_location_calculator SpatialDetection/spatial_location_calculator.cpp ON)

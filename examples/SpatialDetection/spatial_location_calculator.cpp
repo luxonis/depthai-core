@@ -31,9 +31,9 @@ int main() {
 
     // Properties
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-    monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    monoLeft->setCamera("left");
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    monoRight->setCamera("right");
 
     bool lrcheck = false;
     bool subpixel = false;

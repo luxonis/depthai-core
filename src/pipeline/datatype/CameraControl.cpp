@@ -207,4 +207,13 @@ int CameraControl::getLensPosition() const {
     return cfg.lensPosition;
 }
 
+dai::RawCameraControl CameraControl::get() const {
+    return cfg;
+}
+
+CameraControl& CameraControl::set(dai::RawCameraControl config) {
+    cfg = config;
+    return *this;
+}
+
 }  // namespace dai

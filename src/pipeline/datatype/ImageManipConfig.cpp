@@ -284,6 +284,15 @@ dai::Colormap ImageManipConfig::getColormap() const {
     return cfg.formatConfig.colormap;
 }
 
+dai::RawImageManipConfig ImageManipConfig::get() const {
+    return cfg;
+}
+
+ImageManipConfig& ImageManipConfig::set(dai::RawImageManipConfig config) {
+    cfg = config;
+    return *this;
+}
+
 dai::Interpolation ImageManipConfig::getInterpolation() const {
     return cfg.interpolation;
 }

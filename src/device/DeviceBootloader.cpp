@@ -24,6 +24,7 @@
 #include "XLink/XLink.h"
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/spdlog.h"
+#include "utility/Logging.hpp"
 #include "zlib.h"
 
 // Resource compiled assets (cmds)
@@ -145,7 +146,7 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(
         deviceFirmware = std::move(compressBuffer);
 
         auto diff = duration_cast<milliseconds>(steady_clock::now() - t1);
-        spdlog::debug("Compressed firmware for Dephai Application Package. Took {}, size reduced from {:.2f}MiB to {:.2f}MiB",
+        logger::debug("Compressed firmware for Dephai Application Package. Took {}, size reduced from {:.2f}MiB to {:.2f}MiB",
                       diff,
                       prevSize / (1024.0f * 1024.0f),
                       deviceFirmware.size() / (1024.0f * 1024.0f));
@@ -219,11 +220,11 @@ std::vector<uint8_t> DeviceBootloader::createDepthaiApplicationPackage(
     for(std::size_t i = 0; i < assetStorage.size(); i++) fwPackage[assetStorageSection->offset + i] = assetStorage[i];
 
     // Debug
-    if(spdlog::get_level() == spdlog::level::debug) {
+    if(logger::get_level() == spdlog::level::debug) {
         SBR_SECTION* cur = &sbr.sections[0];
-        spdlog::debug("DepthAI Application Package");
+        logger::debug("DepthAI Application Package");
         for(; cur != lastSection + 1; cur++) {
-            spdlog::debug("{}, {}B, {}, {}, {}, {}", cur->name, cur->size, cur->offset, cur->checksum, cur->type, cur->flags);
+            logger::debug("{}, {}B, {}, {}, {}, {}", cur->name, cur->size, cur->offset, cur->checksum, cur->type, cur->flags);
         }
     }
 
@@ -284,7 +285,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
         auto ret = XLinkFindFirstSuitableDevice(deviceInfo.getXLinkDeviceDesc(), &foundDesc);
         if(ret == X_LINK_SUCCESS) {
             deviceInfo = DeviceInfo(foundDesc);
-            spdlog::debug("Found an actual device by given DeviceInfo: {}", deviceInfo.toString());
+            logger::debug("Found an actual device by given DeviceInfo: {}", deviceInfo.toString());
         } else {
             throw std::runtime_error("Specified device not found");
         }
@@ -513,7 +514,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
             // Bump checking thread to not cause spurious warnings/closes
             std::chrono::milliseconds watchdogTimeout = std::chrono::milliseconds(3000);
             if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout * 2) {
-                spdlog::warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
+                logger::warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
                 // ping was missed, reset the device
                 watchdogRunning = false;
                 // close the underlying connection
@@ -523,9 +524,9 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
     });
 
     // Bootloader device ready, check for version
-    spdlog::debug("Connected bootloader version {}", version.toString());
+    logger::debug("Connected bootloader version {}", version.toString());
     if(getEmbeddedBootloaderVersion() > version) {
-        spdlog::info("New bootloader version available. Device has: {}, available: {}", version.toString(), getEmbeddedBootloaderVersion().toString());
+        logger::info("New bootloader version available. Device has: {}, available: {}", version.toString(), getEmbeddedBootloaderVersion().toString());
     }
 }
 
@@ -535,7 +536,7 @@ void DeviceBootloader::close() {
 
     using namespace std::chrono;
     auto t1 = steady_clock::now();
-    spdlog::debug("DeviceBootloader about to be closed...");
+    logger::debug("DeviceBootloader about to be closed...");
 
     // Close connection first; causes Xlink internal calls to unblock semaphore waits and
     // return error codes, which then allows queues to unblock
@@ -556,7 +557,7 @@ void DeviceBootloader::close() {
     // BUGBUG investigate ownership; can another thread accessing this at the same time?
     stream = nullptr;
 
-    spdlog::debug("DeviceBootloader closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
+    logger::debug("DeviceBootloader closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
 }
 
 // This function is thread-unsafe. The idea of "isClosed" is ephemerial and
@@ -663,7 +664,7 @@ DeviceBootloader::ApplicationInfo DeviceBootloader::readApplicationInfo(Memory m
 DeviceBootloader::MemoryInfo DeviceBootloader::getMemoryInfo(Memory memory) {
     if(memory == Memory::EMMC && bootloaderType == Type::USB) {
         // Warn, as result of "no emmc" might be deceiving
-        spdlog::warn("USB Bootloader type does NOT support eMMC");
+        logger::warn("USB Bootloader type does NOT support eMMC");
     }
 
     // Send request to retrieve bootloader version
@@ -787,7 +788,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
         try {
             configJson = readConfigData();
         } catch(const std::exception& ex) {
-            spdlog::debug("Error while trying to read existing bootloader configuration: {}", ex.what());
+            logger::debug("Error while trying to read existing bootloader configuration: {}", ex.what());
         }
         // Set the following field 'appMem' (in forward/backward compat manner)
         configJson["appMem"] = finalAppMem;
@@ -796,12 +797,12 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
         std::string errorMsg;
         std::tie(success, errorMsg) = flashConfigData(configJson);
         if(success) {
-            spdlog::debug("Success flashing the appMem configuration to '{}'", static_cast<std::int32_t>(finalAppMem));
+            logger::debug("Success flashing the appMem configuration to '{}'", static_cast<std::int32_t>(finalAppMem));
         } else {
             throw std::runtime_error(errorMsg);
         }
     } catch(const std::exception& ex) {
-        spdlog::debug("Error while trying to specify final appMem configuration: {}", ex.what());
+        logger::debug("Error while trying to specify final appMem configuration: {}", ex.what());
     }
 
     return ret;
@@ -981,7 +982,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::functio
     try {
         configJson = readConfigData();
     } catch(const std::exception& ex) {
-        spdlog::debug("Error while trying to read existing bootloader configuration: {}", ex.what());
+        logger::debug("Error while trying to read existing bootloader configuration: {}", ex.what());
     }
     // Set the userBl fields (in forward/backward compat manner)
     const auto userBlSize = static_cast<std::uint32_t>(package.size());
@@ -993,7 +994,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::functio
     std::string errorMsg;
     std::tie(success, errorMsg) = flashConfigData(configJson);
     if(success) {
-        spdlog::debug("Success flashing the configuration userBlSize to '{}' and userBlChecksum to '{}'", userBlSize, userBlChecksum);
+        logger::debug("Success flashing the configuration userBlSize to '{}' and userBlChecksum to '{}'", userBlSize, userBlChecksum);
     } else {
         throw std::runtime_error(errorMsg);
     }
