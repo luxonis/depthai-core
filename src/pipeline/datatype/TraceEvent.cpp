@@ -18,4 +18,20 @@ TraceEvent& TraceEvent::set(dai::RawTraceEvent event) {
     return *this;
 }
 
+NodeTraceEvent::Serialized NodeTraceEvent::serialize() const {
+    return {data, raw};
+}
+
+NodeTraceEvent::NodeTraceEvent() : Buffer(std::make_shared<RawNodeTraceEvent>()), event(*dynamic_cast<RawNodeTraceEvent*>(raw.get())) {}
+NodeTraceEvent::NodeTraceEvent(std::shared_ptr<RawNodeTraceEvent> ptr) : Buffer(std::move(ptr)), event(*dynamic_cast<RawNodeTraceEvent*>(raw.get())) {}
+
+dai::RawNodeTraceEvent NodeTraceEvent::get() const {
+    return event;
+}
+
+NodeTraceEvent& NodeTraceEvent::set(dai::RawNodeTraceEvent event) {
+    this->event = event;
+    return *this;
+}
+
 }  // namespace dai

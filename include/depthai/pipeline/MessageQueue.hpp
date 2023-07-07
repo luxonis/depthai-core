@@ -92,6 +92,15 @@ class MessageQueue {
     unsigned int getMaxSize() const;
 
     /**
+     * Gets queue current size
+     * 
+     * @returns Queue size
+    */
+    unsigned int getSize() const {
+        return queue.getSize();
+    }
+
+    /**
      * Gets queues name
      *
      * @returns Queue name
@@ -191,6 +200,7 @@ class MessageQueue {
         rawTraceEvent.dstId = id;
         rawTraceEvent.event = RawTraceEvent::Event::RECEIVE;
         rawTraceEvent.status = RawTraceEvent::Status::END;
+        rawTraceEvent.queueSize = queue.getSize();
         auto ts = steady_clock::now().time_since_epoch();
         rawTraceEvent.timestamp.sec = duration_cast<seconds>(ts).count();
         rawTraceEvent.timestamp.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;

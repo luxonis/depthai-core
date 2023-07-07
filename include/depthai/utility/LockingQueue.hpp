@@ -60,6 +60,12 @@ class LockingQueue {
         return maxSize;
     }
 
+    unsigned getSize() const {
+        // Lock first
+        std::unique_lock<std::mutex> lock(guard);
+        return queue.size();
+    }
+
     bool getBlocking() const {
         // Lock first
         std::unique_lock<std::mutex> lock(guard);

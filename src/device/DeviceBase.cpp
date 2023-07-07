@@ -736,17 +736,30 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
                 const auto msg = StreamMessageParser::parseMessage(std::move(packet));
                 const auto t2Parse = std::chrono::steady_clock::now();
 
-                auto traceEvent = std::dynamic_pointer_cast<dai::TraceEvent>(msg);
-                if(traceEvent) {
-                    auto rawTraceEvent = traceEvent->get();
-                    spdlog::debug("Got a trace event!");
-                    spdlog::trace("EV:{},S:{},IDS:{},IDD:{},TSS:{},TSN:{}",
+                auto queueTraceEvent = std::dynamic_pointer_cast<dai::TraceEvent>(msg);
+                if(queueTraceEvent) {
+                    auto rawTraceEvent = queueTraceEvent->get();
+                    spdlog::trace("EV:{},S:{},IDS:{},IDD:{},TSS:{},TSN:{},QS:{}",
                                   static_cast<std::uint8_t>(rawTraceEvent.event),
                                   static_cast<std::uint8_t>(rawTraceEvent.status),
                                   rawTraceEvent.srcId,
                                   rawTraceEvent.dstId,
                                   rawTraceEvent.timestamp.sec,
-                                  rawTraceEvent.timestamp.nsec);
+                                  rawTraceEvent.timestamp.nsec,
+                                  rawTraceEvent.queueSize);
+                }
+
+                auto nodeTraceEvent = std::dynamic_pointer_cast<dai::NodeTraceEvent>(msg);
+                if(nodeTraceEvent) {
+                    auto rawTraceEvent = nodeTraceEvent->get();
+                    spdlog::trace("IDN:{},MGTSS:{},MGTSN:{},PTSS:{},PTSN:{},MSTSS:{},MSTSN:{}",
+                                  rawTraceEvent.nodeId,
+                                  rawTraceEvent.timeToGetMessages.sec,
+                                  rawTraceEvent.timeToGetMessages.nsec,
+                                  rawTraceEvent.timeToProcess.sec,
+                                  rawTraceEvent.timeToProcess.nsec,
+                                  rawTraceEvent.timeToSendMessages.sec,
+                                  rawTraceEvent.timeToSendMessages.nsec);
                 }
                 // // Send messages to callbacks
                 // {

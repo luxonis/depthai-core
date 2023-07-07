@@ -9,7 +9,7 @@
 namespace dai {
 
 /**
- * ToFConfig message. Carries config for feature tracking algorithm
+ * TraceEvent message. Carries config for feature tracking algorithm
  */
 class TraceEvent : public Buffer {
     Serialized serialize() const override;
@@ -35,5 +35,34 @@ class TraceEvent : public Buffer {
      */
     dai::RawTraceEvent get() const;
 };
+
+/**
+ * TraceEvent message. Carries config for feature tracking algorithm
+ */
+class NodeTraceEvent : public Buffer {
+    Serialized serialize() const override;
+    RawNodeTraceEvent& event;
+
+   public:
+    /**
+     * Construct TraceEvent message.
+     */
+    NodeTraceEvent();
+    explicit NodeTraceEvent(std::shared_ptr<RawNodeTraceEvent> ptr);
+    virtual ~NodeTraceEvent() = default;
+
+    /**
+     * Set explicit configuration.
+     * @param config Explicit configuration
+     */
+     dai::NodeTraceEvent& set(dai::RawNodeTraceEvent event);
+
+    /**
+     * Retrieve the raw event.
+     * @returns the raw event
+     */
+    dai::RawNodeTraceEvent get() const;
+};
+
 
 }  // namespace dai

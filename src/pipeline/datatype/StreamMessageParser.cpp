@@ -181,6 +181,9 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::TraceEvent:
             return parseDatatype<RawTraceEvent>(metadataStart, serializedObjectSize, data);
             break;
+        case DatatypeEnum::NodeTraceEvent:
+            return parseDatatype<RawNodeTraceEvent>(metadataStart, serializedObjectSize, data);
+            break;
     }
 
     throw std::runtime_error("Bad packet, couldn't parse");
@@ -307,6 +310,9 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
 
         case DatatypeEnum::TraceEvent:
             return std::make_shared<TraceEvent>(parseDatatype<RawTraceEvent>(metadataStart, serializedObjectSize, data));
+            break;
+        case DatatypeEnum::NodeTraceEvent:
+            return std::make_shared<NodeTraceEvent>(parseDatatype<RawNodeTraceEvent>(metadataStart, serializedObjectSize, data));
             break;
     }
 
