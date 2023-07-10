@@ -21,7 +21,7 @@
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "pipeline/Pipeline.hpp"
 #include "pipeline/datatype/StreamMessageParser.hpp"
-#include "pipeline/datatype/TraceEvent.hpp"
+#include "pipeline/datatype/TraceEvents.hpp"
 #include "utility/Environment.hpp"
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
@@ -736,7 +736,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
                 const auto msg = StreamMessageParser::parseMessage(std::move(packet));
                 const auto t2Parse = std::chrono::steady_clock::now();
 
-                auto queueTraceEvent = std::dynamic_pointer_cast<dai::TraceEvent>(msg);
+                auto queueTraceEvent = std::dynamic_pointer_cast<dai::QueueTraceEvent>(msg);
                 if(queueTraceEvent) {
                     auto rawTraceEvent = queueTraceEvent->get();
                     spdlog::trace("EV:{},S:{},IDS:{},IDD:{},TSS:{},TSN:{},QS:{}",
@@ -751,15 +751,14 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
 
                 auto nodeTraceEvent = std::dynamic_pointer_cast<dai::NodeTraceEvent>(msg);
                 if(nodeTraceEvent) {
-                    auto rawTraceEvent = nodeTraceEvent->get();
                     spdlog::trace("IDN:{},MGTSS:{},MGTSN:{},PTSS:{},PTSN:{},MSTSS:{},MSTSN:{}",
-                                  rawTraceEvent.nodeId,
-                                  rawTraceEvent.timeToGetMessages.sec,
-                                  rawTraceEvent.timeToGetMessages.nsec,
-                                  rawTraceEvent.timeToProcess.sec,
-                                  rawTraceEvent.timeToProcess.nsec,
-                                  rawTraceEvent.timeToSendMessages.sec,
-                                  rawTraceEvent.timeToSendMessages.nsec);
+                                  nodeTraceEvent->getNodeId(),
+                                  duration_cast<seconds>(nodeTraceEvent->getTimeToGetMessages()).count(),
+                                  duration_cast<nanoseconds>(nodeTraceEvent->getTimeToGetMessages() % seconds(1)).count(),
+                                  duration_cast<seconds>(nodeTraceEvent->getTimeToProcess()).count(),
+                                  duration_cast<nanoseconds>(nodeTraceEvent->getTimeToProcess() % seconds(1)).count(),
+                                  duration_cast<seconds>(nodeTraceEvent->getTimeToSendMessages()).count(),
+                                  duration_cast<nanoseconds>(nodeTraceEvent->getTimeToSendMessages() % seconds(1)).count());
                 }
                 // // Send messages to callbacks
                 // {

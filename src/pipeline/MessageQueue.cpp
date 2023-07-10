@@ -6,7 +6,7 @@
 
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
-#include "depthai/pipeline/datatype/TraceEvent.hpp"
+#include "depthai/pipeline/datatype/TraceEvents.hpp"
 #include "pipeline/datatype/StreamMessageParser.hpp"
 
 // libraries

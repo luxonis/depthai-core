@@ -28,7 +28,7 @@
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 #include "depthai/pipeline/datatype/SystemInformation.hpp"
 #include "depthai/pipeline/datatype/SystemInformationS3.hpp"
-#include "depthai/pipeline/datatype/TraceEvent.hpp"
+#include "depthai/pipeline/datatype/TraceEvents.hpp"
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 
@@ -52,7 +52,7 @@
 #include "depthai-shared/datatype/RawStereoDepthConfig.hpp"
 #include "depthai-shared/datatype/RawSystemInformation.hpp"
 #include "depthai-shared/datatype/RawSystemInformationS3.hpp"
-#include "depthai-shared/datatype/RawTraceEvent.hpp"
+#include "depthai-shared/datatype/RawTraceEvents.hpp"
 #include "depthai-shared/datatype/RawTracklets.hpp"
 #include "depthai-shared/utility/Serialization.hpp"
 
@@ -178,8 +178,8 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<RawBenchmarkReport>(metadataStart, serializedObjectSize, data);
             break;
 
-        case DatatypeEnum::TraceEvent:
-            return parseDatatype<RawTraceEvent>(metadataStart, serializedObjectSize, data);
+        case DatatypeEnum::QueueTraceEvent:
+            return parseDatatype<RawQueueTraceEvent>(metadataStart, serializedObjectSize, data);
             break;
         case DatatypeEnum::NodeTraceEvent:
             return parseDatatype<RawNodeTraceEvent>(metadataStart, serializedObjectSize, data);
@@ -308,8 +308,8 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
             return std::make_shared<BenchmarkReport>(parseDatatype<RawBenchmarkReport>(metadataStart, serializedObjectSize, data));
             break;
 
-        case DatatypeEnum::TraceEvent:
-            return std::make_shared<TraceEvent>(parseDatatype<RawTraceEvent>(metadataStart, serializedObjectSize, data));
+        case DatatypeEnum::QueueTraceEvent:
+            return std::make_shared<QueueTraceEvent>(parseDatatype<RawQueueTraceEvent>(metadataStart, serializedObjectSize, data));
             break;
         case DatatypeEnum::NodeTraceEvent:
             return std::make_shared<NodeTraceEvent>(parseDatatype<RawNodeTraceEvent>(metadataStart, serializedObjectSize, data));

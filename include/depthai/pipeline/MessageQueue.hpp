@@ -8,7 +8,7 @@
 // project
 #include "depthai/pipeline/SideChannel.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
-#include "depthai/pipeline/datatype/TraceEvent.hpp"
+#include "depthai/pipeline/datatype/TraceEvents.hpp"
 #include "depthai/utility/LockingQueue.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
@@ -194,12 +194,12 @@ class MessageQueue {
         }
 
         using namespace std::chrono;
-        auto traceEvent = std::make_shared<dai::TraceEvent>();
-        RawTraceEvent rawTraceEvent;
+        auto traceEvent = std::make_shared<dai::QueueTraceEvent>();
+        RawQueueTraceEvent rawTraceEvent;
         rawTraceEvent.srcId = id;
         rawTraceEvent.dstId = id;
-        rawTraceEvent.event = RawTraceEvent::Event::RECEIVE;
-        rawTraceEvent.status = RawTraceEvent::Status::END;
+        rawTraceEvent.event = RawQueueTraceEvent::Event::RECEIVE;
+        rawTraceEvent.status = RawQueueTraceEvent::Status::END;
         rawTraceEvent.queueSize = queue.getSize();
         auto ts = steady_clock::now().time_since_epoch();
         rawTraceEvent.timestamp.sec = duration_cast<seconds>(ts).count();

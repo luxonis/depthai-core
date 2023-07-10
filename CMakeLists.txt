@@ -253,7 +253,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/FeatureTrackerConfig.cpp
     src/pipeline/datatype/ToFConfig.cpp
     src/pipeline/datatype/BenchmarkReport.cpp
-    src/pipeline/datatype/TraceEvent.cpp
+    src/pipeline/datatype/TraceEvents.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/utility/Path.cpp
