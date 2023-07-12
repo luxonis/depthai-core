@@ -49,5 +49,40 @@ TEST_CASE("UsbSpeed::SUPER_PLUS") {
     dai::Pipeline p;
     makeInfo(p);
     dai::Device d(p, dai::UsbSpeed::SUPER_PLUS);
+
+    verifyInfo(d);
+}
+
+TEST_CASE("Pipeline config usb speed == SUPER")
+{   
+    dai::Pipeline p;
+    makeInfo(p);
+
+    dai::DeviceBase::Config cfg;
+    cfg.board.usb.maxSpeed = dai::UsbSpeed::SUPER;
+
+    p.setBoardConfig(cfg.board);
+
+    dai::Device d(p);
+
+    CHECK(d.getUsbSpeed() == dai::UsbSpeed::SUPER);
+
+    verifyInfo(d);
+}
+
+TEST_CASE("Pipeline config usb speed == HIGH")
+{
+    dai::Pipeline p;
+    makeInfo(p);
+
+    dai::DeviceBase::Config cfg;
+    cfg.board.usb.maxSpeed = dai::UsbSpeed::HIGH;
+
+    p.setBoardConfig(cfg.board);
+
+    dai::Device d(p);
+
+    CHECK(d.getUsbSpeed() == dai::UsbSpeed::HIGH);
+
     verifyInfo(d);
 }
