@@ -9,6 +9,7 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 // shared
+#include "depthai-shared/common/Rect.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
 
 // optional
@@ -80,8 +81,7 @@ class ImgFrame : public Buffer {
     ImgFrame(size_t size);
     explicit ImgFrame(std::shared_ptr<RawImgFrame> ptr);
     virtual ~ImgFrame() = default;
-
-    std::vector<std::shared_ptr<BaseTransformation>> transformations;
+    ImgTransformations& transformations;
     // getters
     /**
      * Retrieves image timestamp related to dai::Clock::now()
@@ -242,20 +242,6 @@ class ImgFrame : public Buffer {
     ImgFrame& setSize(std::tuple<unsigned int, unsigned int> size);
 
     /**
-     * Specifies source frame width
-     *
-     * @param width frame width
-     */
-    ImgFrame& setSourceWidth(unsigned int width);
-
-    /**
-     * Specifies source frame height
-     *
-     * @param height frame height
-     */
-    ImgFrame& setSourceHeight(unsigned int height);
-
-    /**
      * Specifies source frame size
      *
      * @param height frame height
@@ -281,89 +267,42 @@ class ImgFrame : public Buffer {
      * Set raw data for ImgFrame.
      */
     void set(dai::RawImgFrame rawImgFrame);
-
     /**
-     * Copy over image tranformations and information about the source frame from a frame
-     * @param sourceFrame source frame from which the transformations are copied from
+     * Remap a point from the current frame to the source frame
+     * @param point point to remap
+     * @returns remapped point
      */
-    ImgFrame& copyTransformationsFrom(std::shared_ptr<dai::ImgFrame> sourceFrame);
+    dai::Point2f remapPointFromSource(const dai::Point2f& point) const;
 
     /**
-     * Add a flip transformation to the frame
-     * This doesn't transform the image, but rather just saves the fact that it has been done.
-     * @param horizontalFlip horizontal flip
-     * @param verticalFlip vertical flip
+     * Remap a point from the source frame to the current frame
+     * @param point point to remap
+     * @returns remapped point
      */
-    ImgFrame& transformSetFlip(bool horizontalFlip, bool verticalFlip);
+    dai::Point2f remapPointToSource(const dai::Point2f& point) const;
 
     /**
-     * Add a padding transformation to the frame.
-     * This doesn't transform the image, but rather just saves the fact that it has been done.
+     * Remap a rectangle from the source frame to the current frame
      *
-     * Padding either has to be relative to padded image or absolute in pixels.
+     * @param rect rectangle to remap
+     * @returns remapped rectangle
+     */
+    dai::Rect remapRectFromSource(const dai::Rect& rect) const;
+
+    /**
+     * Remap a rectangle from the current frame to the source frame
      *
-     * @param topPadding top padding
-     * @param bottomPadding bottom padding
-     * @param leftPadding left padding
-     * @param rightPadding right padding
+     * @param rect rectangle to remap
+     * @returns remapped rectangle
      */
-    ImgFrame& transformSetPadding(float topPadding, float bottomPadding, float leftPadding, float rightPadding, bool setImageDimensions = true);
+    dai::Rect remapRectToSource(const dai::Rect& rect) const;
 
     /**
-     * Add a crop transformation to the frame.
-     * This doesn't transform the image, but rather just saves the fact that it has been done.
-     *
-     * @param crop crop rectangle - can be either relative or absolute
+     * Convience function to initialize meta data from another frame
+     * Copies over timestamps, transformations done on the image, etc.
+     * @param sourceFrame source frame from which the metadata is taken from
      */
-    ImgFrame& transformSetCrop(dai::Rect crop, bool setImageDimensions = true);
-
-    /**
-     * Add a rotation transformation to the frame.
-     * This doesn't transform the image, but rather just saves the fact that it has been done.
-     *
-     * @param rotationAngle rotation angle in degrees
-     * @param rotationPoint point around which the rotation was performed
-     */
-    ImgFrame& transformSetRotation(float rotationAngle, dai::Point2f rotationPoint = {0.5, 0.5});
-
-    /**
-     * Add a scale transformation to the frame.
-     *
-     * This doesn't transform the image, but rather just saves the fact that it has been done.
-     * @param scaleFactorX scale factor in X direction
-     * @param scaleFactorY scale factor in Y direction
-     */
-    ImgFrame& transformSetScale(float scaleFactorX, float scaleFactorY, bool setImageDimensions = true);
-
-    /**
-     * Transform a point from the current frame to the source frame
-     * @param point point to transform
-     * @returns transformed point
-     */
-    dai::Point2f transformPointFromSource(dai::Point2f point);
-
-    /**
-     * Transform a point from the source frame to the current frame
-     * @param point point to transform
-     * @returns transformed point
-     */
-    dai::Point2f transformPointToSource(dai::Point2f point);
-
-    /**
-     * Transform a rectangle from the source frame to the current frame
-     *
-     * @param rect rectangle to transform
-     * @returns transformed rectangle
-     */
-    dai::Rect transformRectFromSource(dai::Rect rect);
-
-    /**
-     * Transform a rectangle from the current frame to the source frame
-     *
-     * @param rect rectangle to transform
-     * @returns transformed rectangle
-     */
-    dai::Rect transformRectToSource(dai::Rect rect);
+    ImgFrame& setMetadata(const dai::ImgFrame& sourceFrame);
 
     /**
      * @note Fov API works correctly only on rectilinear frames
@@ -379,7 +318,7 @@ class ImgFrame : public Buffer {
      *
      * @returns field of view in degrees
      */
-    float getSourceDFov();
+    float getSourceDFov() const;
 
     /**
      * @note Fov API works correctly only on rectilinear frames
@@ -387,7 +326,7 @@ class ImgFrame : public Buffer {
      *
      * @param degrees field of view in degrees
      */
-    float getSourceHFov();
+    float getSourceHFov() const;
 
     /**
      * @note Fov API works correctly only on rectilinear frames
@@ -395,7 +334,44 @@ class ImgFrame : public Buffer {
      *
      * @param degrees field of view in degrees
      */
-    float getSourceVFov();
+    float getSourceVFov() const;
+
+    /**
+     * Check that the image transformation match the image size
+     *
+     * @returns true if the transformations are valid
+     */
+    bool validateTransformations() const;
+
+    /**
+     * Remap point between two source frames
+     * @param point point to remap
+     * @param sourceImage source image
+     * @param destImage destination image
+     *
+     * @returns remapped point
+     */
+    static dai::Point2f remapPointBetweenSourceFrames(const dai::Point2f& originPoint, const dai::ImgFrame& sourceImage, const dai::ImgFrame& destImage);
+
+    /**
+     * Remap point between two frames
+     * @param originPoint point to remap
+     * @param originFrame origin frame
+     * @param destFrame destination frame
+     *
+     * @returns remapped point
+     */
+    static dai::Point2f remapPointBetweenFrames(const dai::Point2f& originPoint, const dai::ImgFrame& originFrame, const dai::ImgFrame& destFrame);
+
+    /**
+     * Remap rectangle between two frames
+     * @param originRect rectangle to remap
+     * @param originFrame origin frame
+     * @param destFrame destination frame
+     *
+     * @returns remapped rectangle
+     */
+    static dai::Rect remapRectBetweenFrames(const dai::Rect& originRect, const dai::ImgFrame& originFrame, const dai::ImgFrame& destFrame);
 
 // Optional - OpenCV support
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT

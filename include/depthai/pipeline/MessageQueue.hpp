@@ -6,7 +6,9 @@
 #include <vector>
 
 // project
+#include "depthai/pipeline/SideChannel.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
+#include "depthai/pipeline/datatype/TraceEvents.hpp"
 #include "depthai/utility/LockingQueue.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
@@ -23,6 +25,10 @@ class MessageQueue {
     /// Alias for callback id
     using CallbackId = int;
 
+    class QueueException : public std::runtime_error {
+       public:
+        explicit QueueException(const std::string& message) : std::runtime_error(message) {}
+    };
    private:
     LockingQueue<std::shared_ptr<ADatatype>> queue;
     const std::string name{""};
@@ -30,6 +36,8 @@ class MessageQueue {
     std::unordered_map<CallbackId, std::function<void(std::string, std::shared_ptr<ADatatype>)>> callbacks;
     CallbackId uniqueCallbackId{0};
     const std::string exceptionMessage{"MessageQueue was closed"};
+    std::shared_ptr<SideChannel> sideChannel;
+    int id{-1};
 
    public:
     // DataOutputQueue constructor
@@ -82,6 +90,15 @@ class MessageQueue {
      * @returns Maximum queue size
      */
     unsigned int getMaxSize() const;
+
+    /**
+     * Gets queue current size
+     * 
+     * @returns Queue size
+    */
+    unsigned int getSize() const {
+        return queue.getSize();
+    }
 
     /**
      * Gets queues name
@@ -173,8 +190,22 @@ class MessageQueue {
     std::shared_ptr<T> get() {
         std::shared_ptr<ADatatype> val = nullptr;
         if(!queue.waitAndPop(val)) {
-            throw std::runtime_error(exceptionMessage.c_str());
+            throw QueueException(exceptionMessage.c_str());
         }
+
+        using namespace std::chrono;
+        auto traceEvent = std::make_shared<dai::QueueTraceEvent>();
+        RawQueueTraceEvent rawTraceEvent;
+        rawTraceEvent.srcId = id;
+        rawTraceEvent.dstId = id;
+        rawTraceEvent.event = RawQueueTraceEvent::Event::RECEIVE;
+        rawTraceEvent.status = RawQueueTraceEvent::Status::END;
+        rawTraceEvent.queueSize = queue.getSize();
+        auto ts = steady_clock::now().time_since_epoch();
+        rawTraceEvent.timestamp.sec = duration_cast<seconds>(ts).count();
+        rawTraceEvent.timestamp.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
+        traceEvent->set(rawTraceEvent);
+        sideChannel->sendMessage(traceEvent);
         return std::dynamic_pointer_cast<T>(val);
     }
 
@@ -380,6 +411,18 @@ class MessageQueue {
      */
     bool trySend(const std::shared_ptr<ADatatype>& msg);
     // bool trySend(const ADatatype& msg);
+
+    /**
+     * Set the side channel
+     */
+    void setSideChannel(std::shared_ptr<SideChannel> sideChannel);
+
+    /**
+     * Set the queue id
+    */
+    void setId(int id){
+        this->id = id;
+    }
 };
 
 }  // namespace dai

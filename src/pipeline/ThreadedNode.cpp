@@ -1,5 +1,8 @@
 #include "depthai/pipeline/ThreadedNode.hpp"
 
+#include <spdlog/spdlog.h>
+
+#include "utility/Platform.hpp"
 namespace dai {
 
 void ThreadedNode::start() {
@@ -8,12 +11,16 @@ void ThreadedNode::start() {
     thread = std::thread([this]() {
         try {
             run();
-        } catch(const std::exception& ex) {
+        } catch(const MessageQueue::QueueException& ex) {
             // catch anything and stop the node
+            logger->info("Node closing: {}", ex.what());
+            running = false;
+        } catch(const std::runtime_error& ex){
             logger->error("Node threw exception, stopping the node. Exception message: {}", ex.what());
             running = false;
         }
     });
+    platform::setThreadName(thread, fmt::format("{}({})", getName(), id));
 }
 
 void ThreadedNode::wait() {
@@ -30,7 +37,7 @@ void ThreadedNode::stop() {
     }
     // for(auto& rout : getOutputRefs()) {
     // }
-    wait();
+    // wait();
 }
 
 bool ThreadedNode::isRunning() const {

@@ -102,6 +102,7 @@ class Node : public std::enable_shared_from_this<Node> {
         enum class Type { MSender, SSender };
         std::string group = "";
         std::string name;
+        int id{-1};
         Type type;
         // Which types and do descendants count as well?
         std::vector<DatatypeHierarchy> possibleDatatypes;
@@ -129,6 +130,14 @@ class Node : public std::enable_shared_from_this<Node> {
         }
         const Node& getParent() const {
             return parent;
+        }
+
+        void setId(int id){
+            this->id = id;
+        }
+
+        int getId(){
+            return id;
         }
 
         /// Output to string representation
@@ -219,6 +228,7 @@ class Node : public std::enable_shared_from_this<Node> {
         enum class Type { SReceiver, MReceiver };
         std::string group = "";
         std::string name;
+        int id{-1};
         Type type;
         bool defaultBlocking{true};
         int defaultQueueSize{8};
@@ -323,6 +333,15 @@ class Node : public std::enable_shared_from_this<Node> {
         }
         const Node& getParent() const {
             return parent;
+        }
+
+        void setId(int id){
+            this->id = id;
+            this->queue.setId(id);
+        }
+
+        int getId(){
+            return id;
         }
 
         /// Input to string representation
@@ -606,6 +625,10 @@ class Node : public std::enable_shared_from_this<Node> {
     bool hostNode{false};
     /// alias or name
     std::string alias;
+
+    // TODO(morato) make private
+    std::shared_ptr<SideChannel> sideChannel;
+
 
    protected:
     AssetManager assetManager;

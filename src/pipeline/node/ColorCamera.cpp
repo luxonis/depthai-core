@@ -102,9 +102,9 @@ void ColorCamera::setColorOrder(ColorCameraProperties::ColorOrder colorOrder) {
             break;
         case ColorCameraProperties::ColorOrder::RGB:
             if(properties.interleaved) {
-                properties.previewType = ImgFrame::Type::RGB888i; 
+                properties.previewType = ImgFrame::Type::RGB888i;
             } else {
-                properties.previewType = ImgFrame::Type::RGB888p; 
+                properties.previewType = ImgFrame::Type::RGB888p;
             }
             break;
         default:
@@ -125,15 +125,13 @@ void ColorCamera::setInterleaved(bool interleaved) {
     if(interleaved) {
         if(properties.previewType == ImgFrame::Type::RGB888p) {
             properties.previewType = ImgFrame::Type::RGB888i;
-        } 
-        else if(properties.previewType == ImgFrame::Type::BGR888p) {
+        } else if(properties.previewType == ImgFrame::Type::BGR888p) {
             properties.previewType = ImgFrame::Type::BGR888i;
         }
     } else {
         if(properties.previewType == ImgFrame::Type::RGB888i) {
             properties.previewType = ImgFrame::Type::RGB888p;
-        } 
-        else if(properties.previewType == ImgFrame::Type::BGR888i) {
+        } else if(properties.previewType == ImgFrame::Type::BGR888i) {
             properties.previewType = ImgFrame::Type::BGR888p;
         }
     }

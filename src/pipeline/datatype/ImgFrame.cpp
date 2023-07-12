@@ -1,18 +1,15 @@
+#define _USE_MATH_DEFINES
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
 #include "spdlog/fmt/fmt.h"
-
-#ifndef M_PI
-#define M_PI (3.14159265358979323846)
-#endif
-
+#include "spdlog/spdlog.h"
 namespace dai {
 
 ImgFrame::Serialized ImgFrame::serialize() const {
     return {data, raw};
 }
 
-ImgFrame::ImgFrame() : Buffer(std::make_shared<RawImgFrame>()), img(*dynamic_cast<RawImgFrame*>(raw.get())) {
+ImgFrame::ImgFrame() : Buffer(std::make_shared<RawImgFrame>()), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformations(img.transformations) {
     // set timestamp to now
     setTimestamp(std::chrono::steady_clock::now());
 }
@@ -23,30 +20,9 @@ ImgFrame::ImgFrame(size_t size) : ImgFrame() {
     data = mem;
 }
 
-ImgFrame::ImgFrame(std::shared_ptr<RawImgFrame> ptr) : Buffer(std::move(ptr)), img(*dynamic_cast<RawImgFrame*>(raw.get())) {
-    for(auto transformation : img.transformations) {
-        switch(transformation.transformationType) {
-            case RawImgTransformation::Transformation::Crop:
-                transformations.emplace_back(std::make_shared<CropTransformation>(transformation));
-                break;
-            case RawImgTransformation::Transformation::Scale:
-                transformations.emplace_back(std::make_shared<ScaleTransformation>(transformation));
-                break;
-            case RawImgTransformation::Transformation::Flip:
-                transformations.emplace_back(std::make_shared<FlipTransformation>(transformation));
-                break;
-            case RawImgTransformation::Transformation::Pad:
-                transformations.emplace_back(std::make_shared<PadTransformation>(transformation));
-                break;
-            case RawImgTransformation::Transformation::Rotation:
-                transformations.emplace_back(std::make_shared<RotateTransformation>(transformation));
-                break;
-            default:
-                throw std::runtime_error("Unknown transformation!");
-                break;
-        }
-    }
-}
+ImgFrame::ImgFrame(std::shared_ptr<RawImgFrame> ptr)
+    : Buffer(std::move(ptr)), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformations(img.transformations) {}
+
 // helpers
 
 // getters
@@ -170,20 +146,15 @@ ImgFrame& ImgFrame::setSize(std::tuple<unsigned int, unsigned int> size) {
     setSize(std::get<0>(size), std::get<1>(size));
     return *this;
 }
-ImgFrame& ImgFrame::setSourceWidth(unsigned int width) {
+
+ImgFrame& ImgFrame::setSourceSize(unsigned int width, unsigned int height) {
     img.sourceFb.width = width;
     img.sourceFb.stride = width;
-    return *this;
-}
-ImgFrame& ImgFrame::setSourceHeight(unsigned int height) {
     img.sourceFb.height = height;
+    transformations.setInitTransformation(width, height);
     return *this;
 }
-ImgFrame& ImgFrame::setSourceSize(unsigned int width, unsigned int height) {
-    setSourceWidth(width);
-    setSourceHeight(height);
-    return *this;
-}
+
 ImgFrame& ImgFrame::setSourceSize(std::tuple<unsigned int, unsigned int> size) {
     setSourceSize(std::get<0>(size), std::get<1>(size));
     return *this;
@@ -198,229 +169,65 @@ void ImgFrame::set(RawImgFrame rawImgFrame) {
     img = rawImgFrame;
 }
 
-ImgFrame& ImgFrame::copyTransformationsFrom(std::shared_ptr<dai::ImgFrame> sourceFrame) {
-    transformations = sourceFrame->transformations;
-    img.transformations = sourceFrame->get().transformations;
-
-    // Copy over origin data as well
-    setSourceSize(sourceFrame->getSourceWidth(), sourceFrame->getSourceHeight());
-    setSourceHFov(sourceFrame->getSourceHFov());
+ImgFrame& ImgFrame::setMetadata(const dai::ImgFrame& sourceFrame) {
+    set(sourceFrame.get());
     return *this;
 }
 
-ImgFrame& ImgFrame::transformSetFlip(bool horizontalFlip, bool verticalFlip) {
-    RawImgTransformation flipTransformation;
-    flipTransformation.horizontalFlip = horizontalFlip;
-    flipTransformation.verticalFlip = verticalFlip;
-    flipTransformation.transformationType = RawImgTransformation::Transformation::Flip;
-
-    // Add the transformation
-    img.transformations.push_back(flipTransformation);
-    transformations.emplace_back(std::make_shared<FlipTransformation>(flipTransformation));
-
-    // Image sizes stay the same
-    return *this;
-}
-
-ImgFrame& ImgFrame::transformSetPadding(float topPadding, float bottomPadding, float leftPadding, float rightPadding, bool setImageDimensions) {
-    RawImgTransformation padTransformation;
-    if(topPadding > 1 || bottomPadding > 1 || leftPadding > 1 || rightPadding > 1) {
-        // Set padding relative to the padded image
-        padTransformation.leftPadding = leftPadding / (getWidth() + leftPadding + rightPadding);
-        padTransformation.rightPadding = rightPadding / (getWidth() + leftPadding + rightPadding);
-        padTransformation.topPadding = topPadding / (getHeight() + topPadding + bottomPadding);
-        padTransformation.bottomPadding = bottomPadding / (getHeight() + topPadding + bottomPadding);
-    } else {
-        padTransformation.topPadding = topPadding;
-        padTransformation.bottomPadding = bottomPadding;
-        padTransformation.leftPadding = leftPadding;
-        padTransformation.rightPadding = rightPadding;
+dai::Point2f ImgFrame::remapPointFromSource(const dai::Point2f& point) const {
+    if(point.isNormalized()) {
+        throw std::runtime_error("Point must be denormalized");
     }
-    padTransformation.transformationType = RawImgTransformation::Transformation::Pad;
-
-    // Add the transformation
-    img.transformations.push_back(padTransformation);
-    transformations.emplace_back(std::make_shared<PadTransformation>(padTransformation));
-    if(setImageDimensions) {
-        // Set image size
-        setWidth(getWidth() / (1 - padTransformation.leftPadding - padTransformation.rightPadding));
-        setHeight(getHeight() / (1 - padTransformation.bottomPadding - padTransformation.topPadding));
-    }
-    return *this;
-}
-ImgFrame& ImgFrame::transformSetCrop(dai::Rect crop, bool setImageDimensions) {
-    // Add a crop
-    RawImgTransformation cropTransformation;
-    auto cropNormalized = crop.normalize(getWidth(), getHeight());
-    cropTransformation.crop = cropNormalized;
-    cropTransformation.transformationType = RawImgTransformation::Transformation::Crop;
-
-    // Add the transformation
-    img.transformations.push_back(cropTransformation);
-    transformations.emplace_back(std::make_shared<CropTransformation>(cropTransformation));
-
-    if(setImageDimensions) {
-        // Set image size correctly
-        auto cropDenormalized = crop.denormalize(getWidth(), getHeight());
-        setWidth(cropDenormalized.width);
-        setHeight(cropDenormalized.height);
-    }
-    return *this;
-}
-ImgFrame& ImgFrame::transformSetRotation(float rotationAngle, dai::Point2f rotationPoint) {
-    RawImgTransformation rotateTransformation;
-    rotateTransformation.rotationAngle = rotationAngle;
-    rotateTransformation.rotationTurnPoint = rotationPoint;
-    rotateTransformation.transformationType = RawImgTransformation::Transformation::Rotation;
-
-    // Add the transformation
-    img.transformations.push_back(rotateTransformation);
-    transformations.emplace_back(std::make_shared<RotateTransformation>(rotateTransformation));
-
-    // TODO what happens with image dimensions -> check with ImageManip
-    return *this;
-}
-
-ImgFrame& ImgFrame::transformSetScale(float scaleFactorX, float scaleFactorY, bool setImageDimensions) {
-    RawImgTransformation scaleTransformation;
-    scaleTransformation.scaleFactorX = scaleFactorX;
-    scaleTransformation.scaleFactorY = scaleFactorY;
-    scaleTransformation.transformationType = RawImgTransformation::Transformation::Scale;
-
-    // Add the transformation
-    img.transformations.push_back(scaleTransformation);
-    transformations.emplace_back(std::make_shared<ScaleTransformation>(scaleTransformation));
-
-    if(setImageDimensions) {
-        // Set image size
-        setWidth(getWidth() * scaleFactorX);
-        setHeight(getHeight() * scaleFactorY);
-    }
-    return *this;
-}
-
-dai::Point2f ScaleTransformation::trans(dai::Point2f point) {
-    // Since we are dealing with relative coordinates, there is nothing to be done
-    return point;
-}
-
-dai::Point2f ScaleTransformation::invTrans(dai::Point2f point) {
-    // Since we are dealing with relative coordinates, there is nothing to be done
-    return point;
-}
-
-dai::Point2f CropTransformation::trans(dai::Point2f point) {
-    dai::Point2f returnPoint;
-    float cropStartX = rawImgTransformation.crop.topLeft().x;
-    float cropEndX = rawImgTransformation.crop.bottomRight().x;
-    if(point.x < cropStartX) {
-        returnPoint.x = 0;
-    } else if(point.x > cropEndX) {
-        returnPoint.x = 1;
-    } else {
-        returnPoint.x = (point.x - cropStartX) / (cropEndX - cropStartX);
-    }
-
-    float cropStartY = rawImgTransformation.crop.topLeft().y;
-    float cropEndY = rawImgTransformation.crop.bottomRight().y;
-    if(point.y < cropStartY) {
-        returnPoint.y = 0;
-    } else if(point.y > cropEndY) {
-        returnPoint.y = 1;
-    } else {
-        returnPoint.y = (point.y - cropStartY) / (cropEndY - cropStartY);
-    }
-    return returnPoint;
-}
-
-dai::Point2f CropTransformation::invTrans(dai::Point2f point) {
-    dai::Point2f returnPoint;
-    float cropStartX = rawImgTransformation.crop.topLeft().x;
-    float cropEndX = rawImgTransformation.crop.bottomRight().x;
-    returnPoint.x = (point.x) * (cropEndX - cropStartX) + cropStartX;
-
-    float cropStartY = rawImgTransformation.crop.topLeft().y;
-    float cropEndY = rawImgTransformation.crop.bottomRight().y;
-    returnPoint.y = (point.y) * (cropEndY - cropStartY) + cropStartY;
-
-    return returnPoint;
-}
-
-dai::Point2f PadTransformation::trans(dai::Point2f point) {
-    dai::Point2f returnPoint;
-    returnPoint.x = point.x * (1 - rawImgTransformation.leftPadding - rawImgTransformation.rightPadding) + rawImgTransformation.leftPadding;
-    returnPoint.y = point.y * (1 - rawImgTransformation.topPadding - rawImgTransformation.bottomPadding) + rawImgTransformation.topPadding;
-    return returnPoint;
-}
-
-dai::Point2f PadTransformation::invTrans(dai::Point2f point) {
-    dai::Point2f returnPoint;
-
-    returnPoint.x = (point.x - rawImgTransformation.leftPadding) / (1 - rawImgTransformation.leftPadding - rawImgTransformation.rightPadding);
-    returnPoint.y = (point.y - rawImgTransformation.topPadding) / (1 - rawImgTransformation.topPadding - rawImgTransformation.bottomPadding);
-
-    // If point is not in the padded area, it's not between 0 and 1
-    returnPoint.x = std::max(0.0f, std::min(returnPoint.x, 1.0f));
-    returnPoint.y = std::max(0.0f, std::min(returnPoint.y, 1.0f));
-
-    return returnPoint;
-}
-
-dai::Point2f RotateTransformation::trans(dai::Point2f point) {
-    // TODO implementation
-    throw std::runtime_error("Rotate transformation not yet implemented");
-    return point;
-}
-
-dai::Point2f RotateTransformation::invTrans(dai::Point2f point) {
-    // TODO implementation
-    throw std::runtime_error("Rotate transformation not yet implemented");
-    return point;
-}
-
-dai::Point2f FlipTransformation::trans(dai::Point2f point) {
-    dai::Point2f returnPoint;
-    if(rawImgTransformation.horizontalFlip) {
-        returnPoint.x = 1.0f - point.x;
-    }
-    if(rawImgTransformation.verticalFlip) {
-        returnPoint.y = 1.0f - point.y;
-    }
-    return returnPoint;
-}
-
-dai::Point2f FlipTransformation::invTrans(dai::Point2f point) {
-    return trans(point);  // The operation is the same in both ways
-}
-
-dai::Point2f ImgFrame::transformPointFromSource(dai::Point2f point) {
     dai::Point2f transformedPoint = point;
-    for(auto& transformation : transformations) {
-        transformedPoint = transformation->trans(transformedPoint);
+    bool isClipped = false;
+    for(auto& transformation : transformations.transformations) {
+        transformedPoint = transformations.transformPoint(transformation, transformedPoint, isClipped);
     }
     return transformedPoint;
 }
 
-dai::Point2f ImgFrame::transformPointToSource(dai::Point2f point) {
+dai::Point2f ImgFrame::remapPointToSource(const dai::Point2f& point) const {
+    if(point.isNormalized()) {
+        throw std::runtime_error("Point must be denormalized");
+    }
     dai::Point2f transformedPoint = point;
-
+    bool isClipped = false;
     // Do the loop in reverse order
-    for(auto it = transformations.rbegin(); it != transformations.rend(); ++it) {
-        transformedPoint = (*it)->invTrans(transformedPoint);
+    for(auto it = transformations.transformations.rbegin(); it != transformations.transformations.rend(); ++it) {
+        transformedPoint = transformations.invTransformPoint(*it, transformedPoint, isClipped);
     }
     return transformedPoint;
 }
 
-dai::Rect ImgFrame::transformRectFromSource(dai::Rect rect) {
-    auto topLeftTransformed = transformPointFromSource(rect.topLeft());
-    auto bottomRightTransformed = transformPointFromSource(rect.bottomRight());
-    return dai::Rect{topLeftTransformed, bottomRightTransformed};
+dai::Rect ImgFrame::remapRectFromSource(const dai::Rect& rect) const {
+    bool isNormalized = rect.isNormalized();
+    auto returnRect = rect;
+    if(isNormalized) {
+        returnRect = returnRect.denormalize(getSourceWidth(), getSourceHeight());
+    }
+    auto topLeftTransformed = remapPointFromSource(returnRect.topLeft());
+    auto bottomRightTransformed = remapPointFromSource(returnRect.bottomRight());
+    returnRect = dai::Rect(topLeftTransformed, bottomRightTransformed);
+    if(isNormalized) {
+        returnRect = returnRect.normalize(getWidth(), getHeight());
+    }
+    return returnRect;
 }
 
-dai::Rect ImgFrame::transformRectToSource(dai::Rect rect) {
-    auto topLeftTransformed = transformPointToSource(rect.topLeft());
-    auto bottomRightTransformed = transformPointToSource(rect.bottomRight());
-    return dai::Rect{topLeftTransformed, bottomRightTransformed};
+dai::Rect ImgFrame::remapRectToSource(const dai::Rect& rect) const {
+    bool isNormalized = rect.isNormalized();
+    auto returnRect = rect;
+    if(isNormalized) {
+        returnRect = returnRect.denormalize(getWidth(), getHeight());
+    }
+    auto topLeftTransformed = remapPointToSource(returnRect.topLeft());
+    auto bottomRightTransformed = remapPointToSource(returnRect.bottomRight());
+
+    returnRect = dai::Rect(topLeftTransformed, bottomRightTransformed);
+    if(isNormalized) {
+        returnRect = returnRect.normalize(getSourceWidth(), getSourceHeight());
+    }
+    return returnRect;
 }
 
 ImgFrame& ImgFrame::setSourceHFov(float degrees) {
@@ -428,11 +235,11 @@ ImgFrame& ImgFrame::setSourceHFov(float degrees) {
     return *this;
 }
 
-float ImgFrame::getSourceHFov() {
+float ImgFrame::getSourceHFov() const {
     return img.HFovDegrees;
 }
 
-float ImgFrame::getSourceDFov() {
+float ImgFrame::getSourceDFov() const {
     // TODO only works rectlinear lenses (rectified frames).
     // Calculate the vertical FOV from the source dimensions and the source DFov
     float sourceWidth = getSourceWidth();
@@ -470,7 +277,7 @@ float ImgFrame::getSourceDFov() {
     return diagonalFovDegrees;
 }
 
-float ImgFrame::getSourceVFov() {
+float ImgFrame::getSourceVFov() const {
     // TODO only works rectlinear lenses (rectified frames).
     // Calculate the vertical FOV from the source dimensions and the source DFov
     float sourceWidth = getSourceWidth();
@@ -503,6 +310,127 @@ float ImgFrame::getSourceVFov() {
     // Convert VFOV to degrees
     float verticalFovDegrees = verticalFovRadians * (180.0f / static_cast<float>(M_PI));
     return verticalFovDegrees;
+}
+
+bool ImgFrame::validateTransformations() const {
+    if(!transformations.validateTransformationSizes()) {
+        spdlog::warn("Transformation sizes are invalid");
+        return false;
+    }
+
+    // Initial transformation always has to be set
+    if(transformations.transformations.size() == 0) {
+        spdlog::warn("No transformations set");
+        return false;
+    }
+
+    if(getSourceHeight() != transformations.transformations[0].beforeTransformHeight
+       || getSourceWidth() != transformations.transformations[0].beforeTransformWidth) {
+        spdlog::warn("Initial transformation size is {}x{} - while source image size is {}x{}",
+                     transformations.transformations[0].beforeTransformWidth,
+                     transformations.transformations[0].beforeTransformHeight,
+                     getSourceWidth(),
+                     getSourceHeight());
+        return false;
+    }
+
+    if(getHeight() != transformations.getLastHeight() || getWidth() != transformations.getLastWidth()) {
+        spdlog::warn("Last transformation size is {}x{} while current transformation size is {}x{}",
+                     transformations.getLastWidth(),
+                     transformations.getLastHeight(),
+                     getWidth(),
+                     getHeight());
+        return false;
+    }
+
+    return true;
+}
+
+dai::Point2f ImgFrame::remapPointBetweenSourceFrames(const dai::Point2f& point, const dai::ImgFrame& sourceImage, const dai::ImgFrame& destImage) {
+    auto hFovDegreeDest = destImage.getSourceHFov();
+    auto vFovDegreeDest = destImage.getSourceVFov();
+    auto hFovDegreeOrigin = sourceImage.getSourceHFov();
+    auto vFovDegreeOrigin = sourceImage.getSourceVFov();
+
+    float hFovRadiansDest = (hFovDegreeDest * ((float)M_PI / 180.0f));
+    float vFovRadiansDest = (vFovDegreeDest * ((float)M_PI / 180.0f));
+    float hFovRadiansOrigin = (hFovDegreeOrigin * ((float)M_PI / 180.0f));
+    float vFovRadiansOrigin = (vFovDegreeOrigin * ((float)M_PI / 180.0f));
+    if(point.isNormalized()) {
+        throw std::runtime_error("Point is normalized. Cannot remap normalized points");
+    }
+
+    if(sourceImage.getSourceWidth() == 0 || sourceImage.getSourceHeight() == 0 || destImage.getSourceWidth() == 0 || destImage.getSourceHeight() == 0) {
+        throw std::runtime_error("Source image has invalid dimensions - all dimensions need to be set before remapping");
+    }
+
+    if(!(sourceImage.getSourceHFov() > 0)) {
+        throw std::runtime_error("Source image has invalid horizontal FOV - horizontal FOV needs to be set before remapping");
+    }
+
+    if(!(destImage.getSourceHFov() > 0)) {
+        throw std::runtime_error("Destination image has invalid horizontal FOV - horizontal FOV needs to be set before remapping");
+    }
+
+    // Calculate the factor between the FOVs
+    // kX of 1.2 would mean that the destination image has 1.2 times wider FOV than the source image
+    float kX = ((std::tan(hFovRadiansDest / 2) / std::tan(hFovRadiansOrigin / 2)));
+    float kY = ((std::tan(vFovRadiansDest / 2) / std::tan(vFovRadiansOrigin / 2)));
+
+    auto returnPoint = point;
+
+    // Scale the point to the destination image
+    returnPoint.x = std::round(point.x * (static_cast<float>(destImage.getSourceWidth()) / sourceImage.getSourceWidth()));
+    returnPoint.y = std::round(point.y * (static_cast<float>(destImage.getSourceHeight()) / sourceImage.getSourceHeight()));
+
+    // Adjust the point to the destination image
+    unsigned adjustedWidth = std::round(destImage.getSourceWidth() * kX);
+    unsigned adjustedHeight = std::round(destImage.getSourceHeight() * kY);
+
+    int diffX = (adjustedWidth - destImage.getSourceWidth()) / 2;
+    int diffY = (adjustedHeight - destImage.getSourceHeight()) / 2;
+
+    int adjustedFrameX = returnPoint.x + diffX;
+    int adjustedFrameY = returnPoint.y + diffY;
+
+    // Scale the point back to the destination frame
+    returnPoint = dai::Point2f(std::round(adjustedFrameX / kX), std::round(adjustedFrameY / kY));
+    bool pointClipped = false;
+    returnPoint = ImgTransformations::clipPoint(returnPoint, destImage.getSourceWidth(), destImage.getSourceHeight(), pointClipped);
+
+    return returnPoint;
+}
+
+dai::Point2f ImgFrame::remapPointBetweenFrames(const dai::Point2f& originPoint, const ImgFrame& originFrame, const ImgFrame& destFrame) {
+    // First get the origin to the origin image
+    // For example if this is a RGB image that was cropped and rotated and the detection was done there,
+    // you remap it back as it was taken on the camera
+    dai::Point2f transformedPoint = originPoint;
+    transformedPoint = originFrame.remapPointToSource(transformedPoint);
+    if(originFrame.getInstanceNum() != destFrame.getInstanceNum()) {
+        transformedPoint = remapPointBetweenSourceFrames(transformedPoint, originFrame, destFrame);
+    } else {
+        if((originFrame.getSourceHeight() != destFrame.getSourceHeight()) || (originFrame.getSourceWidth() != destFrame.getSourceWidth())
+           || (originFrame.getSourceHFov() != destFrame.getSourceHFov()) || (originFrame.getSourceVFov() != destFrame.getSourceVFov())) {
+            throw std::runtime_error("Frames have the same instance numbers, but different source dimensions and/or FOVs.");
+        }
+    }
+    transformedPoint = destFrame.remapPointFromSource(transformedPoint);
+
+    return transformedPoint;
+}
+
+dai::Rect ImgFrame::remapRectBetweenFrames(const dai::Rect& originRect, const dai::ImgFrame& originFrame, const dai::ImgFrame& destFrame) {
+    bool normalized = originRect.isNormalized();
+    auto returnRect = originRect;
+    returnRect = returnRect.denormalize(originFrame.getWidth(), originFrame.getHeight());
+    auto topLeftTransformed = remapPointBetweenFrames(returnRect.topLeft(), originFrame, destFrame);
+    auto bottomRightTransformed = remapPointBetweenFrames(returnRect.bottomRight(), originFrame, destFrame);
+    returnRect = dai::Rect{topLeftTransformed, bottomRightTransformed};
+    if(normalized) {
+        returnRect = returnRect.normalize(destFrame.getWidth(), destFrame.getHeight());
+    }
+    return returnRect;
 }
 
 }  // namespace dai

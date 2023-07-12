@@ -4,6 +4,7 @@
 
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/pipeline/SideChannel.hpp"
 #include "depthai/utility/AtomicBool.hpp"
 #include "depthai/utility/JoiningThread.hpp"
 

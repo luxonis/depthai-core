@@ -9,6 +9,8 @@ set(DEPTHAI_SHARED_3RDPARTY_HEADERS_PATH "depthai-shared/3rdparty")
 set(DEPTHAI_SHARED_SOURCES
     ${DEPTHAI_SHARED_FOLDER}/src/datatype/DatatypeEnum.cpp
     ${DEPTHAI_SHARED_FOLDER}/src/utility/Checksum.cpp
+    ${DEPTHAI_SHARED_FOLDER}/src/utility/matrixOps.cpp
+    ${DEPTHAI_SHARED_FOLDER}/src/common/ImgTransformations.cpp
 )
 
 set(DEPTHAI_SHARED_PUBLIC_INCLUDE

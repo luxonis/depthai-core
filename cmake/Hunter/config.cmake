@@ -1,8 +1,12 @@
+# hunter_config(
+#     nlohmann_json
+#     VERSION "3.9.1"
+#     URL "https://github.com/nlohmann/json/archive/v3.9.1.tar.gz"
+#     SHA1 "f8a20a7e19227906d77de0ede97468fbcfea03e7"
+# )
 hunter_config(
     nlohmann_json
     VERSION "3.9.1"
-    URL "https://github.com/nlohmann/json/archive/v3.9.1.tar.gz"
-    SHA1 "f8a20a7e19227906d77de0ede97468fbcfea03e7"
 )
 
 hunter_config(
