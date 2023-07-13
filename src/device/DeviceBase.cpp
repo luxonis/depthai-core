@@ -623,6 +623,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
             spdlog::error("Could not start the session on gate!");
         }
 
+
         // Connect with XLinkConnection (skip checking if booted)
         connection = std::make_shared<XLinkConnection>(deviceInfo, X_LINK_ANY_STATE);
     } else {
