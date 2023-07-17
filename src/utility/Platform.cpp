@@ -17,6 +17,10 @@
     #include <pthread.h>
 #endif
 
+#if defined(_WIN32) || defined(__USE_W32_SOCKETS)
+    #include <windows.h>
+#endif
+
 namespace dai {
 namespace platform {
 
@@ -58,6 +62,18 @@ void setThreadName(JoiningThread& thread, const std::string& name) {
     pthread_setname_np(handle, name.c_str());
 #endif
     return;
+}
+
+std::string getTempPath() {
+    std::string tmpPath;
+#if defined(_WIN32) || defined(__USE_W32_SOCKETS)
+    char tmpPathBuffer[MAX_PATH];
+    GetTempPathA(MAX_PATH, tmpPathBuffer);
+    tmpPath = tmpPathBuffer;
+#else
+    tmpPath = "/tmp/";
+#endif
+    return tmpPath;
 }
 
 }  // namespace platform
