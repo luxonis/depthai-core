@@ -190,16 +190,16 @@ bool DeviceGate::stopSession() {
 
     const auto sessionsEndpoint = API_ROOT + "/sessions";
 
-    std::string url = fmt::format("{}/{}/close", sessionsEndpoint, sessionId);
+    std::string url = fmt::format("{}/{}/stop", sessionsEndpoint, sessionId);
     if(auto res = pimpl->cli->Post(url.c_str())) {
         if(res->status != 200) {
-            spdlog::warn("DeviceGate closeSession not successful - status: {}, error: {}", res->status, res->body);
+            spdlog::warn("DeviceGate stopSession not successful - status: {}, error: {}", res->status, res->body);
             return false;
         }
-        spdlog::debug("DeviceGate closeSession successful");
+        spdlog::debug("DeviceGate stopSession successful");
         return true;
     } else {
-        spdlog::error("DeviceGate closeSession not successful - got no response");
+        spdlog::error("DeviceGate stopSession not successful - got no response");
     }
 
     return false;
@@ -216,8 +216,8 @@ bool DeviceGate::destroySession() {
         return true;
     }
 
-    std::string url = fmt::format("{}/{}", sessionsEndpoint, sessionId);
-    if(auto res = pimpl->cli->Delete(url.c_str())) {
+    std::string url = fmt::format("{}/{}/destroy", sessionsEndpoint, sessionId);
+    if(auto res = pimpl->cli->Post(url.c_str())) {
         if(res->status != 200) {
             spdlog::warn("DeviceGate destroySession not successful - status: {}, error: {}", res->status, res->body);
             return false;
