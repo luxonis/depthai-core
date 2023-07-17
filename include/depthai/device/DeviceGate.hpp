@@ -64,8 +64,8 @@ class DeviceGate {
     bool destroySession();
     SessionState updateState();
 
-    tl::optional<std::vector<uint8_t>> getLogFile();
-    tl::optional<std::vector<uint8_t>> getCoreDump();
+    tl::optional<std::vector<uint8_t>> getLogFile(std::string& filename);
+    tl::optional<std::vector<uint8_t>> getCoreDump(std::string& filename);
 
     struct VersionInfo {
         std::string gate, os;
@@ -83,7 +83,7 @@ class DeviceGate {
 
     std::thread stateMonitoringThread;
 
-    tl::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl);
+    tl::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename);
 
     tl::optional<std::string> saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename);
 

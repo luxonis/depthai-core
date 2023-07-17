@@ -7,6 +7,7 @@
 #include "build/version.hpp"
 #include "device/Device.hpp"
 #include "utility/PimplImpl.hpp"
+#include "utility/Platform.hpp"
 #include "utility/Resources.hpp"
 
 // libraries
@@ -289,12 +290,15 @@ DeviceGate::SessionState DeviceGate::updateState() {
 }
 
 tl::optional<std::string> DeviceGate::saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename) {
-    std::string path = "/tmp/" + filename;  // Make this OS agnostic
+    auto tmpdir = platform::getTempPath();
+    std::string path = std::string(tmpdir) + filename;
+
     std::ofstream file(path, std::ios::binary);
     if(!file.is_open()) {
         spdlog::error("Couldn't open file {} for writing", path);
         return tl::nullopt;
     }
+
     file.write(reinterpret_cast<char*>(data.data()), data.size());
     file.close();
     if(!file.good()) {
@@ -305,14 +309,15 @@ tl::optional<std::string> DeviceGate::saveFileToTemporaryDirectory(std::vector<u
     return std::string(path);
 }
 
-tl::optional<std::vector<uint8_t>> DeviceGate::getFile(const std::string& fileUrl) {
+tl::optional<std::vector<uint8_t>> DeviceGate::getFile(const std::string& fileUrl, std::string& filename) {
     // Send a GET request to the server
-    if (auto res = pimpl->cli->Get(fileUrl.c_str())) {
-        // Check if the request was successful
+    if(auto res = pimpl->cli->Get(fileUrl.c_str())) {
         if (res->status == 200) {
+            filename = res->get_header_value("X-Filename");
             // Convert the response body to a vector of uint8_t
             std::vector<uint8_t> fileData(res->body.begin(), res->body.end());
-            spdlog::debug("File download successful");
+
+            spdlog::debug("File download successful. Filename: {}", filename);
             return fileData;
         } else {
             spdlog::warn("File download not successful - status: {}, error: {}", res->status, res->body);
@@ -346,9 +351,12 @@ void DeviceGate::threadedStateMonitoring() {
             case SessionState::CRASHED:
             case SessionState::DESTROYED:
                 spdlog::warn("FW crashed - trying to get out the logs and the core dump");
-                auto logFile = getLogFile();
+                std::string logFileName;
+                auto logFile = getLogFile(logFileName);
                 if(logFile) {
-                    std::string logFileName = "depthai_gate.log";  // TODO make this OS independent
+                    if(logFileName.empty()) {
+                        logFileName = "depthai_gate.log";
+                    }
                     spdlog::warn("Log file found - trying to save it");
                     if(auto path = saveFileToTemporaryDirectory(*logFile, logFileName)) {
                         spdlog::warn("Log file saved to {} - please report to developers", *path);
@@ -358,10 +366,13 @@ void DeviceGate::threadedStateMonitoring() {
                 } else {
                     spdlog::warn("Log file not found");
                 }
-                auto coreDump = getCoreDump();
+                std::string coreDumpName;
+                auto coreDump = getCoreDump(coreDumpName);
                 if(coreDump) {
-                    std::string coreDumpName = "depthai_gate.core";  // TODO make this OS independent
                     spdlog::warn("Core dump found - trying to save it");
+                    if(coreDumpName.empty()) {
+                        coreDumpName = "depthai_gate.core";
+                    }
                     if(auto path = saveFileToTemporaryDirectory(*coreDump, coreDumpName)) {
                         spdlog::warn("Core dump saved to {} - please report to developers", *path);
                     } else {
@@ -375,14 +386,14 @@ void DeviceGate::threadedStateMonitoring() {
     }
 }
 
-tl::optional<std::vector<uint8_t>> DeviceGate::getLogFile(){
+tl::optional<std::vector<uint8_t>> DeviceGate::getLogFile(std::string& filename) {
     std::string url = fmt::format("{}/{}/log_file", sessionsEndpoint, sessionId);
-    return DeviceGate::getFile(url);
+    return DeviceGate::getFile(url, filename);
 }
 
-tl::optional<std::vector<uint8_t>> DeviceGate::getCoreDump(){
+tl::optional<std::vector<uint8_t>> DeviceGate::getCoreDump(std::string& filename) {
     std::string url = fmt::format("{}/{}/core_dump", sessionsEndpoint, sessionId);
-    return DeviceGate::getFile(url);
+    return DeviceGate::getFile(url, filename);
 }
 
 // TODO(themarpe) - get all sessions, check if only one and not protected
