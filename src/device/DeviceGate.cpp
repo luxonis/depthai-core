@@ -45,17 +45,8 @@ class DeviceGate::Impl {
     std::unique_ptr<httplib::Client> cli;
 };
 DeviceGate::~DeviceGate() {
-    if(!stopSession()) {
-        spdlog::warn("DeviceGate stopSession not successful");
-    }
     if(stateMonitoringThread.joinable()) {
         stateMonitoringThread.join();
-    }
-    if(!destroySession()) {
-        spdlog::warn("DeviceGate destroySession not successful");
-    }
-    if(!deleteSession()) {
-        spdlog::warn("DeviceGate deleteSession not successful");
     }
 }
 
@@ -66,6 +57,7 @@ DeviceGate::DeviceGate(const DeviceInfo& deviceInfo) : deviceInfo(deviceInfo) {
 
     // Discover and connect
     pimpl->cli = std::make_unique<httplib::Client>(deviceInfo.name, DEFAULT_PORT);
+    pimpl->cli->set_read_timeout(60);       // 60 seconds timeout to allow for compressing the core dumps without async
     // pimpl->cli->set_connection_timeout(2);
     stateMonitoringThread = std::thread(&DeviceGate::threadedStateMonitoring, this);
 }
@@ -351,6 +343,7 @@ void DeviceGate::threadedStateMonitoring() {
             case SessionState::CRASHED:
             case SessionState::DESTROYED:
                 spdlog::warn("FW crashed - trying to get out the logs and the core dump");
+                std::this_thread::sleep_for(std::chrono::seconds(3)); // Allow for the generation of the crash dump and the log file
                 std::string logFileName;
                 auto logFile = getLogFile(logFileName);
                 if(logFile) {
