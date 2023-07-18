@@ -419,13 +419,13 @@ void DeviceBase::closeImpl() {
     // At the end stop the monitor thread
     if(monitorThread.joinable()) monitorThread.join();
 
+    // Close rpcStream
+    pimpl->rpcStream = nullptr;
+
     // If the device was operated throgh gate, wait for the session to end
     if(gate){
         gate->waitForSessionEnd();
     }
-    // Close rpcStream
-    pimpl->rpcStream = nullptr;
-
     spdlog::debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
 }
 
