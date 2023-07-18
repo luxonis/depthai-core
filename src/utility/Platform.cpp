@@ -71,7 +71,15 @@ std::string getTempPath() {
     GetTempPathA(MAX_PATH, tmpPathBuffer);
     tmpPath = tmpPathBuffer;
 #else
-    tmpPath = "/tmp/";
+    char tmpTemplate[] = "/tmp/depthai_XXXXXX";
+    char* tmpName = mkdtemp(tmpTemplate);
+    if(tmpName == nullptr)
+    {
+        tmpPath = "/tmp";
+    } else {
+        tmpPath = tmpName;
+        tmpPath += '/';
+    }
 #endif
     return tmpPath;
 }

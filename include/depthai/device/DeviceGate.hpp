@@ -68,7 +68,7 @@ class DeviceGate {
 
     tl::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename);
 
-    tl::optional<std::string> saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename);
+    tl::optional<std::string> saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename, std::string direcotryPath = "");
 
     // state of the session
     std::atomic_bool sessionCreated{false};

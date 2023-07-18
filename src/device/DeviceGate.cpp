@@ -277,8 +277,13 @@ DeviceGate::SessionState DeviceGate::getState() {
     return SessionState::ERROR_STATE;
 }
 
-tl::optional<std::string> DeviceGate::saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename) {
-    auto tmpdir = platform::getTempPath();
+tl::optional<std::string> DeviceGate::saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename, std::string directoryPath) {
+    std::string tmpdir;
+    if(directoryPath.empty()) {
+        tmpdir = platform::getTempPath();
+    } else {
+        tmpdir = directoryPath;
+    }
     std::string path = std::string(tmpdir) + filename;
 
     std::ofstream file(path, std::ios::binary);
@@ -322,7 +327,7 @@ void DeviceGate::waitForSessionEnd() {
         std::this_thread::sleep_for(std::chrono::seconds(1));
         auto sessionState = getState();
         if(sessionState == SessionState::ERROR_STATE) {
-            spdlog::error("DeviceGate session state is in error state - stopping the monitoring thread");
+            spdlog::error("DeviceGate session state is in error state - exiting");
             return;
         }
         switch(sessionState) {
@@ -332,7 +337,7 @@ void DeviceGate::waitForSessionEnd() {
             case SessionState::STOPPING:
                 break;  // Nothing to do
             case SessionState::ERROR_STATE:
-                spdlog::error("DeviceGate session state is in error state - stopping the monitoring thread");
+                spdlog::error("DeviceGate session state is in error state - exiting");
                 return;
             case SessionState::STOPPED:
                 return;  // Session stopped - stop the thread
@@ -340,6 +345,7 @@ void DeviceGate::waitForSessionEnd() {
             case SessionState::DESTROYED:
                 spdlog::warn("FW crashed - trying to get out the logs and the core dump");
                 std::this_thread::sleep_for(std::chrono::seconds(3));  // Allow for the generation of the crash dump and the log file
+                std::string temporaryDirectory = platform::getTempPath();
                 std::string logFileName;
                 auto logFile = getLogFile(logFileName);
                 if(logFile) {
@@ -347,7 +353,7 @@ void DeviceGate::waitForSessionEnd() {
                         logFileName = "depthai_gate.log";
                     }
                     spdlog::warn("Log file found - trying to save it");
-                    if(auto path = saveFileToTemporaryDirectory(*logFile, logFileName)) {
+                    if(auto path = saveFileToTemporaryDirectory(*logFile, logFileName, temporaryDirectory)) {
                         spdlog::warn("Log file saved to {} - please report to developers", *path);
                     } else {
                         spdlog::error("Couldn't save log file");
@@ -356,13 +362,14 @@ void DeviceGate::waitForSessionEnd() {
                     spdlog::warn("Log file not found");
                 }
                 std::string coreDumpName;
+                spdlog::warn("Getting the core dump out - this can take up to a minute, because it first needs to be compressed.");
                 auto coreDump = getCoreDump(coreDumpName);
                 if(coreDump) {
                     spdlog::warn("Core dump found - trying to save it");
                     if(coreDumpName.empty()) {
                         coreDumpName = "depthai_gate.core";
                     }
-                    if(auto path = saveFileToTemporaryDirectory(*coreDump, coreDumpName)) {
+                    if(auto path = saveFileToTemporaryDirectory(*coreDump, coreDumpName, temporaryDirectory)) {
                         spdlog::warn("Core dump saved to {} - please report to developers", *path);
                     } else {
                         spdlog::error("Couldn't save core dump");
