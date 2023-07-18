@@ -49,7 +49,6 @@ class DeviceGate {
     // Waits for the gate session to end and tries to get the logs and crash dump out
     void waitForSessionEnd();
 
-    tl::optional<std::vector<uint8_t>> getLogFile(std::string& filename);
     tl::optional<std::vector<uint8_t>> getCoreDump(std::string& filename);
 
     struct VersionInfo {

@@ -343,33 +343,19 @@ void DeviceGate::waitForSessionEnd() {
                 return;  // Session stopped - stop the thread
             case SessionState::CRASHED:
             case SessionState::DESTROYED:
-                spdlog::warn("FW crashed - trying to get out the logs and the core dump");
+                spdlog::warn("FW crashed - trying to get out the core dump");
                 std::this_thread::sleep_for(std::chrono::seconds(3));  // Allow for the generation of the crash dump and the log file
                 std::string temporaryDirectory = platform::getTempPath();
-                std::string logFileName;
-                auto logFile = getLogFile(logFileName);
-                if(logFile) {
-                    if(logFileName.empty()) {
-                        logFileName = "depthai_gate.log";
-                    }
-                    spdlog::warn("Log file found - trying to save it");
-                    if(auto path = saveFileToTemporaryDirectory(*logFile, logFileName, temporaryDirectory)) {
-                        spdlog::warn("Log file saved to {} - please report to developers", *path);
-                    } else {
-                        spdlog::error("Couldn't save log file");
-                    }
-                } else {
-                    spdlog::warn("Log file not found");
-                }
                 std::string coreDumpName;
                 spdlog::warn("Getting the core dump out - this can take up to a minute, because it first needs to be compressed.");
                 auto coreDump = getCoreDump(coreDumpName);
                 if(coreDump) {
                     spdlog::warn("Core dump found - trying to save it");
                     if(coreDumpName.empty()) {
-                        coreDumpName = "depthai_gate.core";
+                        coreDumpName = "depthai_gate_core_dump.tar.gz";
                     }
-                    if(auto path = saveFileToTemporaryDirectory(*coreDump, coreDumpName, temporaryDirectory)) {
+                    std::string fullName = deviceInfo.getMxId() + "-" + coreDumpName;
+                    if(auto path = saveFileToTemporaryDirectory(*coreDump, fullName, temporaryDirectory)) {
                         spdlog::warn("Core dump saved to {} - please report to developers", *path);
                     } else {
                         spdlog::error("Couldn't save core dump");
@@ -380,11 +366,6 @@ void DeviceGate::waitForSessionEnd() {
                 return;
         }
     }
-}
-
-tl::optional<std::vector<uint8_t>> DeviceGate::getLogFile(std::string& filename) {
-    std::string url = fmt::format("{}/{}/log_file", sessionsEndpoint, sessionId);
-    return DeviceGate::getFile(url, filename);
 }
 
 tl::optional<std::vector<uint8_t>> DeviceGate::getCoreDump(std::string& filename) {
