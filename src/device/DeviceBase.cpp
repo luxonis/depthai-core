@@ -419,6 +419,10 @@ void DeviceBase::closeImpl() {
     // At the end stop the monitor thread
     if(monitorThread.joinable()) monitorThread.join();
 
+    // If the device was operated throgh gate, wait for the session to end
+    if(gate){
+        gate->waitForSessionEnd();
+    }
     // Close rpcStream
     pimpl->rpcStream = nullptr;
 

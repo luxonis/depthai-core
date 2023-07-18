@@ -31,7 +31,7 @@ class DeviceGate {
      */
     std::vector<DeviceInfo> getAllAvailableDevices();
 
-    enum class SessionState { NOT_CREATED, CREATED, RUNNING, STOPPED, STOPPING, CRASHED, DESTROYED, ERROR };
+    enum class SessionState { NOT_CREATED, CREATED, RUNNING, STOPPED, STOPPING, CRASHED, DESTROYED, ERROR_STATE };
 
     /**
      * Connects to DepthAI Gate
@@ -45,7 +45,9 @@ class DeviceGate {
     bool stopSession();
     bool deleteSession();
     bool destroySession();
-    SessionState updateState();
+    SessionState getState();
+    // Waits for the gate session to end and tries to get the logs and crash dump out
+    void waitForSessionEnd();
 
     tl::optional<std::vector<uint8_t>> getLogFile(std::string& filename);
     tl::optional<std::vector<uint8_t>> getCoreDump(std::string& filename);
@@ -61,8 +63,6 @@ class DeviceGate {
    private:
     // private
     DeviceInfo deviceInfo;
-
-    void threadedStateMonitoring();
 
     std::thread stateMonitoringThread;
 

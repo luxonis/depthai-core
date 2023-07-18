@@ -44,11 +44,7 @@ class DeviceGate::Impl {
     // Default Gate connection
     std::unique_ptr<httplib::Client> cli;
 };
-DeviceGate::~DeviceGate() {
-    if(stateMonitoringThread.joinable()) {
-        stateMonitoringThread.join();
-    }
-}
+DeviceGate::~DeviceGate() {}
 
 DeviceGate::DeviceGate(const DeviceInfo& deviceInfo) : deviceInfo(deviceInfo) {
     if(deviceInfo.state != X_LINK_GATE) {
@@ -59,7 +55,6 @@ DeviceGate::DeviceGate(const DeviceInfo& deviceInfo) : deviceInfo(deviceInfo) {
     pimpl->cli = std::make_unique<httplib::Client>(deviceInfo.name, DEFAULT_PORT);
     pimpl->cli->set_read_timeout(60);  // 60 seconds timeout to allow for compressing the core dumps without async
     // pimpl->cli->set_connection_timeout(2);
-    stateMonitoringThread = std::thread(&DeviceGate::threadedStateMonitoring, this);
 }
 
 bool DeviceGate::isOkay() {
@@ -170,7 +165,7 @@ bool DeviceGate::startSession() {
 }
 
 bool DeviceGate::stopSession() {
-    auto sessionState = updateState();
+    auto sessionState = getState();
     if(sessionState == SessionState::STOPPED || sessionState == SessionState::DESTROYED) {
         spdlog::warn("DeviceGate trying to stop already stopped session");
         return true;
@@ -199,12 +194,12 @@ bool DeviceGate::stopSession() {
 }
 
 bool DeviceGate::destroySession() {
-    if(updateState() == SessionState::DESTROYED) {
+    if(getState() == SessionState::DESTROYED) {
         spdlog::warn("DeviceGate trying to destroy already destroyed session");
         return true;
     }
 
-    if(updateState() == SessionState::NOT_CREATED) {
+    if(getState() == SessionState::NOT_CREATED) {
         spdlog::debug("No need to destroy a session that wasn't created.");
         return true;
     }
@@ -224,7 +219,7 @@ bool DeviceGate::destroySession() {
 }
 
 bool DeviceGate::deleteSession() {
-    if(updateState() == SessionState::NOT_CREATED) {
+    if(getState() == SessionState::NOT_CREATED) {
         spdlog::debug("No need to delete a session that wasn't created.");
         return true;
     }
@@ -243,7 +238,7 @@ bool DeviceGate::deleteSession() {
     return false;
 }
 
-DeviceGate::SessionState DeviceGate::updateState() {
+DeviceGate::SessionState DeviceGate::getState() {
     if(!sessionCreated) {
         spdlog::debug("Session not yet created - can't get the session state from gate");
         return SessionState::NOT_CREATED;
@@ -252,11 +247,11 @@ DeviceGate::SessionState DeviceGate::updateState() {
     std::string url = fmt::format("{}/{}", sessionsEndpoint, sessionId);
     if(auto res = pimpl->cli->Get(url.c_str())) {
         if(res->status != 200) {
-            spdlog::warn("DeviceGate updateState not successful - status: {}, error: {}", res->status, res->body);
-            return SessionState::ERROR;
+            spdlog::warn("DeviceGate getState not successful - status: {}, error: {}", res->status, res->body);
+            return SessionState::ERROR_STATE;
         }
         auto resp = nlohmann::json::parse(res->body);
-        spdlog::trace("DeviceGate updateState response: {}", resp.dump());
+        spdlog::trace("DeviceGate getState response: {}", resp.dump());
 
         std::string sessionStateStr = resp["state"];
         if(sessionStateStr == "CREATED") {
@@ -272,14 +267,14 @@ DeviceGate::SessionState DeviceGate::updateState() {
         } else if(sessionStateStr == "DESTROYED") {
             sessionState = SessionState::DESTROYED;
         } else {
-            spdlog::warn("DeviceGate updateState not successful - unknown session state: {}", sessionStateStr);
-            sessionState = SessionState::ERROR;
+            spdlog::warn("DeviceGate getState not successful - unknown session state: {}", sessionStateStr);
+            sessionState = SessionState::ERROR_STATE;
         }
         return sessionState;
     } else {
-        spdlog::warn("DeviceGate updateState not successful - got no response");
+        spdlog::warn("DeviceGate getState not successful - got no response");
     }
-    return SessionState::ERROR;
+    return SessionState::ERROR_STATE;
 }
 
 tl::optional<std::string> DeviceGate::saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename) {
@@ -322,11 +317,11 @@ tl::optional<std::vector<uint8_t>> DeviceGate::getFile(const std::string& fileUr
     }
 }
 
-void DeviceGate::threadedStateMonitoring() {
+void DeviceGate::waitForSessionEnd() {
     while(true) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
-        auto sessionState = updateState();
-        if(sessionState == SessionState::ERROR) {
+        auto sessionState = getState();
+        if(sessionState == SessionState::ERROR_STATE) {
             spdlog::error("DeviceGate session state is in error state - stopping the monitoring thread");
             return;
         }
@@ -336,7 +331,7 @@ void DeviceGate::threadedStateMonitoring() {
             case SessionState::RUNNING:
             case SessionState::STOPPING:
                 break;  // Nothing to do
-            case SessionState::ERROR:
+            case SessionState::ERROR_STATE:
                 spdlog::error("DeviceGate session state is in error state - stopping the monitoring thread");
                 return;
             case SessionState::STOPPED:
