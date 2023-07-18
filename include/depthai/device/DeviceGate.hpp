@@ -31,24 +31,7 @@ class DeviceGate {
      */
     std::vector<DeviceInfo> getAllAvailableDevices();
 
-    enum class SessionState {
-        // Session is not created
-        NOT_CREATED,
-        // Session is created, but not started
-        CREATED,
-        // Session is started
-        RUNNING,
-        // Session is stopped
-        STOPPED,
-        // Session is stopping
-        STOPPING,
-        // Session is crashed
-        CRASHED,
-        // Session is destroyed
-        DESTROYED,
-        // Error
-        ERROR
-    };
+    enum class SessionState { NOT_CREATED, CREATED, RUNNING, STOPPED, STOPPING, CRASHED, DESTROYED, ERROR };
 
     /**
      * Connects to DepthAI Gate
@@ -88,7 +71,7 @@ class DeviceGate {
     tl::optional<std::string> saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename);
 
     // state of the session
-    SessionState sessionState = SessionState::NOT_CREATED;
+    std::atomic_bool sessionCreated{false};
 
     // pimpl
     class Impl;
