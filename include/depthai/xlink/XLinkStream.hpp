@@ -43,11 +43,11 @@ class XLinkStream {
     streamId_t streamId{INVALID_STREAM_ID};
 
    public:
-    XLinkStream(const std::shared_ptr<XLinkConnection> conn, const std::string& name, std::size_t maxWriteSize);
+    XLinkStream(const std::shared_ptr<XLinkConnection>& conn, const std::string& name, std::size_t maxWriteSize);
     XLinkStream(const XLinkStream&) = delete;
-    XLinkStream(XLinkStream&& stream);
+    XLinkStream(XLinkStream&& stream) noexcept;
     XLinkStream& operator=(const XLinkStream&) = delete;
-    XLinkStream& operator=(XLinkStream&& stream);
+    XLinkStream& operator=(XLinkStream&& stream) noexcept;
     ~XLinkStream();
 
     // Blocking
@@ -89,11 +89,11 @@ struct XLinkError : public std::runtime_error {
         : runtime_error(message), status(statusID), streamName(std::move(stream)) {}
 };
 struct XLinkReadError : public XLinkError {
-    using XLinkError = XLinkError;
+    using XLinkError::XLinkError;
     XLinkReadError(XLinkError_t status, const std::string& stream);
 };
 struct XLinkWriteError : public XLinkError {
-    using XLinkError = XLinkError;
+    using XLinkError::XLinkError;
     XLinkWriteError(XLinkError_t status, const std::string& stream);
 };
 

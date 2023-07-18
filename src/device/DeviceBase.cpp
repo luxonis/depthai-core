@@ -281,8 +281,6 @@ class DeviceBase::Impl {
     DeviceLogger logger{"host", stdoutColorSink};
 
     // RPC
-    std::mutex rpcMutex;
-    std::shared_ptr<XLinkStream> rpcStream;
     std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> rpcClient;
 
     void setLogLevel(LogLevel level);
@@ -503,11 +501,10 @@ DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo) : deviceInfo(de
 }
 
 void DeviceBase::close() {
-    std::unique_lock<std::mutex> lock(closedMtx);
-    if(!closed) {
-        closeImpl();
-        closed = true;
-    }
+    // Only allow to close once
+    if(closed.exchange(true)) return;
+
+    closeImpl();
 }
 
 void DeviceBase::closeImpl() {
@@ -539,10 +536,6 @@ void DeviceBase::closeImpl() {
     // At the end stop the monitor thread
     if(monitorThread.joinable()) monitorThread.join();
 
-    // Close rpcStream
-    pimpl->rpcStream = nullptr;
-    pimpl->rpcClient = nullptr;
-
     pimpl->logger.debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
 }
 
@@ -550,7 +543,6 @@ void DeviceBase::closeImpl() {
 // is invalidated during the return by value and continues to degrade in
 // validity to the caller
 bool DeviceBase::isClosed() const {
-    std::unique_lock<std::mutex> lock(closedMtx);
     return closed || !watchdogRunning;
 }
 
@@ -565,8 +557,10 @@ void DeviceBase::tryStartPipeline(const Pipeline& pipeline) {
         }
     } catch(const std::exception&) {
         // close device (cleanup)
+        // can throw within itself, e.g. from the rpcclient lambda with an xlink error
         close();
-        // Rethrow original exception
+
+        // Rethrow original exception when close() itself doesn't throw
         throw;
     }
 }
@@ -676,7 +670,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     }
 
     // Get embedded mvcmd or external with applied config
-    if(logger::get_level() == spdlog::level::debug) {
+    if(logger::get_level() <= spdlog::level::debug) {
         nlohmann::json jBoardConfig = config.board;
         pimpl->logger.debug("Device - BoardConfig: {} \nlibnop:{}", jBoardConfig.dump(), spdlog::to_hex(utility::serialize(config.board)));
     }
@@ -729,32 +723,32 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     deviceInfo.state = expectedBootState;
 
     // prepare rpc for both attached and host controlled mode
-    pimpl->rpcStream = std::make_shared<XLinkStream>(connection, device::XLINK_CHANNEL_MAIN_RPC, device::XLINK_USB_BUFFER_MAX_SIZE);
-    auto rpcStream = pimpl->rpcStream;
+    pimpl->rpcClient = std::make_unique<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>(
+        [rpcMutex = std::make_shared<std::mutex>(),
+         rpcStream = std::make_shared<XLinkStream>(connection, device::XLINK_CHANNEL_MAIN_RPC, device::XLINK_USB_BUFFER_MAX_SIZE),
+         &implLogger = this->pimpl->logger](nanorpc::core::type::buffer request) {
+            // Lock for time of the RPC call, to not mix the responses between calling threads.
+            // Note: might cause issues on Windows on incorrect shutdown. To be investigated
+            std::lock_guard<std::mutex> lock(*rpcMutex);
 
-    pimpl->rpcClient = std::make_unique<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>([this, rpcStream](nanorpc::core::type::buffer request) {
-        // Lock for time of the RPC call, to not mix the responses between calling threads.
-        // Note: might cause issues on Windows on incorrect shutdown. To be investigated
-        std::unique_lock<std::mutex> lock(pimpl->rpcMutex);
+            // Log the request data
+            if(logger::get_level() == spdlog::level::trace) {
+                implLogger.trace("RPC: {}", nlohmann::json::from_msgpack(request).dump());
+            }
 
-        // Log the request data
-        if(logger::get_level() == spdlog::level::trace) {
-            pimpl->logger.trace("RPC: {}", nlohmann::json::from_msgpack(request).dump());
-        }
+            try {
+                // Send request to device
+                rpcStream->write(request);
 
-        try {
-            // Send request to device
-            rpcStream->write(std::move(request));
-
-            // Receive response back
-            // Send to nanorpc to parse
-            return rpcStream->read();
-        } catch(const std::exception& e) {
-            // If any exception is thrown, log it and rethrow
-            pimpl->logger.debug("RPC error: {}", e.what());
-            throw std::system_error(std::make_error_code(std::errc::io_error), "Device already closed or disconnected");
-        }
-    });
+                // Receive response back
+                // Send to nanorpc to parse
+                return rpcStream->read();
+            } catch(const std::exception& e) {
+                // If any exception is thrown, log it and rethrow
+                implLogger.debug("RPC error: {}", e.what());
+                throw std::system_error(std::make_error_code(std::errc::io_error), "Device already closed or disconnected");
+            }
+        });
 
     // prepare watchdog thread, which will keep device alive
     // separate stream so it doesn't miss between potentially long RPC calls
@@ -915,12 +909,8 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
                 float rate = 1.0f;
                 while(profilingRunning) {
                     ProfilingData data = getProfilingData();
-                    long long w = data.numBytesWritten - lastData.numBytesWritten;
-                    long long r = data.numBytesRead - lastData.numBytesRead;
-                    w /= rate;
-                    r /= rate;
-
-                    lastData = data;
+                    const float w = (data.numBytesWritten - lastData.numBytesWritten) / rate;
+                    const float r = (data.numBytesRead - lastData.numBytesRead) / rate;
 
                     pimpl->logger.debug("Profiling write speed: {:.2f} MiB/s, read speed: {:.2f} MiB/s, total written: {:.2f} MiB, read: {:.2f} MiB",
                                         w / 1024.0f / 1024.0f,
@@ -928,6 +918,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
                                         data.numBytesWritten / 1024.0f / 1024.0f,
                                         data.numBytesRead / 1024.0f / 1024.0f);
 
+                    lastData = std::move(data);
                     std::this_thread::sleep_for(duration<float>(1) / rate);
                 }
             } catch(const std::exception& ex) {
@@ -1385,6 +1376,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
         const std::string streamAssetStorage = "__stream_asset_storage";
         std::thread t1([this, &streamAssetStorage, &assetStorage]() {
             XLinkStream stream(connection, streamAssetStorage, device::XLINK_USB_BUFFER_MAX_SIZE);
+            // TODO replace this code with XLinkStream::writeSplit()
             int64_t offset = 0;
             do {
                 int64_t toTransfer = std::min(static_cast<int64_t>(device::XLINK_USB_BUFFER_MAX_SIZE), static_cast<int64_t>(assetStorage.size() - offset));
@@ -1397,9 +1389,6 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
         t1.join();
     }
 
-    // print assets on device side for test
-    pimpl->rpcClient->call("printAssets");
-
     // Build and start the pipeline
     bool success = false;
     std::string errorMsg;
@@ -1408,7 +1397,6 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
         pimpl->rpcClient->call("startPipeline");
     } else {
         throw std::runtime_error(errorMsg);
-        return false;
     }
 
     return true;

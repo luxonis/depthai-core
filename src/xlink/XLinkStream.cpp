@@ -13,7 +13,7 @@ namespace dai {
 constexpr std::chrono::milliseconds XLinkStream::WAIT_FOR_STREAM_RETRY;
 constexpr int XLinkStream::STREAM_OPEN_RETRIES;
 
-XLinkStream::XLinkStream(const std::shared_ptr<XLinkConnection> conn, const std::string& name, std::size_t maxWriteSize) : connection(conn), streamName(name) {
+XLinkStream::XLinkStream(const std::shared_ptr<XLinkConnection>& conn, const std::string& name, std::size_t maxWriteSize) : connection(conn), streamName(name) {
     if(name.empty()) throw std::invalid_argument("Cannot create XLinkStream using empty stream name");
     if(!connection || connection->getLinkId() == -1) throw std::invalid_argument("Cannot create XLinkStream using unconnected XLinkConnection");
 
@@ -33,12 +33,12 @@ XLinkStream::XLinkStream(const std::shared_ptr<XLinkConnection> conn, const std:
 }
 
 // Move constructor
-XLinkStream::XLinkStream(XLinkStream&& other)
+XLinkStream::XLinkStream(XLinkStream&& other) noexcept
     : connection(std::move(other.connection)), streamName(std::exchange(other.streamName, {})), streamId(std::exchange(other.streamId, INVALID_STREAM_ID)) {
     // Set other's streamId to INVALID_STREAM_ID to prevent closing
 }
 
-XLinkStream& XLinkStream::operator=(XLinkStream&& other) {
+XLinkStream& XLinkStream::operator=(XLinkStream&& other) noexcept {
     if(this != &other) {
         connection = std::move(other.connection);
         streamId = std::exchange(other.streamId, INVALID_STREAM_ID);

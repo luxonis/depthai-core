@@ -37,8 +37,8 @@ struct DeviceInfo {
     std::string getMxId() const;
     std::string toString() const;
 
-    std::string name = "";
-    std::string mxid = "";
+    std::string name;
+    std::string mxid;
     XLinkDeviceState_t state = X_LINK_ANY_STATE;
     XLinkProtocol_t protocol = X_LINK_ANY_PROTOCOL;
     XLinkPlatform_t platform = X_LINK_ANY_PLATFORM;
@@ -148,8 +148,7 @@ class XLinkConnection {
     DeviceInfo deviceInfo;
 
     // closed
-    mutable std::mutex closedMtx;
-    bool closed{false};
+    std::atomic<bool> closed{false};
 
     constexpr static std::chrono::milliseconds WAIT_FOR_BOOTUP_TIMEOUT{15000};
     constexpr static std::chrono::milliseconds WAIT_FOR_CONNECT_TIMEOUT{5000};

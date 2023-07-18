@@ -25,16 +25,13 @@ extern "C" {
 #include "spdlog/spdlog.h"
 #include "utility/Logging.hpp"
 
+using namespace std::chrono_literals;
+using std::chrono::steady_clock;
+
 namespace dai {
 
-DeviceInfo::DeviceInfo(const deviceDesc_t& desc) {
-    name = std::string(desc.name);
-    mxid = std::string(desc.mxid);
-    state = desc.state;
-    protocol = desc.protocol;
-    platform = desc.platform;
-    status = desc.status;
-}
+DeviceInfo::DeviceInfo(const deviceDesc_t& desc)
+    : name{desc.name}, mxid{desc.mxid}, state{desc.state}, protocol{desc.protocol}, platform{desc.platform}, status{desc.status} {}
 
 DeviceInfo::DeviceInfo(std::string name, std::string mxid, XLinkDeviceState_t state, XLinkProtocol_t protocol, XLinkPlatform_t platform, XLinkError_t status)
     : name(std::move(name)), mxid(std::move(mxid)), state(state), protocol(protocol), platform(platform), status(status) {}
@@ -42,7 +39,7 @@ DeviceInfo::DeviceInfo(std::string name, std::string mxid, XLinkDeviceState_t st
 DeviceInfo::DeviceInfo(std::string mxidOrName) {
     // Parse parameter and set to ip if any dots found
     // mxid doesn't have a dot in the name
-    if(mxidOrName.find(".") != std::string::npos) {
+    if(mxidOrName.find('.') != std::string::npos) {
         // This is reasoned as an IP address or USB path (name). Set rest of info accordingly
         name = std::move(mxidOrName);
         mxid = "";
@@ -105,7 +102,7 @@ static XLinkProtocol_t getDefaultProtocol() {
     return defaultProtocol;
 }
 
-// STATIC
+// STATIC definitions
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT;
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_CONNECT_TIMEOUT;
 constexpr std::chrono::milliseconds XLinkConnection::POLLING_DELAY_TIME;
@@ -193,7 +190,7 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceByMxId(std::string mxId, 
     initialize();
 
     DeviceInfo dev;
-    dev.mxid = mxId;
+    dev.mxid = std::move(mxId);
     dev.state = state;
 
     deviceDesc_t desc = {};
@@ -220,8 +217,6 @@ std::tuple<bool, DeviceInfo> XLinkConnection::getDeviceByMxId(std::string mxId, 
 DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
     initialize();
 
-    using namespace std::chrono;
-
     // Device is in flash booted state. Boot to bootloader first
     auto deviceDesc = deviceInfo.getXLinkDeviceDesc();
 
@@ -244,7 +239,6 @@ DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
     deviceDesc_t foundDeviceDesc = {};
 
     // Wait for device to get to bootloader state
-    XLinkError_t rc;
     auto bootupTimeout = WAIT_FOR_BOOTUP_TIMEOUT;
 
     // Override with environment variables, if set
@@ -252,22 +246,22 @@ DeviceInfo XLinkConnection::bootBootloader(const DeviceInfo& deviceInfo) {
         {"DEPTHAI_BOOTUP_TIMEOUT", &bootupTimeout},
     };
 
-    for(auto ev : evars) {
-        auto name = ev.first;
-        auto valstr = utility::getEnv(name);
+    for(const auto& ev : evars) {
+        const auto valstr = utility::getEnv(ev.first);
         if(!valstr.empty()) {
             try {
                 std::chrono::milliseconds value{std::stoi(valstr)};
                 *ev.second = value;
                 // auto initial = *ev.second;
-                // logger::warn("{} override: {} -> {}", name, initial, value);
+                // logger::warn("{} override: {} -> {}", ev.first, initial, value);
             } catch(const std::invalid_argument& e) {
-                logger::warn("{} value invalid: {}", name, e.what());
+                logger::warn("{} value invalid: {}", ev.first, e.what());
             }
         }
     }
 
     auto tstart = steady_clock::now();
+    XLinkError_t rc = X_LINK_ERROR;
     do {
         rc = XLinkFindFirstSuitableDevice(descToWait, &foundDeviceDesc);
         if(rc == X_LINK_SUCCESS) break;
@@ -307,24 +301,21 @@ XLinkConnection::XLinkConnection(const DeviceInfo& deviceDesc, XLinkDeviceState_
 // within the context of the lock_guard. The value is immediately invalid and outdated
 // when it is returned by value to the caller
 bool XLinkConnection::isClosed() const {
-    std::lock_guard<std::mutex> lock(closedMtx);
     return closed;
 }
 
 void XLinkConnection::close() {
-    std::lock_guard<std::mutex> lock(closedMtx);
-    if(closed) return;
+    if(closed.exchange(true)) return;
 
-    using namespace std::chrono;
-    constexpr auto RESET_TIMEOUT = seconds(2);
-    constexpr auto BOOTUP_SEARCH = seconds(5);
+    constexpr auto RESET_TIMEOUT = 2s;
+    constexpr auto BOOTUP_SEARCH = 5s;  // majority of usb reboots on Windows need more than 5 seconds; this leads to a cascade failure
 
     if(deviceLinkId != -1 && rebootOnDestruction) {
         auto previousLinkId = deviceLinkId;
 
-        auto ret = XLinkResetRemoteTimeout(deviceLinkId, duration_cast<milliseconds>(RESET_TIMEOUT).count());
+        const auto ret = XLinkResetRemoteTimeout(deviceLinkId, static_cast<int>(std::chrono::duration_cast<std::chrono::milliseconds>(RESET_TIMEOUT).count()));
         if(ret != X_LINK_SUCCESS) {
-            logger::debug("XLinkResetRemoteTimeout returned: {}", XLinkErrorToStr(ret));
+            logger::debug("XLinkResetRemoteTimeout({}) returned: {}", previousLinkId, XLinkErrorToStr(ret));
         }
 
         deviceLinkId = -1;
@@ -334,23 +325,31 @@ void XLinkConnection::close() {
         // Wait till same device reappears (is rebooted).
         // Only in case if device was booted to begin with
         if(bootDevice) {
-            auto t1 = steady_clock::now();
-            bool found = false;
-            do {
+            const auto t1 = steady_clock::now();
+            while(true) {
+                bool found = false;
                 DeviceInfo rebootingDeviceInfo;
                 std::tie(found, rebootingDeviceInfo) = XLinkConnection::getDeviceByMxId(deviceInfo.getMxId(), X_LINK_ANY_STATE, false);
-                if(found) {
-                    if(rebootingDeviceInfo.state == X_LINK_UNBOOTED || rebootingDeviceInfo.state == X_LINK_BOOTLOADER) {
-                        break;
-                    }
+                if(found && (rebootingDeviceInfo.state == X_LINK_UNBOOTED || rebootingDeviceInfo.state == X_LINK_BOOTLOADER)) {
+                    break;
                 }
-            } while(!found && steady_clock::now() - t1 < BOOTUP_SEARCH);
+                if(steady_clock::now() - t1 >= BOOTUP_SEARCH) {
+                    if(found) {
+                        logger::debug("XLinkResetRemoteTimeout({}) post-reboot({}s) unusable state {}",
+                                      previousLinkId,
+                                      BOOTUP_SEARCH.count(),
+                                      rebootingDeviceInfo.toString());
+                    } else {
+                        logger::debug("XLinkResetRemoteTimeout({}) post-reboot({}s) can't find device", previousLinkId, BOOTUP_SEARCH.count());
+                    }
+                    break;
+                }
+                std::this_thread::sleep_for(POLLING_DELAY_TIME);
+            };
         }
 
-        logger::debug("XLinkResetRemote of linkId: ({})", previousLinkId);
+        logger::debug("XLinkResetRemoteTimeout({})", previousLinkId);
     }
-
-    closed = true;
 }
 
 XLinkConnection::~XLinkConnection() {
@@ -382,8 +381,6 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
 
     XLinkError_t rc = X_LINK_ERROR;
 
-    using namespace std::chrono;
-
     // if device is in UNBOOTED then boot
     bootDevice = deviceToInit.state == X_LINK_UNBOOTED;
 
@@ -398,16 +395,15 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
         {"DEPTHAI_BOOTUP_TIMEOUT", &bootupTimeout},
     };
 
-    for(auto ev : evars) {
-        auto name = ev.first;
-        auto valstr = utility::getEnv(name);
+    for(const auto& ev : evars) {
+        const auto valstr = utility::getEnv(ev.first);
         if(!valstr.empty()) {
             try {
                 std::chrono::milliseconds value{std::stoi(valstr)};
                 *ev.second = value;
                 // auto initial = *ev.second;
             } catch(const std::invalid_argument& e) {
-                logger::warn("{} value invalid: {}", name, e.what());
+                logger::warn("{} value invalid: {}", ev.first, e.what());
             }
         }
     }
@@ -434,14 +430,10 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
 
         lastDeviceInfo = DeviceInfo(foundDeviceDesc);
 
-        bool bootStatus;
-        if(bootWithPath) {
-            bootStatus = bootAvailableDevice(foundDeviceDesc, pathToMvcmd);
-        } else {
-            bootStatus = bootAvailableDevice(foundDeviceDesc, mvcmd);
-        }
+        const bool bootStatus = bootWithPath ? bootAvailableDevice(foundDeviceDesc, pathToMvcmd) : bootAvailableDevice(foundDeviceDesc, mvcmd);
         if(!bootStatus) {
-            throw std::runtime_error("Failed to boot device!");
+            // this throw will cause an app to crash if not caught by a try/catch around the app's `Device` constructor
+            throw std::runtime_error("Failed to begin the boot of a device!");
         }
     }
 
@@ -457,7 +449,7 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
         // Use "name" as hint only, but might still change
         bootedDescInfo.nameHintOnly = true;
 
-        logger::debug("Searching for booted device: {}, name used as hint only", bootedDeviceInfo.toString());
+        logger::debug("Searching for booted device: {}, name/path used as hint only", bootedDeviceInfo.toString());
 
         // Find booted device
         deviceDesc_t foundDeviceDesc = {};
