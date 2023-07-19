@@ -21,7 +21,9 @@
     #include <windows.h>
 #endif
 
-#include <stdlib.h>
+#ifndef _WIN32
+    #include <unistd.h>
+#endif
 
 namespace dai {
 namespace platform {
