@@ -343,6 +343,14 @@ void DeviceGate::waitForSessionEnd() {
                 return;  // Session stopped - stop the thread
             case SessionState::CRASHED:
             case SessionState::DESTROYED:
+                auto currentVersion = getVersion();
+                auto requiredVersion = Version(0, 0, 14);
+                if(currentVersion < requiredVersion) {
+                    spdlog::warn("FW crashed but the gate version does not support transfering over the core dump. Current version {}, required is {}",
+                                 currentVersion.toString(),
+                                 requiredVersion.toString());
+                    return;
+                }
                 spdlog::warn("FW crashed - trying to get out the core dump");
                 std::this_thread::sleep_for(std::chrono::seconds(3));  // Allow for the generation of the crash dump and the log file
                 std::string temporaryDirectory = platform::getTempPath();
