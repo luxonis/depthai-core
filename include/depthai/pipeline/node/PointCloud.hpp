@@ -9,6 +9,7 @@
 #include <depthai-shared/properties/PointCloudProperties.hpp>
 
 #include "depthai/pipeline/datatype/PointCloudConfig.hpp"
+#include "depthai/pipeline/datatype/OccupancyPool.hpp"
 
 namespace dai {
 namespace node {
@@ -51,6 +52,11 @@ class PointCloud : public NodeCRTP<DeviceNode, PointCloud, PointCloudProperties>
      * Outputs ImgFrame message that carries spatial location results.
      */
     Output outputPointCloud{true, *this, "outputPointCloud", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
+     * Outputs occupancy pool message.
+     */
+    Output outputOccupancyPool{true, *this, "outputOccupancyPool", Output::Type::MSender, {{DatatypeEnum::OccupancyPool, false}}};
 
     /**
      * Passthrough message on which the calculation was performed.

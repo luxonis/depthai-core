@@ -23,6 +23,7 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/PointCloudConfig.hpp"
+#include "depthai/pipeline/datatype/OccupancyPool.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorData.hpp"
@@ -47,6 +48,7 @@
 #include "depthai-shared/datatype/RawImgFrame.hpp"
 #include "depthai-shared/datatype/RawNNData.hpp"
 #include "depthai-shared/datatype/RawPointCloudConfig.hpp"
+#include "depthai-shared/datatype/RawOccupancyPool.hpp"
 #include "depthai-shared/datatype/RawSpatialImgDetections.hpp"
 #include "depthai-shared/datatype/RawSpatialLocationCalculatorConfig.hpp"
 #include "depthai-shared/datatype/RawSpatialLocations.hpp"
@@ -181,6 +183,10 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<RawPointCloudConfig>(metadataStart, serializedObjectSize, data);
             break;
 
+        case DatatypeEnum::OccupancyPool:
+            return parseDatatype<RawOccupancyPool>(metadataStart, serializedObjectSize, data);
+            break;
+
         case DatatypeEnum::ToFConfig:
 
             break;
@@ -309,6 +315,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
 
         case DatatypeEnum::PointCloudConfig:
             return std::make_shared<PointCloudConfig>(parseDatatype<RawPointCloudConfig>(metadataStart, serializedObjectSize, data));
+            break;
+
+        case DatatypeEnum::OccupancyPool:
+            return std::make_shared<OccupancyPool>(parseDatatype<RawOccupancyPool>(metadataStart, serializedObjectSize, data));
             break;
 
         case DatatypeEnum::ToFConfig:

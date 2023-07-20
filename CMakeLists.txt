@@ -254,6 +254,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/ToFConfig.cpp
     src/pipeline/datatype/BenchmarkReport.cpp
     src/pipeline/datatype/PointCloudConfig.cpp
+    src/pipeline/datatype/OccupancyPool.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/utility/Path.cpp
