@@ -21,6 +21,10 @@
     #include <windows.h>
 #endif
 
+#ifndef _WIN32
+    #include <unistd.h>
+#endif
+
 namespace dai {
 namespace platform {
 
@@ -71,7 +75,14 @@ std::string getTempPath() {
     GetTempPathA(MAX_PATH, tmpPathBuffer);
     tmpPath = tmpPathBuffer;
 #else
-    tmpPath = "/tmp/";
+    char tmpTemplate[] = "/tmp/depthai_XXXXXX";
+    char* tmpName = mkdtemp(tmpTemplate);
+    if(tmpName == nullptr) {
+        tmpPath = "/tmp";
+    } else {
+        tmpPath = tmpName;
+        tmpPath += '/';
+    }
 #endif
     return tmpPath;
 }

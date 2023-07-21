@@ -427,6 +427,10 @@ void DeviceBase::closeImpl() {
     // Close rpcStream
     pimpl->rpcStream = nullptr;
 
+    // If the device was operated throgh gate, wait for the session to end
+    if(gate){
+        gate->waitForSessionEnd();
+    }
     spdlog::debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
 }
 

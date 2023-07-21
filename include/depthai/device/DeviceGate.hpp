@@ -31,24 +31,7 @@ class DeviceGate {
      */
     std::vector<DeviceInfo> getAllAvailableDevices();
 
-    enum class SessionState {
-        // Session is not created
-        NOT_CREATED,
-        // Session is created, but not started
-        CREATED,
-        // Session is started
-        RUNNING,
-        // Session is stopped
-        STOPPED,
-        // Session is stopping
-        STOPPING,
-        // Session is crashed
-        CRASHED,
-        // Session is destroyed
-        DESTROYED,
-        // Error
-        ERROR
-    };
+    enum class SessionState { NOT_CREATED, CREATED, RUNNING, STOPPED, STOPPING, CRASHED, DESTROYED, ERROR_STATE };
 
     /**
      * Connects to DepthAI Gate
@@ -62,9 +45,10 @@ class DeviceGate {
     bool stopSession();
     bool deleteSession();
     bool destroySession();
-    SessionState updateState();
+    SessionState getState();
+    // Waits for the gate session to end and tries to get the logs and crash dump out
+    void waitForSessionEnd();
 
-    tl::optional<std::vector<uint8_t>> getLogFile(std::string& filename);
     tl::optional<std::vector<uint8_t>> getCoreDump(std::string& filename);
 
     struct VersionInfo {
@@ -79,16 +63,14 @@ class DeviceGate {
     // private
     DeviceInfo deviceInfo;
 
-    void threadedStateMonitoring();
-
     std::thread stateMonitoringThread;
 
     tl::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename);
 
-    tl::optional<std::string> saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename);
+    tl::optional<std::string> saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename, std::string direcotryPath = "");
 
     // state of the session
-    SessionState sessionState = SessionState::NOT_CREATED;
+    std::atomic_bool sessionCreated{false};
 
     // pimpl
     class Impl;

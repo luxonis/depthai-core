@@ -66,8 +66,7 @@ DeviceGate::DeviceGate(const DeviceInfo& deviceInfo) : deviceInfo(deviceInfo) {
 
     // Discover and connect
     pimpl->cli = std::make_unique<httplib::Client>(deviceInfo.name, DEFAULT_PORT);
-    // pimpl->cli->set_connection_timeout(2);
-    stateMonitoringThread = std::thread(&DeviceGate::threadedStateMonitoring, this);
+    pimpl->cli->set_read_timeout(60);  // 60 seconds timeout to allow for compressing the core dumps without async
 }
 
 bool DeviceGate::isOkay() {
@@ -100,7 +99,6 @@ DeviceGate::VersionInfo DeviceGate::getAllVersion() {
 }
 
 bool DeviceGate::createSession(bool exclusive) {
-
     nlohmann::json createSessionBody = {{"name", "depthai_session"},
                                         // {"fwp_checksum", fwpChecksum},
                                         {"fwp_version", DEPTHAI_DEVICE_RVC3_VERSION},
@@ -142,7 +140,7 @@ bool DeviceGate::createSession(bool exclusive) {
             if(auto res = pimpl->cli->Post(url.c_str(), items)) {
                 if(res.value().status == 200) {
                     spdlog::debug("DeviceGate upload fwp successful");
-                    sessionState = SessionState::CREATED;
+                    sessionCreated = true;
                     return true;
                 } else {
                     spdlog::warn("DeviceGate upload fwp not successful - status: {}, error: {}", res->status, res->body);
@@ -154,7 +152,7 @@ bool DeviceGate::createSession(bool exclusive) {
                 return false;
             }
         }
-        sessionState = SessionState::CREATED;
+        sessionCreated = true;
         return true;
     } else {
         spdlog::warn("DeviceGate createSession not successful - got no response");
@@ -179,6 +177,7 @@ bool DeviceGate::startSession() {
 }
 
 bool DeviceGate::stopSession() {
+    auto sessionState = getState();
     if(sessionState == SessionState::STOPPED || sessionState == SessionState::DESTROYED) {
         spdlog::warn("DeviceGate trying to stop already stopped session");
         return true;
@@ -207,12 +206,12 @@ bool DeviceGate::stopSession() {
 }
 
 bool DeviceGate::destroySession() {
-    if(sessionState == SessionState::DESTROYED) {
+    if(getState() == SessionState::DESTROYED) {
         spdlog::warn("DeviceGate trying to destroy already destroyed session");
         return true;
     }
 
-    if(sessionState == SessionState::NOT_CREATED) {
+    if(getState() == SessionState::NOT_CREATED) {
         spdlog::debug("No need to destroy a session that wasn't created.");
         return true;
     }
@@ -232,7 +231,7 @@ bool DeviceGate::destroySession() {
 }
 
 bool DeviceGate::deleteSession() {
-    if(sessionState == SessionState::NOT_CREATED) {
+    if(getState() == SessionState::NOT_CREATED) {
         spdlog::debug("No need to delete a session that wasn't created.");
         return true;
     }
@@ -251,19 +250,20 @@ bool DeviceGate::deleteSession() {
     return false;
 }
 
-DeviceGate::SessionState DeviceGate::updateState() {
-    if(sessionState == SessionState::NOT_CREATED) {
-        spdlog::debug("Session not yet created - can't get the session state");
-        return sessionState;
+DeviceGate::SessionState DeviceGate::getState() {
+    if(!sessionCreated) {
+        spdlog::debug("Session not yet created - can't get the session state from gate");
+        return SessionState::NOT_CREATED;
     }
+    auto sessionState = SessionState::CREATED;
     std::string url = fmt::format("{}/{}", sessionsEndpoint, sessionId);
     if(auto res = pimpl->cli->Get(url.c_str())) {
         if(res->status != 200) {
-            spdlog::warn("DeviceGate updateState not successful - status: {}, error: {}", res->status, res->body);
-            return SessionState::ERROR;
+            spdlog::warn("DeviceGate getState not successful - status: {}, error: {}", res->status, res->body);
+            return SessionState::ERROR_STATE;
         }
         auto resp = nlohmann::json::parse(res->body);
-        spdlog::trace("DeviceGate updateState response: {}", resp.dump());
+        spdlog::trace("DeviceGate getState response: {}", resp.dump());
 
         std::string sessionStateStr = resp["state"];
         if(sessionStateStr == "CREATED") {
@@ -279,18 +279,23 @@ DeviceGate::SessionState DeviceGate::updateState() {
         } else if(sessionStateStr == "DESTROYED") {
             sessionState = SessionState::DESTROYED;
         } else {
-            spdlog::warn("DeviceGate updateState not successful - unknown session state: {}", sessionStateStr);
-            sessionState = SessionState::ERROR;
+            spdlog::warn("DeviceGate getState not successful - unknown session state: {}", sessionStateStr);
+            sessionState = SessionState::ERROR_STATE;
         }
         return sessionState;
     } else {
-        spdlog::warn("DeviceGate updateState not successful - got no response");
+        spdlog::warn("DeviceGate getState not successful - got no response");
     }
-    return SessionState::ERROR;
+    return SessionState::ERROR_STATE;
 }
 
-tl::optional<std::string> DeviceGate::saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename) {
-    auto tmpdir = platform::getTempPath();
+tl::optional<std::string> DeviceGate::saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename, std::string directoryPath) {
+    std::string tmpdir;
+    if(directoryPath.empty()) {
+        tmpdir = platform::getTempPath();
+    } else {
+        tmpdir = directoryPath;
+    }
     std::string path = std::string(tmpdir) + filename;
 
     std::ofstream file(path, std::ios::binary);
@@ -312,7 +317,7 @@ tl::optional<std::string> DeviceGate::saveFileToTemporaryDirectory(std::vector<u
 tl::optional<std::vector<uint8_t>> DeviceGate::getFile(const std::string& fileUrl, std::string& filename) {
     // Send a GET request to the server
     if(auto res = pimpl->cli->Get(fileUrl.c_str())) {
-        if (res->status == 200) {
+        if(res->status == 200) {
             filename = res->get_header_value("X-Filename");
             // Convert the response body to a vector of uint8_t
             std::vector<uint8_t> fileData(res->body.begin(), res->body.end());
@@ -329,12 +334,12 @@ tl::optional<std::vector<uint8_t>> DeviceGate::getFile(const std::string& fileUr
     }
 }
 
-void DeviceGate::threadedStateMonitoring() {
+void DeviceGate::waitForSessionEnd() {
     while(true) {
         std::this_thread::sleep_for(std::chrono::seconds(1));
-        auto sessionState = updateState();
-        if(sessionState == SessionState::ERROR) {
-            spdlog::error("DeviceGate session state is in error state - stopping the monitoring thread");
+        auto sessionState = getState();
+        if(sessionState == SessionState::ERROR_STATE) {
+            spdlog::error("DeviceGate session state is in error state - exiting");
             return;
         }
         switch(sessionState) {
@@ -343,37 +348,34 @@ void DeviceGate::threadedStateMonitoring() {
             case SessionState::RUNNING:
             case SessionState::STOPPING:
                 break;  // Nothing to do
-            case SessionState::ERROR:
-                spdlog::error("DeviceGate session state is in error state - stopping the monitoring thread");
+            case SessionState::ERROR_STATE:
+                spdlog::error("DeviceGate session state is in error state - exiting");
                 return;
             case SessionState::STOPPED:
                 return;  // Session stopped - stop the thread
             case SessionState::CRASHED:
             case SessionState::DESTROYED:
-                spdlog::warn("FW crashed - trying to get out the logs and the core dump");
-                std::string logFileName;
-                auto logFile = getLogFile(logFileName);
-                if(logFile) {
-                    if(logFileName.empty()) {
-                        logFileName = "depthai_gate.log";
-                    }
-                    spdlog::warn("Log file found - trying to save it");
-                    if(auto path = saveFileToTemporaryDirectory(*logFile, logFileName)) {
-                        spdlog::warn("Log file saved to {} - please report to developers", *path);
-                    } else {
-                        spdlog::error("Couldn't save log file");
-                    }
-                } else {
-                    spdlog::warn("Log file not found");
+                auto currentVersion = getVersion();
+                auto requiredVersion = Version(0, 0, 14);
+                if(currentVersion < requiredVersion) {
+                    spdlog::warn("FW crashed but the gate version does not support transfering over the core dump. Current version {}, required is {}",
+                                 currentVersion.toString(),
+                                 requiredVersion.toString());
+                    return;
                 }
+                spdlog::warn("FW crashed - trying to get out the core dump");
+                std::this_thread::sleep_for(std::chrono::seconds(3));  // Allow for the generation of the crash dump and the log file
+                std::string temporaryDirectory = platform::getTempPath();
                 std::string coreDumpName;
+                spdlog::warn("Getting the core dump out - this can take up to a minute, because it first needs to be compressed.");
                 auto coreDump = getCoreDump(coreDumpName);
                 if(coreDump) {
                     spdlog::warn("Core dump found - trying to save it");
                     if(coreDumpName.empty()) {
-                        coreDumpName = "depthai_gate.core";
+                        coreDumpName = "depthai_gate_core_dump.tar.gz";
                     }
-                    if(auto path = saveFileToTemporaryDirectory(*coreDump, coreDumpName)) {
+                    std::string fullName = deviceInfo.getMxId() + "-" + coreDumpName;
+                    if(auto path = saveFileToTemporaryDirectory(*coreDump, fullName, temporaryDirectory)) {
                         spdlog::warn("Core dump saved to {} - please report to developers", *path);
                     } else {
                         spdlog::error("Couldn't save core dump");
@@ -384,11 +386,6 @@ void DeviceGate::threadedStateMonitoring() {
                 return;
         }
     }
-}
-
-tl::optional<std::vector<uint8_t>> DeviceGate::getLogFile(std::string& filename) {
-    std::string url = fmt::format("{}/{}/log_file", sessionsEndpoint, sessionId);
-    return DeviceGate::getFile(url, filename);
 }
 
 tl::optional<std::vector<uint8_t>> DeviceGate::getCoreDump(std::string& filename) {
