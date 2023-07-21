@@ -1458,6 +1458,17 @@ std::vector<std::uint8_t> DeviceBase::readFactoryCalibrationRaw() {
     return eepromDataRaw;
 }
 
+std::vector<std::uint8_t> DeviceBase::readCcmEepromRaw(CameraBoardSocket socket, int size, int offset) {
+    bool success;
+    std::string errorMsg;
+    std::vector<uint8_t> eepromDataRaw;
+    std::tie(success, errorMsg, eepromDataRaw) = pimpl->rpcClient->call("readCcmEepromRaw", socket, size, offset).as<std::tuple<bool, std::string, std::vector<uint8_t>>>();
+    if(!success) {
+        throw EepromError(errorMsg);
+    }
+    return eepromDataRaw;
+}
+
 void DeviceBase::flashEepromClear() {
     bool factoryPermissions = false;
     bool protectedPermissions = false;
