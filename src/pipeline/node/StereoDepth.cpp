@@ -4,6 +4,7 @@
 #include <fstream>
 
 #include "spdlog/spdlog.h"
+#include "utility/Logging.hpp"
 #include "utility/spdlog-fmt.hpp"
 
 namespace dai {
@@ -28,7 +29,7 @@ StereoDepth::Properties& StereoDepth::getProperties() {
 
 void StereoDepth::setEmptyCalibration(void) {
     setRectification(false);
-    spdlog::warn("{} is deprecated. This function call can be replaced by Stereo::setRectification(false). ", __func__);
+    logger::warn("{} is deprecated. This function call can be replaced by Stereo::setRectification(false). ", __func__);
 }
 
 void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const std::vector<std::uint8_t>& dataRight) {
@@ -126,15 +127,15 @@ void StereoDepth::setRectifyEdgeFillColor(int color) {
 }
 void StereoDepth::setRectifyMirrorFrame(bool enable) {
     (void)enable;
-    spdlog::warn("{} is deprecated.", __func__);
+    logger::warn("{} is deprecated.", __func__);
 }
 void StereoDepth::setOutputRectified(bool enable) {
     (void)enable;
-    spdlog::warn("{} is deprecated. The output is auto-enabled if used", __func__);
+    logger::warn("{} is deprecated. The output is auto-enabled if used", __func__);
 }
 void StereoDepth::setOutputDepth(bool enable) {
     (void)enable;
-    spdlog::warn("{} is deprecated. The output is auto-enabled if used", __func__);
+    logger::warn("{} is deprecated. The output is auto-enabled if used", __func__);
 }
 
 void StereoDepth::setRuntimeModeSwitch(bool enable) {
@@ -172,6 +173,30 @@ void StereoDepth::setVerticalStereo(bool verticalStereo) {
 
 void StereoDepth::setCustomPixelDescriptors(bool customPixelDescriptors) {
     properties.customPixelDescriptors = customPixelDescriptors;
+}
+
+void StereoDepth::setBaseline(float baseline) {
+    properties.baseline = baseline;
+}
+
+void StereoDepth::setFocalLength(float focalLength) {
+    properties.focalLength = focalLength;
+}
+
+void StereoDepth::setDisparityToDepthUseSpecTranslation(bool specTranslation) {
+    properties.disparityToDepthUseSpecTranslation = specTranslation;
+}
+
+void StereoDepth::setRectificationUseSpecTranslation(bool specTranslation) {
+    properties.rectificationUseSpecTranslation = specTranslation;
+}
+
+void StereoDepth::setDepthAlignmentUseSpecTranslation(bool specTranslation) {
+    properties.depthAlignmentUseSpecTranslation = specTranslation;
+}
+
+void StereoDepth::setAlphaScaling(float alpha) {
+    properties.alphaScaling = alpha;
 }
 
 void StereoDepth::setDefaultProfilePreset(PresetMode mode) {

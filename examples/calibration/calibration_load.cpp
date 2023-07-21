@@ -27,10 +27,10 @@ int main(int argc, char** argv) {
 
     // MonoCamera
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    monoLeft->setCamera("left");
     // monoLeft->setFps(5.0);
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
-    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    monoRight->setCamera("right");
     // monoRight->setFps(5.0);
 
     // Linking

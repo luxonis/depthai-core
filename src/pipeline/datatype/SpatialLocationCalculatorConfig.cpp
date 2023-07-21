@@ -23,4 +23,13 @@ std::vector<SpatialLocationCalculatorConfigData> SpatialLocationCalculatorConfig
     return cfg.config;
 }
 
+dai::RawSpatialLocationCalculatorConfig SpatialLocationCalculatorConfig::get() const {
+    return cfg;
+}
+
+SpatialLocationCalculatorConfig& SpatialLocationCalculatorConfig::set(dai::RawSpatialLocationCalculatorConfig config) {
+    cfg = config;
+    return *this;
+}
+
 }  // namespace dai

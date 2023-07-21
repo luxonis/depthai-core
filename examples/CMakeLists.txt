@@ -32,6 +32,10 @@ function(dai_add_example example_name example_src enable_test)
     add_executable(${example_name} ${example_src})
     add_default_flags(${example_name} LEAN)
     target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS} Threads::Threads)
+    # Set compiler features (c++14), and disables extensions (g++14)
+    set_property(TARGET ${example_name} PROPERTY CXX_STANDARD 14)
+    set_property(TARGET ${example_name} PROPERTY CXX_STANDARD_REQUIRED ON)
+    set_property(TARGET ${example_name} PROPERTY CXX_EXTENSIONS OFF)
 
     # Add sanitizers for example
     if(COMMAND add_sanitizers)
@@ -255,6 +259,7 @@ target_compile_definitions(calibration_load PRIVATE CALIB_PATH="${calib_v6}")
 dai_add_example(rgb_camera_control ColorCamera/rgb_camera_control.cpp ON)
 dai_add_example(rgb_preview ColorCamera/rgb_preview.cpp ON)
 dai_add_example(rgb_video ColorCamera/rgb_video.cpp ON)
+dai_add_example(rgb_isp_scale ColorCamera/rgb_isp_scale.cpp ON)
 
 # EdgeDetector
 dai_add_example(edge_detector EdgeDetector/edge_detector.cpp ON)
@@ -268,6 +273,7 @@ dai_add_example(device_queue_event host_side/device_queue_event.cpp ON)
 dai_add_example(opencv_support host_side/opencv_support.cpp ON)
 dai_add_example(queue_add_callback host_side/queue_add_callback.cpp ON)
 dai_add_example(device_information host_side/device_information.cpp OFF)
+dai_add_example(device_logging host_side/device_logging.cpp OFF)
 
 # ImageManip
 dai_add_example(image_manip ImageManip/image_manip_example.cpp ON)
@@ -407,3 +413,5 @@ target_compile_definitions(tmp_detection_parser_mobilenet PRIVATE MODEL_XML_PATH
 target_compile_definitions(tmp_detection_parser_yolo PRIVATE MODEL_XML_PATH="${tiny-vechicle-detection_xml}" MODEL_BIN_PATH="${tiny-vechicle-detection_bin}")
 
 dai_add_example(tmp_mono tmp/tmp_mono.cpp OFF)
+# DetectionParser
+dai_add_example(crash_report CrashReport/crash_report.cpp OFF)

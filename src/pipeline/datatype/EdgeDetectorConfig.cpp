@@ -19,4 +19,13 @@ EdgeDetectorConfigData EdgeDetectorConfig::getConfigData() const {
     return cfg.config;
 }
 
+dai::RawEdgeDetectorConfig EdgeDetectorConfig::get() const {
+    return cfg;
+}
+
+EdgeDetectorConfig& EdgeDetectorConfig::set(dai::RawEdgeDetectorConfig config) {
+    cfg = config;
+    return *this;
+}
+
 }  // namespace dai

@@ -310,6 +310,18 @@ class CameraControl : public Buffer {
      * Retrieves lens position, range 0..255. Returns -1 if not available
      */
     int getLensPosition() const;
+
+    /**
+     * Set explicit configuration.
+     * @param config Explicit configuration
+     */
+    CameraControl& set(dai::RawCameraControl config);
+
+    /**
+     * Retrieve configuration data for CameraControl.
+     * @returns config for CameraControl
+     */
+    dai::RawCameraControl get() const;
 };
 
 }  // namespace dai

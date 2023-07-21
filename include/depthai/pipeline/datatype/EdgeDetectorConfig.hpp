@@ -35,6 +35,18 @@ class EdgeDetectorConfig : public Buffer {
      * @returns EdgeDetectorConfigData: sobel filter horizontal and vertical 3x3 kernels
      */
     EdgeDetectorConfigData getConfigData() const;
+
+    /**
+     * Set explicit configuration.
+     * @param config Explicit configuration
+     */
+    EdgeDetectorConfig& set(dai::RawEdgeDetectorConfig config);
+
+    /**
+     * Retrieve configuration data for EdgeDetector.
+     * @returns config for EdgeDetector
+     */
+    dai::RawEdgeDetectorConfig get() const;
 };
 
 }  // namespace dai

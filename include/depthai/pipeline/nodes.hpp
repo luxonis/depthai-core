@@ -2,6 +2,7 @@
 
 // all the nodes
 #include "node/AprilTag.hpp"
+#include "node/Camera.hpp"
 #include "node/ColorCamera.hpp"
 #include "node/DetectionNetwork.hpp"
 #include "node/DetectionParser.hpp"
@@ -20,6 +21,7 @@
 #include "node/SpatialLocationCalculator.hpp"
 #include "node/StereoDepth.hpp"
 #include "node/SystemLogger.hpp"
+#include "node/ToF.hpp"
 #include "node/VideoEncoder.hpp"
 #include "node/Warp.hpp"
 #include "node/XLinkIn.hpp"

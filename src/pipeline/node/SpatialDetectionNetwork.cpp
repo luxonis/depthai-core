@@ -100,6 +100,10 @@ void SpatialDetectionNetwork::setSpatialCalculationAlgorithm(dai::SpatialLocatio
     properties.calculationAlgorithm = calculationAlgorithm;
 }
 
+void SpatialDetectionNetwork::setSpatialCalculationStepSize(int stepSize) {
+    properties.stepSize = stepSize;
+}
+
 //--------------------------------------------------------------------
 // MobileNet
 //--------------------------------------------------------------------
