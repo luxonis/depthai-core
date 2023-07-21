@@ -13,8 +13,28 @@ dai::RawToFConfig ToFConfig::get() const {
     return cfg;
 }
 
+ToFConfig& ToFConfig::setDepthParams(dai::ToFConfig::DepthParams config) {
+    cfg.depthParams = config;
+    return *this;
+}
+
+ToFConfig& ToFConfig::setFreqModUsed(dai::ToFConfig::DepthParams::TypeFMod fmod) {
+    cfg.depthParams.freqModUsed = fmod;
+    return *this;
+}
+
+ToFConfig& ToFConfig::setAvgPhaseShuffle(bool enable) {
+    cfg.depthParams.avgPhaseShuffle = enable;
+    return *this;
+}
+
 ToFConfig& ToFConfig::set(dai::RawToFConfig config) {
     cfg = config;
+    return *this;
+}
+
+ToFConfig& ToFConfig::setMinAmplitude(float minamp) {
+    cfg.depthParams.minimumAmplitude = minamp;
     return *this;
 }
 
