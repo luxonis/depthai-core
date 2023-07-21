@@ -22,6 +22,7 @@ void SideChannel::sendMessage(const std::shared_ptr<dai::ADatatype>& message) {
 
 void SideChannel::stop() {
     running = false;
+    lockingQueue.destruct();
     if(thread.joinable()) {
         thread.join();
     }
@@ -49,6 +50,7 @@ void SideChannel::threadedRun() {
         if(!lockingQueue.waitAndPop(message)) {
             running = false;
             std::cout << "Stopping the side channel" << std::endl;
+            break;
         }
 
         // Serialize and get metadata

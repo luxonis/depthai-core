@@ -44,20 +44,7 @@ class DeviceGate::Impl {
     // Default Gate connection
     std::unique_ptr<httplib::Client> cli;
 };
-DeviceGate::~DeviceGate() {
-    if(!stopSession()) {
-        spdlog::warn("DeviceGate stopSession not successful");
-    }
-    if(stateMonitoringThread.joinable()) {
-        stateMonitoringThread.join();
-    }
-    if(!destroySession()) {
-        spdlog::warn("DeviceGate destroySession not successful");
-    }
-    if(!deleteSession()) {
-        spdlog::warn("DeviceGate deleteSession not successful");
-    }
-}
+DeviceGate::~DeviceGate() {}
 
 DeviceGate::DeviceGate(const DeviceInfo& deviceInfo) : deviceInfo(deviceInfo) {
     if(deviceInfo.state != X_LINK_GATE) {
