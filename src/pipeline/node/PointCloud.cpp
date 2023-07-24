@@ -27,5 +27,9 @@ bool PointCloud::getWaitForConfigInput() const {
     return inputConfig.getWaitForMessage();
 }
 
+void PointCloud::setNumShaves(int numShaves) {
+    properties.numShaves = numShaves;
+}
+
 }  // namespace node
 }  // namespace dai

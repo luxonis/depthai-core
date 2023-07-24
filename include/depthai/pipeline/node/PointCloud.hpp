@@ -76,6 +76,9 @@ class PointCloud : public NodeCRTP<DeviceNode, PointCloud, PointCloudProperties>
      * @returns True if wait for inputConfig message, false otherwise
      */
     [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] bool getWaitForConfigInput() const;
+
+    void setNumShaves(int numShaves);
+
 };
 
 }  // namespace node
