@@ -48,12 +48,30 @@ class DetectionParser : public NodeCRTP<DeviceNode, DetectionParser, DetectionPa
      */
     int getNumFramesPool();
 
+    // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
+    /**
+     * Load network blob into assets and use once pipeline is started.
+     *
+     * @throws Error if file doesn't exist or isn't a valid network blob.
+     * @param path Path to network blob
+     */
+    void setBlobPath(const dai::Path& path);
+
     /**
      * Retrieves some input tensor information from the blob
      *
      * @param blob OpenVINO blob to retrieve the information from
      */
-    void setBlob(const OpenVINO::Blob& blob);
+    void setBlob(OpenVINO::Blob blob);
+
+    /**
+     * Same functionality as the setBlobPath(). Load network blob into assets and use once pipeline is started.
+     *
+     * @throws Error if file doesn't exist or isn't a valid network blob.
+     * @param path Path to network blob
+     */
+    void setBlob(const dai::Path& path);
+
 
     /**
      * Set input image size

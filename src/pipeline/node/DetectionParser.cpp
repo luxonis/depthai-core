@@ -5,8 +5,16 @@
 namespace dai {
 namespace node {
 
-void DetectionParser::setBlob(const OpenVINO::Blob& blob) {
-    properties.networkInputs = blob.networkOutputs;
+void DetectionParser::setBlob(OpenVINO::Blob blob) {
+    properties.networkInputs = blob.networkInputs;
+}
+
+void DetectionParser::setBlobPath(const dai::Path& path) {
+    setBlob(OpenVINO::Blob(path));
+}
+
+void DetectionParser::setBlob(const dai::Path& path) {
+    setBlobPath(path);
 }
 
 void DetectionParser::setInputImageSize(std::tuple<int, int> size) {
