@@ -49,7 +49,7 @@ class ToF : public NodeCRTP<DeviceNode, ToF, ToFProperties> {
     Input inputRaw{true, *this, "inputRaw", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
 
     Output depth{true, *this, "depth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-
+    // TODO(before mainline) - API not supported on RVC3
     Input input{true, *this, "input", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
@@ -57,6 +57,7 @@ class ToF : public NodeCRTP<DeviceNode, ToF, ToFProperties> {
      * Suitable for when input queue is set to non-blocking behavior.
      */
     Output passthroughInputRaw{true, *this, "passthroughInputRaw", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    // TODO(before mainline) - API not supported on RVC3
     Output amplitude{true, *this, "amplitude", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
     Output error{true, *this, "error", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
 };

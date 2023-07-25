@@ -223,6 +223,7 @@ class ColorCamera : public NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperti
      */
     void setFps(float fps);
 
+    // TODO(before mainline) - API not supported on RVC3
     /**
      * Isp 3A rate (auto focus, auto exposure, auto white balance, camera controls etc.).
      * Default (0) matches the camera FPS, meaning that 3A is running on each frame.
@@ -233,6 +234,7 @@ class ColorCamera : public NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperti
      */
     void setIsp3aFps(int isp3aFps);
 
+    // TODO(before mainline) - API not supported on RVC3
     // Set events on which frames will be received
     void setFrameEventFilter(const std::vector<dai::FrameEvent>& events);
 
@@ -386,6 +388,7 @@ class ColorCamera : public NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperti
     void setCalibrationAlpha(float alpha);
     /// Get calibration alpha parameter that determines FOV of undistorted frames
     float getCalibrationAlpha() const;
+    // TODO(before mainline) - API not supported on RVC3
     /**
      * Configures whether the camera `raw` frames are saved as MIPI-packed to memory.
      * The packed format is more efficient, consuming less memory on device, and less data

@@ -12,6 +12,7 @@
 namespace dai {
 namespace node {
 
+// TODO(before mainline) - API not supported on RVC3 - Camera node needs to be implemented
 /**
  * @brief Camera node. Experimental node, for both mono and color types of sensors
  */

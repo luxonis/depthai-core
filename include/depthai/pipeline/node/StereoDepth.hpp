@@ -68,6 +68,7 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      */
     Input right{true, *this, "right", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
 
+    // TODO(before mainline) - API not supported on RVC3
     /**
      * Input pixel descriptor for left ImgFrame.
      * Input type must be 4 bytes per pixel
@@ -75,6 +76,7 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      */
     Input inputLeftPixelDescriptor{true, *this, "inputLeftPixelDescriptor", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
 
+    // TODO(before mainline) - API not supported on RVC3
     /**
      * Input pixel descriptor for right ImgFrame.
      * Input type must be 4 bytes per pixel
@@ -161,8 +163,11 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      * RGB alignment, left-right check or any postproccessing (e.g. median filter) is not performed on confidence map.
      */
     Output confidenceMap{true, *this, "confidenceMap", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-
+    
+    // TODO(before mainline) - API not supported on RVC3
     Output pixelDescriptorsLeft{true, *this, "pixelDescriptorsLeft", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    
+    // TODO(before mainline) - API not supported on RVC3
     Output pixelDescriptorsRight{true, *this, "pixelDescriptorsRight", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
@@ -373,6 +378,7 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      */
     void setVerticalStereo(bool verticalStereo);
 
+    // TODO(before mainline) - API not supported on RVC3
     /**
      * Whether to use custom pixel descriptors sent from host to device for debugging purposes.
      * Default value is false.
@@ -384,6 +390,7 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      */
     void enableDistortionCorrection(bool enableDistortionCorrection);
 
+    // TODO(before mainline) - API not supported on RVC3
     /**
      * Override baseline from calibration.
      * Used only in disparity to depth conversion.
@@ -391,6 +398,7 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      */
     void setBaseline(float baseline);
 
+    // TODO(before mainline) - API not supported on RVC3
     /**
      * Override focal length from calibration.
      * Used only in disparity to depth conversion.
@@ -398,12 +406,14 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      */
     void setFocalLength(float focalLength);
 
+    // TODO(before mainline) - API not supported on RVC3
     /**
      * Use baseline information for disparity to depth conversion from specs (design data) or from calibration.
      * Default: true
      */
     void setDisparityToDepthUseSpecTranslation(bool specTranslation);
 
+    // TODO(before mainline) - API not supported on RVC3
     /**
      * Obtain rectification matrices using spec translation (design data) or from calibration in calculations.
      * Should be used only for debugging.
@@ -411,12 +421,14 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      */
     void setRectificationUseSpecTranslation(bool specTranslation);
 
+    // TODO(before mainline) - API not supported on RVC3
     /**
      * Use baseline information for depth alignment from specs (design data) or from calibration.
      * Default: true
      */
     void setDepthAlignmentUseSpecTranslation(bool specTranslation);
 
+    // TODO(before mainline) - API not supported on RVC3
     /**
      * Free scaling parameter between 0 (when all the pixels in the undistorted image are valid)
      * and 1 (when all the source image pixels are retained in the undistorted image).
