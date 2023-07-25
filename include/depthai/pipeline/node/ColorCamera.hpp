@@ -344,8 +344,11 @@ class ColorCamera : public NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperti
     /// Get number of frames in isp pool
     int getIspNumFramesPool();
 
+    // TODO(before mainline) - API not supported on RVC2
     /// Set the source of the warp mesh or disable
     void setMeshSource(Properties::WarpMeshSource source);
+
+    // TODO(before mainline) - API not supported on RVC2
     /// Gets the source of the warp mesh
     Properties::WarpMeshSource getMeshSource() const;
 
@@ -365,27 +368,39 @@ class ColorCamera : public NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperti
      */
     // void loadMeshFile(const dai::Path& warpMesh);
 
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Specify mesh calibration data for undistortion
      * See `loadMeshFiles` for the expected data format
      */
     void loadMeshData(const std::vector<std::uint8_t> warpMesh);
 
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Set the distance between mesh points. Default: (32, 32)
      */
     void setMeshStep(int width, int height);
+
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Set mesh size
      */
     void setMeshSize(int width, int height);
+
+    // TODO(before mainline) - API not supported on RVC2
     /// Gets the distance between mesh points
     std::tuple<int, int> getMeshStep() const;
+
+    // TODO(before mainline) - API not supported on RVC2
     /// Gets the mesh size
     std::tuple<int, int> getMeshSize() const;
 
+
+    // TODO(before mainline) - API not supported on RVC2
     /// Set calibration alpha parameter that determines FOV of undistorted frames
     void setCalibrationAlpha(float alpha);
+
+    // TODO(before mainline) - API not supported on RVC2
     /// Get calibration alpha parameter that determines FOV of undistorted frames
     float getCalibrationAlpha() const;
     // TODO(before mainline) - API not supported on RVC3

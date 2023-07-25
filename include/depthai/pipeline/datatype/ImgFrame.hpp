@@ -40,6 +40,8 @@ class ImgFrame : public Buffer {
     ImgFrame(size_t size);
     explicit ImgFrame(std::shared_ptr<RawImgFrame> ptr);
     virtual ~ImgFrame() = default;
+
+    // TODO(before mainline) - API not supported on RVC2
     ImgTransformation& transformation;
 
     // getters
@@ -213,6 +215,7 @@ class ImgFrame : public Buffer {
      */
     ImgFrame& setSize(std::tuple<unsigned int, unsigned int> size);
 
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Specifies source frame width
      *
@@ -220,6 +223,7 @@ class ImgFrame : public Buffer {
      */
     ImgFrame& setSourceWidth(unsigned int width);
 
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Specifies source frame height
      *
@@ -227,6 +231,7 @@ class ImgFrame : public Buffer {
      */
     ImgFrame& setSourceHeight(unsigned int height);
 
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Specifies source frame size
      *
@@ -235,6 +240,7 @@ class ImgFrame : public Buffer {
      */
     ImgFrame& setSourceSize(unsigned int width, unsigned int height);
 
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Specifies source frame size
      *

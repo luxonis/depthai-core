@@ -254,6 +254,7 @@ class CameraControl : public Buffer {
      */
     CameraControl& setEffectMode(EffectMode mode);
 
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Set a miscellaneous control. The controls set by this function get appended
      * to a list, processed after the standard controls
@@ -262,6 +263,7 @@ class CameraControl : public Buffer {
      */
     CameraControl& setMisc(std::string control, std::string value);
 
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Set a miscellaneous control. The controls set by this function get appended
      * to a list, processed after the standard controls
@@ -270,6 +272,7 @@ class CameraControl : public Buffer {
      */
     CameraControl& setMisc(std::string control, int value);
 
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Set a miscellaneous control. The controls set by this function get appended
      * to a list, processed after the standard controls
@@ -278,11 +281,13 @@ class CameraControl : public Buffer {
      */
     CameraControl& setMisc(std::string control, float value);
 
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Clear the list of miscellaneous controls set by `setControl`
      */
     void clearMiscControls();
 
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Get the list of miscellaneous controls set by `setControl`
      * @returns A list of <key, value> pairs as strings

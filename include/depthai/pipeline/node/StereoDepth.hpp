@@ -68,7 +68,7 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      */
     Input right{true, *this, "right", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
 
-    // TODO(before mainline) - API not supported on RVC3
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Input pixel descriptor for left ImgFrame.
      * Input type must be 4 bytes per pixel
@@ -76,7 +76,7 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      */
     Input inputLeftPixelDescriptor{true, *this, "inputLeftPixelDescriptor", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
 
-    // TODO(before mainline) - API not supported on RVC3
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Input pixel descriptor for right ImgFrame.
      * Input type must be 4 bytes per pixel
@@ -164,10 +164,10 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      */
     Output confidenceMap{true, *this, "confidenceMap", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
     
-    // TODO(before mainline) - API not supported on RVC3
+    // TODO(before mainline) - API not supported on RVC2
     Output pixelDescriptorsLeft{true, *this, "pixelDescriptorsLeft", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
     
-    // TODO(before mainline) - API not supported on RVC3
+    // TODO(before mainline) - API not supported on RVC2
     Output pixelDescriptorsRight{true, *this, "pixelDescriptorsRight", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
@@ -371,6 +371,7 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      */
     void useHomographyRectification(bool useHomographyRectification);
 
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Whether to perform vertical stereo matching or not.
      * Default value is false.
@@ -378,7 +379,7 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      */
     void setVerticalStereo(bool verticalStereo);
 
-    // TODO(before mainline) - API not supported on RVC3
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Whether to use custom pixel descriptors sent from host to device for debugging purposes.
      * Default value is false.

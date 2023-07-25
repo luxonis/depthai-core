@@ -13,6 +13,7 @@
 namespace dai {
 namespace node {
 
+// TODO(before mainline) - API not supported on RVC2
 class Pool : public NodeCRTP<DeviceNode, Pool, PoolProperties> {
    public:
     constexpr static const char* NAME = "Pool";
