@@ -378,8 +378,8 @@ class DeviceBase {
 
     /**
      * Connects to device specified by devInfo.
-     * @param version OpenVINO version which the device will be booted with
-     * @param config Config with which specifies which device to connect to
+     * @param config Config with which the device will be booted with
+     * @param devInfo DeviceInfo which specifies which device to connect to
      * @param maxUsbSpeed Maximum allowed USB speed
      */
     DeviceBase(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
@@ -849,6 +849,15 @@ class DeviceBase {
     std::shared_ptr<const XLinkConnection> getConnection() const {
         return connection;
     }
+
+
+    int getEthernetLinkSpeed();
+    int getEthernetLinkDuplex();
+    int getBootMode();
+    int getBootModeCurrent();
+    void setBootGpioInput();
+
+    int64_t getEmmcMemorySize();
 
    protected:
     std::shared_ptr<XLinkConnection> connection;

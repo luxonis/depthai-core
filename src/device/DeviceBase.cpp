@@ -1344,6 +1344,33 @@ void DeviceBase::flashFactoryEepromClear() {
     }
 }
 
+
+int DeviceBase::getEthernetLinkSpeed() {
+    return pimpl->rpcClient->call("getEthernetLinkSpeed").as<int>();
+}
+
+int DeviceBase::getEthernetLinkDuplex() {
+    return pimpl->rpcClient->call("getEthernetLinkDuplex").as<int>();
+}
+
+int DeviceBase::getBootMode() {
+    return pimpl->rpcClient->call("getBootMode").as<int>();
+}
+
+int DeviceBase::getBootModeCurrent() {
+    return pimpl->rpcClient->call("getBootModeCurrent").as<int>();
+}
+
+void DeviceBase::setBootGpioInput() {
+    pimpl->rpcClient->call("setBootGpioInput").as<int>();
+}
+
+int64_t DeviceBase::getEmmcMemorySize() {
+    return pimpl->rpcClient->call("getEmmcMemorySize").as<int64_t>();
+}
+
+
+
 bool DeviceBase::startPipeline() {
     // Deprecated
     return true;
