@@ -216,6 +216,9 @@ dai_test_compile_definitions(openvino_blob_test PRIVATE
 # Bootloader configuration tests
 dai_add_test(bootloader_config_test src/bootloader_config_test.cpp)
 
+# Eeprom naming parsing tests
+dai_add_test(naming_test src/naming_test.cpp)
+
 # Device USB Speed and serialization macros test
 dai_add_test(device_usbspeed_test    src/device_usbspeed_test.cpp CONFORMING)
 dai_add_test(device_usbspeed_test_17 src/device_usbspeed_test.cpp CONFORMING CXX_STANDARD 17)

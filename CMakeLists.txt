@@ -251,6 +251,7 @@ add_library(${TARGET_CORE_NAME}
     src/utility/Environment.cpp
     src/utility/XLinkGlobalProfilingLogger.cpp
     src/utility/Logging.cpp
+    src/utility/EepromDataParser.cpp
     src/xlink/XLinkConnection.cpp
     src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp

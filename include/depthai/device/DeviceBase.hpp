@@ -364,7 +364,7 @@ class DeviceBase {
 
     /**
      * Connects to device specified by devInfo.
-     * @param config Config with which the device will be booted with 
+     * @param config Config with which the device will be booted with
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param maxUsbSpeed Maximum allowed USB speed
      */
@@ -455,6 +455,12 @@ class DeviceBase {
      * @returns device name or empty string if not available
      */
     std::string getDeviceName();
+
+    /**
+     * Get product name if available
+     * @returns product name or empty string if not available
+     */
+    std::string getProductName();
 
     /**
      * Get MxId of device
