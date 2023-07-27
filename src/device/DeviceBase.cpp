@@ -340,7 +340,10 @@ DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, Usb
 }
 
 DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, const dai::Path& pathToCmd) : deviceInfo(devInfo) {
-    init(version, false, pathToCmd);
+    Config cfg;
+    cfg.version = version;
+
+    init2(cfg, pathToCmd, {});
 }
 
 DeviceBase::DeviceBase() : DeviceBase(OpenVINO::VERSION_UNIVERSAL) {}
@@ -401,7 +404,7 @@ DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsb
 }
 
 DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd) : deviceInfo(devInfo) {
-    init(config, false, pathToCmd);
+    init2(config, pathToCmd, {});
 }
 
 DeviceBase::DeviceBase(Config config, const dai::Path& pathToCmd) {
@@ -414,12 +417,20 @@ DeviceBase::DeviceBase(Config config, UsbSpeed maxUsbSpeed) {
 
 void DeviceBase::init(OpenVINO::Version version) {
     tryGetDevice();
-    init(version, false, "");
+
+    Config cfg;
+    cfg.version = version;
+
+    init2(cfg, "", {});
 }
 
 void DeviceBase::init(OpenVINO::Version version, const dai::Path& pathToCmd) {
     tryGetDevice();
-    init(version, false, pathToCmd);
+
+    Config cfg;
+    cfg.version = version;
+
+    init2(cfg, pathToCmd, {});
 }
 
 void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed) {
@@ -429,7 +440,10 @@ void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed) {
 
 void DeviceBase::init(const Pipeline& pipeline) {
     tryGetDevice();
-    init(pipeline, false, "");
+
+    Config cfg = pipeline.getDeviceConfig();
+
+    init2(cfg, "", pipeline);
 }
 
 void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) {
@@ -439,12 +453,18 @@ void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) {
 
 void DeviceBase::init(const Pipeline& pipeline, const dai::Path& pathToCmd) {
     tryGetDevice();
-    init(pipeline, false, pathToCmd);
+
+    Config cfg = pipeline.getDeviceConfig();
+
+    init2(cfg, pathToCmd, pipeline);
 }
 
 void DeviceBase::init(const Pipeline& pipeline, const DeviceInfo& devInfo) {
     deviceInfo = devInfo;
-    init(pipeline, false, "");
+
+    Config cfg = pipeline.getDeviceConfig();
+
+    init2(cfg, "", pipeline);
 }
 
 void DeviceBase::init(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) {
@@ -454,7 +474,10 @@ void DeviceBase::init(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSp
 
 void DeviceBase::init(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd) {
     deviceInfo = devInfo;
-    init(pipeline, false, pathToCmd);
+
+    Config cfg = pipeline.getDeviceConfig();
+
+    init2(cfg, pathToCmd, pipeline);
 }
 
 void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed) {
@@ -464,7 +487,7 @@ void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed) {
 
 void DeviceBase::init(Config config, const dai::Path& pathToCmd) {
     tryGetDevice();
-    init(config, false, pathToCmd);
+    init2(config, pathToCmd, {});
 }
 
 void DeviceBase::init(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) {
@@ -474,7 +497,7 @@ void DeviceBase::init(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbS
 
 void DeviceBase::init(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd) {
     deviceInfo = devInfo;
-    init(config, false, pathToCmd);
+    init2(config, pathToCmd, {});
 }
 
 DeviceBase::DeviceBase(Config config) {
@@ -555,26 +578,6 @@ void DeviceBase::tryStartPipeline(const Pipeline& pipeline) {
     }
 }
 
-void DeviceBase::init(OpenVINO::Version version, bool usb2Mode, const dai::Path& pathToMvcmd) {
-    Config cfg;
-    // Specify usb speed
-    cfg.board.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
-    // Specify the OpenVINO version
-    cfg.version = version;
-    init2(cfg, pathToMvcmd, {});
-}
-void DeviceBase::init(const Pipeline& pipeline, bool usb2Mode, const dai::Path& pathToMvcmd) {
-    Config cfg = pipeline.getDeviceConfig();
-    // Modify usb speed
-    cfg.board.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
-    init2(cfg, pathToMvcmd, pipeline);
-}
-void DeviceBase::init(Config config, bool usb2Mode, const dai::Path& pathToMvcmd) {
-    Config cfg = config;
-    // Modify usb speed
-    cfg.board.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
-    init2(cfg, pathToMvcmd, {});
-}
 void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd) {
     Config cfg;
     // Specify usb speed

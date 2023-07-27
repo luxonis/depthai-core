@@ -306,8 +306,8 @@ class DeviceBase {
 
     /**
      * Connects to device 'devInfo' with custom config.
-     * @param devInfo DeviceInfo which specifies which device to connect to
      * @param config Device custom configuration to boot with
+     * @param devInfo DeviceInfo which specifies which device to connect to
      */
     DeviceBase(Config config, const DeviceInfo& devInfo);
 
@@ -890,7 +890,6 @@ class DeviceBase {
     void init(OpenVINO::Version version);
     void init(OpenVINO::Version version, const dai::Path& pathToCmd);
     void init(OpenVINO::Version version, UsbSpeed maxUsbSpeed);
-    void init(OpenVINO::Version version, bool usb2Mode, const dai::Path& pathToMvcmd);
     void init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
     void init(const Pipeline& pipeline);
     void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed);
@@ -899,9 +898,7 @@ class DeviceBase {
     void init(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode);
     void init(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
     void init(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
-    void init(const Pipeline& pipeline, bool usb2Mode, const dai::Path& pathToMvcmd);
     void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
-    void init(Config config, bool usb2Mode, const dai::Path& pathToMvcmd);
     void init(Config config, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
     void init(Config config, UsbSpeed maxUsbSpeed);
     void init(Config config, const dai::Path& pathToCmd);
