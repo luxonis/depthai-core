@@ -27,6 +27,7 @@ class MessageQueue {
        public:
         explicit QueueException(const std::string& message) : std::runtime_error(message) {}
     };
+
    private:
     LockingQueue<std::shared_ptr<ADatatype>> queue;
     const std::string name{""};

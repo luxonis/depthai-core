@@ -8,8 +8,8 @@
 // shared
 #include <depthai-shared/properties/PointCloudProperties.hpp>
 
-#include "depthai/pipeline/datatype/PointCloudConfig.hpp"
 #include "depthai/pipeline/datatype/OccupancyPool.hpp"
+#include "depthai/pipeline/datatype/PointCloudConfig.hpp"
 
 namespace dai {
 namespace node {
@@ -78,7 +78,6 @@ class PointCloud : public NodeCRTP<DeviceNode, PointCloud, PointCloudProperties>
     [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] bool getWaitForConfigInput() const;
 
     void setNumShaves(int numShaves);
-
 };
 
 }  // namespace node
