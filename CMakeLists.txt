@@ -200,6 +200,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/Pipeline.cpp
     src/pipeline/AssetManager.cpp
     src/pipeline/MessageQueue.cpp
+    src/pipeline/SideChannel.cpp
     src/pipeline/Node.cpp
     src/pipeline/ThreadedNode.cpp
     src/pipeline/DeviceNode.cpp
@@ -254,6 +255,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/FeatureTrackerConfig.cpp
     src/pipeline/datatype/ToFConfig.cpp
     src/pipeline/datatype/BenchmarkReport.cpp
+    src/pipeline/datatype/TraceEvents.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/utility/Path.cpp

@@ -91,6 +91,26 @@ CameraImageOrientation ColorCamera::getImageOrientation() const {
 
 // setColorOrder - RGB or BGR
 void ColorCamera::setColorOrder(ColorCameraProperties::ColorOrder colorOrder) {
+    // TODO Depreciate this API
+    switch(colorOrder) {
+        case ColorCameraProperties::ColorOrder::BGR:
+            if(properties.interleaved) {
+                properties.previewType = ImgFrame::Type::BGR888i;
+            } else {
+                properties.previewType = ImgFrame::Type::BGR888p;
+            }
+            break;
+        case ColorCameraProperties::ColorOrder::RGB:
+            if(properties.interleaved) {
+                properties.previewType = ImgFrame::Type::RGB888i;
+            } else {
+                properties.previewType = ImgFrame::Type::RGB888p;
+            }
+            break;
+        default:
+            throw std::runtime_error("Not handled value in switch");
+    }
+
     properties.colorOrder = colorOrder;
 }
 
@@ -101,12 +121,36 @@ ColorCameraProperties::ColorOrder ColorCamera::getColorOrder() const {
 
 // setInterleaved
 void ColorCamera::setInterleaved(bool interleaved) {
+    // TODO Depreciate this API
+    if(interleaved) {
+        if(properties.previewType == ImgFrame::Type::RGB888p) {
+            properties.previewType = ImgFrame::Type::RGB888i;
+        } else if(properties.previewType == ImgFrame::Type::BGR888p) {
+            properties.previewType = ImgFrame::Type::BGR888i;
+        }
+    } else {
+        if(properties.previewType == ImgFrame::Type::RGB888i) {
+            properties.previewType = ImgFrame::Type::RGB888p;
+        } else if(properties.previewType == ImgFrame::Type::BGR888i) {
+            properties.previewType = ImgFrame::Type::BGR888p;
+        }
+    }
     properties.interleaved = interleaved;
 }
 
 // getInterleaved
 bool ColorCamera::getInterleaved() const {
     return properties.interleaved;
+}
+
+/// Set type of preview output image
+void ColorCamera::setPreviewType(ImgFrame::Type type) {
+    properties.previewType = type;
+}
+
+/// Get the preview type
+ImgFrame::Type ColorCamera::getPreviewType() const {
+    return properties.previewType;
 }
 
 // setFp16

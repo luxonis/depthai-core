@@ -438,6 +438,10 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      * See getOptimalNewCameraMatrix from opencv for more details.
      */
     void setAlphaScaling(float alpha);
+    /**
+     * Whether to enable frame syncing inside stereo node or not. Suitable if inputs are known to be synced.
+     */
+    void setFrameSync(bool enableFrameSync);
 };
 
 }  // namespace node
