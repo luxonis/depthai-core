@@ -83,8 +83,10 @@ else()
     find_package(XLink ${_QUIET} CONFIG REQUIRED HINTS "${CMAKE_CURRENT_LIST_DIR}/XLink" "${CMAKE_CURRENT_LIST_DIR}/../XLink")
 endif()
 
-# OpenCV 4 - (optional, quiet always)
-find_package(OpenCV 4 QUIET CONFIG)
+# OpenCV 4 - (optional)
+if(DEPTHAI_OPENCV_SUPPORT)
+    find_package(OpenCV 4 ${_QUIET} CONFIG REQUIRED)
+endif()
 
 # include optional dependency cmake
 if(DEPTHAI_DEPENDENCY_INCLUDE)
