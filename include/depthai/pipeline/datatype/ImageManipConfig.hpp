@@ -187,6 +187,12 @@ class ImageManipConfig : public Buffer {
      */
     ImageManipConfig& setKeepAspectRatio(bool keep);
 
+    /**
+     * Specify which interpolation method to use
+     * @param interpolation type of interpolation
+     */
+    ImageManipConfig& setInterpolation(dai::Interpolation interpolation);
+
     // Functions to retrieve properties
     /**
      * @returns Top left X coordinate of crop region
@@ -254,6 +260,9 @@ class ImageManipConfig : public Buffer {
      * @returns config for ImageManip
      */
     dai::RawImageManipConfig get() const;
+
+    /// Retrieve which interpolation method to use
+    dai::Interpolation getInterpolation() const;
 };
 
 }  // namespace dai
