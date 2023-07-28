@@ -22,6 +22,7 @@ void SideChannel::sendMessage(const std::shared_ptr<dai::ADatatype>& message) {
 
 void SideChannel::stop() {
     running = false;
+    lockingQueue.destruct();
     if(thread.joinable()) {
         thread.join();
     }
