@@ -881,26 +881,26 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
                 auto queueTraceEvent = std::dynamic_pointer_cast<dai::QueueTraceEvent>(msg);
                 if(queueTraceEvent) {
                     auto rawTraceEvent = queueTraceEvent->get();
-                    spdlog::trace("EV:{},S:{},IDS:{},IDD:{},TSS:{},TSN:{},QS:{}",
-                                  static_cast<std::uint8_t>(rawTraceEvent.event),
-                                  static_cast<std::uint8_t>(rawTraceEvent.status),
-                                  rawTraceEvent.srcId,
-                                  rawTraceEvent.dstId,
-                                  rawTraceEvent.timestamp.sec,
-                                  rawTraceEvent.timestamp.nsec,
-                                  rawTraceEvent.queueSize);
+                    pimpl->logger.trace("EV:{},S:{},IDS:{},IDD:{},TSS:{},TSN:{},QS:{}",
+                                        static_cast<std::uint8_t>(rawTraceEvent.event),
+                                        static_cast<std::uint8_t>(rawTraceEvent.status),
+                                        rawTraceEvent.srcId,
+                                        rawTraceEvent.dstId,
+                                        rawTraceEvent.timestamp.sec,
+                                        rawTraceEvent.timestamp.nsec,
+                                        rawTraceEvent.queueSize);
                 }
 
                 auto nodeTraceEvent = std::dynamic_pointer_cast<dai::NodeTraceEvent>(msg);
                 if(nodeTraceEvent) {
-                    spdlog::trace("IDN:{},MGTSS:{},MGTSN:{},PTSS:{},PTSN:{},MSTSS:{},MSTSN:{}",
-                                  nodeTraceEvent->getNodeId(),
-                                  duration_cast<seconds>(nodeTraceEvent->getTimeToGetMessages()).count(),
-                                  duration_cast<nanoseconds>(nodeTraceEvent->getTimeToGetMessages() % seconds(1)).count(),
-                                  duration_cast<seconds>(nodeTraceEvent->getTimeToProcess()).count(),
-                                  duration_cast<nanoseconds>(nodeTraceEvent->getTimeToProcess() % seconds(1)).count(),
-                                  duration_cast<seconds>(nodeTraceEvent->getTimeToSendMessages()).count(),
-                                  duration_cast<nanoseconds>(nodeTraceEvent->getTimeToSendMessages() % seconds(1)).count());
+                    pimpl->logger.trace("IDN:{},MGTSS:{},MGTSN:{},PTSS:{},PTSN:{},MSTSS:{},MSTSN:{}",
+                                        nodeTraceEvent->getNodeId(),
+                                        duration_cast<seconds>(nodeTraceEvent->getTimeToGetMessages()).count(),
+                                        duration_cast<nanoseconds>(nodeTraceEvent->getTimeToGetMessages() % seconds(1)).count(),
+                                        duration_cast<seconds>(nodeTraceEvent->getTimeToProcess()).count(),
+                                        duration_cast<nanoseconds>(nodeTraceEvent->getTimeToProcess() % seconds(1)).count(),
+                                        duration_cast<seconds>(nodeTraceEvent->getTimeToSendMessages()).count(),
+                                        duration_cast<nanoseconds>(nodeTraceEvent->getTimeToSendMessages() % seconds(1)).count());
                 }
                 // // Send messages to callbacks
                 // {
@@ -914,7 +914,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
                 // }
             }
         } catch(const std::exception& ex) {
-            spdlog::debug("Side channel thread exception caught: {}", ex.what());
+            pimpl->logger.debug("Side channel thread exception caught: {}", ex.what());
         }
 
         sideChannelRunning = false;
@@ -1460,10 +1460,10 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     pipeline.serialize(schema, assets, assetStorage);
 
     // if debug
-    if(spdlog::get_level() <= spdlog::level::debug) {
+    if(pimpl->getLogLevel() <= dai::LogLevel::DEBUG) {
         auto pipelineSer = pipeline.serializeToJson();
-        spdlog::debug("Schema dump: {}", pipelineSer["pipeline"].dump());
-        spdlog::debug("Asset map dump: {}", pipelineSer["assets"].dump());
+        pimpl->logger.debug("Schema dump: {}", pipelineSer["pipeline"].dump());
+        pimpl->logger.debug("Asset map dump: {}", pipelineSer["assets"].dump());
     }
 
     // Load pipelineDesc, assets, and asset storage
