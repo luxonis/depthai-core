@@ -22,6 +22,8 @@
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
+#include "depthai/pipeline/datatype/OccupancyPool.hpp"
+#include "depthai/pipeline/datatype/PointCloudConfig.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorData.hpp"
@@ -46,6 +48,8 @@
 #include "depthai-shared/datatype/RawImgDetections.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
 #include "depthai-shared/datatype/RawNNData.hpp"
+#include "depthai-shared/datatype/RawOccupancyPool.hpp"
+#include "depthai-shared/datatype/RawPointCloudConfig.hpp"
 #include "depthai-shared/datatype/RawSpatialImgDetections.hpp"
 #include "depthai-shared/datatype/RawSpatialLocationCalculatorConfig.hpp"
 #include "depthai-shared/datatype/RawSpatialLocations.hpp"
@@ -184,6 +188,18 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::NodeTraceEvent:
             return parseDatatype<RawNodeTraceEvent>(metadataStart, serializedObjectSize, data);
             break;
+
+        case DatatypeEnum::PointCloudConfig:
+            return parseDatatype<RawPointCloudConfig>(metadataStart, serializedObjectSize, data);
+            break;
+
+        case DatatypeEnum::OccupancyPool:
+            return parseDatatype<RawOccupancyPool>(metadataStart, serializedObjectSize, data);
+            break;
+
+        case DatatypeEnum::ToFConfig:
+
+            break;
     }
 
     throw std::runtime_error("Bad packet, couldn't parse");
@@ -313,6 +329,18 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
             break;
         case DatatypeEnum::NodeTraceEvent:
             return std::make_shared<NodeTraceEvent>(parseDatatype<RawNodeTraceEvent>(metadataStart, serializedObjectSize, data));
+            break;
+
+        case DatatypeEnum::PointCloudConfig:
+            return std::make_shared<PointCloudConfig>(parseDatatype<RawPointCloudConfig>(metadataStart, serializedObjectSize, data));
+            break;
+
+        case DatatypeEnum::OccupancyPool:
+            return std::make_shared<OccupancyPool>(parseDatatype<RawOccupancyPool>(metadataStart, serializedObjectSize, data));
+            break;
+
+        case DatatypeEnum::ToFConfig:
+
             break;
     }
 

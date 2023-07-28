@@ -122,7 +122,7 @@ bool MessageQueue::trySend(const std::shared_ptr<ADatatype>& msg) {
 //     return trySend(std::make_shared<ADatatype>(msg.serialize()));
 // }
 
-void MessageQueue::setSideChannel(std::shared_ptr<SideChannel> sideChannel){
+void MessageQueue::setSideChannel(std::shared_ptr<SideChannel> sideChannel) {
     this->sideChannel = sideChannel;
 }
 

@@ -29,6 +29,7 @@ class MessageQueue {
        public:
         explicit QueueException(const std::string& message) : std::runtime_error(message) {}
     };
+
    private:
     LockingQueue<std::shared_ptr<ADatatype>> queue;
     const std::string name{""};
@@ -93,9 +94,9 @@ class MessageQueue {
 
     /**
      * Gets queue current size
-     * 
+     *
      * @returns Queue size
-    */
+     */
     unsigned int getSize() const {
         return queue.getSize();
     }
@@ -419,8 +420,8 @@ class MessageQueue {
 
     /**
      * Set the queue id
-    */
-    void setId(int id){
+     */
+    void setId(int id) {
         this->id = id;
     }
 };

@@ -15,7 +15,7 @@ void ThreadedNode::start() {
             // catch anything and stop the node
             logger->info("Node closing: {}", ex.what());
             running = false;
-        } catch(const std::runtime_error& ex){
+        } catch(const std::runtime_error& ex) {
             logger->error("Node threw exception, stopping the node. Exception message: {}", ex.what());
             running = false;
         }
