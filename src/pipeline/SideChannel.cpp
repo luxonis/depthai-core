@@ -50,6 +50,7 @@ void SideChannel::threadedRun() {
         if(!lockingQueue.waitAndPop(message)) {
             running = false;
             std::cout << "Stopping the side channel" << std::endl;
+            break;
         }
 
         // Serialize and get metadata
