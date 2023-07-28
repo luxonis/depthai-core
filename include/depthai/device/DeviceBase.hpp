@@ -956,6 +956,8 @@ class DeviceBase {
     void flashWrite(std::vector<std::uint8_t> data, uint64_t offset = 0);
     std::vector<std::uint8_t> flashRead(uint32_t size, uint64_t offset = 0);
     std::tuple<bool, std::string> flashBootloader(Memory memory, Type type, std::function<void(float)> progressCallback, const dai::Path& path = {});
+    std::tuple<bool, std::string> flashBootHeader();
+    std::tuple<bool, std::string> flashUsbRecoveryBootHeader();
 
    private:
     // // bootloader stream
