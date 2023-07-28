@@ -44,7 +44,7 @@ SpatialLocationCalculatorData& SpatialLocationCalculatorData::setTimestampDevice
     using namespace std::chrono;
     auto ts = tp.time_since_epoch();
     rawdata.tsDevice.sec = duration_cast<seconds>(ts).count();
-    rawdata.ts.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
+    rawdata.tsDevice.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
     return *this;
 }
 SpatialLocationCalculatorData& SpatialLocationCalculatorData::setSequenceNum(int64_t sequenceNum) {
