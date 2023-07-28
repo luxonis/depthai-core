@@ -72,7 +72,6 @@ class DetectionParser : public NodeCRTP<DeviceNode, DetectionParser, DetectionPa
      */
     void setBlob(const dai::Path& path);
 
-
     /**
      * Set input image size
      *

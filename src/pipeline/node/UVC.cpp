@@ -4,11 +4,9 @@ namespace dai {
 namespace node {
 
 UVC::UVC() : NodeCRTP<DeviceNode, UVC, UVCProperties>() {}
-UVC::UVC(std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, UVC, UVCProperties>(std::move(props)) {
-}
+UVC::UVC(std::unique_ptr<Properties> props) : NodeCRTP<DeviceNode, UVC, UVCProperties>(std::move(props)) {}
 
-void UVC::build(){
+void UVC::build() {
     ;
 }
 

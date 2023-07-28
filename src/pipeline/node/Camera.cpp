@@ -14,8 +14,7 @@ Camera::Camera() : NodeCRTP<DeviceNode, Camera, CameraProperties>(), rawControl(
 Camera::Camera(std::unique_ptr<Properties> props)
     : NodeCRTP<DeviceNode, Camera, CameraProperties>(std::move(props)),
       rawControl(std::make_shared<RawCameraControl>(properties.initialControl)),
-      initialControl(rawControl) {
-}
+      initialControl(rawControl) {}
 
 void Camera::build() {
     properties.boardSocket = CameraBoardSocket::AUTO;

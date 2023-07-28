@@ -395,7 +395,6 @@ class ColorCamera : public NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperti
     /// Gets the mesh size
     std::tuple<int, int> getMeshSize() const;
 
-
     // TODO(before mainline) - API not supported on RVC2
     /// Set calibration alpha parameter that determines FOV of undistorted frames
     void setCalibrationAlpha(float alpha);

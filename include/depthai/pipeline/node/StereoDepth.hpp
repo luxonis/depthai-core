@@ -163,10 +163,10 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      * RGB alignment, left-right check or any postproccessing (e.g. median filter) is not performed on confidence map.
      */
     Output confidenceMap{true, *this, "confidenceMap", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-    
+
     // TODO(before mainline) - API not supported on RVC2
     Output pixelDescriptorsLeft{true, *this, "pixelDescriptorsLeft", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-    
+
     // TODO(before mainline) - API not supported on RVC2
     Output pixelDescriptorsRight{true, *this, "pixelDescriptorsRight", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 

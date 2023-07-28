@@ -521,7 +521,7 @@ void DeviceBase::closeImpl() {
     pimpl->rpcClient = nullptr;
 
     // If the device was operated throgh gate, wait for the session to end
-    if(gate){
+    if(gate) {
         gate->waitForSessionEnd();
     }
     pimpl->logger.debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
@@ -744,7 +744,6 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         if(!gate->startSession()) {
             spdlog::error("Could not start the session on gate!");
         }
-
 
         // Connect with XLinkConnection (skip checking if booted)
         connection = std::make_shared<XLinkConnection>(deviceInfo, X_LINK_ANY_STATE);

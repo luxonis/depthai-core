@@ -266,7 +266,6 @@ class ImageManipConfig : public Buffer {
      * @returns config for ImageManip
      */
     dai::RawImageManipConfig get() const;
-
 };
 
 }  // namespace dai
