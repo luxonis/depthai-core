@@ -2,7 +2,7 @@
 #include <mutex>
 
 #include "depthai/pipeline/datatype/ADatatype.hpp"
-#include "depthai/utility/LockingQueue.hpp"
+#include "depthai-shared/utility/LockingQueue.hpp"
 
 namespace dai {
 
