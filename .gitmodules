@@ -4,3 +4,9 @@
 [submodule "shared/depthai-bootloader-shared"]
 	path = shared/depthai-bootloader-shared
 	url = ../depthai-bootloader-shared.git
+[submodule "external/xtensor"]
+	path = external/xtensor
+	url = https://github.com/xtensor-stack/xtensor
+[submodule "external/xtl"]
+	path = external/xtl
+	url = https://github.com/xtensor-stack/xtl

@@ -6,6 +6,9 @@
 // This build supports OpenCV integration?
 #cmakedefine DEPTHAI_HAVE_OPENCV_SUPPORT
 
+// This build supports XTensor integration?
+#cmakedefine DEPTHAI_HAVE_XTENSOR_SUPPORT
+
 // Build specific settings overwrite
 #ifdef DEPTHAI_TARGET_CORE
 #ifndef DEPTHAI_TARGET_OPENCV

@@ -87,6 +87,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/sanitizers")
 option(DEPTHAI_CLANG_FORMAT "Enable clang-format target"                  ON)
 option(DEPTHAI_CLANG_TIDY "Enable clang-tidy checks during compilation" OFF)
 option(DEPTHAI_SANITIZE "Enable Address and Undefined sanitizers for library, examples and tests" OFF)
+option(DEPTHAI_XTENSOR_SUPPORT "Enable optional XTensor support" ON)
 
 # Should install depthai core libraries
 option(DEPTHAI_INSTALL   "Enable install target for depthai-core targets" ON)
@@ -321,7 +322,9 @@ include(DepthaiBootloaderDownloader)        # Depthai bootloader binary download
 
 # depthai-shared enforce commit hash match if CI
 if($ENV{CI})
-    set(DEPTHAI_SHARED_COMMIT_HASH_ENFORCE ON)
+    # TODO(themarpe) - Disable before final merge
+    # set(DEPTHAI_SHARED_COMMIT_HASH_ENFORCE ON)
+    set(DEPTHAI_SHARED_COMMIT_HASH_ENFORCE OFF)
     set(DEPTHAI_BOOTLOADER_SHARED_COMMIT_HASH_ENFORCE ON)
 endif()
 
@@ -442,6 +445,13 @@ target_link_libraries(${TARGET_CORE_NAME}
         ZLIB::zlib
 )
 
+if(DEPTHAI_XTENSOR_SUPPORT)
+    target_link_libraries(${TARGET_CORE_NAME}
+        PUBLIC
+            xtensor
+    )
+endif()
+
 # Add compile & CMake definitions
 set(DEPTHAI_DEVICE_VERSION "${DEPTHAI_DEVICE_SIDE_COMMIT}")
 target_compile_definitions(${TARGET_CORE_NAME}
@@ -489,6 +499,14 @@ macro(add_runtime_dependencies depending_target dependency)
 endmacro()
 # Add libusb dll in build time
 add_runtime_dependencies(${TARGET_CORE_NAME} usb-1.0)
+
+########################
+# XTensor Support
+########################
+if(DEPTHAI_XTENSOR_SUPPORT)
+    # Add public compile definition indicating that XTensor support is available
+    set(DEPTHAI_HAVE_XTENSOR_SUPPORT ON)
+endif()
 
 ########################
 # OpenCV Support
@@ -664,6 +682,12 @@ if(DEPTHAI_INSTALL)
     install(DIRECTORY "${DEPTHAI_BOOTLOADER_SHARED_PUBLIC_INCLUDE}/" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
     # Install Hunter dependencies
     install(DIRECTORY "${HUNTER_INSTALL_PREFIX}/" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}/dependencies")
+    # Install depthai-core dependencies
+    if(DEPTHAI_XTENSOR_SUPPORT)
+        install(DIRECTORY "${CMAKE_CURRENT_LIST_DIR}/external" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake")
+        install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/xtl" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/depthai/dependencies")
+        install(DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/xtensor" DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/depthai/dependencies")
+    endif()
     # Install resources if not RC'd
     if(NOT DEPTHAI_BINARIES_RESOURCE_COMPILE)
         install(DIRECTORY "${DEPTHAI_RESOURCES_OUTPUT_DIR}/" DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/${PROJECT_NAME}")
