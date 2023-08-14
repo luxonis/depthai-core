@@ -234,6 +234,11 @@ ImageManipConfig& ImageManipConfig::setKeepAspectRatio(bool keep) {
     return *this;
 }
 
+ImageManipConfig& ImageManipConfig::setInterpolation(dai::Interpolation interpolation) {
+    cfg.interpolation = interpolation;
+    return *this;
+}
+
 // Functions to retrieve properties
 float ImageManipConfig::getCropXMin() const {
     return cfg.cropConfig.cropRect.xmin;
@@ -286,6 +291,10 @@ dai::RawImageManipConfig ImageManipConfig::get() const {
 ImageManipConfig& ImageManipConfig::set(dai::RawImageManipConfig config) {
     cfg = config;
     return *this;
+}
+
+dai::Interpolation ImageManipConfig::getInterpolation() const {
+    return cfg.interpolation;
 }
 
 }  // namespace dai
