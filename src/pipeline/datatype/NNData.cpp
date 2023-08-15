@@ -296,7 +296,7 @@ NNData& NNData::setTimestampDevice(std::chrono::time_point<std::chrono::steady_c
     using namespace std::chrono;
     auto ts = tp.time_since_epoch();
     rawNn.tsDevice.sec = duration_cast<seconds>(ts).count();
-    rawNn.ts.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
+    rawNn.tsDevice.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
     return *this;
 }
 NNData& NNData::setSequenceNum(int64_t sequenceNum) {

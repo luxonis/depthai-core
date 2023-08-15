@@ -49,7 +49,7 @@ Buffer& Buffer::setTimestampDevice(std::chrono::time_point<std::chrono::steady_c
     using namespace std::chrono;
     auto ts = tp.time_since_epoch();
     raw->tsDevice.sec = duration_cast<seconds>(ts).count();
-    raw->ts.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
+    raw->tsDevice.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
     return *this;
 }
 Buffer& Buffer::setSequenceNum(int64_t sequenceNum) {
