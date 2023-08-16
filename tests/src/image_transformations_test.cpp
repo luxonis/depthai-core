@@ -24,7 +24,7 @@ int testPadding() {
     sourceImageFrame->setWidth(1920);
     sourceImageFrame->setHeight(1080);
     sourceImageFrame->setSourceSize(1920, 1080);
-    sourceImageFrame->transformations.setPadding(100, 200, 300, 400);
+    sourceImageFrame->transformations.addPadding(100, 200, 300, 400);
     sourceImageFrame->setWidth(2620);
     sourceImageFrame->setHeight(1380);
     REQUIRE(sourceImageFrame->validateTransformations());
@@ -53,7 +53,7 @@ int testCropping() {
     float width = 300;
     float height = 400;
 
-    sourceImageFrame->transformations.setCrop(x, y, x + width, y + height);
+    sourceImageFrame->transformations.addCrop(x, y, x + width, y + height);
     sourceImageFrame->setSize(300, 400);
     REQUIRE(sourceImageFrame->validateTransformations());
 
@@ -76,7 +76,7 @@ int testFlipping() {
     sourceImageFrame->setWidth(1920);
     sourceImageFrame->setHeight(1080);
     sourceImageFrame->setSourceSize(1920, 1080);
-    sourceImageFrame->transformations.setFlipHorizontal();
+    sourceImageFrame->transformations.addFlipHorizontal();
     REQUIRE(sourceImageFrame->validateTransformations());
     dai::Rect sourceRect{100, 0, 300, 300};
     auto outRect = sourceImageFrame->remapRectToSource(sourceRect);
@@ -98,7 +98,7 @@ int testScale() {
     sourceImageFrame->setHeight(1080);
     sourceImageFrame->setSourceSize(1920, 1080);
 
-    sourceImageFrame->transformations.setScale(12, 0.3);
+    sourceImageFrame->transformations.addScale(12, 0.3);
     sourceImageFrame->setWidth(std::round(12 * 1920));
     sourceImageFrame->setHeight(std::round(0.3 * 1080));
     REQUIRE(sourceImageFrame->validateTransformations());
@@ -128,7 +128,7 @@ int testRotation(dai::Point2f inPoint,
     sourceImageFrame->setSourceSize(1920, 1080);
     REQUIRE(sourceImageFrame->validateTransformations());
 
-    sourceImageFrame->transformations.setRotation(angle, rotationPoint, sourceImageFrame->getWidth(), sourceImageFrame->getHeight());
+    sourceImageFrame->transformations.addRotation(angle, rotationPoint, sourceImageFrame->getWidth(), sourceImageFrame->getHeight());
     auto outPoint = sourceImageFrame->remapPointToSource(inPoint);
     REQUIRE_THAT(outPointCheck.x, Catch::Matchers::WithinAbs(outPoint.x, 0.01));
     REQUIRE_THAT(outPointCheck.y, Catch::Matchers::WithinAbs(outPoint.y, 0.01));

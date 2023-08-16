@@ -178,7 +178,7 @@ ImgFrame& ImgFrame::setSourceSize(unsigned int width, unsigned int height) {
     img.sourceFb.width = width;
     img.sourceFb.stride = width;
     img.sourceFb.height = height;
-    transformations.setInitTransformation(width, height);
+    transformations.addInitTransformation(width, height);
     return *this;
 }
 
@@ -208,7 +208,7 @@ dai::Point2f ImgFrame::remapPointFromSource(const dai::Point2f& point) const {
     dai::Point2f transformedPoint = point;
     bool isClipped = false;
     for(auto& transformation : transformations.transformations) {
-        transformedPoint = transformations.transformPoint(transformation, transformedPoint, isClipped);
+        transformedPoint = dai::ImgTransformation::transformPoint(transformation, transformedPoint, isClipped);
     }
     return transformedPoint;
 }
@@ -221,7 +221,7 @@ dai::Point2f ImgFrame::remapPointToSource(const dai::Point2f& point) const {
     bool isClipped = false;
     // Do the loop in reverse order
     for(auto it = transformations.transformations.rbegin(); it != transformations.transformations.rend(); ++it) {
-        transformedPoint = transformations.invTransformPoint(*it, transformedPoint, isClipped);
+        transformedPoint = dai::ImgTransformation::invTransformPoint(*it, transformedPoint, isClipped);
     }
     return transformedPoint;
 }
@@ -423,7 +423,7 @@ dai::Point2f ImgFrame::remapPointBetweenSourceFrames(const dai::Point2f& point, 
     // Scale the point back to the destination frame
     returnPoint = dai::Point2f(std::round(adjustedFrameX / kX), std::round(adjustedFrameY / kY));
     bool pointClipped = false;
-    returnPoint = ImgTransformations::clipPoint(returnPoint, destImage.getSourceWidth(), destImage.getSourceHeight(), pointClipped);
+    returnPoint = ImgTransformation::clipPoint(returnPoint, destImage.getSourceWidth(), destImage.getSourceHeight(), pointClipped);
 
     return returnPoint;
 }
