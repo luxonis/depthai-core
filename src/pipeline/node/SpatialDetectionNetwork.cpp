@@ -34,14 +34,17 @@ void SpatialDetectionNetwork::build() {
 // -------------------------------------------------------------------
 void SpatialDetectionNetwork::setBlobPath(const dai::Path& path) {
     neuralNetwork->setBlobPath(path);
+    detectionParser->setBlobPath(path);
 }
 
 void SpatialDetectionNetwork::setBlob(OpenVINO::Blob blob) {
     neuralNetwork->setBlob(blob);
+    detectionParser->setBlob(blob);
 }
 
 void SpatialDetectionNetwork::setBlob(const dai::Path& path) {
     neuralNetwork->setBlob(path);
+    detectionParser->setBlob(path);
 }
 
 void SpatialDetectionNetwork::setXmlModelPath(const dai::Path& xmlModelPath, const dai::Path& binModelPath) {
@@ -98,6 +101,10 @@ void SpatialDetectionNetwork::setDepthUpperThreshold(uint32_t upperThreshold) {
 
 void SpatialDetectionNetwork::setSpatialCalculationAlgorithm(dai::SpatialLocationCalculatorAlgorithm calculationAlgorithm) {
     properties.calculationAlgorithm = calculationAlgorithm;
+}
+
+void SpatialDetectionNetwork::setSpatialCalculationStepSize(int stepSize) {
+    properties.stepSize = stepSize;
 }
 
 //--------------------------------------------------------------------

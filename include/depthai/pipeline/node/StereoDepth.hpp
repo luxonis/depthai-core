@@ -68,6 +68,7 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      */
     Input right{true, *this, "right", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
 
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Input pixel descriptor for left ImgFrame.
      * Input type must be 4 bytes per pixel
@@ -75,6 +76,7 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      */
     Input inputLeftPixelDescriptor{true, *this, "inputLeftPixelDescriptor", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
 
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Input pixel descriptor for right ImgFrame.
      * Input type must be 4 bytes per pixel
@@ -162,7 +164,10 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      */
     Output confidenceMap{true, *this, "confidenceMap", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
+    // TODO(before mainline) - API not supported on RVC2
     Output pixelDescriptorsLeft{true, *this, "pixelDescriptorsLeft", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    // TODO(before mainline) - API not supported on RVC2
     Output pixelDescriptorsRight{true, *this, "pixelDescriptorsRight", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
@@ -366,6 +371,7 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      */
     void useHomographyRectification(bool useHomographyRectification);
 
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Whether to perform vertical stereo matching or not.
      * Default value is false.
@@ -373,6 +379,7 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      */
     void setVerticalStereo(bool verticalStereo);
 
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Whether to use custom pixel descriptors sent from host to device for debugging purposes.
      * Default value is false.
@@ -388,6 +395,53 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      * Whether to enable frame syncing inside stereo node or not. Suitable if inputs are known to be synced.
      */
     void setFrameSync(bool enableFrameSync);
+    // TODO(before mainline) - API not supported on RVC3
+    /**
+     * Override baseline from calibration.
+     * Used only in disparity to depth conversion.
+     * Units are centimeters.
+     */
+    void setBaseline(float baseline);
+
+    // TODO(before mainline) - API not supported on RVC3
+    /**
+     * Override focal length from calibration.
+     * Used only in disparity to depth conversion.
+     * Units are pixels.
+     */
+    void setFocalLength(float focalLength);
+
+    // TODO(before mainline) - API not supported on RVC3
+    /**
+     * Use baseline information for disparity to depth conversion from specs (design data) or from calibration.
+     * Default: true
+     */
+    void setDisparityToDepthUseSpecTranslation(bool specTranslation);
+
+    // TODO(before mainline) - API not supported on RVC3
+    /**
+     * Obtain rectification matrices using spec translation (design data) or from calibration in calculations.
+     * Should be used only for debugging.
+     * Default: false
+     */
+    void setRectificationUseSpecTranslation(bool specTranslation);
+
+    // TODO(before mainline) - API not supported on RVC3
+    /**
+     * Use baseline information for depth alignment from specs (design data) or from calibration.
+     * Default: true
+     */
+    void setDepthAlignmentUseSpecTranslation(bool specTranslation);
+
+    // TODO(before mainline) - API not supported on RVC3
+    /**
+     * Free scaling parameter between 0 (when all the pixels in the undistorted image are valid)
+     * and 1 (when all the source image pixels are retained in the undistorted image).
+     * On some high distortion lenses, and/or due to rectification (image rotated) invalid areas may appear even with alpha=0,
+     * in these cases alpha < 0.0 helps removing invalid areas.
+     * See getOptimalNewCameraMatrix from opencv for more details.
+     */
+    void setAlphaScaling(float alpha);
 };
 
 }  // namespace node

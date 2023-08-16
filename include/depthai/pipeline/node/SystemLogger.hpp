@@ -30,13 +30,15 @@ class SystemLogger : public NodeCRTP<DeviceNode, SystemLogger, SystemLoggerPrope
      * Optional - consumes an SystemInformation message from pool to send outwards
      * Otherwise uses dynamic allocation and/or default pool
      */
-    Input inputPool{
-        true, *this, "inputPool", Input::Type::MReceiver, false, 4, {{DatatypeEnum::SystemInformation, false}, {DatatypeEnum::SystemInformationS3, false}}};
+
+    // TODO(before mainline) - Clean up - add pools back in when ready
+    // Input inputPool{
+    //     true, *this, "inputPool", Input::Type::MReceiver, false, 4, {{DatatypeEnum::SystemInformation, false}, {DatatypeEnum::SystemInformationS3, false}}};
 
     /**
      * Default pool that is linked to inputPool input
      */
-    Subnode<Pool> pool{*this, "pool"};
+    // Subnode<Pool> pool{*this, "pool"};
 
     /**
      * Specify logging rate, at which messages will be sent out

@@ -204,8 +204,8 @@ bool Node::Output::trySend(const std::shared_ptr<ADatatype>& msg) {
     return success;
 }
 
-void Node::Input::setBlocking(bool blocking) {
-    this->blocking = blocking;
+void Node::Input::setBlocking(bool newBlocking) {
+    blocking = newBlocking;
 }
 
 bool Node::Input::getBlocking() const {
@@ -216,7 +216,7 @@ bool Node::Input::getBlocking() const {
 }
 
 void Node::Input::setQueueSize(int size) {
-    this->queueSize = size;
+    queueSize = size;
 }
 
 int Node::Input::getQueueSize() const {
@@ -226,16 +226,16 @@ int Node::Input::getQueueSize() const {
     return defaultQueueSize;
 }
 
-void Node::Input::setWaitForMessage(bool waitForMessage) {
-    this->waitForMessage = waitForMessage;
+void Node::Input::setWaitForMessage(bool newWaitForMessage) {
+    waitForMessage = newWaitForMessage;
 }
 
 bool Node::Input::getWaitForMessage() const {
     return waitForMessage.value_or(defaultWaitForMessage);
 }
 
-void Node::Input::setReusePreviousMessage(bool waitForMessage) {
-    this->waitForMessage = !waitForMessage;
+void Node::Input::setReusePreviousMessage(bool reusePreviousMessage) {
+    waitForMessage = !reusePreviousMessage;
 }
 
 bool Node::Input::getReusePreviousMessage() const {

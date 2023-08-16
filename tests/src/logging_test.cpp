@@ -1,7 +1,6 @@
-#define CATCH_CONFIG_MAIN
 #include <spdlog/spdlog.h>
 
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 #include <chrono>
 #include <thread>
 

@@ -30,6 +30,7 @@ class JoiningThread : private std::thread {
     using std::thread::hardware_concurrency;
     using std::thread::join;
     using std::thread::joinable;
+    using std::thread::native_handle;
 
     void swap(JoiningThread& x) {
         std::thread::swap(x);

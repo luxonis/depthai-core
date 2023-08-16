@@ -229,6 +229,24 @@ class ColorCamera : public NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperti
      */
     void setFps(float fps);
 
+    // TODO(before mainline) - API not supported on RVC3
+    /**
+     * Isp 3A rate (auto focus, auto exposure, auto white balance, camera controls etc.).
+     * Default (0) matches the camera FPS, meaning that 3A is running on each frame.
+     * Reducing the rate of 3A reduces the CPU usage on CSS, but also increases the convergence rate of 3A.
+     * Note that camera controls will be processed at this rate. E.g. if camera is running at 30 fps, and camera control is sent at every frame,
+     * but 3A fps is set to 15, the camera control messages will be processed at 15 fps rate, which will lead to queueing.
+
+     */
+    void setIsp3aFps(int isp3aFps);
+
+    // TODO(before mainline) - API not supported on RVC3
+    // Set events on which frames will be received
+    void setFrameEventFilter(const std::vector<dai::FrameEvent>& events);
+
+    // Get events on which frames will be received
+    std::vector<dai::FrameEvent> getFrameEventFilter() const;
+
     /**
      * Get rate at which camera should produce frames
      * @returns Rate in frames per second
@@ -332,8 +350,11 @@ class ColorCamera : public NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperti
     /// Get number of frames in isp pool
     int getIspNumFramesPool();
 
+    // TODO(before mainline) - API not supported on RVC2
     /// Set the source of the warp mesh or disable
     void setMeshSource(Properties::WarpMeshSource source);
+
+    // TODO(before mainline) - API not supported on RVC2
     /// Gets the source of the warp mesh
     Properties::WarpMeshSource getMeshSource() const;
 
@@ -353,29 +374,51 @@ class ColorCamera : public NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperti
      */
     // void loadMeshFile(const dai::Path& warpMesh);
 
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Specify mesh calibration data for undistortion
      * See `loadMeshFiles` for the expected data format
      */
     void loadMeshData(const std::vector<std::uint8_t> warpMesh);
 
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Set the distance between mesh points. Default: (32, 32)
      */
     void setMeshStep(int width, int height);
+
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Set mesh size
      */
     void setMeshSize(int width, int height);
+
+    // TODO(before mainline) - API not supported on RVC2
     /// Gets the distance between mesh points
     std::tuple<int, int> getMeshStep() const;
+
+    // TODO(before mainline) - API not supported on RVC2
     /// Gets the mesh size
     std::tuple<int, int> getMeshSize() const;
 
+    // TODO(before mainline) - API not supported on RVC2
     /// Set calibration alpha parameter that determines FOV of undistorted frames
     void setCalibrationAlpha(float alpha);
+
+    // TODO(before mainline) - API not supported on RVC2
     /// Get calibration alpha parameter that determines FOV of undistorted frames
     float getCalibrationAlpha() const;
+    // TODO(before mainline) - API not supported on RVC3
+    /**
+     * Configures whether the camera `raw` frames are saved as MIPI-packed to memory.
+     * The packed format is more efficient, consuming less memory on device, and less data
+     * to send to host: RAW10: 4 pixels saved on 5 bytes, RAW12: 2 pixels saved on 3 bytes.
+     * When packing is disabled (`false`), data is saved lsb-aligned, e.g. a RAW10 pixel
+     * will be stored as uint16, on bits 9..0: 0b0000'00pp'pppp'pppp.
+     * Default is auto: enabled for standard color/monochrome cameras where ISP can work
+     * with both packed/unpacked, but disabled for other cameras like ToF.
+     */
+    void setRawOutputPacked(bool packed);
 };
 
 }  // namespace node

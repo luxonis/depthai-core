@@ -43,23 +43,23 @@ std::string MonoCamera::getCamera() const {
 }
 
 // Set which color camera to use
-void MonoCamera::setCamId(int64_t id) {
+void MonoCamera::setCamId(int64_t camId) {
     // cast to board socket
-    switch(id) {
+    switch(camId) {
         case 0:
-            properties.boardSocket = CameraBoardSocket::RGB;
+            properties.boardSocket = CameraBoardSocket::CAM_A;
             break;
         case 1:
-            properties.boardSocket = CameraBoardSocket::LEFT;
+            properties.boardSocket = CameraBoardSocket::CAM_B;
             break;
         case 2:
-            properties.boardSocket = CameraBoardSocket::RIGHT;
+            properties.boardSocket = CameraBoardSocket::CAM_C;
             break;
         case 3:
             properties.boardSocket = CameraBoardSocket::CAM_D;
             break;
         default:
-            throw std::invalid_argument(fmt::format("CamId value: {} is invalid.", id));
+            throw std::invalid_argument(fmt::format("CamId value: {} is invalid.", camId));
             break;
     }
 }
@@ -88,8 +88,20 @@ MonoCameraProperties::SensorResolution MonoCamera::getResolution() const {
     return properties.resolution;
 }
 
+void MonoCamera::setFrameEventFilter(const std::vector<dai::FrameEvent>& events) {
+    properties.eventFilter = events;
+}
+
+std::vector<dai::FrameEvent> MonoCamera::getFrameEventFilter() const {
+    return properties.eventFilter;
+}
+
 void MonoCamera::setFps(float fps) {
     properties.fps = fps;
+}
+
+void MonoCamera::setIsp3aFps(int isp3aFps) {
+    properties.isp3aFps = isp3aFps;
 }
 
 float MonoCamera::getFps() const {
@@ -123,6 +135,14 @@ std::tuple<int, int> MonoCamera::getResolutionSize() const {
         case MonoCameraProperties::SensorResolution::THE_1200_P:
             return {1920, 1200};
             break;
+
+        case MonoCameraProperties::SensorResolution::THE_4000X3000:
+            return {4000, 3000};
+            break;
+
+        case MonoCameraProperties::SensorResolution::THE_4224X3136:
+            return {4224, 3136};
+            break;
     }
     return {1280, 720};
 }
@@ -147,6 +167,10 @@ int MonoCamera::getNumFramesPool() const {
 }
 int MonoCamera::getRawNumFramesPool() const {
     return properties.numFramesPoolRaw;
+}
+
+void MonoCamera::setRawOutputPacked(bool packed) {
+    properties.rawPacked = packed;
 }
 
 }  // namespace node

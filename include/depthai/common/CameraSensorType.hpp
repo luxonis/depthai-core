@@ -7,6 +7,9 @@
 // Global namespace
 inline std::ostream& operator<<(std::ostream& out, const dai::CameraSensorType& type) {
     switch(type) {
+        case dai::CameraSensorType::AUTO:
+            out << "AUTO";
+            break;
         case dai::CameraSensorType::COLOR:
             out << "COLOR";
             break;

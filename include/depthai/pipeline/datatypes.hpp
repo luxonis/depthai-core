@@ -20,5 +20,6 @@
 #include "datatype/StereoDepthConfig.hpp"
 #include "datatype/SystemInformation.hpp"
 #include "datatype/SystemInformationS3.hpp"
+#include "datatype/ToFConfig.hpp"
 #include "datatype/TrackedFeatures.hpp"
 #include "datatype/Tracklets.hpp"

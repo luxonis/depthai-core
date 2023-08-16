@@ -212,6 +212,14 @@ class DeviceBootloader {
     DeviceBootloader(const DeviceInfo& devInfo, const dai::Path& pathToBootloader, bool allowFlashingBootloader = false);
 
     /**
+     * Connects to device with specified name/device id
+     *
+     * @param nameOrDeviceId Creates DeviceInfo with nameOrDeviceId to connect to
+     * @param allowFlashingBootloader Set to true to allow flashing the devices bootloader. Defaults to false
+     */
+    DeviceBootloader(std::string nameOrDeviceId, bool allowFlashingBootloader = false);
+
+    /**
      * @brief Destroy the Device Bootloader object
      *
      */
@@ -263,7 +271,7 @@ class DeviceBootloader {
 
     /**
      * Clears flashed application on the device, by removing SBR boot structure
-     * Doesnt remove fast boot header capability to still boot the application
+     * Doesn't remove fast boot header capability to still boot the application
      */
     std::tuple<bool, std::string> flashClear(Memory memory = Memory::AUTO);
 
@@ -342,7 +350,7 @@ class DeviceBootloader {
      * @param memory Memory to read
      * @param offset Offset at which to read the specified bytes
      * @param size Number of bytes to read
-     * @param data Data to read to. Must be atleast 'size' number of bytes big
+     * @param data Data to read to. Must be at least 'size' number of bytes big
      * @param progressCallback Callback that sends back a value between 0..1 which signifies current reading progress
      */
     std::tuple<bool, std::string> readCustom(
@@ -458,6 +466,10 @@ class DeviceBootloader {
 
     /**
      * Is the device already closed (or disconnected)
+     *
+     * @warning This function is thread-unsafe and may return outdated incorrect values. It is
+     * only meant for use in simple single-threaded code. Well written code should handle
+     * exceptions when calling any DepthAI apis to handle hardware events and multithreaded use.
      */
     bool isClosed() const;
 
@@ -466,7 +478,6 @@ class DeviceBootloader {
 
     // private methods
     void init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl::optional<bootloader::Type> type, bool allowBlFlash);
-    void checkClosed() const;
     template <typename T>
     bool sendRequest(const T& request);
     template <typename T>

@@ -7,7 +7,8 @@ void SystemLogger::build() {
     // Set some default properties
     properties.rateHz = 1.0f;
     // Link pool to inputPool
-    pool->out.link(inputPool);
+    // TODO(before mainline) - Add pools if ready
+    // pool->out.link(inputPool);
 }
 
 void SystemLogger::setRate(float hz) {

@@ -29,7 +29,7 @@ int main() {
     // Rotate mono frames
     auto monoLeft = pipeline.create<dai::node::MonoCamera>();
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-    monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    monoLeft->setCamera("left");
 
     auto manipLeft = pipeline.create<dai::node::ImageManip>();
     dai::RotatedRect rr = {{monoLeft->getResolutionWidth() / 2.0f, monoLeft->getResolutionHeight() / 2.0f},  // center

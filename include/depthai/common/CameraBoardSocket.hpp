@@ -10,14 +10,14 @@ inline std::ostream& operator<<(std::ostream& out, const dai::CameraBoardSocket&
         case dai::CameraBoardSocket::AUTO:
             out << "AUTO";
             break;
-        case dai::CameraBoardSocket::RGB:
-            out << "RGB/CENTER/CAM_A";
+        case dai::CameraBoardSocket::CAM_A:
+            out << "CAM_A";
             break;
-        case dai::CameraBoardSocket::LEFT:
-            out << "LEFT/CAM_B";
+        case dai::CameraBoardSocket::CAM_B:
+            out << "CAM_B";
             break;
-        case dai::CameraBoardSocket::RIGHT:
-            out << "RIGHT/CAM_C";
+        case dai::CameraBoardSocket::CAM_C:
+            out << "CAM_C";
             break;
         case dai::CameraBoardSocket::VERTICAL:
             out << "VERTICAL/CAM_D";
@@ -33,6 +33,12 @@ inline std::ostream& operator<<(std::ostream& out, const dai::CameraBoardSocket&
             break;
         case dai::CameraBoardSocket::CAM_H:
             out << "CAM_H";
+            break;
+        case dai::CameraBoardSocket::CAM_I:
+            out << "CAM_I";
+            break;
+        case dai::CameraBoardSocket::CAM_J:
+            out << "CAM_J";
             break;
     }
     return out;
