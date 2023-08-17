@@ -31,7 +31,7 @@ std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::du
     }
 }
 std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> ImgFrame::getTimestampDevice(CameraExposureOffset offset) const {
-    auto ts = getTimestamp();
+    auto ts = getTimestampDevice();
     auto expTime = getExposureTime();
     switch(offset) {
         case CameraExposureOffset::START:
