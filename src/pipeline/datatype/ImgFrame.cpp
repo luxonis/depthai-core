@@ -196,37 +196,37 @@ void ImgFrame::set(RawImgFrame rawImgFrame) {
     img = rawImgFrame;
 }
 
-ImgFrame& ImgFrame::setMetadata(const dai::ImgFrame& sourceFrame) {
+ImgFrame& ImgFrame::setMetadata(const ImgFrame& sourceFrame) {
     set(sourceFrame.get());
     return *this;
 }
 
-dai::Point2f ImgFrame::remapPointFromSource(const dai::Point2f& point) const {
+Point2f ImgFrame::remapPointFromSource(const Point2f& point) const {
     if(point.isNormalized()) {
         throw std::runtime_error("Point must be denormalized");
     }
-    dai::Point2f transformedPoint = point;
+    Point2f transformedPoint = point;
     bool isClipped = false;
     for(auto& transformation : transformations.transformations) {
-        transformedPoint = dai::ImgTransformation::transformPoint(transformation, transformedPoint, isClipped);
+        transformedPoint = ImgTransformation::transformPoint(transformation, transformedPoint, isClipped);
     }
     return transformedPoint;
 }
 
-dai::Point2f ImgFrame::remapPointToSource(const dai::Point2f& point) const {
+Point2f ImgFrame::remapPointToSource(const Point2f& point) const {
     if(point.isNormalized()) {
         throw std::runtime_error("Point must be denormalized");
     }
-    dai::Point2f transformedPoint = point;
+    Point2f transformedPoint = point;
     bool isClipped = false;
     // Do the loop in reverse order
     for(auto it = transformations.transformations.rbegin(); it != transformations.transformations.rend(); ++it) {
-        transformedPoint = dai::ImgTransformation::invTransformPoint(*it, transformedPoint, isClipped);
+        transformedPoint = ImgTransformation::invTransformPoint(*it, transformedPoint, isClipped);
     }
     return transformedPoint;
 }
 
-dai::Rect ImgFrame::remapRectFromSource(const dai::Rect& rect) const {
+Rect ImgFrame::remapRectFromSource(const Rect& rect) const {
     bool isNormalized = rect.isNormalized();
     auto returnRect = rect;
     if(isNormalized) {
@@ -234,14 +234,14 @@ dai::Rect ImgFrame::remapRectFromSource(const dai::Rect& rect) const {
     }
     auto topLeftTransformed = remapPointFromSource(returnRect.topLeft());
     auto bottomRightTransformed = remapPointFromSource(returnRect.bottomRight());
-    returnRect = dai::Rect(topLeftTransformed, bottomRightTransformed);
+    returnRect = Rect(topLeftTransformed, bottomRightTransformed);
     if(isNormalized) {
         returnRect = returnRect.normalize(getWidth(), getHeight());
     }
     return returnRect;
 }
 
-dai::Rect ImgFrame::remapRectToSource(const dai::Rect& rect) const {
+Rect ImgFrame::remapRectToSource(const Rect& rect) const {
     bool isNormalized = rect.isNormalized();
     auto returnRect = rect;
     if(isNormalized) {
@@ -250,7 +250,7 @@ dai::Rect ImgFrame::remapRectToSource(const dai::Rect& rect) const {
     auto topLeftTransformed = remapPointToSource(returnRect.topLeft());
     auto bottomRightTransformed = remapPointToSource(returnRect.bottomRight());
 
-    returnRect = dai::Rect(topLeftTransformed, bottomRightTransformed);
+    returnRect = Rect(topLeftTransformed, bottomRightTransformed);
     if(isNormalized) {
         returnRect = returnRect.normalize(getSourceWidth(), getSourceHeight());
     }
@@ -373,7 +373,7 @@ bool ImgFrame::validateTransformations() const {
     return true;
 }
 
-dai::Point2f ImgFrame::remapPointBetweenSourceFrames(const dai::Point2f& point, const dai::ImgFrame& sourceImage, const dai::ImgFrame& destImage) {
+Point2f ImgFrame::remapPointBetweenSourceFrames(const Point2f& point, const ImgFrame& sourceImage, const ImgFrame& destImage) {
     auto hFovDegreeDest = destImage.getSourceHFov();
     auto vFovDegreeDest = destImage.getSourceVFov();
     auto hFovDegreeOrigin = sourceImage.getSourceHFov();
@@ -421,18 +421,18 @@ dai::Point2f ImgFrame::remapPointBetweenSourceFrames(const dai::Point2f& point, 
     int adjustedFrameY = returnPoint.y + diffY;
 
     // Scale the point back to the destination frame
-    returnPoint = dai::Point2f(std::round(adjustedFrameX / kX), std::round(adjustedFrameY / kY));
+    returnPoint = Point2f(std::round(adjustedFrameX / kX), std::round(adjustedFrameY / kY));
     bool pointClipped = false;
     returnPoint = ImgTransformation::clipPoint(returnPoint, destImage.getSourceWidth(), destImage.getSourceHeight(), pointClipped);
 
     return returnPoint;
 }
 
-dai::Point2f ImgFrame::remapPointBetweenFrames(const dai::Point2f& originPoint, const ImgFrame& originFrame, const ImgFrame& destFrame) {
+Point2f ImgFrame::remapPointBetweenFrames(const Point2f& originPoint, const ImgFrame& originFrame, const ImgFrame& destFrame) {
     // First get the origin to the origin image
     // For example if this is a RGB image that was cropped and rotated and the detection was done there,
     // you remap it back as it was taken on the camera
-    dai::Point2f transformedPoint = originPoint;
+    Point2f transformedPoint = originPoint;
     transformedPoint = originFrame.remapPointToSource(transformedPoint);
     if(originFrame.getInstanceNum() != destFrame.getInstanceNum()) {
         transformedPoint = remapPointBetweenSourceFrames(transformedPoint, originFrame, destFrame);
@@ -447,13 +447,13 @@ dai::Point2f ImgFrame::remapPointBetweenFrames(const dai::Point2f& originPoint, 
     return transformedPoint;
 }
 
-dai::Rect ImgFrame::remapRectBetweenFrames(const dai::Rect& originRect, const dai::ImgFrame& originFrame, const dai::ImgFrame& destFrame) {
+Rect ImgFrame::remapRectBetweenFrames(const Rect& originRect, const ImgFrame& originFrame, const ImgFrame& destFrame) {
     bool normalized = originRect.isNormalized();
     auto returnRect = originRect;
     returnRect = returnRect.denormalize(originFrame.getWidth(), originFrame.getHeight());
     auto topLeftTransformed = remapPointBetweenFrames(returnRect.topLeft(), originFrame, destFrame);
     auto bottomRightTransformed = remapPointBetweenFrames(returnRect.bottomRight(), originFrame, destFrame);
-    returnRect = dai::Rect{topLeftTransformed, bottomRightTransformed};
+    returnRect = Rect{topLeftTransformed, bottomRightTransformed};
     if(normalized) {
         returnRect = returnRect.normalize(destFrame.getWidth(), destFrame.getHeight());
     }
