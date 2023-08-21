@@ -19,8 +19,7 @@ void ColorCamera::build() {
     // Set some default properties
     properties.boardSocket = CameraBoardSocket::AUTO;
     properties.imageOrientation = CameraImageOrientation::AUTO;
-    properties.colorOrder = ColorCameraProperties::ColorOrder::BGR;
-    properties.interleaved = true;
+    properties.previewType = RawImgFrame::Type::BGR888i;
     properties.previewHeight = 300;
     properties.previewWidth = 300;
     properties.resolution = ColorCameraProperties::SensorResolution::THE_1080_P;
@@ -91,56 +90,72 @@ CameraImageOrientation ColorCamera::getImageOrientation() const {
 
 // setColorOrder - RGB or BGR
 void ColorCamera::setColorOrder(ColorCameraProperties::ColorOrder colorOrder) {
-    // TODO Depreciate this API
+    bool isInterleaved = RawImgFrame::isInterleaved(properties.previewType);
+    bool isFp16 = getFp16();
     switch(colorOrder) {
         case ColorCameraProperties::ColorOrder::BGR:
-            if(properties.interleaved) {
-                properties.previewType = ImgFrame::Type::BGR888i;
+            if(isInterleaved) {
+                if(isFp16){
+                    properties.previewType = ImgFrame::Type::BGRF16F16F16i;
+                } else {
+                    properties.previewType = ImgFrame::Type::BGR888i;
+                }
             } else {
-                properties.previewType = ImgFrame::Type::BGR888p;
+                if(isFp16){
+                    properties.previewType = ImgFrame::Type::BGRF16F16F16p;
+                } else {
+                    properties.previewType = ImgFrame::Type::BGR888p;
+                }
             }
             break;
         case ColorCameraProperties::ColorOrder::RGB:
-            if(properties.interleaved) {
-                properties.previewType = ImgFrame::Type::RGB888i;
+            if(isInterleaved) {
+                if(isFp16){
+                    properties.previewType = ImgFrame::Type::RGBF16F16F16i;
+                } else {
+                    properties.previewType = ImgFrame::Type::RGB888i;
+                }
             } else {
-                properties.previewType = ImgFrame::Type::RGB888p;
+                if(isFp16){
+                    properties.previewType = ImgFrame::Type::RGBF16F16F16p;
+                } else {
+                    properties.previewType = ImgFrame::Type::RGB888p;
+                }
             }
             break;
-        default:
-            throw std::runtime_error("Not handled value in switch");
     }
-
-    properties.colorOrder = colorOrder;
 }
 
 // getColorOrder - returns color order
 ColorCameraProperties::ColorOrder ColorCamera::getColorOrder() const {
-    return properties.colorOrder;
+    if(properties.previewType == ImgFrame::Type::RGB888i || properties.previewType == ImgFrame::Type::RGB888p
+       || properties.previewType == ImgFrame::Type::RGBF16F16F16i || properties.previewType == ImgFrame::Type::RGBF16F16F16p) {
+        return ColorCameraProperties::ColorOrder::RGB;
+    } else if(properties.previewType == ImgFrame::Type::BGR888i || properties.previewType == ImgFrame::Type::BGR888p
+              || properties.previewType == ImgFrame::Type::BGRF16F16F16i || properties.previewType == ImgFrame::Type::BGRF16F16F16p) {
+        return ColorCameraProperties::ColorOrder::BGR;
+    } else {
+        // Nothing sensible to return here, return BGR as default
+        return ColorCameraProperties::ColorOrder::BGR;
+    }
 }
 
 // setInterleaved
 void ColorCamera::setInterleaved(bool interleaved) {
-    // TODO Depreciate this API
-    if(interleaved) {
-        if(properties.previewType == ImgFrame::Type::RGB888p) {
-            properties.previewType = ImgFrame::Type::RGB888i;
-        } else if(properties.previewType == ImgFrame::Type::BGR888p) {
-            properties.previewType = ImgFrame::Type::BGR888i;
+    if(RawImgFrame::isInterleaved(properties.previewType)) {
+        if(!interleaved) {
+            properties.previewType = RawImgFrame::toPlanar(properties.previewType);
         }
     } else {
-        if(properties.previewType == ImgFrame::Type::RGB888i) {
-            properties.previewType = ImgFrame::Type::RGB888p;
-        } else if(properties.previewType == ImgFrame::Type::BGR888i) {
-            properties.previewType = ImgFrame::Type::BGR888p;
+        if(interleaved) {
+            properties.previewType = RawImgFrame::toInterleaved(properties.previewType);
         }
     }
-    properties.interleaved = interleaved;
 }
 
 // getInterleaved
 bool ColorCamera::getInterleaved() const {
-    return properties.interleaved;
+    return RawImgFrame::isInterleaved(properties.previewType);
 }
 
 /// Set type of preview output image
@@ -155,12 +170,47 @@ ImgFrame::Type ColorCamera::getPreviewType() const {
 
 // setFp16
 void ColorCamera::setFp16(bool fp16) {
-    properties.fp16 = fp16;
+    auto order = getColorOrder();
+    auto interleaved = getInterleaved();
+    if(fp16) {
+        if(order == ColorCameraProperties::ColorOrder::BGR) {
+            if(interleaved) {
+                properties.previewType = ImgFrame::Type::BGRF16F16F16i;
+            } else {
+                properties.previewType = ImgFrame::Type::BGRF16F16F16p;
+            }
+        } else {
+            if(interleaved) {
+                properties.previewType = ImgFrame::Type::RGBF16F16F16i;
+            } else {
+                properties.previewType = ImgFrame::Type::RGBF16F16F16p;
+            }
+        }
+    } else {
+        if(order == ColorCameraProperties::ColorOrder::BGR) {
+            if(interleaved) {
+                properties.previewType = ImgFrame::Type::BGR888i;
+            } else {
+                properties.previewType = ImgFrame::Type::BGR888p;
+            }
+        } else {
+            if(interleaved) {
+                properties.previewType = ImgFrame::Type::RGB888i;
+            } else {
+                properties.previewType = ImgFrame::Type::RGB888p;
+            }
+        }
+    }
 }
 
 // getFp16
 bool ColorCamera::getFp16() const {
-    return properties.fp16;
+    if(properties.previewType == ImgFrame::Type::BGRF16F16F16i || properties.previewType == ImgFrame::Type::BGRF16F16F16p
+       || properties.previewType == ImgFrame::Type::RGBF16F16F16i || properties.previewType == ImgFrame::Type::RGBF16F16F16p) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 // set preview output size
