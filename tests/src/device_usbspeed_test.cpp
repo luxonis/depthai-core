@@ -53,8 +53,7 @@ TEST_CASE("UsbSpeed::SUPER_PLUS") {
     verifyInfo(d);
 }
 
-TEST_CASE("Pipeline config usb speed == SUPER")
-{   
+TEST_CASE("Pipeline config usb speed == SUPER") {
     dai::Pipeline p;
     makeInfo(p);
 
@@ -70,8 +69,7 @@ TEST_CASE("Pipeline config usb speed == SUPER")
     verifyInfo(d);
 }
 
-TEST_CASE("Pipeline config usb speed == HIGH")
-{
+TEST_CASE("Pipeline config usb speed == HIGH") {
     dai::Pipeline p;
     makeInfo(p);
 
