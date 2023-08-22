@@ -35,6 +35,7 @@
 #include "depthai-shared/device/CrashDump.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
+//#include "depthai-shared/common/Connectivity.hpp"
 
 namespace dai {
 
@@ -584,6 +585,14 @@ class DeviceBase {
      * @returns IMU type
      */
     std::string getConnectedIMU();
+
+   // dai::Connectivity getConnectivity();
+   /**
+     * Get connctivity type
+     *
+     * @returns connectivity type
+     */
+   std::string getConnectivity();
 
     /**
      * Get connected IMU firmware version

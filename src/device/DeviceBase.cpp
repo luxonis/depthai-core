@@ -14,6 +14,7 @@
 #include "depthai-shared/pipeline/Assets.hpp"
 #include "depthai-shared/utility/Serialization.hpp"
 #include "depthai-shared/xlink/XLinkConstants.hpp"
+//#include "depthai-shared/common/Connectivity.hpp"
 
 // project
 #include "DeviceLogger.hpp"
@@ -974,6 +975,14 @@ std::unordered_map<CameraBoardSocket, std::string> DeviceBase::getCameraSensorNa
 
 std::string DeviceBase::getConnectedIMU() {
     return pimpl->rpcClient->call("getConnectedIMU").as<std::string>();
+}
+
+// dai::Connectivity DeviceBase::getConnectivity(){
+//     return pimpl->rpcClient->call("getConnectivity").as<dai::Connectivity>();
+// }
+
+std::string DeviceBase::getConnectivity(){
+    return pimpl->rpcClient->call("getConnectivity").as<std::string>();
 }
 
 dai::Version DeviceBase::getIMUFirmwareVersion() {
