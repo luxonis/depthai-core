@@ -135,6 +135,14 @@ std::tuple<int, int> MonoCamera::getResolutionSize() const {
         case MonoCameraProperties::SensorResolution::THE_1200_P:
             return {1920, 1200};
             break;
+
+        case MonoCameraProperties::SensorResolution::THE_4000X3000:
+            return {4000, 3000};
+            break;
+
+        case MonoCameraProperties::SensorResolution::THE_4224X3136:
+            return {4224, 3136};
+            break;
     }
     return {1280, 720};
 }
