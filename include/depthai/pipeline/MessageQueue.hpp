@@ -6,10 +6,10 @@
 #include <vector>
 
 // project
+#include "depthai-shared/utility/LockingQueue.hpp"
 #include "depthai/pipeline/SideChannel.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/TraceEvents.hpp"
-#include "depthai-shared/utility/LockingQueue.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
 // shared
@@ -94,9 +94,9 @@ class MessageQueue {
 
     /**
      * Gets queue current size
-     * 
+     *
      * @returns Queue size
-    */
+     */
     unsigned int getSize() const {
         return queue.getSize();
     }
@@ -420,8 +420,8 @@ class MessageQueue {
 
     /**
      * Set the queue id
-    */
-    void setId(int id){
+     */
+    void setId(int id) {
         this->id = id;
     }
 };

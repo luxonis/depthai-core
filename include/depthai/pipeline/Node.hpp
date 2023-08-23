@@ -132,11 +132,11 @@ class Node : public std::enable_shared_from_this<Node> {
             return parent;
         }
 
-        void setId(int id){
+        void setId(int id) {
             this->id = id;
         }
 
-        int getId(){
+        int getId() {
             return id;
         }
 
@@ -335,12 +335,12 @@ class Node : public std::enable_shared_from_this<Node> {
             return parent;
         }
 
-        void setId(int id){
+        void setId(int id) {
             this->id = id;
             this->queue.setId(id);
         }
 
-        int getId(){
+        int getId() {
             return id;
         }
 
@@ -628,7 +628,6 @@ class Node : public std::enable_shared_from_this<Node> {
 
     // TODO(morato) make private
     std::shared_ptr<SideChannel> sideChannel;
-
 
    protected:
     AssetManager assetManager;
