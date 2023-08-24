@@ -29,6 +29,11 @@ class VideoEncoder : public NodeCRTP<Node, VideoEncoder, VideoEncoderProperties>
      */
     Output bitstream{*this, "bitstream", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
+    /**
+     * Outputs EncodedFrame message that carries encoded (MJPEG, H264 or H265) frame data.
+     */
+    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::EncodedFrame, false}}};
+
     // Sets default options for a specified size and profile
     /**
      * Sets a default preset based on specified frame rate and profile
