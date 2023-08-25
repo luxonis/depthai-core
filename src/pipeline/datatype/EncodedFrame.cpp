@@ -27,10 +27,10 @@ int64_t EncodedFrame::getSequenceNum() const {
     return frame.sequenceNum;
 }
 unsigned int EncodedFrame::getWidth() const {
-    return frame.fb.width;
+    return frame.width;
 }
 unsigned int EncodedFrame::getHeight() const {
-    return frame.fb.height;
+    return frame.height;
 }
 unsigned int EncodedFrame::getQuality() const {
     return frame.quality;
@@ -39,7 +39,7 @@ bool EncodedFrame::getLossless() const {
     return frame.lossless;
 }
 EncodedFrame::FrameType EncodedFrame::getFrameType() const {
-    return frame.frameType;
+    return frame.type;
 }
 EncodedFrame::Profile EncodedFrame::getProfile() const {
     return frame.profile;
@@ -92,7 +92,7 @@ EncodedFrame& EncodedFrame::setLossless(bool lossless) {
     return *this;
 }
 EncodedFrame& EncodedFrame::setFrameType(FrameType frameType) {
-    frame.frameType = frameType;
+    frame.type = frameType;
     return *this;
 }
 EncodedFrame& EncodedFrame::setProfile(Profile profile) {
