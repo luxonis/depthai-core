@@ -10,6 +10,7 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 // shared
+#include "depthai-shared/common/Rect.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
 
 // optional
@@ -40,9 +41,7 @@ class ImgFrame : public Buffer {
     ImgFrame(size_t size);
     explicit ImgFrame(std::shared_ptr<RawImgFrame> ptr);
     virtual ~ImgFrame() = default;
-
-    // TODO(before mainline) - API not supported on RVC2
-    ImgTransformation& transformation;
+    ImgTransformations& transformations;
 
     // getters
     /**
@@ -217,22 +216,6 @@ class ImgFrame : public Buffer {
 
     // TODO(before mainline) - API not supported on RVC2
     /**
-     * Specifies source frame width
-     *
-     * @param width frame width
-     */
-    ImgFrame& setSourceWidth(unsigned int width);
-
-    // TODO(before mainline) - API not supported on RVC2
-    /**
-     * Specifies source frame height
-     *
-     * @param height frame height
-     */
-    ImgFrame& setSourceHeight(unsigned int height);
-
-    // TODO(before mainline) - API not supported on RVC2
-    /**
      * Specifies source frame size
      *
      * @param height frame height
@@ -259,6 +242,111 @@ class ImgFrame : public Buffer {
      * Set raw data for ImgFrame.
      */
     void set(dai::RawImgFrame rawImgFrame);
+    /**
+     * Remap a point from the current frame to the source frame
+     * @param point point to remap
+     * @returns remapped point
+     */
+    Point2f remapPointFromSource(const Point2f& point) const;
+
+    /**
+     * Remap a point from the source frame to the current frame
+     * @param point point to remap
+     * @returns remapped point
+     */
+    Point2f remapPointToSource(const Point2f& point) const;
+
+    /**
+     * Remap a rectangle from the source frame to the current frame
+     *
+     * @param rect rectangle to remap
+     * @returns remapped rectangle
+     */
+    Rect remapRectFromSource(const Rect& rect) const;
+
+    /**
+     * Remap a rectangle from the current frame to the source frame
+     *
+     * @param rect rectangle to remap
+     * @returns remapped rectangle
+     */
+    Rect remapRectToSource(const Rect& rect) const;
+
+    /**
+     * Convience function to initialize meta data from another frame
+     * Copies over timestamps, transformations done on the image, etc.
+     * @param sourceFrame source frame from which the metadata is taken from
+     */
+    ImgFrame& setMetadata(const ImgFrame& sourceFrame);
+
+    /**
+     * @note Fov API works correctly only on rectilinear frames
+     * Set the source horizontal field of view
+     *
+     * @param degrees field of view in degrees
+     */
+    ImgFrame& setSourceHFov(float degrees);
+
+    /**
+     * @note Fov API works correctly only on rectilinear frames
+     * Get the source diagonal field of view in degrees
+     *
+     * @returns field of view in degrees
+     */
+    float getSourceDFov() const;
+
+    /**
+     * @note Fov API works correctly only on rectilinear frames
+     * Get the source horizontal field of view
+     *
+     * @param degrees field of view in degrees
+     */
+    float getSourceHFov() const;
+
+    /**
+     * @note Fov API works correctly only on rectilinear frames
+     * Get the source vertical field of view
+     *
+     * @param degrees field of view in degrees
+     */
+    float getSourceVFov() const;
+
+    /**
+     * Check that the image transformation match the image size
+     *
+     * @returns true if the transformations are valid
+     */
+    bool validateTransformations() const;
+
+    /**
+     * Remap point between two source frames
+     * @param point point to remap
+     * @param sourceImage source image
+     * @param destImage destination image
+     *
+     * @returns remapped point
+     */
+    static Point2f remapPointBetweenSourceFrames(const Point2f& originPoint, const ImgFrame& sourceImage, const ImgFrame& destImage);
+
+    /**
+     * Remap point between two frames
+     * @param originPoint point to remap
+     * @param originFrame origin frame
+     * @param destFrame destination frame
+     *
+     * @returns remapped point
+     */
+    static Point2f remapPointBetweenFrames(const Point2f& originPoint, const ImgFrame& originFrame, const ImgFrame& destFrame);
+
+    /**
+     * Remap rectangle between two frames
+     * @param originRect rectangle to remap
+     * @param originFrame origin frame
+     * @param destFrame destination frame
+     *
+     * @returns remapped rectangle
+     */
+    static Rect remapRectBetweenFrames(const Rect& originRect, const ImgFrame& originFrame, const ImgFrame& destFrame);
 
 // Optional - OpenCV support
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT

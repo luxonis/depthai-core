@@ -13,10 +13,10 @@
 #include "depthai-shared/common/CameraInfo.hpp"
 #include "depthai-shared/common/Extrinsics.hpp"
 #include "depthai-shared/common/Point3f.hpp"
+#include "depthai-shared/utility/matrixOps.hpp"
 #include "nlohmann/json.hpp"
 #include "spdlog/spdlog.h"
 #include "utility/Logging.hpp"
-#include "utility/matrixOps.hpp"
 
 namespace dai {
 

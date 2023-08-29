@@ -2,7 +2,7 @@
 
 #include <depthai/pipeline/DeviceNode.hpp>
 #include <depthai/pipeline/datatype/CameraControl.hpp>
-
+#include <depthai/pipeline/datatype/ImgFrame.hpp>
 // shared
 #include <depthai-shared/properties/ColorCameraProperties.hpp>
 
@@ -137,22 +137,28 @@ class ColorCamera : public NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperti
     CameraImageOrientation getImageOrientation() const;
 
     /// Set color order of preview output images. RGB or BGR
-    void setColorOrder(ColorCameraProperties::ColorOrder colorOrder);
+    [[deprecated("Use 'setPreviewType()' instead")]] void setColorOrder(ColorCameraProperties::ColorOrder colorOrder);
 
     /// Get color order of preview output frames. RGB or BGR
-    ColorCameraProperties::ColorOrder getColorOrder() const;
+    [[deprecated("Use 'getPreviewType()' instead")]] ColorCameraProperties::ColorOrder getColorOrder() const;
 
     /// Set planar or interleaved data of preview output frames
-    void setInterleaved(bool interleaved);
+    [[deprecated("Use 'setPreviewType()' instead")]] void setInterleaved(bool interleaved);
 
     /// Get planar or interleaved data of preview output frames
-    bool getInterleaved() const;
+    [[deprecated("Use 'getPreviewType()' instead")]] bool getInterleaved() const;
+
+    /// Set type of preview output images.
+    void setPreviewType(ImgFrame::Type type);
+
+    /// Get the preview type
+    ImgFrame::Type getPreviewType() const;
 
     /// Set fp16 (0..255) data type of preview output frames
-    void setFp16(bool fp16);
+    [[deprecated("Use 'setPreviewType()' instead")]] void setFp16(bool fp16);
 
     /// Get fp16 (0..255) data of preview output frames
-    bool getFp16() const;
+    [[deprecated("Use 'getPreviewType()' instead")]] bool getFp16() const;
 
     /// Set preview output size
     void setPreviewSize(int width, int height);
