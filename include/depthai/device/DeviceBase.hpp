@@ -755,6 +755,14 @@ class DeviceBase {
     void flashEepromClear();
 
     /**
+     * Get the size of the NOR flash memory in bytes.
+     * If NOR flash is not present or an error occurs while trying to get it's size, 0 is returned.
+     *  
+     * @return uint64_t 
+     */
+    uint64_t getFlashMemorySize();
+
+    /**
      * Destructive action, deletes Factory area EEPROM contents
      * Requires FACTORY PROTECTED permissions
      *
