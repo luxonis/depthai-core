@@ -89,18 +89,18 @@ void XLinkStream::write(const std::vector<std::uint8_t>& data) {
     write(data.data(), data.size());
 }
 
-void XLinkStream::read(std::vector<std::uint8_t>& data) {
+void XLinkStream::read(std::vector<std::uint8_t>& data, struct timespec* out_time) {
     StreamPacketDesc packet;
-    const auto status = XLinkReadMoveData(streamId, &packet);
+    const auto status = XLinkReadMoveDataWithTime(streamId, &packet, out_time);
     if(status != X_LINK_SUCCESS) {
         throw XLinkReadError(status, streamName);
     }
     data = std::vector<std::uint8_t>(packet.data, packet.data + packet.length);
 }
 
-std::vector<std::uint8_t> XLinkStream::read() {
+std::vector<std::uint8_t> XLinkStream::read(struct timespec* out_time) {
     std::vector<std::uint8_t> data;
-    read(data);
+    read(data, out_time);
     return data;
 }
 

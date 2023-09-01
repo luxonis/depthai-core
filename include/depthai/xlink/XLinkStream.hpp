@@ -54,8 +54,8 @@ class XLinkStream {
     void write(const void* data, std::size_t size);
     void write(const std::uint8_t* data, std::size_t size);
     void write(const std::vector<std::uint8_t>& data);
-    std::vector<std::uint8_t> read();
-    void read(std::vector<std::uint8_t>& data);
+    std::vector<std::uint8_t> read(struct timespec* out_time = NULL);
+    void read(std::vector<std::uint8_t>& data, struct timespec* out_time = NULL);
     // split write helper
     void writeSplit(const void* data, std::size_t size, std::size_t split);
     void writeSplit(const std::vector<uint8_t>& data, std::size_t split);
