@@ -1374,7 +1374,9 @@ int64_t DeviceBase::getEmmcMemorySize() {
     return pimpl->rpcClient->call("getEmmcMemorySize").as<int64_t>();
 }
 
-
+uint64_t DeviceBase::getFlashMemorySize() {
+    return pimpl->rpcClient->call("getFlashMemorySize").as<uint64_t>();
+}
 
 bool DeviceBase::startPipeline() {
     // Deprecated
