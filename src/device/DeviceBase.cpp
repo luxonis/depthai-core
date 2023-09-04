@@ -1403,10 +1403,10 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     pipeline.serialize(schema, assets, assetStorage);
 
     // if debug
-    if(spdlog::get_level() <= spdlog::level::debug) {
+    if(logger::get_level() <= spdlog::level::debug) {
         auto pipelineSer = pipeline.serializeToJson();
-        spdlog::debug("Schema dump: {}", pipelineSer["pipeline"].dump());
-        spdlog::debug("Asset map dump: {}", pipelineSer["assets"].dump());
+        pimpl->logger.debug("Schema dump: {}", pipelineSer["pipeline"].dump());
+        pimpl->logger.debug("Asset map dump: {}", pipelineSer["assets"].dump());
     }
 
     // Load pipelineDesc, assets, and asset storage
