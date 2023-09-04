@@ -247,14 +247,14 @@ class ImgFrame : public Buffer {
      * @param point point to remap
      * @returns remapped point
      */
-    dai::Point2f remapPointFromSource(const dai::Point2f& point) const;
+    Point2f remapPointFromSource(const Point2f& point) const;
 
     /**
      * Remap a point from the source frame to the current frame
      * @param point point to remap
      * @returns remapped point
      */
-    dai::Point2f remapPointToSource(const dai::Point2f& point) const;
+    Point2f remapPointToSource(const Point2f& point) const;
 
     /**
      * Remap a rectangle from the source frame to the current frame
@@ -262,7 +262,7 @@ class ImgFrame : public Buffer {
      * @param rect rectangle to remap
      * @returns remapped rectangle
      */
-    dai::Rect remapRectFromSource(const dai::Rect& rect) const;
+    Rect remapRectFromSource(const Rect& rect) const;
 
     /**
      * Remap a rectangle from the current frame to the source frame
@@ -270,14 +270,14 @@ class ImgFrame : public Buffer {
      * @param rect rectangle to remap
      * @returns remapped rectangle
      */
-    dai::Rect remapRectToSource(const dai::Rect& rect) const;
+    Rect remapRectToSource(const Rect& rect) const;
 
     /**
      * Convience function to initialize meta data from another frame
      * Copies over timestamps, transformations done on the image, etc.
      * @param sourceFrame source frame from which the metadata is taken from
      */
-    ImgFrame& setMetadata(const dai::ImgFrame& sourceFrame);
+    ImgFrame& setMetadata(const ImgFrame& sourceFrame);
 
     /**
      * @note Fov API works correctly only on rectilinear frames
@@ -326,7 +326,7 @@ class ImgFrame : public Buffer {
      *
      * @returns remapped point
      */
-    static dai::Point2f remapPointBetweenSourceFrames(const dai::Point2f& originPoint, const dai::ImgFrame& sourceImage, const dai::ImgFrame& destImage);
+    static Point2f remapPointBetweenSourceFrames(const Point2f& originPoint, const ImgFrame& sourceImage, const ImgFrame& destImage);
 
     /**
      * Remap point between two frames
@@ -336,7 +336,7 @@ class ImgFrame : public Buffer {
      *
      * @returns remapped point
      */
-    static dai::Point2f remapPointBetweenFrames(const dai::Point2f& originPoint, const dai::ImgFrame& originFrame, const dai::ImgFrame& destFrame);
+    static Point2f remapPointBetweenFrames(const Point2f& originPoint, const ImgFrame& originFrame, const ImgFrame& destFrame);
 
     /**
      * Remap rectangle between two frames
@@ -346,7 +346,7 @@ class ImgFrame : public Buffer {
      *
      * @returns remapped rectangle
      */
-    static dai::Rect remapRectBetweenFrames(const dai::Rect& originRect, const dai::ImgFrame& originFrame, const dai::ImgFrame& destFrame);
+    static Rect remapRectBetweenFrames(const Rect& originRect, const ImgFrame& originFrame, const ImgFrame& destFrame);
 
 // Optional - OpenCV support
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
