@@ -846,11 +846,15 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
             Timestamp timestamp = {};
             while(timesyncRunning) {
                 // Block
-                struct timespec treceive;
-                stream.read(&treceive);
+                stream.read();
+                
+                // Timestamp
+                auto d = std::chrono::steady_clock::now().time_since_epoch();
+                timestamp.sec = duration_cast<seconds>(d).count();
+                timestamp.nsec = duration_cast<nanoseconds>(d).count() % 1000000000;                
 
                 // Write timestamp back
-                stream.write(&treceive, sizeof(timestamp));
+                stream.write(&timestamp, sizeof(timestamp));
             }
         } catch(const std::exception& ex) {
             // ignore
