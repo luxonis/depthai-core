@@ -843,15 +843,10 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
 
         try {
             XLinkStream stream(connection, device::XLINK_CHANNEL_TIMESYNC, 128);
-            Timestamp timestamp = {};
             while(timesyncRunning) {
                 // Block
-                stream.read();
-                
-                // Timestamp
-                auto d = std::chrono::steady_clock::now().time_since_epoch();
-                timestamp.sec = duration_cast<seconds>(d).count();
-                timestamp.nsec = duration_cast<nanoseconds>(d).count() % 1000000000;                
+                struct timespec timestamp;
+                stream.read(&timestamp);              
 
                 // Write timestamp back
                 stream.write(&timestamp, sizeof(timestamp));
