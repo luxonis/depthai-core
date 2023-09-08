@@ -763,6 +763,13 @@ class DeviceBase {
     uint64_t getFlashMemorySize();
 
     /**
+     * Flash the bootloader configuration.
+     * 
+    */
+    void flashBootloaderConfig(dai::bootloader::Config& config, dai::bootloader::Type type);
+
+
+    /**
      * Destructive action, deletes Factory area EEPROM contents
      * Requires FACTORY PROTECTED permissions
      *

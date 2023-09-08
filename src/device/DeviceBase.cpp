@@ -1378,6 +1378,16 @@ uint64_t DeviceBase::getFlashMemorySize() {
     return pimpl->rpcClient->call("getFlashMemorySize").as<uint64_t>();
 }
 
+void DeviceBase::flashBootloaderConfig(dai::bootloader::Config& config, dai::bootloader::Type type) {
+    std::vector<uint8_t> package = nlohmann::json::to_bson(nlohmann::json(config));
+    uint32_t checksum = sbr_compute_checksum(package.data(), package.size());
+    off_t offset = dai::bootloader::getStructure(type).offset.at(Section::BOOTLOADER_CONFIG);
+    DeviceBase::flashWrite(std::vector<uint8_t>((uint8_t*)&checksum, ((uint8_t*)(&checksum)) + 4), offset);
+    // The BL expects the size of the config at offset + 4, the size is included in the bson package.
+    DeviceBase::flashWrite(package, offset + sizeof(uint32_t));
+}
+
+
 bool DeviceBase::startPipeline() {
     // Deprecated
     return true;
