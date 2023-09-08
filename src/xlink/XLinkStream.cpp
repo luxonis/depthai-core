@@ -54,7 +54,7 @@ XLinkStream::~XLinkStream() {
     }
 }
 
-StreamPacketDesc::StreamPacketDesc(StreamPacketDesc&& other) noexcept : streamPacketDesc_t{other.data, other.length, other.trsend, other.treceive} {
+StreamPacketDesc::StreamPacketDesc(StreamPacketDesc&& other) noexcept : streamPacketDesc_t{other.data, other.length, other.tRemoteSent, other.tReceived} {
     other.data = nullptr;
     other.length = 0;
 }
@@ -63,8 +63,8 @@ StreamPacketDesc& StreamPacketDesc::operator=(StreamPacketDesc&& other) noexcept
     if(this != &other) {
         data = std::exchange(other.data, nullptr);
         length = std::exchange(other.length, 0);
-        trsend = std::exchange(other.trsend, {});
-        treceive = std::exchange(other.treceive, {});
+        tRemoteSent = std::exchange(other.tRemoteSent, {});
+        tReceived = std::exchange(other.tReceived, {});
     }
     return *this;
 }
@@ -91,20 +91,34 @@ void XLinkStream::write(const std::vector<std::uint8_t>& data) {
     write(data.data(), data.size());
 }
 
-void XLinkStream::read(std::vector<std::uint8_t>& data, struct timespec* out_time) {
+void XLinkStream::read(std::vector<std::uint8_t>& data) {
     StreamPacketDesc packet;
     const auto status = XLinkReadMoveData(streamId, &packet);
     if(status != X_LINK_SUCCESS) {
         throw XLinkReadError(status, streamName);
     }
     data = std::vector<std::uint8_t>(packet.data, packet.data + packet.length);
-    if(out_time != NULL)
-        *out_time = packet.treceive;
 }
 
-std::vector<std::uint8_t> XLinkStream::read(struct timespec* out_time) {
+void XLinkStream::read(std::vector<std::uint8_t>& data, struct timespec& timestampReceived) {
+    StreamPacketDesc packet;
+    const auto status = XLinkReadMoveData(streamId, &packet);
+    if(status != X_LINK_SUCCESS) {
+        throw XLinkReadError(status, streamName);
+    }
+    data = std::vector<std::uint8_t>(packet.data, packet.data + packet.length);
+    timestampReceived = packet.tReceived;
+}
+
+std::vector<std::uint8_t> XLinkStream::read() {
     std::vector<std::uint8_t> data;
-    read(data, out_time);
+    read(data);
+    return data;
+}
+
+std::vector<std::uint8_t> XLinkStream::read(struct timespec& timestampReceived) {
+    std::vector<std::uint8_t> data;
+    read(data, timestampReceived);
     return data;
 }
 
