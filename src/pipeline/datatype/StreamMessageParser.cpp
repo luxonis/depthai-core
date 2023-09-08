@@ -116,13 +116,9 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
 
     // Create corresponding object
     switch(objectType) {
-        // RawBuffer is special case, no metadata is actually serialized
-        case DatatypeEnum::Buffer: {
-            // RawBuffer is special case, no metadata is actually serialized
-            auto pBuf = std::make_shared<RawBuffer>();
-            pBuf->data = std::move(data);
-            return pBuf;
-        } break;
+        case DatatypeEnum::Buffer:
+            return parseDatatype<RawBuffer>(metadataStart, serializedObjectSize, data);
+            break;
 
         case DatatypeEnum::ImgFrame:
             return parseDatatype<RawImgFrame>(metadataStart, serializedObjectSize, data);
@@ -216,10 +212,7 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
 
     switch(objectType) {
         case DatatypeEnum::Buffer: {
-            // RawBuffer is special case, no metadata is actually serialized
-            auto pBuf = std::make_shared<RawBuffer>();
-            pBuf->data = std::move(data);
-            return std::make_shared<Buffer>(pBuf);
+            return std::make_shared<Buffer>(parseDatatype<RawBuffer>(metadataStart, serializedObjectSize, data));
         } break;
 
         case DatatypeEnum::ImgFrame:
