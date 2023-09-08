@@ -846,7 +846,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
             while(timesyncRunning) {
                 // Block
                 struct timespec timestamp;
-                stream.read(timestamp);              
+                stream.read(timestamp);
 
                 // Write timestamp back
                 stream.write(&timestamp, sizeof(timestamp));
