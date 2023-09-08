@@ -33,22 +33,6 @@ class EncodedFrame : public Buffer {
 
     // getters
     /**
-     * Retrieves image timestamp related to dai::Clock::now()
-     */
-    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;
-
-    /**
-     * Retrieves image timestamp directly captured from device's monotonic clock,
-     * not synchronized to host time. Used when monotonicity is required.
-     */
-    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
-
-    /**
-     * Retrieves image sequence number
-     */
-    int64_t getSequenceNum() const;
-
-    /**
      * Retrieves image width in pixels
      */
     unsigned int getWidth() const;

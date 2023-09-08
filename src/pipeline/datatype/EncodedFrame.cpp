@@ -15,17 +15,6 @@ EncodedFrame::EncodedFrame(std::shared_ptr<RawEncodedFrame> ptr) : Buffer(std::m
 // Getters
 
 // getters
-std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> EncodedFrame::getTimestamp() const {
-    using namespace std::chrono;
-    return time_point<steady_clock, steady_clock::duration>{seconds(frame.ts.sec) + nanoseconds(frame.ts.nsec)};
-}
-std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> EncodedFrame::getTimestampDevice() const {
-    using namespace std::chrono;
-    return time_point<steady_clock, steady_clock::duration>{seconds(frame.tsDevice.sec) + nanoseconds(frame.tsDevice.nsec)};
-}
-int64_t EncodedFrame::getSequenceNum() const {
-    return frame.sequenceNum;
-}
 unsigned int EncodedFrame::getWidth() const {
     return frame.width;
 }
@@ -48,23 +37,14 @@ EncodedFrame::Profile EncodedFrame::getProfile() const {
 // setters
 EncodedFrame& EncodedFrame::setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
     // Set timestamp from timepoint
-    using namespace std::chrono;
-    auto ts = tp.time_since_epoch();
-    frame.ts.sec = duration_cast<seconds>(ts).count();
-    frame.ts.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
-    return *this;
+    return static_cast<EncodedFrame&>(Buffer::setTimestamp(tp));
 }
 EncodedFrame& EncodedFrame::setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
     // Set timestamp from timepoint
-    using namespace std::chrono;
-    auto ts = tp.time_since_epoch();
-    frame.tsDevice.sec = duration_cast<seconds>(ts).count();
-    frame.tsDevice.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
-    return *this;
+    return static_cast<EncodedFrame&>(Buffer::setTimestampDevice(tp));
 }
 EncodedFrame& EncodedFrame::setSequenceNum(int64_t sequenceNum) {
-    frame.sequenceNum = sequenceNum;
-    return *this;
+    return static_cast<EncodedFrame&>(Buffer::setSequenceNum(sequenceNum));
 }
 EncodedFrame& EncodedFrame::setWidth(unsigned int width) {
     frame.width = width;
