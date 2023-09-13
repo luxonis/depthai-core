@@ -59,7 +59,7 @@ std::string parseDeviceName(EepromData eeprom, EepromData eepromFactory) {
             // Regenerate from tokens
             auto tokens = split(deviceName, '-');
             deviceName = "";
-            for(int i = 0; i < tokens.size(); i++) {
+            for(unsigned int i = 0; i < tokens.size(); i++) {
                 const auto& token = tokens[i];
 
                 // check if token has to be removed
