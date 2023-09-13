@@ -551,7 +551,7 @@ void CalibrationHandler::setBoardInfo(std::string productName,
                                       std::string boardRev,
                                       std::string boardConf,
                                       std::string hardwareConf,
-                                      std::string batchName,
+                                      std::string deviceName,
                                       uint64_t batchTime,
                                       uint32_t boardOptions,
                                       std::string boardCustom) {
@@ -560,7 +560,7 @@ void CalibrationHandler::setBoardInfo(std::string productName,
     eepromData.boardRev = boardRev;
     eepromData.boardConf = boardConf;
     eepromData.hardwareConf = hardwareConf;
-    eepromData.batchName = batchName;
+    eepromData.deviceName = deviceName;
     eepromData.batchTime = batchTime;
     eepromData.boardCustom = boardCustom;
     eepromData.boardOptions = boardOptions;
