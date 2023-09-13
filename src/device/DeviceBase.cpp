@@ -25,6 +25,7 @@
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Resources.hpp"
+#include "utility/EepromDataParser.hpp"
 
 // libraries
 #include "XLink/XLink.h"
@@ -922,8 +923,8 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
                     ProfilingData data = getProfilingData();
                     long long w = data.numBytesWritten - lastData.numBytesWritten;
                     long long r = data.numBytesRead - lastData.numBytesRead;
-                    w /= rate;
-                    r /= rate;
+                    w = static_cast<long long>(w / rate);
+                    r = static_cast<long long>(r / rate);
 
                     lastData = data;
 
@@ -1067,31 +1068,16 @@ DeviceInfo DeviceBase::getDeviceInfo() const {
     return deviceInfo;
 }
 
+std::string DeviceBase::getProductName() {
+    EepromData eepromFactory = readFactoryCalibrationOrDefault().getEepromData();
+    EepromData eeprom = readCalibrationOrDefault().getEepromData();
+    return utility::parseProductName(eeprom, eepromFactory);
+}
+
 std::string DeviceBase::getDeviceName() {
-    std::string deviceName;
-    EepromData eeprom = readFactoryCalibrationOrDefault().getEepromData();
-    if((deviceName = eeprom.productName).empty()) {
-        eeprom = readCalibrationOrDefault().getEepromData();
-        if((deviceName = eeprom.productName).empty()) {
-            deviceName = eeprom.boardName;
-        }
-    }
-
-    // Convert to device naming from display/product naming
-    // std::transform(deviceName.begin(), deviceName.end(), deviceName.begin(), std::ptr_fun<int, int>(std::toupper));
-    std::transform(deviceName.begin(), deviceName.end(), deviceName.begin(), [](int c) { return std::toupper(c); });
-    std::replace(deviceName.begin(), deviceName.end(), ' ', '-');
-
-    // Handle some known legacy cases
-    if(deviceName == "BW1098OBC") {
-        deviceName = "OAK-D";
-    } else if(deviceName == "DM2097") {
-        deviceName = "OAK-D-CM4-POE";
-    } else if(deviceName == "BW1097") {
-        deviceName = "OAK-D-CM3";
-    }
-
-    return deviceName;
+    EepromData eepromFactory = readFactoryCalibrationOrDefault().getEepromData();
+    EepromData eeprom = readCalibrationOrDefault().getEepromData();
+    return utility::parseDeviceName(eeprom, eepromFactory);
 }
 
 void DeviceBase::setLogOutputLevel(LogLevel level) {
