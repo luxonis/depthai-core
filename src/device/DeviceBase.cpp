@@ -845,6 +845,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
             XLinkStream stream(connection, device::XLINK_CHANNEL_TIMESYNC, 128);
             while(timesyncRunning) {
                 // Block
+                // FIXME: RPI has timespec size of 8 bytes - mismatch on device
                 struct timespec timestamp;
                 stream.read(timestamp);
 
