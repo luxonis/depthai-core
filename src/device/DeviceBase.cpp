@@ -603,6 +603,12 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     // Apply nonExclusiveMode
     config.board.nonExclusiveMode = config.nonExclusiveMode;
 
+    // Apply device specific logger level
+    {
+        auto deviceLogLevel = config.logLevel.value_or(spdlogLevelToLogLevel(logger::get_level()));
+        setLogOutputLevel(config.outputLogLevel.value_or(deviceLogLevel));
+    }
+
     // Specify expected running mode
     XLinkDeviceState_t expectedBootState = X_LINK_BOOTED;
     if(config.nonExclusiveMode) {
@@ -677,7 +683,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     }
 
     // Get embedded mvcmd or external with applied config
-    if(logger::get_level() == spdlog::level::debug) {
+    if(getLogOutputLevel() <= LogLevel::DEBUG) {
         nlohmann::json jBoardConfig = config.board;
         pimpl->logger.debug("Device - BoardConfig: {} \nlibnop:{}", jBoardConfig.dump(), spdlog::to_hex(utility::serialize(config.board)));
     }
@@ -739,7 +745,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         std::unique_lock<std::mutex> lock(pimpl->rpcMutex);
 
         // Log the request data
-        if(logger::get_level() == spdlog::level::trace) {
+        if(getLogOutputLevel() == LogLevel::TRACE) {
             pimpl->logger.trace("RPC: {}", nlohmann::json::from_msgpack(request).dump());
         }
 
@@ -822,7 +828,6 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     try {
         auto level = spdlogLevelToLogLevel(logger::get_level());
         setLogLevel(config.logLevel.value_or(level));
-        setLogOutputLevel(config.outputLogLevel.value_or(level));
 
         // Sets system inforation logging rate. By default 1s
         setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
@@ -1353,7 +1358,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     pipeline.serialize(schema, assets, assetStorage);
 
     // if debug or lower
-    if(logger::get_level() <= spdlog::level::debug) {
+    if(getLogOutputLevel() <= LogLevel::DEBUG) {
         nlohmann::json jSchema = schema;
         pimpl->logger.debug("Schema dump: {}", jSchema.dump());
         nlohmann::json jAssets = assets;
