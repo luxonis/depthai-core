@@ -21,11 +21,11 @@
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "pipeline/Pipeline.hpp"
+#include "utility/EepromDataParser.hpp"
 #include "utility/Environment.hpp"
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Resources.hpp"
-#include "utility/EepromDataParser.hpp"
 
 // libraries
 #include "XLink/XLink.h"
