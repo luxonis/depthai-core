@@ -100,7 +100,7 @@ void XLinkStream::read(std::vector<std::uint8_t>& data) {
     data = std::vector<std::uint8_t>(packet.data, packet.data + packet.length);
 }
 
-void XLinkStream::read(std::vector<std::uint8_t>& data, struct timespec& timestampReceived) {
+void XLinkStream::read(std::vector<std::uint8_t>& data, XLinkTimespec& timestampReceived) {
     StreamPacketDesc packet;
     const auto status = XLinkReadMoveData(streamId, &packet);
     if(status != X_LINK_SUCCESS) {
@@ -116,7 +116,7 @@ std::vector<std::uint8_t> XLinkStream::read() {
     return data;
 }
 
-std::vector<std::uint8_t> XLinkStream::read(struct timespec& timestampReceived) {
+std::vector<std::uint8_t> XLinkStream::read(XLinkTimespec& timestampReceived) {
     std::vector<std::uint8_t> data;
     read(data, timestampReceived);
     return data;

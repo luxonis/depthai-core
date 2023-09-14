@@ -28,6 +28,7 @@
 
 // libraries
 #include "XLink/XLink.h"
+#include "XLink/XLinkTime.h"
 #include "nanorpc/core/client.h"
 #include "nanorpc/packer/nlohmann_msgpack.h"
 #include "spdlog/details/os.h"
@@ -845,8 +846,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
             XLinkStream stream(connection, device::XLINK_CHANNEL_TIMESYNC, 128);
             while(timesyncRunning) {
                 // Block
-                // FIXME: RPI has timespec size of 8 bytes - mismatch on device
-                struct timespec timestamp;
+                XLinkTimespec timestamp;
                 stream.read(timestamp);
 
                 // Write timestamp back

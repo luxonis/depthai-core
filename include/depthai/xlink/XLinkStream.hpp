@@ -17,6 +17,7 @@
 
 // libraries
 #include <XLink/XLinkPublicDefines.h>
+#include <XLink/XLinkTime.h>
 
 // project
 #include "depthai/xlink/XLinkConnection.hpp"
@@ -55,9 +56,9 @@ class XLinkStream {
     void write(const std::uint8_t* data, std::size_t size);
     void write(const std::vector<std::uint8_t>& data);
     std::vector<std::uint8_t> read();
-    std::vector<std::uint8_t> read(struct timespec& timestampReceived);
+    std::vector<std::uint8_t> read(XLinkTimespec& timestampReceived);
     void read(std::vector<std::uint8_t>& data);
-    void read(std::vector<std::uint8_t>& data, struct timespec& timestampReceived);
+    void read(std::vector<std::uint8_t>& data, XLinkTimespec& timestampReceived);
     // split write helper
     void writeSplit(const void* data, std::size_t size, std::size_t split);
     void writeSplit(const std::vector<uint8_t>& data, std::size_t split);
