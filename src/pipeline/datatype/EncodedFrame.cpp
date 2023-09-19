@@ -15,12 +15,6 @@ EncodedFrame::EncodedFrame(std::shared_ptr<RawEncodedFrame> ptr) : Buffer(std::m
 // Getters
 
 // getters
-unsigned int EncodedFrame::getWidth() const {
-    return frame.width;
-}
-unsigned int EncodedFrame::getHeight() const {
-    return frame.height;
-}
 unsigned int EncodedFrame::getQuality() const {
     return frame.quality;
 }
@@ -45,23 +39,6 @@ EncodedFrame& EncodedFrame::setTimestampDevice(std::chrono::time_point<std::chro
 }
 EncodedFrame& EncodedFrame::setSequenceNum(int64_t sequenceNum) {
     return static_cast<EncodedFrame&>(Buffer::setSequenceNum(sequenceNum));
-}
-EncodedFrame& EncodedFrame::setWidth(unsigned int width) {
-    frame.width = width;
-    return *this;
-}
-EncodedFrame& EncodedFrame::setHeight(unsigned int height) {
-    frame.height = height;
-    return *this;
-}
-EncodedFrame& EncodedFrame::setSize(unsigned int width, unsigned int height) {
-    setWidth(width);
-    setHeight(height);
-    return *this;
-}
-EncodedFrame& EncodedFrame::setSize(std::tuple<unsigned int, unsigned int> size) {
-    setSize(std::get<0>(size), std::get<1>(size));
-    return *this;
 }
 EncodedFrame& EncodedFrame::setQuality(unsigned int quality) {
     frame.quality = quality;

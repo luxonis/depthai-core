@@ -33,16 +33,6 @@ class EncodedFrame : public Buffer {
 
     // getters
     /**
-     * Retrieves image width in pixels
-     */
-    unsigned int getWidth() const;
-
-    /**
-     * Retrieves image height in pixels
-     */
-    unsigned int getHeight() const;
-
-    /**
      * Retrieves the encoding quality
      */
     unsigned int getQuality() const;
@@ -79,35 +69,6 @@ class EncodedFrame : public Buffer {
      * @param seq Sequence number
      */
     EncodedFrame& setSequenceNum(int64_t seq);
-
-    /**
-     * Specifies frame width
-     *
-     * @param width frame width
-     */
-    EncodedFrame& setWidth(unsigned int width);
-
-    /**
-     * Specifies frame height
-     *
-     * @param height frame height
-     */
-    EncodedFrame& setHeight(unsigned int height);
-
-    /**
-     * Specifies frame size
-     *
-     * @param height frame height
-     * @param width frame width
-     */
-    EncodedFrame& setSize(unsigned int width, unsigned int height);
-
-    /**
-     * Specifies frame size
-     *
-     * @param size frame size
-     */
-    EncodedFrame& setSize(std::tuple<unsigned int, unsigned int> size);
 
     /**
      * Specifies the encoding quality
