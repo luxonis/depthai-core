@@ -18,6 +18,9 @@ EncodedFrame::EncodedFrame(std::shared_ptr<RawEncodedFrame> ptr) : Buffer(std::m
 unsigned int EncodedFrame::getQuality() const {
     return frame.quality;
 }
+unsigned int EncodedFrame::getBitrate() const {
+    return frame.bitrate;
+}
 bool EncodedFrame::getLossless() const {
     return frame.lossless;
 }
@@ -44,6 +47,11 @@ EncodedFrame& EncodedFrame::setQuality(unsigned int quality) {
     frame.quality = quality;
     return *this;
 }
+EncodedFrame& EncodedFrame::setBitrate(unsigned int bitrate) {
+    frame.bitrate = bitrate;
+    return *this;
+}
+
 EncodedFrame& EncodedFrame::setLossless(bool lossless) {
     frame.lossless = lossless;
     return *this;

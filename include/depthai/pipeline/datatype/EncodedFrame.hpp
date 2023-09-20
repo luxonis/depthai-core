@@ -36,6 +36,12 @@ class EncodedFrame : public Buffer {
      * Retrieves the encoding quality
      */
     unsigned int getQuality() const;
+    
+    /**
+     * Retrieves the encoding bitrate
+     */
+    unsigned int getBitrate() const;
+
 
     /**
      * Returns true if encoding is lossless (JPEG only)
@@ -76,6 +82,14 @@ class EncodedFrame : public Buffer {
      * @param quality Encoding quality
      */
     EncodedFrame& setQuality(unsigned int quality);
+
+    /**
+     * Specifies the encoding quality
+     *
+     * @param quality Encoding quality
+     */
+    EncodedFrame& setBitrate(unsigned int bitrate);
+
 
     /**
      * Specifies if encoding is lossless (JPEG only)
