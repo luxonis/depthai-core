@@ -65,4 +65,4 @@ EncodedFrame& EncodedFrame::setProfile(Profile profile) {
     return *this;
 }
 
-}
+}  // namespace dai

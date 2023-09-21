@@ -1,6 +1,7 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <iostream>
+
 #include "depthai-shared/datatype/RawEncodedFrame.hpp"
 #include "depthai-shared/properties/VideoEncoderProperties.hpp"
 #include "depthai/device/Device.hpp"
@@ -43,19 +44,18 @@ TEST_CASE("OLD_OUTPUT") {
     xlinkOut->setStreamName("out");
 
     dai::Device device(pipeline);
-    
+
     auto outQ = device.getOutputQueue("out");
-    for (int i = 0; i < 100; ++i) {
+    for(int i = 0; i < 100; ++i) {
         REQUIRE_NOTHROW(outQ->get<dai::ImgFrame>());
     }
 }
 
-
 TEST_CASE("JPEG_ENCODING_LOSSLESS") {
     dai::Device device(getPipeline(dai::VideoEncoderProperties::Profile::MJPEG, 30, true, 0));
-    
+
     auto outQ = device.getOutputQueue("out");
-    for (int i = 0; i < 100; ++i) {
+    for(int i = 0; i < 100; ++i) {
         auto encfrm = outQ->get<dai::EncodedFrame>();
         REQUIRE(encfrm->getProfile() == dai::EncodedFrame::Profile::JPEG);
         REQUIRE(encfrm->getLossless() == true);
@@ -65,9 +65,9 @@ TEST_CASE("JPEG_ENCODING_LOSSLESS") {
 
 TEST_CASE("JPEG_ENCODING_LOSSY") {
     dai::Device device(getPipeline(dai::VideoEncoderProperties::Profile::MJPEG, 30, false, 0));
-    
+
     auto outQ = device.getOutputQueue("out");
-    for (int i = 0; i < 100; ++i) {
+    for(int i = 0; i < 100; ++i) {
         auto encfrm = outQ->get<dai::EncodedFrame>();
         REQUIRE(encfrm->getProfile() == dai::EncodedFrame::Profile::JPEG);
         REQUIRE(encfrm->getLossless() == false);
@@ -77,14 +77,13 @@ TEST_CASE("JPEG_ENCODING_LOSSY") {
 
 TEST_CASE("AVC_ENCODING") {
     dai::Device device(getPipeline(dai::VideoEncoderProperties::Profile::H264_HIGH, 30, false, 8500000));
-    
+
     auto outQ = device.getOutputQueue("out");
-    for (int i = 0; i < 100; ++i) {
+    for(int i = 0; i < 100; ++i) {
         auto encfrm = outQ->get<dai::EncodedFrame>();
         REQUIRE(encfrm->getProfile() == dai::EncodedFrame::Profile::AVC);
         REQUIRE(encfrm->getLossless() == false);
-        if (i % 30 == 0)
-            REQUIRE(encfrm->getFrameType() == dai::EncodedFrame::FrameType::I);
+        if(i % 30 == 0) REQUIRE(encfrm->getFrameType() == dai::EncodedFrame::FrameType::I);
         REQUIRE(encfrm->getQuality() == 30);
         REQUIRE(encfrm->getBitrate() == 8500000);
     }
@@ -92,14 +91,13 @@ TEST_CASE("AVC_ENCODING") {
 
 TEST_CASE("HEVC_ENCODING") {
     dai::Device device(getPipeline(dai::VideoEncoderProperties::Profile::H265_MAIN, 30, false, 8500000));
-    
+
     auto outQ = device.getOutputQueue("out");
-    for (int i = 0; i < 100; ++i) {
+    for(int i = 0; i < 100; ++i) {
         auto encfrm = outQ->get<dai::EncodedFrame>();
         REQUIRE(encfrm->getProfile() == dai::EncodedFrame::Profile::HEVC);
         REQUIRE(encfrm->getLossless() == false);
-        if (i % 30 == 0)
-            REQUIRE(encfrm->getFrameType() == dai::EncodedFrame::FrameType::I);
+        if(i % 30 == 0) REQUIRE(encfrm->getFrameType() == dai::EncodedFrame::FrameType::I);
         REQUIRE(encfrm->getQuality() == 30);
         REQUIRE(encfrm->getBitrate() == 8500000);
     }

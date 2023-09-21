@@ -18,10 +18,10 @@ class EncodedFrame : public Buffer {
     std::shared_ptr<RawBuffer> serialize() const override;
     RawEncodedFrame& frame;
 
-  public:
+   public:
     // Raw* mirror
     using Profile = RawEncodedFrame::Profile;
-    using FrameType = RawEncodedFrame::FrameType;  
+    using FrameType = RawEncodedFrame::FrameType;
 
     /**
      * Construct EncodedFrame message.
@@ -36,16 +36,15 @@ class EncodedFrame : public Buffer {
      * Retrieves the encoding quality
      */
     unsigned int getQuality() const;
-    
+
     /**
      * Retrieves the encoding bitrate
      */
     unsigned int getBitrate() const;
 
-
     /**
      * Returns true if encoding is lossless (JPEG only)
-    */
+     */
     bool getLossless() const;
 
     /**
@@ -90,7 +89,6 @@ class EncodedFrame : public Buffer {
      */
     EncodedFrame& setBitrate(unsigned int bitrate);
 
-
     /**
      * Specifies if encoding is lossless (JPEG only)
      *
@@ -113,4 +111,4 @@ class EncodedFrame : public Buffer {
     EncodedFrame& setProfile(Profile profile);
 };
 
-}
+}  // namespace dai
