@@ -48,6 +48,7 @@ ImageManipConfig& ImageManipConfig::setCropRotatedRect(RotatedRect rr, bool norm
 ImageManipConfig& ImageManipConfig::setWarpTransformFourPoints(std::vector<Point2f> pt, bool normalizedCoords) {
     // Enable resize stage and extended flags
     cfg.enableResize = true;
+    cfg.resizeConfig.keepAspectRatio = false;
     cfg.resizeConfig.enableWarp4pt = true;
     cfg.resizeConfig.warpFourPoints = pt;
     cfg.resizeConfig.normalizedCoords = normalizedCoords;

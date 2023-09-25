@@ -471,6 +471,12 @@ class DeviceBase {
     std::string getDeviceName();
 
     /**
+     * Get product name if available
+     * @returns product name or empty string if not available
+     */
+    std::string getProductName();
+
+    /**
      * Get MxId of device
      *
      * @returns MxId of connected device
@@ -757,17 +763,16 @@ class DeviceBase {
     /**
      * Get the size of the NOR flash memory in bytes.
      * If NOR flash is not present or an error occurs while trying to get it's size, 0 is returned.
-     *  
-     * @return uint64_t 
+     *
+     * @return uint64_t
      */
     uint64_t getFlashMemorySize();
 
     /**
      * Flash the bootloader configuration.
-     * 
-    */
+     *
+     */
     void flashBootloaderConfig(dai::bootloader::Config& config, dai::bootloader::Type type);
-
 
     /**
      * Destructive action, deletes Factory area EEPROM contents
@@ -864,7 +869,6 @@ class DeviceBase {
     std::shared_ptr<const XLinkConnection> getConnection() const {
         return connection;
     }
-
 
     int getEthernetLinkSpeed();
     int getEthernetLinkDuplex();
