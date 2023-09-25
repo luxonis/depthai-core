@@ -970,6 +970,11 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         });
     }
 
+    if(utility::getEnv("DEPTHAI_ENABLE_COREDUMP") == "1") {
+        pimpl->logger.warn("Core dump enabled");
+        pimpl->rpcClient->call("enableCoreDump");
+    }
+
     // Below can throw - make sure to gracefully exit threads
     try {
         // Starts and waits for inital timesync
