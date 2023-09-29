@@ -435,7 +435,8 @@ std::vector<std::vector<float>> CalibrationHandler::getImuToCameraExtrinsics(Cam
     if(eepromData.imuExtrinsics.toCameraSocket == cameraId) {
         return currTransformationMatrixImu;
     } else {
-        std::vector<std::vector<float>> destTransformationMatrixCurr = getCameraExtrinsics(eepromData.imuExtrinsics.toCameraSocket, cameraId, useSpecTranslation);
+        std::vector<std::vector<float>> destTransformationMatrixCurr =
+            getCameraExtrinsics(eepromData.imuExtrinsics.toCameraSocket, cameraId, useSpecTranslation);
         return matMul(destTransformationMatrixCurr, currTransformationMatrixImu);
     }
 }
