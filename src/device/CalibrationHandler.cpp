@@ -431,24 +431,25 @@ std::vector<std::vector<float>> CalibrationHandler::getImuToCameraExtrinsics(Cam
         throw std::runtime_error("There is no Camera data available corresponding to the requested source cameraId");
     }
 
-    std::vector<std::vector<float>> transformationMatrix = eepromData.imuExtrinsics.rotationMatrix;
+    std::vector<std::vector<float>> currTransformationMatrixImu = eepromData.imuExtrinsics.rotationMatrix;
     if(useSpecTranslation) {
-        transformationMatrix[0].push_back(eepromData.imuExtrinsics.specTranslation.x);
-        transformationMatrix[1].push_back(eepromData.imuExtrinsics.specTranslation.y);
-        transformationMatrix[2].push_back(eepromData.imuExtrinsics.specTranslation.z);
+        currTransformationMatrixImu[0].push_back(eepromData.imuExtrinsics.specTranslation.x);
+        currTransformationMatrixImu[1].push_back(eepromData.imuExtrinsics.specTranslation.y);
+        currTransformationMatrixImu[2].push_back(eepromData.imuExtrinsics.specTranslation.z);
     } else {
-        transformationMatrix[0].push_back(eepromData.imuExtrinsics.translation.x);
-        transformationMatrix[1].push_back(eepromData.imuExtrinsics.translation.y);
-        transformationMatrix[2].push_back(eepromData.imuExtrinsics.translation.z);
+        currTransformationMatrixImu[0].push_back(eepromData.imuExtrinsics.translation.x);
+        currTransformationMatrixImu[1].push_back(eepromData.imuExtrinsics.translation.y);
+        currTransformationMatrixImu[2].push_back(eepromData.imuExtrinsics.translation.z);
     }
     std::vector<float> homogeneous_vector = {0, 0, 0, 1};
-    transformationMatrix.push_back(homogeneous_vector);
+    currTransformationMatrixImu.push_back(homogeneous_vector);
 
     if(eepromData.imuExtrinsics.toCameraSocket == cameraId) {
-        return transformationMatrix;
+        return currTransformationMatrixImu;
     } else {
-        std::vector<std::vector<float>> localTransformationMatrix = getCameraExtrinsics(eepromData.imuExtrinsics.toCameraSocket, cameraId, useSpecTranslation);
-        return matMul(transformationMatrix, localTransformationMatrix);
+        std::vector<std::vector<float>> destTransformationMatrixCurr =
+            getCameraExtrinsics(eepromData.imuExtrinsics.toCameraSocket, cameraId, useSpecTranslation);
+        return matMul(destTransformationMatrixCurr, currTransformationMatrixImu);
     }
 }
 
@@ -518,25 +519,25 @@ std::vector<std::vector<float>> CalibrationHandler::computeExtrinsicMatrix(Camer
         transformationMatrix.push_back(homogeneous_vector);
         return transformationMatrix;
     } else {
-        std::vector<std::vector<float>> futureTransformationMatrix =
+        std::vector<std::vector<float>> destTransformationMatrixCurr =
             computeExtrinsicMatrix(eepromData.cameraData.at(srcCamera).extrinsics.toCameraSocket, dstCamera, useSpecTranslation);
-        std::vector<std::vector<float>> currTransformationMatrix = eepromData.cameraData.at(srcCamera).extrinsics.rotationMatrix;
+        std::vector<std::vector<float>> currTransformationMatrixSrc = eepromData.cameraData.at(srcCamera).extrinsics.rotationMatrix;
         if(useSpecTranslation) {
             const dai::Point3f& mTrans = eepromData.cameraData.at(srcCamera).extrinsics.specTranslation;
             if(mTrans.x == 0 && mTrans.y == 0 && mTrans.z == 0) {
                 throw std::runtime_error("Cannot use useSpecTranslation argument since specTranslation has {0, 0, 0}");
             }
-            currTransformationMatrix[0].push_back(eepromData.cameraData.at(srcCamera).extrinsics.specTranslation.x);
-            currTransformationMatrix[1].push_back(eepromData.cameraData.at(srcCamera).extrinsics.specTranslation.y);
-            currTransformationMatrix[2].push_back(eepromData.cameraData.at(srcCamera).extrinsics.specTranslation.z);
+            currTransformationMatrixSrc[0].push_back(eepromData.cameraData.at(srcCamera).extrinsics.specTranslation.x);
+            currTransformationMatrixSrc[1].push_back(eepromData.cameraData.at(srcCamera).extrinsics.specTranslation.y);
+            currTransformationMatrixSrc[2].push_back(eepromData.cameraData.at(srcCamera).extrinsics.specTranslation.z);
         } else {
-            currTransformationMatrix[0].push_back(eepromData.cameraData.at(srcCamera).extrinsics.translation.x);
-            currTransformationMatrix[1].push_back(eepromData.cameraData.at(srcCamera).extrinsics.translation.y);
-            currTransformationMatrix[2].push_back(eepromData.cameraData.at(srcCamera).extrinsics.translation.z);
+            currTransformationMatrixSrc[0].push_back(eepromData.cameraData.at(srcCamera).extrinsics.translation.x);
+            currTransformationMatrixSrc[1].push_back(eepromData.cameraData.at(srcCamera).extrinsics.translation.y);
+            currTransformationMatrixSrc[2].push_back(eepromData.cameraData.at(srcCamera).extrinsics.translation.z);
         }
         std::vector<float> homogeneous_vector = {0, 0, 0, 1};
-        currTransformationMatrix.push_back(homogeneous_vector);
-        return matMul(currTransformationMatrix, futureTransformationMatrix);
+        currTransformationMatrixSrc.push_back(homogeneous_vector);
+        return matMul(destTransformationMatrixCurr, currTransformationMatrixSrc);
     }
 }
 
