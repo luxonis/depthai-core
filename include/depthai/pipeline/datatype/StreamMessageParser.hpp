@@ -7,6 +7,7 @@
 #include <XLink/XLinkPublicDefines.h>
 
 // project
+#include "depthai-shared/datatype/RawMessageGroup.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 
 // shared
@@ -22,6 +23,7 @@ class StreamMessageParser {
     static std::shared_ptr<ADatatype> parseMessageToADatatype(streamPacketDesc_t* const packet);
     static std::vector<std::uint8_t> serializeMessage(const std::shared_ptr<const RawBuffer>& data);
     static std::vector<std::uint8_t> serializeMessage(const RawBuffer& data);
+    static std::vector<std::uint8_t> serializeMessage(RawMessageGroup& data);
     static std::vector<std::uint8_t> serializeMessage(const std::shared_ptr<const ADatatype>& data);
     static std::vector<std::uint8_t> serializeMessage(const ADatatype& data);
 };
