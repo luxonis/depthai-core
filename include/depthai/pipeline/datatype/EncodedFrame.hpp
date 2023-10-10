@@ -33,6 +33,29 @@ class EncodedFrame : public Buffer {
 
     // getters
     /**
+     * Retrieves instance number
+     */
+    unsigned int getInstanceNum() const;
+    /**
+     * Retrieves exposure time
+     */
+    std::chrono::microseconds getExposureTime() const;
+
+    /**
+     * Retrieves sensitivity, as an ISO value
+     */
+    int getSensitivity() const;
+
+    /**
+     * Retrieves white-balance color temperature of the light source, in kelvins
+     */
+    int getColorTemperature() const;
+
+    /**
+     * Retrieves lens position, range 0..255. Returns -1 if not available
+     */
+    int getLensPosition() const;
+    /**
      * Retrieves the encoding quality
      */
     unsigned int getQuality() const;
@@ -74,6 +97,13 @@ class EncodedFrame : public Buffer {
      * @param seq Sequence number
      */
     EncodedFrame& setSequenceNum(int64_t seq);
+
+    /**
+     * Instance number relates to the origin of the frame (which camera)
+     *
+     * @param instance Instance number
+     */
+    EncodedFrame& setInstanceNum(unsigned int instance);
 
     /**
      * Specifies the encoding quality

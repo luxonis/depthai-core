@@ -12,9 +12,22 @@ EncodedFrame::EncodedFrame() : Buffer(std::make_shared<RawEncodedFrame>()), fram
 }
 EncodedFrame::EncodedFrame(std::shared_ptr<RawEncodedFrame> ptr) : Buffer(std::move(ptr)), frame(*dynamic_cast<RawEncodedFrame*>(raw.get())) {}
 
-// Getters
-
 // getters
+unsigned int EncodedFrame::getInstanceNum() const {
+    return frame.instanceNum;
+}
+std::chrono::microseconds EncodedFrame::getExposureTime() const {
+    return std::chrono::microseconds(frame.cam.exposureTimeUs);
+}
+int EncodedFrame::getSensitivity() const {
+    return frame.cam.sensitivityIso;
+}
+int EncodedFrame::getColorTemperature() const {
+    return frame.cam.wbColorTemp;
+}
+int EncodedFrame::getLensPosition() const {
+    return frame.cam.lensPosition;
+}
 unsigned int EncodedFrame::getQuality() const {
     return frame.quality;
 }
@@ -42,6 +55,10 @@ EncodedFrame& EncodedFrame::setTimestampDevice(std::chrono::time_point<std::chro
 }
 EncodedFrame& EncodedFrame::setSequenceNum(int64_t sequenceNum) {
     return static_cast<EncodedFrame&>(Buffer::setSequenceNum(sequenceNum));
+}
+EncodedFrame& EncodedFrame::setInstanceNum(unsigned int instanceNum) {
+    frame.instanceNum = instanceNum;
+    return *this;
 }
 EncodedFrame& EncodedFrame::setQuality(unsigned int quality) {
     frame.quality = quality;
