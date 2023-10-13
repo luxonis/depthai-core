@@ -2,6 +2,8 @@
 
 // all the nodes
 #include "node/AprilTag.hpp"
+#include "node/BenchmarkIn.hpp"
+#include "node/BenchmarkOut.hpp"
 #include "node/Camera.hpp"
 #include "node/ColorCamera.hpp"
 #include "node/DetectionNetwork.hpp"
@@ -20,6 +22,7 @@
 #include "node/SpatialDetectionNetwork.hpp"
 #include "node/SpatialLocationCalculator.hpp"
 #include "node/StereoDepth.hpp"
+#include "node/Sync.hpp"
 #include "node/SystemLogger.hpp"
 #include "node/ToF.hpp"
 #include "node/VideoEncoder.hpp"
