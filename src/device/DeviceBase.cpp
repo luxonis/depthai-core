@@ -972,7 +972,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     auto crashdumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
     if(!crashdumpPathStr.empty()) {
         pimpl->logger.warn("Crash dump enabled");
-        pimpl->rpcClient->call("enableCrashDump");
+        pimpl->rpcClient->call("enableCrashDump", true);
     }
 
     // Below can throw - make sure to gracefully exit threads
