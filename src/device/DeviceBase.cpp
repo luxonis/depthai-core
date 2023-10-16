@@ -969,10 +969,10 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
             profilingRunning = false;
         });
     }
-
-    if(utility::getEnv("DEPTHAI_ENABLE_COREDUMP") == "1") {
-        pimpl->logger.warn("Core dump enabled");
-        pimpl->rpcClient->call("enableCoreDump");
+    auto crashdumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
+    if(!crashdumpPathStr.empty()) {
+        pimpl->logger.warn("Crash dump enabled");
+        pimpl->rpcClient->call("enableCrashDump");
     }
 
     // Below can throw - make sure to gracefully exit threads
