@@ -6,6 +6,7 @@
 
 // project
 #include "depthai/build/config.hpp"
+#include "depthai/common/CameraExposureOffset.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 // shared
@@ -18,47 +19,6 @@
 #endif
 
 namespace dai {
-
-class BaseTransformation {
-   protected:
-    RawImgTransformation rawImgTransformation;
-
-   public:
-    BaseTransformation(RawImgTransformation rawImgTransformation) : rawImgTransformation(rawImgTransformation){};
-    virtual dai::Point2f trans(dai::Point2f point) = 0;
-    virtual dai::Point2f invTrans(dai::Point2f point) = 0;
-    virtual ~BaseTransformation() = default;
-};
-
-class ScaleTransformation : public BaseTransformation {
-    using BaseTransformation::BaseTransformation;
-    dai::Point2f trans(dai::Point2f point);
-    dai::Point2f invTrans(dai::Point2f point);
-};
-
-class CropTransformation : public BaseTransformation {
-    using BaseTransformation::BaseTransformation;
-    dai::Point2f trans(dai::Point2f point);
-    dai::Point2f invTrans(dai::Point2f point);
-};
-
-class PadTransformation : public BaseTransformation {
-    using BaseTransformation::BaseTransformation;
-    dai::Point2f trans(dai::Point2f point);
-    dai::Point2f invTrans(dai::Point2f point);
-};
-
-class FlipTransformation : public BaseTransformation {
-    using BaseTransformation::BaseTransformation;
-    dai::Point2f trans(dai::Point2f point);
-    dai::Point2f invTrans(dai::Point2f point);
-};
-
-class RotateTransformation : public BaseTransformation {
-    using BaseTransformation::BaseTransformation;
-    dai::Point2f trans(dai::Point2f point);
-    dai::Point2f invTrans(dai::Point2f point);
-};
 
 /**
  * ImgFrame message. Carries image data and metadata.
@@ -82,17 +42,30 @@ class ImgFrame : public Buffer {
     explicit ImgFrame(std::shared_ptr<RawImgFrame> ptr);
     virtual ~ImgFrame() = default;
     ImgTransformations& transformations;
+
     // getters
     /**
-     * Retrieves image timestamp related to dai::Clock::now()
+     * Retrieves image timestamp (end of exposure) related to dai::Clock::now()
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;
 
     /**
-     * Retrieves image timestamp directly captured from device's monotonic clock,
-     * not synchronized to host time. Used mostly for debugging
+     * Retrieves image timestamp (end of exposure) directly captured from device's monotonic clock,
+     * not synchronized to host time. Used when monotonicity is required.
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
+
+    // getters
+    /**
+     * Retrieves image timestamp (at the specified offset of exposure) related to dai::Clock::now()
+     */
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp(CameraExposureOffset offset) const;
+
+    /**
+     * Retrieves image timestamp (at the specified offset of exposure) directly captured from device's monotonic clock,
+     * not synchronized to host time. Used when monotonicity is required.
+     */
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice(CameraExposureOffset offset) const;
 
     /**
      * Retrieves instance number
@@ -241,6 +214,7 @@ class ImgFrame : public Buffer {
      */
     ImgFrame& setSize(std::tuple<unsigned int, unsigned int> size);
 
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Specifies source frame size
      *
@@ -249,6 +223,7 @@ class ImgFrame : public Buffer {
      */
     ImgFrame& setSourceSize(unsigned int width, unsigned int height);
 
+    // TODO(before mainline) - API not supported on RVC2
     /**
      * Specifies source frame size
      *
@@ -272,14 +247,14 @@ class ImgFrame : public Buffer {
      * @param point point to remap
      * @returns remapped point
      */
-    dai::Point2f remapPointFromSource(const dai::Point2f& point) const;
+    Point2f remapPointFromSource(const Point2f& point) const;
 
     /**
      * Remap a point from the source frame to the current frame
      * @param point point to remap
      * @returns remapped point
      */
-    dai::Point2f remapPointToSource(const dai::Point2f& point) const;
+    Point2f remapPointToSource(const Point2f& point) const;
 
     /**
      * Remap a rectangle from the source frame to the current frame
@@ -287,7 +262,7 @@ class ImgFrame : public Buffer {
      * @param rect rectangle to remap
      * @returns remapped rectangle
      */
-    dai::Rect remapRectFromSource(const dai::Rect& rect) const;
+    Rect remapRectFromSource(const Rect& rect) const;
 
     /**
      * Remap a rectangle from the current frame to the source frame
@@ -295,14 +270,14 @@ class ImgFrame : public Buffer {
      * @param rect rectangle to remap
      * @returns remapped rectangle
      */
-    dai::Rect remapRectToSource(const dai::Rect& rect) const;
+    Rect remapRectToSource(const Rect& rect) const;
 
     /**
      * Convience function to initialize meta data from another frame
      * Copies over timestamps, transformations done on the image, etc.
      * @param sourceFrame source frame from which the metadata is taken from
      */
-    ImgFrame& setMetadata(const dai::ImgFrame& sourceFrame);
+    ImgFrame& setMetadata(const ImgFrame& sourceFrame);
 
     /**
      * @note Fov API works correctly only on rectilinear frames
@@ -351,7 +326,7 @@ class ImgFrame : public Buffer {
      *
      * @returns remapped point
      */
-    static dai::Point2f remapPointBetweenSourceFrames(const dai::Point2f& originPoint, const dai::ImgFrame& sourceImage, const dai::ImgFrame& destImage);
+    static Point2f remapPointBetweenSourceFrames(const Point2f& originPoint, const ImgFrame& sourceImage, const ImgFrame& destImage);
 
     /**
      * Remap point between two frames
@@ -361,7 +336,7 @@ class ImgFrame : public Buffer {
      *
      * @returns remapped point
      */
-    static dai::Point2f remapPointBetweenFrames(const dai::Point2f& originPoint, const dai::ImgFrame& originFrame, const dai::ImgFrame& destFrame);
+    static Point2f remapPointBetweenFrames(const Point2f& originPoint, const ImgFrame& originFrame, const ImgFrame& destFrame);
 
     /**
      * Remap rectangle between two frames
@@ -371,7 +346,7 @@ class ImgFrame : public Buffer {
      *
      * @returns remapped rectangle
      */
-    static dai::Rect remapRectBetweenFrames(const dai::Rect& originRect, const dai::ImgFrame& originFrame, const dai::ImgFrame& destFrame);
+    static Rect remapRectBetweenFrames(const Rect& originRect, const ImgFrame& originFrame, const ImgFrame& destFrame);
 
 // Optional - OpenCV support
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT

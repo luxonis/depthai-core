@@ -1,8 +1,8 @@
 #pragma once
 #include <mutex>
 
+#include "depthai-shared/utility/LockingQueue.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
-#include "depthai/utility/LockingQueue.hpp"
 
 namespace dai {
 

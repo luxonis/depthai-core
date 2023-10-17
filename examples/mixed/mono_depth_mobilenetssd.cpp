@@ -41,9 +41,9 @@ int main(int argc, char** argv) {
     nnOut->setStreamName("nn");
 
     // Properties
-    monoRight->setBoardSocket(dai::CameraBoardSocket::RIGHT);
+    monoRight->setCamera("right");
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
-    monoLeft->setBoardSocket(dai::CameraBoardSocket::LEFT);
+    monoLeft->setCamera("left");
     monoLeft->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     // Produce the depth map (using disparity output as it's easier to visualize depth this way)
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);

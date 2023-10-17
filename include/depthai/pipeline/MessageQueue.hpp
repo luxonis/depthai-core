@@ -6,10 +6,10 @@
 #include <vector>
 
 // project
+#include "depthai-shared/utility/LockingQueue.hpp"
 #include "depthai/pipeline/SideChannel.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/TraceEvents.hpp"
-#include "depthai/utility/LockingQueue.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
 // shared

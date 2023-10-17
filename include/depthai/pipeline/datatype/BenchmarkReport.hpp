@@ -4,6 +4,7 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 namespace dai {
 
+// TODO(before mainline) - API not supported on RVC2
 /**
  * BenchmarkReport message.
  */

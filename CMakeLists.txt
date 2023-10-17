@@ -43,7 +43,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.19.1" LANGUAGES CXX C)
+project(depthai VERSION "2.22.0" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -207,6 +207,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/XLinkIn.cpp
     src/pipeline/node/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
+    src/pipeline/node/Camera.cpp
     src/pipeline/node/MonoCamera.cpp
     src/pipeline/node/StereoDepth.cpp
     src/pipeline/node/NeuralNetwork.cpp
@@ -232,6 +233,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/test/MyProducer.cpp
     src/pipeline/node/test/MyConsumer.cpp
     src/pipeline/node/PointCloud.cpp
+    src/pipeline/node/UVC.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
@@ -262,6 +264,8 @@ add_library(${TARGET_CORE_NAME}
     src/utility/Path.cpp
     src/utility/Platform.cpp
     src/utility/Environment.cpp
+    src/utility/XLinkGlobalProfilingLogger.cpp
+    src/utility/Logging.cpp
     src/xlink/XLinkConnection.cpp
     src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp
@@ -335,8 +339,28 @@ endif()
 # No user specified paths, download from server
 message(STATUS "Downloading Depthai device side binaries from server...")
 
+# Then get the Depthai device side binaries (local or download)
+if(DEPTHAI_CMD_PATH OR DEPTHAI_USB2_CMD_PATH OR DEPTHAI_USB2_PATCH_PATH)
+    # At least one of the paths is set. include binaries locally
+    message(STATUS "Using local Depthai device side binaries...")
+
+    DepthaiLocal(
+        PATCH_ONLY ${DEPTHAI_USB2_PATCH_ONLY_MODE}
+        "${DEPTHAI_RESOURCES_OUTPUT_DIR}"            # Output folder
+        DEPTHAI_RESOURCE_LIST                       # List of output resources
+        "${DEPTHAI_CMD_PATH}"                       # depthai.cmd
+        "${DEPTHAI_USB2_CMD_PATH}"                  # depthai-usb2.cmd
+        "${DEPTHAI_USB2_PATCH_PATH}"                # depthai-usb2-patch.patch
+    )
+
+else()
+    # No user specified paths, download from server
+    message(STATUS "Downloading Depthai device side binaries from server...")
+endif()
+
 if(DEPTHAI_ENABLE_DEVICE_FW)
     # Add device FW
+
     DepthaiDownload(
         "${DEPTHAI_SHARED_COMMIT_HASH}" "${DEPTHAI_SHARED_COMMIT_HASH_ENFORCE}"
         PATCH_ONLY ON

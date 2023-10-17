@@ -48,19 +48,18 @@ class ToF : public NodeCRTP<DeviceNode, ToF, ToFProperties> {
      */
     Input inputRaw{true, *this, "inputRaw", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
 
-    /**
-     * Outputs TrackedFeatures message that carries tracked features results.
-     */
     Output depth{true, *this, "depth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-
-    // TODO add amplitude
-    // Output depth{true, *this, "depth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    // TODO(before mainline) - API not supported on RVC3
+    Input input{true, *this, "input", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
      * Passthrough message on which the calculation was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
     Output passthroughInputRaw{true, *this, "passthroughInputRaw", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    // TODO(before mainline) - API not supported on RVC3
+    Output amplitude{true, *this, "amplitude", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
+    Output error{true, *this, "error", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
 };
 
 }  // namespace node

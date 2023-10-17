@@ -16,12 +16,21 @@ class ToFConfig : public Buffer {
     RawToFConfig& cfg;
 
    public:
+    // Raw* mirror
+    using DepthParams = RawToFConfig::DepthParams;
+
     /**
      * Construct ToFConfig message.
      */
     ToFConfig();
     explicit ToFConfig(std::shared_ptr<RawToFConfig> ptr);
     virtual ~ToFConfig() = default;
+
+    // TODO(before mainline) - API not supported on RVC3
+    ToFConfig& setDepthParams(dai::ToFConfig::DepthParams config);
+    ToFConfig& setFreqModUsed(dai::ToFConfig::DepthParams::TypeFMod fmod);
+    ToFConfig& setAvgPhaseShuffle(bool enable);
+    ToFConfig& setMinAmplitude(float minamp);
 
     /**
      * Set explicit configuration.

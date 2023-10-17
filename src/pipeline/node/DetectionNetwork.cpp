@@ -30,14 +30,17 @@ void DetectionNetwork::build() {
 // -------------------------------------------------------------------
 void DetectionNetwork::setBlobPath(const dai::Path& path) {
     neuralNetwork->setBlobPath(path);
+    detectionParser->setBlobPath(path);
 }
 
 void DetectionNetwork::setBlob(OpenVINO::Blob blob) {
     neuralNetwork->setBlob(blob);
+    detectionParser->setBlob(blob);
 }
 
 void DetectionNetwork::setBlob(const dai::Path& path) {
     neuralNetwork->setBlob(path);
+    detectionParser->setBlob(path);
 }
 
 void DetectionNetwork::setXmlModelPath(const dai::Path& xmlModelPath, const dai::Path& binModelPath) {

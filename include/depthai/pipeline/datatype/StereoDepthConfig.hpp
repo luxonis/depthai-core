@@ -121,6 +121,14 @@ class StereoDepthConfig : public Buffer {
      */
     StereoDepthConfig& setDisparityShift(int disparityShift);
 
+    // TODO(before mainline) - API not supported on RVC3
+    /**
+     * Invalidate X amount of pixels at the edge of disparity frame.
+     * For right and center alignment X pixels will be invalidated from the right edge,
+     * for left alignment from the left edge.
+     */
+    StereoDepthConfig& setNumInvalidateEdgePixels(int32_t numInvalidateEdgePixels);
+
     /**
      * Get depth unit of depth map.
      */

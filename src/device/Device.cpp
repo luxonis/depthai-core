@@ -23,40 +23,39 @@ namespace dai {
 // Common explicit instantiation, to remove the need to define in header
 constexpr std::size_t Device::EVENT_QUEUE_MAXIMUM_SIZE;
 
-Device::Device(const Pipeline& pipeline) : DeviceBase(pipeline.getOpenVINOVersion()) {
+Device::Device(const Pipeline& pipeline) : DeviceBase(pipeline.getDeviceConfig()) {
     tryStartPipeline(pipeline);
 }
 
 template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool>>
-Device::Device(const Pipeline& pipeline, T usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), usb2Mode) {
+Device::Device(const Pipeline& pipeline, T usb2Mode) : DeviceBase(pipeline.getDeviceConfig(), usb2Mode) {
     tryStartPipeline(pipeline);
 }
 template Device::Device(const Pipeline&, bool);
 
-Device::Device(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) : DeviceBase(pipeline.getOpenVINOVersion(), maxUsbSpeed) {
+Device::Device(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) : DeviceBase(pipeline.getDeviceConfig(), maxUsbSpeed) {
     tryStartPipeline(pipeline);
 }
 
-Device::Device(const Pipeline& pipeline, const dai::Path& pathToCmd) : DeviceBase(pipeline.getOpenVINOVersion(), pathToCmd) {
+Device::Device(const Pipeline& pipeline, const dai::Path& pathToCmd) : DeviceBase(pipeline.getDeviceConfig(), pathToCmd) {
     tryStartPipeline(pipeline);
 }
 
-Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, false) {
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo) : DeviceBase(pipeline.getDeviceConfig(), devInfo, false) {
     tryStartPipeline(pipeline);
 }
 
-Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd)
-    : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, pathToCmd) {
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd) : DeviceBase(pipeline.getDeviceConfig(), devInfo, pathToCmd) {
     tryStartPipeline(pipeline);
 }
 
 template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool>>
-Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, T usb2Mode) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, usb2Mode) {
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, T usb2Mode) : DeviceBase(pipeline.getDeviceConfig(), devInfo, usb2Mode) {
     tryStartPipeline(pipeline);
 }
 template Device::Device(const Pipeline&, const DeviceInfo&, bool);
 
-Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : DeviceBase(pipeline.getOpenVINOVersion(), devInfo, maxUsbSpeed) {
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) : DeviceBase(pipeline.getDeviceConfig(), devInfo, maxUsbSpeed) {
     tryStartPipeline(pipeline);
 }
 
@@ -85,8 +84,6 @@ void Device::closeImpl() {
 }
 
 std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name) {
-    checkClosed();
-
     // Throw if queue not created
     // all queues for xlink streams are created upfront
     if(outputQueueMap.count(name) == 0) {
@@ -97,8 +94,6 @@ std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name)
 }
 
 std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name, unsigned int maxSize, bool blocking) {
-    checkClosed();
-
     // Throw if queue not created
     // all queues for xlink streams are created upfront
     if(outputQueueMap.count(name) == 0) {
@@ -114,8 +109,6 @@ std::shared_ptr<DataOutputQueue> Device::getOutputQueue(const std::string& name,
 }
 
 std::vector<std::string> Device::getOutputQueueNames() const {
-    checkClosed();
-
     std::vector<std::string> names;
     names.reserve(outputQueueMap.size());
     for(const auto& kv : outputQueueMap) {
@@ -125,8 +118,6 @@ std::vector<std::string> Device::getOutputQueueNames() const {
 }
 
 std::shared_ptr<DataInputQueue> Device::getInputQueue(const std::string& name) {
-    checkClosed();
-
     // Throw if queue not created
     // all queues for xlink streams are created upfront
     if(inputQueueMap.count(name) == 0) {
@@ -137,8 +128,6 @@ std::shared_ptr<DataInputQueue> Device::getInputQueue(const std::string& name) {
 }
 
 std::shared_ptr<DataInputQueue> Device::getInputQueue(const std::string& name, unsigned int maxSize, bool blocking) {
-    checkClosed();
-
     // Throw if queue not created
     // all queues for xlink streams are created upfront
     if(inputQueueMap.count(name) == 0) {
@@ -154,8 +143,6 @@ std::shared_ptr<DataInputQueue> Device::getInputQueue(const std::string& name, u
 }
 
 std::vector<std::string> Device::getInputQueueNames() const {
-    checkClosed();
-
     std::vector<std::string> names;
     names.reserve(inputQueueMap.size());
     for(const auto& kv : inputQueueMap) {
@@ -175,8 +162,6 @@ std::vector<std::string> Device::getInputQueueNames() const {
 // }
 
 std::vector<std::string> Device::getQueueEvents(const std::vector<std::string>& queueNames, std::size_t maxNumEvents, std::chrono::microseconds timeout) {
-    checkClosed();
-
     // First check if specified queues names are actually opened
     auto availableQueueNames = getOutputQueueNames();
     for(const auto& outputQueue : queueNames) {
@@ -276,7 +261,7 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
             node::XLinkIn::Properties props;
             utility::deserialize(kv.second.properties, props);
             auto streamName = props.streamName;
-
+            if(inputQueueMap.count(streamName) != 0) throw std::invalid_argument(fmt::format("Streams have duplicate name '{}'", streamName));
             // Create DataInputQueue's
             inputQueueMap[streamName] = std::make_shared<DataInputQueue>(connection, streamName, 16, true, props.maxDataSize);
         } else if(kv.second.name == node::XLinkOut::NAME) {
@@ -285,6 +270,7 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
             utility::deserialize(kv.second.properties, props);
             auto streamName = props.streamName;
 
+            if(outputQueueMap.count(streamName) != 0) throw std::invalid_argument(fmt::format("Streams have duplcate name '{}'", streamName));
             // Create DataOutputQueue's
             outputQueueMap[streamName] = std::make_shared<DataOutputQueue>(connection, streamName);
             spdlog::trace("Opened DataOutputQueue for {}", streamName);

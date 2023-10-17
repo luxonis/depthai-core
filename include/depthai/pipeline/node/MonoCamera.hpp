@@ -107,11 +107,27 @@ class MonoCamera : public NodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>
     /// Get sensor resolution
     Properties::SensorResolution getResolution() const;
 
+    // Set events on which frames will be received
+    void setFrameEventFilter(const std::vector<dai::FrameEvent>& events);
+
+    // Get events on which frames will be received
+    std::vector<dai::FrameEvent> getFrameEventFilter() const;
+
     /**
      * Set rate at which camera should produce frames
      * @param fps Rate in frames per second
      */
     void setFps(float fps);
+
+    /**
+     * Isp 3A rate (auto focus, auto exposure, auto white balance, camera controls etc.).
+     * Default (0) matches the camera FPS, meaning that 3A is running on each frame.
+     * Reducing the rate of 3A reduces the CPU usage on CSS, but also increases the convergence rate of 3A.
+     * Note that camera controls will be processed at this rate. E.g. if camera is running at 30 fps, and camera control is sent at every frame,
+     * but 3A fps is set to 15, the camera control messages will be processed at 15 fps rate, which will lead to queueing.
+
+     */
+    void setIsp3aFps(int isp3aFps);
 
     /**
      * Get rate at which camera should produce frames
@@ -135,6 +151,17 @@ class MonoCamera : public NodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>
     int getNumFramesPool() const;
     /// Get number of frames in raw pool
     int getRawNumFramesPool() const;
+
+    /**
+     * Configures whether the camera `raw` frames are saved as MIPI-packed to memory.
+     * The packed format is more efficient, consuming less memory on device, and less data
+     * to send to host: RAW10: 4 pixels saved on 5 bytes, RAW12: 2 pixels saved on 3 bytes.
+     * When packing is disabled (`false`), data is saved lsb-aligned, e.g. a RAW10 pixel
+     * will be stored as uint16, on bits 9..0: 0b0000'00pp'pppp'pppp.
+     * Default is auto: enabled for standard color/monochrome cameras where ISP can work
+     * with both packed/unpacked, but disabled for other cameras like ToF.
+     */
+    void setRawOutputPacked(bool packed);
 };
 
 }  // namespace node
