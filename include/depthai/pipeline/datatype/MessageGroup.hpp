@@ -35,10 +35,10 @@ class MessageGroup : public Buffer {
         grp.group[name] = RawGroupMessage{type, value.getRaw()};
     }
 
-    // TODO(asahtik): TEMP - remove
-    RawMessageGroup& getInternal() {
-        return grp;
-    }
+    /**
+     * True if sync was successful.
+     */
+    bool syncSuccessful() const;
 
     /**
      * Sets image timestamp related to dai::Clock::now()

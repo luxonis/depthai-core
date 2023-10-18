@@ -19,6 +19,7 @@
 #include "node/SpatialDetectionNetwork.hpp"
 #include "node/SpatialLocationCalculator.hpp"
 #include "node/StereoDepth.hpp"
+#include "node/Sync.hpp"
 #include "node/SystemLogger.hpp"
 #include "node/ToF.hpp"
 #include "node/VideoEncoder.hpp"

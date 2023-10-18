@@ -2,7 +2,6 @@
 
 #include "depthai-shared/datatype/DatatypeEnum.hpp"
 #include "depthai-shared/datatype/RawBuffer.hpp"
-#include "depthai-shared/datatype/RawMessageGroup.hpp"
 
 namespace dai {
 
@@ -15,6 +14,10 @@ MessageGroup::MessageGroup(std::shared_ptr<RawMessageGroup> ptr) : Buffer(std::m
 
 Buffer MessageGroup::operator[](const std::string& name) {
     return Buffer(grp.group.at(name).buffer);
+}
+
+bool MessageGroup::syncSuccessful() const {
+    return grp.success;
 }
 
 // setters

@@ -22,6 +22,26 @@ class Sync : public NodeCRTP<Node, Sync, SyncProperties> {
      * TODO
      */
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::MessageGroup, false}}};
+
+    /**
+     * TODO
+     */
+    void setSyncIntervalMs(unsigned int syncIntervalMs);
+
+    /**
+     * TODO
+     */
+    void setSyncAttempts(unsigned int syncAttempts);
+   
+    /**
+     * TODO
+     */
+    unsigned int getSyncIntervalMs() const;
+   
+    /**
+     * TODO
+     */
+    unsigned int getSyncAttempts() const;
 };
 
 }  // namespace node
