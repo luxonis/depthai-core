@@ -728,6 +728,7 @@ class Node : public std::enable_shared_from_this<Node> {
     Node() = default;
     Node(std::unique_ptr<Properties> props, bool conf);
     void build();
+    void removeConnectionToNode(std::shared_ptr<Node> node);
 
    public:
     virtual ~Node() = default;
