@@ -24,6 +24,7 @@ class OccupancyPool : public Buffer {
     virtual ~OccupancyPool() = default;
 
     std::vector<std::vector<int>>& occupancyPool;
+    std::vector<std::vector<std::vector<int>>>& occupancyPool3d;
 
     /**
      * Retrieves image timestamp related to dai::Clock::now()
