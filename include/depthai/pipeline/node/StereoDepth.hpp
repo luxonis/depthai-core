@@ -393,6 +393,18 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
      * See getOptimalNewCameraMatrix from opencv for more details.
      */
     void setAlphaScaling(float alpha);
+
+    /**
+     * Whether to use vertical stereo mode or not.
+     * Default value: auto, extrinsic calibration data will determine whether it's vertical or horizontal stereo.
+     */
+    void setVerticalStereo(bool verticalStereo);
+
+    /**
+     * Interpolation type used for stereo rectification.
+     * Default value: DEFAULT_STEREO_RECTIFICATION.
+     */
+    void setRectificationInterpolation(Interpolation rectificationInterpolation);
 };
 
 }  // namespace node

@@ -219,5 +219,13 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
     }
 }
 
+void StereoDepth::setVerticalStereo(bool verticalStereo) {
+    properties.verticalStereo = verticalStereo;
+}
+
+void StereoDepth::setRectificationInterpolation(Interpolation rectificationInterpolation) {
+    properties.rectificationInterpolation = rectificationInterpolation;
+}
+
 }  // namespace node
 }  // namespace dai
