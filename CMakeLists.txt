@@ -192,6 +192,7 @@ add_library(${TARGET_CORE_NAME}
     # sources
     src/device/Device.cpp
     src/device/DeviceBase.cpp
+    src/device/DeviceBaseNew.cpp
     src/device/DeviceBootloader.cpp
     src/device/DataQueue.cpp
     src/device/CallbackHandler.cpp
@@ -458,6 +459,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         libnop
         xtensor
         spdlog::spdlog
+        dl
     INTERFACE
         XLinkPublic
     PRIVATE
