@@ -44,7 +44,7 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                     std::vector<std::uint8_t> metadata;
                     DatatypeEnum type;
                     msg->getRaw()->serialize(metadata, type);
-                    spdlog::trace("Received message from device ({}) - parsing time: {}, data size: {}, object type: {} object data: {}",
+                    logger::trace("Received message from device ({}) - parsing time: {}, data size: {}, object type: {} object data: {}",
                                   name,
                                   std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
                                   msg->data->getSize(),
@@ -202,7 +202,7 @@ DataInputQueue::DataInputQueue(
 
                 // Log
                 if(spdlog::get_level() == spdlog::level::trace) {
-                    spdlog::trace("Sent message to device ({}) - data size: {}, metadata: {}, sending time: {}",
+                    logger::trace("Sent message to device ({}) - data size: {}, metadata: {}, sending time: {}",
                                   stream.getStreamName(),
                                   outgoing.data->getSize(),
                                   spdlog::to_hex(outgoing.metadata),

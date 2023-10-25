@@ -768,7 +768,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         std::unique_lock<std::mutex> lock(pimpl->rpcMutex);
 
         // Log the request data
-        if(logger::get_level() == spdlog::level::trace) {
+        if(getLogOutputLevel() == LogLevel::TRACE) {
             pimpl->logger.trace("RPC: {}", nlohmann::json::from_msgpack(request).dump());
         }
 
@@ -1025,6 +1025,11 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
 
             profilingRunning = false;
         });
+    }
+    auto crashdumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
+    if(!crashdumpPathStr.empty()) {
+        pimpl->logger.warn("Crash dump enabled");
+        pimpl->rpcClient->call("enableCrashDump", true);
     }
 
     // Below can throw - make sure to gracefully exit threads
@@ -1459,11 +1464,12 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     std::vector<std::uint8_t> assetStorage;
     pipeline.serialize(schema, assets, assetStorage);
 
-    // if debug
-    if(logger::get_level() <= spdlog::level::debug) {
-        auto pipelineSer = pipeline.serializeToJson();
-        pimpl->logger.debug("Schema dump: {}", pipelineSer["pipeline"].dump());
-        pimpl->logger.debug("Asset map dump: {}", pipelineSer["assets"].dump());
+    // if debug or lower
+    if(getLogOutputLevel() <= LogLevel::DEBUG) {
+        nlohmann::json jSchema = schema;
+        pimpl->logger.debug("Schema dump: {}", jSchema.dump());
+        nlohmann::json jAssets = assets;
+        pimpl->logger.debug("Asset map dump: {}", jAssets.dump());
     }
 
     // Load pipelineDesc, assets, and asset storage

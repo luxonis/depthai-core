@@ -9,6 +9,7 @@
 #include "utility/PimplImpl.hpp"
 #include "utility/Platform.hpp"
 #include "utility/Resources.hpp"
+#include "utility/Environment.hpp"
 
 // libraries
 #include "httplib.h"
@@ -53,7 +54,7 @@ DeviceGate::DeviceGate(const DeviceInfo& deviceInfo) : deviceInfo(deviceInfo) {
 
     // Discover and connect
     pimpl->cli = std::make_unique<httplib::Client>(deviceInfo.name, DEFAULT_PORT);
-    pimpl->cli->set_read_timeout(60);  // 60 seconds timeout to allow for compressing the core dumps without async
+    pimpl->cli->set_read_timeout(60);  // 60 seconds timeout to allow for compressing the crash dumps without async
     // pimpl->cli->set_connection_timeout(2);
 }
 
@@ -343,40 +344,45 @@ void DeviceGate::waitForSessionEnd() {
                 return;  // Session stopped - stop the thread
             case SessionState::CRASHED:
             case SessionState::DESTROYED:
+                auto crashDumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
+                if(crashDumpPathStr.empty()) {
+                    spdlog::warn("Firmware crashed but the environment variable DEPTHAI_CRASHDUMP is not set, the crash dump will not be saved.");
+                    return;
+                }
+
                 auto currentVersion = getVersion();
                 auto requiredVersion = Version(0, 0, 14);
                 if(currentVersion < requiredVersion) {
-                    spdlog::warn("FW crashed but the gate version does not support transfering over the core dump. Current version {}, required is {}",
+                    spdlog::warn("FW crashed but the gate version does not support transfering over the crash dump. Current version {}, required is {}",
                                  currentVersion.toString(),
                                  requiredVersion.toString());
                     return;
                 }
-                spdlog::warn("FW crashed - trying to get out the core dump");
+                spdlog::warn("FW crashed - trying to get out the crash dump");
                 std::this_thread::sleep_for(std::chrono::seconds(3));  // Allow for the generation of the crash dump and the log file
-                std::string temporaryDirectory = platform::getTempPath();
-                std::string coreDumpName;
-                spdlog::warn("Getting the core dump out - this can take up to a minute, because it first needs to be compressed.");
-                auto coreDump = getCoreDump(coreDumpName);
-                if(coreDump) {
-                    spdlog::warn("Core dump found - trying to save it");
-                    if(coreDumpName.empty()) {
-                        coreDumpName = "depthai_gate_core_dump.tar.gz";
+                std::string crashDumpName;
+                spdlog::warn("Getting the crash dump out - this can take up to a minute, because it first needs to be compressed.");
+                auto crashDump = getCrashDump(crashDumpName);
+                if(crashDump) {
+                    spdlog::warn("Crash dump found - trying to save it");
+                    if(crashDumpName.empty()) {
+                        crashDumpName = "depthai_gate_crash_dump.tar.gz";
                     }
-                    std::string fullName = deviceInfo.getMxId() + "-" + coreDumpName;
-                    if(auto path = saveFileToTemporaryDirectory(*coreDump, fullName, temporaryDirectory)) {
-                        spdlog::warn("Core dump saved to {} - please report to developers", *path);
+                    std::string fullName = deviceInfo.getMxId() + "-" + crashDumpName;
+                    if(auto path = saveFileToTemporaryDirectory(*crashDump, fullName, crashDumpPathStr)) {
+                        spdlog::warn("Crash dump saved to {} - please report to developers", *path);
                     } else {
-                        spdlog::error("Couldn't save core dump");
+                        spdlog::error("Couldn't save crash dump");
                     }
                 } else {
-                    spdlog::warn("Core dump not found");
+                    spdlog::warn("Crash dump not found");
                 }
                 return;
         }
     }
 }
 
-tl::optional<std::vector<uint8_t>> DeviceGate::getCoreDump(std::string& filename) {
+tl::optional<std::vector<uint8_t>> DeviceGate::getCrashDump(std::string& filename) {
     std::string url = fmt::format("{}/{}/core_dump", sessionsEndpoint, sessionId);
     return DeviceGate::getFile(url, filename);
 }
