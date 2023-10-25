@@ -1,4 +1,4 @@
-#include "Environment.hpp"
+#include "depthai/utility/Environment.hpp"
 
 #include <spdlog/details/os.h>
 #include <spdlog/spdlog.h>
@@ -7,7 +7,7 @@
 #include <unordered_map>
 
 // project
-#include <utility/Logging.hpp>
+#include "depthai/utility/Logging.hpp"
 
 namespace dai {
 namespace utility {

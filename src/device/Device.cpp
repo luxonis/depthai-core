@@ -10,7 +10,7 @@
 #include "depthai-shared/xlink/XLinkConstants.hpp"
 
 // project
-#include "DeviceLogger.hpp"
+#include "depthai/device/DeviceLogger.hpp"
 #include "depthai/device/DeviceBootloader.hpp"
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"

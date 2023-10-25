@@ -24,7 +24,7 @@
 #include "XLink/XLink.h"
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/spdlog.h"
-#include "utility/Logging.hpp"
+#include "depthai/utility/Logging.hpp"
 #include "zlib.h"
 
 namespace dai {

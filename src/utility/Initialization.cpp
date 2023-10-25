@@ -5,8 +5,8 @@
 
 // project
 #include "build/version.hpp"
-#include "utility/Environment.hpp"
-#include "utility/Logging.hpp"
+#include "depthai/utility/Environment.hpp"
+#include "depthai/utility/Logging.hpp"
 #include "utility/Resources.hpp"
 #include "utility/XLinkGlobalProfilingLogger.hpp"
 
@@ -16,7 +16,7 @@
 #include "spdlog/cfg/helpers.h"
 #include "spdlog/details/os.h"
 #include "spdlog/spdlog.h"
-#include "utility/Logging.hpp"
+#include "depthai/utility/Logging.hpp"
 extern "C" {
 #include "XLink/XLinkLog.h"
 }

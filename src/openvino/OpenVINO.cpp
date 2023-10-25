@@ -10,7 +10,7 @@
 
 #include "BlobReader.hpp"
 #include "spdlog/spdlog.h"
-#include "utility/Logging.hpp"
+#include "depthai/utility/Logging.hpp"
 #include "utility/spdlog-fmt.hpp"
 
 namespace dai {

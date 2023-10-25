@@ -15,7 +15,7 @@
 #include "spdlog/details/os.h"
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/spdlog.h"
-#include "utility/Logging.hpp"
+#include "depthai/utility/Logging.hpp"
 
 // shared
 #include "depthai-shared/device/BoardConfig.hpp"
@@ -23,7 +23,7 @@
 #include "depthai-shared/utility/Serialization.hpp"
 
 // project
-#include "utility/Environment.hpp"
+#include "depthai/utility/Environment.hpp"
 #include "utility/spdlog-fmt.hpp"
 
 extern "C" {

@@ -1,5 +1,5 @@
 #pragma once
-
+#include "depthai/utility/Logging.hpp"
 #include <spdlog/spdlog.h>
 
 namespace dai {

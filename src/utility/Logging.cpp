@@ -1,4 +1,4 @@
-#include "Logging.hpp"
+#include "depthai/utility/Logging.hpp"
 
 namespace dai {
 

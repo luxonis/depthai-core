@@ -41,7 +41,7 @@ namespace dai {
 
 // Forward declare Pipeline
 class Pipeline;
-
+class DeviceBaseImpl;
 /**
  * The core of depthai device for RAII, connects to device and maintains watchdog, timesync, ...
  */
@@ -930,9 +930,7 @@ class DeviceBase {
     mutable std::mutex closedMtx;
     bool closed{false};
 
-    // pimpl
-    class Impl;
-    Pimpl<Impl> pimpl;
+    Pimpl<DeviceBaseImpl> pimpl;
 
     // Device config
     Config config;

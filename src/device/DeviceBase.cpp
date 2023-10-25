@@ -2,6 +2,7 @@
 
 // std
 #include <iostream>
+#include <dlfcn.h>
 
 // shared
 #include "depthai-bootloader-shared/Bootloader.hpp"
@@ -16,12 +17,13 @@
 #include "depthai-shared/xlink/XLinkConstants.hpp"
 
 // project
-#include "DeviceLogger.hpp"
+#include "depthai/device/DeviceLogger.hpp"
 #include "depthai/device/EepromError.hpp"
+#include "depthai/device/DeviceBaseImpl.hpp"
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "pipeline/Pipeline.hpp"
-#include "utility/Environment.hpp"
+#include "depthai/utility/Environment.hpp"
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Resources.hpp"
@@ -35,7 +37,8 @@
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
-#include "utility/Logging.hpp"
+#include "depthai/utility/Logging.hpp"
+
 
 namespace dai {
 
@@ -86,26 +89,26 @@ static LogLevel spdlogLevelToLogLevel(spdlog::level::level_enum level, LogLevel 
     // Default
     return defaultValue;
 }
-static spdlog::level::level_enum logLevelToSpdlogLevel(LogLevel level, spdlog::level::level_enum defaultValue = spdlog::level::off) {
-    switch(level) {
-        case LogLevel::TRACE:
-            return spdlog::level::trace;
-        case LogLevel::DEBUG:
-            return spdlog::level::debug;
-        case LogLevel::INFO:
-            return spdlog::level::info;
-        case LogLevel::WARN:
-            return spdlog::level::warn;
-        case LogLevel::ERR:
-            return spdlog::level::err;
-        case LogLevel::CRITICAL:
-            return spdlog::level::critical;
-        case LogLevel::OFF:
-            return spdlog::level::off;
-    }
-    // Default
-    return defaultValue;
-}
+// static spdlog::level::level_enum logLevelToSpdlogLevel(LogLevel level, spdlog::level::level_enum defaultValue = spdlog::level::off) {
+//     switch(level) {
+//         case LogLevel::TRACE:
+//             return spdlog::level::trace;
+//         case LogLevel::DEBUG:
+//             return spdlog::level::debug;
+//         case LogLevel::INFO:
+//             return spdlog::level::info;
+//         case LogLevel::WARN:
+//             return spdlog::level::warn;
+//         case LogLevel::ERR:
+//             return spdlog::level::err;
+//         case LogLevel::CRITICAL:
+//             return spdlog::level::critical;
+//         case LogLevel::OFF:
+//             return spdlog::level::off;
+//     }
+//     // Default
+//     return defaultValue;
+// }
 
 constexpr std::chrono::seconds DeviceBase::DEFAULT_SEARCH_TIME;
 constexpr float DeviceBase::DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ;
@@ -268,62 +271,62 @@ std::tuple<bool, DeviceInfo> DeviceBase::getFirstDevice(){
 }
 */
 
-///////////////////////////////////////////////
-// Impl section - use this to hide dependencies
-///////////////////////////////////////////////
-class DeviceBase::Impl {
-   public:
-    Impl() = default;
+// ///////////////////////////////////////////////
+// // Impl section - use this to hide dependencies
+// ///////////////////////////////////////////////
+// class DeviceBase::Impl {
+//    public:
+//     Impl() = default;
 
-    // Default sink
-    std::shared_ptr<spdlog::sinks::stdout_color_sink_mt> stdoutColorSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
-    // Device Logger
-    DeviceLogger logger{"host", stdoutColorSink};
+//     // Default sink
+//     std::shared_ptr<spdlog::sinks::stdout_color_sink_mt> stdoutColorSink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
+//     // Device Logger
+//     DeviceLogger logger{"host", stdoutColorSink};
 
-    // RPC
-    std::mutex rpcMutex;
-    std::shared_ptr<XLinkStream> rpcStream;
-    std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> rpcClient;
+//     // RPC
+//     std::mutex rpcMutex;
+//     std::shared_ptr<XLinkStream> rpcStream;
+//     std::unique_ptr<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>> rpcClient;
 
-    void setLogLevel(LogLevel level);
-    LogLevel getLogLevel();
-    void setPattern(const std::string& pattern);
-};
+//     void setLogLevel(LogLevel level);
+//     LogLevel getLogLevel();
+//     void setPattern(const std::string& pattern);
+// };
 
-void DeviceBase::Impl::setPattern(const std::string& pattern) {
-    logger.set_pattern(pattern);
-}
+// void DeviceBase::Impl::setPattern(const std::string& pattern) {
+//     logger.set_pattern(pattern);
+// }
 
-void DeviceBase::Impl::setLogLevel(LogLevel level) {
-    // Converts LogLevel to spdlog and reconfigures logger level
-    auto spdlogLevel = logLevelToSpdlogLevel(level, spdlog::level::warn);
-    // Set level for all configured sinks
-    logger.set_level(spdlogLevel);
-}
+// void DeviceBase::Impl::setLogLevel(LogLevel level) {
+//     // Converts LogLevel to spdlog and reconfigures logger level
+//     auto spdlogLevel = logLevelToSpdlogLevel(level, spdlog::level::warn);
+//     // Set level for all configured sinks
+//     logger.set_level(spdlogLevel);
+// }
 
-LogLevel DeviceBase::Impl::getLogLevel() {
-    // Converts spdlog to LogLevel
-    return spdlogLevelToLogLevel(logger.level(), LogLevel::WARN);
-}
+// LogLevel DeviceBase::Impl::getLogLevel() {
+//     // Converts spdlog to LogLevel
+//     return spdlogLevelToLogLevel(logger.level(), LogLevel::WARN);
+// }
 
-///////////////////////////////////////////////
-// END OF Impl section
-///////////////////////////////////////////////
+// ///////////////////////////////////////////////
+// // END OF Impl section
+// ///////////////////////////////////////////////
 
 void DeviceBase::tryGetDevice() {
     // Searches for any available device for 'default' timeout
     bool found = false;
     std::tie(found, deviceInfo) = getAnyAvailableDevice();
 
-    // If no device found, throw
-    if(!found) {
-        auto numConnected = getAllAvailableDevices().size();
-        if(numConnected > 0) {
-            throw std::runtime_error(fmt::format("No available devices ({} connected, but in use)", numConnected));
-        } else {
-            throw std::runtime_error("No available devices");
-        }
-    }
+    // // If no device found, throw
+    // if(!found) {
+    //     auto numConnected = getAllAvailableDevices().size();
+    //     if(numConnected > 0) {
+    //         throw std::runtime_error(fmt::format("No available devices ({} connected, but in use)", numConnected));
+    //     } else {
+    //         throw std::runtime_error("No available devices");
+    //     }
+    // }
 }
 
 DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo) : DeviceBase(version, devInfo, DeviceBase::DEFAULT_USB_SPEED) {}
@@ -594,6 +597,32 @@ void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed, const dai::Path& path
 }
 
 void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<const Pipeline&> pipeline) {
+    // Change the implementation to the local one as a test
+    void* shared_library_handle = dlopen("libdepthai-device-kb_shared.so", RTLD_LAZY);
+    if (!shared_library_handle) {
+        std::cerr << "Cannot open library: " << dlerror() << '\n';
+        return;
+    }
+
+    // load the symbol
+    typedef DeviceBaseImpl* (*create_t)();
+
+    // reset errors
+    dlerror();
+
+    create_t createDeviceBaseImpl = (create_t) dlsym(shared_library_handle, "createDeviceImpl");
+    const char *dlsym_error = dlerror();
+    if (dlsym_error) {
+        std::cerr << "Cannot load symbol 'create': " << dlsym_error << '\n';
+        dlclose(shared_library_handle);
+        return;
+    }
+    DeviceBaseImpl* impl = createDeviceBaseImpl();
+
+    if(1){
+        pimpl = Pimpl<DeviceBaseImpl>(impl);
+    }
+    
     // Initalize depthai library if not already
     initialize();
 
@@ -721,10 +750,10 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         // Boot and connect with XLinkConnection constructor
         connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig, expectedBootState);
 
-    } else if(deviceInfo.state == X_LINK_BOOTED) {
+    } else if(deviceInfo.state == X_LINK_BOOTED || true) {
         // Connect without booting
-        std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, pathToMvcmd);
-        connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
+        // std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, pathToMvcmd);
+        connection = std::make_shared<XLinkConnection>(deviceInfo);
     } else if(deviceInfo.state == X_LINK_GATE || deviceInfo.state == X_LINK_GATE_BOOTED) {
         // Boot FW using DeviceGate then connect directly
         gate = std::make_unique<DeviceGate>(deviceInfo);

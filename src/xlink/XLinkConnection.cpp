@@ -11,7 +11,7 @@
 
 // project
 #include "depthai/utility/Initialization.hpp"
-#include "utility/Environment.hpp"
+#include "depthai/utility/Environment.hpp"
 #include "utility/spdlog-fmt.hpp"
 
 // libraries
@@ -23,7 +23,7 @@ extern "C" {
 #include "spdlog/details/os.h"
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/spdlog.h"
-#include "utility/Logging.hpp"
+#include "depthai/utility/Logging.hpp"
 
 namespace dai {
 

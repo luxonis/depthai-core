@@ -9,7 +9,7 @@
 #include "utility/PimplImpl.hpp"
 #include "utility/Platform.hpp"
 #include "utility/Resources.hpp"
-#include "utility/Environment.hpp"
+#include "depthai/utility/Environment.hpp"
 
 // libraries
 #include "httplib.h"

@@ -13,7 +13,7 @@
 #include "depthai-shared/xlink/XLinkConstants.hpp"
 
 // libraries
-#include "utility/Logging.hpp"
+#include "depthai/utility/Logging.hpp"
 
 // Additions
 #include "spdlog/fmt/bin_to_hex.h"

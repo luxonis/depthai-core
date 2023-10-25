@@ -15,7 +15,12 @@ class Pimpl {
     Pimpl();
     template <typename... Args>
     Pimpl(Args&&...);
+    Pimpl(T* raw_ptr);
     ~Pimpl();
+    Pimpl(Pimpl&&) noexcept;
+
+    Pimpl& operator=(const Pimpl& other);
+    Pimpl& operator=(Pimpl&&) noexcept;
     T* operator->();
     T& operator*();
 };

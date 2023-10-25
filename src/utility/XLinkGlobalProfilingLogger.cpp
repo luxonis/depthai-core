@@ -2,7 +2,7 @@
 
 #include <XLink/XLink.h>
 
-#include "Logging.hpp"
+#include "depthai/utility/Logging.hpp"
 #include "depthai/utility/Initialization.hpp"
 
 using namespace std;

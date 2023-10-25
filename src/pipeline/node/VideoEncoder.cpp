@@ -5,7 +5,7 @@
 
 // libraries
 #include "spdlog/spdlog.h"
-#include "utility/Logging.hpp"
+#include "depthai/utility/Logging.hpp"
 
 namespace dai {
 namespace node {
