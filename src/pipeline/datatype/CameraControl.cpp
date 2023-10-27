@@ -190,6 +190,16 @@ CameraControl& CameraControl::setEffectMode(EffectMode mode) {
     cfg.effectMode = mode;
     return *this;
 }
+CameraControl& CameraControl::setControlMode(ControlMode mode) {
+    cfg.setCommand(RawCameraControl::Command::CONTROL_MODE);
+    cfg.controlMode = mode;
+    return *this;
+}
+CameraControl& CameraControl::setCaptureIntent(CaptureIntent mode) {
+    cfg.setCommand(RawCameraControl::Command::CAPTURE_INTENT);
+    cfg.captureIntent = mode;
+    return *this;
+}
 
 bool CameraControl::getCaptureStill() const {
     return cfg.getCommand(RawCameraControl::Command::STILL_CAPTURE);

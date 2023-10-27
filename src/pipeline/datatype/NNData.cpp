@@ -269,39 +269,17 @@ std::vector<std::int32_t> NNData::getFirstLayerInt32() const {
     return {};
 }
 
-// getters
-std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> NNData::getTimestamp() const {
-    using namespace std::chrono;
-    return time_point<steady_clock, steady_clock::duration>{seconds(rawNn.ts.sec) + nanoseconds(rawNn.ts.nsec)};
-}
-std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> NNData::getTimestampDevice() const {
-    using namespace std::chrono;
-    return time_point<steady_clock, steady_clock::duration>{seconds(rawNn.tsDevice.sec) + nanoseconds(rawNn.tsDevice.nsec)};
-}
-int64_t NNData::getSequenceNum() const {
-    return rawNn.sequenceNum;
-}
-
 // setters
 NNData& NNData::setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
     // Set timestamp from timepoint
-    using namespace std::chrono;
-    auto ts = tp.time_since_epoch();
-    rawNn.ts.sec = duration_cast<seconds>(ts).count();
-    rawNn.ts.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
-    return *this;
+    return static_cast<NNData&>(Buffer::setTimestamp(tp));
 }
 NNData& NNData::setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
     // Set timestamp from timepoint
-    using namespace std::chrono;
-    auto ts = tp.time_since_epoch();
-    rawNn.tsDevice.sec = duration_cast<seconds>(ts).count();
-    rawNn.ts.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
-    return *this;
+    return static_cast<NNData&>(Buffer::setTimestampDevice(tp));
 }
 NNData& NNData::setSequenceNum(int64_t sequenceNum) {
-    rawNn.sequenceNum = sequenceNum;
-    return *this;
+    return static_cast<NNData&>(Buffer::setSequenceNum(sequenceNum));
 }
 
 }  // namespace dai

@@ -90,9 +90,9 @@ class Warp : public NodeCRTP<Node, Warp, WarpProperties> {
      * Specify which interpolation method to use
      * @param interpolation type of interpolation
      */
-    void setInterpolation(Properties::Interpolation interpolation);
+    void setInterpolation(dai::Interpolation interpolation);
     /// Retrieve which interpolation method to use
-    Properties::Interpolation getInterpolation() const;
+    dai::Interpolation getInterpolation() const;
 };
 
 }  // namespace node
