@@ -76,25 +76,6 @@ inline std::shared_ptr<T> parseDatatype(std::uint8_t* metadata, size_t size, std
     return tmp;
 }
 
-template <>
-inline std::shared_ptr<RawMessageGroup> parseDatatype(std::uint8_t* metadata, size_t size, std::vector<uint8_t>& data) {
-    auto tmp = std::make_shared<RawMessageGroup>();
-
-    // deserialize
-    utility::deserialize(metadata, size, *tmp);
-    // Move data
-    for(auto& entry : tmp->group) {
-        auto begin = data.begin() + entry.second.offset;
-        auto end = begin + entry.second.size;
-        if(end > data.end()) {
-            throw std::runtime_error("Bad packet, couldn't parse (message group data out of bounds)");
-        }
-        std::move(begin, end, std::back_inserter(entry.second.buffer->data));
-    }
-
-    return tmp;
-}
-
 static std::tuple<DatatypeEnum, size_t, size_t> parseHeader(streamPacketDesc_t* const packet) {
     if(packet->length < 8) {
         throw std::runtime_error("Bad packet, couldn't parse (not enough data)");
@@ -218,8 +199,7 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
     throw std::runtime_error("Bad packet, couldn't parse");
 }
 
-std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPacketDesc_t* const packet) {
-    DatatypeEnum objectType;
+std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPacketDesc_t* const packet, DatatypeEnum& objectType) {
     size_t serializedObjectSize;
     size_t bufferLength;
     std::tie(objectType, serializedObjectSize, bufferLength) = parseHeader(packet);
@@ -312,8 +292,12 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
 
     throw std::runtime_error("Bad packet, couldn't parse (invalid message type)");
 }
+std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPacketDesc_t* const packet) {
+    DatatypeEnum objectType;
+    return parseMessageToADatatype(packet, objectType);
+}
 
-std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer& data) {
+std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer& data, DatatypeEnum& datatype) {
     // Serialization:
     // 1. fill vector with bytes from data.data
     // 2. serialize and append metadata
@@ -321,7 +305,6 @@ std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer&
     // 4. append size (4B LE) of serialized metadata
 
     std::vector<std::uint8_t> metadata;
-    DatatypeEnum datatype;
     data.serialize(metadata, datatype);
     uint32_t metadataSize = static_cast<uint32_t>(metadata.size());
 
@@ -340,44 +323,18 @@ std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer&
 
     return ser;
 }
-
-std::vector<std::uint8_t> StreamMessageParser::serializeMessage(RawMessageGroup& data) {
-    // Serialization:
-    // 1. fill vector with bytes from data.data
-    // 2. serialize and append metadata
-    // 3. append datatype enum (4B LE)
-    // 4. append size (4B LE) of serialized metadata
-
-    data.updateOffsets();
-    std::vector<std::uint8_t> metadata;
-    DatatypeEnum datatype;
-    data.serialize(metadata, datatype);
-    uint32_t metadataSize = static_cast<uint32_t>(metadata.size());
-
-    // 4B datatype & 4B metadata size
-    std::array<std::uint8_t, 4> leDatatype;
-    std::array<std::uint8_t, 4> leMetadataSize;
-    for(int i = 0; i < 4; i++) leDatatype[i] = (static_cast<std::int32_t>(datatype) >> (i * 8)) & 0xFF;
-    for(int i = 0; i < 4; i++) leMetadataSize[i] = (metadataSize >> i * 8) & 0xFF;
-
-    uint64_t dataSize = 0;
-    for(auto& entry : data.group) dataSize += entry.second.size;
-
-    std::vector<std::uint8_t> ser;
-    ser.reserve(dataSize + metadata.size() + leDatatype.size() + leMetadataSize.size());
-    for(auto& entry : data.group) {
-        ser.insert(ser.end(), entry.second.buffer->data.begin(), entry.second.buffer->data.end());
-    }
-    ser.insert(ser.end(), metadata.begin(), metadata.end());
-    ser.insert(ser.end(), leDatatype.begin(), leDatatype.end());
-    ser.insert(ser.end(), leMetadataSize.begin(), leMetadataSize.end());
-
-    return ser;
+std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer& data) {
+    DatatypeEnum type;
+    return serializeMessage(data, type);
 }
 
-std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const std::shared_ptr<const RawBuffer>& data) {
+std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const std::shared_ptr<const RawBuffer>& data, DatatypeEnum& type) {
     if(!data) return {};
-    return serializeMessage(*data);
+    return serializeMessage(*data, type);
+}
+std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const std::shared_ptr<const RawBuffer>& data) {
+    DatatypeEnum type;
+    return serializeMessage(data, type);
 }
 
 std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const ADatatype& data) {

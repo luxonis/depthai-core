@@ -30,9 +30,10 @@ class MessageGroup : public Buffer {
         return T(grp.group.at(name).buffer);
     }
     template <typename T>
-    void add(const std::string& name, const T& value) {
+    void add(const std::string& name, const std::shared_ptr<T>& value) {
+        // TODO(asahtik): How to get the correct type when using pybind11?
         DatatypeEnum type = rawToType<T>();
-        grp.group[name] = RawGroupMessage{type, value.getRaw()};
+        grp.group[name] = RawGroupMessage{type, value->getRaw()};
     }
 
     /**

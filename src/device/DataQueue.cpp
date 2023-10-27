@@ -3,8 +3,11 @@
 // std
 #include <chrono>
 #include <iostream>
+#include <memory>
 
 // project
+#include "depthai-shared/datatype/DatatypeEnum.hpp"
+#include "depthai-shared/datatype/RawMessageGroup.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 #include "pipeline/datatype/StreamMessageParser.hpp"
@@ -35,8 +38,23 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
             while(running) {
                 // Blocking -- parse packet and gather timing information
                 auto packet = stream.readMove();
+                DatatypeEnum type;
                 const auto t1Parse = std::chrono::steady_clock::now();
-                const auto data = StreamMessageParser::parseMessageToADatatype(&packet);
+                const auto data = StreamMessageParser::parseMessageToADatatype(&packet, type);
+                if(type == DatatypeEnum::MessageGroup) {
+                    auto rawMsgGrp = std::dynamic_pointer_cast<RawMessageGroup>(data->serialize());
+                    unsigned int size = rawMsgGrp->group.size();
+                    std::vector<std::shared_ptr<ADatatype>> packets;
+                    packets.reserve(size);
+                    for(unsigned int i = 0; i < rawMsgGrp->group.size(); ++i) {
+                        auto dpacket = stream.readMove();
+                        packets.push_back(StreamMessageParser::parseMessageToADatatype(&dpacket));
+                    }
+                    for(auto& msg : rawMsgGrp->group) {
+                        logger::info("Message group index {}", msg.second.index);
+                        msg.second.buffer = packets[msg.second.index]->serialize();
+                    }
+                }
                 const auto t2Parse = std::chrono::steady_clock::now();
 
                 // Trace level debugging
@@ -192,7 +210,17 @@ DataInputQueue::DataInputQueue(
 
                 // serialize
                 auto t1Parse = std::chrono::steady_clock::now();
-                auto serialized = StreamMessageParser::serializeMessage(data);
+                data->prepareMetadata();
+                DatatypeEnum type;
+                auto serialized = StreamMessageParser::serializeMessage(data, type);
+                std::vector<std::vector<uint8_t>> serializedAux;
+                if(type == DatatypeEnum::MessageGroup) {
+                    auto rawMsgGrp = std::dynamic_pointer_cast<RawMessageGroup>(data);
+                    serializedAux.reserve(rawMsgGrp->group.size());
+                    for(auto& msg : rawMsgGrp->group) {
+                        serializedAux.push_back(StreamMessageParser::serializeMessage(msg.second.buffer));
+                    }
+                }
                 auto t2Parse = std::chrono::steady_clock::now();
 
                 // Trace level debugging
@@ -210,6 +238,9 @@ DataInputQueue::DataInputQueue(
 
                 // Blocking
                 stream.write(serialized);
+                for(auto& msg : serializedAux) {
+                    stream.write(msg);
+                }
 
                 // Increment num packets sent
                 numPacketsSent++;
