@@ -1,4 +1,5 @@
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
+#include "utility/H26xParsers.hpp"
 
 namespace dai {
 
@@ -38,6 +39,40 @@ bool EncodedFrame::getLossless() const {
     return frame.lossless;
 }
 EncodedFrame::FrameType EncodedFrame::getFrameType() const {
+    if (frame.type == FrameType::Unknown) {
+        SliceType frameType;
+        switch (frame.profile) {
+            case RawEncodedFrame::Profile::JPEG:
+                frameType = SliceType::I;
+                break;
+            case RawEncodedFrame::Profile::AVC:
+                frameType = getTypesH264(frame.data, true)[0];
+                break;
+            case RawEncodedFrame::Profile::HEVC:
+                frameType = getTypesH265(frame.data, true)[0];
+                break;
+        }
+        switch (frameType) {
+            case SliceType::P:
+                frame.type = FrameType::P;
+                break;
+            case SliceType::B:
+                frame.type = FrameType::B;
+                break;
+            case SliceType::I:
+                frame.type = FrameType::I;
+                break;
+            case SliceType::SP:
+                frame.type = FrameType::P;
+                break;
+            case SliceType::SI:
+                frame.type = FrameType::I;
+                break;
+            case SliceType::Unknown:
+                frame.type = FrameType::Unknown;
+                break;
+        }
+    }
     return frame.type;
 }
 EncodedFrame::Profile EncodedFrame::getProfile() const {

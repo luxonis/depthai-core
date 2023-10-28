@@ -248,6 +248,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/TrackedFeatures.cpp
     src/pipeline/datatype/FeatureTrackerConfig.cpp
     src/pipeline/datatype/ToFConfig.cpp
+    src/utility/H26xParsers.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/utility/Path.cpp
