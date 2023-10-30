@@ -68,6 +68,10 @@ std::vector<CameraBoardSocket> DeviceBaseImpl::getConnectedCameras() {
     return {CameraBoardSocket::CAM_A, CameraBoardSocket::CAM_B};
 }
 
+void DeviceBaseImpl::addOutputQueueCallback(std::string name, std::function<void(std::shared_ptr<ADatatype>)> callback) {
+    return; // TODO no default impl
+}
+
 DeviceBaseImpl::~DeviceBaseImpl() {
     // Destructor
     std::cout << "DeviceBaseImpl destructor called" << std::endl;

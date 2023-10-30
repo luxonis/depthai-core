@@ -113,6 +113,12 @@ DataOutputQueue::~DataOutputQueue() {
     if(readingThread.joinable()) readingThread.join();
 }
 
+void DataOutputQueue::sendMessage(std::shared_ptr<ADatatype> message) {
+    if(!queue.push(message)) {
+        throw std::runtime_error(fmt::format("Underlying queue destructed"));
+    }
+}
+
 void DataOutputQueue::setBlocking(bool blocking) {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
     queue.setBlocking(blocking);

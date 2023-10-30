@@ -12,6 +12,8 @@
 // project
 #include "depthai/device/DeviceLogger.hpp"
 #include "depthai/device/DeviceBootloader.hpp"
+#include "depthai/device/DeviceBaseImpl.hpp"
+#include "utility/PimplImpl.hpp"
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "pipeline/Pipeline.hpp"
@@ -273,6 +275,12 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
             if(outputQueueMap.count(streamName) != 0) throw std::invalid_argument(fmt::format("Streams have duplcate name '{}'", streamName));
             // Create DataOutputQueue's
             outputQueueMap[streamName] = std::make_shared<DataOutputQueue>(connection, streamName);
+            auto outputQueue = outputQueueMap[streamName];
+            // Create a lambda and add it as a callback right here
+            pimpl->addOutputQueueCallback(streamName, [outputQueue](std::shared_ptr<dai::ADatatype> message) {
+                outputQueue->sendMessage(message);
+            });
+
             spdlog::trace("Opened DataOutputQueue for {}", streamName);
             // Add callback for events
             callbackIdMap[streamName] = outputQueueMap[streamName]->addCallback([this](std::string queueName, std::shared_ptr<ADatatype>) {

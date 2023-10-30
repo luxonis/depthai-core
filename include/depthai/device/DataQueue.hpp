@@ -55,6 +55,7 @@ class DataOutputQueue {
      */
     void close();
 
+    void sendMessage(std::shared_ptr<dai::ADatatype> message);
     /**
      * Sets queue behavior when full (maxSize)
      *

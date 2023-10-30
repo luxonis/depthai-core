@@ -40,5 +40,7 @@ class DeviceBaseImpl {
 
     // Test for direct calls
     virtual std::vector<CameraBoardSocket> getConnectedCameras();
+
+    virtual void addOutputQueueCallback(std::string name, std::function<void(std::shared_ptr<ADatatype>)> callback);
 };
 }  // namespace dai

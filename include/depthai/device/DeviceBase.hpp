@@ -885,6 +885,8 @@ class DeviceBase {
     void init(Config config, const dai::Path& pathToCmd);
     void init(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
     void init(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
+   protected:
+    Pimpl<DeviceBaseImpl> pimpl;
 
    private:
     // private functions
@@ -930,7 +932,6 @@ class DeviceBase {
     mutable std::mutex closedMtx;
     bool closed{false};
 
-    Pimpl<DeviceBaseImpl> pimpl;
 
     // Device config
     Config config;
