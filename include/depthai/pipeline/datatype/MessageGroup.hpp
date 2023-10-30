@@ -24,7 +24,7 @@ class MessageGroup : public Buffer {
     virtual ~MessageGroup() = default;
 
     /// Group
-    Buffer operator[](const std::string& name);
+    std::shared_ptr<ADatatype> operator[](const std::string& name);
     template <typename T>
     T get(const std::string& name) {
         return T(grp.group.at(name).buffer);
