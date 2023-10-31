@@ -314,14 +314,24 @@ Resources& Resources::getInstance() {
     return instance;
 }
 
-template <typename CV, typename BOOL, typename MTX, typename PATH, typename LIST, typename MAP>
-std::function<void()> getLazyTarXzFunction(MTX& mtx, CV& cv, BOOL& ready, PATH cmrcPath, LIST& resourceList, MAP& resourceMap) {
-    return [&mtx, &cv, &ready, cmrcPath, &resourceList, &resourceMap] {
+std::function<std::vector<uint8_t>()> getFetchFromCmrc(const std::string& cmrcPath) {
+    return [cmrcPath] {
+        auto fs = cmrc::depthai::get_filesystem();
+        return std::vector<uint8_t>(fs.open(cmrcPath).begin(), fs.open(cmrcPath).end());
+    };
+}
+
+template <typename CV, typename BOOL, typename MTX, typename LIST, typename MAP>
+std::function<void()> getLazyTarXzFunction(MTX& mtx,
+                                           CV& cv,
+                                           BOOL& ready,
+                                           LIST& resourceList,
+                                           MAP& resourceMap,
+                                           std::function<std::vector<uint8_t>()> fetchFunc){
+    return [&mtx, &cv, &ready, &resourceList, &resourceMap, fetchFunc] {
         using namespace std::chrono;
 
-        // Get binaries from internal sources
-        auto fs = cmrc::depthai::get_filesystem();
-        auto tarXz = fs.open(cmrcPath);
+        auto tarXz = fetchFunc();
 
         auto t1 = steady_clock::now();
 
@@ -329,7 +339,7 @@ std::function<void()> getLazyTarXzFunction(MTX& mtx, CV& cv, BOOL& ready, PATH c
         struct archive* a = archive_read_new();
         archive_read_support_filter_xz(a);
         archive_read_support_format_tar(a);
-        int r = archive_read_open_memory(a, tarXz.begin(), tarXz.size());
+        int r = archive_read_open_memory(a, tarXz.data(), tarXz.size());
         assert(r == ARCHIVE_OK);
 
         auto t2 = steady_clock::now();
@@ -396,7 +406,7 @@ std::function<void()> getLazyTarXzFunction(MTX& mtx, CV& cv, BOOL& ready, PATH c
 
         // Debug - logs loading times
         logger::debug(
-            "Resources - Archive '{}' open: {}, archive read: {}", cmrcPath, duration_cast<milliseconds>(t2 - t1), duration_cast<milliseconds>(t3 - t2));
+            "Resources - Archive open: {}, archive read: {}", duration_cast<milliseconds>(t2 - t1), duration_cast<milliseconds>(t3 - t2));
 
         // Notify that that preload is finished
         {
@@ -419,7 +429,7 @@ Resources::Resources() {
 #ifdef DEPTHAI_ENABLE_DEVICE_FW
     // Device resources
     // Create a thread which lazy-loads firmware resources package
-    lazyThreadDevice = std::thread(getLazyTarXzFunction(mtxDevice, cvDevice, readyDevice, CMRC_DEPTHAI_DEVICE_TAR_XZ, RESOURCE_LIST_DEVICE, resourceMapDevice));
+    lazyThreadDevice = std::thread(getLazyTarXzFunction(mtxDevice, cvDevice, readyDevice, RESOURCE_LIST_DEVICE, resourceMapDevice, getFetchFromCmrc(CMRC_DEPTHAI_DEVICE_TAR_XZ)));
 #endif
 
 // First check if device bootloader fw is enabled
@@ -427,17 +437,18 @@ Resources::Resources() {
     // Bootloader resources
     // Create a thread which lazy-loads firmware resources package
     lazyThreadBootloader = std::thread(
-        getLazyTarXzFunction(mtxBootloader, cvBootloader, readyBootloader, CMRC_DEPTHAI_BOOTLOADER_TAR_XZ, RESOURCE_LIST_BOOTLOADER, resourceMapBootloader));
+        getLazyTarXzFunction(mtxBootloader, cvBootloader, readyBootloader, RESOURCE_LIST_BOOTLOADER, resourceMapBootloader, getFetchFromCmrc(CMRC_DEPTHAI_BOOTLOADER_TAR_XZ)));
 #endif
 
 #ifdef DEPTHAI_ENABLE_DEVICE_RVC3_FW
-    lazyThreadRVC3 = std::thread(getLazyTarXzFunction(mtxRVC3, cvRVC3, readyRVC3, CMRC_DEPTHAI_DEVICE_KB_FWP_TAR_XZ, RESOURCE_LIST_RVC3, resourceMapRVC3));
+    lazyThreadRVC3 = std::thread(getLazyTarXzFunction(mtxRVC3, cvRVC3, readyRVC3, RESOURCE_LIST_RVC3, resourceMapRVC3, [this]{ return this->getDeviceKbFwp(); }));
 #endif
 }
 
 Resources::~Resources() {
     // join the lazy threads
     if(lazyThreadDevice.joinable()) lazyThreadDevice.join();
+    if(lazyThreadRVC3.joinable()) lazyThreadRVC3.join();
     if(lazyThreadBootloader.joinable()) lazyThreadBootloader.join();
 }
 
