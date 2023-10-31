@@ -18,9 +18,7 @@
 namespace dai {
 class DeviceBaseImpl {
    public:
-    DeviceBaseImpl() {
-        std::cout << "Creating DeviceBaseImpl" << std::endl;
-    }
+    DeviceBaseImpl(){};
     virtual ~DeviceBaseImpl();
 
     // TODO Copied over from the original impl
