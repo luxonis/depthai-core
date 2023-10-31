@@ -21,10 +21,15 @@ class Resources {
     ~Resources();
 
     mutable std::mutex mtxDevice;
+    mutable std::mutex mtxRVC3;
     mutable std::condition_variable cvDevice;
+    mutable std::condition_variable cvRVC3;
     std::thread lazyThreadDevice;
+    std::thread lazyThreadRVC3;
     bool readyDevice;
+    bool readyRVC3;
     std::unordered_map<std::string, std::vector<std::uint8_t>> resourceMapDevice;
+    std::unordered_map<std::string, std::vector<std::uint8_t>> resourceMapRVC3;
 
     mutable std::mutex mtxBootloader;
     mutable std::condition_variable cvBootloader;
@@ -42,7 +47,7 @@ public:
     std::vector<std::uint8_t> getDeviceFirmware(Device::Config config, dai::Path pathToMvcmd = {}) const;
     std::vector<std::uint8_t> getBootloaderFirmware(DeviceBootloader::Type type = DeviceBootloader::Type::USB) const;
     std::vector<std::uint8_t> getDeviceKbFwp() const;
-
+    std::vector<std::uint8_t> getDeviceKbSo() const;
 };
 
 } // namespace dai

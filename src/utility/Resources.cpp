@@ -65,6 +65,8 @@ constexpr static auto RESOURCE_LIST_DEVICE = array_of<const char*>(DEPTHAI_CMD_O
                                                                    DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH,
                                                                    DEPTHAI_CMD_OPENVINO_2021_3_PATCH_PATH);
 
+constexpr static auto RESOURCE_LIST_RVC3 = array_of<const char*>("libdepthai-device-kb.so");
+
 std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, dai::Path pathToMvcmd) const {
 // First check if device fw is enabled
 #ifndef DEPTHAI_ENABLE_DEVICE_FW
@@ -298,6 +300,15 @@ std::vector<std::uint8_t> Resources::getDeviceKbFwp() const {
     }
 }
 
+std::vector<std::uint8_t> Resources::getDeviceKbSo() const {
+    // Wait on the lazy thread to finish
+    {
+        std::unique_lock<std::mutex> lock(mtxRVC3);
+        cvRVC3.wait(lock, [this]() { return readyRVC3; });
+    }
+    return resourceMapRVC3.at("libdepthai-device-kb.so");
+}
+
 Resources& Resources::getInstance() {
     static Resources instance;  // Guaranteed to be destroyed, instantiated on first use.
     return instance;
@@ -417,6 +428,10 @@ Resources::Resources() {
     // Create a thread which lazy-loads firmware resources package
     lazyThreadBootloader = std::thread(
         getLazyTarXzFunction(mtxBootloader, cvBootloader, readyBootloader, CMRC_DEPTHAI_BOOTLOADER_TAR_XZ, RESOURCE_LIST_BOOTLOADER, resourceMapBootloader));
+#endif
+
+#ifdef DEPTHAI_ENABLE_DEVICE_RVC3_FW
+    lazyThreadRVC3 = std::thread(getLazyTarXzFunction(mtxRVC3, cvRVC3, readyRVC3, CMRC_DEPTHAI_DEVICE_KB_FWP_TAR_XZ, RESOURCE_LIST_RVC3, resourceMapRVC3));
 #endif
 }
 

@@ -2,6 +2,7 @@
 
 // std
 #include <iostream>
+#include <fstream>
 #include <dlfcn.h>
 
 // shared
@@ -598,7 +599,34 @@ void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed, const dai::Path& path
 
 void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<const Pipeline&> pipeline) {
     // Change the implementation to the local one as a test
-    void* shared_library_handle = dlopen("libdepthai-device-kb_shared.so", RTLD_LAZY);
+    auto& resources = Resources::getInstance();
+    std::vector<uint8_t> sharedLibrary = resources.getDeviceKbSo();
+
+        // Check if the sharedLibrary is empty or not
+    if(sharedLibrary.empty()) {
+        std::cerr << "Failed to retrieve the shared library.\n";
+        throw std::runtime_error("Failed to retrieve the shared library.\n");
+    }
+
+    // Save the .so to a file
+    const std::string filePath = "/tmp/libdepthai-device-kb.so";
+    std::ofstream ofs(filePath, std::ios::binary);
+
+    if (!ofs) {
+        std::cerr << "Failed to open file for writing: " << filePath << '\n';
+        throw std::runtime_error("Failed to open file for writing: " + filePath);
+    }
+
+    ofs.write(reinterpret_cast<const char*>(sharedLibrary.data()), sharedLibrary.size());
+
+    if (!ofs.good()) {
+        std::cerr << "Failed to write to file: " << filePath << '\n';
+        throw std::runtime_error("Failed to write to file: " + filePath);
+    }
+
+    ofs.close();
+
+    void* shared_library_handle = dlopen("/tmp/libdepthai-device-kb.so", RTLD_LAZY);
     if (!shared_library_handle) {
         std::cerr << "Cannot open library: " << dlerror() << '\n';
         return;
