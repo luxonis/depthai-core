@@ -946,7 +946,7 @@ function(cmrc_add_resource_library name)
     # with a character array compiled in containing the contents of the
     # corresponding resource file.
     add_library(${name} STATIC ${libcpp})
-    
+    set(_inc_gen_dir "${CMAKE_BINARY_DIR}/_cmrc/gen/include") # TODO debug why this is needed here
     # Add private include to incbin/incbin.h
     target_include_directories(${name} PRIVATE "${_inc_gen_dir}")
 
