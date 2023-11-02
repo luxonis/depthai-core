@@ -52,26 +52,9 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                                   spdlog::to_hex(metadata));
                 }
 
-                // Add 'data' to queue
-                if(!queue.push(msg)) {
-                    throw std::runtime_error(fmt::format("Underlying queue destructed"));
-                }
-
                 // Increment numPacketsRead
                 numPacketsRead++;
-
-                // Call callbacks
-                {
-                    std::unique_lock<std::mutex> l(callbacksMtx);
-                    for(const auto& kv : callbacks) {
-                        const auto& callback = kv.second;
-                        try {
-                            callback(name, msg);
-                        } catch(const std::exception& ex) {
-                            logger::error("Callback with id: {} throwed an exception: {}", kv.first, ex.what());
-                        }
-                    }
-                }
+                sendMessage(msg);
             }
 
         } catch(const std::exception& ex) {
@@ -116,6 +99,18 @@ DataOutputQueue::~DataOutputQueue() {
 void DataOutputQueue::sendMessage(std::shared_ptr<ADatatype> message) {
     if(!queue.push(message)) {
         throw std::runtime_error(fmt::format("Underlying queue destructed"));
+    }
+    // Call callbacks
+    {
+        std::unique_lock<std::mutex> l(callbacksMtx);
+        for(const auto& kv : callbacks) {
+            const auto& callback = kv.second;
+            try {
+                callback(name, message);
+            } catch(const std::exception& ex) {
+                logger::error("Callback with id: {} throwed an exception: {}", kv.first, ex.what());
+            }
+        }
     }
 }
 
