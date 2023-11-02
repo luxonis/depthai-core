@@ -32,16 +32,26 @@ class Sync : public NodeCRTP<Node, Sync, SyncProperties> {
      * TODO
      */
     void setSyncAttempts(unsigned int syncAttempts);
-   
+
+    /**
+     * TODO
+     */
+    void setNumFramesPool(unsigned int numFramesPool);
+
     /**
      * TODO
      */
     unsigned int getSyncIntervalMs() const;
-   
+
     /**
      * TODO
      */
     unsigned int getSyncAttempts() const;
+
+    /**
+     * TODO
+     */
+    unsigned int getNumFramesPool() const;
 };
 
 }  // namespace node

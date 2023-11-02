@@ -12,19 +12,27 @@ Sync::Sync(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique
 }
 
 void Sync::setSyncIntervalMs(unsigned int syncIntervalMs) {
-  properties.syncIntervalMs = syncIntervalMs;
+    properties.syncIntervalMs = syncIntervalMs;
 }
 
 void Sync::setSyncAttempts(unsigned int syncAttempts) {
-  properties.syncAttempts = syncAttempts;
+    properties.syncAttempts = syncAttempts;
+}
+
+void Sync::setNumFramesPool(unsigned int numFramesPool) {
+    properties.numFramesPool = numFramesPool;
 }
 
 unsigned int Sync::getSyncIntervalMs() const {
-  return properties.syncIntervalMs;
+    return properties.syncIntervalMs;
 }
 
 unsigned int Sync::getSyncAttempts() const {
-  return properties.syncAttempts;
+    return properties.syncAttempts;
+}
+
+unsigned int Sync::getNumFramesPool() const {
+    return properties.numFramesPool;
 }
 
 }  // namespace node

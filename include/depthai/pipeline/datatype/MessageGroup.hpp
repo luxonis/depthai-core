@@ -40,6 +40,11 @@ class MessageGroup : public Buffer {
     bool syncSuccessful() const;
 
     /**
+     * Retrieves interval between the first and the last message in the group.
+     */
+    int64_t getIntervalNs() const;
+
+    /**
      * Sets image timestamp related to dai::Clock::now()
      */
     MessageGroup& setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);

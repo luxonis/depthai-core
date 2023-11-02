@@ -63,6 +63,22 @@ bool MessageGroup::syncSuccessful() const {
     return grp.success;
 }
 
+int64_t MessageGroup::getIntervalNs() const {
+    if(!grp.group.empty()) {
+        auto first = grp.group.begin()->second.buffer->tsDevice;
+        int64_t oldest = first.sec * (int64_t)1e9 + first.nsec;
+        int64_t latest = oldest;
+        for(auto& entry : grp.group) {
+            auto& ts = entry.second.buffer->tsDevice;
+            int64_t tsNs = ts.sec * (int64_t)1e9 + ts.nsec;
+            if(tsNs < oldest) oldest = tsNs;
+            if(tsNs > latest) latest = tsNs;
+        }
+        return latest - oldest;
+    }
+    return {};
+}
+
 // setters
 MessageGroup& MessageGroup::setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
     // Set timestamp from timepoint
