@@ -14,27 +14,30 @@ class Sync : public NodeCRTP<Node, Sync, SyncProperties> {
     Sync(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
-     * TODO
+     * A map of inputs
      */
     InputMap inputs;
 
     /**
-     * TODO
+     * Output message of type MessageGroup
      */
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::MessageGroup, false}}};
 
     /**
-     * TODO
+     * Set the maximal interval between messages in the group in milliseconds
+     * @param syncIntervalMs Maximal interval between messages in the group in milliseconds
      */
     void setSyncIntervalMs(unsigned int syncIntervalMs);
 
     /**
-     * TODO
+     * Set the number of attempts to get the specified max interval between messages in the group
+     * @param syncAttempts Number of attempts to get the specified max interval between messages in the group
      */
     void setSyncAttempts(unsigned int syncAttempts);
 
     /**
-     * TODO
+     * Specifies how many frames will be available in the pool
+     * @param numFrames How many frames will pool have
      */
     void setNumFramesPool(unsigned int numFramesPool);
 
@@ -44,12 +47,12 @@ class Sync : public NodeCRTP<Node, Sync, SyncProperties> {
     unsigned int getSyncIntervalMs() const;
 
     /**
-     * TODO
+     * Gets the number of sync attempts
      */
     unsigned int getSyncAttempts() const;
 
     /**
-     * TODO
+     * Gets the number of frames in the pool
      */
     unsigned int getNumFramesPool() const;
 };

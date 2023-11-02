@@ -14,12 +14,12 @@ class MessageDemux : public NodeCRTP<Node, MessageDemux, MessageDemuxProperties>
     MessageDemux(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
-     * TODO
+     * Input message of type MessageGroup
      */
     Input input{*this, "input", Input::Type::SReceiver, {{DatatypeEnum::MessageGroup, false}}};
 
     /**
-     * TODO
+     * A map of outputs, where keys are same as in the input MessageGroup
      */
     OutputMap outputs;
 };
