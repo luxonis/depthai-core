@@ -11,6 +11,10 @@ DatatypeEnum rawToType<ImgFrame>() {
     return DatatypeEnum::ImgFrame;
 }
 template <>
+DatatypeEnum rawToType<EncodedFrame>() {
+    return DatatypeEnum::EncodedFrame;
+}
+template <>
 DatatypeEnum rawToType<NNData>() {
     return DatatypeEnum::NNData;
 }

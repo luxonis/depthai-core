@@ -19,6 +19,8 @@ std::shared_ptr<ADatatype> MessageGroup::operator[](const std::string& name) {
             return std::make_shared<Buffer>(std::dynamic_pointer_cast<RawBuffer>(ptr));
         case DatatypeEnum::ImgFrame:
             return std::make_shared<ImgFrame>(std::dynamic_pointer_cast<RawImgFrame>(ptr));
+        case DatatypeEnum::EncodedFrame:
+            return std::make_shared<EncodedFrame>(std::dynamic_pointer_cast<RawEncodedFrame>(ptr));
         case DatatypeEnum::NNData:
             return std::make_shared<NNData>(std::dynamic_pointer_cast<RawNNData>(ptr));
         case DatatypeEnum::ImageManipConfig:

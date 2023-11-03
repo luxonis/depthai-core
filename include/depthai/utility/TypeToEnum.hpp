@@ -6,6 +6,7 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
+#include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
@@ -31,6 +32,8 @@ template <>
 DatatypeEnum rawToType<Buffer>();
 template <>
 DatatypeEnum rawToType<ImgFrame>();
+template <>
+DatatypeEnum rawToType<EncodedFrame>();
 template <>
 DatatypeEnum rawToType<NNData>();
 template <>
