@@ -307,13 +307,14 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
     return parseMessageToADatatype(packet, objectType);
 }
 
-std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer& data, DatatypeEnum& datatype) {
+std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer& data) {
     // Serialization:
     // 1. fill vector with bytes from data.data
     // 2. serialize and append metadata
     // 3. append datatype enum (4B LE)
     // 4. append size (4B LE) of serialized metadata
 
+    DatatypeEnum datatype;
     std::vector<std::uint8_t> metadata;
     data.serialize(metadata, datatype);
     uint32_t metadataSize = static_cast<uint32_t>(metadata.size());
@@ -333,18 +334,10 @@ std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer&
 
     return ser;
 }
-std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer& data) {
-    DatatypeEnum type;
-    return serializeMessage(data, type);
-}
 
-std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const std::shared_ptr<const RawBuffer>& data, DatatypeEnum& type) {
-    if(!data) return {};
-    return serializeMessage(*data, type);
-}
 std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const std::shared_ptr<const RawBuffer>& data) {
-    DatatypeEnum type;
-    return serializeMessage(data, type);
+    if(!data) return {};
+    return serializeMessage(*data);
 }
 
 std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const ADatatype& data) {

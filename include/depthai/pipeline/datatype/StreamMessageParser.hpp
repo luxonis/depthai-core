@@ -24,9 +24,7 @@ class StreamMessageParser {
     static std::shared_ptr<ADatatype> parseMessageToADatatype(streamPacketDesc_t* const packet);
     static std::shared_ptr<ADatatype> parseMessageToADatatype(streamPacketDesc_t* const packet, DatatypeEnum& type);
     static std::vector<std::uint8_t> serializeMessage(const std::shared_ptr<const RawBuffer>& data);
-    static std::vector<std::uint8_t> serializeMessage(const std::shared_ptr<const RawBuffer>& data, DatatypeEnum& type);
     static std::vector<std::uint8_t> serializeMessage(const RawBuffer& data);
-    static std::vector<std::uint8_t> serializeMessage(const RawBuffer& data, DatatypeEnum& type);
     static std::vector<std::uint8_t> serializeMessage(const std::shared_ptr<const ADatatype>& data);
     static std::vector<std::uint8_t> serializeMessage(const ADatatype& data);
 };

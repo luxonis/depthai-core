@@ -42,7 +42,7 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                 const auto t1Parse = std::chrono::steady_clock::now();
                 const auto data = StreamMessageParser::parseMessageToADatatype(&packet, type);
                 if(type == DatatypeEnum::MessageGroup) {
-                    auto rawMsgGrp = std::dynamic_pointer_cast<RawMessageGroup>(data->serialize());
+                    auto rawMsgGrp = std::dynamic_pointer_cast<RawMessageGroup>(data->getRaw());
                     unsigned int size = rawMsgGrp->group.size();
                     std::vector<std::shared_ptr<ADatatype>> packets;
                     packets.reserve(size);
@@ -51,7 +51,6 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                         packets.push_back(StreamMessageParser::parseMessageToADatatype(&dpacket));
                     }
                     for(auto& msg : rawMsgGrp->group) {
-                        logger::info("Message group index {}", msg.second.index);
                         msg.second.buffer = packets[msg.second.index]->serialize();
                     }
                 }
@@ -210,17 +209,17 @@ DataInputQueue::DataInputQueue(
 
                 // serialize
                 auto t1Parse = std::chrono::steady_clock::now();
-                data->prepareMetadata();
-                DatatypeEnum type;
-                auto serialized = StreamMessageParser::serializeMessage(data, type);
                 std::vector<std::vector<uint8_t>> serializedAux;
-                if(type == DatatypeEnum::MessageGroup) {
+                if(data->getType() == DatatypeEnum::MessageGroup) {
                     auto rawMsgGrp = std::dynamic_pointer_cast<RawMessageGroup>(data);
                     serializedAux.reserve(rawMsgGrp->group.size());
+                    unsigned int index = 0;
                     for(auto& msg : rawMsgGrp->group) {
+                        msg.second.index = index++;
                         serializedAux.push_back(StreamMessageParser::serializeMessage(msg.second.buffer));
                     }
                 }
+                auto serialized = StreamMessageParser::serializeMessage(data);
                 auto t2Parse = std::chrono::steady_clock::now();
 
                 // Trace level debugging

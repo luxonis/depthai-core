@@ -81,6 +81,10 @@ int64_t MessageGroup::getIntervalNs() const {
     return {};
 }
 
+int64_t MessageGroup::getNumMessages() const {
+    return grp.group.size();
+}
+
 // setters
 MessageGroup& MessageGroup::setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
     // Set timestamp from timepoint

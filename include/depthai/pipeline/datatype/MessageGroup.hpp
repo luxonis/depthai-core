@@ -11,7 +11,7 @@
 namespace dai {
 
 /**
- * IMUData message. Carries normalized detection results
+ * MessageGroup message. Carries multiple messages in one.
  */
 class MessageGroup : public Buffer {
     std::shared_ptr<RawBuffer> serialize() const override;
@@ -43,6 +43,8 @@ class MessageGroup : public Buffer {
      * Retrieves interval between the first and the last message in the group.
      */
     int64_t getIntervalNs() const;
+
+    int64_t getNumMessages() const;
 
     /**
      * Sets image timestamp related to dai::Clock::now()
