@@ -254,7 +254,6 @@ add_library(${TARGET_CORE_NAME}
     src/utility/H26xParsers.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
-    src/utility/TypeToEnum.cpp
     src/utility/Path.cpp
     src/utility/Platform.cpp
     src/utility/Environment.cpp

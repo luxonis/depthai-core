@@ -10,6 +10,7 @@
 #include "depthai-shared/datatype/RawMessageGroup.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
+#include "pipeline/datatype/MessageGroup.hpp"
 #include "pipeline/datatype/StreamMessageParser.hpp"
 
 // shared
@@ -42,16 +43,17 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                 const auto t1Parse = std::chrono::steady_clock::now();
                 const auto data = StreamMessageParser::parseMessageToADatatype(&packet, type);
                 if(type == DatatypeEnum::MessageGroup) {
-                    auto rawMsgGrp = std::dynamic_pointer_cast<RawMessageGroup>(data->getRaw());
-                    unsigned int size = rawMsgGrp->group.size();
+                    auto msgGrp = std::dynamic_pointer_cast<MessageGroup>(data);
+                    unsigned int size = msgGrp->getNumMessages();
                     std::vector<std::shared_ptr<ADatatype>> packets;
                     packets.reserve(size);
-                    for(unsigned int i = 0; i < rawMsgGrp->group.size(); ++i) {
+                    for(unsigned int i = 0; i < size; ++i) {
                         auto dpacket = stream.readMove();
                         packets.push_back(StreamMessageParser::parseMessageToADatatype(&dpacket));
                     }
+                    auto rawMsgGrp = std::dynamic_pointer_cast<RawMessageGroup>(data->getRaw());
                     for(auto& msg : rawMsgGrp->group) {
-                        msg.second.buffer = packets[msg.second.index]->serialize();
+                        msgGrp->add(msg.first, packets[msg.second.index]);
                     }
                 }
                 const auto t2Parse = std::chrono::steady_clock::now();
