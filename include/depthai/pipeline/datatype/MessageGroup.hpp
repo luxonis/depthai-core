@@ -19,7 +19,7 @@ class MessageGroup : public Buffer {
     std::unordered_map<std::string, std::shared_ptr<ADatatype>> group;
 
    public:
-    /// Construct IMUData message
+    /// Construct MessageGroup message
     MessageGroup();
     explicit MessageGroup(std::shared_ptr<RawMessageGroup> ptr);
     virtual ~MessageGroup() = default;
