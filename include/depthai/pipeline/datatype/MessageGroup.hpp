@@ -58,6 +58,8 @@ class MessageGroup : public Buffer {
      * Retrieves image sequence number
      */
     MessageGroup& setSequenceNum(int64_t sequenceNum);
+
+    MessageGroup& setSuccess(bool success);
 };
 
 }  // namespace dai

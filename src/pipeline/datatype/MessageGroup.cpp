@@ -58,4 +58,9 @@ MessageGroup& MessageGroup::setSequenceNum(int64_t sequenceNum) {
     return static_cast<MessageGroup&>(Buffer::setSequenceNum(sequenceNum));
 }
 
+MessageGroup& MessageGroup::setSuccess(bool success) {
+    rawGrp.success = success;
+    return *this;
+}
+
 }  // namespace dai
