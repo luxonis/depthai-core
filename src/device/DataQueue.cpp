@@ -43,7 +43,7 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                 const auto t1Parse = std::chrono::steady_clock::now();
                 const auto data = StreamMessageParser::parseMessageToADatatype(&packet, type);
                 if(type == DatatypeEnum::MessageGroup) {
-                    auto msgGrp = std::dynamic_pointer_cast<MessageGroup>(data);
+                    auto msgGrp = std::static_pointer_cast<MessageGroup>(data);
                     unsigned int size = msgGrp->getNumMessages();
                     std::vector<std::shared_ptr<ADatatype>> packets;
                     packets.reserve(size);
@@ -51,7 +51,7 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                         auto dpacket = stream.readMove();
                         packets.push_back(StreamMessageParser::parseMessageToADatatype(&dpacket));
                     }
-                    auto rawMsgGrp = std::dynamic_pointer_cast<RawMessageGroup>(data->getRaw());
+                    auto rawMsgGrp = std::static_pointer_cast<RawMessageGroup>(data->getRaw());
                     for(auto& msg : rawMsgGrp->group) {
                         msgGrp->add(msg.first, packets[msg.second.index]);
                     }
