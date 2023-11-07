@@ -4,6 +4,7 @@
 #include <tuple>
 
 namespace dai {
+namespace utility {
 
 template <typename T>
 struct H26xParser {
@@ -287,4 +288,5 @@ std::vector<SliceType> getTypesH265(buf& bs, bool breakOnFirst) {
     return H265Parser::getTypes(bs, breakOnFirst);
 }
 
+}  // namespace utility
 }  // namespace dai
