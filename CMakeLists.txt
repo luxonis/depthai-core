@@ -229,6 +229,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/UVC.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
+    src/pipeline/datatype/EncodedFrame.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
     src/pipeline/datatype/CameraControl.cpp
     src/pipeline/datatype/NNData.cpp
@@ -247,6 +248,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/TrackedFeatures.cpp
     src/pipeline/datatype/FeatureTrackerConfig.cpp
     src/pipeline/datatype/ToFConfig.cpp
+    src/utility/H26xParsers.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/utility/Path.cpp
