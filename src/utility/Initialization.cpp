@@ -78,6 +78,15 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
         (void)installSignalHandler;
 #endif
 
+        // Read JavaVM pointer from env if present
+        {
+            auto javavmEnvStr = utility::getEnv("DEPTHAI_LIBUSB_ANDROID_JAVAVM");
+            if(javavm == nullptr && !javavmEnvStr.empty()) {
+                // Read the uintptr_t value from the decimal string
+                sscanf(javavmEnvStr.c_str(), "%" SCNuPTR, reinterpret_cast<uintptr_t*>(&javavm));
+            }
+        }
+
         // Print core commit and build datetime
         if(additionalInfo != nullptr && additionalInfo[0] != '\0') {
             logger::debug("{}", additionalInfo);

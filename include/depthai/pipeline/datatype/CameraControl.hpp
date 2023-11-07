@@ -40,6 +40,8 @@ class CameraControl : public Buffer {
     using AutoWhiteBalanceMode = RawCameraControl::AutoWhiteBalanceMode;
     using SceneMode = RawCameraControl::SceneMode;
     using EffectMode = RawCameraControl::EffectMode;
+    using ControlMode = RawCameraControl::ControlMode;
+    using CaptureIntent = RawCameraControl::CaptureIntent;
     using FrameSyncMode = RawCameraControl::FrameSyncMode;
 
     /// Construct CameraControl message
@@ -253,6 +255,18 @@ class CameraControl : public Buffer {
      * @param mode Effect mode
      */
     CameraControl& setEffectMode(EffectMode mode);
+
+    /**
+     * Set a command to specify control mode
+     * @param mode Control mode
+     */
+    CameraControl& setControlMode(ControlMode mode);
+
+    /**
+     * Set a command to specify capture intent mode
+     * @param mode Capture intent mode
+     */
+    CameraControl& setCaptureIntent(CaptureIntent mode);
 
     // Functions to retrieve properties
     /**
