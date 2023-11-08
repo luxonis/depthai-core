@@ -23,6 +23,7 @@
 #include "pipeline/Pipeline.hpp"
 #include "utility/EepromDataParser.hpp"
 #include "utility/Environment.hpp"
+#include "utility/Files.hpp"
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Resources.hpp"
@@ -556,21 +557,49 @@ void DeviceBase::closeImpl() {
 
     // Get crash dump if needed
     if(shouldGetCrashDump) {
+        pimpl->logger.debug("Getting crash dump...");
         auto t1 = steady_clock::now();
         bool gotDump = false;
         bool found = false;
         do {
             DeviceInfo rebootingDeviceInfo;
             std::tie(found, rebootingDeviceInfo) = XLinkConnection::getDeviceByMxId(deviceInfo.getMxId(), X_LINK_ANY_STATE, false);
-            if(found && rebootingDeviceInfo.state == X_LINK_UNBOOTED) {
+            if(found && (rebootingDeviceInfo.state == X_LINK_UNBOOTED || rebootingDeviceInfo.state == X_LINK_BOOTLOADER)) {
                 std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, firmwarePath);
                 deviceInfo = rebootingDeviceInfo;
-                connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
+                if(deviceInfo.state == X_LINK_UNBOOTED) {
+                    connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
+                } else {
+                    XLinkDeviceState_t expectedBootState = X_LINK_BOOTED;
+                    if(config.nonExclusiveMode) {
+                        expectedBootState = X_LINK_BOOTED_NON_EXCLUSIVE;
+                    }
+                    {
+                        DeviceBootloader bl(deviceInfo);
+                        auto version = bl.getVersion();
+                        bootloaderVersion = version;
+
+                        if(version >= DeviceBootloader::Version(0, 0, 12)) {
+                            bl.bootMemory(fwWithConfig);
+                            deviceInfo.state = expectedBootState;
+                        } else {
+                            bl.bootUsbRomBootloader();
+                            deviceInfo.state = X_LINK_UNBOOTED;
+                        }
+                    }
+                    connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig, expectedBootState);
+                }
                 createRpc();
                 auto dump = getCrashDump();
                 std::vector<uint8_t> data;
                 utility::serialize<SerializationType::JSON>(dump, data);
-                pimpl->logger.error("Device crashed, got crash dump: \n{}", std::string(data.begin(), data.end()));
+                auto crashDumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
+                auto path = saveFileToTemporaryDirectory(data, deviceInfo.getMxId() + "-depthai_crash_dump.json", crashDumpPathStr);
+                if(path.has_value()) {
+                    pimpl->logger.warn("Device crashed. Crash dump saved to {}", path.value());
+                } else {
+                    pimpl->logger.warn("Device crashed. Crash dump could not be saved");
+                }
                 gotDump = true;
                 break;
             }
@@ -578,6 +607,10 @@ void DeviceBase::closeImpl() {
         if(!gotDump) {
             pimpl->logger.error("Device likely crashed but did not reboot in time to get the crash dump");
         }
+        // Close rpcStream
+        connection->close();
+        pimpl->rpcStream = nullptr;
+        pimpl->rpcClient = nullptr;
     }
 
     pimpl->logger.debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
