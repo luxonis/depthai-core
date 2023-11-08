@@ -888,6 +888,8 @@ class DeviceBase {
     void init(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
     void init(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
 
+    void createRpc();
+
    private:
     // private functions
     void init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<const Pipeline&> pipeline);
@@ -932,5 +934,7 @@ class DeviceBase {
 
     // Device config
     Config config;
+
+    dai::Path firmwarePath;
 };
 }  // namespace dai

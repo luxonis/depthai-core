@@ -517,6 +517,15 @@ void DeviceBase::closeImpl() {
     auto t1 = steady_clock::now();
     pimpl->logger.debug("Device about to be closed...");
 
+    bool shouldGetCrashDump = false;
+    try {
+        int status = pimpl->rpcClient->call("checkShutdown").as<int>();
+        pimpl->logger.debug("Device exit status {}", status);
+    } catch(const std::exception& ex) {
+        pimpl->logger.debug("checkShutdown call error: {}", ex.what());
+        shouldGetCrashDump = true;
+    }
+
     // Close connection first; causes Xlink internal calls to unblock semaphore waits and
     // return error codes, which then allows queues to unblock
     // always manage ownership because other threads (e.g. watchdog) are running and need to
@@ -544,6 +553,32 @@ void DeviceBase::closeImpl() {
     // Close rpcStream
     pimpl->rpcStream = nullptr;
     pimpl->rpcClient = nullptr;
+
+    // Get crash dump if needed
+    if(shouldGetCrashDump) {
+        auto t1 = steady_clock::now();
+        bool gotDump = false;
+        bool found = false;
+        do {
+            DeviceInfo rebootingDeviceInfo;
+            std::tie(found, rebootingDeviceInfo) = XLinkConnection::getDeviceByMxId(deviceInfo.getMxId(), X_LINK_ANY_STATE, false);
+            if(found && rebootingDeviceInfo.state == X_LINK_UNBOOTED) {
+                std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, firmwarePath);
+                deviceInfo = rebootingDeviceInfo;
+                connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
+                createRpc();
+                auto dump = getCrashDump();
+                std::vector<uint8_t> data;
+                utility::serialize<SerializationType::JSON>(dump, data);
+                pimpl->logger.error("Device crashed, got crash dump: \n{}", std::string(data.begin(), data.end()));
+                gotDump = true;
+                break;
+            }
+        } while(!found && steady_clock::now() - t1 < std::chrono::seconds(7));
+        if(!gotDump) {
+            pimpl->logger.error("Device likely crashed but did not reboot in time to get the crash dump");
+        }
+    }
 
     pimpl->logger.debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
 }
@@ -594,12 +629,43 @@ void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed, const dai::Path& path
     init2(cfg, pathToMvcmd, {});
 }
 
+void DeviceBase::createRpc() {
+    // prepare rpc for both attached and host controlled mode
+    pimpl->rpcStream = std::make_shared<XLinkStream>(connection, device::XLINK_CHANNEL_MAIN_RPC, device::XLINK_USB_BUFFER_MAX_SIZE);
+    auto rpcStream = pimpl->rpcStream;
+
+    pimpl->rpcClient = std::make_unique<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>([this, rpcStream](nanorpc::core::type::buffer request) {
+        // Lock for time of the RPC call, to not mix the responses between calling threads.
+        // Note: might cause issues on Windows on incorrect shutdown. To be investigated
+        std::unique_lock<std::mutex> lock(pimpl->rpcMutex);
+
+        // Log the request data
+        if(getLogOutputLevel() == LogLevel::TRACE) {
+            pimpl->logger.trace("RPC: {}", nlohmann::json::from_msgpack(request).dump());
+        }
+
+        try {
+            // Send request to device
+            rpcStream->write(std::move(request));
+
+            // Receive response back
+            // Send to nanorpc to parse
+            return rpcStream->read();
+        } catch(const std::exception& e) {
+            // If any exception is thrown, log it and rethrow
+            pimpl->logger.debug("RPC error: {}", e.what());
+            throw std::system_error(std::make_error_code(std::errc::io_error), "Device already closed or disconnected");
+        }
+    });
+}
+
 void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<const Pipeline&> pipeline) {
     // Initalize depthai library if not already
     initialize();
 
     // Specify cfg
     config = cfg;
+    firmwarePath = pathToMvcmd;
 
     // Apply nonExclusiveMode
     config.board.nonExclusiveMode = config.nonExclusiveMode;
@@ -736,33 +802,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
 
     deviceInfo.state = expectedBootState;
 
-    // prepare rpc for both attached and host controlled mode
-    pimpl->rpcStream = std::make_shared<XLinkStream>(connection, device::XLINK_CHANNEL_MAIN_RPC, device::XLINK_USB_BUFFER_MAX_SIZE);
-    auto rpcStream = pimpl->rpcStream;
-
-    pimpl->rpcClient = std::make_unique<nanorpc::core::client<nanorpc::packer::nlohmann_msgpack>>([this, rpcStream](nanorpc::core::type::buffer request) {
-        // Lock for time of the RPC call, to not mix the responses between calling threads.
-        // Note: might cause issues on Windows on incorrect shutdown. To be investigated
-        std::unique_lock<std::mutex> lock(pimpl->rpcMutex);
-
-        // Log the request data
-        if(getLogOutputLevel() == LogLevel::TRACE) {
-            pimpl->logger.trace("RPC: {}", nlohmann::json::from_msgpack(request).dump());
-        }
-
-        try {
-            // Send request to device
-            rpcStream->write(std::move(request));
-
-            // Receive response back
-            // Send to nanorpc to parse
-            return rpcStream->read();
-        } catch(const std::exception& e) {
-            // If any exception is thrown, log it and rethrow
-            pimpl->logger.debug("RPC error: {}", e.what());
-            throw std::system_error(std::make_error_code(std::errc::io_error), "Device already closed or disconnected");
-        }
-    });
+    createRpc();
 
     // prepare watchdog thread, which will keep device alive
     // separate stream so it doesn't miss between potentially long RPC calls
