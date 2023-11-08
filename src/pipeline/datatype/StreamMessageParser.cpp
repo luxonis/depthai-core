@@ -15,6 +15,7 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
+#include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
@@ -37,6 +38,7 @@
 #include "depthai-shared/datatype/RawBuffer.hpp"
 #include "depthai-shared/datatype/RawCameraControl.hpp"
 #include "depthai-shared/datatype/RawEdgeDetectorConfig.hpp"
+#include "depthai-shared/datatype/RawEncodedFrame.hpp"
 #include "depthai-shared/datatype/RawFeatureTrackerConfig.hpp"
 #include "depthai-shared/datatype/RawIMUData.hpp"
 #include "depthai-shared/datatype/RawImageManipConfig.hpp"
@@ -120,6 +122,10 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
 
         case DatatypeEnum::ImgFrame:
             return parseDatatype<RawImgFrame>(metadataStart, serializedObjectSize, data);
+            break;
+
+        case DatatypeEnum::EncodedFrame:
+            return parseDatatype<RawEncodedFrame>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::NNData:
@@ -211,6 +217,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
 
         case DatatypeEnum::ImgFrame:
             return std::make_shared<ImgFrame>(parseDatatype<RawImgFrame>(metadataStart, serializedObjectSize, data));
+            break;
+
+        case DatatypeEnum::EncodedFrame:
+            return std::make_shared<EncodedFrame>(parseDatatype<RawEncodedFrame>(metadataStart, serializedObjectSize, data));
             break;
 
         case DatatypeEnum::NNData:
