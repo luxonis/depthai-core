@@ -41,35 +41,35 @@ bool EncodedFrame::getLossless() const {
 }
 EncodedFrame::FrameType EncodedFrame::getFrameType() const {
     if(frame.type == FrameType::Unknown) {
-        SliceType frameType;
+        utility::SliceType frameType;
         switch(frame.profile) {
             case RawEncodedFrame::Profile::JPEG:
-                frameType = SliceType::I;
+                frameType = utility::SliceType::I;
                 break;
             case RawEncodedFrame::Profile::AVC:
-                frameType = getTypesH264(frame.data, true)[0];
+                frameType = utility::getTypesH264(frame.data, true)[0];
                 break;
             case RawEncodedFrame::Profile::HEVC:
-                frameType = getTypesH265(frame.data, true)[0];
+                frameType = utility::getTypesH265(frame.data, true)[0];
                 break;
         }
         switch(frameType) {
-            case SliceType::P:
+            case utility::SliceType::P:
                 frame.type = FrameType::P;
                 break;
-            case SliceType::B:
+            case utility::SliceType::B:
                 frame.type = FrameType::B;
                 break;
-            case SliceType::I:
+            case utility::SliceType::I:
                 frame.type = FrameType::I;
                 break;
-            case SliceType::SP:
+            case utility::SliceType::SP:
                 frame.type = FrameType::P;
                 break;
-            case SliceType::SI:
+            case utility::SliceType::SI:
                 frame.type = FrameType::I;
                 break;
-            case SliceType::Unknown:
+            case utility::SliceType::Unknown:
                 frame.type = FrameType::Unknown;
                 break;
         }
