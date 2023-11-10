@@ -508,8 +508,8 @@ class DeviceBase {
     bool setIrFloodLightBrightness(float mA, int mask = -1);
 
     /**
-     * Sets the brightness of the IR Laser Dot Projector. Limits: up to 765mA at 30% frame time duty cycle when exposure time is longer than 30% frame time.
-     * Otherwise, duty cycle is 100% of exposure time, with increased current 765mA + linearly interpolated based on difference between 30% frame time and exposure time. 
+     * Sets the intensity of the IR Laser Dot Projector. Limits: up to 765mA at 30% frame time duty cycle when exposure time is longer than 30% frame time.
+     * Otherwise, duty cycle is 100% of exposure time, with current increased up to max 1200mA to make up for shorter duty cycle.
      * The duty cycle is controlled by `left` camera STROBE, aligned to start of exposure.
      * The emitter is turned off by default
      *
@@ -520,7 +520,7 @@ class DeviceBase {
     bool setIrLaserDotProjectorIntensity(float intensity, int mask = -1);
 
     /**
-     * Sets the brightness of the IR Flood Light. Limits: Intensity is directly normalized to 0 - 1500mA current.
+     * Sets the intensity of the IR Flood Light. Limits: Intensity is directly normalized to 0 - 1500mA current.
      * The duty cycle is 30% when exposure time is longer than 30% frame time. Otherwise, duty cycle is 100% of exposure time.
      * The duty cycle is controlled by the `left` camera STROBE, aligned to start of exposure.
      * The emitter is turned off by default
