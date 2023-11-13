@@ -11,7 +11,7 @@ Sync::Sync(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique
     setOutputRefs({&out});
 }
 
-void Sync::setSyncIntervalMs(unsigned int syncIntervalMs) {
+void Sync::setSyncThresholdMs(unsigned int syncIntervalMs) {
     properties.syncIntervalMs = syncIntervalMs;
 }
 

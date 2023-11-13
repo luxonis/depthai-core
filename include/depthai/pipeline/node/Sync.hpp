@@ -27,7 +27,7 @@ class Sync : public NodeCRTP<Node, Sync, SyncProperties> {
      * Set the maximal interval between messages in the group in milliseconds
      * @param syncIntervalMs Maximal interval between messages in the group in milliseconds
      */
-    void setSyncIntervalMs(unsigned int syncIntervalMs);
+    void setSyncThresholdMs(unsigned int syncIntervalMs);
 
     /**
      * Set the number of attempts to get the specified max interval between messages in the group

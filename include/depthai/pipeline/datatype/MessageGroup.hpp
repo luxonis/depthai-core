@@ -31,6 +31,11 @@ class MessageGroup : public Buffer {
         return std::dynamic_pointer_cast<T>(group[name]);
     }
     void add(const std::string& name, const std::shared_ptr<ADatatype>& value);
+    template <typename T>
+    void add(const std::string& name, const T& value) {
+        group[name] = std::make_shared<T>(value);
+        rawGrp.group[name] = {value.getRaw(), 0};
+    }
 
     /**
      * True if sync was successful.
