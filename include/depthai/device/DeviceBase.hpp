@@ -377,7 +377,7 @@ class DeviceBase {
      * @param pathToCmd Path to custom device firmware
      * @param dumpOnly If true only the minimal connection is established to retrieve the crash dump
      */
-    DeviceBase(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd, bool dumpOnly=false);
+    DeviceBase(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd, bool dumpOnly = false);
 
     /**
      * Device destructor
