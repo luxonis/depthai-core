@@ -61,7 +61,7 @@ int main() {
 
     // Connect to device and start pipeline
     dai::Device device(pipeline);
-    device.setIrLaserDotProjectorBrightness(0.7f);
+    device.setIrLaserDotProjectorIntensity(0.7f);
 
     // Output queue will be used to get the depth frames from the outputs defined above
     auto depthQueue = device.getOutputQueue("depth", 4, false);

@@ -493,7 +493,7 @@ class DeviceBase {
      * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W-DEV
      * @returns True on success, false if not found or other failure
      */
-    bool setIrLaserDotProjectorBrightness(float mA, int mask = -1);
+    [[deprecated("Use setIrLaserDotProjectorIntensity(float intensity) instead.")]] bool setIrLaserDotProjectorBrightness(float mA, int mask = -1);
 
     /**
      * Sets the brightness of the IR Flood Light. Limits: up to 1500mA at 30% duty cycle.
@@ -505,7 +505,7 @@ class DeviceBase {
      * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W-DEV
      * @returns True on success, false if not found or other failure
      */
-    bool setIrFloodLightBrightness(float mA, int mask = -1);
+    [[deprecated("Use setIrFloodLightIntensity(float intensity) instead.")]] bool setIrFloodLightBrightness(float mA, int mask = -1);
 
     /**
      * Sets the intensity of the IR Laser Dot Projector. Limits: up to 765mA at 30% frame time duty cycle when exposure time is longer than 30% frame time.
