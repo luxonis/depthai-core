@@ -576,7 +576,7 @@ class DeviceBase {
      *
      * @returns Vector of connection type
      */
-    std::vector<Connectivity> getAvailableInterfaces();
+    std::vector<Connectivity> getConnectionInterfaces();
 
     /**
      * Get cameras that are connected to the device with their features/properties
