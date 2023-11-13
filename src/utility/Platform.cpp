@@ -13,6 +13,14 @@
     #include <arpa/inet.h>
 #endif
 
+#if defined(_WIN32) || defined(__USE_W32_SOCKETS)
+    #include <windows.h>
+#endif
+
+#ifndef _WIN32
+    #include <unistd.h>
+#endif
+
 namespace dai {
 namespace platform {
 
