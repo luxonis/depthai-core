@@ -31,6 +31,8 @@ class ImgFrame : public Buffer {
     using Type = RawImgFrame::Type;
     using Specs = RawImgFrame::Specs;
     using CameraSettings = RawImgFrame::CameraSettings;
+    using Buffer::getTimestamp;
+    using Buffer::getTimestampDevice;
 
     /**
      * Construct ImgFrame message.
@@ -42,15 +44,15 @@ class ImgFrame : public Buffer {
 
     // getters
     /**
-     * Retrieves image timestamp (end of exposure) related to dai::Clock::now()
+     * Retrieves image timestamp (at the specified offset of exposure) related to dai::Clock::now()
      */
-    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp(CameraExposureOffset offset) const;
 
     /**
-     * Retrieves image timestamp (end of exposure) directly captured from device's monotonic clock,
+     * Retrieves image timestamp (at the specified offset of exposure) directly captured from device's monotonic clock,
      * not synchronized to host time. Used when monotonicity is required.
      */
-    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice(CameraExposureOffset offset) const;
 
     // getters
     /**
@@ -73,11 +75,6 @@ class ImgFrame : public Buffer {
      * Retrieves image category
      */
     unsigned int getCategory() const;
-
-    /**
-     * Retrieves image sequence number
-     */
-    int64_t getSequenceNum() const;
 
     /**
      * Retrieves image width in pixels
