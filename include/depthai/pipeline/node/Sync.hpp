@@ -31,7 +31,10 @@ class Sync : public NodeCRTP<Node, Sync, SyncProperties> {
 
     /**
      * Set the number of attempts to get the specified max interval between messages in the group
-     * @param syncAttempts Number of attempts to get the specified max interval between messages in the group
+     * @param syncAttempts Number of attempts to get the specified max interval between messages in the group:
+     *   - if syncAttempts = 0 then the node sends a message as soon at the group is filled
+     *   - if syncAttempts > 0 then the node will make syncAttemts attempts to synchronize before sending out a message
+     *   - if syncAttempts = -1 (default) then the node will only send a message if successfully synchronized
      */
     void setSyncAttempts(unsigned int syncAttempts);
 
@@ -42,9 +45,9 @@ class Sync : public NodeCRTP<Node, Sync, SyncProperties> {
     void setNumFramesPool(unsigned int numFramesPool);
 
     /**
-     * TODO
+     * Gets the maximal interval between messages in the group in milliseconds
      */
-    unsigned int getSyncIntervalMs() const;
+    unsigned int getSyncThresholdMs() const;
 
     /**
      * Gets the number of sync attempts

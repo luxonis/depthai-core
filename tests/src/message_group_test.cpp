@@ -88,3 +88,48 @@ TEST_CASE("Sync - demux") {
 
     device.close();
 }
+
+TEST_CASE("MessageGroup ping-pong") {
+    auto buf1Ts = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
+    auto buf2Ts = std::chrono::steady_clock::now() + std::chrono::milliseconds(150);
+
+    dai::Pipeline pipeline;
+    auto xout = pipeline.create<dai::node::XLinkOut>();
+    xout->setStreamName("out");
+
+    auto xin = pipeline.create<dai::node::XLinkIn>();
+    xin->setStreamName("in");
+    
+    xin->out.link(xout->input);
+    
+    dai::Device device(pipeline);
+
+    auto inQ = device.getInputQueue("in");
+    auto outQ = device.getOutputQueue("out");
+
+    dai::Buffer buf1;
+    buf1.setData({1, 2, 3, 4, 5});
+    buf1.setTimestamp(buf1Ts);
+
+    dai::ImgFrame img1;
+    img1.setData({6, 7, 8, 9, 10});
+    img1.setTimestamp(buf2Ts);
+    img1.setSize({5, 6});
+
+    dai::MessageGroup msgGrp;
+    msgGrp.add("buf1", buf1);
+    msgGrp.add("img1", img1);
+
+    inQ->send(msgGrp);
+
+    auto out = outQ->get<dai::MessageGroup>();
+
+    REQUIRE(out->get<dai::Buffer>("buf1")->getTimestamp() == buf1Ts);
+    REQUIRE(out->get<dai::ImgFrame>("img1")->getTimestamp() == buf2Ts);
+    REQUIRE(out->get<dai::Buffer>("buf1")->getData() == std::vector<unsigned char>{1, 2, 3, 4, 5});
+    REQUIRE(out->get<dai::ImgFrame>("img1")->getData() == std::vector<unsigned char>{6, 7, 8, 9, 10});
+    REQUIRE(out->get<dai::ImgFrame>("img1")->getWidth() == 5);
+    REQUIRE(out->get<dai::ImgFrame>("img1")->getHeight() == 6);
+
+    device.close();
+}

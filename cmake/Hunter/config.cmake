@@ -101,9 +101,9 @@ hunter_config(
 # Specific Catch2 version
 hunter_config(
     Catch2
-    VERSION "2.13.7"
-    URL "https://github.com/catchorg/Catch2/archive/refs/tags/v3.2.1.tar.gz"
-    SHA1 "acfba7f71cbbbbf60bc1bc4c0e3efca4a9c70df7"
+    VERSION "3.4.0"
+    URL "https://github.com/catchorg/Catch2/archive/refs/tags/v3.4.0.tar.gz"
+    SHA1 "4c308576c856a43dc88949a8f64ef90ebf94ae1b"
 )
 
 # ZLib - Luxonis fix for alias on imported target for old CMake versions

@@ -33,14 +33,16 @@ class MessageGroup : public Buffer {
     void add(const std::string& name, const std::shared_ptr<ADatatype>& value);
     template <typename T>
     void add(const std::string& name, const T& value) {
+        static_assert(std::is_base_of<ADatatype, T>::value, "T must derive from ADatatype");
         group[name] = std::make_shared<T>(value);
         rawGrp.group[name] = {value.getRaw(), 0};
     }
 
     /**
-     * True if sync was successful.
+     * True if all messages in the group are in the interval
+     * @param thresholdNs Maximal interval between messages
      */
-    bool syncSuccessful() const;
+    bool isSynced(int64_t thresholdNs) const;
 
     /**
      * Retrieves interval between the first and the last message in the group.

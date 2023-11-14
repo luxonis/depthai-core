@@ -23,10 +23,6 @@ void MessageGroup::add(const std::string& name, const std::shared_ptr<ADatatype>
     rawGrp.group[name] = {value->getRaw(), 0};
 }
 
-bool MessageGroup::syncSuccessful() const {
-    return rawGrp.success;
-}
-
 int64_t MessageGroup::getIntervalNs() const {
     if(!rawGrp.group.empty()) {
         auto oldest = std::dynamic_pointer_cast<Buffer>(group.begin()->second)->getTimestampDevice();
@@ -45,6 +41,10 @@ int64_t MessageGroup::getNumMessages() const {
     return rawGrp.group.size();
 }
 
+bool MessageGroup::isSynced(int64_t thresholdNs) const {
+    return getIntervalNs() <= thresholdNs;
+}
+
 // setters
 MessageGroup& MessageGroup::setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
     // Set timestamp from timepoint
@@ -56,11 +56,6 @@ MessageGroup& MessageGroup::setTimestampDevice(std::chrono::time_point<std::chro
 }
 MessageGroup& MessageGroup::setSequenceNum(int64_t sequenceNum) {
     return static_cast<MessageGroup&>(Buffer::setSequenceNum(sequenceNum));
-}
-
-MessageGroup& MessageGroup::setSuccess(bool success) {
-    rawGrp.success = success;
-    return *this;
 }
 
 }  // namespace dai

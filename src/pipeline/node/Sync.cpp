@@ -23,7 +23,7 @@ void Sync::setNumFramesPool(unsigned int numFramesPool) {
     properties.numFramesPool = numFramesPool;
 }
 
-unsigned int Sync::getSyncIntervalMs() const {
+unsigned int Sync::getSyncThresholdMs() const {
     return properties.syncIntervalMs;
 }
 
