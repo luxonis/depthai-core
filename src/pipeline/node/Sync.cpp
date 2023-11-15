@@ -15,7 +15,7 @@ void Sync::setSyncThresholdMs(unsigned int syncIntervalMs) {
     properties.syncIntervalMs = syncIntervalMs;
 }
 
-void Sync::setSyncAttempts(unsigned int syncAttempts) {
+void Sync::setSyncAttempts(int syncAttempts) {
     properties.syncAttempts = syncAttempts;
 }
 
@@ -27,7 +27,7 @@ unsigned int Sync::getSyncThresholdMs() const {
     return properties.syncIntervalMs;
 }
 
-unsigned int Sync::getSyncAttempts() const {
+int Sync::getSyncAttempts() const {
     return properties.syncAttempts;
 }
 

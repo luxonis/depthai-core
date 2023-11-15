@@ -36,7 +36,7 @@ class Sync : public NodeCRTP<Node, Sync, SyncProperties> {
      *   - if syncAttempts > 0 then the node will make syncAttemts attempts to synchronize before sending out a message
      *   - if syncAttempts = -1 (default) then the node will only send a message if successfully synchronized
      */
-    void setSyncAttempts(unsigned int syncAttempts);
+    void setSyncAttempts(int syncAttempts);
 
     /**
      * Specifies how many frames will be available in the pool
@@ -52,7 +52,7 @@ class Sync : public NodeCRTP<Node, Sync, SyncProperties> {
     /**
      * Gets the number of sync attempts
      */
-    unsigned int getSyncAttempts() const;
+    int getSyncAttempts() const;
 
     /**
      * Gets the number of frames in the pool

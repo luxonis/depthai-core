@@ -22,12 +22,6 @@ class MessageDemux : public NodeCRTP<Node, MessageDemux, MessageDemuxProperties>
      * A map of outputs, where keys are same as in the input MessageGroup
      */
     OutputMap outputs;
-
-    /**
-     * Specify if demux should only forward message if sync was successful
-     * @param demuxOnlyOnSuccessful If true, demux will only forward message if sync was successful
-     */
-    void setDemuxOnlyOnSuccessful(bool demuxOnlyOnSuccessful);
 };
 
 }  // namespace node

@@ -12,9 +12,5 @@ MessageDemux::MessageDemux(const std::shared_ptr<PipelineImpl>& par, int64_t nod
     setOutputMapRefs(&outputs);
 }
 
-void MessageDemux::setDemuxOnlyOnSuccessful(bool demuxOnlyOnSuccessful) {
-    properties.demuxOnlyOnSuccessful = demuxOnlyOnSuccessful;
-}
-
 }  // namespace node
 }  // namespace dai
