@@ -292,8 +292,8 @@ class DeviceBase {
 
     /**
      * Connects to device 'devInfo' with custom config.
-     * @param devInfo DeviceInfo which specifies which device to connect to
      * @param config Device custom configuration to boot with
+     * @param devInfo DeviceInfo which specifies which device to connect to
      */
     DeviceBase(Config config, const DeviceInfo& devInfo);
 
@@ -364,8 +364,8 @@ class DeviceBase {
 
     /**
      * Connects to device specified by devInfo.
-     * @param version OpenVINO version which the device will be booted with
-     * @param config Config with which specifies which device to connect to
+     * @param config Config with which the device will be booted with
+     * @param devInfo DeviceInfo which specifies which device to connect to
      * @param maxUsbSpeed Maximum allowed USB speed
      */
     DeviceBase(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
@@ -455,6 +455,12 @@ class DeviceBase {
      * @returns device name or empty string if not available
      */
     std::string getDeviceName();
+
+    /**
+     * Get product name if available
+     * @returns product name or empty string if not available
+     */
+    std::string getProductName();
 
     /**
      * Get MxId of device
@@ -867,7 +873,6 @@ class DeviceBase {
     void init(OpenVINO::Version version);
     void init(OpenVINO::Version version, const dai::Path& pathToCmd);
     void init(OpenVINO::Version version, UsbSpeed maxUsbSpeed);
-    void init(OpenVINO::Version version, bool usb2Mode, const dai::Path& pathToMvcmd);
     void init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
     void init(const Pipeline& pipeline);
     void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed);
@@ -876,9 +881,7 @@ class DeviceBase {
     void init(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode);
     void init(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
     void init(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
-    void init(const Pipeline& pipeline, bool usb2Mode, const dai::Path& pathToMvcmd);
     void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
-    void init(Config config, bool usb2Mode, const dai::Path& pathToMvcmd);
     void init(Config config, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
     void init(Config config, UsbSpeed maxUsbSpeed);
     void init(Config config, const dai::Path& pathToCmd);

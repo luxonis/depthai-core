@@ -2,6 +2,29 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.23.0 (2023-11-14)
+-----------
+* ImageManip - configurable interpolation type
+* Script - added missing bindings for reading device releated data (on device calibration, etc...)
+* Added Device::getDeviceName and Device::getProductName that target a user name and a "SKU" name
+* Timesync - improved synchronization with tweaks to XLink
+* Calibration - added housingExtrinsics
+* Fix CAM_D enumeration on OAK-FFC-4P R7
+* BMI270 IMU - fix latency when slow reading
+* Device related logging
+* OAK-D-SR-POE - new revision bugfixes
+* Fix 4 cameras crash on PoE due to memory allocation
+* Fixed incorrect warp in issue #882
+* XLink - updated number of devices to 64
+* ToF - median filter and Z map support (still not the final decoding pipeline)
+* hasAutofocus value fixed and introduced hasAutofocusIC
+* Added timestamps and sequence numbers to all Message types
+* Added DEPTHAI_ENABLE_LIBUSB for potentially disabling USB protocol (to not require libusb library)
+* OV9782 and AR0234 improvements:
+* OV9782 FPS improvements
+* AR0234 max exposure time bump to 33ms and improved FSync INPUT mode
+* Contributors: Alex Bougdan, Szabolcs Gergely, Martin Peterlin
+
 2.22.0 (2023-06-15)
 -----------
 * UVC Node - Capability to create a pipeline that sends data over UVC (or flash it)

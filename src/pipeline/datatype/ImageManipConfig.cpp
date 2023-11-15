@@ -48,6 +48,7 @@ ImageManipConfig& ImageManipConfig::setCropRotatedRect(RotatedRect rr, bool norm
 ImageManipConfig& ImageManipConfig::setWarpTransformFourPoints(std::vector<Point2f> pt, bool normalizedCoords) {
     // Enable resize stage and extended flags
     cfg.enableResize = true;
+    cfg.resizeConfig.keepAspectRatio = false;
     cfg.resizeConfig.enableWarp4pt = true;
     cfg.resizeConfig.warpFourPoints = pt;
     cfg.resizeConfig.normalizedCoords = normalizedCoords;
@@ -234,6 +235,11 @@ ImageManipConfig& ImageManipConfig::setKeepAspectRatio(bool keep) {
     return *this;
 }
 
+ImageManipConfig& ImageManipConfig::setInterpolation(dai::Interpolation interpolation) {
+    cfg.interpolation = interpolation;
+    return *this;
+}
+
 // Functions to retrieve properties
 float ImageManipConfig::getCropXMin() const {
     return cfg.cropConfig.cropRect.xmin;
@@ -286,6 +292,10 @@ dai::RawImageManipConfig ImageManipConfig::get() const {
 ImageManipConfig& ImageManipConfig::set(dai::RawImageManipConfig config) {
     cfg = config;
     return *this;
+}
+
+dai::Interpolation ImageManipConfig::getInterpolation() const {
+    return cfg.interpolation;
 }
 
 }  // namespace dai
