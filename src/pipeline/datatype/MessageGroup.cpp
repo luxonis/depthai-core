@@ -41,6 +41,15 @@ int64_t MessageGroup::getNumMessages() const {
     return rawGrp.group.size();
 }
 
+std::vector<std::string> MessageGroup::getMessageNames() const {
+    std::vector<std::string> names;
+    names.reserve(group.size());
+    for(const auto& entry : group) {
+        names.push_back(entry.first);
+    }
+    return names;
+}
+
 bool MessageGroup::isSynced(int64_t thresholdNs) const {
     return getIntervalNs() <= thresholdNs;
 }

@@ -52,6 +52,11 @@ class MessageGroup : public Buffer {
     int64_t getNumMessages() const;
 
     /**
+     * Gets the names of messages in the group
+     */
+    std::vector<std::string> getMessageNames() const;
+
+    /**
      * Sets image timestamp related to dai::Clock::now()
      */
     MessageGroup& setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
