@@ -54,18 +54,6 @@ class ImgFrame : public Buffer {
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice(CameraExposureOffset offset) const;
 
-    // getters
-    /**
-     * Retrieves image timestamp (at the specified offset of exposure) related to dai::Clock::now()
-     */
-    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp(CameraExposureOffset offset) const;
-
-    /**
-     * Retrieves image timestamp (at the specified offset of exposure) directly captured from device's monotonic clock,
-     * not synchronized to host time. Used when monotonicity is required.
-     */
-    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice(CameraExposureOffset offset) const;
-
     /**
      * Retrieves instance number
      */
