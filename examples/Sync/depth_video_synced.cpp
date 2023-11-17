@@ -29,6 +29,8 @@ int main() {
 
     color->setCamera("color");
 
+    sync->setSyncThresholdMs(100);
+
     // Linking
     monoLeft->out.link(stereo->left);
     monoRight->out.link(stereo->right);
