@@ -23,6 +23,13 @@ void MessageGroup::add(const std::string& name, const std::shared_ptr<ADatatype>
     rawGrp.group[name] = {value->getRaw(), 0};
 }
 
+std::unordered_map<std::string, std::shared_ptr<ADatatype>>::iterator MessageGroup::begin() {
+    return group.begin();
+}
+std::unordered_map<std::string, std::shared_ptr<ADatatype>>::iterator MessageGroup::end() {
+    return group.end();
+}
+
 int64_t MessageGroup::getIntervalNs() const {
     if(!rawGrp.group.empty()) {
         auto oldest = std::dynamic_pointer_cast<Buffer>(group.begin()->second)->getTimestampDevice();

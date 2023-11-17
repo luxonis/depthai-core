@@ -19,20 +19,12 @@ void Sync::setSyncAttempts(int syncAttempts) {
     properties.syncAttempts = syncAttempts;
 }
 
-void Sync::setNumFramesPool(unsigned int numFramesPool) {
-    properties.numFramesPool = numFramesPool;
-}
-
 unsigned int Sync::getSyncThresholdMs() const {
     return properties.syncIntervalMs;
 }
 
 int Sync::getSyncAttempts() const {
     return properties.syncAttempts;
-}
-
-unsigned int Sync::getNumFramesPool() const {
-    return properties.numFramesPool;
 }
 
 }  // namespace node

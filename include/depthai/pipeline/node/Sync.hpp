@@ -39,12 +39,6 @@ class Sync : public NodeCRTP<Node, Sync, SyncProperties> {
     void setSyncAttempts(int syncAttempts);
 
     /**
-     * Specifies how many frames will be available in the pool
-     * @param numFrames How many frames will pool have
-     */
-    void setNumFramesPool(unsigned int numFramesPool);
-
-    /**
      * Gets the maximal interval between messages in the group in milliseconds
      */
     unsigned int getSyncThresholdMs() const;
@@ -53,11 +47,6 @@ class Sync : public NodeCRTP<Node, Sync, SyncProperties> {
      * Gets the number of sync attempts
      */
     int getSyncAttempts() const;
-
-    /**
-     * Gets the number of frames in the pool
-     */
-    unsigned int getNumFramesPool() const;
 };
 
 }  // namespace node

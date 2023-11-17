@@ -38,6 +38,10 @@ class MessageGroup : public Buffer {
         rawGrp.group[name] = {value.getRaw(), 0};
     }
 
+    // Iterators
+    std::unordered_map<std::string, std::shared_ptr<ADatatype>>::iterator begin();
+    std::unordered_map<std::string, std::shared_ptr<ADatatype>>::iterator end();
+
     /**
      * True if all messages in the group are in the interval
      * @param thresholdNs Maximal interval between messages
