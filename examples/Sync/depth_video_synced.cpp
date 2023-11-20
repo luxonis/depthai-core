@@ -35,7 +35,7 @@ int main() {
     monoLeft->out.link(stereo->left);
     monoRight->out.link(stereo->right);
 
-    stereo->depth.link(sync->inputs["depth"]);
+    stereo->disparity.link(sync->inputs["disparity"]);
     color->video.link(sync->inputs["video"]);
 
     sync->out.link(xoutGrp->input);
@@ -45,12 +45,22 @@ int main() {
 
     auto queue = device.getOutputQueue("xout", 10, true);
 
+    float disparityMultiplier = 255 / stereo->initialConfig.getMaxDisparity();
+    
     while(true) {
         auto msgGrp = queue->get<dai::MessageGroup>();
-        std::cout << "Got message group" << std::endl;
         for(auto& frm : *msgGrp) {
             auto imgFrm = std::dynamic_pointer_cast<dai::ImgFrame>(frm.second);
-            cv::imshow(frm.first, imgFrm->getFrame());
+            cv::Mat img;
+            if(frm.first == "disparity") {
+                cv::Mat disp(imgFrm->getCvFrame());
+                disp.convertTo(disp, CV_8UC1, disparityMultiplier);  // Extend disparity range
+                cv::imshow("disparity", disp);
+                cv::applyColorMap(disp, img, cv::COLORMAP_JET);
+            } else {
+                img = imgFrm->getFrame();
+            }
+            cv::imshow(frm.first, img);
         }
 
         int key = cv::waitKey(1);

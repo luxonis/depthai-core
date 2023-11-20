@@ -16,7 +16,7 @@ MessageGroup::MessageGroup() : Buffer(std::make_shared<RawMessageGroup>()), rawG
 MessageGroup::MessageGroup(std::shared_ptr<RawMessageGroup> ptr) : Buffer(std::move(ptr)), rawGrp(*dynamic_cast<RawMessageGroup*>(raw.get())) {}
 
 std::shared_ptr<ADatatype> MessageGroup::operator[](const std::string& name) {
-    return group[name];
+    return group.at(name);
 }
 void MessageGroup::add(const std::string& name, const std::shared_ptr<ADatatype>& value) {
     group[name] = value;
