@@ -521,10 +521,10 @@ void DeviceBase::closeImpl() {
         pimpl->logger.debug("Device about to be closed...");
 
         try {
-            int status = pimpl->rpcClient->call("checkShutdown").as<int>();
-            pimpl->logger.debug("Device exit status {}", status);
+            bool canShutdown = pimpl->rpcClient->call("shutdown").as<bool>();
+            pimpl->logger.debug("Shutdown {}", canShutdown ? "OK" : "error");
         } catch(const std::exception& ex) {
-            pimpl->logger.debug("checkShutdown call error: {}", ex.what());
+            pimpl->logger.debug("shutdown call error: {}", ex.what());
             shouldGetCrashDump = true;
         }
     }
