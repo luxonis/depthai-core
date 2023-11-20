@@ -51,14 +51,10 @@ int main() {
         auto msgGrp = queue->get<dai::MessageGroup>();
         for(auto& frm : *msgGrp) {
             auto imgFrm = std::dynamic_pointer_cast<dai::ImgFrame>(frm.second);
-            cv::Mat img;
+            cv::Mat img = imgFrm->getCvFrame();
             if(frm.first == "disparity") {
-                cv::Mat disp(imgFrm->getCvFrame());
-                disp.convertTo(disp, CV_8UC1, disparityMultiplier);  // Extend disparity range
-                cv::imshow("disparity", disp);
-                cv::applyColorMap(disp, img, cv::COLORMAP_JET);
-            } else {
-                img = imgFrm->getFrame();
+                img.convertTo(img, CV_8UC1, disparityMultiplier);  // Extend disparity range
+                cv::applyColorMap(img, img, cv::COLORMAP_JET);
             }
             cv::imshow(frm.first, img);
         }
