@@ -29,7 +29,7 @@ int main() {
 
     color->setCamera("color");
 
-    sync->setSyncThresholdMs(100);
+    sync->setSyncThreshold(std::chrono::milliseconds(100));
 
     // Linking
     monoLeft->out.link(stereo->left);

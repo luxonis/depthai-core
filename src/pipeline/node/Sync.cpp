@@ -11,16 +11,16 @@ Sync::Sync(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique
     setOutputRefs({&out});
 }
 
-void Sync::setSyncThresholdMs(unsigned int syncIntervalMs) {
-    properties.syncIntervalMs = syncIntervalMs;
+void Sync::setSyncThreshold(std::chrono::nanoseconds syncThreshold) {
+    properties.syncThresholdNs = syncThreshold.count();
 }
 
 void Sync::setSyncAttempts(int syncAttempts) {
     properties.syncAttempts = syncAttempts;
 }
 
-unsigned int Sync::getSyncThresholdMs() const {
-    return properties.syncIntervalMs;
+std::chrono::nanoseconds Sync::getSyncThreshold() const {
+    return std::chrono::nanoseconds(properties.syncThresholdNs);
 }
 
 int Sync::getSyncAttempts() const {

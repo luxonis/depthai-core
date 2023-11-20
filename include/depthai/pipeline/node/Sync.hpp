@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include "depthai-shared/properties/SyncProperties.hpp"
 #include "depthai/pipeline/Node.hpp"
 
@@ -24,10 +25,10 @@ class Sync : public NodeCRTP<Node, Sync, SyncProperties> {
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::MessageGroup, false}}};
 
     /**
-     * Set the maximal interval between messages in the group in milliseconds
-     * @param syncIntervalMs Maximal interval between messages in the group in milliseconds
+     * Set the maximal interval between messages in the group
+     * @param syncThreshold Maximal interval between messages in the group
      */
-    void setSyncThresholdMs(unsigned int syncIntervalMs);
+    void setSyncThreshold(std::chrono::nanoseconds syncThreshold);
 
     /**
      * Set the number of attempts to get the specified max interval between messages in the group
@@ -41,7 +42,7 @@ class Sync : public NodeCRTP<Node, Sync, SyncProperties> {
     /**
      * Gets the maximal interval between messages in the group in milliseconds
      */
-    unsigned int getSyncThresholdMs() const;
+    std::chrono::nanoseconds getSyncThreshold() const;
 
     /**
      * Gets the number of sync attempts

@@ -33,7 +33,7 @@ while True:
 )SCRPT");
 
     auto sync = pipeline.create<dai::node::Sync>();
-    sync->setSyncThresholdMs(100);
+    sync->setSyncThreshold(std::chrono::milliseconds(100));
 
     auto xout = pipeline.create<dai::node::XLinkOut>();
     xout->setStreamName("xout");

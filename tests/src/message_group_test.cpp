@@ -44,7 +44,7 @@ TEST_CASE("Sync - demux") {
     auto demux = pipeline.create<dai::node::MessageDemux>();
 
     auto sync = pipeline.create<dai::node::Sync>();
-    sync->setSyncThresholdMs(100);
+    sync->setSyncThreshold(std::chrono::milliseconds(100));
 
     auto xin1 = pipeline.create<dai::node::XLinkIn>();
     xin1->setStreamName("in1");
