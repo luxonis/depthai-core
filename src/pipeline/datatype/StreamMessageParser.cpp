@@ -15,6 +15,7 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
+#include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
@@ -38,6 +39,7 @@
 #include "depthai-shared/datatype/RawBuffer.hpp"
 #include "depthai-shared/datatype/RawCameraControl.hpp"
 #include "depthai-shared/datatype/RawEdgeDetectorConfig.hpp"
+#include "depthai-shared/datatype/RawEncodedFrame.hpp"
 #include "depthai-shared/datatype/RawFeatureTrackerConfig.hpp"
 #include "depthai-shared/datatype/RawIMUData.hpp"
 #include "depthai-shared/datatype/RawImageManipConfig.hpp"
@@ -116,16 +118,16 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
 
     // Create corresponding object
     switch(objectType) {
-        // RawBuffer is special case, no metadata is actually serialized
-        case DatatypeEnum::Buffer: {
-            // RawBuffer is special case, no metadata is actually serialized
-            auto pBuf = std::make_shared<RawBuffer>();
-            pBuf->data = std::move(data);
-            return pBuf;
-        } break;
+        case DatatypeEnum::Buffer:
+            return parseDatatype<RawBuffer>(metadataStart, serializedObjectSize, data);
+            break;
 
         case DatatypeEnum::ImgFrame:
             return parseDatatype<RawImgFrame>(metadataStart, serializedObjectSize, data);
+            break;
+
+        case DatatypeEnum::EncodedFrame:
+            return parseDatatype<RawEncodedFrame>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::NNData:
@@ -216,14 +218,15 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
 
     switch(objectType) {
         case DatatypeEnum::Buffer: {
-            // RawBuffer is special case, no metadata is actually serialized
-            auto pBuf = std::make_shared<RawBuffer>();
-            pBuf->data = std::move(data);
-            return std::make_shared<Buffer>(pBuf);
+            return std::make_shared<Buffer>(parseDatatype<RawBuffer>(metadataStart, serializedObjectSize, data));
         } break;
 
         case DatatypeEnum::ImgFrame:
             return std::make_shared<ImgFrame>(parseDatatype<RawImgFrame>(metadataStart, serializedObjectSize, data));
+            break;
+
+        case DatatypeEnum::EncodedFrame:
+            return std::make_shared<EncodedFrame>(parseDatatype<RawEncodedFrame>(metadataStart, serializedObjectSize, data));
             break;
 
         case DatatypeEnum::NNData:

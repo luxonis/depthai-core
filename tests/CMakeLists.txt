@@ -107,8 +107,9 @@ function(dai_add_test test_name test_src)
             set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${test_name}>")
         endif()
         add_custom_command(TARGET ${test_name} POST_BUILD COMMAND
-            ${CMAKE_COMMAND} -E copy_if_different ${depthai_dll_libraries} $<TARGET_FILE_DIR:${test_name}>
+            "$<$<BOOL:${depthai_dll_libraries}>:${CMAKE_COMMAND};-E;copy_if_different;${depthai_dll_libraries};$<TARGET_FILE_DIR:${test_name}>>"
             COMMAND_EXPAND_LISTS
+            VERBATIM
         )
     endif()
 endfunction()
@@ -216,10 +217,15 @@ dai_test_compile_definitions(openvino_blob_test PRIVATE
 # Bootloader configuration tests
 dai_add_test(bootloader_config_test src/bootloader_config_test.cpp)
 
+# Eeprom naming parsing tests
+dai_add_test(naming_test src/naming_test.cpp)
+
 # Device USB Speed and serialization macros test
 dai_add_test(device_usbspeed_test    src/device_usbspeed_test.cpp CONFORMING)
 dai_add_test(device_usbspeed_test_17 src/device_usbspeed_test.cpp CONFORMING CXX_STANDARD 17)
 dai_add_test(device_usbspeed_test_20 src/device_usbspeed_test.cpp CONFORMING CXX_STANDARD 20)
+
+dai_add_test(encoded_frame_test src/encoded_frame_test.cpp CXX_STANDARD 17)
 
 # Unlimited io connections test
 dai_add_test(unlimited_io_connection_test src/unlimited_io_connection_test.cpp)
