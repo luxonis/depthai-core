@@ -513,6 +513,13 @@ void DeviceBase::close() {
     }
 }
 
+tl::optional<std::string> saveCrashDump(dai::CrashDump& dump, std::string mxId) {
+    std::vector<uint8_t> data;
+    utility::serialize<SerializationType::JSON>(dump, data);
+    auto crashDumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
+    return saveFileToTemporaryDirectory(data, mxId + "-depthai_crash_dump.json", crashDumpPathStr);
+}
+
 void DeviceBase::closeImpl() {
     using namespace std::chrono;
     auto t1 = steady_clock::now();
@@ -521,9 +528,21 @@ void DeviceBase::closeImpl() {
         pimpl->logger.debug("Device about to be closed...");
 
         try {
-            bool shutdownOk = pimpl->rpcClient->call("shutdown").as<bool>();
-            shouldGetCrashDump = !shutdownOk;
-            pimpl->logger.debug("Shutdown {}", shutdownOk ? "OK" : "error");
+            if(hasCrashDump()) {
+                connection->setRebootOnDestruction(true);
+                auto dump = getCrashDump();
+                auto path = saveCrashDump(dump, deviceInfo.getMxId());
+                if(path.has_value()) {
+                    pimpl->logger.warn("There was a fatal error. Crash dump saved to {}", path.value());
+                } else {
+                    pimpl->logger.warn("There was a fatal error. Crash dump could not be saved");
+                }
+            } else {
+                bool isRunning = pimpl->rpcClient->call("isRunning").as<bool>();
+                shouldGetCrashDump = !isRunning;
+                connection->setRebootOnDestruction(connection->getRebootOnDestruction() || shouldGetCrashDump);
+                pimpl->logger.debug("Shutdown {}", isRunning ? "OK" : "error");
+            }
         } catch(const std::exception& ex) {
             pimpl->logger.debug("shutdown call error: {}", ex.what());
             shouldGetCrashDump = true;
@@ -573,10 +592,7 @@ void DeviceBase::closeImpl() {
                 if(found && (rebootingDeviceInfo.state == X_LINK_UNBOOTED || rebootingDeviceInfo.state == X_LINK_BOOTLOADER)) {
                     DeviceBase rebootingDevice(config, rebootingDeviceInfo, firmwarePath, true);
                     auto dump = rebootingDevice.getCrashDump();
-                    std::vector<uint8_t> data;
-                    utility::serialize<SerializationType::JSON>(dump, data);
-                    auto crashDumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
-                    auto path = saveFileToTemporaryDirectory(data, deviceInfo.getMxId() + "-depthai_crash_dump.json", crashDumpPathStr);
+                    auto path = saveCrashDump(dump, deviceInfo.getMxId());
                     if(path.has_value()) {
                         pimpl->logger.warn("Device crashed. Crash dump saved to {}", path.value());
                     } else {
