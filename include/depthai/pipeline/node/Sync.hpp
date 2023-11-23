@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+
 #include "depthai-shared/properties/SyncProperties.hpp"
 #include "depthai/pipeline/Node.hpp"
 
