@@ -28,6 +28,7 @@
 
 // shared
 #include "depthai-shared/common/ChipTemperature.hpp"
+#include "depthai-shared/common/Connectivity.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
 #include "depthai-shared/datatype/RawIMUData.hpp"
@@ -593,6 +594,13 @@ class DeviceBase {
      * @returns Vector of connected cameras
      */
     std::vector<CameraBoardSocket> getConnectedCameras();
+
+    /**
+     * Get connectivity for device
+     *
+     * @returns Vector of connection type
+     */
+    std::vector<Connectivity> getConnectionInterfaces();
 
     /**
      * Get cameras that are connected to the device with their features/properties
