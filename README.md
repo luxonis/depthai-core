@@ -185,6 +185,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_BOOTLOADER_BINARY_ETH | Overrides device Network Bootloader binary. Mostly for internal debugging purposes. |
 | DEPTHAI_ALLOW_FACTORY_FLASHING | Internal use only |
 | DEPTHAI_LIBUSB_ANDROID_JAVAVM | JavaVM pointer that is passed to libusb for rootless Android interaction with devices. Interpreted as decimal value of uintptr_t |
+| DEPTHAI_CRASHDUMP | Directory in which to save the crashdump. |
 
 ## Running tests
 
