@@ -15,7 +15,7 @@ class SideChannel {
 
    private:
     std::thread thread;
-    LockingQueue<std::shared_ptr<dai::ADatatype>> lockingQueue{10, false};
+    LockingQueue<std::shared_ptr<dai::ADatatype>> lockingQueue{50, false};
     std::atomic_bool running{true};
     void threadedRun();
 };
