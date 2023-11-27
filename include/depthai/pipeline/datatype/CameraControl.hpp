@@ -162,6 +162,22 @@ class CameraControl : public Buffer {
     CameraControl& setAutoExposureCompensation(int compensation);
 
     /**
+     * Set a command to specify the maximum exposure time limit for auto-exposure. By default
+     * the AE algorithm prioritizes increasing exposure over ISO, up to around frame-time
+     * (subject to further limits imposed by anti-banding)
+     * @param maxExposureTimeUs Maximum exposure time in microseconds
+     */
+    CameraControl& setAutoExposureLimit(uint32_t maxExposureTimeUs);
+
+    /**
+     * Set a command to specify the maximum exposure time limit for auto-exposure. By default
+     * the AE algorithm prioritizes increasing exposure over ISO, up to around frame-time
+     * (subject to further limits imposed by anti-banding)
+     * @param maxExposureTime Maximum exposure time
+     */
+    CameraControl& setAutoExposureLimit(std::chrono::microseconds maxExposureTime);
+
+    /**
      * Set a command to specify anti-banding mode. Anti-banding / anti-flicker
      * works in auto-exposure mode, by controlling the exposure time to be applied
      * in multiples of half the mains period, for example in multiple of 10ms
@@ -186,7 +202,7 @@ class CameraControl : public Buffer {
      * @param exposureTime Exposure time
      * @param sensitivityIso Sensitivity as ISO value, usual range 100..1600
      */
-    void setManualExposure(std::chrono::microseconds exposureTime, uint32_t sensitivityIso);
+    CameraControl& setManualExposure(std::chrono::microseconds exposureTime, uint32_t sensitivityIso);
 
     // White Balance
     /**

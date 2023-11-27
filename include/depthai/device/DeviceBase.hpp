@@ -28,6 +28,7 @@
 
 // shared
 #include "depthai-shared/common/ChipTemperature.hpp"
+#include "depthai-shared/common/Connectivity.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
 #include "depthai-shared/datatype/RawIMUData.hpp"
@@ -493,7 +494,7 @@ class DeviceBase {
      * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W-DEV
      * @returns True on success, false if not found or other failure
      */
-    bool setIrLaserDotProjectorBrightness(float mA, int mask = -1);
+    [[deprecated("Use setIrLaserDotProjectorIntensity(float intensity) instead.")]] bool setIrLaserDotProjectorBrightness(float mA, int mask = -1);
 
     /**
      * Sets the brightness of the IR Flood Light. Limits: up to 1500mA at 30% duty cycle.
@@ -505,7 +506,31 @@ class DeviceBase {
      * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W-DEV
      * @returns True on success, false if not found or other failure
      */
-    bool setIrFloodLightBrightness(float mA, int mask = -1);
+    [[deprecated("Use setIrFloodLightIntensity(float intensity) instead.")]] bool setIrFloodLightBrightness(float mA, int mask = -1);
+
+    /**
+     * Sets the intensity of the IR Laser Dot Projector. Limits: up to 765mA at 30% frame time duty cycle when exposure time is longer than 30% frame time.
+     * Otherwise, duty cycle is 100% of exposure time, with current increased up to max 1200mA to make up for shorter duty cycle.
+     * The duty cycle is controlled by `left` camera STROBE, aligned to start of exposure.
+     * The emitter is turned off by default
+     *
+     * @param intensity Intensity on range 0 to 1, that will determine brightness. 0 or negative to turn off
+     * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W-DEV
+     * @returns True on success, false if not found or other failure
+     */
+    bool setIrLaserDotProjectorIntensity(float intensity, int mask = -1);
+
+    /**
+     * Sets the intensity of the IR Flood Light. Limits: Intensity is directly normalized to 0 - 1500mA current.
+     * The duty cycle is 30% when exposure time is longer than 30% frame time. Otherwise, duty cycle is 100% of exposure time.
+     * The duty cycle is controlled by the `left` camera STROBE, aligned to start of exposure.
+     * The emitter is turned off by default
+     *
+     * @param intensity Intensity on range 0 to 1, that will determine brightness, 0 or negative to turn off
+     * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W-DEV
+     * @returns True on success, false if not found or other failure
+     */
+    bool setIrFloodLightIntensity(float intensity, int mask = -1);
 
     /**
      * Retrieves detected IR laser/LED drivers.
@@ -569,6 +594,13 @@ class DeviceBase {
      * @returns Vector of connected cameras
      */
     std::vector<CameraBoardSocket> getConnectedCameras();
+
+    /**
+     * Get connectivity for device
+     *
+     * @returns Vector of connection type
+     */
+    std::vector<Connectivity> getConnectionInterfaces();
 
     /**
      * Get cameras that are connected to the device with their features/properties
