@@ -85,8 +85,6 @@ TEST_CASE("Sync - demux") {
     REQUIRE(out2->getData() == std::vector<unsigned char>{6, 7, 8, 9, 10});
     REQUIRE(out2->getWidth() == 5);
     REQUIRE(out2->getHeight() == 6);
-
-    device.close();
 }
 
 TEST_CASE("MessageGroup ping-pong") {
@@ -130,6 +128,4 @@ TEST_CASE("MessageGroup ping-pong") {
     REQUIRE(out->get<dai::ImgFrame>("img1")->getData() == std::vector<unsigned char>{6, 7, 8, 9, 10});
     REQUIRE(out->get<dai::ImgFrame>("img1")->getWidth() == 5);
     REQUIRE(out->get<dai::ImgFrame>("img1")->getHeight() == 6);
-
-    device.close();
 }
