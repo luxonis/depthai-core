@@ -524,9 +524,7 @@ unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
             logger::warn("DEPTHAI_CRASHDUMP_TIMEOUT value invalid: {}", e.what());
         }
     }
-    return DEFAULT_CRASHDUMP_TIMEOUT + (protocol == X_LINK_TCP_IP ? 
-            device::XLINK_TCP_WATCHDOG_TIMEOUT.count() : 
-            device::XLINK_USB_WATCHDOG_TIMEOUT.count());
+    return DEFAULT_CRASHDUMP_TIMEOUT + (protocol == X_LINK_TCP_IP ? device::XLINK_TCP_WATCHDOG_TIMEOUT.count() : device::XLINK_USB_WATCHDOG_TIMEOUT.count());
 }
 
 tl::optional<std::string> saveCrashDump(dai::CrashDump& dump, std::string mxId) {
@@ -898,8 +896,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
                 }
                 // Recheck if watchdogRunning wasn't already closed and close if more than twice of WD passed
                 if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout * 2) {
-                    pimpl->logger.warn(
-                        "Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
+                    pimpl->logger.warn("Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
                     // ping was missed, reset the device
                     watchdogRunning = false;
                     // close the underlying connection
