@@ -621,10 +621,6 @@ void DeviceBase::closeImpl() {
             if(!gotDump) {
                 pimpl->logger.error("Device likely crashed but did not reboot in time to get the crash dump");
             }
-            // Close rpcStream
-            connection->close();
-            pimpl->rpcStream = nullptr;
-            pimpl->rpcClient = nullptr;
         } else if(shouldGetCrashDump) {
             pimpl->logger.warn("Device crashed. Crash dump retrieval disabled.");
         }
