@@ -1046,8 +1046,8 @@ std::vector<CameraBoardSocket> DeviceBase::getConnectedCameras() {
     return pimpl->rpcClient->call("getConnectedCameras").as<std::vector<CameraBoardSocket>>();
 }
 
-std::vector<Connectivity> DeviceBase::getConnectionInterfaces() {
-    return pimpl->rpcClient->call("getConnectivity").as<std::vector<Connectivity>>();
+std::vector<ConnectionInterface> DeviceBase::getConnectionInterfaces() {
+    return pimpl->rpcClient->call("getConnectionInterfaces").as<std::vector<ConnectionInterface>>();
 }
 
 std::vector<CameraFeatures> DeviceBase::getConnectedCameraFeatures() {
