@@ -304,7 +304,7 @@ class DeviceBase {
      *
      * @param devInfo DeviceInfo which specifies which device to connect to
      */
-    DeviceBase(const DeviceInfo& devInfo);
+    explicit DeviceBase(const DeviceInfo& devInfo);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
@@ -376,8 +376,9 @@ class DeviceBase {
      * @param config Config with which the device will be booted with
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param pathToCmd Path to custom device firmware
+     * @param dumpOnly If true only the minimal connection is established to retrieve the crash dump
      */
-    DeviceBase(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
+    DeviceBase(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd, bool dumpOnly = false);
 
     /**
      * Device destructor
@@ -964,5 +965,8 @@ class DeviceBase {
 
     // Device config
     Config config;
+
+    dai::Path firmwarePath;
+    bool dumpOnly = false;
 };
 }  // namespace dai

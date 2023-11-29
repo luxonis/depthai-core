@@ -23,6 +23,7 @@
 #include "pipeline/Pipeline.hpp"
 #include "utility/EepromDataParser.hpp"
 #include "utility/Environment.hpp"
+#include "utility/Files.hpp"
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Resources.hpp"
@@ -44,6 +45,8 @@ namespace dai {
 const std::string MAGIC_PROTECTED_FLASHING_VALUE = "235539980";
 const std::string MAGIC_FACTORY_FLASHING_VALUE = "413424129";
 const std::string MAGIC_FACTORY_PROTECTED_FLASHING_VALUE = "868632271";
+
+const unsigned int DEFAULT_CRASHDUMP_TIMEOUT = 9000;
 
 // local static function
 static void getFlashingPermissions(bool& factoryPermissions, bool& protectedPermissions) {
@@ -398,7 +401,7 @@ DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsb
     init(config, maxUsbSpeed, "");
 }
 
-DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd) : deviceInfo(devInfo) {
+DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd, bool dumpOnly) : deviceInfo(devInfo), dumpOnly(dumpOnly) {
     init2(config, pathToCmd, {});
 }
 
@@ -512,10 +515,52 @@ void DeviceBase::close() {
     }
 }
 
+unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
+    std::string timeoutStr = utility::getEnv("DEPTHAI_CRASHDUMP_TIMEOUT");
+    if(!timeoutStr.empty()) {
+        try {
+            return std::stoi(timeoutStr) * 1000;
+        } catch(const std::invalid_argument& e) {
+            logger::warn("DEPTHAI_CRASHDUMP_TIMEOUT value invalid: {}", e.what());
+        }
+    }
+    return DEFAULT_CRASHDUMP_TIMEOUT + (protocol == X_LINK_TCP_IP ? device::XLINK_TCP_WATCHDOG_TIMEOUT.count() : device::XLINK_USB_WATCHDOG_TIMEOUT.count());
+}
+
+tl::optional<std::string> saveCrashDump(dai::CrashDump& dump, std::string mxId) {
+    std::vector<uint8_t> data;
+    utility::serialize<SerializationType::JSON>(dump, data);
+    auto crashDumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
+    return saveFileToTemporaryDirectory(data, mxId + "-depthai_crash_dump.json", crashDumpPathStr);
+}
+
 void DeviceBase::closeImpl() {
     using namespace std::chrono;
     auto t1 = steady_clock::now();
-    pimpl->logger.debug("Device about to be closed...");
+    bool shouldGetCrashDump = false;
+    if(!dumpOnly) {
+        pimpl->logger.debug("Device about to be closed...");
+        try {
+            if(hasCrashDump()) {
+                connection->setRebootOnDestruction(true);
+                auto dump = getCrashDump();
+                auto path = saveCrashDump(dump, deviceInfo.getMxId());
+                if(path.has_value()) {
+                    pimpl->logger.warn("There was a fatal error. Crash dump saved to {}", path.value());
+                } else {
+                    pimpl->logger.warn("There was a fatal error. Crash dump could not be saved");
+                }
+            } else {
+                bool isRunning = pimpl->rpcClient->call("isRunning").as<bool>();
+                shouldGetCrashDump = !isRunning;
+                connection->setRebootOnDestruction(connection->getRebootOnDestruction() || shouldGetCrashDump);
+                pimpl->logger.debug("Shutdown {}", isRunning ? "OK" : "error");
+            }
+        } catch(const std::exception& ex) {
+            pimpl->logger.debug("shutdown call error: {}", ex.what());
+            shouldGetCrashDump = true;
+        }
+    }
 
     // Close connection first; causes Xlink internal calls to unblock semaphore waits and
     // return error codes, which then allows queues to unblock
@@ -524,28 +569,64 @@ void DeviceBase::closeImpl() {
     // invalid memory, etc. which hard crashes main app
     connection->close();
 
-    // Stop various threads
     watchdogRunning = false;
-    timesyncRunning = false;
-    loggingRunning = false;
-    profilingRunning = false;
-
     // Stop watchdog first (this resets and waits for link to fall down)
     if(watchdogThread.joinable()) watchdogThread.join();
-    // Then stop timesync
-    if(timesyncThread.joinable()) timesyncThread.join();
-    // And at the end stop logging thread
-    if(loggingThread.joinable()) loggingThread.join();
-    // And at the end stop profiling thread
-    if(profilingThread.joinable()) profilingThread.join();
-    // At the end stop the monitor thread
-    if(monitorThread.joinable()) monitorThread.join();
+
+    if(!dumpOnly) {
+        // Stop various threads
+        timesyncRunning = false;
+        loggingRunning = false;
+        profilingRunning = false;
+
+        // Then stop timesync
+        if(timesyncThread.joinable()) timesyncThread.join();
+        // And at the end stop logging thread
+        if(loggingThread.joinable()) loggingThread.join();
+        // And at the end stop profiling thread
+        if(profilingThread.joinable()) profilingThread.join();
+        // At the end stop the monitor thread
+        if(monitorThread.joinable()) monitorThread.join();
+    }
 
     // Close rpcStream
     pimpl->rpcStream = nullptr;
     pimpl->rpcClient = nullptr;
 
-    pimpl->logger.debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
+    if(!dumpOnly) {
+        auto timeout = getCrashdumpTimeout(deviceInfo.protocol);
+        // Get crash dump if needed
+        if(shouldGetCrashDump && timeout > 0) {
+            pimpl->logger.debug("Getting crash dump...");
+            auto t1 = steady_clock::now();
+            bool gotDump = false;
+            bool found = false;
+            do {
+                DeviceInfo rebootingDeviceInfo;
+                std::tie(found, rebootingDeviceInfo) = XLinkConnection::getDeviceByMxId(deviceInfo.getMxId(), X_LINK_ANY_STATE, false);
+                if(found && (rebootingDeviceInfo.state == X_LINK_UNBOOTED || rebootingDeviceInfo.state == X_LINK_BOOTLOADER)) {
+                    pimpl->logger.trace("Found rebooting device in {}ns", duration_cast<nanoseconds>(steady_clock::now() - t1).count());
+                    DeviceBase rebootingDevice(config, rebootingDeviceInfo, firmwarePath, true);
+                    auto dump = rebootingDevice.getCrashDump();
+                    auto path = saveCrashDump(dump, deviceInfo.getMxId());
+                    if(path.has_value()) {
+                        pimpl->logger.warn("Device crashed. Crash dump saved to {}", path.value());
+                    } else {
+                        pimpl->logger.warn("Device crashed. Crash dump could not be saved");
+                    }
+                    gotDump = true;
+                    break;
+                }
+            } while(!found && steady_clock::now() - t1 < std::chrono::milliseconds(timeout));
+            if(!gotDump) {
+                pimpl->logger.error("Device likely crashed but did not reboot in time to get the crash dump");
+            }
+        } else if(shouldGetCrashDump) {
+            pimpl->logger.warn("Device crashed. Crash dump retrieval disabled.");
+        }
+
+        pimpl->logger.debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
+    }
 }
 
 // This function is thread-unsafe. The idea of "isClosed" is ephemerial and
@@ -596,10 +677,11 @@ void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed, const dai::Path& path
 
 void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<const Pipeline&> pipeline) {
     // Initalize depthai library if not already
-    initialize();
+    if(!dumpOnly) initialize();
 
     // Specify cfg
     config = cfg;
+    firmwarePath = pathToMvcmd;
 
     // Apply nonExclusiveMode
     config.board.nonExclusiveMode = config.nonExclusiveMode;
@@ -825,131 +907,133 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         watchdogRunning = true;
     }
 
-    // Below can throw - make sure to gracefully exit threads
-    try {
-        auto level = spdlogLevelToLogLevel(logger::get_level());
-        setLogLevel(config.logLevel.value_or(level));
-
-        // Sets system inforation logging rate. By default 1s
-        setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
-    } catch(const std::exception&) {
-        // close device (cleanup)
-        close();
-        // Rethrow original exception
-        throw;
-    }
-
-    // prepare timesync thread, which will keep device synchronized
-    timesyncThread = std::thread([this]() {
-        using namespace std::chrono;
-
+    if(!dumpOnly) {
+        // Below can throw - make sure to gracefully exit threads
         try {
-            XLinkStream stream(connection, device::XLINK_CHANNEL_TIMESYNC, 128);
-            while(timesyncRunning) {
-                // Block
-                XLinkTimespec timestamp;
-                stream.read(timestamp);
+            auto level = spdlogLevelToLogLevel(logger::get_level());
+            setLogLevel(config.logLevel.value_or(level));
 
-                // Write timestamp back
-                stream.write(&timestamp, sizeof(timestamp));
-            }
-        } catch(const std::exception& ex) {
-            // ignore
-            pimpl->logger.debug("Timesync thread exception caught: {}", ex.what());
+            // Sets system inforation logging rate. By default 1s
+            setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
+        } catch(const std::exception&) {
+            // close device (cleanup)
+            close();
+            // Rethrow original exception
+            throw;
         }
 
-        timesyncRunning = false;
-    });
+        // prepare timesync thread, which will keep device synchronized
+        timesyncThread = std::thread([this]() {
+            using namespace std::chrono;
 
-    // prepare logging thread, which will log device messages
-    loggingThread = std::thread([this]() {
-        using namespace std::chrono;
-        std::vector<LogMessage> messages;
-        try {
-            XLinkStream stream(connection, device::XLINK_CHANNEL_LOG, 128);
-            while(loggingRunning) {
-                // Block
-                auto log = stream.read();
+            try {
+                XLinkStream stream(connection, device::XLINK_CHANNEL_TIMESYNC, 128);
+                while(timesyncRunning) {
+                    // Block
+                    XLinkTimespec timestamp;
+                    stream.read(timestamp);
 
-                try {
-                    // Deserialize incoming messages
-                    utility::deserialize(log, messages);
+                    // Write timestamp back
+                    stream.write(&timestamp, sizeof(timestamp));
+                }
+            } catch(const std::exception& ex) {
+                // ignore
+                pimpl->logger.debug("Timesync thread exception caught: {}", ex.what());
+            }
 
-                    pimpl->logger.trace("Log vector decoded, size: {}", messages.size());
+            timesyncRunning = false;
+        });
 
-                    // log the messages in incremental order (0 -> size-1)
-                    for(const auto& msg : messages) {
-                        pimpl->logger.logMessage(msg);
-                    }
+        // prepare logging thread, which will log device messages
+        loggingThread = std::thread([this]() {
+            using namespace std::chrono;
+            std::vector<LogMessage> messages;
+            try {
+                XLinkStream stream(connection, device::XLINK_CHANNEL_LOG, 128);
+                while(loggingRunning) {
+                    // Block
+                    auto log = stream.read();
 
-                    // Log to callbacks
-                    {
-                        // lock mtx to callback map (shared)
-                        std::unique_lock<std::mutex> l(logCallbackMapMtx);
+                    try {
+                        // Deserialize incoming messages
+                        utility::deserialize(log, messages);
+
+                        pimpl->logger.trace("Log vector decoded, size: {}", messages.size());
+
+                        // log the messages in incremental order (0 -> size-1)
                         for(const auto& msg : messages) {
-                            for(const auto& kv : logCallbackMap) {
-                                const auto& cb = kv.second;
-                                // If available, callback with msg
-                                if(cb) cb(msg);
+                            pimpl->logger.logMessage(msg);
+                        }
+
+                        // Log to callbacks
+                        {
+                            // lock mtx to callback map (shared)
+                            std::unique_lock<std::mutex> l(logCallbackMapMtx);
+                            for(const auto& msg : messages) {
+                                for(const auto& kv : logCallbackMap) {
+                                    const auto& cb = kv.second;
+                                    // If available, callback with msg
+                                    if(cb) cb(msg);
+                                }
                             }
                         }
+
+                    } catch(const nlohmann::json::exception& ex) {
+                        pimpl->logger.error("Exception while parsing or calling callbacks for log message from device: {}", ex.what());
                     }
-
-                } catch(const nlohmann::json::exception& ex) {
-                    pimpl->logger.error("Exception while parsing or calling callbacks for log message from device: {}", ex.what());
-                }
-            }
-        } catch(const std::exception& ex) {
-            // ignore exception from logging
-            pimpl->logger.debug("Log thread exception caught: {}", ex.what());
-        }
-
-        loggingRunning = false;
-    });
-
-    if(utility::getEnv("DEPTHAI_PROFILING") == "1") {
-        // prepare profiling thread, which will log device messages
-        profilingThread = std::thread([this]() {
-            using namespace std::chrono;
-            try {
-                ProfilingData lastData = {};
-                // TODO(themarpe) - expose
-                float rate = 1.0f;
-                while(profilingRunning) {
-                    ProfilingData data = getProfilingData();
-                    long long w = data.numBytesWritten - lastData.numBytesWritten;
-                    long long r = data.numBytesRead - lastData.numBytesRead;
-                    w = static_cast<long long>(w / rate);
-                    r = static_cast<long long>(r / rate);
-
-                    lastData = data;
-
-                    pimpl->logger.debug("Profiling write speed: {:.2f} MiB/s, read speed: {:.2f} MiB/s, total written: {:.2f} MiB, read: {:.2f} MiB",
-                                        w / 1024.0f / 1024.0f,
-                                        r / 1024.0f / 1024.0f,
-                                        data.numBytesWritten / 1024.0f / 1024.0f,
-                                        data.numBytesRead / 1024.0f / 1024.0f);
-
-                    std::this_thread::sleep_for(duration<float>(1) / rate);
                 }
             } catch(const std::exception& ex) {
                 // ignore exception from logging
-                pimpl->logger.debug("Profiling thread exception caught: {}", ex.what());
+                pimpl->logger.debug("Log thread exception caught: {}", ex.what());
             }
 
-            profilingRunning = false;
+            loggingRunning = false;
         });
-    }
 
-    // Below can throw - make sure to gracefully exit threads
-    try {
-        // Starts and waits for inital timesync
-        setTimesync(DEFAULT_TIMESYNC_PERIOD, DEFAULT_TIMESYNC_NUM_SAMPLES, DEFAULT_TIMESYNC_RANDOM);
-    } catch(const std::exception&) {
-        // close device (cleanup)
-        close();
-        // Rethrow original exception
-        throw;
+        if(utility::getEnv("DEPTHAI_PROFILING") == "1") {
+            // prepare profiling thread, which will log device messages
+            profilingThread = std::thread([this]() {
+                using namespace std::chrono;
+                try {
+                    ProfilingData lastData = {};
+                    // TODO(themarpe) - expose
+                    float rate = 1.0f;
+                    while(profilingRunning) {
+                        ProfilingData data = getProfilingData();
+                        long long w = data.numBytesWritten - lastData.numBytesWritten;
+                        long long r = data.numBytesRead - lastData.numBytesRead;
+                        w = static_cast<long long>(w / rate);
+                        r = static_cast<long long>(r / rate);
+
+                        lastData = data;
+
+                        pimpl->logger.debug("Profiling write speed: {:.2f} MiB/s, read speed: {:.2f} MiB/s, total written: {:.2f} MiB, read: {:.2f} MiB",
+                                            w / 1024.0f / 1024.0f,
+                                            r / 1024.0f / 1024.0f,
+                                            data.numBytesWritten / 1024.0f / 1024.0f,
+                                            data.numBytesRead / 1024.0f / 1024.0f);
+
+                        std::this_thread::sleep_for(duration<float>(1) / rate);
+                    }
+                } catch(const std::exception& ex) {
+                    // ignore exception from logging
+                    pimpl->logger.debug("Profiling thread exception caught: {}", ex.what());
+                }
+
+                profilingRunning = false;
+            });
+        }
+
+        // Below can throw - make sure to gracefully exit threads
+        try {
+            // Starts and waits for inital timesync
+            setTimesync(DEFAULT_TIMESYNC_PERIOD, DEFAULT_TIMESYNC_NUM_SAMPLES, DEFAULT_TIMESYNC_RANDOM);
+        } catch(const std::exception&) {
+            // close device (cleanup)
+            close();
+            // Rethrow original exception
+            throw;
+        }
     }
 }
 
