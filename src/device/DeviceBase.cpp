@@ -513,6 +513,18 @@ void DeviceBase::close() {
     }
 }
 
+unsigned int getCrashdumpTimeout() {
+    std::string timeoutStr = utility::getEnv("DEPTHAI_CRASHDUMP_TIMEOUT");
+    if(!timeoutStr.empty()) {
+        try {
+            return std::stoi(timeoutStr);
+        } catch(const std::invalid_argument& e) {
+            logger::warn("DEPTHAI_CRASHDUMP_TIMEOUT value invalid: {}", e.what());
+        }
+    }
+    return 7;
+}
+
 tl::optional<std::string> saveCrashDump(dai::CrashDump& dump, std::string mxId) {
     std::vector<uint8_t> data;
     utility::serialize<SerializationType::JSON>(dump, data);
@@ -526,7 +538,6 @@ void DeviceBase::closeImpl() {
     bool shouldGetCrashDump = false;
     if(!dumpOnly) {
         pimpl->logger.debug("Device about to be closed...");
-
         try {
             if(hasCrashDump()) {
                 connection->setRebootOnDestruction(true);
@@ -580,8 +591,9 @@ void DeviceBase::closeImpl() {
     pimpl->rpcClient = nullptr;
 
     if(!dumpOnly) {
+        auto timeout = getCrashdumpTimeout();
         // Get crash dump if needed
-        if(shouldGetCrashDump) {
+        if(shouldGetCrashDump && timeout > 0) {
             pimpl->logger.debug("Getting crash dump...");
             auto t1 = steady_clock::now();
             bool gotDump = false;
@@ -601,7 +613,7 @@ void DeviceBase::closeImpl() {
                     gotDump = true;
                     break;
                 }
-            } while(!found && steady_clock::now() - t1 < std::chrono::seconds(7));
+            } while(!found && steady_clock::now() - t1 < std::chrono::seconds(timeout));
             if(!gotDump) {
                 pimpl->logger.error("Device likely crashed but did not reboot in time to get the crash dump");
             }
@@ -609,6 +621,8 @@ void DeviceBase::closeImpl() {
             connection->close();
             pimpl->rpcStream = nullptr;
             pimpl->rpcClient = nullptr;
+        } else if(shouldGetCrashDump) {
+            pimpl->logger.warn("Device crashed. Crash dump retrieval disabled.");
         }
 
         pimpl->logger.debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
