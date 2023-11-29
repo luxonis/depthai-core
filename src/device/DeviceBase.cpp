@@ -46,6 +46,8 @@ const std::string MAGIC_PROTECTED_FLASHING_VALUE = "235539980";
 const std::string MAGIC_FACTORY_FLASHING_VALUE = "413424129";
 const std::string MAGIC_FACTORY_PROTECTED_FLASHING_VALUE = "868632271";
 
+const unsigned int DEFAULT_CRASHDUMP_TIMEOUT = 9000;
+
 // local static function
 static void getFlashingPermissions(bool& factoryPermissions, bool& protectedPermissions) {
     auto permissionEnv = utility::getEnv("DEPTHAI_ALLOW_FACTORY_FLASHING");
@@ -513,16 +515,18 @@ void DeviceBase::close() {
     }
 }
 
-unsigned int getCrashdumpTimeout() {
+unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
     std::string timeoutStr = utility::getEnv("DEPTHAI_CRASHDUMP_TIMEOUT");
     if(!timeoutStr.empty()) {
         try {
-            return std::stoi(timeoutStr);
+            return std::stoi(timeoutStr) * 1000;
         } catch(const std::invalid_argument& e) {
             logger::warn("DEPTHAI_CRASHDUMP_TIMEOUT value invalid: {}", e.what());
         }
     }
-    return 7;
+    return DEFAULT_CRASHDUMP_TIMEOUT + (protocol == X_LINK_TCP_IP ? 
+            device::XLINK_TCP_WATCHDOG_TIMEOUT.count() : 
+            device::XLINK_USB_WATCHDOG_TIMEOUT.count());
 }
 
 tl::optional<std::string> saveCrashDump(dai::CrashDump& dump, std::string mxId) {
@@ -567,15 +571,16 @@ void DeviceBase::closeImpl() {
     // invalid memory, etc. which hard crashes main app
     connection->close();
 
+    watchdogRunning = false;
+    // Stop watchdog first (this resets and waits for link to fall down)
+    if(watchdogThread.joinable()) watchdogThread.join();
+
     if(!dumpOnly) {
         // Stop various threads
-        watchdogRunning = false;
         timesyncRunning = false;
         loggingRunning = false;
         profilingRunning = false;
 
-        // Stop watchdog first (this resets and waits for link to fall down)
-        if(watchdogThread.joinable()) watchdogThread.join();
         // Then stop timesync
         if(timesyncThread.joinable()) timesyncThread.join();
         // And at the end stop logging thread
@@ -591,7 +596,7 @@ void DeviceBase::closeImpl() {
     pimpl->rpcClient = nullptr;
 
     if(!dumpOnly) {
-        auto timeout = getCrashdumpTimeout();
+        auto timeout = getCrashdumpTimeout(deviceInfo.protocol);
         // Get crash dump if needed
         if(shouldGetCrashDump && timeout > 0) {
             pimpl->logger.debug("Getting crash dump...");
@@ -602,6 +607,7 @@ void DeviceBase::closeImpl() {
                 DeviceInfo rebootingDeviceInfo;
                 std::tie(found, rebootingDeviceInfo) = XLinkConnection::getDeviceByMxId(deviceInfo.getMxId(), X_LINK_ANY_STATE, false);
                 if(found && (rebootingDeviceInfo.state == X_LINK_UNBOOTED || rebootingDeviceInfo.state == X_LINK_BOOTLOADER)) {
+                    pimpl->logger.trace("Found rebooting device in {}ns", duration_cast<nanoseconds>(steady_clock::now() - t1).count());
                     DeviceBase rebootingDevice(config, rebootingDeviceInfo, firmwarePath, true);
                     auto dump = rebootingDevice.getCrashDump();
                     auto path = saveCrashDump(dump, deviceInfo.getMxId());
@@ -613,7 +619,7 @@ void DeviceBase::closeImpl() {
                     gotDump = true;
                     break;
                 }
-            } while(!found && steady_clock::now() - t1 < std::chrono::seconds(timeout));
+            } while(!found && steady_clock::now() - t1 < std::chrono::milliseconds(timeout));
             if(!gotDump) {
                 pimpl->logger.error("Device likely crashed but did not reboot in time to get the crash dump");
             }
@@ -846,69 +852,69 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         }
     });
 
-    if(!dumpOnly) {
-        // prepare watchdog thread, which will keep device alive
-        // separate stream so it doesn't miss between potentially long RPC calls
-        // Only create the thread if watchdog is enabled
-        if(watchdogTimeout > std::chrono::milliseconds(0)) {
-            // Specify "last" ping time (5s in the future, for some grace time)
-            {
-                std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
-                lastWatchdogPingTime = std::chrono::steady_clock::now() + std::chrono::seconds(5);
-            }
-
-            // Start watchdog thread for device
-            watchdogThread = std::thread([this, watchdogTimeout]() {
-                try {
-                    XLinkStream stream(connection, device::XLINK_CHANNEL_WATCHDOG, 128);
-                    std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
-                    while(watchdogRunning) {
-                        stream.write(watchdogKeepalive);
-                        {
-                            std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
-                            lastWatchdogPingTime = std::chrono::steady_clock::now();
-                        }
-                        // Ping with a period half of that of the watchdog timeout
-                        std::this_thread::sleep_for(watchdogTimeout / 2);
-                    }
-                } catch(const std::exception& ex) {
-                    // ignore
-                    pimpl->logger.debug("Watchdog thread exception caught: {}", ex.what());
-                }
-
-                // Watchdog ended. Useful for checking disconnects
-                watchdogRunning = false;
-            });
-
-            // Start monitor thread for host - makes sure that device is responding to pings, otherwise it disconnects
-            monitorThread = std::thread([this, watchdogTimeout]() {
-                while(watchdogRunning) {
-                    // Ping with a period half of that of the watchdog timeout
-                    std::this_thread::sleep_for(watchdogTimeout);
-                    // Check if wd was pinged in the specified watchdogTimeout time.
-                    decltype(lastWatchdogPingTime) prevPingTime;
-                    {
-                        std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
-                        prevPingTime = lastWatchdogPingTime;
-                    }
-                    // Recheck if watchdogRunning wasn't already closed and close if more than twice of WD passed
-                    if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout * 2) {
-                        pimpl->logger.warn(
-                            "Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
-                        // ping was missed, reset the device
-                        watchdogRunning = false;
-                        // close the underlying connection
-                        connection->close();
-                    }
-                }
-            });
-
-        } else {
-            // Still set watchdogRunning explictitly
-            // as it indicates device not being closed
-            watchdogRunning = true;
+    // prepare watchdog thread, which will keep device alive
+    // separate stream so it doesn't miss between potentially long RPC calls
+    // Only create the thread if watchdog is enabled
+    if(watchdogTimeout > std::chrono::milliseconds(0)) {
+        // Specify "last" ping time (5s in the future, for some grace time)
+        {
+            std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
+            lastWatchdogPingTime = std::chrono::steady_clock::now() + std::chrono::seconds(5);
         }
 
+        // Start watchdog thread for device
+        watchdogThread = std::thread([this, watchdogTimeout]() {
+            try {
+                XLinkStream stream(connection, device::XLINK_CHANNEL_WATCHDOG, 128);
+                std::vector<uint8_t> watchdogKeepalive = {0, 0, 0, 0};
+                while(watchdogRunning) {
+                    stream.write(watchdogKeepalive);
+                    {
+                        std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
+                        lastWatchdogPingTime = std::chrono::steady_clock::now();
+                    }
+                    // Ping with a period half of that of the watchdog timeout
+                    std::this_thread::sleep_for(watchdogTimeout / 2);
+                }
+            } catch(const std::exception& ex) {
+                // ignore
+                pimpl->logger.debug("Watchdog thread exception caught: {}", ex.what());
+            }
+
+            // Watchdog ended. Useful for checking disconnects
+            watchdogRunning = false;
+        });
+
+        // Start monitor thread for host - makes sure that device is responding to pings, otherwise it disconnects
+        monitorThread = std::thread([this, watchdogTimeout]() {
+            while(watchdogRunning) {
+                // Ping with a period half of that of the watchdog timeout
+                std::this_thread::sleep_for(watchdogTimeout);
+                // Check if wd was pinged in the specified watchdogTimeout time.
+                decltype(lastWatchdogPingTime) prevPingTime;
+                {
+                    std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
+                    prevPingTime = lastWatchdogPingTime;
+                }
+                // Recheck if watchdogRunning wasn't already closed and close if more than twice of WD passed
+                if(watchdogRunning && std::chrono::steady_clock::now() - prevPingTime > watchdogTimeout * 2) {
+                    pimpl->logger.warn(
+                        "Monitor thread (device: {} [{}]) - ping was missed, closing the device connection", deviceInfo.mxid, deviceInfo.name);
+                    // ping was missed, reset the device
+                    watchdogRunning = false;
+                    // close the underlying connection
+                    connection->close();
+                }
+            }
+        });
+
+    } else {
+        // Still set watchdogRunning explictitly
+        // as it indicates device not being closed
+        watchdogRunning = true;
+    }
+
+    if(!dumpOnly) {
         // Below can throw - make sure to gracefully exit threads
         try {
             auto level = spdlogLevelToLogLevel(logger::get_level());
