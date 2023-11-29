@@ -41,7 +41,7 @@ bool EncodedFrame::getLossless() const {
 }
 EncodedFrame::FrameType EncodedFrame::getFrameType() const {
     if(frame.type == FrameType::Unknown) {
-        utility::SliceType frameType;
+        utility::SliceType frameType = utility::SliceType::Unknown;
         switch(frame.profile) {
             case RawEncodedFrame::Profile::JPEG:
                 frameType = utility::SliceType::I;
