@@ -607,12 +607,16 @@ void DeviceBase::closeImpl() {
                 if(found && (rebootingDeviceInfo.state == X_LINK_UNBOOTED || rebootingDeviceInfo.state == X_LINK_BOOTLOADER)) {
                     pimpl->logger.trace("Found rebooting device in {}ns", duration_cast<nanoseconds>(steady_clock::now() - t1).count());
                     DeviceBase rebootingDevice(config, rebootingDeviceInfo, firmwarePath, true);
-                    auto dump = rebootingDevice.getCrashDump();
-                    auto path = saveCrashDump(dump, deviceInfo.getMxId());
-                    if(path.has_value()) {
-                        pimpl->logger.warn("Device crashed. Crash dump saved to {}", path.value());
+                    if(rebootingDevice.hasCrashDump()) {
+                        auto dump = rebootingDevice.getCrashDump();
+                        auto path = saveCrashDump(dump, deviceInfo.getMxId());
+                        if(path.has_value()) {
+                            pimpl->logger.warn("Device crashed. Crash dump saved to {}", path.value());
+                        } else {
+                            pimpl->logger.warn("Device crashed. Crash dump could not be saved");
+                        }
                     } else {
-                        pimpl->logger.warn("Device crashed. Crash dump could not be saved");
+                        pimpl->logger.warn("Device crashed, but no crash dump could be extracted.");
                     }
                     gotDump = true;
                     break;
