@@ -166,7 +166,10 @@ class CalibrationHandler {
      * Get the Distortion Coefficients object
      *
      * @param cameraId Uses the cameraId to identify which distortion Coefficients to return.
-     * @return the distortion coefficients of the requested camera in this order: [k1,k2,p1,p2,k3,k4,k5,k6,s1,s2,s3,s4,τx,τy]
+     * @return the distortion coefficients of the requested camera in this order: [k1,k2,p1,p2,k3,k4,k5,k6,s1,s2,s3,s4,τx,τy] for CameraModel::Perspective
+     * or [k1, k2, k3, k4] for CameraModel::Fisheye
+     * see https://docs.opencv.org/4.5.4/d9/d0c/group__calib3d.html for Perspective model (Rational Polynomial Model)
+     * see https://docs.opencv.org/4.5.4/db/d58/group__calib3d__fisheye.html for Fisheye model
      */
     std::vector<float> getDistortionCoefficients(CameraBoardSocket cameraId) const;
 
