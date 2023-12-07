@@ -369,3 +369,8 @@ target_compile_definitions(detection_parser PRIVATE BLOB_PATH="${mobilenet_blob}
 
 # DetectionParser
 dai_add_example(crash_report CrashReport/crash_report.cpp OFF)
+
+# Sync
+dai_add_example(sync_scripts Sync/sync_scripts.cpp ON)
+dai_add_example(demux_message_group Sync/demux_message_group.cpp ON)
+dai_add_example(depth_video_synced Sync/depth_video_synced.cpp ON)
