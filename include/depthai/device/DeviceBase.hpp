@@ -828,6 +828,24 @@ class DeviceBase {
     UsbSpeed getUsbSpeed();
 
     /**
+     * Retrieves the camera temperature, usually from the image sensor die
+     *
+     * @param socket Board socket to identify the camera
+     * @throws std::runtime_error if any error occurred
+     * @returns Temperature in degrees Celsius
+     */
+    float getCameraTemperature(CameraBoardSocket socket);
+
+    /**
+     * Retrieves the camera temperature, usually from the image sensor die
+     *
+     * @param name Name of the camera
+     * @throws std::runtime_error if any error occurred
+     * @returns Temperature in degrees Celsius
+     */
+    float getCameraTemperature(std::string name);
+
+    /**
      * Configures Timesync service on device. It keeps host and device clocks in sync
      * First time timesync is started it waits until the initial sync is completed
      * Afterwards the function changes the following parameters

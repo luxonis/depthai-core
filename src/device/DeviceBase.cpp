@@ -1128,6 +1128,28 @@ UsbSpeed DeviceBase::getUsbSpeed() {
     return pimpl->rpcClient->call("getUsbSpeed").as<UsbSpeed>();
 }
 
+float DeviceBase::getCameraTemperature(CameraBoardSocket socket) {
+    bool success;
+    std::string errorMsg;
+    float temp;
+    std::tie(success, errorMsg, temp) = pimpl->rpcClient->call("getCameraTemperature", socket, "", false).as<std::tuple<bool, std::string, float>>();
+    if(!success) {
+        throw std::runtime_error(errorMsg);
+    }
+    return temp;
+}
+
+float DeviceBase::getCameraTemperature(std::string name) {
+    bool success;
+    std::string errorMsg;
+    float temp;
+    std::tie(success, errorMsg, temp) = pimpl->rpcClient->call("getCameraTemperature", CameraBoardSocket::AUTO, name, true).as<std::tuple<bool, std::string, float>>();
+    if(!success) {
+        throw std::runtime_error(errorMsg);
+    }
+    return temp;
+}
+
 tl::optional<Version> DeviceBase::getBootloaderVersion() {
     return bootloaderVersion;
 }
