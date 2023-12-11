@@ -151,6 +151,14 @@ class ImageManipConfig : public Buffer {
     ImageManipConfig& setFrameType(ImgFrame::Type name);
 
     /**
+     * Specify gray to color conversion map
+     * @param colormap map from Colormap enum or Colormap::NONE to disable
+     */
+    ImageManipConfig& setColormap(Colormap colormap, int min, int max);
+    ImageManipConfig& setColormap(Colormap colormap, float maxf);
+    ImageManipConfig& setColormap(Colormap colormap, int max = 255);
+
+    /**
      * Specify horizontal flip
      * @param flip True to enable flip, false otherwise
      */
@@ -178,6 +186,12 @@ class ImageManipConfig : public Buffer {
      * Specifies to whether to keep aspect ratio or not
      */
     ImageManipConfig& setKeepAspectRatio(bool keep);
+
+    /**
+     * Specify which interpolation method to use
+     * @param interpolation type of interpolation
+     */
+    ImageManipConfig& setInterpolation(dai::Interpolation interpolation);
 
     // Functions to retrieve properties
     /**
@@ -229,6 +243,26 @@ class ImageManipConfig : public Buffer {
      * @returns True if resize thumbnail mode is set, false otherwise
      */
     bool isResizeThumbnail() const;
+
+    /**
+     * @returns specified colormap
+     */
+    Colormap getColormap() const;
+
+    /**
+     * Set explicit configuration.
+     * @param config Explicit configuration
+     */
+    ImageManipConfig& set(dai::RawImageManipConfig config);
+
+    /**
+     * Retrieve configuration data for ImageManip.
+     * @returns config for ImageManip
+     */
+    dai::RawImageManipConfig get() const;
+
+    /// Retrieve which interpolation method to use
+    dai::Interpolation getInterpolation() const;
 };
 
 }  // namespace dai

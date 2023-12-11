@@ -48,6 +48,7 @@ ImageManipConfig& ImageManipConfig::setCropRotatedRect(RotatedRect rr, bool norm
 ImageManipConfig& ImageManipConfig::setWarpTransformFourPoints(std::vector<Point2f> pt, bool normalizedCoords) {
     // Enable resize stage and extended flags
     cfg.enableResize = true;
+    cfg.resizeConfig.keepAspectRatio = false;
     cfg.resizeConfig.enableWarp4pt = true;
     cfg.resizeConfig.warpFourPoints = pt;
     cfg.resizeConfig.normalizedCoords = normalizedCoords;
@@ -160,6 +161,47 @@ ImageManipConfig& ImageManipConfig::setFrameType(dai::RawImgFrame::Type type) {
     return *this;
 }
 
+ImageManipConfig& ImageManipConfig::setColormap(dai::Colormap colormap, float maxf) {
+    int max = maxf;
+    if(max < 0 || max >= 256) throw std::invalid_argument("Colormap max argument must be between 0 and 255");
+
+    // Enable format stage
+    cfg.enableFormat = true;
+
+    // Set type format
+    cfg.formatConfig.colormap = colormap;
+    cfg.formatConfig.colormapMin = 0;
+    cfg.formatConfig.colormapMax = max;
+    return *this;
+}
+
+ImageManipConfig& ImageManipConfig::setColormap(dai::Colormap colormap, int max) {
+    if(max < 0 || max >= 256) throw std::invalid_argument("Colormap max argument must be between 0 and 255");
+
+    // Enable format stage
+    cfg.enableFormat = true;
+
+    // Set type format
+    cfg.formatConfig.colormap = colormap;
+    cfg.formatConfig.colormapMin = 0;
+    cfg.formatConfig.colormapMax = max;
+    return *this;
+}
+
+ImageManipConfig& ImageManipConfig::setColormap(dai::Colormap colormap, int min, int max) {
+    if(max < 0 || max >= 256) throw std::invalid_argument("Colormap max argument must be between 0 and 255");
+    if(min < 0 || min >= 256) throw std::invalid_argument("Colormap min argument must be between 0 and 255");
+
+    // Enable format stage
+    cfg.enableFormat = true;
+
+    // Set type format
+    cfg.formatConfig.colormap = colormap;
+    cfg.formatConfig.colormapMin = min;
+    cfg.formatConfig.colormapMax = max;
+    return *this;
+}
+
 ImageManipConfig& ImageManipConfig::setHorizontalFlip(bool flip) {
     // Enable format stage
     cfg.enableFormat = true;
@@ -190,6 +232,11 @@ ImageManipConfig& ImageManipConfig::setSkipCurrentImage(bool skip) {
 ImageManipConfig& ImageManipConfig::setKeepAspectRatio(bool keep) {
     // Set whether to keep aspect ratio or not
     cfg.resizeConfig.keepAspectRatio = keep;
+    return *this;
+}
+
+ImageManipConfig& ImageManipConfig::setInterpolation(dai::Interpolation interpolation) {
+    cfg.interpolation = interpolation;
     return *this;
 }
 
@@ -232,6 +279,23 @@ ImageManipConfig::FormatConfig ImageManipConfig::getFormatConfig() const {
 
 bool ImageManipConfig::isResizeThumbnail() const {
     return cfg.resizeConfig.lockAspectRatioFill;
+}
+
+dai::Colormap ImageManipConfig::getColormap() const {
+    return cfg.formatConfig.colormap;
+}
+
+dai::RawImageManipConfig ImageManipConfig::get() const {
+    return cfg;
+}
+
+ImageManipConfig& ImageManipConfig::set(dai::RawImageManipConfig config) {
+    cfg = config;
+    return *this;
+}
+
+dai::Interpolation ImageManipConfig::getInterpolation() const {
+    return cfg.interpolation;
 }
 
 }  // namespace dai

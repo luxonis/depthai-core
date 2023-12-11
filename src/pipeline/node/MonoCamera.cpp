@@ -33,24 +33,32 @@ CameraBoardSocket MonoCamera::getBoardSocket() const {
     return properties.boardSocket;
 }
 
+void MonoCamera::setCamera(std::string name) {
+    properties.cameraName = name;
+}
+
+std::string MonoCamera::getCamera() const {
+    return properties.cameraName;
+}
+
 // Set which color camera to use
-void MonoCamera::setCamId(int64_t id) {
+void MonoCamera::setCamId(int64_t camId) {
     // cast to board socket
-    switch(id) {
+    switch(camId) {
         case 0:
-            properties.boardSocket = CameraBoardSocket::RGB;
+            properties.boardSocket = CameraBoardSocket::CAM_A;
             break;
         case 1:
-            properties.boardSocket = CameraBoardSocket::LEFT;
+            properties.boardSocket = CameraBoardSocket::CAM_B;
             break;
         case 2:
-            properties.boardSocket = CameraBoardSocket::RIGHT;
+            properties.boardSocket = CameraBoardSocket::CAM_C;
             break;
         case 3:
             properties.boardSocket = CameraBoardSocket::CAM_D;
             break;
         default:
-            throw std::invalid_argument(fmt::format("CamId value: {} is invalid.", id));
+            throw std::invalid_argument(fmt::format("CamId value: {} is invalid.", camId));
             break;
     }
 }
@@ -79,8 +87,20 @@ MonoCameraProperties::SensorResolution MonoCamera::getResolution() const {
     return properties.resolution;
 }
 
+void MonoCamera::setFrameEventFilter(const std::vector<dai::FrameEvent>& events) {
+    properties.eventFilter = events;
+}
+
+std::vector<dai::FrameEvent> MonoCamera::getFrameEventFilter() const {
+    return properties.eventFilter;
+}
+
 void MonoCamera::setFps(float fps) {
     properties.fps = fps;
+}
+
+void MonoCamera::setIsp3aFps(int isp3aFps) {
+    properties.isp3aFps = isp3aFps;
 }
 
 float MonoCamera::getFps() const {
@@ -138,6 +158,10 @@ int MonoCamera::getNumFramesPool() const {
 }
 int MonoCamera::getRawNumFramesPool() const {
     return properties.numFramesPoolRaw;
+}
+
+void MonoCamera::setRawOutputPacked(bool packed) {
+    properties.rawPacked = packed;
 }
 
 }  // namespace node

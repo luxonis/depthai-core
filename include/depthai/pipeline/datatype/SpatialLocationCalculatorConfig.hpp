@@ -39,6 +39,18 @@ class SpatialLocationCalculatorConfig : public Buffer {
      * @returns Vector of configuration parameters for ROIs (region of interests)
      */
     std::vector<SpatialLocationCalculatorConfigData> getConfigData() const;
+
+    /**
+     * Set explicit configuration.
+     * @param config Explicit configuration
+     */
+    SpatialLocationCalculatorConfig& set(dai::RawSpatialLocationCalculatorConfig config);
+
+    /**
+     * Retrieve configuration data for SpatialLocationCalculator.
+     * @returns config for SpatialLocationCalculator
+     */
+    dai::RawSpatialLocationCalculatorConfig get() const;
 };
 
 }  // namespace dai

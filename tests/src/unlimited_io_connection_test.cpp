@@ -1,5 +1,4 @@
-#define CATCH_CONFIG_MAIN
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 // Include depthai library
 #include <depthai/depthai.hpp>
@@ -37,7 +36,7 @@ TEST_CASE("Test many IO connections after crossing Leon processors") {
         numFrames[out] = 0;
     }
 
-    // Retrieve atleast 10 frames of each, without errors
+    // Retrieve at least 10 frames of each, without errors
     constexpr auto NUM_FRAMES_REQUIRED = 10;
 
     bool receivedEnoughFrames = true;
@@ -98,7 +97,7 @@ TEST_CASE("Test many IO connections before crossing Leon processors") {
         numFrames[out] = 0;
     }
 
-    // Retrieve atleast 10 frames of each, without errors
+    // Retrieve at least 10 frames of each, without errors
     constexpr auto NUM_FRAMES_REQUIRED = 10;
 
     bool receivedEnoughFrames = false;

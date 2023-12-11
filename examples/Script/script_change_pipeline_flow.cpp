@@ -7,7 +7,7 @@ int main() {
     dai::Pipeline pipeline;
 
     auto cam = pipeline.create<dai::node::ColorCamera>();
-    cam->setBoardSocket(dai::CameraBoardSocket::RGB);
+    cam->setBoardSocket(dai::CameraBoardSocket::CAM_A);
     cam->setInterleaved(false);
     cam->setIspScale(2, 3);
     cam->setVideoSize(720, 720);

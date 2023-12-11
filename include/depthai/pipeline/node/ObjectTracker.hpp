@@ -72,7 +72,7 @@ class ObjectTracker : public NodeCRTP<Node, ObjectTracker, ObjectTrackerProperti
 
     /**
      * Specify maximum number of object to track.
-     * @param maxObjectsToTrack Maximum number of object to track. Maximum 60.
+     * @param maxObjectsToTrack Maximum number of object to track. Maximum 60 in case of SHORT_TERM_KCF, otherwise 1000.
      */
     void setMaxObjectsToTrack(std::int32_t maxObjectsToTrack);
 
@@ -93,6 +93,11 @@ class ObjectTracker : public NodeCRTP<Node, ObjectTracker, ObjectTrackerProperti
      * @param type Tracker ID assignment policy.
      */
     void setTrackerIdAssignmentPolicy(TrackerIdAssignmentPolicy type);
+
+    /**
+     * Whether tracker should take into consideration class label for tracking.
+     */
+    void setTrackingPerClass(bool trackingPerClass);
 };
 
 }  // namespace node

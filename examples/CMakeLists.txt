@@ -31,7 +31,11 @@ function(dai_add_example example_name example_src enable_test)
     # Add example
     add_executable(${example_name} ${example_src})
     add_default_flags(${example_name} LEAN)
-    target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS} Threads::Threads Eigen3::Eigen)
+    target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS} Threads::Threads)
+    # Set compiler features (c++14), and disables extensions (g++14)
+    set_property(TARGET ${example_name} PROPERTY CXX_STANDARD 14)
+    set_property(TARGET ${example_name} PROPERTY CXX_STANDARD_REQUIRED ON)
+    set_property(TARGET ${example_name} PROPERTY CXX_EXTENSIONS OFF)
 
     # Add sanitizers for example
     if(COMMAND add_sanitizers)
@@ -79,8 +83,9 @@ function(dai_add_example example_name example_src enable_test)
             set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${example_name}>")
         endif()
         add_custom_command(TARGET ${example_name} POST_BUILD COMMAND
-            ${CMAKE_COMMAND} -E copy_if_different ${depthai_dll_libraries} $<TARGET_FILE_DIR:${example_name}>
+            "$<$<BOOL:${depthai_dll_libraries}>:${CMAKE_COMMAND};-E;copy_if_different;${depthai_dll_libraries};$<TARGET_FILE_DIR:${example_name}>>"
             COMMAND_EXPAND_LISTS
+            VERBATIM
         )
     endif()
 endfunction()
@@ -224,6 +229,7 @@ dai_add_example(rgb_camera_control ColorCamera/rgb_camera_control.cpp ON)
 dai_add_example(rgb_preview ColorCamera/rgb_preview.cpp ON)
 dai_add_example(rgb_video ColorCamera/rgb_video.cpp ON)
 dai_add_example(cameraMatrixTest ColorCamera/newCameraMatrixTest.cpp ON)
+dai_add_example(rgb_isp_scale ColorCamera/rgb_isp_scale.cpp ON)
 
 # EdgeDetector
 dai_add_example(edge_detector EdgeDetector/edge_detector.cpp ON)
@@ -237,6 +243,7 @@ dai_add_example(device_queue_event host_side/device_queue_event.cpp ON)
 dai_add_example(opencv_support host_side/opencv_support.cpp ON)
 dai_add_example(queue_add_callback host_side/queue_add_callback.cpp ON)
 dai_add_example(device_information host_side/device_information.cpp OFF)
+dai_add_example(device_logging host_side/device_logging.cpp OFF)
 
 # ImageManip
 dai_add_example(image_manip ImageManip/image_manip_example.cpp ON)
@@ -315,6 +322,7 @@ dai_add_example(script_json_communication Script/script_json_communication.cpp O
 dai_add_example(script_change_pipeline_flow Script/script_change_pipeline_flow.cpp OFF)
 target_compile_definitions(script_change_pipeline_flow PRIVATE BLOB_PATH="${mobilenet_5shaves_blob}")
 dai_add_example(script_get_device_info Script/script_get_device_info.cpp ON)
+dai_add_example(script_read_calibration Script/script_read_calibration.cpp ON)
 
 # SpatialDetection
 dai_add_example(spatial_location_calculator SpatialDetection/spatial_location_calculator.cpp ON)
@@ -359,3 +367,6 @@ dai_add_example(apriltag_rgb AprilTag/apriltag_rgb.cpp ON)
 # DetectionParser
 dai_add_example(detection_parser NeuralNetwork/detection_parser.cpp ON)
 target_compile_definitions(detection_parser PRIVATE BLOB_PATH="${mobilenet_blob}")
+
+# DetectionParser
+dai_add_example(crash_report CrashReport/crash_report.cpp OFF)
