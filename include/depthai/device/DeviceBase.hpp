@@ -613,7 +613,7 @@ class DeviceBase {
 
     /**
      * Get stereo pairs based on the device type.
-     * 
+     *
      * @returns Vector of stereo pairs
      */
     std::vector<StereoPair> getStereoPairs();
