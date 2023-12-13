@@ -1003,6 +1003,10 @@ std::unordered_map<CameraBoardSocket, std::string> DeviceBase::getCameraSensorNa
     return pimpl->rpcClient->call("getCameraSensorNames").as<std::unordered_map<CameraBoardSocket, std::string>>();
 }
 
+std::vector<StereoPair> DeviceBase::getStereoPairs() {
+    return pimpl->rpcClient->call("getStereoPairs").as<std::vector<StereoPair>>();
+}
+
 std::string DeviceBase::getConnectedIMU() {
     isClosed();
     return pimpl->rpcClient->call("getConnectedIMU").as<std::string>();
