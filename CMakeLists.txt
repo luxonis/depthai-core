@@ -6,6 +6,9 @@ if(NOT WIN32)
     set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
 endif()
 
+# Early options
+option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
+
 # Set type to canonicalize relative paths for user-provided toolchain
 set(CMAKE_TOOLCHAIN_FILE "" CACHE FILEPATH "CMake toolchain path")
 
@@ -43,7 +46,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.22.0" LANGUAGES CXX C)
+project(depthai VERSION "2.23.0" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -263,6 +266,7 @@ add_library(${TARGET_CORE_NAME}
     src/utility/Environment.cpp
     src/utility/XLinkGlobalProfilingLogger.cpp
     src/utility/Logging.cpp
+    src/utility/EepromDataParser.cpp
     src/xlink/XLinkConnection.cpp
     src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp
@@ -476,8 +480,6 @@ target_link_libraries(${TARGET_CORE_NAME}
 set(DEPTHAI_DEVICE_VERSION "${DEPTHAI_DEVICE_SIDE_COMMIT}")
 target_compile_definitions(${TARGET_CORE_NAME}
     PRIVATE
-        # XLink required define
-        __PC__
         # Add depthai-device version
         DEPTHAI_DEVICE_VERSION="${DEPTHAI_DEVICE_VERSION}"
         # Add depthai-bootloader version
@@ -494,6 +496,11 @@ if(DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW)
 endif()
 if(DEPTHAI_ENABLE_DEVICE_RVC3_FW)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_DEVICE_RVC3_FW)
+endif()
+# Add compile flag if libusb is available
+if(DEPTHAI_ENABLE_LIBUSB)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_LIBUSB)
+    set(DEPTHAI_HAVE_LIBUSB_SUPPORT ON)
 endif()
 
 # Add Backward dependency if enabled (On by default)
@@ -523,8 +530,9 @@ macro(add_runtime_dependencies depending_target dependency)
         set(required_dll_files ${dlls} ${depthai_dll_libraries})
         # Copy the required dlls
         add_custom_command(TARGET ${depending_target} POST_BUILD COMMAND
-            ${CMAKE_COMMAND} -E copy_if_different ${required_dll_files} $<TARGET_FILE_DIR:${depending_target}>
+            "$<$<BOOL:${required_dll_files}>:${CMAKE_COMMAND};-E;copy_if_different;${required_dll_files};$<TARGET_FILE_DIR:${depending_target}>>"
             COMMAND_EXPAND_LISTS
+            VERBATIM
         )
         message(STATUS "Required dlls for core are: ${required_dll_files}")
     endif()
