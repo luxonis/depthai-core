@@ -295,7 +295,9 @@ class ColorCamera : public NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperti
     void sensorCenterCrop();
 
     /**
-     * Specifies sensor crop rectangle
+     * Specifies the cropping that happens when converting ISP to video output. By default, video will be center cropped
+     * from the ISP output. Note that this doesn't actually do on-sensor cropping (and MIPI-stream only that region), but
+     * it does postprocessing on the ISP (on RVC).
      * @param x Top left X coordinate
      * @param y Top left Y coordinate
      */
