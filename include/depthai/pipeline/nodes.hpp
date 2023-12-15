@@ -22,6 +22,7 @@
 #include "node/StereoDepth.hpp"
 #include "node/Sync.hpp"
 #include "node/SystemLogger.hpp"
+#include "node/Thermal.hpp"
 #include "node/ToF.hpp"
 #include "node/VideoEncoder.hpp"
 #include "node/Warp.hpp"
