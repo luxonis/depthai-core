@@ -166,7 +166,10 @@ class CalibrationHandler {
      * Get the Distortion Coefficients object
      *
      * @param cameraId Uses the cameraId to identify which distortion Coefficients to return.
-     * @return the distortion coefficients of the requested camera in this order: [k1,k2,p1,p2,k3,k4,k5,k6,s1,s2,s3,s4,τx,τy]
+     * @return the distortion coefficients of the requested camera in this order: [k1,k2,p1,p2,k3,k4,k5,k6,s1,s2,s3,s4,τx,τy] for CameraModel::Perspective
+     * or [k1, k2, k3, k4] for CameraModel::Fisheye
+     * see https://docs.opencv.org/4.5.4/d9/d0c/group__calib3d.html for Perspective model (Rational Polynomial Model)
+     * see https://docs.opencv.org/4.5.4/db/d58/group__calib3d__fisheye.html for Fisheye model
      */
     std::vector<float> getDistortionCoefficients(CameraBoardSocket cameraId) const;
 
@@ -352,6 +355,37 @@ class CalibrationHandler {
                       uint64_t batchTime,
                       uint32_t boardOptions,
                       std::string boardCustom = "");
+
+    /**
+     * Set the Board Info object. Creates version 7 EEPROM data
+     *
+     * @param deviceName Sets device name.
+     * @param productName Sets product name (alias).
+     * @param boardName Sets board name.
+     * @param boardRev Sets board revision id.
+     * @param boardConf Sets board configuration id.
+     * @param hardwareConf Sets hardware configuration id.
+     * @param batchName Sets batch name. Not supported anymore
+     * @param batchTime Sets batch time (unix timestamp).
+     * @param boardCustom Sets a custom board (Default empty string).
+     */
+    void setBoardInfo(std::string deviceName,
+                      std::string productName,
+                      std::string boardName,
+                      std::string boardRev,
+                      std::string boardConf,
+                      std::string hardwareConf,
+                      std::string batchName,
+                      uint64_t batchTime,
+                      uint32_t boardOptions,
+                      std::string boardCustom = "");
+
+    /**
+     * Set the deviceName which responses to getDeviceName of Device
+     *
+     * @param deviceName Sets device name.
+     */
+    void setDeviceName(std::string deviceName);
 
     /**
      * Set the productName which acts as alisas for users to identify the device
