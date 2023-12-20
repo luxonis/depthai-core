@@ -300,14 +300,11 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
         case DatatypeEnum::ToFConfig:
             return std::make_shared<ToFConfig>(parseDatatype<RawToFConfig>(metadataStart, serializedObjectSize, data));
             break;
-<<<<<<< HEAD
-
         case DatatypeEnum::PointCloudConfig:
             return std::make_shared<PointCloudConfig>(parseDatatype<RawPointCloudConfig>(metadataStart, serializedObjectSize, data));
-=======
+            break;
         case DatatypeEnum::MessageGroup:
             return std::make_shared<MessageGroup>(parseDatatype<RawMessageGroup>(metadataStart, serializedObjectSize, data));
->>>>>>> 6e6a094bf26ee961a54c06b28d94a52fec7da765
             break;
     }
 
