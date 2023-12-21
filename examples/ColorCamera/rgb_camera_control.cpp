@@ -114,7 +114,8 @@ int main() {
         auto videoFrames = videoQueue->tryGetAll<dai::ImgFrame>();
         for(const auto& videoFrame : videoFrames) {
             // Decode JPEG
-            auto frame = cv::imdecode(videoFrame->getData(), cv::IMREAD_UNCHANGED);
+            std::vector<uint8_t> vecData(videoFrame->getData().begin(), videoFrame->getData().end());
+            auto frame = cv::imdecode(vecData, cv::IMREAD_UNCHANGED);
             // Display
             cv::imshow("video", frame);
 
@@ -131,7 +132,8 @@ int main() {
         auto stillFrames = stillQueue->tryGetAll<dai::ImgFrame>();
         for(const auto& stillFrame : stillFrames) {
             // Decode JPEG
-            auto frame = cv::imdecode(stillFrame->getData(), cv::IMREAD_UNCHANGED);
+            std::vector<uint8_t> vecData(stillFrame->getData().begin(), stillFrame->getData().end());
+            auto frame = cv::imdecode(vecData, cv::IMREAD_UNCHANGED);
             // Display
             cv::imshow("still", frame);
         }

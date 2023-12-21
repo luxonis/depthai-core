@@ -7,7 +7,7 @@
 #include <vector>
 
 #include "Buffer.hpp"
-#include "depthai-shared/datatype/RawNNData.hpp"
+#include "depthai/common/TensorInfo.hpp"
 #include "depthai/utility/VectorMemory.hpp"
 #include "depthai/utility/span.hpp"
 
@@ -49,56 +49,55 @@ namespace dai {
  */
 class NNData : public Buffer {
     static constexpr int DATA_ALIGNMENT = 64;
-    Serialized serialize() const override;
     static uint16_t fp32_to_fp16(float);
     static float fp16_to_fp32(uint16_t);
-    RawNNData& rawNn;
 
     // store the data
     // uint8_t
-    std::unordered_map<std::string, std::vector<std::uint8_t>> u8Data;
-    // FP16
-    std::unordered_map<std::string, std::vector<std::uint16_t>> fp16Data;
+    // std::unordered_map<std::string, std::vector<std::uint8_t>> u8Data;
+    // // FP16
+    // std::unordered_map<std::string, std::vector<std::uint16_t>> fp16Data;
 
    public:
+    std::vector<TensorInfo> tensors;
+    unsigned int batchSize;
     /**
      * Construct NNData message.
      */
-    NNData();
+    NNData() = default;
     NNData(size_t size);
-    explicit NNData(std::shared_ptr<RawNNData> ptr);
     virtual ~NNData() = default;
 
-    // Expose
-    // uint8_t
-    /**
-     * Set a layer with datatype U8.
-     * @param name Name of the layer
-     * @param data Data to store
-     */
-    [[deprecated("Use 'addTensor()' instead")]] NNData& setLayer(const std::string& name, std::vector<std::uint8_t> data);
+    // // Expose
+    // // uint8_t
+    // /**
+    //  * Set a layer with datatype U8.
+    //  * @param name Name of the layer
+    //  * @param data Data to store
+    //  */
+    // [[deprecated("Use 'addTensor()' instead")]] NNData& setLayer(const std::string& name, std::vector<std::uint8_t> data);
 
-    /**
-     * Set a layer with datatype U8. Integers are cast to bytes.
-     * @param name Name of the layer
-     * @param data Data to store
-     */
-    [[deprecated("Use 'addTensor()' instead")]] NNData& setLayer(const std::string& name, const std::vector<int>& data);
+    // /**
+    //  * Set a layer with datatype U8. Integers are cast to bytes.
+    //  * @param name Name of the layer
+    //  * @param data Data to store
+    //  */
+    // [[deprecated("Use 'addTensor()' instead")]] NNData& setLayer(const std::string& name, const std::vector<int>& data);
 
-    // fp16
-    /**
-     * Set a layer with datatype FP16. Float values are converted to FP16.
-     * @param name Name of the layer
-     * @param data Data to store
-     */
-    [[deprecated("Use 'addTensor()' instead")]] NNData& setLayer(const std::string& name, std::vector<float> data);
+    // // fp16
+    // /**
+    //  * Set a layer with datatype FP16. Float values are converted to FP16.
+    //  * @param name Name of the layer
+    //  * @param data Data to store
+    //  */
+    // [[deprecated("Use 'addTensor()' instead")]] NNData& setLayer(const std::string& name, std::vector<float> data);
 
-    /**
-     * Set a layer with datatype FP16. Double values are converted to FP16.
-     * @param name Name of the layer
-     * @param data Data to store
-     */
-    [[deprecated("Use 'addTensor()' instead")]] NNData& setLayer(const std::string& name, std::vector<double> data);
+    // /**
+    //  * Set a layer with datatype FP16. Double values are converted to FP16.
+    //  * @param name Name of the layer
+    //  * @param data Data to store
+    //  */
+    // [[deprecated("Use 'addTensor()' instead")]] NNData& setLayer(const std::string& name, std::vector<double> data);
 
     // getters
     /**
@@ -117,7 +116,7 @@ class NNData : public Buffer {
      * @param[out] tensor Outputs tensor information of that layer
      * @returns True if layer exists, false otherwise
      */
-    [[deprecated("Use 'getTensor()' instead")]] bool getLayer(const std::string& name, TensorInfo& tensor) const;
+    bool getLayer(const std::string& name, TensorInfo& tensor) const;
 
     /**
      * Checks if given layer exists
@@ -134,79 +133,48 @@ class NNData : public Buffer {
      */
     bool getLayerDatatype(const std::string& name, TensorInfo::DataType& datatype) const;
 
-    // uint8
-    /**
-     * Convenience function to retrieve U8 data from layer
-     * @param name Name of the layer
-     * @returns U8 binary data
-     */
-    [[deprecated("Use 'getTensor()' instead")]] std::vector<std::uint8_t> getLayerUInt8(const std::string& name) const;
+    // // uint8
+    // /**
+    //  * Convenience function to retrieve U8 data from layer
+    //  * @param name Name of the layer
+    //  * @returns U8 binary data
+    //  */
+    // [[deprecated("Use 'getTensor()' instead")]] std::vector<std::uint8_t> getLayerUInt8(const std::string& name) const;
 
-    // fp16
-    /**
-     * Convenience function to retrieve float values from layers FP16 tensor
-     * @param name Name of the layer
-     * @returns Float data
-     */
-    [[deprecated("Use 'getTensor()' instead")]] std::vector<float> getLayerFp16(const std::string& name) const;
+    // // fp16
+    // /**
+    //  * Convenience function to retrieve float values from layers FP16 tensor
+    //  * @param name Name of the layer
+    //  * @returns Float data
+    //  */
+    // [[deprecated("Use 'getTensor()' instead")]] std::vector<float> getLayerFp16(const std::string& name) const;
 
-    // int32
-    /**
-     * Convenience function to retrieve INT32 values from layers tensor
-     * @param name Name of the layer
-     * @returns INT32 data
-     */
-    [[deprecated("Use 'getTensor()' instead")]] std::vector<std::int32_t> getLayerInt32(const std::string& name) const;
+    // // int32
+    // /**
+    //  * Convenience function to retrieve INT32 values from layers tensor
+    //  * @param name Name of the layer
+    //  * @returns INT32 data
+    //  */
+    // [[deprecated("Use 'getTensor()' instead")]] std::vector<std::int32_t> getLayerInt32(const std::string& name) const;
 
-    // first layer
-    /**
-     * Convenience function to retrieve U8 data from first layer
-     * @returns U8 binary data
-     */
-    [[deprecated("Use 'getTensor()' instead")]] std::vector<std::uint8_t> getFirstLayerUInt8() const;
+    // // first layer
+    // /**
+    //  * Convenience function to retrieve U8 data from first layer
+    //  * @returns U8 binary data
+    //  */
+    // [[deprecated("Use 'getTensor()' instead")]] std::vector<std::uint8_t> getFirstLayerUInt8() const;
 
-    /**
-     * Convenience function to retrieve float values from first layers FP16 tensor
-     * @returns Float data
-     */
-    [[deprecated("Use 'getTensor()' instead")]] std::vector<float> getFirstLayerFp16() const;
+    // /**
+    //  * Convenience function to retrieve float values from first layers FP16 tensor
+    //  * @returns Float data
+    //  */
+    // [[deprecated("Use 'getTensor()' instead")]] std::vector<float> getFirstLayerFp16() const;
 
-    /**
-     * Convenience function to retrieve INT32 values from first layers tensor
-     * @returns INT32 data
-     */
-    [[deprecated("Use 'getTensor()' instead")]] std::vector<std::int32_t> getFirstLayerInt32() const;
-
-    /**
-     * Retrieves image timestamp related to dai::Clock::now()
-     */
-    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;
-
-    /**
-     * Retrieves image timestamp directly captured from device's monotonic clock,
-     * not synchronized to host time. Used mostly for debugging
-     */
-    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
-
-    /**
-     * Retrieves image sequence number
-     */
-    int64_t getSequenceNum() const;
-
-    /**
-     * Sets image timestamp related to dai::Clock::now()
-     */
-    NNData& setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
-
-    /**
-     * Sets image timestamp related to dai::Clock::now()
-     */
-    NNData& setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
-
-    /**
-     * Retrieves image sequence number
-     */
-    NNData& setSequenceNum(int64_t sequenceNum);
+    // /**
+    //  * Convenience function to retrieve INT32 values from first layers tensor
+    //  * @returns INT32 data
+    //  */
+    // [[deprecated("Use 'getTensor()' instead")]] std::vector<std::int32_t> getFirstLayerInt32() const;
 
     /**
      * Emplace a tensor
@@ -257,7 +225,7 @@ class NNData : public Buffer {
         // Reserve space
         vecData->resize(offset + sConvertedData);
 
-        // Convert data to u8 or fp16 and write to rawNn.data
+        // Convert data to u8 or fp16 and write to data
         if(std::is_integral<_Ty>::value) {
             for(uint32_t i = 0; i < tensor.size(); i++) {
                 vecData->data()[i + offset] = (uint8_t)tensor.data()[i];
@@ -279,7 +247,7 @@ class NNData : public Buffer {
             info.strides.push_back(tensor.strides()[i] * sizeof(uint16_t));
         }
 
-        rawNn.tensors.push_back(info);
+        tensors.push_back(info);
         return *this;
     }
 
@@ -289,9 +257,9 @@ class NNData : public Buffer {
      */
     template <typename _Ty>
     xt::xarray<_Ty> getTensor(const std::string& name) {
-        const auto it = std::find_if(rawNn.tensors.begin(), rawNn.tensors.end(), [&name](const TensorInfo& ti) { return ti.name == name; });
+        const auto it = std::find_if(tensors.begin(), tensors.end(), [&name](const TensorInfo& ti) { return ti.name == name; });
 
-        if(it == rawNn.tensors.end()) throw std::runtime_error("Tensor does not exist");
+        if(it == tensors.end()) throw std::runtime_error("Tensor does not exist");
 
         std::vector<size_t> dims;
         for(const auto v : it->dims) {
@@ -348,12 +316,18 @@ class NNData : public Buffer {
      */
     template <typename _Ty>
     xt::xarray<_Ty> getFirstTensor() {
-        if(!rawNn.tensors.empty()) {
-            return getTensor<_Ty>(rawNn.tensors[0].name);
+        if(!tensors.empty()) {
+            return getTensor<_Ty>(tensors[0].name);
         }
 
         return {};
     }
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
+        metadata = utility::serialize(*this);
+        datatype = DatatypeEnum::NNData;
+    };
+
+    DEPTHAI_SERIALIZE(NNData, sequenceNum, ts, tsDevice, tensors, batchSize);
 };
 
 }  // namespace dai

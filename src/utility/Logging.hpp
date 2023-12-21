@@ -12,7 +12,7 @@
 #include <spdlog/sinks/stdout_color_sinks.h>
 
 // shared
-#include <depthai-shared/log/LogConstants.hpp>
+#include <depthai/log/LogConstants.hpp>
 
 // project
 #include <depthai/device/Device.hpp>

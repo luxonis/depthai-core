@@ -4,7 +4,7 @@
 #include <depthai/pipeline/datatype/CameraControl.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
 // shared
-#include <depthai-shared/properties/ColorCameraProperties.hpp>
+#include <depthai/properties/ColorCameraProperties.hpp>
 
 namespace dai {
 namespace node {
@@ -21,14 +21,11 @@ class ColorCamera : public NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperti
    protected:
     Properties& getProperties();
 
-   private:
-    std::shared_ptr<RawCameraControl> rawControl;
-
    public:
     /**
      * Constructs ColorCamera node.
      */
-    ColorCamera();
+    ColorCamera() = default;
     ColorCamera(std::unique_ptr<Properties> props);
 
     /**

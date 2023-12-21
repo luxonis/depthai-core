@@ -128,7 +128,7 @@ int main() {
     featureTrackerLeft->setHardwareResources(numShaves, numMemorySlices);
     featureTrackerRight->setHardwareResources(numShaves, numMemorySlices);
 
-    auto featureTrackerConfig = featureTrackerRight->initialConfig.get();
+    auto featureTrackerConfig = featureTrackerRight->initialConfig;
 
     printf("Press 's' to switch between Lucas-Kanade optical flow and hardware accelerated motion estimation! \n");
 
@@ -183,9 +183,7 @@ int main() {
                 featureTrackerConfig.motionEstimator.type = dai::FeatureTrackerConfig::MotionEstimator::Type::LUCAS_KANADE_OPTICAL_FLOW;
                 printf("Switching to Lucas-Kanade optical flow \n");
             }
-            auto cfg = dai::FeatureTrackerConfig();
-            cfg.set(featureTrackerConfig);
-            inputFeatureTrackerConfigQueue->send(cfg);
+            inputFeatureTrackerConfigQueue->send(featureTrackerConfig);
         }
     }
     return 0;

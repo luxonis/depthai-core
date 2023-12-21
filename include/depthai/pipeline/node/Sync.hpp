@@ -6,7 +6,7 @@
 #include <fstream>
 
 // shared
-#include <depthai-shared/properties/SyncProperties.hpp>
+#include <depthai/properties/SyncProperties.hpp>
 
 namespace dai {
 namespace node {

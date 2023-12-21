@@ -6,14 +6,13 @@
 // shared
 #include "depthai-bootloader-shared/Bootloader.hpp"
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
-#include "depthai-shared/datatype/RawImgFrame.hpp"
-#include "depthai-shared/device/CrashDump.hpp"
-#include "depthai-shared/log/LogConstants.hpp"
-#include "depthai-shared/log/LogLevel.hpp"
-#include "depthai-shared/log/LogMessage.hpp"
-#include "depthai-shared/pipeline/Assets.hpp"
-#include "depthai-shared/utility/Serialization.hpp"
-#include "depthai-shared/xlink/XLinkConstants.hpp"
+#include "depthai/device/CrashDump.hpp"
+#include "depthai/log/LogConstants.hpp"
+#include "depthai/log/LogLevel.hpp"
+#include "depthai/log/LogMessage.hpp"
+#include "depthai/pipeline/Assets.hpp"
+#include "depthai/utility/Serialization.hpp"
+#include "depthai/xlink/XLinkConstants.hpp"
 
 // project
 #include "DeviceLogger.hpp"

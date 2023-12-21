@@ -22,7 +22,7 @@ void MyProducer::run() {
         auto buf = std::make_shared<Buffer>();
         buf->setData({1, 2, 3});
 
-        std::cout << "sending message (ptr: " << buf.get() << ", raw: " << buf->getRaw().get() << ")\n";
+        std::cout << "sending message (ptr: " << buf.get() << "\n";
         out.send(buf);
     }
 }

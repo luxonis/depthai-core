@@ -13,9 +13,9 @@
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/utility/copyable_unique_ptr.hpp"
 
-// depthai-shared
-#include "depthai-shared/datatype/DatatypeEnum.hpp"
-#include "depthai-shared/properties/Properties.hpp"
+// depthai
+#include "depthai/pipeline/datatype/DatatypeEnum.hpp"
+#include "depthai/properties/Properties.hpp"
 
 // libraries
 #include "tl/optional.hpp"

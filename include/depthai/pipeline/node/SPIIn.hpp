@@ -3,7 +3,7 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
-#include <depthai-shared/properties/SPIInProperties.hpp>
+#include <depthai/properties/SPIInProperties.hpp>
 
 namespace dai {
 namespace node {

@@ -28,7 +28,7 @@ int main() {
     right->setFps(FPS);
 
     auto stereo = pipeline.create<dai::node::StereoDepth>();
-    stereo->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_7x7);
+    stereo->initialConfig.setMedianFilter(dai::StereoDepthConfig::MedianFilter::KERNEL_7x7);
     stereo->setLeftRightCheck(true);
     stereo->setExtendedDisparity(false);
     stereo->setSubpixel(false);

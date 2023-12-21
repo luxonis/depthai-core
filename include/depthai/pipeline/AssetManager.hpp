@@ -4,7 +4,7 @@
 #include <memory>
 #include <vector>
 
-#include "depthai-shared/pipeline/Assets.hpp"
+#include "depthai/pipeline/Assets.hpp"
 #include "depthai/utility/Path.hpp"
 
 namespace dai {

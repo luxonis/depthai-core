@@ -8,10 +8,9 @@
 #include "depthai-bootloader-shared/SBR.h"
 #include "depthai-bootloader-shared/Structure.hpp"
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
-#include "depthai-shared/datatype/RawImgFrame.hpp"
-#include "depthai-shared/pipeline/Assets.hpp"
-#include "depthai-shared/utility/Serialization.hpp"
-#include "depthai-shared/xlink/XLinkConstants.hpp"
+#include "depthai/pipeline/Assets.hpp"
+#include "depthai/utility/Serialization.hpp"
+#include "depthai/xlink/XLinkConstants.hpp"
 
 // project
 #include "device/Device.hpp"

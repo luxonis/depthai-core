@@ -7,7 +7,7 @@
 #include "utility/spdlog-fmt.hpp"
 
 // shared
-#include "depthai-shared/pipeline/NodeConnectionSchema.hpp"
+#include "depthai/pipeline/NodeConnectionSchema.hpp"
 
 // std
 #include <cassert>

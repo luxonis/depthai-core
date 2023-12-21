@@ -2,10 +2,10 @@
 #include <string>
 #include <tuple>
 
-#include "depthai-shared/common/CameraBoardSocket.hpp"
-#include "depthai-shared/common/EepromData.hpp"
-#include "depthai-shared/common/Point2f.hpp"
-#include "depthai-shared/common/Size2f.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/EepromData.hpp"
+#include "depthai/common/Point2f.hpp"
+#include "depthai/common/Size2f.hpp"
 #include "depthai/utility/Path.hpp"
 
 namespace dai {

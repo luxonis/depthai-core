@@ -6,7 +6,7 @@
 #include <fstream>
 
 // shared
-#include <depthai-shared/properties/DetectionParserProperties.hpp>
+#include <depthai/properties/DetectionParserProperties.hpp>
 
 namespace dai {
 namespace node {

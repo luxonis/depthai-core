@@ -1,4 +1,3 @@
-#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/BenchmarkIn.hpp"
 #include "depthai/pipeline/node/BenchmarkOut.hpp"
 

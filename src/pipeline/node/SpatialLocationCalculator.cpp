@@ -5,18 +5,12 @@
 namespace dai {
 namespace node {
 
-SpatialLocationCalculator::SpatialLocationCalculator()
-    : NodeCRTP<DeviceNode, SpatialLocationCalculator, SpatialLocationCalculatorProperties>(),
-      rawConfig(std::make_shared<RawSpatialLocationCalculatorConfig>()),
-      initialConfig(rawConfig) {}
 
 SpatialLocationCalculator::SpatialLocationCalculator(std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, SpatialLocationCalculator, SpatialLocationCalculatorProperties>(std::move(props)),
-      rawConfig(std::make_shared<RawSpatialLocationCalculatorConfig>(properties.roiConfig)),
-      initialConfig(rawConfig) {}
+    : NodeCRTP<DeviceNode, SpatialLocationCalculator, SpatialLocationCalculatorProperties>(std::move(props)) {}
 
 SpatialLocationCalculator::Properties& SpatialLocationCalculator::getProperties() {
-    properties.roiConfig = *rawConfig;
+    properties.roiConfig = initialConfig;
     return properties;
 }
 

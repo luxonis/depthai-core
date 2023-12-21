@@ -3,7 +3,7 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
-#include <depthai-shared/properties/IMUProperties.hpp>
+#include <depthai/properties/IMUProperties.hpp>
 
 namespace dai {
 namespace node {

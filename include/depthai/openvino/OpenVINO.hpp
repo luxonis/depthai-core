@@ -8,7 +8,7 @@
 #include <utility>
 #include <vector>
 
-#include "depthai-shared/common/TensorInfo.hpp"
+#include "depthai/common/TensorInfo.hpp"
 #include "depthai/utility/Path.hpp"
 
 namespace dai {

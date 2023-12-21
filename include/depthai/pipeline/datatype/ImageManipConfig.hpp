@@ -3,9 +3,11 @@
 #include <unordered_map>
 #include <vector>
 
-#include "depthai-shared/datatype/RawImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/common/RotatedRect.hpp"
+#include "depthai/common/Colormap.hpp"
+
 
 namespace dai {
 
@@ -21,19 +23,87 @@ namespace dai {
  *  - ...
  */
 class ImageManipConfig : public Buffer {
-    Serialized serialize() const override;
-
    public:
-    RawImageManipConfig& cfg;
-    // Alias
-    using CropConfig = RawImageManipConfig::CropConfig;
-    using ResizeConfig = RawImageManipConfig::ResizeConfig;
-    using FormatConfig = RawImageManipConfig::FormatConfig;
-
-    /// Construct ImageManipConfig message
-    ImageManipConfig();
-    explicit ImageManipConfig(std::shared_ptr<RawImageManipConfig> ptr);
+    ImageManipConfig() = default;
     virtual ~ImageManipConfig() = default;
+
+    struct CropRect {
+        // Normalized range 0-1
+        float xmin = 0.0f, ymin = 0.0f, xmax = 0.0f, ymax = 0.0f;
+
+        DEPTHAI_SERIALIZE(CropRect, xmin, ymin, xmax, ymax);
+    };
+
+    struct CropConfig {
+        CropRect cropRect;
+        RotatedRect cropRotatedRect;
+
+        bool enableCenterCropRectangle = false;
+        // if enableCenterCropRectangle -> automatically calculated crop parameters
+        float cropRatio = 1.0f, widthHeightAspectRatio = 1.0f;
+
+        bool enableRotatedRect = false;
+
+        // Range 0..1 by default. Set 'false' to specify in pixels
+        bool normalizedCoords = true;
+
+        DEPTHAI_SERIALIZE(CropConfig, cropRect, cropRotatedRect, enableCenterCropRectangle, cropRatio, widthHeightAspectRatio, enableRotatedRect, normalizedCoords);
+    };
+
+    struct ResizeConfig {
+        int width = 0, height = 0;
+        bool lockAspectRatioFill = false;
+        char bgRed = 0, bgGreen = 0, bgBlue = 0;
+
+        //  clockwise order, pt[0] is mapped to the top-left output corner
+        std::vector<Point2f> warpFourPoints;
+        bool normalizedCoords = true;
+        bool enableWarp4pt = false;
+
+        std::vector<float> warpMatrix3x3;
+        bool enableWarpMatrix = false;
+
+        // Warp background / border mode: replicates pixels if true,
+        // otherwise fills with a constant color defined by: bgRed, bgGreen, bgBlue
+        bool warpBorderReplicate = false;
+
+        // clockwise
+        float rotationAngleDeg;
+        bool enableRotation = false;
+
+        /**
+         * Whether to keep aspect ratio of input or not
+         */
+        bool keepAspectRatio = true;
+
+        DEPTHAI_SERIALIZE(ResizeConfig,
+                          width,
+                          height,
+                          lockAspectRatioFill,
+                          bgRed,
+                          bgGreen,
+                          bgBlue,
+                          warpFourPoints,
+                          normalizedCoords,
+                          enableWarp4pt,
+                          warpMatrix3x3,
+                          enableWarpMatrix,
+                          warpBorderReplicate,
+                          rotationAngleDeg,
+                          enableRotation,
+                          keepAspectRatio);
+    };
+
+    struct FormatConfig {
+        ImgFrame::Type type = ImgFrame::Type::NONE;
+        bool flipHorizontal = false;
+        bool flipVertical = false;
+        Colormap colormap = Colormap::NONE;
+        int colormapMin = 0;
+        int colormapMax = 255;
+
+        DEPTHAI_SERIALIZE(FormatConfig, type, flipHorizontal, flipVertical, colormap, colormapMin, colormapMax);
+    };
 
     // Functions to set properties
     /**
@@ -255,17 +325,25 @@ class ImageManipConfig : public Buffer {
      */
     Colormap getColormap() const;
 
-    /**
-     * Set explicit configuration.
-     * @param config Explicit configuration
-     */
-    ImageManipConfig& set(dai::RawImageManipConfig config);
+   private:
+    CropConfig cropConfig;
+    ResizeConfig resizeConfig;
+    FormatConfig formatConfig;
 
-    /**
-     * Retrieve configuration data for ImageManip.
-     * @returns config for ImageManip
-     */
-    dai::RawImageManipConfig get() const;
+    bool enableCrop = false;
+    bool enableResize = false;
+    bool enableFormat = false;
+
+    // Usable with runtime config only,
+    // when ImageManipProperties.inputConfig.setWaitForMessage(true) is set
+    bool reusePreviousImage = false;
+    bool skipCurrentImage = false;
+
+   public:
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
+        metadata = utility::serialize(*this);
+        datatype = DatatypeEnum::ImageManipConfig;
+    };
 };
 
 }  // namespace dai

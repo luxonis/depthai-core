@@ -8,7 +8,7 @@
 #include <fstream>
 
 // shared
-#include <depthai-shared/properties/ObjectTrackerProperties.hpp>
+#include <depthai/properties/ObjectTrackerProperties.hpp>
 
 namespace dai {
 namespace node {

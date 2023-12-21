@@ -5,16 +5,12 @@
 namespace dai {
 namespace node {
 
-EdgeDetector::EdgeDetector()
-    : NodeCRTP<DeviceNode, EdgeDetector, EdgeDetectorProperties>(), rawConfig(std::make_shared<RawEdgeDetectorConfig>()), initialConfig(rawConfig) {}
 
 EdgeDetector::EdgeDetector(std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, EdgeDetector, EdgeDetectorProperties>(std::move(props)),
-      rawConfig(std::make_shared<RawEdgeDetectorConfig>(properties.initialConfig)),
-      initialConfig(rawConfig) {}
+    : NodeCRTP<DeviceNode, EdgeDetector, EdgeDetectorProperties>(std::move(props)){}
 
 EdgeDetector::Properties& EdgeDetector::getProperties() {
-    properties.initialConfig = *rawConfig;
+    properties.initialConfig = initialConfig;
     return properties;
 }
 

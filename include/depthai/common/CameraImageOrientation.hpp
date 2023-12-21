@@ -1,27 +1,13 @@
 #pragma once
+#include <cstdint>
 
-#include <ostream>
+namespace dai {
+/**
+ * Camera sensor image orientation / pixel readout.
+ * This exposes direct sensor settings. 90 or 270 degrees rotation is not available.
+ *
+ * AUTO denotes that the decision will be made by device (e.g. on OAK-1/megaAI: ROTATE_180_DEG).
+ */
+enum class CameraImageOrientation : int32_t { AUTO = -1, NORMAL, HORIZONTAL_MIRROR, VERTICAL_FLIP, ROTATE_180_DEG };
 
-#include "depthai-shared/common/CameraImageOrientation.hpp"
-
-// Global namespace
-inline std::ostream& operator<<(std::ostream& out, const dai::CameraImageOrientation& orientation) {
-    switch(orientation) {
-        case dai::CameraImageOrientation::AUTO:
-            out << "AUTO";
-            break;
-        case dai::CameraImageOrientation::NORMAL:
-            out << "NORMAL";
-            break;
-        case dai::CameraImageOrientation::HORIZONTAL_MIRROR:
-            out << "HORIZONTAL_MIRROR";
-            break;
-        case dai::CameraImageOrientation::VERTICAL_FLIP:
-            out << "VERTICAL_FLIP";
-            break;
-        case dai::CameraImageOrientation::ROTATE_180_DEG:
-            out << "ROTATE_180_DEG";
-            break;
-    }
-    return out;
-}
+}  // namespace dai

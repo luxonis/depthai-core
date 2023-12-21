@@ -53,7 +53,8 @@ int main() {
 
     // Wait for the script to send the changed dictionary back
     auto jsonData = device.getOutputQueue("out")->get<dai::Buffer>();
-    auto changedDict = nlohmann::json::parse(jsonData->getData());
+    std::vector<uint8_t> vecData(jsonData->getData().begin(), jsonData->getData().end());
+    auto changedDict = nlohmann::json::parse(vecData);
     cout << "changedDict: " << changedDict << "\n";
     const nlohmann::json expectedDict{{"one", 2}, {"foo", "baz"}};
     if(expectedDict != changedDict) return 1;

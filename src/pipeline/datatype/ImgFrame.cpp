@@ -5,12 +5,8 @@
 #include "spdlog/spdlog.h"
 namespace dai {
 
-ImgFrame::Serialized ImgFrame::serialize() const {
-    return {data, raw};
-}
-
-ImgFrame::ImgFrame() : Buffer(std::make_shared<RawImgFrame>()), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformations(img.transformations) {
-    // set timestamp to now
+ImgFrame::ImgFrame() {
+    // Set timestamp to now
     setTimestamp(std::chrono::steady_clock::now());
 }
 
@@ -20,20 +16,6 @@ ImgFrame::ImgFrame(size_t size) : ImgFrame() {
     data = mem;
 }
 
-ImgFrame::ImgFrame(std::shared_ptr<RawImgFrame> ptr)
-    : Buffer(std::move(ptr)), img(*dynamic_cast<RawImgFrame*>(raw.get())), transformations(img.transformations) {}
-
-// helpers
-
-// getters
-std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> ImgFrame::getTimestamp() const {
-    using namespace std::chrono;
-    return time_point<steady_clock, steady_clock::duration>{seconds(img.ts.sec) + nanoseconds(img.ts.nsec)};
-}
-std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> ImgFrame::getTimestampDevice() const {
-    using namespace std::chrono;
-    return time_point<steady_clock, steady_clock::duration>{seconds(img.tsDevice.sec) + nanoseconds(img.tsDevice.nsec)};
-}
 std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> ImgFrame::getTimestamp(CameraExposureOffset offset) const {
     auto ts = getTimestamp();
     auto expTime = getExposureTime();
@@ -62,106 +44,79 @@ std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::du
 }
 
 unsigned int ImgFrame::getInstanceNum() const {
-    return img.instanceNum;
+    return instanceNum;
 }
 unsigned int ImgFrame::getCategory() const {
-    return img.category;
-}
-int64_t ImgFrame::getSequenceNum() const {
-    return img.sequenceNum;
+    return category;
 }
 unsigned int ImgFrame::getWidth() const {
-    return img.fb.width;
+    return fb.width;
 }
 unsigned int ImgFrame::getStride() const {
-    if(img.fb.stride == 0) return getWidth();
-    return img.fb.stride;
+    if(fb.stride == 0) return getWidth();
+    return fb.stride;
 }
 unsigned int ImgFrame::getPlaneStride(int planeIndex) const {
     int planeStride = 0;
     switch(planeIndex) {
         case 0:
-            planeStride = img.fb.p2Offset - img.fb.p1Offset;
+            planeStride = fb.p2Offset - fb.p1Offset;
             break;
         case 1:
-            planeStride = img.fb.p3Offset - img.fb.p2Offset;
+            planeStride = fb.p3Offset - fb.p2Offset;
             break;
     }
     if(planeStride <= 0) planeStride = getStride() * getHeight();
     return planeStride;
 }
 unsigned int ImgFrame::getHeight() const {
-    return img.fb.height;
+    return fb.height;
 }
 unsigned int ImgFrame::getPlaneHeight() const {
     return getPlaneStride() / getStride();
 }
-RawImgFrame::Type ImgFrame::getType() const {
-    return img.fb.type;
+ImgFrame::Type ImgFrame::getType() const {
+    return fb.type;
 }
 float ImgFrame::getBytesPerPixel() const {
-    return img.typeToBpp(getType());
+    return typeToBpp(getType());
 }
 std::chrono::microseconds ImgFrame::getExposureTime() const {
-    return std::chrono::microseconds(img.cam.exposureTimeUs);
+    return std::chrono::microseconds(cam.exposureTimeUs);
 }
 int ImgFrame::getSensitivity() const {
-    return img.cam.sensitivityIso;
+    return cam.sensitivityIso;
 }
 int ImgFrame::getColorTemperature() const {
-    return img.cam.wbColorTemp;
+    return cam.wbColorTemp;
 }
 int ImgFrame::getLensPosition() const {
-    return img.cam.lensPosition;
+    return cam.lensPosition;
 }
 
 unsigned int ImgFrame::getSourceWidth() const {
-    return img.sourceFb.width;
+    return sourceFb.width;
 }
 unsigned int ImgFrame::getSourceHeight() const {
-    return img.sourceFb.height;
+    return sourceFb.height;
 }
 
-RawImgFrame ImgFrame::get() const {
-    return img;
-}
-
-// setters
-ImgFrame& ImgFrame::setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
-    // Set timestamp from timepoint
-    using namespace std::chrono;
-    auto ts = tp.time_since_epoch();
-    img.ts.sec = duration_cast<seconds>(ts).count();
-    img.ts.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
-    return *this;
-}
-ImgFrame& ImgFrame::setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
-    // Set timestamp from timepoint
-    using namespace std::chrono;
-    auto ts = tp.time_since_epoch();
-    img.tsDevice.sec = duration_cast<seconds>(ts).count();
-    img.tsDevice.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
-    return *this;
-}
 ImgFrame& ImgFrame::setInstanceNum(unsigned int instanceNum) {
-    img.instanceNum = instanceNum;
+    instanceNum = instanceNum;
     return *this;
 }
 ImgFrame& ImgFrame::setCategory(unsigned int category) {
-    img.category = category;
+    category = category;
     return *this;
 }
-ImgFrame& ImgFrame::setSequenceNum(int64_t sequenceNum) {
-    img.sequenceNum = sequenceNum;
-    return *this;
-}
+
 ImgFrame& ImgFrame::setWidth(unsigned int width) {
-    img.fb.width = width;
-    img.fb.stride = width;
+    fb.width = width;
+    fb.stride = width;
     return *this;
 }
 ImgFrame& ImgFrame::setHeight(unsigned int height) {
-    img.fb.height = height;
+    fb.height = height;
     return *this;
 }
 ImgFrame& ImgFrame::setSize(unsigned int width, unsigned int height) {
@@ -175,9 +130,9 @@ ImgFrame& ImgFrame::setSize(std::tuple<unsigned int, unsigned int> size) {
 }
 
 ImgFrame& ImgFrame::setSourceSize(unsigned int width, unsigned int height) {
-    img.sourceFb.width = width;
-    img.sourceFb.stride = width;
-    img.sourceFb.height = height;
+    sourceFb.width = width;
+    sourceFb.stride = width;
+    sourceFb.height = height;
     transformations.addInitTransformation(width, height);
     return *this;
 }
@@ -186,20 +141,17 @@ ImgFrame& ImgFrame::setSourceSize(std::tuple<unsigned int, unsigned int> size) {
     setSourceSize(std::get<0>(size), std::get<1>(size));
     return *this;
 }
-ImgFrame& ImgFrame::setType(RawImgFrame::Type type) {
-    img.fb.type = type;
-    img.fb.bytesPP = RawImgFrame::typeToBpp(img.fb.type);
+ImgFrame& ImgFrame::setType(Type type) {
+    fb.type = type;
+    fb.bytesPP = ImgFrame::typeToBpp(fb.type);
     return *this;
 }
 
-void ImgFrame::set(RawImgFrame rawImgFrame) {
-    img = rawImgFrame;
-}
-
-ImgFrame& ImgFrame::setMetadata(const ImgFrame& sourceFrame) {
-    set(sourceFrame.get());
-    return *this;
-}
+// TODO add this back in
+// ImgFrame& ImgFrame::setMetadata(const ImgFrame& sourceFrame) {
+//     set(sourceFrame.get());
+//     return *this;
+// }
 
 Point2f ImgFrame::remapPointFromSource(const Point2f& point) const {
     if(point.isNormalized()) {
@@ -258,12 +210,12 @@ Rect ImgFrame::remapRectToSource(const Rect& rect) const {
 }
 
 ImgFrame& ImgFrame::setSourceHFov(float degrees) {
-    img.HFovDegrees = degrees;
+    HFovDegrees = degrees;
     return *this;
 }
 
 float ImgFrame::getSourceHFov() const {
-    return img.HFovDegrees;
+    return HFovDegrees;
 }
 
 float ImgFrame::getSourceDFov() const {

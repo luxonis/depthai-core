@@ -33,28 +33,10 @@
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 
 // shared
-#include "depthai-shared/datatype/DatatypeEnum.hpp"
-#include "depthai-shared/datatype/RawAprilTagConfig.hpp"
-#include "depthai-shared/datatype/RawAprilTags.hpp"
-#include "depthai-shared/datatype/RawBenchmarkReport.hpp"
-#include "depthai-shared/datatype/RawBuffer.hpp"
-#include "depthai-shared/datatype/RawCameraControl.hpp"
-#include "depthai-shared/datatype/RawEdgeDetectorConfig.hpp"
-#include "depthai-shared/datatype/RawFeatureTrackerConfig.hpp"
-#include "depthai-shared/datatype/RawIMUData.hpp"
-#include "depthai-shared/datatype/RawImageManipConfig.hpp"
-#include "depthai-shared/datatype/RawImgDetections.hpp"
-#include "depthai-shared/datatype/RawImgFrame.hpp"
-#include "depthai-shared/datatype/RawNNData.hpp"
-#include "depthai-shared/datatype/RawSpatialImgDetections.hpp"
-#include "depthai-shared/datatype/RawSpatialLocationCalculatorConfig.hpp"
-#include "depthai-shared/datatype/RawSpatialLocations.hpp"
-#include "depthai-shared/datatype/RawStereoDepthConfig.hpp"
-#include "depthai-shared/datatype/RawSystemInformation.hpp"
-#include "depthai-shared/datatype/RawSystemInformationS3.hpp"
-#include "depthai-shared/datatype/RawToFConfig.hpp"
-#include "depthai-shared/datatype/RawTracklets.hpp"
-#include "depthai-shared/utility/Serialization.hpp"
+#include "depthai/pipeline/datatype/DatatypeEnum.hpp"
+
+#include "depthai/utility/Serialization.hpp"
+#include "xlink/XLinkStream.hpp"
 
 // StreamPacket structure ->  || imgframepixels... , serialized_object, object_type, serialized_object_size ||
 // object_type -> DataType(int), serialized_object_size -> int
@@ -107,7 +89,7 @@ static std::tuple<DatatypeEnum, size_t, size_t> parseHeader(streamPacketDesc_t* 
     return {objectType, serializedObjectSize, bufferLength};
 }
 
-std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t* const packet) {
+std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t* const packet) {
     DatatypeEnum objectType;
     size_t serializedObjectSize;
     size_t bufferLength;
@@ -119,90 +101,93 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
 
     // Create corresponding object
     switch(objectType) {
-        // RawBuffer is special case, no metadata is actually serialized
-        case DatatypeEnum::Buffer: {
-            // RawBuffer is special case, no metadata is actually serialized
-            auto pBuf = std::make_shared<RawBuffer>();
-            // pBuf->data = std::move(data);
+        // RawBuffer and ADatatype are special cases, since no metadata is actually serialized
+        case DatatypeEnum::ADatatype: {
+            auto pBuf = std::make_shared<ADatatype>();
             return pBuf;
-        } break;
+        }
+        case DatatypeEnum::Buffer: {
+            auto pBuf = std::make_shared<Buffer>();
+            return pBuf;
+            break;
+        }
 
         case DatatypeEnum::ImgFrame:
-            return parseDatatype<RawImgFrame>(metadataStart, serializedObjectSize, data);
+            return parseDatatype<ImgFrame>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::NNData:
-            return parseDatatype<RawNNData>(metadataStart, serializedObjectSize, data);
+            return parseDatatype<NNData>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::ImageManipConfig:
-            return parseDatatype<RawImageManipConfig>(metadataStart, serializedObjectSize, data);
+            return parseDatatype<ImageManipConfig>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::CameraControl:
-            return parseDatatype<RawCameraControl>(metadataStart, serializedObjectSize, data);
+            return parseDatatype<CameraControl>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::ImgDetections:
-            return parseDatatype<RawImgDetections>(metadataStart, serializedObjectSize, data);
+            return parseDatatype<ImgDetections>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::SpatialImgDetections:
-            return parseDatatype<RawSpatialImgDetections>(metadataStart, serializedObjectSize, data);
+            return parseDatatype<SpatialImgDetections>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::SystemInformation:
-            return parseDatatype<RawSystemInformation>(metadataStart, serializedObjectSize, data);
+            return parseDatatype<SystemInformation>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::SystemInformationS3:
-            return parseDatatype<RawSystemInformationS3>(metadataStart, serializedObjectSize, data);
+            return parseDatatype<SystemInformationS3>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::SpatialLocationCalculatorData:
-            return parseDatatype<RawSpatialLocations>(metadataStart, serializedObjectSize, data);
+            return parseDatatype<SpatialLocationCalculatorData>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::SpatialLocationCalculatorConfig:
-            return parseDatatype<RawSpatialLocationCalculatorConfig>(metadataStart, serializedObjectSize, data);
+            return parseDatatype<SpatialLocationCalculatorConfig>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::AprilTags:
-            return parseDatatype<RawAprilTags>(metadataStart, serializedObjectSize, data);
+            return parseDatatype<AprilTags>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::AprilTagConfig:
-            return parseDatatype<RawAprilTagConfig>(metadataStart, serializedObjectSize, data);
+            return parseDatatype<AprilTagConfig>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::Tracklets:
-            return parseDatatype<RawTracklets>(metadataStart, serializedObjectSize, data);
+            return parseDatatype<Tracklets>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::IMUData:
-            return parseDatatype<RawIMUData>(metadataStart, serializedObjectSize, data);
+            return parseDatatype<IMUData>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::StereoDepthConfig:
-            return parseDatatype<RawStereoDepthConfig>(metadataStart, serializedObjectSize, data);
+            return parseDatatype<StereoDepthConfig>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::EdgeDetectorConfig:
-            return parseDatatype<RawEdgeDetectorConfig>(metadataStart, serializedObjectSize, data);
+            return parseDatatype<EdgeDetectorConfig>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::TrackedFeatures:
-            return parseDatatype<RawTrackedFeatures>(metadataStart, serializedObjectSize, data);
+            return parseDatatype<TrackedFeatures>(metadataStart, serializedObjectSize, data);
             break;
 
         case DatatypeEnum::FeatureTrackerConfig:
-            return parseDatatype<RawFeatureTrackerConfig>(metadataStart, serializedObjectSize, data);
+            return parseDatatype<FeatureTrackerConfig>(metadataStart, serializedObjectSize, data);
             break;
         case DatatypeEnum::BenchmarkReport:
-            return parseDatatype<RawBenchmarkReport>(metadataStart, serializedObjectSize, data);
+            return parseDatatype<BenchmarkReport>(metadataStart, serializedObjectSize, data);
             break;
         case DatatypeEnum::ToFConfig:
-            return parseDatatype<RawToFConfig>(metadataStart, serializedObjectSize, data);
+            return parseDatatype<ToFConfig>(metadataStart, serializedObjectSize, data);
             break;
     }
 
@@ -210,137 +195,19 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
 }
 
 std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(StreamPacketDesc packet) {
-    auto message = parseMessageToADatatype(&packet);
-
-    // Create memory out of StreamPacketDesc
-    const int serializedObjectSize = readIntLE(packet.data + packet.length - 4);
-    if(serializedObjectSize < 0) {
-        throw std::runtime_error("Bad packet, couldn't parse");
-    }
-    const std::uint32_t bufferLength = packet.length - 8 - serializedObjectSize;
-
-    // TODO(themarpe) - revisit fix with better memory interface
-    packet.length = bufferLength;
-
-    // Construct Memory object
-    message->data = std::make_shared<StreamPacketMemory>(std::move(packet));
-
-    return message;
+    return parseMessage(&packet);
 }
 
-std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPacketDesc_t* const packet) {
-    DatatypeEnum objectType;
-    size_t serializedObjectSize;
-    size_t bufferLength;
-    std::tie(objectType, serializedObjectSize, bufferLength) = parseHeader(packet);
-    auto* const metadataStart = packet->data + bufferLength;
-
-    // // copy data part
-    // TMPTMP
-    // std::vector<uint8_t> data(packet->data, packet->data + bufferLength);
-    std::vector<uint8_t> data;
-
-    switch(objectType) {
-        case DatatypeEnum::Buffer: {
-            // RawBuffer is special case, no metadata is actually serialized
-            auto pBuf = std::make_shared<RawBuffer>();
-            // pBuf->data = std::move(data);
-            return std::make_shared<Buffer>(pBuf);
-        } break;
-
-        case DatatypeEnum::ImgFrame:
-            return std::make_shared<ImgFrame>(parseDatatype<RawImgFrame>(metadataStart, serializedObjectSize, data));
-            break;
-
-        case DatatypeEnum::NNData:
-            return std::make_shared<NNData>(parseDatatype<RawNNData>(metadataStart, serializedObjectSize, data));
-            break;
-
-        case DatatypeEnum::ImageManipConfig:
-            return std::make_shared<ImageManipConfig>(parseDatatype<RawImageManipConfig>(metadataStart, serializedObjectSize, data));
-            break;
-
-        case DatatypeEnum::CameraControl:
-            return std::make_shared<CameraControl>(parseDatatype<RawCameraControl>(metadataStart, serializedObjectSize, data));
-            break;
-
-        case DatatypeEnum::ImgDetections:
-            return std::make_shared<ImgDetections>(parseDatatype<RawImgDetections>(metadataStart, serializedObjectSize, data));
-            break;
-
-        case DatatypeEnum::SpatialImgDetections:
-            return std::make_shared<SpatialImgDetections>(parseDatatype<RawSpatialImgDetections>(metadataStart, serializedObjectSize, data));
-            break;
-
-        case DatatypeEnum::SystemInformation:
-            return std::make_shared<SystemInformation>(parseDatatype<RawSystemInformation>(metadataStart, serializedObjectSize, data));
-            break;
-
-        case DatatypeEnum::SystemInformationS3:
-            return std::make_shared<SystemInformationS3>(parseDatatype<RawSystemInformationS3>(metadataStart, serializedObjectSize, data));
-            break;
-
-        case DatatypeEnum::SpatialLocationCalculatorData:
-            return std::make_shared<SpatialLocationCalculatorData>(parseDatatype<RawSpatialLocations>(metadataStart, serializedObjectSize, data));
-            break;
-
-        case DatatypeEnum::SpatialLocationCalculatorConfig:
-            return std::make_shared<SpatialLocationCalculatorConfig>(
-                parseDatatype<RawSpatialLocationCalculatorConfig>(metadataStart, serializedObjectSize, data));
-            break;
-
-        case DatatypeEnum::AprilTags:
-            return std::make_shared<AprilTags>(parseDatatype<RawAprilTags>(metadataStart, serializedObjectSize, data));
-            break;
-
-        case DatatypeEnum::AprilTagConfig:
-            return std::make_shared<AprilTagConfig>(parseDatatype<RawAprilTagConfig>(metadataStart, serializedObjectSize, data));
-            break;
-
-        case DatatypeEnum::Tracklets:
-            return std::make_shared<Tracklets>(parseDatatype<RawTracklets>(metadataStart, serializedObjectSize, data));
-            break;
-
-        case DatatypeEnum::IMUData:
-            return std::make_shared<IMUData>(parseDatatype<RawIMUData>(metadataStart, serializedObjectSize, data));
-            break;
-
-        case DatatypeEnum::StereoDepthConfig:
-            return std::make_shared<StereoDepthConfig>(parseDatatype<RawStereoDepthConfig>(metadataStart, serializedObjectSize, data));
-            break;
-
-        case DatatypeEnum::EdgeDetectorConfig:
-            return std::make_shared<EdgeDetectorConfig>(parseDatatype<RawEdgeDetectorConfig>(metadataStart, serializedObjectSize, data));
-            break;
-
-        case DatatypeEnum::TrackedFeatures:
-            return std::make_shared<TrackedFeatures>(parseDatatype<RawTrackedFeatures>(metadataStart, serializedObjectSize, data));
-            break;
-
-        case DatatypeEnum::FeatureTrackerConfig:
-            return std::make_shared<FeatureTrackerConfig>(parseDatatype<RawFeatureTrackerConfig>(metadataStart, serializedObjectSize, data));
-            break;
-        case DatatypeEnum::BenchmarkReport:
-            return std::make_shared<BenchmarkReport>(parseDatatype<RawBenchmarkReport>(metadataStart, serializedObjectSize, data));
-            break;
-        case DatatypeEnum::ToFConfig:
-            return std::make_shared<ToFConfig>(parseDatatype<RawToFConfig>(metadataStart, serializedObjectSize, data));
-            break;
-    }
-
-    throw std::runtime_error("Bad packet, couldn't parse (invalid message type)");
-}
-
-std::vector<std::uint8_t> StreamMessageParser::serializeMetadata(const RawBuffer& data) {
+std::vector<std::uint8_t> StreamMessageParser::serializeMetadata(const ADatatype& message) {
     // Serialization:
-    // 1. fill vector with bytes from data.data
+    // 1. fill vector with bytes from message.data
     // 2. serialize and append metadata
     // 3. append datatype enum (4B LE)
     // 4. append size (4B LE) of serialized metadata
 
     std::vector<std::uint8_t> metadata;
     DatatypeEnum datatype;
-    data.serialize(metadata, datatype);
+    message.serialize(metadata, datatype);
     uint32_t metadataSize = static_cast<uint32_t>(metadata.size());
 
     // 4B datatype & 4B metadata size
@@ -358,31 +225,36 @@ std::vector<std::uint8_t> StreamMessageParser::serializeMetadata(const RawBuffer
     return ser;
 }
 
-std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer& data) {
-    // Serialization:
-    // 1. fill vector with bytes from data.data
-    // 2. serialize and append metadata
-    // 3. append datatype enum (4B LE)
-    // 4. append size (4B LE) of serialized metadata
-
-    throw std::invalid_argument("TODO");
-
-    std::vector<std::uint8_t> metadata = serializeMetadata(data);
-    return metadata;
-
-    // std::vector<std::uint8_t> ser;
-    // ser.reserve(data.data.size() + metadata.size() + leDatatype.size() + leMetadataSize.size());
-    // ser.insert(ser.end(), data.data.begin(), data.data.end());
-    // ser.insert(ser.end(), metadata.begin(), metadata.end());
-    // ser.insert(ser.end(), leDatatype.begin(), leDatatype.end());
-    // ser.insert(ser.end(), leMetadataSize.begin(), leMetadataSize.end());
-    // return ser;
-}
-
-std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const std::shared_ptr<const RawBuffer>& data) {
+std::vector<std::uint8_t> StreamMessageParser::serializeMetadata(const std::shared_ptr<const ADatatype>& data) {
     if(!data) return {};
-    return serializeMessage(*data);
+    return serializeMetadata(*data);
 }
+
+// std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const ADatatype& message) {
+//     // Serialization:
+//     // 1. fill vector with bytes from data.data
+//     // 2. serialize and append metadata
+//     // 3. append datatype enum (4B LE)
+//     // 4. append size (4B LE) of serialized metadata
+
+//     throw std::invalid_argument("TODO");
+
+//     std::vector<std::uint8_t> metadata = serializeMetadata(message);
+//     return metadata;
+
+//     // std::vector<std::uint8_t> ser;
+//     // ser.reserve(data.data.size() + metadata.size() + leDatatype.size() + leMetadataSize.size());
+//     // ser.insert(ser.end(), data.data.begin(), data.data.end());
+//     // ser.insert(ser.end(), metadata.begin(), metadata.end());
+//     // ser.insert(ser.end(), leDatatype.begin(), leDatatype.end());
+//     // ser.insert(ser.end(), leMetadataSize.begin(), leMetadataSize.end());
+//     // return ser;
+// }
+
+// std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const std::shared_ptr<const ADatatype>& data) {
+//     if(!data) return {};
+//     return serializeMessage(*data);
+// }
 
 // std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const ADatatype& data) {
 //     return serializeMessage(data.serialize());

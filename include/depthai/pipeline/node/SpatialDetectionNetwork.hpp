@@ -9,7 +9,7 @@
 #include <fstream>
 
 // shared
-#include <depthai-shared/properties/SpatialDetectionNetworkProperties.hpp>
+#include <depthai/properties/SpatialDetectionNetworkProperties.hpp>
 
 namespace dai {
 namespace node {

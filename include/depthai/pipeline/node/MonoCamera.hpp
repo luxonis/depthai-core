@@ -6,7 +6,7 @@
 #include "depthai/common/CameraBoardSocket.hpp"
 
 // shared
-#include <depthai-shared/properties/MonoCameraProperties.hpp>
+#include <depthai/properties/MonoCameraProperties.hpp>
 
 namespace dai {
 namespace node {
@@ -20,14 +20,11 @@ class MonoCamera : public NodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>
     using NodeCRTP::NodeCRTP;
     void build();
 
-   private:
-    std::shared_ptr<RawCameraControl> rawControl;
-
    protected:
     Properties& getProperties();
 
    public:
-    MonoCamera();
+    MonoCamera() = default;
     MonoCamera(std::unique_ptr<Properties> props);
 
     /**

@@ -2,11 +2,8 @@
 
 #include <depthai/pipeline/DeviceNode.hpp>
 
-// standard
-#include <fstream>
-
 // shared
-#include <depthai-shared/properties/SpatialLocationCalculatorProperties.hpp>
+#include <depthai/properties/SpatialLocationCalculatorProperties.hpp>
 
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 
@@ -24,11 +21,8 @@ class SpatialLocationCalculator : public NodeCRTP<DeviceNode, SpatialLocationCal
    protected:
     Properties& getProperties();
 
-   private:
-    std::shared_ptr<RawSpatialLocationCalculatorConfig> rawConfig;
-
    public:
-    SpatialLocationCalculator();
+    SpatialLocationCalculator() = default;
     SpatialLocationCalculator(std::unique_ptr<Properties> props);
 
     /**

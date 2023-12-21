@@ -1,8 +1,33 @@
 #pragma once
+#include <cstdint>
+#include <iostream>
+namespace dai {
+/**
+ * Which Camera socket to use.
+ *
+ * AUTO denotes that the decision will be made by device
+ */
+enum class CameraBoardSocket : int32_t {
+    AUTO = -1,
+    CAM_A,
+    CAM_B,
+    CAM_C,
+    CAM_D,
+    VERTICAL = CAM_D,
+    CAM_E,
+    CAM_F,
+    CAM_G,
+    CAM_H,
+    CAM_I,
+    CAM_J,
+    // Deprecated naming
+    RGB [[deprecated]] = CAM_A,
+    CENTER [[deprecated]] = CAM_A,
+    LEFT [[deprecated]] = CAM_B,
+    RIGHT [[deprecated]] = CAM_C,
+};
 
-#include <ostream>
-
-#include "depthai-shared/common/CameraBoardSocket.hpp"
+}  // namespace dai
 
 // Global namespace
 inline std::ostream& operator<<(std::ostream& out, const dai::CameraBoardSocket& socket) {
@@ -19,8 +44,8 @@ inline std::ostream& operator<<(std::ostream& out, const dai::CameraBoardSocket&
         case dai::CameraBoardSocket::CAM_C:
             out << "CAM_C";
             break;
-        case dai::CameraBoardSocket::VERTICAL:
-            out << "VERTICAL/CAM_D";
+        case dai::CameraBoardSocket::CAM_D:
+            out << "CAM_D";
             break;
         case dai::CameraBoardSocket::CAM_E:
             out << "CAM_E";

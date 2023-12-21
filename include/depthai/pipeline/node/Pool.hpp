@@ -8,7 +8,7 @@
 #include <fstream>
 
 // shared
-#include <depthai-shared/properties/PoolProperties.hpp>
+#include <depthai/properties/PoolProperties.hpp>
 
 namespace dai {
 namespace node {

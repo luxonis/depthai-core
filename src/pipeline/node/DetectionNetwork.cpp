@@ -2,7 +2,7 @@
 
 #include <sstream>
 
-#include "depthai-shared/common/DetectionNetworkType.hpp"
+#include "depthai/common/DetectionNetworkType.hpp"
 #include "openvino/BlobReader.hpp"
 
 namespace dai {

@@ -4,13 +4,10 @@
 #include <functional>
 #include <memory>
 
-// shared
-#include "depthai-shared/datatype/RawBuffer.hpp"
-#include "depthai-shared/xlink/XLinkConstants.hpp"
 
 // project
-#include "DataQueue.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
+#include "depthai/pipeline/datatype/ADatatype.hpp"
 
 namespace dai {
 
@@ -18,13 +15,13 @@ class CallbackHandler {
     std::thread t;
     std::atomic<bool> running{true};
     std::shared_ptr<XLinkConnection> connection;
-    std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> callback;
+    std::function<std::shared_ptr<ADatatype>(std::shared_ptr<ADatatype>)> callback;
 
    public:
-    void setCallback(std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb);
+    void setCallback(std::function<std::shared_ptr<ADatatype>(std::shared_ptr<ADatatype>)> cb);
     CallbackHandler(std::shared_ptr<XLinkConnection> conn,
                     const std::string& streamName,
-                    std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb);
+                    std::function<std::shared_ptr<ADatatype>(std::shared_ptr<ADatatype>)> cb);
     ~CallbackHandler();
 };
 

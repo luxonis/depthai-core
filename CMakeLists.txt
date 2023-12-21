@@ -194,7 +194,7 @@ add_library(${TARGET_CORE_NAME}
     src/device/DeviceBase.cpp
     src/device/DeviceBootloader.cpp
     src/device/DataQueue.cpp
-    src/device/CallbackHandler.cpp
+    # src/device/CallbackHandler.cpp
     src/device/CalibrationHandler.cpp
     src/device/Version.cpp
     src/pipeline/Pipeline.cpp

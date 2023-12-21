@@ -3,7 +3,7 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
-#include <depthai-shared/properties/UVCProperties.hpp>
+#include <depthai/properties/UVCProperties.hpp>
 
 namespace dai {
 namespace node {
@@ -18,7 +18,7 @@ class UVC : public NodeCRTP<DeviceNode, UVC, UVCProperties> {
     void build();
 
    public:
-    UVC();
+    UVC() = default;
     UVC(std::unique_ptr<Properties> props);
 
     /**

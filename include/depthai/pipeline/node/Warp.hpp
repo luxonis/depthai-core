@@ -4,8 +4,8 @@
 // #include <depthai/pipeline/datatype/WarpConfig.hpp>
 
 // shared
-#include <depthai-shared/common/Point2f.hpp>
-#include <depthai-shared/properties/WarpProperties.hpp>
+#include <depthai/common/Point2f.hpp>
+#include <depthai/properties/WarpProperties.hpp>
 
 namespace dai {
 namespace node {

@@ -69,9 +69,9 @@ void test(bool manualBlob) {
 
         dai::NNData nndata1, nndata2;
         // Specify tensor by name
-        nndata1.setLayer(MOBILENET_INPUT_TENSOR, std::vector<uint8_t>(MOBILENET_DATA_SIZE + i * 1024 * 10));
+        nndata1.addTensor(MOBILENET_INPUT_TENSOR, std::vector<uint8_t>(MOBILENET_DATA_SIZE + i * 1024 * 10));
         // Specify tensor by index
-        nndata2.setLayer("", std::vector<uint8_t>(MOBILENET_DATA_SIZE + i * 1024 * 10));
+        nndata2.addTensor("", std::vector<uint8_t>(MOBILENET_DATA_SIZE + i * 1024 * 10));
 
         dai::ImgFrame frame;
         frame.setWidth(MOBILENET_WIDTH);

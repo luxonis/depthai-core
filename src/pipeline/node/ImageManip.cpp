@@ -2,53 +2,48 @@
 namespace dai {
 namespace node {
 
-ImageManip::ImageManip()
-    : NodeCRTP<DeviceNode, ImageManip, ImageManipProperties>(), rawConfig(std::make_shared<RawImageManipConfig>()), initialConfig(rawConfig) {}
-
 ImageManip::ImageManip(std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, ImageManip, ImageManipProperties>(std::move(props)),
-      rawConfig(std::make_shared<RawImageManipConfig>(properties.initialConfig)),
-      initialConfig(rawConfig) {}
+    : NodeCRTP<DeviceNode, ImageManip, ImageManipProperties>(std::move(props)){}
 
 ImageManip::Properties& ImageManip::getProperties() {
-    properties.initialConfig = *rawConfig;
+    properties.initialConfig = initialConfig;
     return properties;
 }
 
 // Initial ImageManipConfig
 void ImageManip::setCropRect(float xmin, float ymin, float xmax, float ymax) {
     initialConfig.setCropRect(xmin, ymin, xmax, ymax);
-    properties.initialConfig = *rawConfig;
+    properties.initialConfig = initialConfig;
 }
 
 void ImageManip::setCenterCrop(float ratio, float whRatio) {
     initialConfig.setCenterCrop(ratio, whRatio);
-    properties.initialConfig = *rawConfig;
+    properties.initialConfig = initialConfig;
 }
 
 void ImageManip::setResize(int w, int h) {
     initialConfig.setResize(w, h);
-    properties.initialConfig = *rawConfig;
+    properties.initialConfig = initialConfig;
 }
 
 void ImageManip::setResizeThumbnail(int w, int h, int bgRed, int bgGreen, int bgBlue) {
     initialConfig.setResizeThumbnail(w, h, bgRed, bgGreen, bgBlue);
-    properties.initialConfig = *rawConfig;
+    properties.initialConfig = initialConfig;
 }
 
-void ImageManip::setFrameType(dai::RawImgFrame::Type type) {
+void ImageManip::setFrameType(dai::ImgFrame::Type type) {
     initialConfig.setFrameType(type);
-    properties.initialConfig = *rawConfig;
+    properties.initialConfig = initialConfig;
 }
 
 void ImageManip::setHorizontalFlip(bool flip) {
     initialConfig.setHorizontalFlip(flip);
-    properties.initialConfig = *rawConfig;
+    properties.initialConfig = initialConfig;
 }
 
 void ImageManip::setKeepAspectRatio(bool keep) {
     initialConfig.setKeepAspectRatio(keep);
-    properties.initialConfig = *rawConfig;
+    properties.initialConfig = initialConfig;
 }
 
 // Node properties configuration

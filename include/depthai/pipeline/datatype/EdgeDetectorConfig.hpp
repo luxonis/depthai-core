@@ -3,7 +3,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "depthai-shared/datatype/RawEdgeDetectorConfig.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {
@@ -12,16 +11,26 @@ namespace dai {
  * EdgeDetectorConfig message. Carries sobel edge filter config.
  */
 class EdgeDetectorConfig : public Buffer {
-    Serialized serialize() const override;
-    RawEdgeDetectorConfig& cfg;
-
    public:
-    /**
-     * Construct EdgeDetectorConfig message.
-     */
-    EdgeDetectorConfig();
-    explicit EdgeDetectorConfig(std::shared_ptr<RawEdgeDetectorConfig> ptr);
+    EdgeDetectorConfig() = default;
     virtual ~EdgeDetectorConfig() = default;
+
+    struct EdgeDetectorConfigData {
+        /**
+         * Used for horizontal gradient computation in 3x3 Sobel filter
+         * Format - 3x3 matrix, 2nd column must be 0
+         * Default - +1 0 -1; +2 0 -2; +1 0 -1
+         */
+        std::vector<std::vector<int>> sobelFilterHorizontalKernel;
+        /**
+         * Used for vertical gradient computation in 3x3 Sobel filter
+         * Format - 3x3 matrix, 2nd row must be 0
+         * Default - +1 +2 +1; 0 0 0; -1 -2 -1
+         */
+        std::vector<std::vector<int>> sobelFilterVerticalKernel;
+
+        DEPTHAI_SERIALIZE(EdgeDetectorConfigData, sobelFilterHorizontalKernel, sobelFilterVerticalKernel);
+    };
 
     /**
      * Set sobel filter horizontal and vertical 3x3 kernels
@@ -36,17 +45,16 @@ class EdgeDetectorConfig : public Buffer {
      */
     EdgeDetectorConfigData getConfigData() const;
 
-    /**
-     * Set explicit configuration.
-     * @param config Explicit configuration
-     */
-    EdgeDetectorConfig& set(dai::RawEdgeDetectorConfig config);
+   private:
+    EdgeDetectorConfigData config;
 
-    /**
-     * Retrieve configuration data for EdgeDetector.
-     * @returns config for EdgeDetector
-     */
-    dai::RawEdgeDetectorConfig get() const;
+   public:
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
+        metadata = utility::serialize(*this);
+        datatype = DatatypeEnum::EdgeDetectorConfig;
+    };
+
+    DEPTHAI_SERIALIZE(EdgeDetectorConfig, sequenceNum, ts, tsDevice, config);
 };
 
 }  // namespace dai

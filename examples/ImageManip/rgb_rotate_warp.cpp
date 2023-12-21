@@ -159,8 +159,8 @@ int main() {
 
         for(const auto& q : frameQueues) {
             auto img = q->get<dai::ImgFrame>();
-            auto mat = toMat(img->getData(), img->getWidth(), img->getHeight(), 3, 1);
-            cv::imshow(q->getName(), mat);
+            // auto mat = toMat(img->getData(), img->getWidth(), img->getHeight(), 3, 1);
+            cv::imshow(q->getName(), img->getCvFrame());
         }
         key = cv::waitKey(1);
     }

@@ -6,7 +6,7 @@
 #include <fstream>
 
 // shared
-#include <depthai-shared/properties/FeatureTrackerProperties.hpp>
+#include <depthai/properties/FeatureTrackerProperties.hpp>
 
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
 
@@ -25,11 +25,8 @@ class FeatureTracker : public NodeCRTP<DeviceNode, FeatureTracker, FeatureTracke
    protected:
     Properties& getProperties();
 
-   private:
-    std::shared_ptr<RawFeatureTrackerConfig> rawConfig;
-
    public:
-    FeatureTracker();
+    FeatureTracker() = default;
     FeatureTracker(std::unique_ptr<Properties> props);
 
     /**

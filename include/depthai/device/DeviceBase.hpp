@@ -28,14 +28,13 @@
 #include "depthai/xlink/XLinkStream.hpp"
 
 // shared
-#include "depthai-shared/common/ChipTemperature.hpp"
-#include "depthai-shared/common/CpuUsage.hpp"
-#include "depthai-shared/common/MemoryInfo.hpp"
-#include "depthai-shared/datatype/RawIMUData.hpp"
-#include "depthai-shared/device/BoardConfig.hpp"
-#include "depthai-shared/device/CrashDump.hpp"
-#include "depthai-shared/log/LogLevel.hpp"
-#include "depthai-shared/log/LogMessage.hpp"
+#include "depthai/common/ChipTemperature.hpp"
+#include "depthai/common/CpuUsage.hpp"
+#include "depthai/common/MemoryInfo.hpp"
+#include "depthai/device/BoardConfig.hpp"
+#include "depthai/device/CrashDump.hpp"
+#include "depthai/log/LogLevel.hpp"
+#include "depthai/log/LogMessage.hpp"
 
 namespace dai {
 

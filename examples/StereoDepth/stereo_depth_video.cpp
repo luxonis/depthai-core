@@ -50,7 +50,7 @@ int main() {
         stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
         stereo->setRectifyEdgeFillColor(0);  // black, to better see the cutout
         // stereo->setInputResolution(1280, 720);
-        stereo->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_5x5);
+        stereo->initialConfig.setMedianFilter(dai::StereoDepthConfig::MedianFilter::KERNEL_5x5);
         stereo->setLeftRightCheck(lrcheck);
         stereo->setExtendedDisparity(extended);
         stereo->setSubpixel(subpixel);

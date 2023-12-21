@@ -6,8 +6,7 @@
 // shared
 #include "depthai-bootloader-shared/Bootloader.hpp"
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
-#include "depthai-shared/datatype/RawImgFrame.hpp"
-#include "depthai-shared/xlink/XLinkConstants.hpp"
+#include "depthai/xlink/XLinkConstants.hpp"
 
 // project
 #include "DeviceLogger.hpp"

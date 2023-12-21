@@ -110,11 +110,6 @@ struct RawAprilTagConfig : public RawBuffer {
      */
     QuadThresholds quadThresholds;
 
-    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
-        metadata = utility::serialize(*this);
-        datatype = DatatypeEnum::AprilTagConfig;
-    };
-
     DEPTHAI_SERIALIZE(RawAprilTagConfig, family, quadDecimate, quadSigma, refineEdges, decodeSharpening, maxHammingDistance, quadThresholds);
 };
 

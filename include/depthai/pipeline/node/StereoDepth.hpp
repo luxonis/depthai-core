@@ -3,7 +3,7 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
-#include "depthai-shared/properties/StereoDepthProperties.hpp"
+#include "depthai/properties/StereoDepthProperties.hpp"
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
 
 namespace dai {
@@ -37,10 +37,10 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
 
    private:
     PresetMode presetMode = PresetMode::HIGH_DENSITY;
-    std::shared_ptr<RawStereoDepthConfig> rawConfig;
 
    public:
-    StereoDepth();
+    using MedianFilter = dai::StereoDepthConfig::MedianFilter;
+    StereoDepth() = default;
     StereoDepth(std::unique_ptr<Properties> props);
 
     /**
@@ -234,7 +234,7 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
     /**
      * @param median Set kernel size for disparity/depth median filtering, or disable
      */
-    [[deprecated("Use 'initialConfig.setMedianFilter()' instead")]] void setMedianFilter(dai::MedianFilter median);
+    [[deprecated("Use 'initialConfig.setMedianFilter()' instead")]] void setMedianFilter(MedianFilter median);
 
     /**
      * @param align Set the disparity/depth alignment: centered (between the 'left' and 'right' inputs),

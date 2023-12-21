@@ -68,7 +68,9 @@ int main(int argc, char** argv) {
 
     while(true) {
         auto inNn = qNn->get<dai::NNData>();
-        cv::imshow("Concat", fromPlanarFp16(inNn->getFirstLayerFp16(), 900, 300));
+        auto firstTensor = inNn->getFirstTensor<float>();
+        std::vector<float> firstLayer(firstTensor.begin(), firstTensor.end());
+        cv::imshow("Concat", fromPlanarFp16(firstLayer, 900, 300));
 
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q') {

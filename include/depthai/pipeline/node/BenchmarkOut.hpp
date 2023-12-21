@@ -3,7 +3,7 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
-#include <depthai-shared/properties/BenchmarkPropertiesOut.hpp>
+#include <depthai/properties/BenchmarkPropertiesOut.hpp>
 
 namespace dai {
 namespace node {

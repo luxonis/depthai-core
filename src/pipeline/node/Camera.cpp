@@ -1,20 +1,14 @@
 #include "depthai/pipeline/node/Camera.hpp"
 // std
-#include <cmath>
 #include <fstream>
 
 // libraries
-#include "spdlog/fmt/fmt.h"
 
 namespace dai {
 namespace node {
 
-Camera::Camera() : NodeCRTP<DeviceNode, Camera, CameraProperties>(), rawControl(std::make_shared<RawCameraControl>()), initialControl(rawControl) {}
-
 Camera::Camera(std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, Camera, CameraProperties>(std::move(props)),
-      rawControl(std::make_shared<RawCameraControl>(properties.initialControl)),
-      initialControl(rawControl) {}
+    : NodeCRTP<DeviceNode, Camera, CameraProperties>(std::move(props)) {}
 
 void Camera::build() {
     properties.boardSocket = CameraBoardSocket::AUTO;
@@ -28,7 +22,7 @@ void Camera::build() {
 }
 
 Camera::Properties& Camera::getProperties() {
-    properties.initialControl = *rawControl;
+    properties.initialControl = initialControl;
     return properties;
 }
 

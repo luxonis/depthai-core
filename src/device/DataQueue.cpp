@@ -10,7 +10,7 @@
 #include "pipeline/datatype/StreamMessageParser.hpp"
 
 // shared
-#include "depthai-shared/xlink/XLinkConstants.hpp"
+#include "depthai/xlink/XLinkConstants.hpp"
 
 // libraries
 #include "utility/Logging.hpp"
@@ -43,7 +43,7 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                 if(logger::get_level() == spdlog::level::trace) {
                     std::vector<std::uint8_t> metadata;
                     DatatypeEnum type;
-                    msg->getRaw()->serialize(metadata, type);
+                    msg->serialize(metadata, type);
                     logger::trace("Received message from device ({}) - parsing time: {}, data size: {}, object type: {} object data: {}",
                                   name,
                                   std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
@@ -285,69 +285,46 @@ std::string DataInputQueue::getName() const {
     return name;
 }
 
-void DataInputQueue::send(const ADatatype::Serialized& serialized) {
-    send(serialized.metadata, serialized.data);
-}
-
-void DataInputQueue::send(const std::shared_ptr<RawBuffer>& metadata, std::shared_ptr<Memory> data) {
+DataInputQueue::OutgoingMessage DataInputQueue::getOutgoingMessage(const ADatatype& message) {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
-    if(!metadata) throw std::invalid_argument("Message passed is not valid (nullptr)");
-
     // Check if stream receiver has enough space for this message
-    if(data->getSize() > maxDataSize) {
-        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", data->getSize(), maxDataSize));
+    if(message.data->getSize() > maxDataSize) {
+        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", message.data->getSize(), maxDataSize));
     }
 
     // TODO(themarpe) - move serialization to be the last step
     // Create outgoing message and serialize
     OutgoingMessage outgoing;
     // serialize
-    outgoing.data = data;
-    outgoing.metadata = StreamMessageParser::serializeMetadata(*metadata);
+    outgoing.data = message.data;
+    outgoing.metadata = StreamMessageParser::serializeMetadata(message);
+    return outgoing;
+}
+
+void DataInputQueue::send(const std::shared_ptr<ADatatype>& message) {
+    if(!running) throw std::runtime_error(exceptionMessage.c_str());
+    if(!message) throw std::invalid_argument("Message passed is not valid (nullptr)");
+    DataInputQueue::send(*message);
+}
+
+void DataInputQueue::send(const ADatatype& message) {
+    OutgoingMessage outgoing = getOutgoingMessage(message);
 
     if(!queue.push(std::move(outgoing))) {
         throw std::runtime_error(fmt::format("Underlying queue destructed"));
     }
 }
-void DataInputQueue::send(const std::shared_ptr<ADatatype>& msg) {
-    if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
-    send(msg->serialize());
-}
 
-void DataInputQueue::send(const ADatatype& msg) {
-    send(msg.serialize());
-}
-
-bool DataInputQueue::send(const ADatatype::Serialized& serialized, std::chrono::milliseconds timeout) {
-    return send(serialized.metadata, serialized.data, timeout);
-}
-
-bool DataInputQueue::send(const std::shared_ptr<RawBuffer>& metadata, std::shared_ptr<Memory> data, std::chrono::milliseconds timeout) {
+bool DataInputQueue::send(const ADatatype& message, std::chrono::milliseconds timeout) {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
-    if(!metadata) throw std::invalid_argument("Message passed is not valid (nullptr)");
-
-    // Check if stream receiver has enough space for this message
-    if(data->getSize() > maxDataSize) {
-        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", data->getSize(), maxDataSize));
-    }
-
-    // TODO(themarpe) - move serialization to be the last step
-    // Create outgoing message and serialize
-    OutgoingMessage outgoing;
-    // serialize
-    outgoing.data = data;
-    outgoing.metadata = StreamMessageParser::serializeMetadata(*metadata);
+    OutgoingMessage outgoing = getOutgoingMessage(message);
 
     return queue.tryWaitAndPush(std::move(outgoing), timeout);
 }
 
 bool DataInputQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::milliseconds timeout) {
+    if(!running) throw std::runtime_error(exceptionMessage.c_str());
     if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
-    return send(msg->serialize(), timeout);
+    return send(*msg, timeout);
 }
-
-bool DataInputQueue::send(const ADatatype& msg, std::chrono::milliseconds timeout) {
-    return send(msg.serialize(), timeout);
-}
-
 }  // namespace dai

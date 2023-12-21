@@ -90,7 +90,7 @@ int main(int argc, char** argv) {
                 camFps++;
 
                 // process
-                cv::Mat frame = toMat(preview->getData(), preview->getWidth(), preview->getHeight(), 3, 1);
+                cv::Mat frame = preview->getCvFrame();
 
                 // Draw all detections
                 for(const auto& d : prevResult->detections) {

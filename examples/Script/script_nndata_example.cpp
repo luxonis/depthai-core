@@ -35,13 +35,13 @@ int main() {
     std::cout << "NNData size: " << nndata->getData().size() << std::endl;
 
     std::cout << "FP16 values: ";
-    for(auto val : nndata->getLayerFp16("fp16")) {
+    for(auto val : nndata->getTensor<double>("fp16")) {
         std::cout << to_string(val) + " ";
     }
     std::cout << std::endl;
 
     std::cout << "UINT8 values: ";
-    for(auto val : nndata->getLayerUInt8("uint8")) {
+    for(auto val : nndata->getTensor<int>("uint8")) {
         std::cout << to_string(val) + " ";
     }
     std::cout << std::endl;

@@ -1,4 +1,5 @@
 
+#include <cstdint>
 #include <iostream>
 
 #include "utility.hpp"
@@ -54,18 +55,19 @@ int main(int argc, char** argv) {
 
     while(true) {
         // data to send further
-        auto tensor = std::make_shared<dai::RawImgFrame>();
+        auto tensor = std::make_shared<dai::ImgFrame>();
 
         // Read frame from webcam
         webcam >> frame;
 
         // crop and resize
         cv::Mat resizedFrame = resizeKeepAspectRatio(frame, cv::Size(MODEL_IN_WIDTH, MODEL_IN_HEIGHT), cv::Scalar(0));
+        std::vector<uint8_t> frameData;
+        toPlanar(resizedFrame, frameData);
 
-        toPlanar(resizedFrame, tensor->data);
-
-        auto inputFrame = std::make_shared<dai::ImgFrame>(tensor);
-        inputFrame->setType(dai::RawImgFrame::Type::BGR888p);
+        auto inputFrame = tensor;
+        inputFrame->setData(frameData);
+        inputFrame->setType(dai::ImgFrame::Type::BGR888p);
         inputFrame->setWidth(MODEL_IN_WIDTH);
         inputFrame->setHeight(MODEL_IN_HEIGHT);
 
@@ -98,7 +100,7 @@ int main(int argc, char** argv) {
         cv::putText(cvframe, fpsStr.str(), cv::Point(2, MODEL_IN_HEIGHT - 4), cv::FONT_HERSHEY_TRIPLEX, 0.4, cv::Scalar(255, 255, 255));
 
         auto det = detections->get<dai::NNData>();
-        std::vector<float> detData = det->getFirstLayerFp16();
+        auto detData = det->getFirstTensor<float>();
         if(detData.size() > 0) {
             int i = 0;
             while(detData[i * 7] != -1.0f) {

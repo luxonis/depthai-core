@@ -18,9 +18,9 @@
 #include "utility/Logging.hpp"
 
 // shared
-#include "depthai-shared/device/BoardConfig.hpp"
-#include "depthai-shared/utility/Checksum.hpp"
-#include "depthai-shared/utility/Serialization.hpp"
+#include "depthai/device/BoardConfig.hpp"
+#include "depthai/utility/Checksum.hpp"
+#include "depthai/utility/Serialization.hpp"
 
 // project
 #include "utility/Environment.hpp"

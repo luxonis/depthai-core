@@ -75,7 +75,10 @@ int main(int argc, char** argv) {
     while(true) {
         auto inNn = qNn->get<dai::NNData>();
         // To get original frame back (0-255), we add multiply all frame values (pixels) by 255 and then add 127.5 to them.
-        cv::imshow("Original Frame", fromPlanarFp16(inNn->getFirstLayerFp16(), 300, 300, 127.5, 255.0));
+        // TODO - do this cleaner
+        xt::xarray<float> firstTensor = inNn->getFirstTensor<float>();
+        std::vector<float> flattened(firstTensor.begin(), firstTensor.end());
+        cv::imshow("Original Frame", fromPlanarFp16(flattened, 300, 300, 127.5, 255.0));
 
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q') {

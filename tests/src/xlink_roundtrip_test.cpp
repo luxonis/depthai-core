@@ -31,7 +31,7 @@ static void test_xlink_roundtrip(int w, int h) {
     imgFrame.setHeight(h);
 
     imgFrame.setData(data);
-    imgFrame.setType(dai::RawImgFrame::Type::BGR888p);
+    imgFrame.setType(dai::ImgFrame::Type::BGR888p);
     // Send the frame
     inQ->send(imgFrame);
 

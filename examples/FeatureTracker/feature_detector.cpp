@@ -59,7 +59,7 @@ int main() {
     featureTrackerRight->outputFeatures.link(xoutTrackedFeaturesRight->input);
     xinTrackedFeaturesConfig->out.link(featureTrackerRight->inputConfig);
 
-    auto featureTrackerConfig = featureTrackerRight->initialConfig.get();
+    auto featureTrackerConfig = featureTrackerRight->initialConfig;
 
     printf("Press 's' to switch between Harris and Shi-Thomasi corner detector! \n");
 
@@ -110,7 +110,7 @@ int main() {
                 printf("Switching to Harris \n");
             }
             auto cfg = dai::FeatureTrackerConfig();
-            cfg.set(featureTrackerConfig);
+            cfg = featureTrackerConfig;
             inputFeatureTrackerConfigQueue->send(cfg);
         }
     }

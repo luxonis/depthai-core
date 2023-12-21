@@ -4,7 +4,7 @@
 #include <depthai/pipeline/datatype/ImageManipConfig.hpp>
 
 // shared
-#include <depthai-shared/properties/ImageManipProperties.hpp>
+#include <depthai/properties/ImageManipProperties.hpp>
 
 namespace dai {
 namespace node {
@@ -20,13 +20,10 @@ class ImageManip : public NodeCRTP<DeviceNode, ImageManip, ImageManipProperties>
    protected:
     Properties& getProperties();
 
-   private:
-    std::shared_ptr<RawImageManipConfig> rawConfig;
-
     void setWarpMesh(const float* meshData, int numMeshPoints, int width, int height);
 
    public:
-    ImageManip();
+    ImageManip() = default;
     ImageManip(std::unique_ptr<Properties> props);
 
     /**

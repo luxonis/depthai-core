@@ -11,8 +11,6 @@
 #include "depthai/xlink/XLinkConnection.hpp"
 
 // shared
-#include "depthai-shared/datatype/RawBuffer.hpp"
-
 namespace dai {
 
 /**
@@ -330,13 +328,6 @@ class MessageQueue {
         return getAll<ADatatype>(timeout, hasTimedout);
     }
 
-    // /**
-    //  * Adds a raw message to the queue, which will be picked up and sent to the device.
-    //  * Can either block if 'blocking' behavior is true or overwrite oldest
-    //  * @param rawMsg Message to add to the queue
-    //  */
-    // void send(const std::shared_ptr<RawBuffer>& rawMsg);
-
     /**
      * Adds a message to the queue, which will be picked up and sent to the device.
      * Can either block if 'blocking' behavior is true or overwrite oldest
@@ -350,15 +341,6 @@ class MessageQueue {
      * @param msg Message to add to the queue
      */
     // void send(const ADatatype& msg);
-
-    // /**
-    //  * Adds message to the queue, which will be picked up and sent to the device.
-    //  * Can either block until timeout if 'blocking' behavior is true or overwrite oldest
-    //  *
-    //  * @param rawMsg Message to add to the queue
-    //  * @param timeout Maximum duration to block in milliseconds
-    //  */
-    // bool send(const std::shared_ptr<RawBuffer>& rawMsg, std::chrono::milliseconds timeout);
 
     /**
      * Adds message to the queue, which will be picked up and sent to the device.

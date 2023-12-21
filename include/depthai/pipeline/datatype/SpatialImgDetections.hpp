@@ -4,61 +4,47 @@
 #include <unordered_map>
 #include <vector>
 
-#include "depthai-shared/datatype/RawSpatialImgDetections.hpp"
+#include "depthai/common/Point3f.hpp"
+#include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/pipeline/datatype/ImgDetections.hpp"
+#include "depthai/utility/Serialization.hpp"
 
 namespace dai {
+
+/**
+ * SpatialImgDetection structure
+ *
+ * Contains image detection results together with spatial location data.
+ */
+struct SpatialImgDetection : public ImgDetection {
+    Point3f spatialCoordinates;
+    SpatialLocationCalculatorConfigData boundingBoxMapping;
+};
+
+DEPTHAI_SERIALIZE_EXT(SpatialImgDetection, label, confidence, xmin, ymin, xmax, ymax, spatialCoordinates, boundingBoxMapping);
 
 /**
  * SpatialImgDetections message. Carries detection results together with spatial location data
  */
 class SpatialImgDetections : public Buffer {
-    Serialized serialize() const override;
-    RawSpatialImgDetections& dets;
-
    public:
     /**
      * Construct SpatialImgDetections message.
      */
-    SpatialImgDetections();
-    explicit SpatialImgDetections(std::shared_ptr<RawSpatialImgDetections> ptr);
+    SpatialImgDetections() = default;
     virtual ~SpatialImgDetections() = default;
 
     /**
      * Detection results.
      */
-    std::vector<SpatialImgDetection>& detections;
+    std::vector<SpatialImgDetection> detections;
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
+        metadata = utility::serialize(*this);
+        datatype = DatatypeEnum::SpatialImgDetections;
+    };
 
-    /**
-     * Sets image timestamp related to dai::Clock::now()
-     */
-    SpatialImgDetections& setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
-
-    /**
-     * Sets image timestamp related to dai::Clock::now()
-     */
-    SpatialImgDetections& setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
-
-    /**
-     * Retrieves image sequence number
-     */
-    SpatialImgDetections& setSequenceNum(int64_t sequenceNum);
-
-    /**
-     * Retrieves image timestamp related to dai::Clock::now()
-     */
-    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;
-
-    /**
-     * Retrieves image timestamp directly captured from device's monotonic clock,
-     * not synchronized to host time. Used mostly for debugging
-     */
-    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
-
-    /**
-     * Retrieves image sequence number
-     */
-    int64_t getSequenceNum() const;
+    DEPTHAI_SERIALIZE(SpatialImgDetections, sequenceNum, ts, tsDevice, detections);
 };
 
 }  // namespace dai

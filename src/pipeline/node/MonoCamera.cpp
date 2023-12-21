@@ -11,16 +11,11 @@ void MonoCamera::build() {
     properties.fps = 30.0;
 }
 
-MonoCamera::MonoCamera()
-    : NodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>(), rawControl(std::make_shared<RawCameraControl>()), initialControl(rawControl) {}
-
 MonoCamera::MonoCamera(std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>(std::move(props)),
-      rawControl(std::make_shared<RawCameraControl>(properties.initialControl)),
-      initialControl(rawControl) {}
+    : NodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>(std::move(props)){}
 
 MonoCamera::Properties& MonoCamera::getProperties() {
-    properties.initialControl = *rawControl;
+    properties.initialControl = initialControl;
     return properties;
 }
 

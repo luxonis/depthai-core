@@ -7,19 +7,14 @@
 namespace dai {
 namespace node {
 
-ColorCamera::ColorCamera()
-    : NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(), rawControl(std::make_shared<RawCameraControl>()), initialControl(rawControl) {}
-
 ColorCamera::ColorCamera(std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(std::move(props)),
-      rawControl(std::make_shared<RawCameraControl>(properties.initialControl)),
-      initialControl(rawControl) {}
+    : NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(std::move(props)) {}
 
 void ColorCamera::build() {
     // Set some default properties
     properties.boardSocket = CameraBoardSocket::AUTO;
     properties.imageOrientation = CameraImageOrientation::AUTO;
-    properties.previewType = RawImgFrame::Type::BGR888i;
+    properties.previewType = ImgFrame::Type::BGR888i;
     properties.previewHeight = 300;
     properties.previewWidth = 300;
     properties.resolution = ColorCameraProperties::SensorResolution::THE_1080_P;
@@ -28,7 +23,7 @@ void ColorCamera::build() {
 }
 
 ColorCamera::Properties& ColorCamera::getProperties() {
-    properties.initialControl = *rawControl;
+    properties.initialControl = initialControl;
     return properties;
 }
 
@@ -90,7 +85,7 @@ CameraImageOrientation ColorCamera::getImageOrientation() const {
 
 // setColorOrder - RGB or BGR
 void ColorCamera::setColorOrder(ColorCameraProperties::ColorOrder colorOrder) {
-    bool isInterleaved = RawImgFrame::isInterleaved(properties.previewType);
+    bool isInterleaved = ImgFrame::isInterleaved(properties.previewType);
     bool isFp16 = getFp16();
     switch(colorOrder) {
         case ColorCameraProperties::ColorOrder::BGR:
@@ -142,20 +137,20 @@ ColorCameraProperties::ColorOrder ColorCamera::getColorOrder() const {
 
 // setInterleaved
 void ColorCamera::setInterleaved(bool interleaved) {
-    if(RawImgFrame::isInterleaved(properties.previewType)) {
+    if(ImgFrame::isInterleaved(properties.previewType)) {
         if(!interleaved) {
-            properties.previewType = RawImgFrame::toPlanar(properties.previewType);
+            properties.previewType = ImgFrame::toPlanar(properties.previewType);
         }
     } else {
         if(interleaved) {
-            properties.previewType = RawImgFrame::toInterleaved(properties.previewType);
+            properties.previewType = ImgFrame::toInterleaved(properties.previewType);
         }
     }
 }
 
 // getInterleaved
 bool ColorCamera::getInterleaved() const {
-    return RawImgFrame::isInterleaved(properties.previewType);
+    return ImgFrame::isInterleaved(properties.previewType);
 }
 
 /// Set type of preview output image

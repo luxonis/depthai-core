@@ -4,7 +4,7 @@
 #include <depthai/pipeline/node/Pool.hpp>
 
 // shared
-#include <depthai-shared/properties/SystemLoggerProperties.hpp>
+#include <depthai/properties/SystemLoggerProperties.hpp>
 
 namespace dai {
 namespace node {

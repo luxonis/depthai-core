@@ -3,11 +3,10 @@
 #include <depthai/pipeline/datatype/CameraControl.hpp>
 
 #include "depthai/pipeline/DeviceNode.hpp"
-#include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/utility/span.hpp"
 
 // shared
-#include <depthai-shared/properties/CameraProperties.hpp>
+#include <depthai/properties/CameraProperties.hpp>
 
 namespace dai {
 namespace node {
@@ -25,14 +24,11 @@ class Camera : public NodeCRTP<DeviceNode, Camera, CameraProperties> {
    protected:
     Properties& getProperties();
 
-   private:
-    std::shared_ptr<RawCameraControl> rawControl;
-
    public:
     /**
      * Constructs Camera node.
      */
-    Camera();
+    Camera() = default;
     Camera(std::unique_ptr<Properties> props);
 
     /**

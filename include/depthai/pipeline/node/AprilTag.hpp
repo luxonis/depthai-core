@@ -3,7 +3,7 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
-#include <depthai-shared/properties/AprilTagProperties.hpp>
+#include <depthai/properties/AprilTagProperties.hpp>
 
 #include "depthai/pipeline/datatype/AprilTagConfig.hpp"
 
@@ -21,11 +21,8 @@ class AprilTag : public NodeCRTP<DeviceNode, AprilTag, AprilTagProperties> {
    protected:
     Properties& getProperties();
 
-   private:
-    std::shared_ptr<RawAprilTagConfig> rawConfig;
-
    public:
-    AprilTag();
+    AprilTag() = default;
     AprilTag(std::unique_ptr<Properties> props);
 
     /**

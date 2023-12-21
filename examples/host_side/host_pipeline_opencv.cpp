@@ -6,7 +6,7 @@
 #include "depthai/pipeline/node/test/MyProducer.hpp"
 
 // shared
-#include "depthai-shared/properties/XLinkOutProperties.hpp"
+#include "depthai/properties/XLinkOutProperties.hpp"
 
 // project
 #include "depthai/pipeline/ThreadedNode.hpp"

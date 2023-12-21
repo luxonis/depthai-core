@@ -3,7 +3,7 @@
 #include <depthai/pipeline/ThreadedNode.hpp>
 
 // shared
-#include <depthai-shared/properties/XLinkOutProperties.hpp>
+#include <depthai/properties/XLinkOutProperties.hpp>
 
 // project
 #include <depthai/pipeline/datatype/Buffer.hpp>
@@ -20,7 +20,6 @@ class MyConsumer : public NodeCRTP<ThreadedNode, MyConsumer, XLinkOutProperties>
     constexpr static const char* NAME = "MyConsumer";
     void build();
 
-   public:
     /**
      * Input for any type of messages to be transferred over XLink stream
      *
@@ -31,7 +30,7 @@ class MyConsumer : public NodeCRTP<ThreadedNode, MyConsumer, XLinkOutProperties>
     void run() override {
         while(isRunning()) {
             auto msg = input.queue.get<dai::Buffer>();
-            std::cout << "got message (ptr: " << msg.get() << ", raw: " << msg->getRaw().get() << "), data (size: " << msg->data->getData().size() << "): ";
+            std::cout << "got message (ptr: " << msg.get() << ", data (size: " << msg->data->getData().size() << "): ";
 
             for(int b : msg->getData()) {
                 std::cout << b;

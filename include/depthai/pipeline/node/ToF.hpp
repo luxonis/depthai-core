@@ -6,7 +6,7 @@
 #include <fstream>
 
 // shared
-#include <depthai-shared/properties/ToFProperties.hpp>
+#include <depthai/properties/ToFProperties.hpp>
 
 #include "depthai/pipeline/datatype/ToFConfig.hpp"
 
@@ -25,11 +25,8 @@ class ToF : public NodeCRTP<DeviceNode, ToF, ToFProperties> {
    protected:
     Properties& getProperties();
 
-   private:
-    std::shared_ptr<RawToFConfig> rawConfig;
-
    public:
-    ToF();
+    ToF() = default;
     ToF(std::unique_ptr<Properties> props);
 
     /**

@@ -108,7 +108,9 @@ int main(int argc, char** argv) {
         // crop and resize
         cv::Mat resizedFrame = resizeKeepAspectRatio(frame, cv::Size(MODEL_IN_WIDTH, MODEL_IN_HEIGHT), cv::Scalar(0));
 
-        toPlanar(resizedFrame, tensor.getData());
+        std::vector<uint8_t> data;
+        toPlanar(resizedFrame, data);
+        tensor.setData(data);
 
         in->send(tensor);
 

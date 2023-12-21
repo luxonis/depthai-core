@@ -5,15 +5,11 @@
 namespace dai {
 namespace node {
 
-AprilTag::AprilTag() : NodeCRTP<DeviceNode, AprilTag, AprilTagProperties>(), rawConfig(std::make_shared<RawAprilTagConfig>()), initialConfig(rawConfig) {}
-
 AprilTag::AprilTag(std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, AprilTag, AprilTagProperties>(std::move(props)),
-      rawConfig(std::make_shared<RawAprilTagConfig>(properties.initialConfig)),
-      initialConfig(rawConfig) {}
+    : NodeCRTP<DeviceNode, AprilTag, AprilTagProperties>(std::move(props)) {}
 
 AprilTag::Properties& AprilTag::getProperties() {
-    properties.initialConfig = *rawConfig;
+    properties.initialConfig = initialConfig;
     return properties;
 }
 

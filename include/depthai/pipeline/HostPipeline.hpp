@@ -14,9 +14,9 @@
 #include "depthai/openvino/OpenVINO.hpp"
 
 // shared
-#include "depthai-shared/device/BoardConfig.hpp"
-#include "depthai-shared/pipeline/PipelineSchema.hpp"
-#include "depthai-shared/properties/GlobalProperties.hpp"
+#include "depthai/device/BoardConfig.hpp"
+#include "depthai/pipeline/PipelineSchema.hpp"
+#include "depthai/properties/GlobalProperties.hpp"
 
 namespace dai {
 

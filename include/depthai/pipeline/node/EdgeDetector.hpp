@@ -6,7 +6,7 @@
 #include <fstream>
 
 // shared
-#include <depthai-shared/properties/EdgeDetectorProperties.hpp>
+#include <depthai/properties/EdgeDetectorProperties.hpp>
 
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
 
@@ -24,11 +24,8 @@ class EdgeDetector : public NodeCRTP<DeviceNode, EdgeDetector, EdgeDetectorPrope
    protected:
     Properties& getProperties();
 
-   private:
-    std::shared_ptr<RawEdgeDetectorConfig> rawConfig;
-
    public:
-    EdgeDetector();
+    EdgeDetector() = default;
     EdgeDetector(std::unique_ptr<Properties> props);
 
     /**
