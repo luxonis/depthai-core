@@ -24,6 +24,7 @@
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/PointCloudConfig.hpp"
+#include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorData.hpp"
@@ -49,6 +50,7 @@
 #include "depthai-shared/datatype/RawMessageGroup.hpp"
 #include "depthai-shared/datatype/RawNNData.hpp"
 #include "depthai-shared/datatype/RawPointCloudConfig.hpp"
+#include "depthai-shared/datatype/RawPointCloudData.hpp"
 #include "depthai-shared/datatype/RawSpatialImgDetections.hpp"
 #include "depthai-shared/datatype/RawSpatialLocationCalculatorConfig.hpp"
 #include "depthai-shared/datatype/RawSpatialLocations.hpp"
@@ -202,6 +204,9 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::PointCloudConfig:
             return parseDatatype<RawPointCloudConfig>(metadataStart, serializedObjectSize, data);
             break;
+        case DatatypeEnum::PointCloudData:
+            return parseDatatype<RawPointCloudData>(metadataStart, serializedObjectSize, data);
+            break;
         case DatatypeEnum::MessageGroup:
             return parseDatatype<RawMessageGroup>(metadataStart, serializedObjectSize, data);
             break;
@@ -302,6 +307,9 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
             break;
         case DatatypeEnum::PointCloudConfig:
             return std::make_shared<PointCloudConfig>(parseDatatype<RawPointCloudConfig>(metadataStart, serializedObjectSize, data));
+            break;
+        case DatatypeEnum::PointCloudData:
+            return std::make_shared<PointCloudData>(parseDatatype<RawPointCloudData>(metadataStart, serializedObjectSize, data));
             break;
         case DatatypeEnum::MessageGroup:
             return std::make_shared<MessageGroup>(parseDatatype<RawMessageGroup>(metadataStart, serializedObjectSize, data));

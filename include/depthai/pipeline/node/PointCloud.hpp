@@ -49,7 +49,7 @@ class PointCloud : public NodeCRTP<Node, PointCloud, PointCloudProperties> {
     /**
      * Outputs ImgFrame message that carries spatial location results.
      */
-    Output outputPointCloud{*this, "outputPointCloud", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output outputPointCloud{*this, "outputPointCloud", Output::Type::MSender, {{DatatypeEnum::PointCloudData, false}}};
 
     /**
      * Passthrough message on which the calculation was performed.
