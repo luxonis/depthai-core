@@ -1,4 +1,4 @@
-#include "depthai-shared/common/ImgTransformations.hpp"
+#include "common/ImgTransformations.hpp"
 
 #include <assert.h>
 namespace dai {

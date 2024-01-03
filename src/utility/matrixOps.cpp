@@ -1,4 +1,4 @@
-#include "depthai-shared/utility/matrixOps.hpp"
+#include "utility/matrixOps.hpp"
 
 namespace dai {
 namespace matrix {

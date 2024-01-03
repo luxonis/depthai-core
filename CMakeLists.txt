@@ -169,9 +169,12 @@ include(depthaiDependencies)
 # Add threads preference
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 
-# Add depthai-shared, and definitions that it is PC side
-include(${CMAKE_CURRENT_LIST_DIR}/shared/depthai-shared.cmake)
-
+# # Add depthai-shared, and definitions that it is PC side
+# include(${CMAKE_CURRENT_LIST_DIR}/shared/depthai-shared.cmake)
+# TODO Remove shared naming
+set(DEPTHAI_SHARED_3RDPARTY_INCLUDE
+    ${CMAKE_CURRENT_LIST_DIR}/include/3rdparty/
+)
 # Add depthai-bootloader-shared
 include(${CMAKE_CURRENT_LIST_DIR}/shared/depthai-bootloader-shared.cmake)
 
@@ -185,8 +188,6 @@ set(TARGET_CORE_ALIAS core)
 
 # Create core library
 add_library(${TARGET_CORE_NAME}
-    # depthai-shared sources
-    "${DEPTHAI_SHARED_SOURCES}"
     # depthai-bootloader-shared sources
     "${DEPTHAI_BOOTLOADER_SHARED_SOURCES}"
     # sources
@@ -232,8 +233,10 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/test/MyProducer.cpp
     src/pipeline/node/test/MyConsumer.cpp
     src/pipeline/node/UVC.cpp
+    src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
+    src/pipeline/datatype/ImgTransformations.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
     src/pipeline/datatype/CameraControl.cpp
     src/pipeline/datatype/NNData.cpp
@@ -261,6 +264,8 @@ add_library(${TARGET_CORE_NAME}
     src/utility/Environment.cpp
     src/utility/XLinkGlobalProfilingLogger.cpp
     src/utility/Logging.cpp
+    src/utility/Checksum.cpp
+    src/utility/matrixOps.cpp
     src/xlink/XLinkConnection.cpp
     src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp

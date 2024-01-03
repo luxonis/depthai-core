@@ -1,4 +1,4 @@
-#include "depthai-shared/datatype/DatatypeEnum.hpp"
+#include "pipeline/datatype/DatatypeEnum.hpp"
 
 #include <functional>
 #include <type_traits>

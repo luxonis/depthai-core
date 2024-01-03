@@ -1,4 +1,4 @@
-#include "depthai-shared/utility/Checksum.hpp"
+#include "utility/Checksum.hpp"
 
 namespace dai {
 namespace utility {
