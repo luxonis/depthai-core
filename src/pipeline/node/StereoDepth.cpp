@@ -15,8 +15,7 @@ void StereoDepth::build() {
     setDefaultProfilePreset(presetMode);
 }
 
-StereoDepth::StereoDepth(std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties>(std::move(props)) {}
+StereoDepth::StereoDepth(std::unique_ptr<Properties> props) : NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties>(std::move(props)) {}
 
 StereoDepth::Properties& StereoDepth::getProperties() {
     properties.initialConfig = initialConfig;

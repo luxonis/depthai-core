@@ -1,10 +1,10 @@
 #pragma once
-#include <vector>
 #include <memory>
+#include <vector>
 
+#include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/utility/Memory.hpp"
 #include "depthai/utility/VectorMemory.hpp"
-#include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 
 namespace dai {
 

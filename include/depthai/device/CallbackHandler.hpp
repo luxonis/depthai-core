@@ -4,10 +4,9 @@
 #include <functional>
 #include <memory>
 
-
 // project
-#include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
+#include "depthai/xlink/XLinkConnection.hpp"
 
 namespace dai {
 

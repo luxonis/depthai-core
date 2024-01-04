@@ -208,8 +208,6 @@ struct IMUPacket {
 
 DEPTHAI_SERIALIZE_EXT(IMUPacket, acceleroMeter, gyroscope, magneticField, rotationVector);
 
-
-
 /**
  * IMUData message. Carries normalized detection results
  */

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <depthai/pipeline/datatype/AprilTagConfig.hpp>
+
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {

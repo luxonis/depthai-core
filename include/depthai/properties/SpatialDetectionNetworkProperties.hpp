@@ -8,8 +8,8 @@
 // project
 #include "depthai/common/DetectionNetworkType.hpp"
 #include "depthai/common/optional.hpp"
-#include "depthai/properties/Properties.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
+#include "depthai/properties/Properties.hpp"
 
 namespace dai {
 

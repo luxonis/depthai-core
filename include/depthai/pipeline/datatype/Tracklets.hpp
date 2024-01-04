@@ -3,10 +3,10 @@
 #include <ostream>
 #include <vector>
 
-#include "depthai/pipeline/datatype/Buffer.hpp"
-#include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/common/Point3f.hpp"
 #include "depthai/common/Rect.hpp"
+#include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/pipeline/datatype/ImgDetections.hpp"
 
 namespace dai {
 
@@ -54,7 +54,6 @@ struct Tracklet {
     Point3f spatialCoordinates;
     DEPTHAI_SERIALIZE(Tracklet, roi, id, label, age, status, srcImgDetection, spatialCoordinates);
 };
-
 
 /**
  * Tracklets message. Carries object tracking information.

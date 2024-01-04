@@ -3,8 +3,8 @@
 
 #include "depthai/common/Timestamp.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
-#include "depthai/utility/Serialization.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
+#include "depthai/utility/Serialization.hpp"
 #include "depthai/utility/span.hpp"
 
 namespace dai {

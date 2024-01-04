@@ -3,11 +3,10 @@
 #include <unordered_map>
 #include <vector>
 
+#include "depthai/common/Colormap.hpp"
+#include "depthai/common/RotatedRect.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
-#include "depthai/common/RotatedRect.hpp"
-#include "depthai/common/Colormap.hpp"
-
 
 namespace dai {
 
@@ -47,7 +46,8 @@ class ImageManipConfig : public Buffer {
         // Range 0..1 by default. Set 'false' to specify in pixels
         bool normalizedCoords = true;
 
-        DEPTHAI_SERIALIZE(CropConfig, cropRect, cropRotatedRect, enableCenterCropRectangle, cropRatio, widthHeightAspectRatio, enableRotatedRect, normalizedCoords);
+        DEPTHAI_SERIALIZE(
+            CropConfig, cropRect, cropRotatedRect, enableCenterCropRectangle, cropRatio, widthHeightAspectRatio, enableRotatedRect, normalizedCoords);
     };
 
     struct ResizeConfig {
@@ -337,7 +337,7 @@ class ImageManipConfig : public Buffer {
     // when ImageManipProperties.inputConfig.setWaitForMessage(true) is set
     bool reusePreviousImage = false;
     bool skipCurrentImage = false;
-
+    DEPTHAI_SERIALIZE(ImageManipConfig, cropConfig, resizeConfig, formatConfig, enableCrop, enableResize, enableFormat, reusePreviousImage, skipCurrentImage);
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ImageManipConfig;

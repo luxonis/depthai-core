@@ -5,8 +5,7 @@
 namespace dai {
 namespace node {
 
-ToF::ToF(std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, ToF, ToFProperties>(std::move(props)) {}
+ToF::ToF(std::unique_ptr<Properties> props) : NodeCRTP<DeviceNode, ToF, ToFProperties>(std::move(props)) {}
 
 ToF::Properties& ToF::getProperties() {
     properties.initialConfig = initialConfig;

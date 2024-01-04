@@ -1,10 +1,10 @@
 #pragma once
 
+#include <depthai/common/optional.hpp>
 #include <unordered_map>
 #include <vector>
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
-#include <depthai/common/optional.hpp>
 
 namespace dai {
 

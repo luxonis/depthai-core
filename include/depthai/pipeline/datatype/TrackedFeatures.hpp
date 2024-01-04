@@ -2,12 +2,11 @@
 
 #include <vector>
 
-#include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Timestamp.hpp"
+#include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/utility/Serialization.hpp"
-
 
 namespace dai {
 

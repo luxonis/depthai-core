@@ -7,9 +7,9 @@
 #include "depthai/common/ChipTemperature.hpp"
 #include "depthai/common/CpuUsage.hpp"
 #include "depthai/common/MemoryInfo.hpp"
+#include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/utility/Serialization.hpp"
-#include "depthai/pipeline/datatype/Buffer.hpp"
 namespace dai {
 
 /**
@@ -36,7 +36,8 @@ class SystemInformation : public Buffer {
         datatype = DatatypeEnum::SystemInformation;
     };
 
-    DEPTHAI_SERIALIZE(SystemInformation, ddrMemoryUsage, cmxMemoryUsage, leonCssMemoryUsage, leonMssMemoryUsage, leonCssCpuUsage, leonMssCpuUsage, chipTemperature);
+    DEPTHAI_SERIALIZE(
+        SystemInformation, ddrMemoryUsage, cmxMemoryUsage, leonCssMemoryUsage, leonMssMemoryUsage, leonCssCpuUsage, leonMssCpuUsage, chipTemperature);
 };
 
 }  // namespace dai

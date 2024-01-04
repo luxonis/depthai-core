@@ -3,7 +3,6 @@
 #include <unordered_map>
 #include <vector>
 
-
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {
@@ -30,7 +29,6 @@ class AprilTagConfig : public Buffer {
      * @param family AprilTag family
      */
     AprilTagConfig& setFamily(Family family);
-
 
     /**
      * AprilTag family.
@@ -126,7 +124,8 @@ class AprilTagConfig : public Buffer {
      */
     QuadThresholds quadThresholds;
 
-    DEPTHAI_SERIALIZE(AprilTagConfig, sequenceNum, ts, tsDevice, family, quadDecimate, quadSigma, refineEdges, decodeSharpening, maxHammingDistance, quadThresholds);
+    DEPTHAI_SERIALIZE(
+        AprilTagConfig, sequenceNum, ts, tsDevice, family, quadDecimate, quadSigma, refineEdges, decodeSharpening, maxHammingDistance, quadThresholds);
 };
 
 }  // namespace dai

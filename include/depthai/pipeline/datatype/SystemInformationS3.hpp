@@ -5,8 +5,8 @@
 #include "depthai/common/ChipTemperatureS3.hpp"
 #include "depthai/common/CpuUsage.hpp"
 #include "depthai/common/MemoryInfo.hpp"
-#include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/utility/Serialization.hpp"
 namespace dai {
 
@@ -26,7 +26,6 @@ class SystemInformationS3 : public Buffer {
     CpuUsage cpuAvgUsage;
     std::vector<CpuUsage> cpuUsages;
     ChipTemperatureS3 chipTemperature;
-
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);

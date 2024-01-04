@@ -421,7 +421,6 @@ class CameraControl : public Buffer {
         DEPTHAI_SERIALIZE(StrobeConfig, enable, activeLevel, gpioNumber);
     };
 
-
     /**
      * Set a command to capture a still image
      */

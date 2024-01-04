@@ -5,14 +5,14 @@
 #include <vector>
 
 // project
-#include "depthai/config/config.hpp"
 #include "depthai/common/CameraExposureOffset.hpp"
+#include "depthai/config/config.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 // shared
-#include "depthai/common/Rect.hpp"
-#include "depthai/common/ImgTransformations.hpp"
 #include "depthai/common/FrameEvent.hpp"
+#include "depthai/common/ImgTransformations.hpp"
+#include "depthai/common/Rect.hpp"
 
 // optional
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT

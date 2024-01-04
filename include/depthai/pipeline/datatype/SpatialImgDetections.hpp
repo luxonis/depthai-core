@@ -5,9 +5,9 @@
 #include <vector>
 
 #include "depthai/common/Point3f.hpp"
-#include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
+#include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 #include "depthai/utility/Serialization.hpp"
 
 namespace dai {

@@ -1,11 +1,12 @@
 #pragma once
 #include <tl/optional.hpp>
-#include "depthai/common/optional.hpp"
+
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraImageOrientation.hpp"
 #include "depthai/common/CameraSensorType.hpp"
-#include "depthai/properties/Properties.hpp"
+#include "depthai/common/optional.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
+#include "depthai/properties/Properties.hpp"
 
 namespace dai {
 

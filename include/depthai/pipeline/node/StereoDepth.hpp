@@ -3,8 +3,8 @@
 #include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
-#include "depthai/properties/StereoDepthProperties.hpp"
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
+#include "depthai/properties/StereoDepthProperties.hpp"
 
 namespace dai {
 namespace node {

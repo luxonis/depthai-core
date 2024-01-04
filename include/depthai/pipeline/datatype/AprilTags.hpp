@@ -3,8 +3,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/common/Point2f.hpp"
+#include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {
 
@@ -57,8 +57,6 @@ struct AprilTag {
     Point2f bottomLeft;
 };
 DEPTHAI_SERIALIZE_EXT(AprilTag, id, hamming, decisionMargin, topLeft, topRight, bottomRight, bottomLeft);
-
-
 
 /**
  * AprilTags message.

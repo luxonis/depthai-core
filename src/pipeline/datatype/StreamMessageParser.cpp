@@ -34,7 +34,6 @@
 
 // shared
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
-
 #include "depthai/utility/Serialization.hpp"
 #include "utility/VectorMemory.hpp"
 #include "xlink/XLinkStream.hpp"

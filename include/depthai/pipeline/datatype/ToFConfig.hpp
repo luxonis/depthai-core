@@ -8,7 +8,7 @@ namespace dai {
  */
 class ToFConfig : public Buffer {
    public:
-        struct DepthParams {
+    struct DepthParams {
         /**
          * Enable feature maintaining or not.
          */

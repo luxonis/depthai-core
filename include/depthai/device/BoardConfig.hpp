@@ -11,9 +11,9 @@
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/log/LogLevel.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/utility/Serialization.hpp"
 #include "depthai/xlink/XLinkConstants.hpp"
-#include "depthai/pipeline/datatype/ImgFrame.hpp"
 
 namespace dai {
 

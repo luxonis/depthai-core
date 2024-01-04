@@ -3,9 +3,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "depthai/pipeline/datatype/Buffer.hpp"
-#include "depthai/common/Rect.hpp"
 #include "depthai/common/Point3f.hpp"
+#include "depthai/common/Rect.hpp"
+#include "depthai/pipeline/datatype/Buffer.hpp"
 namespace dai {
 
 /**
@@ -59,7 +59,6 @@ struct SpatialLocationCalculatorConfigData {
     std::int32_t stepSize = AUTO;
 };
 DEPTHAI_SERIALIZE_EXT(SpatialLocationCalculatorConfigData, roi, depthThresholds, calculationAlgorithm, stepSize);
-
 
 /**
  * SpatialLocationCalculatorConfig message. Carries ROI (region of interest) and threshold for depth calculation

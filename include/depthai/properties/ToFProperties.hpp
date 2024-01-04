@@ -1,7 +1,7 @@
 #pragma once
 
-#include "depthai/properties/Properties.hpp"
 #include "depthai/pipeline/datatype/ToFConfig.hpp"
+#include "depthai/properties/Properties.hpp"
 
 namespace dai {
 
@@ -12,7 +12,7 @@ struct ToFProperties : PropertiesSerializable<Properties, ToFProperties> {
     /**
      * Initial ToF config
      */
-   ToFConfig initialConfig;
+    ToFConfig initialConfig;
 };
 
 DEPTHAI_SERIALIZE_EXT(ToFProperties, initialConfig);

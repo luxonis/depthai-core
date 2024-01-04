@@ -7,8 +7,7 @@
 namespace dai {
 namespace node {
 
-Camera::Camera(std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, Camera, CameraProperties>(std::move(props)) {}
+Camera::Camera(std::unique_ptr<Properties> props) : NodeCRTP<DeviceNode, Camera, CameraProperties>(std::move(props)) {}
 
 void Camera::build() {
     properties.boardSocket = CameraBoardSocket::AUTO;

@@ -3,8 +3,8 @@
 #include <vector>
 
 #include "depthai/common/optional.hpp"
-#include "depthai/properties/Properties.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
+#include "depthai/properties/Properties.hpp"
 
 namespace dai {
 
