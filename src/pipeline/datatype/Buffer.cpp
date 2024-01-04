@@ -64,7 +64,7 @@ int64_t Buffer::getSequenceNum() const {
 }
 
 void Buffer::setSequenceNum(int64_t sequenceNum) {
-    sequenceNum = sequenceNum;
+    this->sequenceNum = sequenceNum;
 }
 
 }  // namespace dai
