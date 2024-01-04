@@ -45,10 +45,8 @@ class EdgeDetectorConfig : public Buffer {
      */
     EdgeDetectorConfigData getConfigData() const;
 
-   private:
     EdgeDetectorConfigData config;
 
-   public:
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::EdgeDetectorConfig;

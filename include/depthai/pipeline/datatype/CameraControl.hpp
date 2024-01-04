@@ -690,8 +690,8 @@ class CameraControl : public Buffer {
      * Retrieves lens position, range 0..255. Returns -1 if not available
      */
     int getLensPosition() const;
-    private:
-        uint64_t cmdMask = 0;
+
+    uint64_t cmdMask = 0;
 
     AutoFocusMode autoFocusMode = AutoFocusMode::CONTINUOUS_VIDEO;
 
@@ -742,8 +742,8 @@ class CameraControl : public Buffer {
     bool getCommand(Command cmd) const {
         return !!(cmdMask & (1ull << (uint8_t)cmd));
     }
-    public:
-        void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
+
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::CameraControl;
     };

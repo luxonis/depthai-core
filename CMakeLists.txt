@@ -162,6 +162,8 @@ endif()
 
 ### Get and find dependencies
 
+# Specify optional dependencies
+option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" ON)
 # Include project dependencies
 set(DEPTHAI_DEPENDENCY_INCLUDE "" CACHE FILEPATH "Optional cmake file to append to dependency processing, e.g. additional find_package()")
 include(depthaiDependencies)
@@ -461,7 +463,6 @@ target_link_libraries(${TARGET_CORE_NAME}
     PUBLIC
         nlohmann_json::nlohmann_json
         libnop
-        xtensor
         spdlog::spdlog
     INTERFACE
         XLinkPublic
@@ -488,6 +489,12 @@ target_compile_definitions(${TARGET_CORE_NAME}
         # Add depthai-device-kb version
         DEPTHAI_DEVICE_RVC3_VERSION="${DEPTHAI_DEVICE_RVC3_VERSION}"
 )
+
+if(DEPTHAI_XTENSOR_SUPPORT)
+    target_compile_definitions(${TARGET_CORE_NAME} PUBLIC DEPTHAI_XTENSOR_SUPPORT)
+    target_link_libraries(${TARGET_CORE_NAME} PUBLIC xtensor)
+endif()
+
 # Specify available FW
 if(DEPTHAI_ENABLE_DEVICE_FW)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_DEVICE_FW)
@@ -571,7 +578,7 @@ if(DEPTHAI_OPENCV_SUPPORT)
 
         # Specify that we are building target opencv
         target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_TARGET_OPENCV)
-
+        target_compile_definitions(${TARGET_OPENCV_NAME} PUBLIC DEPTHAI_HAVE_OPENCV_SUPPORT)
         # Add public dependency to depthai::core library
         target_link_libraries(${TARGET_OPENCV_NAME} PUBLIC ${TARGET_CORE_NAME})
 
@@ -645,7 +652,6 @@ message(STATUS "BUILD_DATETIME: ${BUILD_DATETIME}, BUILD_COMMIT: ${BUILD_COMMIT}
 
 # Configure build information (version, opencv support)
 configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in" "${CMAKE_CURRENT_LIST_DIR}/include/depthai/build/version.hpp")
-configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/config.hpp.in" "${CMAKE_CURRENT_LIST_DIR}/include/depthai/build/config.hpp")
 
 ########################
 # Export and install

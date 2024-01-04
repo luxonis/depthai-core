@@ -88,9 +88,7 @@ class SpatialLocationCalculatorConfig : public Buffer {
      * @returns Vector of configuration parameters for ROIs (region of interests)
      */
     std::vector<SpatialLocationCalculatorConfigData> getConfigData() const;
-    private:
     std::vector<SpatialLocationCalculatorConfigData> config;
-    public:
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::SpatialLocationCalculatorConfig;

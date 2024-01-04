@@ -325,7 +325,6 @@ class ImageManipConfig : public Buffer {
      */
     Colormap getColormap() const;
 
-   private:
     CropConfig cropConfig;
     ResizeConfig resizeConfig;
     FormatConfig formatConfig;
@@ -339,7 +338,6 @@ class ImageManipConfig : public Buffer {
     bool reusePreviousImage = false;
     bool skipCurrentImage = false;
 
-   public:
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ImageManipConfig;

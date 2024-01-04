@@ -36,6 +36,7 @@
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 
 #include "depthai/utility/Serialization.hpp"
+#include "utility/VectorMemory.hpp"
 #include "xlink/XLinkStream.hpp"
 
 // StreamPacket structure ->  || imgframepixels... , serialized_object, object_type, serialized_object_size ||
@@ -54,9 +55,8 @@ inline std::shared_ptr<T> parseDatatype(std::uint8_t* metadata, size_t size, std
 
     // deserialize
     utility::deserialize(metadata, size, *tmp);
-    // // Move data
-    // tmp->data = std::move(data);
-    (void)data;
+    // Move data - TODO(Morato) change this back to zero copy
+    tmp->data = std::make_shared<dai::VectorMemory>(std::move(data));
 
     return tmp;
 }
@@ -101,14 +101,13 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
 
     // Create corresponding object
     switch(objectType) {
-        // RawBuffer and ADatatype are special cases, since no metadata is actually serialized
+        // ADatatype is a special case, since no metadata is actually serialized
         case DatatypeEnum::ADatatype: {
             auto pBuf = std::make_shared<ADatatype>();
             return pBuf;
         }
         case DatatypeEnum::Buffer: {
-            auto pBuf = std::make_shared<Buffer>();
-            return pBuf;
+            return parseDatatype<Buffer>(metadataStart, serializedObjectSize, data);
             break;
         }
 

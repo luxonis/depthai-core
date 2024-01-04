@@ -5,7 +5,7 @@
 #include <vector>
 
 // project
-#include "depthai/build/config.hpp"
+#include "depthai/config/config.hpp"
 #include "depthai/common/CameraExposureOffset.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 

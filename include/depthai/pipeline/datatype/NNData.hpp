@@ -27,8 +27,10 @@
     #define _ON_DEF ON
     #undef ON
 #endif
-#include "xtensor/xadapt.hpp"
-#include "xtensor/xarray.hpp"
+#ifdef DEPTHAI_XTENSOR_SUPPORT
+    #include "xtensor/xadapt.hpp"
+    #include "xtensor/xarray.hpp"
+#endif
 #if defined(_ON_DEF)
     #define ON _ON_DEF
 #endif
@@ -184,6 +186,7 @@ class NNData : public Buffer {
      */
     span<std::uint8_t> emplaceTensor(TensorInfo& tensor);
 
+#ifdef DEPTHAI_XTENSOR_SUPPORT
     /**
      * Set a layer with datatype FP16. Double values are converted to FP16.
      * @param name Name of the layer
@@ -322,6 +325,7 @@ class NNData : public Buffer {
 
         return {};
     }
+#endif
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::NNData;
