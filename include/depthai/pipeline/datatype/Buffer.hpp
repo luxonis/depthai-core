@@ -68,12 +68,10 @@ class Buffer : public ADatatype {
      */
     void setSequenceNum(int64_t sequenceNum);
 
-
-   protected:
+    // TODO(Morato) // Make this private
     int64_t sequenceNum = 0;  // increments for each message
     Timestamp ts = {};        // generation timestamp, synced to host time
     Timestamp tsDevice = {};  // generation timestamp, direct device monotonic clock
-   public:
     DEPTHAI_SERIALIZE(Buffer, sequenceNum, ts, tsDevice);
 };
 

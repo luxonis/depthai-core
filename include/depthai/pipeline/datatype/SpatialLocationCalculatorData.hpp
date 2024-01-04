@@ -72,10 +72,9 @@ class SpatialLocationCalculatorData : public Buffer {
      * @returns Vector of spatial location data, carrying spatial information (X,Y,Z)
      */
     std::vector<SpatialLocations> getSpatialLocations() const;  // TODO - should we return a copy instead?
-   private:
+    // TODO(Morato) - make this private
     std::vector<SpatialLocations> spatialLocations;
 
-   public:
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::SpatialLocationCalculatorData;
