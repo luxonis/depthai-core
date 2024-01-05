@@ -1,4 +1,5 @@
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
+#include <iostream>
 
 namespace dai {
 
@@ -12,8 +13,9 @@ PointCloudData::PointCloudData() : Buffer(std::make_shared<RawPointCloudData>())
 }
 PointCloudData::PointCloudData(std::shared_ptr<RawPointCloudData> ptr) : Buffer(std::move(ptr)), pcl(*dynamic_cast<RawPointCloudData*>(raw.get())) {
     if (!raw->data.empty()) {
-        auto* dataPtr = (Point3f*)raw->data.data();
-        points.insert(points.end(), dataPtr, dataPtr + raw->data.size() / sizeof(Point3f));
+        auto* dataPtr = (Point3f*)pcl.data.data();
+        points.insert(points.end(), dataPtr, dataPtr + pcl.data.size() / sizeof(Point3f));
+	assert(points.size() == pcl.width * pcl.height);
     }
 }
 

@@ -16,10 +16,3 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr dai::PointCloudData::toPclData() const {
 
 	return cloud;
 }
-void dai::PointCloudData::visualizePcl() const {
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = toPclData();
-
-	pcl::visualization::CloudViewer viewer("Cloud Viewer");
-	viewer.showCloud(cloud);
-	while (!viewer.wasStopped()) {}
-}

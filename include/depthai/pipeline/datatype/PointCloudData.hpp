@@ -182,10 +182,6 @@ class PointCloudData : public Buffer {
      * Converts PointCloudData to pcl::PointCloud<pcl::PointXYZ>
      */
     pcl::PointCloud<pcl::PointXYZ>::Ptr toPclData() const;
-    /**
-     * Visualizes PointCloudData using pcl::visualization::CloudViewer
-     */
-    void visualizePcl() const;
 
     #else
     template <typename... T>
@@ -194,10 +190,6 @@ class PointCloudData : public Buffer {
     };
     template <typename... T>
     void toPclData() const {
-        static_assert(dependent_false<T...>::value, "Library not configured with PCL support");
-    }
-    template <typename... T>
-    void visualizePcl() const {
         static_assert(dependent_false<T...>::value, "Library not configured with PCL support");
     }
     #endif
