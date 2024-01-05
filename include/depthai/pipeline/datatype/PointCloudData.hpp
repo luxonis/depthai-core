@@ -3,9 +3,16 @@
 #include <unordered_map>
 #include <vector>
 
+#include "depthai/build/config.hpp"
 #include "depthai-shared/datatype/RawPointCloudData.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai-shared/common/Point3f.hpp"
+
+// optional
+#ifdef DEPTHAI_HAVE_PCL_SUPPORT
+#include <pcl/point_types.h>
+#include <pcl/visualization/cloud_viewer.h>
+#endif
 
 namespace dai {
 
@@ -169,6 +176,31 @@ class PointCloudData : public Buffer {
 	 * @param val maximal z coordinate in milimeters
      */
     PointCloudData& setMaxZ(float val);
+
+    #ifdef DEPTHAI_HAVE_PCL_SUPPORT
+    /**
+     * Converts PointCloudData to pcl::PointCloud<pcl::PointXYZ>
+     */
+    pcl::PointCloud<pcl::PointXYZ>::Ptr toPclData() const;
+    /**
+     * Visualizes PointCloudData using pcl::visualization::CloudViewer
+     */
+    void visualizePcl() const;
+
+    #else
+    template <typename... T>
+    struct dependent_false {
+        static constexpr bool value = false;
+    };
+    template <typename... T>
+    void toPclData() const {
+        static_assert(dependent_false<T...>::value, "Library not configured with PCL support");
+    }
+    template <typename... T>
+    void visualizePcl() const {
+        static_assert(dependent_false<T...>::value, "Library not configured with PCL support");
+    }
+    #endif
 };
 
 }  // namespace dai
