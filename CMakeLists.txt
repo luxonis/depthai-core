@@ -613,6 +613,24 @@ if(DEPTHAI_PCL_SUPPORT)
 endif()
 
 ########################
+# Combined target
+########################
+set(TARGET_ALL_ALIAS all)
+set(TARGET_ALL_NAME ${PROJECT_NAME}-all)
+if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_HAVE_PCL_SUPPORT)
+    add_library(${TARGET_ALL_NAME} INTERFACE)
+    add_library("${PROJECT_NAME}::${TARGET_ALL_ALIAS}" ALIAS ${TARGET_ALL_NAME})
+    # Specifies name of generated IMPORTED target (set to alias)
+    set_target_properties(${TARGET_ALL_NAME} PROPERTIES EXPORT_NAME ${TARGET_ALL_ALIAS})
+    target_link_libraries(${TARGET_ALL_NAME} INTERFACE ${TARGET_CORE_NAME} ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME})
+
+    # Add to list of targets to export and install
+    list(APPEND targets_to_export ${TARGET_ALL_NAME})
+
+    message(STATUS "OpenCV and PCL found. Combined target enabled")
+endif()
+
+########################
 # Sanitizers
 ########################
 if(DEPTHAI_SANITIZE)
