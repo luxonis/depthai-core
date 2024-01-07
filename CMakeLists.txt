@@ -306,6 +306,7 @@ option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
 option(DEPTHAI_ENABLE_DEVICE_FW "Enable MyriadX Device FW" ON)
 option(DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW "Enable MyriadX Device Bootloader FW" ON)
 option(DEPTHAI_ENABLE_DEVICE_RVC3_FW "Enable RVC3 Device FW" ON)
+option(DEPTHAI_ENABLE_DEVICE_RVC4_FW "Enable RVC4 Device FW" ON)
 
 option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries into library" ON)
 
@@ -316,6 +317,7 @@ set(DEPTHAI_RESOURCES_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/resources")
 include(Depthai/DepthaiDeviceSideConfig)    # Depthai device binary commit/version configuration
 include(Depthai/DepthaiBootloaderConfig)    # Depthai bootloader binary commit/version configuration
 include(Depthai/DepthaiDeviceKbConfig)    # depthai-device-kb fwp commit/version configuration
+include(Depthai/DepthaiDeviceRVC4Config)    # depthai-device-rvc4 fwp commit/version configuration
 
 # Include downloaders
 include(DepthaiDownloader)                  # Depthai device binary downloader
@@ -382,7 +384,10 @@ endif()
 
 if(DEPTHAI_ENABLE_DEVICE_RVC3_FW)
     # Add device-kb FW
-    DepthaiDeviceKbDownload(
+    DepthaiDeviceDownloader(
+        "depthai-device-kb"
+        "luxonis-keembay-snapshot-local"
+        "luxonis-keembay-release-local"
         "${DEPTHAI_SHARED_COMMIT_HASH}" "${DEPTHAI_SHARED_COMMIT_HASH_ENFORCE}"
         "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
         DEPTHAI_DEVICE_KB_RESOURCE_LIST                 # List of output resources
@@ -390,6 +395,21 @@ if(DEPTHAI_ENABLE_DEVICE_RVC3_FW)
         "${DEPTHAI_DEVICE_RVC3_VERSION}"
     )
     list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_DEVICE_KB_RESOURCE_LIST})
+endif()
+
+if(DEPTHAI_ENABLE_DEVICE_RVC4_FW)
+    # Add device-RVC4 FW
+    DepthaiDeviceDownloader(
+        "depthai-device-rvc4"
+        "luxonis-rvc4-snapshot-local"
+        "luxonis-rvc4-release-local"
+        "${DEPTHAI_SHARED_COMMIT_HASH}" "${DEPTHAI_SHARED_COMMIT_HASH_ENFORCE}"
+        "${DEPTHAI_RESOURCES_OUTPUT_DIR}"                # Output folder
+        DEPTHAI_DEVICE_RVC4_RESOURCE_LIST                 # List of output resources
+        "${DEPTHAI_DEVICE_RVC4_MATURITY}"                # Maturity
+        "${DEPTHAI_DEVICE_RVC4_VERSION}"
+    )
+    list(APPEND RESOURCE_COMPILED_FILES ${DEPTHAI_DEVICE_RVC4_RESOURCE_LIST})
 endif()
 
 message(STATUS "LIST OF RESOURCE COMPILED FILES: ${RESOURCE_COMPILED_FILES}")
@@ -482,6 +502,8 @@ target_compile_definitions(${TARGET_CORE_NAME}
         DEPTHAI_BOOTLOADER_VERSION="${DEPTHAI_BOOTLOADER_VERSION}"
         # Add depthai-device-kb version
         DEPTHAI_DEVICE_RVC3_VERSION="${DEPTHAI_DEVICE_RVC3_VERSION}"
+        # Add depthai-device-rvc4 version
+        DEPTHAI_DEVICE_RVC4_VERSION="${DEPTHAI_DEVICE_RVC4_VERSION}"
 )
 # Specify available FW
 if(DEPTHAI_ENABLE_DEVICE_FW)
@@ -492,6 +514,9 @@ if(DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW)
 endif()
 if(DEPTHAI_ENABLE_DEVICE_RVC3_FW)
     target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_DEVICE_RVC3_FW)
+endif()
+if(DEPTHAI_ENABLE_DEVICE_RVC4_FW)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_DEVICE_RVC4_FW)
 endif()
 
 # Add Backward dependency if enabled (On by default)
