@@ -26,6 +26,7 @@ class PointCloudData : public Buffer {
    public:
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
+    using Buffer::getSequenceNum;
 
     std::vector<Point3f> points;
 
