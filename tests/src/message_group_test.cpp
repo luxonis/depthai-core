@@ -61,10 +61,9 @@ TEST_CASE("Send large messages") {
     dai::Device device(pipeline);
     auto q = device.getOutputQueue("out", 8, true);
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    
-    auto msg = q->tryGet();
-    REQUIRE(msg.get() != nullptr);
+    bool hasTimedOut = false;
+    auto msg = q->get(std::chrono::seconds(1), hasTimedOut);
+    REQUIRE(!hasTimedOut);
     
 }
 
