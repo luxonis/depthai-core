@@ -4,6 +4,7 @@
 #include <depthai/pipeline/datatype/Buffer.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
 #include <depthai/pipeline/datatype/MessageGroup.hpp>
+#include "depthai-shared/common/CameraBoardSocket.hpp"
 
 TEST_CASE("Set and get messages") {
     auto buf1Ts = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
@@ -28,6 +29,43 @@ TEST_CASE("Set and get messages") {
     REQUIRE(msgGrp.get<dai::ImgFrame>("img1")->getData() == buf2Data);
     REQUIRE(msgGrp.get<dai::ImgFrame>("img1")->getWidth() == 5);
     REQUIRE(msgGrp.get<dai::ImgFrame>("img1")->getHeight() == 6);
+}
+
+TEST_CASE("Send large messages") {
+    dai::Pipeline pipeline;
+    auto camRgb = pipeline.create<dai::node::ColorCamera>();
+    auto left = pipeline.create<dai::node::MonoCamera>();
+    auto right = pipeline.create<dai::node::MonoCamera>();
+
+    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_A);
+    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_12_MP);
+
+    camRgb->setFps(20);
+
+    left->setResolution(dai::MonoCameraProperties::SensorResolution::THE_800_P);
+    left->setBoardSocket(dai::CameraBoardSocket::CAM_B);
+    left->setFps(20);
+    right->setResolution(dai::MonoCameraProperties::SensorResolution::THE_800_P);
+    right->setBoardSocket(dai::CameraBoardSocket::CAM_C);
+    right->setFps(20);
+
+    auto sync = pipeline.create<dai::node::Sync>();
+    auto xout = pipeline.create<dai::node::XLinkOut>();
+    xout->setStreamName("out");
+
+    sync->out.link(xout->input);
+    camRgb->isp.link(sync->inputs["rgb"]);
+    left->out.link(sync->inputs["left"]);
+    right->out.link(sync->inputs["right"]);
+
+    dai::Device device(pipeline);
+    auto q = device.getOutputQueue("out", 8, true);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    
+    auto msg = q->tryGet();
+    REQUIRE(msg.get() != nullptr);
+    
 }
 
 // TODO(asahtik): Bring back when the [issue](https://github.com/luxonis/depthai-core/issues/929) is fixed
