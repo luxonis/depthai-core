@@ -115,6 +115,14 @@ CameraControl& CameraControl::setAutoExposureCompensation(int compensation) {
     cfg.expCompensation = compensation;
     return *this;
 }
+CameraControl& CameraControl::setAutoExposureLimit(uint32_t maxExposureTimeUs) {
+    cfg.setCommand(RawCameraControl::Command::AE_TARGET_FPS_RANGE);
+    cfg.aeMaxExposureTimeUs = maxExposureTimeUs;
+    return *this;
+}
+CameraControl& CameraControl::setAutoExposureLimit(std::chrono::microseconds maxExposureTime) {
+    return setAutoExposureLimit(maxExposureTime.count());
+}
 CameraControl& CameraControl::setAntiBandingMode(AntiBandingMode mode) {
     cfg.setCommand(RawCameraControl::Command::ANTIBANDING_MODE);
     cfg.antiBandingMode = mode;
@@ -128,8 +136,8 @@ CameraControl& CameraControl::setManualExposure(uint32_t exposureTimeUs, uint32_
     return *this;
 }
 
-void CameraControl::setManualExposure(std::chrono::microseconds exposureTime, uint32_t sensitivityIso) {
-    setManualExposure(exposureTime.count(), sensitivityIso);
+CameraControl& CameraControl::setManualExposure(std::chrono::microseconds exposureTime, uint32_t sensitivityIso) {
+    return setManualExposure(exposureTime.count(), sensitivityIso);
 }
 
 // White Balance

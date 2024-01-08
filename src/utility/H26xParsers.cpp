@@ -247,7 +247,7 @@ void H265Parser::parseNal(buf& bs, uint start, std::vector<SliceType>& out) {
         numExtraSliceHeaderBits = readUint(bs, bpos2, bpos2 + 3);
         bpos2 += 3;
         pos = (uint)(bpos2 / 8) + (bpos2 % 8 > 0);
-    } else if((0 <= nalUnitType && nalUnitType <= 9) || (16 <= nalUnitType && nalUnitType <= 21)) {
+    } else if(nalUnitType <= 9 || (16 <= nalUnitType && nalUnitType <= 21)) {
         // Coded slice segment
         ulong bpos1 = pos * 8;
         uint firstSliceSegmentInPicFlag = readUint(bs, bpos1, bpos1 + 1);
