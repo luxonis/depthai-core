@@ -41,9 +41,11 @@ ImageManipConfig& ImageManipConfig::setCropRotatedRect(RotatedRect rr, bool norm
 ImageManipConfig& ImageManipConfig::setWarpTransformFourPoints(std::vector<Point2f> pt, bool normalizedCoords) {
     // Enable resize stage and extended flags
     enableResize = true;
+    resizeConfig.keepAspectRatio = false;
     resizeConfig.enableWarp4pt = true;
     resizeConfig.warpFourPoints = pt;
     resizeConfig.normalizedCoords = normalizedCoords;
+
     return *this;
 }
 
@@ -227,6 +229,11 @@ ImageManipConfig& ImageManipConfig::setKeepAspectRatio(bool keep) {
     return *this;
 }
 
+ImageManipConfig& ImageManipConfig::setInterpolation(dai::Interpolation interpolation) {
+    this->interpolation = interpolation;
+    return *this;
+}
+
 // Functions to retrieve properties
 float ImageManipConfig::getCropXMin() const {
     return cropConfig.cropRect.xmin;
@@ -279,4 +286,9 @@ bool ImageManipConfig::getSkipCurrentImage() const {
 Colormap ImageManipConfig::getColormap() const {
     return formatConfig.colormap;
 }
+
+dai::Interpolation ImageManipConfig::getInterpolation() const {
+    return interpolation;
+}
+
 }  // namespace dai

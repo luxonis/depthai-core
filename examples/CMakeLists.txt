@@ -83,8 +83,9 @@ function(dai_add_example example_name example_src enable_test)
             set(depthai_dll_libraries "$<TARGET_RUNTIME_DLLS:${example_name}>")
         endif()
         add_custom_command(TARGET ${example_name} POST_BUILD COMMAND
-            ${CMAKE_COMMAND} -E copy_if_different ${depthai_dll_libraries} $<TARGET_FILE_DIR:${example_name}>
+            "$<$<BOOL:${depthai_dll_libraries}>:${CMAKE_COMMAND};-E;copy_if_different;${depthai_dll_libraries};$<TARGET_FILE_DIR:${example_name}>>"
             COMMAND_EXPAND_LISTS
+            VERBATIM
         )
     endif()
 endfunction()
@@ -352,6 +353,7 @@ dai_add_example(script_json_communication Script/script_json_communication.cpp O
 dai_add_example(script_change_pipeline_flow Script/script_change_pipeline_flow.cpp OFF)
 target_compile_definitions(script_change_pipeline_flow PRIVATE BLOB_PATH="${mobilenet_5shaves_blob}")
 dai_add_example(script_get_device_info Script/script_get_device_info.cpp ON)
+dai_add_example(script_read_calibration Script/script_read_calibration.cpp ON)
 
 # SpatialDetection
 dai_add_example(spatial_location_calculator SpatialDetection/spatial_location_calculator.cpp ON)
@@ -415,3 +417,9 @@ target_compile_definitions(tmp_detection_parser_yolo PRIVATE MODEL_XML_PATH="${t
 dai_add_example(tmp_mono tmp/tmp_mono.cpp OFF)
 # DetectionParser
 dai_add_example(crash_report CrashReport/crash_report.cpp OFF)
+
+# Sync
+dai_add_example(sync_scripts Sync/sync_scripts.cpp ON)
+dai_add_example(demux_message_group Sync/demux_message_group.cpp ON)
+dai_add_example(depth_video_synced Sync/depth_video_synced.cpp ON)
+dai_add_example(imu_video_synced Sync/imu_video_synced.cpp ON)

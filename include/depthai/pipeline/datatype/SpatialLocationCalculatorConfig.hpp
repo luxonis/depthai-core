@@ -56,6 +56,11 @@ struct SpatialLocationCalculatorConfigData {
      */
     SpatialLocationCalculatorAlgorithm calculationAlgorithm = SpatialLocationCalculatorAlgorithm::MEDIAN;
 
+    /**
+     * Step size for calculation.
+     * Step size 1 means that every pixel is taken into calculation, size 2 means every second etc.
+     * Default value AUTO: for AVERAGE, MIN, MAX step size is 1; for MODE/MEDIAN it's 2.
+     */
     std::int32_t stepSize = AUTO;
 };
 DEPTHAI_SERIALIZE_EXT(SpatialLocationCalculatorConfigData, roi, depthThresholds, calculationAlgorithm, stepSize);

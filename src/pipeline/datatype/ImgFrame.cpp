@@ -102,11 +102,11 @@ unsigned int ImgFrame::getSourceHeight() const {
 }
 
 ImgFrame& ImgFrame::setInstanceNum(unsigned int instanceNum) {
-    instanceNum = instanceNum;
+    this->instanceNum = instanceNum;
     return *this;
 }
 ImgFrame& ImgFrame::setCategory(unsigned int category) {
-    category = category;
+    this->category = category;
     return *this;
 }
 

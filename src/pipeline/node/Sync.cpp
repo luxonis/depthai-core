@@ -1,12 +1,22 @@
 #include "depthai/pipeline/node/Sync.hpp"
 
-#include "spdlog/fmt/fmt.h"
-
 namespace dai {
 namespace node {
 
-void Sync::setSyncThresholdMs(float thresholdMs) {
-    properties.syncThresholdMs = thresholdMs;
+void Sync::setSyncThreshold(std::chrono::nanoseconds syncThreshold) {
+    properties.syncThresholdNs = syncThreshold.count();
+}
+
+void Sync::setSyncAttempts(int syncAttempts) {
+    properties.syncAttempts = syncAttempts;
+}
+
+std::chrono::nanoseconds Sync::getSyncThreshold() const {
+    return std::chrono::nanoseconds(properties.syncThresholdNs);
+}
+
+int Sync::getSyncAttempts() const {
+    return properties.syncAttempts;
 }
 
 }  // namespace node

@@ -18,13 +18,18 @@ namespace dai {
  */
 struct EepromData {
     uint32_t version = 7;
-    std::string productName, boardCustom, boardName, boardRev, boardConf, hardwareConf, batchName;
+    std::string productName, boardCustom, boardName, boardRev, boardConf, hardwareConf, deviceName;
+    std::string batchName;  /// Deprecated, not used or stored
     uint64_t batchTime{0};
     uint32_t boardOptions{0};
     std::unordered_map<CameraBoardSocket, CameraInfo> cameraData;
     StereoRectification stereoRectificationData;
     Extrinsics imuExtrinsics;
+    Extrinsics housingExtrinsics;
     std::vector<uint8_t> miscellaneousData;
+    bool stereoUseSpecTranslation{true};
+    bool stereoEnableDistortionCorrection{false};
+    CameraBoardSocket verticalCameraSocket = dai::CameraBoardSocket::AUTO;
 };
 
 DEPTHAI_SERIALIZE_OPTIONAL_EXT(EepromData,
@@ -35,12 +40,17 @@ DEPTHAI_SERIALIZE_OPTIONAL_EXT(EepromData,
                                boardConf,
                                hardwareConf,
                                productName,
+                               deviceName,
                                batchName,
                                batchTime,
                                boardOptions,
                                cameraData,
                                stereoRectificationData,
                                imuExtrinsics,
-                               miscellaneousData);
+                               housingExtrinsics,
+                               miscellaneousData,
+                               stereoUseSpecTranslation,
+                               stereoEnableDistortionCorrection,
+                               verticalCameraSocket);
 
 }  // namespace dai

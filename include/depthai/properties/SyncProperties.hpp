@@ -1,28 +1,24 @@
 #pragma once
 
-#include <vector>
-
-#include "depthai/common/optional.hpp"
 #include "depthai/properties/Properties.hpp"
 
 namespace dai {
 
 /**
- * Specify properties for Sync
+ * Specify properties for Sync.
  */
 struct SyncProperties : PropertiesSerializable<Properties, SyncProperties> {
     /**
-     * Optional manual sync threshold.
-     * If not specified default threshold is obtained as:
-     * thresholdMS = 1000.f / (minimum FPS of input frames) / 2
-     * Frame timestamp difference below this threshold are considered synced.
-     * 0 is not recommended in real time system, as frame interrupts are received
-     * at slightly different time, even with perfect hardware sync.
-     * 0 can be used when replaying frames.
+     * The maximal interval the messages can be apart in nanoseconds.
      */
-    tl::optional<float> syncThresholdMs;
+    uint64_t syncThresholdNs = 10e6;
+
+    /**
+     * The number of syncing attempts before fail (num of replaced messages).
+     */
+    int32_t syncAttempts = -1;
 };
 
-DEPTHAI_SERIALIZE_EXT(SyncProperties, syncThresholdMs);
+DEPTHAI_SERIALIZE_EXT(SyncProperties, syncThresholdNs, syncAttempts);
 
 }  // namespace dai

@@ -13,6 +13,7 @@
 #include "datatype/ImageManipConfig.hpp"
 #include "datatype/ImgDetections.hpp"
 #include "datatype/ImgFrame.hpp"
+#include "datatype/MessageGroup.hpp"
 #include "datatype/NNData.hpp"
 #include "datatype/SpatialImgDetections.hpp"
 #include "datatype/SpatialLocationCalculatorConfig.hpp"

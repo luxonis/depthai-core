@@ -175,24 +175,22 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
 
     /**
      * Use baseline information for disparity to depth conversion from specs (design data) or from calibration.
-     * Suitable for debugging.
-     * Default: true
+     * Suitable for debugging. Utilizes calibrated value as default
      */
-    bool disparityToDepthUseSpecTranslation = true;
+    tl::optional<bool> disparityToDepthUseSpecTranslation = tl::nullopt;
 
     /**
      * Obtain rectification matrices using spec translation (design data) or from calibration in calculations.
      * Suitable for debugging.
      * Default: false
      */
-    bool rectificationUseSpecTranslation = false;
+    tl::optional<bool> rectificationUseSpecTranslation = tl::nullopt;
 
     /**
      * Use baseline information for depth alignment from specs (design data) or from calibration.
-     * Suitable for debugging.
-     * Default: true
+     * Suitable for debugging. Utilizes calibrated value as default
      */
-    bool depthAlignmentUseSpecTranslation = true;
+    tl::optional<bool> depthAlignmentUseSpecTranslation = tl::nullopt;
 
     /**
      * Free scaling parameter between 0 (when all the pixels in the undistorted image are valid)

@@ -573,10 +573,48 @@ void CalibrationHandler::setBoardInfo(std::string productName,
     eepromData.boardRev = boardRev;
     eepromData.boardConf = boardConf;
     eepromData.hardwareConf = hardwareConf;
-    eepromData.batchName = batchName;
     eepromData.batchTime = batchTime;
     eepromData.boardCustom = boardCustom;
     eepromData.boardOptions = boardOptions;
+
+    if(batchName != "") {
+        logger::warn("batchName parameter not supported anymore");
+    }
+
+    // Bump version to V7
+    eepromData.version = 7;
+}
+
+void CalibrationHandler::setBoardInfo(std::string deviceName,
+                                      std::string productName,
+                                      std::string boardName,
+                                      std::string boardRev,
+                                      std::string boardConf,
+                                      std::string hardwareConf,
+                                      std::string batchName,
+                                      uint64_t batchTime,
+                                      uint32_t boardOptions,
+                                      std::string boardCustom) {
+    eepromData.productName = productName;
+    eepromData.boardName = boardName;
+    eepromData.boardRev = boardRev;
+    eepromData.boardConf = boardConf;
+    eepromData.hardwareConf = hardwareConf;
+    eepromData.batchTime = batchTime;
+    eepromData.boardCustom = boardCustom;
+    eepromData.boardOptions = boardOptions;
+    eepromData.deviceName = deviceName;
+
+    if(batchName != "") {
+        logger::warn("batchName parameter not supported anymore");
+    }
+
+    // Bump version to V7
+    eepromData.version = 7;
+}
+
+void CalibrationHandler::setDeviceName(std::string deviceName) {
+    eepromData.deviceName = deviceName;
 
     // Bump version to V7
     eepromData.version = 7;

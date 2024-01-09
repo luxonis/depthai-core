@@ -16,11 +16,13 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
+#include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
@@ -114,6 +116,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<ImgFrame>(metadataStart, serializedObjectSize, data);
             break;
 
+        case DatatypeEnum::EncodedFrame:
+            return parseDatatype<EncodedFrame>(metadataStart, serializedObjectSize, data);
+            break;
+
         case DatatypeEnum::NNData:
             return parseDatatype<NNData>(metadataStart, serializedObjectSize, data);
             break;
@@ -187,6 +193,9 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::ToFConfig:
             return parseDatatype<ToFConfig>(metadataStart, serializedObjectSize, data);
             break;
+        case DatatypeEnum::MessageGroup:
+            return parseDatatype<MessageGroup>(metadataStart, serializedObjectSize, data);
+            break;
     }
 
     throw std::runtime_error("Bad packet, couldn't parse");
@@ -203,8 +212,8 @@ std::vector<std::uint8_t> StreamMessageParser::serializeMetadata(const ADatatype
     // 3. append datatype enum (4B LE)
     // 4. append size (4B LE) of serialized metadata
 
-    std::vector<std::uint8_t> metadata;
     DatatypeEnum datatype;
+    std::vector<std::uint8_t> metadata;
     message.serialize(metadata, datatype);
     uint32_t metadataSize = static_cast<uint32_t>(metadata.size());
 

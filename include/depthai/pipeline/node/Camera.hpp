@@ -332,7 +332,7 @@ class Camera : public NodeCRTP<DeviceNode, Camera, CameraProperties> {
     /// Set calibration alpha parameter that determines FOV of undistorted frames
     void setCalibrationAlpha(float alpha);
     /// Get calibration alpha parameter that determines FOV of undistorted frames
-    float getCalibrationAlpha() const;
+    tl::optional<float> getCalibrationAlpha() const;
 
     /**
      * Configures whether the camera `raw` frames are saved as MIPI-packed to memory.

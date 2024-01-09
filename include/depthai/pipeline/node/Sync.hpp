@@ -11,37 +11,48 @@
 namespace dai {
 namespace node {
 
-// TODO(before mainline) - API not supported on RVC2
+// TODO(before mainline) - API not supported on RVC3
 /**
  * @brief Sync node. Performs syncing between image frames
  */
-class Sync : public NodeCRTP<DeviceNode, Sync, SyncProperties> {
+class Sync : public NodeCRTP<Node, Sync, SyncProperties> {
    public:
     constexpr static const char* NAME = "Sync";
-    using NodeCRTP::NodeCRTP;
-
-   public:
-    /**
-     *  Inputs to Sync node. Can be accessed using subscript operator (Eg: inputs['in1'])
-     *  By default inputs are set to blocking with queue size 8
-     */
-    InputMap inputs{true, *this, "inputs", Input(*this, "", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, false}})};
 
     /**
-     * Outputs from Sync node. Can be accessed subscript operator (Eg: outputs['out1'])
+     * A map of inputs
      */
-    OutputMap outputs{true, *this, "outputs", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}})};
+    InputMap inputs{true, *this, "inputs", Input(*this, "", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}})};
 
     /**
-     * Optional manual sync threshold.
-     * If not specified default threshold is obtained as:
-     * thresholdMS = 1000.f / (minimum FPS of input frames) / 2
-     * Frame timestamp difference below this threshold are considered synced.
-     * 0 is not recommended in real time system, as frame interrupts are received
-     * at slightly different time, even with perfect hardware sync.
-     * 0 can be used when replaying frames.
+     * Output message of type MessageGroup
      */
-    void setSyncThresholdMs(float thresholdMs);
+    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::MessageGroup, false}}};
+
+    /**
+     * Set the maximal interval between messages in the group
+     * @param syncThreshold Maximal interval between messages in the group
+     */
+    void setSyncThreshold(std::chrono::nanoseconds syncThreshold);
+
+    /**
+     * Set the number of attempts to get the specified max interval between messages in the group
+     * @param syncAttempts Number of attempts to get the specified max interval between messages in the group:
+     *   - if syncAttempts = 0 then the node sends a message as soon at the group is filled
+     *   - if syncAttempts > 0 then the node will make syncAttemts attempts to synchronize before sending out a message
+     *   - if syncAttempts = -1 (default) then the node will only send a message if successfully synchronized
+     */
+    void setSyncAttempts(int syncAttempts);
+
+    /**
+     * Gets the maximal interval between messages in the group in milliseconds
+     */
+    std::chrono::nanoseconds getSyncThreshold() const;
+
+    /**
+     * Gets the number of sync attempts
+     */
+    int getSyncAttempts() const;
 };
 
 }  // namespace node

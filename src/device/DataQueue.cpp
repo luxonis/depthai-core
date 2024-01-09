@@ -3,10 +3,14 @@
 // std
 #include <chrono>
 #include <iostream>
+#include <memory>
 
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
+#include "depthai/pipeline/datatype/DatatypeEnum.hpp"
+#include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
+#include "pipeline/datatype/MessageGroup.hpp"
 #include "pipeline/datatype/StreamMessageParser.hpp"
 
 // shared
@@ -37,6 +41,20 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                 auto packet = stream.readMove();
                 const auto t1Parse = std::chrono::steady_clock::now();
                 const auto msg = StreamMessageParser::parseMessage(std::move(packet));
+                if(std::dynamic_pointer_cast<MessageGroup>(msg) != nullptr) {
+                    auto msgGrp = std::static_pointer_cast<MessageGroup>(msg);
+                    unsigned int size = msgGrp->getNumMessages();
+                    std::vector<std::shared_ptr<ADatatype>> packets;
+                    packets.reserve(size);
+                    for(unsigned int i = 0; i < size; ++i) {
+                        auto dpacket = stream.readMove();
+                        packets.push_back(StreamMessageParser::parseMessage(&dpacket));
+                    }
+                    // TODO(Morato) bring back message groups
+                    // for(auto& msg : msgGrp->group) {
+                    //     msgGrp->add(msg.first, packets[msg.second.index]);
+                    // }
+                }
                 const auto t2Parse = std::chrono::steady_clock::now();
 
                 // Trace level debugging
@@ -199,7 +217,6 @@ DataInputQueue::DataInputQueue(
                     stream.write(outgoing.metadata);
                 }
                 auto t2 = steady_clock::now();
-
                 // Log
                 if(spdlog::get_level() == spdlog::level::trace) {
                     logger::trace("Sent message to device ({}) - data size: {}, metadata: {}, sending time: {}",
@@ -208,6 +225,41 @@ DataInputQueue::DataInputQueue(
                                   spdlog::to_hex(outgoing.metadata),
                                   duration_cast<microseconds>(t2 - t1));
                 }
+                // TODO Bring back support for MessageGroup
+                //                 if(std::dynamic_pointer_cast<MessageGroup>())
+                //                 // serialize
+                //                 auto t1Parse = std::chrono::steady_clock::now();
+                //                 std::vector<std::vector<uint8_t>> serializedAux;
+                //                 if(data->getType() == DatatypeEnum::MessageGroup) {
+                //                     auto rawMsgGrp = std::dynamic_pointer_cast<RawMessageGroup>(data);
+                //                     serializedAux.reserve(rawMsgGrp->group.size());
+                //                     unsigned int index = 0;
+                //                     for(auto& msg : rawMsgGrp->group) {
+                //                         msg.second.index = index++;
+                //                         serializedAux.push_back(StreamMessageParser::serializeMessage(msg.second.buffer));
+                //                     }
+                //                 }
+                //                 auto serialized = StreamMessageParser::serializeMessage(data);
+                //                 auto t2Parse = std::chrono::steady_clock::now();
+
+                //                 // Trace level debugging
+                //                 if(logger::get_level() == spdlog::level::trace) {
+                //                     std::vector<std::uint8_t> metadata;
+                //                     DatatypeEnum type;
+                //                     data->serialize(metadata, type);
+                //                     logger::trace("Sending message to device ({}) - serialize time: {}, data size: {}, object type: {} object data: {}",
+                //                                   name,
+                //                                   std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
+                //                                   data->data.size(),
+                //                                   type,
+                //                                   spdlog::to_hex(metadata));
+                //                 }
+
+                //                 // Blocking
+                //                 stream.write(serialized);
+                //                 for(auto& msg : serializedAux) {
+                //                     stream.write(msg);
+                // }
 
                 // Increment num packets sent
                 numPacketsSent++;

@@ -151,7 +151,14 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
     WarpMeshSource warpMeshSource = WarpMeshSource::AUTO;
     std::string warpMeshUri = "";
     int warpMeshWidth, warpMeshHeight;
-    float calibAlpha = 1.0f;
+    /**
+     * Free scaling parameter between 0 (when all the pixels in the undistorted image are valid)
+     * and 1 (when all the source image pixels are retained in the undistorted image).
+     * On some high distortion lenses, and/or due to rectification (image rotated) invalid areas may appear even with alpha=0,
+     * in these cases alpha < 0.0 helps removing invalid areas.
+     * See getOptimalNewCameraMatrix from opencv for more details.
+     */
+    tl::optional<float> calibAlpha;
     int warpMeshStepWidth = 32;
     int warpMeshStepHeight = 32;
 

@@ -18,7 +18,7 @@
 #include "BlobFormat.hpp"
 
 // TODO(themarpe)
-//#include <vpu/model/data.hpp>
+// #include <vpu/model/data.hpp>
 
 namespace dai {
 

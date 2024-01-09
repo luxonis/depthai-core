@@ -4,10 +4,10 @@
 #include <vector>
 
 #include "depthai/common/Colormap.hpp"
+#include "depthai/common/Interpolation.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
-
 namespace dai {
 
 /**
@@ -257,6 +257,12 @@ class ImageManipConfig : public Buffer {
      */
     ImageManipConfig& setKeepAspectRatio(bool keep);
 
+    /**
+     * Specify which interpolation method to use
+     * @param interpolation type of interpolation
+     */
+    ImageManipConfig& setInterpolation(dai::Interpolation interpolation);
+
     // Functions to retrieve properties
     /**
      * @returns Top left X coordinate of crop region
@@ -337,11 +343,16 @@ class ImageManipConfig : public Buffer {
     // when ImageManipProperties.inputConfig.setWaitForMessage(true) is set
     bool reusePreviousImage = false;
     bool skipCurrentImage = false;
-    DEPTHAI_SERIALIZE(ImageManipConfig, cropConfig, resizeConfig, formatConfig, enableCrop, enableResize, enableFormat, reusePreviousImage, skipCurrentImage);
+    Interpolation interpolation = Interpolation::AUTO;
+    DEPTHAI_SERIALIZE(
+        ImageManipConfig, cropConfig, resizeConfig, formatConfig, enableCrop, enableResize, enableFormat, reusePreviousImage, skipCurrentImage, interpolation);
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ImageManipConfig;
     };
+
+    /// Retrieve which interpolation method to use
+    dai::Interpolation getInterpolation() const;
 };
 
 }  // namespace dai

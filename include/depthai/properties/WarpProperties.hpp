@@ -1,6 +1,7 @@
 #pragma once
 
 #include "depthai/common/EepromData.hpp"
+#include "depthai/common/Interpolation.hpp"
 #include "depthai/common/optional.hpp"
 #include "depthai/properties/Properties.hpp"
 
@@ -32,8 +33,7 @@ struct WarpProperties : PropertiesSerializable<Properties, WarpProperties> {
     /// Warp HW IDs to use, if empty, use auto/default
     std::vector<int> warpHwIds;
 
-    enum class Interpolation { BILINEAR = 0, BICUBIC = 1, BYPASS = 2 };
-    Interpolation interpolation;
+    Interpolation interpolation = Interpolation::AUTO;
 };
 
 DEPTHAI_SERIALIZE_EXT(WarpProperties, outputWidth, outputHeight, outputFrameSize, numFramesPool, meshWidth, meshHeight, meshUri, warpHwIds, interpolation);

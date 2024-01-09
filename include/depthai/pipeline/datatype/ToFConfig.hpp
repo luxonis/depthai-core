@@ -1,6 +1,7 @@
 #pragma once
+#include "depthai/common/MedianFilter.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
-
+#include "depthai/utility/Serialization.hpp"
 namespace dai {
 
 /**
@@ -32,8 +33,12 @@ class ToFConfig : public Buffer {
         enum class TypeFMod : std::int32_t { F_MOD_ALL, F_MOD_MIN, F_MOD_MAX };
 
         TypeFMod freqModUsed = TypeFMod::F_MOD_MIN;
+        /**
+         * Set kernel size for depth median filtering, or disable
+         */
+        MedianFilter median = MedianFilter::KERNEL_5x5;
 
-        DEPTHAI_SERIALIZE(DepthParams, enable, avgPhaseShuffle, minimumAmplitude, freqModUsed);
+        DEPTHAI_SERIALIZE(DepthParams, enable, avgPhaseShuffle, minimumAmplitude, freqModUsed, median);
     };
 
     DepthParams depthParams;
@@ -48,6 +53,18 @@ class ToFConfig : public Buffer {
     ToFConfig& setFreqModUsed(dai::ToFConfig::DepthParams::TypeFMod fmod);
     ToFConfig& setAvgPhaseShuffle(bool enable);
     ToFConfig& setMinAmplitude(float minamp);
+
+    /**
+     * @param median Set kernel size for median filtering, or disable
+     */
+    ToFConfig& setMedianFilter(MedianFilter median);
+
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
+        metadata = utility::serialize(*this);
+        datatype = DatatypeEnum::ToFConfig;
+    };
+
+    DEPTHAI_SERIALIZE(ToFConfig, depthParams);
 };
 
 }  // namespace dai

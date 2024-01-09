@@ -1,4 +1,7 @@
 #pragma once
+
+#include <chrono>
+#include <unordered_map>
 #include <vector>
 
 #include "depthai/common/Timestamp.hpp"
@@ -39,12 +42,13 @@ class Buffer : public ADatatype {
     void setData(std::vector<std::uint8_t>&& data);
 
     /**
-     * Retrieves message timestamp, synced to host time
+     * Retrieves timestamp related to dai::Clock::now()
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;
 
     /**
-     * Retrieves image timestamp from the device's monotonic clock
+     * Retrieves timestamp directly captured from device's monotonic clock,
+     * not synchronized to host time. Used mostly for debugging
      */
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
 

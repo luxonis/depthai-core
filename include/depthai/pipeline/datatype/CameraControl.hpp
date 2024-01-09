@@ -534,6 +534,22 @@ class CameraControl : public Buffer {
     CameraControl& setAutoExposureCompensation(int compensation);
 
     /**
+     * Set a command to specify the maximum exposure time limit for auto-exposure. By default
+     * the AE algorithm prioritizes increasing exposure over ISO, up to around frame-time
+     * (subject to further limits imposed by anti-banding)
+     * @param maxExposureTimeUs Maximum exposure time in microseconds
+     */
+    CameraControl& setAutoExposureLimit(uint32_t maxExposureTimeUs);
+
+    /**
+     * Set a command to specify the maximum exposure time limit for auto-exposure. By default
+     * the AE algorithm prioritizes increasing exposure over ISO, up to around frame-time
+     * (subject to further limits imposed by anti-banding)
+     * @param maxExposureTime Maximum exposure time
+     */
+    CameraControl& setAutoExposureLimit(std::chrono::microseconds maxExposureTime);
+
+    /**
      * Set a command to specify anti-banding mode. Anti-banding / anti-flicker
      * works in auto-exposure mode, by controlling the exposure time to be applied
      * in multiples of half the mains period, for example in multiple of 10ms
@@ -558,7 +574,7 @@ class CameraControl : public Buffer {
      * @param exposureTime Exposure time
      * @param sensitivityIso Sensitivity as ISO value, usual range 100..1600
      */
-    void setManualExposure(std::chrono::microseconds exposureTime, uint32_t sensitivityIso);
+    CameraControl& setManualExposure(std::chrono::microseconds exposureTime, uint32_t sensitivityIso);
 
     // White Balance
     /**
@@ -667,6 +683,17 @@ class CameraControl : public Buffer {
      * @returns A list of <key, value> pairs as strings
      */
     std::vector<std::pair<std::string, std::string>> getMiscControls();
+    /**
+     * Set a command to specify control mode
+     * @param mode Control mode
+     */
+    CameraControl& setControlMode(ControlMode mode);
+
+    /**
+     * Set a command to specify capture intent mode
+     * @param mode Capture intent mode
+     */
+    CameraControl& setCaptureIntent(CaptureIntent mode);
 
     // Functions to retrieve properties
     /**
@@ -709,10 +736,13 @@ class CameraControl : public Buffer {
     AutoWhiteBalanceMode awbMode;
     SceneMode sceneMode;
     AntiBandingMode antiBandingMode;
+    CaptureIntent captureIntent;
+    ControlMode controlMode;
     EffectMode effectMode;
     FrameSyncMode frameSyncMode;
     StrobeConfig strobeConfig;
     StrobeTimings strobeTimings;
+    uint32_t aeMaxExposureTimeUs;
     bool aeLockMode;
     bool awbLockMode;
     int8_t expCompensation;  //  -9 ..  9
@@ -761,10 +791,13 @@ class CameraControl : public Buffer {
                       antiBandingMode,
                       aeLockMode,
                       awbLockMode,
+                      captureIntent,
+                      controlMode,
                       effectMode,
                       frameSyncMode,
                       strobeConfig,
                       strobeTimings,
+                      aeMaxExposureTimeUs,
                       expCompensation,
                       brightness,
                       contrast,
