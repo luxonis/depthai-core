@@ -296,7 +296,7 @@ bool Node::isSourceNode() const  {
     return false;
 }
 
-std::string Node::getNodeRecordName() const {
+NodeRecordParams Node::getNodeRecordParams() const {
     throw std::runtime_error("getNodeRecordName is not implemented for non-source nodes.");
 }
 

@@ -14,7 +14,7 @@ namespace node {
 class IMU : public NodeCRTP<Node, IMU, IMUProperties> {
    protected:
     bool isSourceNode() const override;
-    std::string getNodeRecordName() const override;
+    NodeRecordParams getNodeRecordParams() const override;
     Output& getRecordOutput() override;
     Input& getReplayInput() override;
 

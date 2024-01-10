@@ -23,6 +23,11 @@ namespace dai {
 class Pipeline;
 class PipelineImpl;
 
+struct NodeRecordParams {
+    std::string name;
+    bool isVideo;
+};
+
 /**
  * @brief Abstract Node
  */
@@ -59,7 +64,7 @@ class Node {
     void setInputMapRefs(InputMap* inMapRef);
 
     virtual bool isSourceNode() const;
-    virtual std::string getNodeRecordName() const;
+    virtual NodeRecordParams getNodeRecordParams() const;
     virtual Output& getRecordOutput();
     virtual Input& getReplayInput();
 

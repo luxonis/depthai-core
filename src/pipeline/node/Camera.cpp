@@ -285,11 +285,14 @@ bool Camera::isSourceNode() const {
     return true;
 }
 
-std::string Camera::getNodeRecordName() const {
+NodeRecordParams Camera::getNodeRecordParams() const {
     if (properties.boardSocket == CameraBoardSocket::AUTO) {
         throw std::runtime_error("For record and replay functionality, board socket must be specified (Camera).");
     }
-    return "Camera" + toString(properties.boardSocket);
+    return NodeRecordParams {
+        "Camera" + toString(properties.boardSocket),
+        true
+    };
 }
 
 Camera::Output& Camera::getRecordOutput() {

@@ -24,7 +24,7 @@ class MonoCamera : public NodeCRTP<Node, MonoCamera, MonoCameraProperties> {
    protected:
     Properties& getProperties();
     bool isSourceNode() const override;
-    std::string getNodeRecordName() const override;
+    NodeRecordParams getNodeRecordParams() const override;
     Output& getRecordOutput() override;
     Input& getReplayInput() override;
 

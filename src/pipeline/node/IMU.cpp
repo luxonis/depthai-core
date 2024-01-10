@@ -61,8 +61,11 @@ bool IMU::isSourceNode() const {
     return true;
 }
 
-std::string IMU::getNodeRecordName() const {
-    return "IMU";
+NodeRecordParams IMU::getNodeRecordParams() const {
+    return NodeRecordParams {
+        "IMU",
+        false
+    };
 }
 
 IMU::Output& IMU::getRecordOutput() {

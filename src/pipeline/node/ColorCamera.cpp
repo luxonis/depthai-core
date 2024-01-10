@@ -561,11 +561,14 @@ bool ColorCamera::isSourceNode() const {
     return true;
 }
 
-std::string ColorCamera::getNodeRecordName() const {
+NodeRecordParams ColorCamera::getNodeRecordParams() const {
     if (properties.boardSocket == CameraBoardSocket::AUTO) {
         throw std::runtime_error("For record and replay functionality, board socket must be specified (ColorCamera).");
     }
-    return "ColorCamera" + toString(properties.boardSocket);
+    return NodeRecordParams {
+        "ColorCamera" + toString(properties.boardSocket),
+        true
+    };
 }
 
 ColorCamera::Output& ColorCamera::getRecordOutput() {
