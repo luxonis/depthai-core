@@ -12,6 +12,12 @@ namespace node {
  * @brief IMU node for BNO08X.
  */
 class IMU : public NodeCRTP<Node, IMU, IMUProperties> {
+   protected:
+    bool isSourceNode() const override;
+    std::string getNodeRecordName() const override;
+    Output& getRecordOutput() override;
+    Input& getReplayInput() override;
+
    public:
     constexpr static const char* NAME = "IMU";
 

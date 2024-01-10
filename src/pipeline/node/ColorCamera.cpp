@@ -1,4 +1,5 @@
 #include "depthai/pipeline/node/ColorCamera.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
 
 #include <cmath>
 
@@ -554,6 +555,25 @@ int ColorCamera::getIspNumFramesPool() {
 
 void ColorCamera::setRawOutputPacked(bool packed) {
     properties.rawPacked = packed;
+}
+
+bool ColorCamera::isSourceNode() const {
+    return true;
+}
+
+std::string ColorCamera::getNodeRecordName() const {
+    if (properties.boardSocket == CameraBoardSocket::AUTO) {
+        throw std::runtime_error("For record and replay functionality, board socket must be specified (ColorCamera).");
+    }
+    return "ColorCamera" + toString(properties.boardSocket);
+}
+
+ColorCamera::Output& ColorCamera::getRecordOutput() {
+    return isp;
+}
+ColorCamera::Input& ColorCamera::getReplayInput() {
+    throw std::runtime_error("Not yet implemented");
+    // return mockIsp;
 }
 
 }  // namespace node

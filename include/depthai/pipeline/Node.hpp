@@ -29,6 +29,7 @@ class PipelineImpl;
 class Node {
     friend class Pipeline;
     friend class PipelineImpl;
+    friend class Device;
 
    public:
     /// Node identificator. Unique for every node on a single Pipeline
@@ -56,6 +57,11 @@ class Node {
     void setOutputMapRefs(OutputMap* outMapRef);
     void setInputMapRefs(std::initializer_list<InputMap*> l);
     void setInputMapRefs(InputMap* inMapRef);
+
+    virtual bool isSourceNode() const;
+    virtual std::string getNodeRecordName() const;
+    virtual Output& getRecordOutput();
+    virtual Input& getReplayInput();
 
    public:
     struct DatatypeHierarchy {

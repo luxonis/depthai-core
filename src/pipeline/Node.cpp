@@ -1,4 +1,5 @@
 #include "depthai/pipeline/Node.hpp"
+#include <stdexcept>
 
 #include "depthai/pipeline/Pipeline.hpp"
 #include "spdlog/fmt/fmt.h"
@@ -289,6 +290,22 @@ void Node::setInputMapRefs(std::initializer_list<Node::InputMap*> l) {
 }
 void Node::setInputMapRefs(Node::InputMap* inMapRef) {
     inputMapRefs[inMapRef->name] = inMapRef;
+}
+
+bool Node::isSourceNode() const  {
+    return false;
+}
+
+std::string Node::getNodeRecordName() const {
+    throw std::runtime_error("getNodeRecordName is not implemented for non-source nodes.");
+}
+
+Node::Output& Node::getRecordOutput() {
+    throw std::runtime_error("getRecordOutput is not implemented for non-source nodes.");
+}
+
+Node::Input& Node::getReplayInput() {
+    throw std::runtime_error("getReplayInput is not implemented for non-source nodes.");
 }
 
 }  // namespace dai

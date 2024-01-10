@@ -19,6 +19,10 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
 
    protected:
     Properties& getProperties();
+    bool isSourceNode() const override;
+    std::string getNodeRecordName() const override;
+    Output& getRecordOutput() override;
+    Input& getReplayInput() override;
 
    private:
     std::shared_ptr<RawCameraControl> rawControl;

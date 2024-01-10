@@ -1,8 +1,10 @@
 #include "depthai/pipeline/node/Camera.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
 
 // std
 #include <cmath>
 #include <fstream>
+#include <stdexcept>
 
 // libraries
 #include "spdlog/fmt/fmt.h"
@@ -277,6 +279,25 @@ tl::optional<float> Camera::getCalibrationAlpha() const {
 
 void Camera::setRawOutputPacked(bool packed) {
     properties.rawPacked = packed;
+}
+
+bool Camera::isSourceNode() const {
+    return true;
+}
+
+std::string Camera::getNodeRecordName() const {
+    if (properties.boardSocket == CameraBoardSocket::AUTO) {
+        throw std::runtime_error("For record and replay functionality, board socket must be specified (Camera).");
+    }
+    return "Camera" + toString(properties.boardSocket);
+}
+
+Camera::Output& Camera::getRecordOutput() {
+    return isp;
+}
+Camera::Input& Camera::getReplayInput() {
+    throw std::runtime_error("Not yet implemented");
+    // return mockIsp;
 }
 
 }  // namespace node

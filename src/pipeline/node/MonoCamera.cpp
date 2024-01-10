@@ -1,4 +1,5 @@
 #include "depthai/pipeline/node/MonoCamera.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
 
 #include "spdlog/fmt/fmt.h"
 
@@ -162,6 +163,25 @@ int MonoCamera::getRawNumFramesPool() const {
 
 void MonoCamera::setRawOutputPacked(bool packed) {
     properties.rawPacked = packed;
+}
+
+bool MonoCamera::isSourceNode() const {
+    return true;
+}
+
+std::string MonoCamera::getNodeRecordName() const {
+    if (properties.boardSocket == CameraBoardSocket::AUTO) {
+        throw std::runtime_error("For record and replay functionality, board socket must be specified (MonoCamera).");
+    }
+    return "MonoCamera" + toString(properties.boardSocket);
+}
+
+MonoCamera::Output& MonoCamera::getRecordOutput() {
+    return out;
+}
+MonoCamera::Input& MonoCamera::getReplayInput() {
+    throw std::runtime_error("Not yet implemented");
+    // return mockOut;
 }
 
 }  // namespace node

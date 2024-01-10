@@ -11,6 +11,7 @@
 #include "Node.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/device/Device.hpp"
+#include "depthai/device/DeviceBase.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 
 // shared
@@ -23,6 +24,11 @@ namespace dai {
 class PipelineImpl {
     friend class Pipeline;
     friend class Node;
+
+   protected:
+    enum class RecordAndReplay {NONE, RECORD, REPLAY};
+    RecordAndReplay recordAndReplay = RecordAndReplay::NONE;
+    std::string recordAndReplayPath;
 
    public:
     PipelineImpl() = default;
@@ -51,6 +57,7 @@ class PipelineImpl {
     std::vector<std::shared_ptr<Node>> getAllNodes();
     std::shared_ptr<const Node> getNode(Node::Id id) const;
     std::shared_ptr<Node> getNode(Node::Id id);
+    std::vector<std::shared_ptr<Node>> getSourceNodes();
 
     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
     nlohmann::json serializeToJson() const;
@@ -98,12 +105,19 @@ class PipelineImpl {
  * @brief Represents the pipeline, set of nodes and connections between them
  */
 class Pipeline {
+    friend class Device;
+
     std::shared_ptr<PipelineImpl> pimpl;
     PipelineImpl* impl() {
         return pimpl.get();
     }
     const PipelineImpl* impl() const {
         return pimpl.get();
+    }
+
+   protected:
+    std::vector<std::shared_ptr<Node>> getSourceNodes() {
+        return impl()->getSourceNodes();
     }
 
    public:

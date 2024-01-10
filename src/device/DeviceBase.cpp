@@ -1500,4 +1500,9 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
 
     return true;
 }
+
+spdlog::logger& DeviceBase::getLogger() {
+    return pimpl->logger;
+}
+
 }  // namespace dai

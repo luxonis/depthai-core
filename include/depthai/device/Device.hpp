@@ -8,12 +8,27 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <utility>
+#include <fstream>
 
 // project
 #include "DataQueue.hpp"
 #include "depthai/device/DeviceBase.hpp"
 
 namespace dai {
+
+
+namespace rr {
+struct RecordStream {
+    dai::Path path;
+    std::shared_ptr<DataOutputQueue> queue;
+    std::ofstream file;
+    std::unique_ptr<std::thread> thread;
+    std::atomic<bool> running {false};
+};
+}
+
+
 /**
  * Represents the DepthAI device with the methods to interact with it.
  * Implements the host-side queues to connect with XLinkIn and XLinkOut nodes
@@ -221,6 +236,12 @@ class Device : public DeviceBase {
     std::mutex eventMtx;
     std::condition_variable eventCv;
     std::deque<std::string> eventQueue;
+
+    // Record & Replay
+    enum class RecordReplayState { NONE, RECORD, REPLAY };
+
+    RecordReplayState recordReplayState = RecordReplayState::NONE;
+    std::unordered_map<std::string, rr::RecordStream> recordStreams;
 
     bool startPipelineImpl(const Pipeline& pipeline) override;
     void closeImpl() override;
