@@ -1,4 +1,5 @@
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
+
 #include <iostream>
 
 namespace dai {
@@ -12,10 +13,10 @@ PointCloudData::PointCloudData() : Buffer(std::make_shared<RawPointCloudData>())
     setTimestamp(std::chrono::steady_clock::now());
 }
 PointCloudData::PointCloudData(std::shared_ptr<RawPointCloudData> ptr) : Buffer(std::move(ptr)), pcl(*dynamic_cast<RawPointCloudData*>(raw.get())) {
-    if (!raw->data.empty()) {
+    if(!raw->data.empty()) {
         auto* dataPtr = (Point3f*)pcl.data.data();
         points.insert(points.end(), dataPtr, dataPtr + pcl.data.size() / sizeof(Point3f));
-	assert(points.size() == pcl.width * pcl.height);
+        assert(points.size() == pcl.width * pcl.height);
     }
 }
 
@@ -81,28 +82,28 @@ PointCloudData& PointCloudData::setSize(std::tuple<unsigned int, unsigned int> s
     return *this;
 }
 PointCloudData& PointCloudData::setMinX(float val) {
-	pcl.minx = val;
-	return *this;
+    pcl.minx = val;
+    return *this;
 }
 PointCloudData& PointCloudData::setMinY(float val) {
-	pcl.miny = val;
-	return *this;
+    pcl.miny = val;
+    return *this;
 }
 PointCloudData& PointCloudData::setMinZ(float val) {
-	pcl.minz = val;
-	return *this;
+    pcl.minz = val;
+    return *this;
 }
 PointCloudData& PointCloudData::setMaxX(float val) {
-	pcl.maxx = val;
-	return *this;
+    pcl.maxx = val;
+    return *this;
 }
 PointCloudData& PointCloudData::setMaxY(float val) {
-	pcl.maxy = val;
-	return *this;
+    pcl.maxy = val;
+    return *this;
 }
 PointCloudData& PointCloudData::setMaxZ(float val) {
-	pcl.maxz = val;
-	return *this;
+    pcl.maxz = val;
+    return *this;
 }
 
 static_assert(sizeof(Point3f) == 12, "Point3f size must be 12 bytes");

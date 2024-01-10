@@ -3,15 +3,15 @@
 #include <unordered_map>
 #include <vector>
 
-#include "depthai/build/config.hpp"
-#include "depthai-shared/datatype/RawPointCloudData.hpp"
-#include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai-shared/common/Point3f.hpp"
+#include "depthai-shared/datatype/RawPointCloudData.hpp"
+#include "depthai/build/config.hpp"
+#include "depthai/pipeline/datatype/Buffer.hpp"
 
 // optional
 #ifdef DEPTHAI_HAVE_PCL_SUPPORT
-#include <pcl/point_types.h>
-#include <pcl/visualization/cloud_viewer.h>
+    #include <pcl/point_types.h>
+    #include <pcl/visualization/cloud_viewer.h>
 #endif
 
 namespace dai {
@@ -24,9 +24,9 @@ class PointCloudData : public Buffer {
     RawPointCloudData& pcl;
 
    public:
+    using Buffer::getSequenceNum;
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
-    using Buffer::getSequenceNum;
 
     std::vector<Point3f> points;
 
@@ -51,7 +51,7 @@ class PointCloudData : public Buffer {
      * Retrieves image height in pixels
      */
     unsigned int getHeight() const;
-      
+
     /**
      * Retrieves minimal x coordinate in milimeters
      */
@@ -138,53 +138,53 @@ class PointCloudData : public Buffer {
 
     /**
      * Specifies minimal x coordinate in milimeters
-	 * 
-	 * @param val minimal x coordinate in milimeters
+     *
+     * @param val minimal x coordinate in milimeters
      */
     PointCloudData& setMinX(float val);
 
     /**
      * Specifies minimal y coordinate in milimeters
-	 * 
-	 * @param val minimal y coordinate in milimeters
+     *
+     * @param val minimal y coordinate in milimeters
      */
     PointCloudData& setMinY(float val);
 
     /**
      * Specifies minimal z coordinate in milimeters
-	 * 
-	 * @param val minimal z coordinate in milimeters
+     *
+     * @param val minimal z coordinate in milimeters
      */
     PointCloudData& setMinZ(float val);
 
     /**
      * Specifies maximal x coordinate in milimeters
-	 * 
-	 * @param val maximal x coordinate in milimeters
+     *
+     * @param val maximal x coordinate in milimeters
      */
     PointCloudData& setMaxX(float val);
 
     /**
      * Specifies maximal y coordinate in milimeters
-	 * 
-	 * @param val maximal y coordinate in milimeters
+     *
+     * @param val maximal y coordinate in milimeters
      */
     PointCloudData& setMaxY(float val);
 
     /**
      * Specifies maximal z coordinate in milimeters
-	 * 
-	 * @param val maximal z coordinate in milimeters
+     *
+     * @param val maximal z coordinate in milimeters
      */
     PointCloudData& setMaxZ(float val);
 
-    #ifdef DEPTHAI_HAVE_PCL_SUPPORT
+#ifdef DEPTHAI_HAVE_PCL_SUPPORT
     /**
      * Converts PointCloudData to pcl::PointCloud<pcl::PointXYZ>
      */
     pcl::PointCloud<pcl::PointXYZ>::Ptr toPclData() const;
 
-    #else
+#else
     template <typename... T>
     struct dependent_false {
         static constexpr bool value = false;
@@ -193,7 +193,7 @@ class PointCloudData : public Buffer {
     void toPclData() const {
         static_assert(dependent_false<T...>::value, "Library not configured with PCL support");
     }
-    #endif
+#endif
 };
 
 }  // namespace dai
