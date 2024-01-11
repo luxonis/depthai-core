@@ -8,8 +8,6 @@ using Profile = dai::VideoEncoderProperties::Profile;
 namespace dai {
 namespace utility {
 
-enum class RecordEncoding { DEFLATE };
-
 struct RecordConfig {
     struct VideoEncoding {
         bool enabled = false;
@@ -20,7 +18,7 @@ struct RecordConfig {
     };
     struct ByteEncoding {
         bool enabled = true;
-        RecordEncoding algorithm = RecordEncoding::DEFLATE;
+        int compressionLevel = 6;
     };
 
     std::string outputDir;
@@ -56,13 +54,7 @@ void to_json(json& j, const dai::utility::RecordConfig::VideoEncoding& p) {  // 
     j = json{{"enabled", p.enabled}, {"bitrate", p.bitrate}, {"profile", profile}, {"lossless", p.lossless}, {"quality", p.quality}};
 }
 void to_json(json& j, const dai::utility::RecordConfig::ByteEncoding& p) {  // NOLINT
-    std::string algorithm;
-    switch(p.algorithm) {
-        case dai::utility::RecordEncoding::DEFLATE:
-            algorithm = "DEFLATE";
-            break;
-    }
-    j = json{{{"enabled", p.enabled}, {"algorithm", algorithm}}};
+    j = json{{{"enabled", p.enabled}, {"compressionLevel", p.compressionLevel}}};
 }
 void to_json(json& j, const dai::utility::RecordConfig& p) {  // NOLINT
     j = json{{"outputDir", p.outputDir}, {"videoEncoding", p.videoEncoding}, {"byteEncoding", p.byteEncoding}};
@@ -93,13 +85,8 @@ void from_json(const json& j, dai::utility::RecordConfig::VideoEncoding& p) {  /
 void from_json(const json& j, dai::utility::RecordConfig::ByteEncoding& p) {  // NOLINT
     std::string algorithm;
     j.at("enabled").get_to(p.enabled);
-    j.at("algorithm").get_to(algorithm);
-    std::transform(algorithm.begin(), algorithm.end(), algorithm.begin(), ::tolower);
-
-    p.algorithm = dai::utility::RecordEncoding::DEFLATE;
-    if(algorithm == "deflate") {
-        p.algorithm = dai::utility::RecordEncoding::DEFLATE;
-    }
+    j.at("compressionLevel").get_to(p.compressionLevel);
+    p.compressionLevel = std::max(0, std::min(9, p.compressionLevel));
 }
 void from_json(const json& j, dai::utility::RecordConfig& p) {  // NOLINT
     j.at("outputDir").get_to(p.outputDir);

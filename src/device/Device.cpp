@@ -17,11 +17,12 @@
 #include "pipeline/Pipeline.hpp"
 #include "pipeline/datatype/StreamMessageParser.hpp"
 #include "pipeline/node/VideoEncoder.hpp"
-#include "utility/Initialization.hpp"
-#include "utility/Resources.hpp"
+#include "utility/Compression.hpp"
 #include "utility/Environment.hpp"
+#include "utility/Initialization.hpp"
 #include "utility/Platform.hpp"
 #include "utility/RecordConfig.hpp"
+#include "utility/Resources.hpp"
 
 namespace dai {
 
@@ -274,13 +275,13 @@ bool checkRecordConfig(std::string& recordPath, utility::RecordConfig& config, s
         logger.warn("DEPTHAI_RECORD path does not exist or is invalid. Record disabled.");
         return false;
     }
-    if (platform::checkPathExists(recordPath, true)) {
+    if(platform::checkPathExists(recordPath, true)) {
         // Is a directory
         config.outputDir = recordPath;
     } else {
         // Is a file
         std::string ext = recordPath.substr(recordPath.find_last_of('.') + 1);
-        if (ext != "json") {
+        if(ext != "json") {
             logger.warn("DEPTHAI_RECORD path is not a directory or a json file. Record disabled.");
             return false;
         }
@@ -289,27 +290,27 @@ bool checkRecordConfig(std::string& recordPath, utility::RecordConfig& config, s
             json j = json::parse(file);
             config = j.get<utility::RecordConfig>();
 
-            if (platform::checkPathExists(config.outputDir, true)) {
+            if(platform::checkPathExists(config.outputDir, true)) {
                 // Is a directory
                 recordPath = config.outputDir;
             } else {
                 logger.warn("DEPTHAI_RECORD outputDir is not a directory. Record disabled.");
                 return false;
             }
-        } catch (const std::exception& e) {
+        } catch(const std::exception& e) {
             logger.warn("Error while processing DEPTHAI_RECORD json file: {}. Record disabled.", e.what());
             return false;
         }
     }
     return true;
-} 
+}
 
 void recordStream(rr::RecordStream* recordStream, spdlog::logger* logger) {
     while(recordStream->running) {
         std::shared_ptr<ADatatype> data = nullptr;
         try {
             data = recordStream->queue->get();
-        } catch (std::exception& e) {
+        } catch(std::exception& e) {
             // Queue closed / error
             logger->warn("Record stopped: {}", e.what());
         }
@@ -320,9 +321,12 @@ void recordStream(rr::RecordStream* recordStream, spdlog::logger* logger) {
         }
         try {
             auto serialized = StreamMessageParser::serializeMessage(data);
-            recordStream->file.write((char*)serialized.data(), serialized.size());
+            auto compressed = recordStream->compressionLevel > 0 ? utility::deflate(serialized, recordStream->compressionLevel) : serialized;
+            auto size = compressed.size();
+            recordStream->file.write((char*)&size, sizeof(compressed.size()));
+            recordStream->file.write((char*)compressed.data(), compressed.size());
             // TODO(asahtik): optimize written bytes - only write metadata when changed, compression, ...
-        } catch (std::exception& e) {
+        } catch(std::exception& e) {
             recordStream->running = false;
             logger->warn("Record stopped: {}", e.what());
             break;
@@ -340,24 +344,25 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
 
     Pipeline pipelineCopy = pipeline;
 
-    if (!recordPath.empty() && !replayPath.empty()) {
+    if(!recordPath.empty() && !replayPath.empty()) {
         getLogger().warn("Both DEPTHAI_RECORD and DEPTHAI_REPLAY are set. Record and replay disabled.");
-    } else if (!recordPath.empty()) {
+    } else if(!recordPath.empty()) {
         utility::RecordConfig config;
-        if (checkRecordConfig(recordPath, config, getLogger())) {
-            if (platform::checkWritePermissions(recordPath)) {
+        if(checkRecordConfig(recordPath, config, getLogger())) {
+            if(platform::checkWritePermissions(recordPath)) {
                 recordReplayState = RecordReplayState::RECORD;
                 auto sources = pipelineCopy.getSourceNodes();
                 std::string mxId = getMxId();
-                for (auto& node : sources) {
-                    try {
+                try {
+                    for(auto& node : sources) {
                         NodeRecordParams nodeParams = node->getNodeRecordParams();
                         std::string nodeName = nodeParams.name;
                         recordStreams[nodeName].path = Path(platform::joinPaths(recordPath, mxId.append("_").append(nodeName).append(".dai.rec")));
+                        recordStreams[nodeName].compressionLevel = config.byteEncoding.enabled ? config.byteEncoding.compressionLevel : 0;
                         auto xout = pipelineCopy.create<dai::node::XLinkOut>();
                         xout->setStreamName(nodeName);
-                        if (nodeParams.isVideo) {
-                            if (config.videoEncoding.enabled) {
+                        if(nodeParams.isVideo) {
+                            if(config.videoEncoding.enabled) {
                                 auto videnc = pipelineCopy.create<dai::node::VideoEncoder>();
                                 videnc->setProfile(config.videoEncoding.profile);
                                 videnc->setLossless(config.videoEncoding.lossless);
@@ -371,18 +376,27 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
                         } else {
                             node->getRecordOutput().link(xout->input);
                         }
-                    } catch (const std::runtime_error& e) {
-                        recordReplayState = RecordReplayState::NONE;
-                        getLogger().warn("Record disabled: {}", e.what());
                     }
+                } catch(const std::runtime_error& e) {
+                    recordReplayState = RecordReplayState::NONE;
+                    getLogger().warn("Record disabled: {}", e.what());
+                }
+                // Write config to output dir
+                try {
+                    std::ofstream file(Path(platform::joinPaths(recordPath, "record_config.json")));
+                    json j = config;
+                    file << j.dump(4);
+                } catch(const std::exception& e) {
+                    getLogger().warn("Error while writing DEPTHAI_RECORD json file: {}", e.what());
+                    recordReplayState = RecordReplayState::NONE;
                 }
             } else {
                 getLogger().warn("DEPTHAI_RECORD path does not have write permissions. Record disabled.");
             }
         }
-    } else if (!replayPath.empty()) {
-        if (platform::checkPathExists(replayPath)) {
-            if (platform::checkWritePermissions(replayPath)) {
+    } else if(!replayPath.empty()) {
+        if(platform::checkPathExists(replayPath)) {
+            if(platform::checkWritePermissions(replayPath)) {
                 recordReplayState = RecordReplayState::REPLAY;
                 // TODO(asahtik): replay
             } else {
@@ -443,29 +457,29 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
             });
     }
     bool status = DeviceBase::startPipelineImpl(pipelineCopy);
-    if (!status) return status;
+    if(!status) return status;
 
-    if (recordReplayState == RecordReplayState::RECORD) {
+    if(recordReplayState == RecordReplayState::RECORD) {
         bool recordEnabled = true;
         try {
-            for (auto& kv : recordStreams) {
+            for(auto& kv : recordStreams) {
                 kv.second.file.open(kv.second.path, std::ios::out | std::ios::binary);
-                if (!kv.second.file.is_open()) {
+                if(!kv.second.file.is_open()) {
                     throw std::runtime_error(fmt::format("Failed to open file {}.", kv.second.path.string()));
                 }
             }
-        } catch (std::exception& e) {
+        } catch(std::exception& e) {
             getLogger().warn("Record disabled: {}", e.what());
             recordEnabled = false;
         }
-        if (recordEnabled) {
-            for (auto& kv : recordStreams) {
+        if(recordEnabled) {
+            for(auto& kv : recordStreams) {
                 kv.second.queue = outputQueueMap[kv.first];
                 kv.second.running = true;
                 kv.second.thread = std::make_unique<std::thread>(recordStream, &kv.second, &getLogger());
             }
         }
-    } else if (recordReplayState == RecordReplayState::REPLAY) {
+    } else if(recordReplayState == RecordReplayState::REPLAY) {
         // TODO(asahtik): replay
     }
 

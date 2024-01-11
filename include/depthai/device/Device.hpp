@@ -25,6 +25,7 @@ struct RecordStream {
     std::ofstream file;
     std::unique_ptr<std::thread> thread;
     std::atomic<bool> running {false};
+    int compressionLevel = 6;
 };
 }
 

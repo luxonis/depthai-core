@@ -257,6 +257,7 @@ add_library(${TARGET_CORE_NAME}
     src/utility/Path.cpp
     src/utility/Platform.cpp
     src/utility/Environment.cpp
+    src/utility/Compression.cpp
     src/utility/XLinkGlobalProfilingLogger.cpp
     src/utility/Logging.cpp
     src/utility/EepromDataParser.cpp
