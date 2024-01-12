@@ -43,17 +43,10 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                 const auto msg = StreamMessageParser::parseMessage(std::move(packet));
                 if(std::dynamic_pointer_cast<MessageGroup>(msg) != nullptr) {
                     auto msgGrp = std::static_pointer_cast<MessageGroup>(msg);
-                    unsigned int size = msgGrp->getNumMessages();
-                    std::vector<std::shared_ptr<ADatatype>> packets;
-                    packets.reserve(size);
-                    for(unsigned int i = 0; i < size; ++i) {
+                    for(auto& msg : msgGrp->group) {
                         auto dpacket = stream.readMove();
-                        packets.push_back(StreamMessageParser::parseMessage(&dpacket));
+                        msg.second = StreamMessageParser::parseMessage(&dpacket);
                     }
-                    // TODO(Morato) bring back message groups
-                    // for(auto& msg : msgGrp->group) {
-                    //     msgGrp->add(msg.first, packets[msg.second.index]);
-                    // }
                 }
                 const auto t2Parse = std::chrono::steady_clock::now();
 
@@ -204,62 +197,42 @@ DataInputQueue::DataInputQueue(
         try {
             while(running) {
                 // get data from queue
-                OutgoingMessage outgoing;
+                std::shared_ptr<ADatatype> outgoing;
                 if(!queue.waitAndPop(outgoing)) {
                     continue;
                 }
+                auto metadata = StreamMessageParser::serializeMetadata(outgoing);
 
                 // Blocking
                 auto t1 = steady_clock::now();
-                if(outgoing.data->getSize() > 0) {
-                    stream.write(outgoing.data->getData(), outgoing.metadata);
+                if(outgoing->data->getSize() > 0) {
+                    stream.write(outgoing->data->getData(), metadata);
                 } else {
-                    stream.write(outgoing.metadata);
+                    stream.write(metadata);
                 }
                 auto t2 = steady_clock::now();
                 // Log
                 if(spdlog::get_level() == spdlog::level::trace) {
                     logger::trace("Sent message to device ({}) - data size: {}, metadata: {}, sending time: {}",
                                   stream.getStreamName(),
-                                  outgoing.data->getSize(),
-                                  spdlog::to_hex(outgoing.metadata),
+                                  outgoing->data->getSize(),
+                                  spdlog::to_hex(metadata),
                                   duration_cast<microseconds>(t2 - t1));
                 }
-                // TODO Bring back support for MessageGroup
-                //                 if(std::dynamic_pointer_cast<MessageGroup>())
-                //                 // serialize
-                //                 auto t1Parse = std::chrono::steady_clock::now();
-                //                 std::vector<std::vector<uint8_t>> serializedAux;
-                //                 if(data->getType() == DatatypeEnum::MessageGroup) {
-                //                     auto rawMsgGrp = std::dynamic_pointer_cast<RawMessageGroup>(data);
-                //                     serializedAux.reserve(rawMsgGrp->group.size());
-                //                     unsigned int index = 0;
-                //                     for(auto& msg : rawMsgGrp->group) {
-                //                         msg.second.index = index++;
-                //                         serializedAux.push_back(StreamMessageParser::serializeMessage(msg.second.buffer));
-                //                     }
-                //                 }
-                //                 auto serialized = StreamMessageParser::serializeMessage(data);
-                //                 auto t2Parse = std::chrono::steady_clock::now();
 
-                //                 // Trace level debugging
-                //                 if(logger::get_level() == spdlog::level::trace) {
-                //                     std::vector<std::uint8_t> metadata;
-                //                     DatatypeEnum type;
-                //                     data->serialize(metadata, type);
-                //                     logger::trace("Sending message to device ({}) - serialize time: {}, data size: {}, object type: {} object data: {}",
-                //                                   name,
-                //                                   std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
-                //                                   data->data.size(),
-                //                                   type,
-                //                                   spdlog::to_hex(metadata));
-                //                 }
-
-                //                 // Blocking
-                //                 stream.write(serialized);
-                //                 for(auto& msg : serializedAux) {
-                //                     stream.write(msg);
-                // }
+                // Attempt dynamic cast to MessageGroup
+                if(auto msgGroupPtr = std::dynamic_pointer_cast<MessageGroup>(outgoing)) {
+                    logger::trace("Sending group message to device with {} messages", msgGroupPtr->group.size());
+                    for(auto& msg : msgGroupPtr->group) {
+                        logger::trace("Sending part of a group message: {}", msg.first);
+                        auto metadata = StreamMessageParser::serializeMetadata(msg.second);
+                        if(msg.second->data->getSize() > 0) {
+                            stream.write(msg.second->data->getData(), metadata);
+                        } else {
+                            stream.write(metadata);
+                        }
+                    }
+                }
 
                 // Increment num packets sent
                 numPacketsSent++;
@@ -337,46 +310,14 @@ std::string DataInputQueue::getName() const {
     return name;
 }
 
-DataInputQueue::OutgoingMessage DataInputQueue::getOutgoingMessage(const ADatatype& message) {
-    if(!running) throw std::runtime_error(exceptionMessage.c_str());
-    // Check if stream receiver has enough space for this message
-    if(message.data->getSize() > maxDataSize) {
-        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", message.data->getSize(), maxDataSize));
-    }
-
-    // TODO(themarpe) - move serialization to be the last step
-    // Create outgoing message and serialize
-    OutgoingMessage outgoing;
-    // serialize
-    outgoing.data = message.data;
-    outgoing.metadata = StreamMessageParser::serializeMetadata(message);
-    return outgoing;
-}
-
-void DataInputQueue::send(const std::shared_ptr<ADatatype>& message) {
-    if(!running) throw std::runtime_error(exceptionMessage.c_str());
-    if(!message) throw std::invalid_argument("Message passed is not valid (nullptr)");
-    DataInputQueue::send(*message);
-}
-
-void DataInputQueue::send(const ADatatype& message) {
-    OutgoingMessage outgoing = getOutgoingMessage(message);
-
-    if(!queue.push(std::move(outgoing))) {
+void DataInputQueue::send(const std::shared_ptr<ADatatype>& msg) {
+    if(!queue.push(msg)) {
         throw std::runtime_error(fmt::format("Underlying queue destructed"));
     }
 }
 
-bool DataInputQueue::send(const ADatatype& message, std::chrono::milliseconds timeout) {
-    if(!running) throw std::runtime_error(exceptionMessage.c_str());
-    OutgoingMessage outgoing = getOutgoingMessage(message);
-
-    return queue.tryWaitAndPush(std::move(outgoing), timeout);
-}
-
 bool DataInputQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::milliseconds timeout) {
     if(!running) throw std::runtime_error(exceptionMessage.c_str());
-    if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
-    return send(*msg, timeout);
+    return queue.tryWaitAndPush(msg, timeout);
 }
 }  // namespace dai

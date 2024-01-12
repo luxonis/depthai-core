@@ -46,9 +46,9 @@ int main() {
     // edited a bit and sent back to the host
     nlohmann::json dict{{"one", 1}, {"foo", "bar"}};
     cout << "dict: " << dict << "\n";
-    auto buffer = dai::Buffer();
+    auto buffer = std::make_shared<dai::Buffer>();
     auto data = dict.dump();
-    buffer.setData({data.begin(), data.end()});
+    buffer->setData({data.begin(), data.end()});
     device.getInputQueue("in")->send(buffer);
 
     // Wait for the script to send the changed dictionary back

@@ -109,8 +109,8 @@ int main() {
                 featureTrackerConfig.cornerDetector.type = dai::FeatureTrackerConfig::CornerDetector::Type::HARRIS;
                 printf("Switching to Harris \n");
             }
-            auto cfg = dai::FeatureTrackerConfig();
-            cfg = featureTrackerConfig;
+            auto cfg = std::make_shared<dai::FeatureTrackerConfig>();
+            *cfg = featureTrackerConfig;
             inputFeatureTrackerConfigQueue->send(cfg);
         }
     }

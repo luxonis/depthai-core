@@ -67,8 +67,8 @@ int main() {
             xmax = 0.2f;
         }
 
-        dai::ImageManipConfig cfg;
-        cfg.setCropRect(xmin, 0.1f, xmax, 0.3f);
+        auto cfg = std::make_shared<dai::ImageManipConfig>();
+        cfg->setCropRect(xmin, 0.1f, xmax, 0.3f);
         manip2InQueue->send(cfg);
 
         // Gets both image frames

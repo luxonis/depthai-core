@@ -84,13 +84,6 @@ class EncodedFrame : public Buffer {
     Profile getProfile() const;
 
     /**
-     * Specifies sequence number
-     *
-     * @param seq Sequence number
-     */
-    EncodedFrame& setSequenceNum(int64_t seq);
-
-    /**
      * Instance number relates to the origin of the frame (which camera)
      *
      * @param instance Instance number
@@ -134,6 +127,11 @@ class EncodedFrame : public Buffer {
 
     DEPTHAI_SERIALIZE(
         EncodedFrame, cam, instanceNum, quality, bitrate, profile, lossless, type, frameOffset, frameSize, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice);
+
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
+        metadata = utility::serialize(*this);
+        datatype = DatatypeEnum::EncodedFrame;
+    };
 };
 
 }  // namespace dai

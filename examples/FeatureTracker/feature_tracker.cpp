@@ -2,6 +2,7 @@
 
 // Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
+#include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
 #include "deque"
 #include "unordered_map"
 #include "unordered_set"
@@ -128,7 +129,7 @@ int main() {
     featureTrackerLeft->setHardwareResources(numShaves, numMemorySlices);
     featureTrackerRight->setHardwareResources(numShaves, numMemorySlices);
 
-    auto featureTrackerConfig = featureTrackerRight->initialConfig;
+    auto featureTrackerConfig = std::make_shared<dai::FeatureTrackerConfig>(featureTrackerRight->initialConfig);
 
     printf("Press 's' to switch between Lucas-Kanade optical flow and hardware accelerated motion estimation! \n");
 
@@ -176,11 +177,11 @@ int main() {
         if(key == 'q') {
             break;
         } else if(key == 's') {
-            if(featureTrackerConfig.motionEstimator.type == dai::FeatureTrackerConfig::MotionEstimator::Type::LUCAS_KANADE_OPTICAL_FLOW) {
-                featureTrackerConfig.motionEstimator.type = dai::FeatureTrackerConfig::MotionEstimator::Type::HW_MOTION_ESTIMATION;
+            if(featureTrackerConfig->motionEstimator.type == dai::FeatureTrackerConfig::MotionEstimator::Type::LUCAS_KANADE_OPTICAL_FLOW) {
+                featureTrackerConfig->motionEstimator.type = dai::FeatureTrackerConfig::MotionEstimator::Type::HW_MOTION_ESTIMATION;
                 printf("Switching to hardware accelerated motion estimation \n");
             } else {
-                featureTrackerConfig.motionEstimator.type = dai::FeatureTrackerConfig::MotionEstimator::Type::LUCAS_KANADE_OPTICAL_FLOW;
+                featureTrackerConfig->motionEstimator.type = dai::FeatureTrackerConfig::MotionEstimator::Type::LUCAS_KANADE_OPTICAL_FLOW;
                 printf("Switching to Lucas-Kanade optical flow \n");
             }
             inputFeatureTrackerConfigQueue->send(featureTrackerConfig);

@@ -14,24 +14,24 @@ TEST_CASE("Set and get messages") {
     auto buf2Ts = std::chrono::steady_clock::now() + std::chrono::milliseconds(200);
     std::vector<unsigned char> buf1Data = {1, 2, 3};
     std::vector<unsigned char> buf2Data = {4, 5, 6};
-    dai::MessageGroup msgGrp;
+    auto msgGrp = std::make_shared<dai::MessageGroup>();
     dai::Buffer buf;
     buf.setTimestamp(buf1Ts);
     buf.setData(buf1Data);
-    msgGrp.add("buf1", buf);
+    msgGrp->add("buf1", buf);
 
     dai::ImgFrame img;
     img.setTimestamp(buf2Ts);
     img.setData(buf2Data);
     img.setSize({5, 6});
-    msgGrp.add("img1", img);
+    msgGrp->add("img1", img);
 
-    REQUIRE(msgGrp.get<dai::Buffer>("buf1")->getTimestamp() == buf1Ts);
-    REQUIRE(msgGrp.get<dai::ImgFrame>("img1")->getTimestamp() == buf2Ts);
-    REQUIRE((msgGrp.get<dai::Buffer>("buf1")->getData() == buf1Data));
-    REQUIRE((msgGrp.get<dai::ImgFrame>("img1")->getData() == buf2Data));
-    REQUIRE(msgGrp.get<dai::ImgFrame>("img1")->getWidth() == 5);
-    REQUIRE(msgGrp.get<dai::ImgFrame>("img1")->getHeight() == 6);
+    REQUIRE(msgGrp->get<dai::Buffer>("buf1")->getTimestamp() == buf1Ts);
+    REQUIRE(msgGrp->get<dai::ImgFrame>("img1")->getTimestamp() == buf2Ts);
+    REQUIRE((msgGrp->get<dai::Buffer>("buf1")->getData() == buf1Data));
+    REQUIRE((msgGrp->get<dai::ImgFrame>("img1")->getData() == buf2Data));
+    REQUIRE(msgGrp->get<dai::ImgFrame>("img1")->getWidth() == 5);
+    REQUIRE(msgGrp->get<dai::ImgFrame>("img1")->getHeight() == 6);
 }
 
 // TODO(asahtik): Bring back when the [issue](https://github.com/luxonis/depthai-core/issues/929) is fixed
@@ -105,6 +105,9 @@ TEST_CASE("MessageGroup ping-pong") {
     xin->out.link(xout->input);
 
     dai::Device device(pipeline);
+    std::cout << "Let's wait here for a bit!" << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+    std::cout << "Done waiting!" << std::endl;
 
     auto inQ = device.getInputQueue("in");
     auto outQ = device.getOutputQueue("out");
@@ -118,9 +121,9 @@ TEST_CASE("MessageGroup ping-pong") {
     img1.setTimestamp(buf2Ts);
     img1.setSize({5, 6});
 
-    dai::MessageGroup msgGrp;
-    msgGrp.add("buf1", buf1);
-    msgGrp.add("img1", img1);
+    auto msgGrp = std::make_shared<dai::MessageGroup>();
+    msgGrp->add("buf1", buf1);
+    msgGrp->add("img1", img1);
 
     inQ->send(msgGrp);
 

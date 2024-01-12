@@ -102,8 +102,8 @@ int main() {
 
         // Send new config to camera
         if(sendCamConfig) {
-            dai::ImageManipConfig cfg;
-            cfg.setCropRect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
+            auto cfg = std::make_shared<dai::ImageManipConfig>();
+            cfg->setCropRect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
             configQueue->send(cfg);
             sendCamConfig = false;
         }

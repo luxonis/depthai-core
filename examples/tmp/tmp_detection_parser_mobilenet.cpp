@@ -1,5 +1,6 @@
 
 #include <iostream>
+#include <memory>
 
 #include "utility.hpp"
 
@@ -67,7 +68,7 @@ int main(int argc, char** argv) {
 
     while(true) {
         // data to send further
-        dai::Buffer tensor;
+        auto tensor = std::make_shared<dai::Buffer>();
 
         // Read frame from webcam
         webcam >> frame;
@@ -76,7 +77,7 @@ int main(int argc, char** argv) {
         cv::Mat resizedFrame = resizeKeepAspectRatio(frame, cv::Size(MODEL_IN_WIDTH, MODEL_IN_HEIGHT), cv::Scalar(0));
         std::vector<uint8_t> frameData;
         toPlanar(resizedFrame, frameData);
-        tensor.setData(frameData);
+        tensor->setData(frameData);
 
         in->send(tensor);
 

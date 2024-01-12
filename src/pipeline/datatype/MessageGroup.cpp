@@ -15,10 +15,10 @@ void MessageGroup::add(const std::string& name, const std::shared_ptr<ADatatype>
     group[name] = value;
 }
 
-std::unordered_map<std::string, std::shared_ptr<ADatatype>>::iterator MessageGroup::begin() {
+std::map<std::string, std::shared_ptr<ADatatype>>::iterator MessageGroup::begin() {
     return group.begin();
 }
-std::unordered_map<std::string, std::shared_ptr<ADatatype>>::iterator MessageGroup::end() {
+std::map<std::string, std::shared_ptr<ADatatype>>::iterator MessageGroup::end() {
     return group.end();
 }
 

@@ -39,7 +39,7 @@ int test(dai::LogLevel logLevel) {
 
     auto in = device.getInputQueue("input");
     auto out = device.getOutputQueue("output");
-    dai::Buffer message;  // Arbitrary message, used only to control flow
+    auto message = std::make_shared<dai::Buffer>();  // Arbitrary message, used only to control flow
 
     device.setLogLevel(logLevel);
     device.setLogOutputLevel(logLevel);

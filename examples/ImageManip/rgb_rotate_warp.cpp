@@ -139,21 +139,21 @@ int main() {
 
         // Send an updated config with continuous rotate, or after a key press
         if(key >= 0 || (!testFourPt && std::abs(rotateRate) > 0.0001)) {
-            dai::ImageManipConfig cfg;
+            auto cfg = std::make_shared<dai::ImageManipConfig>();
             if(testFourPt) {
-                cfg.setWarpTransformFourPoints(warpList[warpIdx].points, warpList[warpIdx].normalizedCoords);
+                cfg->setWarpTransformFourPoints(warpList[warpIdx].points, warpList[warpIdx].normalizedCoords);
             } else {
                 angleDeg += rotateRate;
                 dai::RotatedRect rr = {{320, 240},  // center
                                        {640, 480},  //{400, 400}, // size
                                        angleDeg};
-                cfg.setCropRotatedRect(rr, false);
+                cfg->setCropRotatedRect(rr, false);
             }
             if(resizeFactor > 0) {
-                cfg.setResize(resizeX, resizeY);
+                cfg->setResize(resizeX, resizeY);
             }
-            // cfg.setWarpBorderFillColor(255, 0, 0);
-            // cfg.setWarpBorderReplicatePixels();
+            // cfg->setWarpBorderFillColor(255, 0, 0);
+            // cfg->setWarpBorderReplicatePixels();
             qManipCfg->send(cfg);
         }
 

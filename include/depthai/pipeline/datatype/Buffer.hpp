@@ -20,7 +20,7 @@ class Buffer : public ADatatype {
     virtual ~Buffer() = default;
 
     virtual void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
-        (void)metadata;
+        metadata = utility::serialize(*this);
         datatype = DatatypeEnum::Buffer;
     };
 

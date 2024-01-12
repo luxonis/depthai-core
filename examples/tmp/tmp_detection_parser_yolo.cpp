@@ -99,8 +99,7 @@ int main(int argc, char** argv) {
 
     while(true) {
         // data to send further
-        // auto tensor = std::make_shared<dai::RawBuffer>();
-        dai::Buffer tensor;
+        auto tensor = std::make_shared<dai::Buffer>();
 
         // Read frame from webcam
         webcam >> frame;
@@ -110,7 +109,7 @@ int main(int argc, char** argv) {
 
         std::vector<uint8_t> data;
         toPlanar(resizedFrame, data);
-        tensor.setData(data);
+        tensor->setData(data);
 
         in->send(tensor);
 

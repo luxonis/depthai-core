@@ -4,16 +4,17 @@
 #include <unordered_map>
 #include <vector>
 
+#include "depthai/common/ADatatypeSharedPtrSerialization.hpp"
+#include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
-
+#include "depthai/utility/Serialization.hpp"
 namespace dai {
-
 /**
  * MessageGroup message. Carries multiple messages in one.
  */
 class MessageGroup : public Buffer {
    public:
-    std::unordered_map<std::string, std::shared_ptr<ADatatype>> group;
+    std::map<std::string, std::shared_ptr<ADatatype>> group;
 
     virtual ~MessageGroup() = default;
 
@@ -31,8 +32,8 @@ class MessageGroup : public Buffer {
     }
 
     // Iterators
-    std::unordered_map<std::string, std::shared_ptr<ADatatype>>::iterator begin();
-    std::unordered_map<std::string, std::shared_ptr<ADatatype>>::iterator end();
+    std::map<std::string, std::shared_ptr<ADatatype>>::iterator begin();
+    std::map<std::string, std::shared_ptr<ADatatype>>::iterator end();
 
     /**
      * True if all messages in the group are in the interval
@@ -52,8 +53,11 @@ class MessageGroup : public Buffer {
      */
     std::vector<std::string> getMessageNames() const;
 
-    // DEPTHAI_SERIALIZE(MessageGroup, group, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
-    DEPTHAI_SERIALIZE(MessageGroup, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
+        metadata = utility::serialize(*this);
+        datatype = DatatypeEnum::MessageGroup;
+    };
+    DEPTHAI_SERIALIZE(MessageGroup, group, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
 };
 
 }  // namespace dai

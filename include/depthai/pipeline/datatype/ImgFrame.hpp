@@ -665,11 +665,10 @@ class ImgFrame : public Buffer {
     float HFovDegrees = 0.0;   // Horizontal field of view in degrees
     uint32_t category = 0;     //
     uint32_t instanceNum = 0;  // Which source created this frame (color, mono, ...)
-    int64_t sequenceNum = 0;   // increments for each frame
     dai::FrameEvent event = dai::FrameEvent::NONE;
 
    public:
-    DEPTHAI_SERIALIZE(ImgFrame, ts, tsDevice, sequenceNum, fb, sourceFb, cam, HFovDegrees, category, instanceNum, transformations);
+    DEPTHAI_SERIALIZE(ImgFrame, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum, fb, sourceFb, cam, HFovDegrees, category, instanceNum, transformations);
 };
 
 }  // namespace dai

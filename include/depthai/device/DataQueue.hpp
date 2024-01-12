@@ -340,18 +340,7 @@ class DataOutputQueue {
  * Access to send messages through XLink stream
  */
 class DataInputQueue {
-    struct OutgoingMessage {
-        std::vector<uint8_t> metadata;
-        std::shared_ptr<Memory> data;
-        OutgoingMessage() = default;
-        OutgoingMessage(OutgoingMessage&&) = default;
-        OutgoingMessage& operator=(OutgoingMessage&&) = default;
-        // Delete copy operations
-        OutgoingMessage(const OutgoingMessage&) = delete;
-        OutgoingMessage& operator=(const OutgoingMessage&) = delete;
-    };
-    OutgoingMessage getOutgoingMessage(const ADatatype& msg);
-    LockingQueue<OutgoingMessage> queue;
+    LockingQueue<std::shared_ptr<ADatatype>> queue;
     std::thread writingThread;
     std::atomic<bool> running{true};
     std::string exceptionMessage;
@@ -434,15 +423,20 @@ class DataInputQueue {
      * Can either block if 'blocking' behavior is true or overwrite oldest
      * @param msg Message to add to the queue
      */
-    void send(const std::shared_ptr<ADatatype>& msg);
+    // TODO(Morato) - this behaves unexpectedly, when a reference of type ADatatype but referencing a derived class is passed
+    // template <class T, typename = std::enable_if_t<std::is_base_of<ADatatype, T>::value>>
+    // void send(const T& msg) {
+    //     static_assert(std::is_base_of<ADatatype, T>::value, "T must be derived from ADatatype");
+    //     if(!running) throw std::runtime_error(exceptionMessage.c_str());
+    //     DataInputQueue::send(std::make_shared<T>(msg));
+    // }
 
     /**
      * Adds a message to the queue, which will be picked up and sent to the device.
      * Can either block if 'blocking' behavior is true or overwrite oldest
      * @param msg Message to add to the queue
      */
-    void send(const ADatatype& msg);
-
+    void send(const std::shared_ptr<ADatatype>& msg);
     /**
      * Adds message to the queue, which will be picked up and sent to the device.
      * Can either block until timeout if 'blocking' behavior is true or overwrite oldest
@@ -459,7 +453,13 @@ class DataInputQueue {
      * @param msg Message to add to the queue
      * @param timeout Maximum duration to block in milliseconds
      */
-    bool send(const ADatatype& msg, std::chrono::milliseconds timeout);
+    // TODO(Morato) - this behaves unexpectedly, when a reference of type ADatatype but referencing a derived class is passed
+    // template <class T, typename = std::enable_if_t<std::is_base_of<ADatatype, T>::value>>
+    // bool send(const T& msg, std::chrono::milliseconds timeout) {
+    //     static_assert(std::is_base_of<ADatatype, T>::value, "T must derive from ADatatype");
+    //     if(!running) throw std::runtime_error(exceptionMessage.c_str());
+    //     return DataInputQueue::send(std::make_shared<T>(msg), timeout);
+    // }
 };
 
 }  // namespace dai
