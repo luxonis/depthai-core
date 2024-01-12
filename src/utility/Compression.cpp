@@ -1,6 +1,7 @@
 #include "Compression.hpp"
 
 #include <stdexcept>
+#include <fcntl.h>
 
 #include "archive.h"
 #include "archive_entry.h"
@@ -62,8 +63,37 @@ std::vector<uint8_t> inflate(std::vector<uint8_t>& data) {
     return result;
 }
 
-std::string tarFiles(const std::string& path, const std::vector<std::string>& files) {
-    return "";
+void tarFiles(const std::string& path, const std::vector<std::string>& files) {
+    struct archive* a;
+    struct archive_entry* entry;
+    struct stat st;
+    char buff[8192];
+    int len;
+    int fd;
+
+    a = archive_write_new();
+    archive_write_add_filter_gzip(a);
+    archive_write_set_format_pax_restricted(a);
+    archive_write_open_filename(a, path.c_str());
+    for(const auto& file : files) {
+        stat(file.c_str(), &st);
+        entry = archive_entry_new();
+        archive_entry_set_pathname(entry, file.c_str());
+        archive_entry_set_size(entry, st.st_size);
+        archive_entry_set_filetype(entry, AE_IFREG);
+        archive_entry_set_perm(entry, 0644);
+        archive_write_header(a, entry);
+        fd = open(file.c_str(), O_RDONLY);
+        len = read(fd, buff, sizeof(buff));
+        while(len > 0) {
+            archive_write_data(a, buff, len);
+            len = read(fd, buff, sizeof(buff));
+        }
+        close(fd);
+        archive_entry_free(entry);
+    }
+    archive_write_close(a);
+    archive_write_free(a);
 }
 
 }  // namespace utility

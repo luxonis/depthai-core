@@ -2,6 +2,7 @@
 
 // std
 #include <iostream>
+#include <cstdio>
 
 // shared
 #include "depthai-bootloader-shared/Bootloader.hpp"
@@ -94,10 +95,20 @@ void Device::closeImpl() {
     inputQueueMap.clear();
 
     // Stop recording
-    for(auto& kv : recordStreams) {
-        if(kv.second.thread != nullptr) {
-            kv.second.thread->join();
+    if (recordReplayState == RecordReplayState::RECORD) {
+        for(auto& kv : recordStreams) {
+            if(kv.second.thread != nullptr) {
+                kv.second.thread->join();
+                kv.second.file.close();
+            }
         }
+        std::vector<std::string> filenames = {platform::joinPaths(recordConfig.outputDir, "record_config.json")};
+        std::transform(recordStreams.begin(), recordStreams.end(), std::back_inserter(filenames), [](auto& kv) { return kv.first; });
+        utility::tarFiles(platform::joinPaths(recordConfig.outputDir, "recording.tar.gz"), filenames);
+        for(auto& kv : recordStreams) {
+            std::remove(kv.second.path.string().c_str());
+        }
+        std::remove(platform::joinPaths(recordConfig.outputDir, "record_config.json").c_str());
     }
 }
 
@@ -334,7 +345,6 @@ void recordStream(rr::RecordStream* recordStream, spdlog::logger* logger) {
         std::this_thread::yield();
         // TODO(asahtik): calculate necessary frequency
     }
-    recordStream->file.close();
 }
 
 bool Device::startPipelineImpl(const Pipeline& pipeline) {
@@ -347,8 +357,7 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
     if(!recordPath.empty() && !replayPath.empty()) {
         getLogger().warn("Both DEPTHAI_RECORD and DEPTHAI_REPLAY are set. Record and replay disabled.");
     } else if(!recordPath.empty()) {
-        utility::RecordConfig config;
-        if(checkRecordConfig(recordPath, config, getLogger())) {
+        if(checkRecordConfig(recordPath, recordConfig, getLogger())) {
             if(platform::checkWritePermissions(recordPath)) {
                 recordReplayState = RecordReplayState::RECORD;
                 auto sources = pipelineCopy.getSourceNodes();
@@ -358,16 +367,16 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
                         NodeRecordParams nodeParams = node->getNodeRecordParams();
                         std::string nodeName = nodeParams.name;
                         recordStreams[nodeName].path = Path(platform::joinPaths(recordPath, mxId.append("_").append(nodeName).append(".dai.rec")));
-                        recordStreams[nodeName].compressionLevel = config.byteEncoding.enabled ? config.byteEncoding.compressionLevel : 0;
+                        recordStreams[nodeName].compressionLevel = recordConfig.byteEncoding.enabled ? recordConfig.byteEncoding.compressionLevel : 0;
                         auto xout = pipelineCopy.create<dai::node::XLinkOut>();
                         xout->setStreamName(nodeName);
                         if(nodeParams.isVideo) {
-                            if(config.videoEncoding.enabled) {
+                            if(recordConfig.videoEncoding.enabled) {
                                 auto videnc = pipelineCopy.create<dai::node::VideoEncoder>();
-                                videnc->setProfile(config.videoEncoding.profile);
-                                videnc->setLossless(config.videoEncoding.lossless);
-                                videnc->setBitrate(config.videoEncoding.bitrate);
-                                videnc->setQuality(config.videoEncoding.quality);
+                                videnc->setProfile(recordConfig.videoEncoding.profile);
+                                videnc->setLossless(recordConfig.videoEncoding.lossless);
+                                videnc->setBitrate(recordConfig.videoEncoding.bitrate);
+                                videnc->setQuality(recordConfig.videoEncoding.quality);
                                 node->getRecordOutput().link(videnc->input);
                                 videnc->out.link(xout->input);
                             } else {
@@ -384,7 +393,7 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
                 // Write config to output dir
                 try {
                     std::ofstream file(Path(platform::joinPaths(recordPath, "record_config.json")));
-                    json j = config;
+                    json j = recordConfig;
                     file << j.dump(4);
                 } catch(const std::exception& e) {
                     getLogger().warn("Error while writing DEPTHAI_RECORD json file: {}", e.what());

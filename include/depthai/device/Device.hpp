@@ -4,12 +4,13 @@
 #include <chrono>
 #include <condition_variable>
 #include <deque>
+#include <fstream>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>
-#include <utility>
-#include <fstream>
+
+#include "depthai/utility/RecordConfig.hpp"
 
 // project
 #include "DataQueue.hpp"
@@ -17,18 +18,16 @@
 
 namespace dai {
 
-
 namespace rr {
 struct RecordStream {
     dai::Path path;
     std::shared_ptr<DataOutputQueue> queue;
     std::ofstream file;
     std::unique_ptr<std::thread> thread;
-    std::atomic<bool> running {false};
+    std::atomic<bool> running{false};
     int compressionLevel = 6;
 };
-}
-
+}  // namespace rr
 
 /**
  * Represents the DepthAI device with the methods to interact with it.
@@ -242,6 +241,7 @@ class Device : public DeviceBase {
     enum class RecordReplayState { NONE, RECORD, REPLAY };
 
     RecordReplayState recordReplayState = RecordReplayState::NONE;
+    utility::RecordConfig recordConfig;
     std::unordered_map<std::string, rr::RecordStream> recordStreams;
 
     bool startPipelineImpl(const Pipeline& pipeline) override;
