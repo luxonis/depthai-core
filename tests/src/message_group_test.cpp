@@ -105,9 +105,6 @@ TEST_CASE("MessageGroup ping-pong") {
     xin->out.link(xout->input);
 
     dai::Device device(pipeline);
-    std::cout << "Let's wait here for a bit!" << std::endl;
-    std::this_thread::sleep_for(std::chrono::milliseconds(5000));
-    std::cout << "Done waiting!" << std::endl;
 
     auto inQ = device.getInputQueue("in");
     auto outQ = device.getOutputQueue("out");
