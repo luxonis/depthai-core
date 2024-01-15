@@ -1,4 +1,5 @@
 #include "depthai/pipeline/Node.hpp"
+
 #include <stdexcept>
 
 #include "depthai/pipeline/Pipeline.hpp"
@@ -292,7 +293,7 @@ void Node::setInputMapRefs(Node::InputMap* inMapRef) {
     inputMapRefs[inMapRef->name] = inMapRef;
 }
 
-bool Node::isSourceNode() const  {
+bool Node::isSourceNode() const {
     return false;
 }
 

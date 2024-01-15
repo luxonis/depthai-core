@@ -66,6 +66,8 @@ class Buffer : public ADatatype {
      * Retrieves sequence number
      */
     Buffer& setSequenceNum(int64_t sequenceNum);
+
+    virtual std::pair<uint8_t*, size_t> getRecordData() const;
 };
 
 }  // namespace dai

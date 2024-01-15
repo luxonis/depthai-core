@@ -56,5 +56,8 @@ Buffer& Buffer::setSequenceNum(int64_t sequenceNum) {
     raw->sequenceNum = sequenceNum;
     return *this;
 }
+std::pair<uint8_t*, size_t> Buffer::getRecordData() const {
+    return {getData().data(), getData().size()};
+}
 
 }  // namespace dai

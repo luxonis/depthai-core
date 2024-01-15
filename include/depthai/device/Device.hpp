@@ -23,8 +23,10 @@ struct RecordStream {
     dai::Path path;
     std::shared_ptr<DataOutputQueue> queue;
     std::ofstream file;
+    std::ofstream fileMeta;
     std::unique_ptr<std::thread> thread;
     std::atomic<bool> running{false};
+    bool compress = true;
     int compressionLevel = 6;
 };
 }  // namespace rr

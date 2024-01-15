@@ -1,6 +1,6 @@
 #include "depthai/pipeline/node/MonoCamera.hpp"
-#include "depthai/common/CameraBoardSocket.hpp"
 
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "spdlog/fmt/fmt.h"
 
 namespace dai {
@@ -170,13 +170,10 @@ bool MonoCamera::isSourceNode() const {
 }
 
 NodeRecordParams MonoCamera::getNodeRecordParams() const {
-    if (properties.boardSocket == CameraBoardSocket::AUTO) {
+    if(properties.boardSocket == CameraBoardSocket::AUTO) {
         throw std::runtime_error("For record and replay functionality, board socket must be specified (MonoCamera).");
     }
-    return NodeRecordParams {
-        "MonoCamera" + toString(properties.boardSocket),
-        true
-    };
+    return NodeRecordParams{"MonoCamera" + toString(properties.boardSocket), true};
 }
 
 MonoCamera::Output& MonoCamera::getRecordOutput() {

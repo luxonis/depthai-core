@@ -1,8 +1,8 @@
 #include "depthai/pipeline/node/ColorCamera.hpp"
-#include "depthai/common/CameraBoardSocket.hpp"
 
 #include <cmath>
 
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "spdlog/fmt/fmt.h"
 
 namespace dai {
@@ -562,13 +562,10 @@ bool ColorCamera::isSourceNode() const {
 }
 
 NodeRecordParams ColorCamera::getNodeRecordParams() const {
-    if (properties.boardSocket == CameraBoardSocket::AUTO) {
+    if(properties.boardSocket == CameraBoardSocket::AUTO) {
         throw std::runtime_error("For record and replay functionality, board socket must be specified (ColorCamera).");
     }
-    return NodeRecordParams {
-        "ColorCamera" + toString(properties.boardSocket),
-        true
-    };
+    return NodeRecordParams{"ColorCamera" + toString(properties.boardSocket), true};
 }
 
 ColorCamera::Output& ColorCamera::getRecordOutput() {

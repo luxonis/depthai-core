@@ -2,6 +2,7 @@
 
 // std
 #include <spdlog/logger.h>
+
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -971,6 +972,5 @@ class DeviceBase {
 
     dai::Path firmwarePath;
     bool dumpOnly = false;
-
 };
 }  // namespace dai

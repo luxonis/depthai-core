@@ -26,7 +26,7 @@ class PipelineImpl {
     friend class Node;
 
    protected:
-    enum class RecordAndReplay {NONE, RECORD, REPLAY};
+    enum class RecordAndReplay { NONE, RECORD, REPLAY };
     RecordAndReplay recordAndReplay = RecordAndReplay::NONE;
     std::string recordAndReplayPath;
 

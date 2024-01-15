@@ -1,8 +1,9 @@
 #include "depthai/device/Device.hpp"
 
 // std
-#include <iostream>
 #include <cstdio>
+#include <iostream>
+#include <memory>
 
 // shared
 #include "depthai-bootloader-shared/Bootloader.hpp"
@@ -16,7 +17,9 @@
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "pipeline/Pipeline.hpp"
+#include "pipeline/datatype/Buffer.hpp"
 #include "pipeline/datatype/StreamMessageParser.hpp"
+#include "pipeline/node/ImageManip.hpp"
 #include "pipeline/node/VideoEncoder.hpp"
 #include "utility/Compression.hpp"
 #include "utility/Environment.hpp"
@@ -95,7 +98,7 @@ void Device::closeImpl() {
     inputQueueMap.clear();
 
     // Stop recording
-    if (recordReplayState == RecordReplayState::RECORD) {
+    if(recordReplayState == RecordReplayState::RECORD) {
         for(auto& kv : recordStreams) {
             if(kv.second.thread != nullptr) {
                 kv.second.thread->join();
@@ -103,10 +106,21 @@ void Device::closeImpl() {
             }
         }
         std::vector<std::string> filenames = {platform::joinPaths(recordConfig.outputDir, "record_config.json")};
-        std::transform(recordStreams.begin(), recordStreams.end(), std::back_inserter(filenames), [](auto& kv) { return kv.first; });
-        utility::tarFiles(platform::joinPaths(recordConfig.outputDir, "recording.tar.gz"), filenames);
+        std::vector<std::string> outFiles = {"record_config.json"};
+        filenames.reserve(recordStreams.size() * 2 + 1);
+        outFiles.reserve(recordStreams.size() * 2 + 1);
+        for(auto& rstr : recordStreams) {
+            filenames.push_back(rstr.second.path.string());
+            filenames.push_back(rstr.second.path.string() + ".meta");
+            outFiles.push_back(rstr.first);
+            outFiles.push_back(rstr.first + ".meta");
+        }
+        getLogger().info("Record: Creating tar file with {} files", filenames.size());
+        utility::tarFiles(platform::joinPaths(recordConfig.outputDir, "recording.tar.gz"), filenames, outFiles);
+        getLogger().info("Record: Removing temporary files");
         for(auto& kv : recordStreams) {
             std::remove(kv.second.path.string().c_str());
+            std::remove((kv.second.path.string() + ".meta").c_str());
         }
         std::remove(platform::joinPaths(recordConfig.outputDir, "record_config.json").c_str());
     }
@@ -317,26 +331,41 @@ bool checkRecordConfig(std::string& recordPath, utility::RecordConfig& config, s
 }
 
 void recordStream(rr::RecordStream* recordStream, spdlog::logger* logger) {
+    uint64_t byteOffset = 0;
     while(recordStream->running) {
-        std::shared_ptr<ADatatype> data = nullptr;
+        std::shared_ptr<ADatatype> msg = nullptr;
         try {
-            data = recordStream->queue->get();
+            msg = recordStream->queue->get();
         } catch(std::exception& e) {
             // Queue closed / error
             logger->warn("Record stopped: {}", e.what());
         }
-        if(data == nullptr) {
+        if(msg == nullptr) {
             // Queue closed
             logger->warn("Record stopped: queue closed");
             break;
         }
         try {
-            auto serialized = StreamMessageParser::serializeMessage(data);
-            auto compressed = recordStream->compressionLevel > 0 ? utility::deflate(serialized, recordStream->compressionLevel) : serialized;
-            auto size = compressed.size();
-            recordStream->file.write((char*)&size, sizeof(compressed.size()));
-            recordStream->file.write((char*)compressed.data(), compressed.size());
-            // TODO(asahtik): optimize written bytes - only write metadata when changed, compression, ...
+            auto msgBuf = std::dynamic_pointer_cast<Buffer>(msg);
+            auto data = msgBuf->getRecordData();
+            uint8_t* buf = data.first;
+            size_t size = data.second;
+            if(recordStream->compress) {
+                auto compressed = utility::deflate(data.first, recordStream->compressionLevel);
+                buf = compressed.data();
+                size = compressed.size();
+            }
+            // TODO(asahtik): add header to unencoded ImgFrames (to be playable in VLC);
+            recordStream->file.write((char*)buf, size);
+
+            recordStream->fileMeta.write((char*)&byteOffset, sizeof(byteOffset));
+            int64_t seqNum = msgBuf->getSequenceNum();
+            recordStream->fileMeta.write((char*)&seqNum, sizeof(msgBuf->getSequenceNum()));
+            int64_t seconds = std::chrono::duration_cast<std::chrono::seconds>(msgBuf->getTimestampDevice().time_since_epoch()).count();
+            int64_t nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(msgBuf->getTimestampDevice().time_since_epoch()).count() % 1000000000;
+            recordStream->fileMeta.write((char*)&seconds, sizeof(seconds));
+            recordStream->fileMeta.write((char*)&nanoseconds, sizeof(nanoseconds));
+            byteOffset += size;
         } catch(std::exception& e) {
             recordStream->running = false;
             logger->warn("Record stopped: {}", e.what());
@@ -367,17 +396,24 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
                         NodeRecordParams nodeParams = node->getNodeRecordParams();
                         std::string nodeName = nodeParams.name;
                         recordStreams[nodeName].path = Path(platform::joinPaths(recordPath, mxId.append("_").append(nodeName).append(".dai.rec")));
+                        recordStreams[nodeName].compress =
+                            recordConfig.byteEncoding.enabled && recordConfig.byteEncoding.compressionLevel > 0 && !nodeParams.isVideo;
                         recordStreams[nodeName].compressionLevel = recordConfig.byteEncoding.enabled ? recordConfig.byteEncoding.compressionLevel : 0;
                         auto xout = pipelineCopy.create<dai::node::XLinkOut>();
                         xout->setStreamName(nodeName);
                         if(nodeParams.isVideo) {
                             if(recordConfig.videoEncoding.enabled) {
+                                auto imageManip = pipelineCopy.create<dai::node::ImageManip>();
+                                imageManip->initialConfig.setFrameType(ImgFrame::Type::NV12);
+                                imageManip->setMaxOutputFrameSize(3110400);
                                 auto videnc = pipelineCopy.create<dai::node::VideoEncoder>();
                                 videnc->setProfile(recordConfig.videoEncoding.profile);
                                 videnc->setLossless(recordConfig.videoEncoding.lossless);
                                 videnc->setBitrate(recordConfig.videoEncoding.bitrate);
                                 videnc->setQuality(recordConfig.videoEncoding.quality);
-                                node->getRecordOutput().link(videnc->input);
+
+                                node->getRecordOutput().link(imageManip->inputImage);
+                                imageManip->out.link(videnc->input);
                                 videnc->out.link(xout->input);
                             } else {
                                 node->getRecordOutput().link(xout->input);
@@ -473,8 +509,12 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
         try {
             for(auto& kv : recordStreams) {
                 kv.second.file.open(kv.second.path, std::ios::out | std::ios::binary);
+                kv.second.fileMeta.open(kv.second.path.string() + ".meta", std::ios::out | std::ios::binary);
                 if(!kv.second.file.is_open()) {
                     throw std::runtime_error(fmt::format("Failed to open file {}.", kv.second.path.string()));
+                }
+                if(!kv.second.fileMeta.is_open()) {
+                    throw std::runtime_error(fmt::format("Failed to open file {}.", kv.second.path.string() + ".meta"));
                 }
             }
         } catch(std::exception& e) {

@@ -1,4 +1,5 @@
 #include "depthai/pipeline/node/Camera.hpp"
+
 #include "depthai/common/CameraBoardSocket.hpp"
 
 // std
@@ -286,13 +287,10 @@ bool Camera::isSourceNode() const {
 }
 
 NodeRecordParams Camera::getNodeRecordParams() const {
-    if (properties.boardSocket == CameraBoardSocket::AUTO) {
+    if(properties.boardSocket == CameraBoardSocket::AUTO) {
         throw std::runtime_error("For record and replay functionality, board socket must be specified (Camera).");
     }
-    return NodeRecordParams {
-        "Camera" + toString(properties.boardSocket),
-        true
-    };
+    return NodeRecordParams{"Camera" + toString(properties.boardSocket), true};
 }
 
 Camera::Output& Camera::getRecordOutput() {
