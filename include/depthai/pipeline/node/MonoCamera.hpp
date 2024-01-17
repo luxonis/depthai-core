@@ -40,6 +40,13 @@ class MonoCamera : public NodeCRTP<Node, MonoCamera, MonoCameraProperties> {
     Input inputControl{*this, "inputControl", Input::Type::SReceiver, true, 8, {{DatatypeEnum::CameraControl, false}}};
 
     /**
+     * Input for mocking 'isp' functionality.
+     *
+     * Default queue is non-blocking with size 8
+     */
+    Input mockIsp{*this, "mockIsp", Input::Type::SReceiver, false, 8, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
      * Outputs ImgFrame message that carries RAW8 encoded (grayscale) frame data.
      *
      * Suitable for use StereoDepth node. Processed by ISP
