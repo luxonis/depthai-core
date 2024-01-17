@@ -1,12 +1,12 @@
 #pragma once
 
-#include "depthai/pipeline/Node.hpp"
+#include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/properties/MessageDemuxProperties.hpp"
 
 namespace dai {
 namespace node {
 
-class MessageDemux : public NodeCRTP<Node, MessageDemux, MessageDemuxProperties> {
+class MessageDemux : public NodeCRTP<DeviceNode, MessageDemux, MessageDemuxProperties> {
    public:
     constexpr static const char* NAME = "MessageDemux";
 

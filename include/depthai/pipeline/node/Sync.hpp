@@ -15,7 +15,7 @@ namespace node {
 /**
  * @brief Sync node. Performs syncing between image frames
  */
-class Sync : public NodeCRTP<Node, Sync, SyncProperties> {
+class Sync : public NodeCRTP<DeviceNode, Sync, SyncProperties> {
    public:
     constexpr static const char* NAME = "Sync";
 

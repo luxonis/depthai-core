@@ -323,11 +323,11 @@ bool NNData::getLayerDatatype(const std::string& name, TensorInfo::DataType& dat
 //     return {};
 // }
 
-// TensorInfo::DataType NNData::getTensorDatatype(const std::string& name) {
-//     const auto it = std::find_if(tensors.begin(), tensors.end(), [&name](const TensorInfo& ti) { return ti.name == name; });
+TensorInfo::DataType NNData::getTensorDatatype(const std::string& name) {
+    const auto it = std::find_if(tensors.begin(), tensors.end(), [&name](const TensorInfo& ti) { return ti.name == name; });
 
-//     if(it == tensors.end()) throw std::runtime_error("Tensor does not exist");
+    if(it == tensors.end()) throw std::runtime_error("Tensor does not exist");
 
-//     return it->dataType;
-// };
+    return it->dataType;
+};
 }  // namespace dai
