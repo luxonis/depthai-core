@@ -10,8 +10,8 @@ PointCloud::PointCloud(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId,
     : NodeCRTP<Node, PointCloud, PointCloudProperties>(par, nodeId, std::move(props)),
       rawConfig(std::make_shared<RawPointCloudConfig>()),
       initialConfig(rawConfig) {
-    setInputRefs({&inputConfig, &inputDepth});
-    setOutputRefs({&outputPointCloud, &passthroughDepth});
+    setInputRefs({&inputConfig, &inputDepth, &inputColor});
+    setOutputRefs({&out, &passthroughDepth});
 }
 
 PointCloud::Properties& PointCloud::getProperties() {

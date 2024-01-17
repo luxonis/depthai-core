@@ -16,19 +16,34 @@
 
 namespace dai {
 
+struct PointXYZRGB {
+    float x, y, z;
+    uint8_t r, g, b;
+private:
+    uint8_t padding[1];
+};
+struct PointXYZ {
+    float x, y, z;
+private:
+    uint8_t padding[4];
+};
+static_assert(sizeof(PointXYZRGB) == 16, "PointXYZRGB size must be 16 bytes");
+static_assert(sizeof(PointXYZ) == 16, "PointXYZ size must be 16 bytes");
+
 /**
  * PointCloudData message. Carries ROI (region of interest) and threshold for depth calculation
  */
 class PointCloudData : public Buffer {
     std::shared_ptr<RawBuffer> serialize() const override;
     RawPointCloudData& pcl;
+    std::vector<PointXYZRGB> pointsXYZRGB;
+    std::vector<PointXYZ> pointsXYZ;
 
    public:
     using Buffer::getSequenceNum;
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
 
-    std::vector<Point3f> points;
 
     /**
      * Construct PointCloudData message.
@@ -51,6 +66,16 @@ class PointCloudData : public Buffer {
      * Retrieves image height in pixels
      */
     unsigned int getHeight() const;
+
+    /**
+     * Retrieves a list of points containing rgb data.
+     */
+    std::vector<PointXYZRGB> getPointsXYZRGB();
+
+    /**
+     * Retrieves a list of points not containing rgb data.
+     */
+    std::vector<PointXYZ> getPointsXYZ();
 
     /**
      * Retrieves minimal x coordinate in milimeters
@@ -182,7 +207,12 @@ class PointCloudData : public Buffer {
     /**
      * Converts PointCloudData to pcl::PointCloud<pcl::PointXYZ>
      */
-    pcl::PointCloud<pcl::PointXYZ>::Ptr toPclData() const;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr toPclData();
+
+    /**
+     * Converts PointCloudData to pcl::PointCloud<pcl::PointXYZRGB>
+     */
+    pcl::PointCloud<pcl::PointXYZRGB>::Ptr toPclRGBData();
 
 #else
     template <typename... T>
@@ -191,6 +221,10 @@ class PointCloudData : public Buffer {
     };
     template <typename... T>
     void toPclData() const {
+        static_assert(dependent_false<T...>::value, "Library not configured with PCL support");
+    }
+    template <typename... T>
+    void toPclRGBData() const {
         static_assert(dependent_false<T...>::value, "Library not configured with PCL support");
     }
 #endif
