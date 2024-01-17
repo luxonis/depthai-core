@@ -229,8 +229,9 @@ dai_add_example(rgb_camera_control ColorCamera/rgb_camera_control.cpp ON)
 dai_add_example(rgb_preview ColorCamera/rgb_preview.cpp ON)
 dai_add_example(rgb_video ColorCamera/rgb_video.cpp ON)
 dai_add_example(rgb_isp_scale ColorCamera/rgb_isp_scale.cpp ON)
-dai_add_example(thermal_cam Thermal/thermal_cam.cpp ON)
-dai_add_example(thermal_nnet Thermal/thermal_nnet.cpp ON)
+
+# Camera
+dai_add_example(thermal_cam Camera/thermal_cam.cpp ON)
 
 # EdgeDetector
 dai_add_example(edge_detector EdgeDetector/edge_detector.cpp ON)
