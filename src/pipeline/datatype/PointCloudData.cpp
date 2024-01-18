@@ -13,29 +13,11 @@ PointCloudData::PointCloudData() : Buffer(std::make_shared<RawPointCloudData>())
     setTimestamp(std::chrono::steady_clock::now());
 }
 PointCloudData::PointCloudData(std::shared_ptr<RawPointCloudData> ptr) : Buffer(std::move(ptr)), pcl(*dynamic_cast<RawPointCloudData*>(raw.get())) {
-}
-
-std::vector<PointXYZRGB> PointCloudData::getPointsXYZRGB() {
-    if (pcl.format != RawPointCloudData::PointCloudFormat::XYZRGB) {
-        throw std::runtime_error("PointCloudData::getPointsXYZRGB() is only available for XYZRGB format");
+    if(!raw->data.empty()) {
+        auto* dataPtr = (Point3f*)pcl.data.data();
+        points.insert(points.end(), dataPtr, dataPtr + pcl.data.size() / sizeof(Point3f));
+        assert(points.size() == pcl.width * pcl.height);
     }
-    if (pointsXYZRGB.empty() && !pcl.data.empty()) {
-        auto* dataPtr = (PointXYZRGB*)pcl.data.data();
-        pointsXYZRGB.insert(pointsXYZRGB.end(), dataPtr, dataPtr + pcl.data.size() / sizeof(PointXYZRGB));
-        assert(pointsXYZRGB.size() == pcl.width * pcl.height);
-        return pointsXYZRGB;
-    } else return pointsXYZRGB;
-};
-std::vector<PointXYZ> PointCloudData::getPointsXYZ() {
-    // if (pcl.format != RawPointCloudData::PointCloudFormat::XYZ) {
-    //     throw std::runtime_error("PointCloudData::getPointsXYZ() is only available for XYZ format");
-    // }
-    if (pointsXYZ.empty() && !pcl.data.empty()) {
-        auto* dataPtr = (PointXYZ*)pcl.data.data();
-        pointsXYZ.insert(pointsXYZ.end(), dataPtr, dataPtr + pcl.data.size() / sizeof(PointXYZ));
-        assert(pointsXYZ.size() == pcl.width * pcl.height);
-        return pointsXYZ;
-    } else return pointsXYZ;
 }
 
 unsigned int PointCloudData::getInstanceNum() const {

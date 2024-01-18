@@ -45,15 +45,11 @@ class PointCloud : public NodeCRTP<Node, PointCloud, PointCloudProperties> {
      * Default queue is non-blocking with size 4.
      */
     Input inputDepth{*this, "inputDepth", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
-    /**
-     * Input message with rgb information
-     */
-    Input inputColor{*this, "inputColor", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
-     * Outputs PointCloudData message.
+     * Outputs ImgFrame message that carries spatial location results.
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::PointCloudData, false}}};
+    Output outputPointCloud{*this, "outputPointCloud", Output::Type::MSender, {{DatatypeEnum::PointCloudData, false}}};
 
     /**
      * Passthrough message on which the calculation was performed.
