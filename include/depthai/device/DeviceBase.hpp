@@ -590,7 +590,7 @@ class DeviceBase {
     /**
      * Get stereo pairs taking into account the calibration and connected cameras.
      * 
-     * @note This method will always return a subset of getStereoPairs.
+     * @note This method will always return a subset of `getStereoPairs`.
      *
      * @returns Vector of stereo pairs
      */

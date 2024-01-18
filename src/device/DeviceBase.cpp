@@ -1006,7 +1006,6 @@ std::unordered_map<CameraBoardSocket, std::string> DeviceBase::getCameraSensorNa
 std::vector<StereoPair> DeviceBase::getStereoPairs() {
     return pimpl->rpcClient->call("getStereoPairs").as<std::vector<StereoPair>>();
 }
-
 std::vector<StereoPair> DeviceBase::getAvailableStereoPairs() {
     std::vector<dai::StereoPair> stereoPairs;
     std::function<std::vector<dai::CameraBoardSocket>(dai::CameraBoardSocket, const std::unordered_map<dai::CameraBoardSocket, dai::CameraInfo>&, std::vector<dai::CameraBoardSocket>&)> visitLinks;
@@ -1025,14 +1024,14 @@ std::vector<StereoPair> DeviceBase::getAvailableStereoPairs() {
         auto calib = readCalibration2();
         eepromData = calib.getEepromData();
         if (eepromData.cameraData.empty()) {
-            throw std::runtime_error("Empty eeprom data");
+            throw std::runtime_error("No camera data found.");
         }
     } catch(const std::exception&) {
         try {
             auto calib = readFactoryCalibration();
             eepromData = calib.getEepromData();
         } catch(const std::exception&) {
-            pimpl->logger.info("No calibration data found.");
+            pimpl->logger.info("No calibration found.");
             return stereoPairs;
         }
     }
