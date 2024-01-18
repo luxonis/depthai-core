@@ -588,6 +588,13 @@ class DeviceBase {
     std::vector<StereoPair> getStereoPairs();
 
     /**
+     * Get stereo pairs based on the device type.
+     *
+     * @returns Vector of stereo pairs
+     */
+    std::vector<StereoPair> getAvailableStereoPairs();
+
+    /**
      * Get connected IMU type
      *
      * @returns IMU type
