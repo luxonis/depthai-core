@@ -69,7 +69,7 @@ int main() {
             cv::line(colormapped, cv::Point(mouseX, mouseY - 10), cv::Point(mouseX, mouseY + 10), textColor, 1);
             // Draw deg C
             char text[32];
-            sprintf(text, "%.1f deg C", frameFp32.at<float>(mouseY, mouseX));
+            snprintf(text, sizeof(text), "%.1f deg C", frameFp32.at<float>(mouseY, mouseX));
             bool putTextLeft = mouseX > colormapped.cols / 2;
             cv::putText(colormapped, text, cv::Point(putTextLeft ? mouseX - 100 : mouseX + 10, mouseY - 10), cv::FONT_HERSHEY_SIMPLEX, 0.5, textColor, 1);
             cv::imshow(tempWindow, colormapped);
