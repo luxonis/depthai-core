@@ -23,6 +23,8 @@ class IMUData : public Buffer {
 
     /// Detections
     std::vector<IMUPacket>& packets;
+
+    std::pair<uint8_t*, size_t> getRecordData() const override;
 };
 
 }  // namespace dai

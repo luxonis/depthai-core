@@ -23,6 +23,10 @@ class MonoCamera : public NodeCRTP<Node, MonoCamera, MonoCameraProperties> {
 
    protected:
     Properties& getProperties();
+    bool isSourceNode() const override;
+    NodeRecordParams getNodeRecordParams() const override;
+    Output& getRecordOutput() override;
+    Input& getReplayInput() override;
 
    public:
     MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);

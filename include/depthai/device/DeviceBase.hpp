@@ -1,6 +1,8 @@
 #pragma once
 
 // std
+#include <spdlog/logger.h>
+
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
@@ -920,6 +922,8 @@ class DeviceBase {
     void init(Config config, const dai::Path& pathToCmd);
     void init(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
     void init(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
+
+    spdlog::logger& getLogger();
 
    private:
     // private functions

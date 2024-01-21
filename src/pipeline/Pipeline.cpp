@@ -82,6 +82,15 @@ std::vector<std::shared_ptr<Node>> PipelineImpl::getAllNodes() {
     }
     return nodes;
 }
+std::vector<std::shared_ptr<Node>> PipelineImpl::getSourceNodes() {
+    std::vector<std::shared_ptr<Node>> sourceNodes;
+    for(const auto& kv : nodeMap) {
+        if(kv.second->isSourceNode()) {
+            sourceNodes.push_back(kv.second);
+        }
+    }
+    return sourceNodes;
+}
 
 void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type) const {
     // Set schema

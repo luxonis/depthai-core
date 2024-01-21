@@ -23,12 +23,18 @@ namespace dai {
 class Pipeline;
 class PipelineImpl;
 
+struct NodeRecordParams {
+    std::string name;
+    bool isVideo;
+};
+
 /**
  * @brief Abstract Node
  */
 class Node {
     friend class Pipeline;
     friend class PipelineImpl;
+    friend class Device;
 
    public:
     /// Node identificator. Unique for every node on a single Pipeline
@@ -56,6 +62,11 @@ class Node {
     void setOutputMapRefs(OutputMap* outMapRef);
     void setInputMapRefs(std::initializer_list<InputMap*> l);
     void setInputMapRefs(InputMap* inMapRef);
+
+    virtual bool isSourceNode() const;
+    virtual NodeRecordParams getNodeRecordParams() const;
+    virtual Output& getRecordOutput();
+    virtual Input& getReplayInput();
 
    public:
     struct DatatypeHierarchy {
