@@ -1051,88 +1051,63 @@ std::vector<CameraBoardSocket> DeviceBase::getConnectedCameras() {
 
 std::vector<StereoPair> DeviceBase::getAvailableStereoPairs() {
     std::vector<dai::StereoPair> stereoPairs;
-    std::function<std::vector<dai::CameraBoardSocket>(dai::CameraBoardSocket, const std::unordered_map<dai::CameraBoardSocket, dai::CameraInfo>&, std::vector<dai::CameraBoardSocket>&)> visitLinks;
-    visitLinks = [&visitLinks](dai::CameraBoardSocket camId, const std::unordered_map<dai::CameraBoardSocket, dai::CameraInfo>& camData, std::vector<dai::CameraBoardSocket>& visited) -> std::vector<dai::CameraBoardSocket> {
-        if (camId == dai::CameraBoardSocket::AUTO) {
-            return visited;
-        }
-        visited.push_back(camId);
-        auto extrinsics = camData.at(camId).extrinsics;
-        auto toSocket = extrinsics.toCameraSocket;
-        return visitLinks(toSocket, camData, visited);
-    };
-
-    dai::EepromData eepromData;
+    dai::CalibrationHandler calibHandler;
     try {
-        auto calib = readCalibration2();
-        eepromData = calib.getEepromData();
-        if (eepromData.cameraData.empty()) {
+        calibHandler = readCalibration2();
+        if(calibHandler.getEepromData().cameraData.empty()) {
             throw std::runtime_error("No camera data found.");
         }
     } catch(const std::exception&) {
         try {
-            auto calib = readFactoryCalibration();
-            eepromData = calib.getEepromData();
+            calibHandler = readFactoryCalibration();
         } catch(const std::exception&) {
             pimpl->logger.info("No calibration found.");
             return stereoPairs;
         }
     }
-    // Step 1: Find the linked cameras
-    std::unordered_map<dai::CameraBoardSocket, std::vector<dai::CameraBoardSocket>> linkedCameras;
-    for (auto const& [cam, camInfo] : eepromData.cameraData) {
-        auto camId = cam;
-        auto extrinsics = camInfo.extrinsics;
-        auto toSocket = extrinsics.toCameraSocket;
-        std::vector<dai::CameraBoardSocket> visited;
-        linkedCameras[camId] = visitLinks(toSocket, eepromData.cameraData, visited);
-    }
-
-    // Step 2: Find stereo pairs, check if vertical or horizontal, and get baseline
-    for (auto const& [camId, linkedSockets] : linkedCameras) {
-        auto fromSocket = camId;
-        auto toSocket = eepromData.cameraData[fromSocket].extrinsics.toCameraSocket;
-        auto accBaselineX = 0.0f;
-        auto accBaselineY = 0.0f;
-        while (toSocket != dai::CameraBoardSocket::AUTO) {
-            auto extrinsics = eepromData.cameraData[fromSocket].extrinsics;
-            accBaselineX += extrinsics.translation.x;
-            accBaselineY = extrinsics.translation.y;
-            auto baseline = accBaselineX;
-            if (std::abs(accBaselineY) > std::abs(accBaselineX)) {
-                baseline = accBaselineY;
+    // Find links between cameras.
+    for(auto const& [camId1, _camInfo1] : calibHandler.getEepromData().cameraData) {
+        for(auto const& [camId2, _camInfo2] : calibHandler.getEepromData().cameraData) {
+            try {
+                auto translationVector = calibHandler.getCameraTranslationVector(camId1, camId2, false);
+                auto baseline = std::abs(translationVector[0]) > std::abs(translationVector[1]) ? translationVector[0] : translationVector[1];  // X or Y
+                auto leftSocket = baseline < 0 ? camId1 : camId2;
+                auto rightSocket = leftSocket == camId1 ? camId2 : camId1;
+                int baselineDiff = std::abs(static_cast<int>(translationVector[0]) - static_cast<int>(translationVector[1]));
+                if(baselineDiff == static_cast<int>(std::abs(baseline))) {
+                    if(std::find_if(stereoPairs.begin(),
+                                    stereoPairs.end(),
+                                    [leftSocket, rightSocket](auto const& pair) { return pair.left == leftSocket && pair.right == rightSocket; })
+                       == stereoPairs.end()) {
+                        stereoPairs.push_back(dai::StereoPair{leftSocket, rightSocket, std::abs(baseline), static_cast<int>(translationVector[0]) == 0});
+                    }
+                } else {
+                    pimpl->logger.debug("Skipping diagonal pair, left: {}, right: {}.", leftSocket, rightSocket);
+                }
+            } catch(const std::exception&) {
+                continue;
             }
-            auto leftSocket = baseline < 0 ? camId : toSocket;
-            auto rightSocket = leftSocket == camId ? toSocket : camId;
-            // Make sure the pair isn't diagonal, else skip
-            int baselineDiff = std::abs(static_cast<int>(accBaselineX) - static_cast<int>(accBaselineY));
-            if (baselineDiff == static_cast<int>(std::abs(baseline))) {
-                stereoPairs.push_back(dai::StereoPair{leftSocket, rightSocket, std::abs(baseline), baseline == accBaselineY});
-            } else {
-                pimpl->logger.debug("Skipping diagonal pair, left: {}, right: {}.", leftSocket, rightSocket);
-            }
-            auto nextSocket = eepromData.cameraData[toSocket].extrinsics.toCameraSocket;
-            fromSocket = toSocket;
-            toSocket = nextSocket;
         }
     }
-    // Step 3: Filter out undetected cameras and socket pairs which are not present in getStereoPairs 
+    // Filter out undetected cameras and socket pairs which are not present in getStereoPairs
     auto deviceStereoPairs = getStereoPairs();
     auto connectedCameras = getConnectedCameras();
     std::vector<dai::StereoPair> filteredStereoPairs;
-    std::copy_if(stereoPairs.begin(), stereoPairs.end(), std::back_inserter(filteredStereoPairs), [this, connectedCameras, deviceStereoPairs](dai::StereoPair pair) {
-        if (std::find(connectedCameras.begin(), connectedCameras.end(), pair.left) == connectedCameras.end()) {
-            pimpl->logger.debug("Skipping calibrated stereo pair because, camera {} was not detected.", pair.left);
-            return false;
-        } else if (std::find(connectedCameras.begin(), connectedCameras.end(), pair.right) == connectedCameras.end()) {
-            pimpl->logger.debug("Skipping calibrated stereo pair because, camera {} was not detected.", pair.right);
-            return false;
-        }
-        return std::find_if(deviceStereoPairs.begin(), deviceStereoPairs.end(), [pair](dai::StereoPair devicePair) {
-            return devicePair.left == pair.left && devicePair.right == pair.right;
-        }) != deviceStereoPairs.end();
-    });
-    
+    std::copy_if(
+        stereoPairs.begin(), stereoPairs.end(), std::back_inserter(filteredStereoPairs), [this, connectedCameras, deviceStereoPairs](dai::StereoPair pair) {
+            if(std::find(connectedCameras.begin(), connectedCameras.end(), pair.left) == connectedCameras.end()) {
+                pimpl->logger.debug("Skipping calibrated stereo pair because, camera {} was not detected.", pair.left);
+                return false;
+            } else if(std::find(connectedCameras.begin(), connectedCameras.end(), pair.right) == connectedCameras.end()) {
+                pimpl->logger.debug("Skipping calibrated stereo pair because, camera {} was not detected.", pair.right);
+                return false;
+            }
+            return std::find_if(deviceStereoPairs.begin(),
+                                deviceStereoPairs.end(),
+                                [pair](dai::StereoPair devicePair) { return devicePair.left == pair.left && devicePair.right == pair.right; })
+                   != deviceStereoPairs.end();
+        });
+
     std::sort(filteredStereoPairs.begin(), filteredStereoPairs.end(), [](dai::StereoPair a, dai::StereoPair b) { return a.baseline < b.baseline; });
     return filteredStereoPairs;
 }
