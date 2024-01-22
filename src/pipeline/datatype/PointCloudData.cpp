@@ -16,7 +16,8 @@ PointCloudData::PointCloudData(std::shared_ptr<RawPointCloudData> ptr) : Buffer(
     if(!raw->data.empty()) {
         auto* dataPtr = (Point3f*)pcl.data.data();
         points.insert(points.end(), dataPtr, dataPtr + pcl.data.size() / sizeof(Point3f));
-        assert(points.size() == pcl.width * pcl.height);
+        assert(isSparse() || points.size() == pcl.width * pcl.height);
+        assert(!isSparse() || points.size() <= pcl.width * pcl.height);
     }
 }
 
@@ -46,6 +47,9 @@ float PointCloudData::getMaxY() const {
 }
 float PointCloudData::getMaxZ() const {
     return pcl.maxz;
+}
+bool PointCloudData::isSparse() const {
+    return pcl.sparse;
 }
 
 // setters

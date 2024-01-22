@@ -34,6 +34,12 @@ class PointCloudConfig : public Buffer {
      * @returns config for SpatialLocationCalculator
      */
     dai::RawPointCloudConfig get() const;
+
+    /**
+     * Enable or disable sparse point cloud calculation.
+     * @param enable
+     */
+    PointCloudConfig& setSparse(bool enable);
 };
 
 }  // namespace dai

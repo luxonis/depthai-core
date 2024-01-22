@@ -5,10 +5,10 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr dai::PointCloudData::toPclData() const {
 
     cloud->width = getWidth();
     cloud->height = getHeight();
-    cloud->is_dense = true;
-    cloud->points.resize(cloud->width * cloud->height);
+    cloud->is_dense = isSparse();
+    cloud->points.resize(this->getData().size() / sizeof(Point3f));
 
-    for(unsigned int i = 0; i < cloud->width * cloud->height; i++) {
+    for(unsigned int i = 0; i < cloud->points.size(); i++) {
         cloud->points[i].x = points[i].x;
         cloud->points[i].y = points[i].y;
         cloud->points[i].z = points[i].z;

@@ -82,6 +82,11 @@ class PointCloudData : public Buffer {
      */
     float getMaxZ() const;
 
+    /**
+     * Retrieves whether point cloud is sparse
+     */
+    bool isSparse() const;
+
     // setters
     /**
      * Retrieves image timestamp related to dai::Clock::now()

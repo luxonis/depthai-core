@@ -18,4 +18,9 @@ PointCloudConfig& PointCloudConfig::set(dai::RawPointCloudConfig config) {
     return *this;
 }
 
+PointCloudConfig& PointCloudConfig::setSparse(bool enable) {
+    cfg.sparse = enable;
+    return *this;
+}
+
 }  // namespace dai

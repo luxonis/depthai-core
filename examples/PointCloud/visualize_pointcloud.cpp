@@ -34,6 +34,7 @@ int main() {
     depth->depth.link(pointcloud->inputDepth);
     depth->disparity.link(xoutDepth->input);
     pointcloud->outputPointCloud.link(xout->input);
+    pointcloud->initialConfig.setSparse(true);
 
     auto viewer = std::make_unique<pcl::visualization::PCLVisualizer>("Cloud Viewer");
     bool first = true;
@@ -58,7 +59,7 @@ int main() {
             std::cout << "Empty point cloud" << std::endl;
             continue;
         }
-        std::cout << "Number of points: " << pclMsg->points.size() / 3 << std::endl;
+        std::cout << "Number of points: " << pclMsg->points.size() << std::endl;
         std::cout << "Min x: " << pclMsg->getMinX() << std::endl;
         std::cout << "Min y: " << pclMsg->getMinY() << std::endl;
         std::cout << "Min z: " << pclMsg->getMinZ() << std::endl;
