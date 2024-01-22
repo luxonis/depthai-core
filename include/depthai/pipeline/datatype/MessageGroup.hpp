@@ -29,7 +29,6 @@ class MessageGroup : public Buffer {
         return group[name];
     }
 
-
     // TODO(Morato) - this API is dangerous, when T is a base reference to a derived class
     // template <typename T>
     // void add(const std::string& name, const T& value) {
