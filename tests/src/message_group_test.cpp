@@ -15,15 +15,15 @@ TEST_CASE("Set and get messages") {
     std::vector<unsigned char> buf1Data = {1, 2, 3};
     std::vector<unsigned char> buf2Data = {4, 5, 6};
     auto msgGrp = std::make_shared<dai::MessageGroup>();
-    dai::Buffer buf;
-    buf.setTimestamp(buf1Ts);
-    buf.setData(buf1Data);
+    auto buf = std::make_shared<dai::Buffer>();
+    buf->setTimestamp(buf1Ts);
+    buf->setData(buf1Data);
     msgGrp->add("buf1", buf);
 
-    dai::ImgFrame img;
-    img.setTimestamp(buf2Ts);
-    img.setData(buf2Data);
-    img.setSize({5, 6});
+    auto img = std::make_shared<dai::ImgFrame>();
+    img->setTimestamp(buf2Ts);
+    img->setData(buf2Data);
+    img->setSize({5, 6});
     msgGrp->add("img1", img);
 
     REQUIRE(msgGrp->get<dai::Buffer>("buf1")->getTimestamp() == buf1Ts);
@@ -109,14 +109,14 @@ TEST_CASE("MessageGroup ping-pong") {
     auto inQ = device.getInputQueue("in");
     auto outQ = device.getOutputQueue("out");
 
-    dai::Buffer buf1;
-    buf1.setData({1, 2, 3, 4, 5});
-    buf1.setTimestamp(buf1Ts);
+    auto buf1 = std::make_shared<dai::Buffer>();
+    buf1->setData({1, 2, 3, 4, 5});
+    buf1->setTimestamp(buf1Ts);
 
-    dai::ImgFrame img1;
-    img1.setData({6, 7, 8, 9, 10});
-    img1.setTimestamp(buf2Ts);
-    img1.setSize({5, 6});
+    auto img1 = std::make_shared<dai::ImgFrame>();
+    img1->setData({6, 7, 8, 9, 10});
+    img1->setTimestamp(buf2Ts);
+    img1->setSize({5, 6});
 
     auto msgGrp = std::make_shared<dai::MessageGroup>();
     msgGrp->add("buf1", buf1);
@@ -128,6 +128,9 @@ TEST_CASE("MessageGroup ping-pong") {
 
     // REQUIRE(out->get<dai::Buffer>("buf1")->getTimestamp() == buf1Ts);
     // REQUIRE(out->get<dai::ImgFrame>("img1")->getTimestamp() == buf2Ts);
+    REQUIRE(out != nullptr);
+    REQUIRE(out->get<dai::Buffer>("buf1") != nullptr);
+    REQUIRE(out->get<dai::ImgFrame>("img1") != nullptr);
     REQUIRE((out->get<dai::Buffer>("buf1")->getData() == std::vector<unsigned char>{1, 2, 3, 4, 5}));
     REQUIRE((out->get<dai::ImgFrame>("img1")->getData() == std::vector<unsigned char>{6, 7, 8, 9, 10}));
     REQUIRE(out->get<dai::ImgFrame>("img1")->getWidth() == 5);

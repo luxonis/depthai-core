@@ -537,7 +537,9 @@ void DeviceBase::closeImpl() {
     using namespace std::chrono;
     auto t1 = steady_clock::now();
     bool shouldGetCrashDump = false;
-    if(!dumpOnly) {
+    // Check if the device is RVC3 - in case it is, crash dump retrieval is done differently
+    bool isRvc2 = deviceInfo.platform == X_LINK_MYRIAD_X;
+    if(!dumpOnly && isRvc2) {
         pimpl->logger.debug("Device about to be closed...");
         try {
             if(hasCrashDump()) {

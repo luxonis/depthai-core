@@ -263,12 +263,19 @@ class ImgFrame : public Buffer {
      */
     Rect remapRectToSource(const Rect& rect) const;
 
-    // /**
-    //  * Convience function to initialize meta data from another frame
-    //  * Copies over timestamps, transformations done on the image, etc.
-    //  * @param sourceFrame source frame from which the metadata is taken from
-    //  */
-    // ImgFrame& setMetadata(const ImgFrame& sourceFrame);
+    /**
+     * Convience function to initialize meta data from another frame
+     * Copies over timestamps, transformations done on the image, etc.
+     * @param sourceFrame source frame from which the metadata is taken from
+     */
+    ImgFrame& setMetadata(const ImgFrame& sourceFrame);
+
+    /**
+     * Convience function to initialize meta data from another frame
+     * Copies over timestamps, transformations done on the image, etc.
+     * @param sourceFrame shared pointer to source frame from which the metadata is taken from
+     */
+    ImgFrame& setMetadata(const std::shared_ptr<ImgFrame>& sourceFrame);
 
     /**
      * @note Fov API works correctly only on rectilinear frames

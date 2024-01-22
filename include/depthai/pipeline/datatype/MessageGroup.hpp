@@ -24,12 +24,19 @@ class MessageGroup : public Buffer {
     std::shared_ptr<T> get(const std::string& name) {
         return std::dynamic_pointer_cast<T>(group[name]);
     }
-    void add(const std::string& name, const std::shared_ptr<ADatatype>& value);
-    template <typename T>
-    void add(const std::string& name, const T& value) {
-        static_assert(std::is_base_of<ADatatype, T>::value, "T must derive from ADatatype");
-        group[name] = std::make_shared<T>(value);
+
+    std::shared_ptr<ADatatype> get(const std::string& name) {
+        return group[name];
     }
+
+
+    // TODO(Morato) - this API is dangerous, when T is a base reference to a derived class
+    // template <typename T>
+    // void add(const std::string& name, const T& value) {
+    //     static_assert(std::is_base_of<ADatatype, T>::value, "T must derive from ADatatype");
+    //     group[name] = std::make_shared<T>(value);
+    // }
+    void add(const std::string& name, const std::shared_ptr<ADatatype>& value);
 
     // Iterators
     std::map<std::string, std::shared_ptr<ADatatype>>::iterator begin();

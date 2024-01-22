@@ -9,7 +9,7 @@ namespace node {
 class MessageDemux : public NodeCRTP<DeviceNode, MessageDemux, MessageDemuxProperties> {
    public:
     constexpr static const char* NAME = "MessageDemux";
-
+    using NodeCRTP::NodeCRTP;
     /**
      * Input message of type MessageGroup
      */

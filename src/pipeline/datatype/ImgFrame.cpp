@@ -147,11 +147,19 @@ ImgFrame& ImgFrame::setType(Type type) {
     return *this;
 }
 
-// TODO add this back in
-// ImgFrame& ImgFrame::setMetadata(const ImgFrame& sourceFrame) {
-//     set(sourceFrame.get());
-//     return *this;
-// }
+ImgFrame& ImgFrame::setMetadata(const ImgFrame& sourceFrame) {
+    auto tmpData = this->data;
+    *this = sourceFrame;
+    this->data = tmpData;  // Keep the original data
+    return *this;
+}
+
+ImgFrame& ImgFrame::setMetadata(const std::shared_ptr<ImgFrame>& sourceFrame) {
+    if(sourceFrame == nullptr) {
+        throw std::invalid_argument("Source frame is null");
+    }
+    return setMetadata(*sourceFrame);
+}
 
 Point2f ImgFrame::remapPointFromSource(const Point2f& point) const {
     if(point.isNormalized()) {
