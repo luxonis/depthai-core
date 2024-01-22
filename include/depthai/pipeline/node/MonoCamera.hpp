@@ -44,7 +44,7 @@ class MonoCamera : public NodeCRTP<Node, MonoCamera, MonoCameraProperties> {
      *
      * Default queue is non-blocking with size 8
      */
-    Input mockIsp{*this, "mockIsp", Input::Type::SReceiver, false, 8, {{DatatypeEnum::ImgFrame, false}}};
+    Input mockIsp{*this, "mockIsp", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 encoded (grayscale) frame data.

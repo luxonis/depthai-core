@@ -59,7 +59,7 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
      *
      * Default queue is non-blocking with size 8
      */
-    Input mockIsp{*this, "mockIsp", Input::Type::SReceiver, false, 8, {{DatatypeEnum::ImgFrame, false}}};
+    Input mockIsp{*this, "mockIsp", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs ImgFrame message that carries NV12 encoded (YUV420, UV plane interleaved) frame data.
