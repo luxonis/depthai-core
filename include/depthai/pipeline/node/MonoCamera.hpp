@@ -42,7 +42,7 @@ class MonoCamera : public NodeCRTP<Node, MonoCamera, MonoCameraProperties> {
     /**
      * Input for mocking 'isp' functionality.
      *
-     * Default queue is non-blocking with size 8
+     * Default queue is blocking with size 8
      */
     Input mockIsp{*this, "mockIsp", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImgFrame, false}}};
 
