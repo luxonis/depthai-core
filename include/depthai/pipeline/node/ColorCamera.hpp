@@ -59,6 +59,13 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
     Input inputControl{*this, "inputControl", Input::Type::SReceiver, true, 8, {{DatatypeEnum::CameraControl, false}}};
 
     /**
+     * Input for mocking 'isp' functionality.
+     *
+     * Default queue is blocking with size 8
+     */
+    Input mockIsp{*this, "mockIsp", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
      * Outputs ImgFrame message that carries NV12 encoded (YUV420, UV plane interleaved) frame data.
      *
      * Suitable for use with VideoEncoder node
