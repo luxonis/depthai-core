@@ -33,6 +33,11 @@ class IMU : public NodeCRTP<Node, IMU, IMUProperties> {
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::IMUData, false}}};
 
     /**
+     * Mock IMU data for replaying recorded data
+     */
+    Input mockIn{*this, "mockIn", Input::Type::SReceiver, {{DatatypeEnum::IMUData, false}}};
+
+    /**
      * Enable a new IMU sensor with explicit configuration
      */
     void enableIMUSensor(IMUSensorConfig sensorConfig);
