@@ -133,6 +133,14 @@ class CameraControl : public Buffer {
      */
     CameraControl& setManualFocus(uint8_t lensPosition);
 
+    /**
+     * Set a command to specify manual focus position (more precise control).
+     * 
+     * @param lensPositionRaw specify lens position 0.0f .. 1.0f
+     * @return CameraControl& 
+     */
+    CameraControl& setManualFocusRaw(float lensPositionRaw);
+
     // Exposure
     /**
      * Set a command to enable auto exposure
@@ -305,6 +313,11 @@ class CameraControl : public Buffer {
      * Retrieves lens position, range 0..255. Returns -1 if not available
      */
     int getLensPosition() const;
+
+    /**
+     * Retrieves lens position, range 0.0 .. 1.0.
+     */
+    float getLensPositionRaw() const;
 
     /**
      * Set explicit configuration.
