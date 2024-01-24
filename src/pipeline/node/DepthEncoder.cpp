@@ -9,7 +9,7 @@
 
 static constexpr auto maxHueValue = 1529;
 std::tuple<int, int, int> toRgbHue(int x) {
-    if(x < 0 || x > 1529) throw std::runtime_error("Invalid input value for hue LUT");
+    if(x < 0 || x > 1529) throw std::runtime_error("Invalid input value for hue LUT conversion. Must be between 0 and 1529 but got " + std::to_string(x));
     int R, G, B = 0;
     if ((0 <= x && x <= 255) || (1275 < x && x <= 1529)) {
         R = 255;
@@ -76,9 +76,13 @@ void DepthEncoder::setHueLut(uint16_t minIn, uint16_t maxIn, float scaleFactor, 
     std::vector<uint8_t> lutR(LUT_SIZE);
     std::vector<uint8_t> lutG(LUT_SIZE);
     std::vector<uint8_t> lutB(LUT_SIZE);
-    uint16_t maxInDisparity = maxIn * scaleFactor;  // Transform depth to disparity
-    uint16_t minInDisparity = minIn * scaleFactor;  // Transform depth to disparity
-
+    uint16_t minInDisparity = scaleFactor / maxIn;  // Transform depth to disparity
+    uint16_t maxInDisparity;
+    if(minIn == 0) {
+        maxInDisparity = LUT_SIZE - 1;
+    } else {
+        maxInDisparity = scaleFactor / minIn;  // Transform depth to disparity
+    }
     for(int i = 0; i < LUT_SIZE; i++) {
         // First handle the case when the input is outside of the range
         if(i < minInDisparity || i > maxInDisparity) {
@@ -88,7 +92,9 @@ void DepthEncoder::setHueLut(uint16_t minIn, uint16_t maxIn, float scaleFactor, 
             continue;
         }
         // Calculate the hue value
-        int hueIn = std::round(static_cast<float>((i - minInDisparity) * 1529) / (maxInDisparity - minInDisparity));
+        // Convert disparity to depth for the hue calculation
+        float depth = scaleFactor / i;
+        int hueIn = std::round(static_cast<float>((depth - minIn) * 1529) / (maxIn - minIn));
         // Handle the buffering to avoid minimum and maximum colors being too similar
         int hueInBuffered = (hueIn * (1.0f - (2 * bufferAmount))) + (maxHueValue * bufferAmount);
         auto color = toRgbHue(hueInBuffered);
