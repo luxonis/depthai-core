@@ -135,9 +135,9 @@ class CameraControl : public Buffer {
 
     /**
      * Set a command to specify manual focus position (more precise control).
-     * 
+     *
      * @param lensPositionRaw specify lens position 0.0f .. 1.0f
-     * @return CameraControl& 
+     * @return CameraControl&
      */
     CameraControl& setManualFocusRaw(float lensPositionRaw);
 
