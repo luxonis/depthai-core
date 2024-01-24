@@ -45,6 +45,16 @@ class DepthEncoder : public NodeCRTP<DeviceNode, DepthEncoder, DepthEncoderPrope
 
     void setLut(std::vector<uint8_t> lutR, std::vector<uint8_t> lutG, std::vector<uint8_t> lutB);
 
+    /**
+     * @brief Set the LUT for depth mapping
+        * @param minIn Minimum input value
+        * @param maxIn Maximum input value
+        * @param scaleFactor Scale factor for input values in case of depth encoding. The scale should work as follows: disparity  = scaleFactor / depth
+        * @param bufferPercentage Percentage of the colorspace to be left out of the LUT to avoid inversion of the low and high values due to the Hue LUT being cyclic
+     */
+    void setHueLut(uint16_t minIn, uint16_t maxIn, float scaleFactor = 1, float bufferPercentage = 0.0f);
+
+
     void setOutputType(RawImgFrame::Type outputType);
 
     void setNumFramesPool(int numFramesPool);
