@@ -183,14 +183,14 @@ class StereoDepth : public NodeCRTP<Node, StereoDepth, StereoDepthProperties> {
     /**
      * Specify input resolution size
      *
-     * Optional if MonoCamera exists, otherwise necessary
+     * Optional use to resize the output, otherwise the resolution is lazy-loaded by the first frame.
      */
     void setInputResolution(int width, int height);
 
     /**
      * Specify input resolution size
      *
-     * Optional if MonoCamera exists, otherwise necessary
+     * Optional use to resize the output, otherwise the resolution is lazy-loaded by the first frame.
      */
     void setInputResolution(std::tuple<int, int> resolution);
 
