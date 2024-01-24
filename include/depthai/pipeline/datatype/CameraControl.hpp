@@ -315,7 +315,7 @@ class CameraControl : public Buffer {
     int getLensPosition() const;
 
     /**
-     * Retrieves lens position, range 0.0 .. 1.0.
+     * Retrieves lens position, range 0.0f..1.0f.
      */
     float getLensPositionRaw() const;
 

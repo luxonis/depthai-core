@@ -55,6 +55,12 @@ class EncodedFrame : public Buffer {
      * Retrieves lens position, range 0..255. Returns -1 if not available
      */
     int getLensPosition() const;
+
+    /**
+     * Retrieves lens position, range 0.0f..1.0f. Returns -1 if not available
+     */
+    float getLensPositionRaw() const;
+
     /**
      * Retrieves the encoding quality
      */
