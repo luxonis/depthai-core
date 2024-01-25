@@ -26,8 +26,18 @@ struct RecordStream {
     std::ofstream fileMeta;
     std::unique_ptr<std::thread> thread;
     std::atomic<bool> running{false};
-    bool compress = true;
+    bool compress = false;
     int compressionLevel = 6;
+};
+struct ReplayStream {
+    dai::Path path;
+    std::shared_ptr<DataInputQueue> queue;
+    std::ifstream file;
+    std::ifstream fileMeta;
+    std::unique_ptr<std::thread> thread;
+    std::atomic<bool> running{false};
+    bool decompress = false;
+    std::function<std::shared_ptr<RawBuffer>(RawBuffer)> getMessageCallback;
 };
 }  // namespace rr
 
@@ -241,10 +251,12 @@ class Device : public DeviceBase {
 
     // Record & Replay
     enum class RecordReplayState { NONE, RECORD, REPLAY };
-
+    
+    std::string mxId;
     RecordReplayState recordReplayState = RecordReplayState::NONE;
     utility::RecordConfig recordConfig;
     std::unordered_map<std::string, rr::RecordStream> recordStreams;
+    std::unordered_map<std::string, rr::ReplayStream> replayStreams;
 
     bool startPipelineImpl(const Pipeline& pipeline) override;
     void closeImpl() override;

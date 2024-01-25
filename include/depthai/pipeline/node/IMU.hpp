@@ -17,6 +17,7 @@ class IMU : public NodeCRTP<Node, IMU, IMUProperties> {
     NodeRecordParams getNodeRecordParams() const override;
     Output& getRecordOutput() override;
     Input& getReplayInput() override;
+    std::function<std::shared_ptr<RawBuffer>(RawBuffer)> getRecordedFrameCallback() const override;
 
    public:
     constexpr static const char* NAME = "IMU";

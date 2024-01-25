@@ -2,6 +2,7 @@
 
 #include <cmath>
 
+#include "depthai-shared/datatype/RawImgFrame.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "spdlog/fmt/fmt.h"
 
@@ -23,7 +24,7 @@ ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeI
     properties.fps = 30.0;
     properties.previewKeepAspectRatio = true;
 
-    setInputRefs({&inputConfig, &inputControl});
+    setInputRefs({&inputConfig, &inputControl, &mockIsp});
     setOutputRefs({&video, &preview, &still, &isp, &raw, &frameEvent});
 }
 
@@ -572,8 +573,20 @@ ColorCamera::Output& ColorCamera::getRecordOutput() {
     return isp;
 }
 ColorCamera::Input& ColorCamera::getReplayInput() {
-    throw std::runtime_error("Not yet implemented");
-    // return mockIsp;
+    return mockIsp;
+}
+
+std::function<std::shared_ptr<RawBuffer>(RawBuffer)> ColorCamera::getRecordedFrameCallback() const {
+    return [&](RawBuffer buf) {
+        RawImgFrame frame;
+        frame.data = std::move(buf.data);
+        frame.tsDevice = buf.tsDevice;
+        frame.sequenceNum = buf.sequenceNum;
+        frame.fb.type = RawImgFrame::Type::NV12;
+        frame.fb.width = 1280; // TODO(asahtik): Somehow get such metadata from callback argument
+        frame.fb.height = 720; // TODO(asahtik): Somehow get such metadata from callback argument
+        return std::make_shared<RawImgFrame>(std::move(frame));
+    };
 }
 
 }  // namespace node

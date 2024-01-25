@@ -25,7 +25,7 @@ Camera::Camera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::un
     properties.fps = 30.0;
     properties.previewKeepAspectRatio = true;
 
-    setInputRefs({&inputConfig, &inputControl});
+    setInputRefs({&inputConfig, &inputControl, &mockIsp});
     setOutputRefs({&video, &preview, &still, &isp, &raw, &frameEvent});
 }
 
@@ -297,8 +297,20 @@ Camera::Output& Camera::getRecordOutput() {
     return isp;
 }
 Camera::Input& Camera::getReplayInput() {
-    throw std::runtime_error("Not yet implemented");
-    // return mockIsp;
+    return mockIsp;
+}
+
+std::function<std::shared_ptr<RawBuffer>(RawBuffer)> Camera::getRecordedFrameCallback() const {
+    return [&](RawBuffer buf) {
+        RawImgFrame frame;
+        frame.data = std::move(buf.data);
+        frame.tsDevice = buf.tsDevice;
+        frame.sequenceNum = buf.sequenceNum;
+        frame.fb.type = RawImgFrame::Type::NV12;
+        frame.fb.width = 1280; // TODO(asahtik): Somehow get such metadata from callback argument
+        frame.fb.height = 720; // TODO(asahtik): Somehow get such metadata from callback argument
+        return std::make_shared<RawImgFrame>(std::move(frame));
+    };
 }
 
 }  // namespace node

@@ -23,6 +23,7 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
     NodeRecordParams getNodeRecordParams() const override;
     Output& getRecordOutput() override;
     Input& getReplayInput() override;
+    std::function<std::shared_ptr<RawBuffer>(RawBuffer)> getRecordedFrameCallback() const override;
 
    private:
     std::shared_ptr<RawCameraControl> rawControl;

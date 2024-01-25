@@ -102,5 +102,69 @@ void tarFiles(const std::string& path, const std::vector<std::string>& files, co
     archive_write_free(a);
 }
 
+std::vector<std::string> filenamesInTar(const std::string& path) {
+    std::vector<std::string> result;
+
+    struct archive* a;
+    struct archive_entry* entry;
+    int r;
+
+    a = archive_read_new();
+    archive_read_support_filter_all(a);
+    archive_read_support_format_all(a);
+    r = archive_read_open_filename(a, path.c_str(), 10240);
+    if(r != ARCHIVE_OK) {
+        throw std::runtime_error("Could not open archive.");
+    }
+    while(archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+        result.emplace_back(archive_entry_pathname(entry));
+        archive_read_data_skip(a);
+    }
+    r = archive_read_free(a);
+    if(r != ARCHIVE_OK) {
+        throw std::runtime_error("Could not free archive.");
+    }
+
+    return result;
+}
+
+void untarFiles(const std::string& path, const std::vector<std::string>& files, const std::vector<std::string>& outFiles) {
+    struct archive* a;
+    struct archive_entry* entry;
+    int r;
+
+    a = archive_read_new();
+    archive_read_support_filter_all(a);
+    archive_read_support_format_all(a);
+    r = archive_read_open_filename(a, path.c_str(), 10240);
+    if(r != ARCHIVE_OK) {
+        throw std::runtime_error("Could not open archive.");
+    }
+    for(size_t i = 0; i < files.size(); i++) {
+        const auto& file = files[i];
+        const auto& outFile = outFiles[i];
+        while(archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+            if(file == archive_entry_pathname(entry)) {
+                int fd = open(outFile.c_str(), O_WRONLY | O_CREAT, archive_entry_perm(entry));
+                if(fd < 0) {
+                    throw std::runtime_error("Could not open file.");
+                }
+                size_t size = archive_entry_size(entry);
+                std::vector<uint8_t> buff(size);
+                archive_read_data(a, buff.data(), size);
+                write(fd, buff.data(), size);
+                close(fd);
+                break;
+            }
+            archive_read_data_skip(a);
+        }
+    }
+
+    r = archive_read_free(a);
+    if(r != ARCHIVE_OK) {
+        throw std::runtime_error("Could not free archive.");
+    }
+}
+
 }  // namespace utility
 }  // namespace dai

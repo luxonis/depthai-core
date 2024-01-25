@@ -309,4 +309,8 @@ Node::Input& Node::getReplayInput() {
     throw std::runtime_error("getReplayInput is not implemented for non-source nodes.");
 }
 
+std::function<std::shared_ptr<RawBuffer>(RawBuffer)> Node::getRecordedFrameCallback() const {
+    return [](RawBuffer buf) { return std::make_shared<RawBuffer>(std::move(buf)); };
+}
+
 }  // namespace dai

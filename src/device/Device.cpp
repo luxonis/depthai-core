@@ -83,8 +83,11 @@ void Device::closeImpl() {
     // Clear map
     callbackIdMap.clear();
 
-    // Stop recording
+    // Stop recording / replaying
     for(auto& kv : recordStreams) {
+        kv.second.running = false;
+    }
+    for(auto& kv : replayStreams) {
         kv.second.running = false;
     }
 
@@ -97,15 +100,23 @@ void Device::closeImpl() {
     outputQueueMap.clear();
     inputQueueMap.clear();
 
-    // Stop recording
-    if(recordReplayState == RecordReplayState::RECORD) {
-        for(auto& kv : recordStreams) {
-            if(kv.second.thread != nullptr) {
-                kv.second.thread->join();
-                kv.second.file.close();
-            }
+    // Stop recording / replaying
+    for(auto& kv : recordStreams) {
+        if(kv.second.thread != nullptr) {
+            kv.second.thread->join();
+            kv.second.file.close();
+            kv.second.fileMeta.close();
         }
-        std::vector<std::string> filenames = {platform::joinPaths(recordConfig.outputDir, "record_config.json")};
+    }
+    for(auto& kv : replayStreams) {
+        if(kv.second.thread != nullptr) {
+            kv.second.thread->join();
+            kv.second.file.close();
+            kv.second.fileMeta.close();
+        }
+    }
+    if(recordReplayState == RecordReplayState::RECORD) {
+        std::vector<std::string> filenames = {platform::joinPaths(recordConfig.outputDir, mxId.append(("_record_config.json")))};
         std::vector<std::string> outFiles = {"record_config.json"};
         filenames.reserve(recordStreams.size() * 2 + 1);
         outFiles.reserve(recordStreams.size() * 2 + 1);
@@ -330,22 +341,25 @@ bool checkRecordConfig(std::string& recordPath, utility::RecordConfig& config, s
     return true;
 }
 
+struct RecordMeta {
+    size_t byteOffset;
+    size_t size;
+    int64_t seqNum;
+    int64_t seconds;
+    int64_t nanoseconds;
+};
+
 void recordStream(rr::RecordStream* recordStream, spdlog::logger* logger) {
-    uint64_t byteOffset = 0;
-    while(recordStream->running) {
-        std::shared_ptr<ADatatype> msg = nullptr;
-        try {
+    size_t byteOffset = 0;
+    std::shared_ptr<ADatatype> msg = nullptr;
+    try {
+        while(recordStream->running) {
             msg = recordStream->queue->get();
-        } catch(std::exception& e) {
-            // Queue closed / error
-            logger->warn("Record stopped: {}", e.what());
-        }
-        if(msg == nullptr) {
-            // Queue closed
-            logger->warn("Record stopped: queue closed");
-            break;
-        }
-        try {
+            if(msg == nullptr) {
+                // Queue closed
+                logger->warn("Record stopped: queue closed");
+                break;
+            }
             auto msgBuf = std::dynamic_pointer_cast<Buffer>(msg);
             auto data = msgBuf->getRecordData();
             uint8_t* buf = data.first;
@@ -358,22 +372,109 @@ void recordStream(rr::RecordStream* recordStream, spdlog::logger* logger) {
             // TODO(asahtik): add header to unencoded ImgFrames (to be playable in VLC);
             recordStream->file.write((char*)buf, size);
 
-            recordStream->fileMeta.write((char*)&byteOffset, sizeof(byteOffset));
             int64_t seqNum = msgBuf->getSequenceNum();
-            recordStream->fileMeta.write((char*)&seqNum, sizeof(msgBuf->getSequenceNum()));
             int64_t seconds = std::chrono::duration_cast<std::chrono::seconds>(msgBuf->getTimestampDevice().time_since_epoch()).count();
             int64_t nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(msgBuf->getTimestampDevice().time_since_epoch()).count() % 1000000000;
-            recordStream->fileMeta.write((char*)&seconds, sizeof(seconds));
-            recordStream->fileMeta.write((char*)&nanoseconds, sizeof(nanoseconds));
+            RecordMeta meta {byteOffset, size, seqNum, seconds, nanoseconds};
+            // TODO(asahtik): Add meta such as width, height, sequence
+            recordStream->fileMeta.write((char*)&meta, sizeof(RecordMeta));
             byteOffset += size;
-        } catch(std::exception& e) {
-            recordStream->running = false;
-            logger->warn("Record stopped: {}", e.what());
-            break;
+            std::this_thread::yield();
+            // TODO(asahtik): calculate necessary frequency
         }
-        std::this_thread::yield();
-        // TODO(asahtik): calculate necessary frequency
+    } catch(std::exception& e) {
+        recordStream->running = false;
+        logger->warn("Record stopped: {}", e.what());
     }
+}
+
+void replayStream(rr::ReplayStream* replayStream, spdlog::logger* logger) {
+    std::shared_ptr<ADatatype> msg = nullptr;
+    std::vector<uint8_t> buffer;
+    try {
+        std::chrono::steady_clock::time_point prevMsgTime = std::chrono::steady_clock::now();
+        std::chrono::steady_clock::time_point prevProcTime = std::chrono::steady_clock::now();
+        bool first = true;
+        while(replayStream->running) {
+            RecordMeta meta {};
+            replayStream->fileMeta.read((char*)&meta, sizeof(RecordMeta));
+
+            if(replayStream->fileMeta.eof()) {
+                // End of file
+                logger->warn("Replay stopped: end of file");
+                break;
+            }
+            if(replayStream->fileMeta.fail()) {
+                // Error while reading
+                logger->warn("Replay stopped: error while reading meta file");
+                break;
+            }
+            buffer.resize(meta.size);
+            replayStream->file.read((char*)buffer.data(), meta.size);
+
+            auto decompressed = buffer;
+            if(replayStream->decompress) {
+                decompressed = utility::inflate(buffer.data(), meta.size);
+            }
+            RawBuffer rawBuffer;
+            rawBuffer.data = decompressed;
+            rawBuffer.tsDevice.sec = meta.seconds;
+            rawBuffer.tsDevice.nsec = meta.nanoseconds;
+            rawBuffer.sequenceNum = meta.seqNum;
+            auto msg = replayStream->getMessageCallback(rawBuffer);
+
+            auto msgTime = std::chrono::steady_clock::time_point(std::chrono::seconds(meta.seconds) + std::chrono::nanoseconds(meta.nanoseconds));
+            if (first) {
+                first = false;
+                prevMsgTime = msgTime;
+            } else {
+                auto now = std::chrono::steady_clock::now();
+                auto msgTimeDiff = msgTime - prevMsgTime;
+                auto procTimeDiff = now - prevProcTime;
+                auto diff = msgTimeDiff - procTimeDiff;
+                if (diff > std::chrono::microseconds(0)) {
+                    std::this_thread::sleep_for(diff);
+                }
+                prevMsgTime = msgTime;
+            }
+            prevProcTime = std::chrono::steady_clock::now();
+
+            replayStream->queue->send(msg);
+
+            std::this_thread::yield();
+        }
+    } catch(std::exception& e) {
+        replayStream->running = false;
+        logger->warn("Replay stopped: {}", e.what());
+    }
+}
+
+bool allMatch(const std::vector<std::string>& v1, const std::vector<std::string>& v2) {
+    for(const auto& el : v1) {
+        if(std::find(v2.begin(), v2.end(), el) == v2.end()) return false;
+    }
+    return true;
+}
+std::string matchTo(const std::vector<std::string>& mxIds, const std::vector<std::string>& filenames, const std::vector<std::string>& nodenames) {
+    std::string mxId = "";
+    for(const auto& id : mxIds) {
+        std::vector<std::string> matches;
+        for(const auto& filename : filenames) {
+            if(filename.size() >= 4 && filename.substr(filename.size() - 4, filename.size()) != "meta" && filename.find(id) != std::string::npos) {
+                matches.push_back(filename.substr(id.size() + 1, filename.find_last_of('.') - id.size() - 1));
+            }
+        }
+        if(matches.size() == nodenames.size()) {
+            if(allMatch(matches, nodenames)) {
+                if(mxId.empty()) {
+                    mxId = id;
+                } else {
+                    throw std::runtime_error("Multiple recordings match the pipeline configuration - unsupported.");
+                }
+            }
+        }
+    }
+    return mxId;
 }
 
 bool Device::startPipelineImpl(const Pipeline& pipeline) {
@@ -390,12 +491,12 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
             if(platform::checkWritePermissions(recordPath)) {
                 recordReplayState = RecordReplayState::RECORD;
                 auto sources = pipelineCopy.getSourceNodes();
-                std::string mxId = getMxId();
+                mxId = getMxId();
                 try {
                     for(auto& node : sources) {
                         NodeRecordParams nodeParams = node->getNodeRecordParams();
                         std::string nodeName = nodeParams.name;
-                        recordStreams[nodeName].path = Path(platform::joinPaths(recordPath, mxId.append("_").append(nodeName).append(".dai.rec")));
+                        recordStreams[nodeName].path = Path(platform::joinPaths(recordPath, mxId.append("_").append(nodeName).append(".rec")));
                         recordStreams[nodeName].compress =
                             recordConfig.byteEncoding.enabled && recordConfig.byteEncoding.compressionLevel > 0 && !nodeParams.isVideo;
                         recordStreams[nodeName].compressionLevel = recordConfig.byteEncoding.enabled ? recordConfig.byteEncoding.compressionLevel : 0;
@@ -405,7 +506,7 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
                             if(recordConfig.videoEncoding.enabled) {
                                 auto imageManip = pipelineCopy.create<dai::node::ImageManip>();
                                 imageManip->initialConfig.setFrameType(ImgFrame::Type::NV12);
-                                imageManip->setMaxOutputFrameSize(3110400);
+                                imageManip->setMaxOutputFrameSize(3110400);  // TODO(asahtik): set size depending on isp size
                                 auto videnc = pipelineCopy.create<dai::node::VideoEncoder>();
                                 videnc->setProfile(recordConfig.videoEncoding.profile);
                                 videnc->setLossless(recordConfig.videoEncoding.lossless);
@@ -428,7 +529,7 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
                 }
                 // Write config to output dir
                 try {
-                    std::ofstream file(Path(platform::joinPaths(recordPath, "record_config.json")));
+                    std::ofstream file(Path(platform::joinPaths(recordPath, mxId.append("_record_config.json"))));
                     json j = recordConfig;
                     file << j.dump(4);
                 } catch(const std::exception& e) {
@@ -443,7 +544,82 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
         if(platform::checkPathExists(replayPath)) {
             if(platform::checkWritePermissions(replayPath)) {
                 recordReplayState = RecordReplayState::REPLAY;
-                // TODO(asahtik): replay
+                std::string rootPath = platform::getDirFromPath(replayPath);
+                auto sources = pipelineCopy.getSourceNodes();
+                mxId = getMxId();
+                try {
+                    auto tarFilenames = utility::filenamesInTar(replayPath);
+                    std::remove_if(tarFilenames.begin(), tarFilenames.end(), [](const std::string& filename) { return filename.size() < 4 || filename.substr(filename.size() - 4, filename.size()) == "meta"; });
+                    std::vector<std::string> nodeNames;
+                    std::vector<std::string> pipelineFilenames;
+                    pipelineFilenames.reserve(sources.size());
+                    for(auto& node : sources) {
+                        NodeRecordParams nodeParams = node->getNodeRecordParams();
+                        std::string nodeName = mxId.append("_").append(nodeParams.name).append(".rec");
+                        pipelineFilenames.push_back(nodeName);
+                        nodeNames.push_back(nodeParams.name);
+                    }
+                    std::vector<std::string> inFiles;
+                    std::vector<std::string> outFiles;
+                    inFiles.reserve(sources.size() + 1);
+                    outFiles.reserve(sources.size() + 1);
+                    if(allMatch(tarFilenames, pipelineFilenames)) {
+                        for(auto& nodename : nodeNames) {
+                            auto filename = mxId.append("_").append(nodename).append(".rec");
+                            inFiles.push_back(filename);
+                            inFiles.push_back(filename + ".meta");
+                            outFiles.push_back(platform::joinPaths(rootPath, filename));
+                            outFiles.push_back(platform::joinPaths(rootPath, filename + ".meta"));
+                        }
+                        inFiles.emplace_back("record_config.json");
+                        outFiles.push_back(platform::joinPaths(rootPath, mxId.append("_record_config.json")));
+                        utility::untarFiles(replayPath, inFiles, outFiles);
+                    } else {
+                        std::vector<std::string> mxIds;
+                        mxIds.reserve(tarFilenames.size());
+                        for(auto& filename : tarFilenames) {
+                            mxIds.push_back(filename.substr(0, filename.find_first_of('_')));
+                        }
+                        // Get unique mxIds
+                        std::sort(mxIds.begin(), mxIds.end());
+                        mxIds.erase(std::unique(mxIds.begin(), mxIds.end()), mxIds.end());
+                        std::string mxIdRec = matchTo(mxIds, tarFilenames, nodeNames);
+                        if (mxIdRec.empty()) {
+                            throw std::runtime_error("No recordings match the pipeline configuration.");
+                        }
+                        for(auto& nodename : nodeNames) {
+                            auto inFilename = mxIdRec.append("_").append(nodename).append(".rec");
+                            auto outFilename = mxId.append("_").append(nodename).append(".rec");
+                            inFiles.push_back(inFilename);
+                            inFiles.push_back(inFilename + ".meta");
+                            outFiles.push_back(platform::joinPaths(rootPath, outFilename));
+                            outFiles.push_back(platform::joinPaths(rootPath, outFilename + ".meta"));
+                        }
+                        inFiles.emplace_back("record_config.json");
+                        outFiles.push_back(platform::joinPaths(rootPath, mxId.append("_record_config.json")));
+                        utility::untarFiles(replayPath, inFiles, outFiles);
+                    }
+
+                    // FIXME(asahtik): If this fails, extracted files do not get removed
+                    std::ifstream file(recordPath);
+                    json j = json::parse(file);
+                    recordConfig = j.get<utility::RecordConfig>();
+
+                    for (auto& node : sources) {
+                        NodeRecordParams nodeParams = node->getNodeRecordParams();
+                        std::string nodeName = nodeParams.name;
+                        auto xin = pipelineCopy.create<dai::node::XLinkIn>();
+                        xin->setStreamName(nodeName);
+                        xin->out.link(node->getReplayInput());
+                        replayStreams[nodeName].path = Path(platform::joinPaths(rootPath, mxId.append("_").append(nodeName).append(".rec")));
+                        replayStreams[nodeName].decompress =
+                            recordConfig.byteEncoding.enabled && recordConfig.byteEncoding.compressionLevel > 0 && !nodeParams.isVideo;
+                        replayStreams[nodeName].getMessageCallback = node->getRecordedFrameCallback();
+                    }
+                } catch(const std::exception& e) {
+                    recordReplayState = RecordReplayState::NONE;
+                    getLogger().warn("Replay disabled: {}", e.what());
+                }
             } else {
                 getLogger().warn("DEPTHAI_REPLAY path does not have write permissions. Replay disabled.");
             }
@@ -517,7 +693,7 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
                     throw std::runtime_error(fmt::format("Failed to open file {}.", kv.second.path.string() + ".meta"));
                 }
             }
-        } catch(std::exception& e) {
+        } catch(const std::exception& e) {
             getLogger().warn("Record disabled: {}", e.what());
             recordEnabled = false;
         }
@@ -529,7 +705,29 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
             }
         }
     } else if(recordReplayState == RecordReplayState::REPLAY) {
-        // TODO(asahtik): replay
+        bool replayEnabled = true;
+        try {
+            for(auto& kv : replayStreams) {
+                kv.second.file.open(kv.second.path, std::ios::in | std::ios::binary);
+                kv.second.fileMeta.open(kv.second.path.string() + ".meta", std::ios::in | std::ios::binary);
+                if(!kv.second.file.is_open()) {
+                    throw std::runtime_error(fmt::format("Failed to open file {}.", kv.second.path.string()));
+                }
+                if(!kv.second.fileMeta.is_open()) {
+                    throw std::runtime_error(fmt::format("Failed to open file {}.", kv.second.path.string() + ".meta"));
+                }
+            }
+        } catch(const std::exception& e) {
+            getLogger().warn("Replay disabled: {}", e.what());
+            replayEnabled = false;
+        }
+        if(replayEnabled) {
+            for(auto& kv : replayStreams) {
+                kv.second.queue = inputQueueMap[kv.first];
+                kv.second.running = true;
+                kv.second.thread = std::make_unique<std::thread>(replayStream, &kv.second, &getLogger());
+            }
+        }
     }
 
     return status;

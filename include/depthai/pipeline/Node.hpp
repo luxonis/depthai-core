@@ -7,6 +7,7 @@
 #include <tuple>
 
 // project
+#include "depthai-shared/datatype/RawBuffer.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/pipeline/AssetManager.hpp"
 #include "depthai/utility/copyable_unique_ptr.hpp"
@@ -67,6 +68,7 @@ class Node {
     virtual NodeRecordParams getNodeRecordParams() const;
     virtual Output& getRecordOutput();
     virtual Input& getReplayInput();
+    virtual std::function<std::shared_ptr<RawBuffer>(RawBuffer)> getRecordedFrameCallback() const;
 
    public:
     struct DatatypeHierarchy {

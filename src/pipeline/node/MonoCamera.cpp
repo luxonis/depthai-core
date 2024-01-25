@@ -1,5 +1,6 @@
 #include "depthai/pipeline/node/MonoCamera.hpp"
 
+#include "depthai-shared/datatype/RawImgFrame.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "spdlog/fmt/fmt.h"
 
@@ -15,7 +16,7 @@ MonoCamera::MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId,
     properties.resolution = MonoCameraProperties::SensorResolution::THE_720_P;
     properties.fps = 30.0;
 
-    setInputRefs({&inputControl});
+    setInputRefs({&inputControl, &mockIsp});
     setOutputRefs({&out, &raw, &frameEvent});
 }
 
@@ -180,8 +181,20 @@ MonoCamera::Output& MonoCamera::getRecordOutput() {
     return out;
 }
 MonoCamera::Input& MonoCamera::getReplayInput() {
-    throw std::runtime_error("Not yet implemented");
-    // return mockOut;
+    return mockIsp;
+}
+
+std::function<std::shared_ptr<RawBuffer>(RawBuffer)> MonoCamera::getRecordedFrameCallback() const {
+    return [&](RawBuffer buf) {
+        RawImgFrame frame;
+        frame.data = std::move(buf.data);
+        frame.tsDevice = buf.tsDevice;
+        frame.sequenceNum = buf.sequenceNum;
+        frame.fb.type = RawImgFrame::Type::NV12;
+        frame.fb.width = 1280; // TODO(asahtik): Somehow get such metadata from callback argument
+        frame.fb.height = 720; // TODO(asahtik): Somehow get such metadata from callback argument
+        return std::make_shared<RawImgFrame>(std::move(frame));
+    };
 }
 
 }  // namespace node

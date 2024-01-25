@@ -27,6 +27,7 @@ class MonoCamera : public NodeCRTP<Node, MonoCamera, MonoCameraProperties> {
     NodeRecordParams getNodeRecordParams() const override;
     Output& getRecordOutput() override;
     Input& getReplayInput() override;
+    std::function<std::shared_ptr<RawBuffer>(RawBuffer)> getRecordedFrameCallback() const override;
 
    public:
     MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);

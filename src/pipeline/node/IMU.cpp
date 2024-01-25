@@ -70,8 +70,18 @@ IMU::Output& IMU::getRecordOutput() {
     return out;
 }
 IMU::Input& IMU::getReplayInput() {
-    throw std::runtime_error("Not yet implemented");
-    // return mockOut;
+    return mockIn;
+}
+
+std::function<std::shared_ptr<RawBuffer>(RawBuffer)> IMU::getRecordedFrameCallback() const {
+    return [](RawBuffer buf) {
+        RawIMUData frame;
+        std::vector<IMUPacket> packets((IMUPacket*)buf.data.data(), (IMUPacket*)(buf.data.data() + buf.data.size()));
+        frame.packets = std::move(packets);
+        frame.sequenceNum = buf.sequenceNum;
+        frame.tsDevice = buf.tsDevice;
+        return std::make_shared<RawIMUData>(std::move(frame));
+    };
 }
 
 }  // namespace node
