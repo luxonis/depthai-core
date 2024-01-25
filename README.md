@@ -185,6 +185,7 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_BOOTLOADER_BINARY_USB | Overrides device USB Bootloader binary. Mostly for internal debugging purposes. |
 | DEPTHAI_BOOTLOADER_BINARY_ETH | Overrides device Network Bootloader binary. Mostly for internal debugging purposes. |
 | DEPTHAI_ALLOW_FACTORY_FLASHING | Internal use only |
+| DEPTHAI_CRASHDUMP | Path to where the crashdump is saved in case the FW crashes. If not specified, crash dump is not enabled. |
 
 ## Running tests
 

@@ -230,6 +230,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/ToF.cpp
     src/pipeline/node/DetectionParser.cpp
     src/pipeline/node/Sync.cpp
+    src/pipeline/node/DepthEncoder.cpp
     src/pipeline/node/test/MyProducer.cpp
     src/pipeline/node/test/MyConsumer.cpp
     src/pipeline/node/PointCloud.cpp
