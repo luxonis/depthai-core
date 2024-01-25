@@ -1277,7 +1277,7 @@ void DeviceBase::setSystemInformationLoggingRate(float rateHz) {
 }
 
 float DeviceBase::getSystemInformationLoggingRate() {
-    return pimpl->rpcClient->call("getSystemInformationLoggingrate").as<float>();
+    return pimpl->rpcClient->call("getSystemInformationLoggingRate").as<float>();
 }
 
 bool DeviceBase::isEepromAvailable() {
