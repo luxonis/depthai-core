@@ -17,10 +17,15 @@ Camera::Camera(std::unique_ptr<Properties> props)
       initialControl(rawControl) {}
 
 void Camera::build() {
+    // properties.boardSocket = CameraBoardSocket::AUTO;
+    // properties.imageOrientation = CameraImageOrientation::AUTO;
+    // properties.previewHeight = 300;
+    // properties.previewWidth = 300;
+    // properties.fps = 30.0;
+    // properties.previewKeepAspectRatio = true;
+
     properties.boardSocket = CameraBoardSocket::AUTO;
     properties.imageOrientation = CameraImageOrientation::AUTO;
-    properties.colorOrder = CameraProperties::ColorOrder::BGR;
-    properties.interleaved = true;
     properties.previewHeight = 300;
     properties.previewWidth = 300;
     properties.fps = 30.0;
@@ -158,6 +163,14 @@ int Camera::getPreviewHeight() const {
     return properties.previewHeight;
 }
 
+ImgFrame::Type Camera::getPreviewType() const {
+    return properties.previewType;
+}
+
+void Camera::setPreviewType(ImgFrame::Type type) {
+    properties.previewType = type;
+}
+
 // Returns video size
 std::tuple<int, int> Camera::getVideoSize() const {
     // TODO(themarpe) - revisit
@@ -170,6 +183,14 @@ int Camera::getVideoWidth() const {
 
 int Camera::getVideoHeight() const {
     return std::get<1>(getVideoSize());
+}
+
+ImgFrame::Type Camera::getVideoType() const {
+    return properties.videoType;
+}
+
+void Camera::setVideoType(ImgFrame::Type type) {
+    properties.videoType = type;
 }
 
 // Returns still size
@@ -228,6 +249,46 @@ int Camera::getHeight() const {
 // float Camera::getSensorCropY() const {
 //     return std::get<1>(getSensorCrop());
 // }
+
+void Camera::setNumFramesPool(int numRaw, int numIsp, int numPreview, int numVideo, int numStill) {
+    properties.numFramesPoolRaw = numRaw;
+    properties.numFramesPoolIsp = numIsp;
+    properties.numFramesPoolPreview = numPreview;
+    properties.numFramesPoolVideo = numVideo;
+    properties.numFramesPoolStill = numStill;
+}
+
+void Camera::setPreviewNumFramesPool(int num) {
+    properties.numFramesPoolPreview = num;
+}
+void Camera::setVideoNumFramesPool(int num) {
+    properties.numFramesPoolVideo = num;
+}
+void Camera::setStillNumFramesPool(int num) {
+    properties.numFramesPoolStill = num;
+}
+void Camera::setRawNumFramesPool(int num) {
+    properties.numFramesPoolRaw = num;
+}
+void Camera::setIspNumFramesPool(int num) {
+    properties.numFramesPoolIsp = num;
+}
+
+int Camera::getPreviewNumFramesPool() {
+    return properties.numFramesPoolPreview;
+}
+int Camera::getVideoNumFramesPool() {
+    return properties.numFramesPoolVideo;
+}
+int Camera::getStillNumFramesPool() {
+    return properties.numFramesPoolStill;
+}
+int Camera::getRawNumFramesPool() {
+    return properties.numFramesPoolRaw;
+}
+int Camera::getIspNumFramesPool() {
+    return properties.numFramesPoolIsp;
+}
 
 void Camera::setMeshSource(Camera::Properties::WarpMeshSource source) {
     properties.warpMeshSource = source;

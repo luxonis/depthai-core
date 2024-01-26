@@ -141,15 +141,14 @@ class Camera : public NodeCRTP<DeviceNode, Camera, CameraProperties> {
     /// Get camera image orientation
     CameraImageOrientation getImageOrientation() const;
 
-    // TODO(themarpe) - add back
-    // /// Set image type of preview output images.
-    // void setPreviewType(ImgFrame::Type type);
-    // /// Get image type of preview output frames.
-    // ImgFrame::Type getPreviewType() const;
-    // /// Set image type of video output images. Supported AUTO, GRAY, YUV420 and NV12.
-    // void setVideoType(ImgFrame::Type type);
-    // /// Get image type of video output frames. Supported AUTO, GRAY, YUV420 and NV12.
-    // ImgFrame::Type getVideoType() const;
+    /// Set image type of preview output images.
+    void setPreviewType(ImgFrame::Type type);
+    /// Get image type of preview output frames.
+    ImgFrame::Type getPreviewType() const;
+    /// Set image type of video output images. Supported AUTO, GRAY, YUV420 and NV12.
+    void setVideoType(ImgFrame::Type type);
+    /// Get image type of video output frames. Supported AUTO, GRAY, YUV420 and NV12.
+    ImgFrame::Type getVideoType() const;
 
     /// Set desired resolution. Sets sensor size to best fit
     void setSize(std::tuple<int, int> size);
@@ -288,16 +287,23 @@ class Camera : public NodeCRTP<DeviceNode, Camera, CameraProperties> {
     //  */
     // bool getPreviewKeepAspectRatio();
 
+    void setNumFramesPool(int numRaw, int numIsp, int numPreview, int numVideo, int numStill);
+    void setPreviewNumFramesPool(int num);
+    void setVideoNumFramesPool(int num);
+    void setStillNumFramesPool(int num);
+    void setRawNumFramesPool(int num);
+    void setIspNumFramesPool(int num);
+
     // /// Get number of frames in preview pool
-    // int getPreviewNumFramesPool();
-    // /// Get number of frames in video pool
-    // int getVideoNumFramesPool();
-    // /// Get number of frames in still pool
-    // int getStillNumFramesPool();
-    // /// Get number of frames in raw pool
-    // int getRawNumFramesPool();
-    // /// Get number of frames in isp pool
-    // int getIspNumFramesPool();
+    int getPreviewNumFramesPool();
+    /// Get number of frames in video pool
+    int getVideoNumFramesPool();
+    /// Get number of frames in still pool
+    int getStillNumFramesPool();
+    /// Get number of frames in raw pool
+    int getRawNumFramesPool();
+    /// Get number of frames in isp pool
+    int getIspNumFramesPool();
 
     /// Set the source of the warp mesh or disable
     void setMeshSource(Properties::WarpMeshSource source);
