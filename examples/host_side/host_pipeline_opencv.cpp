@@ -32,14 +32,16 @@ class Display : public dai::NodeCRTP<dai::ThreadedNode, Display, dai::XLinkOutPr
         while(isRunning()) {
             std::shared_ptr<dai::ImgFrame> imgFrame = input.queue.get<dai::ImgFrame>();
             if(imgFrame != nullptr) {
-                cv::imshow("MyConsumer", imgFrame->getCvFrame());
-                cv::waitKey(1);
+                cv::imshow("Display", imgFrame->getCvFrame());
+                if(cv::waitKey(1) == 'q') {
+                    break;
+                }
             }
         }
     }
 };
 
-int main() {
+int main() try {
     using namespace std;
 
     // Create pipeline
@@ -51,4 +53,6 @@ int main() {
     pipeline.wait();
 
     return 0;
+} catch (const std::exception& ex) {
+    std::cout << "Exception: " << ex.what();
 }
