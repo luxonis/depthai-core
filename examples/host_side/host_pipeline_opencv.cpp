@@ -53,6 +53,6 @@ int main() try {
     pipeline.wait();
 
     return 0;
-} catch (const std::exception& ex) {
+} catch(const std::exception& ex) {
     std::cout << "Exception: " << ex.what();
 }

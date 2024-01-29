@@ -91,6 +91,12 @@ CameraControl& CameraControl::setManualFocus(uint8_t lensPosition) {
     return *this;
 }
 
+CameraControl& CameraControl::setManualFocusRaw(float lensPositionRaw) {
+    cfg.setCommand(RawCameraControl::Command::MOVE_LENS_RAW);
+    cfg.lensPositionRaw = lensPositionRaw;
+    return *this;
+}
+
 // Exposure
 CameraControl& CameraControl::setAutoExposureEnable() {
     cfg.setCommand(RawCameraControl::Command::AE_AUTO);
@@ -222,6 +228,10 @@ int CameraControl::getSensitivity() const {
 
 int CameraControl::getLensPosition() const {
     return cfg.lensPosition;
+}
+
+float CameraControl::getLensPositionRaw() const {
+    return cfg.lensPositionRaw;
 }
 
 dai::RawCameraControl CameraControl::get() const {
