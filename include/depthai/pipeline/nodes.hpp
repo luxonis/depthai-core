@@ -8,6 +8,7 @@
 #include "node/ColorCamera.hpp"
 #include "node/DetectionNetwork.hpp"
 #include "node/DetectionParser.hpp"
+#include "node/DepthEncoder.hpp"
 #include "node/EdgeDetector.hpp"
 #include "node/FeatureTracker.hpp"
 #include "node/IMU.hpp"
