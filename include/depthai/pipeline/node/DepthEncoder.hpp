@@ -59,6 +59,8 @@ class DepthEncoder : public NodeCRTP<DeviceNode, DepthEncoder, DepthEncoderPrope
 
     void setNumFramesPool(int numFramesPool);
 
+   void setNumShaves(int numShaves);
+
 };
 
 }  // namespace node

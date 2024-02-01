@@ -117,5 +117,9 @@ void DepthEncoder::setNumFramesPool(int numFramesPool) {
     properties.numFramesPool = numFramesPool;
 }
 
+void DepthEncoder::setNumShaves(int numShaves) {
+    properties.numShaves = numShaves;
+}
+
 }  // namespace node
 }  // namespace dai
