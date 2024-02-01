@@ -67,7 +67,7 @@ int main() {
         std::cout << "Max y: " << pclMsg->getMaxY() << std::endl;
         std::cout << "Max z: " << pclMsg->getMaxZ() << std::endl;
 
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = pclMsg->toPclData();
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = pclMsg->getPclData();
         if(first) {
             viewer->addPointCloud<pcl::PointXYZ>(cloud, "cloud");
             first = false;

@@ -1,6 +1,6 @@
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 
-pcl::PointCloud<pcl::PointXYZ>::Ptr dai::PointCloudData::toPclData() const {
+pcl::PointCloud<pcl::PointXYZ>::Ptr dai::PointCloudData::getPclData() const {
     pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
 
     cloud->width = getWidth();

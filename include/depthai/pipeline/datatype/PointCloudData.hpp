@@ -187,7 +187,7 @@ class PointCloudData : public Buffer {
     /**
      * Converts PointCloudData to pcl::PointCloud<pcl::PointXYZ>
      */
-    pcl::PointCloud<pcl::PointXYZ>::Ptr toPclData() const;
+    pcl::PointCloud<pcl::PointXYZ>::Ptr getPclData() const;
 
 #else
     template <typename... T>
@@ -195,7 +195,7 @@ class PointCloudData : public Buffer {
         static constexpr bool value = false;
     };
     template <typename... T>
-    void toPclData() const {
+    void getPclData() const {
         static_assert(dependent_false<T...>::value, "Library not configured with PCL support");
     }
 #endif

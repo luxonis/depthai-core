@@ -19,14 +19,5 @@ PointCloud::Properties& PointCloud::getProperties() {
     return properties;
 }
 
-// Node properties configuration
-void PointCloud::setWaitForConfigInput(bool wait) {
-    inputConfig.setWaitForMessage(wait);
-}
-
-bool PointCloud::getWaitForConfigInput() const {
-    return inputConfig.getWaitForMessage();
-}
-
 }  // namespace node
 }  // namespace dai
