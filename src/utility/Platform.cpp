@@ -13,6 +13,14 @@
     #include <arpa/inet.h>
 #endif
 
+#if defined(_WIN32) || defined(__USE_W32_SOCKETS)
+    #include <windows.h>
+#endif
+
+#ifndef _WIN32
+    #include <unistd.h>
+#endif
+
 namespace dai {
 namespace platform {
 
@@ -46,6 +54,25 @@ std::string getIPv4AddressAsString(std::uint32_t binary) {
 #endif
 
     return {address};
+}
+
+std::string getTempPath() {
+    std::string tmpPath;
+#if defined(_WIN32) || defined(__USE_W32_SOCKETS)
+    char tmpPathBuffer[MAX_PATH];
+    GetTempPathA(MAX_PATH, tmpPathBuffer);
+    tmpPath = tmpPathBuffer;
+#else
+    char tmpTemplate[] = "/tmp/depthai_XXXXXX";
+    char* tmpName = mkdtemp(tmpTemplate);
+    if(tmpName == nullptr) {
+        tmpPath = "/tmp";
+    } else {
+        tmpPath = tmpName;
+        tmpPath += '/';
+    }
+#endif
+    return tmpPath;
 }
 
 }  // namespace platform

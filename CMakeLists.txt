@@ -48,7 +48,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.23.0" LANGUAGES CXX C)
+project(depthai VERSION "2.24.0" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -211,8 +211,10 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/ColorCamera.cpp
     src/pipeline/node/Camera.cpp
     src/pipeline/node/ToF.cpp
+    src/pipeline/node/MessageDemux.cpp
     src/pipeline/node/MonoCamera.cpp
     src/pipeline/node/StereoDepth.cpp
+    src/pipeline/node/Sync.cpp
     src/pipeline/node/NeuralNetwork.cpp
     src/pipeline/node/ImageManip.cpp
     src/pipeline/node/Warp.cpp
@@ -232,6 +234,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/UVC.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
+    src/pipeline/datatype/EncodedFrame.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
     src/pipeline/datatype/CameraControl.cpp
     src/pipeline/datatype/NNData.cpp
@@ -250,6 +253,8 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/TrackedFeatures.cpp
     src/pipeline/datatype/FeatureTrackerConfig.cpp
     src/pipeline/datatype/ToFConfig.cpp
+    src/pipeline/datatype/MessageGroup.cpp
+    src/utility/H26xParsers.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/utility/Path.cpp
