@@ -150,10 +150,8 @@ class Camera : public NodeCRTP<DeviceNode, Camera, CameraProperties> {
     /// Get image type of video output frames. Supported AUTO, GRAY, YUV420 and NV12.
     ImgFrame::Type getVideoType() const;
 
-    /// Set desired resolution. Sets sensor size to best fit
-    void setSize(std::tuple<int, int> size);
-    /// Set desired resolution. Sets sensor size to best fit
-    void setSize(int width, int height);
+
+    void setResolution(CameraProperties::SensorResolution resolution);
 
     /// Set preview output size
     void setPreviewSize(int width, int height);
@@ -235,13 +233,6 @@ class Camera : public NodeCRTP<DeviceNode, Camera, CameraProperties> {
     int getStillWidth() const;
     /// Get still height
     int getStillHeight() const;
-
-    /// Get sensor resolution as size
-    std::tuple<int, int> getSize() const;
-    /// Get sensor resolution width
-    int getWidth() const;
-    /// Get sensor resolution height
-    int getHeight() const;
 
     // /// Get 'isp' output resolution as size, after scaling
     // std::tuple<int, int> getIspSize() const;

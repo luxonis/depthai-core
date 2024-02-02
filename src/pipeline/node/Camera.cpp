@@ -86,14 +86,8 @@ void Camera::setVideoSize(std::tuple<int, int> size) {
     setVideoSize(std::get<0>(size), std::get<1>(size));
 }
 
-// set still output size
-void Camera::setSize(int width, int height) {
-    properties.resolutionWidth = width;
-    properties.resolutionHeight = height;
-}
-
-void Camera::setSize(std::tuple<int, int> size) {
-    setSize(std::get<0>(size), std::get<1>(size));
+void Camera::setResolution(CameraProperties::SensorResolution resolution) {
+    properties.resolution = resolution;
 }
 
 // set still output size
@@ -206,20 +200,6 @@ int Camera::getStillWidth() const {
 
 int Camera::getStillHeight() const {
     return std::get<1>(getStillSize());
-}
-
-// Returns sensor size
-std::tuple<int, int> Camera::getSize() const {
-    // TODO(themarpe) - revisit
-    return {properties.resolutionWidth, properties.resolutionHeight};
-}
-
-int Camera::getWidth() const {
-    return std::get<0>(getSize());
-}
-
-int Camera::getHeight() const {
-    return std::get<1>(getSize());
 }
 
 // void Camera::sensorCenterCrop() {
