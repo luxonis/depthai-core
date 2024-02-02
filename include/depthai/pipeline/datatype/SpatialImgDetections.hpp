@@ -44,7 +44,7 @@ class SpatialImgDetections : public Buffer {
         datatype = DatatypeEnum::SpatialImgDetections;
     };
 
-    DEPTHAI_SERIALIZE(SpatialImgDetections, sequenceNum, ts, tsDevice, detections);
+    DEPTHAI_SERIALIZE(SpatialImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections);
 };
 
 }  // namespace dai

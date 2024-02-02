@@ -124,8 +124,17 @@ class AprilTagConfig : public Buffer {
      */
     QuadThresholds quadThresholds;
 
-    DEPTHAI_SERIALIZE(
-        AprilTagConfig, sequenceNum, ts, tsDevice, family, quadDecimate, quadSigma, refineEdges, decodeSharpening, maxHammingDistance, quadThresholds);
+    DEPTHAI_SERIALIZE(AprilTagConfig,
+                      Buffer::sequenceNum,
+                      Buffer::ts,
+                      Buffer::tsDevice,
+                      family,
+                      quadDecimate,
+                      quadSigma,
+                      refineEdges,
+                      decodeSharpening,
+                      maxHammingDistance,
+                      quadThresholds);
 };
 
 }  // namespace dai

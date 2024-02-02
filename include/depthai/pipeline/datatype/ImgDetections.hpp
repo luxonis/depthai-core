@@ -35,7 +35,7 @@ class ImgDetections : public Buffer {
         datatype = DatatypeEnum::ImgDetections;
     };
 
-    DEPTHAI_SERIALIZE(ImgDetections, sequenceNum, ts, tsDevice, detections);
+    DEPTHAI_SERIALIZE(ImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections);
 };
 
 }  // namespace dai

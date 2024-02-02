@@ -52,7 +52,7 @@ class EdgeDetectorConfig : public Buffer {
         datatype = DatatypeEnum::EdgeDetectorConfig;
     };
 
-    DEPTHAI_SERIALIZE(EdgeDetectorConfig, sequenceNum, ts, tsDevice, config);
+    DEPTHAI_SERIALIZE(EdgeDetectorConfig, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, config);
 };
 
 }  // namespace dai
