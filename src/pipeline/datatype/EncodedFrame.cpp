@@ -30,6 +30,9 @@ int EncodedFrame::getColorTemperature() const {
 int EncodedFrame::getLensPosition() const {
     return frame.cam.lensPosition;
 }
+float EncodedFrame::getLensPositionRaw() const {
+    return frame.cam.lensPositionRaw;
+}
 unsigned int EncodedFrame::getQuality() const {
     return frame.quality;
 }
