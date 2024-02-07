@@ -43,7 +43,7 @@ Device::Device(const Pipeline& pipeline, const dai::Path& pathToCmd) : DeviceBas
     tryStartPipeline(pipeline);
 }
 
-Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo) : DeviceBase(pipeline.getDeviceConfig(), devInfo, false) {
+Device::Device(const Pipeline& pipeline, const DeviceInfo& devInfo) : DeviceBase(pipeline.getDeviceConfig(), devInfo) {
     tryStartPipeline(pipeline);
 }
 

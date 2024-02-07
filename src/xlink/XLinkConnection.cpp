@@ -135,7 +135,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
     std::vector<DeviceInfo> devices;
 
     unsigned int numdev = 0;
-    std::array<deviceDesc_t, 32> deviceDescAll = {};
+    std::array<deviceDesc_t, 64> deviceDescAll = {};
     deviceDesc_t suitableDevice = {};
     suitableDevice.protocol = getDefaultProtocol();
     suitableDevice.platform = getDefaultPlatform();
