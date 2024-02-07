@@ -17,14 +17,6 @@ ImgFrame::ImgFrame(std::shared_ptr<RawImgFrame> ptr) : Buffer(std::move(ptr)), i
 // helpers
 
 // getters
-std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> ImgFrame::getTimestamp() const {
-    using namespace std::chrono;
-    return time_point<steady_clock, steady_clock::duration>{seconds(img.ts.sec) + nanoseconds(img.ts.nsec)};
-}
-std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> ImgFrame::getTimestampDevice() const {
-    using namespace std::chrono;
-    return time_point<steady_clock, steady_clock::duration>{seconds(img.tsDevice.sec) + nanoseconds(img.tsDevice.nsec)};
-}
 std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> ImgFrame::getTimestamp(CameraExposureOffset offset) const {
     auto ts = getTimestamp();
     auto expTime = getExposureTime();
@@ -58,9 +50,6 @@ unsigned int ImgFrame::getInstanceNum() const {
 unsigned int ImgFrame::getCategory() const {
     return img.category;
 }
-int64_t ImgFrame::getSequenceNum() const {
-    return img.sequenceNum;
-}
 unsigned int ImgFrame::getWidth() const {
     return img.fb.width;
 }
@@ -83,22 +72,18 @@ int ImgFrame::getLensPosition() const {
     return img.cam.lensPosition;
 }
 
+float ImgFrame::getLensPositionRaw() const {
+    return img.cam.lensPositionRaw;
+}
+
 // setters
 ImgFrame& ImgFrame::setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
     // Set timestamp from timepoint
-    using namespace std::chrono;
-    auto ts = tp.time_since_epoch();
-    img.ts.sec = duration_cast<seconds>(ts).count();
-    img.ts.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
-    return *this;
+    return static_cast<ImgFrame&>(Buffer::setTimestamp(tp));
 }
 ImgFrame& ImgFrame::setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
     // Set timestamp from timepoint
-    using namespace std::chrono;
-    auto ts = tp.time_since_epoch();
-    img.tsDevice.sec = duration_cast<seconds>(ts).count();
-    img.tsDevice.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
-    return *this;
+    return static_cast<ImgFrame&>(Buffer::setTimestampDevice(tp));
 }
 ImgFrame& ImgFrame::setInstanceNum(unsigned int instanceNum) {
     img.instanceNum = instanceNum;
@@ -109,8 +94,7 @@ ImgFrame& ImgFrame::setCategory(unsigned int category) {
     return *this;
 }
 ImgFrame& ImgFrame::setSequenceNum(int64_t sequenceNum) {
-    img.sequenceNum = sequenceNum;
-    return *this;
+    return static_cast<ImgFrame&>(Buffer::setSequenceNum(sequenceNum));
 }
 ImgFrame& ImgFrame::setWidth(unsigned int width) {
     img.fb.width = width;

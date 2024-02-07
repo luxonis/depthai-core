@@ -116,13 +116,15 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
     std::vector<DeviceInfo> devices;
 
     unsigned int numdev = 0;
-    std::array<deviceDesc_t, 32> deviceDescAll = {};
+    std::array<deviceDesc_t, 64> deviceDescAll = {};
     deviceDesc_t suitableDevice = {};
     suitableDevice.protocol = getDefaultProtocol();
     suitableDevice.platform = X_LINK_ANY_PLATFORM;
     suitableDevice.state = state;
 
-    auto allowedDeviceIds = utility::getEnv("DEPTHAI_DEVICE_MXID_LIST");
+    auto allowedDeviceMxIds = utility::getEnv("DEPTHAI_DEVICE_MXID_LIST");
+    auto allowedDeviceIds = utility::getEnv("DEPTHAI_DEVICE_ID_LIST");
+    auto allowedDeviceNames = utility::getEnv("DEPTHAI_DEVICE_NAME_LIST");
 
     auto status = XLinkFindAllSuitableDevices(suitableDevice, deviceDescAll.data(), static_cast<unsigned int>(deviceDescAll.size()), &numdev);
     if(status != X_LINK_SUCCESS) throw std::runtime_error("Couldn't retrieve all connected devices");
@@ -144,8 +146,10 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
             }
         }
 
+        bool allowedMxId = allowedDeviceMxIds.find(info.getMxId()) != std::string::npos || allowedDeviceMxIds.empty();
         bool allowedId = allowedDeviceIds.find(info.getMxId()) != std::string::npos || allowedDeviceIds.empty();
-        if(allowedId) {
+        bool allowedName = allowedDeviceNames.find(info.name) != std::string::npos || allowedDeviceNames.empty();
+        if(allowedMxId && allowedId && allowedName) {
             devices.push_back(info);
         }
     }

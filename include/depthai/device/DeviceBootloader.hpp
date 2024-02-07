@@ -495,6 +495,9 @@ class DeviceBootloader {
     std::tuple<bool, std::string> readCustom(
         Memory memory, size_t offset, size_t size, uint8_t* data, std::string filename, std::function<void(float)> progressCb);
 
+    void createWatchdog();
+    void destroyWatchdog();
+
     // private variables
     std::shared_ptr<XLinkConnection> connection;
     DeviceInfo deviceInfo = {};

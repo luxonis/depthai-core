@@ -21,13 +21,16 @@
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "pipeline/Pipeline.hpp"
+#include "utility/EepromDataParser.hpp"
 #include "utility/Environment.hpp"
+#include "utility/Files.hpp"
 #include "utility/Initialization.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Resources.hpp"
 
 // libraries
 #include "XLink/XLink.h"
+#include "XLink/XLinkTime.h"
 #include "nanorpc/core/client.h"
 #include "nanorpc/packer/nlohmann_msgpack.h"
 #include "spdlog/details/os.h"
@@ -42,6 +45,8 @@ namespace dai {
 const std::string MAGIC_PROTECTED_FLASHING_VALUE = "235539980";
 const std::string MAGIC_FACTORY_FLASHING_VALUE = "413424129";
 const std::string MAGIC_FACTORY_PROTECTED_FLASHING_VALUE = "868632271";
+
+const unsigned int DEFAULT_CRASHDUMP_TIMEOUT = 9000;
 
 // local static function
 static void getFlashingPermissions(bool& factoryPermissions, bool& protectedPermissions) {
@@ -333,7 +338,10 @@ DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, Usb
 }
 
 DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, const dai::Path& pathToCmd) : deviceInfo(devInfo) {
-    init(version, false, pathToCmd);
+    Config cfg;
+    cfg.version = version;
+
+    init2(cfg, pathToCmd, {});
 }
 
 DeviceBase::DeviceBase() : DeviceBase(OpenVINO::VERSION_UNIVERSAL) {}
@@ -393,8 +401,8 @@ DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsb
     init(config, maxUsbSpeed, "");
 }
 
-DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd) : deviceInfo(devInfo) {
-    init(config, false, pathToCmd);
+DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd, bool dumpOnly) : deviceInfo(devInfo), dumpOnly(dumpOnly) {
+    init2(config, pathToCmd, {});
 }
 
 DeviceBase::DeviceBase(Config config, const dai::Path& pathToCmd) {
@@ -407,12 +415,20 @@ DeviceBase::DeviceBase(Config config, UsbSpeed maxUsbSpeed) {
 
 void DeviceBase::init(OpenVINO::Version version) {
     tryGetDevice();
-    init(version, false, "");
+
+    Config cfg;
+    cfg.version = version;
+
+    init2(cfg, "", {});
 }
 
 void DeviceBase::init(OpenVINO::Version version, const dai::Path& pathToCmd) {
     tryGetDevice();
-    init(version, false, pathToCmd);
+
+    Config cfg;
+    cfg.version = version;
+
+    init2(cfg, pathToCmd, {});
 }
 
 void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed) {
@@ -422,7 +438,10 @@ void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed) {
 
 void DeviceBase::init(const Pipeline& pipeline) {
     tryGetDevice();
-    init(pipeline, false, "");
+
+    Config cfg = pipeline.getDeviceConfig();
+
+    init2(cfg, "", pipeline);
 }
 
 void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) {
@@ -432,12 +451,18 @@ void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) {
 
 void DeviceBase::init(const Pipeline& pipeline, const dai::Path& pathToCmd) {
     tryGetDevice();
-    init(pipeline, false, pathToCmd);
+
+    Config cfg = pipeline.getDeviceConfig();
+
+    init2(cfg, pathToCmd, pipeline);
 }
 
 void DeviceBase::init(const Pipeline& pipeline, const DeviceInfo& devInfo) {
     deviceInfo = devInfo;
-    init(pipeline, false, "");
+
+    Config cfg = pipeline.getDeviceConfig();
+
+    init2(cfg, "", pipeline);
 }
 
 void DeviceBase::init(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) {
@@ -447,7 +472,10 @@ void DeviceBase::init(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSp
 
 void DeviceBase::init(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd) {
     deviceInfo = devInfo;
-    init(pipeline, false, pathToCmd);
+
+    Config cfg = pipeline.getDeviceConfig();
+
+    init2(cfg, pathToCmd, pipeline);
 }
 
 void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed) {
@@ -457,7 +485,7 @@ void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed) {
 
 void DeviceBase::init(Config config, const dai::Path& pathToCmd) {
     tryGetDevice();
-    init(config, false, pathToCmd);
+    init2(config, pathToCmd, {});
 }
 
 void DeviceBase::init(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) {
@@ -467,7 +495,7 @@ void DeviceBase::init(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbS
 
 void DeviceBase::init(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd) {
     deviceInfo = devInfo;
-    init(config, false, pathToCmd);
+    init2(config, pathToCmd, {});
 }
 
 DeviceBase::DeviceBase(Config config) {
@@ -487,10 +515,52 @@ void DeviceBase::close() {
     }
 }
 
+unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
+    std::string timeoutStr = utility::getEnv("DEPTHAI_CRASHDUMP_TIMEOUT");
+    if(!timeoutStr.empty()) {
+        try {
+            return std::stoi(timeoutStr) * 1000;
+        } catch(const std::invalid_argument& e) {
+            logger::warn("DEPTHAI_CRASHDUMP_TIMEOUT value invalid: {}", e.what());
+        }
+    }
+    return DEFAULT_CRASHDUMP_TIMEOUT + (protocol == X_LINK_TCP_IP ? device::XLINK_TCP_WATCHDOG_TIMEOUT.count() : device::XLINK_USB_WATCHDOG_TIMEOUT.count());
+}
+
+tl::optional<std::string> saveCrashDump(dai::CrashDump& dump, std::string mxId) {
+    std::vector<uint8_t> data;
+    utility::serialize<SerializationType::JSON>(dump, data);
+    auto crashDumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
+    return saveFileToTemporaryDirectory(data, mxId + "-depthai_crash_dump.json", crashDumpPathStr);
+}
+
 void DeviceBase::closeImpl() {
     using namespace std::chrono;
     auto t1 = steady_clock::now();
-    pimpl->logger.debug("Device about to be closed...");
+    bool shouldGetCrashDump = false;
+    if(!dumpOnly) {
+        pimpl->logger.debug("Device about to be closed...");
+        try {
+            if(hasCrashDump()) {
+                connection->setRebootOnDestruction(true);
+                auto dump = getCrashDump();
+                auto path = saveCrashDump(dump, deviceInfo.getMxId());
+                if(path.has_value()) {
+                    pimpl->logger.warn("There was a fatal error. Crash dump saved to {}", path.value());
+                } else {
+                    pimpl->logger.warn("There was a fatal error. Crash dump could not be saved");
+                }
+            } else {
+                bool isRunning = pimpl->rpcClient->call("isRunning").as<bool>();
+                shouldGetCrashDump = !isRunning;
+                connection->setRebootOnDestruction(connection->getRebootOnDestruction() || shouldGetCrashDump);
+                pimpl->logger.debug("Shutdown {}", isRunning ? "OK" : "error");
+            }
+        } catch(const std::exception& ex) {
+            pimpl->logger.debug("shutdown call error: {}", ex.what());
+            shouldGetCrashDump = true;
+        }
+    }
 
     // Close connection first; causes Xlink internal calls to unblock semaphore waits and
     // return error codes, which then allows queues to unblock
@@ -499,28 +569,68 @@ void DeviceBase::closeImpl() {
     // invalid memory, etc. which hard crashes main app
     connection->close();
 
-    // Stop various threads
     watchdogRunning = false;
-    timesyncRunning = false;
-    loggingRunning = false;
-    profilingRunning = false;
-
     // Stop watchdog first (this resets and waits for link to fall down)
     if(watchdogThread.joinable()) watchdogThread.join();
-    // Then stop timesync
-    if(timesyncThread.joinable()) timesyncThread.join();
-    // And at the end stop logging thread
-    if(loggingThread.joinable()) loggingThread.join();
-    // And at the end stop profiling thread
-    if(profilingThread.joinable()) profilingThread.join();
-    // At the end stop the monitor thread
-    if(monitorThread.joinable()) monitorThread.join();
+
+    if(!dumpOnly) {
+        // Stop various threads
+        timesyncRunning = false;
+        loggingRunning = false;
+        profilingRunning = false;
+
+        // Then stop timesync
+        if(timesyncThread.joinable()) timesyncThread.join();
+        // And at the end stop logging thread
+        if(loggingThread.joinable()) loggingThread.join();
+        // And at the end stop profiling thread
+        if(profilingThread.joinable()) profilingThread.join();
+        // At the end stop the monitor thread
+        if(monitorThread.joinable()) monitorThread.join();
+    }
 
     // Close rpcStream
     pimpl->rpcStream = nullptr;
     pimpl->rpcClient = nullptr;
 
-    pimpl->logger.debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
+    if(!dumpOnly) {
+        auto timeout = getCrashdumpTimeout(deviceInfo.protocol);
+        // Get crash dump if needed
+        if(shouldGetCrashDump && timeout > 0) {
+            pimpl->logger.debug("Getting crash dump...");
+            auto t1 = steady_clock::now();
+            bool gotDump = false;
+            bool found = false;
+            do {
+                DeviceInfo rebootingDeviceInfo;
+                std::tie(found, rebootingDeviceInfo) = XLinkConnection::getDeviceByMxId(deviceInfo.getMxId(), X_LINK_ANY_STATE, false);
+                if(found && (rebootingDeviceInfo.state == X_LINK_UNBOOTED || rebootingDeviceInfo.state == X_LINK_BOOTLOADER)) {
+                    pimpl->logger.trace("Found rebooting device in {}ns", duration_cast<nanoseconds>(steady_clock::now() - t1).count());
+                    DeviceBase rebootingDevice(config, rebootingDeviceInfo, firmwarePath, true);
+                    if(rebootingDevice.hasCrashDump()) {
+                        auto dump = rebootingDevice.getCrashDump();
+                        auto path = saveCrashDump(dump, deviceInfo.getMxId());
+                        if(path.has_value()) {
+                            pimpl->logger.warn("Device crashed. Crash dump saved to {}", path.value());
+                        } else {
+                            pimpl->logger.warn("Device crashed. Crash dump could not be saved");
+                        }
+                    } else {
+                        pimpl->logger.warn("Device crashed, but no crash dump could be extracted.");
+                    }
+                    gotDump = true;
+                    break;
+                }
+            } while(!found && steady_clock::now() - t1 < std::chrono::milliseconds(timeout));
+            if(!gotDump) {
+                pimpl->logger.error("Device likely crashed but did not reboot in time to get the crash dump");
+            }
+        } else if(shouldGetCrashDump) {
+            pimpl->logger.warn("Device crashed. Crash dump retrieval disabled.");
+        }
+
+        pimpl->logger.debug("Device closed, {}", duration_cast<milliseconds>(steady_clock::now() - t1).count());
+    }
 }
 
 // This function is thread-unsafe. The idea of "isClosed" is ephemerial and
@@ -548,26 +658,6 @@ void DeviceBase::tryStartPipeline(const Pipeline& pipeline) {
     }
 }
 
-void DeviceBase::init(OpenVINO::Version version, bool usb2Mode, const dai::Path& pathToMvcmd) {
-    Config cfg;
-    // Specify usb speed
-    cfg.board.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
-    // Specify the OpenVINO version
-    cfg.version = version;
-    init2(cfg, pathToMvcmd, {});
-}
-void DeviceBase::init(const Pipeline& pipeline, bool usb2Mode, const dai::Path& pathToMvcmd) {
-    Config cfg = pipeline.getDeviceConfig();
-    // Modify usb speed
-    cfg.board.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
-    init2(cfg, pathToMvcmd, pipeline);
-}
-void DeviceBase::init(Config config, bool usb2Mode, const dai::Path& pathToMvcmd) {
-    Config cfg = config;
-    // Modify usb speed
-    cfg.board.usb.maxSpeed = usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED;
-    init2(cfg, pathToMvcmd, {});
-}
 void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd) {
     Config cfg;
     // Specify usb speed
@@ -591,13 +681,20 @@ void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed, const dai::Path& path
 
 void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<const Pipeline&> pipeline) {
     // Initalize depthai library if not already
-    initialize();
+    if(!dumpOnly) initialize();
 
     // Specify cfg
     config = cfg;
+    firmwarePath = pathToMvcmd;
 
     // Apply nonExclusiveMode
     config.board.nonExclusiveMode = config.nonExclusiveMode;
+
+    // Apply device specific logger level
+    {
+        auto deviceLogLevel = config.logLevel.value_or(spdlogLevelToLogLevel(logger::get_level()));
+        setLogOutputLevel(config.outputLogLevel.value_or(deviceLogLevel));
+    }
 
     // Specify expected running mode
     XLinkDeviceState_t expectedBootState = X_LINK_BOOTED;
@@ -673,7 +770,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
     }
 
     // Get embedded mvcmd or external with applied config
-    if(logger::get_level() == spdlog::level::debug) {
+    if(getLogOutputLevel() <= LogLevel::DEBUG) {
         nlohmann::json jBoardConfig = config.board;
         pimpl->logger.debug("Device - BoardConfig: {} \nlibnop:{}", jBoardConfig.dump(), spdlog::to_hex(utility::serialize(config.board)));
     }
@@ -735,7 +832,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         std::unique_lock<std::mutex> lock(pimpl->rpcMutex);
 
         // Log the request data
-        if(logger::get_level() == spdlog::level::trace) {
+        if(getLogOutputLevel() == LogLevel::TRACE) {
             pimpl->logger.trace("RPC: {}", nlohmann::json::from_msgpack(request).dump());
         }
 
@@ -814,137 +911,133 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         watchdogRunning = true;
     }
 
-    // Below can throw - make sure to gracefully exit threads
-    try {
-        auto level = spdlogLevelToLogLevel(logger::get_level());
-        setLogLevel(config.logLevel.value_or(level));
-        setLogOutputLevel(config.outputLogLevel.value_or(level));
-
-        // Sets system inforation logging rate. By default 1s
-        setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
-    } catch(const std::exception&) {
-        // close device (cleanup)
-        close();
-        // Rethrow original exception
-        throw;
-    }
-
-    // prepare timesync thread, which will keep device synchronized
-    timesyncThread = std::thread([this]() {
-        using namespace std::chrono;
-
+    if(!dumpOnly) {
+        // Below can throw - make sure to gracefully exit threads
         try {
-            XLinkStream stream(connection, device::XLINK_CHANNEL_TIMESYNC, 128);
-            Timestamp timestamp = {};
-            while(timesyncRunning) {
-                // Block
-                stream.read();
+            auto level = spdlogLevelToLogLevel(logger::get_level());
+            setLogLevel(config.logLevel.value_or(level));
 
-                // Timestamp
-                auto d = std::chrono::steady_clock::now().time_since_epoch();
-                timestamp.sec = duration_cast<seconds>(d).count();
-                timestamp.nsec = duration_cast<nanoseconds>(d).count() % 1000000000;
-
-                // Write timestamp back
-                stream.write(&timestamp, sizeof(timestamp));
-            }
-        } catch(const std::exception& ex) {
-            // ignore
-            pimpl->logger.debug("Timesync thread exception caught: {}", ex.what());
+            // Sets system inforation logging rate. By default 1s
+            setSystemInformationLoggingRate(DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ);
+        } catch(const std::exception&) {
+            // close device (cleanup)
+            close();
+            // Rethrow original exception
+            throw;
         }
 
-        timesyncRunning = false;
-    });
+        // prepare timesync thread, which will keep device synchronized
+        timesyncThread = std::thread([this]() {
+            using namespace std::chrono;
 
-    // prepare logging thread, which will log device messages
-    loggingThread = std::thread([this]() {
-        using namespace std::chrono;
-        std::vector<LogMessage> messages;
-        try {
-            XLinkStream stream(connection, device::XLINK_CHANNEL_LOG, 128);
-            while(loggingRunning) {
-                // Block
-                auto log = stream.read();
+            try {
+                XLinkStream stream(connection, device::XLINK_CHANNEL_TIMESYNC, 128);
+                while(timesyncRunning) {
+                    // Block
+                    XLinkTimespec timestamp;
+                    stream.read(timestamp);
 
-                try {
-                    // Deserialize incoming messages
-                    utility::deserialize(log, messages);
+                    // Write timestamp back
+                    stream.write(&timestamp, sizeof(timestamp));
+                }
+            } catch(const std::exception& ex) {
+                // ignore
+                pimpl->logger.debug("Timesync thread exception caught: {}", ex.what());
+            }
 
-                    pimpl->logger.trace("Log vector decoded, size: {}", messages.size());
+            timesyncRunning = false;
+        });
 
-                    // log the messages in incremental order (0 -> size-1)
-                    for(const auto& msg : messages) {
-                        pimpl->logger.logMessage(msg);
-                    }
+        // prepare logging thread, which will log device messages
+        loggingThread = std::thread([this]() {
+            using namespace std::chrono;
+            std::vector<LogMessage> messages;
+            try {
+                XLinkStream stream(connection, device::XLINK_CHANNEL_LOG, 128);
+                while(loggingRunning) {
+                    // Block
+                    auto log = stream.read();
 
-                    // Log to callbacks
-                    {
-                        // lock mtx to callback map (shared)
-                        std::unique_lock<std::mutex> l(logCallbackMapMtx);
+                    try {
+                        // Deserialize incoming messages
+                        utility::deserialize(log, messages);
+
+                        pimpl->logger.trace("Log vector decoded, size: {}", messages.size());
+
+                        // log the messages in incremental order (0 -> size-1)
                         for(const auto& msg : messages) {
-                            for(const auto& kv : logCallbackMap) {
-                                const auto& cb = kv.second;
-                                // If available, callback with msg
-                                if(cb) cb(msg);
+                            pimpl->logger.logMessage(msg);
+                        }
+
+                        // Log to callbacks
+                        {
+                            // lock mtx to callback map (shared)
+                            std::unique_lock<std::mutex> l(logCallbackMapMtx);
+                            for(const auto& msg : messages) {
+                                for(const auto& kv : logCallbackMap) {
+                                    const auto& cb = kv.second;
+                                    // If available, callback with msg
+                                    if(cb) cb(msg);
+                                }
                             }
                         }
+
+                    } catch(const nlohmann::json::exception& ex) {
+                        pimpl->logger.error("Exception while parsing or calling callbacks for log message from device: {}", ex.what());
                     }
-
-                } catch(const nlohmann::json::exception& ex) {
-                    pimpl->logger.error("Exception while parsing or calling callbacks for log message from device: {}", ex.what());
-                }
-            }
-        } catch(const std::exception& ex) {
-            // ignore exception from logging
-            pimpl->logger.debug("Log thread exception caught: {}", ex.what());
-        }
-
-        loggingRunning = false;
-    });
-
-    if(utility::getEnv("DEPTHAI_PROFILING") == "1") {
-        // prepare profiling thread, which will log device messages
-        profilingThread = std::thread([this]() {
-            using namespace std::chrono;
-            try {
-                ProfilingData lastData = {};
-                // TODO(themarpe) - expose
-                float rate = 1.0f;
-                while(profilingRunning) {
-                    ProfilingData data = getProfilingData();
-                    long long w = data.numBytesWritten - lastData.numBytesWritten;
-                    long long r = data.numBytesRead - lastData.numBytesRead;
-                    w /= rate;
-                    r /= rate;
-
-                    lastData = data;
-
-                    pimpl->logger.debug("Profiling write speed: {:.2f} MiB/s, read speed: {:.2f} MiB/s, total written: {:.2f} MiB, read: {:.2f} MiB",
-                                        w / 1024.0f / 1024.0f,
-                                        r / 1024.0f / 1024.0f,
-                                        data.numBytesWritten / 1024.0f / 1024.0f,
-                                        data.numBytesRead / 1024.0f / 1024.0f);
-
-                    std::this_thread::sleep_for(duration<float>(1) / rate);
                 }
             } catch(const std::exception& ex) {
                 // ignore exception from logging
-                pimpl->logger.debug("Profiling thread exception caught: {}", ex.what());
+                pimpl->logger.debug("Log thread exception caught: {}", ex.what());
             }
 
-            profilingRunning = false;
+            loggingRunning = false;
         });
-    }
 
-    // Below can throw - make sure to gracefully exit threads
-    try {
-        // Starts and waits for inital timesync
-        setTimesync(DEFAULT_TIMESYNC_PERIOD, DEFAULT_TIMESYNC_NUM_SAMPLES, DEFAULT_TIMESYNC_RANDOM);
-    } catch(const std::exception&) {
-        // close device (cleanup)
-        close();
-        // Rethrow original exception
-        throw;
+        if(utility::getEnv("DEPTHAI_PROFILING") == "1") {
+            // prepare profiling thread, which will log device messages
+            profilingThread = std::thread([this]() {
+                using namespace std::chrono;
+                try {
+                    ProfilingData lastData = {};
+                    // TODO(themarpe) - expose
+                    float rate = 1.0f;
+                    while(profilingRunning) {
+                        ProfilingData data = getProfilingData();
+                        long long w = data.numBytesWritten - lastData.numBytesWritten;
+                        long long r = data.numBytesRead - lastData.numBytesRead;
+                        w = static_cast<long long>(w / rate);
+                        r = static_cast<long long>(r / rate);
+
+                        lastData = data;
+
+                        pimpl->logger.debug("Profiling write speed: {:.2f} MiB/s, read speed: {:.2f} MiB/s, total written: {:.2f} MiB, read: {:.2f} MiB",
+                                            w / 1024.0f / 1024.0f,
+                                            r / 1024.0f / 1024.0f,
+                                            data.numBytesWritten / 1024.0f / 1024.0f,
+                                            data.numBytesRead / 1024.0f / 1024.0f);
+
+                        std::this_thread::sleep_for(duration<float>(1) / rate);
+                    }
+                } catch(const std::exception& ex) {
+                    // ignore exception from logging
+                    pimpl->logger.debug("Profiling thread exception caught: {}", ex.what());
+                }
+
+                profilingRunning = false;
+            });
+        }
+
+        // Below can throw - make sure to gracefully exit threads
+        try {
+            // Starts and waits for inital timesync
+            setTimesync(DEFAULT_TIMESYNC_PERIOD, DEFAULT_TIMESYNC_NUM_SAMPLES, DEFAULT_TIMESYNC_RANDOM);
+        } catch(const std::exception&) {
+            // close device (cleanup)
+            close();
+            // Rethrow original exception
+            throw;
+        }
     }
 }
 
@@ -956,8 +1049,81 @@ std::vector<CameraBoardSocket> DeviceBase::getConnectedCameras() {
     return pimpl->rpcClient->call("getConnectedCameras").as<std::vector<CameraBoardSocket>>();
 }
 
+std::vector<StereoPair> DeviceBase::getAvailableStereoPairs() {
+    std::vector<dai::StereoPair> stereoPairs;
+    dai::CalibrationHandler calibHandler;
+    try {
+        calibHandler = readCalibration2();
+        if(calibHandler.getEepromData().cameraData.empty()) {
+            throw std::runtime_error("No camera data found.");
+        }
+    } catch(const std::exception&) {
+        try {
+            calibHandler = readFactoryCalibration();
+        } catch(const std::exception&) {
+            pimpl->logger.info("No calibration found.");
+            return stereoPairs;
+        }
+    }
+    // Find links between cameras.
+    for(auto const& camIdAndInfo1 : calibHandler.getEepromData().cameraData) {
+        auto camId1 = camIdAndInfo1.first;
+        for(auto const& camIdAndInfo2 : calibHandler.getEepromData().cameraData) {
+            auto camId2 = camIdAndInfo2.first;
+            try {
+                auto translationVector = calibHandler.getCameraTranslationVector(camId1, camId2, false);
+                auto baseline = std::abs(translationVector[0]) > std::abs(translationVector[1]) ? translationVector[0] : translationVector[1];  // X or Y
+                auto leftSocket = baseline < 0 ? camId1 : camId2;
+                auto rightSocket = leftSocket == camId1 ? camId2 : camId1;
+                int baselineDiff = std::abs(static_cast<int>(translationVector[0]) - static_cast<int>(translationVector[1]));
+                if(baselineDiff == static_cast<int>(std::abs(baseline))) {
+                    if(std::find_if(stereoPairs.begin(),
+                                    stereoPairs.end(),
+                                    [&leftSocket, &rightSocket](const dai::StereoPair& pair) { return pair.left == leftSocket && pair.right == rightSocket; })
+                       == stereoPairs.end()) {
+                        stereoPairs.push_back(dai::StereoPair{leftSocket, rightSocket, std::abs(baseline), static_cast<int>(translationVector[0]) == 0});
+                    }
+                } else {
+                    pimpl->logger.debug("Skipping diagonal pair, left: {}, right: {}.", leftSocket, rightSocket);
+                }
+            } catch(const std::exception&) {
+                continue;
+            }
+        }
+    }
+    // Filter out undetected cameras and socket pairs which are not present in getStereoPairs
+    auto deviceStereoPairs = getStereoPairs();
+    auto connectedCameras = getConnectedCameras();
+    std::vector<dai::StereoPair> filteredStereoPairs;
+    std::copy_if(
+        stereoPairs.begin(), stereoPairs.end(), std::back_inserter(filteredStereoPairs), [this, connectedCameras, deviceStereoPairs](dai::StereoPair pair) {
+            if(std::find(connectedCameras.begin(), connectedCameras.end(), pair.left) == connectedCameras.end()) {
+                pimpl->logger.debug("Skipping calibrated stereo pair because, camera {} was not detected.", pair.left);
+                return false;
+            } else if(std::find(connectedCameras.begin(), connectedCameras.end(), pair.right) == connectedCameras.end()) {
+                pimpl->logger.debug("Skipping calibrated stereo pair because, camera {} was not detected.", pair.right);
+                return false;
+            }
+            return std::find_if(deviceStereoPairs.begin(),
+                                deviceStereoPairs.end(),
+                                [pair](dai::StereoPair devicePair) { return devicePair.left == pair.left && devicePair.right == pair.right; })
+                   != deviceStereoPairs.end();
+        });
+
+    std::sort(filteredStereoPairs.begin(), filteredStereoPairs.end(), [](dai::StereoPair a, dai::StereoPair b) { return a.baseline < b.baseline; });
+    return filteredStereoPairs;
+}
+
+std::vector<ConnectionInterface> DeviceBase::getConnectionInterfaces() {
+    return pimpl->rpcClient->call("getConnectionInterfaces").as<std::vector<ConnectionInterface>>();
+}
+
 std::vector<CameraFeatures> DeviceBase::getConnectedCameraFeatures() {
     return pimpl->rpcClient->call("getConnectedCameraFeatures").as<std::vector<CameraFeatures>>();
+}
+
+std::vector<StereoPair> DeviceBase::getStereoPairs() {
+    return pimpl->rpcClient->call("getStereoPairs").as<std::vector<StereoPair>>();
 }
 
 std::unordered_map<CameraBoardSocket, std::string> DeviceBase::getCameraSensorNames() {
@@ -1059,31 +1225,16 @@ DeviceInfo DeviceBase::getDeviceInfo() const {
     return deviceInfo;
 }
 
+std::string DeviceBase::getProductName() {
+    EepromData eepromFactory = readFactoryCalibrationOrDefault().getEepromData();
+    EepromData eeprom = readCalibrationOrDefault().getEepromData();
+    return utility::parseProductName(eeprom, eepromFactory);
+}
+
 std::string DeviceBase::getDeviceName() {
-    std::string deviceName;
-    EepromData eeprom = readFactoryCalibrationOrDefault().getEepromData();
-    if((deviceName = eeprom.productName).empty()) {
-        eeprom = readCalibrationOrDefault().getEepromData();
-        if((deviceName = eeprom.productName).empty()) {
-            deviceName = eeprom.boardName;
-        }
-    }
-
-    // Convert to device naming from display/product naming
-    // std::transform(deviceName.begin(), deviceName.end(), deviceName.begin(), std::ptr_fun<int, int>(std::toupper));
-    std::transform(deviceName.begin(), deviceName.end(), deviceName.begin(), [](int c) { return std::toupper(c); });
-    std::replace(deviceName.begin(), deviceName.end(), ' ', '-');
-
-    // Handle some known legacy cases
-    if(deviceName == "BW1098OBC") {
-        deviceName = "OAK-D";
-    } else if(deviceName == "DM2097") {
-        deviceName = "OAK-D-CM4-POE";
-    } else if(deviceName == "BW1097") {
-        deviceName = "OAK-D-CM3";
-    }
-
-    return deviceName;
+    EepromData eepromFactory = readFactoryCalibrationOrDefault().getEepromData();
+    EepromData eeprom = readCalibrationOrDefault().getEepromData();
+    return utility::parseDeviceName(eeprom, eepromFactory);
 }
 
 void DeviceBase::setLogOutputLevel(LogLevel level) {
@@ -1095,11 +1246,19 @@ LogLevel DeviceBase::getLogOutputLevel() {
 }
 
 bool DeviceBase::setIrLaserDotProjectorBrightness(float mA, int mask) {
-    return pimpl->rpcClient->call("setIrLaserDotProjectorBrightness", mA, mask);
+    return pimpl->rpcClient->call("setIrLaserDotProjectorBrightness", mA, mask, false);
+}
+
+bool DeviceBase::setIrLaserDotProjectorIntensity(float intensity, int mask) {
+    return pimpl->rpcClient->call("setIrLaserDotProjectorBrightness", intensity, mask, true);
 }
 
 bool DeviceBase::setIrFloodLightBrightness(float mA, int mask) {
-    return pimpl->rpcClient->call("setIrFloodLightBrightness", mA, mask);
+    return pimpl->rpcClient->call("setIrFloodLightBrightness", mA, mask, false);
+}
+
+bool DeviceBase::setIrFloodLightIntensity(float intensity, int mask) {
+    return pimpl->rpcClient->call("setIrFloodLightBrightness", intensity, mask, true);
 }
 
 std::vector<std::tuple<std::string, int, int>> DeviceBase::getIrDrivers() {
@@ -1166,7 +1325,7 @@ void DeviceBase::setSystemInformationLoggingRate(float rateHz) {
 }
 
 float DeviceBase::getSystemInformationLoggingRate() {
-    return pimpl->rpcClient->call("getSystemInformationLoggingrate").as<float>();
+    return pimpl->rpcClient->call("getSystemInformationLoggingRate").as<float>();
 }
 
 bool DeviceBase::isEepromAvailable() {
@@ -1364,7 +1523,7 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
     pipeline.serialize(schema, assets, assetStorage);
 
     // if debug or lower
-    if(logger::get_level() <= spdlog::level::debug) {
+    if(getLogOutputLevel() <= LogLevel::DEBUG) {
         nlohmann::json jSchema = schema;
         pimpl->logger.debug("Schema dump: {}", jSchema.dump());
         nlohmann::json jAssets = assets;

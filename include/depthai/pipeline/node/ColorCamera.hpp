@@ -286,7 +286,9 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
     void sensorCenterCrop();
 
     /**
-     * Specifies sensor crop rectangle
+     * Specifies the cropping that happens when converting ISP to video output. By default, video will be center cropped
+     * from the ISP output. Note that this doesn't actually do on-sensor cropping (and MIPI-stream only that region), but
+     * it does postprocessing on the ISP (on RVC).
      * @param x Top left X coordinate
      * @param y Top left Y coordinate
      */
@@ -340,6 +342,17 @@ class ColorCamera : public NodeCRTP<Node, ColorCamera, ColorCameraProperties> {
     int getRawNumFramesPool();
     /// Get number of frames in isp pool
     int getIspNumFramesPool();
+
+    /**
+     * Configures whether the camera `raw` frames are saved as MIPI-packed to memory.
+     * The packed format is more efficient, consuming less memory on device, and less data
+     * to send to host: RAW10: 4 pixels saved on 5 bytes, RAW12: 2 pixels saved on 3 bytes.
+     * When packing is disabled (`false`), data is saved lsb-aligned, e.g. a RAW10 pixel
+     * will be stored as uint16, on bits 9..0: 0b0000'00pp'pppp'pppp.
+     * Default is auto: enabled for standard color/monochrome cameras where ISP can work
+     * with both packed/unpacked, but disabled for other cameras like ToF.
+     */
+    void setRawOutputPacked(bool packed);
 };
 
 }  // namespace node

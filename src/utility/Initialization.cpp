@@ -4,6 +4,7 @@
 #include <memory>
 
 // project
+#include "build/config.hpp"
 #include "build/version.hpp"
 #include "utility/Environment.hpp"
 #include "utility/Logging.hpp"
@@ -77,12 +78,25 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
         (void)installSignalHandler;
 #endif
 
+        // Read JavaVM pointer from env if present
+        {
+            auto javavmEnvStr = utility::getEnv("DEPTHAI_LIBUSB_ANDROID_JAVAVM");
+            if(javavm == nullptr && !javavmEnvStr.empty()) {
+                // Read the uintptr_t value from the decimal string
+                sscanf(javavmEnvStr.c_str(), "%" SCNuPTR, reinterpret_cast<uintptr_t*>(&javavm));
+            }
+        }
+
         // Print core commit and build datetime
         if(additionalInfo != nullptr && additionalInfo[0] != '\0') {
             logger::debug("{}", additionalInfo);
         }
-        logger::debug(
-            "Library information - version: {}, commit: {} from {}, build: {}", build::VERSION, build::COMMIT, build::COMMIT_DATETIME, build::BUILD_DATETIME);
+        logger::debug("Library information - version: {}, commit: {} from {}, build: {}, libusb enabled: {}",
+                      build::VERSION,
+                      build::COMMIT,
+                      build::COMMIT_DATETIME,
+                      build::BUILD_DATETIME,
+                      build::HAVE_LIBUSB_SUPPORT);
 
         // Executed at library load time
 
@@ -104,10 +118,13 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
             logger::debug("Initialize failed - {}", errorMsg);
             throw std::runtime_error(errorMsg);
         }
-        // Check that USB protocol is available
+
+        // Check that USB protocol is available, IFF libusb is enabled
+#ifdef DEPTHAI_ENABLE_LIBUSB
         if(!XLinkIsProtocolInitialized(X_LINK_USB_VSC)) {
             logger::warn("USB protocol not available - {}", ERROR_MSG_USB_TIP);
         }
+#endif
 
         // Enable Global XLink profiling
         XLinkProfStart();

@@ -3,10 +3,14 @@
 // std
 #include <chrono>
 #include <iostream>
+#include <memory>
 
 // project
+#include "depthai-shared/datatype/DatatypeEnum.hpp"
+#include "depthai-shared/datatype/RawMessageGroup.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
+#include "pipeline/datatype/MessageGroup.hpp"
 #include "pipeline/datatype/StreamMessageParser.hpp"
 
 // shared
@@ -35,8 +39,23 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
             while(running) {
                 // Blocking -- parse packet and gather timing information
                 auto packet = stream.readMove();
+                DatatypeEnum type;
                 const auto t1Parse = std::chrono::steady_clock::now();
-                const auto data = StreamMessageParser::parseMessageToADatatype(&packet);
+                const auto data = StreamMessageParser::parseMessageToADatatype(&packet, type);
+                if(type == DatatypeEnum::MessageGroup) {
+                    auto msgGrp = std::static_pointer_cast<MessageGroup>(data);
+                    unsigned int size = msgGrp->getNumMessages();
+                    std::vector<std::shared_ptr<ADatatype>> packets;
+                    packets.reserve(size);
+                    for(unsigned int i = 0; i < size; ++i) {
+                        auto dpacket = stream.readMove();
+                        packets.push_back(StreamMessageParser::parseMessageToADatatype(&dpacket));
+                    }
+                    auto rawMsgGrp = std::static_pointer_cast<RawMessageGroup>(data->getRaw());
+                    for(auto& msg : rawMsgGrp->group) {
+                        msgGrp->add(msg.first, packets[msg.second.index]);
+                    }
+                }
                 const auto t2Parse = std::chrono::steady_clock::now();
 
                 // Trace level debugging
@@ -192,6 +211,16 @@ DataInputQueue::DataInputQueue(
 
                 // serialize
                 auto t1Parse = std::chrono::steady_clock::now();
+                std::vector<std::vector<uint8_t>> serializedAux;
+                if(data->getType() == DatatypeEnum::MessageGroup) {
+                    auto rawMsgGrp = std::dynamic_pointer_cast<RawMessageGroup>(data);
+                    serializedAux.reserve(rawMsgGrp->group.size());
+                    unsigned int index = 0;
+                    for(auto& msg : rawMsgGrp->group) {
+                        msg.second.index = index++;
+                        serializedAux.push_back(StreamMessageParser::serializeMessage(msg.second.buffer));
+                    }
+                }
                 auto serialized = StreamMessageParser::serializeMessage(data);
                 auto t2Parse = std::chrono::steady_clock::now();
 
@@ -210,6 +239,9 @@ DataInputQueue::DataInputQueue(
 
                 // Blocking
                 stream.write(serialized);
+                for(auto& msg : serializedAux) {
+                    stream.write(msg);
+                }
 
                 // Increment num packets sent
                 numPacketsSent++;
@@ -293,7 +325,7 @@ void DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg) {
 
     // Check if stream receiver has enough space for this message
     if(rawMsg->data.size() > maxDataSize) {
-        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize));
+        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize.load()));
     }
 
     if(!queue.push(rawMsg)) {
@@ -315,7 +347,7 @@ bool DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg, std::chrono:
 
     // Check if stream receiver has enough space for this message
     if(rawMsg->data.size() > maxDataSize) {
-        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize));
+        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize.load()));
     }
 
     return queue.tryWaitAndPush(rawMsg, timeout);

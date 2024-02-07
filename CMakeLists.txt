@@ -6,6 +6,9 @@ if(NOT WIN32)
     set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
 endif()
 
+# Early options
+option(DEPTHAI_ENABLE_LIBUSB "Enable usage of libusb and interaction with USB devices" ON)
+
 # Set type to canonicalize relative paths for user-provided toolchain
 set(CMAKE_TOOLCHAIN_FILE "" CACHE FILEPATH "CMake toolchain path")
 
@@ -43,7 +46,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.21.2" LANGUAGES CXX C)
+project(depthai VERSION "2.24.0" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -204,8 +207,11 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
     src/pipeline/node/Camera.cpp
+    src/pipeline/node/ToF.cpp
+    src/pipeline/node/MessageDemux.cpp
     src/pipeline/node/MonoCamera.cpp
     src/pipeline/node/StereoDepth.cpp
+    src/pipeline/node/Sync.cpp
     src/pipeline/node/NeuralNetwork.cpp
     src/pipeline/node/ImageManip.cpp
     src/pipeline/node/Warp.cpp
@@ -222,8 +228,10 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/SPIIn.cpp
     src/pipeline/node/FeatureTracker.cpp
     src/pipeline/node/DetectionParser.cpp
+    src/pipeline/node/UVC.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
+    src/pipeline/datatype/EncodedFrame.cpp
     src/pipeline/datatype/ImageManipConfig.cpp
     src/pipeline/datatype/CameraControl.cpp
     src/pipeline/datatype/NNData.cpp
@@ -241,6 +249,9 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/EdgeDetectorConfig.cpp
     src/pipeline/datatype/TrackedFeatures.cpp
     src/pipeline/datatype/FeatureTrackerConfig.cpp
+    src/pipeline/datatype/ToFConfig.cpp
+    src/pipeline/datatype/MessageGroup.cpp
+    src/utility/H26xParsers.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
     src/utility/Path.cpp
@@ -248,6 +259,7 @@ add_library(${TARGET_CORE_NAME}
     src/utility/Environment.cpp
     src/utility/XLinkGlobalProfilingLogger.cpp
     src/utility/Logging.cpp
+    src/utility/EepromDataParser.cpp
     src/xlink/XLinkConnection.cpp
     src/xlink/XLinkStream.cpp
     src/openvino/OpenVINO.cpp
@@ -443,13 +455,16 @@ target_link_libraries(${TARGET_CORE_NAME}
 set(DEPTHAI_DEVICE_VERSION "${DEPTHAI_DEVICE_SIDE_COMMIT}")
 target_compile_definitions(${TARGET_CORE_NAME}
     PRIVATE
-        # XLink required define
-        __PC__
         # Add depthai-device version
         DEPTHAI_DEVICE_VERSION="${DEPTHAI_DEVICE_VERSION}"
         # Add depthai-bootloader version
         DEPTHAI_BOOTLOADER_VERSION="${DEPTHAI_BOOTLOADER_VERSION}"
 )
+# Add compile flag if libusb is available
+if(DEPTHAI_ENABLE_LIBUSB)
+    target_compile_definitions(${TARGET_CORE_NAME} PRIVATE DEPTHAI_ENABLE_LIBUSB)
+    set(DEPTHAI_HAVE_LIBUSB_SUPPORT ON)
+endif()
 
 # Add Backward dependency if enabled (On by default)
 if(DEPTHAI_ENABLE_BACKWARD)
@@ -478,8 +493,9 @@ macro(add_runtime_dependencies depending_target dependency)
         set(required_dll_files ${dlls} ${depthai_dll_libraries})
         # Copy the required dlls
         add_custom_command(TARGET ${depending_target} POST_BUILD COMMAND
-            ${CMAKE_COMMAND} -E copy_if_different ${required_dll_files} $<TARGET_FILE_DIR:${depending_target}>
+            "$<$<BOOL:${required_dll_files}>:${CMAKE_COMMAND};-E;copy_if_different;${required_dll_files};$<TARGET_FILE_DIR:${depending_target}>>"
             COMMAND_EXPAND_LISTS
+            VERBATIM
         )
         message(STATUS "Required dlls for core are: ${required_dll_files}")
     endif()

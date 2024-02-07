@@ -91,6 +91,12 @@ CameraControl& CameraControl::setManualFocus(uint8_t lensPosition) {
     return *this;
 }
 
+CameraControl& CameraControl::setManualFocusRaw(float lensPositionRaw) {
+    cfg.setCommand(RawCameraControl::Command::MOVE_LENS_RAW);
+    cfg.lensPositionRaw = lensPositionRaw;
+    return *this;
+}
+
 // Exposure
 CameraControl& CameraControl::setAutoExposureEnable() {
     cfg.setCommand(RawCameraControl::Command::AE_AUTO);
@@ -115,6 +121,14 @@ CameraControl& CameraControl::setAutoExposureCompensation(int compensation) {
     cfg.expCompensation = compensation;
     return *this;
 }
+CameraControl& CameraControl::setAutoExposureLimit(uint32_t maxExposureTimeUs) {
+    cfg.setCommand(RawCameraControl::Command::AE_TARGET_FPS_RANGE);
+    cfg.aeMaxExposureTimeUs = maxExposureTimeUs;
+    return *this;
+}
+CameraControl& CameraControl::setAutoExposureLimit(std::chrono::microseconds maxExposureTime) {
+    return setAutoExposureLimit(maxExposureTime.count());
+}
 CameraControl& CameraControl::setAntiBandingMode(AntiBandingMode mode) {
     cfg.setCommand(RawCameraControl::Command::ANTIBANDING_MODE);
     cfg.antiBandingMode = mode;
@@ -128,8 +142,8 @@ CameraControl& CameraControl::setManualExposure(uint32_t exposureTimeUs, uint32_
     return *this;
 }
 
-void CameraControl::setManualExposure(std::chrono::microseconds exposureTime, uint32_t sensitivityIso) {
-    setManualExposure(exposureTime.count(), sensitivityIso);
+CameraControl& CameraControl::setManualExposure(std::chrono::microseconds exposureTime, uint32_t sensitivityIso) {
+    return setManualExposure(exposureTime.count(), sensitivityIso);
 }
 
 // White Balance
@@ -190,6 +204,16 @@ CameraControl& CameraControl::setEffectMode(EffectMode mode) {
     cfg.effectMode = mode;
     return *this;
 }
+CameraControl& CameraControl::setControlMode(ControlMode mode) {
+    cfg.setCommand(RawCameraControl::Command::CONTROL_MODE);
+    cfg.controlMode = mode;
+    return *this;
+}
+CameraControl& CameraControl::setCaptureIntent(CaptureIntent mode) {
+    cfg.setCommand(RawCameraControl::Command::CAPTURE_INTENT);
+    cfg.captureIntent = mode;
+    return *this;
+}
 
 CameraControl& CameraControl::setMisc(std::string control, std::string value) {
     cfg.miscControls.push_back(std::make_pair(control, value));
@@ -222,6 +246,10 @@ int CameraControl::getSensitivity() const {
 
 int CameraControl::getLensPosition() const {
     return cfg.lensPosition;
+}
+
+float CameraControl::getLensPositionRaw() const {
+    return cfg.lensPositionRaw;
 }
 
 dai::RawCameraControl CameraControl::get() const {

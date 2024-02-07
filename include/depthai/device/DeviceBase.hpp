@@ -28,8 +28,10 @@
 
 // shared
 #include "depthai-shared/common/ChipTemperature.hpp"
+#include "depthai-shared/common/ConnectionInterface.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
+#include "depthai-shared/common/StereoPair.hpp"
 #include "depthai-shared/datatype/RawIMUData.hpp"
 #include "depthai-shared/device/BoardConfig.hpp"
 #include "depthai-shared/device/CrashDump.hpp"
@@ -292,8 +294,8 @@ class DeviceBase {
 
     /**
      * Connects to device 'devInfo' with custom config.
-     * @param devInfo DeviceInfo which specifies which device to connect to
      * @param config Device custom configuration to boot with
+     * @param devInfo DeviceInfo which specifies which device to connect to
      */
     DeviceBase(Config config, const DeviceInfo& devInfo);
 
@@ -303,7 +305,7 @@ class DeviceBase {
      *
      * @param devInfo DeviceInfo which specifies which device to connect to
      */
-    DeviceBase(const DeviceInfo& devInfo);
+    explicit DeviceBase(const DeviceInfo& devInfo);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
@@ -364,8 +366,8 @@ class DeviceBase {
 
     /**
      * Connects to device specified by devInfo.
-     * @param version OpenVINO version which the device will be booted with
-     * @param config Config with which specifies which device to connect to
+     * @param config Config with which the device will be booted with
+     * @param devInfo DeviceInfo which specifies which device to connect to
      * @param maxUsbSpeed Maximum allowed USB speed
      */
     DeviceBase(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
@@ -375,8 +377,9 @@ class DeviceBase {
      * @param config Config with which the device will be booted with
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param pathToCmd Path to custom device firmware
+     * @param dumpOnly If true only the minimal connection is established to retrieve the crash dump
      */
-    DeviceBase(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
+    DeviceBase(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd, bool dumpOnly = false);
 
     /**
      * Device destructor
@@ -457,6 +460,12 @@ class DeviceBase {
     std::string getDeviceName();
 
     /**
+     * Get product name if available
+     * @returns product name or empty string if not available
+     */
+    std::string getProductName();
+
+    /**
      * Get MxId of device
      *
      * @returns MxId of connected device
@@ -487,7 +496,7 @@ class DeviceBase {
      * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W-DEV
      * @returns True on success, false if not found or other failure
      */
-    bool setIrLaserDotProjectorBrightness(float mA, int mask = -1);
+    [[deprecated("Use setIrLaserDotProjectorIntensity(float intensity) instead.")]] bool setIrLaserDotProjectorBrightness(float mA, int mask = -1);
 
     /**
      * Sets the brightness of the IR Flood Light. Limits: up to 1500mA at 30% duty cycle.
@@ -499,7 +508,31 @@ class DeviceBase {
      * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W-DEV
      * @returns True on success, false if not found or other failure
      */
-    bool setIrFloodLightBrightness(float mA, int mask = -1);
+    [[deprecated("Use setIrFloodLightIntensity(float intensity) instead.")]] bool setIrFloodLightBrightness(float mA, int mask = -1);
+
+    /**
+     * Sets the intensity of the IR Laser Dot Projector. Limits: up to 765mA at 30% frame time duty cycle when exposure time is longer than 30% frame time.
+     * Otherwise, duty cycle is 100% of exposure time, with current increased up to max 1200mA to make up for shorter duty cycle.
+     * The duty cycle is controlled by `left` camera STROBE, aligned to start of exposure.
+     * The emitter is turned off by default
+     *
+     * @param intensity Intensity on range 0 to 1, that will determine brightness. 0 or negative to turn off
+     * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W-DEV
+     * @returns True on success, false if not found or other failure
+     */
+    bool setIrLaserDotProjectorIntensity(float intensity, int mask = -1);
+
+    /**
+     * Sets the intensity of the IR Flood Light. Limits: Intensity is directly normalized to 0 - 1500mA current.
+     * The duty cycle is 30% when exposure time is longer than 30% frame time. Otherwise, duty cycle is 100% of exposure time.
+     * The duty cycle is controlled by the `left` camera STROBE, aligned to start of exposure.
+     * The emitter is turned off by default
+     *
+     * @param intensity Intensity on range 0 to 1, that will determine brightness, 0 or negative to turn off
+     * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W-DEV
+     * @returns True on success, false if not found or other failure
+     */
+    bool setIrFloodLightIntensity(float intensity, int mask = -1);
 
     /**
      * Retrieves detected IR laser/LED drivers.
@@ -565,11 +598,34 @@ class DeviceBase {
     std::vector<CameraBoardSocket> getConnectedCameras();
 
     /**
+     * Get connection interfaces for device
+     *
+     * @returns Vector of connection type
+     */
+    std::vector<ConnectionInterface> getConnectionInterfaces();
+
+    /**
      * Get cameras that are connected to the device with their features/properties
      *
      * @returns Vector of connected camera features
      */
     std::vector<CameraFeatures> getConnectedCameraFeatures();
+
+    /**
+     * Get stereo pairs based on the device type.
+     *
+     * @returns Vector of stereo pairs
+     */
+    std::vector<StereoPair> getStereoPairs();
+
+    /**
+     * Get stereo pairs taking into account the calibration and connected cameras.
+     *
+     * @note This method will always return a subset of `getStereoPairs`.
+     *
+     * @returns Vector of stereo pairs
+     */
+    std::vector<StereoPair> getAvailableStereoPairs();
 
     /**
      * Get sensor names for cameras that are connected to the device
@@ -867,7 +923,6 @@ class DeviceBase {
     void init(OpenVINO::Version version);
     void init(OpenVINO::Version version, const dai::Path& pathToCmd);
     void init(OpenVINO::Version version, UsbSpeed maxUsbSpeed);
-    void init(OpenVINO::Version version, bool usb2Mode, const dai::Path& pathToMvcmd);
     void init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
     void init(const Pipeline& pipeline);
     void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed);
@@ -876,9 +931,7 @@ class DeviceBase {
     void init(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode);
     void init(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
     void init(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
-    void init(const Pipeline& pipeline, bool usb2Mode, const dai::Path& pathToMvcmd);
     void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
-    void init(Config config, bool usb2Mode, const dai::Path& pathToMvcmd);
     void init(Config config, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
     void init(Config config, UsbSpeed maxUsbSpeed);
     void init(Config config, const dai::Path& pathToCmd);
@@ -929,5 +982,8 @@ class DeviceBase {
 
     // Device config
     Config config;
+
+    dai::Path firmwarePath;
+    bool dumpOnly = false;
 };
 }  // namespace dai

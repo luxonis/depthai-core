@@ -1,5 +1,7 @@
 # DepthAI C++ Library
 
+[![Forum](https://img.shields.io/badge/Forum-discuss-orange)](https://discuss.luxonis.com/)
+[![Docs](https://img.shields.io/badge/Docs-DepthAI_API-yellow)](https://docs.luxonis.com/projects/api)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 Core C++ library
@@ -177,11 +179,16 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_CONNECT_TIMEOUT | Specifies timeout in milliseconds for establishing a connection to a given device. |
 | DEPTHAI_BOOTUP_TIMEOUT | Specifies timeout in milliseconds for waiting the device to boot after sending the binary. |
 | DEPTHAI_PROTOCOL | Restricts default search to the specified protocol. Options: any, usb, tcpip. |
-| DEPTHAI_DEVICE_MXID_LIST | Restricts default search to the specified MXIDs. Accepts comma separated list of MXIDs |
+| DEPTHAI_DEVICE_MXID_LIST | Restricts default search to the specified MXIDs. Accepts comma separated list of MXIDs. Lists filter results in an "AND" manner and not "OR" |
+| DEPTHAI_DEVICE_ID_LIST | Alias to MXID list. Lists filter results in an "AND" manner and not "OR" |
+| DEPTHAI_DEVICE_NAME_LIST | Restricts default search to the specified NAMEs. Accepts comma separated list of NAMEs. Lists filter results in an "AND" manner and not "OR" |
 | DEPTHAI_DEVICE_BINARY | Overrides device Firmware binary. Mostly for internal debugging purposes. |
 | DEPTHAI_BOOTLOADER_BINARY_USB | Overrides device USB Bootloader binary. Mostly for internal debugging purposes. |
 | DEPTHAI_BOOTLOADER_BINARY_ETH | Overrides device Network Bootloader binary. Mostly for internal debugging purposes. |
 | DEPTHAI_ALLOW_FACTORY_FLASHING | Internal use only |
+| DEPTHAI_LIBUSB_ANDROID_JAVAVM | JavaVM pointer that is passed to libusb for rootless Android interaction with devices. Interpreted as decimal value of uintptr_t |
+| DEPTHAI_CRASHDUMP | Directory in which to save the crash dump. |
+| DEPTHAI_CRASHDUMP_TIMEOUT | Specifies the duration in seconds to wait for device reboot when obtaining a crash dump. Crash dump retrieval disabled if 0. |
 
 ## Running tests
 
