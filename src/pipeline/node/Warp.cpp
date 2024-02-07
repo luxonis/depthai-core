@@ -74,11 +74,11 @@ std::vector<int> Warp::getHwIds() const {
     return properties.warpHwIds;
 }
 
-void Warp::setInterpolation(Warp::Properties::Interpolation interpolation) {
+void Warp::setInterpolation(dai::Interpolation interpolation) {
     properties.interpolation = interpolation;
 }
 
-Warp::Properties::Interpolation Warp::getInterpolation() const {
+dai::Interpolation Warp::getInterpolation() const {
     return properties.interpolation;
 }
 

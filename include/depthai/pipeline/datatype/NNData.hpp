@@ -178,22 +178,6 @@ class NNData : public Buffer {
     [[deprecated("Use 'getTensor()' instead")]] std::vector<std::int32_t> getFirstLayerInt32() const;
 
     /**
-     * Retrieves image timestamp related to dai::Clock::now()
-     */
-    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;
-
-    /**
-     * Retrieves image timestamp directly captured from device's monotonic clock,
-     * not synchronized to host time. Used mostly for debugging
-     */
-    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
-
-    /**
-     * Retrieves image sequence number
-     */
-    int64_t getSequenceNum() const;
-
-    /**
      * Sets image timestamp related to dai::Clock::now()
      */
     NNData& setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
