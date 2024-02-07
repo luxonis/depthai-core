@@ -1081,8 +1081,10 @@ std::vector<StereoPair> DeviceBase::getAvailableStereoPairs() {
         }
     }
     // Find links between cameras.
-    for(auto const& [camId1, _camInfo1] : calibHandler.getEepromData().cameraData) {
-        for(auto const& [camId2, _camInfo2] : calibHandler.getEepromData().cameraData) {
+    for(auto const& camIdAndInfo1 : calibHandler.getEepromData().cameraData) {
+        auto camId1 = camIdAndInfo1.first;
+        for(auto const& camIdAndInfo2 : calibHandler.getEepromData().cameraData) {
+            auto camId2 = camIdAndInfo2.first;
             try {
                 auto translationVector = calibHandler.getCameraTranslationVector(camId1, camId2, false);
                 auto baseline = std::abs(translationVector[0]) > std::abs(translationVector[1]) ? translationVector[0] : translationVector[1];  // X or Y
