@@ -6,10 +6,10 @@
 // project
 #include "build/version.hpp"
 #include "device/Device.hpp"
+#include "utility/Environment.hpp"
 #include "utility/PimplImpl.hpp"
 #include "utility/Platform.hpp"
 #include "utility/Resources.hpp"
-#include "utility/Environment.hpp"
 
 // libraries
 #include "httplib.h"
