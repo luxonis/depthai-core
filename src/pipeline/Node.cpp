@@ -255,8 +255,8 @@ std::vector<uint8_t> Node::loadResource(dai::Path uri) {
     return parent.lock()->loadResourceCwd(uri, cwd);
 }
 
-Node::OutputMap::OutputMap(Node& parent, std::string name, Node::Output defaultOutput) : defaultOutput(defaultOutput), name(std::move(name)) {}
-Node::OutputMap::OutputMap(Node& parent, Node::Output defaultOutput) : defaultOutput(defaultOutput) {}
+Node::OutputMap::OutputMap(std::string name, Node::Output defaultOutput) : defaultOutput(defaultOutput), name(std::move(name)) {}
+Node::OutputMap::OutputMap(Node::Output defaultOutput) : defaultOutput(defaultOutput) {}
 Node::OutputMap::OutputMap(bool ref, Node& parent, std::string name, Node::Output defaultOutput) : defaultOutput(defaultOutput), name(std::move(name)) {
     // Place oneself to the parents references
     if(ref) {
@@ -293,8 +293,8 @@ Node::Output& Node::OutputMap::operator[](std::pair<std::string, std::string> gr
     // otherwise just return reference to existing
     return at(groupKey);
 }
-Node::InputMap::InputMap(Node& parent, std::string name, Node::Input defaultInput) : defaultInput(defaultInput), name(std::move(name)) {}
-Node::InputMap::InputMap(Node& parent, Node::Input defaultInput) : defaultInput(defaultInput) {}
+Node::InputMap::InputMap(std::string name, Node::Input defaultInput) : defaultInput(defaultInput), name(std::move(name)) {}
+Node::InputMap::InputMap(Node::Input defaultInput) : defaultInput(defaultInput) {}
 Node::InputMap::InputMap(bool ref, Node& parent, std::string name, Node::Input defaultInput) : defaultInput(defaultInput), name(std::move(name)) {
     // Place oneself to the parents references
     if(ref) {
