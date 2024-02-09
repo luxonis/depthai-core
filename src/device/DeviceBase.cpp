@@ -1047,7 +1047,7 @@ std::vector<StereoPair> DeviceBase::getAvailableStereoPairs() {
                         stereoPairs.push_back(dai::StereoPair{leftSocket, rightSocket, std::abs(baseline), static_cast<int>(translationVector[0]) == 0});
                     }
                 } else {
-                    pimpl->logger.debug("Skipping diagonal pair, left: {}, right: {}.", leftSocket, rightSocket);
+                    // pimpl->logger.debug("Skipping diagonal pair, left: {}, right: {}.", leftSocket, rightSocket);
                 }
             } catch(const std::exception&) {
                 continue;
@@ -1061,10 +1061,10 @@ std::vector<StereoPair> DeviceBase::getAvailableStereoPairs() {
     std::copy_if(
         stereoPairs.begin(), stereoPairs.end(), std::back_inserter(filteredStereoPairs), [this, connectedCameras, deviceStereoPairs](dai::StereoPair pair) {
             if(std::find(connectedCameras.begin(), connectedCameras.end(), pair.left) == connectedCameras.end()) {
-                pimpl->logger.debug("Skipping calibrated stereo pair because, camera {} was not detected.", pair.left);
+                // pimpl->logger.debug("Skipping calibrated stereo pair because, camera {} was not detected.", pair.left);
                 return false;
             } else if(std::find(connectedCameras.begin(), connectedCameras.end(), pair.right) == connectedCameras.end()) {
-                pimpl->logger.debug("Skipping calibrated stereo pair because, camera {} was not detected.", pair.right);
+                // pimpl->logger.debug("Skipping calibrated stereo pair because, camera {} was not detected.", pair.right);
                 return false;
             }
             return std::find_if(deviceStereoPairs.begin(),
