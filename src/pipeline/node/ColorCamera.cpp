@@ -84,8 +84,11 @@ CameraImageOrientation ColorCamera::getImageOrientation() const {
 
 // setColorOrder - RGB or BGR
 void ColorCamera::setColorOrder(ColorCameraProperties::ColorOrder colorOrder) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     bool isInterleaved = ImgFrame::isInterleaved(properties.previewType);
     bool isFp16 = getFp16();
+#pragma GCC diagnostic pop
     switch(colorOrder) {
         case ColorCameraProperties::ColorOrder::BGR:
             if(isInterleaved) {
@@ -129,8 +132,7 @@ ColorCameraProperties::ColorOrder ColorCamera::getColorOrder() const {
               || properties.previewType == ImgFrame::Type::BGRF16F16F16i || properties.previewType == ImgFrame::Type::BGRF16F16F16p) {
         return ColorCameraProperties::ColorOrder::BGR;
     } else {
-        // Nothing sensible to return here, return BGR as default
-        return ColorCameraProperties::ColorOrder::BGR;
+        throw std::runtime_error("Don't call getColorOrder() for wrong previewType");
     }
 }
 
@@ -164,8 +166,11 @@ ImgFrame::Type ColorCamera::getPreviewType() const {
 
 // setFp16
 void ColorCamera::setFp16(bool fp16) {
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
     auto order = getColorOrder();
     auto interleaved = getInterleaved();
+#pragma GCC diagnostic pop
     if(fp16) {
         if(order == ColorCameraProperties::ColorOrder::BGR) {
             if(interleaved) {
