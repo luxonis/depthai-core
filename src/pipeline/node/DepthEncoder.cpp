@@ -67,22 +67,24 @@ void DepthEncoder::setLut(std::vector<uint8_t> lutR, std::vector<uint8_t> lutG, 
     properties.lutB = std::move(lutB);
 }
 
-void DepthEncoder::setHueLut(uint16_t minIn, uint16_t maxIn, float scaleFactor, float bufferAmount) {
+
+void DepthEncoder::setHueLutGeneric(uint16_t minDepthIn,
+                                    uint16_t maxDepthIn,
+                                    float bufferAmount,
+                                    const std::function<uint16_t(uint16_t, uint16_t)>& getMinDisparity,
+                                    const std::function<uint16_t(uint16_t, uint16_t, uint16_t)>& getMaxDisparity,
+                                    const std::function<uint16_t(uint16_t, uint16_t, uint16_t, uint16_t)>& getHueValueFromDisparity) {
     // First check the input for validity
-    if(minIn >= maxIn) throw std::runtime_error("Invalid input for setHueLut: minIn must be smaller than maxIn");
-    if(scaleFactor <= 0) throw std::runtime_error("Invalid input for setHueLut: scaleFactor must be positive");
-    if(bufferAmount < 0 || bufferAmount > 1) throw std::runtime_error("Invalid input for setHueLut: bufferAmount must be between 0 and 1");
-    constexpr uint16_t LUT_SIZE = 96 * 32 * 2; // Must match the maximum size on FW
+    if(minDepthIn >= maxDepthIn) throw std::runtime_error("Invalid input for setHueLut: minIn must be smaller than maxIn");
+    if(bufferAmount < 0 || bufferAmount > 0.5f) throw std::runtime_error("Invalid input for setHueLut: bufferAmount must be between 0 and 0.5");
+    constexpr uint16_t LUT_SIZE = 96 * 32 * 2;  // Must match the maximum size on FW
     std::vector<uint8_t> lutR(LUT_SIZE);
     std::vector<uint8_t> lutG(LUT_SIZE);
     std::vector<uint8_t> lutB(LUT_SIZE);
-    uint16_t minInDisparity = scaleFactor / maxIn;  // Transform depth to disparity
-    uint16_t maxInDisparity;
-    if(minIn == 0) {
-        maxInDisparity = LUT_SIZE - 1;
-    } else {
-        maxInDisparity = scaleFactor / minIn;  // Transform depth to disparity
-    }
+
+    uint16_t minInDisparity = getMinDisparity(minDepthIn, maxDepthIn);
+    uint16_t maxInDisparity = getMaxDisparity(minDepthIn, maxDepthIn, LUT_SIZE - 1);
+
     for(int i = 0; i < LUT_SIZE; i++) {
         // First handle the case when the input is outside of the range
         if(i < minInDisparity || i > maxInDisparity) {
@@ -92,11 +94,10 @@ void DepthEncoder::setHueLut(uint16_t minIn, uint16_t maxIn, float scaleFactor, 
             continue;
         }
         // Calculate the hue value
-        // Convert disparity to depth for the hue calculation
-        float depth = scaleFactor / i;
-        int hueIn = std::round(static_cast<float>((depth - minIn) * 1529) / (maxIn - minIn));
+        auto hueIn = getHueValueFromDisparity(i, minDepthIn, maxDepthIn, maxHueValue);
+
         // Handle the buffering to avoid minimum and maximum colors being too similar
-        int hueInBuffered = (hueIn * (1.0f - (2 * bufferAmount))) + (maxHueValue * bufferAmount);
+        auto hueInBuffered = static_cast<uint16_t>(std::round(static_cast<float>(hueIn) * (1.0f - (2 * bufferAmount))) + (maxHueValue * bufferAmount));
         auto color = toRgbHue(hueInBuffered);
         lutR[i] = std::get<0>(color);
         lutG[i] = std::get<1>(color);
@@ -108,6 +109,100 @@ void DepthEncoder::setHueLut(uint16_t minIn, uint16_t maxIn, float scaleFactor, 
     lutB[0] = 0;
     setLut(lutR, lutG, lutB);
 }
+
+void DepthEncoder::setHueLutDisparity(uint16_t minInDepth, uint16_t maxInDepth, float scale, float bufferAmount) {
+    // Check scale for validity
+    if(scale <= 0) throw std::runtime_error("Invalid input for setHueLutDepth: scale must be positive");
+
+    auto getMinDisparity = [scale](uint16_t minDepth, uint16_t maxDepth) -> uint16_t {
+        (void)minDepth;
+        return static_cast<std::uint16_t>(std::round(scale / static_cast<float>(maxDepth)));
+    };
+    auto getMaxDisparity = [scale](uint16_t minDepth, uint16_t maxDepth, uint16_t valueForMaxDepth) -> uint16_t {
+        (void)maxDepth;
+        if(minDepth == 0) {
+            return valueForMaxDepth;
+        }
+        return static_cast<std::uint16_t>(std::round(scale / static_cast<float>(minDepth)));
+    };
+    auto getHueValueFromDisparity = [scale](uint16_t disparity, uint16_t minDepth, uint16_t maxDepth, int maxHueValue) -> int {
+        (void)minDepth;
+        (void)maxDepth;
+        uint16_t maxDisparity = 0;
+        if(minDepth == 0) {
+            throw std::runtime_error("Invalid input for setHueLutDepth: minDepth must not be zero");
+        } else {
+            maxDisparity = static_cast<uint16_t>(std::round(scale / minDepth));
+        }
+        return static_cast<int>(std::round(static_cast<float>(disparity) * static_cast<float>(maxHueValue) / static_cast<float>(maxDisparity)));
+    };
+
+    setHueLutGeneric(minInDepth, maxInDepth, bufferAmount, getMinDisparity, getMaxDisparity, getHueValueFromDisparity);
+};
+
+void DepthEncoder::setHueLutDepth(uint16_t minInDepth, uint16_t maxInDepth, float scale, float bufferAmount) {
+    // Check scale for validity
+    if(scale <= 0) throw std::runtime_error("Invalid input for setHueLutDepth: scale must be positive");
+
+    auto getMinDisparity = [scale](uint16_t minDepth, uint16_t maxDepth) -> uint16_t {
+        (void)minDepth;
+        return static_cast<std::uint16_t>(std::round(scale / static_cast<float>(maxDepth)));
+    };
+    auto getMaxDisparity = [scale](uint16_t minDepth, uint16_t maxDepth, uint16_t valueForMaxDepth) -> uint16_t {
+        (void)maxDepth;
+        if(minDepth == 0) {
+            return valueForMaxDepth;
+        }
+        return static_cast<std::uint16_t>(std::round(scale / static_cast<float>(minDepth)));
+    };
+    auto getHueValueFromDisparity = [scale](uint16_t disparity, uint16_t minDepth, uint16_t maxDepth, int maxHueValue) -> int {
+        float depth = scale / static_cast<float>(disparity);
+        return static_cast<int>(std::round(static_cast<float>((depth - static_cast<float>(minDepth)) * static_cast<float>(maxHueValue))
+                                           / static_cast<float>((maxDepth - minDepth))));
+    };
+
+    setHueLutGeneric(minInDepth, maxInDepth, bufferAmount, getMinDisparity, getMaxDisparity, getHueValueFromDisparity);
+}
+
+std::tuple<double, double> DepthEncoder::setHueLutDepthNormalized(uint16_t minInDepth, uint16_t maxInDepth, float scale, float bufferAmount) {
+    // Check scale for validity
+    if(scale <= 0) throw std::runtime_error("Invalid input for setHueLutDepth: scale must be positive");
+
+    auto getMinDisparity = [scale](uint16_t minDepth, uint16_t maxDepth) -> uint16_t {
+        (void)minDepth;
+        return static_cast<std::uint16_t>(std::round(scale / static_cast<float>(maxDepth)));
+    };
+    auto getMaxDisparity = [scale](uint16_t minDepth, uint16_t maxDepth, uint16_t valueForMaxDepth) -> uint16_t {
+        (void)maxDepth;
+        if(minDepth == 0) {
+            return valueForMaxDepth;
+        }
+        return static_cast<std::uint16_t>(std::round(scale / static_cast<float>(minDepth)));
+    };
+
+    // Push the depth through a logarithmic function to make the expected relative error constant
+    // depth = a * ln(depth) + d
+    // To get a and d we solve the system of equations:
+    // a * ln(minDepth) + d = minHue
+    // a * ln(maxDepth) + d = maxHue
+    // Then we solve for a and d
+    // a = maxHue - minHue / (ln(maxDepth) - ln(minDepth))
+    // d = ln(maxDepth) * minHue - maxHue * ln(minDepth) / (ln(maxDepth) - ln(minDepth))
+    // Considering minHue = 0 and maxHue = maxHueValue
+    auto a = static_cast<double>(maxHueValue) / (std::log(maxInDepth) - std::log(minInDepth));
+    auto d = - maxHueValue * std::log(minInDepth) / (std::log(maxInDepth) - std::log(minInDepth));
+    // std::cout << "a: " << a << " d: " << d << std::endl;
+    auto getHueValueFromDisparity = [scale, a, d](uint16_t disparity, uint16_t minDepth, uint16_t maxDepth, int maxHueValue) -> int {
+        (void)maxHueValue;
+        (void)minDepth;
+        (void)maxDepth;
+        double depth = scale / disparity;
+        return static_cast<int>(std::round(a * std::log(depth) + d));
+    };
+
+    setHueLutGeneric(minInDepth, maxInDepth, bufferAmount, getMinDisparity, getMaxDisparity, getHueValueFromDisparity);
+    return std::make_tuple(a, d);
+};
 
 void DepthEncoder::setOutputType(RawImgFrame::Type outputType) {
     properties.outputType = outputType;
