@@ -24,6 +24,7 @@ inline std::ostream& operator<<(std::ostream& out, const dai::CameraFeatures& ca
     }
     out << "], ";
     out << "hasAutofocus: " << camera.hasAutofocus << ", ";
+    out << "hasAutofocusIC: " << camera.hasAutofocusIC << ", ";
     out << "name: " << camera.name << "}";
 
     return out;

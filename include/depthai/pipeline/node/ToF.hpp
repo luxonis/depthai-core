@@ -59,6 +59,7 @@ class ToF : public NodeCRTP<DeviceNode, ToF, ToFProperties> {
     Output passthroughInputRaw{true, *this, "passthroughInputRaw", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
     // TODO(before mainline) - API not supported on RVC3
     Output amplitude{true, *this, "amplitude", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
+    Output intensity{true, *this, "intensity", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
     Output error{true, *this, "error", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
 };
 
