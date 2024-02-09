@@ -552,6 +552,38 @@ void Node::add(std::shared_ptr<Node> node) {
     nodeMap.push_back(node);
 }
 
+void Node::remove(std::shared_ptr<Node> node) {
+    // Remove the connection to the removed node and all it's children from all the nodes in the pipeline
+    auto pipeline = parent.lock();
+    if(pipeline == nullptr) {
+        throw std::runtime_error("Pipeline is null");
+    }
+
+    for(auto& n : pipeline->nodes) {
+        for(auto& childNode : node->nodeMap) {
+            n->removeConnectionToNode(childNode);
+        }
+        n->removeConnectionToNode(node);
+    }
+
+    // Finally remove the node from the map
+    nodeMap.erase(std::remove(nodeMap.begin(), nodeMap.end(), node), nodeMap.end());
+}
+
+void Node::removeConnectionToNode(std::shared_ptr<Node> node) {
+    // Remove all connections to this node
+    for(auto it = connections.begin(); it != connections.end();) {
+        if(it->inputNode.lock() == node || it->outputNode.lock() == node) {
+            it = connections.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    for(auto& n : nodeMap) {
+        n->removeConnectionToNode(node);
+    }
+}
+
 // Recursive helpers for pipelines
 Node::ConnectionMap Node::getConnectionMap() {
     ConnectionMap map;
