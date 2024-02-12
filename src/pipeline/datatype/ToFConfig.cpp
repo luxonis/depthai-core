@@ -38,4 +38,9 @@ ToFConfig& ToFConfig::setMinAmplitude(float minamp) {
     return *this;
 }
 
+ToFConfig& ToFConfig::setMedianFilter(MedianFilter median) {
+    cfg.depthParams.median = median;
+    return *this;
+}
+
 }  // namespace dai
