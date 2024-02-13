@@ -23,6 +23,7 @@
 #include "node/Sync.hpp"
 #include "node/SystemLogger.hpp"
 #include "node/ToF.hpp"
+#include "node/UVC.hpp"
 #include "node/VideoEncoder.hpp"
 #include "node/Warp.hpp"
 #include "node/XLinkIn.hpp"
