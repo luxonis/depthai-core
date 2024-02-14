@@ -25,12 +25,12 @@ class Sync : public NodeCRTP<DeviceNode, Sync, SyncProperties> {
      *  Inputs to Sync node. Can be accessed using subscript operator (Eg: inputs['in1'])
      *  By default inputs are set to blocking with queue size 8
      */
-    InputMap inputs{true, *this, "inputs", Input(*this, "", Input::Type::SReceiver, {{DatatypeEnum::ImgFrame, false}})};
+    InputMap inputs{true, *this, "inputs", Input(*this, "", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}})};
 
     /**
      * Outputs from Sync node. Can be accessed subscript operator (Eg: outputs['out1'])
      */
-    OutputMap outputs{true, *this, "outputs", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}})};
+    OutputMap outputs{true, *this, "outputs", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}})};
 
     /**
      * Optional manual sync threshold.

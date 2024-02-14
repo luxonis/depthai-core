@@ -4,6 +4,7 @@
 #include <memory>
 
 // project
+#include "build/config.hpp"
 #include "build/version.hpp"
 #include "utility/Environment.hpp"
 #include "utility/Logging.hpp"
@@ -81,8 +82,12 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
         if(additionalInfo != nullptr && additionalInfo[0] != '\0') {
             logger::debug("{}", additionalInfo);
         }
-        logger::debug(
-            "Library information - version: {}, commit: {} from {}, build: {}", build::VERSION, build::COMMIT, build::COMMIT_DATETIME, build::BUILD_DATETIME);
+        logger::debug("Library information - version: {}, commit: {} from {}, build: {}, libusb enabled: {}",
+                      build::VERSION,
+                      build::COMMIT,
+                      build::COMMIT_DATETIME,
+                      build::BUILD_DATETIME,
+                      build::HAVE_LIBUSB_SUPPORT);
 
         // Executed at library load time
 
@@ -104,10 +109,13 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
             logger::debug("Initialize failed - {}", errorMsg);
             throw std::runtime_error(errorMsg);
         }
-        // Check that USB protocol is available
+
+        // Check that USB protocol is available, IFF libusb is enabled
+#ifdef DEPTHAI_ENABLE_LIBUSB
         if(!XLinkIsProtocolInitialized(X_LINK_USB_VSC)) {
             logger::warn("USB protocol not available - {}", ERROR_MSG_USB_TIP);
         }
+#endif
 
         // Enable Global XLink profiling
         XLinkProfStart();
