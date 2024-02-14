@@ -7,9 +7,15 @@ OccupancyPool::Serialized OccupancyPool::serialize() const {
 }
 
 OccupancyPool::OccupancyPool()
-    : Buffer(std::make_shared<RawOccupancyPool>()), rawdata(*dynamic_cast<RawOccupancyPool*>(raw.get())), occupancyPool(rawdata.occupancyPool), occupancyPool3d(rawdata.occupancyPool3d) {}
+    : Buffer(std::make_shared<RawOccupancyPool>()),
+      rawdata(*dynamic_cast<RawOccupancyPool*>(raw.get())),
+      occupancyPool(rawdata.occupancyPool),
+      occupancyPool3d(rawdata.occupancyPool3d) {}
 OccupancyPool::OccupancyPool(std::shared_ptr<RawOccupancyPool> ptr)
-    : Buffer(std::move(ptr)), rawdata(*dynamic_cast<RawOccupancyPool*>(raw.get())), occupancyPool(rawdata.occupancyPool), occupancyPool3d(rawdata.occupancyPool3d) {}
+    : Buffer(std::move(ptr)),
+      rawdata(*dynamic_cast<RawOccupancyPool*>(raw.get())),
+      occupancyPool(rawdata.occupancyPool),
+      occupancyPool3d(rawdata.occupancyPool3d) {}
 
 // getters
 std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> OccupancyPool::getTimestamp() const {
