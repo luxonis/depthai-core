@@ -7,6 +7,7 @@
 #include "datatype/Buffer.hpp"
 #include "datatype/CameraControl.hpp"
 #include "datatype/EdgeDetectorConfig.hpp"
+#include "datatype/EncodedFrame.hpp"
 #include "datatype/FeatureTrackerConfig.hpp"
 #include "datatype/IMUData.hpp"
 #include "datatype/ImageManipConfig.hpp"
