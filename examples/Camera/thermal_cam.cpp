@@ -16,21 +16,35 @@ void mouseCallback(int event, int x, int y, int flags, void* userdata) {
 const cv::Scalar WHITE(255, 255, 255);
 
 int main() {
+    dai::Device d;
     dai::Pipeline pipeline;
     auto thermal = pipeline.create<dai::node::Camera>();
-    thermal->setBoardSocket(dai::CameraBoardSocket::CAM_E);
-    thermal->setFps(25);
-    int width = 256;
-    int height = 192;
+    // Find the sensor width, height.
+    int width, height;
+    bool thermal_found = false;
+    for (auto &features : d.getConnectedCameraFeatures()) {
+        if (std::find_if(features.supportedTypes.begin(), features.supportedTypes.end(), [](const dai::CameraSensorType &type) {
+            return type == dai::CameraSensorType::THERMAL;
+        }) != features.supportedTypes.end()) {
+            thermal->setBoardSocket(features.socket); // Thermal will always be on CAM_E
+            width = features.width;
+            height = features.height;
+            thermal_found = true;
+        }
+    }
+    if (!thermal_found) {
+        throw std::runtime_error("Thermal camera not found!");
+    }
     thermal->setPreviewSize(width, height);
     auto xlink = pipeline.create<dai::node::XLinkOut>();
     auto xlinkRaw = pipeline.create<dai::node::XLinkOut>();
+    // Output preview,video, isp: RGB or NV12 or YUV420 thermal image.
     thermal->preview.link(xlink->input);
+    // Output raw: FP16 temperature data (degrees Celsius)
     thermal->raw.link(xlinkRaw->input);
+
     xlinkRaw->setStreamName("thermal_raw");
     xlink->setStreamName("thermal");
-    dai::DeviceInfo info;
-    dai::Device d;
     d.startPipeline(pipeline);
     auto q = d.getOutputQueue("thermal", 2, false);
     auto qRaw = d.getOutputQueue("thermal_raw", 2, false);
