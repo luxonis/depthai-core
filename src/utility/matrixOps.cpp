@@ -130,7 +130,7 @@ bool matInv(std::vector<std::vector<float>>& A, std::vector<std::vector<float>>&
 }
 
 std::vector<std::vector<float>> createRotationMatrix(float theta) {
-    float radian = theta * M_PI / 180;  // convert degree to radian
+    float radian = theta * static_cast<float>(M_PI) / 180.0f;  // convert degree to radian
     std::vector<std::vector<float>> rotationMatrix = {{std::cos(radian), -std::sin(radian), 0}, {std::sin(radian), std::cos(radian), 0}, {0, 0, 1}};
     return rotationMatrix;
 }

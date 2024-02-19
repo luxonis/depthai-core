@@ -202,8 +202,8 @@ class Node : public std::enable_shared_from_this<Node> {
 
        public:
         std::string name;
-        OutputMap(Node& parent, std::string name, Output defaultOutput);
-        OutputMap(Node& parent, Output defaultOutput);
+        OutputMap(std::string name, Output defaultOutput);
+        OutputMap(Output defaultOutput);
         OutputMap(bool ref, Node& parent, std::string name, Output defaultOutput);
         OutputMap(bool ref, Node& parent, Output defaultOutput);
         /// Create or modify an output
@@ -551,8 +551,8 @@ class Node : public std::enable_shared_from_this<Node> {
 
        public:
         std::string name;
-        InputMap(Node& parent, Input defaultInput);
-        InputMap(Node& parent, std::string name, Input defaultInput);
+        InputMap(Input defaultInput);
+        InputMap(std::string name, Input defaultInput);
         InputMap(bool ref, Node& parent, Input defaultInput);
         InputMap(bool ref, Node& parent, std::string name, Input defaultInput);
         /// Create or modify an input
