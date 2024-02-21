@@ -40,8 +40,13 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                 // Blocking -- parse packet and gather timing information
                 auto packet = stream.readMove();
                 DatatypeEnum type;
+                std::shared_ptr<ADatatype> data{};
                 const auto t1Parse = std::chrono::steady_clock::now();
-                const auto data = StreamMessageParser::parseMessageToADatatype(&packet, type);
+                try {
+                    data = StreamMessageParser::parseMessageToADatatype(&packet, type);
+                } catch(const std::exception& ex) {
+                    logger::error("Caught exception on stream '{}': {}", name, ex.what());
+                }
                 if(type == DatatypeEnum::MessageGroup) {
                     auto msgGrp = std::static_pointer_cast<MessageGroup>(data);
                     unsigned int size = msgGrp->getNumMessages();
