@@ -850,6 +850,17 @@ class DeviceBase {
     std::vector<std::uint8_t> readCcmEepromRaw(CameraBoardSocket socket, int size, int offset = 0);
 
     /**
+     * Writes the raw EEPROM data from the specified CCM (compact camera module).
+     * Note: only certain CCMs (e.g. ToF) do have an EEPROM chip on-module
+     *
+     * @param socket CameraBoardSocket where the CCM is placed
+     * @param data Data buffer to write
+     * @param offset Absolute offset in EEPROM memory to read from
+     * @throws std::runtime_exception if any error occurred
+     */
+    void writeCcmEepromRaw(CameraBoardSocket socket, std::vector<uint8_t> data, int offset = 0);
+
+    /**
      * Retrieves USB connection speed
      *
      * @returns USB connection speed of connected device if applicable. Unknown otherwise.
