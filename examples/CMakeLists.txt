@@ -234,6 +234,9 @@ dai_add_example(rgb_preview ColorCamera/rgb_preview.cpp ON OFF)
 dai_add_example(rgb_video ColorCamera/rgb_video.cpp ON OFF)
 dai_add_example(rgb_isp_scale ColorCamera/rgb_isp_scale.cpp ON OFF)
 
+# Camera
+dai_add_example(thermal_cam Camera/thermal_cam.cpp OFF)
+
 # EdgeDetector
 dai_add_example(edge_detector EdgeDetector/edge_detector.cpp ON OFF)
 
