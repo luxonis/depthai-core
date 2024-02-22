@@ -19,7 +19,7 @@ int main() {
 
     // Create a node that will produce the depth map (using disparity output as
     // it's easier to visualize depth this way)
-    depth->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_ACCURACY);
+    depth->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     // Options: MEDIAN_OFF, KERNEL_3x3, KERNEL_5x5, KERNEL_7x7 (default)
     depth->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_7x7);
     depth->setLeftRightCheck(true);
@@ -47,14 +47,18 @@ int main() {
     while(true) {
         std::cout << "Waiting for data" << std::endl;
         auto depthImg = qDepth->get<dai::ImgFrame>();
-        cv::imshow("depth", depthImg->getFrame());
-        cv::waitKey(1);
         auto pclMsg = q->get<dai::PointCloudData>();
         std::cout << "Got data" << std::endl;
         if(!pclMsg) {
             std::cout << "No data" << std::endl;
             continue;
         }
+
+        auto frame = depthImg->getCvFrame();
+        frame.convertTo(frame, CV_8UC1, 255 / depth->initialConfig.getMaxDisparity());
+        cv::imshow("depth", frame);
+        cv::waitKey(1);
+
         if(pclMsg->points.empty()) {
             std::cout << "Empty point cloud" << std::endl;
             continue;
