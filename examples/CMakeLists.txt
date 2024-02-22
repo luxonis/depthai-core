@@ -230,6 +230,9 @@ dai_add_example(rgb_preview ColorCamera/rgb_preview.cpp ON)
 dai_add_example(rgb_video ColorCamera/rgb_video.cpp ON)
 dai_add_example(rgb_isp_scale ColorCamera/rgb_isp_scale.cpp ON)
 
+# Camera
+dai_add_example(thermal_cam Camera/thermal_cam.cpp OFF)
+
 # EdgeDetector
 dai_add_example(edge_detector EdgeDetector/edge_detector.cpp ON)
 
@@ -369,3 +372,9 @@ target_compile_definitions(detection_parser PRIVATE BLOB_PATH="${mobilenet_blob}
 
 # DetectionParser
 dai_add_example(crash_report CrashReport/crash_report.cpp OFF)
+
+# Sync
+dai_add_example(sync_scripts Sync/sync_scripts.cpp ON)
+dai_add_example(demux_message_group Sync/demux_message_group.cpp ON)
+dai_add_example(depth_video_synced Sync/depth_video_synced.cpp ON)
+dai_add_example(imu_video_synced Sync/imu_video_synced.cpp ON)
