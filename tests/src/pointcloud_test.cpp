@@ -1,9 +1,9 @@
 #include <catch2/catch_all.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <depthai/depthai.hpp>
+
 #include "depthai-shared/properties/StereoDepthProperties.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
-
 
 dai::Pipeline getPipeline(bool sparse) {
     dai::Pipeline pipeline;
@@ -41,7 +41,7 @@ TEST_CASE("dense pointcloud") {
     for(int i = 0; i < 10; ++i) {
         auto pcl = outQ->get<dai::PointCloudData>();
         REQUIRE(pcl != nullptr);
-        REQUIRE(pcl->points.size() == 600UL * 400UL); 
+        REQUIRE(pcl->points.size() == 600UL * 400UL);
         REQUIRE(pcl->getMinX() < 0);
         REQUIRE(pcl->getMaxX() > 0);
         REQUIRE(pcl->getMinY() < 0);
@@ -56,7 +56,7 @@ TEST_CASE("sparse pointcloud") {
     for(int i = 0; i < 10; ++i) {
         auto pcl = outQ->get<dai::PointCloudData>();
         REQUIRE(pcl != nullptr);
-        REQUIRE(pcl->points.size() <= 600UL * 400UL); 
+        REQUIRE(pcl->points.size() <= 600UL * 400UL);
         REQUIRE(pcl->getMinX() < 0);
         REQUIRE(pcl->getMaxX() > 0);
         REQUIRE(pcl->getMinY() < 0);
