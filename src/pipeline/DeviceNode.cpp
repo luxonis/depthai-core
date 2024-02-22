@@ -34,10 +34,6 @@ void DeviceNode::run() {
             }
         }
     }
-
-    // TMP TMP - not needed
-    while(isRunning()) {
-    }
 }
 
 }  // namespace dai
