@@ -49,6 +49,7 @@ class ToF : public NodeCRTP<Node, ToF, ToFProperties> {
     Output depth{*this, "depth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
     Output amplitude{*this, "amplitude", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
     Output intensity{*this, "intensity", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
+    Output phase{*this, "phase", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
     Output error{*this, "error", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
 };
 
