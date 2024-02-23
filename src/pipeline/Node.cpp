@@ -5,7 +5,7 @@
 
 namespace dai {
 
-Node::Node(std::unique_ptr<Properties> props, bool conf) : configureMode{conf}, propertiesHolder(std::move(props)) {}
+Node::Node(bool conf) : configureMode{conf} {}
 
 tl::optional<OpenVINO::Version> Node::getRequiredOpenVINOVersion() {
     return tl::nullopt;
@@ -19,10 +19,6 @@ const Pipeline Node::getParentPipeline() const {
 Pipeline Node::getParentPipeline() {
     Pipeline pipeline(std::shared_ptr<PipelineImpl>{parent});
     return pipeline;
-}
-
-Properties& Node::getProperties() {
-    return *propertiesHolder;
 }
 
 Node::Connection::Connection(Output out, Input in) {

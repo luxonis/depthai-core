@@ -8,6 +8,14 @@
 
 namespace dai {
 
+DeviceNode::DeviceNode(std::unique_ptr<Properties> props, bool conf) : propertiesHolder(std::move(props)) {
+    // TODO pass the conf param along
+}
+
+Properties& DeviceNode::getProperties() {
+    return *propertiesHolder;
+}
+
 void DeviceNode::run() {
     auto pipeline = getParentPipeline();
     if(pipeline.getDevice() != nullptr) {
