@@ -15,10 +15,10 @@ namespace node {
  * @brief DetectionParser node. Parses detection results from different neural networks and is being used internally by MobileNetDetectionNetwork and
  * YoloDetectionNetwork.
  */
-class DetectionParser : public NodeCRTP<DeviceNode, DetectionParser, DetectionParserProperties> {
+class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, DetectionParserProperties> {
    public:
     constexpr static const char* NAME = "DetectionParser";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
     /**
      * Input NN results with detection data to parse

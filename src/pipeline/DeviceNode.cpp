@@ -9,7 +9,7 @@
 namespace dai {
 
 DeviceNode::DeviceNode(std::unique_ptr<Properties> props, bool conf) : propertiesHolder(std::move(props)) {
-    // TODO pass the conf param along
+    configureMode = conf;
 }
 
 Properties& DeviceNode::getProperties() {

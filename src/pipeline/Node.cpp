@@ -5,8 +5,6 @@
 
 namespace dai {
 
-Node::Node(bool conf) : configureMode{conf} {}
-
 tl::optional<OpenVINO::Version> Node::getRequiredOpenVINOVersion() {
     return tl::nullopt;
 }

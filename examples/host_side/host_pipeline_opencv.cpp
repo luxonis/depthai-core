@@ -13,7 +13,7 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
-class Display : public dai::NodeCRTP<dai::ThreadedNode, Display, dai::XLinkOutProperties> {
+class Display : public dai::NodeCRTP<dai::ThreadedNode, Display> {
    public:
     constexpr static const char* NAME = "Display";
 

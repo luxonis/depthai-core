@@ -590,10 +590,9 @@ class Node : public std::enable_shared_from_this<Node> {
         bool operator==(const Connection& rhs) const;
     };
 
-   private:
+   protected:
     bool configureMode{false};
 
-   protected:
     // when Pipeline tries to serialize and construct on remote, it will check if all connected nodes are on same pipeline
     std::weak_ptr<PipelineImpl> parent;
     std::weak_ptr<Node> parentNode;
@@ -742,6 +741,37 @@ class Node : public std::enable_shared_from_this<Node> {
     const NodeMap& getNodeMap() const {
         return nodeMap;
     }
+};
+
+// Node CRTP class
+template <typename Base, typename Derived>
+class NodeCRTP : public Base {
+   public:
+    virtual ~NodeCRTP() = default;
+
+    const char* getName() const override {
+        return Derived::NAME;
+    };
+    std::unique_ptr<Node> clone() const override {
+        return std::make_unique<Derived>(static_cast<const Derived&>(*this));
+    };
+    void build() {}
+
+    // No public constructor, only a factory function.
+    [[nodiscard]] static std::shared_ptr<Derived> create() {
+        auto n = std::make_shared<Derived>();
+        n->build();
+        return n;
+    }
+    [[nodiscard]] static std::shared_ptr<Derived> create(std::unique_ptr<Properties> props) {
+        auto n = std::shared_ptr<Derived>(new Derived(props));
+        // Configure mode, don't build
+        // n->build();
+        return n;
+    }
+
+    friend Derived;
+    friend Base;
 };
 
 }  // namespace dai

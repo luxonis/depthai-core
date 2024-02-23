@@ -17,13 +17,13 @@ namespace node {
 /**
  * @brief SpatialDetectionNetwork node. Runs a neural inference on input image and calculates spatial location data.
  */
-class SpatialDetectionNetwork : public NodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
+class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
     SpatialDetectionNetwork() : input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {};
     SpatialDetectionNetwork(std::unique_ptr<Properties> props)
-        : NodeCRTP(std::move(props)), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {};
+        :DeviceNodeCRTP(std::move(props)), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {};
     SpatialDetectionNetwork(std::unique_ptr<Properties> props, bool confMode)
-        : NodeCRTP(std::move(props), confMode), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {};
+        :DeviceNodeCRTP(std::move(props), confMode), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {};
 
     constexpr static const char* NAME = "SpatialDetectionNetwork";
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};

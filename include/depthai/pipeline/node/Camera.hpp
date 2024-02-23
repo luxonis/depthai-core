@@ -15,10 +15,10 @@ namespace node {
 /**
  * @brief Camera node. Experimental node, for both mono and color types of sensors
  */
-class Camera : public NodeCRTP<DeviceNode, Camera, CameraProperties> {
+class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
    public:
     constexpr static const char* NAME = "Camera";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     void build();
 
    protected:

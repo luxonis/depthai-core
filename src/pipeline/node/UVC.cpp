@@ -3,7 +3,7 @@
 namespace dai {
 namespace node {
 
-UVC::UVC(std::unique_ptr<Properties> props) : NodeCRTP<DeviceNode, UVC, UVCProperties>(std::move(props)) {}
+UVC::UVC(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, UVC, UVCProperties>(std::move(props)) {}
 
 void UVC::build() {
     ;

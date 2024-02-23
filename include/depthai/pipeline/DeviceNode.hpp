@@ -23,10 +23,10 @@ class DeviceNode : public ThreadedNode {
 
 // Node CRTP class
 template <typename Base, typename Derived, typename Props>
-class NodeCRTP : public Base {
+class DeviceNodeCRTP : public Base {
    public:
     using Properties = Props;
-    virtual ~NodeCRTP() = default;
+    virtual ~DeviceNodeCRTP() = default;
     /// Underlying properties
     Properties& properties;
     const char* getName() const override {
@@ -51,9 +51,9 @@ class NodeCRTP : public Base {
     }
 
    protected:
-    NodeCRTP() : Base(std::make_unique<Props>(), false), properties(static_cast<Properties&>(*DeviceNode::propertiesHolder)) {}
-    NodeCRTP(std::unique_ptr<Properties> props) : Base(std::move(props), true), properties(static_cast<Properties&>(*DeviceNode::propertiesHolder)) {}
-    NodeCRTP(std::unique_ptr<Properties> props, bool confMode)
+    DeviceNodeCRTP() : Base(std::make_unique<Props>(), false), properties(static_cast<Properties&>(*DeviceNode::propertiesHolder)) {}
+    DeviceNodeCRTP(std::unique_ptr<Properties> props) : Base(std::move(props), true), properties(static_cast<Properties&>(*DeviceNode::propertiesHolder)) {}
+    DeviceNodeCRTP(std::unique_ptr<Properties> props, bool confMode)
         : Base(std::move(props), confMode), properties(static_cast<Properties&>(*DeviceNode::propertiesHolder)) {}
 
     friend Derived;

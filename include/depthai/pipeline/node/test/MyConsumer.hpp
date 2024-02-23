@@ -1,6 +1,6 @@
 #pragma once
 
-#include <depthai/pipeline/DeviceNode.hpp>
+#include <depthai/pipeline/ThreadedNode.hpp>
 
 // shared
 #include <depthai/properties/XLinkOutProperties.hpp>
@@ -15,7 +15,7 @@ namespace test {
 /**
  * @brief XLinkOut node. Sends messages over XLink.
  */
-class MyConsumer : public NodeCRTP<DeviceNode, MyConsumer, XLinkOutProperties> {
+class MyConsumer : public NodeCRTP<ThreadedNode, MyConsumer> {
    public:
     constexpr static const char* NAME = "MyConsumer";
     void build();

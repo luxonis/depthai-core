@@ -16,10 +16,10 @@ namespace node {
 /**
  * @brief NeuralNetwork node. Runs a neural inference on input data.
  */
-class NeuralNetwork : public NodeCRTP<DeviceNode, NeuralNetwork, NeuralNetworkProperties> {
+class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNetworkProperties> {
    public:
     constexpr static const char* NAME = "NeuralNetwork";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
    protected:
     tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion() override;

@@ -11,10 +11,10 @@ namespace node {
 /**
  * @brief XLinkIn node. Receives messages over XLink.
  */
-class XLinkIn : public NodeCRTP<DeviceNode, XLinkIn, XLinkInProperties> {
+class XLinkIn : public DeviceNodeCRTP<DeviceNode, XLinkIn, XLinkInProperties> {
    public:
     constexpr static const char* NAME = "XLinkIn";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
    public:
     virtual ~XLinkIn() = default;

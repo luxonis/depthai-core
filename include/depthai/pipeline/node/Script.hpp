@@ -13,10 +13,10 @@
 namespace dai {
 namespace node {
 
-class Script : public NodeCRTP<DeviceNode, Script, ScriptProperties> {
+class Script : public DeviceNodeCRTP<DeviceNode, Script, ScriptProperties> {
    public:
     constexpr static const char* NAME = "Script";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     void build();
 
    private:

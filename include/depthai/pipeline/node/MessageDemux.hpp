@@ -6,10 +6,10 @@
 namespace dai {
 namespace node {
 
-class MessageDemux : public NodeCRTP<DeviceNode, MessageDemux, MessageDemuxProperties> {
+class MessageDemux : public DeviceNodeCRTP<DeviceNode, MessageDemux, MessageDemuxProperties> {
    public:
     constexpr static const char* NAME = "MessageDemux";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     /**
      * Input message of type MessageGroup
      */

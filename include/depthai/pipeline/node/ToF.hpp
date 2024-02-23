@@ -17,10 +17,10 @@ namespace node {
  * @brief ToF node.
  * Performs feature tracking and reidentification using motion estimation between 2 consecutive frames.
  */
-class ToF : public NodeCRTP<DeviceNode, ToF, ToFProperties> {
+class ToF : public DeviceNodeCRTP<DeviceNode, ToF, ToFProperties> {
    public:
     constexpr static const char* NAME = "ToF";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
    protected:
     Properties& getProperties();
