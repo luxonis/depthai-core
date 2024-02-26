@@ -210,7 +210,7 @@ hunter_private_data(
 dai_add_example(bootloader_version bootloader/bootloader_version.cpp ON OFF)
 dai_add_example(flash_bootloader bootloader/flash_bootloader.cpp OFF OFF)
 dai_add_example(flash_user_bootloader bootloader/flash_user_bootloader.cpp OFF OFF)
-dai_add_example(bootloader_config bootloader/bootloader_config.cpp ON OFF)
+dai_add_example(bootloader_config bootloader/bootloader_config.cpp ON OFF read)
 dai_add_example(poe_set_ip bootloader/poe_set_ip.cpp OFF OFF)
 dai_add_example(read_flash_memory bootloader/read_flash_memory.cpp OFF OFF)
 dai_add_example(write_flash_memory bootloader/write_flash_memory.cpp OFF OFF)
