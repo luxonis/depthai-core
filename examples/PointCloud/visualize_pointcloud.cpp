@@ -59,11 +59,11 @@ int main() {
         cv::imshow("depth", frame);
         cv::waitKey(1);
 
-        if(pclMsg->points.empty()) {
+        if(pclMsg->getPoints().empty()) {
             std::cout << "Empty point cloud" << std::endl;
             continue;
         }
-        std::cout << "Number of points: " << pclMsg->points.size() << std::endl;
+        std::cout << "Number of points: " << pclMsg->getPoints().size() << std::endl;
         std::cout << "Min x: " << pclMsg->getMinX() << std::endl;
         std::cout << "Min y: " << pclMsg->getMinY() << std::endl;
         std::cout << "Min z: " << pclMsg->getMinZ() << std::endl;

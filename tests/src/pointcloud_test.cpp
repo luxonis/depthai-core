@@ -41,7 +41,7 @@ TEST_CASE("dense pointcloud") {
     for(int i = 0; i < 10; ++i) {
         auto pcl = outQ->get<dai::PointCloudData>();
         REQUIRE(pcl != nullptr);
-        REQUIRE(pcl->points.size() == 600UL * 400UL);
+        REQUIRE(pcl->getPoints().size() == 600UL * 400UL);
         REQUIRE(pcl->getMinX() < 0);
         REQUIRE(pcl->getMaxX() > 0);
         REQUIRE(pcl->getMinY() < 0);
@@ -56,7 +56,7 @@ TEST_CASE("sparse pointcloud") {
     for(int i = 0; i < 10; ++i) {
         auto pcl = outQ->get<dai::PointCloudData>();
         REQUIRE(pcl != nullptr);
-        REQUIRE(pcl->points.size() <= 600UL * 400UL);
+        REQUIRE(pcl->getPoints().size() <= 600UL * 400UL);
         REQUIRE(pcl->getMinX() < 0);
         REQUIRE(pcl->getMaxX() > 0);
         REQUIRE(pcl->getMinY() < 0);
