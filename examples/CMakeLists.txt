@@ -52,7 +52,7 @@ function(dai_add_example example_name example_src enable_test use_pcl)
 
     # parse the rest of the arguments
     set(arguments ${ARGV})
-    list(REMOVE_AT arguments 0 1 2)
+    list(REMOVE_AT arguments 0 1 2 3)
 
     # If 'DEPTHAI_TEST_EXAMPLES' is ON, then examples will be part of the test suite
     if(${enable_test} AND DEPTHAI_TEST_EXAMPLES)
