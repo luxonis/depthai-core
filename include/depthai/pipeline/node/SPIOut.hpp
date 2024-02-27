@@ -11,10 +11,10 @@ namespace node {
 /**
  * @brief SPIOut node. Sends messages over SPI.
  */
-class SPIOut : public NodeCRTP<DeviceNode, SPIOut, SPIOutProperties> {
+class SPIOut : public DeviceNodeCRTP<DeviceNode, SPIOut, SPIOutProperties> {
    public:
     constexpr static const char* NAME = "SPIOut";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     void build() {
         properties.busId = 0;
     }

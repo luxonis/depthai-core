@@ -15,10 +15,10 @@ namespace node {
 /**
  * @brief Sync node. Performs syncing between image frames
  */
-class Sync : public NodeCRTP<DeviceNode, Sync, SyncProperties> {
+class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties> {
    public:
     constexpr static const char* NAME = "Sync";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
     /**
      * A map of inputs

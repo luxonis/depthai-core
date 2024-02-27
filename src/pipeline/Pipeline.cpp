@@ -197,7 +197,11 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
             } else {
                 info.parentId = -1;
             }
-            node->getProperties().serialize(info.properties, type);
+            const auto& deviceNode = std::dynamic_pointer_cast<DeviceNode>(node);
+            if(!deviceNode) {
+                throw std::invalid_argument(fmt::format("Node '{}' should subclass DeviceNode or have hostNode == true", info.name));
+            }
+            deviceNode->getProperties().serialize(info.properties, type);
 
             // Create Io information
             auto inputs = node->getInputs();
@@ -376,7 +380,11 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
                 NodeObjInfo info;
                 info.id = node->id;
                 info.name = node->getName();
-                node->getProperties().serialize(info.properties, type);
+                const auto& deviceNode = std::dynamic_pointer_cast<DeviceNode>(node);
+                if(!deviceNode) {
+                    throw std::invalid_argument(fmt::format("Node '{}' should subclass DeviceNode or have hostNode == true", info.name));
+                }
+                deviceNode->getProperties().serialize(info.properties, type);
 
                 // Create Io information
                 auto inputs = node->getInputs();

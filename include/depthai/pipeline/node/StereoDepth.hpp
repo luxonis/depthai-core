@@ -12,10 +12,10 @@ namespace node {
 /**
  * @brief StereoDepth node. Compute stereo disparity and depth from left-right image pair.
  */
-class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties> {
+class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties> {
    public:
     constexpr static const char* NAME = "StereoDepth";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     void build();
 
     /**

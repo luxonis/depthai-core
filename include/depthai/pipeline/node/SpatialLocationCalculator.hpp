@@ -13,10 +13,10 @@ namespace node {
 /**
  * @brief SpatialLocationCalculator node. Calculates spatial location data on a set of ROIs on depth map.
  */
-class SpatialLocationCalculator : public NodeCRTP<DeviceNode, SpatialLocationCalculator, SpatialLocationCalculatorProperties> {
+class SpatialLocationCalculator : public DeviceNodeCRTP<DeviceNode, SpatialLocationCalculator, SpatialLocationCalculatorProperties> {
    public:
     constexpr static const char* NAME = "SpatialLocationCalculator";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
    protected:
     Properties& getProperties();

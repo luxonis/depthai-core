@@ -14,10 +14,10 @@ namespace node {
 /**
  * @brief MonoCamera node. For use with grayscale sensors.
  */
-class MonoCamera : public NodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties> {
+class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties> {
    public:
     constexpr static const char* NAME = "MonoCamera";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     void build();
 
    protected:

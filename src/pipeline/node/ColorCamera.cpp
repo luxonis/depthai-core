@@ -7,7 +7,7 @@
 namespace dai {
 namespace node {
 
-ColorCamera::ColorCamera(std::unique_ptr<Properties> props) : NodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(std::move(props)) {}
+ColorCamera::ColorCamera(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(std::move(props)) {}
 
 void ColorCamera::build() {
     // Set some default properties

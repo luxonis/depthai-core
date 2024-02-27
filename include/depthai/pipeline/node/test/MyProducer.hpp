@@ -12,7 +12,7 @@ namespace test {
 /**
  * @brief XLinkOut node. Sends messages over XLink.
  */
-class MyProducer : public NodeCRTP<ThreadedNode, MyProducer, XLinkOutProperties> {
+class MyProducer : public NodeCRTP<ThreadedNode, MyProducer> {
    public:
     constexpr static const char* NAME = "MyProducer";
     void build();

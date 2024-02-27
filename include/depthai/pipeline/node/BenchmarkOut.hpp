@@ -8,10 +8,10 @@
 namespace dai {
 namespace node {
 
-class BenchmarkOut : public NodeCRTP<DeviceNode, BenchmarkOut, BenchmarkPropertiesOut> {
+class BenchmarkOut : public DeviceNodeCRTP<DeviceNode, BenchmarkOut, BenchmarkPropertiesOut> {
    public:
     constexpr static const char* NAME = "BenchmarkOut";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
     void build() {
         properties.numMessages = -1;  // By default send messages indefinitely
