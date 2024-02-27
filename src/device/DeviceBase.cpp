@@ -573,21 +573,19 @@ void DeviceBase::closeImpl() {
     // Stop watchdog first (this resets and waits for link to fall down)
     if(watchdogThread.joinable()) watchdogThread.join();
 
-    if(!dumpOnly) {
-        // Stop various threads
-        timesyncRunning = false;
-        loggingRunning = false;
-        profilingRunning = false;
+    // Stop various threads
+    timesyncRunning = false;
+    loggingRunning = false;
+    profilingRunning = false;
 
-        // Then stop timesync
-        if(timesyncThread.joinable()) timesyncThread.join();
-        // And at the end stop logging thread
-        if(loggingThread.joinable()) loggingThread.join();
-        // And at the end stop profiling thread
-        if(profilingThread.joinable()) profilingThread.join();
-        // At the end stop the monitor thread
-        if(monitorThread.joinable()) monitorThread.join();
-    }
+    // Then stop timesync
+    if(timesyncThread.joinable()) timesyncThread.join();
+    // And at the end stop logging thread
+    if(loggingThread.joinable()) loggingThread.join();
+    // And at the end stop profiling thread
+    if(profilingThread.joinable()) profilingThread.join();
+    // At the end stop the monitor thread
+    if(monitorThread.joinable()) monitorThread.join();
 
     // Close rpcStream
     pimpl->rpcStream = nullptr;
