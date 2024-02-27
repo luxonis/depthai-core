@@ -22,18 +22,17 @@ int main() {
     // Find the sensor width, height.
     int width, height;
     bool thermal_found = false;
-    for(auto& features : d.getConnectedCameraFeatures()) {
-        if(std::find_if(features.supportedTypes.begin(),
-                        features.supportedTypes.end(),
-                        [](const dai::CameraSensorType& type) { return type == dai::CameraSensorType::THERMAL; })
-           != features.supportedTypes.end()) {
-            thermal->setBoardSocket(features.socket);  // Thermal will always be on CAM_E
+    for (auto &features : d.getConnectedCameraFeatures()) {
+        if (std::find_if(features.supportedTypes.begin(), features.supportedTypes.end(), [](const dai::CameraSensorType &type) {
+            return type == dai::CameraSensorType::THERMAL;
+        }) != features.supportedTypes.end()) {
+            thermal->setBoardSocket(features.socket); // Thermal will always be on CAM_E
             width = features.width;
             height = features.height;
             thermal_found = true;
         }
     }
-    if(!thermal_found) {
+    if (!thermal_found) {
         throw std::runtime_error("Thermal camera not found!");
     }
     thermal->setPreviewSize(width, height);

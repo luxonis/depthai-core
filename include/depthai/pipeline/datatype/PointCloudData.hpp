@@ -22,13 +22,12 @@ namespace dai {
 class PointCloudData : public Buffer {
     std::shared_ptr<RawBuffer> serialize() const override;
     RawPointCloudData& pcl;
+    std::vector<Point3f> points;
 
    public:
     using Buffer::getSequenceNum;
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;
-
-    std::vector<Point3f> points;
 
     /**
      * Construct PointCloudData message.
@@ -36,6 +35,8 @@ class PointCloudData : public Buffer {
     PointCloudData();
     explicit PointCloudData(std::shared_ptr<RawPointCloudData> ptr);
     virtual ~PointCloudData() = default;
+
+    std::vector<Point3f>& getPoints();
 
     /**
      * Retrieves instance number

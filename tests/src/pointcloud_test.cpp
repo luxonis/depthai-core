@@ -20,7 +20,7 @@ dai::Pipeline getPipeline(bool sparse) {
     monoRight->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
 
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
-    stereo->setOutputSize(600, 400);
+    stereo->setOutputSize(1280, 720);
 
     xout->setStreamName("out");
 
@@ -41,11 +41,13 @@ TEST_CASE("dense pointcloud") {
     for(int i = 0; i < 10; ++i) {
         auto pcl = outQ->get<dai::PointCloudData>();
         REQUIRE(pcl != nullptr);
-        REQUIRE(pcl->points.size() == 600UL * 400UL);
-        REQUIRE(pcl->getMinX() < 0);
-        REQUIRE(pcl->getMaxX() > 0);
-        REQUIRE(pcl->getMinY() < 0);
-        REQUIRE(pcl->getMaxY() > 0);
+        REQUIRE(pcl->getWidth() == 1280);
+        REQUIRE(pcl->getHeight() == 720);
+        REQUIRE(pcl->getPoints().size() == 1280UL * 720UL);
+        REQUIRE(pcl->getMinX() < 0.0f);
+        REQUIRE(pcl->getMaxX() > 0.0f);
+        REQUIRE(pcl->getMinY() < 0.0f);
+        REQUIRE(pcl->getMaxY() > 0.0f);
     }
 }
 
@@ -56,11 +58,13 @@ TEST_CASE("sparse pointcloud") {
     for(int i = 0; i < 10; ++i) {
         auto pcl = outQ->get<dai::PointCloudData>();
         REQUIRE(pcl != nullptr);
-        REQUIRE(pcl->points.size() <= 600UL * 400UL);
-        REQUIRE(pcl->getMinX() < 0);
-        REQUIRE(pcl->getMaxX() > 0);
-        REQUIRE(pcl->getMinY() < 0);
-        REQUIRE(pcl->getMaxY() > 0);
-        REQUIRE(pcl->getMinZ() > 0);
+        REQUIRE(pcl->getWidth() == 1280);
+        REQUIRE(pcl->getHeight() == 720);
+        REQUIRE(pcl->getPoints().size() < 1280UL * 720UL);
+        REQUIRE(pcl->getMinX() < 0.0f);
+        REQUIRE(pcl->getMaxX() > 0.0f);
+        REQUIRE(pcl->getMinY() < 0.0f);
+        REQUIRE(pcl->getMaxY() > 0.0f);
+        REQUIRE(pcl->getMinZ() > 0.0f);
     }
 }

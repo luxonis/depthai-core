@@ -52,7 +52,7 @@ function(dai_add_example example_name example_src enable_test use_pcl)
 
     # parse the rest of the arguments
     set(arguments ${ARGV})
-    list(REMOVE_AT arguments 0 1 2)
+    list(REMOVE_AT arguments 0 1 2 3)
 
     # If 'DEPTHAI_TEST_EXAMPLES' is ON, then examples will be part of the test suite
     if(${enable_test} AND DEPTHAI_TEST_EXAMPLES)
@@ -210,7 +210,7 @@ hunter_private_data(
 dai_add_example(bootloader_version bootloader/bootloader_version.cpp ON OFF)
 dai_add_example(flash_bootloader bootloader/flash_bootloader.cpp OFF OFF)
 dai_add_example(flash_user_bootloader bootloader/flash_user_bootloader.cpp OFF OFF)
-dai_add_example(bootloader_config bootloader/bootloader_config.cpp ON OFF)
+dai_add_example(bootloader_config bootloader/bootloader_config.cpp ON OFF read)
 dai_add_example(poe_set_ip bootloader/poe_set_ip.cpp OFF OFF)
 dai_add_example(read_flash_memory bootloader/read_flash_memory.cpp OFF OFF)
 dai_add_example(write_flash_memory bootloader/write_flash_memory.cpp OFF OFF)

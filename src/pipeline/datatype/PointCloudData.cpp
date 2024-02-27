@@ -12,13 +12,16 @@ PointCloudData::PointCloudData() : Buffer(std::make_shared<RawPointCloudData>())
     // set timestamp to now
     setTimestamp(std::chrono::steady_clock::now());
 }
-PointCloudData::PointCloudData(std::shared_ptr<RawPointCloudData> ptr) : Buffer(std::move(ptr)), pcl(*dynamic_cast<RawPointCloudData*>(raw.get())) {
-    if(!raw->data.empty()) {
+PointCloudData::PointCloudData(std::shared_ptr<RawPointCloudData> ptr) : Buffer(std::move(ptr)), pcl(*dynamic_cast<RawPointCloudData*>(raw.get())) {}
+
+std::vector<Point3f>& PointCloudData::getPoints() {
+    if(points.empty() && !pcl.data.empty()) {
         auto* dataPtr = (Point3f*)pcl.data.data();
         points.insert(points.end(), dataPtr, dataPtr + pcl.data.size() / sizeof(Point3f));
         assert(isSparse() || points.size() == pcl.width * pcl.height);
         assert(!isSparse() || points.size() <= pcl.width * pcl.height);
     }
+    return points;
 }
 
 unsigned int PointCloudData::getInstanceNum() const {
