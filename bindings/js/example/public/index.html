@@ -15,9 +15,18 @@
             byteArray.forEach((element, index) => {
               bytes.push_back(element);
             });
-            var res = Module.deserializeImgFrame(bytes);
-            console.log("deserializeImgFrame result: ", res);
-            console.log("DIMS from javascript: ", res.width, "x", res.height);
+            var msgType = Module.getMessageType(bytes);
+            if (msgType === Module.DatatypeEnum.ImgFrame) {
+              console.log("message type is ImgFrame");
+              var res = Module.deserializeImgFrame(bytes);
+              console.log("deserializeImgFrame result: ", res);
+              console.log("DIMS from javascript: ", res.width, "x", res.height);
+            } else if (msgType === Module.DatatypeEnum.ImgDetections) {
+              console.log("message type is ImgDetections");
+              var res = Module.deserializeImgDetections(bytes);
+            } else {
+              throw Error("Unhandled message type: " + msgType);
+            }
           } else {
             console.error("Not an array buffer");
           }
