@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+  <script>
+    var Module = {
+      onRuntimeInitialized: function() {
+        console.log(Object.keys(Module));
+        const req = new XMLHttpRequest();
+        req.open("GET", "/img_frame.dump", true);
+        req.responseType = "arraybuffer";
+        req.onload = (event) => {
+          const arrayBuffer = req.response;
+          if (arrayBuffer) {
+            var bytes = new Module.Uint8Vector();
+            const byteArray = new Uint8Array(arrayBuffer);
+            byteArray.forEach((element, index) => {
+              bytes.push_back(element);
+            });
+            var res = Module.deserializeImgFrame(bytes);
+            console.log("deserializeImgFrame result: ", res);
+            console.log("DIMS from javascript: ", res.width, "x", res.height);
+          } else {
+            console.error("Not an array buffer");
+          }
+        };
+        req.send(null);
+      }
+    };
+  </script>
+  <script src="/depthai-js.js"></script>
+</html>
