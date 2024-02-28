@@ -79,7 +79,7 @@ CameraControl& CameraControl::setAutoFocusRegion(uint16_t startX, uint16_t start
 }
 CameraControl& CameraControl::setManualFocus(uint8_t lensPosition) {
     setCommand(Command::MOVE_LENS);
-    lensPosition = lensPosition;
+    this->lensPosition = lensPosition;
     return *this;
 }
 
