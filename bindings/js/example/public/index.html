@@ -1,39 +1,5 @@
 <!doctype html>
 <html>
-  <script>
-    var Module = {
-      onRuntimeInitialized: function() {
-        console.log(Object.keys(Module));
-        const req = new XMLHttpRequest();
-        req.open("GET", "/img_frame.dump", true);
-        req.responseType = "arraybuffer";
-        req.onload = (event) => {
-          const arrayBuffer = req.response;
-          if (arrayBuffer) {
-            var bytes = new Module.Uint8Vector();
-            const byteArray = new Uint8Array(arrayBuffer);
-            byteArray.forEach((element, index) => {
-              bytes.push_back(element);
-            });
-            var msgType = Module.getMessageType(bytes);
-            if (msgType === Module.DatatypeEnum.ImgFrame) {
-              console.log("message type is ImgFrame");
-              var res = Module.deserializeImgFrame(bytes);
-              console.log("deserializeImgFrame result: ", res);
-              console.log("DIMS from javascript: ", res.width, "x", res.height);
-            } else if (msgType === Module.DatatypeEnum.ImgDetections) {
-              console.log("message type is ImgDetections");
-              var res = Module.deserializeImgDetections(bytes);
-            } else {
-              throw Error("Unhandled message type: " + msgType);
-            }
-          } else {
-            console.error("Not an array buffer");
-          }
-        };
-        req.send(null);
-      }
-    };
-  </script>
+  <script src="/index.js"></script>
   <script src="/depthai-js.js"></script>
 </html>

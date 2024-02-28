@@ -13,41 +13,39 @@
 #include <depthai/pipeline/datatype/DatatypeEnum.hpp>
 #include <depthai/pipeline/datatype/StreamMessageParser.hpp>
 
-EMSCRIPTEN_DECLARE_VAL_TYPE(Uint8Array);
+inline int readIntLE(std::uint8_t* data) {
+    return data[0] + data[1] * 256 + data[2] * 256 * 256 + data[3] * 256 * 256 * 256;
+}
 
 template <typename T>
 std::shared_ptr<T> daiDeserializeFromJS(std::vector<std::uint8_t> data) {
-    // T daiDeserializeFromJS(Uint8Array data) {
-    streamPacketDesc_t packet;
-    packet.data = data.data();
-    packet.length = data.size();
-    const auto res = dai::StreamMessageParser::parseMessage(&packet);
-    const auto typedRes = std::dynamic_pointer_cast<T>(res);
-    if(typedRes == nullptr) {
-        throw std::invalid_argument(
-            "Deserialization error. Passed in message data is for message of other type. "
-            "Please use getMessageType() first and call the correct decoding function for the returned type");
+    auto imgFrame = std::make_shared<T>();
+    const auto rc = dai::utility::deserialize(data, *imgFrame);
+    if(!rc) {
+        // this should never happen as exceptions are enabled !!!
+        std::cout << "Deserialization failed" << std::endl;
     }
-    return typedRes;
+    return imgFrame;
 }
 
-dai::DatatypeEnum daiGetMessageType(std::vector<std::uint8_t> data) {
-    streamPacketDesc_t packet;
-    packet.data = data.data();
-    packet.length = data.size();
+struct MessageHeader {
     dai::DatatypeEnum objectType;
-    size_t serializedObjectSize;
-    size_t bufferLength;
-    std::tie(objectType, serializedObjectSize, bufferLength) = dai::StreamMessageParser::parseHeader(&packet);
-    return objectType;
+    int serializedObjectSize;
+};
+
+MessageHeader daiGetMessageType(std::vector<std::uint8_t> data) {
+    if(data.size() < 8) {
+        throw std::invalid_argument("Message header data should be at least 8 bytes long.");
+    }
+    MessageHeader header;
+    header.serializedObjectSize = readIntLE(data.data() + data.size() - 4);
+    header.objectType = static_cast<dai::DatatypeEnum>(readIntLE(data.data() + data.size() - 8));
+    return header;
 }
 
 using namespace emscripten;
 
 EMSCRIPTEN_BINDINGS(depthai_js) {
-    // emscripten::val types using EMSCRIPTEN_DECLARE_VAL_TYPE() macro
-    register_type<Uint8Array>("Uint8Array");
-
     // vector types
     register_vector<std::uint8_t>("Uint8Vector");
     register_vector<dai::ImgDetection>("ImgDetectionVector");
@@ -80,6 +78,9 @@ EMSCRIPTEN_BINDINGS(depthai_js) {
         .value("MessageGroup", dai::DatatypeEnum::MessageGroup);
 
     // structs
+    value_object<MessageHeader>("MessageHeader")
+        .field("objectType", &MessageHeader::objectType)
+        .field("serializedObjectSize", &MessageHeader::serializedObjectSize);
     value_object<dai::ImgDetection>("ImgDetection")
         .field("xmin", &dai::ImgDetection::xmin)
         .field("xmax", &dai::ImgDetection::xmax)
@@ -99,4 +100,3 @@ EMSCRIPTEN_BINDINGS(depthai_js) {
     function("deserializeImgDetections", &daiDeserializeFromJS<dai::ImgDetections>);
     function("getMessageType", &daiGetMessageType);
 }
-
