@@ -11,10 +11,10 @@ namespace node {
 /**
  * @brief XLinkOut node. Sends messages over XLink.
  */
-class XLinkOut : public NodeCRTP<DeviceNode, XLinkOut, XLinkOutProperties> {
+class XLinkOut : public DeviceNodeCRTP<DeviceNode, XLinkOut, XLinkOutProperties> {
    public:
     constexpr static const char* NAME = "XLinkOut";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     void build();
 
    public:

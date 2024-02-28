@@ -12,10 +12,10 @@ namespace node {
 /**
  * @brief SystemLogger node. Send system information periodically.
  */
-class SystemLogger : public NodeCRTP<DeviceNode, SystemLogger, SystemLoggerProperties> {
+class SystemLogger : public DeviceNodeCRTP<DeviceNode, SystemLogger, SystemLoggerProperties> {
    public:
     constexpr static const char* NAME = "SystemLogger";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     void build();
 
     /**

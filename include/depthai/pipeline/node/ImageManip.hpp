@@ -12,10 +12,10 @@ namespace node {
 /**
  * @brief ImageManip node. Capability to crop, resize, warp, ... incoming image frames
  */
-class ImageManip : public NodeCRTP<DeviceNode, ImageManip, ImageManipProperties> {
+class ImageManip : public DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipProperties> {
    public:
     constexpr static const char* NAME = "ImageManip";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
    protected:
     Properties& getProperties();

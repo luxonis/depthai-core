@@ -14,10 +14,10 @@ namespace dai {
 namespace node {
 
 // TODO(before mainline) - API not supported on RVC2
-class Pool : public NodeCRTP<DeviceNode, Pool, PoolProperties> {
+class Pool : public DeviceNodeCRTP<DeviceNode, Pool, PoolProperties> {
    public:
     constexpr static const char* NAME = "Pool";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
     /**
      *  Pool output in pull orientation

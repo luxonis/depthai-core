@@ -6,7 +6,7 @@ namespace dai {
 namespace node {
 
 SpatialLocationCalculator::SpatialLocationCalculator(std::unique_ptr<Properties> props)
-    : NodeCRTP<DeviceNode, SpatialLocationCalculator, SpatialLocationCalculatorProperties>(std::move(props)) {}
+    : DeviceNodeCRTP<DeviceNode, SpatialLocationCalculator, SpatialLocationCalculatorProperties>(std::move(props)) {}
 
 SpatialLocationCalculator::Properties& SpatialLocationCalculator::getProperties() {
     properties.roiConfig = initialConfig;

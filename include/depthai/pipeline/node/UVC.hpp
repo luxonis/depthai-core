@@ -11,10 +11,10 @@ namespace node {
 /**
  * @brief UVC (USB Video Class) node
  */
-class UVC : public NodeCRTP<DeviceNode, UVC, UVCProperties> {
+class UVC : public DeviceNodeCRTP<DeviceNode, UVC, UVCProperties> {
    public:
     constexpr static const char* NAME = "UVC";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     void build();
 
    public:

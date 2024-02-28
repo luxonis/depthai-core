@@ -17,10 +17,10 @@ namespace node {
  * @brief FeatureTracker node.
  * Performs feature tracking and reidentification using motion estimation between 2 consecutive frames.
  */
-class FeatureTracker : public NodeCRTP<DeviceNode, FeatureTracker, FeatureTrackerProperties> {
+class FeatureTracker : public DeviceNodeCRTP<DeviceNode, FeatureTracker, FeatureTrackerProperties> {
    public:
     constexpr static const char* NAME = "FeatureTracker";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
    protected:
     Properties& getProperties();

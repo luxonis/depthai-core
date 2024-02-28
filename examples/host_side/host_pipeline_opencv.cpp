@@ -1,5 +1,6 @@
 #include <iostream>
 
+
 // Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/node/test/MyConsumer.hpp"
@@ -13,7 +14,7 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
-class Display : public dai::NodeCRTP<dai::ThreadedNode, Display, dai::XLinkOutProperties> {
+class Display : public dai::NodeCRTP<dai::ThreadedNode, Display> {
    public:
     constexpr static const char* NAME = "Display";
 
@@ -33,9 +34,12 @@ class Display : public dai::NodeCRTP<dai::ThreadedNode, Display, dai::XLinkOutPr
             std::shared_ptr<dai::ImgFrame> imgFrame = input.queue.get<dai::ImgFrame>();
             if(imgFrame != nullptr) {
                 cv::imshow("MyConsumer", imgFrame->getCvFrame());
-                cv::waitKey(1);
-            }
+                auto key = cv::waitKey(1);
+                if(key == 'q') {
+                    stop();
+                }            }
         }
+        fmt::print("Display node stopped\n");
     }
 };
 

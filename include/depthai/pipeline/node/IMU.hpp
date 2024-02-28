@@ -11,10 +11,10 @@ namespace node {
 /**
  * @brief IMU node for BNO08X.
  */
-class IMU : public NodeCRTP<DeviceNode, IMU, IMUProperties> {
+class IMU : public DeviceNodeCRTP<DeviceNode, IMU, IMUProperties> {
    public:
     constexpr static const char* NAME = "IMU";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
     /**
      * Outputs IMUData message that carries IMU packets.

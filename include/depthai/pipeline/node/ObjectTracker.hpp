@@ -16,10 +16,10 @@ namespace node {
 /**
  * @brief ObjectTracker node. Performs object tracking using Kalman filter and hungarian algorithm.
  */
-class ObjectTracker : public NodeCRTP<DeviceNode, ObjectTracker, ObjectTrackerProperties> {
+class ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTrackerProperties> {
    public:
     constexpr static const char* NAME = "ObjectTracker";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     /**
      * Input ImgFrame message on which tracking will be performed. RGBp, BGRp, NV12, YUV420p types are supported.
      * Default queue is non-blocking with size 4.

@@ -9,10 +9,10 @@ namespace dai {
 namespace node {
 
 // TODO(before mainline) - API not supported on RVC2
-class BenchmarkIn : public NodeCRTP<DeviceNode, BenchmarkIn, BenchmarkPropertiesIn> {
+class BenchmarkIn : public DeviceNodeCRTP<DeviceNode, BenchmarkIn, BenchmarkPropertiesIn> {
    public:
     constexpr static const char* NAME = "BenchmarkIn";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
     /**
      * Receive messages as fast as possible

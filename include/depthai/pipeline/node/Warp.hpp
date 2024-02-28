@@ -13,10 +13,10 @@ namespace node {
 /**
  * @brief Warp node. Capability to crop, resize, warp, ... incoming image frames
  */
-class Warp : public NodeCRTP<DeviceNode, Warp, WarpProperties> {
+class Warp : public DeviceNodeCRTP<DeviceNode, Warp, WarpProperties> {
    public:
     constexpr static const char* NAME = "Warp";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
    private:
     void setWarpMesh(const float* meshData, int numMeshPoints, int width, int height);

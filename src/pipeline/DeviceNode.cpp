@@ -8,6 +8,14 @@
 
 namespace dai {
 
+DeviceNode::DeviceNode(std::unique_ptr<Properties> props, bool conf) : propertiesHolder(std::move(props)) {
+    configureMode = conf;
+}
+
+Properties& DeviceNode::getProperties() {
+    return *propertiesHolder;
+}
+
 void DeviceNode::run() {
     auto pipeline = getParentPipeline();
     if(pipeline.getDevice() != nullptr) {
@@ -33,10 +41,6 @@ void DeviceNode::run() {
                 input->queue.addCallback([dev, xlinkName](std::string, std::shared_ptr<ADatatype> msg) { dev->getInputQueue(xlinkName)->send(msg); });
             }
         }
-    }
-
-    // TMP TMP - not needed
-    while(isRunning()) {
     }
 }
 

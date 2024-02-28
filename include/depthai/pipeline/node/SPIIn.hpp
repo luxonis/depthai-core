@@ -11,10 +11,10 @@ namespace node {
 /**
  * @brief SPIIn node. Receives messages over SPI.
  */
-class SPIIn : public NodeCRTP<DeviceNode, SPIIn, SPIInProperties> {
+class SPIIn : public DeviceNodeCRTP<DeviceNode, SPIIn, SPIInProperties> {
    public:
     constexpr static const char* NAME = "SPIIn";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     void build();
 
     /**

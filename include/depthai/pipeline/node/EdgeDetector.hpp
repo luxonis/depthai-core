@@ -16,10 +16,10 @@ namespace node {
 /**
  * @brief EdgeDetector node. Performs edge detection using 3x3 Sobel filter
  */
-class EdgeDetector : public NodeCRTP<DeviceNode, EdgeDetector, EdgeDetectorProperties> {
+class EdgeDetector : public DeviceNodeCRTP<DeviceNode, EdgeDetector, EdgeDetectorProperties> {
    public:
     constexpr static const char* NAME = "EdgeDetector";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
    protected:
     Properties& getProperties();

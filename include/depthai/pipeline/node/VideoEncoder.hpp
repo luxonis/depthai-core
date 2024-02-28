@@ -11,10 +11,10 @@ namespace node {
 /**
  * @brief VideoEncoder node. Encodes frames into MJPEG, H264 or H265.
  */
-class VideoEncoder : public NodeCRTP<DeviceNode, VideoEncoder, VideoEncoderProperties> {
+class VideoEncoder : public DeviceNodeCRTP<DeviceNode, VideoEncoder, VideoEncoderProperties> {
    public:
     constexpr static const char* NAME = "VideoEncoder";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
     /**
      * Input for NV12 ImgFrame to be encoded

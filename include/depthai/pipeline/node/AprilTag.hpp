@@ -13,10 +13,10 @@ namespace node {
 /**
  * @brief AprilTag node.
  */
-class AprilTag : public NodeCRTP<DeviceNode, AprilTag, AprilTagProperties> {
+class AprilTag : public DeviceNodeCRTP<DeviceNode, AprilTag, AprilTagProperties> {
    public:
     constexpr static const char* NAME = "AprilTag";
-    using NodeCRTP::NodeCRTP;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
    protected:
     Properties& getProperties();
