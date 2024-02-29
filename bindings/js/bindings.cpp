@@ -82,9 +82,12 @@ EMSCRIPTEN_BINDINGS(depthai_js) {
         .field("objectType", &MessageHeader::objectType)
         .field("serializedObjectSize", &MessageHeader::serializedObjectSize);
     value_object<dai::ImgDetection>("ImgDetection")
+        .field("label", &dai::ImgDetection::label)
+        .field("confidence", &dai::ImgDetection::confidence)
         .field("xmin", &dai::ImgDetection::xmin)
         .field("xmax", &dai::ImgDetection::xmax)
-        .field("label", &dai::ImgDetection::label);
+        .field("ymin", &dai::ImgDetection::ymin)
+        .field("ymax", &dai::ImgDetection::ymax);
 
     // classes
     class_<dai::ImgFrame>("ImgFrame")
