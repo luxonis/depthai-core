@@ -1,0 +1,46 @@
+{
+  "name": "depthai-js",
+  "version": "0.0.1",
+  "description": "depthai-core JS bindings",
+  "author": "Luxonis <info@luxonis.com>",
+  "keywords": [],
+  "license": "MIT",
+  "main": "lib/cjs/index.js",
+  "module": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js"
+  },
+  "types": "./lib/index.d.ts",
+  "files": [
+    "lib/**/*",
+    "README.md"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/luxonis/depthai-core"
+  },
+  "scripts": {
+    "clean": "rimraf lib",
+    "build:esm": "cross-env BABEL_ENV=esmUnbundled babel src --extensions '.ts' --out-dir 'lib'",
+    "build:cjs": "cross-env BABEL_ENV=cjs babel src --extensions '.ts' --out-dir 'lib/cjs'",
+    "build:esmBundled": "cross-env BABEL_ENV=esmBundled rollup -c rollup.config.js",
+    "build:umdBundled": "cross-env BABEL_ENV=umdBundled rollup -c rollup.config.js",
+    "build:declarations": "tsc -p tsconfig.json",
+    "build:copyFiles": "mkdir -p lib && cp src/*.js src/*.d.ts lib/",
+    "build": "npm-run-all -l clean -p build:esm build:cjs build:esmBundled build:umdBundled build:declarations build:copyFiles"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.23.9",
+    "@babel/core": "^7.24.0",
+    "@babel/preset-env": "^7.24.0",
+    "@babel/preset-typescript": "^7.23.3",
+    "@rollup/plugin-babel": "^6.0.4",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "cross-env": "^7.0.3",
+    "npm-run-all": "^4.1.5",
+    "rimraf": "^5.0.5",
+    "rollup": "^2.79.1",
+    "rollup-plugin-terser": "^7.0.2",
+    "typescript": "^5.3.3"
+  }
+}

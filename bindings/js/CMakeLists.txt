@@ -9,6 +9,11 @@ target_link_options(
   PRIVATE
   -fwasm-exceptions
   --embind-emit-tsd depthai-js.d.ts
+  -sUSE_ES6_IMPORT_META=0
+  -sENVIRONMENT=web
+  -sMODULARIZE
+  -sEXPORT_ES6
+  -sEXPORT_NAME=depthaiJsModuleInitialize
 )
 target_link_libraries(
   "${TARGET_NAME}"

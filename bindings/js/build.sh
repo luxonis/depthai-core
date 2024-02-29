@@ -8,8 +8,11 @@ source ~/emsdk/emsdk_env.sh
 cd ../..
 
 cmake --build build --target depthai-js --parallel $(($(nproc) * 75 / 100))
-# the whole library ? will probably have to write bindings by hand as in the python one
-# emcc -lembind -o library.js -s MODULARIZE=1 -Wl,--whole-archive build/libdepthai-core.a -Wl,--no-whole-archive
+cp build/bindings/js/depthai-js.{d.ts,js} bindings/js/src/
+cd -
 
-# just a subset / wrapper:
-# em++ main.cpp
+if [ ! -d node_modules ]; then
+  npm ci
+fi
+
+npm run build
