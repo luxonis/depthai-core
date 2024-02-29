@@ -62,7 +62,7 @@ inline std::shared_ptr<T> parseDatatype(std::uint8_t* metadata, size_t size, std
     return tmp;
 }
 
-std::tuple<DatatypeEnum, size_t, size_t> StreamMessageParser::parseHeader(streamPacketDesc_t* const packet) {
+static std::tuple<DatatypeEnum, size_t, size_t> parseHeader(streamPacketDesc_t* const packet) {
     if(packet->length < 8) {
         throw std::runtime_error("Bad packet, couldn't parse (not enough data)");
     }

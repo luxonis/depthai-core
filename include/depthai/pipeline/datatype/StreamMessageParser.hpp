@@ -16,7 +16,6 @@
 namespace dai {
 class StreamMessageParser {
    public:
-    static std::tuple<DatatypeEnum, size_t, size_t> parseHeader(streamPacketDesc_t* const packet);
     static std::shared_ptr<ADatatype> parseMessage(StreamPacketDesc packet);
     static std::shared_ptr<ADatatype> parseMessage(streamPacketDesc_t* const packet);
     // static std::vector<std::uint8_t> serializeMessage(const std::shared_ptr<const ADatatype>& data);
