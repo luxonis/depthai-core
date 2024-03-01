@@ -42,3 +42,31 @@ inline std::ostream& operator<<(std::ostream& out, const std::vector<dai::Camera
 
     return out;
 }
+
+inline std::ostream& operator<<(std::ostream& out, const dai::CameraSensorConfig& config) {
+    out << "{width: " << config.width << ", ";
+    out << "height: " << config.height << ", ";
+    out << "minFps: " << config.minFps << ", ";
+    out << "maxFps: " << config.maxFps << ", ";
+    out << "type: " << config.type << ", ";
+    out << "fov: "
+        << "{x:" << config.fov.x << ", ";
+    out << "y: " << config.fov.y << ", ";
+    out << "width: " << config.fov.width << ", ";
+    out << "height: " << config.fov.height << "}";
+    out << "}";
+    return out;
+}
+
+inline std::ostream& operator<<(std::ostream& out, const std::vector<dai::CameraSensorConfig>& configs) {
+    out << "[";
+    for(size_t i = 0; i < configs.size(); i++) {
+        if(i != 0) {
+            out << ", ";
+        }
+        out << configs.at(i);
+    }
+    out << "]";
+
+    return out;
+}
