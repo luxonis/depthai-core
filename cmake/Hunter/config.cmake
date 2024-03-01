@@ -84,15 +84,17 @@ hunter_config(
         FP16_BUILD_TESTS=OFF
 )
 
-# Backward - Stacktrace printer
-hunter_config(
-    Backward
-    VERSION "1.6"
-    URL "https://github.com/bombela/backward-cpp/archive/refs/tags/v1.6.tar.gz"
-    SHA1 "4ecb711eabfd15bc88ff9dd9342907fc5da46b62"
-    CMAKE_ARGS
-        BACKWARD_TESTS=OFF
-)
+if(NOT EMSCRIPTEN)
+    # Backward - Stacktrace printer
+    hunter_config(
+      Backward
+      VERSION "1.6"
+      URL "https://github.com/bombela/backward-cpp/archive/refs/tags/v1.6.tar.gz"
+      SHA1 "4ecb711eabfd15bc88ff9dd9342907fc5da46b62"
+      CMAKE_ARGS
+          BACKWARD_TESTS=OFF
+    )
+endif()
 
 # libnop - Serialization
 hunter_config(
