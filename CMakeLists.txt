@@ -651,7 +651,9 @@ if (DEPTHAI_BUILD_EXAMPLES)
     add_subdirectory(examples)
 endif()
 
-add_subdirectory(bindings/js)
+if (EMSCRIPTEN)
+    add_subdirectory(bindings/js)
+endif()
 
 ########################
 # Documentation
