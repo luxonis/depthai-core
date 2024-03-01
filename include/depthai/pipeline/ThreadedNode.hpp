@@ -3,7 +3,6 @@
 #include <spdlog/async_logger.h>
 
 #include "depthai/pipeline/Node.hpp"
-#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/utility/AtomicBool.hpp"
 #include "depthai/utility/JoiningThread.hpp"
 

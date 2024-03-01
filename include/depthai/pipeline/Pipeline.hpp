@@ -3,11 +3,13 @@
 // standard
 #include <map>
 #include <memory>
+#include <type_traits>
 #include <unordered_set>
 #include <vector>
 
 // project
 #include "AssetManager.hpp"
+#include "DeviceNode.hpp"
 #include "Node.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/device/Device.hpp"
@@ -26,7 +28,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     friend class Node;
 
    public:
-    PipelineImpl(Pipeline& pipeline) : assetManager("/pipeline/"), parent(pipeline) {}
+    PipelineImpl(Pipeline& pipeline, std::shared_ptr<Device> device) : assetManager("/pipeline/"), parent(pipeline), defaultDevice{std::move(device)} {}
     PipelineImpl(const PipelineImpl&) = default;
     ~PipelineImpl();
 
@@ -103,9 +105,21 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // was pipeline built
     AtomicBool isBuild{false};
 
-    // TMP TMP - to be moved
     // DeviceBase for hybrid pipelines
-    std::shared_ptr<Device> device;
+    std::shared_ptr<Device> defaultDevice;
+
+    template <typename N>
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value, std::shared_ptr<N>> createNode() {
+        // N is a subclass of DeviceNode
+        // return N::create();  // Specific create call for DeviceNode subclasses
+        return N::create(defaultDevice);  // Specific create call for DeviceNode subclasses
+    }
+
+    template <typename N>
+    std::enable_if_t<!std::is_base_of<DeviceNode, N>::value, std::shared_ptr<N>> createNode() {
+        // N is not a subclass of DeviceNode
+        return N::create();  // Generic create call
+    }
 
     // Template create function
     template <class N>
@@ -114,8 +128,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
         // Check that passed type 'N' is subclass of Node
         static_assert(std::is_base_of<Node, N>::value, "Specified class is not a subclass of Node");
         // Create and store the node in the map
-        auto node = N::create();
-        // Add
+        auto node = createNode<N>();
+        // std::shared_ptr<N> node = nullptr;
         add(node);
         // Return shared pointer to this node
         return node;
@@ -152,13 +166,11 @@ class Pipeline {
     }
 
     /**
-     * Constructs a new pipeline
+     * Constructs a new pipeline - creates the device implicitly
      */
     Pipeline();
+    explicit Pipeline(std::shared_ptr<Device> device);
     explicit Pipeline(std::shared_ptr<PipelineImpl> pimpl);
-
-    /// Clone the pipeline (Creates a copy)
-    Pipeline clone() const;
 
     /**
      * @returns Global properties of current pipeline
@@ -377,8 +389,8 @@ class Pipeline {
         impl()->stop();
     }
 
-    std::shared_ptr<Device> getDevice() {
-        return impl()->device;
+    std::shared_ptr<Device> getDefaultDevice() {
+        return impl()->defaultDevice;
     }
 };
 

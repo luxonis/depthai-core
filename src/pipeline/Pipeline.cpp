@@ -42,39 +42,36 @@ Node::Id PipelineImpl::getNextUniqueId() {
     return latestId++;
 }
 
-Pipeline::Pipeline() : pimpl(std::make_shared<PipelineImpl>(*this)) {
-    // // Initialize library
-    // initialize();
-}
+Pipeline::Pipeline() : pimpl(std::make_shared<PipelineImpl>(*this, std::make_shared<dai::Device>())) {}
 
-Pipeline Pipeline::clone() const {
-    // TODO(themarpe) - Copy assets
+Pipeline::Pipeline(std::shared_ptr<Device> device) : pimpl(std::make_shared<PipelineImpl>(*this, device)) {}
 
-    Pipeline clone;
+// Pipeline Pipeline::clone() const {
+//     // TODO(themarpe) - Copy assets
 
-    // Make a copy of PipelineImpl
-    clone.pimpl = std::make_shared<PipelineImpl>(*impl());
+//     Pipeline clone;
 
-    // All IDs remain the same, just switch out the actual nodes with copies
-    // Copy all nodes
-    for(const auto& node : impl()->nodes) {
-        // const auto& id = kv.first;
+//     // Make a copy of PipelineImpl
+//     clone.pimpl = std::make_shared<PipelineImpl>(*impl());
 
-        // Swap out with a copy
-        auto nodeClone = node->clone();
-        // Set parent to be the new pipeline
-        nodeClone->parent = std::weak_ptr<PipelineImpl>(clone.pimpl);
+//     // All IDs remain the same, just switch out the actual nodes with copies
+//     // Copy all nodes
+//     for(const auto& node : impl()->nodes) {
+//         // const auto& id = kv.first;
 
-        // Add the new copy
-        clone.pimpl->nodes.push_back(node->clone());
-    }
+//         // Swap out with a copy
+//         auto nodeClone = node->clone();
+//         // Set parent to be the new pipeline
+//         nodeClone->parent = std::weak_ptr<PipelineImpl>(clone.pimpl);
 
-    return clone;
-}
+//         // Add the new copy
+//         clone.pimpl->nodes.push_back(node->clone());
+//     }
 
-Pipeline::Pipeline(std::shared_ptr<PipelineImpl> pimpl) {
-    this->pimpl = pimpl;
-}
+//     return clone;
+// }
+
+Pipeline::Pipeline(std::shared_ptr<PipelineImpl> pimpl) : pimpl(std::move(pimpl)) {}
 
 PipelineSchema Pipeline::getPipelineSchema(SerializationType type) const {
     return pimpl->getPipelineSchema(type);
@@ -652,7 +649,6 @@ tl::optional<EepromData> PipelineImpl::getEepromData() const {
 }
 
 bool PipelineImpl::isHostOnly() const {
-    // Starts pipeline, go through all nodes and start them
     bool hostOnly = true;
     for(const auto& node : nodes) {
         if(!node->hostNode) {
@@ -664,7 +660,6 @@ bool PipelineImpl::isHostOnly() const {
 }
 
 bool PipelineImpl::isDeviceOnly() const {
-    // Starts pipeline, go through all nodes and start them
     bool deviceOnly = true;
     for(const auto& node : nodes) {
         if(node->hostNode) {
@@ -720,13 +715,13 @@ void PipelineImpl::build() {
 
     // Build
     if(!isHostOnly()) {
-        // throw std::invalid_argument("Pipeline contains device nodes");
-        device = std::make_shared<Device>(Pipeline(shared_from_this()));
-        for(auto outQ : device->getOutputQueueNames()) {
-            device->getOutputQueue(outQ, 0, false);
+        // TODO(Morato) - handle multiple devices correctly, start pipeline on all of them
+        defaultDevice->startPipeline(Pipeline(shared_from_this()));
+        for(auto outQ : defaultDevice->getOutputQueueNames()) {
+            defaultDevice->getOutputQueue(outQ, 0, false);
         }
-        for(auto inQ : device->getInputQueueNames()) {
-            device->getInputQueue(inQ, 0, false);
+        for(auto inQ : defaultDevice->getInputQueueNames()) {
+            defaultDevice->getInputQueue(inQ, 0, false);
         }
     }
 

@@ -12,14 +12,18 @@ DeviceNode::DeviceNode(std::unique_ptr<Properties> props, bool conf) : propertie
     configureMode = conf;
 }
 
+DeviceNode::DeviceNode(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool conf) : device(device), propertiesHolder(std::move(props)) {
+    configureMode = conf;
+}
+
 Properties& DeviceNode::getProperties() {
     return *propertiesHolder;
 }
 
 void DeviceNode::run() {
     auto pipeline = getParentPipeline();
-    if(pipeline.getDevice() != nullptr) {
-        auto dev = pipeline.getDevice();
+    if(pipeline.getDefaultDevice() != nullptr) {
+        auto dev = pipeline.getDefaultDevice();
 
         auto outputQueueNames = dev->getOutputQueueNames();
         auto inputQueueNames = dev->getInputQueueNames();
