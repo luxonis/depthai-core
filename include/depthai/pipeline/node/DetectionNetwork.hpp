@@ -17,6 +17,11 @@ namespace node {
  */
 class DetectionNetwork : public NodeGroup {
    public:
+    [[nodiscard]] static std::shared_ptr<DetectionNetwork> create() {
+        auto n = std::make_shared<DetectionNetwork>();
+        n->build();
+        return n;
+    }
     void build();
     DetectionNetwork() : out{detectionParser->out}, outNetwork{neuralNetwork->out}, input{neuralNetwork->input}, passthrough{neuralNetwork->passthrough} {};
 
@@ -46,6 +51,15 @@ class DetectionNetwork : public NodeGroup {
      * Suitable for when input queue is set to non-blocking behavior.
      */
     Output& passthrough;
+
+    // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
+    /**
+     * Load network blob into assets and use once pipeline is started.
+     *
+     * @throws Error if file doesn't exist or isn't a valid network blob.
+     * @param path Path to network blob
+     */
+    void setNNArchive(const dai::Path& path);
 
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**

@@ -1,9 +1,15 @@
 #include "depthai/pipeline/node/DetectionNetwork.hpp"
 
+// C++ std
 #include <sstream>
 
+// libraries
+#include <nlohmann/json.hpp>
+#include <openvino/BlobReader.hpp>
+
+// internal
 #include "depthai/common/DetectionNetworkType.hpp"
-#include "openvino/BlobReader.hpp"
+#include "json_types/Generators.hpp"
 
 namespace dai {
 namespace node {
@@ -28,6 +34,29 @@ void DetectionNetwork::build() {
 // -------------------------------------------------------------------
 // Neural Network API
 // -------------------------------------------------------------------
+
+void DetectionNetwork::setNNArchive(const dai::Path& path) {
+    // Should we allow to specify the format separately also?
+    // in a function param using an enum with default AUTO which does the below?
+    if(false /* path ends in .json */) {
+        // check in same directory for the file specified in path
+        // should we handle absolute paths here differently without looking into same directory?
+    } else if(false /* path ends in .tar */) {
+        // just get the file handle using libarchive, don't need to decompress anything.
+    } else if(false /* path ends in .tar.xz */) {
+        // decompress maybe libarchive has some magic handling of different file endings? try it.
+    } else if(false /* path ends in .tar.gz */) {
+        // decompress
+    }
+    std::cout << "USING PATH:" << path.string() << std::endl;
+    std::ifstream jsonStream(path);
+    nlohmann::json json = nlohmann::json::parse(jsonStream);
+    dai::json_types::NnArchiveConfig config;
+    dai::json_types::from_json(json, config);
+    std::cout << "ARCHIVE NAME WAS: " << config.stages[0].metadata.name << std::endl;
+    std::cout << "ARCHIVE PATH WAS: " << config.stages[0].metadata.path << std::endl;
+}
+
 void DetectionNetwork::setBlobPath(const dai::Path& path) {
     neuralNetwork->setBlobPath(path);
     detectionParser->setBlobPath(path);
