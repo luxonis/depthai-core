@@ -11,21 +11,12 @@ DepthAlign::DepthAlign(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId,
       rawConfig(std::make_shared<RawDepthAlignConfig>()),
       initialConfig(rawConfig) {
     setInputRefs({&inputConfig, &inputDepth});
-    setOutputRefs({&outputDepthAlign, &passthroughDepth});
+    setOutputRefs({&outputAlignedDepth, &passthroughDepth});
 }
 
 DepthAlign::Properties& DepthAlign::getProperties() {
     properties.initialConfig = *rawConfig;
     return properties;
-}
-
-// Node properties configuration
-void DepthAlign::setWaitForConfigInput(bool wait) {
-    inputConfig.setWaitForMessage(wait);
-}
-
-bool DepthAlign::getWaitForConfigInput() const {
-    return inputConfig.getWaitForMessage();
 }
 
 }  // namespace node

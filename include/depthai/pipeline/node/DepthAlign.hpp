@@ -49,7 +49,7 @@ class DepthAlign : public NodeCRTP<Node, DepthAlign, DepthAlignProperties> {
     /**
      * Outputs ImgFrame message that carries aligned depth image.
      */
-    Output outputDepthAlign{*this, "outputAlignedDepth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output outputAlignedDepth{*this, "outputAlignedDepth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Passthrough message on which the calculation was performed.
@@ -57,18 +57,6 @@ class DepthAlign : public NodeCRTP<Node, DepthAlign, DepthAlignProperties> {
      */
     Output passthroughDepth{*this, "passthroughDepth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
-    // Functions to set properties
-    /**
-     * Specify whether or not wait until configuration message arrives to inputConfig Input.
-     * @param wait True to wait for configuration message, false otherwise.
-     */
-    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] void setWaitForConfigInput(bool wait);
-
-    /**
-     * @see setWaitForConfigInput
-     * @returns True if wait for inputConfig message, false otherwise
-     */
-    [[deprecated("Use 'inputConfig.setWaitForMessage()' instead")]] bool getWaitForConfigInput() const;
 };
 
 }  // namespace node
