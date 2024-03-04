@@ -57,6 +57,16 @@ class DepthAlign : public NodeCRTP<Node, DepthAlign, DepthAlignProperties> {
      */
     Output passthroughDepth{*this, "passthroughDepth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
+    /**
+     * Specify to which camera socket the depth map is aligned to
+     */
+    DepthAlign& setAlignTo(CameraBoardSocket alignTo);
+
+    /**
+     * Specify the output size of the aligned depth map
+     */
+    DepthAlign& setOutputSize(int width, int height);
+
 };
 
 }  // namespace node

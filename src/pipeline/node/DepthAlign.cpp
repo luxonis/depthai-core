@@ -19,5 +19,16 @@ DepthAlign::Properties& DepthAlign::getProperties() {
     return properties;
 }
 
+DepthAlign& DepthAlign::setAlignTo(CameraBoardSocket alignTo) {
+    properties.alignTo = alignTo;
+    return *this;
+}
+
+DepthAlign& DepthAlign::setOutputSize(int width, int height) {
+    properties.alignWidth = alignWidth;
+    properties.alignHeight = alignHeight;
+    return *this;
+}
+
 }  // namespace node
 }  // namespace dai
