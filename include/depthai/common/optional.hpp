@@ -25,6 +25,12 @@ struct adl_serializer<tl::optional<T>> {
                                // adl_serializer<T>::from_json
         }
     }
+    static tl::optional<T> from_json(const json& j) {
+        if(j.is_null())
+            return tl::make_optional<T>();
+        else
+            return tl::make_optional<T>(j.get<T>());
+    }
 };
 }  // namespace nlohmann
 
