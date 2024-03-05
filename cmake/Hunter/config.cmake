@@ -141,3 +141,72 @@ hunter_config(
         HTTPLIB_USE_OPENSSL_IF_AVAILABLE=OFF
         HTTPLIB_USE_BROTLI_IF_AVAILABLE=OFF
 )
+
+# RTABMap
+hunter_config(
+    rtbmap
+    VERSION "0.21.4"
+    URL "https://github.com/introlab/rtabmap/archive/refs/tags/0.21.4.tar.gz"
+    SHA1 "3ac7372c3bd6761095421a3282d66521822f89f7"
+    CMAKE_ARGS
+        WITH_UDEV=OFF
+        # Build shared libs by default to not cause licensing issues
+        BUILD_SHARED_LIBS=ON
+
+
+        option(WITH_QT            "Include Qt support"                   OFF)
+        option(WITH_ORB_OCTREE    "Include ORB Octree feature support"   OFF)
+        option(WITH_TORCH         "Include Torch support (SuperPoint)"   OFF)
+        option(WITH_PYTHON        "Include Python3 support (PyMatcher, PyDetector)"  OFF)
+        option(WITH_PYTHON_THREADING  "Use more than one Python interpreter."  OFF)
+        option(WITH_PDAL          "Include PDAL support"                 OFF)
+        option(WITH_FREENECT      "Include Freenect support"             OFF)
+        option(WITH_FREENECT2     "Include Freenect2 support"            OFF)
+        option(WITH_K4W2          "Include Kinect for Windows v2 support" OFF)
+        option(WITH_K4A           "Include Kinect for Azure support"     OFF)
+        option(WITH_OPENNI2       "Include OpenNI2 support"              OFF)
+        option(WITH_DC1394        "Include dc1394 support"               ON)
+        option(WITH_G2O           "Include g2o support"                  ON)
+        option(WITH_GTSAM         "Include GTSAM support"                ON)
+        option(WITH_TORO          "Include TORO support"                 ON)
+        option(WITH_CERES         "Include Ceres support"                OFF)
+        option(WITH_MRPT          "Include MRPT support"                 ON)
+        option(WITH_VERTIGO       "Include Vertigo support"              ON)
+        option(WITH_CVSBA         "Include cvsba support"                OFF)
+        option(WITH_POINTMATCHER  "Include libpointmatcher support"      ON)
+        option(WITH_CCCORELIB     "Include CCCoreLib support"            OFF)
+        option(WITH_OPEN3D        "Include Open3D support"               OFF)
+        option(WITH_LOAM          "Include LOAM support"                 OFF)
+        option(WITH_FLOAM         "Include FLOAM support"                OFF)
+        option(WITH_FLYCAPTURE2   "Include FlyCapture2/Triclops support" OFF)
+        option(WITH_ZED           "Include ZED sdk support"              OFF)
+        option(WITH_ZEDOC         "Include ZED Open Capture support"     OFF)
+        option(WITH_REALSENSE     "Include RealSense support"            OFF)
+        option(WITH_REALSENSE_SLAM "Include RealSenseSlam support"       OFF)
+        option(WITH_REALSENSE2    "Include RealSense support"            OFF)
+        option(WITH_MYNTEYE       "Include mynteye-s support"            OFF)
+        option(WITH_DEPTHAI       "Include depthai-core support"         OFF)
+        option(WITH_OCTOMAP       "Include OctoMap support"              ON)
+        option(WITH_GRIDMAP       "Include GridMap support"              ON)
+        option(WITH_CPUTSDF       "Include CPUTSDF support"              OFF)
+        option(WITH_OPENCHISEL    "Include open_chisel support"          OFF)
+        option(WITH_ALICE_VISION  "Include AliceVision support"          OFF)
+        option(WITH_FOVIS         "Include FOVIS supp++ort"                OFF)
+        option(WITH_VISO2         "Include VISO2 support"                OFF)
+        option(WITH_DVO           "Include DVO support"                  OFF)
+        option(WITH_ORB_SLAM      "Include ORB_SLAM2 or ORB_SLAM3  support" OFF)
+        option(WITH_OKVIS         "Include OKVIS support"                OFF)
+        option(WITH_MSCKF_VIO     "Include MSCKF_VIO support"            OFF)
+        option(WITH_VINS          "Include VINS-Fusion support"          OFF)
+        option(WITH_OPENVINS      "Include OpenVINS support"             OFF)
+        option(WITH_MADGWICK      "Include Madgwick IMU filtering support" ON)
+        option(WITH_FASTCV        "Include FastCV support"               ON)
+        option(WITH_OPENMP        "Include OpenMP support"               ON)
+        option(WITH_OPENGV        "Include OpenGV support"               ON)
+        IF(MOBILE_BUILD)
+        option(PCL_OMP            "With PCL OMP implementations"         OFF)
+        ELSE()
+        option(PCL_OMP            "With PCL OMP implementations"         ON)
+        ENDIF()
+
+)

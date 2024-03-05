@@ -18,6 +18,9 @@ else()
     hunter_add_package(spdlog)
     hunter_add_package(ZLIB)
     hunter_add_package(httplib)
+    hunter_add_package(rtbmap COMPONENTS core utilite)
+    hunter_add_package(PNG)
+    hunter_add_package(TIFF)
     if(DEPTHAI_ENABLE_BACKWARD)
         hunter_add_package(Backward)
     endif()
@@ -71,6 +74,8 @@ find_package(nlohmann_json 3.6.0 ${_QUIET} CONFIG REQUIRED)
 # libnop for serialization
 find_package(libnop ${_QUIET} CONFIG REQUIRED)
 
+
+
 # XLink
 if(DEPTHAI_XLINK_LOCAL AND (NOT CONFIG_MODE))
     set(_BUILD_SHARED_LIBS_SAVED "${BUILD_SHARED_LIBS}")
@@ -87,6 +92,8 @@ endif()
 
 # OpenCV 4 - (optional, quiet always)
 find_package(OpenCV 4 QUIET CONFIG)
+
+find_package(RTABMap ${_QUIET} CONFIG REQUIRED COMPONENTS core utilite)
 
 # include optional dependency cmake
 if(DEPTHAI_DEPENDENCY_INCLUDE)

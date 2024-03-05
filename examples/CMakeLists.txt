@@ -3,6 +3,7 @@ option(DEPTHAI_TEST_EXAMPLES "Test examples - examples will be ran as a part of 
 
 # Dependencies
 find_package(OpenCV REQUIRED)
+find_package(RTABMap REQUIRED COMPONENTS core utilite)
 find_package(Sanitizers)
 
 # Create utility library
@@ -275,6 +276,9 @@ dai_add_example(opencv_support host_side/opencv_support.cpp ON)
 dai_add_example(queue_add_callback host_side/queue_add_callback.cpp ON)
 dai_add_example(device_information host_side/device_information.cpp OFF)
 dai_add_example(device_logging host_side/device_logging.cpp OFF)
+dai_add_example(rtabmap_rgbd host_side/rtabmap_rgbd.cpp OFF)
+target_link_options(rtabmap_rgbd PRIVATE "-Wl,--disable-new-dtags")
+target_link_libraries(rtabmap_rgbd PRIVATE rtabmap::core)
 
 # ImageManip
 dai_add_example(image_manip ImageManip/image_manip_example.cpp ON)
