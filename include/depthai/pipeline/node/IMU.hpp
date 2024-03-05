@@ -12,6 +12,12 @@ namespace node {
  * @brief IMU node for BNO08X.
  */
 class IMU : public DeviceNodeCRTP<DeviceNode, IMU, IMUProperties> {
+   protected:
+    bool isSourceNode() const override;
+    NodeRecordParams getNodeRecordParams() const override;
+    Output& getRecordOutput() override;
+    Input& getReplayInput() override;
+
    public:
     constexpr static const char* NAME = "IMU";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -20,6 +26,11 @@ class IMU : public DeviceNodeCRTP<DeviceNode, IMU, IMUProperties> {
      * Outputs IMUData message that carries IMU packets.
      */
     Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::IMUData, false}}};
+
+    /**
+     * Mock IMU data for replaying recorded data
+     */
+    Input mockIn{*this, "mockIn", Input::Type::SReceiver, {{DatatypeEnum::IMUData, false}}};
 
     /**
      * Enable a new IMU sensor with explicit configuration

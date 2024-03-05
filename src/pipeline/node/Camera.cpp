@@ -273,5 +273,23 @@ void Camera::setRawOutputPacked(bool packed) {
     properties.rawPacked = packed;
 }
 
+bool Camera::isSourceNode() const {
+    return true;
+}
+
+NodeRecordParams Camera::getNodeRecordParams() const {
+    if(properties.boardSocket == CameraBoardSocket::AUTO) {
+        throw std::runtime_error("For record and replay functionality, board socket must be specified (in Camera node).");
+    }
+    return NodeRecordParams{"Camera" + toString(properties.boardSocket), true};
+}
+
+Camera::Output& Camera::getRecordOutput() {
+    return isp;
+}
+Camera::Input& Camera::getReplayInput() {
+    return mockIsp;
+}
+
 }  // namespace node
 }  // namespace dai

@@ -22,6 +22,10 @@ class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraPrope
 
    protected:
     Properties& getProperties();
+    bool isSourceNode() const override;
+    NodeRecordParams getNodeRecordParams() const override;
+    Output& getRecordOutput() override;
+    Input& getReplayInput() override;
 
    public:
     MonoCamera() = default;
@@ -37,6 +41,13 @@ class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraPrope
      * Default queue is blocking with size 8
      */
     Input inputControl{true, *this, "inputControl", Input::Type::SReceiver, true, 8, {{DatatypeEnum::CameraControl, false}}};
+
+    /**
+     * Input for mocking 'isp' functionality.
+     *
+     * Default queue is blocking with size 8
+     */
+    Input mockIsp{*this, "mockIsp", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 encoded (grayscale) frame data.

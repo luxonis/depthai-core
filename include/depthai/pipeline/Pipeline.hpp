@@ -55,6 +55,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Access to nodes
     std::vector<std::shared_ptr<Node>> getAllNodes() const;
     std::shared_ptr<Node> getNode(Node::Id id) const;
+    std::vector<std::shared_ptr<Node>> getSourceNodes();
+
 
     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
     nlohmann::json serializeToJson() const;

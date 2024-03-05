@@ -727,5 +727,23 @@ void ColorCamera::setRawOutputPacked(bool packed) {
     properties.rawPacked = packed;
 }
 
+bool ColorCamera::isSourceNode() const {
+    return true;
+}
+
+NodeRecordParams ColorCamera::getNodeRecordParams() const {
+    if(properties.boardSocket == CameraBoardSocket::AUTO) {
+        throw std::runtime_error("For record and replay functionality, board socket must be specified (ColorCamera).");
+    }
+    return NodeRecordParams{"ColorCamera" + toString(properties.boardSocket), true};
+}
+
+ColorCamera::Output& ColorCamera::getRecordOutput() {
+    return isp;
+}
+ColorCamera::Input& ColorCamera::getReplayInput() {
+    return mockIsp;
+}
+
 }  // namespace node
 }  // namespace dai

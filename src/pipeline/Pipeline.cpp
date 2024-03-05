@@ -111,6 +111,16 @@ std::vector<std::shared_ptr<Node>> PipelineImpl::getAllNodes() const {
     return allNodes;
 }
 
+std::vector<std::shared_ptr<Node>> PipelineImpl::getSourceNodes() {
+    std::vector<std::shared_ptr<Node>> sourceNodes;
+    for(auto& node : nodes) {
+        if(node->isSourceNode()) {
+            sourceNodes.push_back(node);
+        }
+    }
+    return sourceNodes;
+}
+
 void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type) const {
     // Set schema
     schema = getPipelineSchema(type);
