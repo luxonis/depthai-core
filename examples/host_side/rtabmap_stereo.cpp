@@ -201,15 +201,15 @@ int main() {
         cv::putText(final_img, zPos.str(), cv::Point(10, 90), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
 
         std::stringstream rollPos;
-        rollPos << "Roll: " << roll << " deg";
+        rollPos << "Roll: " << roll << " rad";
         cv::putText(final_img, rollPos.str(), cv::Point(10, 110), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
 
         std::stringstream pitchPos;
-        pitchPos << "Pitch: " << pitch << " deg";
+        pitchPos << "Pitch: " << pitch << " rad";
         cv::putText(final_img, pitchPos.str(), cv::Point(10, 130), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
 
         std::stringstream yawPos;
-        yawPos << "Yaw: " << yaw << " deg";
+        yawPos << "Yaw: " << yaw << " rad";
         cv::putText(final_img, yawPos.str(), cv::Point(10, 150), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
 
         cv::imshow("keypoints", final_img);
