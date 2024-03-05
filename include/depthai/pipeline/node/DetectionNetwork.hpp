@@ -17,6 +17,32 @@ namespace node {
  */
 class DetectionNetwork : public NodeGroup {
    public:
+    enum class NNArchiveFormat : uint8_t {
+        /**
+         * Try to guess the file format from the file extension.
+         * .json -> RAW_FS
+         * everything else use libarchive to guess the format
+         * supported formats are: https://github.com/libarchive/libarchive?tab=readme-ov-file#supported-formats
+         */
+        AUTO = 0,
+        /**
+         * Raw host filesystem. Just pass the path to the json config file. The BLOB should be located in the same folder.
+         */
+        RAW_FS,
+        /**
+         * Force libarchive to treat the file as .tar
+         */
+        TAR,
+        /**
+         * Force libarchive to treat the file as .tar.gz
+         */
+        TAR_GZ,
+        /**
+         * Force libarchive to treat the file as .tar.xz
+         */
+        TAR_XZ,
+    };
+
     [[nodiscard]] static std::shared_ptr<DetectionNetwork> create() {
         auto n = std::make_shared<DetectionNetwork>();
         n->build();
@@ -59,7 +85,7 @@ class DetectionNetwork : public NodeGroup {
      * @throws Error if file doesn't exist or isn't a valid network blob.
      * @param path Path to network blob
      */
-    void setNNArchive(const dai::Path& path);
+    void setNNArchive(const dai::Path& path, const NNArchiveFormat format = NNArchiveFormat::AUTO);
 
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**

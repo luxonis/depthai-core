@@ -7,9 +7,13 @@
 #include <nlohmann/json.hpp>
 #include <openvino/BlobReader.hpp>
 
+#include "archive.h"
+#include "archive_entry.h"
+
 // internal
 #include "depthai/common/DetectionNetworkType.hpp"
 #include "json_types/Generators.hpp"
+#include "utility/Logging.hpp"
 
 namespace dai {
 namespace node {
@@ -35,18 +39,69 @@ void DetectionNetwork::build() {
 // Neural Network API
 // -------------------------------------------------------------------
 
-void DetectionNetwork::setNNArchive(const dai::Path& path) {
-    // Should we allow to specify the format separately also?
-    // in a function param using an enum with default AUTO which does the below?
-    if(false /* path ends in .json */) {
-        // check in same directory for the file specified in path
-        // should we handle absolute paths here differently without looking into same directory?
-    } else if(false /* path ends in .tar */) {
-        // just get the file handle using libarchive, don't need to decompress anything.
-    } else if(false /* path ends in .tar.xz */) {
-        // decompress maybe libarchive has some magic handling of different file endings? try it.
-    } else if(false /* path ends in .tar.gz */) {
-        // decompress
+// TODO support setting NNArchive from memory location
+void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat format) {
+    const auto filepath = path.string();
+#if defined(_WIN32) && defined(_MSC_VER)
+    const auto separator = "\\";
+#else
+    const auto separator = "/";
+#endif
+    std::string blobPath;
+    const size_t lastSlashIndex = filepath.find_last_of(separator);
+    std::string archiveName;
+    if(std::string::npos == lastSlashIndex) {
+        archiveName = filepath;
+    } else {
+        archiveName = filepath.substr(lastSlashIndex + 1);
+    }
+    std::cout << "ARCHIVE NAME: " << archiveName << std::endl;
+    bool isJson = format == NNArchiveFormat::RAW_FS;
+    if(format == NNArchiveFormat::AUTO) {
+        const auto pointIndex = filepath.find_last_of(".");
+        if(pointIndex != std::string::npos) {
+            isJson = filepath.substr(filepath.find_last_of(".") + 1) == "json";
+        }
+    }
+    if(!isJson) {
+        const auto a = archive_read_new();
+        switch(format) {
+            case NNArchiveFormat::AUTO:
+                archive_read_support_filter_all(a);
+                archive_read_support_format_all(a);
+                break;
+            case NNArchiveFormat::TAR:
+                archive_read_support_filter_none(a);
+                archive_read_support_format_tar(a);
+                break;
+            case NNArchiveFormat::TAR_GZ:
+                archive_read_support_filter_gzip(a);
+                archive_read_support_format_tar(a);
+                break;
+            case NNArchiveFormat::TAR_XZ:
+                archive_read_support_filter_xz(a);
+                archive_read_support_format_tar(a);
+                break;
+            case NNArchiveFormat::RAW_FS:
+                throw std::runtime_error("");
+                break;
+        }
+        auto rc = archive_read_open_filename(a, filepath.c_str(), 10240);
+        if(rc != ARCHIVE_OK) {
+            throw std::runtime_error(fmt::format("Error when decompressing {}.", filepath));
+        }
+        struct archive_entry* entry;
+        while(archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+            std::string entryName(archive_entry_pathname(entry));
+            printf("COMPRESSED ENTRY: %s\n", archive_entry_pathname(entry));
+            if(entryName == archiveName + ".json") {
+                std::cout << "FOUND JSON FILE: " << entryName << std::endl;
+            }
+        }
+        rc = archive_read_free(a);  // Note 3
+        if(rc != ARCHIVE_OK) {
+            logger::warn("couldn't free archive while handling {}.", filepath);
+        }
     }
     std::cout << "USING PATH:" << path.string() << std::endl;
     std::ifstream jsonStream(path);
@@ -60,14 +115,6 @@ void DetectionNetwork::setNNArchive(const dai::Path& path) {
     const auto stage = config.stages[0];
     std::cout << "ARCHIVE NAME WAS: " << stage.metadata.name << std::endl;
     std::cout << "ARCHIVE PATH WAS: " << stage.metadata.path << std::endl;
-#if defined(_WIN32) && defined(_MSC_VER)
-    const auto separator = "\\";
-#else
-    const auto separator = "/";
-#endif
-    std::string blobPath;
-    const auto filepath = path.string();
-    const size_t lastSlashIndex = filepath.find_last_of(separator);
     if(std::string::npos == lastSlashIndex) {
         blobPath = stage.metadata.path;
     } else {
@@ -76,28 +123,28 @@ void DetectionNetwork::setNNArchive(const dai::Path& path) {
         blobPath = basedir + separator + stage.metadata.path;
     }
     std::cout << "BLOB PATH: " << blobPath << std::endl;
+    // TODO handle compressed streams here...
     setBlobPath(blobPath);
 
     // TODO is NN Archive valid without this? why is this optional?
     if(!stage.heads) {
-    throw std::runtime_error(
-                fmt::format("Heads array is not defined in the NN Archive config file.");
+        throw std::runtime_error("Heads array is not defined in the NN Archive config file.");
     }
     // TODO for now get info from heads[0] but in the future correctly support multiple outputs and mapped heads
     if((*stage.heads).size() != 1) {
-    throw std::runtime_error(
-        fmt::format("There should be exactly one head per stage in the NN Archive config file defined. Found {} stages.", (*stage.heads).size()));
+        throw std::runtime_error(
+            fmt::format("There should be exactly one head per stage in the NN Archive config file defined. Found {} stages.", (*stage.heads).size()));
     }
     const auto headMeta = (*stage.heads)[0].metadata;
     if(headMeta.family == dai::json_types::Family::OBJECT_DETECTION_YOLO) {
-    detectionParser->properties.parser.nnFamily = DetectionNetworkType::YOLO;
+        detectionParser->properties.parser.nnFamily = DetectionNetworkType::YOLO;
     }
     detectionParser->setNumClasses(headMeta.nClasses);
     if(headMeta.iouThreshold) {
-    detectionParser->properties.parser.iouThreshold = *headMeta.iouThreshold;
+        detectionParser->properties.parser.iouThreshold = *headMeta.iouThreshold;
     }
     if(headMeta.confThreshold) {
-    setConfidenceThreshold(*headMeta.confThreshold);
+        setConfidenceThreshold(*headMeta.confThreshold);
     }
     detectionParser->setCoordinateSize(4);
 }
