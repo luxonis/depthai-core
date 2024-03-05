@@ -53,8 +53,61 @@ void DetectionNetwork::setNNArchive(const dai::Path& path) {
     nlohmann::json json = nlohmann::json::parse(jsonStream);
     dai::json_types::NnArchiveConfig config;
     dai::json_types::from_json(json, config);
-    std::cout << "ARCHIVE NAME WAS: " << config.stages[0].metadata.name << std::endl;
-    std::cout << "ARCHIVE PATH WAS: " << config.stages[0].metadata.path << std::endl;
+    if(config.stages.size() != 1) {
+        throw std::runtime_error(
+            fmt::format("There should be exactly one stage in the NN Archive config file defined. Found {} stages.", config.stages.size()));
+    }
+    const auto stage = config.stages[0];
+    std::cout << "ARCHIVE NAME WAS: " << stage.metadata.name << std::endl;
+    std::cout << "ARCHIVE PATH WAS: " << stage.metadata.path << std::endl;
+#if defined(_WIN32) && defined(_MSC_VER)
+    const auto separator = "\\";
+#else
+    const auto separator = "/";
+#endif
+    std::string blobPath;
+    const auto filepath = path.string();
+    const size_t lastSlashIndex = filepath.find_last_of(separator);
+    if(std::string::npos == lastSlashIndex) {
+        blobPath = stage.metadata.path;
+    } else {
+        const auto basedir = filepath.substr(0, lastSlashIndex + 1);
+        std::cout << "BASE DIR: " << basedir << std::endl;
+        blobPath = basedir + separator + stage.metadata.path;
+    }
+    std::cout << "BLOB PATH: " << blobPath << std::endl;
+    setBlobPath(blobPath);
+
+    // TODO for now get info from heads[0] but in the future correctly support multiple outputs and mapped heads
+    if(stage.heads) {
+        if((*stage.heads).size() != 1) {
+            throw std::runtime_error(
+                fmt::format("There should be exactly one head per stage in the NN Archive config file defined. Found {} stages.", (*stage.heads).size()));
+        }
+        const auto headMeta = (*stage.heads)[0].metadata;
+        if(headMeta.family == dai::json_types::Family::OBJECT_DETECTION_YOLO) {
+            detectionParser->properties.parser.nnFamily = DetectionNetworkType::YOLO;
+        }
+        detectionParser->setNumClasses(headMeta.nClasses);
+        if(headMeta.iouThreshold) {
+            detectionParser->properties.parser.iouThreshold = *headMeta.iouThreshold;
+        }
+        if(headMeta.confThreshold) {
+            setConfidenceThreshold(*headMeta.confThreshold);
+        }
+    }
+
+    /*
+    // TODO remove this
+    detectionParser->properties.parser.nnFamily = DetectionNetworkType::YOLO;
+    detectionParser->properties.parser.iouThreshold = 0.5f;
+    setConfidenceThreshold(0.5f);
+
+    // TODO remove this
+    detectionParser->setCoordinateSize(4);
+    detectionParser->setAnchors({10, 14, 23, 27, 37, 58, 81, 82, 135, 169, 344, 319});
+    detectionParser->setAnchorMasks({{"side26", {1, 2, 3}}, {"side13", {3, 4, 5}}});
+    */
 }
 
 void DetectionNetwork::setBlobPath(const dai::Path& path) {

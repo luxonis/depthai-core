@@ -25,19 +25,12 @@ static std::atomic<bool> syncNN{true};
 int main(int argc, char** argv) {
     using namespace std;
     using namespace std::chrono;
-    std::string nnPath(BLOB_PATH);
 
-    // If path to blob specified, use that
-    if(argc > 1) {
-        nnPath = std::string(argv[1]);
-    }
-
-    if(argc < 3) {
+    if(argc < 2) {
         throw std::invalid_argument("You should provide 2 arguments for this example.");
     }
-
-    // Print which blob we are using
-    printf("Using blob at path: %s\n", nnPath.c_str());
+    const std::string nnArchiveJsonPath(argv[1]);
+    printf("Using archive at path: %s\n", nnArchiveJsonPath.c_str());
 
     // Create pipeline
     dai::Pipeline pipeline;
@@ -52,7 +45,9 @@ int main(int argc, char** argv) {
     nnOut->setStreamName("detections");
 
     // Properties
-    camRgb->setPreviewSize(416, 416);
+    // TODO warn / fail fast if inputs don't match the ones specified in the NNArchive .json file???
+    // camRgb->setPreviewSize(416, 416);
+    camRgb->setPreviewSize(640, 640);
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     camRgb->setInterleaved(false);
     camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
@@ -67,10 +62,17 @@ int main(int argc, char** argv) {
     detectionNetwork->setAnchorMasks({{"side26", {1, 2, 3}}, {"side13", {3, 4, 5}}});
     detectionNetwork->setIouThreshold(0.5f);
     detectionNetwork->setBlobPath(nnPath);
+    */
+    detectionNetwork->setNNArchive(nnArchiveJsonPath);
+
+    // TODO make it work without this
+    // detectionNetwork->setCoordinateSize(4);
+    // detectionNetwork->setAnchors({10, 14, 23, 27, 37, 58, 81, 82, 135, 169, 344, 319});
+    // detectionNetwork->setAnchorMasks({{"side26", {1, 2, 3}}, {"side13", {3, 4, 5}}});
+
+    // Will we get this from NN Archive also?
     detectionNetwork->setNumInferenceThreads(2);
     detectionNetwork->input.setBlocking(false);
-    */
-    detectionNetwork->setNNArchive(std::string(argv[2]));
 
     // Linking
     camRgb->preview.link(detectionNetwork->input);
