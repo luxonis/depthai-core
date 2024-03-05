@@ -280,6 +280,10 @@ dai_add_example(rtabmap_rgbd host_side/rtabmap_rgbd.cpp OFF)
 target_link_options(rtabmap_rgbd PRIVATE "-Wl,--disable-new-dtags")
 target_link_libraries(rtabmap_rgbd PRIVATE rtabmap::core)
 
+dai_add_example(rtabmap_stereo host_side/rtabmap_stereo.cpp OFF)
+target_link_options(rtabmap_stereo PRIVATE "-Wl,--disable-new-dtags")
+target_link_libraries(rtabmap_stereo PRIVATE rtabmap::core)
+
 # ImageManip
 dai_add_example(image_manip ImageManip/image_manip_example.cpp ON)
 dai_add_example(image_manip_rotate ImageManip/image_manip_rotate.cpp ON)
