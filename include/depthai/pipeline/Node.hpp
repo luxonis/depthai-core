@@ -217,7 +217,7 @@ class Node : public std::enable_shared_from_this<Node> {
 
        public:
         enum class Type { SReceiver, MReceiver };
-        std::string group = "";
+        std::string group;
         std::string name;
         Type type;
         bool defaultBlocking{true};

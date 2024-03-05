@@ -3,11 +3,6 @@
 
 // Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
-#include "depthai/pipeline/node/test/MyConsumer.hpp"
-#include "depthai/pipeline/node/test/MyProducer.hpp"
-
-// shared
-#include "depthai/properties/XLinkOutProperties.hpp"
 
 // project
 #include "depthai/pipeline/ThreadedNode.hpp"
