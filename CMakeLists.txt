@@ -100,7 +100,7 @@ set(DEPTHAI_SHARED_LOCAL "" CACHE STRING "Path to local depthai-shared source to
 set(DEPTHAI_BOOTLOADER_SHARED_LOCAL "" CACHE STRING "Path to local depthai-bootloader-shared source to use instead of submodule")
 
 # Enable backward stack printing on crash
-if(ANDROID)
+if(ANDROID OR EMSCRIPTEN)
     # Backward not supported currently on Android
     set(DEPTHAI_ENABLE_BACKWARD OFF CACHE BOOL "" FORCE)
 else()
@@ -649,6 +649,10 @@ endif()
 ########################
 if (DEPTHAI_BUILD_EXAMPLES)
     add_subdirectory(examples)
+endif()
+
+if (EMSCRIPTEN)
+    add_subdirectory(bindings/js)
 endif()
 
 ########################
