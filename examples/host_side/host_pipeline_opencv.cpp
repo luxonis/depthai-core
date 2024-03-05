@@ -32,7 +32,8 @@ class Display : public dai::NodeCRTP<dai::ThreadedNode, Display> {
                 auto key = cv::waitKey(1);
                 if(key == 'q') {
                     stop();
-                }            }
+                }
+            }
         }
         fmt::print("Display node stopped\n");
     }
