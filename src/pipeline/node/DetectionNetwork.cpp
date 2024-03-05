@@ -78,36 +78,28 @@ void DetectionNetwork::setNNArchive(const dai::Path& path) {
     std::cout << "BLOB PATH: " << blobPath << std::endl;
     setBlobPath(blobPath);
 
-    // TODO for now get info from heads[0] but in the future correctly support multiple outputs and mapped heads
-    if(stage.heads) {
-        if((*stage.heads).size() != 1) {
-            throw std::runtime_error(
-                fmt::format("There should be exactly one head per stage in the NN Archive config file defined. Found {} stages.", (*stage.heads).size()));
-        }
-        const auto headMeta = (*stage.heads)[0].metadata;
-        if(headMeta.family == dai::json_types::Family::OBJECT_DETECTION_YOLO) {
-            detectionParser->properties.parser.nnFamily = DetectionNetworkType::YOLO;
-        }
-        detectionParser->setNumClasses(headMeta.nClasses);
-        if(headMeta.iouThreshold) {
-            detectionParser->properties.parser.iouThreshold = *headMeta.iouThreshold;
-        }
-        if(headMeta.confThreshold) {
-            setConfidenceThreshold(*headMeta.confThreshold);
-        }
+    // TODO is NN Archive valid without this? why is this optional?
+    if(!stage.heads) {
+    throw std::runtime_error(
+                fmt::format("Heads array is not defined in the NN Archive config file.");
     }
-
-    /*
-    // TODO remove this
+    // TODO for now get info from heads[0] but in the future correctly support multiple outputs and mapped heads
+    if((*stage.heads).size() != 1) {
+    throw std::runtime_error(
+        fmt::format("There should be exactly one head per stage in the NN Archive config file defined. Found {} stages.", (*stage.heads).size()));
+    }
+    const auto headMeta = (*stage.heads)[0].metadata;
+    if(headMeta.family == dai::json_types::Family::OBJECT_DETECTION_YOLO) {
     detectionParser->properties.parser.nnFamily = DetectionNetworkType::YOLO;
-    detectionParser->properties.parser.iouThreshold = 0.5f;
-    setConfidenceThreshold(0.5f);
-
-    // TODO remove this
+    }
+    detectionParser->setNumClasses(headMeta.nClasses);
+    if(headMeta.iouThreshold) {
+    detectionParser->properties.parser.iouThreshold = *headMeta.iouThreshold;
+    }
+    if(headMeta.confThreshold) {
+    setConfidenceThreshold(*headMeta.confThreshold);
+    }
     detectionParser->setCoordinateSize(4);
-    detectionParser->setAnchors({10, 14, 23, 27, 37, 58, 81, 82, 135, 169, 344, 319});
-    detectionParser->setAnchorMasks({{"side26", {1, 2, 3}}, {"side13", {3, 4, 5}}});
-    */
 }
 
 void DetectionNetwork::setBlobPath(const dai::Path& path) {
