@@ -2,6 +2,33 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.24.0 (2024-02-02)
+-----------
+* New nodes and messages:
+* Sync node - syncs multiple inputs based on the timestamp, outputs a message group message
+* Demux node - demultiplexes message group in multiple messages
+* Message group message - a new message that can contain a map of arbitrary depthai messages, it's the output of the sync node and input to the demux node
+* Encoded frame message - a new message specialized for encoded frames
+* New output for the VideoEncoder node (out) for the encoded frame message
+* Automatic crash dump retrieval for firmware crashes
+* Added setIrFloodLightIntensity and setIrLaserDotProjectorIntensity methods for setting the intensity normalized between 0 and 1
+* Added getConnectionInterfaces method to retrieve the list of available interfaces on a device
+* Added an option to cap maximum time for exposure when using auto exposure with setAutoExposureLimit
+* Initial integration for IMX283 and IMX462
+* Improve time-syncing between the host and device to achieve sub 300 us offset
+* Improved max FPS and image quality under low light for OV9282 and OV9782 #926 ,new ranges per resolution of:
+* THE_800_P: 1.687 .. 129.6 fps
+* THE_720_P: 1.687 .. 143.1 fps
+* THE_400_P: 1.687 .. 255.7 fps
+* Avoid overflow for XLink profiling #933
+* Improve XLink stability when using multiple devices luxonis/XLink#73
+* Fix a rare bug where the device would hand in the constructor #922
+* Fix a bug where XLinkIn didn't work correctly for very small and very large buffers
+* Fix a bug for running multiple stereo nodes with a shared input
+* On multi-input NeuralNetworks set the output NNData to the newest input timestamp (previously undefined)
+* Add NOC DDR usage reporting on DEPTHAI_LEVEL=info
+* Contributors: Alex Bougdan, Szabolcs Gergely, Martin Peterlin
+
 2.23.0 (2023-11-14)
 -----------
 * ImageManip - configurable interpolation type
