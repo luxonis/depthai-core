@@ -33,6 +33,7 @@
 #include "depthai/pipeline/datatype/ToFConfig.hpp"
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/Tracklets.hpp"
+#include "depthai/pipeline/datatype/TransformData.hpp"
 
 // shared
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
@@ -195,6 +196,9 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             break;
         case DatatypeEnum::MessageGroup:
             return parseDatatype<MessageGroup>(metadataStart, serializedObjectSize, data);
+            break;
+        case DatatypeEnum::TransformData:
+            return parseDatatype<TransformData>(metadataStart, serializedObjectSize, data);
             break;
     }
 

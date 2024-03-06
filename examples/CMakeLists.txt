@@ -276,13 +276,10 @@ dai_add_example(opencv_support host_side/opencv_support.cpp ON)
 dai_add_example(queue_add_callback host_side/queue_add_callback.cpp ON)
 dai_add_example(device_information host_side/device_information.cpp OFF)
 dai_add_example(device_logging host_side/device_logging.cpp OFF)
-dai_add_example(rtabmap_rgbd host_side/rtabmap_rgbd.cpp OFF)
-target_link_options(rtabmap_rgbd PRIVATE "-Wl,--disable-new-dtags")
-target_link_libraries(rtabmap_rgbd PRIVATE rtabmap::core)
 
-dai_add_example(rtabmap_stereo host_side/rtabmap_stereo.cpp OFF)
-target_link_options(rtabmap_stereo PRIVATE "-Wl,--disable-new-dtags")
-target_link_libraries(rtabmap_stereo PRIVATE rtabmap::core)
+dai_add_example(rtabmap_vio host_side/rtabmap_vio.cpp OFF)
+target_link_options(rtabmap_vio PRIVATE "-Wl,--disable-new-dtags")
+target_link_libraries(rtabmap_vio PRIVATE rtabmap::core)
 
 # ImageManip
 dai_add_example(image_manip ImageManip/image_manip_example.cpp ON)

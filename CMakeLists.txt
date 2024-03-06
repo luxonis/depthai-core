@@ -267,6 +267,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/ToFConfig.cpp
     src/pipeline/datatype/BenchmarkReport.cpp
     src/pipeline/datatype/MessageGroup.cpp
+    src/pipeline/datatype/TransformData.cpp
     src/utility/H26xParsers.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
