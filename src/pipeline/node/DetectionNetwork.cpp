@@ -13,6 +13,8 @@
 // internal
 #include "depthai/common/DetectionNetworkType.hpp"
 #include "json_types/Generators.hpp"
+#include "utility/ArchiveUtil.hpp"
+#include "utility/ErrorMacros.hpp"
 #include "utility/Logging.hpp"
 
 namespace dai {
@@ -39,7 +41,6 @@ void DetectionNetwork::build() {
 // Neural Network API
 // -------------------------------------------------------------------
 
-// TODO support setting NNArchive from memory location
 void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat format) {
     const auto filepath = path.string();
 #if defined(_WIN32) && defined(_MSC_VER)
@@ -47,7 +48,6 @@ void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat
 #else
     const auto separator = "/";
 #endif
-    std::string blobPath;
     const size_t lastSlashIndex = filepath.find_last_of(separator);
     std::string archiveName;
     if(std::string::npos == lastSlashIndex) {
@@ -55,7 +55,6 @@ void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat
     } else {
         archiveName = filepath.substr(lastSlashIndex + 1);
     }
-    std::cout << "ARCHIVE NAME: " << archiveName << std::endl;
     bool isJson = format == NNArchiveFormat::RAW_FS;
     if(format == NNArchiveFormat::AUTO) {
         const auto pointIndex = filepath.find_last_of(".");
@@ -63,78 +62,64 @@ void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat
             isJson = filepath.substr(filepath.find_last_of(".") + 1) == "json";
         }
     }
-    if(!isJson) {
-        const auto a = archive_read_new();
-        switch(format) {
-            case NNArchiveFormat::AUTO:
-                archive_read_support_filter_all(a);
-                archive_read_support_format_all(a);
-                break;
-            case NNArchiveFormat::TAR:
-                archive_read_support_filter_none(a);
-                archive_read_support_format_tar(a);
-                break;
-            case NNArchiveFormat::TAR_GZ:
-                archive_read_support_filter_gzip(a);
-                archive_read_support_format_tar(a);
-                break;
-            case NNArchiveFormat::TAR_XZ:
-                archive_read_support_filter_xz(a);
-                archive_read_support_format_tar(a);
-                break;
-            case NNArchiveFormat::RAW_FS:
-                throw std::runtime_error("");
-                break;
-        }
-        auto rc = archive_read_open_filename(a, filepath.c_str(), 10240);
-        if(rc != ARCHIVE_OK) {
-            throw std::runtime_error(fmt::format("Error when decompressing {}.", filepath));
-        }
+    tl::optional<nlohmann::json> maybeJson;
+    if(isJson) {
+        std::ifstream jsonStream(path);
+        maybeJson = nlohmann::json::parse(jsonStream);
+    } else {
+        dai::utility::ArchiveUtil archive(filepath, format);
         struct archive_entry* entry;
-        while(archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+        bool foundJson = false;
+        while(archive_read_next_header(archive.getA(), &entry) == ARCHIVE_OK) {
             std::string entryName(archive_entry_pathname(entry));
-            printf("COMPRESSED ENTRY: %s\n", archive_entry_pathname(entry));
             if(entryName == archiveName + ".json") {
-                std::cout << "FOUND JSON FILE: " << entryName << std::endl;
+                foundJson = true;
+                const auto jsonBytes = archive.readEntry(entry);
+                maybeJson = nlohmann::json::parse(jsonBytes);
+                break;
             }
         }
-        rc = archive_read_free(a);  // Note 3
-        if(rc != ARCHIVE_OK) {
-            logger::warn("couldn't free archive while handling {}.", filepath);
-        }
+        daiCheckV(foundJson, "Didn't find the {}.json file inside the {} archive.", archiveName, filepath);
     }
-    std::cout << "USING PATH:" << path.string() << std::endl;
-    std::ifstream jsonStream(path);
-    nlohmann::json json = nlohmann::json::parse(jsonStream);
+    daiCheckIn(maybeJson);
+    const auto json = *maybeJson;
     dai::json_types::NnArchiveConfig config;
     dai::json_types::from_json(json, config);
-    if(config.stages.size() != 1) {
-        throw std::runtime_error(
-            fmt::format("There should be exactly one stage in the NN Archive config file defined. Found {} stages.", config.stages.size()));
-    }
+    daiCheckV(config.stages.size() == 1, "There should be exactly one stage in the NN Archive config file defined. Found {} stages.", config.stages.size());
     const auto stage = config.stages[0];
-    std::cout << "ARCHIVE NAME WAS: " << stage.metadata.name << std::endl;
-    std::cout << "ARCHIVE PATH WAS: " << stage.metadata.path << std::endl;
-    if(std::string::npos == lastSlashIndex) {
-        blobPath = stage.metadata.path;
+    if(isJson) {
+        std::string blobPath;
+        if(std::string::npos == lastSlashIndex) {
+            blobPath = stage.metadata.path;
+        } else {
+            const auto basedir = filepath.substr(0, lastSlashIndex + 1);
+            blobPath = basedir + separator + stage.metadata.path;
+        }
+        setBlobPath(blobPath);
     } else {
-        const auto basedir = filepath.substr(0, lastSlashIndex + 1);
-        std::cout << "BASE DIR: " << basedir << std::endl;
-        blobPath = basedir + separator + stage.metadata.path;
+        dai::utility::ArchiveUtil archive(filepath, format);
+        struct archive_entry* entry;
+        bool found = false;
+        while(archive_read_next_header(archive.getA(), &entry) == ARCHIVE_OK) {
+            std::string entryName(archive_entry_pathname(entry));
+            if(entryName == stage.metadata.path) {
+                found = true;
+                // TODO maybe do this async in another thread and check for call to setBlob() in between
+                // to interrupt extraction in the while loop and overwrite the blob
+                // Then startPipeline should wait for the extraction to finish
+                const auto blobBytes = archive.readEntry(entry);
+                setBlob(OpenVINO::Blob(blobBytes));
+                break;
+            }
+        }
+        daiCheckV(found, "No blob named {} found in NN Archive {}.", stage.metadata.path, filepath)
     }
-    std::cout << "BLOB PATH: " << blobPath << std::endl;
-    // TODO handle compressed streams here...
-    setBlobPath(blobPath);
-
     // TODO is NN Archive valid without this? why is this optional?
-    if(!stage.heads) {
-        throw std::runtime_error("Heads array is not defined in the NN Archive config file.");
-    }
+    daiCheck(stage.heads, "Heads array is not defined in the NN Archive config file.");
     // TODO for now get info from heads[0] but in the future correctly support multiple outputs and mapped heads
-    if((*stage.heads).size() != 1) {
-        throw std::runtime_error(
-            fmt::format("There should be exactly one head per stage in the NN Archive config file defined. Found {} stages.", (*stage.heads).size()));
-    }
+    daiCheckV((*stage.heads).size() == 1,
+              "There should be exactly one head per stage in the NN Archive config file defined. Found {} stages.",
+              (*stage.heads).size());
     const auto headMeta = (*stage.heads)[0].metadata;
     if(headMeta.family == dai::json_types::Family::OBJECT_DETECTION_YOLO) {
         detectionParser->properties.parser.nnFamily = DetectionNetworkType::YOLO;
