@@ -15,11 +15,13 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
+#include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
@@ -37,11 +39,13 @@
 #include "depthai-shared/datatype/RawBuffer.hpp"
 #include "depthai-shared/datatype/RawCameraControl.hpp"
 #include "depthai-shared/datatype/RawEdgeDetectorConfig.hpp"
+#include "depthai-shared/datatype/RawEncodedFrame.hpp"
 #include "depthai-shared/datatype/RawFeatureTrackerConfig.hpp"
 #include "depthai-shared/datatype/RawIMUData.hpp"
 #include "depthai-shared/datatype/RawImageManipConfig.hpp"
 #include "depthai-shared/datatype/RawImgDetections.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
+#include "depthai-shared/datatype/RawMessageGroup.hpp"
 #include "depthai-shared/datatype/RawNNData.hpp"
 #include "depthai-shared/datatype/RawSpatialImgDetections.hpp"
 #include "depthai-shared/datatype/RawSpatialLocationCalculatorConfig.hpp"
@@ -122,6 +126,10 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
             return parseDatatype<RawImgFrame>(metadataStart, serializedObjectSize, data);
             break;
 
+        case DatatypeEnum::EncodedFrame:
+            return parseDatatype<RawEncodedFrame>(metadataStart, serializedObjectSize, data);
+            break;
+
         case DatatypeEnum::NNData:
             return parseDatatype<RawNNData>(metadataStart, serializedObjectSize, data);
             break;
@@ -189,13 +197,15 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::ToFConfig:
             return parseDatatype<RawToFConfig>(metadataStart, serializedObjectSize, data);
             break;
+        case DatatypeEnum::MessageGroup:
+            return parseDatatype<RawMessageGroup>(metadataStart, serializedObjectSize, data);
+            break;
     }
 
     throw std::runtime_error("Bad packet, couldn't parse");
 }
 
-std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPacketDesc_t* const packet) {
-    DatatypeEnum objectType;
+std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPacketDesc_t* const packet, DatatypeEnum& objectType) {
     size_t serializedObjectSize;
     size_t bufferLength;
     std::tie(objectType, serializedObjectSize, bufferLength) = parseHeader(packet);
@@ -211,6 +221,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
 
         case DatatypeEnum::ImgFrame:
             return std::make_shared<ImgFrame>(parseDatatype<RawImgFrame>(metadataStart, serializedObjectSize, data));
+            break;
+
+        case DatatypeEnum::EncodedFrame:
+            return std::make_shared<EncodedFrame>(parseDatatype<RawEncodedFrame>(metadataStart, serializedObjectSize, data));
             break;
 
         case DatatypeEnum::NNData:
@@ -281,9 +295,16 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
         case DatatypeEnum::ToFConfig:
             return std::make_shared<ToFConfig>(parseDatatype<RawToFConfig>(metadataStart, serializedObjectSize, data));
             break;
+        case DatatypeEnum::MessageGroup:
+            return std::make_shared<MessageGroup>(parseDatatype<RawMessageGroup>(metadataStart, serializedObjectSize, data));
+            break;
     }
 
     throw std::runtime_error("Bad packet, couldn't parse (invalid message type)");
+}
+std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPacketDesc_t* const packet) {
+    DatatypeEnum objectType;
+    return parseMessageToADatatype(packet, objectType);
 }
 
 std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer& data) {
@@ -293,8 +314,8 @@ std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer&
     // 3. append datatype enum (4B LE)
     // 4. append size (4B LE) of serialized metadata
 
-    std::vector<std::uint8_t> metadata;
     DatatypeEnum datatype;
+    std::vector<std::uint8_t> metadata;
     data.serialize(metadata, datatype);
     uint32_t metadataSize = static_cast<uint32_t>(metadata.size());
 
