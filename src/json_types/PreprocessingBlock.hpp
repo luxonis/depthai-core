@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "tl/optional.hpp"
+#include <optional>
 #include <nlohmann/json.hpp>
 #include "helper.hpp"
 
@@ -51,19 +51,19 @@ namespace json_types {
         /**
          * If True, format is changed from interleaved to planar.
          */
-        tl::optional<bool> interleavedToPlanar;
+        std::optional<bool> interleavedToPlanar;
         /**
          * Mean values in channel order. Typically, this is BGR order.
          */
-        tl::optional<std::vector<double>> mean;
+        std::optional<std::vector<double>> mean;
         /**
          * If True, color channels are reversed (e.g. BGR to RGB or vice versa).
          */
-        tl::optional<bool> reverseChannels;
+        std::optional<bool> reverseChannels;
         /**
          * Standardization values in channel order. Typically, this is BGR order.
          */
-        tl::optional<std::vector<double>> scale;
+        std::optional<std::vector<double>> scale;
     };
 }
 }

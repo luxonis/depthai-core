@@ -85,15 +85,14 @@ void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat
     const auto json = *maybeJson;
     dai::json_types::NnArchiveConfig config;
     dai::json_types::from_json(json, config);
-    daiCheckV(config.stages.size() == 1, "There should be exactly one stage in the NN Archive config file defined. Found {} stages.", config.stages.size());
-    const auto stage = config.stages[0];
+    const auto model = config.model;
     if(isJson) {
         std::string blobPath;
         if(std::string::npos == lastSlashIndex) {
-            blobPath = stage.metadata.path;
+            blobPath = model.metadata.path;
         } else {
             const auto basedir = filepath.substr(0, lastSlashIndex + 1);
-            blobPath = basedir + separator + stage.metadata.path;
+            blobPath = basedir + separator + model.metadata.path;
         }
         setBlobPath(blobPath);
     } else {
@@ -102,7 +101,7 @@ void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat
         bool found = false;
         while(archive_read_next_header(archive.getA(), &entry) == ARCHIVE_OK) {
             std::string entryName(archive_entry_pathname(entry));
-            if(entryName == stage.metadata.path) {
+            if(entryName == model.metadata.path) {
                 found = true;
                 // TODO maybe do this async in another thread and check for call to setBlob() in between
                 // to interrupt extraction in the while loop and overwrite the blob
@@ -112,15 +111,14 @@ void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat
                 break;
             }
         }
-        daiCheckV(found, "No blob named {} found in NN Archive {}.", stage.metadata.path, filepath)
+        daiCheckV(found, "No blob named {} found in NN Archive {}.", model.metadata.path, filepath)
     }
     // TODO is NN Archive valid without this? why is this optional?
-    daiCheck(stage.heads, "Heads array is not defined in the NN Archive config file.");
+    daiCheck(model.heads, "Heads array is not defined in the NN Archive config file.");
     // TODO for now get info from heads[0] but in the future correctly support multiple outputs and mapped heads
-    daiCheckV((*stage.heads).size() == 1,
-              "There should be exactly one head per stage in the NN Archive config file defined. Found {} stages.",
-              (*stage.heads).size());
-    const auto headMeta = (*stage.heads)[0].metadata;
+    daiCheckV(
+        (*model.heads).size() == 1, "There should be exactly one head per model in the NN Archive config file defined. Found {} heads.", (*model.heads).size());
+    const auto headMeta = (*model.heads)[0].metadata;
     if(headMeta.family == dai::json_types::Family::OBJECT_DETECTION_YOLO) {
         detectionParser->properties.parser.nnFamily = DetectionNetworkType::YOLO;
     }

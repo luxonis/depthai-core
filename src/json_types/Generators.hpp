@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "tl/optional.hpp"
+#include <optional>
 #include <nlohmann/json.hpp>
 #include "helper.hpp"
 
@@ -68,6 +68,7 @@ namespace json_types {
     void to_json(json & j, const InputType & x);
 
     inline void from_json(const json & j, Metadata& x) {
+        x.anchors = get_stack_optional<std::vector<std::vector<std::vector<int64_t>>>>(j, "anchors");
         x.classes = j.at("classes").get<std::vector<std::string>>();
         x.confThreshold = get_stack_optional<double>(j, "conf_threshold");
         x.family = j.at("family").get<Family>();
@@ -77,14 +78,14 @@ namespace json_types {
         x.nKeypoints = get_stack_optional<int64_t>(j, "n_keypoints");
         x.nPrototypes = get_stack_optional<int64_t>(j, "n_prototypes");
         x.prototypeOutputName = get_stack_optional<std::string>(j, "prototype_output_name");
-        x.stride = get_stack_optional<int64_t>(j, "stride");
         x.subtype = get_stack_optional<ObjectDetectionSubtypeYolo>(j, "subtype");
-        x.anchors = get_stack_optional<std::vector<std::vector<int64_t>>>(j, "anchors");
         x.isSoftmax = get_stack_optional<bool>(j, "is_softmax");
+        x.postprocessorPath = get_stack_optional<std::string>(j, "postprocessor_path");
     }
 
     inline void to_json(json & j, const Metadata & x) {
         j = json::object();
+        j["anchors"] = x.anchors;
         j["classes"] = x.classes;
         j["conf_threshold"] = x.confThreshold;
         j["family"] = x.family;
@@ -94,20 +95,17 @@ namespace json_types {
         j["n_keypoints"] = x.nKeypoints;
         j["n_prototypes"] = x.nPrototypes;
         j["prototype_output_name"] = x.prototypeOutputName;
-        j["stride"] = x.stride;
         j["subtype"] = x.subtype;
-        j["anchors"] = x.anchors;
         j["is_softmax"] = x.isSoftmax;
+        j["postprocessor_path"] = x.postprocessorPath;
     }
 
     inline void from_json(const json & j, Head& x) {
-        x.headId = j.at("head_id").get<std::string>();
         x.metadata = j.at("metadata").get<Metadata>();
     }
 
     inline void to_json(json & j, const Head & x) {
         j = json::object();
-        j["head_id"] = x.headId;
         j["metadata"] = x.metadata;
     }
 
@@ -156,14 +154,12 @@ namespace json_types {
 
     inline void from_json(const json & j, Output& x) {
         x.dtype = j.at("dtype").get<DataType>();
-        x.headIds = j.at("head_ids").get<std::vector<std::string>>();
         x.name = j.at("name").get<std::string>();
     }
 
     inline void to_json(json & j, const Output & x) {
         j = json::object();
         j["dtype"] = x.dtype;
-        j["head_ids"] = x.headIds;
         j["name"] = x.name;
     }
 
@@ -184,15 +180,13 @@ namespace json_types {
 
     inline void from_json(const json & j, NnArchiveConfig& x) {
         x.configVersion = j.at("config_version").get<ConfigVersion>();
-        x.connections = get_stack_optional<std::vector<std::string>>(j, "connections");
-        x.stages = j.at("stages").get<std::vector<Model>>();
+        x.model = j.at("model").get<Model>();
     }
 
     inline void to_json(json & j, const NnArchiveConfig & x) {
         j = json::object();
         j["config_version"] = x.configVersion;
-        j["connections"] = x.connections;
-        j["stages"] = x.stages;
+        j["model"] = x.model;
     }
 
     inline void from_json(const json & j, ConfigVersion & x) {
@@ -209,6 +203,7 @@ namespace json_types {
 
     inline void from_json(const json & j, Family & x) {
         if (j == "Classification") x = Family::CLASSIFICATION;
+        else if (j == "InstanceSegmentationYOLO") x = Family::INSTANCE_SEGMENTATION_YOLO;
         else if (j == "ObjectDetectionSSD") x = Family::OBJECT_DETECTION_SSD;
         else if (j == "ObjectDetectionYOLO") x = Family::OBJECT_DETECTION_YOLO;
         else if (j == "Segmentation") x = Family::SEGMENTATION;
@@ -218,6 +213,7 @@ namespace json_types {
     inline void to_json(json & j, const Family & x) {
         switch (x) {
             case Family::CLASSIFICATION: j = "Classification"; break;
+            case Family::INSTANCE_SEGMENTATION_YOLO: j = "InstanceSegmentationYOLO"; break;
             case Family::OBJECT_DETECTION_SSD: j = "ObjectDetectionSSD"; break;
             case Family::OBJECT_DETECTION_YOLO: j = "ObjectDetectionYOLO"; break;
             case Family::SEGMENTATION: j = "Segmentation"; break;

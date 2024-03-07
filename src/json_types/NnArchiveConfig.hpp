@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "tl/optional.hpp"
+#include <optional>
 #include <nlohmann/json.hpp>
 #include "helper.hpp"
 
@@ -28,12 +28,8 @@ namespace json_types {
      *
      * @type config_version: str
      * @ivar config_version: Static variable representing the version of the config scheme.
-     * @type stages: list
-     * @ivar stages: List of Model objects each representing a stage in the model (list of
-     * one element for single-stage models).
-     * @type connections: list
-     * @ivar connections: List of connections instructing how to connect multi stage models
-     * (empty for single-stage models).
+     * @type model: Model
+     * @ivar model: A Model object representing the neural network used in the archive.
      */
 
     using nlohmann::json;
@@ -44,12 +40,8 @@ namespace json_types {
      *
      * @type config_version: str
      * @ivar config_version: Static variable representing the version of the config scheme.
-     * @type stages: list
-     * @ivar stages: List of Model objects each representing a stage in the model (list of
-     * one element for single-stage models).
-     * @type connections: list
-     * @ivar connections: List of connections instructing how to connect multi stage models
-     * (empty for single-stage models).
+     * @type model: Model
+     * @ivar model: A Model object representing the neural network used in the archive.
      */
     struct NnArchiveConfig {
         /**
@@ -57,15 +49,9 @@ namespace json_types {
          */
         ConfigVersion configVersion;
         /**
-         * List of connections instructing how to connect multi stage models (empty for single-stage
-         * models).
+         * A Model object representing the neural network used in the archive.
          */
-        tl::optional<std::vector<std::string>> connections;
-        /**
-         * List of Model objects each representing a stage in the model (list of one element for
-         * single-stage models)
-         */
-        std::vector<Model> stages;
+        Model model;
     };
 }
 }

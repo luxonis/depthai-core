@@ -34,9 +34,6 @@ npx quicktype \
   --source-style multi-source \
   ../luxonis_ml_json_schema.json
 cd ..
-grep -rl 'std::optional' json_types | xargs -n 1 sed -i -e 's/std::optional/tl::optional/'
-grep -rl 'include <optional>' json_types | xargs -n 1 sed -i -e 's|include <optional>|include "tl/optional.hpp"|'
-perl -0777 -i -pe 's/    template <typename T>\n    struct adl_serializer<tl::optional<T>>.*\#endif/}\n#endif/s' json_types/helper.hpp
 rm -rf ../../src/json_types
 cp -r json_types ../../src/
 

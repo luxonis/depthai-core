@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "tl/optional.hpp"
+#include <optional>
 #include <nlohmann/json.hpp>
 #include "helper.hpp"
 
@@ -20,6 +20,8 @@
 namespace dai {
 namespace json_types {
     /**
+     * A Model object representing the neural network used in the archive.
+     *
      * Class defining a single-stage model config scheme.
      *
      * @type metadata: Metadata
@@ -36,6 +38,8 @@ namespace json_types {
     using nlohmann::json;
 
     /**
+     * A Model object representing the neural network used in the archive.
+     *
      * Class defining a single-stage model config scheme.
      *
      * @type metadata: Metadata
@@ -52,7 +56,7 @@ namespace json_types {
         /**
          * List of Head objects defining the model heads. If not defined, we assume a raw output.
          */
-        tl::optional<std::vector<Head>> heads;
+        std::optional<std::vector<Head>> heads;
         /**
          * List of Input objects defining the model inputs.
          */

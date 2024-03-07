@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "tl/optional.hpp"
+#include <optional>
 #include <nlohmann/json.hpp>
 #include "helper.hpp"
 
@@ -19,8 +19,10 @@ namespace json_types {
     /**
      * Represents head of a model.
      *
-     * @type head_id: str
-     * @ivar head_id: Unique head identifier.
+     * @type outputs: C{Union[List[str], Dict[str, Union[str, List]]]}
+     * @ivar outputs: A list of output names from the `outputs` block of the archive or a
+     * dictionary mapping DepthAI parser names needed for the head to output names. The
+     * referenced outputs will be used by the DepthAI parser.
      * @type metadata: HeadMetadata
      * @ivar metadata: Parameters required by head to run postprocessing.
      */
@@ -30,16 +32,14 @@ namespace json_types {
     /**
      * Represents head of a model.
      *
-     * @type head_id: str
-     * @ivar head_id: Unique head identifier.
+     * @type outputs: C{Union[List[str], Dict[str, Union[str, List]]]}
+     * @ivar outputs: A list of output names from the `outputs` block of the archive or a
+     * dictionary mapping DepthAI parser names needed for the head to output names. The
+     * referenced outputs will be used by the DepthAI parser.
      * @type metadata: HeadMetadata
      * @ivar metadata: Parameters required by head to run postprocessing.
      */
     struct Head {
-        /**
-         * Unique head identifier.
-         */
-        std::string headId;
         /**
          * Parameters required by head to run postprocessing.
          */

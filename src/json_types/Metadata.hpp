@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "tl/optional.hpp"
+#include <optional>
 #include <nlohmann/json.hpp>
 #include "helper.hpp"
 
@@ -41,8 +41,6 @@ namespace json_types {
      *
      * @type family: str
      * @ivar family: Decoding family.
-     * @type anchors: list
-     * @ivar anchors: Predefined bounding boxes of different sizes and aspect ratios.
      *
      * Metadata for segmentation head.
      *
@@ -57,6 +55,14 @@ namespace json_types {
      * @ivar family: Decoding family.
      * @type is_softmax: bool
      * @ivar is_softmax: True, if output is already softmaxed.
+     *
+     * Metadata for YOLO instance segmentation head.
+     *
+     * @type family: str
+     * @ivar family: Decoding family.
+     * @type postprocessor_path: str
+     * @ivar postprocessor_path: Path to the secondary executable used in YOLO instance
+     * segmentation.
      */
 
     using nlohmann::json;
@@ -81,8 +87,6 @@ namespace json_types {
      *
      * @type family: str
      * @ivar family: Decoding family.
-     * @type anchors: list
-     * @ivar anchors: Predefined bounding boxes of different sizes and aspect ratios.
      *
      * Metadata for segmentation head.
      *
@@ -97,8 +101,22 @@ namespace json_types {
      * @ivar family: Decoding family.
      * @type is_softmax: bool
      * @ivar is_softmax: True, if output is already softmaxed.
+     *
+     * Metadata for YOLO instance segmentation head.
+     *
+     * @type family: str
+     * @ivar family: Decoding family.
+     * @type postprocessor_path: str
+     * @ivar postprocessor_path: Path to the secondary executable used in YOLO instance
+     * segmentation.
      */
     struct Metadata {
+        /**
+         * Predefined bounding boxes of different sizes and aspect ratios. The innermost lists are
+         * length 2 tuples of box sizes. The middle lists are anchors for each output. The outmost
+         * lists go from smallest to largest output.
+         */
+        std::optional<std::vector<std::vector<std::vector<int64_t>>>> anchors;
         /**
          * Names of object classes recognized by the model.
          */
@@ -106,7 +124,7 @@ namespace json_types {
         /**
          * Confidence score threshold above which a detected object is considered valid.
          */
-        tl::optional<double> confThreshold;
+        std::optional<double> confThreshold;
         /**
          * Decoding family.
          */
@@ -114,11 +132,11 @@ namespace json_types {
         /**
          * Non-max supression threshold limiting boxes intersection.
          */
-        tl::optional<double> iouThreshold;
+        std::optional<double> iouThreshold;
         /**
          * Maximum detections per image.
          */
-        tl::optional<int64_t> maxDet;
+        std::optional<int64_t> maxDet;
         /**
          * Number of object classes recognized by the model.
          */
@@ -126,31 +144,27 @@ namespace json_types {
         /**
          * Number of keypoints per bbox if provided.
          */
-        tl::optional<int64_t> nKeypoints;
+        std::optional<int64_t> nKeypoints;
         /**
          * Number of prototypes per bbox if provided.
          */
-        tl::optional<int64_t> nPrototypes;
+        std::optional<int64_t> nPrototypes;
         /**
          * Output node containing prototype information.
          */
-        tl::optional<std::string> prototypeOutputName;
-        /**
-         * Step size at which the filter (or kernel) moves across the input data during convolution.
-         */
-        tl::optional<int64_t> stride;
+        std::optional<std::string> prototypeOutputName;
         /**
          * YOLO family decoding subtype (e.g. v5, v6, v7 etc.).
          */
-        tl::optional<ObjectDetectionSubtypeYolo> subtype;
-        /**
-         * Predefined bounding boxes of different sizes and aspect ratios.
-         */
-        tl::optional<std::vector<std::vector<int64_t>>> anchors;
+        std::optional<ObjectDetectionSubtypeYolo> subtype;
         /**
          * True, if output is already softmaxed.
          */
-        tl::optional<bool> isSoftmax;
+        std::optional<bool> isSoftmax;
+        /**
+         * Path to the secondary executable used in YOLO instance segmentation.
+         */
+        std::optional<std::string> postprocessorPath;
     };
 }
 }

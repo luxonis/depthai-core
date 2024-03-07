@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "tl/optional.hpp"
+#include <optional>
 #include <nlohmann/json.hpp>
 
 #include <sstream>
@@ -47,16 +47,16 @@ namespace json_types {
         return get_heap_optional<T>(j, property.data());
     }
     template <typename T>
-    inline tl::optional<T> get_stack_optional(const json & j, const char * property) {
+    inline std::optional<T> get_stack_optional(const json & j, const char * property) {
         auto it = j.find(property);
         if (it != j.end() && !it->is_null()) {
-            return j.at(property).get<tl::optional<T>>();
+            return j.at(property).get<std::optional<T>>();
         }
-        return tl::optional<T>();
+        return std::optional<T>();
     }
 
     template <typename T>
-    inline tl::optional<T> get_stack_optional(const json & j, std::string property) {
+    inline std::optional<T> get_stack_optional(const json & j, std::string property) {
         return get_stack_optional<T>(j, property.data());
     }
     #endif
@@ -74,6 +74,16 @@ namespace nlohmann {
 
         static std::shared_ptr<T> from_json(const json & j) {
             if (j.is_null()) return std::make_shared<T>(); else return std::make_shared<T>(j.get<T>());
+        }
+    };
+    template <typename T>
+    struct adl_serializer<std::optional<T>> {
+        static void to_json(json & j, const std::optional<T> & opt) {
+            if (!opt) j = nullptr; else j = *opt;
+        }
+
+        static std::optional<T> from_json(const json & j) {
+            if (j.is_null()) return std::make_optional<T>(); else return std::make_optional<T>(j.get<T>());
         }
     };
 }

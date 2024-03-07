@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include "tl/optional.hpp"
+#include <optional>
 #include <nlohmann/json.hpp>
 #include "helper.hpp"
 
@@ -16,6 +16,6 @@ namespace dai {
 namespace json_types {
     using nlohmann::json;
 
-    enum class Family : int { CLASSIFICATION, OBJECT_DETECTION_SSD, OBJECT_DETECTION_YOLO, SEGMENTATION };
+    enum class Family : int { CLASSIFICATION, INSTANCE_SEGMENTATION_YOLO, OBJECT_DETECTION_SSD, OBJECT_DETECTION_YOLO, SEGMENTATION };
 }
 }
