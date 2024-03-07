@@ -85,7 +85,7 @@ class DetectionNetwork : public NodeGroup {
      * @throws Error if file doesn't exist or isn't a valid network blob.
      * @param path Path to network blob
      */
-    void setNNArchive(const dai::Path& path, const NNArchiveFormat format = NNArchiveFormat::AUTO);
+    void setNNArchive(const dai::Path& path, NNArchiveFormat format = NNArchiveFormat::AUTO);
 
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**

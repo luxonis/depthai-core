@@ -44,9 +44,9 @@ void DetectionNetwork::build() {
 void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat format) {
     const auto filepath = path.string();
 #if defined(_WIN32) && defined(_MSC_VER)
-    const auto separator = "\\";
+    const char separator = '\\';
 #else
-    const auto separator = "/";
+    const char separator = '/';
 #endif
     const size_t lastSlashIndex = filepath.find_last_of(separator);
     std::string archiveName;
@@ -57,9 +57,9 @@ void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat
     }
     bool isJson = format == NNArchiveFormat::RAW_FS;
     if(format == NNArchiveFormat::AUTO) {
-        const auto pointIndex = filepath.find_last_of(".");
+        const auto pointIndex = filepath.find_last_of('.');
         if(pointIndex != std::string::npos) {
-            isJson = filepath.substr(filepath.find_last_of(".") + 1) == "json";
+            isJson = filepath.substr(filepath.find_last_of('.') + 1) == "json";
         }
     }
     std::optional<nlohmann::json> maybeJson;
@@ -68,7 +68,7 @@ void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat
         maybeJson = nlohmann::json::parse(jsonStream);
     } else {
         dai::utility::ArchiveUtil archive(filepath, format);
-        struct archive_entry* entry;
+        struct archive_entry* entry = nullptr;
         bool foundJson = false;
         while(archive_read_next_header(archive.getA(), &entry) == ARCHIVE_OK) {
             std::string entryName(archive_entry_pathname(entry));
@@ -97,13 +97,13 @@ void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat
         setBlobPath(blobPath);
     } else {
         dai::utility::ArchiveUtil archive(filepath, format);
-        struct archive_entry* entry;
+        struct archive_entry* entry = nullptr;
         bool found = false;
         while(archive_read_next_header(archive.getA(), &entry) == ARCHIVE_OK) {
             std::string entryName(archive_entry_pathname(entry));
             if(entryName == model.metadata.path) {
                 found = true;
-                // TODO maybe do this async in another thread and check for call to setBlob() in between
+                // TODO(jakgra) maybe do this async in another thread and check for call to setBlob() in between
                 // to interrupt extraction in the while loop and overwrite the blob
                 // Then startPipeline should wait for the extraction to finish
                 const auto blobBytes = archive.readEntry(entry);
@@ -113,21 +113,21 @@ void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat
         }
         daiCheckV(found, "No blob named {} found in NN Archive {}.", model.metadata.path, filepath)
     }
-    // TODO is NN Archive valid without this? why is this optional?
+    // TODO(jakgra) is NN Archive valid without this? why is this optional?
     daiCheck(model.heads, "Heads array is not defined in the NN Archive config file.");
-    // TODO for now get info from heads[0] but in the future correctly support multiple outputs and mapped heads
+    // TODO(jakgra) for now get info from heads[0] but in the future correctly support multiple outputs and mapped heads
     daiCheckV(
         (*model.heads).size() == 1, "There should be exactly one head per model in the NN Archive config file defined. Found {} heads.", (*model.heads).size());
     const auto headMeta = (*model.heads)[0].metadata;
     if(headMeta.family == dai::json_types::Family::OBJECT_DETECTION_YOLO) {
         detectionParser->properties.parser.nnFamily = DetectionNetworkType::YOLO;
     }
-    detectionParser->setNumClasses(headMeta.nClasses);
+    detectionParser->setNumClasses(static_cast<int>(headMeta.nClasses));
     if(headMeta.iouThreshold) {
-        detectionParser->properties.parser.iouThreshold = *headMeta.iouThreshold;
+        detectionParser->properties.parser.iouThreshold = static_cast<float>(*headMeta.iouThreshold);
     }
     if(headMeta.confThreshold) {
-        setConfidenceThreshold(*headMeta.confThreshold);
+        setConfidenceThreshold(static_cast<float>(*headMeta.confThreshold));
     }
     detectionParser->setCoordinateSize(4);
 }
