@@ -15,7 +15,7 @@ pcl::PointCloud<pcl::PointXYZ>::Ptr dai::PointCloudData::getPclData() const {
 
     for(unsigned int i = 0; i < size; i++) {
         cloud->points[i].x = dataPtr[i].x;
-        cloud->points[i].y = -dataPtr[i].y;
+        cloud->points[i].y = dataPtr[i].y;
         cloud->points[i].z = dataPtr[i].z;
     }
 
