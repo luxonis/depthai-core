@@ -1,3 +1,4 @@
+#pragma once
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {

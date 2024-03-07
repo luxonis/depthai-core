@@ -268,6 +268,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/BenchmarkReport.cpp
     src/pipeline/datatype/MessageGroup.cpp
     src/pipeline/datatype/TransformData.cpp
+    src/pipeline/datatype/RTABMapSensorData.cpp
     src/utility/H26xParsers.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
@@ -319,6 +320,7 @@ option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
 option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
 option(DEPTHAI_BUILD_DOCS "Build documentation - requires doxygen to be installed" OFF)
 option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
+option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" ON)
 
 # Specify support for FW
 option(DEPTHAI_ENABLE_DEVICE_FW "Enable MyriadX Device FW" ON)
@@ -614,6 +616,57 @@ if(DEPTHAI_OPENCV_SUPPORT)
 endif()
 
 ########################
+# RTABMap Support
+########################
+set(THIRDPARTY_RTABMAP_LIBRARIES "" CACHE STRING "Optional libraries to link RTABMap support, e.g. TBB::tbb")
+set(TARGET_RTABMAP_NAME ${PROJECT_NAME}-rtabmap)
+set(TARGET_RTABMAP_ALIAS rtabmap)
+if(DEPTHAI_RTABMAP_SUPPORT)
+    # Check if required libraries are available
+    set(RTABMAP_SUPPORT_AVAILABLE ${RTABMap_FOUND})
+
+    if(RTABMAP_SUPPORT_AVAILABLE)
+
+        # Add depthai-core-opencv library and depthai::core::opencv alias
+        add_library(${TARGET_RTABMAP_NAME} src/rtabmap/VIO.cpp)
+        add_library("${PROJECT_NAME}::${TARGET_RTABMAP_ALIAS}" ALIAS ${TARGET_RTABMAP_NAME})
+        # Specifies name of generated IMPORTED target (set to alias)
+        set_target_properties(${TARGET_RTABMAP_NAME} PROPERTIES EXPORT_NAME ${TARGET_RTABMAP_ALIAS})
+
+        # Add default flags
+        add_default_flags(${TARGET_RTABMAP_NAME})
+        add_flag(${TARGET_RTABMAP_NAME} -Wno-switch-enum)
+
+        target_link_options(${TARGET_RTABMAP_NAME} PRIVATE "-Wl,--disable-new-dtags")
+# target_link_libraries(rtabmap_vio PRIVATE rtabmap::core)
+        # Link to RTABMap (publically)
+        target_link_libraries(${TARGET_RTABMAP_NAME} PUBLIC rtabmap::core depthai::opencv ${THIRDPARTY_RTABMAP_LIBRARIES})
+
+        # Add public compile definition indicating that RTABMap support is available
+        set(DEPTHAI_HAVE_RTABMAP_SUPPORT ON)
+
+        # Specify that we are building target rtabmap
+        target_compile_definitions(${TARGET_RTABMAP_NAME} PUBLIC DEPTHAI_TARGET_RTABMAP)
+        target_compile_definitions(${TARGET_RTABMAP_NAME} PUBLIC DEPTHAI_HAVE_RTABMAP_SUPPORT)
+        # Add public dependency to depthai::core library
+        target_link_libraries(${TARGET_RTABMAP_NAME} PUBLIC ${TARGET_CORE_NAME})
+
+        # Add to clangformat target
+        if(COMMAND target_clangformat_setup)
+            target_clangformat_setup(${TARGET_RTABMAP_NAME} "")
+        endif()
+
+        # Add to list of targets to export and install
+        list(APPEND targets_to_export ${TARGET_RTABMAP_NAME})
+
+        message(STATUS "RTABMap and required libraries (${REQUIRED_RTABMAP_LIBRARIES}) found. RTABMap Support enabled")
+
+    else()
+        message(STATUS "RTABMap or required libraries (${REQUIRED_RTABMAP_LIBRARIES}) not found. RTABMap Support disabled")
+    endif()
+endif()
+
+########################
 # Sanitizers
 ########################
 if(DEPTHAI_SANITIZE)
@@ -623,6 +676,9 @@ if(DEPTHAI_SANITIZE)
     add_sanitizers(${TARGET_CORE_NAME})
     if(DEPTHAI_HAVE_OPENCV_SUPPORT)
         add_sanitizers(${TARGET_OPENCV_NAME})
+    endif()
+    if(DEPTHAI_HAVE_RTABMAP_SUPPORT)
+        add_sanitizers(${TARGET_RTABMAP_NAME})
     endif()
     if(DEPTHAI_XLINK_LOCAL)
         add_sanitizers(XLink)
@@ -776,6 +832,14 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT)
     set(tmp_definitions "$<TARGET_PROPERTY:${TARGET_OPENCV_NAME},INTERFACE_COMPILE_DEFINITIONS>")
     set(tmp_includes "$<TARGET_PROPERTY:${TARGET_OPENCV_NAME},INTERFACE_INCLUDE_DIRECTORIES>")
     file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/depthai-opencv-integration.txt" CONTENT
+        "$<$<BOOL:${tmp_definitions}>:\n-D\'$<JOIN:${tmp_definitions},\'\n-D\'>\'>\n
+        $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
+    )
+endif()
+if(DEPTHAI_HAVE_RTABMAP_SUPPORT)
+    set(tmp_definitions "$<TARGET_PROPERTY:${TARGET_RTABMAP_NAME},INTERFACE_COMPILE_DEFINITIONS>")
+    set(tmp_includes "$<TARGET_PROPERTY:${TARGET_RTABMAP_NAME},INTERFACE_INCLUDE_DIRECTORIES>")
+    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/depthai-rtabmap-integration.txt" CONTENT
         "$<$<BOOL:${tmp_definitions}>:\n-D\'$<JOIN:${tmp_definitions},\'\n-D\'>\'>\n
         $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
     )

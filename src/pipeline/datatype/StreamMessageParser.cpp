@@ -34,6 +34,7 @@
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
+#include "depthai/pipeline/datatype/RTABMapSensorData.hpp"
 
 // shared
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
@@ -200,6 +201,9 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::TransformData:
             return parseDatatype<TransformData>(metadataStart, serializedObjectSize, data);
             break;
+        // case DatatypeEnum::RTABMapSensorData:
+        //     return parseDatatype<RTABMapSensorData>(metadataStart, serializedObjectSize, data);
+        //     break;
     }
 
     throw std::runtime_error("Bad packet, couldn't parse");

@@ -279,7 +279,7 @@ dai_add_example(device_logging host_side/device_logging.cpp OFF)
 
 dai_add_example(rtabmap_vio host_side/rtabmap_vio.cpp OFF)
 target_link_options(rtabmap_vio PRIVATE "-Wl,--disable-new-dtags")
-target_link_libraries(rtabmap_vio PRIVATE rtabmap::core)
+target_link_libraries(rtabmap_vio PRIVATE depthai::rtabmap)
 
 # ImageManip
 dai_add_example(image_manip ImageManip/image_manip_example.cpp ON)
