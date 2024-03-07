@@ -1,8 +1,5 @@
 #include "depthai/pipeline/node/DetectionNetwork.hpp"
 
-// C++ std
-#include <sstream>
-
 // libraries
 #include <nlohmann/json.hpp>
 #include <openvino/BlobReader.hpp>
@@ -13,9 +10,10 @@
 // internal
 #include "depthai/common/DetectionNetworkType.hpp"
 #include "json_types/Generators.hpp"
+#include "json_types/NnArchiveConfig.hpp"
 #include "utility/ArchiveUtil.hpp"
 #include "utility/ErrorMacros.hpp"
-#include "utility/Logging.hpp"
+#include "utility/PimplImpl.hpp"
 
 namespace dai {
 namespace node {
@@ -24,24 +22,17 @@ namespace node {
 // Base Detection Network Class
 //--------------------------------------------------------------------
 
-void DetectionNetwork::build() {
-    // Default confidence threshold
-    detectionParser->properties.parser.confidenceThreshold = 0.5;
-    neuralNetwork->out.link(detectionParser->input);
-    neuralNetwork->passthrough.link(detectionParser->imageIn);
+class DetectionNetwork::Impl {
+   public:
+    Impl() = default;
 
-    // No "internal" buffering to keep interface similar to monolithic nodes
-    detectionParser->input.setBlocking(true);
-    detectionParser->input.setQueueSize(1);
-    detectionParser->imageIn.setBlocking(false);
-    detectionParser->imageIn.setQueueSize(1);
-}
+    static dai::json_types::NnArchiveConfig parseNNArchiveConfig(const dai::Path& path, NNArchiveFormat format, bool& isJson, std::string& blobPath);
+};
 
-// -------------------------------------------------------------------
-// Neural Network API
-// -------------------------------------------------------------------
-
-void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat format) {
+dai::json_types::NnArchiveConfig DetectionNetwork::Impl::parseNNArchiveConfig(const dai::Path& path,
+                                                                              const NNArchiveFormat format,
+                                                                              bool& isJson,
+                                                                              std::string& blobPath) {
     const auto filepath = path.string();
 #if defined(_WIN32) && defined(_MSC_VER)
     const char separator = '\\';
@@ -49,13 +40,14 @@ void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat
     const char separator = '/';
 #endif
     const size_t lastSlashIndex = filepath.find_last_of(separator);
+
     std::string archiveName;
     if(std::string::npos == lastSlashIndex) {
         archiveName = filepath;
     } else {
         archiveName = filepath.substr(lastSlashIndex + 1);
     }
-    bool isJson = format == NNArchiveFormat::RAW_FS;
+    isJson = format == NNArchiveFormat::RAW_FS;
     if(format == NNArchiveFormat::AUTO) {
         const auto pointIndex = filepath.find_last_of('.');
         if(pointIndex != std::string::npos) {
@@ -81,22 +73,49 @@ void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat
         }
         daiCheckV(foundJson, "Didn't find the {}.json file inside the {} archive.", archiveName, filepath);
     }
-    daiCheckIn(maybeJson);
-    const auto json = *maybeJson;
     dai::json_types::NnArchiveConfig config;
-    dai::json_types::from_json(json, config);
-    const auto model = config.model;
+    dai::json_types::from_json(*maybeJson, config);
     if(isJson) {
-        std::string blobPath;
         if(std::string::npos == lastSlashIndex) {
-            blobPath = model.metadata.path;
+            blobPath = config.model.metadata.path;
         } else {
             const auto basedir = filepath.substr(0, lastSlashIndex + 1);
-            blobPath = basedir + separator + model.metadata.path;
+            blobPath = basedir + separator + config.model.metadata.path;
         }
+    }
+    return config;
+}
+
+DetectionNetwork::DetectionNetwork()
+    : out{detectionParser->out}, outNetwork{neuralNetwork->out}, input{neuralNetwork->input}, passthrough{neuralNetwork->passthrough} {};
+DetectionNetwork::~DetectionNetwork() = default;
+
+// -------------------------------------------------------------------
+// Neural Network API
+// -------------------------------------------------------------------
+
+void DetectionNetwork::build() {
+    // Default confidence threshold
+    detectionParser->properties.parser.confidenceThreshold = 0.5;
+    neuralNetwork->out.link(detectionParser->input);
+    neuralNetwork->passthrough.link(detectionParser->imageIn);
+
+    // No "internal" buffering to keep interface similar to monolithic nodes
+    detectionParser->input.setBlocking(true);
+    detectionParser->input.setQueueSize(1);
+    detectionParser->imageIn.setBlocking(false);
+    detectionParser->imageIn.setQueueSize(1);
+}
+
+void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat format) {
+    bool isJson = false;
+    std::string blobPath;
+    const auto config = pimpl->parseNNArchiveConfig(path, format, isJson, blobPath);
+    const auto model = config.model;
+    if(isJson) {
         setBlobPath(blobPath);
     } else {
-        dai::utility::ArchiveUtil archive(filepath, format);
+        dai::utility::ArchiveUtil archive(path.string(), format);
         struct archive_entry* entry = nullptr;
         bool found = false;
         while(archive_read_next_header(archive.getA(), &entry) == ARCHIVE_OK) {
@@ -111,7 +130,7 @@ void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat
                 break;
             }
         }
-        daiCheckV(found, "No blob named {} found in NN Archive {}.", model.metadata.path, filepath)
+        daiCheckV(found, "No blob named {} found in NN Archive {}.", model.metadata.path, path)
     }
     // TODO(jakgra) is NN Archive valid without this? why is this optional?
     daiCheck(model.heads, "Heads array is not defined in the NN Archive config file.");

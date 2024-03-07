@@ -5,9 +5,7 @@
 #include <depthai/pipeline/node/NeuralNetwork.hpp>
 
 #include "depthai/openvino/OpenVINO.hpp"
-
-// standard
-#include <fstream>
+#include "depthai/utility/Pimpl.hpp"
 
 namespace dai {
 namespace node {
@@ -43,13 +41,15 @@ class DetectionNetwork : public NodeGroup {
         TAR_XZ,
     };
 
+    DetectionNetwork();
+    ~DetectionNetwork() override;
+
     [[nodiscard]] static std::shared_ptr<DetectionNetwork> create() {
         auto n = std::make_shared<DetectionNetwork>();
         n->build();
         return n;
     }
     void build();
-    DetectionNetwork() : out{detectionParser->out}, outNetwork{neuralNetwork->out}, input{neuralNetwork->input}, passthrough{neuralNetwork->passthrough} {};
 
    public:
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
@@ -173,6 +173,10 @@ class DetectionNetwork : public NodeGroup {
      * @returns Detection confidence
      */
     float getConfidenceThreshold() const;
+
+   private:
+    class Impl;
+    Pimpl<Impl> pimpl;
 };
 
 /**
