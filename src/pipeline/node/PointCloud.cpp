@@ -19,5 +19,9 @@ PointCloud::Properties& PointCloud::getProperties() {
     return properties;
 }
 
+void PointCloud::setNumFramesPool(int numFramesPool) {
+    properties.numFramesPool = numFramesPool;
+}
+
 }  // namespace node
 }  // namespace dai

@@ -57,6 +57,12 @@ class PointCloud : public NodeCRTP<Node, PointCloud, PointCloudProperties> {
      * Suitable for when input queue is set to non-blocking behavior.
      */
     Output passthroughDepth{*this, "passthroughDepth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
+     * Specify number of frames in pool.
+     * @param numFramesPool How many frames should the pool have
+     */
+    void setNumFramesPool(int numFramesPool);
 };
 
 }  // namespace node
