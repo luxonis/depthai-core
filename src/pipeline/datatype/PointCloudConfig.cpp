@@ -22,7 +22,7 @@ std::array<std::array<float, 4>, 4> PointCloudConfig::getTransformationMatrix() 
 }
 
 PointCloudConfig& PointCloudConfig::set(dai::RawPointCloudConfig config) {
-    cfg = config;
+    cfg = std::move(config);
     return *this;
 }
 
