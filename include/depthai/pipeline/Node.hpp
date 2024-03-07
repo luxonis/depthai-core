@@ -13,7 +13,7 @@
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/utility/copyable_unique_ptr.hpp"
 
-#include "depthai/utility/RecordReplayParams.hpp"
+#include "depthai/utility/RecordReplay.hpp"
 
 // depthai
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
@@ -33,6 +33,7 @@ class PipelineImpl;
 class Node : public std::enable_shared_from_this<Node> {
     friend class Pipeline;
     friend class PipelineImpl;
+    friend class Device;
 
    public:
     /// Node identificator. Unique for every node on a single Pipeline
@@ -67,7 +68,7 @@ class Node : public std::enable_shared_from_this<Node> {
 
     // For record and replay
     virtual bool isSourceNode() const;
-    virtual NodeRecordParams getNodeRecordParams() const;
+    virtual utility::NodeRecordParams getNodeRecordParams() const;
     virtual Output& getRecordOutput();
     virtual Input& getReplayInput();
 

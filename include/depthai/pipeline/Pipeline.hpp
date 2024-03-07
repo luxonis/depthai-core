@@ -1,7 +1,6 @@
 #pragma once
 
 // standard
-#include <map>
 #include <memory>
 #include <unordered_set>
 #include <vector>
@@ -56,7 +55,6 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     std::vector<std::shared_ptr<Node>> getAllNodes() const;
     std::shared_ptr<Node> getNode(Node::Id id) const;
     std::vector<std::shared_ptr<Node>> getSourceNodes();
-
 
     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
     nlohmann::json serializeToJson() const;
@@ -143,7 +141,14 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
  */
 class Pipeline {
     friend class PipelineImpl;
+    friend class Device;
+
     std::shared_ptr<PipelineImpl> pimpl;
+
+   protected:
+    std::vector<std::shared_ptr<Node>> getSourceNodes() {
+        return impl()->getSourceNodes();
+    }
 
    public:
     PipelineImpl* impl() {

@@ -582,8 +582,10 @@ bool Node::isSourceNode() const {
     return false;
 }
 
-NodeRecordParams Node::getNodeRecordParams() const {
-    throw std::runtime_error("getNodeRecordName is not implemented for non-source nodes.");
+utility::NodeRecordParams Node::getNodeRecordParams() const {
+    utility::NodeRecordParams params;
+    params.name = getName();
+    return params;
 }
 
 Node::Output& Node::getRecordOutput() {

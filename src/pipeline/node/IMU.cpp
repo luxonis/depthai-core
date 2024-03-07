@@ -55,8 +55,10 @@ bool IMU::isSourceNode() const {
     return true;
 }
 
-NodeRecordParams IMU::getNodeRecordParams() const {
-    return NodeRecordParams{"IMU", false};
+utility::NodeRecordParams IMU::getNodeRecordParams() const {
+    utility::NodeRecordParams params;
+    params.name = "IMU";
+    return params;
 }
 
 IMU::Output& IMU::getRecordOutput() {

@@ -171,11 +171,13 @@ bool MonoCamera::isSourceNode() const {
     return true;
 }
 
-NodeRecordParams MonoCamera::getNodeRecordParams() const {
+utility::NodeRecordParams MonoCamera::getNodeRecordParams() const {
     if(properties.boardSocket == CameraBoardSocket::AUTO) {
-        throw std::runtime_error("For record and replay functionality, board socket must be specified (MonoCamera).");
+        throw std::runtime_error("For record and replay functionality, board socket must be specified (Camera).");
     }
-    return NodeRecordParams{"MonoCamera" + toString(properties.boardSocket), true};
+    utility::NodeRecordParams params;
+    params.name = "Camera" + toString(properties.boardSocket);
+    return params;
 }
 
 MonoCamera::Output& MonoCamera::getRecordOutput() {

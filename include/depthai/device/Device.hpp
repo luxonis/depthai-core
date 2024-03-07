@@ -12,6 +12,7 @@
 // project
 #include "DataQueue.hpp"
 #include "depthai/device/DeviceBase.hpp"
+#include "depthai/utility/RecordReplay.hpp"
 
 namespace dai {
 /**
@@ -221,6 +222,10 @@ class Device : public DeviceBase {
     std::mutex eventMtx;
     std::condition_variable eventCv;
     std::deque<std::string> eventQueue;
+
+    // Record and Replay
+    utility::RecordConfig recordConfig;
+    std::unordered_map<std::string, std::string> recordReplayFilenames;
 
     bool startPipelineImpl(const Pipeline& pipeline) override;
     void closeImpl() override;
