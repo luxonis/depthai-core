@@ -14,7 +14,7 @@ namespace dai {
 namespace node {
 
 /**
- * @brief PointCloud node. Calculates spatial location data on a set of ROIs on depth map.
+ * @brief PointCloud node. Computes point cloud from depth frames.
  */
 class PointCloud : public NodeCRTP<Node, PointCloud, PointCloudProperties> {
    public:
@@ -31,7 +31,7 @@ class PointCloud : public NodeCRTP<Node, PointCloud, PointCloudProperties> {
     PointCloud(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
-     * Initial config to use when calculating spatial location data.
+     * Initial config to use when computing the point cloud.
      */
     PointCloudConfig initialConfig;
 
@@ -40,19 +40,20 @@ class PointCloud : public NodeCRTP<Node, PointCloud, PointCloudProperties> {
      * Default queue is non-blocking with size 4.
      */
     Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::PointCloudConfig, false}}};
+
     /**
-     * Input message with depth data used to retrieve spatial information about detected object.
+     * Input message with depth data used to create the point cloud.
      * Default queue is non-blocking with size 4.
      */
     Input inputDepth{*this, "inputDepth", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
-     * Outputs ImgFrame message that carries spatial location results.
+     * Outputs PointCloudData message
      */
     Output outputPointCloud{*this, "outputPointCloud", Output::Type::MSender, {{DatatypeEnum::PointCloudData, false}}};
 
     /**
-     * Passthrough message on which the calculation was performed.
+     * Passthrough depth from which the point cloud was calculated.
      * Suitable for when input queue is set to non-blocking behavior.
      */
     Output passthroughDepth{*this, "passthroughDepth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
