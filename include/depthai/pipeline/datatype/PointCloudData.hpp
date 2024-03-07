@@ -17,7 +17,7 @@
 namespace dai {
 
 /**
- * PointCloudData message. Carries ROI (region of interest) and threshold for depth calculation
+ * PointCloudData message. Carries point cloud data.
  */
 class PointCloudData : public Buffer {
     std::shared_ptr<RawBuffer> serialize() const override;
@@ -44,42 +44,42 @@ class PointCloudData : public Buffer {
     unsigned int getInstanceNum() const;
 
     /**
-     * Retrieves image width in pixels
+     * Retrieves the height in pixels - in case of a sparse point cloud, this represents the hight of the frame which was used to generate the point cloud
      */
     unsigned int getWidth() const;
 
     /**
-     * Retrieves image height in pixels
+     * Retrieves the height in pixels - in case of a sparse point cloud, this represents the hight of the frame which was used to generate the point cloud
      */
     unsigned int getHeight() const;
 
     /**
-     * Retrieves minimal x coordinate in milimeters
+     * Retrieves minimal x coordinate in depth units (millimeter by default)
      */
     float getMinX() const;
 
     /**
-     * Retrieves minimal y coordinate in milimeters
+     * Retrieves minimal y coordinate in depth units (millimeter by default)
      */
     float getMinY() const;
 
     /**
-     * Retrieves minimal z coordinate in milimeters
+     * Retrieves minimal z coordinate in depth units (millimeter by default)
      */
     float getMinZ() const;
 
     /**
-     * Retrieves maximal x coordinate in milimeters
+     * Retrieves maximal x coordinate in depth units (millimeter by default)
      */
     float getMaxX() const;
 
     /**
-     * Retrieves maximal y coordinate in milimeters
+     * Retrieves maximal y coordinate in depth units (millimeter by default)
      */
     float getMaxY() const;
 
     /**
-     * Retrieves maximal z coordinate in milimeters
+     * Retrieves maximal z coordinate in depth units (millimeter by default)
      */
     float getMaxZ() const;
 
@@ -143,44 +143,44 @@ class PointCloudData : public Buffer {
     PointCloudData& setSize(std::tuple<unsigned int, unsigned int> size);
 
     /**
-     * Specifies minimal x coordinate in milimeters
+     * Specifies minimal x coordinate in depth units (millimeter by default)
      *
-     * @param val minimal x coordinate in milimeters
+     * @param val minimal x coordinate in depth units (millimeter by default)
      */
     PointCloudData& setMinX(float val);
 
     /**
-     * Specifies minimal y coordinate in milimeters
+     * Specifies minimal y coordinate in depth units (millimeter by default)
      *
-     * @param val minimal y coordinate in milimeters
+     * @param val minimal y coordinate in depth units (millimeter by default)
      */
     PointCloudData& setMinY(float val);
 
     /**
-     * Specifies minimal z coordinate in milimeters
+     * Specifies minimal z coordinate in depth units (millimeter by default)
      *
-     * @param val minimal z coordinate in milimeters
+     * @param val minimal z coordinate in depth units (millimeter by default)
      */
     PointCloudData& setMinZ(float val);
 
     /**
-     * Specifies maximal x coordinate in milimeters
+     * Specifies maximal x coordinate in depth units (millimeter by default)
      *
-     * @param val maximal x coordinate in milimeters
+     * @param val maximal x coordinate in depth units (millimeter by default)
      */
     PointCloudData& setMaxX(float val);
 
     /**
-     * Specifies maximal y coordinate in milimeters
+     * Specifies maximal y coordinate in depth units (millimeter by default)
      *
-     * @param val maximal y coordinate in milimeters
+     * @param val maximal y coordinate in depth units (millimeter by default)
      */
     PointCloudData& setMaxY(float val);
 
     /**
-     * Specifies maximal z coordinate in milimeters
+     * Specifies maximal z coordinate in depth units (millimeter by default)
      *
-     * @param val maximal z coordinate in milimeters
+     * @param val maximal z coordinate in depth units (millimeter by default)
      */
     PointCloudData& setMaxZ(float val);
 
