@@ -4,6 +4,7 @@
 #include "utility/spdlog-fmt.hpp"
 
 // clang-format off
+// NOLINTBEGIN(cppcoreguidelines-macro-usage)
 
 // Only use this one for internal errors. Clearly invalid states that shouldn't happen.
 #define daiCheckIn(A) \
@@ -34,4 +35,5 @@
         throw std::runtime_error(fmt::format( M, ##__VA_ARGS__ )); \
     }
 
+// NOLINTEND(cppcoreguidelines-macro-usage)
 // clang-format on

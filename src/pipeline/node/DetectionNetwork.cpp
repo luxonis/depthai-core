@@ -62,7 +62,7 @@ void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat
             isJson = filepath.substr(filepath.find_last_of(".") + 1) == "json";
         }
     }
-    tl::optional<nlohmann::json> maybeJson;
+    std::optional<nlohmann::json> maybeJson;
     if(isJson) {
         std::ifstream jsonStream(path);
         maybeJson = nlohmann::json::parse(jsonStream);
