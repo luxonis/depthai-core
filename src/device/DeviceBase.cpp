@@ -1498,30 +1498,31 @@ std::tuple<bool, std::string> DeviceBase::flashBootloader(Memory memory, Type ty
     const std::string streamBootloader = "__stream_bootloader";
 
     // Make sure to always join the thread.
-    auto t1Deleter = [&](std::thread* t) {
-        if(t == nullptr) {
-            return;
-        }
-        if(t->joinable()) {
-            t->join();
-        }
-    };
-    auto threadFunc = [this, &streamBootloader, &package]() {
-        XLinkStream stream(connection, streamBootloader, device::XLINK_USB_BUFFER_MAX_SIZE);
-        int64_t offset = 0;
-        do {
-            int64_t toTransfer = std::min(static_cast<int64_t>(device::XLINK_USB_BUFFER_MAX_SIZE), static_cast<int64_t>(package.size() - offset));
-            stream.write(&package[offset], toTransfer);
-            offset += toTransfer;
-        } while(offset < static_cast<int64_t>(package.size()));
-    };
-    std::thread* threadPtr = new std::thread(threadFunc);
-    std::unique_ptr<std::thread, decltype(t1Deleter)> t1(threadPtr, t1Deleter);
+    // auto t1Deleter = [&](std::thread* t) {
+    //     if(t == nullptr) {
+    //         return;
+    //     }
+    //     if(t->joinable()) {
+    //         t->join();
+    //     }
+    // };
+    // auto threadFunc = [this, &streamBootloader, &package]() {
+    //     XLinkStream stream(connection, streamBootloader, device::XLINK_USB_BUFFER_MAX_SIZE);
+    //     int64_t offset = 0;
+    //     do {
+    //         int64_t toTransfer = std::min(static_cast<int64_t>(device::XLINK_USB_BUFFER_MAX_SIZE), static_cast<int64_t>(package.size() - offset));
+    //         stream.write(&package[offset], toTransfer);
+    //         offset += toTransfer;
+    //     } while(offset < static_cast<int64_t>(package.size()));
+    // };
+    // std::unique_ptr<std::thread, decltype(t1Deleter)> t1( new std::thread(threadFunc), t1Deleter);
+    XLinkStream stream(connection, streamBootloader, device::XLINK_USB_BUFFER_MAX_SIZE);
+    stream.writeSplit(package.data(), package.size(), bootloader::XLINK_STREAM_MAX_SIZE);
 
     pimpl->rpcClient->call("readFromXLink", streamBootloader, mem, package.size());
-    if (t1 && t1->joinable()) {
-        t1->join();
-    }
+    // if (t1 && t1->joinable()) {
+    //     t1->join();
+    // }
 
     // Start flashing
     pimpl->rpcClient->call("flashWriteMemAsync", mem, package.size(), dai::bootloader::getStructure(type).offset.at(Section::BOOTLOADER));
