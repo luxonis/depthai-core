@@ -36,6 +36,13 @@ class ToFConfig : public Buffer {
     ToFConfig& setMedianFilter(MedianFilter median);
 
     /**
+     * Set temperature coefficients for depth calculation
+     * @param A Temperature coefficient A
+     * @param B Temperature coefficient B
+     */
+    ToFConfig& setTemperatureCoefficients(float A, float B);
+
+    /**
      * Set explicit configuration.
      * @param config Explicit configuration
      */

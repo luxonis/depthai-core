@@ -43,4 +43,10 @@ ToFConfig& ToFConfig::setMedianFilter(MedianFilter median) {
     return *this;
 }
 
+ToFConfig& ToFConfig::setTemperatureCoefficients(float A, float B) {
+    cfg.depthParams.temperatureCoefficientA = A;
+    cfg.depthParams.temperatureCoefficientB = B;
+    return *this;
+}
+
 }  // namespace dai
