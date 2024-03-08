@@ -1496,7 +1496,15 @@ std::tuple<bool, std::string> DeviceBase::flashBootloader(Memory memory, Type ty
 
     // Transfer the whole package in a separate thread
     const std::string streamBootloader = "__stream_bootloader";
-    std::thread t1([this, &streamBootloader, &package]() {
+    auto deleter = [&](std::thread* t) {
+        if(t == nullptr) {
+            return;
+        }
+        if(t->joinable()) {
+            t->join();
+        }
+    };
+    auto threadFunc = [this, &streamBootloader, &package]() {
         XLinkStream stream(connection, streamBootloader, device::XLINK_USB_BUFFER_MAX_SIZE);
         int64_t offset = 0;
         do {
@@ -1504,10 +1512,15 @@ std::tuple<bool, std::string> DeviceBase::flashBootloader(Memory memory, Type ty
             stream.write(&package[offset], toTransfer);
             offset += toTransfer;
         } while(offset < static_cast<int64_t>(package.size()));
-    });
+    };
+    std::thread* threadPtr = new std::thread(threadFunc);
+    /// Create a destructor that joins the thread.
+    std::unique_ptr<std::thread, decltype(deleter)> t1(threadPtr, deleter);
 
     pimpl->rpcClient->call("readFromXLink", streamBootloader, mem, package.size());
-    t1.join();
+    if (t1.get() && t1->joinable()) {
+        t1->join();
+    }
 
     // Start flashing
     pimpl->rpcClient->call("flashWriteMemAsync", mem, package.size(), dai::bootloader::getStructure(type).offset.at(Section::BOOTLOADER));
