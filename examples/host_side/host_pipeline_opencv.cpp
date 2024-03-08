@@ -5,25 +5,7 @@
 #include "depthai/pipeline/node/ColorCamera.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
-
-class Display : public dai::NodeCRTP<dai::HostNode, Display> {
-   public:
-    Input input{*this};
-
-    void run() override {
-        while(isRunning()) {
-            std::shared_ptr<dai::ImgFrame> imgFrame = input.queue->get<dai::ImgFrame>();
-            if(imgFrame != nullptr) {
-                cv::imshow("Preview frame", imgFrame->getCvFrame());
-                auto key = cv::waitKey(1);
-                if(key == 'q') {
-                    stop();
-                }
-            }
-        }
-        fmt::print("Display node stopped\n");
-    }
-};
+#include "depthai/pipeline/node/host/Display.hpp"
 
 int main() {
     using namespace std;
