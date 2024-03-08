@@ -180,6 +180,9 @@ jobs:
         echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
         echo "CMAKE_GENERATOR=Visual Studio 17 2022" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
         echo "CMAKE_GENERATOR_PLATFORM=${{ matrix.platform }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+  
+    - name: Setup cmake # TODO - without it, wheels don't build on latest macos-latest
+      uses: jwlawson/actions-setup-cmake@v1.13
 
     - name: Configure ${{ matrix.build-type }}, shared ${{ matrix.shared }}, ${{ matrix.platform }}
       run: cmake -S . -B build -D BUILD_SHARED_LIBS=${{ matrix.shared}} -D CMAKE_BUILD_TYPE=${{ matrix.build-type }} -D CMAKE_INSTALL_PREFIX=$GITHUB_WORKSPACE/depthai_install ${{ env.CMAKE_ARGS }}
