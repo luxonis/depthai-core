@@ -3,6 +3,7 @@
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
+#include "depthai/pipeline/HostNode.hpp"
 #include "depthai/utility/Initialization.hpp"
 #include "utility/spdlog-fmt.hpp"
 
@@ -12,6 +13,7 @@
 // std
 #include <cassert>
 #include <fstream>
+#include <memory>
 
 // libraries
 #include "spdlog/fmt/fmt.h"
@@ -179,7 +181,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
             continue;
         }
         // Check if its a host node or device node
-        if(node->hostNode) {
+        if(std::dynamic_pointer_cast<HostNode>(node)) {
             // host node, no need to serialize to a schema
             // TBD any additional changes
         } else {
@@ -215,7 +217,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
                 io.group = input.group;
                 auto ioKey = std::make_tuple(io.group, io.name);
 
-                io.waitForMessage = input.waitForMessage.value_or(input.defaultWaitForMessage);
+                io.waitForMessage = input.getWaitForMessage();
                 switch(input.type) {
                     case Node::Input::Type::MReceiver:
                         io.type = NodeIoInfo::Type::MReceiver;
@@ -299,8 +301,8 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
             c.node2Input = conn.inputName;
             c.node2InputGroup = conn.inputGroup;
 
-            bool outputHost = outNode->hostNode;
-            bool inputHost = inNode->hostNode;
+            bool outputHost = std::dynamic_pointer_cast<HostNode>(outNode) != nullptr;
+            bool inputHost = std::dynamic_pointer_cast<HostNode>(inNode) != nullptr;
 
             std::shared_ptr<Node> node;
 
@@ -398,7 +400,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
                     io.group = input.group;
                     auto ioKey = std::make_tuple(io.group, io.name);
 
-                    io.waitForMessage = input.waitForMessage.value_or(input.defaultWaitForMessage);
+                    io.waitForMessage = input.getWaitForMessage();
                     switch(input.type) {
                         case Node::Input::Type::MReceiver:
                             io.type = NodeIoInfo::Type::MReceiver;
@@ -651,7 +653,7 @@ tl::optional<EepromData> PipelineImpl::getEepromData() const {
 bool PipelineImpl::isHostOnly() const {
     bool hostOnly = true;
     for(const auto& node : nodes) {
-        if(!node->hostNode) {
+        if(std::dynamic_pointer_cast<HostNode>(node) == nullptr) {
             hostOnly = false;
             break;
         }
@@ -662,7 +664,7 @@ bool PipelineImpl::isHostOnly() const {
 bool PipelineImpl::isDeviceOnly() const {
     bool deviceOnly = true;
     for(const auto& node : nodes) {
-        if(node->hostNode) {
+        if(std::dynamic_pointer_cast<DeviceNode>(node) != nullptr) {
             deviceOnly = false;
             break;
         }

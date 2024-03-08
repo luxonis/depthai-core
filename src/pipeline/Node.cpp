@@ -78,7 +78,8 @@ bool Node::Output::isSamePipeline(const Input& in) {
     // By checking parent of node
     auto outputPipeline = parent.parent.lock();
     if(outputPipeline != nullptr) {
-        return (outputPipeline == in.parent.parent.lock());
+        auto inputPipeline = in.getParent().parent.lock();
+        return (outputPipeline == inputPipeline);
     }
     return false;
 }
@@ -121,6 +122,7 @@ void Node::Output::link(Input& in) {
         throw std::runtime_error(fmt::format("Cannot link '{}.{}' to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
     }
 
+    // Needed for serialization
     // Create 'Connection' object between 'out' and 'in'
     Node::ConnectionInternal connection(*this, in);
 
@@ -132,8 +134,11 @@ void Node::Output::link(Input& in) {
 
     // Otherwise all is set to add a new connection
     parent.connections.insert(connection);
+    // Add the shared_ptr to the input directly for host side
+    connectedInputs.push_back(in.queue);
 }
 
+// TODO(Morato) - is this really needed?
 Node::ConnectionInternal::ConnectionInternal(Output& out, Input& in) {
     outputNode = out.getParent().shared_from_this();
     outputName = out.name;
@@ -158,66 +163,69 @@ void Node::Output::unlink(Input& in) {
 
     // Unlink
     parent.connections.erase(connection);
+
+    // Remove the shared_ptr to the input directly for host side
+    connectedInputs.erase(std::remove(connectedInputs.begin(), connectedInputs.end(), in.queue), connectedInputs.end());
 }
 
 void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
-    for(auto& conn : getConnections()) {
-        // Get node AND hold a reference to it.
-        auto node = conn.inputNode.lock();
-        // Safe, as long as we also hold 'node' shared_ptr
-        auto inputs = node->getInputRefs();
-        // Find the corresponding inputs
-        for(auto& input : inputs) {
-            if(input->group == conn.inputGroup && input->name == conn.inputName) {
-                // Corresponding input to a given connection
-                // Send the message
-                input->queue.send(msg);
-            }
-        }
+    // for(auto& conn : getConnections()) {
+    //     // Get node AND hold a reference to it.
+    //     auto node = conn.inputNode.lock();
+    //     // Safe, as long as we also hold 'node' shared_ptr
+    //     auto inputs = node->getInputRefs();
+    //     // Find the corresponding inputs
+    //     for(auto& input : inputs) {
+    //         if(input->group == conn.inputGroup && input->name == conn.inputName) {
+    //             // Corresponding input to a given connection
+    //             // Send the message
+    //             input->queue.send(msg);
+    //         }
+    //     }
+    // }
+    for(auto& messageQueue : connectedInputs) {
+        messageQueue->send(msg);
     }
 }
 
 bool Node::Output::trySend(const std::shared_ptr<ADatatype>& msg) {
     bool success = true;
 
-    for(auto& conn : getConnections()) {
-        // Get node AND hold a reference to it.
-        auto node = conn.inputNode.lock();
-        // Safe, as long as we also hold 'node' shared_ptr
-        auto inputs = node->getInputRefs();
-        // Find the corresponding inputs
-        for(auto& input : inputs) {
-            if(input->group == conn.inputGroup && input->name == conn.inputName) {
-                // Corresponding input to a given connection
-                // Send the message
-                success &= input->queue.trySend(msg);
-            }
-        }
+    // for(auto& conn : getConnections()) {
+    //     // Get node AND hold a reference to it.
+    //     auto node = conn.inputNode.lock();
+    //     // Safe, as long as we also hold 'node' shared_ptr
+    //     auto inputs = node->getInputRefs();
+    //     // Find the corresponding inputs
+    //     for(auto& input : inputs) {
+    //         if(input->group == conn.inputGroup && input->name == conn.inputName) {
+    //             // Corresponding input to a given connection
+    //             // Send the message
+    //             success &= input->queue.trySend(msg);
+    //         }
+    //     }
+    // }
+    for(auto& messageQueue : connectedInputs) {
+        success &= messageQueue->trySend(msg);
     }
 
     return success;
 }
 
 void Node::Input::setBlocking(bool newBlocking) {
-    blocking = newBlocking;
+    queue->setBlocking(newBlocking);
 }
 
 bool Node::Input::getBlocking() const {
-    if(blocking) {
-        return *blocking;
-    }
-    return defaultBlocking;
+    return queue->getBlocking();
 }
 
 void Node::Input::setQueueSize(int size) {
-    queueSize = size;
+    queue->setMaxSize(size);
 }
 
 int Node::Input::getQueueSize() const {
-    if(queueSize) {
-        return *queueSize;
-    }
-    return defaultQueueSize;
+    return queue->getMaxSize();
 }
 
 void Node::Input::setWaitForMessage(bool newWaitForMessage) {
@@ -225,7 +233,7 @@ void Node::Input::setWaitForMessage(bool newWaitForMessage) {
 }
 
 bool Node::Input::getWaitForMessage() const {
-    return waitForMessage.value_or(defaultWaitForMessage);
+    return waitForMessage;
 }
 
 void Node::Input::setReusePreviousMessage(bool reusePreviousMessage) {
@@ -233,7 +241,7 @@ void Node::Input::setReusePreviousMessage(bool reusePreviousMessage) {
 }
 
 bool Node::Input::getReusePreviousMessage() const {
-    return !waitForMessage.value_or(defaultWaitForMessage);
+    return !waitForMessage;
 }
 
 const AssetManager& Node::getAssetManager() const {

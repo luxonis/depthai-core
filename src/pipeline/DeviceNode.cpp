@@ -42,7 +42,7 @@ void DeviceNode::run() {
             auto xlinkName = fmt::format("__x_{}_{}", input->getParent().id, input->toString());
             printf("checking input: %s\n", xlinkName.c_str());
             if(std::find(inputQueueNames.begin(), inputQueueNames.end(), xlinkName) != inputQueueNames.end()) {
-                input->queue.addCallback([dev, xlinkName](std::string, std::shared_ptr<ADatatype> msg) { dev->getInputQueue(xlinkName)->send(msg); });
+                input->queue->addCallback([dev, xlinkName](std::string, std::shared_ptr<ADatatype> msg) { dev->getInputQueue(xlinkName)->send(msg); });
             }
         }
     }

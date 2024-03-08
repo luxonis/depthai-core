@@ -212,35 +212,35 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/XLinkIn.cpp
     src/pipeline/node/XLinkOut.cpp
     src/pipeline/node/ColorCamera.cpp
-    src/pipeline/node/Camera.cpp
-    src/pipeline/node/ToF.cpp
-    src/pipeline/node/MessageDemux.cpp
-    src/pipeline/node/MonoCamera.cpp
-    src/pipeline/node/StereoDepth.cpp
-    src/pipeline/node/Sync.cpp
-    src/pipeline/node/NeuralNetwork.cpp
-    src/pipeline/node/ImageManip.cpp
-    src/pipeline/node/Warp.cpp
-    src/pipeline/node/VideoEncoder.cpp
-    src/pipeline/node/DetectionNetwork.cpp
-    src/pipeline/node/Script.cpp
-    src/pipeline/node/Pool.cpp
-    src/pipeline/node/Benchmark.cpp
-    src/pipeline/node/SpatialDetectionNetwork.cpp
-    src/pipeline/node/SystemLogger.cpp
-    src/pipeline/node/SpatialLocationCalculator.cpp
-    src/pipeline/node/AprilTag.cpp
-    src/pipeline/node/ObjectTracker.cpp
-    src/pipeline/node/IMU.cpp
-    src/pipeline/node/EdgeDetector.cpp
-    src/pipeline/node/SPIIn.cpp
-    src/pipeline/node/FeatureTracker.cpp
-    src/pipeline/node/ToF.cpp
-    src/pipeline/node/DetectionParser.cpp
-    src/pipeline/node/Sync.cpp
-    src/pipeline/node/test/MyProducer.cpp
-    src/pipeline/node/test/MyConsumer.cpp
-    src/pipeline/node/UVC.cpp
+    # src/pipeline/node/Camera.cpp
+    # src/pipeline/node/ToF.cpp
+    # src/pipeline/node/MessageDemux.cpp
+    # src/pipeline/node/MonoCamera.cpp
+    # src/pipeline/node/StereoDepth.cpp
+    # src/pipeline/node/Sync.cpp
+    # src/pipeline/node/NeuralNetwork.cpp
+    # src/pipeline/node/ImageManip.cpp
+    # src/pipeline/node/Warp.cpp
+    # src/pipeline/node/VideoEncoder.cpp
+    # src/pipeline/node/DetectionNetwork.cpp
+    # src/pipeline/node/Script.cpp
+    # src/pipeline/node/Pool.cpp
+    # src/pipeline/node/Benchmark.cpp
+    # src/pipeline/node/SpatialDetectionNetwork.cpp
+    # src/pipeline/node/SystemLogger.cpp
+    # src/pipeline/node/SpatialLocationCalculator.cpp
+    # src/pipeline/node/AprilTag.cpp
+    # src/pipeline/node/ObjectTracker.cpp
+    # src/pipeline/node/IMU.cpp
+    # src/pipeline/node/EdgeDetector.cpp
+    # src/pipeline/node/SPIIn.cpp
+    # src/pipeline/node/FeatureTracker.cpp
+    # src/pipeline/node/ToF.cpp
+    # src/pipeline/node/DetectionParser.cpp
+    # src/pipeline/node/Sync.cpp
+    # src/pipeline/node/test/MyProducer.cpp
+    # src/pipeline/node/test/MyConsumer.cpp
+    # src/pipeline/node/UVC.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp

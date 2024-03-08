@@ -1,34 +1,24 @@
 #include <iostream>
 
-
-// Includes common necessary includes for development using depthai library
-#include "depthai/depthai.hpp"
-
 // project
-#include "depthai/pipeline/ThreadedNode.hpp"
-#include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/pipeline/HostNode.hpp"
+#include "depthai/pipeline/node/ColorCamera.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
 
-class Display : public dai::NodeCRTP<dai::ThreadedNode, Display> {
+class Display : public dai::NodeCRTP<dai::HostNode, Display> {
    public:
-    constexpr static const char* NAME = "Display";
-
-   public:
-    void build() {
-        hostNode = true;
-    }
-
     /**
      * Input for any ImgFrame messages to be displayed
      * Default queue is blocking with size 8
      */
-    Input input{true, *this, "in", Input::Type::SReceiver, true, 8, true, {{dai::DatatypeEnum::Buffer, true}}};
+    Input input{*this};
 
     void run() override {
         while(isRunning()) {
-            std::shared_ptr<dai::ImgFrame> imgFrame = input.queue.get<dai::ImgFrame>();
+            std::shared_ptr<dai::ImgFrame> imgFrame = input.queue->get<dai::ImgFrame>();
             if(imgFrame != nullptr) {
-                cv::imshow("MyConsumer", imgFrame->getCvFrame());
+                cv::imshow("Preview frame", imgFrame->getCvFrame());
                 auto key = cv::waitKey(1);
                 if(key == 'q') {
                     stop();

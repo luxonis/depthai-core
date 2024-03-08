@@ -97,6 +97,7 @@ class Node : public std::enable_shared_from_this<Node> {
 
     class Output {
         Node& parent;
+        std::vector<std::shared_ptr<MessageQueue>> connectedInputs;
 
        public:
         enum class Type { MSender, SSender };
@@ -105,23 +106,15 @@ class Node : public std::enable_shared_from_this<Node> {
         Type type;
         // Which types and do descendants count as well?
         std::vector<DatatypeHierarchy> possibleDatatypes;
+
         Output(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types)
-            : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {}
-        Output(Node& par, std::string group, std::string n, Type t, std::vector<DatatypeHierarchy> types)
-            : parent(par), group(std::move(group)), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {}
-        Output(bool ref, Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types)
             : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {
             // Place oneself to the parents references
-            if(ref) {
-                parent.setOutputRefs(this);
-            }
+            parent.setOutputRefs(this);
         }
-        Output(bool ref, Node& par, std::string group, std::string n, Type t, std::vector<DatatypeHierarchy> types)
+        Output(Node& par, std::string group, std::string n, Type t, std::vector<DatatypeHierarchy> types)
             : parent(par), group(std::move(group)), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {
-            // Place oneself to the parents references
-            if(ref) {
-                parent.setOutputRefs(this);
-            }
+            parent.setOutputRefs(this);
         }
 
         Node& getParent() {
@@ -212,110 +205,62 @@ class Node : public std::enable_shared_from_this<Node> {
         Output& operator[](std::pair<std::string, std::string> groupKey);
     };
 
+    // Input is a thing layer over a MessageQueue which carries meta data and contains the actual queue as a shared_ptr
     class Input {
         Node& parent;
-
+        static constexpr bool defaultBlocking{true};
+        static constexpr int defaultQueueSize{8};
+        // Options - more information about the input
+        bool waitForMessage{false};
        public:
+        // Queue is a shared_ptr as both the node outputs and the node inputs need access and it needs to stay alive as long as the last node is alive
+        std::shared_ptr<MessageQueue> queue;
         enum class Type { SReceiver, MReceiver };
         std::string group;
         std::string name;
         Type type;
-        bool defaultBlocking{true};
-        int defaultQueueSize{8};
-        tl::optional<bool> blocking;
-        tl::optional<int> queueSize;
-        // Options - more information about the input
-        tl::optional<bool> waitForMessage;
-        bool defaultWaitForMessage{false};
-        friend class Output;
+
         std::vector<DatatypeHierarchy> possibleDatatypes;
 
-        MessageQueue queue;
+        // Create a default input type
+        Input(Node& par) : parent(par), queue(std::make_shared<MessageQueue>()), type(Type::SReceiver), possibleDatatypes({{DatatypeEnum::Buffer, true}}) {
+            queue->setMaxSize(defaultQueueSize);
+            queue->setBlocking(defaultBlocking);
+            parent.setInputRefs(this);
+        }
 
         /// Constructs Input with default blocking and queueSize options
         Input(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types)
-            : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {}
+            : parent(par), queue(std::make_shared<MessageQueue>()), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {
+            queue->setMaxSize(defaultQueueSize);
+            queue->setBlocking(defaultBlocking);
+            parent.setInputRefs(this);
+        }
 
         /// Constructs Input with specified blocking and queueSize options
         Input(Node& par, std::string n, Type t, bool blocking, int queueSize, std::vector<DatatypeHierarchy> types)
-            : parent(par), name(std::move(n)), type(t), defaultBlocking(blocking), defaultQueueSize(queueSize), possibleDatatypes(std::move(types)) {}
+            : parent(par), queue(std::make_shared<MessageQueue>()), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {
+            queue->setMaxSize(queueSize);
+            queue->setBlocking(blocking);
+            parent.setInputRefs(this);
+        }
 
         /// Constructs Input with specified blocking and queueSize as well as additional options
         Input(Node& par, std::string n, Type t, bool blocking, int queueSize, bool waitForMessage, std::vector<DatatypeHierarchy> types)
-            : parent(par),
-              name(std::move(n)),
-              type(t),
-              defaultBlocking(blocking),
-              defaultQueueSize(queueSize),
-              defaultWaitForMessage(waitForMessage),
-              possibleDatatypes(std::move(types)) {}
+            : parent(par), queue(std::make_shared<MessageQueue>()), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {
+            queue->setMaxSize(queueSize);
+            queue->setBlocking(blocking);
+            setWaitForMessage(waitForMessage);
+            parent.setInputRefs(this);
+        }
 
         /// Constructs Input with specified blocking and queueSize as well as additional options
         Input(Node& par, std::string group, std::string n, Type t, bool blocking, int queueSize, bool waitForMessage, std::vector<DatatypeHierarchy> types)
-            : parent(par),
-              group(std::move(group)),
-              name(std::move(n)),
-              type(t),
-              defaultBlocking(blocking),
-              defaultQueueSize(queueSize),
-              defaultWaitForMessage(waitForMessage),
-              possibleDatatypes(std::move(types)) {}
-
-        /// Constructs Input with default blocking and queueSize options
-        Input(bool ref, Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types)
-            : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {
-            // Place oneself to the parents references
-            if(ref) {
-                parent.setInputRefs(this);
-            }
-        }
-
-        /// Constructs Input with specified blocking and queueSize options
-        Input(bool ref, Node& par, std::string n, Type t, bool blocking, int queueSize, std::vector<DatatypeHierarchy> types)
-            : parent(par), name(std::move(n)), type(t), defaultBlocking(blocking), defaultQueueSize(queueSize), possibleDatatypes(std::move(types)) {
-            // Place oneself to the parents references
-            if(ref) {
-                parent.setInputRefs(this);
-            }
-        }
-
-        /// Constructs Input with specified blocking and queueSize as well as additional options
-        Input(bool ref, Node& par, std::string n, Type t, bool blocking, int queueSize, bool waitForMessage, std::vector<DatatypeHierarchy> types)
-            : parent(par),
-              name(std::move(n)),
-              type(t),
-              defaultBlocking(blocking),
-              defaultQueueSize(queueSize),
-              defaultWaitForMessage(waitForMessage),
-              possibleDatatypes(std::move(types)) {
-            // Place oneself to the parents references
-            if(ref) {
-                parent.setInputRefs(this);
-            }
-        }
-
-        /// Constructs Input with specified blocking and queueSize as well as additional options
-        Input(bool ref,
-              Node& par,
-              std::string group,
-              std::string n,
-              Type t,
-              bool blocking,
-              int queueSize,
-              bool waitForMessage,
-              std::vector<DatatypeHierarchy> types)
-            : parent(par),
-              group(std::move(group)),
-              name(std::move(n)),
-              type(t),
-              defaultBlocking(blocking),
-              defaultQueueSize(queueSize),
-              defaultWaitForMessage(waitForMessage),
-              possibleDatatypes(std::move(types)) {
-            // Place oneself to the parents references
-            if(ref) {
-                parent.setInputRefs(this);
-            }
+            : parent(par), queue(std::make_shared<MessageQueue>()), group(std::move(group)), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {
+            queue->setMaxSize(queueSize);
+            queue->setBlocking(blocking);
+            setWaitForMessage(waitForMessage);
+            parent.setInputRefs(this);
         }
 
         Node& getParent() {
@@ -385,7 +330,7 @@ class Node : public std::enable_shared_from_this<Node> {
          */
         template <class T>
         bool has() {
-            return queue.has<T>();
+            return queue->has<T>();
         }
 
         /**
@@ -393,7 +338,7 @@ class Node : public std::enable_shared_from_this<Node> {
          * @returns True if queue isn't empty, false otherwise
          */
         bool has() {
-            return queue.has();
+            return queue->has();
         }
 
         /**
@@ -403,7 +348,7 @@ class Node : public std::enable_shared_from_this<Node> {
          */
         template <class T>
         std::shared_ptr<T> tryGet() {
-            return queue.tryGet<T>();
+            return queue->tryGet<T>();
         }
 
         /**
@@ -422,7 +367,7 @@ class Node : public std::enable_shared_from_this<Node> {
          */
         template <class T>
         std::shared_ptr<T> get() {
-            return queue.get<T>();
+            return queue->get<T>();
         }
 
         /**
@@ -441,7 +386,7 @@ class Node : public std::enable_shared_from_this<Node> {
          */
         template <class T>
         std::shared_ptr<T> front() {
-            return queue.front<T>();
+            return queue->front<T>();
         }
 
         /**
@@ -462,7 +407,7 @@ class Node : public std::enable_shared_from_this<Node> {
          */
         template <class T, typename Rep, typename Period>
         std::shared_ptr<T> get(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
-            return queue.get<T, Rep, Period>(timeout, hasTimedout);
+            return queue->get<T, Rep, Period>(timeout, hasTimedout);
         }
 
         /**
@@ -484,7 +429,7 @@ class Node : public std::enable_shared_from_this<Node> {
          */
         template <class T>
         std::vector<std::shared_ptr<T>> tryGetAll() {
-            return queue.tryGetAll<T>();
+            return queue->tryGetAll<T>();
         }
 
         /**
@@ -504,7 +449,7 @@ class Node : public std::enable_shared_from_this<Node> {
          */
         template <class T>
         std::vector<std::shared_ptr<T>> getAll() {
-            return queue.getAll<T>();
+            return queue->getAll<T>();
         }
 
         /**
@@ -526,7 +471,7 @@ class Node : public std::enable_shared_from_this<Node> {
          */
         template <class T, typename Rep, typename Period>
         std::vector<std::shared_ptr<T>> getAll(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
-            return queue.getAll<T, Rep, Period>(timeout, hasTimedout);
+            return queue->getAll<T, Rep, Period>(timeout, hasTimedout);
         }
 
         /**
@@ -601,8 +546,7 @@ class Node : public std::enable_shared_from_this<Node> {
     // TODO(themarpe) - restrict access
     /// Id of node. Assigned after being placed on the pipeline
     Id id{-1};
-    /// Marker if the node can run on host
-    bool hostNode{false};
+
     /// alias or name
     std::string alias;
 
