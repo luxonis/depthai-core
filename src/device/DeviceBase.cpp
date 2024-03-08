@@ -1496,7 +1496,9 @@ std::tuple<bool, std::string> DeviceBase::flashBootloader(Memory memory, Type ty
 
     // Transfer the whole package in a separate thread
     const std::string streamBootloader = "__stream_bootloader";
-    auto deleter = [&](std::thread* t) {
+
+    // Make sure to always join the thread.
+    auto t1Deleter = [&](std::thread* t) {
         if(t == nullptr) {
             return;
         }
@@ -1514,11 +1516,10 @@ std::tuple<bool, std::string> DeviceBase::flashBootloader(Memory memory, Type ty
         } while(offset < static_cast<int64_t>(package.size()));
     };
     std::thread* threadPtr = new std::thread(threadFunc);
-    /// Create a destructor that joins the thread.
-    std::unique_ptr<std::thread, decltype(deleter)> t1(threadPtr, deleter);
+    std::unique_ptr<std::thread, decltype(t1Deleter)> t1(threadPtr, t1Deleter);
 
     pimpl->rpcClient->call("readFromXLink", streamBootloader, mem, package.size());
-    if (t1.get() && t1->joinable()) {
+    if (t1 && t1->joinable()) {
         t1->join();
     }
 
