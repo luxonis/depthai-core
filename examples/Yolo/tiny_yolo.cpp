@@ -58,8 +58,37 @@ int main(int argc, char** argv) {
     detectionNetwork->setConfidenceThreshold(0.5f);
     detectionNetwork->setNumClasses(80);
     detectionNetwork->setCoordinateSize(4);
-    detectionNetwork->setAnchors({10, 14, 23, 27, 37, 58, 81, 82, 135, 169, 344, 319});
-    detectionNetwork->setAnchorMasks({{"side26", {1, 2, 3}}, {"side13", {3, 4, 5}}});
+
+    detectionNetwork->setAnchors({{// side26Anchors
+                                   {
+                                       10,  // width
+                                       14   // height
+                                   },
+                                   {
+                                       23,  // width
+                                       27   // height
+                                   },
+                                   {
+                                       37,  // width
+                                       58   // height
+                                   }},
+                                  {// side13Anchors
+                                   {
+                                       81,  // width
+                                       82   // height
+                                   },
+                                   {
+                                       135,  // width
+                                       169   // height
+                                   },
+                                   {
+                                       344,  // width
+                                       319   // height
+                                   }}});
+
+    // Deprecated old system
+    // detectionNetwork->setAnchors({10, 14, 23, 27, 37, 58, 81, 82, 135, 169, 344, 319});
+    // detectionNetwork->setAnchorMasks({{"side26", {0, 1, 2}}, {"side13", {3, 4, 5}}});
     detectionNetwork->setIouThreshold(0.5f);
     detectionNetwork->setBlobPath(nnPath);
     detectionNetwork->setNumInferenceThreads(2);

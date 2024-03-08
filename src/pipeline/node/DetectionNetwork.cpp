@@ -149,6 +149,17 @@ void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat
         setConfidenceThreshold(static_cast<float>(*headMeta.confThreshold));
     }
     detectionParser->setCoordinateSize(4);
+    if(headMeta.anchors) {
+        std::vector<float> flatArr;
+        for(const auto& arr : *headMeta.anchors) {
+            for(const auto& arr2 : arr) {
+                for(const auto& val : arr2) {
+                    flatArr.push_back(static_cast<float>(val));
+                }
+            }
+        }
+        detectionParser->setAnchors(flatArr);
+    }
 }
 
 void DetectionNetwork::setBlobPath(const dai::Path& path) {
@@ -237,6 +248,10 @@ void YoloDetectionNetwork::setAnchors(std::vector<float> anchors) {
 
 void YoloDetectionNetwork::setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks) {
     detectionParser->setAnchorMasks(anchorMasks);
+}
+
+void YoloDetectionNetwork::setAnchors(const std::vector<std::vector<std::vector<float>>>& anchors) {
+    detectionParser->setAnchors(anchors);
 }
 
 void YoloDetectionNetwork::setIouThreshold(float thresh) {
