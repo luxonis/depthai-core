@@ -150,15 +150,20 @@ void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat
     }
     detectionParser->setCoordinateSize(4);
     if(headMeta.anchors) {
-        std::vector<float> flatArr;
-        for(const auto& arr : *headMeta.anchors) {
-            for(const auto& arr2 : arr) {
-                for(const auto& val : arr2) {
-                    flatArr.push_back(static_cast<float>(val));
+        const auto anchorsIn = *headMeta.anchors;
+        std::vector<std::vector<std::vector<float>>> anchorsOut(anchorsIn.size());
+        for(size_t layer = 0; layer < anchorsOut.size(); ++layer) {
+            std::vector<std::vector<float>> layerOut(anchorsIn[layer].size());
+            for(size_t anchor = 0; anchor < layerOut.size(); ++anchor) {
+                std::vector<float> anchorOut(anchorsIn[layer][anchor].size());
+                for(size_t dim = 0; dim < anchorOut.size(); ++dim) {
+                    anchorOut[dim] = static_cast<float>(anchorsIn[layer][anchor][dim]);
                 }
+                layerOut[anchor] = anchorOut;
             }
+            anchorsOut[layer] = layerOut;
         }
-        detectionParser->setAnchors(flatArr);
+        detectionParser->setAnchors(anchorsOut);
     }
 }
 
