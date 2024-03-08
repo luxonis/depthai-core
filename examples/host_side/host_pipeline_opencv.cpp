@@ -8,10 +8,6 @@
 
 class Display : public dai::NodeCRTP<dai::HostNode, Display> {
    public:
-    /**
-     * Input for any ImgFrame messages to be displayed
-     * Default queue is blocking with size 8
-     */
     Input input{*this};
 
     void run() override {
