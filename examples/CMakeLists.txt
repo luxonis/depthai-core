@@ -211,6 +211,7 @@ dai_add_example(poe_set_ip bootloader/poe_set_ip.cpp OFF)
 dai_add_example(read_flash_memory bootloader/read_flash_memory.cpp OFF)
 dai_add_example(write_flash_memory bootloader/write_flash_memory.cpp OFF)
 dai_add_example(flash_boot_header bootloader/flash_boot_header.cpp OFF)
+dai_add_example(flash_bl bootloader/flash_bl.cpp OFF)
 
 # calibration
 dai_add_example(calibration_flash calibration/calibration_flash.cpp OFF)
