@@ -9,7 +9,7 @@ find_package(Sanitizers)
 add_library(utility utility/utility.cpp)
 target_include_directories(utility PUBLIC "utility")
 add_default_flags(utility LEAN)
-target_link_libraries(utility FP16::fp16 ${OpenCV_LIBS})
+target_link_libraries(utility fp16 ${OpenCV_LIBS})
 
 # Create environments for usb & poe labels
 set(test_usb_env
