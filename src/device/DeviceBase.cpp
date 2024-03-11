@@ -1507,10 +1507,11 @@ std::tuple<bool, std::string> DeviceBase::flashBootloader(Memory memory, Type ty
         }
     };
     auto threadFunc = [this, &streamBootloader, &package]() {
-        XLinkStream stream(connection, streamBootloader, device::XLINK_USB_BUFFER_MAX_SIZE);
+        uint32_t chunk_size = device::XLINK_USB_BUFFER_MAX_SIZE / 2;
+        XLinkStream stream(connection, streamBootloader, chunk_size);
         int64_t offset = 0;
         do {
-            int64_t toTransfer = std::min(static_cast<int64_t>(device::XLINK_USB_BUFFER_MAX_SIZE), static_cast<int64_t>(package.size() - offset));
+            int64_t toTransfer = std::min(static_cast<int64_t>(chunk_size), static_cast<int64_t>(package.size() - offset));
             stream.write(&package[offset], toTransfer);
             offset += toTransfer;
         } while(offset < static_cast<int64_t>(package.size()));
