@@ -1,18 +1,14 @@
 #pragma once
 #include "depthai/pipeline/datatype/Buffer.hpp"
-
+#ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
+    #include "rtabmap/core/Transform.h"
+#endif
 namespace dai {
 struct Transform {
-    float x = 0.f;
-    float y = 0.f;
-    float z = 0.f;
-    float qx = 0.f;
-    float qy = 0.f;
-    float qz = 0.f;
-    float qw = 1.f;
+    std::vector<std::vector<float>> data;
 };
 
-DEPTHAI_SERIALIZE_EXT(Transform, x, y, z, qx, qy, qz, qw);
+DEPTHAI_SERIALIZE_EXT(Transform, data);
 
 /**
  * TransformData message. Carries transform in x,y,z,qx,qy,qz,qw format.
@@ -22,7 +18,16 @@ class TransformData : public Buffer {
     /**
      * Construct TransformData message.
      */
-    TransformData() = default;
+    TransformData();
+    TransformData(const Transform& transform);
+    TransformData(const std::vector<std::vector<float>>& data);
+    TransformData(float x, float y, float z, float qx, float qy, float qz, float qw);
+    TransformData(float x, float y, float z, float roll, float pitch, float yaw);
+
+#ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
+    TransformData(const rtabmap::Transform& transformRTABMap);
+    void getRTABMapTransform(rtabmap::Transform& transformRTABMap) const;
+#endif
     virtual ~TransformData() = default;
 
     /// Transform
@@ -32,6 +37,10 @@ class TransformData : public Buffer {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::TransformData;
     };
+
+    void getTranslation(float& x, float& y, float& z) const;
+    void getRotationEuler(float& r, float& p, float& y) const;
+    void getQuaternion(float& qx, float& qy, float& qz, float& qw) const;
 
     DEPTHAI_SERIALIZE(TransformData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, transform);
 };

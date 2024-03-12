@@ -628,7 +628,7 @@ if(DEPTHAI_RTABMAP_SUPPORT)
     if(RTABMAP_SUPPORT_AVAILABLE)
 
         # Add depthai-core-opencv library and depthai::core::opencv alias
-        add_library(${TARGET_RTABMAP_NAME} src/rtabmap/VIO.cpp)
+        add_library(${TARGET_RTABMAP_NAME} src/rtabmap/RTABMapVIO.cpp src/rtabmap/CalibrationHandler.cpp src/rtabmap/TransformData.cpp)
         add_library("${PROJECT_NAME}::${TARGET_RTABMAP_ALIAS}" ALIAS ${TARGET_RTABMAP_NAME})
         # Specifies name of generated IMPORTED target (set to alias)
         set_target_properties(${TARGET_RTABMAP_NAME} PROPERTIES EXPORT_NAME ${TARGET_RTABMAP_ALIAS})
@@ -637,8 +637,6 @@ if(DEPTHAI_RTABMAP_SUPPORT)
         add_default_flags(${TARGET_RTABMAP_NAME})
         add_flag(${TARGET_RTABMAP_NAME} -Wno-switch-enum)
 
-        target_link_options(${TARGET_RTABMAP_NAME} PRIVATE "-Wl,--disable-new-dtags")
-# target_link_libraries(rtabmap_vio PRIVATE rtabmap::core)
         # Link to RTABMap (publically)
         target_link_libraries(${TARGET_RTABMAP_NAME} PUBLIC rtabmap::core depthai::opencv ${THIRDPARTY_RTABMAP_LIBRARIES})
 

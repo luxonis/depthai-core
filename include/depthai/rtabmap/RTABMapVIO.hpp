@@ -7,6 +7,7 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
+#include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "rtabmap/core/CameraModel.h"
 #include "rtabmap/core/Odometry.h"
 #include "rtabmap/core/OdometryInfo.h"
@@ -15,9 +16,9 @@
 #include "rtabmap/core/Transform.h"
 namespace dai {
 namespace node {
-class VisualOdometry : public dai::NodeCRTP<dai::ThreadedNode, VisualOdometry> {
+class RTABMapVIO : public dai::NodeCRTP<dai::ThreadedNode, RTABMapVIO> {
    public:
-    constexpr static const char* NAME = "VisualOdometry";
+    constexpr static const char* NAME = "RTABMapVIO";
 
    public:
     void build();
@@ -30,12 +31,14 @@ class VisualOdometry : public dai::NodeCRTP<dai::ThreadedNode, VisualOdometry> {
     Input inputDepth{true, *this, "depth", Input::Type::SReceiver, false, 8, true, {{dai::DatatypeEnum::ImgFrame, true}}};
     Input inputIMU{true, *this, "imu", Input::Type::SReceiver, false, 8, true, {{dai::DatatypeEnum::IMUData, true}}};
     Input inputFeatures{true, *this, "features", Input::Type::SReceiver, false, 8, true, {{dai::DatatypeEnum::TrackedFeatures, true}}};
+    Input inputReset{true, *this, "reset", Input::Type::SReceiver, false, 8, true, {{dai::DatatypeEnum::CameraControl, true}}};
 
     Output transform{true, *this, "transform", Output::Type::MSender, {{dai::DatatypeEnum::TransformData, true}}};
 
     void run() override;
     void getCalib(dai::Pipeline& pipeline, int instanceNum, int width, int height);
-
+    void stop() override;
+    void setParams(const rtabmap::ParametersMap& params);
    private:
     rtabmap::StereoCameraModel model;
     rtabmap::Odometry* odom;

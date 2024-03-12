@@ -19,7 +19,7 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
-#include "depthai/rtabmap/VIO.hpp"
+#include "depthai/rtabmap/RTABMapVIO.hpp"
 
 
 int main() {
@@ -35,8 +35,10 @@ int main() {
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto imu = pipeline.create<dai::node::IMU>();
     auto featureTracker = pipeline.create<dai::node::FeatureTracker>();
-    auto odom = pipeline.create<dai::node::VisualOdometry>();
-
+    auto odom = pipeline.create<dai::node::RTABMapVIO>();
+    auto params = rtabmap::ParametersMap();
+    params.insert(rtabmap::ParametersPair("Odom/AlignWithGround", "true"));
+    odom->setParams(params);
     imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 100);
     imu->setBatchReportThreshold(1);
     imu->setMaxBatchReports(10);
@@ -60,6 +62,10 @@ int main() {
     stereo->setLeftRightCheck(true);
     stereo->initialConfig.setLeftRightCheckThreshold(10);
     stereo->setDepthAlign(dai::StereoDepthProperties::DepthAlign::RECTIFIED_LEFT);
+
+    // auto controlIn = pipeline.create<dai::node::XLinkIn>();
+    // controlIn->setStreamName("control");
+
 
     // Linking
     left->isp.link(stereo->left);

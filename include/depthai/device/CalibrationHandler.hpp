@@ -7,7 +7,9 @@
 #include "depthai/common/Point2f.hpp"
 #include "depthai/common/Size2f.hpp"
 #include "depthai/utility/Path.hpp"
-
+#ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
+    #include "rtabmap/core/StereoCameraModel.h"
+#endif
 namespace dai {
 /**
  * CalibrationHandler is an interface to read/load/write structured calibration and device data.
@@ -549,6 +551,31 @@ class CalibrationHandler {
      * @return true on proper connection with no loops.
      */
     bool validateCameraArray() const;
+
+// Optional - RTABMap support
+#ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
+    /**
+     * @note This API only available if RTABMap support is enabled
+     *
+     * Provide the rtabmap::StereoCameraModel object
+     *
+     * @param model StereoCameraModel object to be filled with the intrinsics and extrinsics of the camera
+     * @param socketID CameraBoardSocket of the camera
+     * @param width Width of the image for which intrinsics is requested
+     * @param height Height of the image for which intrinsics is requested
+     */
+    void getRTABMapCameraModel(rtabmap::StereoCameraModel &model, CameraBoardSocket cameraId, int width, int height, float alphaScaling=1.0);
+
+#else
+    template <typename... T>
+    struct dependent_false {
+        static constexpr bool value = false;
+    };
+    template <typename... T>
+    void getRTABMapCameraModel(T...) {
+        static_assert(dependent_false<T...>::value, "Library not configured with RTABMap support");
+    }
+#endif
 
    private:
     /** when the user is writing extrinsics do we validate if
