@@ -34,12 +34,12 @@ class RTABMapVIO : public dai::NodeCRTP<dai::ThreadedNode, RTABMapVIO> {
     Input inputReset{true, *this, "reset", Input::Type::SReceiver, false, 8, true, {{dai::DatatypeEnum::CameraControl, true}}};
 
     Output transform{true, *this, "transform", Output::Type::MSender, {{dai::DatatypeEnum::TransformData, true}}};
-
+    Output passthroughRect{true, *this, "passthrough_rect", Output::Type::MSender, {{dai::DatatypeEnum::ImgFrame, true}}};
     void run() override;
-    void getCalib(dai::Pipeline& pipeline, int instanceNum, int width, int height);
     void stop() override;
     void setParams(const rtabmap::ParametersMap& params);
    private:
+    void getCalib(dai::Pipeline& pipeline, int instanceNum, int width, int height);
     rtabmap::StereoCameraModel model;
     rtabmap::Odometry* odom;
     rtabmap::OdometryInfo info;

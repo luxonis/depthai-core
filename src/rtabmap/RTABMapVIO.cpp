@@ -9,7 +9,7 @@ void RTABMapVIO::build() {
 
 void RTABMapVIO::stop() {
     dai::Node::stop();
-    cv::destroyAllWindows();
+    // cv::destroyAllWindows();
     if(odom != nullptr) {
         delete odom;
     }
@@ -35,7 +35,6 @@ void RTABMapVIO::run() {
             auto pipeline = getParentPipeline();
             getCalib(pipeline, imgFrame->getInstanceNum(), imgFrame->getWidth(), imgFrame->getHeight());
             modelSet = true;
-            std::cout << "Model set" << std::endl;
         } else {
             double stamp = std::chrono::duration<double>(imgFrame->getTimestampDevice(dai::CameraExposureOffset::MIDDLE).time_since_epoch()).count();
 
@@ -78,45 +77,46 @@ void RTABMapVIO::run() {
             float x, y, z, roll, pitch, yaw;
             pose.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
 
-            std::stringstream xPos;
-            xPos << "X: " << x << " m";
-            cv::putText(final_img, xPos.str(), cv::Point(10, 50), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
+            // std::stringstream xPos;
+            // xPos << "X: " << x << " m";
+            // cv::putText(final_img, xPos.str(), cv::Point(10, 50), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
 
-            std::stringstream yPos;
-            yPos << "Y: " << y << " m";
-            cv::putText(final_img, yPos.str(), cv::Point(10, 70), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
+            // std::stringstream yPos;
+            // yPos << "Y: " << y << " m";
+            // cv::putText(final_img, yPos.str(), cv::Point(10, 70), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
 
-            std::stringstream zPos;
-            zPos << "Z: " << z << " m";
-            cv::putText(final_img, zPos.str(), cv::Point(10, 90), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
+            // std::stringstream zPos;
+            // zPos << "Z: " << z << " m";
+            // cv::putText(final_img, zPos.str(), cv::Point(10, 90), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
 
-            std::stringstream rollPos;
-            rollPos << "Roll: " << roll << " rad";
-            cv::putText(final_img, rollPos.str(), cv::Point(10, 110), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
+            // std::stringstream rollPos;
+            // rollPos << "Roll: " << roll << " rad";
+            // cv::putText(final_img, rollPos.str(), cv::Point(10, 110), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
 
-            std::stringstream pitchPos;
-            pitchPos << "Pitch: " << pitch << " rad";
-            cv::putText(final_img, pitchPos.str(), cv::Point(10, 130), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
+            // std::stringstream pitchPos;
+            // pitchPos << "Pitch: " << pitch << " rad";
+            // cv::putText(final_img, pitchPos.str(), cv::Point(10, 130), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
 
-            std::stringstream yawPos;
-            yawPos << "Yaw: " << yaw << " rad";
-            cv::putText(final_img, yawPos.str(), cv::Point(10, 150), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
+            // std::stringstream yawPos;
+            // yawPos << "Yaw: " << yaw << " rad";
+            // cv::putText(final_img, yawPos.str(), cv::Point(10, 150), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
 
 
-            Eigen::Quaternionf q = pose.getQuaternionf();
+            // Eigen::Quaternionf q = pose.getQuaternionf();
 
-            auto out = std::make_shared<dai::TransformData>(pose);
             
 
-            cv::imshow("keypoints", final_img);
-            auto key = cv::waitKey(1);
-            if(key == 'q' || key == 'Q') {
-                stop();
-            }
-            else if(key == 'r' || key == 'R') {
-                odom->reset();
-            }
+            // cv::imshow("keypoints", final_img);
+            // auto key = cv::waitKey(1);
+            // if(key == 'q' || key == 'Q') {
+            //     stop();
+            // }
+            // else if(key == 'r' || key == 'R') {
+            //     odom->reset();
+            // }
+            auto out = std::make_shared<dai::TransformData>(pose);
             transform.send(out);
+            passthroughRect.send(imgFrame);
         }
     }
     fmt::print("Display node stopped\n");

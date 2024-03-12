@@ -277,9 +277,14 @@ dai_add_example(queue_add_callback host_side/queue_add_callback.cpp ON)
 dai_add_example(device_information host_side/device_information.cpp OFF)
 dai_add_example(device_logging host_side/device_logging.cpp OFF)
 
+include(FetchContent)
+FetchContent_Declare(rerun_sdk URL
+    https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip)
+FetchContent_MakeAvailable(rerun_sdk)
 dai_add_example(rtabmap_vio host_side/rtabmap_vio.cpp OFF)
+set_property(TARGET rtabmap_vio PROPERTY CXX_STANDARD 17)
 target_link_options(rtabmap_vio PRIVATE "-Wl,--disable-new-dtags")
-target_link_libraries(rtabmap_vio PRIVATE depthai::rtabmap)
+target_link_libraries(rtabmap_vio PRIVATE depthai::rtabmap rerun_sdk)
 
 # ImageManip
 dai_add_example(image_manip ImageManip/image_manip_example.cpp ON)

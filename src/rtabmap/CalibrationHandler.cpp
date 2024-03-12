@@ -18,6 +18,8 @@ void CalibrationHandler::getRTABMapCameraModel(rtabmap::StereoCameraModel& model
     double fy = cameraMatrix.at<double>(1, 1);
     double cx = cameraMatrix.at<double>(0, 2);
     double cy = cameraMatrix.at<double>(1, 2);
+    std::cout << "width " << width << " height " << height << std::endl;
+    std::cout << "fx " << fx << " fy " << fy << " cx " << cx << " cy " << cy << std::endl;
     double baseline = getBaselineDistance(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_B) / 100.0;
     if(cameraId == dai::CameraBoardSocket::CAM_A)
         model = rtabmap::StereoCameraModel(eepromData.boardName, fx, fy, cx, cy, baseline, rtabmap::Transform::getIdentity(), cv::Size(width, height));

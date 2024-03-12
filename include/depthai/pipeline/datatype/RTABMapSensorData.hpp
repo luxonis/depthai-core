@@ -4,27 +4,22 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/common/Point3f.hpp"
+#include "depthai/common/CameraInfo.hpp"
 
 
 namespace dai {
 
-struct CameraModel{
+struct CameraModelRTABMap{
     std::string name;
-    int imageWidth;
-    int imageHeight;
-    float cx;
-    float cy;
-    float fx;
-    float fy;
-    float baseline;
+    CameraInfo cameraInfo;
     Transform localTransform;
 };
-DEPTHAI_SERIALIZE_EXT(CameraModel, name, imageWidth, imageHeight, cx, cy, fx, fy, baseline, localTransform);
+DEPTHAI_SERIALIZE_EXT(CameraModelRTABMap, name, cameraInfo, localTransform);
 
 struct SensorData {
     int id;
     double stamp;
-    std::vector<CameraModel> cameraModels;
+    std::vector<CameraModelRTABMap> cameraModels;
     ImgFrame imageRaw;
     ImgFrame depthImage;
     TrackedFeatures trackedFeatures;
