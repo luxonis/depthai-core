@@ -26,7 +26,7 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
         /**
          * Mesh array size in bytes, for each of 'left' and 'right' (need to match)
          */
-        tl::optional<std::uint32_t> meshSize;
+        std::optional<std::uint32_t> meshSize;
         /**
          * Distance between mesh points, in the horizontal direction
          */
@@ -65,19 +65,19 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
     /**
      * Input frame width. Optional (taken from MonoCamera nodes if they exist)
      */
-    tl::optional<std::int32_t> width;
+    std::optional<std::int32_t> width;
     /**
      * Input frame height. Optional (taken from MonoCamera nodes if they exist)
      */
-    tl::optional<std::int32_t> height;
+    std::optional<std::int32_t> height;
     /**
      * Output disparity/depth width. Currently only used when aligning to RGB
      */
-    tl::optional<std::int32_t> outWidth;
+    std::optional<std::int32_t> outWidth;
     /**
      * Output disparity/depth height. Currently only used when aligning to RGB
      */
-    tl::optional<std::int32_t> outHeight;
+    std::optional<std::int32_t> outHeight;
     /**
      * Whether to keep aspect ratio of the input (rectified) or not
      */
@@ -139,7 +139,7 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      * distortion. Implementation for generating the mesh is same as opencv's initUndistortRectifyMap function. Only the first 8 distortion coefficients are
      * used from calibration data.
      */
-    tl::optional<bool> useHomographyRectification;
+    std::optional<bool> useHomographyRectification;
 
     /**
      * Whether to perform vertical stereo matching or not.
@@ -164,33 +164,33 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      * Used only in disparity to depth conversion.
      * Units are centimeters.
      */
-    tl::optional<float> baseline;
+    std::optional<float> baseline;
 
     /**
      * Override focal length from calibration.
      * Used only in disparity to depth conversion.
      * Units are pixels.
      */
-    tl::optional<float> focalLength;
+    std::optional<float> focalLength;
 
     /**
      * Use baseline information for disparity to depth conversion from specs (design data) or from calibration.
      * Suitable for debugging. Utilizes calibrated value as default
      */
-    tl::optional<bool> disparityToDepthUseSpecTranslation = tl::nullopt;
+    std::optional<bool> disparityToDepthUseSpecTranslation = std::nullopt;
 
     /**
      * Obtain rectification matrices using spec translation (design data) or from calibration in calculations.
      * Suitable for debugging.
      * Default: false
      */
-    tl::optional<bool> rectificationUseSpecTranslation = tl::nullopt;
+    std::optional<bool> rectificationUseSpecTranslation = std::nullopt;
 
     /**
      * Use baseline information for depth alignment from specs (design data) or from calibration.
      * Suitable for debugging. Utilizes calibrated value as default
      */
-    tl::optional<bool> depthAlignmentUseSpecTranslation = tl::nullopt;
+    std::optional<bool> depthAlignmentUseSpecTranslation = std::nullopt;
 
     /**
      * Free scaling parameter between 0 (when all the pixels in the undistorted image are valid)
@@ -199,7 +199,7 @@ struct StereoDepthProperties : PropertiesSerializable<Properties, StereoDepthPro
      * in these cases alpha < 0.0 helps removing invalid areas.
      * See getOptimalNewCameraMatrix from opencv for more details.
      */
-    tl::optional<float> alphaScaling;
+    std::optional<float> alphaScaling;
 };
 
 DEPTHAI_SERIALIZE_EXT(StereoDepthProperties,

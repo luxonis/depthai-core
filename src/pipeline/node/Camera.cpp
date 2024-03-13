@@ -265,7 +265,7 @@ void Camera::setCalibrationAlpha(float alpha) {
     properties.calibAlpha = alpha;
 }
 
-tl::optional<float> Camera::getCalibrationAlpha() const {
+std::optional<float> Camera::getCalibrationAlpha() const {
     return properties.calibAlpha;
 }
 

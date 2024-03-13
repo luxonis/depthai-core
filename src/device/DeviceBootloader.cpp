@@ -246,12 +246,12 @@ void DeviceBootloader::saveDepthaiApplicationPackage(
 }
 
 DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo) : deviceInfo(devInfo) {
-    init(true, {}, tl::nullopt, false);
+    init(true, {}, std::nullopt, false);
 }
 
 template <>
 DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, bool allowFlashingBootloader) : deviceInfo(devInfo) {
-    init(true, {}, tl::nullopt, allowFlashingBootloader);
+    init(true, {}, std::nullopt, allowFlashingBootloader);
 }
 
 DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, Type type, bool allowFlashingBootloader) : deviceInfo(devInfo) {
@@ -259,11 +259,11 @@ DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, Type type, bool al
 }
 
 DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, const dai::Path& pathToBootloader, bool allowFlashingBootloader) : deviceInfo(devInfo) {
-    init(false, pathToBootloader, tl::nullopt, allowFlashingBootloader);
+    init(false, pathToBootloader, std::nullopt, allowFlashingBootloader);
 }
 
 DeviceBootloader::DeviceBootloader(std::string nameOrDeviceId, bool allowFlashingBootloader) : deviceInfo(std::move(nameOrDeviceId)) {
-    init(true, {}, tl::nullopt, allowFlashingBootloader);
+    init(true, {}, std::nullopt, allowFlashingBootloader);
 }
 
 void DeviceBootloader::createWatchdog() {
@@ -347,7 +347,7 @@ void DeviceBootloader::destroyWatchdog() {
     if(monitorThread.joinable()) monitorThread.join();
 }
 
-void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl::optional<bootloader::Type> type, bool allowBlFlash) {
+void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, std::optional<bootloader::Type> type, bool allowBlFlash) {
     stream = nullptr;
     allowFlashingBootloader = allowBlFlash;
 

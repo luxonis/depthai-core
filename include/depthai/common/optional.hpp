@@ -1,15 +1,15 @@
 #pragma once
 
 #include "depthai/utility/Serialization.hpp"
-#include "tl/optional.hpp"
+#include <optional>
 
-// tl::optional serialization for nlohmann json
+// std::optional serialization for nlohmann json
 // partial specialization (full specialization works too)
 namespace nlohmann {
 template <typename T>
-struct adl_serializer<tl::optional<T>> {
-    static void to_json(json& j, const tl::optional<T>& opt) {  // NOLINT this is a specialization, naming conventions don't apply
-        if(opt == tl::nullopt) {
+struct adl_serializer<std::optional<T>> {
+    static void to_json(json& j, const std::optional<T>& opt) {  // NOLINT this is a specialization, naming conventions don't apply
+        if(opt == std::nullopt) {
             j = nullptr;
         } else {
             j = *opt;  // this will call adl_serializer<T>::to_json which will
@@ -17,9 +17,9 @@ struct adl_serializer<tl::optional<T>> {
         }
     }
 
-    static void from_json(const json& j, tl::optional<T>& opt) {  // NOLINT this is a specialization, naming conventions don't apply
+    static void from_json(const json& j, std::optional<T>& opt) {  // NOLINT this is a specialization, naming conventions don't apply
         if(j.is_null()) {
-            opt = tl::nullopt;
+            opt = std::nullopt;
         } else {
             opt = j.get<T>();  // same as above, but with
                                // adl_serializer<T>::from_json
@@ -28,7 +28,7 @@ struct adl_serializer<tl::optional<T>> {
 };
 }  // namespace nlohmann
 
-// tl::optional serialization for libnop
+// std::optional serialization for libnop
 namespace nop {
 
 //
@@ -50,8 +50,8 @@ namespace nop {
 //
 
 template <typename T>
-struct Encoding<tl::optional<T>> : EncodingIO<tl::optional<T>> {
-    using Type = tl::optional<T>;
+struct Encoding<std::optional<T>> : EncodingIO<std::optional<T>> {
+    using Type = std::optional<T>;
 
     static constexpr EncodingByte Prefix(const Type& value) {
         return value ? Encoding<T>::Prefix(*value) : EncodingByte::Empty;

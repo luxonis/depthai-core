@@ -278,7 +278,7 @@ DeviceGate::SessionState DeviceGate::getState() {
     return SessionState::ERROR_STATE;
 }
 
-tl::optional<std::string> DeviceGate::saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename, std::string directoryPath) {
+std::optional<std::string> DeviceGate::saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename, std::string directoryPath) {
     std::string tmpdir;
     if(directoryPath.empty()) {
         tmpdir = platform::getTempPath();
@@ -290,20 +290,20 @@ tl::optional<std::string> DeviceGate::saveFileToTemporaryDirectory(std::vector<u
     std::ofstream file(path, std::ios::binary);
     if(!file.is_open()) {
         spdlog::error("Couldn't open file {} for writing", path);
-        return tl::nullopt;
+        return std::nullopt;
     }
 
     file.write(reinterpret_cast<char*>(data.data()), data.size());
     file.close();
     if(!file.good()) {
         spdlog::error("Couldn't write to file {}", path);
-        return tl::nullopt;
+        return std::nullopt;
     }
     spdlog::debug("Saved file {} to {}", filename, path);
     return std::string(path);
 }
 
-tl::optional<std::vector<uint8_t>> DeviceGate::getFile(const std::string& fileUrl, std::string& filename) {
+std::optional<std::vector<uint8_t>> DeviceGate::getFile(const std::string& fileUrl, std::string& filename) {
     // Send a GET request to the server
     if(auto res = pimpl->cli->Get(fileUrl.c_str())) {
         if(res->status == 200) {
@@ -315,11 +315,11 @@ tl::optional<std::vector<uint8_t>> DeviceGate::getFile(const std::string& fileUr
             return fileData;
         } else {
             spdlog::warn("File download not successful - status: {}, error: {}", res->status, res->body);
-            return tl::nullopt;
+            return std::nullopt;
         }
     } else {
         spdlog::warn("File download not successful - got no response");
-        return tl::nullopt;
+        return std::nullopt;
     }
 }
 
@@ -382,7 +382,7 @@ void DeviceGate::waitForSessionEnd() {
     }
 }
 
-tl::optional<std::vector<uint8_t>> DeviceGate::getCrashDump(std::string& filename) {
+std::optional<std::vector<uint8_t>> DeviceGate::getCrashDump(std::string& filename) {
     std::string url = fmt::format("{}/{}/core_dump", sessionsEndpoint, sessionId);
     return DeviceGate::getFile(url, filename);
 }

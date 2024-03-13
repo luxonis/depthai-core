@@ -6,35 +6,35 @@
 namespace dai {
 namespace node {
 
-void Pool::setNumMessages(tl::optional<int> num) {
+void Pool::setNumMessages(std::optional<int> num) {
     properties.numMessages = num;
 }
 
-tl::optional<int> Pool::getNumMessages() const {
+std::optional<int> Pool::getNumMessages() const {
     return properties.numMessages;
 }
 
-void Pool::setMaxMessageSize(tl::optional<std::int64_t> size) {
+void Pool::setMaxMessageSize(std::optional<std::int64_t> size) {
     properties.maxMessageSize = size;
 }
 
-tl::optional<std::int64_t> Pool::getMaxMessageSize() const {
+std::optional<std::int64_t> Pool::getMaxMessageSize() const {
     return properties.maxMessageSize;
 }
 
-void Pool::setDatatype(tl::optional<DatatypeEnum> type) {
+void Pool::setDatatype(std::optional<DatatypeEnum> type) {
     properties.datatype = type;
 }
 
-tl::optional<DatatypeEnum> Pool::getDatatype() const {
+std::optional<DatatypeEnum> Pool::getDatatype() const {
     return properties.datatype;
 }
 
-void Pool::setProcessor(tl::optional<ProcessorType> proc) {
+void Pool::setProcessor(std::optional<ProcessorType> proc) {
     properties.processor = proc;
 }
 
-tl::optional<ProcessorType> Pool::getProcessor() const {
+std::optional<ProcessorType> Pool::getProcessor() const {
     return properties.processor;
 }
 

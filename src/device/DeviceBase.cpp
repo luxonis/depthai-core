@@ -2,6 +2,7 @@
 
 // std
 #include <iostream>
+#include <optional>
 
 // shared
 #include "depthai-bootloader-shared/Bootloader.hpp"
@@ -340,7 +341,7 @@ DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, con
     Config cfg;
     cfg.version = version;
 
-    init2(cfg, pathToCmd, {});
+    init2(cfg, pathToCmd, false);
 }
 
 DeviceBase::DeviceBase() : DeviceBase(OpenVINO::VERSION_UNIVERSAL) {}
@@ -401,7 +402,7 @@ DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsb
 }
 
 DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd, bool dumpOnly) : deviceInfo(devInfo), dumpOnly(dumpOnly) {
-    init2(config, pathToCmd, {});
+    init2(config, pathToCmd, false);
 }
 
 DeviceBase::DeviceBase(Config config, const dai::Path& pathToCmd) {
@@ -418,7 +419,7 @@ void DeviceBase::init(OpenVINO::Version version) {
     Config cfg;
     cfg.version = version;
 
-    init2(cfg, "", {});
+    init2(cfg, "", false);
 }
 
 void DeviceBase::init(OpenVINO::Version version, const dai::Path& pathToCmd) {
@@ -427,7 +428,7 @@ void DeviceBase::init(OpenVINO::Version version, const dai::Path& pathToCmd) {
     Config cfg;
     cfg.version = version;
 
-    init2(cfg, pathToCmd, {});
+    init2(cfg, pathToCmd, false);
 }
 
 void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed) {
@@ -440,7 +441,7 @@ void DeviceBase::init(const Pipeline& pipeline) {
 
     Config cfg = pipeline.getDeviceConfig();
 
-    init2(cfg, "", pipeline);
+    init2(cfg, "", true);
 }
 
 void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) {
@@ -453,7 +454,7 @@ void DeviceBase::init(const Pipeline& pipeline, const dai::Path& pathToCmd) {
 
     Config cfg = pipeline.getDeviceConfig();
 
-    init2(cfg, pathToCmd, pipeline);
+    init2(cfg, pathToCmd, true);
 }
 
 void DeviceBase::init(const Pipeline& pipeline, const DeviceInfo& devInfo) {
@@ -461,7 +462,7 @@ void DeviceBase::init(const Pipeline& pipeline, const DeviceInfo& devInfo) {
 
     Config cfg = pipeline.getDeviceConfig();
 
-    init2(cfg, "", pipeline);
+    init2(cfg, "", true);
 }
 
 void DeviceBase::init(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) {
@@ -474,7 +475,7 @@ void DeviceBase::init(const Pipeline& pipeline, const DeviceInfo& devInfo, const
 
     Config cfg = pipeline.getDeviceConfig();
 
-    init2(cfg, pathToCmd, pipeline);
+    init2(cfg, pathToCmd, true);
 }
 
 void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed) {
@@ -484,7 +485,7 @@ void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed) {
 
 void DeviceBase::init(Config config, const dai::Path& pathToCmd) {
     tryGetDevice();
-    init2(config, pathToCmd, {});
+    init2(config, pathToCmd, false);
 }
 
 void DeviceBase::init(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) {
@@ -494,16 +495,16 @@ void DeviceBase::init(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbS
 
 void DeviceBase::init(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd) {
     deviceInfo = devInfo;
-    init2(config, pathToCmd, {});
+    init2(config, pathToCmd, false);
 }
 
 DeviceBase::DeviceBase(Config config) {
     tryGetDevice();
-    init2(config, {}, {});
+    init2(config, {}, false);
 }
 
 DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo) : deviceInfo(devInfo) {
-    init2(config, {}, {});
+    init2(config, {}, false);
 }
 
 void DeviceBase::close() {
@@ -526,7 +527,7 @@ unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
     return DEFAULT_CRASHDUMP_TIMEOUT + (protocol == X_LINK_TCP_IP ? device::XLINK_TCP_WATCHDOG_TIMEOUT.count() : device::XLINK_USB_WATCHDOG_TIMEOUT.count());
 }
 
-tl::optional<std::string> saveCrashDump(dai::CrashDump& dump, std::string mxId) {
+std::optional<std::string> saveCrashDump(dai::CrashDump& dump, std::string mxId) {
     std::vector<uint8_t> data;
     utility::serialize<SerializationType::JSON>(dump, data);
     auto crashDumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
@@ -670,13 +671,13 @@ void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const dai
     cfg.board.usb.maxSpeed = maxUsbSpeed;
     // Specify the OpenVINO version
     cfg.version = version;
-    init2(cfg, pathToMvcmd, {});
+    init2(cfg, pathToMvcmd, false);
 }
 void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd) {
     Config cfg = pipeline.getDeviceConfig();
     // Modify usb speed
     cfg.board.usb.maxSpeed = maxUsbSpeed;
-    init2(cfg, pathToMvcmd, pipeline);
+    init2(cfg, pathToMvcmd, true);
 }
 void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd) {
     Config cfg = config;
@@ -685,7 +686,7 @@ void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed, const dai::Path& path
     init2(cfg, pathToMvcmd, {});
 }
 
-void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<const Pipeline&> pipeline) {
+void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipeline) {
     // Initalize depthai library if not already
     if(!dumpOnly) initialize();
 
@@ -721,7 +722,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         }
     }
 
-    if(pipeline) {
+    if(hasPipeline) {
         pimpl->logger.debug("Device - pipeline serialized, OpenVINO version: {}", OpenVINO::getVersionName(config.version));
     } else {
         pimpl->logger.debug("Device - OpenVINO version: {}", OpenVINO::getVersionName(config.version));
@@ -1169,7 +1170,7 @@ UsbSpeed DeviceBase::getUsbSpeed() {
     return pimpl->rpcClient->call("getUsbSpeed").as<UsbSpeed>();
 }
 
-tl::optional<Version> DeviceBase::getBootloaderVersion() {
+std::optional<Version> DeviceBase::getBootloaderVersion() {
     return bootloaderVersion;
 }
 

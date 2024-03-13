@@ -474,13 +474,13 @@ OpenVINO::Version PipelineImpl::getOpenVINOVersion() const {
 }
 
 /// Get required OpenVINO version to run this pipeline. Can be none
-tl::optional<OpenVINO::Version> PipelineImpl::getRequiredOpenVINOVersion() const {
+std::optional<OpenVINO::Version> PipelineImpl::getRequiredOpenVINOVersion() const {
     return getPipelineOpenVINOVersion();
 }
 
-tl::optional<OpenVINO::Version> PipelineImpl::getPipelineOpenVINOVersion() const {
+std::optional<OpenVINO::Version> PipelineImpl::getPipelineOpenVINOVersion() const {
     // Loop over nodes, and get the required information
-    tl::optional<OpenVINO::Version> version;
+    std::optional<OpenVINO::Version> version;
     std::string lastNodeNameWithRequiredVersion = "";
     Node::Id lastNodeIdWithRequiredVersion = -1;
 
@@ -525,7 +525,7 @@ tl::optional<OpenVINO::Version> PipelineImpl::getPipelineOpenVINOVersion() const
         return version;
     } else {
         // Return null
-        return tl::nullopt;
+        return std::nullopt;
     }
 }
 
@@ -643,11 +643,11 @@ CalibrationHandler PipelineImpl::getCalibrationData() const {
     }
 }
 
-void PipelineImpl::setEepromData(tl::optional<EepromData> eepromData) {
+void PipelineImpl::setEepromData(std::optional<EepromData> eepromData) {
     globalProperties.calibData = eepromData;
 }
 
-tl::optional<EepromData> PipelineImpl::getEepromData() const {
+std::optional<EepromData> PipelineImpl::getEepromData() const {
     return globalProperties.calibData;
 }
 

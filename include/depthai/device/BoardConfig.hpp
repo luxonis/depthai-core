@@ -49,8 +49,8 @@ struct BoardConfig {
     std::vector<std::string> sysctl;
 
     /// Watchdog config
-    tl::optional<uint32_t> watchdogTimeoutMs;
-    tl::optional<uint32_t> watchdogInitialDelayMs;
+    std::optional<uint32_t> watchdogTimeoutMs;
+    std::optional<uint32_t> watchdogInitialDelayMs;
 
     /// GPIO config
     struct GPIO {
@@ -87,28 +87,28 @@ struct BoardConfig {
     std::unordered_map<std::int8_t, UART> uart;
 
     /// PCIe config
-    tl::optional<bool> pcieInternalClock;
+    std::optional<bool> pcieInternalClock;
 
     /// USB3 phy config
-    tl::optional<bool> usb3PhyInternalClock;
+    std::optional<bool> usb3PhyInternalClock;
 
     /// MIPI 4Lane RGB config
-    tl::optional<bool> mipi4LaneRgb;
+    std::optional<bool> mipi4LaneRgb;
 
     /// eMMC config
-    tl::optional<bool> emmc;
+    std::optional<bool> emmc;
 
     /// log path
-    tl::optional<std::string> logPath;
+    std::optional<std::string> logPath;
 
     /// Max log size
-    tl::optional<size_t> logSizeMax;
+    std::optional<size_t> logSizeMax;
 
     /// log verbosity
-    tl::optional<LogLevel> logVerbosity;
+    std::optional<LogLevel> logVerbosity;
 
     /// log device prints
-    tl::optional<bool> logDevicePrints;
+    std::optional<bool> logDevicePrints;
 
     bool nonExclusiveMode = false;
 
@@ -120,7 +120,7 @@ struct BoardConfig {
     //     int gpioPwr, gpioRst;
     //     float voltageCore, voltageAnalog, voltageInterface;
     //     // TODO(themarpe) - tbd if better placed here
-    //     // tl::optional<CameraBoardSocket> syncTo;
+    //     // std::optional<CameraBoardSocket> syncTo;
     // };
     // std::unordered_map<CameraBoardSocket, Socket> socket;
 
@@ -129,10 +129,10 @@ struct BoardConfig {
         std::string name;
         // TODO(themarpe) - add later when applicable
         // std::vector<std::string> sensorName;
-        tl::optional<CameraSensorType> sensorType;
+        std::optional<CameraSensorType> sensorType;
         // std::vector<vector> vcm;
-        // tl::optional<CameraBoardSocket> syncTo;
-        tl::optional<CameraImageOrientation> orientation;
+        // std::optional<CameraBoardSocket> syncTo;
+        std::optional<CameraImageOrientation> orientation;
     };
     std::unordered_map<CameraBoardSocket, Camera> camera;
 
@@ -140,7 +140,7 @@ struct BoardConfig {
         IMU() : bus(0), interrupt(53), wake(34), csGpio(8), boot(46), reset(45) {}
         int8_t bus, interrupt, wake, csGpio, boot, reset;
     };
-    tl::optional<IMU> imu;
+    std::optional<IMU> imu;
 
     /// UVC configuration for USB descriptor
     struct UVC {
@@ -151,7 +151,7 @@ struct BoardConfig {
         UVC(uint16_t width, uint16_t height) : width(width), height(height), frameType(ImgFrame::Type::NV12), enable(true) {}
         UVC() : UVC(1920, 1080) {}
     };
-    tl::optional<UVC> uvc;
+    std::optional<UVC> uvc;
 };
 
 DEPTHAI_SERIALIZE_EXT(BoardConfig::USB, vid, pid, flashBootedVid, flashBootedPid, maxSpeed, productName, manufacturer);

@@ -10,7 +10,7 @@
 #include "depthai/device/Version.hpp"
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
-#include "tl/optional.hpp"
+#include <optional>
 namespace dai {
 
 /**
@@ -49,7 +49,7 @@ class DeviceGate {
     // Waits for the gate session to end and tries to get the logs and crash dump out
     void waitForSessionEnd();
 
-    tl::optional<std::vector<uint8_t>> getCrashDump(std::string& filename);
+    std::optional<std::vector<uint8_t>> getCrashDump(std::string& filename);
 
     struct VersionInfo {
         std::string gate, os;
@@ -65,9 +65,9 @@ class DeviceGate {
 
     std::thread stateMonitoringThread;
 
-    tl::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename);
+    std::optional<std::vector<uint8_t>> getFile(const std::string& fileUrl, std::string& filename);
 
-    tl::optional<std::string> saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename, std::string direcotryPath = "");
+    std::optional<std::string> saveFileToTemporaryDirectory(std::vector<uint8_t> data, std::string filename, std::string direcotryPath = "");
 
     // state of the session
     std::atomic_bool sessionCreated{false};
