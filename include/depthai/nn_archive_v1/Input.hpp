@@ -1,28 +1,18 @@
-//  To parse this JSON data, first install
-//
-//      json.hpp  https://github.com/nlohmann/json
-//
-//  Then include this file, and then do
-//
-//     Input.hpp data = nlohmann::json::parse(jsonString);
-
 #pragma once
 
 #include <optional>
-#include <nlohmann/json.hpp>
-#include "helper.hpp"
 
 #include "PreprocessingBlock.hpp"
 
 namespace dai {
-namespace json_types {
+namespace nn_archive_v1 {
     enum class DataType : int;
     enum class InputType : int;
 }
 }
 
 namespace dai {
-namespace json_types {
+namespace nn_archive_v1 {
     /**
      * Represents input stream of a model.
      *
@@ -43,7 +33,6 @@ namespace json_types {
      * @ivar preprocessing: Preprocessing steps applied to the input data.
      */
 
-    using nlohmann::json;
 
     /**
      * Represents input stream of a model.

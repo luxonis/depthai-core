@@ -9,8 +9,8 @@
 
 // internal
 #include "depthai/common/DetectionNetworkType.hpp"
-#include "json_types/Generators.hpp"
-#include "json_types/NnArchiveConfig.hpp"
+#include "depthai/nn_archive_v1/Config.hpp"
+#include "nn_archive_v1/Generators.hpp"
 #include "utility/ArchiveUtil.hpp"
 #include "utility/ErrorMacros.hpp"
 #include "utility/PimplImpl.hpp"
@@ -26,27 +26,14 @@ class DetectionNetwork::Impl {
    public:
     Impl() = default;
 
-    static dai::json_types::NnArchiveConfig parseNNArchiveConfig(const dai::Path& path, NNArchiveFormat format, bool& isJson, std::string& blobPath);
+    static dai::nn_archive_v1::Config parseNNArchiveConfig(const dai::Path& path, NNArchiveFormat format, bool& isJson, std::string& blobPath);
 };
 
-dai::json_types::NnArchiveConfig DetectionNetwork::Impl::parseNNArchiveConfig(const dai::Path& path,
-                                                                              const NNArchiveFormat format,
-                                                                              bool& isJson,
-                                                                              std::string& blobPath) {
+dai::nn_archive_v1::Config DetectionNetwork::Impl::parseNNArchiveConfig(const dai::Path& path,
+                                                                        const NNArchiveFormat format,
+                                                                        bool& isJson,
+                                                                        std::string& blobPath) {
     const auto filepath = path.string();
-#if defined(_WIN32) && defined(_MSC_VER)
-    const char separator = '\\';
-#else
-    const char separator = '/';
-#endif
-    const size_t lastSlashIndex = filepath.find_last_of(separator);
-
-    std::string archiveName;
-    if(std::string::npos == lastSlashIndex) {
-        archiveName = filepath;
-    } else {
-        archiveName = filepath.substr(lastSlashIndex + 1);
-    }
     isJson = format == NNArchiveFormat::RAW_FS;
     if(format == NNArchiveFormat::AUTO) {
         const auto pointIndex = filepath.find_last_of('.');
@@ -64,18 +51,24 @@ dai::json_types::NnArchiveConfig DetectionNetwork::Impl::parseNNArchiveConfig(co
         bool foundJson = false;
         while(archive_read_next_header(archive.getA(), &entry) == ARCHIVE_OK) {
             std::string entryName(archive_entry_pathname(entry));
-            if(entryName == archiveName + ".json") {
+            if(entryName == "config.json") {
                 foundJson = true;
                 const auto jsonBytes = archive.readEntry(entry);
                 maybeJson = nlohmann::json::parse(jsonBytes);
                 break;
             }
         }
-        daiCheckV(foundJson, "Didn't find the {}.json file inside the {} archive.", archiveName, filepath);
+        daiCheckV(foundJson, "Didn't find the config.json file inside the {} archive.", filepath);
     }
-    dai::json_types::NnArchiveConfig config;
-    dai::json_types::from_json(*maybeJson, config);
+    dai::nn_archive_v1::Config config;
+    dai::nn_archive_v1::from_json(*maybeJson, config);
     if(isJson) {
+#if defined(_WIN32) && defined(_MSC_VER)
+        const char separator = '\\';
+#else
+        const char separator = '/';
+#endif
+        const size_t lastSlashIndex = filepath.find_last_of(separator);
         if(std::string::npos == lastSlashIndex) {
             blobPath = config.model.metadata.path;
         } else {
@@ -137,20 +130,20 @@ void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat
     // TODO(jakgra) for now get info from heads[0] but in the future correctly support multiple outputs and mapped heads
     daiCheckV(
         (*model.heads).size() == 1, "There should be exactly one head per model in the NN Archive config file defined. Found {} heads.", (*model.heads).size());
-    const auto headMeta = (*model.heads)[0].metadata;
-    if(headMeta.family == dai::json_types::Family::OBJECT_DETECTION_YOLO) {
+    const auto head = (*model.heads)[0];
+    if(head.family == "ObjectDetectionYOLO") {
         detectionParser->properties.parser.nnFamily = DetectionNetworkType::YOLO;
     }
-    detectionParser->setNumClasses(static_cast<int>(headMeta.nClasses));
-    if(headMeta.iouThreshold) {
-        detectionParser->properties.parser.iouThreshold = static_cast<float>(*headMeta.iouThreshold);
+    detectionParser->setNumClasses(static_cast<int>(head.nClasses));
+    if(head.iouThreshold) {
+        detectionParser->properties.parser.iouThreshold = static_cast<float>(*head.iouThreshold);
     }
-    if(headMeta.confThreshold) {
-        setConfidenceThreshold(static_cast<float>(*headMeta.confThreshold));
+    if(head.confThreshold) {
+        setConfidenceThreshold(static_cast<float>(*head.confThreshold));
     }
     detectionParser->setCoordinateSize(4);
-    if(headMeta.anchors) {
-        const auto anchorsIn = *headMeta.anchors;
+    if(head.anchors) {
+        const auto anchorsIn = *head.anchors;
         std::vector<std::vector<std::vector<float>>> anchorsOut(anchorsIn.size());
         for(size_t layer = 0; layer < anchorsOut.size(); ++layer) {
             std::vector<std::vector<float>> layerOut(anchorsIn[layer].size());

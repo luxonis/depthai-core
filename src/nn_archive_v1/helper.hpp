@@ -14,11 +14,11 @@
 #include <sstream>
 
 namespace dai {
-namespace json_types {
+namespace nn_archive_v1 {
     using nlohmann::json;
 
-    #ifndef NLOHMANN_UNTYPED_dai_json_types_HELPER
-    #define NLOHMANN_UNTYPED_dai_json_types_HELPER
+    #ifndef NLOHMANN_UNTYPED_dai_nn_archive_v1_HELPER
+    #define NLOHMANN_UNTYPED_dai_nn_archive_v1_HELPER
     inline json get_untyped(const json & j, const char * property) {
         if (j.find(property) != j.end()) {
             return j.at(property).get<json>();
@@ -31,8 +31,8 @@ namespace json_types {
     }
     #endif
 
-    #ifndef NLOHMANN_OPTIONAL_dai_json_types_HELPER
-    #define NLOHMANN_OPTIONAL_dai_json_types_HELPER
+    #ifndef NLOHMANN_OPTIONAL_dai_nn_archive_v1_HELPER
+    #define NLOHMANN_OPTIONAL_dai_nn_archive_v1_HELPER
     template <typename T>
     inline std::shared_ptr<T> get_heap_optional(const json & j, const char * property) {
         auto it = j.find(property);
@@ -63,28 +63,4 @@ namespace json_types {
 }
 }
 
-#ifndef NLOHMANN_OPT_HELPER
-#define NLOHMANN_OPT_HELPER
-namespace nlohmann {
-    template <typename T>
-    struct adl_serializer<std::shared_ptr<T>> {
-        static void to_json(json & j, const std::shared_ptr<T> & opt) {
-            if (!opt) j = nullptr; else j = *opt;
-        }
 
-        static std::shared_ptr<T> from_json(const json & j) {
-            if (j.is_null()) return std::make_shared<T>(); else return std::make_shared<T>(j.get<T>());
-        }
-    };
-    template <typename T>
-    struct adl_serializer<std::optional<T>> {
-        static void to_json(json & j, const std::optional<T> & opt) {
-            if (!opt) j = nullptr; else j = *opt;
-        }
-
-        static std::optional<T> from_json(const json & j) {
-            if (j.is_null()) return std::make_optional<T>(); else return std::make_optional<T>(j.get<T>());
-        }
-    };
-}
-#endif

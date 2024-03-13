@@ -12,24 +12,23 @@
 #include <nlohmann/json.hpp>
 #include "helper.hpp"
 
-#include "NnArchiveConfig.hpp"
-#include "Model.hpp"
-#include "Output.hpp"
-#include "MetadataClass.hpp"
-#include "Input.hpp"
-#include "PreprocessingBlock.hpp"
-#include "InputType.hpp"
-#include "DataType.hpp"
-#include "Head.hpp"
-#include "Metadata.hpp"
-#include "ObjectDetectionSubtypeYolo.hpp"
-#include "Family.hpp"
-#include "ConfigVersion.hpp"
+#include "depthai/nn_archive_v1/Config.hpp"
+#include "depthai/nn_archive_v1/Model.hpp"
+#include "depthai/nn_archive_v1/Output.hpp"
+#include "depthai/nn_archive_v1/Metadata.hpp"
+#include "depthai/nn_archive_v1/Input.hpp"
+#include "depthai/nn_archive_v1/PreprocessingBlock.hpp"
+#include "depthai/nn_archive_v1/InputType.hpp"
+#include "depthai/nn_archive_v1/DataType.hpp"
+#include "depthai/nn_archive_v1/Head.hpp"
+#include "depthai/nn_archive_v1/ObjectDetectionSubtypeYolo.hpp"
+#include "depthai/nn_archive_v1/Outputs.hpp"
+#include "depthai/nn_archive_v1/ConfigVersion.hpp"
 
 namespace dai {
-namespace json_types {
-    void from_json(const json & j, Metadata & x);
-    void to_json(json & j, const Metadata & x);
+namespace nn_archive_v1 {
+    void from_json(const json & j, Outputs & x);
+    void to_json(json & j, const Outputs & x);
 
     void from_json(const json & j, Head & x);
     void to_json(json & j, const Head & x);
@@ -40,8 +39,8 @@ namespace json_types {
     void from_json(const json & j, Input & x);
     void to_json(json & j, const Input & x);
 
-    void from_json(const json & j, MetadataClass & x);
-    void to_json(json & j, const MetadataClass & x);
+    void from_json(const json & j, Metadata & x);
+    void to_json(json & j, const Metadata & x);
 
     void from_json(const json & j, Output & x);
     void to_json(json & j, const Output & x);
@@ -49,14 +48,11 @@ namespace json_types {
     void from_json(const json & j, Model & x);
     void to_json(json & j, const Model & x);
 
-    void from_json(const json & j, NnArchiveConfig & x);
-    void to_json(json & j, const NnArchiveConfig & x);
+    void from_json(const json & j, Config & x);
+    void to_json(json & j, const Config & x);
 
     void from_json(const json & j, ConfigVersion & x);
     void to_json(json & j, const ConfigVersion & x);
-
-    void from_json(const json & j, Family & x);
-    void to_json(json & j, const Family & x);
 
     void from_json(const json & j, ObjectDetectionSubtypeYolo & x);
     void to_json(json & j, const ObjectDetectionSubtypeYolo & x);
@@ -67,46 +63,58 @@ namespace json_types {
     void from_json(const json & j, InputType & x);
     void to_json(json & j, const InputType & x);
 
-    inline void from_json(const json & j, Metadata& x) {
-        x.anchors = get_stack_optional<std::vector<std::vector<std::vector<int64_t>>>>(j, "anchors");
+    inline void from_json(const json & j, Outputs& x) {
+        x.predictions = get_stack_optional<std::string>(j, "predictions");
+        x.yoloOutputs = get_stack_optional<std::vector<std::string>>(j, "yolo_outputs");
+        x.boxes = get_stack_optional<std::string>(j, "boxes");
+        x.scores = get_stack_optional<std::string>(j, "scores");
+        x.maskOutputs = get_stack_optional<std::vector<std::string>>(j, "mask_outputs");
+        x.protos = get_stack_optional<std::string>(j, "protos");
+    }
+
+    inline void to_json(json & j, const Outputs & x) {
+        j = json::object();
+        j["predictions"] = x.predictions;
+        j["yolo_outputs"] = x.yoloOutputs;
+        j["boxes"] = x.boxes;
+        j["scores"] = x.scores;
+        j["mask_outputs"] = x.maskOutputs;
+        j["protos"] = x.protos;
+    }
+
+    inline void from_json(const json & j, Head& x) {
         x.classes = j.at("classes").get<std::vector<std::string>>();
+        x.family = j.at("family").get<std::string>();
+        x.isSoftmax = get_stack_optional<bool>(j, "is_softmax");
+        x.nClasses = j.at("n_classes").get<int64_t>();
+        x.outputs = j.at("outputs").get<Outputs>();
+        x.anchors = get_stack_optional<std::vector<std::vector<std::vector<int64_t>>>>(j, "anchors");
         x.confThreshold = get_stack_optional<double>(j, "conf_threshold");
-        x.family = j.at("family").get<Family>();
         x.iouThreshold = get_stack_optional<double>(j, "iou_threshold");
         x.maxDet = get_stack_optional<int64_t>(j, "max_det");
-        x.nClasses = j.at("n_classes").get<int64_t>();
         x.nKeypoints = get_stack_optional<int64_t>(j, "n_keypoints");
         x.nPrototypes = get_stack_optional<int64_t>(j, "n_prototypes");
         x.prototypeOutputName = get_stack_optional<std::string>(j, "prototype_output_name");
         x.subtype = get_stack_optional<ObjectDetectionSubtypeYolo>(j, "subtype");
-        x.isSoftmax = get_stack_optional<bool>(j, "is_softmax");
         x.postprocessorPath = get_stack_optional<std::string>(j, "postprocessor_path");
-    }
-
-    inline void to_json(json & j, const Metadata & x) {
-        j = json::object();
-        j["anchors"] = x.anchors;
-        j["classes"] = x.classes;
-        j["conf_threshold"] = x.confThreshold;
-        j["family"] = x.family;
-        j["iou_threshold"] = x.iouThreshold;
-        j["max_det"] = x.maxDet;
-        j["n_classes"] = x.nClasses;
-        j["n_keypoints"] = x.nKeypoints;
-        j["n_prototypes"] = x.nPrototypes;
-        j["prototype_output_name"] = x.prototypeOutputName;
-        j["subtype"] = x.subtype;
-        j["is_softmax"] = x.isSoftmax;
-        j["postprocessor_path"] = x.postprocessorPath;
-    }
-
-    inline void from_json(const json & j, Head& x) {
-        x.metadata = j.at("metadata").get<Metadata>();
     }
 
     inline void to_json(json & j, const Head & x) {
         j = json::object();
-        j["metadata"] = x.metadata;
+        j["classes"] = x.classes;
+        j["family"] = x.family;
+        j["is_softmax"] = x.isSoftmax;
+        j["n_classes"] = x.nClasses;
+        j["outputs"] = x.outputs;
+        j["anchors"] = x.anchors;
+        j["conf_threshold"] = x.confThreshold;
+        j["iou_threshold"] = x.iouThreshold;
+        j["max_det"] = x.maxDet;
+        j["n_keypoints"] = x.nKeypoints;
+        j["n_prototypes"] = x.nPrototypes;
+        j["prototype_output_name"] = x.prototypeOutputName;
+        j["subtype"] = x.subtype;
+        j["postprocessor_path"] = x.postprocessorPath;
     }
 
     inline void from_json(const json & j, PreprocessingBlock& x) {
@@ -141,12 +149,12 @@ namespace json_types {
         j["shape"] = x.shape;
     }
 
-    inline void from_json(const json & j, MetadataClass& x) {
+    inline void from_json(const json & j, Metadata& x) {
         x.name = j.at("name").get<std::string>();
         x.path = j.at("path").get<std::string>();
     }
 
-    inline void to_json(json & j, const MetadataClass & x) {
+    inline void to_json(json & j, const Metadata & x) {
         j = json::object();
         j["name"] = x.name;
         j["path"] = x.path;
@@ -166,7 +174,7 @@ namespace json_types {
     inline void from_json(const json & j, Model& x) {
         x.heads = get_stack_optional<std::vector<Head>>(j, "heads");
         x.inputs = j.at("inputs").get<std::vector<Input>>();
-        x.metadata = j.at("metadata").get<MetadataClass>();
+        x.metadata = j.at("metadata").get<Metadata>();
         x.outputs = j.at("outputs").get<std::vector<Output>>();
     }
 
@@ -178,12 +186,12 @@ namespace json_types {
         j["outputs"] = x.outputs;
     }
 
-    inline void from_json(const json & j, NnArchiveConfig& x) {
+    inline void from_json(const json & j, Config& x) {
         x.configVersion = j.at("config_version").get<ConfigVersion>();
         x.model = j.at("model").get<Model>();
     }
 
-    inline void to_json(json & j, const NnArchiveConfig & x) {
+    inline void to_json(json & j, const Config & x) {
         j = json::object();
         j["config_version"] = x.configVersion;
         j["model"] = x.model;
@@ -197,26 +205,6 @@ namespace json_types {
     inline void to_json(json & j, const ConfigVersion & x) {
         switch (x) {
             case ConfigVersion::THE_10: j = "1.0"; break;
-            default: throw std::runtime_error("Unexpected value in enumeration \"[object Object]\": " + std::to_string(static_cast<int>(x)));
-        }
-    }
-
-    inline void from_json(const json & j, Family & x) {
-        if (j == "Classification") x = Family::CLASSIFICATION;
-        else if (j == "InstanceSegmentationYOLO") x = Family::INSTANCE_SEGMENTATION_YOLO;
-        else if (j == "ObjectDetectionSSD") x = Family::OBJECT_DETECTION_SSD;
-        else if (j == "ObjectDetectionYOLO") x = Family::OBJECT_DETECTION_YOLO;
-        else if (j == "Segmentation") x = Family::SEGMENTATION;
-        else { throw std::runtime_error("Input JSON does not conform to schema!"); }
-    }
-
-    inline void to_json(json & j, const Family & x) {
-        switch (x) {
-            case Family::CLASSIFICATION: j = "Classification"; break;
-            case Family::INSTANCE_SEGMENTATION_YOLO: j = "InstanceSegmentationYOLO"; break;
-            case Family::OBJECT_DETECTION_SSD: j = "ObjectDetectionSSD"; break;
-            case Family::OBJECT_DETECTION_YOLO: j = "ObjectDetectionYOLO"; break;
-            case Family::SEGMENTATION: j = "Segmentation"; break;
             default: throw std::runtime_error("Unexpected value in enumeration \"[object Object]\": " + std::to_string(static_cast<int>(x)));
         }
     }

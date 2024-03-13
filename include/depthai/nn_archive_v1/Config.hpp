@@ -1,27 +1,17 @@
-//  To parse this JSON data, first install
-//
-//      json.hpp  https://github.com/nlohmann/json
-//
-//  Then include this file, and then do
-//
-//     NnArchiveConfig.hpp data = nlohmann::json::parse(jsonString);
-
 #pragma once
 
 #include <optional>
-#include <nlohmann/json.hpp>
-#include "helper.hpp"
 
 #include "Model.hpp"
 
 namespace dai {
-namespace json_types {
+namespace nn_archive_v1 {
     enum class ConfigVersion : int;
 }
 }
 
 namespace dai {
-namespace json_types {
+namespace nn_archive_v1 {
     /**
      * The main class of the multi/single-stage model config scheme (multi- stage models
      * consists of interconnected single-stage models).
@@ -32,7 +22,6 @@ namespace json_types {
      * @ivar model: A Model object representing the neural network used in the archive.
      */
 
-    using nlohmann::json;
 
     /**
      * The main class of the multi/single-stage model config scheme (multi- stage models
@@ -43,7 +32,7 @@ namespace json_types {
      * @type model: Model
      * @ivar model: A Model object representing the neural network used in the archive.
      */
-    struct NnArchiveConfig {
+    struct Config {
         /**
          * Static variable representing the version of the config scheme.
          */

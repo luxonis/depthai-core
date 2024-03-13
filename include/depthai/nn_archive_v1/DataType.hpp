@@ -1,19 +1,9 @@
-//  To parse this JSON data, first install
-//
-//      json.hpp  https://github.com/nlohmann/json
-//
-//  Then include this file, and then do
-//
-//     DataType.hpp data = nlohmann::json::parse(jsonString);
-
 #pragma once
 
 #include <optional>
-#include <nlohmann/json.hpp>
-#include "helper.hpp"
 
 namespace dai {
-namespace json_types {
+namespace nn_archive_v1 {
     /**
      * Data type of the input data (e.g., 'float32').
      *
@@ -22,7 +12,6 @@ namespace json_types {
      * Data type of the output data (e.g., 'float32').
      */
 
-    using nlohmann::json;
 
     /**
      * Data type of the input data (e.g., 'float32').

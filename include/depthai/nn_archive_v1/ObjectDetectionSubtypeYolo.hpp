@@ -1,19 +1,9 @@
-//  To parse this JSON data, first install
-//
-//      json.hpp  https://github.com/nlohmann/json
-//
-//  Then include this file, and then do
-//
-//     ObjectDetectionSubtypeYolo.hpp data = nlohmann::json::parse(jsonString);
-
 #pragma once
 
 #include <optional>
-#include <nlohmann/json.hpp>
-#include "helper.hpp"
 
 namespace dai {
-namespace json_types {
+namespace nn_archive_v1 {
     /**
      * YOLO family decoding subtype (e.g. v5, v6, v7 etc.).
      *
@@ -22,7 +12,6 @@ namespace json_types {
      * Subtype members have exactly the same decoding.
      */
 
-    using nlohmann::json;
 
     /**
      * YOLO family decoding subtype (e.g. v5, v6, v7 etc.).

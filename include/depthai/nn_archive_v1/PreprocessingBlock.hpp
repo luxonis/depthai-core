@@ -1,19 +1,9 @@
-//  To parse this JSON data, first install
-//
-//      json.hpp  https://github.com/nlohmann/json
-//
-//  Then include this file, and then do
-//
-//     PreprocessingBlock.hpp data = nlohmann::json::parse(jsonString);
-
 #pragma once
 
 #include <optional>
-#include <nlohmann/json.hpp>
-#include "helper.hpp"
 
 namespace dai {
-namespace json_types {
+namespace nn_archive_v1 {
     /**
      * Preprocessing steps applied to the input data.
      *
@@ -30,7 +20,6 @@ namespace json_types {
      * @ivar interleaved_to_planar: If True, format is changed from interleaved to planar.
      */
 
-    using nlohmann::json;
 
     /**
      * Preprocessing steps applied to the input data.

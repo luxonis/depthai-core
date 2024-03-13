@@ -1,19 +1,9 @@
-//  To parse this JSON data, first install
-//
-//      json.hpp  https://github.com/nlohmann/json
-//
-//  Then include this file, and then do
-//
-//     MetadataClass.hpp data = nlohmann::json::parse(jsonString);
-
 #pragma once
 
 #include <optional>
-#include <nlohmann/json.hpp>
-#include "helper.hpp"
 
 namespace dai {
-namespace json_types {
+namespace nn_archive_v1 {
     /**
      * Metadata object defining the model metadata.
      *
@@ -25,7 +15,6 @@ namespace json_types {
      * @ivar path: Relative path to the model executable.
      */
 
-    using nlohmann::json;
 
     /**
      * Metadata object defining the model metadata.
@@ -37,7 +26,7 @@ namespace json_types {
      * @type path: str
      * @ivar path: Relative path to the model executable.
      */
-    struct MetadataClass {
+    struct Metadata {
         /**
          * Name of the model.
          */

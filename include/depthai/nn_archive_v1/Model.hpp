@@ -1,24 +1,14 @@
-//  To parse this JSON data, first install
-//
-//      json.hpp  https://github.com/nlohmann/json
-//
-//  Then include this file, and then do
-//
-//     Model.hpp data = nlohmann::json::parse(jsonString);
-
 #pragma once
 
 #include <optional>
-#include <nlohmann/json.hpp>
-#include "helper.hpp"
 
 #include "Head.hpp"
 #include "Input.hpp"
-#include "MetadataClass.hpp"
+#include "Metadata.hpp"
 #include "Output.hpp"
 
 namespace dai {
-namespace json_types {
+namespace nn_archive_v1 {
     /**
      * A Model object representing the neural network used in the archive.
      *
@@ -35,7 +25,6 @@ namespace json_types {
      * assume a raw output.
      */
 
-    using nlohmann::json;
 
     /**
      * A Model object representing the neural network used in the archive.
@@ -64,7 +53,7 @@ namespace json_types {
         /**
          * Metadata object defining the model metadata.
          */
-        MetadataClass metadata;
+        Metadata metadata;
         /**
          * List of Output objects defining the model outputs.
          */
