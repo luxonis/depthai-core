@@ -5,6 +5,21 @@ namespace node {
 void RTABMapVIO::build() {
     hostNode = true;
     odom = rtabmap::Odometry::create();
+    inputIMU.queue.addCallback(std::bind(&RTABMapVIO::imuCB, this, std::placeholders::_1));
+}
+void RTABMapVIO::imuCB(std::shared_ptr<dai::ADatatype> msg) {
+    auto imuData = std::static_pointer_cast<dai::IMUData>(msg);
+    auto imuPackets = imuData->packets;
+    for(auto& imuPacket : imuPackets) {
+        auto& acceleroValues = imuPacket.acceleroMeter;
+        auto& gyroValues = imuPacket.gyroscope;
+        auto& rotValues = imuPacket.rotationVector;
+        double accStamp = std::chrono::duration<double>(acceleroValues.getTimestampDevice().time_since_epoch()).count();
+        double gyroStamp = std::chrono::duration<double>(gyroValues.getTimestampDevice().time_since_epoch()).count();
+        accBuffer_.emplace_hint(accBuffer_.end(), accStamp, cv::Vec3f(acceleroValues.x, acceleroValues.y, acceleroValues.z));
+        gyroBuffer_.emplace_hint(gyroBuffer_.end(), gyroStamp, cv::Vec3f(gyroValues.x, gyroValues.y, gyroValues.z));
+        rotBuffer_.emplace_hint(rotBuffer_.end(), gyroStamp, cv::Vec4f(rotValues.i, rotValues.j, rotValues.k, rotValues.real));
+    }
 }
 
 void RTABMapVIO::stop() {
@@ -16,66 +31,100 @@ void RTABMapVIO::stop() {
 }
 
 void RTABMapVIO::setParams(const rtabmap::ParametersMap& params) {
-
     odom = rtabmap::Odometry::create(params);
-    
 }
 
 void RTABMapVIO::run() {
     while(isRunning()) {
         auto imgFrame = inputRect.queue.get<dai::ImgFrame>();
         auto depthFrame = inputDepth.queue.get<dai::ImgFrame>();
-        auto imuData = inputIMU.queue.get<dai::IMUData>();
-        auto features = inputFeatures.queue.tryGet<dai::TrackedFeatures>();
+        auto features = inputFeatures.queue.get<dai::TrackedFeatures>();
         auto reset = inputReset.queue.tryGet<dai::CameraControl>();
+        rtabmap::SensorData data;
         if(reset != nullptr) {
             odom->reset();
         }
-        if(!modelSet) {
-            auto pipeline = getParentPipeline();
-            getCalib(pipeline, imgFrame->getInstanceNum(), imgFrame->getWidth(), imgFrame->getHeight());
-            modelSet = true;
-        } else {
-            double stamp = std::chrono::duration<double>(imgFrame->getTimestampDevice(dai::CameraExposureOffset::MIDDLE).time_since_epoch()).count();
 
-            auto data = rtabmap::SensorData(imgFrame->getCvFrame(), depthFrame->getCvFrame(), model.left(), imgFrame->getSequenceNum(), stamp);
+        if(imgFrame != nullptr && depthFrame != nullptr) {
+            if(!modelSet) {
+                auto pipeline = getParentPipeline();
+                getCalib(pipeline, imgFrame->getInstanceNum(), imgFrame->getWidth(), imgFrame->getHeight());
+                modelSet = true;
+            } else {
+                double stamp = std::chrono::duration<double>(imgFrame->getTimestampDevice(dai::CameraExposureOffset::MIDDLE).time_since_epoch()).count();
 
-            auto imuPackets = imuData->packets;
+                data = rtabmap::SensorData(imgFrame->getCvFrame(), depthFrame->getCvFrame(), model.left(), imgFrame->getSequenceNum(), stamp);
 
-            for(auto& imuPacket : imuPackets) {
-                auto& acceleroValues = imuPacket.acceleroMeter;
-                auto& gyroValues = imuPacket.gyroscope;
-                auto& rotValues = imuPacket.rotationVector;
-                rtabmap::IMU imu(cv::Vec4f(rotValues.i, rotValues.j, rotValues.k, rotValues.real),
-                                 cv::Mat::eye(3, 3, CV_64FC1),
-                                 cv::Vec3f(gyroValues.x, gyroValues.y, gyroValues.z),
-                                 cv::Mat::eye(3, 3, CV_64FC1),
-                                 cv::Vec3f(acceleroValues.x, acceleroValues.y, acceleroValues.z),
-                                 cv::Mat::eye(3, 3, CV_64FC1),
-                                 imuLocalTransform);
-                data.setIMU(imu);
-            }
-
-            std::vector<cv::KeyPoint> keypoints;
-            if(features != nullptr) {
-                for(auto& feature : features->trackedFeatures) {
-                    keypoints.emplace_back(cv::KeyPoint(feature.position.x, feature.position.y, 3));
+                std::vector<cv::KeyPoint> keypoints;
+                if(features != nullptr) {
+                    for(auto& feature : features->trackedFeatures) {
+                        keypoints.emplace_back(cv::KeyPoint(feature.position.x, feature.position.y, 3));
+                    }
+                    data.setFeatures(keypoints, std::vector<cv::Point3f>(), cv::Mat());
                 }
-                data.setFeatures(keypoints, std::vector<cv::Point3f>(), cv::Mat());
+
+                cv::Vec3d acc, gyro;
+                cv::Vec4d rot;
+                std::map<double, cv::Vec3f>::const_iterator iterA, iterB;
+                std::map<double, cv::Vec4f>::const_iterator iterC, iterD;
+                if(accBuffer_.empty() || gyroBuffer_.empty() || rotBuffer_.empty() || accBuffer_.rbegin()->first < stamp || gyroBuffer_.rbegin()->first < stamp
+                   || rotBuffer_.rbegin()->first < stamp) {
+                } else {
+                    // acc
+                    iterB = accBuffer_.lower_bound(stamp);
+                    iterA = iterB;
+                    if(iterA != accBuffer_.begin()) iterA = --iterA;
+                    if(iterA == iterB || stamp == iterB->first) {
+                        acc = iterB->second;
+                    } else if(stamp > iterA->first && stamp < iterB->first) {
+                        float t = (stamp - iterA->first) / (iterB->first - iterA->first);
+                        acc = iterA->second + t * (iterB->second - iterA->second);
+                    }
+                    accBuffer_.erase(accBuffer_.begin(), iterB);
+
+                    // gyro
+                    iterB = gyroBuffer_.lower_bound(stamp);
+                    iterA = iterB;
+                    if(iterA != gyroBuffer_.begin()) iterA = --iterA;
+                    if(iterA == iterB || stamp == iterB->first) {
+                        gyro = iterB->second;
+                    } else if(stamp > iterA->first && stamp < iterB->first) {
+                        float t = (stamp - iterA->first) / (iterB->first - iterA->first);
+                        gyro = iterA->second + t * (iterB->second - iterA->second);
+                    }
+                    gyroBuffer_.erase(gyroBuffer_.begin(), iterB);
+
+                    // rot
+                    iterD = rotBuffer_.lower_bound(stamp);
+                    iterC = iterD;
+                    if(iterC != rotBuffer_.begin()) iterC = --iterC;
+                    if(iterC == iterD || stamp == iterD->first) {
+                        rot = iterD->second;
+                    } else if(stamp > iterC->first && stamp < iterD->first) {
+                        float t = (stamp - iterC->first) / (iterD->first - iterC->first);
+                        rot = iterC->second + t * (iterD->second - iterC->second);
+                    }
+                    rotBuffer_.erase(rotBuffer_.begin(), iterD);
+
+                    data.setIMU(
+                        rtabmap::IMU(rot, cv::Mat::eye(3, 3, CV_64FC1), gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform));
+                }
+                auto pose = odom->process(data, &info);
+                cv::Mat final_img;
+
+                for(auto word : info.words) {
+                    keypoints.push_back(word.second);
+                }
+                cv::drawKeypoints(imgFrame->getCvFrame(), keypoints, final_img);
+
+                // add pose information to frame
+
+                float x, y, z, roll, pitch, yaw;
+                pose.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
+                auto out = std::make_shared<dai::TransformData>(pose);
+                transform.send(out);
+                passthroughRect.send(imgFrame);
             }
-
-            auto pose = odom->process(data, &info);
-            cv::Mat final_img;
-
-            for(auto word : info.words) {
-                keypoints.push_back(word.second);
-            }
-            cv::drawKeypoints(imgFrame->getCvFrame(), keypoints, final_img);
-
-            // add pose information to frame
-
-            float x, y, z, roll, pitch, yaw;
-            pose.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
 
             // std::stringstream xPos;
             // xPos << "X: " << x << " m";
@@ -101,10 +150,7 @@ void RTABMapVIO::run() {
             // yawPos << "Yaw: " << yaw << " rad";
             // cv::putText(final_img, yawPos.str(), cv::Point(10, 150), cv::FONT_HERSHEY_TRIPLEX, 0.5, 255);
 
-
             // Eigen::Quaternionf q = pose.getQuaternionf();
-
-            
 
             // cv::imshow("keypoints", final_img);
             // auto key = cv::waitKey(1);
@@ -114,9 +160,6 @@ void RTABMapVIO::run() {
             // else if(key == 'r' || key == 'R') {
             //     odom->reset();
             // }
-            auto out = std::make_shared<dai::TransformData>(pose);
-            transform.send(out);
-            passthroughRect.send(imgFrame);
         }
     }
     fmt::print("Display node stopped\n");

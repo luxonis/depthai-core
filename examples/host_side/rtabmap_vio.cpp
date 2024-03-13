@@ -58,7 +58,7 @@ class RerunStreamer : public dai::NodeCRTP<dai::ThreadedNode, RerunStreamer> {
                 positions.push_back(position);
                 rerun::LineStrip3D lineStrip(positions);
                 rec.log("world/trajectory", rerun::LineStrips3D(lineStrip));
-                rec.log("world/camera/image", rerun::Pinhole::from_focal_length_and_resolution({256.06f, 256.06}, {576.0f, 360.0f}));
+                rec.log("world/camera/image", rerun::Pinhole::from_focal_length_and_resolution({145.274f, 211.736f}, {576.0f, 360.0f}));
                 rec.log("world/camera/image/rgb",
                         rerun::Image(tensor_shape(imgFrame->getCvFrame()), reinterpret_cast<const uint8_t*>(imgFrame->getCvFrame().data)));
             }
@@ -70,6 +70,8 @@ class RerunStreamer : public dai::NodeCRTP<dai::ThreadedNode, RerunStreamer> {
 
 int main() {
     using namespace std;
+    ULogger::setType(ULogger::kTypeConsole);
+	ULogger::setLevel(ULogger::kInfo);
     // Create pipeline
     dai::Pipeline pipeline;
     int fps = 30;
@@ -95,10 +97,10 @@ int main() {
     featureTracker->setHardwareResources(1, 2);
     featureTracker->initialConfig.setCornerDetector(dai::FeatureTrackerConfig::CornerDetector::Type::SHI_THOMASI);
     featureTracker->initialConfig.setNumTargetFeatures(1000);
-    // featureTracker->initialConfig.setMotionEstimator(false);
+    featureTracker->initialConfig.setMotionEstimator(false);
     featureTracker->initialConfig.featureMaintainer.minimumDistanceBetweenFeatures = 49.0;
     stereo->rectifiedLeft.link(featureTracker->inputImage);
-
+    stereo->setAlphaScaling(0.0);
     left->setIspScale(9, 20);
     left->setCamera("left");
     left->setFps(fps);
@@ -108,8 +110,17 @@ int main() {
 
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     stereo->setLeftRightCheck(true);
+    stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
+	stereo->enableDistortionCorrection(true);
     stereo->initialConfig.setLeftRightCheckThreshold(10);
     stereo->setDepthAlign(dai::StereoDepthProperties::DepthAlign::RECTIFIED_LEFT);
+    stereo->setAlphaScaling(0.0);
+    stereo->initialConfig.setMedianFilter(dai::StereoDepthConfig::MedianFilter::KERNEL_7x7);
+
+	stereo->initialConfig.censusTransform.kernelSize = dai::StereoDepthConfig::CensusTransform::KernelSize::KERNEL_7x9;
+	stereo->initialConfig.censusTransform.kernelMask = 0X2AA00AA805540155;
+	stereo->initialConfig.postProcessing.brightnessFilter.maxBrightness = 255;
+
 
     // auto controlIn = pipeline.create<dai::node::XLinkIn>();
     // controlIn->setStreamName("control");
@@ -120,7 +131,7 @@ int main() {
     featureTracker->passthroughInputImage.link(odom->inputRect);
     stereo->depth.link(odom->inputDepth);
     imu->out.link(odom->inputIMU);
-    // featureTracker->outputFeatures.link(odom->inputFeatures);
+    featureTracker->outputFeatures.link(odom->inputFeatures);
     odom->transform.link(rerun->inputTrans);
     odom->passthroughRect.link(rerun->inputImg);
     pipeline.start();
