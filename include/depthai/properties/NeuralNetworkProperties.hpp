@@ -17,7 +17,7 @@ struct NeuralNetworkProperties : PropertiesSerializable<Properties, NeuralNetwor
     /**
      * Blob binary size in bytes
      */
-    tl::optional<std::uint32_t> blobSize;
+    std::optional<std::uint32_t> blobSize;
     /**
      * Uri which points to blob
      */

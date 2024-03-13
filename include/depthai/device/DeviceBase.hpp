@@ -71,8 +71,8 @@ class DeviceBase {
         OpenVINO::Version version = OpenVINO::VERSION_UNIVERSAL;
         BoardConfig board;
         bool nonExclusiveMode = false;
-        tl::optional<LogLevel> outputLogLevel;
-        tl::optional<LogLevel> logLevel;
+        std::optional<LogLevel> outputLogLevel;
+        std::optional<LogLevel> logLevel;
     };
 
     // static API
@@ -391,7 +391,7 @@ class DeviceBase {
      *
      * @returns DeviceBootloader::Version if booted through Bootloader or none otherwise
      */
-    tl::optional<Version> getBootloaderVersion();
+    std::optional<Version> getBootloaderVersion();
 
     /**
      * Checks if devices pipeline is already running
@@ -923,11 +923,11 @@ class DeviceBase {
 
    private:
     // private functions
-    void init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<const Pipeline&> pipeline);
+    void init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipeline);
     void tryGetDevice();
 
     DeviceInfo deviceInfo = {};
-    tl::optional<Version> bootloaderVersion;
+    std::optional<Version> bootloaderVersion;
 
     // Log callback
     int uniqueCallbackId = 0;

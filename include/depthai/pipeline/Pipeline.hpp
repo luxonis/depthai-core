@@ -38,9 +38,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Functions
     Node::Id getNextUniqueId();
     PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
-    tl::optional<OpenVINO::Version> getPipelineOpenVINOVersion() const;
+    std::optional<OpenVINO::Version> getPipelineOpenVINOVersion() const;
     OpenVINO::Version getOpenVINOVersion() const;
-    tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion() const;
+    std::optional<OpenVINO::Version> getRequiredOpenVINOVersion() const;
     bool isOpenVINOVersionCompatible(OpenVINO::Version version) const;
     Device::Config getDeviceConfig() const;
     void setCameraTuningBlobPath(const dai::Path& path);
@@ -66,8 +66,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void setCalibrationData(CalibrationHandler calibrationDataHandler);
     bool isCalibrationDataAvailable() const;
     CalibrationHandler getCalibrationData() const;
-    void setEepromData(tl::optional<EepromData> eepromData);
-    tl::optional<EepromData> getEepromData() const;
+    void setEepromData(std::optional<EepromData> eepromData);
+    std::optional<EepromData> getEepromData() const;
     bool isHostOnly() const;
     bool isDeviceOnly() const;
 
@@ -76,7 +76,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Pipeline asset manager
     AssetManager assetManager;
     // Optionally forced version
-    tl::optional<OpenVINO::Version> forceRequiredOpenVINOVersion;
+    std::optional<OpenVINO::Version> forceRequiredOpenVINOVersion;
     // Global pipeline properties
     GlobalProperties globalProperties;
     // // Optimized for adding, searching and removing connections
@@ -282,7 +282,7 @@ class Pipeline {
      *
      * @return eepromData from the the pipeline
      */
-    tl::optional<EepromData> getEepromData() const {
+    std::optional<EepromData> getEepromData() const {
         return impl()->getEepromData();
     }
 
@@ -291,7 +291,7 @@ class Pipeline {
      *
      * @param eepromData EepromData object that is loaded in the pipeline.
      */
-    void setEepromData(tl::optional<EepromData> eepromData) {
+    void setEepromData(std::optional<EepromData> eepromData) {
         impl()->setEepromData(eepromData);
     }
 
@@ -301,7 +301,7 @@ class Pipeline {
     }
 
     /// Get required OpenVINO version to run this pipeline. Can be none
-    tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion() const {
+    std::optional<OpenVINO::Version> getRequiredOpenVINOVersion() const {
         return impl()->getRequiredOpenVINOVersion();
     }
 

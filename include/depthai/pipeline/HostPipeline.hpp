@@ -38,9 +38,9 @@ class HostPipelineImpl : public PipelineImpl {
     // Functions
     Node::Id getNextUniqueId();
     PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
-    tl::optional<OpenVINO::Version> getPipelineOpenVINOVersion() const;
+    std::optional<OpenVINO::Version> getPipelineOpenVINOVersion() const;
     OpenVINO::Version getOpenVINOVersion() const;
-    tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion() const;
+    std::optional<OpenVINO::Version> getRequiredOpenVINOVersion() const;
     bool isOpenVINOVersionCompatible(OpenVINO::Version version) const;
     Device::Config getDeviceConfig() const;
     void setCameraTuningBlobPath(const dai::Path& path);
@@ -69,7 +69,7 @@ class HostPipelineImpl : public PipelineImpl {
     // Pipeline asset manager
     AssetManager assetManager;
     // Optionally forced version
-    tl::optional<OpenVINO::Version> forceRequiredOpenVINOVersion;
+    std::optional<OpenVINO::Version> forceRequiredOpenVINOVersion;
     // Global pipeline properties
     GlobalProperties globalProperties;
     // Optimized for adding, searching and removing connections
@@ -259,7 +259,7 @@ class HostPipeline : {
     }
 
     /// Get required OpenVINO version to run this pipeline. Can be none
-    tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion() const {
+    std::optional<OpenVINO::Version> getRequiredOpenVINOVersion() const {
         return impl()->getRequiredOpenVINOVersion();
     }
 

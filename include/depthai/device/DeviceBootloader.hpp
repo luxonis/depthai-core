@@ -477,7 +477,7 @@ class DeviceBootloader {
     // private static
 
     // private methods
-    void init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl::optional<bootloader::Type> type, bool allowBlFlash);
+    void init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, std::optional<bootloader::Type> type, bool allowBlFlash);
     template <typename T>
     bool sendRequest(const T& request);
     template <typename T>

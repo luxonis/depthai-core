@@ -199,7 +199,7 @@ struct ColorCameraProperties : PropertiesSerializable<Properties, ColorCameraPro
      * Default is auto: enabled for standard color/monochrome cameras where ISP can work
      * with both packed/unpacked, but disabled for other cameras like ToF.
      */
-    tl::optional<bool> rawPacked;
+    std::optional<bool> rawPacked;
 };
 
 DEPTHAI_SERIALIZE_EXT(ColorCameraProperties,
