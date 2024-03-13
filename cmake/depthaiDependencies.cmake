@@ -76,8 +76,9 @@ endif()
 
 # OpenCV 4 - (optional, quiet always)
 find_package(OpenCV 4 QUIET CONFIG)
-
-find_package(jsoncpp QUIET)
+if(NOT TARGET JsonCpp::JsonCpp)
+    find_package(jsoncpp QUIET)
+endif()
 set(MODULE_TEMP ${CMAKE_MODULE_PATH})
 set(PREFIX_TEMP ${CMAKE_PREFIX_PATH})
 set(CMAKE_MODULE_PATH ${_DEPTHAI_MODULE_PATH_ORIGINAL})
