@@ -14,6 +14,7 @@
 #include "utility/ArchiveUtil.hpp"
 #include "utility/ErrorMacros.hpp"
 #include "utility/PimplImpl.hpp"
+#include "depthai/nn_archive/NNArchive.hpp"
 
 namespace dai {
 namespace node {
