@@ -6,7 +6,7 @@
 namespace dai {
 namespace node {
 
-tl::optional<OpenVINO::Version> NeuralNetwork::getRequiredOpenVINOVersion() {
+std::optional<OpenVINO::Version> NeuralNetwork::getRequiredOpenVINOVersion() {
     return networkOpenvinoVersion;
 }
 

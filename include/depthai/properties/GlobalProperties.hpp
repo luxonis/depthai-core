@@ -23,18 +23,18 @@ struct GlobalProperties : PropertiesSerializable<Properties, GlobalProperties> {
      * draw
      */
     double leonMssFrequencyHz = 700 * 1000 * 1000;
-    tl::optional<std::string> pipelineName;
-    tl::optional<std::string> pipelineVersion;
+    std::optional<std::string> pipelineName;
+    std::optional<std::string> pipelineVersion;
     /**
      * Calibration data sent through pipeline
      */
 
-    tl::optional<dai::EepromData> calibData;
+    std::optional<dai::EepromData> calibData;
 
     /**
      * Camera tuning blob size in bytes
      */
-    tl::optional<std::uint32_t> cameraTuningBlobSize;
+    std::optional<std::uint32_t> cameraTuningBlobSize;
     /**
      * Uri which points to camera tuning blob
      */

@@ -14,22 +14,22 @@ struct PoolProperties : PropertiesSerializable<Properties, PoolProperties> {
     /**
      * Number of messages in pool
      */
-    tl::optional<int> numMessages = tl::nullopt;
+    std::optional<int> numMessages = std::nullopt;
 
     /**
      * Size of data allocated for each message
      */
-    tl::optional<std::int64_t> maxMessageSize = tl::nullopt;
+    std::optional<std::int64_t> maxMessageSize = std::nullopt;
 
     /**
      * Optional datatype of messages in the pool
      */
-    tl::optional<DatatypeEnum> datatype = tl::nullopt;
+    std::optional<DatatypeEnum> datatype = std::nullopt;
 
     /**
      * Which processor should hold the pool
      */
-    tl::optional<ProcessorType> processor = tl::nullopt;
+    std::optional<ProcessorType> processor = std::nullopt;
 };
 
 DEPTHAI_SERIALIZE_EXT(PoolProperties, numMessages, maxMessageSize, datatype, processor);
