@@ -16,6 +16,7 @@
 #include <cassert>
 #include <fstream>
 #include <memory>
+#include <stdexcept>
 #include <unordered_set>
 
 // libraries
@@ -756,8 +757,9 @@ void PipelineImpl::build() {
         std::shared_ptr<node::XLinkIn> xLinkIn;
     };
 
-    std::unordered_map<std::shared_ptr<Node>, XLinkOutBridge> bridgesOut;
-    std::unordered_map<std::shared_ptr<Node>, XLinkInBridge> bridgesIn;
+    std::unordered_map<dai::Node::Output*, XLinkOutBridge> bridgesOut;
+    std::unordered_map<dai::Node::Input*, XLinkInBridge> bridgesIn;
+
     for(auto& connection : getConnectionsInternal()) {
         auto inNode = connection.inputNode.lock();
         auto outNode = connection.outputNode.lock();
@@ -768,13 +770,13 @@ void PipelineImpl::build() {
         std::unordered_set<std::string> uniqueStreamNames;
         if(std::dynamic_pointer_cast<DeviceNode>(outNode) && std::dynamic_pointer_cast<HostNode>(inNode)) {
             // Check if the bridge already exists
-            if(bridgesOut.count(outNode) == 0) {  // If the bridge does not already exist, create one
+            if(bridgesOut.count(connection.out) == 0) {  // If the bridge does not already exist, create one
                 // // Create a new bridge
-                bridgesOut[outNode] = XLinkOutBridge{
+                bridgesOut[connection.out] = XLinkOutBridge{
                     create<node::XLinkOut>(shared_from_this()),
                     create<node::XLinkInHost>(shared_from_this()),
                 };
-                auto& xLinkBridge = bridgesOut[outNode];
+                auto& xLinkBridge = bridgesOut[connection.out];
                 auto streamName = fmt::format("__x_{}_{}", outNode->id, connection.outputName);
 
                 // Check if the stream name is unique
@@ -787,18 +789,18 @@ void PipelineImpl::build() {
                 xLinkBridge.xLinkInHost->setConnection(defaultDevice->getConnection());
                 connection.out->link(xLinkBridge.xLinkOut->input);
             }
-            auto xLinkBridge = bridgesOut[outNode];
+            auto xLinkBridge = bridgesOut[connection.out];
             connection.out->unlink(*connection.in);  // Unlink the connection
             xLinkBridge.xLinkInHost->out.link(*connection.in);
         } else if(std::dynamic_pointer_cast<DeviceNode>(inNode) && std::dynamic_pointer_cast<HostNode>(outNode)) {
             // Check if the bridge already exists
-            if(bridgesIn.count(inNode) == 0) {  // If the bridge does not already exist, create one
+            if(bridgesIn.count(connection.in) == 0) {  // If the bridge does not already exist, create one
                 // // Create a new bridge
-                bridgesIn[inNode] = XLinkInBridge{
+                bridgesIn[connection.in] = XLinkInBridge{
                     create<node::XLinkOutHost>(shared_from_this()),
                     create<node::XLinkIn>(shared_from_this()),
                 };
-                auto& xLinkBridge = bridgesIn[inNode];
+                auto& xLinkBridge = bridgesIn[connection.in];
                 auto streamName = fmt::format("__x_{}_{}", inNode->id, connection.inputName);
 
                 // Check if the stream name is unique
@@ -811,12 +813,30 @@ void PipelineImpl::build() {
                 xLinkBridge.xLinkOutHost->setConnection(defaultDevice->getConnection());
                 xLinkBridge.xLinkIn->out.link(*connection.in);
             }
-            auto xLinkBridge = bridgesIn[inNode];
+            auto xLinkBridge = bridgesIn[connection.in];
             connection.out->unlink(*connection.in);  // Unlink the original connection
             connection.out->link(xLinkBridge.xLinkOutHost->in);
         }
     }
 
+    for(auto& node : nodes) {
+        if(std::dynamic_pointer_cast<HostNode>(node)) {
+            // Nothing special to do for host nodes
+            continue;
+        }
+        for(auto* output : node->getOutputRefs()) {
+            for(auto& queueConnection : output->getQueueConnections()) {
+                // For every queue connection, if it's connected to a device node, create a bridge, if it doesn't exist
+                if(bridgesOut.count(queueConnection.output) == 0) {
+                    throw std::runtime_error("Unimplemented");
+                }
+                auto xLinkBridge = bridgesOut[queueConnection.output];
+                queueConnection.output->unlink(queueConnection.queue);  // Unlink the original connection
+                xLinkBridge.xLinkInHost->out.link(queueConnection.queue);
+
+            }
+        }
+    }
     // Go through the build stages sequentially
     for(const auto& node : nodes) {
         node->buildStage1();

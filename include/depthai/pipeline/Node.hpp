@@ -97,8 +97,19 @@ class Node : public std::enable_shared_from_this<Node> {
     };
 
     class Output {
+       public:
+        struct QueueConnection {
+            Output* output;
+            std::shared_ptr<MessageQueue> queue;
+            bool operator==(const QueueConnection& rhs) const {
+                return output == rhs.output && queue == rhs.queue;
+            }
+        };
+
+       private:
         Node& parent;
         std::vector<std::shared_ptr<MessageQueue>> connectedInputs;
+        std::vector<QueueConnection> queueConnections;
 
        public:
         enum class Type { MSender, SSender };
@@ -152,6 +163,30 @@ class Node : public std::enable_shared_from_this<Node> {
          * @returns Vector of connections
          */
         std::vector<ConnectionInternal> getConnections();
+
+        /**
+         * Retrieve all queue connections from this output
+         * @returns Vector of queue connections
+         */
+        std::vector<QueueConnection> getQueueConnections() {
+            return queueConnections;
+        }
+
+        std::shared_ptr<dai::MessageQueue> getQueue() {
+            auto queue = std::make_shared<MessageQueue>();
+            link(queue);
+            return queue;
+        }
+
+        void link(const std::shared_ptr<dai::MessageQueue>& queue) {
+            connectedInputs.push_back(queue);
+            queueConnections.push_back({this, queue});
+        }
+
+        void unlink(const std::shared_ptr<dai::MessageQueue>& queue) {
+            connectedInputs.erase(std::remove(connectedInputs.begin(), connectedInputs.end(), queue), connectedInputs.end());
+            queueConnections.erase(std::remove(queueConnections.begin(), queueConnections.end(), QueueConnection{this, queue}), queueConnections.end());
+        }
 
         /**
          * Link current output to input.

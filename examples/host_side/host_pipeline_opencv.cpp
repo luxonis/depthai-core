@@ -10,19 +10,26 @@
 #include "depthai/pipeline/node/host/Display.hpp"
 #include "depthai/pipeline/node/host/HostCamera.hpp"
 #include "depthai/properties/ColorCameraProperties.hpp"
+
 int main() {
     // Create pipeline
     dai::Pipeline pipeline;
-    auto hostCam = pipeline.create<dai::node::HostCamera>();
     auto camRgb = pipeline.create<dai::node::ColorCamera>(dai::CameraBoardSocket::CAM_A);
+    camRgb->setVideoSize(640, 480);
     auto displayDevice = pipeline.create<dai::node::Display>(std::string{"Device Display"});
-    auto displayHost = pipeline.create<dai::node::Display>("Host Display");
-    auto imageManip = pipeline.create<dai::node::ImageManip>();
-    camRgb->preview.link(displayDevice->input);
-    // hostCam->out.link(imageManip->inputImage);
-    // imageManip->out.link(displayHost->input);
-    hostCam->out.link(displayHost->input);
+
+    camRgb->video.link(displayDevice->input);
+
+    // Option 2:
+    auto queue = camRgb->video.getQueue();
+
     pipeline.start();
+
+    while (pipeline.isRunning()) {
+        auto message = queue->get<dai::ImgFrame>();
+        cv::imshow("QueueFrame", message->getCvFrame());
+    }
+
     pipeline.wait();
     return 0;
 }
