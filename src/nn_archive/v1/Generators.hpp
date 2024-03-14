@@ -12,18 +12,18 @@
 #include <nlohmann/json.hpp>
 #include "helper.hpp"
 
-#include "depthai/nn_archive_v1/Config.hpp"
-#include "depthai/nn_archive_v1/Model.hpp"
-#include "depthai/nn_archive_v1/Output.hpp"
-#include "depthai/nn_archive_v1/Metadata.hpp"
-#include "depthai/nn_archive_v1/Input.hpp"
-#include "depthai/nn_archive_v1/PreprocessingBlock.hpp"
-#include "depthai/nn_archive_v1/InputType.hpp"
-#include "depthai/nn_archive_v1/DataType.hpp"
-#include "depthai/nn_archive_v1/Head.hpp"
-#include "depthai/nn_archive_v1/ObjectDetectionSubtypeYolo.hpp"
-#include "depthai/nn_archive_v1/Outputs.hpp"
-#include "depthai/nn_archive_v1/ConfigVersion.hpp"
+#include "depthai/nn_archive/v1/Config.hpp"
+#include "depthai/nn_archive/v1/Model.hpp"
+#include "depthai/nn_archive/v1/Output.hpp"
+#include "depthai/nn_archive/v1/Metadata.hpp"
+#include "depthai/nn_archive/v1/Input.hpp"
+#include "depthai/nn_archive/v1/PreprocessingBlock.hpp"
+#include "depthai/nn_archive/v1/InputType.hpp"
+#include "depthai/nn_archive/v1/DataType.hpp"
+#include "depthai/nn_archive/v1/Head.hpp"
+#include "depthai/nn_archive/v1/ObjectDetectionSubtypeYolo.hpp"
+#include "depthai/nn_archive/v1/Outputs.hpp"
+#include "depthai/nn_archive/v1/ConfigVersion.hpp"
 
 namespace dai {
 namespace nn_archive {

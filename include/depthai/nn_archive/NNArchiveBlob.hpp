@@ -5,8 +5,10 @@
 
 // C++ std
 #include <functional>
-#include <variant>
 #include <vector>
+
+// libraries
+#include <spimpl.h>
 
 // internal
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
@@ -20,11 +22,12 @@ class NNArchiveBlob {
     /**
      * see NNArchive class for parameter explanation
      */
-    explicit NNArchiveBlob(std::vector<uint8_t> data, dai::NNArchiveEntry::Compression compression = dai::NNArchiveEntry::Compression::AUTO);
+    explicit NNArchiveBlob(const std::vector<uint8_t>& data, dai::NNArchiveEntry::Compression compression = dai::NNArchiveEntry::Compression::AUTO);
     /**
+     * @blobName Name of the blob file inside the archive. Can be found using NNArchiveConfig.getBlobName().
      * see NNArchive class for parameter explanation
      */
-    explicit NNArchiveBlob(const dai::Path& path, dai::NNArchiveEntry::Compression compression = dai::NNArchiveEntry::Compression::AUTO);
+    explicit NNArchiveBlob(const std::string& blobName, const dai::Path& path, dai::NNArchiveEntry::Compression compression = dai::NNArchiveEntry::Compression::AUTO);
     /**
      * see NNArchive class for parameter explanation
      */
@@ -40,13 +43,13 @@ class NNArchiveBlob {
     explicit NNArchiveBlob(const dai::Path& path);
 
     /**
-     * returns the blob or nullptr if the blob isn't loaded (yet)
+     * returns the blob or std::nullopt if the blob isn't loaded (yet)
      */
-    OpenVINO::Blob* getBlob();
+    const OpenVINO::Blob* getBlob() const;
 
    private:
-    // TODO(jakgra) move to pimpl
-    std::variant<OpenVINO, Path> blobOrPath;
+    class Impl;
+    spimpl::impl_ptr<Impl> pimpl;
 };
 
 }  // namespace dai

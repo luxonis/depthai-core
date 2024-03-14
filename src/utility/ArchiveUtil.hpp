@@ -14,7 +14,7 @@ namespace dai::utility {
 class ArchiveUtil {
    public:
     explicit ArchiveUtil(struct archive* archivePtr);
-    ArchiveUtil(const std::string& filepath, dai::node::DetectionNetwork::NNArchiveFormat format);
+    ArchiveUtil(const std::string& filepath, NNArchiveEntry::Compression format);
     struct archive* getA();
     std::vector<uint8_t> readEntry(struct archive_entry* entry);
     ArchiveUtil(const ArchiveUtil&) = delete;

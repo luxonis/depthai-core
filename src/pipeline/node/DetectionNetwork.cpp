@@ -27,9 +27,12 @@ class DetectionNetwork::Impl {
    public:
     Impl() = default;
 
-    static dai::nn_archive::v1::Config parseNNArchiveConfig(const dai::Path& path, NNArchiveFormat format, bool& isJson, std::string& blobPath);
+    /*
+    static dai::nn_archive::v1::Config parseNNArchiveConfig(const dai::Path& path, NNArchiveEntry::Compression format, bool& isJson, std::string& blobPath);
+    */
 };
 
+/*
 dai::nn_archive::v1::Config DetectionNetwork::Impl::parseNNArchiveConfig(const dai::Path& path,
                                                                          const NNArchiveFormat format,
                                                                          bool& isJson,
@@ -79,6 +82,7 @@ dai::nn_archive::v1::Config DetectionNetwork::Impl::parseNNArchiveConfig(const d
     }
     return config;
 }
+*/
 
 DetectionNetwork::DetectionNetwork()
     : out{detectionParser->out}, outNetwork{neuralNetwork->out}, input{neuralNetwork->input}, passthrough{neuralNetwork->passthrough} {};
@@ -101,6 +105,7 @@ void DetectionNetwork::build() {
     detectionParser->imageIn.setQueueSize(1);
 }
 
+/*
 void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat format) {
     bool isJson = false;
     std::string blobPath;
@@ -126,6 +131,49 @@ void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat
         }
         daiCheckV(found, "No blob named {} found in NN Archive {}.", model.metadata.path, path)
     }
+    // TODO(jakgra) is NN Archive valid without this? why is this optional?
+    daiCheck(model.heads, "Heads array is not defined in the NN Archive config file.");
+    // TODO(jakgra) for now get info from heads[0] but in the future correctly support multiple outputs and mapped heads
+    daiCheckV(
+        (*model.heads).size() == 1, "There should be exactly one head per model in the NN Archive config file defined. Found {} heads.", (*model.heads).size());
+    const auto head = (*model.heads)[0];
+    if(head.family == "ObjectDetectionYOLO") {
+        detectionParser->properties.parser.nnFamily = DetectionNetworkType::YOLO;
+    }
+    detectionParser->setNumClasses(static_cast<int>(head.nClasses));
+    if(head.iouThreshold) {
+        detectionParser->properties.parser.iouThreshold = static_cast<float>(*head.iouThreshold);
+    }
+    if(head.confThreshold) {
+        setConfidenceThreshold(static_cast<float>(*head.confThreshold));
+    }
+    detectionParser->setCoordinateSize(4);
+    if(head.anchors) {
+        const auto anchorsIn = *head.anchors;
+        std::vector<std::vector<std::vector<float>>> anchorsOut(anchorsIn.size());
+        for(size_t layer = 0; layer < anchorsOut.size(); ++layer) {
+            std::vector<std::vector<float>> layerOut(anchorsIn[layer].size());
+            for(size_t anchor = 0; anchor < layerOut.size(); ++anchor) {
+                std::vector<float> anchorOut(anchorsIn[layer][anchor].size());
+                for(size_t dim = 0; dim < anchorOut.size(); ++dim) {
+                    anchorOut[dim] = static_cast<float>(anchorsIn[layer][anchor][dim]);
+                }
+                layerOut[anchor] = anchorOut;
+            }
+            anchorsOut[layer] = layerOut;
+        }
+        detectionParser->setAnchors(anchorsOut);
+    }
+}
+*/
+
+void DetectionNetwork::setNNArchive(const NNArchive& nnArchive) {
+    const auto configMaybe = nnArchive.getConfig().getConfig<nn_archive::v1::Config>();
+    daiCheck(configMaybe, "Unsupported NNArchive format / version. Check which depthai version you are running.");
+    const auto& config = *configMaybe;
+    const auto* blob = nnArchive.getBlob().getBlob();
+    daiCheckIn(blob);
+    const auto model = config.model;
     // TODO(jakgra) is NN Archive valid without this? why is this optional?
     daiCheck(model.heads, "Heads array is not defined in the NN Archive config file.");
     // TODO(jakgra) for now get info from heads[0] but in the future correctly support multiple outputs and mapped heads

@@ -1,16 +1,15 @@
 #include "ArchiveUtil.hpp"
 
-#include "depthai/pipeline/node/DetectionNetwork.hpp"
 #include "utility/ErrorMacros.hpp"
 #include "utility/Logging.hpp"
 
 namespace dai::utility {
 
-ArchiveUtil::ArchiveUtil(const std::string& filepath, dai::node::DetectionNetwork::NNArchiveFormat format) {
+ArchiveUtil::ArchiveUtil(const std::string& filepath, NNArchiveEntry::Compression format) {
     auto* archivePtr = archive_read_new();
     daiCheckIn(archivePtr);
     aPtr = archivePtr;
-    using F = dai::node::DetectionNetwork::NNArchiveFormat;
+    using F = NNArchiveEntry::Compression;
     switch(format) {
         case F::AUTO:
             archive_read_support_filter_all(aPtr);
@@ -29,6 +28,7 @@ ArchiveUtil::ArchiveUtil(const std::string& filepath, dai::node::DetectionNetwor
             archive_read_support_format_tar(aPtr);
             break;
         case F::RAW_FS:
+        default:
             daiCheckIn(false);
             break;
     }

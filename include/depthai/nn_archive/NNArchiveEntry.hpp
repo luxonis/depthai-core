@@ -16,6 +16,10 @@ class NNArchiveEntry {
          */
         AUTO = 0,
         /**
+         * The entry isn't compressed. Access it directly on the filesystem.
+         */
+        RAW_FS,
+        /**
          * Force libarchive to treat the file as .tar
          */
         TAR,

@@ -8,9 +8,11 @@
 #include <optional>
 #include <vector>
 
+// libraries
+#include <spimpl.h>
+
 // internal
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
-#include "depthai/nn_archive/v1/Config.hpp"
 #include "depthai/utility/Path.hpp"
 
 namespace dai {
@@ -18,10 +20,16 @@ namespace dai {
 class NNArchiveConfig {
    public:
     /**
+     * Tries to parse the config from json data.
+     * Throws an error if the config data is malformed / unsupported.
+     */
+    explicit NNArchiveConfig(const std::vector<uint8_t>& configData);
+
+    /**
      * @data Should point to a whole compressed NNArchive read to memory
      * see NNArchive class for parameter explanation
      */
-    explicit NNArchiveConfig(std::vector<uint8_t> data, NNArchiveEntry::Compression compression = NNArchiveEntry::Compression::AUTO);
+    explicit NNArchiveConfig(const std::vector<uint8_t>& data, NNArchiveEntry::Compression compression = NNArchiveEntry::Compression::AUTO);
     /**
      * all parameters should point to a whole compressed NNArchive
      * see NNArchive class for parameter explanation
@@ -46,17 +54,14 @@ class NNArchiveConfig {
     std::optional<T> getConfig() const;
 
     /**
-     * Tries to parse the config from json data and sets it.
-     * Doesn't load the blob.
-     * Throws an error if the config data is malformed / unsupported.
+     * returns the blobName from the config file.
+     * Throws if the config is malformed.
      */
-    void setConfig(std::vector<uint8_t> configData);
+    const std::string& getBlobPath() const;
 
    private:
-    // TODO(jakgra) move to pimpl
-    std::optional<dai::nn_archive::v1::Config> configV1;
-    // in the future we will have
-    // std::optional<dai::nn_archive_v1::Config> configV2;
+    class Impl;
+    spimpl::impl_ptr<Impl> pimpl;
 };
 
 }  // namespace dai

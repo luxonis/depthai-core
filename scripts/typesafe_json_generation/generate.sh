@@ -56,8 +56,8 @@ done
 
 # fix private files
 perl -0777 -i -pe 's/\#ifndef NLOHMANN_OPT_HELPER.*\#endif//s' $private_dir/helper.hpp
-perl -0777 -i -pe 's|\#include \"|\#include \"depthai/nn_archive_v1/|g' $private_dir/Generators.hpp
-perl -0777 -i -pe 's|\#include \"depthai/nn_archive_v1/helper.hpp\"|\#include \"helper.hpp\"|g' $private_dir/Generators.hpp
+perl -0777 -i -pe 's|\#include \"|\#include \"depthai/nn_archive/v1/|g' $private_dir/Generators.hpp
+perl -0777 -i -pe 's|\#include \"depthai/nn_archive/v1/helper.hpp\"|\#include \"helper.hpp\"|g' $private_dir/Generators.hpp
 
 # cleanup public files
 grep -rl 'To parse this JSON data' $headers_dir | xargs -n 1 perl -0777 -i -pe 's/\/\/  To parse this JSON data.*\#pragma once/\#pragma once/s'

@@ -4,6 +4,7 @@
 #include <depthai/pipeline/node/DetectionParser.hpp>
 #include <depthai/pipeline/node/NeuralNetwork.hpp>
 
+#include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/utility/Pimpl.hpp"
 
@@ -15,32 +16,6 @@ namespace node {
  */
 class DetectionNetwork : public NodeGroup {
    public:
-    enum class NNArchiveFormat : uint8_t {
-        /**
-         * Try to guess the file format from the file extension.
-         * .json -> RAW_FS
-         * everything else use libarchive to guess the format
-         * supported formats are: https://github.com/libarchive/libarchive?tab=readme-ov-file#supported-formats
-         */
-        AUTO = 0,
-        /**
-         * Raw host filesystem. Just pass the path to the json config file. The BLOB should be located in the same folder.
-         */
-        RAW_FS,
-        /**
-         * Force libarchive to treat the file as .tar
-         */
-        TAR,
-        /**
-         * Force libarchive to treat the file as .tar.gz
-         */
-        TAR_GZ,
-        /**
-         * Force libarchive to treat the file as .tar.xz
-         */
-        TAR_XZ,
-    };
-
     DetectionNetwork();
     ~DetectionNetwork() override;
 
@@ -78,14 +53,11 @@ class DetectionNetwork : public NodeGroup {
      */
     Output& passthrough;
 
-    // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**
-     * Load network blob into assets and use once pipeline is started.
+     * Apply NNArchive config to this Node and load network blob into assets and use once pipeline is started.
      *
-     * @throws Error if file doesn't exist or isn't a valid network blob.
-     * @param path Path to network blob
      */
-    void setNNArchive(const dai::Path& path, NNArchiveFormat format = NNArchiveFormat::AUTO);
+    void setNNArchive(const NNArchive& nnArchive);
 
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**

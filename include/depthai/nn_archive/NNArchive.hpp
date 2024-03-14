@@ -7,6 +7,9 @@
 #include <functional>
 #include <vector>
 
+// libraries
+#include <spimpl.h>
+
 // internal
 #include "depthai/nn_archive/NNArchiveBlob.hpp"
 #include "depthai/nn_archive/NNArchiveConfig.hpp"
@@ -20,7 +23,7 @@ class NNArchive {
     /**
      * @data Should point to a whole compressed NNArchive read to memory
      */
-    explicit NNArchive(std::vector<uint8_t> data, NNArchiveEntry::Compression compression = NNArchiveEntry::Compression::AUTO);
+    explicit NNArchive(const std::vector<uint8_t>& data, NNArchiveEntry::Compression compression = NNArchiveEntry::Compression::AUTO);
     /**
      * @path Filesystem path to a whole compressed NNArchive
      */
@@ -64,9 +67,8 @@ class NNArchive {
     const NNArchiveBlob& getBlob() const;
 
    private:
-    // TODO(jakgra) move to pimpl
-    NNArchiveConfig config;
-    NNArchiveBlob blob;
+    class Impl;
+    spimpl::impl_ptr<Impl> pimpl;
 };
 
 }  // namespace dai

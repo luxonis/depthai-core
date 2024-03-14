@@ -29,8 +29,8 @@ int main(int argc, char** argv) {
     if(argc < 2) {
         throw std::invalid_argument("You should provide 2 arguments for this example.");
     }
-    const std::string nnArchiveJsonPath(argv[1]);
-    printf("Using archive at path: %s\n", nnArchiveJsonPath.c_str());
+    const std::string nnArchivePath(argv[1]);
+    std::cout << "Using archive at path: %s\n";
 
     // Create pipeline
     dai::Pipeline pipeline;
@@ -45,7 +45,7 @@ int main(int argc, char** argv) {
     nnOut->setStreamName("detections");
 
     // Properties
-    // TODO warn / fail fast if inputs don't match the ones specified in the NNArchive .json file???
+    // TODO(jakgra) warn / fail fast if inputs don't match the ones specified in the NNArchive .json file???
     // camRgb->setPreviewSize(416, 416);
     camRgb->setPreviewSize(640, 640);
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
@@ -53,23 +53,9 @@ int main(int argc, char** argv) {
     camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
     camRgb->setFps(40);
 
-    // Network specific settings
-    /*
-    detectionNetwork->setConfidenceThreshold(0.5f);
-    detectionNetwork->setNumClasses(80);
-    detectionNetwork->setCoordinateSize(4);
-    detectionNetwork->setAnchors({10, 14, 23, 27, 37, 58, 81, 82, 135, 169, 344, 319});
-    detectionNetwork->setAnchorMasks({{"side26", {1, 2, 3}}, {"side13", {3, 4, 5}}});
-    detectionNetwork->setIouThreshold(0.5f);
-    detectionNetwork->setBlobPath(nnPath);
-    */
-    detectionNetwork->setNNArchive(nnArchiveJsonPath);
+    detectionNetwork->setNNArchive(dai::NNArchive(nnArchivePath));
 
-    // TODO make it work without this
-    // detectionNetwork->setCoordinateSize(4);
-    // detectionNetwork->setAnchors({10, 14, 23, 27, 37, 58, 81, 82, 135, 169, 344, 319});
-    // detectionNetwork->setAnchorMasks({{"side26", {1, 2, 3}}, {"side13", {3, 4, 5}}});
-
+    // TODO(jakgra)
     // Will we get this from NN Archive also?
     detectionNetwork->setNumInferenceThreads(2);
     detectionNetwork->input.setBlocking(false);
