@@ -218,6 +218,7 @@ class Node : public std::enable_shared_from_this<Node> {
         static constexpr int defaultQueueSize{8};
         // Options - more information about the input
         bool waitForMessage{false};
+
        public:
         // Queue is a shared_ptr as both the node outputs and the node inputs need access and it needs to stay alive as long as the last node is alive
         std::shared_ptr<MessageQueue> queue;
@@ -710,7 +711,7 @@ class NodeCRTP : public Base {
     void build() {}
 
     // No public constructor, only a factory function.
-    template<typename... Args>
+    template <typename... Args>
     [[nodiscard]] static std::shared_ptr<Derived> create(Args&&... args) {
         auto n = std::make_shared<Derived>(std::forward<Args>(args)...);
         n->build();

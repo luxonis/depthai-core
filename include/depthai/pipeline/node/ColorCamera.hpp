@@ -5,6 +5,8 @@
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
 // shared
 #include <depthai/properties/ColorCameraProperties.hpp>
+
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/pipeline/Node.hpp"
 
 namespace dai {
@@ -14,18 +16,19 @@ namespace node {
  * @brief ColorCamera node. For use with color sensors.
  */
 class ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties> {
-    friend class PipelineImpl;  // Allow only PipelineImpl to construct this node
-    friend class DeviceNodeCRTP; // Allow DeviceNodeCRTP to construct this node
+    friend class PipelineImpl;    // Allow only PipelineImpl to construct this node
+    friend class DeviceNodeCRTP;  // Allow DeviceNodeCRTP to construct this node
    public:
     constexpr static const char* NAME = "ColorCamera";
+
    protected:
+    ColorCamera(std::shared_ptr<Device> device, dai::CameraBoardSocket boardSocket = CameraBoardSocket::AUTO);
     Properties& getProperties();
     ColorCamera(std::unique_ptr<Properties> props);
     void build();
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
    public:
-
     /**
      * Computes the scaled size given numerator and denominator
      */

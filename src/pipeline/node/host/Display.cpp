@@ -1,31 +1,34 @@
 #include "depthai/pipeline/node/host/Display.hpp"
-#include "depthai/pipeline/Pipeline.hpp"
+
 #include <chrono>
 #include <opencv2/opencv.hpp>
+
+#include "depthai/pipeline/Pipeline.hpp"
 namespace dai {
 namespace node {
 
 // Create a window of 30 frames and calculate the FPS
 class FPSCounter {
-    public:
-     void update() {
-          if(frames.size() >= 30) {
-                frames.pop_front();
-          }
-          frames.push_back(std::chrono::steady_clock::now());
-     }
+   public:
+    void update() {
+        if(frames.size() >= 30) {
+            frames.pop_front();
+        }
+        frames.push_back(std::chrono::steady_clock::now());
+    }
 
-     float getFPS() {
-          if(frames.size() < 2) {
-                return 0;
-          }
-          auto first = frames.front();
-          auto last = frames.back();
-          auto duration = last - first;
-          return frames.size() / std::chrono::duration_cast<std::chrono::duration<float>>(duration).count();
-     }
-    private:
-     std::deque<std::chrono::steady_clock::time_point> frames;
+    float getFPS() {
+        if(frames.size() < 2) {
+            return 0;
+        }
+        auto first = frames.front();
+        auto last = frames.back();
+        auto duration = last - first;
+        return frames.size() / std::chrono::duration_cast<std::chrono::duration<float>>(duration).count();
+    }
+
+   private:
+    std::deque<std::chrono::steady_clock::time_point> frames;
 };
 
 Display::Display(std::string name) : name(std::move(name)) {}

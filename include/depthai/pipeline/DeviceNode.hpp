@@ -1,15 +1,17 @@
 #pragma once
 
 #include <memory>
+
+#include "depthai/device/Device.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/ThreadedNode.hpp"
-#include "depthai/device/Device.hpp"
 
 namespace dai {
 
 class DeviceNode : public ThreadedNode {
    private:
     std::shared_ptr<Device> device;
+
    public:
     DeviceNode() = delete;
     virtual ~DeviceNode() = default;
@@ -17,7 +19,6 @@ class DeviceNode : public ThreadedNode {
     virtual void run() override;
 
     copyable_unique_ptr<Properties> propertiesHolder;
-
 
     // Get properties
     virtual Properties& getProperties();
@@ -54,21 +55,23 @@ class DeviceNodeCRTP : public Base {
     // No public constructor, only a factory function.
     template <typename... Args>
     [[nodiscard]] static std::shared_ptr<Derived> create(std::shared_ptr<Device> device, Args&&... args) {
-        auto n = std::make_shared<Derived>(device, std::forward<Args>(args)...);
+        // auto n = std::make_shared<Derived>(device, std::forward<Args>(args)...);
+        auto n = std::shared_ptr<Derived>(new Derived(device, std::forward<Args>(args)...));
         n->build();
         return n;
     }
     [[nodiscard]] static std::shared_ptr<Derived> create(std::unique_ptr<Properties> props) {
+        // auto n = std::shared_ptr<Derived>(new Derived(props));
         auto n = std::shared_ptr<Derived>(new Derived(props));
         // Configure mode, don't build
         // n->build();
         return n;
     }
 
-//    protected: TODO(Morato) Make this protected again ASAP TMP TMP
-    public:
+   protected:
     DeviceNodeCRTP() : Base(std::make_unique<Props>(), false), properties(static_cast<Properties&>(*DeviceNode::propertiesHolder)) {}
-    DeviceNodeCRTP(const std::shared_ptr<Device>& device) : Base(device, std::make_unique<Props>(), false), properties(static_cast<Properties&>(*DeviceNode::propertiesHolder)) {}
+    DeviceNodeCRTP(const std::shared_ptr<Device>& device)
+        : Base(device, std::make_unique<Props>(), false), properties(static_cast<Properties&>(*DeviceNode::propertiesHolder)) {}
     DeviceNodeCRTP(std::unique_ptr<Properties> props) : Base(std::move(props), true), properties(static_cast<Properties&>(*DeviceNode::propertiesHolder)) {}
     DeviceNodeCRTP(std::unique_ptr<Properties> props, bool confMode)
         : Base(std::move(props), confMode), properties(static_cast<Properties&>(*DeviceNode::propertiesHolder)) {}

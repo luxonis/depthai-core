@@ -14,7 +14,7 @@ void ThreadedNode::start() {
         } catch(const MessageQueue::QueueException& ex) {
             // catch the exception and stop the node
             auto expStr = fmt::format("Node stopped with a queue exception: {}", ex.what());
-            if(logger){
+            if(logger) {
                 logger->info(expStr);
             } else {
                 spdlog::info(expStr);
@@ -22,7 +22,7 @@ void ThreadedNode::start() {
             running = false;
         } catch(const std::runtime_error& ex) {
             auto expStr = fmt::format("Node threw exception, stopping the node. Exception message: {}", ex.what());
-            if(logger){
+            if(logger) {
                 logger->error(expStr);
             } else {
                 spdlog::error(expStr);

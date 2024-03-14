@@ -12,7 +12,8 @@ DeviceNode::DeviceNode(std::unique_ptr<Properties> props, bool conf) : propertie
     configureMode = conf;
 }
 
-DeviceNode::DeviceNode(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool conf) : device(device), propertiesHolder(std::move(props)) {
+DeviceNode::DeviceNode(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool conf)
+    : device(device), propertiesHolder(std::move(props)) {
     configureMode = conf;
 }
 

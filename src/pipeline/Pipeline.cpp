@@ -817,7 +817,6 @@ void PipelineImpl::build() {
         }
     }
 
-
     // Go through the build stages sequentially
     for(const auto& node : nodes) {
         node->buildStage1();

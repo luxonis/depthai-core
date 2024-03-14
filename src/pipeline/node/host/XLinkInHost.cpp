@@ -73,7 +73,7 @@ void XLinkInHost::run() {
             //     }
             // }
         } catch(const std::exception& ex) {
-            if(isRunning()){
+            if(isRunning()) {
                 auto exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
                 throw std::runtime_error(exceptionMessage);
             } else {

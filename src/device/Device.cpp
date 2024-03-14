@@ -293,7 +293,7 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
     //             // notify the rest
     //             eventCv.notify_all();
     //         });
-        // }
+    // }
     // }
 
     return DeviceBase::startPipelineImpl(pipeline);
