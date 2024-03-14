@@ -63,6 +63,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void remove(std::shared_ptr<Node> node);
 
     std::vector<Node::Connection> getConnections() const;
+    std::vector<Node::ConnectionInternal> getConnectionsInternal() const;
     void link(const Node::Output& out, const Node::Input& in);
     void unlink(const Node::Output& out, const Node::Input& in);
     void setCalibrationData(CalibrationHandler calibrationDataHandler);

@@ -241,6 +241,7 @@ add_library(${TARGET_CORE_NAME}
     # src/pipeline/node/test/MyProducer.cpp
     # src/pipeline/node/test/MyConsumer.cpp
     # src/pipeline/node/UVC.cpp
+    src/pipeline/node/host/XLinkInHost.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp

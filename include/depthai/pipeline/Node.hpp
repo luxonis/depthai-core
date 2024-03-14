@@ -515,6 +515,8 @@ class Node : public std::enable_shared_from_this<Node> {
         std::weak_ptr<Node> inputNode;
         std::string inputName;
         std::string inputGroup;
+        Output* out;
+        Input* in;
         bool operator==(const ConnectionInternal& rhs) const;
         struct Hash {
             size_t operator()(const dai::Node::ConnectionInternal& obj) const;

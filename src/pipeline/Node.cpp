@@ -138,14 +138,10 @@ void Node::Output::link(Input& in) {
     connectedInputs.push_back(in.queue);
 }
 
-// TODO(Morato) - is this really needed?
-Node::ConnectionInternal::ConnectionInternal(Output& out, Input& in) {
+Node::ConnectionInternal::ConnectionInternal(Output& out, Input& in)
+    : outputName{out.name}, outputGroup{out.group}, inputName{in.name}, inputGroup{in.group}, out{&out}, in{&in} {
     outputNode = out.getParent().shared_from_this();
-    outputName = out.name;
-    outputGroup = out.group;
     inputNode = in.getParent().shared_from_this();
-    inputName = in.name;
-    inputGroup = in.group;
 }
 
 bool Node::ConnectionInternal::operator==(const Node::ConnectionInternal& rhs) const {

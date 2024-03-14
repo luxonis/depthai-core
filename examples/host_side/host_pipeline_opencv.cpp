@@ -13,10 +13,9 @@ int main() {
     // Create pipeline
     dai::Pipeline pipeline;
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
-    auto display = pipeline.create<Display>();
+    auto display = pipeline.create<dai::node::Display>();
     camRgb->preview.link(display->input);
     pipeline.start();
     pipeline.wait();
-
     return 0;
 }
