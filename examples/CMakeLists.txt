@@ -278,8 +278,7 @@ dai_add_example(device_information host_side/device_information.cpp OFF)
 dai_add_example(device_logging host_side/device_logging.cpp OFF)
 
 include(FetchContent)
-FetchContent_Declare(rerun_sdk URL
-    https://github.com/rerun-io/rerun/releases/latest/download/rerun_cpp_sdk.zip)
+FetchContent_Declare(rerun_sdk URL https://build.rerun.io/commit/1030934/rerun_cpp_sdk.zip)
 FetchContent_MakeAvailable(rerun_sdk)
 dai_add_example(rtabmap_vio host_side/rtabmap_vio.cpp OFF)
 set_property(TARGET rtabmap_vio PROPERTY CXX_STANDARD 17)

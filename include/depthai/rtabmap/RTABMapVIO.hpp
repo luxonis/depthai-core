@@ -48,6 +48,7 @@ class RTABMapVIO : public dai::NodeCRTP<dai::ThreadedNode, RTABMapVIO> {
     std::map<double, cv::Vec3f> accBuffer_;
 	std::map<double, cv::Vec3f> gyroBuffer_;
     std::map<double, cv::Vec4f> rotBuffer_;
+    float alphaScaling;
     bool modelSet = false;
 };
 }  // namespace node

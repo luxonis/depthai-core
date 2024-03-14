@@ -70,8 +70,8 @@ class RerunStreamer : public dai::NodeCRTP<dai::ThreadedNode, RerunStreamer> {
 
 int main() {
     using namespace std;
-    ULogger::setType(ULogger::kTypeConsole);
-	ULogger::setLevel(ULogger::kInfo);
+    // ULogger::setType(ULogger::kTypeConsole);
+	// ULogger::setLevel(ULogger::kInfo);
     // Create pipeline
     dai::Pipeline pipeline;
     int fps = 30;
@@ -88,6 +88,7 @@ int main() {
     auto params = rtabmap::ParametersMap();
     params.insert(rtabmap::ParametersPair("Odom/AlignWithGround", "true"));
     params.insert(rtabmap::ParametersPair("Odom/FilteringStrategy", "1"));
+
     odom->setParams(params);
     imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 100);
     imu->enableIMUSensor({dai::IMUSensor::ROTATION_VECTOR}, 100);
@@ -107,6 +108,7 @@ int main() {
     right->setIspScale(9, 20);
     right->setCamera("right");
     right->setFps(fps);
+	stereo->setExtendedDisparity(false);
 
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     stereo->setLeftRightCheck(true);
@@ -114,12 +116,8 @@ int main() {
 	stereo->enableDistortionCorrection(true);
     stereo->initialConfig.setLeftRightCheckThreshold(10);
     stereo->setDepthAlign(dai::StereoDepthProperties::DepthAlign::RECTIFIED_LEFT);
-    stereo->setAlphaScaling(0.0);
+    // stereo->setAlphaScaling(0.0);
     stereo->initialConfig.setMedianFilter(dai::StereoDepthConfig::MedianFilter::KERNEL_7x7);
-
-	stereo->initialConfig.censusTransform.kernelSize = dai::StereoDepthConfig::CensusTransform::KernelSize::KERNEL_7x9;
-	stereo->initialConfig.censusTransform.kernelMask = 0X2AA00AA805540155;
-	stereo->initialConfig.postProcessing.brightnessFilter.maxBrightness = 255;
 
 
     // auto controlIn = pipeline.create<dai::node::XLinkIn>();

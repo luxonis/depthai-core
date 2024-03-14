@@ -4,6 +4,7 @@ namespace dai {
 namespace node {
 void RTABMapVIO::build() {
     hostNode = true;
+    alphaScaling = -1.0;
     odom = rtabmap::Odometry::create();
     inputIMU.queue.addCallback(std::bind(&RTABMapVIO::imuCB, this, std::placeholders::_1));
 }
@@ -170,7 +171,7 @@ void RTABMapVIO::getCalib(dai::Pipeline& pipeline, int instanceNum, int width, i
     auto calibHandler = device->readCalibration2();
 
     auto cameraId = static_cast<dai::CameraBoardSocket>(instanceNum);
-    calibHandler.getRTABMapCameraModel(model, cameraId, width, height);
+    calibHandler.getRTABMapCameraModel(model, cameraId, width, height, alphaScaling);
     auto eeprom = calibHandler.getEepromData();
     if(eeprom.boardName == "OAK-D" || eeprom.boardName == "BW1098OBC") {
         imuLocalTransform = rtabmap::Transform(0, -1, 0, 0.0525, 1, 0, 0, 0.013662, 0, 0, 1, 0);
