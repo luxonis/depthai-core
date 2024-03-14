@@ -4,13 +4,10 @@
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
 
 namespace dai {
-namespace node{
-class Display : public dai::NodeCRTP<dai::HostNode, Display> {
-   private:
-    std::string name;
+namespace node {
+class HostCamera : public dai::NodeCRTP<dai::HostNode, HostCamera> {
    public:
-    explicit Display(std::string name = "Display");
-    Input input{*this};
+    Output out{*this};
     void run() override;
 };
 }  // namespace node

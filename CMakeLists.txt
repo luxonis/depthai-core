@@ -219,7 +219,7 @@ add_library(${TARGET_CORE_NAME}
     # src/pipeline/node/StereoDepth.cpp
     # src/pipeline/node/Sync.cpp
     # src/pipeline/node/NeuralNetwork.cpp
-    # src/pipeline/node/ImageManip.cpp
+    src/pipeline/node/ImageManip.cpp
     # src/pipeline/node/Warp.cpp
     # src/pipeline/node/VideoEncoder.cpp
     # src/pipeline/node/DetectionNetwork.cpp
@@ -242,6 +242,7 @@ add_library(${TARGET_CORE_NAME}
     # src/pipeline/node/test/MyConsumer.cpp
     # src/pipeline/node/UVC.cpp
     src/pipeline/node/host/XLinkInHost.cpp
+    src/pipeline/node/host/XLinkOutHost.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
@@ -580,6 +581,7 @@ if(DEPTHAI_OPENCV_SUPPORT)
         add_library(${TARGET_OPENCV_NAME}
             src/opencv/ImgFrame.cpp
             src/pipeline/node/host/Display.cpp
+            src/pipeline/node/host/HostCamera.cpp
         )
         add_library("${PROJECT_NAME}::${TARGET_OPENCV_ALIAS}" ALIAS ${TARGET_OPENCV_NAME})
         # Specifies name of generated IMPORTED target (set to alias)

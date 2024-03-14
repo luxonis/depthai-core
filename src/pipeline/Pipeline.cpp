@@ -746,12 +746,18 @@ void PipelineImpl::build() {
     //     connect them
 
     // Create a map of already visited nodes to only create one xlink bridge
-    struct XLinkBridge {
+    struct XLinkOutBridge {
         std::shared_ptr<node::XLinkOut> xLinkOut;
         std::shared_ptr<node::XLinkInHost> xLinkInHost;
     };
 
-    std::unordered_map<std::shared_ptr<Node>, XLinkBridge> bridges;
+    struct XLinkInBridge {
+        std::shared_ptr<node::XLinkOutHost> xLinkOutHost;
+        std::shared_ptr<node::XLinkIn> xLinkIn;
+    };
+
+    std::unordered_map<std::shared_ptr<Node>, XLinkOutBridge> bridgesOut;
+    std::unordered_map<std::shared_ptr<Node>, XLinkInBridge> bridgesIn;
     for(auto& connection : getConnectionsInternal()) {
         auto inNode = connection.inputNode.lock();
         auto outNode = connection.outputNode.lock();
@@ -762,13 +768,13 @@ void PipelineImpl::build() {
         std::unordered_set<std::string> uniqueStreamNames;
         if(std::dynamic_pointer_cast<DeviceNode>(outNode) && std::dynamic_pointer_cast<HostNode>(inNode)) {
             // Check if the bridge already exists
-            if(bridges.count(outNode) == 0) {  // If the bridge does not already exist, create one
+            if(bridgesOut.count(outNode) == 0) {  // If the bridge does not already exist, create one
                 // // Create a new bridge
-                bridges[outNode] = XLinkBridge{
+                bridgesOut[outNode] = XLinkOutBridge{
                     create<node::XLinkOut>(shared_from_this()),
                     create<node::XLinkInHost>(shared_from_this()),
                 };
-                auto& xLinkBridge = bridges[outNode];
+                auto& xLinkBridge = bridgesOut[outNode];
                 auto streamName = fmt::format("__x_{}_{}", outNode->id, connection.outputName);
 
                 // Check if the stream name is unique
@@ -781,23 +787,36 @@ void PipelineImpl::build() {
                 xLinkBridge.xLinkInHost->setConnection(defaultDevice->getConnection());
                 connection.out->link(xLinkBridge.xLinkOut->input);
             }
-            auto xLinkBridge = bridges[outNode];
+            auto xLinkBridge = bridgesOut[outNode];
             connection.out->unlink(*connection.in);  // Unlink the connection
             xLinkBridge.xLinkInHost->out.link(*connection.in);
+        } else if(std::dynamic_pointer_cast<DeviceNode>(inNode) && std::dynamic_pointer_cast<HostNode>(outNode)) {
+            // Check if the bridge already exists
+            if(bridgesIn.count(inNode) == 0) {  // If the bridge does not already exist, create one
+                // // Create a new bridge
+                bridgesIn[inNode] = XLinkInBridge{
+                    create<node::XLinkOutHost>(shared_from_this()),
+                    create<node::XLinkIn>(shared_from_this()),
+                };
+                auto& xLinkBridge = bridgesIn[inNode];
+                auto streamName = fmt::format("__x_{}_{}", inNode->id, connection.inputName);
+
+                // Check if the stream name is unique
+                if(uniqueStreamNames.count(streamName) > 0) {
+                    throw std::runtime_error(fmt::format("Stream name '{}' is not unique", streamName));
+                }
+                uniqueStreamNames.insert(streamName);
+                xLinkBridge.xLinkOutHost->setStreamName(streamName);
+                xLinkBridge.xLinkIn->setStreamName(streamName);
+                xLinkBridge.xLinkOutHost->setConnection(defaultDevice->getConnection());
+                xLinkBridge.xLinkIn->out.link(*connection.in);
+            }
+            auto xLinkBridge = bridgesIn[inNode];
+            connection.out->unlink(*connection.in);  // Unlink the original connection
+            connection.out->link(xLinkBridge.xLinkOutHost->in);
         }
     }
 
-    // Build
-    if(!isHostOnly()) {
-        // TODO(Morato) - handle multiple devices correctly, start pipeline on all of them
-        defaultDevice->startPipeline(Pipeline(shared_from_this()));
-        // for(auto outQ : defaultDevice->getOutputQueueNames()) {
-        //     defaultDevice->getOutputQueue(outQ, 0, false);
-        // }
-        // for(auto inQ : defaultDevice->getInputQueueNames()) {
-        //     defaultDevice->getInputQueue(inQ, 0, false);
-        // }
-    }
 
     // Go through the build stages sequentially
     for(const auto& node : nodes) {
@@ -810,6 +829,18 @@ void PipelineImpl::build() {
 
     for(const auto& node : nodes) {
         node->buildStage3();
+    }
+
+    // Build
+    if(!isHostOnly()) {
+        // TODO(Morato) - handle multiple devices correctly, start pipeline on all of them
+        defaultDevice->startPipeline(Pipeline(shared_from_this()));
+        // for(auto outQ : defaultDevice->getOutputQueueNames()) {
+        //     defaultDevice->getOutputQueue(outQ, 0, false);
+        // }
+        // for(auto inQ : defaultDevice->getInputQueueNames()) {
+        //     defaultDevice->getInputQueue(inQ, 0, false);
+        // }
     }
 }
 
@@ -843,6 +874,12 @@ void PipelineImpl::stop() {
 
     // Indicate that pipeline is not runnin
     running = false;
+
+    // TODO(Morato) - handle multiple devices correctly, stop pipeline on all of them
+    // Close the devices
+    if(!isHostOnly()) {
+        defaultDevice->close();
+    }
 }
 
 PipelineImpl::~PipelineImpl() {

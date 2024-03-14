@@ -73,9 +73,14 @@ void XLinkInHost::run() {
             //     }
             // }
         } catch(const std::exception& ex) {
-            auto exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
-            throw std::runtime_error(exceptionMessage);
-            // TODO(Morato) handle the error properly here
+            if(isRunning()){
+                auto exceptionMessage = fmt::format("Communication exception - possible device error/misconfiguration. Original message '{}'", ex.what());
+                throw std::runtime_error(exceptionMessage);
+            } else {
+                // If the node is not running, we can safely ignore the exception, since it's expected
+                logger::info("XLinkInHost node stopped - exception: {}", ex.what());
+                break;
+            }
         }
     }
 }
