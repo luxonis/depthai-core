@@ -1,15 +1,19 @@
 #pragma once
 
+#include <string>
 #include <optional>
 
 namespace dai {
-namespace nn_archive_v1 {
+namespace nn_archive {
+namespace v1 {
     enum class DataType : int;
+}
 }
 }
 
 namespace dai {
-namespace nn_archive_v1 {
+namespace nn_archive {
+namespace v1 {
     /**
      * Represents output stream of a model.
      *
@@ -38,5 +42,6 @@ namespace nn_archive_v1 {
          */
         std::string name;
     };
+}
 }
 }

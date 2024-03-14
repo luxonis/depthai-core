@@ -10,7 +10,7 @@
 
 // internal
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
-#include "depthai/nn_archive_v1/Config.hpp"
+#include "depthai/nn_archive/v1/Config.hpp"
 #include "depthai/utility/Path.hpp"
 
 namespace dai {
@@ -54,7 +54,7 @@ class NNArchiveConfig {
 
    private:
     // TODO(jakgra) move to pimpl
-    std::optional<dai::nn_archive_v1::Config> configV1;
+    std::optional<dai::nn_archive::v1::Config> configV1;
     // in the future we will have
     // std::optional<dai::nn_archive_v1::Config> configV2;
 };

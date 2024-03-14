@@ -5,13 +5,16 @@
 #include "Model.hpp"
 
 namespace dai {
-namespace nn_archive_v1 {
+namespace nn_archive {
+namespace v1 {
     enum class ConfigVersion : int;
+}
 }
 }
 
 namespace dai {
-namespace nn_archive_v1 {
+namespace nn_archive {
+namespace v1 {
     /**
      * The main class of the multi/single-stage model config scheme (multi- stage models
      * consists of interconnected single-stage models).
@@ -42,5 +45,6 @@ namespace nn_archive_v1 {
          */
         Model model;
     };
+}
 }
 }

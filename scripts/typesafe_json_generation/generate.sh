@@ -3,8 +3,8 @@
 set -e
 cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1
 
-child_namespace="nn_archive_v1"
-parent_namespace="dai"
+folder_name="nn_archive/v1"
+namespace="dai::nn_archive::v1"
 
 if [ ! -d luxonis_ml ]; then
   git clone https://github.com/luxonis/luxonis-ml.git luxonis_ml
@@ -25,11 +25,11 @@ fi
 python generate_json_schema.py > luxonis_ml_json_schema_broken.json
 node fix_schema_definition.js luxonis_ml_json_schema_broken.json luxonis_ml_json_schema.json
 rm -rf json_types
-main_dir=json_types/$child_namespace
+main_dir=json_types/$folder_name
 mkdir -p $main_dir
 cd $main_dir
 npx quicktype \
-  --namespace "${parent_namespace}::${child_namespace}" \
+  --namespace "${namespace}" \
   --include-location global-include \
   --member-style camel-case \
   --lang c++ \
@@ -38,14 +38,15 @@ npx quicktype \
   --code-format with-struct \
   --no-boost \
   --source-style multi-source \
-  ../../luxonis_ml_json_schema.json
-cd ../..
-headers_dir=../../include/depthai/$child_namespace
+  ../../../luxonis_ml_json_schema.json
+cd ../../..
+headers_dir=../../include/depthai/$folder_name
 rm -rf $headers_dir
-cp -r $main_dir $headers_dir
-private_dir=../../src/$child_namespace
+mkdir -p $headers_dir
+cp -r $main_dir/* $headers_dir/
+private_dir=../../src/$folder_name
 rm -rf $private_dir
-mkdir $private_dir
+mkdir -p $private_dir
 for private_file in \
   Generators.hpp \
   helper.hpp
@@ -63,4 +64,9 @@ grep -rl 'To parse this JSON data' $headers_dir | xargs -n 1 perl -0777 -i -pe '
 grep -rl '#include "helper.hpp"' $headers_dir | xargs -n 1 perl -0777 -i -pe 's/\#include "helper.hpp"\n//s'
 grep -rl '#include <nlohmann/json.hpp>' $headers_dir | xargs -n 1 perl -0777 -i -pe 's/\#include <nlohmann\/json.hpp>\n//s'
 grep -rl 'using nlohmann::json;' $headers_dir | xargs -n 1 perl -0777 -i -pe 's/ *using nlohmann::json;\n//s'
+
+# add include <string>
+grep -lZ std::string $headers_dir/*.hpp | xargs -r0 grep -L 'include <string>' | xargs -n 1 perl -0777 -i -pe 's/#pragma once\n\n/#pragma once\n\n#include <string>\n/s'
+# add include <vector>
+grep -lZ std::vector $headers_dir/*.hpp | xargs -r0 grep -L 'include <vector>' | xargs -n 1 perl -0777 -i -pe 's/#pragma once\n\n/#pragma once\n\n#include <vector>\n/s'
 

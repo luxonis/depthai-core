@@ -3,7 +3,8 @@
 #include <optional>
 
 namespace dai {
-namespace nn_archive_v1 {
+namespace nn_archive {
+namespace v1 {
     /**
      * YOLO family decoding subtype (e.g. v5, v6, v7 etc.).
      *
@@ -21,5 +22,6 @@ namespace nn_archive_v1 {
      * Subtype members have exactly the same decoding.
      */
     enum class ObjectDetectionSubtypeYolo : int { YOLOV5, YOLOV6, YOLOV7, YOLOV8 };
+}
 }
 }

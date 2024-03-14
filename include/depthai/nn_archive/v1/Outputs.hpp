@@ -1,9 +1,12 @@
 #pragma once
 
+#include <vector>
+#include <string>
 #include <optional>
 
 namespace dai {
-namespace nn_archive_v1 {
+namespace nn_archive {
+namespace v1 {
     /**
      * A configuration specifying which output names from the `outputs` block of the archive are
      * fed into the head.
@@ -90,5 +93,6 @@ namespace nn_archive_v1 {
          */
         std::optional<std::string> protos;
     };
+}
 }
 }

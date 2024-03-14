@@ -1,9 +1,11 @@
 #pragma once
 
+#include <vector>
 #include <optional>
 
 namespace dai {
-namespace nn_archive_v1 {
+namespace nn_archive {
+namespace v1 {
     /**
      * Preprocessing steps applied to the input data.
      *
@@ -54,5 +56,6 @@ namespace nn_archive_v1 {
          */
         std::optional<std::vector<double>> scale;
     };
+}
 }
 }

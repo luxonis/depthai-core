@@ -3,8 +3,10 @@
 #include <optional>
 
 namespace dai {
-namespace nn_archive_v1 {
+namespace nn_archive {
+namespace v1 {
 
     enum class ConfigVersion : int { THE_10 };
+}
 }
 }

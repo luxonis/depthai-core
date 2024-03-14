@@ -1,9 +1,11 @@
 #pragma once
 
+#include <string>
 #include <optional>
 
 namespace dai {
-namespace nn_archive_v1 {
+namespace nn_archive {
+namespace v1 {
     /**
      * Metadata object defining the model metadata.
      *
@@ -36,5 +38,6 @@ namespace nn_archive_v1 {
          */
         std::string path;
     };
+}
 }
 }

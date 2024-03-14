@@ -1,17 +1,22 @@
 #pragma once
 
+#include <vector>
+#include <string>
 #include <optional>
 
 #include "Outputs.hpp"
 
 namespace dai {
-namespace nn_archive_v1 {
+namespace nn_archive {
+namespace v1 {
     enum class ObjectDetectionSubtypeYolo : int;
+}
 }
 }
 
 namespace dai {
-namespace nn_archive_v1 {
+namespace nn_archive {
+namespace v1 {
     /**
      * Metadata for classification head.
      *
@@ -231,5 +236,6 @@ namespace nn_archive_v1 {
          */
         std::optional<std::string> postprocessorPath;
     };
+}
 }
 }

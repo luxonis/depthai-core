@@ -1,5 +1,6 @@
 #pragma once
 
+#include <vector>
 #include <optional>
 
 #include "Head.hpp"
@@ -8,7 +9,8 @@
 #include "Output.hpp"
 
 namespace dai {
-namespace nn_archive_v1 {
+namespace nn_archive {
+namespace v1 {
     /**
      * A Model object representing the neural network used in the archive.
      *
@@ -59,5 +61,6 @@ namespace nn_archive_v1 {
          */
         std::vector<Output> outputs;
     };
+}
 }
 }

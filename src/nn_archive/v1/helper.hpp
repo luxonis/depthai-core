@@ -14,7 +14,8 @@
 #include <sstream>
 
 namespace dai {
-namespace nn_archive_v1 {
+namespace nn_archive {
+namespace v1 {
     using nlohmann::json;
 
     #ifndef NLOHMANN_UNTYPED_dai_nn_archive_v1_HELPER
@@ -60,6 +61,7 @@ namespace nn_archive_v1 {
         return get_stack_optional<T>(j, property.data());
     }
     #endif
+}
 }
 }
 

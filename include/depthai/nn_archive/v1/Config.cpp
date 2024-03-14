@@ -15,6 +15,8 @@
 #include "Model.hpp"
 #include "Config.hpp"
 namespace dai {
-namespace nn_archive_v1 {
+namespace nn_archive {
+namespace v1 {
+}
 }
 }

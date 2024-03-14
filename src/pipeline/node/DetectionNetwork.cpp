@@ -9,12 +9,12 @@
 
 // internal
 #include "depthai/common/DetectionNetworkType.hpp"
-#include "depthai/nn_archive_v1/Config.hpp"
-#include "nn_archive_v1/Generators.hpp"
+#include "depthai/nn_archive/NNArchive.hpp"
+#include "depthai/nn_archive/v1/Config.hpp"
+#include "nn_archive/v1/Generators.hpp"
 #include "utility/ArchiveUtil.hpp"
 #include "utility/ErrorMacros.hpp"
 #include "utility/PimplImpl.hpp"
-#include "depthai/nn_archive/NNArchive.hpp"
 
 namespace dai {
 namespace node {
@@ -27,13 +27,13 @@ class DetectionNetwork::Impl {
    public:
     Impl() = default;
 
-    static dai::nn_archive_v1::Config parseNNArchiveConfig(const dai::Path& path, NNArchiveFormat format, bool& isJson, std::string& blobPath);
+    static dai::nn_archive::v1::Config parseNNArchiveConfig(const dai::Path& path, NNArchiveFormat format, bool& isJson, std::string& blobPath);
 };
 
-dai::nn_archive_v1::Config DetectionNetwork::Impl::parseNNArchiveConfig(const dai::Path& path,
-                                                                        const NNArchiveFormat format,
-                                                                        bool& isJson,
-                                                                        std::string& blobPath) {
+dai::nn_archive::v1::Config DetectionNetwork::Impl::parseNNArchiveConfig(const dai::Path& path,
+                                                                         const NNArchiveFormat format,
+                                                                         bool& isJson,
+                                                                         std::string& blobPath) {
     const auto filepath = path.string();
     isJson = format == NNArchiveFormat::RAW_FS;
     if(format == NNArchiveFormat::AUTO) {
@@ -61,8 +61,8 @@ dai::nn_archive_v1::Config DetectionNetwork::Impl::parseNNArchiveConfig(const da
         }
         daiCheckV(foundJson, "Didn't find the config.json file inside the {} archive.", filepath);
     }
-    dai::nn_archive_v1::Config config;
-    dai::nn_archive_v1::from_json(*maybeJson, config);
+    dai::nn_archive::v1::Config config;
+    dai::nn_archive::v1::from_json(*maybeJson, config);
     if(isJson) {
 #if defined(_WIN32) && defined(_MSC_VER)
         const char separator = '\\';

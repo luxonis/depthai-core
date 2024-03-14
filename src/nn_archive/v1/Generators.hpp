@@ -26,7 +26,8 @@
 #include "depthai/nn_archive_v1/ConfigVersion.hpp"
 
 namespace dai {
-namespace nn_archive_v1 {
+namespace nn_archive {
+namespace v1 {
     void from_json(const json & j, Outputs & x);
     void to_json(json & j, const Outputs & x);
 
@@ -260,5 +261,6 @@ namespace nn_archive_v1 {
             default: throw std::runtime_error("Unexpected value in enumeration \"[object Object]\": " + std::to_string(static_cast<int>(x)));
         }
     }
+}
 }
 }

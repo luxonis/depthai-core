@@ -1,18 +1,23 @@
 #pragma once
 
+#include <vector>
+#include <string>
 #include <optional>
 
 #include "PreprocessingBlock.hpp"
 
 namespace dai {
-namespace nn_archive_v1 {
+namespace nn_archive {
+namespace v1 {
     enum class DataType : int;
     enum class InputType : int;
 }
 }
+}
 
 namespace dai {
-namespace nn_archive_v1 {
+namespace nn_archive {
+namespace v1 {
     /**
      * Represents input stream of a model.
      *
@@ -75,5 +80,6 @@ namespace nn_archive_v1 {
          */
         std::vector<int64_t> shape;
     };
+}
 }
 }
