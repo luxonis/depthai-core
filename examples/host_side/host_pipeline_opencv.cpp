@@ -11,8 +11,6 @@
 #include "depthai/pipeline/node/host/HostCamera.hpp"
 #include "depthai/properties/ColorCameraProperties.hpp"
 int main() {
-    using namespace std;
-
     // Create pipeline
     dai::Pipeline pipeline;
     auto hostCam = pipeline.create<dai::node::HostCamera>();
