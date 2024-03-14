@@ -16,6 +16,7 @@
 #include <cassert>
 #include <fstream>
 #include <memory>
+#include <unordered_set>
 
 // libraries
 #include "spdlog/fmt/fmt.h"
@@ -758,6 +759,7 @@ void PipelineImpl::build() {
             throw std::runtime_error(fmt::format(
                 "Input node in connection {}-{}_{}-{} is null", connection.inputName, connection.inputGroup, connection.outputName, connection.outputGroup));
         }
+        std::unordered_set<std::string> uniqueStreamNames;
         if(std::dynamic_pointer_cast<DeviceNode>(outNode) && std::dynamic_pointer_cast<HostNode>(inNode)) {
             // Check if the bridge already exists
             if(bridges.count(outNode) == 0) {  // If the bridge does not already exist, create one
@@ -768,6 +770,12 @@ void PipelineImpl::build() {
                 };
                 auto& xLinkBridge = bridges[outNode];
                 auto streamName = fmt::format("__x_{}_{}", outNode->id, connection.outputName);
+
+                // Check if the stream name is unique
+                if(uniqueStreamNames.count(streamName) > 0) {
+                    throw std::runtime_error(fmt::format("Stream name '{}' is not unique", streamName));
+                }
+                uniqueStreamNames.insert(streamName);
                 xLinkBridge.xLinkOut->setStreamName(streamName);
                 xLinkBridge.xLinkInHost->setStreamName(streamName);
                 xLinkBridge.xLinkInHost->setConnection(defaultDevice->getConnection());

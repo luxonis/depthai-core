@@ -6,6 +6,7 @@
 #include <string>
 #include <tuple>
 #include <unordered_set>
+#include <utility>
 
 // project
 #include "depthai/openvino/OpenVINO.hpp"
@@ -106,6 +107,11 @@ class Node : public std::enable_shared_from_this<Node> {
         Type type;
         // Which types and do descendants count as well?
         std::vector<DatatypeHierarchy> possibleDatatypes;
+
+        Output(Node& par) : parent(par), type(Type::MSender), possibleDatatypes({{DatatypeEnum::Buffer, true}}) {
+            // Place oneself to the parents references
+            parent.setOutputRefs(this);
+        }
 
         Output(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types)
             : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {
@@ -704,8 +710,9 @@ class NodeCRTP : public Base {
     void build() {}
 
     // No public constructor, only a factory function.
-    [[nodiscard]] static std::shared_ptr<Derived> create() {
-        auto n = std::make_shared<Derived>();
+    template<typename... Args>
+    [[nodiscard]] static std::shared_ptr<Derived> create(Args&&... args) {
+        auto n = std::make_shared<Derived>(std::forward<Args>(args)...);
         n->build();
         return n;
     }

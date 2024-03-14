@@ -5,6 +5,7 @@
 #include <memory>
 #include <type_traits>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 // project
@@ -109,27 +110,27 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // DeviceBase for hybrid pipelines
     std::shared_ptr<Device> defaultDevice;
 
-    template <typename N>
-    std::enable_if_t<std::is_base_of<DeviceNode, N>::value, std::shared_ptr<N>> createNode() {
+    template <typename N, typename... Args>
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value, std::shared_ptr<N>> createNode(Args&&... args) {
         // N is a subclass of DeviceNode
         // return N::create();  // Specific create call for DeviceNode subclasses
-        return N::create(defaultDevice);  // Specific create call for DeviceNode subclasses
+        return N::create(defaultDevice, std::forward<Args>(args)...);  // Specific create call for DeviceNode subclasses
     }
 
-    template <typename N>
-    std::enable_if_t<!std::is_base_of<DeviceNode, N>::value, std::shared_ptr<N>> createNode() {
+    template <typename N, typename... Args>
+    std::enable_if_t<!std::is_base_of<DeviceNode, N>::value, std::shared_ptr<N>> createNode(Args&&... args) {
         // N is not a subclass of DeviceNode
-        return N::create();  // Generic create call
+        return N::create(std::forward<Args>(args)...);  // Generic create call
     }
 
     // Template create function
-    template <class N>
-    std::shared_ptr<N> create(const std::shared_ptr<PipelineImpl>& itself) {
+    template <class N, typename... Args>
+    std::shared_ptr<N> create(const std::shared_ptr<PipelineImpl>& itself, Args&&... args) {
         (void)itself;
         // Check that passed type 'N' is subclass of Node
         static_assert(std::is_base_of<Node, N>::value, "Specified class is not a subclass of Node");
         // Create and store the node in the map
-        auto node = createNode<N>();
+        auto node = createNode<N>(std::forward<Args>(args)...);
         // std::shared_ptr<N> node = nullptr;
         add(node);
         // Return shared pointer to this node
@@ -207,9 +208,9 @@ class Pipeline {
      *
      * Node is specified by template argument N
      */
-    template <class N>
-    std::shared_ptr<N> create() {
-        return impl()->create<N>(pimpl);
+    template <class N, typename... Args>
+    std::shared_ptr<N> create(Args&&... args) {
+        return impl()->create<N>(pimpl, std::forward<Args>(args)...);
     }
 
     /**
