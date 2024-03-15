@@ -7,6 +7,7 @@
 #include <spimpl.h>
 
 // internal private
+#include "utility/ArchiveUtil.hpp"
 #include "utility/ErrorMacros.hpp"
 
 namespace dai {
@@ -14,19 +15,41 @@ namespace dai {
 class NNArchive::Impl {
    public:
     NNArchiveConfig mConfig;
-    std::optional<NNArchiveBlob> mBlob;
+    NNArchiveBlob mBlob;
+
+    static NNArchiveBlob blobFromConfig(const NNArchiveConfig& config, const Path& path, NNArchiveEntry::Compression compression) {
+        if((compression == NNArchiveEntry::Compression::AUTO && utility::ArchiveUtil::isJsonPath(path)) || compression == NNArchiveEntry::Compression::RAW_FS) {
+            const auto filepath = path.string();
+#if defined(_WIN32) && defined(_MSC_VER)
+            const char separator = '\\';
+#else
+            const char separator = '/';
+#endif
+            const auto& configV1 = config.getConfigV1();
+            daiCheckIn(configV1);
+            const size_t lastSlashIndex = filepath.find_last_of(separator);
+            std::string blobPath;
+            if(std::string::npos == lastSlashIndex) {
+                blobPath = (*configV1).model.metadata.path;
+            } else {
+                const auto basedir = filepath.substr(0, lastSlashIndex + 1);
+                blobPath = basedir + separator + (*configV1).model.metadata.path;
+            }
+            return NNArchiveBlob(config, blobPath, NNArchiveEntry::Compression::RAW_FS);
+        }
+        return NNArchiveBlob(config, path, compression);
+    }
 
     Impl(const std::vector<uint8_t>& data, NNArchiveEntry::Compression compression)
-        : mConfig(NNArchiveConfig(data, compression)), mBlob(NNArchiveBlob(data, compression)) {}
+        : mConfig(NNArchiveConfig(data, compression)), mBlob(NNArchiveBlob(mConfig, data, compression)) {}
 
     Impl(NNArchiveConfig config, NNArchiveBlob blob) : mConfig(std::move(config)), mBlob(std::move(blob)){};
 
     Impl(const Path& path, NNArchiveEntry::Compression compression)
-        : mConfig(NNArchiveConfig(path, compression)), mBlob(NNArchiveBlob(mConfig.getBlobPath(), path, compression)) {}
+        : mConfig(NNArchiveConfig(path, compression)), mBlob(blobFromConfig(mConfig, path, compression)) {}
 
     const NNArchiveBlob& getBlob() const {
-        daiCheckIn(mBlob);
-        return *mBlob;
+        return mBlob;
     }
 };
 

@@ -14,7 +14,6 @@
 #include "depthai/nn_archive/v1/Config.hpp"
 
 // internal private
-#include "nn_archive/v1/helper.hpp"
 #include "nn_archive/v1/Generators.hpp"
 #include "utility/ArchiveUtil.hpp"
 #include "utility/ErrorMacros.hpp"
@@ -26,33 +25,43 @@ class NNArchiveConfig::Impl {
     // in the future we will have <nn_archive::v1::Config, nn_archive::v2::Config>
     std::variant<dai::nn_archive::v1::Config> mConfig;
 
-    Impl(const std::vector<uint8_t>& data, NNArchiveEntry::Compression compression) {}
+    void initConfig(const std::optional<nlohmann::json>& maybeJson) {
+        daiCheckIn(maybeJson);
+        dai::nn_archive::v1::Config config;
+        dai::nn_archive::v1::from_json(*maybeJson, config);
+        mConfig = config;
+    }
 
-    Impl(const Path& path, NNArchiveEntry::Compression compression) {
-        const auto filepath = path.string();
+    Impl(const std::vector<uint8_t>& data, NNArchiveEntry::Compression compression) {
         bool isJson = compression == NNArchiveEntry::Compression::RAW_FS;
-        if(compression == NNArchiveEntry::Compression::AUTO) {
-            const auto pointIndex = filepath.find_last_of('.');
-            if(pointIndex != std::string::npos) {
-                isJson = filepath.substr(filepath.find_last_of('.') + 1) == "json";
-            }
-        }
         std::optional<nlohmann::json> maybeJson;
-        nlohmann::json json;
         if(isJson) {
-            // std::ifstream jsonStream(path);
-            // maybeJson = nlohmann::json::parse(jsonStream);
-            daiCheck(false, "Raw json not implemented yet");
+            maybeJson = nlohmann::json::parse(data);
         } else {
-            utility::ArchiveUtil archive(filepath, compression);
+            utility::ArchiveUtil archive(data, compression);
             std::vector<uint8_t> jsonBytes;
             const bool success = archive.readEntry("config.json", jsonBytes);
-            daiCheckV(success, "Didn't find the config.json file inside the {} archive.", filepath);
-            json = nlohmann::json::parse(jsonBytes);
+            daiCheck(success, "Didn't find the config.json file inside the NNArchive read from memory.");
+            maybeJson = nlohmann::json::parse(jsonBytes);
         }
-        dai::nn_archive::v1::Config config;
-        dai::nn_archive::v1::from_json(json, config);
-        mConfig = config;
+        initConfig(maybeJson);
+    }
+
+    Impl(const Path& path, NNArchiveEntry::Compression compression) {
+        bool isJson =
+            compression == NNArchiveEntry::Compression::RAW_FS || (compression == NNArchiveEntry::Compression::AUTO && utility::ArchiveUtil::isJsonPath(path));
+        std::optional<nlohmann::json> maybeJson;
+        if(isJson) {
+            std::ifstream jsonStream(path);
+            maybeJson = nlohmann::json::parse(jsonStream);
+        } else {
+            utility::ArchiveUtil archive(path, compression);
+            std::vector<uint8_t> jsonBytes;
+            const bool success = archive.readEntry("config.json", jsonBytes);
+            daiCheckV(success, "Didn't find the config.json file inside the {} archive.", path);
+            maybeJson = nlohmann::json::parse(jsonBytes);
+        }
+        initConfig(maybeJson);
     }
 
     template <typename T>
@@ -61,26 +70,6 @@ class NNArchiveConfig::Impl {
             return *configPtr;
         }
         return std::nullopt;
-    }
-
-    const nn_archive::v1::Head& getHead() const {
-        const auto& maybeConfig = getConfig<nn_archive::v1::Config>();
-        daiCheckIn(maybeConfig);
-        const auto& config = *maybeConfig;
-
-        // TODO(jakgra) is NN Archive valid without this? why is this optional?
-        daiCheck(config.model.heads, "Heads array is not defined in the NN Archive config file.");
-        // TODO(jakgra) for now get info from heads[0] but in the future correctly support multiple outputs and mapped h  eads
-        daiCheckV((*config.model.heads).size() == 1,
-                  "There should be exactly one head per model in the NN Archive config file defined. Found {} heads.",
-                  (*config.model.heads).size());
-        return (*config.model.heads)[0];
-    }
-
-    std::string getBlobPath() const {
-        const auto& maybeConfig = getConfig<nn_archive::v1::Config>();
-        daiCheckIn(maybeConfig);
-        return (*maybeConfig).model.metadata.path;
     }
 };
 
@@ -91,10 +80,6 @@ NNArchiveConfig::NNArchiveConfig(const Path& path, NNArchiveEntry::Compression c
 
 std::optional<nn_archive::v1::Config> NNArchiveConfig::getConfigV1() const {
     return pimpl->getConfig<nn_archive::v1::Config>();
-}
-
-std::string NNArchiveConfig::getBlobPath() const {
-    return pimpl->getBlobPath();
 }
 
 }  // namespace dai

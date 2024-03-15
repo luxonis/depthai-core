@@ -3,9 +3,10 @@
 #include "utility/ErrorMacros.hpp"
 #include "utility/Logging.hpp"
 
-namespace dai::utility {
+namespace dai {
+namespace utility {
 
-ArchiveUtil::ArchiveUtil(const std::string& filepath, NNArchiveEntry::Compression format) {
+void ArchiveUtil::init(NNArchiveEntry::Compression format) {
     auto* archivePtr = archive_read_new();
     daiCheckIn(archivePtr);
     aPtr = archivePtr;
@@ -32,6 +33,16 @@ ArchiveUtil::ArchiveUtil(const std::string& filepath, NNArchiveEntry::Compressio
             daiCheckIn(false);
             break;
     }
+}
+
+ArchiveUtil::ArchiveUtil(const std::vector<uint8_t>& data, NNArchiveEntry::Compression format) {
+    init(format);
+    const auto res = archive_read_open_memory(aPtr, data.data(), data.size());
+    daiCheck(res == ARCHIVE_OK, "Error when decompressing archive from memory.");
+}
+
+ArchiveUtil::ArchiveUtil(const std::string& filepath, NNArchiveEntry::Compression format) {
+    init(format);
     const auto res = archive_read_open_filename(aPtr, filepath.c_str(), 10240);
     daiCheckV(res == ARCHIVE_OK, "Error when decompressing {}.", filepath);
 }
@@ -106,4 +117,14 @@ ArchiveUtil::~ArchiveUtil() {
     }
 }
 
-}  // namespace dai::utility
+bool ArchiveUtil::isJsonPath(const Path& path) {
+    const auto filepath = path.string();
+    const auto pointIndex = filepath.find_last_of('.');
+    if(pointIndex != std::string::npos) {
+        return filepath.substr(filepath.find_last_of('.') + 1) == "json";
+    }
+    return false;
+}
+
+}  // namespace utility
+}  // namespace dai

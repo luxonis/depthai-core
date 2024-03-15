@@ -21,18 +21,15 @@ namespace dai {
 class NNArchiveConfig {
    public:
     /**
-     * Tries to parse the config from json data.
-     * Throws an error if the config data is malformed / unsupported.
-     */
-    explicit NNArchiveConfig(const std::vector<uint8_t>& configData);
-
-    /**
-     * @data Should point to a whole compressed NNArchive read to memory
-     * see NNArchive class for parameter explanation
+     * @data Should point to a whole compressed NNArchive read to memory if compression is not set to RAW_FS.
+     * If compression is set to RAW_FS, then this should point to just the config.json file read to memory.
      */
     explicit NNArchiveConfig(const std::vector<uint8_t>& data, NNArchiveEntry::Compression compression = NNArchiveEntry::Compression::AUTO);
     /**
-     * all parameters should point to a whole compressed NNArchive
+     * @path Should point to:
+     * 1) if compression is set to RAW_FS: to just the config.json file.
+     * 2) if compression is set to AUTO: to whole compressed NNArchive or just the config.json file which must end in .json .
+     * 3) else: to whole compressed NNArchive.
      * see NNArchive class for parameter explanation
      */
     explicit NNArchiveConfig(const dai::Path& path, NNArchiveEntry::Compression compression = NNArchiveEntry::Compression::AUTO);
@@ -48,12 +45,6 @@ class NNArchiveConfig {
                     NNArchiveEntry::Compression compression = NNArchiveEntry::Compression::AUTO);
 
     std::optional<dai::nn_archive::v1::Config> getConfigV1() const;
-
-    /**
-     * returns the blobName from the config file.
-     * Throws if the config is malformed.
-     */
-    std::string getBlobPath() const;
 
    private:
     class Impl;

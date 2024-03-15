@@ -28,61 +28,9 @@ class DetectionNetwork::Impl {
     Impl() = default;
 
     /*
-    static dai::nn_archive::v1::Config parseNNArchiveConfig(const dai::Path& path, NNArchiveEntry::Compression format, bool& isJson, std::string& blobPath);
-    */
+     * Place for future private stuff.
+     */
 };
-
-/*
-dai::nn_archive::v1::Config DetectionNetwork::Impl::parseNNArchiveConfig(const dai::Path& path,
-                                                                         const NNArchiveFormat format,
-                                                                         bool& isJson,
-                                                                         std::string& blobPath) {
-    const auto filepath = path.string();
-    isJson = format == NNArchiveFormat::RAW_FS;
-    if(format == NNArchiveFormat::AUTO) {
-        const auto pointIndex = filepath.find_last_of('.');
-        if(pointIndex != std::string::npos) {
-            isJson = filepath.substr(filepath.find_last_of('.') + 1) == "json";
-        }
-    }
-    std::optional<nlohmann::json> maybeJson;
-    if(isJson) {
-        std::ifstream jsonStream(path);
-        maybeJson = nlohmann::json::parse(jsonStream);
-    } else {
-        dai::utility::ArchiveUtil archive(filepath, format);
-        struct archive_entry* entry = nullptr;
-        bool foundJson = false;
-        while(archive_read_next_header(archive.getA(), &entry) == ARCHIVE_OK) {
-            std::string entryName(archive_entry_pathname(entry));
-            if(entryName == "config.json") {
-                foundJson = true;
-                const auto jsonBytes = archive.readEntry(entry);
-                maybeJson = nlohmann::json::parse(jsonBytes);
-                break;
-            }
-        }
-        daiCheckV(foundJson, "Didn't find the config.json file inside the {} archive.", filepath);
-    }
-    dai::nn_archive::v1::Config config;
-    dai::nn_archive::v1::from_json(*maybeJson, config);
-    if(isJson) {
-#if defined(_WIN32) && defined(_MSC_VER)
-        const char separator = '\\';
-#else
-        const char separator = '/';
-#endif
-        const size_t lastSlashIndex = filepath.find_last_of(separator);
-        if(std::string::npos == lastSlashIndex) {
-            blobPath = config.model.metadata.path;
-        } else {
-            const auto basedir = filepath.substr(0, lastSlashIndex + 1);
-            blobPath = basedir + separator + config.model.metadata.path;
-        }
-    }
-    return config;
-}
-*/
 
 DetectionNetwork::DetectionNetwork()
     : out{detectionParser->out}, outNetwork{neuralNetwork->out}, input{neuralNetwork->input}, passthrough{neuralNetwork->passthrough} {};
@@ -104,68 +52,6 @@ void DetectionNetwork::build() {
     detectionParser->imageIn.setBlocking(false);
     detectionParser->imageIn.setQueueSize(1);
 }
-
-/*
-void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat format) {
-    bool isJson = false;
-    std::string blobPath;
-    const auto config = pimpl->parseNNArchiveConfig(path, format, isJson, blobPath);
-    const auto model = config.model;
-    if(isJson) {
-        setBlobPath(blobPath);
-    } else {
-        dai::utility::ArchiveUtil archive(path.string(), format);
-        struct archive_entry* entry = nullptr;
-        bool found = false;
-        while(archive_read_next_header(archive.getA(), &entry) == ARCHIVE_OK) {
-            std::string entryName(archive_entry_pathname(entry));
-            if(entryName == model.metadata.path) {
-                found = true;
-                // TODO(jakgra) maybe do this async in another thread and check for call to setBlob() in between
-                // to interrupt extraction in the while loop and overwrite the blob
-                // Then startPipeline should wait for the extraction to finish
-                const auto blobBytes = archive.readEntry(entry);
-                setBlob(OpenVINO::Blob(blobBytes));
-                break;
-            }
-        }
-        daiCheckV(found, "No blob named {} found in NN Archive {}.", model.metadata.path, path)
-    }
-    // TODO(jakgra) is NN Archive valid without this? why is this optional?
-    daiCheck(model.heads, "Heads array is not defined in the NN Archive config file.");
-    // TODO(jakgra) for now get info from heads[0] but in the future correctly support multiple outputs and mapped heads
-    daiCheckV(
-        (*model.heads).size() == 1, "There should be exactly one head per model in the NN Archive config file defined. Found {} heads.", (*model.heads).size());
-    const auto head = (*model.heads)[0];
-    if(head.family == "ObjectDetectionYOLO") {
-        detectionParser->properties.parser.nnFamily = DetectionNetworkType::YOLO;
-    }
-    detectionParser->setNumClasses(static_cast<int>(head.nClasses));
-    if(head.iouThreshold) {
-        detectionParser->properties.parser.iouThreshold = static_cast<float>(*head.iouThreshold);
-    }
-    if(head.confThreshold) {
-        setConfidenceThreshold(static_cast<float>(*head.confThreshold));
-    }
-    detectionParser->setCoordinateSize(4);
-    if(head.anchors) {
-        const auto anchorsIn = *head.anchors;
-        std::vector<std::vector<std::vector<float>>> anchorsOut(anchorsIn.size());
-        for(size_t layer = 0; layer < anchorsOut.size(); ++layer) {
-            std::vector<std::vector<float>> layerOut(anchorsIn[layer].size());
-            for(size_t anchor = 0; anchor < layerOut.size(); ++anchor) {
-                std::vector<float> anchorOut(anchorsIn[layer][anchor].size());
-                for(size_t dim = 0; dim < anchorOut.size(); ++dim) {
-                    anchorOut[dim] = static_cast<float>(anchorsIn[layer][anchor][dim]);
-                }
-                layerOut[anchor] = anchorOut;
-            }
-            anchorsOut[layer] = layerOut;
-        }
-        detectionParser->setAnchors(anchorsOut);
-    }
-}
-*/
 
 void DetectionNetwork::setNNArchive(const NNArchive& nnArchive) {
     const auto configMaybe = nnArchive.getConfig().getConfigV1();

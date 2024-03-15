@@ -8,6 +8,7 @@
 
 // internal public
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
+#include "depthai/utility/Path.hpp"
 
 namespace dai::utility {
 
@@ -16,6 +17,8 @@ class ArchiveUtil {
    public:
     explicit ArchiveUtil(struct archive* archivePtr);
     ArchiveUtil(const std::string& filepath, NNArchiveEntry::Compression format);
+    ArchiveUtil(const std::vector<uint8_t>& data, NNArchiveEntry::Compression format);
+
     struct archive* getA();
     // Throws on error
     void readEntry(struct archive_entry* entry, std::vector<uint8_t>& out);
@@ -29,8 +32,12 @@ class ArchiveUtil {
     ArchiveUtil& operator=(ArchiveUtil&&) = delete;
     ~ArchiveUtil();
 
+    static bool isJsonPath(const Path& path);
+
    private:
     struct archive* aPtr = nullptr;
+
+    void init(NNArchiveEntry::Compression format);
 };
 
 }  // namespace dai::utility

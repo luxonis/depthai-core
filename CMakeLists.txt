@@ -288,6 +288,7 @@ add_library(${TARGET_CORE_NAME}
     src/nn_archive/NNArchive.cpp
     src/nn_archive/NNArchiveConfig.cpp
     src/nn_archive/NNArchiveBlob.cpp
+    src/nn_archive/NNArchiveConfigHelper.cpp
 )
 add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
 # Specify that we are building core
