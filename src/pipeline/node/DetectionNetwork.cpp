@@ -168,11 +168,12 @@ void DetectionNetwork::setNNArchive(const dai::Path& path, const NNArchiveFormat
 */
 
 void DetectionNetwork::setNNArchive(const NNArchive& nnArchive) {
-    const auto configMaybe = nnArchive.getConfig().getConfig<nn_archive::v1::Config>();
+    const auto configMaybe = nnArchive.getConfig().getConfigV1();
     daiCheck(configMaybe, "Unsupported NNArchive format / version. Check which depthai version you are running.");
     const auto& config = *configMaybe;
-    const auto* blob = nnArchive.getBlob().getBlob();
+    const auto& blob = nnArchive.getBlob().getOpenVINOBlob();
     daiCheckIn(blob);
+    setBlob(*blob);
     const auto model = config.model;
     // TODO(jakgra) is NN Archive valid without this? why is this optional?
     daiCheck(model.heads, "Heads array is not defined in the NN Archive config file.");

@@ -8,6 +8,8 @@
 
 #pragma once
 
+#include "depthai/common/optional.hpp"
+
 #include <optional>
 #include <nlohmann/json.hpp>
 
@@ -65,4 +67,19 @@ namespace v1 {
 }
 }
 
+#ifndef NLOHMANN_OPT_HELPER
+#define NLOHMANN_OPT_HELPER
+namespace nlohmann {
+    template <typename T>
+    struct adl_serializer<std::shared_ptr<T>> {
+        static void to_json(json & j, const std::shared_ptr<T> & opt) {
+            if (!opt) j = nullptr; else j = *opt;
+        }
 
+        static std::shared_ptr<T> from_json(const json & j) {
+            if (j.is_null()) return std::make_shared<T>(); else return std::make_shared<T>(j.get<T>());
+        }
+    };
+
+}
+#endif

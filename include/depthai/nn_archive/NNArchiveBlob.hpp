@@ -5,6 +5,7 @@
 
 // C++ std
 #include <functional>
+#include <optional>
 #include <vector>
 
 // libraries
@@ -24,10 +25,12 @@ class NNArchiveBlob {
      */
     explicit NNArchiveBlob(const std::vector<uint8_t>& data, dai::NNArchiveEntry::Compression compression = dai::NNArchiveEntry::Compression::AUTO);
     /**
-     * @blobName Name of the blob file inside the archive. Can be found using NNArchiveConfig.getBlobName().
+     * @blobName Name of the blob file inside the archive. Can be found using NNArchiveConfig.getBlobPath().
      * see NNArchive class for parameter explanation
      */
-    explicit NNArchiveBlob(const std::string& blobName, const dai::Path& path, dai::NNArchiveEntry::Compression compression = dai::NNArchiveEntry::Compression::AUTO);
+    explicit NNArchiveBlob(const std::string& blobPath,
+                           const dai::Path& archivePath,
+                           dai::NNArchiveEntry::Compression compression = dai::NNArchiveEntry::Compression::AUTO);
     /**
      * see NNArchive class for parameter explanation
      */
@@ -43,9 +46,9 @@ class NNArchiveBlob {
     explicit NNArchiveBlob(const dai::Path& path);
 
     /**
-     * returns the blob or std::nullopt if the blob isn't loaded (yet)
+     * returns the blob or std::nullopt if the blob isn't loaded (yet) or the blob isn't an OpenVINO blob
      */
-    const OpenVINO::Blob* getBlob() const;
+    std::optional<std::reference_wrapper<const OpenVINO::Blob>> getOpenVINOBlob() const;
 
    private:
     class Impl;

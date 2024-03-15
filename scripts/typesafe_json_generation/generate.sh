@@ -55,7 +55,10 @@ do
 done
 
 # fix private files
-perl -0777 -i -pe 's/\#ifndef NLOHMANN_OPT_HELPER.*\#endif//s' $private_dir/helper.hpp
+# perl -0777 -i -pe 's/\#ifndef NLOHMANN_OPT_HELPER.*\#endif//s' $private_dir/helper.hpp
+#
+perl -0777 -i -pe 's| *template <typename T>\n *struct adl_serializer<std::optional<T>>.*};||s' $private_dir/helper.hpp
+perl -0777 -i -pe 's|\#pragma once|\#pragma once\n\n\#include "depthai/common/optional.hpp"|s' $private_dir/helper.hpp
 perl -0777 -i -pe 's|\#include \"|\#include \"depthai/nn_archive/v1/|g' $private_dir/Generators.hpp
 perl -0777 -i -pe 's|\#include \"depthai/nn_archive/v1/helper.hpp\"|\#include \"helper.hpp\"|g' $private_dir/Generators.hpp
 

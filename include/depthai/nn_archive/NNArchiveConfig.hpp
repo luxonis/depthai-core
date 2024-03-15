@@ -13,6 +13,7 @@
 
 // internal
 #include "depthai/nn_archive/NNArchiveEntry.hpp"
+#include "depthai/nn_archive/v1/Config.hpp"
 #include "depthai/utility/Path.hpp"
 
 namespace dai {
@@ -46,18 +47,13 @@ class NNArchiveConfig {
                     const std::function<int()>& closeCallback,
                     NNArchiveEntry::Compression compression = NNArchiveEntry::Compression::AUTO);
 
-    /**
-     * type T can only be dai::nn_archive::v1::Config for now.
-     * returns the config object if config is loaded and of type T, std::nullopt otherwise.
-     */
-    template <typename T>
-    std::optional<T> getConfig() const;
+    std::optional<dai::nn_archive::v1::Config> getConfigV1() const;
 
     /**
      * returns the blobName from the config file.
      * Throws if the config is malformed.
      */
-    const std::string& getBlobPath() const;
+    std::string getBlobPath() const;
 
    private:
     class Impl;

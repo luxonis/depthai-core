@@ -1,12 +1,13 @@
 // C++ std
+#include <string>
 #include <vector>
 
 // libraries
 #include "archive.h"
 #include "archive_entry.h"
 
-// internal
-#include "depthai/pipeline/node/DetectionNetwork.hpp"
+// internal public
+#include "depthai/nn_archive/NNArchiveEntry.hpp"
 
 namespace dai::utility {
 
@@ -16,7 +17,12 @@ class ArchiveUtil {
     explicit ArchiveUtil(struct archive* archivePtr);
     ArchiveUtil(const std::string& filepath, NNArchiveEntry::Compression format);
     struct archive* getA();
-    std::vector<uint8_t> readEntry(struct archive_entry* entry);
+    // Throws on error
+    void readEntry(struct archive_entry* entry, std::vector<uint8_t>& out);
+    // Reads entryName from archive to curEntry member.
+    // Returns true if entry found, false otherwise.
+    // Throws on other errors
+    bool readEntry(const std::string& entryName, std::vector<uint8_t>& out);
     ArchiveUtil(const ArchiveUtil&) = delete;
     ArchiveUtil& operator=(const ArchiveUtil&) = delete;
     ArchiveUtil(ArchiveUtil&&) = delete;

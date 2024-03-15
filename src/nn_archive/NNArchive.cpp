@@ -6,9 +6,6 @@
 // libraries
 #include <spimpl.h>
 
-// internal public
-#include "depthai/nn_archive/v1/Config.hpp"
-
 // internal private
 #include "utility/ErrorMacros.hpp"
 
@@ -24,14 +21,8 @@ class NNArchive::Impl {
 
     Impl(NNArchiveConfig config, NNArchiveBlob blob) : mConfig(std::move(config)), mBlob(std::move(blob)){};
 
-    Impl(const Path& path, NNArchiveEntry::Compression compression) : mConfig(NNArchiveConfig(path, compression)), mBlob(NNArchiveBlob(path, compression)) {
-        const auto& maybeConfig = mConfig.getConfig<nn_archive::v1::Config>();
-        daiCheckIn(maybeConfig);
-        const auto& config = *maybeConfig;
-        const auto& heads = config.model.heads;
-        if ()
-mBlob = NNArchiveBlob(path, compression);
-    }
+    Impl(const Path& path, NNArchiveEntry::Compression compression)
+        : mConfig(NNArchiveConfig(path, compression)), mBlob(NNArchiveBlob(mConfig.getBlobPath(), path, compression)) {}
 
     const NNArchiveBlob& getBlob() const {
         daiCheckIn(mBlob);

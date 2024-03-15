@@ -30,7 +30,7 @@ int main(int argc, char** argv) {
         throw std::invalid_argument("You should provide 2 arguments for this example.");
     }
     const std::string nnArchivePath(argv[1]);
-    std::cout << "Using archive at path: %s\n";
+    std::cout << "Using archive at path:" << nnArchivePath << "\n";
 
     // Create pipeline
     dai::Pipeline pipeline;

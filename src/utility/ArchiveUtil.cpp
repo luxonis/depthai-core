@@ -46,9 +46,9 @@ struct archive* ArchiveUtil::getA() {
     return aPtr;
 }
 
-std::vector<uint8_t> ArchiveUtil::readEntry(struct archive_entry* entry) {
+void ArchiveUtil::readEntry(struct archive_entry* entry, std::vector<uint8_t>& out) {
     daiCheckIn(aPtr);
-    std::vector<uint8_t> out;
+    out.clear();
 
     // Read size, 16KiB
     auto readSize = static_cast<int64_t>(16 * 1024);
@@ -82,7 +82,18 @@ std::vector<uint8_t> ArchiveUtil::readEntry(struct archive_entry* entry) {
 
     // Resize vector to actual read size
     out.resize(finalSize);
-    return out;
+}
+
+bool ArchiveUtil::readEntry(const std::string& entryName, std::vector<uint8_t>& out) {
+    struct archive_entry* entry = nullptr;
+    while(archive_read_next_header(getA(), &entry) == ARCHIVE_OK) {
+        std::string curEntryName(archive_entry_pathname(entry));
+        if(curEntryName == entryName) {
+            readEntry(entry, out);
+            return true;
+        }
+    }
+    return false;
 }
 
 ArchiveUtil::~ArchiveUtil() {

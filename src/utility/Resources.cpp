@@ -333,7 +333,7 @@ std::function<void()> getLazyTarXzFunction(MTX& mtx, CV& cv, BOOL& ready, PATH c
             for(const auto& cpath : resourceList) {
                 std::string resPath(cpath);
                 if(resPath == std::string(archive_entry_pathname(entry))) {
-                    resourceMap[resPath] = archive.readEntry(entry);
+                    archive.readEntry(entry, resourceMap[resPath]);
                     // Entry found - go to next required resource
                     break;
                 }
