@@ -20,17 +20,27 @@ static const std::vector<std::string> labelMap = {
     "laptop",        "mouse",        "remote",        "keyboard",      "cell phone",  "microwave",   "oven",        "toaster",      "sink",
     "refrigerator",  "book",         "clock",         "vase",          "scissors",    "teddy bear",  "hair drier",  "toothbrush"};
 
-static std::atomic<bool> syncNN{true};
+static const std::atomic<bool> syncNN{true};
 
 int main(int argc, char** argv) {
     using namespace std;
     using namespace std::chrono;
 
-    if(argc < 2) {
-        throw std::invalid_argument("You should provide 2 arguments for this example.");
+    auto args = dai::span(argv, static_cast<size_t>(argc));
+    if(args.size() < 3) {
+        std::cout << "WRONG USAGE!!!\n\n"
+                  << "USAGE: ./nn_archive ${EXAMPLE_TYPE} ${PATH_TO_ARCHIVE_OR_RAW_CONFIG_JSON}\n\n"
+                  << "Where EXAMPLE_TYPE is:\n"
+                  << "1) fs, read directly from filesystem\n"
+                  << "2) memory, read the whole NNArchive to memory first\n"
+                  << "3) buffer, feed the library with the archive chunk by chunk\n"
+                  << "4) advanced, decompress the config from the archive first, get some info and then optionally decompress the blob\n";
+        return 1;
     }
-    const std::string nnArchivePath(argv[1]);
+    const std::string exampleType(args[1]);
+    const std::string nnArchivePath(args[2]);
     std::cout << "Using archive at path:" << nnArchivePath << "\n";
+    std::cout << "Running example type:" << nnArchivePath << "\n";
 
     // Create pipeline
     dai::Pipeline pipeline;
@@ -53,7 +63,15 @@ int main(int argc, char** argv) {
     camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);
     camRgb->setFps(40);
 
-    detectionNetwork->setNNArchive(dai::NNArchive(nnArchivePath));
+    if(exampleType == "fs") {
+        detectionNetwork->setNNArchive(dai::NNArchive(nnArchivePath));
+    } else if(exampleType == "memory") {
+        std::ifstream archiveFile(nnArchivePath, std::ios::binary);
+        std::vector<uint8_t> fileContents((std::istreambuf_iterator<char>(archiveFile)), std::istreambuf_iterator<char>());
+        detectionNetwork->setNNArchive(dai::NNArchive(fileContents));
+    } else {
+        throw std::runtime_error("Not implemented yet");
+    }
 
     // TODO(jakgra)
     // Will we get this from NN Archive also?
