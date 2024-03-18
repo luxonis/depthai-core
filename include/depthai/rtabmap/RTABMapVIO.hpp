@@ -11,7 +11,6 @@
 #include "rtabmap/core/CameraModel.h"
 #include "rtabmap/core/Odometry.h"
 #include "rtabmap/core/OdometryInfo.h"
-#include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/SensorData.h"
 #include "rtabmap/core/Transform.h"
 namespace dai {

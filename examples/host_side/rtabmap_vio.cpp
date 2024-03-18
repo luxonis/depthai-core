@@ -58,7 +58,7 @@ class RerunStreamer : public dai::NodeCRTP<dai::ThreadedNode, RerunStreamer> {
                 positions.push_back(position);
                 rerun::LineStrip3D lineStrip(positions);
                 rec.log("world/trajectory", rerun::LineStrips3D(lineStrip));
-                rec.log("world/camera/image", rerun::Pinhole::from_focal_length_and_resolution({145.274f, 211.736f}, {576.0f, 360.0f}));
+                rec.log("world/camera/image", rerun::Pinhole::from_focal_length_and_resolution({256.06f, 256.06f}, {576.0f, 360.0f}));
                 rec.log("world/camera/image/rgb",
                         rerun::Image(tensor_shape(imgFrame->getCvFrame()), reinterpret_cast<const uint8_t*>(imgFrame->getCvFrame().data)));
             }
@@ -71,7 +71,7 @@ class RerunStreamer : public dai::NodeCRTP<dai::ThreadedNode, RerunStreamer> {
 int main() {
     using namespace std;
     // ULogger::setType(ULogger::kTypeConsole);
-	// ULogger::setLevel(ULogger::kInfo);
+	// ULogger::setLevel(ULogger::kDebug);
     // Create pipeline
     dai::Pipeline pipeline;
     int fps = 30;
@@ -86,8 +86,7 @@ int main() {
     auto odom = pipeline.create<dai::node::RTABMapVIO>();
     auto rerun = pipeline.create<RerunStreamer>();
     auto params = rtabmap::ParametersMap();
-    params.insert(rtabmap::ParametersPair("Odom/AlignWithGround", "true"));
-    params.insert(rtabmap::ParametersPair("Odom/FilteringStrategy", "1"));
+    params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomResetCountdown(), "30"));
 
     odom->setParams(params);
     imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 100);
@@ -116,8 +115,6 @@ int main() {
 	stereo->enableDistortionCorrection(true);
     stereo->initialConfig.setLeftRightCheckThreshold(10);
     stereo->setDepthAlign(dai::StereoDepthProperties::DepthAlign::RECTIFIED_LEFT);
-    // stereo->setAlphaScaling(0.0);
-    stereo->initialConfig.setMedianFilter(dai::StereoDepthConfig::MedianFilter::KERNEL_7x7);
 
 
     // auto controlIn = pipeline.create<dai::node::XLinkIn>();

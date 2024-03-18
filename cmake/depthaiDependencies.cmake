@@ -93,6 +93,8 @@ endif()
 find_package(OpenCV 4 QUIET CONFIG)
 
 if(DEPTHAI_RTABMAP_SUPPORT)
+    # hunter_add_package(g2o)
+    # find_package(g2o ${_QUIET} CONFIG REQUIRED)
     hunter_add_package(rtbmap COMPONENTS core utilite)
     find_package(RTABMap ${_QUIET} CONFIG REQUIRED COMPONENTS core utilite)
 endif()

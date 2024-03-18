@@ -3,7 +3,6 @@ option(DEPTHAI_TEST_EXAMPLES "Test examples - examples will be ran as a part of 
 
 # Dependencies
 find_package(OpenCV REQUIRED)
-find_package(RTABMap REQUIRED COMPONENTS core utilite)
 find_package(Sanitizers)
 
 # Create utility library
