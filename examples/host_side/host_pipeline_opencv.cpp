@@ -18,16 +18,21 @@ int main() {
     camRgb->setVideoSize(640, 480);
     auto displayDevice = pipeline.create<dai::node::Display>(std::string{"Device Display"});
 
-    camRgb->video.link(displayDevice->input);
+    // camRgb->video.link(displayDevice->input);
 
     // Option 2:
     auto queue = camRgb->video.getQueue();
 
     pipeline.start();
 
-    while (pipeline.isRunning()) {
+    while(pipeline.isRunning()) {
         auto message = queue->get<dai::ImgFrame>();
         cv::imshow("QueueFrame", message->getCvFrame());
+        auto q = cv::waitKey(1);
+        if(q == 'q') {
+            pipeline.stop();
+            break;
+        }
     }
 
     pipeline.wait();
