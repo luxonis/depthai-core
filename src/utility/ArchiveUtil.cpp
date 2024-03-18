@@ -1,5 +1,9 @@
 #include "ArchiveUtil.hpp"
 
+// c std
+#include <cstdio>
+#include <optional>
+
 #include "utility/ErrorMacros.hpp"
 #include "utility/Logging.hpp"
 
@@ -47,6 +51,106 @@ ArchiveUtil::ArchiveUtil(const std::string& filepath, NNArchiveEntry::Compressio
     daiCheckV(res == ARCHIVE_OK, "Error when decompressing {}.", filepath);
 }
 
+int64_t ArchiveUtil::readCb(struct archive*, void* context, const void** buffer) {
+    daiCheckIn(context);
+    auto* cSelf = static_cast<ArchiveUtil*>(context);
+    daiCheckIn(cSelf);
+    return cSelf->archiveRead(buffer);
+}
+
+int ArchiveUtil::openCb(struct archive*, void* context) {
+    daiCheckIn(context);
+    auto* cSelf = static_cast<ArchiveUtil*>(context);
+    daiCheckIn(cSelf);
+    return cSelf->archiveOpen();
+}
+
+int ArchiveUtil::closeCb(struct archive*, void* context) {
+    daiCheckIn(context);
+    auto* cSelf = static_cast<ArchiveUtil*>(context);
+    daiCheckIn(cSelf);
+    return cSelf->archiveClose();
+}
+
+int ArchiveUtil::archiveOpen() {
+    daiCheckIn(userOpenCallback);
+    return (*userOpenCallback)();
+}
+
+int ArchiveUtil::archiveClose() {
+    daiCheckIn(userCloseCallback);
+    return (*userCloseCallback)();
+}
+
+int64_t ArchiveUtil::seekCb(struct archive*, void* context, int64_t offset, int whence) {
+    daiCheckIn(context);
+    auto* cSelf = static_cast<ArchiveUtil*>(context);
+    daiCheckIn(cSelf);
+    return cSelf->archiveSeek(offset, whence);
+}
+
+int64_t ArchiveUtil::archiveSeek(int64_t offset,  // NOLINT(bugprone-easily-swappable-parameters)
+                                 int whence       // NOLINT(bugprone-easily-swappable-parameters)
+) {
+    daiCheckIn(userSeekCallback);
+    std::optional<NNArchiveEntry::Seek> whenceConverted;
+    switch(whence) {
+        case SEEK_SET:
+            whenceConverted = NNArchiveEntry::Seek::SET;
+            break;
+        case SEEK_CUR:
+            whenceConverted = NNArchiveEntry::Seek::CUR;
+            break;
+        case SEEK_END:
+            whenceConverted = NNArchiveEntry::Seek::END;
+            break;
+        default:
+            daiCheckIn(false);
+            break;
+    }
+    return (*userSeekCallback)(offset, *whenceConverted);
+}
+
+int64_t ArchiveUtil::skipCb(struct archive*, void* context, int64_t request) {
+    daiCheckIn(context);
+    auto* cSelf = static_cast<ArchiveUtil*>(context);
+    daiCheckIn(cSelf);
+    return cSelf->archiveSkip(request);
+}
+
+int64_t ArchiveUtil::archiveSkip(int64_t request) {
+    daiCheckIn(userSkipCallback);
+    return (*userSkipCallback)(request);
+}
+
+ArchiveUtil::ArchiveUtil(const std::function<int()>& openCallback,
+                         const std::function<std::shared_ptr<std::vector<uint8_t>>()>& readCallback,
+                         const std::function<int64_t(int64_t offset, NNArchiveEntry::Seek whence)>& seekCallback,
+                         const std::function<int64_t(int64_t request)>& skipCallback,
+                         const std::function<int()>& closeCallback,
+                         NNArchiveEntry::Compression format)
+    : userOpenCallback(openCallback),
+      userReadCallback(readCallback),
+      userSeekCallback(seekCallback),
+      userSkipCallback(skipCallback),
+      userCloseCallback(closeCallback) {
+    init(format);
+    auto res = archive_read_set_callback_data(aPtr, this);
+    daiCheckIn(res == ARCHIVE_OK);
+    res = archive_read_set_open_callback(aPtr, openCb);
+    daiCheckIn(res == ARCHIVE_OK);
+    res = archive_read_set_read_callback(aPtr, readCb);
+    daiCheckIn(res == ARCHIVE_OK);
+    res = archive_read_set_close_callback(aPtr, closeCb);
+    daiCheckIn(res == ARCHIVE_OK);
+    res = archive_read_set_seek_callback(aPtr, seekCb);
+    daiCheckIn(res == ARCHIVE_OK);
+    res = archive_read_set_skip_callback(aPtr, skipCb);
+    daiCheckIn(res == ARCHIVE_OK);
+    res = archive_read_open1(aPtr);
+    daiCheck(res == ARCHIVE_OK, "Couldn't open the archive. Did you provide the correct binary data to the read callback? Did your open callback return 0?");
+}
+
 ArchiveUtil::ArchiveUtil(struct archive* archivePtr) {
     daiCheckIn(archivePtr);
     aPtr = archivePtr;
@@ -55,6 +159,15 @@ ArchiveUtil::ArchiveUtil(struct archive* archivePtr) {
 struct archive* ArchiveUtil::getA() {
     daiCheckIn(aPtr);
     return aPtr;
+}
+
+int64_t ArchiveUtil::archiveRead(const void** buffer) {
+    daiCheckIn(userReadCallback);
+    userReadBuffer = (*userReadCallback)();
+    daiCheck(userReadBuffer, "Don't return nullptr from read callbacks.");
+    *buffer = userReadBuffer->data();
+    daiCheck(userReadBuffer->size() <= std::numeric_limits<int64_t>::max(), "You can return at most int64_t MAX data->size() from read callbacks.");
+    return static_cast<int64_t>(userReadBuffer->size());
 }
 
 void ArchiveUtil::readEntry(struct archive_entry* entry, std::vector<uint8_t>& out) {

@@ -34,11 +34,11 @@ class NNArchiveConfig {
      */
     explicit NNArchiveConfig(const dai::Path& path, NNArchiveEntry::Compression compression = NNArchiveEntry::Compression::AUTO);
     /**
-     * all parameters should point to a whole compressed NNArchive
+     *  Returned data should be just the config.json if compression == RAW_FS or the whole NNArchive otherwise
      * see NNArchive class for parameter explanation
      */
     NNArchiveConfig(const std::function<int()>& openCallback,
-                    const std::function<void(std::vector<uint8_t>& buffer)>& readCallback,
+                    const std::function<std::shared_ptr<std::vector<uint8_t>>()>& readCallback,
                     const std::function<int64_t(int64_t offset, NNArchiveEntry::Seek whence)>& seekCallback,
                     const std::function<int64_t(int64_t request)>& skipCallback,
                     const std::function<int()>& closeCallback,

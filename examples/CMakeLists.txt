@@ -426,4 +426,5 @@ dai_add_example(imu_video_synced Sync/imu_video_synced.cpp ON)
 
 # NN Archive
 dai_add_example(nn_archive NNArchive/nn_archive.cpp ON)
-target_compile_definitions(nn_archive PRIVATE BLOB_PATH="${tiny_yolo_v4_blob}")
+target_compile_definitions(nn_archive PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT=1)
+target_link_libraries(nn_archive PRIVATE ssl crypto)

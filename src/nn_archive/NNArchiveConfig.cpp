@@ -23,7 +23,7 @@ namespace dai {
 class NNArchiveConfig::Impl {
    public:
     // in the future we will have <nn_archive::v1::Config, nn_archive::v2::Config>
-    std::variant<dai::nn_archive::v1::Config> mConfig;
+    std::optional<std::variant<dai::nn_archive::v1::Config>> mConfig;
 
     void initConfig(const std::optional<nlohmann::json>& maybeJson) {
         daiCheckIn(maybeJson);
@@ -64,9 +64,29 @@ class NNArchiveConfig::Impl {
         initConfig(maybeJson);
     }
 
+    Impl(const std::function<int()>& openCallback,
+         const std::function<std::shared_ptr<std::vector<uint8_t>>()>& readCallback,
+         const std::function<int64_t(int64_t offset, NNArchiveEntry::Seek whence)>& seekCallback,
+         const std::function<int64_t(int64_t request)>& skipCallback,
+         const std::function<int()>& closeCallback,
+         NNArchiveEntry::Compression compression) {
+        std::optional<nlohmann::json> maybeJson;
+        if(compression == NNArchiveEntry::Compression::RAW_FS) {
+            daiCheck(false, "RAW_FS with callbacks NOT IMPLEMENTED YET for NNArchiveConfig");
+        } else {
+            utility::ArchiveUtil archive(openCallback, readCallback, seekCallback, skipCallback, closeCallback, compression);
+            std::vector<uint8_t> jsonBytes;
+            const bool success = archive.readEntry("config.json", jsonBytes);
+            daiCheck(success, "Didn't find the config.json file inside the NNArchive.");
+            maybeJson = nlohmann::json::parse(jsonBytes);
+        }
+        initConfig(maybeJson);
+    }
+
     template <typename T>
     std::optional<T> getConfig() const {
-        if(const auto* configPtr(std::get_if<T>(&mConfig)); configPtr) {
+        daiCheckIn(mConfig);
+        if(const auto* configPtr(std::get_if<T>(&(*mConfig))); configPtr) {
             return *configPtr;
         }
         return std::nullopt;
@@ -77,6 +97,14 @@ NNArchiveConfig::NNArchiveConfig(const std::vector<uint8_t>& data, NNArchiveEntr
     : pimpl(spimpl::make_impl<Impl>(data, compression)){};
 
 NNArchiveConfig::NNArchiveConfig(const Path& path, NNArchiveEntry::Compression compression) : pimpl(spimpl::make_impl<Impl>(path, compression)) {}
+
+NNArchiveConfig::NNArchiveConfig(const std::function<int()>& openCallback,
+                                 const std::function<std::shared_ptr<std::vector<uint8_t>>()>& readCallback,
+                                 const std::function<int64_t(int64_t offset, NNArchiveEntry::Seek whence)>& seekCallback,
+                                 const std::function<int64_t(int64_t request)>& skipCallback,
+                                 const std::function<int()>& closeCallback,
+                                 NNArchiveEntry::Compression compression)
+    : pimpl(spimpl::make_impl<Impl>(openCallback, readCallback, seekCallback, skipCallback, closeCallback, compression)) {}
 
 std::optional<nn_archive::v1::Config> NNArchiveConfig::getConfigV1() const {
     return pimpl->getConfig<nn_archive::v1::Config>();

@@ -1,6 +1,11 @@
 #include <chrono>
 #include <iostream>
 
+// libraries
+// You need to have libssl and libcrypto installed to run / build this example
+// see #define CPPHTTPLIB_OPENSSL_SUPPORT documentation here: https://github.com/yhirose/cpp-httplib
+#include "httplib.h"
+
 // Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
@@ -22,10 +27,84 @@ static const std::vector<std::string> labelMap = {
 
 static const std::atomic<bool> syncNN{true};
 
-void initializeNNArchive(const std::string& exampleType,    // NOLINT(bugprone-easily-swappable-parameters)
-                         const std::string& nnArchivePath,  // NOLINT(bugprone-easily-swappable-parameters)
-                         const std::shared_ptr<dai::node::ColorCamera>& camRgb,
-                         const std::shared_ptr<dai::node::DetectionNetwork>& detectionNetwork) {
+void initializeNNArchiveFromServer(const std::string& exampleType,    // NOLINT(bugprone-easily-swappable-parameters)
+                                   const std::string& nnArchivePath,  // NOLINT(bugprone-easily-swappable-parameters)
+                                   const std::shared_ptr<dai::node::ColorCamera>& camRgb,
+                                   const std::shared_ptr<dai::node::DetectionNetwork>& detectionNetwork) {
+    // httplib::Client cli("https://artifacts.luxonis.com");
+    httplib::Client cli("http://localhost:8000");
+    int64_t curPos = 0;
+    uint64_t wholeBytesRead = 0;
+    const dai::NNArchiveConfig config([]() { return 0; },
+                                      [&wholeBytesRead, &curPos, &cli]() {
+                                          auto bufferSize = 1024;
+                                          const auto bytes = std::make_shared<std::vector<uint8_t>>();
+                                          // auto res = cli.Get("/artifactory/luxonis-depthai-data-local/network/yolo-v3-tiny-tf_openvino_2021.4_6shave.blob");
+                                          auto res = cli.Get("/yolov5.tar.gz",
+                                                             {
+                                                                 httplib::make_range_header({{curPos, curPos + bufferSize - 1}})  // 'Range: bytes=1-10'
+                                                             },
+                                                             [&](const char* data, size_t dataLength) {
+                                                                 const auto origSize = bytes->size();
+                                                                 bytes->reserve(origSize + dataLength);
+                                                                 for(size_t offset = 0; offset < dataLength; ++offset) {
+                                                                     bytes->push_back(data[offset]);
+                                                                 }
+                                                                 return true;
+                                                             }
+
+                                          );
+                                          if(res->status == 416) {
+                                              std::cout << "Returning empty bytes\n";
+                                              // Probably end of file reached. Return empty bytes.
+                                              return bytes;
+                                          }
+                                          if(res->status != 206) {
+                                              std::string body(bytes->begin(), bytes->end());
+                                              std::cout << "HTTP CODE WAS: " << res->status << " --- " << body << "\n";
+                                              throw std::runtime_error("Server probably doesn't support HTTP range requests?");
+                                          }
+                                          curPos += static_cast<int64_t>(bytes->size());
+                                          wholeBytesRead += bytes->size();
+                                          return bytes;
+                                      },
+                                      [&curPos](auto offset, auto whence) {
+                                          std::cout << "SEEKING TO: " << offset << "\n";
+                                          switch(whence) {
+                                              case dai::NNArchiveEntry::Seek::CUR:
+                                                  std::cout << "was CUR\n";
+                                                  curPos = offset;
+                                                  break;
+                                              case dai::NNArchiveEntry::Seek::SET:
+                                                  std::cout << "was SET\n";
+                                                  curPos = 0;
+                                                  break;
+                                              case dai::NNArchiveEntry::Seek::END:
+                                                  throw std::runtime_error("SEEK TO END of file not implemented");
+                                                  break;
+                                          }
+                                          return curPos;
+                                      },
+                                      [&curPos](auto request) {
+                                          std::cout << "Skipping bytes: " << request << "\n";
+                                          curPos = curPos + request;
+                                          return request;
+                                      },
+                                      []() { return 0; });
+    const auto& configV1 = config.getConfigV1();
+    if(!configV1) {
+        throw std::runtime_error("Wrong config version");
+    }
+    const auto width = (*configV1).model.inputs[0].shape[2];
+    const auto height = (*configV1).model.inputs[0].shape[3];
+    std::cout << "Got width: " << width << " and height: " << height << " from config file without downloading the whole archive and only reading "
+              << static_cast<double>(wholeBytesRead) / 1024.0 << " kB of data from the server.\n";
+}
+
+int initializeNNArchive(const std::string& exampleType,    // NOLINT(bugprone-easily-swappable-parameters)
+                        const std::string& nnArchivePath,  // NOLINT(bugprone-easily-swappable-parameters)
+                        const std::shared_ptr<dai::node::ColorCamera>& camRgb,
+                        const std::shared_ptr<dai::node::DetectionNetwork>& detectionNetwork) {
     if(exampleType != "advanced") {
         camRgb->setPreviewSize(640, 640);
     }
@@ -51,9 +130,13 @@ void initializeNNArchive(const std::string& exampleType,    // NOLINT(bugprone-e
         }
         camRgb->setPreviewSize(static_cast<int>(width), static_cast<int>(height));
         detectionNetwork->setNNArchive(dai::NNArchive(config, dai::NNArchiveBlob(config, nnArchivePath)));
+    } else if(exampleType == "http") {
+        initializeNNArchiveFromServer(exampleType, nnArchivePath, camRgb, detectionNetwork);
+        return 1;
     } else {
         throw std::runtime_error("Not implemented yet");
     }
+    return 0;
 }
 
 int main(int argc, char** argv) {  // NOLINT
@@ -68,7 +151,8 @@ int main(int argc, char** argv) {  // NOLINT
                   << "1) fs, read directly from filesystem\n"
                   << "2) memory, read the whole NNArchive to memory first\n"
                   << "3) buffer, feed the library with the archive chunk by chunk\n"
-                  << "4) advanced, decompress the config from the archive first, get some info and then optionally decompress the blob\n";
+                  << "4) advanced, decompress the config from the archive first, get some info and then optionally decompress the blob\n"
+                  << "5) http, decompress the config from the remote archive first, get some info and then optionally decompress the blob\n";
         return 1;
     }
     const std::string exampleType(args[1]);
@@ -93,7 +177,9 @@ int main(int argc, char** argv) {  // NOLINT
     camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);  // NOLINT
     camRgb->setFps(40);
 
-    initializeNNArchive(exampleType, nnArchivePath, camRgb, detectionNetwork);
+    if(initializeNNArchive(exampleType, nnArchivePath, camRgb, detectionNetwork)) {
+        return 0;
+    }
     // TODO(jakgra)
     // Will we get this from NN Archive also?
     detectionNetwork->setNumInferenceThreads(2);
