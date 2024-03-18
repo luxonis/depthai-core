@@ -36,7 +36,10 @@ class NNArchive {
      * optionally followed by NNArchive(const NNArchiveConfig& config, const NNArchiveBlob& blob)
      */
     NNArchive(
-        // TODO(jakgra) Check if it's called for reading the archive or only for writting
+        /**
+         * Setup any needed data structures before read callbacks are fired.
+         * Return 0 on success.
+         */
         const std::function<int()>& openCallback,
         /**
          * Returns the next block of data from the archive.
@@ -46,7 +49,7 @@ class NNArchive {
         /**
          * Seeks to specified location in the file and returns the position.
          * Whence values have same meaning as SEEK_SET, SEEK_CUR, SEEK_END from stdio.h.
-         * Throw instance of std::error if the seek fails for any reason.
+         * Throw instance of std::runtime_error if the seek fails for any reason.
          */
         const std::function<int64_t(int64_t offset, NNArchiveEntry::Seek whence)>& seekCallback,
         /**
@@ -56,7 +59,9 @@ class NNArchive {
          * read callback and discard data as necessary to make up the full skip.
          */
         const std::function<int64_t(int64_t request)>& skipCallback,
-        // TODO(jakgra) Check if it's called for reading the archive or only for writting
+        /**
+         * Cleanup any data structures from openCallback and return 0 on success
+         */
         const std::function<int()>& closeCallback,
         NNArchiveEntry::Compression compression = NNArchiveEntry::Compression::AUTO);
 

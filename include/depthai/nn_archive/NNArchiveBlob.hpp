@@ -40,12 +40,11 @@ class NNArchiveBlob {
      */
     NNArchiveBlob(const NNArchiveConfig& config,
                   const std::function<int()>& openCallback,
-                  const std::function<void(std::vector<uint8_t>& buffer)>& readCallback,
-                  const std::function<int64_t(int64_t offset, dai::NNArchiveEntry::Seek whence)>& seekCallback,
+                  const std::function<std::shared_ptr<std::vector<uint8_t>>()>& readCallback,
+                  const std::function<int64_t(int64_t offset, NNArchiveEntry::Seek whence)>& seekCallback,
                   const std::function<int64_t(int64_t request)>& skipCallback,
                   const std::function<int()>& closeCallback,
-                  dai::NNArchiveEntry::Compression compression = NNArchiveEntry::Compression::AUTO);
-
+                  NNArchiveEntry::Compression compression = NNArchiveEntry::Compression::AUTO);
     /**
      * returns the OpenVINO blob or std::nullopt if the blob is in another format
      */
