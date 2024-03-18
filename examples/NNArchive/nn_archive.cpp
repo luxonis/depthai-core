@@ -27,20 +27,19 @@ static const std::vector<std::string> labelMap = {
 
 static const std::atomic<bool> syncNN{true};
 
-void initializeNNArchiveFromServer(const std::string& exampleType,    // NOLINT(bugprone-easily-swappable-parameters)
+void initializeNNArchiveFromServer(const std::string& urlBase,        // NOLINT(bugprone-easily-swappable-parameters)
+                                   const std::string& exampleType,    // NOLINT(bugprone-easily-swappable-parameters)
                                    const std::string& nnArchivePath,  // NOLINT(bugprone-easily-swappable-parameters)
                                    const std::shared_ptr<dai::node::ColorCamera>& camRgb,
                                    const std::shared_ptr<dai::node::DetectionNetwork>& detectionNetwork) {
-    // httplib::Client cli("https://artifacts.luxonis.com");
-    httplib::Client cli("http://localhost:8000");
+    httplib::Client cli(urlBase);
     int64_t curPos = 0;
     uint64_t wholeBytesRead = 0;
     const dai::NNArchiveConfig config([]() { return 0; },
-                                      [&wholeBytesRead, &curPos, &cli]() {
+                                      [&nnArchivePath, &wholeBytesRead, &curPos, &cli]() {
                                           auto bufferSize = 1024;
                                           const auto bytes = std::make_shared<std::vector<uint8_t>>();
-                                          // auto res = cli.Get("/artifactory/luxonis-depthai-data-local/network/yolo-v3-tiny-tf_openvino_2021.4_6shave.blob");
-                                          auto res = cli.Get("/yolov5.tar.gz",
+                                          auto res = cli.Get(nnArchivePath,
                                                              {
                                                                  httplib::make_range_header({{curPos, curPos + bufferSize - 1}})  // 'Range: bytes=1-10'
                                                              },
@@ -101,10 +100,11 @@ void initializeNNArchiveFromServer(const std::string& exampleType,    // NOLINT(
               << static_cast<double>(wholeBytesRead) / 1024.0 << " kB of data from the server.\n";
 }
 
-int initializeNNArchive(const std::string& exampleType,    // NOLINT(bugprone-easily-swappable-parameters)
-                        const std::string& nnArchivePath,  // NOLINT(bugprone-easily-swappable-parameters)
-                        const std::shared_ptr<dai::node::ColorCamera>& camRgb,
-                        const std::shared_ptr<dai::node::DetectionNetwork>& detectionNetwork) {
+bool initializeNNArchive(const std::string& urlBase,        // NOLINT(bugprone-easily-swappable-parameters)
+                         const std::string& exampleType,    // NOLINT(bugprone-easily-swappable-parameters)
+                         const std::string& nnArchivePath,  // NOLINT(bugprone-easily-swappable-parameters)
+                         const std::shared_ptr<dai::node::ColorCamera>& camRgb,
+                         const std::shared_ptr<dai::node::DetectionNetwork>& detectionNetwork) {
     if(exampleType != "advanced") {
         camRgb->setPreviewSize(640, 640);
     }
@@ -131,34 +131,46 @@ int initializeNNArchive(const std::string& exampleType,    // NOLINT(bugprone-ea
         camRgb->setPreviewSize(static_cast<int>(width), static_cast<int>(height));
         detectionNetwork->setNNArchive(dai::NNArchive(config, dai::NNArchiveBlob(config, nnArchivePath)));
     } else if(exampleType == "http") {
-        initializeNNArchiveFromServer(exampleType, nnArchivePath, camRgb, detectionNetwork);
-        return 1;
+        initializeNNArchiveFromServer(urlBase, exampleType, nnArchivePath, camRgb, detectionNetwork);
+        return true;
     } else {
         throw std::runtime_error("Not implemented yet");
     }
-    return 0;
+    return false;
 }
 
-int main(int argc, char** argv) {  // NOLINT
-    using namespace std;           // NOLINT
-    using namespace std::chrono;   // NOLINT
-
-    auto args = dai::span(argv, static_cast<size_t>(argc));
-    if(args.size() < 3) {
-        std::cout << "WRONG USAGE!!!\n\n"
-                  << "USAGE: ./nn_archive ${EXAMPLE_TYPE} ${PATH_TO_ARCHIVE_OR_RAW_CONFIG_JSON}\n\n"
+/*
+ *
+"USAGE: ./nn_archive ${EXAMPLE_TYPE} ${PATH_TO_ARCHIVE_OR_RAW_CONFIG_JSON}\n\n"
                   << "Where EXAMPLE_TYPE is:\n"
                   << "1) fs, read directly from filesystem\n"
                   << "2) memory, read the whole NNArchive to memory first\n"
                   << "3) buffer, feed the library with the archive chunk by chunk\n"
                   << "4) advanced, decompress the config from the archive first, get some info and then optionally decompress the blob\n"
                   << "5) http, decompress the config from the remote archive first, get some info and then optionally decompress the blob\n";
-        return 1;
+*/
+
+int main(int argc, char** argv) {  // NOLINT
+    using namespace std;           // NOLINT
+    using namespace std::chrono;   // NOLINT
+
+    std::string exampleType(EXAMPLE_TYPE);
+    std::string nnArchivePath(NN_ARCHIVE_PATH);
+    std::string urlBase(URL_BASE);
+
+    auto args = dai::span(argv, static_cast<size_t>(argc));
+    if(args.size() >= 2) {
+        exampleType = args[1];
     }
-    const std::string exampleType(args[1]);
-    const std::string nnArchivePath(args[2]);
-    std::cout << "Using archive at path:" << nnArchivePath << "\n";
-    std::cout << "Running example type:" << nnArchivePath << "\n";
+    if(args.size() >= 3) {
+        nnArchivePath = args[2];
+    }
+    if(args.size() >= 4) {
+        urlBase = args[3];
+    }
+    std::cout << "Using archive at path: " << nnArchivePath << "\n";
+    std::cout << "Running example type: " << exampleType << "\n";
+    std::cout << "Using url base: " << urlBase << "\n";
 
     // Create pipeline
     dai::Pipeline pipeline;
@@ -177,7 +189,7 @@ int main(int argc, char** argv) {  // NOLINT
     camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);  // NOLINT
     camRgb->setFps(40);
 
-    if(initializeNNArchive(exampleType, nnArchivePath, camRgb, detectionNetwork)) {
+    if(initializeNNArchive(urlBase, exampleType, nnArchivePath, camRgb, detectionNetwork)) {
         return 0;
     }
     // TODO(jakgra)
