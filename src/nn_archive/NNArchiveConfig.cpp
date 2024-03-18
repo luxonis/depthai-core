@@ -26,7 +26,7 @@ class NNArchiveConfig::Impl {
     std::optional<std::variant<dai::nn_archive::v1::Config>> mConfig;
 
     void initConfig(const std::optional<nlohmann::json>& maybeJson) {
-        daiCheckIn(maybeJson);
+        DAI_CHECK_IN(maybeJson);
         dai::nn_archive::v1::Config config;
         dai::nn_archive::v1::from_json(*maybeJson, config);
         mConfig = config;
@@ -41,7 +41,7 @@ class NNArchiveConfig::Impl {
             utility::ArchiveUtil archive(data, compression);
             std::vector<uint8_t> jsonBytes;
             const bool success = archive.readEntry("config.json", jsonBytes);
-            daiCheck(success, "Didn't find the config.json file inside the NNArchive read from memory.");
+            DAI_CHECK(success, "Didn't find the config.json file inside the NNArchive read from memory.");
             maybeJson = nlohmann::json::parse(jsonBytes);
         }
         initConfig(maybeJson);
@@ -58,7 +58,7 @@ class NNArchiveConfig::Impl {
             utility::ArchiveUtil archive(path, compression);
             std::vector<uint8_t> jsonBytes;
             const bool success = archive.readEntry("config.json", jsonBytes);
-            daiCheckV(success, "Didn't find the config.json file inside the {} archive.", path);
+            DAI_CHECK_V(success, "Didn't find the config.json file inside the {} archive.", path);
             maybeJson = nlohmann::json::parse(jsonBytes);
         }
         initConfig(maybeJson);
@@ -72,12 +72,12 @@ class NNArchiveConfig::Impl {
          NNArchiveEntry::Compression compression) {
         std::optional<nlohmann::json> maybeJson;
         if(compression == NNArchiveEntry::Compression::RAW_FS) {
-            daiCheck(false, "RAW_FS with callbacks NOT IMPLEMENTED YET for NNArchiveConfig");
+            DAI_CHECK(false, "RAW_FS with callbacks NOT IMPLEMENTED YET for NNArchiveConfig");
         } else {
             utility::ArchiveUtil archive(openCallback, readCallback, seekCallback, skipCallback, closeCallback, compression);
             std::vector<uint8_t> jsonBytes;
             const bool success = archive.readEntry("config.json", jsonBytes);
-            daiCheck(success, "Didn't find the config.json file inside the NNArchive.");
+            DAI_CHECK(success, "Didn't find the config.json file inside the NNArchive.");
             maybeJson = nlohmann::json::parse(jsonBytes);
         }
         initConfig(maybeJson);
@@ -85,7 +85,7 @@ class NNArchiveConfig::Impl {
 
     template <typename T>
     std::optional<T> getConfig() const {
-        daiCheckIn(mConfig);
+        DAI_CHECK_IN(mConfig);
         if(const auto* configPtr(std::get_if<T>(&(*mConfig))); configPtr) {
             return *configPtr;
         }

@@ -55,16 +55,16 @@ void DetectionNetwork::build() {
 
 void DetectionNetwork::setNNArchive(const NNArchive& nnArchive) {
     const auto configMaybe = nnArchive.getConfig().getConfigV1();
-    daiCheck(configMaybe, "Unsupported NNArchive format / version. Check which depthai version you are running.");
+    DAI_CHECK(configMaybe, "Unsupported NNArchive format / version. Check which depthai version you are running.");
     const auto& config = *configMaybe;
     const auto& blob = nnArchive.getBlob().getOpenVINOBlob();
-    daiCheckIn(blob);
+    DAI_CHECK_IN(blob);
     setBlob(*blob);
     const auto model = config.model;
     // TODO(jakgra) is NN Archive valid without this? why is this optional?
-    daiCheck(model.heads, "Heads array is not defined in the NN Archive config file.");
+    DAI_CHECK(model.heads, "Heads array is not defined in the NN Archive config file.");
     // TODO(jakgra) for now get info from heads[0] but in the future correctly support multiple outputs and mapped heads
-    daiCheckV(
+    DAI_CHECK_V(
         (*model.heads).size() == 1, "There should be exactly one head per model in the NN Archive config file defined. Found {} heads.", (*model.heads).size());
     const auto head = (*model.heads)[0];
     if(head.family == "ObjectDetectionYOLO") {

@@ -8,7 +8,7 @@ namespace nn_archive {
 
 std::string NNArchiveConfigHelper::getBlobPath(const NNArchiveConfig& config) {
     const auto& maybeConfig = config.getConfigV1();
-    daiCheckIn(maybeConfig);
+    DAI_CHECK_IN(maybeConfig);
     return (*maybeConfig).model.metadata.path;
 }
 

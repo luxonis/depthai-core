@@ -26,7 +26,7 @@ class NNArchiveBlob::Impl {
             utility::ArchiveUtil archive(dataOrPath, compression);
             std::vector<uint8_t> blobBytes;
             const bool success = archive.readEntry(blobPath, blobBytes);
-            daiCheckV(success, "No blob {} found in NNArchive. Please check your NNArchive.", blobPath);
+            DAI_CHECK_V(success, "No blob {} found in NNArchive. Please check your NNArchive.", blobPath);
             mBlob.emplace(OpenVINO::Blob(blobBytes));
         }
     }
@@ -47,13 +47,13 @@ class NNArchiveBlob::Impl {
          const std::function<int()>& closeCallback,
          NNArchiveEntry::Compression compression) {
         if(compression == NNArchiveEntry::Compression::RAW_FS) {
-            daiCheck(false, "RAW_FS with callbacks NOT IMPLEMENTED YET for NNArchiveBlob");
+            DAI_CHECK(false, "RAW_FS with callbacks NOT IMPLEMENTED YET for NNArchiveBlob");
         } else {
             const auto& blobPath = nn_archive::NNArchiveConfigHelper::getBlobPath(config);
             utility::ArchiveUtil archive(openCallback, readCallback, seekCallback, skipCallback, closeCallback, compression);
             std::vector<uint8_t> blobBytes;
             const bool success = archive.readEntry(blobPath, blobBytes);
-            daiCheckV(success, "No blob {} found in NNArchive. Please check your NNArchive.", blobPath);
+            DAI_CHECK_V(success, "No blob {} found in NNArchive. Please check your NNArchive.", blobPath);
             mBlob.emplace(OpenVINO::Blob(blobBytes));
         }
     }

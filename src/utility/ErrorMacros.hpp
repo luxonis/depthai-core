@@ -4,10 +4,9 @@
 #include "utility/spdlog-fmt.hpp"
 
 // clang-format off
-// NOLINTBEGIN(cppcoreguidelines-macro-usage)
 
 // Only use this one for internal errors. Clearly invalid states that shouldn't happen.
-#define daiCheckIn(A) \
+#define DAI_CHECK_IN(A) \
     if(!(A)) { \
         throw std::runtime_error(fmt::format( \
             "Internal error occured. Please report." \
@@ -25,15 +24,14 @@
             )); \
     }
 
-#define daiCheck(A, M) \
+#define DAI_CHECK(A, M) \
     if(!(A)) { \
         throw std::runtime_error( M ); \
     }
 
-#define daiCheckV(A, M, ...) \
+#define DAI_CHECK_V(A, M, ...) \
     if(!(A)) { \
         throw std::runtime_error(fmt::format( M, ##__VA_ARGS__ )); \
     }
 
-// NOLINTEND(cppcoreguidelines-macro-usage)
 // clang-format on

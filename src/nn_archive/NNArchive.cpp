@@ -26,7 +26,7 @@ class NNArchive::Impl {
             const char separator = '/';
 #endif
             const auto& configV1 = config.getConfigV1();
-            daiCheckIn(configV1);
+            DAI_CHECK_IN(configV1);
             const size_t lastSlashIndex = filepath.find_last_of(separator);
             std::string blobPath;
             if(std::string::npos == lastSlashIndex) {

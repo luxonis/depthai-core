@@ -318,7 +318,7 @@ std::function<void()> getLazyTarXzFunction(MTX& mtx, CV& cv, BOOL& ready, PATH c
 
         // Load tar.xz archive from memory
         struct archive* aPtr = archive_read_new();
-        daiCheckIn(aPtr);
+        DAI_CHECK_IN(aPtr);
         dai::utility::ArchiveUtil archive(aPtr);
         archive_read_support_filter_xz(archive.getA());
         archive_read_support_format_tar(archive.getA());
