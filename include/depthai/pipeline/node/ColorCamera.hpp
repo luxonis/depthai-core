@@ -22,7 +22,7 @@ class ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraPr
     constexpr static const char* NAME = "ColorCamera";
 
    protected:
-    ColorCamera(std::shared_ptr<Device> device, dai::CameraBoardSocket boardSocket = CameraBoardSocket::AUTO);
+    ColorCamera(std::shared_ptr<Device> device, dai::CameraBoardSocket boardSocket);
     Properties& getProperties();
     ColorCamera(std::unique_ptr<Properties> props);
     void build();
