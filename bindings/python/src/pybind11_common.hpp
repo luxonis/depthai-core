@@ -18,15 +18,6 @@
 // Include docstring file
 #include "docstring.hpp"
 
-
-#include "tl/optional.hpp"
-//using tl::optional;
-namespace pybind11 { namespace detail {
-    template <typename T>
-    struct type_caster<tl::optional<T>> : optional_caster<tl::optional<T>> {};
-}}
-
-
 namespace pybind11 { namespace detail {
     template <> struct type_caster<dai::Path> {
     public:

@@ -4,7 +4,7 @@ import re
 
 
 project_root = os.path.dirname(__file__)
-version_depthai_core_path = project_root + "/" + "depthai-core/CMakeLists.txt"
+version_depthai_core_path = project_root + "/" + "../../CMakeLists.txt"
 version_depthai_python_path = project_root + "/" + "CMakeLists.txt"
 
 cmake_lists_txt_version_pattern = r'project[\s]*\([^Vv]*version[\s]+((\"(?P<ver1>\S*)\"|(?P<ver2>\S*)\s))'

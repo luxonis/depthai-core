@@ -321,6 +321,7 @@ endif()
 # First specify options
 option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
 option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
+option(DEPTHAI_BUILD_PYTHON "Build python bindings" OFF)
 option(DEPTHAI_BUILD_DOCS "Build documentation - requires doxygen to be installed" OFF)
 option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
 
@@ -658,6 +659,10 @@ endif()
 
 if (EMSCRIPTEN)
     add_subdirectory(bindings/js)
+endif()
+
+if (DEPTHAI_BUILD_PYTHON)
+  add_subdirectory(bindings/python)
 endif()
 
 ########################

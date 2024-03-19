@@ -15,43 +15,17 @@ if(UNIX)
     set(SYS_PATH_SEPARATOR ":")
 endif()
 
-# Generate combined Hunter config
-file(READ depthai-core/cmake/Hunter/config.cmake depthai_core_hunter_config)
-file(READ cmake/Hunter/config.cmake hunter_config)
-string(CONCAT final_hunter_config ${depthai_core_hunter_config} "\n\n" ${hunter_config})
-file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/generated/Hunter/config.cmake ${final_hunter_config})
-
-include("cmake/HunterGate.cmake")
-HunterGate(
-    URL "https://github.com/cpp-pm/hunter/archive/v0.24.18.tar.gz"
-    SHA1 "1292e4d661e1770d6d6ca08c12c07cf34a0bf718"
-    FILEPATH ${CMAKE_CURRENT_BINARY_DIR}/generated/Hunter/config.cmake # Combined config
-)
-
 # Move binary dir if windows, to shorten the path
 if(WIN32)
     set(HUNTER_BINARY_DIR "${HUNTER_GATE_ROOT}/_bin" CACHE STRING "Hunter binary directory")
 endif()
 
 # Pybindings project
-set(TARGET_NAME depthai)
-project(depthai VERSION "0") # revision of bindings [depthai-core].[rev]
-
-# Set default build type depending on context
-set(default_build_type "Release")
-if(EXISTS "${CMAKE_SOURCE_DIR}/.git" AND NOT DEFINED ENV{CI})
-    set(default_build_type "Debug")
-endif()
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-    message(STATUS "Setting build type to '${default_build_type}' as none was specified.")
-    set(CMAKE_BUILD_TYPE "${default_build_type}" CACHE STRING "Choose the type of build." FORCE)
-    # Set the possible values of build type for cmake-gui
-    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
-endif()
+set(TARGET_NAME depthai-python)
+project(depthai-python VERSION "0") # revision of bindings [depthai-core].[rev]
 
 # Add module paths
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/")
-list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/depthai-core/cmake")
 
 # Constants
 set(DOCSTRINGS_INCLUDE_PLACEHOLDER_DIR ${CMAKE_CURRENT_BINARY_DIR}/generated/include)
@@ -59,7 +33,7 @@ set(DOCSTRINGS_INCLUDE_PLACEHOLDER_PATH ${DOCSTRINGS_INCLUDE_PLACEHOLDER_DIR}/do
 set(DEFAULT_DOCSTRINGS_OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/generated/depthai_python_docstring.hpp)
 
 # First specify options
-option(DEPTHAI_PYTHON_USE_FIND_PACKAGE "Use find_package for depthai-core" OFF)
+# option(DEPTHAI_PYTHON_USE_FIND_PACKAGE "Use find_package for depthai-core" OFF)
 option(DEPTHAI_PYTHON_ENABLE_TESTS "Enable tests" OFF)
 option(DEPTHAI_PYTHON_ENABLE_EXAMPLES "Enable examples" OFF)
 option(DEPTHAI_PYTHON_BUILD_DOCS "Build documentation - see docs/requirements.txt for needed dependencies" OFF)
@@ -68,11 +42,11 @@ option(DEPTHAI_PYTHON_EMBEDDED_MODULE "Create an embeddable module" OFF)
 
 
 # Add depthai-core dependency
-if(DEPTHAI_PYTHON_USE_FIND_PACKAGE)
-    find_package(depthai CONFIG REQUIRED)
-else()
-    add_subdirectory(depthai-core)
-endif()
+# if(DEPTHAI_PYTHON_USE_FIND_PACKAGE)
+#    find_package(depthai CONFIG REQUIRED)
+#else()
+#    add_subdirectory(depthai-core)
+#endif()
 
 # Add pybind11 dependency
 #add_subdirectory(pybind11-2.5.0)
@@ -320,11 +294,6 @@ target_compile_definitions(${TARGET_NAME}
         DEPTHAI_PYTHON_COMMIT_DATETIME="${BUILD_COMMIT_DATETIME}"
         DEPTHAI_PYTHON_BUILD_DATETIME="${BUILD_DATETIME}"
 )
-
-# Set compiler features (c++14), and disables extensions
-set_property(TARGET ${TARGET_NAME} PROPERTY CXX_STANDARD 14)
-set_property(TARGET ${TARGET_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
-set_property(TARGET ${TARGET_NAME} PROPERTY CXX_EXTENSIONS OFF)
 
 # ASAN Settings as we are building and using shared library
 if(SANITIZE_ADDRESS OR SANITIZE_MEMORY OR SANITIZE_THREAD OR SANITIZE_UNDEFINED)
