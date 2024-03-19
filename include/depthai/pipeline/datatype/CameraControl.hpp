@@ -743,8 +743,8 @@ class CameraControl : public Buffer {
     StrobeConfig strobeConfig;
     StrobeTimings strobeTimings;
     uint32_t aeMaxExposureTimeUs;
-    bool aeLockMode;
-    bool awbLockMode;
+    bool aeLockMode{false};
+    bool awbLockMode{false};
     int8_t expCompensation;  //  -9 ..  9
     int8_t brightness;       // -10 .. 10
     int8_t contrast;         // -10 .. 10

@@ -215,7 +215,7 @@ add_library(${TARGET_CORE_NAME}
     # src/pipeline/node/Camera.cpp
     # src/pipeline/node/ToF.cpp
     # src/pipeline/node/MessageDemux.cpp
-    # src/pipeline/node/MonoCamera.cpp
+    src/pipeline/node/MonoCamera.cpp
     # src/pipeline/node/StereoDepth.cpp
     # src/pipeline/node/Sync.cpp
     # src/pipeline/node/NeuralNetwork.cpp
@@ -237,12 +237,13 @@ add_library(${TARGET_CORE_NAME}
     # src/pipeline/node/FeatureTracker.cpp
     # src/pipeline/node/ToF.cpp
     # src/pipeline/node/DetectionParser.cpp
-    # src/pipeline/node/Sync.cpp
+    src/pipeline/node/Sync.cpp
     # src/pipeline/node/test/MyProducer.cpp
     # src/pipeline/node/test/MyConsumer.cpp
     # src/pipeline/node/UVC.cpp
     src/pipeline/node/host/XLinkInHost.cpp
     src/pipeline/node/host/XLinkOutHost.cpp
+    src/pipeline/node/host/SyncedNode.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp

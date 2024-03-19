@@ -107,6 +107,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // was pipeline built
     AtomicBool isBuild{false};
 
+    // Add a mutex for any state change
+    std::mutex stateMtx;
+
     // DeviceBase for hybrid pipelines
     std::shared_ptr<Device> defaultDevice;
 

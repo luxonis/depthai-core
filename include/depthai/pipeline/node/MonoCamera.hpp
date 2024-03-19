@@ -36,21 +36,21 @@ class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraPrope
      * Input for CameraControl message, which can modify camera parameters in runtime
      * Default queue is blocking with size 8
      */
-    Input inputControl{true, *this, "inputControl", Input::Type::SReceiver, true, 8, {{DatatypeEnum::CameraControl, false}}};
+    Input inputControl{*this, "inputControl", Input::Type::SReceiver, true, 8, {{DatatypeEnum::CameraControl, false}}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 encoded (grayscale) frame data.
      *
      * Suitable for use StereoDepth node. Processed by ISP
      */
-    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs ImgFrame message that carries RAW10-packed (MIPI CSI-2 format) frame data.
      *
      * Captured directly from the camera sensor
      */
-    Output raw{true, *this, "raw", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output raw{*this, "raw", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs metadata-only ImgFrame message as an early indicator of an incoming frame.
@@ -60,7 +60,7 @@ class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraPrope
      * Could be used to synchronize various processes with camera capture.
      * Fields populated: camera id, sequence number, timestamp
      */
-    Output frameEvent{true, *this, "frameEvent", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output frameEvent{*this, "frameEvent", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Specify which board socket to use

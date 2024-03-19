@@ -10,13 +10,19 @@ tl::optional<OpenVINO::Version> Node::getRequiredOpenVINOVersion() {
 }
 
 const Pipeline Node::getParentPipeline() const {
-    Pipeline pipeline(std::shared_ptr<PipelineImpl>{parent});
-    return pipeline;
+    auto impl = parent.lock();
+    if(impl == nullptr) {
+        throw std::runtime_error("Pipeline is null");
+    }
+    return Pipeline(impl);
 }
 
 Pipeline Node::getParentPipeline() {
-    Pipeline pipeline(std::shared_ptr<PipelineImpl>{parent});
-    return pipeline;
+    auto impl = parent.lock();
+    if(impl == nullptr) {
+        throw std::runtime_error("Pipeline is null");
+    }
+    return Pipeline(impl);
 }
 
 Node::Connection::Connection(Output out, Input in) {
@@ -291,19 +297,13 @@ Node::Output& Node::OutputMap::operator[](std::pair<std::string, std::string> gr
     // otherwise just return reference to existing
     return at(groupKey);
 }
-Node::InputMap::InputMap(std::string name, Node::Input defaultInput) : defaultInput(defaultInput), name(std::move(name)) {}
-Node::InputMap::InputMap(Node::Input defaultInput) : defaultInput(defaultInput) {}
-Node::InputMap::InputMap(bool ref, Node& parent, std::string name, Node::Input defaultInput) : defaultInput(defaultInput), name(std::move(name)) {
-    // Place oneself to the parents references
-    if(ref) {
-        parent.setInputMapRefs(this);
-    }
+// Node::InputMap::InputMap(std::string name, Node::Input defaultInput) : defaultInput(defaultInput), name(std::move(name)) {}
+// Node::InputMap::InputMap(Node::Input defaultInput) : defaultInput(defaultInput) {}
+Node::InputMap::InputMap(Node& parent, std::string name, Node::Input defaultInput) : defaultInput(defaultInput), name(std::move(name)) {
+    parent.setInputMapRefs(this);
 }
-Node::InputMap::InputMap(bool ref, Node& parent, Node::Input defaultInput) : defaultInput(defaultInput) {
-    // Place oneself to the parents references
-    if(ref) {
-        parent.setInputMapRefs(this);
-    }
+Node::InputMap::InputMap(Node& parent, Node::Input defaultInput) : defaultInput(defaultInput) {
+    parent.setInputMapRefs(this);
 }
 Node::Input& Node::InputMap::operator[](const std::string& key) {
     if(count({name, key}) == 0) {
@@ -330,6 +330,10 @@ Node::Input& Node::InputMap::operator[](std::pair<std::string, std::string> grou
     return at(groupKey);
 }
 
+bool Node::InputMap::has(const std::string& key) const{
+    return count({name, key}) > 0;
+}
+
 /// Retrieves all nodes outputs
 std::vector<Node::Output> Node::getOutputs() {
     std::vector<Node::Output> result;
@@ -344,6 +348,8 @@ std::vector<Node::Output> Node::getOutputs() {
 std::vector<Node::Input> Node::getInputs() {
     std::vector<Node::Input> result;
     auto refs = getInputRefs();
+    // TMP - DON'T COMMIT
+    result.reserve(refs.size());
     for(auto* x : refs) {
         result.push_back(*x);
     }
@@ -644,6 +650,11 @@ size_t Node::ConnectionInternal::Hash::operator()(const dai::Node::ConnectionInt
     seed ^= hId(obj.inputNode.lock()) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     seed ^= hStr(obj.outputName) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     return seed;
+}
+
+void Node::stopPipeline() {
+    auto pipeline = getParentPipeline();
+    pipeline.stop();
 }
 
 }  // namespace dai

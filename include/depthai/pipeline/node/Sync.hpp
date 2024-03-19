@@ -23,12 +23,12 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties> {
     /**
      * A map of inputs
      */
-    InputMap inputs{true, *this, "inputs", Input(*this, "", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}})};
+    InputMap inputs{*this, "inputs", Input(*this, "", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}}, false)};
 
     /**
      * Output message of type MessageGroup
      */
-    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::MessageGroup, false}}};
+    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::MessageGroup, false}}};
 
     /**
      * Set the maximal interval between messages in the group

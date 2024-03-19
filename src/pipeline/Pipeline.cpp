@@ -16,6 +16,7 @@
 #include <cassert>
 #include <fstream>
 #include <memory>
+#include <mutex>
 #include <stdexcept>
 #include <unordered_set>
 
@@ -723,6 +724,19 @@ void PipelineImpl::build() {
     if(isBuild) return;
     isBuild = true;
 
+    // Go through the build stages sequentially
+    for(const auto& node : nodes) {
+        node->buildStage1();
+    }
+
+    for(const auto& node : nodes) {
+        node->buildStage2();
+    }
+
+    for(const auto& node : nodes) {
+        node->buildStage3();
+    }
+
     // Go through all the connections and handle any
     // Host -> Device connections
     // Device -> Host connections
@@ -855,18 +869,6 @@ void PipelineImpl::build() {
             }
         }
     }
-    // Go through the build stages sequentially
-    for(const auto& node : nodes) {
-        node->buildStage1();
-    }
-
-    for(const auto& node : nodes) {
-        node->buildStage2();
-    }
-
-    for(const auto& node : nodes) {
-        node->buildStage3();
-    }
 
     // Build
     if(!isHostOnly()) {
@@ -882,6 +884,7 @@ void PipelineImpl::build() {
 }
 
 void PipelineImpl::start() {
+    std::lock_guard<std::mutex> lock(stateMtx);
     // TODO(themarpe) - add mutex and set running up ahead
 
     // Implicitly build (if not already)
@@ -904,19 +907,21 @@ void PipelineImpl::wait() {
 }
 
 void PipelineImpl::stop() {
+    std::lock_guard<std::mutex> lock(stateMtx);
     // Stops the pipeline execution
     for(const auto& node : nodes) {
         node->stop();
     }
 
-    // Indicate that pipeline is not runnin
-    running = false;
 
     // TODO(Morato) - handle multiple devices correctly, stop pipeline on all of them
     // Close the devices
     if(!isHostOnly()) {
         defaultDevice->close();
     }
+
+    // Indicate that pipeline is not runnin
+    running = false;
 }
 
 PipelineImpl::~PipelineImpl() {

@@ -402,6 +402,7 @@ target_compile_definitions(detection_parser PRIVATE BLOB_PATH="${mobilenet_blob}
 # Host pipeline
 dai_add_example(host_pipeline host_side/host_pipeline.cpp ON)
 dai_add_example(host_pipeline_opencv host_side/host_pipeline_opencv.cpp ON)
+dai_add_example(host_pipeline_synced_node host_side/host_pipeline_synced_node.cpp ON)
 
 # TMP
 dai_add_example(tmp_preview tmp/tmp_preview.cpp OFF)
