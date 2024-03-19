@@ -232,6 +232,14 @@ hunter_private_data(
     LOCATION tiny-vechicle-detection_bin
 )
 
+# yolo v5 nn archive
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo-v6-openvino_2022.1_6shave-rvc2.tar.xz"
+    SHA1 "63a5bb29d1ca0d3b019f13d66401e634539aac82"
+    FILE "yolo-v6-openvino_2022.1_6shave-rvc2.tar.xz"
+    LOCATION nn_archive_yolo_v6_tar_xz
+)
+
 ## message(STATUS "Location of test1.data: ${test1_data}")
 
 # bootloader
@@ -423,3 +431,14 @@ dai_add_example(sync_scripts Sync/sync_scripts.cpp ON)
 dai_add_example(demux_message_group Sync/demux_message_group.cpp ON)
 dai_add_example(depth_video_synced Sync/depth_video_synced.cpp ON)
 dai_add_example(imu_video_synced Sync/imu_video_synced.cpp ON)
+
+# NN Archive
+dai_add_example(nn_archive_fs_yolo_v6 NNArchive/nn_archive.cpp ON)
+target_compile_definitions(nn_archive_fs_yolo_v6 PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT=1 EXAMPLE_TYPE="fs" NN_ARCHIVE_PATH="${nn_archive_yolo_v6_tar_xz}" URL_BASE="https://artifacts.luxonis.com")
+target_link_libraries(nn_archive_fs_yolo_v6 PRIVATE ssl crypto)
+dai_add_example(nn_archive_memory_yolo_v6 NNArchive/nn_archive.cpp ON)
+target_compile_definitions(nn_archive_memory_yolo_v6 PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT=1 EXAMPLE_TYPE="memory" NN_ARCHIVE_PATH="${nn_archive_yolo_v6_tar_xz}" URL_BASE="https://artifacts.luxonis.com")
+target_link_libraries(nn_archive_memory_yolo_v6 PRIVATE ssl crypto)
+dai_add_example(nn_archive_advanced_yolo_v6 NNArchive/nn_archive.cpp ON)
+target_compile_definitions(nn_archive_advanced_yolo_v6 PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT=1 EXAMPLE_TYPE="advanced" NN_ARCHIVE_PATH="${nn_archive_yolo_v6_tar_xz}" URL_BASE="https://artifacts.luxonis.com")
+target_link_libraries(nn_archive_advanced_yolo_v6 PRIVATE ssl crypto)

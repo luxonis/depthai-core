@@ -1,0 +1,6 @@
+/node_modules
+/luxonis_ml
+/env
+/json_types
+/luxonis_ml_json_schema.json
+/luxonis_ml_json_schema_broken.json

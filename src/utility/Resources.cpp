@@ -23,7 +23,9 @@
 #include "depthai/utility/Serialization.hpp"
 
 // project
+#include "utility/ArchiveUtil.hpp"
 #include "utility/Environment.hpp"
+#include "utility/ErrorMacros.hpp"
 #include "utility/spdlog-fmt.hpp"
 
 extern "C" {
@@ -315,65 +317,28 @@ std::function<void()> getLazyTarXzFunction(MTX& mtx, CV& cv, BOOL& ready, PATH c
         auto t1 = steady_clock::now();
 
         // Load tar.xz archive from memory
-        struct archive* a = archive_read_new();
-        archive_read_support_filter_xz(a);
-        archive_read_support_format_tar(a);
-        int r = archive_read_open_memory(a, tarXz.begin(), tarXz.size());
+        struct archive* aPtr = archive_read_new();
+        DAI_CHECK_IN(aPtr);
+        dai::utility::ArchiveUtil archive(aPtr);
+        archive_read_support_filter_xz(archive.getA());
+        archive_read_support_format_tar(archive.getA());
+        int r = archive_read_open_memory(archive.getA(), tarXz.begin(), tarXz.size());
         assert(r == ARCHIVE_OK);
 
         auto t2 = steady_clock::now();
 
         struct archive_entry* entry;
-        while(archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+        while(archive_read_next_header(archive.getA(), &entry) == ARCHIVE_OK) {
             // Check whether filename matches to one of required resources
             for(const auto& cpath : resourceList) {
                 std::string resPath(cpath);
                 if(resPath == std::string(archive_entry_pathname(entry))) {
-                    // Create an emtpy entry
-                    resourceMap[resPath] = std::vector<std::uint8_t>();
-
-                    // Read size, 16KiB
-                    std::size_t readSize = 16 * 1024;
-                    if(archive_entry_size_is_set(entry)) {
-                        // if size is specified, use that for read size
-                        readSize = archive_entry_size(entry);
-                    }
-
-                    // Record number of bytes actually read
-                    long long finalSize = 0;
-
-                    while(true) {
-                        // Current size, as a offset to write next data to
-                        auto currentSize = resourceMap[resPath].size();
-
-                        // Resize to accomodate for extra data
-                        resourceMap[resPath].resize(currentSize + readSize);
-                        long long size = archive_read_data(a, &resourceMap[resPath][currentSize], readSize);
-
-                        // Assert that no errors occurred
-                        assert(size >= 0);
-
-                        // Append number of bytes actually read to finalSize
-                        finalSize += size;
-
-                        // All bytes were read
-                        if(size == 0) {
-                            break;
-                        }
-                    }
-
-                    // Resize vector to actual read size
-                    resourceMap[resPath].resize(finalSize);
-
+                    archive.readEntry(entry, resourceMap[resPath]);
                     // Entry found - go to next required resource
                     break;
                 }
             }
         }
-        r = archive_read_free(a);  // Note 3
-        assert(r == ARCHIVE_OK);
-        // Ignore 'r' variable when in Release build
-        (void)r;
 
         // Check that all resources were read
         for(const auto& cpath : resourceList) {
