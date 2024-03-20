@@ -12,8 +12,8 @@ if(WIN32)
 endif()
 
 # Pybindings project
-set(TARGET_NAME depthai-python)
-project(depthai-python VERSION "0") # revision of bindings [depthai-core].[rev]
+set(TARGET_NAME depthai)
+project(depthai VERSION "0") # revision of bindings [depthai-core].[rev]
 
 # Add module paths
 list(APPEND CMAKE_MODULE_PATH "${PROJECT_SOURCE_DIR}/cmake/")

@@ -44,6 +44,7 @@ Later submodules also need to be updated.
 #### Local build with pip
 To build and install using pip:
 ```
+cd dephai-core/bindings/python
 python3 -m pip install .
 ```
 Add parameter `-v` to see the output of the building process.
@@ -51,6 +52,7 @@ Add parameter `-v` to see the output of the building process.
 #### Wheel with pip
 To build a wheel, execute the following
 ```
+cd depthai-core/bindings/python
 python3 -m pip wheel . -w wheelhouse
 ```
 
@@ -61,7 +63,8 @@ To build a shared library from source perform the following:
 For older versions use: Linux/macOS: `cmake --build build -- -j[num CPU cores]`, MSVC: `cmake --build build -- /MP[num CPU cores]`
 
 ```
-cmake -H. -Bbuild
+cd depthai-core
+cmake -H. -Bbuild -DDEPTHAI_BUILD_PYTHON=ON
 cmake --build build
 ```
 To specify custom Python executable to build for, use `cmake -H. -Bbuild -D PYTHON_EXECUTABLE=/full/path/to/python`.

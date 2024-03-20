@@ -26,7 +26,7 @@ if os.environ.get('CI') != None :
         final_version = find_version.get_package_dev_version(os.environ['BUILD_COMMIT_HASH'])
     with open(version_file, 'w') as vf :
         vf.write("__version__ = '" + final_version + "'")
-elif os.path.exists(".git"):
+elif os.path.exists("../../.git"):
     ### else if .git folder exists, create depthai with commit hash retrieved from git rev-parse HEAD
     commit_hash = 'dev'
     try:
@@ -102,6 +102,9 @@ class CMakeBuild(build_ext):
         cmake_args = []
         build_args = []
         env = os.environ.copy()
+
+        cmake_args += ['-DDEPTHAI_BUILD_PYTHON=ON']
+        build_args += ['--target=depthai']
 
         # Specify output directory and python executable
         cmake_args += ['-DCMAKE_LIBRARY_OUTPUT_DIRECTORY=' + extdir, '-DPYTHON_EXECUTABLE=' + sys.executable]
@@ -204,8 +207,8 @@ setup(
     license="MIT",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/luxonis/depthai-python",
-    ext_modules=[CMakeExtension(MODULE_NAME)],
+    url="https://github.com/luxonis/depthai-core/bindings/python",
+    ext_modules=[CMakeExtension(MODULE_NAME, str(Path(__file__).absolute().parent.parent.parent.absolute()))],
     cmdclass={
         'build_ext': CMakeBuild
     },
