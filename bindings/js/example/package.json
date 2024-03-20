@@ -1,0 +1,16 @@
+{
+  "name": "depthai-js-example",
+  "version": "0.0.1",
+  "description": "A simple depthai-js usage example",
+  "author": "Luxonis <info@luxonis.com>",
+  "keywords": [],
+  "license": "MIT",
+  "scripts": {},
+  "devDependencies": {
+    "esbuild": "0.20.1",
+    "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "depthai-js": "file:.."
+  }
+}

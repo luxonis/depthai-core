@@ -22,12 +22,14 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
     switch(getType()) {
         case Type::RGB888i:
         case Type::BGR888i:
-        case Type::BGR888p:
-        case Type::RGB888p:
             size = cv::Size(getWidth(), getHeight());
             type = CV_8UC3;
             break;
-
+        case Type::BGR888p:
+        case Type::RGB888p:
+            size = cv::Size(getWidth(), getHeight() * 3);
+            type = CV_8UC1;
+            break;
         case Type::YUV420p:
         case Type::NV12:
         case Type::NV21:
