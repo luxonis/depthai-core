@@ -13,14 +13,13 @@ class SyncedNode : public dai::HostNode {
    private:
     Subnode<dai::node::Sync> sync{*this, "sync"};  // TODO(Morato) - this should optionally run on host OR device
     Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::MessageGroup, true}}};
-   protected:
-    virtual ~SyncedNode() = default;
 
+   protected:
+    void buildStage1() override;
+    void run() override;
    public:
     InputMap& inputs = sync->inputs;
-    void buildStage1() override;
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
-    void run() override;
     virtual std::shared_ptr<Buffer> runOnce(std::shared_ptr<dai::MessageGroup> in) = 0;
 };
 }  // namespace node
