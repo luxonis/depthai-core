@@ -7,3 +7,6 @@
 [submodule "3rdparty/xtl"]
 	path = 3rdparty/xtl
 	url = https://github.com/xtensor-stack/xtl
+[submodule "bindings/python/external/xtensor-python"]
+	path = bindings/python/external/xtensor-python
+	url = https://github.com/xtensor-stack/xtensor-python.git
