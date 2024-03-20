@@ -56,9 +56,9 @@ void bind_trackedfeatures(pybind11::module& m, void* pCallstack){
         .def("getTimestamp", &TrackedFeatures::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &TrackedFeatures::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getSequenceNum", &TrackedFeatures::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
-        .def("setTimestamp", &TrackedFeatures::setTimestamp, DOC(dai, TrackedFeatures, setTimestamp))
-        .def("setTimestampDevice", &TrackedFeatures::setTimestampDevice, DOC(dai, TrackedFeatures, setTimestampDevice))
-        .def("setSequenceNum", &TrackedFeatures::setSequenceNum, DOC(dai, TrackedFeatures, setSequenceNum))
+        // .def("setTimestamp", &TrackedFeatures::setTimestamp, DOC(dai, TrackedFeatures, setTimestamp))
+        // .def("setTimestampDevice", &TrackedFeatures::setTimestampDevice, DOC(dai, TrackedFeatures, setTimestampDevice))
+        // .def("setSequenceNum", &TrackedFeatures::setSequenceNum, DOC(dai, TrackedFeatures, setSequenceNum))
         ;
 
 }

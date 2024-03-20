@@ -108,13 +108,13 @@ void bind_encodedframe(pybind11::module &m, void *pCallstack) {
       .def("getProfile", &EncodedFrame::getProfile,
            DOC(dai, EncodedFrame, getProfile))
 
-      // setters
-      .def("setTimestamp", &EncodedFrame::setTimestamp,
-           DOC(dai, EncodedFrame, setTimestamp))
-      .def("setTimestampDevice", &EncodedFrame::setTimestampDevice,
-           DOC(dai, EncodedFrame, setTimestampDevice))
-      .def("setSequenceNum", &EncodedFrame::setSequenceNum,
-           DOC(dai, EncodedFrame, setSequenceNum))
+     //  // setters
+     //  .def("setTimestamp", &EncodedFrame::setTimestamp,
+     //       DOC(dai, EncodedFrame, setTimestamp))
+     //  .def("setTimestampDevice", &EncodedFrame::setTimestampDevice,
+     //       DOC(dai, EncodedFrame, setTimestampDevice))
+     //  .def("setSequenceNum", &EncodedFrame::setSequenceNum,
+     //       DOC(dai, EncodedFrame, setSequenceNum))
       .def("setQuality", &EncodedFrame::setQuality,
            DOC(dai, EncodedFrame, getQuality))
       .def("setBitrate", &EncodedFrame::setBitrate,
