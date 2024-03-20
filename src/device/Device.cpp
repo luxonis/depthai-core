@@ -17,6 +17,7 @@
 #include "depthai/utility/Compression.hpp"
 #include "pipeline/Pipeline.hpp"
 #include "pipeline/node/Record.hpp"
+#include "pipeline/node/Replay.hpp"
 #include "utility/Environment.hpp"
 #include "utility/Initialization.hpp"
 #include "utility/Platform.hpp"
@@ -319,10 +320,10 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
                             //     imageManip->out.link(videnc->input);
                             //     videnc->out.link(xout->input);
                             // } else {
-                            node->getRecordOutput().link(recordNode->input);
+                            node->getRecordOutput().link(recordNode->in);
                             // }
                         } else {
-                            node->getRecordOutput().link(recordNode->input);
+                            node->getRecordOutput().link(recordNode->in);
                         }
                     }
                     recordReplayFilenames["record_config"] = platform::joinPaths(recordPath, mxId.append("_record_config.json"));
@@ -420,10 +421,9 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
                     for(auto& node : sources) {
                         utility::NodeRecordParams nodeParams = node->getNodeRecordParams();
                         std::string nodeName = nodeParams.name;
-                        // TODO(asahtik): Uncomment after implementing Replay
-                        // auto replay = pipelineCopy.create<dai::node::Replay>();
-                        // replay.setReplayFile(platform::joinPaths(rootPath, mxId.append("_").append(nodeName).append(".mp4")));
-                        // replay->out.link(node->getReplayInput());
+                        auto replay = pipelineCopy.create<dai::node::Replay>();
+                        replay->setReplayFile(platform::joinPaths(rootPath, mxId.append("_").append(nodeName).append(".mp4")));
+                        replay->out.link(node->getReplayInput());
                     }
                 } catch(const std::exception& e) {
                     spdlog::warn("Replay disabled: {}", e.what());

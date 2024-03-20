@@ -16,28 +16,28 @@ namespace dai {
 namespace node {
 
 /**
- * @brief Record node, used to record a source stream to a file
+ * @brief Replay node, used to replay a file to a source node
  */
-class Record : public NodeCRTP<ThreadedNode, Record> {
+class Replay : public NodeCRTP<ThreadedNode, Replay> {
 private:
-    std::shared_ptr<utility::VideoRecorder> videoRecorder;
-    std::string recordFile;
+    std::shared_ptr<utility::VideoPlayer> videoPlayer;
+    std::string replayFile;
    public:
-    constexpr static const char* NAME = "Record";
+    constexpr static const char* NAME = "Replay";
     void build();
 
     /**
-     * Input for any type of messages to be transferred over XLink stream
+     * Output for any type of messages to be transferred over XLink stream
      *
      * Default queue is blocking with size 8
      */
-    Input in{true, *this, "in", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::Buffer, true}}};
+    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
 
     void start() override;
     void run() override;
     void stop() override;
 
-    Record& setRecordFile(const std::string& recordFile);
+    Replay& setReplayFile(const std::string& replayFile);
 };
 
 }  // namespace node

@@ -241,6 +241,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/test/MyProducer.cpp
     src/pipeline/node/test/MyConsumer.cpp
     src/pipeline/node/Record.cpp
+    src/pipeline/node/Replay.cpp
     src/pipeline/node/UVC.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/datatype/Buffer.cpp

@@ -22,11 +22,11 @@ void Record::start() {
 }
 void Record::run() {
     if(recordFile.empty()) {
-        throw std::runtime_error("Record recordPath must be set");
+        throw std::runtime_error("Record recordFile must be set");
     }
     // TODO(asahtik): EncodedFrame and byte writer (Buffer, IMUData)
     while(isRunning()) {
-        auto msg = input.queue.get<dai::Buffer>();
+        auto msg = in.queue.get<dai::Buffer>();
         if(std::dynamic_pointer_cast<ImgFrame>(msg) != nullptr) {
             auto imgFrame = std::dynamic_pointer_cast<ImgFrame>(msg);
             // TODO(asahtik): Somehow seet framerate 
