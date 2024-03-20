@@ -5,8 +5,8 @@
 
 namespace dai {
 
-tl::optional<OpenVINO::Version> Node::getRequiredOpenVINOVersion() {
-    return tl::nullopt;
+std::optional<OpenVINO::Version> Node::getRequiredOpenVINOVersion() {
+    return std::nullopt;
 }
 
 const Pipeline Node::getParentPipeline() const {

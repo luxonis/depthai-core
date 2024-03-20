@@ -28,40 +28,40 @@ class Pool : public DeviceNodeCRTP<DeviceNode, Pool, PoolProperties> {
      * Sets number of messages in pool
      * @param num number of messages in pool
      */
-    void setNumMessages(tl::optional<int> num);
+    void setNumMessages(std::optional<int> num);
 
     /// Retrieves pool size
-    tl::optional<int> getNumMessages() const;
+    std::optional<int> getNumMessages() const;
 
     /**
      * Sets reserved data size of each message in the pool
      * @param size data size allocated for each message
      */
-    void setMaxMessageSize(tl::optional<std::int64_t> size);
+    void setMaxMessageSize(std::optional<std::int64_t> size);
 
     /// Retrieves pool size
-    tl::optional<std::int64_t> getMaxMessageSize() const;
+    std::optional<std::int64_t> getMaxMessageSize() const;
 
     /**
      * Sets optional type of the pool. TODO(themarpe) - might be required
      * @param datatype Type of the pool messages
      */
-    void setDatatype(tl::optional<DatatypeEnum> type);
+    void setDatatype(std::optional<DatatypeEnum> type);
 
     /// Retrieves optional pool type
-    tl::optional<DatatypeEnum> getDatatype() const;
+    std::optional<DatatypeEnum> getDatatype() const;
 
     /**
      * Set on which processor the pool should be placed
      * @param type Processor type - Leon CSS or Leon MSS
      */
-    void setProcessor(tl::optional<ProcessorType> type);
+    void setProcessor(std::optional<ProcessorType> type);
 
     /**
      * Get on which processor the pool should be placed
      * @returns Processor type - Leon CSS or Leon MSS
      */
-    tl::optional<ProcessorType> getProcessor() const;
+    std::optional<ProcessorType> getProcessor() const;
 };
 
 }  // namespace node

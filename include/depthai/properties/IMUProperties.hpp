@@ -175,7 +175,7 @@ struct IMUProperties : PropertiesSerializable<Properties, IMUProperties> {
      * Whether to perform firmware update or not.
      * Default value: false.
      */
-    tl::optional<bool> enableFirmwareUpdate = false;
+    std::optional<bool> enableFirmwareUpdate = false;
 };
 
 DEPTHAI_SERIALIZE_EXT(IMUProperties, imuSensors, batchReportThreshold, maxBatchReports, enableFirmwareUpdate);

@@ -1,9 +1,20 @@
 #include "depthai/pipeline/node/DetectionNetwork.hpp"
 
-#include <sstream>
+// libraries
+#include <nlohmann/json.hpp>
+#include <openvino/BlobReader.hpp>
 
+#include "archive.h"
+#include "archive_entry.h"
+
+// internal
 #include "depthai/common/DetectionNetworkType.hpp"
-#include "openvino/BlobReader.hpp"
+#include "depthai/nn_archive/NNArchive.hpp"
+#include "depthai/nn_archive/v1/Config.hpp"
+#include "nn_archive/v1/Generators.hpp"
+#include "utility/ArchiveUtil.hpp"
+#include "utility/ErrorMacros.hpp"
+#include "utility/PimplImpl.hpp"
 
 namespace dai {
 namespace node {
@@ -11,6 +22,23 @@ namespace node {
 //--------------------------------------------------------------------
 // Base Detection Network Class
 //--------------------------------------------------------------------
+
+class DetectionNetwork::Impl {
+   public:
+    Impl() = default;
+
+    /*
+     * Place for future private stuff.
+     */
+};
+
+DetectionNetwork::DetectionNetwork()
+    : out{detectionParser->out}, outNetwork{neuralNetwork->out}, input{neuralNetwork->input}, passthrough{neuralNetwork->passthrough} {};
+DetectionNetwork::~DetectionNetwork() = default;
+
+// -------------------------------------------------------------------
+// Neural Network API
+// -------------------------------------------------------------------
 
 void DetectionNetwork::build() {
     // Default confidence threshold
@@ -25,9 +53,49 @@ void DetectionNetwork::build() {
     detectionParser->imageIn.setQueueSize(1);
 }
 
-// -------------------------------------------------------------------
-// Neural Network API
-// -------------------------------------------------------------------
+void DetectionNetwork::setNNArchive(const NNArchive& nnArchive) {
+    const auto configMaybe = nnArchive.getConfig().getConfigV1();
+    DAI_CHECK(configMaybe, "Unsupported NNArchive format / version. Check which depthai version you are running.");
+    const auto& config = *configMaybe;
+    const auto& blob = nnArchive.getBlob().getOpenVINOBlob();
+    DAI_CHECK_IN(blob);
+    setBlob(*blob);
+    const auto model = config.model;
+    // TODO(jakgra) is NN Archive valid without this? why is this optional?
+    DAI_CHECK(model.heads, "Heads array is not defined in the NN Archive config file.");
+    // TODO(jakgra) for now get info from heads[0] but in the future correctly support multiple outputs and mapped heads
+    DAI_CHECK_V(
+        (*model.heads).size() == 1, "There should be exactly one head per model in the NN Archive config file defined. Found {} heads.", (*model.heads).size());
+    const auto head = (*model.heads)[0];
+    if(head.family == "ObjectDetectionYOLO") {
+        detectionParser->properties.parser.nnFamily = DetectionNetworkType::YOLO;
+    }
+    detectionParser->setNumClasses(static_cast<int>(head.nClasses));
+    if(head.iouThreshold) {
+        detectionParser->properties.parser.iouThreshold = static_cast<float>(*head.iouThreshold);
+    }
+    if(head.confThreshold) {
+        setConfidenceThreshold(static_cast<float>(*head.confThreshold));
+    }
+    detectionParser->setCoordinateSize(4);
+    if(head.anchors) {
+        const auto anchorsIn = *head.anchors;
+        std::vector<std::vector<std::vector<float>>> anchorsOut(anchorsIn.size());
+        for(size_t layer = 0; layer < anchorsOut.size(); ++layer) {
+            std::vector<std::vector<float>> layerOut(anchorsIn[layer].size());
+            for(size_t anchor = 0; anchor < layerOut.size(); ++anchor) {
+                std::vector<float> anchorOut(anchorsIn[layer][anchor].size());
+                for(size_t dim = 0; dim < anchorOut.size(); ++dim) {
+                    anchorOut[dim] = static_cast<float>(anchorsIn[layer][anchor][dim]);
+                }
+                layerOut[anchor] = anchorOut;
+            }
+            anchorsOut[layer] = layerOut;
+        }
+        detectionParser->setAnchors(anchorsOut);
+    }
+}
+
 void DetectionNetwork::setBlobPath(const dai::Path& path) {
     neuralNetwork->setBlobPath(path);
     detectionParser->setBlobPath(path);
@@ -114,6 +182,10 @@ void YoloDetectionNetwork::setAnchors(std::vector<float> anchors) {
 
 void YoloDetectionNetwork::setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks) {
     detectionParser->setAnchorMasks(anchorMasks);
+}
+
+void YoloDetectionNetwork::setAnchors(const std::vector<std::vector<std::vector<float>>>& anchors) {
+    detectionParser->setAnchors(anchors);
 }
 
 void YoloDetectionNetwork::setIouThreshold(float thresh) {

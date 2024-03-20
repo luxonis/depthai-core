@@ -287,6 +287,11 @@ add_library(${TARGET_CORE_NAME}
     src/openvino/BlobReader.cpp
     src/bspatch/bspatch.c
     src/device/DeviceGate.cpp
+    src/utility/ArchiveUtil.cpp
+    src/nn_archive/NNArchive.cpp
+    src/nn_archive/NNArchiveConfig.cpp
+    src/nn_archive/NNArchiveBlob.cpp
+    src/nn_archive/NNArchiveConfigHelper.cpp
 )
 add_library("${PROJECT_NAME}::${TARGET_CORE_ALIAS}" ALIAS ${TARGET_CORE_NAME})
 # Specify that we are building core
@@ -305,20 +310,21 @@ if(DEPTHAI_CLANG_TIDY)
     target_clangtidy_setup(${TARGET_CORE_NAME})
 endif()
 
-# Set compiler features (c++14), and disables extensions (g++14)
-set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD 14)
+# Set compiler features (c++17), and disables extensions (g++17)
+set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD 17)
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_STANDARD_REQUIRED ON)
 set_property(TARGET ${TARGET_CORE_NAME} PROPERTY CXX_EXTENSIONS OFF)
-# Add interface transitive property (C++14)
+# Add interface transitive property (C++17)
 if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
     target_compile_features(${TARGET_CORE_NAME} INTERFACE cxx_generic_lambdas)
 else()
-    target_compile_features(${TARGET_CORE_NAME} INTERFACE cxx_std_14)
+    target_compile_features(${TARGET_CORE_NAME} INTERFACE cxx_std_17)
 endif()
 
 # First specify options
 option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
 option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
+option(DEPTHAI_BUILD_PYTHON "Build python bindings" OFF)
 option(DEPTHAI_BUILD_DOCS "Build documentation - requires doxygen to be installed" OFF)
 option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
 
@@ -660,6 +666,10 @@ endif()
 
 if (EMSCRIPTEN)
     add_subdirectory(bindings/js)
+endif()
+
+if (DEPTHAI_BUILD_PYTHON)
+  add_subdirectory(bindings/python)
 endif()
 
 ########################

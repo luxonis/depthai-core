@@ -22,8 +22,8 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
    protected:
-    tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion() override;
-    tl::optional<OpenVINO::Version> networkOpenvinoVersion;
+    std::optional<OpenVINO::Version> getRequiredOpenVINOVersion() override;
+    std::optional<OpenVINO::Version> networkOpenvinoVersion;
 
    public:
     /**

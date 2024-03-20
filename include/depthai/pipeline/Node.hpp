@@ -19,7 +19,7 @@
 #include "depthai/properties/Properties.hpp"
 
 // libraries
-#include "tl/optional.hpp"
+#include <optional>
 
 namespace dai {
 // fwd declare Pipeline
@@ -618,7 +618,7 @@ class Node : public std::enable_shared_from_this<Node> {
    protected:
     AssetManager assetManager;
 
-    virtual tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion();
+    virtual std::optional<OpenVINO::Version> getRequiredOpenVINOVersion();
 
     // Optimized for adding, searching and removing connections
     // using NodeMap = std::unordered_map<Node::Id, std::shared_ptr<Node>>;

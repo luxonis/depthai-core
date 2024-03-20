@@ -72,6 +72,10 @@ void DetectionParser::setAnchorMasks(std::map<std::string, std::vector<int>> anc
     properties.parser.anchorMasks = anchorMasks;
 }
 
+void DetectionParser::setAnchors(const std::vector<std::vector<std::vector<float>>>& anchors) {
+    properties.parser.anchorsV2 = anchors;
+}
+
 void DetectionParser::setIouThreshold(float thresh) {
     properties.parser.iouThreshold = thresh;
 }

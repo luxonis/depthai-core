@@ -114,6 +114,8 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     void setAnchors(std::vector<float> anchors);
     /// Set anchor masks
     void setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks);
+    /// Set anchors with masks
+    void setAnchors(const std::vector<std::vector<std::vector<float>>>& anchors);
     /// Set Iou threshold
     void setIouThreshold(float thresh);
 

@@ -20,9 +20,11 @@ struct DetectionParserOptions {
     int coordinates;
     std::vector<float> anchors;
     std::map<std::string, std::vector<int>> anchorMasks;
+    /// see YoloDetectionNetwork::setAnchors() for format
+    std::vector<std::vector<std::vector<float>>> anchorsV2;
     float iouThreshold;
 };
 
-DEPTHAI_SERIALIZE_EXT(DetectionParserOptions, nnFamily, confidenceThreshold, classes, coordinates, anchors, anchorMasks, iouThreshold);
+DEPTHAI_SERIALIZE_EXT(DetectionParserOptions, nnFamily, confidenceThreshold, classes, coordinates, anchors, anchorMasks, anchorsV2, iouThreshold);
 
 }  // namespace dai
