@@ -166,7 +166,7 @@ int64_t ArchiveUtil::archiveRead(const void** buffer) {
     userReadBuffer = (*userReadCallback)();
     DAI_CHECK(userReadBuffer, "Don't return nullptr from read callbacks.");
     *buffer = userReadBuffer->data();
-    DAI_CHECK(userReadBuffer->size() <= std::numeric_limits<int64_t>::max(), "You can return at most int64_t MAX data->size() from read callbacks.");
+    DAI_CHECK(userReadBuffer->size() <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()), "You can return at most int64_t MAX data->size() from read callbacks.");
     return static_cast<int64_t>(userReadBuffer->size());
 }
 
