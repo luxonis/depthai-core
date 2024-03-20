@@ -5,6 +5,7 @@
 
 // libraries
 #include "spdlog/spdlog.h"
+#include "utility/Logging.hpp"
 
 namespace dai {
 namespace node {
@@ -14,15 +15,10 @@ VideoEncoder::VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nod
 VideoEncoder::VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
     : NodeCRTP<Node, VideoEncoder, VideoEncoderProperties>(par, nodeId, std::move(props)) {
     setInputRefs({&input});
-    setOutputRefs({&bitstream});
+    setOutputRefs({&bitstream, &out});
 }
 // node properties
 void VideoEncoder::setNumFramesPool(int frames) {
-    // 16 is maximum allowed value
-    if(frames > 16) {
-        throw std::invalid_argument("Maximum number of frames in pool for VideoEncoder is 16");
-    }
-
     properties.numFramesPool = frames;
     // Set default input queue size as well
     input.defaultQueueSize = frames;
@@ -43,14 +39,14 @@ void VideoEncoder::setProfile(VideoEncoderProperties::Profile profile) {
 
 void VideoEncoder::setProfile(std::tuple<int, int> size, VideoEncoderProperties::Profile profile) {
     (void)size;
-    spdlog::warn("VideoEncoder {}: passing 'size' is deprecated. It is auto-determined from first frame", __func__);
+    logger::warn("VideoEncoder {}: passing 'size' is deprecated. It is auto-determined from first frame", __func__);
     setProfile(profile);
 }
 
 void VideoEncoder::setProfile(int width, int height, VideoEncoderProperties::Profile profile) {
     (void)width;
     (void)height;
-    spdlog::warn("VideoEncoder {}: passing 'width'/ 'height' is deprecated. The size is auto-determined from first frame", __func__);
+    logger::warn("VideoEncoder {}: passing 'width'/ 'height' is deprecated. The size is auto-determined from first frame", __func__);
     setProfile(profile);
 }
 
@@ -80,6 +76,10 @@ void VideoEncoder::setLossless(bool lossless) {
 
 void VideoEncoder::setFrameRate(float frameRate) {
     properties.frameRate = frameRate;
+}
+
+void VideoEncoder::setMaxOutputFrameSize(int maxFrameSize) {
+    properties.outputFrameSize = maxFrameSize;
 }
 
 VideoEncoderProperties::RateControlMode VideoEncoder::getRateControlMode() const {
@@ -115,17 +115,17 @@ int VideoEncoder::getQuality() const {
 }
 
 std::tuple<int, int> VideoEncoder::getSize() const {
-    spdlog::warn("VideoEncoder {} is deprecated. The size is auto-determined from first frame and not known upfront", __func__);
+    logger::warn("VideoEncoder {} is deprecated. The size is auto-determined from first frame and not known upfront", __func__);
     return {0, 0};
 }
 
 int VideoEncoder::getWidth() const {
-    spdlog::warn("VideoEncoder {} is deprecated. The size is auto-determined from first frame and not known upfront", __func__);
+    logger::warn("VideoEncoder {} is deprecated. The size is auto-determined from first frame and not known upfront", __func__);
     return 0;
 }
 
 int VideoEncoder::getHeight() const {
-    spdlog::warn("VideoEncoder {} is deprecated. The size is auto-determined from first frame and not known upfront", __func__);
+    logger::warn("VideoEncoder {} is deprecated. The size is auto-determined from first frame and not known upfront", __func__);
     return 0;
 }
 
@@ -163,18 +163,22 @@ void VideoEncoder::setDefaultProfilePreset(float fps, VideoEncoderProperties::Pr
 void VideoEncoder::setDefaultProfilePreset(int width, int height, float fps, VideoEncoderProperties::Profile profile) {
     (void)width;
     (void)height;
-    spdlog::warn("VideoEncoder {}: passing 'width'/ 'height' is deprecated. The size is auto-determined from first frame", __func__);
+    logger::warn("VideoEncoder {}: passing 'width'/ 'height' is deprecated. The size is auto-determined from first frame", __func__);
     setDefaultProfilePreset(fps, profile);
 }
 
 void VideoEncoder::setDefaultProfilePreset(std::tuple<int, int> size, float fps, VideoEncoderProperties::Profile profile) {
     (void)size;
-    spdlog::warn("VideoEncoder {}: passing 'width'/ 'height' is deprecated. The size is auto-determined from first frame", __func__);
+    logger::warn("VideoEncoder {}: passing 'width'/ 'height' is deprecated. The size is auto-determined from first frame", __func__);
     setDefaultProfilePreset(fps, profile);
 }
 
 bool VideoEncoder::getLossless() const {
     return properties.lossless;
+}
+
+int VideoEncoder::getMaxOutputFrameSize() const {
+    return properties.outputFrameSize;
 }
 
 }  // namespace node

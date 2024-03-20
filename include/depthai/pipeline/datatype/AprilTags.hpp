@@ -24,6 +24,21 @@ class AprilTags : public Buffer {
     virtual ~AprilTags() = default;
 
     std::vector<AprilTag>& aprilTags;
+
+    /**
+     * Sets image timestamp related to dai::Clock::now()
+     */
+    AprilTags& setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+
+    /**
+     * Sets image timestamp related to dai::Clock::now()
+     */
+    AprilTags& setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+
+    /**
+     * Retrieves image sequence number
+     */
+    AprilTags& setSequenceNum(int64_t sequenceNum);
 };
 
 }  // namespace dai

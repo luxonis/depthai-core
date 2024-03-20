@@ -1,5 +1,4 @@
-#define CATCH_CONFIG_MAIN
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 // std
 #include <atomic>
@@ -47,7 +46,7 @@ TEST_CASE("OpenVINO 2020.3 setBlob") {
 
     auto networkOpenvinoVersion = p.getOpenVINOVersion();
     REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2020_3);
-    dai::Device d(p);
+    REQUIRE_THROWS_AS(dai::Device(p), std::runtime_error);
 }
 
 TEST_CASE("OpenVINO 2020.4 setBlob") {
@@ -120,6 +119,20 @@ TEST_CASE("OpenVINO 2021.4 setBlob") {
     dai::Device d(p);
 }
 
+TEST_CASE("OpenVINO 2022.1 setBlob") {
+    dai::Pipeline p;
+    auto nn = p.create<dai::node::NeuralNetwork>();
+
+    dai::OpenVINO::Blob blob(OPENVINO_2022_1_BLOB_PATH);
+    REQUIRE(blob.version == dai::OpenVINO::VERSION_2022_1);
+    checkBlob(blob);
+    nn->setBlob(std::move(blob));
+
+    auto networkOpenvinoVersion = p.getOpenVINOVersion();
+    REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2022_1);
+    dai::Device d(p);
+}
+
 // setBlobPath
 
 TEST_CASE("OpenVINO 2020.3 blob") {
@@ -128,7 +141,7 @@ TEST_CASE("OpenVINO 2020.3 blob") {
     nn->setBlobPath(OPENVINO_2020_3_BLOB_PATH);
     auto networkOpenvinoVersion = p.getOpenVINOVersion();
     REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2020_3);
-    dai::Device d(p);
+    REQUIRE_THROWS_AS(dai::Device(p), std::runtime_error);
 }
 
 TEST_CASE("OpenVINO 2020.4 blob") {
@@ -176,6 +189,15 @@ TEST_CASE("OpenVINO 2021.4 blob") {
     dai::Device d(p);
 }
 
+TEST_CASE("OpenVINO 2022.1 blob") {
+    dai::Pipeline p;
+    auto nn = p.create<dai::node::NeuralNetwork>();
+    nn->setBlobPath(OPENVINO_2022_1_BLOB_PATH);
+    auto networkOpenvinoVersion = p.getOpenVINOVersion();
+    REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2022_1);
+    dai::Device d(p);
+}
+
 // Check if an exception is thrown if blob is corrupted
 TEST_CASE("OpenVINO corrupted blob") {
     std::ifstream stream(OPENVINO_2021_4_BLOB_PATH, std::ios::in | std::ios::binary);
@@ -185,4 +207,66 @@ TEST_CASE("OpenVINO corrupted blob") {
     blobData.resize(blobData.size() / 2);
 
     REQUIRE_THROWS(dai::OpenVINO::Blob(blobData));
+}
+
+// TEST UNIVERSAL FW
+
+TEST_CASE("OpenVINO 2020.4 blob, test with universal FW") {
+    dai::Pipeline p;
+    auto nn = p.create<dai::node::NeuralNetwork>();
+    nn->setBlobPath(OPENVINO_2020_4_BLOB_PATH);
+    auto networkOpenvinoVersion = p.getOpenVINOVersion();
+    REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2020_4);
+    p.setOpenVINOVersion(dai::OpenVINO::VERSION_UNIVERSAL);
+    dai::Device d(p);
+}
+
+TEST_CASE("OpenVINO 2021.1 blob, test with universal FW") {
+    dai::Pipeline p;
+    auto nn = p.create<dai::node::NeuralNetwork>();
+    nn->setBlobPath(OPENVINO_2021_1_BLOB_PATH);
+    auto networkOpenvinoVersion = p.getOpenVINOVersion();
+    REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2021_1);
+    p.setOpenVINOVersion(dai::OpenVINO::VERSION_UNIVERSAL);
+    dai::Device d(p);
+}
+
+TEST_CASE("OpenVINO 2021.2 blob, test with universal FW") {
+    dai::Pipeline p;
+    auto nn = p.create<dai::node::NeuralNetwork>();
+    nn->setBlobPath(OPENVINO_2021_2_BLOB_PATH);
+    auto networkOpenvinoVersion = p.getOpenVINOVersion();
+    REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2021_2);
+    p.setOpenVINOVersion(dai::OpenVINO::VERSION_UNIVERSAL);
+    dai::Device d(p);
+}
+
+TEST_CASE("OpenVINO 2021.3 blob, test with universal FW") {
+    dai::Pipeline p;
+    auto nn = p.create<dai::node::NeuralNetwork>();
+    nn->setBlobPath(OPENVINO_2021_3_BLOB_PATH);
+    auto networkOpenvinoVersion = p.getOpenVINOVersion();
+    REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2021_3);
+    p.setOpenVINOVersion(dai::OpenVINO::VERSION_UNIVERSAL);
+    dai::Device d(p);
+}
+
+TEST_CASE("OpenVINO 2021.4 blob, test with universal FW") {
+    dai::Pipeline p;
+    auto nn = p.create<dai::node::NeuralNetwork>();
+    nn->setBlobPath(OPENVINO_2021_4_BLOB_PATH);
+    auto networkOpenvinoVersion = p.getOpenVINOVersion();
+    REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2021_4);
+    p.setOpenVINOVersion(dai::OpenVINO::VERSION_UNIVERSAL);
+    dai::Device d(p);
+}
+
+TEST_CASE("OpenVINO 2022.1 blob, test with universal FW") {
+    dai::Pipeline p;
+    auto nn = p.create<dai::node::NeuralNetwork>();
+    nn->setBlobPath(OPENVINO_2022_1_BLOB_PATH);
+    auto networkOpenvinoVersion = p.getOpenVINOVersion();
+    REQUIRE(networkOpenvinoVersion == dai::OpenVINO::VERSION_2022_1);
+    p.setOpenVINOVersion(dai::OpenVINO::VERSION_UNIVERSAL);
+    dai::Device d(p);
 }

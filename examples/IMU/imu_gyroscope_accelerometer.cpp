@@ -51,8 +51,8 @@ int main() {
             auto& acceleroValues = imuPacket.acceleroMeter;
             auto& gyroValues = imuPacket.gyroscope;
 
-            auto acceleroTs1 = acceleroValues.timestamp.get();
-            auto gyroTs1 = gyroValues.timestamp.get();
+            auto acceleroTs1 = acceleroValues.getTimestampDevice();
+            auto gyroTs1 = gyroValues.getTimestampDevice();
             if(!firstTs) {
                 baseTs = std::min(acceleroTs1, gyroTs1);
                 firstTs = true;

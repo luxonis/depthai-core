@@ -43,16 +43,16 @@ Pipeline Pipeline::clone() const {
     return clone;
 }
 
-Pipeline::Pipeline(const std::shared_ptr<PipelineImpl>& pimpl) {
-    this->pimpl = pimpl;
+Pipeline::Pipeline(const std::shared_ptr<PipelineImpl>& newPimpl) {
+    pimpl = newPimpl;
 }
 
 GlobalProperties Pipeline::getGlobalProperties() const {
     return pimpl->globalProperties;
 }
 
-PipelineSchema Pipeline::getPipelineSchema() const {
-    return pimpl->getPipelineSchema();
+PipelineSchema Pipeline::getPipelineSchema(SerializationType type) const {
+    return pimpl->getPipelineSchema(type);
 }
 
 std::shared_ptr<const Node> PipelineImpl::getNode(Node::Id id) const {
@@ -83,9 +83,9 @@ std::vector<std::shared_ptr<Node>> PipelineImpl::getAllNodes() {
     return nodes;
 }
 
-void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage) const {
+void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type) const {
     // Set schema
-    schema = getPipelineSchema();
+    schema = getPipelineSchema(type);
 
     // Serialize all asset managers into asset storage
     assetStorage.clear();
@@ -100,9 +100,28 @@ void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector
     assets = mutableAssets;
 }
 
-PipelineSchema PipelineImpl::getPipelineSchema() const {
+nlohmann::json PipelineImpl::serializeToJson() const {
+    PipelineSchema schema;
+    Assets assets;
+    std::vector<uint8_t> assetStorage;
+    serialize(schema, assets, assetStorage, SerializationType::JSON);
+
+    nlohmann::json j;
+    j["pipeline"] = schema;
+    for(auto& node : j["pipeline"]["nodes"]) {
+        node[1]["properties"] = nlohmann::json::parse(node[1]["properties"].get<std::vector<uint8_t>>());
+    }
+
+    j["assets"] = assets;
+    j["assetStorage"] = assetStorage;
+    return j;
+}
+
+PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
     PipelineSchema schema;
     schema.globalProperties = globalProperties;
+
+    std::uint32_t latestIoId = 0;
 
     // Loop over nodes, and add them to schema
     for(const auto& kv : nodeMap) {
@@ -111,7 +130,7 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
         NodeObjInfo info;
         info.id = node->id;
         info.name = node->getName();
-        node->getProperties().serialize(info.properties);
+        node->getProperties().serialize(info.properties, type);
 
         // Create Io information
         auto inputs = node->getInputs();
@@ -122,6 +141,7 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
         // Add inputs
         for(const auto& input : inputs) {
             NodeIoInfo io;
+            io.id = ++latestIoId;
             io.blocking = input.getBlocking();
             io.queueSize = input.getQueueSize();
             io.name = input.name;
@@ -152,6 +172,7 @@ PipelineSchema PipelineImpl::getPipelineSchema() const {
         // Add outputs
         for(const auto& output : outputs) {
             NodeIoInfo io;
+            io.id = ++latestIoId;
             io.blocking = false;
             io.name = output.name;
             io.group = output.group;
@@ -265,12 +286,12 @@ tl::optional<OpenVINO::Version> PipelineImpl::getPipelineOpenVINOVersion() const
 
 Device::Config PipelineImpl::getDeviceConfig() const {
     Device::Config config;
-    config.version = getPipelineOpenVINOVersion().value_or(OpenVINO::DEFAULT_VERSION);
-    // TODO(themarpe) - fill out rest of board config
+    config.version = getPipelineOpenVINOVersion().value_or(OpenVINO::VERSION_UNIVERSAL);
+    config.board = board;
     return config;
 }
 
-void PipelineImpl::setCameraTuningBlobPath(const std::string& path) {
+void PipelineImpl::setCameraTuningBlobPath(const dai::Path& path) {
     std::string assetKey = "camTuning";
 
     auto asset = assetManager.set(assetKey, path);
@@ -281,6 +302,22 @@ void PipelineImpl::setCameraTuningBlobPath(const std::string& path) {
 
 void PipelineImpl::setXLinkChunkSize(int sizeBytes) {
     globalProperties.xlinkChunkSize = sizeBytes;
+}
+
+void PipelineImpl::setSippBufferSize(int sizeBytes) {
+    globalProperties.sippBufferSize = sizeBytes;
+}
+
+void PipelineImpl::setSippDmaBufferSize(int sizeBytes) {
+    globalProperties.sippDmaBufferSize = sizeBytes;
+}
+
+void PipelineImpl::setBoardConfig(BoardConfig boardCfg) {
+    board = boardCfg;
+}
+
+BoardConfig PipelineImpl::getBoardConfig() const {
+    return board;
 }
 
 // Remove node capability
@@ -415,9 +452,9 @@ void PipelineImpl::unlink(const Node::Output& out, const Node::Input& in) {
 }
 
 void PipelineImpl::setCalibrationData(CalibrationHandler calibrationDataHandler) {
-    if(!calibrationDataHandler.validateCameraArray()) {
+    /* if(!calibrationDataHandler.validateCameraArray()) {
         throw std::runtime_error("Failed to validate the extrinsics connection. Enable debug mode for more information.");
-    }
+    } */
     globalProperties.calibData = calibrationDataHandler.getEepromData();
 }
 

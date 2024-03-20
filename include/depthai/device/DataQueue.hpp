@@ -12,6 +12,7 @@
 
 // shared
 #include "depthai-shared/datatype/RawBuffer.hpp"
+#include "depthai-shared/xlink/XLinkConstants.hpp"
 
 namespace dai {
 
@@ -42,6 +43,10 @@ class DataOutputQueue {
 
     /**
      * Check whether queue is closed
+     *
+     * @warning This function is thread-unsafe and may return outdated incorrect values. It is
+     * only meant for use in simple single-threaded code. Well written code should handle
+     * exceptions when calling any DepthAI apis to handle hardware events and multithreaded use.
      */
     bool isClosed() const;
 
@@ -342,14 +347,22 @@ class DataInputQueue {
     std::atomic<bool> running{true};
     std::string exceptionMessage;
     const std::string name;
-    std::size_t maxDataSize;
+    std::atomic<std::size_t> maxDataSize{device::XLINK_USB_BUFFER_MAX_SIZE};
 
    public:
-    DataInputQueue(const std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize = 16, bool blocking = true);
+    DataInputQueue(const std::shared_ptr<XLinkConnection> conn,
+                   const std::string& streamName,
+                   unsigned int maxSize = 16,
+                   bool blocking = true,
+                   std::size_t maxDataSize = device::XLINK_USB_BUFFER_MAX_SIZE);
     ~DataInputQueue();
 
     /**
      * Check whether queue is closed
+     *
+     * @warning This function is thread-unsafe and may return outdated incorrect values. It is
+     * only meant for use in simple single-threaded code. Well written code should handle
+     * exceptions when calling any DepthAI apis to handle hardware events and multithreaded use.
      */
     bool isClosed() const;
 

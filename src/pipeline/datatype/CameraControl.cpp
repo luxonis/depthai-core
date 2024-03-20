@@ -25,6 +25,40 @@ CameraControl& CameraControl::setStopStreaming() {
     cfg.setCommand(RawCameraControl::Command::STOP_STREAM);
     return *this;
 }
+CameraControl& CameraControl::setExternalTrigger(int numFramesBurst, int numFramesDiscard) {
+    cfg.setCommand(RawCameraControl::Command::EXTERNAL_TRIGGER);
+    cfg.lowPowerNumFramesBurst = numFramesBurst;
+    cfg.lowPowerNumFramesDiscard = numFramesDiscard;
+    return *this;
+}
+
+CameraControl& CameraControl::setFrameSyncMode(FrameSyncMode mode) {
+    cfg.setCommand(RawCameraControl::Command::FRAME_SYNC);
+    cfg.frameSyncMode = mode;
+    return *this;
+}
+
+CameraControl& CameraControl::setStrobeSensor(int activeLevel) {
+    cfg.setCommand(RawCameraControl::Command::STROBE_CONFIG);
+    cfg.strobeConfig.enable = true;
+    cfg.strobeConfig.activeLevel = activeLevel;
+    cfg.strobeConfig.gpioNumber = -1;
+    return *this;
+}
+
+CameraControl& CameraControl::setStrobeExternal(int gpioNumber, int activeLevel) {
+    cfg.setCommand(RawCameraControl::Command::STROBE_CONFIG);
+    cfg.strobeConfig.enable = true;
+    cfg.strobeConfig.activeLevel = activeLevel;
+    cfg.strobeConfig.gpioNumber = gpioNumber;
+    return *this;
+}
+
+CameraControl& CameraControl::setStrobeDisable() {
+    cfg.setCommand(RawCameraControl::Command::STROBE_CONFIG);
+    cfg.strobeConfig.enable = false;
+    return *this;
+}
 
 // Focus
 CameraControl& CameraControl::setAutoFocusMode(AutoFocusMode mode) {
@@ -34,6 +68,12 @@ CameraControl& CameraControl::setAutoFocusMode(AutoFocusMode mode) {
 }
 CameraControl& CameraControl::setAutoFocusTrigger() {
     cfg.setCommand(RawCameraControl::Command::AF_TRIGGER);
+    return *this;
+}
+CameraControl& CameraControl::setAutoFocusLensRange(int infinityPosition, int macroPosition) {
+    cfg.setCommand(RawCameraControl::Command::AF_LENS_RANGE);
+    cfg.lensPosAutoInfinity = infinityPosition;
+    cfg.lensPosAutoMacro = macroPosition;
     return *this;
 }
 CameraControl& CameraControl::setAutoFocusRegion(uint16_t startX, uint16_t startY, uint16_t width, uint16_t height) {
@@ -48,6 +88,12 @@ CameraControl& CameraControl::setAutoFocusRegion(uint16_t startX, uint16_t start
 CameraControl& CameraControl::setManualFocus(uint8_t lensPosition) {
     cfg.setCommand(RawCameraControl::Command::MOVE_LENS);
     cfg.lensPosition = lensPosition;
+    return *this;
+}
+
+CameraControl& CameraControl::setManualFocusRaw(float lensPositionRaw) {
+    cfg.setCommand(RawCameraControl::Command::MOVE_LENS_RAW);
+    cfg.lensPositionRaw = lensPositionRaw;
     return *this;
 }
 
@@ -75,6 +121,14 @@ CameraControl& CameraControl::setAutoExposureCompensation(int compensation) {
     cfg.expCompensation = compensation;
     return *this;
 }
+CameraControl& CameraControl::setAutoExposureLimit(uint32_t maxExposureTimeUs) {
+    cfg.setCommand(RawCameraControl::Command::AE_TARGET_FPS_RANGE);
+    cfg.aeMaxExposureTimeUs = maxExposureTimeUs;
+    return *this;
+}
+CameraControl& CameraControl::setAutoExposureLimit(std::chrono::microseconds maxExposureTime) {
+    return setAutoExposureLimit(maxExposureTime.count());
+}
 CameraControl& CameraControl::setAntiBandingMode(AntiBandingMode mode) {
     cfg.setCommand(RawCameraControl::Command::ANTIBANDING_MODE);
     cfg.antiBandingMode = mode;
@@ -86,6 +140,10 @@ CameraControl& CameraControl::setManualExposure(uint32_t exposureTimeUs, uint32_
     cfg.expManual.sensitivityIso = sensitivityIso;
     cfg.expManual.frameDurationUs = 0;  // TODO
     return *this;
+}
+
+CameraControl& CameraControl::setManualExposure(std::chrono::microseconds exposureTime, uint32_t sensitivityIso) {
+    return setManualExposure(exposureTime.count(), sensitivityIso);
 }
 
 // White Balance
@@ -146,9 +204,44 @@ CameraControl& CameraControl::setEffectMode(EffectMode mode) {
     cfg.effectMode = mode;
     return *this;
 }
+CameraControl& CameraControl::setControlMode(ControlMode mode) {
+    cfg.setCommand(RawCameraControl::Command::CONTROL_MODE);
+    cfg.controlMode = mode;
+    return *this;
+}
+CameraControl& CameraControl::setCaptureIntent(CaptureIntent mode) {
+    cfg.setCommand(RawCameraControl::Command::CAPTURE_INTENT);
+    cfg.captureIntent = mode;
+    return *this;
+}
 
 bool CameraControl::getCaptureStill() const {
     return cfg.getCommand(RawCameraControl::Command::STILL_CAPTURE);
+}
+
+std::chrono::microseconds CameraControl::getExposureTime() const {
+    return std::chrono::microseconds(cfg.expManual.exposureTimeUs);
+}
+
+int CameraControl::getSensitivity() const {
+    return cfg.expManual.sensitivityIso;
+}
+
+int CameraControl::getLensPosition() const {
+    return cfg.lensPosition;
+}
+
+float CameraControl::getLensPositionRaw() const {
+    return cfg.lensPositionRaw;
+}
+
+dai::RawCameraControl CameraControl::get() const {
+    return cfg;
+}
+
+CameraControl& CameraControl::set(dai::RawCameraControl config) {
+    cfg = config;
+    return *this;
 }
 
 }  // namespace dai

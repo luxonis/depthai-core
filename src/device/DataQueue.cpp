@@ -3,17 +3,21 @@
 // std
 #include <chrono>
 #include <iostream>
+#include <memory>
 
 // project
+#include "depthai-shared/datatype/DatatypeEnum.hpp"
+#include "depthai-shared/datatype/RawMessageGroup.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
+#include "pipeline/datatype/MessageGroup.hpp"
 #include "pipeline/datatype/StreamMessageParser.hpp"
 
 // shared
 #include "depthai-shared/xlink/XLinkConstants.hpp"
 
 // libraries
-#include "spdlog/spdlog.h"
+#include "utility/Logging.hpp"
 
 // Additions
 #include "spdlog/fmt/bin_to_hex.h"
@@ -35,25 +39,42 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
             while(running) {
                 // Blocking -- parse packet and gather timing information
                 auto packet = stream.readMove();
+                DatatypeEnum type;
                 const auto t1Parse = std::chrono::steady_clock::now();
-                const auto data = StreamMessageParser::parseMessageToADatatype(&packet);
+                const auto data = StreamMessageParser::parseMessageToADatatype(&packet, type);
+                if(type == DatatypeEnum::MessageGroup) {
+                    auto msgGrp = std::static_pointer_cast<MessageGroup>(data);
+                    unsigned int size = msgGrp->getNumMessages();
+                    std::vector<std::shared_ptr<ADatatype>> packets;
+                    packets.reserve(size);
+                    for(unsigned int i = 0; i < size; ++i) {
+                        auto dpacket = stream.readMove();
+                        packets.push_back(StreamMessageParser::parseMessageToADatatype(&dpacket));
+                    }
+                    auto rawMsgGrp = std::static_pointer_cast<RawMessageGroup>(data->getRaw());
+                    for(auto& msg : rawMsgGrp->group) {
+                        msgGrp->add(msg.first, packets[msg.second.index]);
+                    }
+                }
                 const auto t2Parse = std::chrono::steady_clock::now();
 
                 // Trace level debugging
-                if(spdlog::get_level() == spdlog::level::trace) {
+                if(logger::get_level() == spdlog::level::trace) {
                     std::vector<std::uint8_t> metadata;
                     DatatypeEnum type;
                     data->getRaw()->serialize(metadata, type);
-                    spdlog::trace("Received message from device ({}) - parsing time: {}, data size: {}, object type: {} object data: {}",
+                    logger::trace("Received message from device ({}) - parsing time: {}, data size: {}, object type: {} object data: {}",
                                   name,
                                   std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
                                   data->getRaw()->data.size(),
-                                  type,
+                                  static_cast<std::int32_t>(type),
                                   spdlog::to_hex(metadata));
                 }
 
                 // Add 'data' to queue
-                queue.push(data);
+                if(!queue.push(data)) {
+                    throw std::runtime_error(fmt::format("Underlying queue destructed"));
+                }
 
                 // Increment numPacketsRead
                 numPacketsRead++;
@@ -66,7 +87,7 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
                         try {
                             callback(name, data);
                         } catch(const std::exception& ex) {
-                            spdlog::error("Callback with id: {} throwed an exception: {}", kv.first, ex.what());
+                            logger::error("Callback with id: {} throwed an exception: {}", kv.first, ex.what());
                         }
                     }
                 }
@@ -81,6 +102,10 @@ DataOutputQueue::DataOutputQueue(const std::shared_ptr<XLinkConnection> conn, co
     });
 }
 
+// This function is thread-unsafe. The idea of "isClosed" is ephemerial and
+// since there is no mutex lock, its state is outdated and invalid even before
+// the logical NOT in this function. This calculated boolean then continues to degrade
+// in validity as it is returned by value to the caller
 bool DataOutputQueue::isClosed() const {
     return !running;
 }
@@ -96,7 +121,7 @@ void DataOutputQueue::close() {
     if((readingThread.get_id() != std::this_thread::get_id()) && readingThread.joinable()) readingThread.join();
 
     // Log
-    spdlog::debug("DataOutputQueue ({}) closed", name);
+    logger::debug("DataOutputQueue ({}) closed", name);
 }
 
 DataOutputQueue::~DataOutputQueue() {
@@ -168,10 +193,11 @@ bool DataOutputQueue::removeCallback(int callbackId) {
 }
 
 // DATA INPUT QUEUE
-DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize, bool blocking)
-    : queue(maxSize, blocking), name(streamName) {
-    // open stream with default XLINK_USB_BUFFER_MAX_SIZE write size
-    XLinkStream stream(std::move(conn), name, device::XLINK_USB_BUFFER_MAX_SIZE);
+DataInputQueue::DataInputQueue(
+    const std::shared_ptr<XLinkConnection> conn, const std::string& streamName, unsigned int maxSize, bool blocking, std::size_t maxDataSize)
+    : queue(maxSize, blocking), name(streamName), maxDataSize(maxDataSize) {
+    // open stream with maxDataSize write size
+    XLinkStream stream(std::move(conn), name, maxDataSize + device::XLINK_MESSAGE_METADATA_MAX_SIZE);
 
     writingThread = std::thread([this, stream = std::move(stream)]() mutable {
         std::uint64_t numPacketsSent = 0;
@@ -185,15 +211,25 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection> conn, cons
 
                 // serialize
                 auto t1Parse = std::chrono::steady_clock::now();
+                std::vector<std::vector<uint8_t>> serializedAux;
+                if(data->getType() == DatatypeEnum::MessageGroup) {
+                    auto rawMsgGrp = std::dynamic_pointer_cast<RawMessageGroup>(data);
+                    serializedAux.reserve(rawMsgGrp->group.size());
+                    unsigned int index = 0;
+                    for(auto& msg : rawMsgGrp->group) {
+                        msg.second.index = index++;
+                        serializedAux.push_back(StreamMessageParser::serializeMessage(msg.second.buffer));
+                    }
+                }
                 auto serialized = StreamMessageParser::serializeMessage(data);
                 auto t2Parse = std::chrono::steady_clock::now();
 
                 // Trace level debugging
-                if(spdlog::get_level() == spdlog::level::trace) {
+                if(logger::get_level() == spdlog::level::trace) {
                     std::vector<std::uint8_t> metadata;
                     DatatypeEnum type;
                     data->serialize(metadata, type);
-                    spdlog::trace("Sending message to device ({}) - serialize time: {}, data size: {}, object type: {} object data: {}",
+                    logger::trace("Sending message to device ({}) - serialize time: {}, data size: {}, object type: {} object data: {}",
                                   name,
                                   std::chrono::duration_cast<std::chrono::microseconds>(t2Parse - t1Parse),
                                   data->data.size(),
@@ -203,6 +239,9 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection> conn, cons
 
                 // Blocking
                 stream.write(serialized);
+                for(auto& msg : serializedAux) {
+                    stream.write(msg);
+                }
 
                 // Increment num packets sent
                 numPacketsSent++;
@@ -217,6 +256,10 @@ DataInputQueue::DataInputQueue(const std::shared_ptr<XLinkConnection> conn, cons
     });
 }
 
+// This function is thread-unsafe. The idea of "isClosed" is ephemerial and
+// since there is no mutex lock, its state is outdated and invalid even before
+// the logical NOT in this function. This calculated boolean then continues to degrade
+// in validity as it is returned by value to the caller
 bool DataInputQueue::isClosed() const {
     return !running;
 }
@@ -232,7 +275,7 @@ void DataInputQueue::close() {
     if((writingThread.get_id() != std::this_thread::get_id()) && writingThread.joinable()) writingThread.join();
 
     // Log
-    spdlog::debug("DataInputQueue ({}) closed", name);
+    logger::debug("DataInputQueue ({}) closed", name);
 }
 
 DataInputQueue::~DataInputQueue() {
@@ -263,6 +306,7 @@ unsigned int DataInputQueue::getMaxSize() const {
     return queue.getMaxSize();
 }
 
+// BUGBUG https://github.com/luxonis/depthai-core/issues/762
 void DataInputQueue::setMaxDataSize(std::size_t maxSize) {
     maxDataSize = maxSize;
 }
@@ -281,10 +325,12 @@ void DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg) {
 
     // Check if stream receiver has enough space for this message
     if(rawMsg->data.size() > maxDataSize) {
-        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize));
+        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize.load()));
     }
 
-    queue.push(rawMsg);
+    if(!queue.push(rawMsg)) {
+        throw std::runtime_error("Underlying queue destructed");
+    }
 }
 void DataInputQueue::send(const std::shared_ptr<ADatatype>& msg) {
     if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
@@ -301,7 +347,7 @@ bool DataInputQueue::send(const std::shared_ptr<RawBuffer>& rawMsg, std::chrono:
 
     // Check if stream receiver has enough space for this message
     if(rawMsg->data.size() > maxDataSize) {
-        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize));
+        throw std::runtime_error(fmt::format("Trying to send larger ({}B) message than XLinkIn maxDataSize ({}B)", rawMsg->data.size(), maxDataSize.load()));
     }
 
     return queue.tryWaitAndPush(rawMsg, timeout);

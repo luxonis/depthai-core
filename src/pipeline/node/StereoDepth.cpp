@@ -4,6 +4,8 @@
 #include <fstream>
 
 #include "spdlog/spdlog.h"
+#include "utility/Logging.hpp"
+#include "utility/spdlog-fmt.hpp"
 
 namespace dai {
 namespace node {
@@ -37,19 +39,9 @@ StereoDepth::Properties& StereoDepth::getProperties() {
     return properties;
 }
 
-void StereoDepth::loadCalibrationData(const std::vector<std::uint8_t>& data) {
-    (void)data;
-    spdlog::warn("{} is deprecated. This function call is replaced by Pipeline::setCalibrationData under pipeline. ", __func__);
-}
-
-void StereoDepth::loadCalibrationFile(const std::string& path) {
-    (void)path;
-    spdlog::warn("{} is deprecated. This function call is replaced by Pipeline::setCalibrationData under pipeline. ", __func__);
-}
-
 void StereoDepth::setEmptyCalibration(void) {
     setRectification(false);
-    spdlog::warn("{} is deprecated. This function call can be replaced by Stereo::setRectification(false). ", __func__);
+    logger::warn("{} is deprecated. This function call can be replaced by Stereo::setRectification(false). ", __func__);
 }
 
 void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const std::vector<std::uint8_t>& dataRight) {
@@ -72,16 +64,16 @@ void StereoDepth::loadMeshData(const std::vector<std::uint8_t>& dataLeft, const 
     properties.mesh.meshSize = static_cast<uint32_t>(meshAsset.data.size());
 }
 
-void StereoDepth::loadMeshFiles(const std::string& pathLeft, const std::string& pathRight) {
+void StereoDepth::loadMeshFiles(const dai::Path& pathLeft, const dai::Path& pathRight) {
     std::ifstream streamLeft(pathLeft, std::ios::binary);
     if(!streamLeft.is_open()) {
-        throw std::runtime_error("StereoDepth | Cannot open mesh at path: " + pathLeft);
+        throw std::runtime_error(fmt::format("StereoDepth | Cannot open mesh at path: {}", pathLeft));
     }
     std::vector<std::uint8_t> dataLeft = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(streamLeft), {});
 
     std::ifstream streamRight(pathRight, std::ios::binary);
     if(!streamRight.is_open()) {
-        throw std::runtime_error("StereoDepth | Cannot open mesh at path: " + pathRight);
+        throw std::runtime_error(fmt::format("StereoDepth | Cannot open mesh at path: {}", pathRight));
     }
     std::vector<std::uint8_t> dataRight = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(streamRight), {});
 
@@ -134,6 +126,10 @@ void StereoDepth::setSubpixel(bool enable) {
     initialConfig.setSubpixel(enable);
     properties.initialConfig = *rawConfig;
 }
+void StereoDepth::setSubpixelFractionalBits(int subpixelFractionalBits) {
+    initialConfig.setSubpixelFractionalBits(subpixelFractionalBits);
+    properties.initialConfig = *rawConfig;
+}
 void StereoDepth::setExtendedDisparity(bool enable) {
     initialConfig.setExtendedDisparity(enable);
     properties.initialConfig = *rawConfig;
@@ -143,15 +139,15 @@ void StereoDepth::setRectifyEdgeFillColor(int color) {
 }
 void StereoDepth::setRectifyMirrorFrame(bool enable) {
     (void)enable;
-    spdlog::warn("{} is deprecated.", __func__);
+    logger::warn("{} is deprecated.", __func__);
 }
 void StereoDepth::setOutputRectified(bool enable) {
     (void)enable;
-    spdlog::warn("{} is deprecated. The output is auto-enabled if used", __func__);
+    logger::warn("{} is deprecated. The output is auto-enabled if used", __func__);
 }
 void StereoDepth::setOutputDepth(bool enable) {
     (void)enable;
-    spdlog::warn("{} is deprecated. The output is auto-enabled if used", __func__);
+    logger::warn("{} is deprecated. The output is auto-enabled if used", __func__);
 }
 
 void StereoDepth::setRuntimeModeSwitch(bool enable) {
@@ -173,6 +169,38 @@ void StereoDepth::setPostProcessingHardwareResources(int numShaves, int numMemor
 
 void StereoDepth::setFocalLengthFromCalibration(bool focalLengthFromCalibration) {
     properties.focalLengthFromCalibration = focalLengthFromCalibration;
+}
+
+void StereoDepth::useHomographyRectification(bool useHomographyRectification) {
+    properties.useHomographyRectification = useHomographyRectification;
+}
+
+void StereoDepth::enableDistortionCorrection(bool enableDistortionCorrection) {
+    useHomographyRectification(!enableDistortionCorrection);
+}
+
+void StereoDepth::setBaseline(float baseline) {
+    properties.baseline = baseline;
+}
+
+void StereoDepth::setFocalLength(float focalLength) {
+    properties.focalLength = focalLength;
+}
+
+void StereoDepth::setDisparityToDepthUseSpecTranslation(bool specTranslation) {
+    properties.disparityToDepthUseSpecTranslation = specTranslation;
+}
+
+void StereoDepth::setRectificationUseSpecTranslation(bool specTranslation) {
+    properties.rectificationUseSpecTranslation = specTranslation;
+}
+
+void StereoDepth::setDepthAlignmentUseSpecTranslation(bool specTranslation) {
+    properties.depthAlignmentUseSpecTranslation = specTranslation;
+}
+
+void StereoDepth::setAlphaScaling(float alpha) {
+    properties.alphaScaling = alpha;
 }
 
 void StereoDepth::setDefaultProfilePreset(PresetMode mode) {

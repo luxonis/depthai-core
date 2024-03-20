@@ -15,6 +15,7 @@
 #include "spdlog/details/os.h"
 #include "spdlog/fmt/chrono.h"
 #include "spdlog/spdlog.h"
+#include "utility/Logging.hpp"
 
 // shared
 #include "depthai-shared/device/BoardConfig.hpp"
@@ -23,6 +24,7 @@
 
 // project
 #include "utility/Environment.hpp"
+#include "utility/spdlog-fmt.hpp"
 
 extern "C" {
 #include "bspatch/bspatch.h"
@@ -41,12 +43,11 @@ static std::vector<std::uint8_t> createPrebootHeader(const std::vector<uint8_t>&
 constexpr static auto CMRC_DEPTHAI_DEVICE_TAR_XZ = "depthai-device-fwp-" DEPTHAI_DEVICE_VERSION ".tar.xz";
 
 // Main FW
-constexpr static auto DEPTHAI_CMD_OPENVINO_2021_4_PATH = "depthai-device-openvino-2021.4-" DEPTHAI_DEVICE_VERSION ".cmd";
-constexpr static auto MAIN_FW_PATH = DEPTHAI_CMD_OPENVINO_2021_4_PATH;
-constexpr static auto& MAIN_FW_VERSION = OpenVINO::DEFAULT_VERSION;
+constexpr static auto DEPTHAI_CMD_OPENVINO_UNIVERSAL_PATH = "depthai-device-openvino-universal-" DEPTHAI_DEVICE_VERSION ".cmd";
+constexpr static auto MAIN_FW_PATH = DEPTHAI_CMD_OPENVINO_UNIVERSAL_PATH;
+constexpr static auto MAIN_FW_VERSION = OpenVINO::VERSION_UNIVERSAL;
 
 // Patches from Main FW
-constexpr static auto DEPTHAI_CMD_OPENVINO_2020_3_PATCH_PATH = "depthai-device-openvino-2020.3-" DEPTHAI_DEVICE_VERSION ".patch";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2020_4_PATCH_PATH = "depthai-device-openvino-2020.4-" DEPTHAI_DEVICE_VERSION ".patch";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2021_1_PATCH_PATH = "depthai-device-openvino-2021.1-" DEPTHAI_DEVICE_VERSION ".patch";
 constexpr static auto DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH = "depthai-device-openvino-2021.2-" DEPTHAI_DEVICE_VERSION ".patch";
@@ -58,14 +59,13 @@ static constexpr auto array_of(T&&... t) -> std::array<V, sizeof...(T)> {
     return {{std::forward<T>(t)...}};
 }
 
-constexpr static auto RESOURCE_LIST_DEVICE = array_of<const char*>(DEPTHAI_CMD_OPENVINO_2021_4_PATH,
-                                                                   DEPTHAI_CMD_OPENVINO_2020_3_PATCH_PATH,
+constexpr static auto RESOURCE_LIST_DEVICE = array_of<const char*>(DEPTHAI_CMD_OPENVINO_UNIVERSAL_PATH,
                                                                    DEPTHAI_CMD_OPENVINO_2020_4_PATCH_PATH,
                                                                    DEPTHAI_CMD_OPENVINO_2021_1_PATCH_PATH,
                                                                    DEPTHAI_CMD_OPENVINO_2021_2_PATCH_PATH,
                                                                    DEPTHAI_CMD_OPENVINO_2021_3_PATCH_PATH);
 
-std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, std::string pathToMvcmd) const {
+std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, dai::Path pathToMvcmd) const {
     // Wait until lazy load is complete
     {
         std::unique_lock<std::mutex> lock(mtxDevice);
@@ -78,12 +78,12 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, st
     auto& version = config.version;
 
     // Check if pathToMvcmd variable is set
-    std::string finalFwBinaryPath = "";
+    dai::Path finalFwBinaryPath;
     if(!pathToMvcmd.empty()) {
         finalFwBinaryPath = pathToMvcmd;
     }
     // Override if env variable DEPTHAI_DEVICE_BINARY is set
-    auto fwBinaryPath = utility::getEnv("DEPTHAI_DEVICE_BINARY");
+    dai::Path fwBinaryPath = utility::getEnv("DEPTHAI_DEVICE_BINARY");
     if(!fwBinaryPath.empty()) {
         finalFwBinaryPath = fwBinaryPath;
     }
@@ -94,9 +94,10 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, st
         if(!stream.is_open()) {
             // Throw an error
             // TODO(themarpe) - Unify exceptions into meaningful groups
-            throw std::runtime_error(fmt::format("File at path {} pointed to by DEPTHAI_DEVICE_BINARY doesn't exist.", fwBinaryPath));
+            throw std::runtime_error(
+                fmt::format("File at path {}{} doesn't exist.", finalFwBinaryPath, !fwBinaryPath.empty() ? " pointed to by DEPTHAI_DEVICE_BINARY" : ""));
         }
-        spdlog::warn("Overriding firmware: {}", fwBinaryPath);
+        logger::warn("Overriding firmware: {}", finalFwBinaryPath);
         // Read the file and return its contents
         finalFwBinary = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
     } else {
@@ -107,7 +108,7 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, st
             {OpenVINO::VERSION_2020_4, OpenVINO::VERSION_2021_1, OpenVINO::VERSION_2021_2, OpenVINO::VERSION_2021_3});
 
         if(deprecatedVersions.count(version)) {
-            spdlog::warn("OpenVINO {} is deprecated!", OpenVINO::getVersionName(version));
+            logger::warn("OpenVINO {} is deprecated!", OpenVINO::getVersionName(version));
         }
 
         // Main FW
@@ -117,7 +118,7 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, st
 
         switch(version) {
             case OpenVINO::VERSION_2020_3:
-                depthaiPatch = resourceMapDevice.at(DEPTHAI_CMD_OPENVINO_2020_3_PATCH_PATH);
+                throw std::runtime_error(fmt::format("OpenVINO {} is not available anymore", OpenVINO::getVersionName(version)));
                 break;
 
             case OpenVINO::VERSION_2020_4:
@@ -136,6 +137,8 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, st
                 depthaiPatch = resourceMapDevice.at(DEPTHAI_CMD_OPENVINO_2021_3_PATCH_PATH);
                 break;
 
+            case OpenVINO::VERSION_2021_4:
+            case OpenVINO::VERSION_2022_1:
             case MAIN_FW_VERSION:
                 depthaiBinary = resourceMapDevice.at(MAIN_FW_PATH);
                 break;
@@ -143,7 +146,7 @@ std::vector<std::uint8_t> Resources::getDeviceFirmware(Device::Config config, st
 
         // is patching required?
         if(!depthaiPatch.empty()) {
-            spdlog::debug("Patching OpenVINO FW version from {} to {}", OpenVINO::getVersionName(MAIN_FW_VERSION), OpenVINO::getVersionName(version));
+            logger::debug("Patching OpenVINO FW version from {} to {}", OpenVINO::getVersionName(MAIN_FW_VERSION), OpenVINO::getVersionName(version));
 
             // Load full binary for patch
             depthaiBinary = resourceMapDevice.at(MAIN_FW_PATH);
@@ -209,7 +212,7 @@ std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type
     } else if(type == dai::bootloader::Type::NETWORK) {
         blEnvVar = "DEPTHAI_BOOTLOADER_BINARY_ETH";
     }
-    auto blBinaryPath = utility::getEnv(blEnvVar);
+    dai::Path blBinaryPath = utility::getEnv(blEnvVar);
     if(!blBinaryPath.empty()) {
         // Load binary file at path
         std::ifstream stream(blBinaryPath, std::ios::binary);
@@ -218,7 +221,7 @@ std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type
             // TODO(themarpe) - Unify exceptions into meaningful groups
             throw std::runtime_error(fmt::format("File at path {} pointed to by {} doesn't exist.", blBinaryPath, blEnvVar));
         }
-        spdlog::warn("Overriding bootloader {}: {}", blEnvVar, blBinaryPath);
+        logger::warn("Overriding bootloader {}: {}", blEnvVar, blBinaryPath);
         // Read the file and return its content
         return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
     }
@@ -328,7 +331,7 @@ std::function<void()> getLazyTarXzFunction(MTX& mtx, CV& cv, BOOL& ready, PATH c
         auto t3 = steady_clock::now();
 
         // Debug - logs loading times
-        spdlog::debug(
+        logger::debug(
             "Resources - Archive '{}' open: {}, archive read: {}", cmrcPath, duration_cast<milliseconds>(t2 - t1), duration_cast<milliseconds>(t3 - t2));
 
         // Notify that that preload is finished

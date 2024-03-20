@@ -1,5 +1,7 @@
 # DepthAI C++ Library
 
+[![Forum](https://img.shields.io/badge/Forum-discuss-orange)](https://discuss.luxonis.com/)
+[![Docs](https://img.shields.io/badge/Docs-DepthAI_API-yellow)](https://docs.luxonis.com/projects/api)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 
 Core C++ library
@@ -13,13 +15,17 @@ DepthAI library doesn't yet provide API stability guarantees. While we take care
 
 ## Dependencies
 - CMake >= 3.10
-- libusb1 development package (MacOS & Linux only)
 - C/C++14 compiler
 - [optional] OpenCV 4 (required if building examples)
+- [optional] PCL (required for point cloud example)
 
-MacOS: `brew install libusb`, optionally with `brew install opencv`
+To install OpenCV:
+MacOS: `brew install opencv`
+Linux: `sudo apt install libopencv-dev`
 
-Linux: `sudo apt install libusb-1.0-0-dev`, optionally with `sudo apt install libopencv-dev`
+To install PCL:
+MacOS: `brew install pcl`
+Linux: `sudo apt install libpcl-dev`
 
 ## Building
 
@@ -47,6 +53,29 @@ To build dynamic version of library configure with following option added
 cmake -S. -Bbuild -D'BUILD_SHARED_LIBS=ON'
 cmake --build build
 ```
+
+
+### Android
+
+Android is supported to some extent but not actively pursued nor tested. PRs with any improvements are welcome.
+
+Steps:
+
+ - Install Android NDK (for example via Android Studio).
+ - Set the NDK path:
+```
+export ANDROID_HOME=$HOME/.local/lib/Android
+export PATH=$PATH:$ANDROID_HOME/emulator:$ANDROID_HOME/platform-tools
+export NDK=$ANDROID_HOME/ndk/23.1.7779620/ # Check version
+```
+ - Ensure a recent version of cmake (apt version is outdated, install snap install cmake --classic)
+ - Run cmake, set your ABI and Platform as needed:
+
+```
+cmake -S. -Bbuild -DCMAKE_TOOLCHAIN_FILE=$NDK/build/cmake/android.toolchain.cmake -DANDROID_ABI=armeabi-v7a -DANDROID_PLATFORM=android-25
+cmake --build build
+```
+
 
 ## Running examples
 
@@ -76,7 +105,7 @@ Targets available to link to are:
 
 #### Using find_package
 
-Build static or dynamic version of library (See: [Building](##building) and optionally [Installing](##installing))
+Build static or dynamic version of library (See: [Building](#building) and optionally [Installing](#installing))
 
 Add `find_package` and `target_link_libraries` to your project
 ```
@@ -112,8 +141,8 @@ target_link_libraries([my-app] PRIVATE depthai::opencv)
 ### Non-CMake integration (Visual Studio, Xcode, CodeBlocks, ...)
 
 To integrate into a different build system than CMake, prefered way is compiling as dynamic library and setting correct build options.
-1. First build as dynamic library: [Building Dynamic library](###dynamic-library)
-2. Then install: [Installing](##installing)
+1. First build as dynamic library: [Building Dynamic library](#dynamic-library)
+2. Then install: [Installing](#installing)
 
 In your non-CMake project (new Visual Studio project, ...)
 1. Set needed library directories:
@@ -123,9 +152,6 @@ In your non-CMake project (new Visual Studio project, ...)
     - `build/install/include` (library headers)
     - `build/install/include/depthai-shared/3rdparty` (shared 3rdparty headers)
     - `build/install/lib/cmake/depthai/dependencies/include` (dependency headers)
-3. Add the following defines
-    - `XLINK_USE_MX_ID_NAME=ON`
-    - `__PC__=ON`
 
 > ℹ️ Threading library might need to be linked to explicitly.
 
@@ -149,6 +175,8 @@ The following environment variables can be set to alter default behavior of the 
 
 | Environment variable  | Description   |
 |--------------|-----------|
+| DEPTHAI_LEVEL | Sets logging verbosity, 'trace', 'debug', 'warn', 'error' and 'off' |
+| XLINK_LEVEL | Sets logging verbosity of XLink library, 'debug'. 'info', 'warn', 'error', 'fatal' and 'off' |
 | DEPTHAI_INSTALL_SIGNAL_HANDLER | Set to 0 to disable installing Backward signal handler for stack trace printing |
 | DEPTHAI_WATCHDOG | Sets device watchdog timeout. Useful for debugging (`DEPTHAI_WATCHDOG=0`), to prevent device reset while the process is paused. |
 | DEPTHAI_WATCHDOG_INITIAL_DELAY | Specifies delay after which the device watchdog starts. |
@@ -156,9 +184,16 @@ The following environment variables can be set to alter default behavior of the 
 | DEPTHAI_CONNECT_TIMEOUT | Specifies timeout in milliseconds for establishing a connection to a given device. |
 | DEPTHAI_BOOTUP_TIMEOUT | Specifies timeout in milliseconds for waiting the device to boot after sending the binary. |
 | DEPTHAI_PROTOCOL | Restricts default search to the specified protocol. Options: any, usb, tcpip. |
+| DEPTHAI_DEVICE_MXID_LIST | Restricts default search to the specified MXIDs. Accepts comma separated list of MXIDs. Lists filter results in an "AND" manner and not "OR" |
+| DEPTHAI_DEVICE_ID_LIST | Alias to MXID list. Lists filter results in an "AND" manner and not "OR" |
+| DEPTHAI_DEVICE_NAME_LIST | Restricts default search to the specified NAMEs. Accepts comma separated list of NAMEs. Lists filter results in an "AND" manner and not "OR" |
 | DEPTHAI_DEVICE_BINARY | Overrides device Firmware binary. Mostly for internal debugging purposes. |
 | DEPTHAI_BOOTLOADER_BINARY_USB | Overrides device USB Bootloader binary. Mostly for internal debugging purposes. |
 | DEPTHAI_BOOTLOADER_BINARY_ETH | Overrides device Network Bootloader binary. Mostly for internal debugging purposes. |
+| DEPTHAI_ALLOW_FACTORY_FLASHING | Internal use only |
+| DEPTHAI_LIBUSB_ANDROID_JAVAVM | JavaVM pointer that is passed to libusb for rootless Android interaction with devices. Interpreted as decimal value of uintptr_t |
+| DEPTHAI_CRASHDUMP | Directory in which to save the crash dump. |
+| DEPTHAI_CRASHDUMP_TIMEOUT | Specifies the duration in seconds to wait for device reboot when obtaining a crash dump. Crash dump retrieval disabled if 0. |
 
 ## Running tests
 

@@ -96,6 +96,44 @@ class StereoDepthConfig : public Buffer {
     StereoDepthConfig& setSubpixel(bool enable);
 
     /**
+     * Number of fractional bits for subpixel mode.
+     * Default value: 3.
+     * Valid values: 3,4,5.
+     * Defines the number of fractional disparities: 2^x.
+     * Median filter postprocessing is supported only for 3 fractional bits.
+     */
+    StereoDepthConfig& setSubpixelFractionalBits(int subpixelFractionalBits);
+
+    /**
+     * Set depth unit of depth map.
+     *
+     * Meter, centimeter, millimeter, inch, foot or custom unit is available.
+     */
+    StereoDepthConfig& setDepthUnit(AlgorithmControl::DepthUnit depthUnit);
+
+    /**
+     * Shift input frame by a number of pixels to increase minimum depth.
+     * For example shifting by 48 will change effective disparity search range from (0,95] to [48,143].
+     * An alternative approach to reducing the minZ.
+     * We normally only recommend doing this when it is known that there will be no objects
+     * farther away than MaxZ, such as having a depth camera mounted above a table
+     * pointing down at the table surface.
+     */
+    StereoDepthConfig& setDisparityShift(int disparityShift);
+
+    /**
+     * Invalidate X amount of pixels at the edge of disparity frame.
+     * For right and center alignment X pixels will be invalidated from the right edge,
+     * for left alignment from the left edge.
+     */
+    StereoDepthConfig& setNumInvalidateEdgePixels(int32_t numInvalidateEdgePixels);
+
+    /**
+     * Get depth unit of depth map.
+     */
+    AlgorithmControl::DepthUnit getDepthUnit();
+
+    /**
      * Useful for normalization of the disparity map.
      * @returns Maximum disparity value that the node can return
      */

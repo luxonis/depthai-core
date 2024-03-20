@@ -15,4 +15,19 @@ std::vector<SpatialLocations>& SpatialLocationCalculatorData::getSpatialLocation
     return rawdata.spatialLocations;
 }
 
+// setters
+SpatialLocationCalculatorData& SpatialLocationCalculatorData::setTimestamp(
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
+    // Set timestamp from timepoint
+    return static_cast<SpatialLocationCalculatorData&>(Buffer::setTimestamp(tp));
+}
+SpatialLocationCalculatorData& SpatialLocationCalculatorData::setTimestampDevice(
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
+    // Set timestamp from timepoint
+    return static_cast<SpatialLocationCalculatorData&>(Buffer::setTimestampDevice(tp));
+}
+SpatialLocationCalculatorData& SpatialLocationCalculatorData::setSequenceNum(int64_t sequenceNum) {
+    return static_cast<SpatialLocationCalculatorData&>(Buffer::setSequenceNum(sequenceNum));
+}
+
 }  // namespace dai

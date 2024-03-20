@@ -10,23 +10,31 @@
 #include <string>
 #include <thread>
 #include <tuple>
+#include <type_traits>
 #include <unordered_map>
 #include <vector>
 
 // project
 #include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/CameraFeatures.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
+#include "depthai/device/Version.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/utility/Pimpl.hpp"
+#include "depthai/utility/ProfilingData.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 #include "depthai/xlink/XLinkStream.hpp"
 
 // shared
 #include "depthai-shared/common/ChipTemperature.hpp"
+#include "depthai-shared/common/ConnectionInterface.hpp"
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
+#include "depthai-shared/common/StereoPair.hpp"
+#include "depthai-shared/datatype/RawIMUData.hpp"
 #include "depthai-shared/device/BoardConfig.hpp"
+#include "depthai-shared/device/CrashDump.hpp"
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
 
@@ -48,6 +56,12 @@ class DeviceBase {
     static constexpr float DEFAULT_SYSTEM_INFORMATION_LOGGING_RATE_HZ{1.0f};
     /// Default UsbSpeed for device connection
     static constexpr UsbSpeed DEFAULT_USB_SPEED{UsbSpeed::SUPER};
+    /// Default Timesync period
+    static constexpr std::chrono::milliseconds DEFAULT_TIMESYNC_PERIOD{5000};
+    /// Default Timesync number of samples per sync
+    static constexpr int DEFAULT_TIMESYNC_NUM_SAMPLES{10};
+    /// Default Timesync packet interval randomness
+    static constexpr bool DEFAULT_TIMESYNC_RANDOM{true};
 
     // Structures
 
@@ -55,8 +69,11 @@ class DeviceBase {
      * Device specific configuration
      */
     struct Config {
-        OpenVINO::Version version;
+        OpenVINO::Version version = OpenVINO::VERSION_UNIVERSAL;
         BoardConfig board;
+        bool nonExclusiveMode = false;
+        tl::optional<LogLevel> outputLogLevel;
+        tl::optional<LogLevel> logLevel;
     };
 
     // static API
@@ -74,8 +91,7 @@ class DeviceBase {
      * @param timeout duration of time to wait for the any device
      * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
-    template <typename Rep, typename Period>
-    static std::tuple<bool, DeviceInfo> getAnyAvailableDevice(std::chrono::duration<Rep, Period> timeout);
+    static std::tuple<bool, DeviceInfo> getAnyAvailableDevice(std::chrono::milliseconds timeout);
 
     /**
      * Gets any available device
@@ -83,6 +99,15 @@ class DeviceBase {
      * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
      */
     static std::tuple<bool, DeviceInfo> getAnyAvailableDevice();
+
+    /**
+     * Waits for any available device with a timeout
+     *
+     * @param timeout duration of time to wait for the any device
+     * @param cb callback function called between pooling intervals
+     * @returns Tuple of bool and DeviceInfo. Bool specifies if device was found. DeviceInfo specifies the found device
+     */
+    static std::tuple<bool, DeviceInfo> getAnyAvailableDevice(std::chrono::milliseconds timeout, std::function<void()> cb);
 
     /**
      * Gets first available device. Device can be either in XLINK_UNBOOTED or XLINK_BOOTLOADER state
@@ -98,10 +123,18 @@ class DeviceBase {
     static std::tuple<bool, DeviceInfo> getDeviceByMxId(std::string mxId);
 
     /**
-     * Returns all connected devices
-     * @returns Vector of connected devices
+     * Returns all available devices
+     * @returns Vector of available devices
      */
     static std::vector<DeviceInfo> getAllAvailableDevices();
+
+    /**
+     * Returns information of all connected devices.
+     * The devices could be both connectable as well as already connected to devices.
+     *
+     * @returns Vector of connected device information
+     */
+    static std::vector<DeviceInfo> getAllConnectedDevices();
 
     /**
      * Gets device firmware binary for a specific OpenVINO version
@@ -109,7 +142,7 @@ class DeviceBase {
      * @param version Version of OpenVINO which firmware will support
      * @returns Firmware binary
      */
-    static std::vector<std::uint8_t> getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version = OpenVINO::DEFAULT_VERSION);
+    static std::vector<std::uint8_t> getEmbeddedDeviceBinary(bool usb2Mode, OpenVINO::Version version = OpenVINO::VERSION_UNIVERSAL);
 
     /**
      * Gets device firmware binary for a specific configuration
@@ -117,6 +150,13 @@ class DeviceBase {
      * @returns Firmware binary
      */
     static std::vector<std::uint8_t> getEmbeddedDeviceBinary(Config config);
+
+    /**
+     * Get current global accumulated profiling data
+     *
+     * @returns ProfilingData from all devices
+     */
+    static ProfilingData getGlobalProfilingData();
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
@@ -129,7 +169,8 @@ class DeviceBase {
      * @param pipeline Pipeline to be executed on the device
      * @param usb2Mode Boot device using USB2 mode firmware
      */
-    DeviceBase(const Pipeline& pipeline, bool usb2Mode);
+    template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
+    DeviceBase(const Pipeline& pipeline, T usb2Mode) : DeviceBase(pipeline, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
@@ -143,14 +184,7 @@ class DeviceBase {
      * @param pipeline Pipeline to be executed on the device
      * @param pathToCmd Path to custom device firmware
      */
-    DeviceBase(const Pipeline& pipeline, const char* pathToCmd);
-
-    /**
-     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * @param pipeline Pipeline to be executed on the device
-     * @param pathToCmd Path to custom device firmware
-     */
-    DeviceBase(const Pipeline& pipeline, const std::string& pathToCmd);
+    DeviceBase(const Pipeline& pipeline, const dai::Path& pathToCmd);
 
     /**
      * Connects to device specified by devInfo.
@@ -165,7 +199,9 @@ class DeviceBase {
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param usb2Mode Boot device using USB2 mode firmware
      */
-    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode);
+    template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
+    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, T usb2Mode)
+        : DeviceBase(pipeline, devInfo, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
 
     /**
      * Connects to device specified by devInfo.
@@ -181,19 +217,11 @@ class DeviceBase {
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param pathToCmd Path to custom device firmware
      */
-    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const char* pathToCmd);
-
-    /**
-     * Connects to device specified by devInfo.
-     * @param pipeline Pipeline to be executed on the device
-     * @param devInfo DeviceInfo which specifies which device to connect to
-     * @param pathToCmd Path to custom device firmware
-     */
-    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const std::string& pathToCmd);
+    DeviceBase(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
 
     /**
      * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * Uses OpenVINO version Pipeline::DEFAULT_OPENVINO_VERSION
+     * Uses OpenVINO version OpenVINO::VERSION_UNIVERSAL
      */
     DeviceBase();
 
@@ -208,12 +236,12 @@ class DeviceBase {
      * @param version OpenVINO version which the device will be booted with
      * @param usb2Mode Boot device using USB2 mode firmware
      */
-    DeviceBase(OpenVINO::Version version, bool usb2Mode);
+    template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
+    DeviceBase(OpenVINO::Version version, T usb2Mode) : DeviceBase(version, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
 
     /**
      * Connects to device specified by devInfo.
      * @param version OpenVINO version which the device will be booted with
-     * @param devInfo DeviceInfo which specifies which device to connect to
      * @param maxUsbSpeed Maximum allowed USB speed
      */
     DeviceBase(OpenVINO::Version version, UsbSpeed maxUsbSpeed);
@@ -223,14 +251,7 @@ class DeviceBase {
      * @param version OpenVINO version which the device will be booted with
      * @param pathToCmd Path to custom device firmware
      */
-    DeviceBase(OpenVINO::Version version, const char* pathToCmd);
-
-    /**
-     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
-     * @param version OpenVINO version which the device will be booted with
-     * @param pathToCmd Path to custom device firmware
-     */
-    DeviceBase(OpenVINO::Version version, const std::string& pathToCmd);
+    DeviceBase(OpenVINO::Version version, const dai::Path& pathToCmd);
 
     /**
      * Connects to device specified by devInfo.
@@ -245,7 +266,9 @@ class DeviceBase {
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param usb2Mode Boot device using USB2 mode firmware
      */
-    DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, bool usb2Mode);
+    template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
+    DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, T usb2Mode)
+        : DeviceBase(version, devInfo, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
 
     /**
      * Connects to device specified by devInfo.
@@ -261,15 +284,7 @@ class DeviceBase {
      * @param devInfo DeviceInfo which specifies which device to connect to
      * @param pathToCmd Path to custom device firmware
      */
-    DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, const char* pathToCmd);
-
-    /**
-     * Connects to device specified by devInfo.
-     * @param version OpenVINO version which the device will be booted with
-     * @param devInfo DeviceInfo which specifies which device to connect to
-     * @param usb2Mode Path to custom device firmware
-     */
-    DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, const std::string& pathToCmd);
+    DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
 
     /**
      * Connects to any available device with custom config.
@@ -279,16 +294,105 @@ class DeviceBase {
 
     /**
      * Connects to device 'devInfo' with custom config.
-     * @param devInfo DeviceInfo which specifies which device to connect to
      * @param config Device custom configuration to boot with
+     * @param devInfo DeviceInfo which specifies which device to connect to
      */
     DeviceBase(Config config, const DeviceInfo& devInfo);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * Uses OpenVINO version OpenVINO::VERSION_UNIVERSAL
+     *
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     */
+    explicit DeviceBase(const DeviceInfo& devInfo);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * Uses OpenVINO version OpenVINO::VERSION_UNIVERSAL
+     *
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param maxUsbSpeed Maximum allowed USB speed
+     */
+    DeviceBase(const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * Uses OpenVINO version OpenVINO::VERSION_UNIVERSAL
+     *
+     * @param nameOrDeviceId Creates DeviceInfo with nameOrDeviceId to connect to
+     */
+    DeviceBase(std::string nameOrDeviceId);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * Uses OpenVINO version OpenVINO::VERSION_UNIVERSAL
+     *
+     * @param nameOrDeviceId Creates DeviceInfo with nameOrDeviceId to connect to
+     * @param maxUsbSpeed Maximum allowed USB speed
+     */
+    DeviceBase(std::string nameOrDeviceId, UsbSpeed maxUsbSpeed);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param config Config with which the device will be booted with
+     * @param usb2Mode Boot device using USB2 mode firmware
+     */
+    template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
+    DeviceBase(Config config, T usb2Mode) : DeviceBase(config, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param config Config with which the device will be booted with
+     * @param maxUsbSpeed Maximum allowed USB speed
+     */
+    DeviceBase(Config config, UsbSpeed maxUsbSpeed);
+
+    /**
+     * Connects to any available device with a DEFAULT_SEARCH_TIME timeout.
+     * @param config Config with which the device will be booted with
+     * @param pathToCmd Path to custom device firmware
+     */
+    DeviceBase(Config config, const dai::Path& pathToCmd);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param config Config with which the device will be booted with
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param usb2Mode Boot device using USB2 mode firmware
+     */
+    template <typename T, std::enable_if_t<std::is_same<T, bool>::value, bool> = true>
+    DeviceBase(Config config, const DeviceInfo& devInfo, T usb2Mode) : DeviceBase(config, devInfo, usb2Mode ? UsbSpeed::HIGH : DeviceBase::DEFAULT_USB_SPEED) {}
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param config Config with which the device will be booted with
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param maxUsbSpeed Maximum allowed USB speed
+     */
+    DeviceBase(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
+
+    /**
+     * Connects to device specified by devInfo.
+     * @param config Config with which the device will be booted with
+     * @param devInfo DeviceInfo which specifies which device to connect to
+     * @param pathToCmd Path to custom device firmware
+     * @param dumpOnly If true only the minimal connection is established to retrieve the crash dump
+     */
+    DeviceBase(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd, bool dumpOnly = false);
 
     /**
      * Device destructor
      * @note In the destructor of the derived class, remember to call close()
      */
     virtual ~DeviceBase();
+
+    /**
+     * Gets Bootloader version if it was booted through Bootloader
+     *
+     * @returns DeviceBootloader::Version if booted through Bootloader or none otherwise
+     */
+    tl::optional<Version> getBootloaderVersion();
 
     /**
      * Checks if devices pipeline is already running
@@ -350,6 +454,18 @@ class DeviceBase {
     DeviceInfo getDeviceInfo() const;
 
     /**
+     * Get device name if available
+     * @returns device name or empty string if not available
+     */
+    std::string getDeviceName();
+
+    /**
+     * Get product name if available
+     * @returns product name or empty string if not available
+     */
+    std::string getProductName();
+
+    /**
      * Get MxId of device
      *
      * @returns MxId of connected device
@@ -380,7 +496,7 @@ class DeviceBase {
      * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W-DEV
      * @returns True on success, false if not found or other failure
      */
-    bool setIrLaserDotProjectorBrightness(float mA, int mask = -1);
+    [[deprecated("Use setIrLaserDotProjectorIntensity(float intensity) instead.")]] bool setIrLaserDotProjectorBrightness(float mA, int mask = -1);
 
     /**
      * Sets the brightness of the IR Flood Light. Limits: up to 1500mA at 30% duty cycle.
@@ -392,7 +508,31 @@ class DeviceBase {
      * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W-DEV
      * @returns True on success, false if not found or other failure
      */
-    bool setIrFloodLightBrightness(float mA, int mask = -1);
+    [[deprecated("Use setIrFloodLightIntensity(float intensity) instead.")]] bool setIrFloodLightBrightness(float mA, int mask = -1);
+
+    /**
+     * Sets the intensity of the IR Laser Dot Projector. Limits: up to 765mA at 30% frame time duty cycle when exposure time is longer than 30% frame time.
+     * Otherwise, duty cycle is 100% of exposure time, with current increased up to max 1200mA to make up for shorter duty cycle.
+     * The duty cycle is controlled by `left` camera STROBE, aligned to start of exposure.
+     * The emitter is turned off by default
+     *
+     * @param intensity Intensity on range 0 to 1, that will determine brightness. 0 or negative to turn off
+     * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W-DEV
+     * @returns True on success, false if not found or other failure
+     */
+    bool setIrLaserDotProjectorIntensity(float intensity, int mask = -1);
+
+    /**
+     * Sets the intensity of the IR Flood Light. Limits: Intensity is directly normalized to 0 - 1500mA current.
+     * The duty cycle is 30% when exposure time is longer than 30% frame time. Otherwise, duty cycle is 100% of exposure time.
+     * The duty cycle is controlled by the `left` camera STROBE, aligned to start of exposure.
+     * The emitter is turned off by default
+     *
+     * @param intensity Intensity on range 0 to 1, that will determine brightness, 0 or negative to turn off
+     * @param mask Optional mask to modify only Left (0x1) or Right (0x2) sides on OAK-D-Pro-W-DEV
+     * @returns True on success, false if not found or other failure
+     */
+    bool setIrFloodLightIntensity(float intensity, int mask = -1);
 
     /**
      * Retrieves detected IR laser/LED drivers.
@@ -401,6 +541,23 @@ class DeviceBase {
      * For OAK-D-Pro it should be `[{"LM3644", 2, 0x63}]`
      */
     std::vector<std::tuple<std::string, int, int>> getIrDrivers();
+
+    /**
+     * Retrieves crash dump for debugging.
+     */
+    dai::CrashDump getCrashDump(bool clearCrashDump = true);
+
+    /**
+     * Retrieves whether the is crash dump stored on device or not.
+     */
+    bool hasCrashDump();
+
+    /**
+     * Get current accumulated profiling data
+     *
+     * @returns ProfilingData from the specific device
+     */
+    ProfilingData getProfilingData();
 
     /**
      * Add a callback for device logging. The callback will be called from a separate thread with the LogMessage being passed.
@@ -441,11 +598,82 @@ class DeviceBase {
     std::vector<CameraBoardSocket> getConnectedCameras();
 
     /**
+     * Get connection interfaces for device
+     *
+     * @returns Vector of connection type
+     */
+    std::vector<ConnectionInterface> getConnectionInterfaces();
+
+    /**
+     * Get cameras that are connected to the device with their features/properties
+     *
+     * @returns Vector of connected camera features
+     */
+    std::vector<CameraFeatures> getConnectedCameraFeatures();
+
+    /**
+     * Get stereo pairs based on the device type.
+     *
+     * @returns Vector of stereo pairs
+     */
+    std::vector<StereoPair> getStereoPairs();
+
+    /**
+     * Get stereo pairs taking into account the calibration and connected cameras.
+     *
+     * @note This method will always return a subset of `getStereoPairs`.
+     *
+     * @returns Vector of stereo pairs
+     */
+    std::vector<StereoPair> getAvailableStereoPairs();
+
+    /**
      * Get sensor names for cameras that are connected to the device
      *
      * @returns Map/dictionary with camera sensor names, indexed by socket
      */
     std::unordered_map<CameraBoardSocket, std::string> getCameraSensorNames();
+
+    /**
+     * Get connected IMU type
+     *
+     * @returns IMU type
+     */
+    std::string getConnectedIMU();
+
+    /**
+     * Get connected IMU firmware version
+     *
+     * @returns IMU firmware version
+     */
+    dai::Version getIMUFirmwareVersion();
+
+    /**
+     * Get embedded IMU firmware version to which IMU can be upgraded
+     *
+     * @returns Get embedded IMU firmware version to which IMU can be upgraded.
+     */
+    dai::Version getEmbeddedIMUFirmwareVersion();
+
+    /**
+     * Starts IMU firmware update asynchronously only if IMU node is not running.
+     * If current firmware version is the same as embedded firmware version then it's no-op. Can be overridden by forceUpdate parameter.
+     * State of firmware update can be monitored using getIMUFirmwareUpdateStatus API.
+     *
+     * @param forceUpdate Force firmware update or not. Will perform FW update regardless of current version and embedded firmware version.
+     *
+     * @returns Returns whether firmware update can be started. Returns false if IMU node is started.
+     */
+    bool startIMUFirmwareUpdate(bool forceUpdate = false);
+
+    /**
+     * Get IMU firmware update status
+     *
+     * @returns Whether IMU firmware update is done and last firmware update progress as percentage.
+     * return value true and 100 means that the update was successful
+     * return value true and other than 100 means that the update failed
+     */
+    std::tuple<bool, float> getIMUFirmwareUpdateStatus();
 
     /**
      * Retrieves current DDR memory information from device
@@ -497,6 +725,12 @@ class DeviceBase {
     CpuUsage getLeonMssCpuUsage();
 
     /**
+     * Check if EEPROM is available
+     * @returns True if EEPROM is present on board, false otherwise
+     */
+    bool isEepromAvailable();
+
+    /**
      * Stores the Calibration and Device information to the Device EEPROM
      *
      * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
@@ -506,11 +740,102 @@ class DeviceBase {
     bool flashCalibration(CalibrationHandler calibrationDataHandler);
 
     /**
+     * Stores the Calibration and Device information to the Device EEPROM
+     *
+     * @throws std::runtime_exception if failed to flash the calibration
+     * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
+     */
+    void flashCalibration2(CalibrationHandler calibrationDataHandler);
+
+    /**
      * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
+     * If no calibration is flashed, it returns default
      *
      * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
      */
     CalibrationHandler readCalibration();
+
+    /**
+     * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
+     *
+     * @throws std::runtime_exception if no calibration is flashed
+     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
+     */
+    CalibrationHandler readCalibration2();
+
+    /**
+     * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
+     * If no calibration is flashed, it returns default
+     *
+     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM
+     */
+    CalibrationHandler readCalibrationOrDefault();
+
+    /**
+     * Factory reset EEPROM data if factory backup is available.
+     *
+     * @throws std::runtime_exception If factory reset was unsuccessful
+     */
+    void factoryResetCalibration();
+
+    /**
+     * Stores the Calibration and Device information to the Device EEPROM in Factory area
+     * To perform this action, correct env variable must be set
+     *
+     * @throws std::runtime_exception if failed to flash the calibration
+     * @return True on successful flash, false on failure
+     */
+    void flashFactoryCalibration(CalibrationHandler calibrationHandler);
+
+    /**
+     * Destructive action, deletes User area EEPROM contents
+     * Requires PROTECTED permissions
+     *
+     * @throws std::runtime_exception if failed to flash the calibration
+     * @return True on successful flash, false on failure
+     */
+    void flashEepromClear();
+
+    /**
+     * Destructive action, deletes Factory area EEPROM contents
+     * Requires FACTORY PROTECTED permissions
+     *
+     * @throws std::runtime_exception if failed to flash the calibration
+     * @return True on successful flash, false on failure
+     */
+    void flashFactoryEepromClear();
+
+    /**
+     * Fetches the EEPROM data from Factory area and loads it into CalibrationHandler object
+     *
+     * @throws std::runtime_exception if no calibration is flashed
+     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM in Factory Area
+     */
+    CalibrationHandler readFactoryCalibration();
+
+    /**
+     * Fetches the EEPROM data from Factory area and loads it into CalibrationHandler object
+     * If no calibration is flashed, it returns default
+     *
+     * @return The CalibrationHandler object containing the calibration currently flashed on device EEPROM in Factory Area
+     */
+    CalibrationHandler readFactoryCalibrationOrDefault();
+
+    /**
+     * Fetches the raw EEPROM data from User area
+     *
+     * @throws std::runtime_exception if any error occurred
+     * @returns Binary dump of User area EEPROM data
+     */
+    std::vector<std::uint8_t> readCalibrationRaw();
+
+    /**
+     * Fetches the raw EEPROM data from Factory area
+     *
+     * @throws std::runtime_exception if any error occurred
+     * @returns Binary dump of Factory area EEPROM data
+     */
+    std::vector<std::uint8_t> readFactoryCalibrationRaw();
 
     /**
      * Retrieves USB connection speed
@@ -518,6 +843,24 @@ class DeviceBase {
      * @returns USB connection speed of connected device if applicable. Unknown otherwise.
      */
     UsbSpeed getUsbSpeed();
+
+    /**
+     * Configures Timesync service on device. It keeps host and device clocks in sync
+     * First time timesync is started it waits until the initial sync is completed
+     * Afterwards the function changes the following parameters
+     *
+     * @param period Interval between timesync runs
+     * @param numSamples Number of timesync samples per run which are used to compute a better value. Set to zero to disable timesync
+     * @param random If true partial timesync requests will be performed at random intervals, otherwise at fixed intervals
+     */
+    void setTimesync(std::chrono::milliseconds period, int numSamples, bool random);
+
+    /**
+     * Enables or disables Timesync service on device. It keeps host and device clocks in sync.
+     *
+     * @param enable Enables or disables consistent timesyncing
+     */
+    void setTimesync(bool enable);
 
     /**
      * Explicitly closes connection to device.
@@ -528,6 +871,10 @@ class DeviceBase {
 
     /**
      * Is the device already closed (or disconnected)
+     *
+     * @warning This function is thread-unsafe and may return outdated incorrect values. It is
+     * only meant for use in simple single-threaded code. Well written code should handle
+     * exceptions when calling any DepthAI apis to handle hardware events and multithreaded use.
      */
     bool isClosed() const;
 
@@ -554,11 +901,6 @@ class DeviceBase {
     void tryStartPipeline(const Pipeline& pipeline);
 
     /**
-     * throws an error if the device has been closed or the watchdog has died
-     */
-    void checkClosed() const;
-
-    /**
      * Allows the derived classes to handle custom setup for starting the pipeline
      *
      * @param pipeline OpenVINO version of the pipeline must match the one which the device was booted with
@@ -576,15 +918,33 @@ class DeviceBase {
      */
     virtual void closeImpl();
 
+   protected:
+    // protected functions
+    void init(OpenVINO::Version version);
+    void init(OpenVINO::Version version, const dai::Path& pathToCmd);
+    void init(OpenVINO::Version version, UsbSpeed maxUsbSpeed);
+    void init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
+    void init(const Pipeline& pipeline);
+    void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed);
+    void init(const Pipeline& pipeline, const dai::Path& pathToCmd);
+    void init(const Pipeline& pipeline, const DeviceInfo& devInfo);
+    void init(const Pipeline& pipeline, const DeviceInfo& devInfo, bool usb2Mode);
+    void init(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
+    void init(const Pipeline& pipeline, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
+    void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
+    void init(Config config, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd);
+    void init(Config config, UsbSpeed maxUsbSpeed);
+    void init(Config config, const dai::Path& pathToCmd);
+    void init(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed);
+    void init(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd);
+
    private:
     // private functions
-    void init(OpenVINO::Version version, bool usb2Mode, const std::string& pathToMvcmd);
-    void init(const Pipeline& pipeline, bool usb2Mode, const std::string& pathToMvcmd);
-    void init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd);
-    void init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const std::string& pathToMvcmd);
-    void init2(Config cfg, const std::string& pathToMvcmd, tl::optional<const Pipeline&> pipeline);
+    void init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<const Pipeline&> pipeline);
+    void tryGetDevice();
 
     DeviceInfo deviceInfo = {};
+    tl::optional<Version> bootloaderVersion;
 
     // Log callback
     int uniqueCallbackId = 0;
@@ -603,11 +963,18 @@ class DeviceBase {
     std::thread loggingThread;
     std::atomic<bool> loggingRunning{true};
 
-    // RPC stream
-    std::unique_ptr<XLinkStream> rpcStream;
+    // Profiling thread
+    std::thread profilingThread;
+    std::atomic<bool> profilingRunning{true};
+
+    // Monitor thread
+    std::thread monitorThread;
+    std::mutex lastWatchdogPingTimeMtx;
+    std::chrono::steady_clock::time_point lastWatchdogPingTime;
 
     // closed
-    std::atomic<bool> closed{false};
+    mutable std::mutex closedMtx;
+    bool closed{false};
 
     // pimpl
     class Impl;
@@ -615,5 +982,8 @@ class DeviceBase {
 
     // Device config
     Config config;
+
+    dai::Path firmwarePath;
+    bool dumpOnly = false;
 };
 }  // namespace dai

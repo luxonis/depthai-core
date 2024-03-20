@@ -1,5 +1,4 @@
-#define CATCH_CONFIG_MAIN
-#include <catch2/catch.hpp>
+#include <catch2/catch_all.hpp>
 
 // Include depthai library
 #include <depthai/depthai.hpp>
@@ -57,4 +56,28 @@ TEST_CASE("Cross pipeline link with Input and Output") {
     REQUIRE_FALSE(xin->out.canConnect(xout->input));
     // Then check that actually linking throws
     REQUIRE_THROWS(xin->out.link(xout->input));
+}
+
+TEST_CASE("Duplicate xlink stream names") {
+    dai::Pipeline p;
+    auto sysInfo1 = p.create<dai::node::SystemLogger>();
+    auto sysInfo2 = p.create<dai::node::SystemLogger>();
+    auto xout1 = p.create<dai::node::XLinkOut>();
+    auto xout2 = p.create<dai::node::XLinkOut>();
+    sysInfo1->out.link(xout1->input);
+    sysInfo2->out.link(xout2->input);
+    xout1->setStreamName("test1");
+    xout2->setStreamName("test1");
+    REQUIRE_THROWS_AS(dai::Device{p}, std::invalid_argument);
+
+    p = {};
+    auto script1 = p.create<dai::node::Script>();
+    auto script2 = p.create<dai::node::Script>();
+    auto xin1 = p.create<dai::node::XLinkIn>();
+    auto xin2 = p.create<dai::node::XLinkIn>();
+    xin1->out.link(script1->inputs["in"]);
+    xin2->out.link(script2->inputs["in"]);
+    xin1->setStreamName("test2");
+    xin1->setStreamName("test2");
+    REQUIRE_THROWS_AS(dai::Device{p}, std::invalid_argument);
 }

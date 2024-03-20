@@ -30,6 +30,21 @@ class SpatialLocationCalculatorData : public Buffer {
     std::vector<SpatialLocations>& getSpatialLocations() const;
 
     std::vector<SpatialLocations>& spatialLocations;
+
+    /**
+     * Sets image timestamp related to dai::Clock::now()
+     */
+    SpatialLocationCalculatorData& setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+
+    /**
+     * Sets image timestamp related to dai::Clock::now()
+     */
+    SpatialLocationCalculatorData& setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+
+    /**
+     * Retrieves image sequence number
+     */
+    SpatialLocationCalculatorData& setSequenceNum(int64_t sequenceNum);
 };
 
 }  // namespace dai

@@ -24,6 +24,21 @@ class TrackedFeatures : public Buffer {
     virtual ~TrackedFeatures() = default;
 
     std::vector<TrackedFeature>& trackedFeatures;
+
+    /**
+     * Sets image timestamp related to dai::Clock::now()
+     */
+    TrackedFeatures& setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+
+    /**
+     * Sets image timestamp related to dai::Clock::now()
+     */
+    TrackedFeatures& setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+
+    /**
+     * Retrieves image sequence number
+     */
+    TrackedFeatures& setSequenceNum(int64_t sequenceNum);
 };
 
 }  // namespace dai

@@ -6,6 +6,7 @@
 
 // project
 #include "depthai/build/config.hpp"
+#include "depthai/common/CameraExposureOffset.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 // shared
@@ -29,6 +30,9 @@ class ImgFrame : public Buffer {
     // Raw* mirror
     using Type = RawImgFrame::Type;
     using Specs = RawImgFrame::Specs;
+    using CameraSettings = RawImgFrame::CameraSettings;
+    using Buffer::getTimestamp;
+    using Buffer::getTimestampDevice;
 
     /**
      * Construct ImgFrame message.
@@ -40,15 +44,15 @@ class ImgFrame : public Buffer {
 
     // getters
     /**
-     * Retrieves image timestamp related to dai::Clock::now()
+     * Retrieves image timestamp (at the specified offset of exposure) related to dai::Clock::now()
      */
-    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp() const;
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestamp(CameraExposureOffset offset) const;
 
     /**
-     * Retrieves image timestamp directly captured from device's monotonic clock,
-     * not synchronized to host time. Used mostly for debugging
+     * Retrieves image timestamp (at the specified offset of exposure) directly captured from device's monotonic clock,
+     * not synchronized to host time. Used when monotonicity is required.
      */
-    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
+    std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice(CameraExposureOffset offset) const;
 
     /**
      * Retrieves instance number
@@ -59,11 +63,6 @@ class ImgFrame : public Buffer {
      * Retrieves image category
      */
     unsigned int getCategory() const;
-
-    /**
-     * Retrieves image sequence number
-     */
-    int64_t getSequenceNum() const;
 
     /**
      * Retrieves image width in pixels
@@ -79,6 +78,31 @@ class ImgFrame : public Buffer {
      * Retrieves image type
      */
     Type getType() const;
+
+    /**
+     * Retrieves exposure time
+     */
+    std::chrono::microseconds getExposureTime() const;
+
+    /**
+     * Retrieves sensitivity, as an ISO value
+     */
+    int getSensitivity() const;
+
+    /**
+     * Retrieves white-balance color temperature of the light source, in kelvins
+     */
+    int getColorTemperature() const;
+
+    /**
+     * Retrieves lens position, range 0..255. Returns -1 if not available
+     */
+    int getLensPosition() const;
+
+    /**
+     * Retrieves lens position, range 0.0f..1.0f. Returns -1 if not available
+     */
+    float getLensPositionRaw() const;
 
     // setters
     /**

@@ -23,8 +23,12 @@ tl::optional<OpenVINO::Version> NeuralNetwork::getRequiredOpenVINOVersion() {
 }
 
 // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
-void NeuralNetwork::setBlobPath(const std::string& path) {
+void NeuralNetwork::setBlobPath(const dai::Path& path) {
     setBlob(OpenVINO::Blob(path));
+}
+
+void NeuralNetwork::setBlob(const dai::Path& path) {
+    setBlobPath(path);
 }
 
 void NeuralNetwork::setBlob(OpenVINO::Blob blob) {
