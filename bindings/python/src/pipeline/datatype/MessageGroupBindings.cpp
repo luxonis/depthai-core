@@ -56,9 +56,9 @@ void bind_message_group(pybind11::module& m, void* pCallstack){
         .def("getTimestamp", &MessageGroup::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &MessageGroup::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getSequenceNum", &MessageGroup::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
-        .def("setTimestamp", &MessageGroup::setTimestamp, DOC(dai, MessageGroup, setTimestamp))
-        .def("setTimestampDevice", &MessageGroup::setTimestampDevice, DOC(dai, MessageGroup, setTimestampDevice))
-        .def("setSequenceNum", &MessageGroup::setSequenceNum, DOC(dai, MessageGroup, setSequenceNum))
+        // .def("setTimestamp", &MessageGroup::setTimestamp, DOC(dai, MessageGroup, setTimestamp))
+        // .def("setTimestampDevice", &MessageGroup::setTimestampDevice, DOC(dai, MessageGroup, setTimestampDevice))
+        // .def("setSequenceNum", &MessageGroup::setSequenceNum, DOC(dai, MessageGroup, setSequenceNum))
         ;
 
 }

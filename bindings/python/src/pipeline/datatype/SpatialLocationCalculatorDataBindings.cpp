@@ -53,9 +53,9 @@ void bind_spatiallocationcalculatordata(pybind11::module& m, void* pCallstack){
         .def("getTimestamp", &SpatialLocationCalculatorData::Buffer::getTimestamp, DOC(dai, Buffer, getTimestamp))
         .def("getTimestampDevice", &SpatialLocationCalculatorData::Buffer::getTimestampDevice, DOC(dai, Buffer, getTimestampDevice))
         .def("getSequenceNum", &SpatialLocationCalculatorData::Buffer::getSequenceNum, DOC(dai, Buffer, getSequenceNum))
-        .def("setTimestamp", &SpatialLocationCalculatorData::setTimestamp, DOC(dai, SpatialLocationCalculatorData, setTimestamp))
-        .def("setTimestampDevice", &SpatialLocationCalculatorData::setTimestampDevice, DOC(dai, SpatialLocationCalculatorData, setTimestampDevice))
-        .def("setSequenceNum", &SpatialLocationCalculatorData::setSequenceNum, DOC(dai, SpatialLocationCalculatorData, setSequenceNum))
+        // .def("setTimestamp", &SpatialLocationCalculatorData::setTimestamp, DOC(dai, SpatialLocationCalculatorData, setTimestamp))
+        // .def("setTimestampDevice", &SpatialLocationCalculatorData::setTimestampDevice, DOC(dai, SpatialLocationCalculatorData, setTimestampDevice))
+        // .def("setSequenceNum", &SpatialLocationCalculatorData::setSequenceNum, DOC(dai, SpatialLocationCalculatorData, setSequenceNum))
         ;
 
 
