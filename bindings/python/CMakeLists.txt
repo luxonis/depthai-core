@@ -1,14 +1,5 @@
 cmake_minimum_required(VERSION 3.4) # For Hunter
 
-# Set defaults
-# PIC toolchain as we are building a shared library
-set(CMAKE_TOOLCHAIN_FILE "${CMAKE_CURRENT_LIST_DIR}/cmake/toolchain/pic.cmake" CACHE STRING "")
-
-# Build dependencies as 'Release' only by default (if not MSVC, as it requires same debug level for libraries to be linked against)
-if(NOT WIN32)
-    set(HUNTER_CONFIGURATION_TYPES "Release" CACHE STRING "Hunter dependencies list of build configurations")
-endif()
-
 # Specify path separator
 set(SYS_PATH_SEPARATOR ";")
 if(UNIX)
@@ -39,14 +30,6 @@ option(DEPTHAI_PYTHON_ENABLE_EXAMPLES "Enable examples" OFF)
 option(DEPTHAI_PYTHON_BUILD_DOCS "Build documentation - see docs/requirements.txt for needed dependencies" OFF)
 option(DEPTHAI_PYTHON_BUILD_DOCSTRINGS "Generate docstrings from header files if module 'pybind11_mkdoc' available" ON)
 option(DEPTHAI_PYTHON_EMBEDDED_MODULE "Create an embeddable module" OFF)
-
-
-# Add depthai-core dependency
-# if(DEPTHAI_PYTHON_USE_FIND_PACKAGE)
-#    find_package(depthai CONFIG REQUIRED)
-#else()
-#    add_subdirectory(depthai-core)
-#endif()
 
 # Add pybind11 dependency
 #add_subdirectory(pybind11-2.5.0)
