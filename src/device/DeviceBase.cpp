@@ -1158,8 +1158,8 @@ bool DeviceBase::startIMUFirmwareUpdate(bool forceUpdate) {
     return pimpl->rpcClient->call("startIMUFirmwareUpdate", forceUpdate).as<bool>();
 }
 
-std::tuple<bool, float> DeviceBase::getIMUFirmwareUpdateStatus() {
-    return pimpl->rpcClient->call("getIMUFirmwareUpdateStatus").as<std::tuple<bool, float>>();
+std::tuple<bool, unsigned int> DeviceBase::getIMUFirmwareUpdateStatus() {
+    return pimpl->rpcClient->call("getIMUFirmwareUpdateStatus").as<std::tuple<bool, unsigned int>>();
 }
 
 // Convenience functions for querying current system information

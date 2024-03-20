@@ -36,7 +36,7 @@ int main() {
 
     while(true) {
         bool fwUpdateFinished;
-        float percentage;
+        unsigned int percentage;
         std::tie(fwUpdateFinished, percentage) = device.getIMUFirmwareUpdateStatus();
         std::cout << "IMU FW update status: " << std::setprecision(1) << percentage << std::endl;
         if(fwUpdateFinished) {

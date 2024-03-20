@@ -673,7 +673,7 @@ class DeviceBase {
      * return value true and 100 means that the update was successful
      * return value true and other than 100 means that the update failed
      */
-    std::tuple<bool, float> getIMUFirmwareUpdateStatus();
+    std::tuple<bool, unsigned int> getIMUFirmwareUpdateStatus();
 
     /**
      * Retrieves current DDR memory information from device
