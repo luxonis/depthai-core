@@ -1,11 +1,13 @@
 #include "NodeBindings.hpp"
-#include "Common.hpp"
 
-#include "depthai/pipeline/Pipeline.hpp"
-#include "depthai/pipeline/Node.hpp"
-#include "depthai/pipeline/ThreadedNode.hpp"
+#include <pybind11/smart_holder.h>
+
+#include "Common.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
+#include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/NodeGroup.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/pipeline/ThreadedNode.hpp"
 
 // Libraries
 #include "hedley/hedley.h"
@@ -195,7 +197,8 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack){
     daiNodeModule = m.def_submodule("node");
 
     // Properties
-    py::class_<Node, std::shared_ptr<Node>> pyNode(m, "Node", DOC(dai, Node));
+    py::class_<Node, PYBIND11_SH_AVL(Node)> pyNode(m, "Node", DOC(dai, Node));
+
     py::class_<Node::Input> pyInput(pyNode, "Input", DOC(dai, Node, Input));
     py::enum_<Node::Input::Type> nodeInputType(pyInput, "Type");
     py::class_<Node::Output> pyOutput(pyNode, "Output", DOC(dai, Node, Output));
@@ -212,12 +215,12 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack){
     // Node::OutputMap bindings
     bindNodeMap<Node::OutputMap>(pyNode, "OutputMap");
 
-    // NodeGroup
-    py::class_<NodeGroup, Node, std::shared_ptr<NodeGroup>> pyNodeGroup(m, "NodeGroup", DOC(dai, NodeGroup));
+    //     // NodeGroup
+    py::class_<NodeGroup, Node, PYBIND11_SH_AVL(NodeGroup)> pyNodeGroup(m, "NodeGroup", DOC(dai, NodeGroup));
 
-    // Threaded & Device nodes
-    py::class_<ThreadedNode, Node, std::shared_ptr<ThreadedNode>> pyThreadedNode(m, "ThreadedNode", DOC(dai, ThreadedNode));
-    py::class_<DeviceNode, ThreadedNode, std::shared_ptr<DeviceNode>> pyDeviceNode(m, "DeviceNode", DOC(dai, DeviceNode));
+    // // Threaded & Device nodes
+    py::class_<ThreadedNode, Node, PYBIND11_SH_AVL(ThreadedNode)> pyThreadedNode(m, "ThreadedNode", DOC(dai, ThreadedNode));
+    py::class_<DeviceNode, ThreadedNode, PYBIND11_SH_AVL(DeviceNode)> pyDeviceNode(m, "DeviceNode", DOC(dai, DeviceNode));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
