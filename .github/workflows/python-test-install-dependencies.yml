@@ -1,15 +1,15 @@
- name: OS Support
+ name: python bindings OS Support
 
  on:
   workflow_dispatch:
   push:
     paths:
-      - 'docs/source/_static/install_dependencies.sh'
-      - 'examples/install_requirements.py'
+      - 'bindings/python/docs/source/_static/install_dependencies.sh'
+      - 'bindings/python/examples/install_requirements.py'
   pull_request:
       paths:
-      - 'docs/source/_static/install_dependencies.sh'
-      - 'examples/install_requirements.py'
+      - 'bindings/python/docs/source/_static/install_dependencies.sh'
+      - 'bindings/python/examples/install_requirements.py'
 
  jobs:
    test_linux:
@@ -30,11 +30,11 @@
        - name: Install dependencies
          run: |
            ln -snf /usr/share/zoneinfo/UTC /etc/localtime && echo UTC > /etc/timezone # Otherwise tzdata installer prompts for user input
-           sed '/udevadm control --reload-rules && sudo udevadm trigger/d' docs/source/_static/install_dependencies.sh > tmp_script.sh # Doesn't work on docker
+           sed '/udevadm control --reload-rules && sudo udevadm trigger/d' bindings/python/docs/source/_static/install_dependencies.sh > tmp_script.sh # Doesn't work on docker
            bash tmp_script.sh
        - name: Install example requirements
          run: |
-           python3 examples/install_requirements.py
+           python3 bindings/python/examples/install_requirements.py
    test_macos:
       strategy:
         matrix:
@@ -44,11 +44,11 @@
        - uses: actions/checkout@v3
        - name: Install dependencies
          run: |
-           sed '/udevadm control --reload-rules && sudo udevadm trigger/d' docs/source/_static/install_dependencies.sh > tmp_script.sh
+           sed '/udevadm control --reload-rules && sudo udevadm trigger/d' bindings/python/docs/source/_static/install_dependencies.sh > tmp_script.sh
            bash tmp_script.sh
        - name: Install example requirements
          run: |
-           python3 examples/install_requirements.py
+           python3 bindings/python/examples/install_requirements.py
    test_windows:
       runs-on: windows-latest
       steps:
@@ -61,4 +61,4 @@
         run: choco install cmake git python --version 3.10 -y
       - name: Install example requrirements
         run: |
-          python examples/install_requirements.py
+          python bindings/python/examples/install_requirements.py

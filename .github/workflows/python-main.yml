@@ -11,10 +11,8 @@ on:
   workflow_dispatch:
   push:
     branches:
-    - main
-    - develop
-    - rvc3_support
-    - rvc3_develop
+    - v3_develop
+    - v3_develop_python_ci
     tags:
     - 'v*'
 
@@ -35,7 +33,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.hunter
-          key: hunter-ubuntu-latest
+          key: hunter-ubuntu-latest-v3-develop
       - name: List .hunter cache directory
         run: ls -a -l ~/.hunter/_Base/ || true
       - uses: actions/checkout@v3
@@ -51,14 +49,14 @@ jobs:
           sudo apt install libusb-1.0-0-dev
           python -m pip install -r docs/requirements_mkdoc.txt
       - name: Configure project
-        run: cmake -S . -B build -DDEPTHAI_PYTHON_FORCE_DOCSTRINGS=ON -DDEPTHAI_PYTHON_DOCSTRINGS_OUTPUT="$PWD/docstrings/depthai_python_docstring.hpp"
+        run: cmake -S . -B build -DDEPTHAI_BUILD_PYTHON=ON -DDEPTHAI_PYTHON_FORCE_DOCSTRINGS=ON -DDEPTHAI_PYTHON_DOCSTRINGS_OUTPUT="$PWD/bindings/python/docstrings/depthai_python_docstring.hpp"
       - name: Build target 'pybind11_mkdoc'
         run: cmake --build build --target pybind11_mkdoc --parallel 4
       - name: Upload docstring artifacts
         uses: actions/upload-artifact@v3
         with:
           name: docstrings
-          path: docstrings/
+          path: bindings/python/docstrings/
           retention-days: 1
 
 
@@ -78,13 +76,13 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.hunter/
-          key: hunter-pytest-${{ matrix.os }}
+          key: hunter-pytest-${{ matrix.os }}-v3-develop
       - name: Cache .hunter folder
         if: matrix.os == 'windows-latest'
         uses: actions/cache@v3
         with:
           path: C:/.hunter/
-          key: hunter-pytest-${{ matrix.os }}
+          key: hunter-pytest-${{ matrix.os }}-v3-develop
 
       - uses: actions/checkout@v3
         with:
@@ -93,9 +91,9 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: 'docstrings'
-          path: docstrings
+          path: bindings/python/docstrings
       - name: Specify docstring to use while building the wheel
-        run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
+        run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -120,7 +118,7 @@ jobs:
 
       - name: Compile
         run: |
-          cmake -S . -B build -D CMAKE_BUILD_TYPE=Release -D DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/docstrings/depthai_python_docstring.hpp -D DEPTHAI_PYTHON_ENABLE_TESTS=ON
+          cmake -S . -B build -DDEPTHAI_BUILD_PYTHON=ON -D CMAKE_BUILD_TYPE=Release -D DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp -D DEPTHAI_PYTHON_ENABLE_TESTS=ON
           cmake --build build --parallel 4
       - name: Test
         run: |
@@ -144,9 +142,9 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: 'docstrings'
-          path: docstrings
+          path: bindings/python/docstrings
       - name: Specify docstring to use while building the wheel
-        run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
+        run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
 
       - name: Append build hash if not a tagged commit
         if: startsWith(github.ref, 'refs/tags/v') != true
@@ -188,7 +186,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: C:/.hunter
-          key: hunter-msvc
+          key: hunter-msvc-v3-develop
       - uses: actions/checkout@v3
         with:
           submodules: 'recursive'
@@ -196,9 +194,9 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: 'docstrings'
-          path: docstrings
+          path: bindings/python/docstrings
       - name: Specify docstring to use while building the wheel
-        run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/docstrings/depthai_python_docstring.hpp" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+        run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
       - name: Select Windows SDK
         run: echo "CMAKE_ARGS=-DCMAKE_SYSTEM_VERSION=${{ env.CMAKE_WINDOWS_SDK_VERSION }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
@@ -242,7 +240,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.hunter
-          key: hunter-macos-latest
+          key: hunter-macos-latest-v3-develop
       - name: List .hunter cache directory
         run: |
           ls -a -l ~/.hunter/_Base/ || true
@@ -255,9 +253,9 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: 'docstrings'
-          path: docstrings
+          path: bindings/python/docstrings
       - name: Specify docstring to use while building the wheel
-        run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
+        run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
 
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
@@ -313,9 +311,9 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: 'docstrings'
-          path: docstrings
+          path: bindings/python/docstrings
       - name: Specify docstring to use while building the wheel
-        run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
+        run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
 
       - name: Append build hash if not a tagged commit
         if: startsWith(github.ref, 'refs/tags/v') != true
@@ -360,7 +358,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ~/.hunter
-          key: hunter-x86_64
+          key: hunter-x86_64-v3-develop
       - uses: actions/checkout@v3
         with:
           submodules: 'recursive'
@@ -376,13 +374,13 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: 'docstrings'
-          path: docstrings
+          path: bindings/python/docstrings
       - name: Specify docstring to use while building the wheel
-        run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
+        run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
 
       - name: Build and install depthai-core
         run: |
-          cmake -S depthai-core/ -B build_core -D CMAKE_BUILD_TYPE=Release -D CMAKE_TOOLCHAIN_FILE=$PWD/cmake/toolchain/pic.cmake
+          cmake -S . -B build_core -D CMAKE_BUILD_TYPE=Release -D CMAKE_TOOLCHAIN_FILE=$PWD/cmake/toolchain/pic.cmake
           cmake --build build_core --target install --parallel 4
           echo "DEPTHAI_INSTALLATION_DIR=$PWD/build_core/install/" >> $GITHUB_ENV
 
@@ -438,13 +436,13 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: 'docstrings'
-          path: docstrings
+          path: bindings/python/docstrings
       - name: Specify docstring to use while building the wheel
-        run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
+        run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" >> $GITHUB_ENV
 
       - name: Build and install depthai-core
         run: |
-          cmake -S depthai-core/ -B build_core -D CMAKE_BUILD_TYPE=Release -D CMAKE_TOOLCHAIN_FILE=$PWD/cmake/toolchain/pic.cmake
+          cmake -S . -B build_core -D CMAKE_BUILD_TYPE=Release -D CMAKE_TOOLCHAIN_FILE=$PWD/cmake/toolchain/pic.cmake
           cmake --build build_core --target install --parallel 4
           echo "DEPTHAI_INSTALLATION_DIR=$PWD/build_core/install/" >> $GITHUB_ENV
 

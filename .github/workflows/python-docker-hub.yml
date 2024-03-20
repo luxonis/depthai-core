@@ -49,7 +49,7 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           push: true
-          file: ci/Dockerfile
+          file: bindings/python/ci/Dockerfile
           tags: luxonis/depthai-library:${{ env.LUXONIS_IMAGE_TAG }}
 
       - name: Cleanup the created image
