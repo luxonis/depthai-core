@@ -150,7 +150,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v') != true
         run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
       - name: Building wheel
-        run: python3 -m pip wheel . -w ./wheelhouse/ --verbose
+        run: cd bindings/python && python3 -m pip wheel . -w ./wheelhouse/ --verbose
       - name: Auditing wheels and adding armv6l tag (Running on RPi, binaries compiled as armv6l)
         run: |
           python3 -m pip install -U wheel auditwheel
@@ -213,7 +213,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
       - name: Building wheels
-        run: python -m pip wheel . -w ./wheelhouse/audited/ --verbose
+        run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/audited/ --verbose
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -272,7 +272,7 @@ jobs:
       - name: Set macos deployment target
         run: echo "MACOSX_DEPLOYMENT_TARGET=10.9" >> $GITHUB_ENV
       - name: Building wheels
-        run: python -m pip wheel . -w ./wheelhouse/ --verbose
+        run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --verbose
       - name: Auditing wheels
         run: ci/repair-whl-macos.sh `pwd`/wheelhouse/* `pwd`/wheelhouse/audited
       - name: Archive wheel artifacts
@@ -327,7 +327,7 @@ jobs:
       #     echo "DEPTHAI_INSTALLATION_DIR=$PWD/build_core/install/" >> $GITHUB_ENV
 
       - name: Build wheels
-        run: for PYBIN in {9..11}; do "python3.${PYBIN}" -m pip wheel . -w wheelhouse/ --verbose; done
+        run: cd bindings/python && for PYBIN in {9..11}; do "python3.${PYBIN}" -m pip wheel . -w wheelhouse/ --verbose; done
 
       - name: Auditing wheels
         run: delocate-wheel -v -w wheelhouse/audited wheelhouse/*.whl
@@ -393,7 +393,7 @@ jobs:
           /opt/python/cp38-cp38/bin/python3.8 setup.py sdist --formats=gztar
           mv dist/* wheelhouse/audited/
       - name: Build wheels
-        run: for PYBIN in /opt/python/cp3{6..11}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
+        run: cd bindings/python && for PYBIN in /opt/python/cp3{6..11}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
       - name: Audit wheels
         run: for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
       - name: Archive wheel artifacts
@@ -450,7 +450,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v') != true
         run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
       - name: Building wheels
-        run: for PYBIN in /opt/python/cp3{6..11}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
+        run: cd bindings/python && for PYBIN in /opt/python/cp3{6..11}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
       - name: Auditing wheels
         run: for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
       - name: Archive wheel artifacts
