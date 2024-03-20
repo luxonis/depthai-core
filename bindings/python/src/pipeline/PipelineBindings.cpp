@@ -124,10 +124,10 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
              })
         // 'Template' create function
         .def("create",
-             [](dai::Pipeline &p, py::object class_) {
+             [](dai::Pipeline &p, py::object class_, const py::args &args, const py::kwargs &kwargs) {
 
                if(py::cast<std::string>(class_.attr("__base__").attr("__name__")) == "HostNode") {
-                    std::shared_ptr<Node> host_node = py::cast<std::shared_ptr<HostNode>>(class_());
+                    std::shared_ptr<Node> host_node = py::cast<std::shared_ptr<HostNode>>(class_(*args, **kwargs));
                     p.add(host_node);
                     return host_node;
                }
