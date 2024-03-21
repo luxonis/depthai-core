@@ -128,7 +128,7 @@ void bind_xlinkout(pybind11::module& m, void* pCallstack);
 // void bind_benchmark(pybind11::module& m, void* pCallstack);
 void bind_colorcamera(pybind11::module& m, void* pCallstack);
 void bind_camera(pybind11::module& m, void* pCallstack);
-// void bind_monocamera(pybind11::module& m, void* pCallstack);
+void bind_monocamera(pybind11::module& m, void* pCallstack);
 // void bind_stereodepth(pybind11::module& m, void* pCallstack);
 // void bind_neuralnetwork(pybind11::module& m, void* pCallstack);
 // void bind_videoencoder(pybind11::module& m, void* pCallstack);
@@ -163,7 +163,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     // callstack.push_front(bind_benchmark);
     callstack.push_front(bind_colorcamera);
     // callstack.push_front(bind_camera);
-    // callstack.push_front(bind_monocamera);
+    callstack.push_front(bind_monocamera);
     // callstack.push_front(bind_stereodepth);
     // callstack.push_front(bind_neuralnetwork);
     // callstack.push_front(bind_videoencoder);
