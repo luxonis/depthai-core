@@ -51,7 +51,7 @@ ArchiveUtil::ArchiveUtil(const std::string& filepath, NNArchiveEntry::Compressio
     DAI_CHECK_V(res == ARCHIVE_OK, "Error when decompressing {}.", filepath);
 }
 
-int64_t ArchiveUtil::readCb(struct archive*, void* context, const void** buffer) {
+la_ssize_t ArchiveUtil::readCb(struct archive*, void* context, const void** buffer) {
     DAI_CHECK_IN(context);
     auto* cSelf = static_cast<ArchiveUtil*>(context);
     DAI_CHECK_IN(cSelf);
