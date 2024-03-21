@@ -484,24 +484,6 @@ jobs:
     - name: Check if version matches
       run: python3.8 -c 'import find_version as v; exit(0) if "${{ github.ref_name }}" == f"v{v.get_package_version()}" else exit(1)'
 
-    # Create GitHub release
-    - uses: actions/create-release@master
-      id: createRelease
-      name: Create ${{ github.ref_name }} depthai-python release
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref }}
-        release_name: Release ${{ github.ref }}
-        body: |
-          ## Features
-
-          ## Bug fixes
-
-          ## Misc
-
-        draft: true
-
   # Deploy to PyPi and Artifactory. Only when a commit is tagged
   deploy:
     if: startsWith(github.ref, 'refs/tags/v')
