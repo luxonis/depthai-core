@@ -166,7 +166,7 @@ jobs:
           path: wheelhouse/audited/
       - name: Deploy wheels to artifactory (if not a release)
         if: startsWith(github.ref, 'refs/tags/v') != true
-        run: bash ./ci/upload-artifactory.sh
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
@@ -222,7 +222,7 @@ jobs:
           path: wheelhouse/audited/
       - name: Deploy wheels to artifactory (if not a release)
         if: startsWith(github.ref, 'refs/tags/v') != true
-        run: bash ./ci/upload-artifactory.sh
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
@@ -275,7 +275,7 @@ jobs:
       - name: Building wheels
         run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --verbose
       - name: Auditing wheels
-        run: ci/repair-whl-macos.sh `pwd`/wheelhouse/* `pwd`/wheelhouse/audited
+        run: cd bindings/python && ci/repair-whl-macos.sh `pwd`/wheelhouse/* `pwd`/wheelhouse/audited
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -283,7 +283,7 @@ jobs:
           path: wheelhouse/audited/
       - name: Deploy wheels to artifactory (if not a release)
         if: startsWith(github.ref, 'refs/tags/v') != true
-        run: bash ./ci/upload-artifactory.sh
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
@@ -340,7 +340,7 @@ jobs:
           path: wheelhouse/audited/
       - name: Deploy wheels to artifactory (if not a release)
         if: startsWith(github.ref, 'refs/tags/v') != true
-        run: bash ./ci/upload-artifactory.sh
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
@@ -404,7 +404,7 @@ jobs:
           path: wheelhouse/audited/
       - name: Deploy wheels to artifactory (if not a release)
         if: startsWith(github.ref, 'refs/tags/v') != true
-        run: bash ./ci/upload-artifactory.sh
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
@@ -461,7 +461,7 @@ jobs:
           path: wheelhouse/audited/
       - name: Deploy wheels to artifactory (if not a release)
         if: startsWith(github.ref, 'refs/tags/v') != true
-        run: bash ./ci/upload-artifactory.sh
+        run: cd bindings/python && bash ./ci/upload-artifactory.sh
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
@@ -518,13 +518,13 @@ jobs:
       - name: List files
         run: ls -lah
       - name: Run deploy to PyPi
-        run: bash ./ci/upload-pypi.sh
+        run: cd bindings/python && bash ./ci/upload-pypi.sh
         env:
           PYPI_SERVER: ${{ secrets.PYPI_SERVER }}
           PYPI_USER: ${{ secrets.PYPI_USER }}
           PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
       - name: Run deploy to Artifactory
-        run: bash ./ci/upload-artifactory-release.sh
+        run: cd bindings/python && bash ./ci/upload-artifactory-release.sh
         env:
           ARTIFACTORY_URL: ${{ secrets.ARTIFACTORY_URL }}
           ARTIFACTORY_USER: ${{ secrets.ARTIFACTORY_USER }}
