@@ -1,6 +1,7 @@
 #include "NodeBindings.hpp"
 
 #include <pybind11/smart_holder.h>
+#include <memory>
 
 #include "Common.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
@@ -197,7 +198,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack){
     daiNodeModule = m.def_submodule("node");
 
     // Properties
-    py::class_<Node, PYBIND11_SH_AVL(Node)> pyNode(m, "Node", DOC(dai, Node));
+    py::class_<Node, std::shared_ptr<Node>> pyNode(m, "Node", DOC(dai, Node));
 
     py::class_<Node::Input> pyInput(pyNode, "Input", DOC(dai, Node, Input));
     py::enum_<Node::Input::Type> nodeInputType(pyInput, "Type");
@@ -216,11 +217,11 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack){
     bindNodeMap<Node::OutputMap>(pyNode, "OutputMap");
 
     //     // NodeGroup
-    py::class_<NodeGroup, Node, PYBIND11_SH_AVL(NodeGroup)> pyNodeGroup(m, "NodeGroup", DOC(dai, NodeGroup));
+    py::class_<NodeGroup, Node, std::shared_ptr<NodeGroup>> pyNodeGroup(m, "NodeGroup", DOC(dai, NodeGroup));
 
     // // Threaded & Device nodes
-    py::class_<ThreadedNode, Node, PYBIND11_SH_AVL(ThreadedNode)> pyThreadedNode(m, "ThreadedNode", DOC(dai, ThreadedNode));
-    py::class_<DeviceNode, ThreadedNode, PYBIND11_SH_AVL(DeviceNode)> pyDeviceNode(m, "DeviceNode", DOC(dai, DeviceNode));
+    py::class_<ThreadedNode, Node, std::shared_ptr<ThreadedNode>> pyThreadedNode(m, "ThreadedNode", DOC(dai, ThreadedNode));
+    py::class_<DeviceNode, ThreadedNode, std::shared_ptr<DeviceNode>> pyDeviceNode(m, "DeviceNode", DOC(dai, DeviceNode));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -256,7 +257,8 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack){
         .value("MReceiver", Node::Input::Type::MReceiver)
     ;
     pyInput
-        .def(py::init([](Node &parent){return Node::Input{parent};}))
+        .def(py::init<Node&>(), py::arg("parent"), py::keep_alive<2,1>()) // Keep the input alive as long as the parent is alive
+        .def(py::init<Node&, const std::string&>(), py::arg("parent"), py::arg("name"), py::keep_alive<2,1>())
         .def_readwrite("group", &Node::Input::group, DOC(dai, Node, Input, group))
         .def_readwrite("name", &Node::Input::name, DOC(dai, Node, Input, name))
         .def_readwrite("type", &Node::Input::type, DOC(dai, Node, Input, type))
@@ -328,7 +330,8 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack){
         .value("SSender", Node::Output::Type::SSender)
     ;
     pyOutput
-        .def(py::init([](Node &parent){return Node::Output{parent};}))
+        .def(py::init<Node&>(), py::arg("parent"), py::keep_alive<2,1>())
+        .def(py::init<Node&, const std::string&>(), py::arg("parent"), py::arg("name"), py::keep_alive<2,1>())
         .def_readwrite("group", &Node::Output::group, DOC(dai, Node, Output, group))
         .def_readwrite("name", &Node::Output::name, DOC(dai, Node, Output, name))
         .def_readwrite("type", &Node::Output::type, DOC(dai, Node, Output, type))
@@ -360,6 +363,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack){
         .def("getName", &Node::getName, DOC(dai, Node, getName))
         .def("getOutputs", &Node::getOutputs, DOC(dai, Node, getOutputs))
         .def("getInputs", &Node::getInputs, DOC(dai, Node, getInputs))
+        .def("stopPipeline", &Node::stopPipeline, DOC(dai, Node, stopPipeline), py::call_guard<py::gil_scoped_release>())
         .def("getOutputRefs", static_cast<std::vector< Node::Output*> (Node::*)()>(&Node::getOutputRefs), DOC(dai, Node, getOutputRefs), py::return_value_policy::reference_internal)
         .def("getInputRefs", static_cast<std::vector<Node::Input*> (Node::*)()>(&Node::getInputRefs), DOC(dai, Node, getInputRefs), py::return_value_policy::reference_internal)
         .def("getOutputRefs", static_cast<std::vector<const Node::Output*> (Node::*)() const>(&Node::getOutputRefs), DOC(dai, Node, getOutputRefs), py::return_value_policy::reference_internal)

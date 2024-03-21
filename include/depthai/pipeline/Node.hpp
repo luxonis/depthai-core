@@ -124,6 +124,11 @@ class Node : public std::enable_shared_from_this<Node> {
             parent.setOutputRefs(this);
         }
 
+        Output(Node& par, std::string name) : parent(par), name{std::move(name)}, type(Type::MSender), possibleDatatypes({{DatatypeEnum::Buffer, true}}) {
+            // Place oneself to the parents references
+            parent.setOutputRefs(this);
+        }
+
         Output(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types)
             : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {
             // Place oneself to the parents references

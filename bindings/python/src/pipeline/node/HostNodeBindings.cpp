@@ -17,7 +17,7 @@ public:
 
 void bind_hostnode(pybind11::module& m, void* pCallstack){
     // declare upfront
-    auto hostNode = py::class_<HostNode, PyHostNode, ThreadedNode, PYBIND11_SH_AVL(HostNode)>(m, "HostNode", DOC(dai, HostNode));
+    auto hostNode = py::class_<HostNode, PyHostNode, ThreadedNode, std::shared_ptr<HostNode>>(m, "HostNode", DOC(dai, HostNode));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

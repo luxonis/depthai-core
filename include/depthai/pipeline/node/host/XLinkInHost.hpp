@@ -11,6 +11,7 @@ class XLinkInHost : public NodeCRTP<HostNode, XLinkInHost> {
     std::string streamName;
 
    public:
+    constexpr static const char* NAME = "XLinkInHost";
     Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
     // XLinkInHost(std::shared_ptr<XLinkConnection> conn, std::string streamName);
     void setStreamName(const std::string& name);
