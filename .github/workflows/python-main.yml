@@ -390,7 +390,7 @@ jobs:
 
       - name: Building source distribution
         run: |
-          /opt/python/cp38-cp38/bin/python3.8 setup.py sdist --formats=gztar
+          /opt/python/cp38-cp38/bin/python3.8 bindings/python/setup.py sdist --formats=gztar
           mv dist/* wheelhouse/audited/
       - name: Build wheels
         run: cd bindings/python && for PYBIN in /opt/python/cp3{6..11}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
