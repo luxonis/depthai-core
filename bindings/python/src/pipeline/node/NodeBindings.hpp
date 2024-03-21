@@ -5,7 +5,6 @@
 #include "depthai/pipeline/NodeGroup.hpp"
 #include "depthai/pipeline/ThreadedNode.hpp"
 #include "pybind11_common.hpp"
-#include <pybind11/smart_holder.h>
 // depthai
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/HostNode.hpp"

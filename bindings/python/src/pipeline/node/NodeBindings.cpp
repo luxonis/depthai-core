@@ -1,6 +1,5 @@
 #include "NodeBindings.hpp"
 
-#include <pybind11/smart_holder.h>
 #include <memory>
 
 #include "Common.hpp"

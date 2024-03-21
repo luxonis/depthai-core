@@ -1,6 +1,5 @@
 #include "NodeBindings.hpp"
 #include "Common.hpp"
-#include <pybind11/smart_holder.h>
 #include "depthai/pipeline/HostNode.hpp"
 
 using namespace dai;
