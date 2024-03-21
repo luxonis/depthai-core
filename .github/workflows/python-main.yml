@@ -329,7 +329,10 @@ jobs:
         run: cd bindings/python && for PYBIN in {9..11}; do "python3.${PYBIN}" -m pip wheel . -w wheelhouse/ --verbose; done
 
       - name: Auditing wheels
-        run: cd bindings/python && delocate-wheel -v -w wheelhouse/audited wheelhouse/*.whl
+        run: |
+          cd bindings/python
+          python -m pip install delocate
+          delocate-wheel -v -w wheelhouse/audited wheelhouse/*.whl
 
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v3
