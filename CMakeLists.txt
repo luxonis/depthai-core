@@ -314,8 +314,6 @@ if(${CMAKE_VERSION} VERSION_LESS "3.8.0")
 else()
     target_compile_features(${TARGET_CORE_NAME} INTERFACE cxx_std_17)
 endif()
-# Minimal supported macOS SDK version for c++17 support
-set(CMAKE_OSX_DEPLOYMENT_TARGET 10.13)
 
 # First specify options
 option(DEPTHAI_BUILD_TESTS "Build tests" OFF)

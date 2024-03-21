@@ -270,7 +270,7 @@ jobs:
           brew install libusb
           python -m pip install delocate
       - name: Set macos deployment target
-        run: echo "MACOSX_DEPLOYMENT_TARGET=10.9" >> $GITHUB_ENV
+        run: echo "MACOSX_DEPLOYMENT_TARGET=10.13" >> $GITHUB_ENV
       - name: Building wheels
         run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --verbose
       - name: Auditing wheels
