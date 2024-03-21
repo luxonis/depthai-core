@@ -163,7 +163,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: audited-wheels
-          path: wheelhouse/audited/
+          path: bindings/python/wheelhouse/audited/
       - name: Deploy wheels to artifactory (if not a release)
         if: startsWith(github.ref, 'refs/tags/v') != true
         run: cd bindings/python && bash ./ci/upload-artifactory.sh
@@ -219,7 +219,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: audited-wheels
-          path: wheelhouse/audited/
+          path: bindings/python/wheelhouse/audited/
       - name: Deploy wheels to artifactory (if not a release)
         if: startsWith(github.ref, 'refs/tags/v') != true
         run: cd bindings/python && bash ./ci/upload-artifactory.sh
@@ -278,7 +278,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: audited-wheels
-          path: wheelhouse/audited/
+          path: bindings/python/wheelhouse/audited/
       - name: Deploy wheels to artifactory (if not a release)
         if: startsWith(github.ref, 'refs/tags/v') != true
         run: cd bindings/python && bash ./ci/upload-artifactory.sh
@@ -329,13 +329,13 @@ jobs:
         run: cd bindings/python && for PYBIN in {9..11}; do "python3.${PYBIN}" -m pip wheel . -w wheelhouse/ --verbose; done
 
       - name: Auditing wheels
-        run: delocate-wheel -v -w wheelhouse/audited wheelhouse/*.whl
+        run: cd bindings/python && delocate-wheel -v -w wheelhouse/audited wheelhouse/*.whl
 
       - name: Archive wheel artifacts
         uses: actions/upload-artifact@v3
         with:
           name: audited-wheels
-          path: wheelhouse/audited/
+          path: bindings/python/wheelhouse/audited/
       - name: Deploy wheels to artifactory (if not a release)
         if: startsWith(github.ref, 'refs/tags/v') != true
         run: cd bindings/python && bash ./ci/upload-artifactory.sh
@@ -365,10 +365,11 @@ jobs:
         run: yum install -y --disableplugin=fastestmirror libusb1-devel
       - name: Installing cmake dependency
         run: |
+          cd bindings/python
           /opt/python/cp38-cp38/bin/python3.8 -m pip install cmake
           ln -s /opt/python/cp38-cp38/bin/cmake /bin/
       - name: Create folder structure
-        run: mkdir -p wheelhouse/audited/
+        run: cd bindings/python && mkdir -p wheelhouse/audited/
 
       - uses: actions/download-artifact@v3
         with:
@@ -389,7 +390,8 @@ jobs:
 
       - name: Building source distribution
         run: |
-          /opt/python/cp38-cp38/bin/python3.8 bindings/python/setup.py sdist --formats=gztar
+          cd bindings/python
+          /opt/python/cp38-cp38/bin/python3.8 setup.py sdist --formats=gztar
           mv dist/* wheelhouse/audited/
       - name: Build wheels
         run: cd bindings/python && for PYBIN in /opt/python/cp3{6..11}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
@@ -399,7 +401,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: audited-wheels
-          path: wheelhouse/audited/
+          path: bindings/python/wheelhouse/audited/
       - name: Deploy wheels to artifactory (if not a release)
         if: startsWith(github.ref, 'refs/tags/v') != true
         run: cd bindings/python && bash ./ci/upload-artifactory.sh
@@ -427,10 +429,11 @@ jobs:
         run: yum install -y --disableplugin=fastestmirror libusb1-devel
       - name: Installing cmake dependency
         run: |
+          cd bindings/python
           /opt/python/cp38-cp38/bin/python3.8 -m pip install cmake
           ln -s /opt/python/cp38-cp38/bin/cmake /bin/
       - name: Create folder structure
-        run: mkdir -p wheelhouse/audited/
+        run: cd bindings/python && mkdir -p wheelhouse/audited/
 
       - uses: actions/download-artifact@v3
         with:
@@ -456,7 +459,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: audited-wheels
-          path: wheelhouse/audited/
+          path: bindings/python/wheelhouse/audited/
       - name: Deploy wheels to artifactory (if not a release)
         if: startsWith(github.ref, 'refs/tags/v') != true
         run: cd bindings/python && bash ./ci/upload-artifactory.sh
@@ -494,7 +497,7 @@ jobs:
       - uses: actions/download-artifact@v3
         with:
           name: audited-wheels
-          path: wheelhouse/audited/
+          path: bindings/python/wheelhouse/audited/
       - name: List files
         run: ls -lah
       - name: Run deploy to PyPi
