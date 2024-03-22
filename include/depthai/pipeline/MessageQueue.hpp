@@ -33,6 +33,7 @@ class MessageQueue {
     std::unordered_map<CallbackId, std::function<void(std::string, std::shared_ptr<ADatatype>)>> callbacks;
     CallbackId uniqueCallbackId{0};
     const std::string exceptionMessage{"MessageQueue was closed"};
+    void callCallbacks(std::shared_ptr<ADatatype> msg);
 
    public:
     // DataOutputQueue constructor

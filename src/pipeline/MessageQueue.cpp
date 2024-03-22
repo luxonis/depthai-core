@@ -96,6 +96,7 @@ bool MessageQueue::removeCallback(int callbackId) {
 
 void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
     if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
+    callCallbacks(msg);
     queue.push(msg);
 }
 
@@ -105,6 +106,7 @@ void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
 
 bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::milliseconds timeout) {
     if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
+    callCallbacks(msg);
     return queue.tryWaitAndPush(msg, timeout);
 }
 
@@ -114,6 +116,8 @@ bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::mill
 
 // Try variants
 bool MessageQueue::trySend(const std::shared_ptr<ADatatype>& msg) {
+    if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
+    callCallbacks(msg);
     return send(msg, std::chrono::milliseconds(0));
 }
 
@@ -121,4 +125,13 @@ bool MessageQueue::trySend(const std::shared_ptr<ADatatype>& msg) {
 //     return trySend(std::make_shared<ADatatype>(msg.serialize()));
 // }
 
+void MessageQueue::callCallbacks(std::shared_ptr<ADatatype> msg) {
+    // Lock first
+    std::lock_guard<std::mutex> l(callbacksMtx);
+
+    // Call all callbacks
+    for(auto& kv : callbacks) {
+        kv.second(name, msg);
+    }
+}
 }  // namespace dai
