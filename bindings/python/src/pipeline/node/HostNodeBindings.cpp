@@ -22,7 +22,8 @@ public:
         PYBIND11_OVERRIDE_PURE(
                 std::shared_ptr<Buffer>,
                 SyncedNode,
-                runOnce);
+                runOnce,
+                in);
     }
 };
 
@@ -52,6 +53,6 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
     syncedNode
         .def(py::init<>())
         .def("runOnce", &SyncedNode::runOnce)
-        .def_property_readonly("inputs", [](SyncedNode &node){return node.inputs;})
+        .def_property_readonly("inputs", [](SyncedNode &node){return &node.inputs;}, py::return_value_policy::reference_internal)
     ;
 }
