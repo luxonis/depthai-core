@@ -55,9 +55,9 @@ TEST_CASE("MessageQueue - Non-blocking behavior", "[MessageQueue]") {
 
 TEST_CASE("MessageQueue - Multiple producers and consumers", "[MessageQueue]") {
     MessageQueue queue(100, true);
-    constexpr int NUM_MESSAGES = 1000;
-    constexpr int NUM_PRODUCERS = 10;
-    constexpr int NUM_CONSUMERS = 10;
+    constexpr int NUM_MESSAGES = 100000;
+    constexpr int NUM_PRODUCERS = 100;
+    constexpr int NUM_CONSUMERS = 100;
     constexpr int NUM_MESSAGES_PER_PRODUCER = NUM_MESSAGES / NUM_PRODUCERS;
     constexpr int NUM_MESSAGES_PER_CONSUMER = NUM_MESSAGES / NUM_CONSUMERS;
 
@@ -201,4 +201,160 @@ TEST_CASE("MessageQueue - Name and properties", "[MessageQueue]") {
     // Test setMaxSize
     queue.setMaxSize(20);
     REQUIRE(queue.getMaxSize() == 20);
+}
+
+TEST_CASE("MessageQueue - Changing maxSize at runtime", "[MessageQueue]") {
+    MessageQueue queue(10);
+
+    // Fill up the queue
+    for (int i = 0; i < 10; ++i) {
+        auto msg = std::make_shared<ADatatype>();
+        queue.send(msg);
+    }
+
+    // Increase maxSize and check if we can send more messages
+    queue.setMaxSize(15);
+    for (int i = 0; i < 5; ++i) {
+        auto msg = std::make_shared<ADatatype>();
+        queue.send(msg);
+    }
+    REQUIRE(queue.getMaxSize() == 15);
+    REQUIRE(queue.getSize() == 15);
+    REQUIRE(queue.isFull());
+
+    // Decrease maxSize and check if the queue is truncated
+    queue.setMaxSize(5);
+    REQUIRE(queue.getMaxSize() == 5);
+    std::vector<std::shared_ptr<ADatatype>> messages;
+    for(int i = 0; i < 5; ++i) {
+        messages.push_back(queue.get<ADatatype>());
+    }
+    REQUIRE(queue.getSize() == 10);
+    REQUIRE(queue.isFull());
+
+    // Get all messages
+    auto allMessages = queue.getAll();
+    REQUIRE(allMessages.size() == 10);
+    REQUIRE(queue.getSize() == 0);
+    REQUIRE_FALSE(queue.isFull());
+
+    // Check that 5 messages can be sent and received
+    for (int i = 0; i < 3; ++i) {
+        auto msg = std::make_shared<ADatatype>();
+        queue.send(msg);
+    }
+    REQUIRE(queue.getSize() == 3);
+    REQUIRE_FALSE(queue.isFull());
+    for (int i = 0; i < 3; ++i) {
+        auto msg = queue.get<ADatatype>();
+    }
+    REQUIRE(queue.getSize() == 0);
+}
+
+TEST_CASE("MessageQueue - Adding and removing callbacks at runtime", "[MessageQueue]") {
+    MessageQueue queue(10);
+    std::atomic<int> callbackCount1{0};
+    std::atomic<int> callbackCount2{0};
+
+    // Add first callback
+    auto callbackId1 = queue.addCallback([&]() { callbackCount1++; });
+    auto msg = std::make_shared<ADatatype>();
+    queue.send(msg);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    REQUIRE(callbackCount1 == 1);
+
+    // Add second callback
+    auto callbackId2 = queue.addCallback([&]() { callbackCount2++; });
+    queue.send(msg);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    REQUIRE(callbackCount1 == 2);
+    REQUIRE(callbackCount2 == 1);
+
+    // Remove first callback
+    queue.removeCallback(callbackId1);
+    queue.send(msg);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    REQUIRE(callbackCount1 == 2);
+    REQUIRE(callbackCount2 == 2);
+
+    // Remove second callback
+    queue.removeCallback(callbackId2);
+    queue.send(msg);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    REQUIRE(callbackCount1 == 2);
+    REQUIRE(callbackCount2 == 2);
+}
+
+TEST_CASE("MessageQueue - Multi-threaded callbacks", "[MessageQueue]") {
+    MessageQueue queue(10);
+    std::atomic<int> callbackCount{0};
+    std::atomic<int> numberOfCallbacks{0};
+    constexpr int NUM_CALLBACKS = 10;
+
+    // Add multiple callbacks from different threads
+    std::vector<std::thread> callbackThreads;
+    for(int i = 0; i < NUM_CALLBACKS; ++i) {
+        callbackThreads.emplace_back([&]() {
+            queue.addCallback([&]() { callbackCount++; });
+        });
+    }
+    for (auto& thread : callbackThreads) {
+        thread.join();
+    }
+    // Send messages and check if all callbacks are invoked
+    auto msg = std::make_shared<ADatatype>();
+    queue.send(msg);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    REQUIRE(callbackCount == NUM_CALLBACKS);
+}
+
+TEST_CASE("MessageQueue - Callbacks with blocking queue", "[MessageQueue]") {
+    constexpr int QUEUE_SIZE = 5;
+    MessageQueue queue(QUEUE_SIZE, true);  // Create a blocking queue
+    std::atomic<int> callbackCount{0};
+
+    // Fill up the queue to its maximum capacity
+    for (int i = 0; i < QUEUE_SIZE; ++i) {
+        auto msg = std::make_shared<ADatatype>();
+        queue.send(msg);
+    }
+
+    REQUIRE(queue.isFull());
+
+    // Add callbacks
+    constexpr int NUM_CALLBACKS = 3;
+    for (int i = 0; i < NUM_CALLBACKS; ++i) {
+        queue.addCallback([&]() { callbackCount++; });
+    }
+
+    // Send a message
+    auto success = queue.trySend(std::make_shared<ADatatype>());
+    // Check if all callbacks were called
+    REQUIRE(callbackCount == NUM_CALLBACKS);
+    REQUIRE_FALSE(success);
+
+    // Consume messages from the queue
+    std::thread consumeThread([&]() {
+        for (int i = 0; i < QUEUE_SIZE; ++i) {
+            auto msg = queue.get();
+        }
+    });
+
+    consumeThread.join();
+}
+
+TEST_CASE("MessageQueue - Callbacks on an empty unblocking queue, then send a message", "[MessageQueue]") {
+    MessageQueue queue(0, false);  // Create a non-blocking queue
+    std::atomic<int> callbackCount{0};
+
+    // Add a callback
+    queue.addCallback([&]() { callbackCount++; });
+
+    // Send a message
+    auto msg = std::make_shared<ADatatype>();
+    queue.send(msg);
+
+    REQUIRE(queue.getSize() == 0);
+    // Check if the callback was called
+    REQUIRE(callbackCount == 1);
 }

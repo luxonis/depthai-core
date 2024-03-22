@@ -77,6 +77,7 @@ class MessageQueue {
      * Sets queue maximum size
      *
      * @param maxSize Specifies maximum number of messages in the queue
+     * @note If maxSize is smaller than size, queue will not be truncated immediately, only after messages are popped
      */
     void setMaxSize(unsigned int maxSize);
 
@@ -86,6 +87,20 @@ class MessageQueue {
      * @returns Maximum queue size
      */
     unsigned int getMaxSize() const;
+
+    /**
+     * Gets queue current size
+     *
+     * @returns Current queue size
+     */
+    unsigned int getSize() const;
+
+    /**
+     * Gets whether queue is full
+     *
+     * @returns True if queue is full, false otherwise
+     */
+    unsigned int isFull() const;
 
     /**
      * Gets queues name

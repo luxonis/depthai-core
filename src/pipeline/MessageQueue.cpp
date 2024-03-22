@@ -54,6 +54,14 @@ unsigned int MessageQueue::getMaxSize() const {
     return queue.getMaxSize();
 }
 
+unsigned int MessageQueue::getSize() const {
+    return queue.getSize();
+}
+
+unsigned int MessageQueue::isFull() const {
+    return queue.isFull();
+}
+
 std::string MessageQueue::getName() const {
     return name;
 }
@@ -117,7 +125,6 @@ bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::mill
 // Try variants
 bool MessageQueue::trySend(const std::shared_ptr<ADatatype>& msg) {
     if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
-    callCallbacks(msg);
     return send(msg, std::chrono::milliseconds(0));
 }
 
