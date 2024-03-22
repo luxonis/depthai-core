@@ -258,9 +258,9 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack){
     pyInput
         .def(py::init<Node&>(), py::arg("parent"), py::keep_alive<2,1>()) // Keep the input alive as long as the parent is alive
         .def(py::init<Node&, const std::string&>(), py::arg("parent"), py::arg("name"), py::keep_alive<2,1>())
-        .def_readwrite("group", &Node::Input::group, DOC(dai, Node, Input, group))
-        .def_readwrite("name", &Node::Input::name, DOC(dai, Node, Input, name))
-        .def_readwrite("type", &Node::Input::type, DOC(dai, Node, Input, type))
+        // .def_readwrite("group", &Node::Input::group, DOC(dai, Node, Input, group))
+        // .def_readwrite("name", &Node::Input::name, DOC(dai, Node, Input, name))
+        // .def_readwrite("type", &Node::Input::type, DOC(dai, Node, Input, type))
         .def_readwrite("possibleDatatypes", &Node::Input::possibleDatatypes, DOC(dai, Node, Input, possibleDatatypes))
         .def("getParent", static_cast<const Node& (Node::Input::*)() const>(&Node::Input::getParent), py::return_value_policy::reference_internal, DOC(dai, Node, Input, getParent))
         .def("getParent", static_cast<Node& (Node::Input::*)()>(&Node::Input::getParent), py::return_value_policy::reference_internal, DOC(dai, Node, Input, getParent))
@@ -383,7 +383,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack){
                 }
                 for(auto& input : n.getInputRefs()) {
                     // TODO - Revisit, pybind might try to release the input when refcount goes to zero
-                    dict[py::str(input->name)] = input;
+                    dict[py::str(input->getName())] = input;
                 }
                 return dict;
             },

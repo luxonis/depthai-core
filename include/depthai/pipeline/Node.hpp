@@ -311,7 +311,7 @@ class Node : public std::enable_shared_from_this<Node> {
 
         bool operator==(const Input& rhs) const {
             return &parent == &rhs.parent && group == rhs.group && name == rhs.name && type == rhs.type && getBlocking() == rhs.getBlocking()
-                   && getMaxQueueSize() == rhs.getMaxQueueSize() && getWaitForMessage() == rhs.getWaitForMessage()
+                   && getQueueSize() == rhs.getQueueSize() && getWaitForMessage() == rhs.getWaitForMessage()
                    && getReusePreviousMessage() == rhs.getReusePreviousMessage();
         }
 

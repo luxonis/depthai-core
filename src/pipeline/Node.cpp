@@ -222,11 +222,11 @@ bool Node::Input::getBlocking() const {
     return queue->getBlocking();
 }
 
-void Node::Input::setMaxQueueSize(int size) {
+void Node::Input::setQueueSize(int size) {
     queue->setMaxSize(size);
 }
 
-int Node::Input::getMaxQueueSize() const {
+int Node::Input::getQueueSize() const {
     return queue->getMaxSize();
 }
 
