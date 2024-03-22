@@ -348,8 +348,6 @@ std::vector<Node::Output> Node::getOutputs() {
 std::vector<Node::Input> Node::getInputs() {
     std::vector<Node::Input> result;
     auto refs = getInputRefs();
-    // TMP - DON'T COMMIT
-    result.reserve(refs.size());
     for(auto* x : refs) {
         result.push_back(*x);
     }
