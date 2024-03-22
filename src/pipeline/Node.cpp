@@ -30,8 +30,8 @@ Node::Connection::Connection(Output out, Input in) {
     outputName = out.name;
     outputGroup = out.group;
     inputId = in.getParent().id;
-    inputName = in.name;
-    inputGroup = in.group;
+    inputName = in.getName();
+    inputGroup = in.getGroup();
 }
 
 Node::Connection::Connection(ConnectionInternal c) {
@@ -110,8 +110,8 @@ static bool isDatatypeMatch(const Node::Output& out, const Node::Input& in) {
 
 bool Node::Output::canConnect(const Input& in) {
     // Check that IoType match up
-    if(type == Output::Type::MSender && in.type == Input::Type::MReceiver) return false;
-    if(type == Output::Type::SSender && in.type == Input::Type::SReceiver) return false;
+    if(type == Output::Type::MSender && in.getType() == Input::Type::MReceiver) return false;
+    if(type == Output::Type::SSender && in.getType() == Input::Type::SReceiver) return false;
 
     // Check that datatypes match up
     if(!isDatatypeMatch(*this, in)) {
@@ -145,7 +145,7 @@ void Node::Output::link(Input& in) {
 }
 
 Node::ConnectionInternal::ConnectionInternal(Output& out, Input& in)
-    : outputName{out.name}, outputGroup{out.group}, inputName{in.name}, inputGroup{in.group}, out{&out}, in{&in} {
+    : outputName{out.name}, outputGroup{out.group}, inputName{in.getName()}, inputGroup{in.getGroup()}, out{&out}, in{&in} {
     outputNode = out.getParent().shared_from_this();
     inputNode = in.getParent().shared_from_this();
 }
@@ -222,11 +222,11 @@ bool Node::Input::getBlocking() const {
     return queue->getBlocking();
 }
 
-void Node::Input::setQueueSize(int size) {
+void Node::Input::setMaxQueueSize(int size) {
     queue->setMaxSize(size);
 }
 
-int Node::Input::getQueueSize() const {
+int Node::Input::getMaxQueueSize() const {
     return queue->getMaxSize();
 }
 
@@ -309,8 +309,8 @@ Node::Input& Node::InputMap::operator[](const std::string& key) {
     if(count({name, key}) == 0) {
         // Create using default and rename with group and key
         Input input(defaultInput);
-        input.group = name;
-        input.name = key;
+        input.setGroup(name);
+        input.setName(key);
         insert({{name, key}, input});
     }
     // otherwise just return reference to existing
@@ -322,8 +322,8 @@ Node::Input& Node::InputMap::operator[](std::pair<std::string, std::string> grou
         Input input(defaultInput);
 
         // Uses \t (tab) as a special character to parse out as subgroup name
-        input.group = fmt::format("{}\t{}", name, groupKey.first);
-        input.name = groupKey.second;
+        input.setGroup(fmt::format("{}\t{}", name, groupKey.first));
+        input.setName(groupKey.second);
         insert(std::make_pair(groupKey, input));
     }
     // otherwise just return reference to existing
@@ -448,7 +448,7 @@ Node::Input* Node::getInputRef(std::string name) {
 Node::Input* Node::getInputRef(std::string group, std::string name) {
     auto refs = getInputRefs();
     for(auto& input : refs) {
-        if(input->group == group && input->name == name) {
+        if(input->getGroup() == group && input->getName() == name) {
             return input;
         }
     }
@@ -501,11 +501,11 @@ void Node::setOutputRefs(Node::Output* outRef) {
 }
 void Node::setInputRefs(std::initializer_list<Node::Input*> l) {
     for(auto& inRef : l) {
-        inputRefs[inRef->name] = inRef;
+        inputRefs[inRef->getName()] = inRef;
     }
 }
 void Node::setInputRefs(Node::Input* inRef) {
-    inputRefs[inRef->name] = inRef;
+    inputRefs[inRef->getName()] = inRef;
 }
 void Node::setOutputMapRefs(std::initializer_list<Node::OutputMap*> l) {
     for(auto& outMapRef : l) {

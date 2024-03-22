@@ -39,9 +39,9 @@ class DeviceNodeCRTP : public Base {
     const char* getName() const override {
         return Derived::NAME;
     };
-    std::unique_ptr<Node> clone() const override {
-        return std::make_unique<Derived>(static_cast<const Derived&>(*this));
-    };
+    // std::unique_ptr<Node> clone() const override {
+    //     return std::make_unique<Derived>(static_cast<const Derived&>(*this));
+    // };
     void build() {}
 
     // No public constructor, only a factory function.

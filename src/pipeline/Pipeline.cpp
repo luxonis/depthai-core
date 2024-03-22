@@ -227,12 +227,12 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
                 NodeIoInfo io;
                 io.blocking = input.getBlocking();
                 io.queueSize = input.getQueueSize();
-                io.name = input.name;
-                io.group = input.group;
+                io.name = input.getName();
+                io.group = input.getGroup();
                 auto ioKey = std::make_tuple(io.group, io.name);
 
                 io.waitForMessage = input.getWaitForMessage();
-                switch(input.type) {
+                switch(input.getType()) {
                     case Node::Input::Type::MReceiver:
                         io.type = NodeIoInfo::Type::MReceiver;
                         break;
@@ -611,8 +611,8 @@ bool PipelineImpl::canConnect(const Node::Output& out, const Node::Input& in) {
     }
 
     // Check that IoType match up
-    if(out.type == Node::Output::Type::MSender && in.type == Node::Input::Type::MReceiver) return false;
-    if(out.type == Node::Output::Type::SSender && in.type == Node::Input::Type::SReceiver) return false;
+    if(out.type == Node::Output::Type::MSender && in.getType() == Node::Input::Type::MReceiver) return false;
+    if(out.type == Node::Output::Type::SSender && in.getType() == Node::Input::Type::SReceiver) return false;
 
     // Check that datatypes match up
     for(const auto& outHierarchy : out.possibleDatatypes) {
