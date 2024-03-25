@@ -15,6 +15,7 @@
 #include "depthai/utility/copyable_unique_ptr.hpp"
 
 // depthai
+#include "depthai/capabilities/Capability.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/properties/Properties.hpp"
 
@@ -119,6 +120,8 @@ class Node : public std::enable_shared_from_this<Node> {
         // Which types and do descendants count as well?
         std::vector<DatatypeHierarchy> possibleDatatypes;
 
+        std::vector<Capability> possibleCapabilities;
+
         Output(Node& par) : parent(par), type(Type::MSender), possibleDatatypes({{DatatypeEnum::Buffer, true}}) {
             // Place oneself to the parents references
             parent.setOutputRefs(this);
@@ -134,8 +137,20 @@ class Node : public std::enable_shared_from_this<Node> {
             // Place oneself to the parents references
             parent.setOutputRefs(this);
         }
+
+        Output(Node& par, std::string n, Type t, std::vector<Capability> caps)
+            : parent(par), name(std::move(n)), type(t), possibleCapabilities(std::move(caps)) {
+            // Place oneself to the parents references
+            parent.setOutputRefs(this);
+        }
+
         Output(Node& par, std::string group, std::string n, Type t, std::vector<DatatypeHierarchy> types)
             : parent(par), group(std::move(group)), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {
+            parent.setOutputRefs(this);
+        }
+
+        Output(Node& par, std::string group, std::string n, Type t, std::vector<Capability> caps)
+            : parent(par), group(std::move(group)), name(std::move(n)), type(t), possibleCapabilities(std::move(caps)) {
             parent.setOutputRefs(this);
         }
 
