@@ -151,8 +151,8 @@ class XLinkConnection {
     mutable std::mutex closedMtx;
     bool closed{false};
 
-    constexpr static std::chrono::milliseconds WAIT_FOR_BOOTUP_TIMEOUT{15000};
-    constexpr static std::chrono::milliseconds WAIT_FOR_CONNECT_TIMEOUT{5000};
+    constexpr static std::chrono::milliseconds WAIT_FOR_BOOTUP_TIMEOUT{30000};
+    constexpr static std::chrono::milliseconds WAIT_FOR_CONNECT_TIMEOUT{30000};
     constexpr static std::chrono::milliseconds POLLING_DELAY_TIME{10};
 };
 
