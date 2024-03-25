@@ -132,7 +132,7 @@ class Device : public DeviceBase {
     /**
      * Gets an input queue corresponding to stream name. If it doesn't exist it throws. Also sets queue options
      *
-     * @param name Queue/stream name, set in XLinkOut node
+     * @param name Queue/stream name, set in XLinkIn node
      * @param maxSize Maximum number of messages in queue
      * @param blocking Queue behavior once full. True: blocking, false: overwriting of oldest messages. Default: true
      * @returns Smart pointer to DataInputQueue
