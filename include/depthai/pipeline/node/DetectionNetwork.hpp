@@ -4,10 +4,9 @@
 #include <depthai/pipeline/node/DetectionParser.hpp>
 #include <depthai/pipeline/node/NeuralNetwork.hpp>
 
+#include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
-
-// standard
-#include <fstream>
+#include "depthai/utility/Pimpl.hpp"
 
 namespace dai {
 namespace node {
@@ -17,8 +16,15 @@ namespace node {
  */
 class DetectionNetwork : public NodeGroup {
    public:
+    DetectionNetwork();
+    ~DetectionNetwork() override;
+
+    [[nodiscard]] static std::shared_ptr<DetectionNetwork> create() {
+        auto n = std::make_shared<DetectionNetwork>();
+        n->build();
+        return n;
+    }
     void build();
-    DetectionNetwork() : out{detectionParser->out}, outNetwork{neuralNetwork->out}, input{neuralNetwork->input}, passthrough{neuralNetwork->passthrough} {};
 
    public:
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
@@ -46,6 +52,12 @@ class DetectionNetwork : public NodeGroup {
      * Suitable for when input queue is set to non-blocking behavior.
      */
     Output& passthrough;
+
+    /**
+     * Apply NNArchive config to this Node and load network blob into assets and use once pipeline is started.
+     *
+     */
+    void setNNArchive(const NNArchive& nnArchive);
 
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**
@@ -133,6 +145,10 @@ class DetectionNetwork : public NodeGroup {
      * @returns Detection confidence
      */
     float getConfidenceThreshold() const;
+
+   private:
+    class Impl;
+    Pimpl<Impl> pimpl;
 };
 
 /**
@@ -165,9 +181,53 @@ class YoloDetectionNetwork : public DetectionNetwork {
     /// Set coordianate size
     void setCoordinateSize(int coordinates);
     /// Set anchors
-    void setAnchors(std::vector<float> anchors);
+    [[deprecated("Use setAnchors(const std::vector<std::vector<std::vector<float>>>& anchors) instead")]] void setAnchors(std::vector<float> anchors);
     /// Set anchor masks
-    void setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks);
+    [[deprecated("Use setAnchors(const std::vector<std::vector<std::vector<float>>>& anchors) instead")]] void setAnchorMasks(
+        std::map<std::string, std::vector<int>> anchorMasks);
+
+    /**
+     * Sets anchors with masks included.
+     *
+     * @param anchors Anchors grouped by masks from biggest mask(ex.: side26) to smallest(ex.: side13)
+     *
+     * Ordering should be from biggest to smallest (example: { side26Anchors, side13Anchors, side7Anchors }).
+     * Format is:
+     * {
+     *   { // side26Anchors
+     *     {
+     *       10, // width
+     *       14 // height
+     *     },
+     *     {
+     *       23, // width
+     *       27 // height
+     *     },
+     *     {
+     *       37, // width
+     *       58 // height
+     *     }
+     *   },
+     *   { // side13Anchors
+     *     {
+     *       81, // width
+     *       82 // height
+     *     },
+     *     {
+     *       135, // width
+     *       169 // height
+     *     },
+     *     {
+     *       344, // width
+     *       319 // height
+     *     },
+     *     ... other anchors for side13
+     *   },
+     *   ... other sides (ordered from biggest to smallest) anchors
+     * }
+     */
+    void setAnchors(const std::vector<std::vector<std::vector<float>>>& anchors);
+
     /// Set Iou threshold
     void setIouThreshold(float thresh);
 

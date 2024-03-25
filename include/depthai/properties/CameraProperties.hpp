@@ -1,5 +1,5 @@
 #pragma once
-#include <tl/optional.hpp>
+#include <optional>
 
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraImageOrientation.hpp"
@@ -158,7 +158,7 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
      * in these cases alpha < 0.0 helps removing invalid areas.
      * See getOptimalNewCameraMatrix from opencv for more details.
      */
-    tl::optional<float> calibAlpha;
+    std::optional<float> calibAlpha;
     int warpMeshStepWidth = 32;
     int warpMeshStepHeight = 32;
 
@@ -171,7 +171,7 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
      * Default is auto: enabled for standard color/monochrome cameras where ISP can work
      * with both packed/unpacked, but disabled for other cameras like ToF.
      */
-    tl::optional<bool> rawPacked;
+    std::optional<bool> rawPacked;
 };
 
 DEPTHAI_SERIALIZE_EXT(CameraProperties,

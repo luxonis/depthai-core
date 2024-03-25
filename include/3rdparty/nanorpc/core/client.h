@@ -9,15 +9,11 @@
 #define __NANO_RPC_CORE_CLIENT_H__
 
 // STD
-#include <functional>
-#include <stdexcept>
+#include <any>
 #include <string>
 #include <tuple>
 #include <utility>
-
-// C++17 backwards compatibility
-#include <linb/any.hpp>
-#include <tl/optional.hpp>
+#include <optional>
 
 // NANORPC
 #include "nanorpc/core/detail/pack_meta.h"
@@ -136,7 +132,7 @@ private:
                  deserializer_.reset();
             }
 
-            return linb::any_cast<Type>(*value_);
+            return std::any_cast<Type>(*value_);
         }
 
         template <typename T>
@@ -149,8 +145,8 @@ private:
         template <typename>
         friend class client;
 
-        mutable tl::optional<deserializer_type> deserializer_;
-        mutable tl::optional<linb::any> value_;
+        mutable std::optional<deserializer_type> deserializer_;
+        mutable std::optional<std::any> value_;
 
         result(deserializer_type deserializer)
             : deserializer_{std::move(deserializer)}

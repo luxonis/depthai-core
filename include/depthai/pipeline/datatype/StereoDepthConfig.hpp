@@ -127,7 +127,7 @@ class StereoDepthConfig : public Buffer {
          * Center alignment factor 1 is equivalent to RECTIFIED_RIGHT
          * Center alignment factor 0 is equivalent to RECTIFIED_LEFT
          */
-        tl::optional<float> centerAlignmentShiftFactor;
+        std::optional<float> centerAlignmentShiftFactor;
 
         /**
          * Invalidate X amount of pixels at the edge of disparity frame.
