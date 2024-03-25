@@ -57,6 +57,46 @@ class VideoRecorderOpenCV : public VideoRecorder {
 };
 #endif
 
+// TODO(asahtik): Replay frame metadata
+class VideoPlayer {
+   public:
+    VideoPlayer() = default;
+    virtual ~VideoPlayer() = default;
+    virtual bool init(const std::string& filePath) = 0;
+    virtual std::vector<uint8_t> next() = 0;
+    virtual bool close() = 0;
+    bool isInitialized() const {
+        return initialized;
+    }
+
+   private:
+    bool initialized = false;
+};
+
+class VideoPlayerMp4v2 : public VideoPlayer {
+   public:
+    ~VideoPlayerMp4v2() override;
+    bool init(const std::string& filePath) override;
+    std::vector<uint8_t> next() override;
+    bool close() override;
+};
+
+// #if DEPTHAI_RECORD_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
+// class VideoRecorderOpenCV : public VideoRecorder {
+//    public:
+//     VideoRecorderOpenCV(const std::string& filename, int width, int height, int fps, int bitrate, int quality, bool lossless, int profile);
+//     ~VideoRecorderOpenCV() override;
+//     bool init(std::string filePath, int width, int heigh, int fps) override;
+//     bool write(span<const uint8_t>&) override;
+//     bool close() override;
+//
+//    private:
+//     cv::VideoWriter writer;
+//     std::string filePath;
+//     int width, height, fps;
+// };
+// #endif
+
 struct NodeRecordParams {
     std::string name;
 };

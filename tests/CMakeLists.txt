@@ -29,7 +29,7 @@ function(dai_add_test test_name test_src)
 
     # check compiler for C++ standard
     if(NOT DAT_CXX_STANDARD)
-        set(DAT_CXX_STANDARD 14)
+        set(DAT_CXX_STANDARD 17)
     endif()
     if(NOT COMPILER_SUPPORTS_CXX${DAT_CXX_STANDARD})
         message(STATUS "Skipping test ${test_name} with c++${DAT_CXX_STANDARD}; no compiler support")

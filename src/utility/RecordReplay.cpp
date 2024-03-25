@@ -21,6 +21,20 @@ bool VideoRecorderMp4v2::close() {
     return false;
 }
 
+VideoPlayerMp4v2::~VideoPlayerMp4v2() {}
+
+bool VideoPlayerMp4v2::init(const std::string& filePath) {
+    return false;
+}
+
+std::vector<uint8_t> VideoPlayerMp4v2::next() {
+    return {};
+}
+
+bool VideoPlayerMp4v2::close() {
+    return false;
+}
+
 bool checkRecordConfig(std::string& recordPath, utility::RecordConfig& config) {
     if(!platform::checkPathExists(recordPath)) {
         spdlog::warn("DEPTHAI_RECORD path does not exist or is invalid. Record disabled.");
