@@ -163,7 +163,7 @@ hunter_config(
     rtbmap
     # VERSION "0.21.4"
     URL "https://github.com/introlab/rtabmap/archive/refs/heads/master.tar.gz"
-    SHA1 "d01d90ade4b9fa9219097e8bef92492e953a21f3"
+    SHA1 "997599cc3a4c2ab90adba855f8c398fbbe9fcccc"
     CMAKE_ARGS
         CMAKE_BUILD_TYPE=RelWithDebInfo
         BUILD_APP=OFF
@@ -222,7 +222,7 @@ hunter_config(
         WITH_OPENMP=OFF
         WITH_OPENGV=OFF
         PCL_OMP=OFF
-
+)
 # Pybind11 2.9.2
 hunter_config(
     pybind11
