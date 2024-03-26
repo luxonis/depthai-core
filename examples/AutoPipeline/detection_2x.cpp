@@ -1,7 +1,11 @@
 #include <chrono>
 #include <iostream>
+#include <iterator>
+#include <stdexcept>
 
 // Includes common necessary includes for development using depthai library
+#include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/CameraSensorType.hpp"
 #include "depthai/depthai.hpp"
 
 /*
@@ -22,6 +26,11 @@ static const std::vector<std::string> labelMap = {
 
 static const std::atomic<bool> syncNN{true};
 
+std::vector<dai::CameraFeatures> getCameraFeatures() {
+    dai::Device device;
+    return device.getConnectedCameraFeatures();
+}
+
 int main(int argc, char** argv) {  // NOLINT
     using namespace std;           // NOLINT
     using namespace std::chrono;   // NOLINT
@@ -31,6 +40,8 @@ int main(int argc, char** argv) {  // NOLINT
 
     std::cout << "Using archive at path: " << nnArchivePath << "\n";
     std::cout << "Using archive 2 at path: " << nnArchivePath2 << "\n";
+
+    const auto& cameraFeatures = getCameraFeatures();
 
     // Create pipeline
     dai::Pipeline pipeline;
@@ -44,25 +55,51 @@ int main(int argc, char** argv) {  // NOLINT
     xoutRgb->setStreamName("rgb");
     nnOut->setStreamName("detections");
 
-    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     camRgb->setInterleaved(false);                                       // NOLINT
     camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);  // NOLINT
     camRgb->setFps(40);
 
-    const dai::NNArchiveConfig config(nnArchivePath);
-    const auto& configV1 = config.getConfigV1();
-    if(!configV1) {
+    const dai::NNArchive archive(nnArchivePath);
+    const dai::NNArchive archive2(nnArchivePath2);
+    const auto& config = archive.getConfig().getConfigV1();
+    const auto& config2 = archive2.getConfig().getConfigV1();
+    if(!config || !config2) {
         throw std::runtime_error("Wrong config version");
     }
-    const auto width = (*configV1).model.inputs[0].shape[2];
-    const auto height = (*configV1).model.inputs[0].shape[3];
-    if(width > 1920 || height > 1080) {
-        // We could decide to load another NNArchive that has a smaller size instead of throwing ...
-        // All without loading / reading to memory the whole blob
-        throw std::runtime_error("Sorry that's to big");
+    const auto width = (*config).model.inputs[0].shape[2];
+    const auto height = (*config).model.inputs[0].shape[3];
+    const auto width2 = (*config2).model.inputs[0].shape[2];
+    const auto height2 = (*config2).model.inputs[0].shape[3];
+    const auto& camera = std::find_if(
+        cameraFeatures.begin(), cameraFeatures.end(), [](const dai::CameraFeatures& itr) -> bool { return itr.socket == dai::CameraBoardSocket::CAM_A; });
+    if(camera == cameraFeatures.end()) {
+        throw std::runtime_error("Device doesn't support ColorCamera");
     }
+    std::vector<dai::CameraSensorConfig> colorCameraModes;
+    std::copy_if(camera->configs.begin(), camera->configs.end(), std::back_inserter(colorCameraModes), [](const auto& itr) {
+        return itr.type == dai::CameraSensorType::COLOR;
+    });
+    int64_t minAdditionalPixels = -1;
+    ssize_t foundIndex = -1;
+    ssize_t index = 0;
+    for(const auto& mode : colorCameraModes) {
+        if(mode.width >= width && mode.height >= height) {
+            int64_t additionalPixels = (mode.width - width) * mode.height + (mode.height - height) * mode.width;
+            if(minAdditionalPixels == -1 || additionalPixels < minAdditionalPixels) {
+                foundIndex = index;
+                minAdditionalPixels = additionalPixels;
+            }
+        }
+        ++index;
+    }
+    if(minAdditionalPixels == -1 || foundIndex == -1) {
+        throw std::runtime_error("This camera can't provide the wanted resolution");
+    }
+    const auto& mode = colorCameraModes[foundIndex];
+    std::cout << "FOUND CLOSEST RESOLUTION: " << mode.width << "x" << mode.height;
+    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     camRgb->setPreviewSize(static_cast<int>(width), static_cast<int>(height));
-    detectionNetwork->setNNArchive(dai::NNArchive(config, dai::NNArchiveBlob(config, nnArchivePath)));
+    detectionNetwork->setNNArchive(archive);
 
     detectionNetwork->setNumInferenceThreads(2);
     detectionNetwork->input.setBlocking(false);
