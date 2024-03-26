@@ -160,6 +160,25 @@ int main(int argc, char** argv) {  // NOLINT
     std::cout << "FOUND CLOSEST RESOLUTION: " << mode.width << "x" << mode.height << std::endl;
     std::cout << "SETTING PREVIEW SIZE TO: " << width << "x" << height << std::endl;
     camRgb->setResolution(resolutionFromSensorConfig(mode));
+    const auto useWidth = (double)width / (double)mode.width > (double)height / (double)mode.height;
+    int numerator = useWidth ? width : height;
+    int denominator = useWidth ? mode.width : mode.height;
+    const auto div = std::gcd(numerator, denominator);
+    numerator = numerator / div;
+    denominator = denominator / div;
+    // 16 is the max numerator and 63 the max denominator
+    if(numerator > 16 || denominator > 63) {
+        const double scale = (double)numerator / (double)denominator;
+        if(scale > 16.0 / 63.0) {
+            numerator = 16;
+            denominator = std::floor(scale / 16.0);
+        } else {
+            numerator = std::ceil(scale * 63.0);
+            denominator = 63;
+        }
+    }
+    std::cout << "USING ISP SCALE " << numerator << "/" << denominator << std::endl;
+    camRgb->setIspScale(numerator, denominator);
     camRgb->setPreviewSize(static_cast<int>(width), static_cast<int>(height));
     detectionNetwork->setNNArchive(archive);
 
