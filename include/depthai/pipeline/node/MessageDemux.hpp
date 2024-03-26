@@ -18,7 +18,7 @@ class MessageDemux : public DeviceNodeCRTP<DeviceNode, MessageDemux, MessageDemu
     /**
      * A map of outputs, where keys are same as in the input MessageGroup
      */
-    OutputMap outputs{true, *this, "outputs", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}})};
+    OutputMap outputs{true, *this, "outputs", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}, false)};
 };
 
 }  // namespace node

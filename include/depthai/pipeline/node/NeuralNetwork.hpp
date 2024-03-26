@@ -48,12 +48,12 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
      * Inputs mapped to network inputs. Useful for inferring from separate data sources
      * Default input is non-blocking with queue size 1 and waits for messages
      */
-    InputMap inputs{*this, "inputs", Input(*this, "", Input::Type::SReceiver, false, 1, true, {{DatatypeEnum::Buffer, true}})};
+    InputMap inputs{*this, "inputs", Input(*this, "", Input::Type::SReceiver, false, 1, true, {{DatatypeEnum::Buffer, true}}, false)};
 
     /**
      * Passthroughs which correspond to specified input
      */
-    OutputMap passthroughs{true, *this, "passthroughs", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}})};
+    OutputMap passthroughs{true, *this, "passthroughs", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}, false)};
 
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**

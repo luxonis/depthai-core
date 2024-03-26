@@ -122,20 +122,25 @@ class Node : public std::enable_shared_from_this<Node> {
 
         // std::vector<Capability> possibleCapabilities;
 
-        Output(Node& par) : parent(par), type(Type::MSender), possibleDatatypes({{DatatypeEnum::Buffer, true}}) {
+        Output(Node& par, bool ref = true) : parent(par), type(Type::MSender), possibleDatatypes({{DatatypeEnum::Buffer, true}}) {
             // Place oneself to the parents references
-            parent.setOutputRefs(this);
+            if(ref) {
+                parent.setOutputRefs(this);
+            }
         }
 
-        Output(Node& par, std::string name) : parent(par), name{std::move(name)}, type(Type::MSender), possibleDatatypes({{DatatypeEnum::Buffer, true}}) {
-            // Place oneself to the parents references
-            parent.setOutputRefs(this);
+        Output(Node& par, std::string name, bool ref = true)
+            : parent(par), name{std::move(name)}, type(Type::MSender), possibleDatatypes({{DatatypeEnum::Buffer, true}}) {
+            if(ref) {
+                parent.setOutputRefs(this);
+            }
         }
 
-        Output(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types)
+        Output(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types, bool ref = true)
             : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {
-            // Place oneself to the parents references
-            parent.setOutputRefs(this);
+            if(ref) {
+                parent.setOutputRefs(this);
+            }
         }
 
         /*
@@ -146,9 +151,11 @@ class Node : public std::enable_shared_from_this<Node> {
         }
         */
 
-        Output(Node& par, std::string group, std::string n, Type t, std::vector<DatatypeHierarchy> types)
+        Output(Node& par, std::string group, std::string n, Type t, std::vector<DatatypeHierarchy> types, bool ref = true)
             : parent(par), group(std::move(group)), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {
-            parent.setOutputRefs(this);
+            if(ref) {
+                parent.setOutputRefs(this);
+            }
         }
 
         /*

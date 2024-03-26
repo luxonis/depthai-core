@@ -3,6 +3,7 @@
 
 // Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
+#include "depthai/pipeline/MessageQueue.hpp"
 
 /*
 The code is the same as for Tiny-yolo-V3, the only difference is the blob file.
@@ -38,11 +39,11 @@ int main(int argc, char** argv) {  // NOLINT
     // Define sources and outputs
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
     auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>();
-    auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
-    auto nnOut = pipeline.create<dai::node::XLinkOut>();
+    // auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
+    // auto nnOut = pipeline.create<dai::node::XLinkOut>();
 
-    xoutRgb->setStreamName("rgb");
-    nnOut->setStreamName("detections");
+    // xoutRgb->setStreamName("rgb");
+    // nnOut->setStreamName("detections");
 
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     camRgb->setInterleaved(false);                                       // NOLINT
@@ -69,20 +70,20 @@ int main(int argc, char** argv) {  // NOLINT
 
     // Linking
     camRgb->preview.link(detectionNetwork->input);
+    std::shared_ptr<dai::MessageQueue> queueFrames;
     if(syncNN) {
-        detectionNetwork->passthrough.link(xoutRgb->input);
+        queueFrames = detectionNetwork->passthrough.getQueue();
     } else {
-        camRgb->preview.link(xoutRgb->input);
+        queueFrames = camRgb->preview.getQueue();
     }
 
-    detectionNetwork->out.link(nnOut->input);
+    auto detectionQueue = detectionNetwork->out.getQueue();
 
-    // Connect to device and start pipeline
-    dai::Device device(pipeline);
 
     // Output queues will be used to get the rgb frames and nn data from the outputs defined above
-    auto qRgb = device.getOutputQueue("rgb", 4, false);
-    auto qDet = device.getOutputQueue("detections", 4, false);
+    auto qRgb = queueFrames;
+    auto qDet = detectionQueue;
+    pipeline.start();
 
     cv::Mat frame;
     std::vector<dai::ImgDetection> detections;
@@ -154,8 +155,10 @@ int main(int argc, char** argv) {  // NOLINT
 
         int key = cv::waitKey(1);
         if(key == 'q' || key == 'Q') {
-            return 0;
+            break;
         }
     }
+    pipeline.stop();
+    pipeline.wait();
     return 0;
 }

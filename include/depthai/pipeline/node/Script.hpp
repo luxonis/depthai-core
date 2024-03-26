@@ -27,12 +27,12 @@ class Script : public DeviceNodeCRTP<DeviceNode, Script, ScriptProperties> {
      *  Inputs to Script node. Can be accessed using subscript operator (Eg: inputs['in1'])
      *  By default inputs are set to blocking with queue size 8
      */
-    InputMap inputs{true, *this, "io", Input(*this, "", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}})};
+    InputMap inputs{*this, "io", Input(*this, "", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}}, false)};
 
     /**
      * Outputs from Script node. Can be accessed subscript operator (Eg: outputs['out1'])
      */
-    OutputMap outputs{true, *this, "io", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}})};
+    OutputMap outputs{true, *this, "io", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}, false)};
 
     /**
      * Specify local filesystem path to load the script
