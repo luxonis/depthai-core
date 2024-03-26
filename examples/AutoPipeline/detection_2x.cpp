@@ -1,7 +1,11 @@
 #include <chrono>
 #include <iostream>
+#include <iterator>
+#include <stdexcept>
 
 // Includes common necessary includes for development using depthai library
+#include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/CameraSensorType.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
 
@@ -21,8 +25,6 @@ static const std::vector<std::string> labelMap = {
     "laptop",        "mouse",        "remote",        "keyboard",      "cell phone",  "microwave",   "oven",        "toaster",      "sink",
     "refrigerator",  "book",         "clock",         "vase",          "scissors",    "teddy bear",  "hair drier",  "toothbrush"};
 
-static const std::atomic<bool> syncNN{true};
-
 int main(int argc, char** argv) {  // NOLINT
     using namespace std;           // NOLINT
     using namespace std::chrono;   // NOLINT
@@ -33,56 +35,77 @@ int main(int argc, char** argv) {  // NOLINT
     std::cout << "Using archive at path: " << nnArchivePath << "\n";
     std::cout << "Using archive 2 at path: " << nnArchivePath2 << "\n";
 
-    // Create pipeline
     dai::Pipeline pipeline;
 
-    // Define sources and outputs
+    const auto device = pipeline.getDefaultDevice();
+    if(!device) {
+        throw std::runtime_error("The pipeline was without device");
+    }
+
+    const auto& cameraFeatures = device->getConnectedCameraFeatures();
+
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
-    auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>();
-    // auto xoutRgb = pipeline.create<dai::node::XLinkOut>();
-    // auto nnOut = pipeline.create<dai::node::XLinkOut>();
 
-    // xoutRgb->setStreamName("rgb");
-    // nnOut->setStreamName("detections");
-
-    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     camRgb->setInterleaved(false);                                       // NOLINT
     camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);  // NOLINT
+    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1352X1012);
+    // camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     camRgb->setFps(40);
 
-    const dai::NNArchiveConfig config(nnArchivePath);
-    const auto& configV1 = config.getConfigV1();
-    if(!configV1) {
+    auto detectionNetwork = pipeline.create<dai::node::DetectionNetwork>();
+    const dai::NNArchive archive(nnArchivePath);
+    const dai::NNArchive archive2(nnArchivePath2);
+    const auto& config = archive.getConfig().getConfigV1();
+    const auto& config2 = archive2.getConfig().getConfigV1();
+    if(!config || !config2) {
         throw std::runtime_error("Wrong config version");
     }
-    const auto width = (*configV1).model.inputs[0].shape[2];
-    const auto height = (*configV1).model.inputs[0].shape[3];
-    if(width > 1920 || height > 1080) {
-        // We could decide to load another NNArchive that has a smaller size instead of throwing ...
-        // All without loading / reading to memory the whole blob
-        throw std::runtime_error("Sorry that's to big");
+    const auto width = (*config).model.inputs[0].shape[2];
+    const auto height = (*config).model.inputs[0].shape[3];
+    const auto width2 = (*config2).model.inputs[0].shape[2];
+    const auto height2 = (*config2).model.inputs[0].shape[3];
+    const auto& camera = std::find_if(
+        cameraFeatures.begin(), cameraFeatures.end(), [](const dai::CameraFeatures& itr) -> bool { return itr.socket == dai::CameraBoardSocket::CAM_A; });
+    if(camera == cameraFeatures.end()) {
+        throw std::runtime_error("Device doesn't support ColorCamera");
     }
+    std::vector<dai::CameraSensorConfig> colorCameraModes;
+    std::copy_if(camera->configs.begin(), camera->configs.end(), std::back_inserter(colorCameraModes), [](const auto& itr) {
+        return itr.type == dai::CameraSensorType::COLOR;
+    });
+    int64_t minAdditionalPixels = -1;
+    ssize_t foundIndex = -1;
+    ssize_t index = 0;
+    for(const auto& mode : colorCameraModes) {
+        if(mode.width >= width && mode.height >= height) {
+            int64_t additionalPixels = (mode.width - width) * mode.height + (mode.height - height) * mode.width;
+            if(minAdditionalPixels == -1 || additionalPixels < minAdditionalPixels) {
+                foundIndex = index;
+                minAdditionalPixels = additionalPixels;
+            }
+        }
+        ++index;
+    }
+    if(minAdditionalPixels == -1 || foundIndex == -1) {
+        throw std::runtime_error("This camera can't provide the wanted resolution");
+    }
+    const auto& mode = colorCameraModes[foundIndex];
+    std::cout << "FOUND CLOSEST RESOLUTION: " << mode.width << "x" << mode.height << std::endl;
+    std::cout << "SETTING PREVIEW SIZE TO: " << width << "x" << height << std::endl;
     camRgb->setPreviewSize(static_cast<int>(width), static_cast<int>(height));
-    detectionNetwork->setNNArchive(dai::NNArchive(config, dai::NNArchiveBlob(config, nnArchivePath)));
+    detectionNetwork->setNNArchive(archive);
 
     detectionNetwork->setNumInferenceThreads(2);
     detectionNetwork->input.setBlocking(false);
 
     // Linking
     camRgb->preview.link(detectionNetwork->input);
-    std::shared_ptr<dai::MessageQueue> queueFrames;
-    if(syncNN) {
-        queueFrames = detectionNetwork->passthrough.getQueue();
-    } else {
-        queueFrames = camRgb->preview.getQueue();
-    }
-
+    const auto queueFrames = camRgb->video.getQueue();
     auto detectionQueue = detectionNetwork->out.getQueue();
 
-
     // Output queues will be used to get the rgb frames and nn data from the outputs defined above
-    auto qRgb = queueFrames;
-    auto qDet = detectionQueue;
+    const auto& qRgb = queueFrames;
+    const auto& qDet = detectionQueue;
     pipeline.start();
 
     cv::Mat frame;
@@ -118,16 +141,8 @@ int main(int argc, char** argv) {  // NOLINT
     };
 
     while(true) {
-        std::shared_ptr<dai::ImgFrame> inRgb;
-        std::shared_ptr<dai::ImgDetections> inDet;
-
-        if(syncNN) {
-            inRgb = qRgb->get<dai::ImgFrame>();
-            inDet = qDet->get<dai::ImgDetections>();
-        } else {
-            inRgb = qRgb->tryGet<dai::ImgFrame>();
-            inDet = qDet->tryGet<dai::ImgDetections>();
-        }
+        const auto inRgb = qRgb->tryGet<dai::ImgFrame>();
+        const auto inDet = qDet->tryGet<dai::ImgDetections>();
 
         counter++;
         auto currentTime = steady_clock::now();
