@@ -443,3 +443,8 @@ target_link_libraries(nn_archive_memory_yolo_v6 PRIVATE ssl crypto)
 dai_add_example(nn_archive_advanced_yolo_v6 NNArchive/nn_archive.cpp ON)
 target_compile_definitions(nn_archive_advanced_yolo_v6 PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT=1 EXAMPLE_TYPE="advanced" NN_ARCHIVE_PATH="${nn_archive_yolo_v6_tar_xz}" URL_BASE="https://artifacts.luxonis.com")
 target_link_libraries(nn_archive_advanced_yolo_v6 PRIVATE ssl crypto)
+
+# Pipeline auto negotiation and linking
+dai_add_example(detection_2x AutoPipeline/detection_2x.cpp ON)
+target_compile_definitions(detection_2x PRIVATE NN_ARCHIVE_PATH="${nn_archive_yolo_v6_tar_xz}" NN_ARCHIVE_PATH_2="${nn_archive_yolo_v6_tar_xz}")
+ 
