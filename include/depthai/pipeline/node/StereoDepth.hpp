@@ -1,6 +1,7 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
+#include <tl/optional.hpp>
 
 // shared
 #include "depthai-shared/properties/StereoDepthProperties.hpp"
@@ -433,15 +434,29 @@ class StereoDepth : public NodeCRTP<DeviceNode, StereoDepth, StereoDepthProperti
      */
     void setDepthAlignmentUseSpecTranslation(bool specTranslation);
 
-    // TODO(before mainline) - API not supported on RVC3
     /**
      * Free scaling parameter between 0 (when all the pixels in the undistorted image are valid)
      * and 1 (when all the source image pixels are retained in the undistorted image).
      * On some high distortion lenses, and/or due to rectification (image rotated) invalid areas may appear even with alpha=0,
      * in these cases alpha < 0.0 helps removing invalid areas.
      * See getOptimalNewCameraMatrix from opencv for more details.
+     * @throws Throws if intrinsic scaling is set
      */
     void setAlphaScaling(float alpha);
+
+    // /**
+    //  * Get the current alpha scaling value.
+    //  * @returns Alpha scaling value
+    //  */
+    // tl::optional<float> getAlphaScaling() const;
+
+    /**
+     * Set intrinsic scaling for intrinsics to use in rectification.
+     * The function throws if alpha scaling is set.
+     * @param scaling Scaling factor for intrinsics
+     * @throws Throws if alpha scaling is set
+     */
+    void setIntrinsicScaling(float scaling);
 };
 
 }  // namespace node

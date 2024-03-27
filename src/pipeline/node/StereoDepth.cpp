@@ -196,7 +196,17 @@ void StereoDepth::setDepthAlignmentUseSpecTranslation(bool specTranslation) {
 }
 
 void StereoDepth::setAlphaScaling(float alpha) {
+    if(properties.intrinsicScaleFactor.has_value()) {
+        throw std::runtime_error("StereoDepth | alphaScaling is not compatible with intrinsicScaleFactor");
+    }
     properties.alphaScaling = alpha;
+}
+
+void StereoDepth::setIntrinsicScaling(float scale) {
+    if(properties.alphaScaling.has_value()) {
+        throw std::runtime_error("StereoDepth | intrinsicScaleFactor is not compatible with alphaScaling");
+    }
+    properties.intrinsicScaleFactor = scale;
 }
 
 void StereoDepth::setDefaultProfilePreset(PresetMode mode) {

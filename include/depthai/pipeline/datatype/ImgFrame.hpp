@@ -297,6 +297,24 @@ class ImgFrame : public Buffer {
     float getSourceVFov() const;
 
     /**
+    * Get the intrinsic matrix of the camera
+    * @returns intrinsic matrix of the camera
+    */
+    tl::optional<std::vector<std::vector<float>>> getIntrinsicMatrix() const;
+
+    /**
+     * Set the intrinsic matrix of the camera
+     * @param intrinsicMatrix intrinsic matrix of the camera
+     */
+    ImgFrame& setIntrinsicMatrix(const std::vector<std::vector<float>>& intrinsicMatrix);
+
+    /**
+     * Set the intrinsic matrix of the camera
+     * @param intrinsicMatrix intrinsic matrix of the camera
+     */
+    ImgFrame& setIntrinsicMatrix(const tl::optional<std::vector<std::vector<float>>>& intrinsicMatrix);
+
+    /**
      * Check that the image transformation match the image size
      *
      * @returns true if the transformations are valid

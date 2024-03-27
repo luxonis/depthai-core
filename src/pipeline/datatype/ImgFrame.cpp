@@ -319,6 +319,20 @@ float ImgFrame::getSourceVFov() const {
     return verticalFovDegrees;
 }
 
+tl::optional<std::vector<std::vector<float>>> ImgFrame::getIntrinsicMatrix() const {
+    return img.intrinsicMatrix;
+}
+
+ImgFrame& ImgFrame::setIntrinsicMatrix(const std::vector<std::vector<float>>& intrinsicMatrix) {
+    img.intrinsicMatrix = intrinsicMatrix;
+    return *this;
+}
+
+ImgFrame& ImgFrame::setIntrinsicMatrix(const tl::optional<std::vector<std::vector<float>>>& intrinsicMatrix) {
+    img.intrinsicMatrix = intrinsicMatrix;
+    return *this;
+}
+
 bool ImgFrame::validateTransformations() const {
     if(!transformations.validateTransformationSizes()) {
         spdlog::warn("Transformation sizes are invalid");
