@@ -201,7 +201,7 @@ void testResolution(std::optional<std::tuple<int, int>> wantedSize = std::nullop
         height = std::abs(std::rand()) % (*maxMode).height;
         // INFO TAKEN FROM FW: width & height must be greater or equal to 32 pixels (empirical tests)
         width = width < 32 ? 32 : width;
-        height = height < 32 ? 32 : width;
+        height = height < 32 ? 32 : height;
     }
     std::cout << "TESTING RESOLUTION: " << width << "x" << height << std::endl;
     const auto& mode = getClosestCameraConfig(colorCameraConfigs, width, height);
