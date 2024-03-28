@@ -1,9 +1,11 @@
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <stdexcept>
 
 // Libraries
 #include <catch2/catch_all.hpp>
+#include <tuple>
 
 // Includes common necessary includes for development using depthai library
 #include "depthai/common/CameraBoardSocket.hpp"
@@ -111,6 +113,55 @@ dai::CameraSensorConfig getClosestCameraConfig(dai::Device& device, int64_t widt
     return colorCameraModes[foundIndex];
 }
 
+std::set<std::tuple<double, int, int>> validIspScales() {
+    std::set<std::tuple<double, int, int>> result;
+    for(int numerator = 1; numerator < 16 + 1; ++numerator) {
+        for(int denominator = 1; denominator < 63 + 1; ++denominator) {
+            // Chroma needs 2x extra downscaling
+            if(denominator < 32 || numerator % 2 == 0) {
+                // Only if irreducible
+                if(std::gcd(numerator, denominator) == 1) {
+                    result.insert(std::make_tuple((double)numerator / (double)denominator, numerator, denominator));
+                }
+            }
+        }
+    }
+    return result;
+}
+
+std::tuple<int, int> findClosestIspScale(int width, int height, const dai::CameraSensorConfig& mode) {
+    const static auto validScales = validIspScales();
+    const auto useWidth = (double)width / (double)mode.width > (double)height / (double)mode.height;
+    int numerator = useWidth ? width : height;
+    int denominator = useWidth ? mode.width : mode.height;
+    const auto div = std::gcd(numerator, denominator);
+    numerator = numerator / div;
+    denominator = denominator / div;
+    const auto foundScale = std::find_if(validScales.begin(), validScales.end(), [numerator, denominator](const auto& itr) {
+        return std::get<1>(itr) == numerator && std::get<2>(itr) == denominator;
+    });
+    if(foundScale != validScales.end()) {
+        return std::make_tuple(std::get<1>(*foundScale), std::get<2>(*foundScale));
+    }
+    const double wantedScale = (double)numerator / (double)denominator;
+    double bestDiff = std::numeric_limits<double>::max();
+    auto bestScale = std::make_tuple<int, int>(-1, -1);
+    for(const auto& validScale : validScales) {
+        const auto scale = std::get<0>(validScale);
+        if(scale >= wantedScale) {
+            const auto diff = scale - wantedScale;
+            if(diff < bestDiff) {
+                bestDiff = diff;
+                bestScale = std::make_tuple(std::get<1>(validScale), std::get<2>(validScale));
+            }
+        }
+    }
+    if(std::get<0>(bestScale) == -1) {
+        throw std::runtime_error("Couldn't find correct scale");
+    }
+    return bestScale;
+}
+
 TEST_CASE("resolutions") {
     dai::Pipeline pipeline;
 
@@ -122,6 +173,10 @@ TEST_CASE("resolutions") {
 
     const long width = 444;
     const auto height = 888;
+    /*
+    const long width = 888;
+    const auto height = 444;
+    */
 
     const auto device = pipeline.getDefaultDevice();
     if(!device) {
@@ -129,30 +184,14 @@ TEST_CASE("resolutions") {
     }
     const auto& mode = getClosestCameraConfig(*device, width, height);
     std::cout << "FOUND CLOSEST RESOLUTION: " << mode.width << "x" << mode.height << std::endl;
-    std::cout << "SETTING PREVIEW SIZE TO: " << width << "x" << height << std::endl;
     camRgb->setResolution(resolutionFromSensorConfig(mode));
-    const auto useWidth = (double)width / (double)mode.width > (double)height / (double)mode.height;
-    int numerator = useWidth ? width : height;
-    int denominator = useWidth ? mode.width : mode.height;
-    const auto div = std::gcd(numerator, denominator);
-    numerator = numerator / div;
-    denominator = denominator / div;
-    // 16 is the max numerator and 63 the max denominator
-    if(numerator > 16 || denominator > 63) {
-        const double scale = (double)numerator / (double)denominator;
-        if(scale > 16.0 / 63.0) {
-            numerator = 16;
-            denominator = std::floor(scale / 16.0);
-        } else {
-            numerator = std::ceil(scale * 63.0);
-            denominator = 63;
-        }
-    }
-    std::cout << "USING ISP SCALE " << numerator << "/" << denominator << std::endl;
-    camRgb->setIspScale(numerator, denominator);
+    const auto ispScale = findClosestIspScale(width, height, mode);
+    std::cout << "USING ISP SCALE " << std::get<0>(ispScale) << "/" << std::get<1>(ispScale) << std::endl;
+    camRgb->setIspScale(ispScale);
+    std::cout << "SETTING PREVIEW SIZE TO: " << width << "x" << height << std::endl;
     camRgb->setPreviewSize(static_cast<int>(width), static_cast<int>(height));
 
-    const auto queueFrames = camRgb->raw.getQueue();
+    const auto queueFrames = camRgb->preview.getQueue();
 
     // Output queues will be used to get the rgb frames and nn data from the outputs defined above
     const auto& qRgb = queueFrames;

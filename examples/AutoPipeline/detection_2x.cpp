@@ -147,8 +147,10 @@ int main(int argc, char** argv) {  // NOLINT
     if(!config || !config2) {
         throw std::runtime_error("Wrong config version");
     }
-    const auto width = (*config).model.inputs[0].shape[2];
-    const auto height = (*config).model.inputs[0].shape[3];
+    // const auto width = (*config).model.inputs[0].shape[2];
+    // const auto height = (*config).model.inputs[0].shape[3];
+    const auto width = 900;
+    const auto height = 900;
     const auto width2 = (*config2).model.inputs[0].shape[2];
     const auto height2 = (*config2).model.inputs[0].shape[3];
 
@@ -179,7 +181,8 @@ int main(int argc, char** argv) {  // NOLINT
     }
     std::cout << "USING ISP SCALE " << numerator << "/" << denominator << std::endl;
     camRgb->setIspScale(numerator, denominator);
-    camRgb->setPreviewSize(static_cast<int>(width), static_cast<int>(height));
+    camRgb->setPreviewSize(static_cast<int>(640), static_cast<int>(640));
+    camRgb->setVideoSize(static_cast<int>(width), static_cast<int>(height));
     detectionNetwork->setNNArchive(archive);
 
     detectionNetwork->setNumInferenceThreads(2);
