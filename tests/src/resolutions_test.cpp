@@ -231,8 +231,13 @@ void testResolution(std::optional<std::tuple<int, int>> wantedSize = std::nullop
     std::this_thread::sleep_for(std::chrono::seconds(10));
 }
 
+TEST_CASE("prev_broken_resolutions") {
+    const auto resolution = GENERATE(table<int, int>({{3860, 2587}, {3951, 1576}, {909, 909}, {444, 888}}));
+    testResolution(resolution);
+}
+
 TEST_CASE("common_resolutions") {
-    const auto resolution = GENERATE(table<int, int>({{1920, 1080}, {300, 300}, {640, 640}, {800, 600}, {444, 888}}));
+    const auto resolution = GENERATE(table<int, int>({{1920, 1080}, {300, 300}, {640, 640}, {800, 600}}));
     testResolution(resolution);
 }
 
