@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <chrono>
 #include <iostream>
 #include <iterator>
 #include <limits>
@@ -5,10 +7,12 @@
 
 // Libraries
 #include <catch2/catch_all.hpp>
+#include <catch2/generators/catch_generators.hpp>
 #include <tuple>
 
 // Includes common necessary includes for development using depthai library
 #include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/CameraFeatures.hpp"
 #include "depthai/common/CameraSensorType.hpp"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
@@ -75,7 +79,7 @@ dai::ColorCameraProperties::SensorResolution resolutionFromSensorConfig(const da
     }
 }
 
-dai::CameraSensorConfig getClosestCameraConfig(dai::Device& device, int64_t width, int64_t height) {
+std::vector<dai::CameraSensorConfig> getColorCameraConfigs(dai::Device& device) {
     const auto& cameraFeatures = device.getConnectedCameraFeatures();
     const auto& camera = std::find_if(
         cameraFeatures.begin(), cameraFeatures.end(), [](const dai::CameraFeatures& itr) -> bool { return itr.socket == dai::CameraBoardSocket::CAM_A; });
@@ -86,6 +90,10 @@ dai::CameraSensorConfig getClosestCameraConfig(dai::Device& device, int64_t widt
     std::copy_if(camera->configs.begin(), camera->configs.end(), std::back_inserter(colorCameraModes), [](const auto& itr) {
         return itr.type == dai::CameraSensorType::COLOR;
     });
+    return colorCameraModes;
+}
+
+dai::CameraSensorConfig getClosestCameraConfig(const std::vector<dai::CameraSensorConfig>& colorCameraModes, int64_t width, int64_t height) {
     int64_t minAdditionalPixels = -1;
     ssize_t foundIndex = -1;
     ssize_t index = 0;
@@ -108,7 +116,7 @@ dai::CameraSensorConfig getClosestCameraConfig(dai::Device& device, int64_t widt
         ++index;
     }
     if(minAdditionalPixels == -1 || foundIndex == -1) {
-        throw std::runtime_error("This camera can't provide the wanted resolution" + std::to_string(width) + "x" + std::to_string(height));
+        throw std::runtime_error("This camera can't provide the wanted resolution " + std::to_string(width) + "x" + std::to_string(height));
     }
     return colorCameraModes[foundIndex];
 }
@@ -162,7 +170,7 @@ std::tuple<int, int> findClosestIspScale(int width, int height, const dai::Camer
     return bestScale;
 }
 
-TEST_CASE("resolutions") {
+void testResolution(std::optional<std::tuple<int, int>> wantedSize = std::nullopt) {
     dai::Pipeline pipeline;
 
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
@@ -171,18 +179,32 @@ TEST_CASE("resolutions") {
     camRgb->setColorOrder(dai::ColorCameraProperties::ColorOrder::BGR);  // NOLINT
     camRgb->setFps(40);
 
-    const long width = 444;
-    const auto height = 888;
-    /*
-    const long width = 888;
-    const auto height = 444;
-    */
-
     const auto device = pipeline.getDefaultDevice();
     if(!device) {
         throw std::runtime_error("The pipeline was without device");
     }
-    const auto& mode = getClosestCameraConfig(*device, width, height);
+    const auto& colorCameraConfigs = getColorCameraConfigs(*device);
+    int width;
+    int height;
+    if(wantedSize) {
+        width = std::get<0>(*wantedSize);
+        height = std::get<1>(*wantedSize);
+    } else {
+        const auto maxMode = std::max_element(colorCameraConfigs.begin(), colorCameraConfigs.end(), [](const auto& first, const auto& second) {
+            return first.width * first.height < second.width * second.height;
+        });
+        if(maxMode == colorCameraConfigs.end()) {
+            throw std::runtime_error("No color camera sensor configs found");
+        }
+        std::srand(std::time(nullptr));
+        width = std::abs(std::rand()) % (*maxMode).width;
+        height = std::abs(std::rand()) % (*maxMode).height;
+        // INFO TAKEN FROM FW: width & height must be greater or equal to 32 pixels (empirical tests)
+        width = width < 32 ? 32 : width;
+        height = height < 32 ? 32 : width;
+    }
+    std::cout << "TESTING RESOLUTION: " << width << "x" << height << std::endl;
+    const auto& mode = getClosestCameraConfig(colorCameraConfigs, width, height);
     std::cout << "FOUND CLOSEST RESOLUTION: " << mode.width << "x" << mode.height << std::endl;
     camRgb->setResolution(resolutionFromSensorConfig(mode));
     const auto ispScale = findClosestIspScale(width, height, mode);
@@ -193,7 +215,6 @@ TEST_CASE("resolutions") {
 
     const auto queueFrames = camRgb->preview.getQueue();
 
-    // Output queues will be used to get the rgb frames and nn data from the outputs defined above
     const auto& qRgb = queueFrames;
     pipeline.start();
 
@@ -207,4 +228,15 @@ TEST_CASE("resolutions") {
     }
     pipeline.stop();
     pipeline.wait();
+    std::this_thread::sleep_for(std::chrono::seconds(10));
+}
+
+TEST_CASE("common_resolutions") {
+    const auto resolution = GENERATE(table<int, int>({{1920, 1080}, {300, 300}, {640, 640}, {800, 600}, {444, 888}}));
+    testResolution(resolution);
+}
+
+TEST_CASE("random_resolutions") {
+    (void)GENERATE(repeat(20, value(0)));
+    testResolution();
 }
