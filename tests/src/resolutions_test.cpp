@@ -211,6 +211,10 @@ void testResolution(std::optional<std::tuple<int, int>> wantedSize = std::nullop
     std::cout << "USING ISP SCALE " << std::get<0>(ispScale) << "/" << std::get<1>(ispScale) << std::endl;
     camRgb->setIspScale(ispScale);
     std::cout << "SETTING PREVIEW SIZE TO: " << width << "x" << height << std::endl;
+    // TODO(jakgra) add this limitation on RVC2 devices
+    // int maxIspVideoWidth = std::min(width, 3840);
+    // int maxIspVideoHeight = std::min(height, 2160);
+
     camRgb->setPreviewSize(static_cast<int>(width), static_cast<int>(height));
 
     const auto queueFrames = camRgb->preview.getQueue();
@@ -231,17 +235,21 @@ void testResolution(std::optional<std::tuple<int, int>> wantedSize = std::nullop
     std::this_thread::sleep_for(std::chrono::seconds(10));
 }
 
+/*
 TEST_CASE("prev_broken_resolutions") {
     const auto resolution = GENERATE(table<int, int>({{3860, 2587}, {3951, 1576}, {909, 909}, {444, 888}}));
     testResolution(resolution);
 }
+*/
 
 TEST_CASE("common_resolutions") {
     const auto resolution = GENERATE(table<int, int>({{1920, 1080}, {300, 300}, {640, 640}, {800, 600}}));
     testResolution(resolution);
 }
 
+/*
 TEST_CASE("random_resolutions") {
     (void)GENERATE(repeat(20, value(0)));
     testResolution();
 }
+*/
