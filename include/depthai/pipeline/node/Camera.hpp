@@ -2,6 +2,7 @@
 
 #include <depthai/pipeline/datatype/CameraControl.hpp>
 
+#include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
 #include "depthai/utility/span.hpp"
 
@@ -35,6 +36,8 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
      * Computes the scaled size given numerator and denominator
      */
     static int getScaledSize(int input, int num, int denom);
+
+    Output* requestNewOutput(const ImgFrameCapability& capability, bool onHost = false);
 
     /**
      * Initial control options to apply to sensor

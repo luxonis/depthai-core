@@ -1,8 +1,13 @@
 #include "depthai/pipeline/node/Camera.hpp"
 // std
 #include <fstream>
+#include <stdexcept>
+#include <variant>
 
 // libraries
+
+// depthai internal
+#include "utility/ErrorMacros.hpp"
 
 namespace dai {
 namespace node {
@@ -271,6 +276,24 @@ std::optional<float> Camera::getCalibrationAlpha() const {
 
 void Camera::setRawOutputPacked(bool packed) {
     properties.rawPacked = packed;
+}
+
+Camera::Output* Camera::requestNewOutput(const ImgFrameCapability& capability, bool onHost) {
+    (void)onHost;  // This will be used for optimizing network troughput
+    DAI_CHECK_V(preview.getConnections().empty() && video.getConnections().empty() && isp.getConnections().empty() && still.getConnections().empty(),
+                "Can't use managed and unmanaged mode at the same time. Don't link() preview, video, isp, still outputs or don't use requestNewOutput().");
+    if(capability.size.value) {
+        const auto* size = std::get_if<std::tuple<uint32_t, uint32_t>>(&(*capability.size.value));
+        if(size != nullptr) {
+            std::cout << "Setting preview size" << std::endl;
+            setPreviewSize(*size);
+        } else {
+            std::cout << "NOT Setting preview size" << std::endl;
+        }
+    } else {
+        std::cout << "NOT Setting preview size because value is NULL" << std::endl;
+    }
+    return &preview;
 }
 
 }  // namespace node
