@@ -88,31 +88,6 @@ class PointCloudData : public Buffer {
      */
     bool isSparse() const;
 
-    // setters
-    /**
-     * Retrieves image timestamp related to dai::Clock::now()
-     */
-    PointCloudData& setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
-
-    /**
-     * Sets image timestamp related to dai::Clock::now()
-     */
-    PointCloudData& setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
-
-    /**
-     * Instance number relates to the origin of the frame (which camera)
-     *
-     * @param instance Instance number
-     */
-    PointCloudData& setInstanceNum(unsigned int instance);
-
-    /**
-     * Specifies sequence number
-     *
-     * @param seq Sequence number
-     */
-    PointCloudData& setSequenceNum(int64_t seq);
-
     /**
      * Specifies frame width
      *
@@ -183,6 +158,20 @@ class PointCloudData : public Buffer {
      * @param val maximal z coordinate in depth units (millimeter by default)
      */
     PointCloudData& setMaxZ(float val);
+
+    /**
+     * Specifies whether point cloud is sparse
+     *
+     * @param val whether point cloud is sparse
+     */
+    PointCloudData& setSparse(bool val);
+
+    /**
+     * Specifies instance number
+     *
+     * @param instanceNum instance number
+     */
+    PointCloudData& setInstanceNum(unsigned int instanceNum);
 
 #ifdef DEPTHAI_HAVE_PCL_SUPPORT
     /**

@@ -2,7 +2,7 @@
 
 #include <iostream>
 
-#include "common/Point3f.hpp"
+#include "depthai/common/Point3f.hpp"
 
 namespace dai {
 
@@ -92,7 +92,10 @@ PointCloudData& PointCloudData::setMaxZ(float val) {
     this->maxz = val;
     return *this;
 }
+PointCloudData& PointCloudData::setSparse(bool val) {
+    sparse = val;
+    return *this;
+}
 
 static_assert(sizeof(Point3f) == 12, "Point3f size must be 12 bytes");
-
 }  // namespace dai
