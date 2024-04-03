@@ -648,6 +648,8 @@ if(DEPTHAI_PCL_SUPPORT)
 
         # Specify that we are building target pcl
         target_compile_definitions(${TARGET_PCL_NAME} PUBLIC DEPTHAI_TARGET_PCL)
+        target_compile_definitions(${TARGET_PCL_NAME} PUBLIC DEPTHAI_HAVE_PCL_SUPPORT)
+
 
         target_include_directories(${TARGET_PCL_NAME} PUBLIC ${PCL_INCLUDE_DIRS})
         target_link_directories(${TARGET_PCL_NAME} PUBLIC ${PCL_LIBRARY_DIRS})

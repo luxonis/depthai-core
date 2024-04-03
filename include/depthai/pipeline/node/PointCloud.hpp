@@ -7,6 +7,7 @@
 
 // shared
 #include <depthai/properties/PointCloudProperties.hpp>
+#include <memory>
 
 #include "depthai/pipeline/datatype/PointCloudConfig.hpp"
 
@@ -16,7 +17,7 @@ namespace node {
 /**
  * @brief PointCloud node. Computes point cloud from depth frames.
  */
-class PointCloud : public DeviceNodeCRTP<Node, PointCloud, PointCloudProperties> {
+class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudProperties> {
    public:
     constexpr static const char* NAME = "PointCloud";
 
@@ -24,9 +25,8 @@ class PointCloud : public DeviceNodeCRTP<Node, PointCloud, PointCloudProperties>
     Properties& getProperties();
 
    public:
-    PointCloud(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    PointCloud(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
-
+    PointCloud() = default;
+    PointCloud(std::unique_ptr<Properties> props);
     /**
      * Initial config to use when computing the point cloud.
      */
