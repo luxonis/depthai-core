@@ -132,6 +132,7 @@ set(SOURCE_LIST
     src/pipeline/node/BenchmarkBindings.cpp
     src/pipeline/node/UVCBindings.cpp
     src/pipeline/node/ToFBindings.cpp
+    src/pipeline/node/PointCloudBindings.cpp
     src/pipeline/node/SyncBindings.cpp
     src/pipeline/node/MessageDemuxBindings.cpp
 
@@ -158,6 +159,8 @@ set(SOURCE_LIST
     src/pipeline/datatype/TrackedFeaturesBindings.cpp
     src/pipeline/datatype/TrackletsBindings.cpp
     src/pipeline/datatype/BenchmarkReportBindings.cpp
+    src/pipeline/datatype/PointCloudConfigBindings.cpp
+    src/pipeline/datatype/PointCloudDataBindings.cpp
 )
 
 # Add files for python module

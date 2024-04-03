@@ -27,10 +27,12 @@
 #include "depthai/common/Size2f.hpp"
 #include "depthai/common/Timestamp.hpp"
 #include "depthai/common/UsbSpeed.hpp"
+#include "depthai/common/StereoPair.hpp"
 
 // depthai
 #include "depthai/common/CameraFeatures.hpp"
 #include "depthai/common/CameraExposureOffset.hpp"
+#include "depthai/common/StereoPair.hpp"
 #include "depthai/utility/ProfilingData.hpp"
 
 void CommonBindings::bind(pybind11::module& m, void* pCallstack){
@@ -63,6 +65,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
     py::class_<DetectionParserOptions> detectionParserOptions(m, "DetectionParserOptions", DOC(dai, DetectionParserOptions));
     py::class_<RotatedRect> rotatedRect(m, "RotatedRect", DOC(dai, RotatedRect));
     py::class_<Rect> rect(m, "Rect", DOC(dai, Rect));
+    py::class_<StereoPair> stereoPair(m, "StereoPair", DOC(dai, StereoPair));
     py::enum_<CameraExposureOffset> cameraExposureOffset(m, "CameraExposureOffset");
     py::enum_<Colormap> colormap(m, "Colormap", DOC(dai, Colormap));
     py::enum_<FrameEvent> frameEvent(m, "FrameEvent", DOC(dai, FrameEvent));
@@ -108,6 +111,19 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
         .def_readwrite("y", &Rect::y)
         .def_readwrite("width", &Rect::width)
         .def_readwrite("height", &Rect::height)
+        ;
+
+    stereoPair
+        .def(py::init<>())
+        .def_readwrite("left", &StereoPair::left)
+        .def_readwrite("right", &StereoPair::right)
+        .def_readwrite("baseline", &StereoPair::baseline)
+        .def_readwrite("isVertical", &StereoPair::isVertical)
+        .def("__repr__", [](StereoPair& stereoPair) {
+            std::stringstream stream;
+            stream << stereoPair;
+            return stream.str();
+        })
         ;
 
     timestamp
@@ -216,6 +232,7 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
         .def_readwrite("hasAutofocusIC", &CameraFeatures::hasAutofocusIC)
         .def_readwrite("name", &CameraFeatures::name)
         .def_readwrite("configs", &CameraFeatures::configs)
+        .def_readwrite("calibrationResolution", &CameraFeatures::calibrationResolution)
         .def("__repr__", [](CameraFeatures& camera) {
             std::stringstream stream;
             stream << camera;
@@ -231,6 +248,12 @@ void CommonBindings::bind(pybind11::module& m, void* pCallstack){
         .def_readwrite("minFps", &CameraSensorConfig::minFps)
         .def_readwrite("maxFps", &CameraSensorConfig::maxFps)
         .def_readwrite("type", &CameraSensorConfig::type)
+        .def_readwrite("fov", &CameraSensorConfig::fov)
+        .def("__repr__", [](CameraSensorConfig& config) {
+            std::stringstream stream;
+            stream << config;
+            return stream.str();
+        })
     ;
 
     // MemoryInfo
