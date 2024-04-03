@@ -292,6 +292,14 @@ set_property(TARGET rtabmap_vio PROPERTY CXX_STANDARD 17)
 target_link_options(rtabmap_vio PRIVATE "-Wl,--disable-new-dtags")
 target_link_libraries(rtabmap_vio PRIVATE depthai::rtabmap rerun_sdk)
 
+# find_package(Eigen3 REQUIRED)
+# find_package(cer)
+# find_package(basalt CONFIG REQUIRED)
+# dai_add_example(basalt_dai_vio host_side/basalt_dai_vio.cpp OFF)
+# set_property(TARGET basalt_dai_vio PROPERTY CXX_STANDARD 17)
+# target_link_options(basalt_dai_vio PRIVATE "-Wl,--disable-new-dtags")
+# target_link_libraries(basalt_dai_vio PRIVATE basalt rerun_sdk Eigen3::Eigen)
+
 # ImageManip
 dai_add_example(image_manip ImageManip/image_manip_example.cpp ON)
 dai_add_example(image_manip_rotate ImageManip/image_manip_rotate.cpp ON)

@@ -331,7 +331,7 @@ option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" ON)
 # Specify support for FW
 option(DEPTHAI_ENABLE_DEVICE_FW "Enable MyriadX Device FW" ON)
 option(DEPTHAI_ENABLE_DEVICE_BOOTLOADER_FW "Enable MyriadX Device Bootloader FW" ON)
-option(DEPTHAI_ENABLE_DEVICE_RVC3_FW "Enable RVC3 Device FW" ON)
+option(DEPTHAI_ENABLE_DEVICE_RVC3_FW "Enable RVC3 Device FW" OFF)
 
 option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries into library" ON)
 

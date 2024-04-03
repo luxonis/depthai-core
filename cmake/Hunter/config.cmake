@@ -163,7 +163,7 @@ hunter_config(
     rtbmap
     # VERSION "0.21.4"
     URL "https://github.com/introlab/rtabmap/archive/refs/heads/master.tar.gz"
-    SHA1 "997599cc3a4c2ab90adba855f8c398fbbe9fcccc"
+    SHA1 "9d3a45bc050669ab6782482638bad60b158fd975"
     CMAKE_ARGS
         CMAKE_BUILD_TYPE=RelWithDebInfo
         BUILD_APP=OFF
@@ -230,3 +230,13 @@ hunter_config(
     URL "https://github.com/pybind/pybind11/archive/refs/tags/v2.9.2.tar.gz"
     SHA1 "5e05583a210282c3251281b6ee5677915f0cbf95"
 )
+
+
+# hunter_config(
+#     basalt
+#     URL "https://gitlab.freedesktop.org/mateosss/basalt/-/archive/release-673cc5c6/basalt-release-673cc5c6.tar.gz"
+#     SHA1 "60825d3e76f15896abc5011edaafffe4ff4b6c93"
+#     CMAKE_ARGS
+#         BASALT_INSTANTIATIONS_DOUBLE=off
+#         BUILD_TESTS=off
+# )
