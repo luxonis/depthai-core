@@ -5,12 +5,70 @@
 #include <variant>
 
 // libraries
+#include <spimpl.h>
 
 // depthai internal
 #include "utility/ErrorMacros.hpp"
 
 namespace dai {
 namespace node {
+
+class Camera::Impl {
+   public:
+    enum class OutputType { PREVIEW, VIDEO, RAW };
+
+    static OutputType getOutputType(ImgFrame::Type format) {
+        using E = ImgFrame::Type;
+        switch(format) {
+            case E::YUV422i:  // interleaved 8 bit
+            case E::YUV444p:  // planar 4:4:4 format
+            case E::YUV420p:  // planar 4:2:0 format
+            case E::YUV422p:  // planar 8 bit
+            case E::YUV400p:  // 8-bit greyscale
+            case E::YUV444i:
+            case E::NV12:
+            case E::NV21:
+                return OutputType::VIDEO;
+            case E::RGBA8888:       // RGBA interleaved stored in 32 bit word
+            case E::RGB161616:      // Planar 16 bit RGB data
+            case E::RGB888p:        // Planar 8 bit RGB data
+            case E::BGR888p:        // Planar 8 bit BGR data
+            case E::RGB888i:        // Interleaved 8 bit RGB data
+            case E::BGR888i:        // Interleaved 8 bit BGR data
+            case E::RGBF16F16F16p:  // Planar FP16 RGB data
+            case E::BGRF16F16F16p:  // Planar FP16 BGR data
+            case E::RGBF16F16F16i:  // Interleaved FP16 RGB data
+            case E::BGRF16F16F16i:  // Interleaved FP16 BGR data
+            case E::GRAY8:          // 8 bit grayscale (1 plane)
+            case E::GRAYF16:        // FP16 grayscale (normalized)
+                return OutputType::PREVIEW;
+            case E::LUT2:   // 1 bit  per pixel, Lookup table (used for graphics layers)
+            case E::LUT4:   // 2 bits per pixel, Lookup table (used for graphics layers)
+            case E::LUT16:  // 4 bits per pixel, Lookup table (used for graphics layers)
+                DAI_CHECK(false, "LUT formats on camera NOT IMPLEMENTED YET");
+                break;
+            case E::RAW16:  // save any raw type (8, 10, 12bit) on 16 bits
+            case E::RAW14:  // 14bit value in 16bit storage
+            case E::RAW12:  // 12bit value in 16bit storage
+            case E::RAW10:  // 10bit value in 16bit storage
+            case E::RAW8:
+            case E::PACK10:  // SIPP 10bit packed format
+            case E::PACK12:  // SIPP 12bit packed format
+            case E::RAW32:   // 32 bits raw
+                return OutputType::RAW;
+            case E::BITSTREAM:  // used for video encoder bitstream
+            case E::HDR:
+                DAI_CHECK_IN(false);
+                break;
+            case E::NONE:
+                DAI_CHECK_IN(false);
+                break;
+            default:
+                DAI_CHECK_IN(false);
+                break;
+        }
+    }
+};
 
 Camera::Camera(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>(std::move(props)) {}
 
@@ -282,18 +340,55 @@ Camera::Output* Camera::requestNewOutput(const ImgFrameCapability& capability, b
     (void)onHost;  // This will be used for optimizing network troughput
     DAI_CHECK_V(preview.getConnections().empty() && video.getConnections().empty() && isp.getConnections().empty() && still.getConnections().empty(),
                 "Can't use managed and unmanaged mode at the same time. Don't link() preview, video, isp, still outputs or don't use requestNewOutput().");
+    const std::optional<ImgFrame::Type> encoding = (capability.encoding && *capability.encoding != ImgFrame::Type::NONE) ? capability.encoding : std::nullopt;
+    if(encoding) {
+        // TODO(jakgra) set fp16, colorOrder, interleaved, rawPacked ... from encoding and throw for unsupported encodings
+    }
+    // TODO(jakgra) check if video default output is ok for all cameras / sensors?
+    const auto outputType = encoding ? pimpl->getOutputType(*encoding) : Impl::OutputType::VIDEO;
     if(capability.size.value) {
         const auto* size = std::get_if<std::tuple<uint32_t, uint32_t>>(&(*capability.size.value));
         if(size != nullptr) {
-            std::cout << "Setting preview size" << std::endl;
-            setPreviewSize(*size);
+            using E = Impl::OutputType;
+            switch(outputType) {
+                case E::PREVIEW:
+                    std::cout << "Setting preview size\n" << std::flush;
+                    setPreviewSize(*size);
+                    break;
+                case E::VIDEO:
+                    std::cout << "Setting video size\n" << std::flush;
+                    setVideoSize(*size);
+                    break;
+                case E::RAW:
+                    // TODO(jakgra) check if is an exact fit for some SensorConfig or throw otherwise
+                    std::cout << "Not setting size because is RAW output\n" << std::flush;
+                    break;
+                default:
+                    DAI_CHECK_IN(false);
+                    break;
+            }
         } else {
-            std::cout << "NOT Setting preview size" << std::endl;
+            // TODO(jakgra) support this
+            DAI_CHECK(false, "Ranged and array sizes not supported yet. Only fixed size works for now");
         }
     } else {
-        std::cout << "NOT Setting preview size because value is NULL" << std::endl;
+        // TODO(jakgra) set some default resolution that matches a sensor config here
+        // should this be the same for all cameras (ex.: full HD) or camera specific (ex.: max resolution)
+        // if there are multiple outputs, should the above logic apply or should we take the same resolution as another output and just return that output?
+        std::cout << "NOT Setting preview size because value is NULL\n" << std::flush;
     }
-    return &preview;
+    switch(outputType) {
+        using E = Impl::OutputType;
+        case E::PREVIEW:
+            return &preview;
+        case E::RAW:
+            return &raw;
+        case E::VIDEO:
+            return &video;
+        default:
+            DAI_CHECK_IN(false);
+            break;
+    }
 }
 
 }  // namespace node

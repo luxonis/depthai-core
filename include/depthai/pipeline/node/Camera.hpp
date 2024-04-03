@@ -1,13 +1,14 @@
 #pragma once
 
-#include <depthai/pipeline/datatype/CameraControl.hpp>
+// libraries
+#include <spimpl.h>
 
+// depthai
 #include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
+#include "depthai/pipeline/datatype/CameraControl.hpp"
+#include "depthai/properties/CameraProperties.hpp"
 #include "depthai/utility/span.hpp"
-
-// shared
-#include <depthai/properties/CameraProperties.hpp>
 
 namespace dai {
 namespace node {
@@ -347,6 +348,10 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
      * with both packed/unpacked, but disabled for other cameras like ToF.
      */
     void setRawOutputPacked(bool packed);
+
+   private:
+    class Impl;
+    spimpl::impl_ptr<Impl> pimpl;
 };
 
 }  // namespace node

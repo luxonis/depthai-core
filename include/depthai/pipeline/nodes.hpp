@@ -1,3 +1,4 @@
+// IWYU pragma: private, include "depthai/depthai.hpp"
 #pragma once
 
 // all the nodes
