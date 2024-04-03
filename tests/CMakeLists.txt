@@ -229,6 +229,8 @@ dai_add_test(encoded_frame_test src/encoded_frame_test.cpp CXX_STANDARD 17)
 
 dai_add_test(message_group_frame_test src/message_group_test.cpp CXX_STANDARD 17)
 
+dai_add_test(pointcloud_test src/pointcloud_test.cpp CXX_STANDARD 17)
+
 # Unlimited io connections test
 dai_add_test(unlimited_io_connection_test src/unlimited_io_connection_test.cpp)
 

@@ -270,7 +270,7 @@ void DeviceBootloader::createWatchdog() {
     if(monitorThread.joinable() || watchdogThread.joinable()) {
         throw std::runtime_error("Watchdog already created. Destroy it first.");
     }
-
+    watchdogRunning = true;
     // Specify "last" ping time (5s in the future, for some grace time)
     {
         std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);

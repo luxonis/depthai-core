@@ -26,12 +26,16 @@ set(test_poe_env
 )
 
 # Helper for adding new examples
-function(dai_add_example example_name example_src enable_test)
+function(dai_add_example example_name example_src enable_test use_pcl)
 
     # Add example
     add_executable(${example_name} ${example_src})
     add_default_flags(${example_name} LEAN)
-    target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS} Threads::Threads)
+    if(use_pcl)
+        target_link_libraries(${example_name} PRIVATE utility depthai::all ${OpenCV_LIBS} Threads::Threads)
+    else()
+        target_link_libraries(${example_name} PRIVATE utility depthai::opencv ${OpenCV_LIBS} Threads::Threads)
+    endif()
     # Set compiler features (c++17), and disables extensions (g++17)
     set_property(TARGET ${example_name} PROPERTY CXX_STANDARD 17)
     set_property(TARGET ${example_name} PROPERTY CXX_STANDARD_REQUIRED ON)
@@ -48,7 +52,7 @@ function(dai_add_example example_name example_src enable_test)
 
     # parse the rest of the arguments
     set(arguments ${ARGV})
-    list(REMOVE_AT arguments 0 1 2)
+    list(REMOVE_AT arguments 0 1 2 3)
 
     # If 'DEPTHAI_TEST_EXAMPLES' is ON, then examples will be part of the test suite
     if(${enable_test} AND DEPTHAI_TEST_EXAMPLES)
@@ -243,68 +247,71 @@ hunter_private_data(
 ## message(STATUS "Location of test1.data: ${test1_data}")
 
 # bootloader
-dai_add_example(bootloader_version bootloader/bootloader_version.cpp ON)
-dai_add_example(flash_bootloader bootloader/flash_bootloader.cpp OFF)
-dai_add_example(flash_user_bootloader bootloader/flash_user_bootloader.cpp OFF)
-dai_add_example(bootloader_config bootloader/bootloader_config.cpp ON read)
-dai_add_example(poe_set_ip bootloader/poe_set_ip.cpp OFF)
-dai_add_example(read_flash_memory bootloader/read_flash_memory.cpp OFF)
-dai_add_example(write_flash_memory bootloader/write_flash_memory.cpp OFF)
-dai_add_example(flash_boot_header bootloader/flash_boot_header.cpp OFF)
+dai_add_example(bootloader_version bootloader/bootloader_version.cpp ON OFF)
+dai_add_example(flash_bootloader bootloader/flash_bootloader.cpp OFF OFF)
+dai_add_example(flash_user_bootloader bootloader/flash_user_bootloader.cpp OFF OFF)
+dai_add_example(bootloader_config bootloader/bootloader_config.cpp ON OFF read)
+dai_add_example(poe_set_ip bootloader/poe_set_ip.cpp OFF OFF)
+dai_add_example(read_flash_memory bootloader/read_flash_memory.cpp OFF OFF)
+dai_add_example(write_flash_memory bootloader/write_flash_memory.cpp OFF OFF)
+dai_add_example(flash_boot_header bootloader/flash_boot_header.cpp OFF OFF)
 
 # calibration
-dai_add_example(calibration_flash calibration/calibration_flash.cpp OFF)
-dai_add_example(calibration_flash_version5 calibration/calibration_flash_v5.cpp OFF)
-dai_add_example(calibration_load calibration/calibration_load.cpp ON)
-dai_add_example(calibration_reader calibration/calibration_reader.cpp ON)
-dai_add_example(calibration_dump calibration/calibration_dump.cpp ON)
-dai_add_example(calibration_factory_reset calibration/calibration_factory_reset.cpp OFF)
+dai_add_example(calibration_flash calibration/calibration_flash.cpp OFF OFF)
+dai_add_example(calibration_flash_version5 calibration/calibration_flash_v5.cpp OFF OFF)
+dai_add_example(calibration_load calibration/calibration_load.cpp ON OFF)
+dai_add_example(calibration_reader calibration/calibration_reader.cpp ON OFF)
+dai_add_example(calibration_dump calibration/calibration_dump.cpp ON OFF)
+dai_add_example(calibration_factory_reset calibration/calibration_factory_reset.cpp OFF OFF)
 
 target_compile_definitions(calibration_flash PRIVATE CALIB_PATH="${calib_v6}")
 target_compile_definitions(calibration_flash_version5 PRIVATE CALIB_PATH="${calib_v5}" BOARD_PATH="${device_config}")
 target_compile_definitions(calibration_load PRIVATE CALIB_PATH="${calib_v6}")
 
 # ColorCamera
-dai_add_example(rgb_camera_control ColorCamera/rgb_camera_control.cpp ON)
-dai_add_example(rgb_preview ColorCamera/rgb_preview.cpp ON)
-dai_add_example(rgb_video ColorCamera/rgb_video.cpp ON)
-dai_add_example(rgb_isp_scale ColorCamera/rgb_isp_scale.cpp ON)
+dai_add_example(rgb_camera_control ColorCamera/rgb_camera_control.cpp ON OFF)
+dai_add_example(rgb_preview ColorCamera/rgb_preview.cpp ON OFF)
+dai_add_example(rgb_video ColorCamera/rgb_video.cpp ON OFF)
+dai_add_example(rgb_isp_scale ColorCamera/rgb_isp_scale.cpp ON OFF)
+
+# Camera
+dai_add_example(thermal_cam Camera/thermal_cam.cpp OFF OFF)
 
 # EdgeDetector
-dai_add_example(edge_detector EdgeDetector/edge_detector.cpp ON)
+dai_add_example(edge_detector EdgeDetector/edge_detector.cpp ON OFF)
 
 # FeatureTracker
-dai_add_example(feature_detector FeatureTracker/feature_detector.cpp ON)
-dai_add_example(feature_tracker FeatureTracker/feature_tracker.cpp ON)
+dai_add_example(feature_detector FeatureTracker/feature_detector.cpp ON OFF)
+dai_add_example(feature_tracker FeatureTracker/feature_tracker.cpp ON OFF)
 
 # host_side
-dai_add_example(device_queue_event host_side/device_queue_event.cpp ON)
-dai_add_example(opencv_support host_side/opencv_support.cpp ON)
-dai_add_example(queue_add_callback host_side/queue_add_callback.cpp ON)
-dai_add_example(device_information host_side/device_information.cpp OFF)
-dai_add_example(device_logging host_side/device_logging.cpp OFF)
+dai_add_example(device_queue_event host_side/device_queue_event.cpp ON OFF)
+dai_add_example(opencv_support host_side/opencv_support.cpp ON OFF)
+dai_add_example(queue_add_callback host_side/queue_add_callback.cpp ON OFF)
+dai_add_example(device_information host_side/device_information.cpp OFF OFF)
+dai_add_example(device_logging host_side/device_logging.cpp OFF OFF)
 
 # ImageManip
-dai_add_example(image_manip ImageManip/image_manip_example.cpp ON)
-dai_add_example(image_manip_rotate ImageManip/image_manip_rotate.cpp ON)
-dai_add_example(image_manip_tiling ImageManip/image_manip_tiling.cpp ON)
-dai_add_example(rgb_rotate_warp ImageManip/rgb_rotate_warp.cpp ON)
-dai_add_example(image_manip_warp_mesh ImageManip/image_manip_warp_mesh.cpp ON)
+dai_add_example(image_manip ImageManip/image_manip_example.cpp ON OFF)
+dai_add_example(image_manip_rotate ImageManip/image_manip_rotate.cpp ON OFF)
+dai_add_example(image_manip_tiling ImageManip/image_manip_tiling.cpp ON OFF)
+dai_add_example(rgb_rotate_warp ImageManip/rgb_rotate_warp.cpp ON OFF)
+dai_add_example(image_manip_warp_mesh ImageManip/image_manip_warp_mesh.cpp ON OFF)
 
 # Warp
-dai_add_example(warp_mesh Warp/warp_mesh.cpp ON)
+dai_add_example(warp_mesh Warp/warp_mesh.cpp ON OFF)
 
 # IMU
-dai_add_example(imu_gyroscope_accelerometer IMU/imu_gyroscope_accelerometer.cpp ON)
-dai_add_example(imu_rotation_vector IMU/imu_rotation_vector.cpp ON)
+dai_add_example(imu_gyroscope_accelerometer IMU/imu_gyroscope_accelerometer.cpp ON OFF)
+dai_add_example(imu_rotation_vector IMU/imu_rotation_vector.cpp ON OFF)
 
 # mixed
-dai_add_example(mono_depth_mobilenetssd mixed/mono_depth_mobilenetssd.cpp ON)
-dai_add_example(rgb_encoding_mono_mobilenet mixed/rgb_encoding_mono_mobilenet.cpp ON)
-dai_add_example(rgb_encoding_mono_mobilenet_depth mixed/rgb_encoding_mono_mobilenet_depth.cpp ON)
-dai_add_example(rgb_encoding_mobilenet mixed/rgb_encoding_mobilenet.cpp ON)
-dai_add_example(multiple_devices mixed/multiple_devices.cpp OFF)
-dai_add_example(frame_sync mixed/frame_sync.cpp ON)
+dai_add_example(mono_depth_mobilenetssd mixed/mono_depth_mobilenetssd.cpp ON OFF)
+dai_add_example(rgb_encoding_mono_mobilenet mixed/rgb_encoding_mono_mobilenet.cpp ON OFF)
+dai_add_example(rgb_encoding_mono_mobilenet_depth mixed/rgb_encoding_mono_mobilenet_depth.cpp ON OFF)
+dai_add_example(rgb_encoding_mobilenet mixed/rgb_encoding_mobilenet.cpp ON OFF)
+dai_add_example(multiple_devices mixed/multiple_devices.cpp OFF OFF)
+dai_add_example(frame_sync mixed/frame_sync.cpp ON OFF)
 
 target_compile_definitions(mono_depth_mobilenetssd PRIVATE BLOB_PATH="${mobilenet_blob}")
 target_compile_definitions(rgb_encoding_mono_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}")
@@ -312,14 +319,14 @@ target_compile_definitions(rgb_encoding_mono_mobilenet_depth PRIVATE BLOB_PATH="
 target_compile_definitions(rgb_encoding_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}")
 
 # MobileNet
-dai_add_example(camera_mobilenet_sync MobileNet/camera_mobilenet_sync_example.cpp ON)
-dai_add_example(rgb_mobilenet MobileNet/rgb_mobilenet.cpp  ON)
-dai_add_example(rgb_mobilenet_4k MobileNet/rgb_mobilenet_4k.cpp ON)
-dai_add_example(mono_mobilenet MobileNet/mono_mobilenet.cpp  ON)
-dai_add_example(video_mobilenet MobileNet/video_mobilenet.cpp ON)
+dai_add_example(camera_mobilenet_sync MobileNet/camera_mobilenet_sync_example.cpp ON OFF)
+dai_add_example(rgb_mobilenet MobileNet/rgb_mobilenet.cpp  ON OFF)
+dai_add_example(rgb_mobilenet_4k MobileNet/rgb_mobilenet_4k.cpp ON OFF)
+dai_add_example(mono_mobilenet MobileNet/mono_mobilenet.cpp  ON OFF)
+dai_add_example(video_mobilenet MobileNet/video_mobilenet.cpp ON OFF)
 # Usually not available - removed from tests
 # TODO - add to a separate group if possible
-dai_add_example(webcam_mobilenet MobileNet/webcam_mobilenet_example.cpp OFF)
+dai_add_example(webcam_mobilenet MobileNet/webcam_mobilenet_example.cpp OFF OFF)
 
 target_compile_definitions(camera_mobilenet_sync PRIVATE BLOB_PATH="${mobilenet_blob}")
 target_compile_definitions(rgb_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}"  ON)
@@ -329,47 +336,47 @@ target_compile_definitions(video_mobilenet PRIVATE BLOB_PATH="${mobilenet_8shave
 target_compile_definitions(webcam_mobilenet PRIVATE BLOB_PATH="${mobilenet_8shaves_blob}")
 
 # MonoCamera
-dai_add_example(mono_camera_control MonoCamera/mono_camera_control.cpp ON)
-dai_add_example(mono_preview MonoCamera/mono_preview.cpp  ON)
-dai_add_example(mono_full_resolution_saver MonoCamera/mono_full_resolution_saver.cpp  ON)
+dai_add_example(mono_camera_control MonoCamera/mono_camera_control.cpp ON OFF)
+dai_add_example(mono_preview MonoCamera/mono_preview.cpp  ON OFF)
+dai_add_example(mono_full_resolution_saver MonoCamera/mono_full_resolution_saver.cpp  ON OFF)
 
 # NeuralNetwork
-dai_add_example(concatenate NeuralNetwork/concat_multi_input.cpp ON)
-dai_add_example(normalize NeuralNetwork/normalization_multi_input.cpp ON)
+dai_add_example(concatenate NeuralNetwork/concat_multi_input.cpp ON OFF)
+dai_add_example(normalize NeuralNetwork/normalization_multi_input.cpp ON OFF)
 
 target_compile_definitions(concatenate PRIVATE BLOB_PATH="${concat_model}")
 target_compile_definitions(normalize PRIVATE BLOB_PATH="${normalization_model}")
 
 # ObjectTracker
-dai_add_example(object_tracker ObjectTracker/object_tracker.cpp ON)
-dai_add_example(spatial_object_tracker ObjectTracker/spatial_object_tracker.cpp ON)
-dai_add_example(object_tracker_video ObjectTracker/object_tracker_video.cpp ON)
+dai_add_example(object_tracker ObjectTracker/object_tracker.cpp ON OFF)
+dai_add_example(spatial_object_tracker ObjectTracker/spatial_object_tracker.cpp ON OFF)
+dai_add_example(object_tracker_video ObjectTracker/object_tracker_video.cpp ON OFF)
 
 target_compile_definitions(object_tracker PRIVATE BLOB_PATH="${mobilenet_blob}")
 target_compile_definitions(spatial_object_tracker PRIVATE BLOB_PATH="${mobilenet_5shaves_blob}")
 target_compile_definitions(object_tracker_video PRIVATE BLOB_PATH="${person_detection}" VIDEO_PATH="${construction_vest}")
 
 # Script
-dai_add_example(script_camera_control Script/script_camera_control.cpp ON)
-dai_add_example(script_forward_frames Script/script_forward_frames.cpp ON)
-dai_add_example(script_get_ip Script/script_get_ip.cpp OFF)
-dai_add_example(script_http_client Script/script_http_client.cpp OFF)
-dai_add_example(script_http_server Script/script_http_server.cpp OFF)
-dai_add_example(script_mjpeg_server Script/script_mjpeg_server.cpp OFF)
-dai_add_example(script_nndata_example Script/script_nndata_example.cpp ON)
-dai_add_example(script_json_communication Script/script_json_communication.cpp ON)
-dai_add_example(script_change_pipeline_flow Script/script_change_pipeline_flow.cpp OFF)
+dai_add_example(script_camera_control Script/script_camera_control.cpp ON OFF)
+dai_add_example(script_forward_frames Script/script_forward_frames.cpp ON OFF)
+dai_add_example(script_get_ip Script/script_get_ip.cpp OFF OFF)
+dai_add_example(script_http_client Script/script_http_client.cpp OFF OFF)
+dai_add_example(script_http_server Script/script_http_server.cpp OFF OFF)
+dai_add_example(script_mjpeg_server Script/script_mjpeg_server.cpp OFF OFF)
+dai_add_example(script_nndata_example Script/script_nndata_example.cpp ON OFF)
+dai_add_example(script_json_communication Script/script_json_communication.cpp ON OFF)
+dai_add_example(script_change_pipeline_flow Script/script_change_pipeline_flow.cpp OFF OFF)
 target_compile_definitions(script_change_pipeline_flow PRIVATE BLOB_PATH="${mobilenet_5shaves_blob}")
-dai_add_example(script_get_device_info Script/script_get_device_info.cpp ON)
-dai_add_example(script_read_calibration Script/script_read_calibration.cpp ON)
+dai_add_example(script_get_device_info Script/script_get_device_info.cpp ON OFF)
+dai_add_example(script_read_calibration Script/script_read_calibration.cpp ON OFF)
 
 # SpatialDetection
-dai_add_example(spatial_location_calculator SpatialDetection/spatial_location_calculator.cpp ON)
-dai_add_example(spatial_mobilenet_mono SpatialDetection/spatial_mobilenet_mono.cpp ON)
-dai_add_example(spatial_mobilenet SpatialDetection/spatial_mobilenet.cpp ON)
-dai_add_example(spatial_tiny_yolo_v3 SpatialDetection/spatial_tiny_yolo.cpp ON)
-dai_add_example(spatial_tiny_yolo_v4 SpatialDetection/spatial_tiny_yolo.cpp ON)
-dai_add_example(spatial_calculator_multi_roi SpatialDetection/spatial_calculator_multi_roi.cpp OFF)
+dai_add_example(spatial_location_calculator SpatialDetection/spatial_location_calculator.cpp ON OFF)
+dai_add_example(spatial_mobilenet_mono SpatialDetection/spatial_mobilenet_mono.cpp ON OFF)
+dai_add_example(spatial_mobilenet SpatialDetection/spatial_mobilenet.cpp ON OFF)
+dai_add_example(spatial_tiny_yolo_v3 SpatialDetection/spatial_tiny_yolo.cpp ON OFF)
+dai_add_example(spatial_tiny_yolo_v4 SpatialDetection/spatial_tiny_yolo.cpp ON OFF)
+dai_add_example(spatial_calculator_multi_roi SpatialDetection/spatial_calculator_multi_roi.cpp OFF OFF)
 
 target_compile_definitions(spatial_mobilenet_mono PRIVATE BLOB_PATH="${mobilenet_blob}")
 target_compile_definitions(spatial_mobilenet PRIVATE BLOB_PATH="${mobilenet_blob}")
@@ -377,68 +384,72 @@ target_compile_definitions(spatial_tiny_yolo_v3 PRIVATE BLOB_PATH="${tiny_yolo_v
 target_compile_definitions(spatial_tiny_yolo_v4 PRIVATE BLOB_PATH="${tiny_yolo_v4_blob}")
 
 # StereoDepth
-dai_add_example(depth_crop_control StereoDepth/depth_crop_control.cpp ON)
-dai_add_example(depth_preview StereoDepth/depth_preview.cpp  ON)
-dai_add_example(depth_post_processing StereoDepth/depth_post_processing.cpp  ON)
-dai_add_example(rgb_depth_aligned StereoDepth/rgb_depth_aligned.cpp ON)
-dai_add_example(rgb_depth_confidence_aligned StereoDepth/rgb_depth_confidence_aligned.cpp ON)
-dai_add_example(stereo_depth_video StereoDepth/stereo_depth_video.cpp ON)
+dai_add_example(depth_crop_control StereoDepth/depth_crop_control.cpp ON OFF)
+dai_add_example(depth_preview StereoDepth/depth_preview.cpp  ON OFF)
+dai_add_example(depth_post_processing StereoDepth/depth_post_processing.cpp  ON OFF)
+dai_add_example(rgb_depth_aligned StereoDepth/rgb_depth_aligned.cpp ON OFF)
+dai_add_example(rgb_depth_confidence_aligned StereoDepth/rgb_depth_confidence_aligned.cpp ON OFF)
+dai_add_example(stereo_depth_video StereoDepth/stereo_depth_video.cpp ON OFF)
 
 # SystemLogger
-dai_add_example(system_information SystemLogger/system_information.cpp ON)
+dai_add_example(system_information SystemLogger/system_information.cpp ON OFF)
 
 # VideoEncoder
-dai_add_example(disparity_encoding VideoEncoder/disparity_encoding.cpp  ON)
-dai_add_example(rgb_encoding VideoEncoder/rgb_encoding.cpp  ON)
-dai_add_example(rgb_full_resolution_saver VideoEncoder/rgb_full_resolution_saver.cpp  ON)
-dai_add_example(rgb_mono_encoding VideoEncoder/rgb_mono_encoding.cpp  ON)
-dai_add_example(encoding_max_limit VideoEncoder/encoding_max_limit.cpp ON)
-dai_add_example(mjpeg_encoding VideoEncoder/mjpeg_encoding_example.cpp ON)
+dai_add_example(disparity_encoding VideoEncoder/disparity_encoding.cpp  ON OFF)
+dai_add_example(rgb_encoding VideoEncoder/rgb_encoding.cpp  ON OFF)
+dai_add_example(rgb_full_resolution_saver VideoEncoder/rgb_full_resolution_saver.cpp  ON OFF)
+dai_add_example(rgb_mono_encoding VideoEncoder/rgb_mono_encoding.cpp  ON OFF)
+dai_add_example(encoding_max_limit VideoEncoder/encoding_max_limit.cpp ON OFF)
+dai_add_example(mjpeg_encoding VideoEncoder/mjpeg_encoding_example.cpp ON OFF)
 
 # Yolo
-dai_add_example(tiny_yolo_v4_device_side_decoding Yolo/tiny_yolo.cpp ON)
-dai_add_example(tiny_yolo_v3_device_side_decoding Yolo/tiny_yolo.cpp  ON)
+dai_add_example(tiny_yolo_v4_device_side_decoding Yolo/tiny_yolo.cpp ON OFF)
+dai_add_example(tiny_yolo_v3_device_side_decoding Yolo/tiny_yolo.cpp  ON OFF)
 target_compile_definitions(tiny_yolo_v4_device_side_decoding PRIVATE BLOB_PATH="${tiny_yolo_v4_blob}")
 target_compile_definitions(tiny_yolo_v3_device_side_decoding PRIVATE BLOB_PATH="${tiny_yolo_v3_blob}")
-dai_add_example(apriltag AprilTag/apriltag.cpp ON)
-dai_add_example(apriltag_rgb AprilTag/apriltag_rgb.cpp ON)
+dai_add_example(apriltag AprilTag/apriltag.cpp ON OFF)
+dai_add_example(apriltag_rgb AprilTag/apriltag_rgb.cpp ON OFF)
 
 # DetectionParser
-dai_add_example(detection_parser NeuralNetwork/detection_parser.cpp ON)
+dai_add_example(detection_parser NeuralNetwork/detection_parser.cpp ON OFF)
 target_compile_definitions(detection_parser PRIVATE BLOB_PATH="${mobilenet_blob}")
 
 # Host pipeline
-dai_add_example(host_pipeline host_side/host_pipeline.cpp ON)
-dai_add_example(host_pipeline_opencv host_side/host_pipeline_opencv.cpp ON)
+dai_add_example(host_pipeline host_side/host_pipeline.cpp ON OFF)
+dai_add_example(host_pipeline_opencv host_side/host_pipeline_opencv.cpp ON OFF)
 
 # TMP
-dai_add_example(tmp_preview tmp/tmp_preview.cpp OFF)
+dai_add_example(tmp_preview tmp/tmp_preview.cpp OFF OFF)
 
-dai_add_example(tmp_nn tmp/tmp_nn.cpp OFF)
-dai_add_example(tmp_detection_parser_mobilenet tmp/tmp_detection_parser_mobilenet.cpp OFF)
-dai_add_example(tmp_detection_parser_yolo tmp/tmp_detection_parser_yolo.cpp OFF)
-dai_add_example(tmp_system_logger tmp/tmp_system_logger.cpp OFF)
+dai_add_example(tmp_nn tmp/tmp_nn.cpp OFF OFF)
+dai_add_example(tmp_detection_parser_mobilenet tmp/tmp_detection_parser_mobilenet.cpp OFF OFF)
+dai_add_example(tmp_detection_parser_yolo tmp/tmp_detection_parser_yolo.cpp OFF OFF)
+dai_add_example(tmp_system_logger tmp/tmp_system_logger.cpp OFF OFF)
 target_compile_definitions(tmp_nn PRIVATE MODEL_XML_PATH="${person_detection_xml}" MODEL_BIN_PATH="${person_detection_bin}")
 target_compile_definitions(tmp_detection_parser_mobilenet PRIVATE MODEL_XML_PATH="${person_detection_xml}" MODEL_BIN_PATH="${person_detection_bin}")
 target_compile_definitions(tmp_detection_parser_yolo PRIVATE MODEL_XML_PATH="${tiny-vechicle-detection_xml}" MODEL_BIN_PATH="${tiny-vechicle-detection_bin}")
 
-dai_add_example(tmp_mono tmp/tmp_mono.cpp OFF)
+dai_add_example(tmp_mono tmp/tmp_mono.cpp OFF OFF)
 # DetectionParser
-dai_add_example(crash_report CrashReport/crash_report.cpp OFF)
-
-# Sync
-dai_add_example(sync_scripts Sync/sync_scripts.cpp ON)
-dai_add_example(demux_message_group Sync/demux_message_group.cpp ON)
-dai_add_example(depth_video_synced Sync/depth_video_synced.cpp ON)
-dai_add_example(imu_video_synced Sync/imu_video_synced.cpp ON)
+dai_add_example(crash_report CrashReport/crash_report.cpp OFF OFF)
 
 # NN Archive
-dai_add_example(nn_archive_fs_yolo_v6 NNArchive/nn_archive.cpp ON)
+dai_add_example(nn_archive_fs_yolo_v6 NNArchive/nn_archive.cpp ON OFF)
 target_compile_definitions(nn_archive_fs_yolo_v6 PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT=1 EXAMPLE_TYPE="fs" NN_ARCHIVE_PATH="${nn_archive_yolo_v6_tar_xz}" URL_BASE="https://artifacts.luxonis.com")
 target_link_libraries(nn_archive_fs_yolo_v6 PRIVATE ssl crypto)
-dai_add_example(nn_archive_memory_yolo_v6 NNArchive/nn_archive.cpp ON)
+dai_add_example(nn_archive_memory_yolo_v6 NNArchive/nn_archive.cpp ON OFF)
 target_compile_definitions(nn_archive_memory_yolo_v6 PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT=1 EXAMPLE_TYPE="memory" NN_ARCHIVE_PATH="${nn_archive_yolo_v6_tar_xz}" URL_BASE="https://artifacts.luxonis.com")
 target_link_libraries(nn_archive_memory_yolo_v6 PRIVATE ssl crypto)
-dai_add_example(nn_archive_advanced_yolo_v6 NNArchive/nn_archive.cpp ON)
+dai_add_example(nn_archive_advanced_yolo_v6 NNArchive/nn_archive.cpp ON OFF)
 target_compile_definitions(nn_archive_advanced_yolo_v6 PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT=1 EXAMPLE_TYPE="advanced" NN_ARCHIVE_PATH="${nn_archive_yolo_v6_tar_xz}" URL_BASE="https://artifacts.luxonis.com")
 target_link_libraries(nn_archive_advanced_yolo_v6 PRIVATE ssl crypto)
+
+# Sync
+dai_add_example(sync_scripts Sync/sync_scripts.cpp ON OFF)
+dai_add_example(demux_message_group Sync/demux_message_group.cpp ON OFF)
+dai_add_example(depth_video_synced Sync/depth_video_synced.cpp ON OFF)
+dai_add_example(imu_video_synced Sync/imu_video_synced.cpp ON OFF)
+
+if(DEPTHAI_HAVE_PCL_SUPPORT)
+    dai_add_example(visualize_pointcloud PointCloud/visualize_pointcloud.cpp ON ON)
+endif()

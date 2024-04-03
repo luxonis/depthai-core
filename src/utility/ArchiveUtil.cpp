@@ -193,7 +193,7 @@ void ArchiveUtil::readEntry(struct archive_entry* entry, std::vector<uint8_t>& o
         int64_t size = archive_read_data(aPtr, &out[currentSize], readSize);
 
         // Check that no errors occurred
-        DAI_CHECK(size >= 0, "Errors occured when reading from archive using libarchive.");
+        DAI_CHECK(size >= 0, fmt::format("Errors occured when reading from archive using libarchive. Error - {}", size));
 
         // Append number of bytes actually read to finalSize
         finalSize += size;
