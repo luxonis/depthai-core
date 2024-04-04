@@ -49,7 +49,7 @@ Node::Id PipelineImpl::getNextUniqueId() {
     return latestId++;
 }
 
-Pipeline::Pipeline(bool hostOnly) : pimpl(std::make_shared<PipelineImpl>(*this, hostOnly)) {}
+Pipeline::Pipeline(bool createImplicitDevice) : pimpl(std::make_shared<PipelineImpl>(*this, createImplicitDevice)) {}
 
 Pipeline::Pipeline(std::shared_ptr<Device> device) : pimpl(std::make_shared<PipelineImpl>(*this, device)) {}
 

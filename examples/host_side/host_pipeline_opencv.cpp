@@ -13,7 +13,7 @@
 
 int main() {
     // Create pipeline
-    dai::Pipeline pipeline;
+    dai::Pipeline pipeline(true);
     auto camRgb = pipeline.create<dai::node::ColorCamera>(dai::CameraBoardSocket::CAM_A);
     camRgb->setVideoSize(640, 480);
     auto displayDevice = pipeline.create<dai::node::Display>(std::string{"Device Display"});

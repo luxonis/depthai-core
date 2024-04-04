@@ -35,6 +35,12 @@ class Node : public std::enable_shared_from_this<Node> {
     friend class PipelineImpl;
 
    public:
+    // Nodes must always be managed
+    Node(const Node&) = delete;
+    Node& operator=(const Node&) = delete;
+    Node(Node&&) = delete;
+    Node& operator=(Node&&) = delete;
+
     /// Node identificator. Unique for every node on a single Pipeline
     using Id = std::int64_t;
     struct Connection;
