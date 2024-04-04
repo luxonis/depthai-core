@@ -361,12 +361,11 @@ std::vector<Node::Output*> Node::getOutputRefs() {
     tmpOutputRefs.reserve(outputRefs.size() + outputMapRefs.size() * 5);
     // Add outputRefs
     for(auto& kv : outputRefs) {
-        tmpOutputRefs.push_back(kv.second);
+        tmpOutputRefs.push_back(kv);
     }
     // Add outputs from Maps
     for(auto& kvMap : outputMapRefs) {
-        auto*& map = kvMap.second;
-        for(auto& kv : *map) {
+        for(auto& kv : *kvMap) {
             tmpOutputRefs.push_back(&kv.second);
         }
     }
@@ -380,12 +379,11 @@ std::vector<const Node::Output*> Node::getOutputRefs() const {
     tmpOutputRefs.reserve(outputRefs.size() + outputMapRefs.size() * 5);
     // Add outputRefs
     for(const auto& kv : outputRefs) {
-        tmpOutputRefs.push_back(kv.second);
+        tmpOutputRefs.push_back(kv);
     }
     // Add outputs from Maps
     for(const auto& kvMap : outputMapRefs) {
-        const auto* const& map = kvMap.second;
-        for(const auto& kv : *map) {
+        for(const auto& kv : *kvMap) {
             tmpOutputRefs.push_back(&kv.second);
         }
     }
@@ -398,13 +396,12 @@ std::vector<Node::Input*> Node::getInputRefs() {
     tmpInputRefs.reserve(inputRefs.size() + inputMapRefs.size() * 5);
     // Add inputRefs
     for(auto& kv : inputRefs) {
-        tmpInputRefs.push_back(kv.second);
+        tmpInputRefs.push_back(kv);
     }
     // Add inputs from Maps
     for(auto& kvMap : inputMapRefs) {
-        auto*& map = kvMap.second;
-        for(auto& kv : *map) {
-            tmpInputRefs.push_back(&kv.second);
+        for(auto& kv : *kvMap) {
+            tmpInputRefs.push_back(kv.second.get());
         }
     }
     return tmpInputRefs;
@@ -417,43 +414,42 @@ std::vector<const Node::Input*> Node::getInputRefs() const {
     tmpInputRefs.reserve(inputRefs.size() + inputMapRefs.size() * 5);
     // Add inputRefs
     for(const auto& kv : inputRefs) {
-        tmpInputRefs.push_back(kv.second);
+        tmpInputRefs.push_back(kv);
     }
     // Add inputs from Maps
     for(const auto& kvMap : inputMapRefs) {
-        const auto* const& map = kvMap.second;
-        for(const auto& kv : *map) {
-            tmpInputRefs.push_back(&kv.second);
+        for(const auto& kv : *kvMap) {
+            tmpInputRefs.push_back(kv.second.get());
         }
     }
     return tmpInputRefs;
 }
 
-Node::Output* Node::getOutputRef(std::string name) {
-    return getOutputRef("", name);
-}
-Node::Output* Node::getOutputRef(std::string group, std::string name) {
-    auto refs = getOutputRefs();
-    for(auto& out : refs) {
-        if(out->group == group && out->name == name) {
-            return out;
-        }
-    }
-    return nullptr;
-}
+// Node::Output* Node::getOutputRef(std::string name) {
+//     return getOutputRef("", name);
+// }
+// Node::Output* Node::getOutputRef(std::string group, std::string name) {
+//     auto refs = getOutputRefs();
+//     for(auto& out : refs) {
+//         if(out->group == group && out->name == name) {
+//             return out;
+//         }
+//     }
+//     return nullptr;
+// }
 
-Node::Input* Node::getInputRef(std::string name) {
-    return getInputRef("", name);
-}
-Node::Input* Node::getInputRef(std::string group, std::string name) {
-    auto refs = getInputRefs();
-    for(auto& input : refs) {
-        if(input->getGroup() == group && input->getName() == name) {
-            return input;
-        }
-    }
-    return nullptr;
-}
+// Node::Input* Node::getInputRef(std::string name) {
+//     return getInputRef("", name);
+// }
+// Node::Input* Node::getInputRef(std::string group, std::string name) {
+//     auto refs = getInputRefs();
+//     for(auto& input : refs) {
+//         if(input->getGroup() == group && input->getName() == name) {
+//             return input;
+//         }
+//     }
+//     return nullptr;
+// }
 
 std::vector<Node::InputMap*> Node::getInputMapRefs() {
     std::vector<Node::InputMap*> tmpInputMapRefs;
@@ -461,7 +457,7 @@ std::vector<Node::InputMap*> Node::getInputMapRefs() {
     tmpInputMapRefs.reserve(inputMapRefs.size());
     // Add inputs from Maps
     for(const auto& kvMap : inputMapRefs) {
-        tmpInputMapRefs.push_back(kvMap.second);
+        tmpInputMapRefs.push_back(kvMap);
     }
     return tmpInputMapRefs;
 }
@@ -472,56 +468,56 @@ std::vector<Node::OutputMap*> Node::getOutputMapRefs() {
     tmpOutputMapRefs.reserve(outputMapRefs.size());
     // Add inputs from Maps
     for(const auto& kvMap : outputMapRefs) {
-        tmpOutputMapRefs.push_back(kvMap.second);
+        tmpOutputMapRefs.push_back(kvMap);
     }
     return tmpOutputMapRefs;
 }
 
-Node::InputMap* Node::getInputMapRef(std::string group) {
-    if(inputMapRefs.count(group) == 0) {
-        return nullptr;
-    }
-    return inputMapRefs[group];
-}
+// Node::InputMap* Node::getInputMapRef(std::string group) {
+//     if(inputMapRefs.count(group) == 0) {
+//         return nullptr;
+//     }
+//     return inputMapRefs[group];
+// }
 
-Node::OutputMap* Node::getOutputMapRef(std::string group) {
-    if(outputMapRefs.count(group) == 0) {
-        return nullptr;
-    }
-    return outputMapRefs[group];
-}
+// Node::OutputMap* Node::getOutputMapRef(std::string group) {
+//     if(outputMapRefs.count(group) == 0) {
+//         return nullptr;
+//     }
+//     return outputMapRefs[group];
+// }
 
 void Node::setOutputRefs(std::initializer_list<Node::Output*> l) {
     for(auto& outRef : l) {
-        outputRefs[outRef->name] = outRef;
+        outputRefs.push_back(outRef);
     }
 }
 void Node::setOutputRefs(Node::Output* outRef) {
-    outputRefs[outRef->name] = outRef;
+    outputRefs.push_back(outRef);
 }
 void Node::setInputRefs(std::initializer_list<Node::Input*> l) {
     for(auto& inRef : l) {
-        inputRefs[inRef->getName()] = inRef;
+        inputRefs.push_back(inRef);
     }
 }
 void Node::setInputRefs(Node::Input* inRef) {
-    inputRefs[inRef->getName()] = inRef;
+    inputRefs.push_back(inRef);
 }
 void Node::setOutputMapRefs(std::initializer_list<Node::OutputMap*> l) {
     for(auto& outMapRef : l) {
-        outputMapRefs[outMapRef->name] = outMapRef;
+        outputMapRefs.push_back(outMapRef);
     }
 }
 void Node::setOutputMapRefs(Node::OutputMap* outMapRef) {
-    outputMapRefs[outMapRef->name] = outMapRef;
+    outputMapRefs.push_back(outMapRef);
 }
 void Node::setInputMapRefs(std::initializer_list<Node::InputMap*> l) {
     for(auto& inMapRef : l) {
-        inputMapRefs[inMapRef->name] = inMapRef;
+        inputMapRefs.push_back(inMapRef);
     }
 }
 void Node::setInputMapRefs(Node::InputMap* inMapRef) {
-    inputMapRefs[inMapRef->name] = inMapRef;
+    inputMapRefs.push_back(inMapRef);
 }
 void Node::buildStage1() {
     return;
@@ -535,7 +531,7 @@ void Node::buildStage3() {
 
 void Node::setNodeRefs(std::initializer_list<std::pair<std::string, std::shared_ptr<Node>*>> l) {
     for(auto& nodeRef : l) {
-        nodeRefs[nodeRef.first] = nodeRef.second;
+        nodeRefs.push_back(nodeRef.second);
     }
 }
 void Node::setNodeRefs(std::pair<std::string, std::shared_ptr<Node>*> nodeRef) {
@@ -548,9 +544,6 @@ void Node::setNodeRefs(std::string alias, std::shared_ptr<Node>* nodeRef) {
 void Node::add(std::shared_ptr<Node> node) {
     // TODO(themarpe) - check if node is already added somewhere else, etc... (as in Pipeline)
     node->parentNode = shared_from_this();
-
-    // Add to the map (node holds its children itself)
-    // nodeMap[node->id] = node;
     nodeMap.push_back(node);
 }
 

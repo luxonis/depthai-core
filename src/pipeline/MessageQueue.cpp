@@ -17,7 +17,7 @@
 
 namespace dai {
 
-MessageQueue::MessageQueue(const std::string& name, unsigned int maxSize, bool blocking) : queue(maxSize, blocking), name(name) {}
+MessageQueue::MessageQueue(std::string name, unsigned int maxSize, bool blocking) : queue(maxSize, blocking), name(std::move(name)) {}
 
 MessageQueue::MessageQueue(unsigned int maxSize, bool blocking) : queue(maxSize, blocking) {}
 
@@ -36,6 +36,14 @@ void MessageQueue::close() {
 MessageQueue::~MessageQueue() {
     // Close the queue first
     close();
+}
+
+void MessageQueue::setName(std::string name) {
+    this->name = std::move(name);
+}
+
+std::string MessageQueue::getName() const {
+    return name;
 }
 
 void MessageQueue::setBlocking(bool blocking) {
@@ -62,37 +70,33 @@ unsigned int MessageQueue::isFull() const {
     return queue.isFull();
 }
 
-std::string MessageQueue::getName() const {
-    return name;
-}
-
 int MessageQueue::addCallback(std::function<void(std::string, std::shared_ptr<ADatatype>)> callback) {
     // Lock first
-    std::unique_lock<std::mutex> l(callbacksMtx);
+    std::unique_lock<std::mutex> lock(callbacksMtx);
 
     // Get unique id
-    int id = uniqueCallbackId++;
+    int uniqueId = uniqueCallbackId++;
 
     // assign callback
-    callbacks[id] = callback;
+    callbacks[uniqueId] = std::move(callback);
 
     // return id assigned to the callback
-    return id;
+    return uniqueId;
 }
 
-int MessageQueue::addCallback(std::function<void(std::shared_ptr<ADatatype>)> callback) {
+int MessageQueue::addCallback(const std::function<void(std::shared_ptr<ADatatype>)>& callback) {
     // Create a wrapper
-    return addCallback([callback](std::string, std::shared_ptr<ADatatype> message) { callback(message); });
+    return addCallback([callback](const std::string&, std::shared_ptr<ADatatype> message) { callback(std::move(message)); });
 }
 
-int MessageQueue::addCallback(std::function<void()> callback) {
+int MessageQueue::addCallback(const std::function<void()>& callback) {
     // Create a wrapper
-    return addCallback([callback](std::string, std::shared_ptr<ADatatype>) { callback(); });
+    return addCallback([callback](const std::string&, std::shared_ptr<ADatatype>) { callback(); });
 }
 
 bool MessageQueue::removeCallback(int callbackId) {
     // Lock first
-    std::unique_lock<std::mutex> l(callbacksMtx);
+    std::unique_lock<std::mutex> lock(callbacksMtx);
 
     // If callback with id 'callbackId' doesn't exists, return false
     if(callbacks.count(callbackId) == 0) return false;
@@ -108,37 +112,25 @@ void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
     queue.push(msg);
 }
 
-// void MessageQueue::send(const ADatatype& msg) {
-//     send(std::make_shared<ADatatype>(msg.serialize()));
-// }
-
 bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::milliseconds timeout) {
     if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
     callCallbacks(msg);
     return queue.tryWaitAndPush(msg, timeout);
 }
 
-// bool MessageQueue::send(const ADatatype& msg, std::chrono::milliseconds timeout) {
-//     return send(std::make_shared<ADatatype>(msg.serialize()), timeout);
-// }
-
-// Try variants
 bool MessageQueue::trySend(const std::shared_ptr<ADatatype>& msg) {
     if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
     return send(msg, std::chrono::milliseconds(0));
 }
 
-// bool MessageQueue::trySend(const ADatatype& msg) {
-//     return trySend(std::make_shared<ADatatype>(msg.serialize()));
-// }
-
-void MessageQueue::callCallbacks(std::shared_ptr<ADatatype> msg) {
+void MessageQueue::callCallbacks(std::shared_ptr<ADatatype> message) {
     // Lock first
-    std::lock_guard<std::mutex> l(callbacksMtx);
+    std::lock_guard<std::mutex> lock(callbacksMtx);
 
     // Call all callbacks
-    for(auto& kv : callbacks) {
-        kv.second(name, msg);
+    for(auto& keyValue : callbacks) {
+        keyValue.second(name, std::move(message));
     }
 }
+
 }  // namespace dai

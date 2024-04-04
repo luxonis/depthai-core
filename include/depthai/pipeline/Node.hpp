@@ -45,11 +45,11 @@ class Node : public std::enable_shared_from_this<Node> {
     class OutputMap;
 
    protected:
-    std::unordered_map<std::string, Output*> outputRefs;
-    std::unordered_map<std::string, Input*> inputRefs;
-    std::unordered_map<std::string, OutputMap*> outputMapRefs;
-    std::unordered_map<std::string, InputMap*> inputMapRefs;
-    std::unordered_map<std::string, std::shared_ptr<Node>*> nodeRefs;
+    std::vector<Output*> outputRefs;
+    std::vector<Input*> inputRefs;
+    std::vector<OutputMap*> outputMapRefs;
+    std::vector<InputMap*> inputMapRefs;
+    std::vector<std::shared_ptr<Node>*> nodeRefs;
 
     // helpers for setting refs
     void setOutputRefs(std::initializer_list<Output*> l);
@@ -79,7 +79,7 @@ class Node : public std::enable_shared_from_this<Node> {
                 parent.nodeMap.push_back(node);
             }
             // Add reference
-            parent.nodeRefs[alias] = &node;
+            parent.nodeRefs.push_back(&node);
         }
         T& operator*() const noexcept {
             return *std::static_pointer_cast<T>(node).get();
@@ -141,14 +141,6 @@ class Node : public std::enable_shared_from_this<Node> {
                 parent.setOutputRefs(this);
             }
         }
-
-        /*
-        Output(Node& par, std::string n, Type t, std::vector<Capability> caps)
-            : parent(par), name(std::move(n)), type(t), possibleCapabilities(std::move(caps)) {
-            // Place oneself to the parents references
-            parent.setOutputRefs(this);
-        }
-        */
 
         Output(Node& par, std::string group, std::string n, Type t, std::vector<DatatypeHierarchy> types, bool ref = true)
             : parent(par), group(std::move(group)), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {
@@ -260,7 +252,7 @@ class Node : public std::enable_shared_from_this<Node> {
        public:
         std::string name;
         OutputMap(std::string name, Output defaultOutput);
-        OutputMap(Output defaultOutput);
+        explicit OutputMap(Output defaultOutput);
         OutputMap(bool ref, Node& parent, std::string name, Output defaultOutput);
         OutputMap(bool ref, Node& parent, Output defaultOutput);
         /// Create or modify an output
@@ -269,124 +261,61 @@ class Node : public std::enable_shared_from_this<Node> {
         Output& operator[](std::pair<std::string, std::string> groupKey);
     };
 
-    // Input is a thing layer over a MessageQueue which carries meta data and contains the actual queue as a shared_ptr
-    class Input {
+    // Input extends the message queue with additional option that specifies whether to wait for message or not
+    class Input : public MessageQueue {
        public:
-        enum class Type { SReceiver, MReceiver };
+        enum class Type { SReceiver, MReceiver };  // TODO(Morato) - refactor, make the MReceiver a separate class (shouldn't inherit from MessageQueue)
 
        private:
-        Node& parent;
+        std::reference_wrapper<Node> parent;
         static constexpr bool defaultBlocking{true};
         static constexpr int defaultMaxQueueSize{8};
 
         // Options - more information about the input
         bool waitForMessage{false};
         std::string group;
-        std::string name;
         Type type;
 
        public:
-        // Queue is a shared_ptr as both the node outputs and the node inputs need access and it needs to stay alive as long as the last node is alive
-        std::shared_ptr<MessageQueue> queue;
+        Input(Node& par,
+              std::string name,
+              Type type = Type::SReceiver,
+              bool blocking = true,
+              int queueSize = 8,
+              bool waitForMessage = false,
+              std::vector<DatatypeHierarchy> types = {{DatatypeEnum::Buffer, true}})
+            : MessageQueue(std::move(name), queueSize, blocking),
+              parent(par),
+              waitForMessage(waitForMessage),
+              type(type),
+              possibleDatatypes(std::move(types)) {}
+
         std::vector<DatatypeHierarchy> possibleDatatypes;
 
-        // Create a default input type
-        Input(Node& par, bool inputRef = true)
-            : Input(par, "", Type::SReceiver, defaultBlocking, defaultMaxQueueSize, false, {{DatatypeEnum::Buffer, true}}, inputRef) {}
-
-        Input(Node& par, std::string n, bool inputRef = true)
-            : Input(par, "", n, Type::SReceiver, defaultBlocking, defaultMaxQueueSize, false, {{DatatypeEnum::Buffer, true}}, inputRef) {}
-
-        Input(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types, bool inputRef = true)
-            : Input(par, "", n, t, defaultBlocking, defaultMaxQueueSize, false, std::move(types), inputRef) {}
-
-        Input(Node& par, std::string n, Type t, bool blocking, int queueSize, std::vector<DatatypeHierarchy> types, bool inputRef = true)
-            : Input(par, "", n, t, blocking, queueSize, false, std::move(types), inputRef) {}
-
-        Input(Node& par, std::string n, Type t, bool blocking, int queueSize, bool waitForMessage, std::vector<DatatypeHierarchy> types, bool inputRef = true)
-            : Input(par, "", n, t, blocking, queueSize, waitForMessage, std::move(types), inputRef) {}
-
-        Input(Node& par,
-              std::string group,
-              std::string n,
-              Type t,
-              bool blocking,
-              int queueSize,
-              bool waitForMessage,
-              std::vector<DatatypeHierarchy> types,
-              bool inputRef = true)
-            : parent(par),
-              waitForMessage(waitForMessage),
-              group(std::move(group)),
-              name(std::move(n)),
-              type(t),
-              queue(std::make_shared<MessageQueue>(queueSize, blocking)),
-              possibleDatatypes(std::move(types)) {
-            if(inputRef) {
-                parent.setInputRefs(this);
-            }
+        /**
+         * Get the parent node
+         */
+        const Node& getParent() const {
+            return parent;
+        }
+        /**
+         * Get the parent node
+         */
+        Node& getParent() {
+            return parent;
         }
 
-        bool operator==(const Input& rhs) const {
-            return &parent == &rhs.parent && group == rhs.group && name == rhs.name && type == rhs.type && getBlocking() == rhs.getBlocking()
-                   && getQueueSize() == rhs.getQueueSize() && getWaitForMessage() == rhs.getWaitForMessage()
-                   && getReusePreviousMessage() == rhs.getReusePreviousMessage();
-        }
-
-        void setGroup(std::string group) {
-            this->group = std::move(group);
-        }
-
-        void setName(std::string name) {
-            this->name = std::move(name);
-        }
-
-        std::string getGroup() const {
-            return group;
-        }
-
-        std::string getName() const {
-            return name;
-        }
-
+        /**
+         * Get type
+        */
         Type getType() const {
             return type;
         }
 
-        Node& getParent() {
-            return parent;
-        }
-        const Node& getParent() const {
-            return parent;
-        }
-
-        /// Input to string representation
+        /**
+         * Input to string representation
+         */
         std::string toString() const;
-
-        /**
-         * Overrides default input queue behavior.
-         * @param blocking True blocking, false overwriting
-         */
-        void setBlocking(bool blocking);
-
-        /**
-         * Get input queue behavior
-         * @returns True blocking, false overwriting
-         */
-        bool getBlocking() const;
-
-        /**
-         * Overrides default input queue size.
-         * If queue size fills up, behavior depends on `blocking` attribute
-         * @param size Maximum input queue size
-         */
-        void setQueueSize(int size);
-
-        /**
-         * Get input queue size.
-         * @returns Maximum input queue size
-         */
-        int getQueueSize() const;
 
         /**
          * Overrides default wait for message behavior.
@@ -412,169 +341,15 @@ class Node : public std::enable_shared_from_this<Node> {
          */
         bool getReusePreviousMessage() const;
 
-        // TODO(themarpe) - refactor, rather extend from MessageQueue
+        /**
+         * Set group name for this input
+         */
+        void setGroup(std::string group);
 
         /**
-         * Check whether front of the queue has message of type T
-         * @returns True if queue isn't empty and the first element is of type T, false otherwise
+         * Get group name for this input
          */
-        template <class T>
-        bool has() {
-            return queue->has<T>();
-        }
-
-        /**
-         * Check whether front of the queue has a message (isn't empty)
-         * @returns True if queue isn't empty, false otherwise
-         */
-        bool has() {
-            return queue->has();
-        }
-
-        /**
-         * Try to retrieve message T from queue. If message isn't of type T it returns nullptr
-         *
-         * @returns Message of type T or nullptr if no message available
-         */
-        template <class T>
-        std::shared_ptr<T> tryGet() {
-            return queue->tryGet<T>();
-        }
-
-        /**
-         * Try to retrieve message from queue. If no message available, return immediately with nullptr
-         *
-         * @returns Message or nullptr if no message available
-         */
-        std::shared_ptr<ADatatype> tryGet() {
-            return tryGet<ADatatype>();
-        }
-
-        /**
-         * Block until a message is available.
-         *
-         * @returns Message of type T or nullptr if no message available
-         */
-        template <class T>
-        std::shared_ptr<T> get() {
-            return queue->get<T>();
-        }
-
-        /**
-         * Block until a message is available.
-         *
-         * @returns Message or nullptr if no message available
-         */
-        std::shared_ptr<ADatatype> get() {
-            return get<ADatatype>();
-        }
-
-        /**
-         * Gets first message in the queue.
-         *
-         * @returns Message of type T or nullptr if no message available
-         */
-        template <class T>
-        std::shared_ptr<T> front() {
-            return queue->front<T>();
-        }
-
-        /**
-         * Gets first message in the queue.
-         *
-         * @returns Message or nullptr if no message available
-         */
-        std::shared_ptr<ADatatype> front() {
-            return front<ADatatype>();
-        }
-
-        /**
-         * Block until a message is available with a timeout.
-         *
-         * @param timeout Duration for which the function should block
-         * @param[out] hasTimedout Outputs true if timeout occurred, false otherwise
-         * @returns Message of type T otherwise nullptr if message isn't type T or timeout occurred
-         */
-        template <class T, typename Rep, typename Period>
-        std::shared_ptr<T> get(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
-            return queue->get<T, Rep, Period>(timeout, hasTimedout);
-        }
-
-        /**
-         * Block until a message is available with a timeout.
-         *
-         * @param timeout Duration for which the function should block
-         * @param[out] hasTimedout Outputs true if timeout occurred, false otherwise
-         * @returns Message of type T otherwise nullptr if message isn't type T or timeout occurred
-         */
-        template <typename Rep, typename Period>
-        std::shared_ptr<ADatatype> get(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
-            return get<ADatatype>(timeout, hasTimedout);
-        }
-
-        /**
-         * Try to retrieve all messages in the queue.
-         *
-         * @returns Vector of messages which can either be of type T or nullptr
-         */
-        template <class T>
-        std::vector<std::shared_ptr<T>> tryGetAll() {
-            return queue->tryGetAll<T>();
-        }
-
-        /**
-         * Try to retrieve all messages in the queue.
-         *
-         * @returns Vector of messages
-         */
-        std::vector<std::shared_ptr<ADatatype>> tryGetAll() {
-            return tryGetAll<ADatatype>();
-        }
-
-        /**
-         * Block until at least one message in the queue.
-         * Then return all messages from the queue.
-         *
-         * @returns Vector of messages which can either be of type T or nullptr
-         */
-        template <class T>
-        std::vector<std::shared_ptr<T>> getAll() {
-            return queue->getAll<T>();
-        }
-
-        /**
-         * Block until at least one message in the queue.
-         * Then return all messages from the queue.
-         *
-         * @returns Vector of messages
-         */
-        std::vector<std::shared_ptr<ADatatype>> getAll() {
-            return getAll<ADatatype>();
-        }
-
-        /**
-         * Block for maximum timeout duration.
-         * Then return all messages from the queue.
-         * @param timeout Maximum duration to block
-         * @param[out] hasTimedout Outputs true if timeout occurred, false otherwise
-         * @returns Vector of messages which can either be of type T or nullptr
-         */
-        template <class T, typename Rep, typename Period>
-        std::vector<std::shared_ptr<T>> getAll(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
-            return queue->getAll<T, Rep, Period>(timeout, hasTimedout);
-        }
-
-        /**
-         * Block for maximum timeout duration.
-         * Then return all messages from the queue.
-         * @param timeout Maximum duration to block
-         * @param[out] hasTimedout Outputs true if timeout occurred, false otherwise
-         * @returns Vector of messages
-         */
-        template <typename Rep, typename Period>
-        std::vector<std::shared_ptr<ADatatype>> getAll(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
-            return getAll<ADatatype>(timeout, hasTimedout);
-        }
+        std::string getGroup() const;
     };
 
     /**
@@ -674,13 +449,9 @@ class Node : public std::enable_shared_from_this<Node> {
         this->alias = std::move(alias);
     }
 
-    // /// Deep copy the node
-    // virtual std::unique_ptr<Node> clone() const = 0;
-
     /// Retrieves nodes name
     virtual const char* getName() const = 0;
 
-    // TBD - might be an default impl instead
     /// Start node execution
     virtual void start(){};
 
@@ -721,19 +492,19 @@ class Node : public std::enable_shared_from_this<Node> {
     /// Retrieves reference to node inputs
     std::vector<InputMap*> getInputMapRefs();
 
-    /// Retrieves reference to specific output
-    Output* getOutputRef(std::string name);
-    Output* getOutputRef(std::string group, std::string name);
+    // /// Retrieves reference to specific output
+    // Output* getOutputRef(std::string name);
+    // Output* getOutputRef(std::string group, std::string name);
 
-    /// Retrieves reference to specific input
-    Input* getInputRef(std::string name);
-    Input* getInputRef(std::string group, std::string name);
+    // /// Retrieves reference to specific input
+    // Input* getInputRef(std::string name);
+    // Input* getInputRef(std::string group, std::string name);
 
-    /// Retrieves reference to specific output map
-    OutputMap* getOutputMapRef(std::string group);
+    // /// Retrieves reference to specific output map
+    // OutputMap* getOutputMapRef(std::string group);
 
-    /// Retrieves reference to specific input map
-    InputMap* getInputMapRef(std::string group);
+    // /// Retrieves reference to specific input map
+    // InputMap* getInputMapRef(std::string group);
 
    protected:
     Node() = default;
@@ -778,6 +549,12 @@ class Node : public std::enable_shared_from_this<Node> {
     void link(const Node::Output& out, const Node::Input& in);
     void unlink(const Node::Output& out, const Node::Input& in);
     /// Get a reference to internal node map
+
+    /**
+     * @brief Returns true or false whether the node should be run on host or not
+     */
+    virtual bool runOnHost() const = 0;
+
     const NodeMap& getNodeMap() const {
         return nodeMap;
     }

@@ -9,8 +9,11 @@ namespace dai {
 class HostNode : public ThreadedNode {
    public:
     constexpr static const char* NAME = "HostNode";
-    // TODO(Morato) for now, this is a thin layer above threaded node.
     using ThreadedNode::ThreadedNode;
+    bool runOnHost() const final {
+        // Host node don't contain the necessary information to be serialized and sent to the device
+        return true;
+    }
 };
 
 }  // namespace dai

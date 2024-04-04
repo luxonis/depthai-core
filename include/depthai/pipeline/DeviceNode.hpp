@@ -18,6 +18,11 @@ class DeviceNode : public ThreadedNode {
     // virtual 'run' method
     virtual void run() override;
 
+    bool runOnHost() const override {
+        // By default, don't allow running on host, but can be overridden
+        return false;
+    }
+
     copyable_unique_ptr<Properties> propertiesHolder;
 
     // Get properties

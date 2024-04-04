@@ -12,6 +12,7 @@ Checks: >
   hicpp-*,
   performance-*,
   readability-*,
+  -readability-identifier-length,
   -google-readability-namespace-comments,
   -readability-inconsistent-declaration-parameter-name,
   -readability-braces-around-statements,
@@ -320,6 +321,3 @@ CheckOptions:
     value:           UPPER_CASE
   - key:             readability-identifier-naming.IgnoreMainLikeFunctions
     value:           1
-
-    
-

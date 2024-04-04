@@ -29,6 +29,11 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     friend class Node;
 
    public:
+    PipelineImpl(Pipeline& pipeline, bool hostOnly = true) : assetManager("/pipeline/"), parent(pipeline) {
+        if(!hostOnly) {
+            defaultDevice = std::make_shared<Device>();
+        }
+    }
     PipelineImpl(Pipeline& pipeline, std::shared_ptr<Device> device) : assetManager("/pipeline/"), parent(pipeline), defaultDevice{std::move(device)} {}
     PipelineImpl(const PipelineImpl&) = default;
     ~PipelineImpl();
@@ -171,10 +176,20 @@ class Pipeline {
     }
 
     /**
-     * Constructs a new pipeline - creates the device implicitly
+     * Creates a pipeline
+     * @param hostOnly If true, pipeline will run only be able to run host nodes and no device nodes can be added, otherwise pipeline implicitly creates a
+     * device
      */
-    Pipeline();
+    explicit Pipeline(bool hostOnly = true);
+
+    /**
+     * Creates a pipeline with specified device
+     */
     explicit Pipeline(std::shared_ptr<Device> device);
+
+    /**
+     * Creates a pipeline with specified device
+     */
     explicit Pipeline(std::shared_ptr<PipelineImpl> pimpl);
 
     /**
@@ -394,6 +409,9 @@ class Pipeline {
         impl()->stop();
     }
 
+    /*
+     * @note In case of a host only pipeline, this function returns a nullptr
+     */
     std::shared_ptr<Device> getDefaultDevice() {
         return impl()->defaultDevice;
     }
