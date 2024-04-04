@@ -17,6 +17,23 @@ class Camera::Impl {
    public:
     enum class OutputType { PREVIEW, VIDEO, RAW };
 
+    struct OutputRequest {
+        ImgFrameCapability capability;
+        bool onHost{};
+    };
+
+    // TODO(jakgra) fix so all resolutions work
+    struct Res {
+        int32_t width;
+        int32_t height;
+    };
+
+    std::vector<Res> notWorkingResolutions = {
+        {.width = 1352, .height = 1012}  // dai::ColorCameraProperties::SensorResolution::THE_1352X1012
+    };
+
+    std::vector<OutputRequest> outputRequests;
+
     static OutputType getOutputType(ImgFrame::Type format) {
         using E = ImgFrame::Type;
         switch(format) {
@@ -62,6 +79,146 @@ class Camera::Impl {
                 break;
             case E::NONE:
                 DAI_CHECK_IN(false);
+                break;
+            default:
+                DAI_CHECK_IN(false);
+                break;
+        }
+    }
+
+    dai::CameraSensorConfig getClosestCameraConfig(const std::vector<dai::CameraSensorConfig>& colorCameraModes, int64_t width, int64_t height) {
+        int64_t minAdditionalPixels = -1;
+        ssize_t foundIndex = -1;
+        ssize_t index = 0;
+        for(const auto& mode : colorCameraModes) {
+            if(mode.width >= width && mode.height >= height) {
+                if(std::find_if(notWorkingResolutions.begin(),
+                                notWorkingResolutions.end(),
+                                [&mode = std::as_const(mode)](const auto& itr) { return itr.width == mode.width && itr.height == mode.height; })
+                   != notWorkingResolutions.end()) {
+                    std::cout << "Warning: ignoring possible best resolution " << mode.width << "x" << mode.height << " because of possible firmware bugs\n"
+                              << std::flush;
+                } else {
+                    int64_t additionalPixels = (mode.width - width) * mode.height + (mode.height - height) * mode.width;
+                    if(minAdditionalPixels == -1 || additionalPixels < minAdditionalPixels) {
+                        foundIndex = index;
+                        minAdditionalPixels = additionalPixels;
+                    }
+                }
+            }
+        }
+        ++index;
+        DAI_CHECK_IN(minAdditionalPixels != -1 && foundIndex != -1);
+        return colorCameraModes[foundIndex];
+    }
+
+    static std::set<std::tuple<double, int, int>> validIspScales() {
+        std::set<std::tuple<double, int, int>> result;
+        for(int numerator = 1; numerator < 16 + 1; ++numerator) {
+            for(int denominator = 1; denominator < 63 + 1; ++denominator) {
+                // Chroma needs 2x extra downscaling
+                if(denominator < 32 || numerator % 2 == 0) {
+                    // Only if irreducible
+                    if(std::gcd(numerator, denominator) == 1) {
+                        result.insert(std::make_tuple(static_cast<double>(numerator) / static_cast<double>(denominator), numerator, denominator));
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
+    static std::tuple<int, int> findClosestIspScale(int width, int height, const dai::CameraSensorConfig& mode) {
+        const static auto validScales = validIspScales();
+        const auto useWidth = static_cast<double>(width) / static_cast<double>(mode.width) > static_cast<double>(height) / static_cast<double>(mode.height);
+        int numerator = useWidth ? width : height;
+        int denominator = useWidth ? mode.width : mode.height;
+        const auto div = std::gcd(numerator, denominator);
+        numerator = numerator / div;
+        denominator = denominator / div;
+        const auto foundScale = std::find_if(validScales.begin(), validScales.end(), [numerator, denominator](const auto& itr) {
+            return std::get<1>(itr) == numerator && std::get<2>(itr) == denominator;
+        });
+
+        if(foundScale != validScales.end()) {
+            return std::make_tuple(std::get<1>(*foundScale), std::get<2>(*foundScale));
+        }
+        const double wantedScale = static_cast<double>(numerator) / static_cast<double>(denominator);
+        double bestDiff = std::numeric_limits<double>::max();
+        auto bestScale = std::make_tuple<int, int>(-1, -1);
+        for(const auto& validScale : validScales) {
+            const auto scale = std::get<0>(validScale);
+            if(scale >= wantedScale) {
+                const auto diff = scale - wantedScale;
+                if(diff < bestDiff) {
+                    bestDiff = diff;
+                    bestScale = std::make_tuple(std::get<1>(validScale), std::get<2>(validScale));
+                }
+            }
+        }
+        DAI_CHECK_IN(std::get<0>(bestScale) != -1);
+        return bestScale;
+    }
+
+    void requestNewOutput(const ImgFrameCapability& capability, bool onHost) {
+        outputRequests.push_back({capability, onHost});
+    }
+
+    void buildStage1(std::shared_ptr<Device> device, CameraProperties& properties, Output& preview, Output& video, Output& isp, Output& still) {
+        DAI_CHECK_V(preview.getConnections().empty() && video.getConnections().empty() && isp.getConnections().empty() && still.getConnections().empty(),
+                    "Can't use managed and unmanaged mode at the same time. Don't link() preview, video, isp, still outputs or don't use requestNewOutput().");
+        DAI_CHECK_IN(!outputRequests.empty());
+        const auto& capability = outputRequests[0].capability;
+        const std::optional<ImgFrame::Type> encoding =
+            (capability.encoding && *capability.encoding != ImgFrame::Type::NONE) ? capability.encoding : std::nullopt;
+        if(encoding) {
+            // TODO(jakgra) set fp16, colorOrder, interleaved, rawPacked ... from encoding and throw for unsupported encodings
+        }
+        // TODO(jakgra) check if video default output is ok for all cameras / sensors?
+        const auto outputType = encoding ? getOutputType(*encoding) : Impl::OutputType::VIDEO;
+        if(capability.size.value) {
+            const auto* size = std::get_if<std::tuple<uint32_t, uint32_t>>(&(*capability.size.value));
+            if(size != nullptr) {
+                using E = Impl::OutputType;
+                switch(outputType) {
+                    case E::PREVIEW:
+                        std::cout << "Setting preview size\n" << std::flush;
+                        properties.previewWidth = std::get<0>(*size);
+                        properties.previewHeight = std::get<1>(*size);
+                        break;
+                    case E::VIDEO:
+                        std::cout << "Setting video size\n" << std::flush;
+                        properties.videoWidth = std::get<0>(*size);
+                        properties.videoHeight = std::get<1>(*size);
+                        break;
+                    case E::RAW:
+                        // TODO(jakgra) check if is an exact fit for some SensorConfig or throw otherwise
+                        std::cout << "Not setting size because is RAW output\n" << std::flush;
+                        break;
+                    default:
+                        DAI_CHECK_IN(false);
+                        break;
+                }
+            } else {
+                // TODO(jakgra) support this
+                DAI_CHECK(false, "Ranged and array sizes not supported yet. Only fixed size works for now");
+            }
+        } else {
+            // TODO(jakgra) set some default resolution that matches a sensor config here
+            // should this be the same for all cameras (ex.: full HD) or camera specific (ex.: max resolution)
+            // if there are multiple outputs, should the above logic apply or should we take the same resolution as another output and just return that output?
+            std::cout << "NOT Setting preview size because value is NULL\n" << std::flush;
+        }
+        switch(outputType) {
+            using E = Impl::OutputType;
+            case E::PREVIEW:
+                // return &preview;
+                break;
+            case E::RAW:
+                // return &raw;
+                break;
+            case E::VIDEO:
+                // return &video;
                 break;
             default:
                 DAI_CHECK_IN(false);
@@ -337,58 +494,13 @@ void Camera::setRawOutputPacked(bool packed) {
 }
 
 Camera::Output* Camera::requestNewOutput(const ImgFrameCapability& capability, bool onHost) {
-    (void)onHost;  // This will be used for optimizing network troughput
-    DAI_CHECK_V(preview.getConnections().empty() && video.getConnections().empty() && isp.getConnections().empty() && still.getConnections().empty(),
-                "Can't use managed and unmanaged mode at the same time. Don't link() preview, video, isp, still outputs or don't use requestNewOutput().");
-    const std::optional<ImgFrame::Type> encoding = (capability.encoding && *capability.encoding != ImgFrame::Type::NONE) ? capability.encoding : std::nullopt;
-    if(encoding) {
-        // TODO(jakgra) set fp16, colorOrder, interleaved, rawPacked ... from encoding and throw for unsupported encodings
-    }
-    // TODO(jakgra) check if video default output is ok for all cameras / sensors?
-    const auto outputType = encoding ? pimpl->getOutputType(*encoding) : Impl::OutputType::VIDEO;
-    if(capability.size.value) {
-        const auto* size = std::get_if<std::tuple<uint32_t, uint32_t>>(&(*capability.size.value));
-        if(size != nullptr) {
-            using E = Impl::OutputType;
-            switch(outputType) {
-                case E::PREVIEW:
-                    std::cout << "Setting preview size\n" << std::flush;
-                    setPreviewSize(*size);
-                    break;
-                case E::VIDEO:
-                    std::cout << "Setting video size\n" << std::flush;
-                    setVideoSize(*size);
-                    break;
-                case E::RAW:
-                    // TODO(jakgra) check if is an exact fit for some SensorConfig or throw otherwise
-                    std::cout << "Not setting size because is RAW output\n" << std::flush;
-                    break;
-                default:
-                    DAI_CHECK_IN(false);
-                    break;
-            }
-        } else {
-            // TODO(jakgra) support this
-            DAI_CHECK(false, "Ranged and array sizes not supported yet. Only fixed size works for now");
-        }
-    } else {
-        // TODO(jakgra) set some default resolution that matches a sensor config here
-        // should this be the same for all cameras (ex.: full HD) or camera specific (ex.: max resolution)
-        // if there are multiple outputs, should the above logic apply or should we take the same resolution as another output and just return that output?
-        std::cout << "NOT Setting preview size because value is NULL\n" << std::flush;
-    }
-    switch(outputType) {
-        using E = Impl::OutputType;
-        case E::PREVIEW:
-            return &preview;
-        case E::RAW:
-            return &raw;
-        case E::VIDEO:
-            return &video;
-        default:
-            DAI_CHECK_IN(false);
-            break;
-    }
+    pimpl->requestNewOutput(capability, onHost);
+    // TODO(jakgra) return a reference to some dynamically allocated Output that we link to the correct one afterwards
+    return &preview;
+}
+
+void Camera::buildStage1() {
+    pimpl->buildStage1(device, properties, preview, video, isp, still);
 }
 
 }  // namespace node

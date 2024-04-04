@@ -349,6 +349,9 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
      */
     void setRawOutputPacked(bool packed);
 
+   protected:
+    void buildStage1() override;
+
    private:
     class Impl;
     spimpl::impl_ptr<Impl> pimpl;
