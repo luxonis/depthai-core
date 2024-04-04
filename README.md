@@ -17,10 +17,15 @@ DepthAI library doesn't yet provide API stability guarantees. While we take care
 - CMake >= 3.14
 - C/C++14 compiler
 - [optional] OpenCV 4 (required if building examples)
+- [optional] PCL (required for point cloud example)
 
-MacOS: Optional `brew install opencv`
+To install OpenCV:
+MacOS: `brew install opencv`
+Linux: `sudo apt install libopencv-dev`
 
-Linux: Optional `sudo apt install libopencv-dev`
+To install PCL:
+MacOS: `brew install pcl`
+Linux: `sudo apt install libpcl-dev`
 
 ## Building
 

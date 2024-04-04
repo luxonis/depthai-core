@@ -46,7 +46,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.24.0" LANGUAGES CXX C)
+project(depthai VERSION "2.25.0" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -244,6 +244,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/Replay.cpp
     src/pipeline/node/UVC.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
+    src/pipeline/node/PointCloud.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImgTransformations.cpp
@@ -268,6 +269,8 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/FeatureTrackerConfig.cpp
     src/pipeline/datatype/ToFConfig.cpp
     src/pipeline/datatype/BenchmarkReport.cpp
+    src/pipeline/datatype/PointCloudConfig.cpp
+    src/pipeline/datatype/PointCloudData.cpp
     src/pipeline/datatype/MessageGroup.cpp
     src/utility/H26xParsers.cpp
     src/utility/Initialization.cpp
@@ -328,6 +331,7 @@ option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be in
 option(DEPTHAI_BUILD_PYTHON "Build python bindings" OFF)
 option(DEPTHAI_BUILD_DOCS "Build documentation - requires doxygen to be installed" OFF)
 option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
+option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" ON)
 
 # Specify support for FW
 option(DEPTHAI_ENABLE_DEVICE_FW "Enable MyriadX Device FW" ON)
@@ -623,6 +627,76 @@ if(DEPTHAI_OPENCV_SUPPORT)
     endif()
 endif()
 
+
+########################
+# PCL Support
+########################
+set(TARGET_PCL_NAME ${PROJECT_NAME}-pcl)
+set(TARGET_PCL_ALIAS pcl)
+if(DEPTHAI_PCL_SUPPORT)
+    if(PCL_FOUND)
+        # Add depthai-core-pcl library and depthai::core::pcl alias
+        add_library(${TARGET_PCL_NAME} src/pcl/PointCloudData.cpp)
+        add_library("${PROJECT_NAME}::${TARGET_PCL_ALIAS}" ALIAS ${TARGET_PCL_NAME})
+        # Specifies name of generated IMPORTED target (set to alias)
+        set_target_properties(${TARGET_PCL_NAME} PROPERTIES EXPORT_NAME ${TARGET_PCL_ALIAS})
+
+        # Add default flags
+        add_default_flags(${TARGET_PCL_NAME})
+        add_flag(${TARGET_PCL_NAME} -Wno-switch-enum)
+
+        # Link to PCL (publically)
+        target_link_libraries(${TARGET_PCL_NAME} PUBLIC ${PCL_LIBRARIES})
+
+        # Add public compile definition indicating that PCL support is available
+        set(DEPTHAI_HAVE_PCL_SUPPORT ON)
+
+        # Specify that we are building target pcl
+        target_compile_definitions(${TARGET_PCL_NAME} PUBLIC DEPTHAI_TARGET_PCL)
+        target_compile_definitions(${TARGET_PCL_NAME} PUBLIC DEPTHAI_HAVE_PCL_SUPPORT)
+
+
+        target_include_directories(${TARGET_PCL_NAME} PUBLIC ${PCL_INCLUDE_DIRS})
+        target_link_directories(${TARGET_PCL_NAME} PUBLIC ${PCL_LIBRARY_DIRS})
+        target_compile_definitions(${TARGET_PCL_NAME} PUBLIC ${PCL_DEFINITIONS})
+
+        # Add public dependency to depthai::core library
+        target_include_directories(${TARGET_CORE_NAME} PUBLIC $<TARGET_PROPERTY:${TARGET_PCL_NAME},INTERFACE_INCLUDE_DIRECTORIES>)
+        target_link_libraries(${TARGET_PCL_NAME} PUBLIC ${TARGET_CORE_NAME})
+
+        # Add to clangformat target
+        if(COMMAND target_clangformat_setup)
+            target_clangformat_setup(${TARGET_PCL_NAME} "")
+        endif()
+
+        # Add to list of targets to export and install
+        list(APPEND targets_to_export ${TARGET_PCL_NAME})
+
+        message(STATUS "PCL found. PCL Support enabled")
+
+    else()
+        message(STATUS "PCL not found. PCL Support disabled")
+    endif()
+endif()
+
+########################
+# Combined target
+########################
+set(TARGET_ALL_ALIAS all)
+set(TARGET_ALL_NAME ${PROJECT_NAME}-all)
+if(DEPTHAI_HAVE_OPENCV_SUPPORT AND DEPTHAI_HAVE_PCL_SUPPORT)
+    add_library(${TARGET_ALL_NAME} INTERFACE)
+    add_library("${PROJECT_NAME}::${TARGET_ALL_ALIAS}" ALIAS ${TARGET_ALL_NAME})
+    # Specifies name of generated IMPORTED target (set to alias)
+    set_target_properties(${TARGET_ALL_NAME} PROPERTIES EXPORT_NAME ${TARGET_ALL_ALIAS})
+    target_link_libraries(${TARGET_ALL_NAME} INTERFACE ${TARGET_CORE_NAME} ${TARGET_OPENCV_NAME} ${TARGET_PCL_NAME})
+
+    # Add to list of targets to export and install
+    list(APPEND targets_to_export ${TARGET_ALL_NAME})
+
+    message(STATUS "OpenCV and PCL found. Combined target enabled")
+endif()
+
 ########################
 # Sanitizers
 ########################
@@ -633,6 +707,9 @@ if(DEPTHAI_SANITIZE)
     add_sanitizers(${TARGET_CORE_NAME})
     if(DEPTHAI_HAVE_OPENCV_SUPPORT)
         add_sanitizers(${TARGET_OPENCV_NAME})
+    endif()
+    if(DEPTHAI_HAVE_PCL_SUPPORT)
+        add_sanitizers(${TARGET_PCL_NAME})
     endif()
     if(DEPTHAI_XLINK_LOCAL)
         add_sanitizers(XLink)
@@ -684,7 +761,7 @@ endif()
 string(TIMESTAMP BUILD_DATETIME "%Y-%m-%d %H:%M:%S +0000" UTC)
 message(STATUS "BUILD_DATETIME: ${BUILD_DATETIME}, BUILD_COMMIT: ${BUILD_COMMIT}, BUILD_COMMIT_DATETIME: ${BUILD_COMMIT_DATETIME}")
 
-# Configure build information (version, opencv support)
+# Configure build information (version, opencv, pcl support)
 configure_file("${CMAKE_CURRENT_LIST_DIR}/cmake/version.hpp.in" "${CMAKE_CURRENT_LIST_DIR}/include/depthai/build/version.hpp")
 
 ########################
@@ -790,6 +867,14 @@ if(DEPTHAI_HAVE_OPENCV_SUPPORT)
     set(tmp_definitions "$<TARGET_PROPERTY:${TARGET_OPENCV_NAME},INTERFACE_COMPILE_DEFINITIONS>")
     set(tmp_includes "$<TARGET_PROPERTY:${TARGET_OPENCV_NAME},INTERFACE_INCLUDE_DIRECTORIES>")
     file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/depthai-opencv-integration.txt" CONTENT
+        "$<$<BOOL:${tmp_definitions}>:\n-D\'$<JOIN:${tmp_definitions},\'\n-D\'>\'>\n
+        $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
+    )
+endif()
+if(DEPTHAI_HAVE_PCL_SUPPORT)
+    set(tmp_definitions "$<TARGET_PROPERTY:${TARGET_PCL_NAME},INTERFACE_COMPILE_DEFINITIONS>")
+    set(tmp_includes "$<TARGET_PROPERTY:${TARGET_PCL_NAME},INTERFACE_INCLUDE_DIRECTORIES>")
+    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/depthai-pcl-integration.txt" CONTENT
         "$<$<BOOL:${tmp_definitions}>:\n-D\'$<JOIN:${tmp_definitions},\'\n-D\'>\'>\n
         $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
     )

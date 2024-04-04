@@ -24,6 +24,8 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/NNData.hpp"
+#include "depthai/pipeline/datatype/PointCloudConfig.hpp"
+#include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/datatype/SpatialImgDetections.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorConfig.hpp"
 #include "depthai/pipeline/datatype/SpatialLocationCalculatorData.hpp"
@@ -192,6 +194,12 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessage(streamPacketDesc_t*
             break;
         case DatatypeEnum::ToFConfig:
             return parseDatatype<ToFConfig>(metadataStart, serializedObjectSize, data);
+            break;
+        case DatatypeEnum::PointCloudConfig:
+            return parseDatatype<PointCloudConfig>(metadataStart, serializedObjectSize, data);
+            break;
+        case DatatypeEnum::PointCloudData:
+            return parseDatatype<PointCloudData>(metadataStart, serializedObjectSize, data);
             break;
         case DatatypeEnum::MessageGroup:
             return parseDatatype<MessageGroup>(metadataStart, serializedObjectSize, data);

@@ -29,6 +29,8 @@ enum class DatatypeEnum : std::int32_t {
     TrackedFeatures,
     BenchmarkReport,
     MessageGroup,
+    PointCloudConfig,
+    PointCloudData
 };
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);
 

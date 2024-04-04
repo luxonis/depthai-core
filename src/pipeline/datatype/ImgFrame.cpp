@@ -97,6 +97,11 @@ int ImgFrame::getLensPosition() const {
 unsigned int ImgFrame::getSourceWidth() const {
     return sourceFb.width;
 }
+
+float ImgFrame::getLensPositionRaw() const {
+    return cam.lensPositionRaw;
+}
+
 unsigned int ImgFrame::getSourceHeight() const {
     return sourceFb.height;
 }

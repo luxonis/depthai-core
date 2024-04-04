@@ -34,6 +34,41 @@ TEST_CASE("Set and get messages") {
     REQUIRE(msgGrp->get<dai::ImgFrame>("img1")->getHeight() == 6);
 }
 
+TEST_CASE("Send large messages") {
+    dai::Pipeline pipeline;
+    auto camRgb = pipeline.create<dai::node::ColorCamera>();
+    auto left = pipeline.create<dai::node::MonoCamera>();
+    auto right = pipeline.create<dai::node::MonoCamera>();
+
+    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_A);
+    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_12_MP);
+
+    camRgb->setFps(20);
+
+    left->setResolution(dai::MonoCameraProperties::SensorResolution::THE_800_P);
+    left->setBoardSocket(dai::CameraBoardSocket::CAM_B);
+    left->setFps(20);
+    right->setResolution(dai::MonoCameraProperties::SensorResolution::THE_800_P);
+    right->setBoardSocket(dai::CameraBoardSocket::CAM_C);
+    right->setFps(20);
+
+    auto sync = pipeline.create<dai::node::Sync>();
+    auto xout = pipeline.create<dai::node::XLinkOut>();
+    xout->setStreamName("out");
+
+    sync->out.link(xout->input);
+    camRgb->isp.link(sync->inputs["rgb"]);
+    left->out.link(sync->inputs["left"]);
+    right->out.link(sync->inputs["right"]);
+
+    dai::Device device(pipeline);
+    auto q = device.getOutputQueue("out", 8, true);
+
+    bool hasTimedOut = false;
+    auto msg = q->get(std::chrono::seconds(1), hasTimedOut);
+    REQUIRE(!hasTimedOut);
+}
+
 // TODO(asahtik): Bring back when the [issue](https://github.com/luxonis/depthai-core/issues/929) is fixed
 // TEST_CASE("Sync - demux") {
 //     auto buf1Ts = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);

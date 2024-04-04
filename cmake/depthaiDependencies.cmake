@@ -1,5 +1,6 @@
 if(CONFIG_MODE)
     set(_DEPTHAI_PREFIX_PATH_ORIGINAL ${CMAKE_PREFIX_PATH})
+    set(_DEPTHAI_MODULE_PATH_ORIGINAL ${CMAKE_MODULE_PATH})
     set(_DEPTHAI_FIND_ROOT_PATH_MODE_PACKAGE_ORIGINAL ${CMAKE_FIND_ROOT_PATH_MODE_PACKAGE})
     # Fixes Android NDK build, where prefix path is ignored as its not inside sysroot
     set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE "BOTH")
@@ -91,6 +92,15 @@ endif()
 
 # OpenCV 4 - (optional, quiet always)
 find_package(OpenCV 4 QUIET CONFIG)
+
+find_package(jsoncpp QUIET)
+set(MODULE_TEMP ${CMAKE_MODULE_PATH})
+set(PREFIX_TEMP ${CMAKE_PREFIX_PATH})
+set(CMAKE_MODULE_PATH ${_DEPTHAI_MODULE_PATH_ORIGINAL})
+set(CMAKE_PREFIX_PATH ${_DEPTHAI_PREFIX_PATH_ORIGINAL})
+find_package(PCL QUIET CONFIG COMPONENTS common visualization)
+set(CMAKE_MODULE_PATH ${MODULE_TEMP})
+set(CMAKE_PREFIX_PATH ${PREFIX_TEMP})
 
 # include optional dependency cmake
 if(DEPTHAI_DEPENDENCY_INCLUDE)

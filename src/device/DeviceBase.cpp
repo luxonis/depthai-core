@@ -575,21 +575,19 @@ void DeviceBase::closeImpl() {
     // Stop watchdog first (this resets and waits for link to fall down)
     if(watchdogThread.joinable()) watchdogThread.join();
 
-    if(!dumpOnly) {
-        // Stop various threads
-        timesyncRunning = false;
-        loggingRunning = false;
-        profilingRunning = false;
+    // Stop various threads
+    timesyncRunning = false;
+    loggingRunning = false;
+    profilingRunning = false;
 
-        // Then stop timesync
-        if(timesyncThread.joinable()) timesyncThread.join();
-        // And at the end stop logging thread
-        if(loggingThread.joinable()) loggingThread.join();
-        // And at the end stop profiling thread
-        if(profilingThread.joinable()) profilingThread.join();
-        // At the end stop the monitor thread
-        if(monitorThread.joinable()) monitorThread.join();
-    }
+    // Then stop timesync
+    if(timesyncThread.joinable()) timesyncThread.join();
+    // And at the end stop logging thread
+    if(loggingThread.joinable()) loggingThread.join();
+    // And at the end stop profiling thread
+    if(profilingThread.joinable()) profilingThread.join();
+    // At the end stop the monitor thread
+    if(monitorThread.joinable()) monitorThread.join();
 
     // Close rpcStream
     pimpl->rpcStream = nullptr;
@@ -1086,12 +1084,81 @@ std::vector<CameraBoardSocket> DeviceBase::getConnectedCameras() {
     return pimpl->rpcClient->call("getConnectedCameras").as<std::vector<CameraBoardSocket>>();
 }
 
+std::vector<StereoPair> DeviceBase::getAvailableStereoPairs() {
+    std::vector<dai::StereoPair> stereoPairs;
+    dai::CalibrationHandler calibHandler;
+    try {
+        calibHandler = readCalibration2();
+        if(calibHandler.getEepromData().cameraData.empty()) {
+            throw std::runtime_error("No camera data found.");
+        }
+    } catch(const std::exception&) {
+        try {
+            calibHandler = readFactoryCalibration();
+        } catch(const std::exception&) {
+            pimpl->logger.info("No calibration found.");
+            return stereoPairs;
+        }
+    }
+    // Find links between cameras.
+    for(auto const& camIdAndInfo1 : calibHandler.getEepromData().cameraData) {
+        auto camId1 = camIdAndInfo1.first;
+        for(auto const& camIdAndInfo2 : calibHandler.getEepromData().cameraData) {
+            auto camId2 = camIdAndInfo2.first;
+            try {
+                auto translationVector = calibHandler.getCameraTranslationVector(camId1, camId2, false);
+                auto baseline = std::abs(translationVector[0]) > std::abs(translationVector[1]) ? translationVector[0] : translationVector[1];  // X or Y
+                auto leftSocket = baseline < 0 ? camId1 : camId2;
+                auto rightSocket = leftSocket == camId1 ? camId2 : camId1;
+                int baselineDiff = std::abs(static_cast<int>(translationVector[0]) - static_cast<int>(translationVector[1]));
+                if(baselineDiff == static_cast<int>(std::abs(baseline))) {
+                    if(std::find_if(stereoPairs.begin(),
+                                    stereoPairs.end(),
+                                    [&leftSocket, &rightSocket](const dai::StereoPair& pair) { return pair.left == leftSocket && pair.right == rightSocket; })
+                       == stereoPairs.end()) {
+                        stereoPairs.push_back(dai::StereoPair{leftSocket, rightSocket, std::abs(baseline), static_cast<int>(translationVector[0]) == 0});
+                    }
+                } else {
+                    pimpl->logger.debug("Skipping diagonal pair, left: {}, right: {}.", leftSocket, rightSocket);
+                }
+            } catch(const std::exception&) {
+                continue;
+            }
+        }
+    }
+    // Filter out undetected cameras and socket pairs which are not present in getStereoPairs
+    auto deviceStereoPairs = getStereoPairs();
+    auto connectedCameras = getConnectedCameras();
+    std::vector<dai::StereoPair> filteredStereoPairs;
+    std::copy_if(
+        stereoPairs.begin(), stereoPairs.end(), std::back_inserter(filteredStereoPairs), [this, connectedCameras, deviceStereoPairs](dai::StereoPair pair) {
+            if(std::find(connectedCameras.begin(), connectedCameras.end(), pair.left) == connectedCameras.end()) {
+                pimpl->logger.debug("Skipping calibrated stereo pair because, camera {} was not detected.", pair.left);
+                return false;
+            } else if(std::find(connectedCameras.begin(), connectedCameras.end(), pair.right) == connectedCameras.end()) {
+                pimpl->logger.debug("Skipping calibrated stereo pair because, camera {} was not detected.", pair.right);
+                return false;
+            }
+            return std::find_if(deviceStereoPairs.begin(),
+                                deviceStereoPairs.end(),
+                                [pair](dai::StereoPair devicePair) { return devicePair.left == pair.left && devicePair.right == pair.right; })
+                   != deviceStereoPairs.end();
+        });
+
+    std::sort(filteredStereoPairs.begin(), filteredStereoPairs.end(), [](dai::StereoPair a, dai::StereoPair b) { return a.baseline < b.baseline; });
+    return filteredStereoPairs;
+}
+
 std::vector<ConnectionInterface> DeviceBase::getConnectionInterfaces() {
     return pimpl->rpcClient->call("getConnectionInterfaces").as<std::vector<ConnectionInterface>>();
 }
 
 std::vector<CameraFeatures> DeviceBase::getConnectedCameraFeatures() {
     return pimpl->rpcClient->call("getConnectedCameraFeatures").as<std::vector<CameraFeatures>>();
+}
+
+std::vector<StereoPair> DeviceBase::getStereoPairs() {
+    return pimpl->rpcClient->call("getStereoPairs").as<std::vector<StereoPair>>();
 }
 
 std::unordered_map<CameraBoardSocket, std::string> DeviceBase::getCameraSensorNames() {
@@ -1298,7 +1365,7 @@ void DeviceBase::setSystemInformationLoggingRate(float rateHz) {
 }
 
 float DeviceBase::getSystemInformationLoggingRate() {
-    return pimpl->rpcClient->call("getSystemInformationLoggingrate").as<float>();
+    return pimpl->rpcClient->call("getSystemInformationLoggingRate").as<float>();
 }
 
 bool DeviceBase::isEepromAvailable() {

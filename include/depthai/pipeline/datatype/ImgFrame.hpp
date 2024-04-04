@@ -169,6 +169,11 @@ class ImgFrame : public Buffer {
     int getLensPosition() const;
 
     /**
+     * Retrieves lens position, range 0.0f..1.0f. Returns -1 if not available
+     */
+    float getLensPositionRaw() const;
+
+    /**
      * Instance number relates to the origin of the frame (which camera)
      *
      * @param instance Instance number
@@ -662,8 +667,9 @@ class ImgFrame : public Buffer {
         int32_t sensitivityIso;
         int32_t lensPosition;
         int32_t wbColorTemp;
+        float lensPositionRaw;
 
-        DEPTHAI_SERIALIZE(CameraSettings, exposureTimeUs, sensitivityIso, lensPosition, wbColorTemp);
+        DEPTHAI_SERIALIZE(CameraSettings, exposureTimeUs, sensitivityIso, lensPosition, wbColorTemp, lensPositionRaw);
     };
 
     Specs fb = {};

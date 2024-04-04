@@ -15,8 +15,8 @@ class EncodedFrame : public Buffer {
         int32_t sensitivityIso;
         int32_t lensPosition;
         int32_t wbColorTemp;
-
-        DEPTHAI_SERIALIZE(CameraSettings, exposureTimeUs, sensitivityIso, lensPosition, wbColorTemp);
+        float lensPositionRaw;
+        DEPTHAI_SERIALIZE(CameraSettings, exposureTimeUs, sensitivityIso, lensPosition, wbColorTemp, lensPositionRaw);
     };
 
     CameraSettings cam;
@@ -72,6 +72,12 @@ class EncodedFrame : public Buffer {
      * Retrieves lens position, range 0..255. Returns -1 if not available
      */
     int getLensPosition() const;
+
+    /**
+     * Retrieves lens position, range 0.0f..1.0f. Returns -1 if not available
+     */
+    float getLensPositionRaw() const;
+
     /**
      * Retrieves the encoding quality
      */
