@@ -511,7 +511,6 @@ class DeviceBootloader {
     bool isEmbedded = false;
     Type bootloaderType;
     tl::optional<Version> flashedVersion;
-    const Version VERSION_USER_BL_UNSUPPORTED = Version("0.0.20");
 
     // closed
     std::atomic<bool> closed{false};

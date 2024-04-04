@@ -701,8 +701,12 @@ bool DeviceBootloader::isUserBootloaderSupported() {
         return false;
     }
 
+    if(!getFlashedVersion()) {
+        return false;
+    }
+
     // Check if bootloader version is adequate
-    if(getFlashedVersion().value_or(DeviceBootloader::VERSION_USER_BL_UNSUPPORTED).getSemver() < Version(Request::IsUserBootloader::VERSION)) {
+    if(getFlashedVersion().value().getSemver() < Version(Request::IsUserBootloader::VERSION)) {
         return false;
     }
 
@@ -933,8 +937,14 @@ std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::functio
     // }
 
     // Check if bootloader version is adequate
-    if(getFlashedVersion().value_or(DeviceBootloader::VERSION_USER_BL_UNSUPPORTED).getSemver() < Version(Request::IsUserBootloader::VERSION)) {
-        throw std::runtime_error("Current bootloader version doesn't support User Bootloader");
+    if(!getFlashedVersion()) {
+        throw std::runtime_error(
+            "Couldn't retrieve version of the flashed bootloader. Make sure you have a factory bootloader flashed and the device is booted to bootloader.");
+    }
+    if(getFlashedVersion().value().getSemver() < Version(Request::IsUserBootloader::VERSION)) {
+        throw std::runtime_error(fmt::format("Current bootloader version doesn't support User Bootloader. Current version: {}, minimum required version: {}",
+                                             getFlashedVersion().value().toStringSemver(),
+                                             Version(Request::IsUserBootloader::VERSION).toStringSemver()));
     }
 
     // Retrieve bootloader
