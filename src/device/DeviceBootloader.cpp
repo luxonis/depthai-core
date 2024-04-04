@@ -416,6 +416,7 @@ void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl
 
             // Retrieve bootloader version
             version = requestVersion();
+            flashedVersion = version;
             if(version >= Version(0, 0, 12)) {
                 // If version is adequate, do an in memory boot.
 
@@ -586,6 +587,10 @@ DeviceBootloader::Version DeviceBootloader::getVersion() const {
     return version;
 }
 
+tl::optional<DeviceBootloader::Version> DeviceBootloader::getFlashedVersion() const {
+    return flashedVersion;
+}
+
 DeviceBootloader::Version DeviceBootloader::requestVersion() {
     // Send request to retrieve bootloader version
     if(!sendRequest(Request::GetBootloaderVersion{})) {
@@ -697,7 +702,7 @@ bool DeviceBootloader::isUserBootloaderSupported() {
     }
 
     // Check if bootloader version is adequate
-    if(getVersion().getSemver() < Version(Request::IsUserBootloader::VERSION)) {
+    if(getFlashedVersion().value_or(DeviceBootloader::VERSION_USER_BL_UNSUPPORTED).getSemver() < Version(Request::IsUserBootloader::VERSION)) {
         return false;
     }
 
@@ -725,7 +730,10 @@ std::tuple<bool, std::string> DeviceBootloader::flashDepthaiApplicationPackage(s
                                                                                std::vector<uint8_t> package,
                                                                                Memory memory) {
     // Bug in NETWORK bootloader in version 0.0.12 < 0.0.14 - flashing can cause a soft brick
-    auto bootloaderVersion = getVersion();
+    if(!getFlashedVersion()) {
+        return {false, "Can't flash DepthAI application package without knowing flashed bootloader version."};
+    }
+    auto bootloaderVersion = *getFlashedVersion();
     if(bootloaderType == Type::NETWORK && bootloaderVersion < Version(0, 0, 14)) {
         throw std::invalid_argument("Network bootloader requires version 0.0.14 or higher to flash applications. Current version: "
                                     + bootloaderVersion.toString());
@@ -925,7 +933,7 @@ std::tuple<bool, std::string> DeviceBootloader::flashUserBootloader(std::functio
     // }
 
     // Check if bootloader version is adequate
-    if(getVersion().getSemver() < Version(Request::IsUserBootloader::VERSION)) {
+    if(getFlashedVersion().value_or(DeviceBootloader::VERSION_USER_BL_UNSUPPORTED).getSemver() < Version(Request::IsUserBootloader::VERSION)) {
         throw std::runtime_error("Current bootloader version doesn't support User Bootloader");
     }
 
