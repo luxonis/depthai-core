@@ -151,3 +151,13 @@ hunter_config(
     URL "https://github.com/pybind/pybind11/archive/refs/tags/v2.9.2.tar.gz"
     SHA1 "5e05583a210282c3251281b6ee5677915f0cbf95"
 )
+
+hunter_config(
+    mp4v2
+    VERSION "2.1.3"
+    URL "https://github.com/asahtik/mp4v2/archive/f868f0b842e427e20032922f839988ea4615800e.tar.gz"
+    SHA1 "74820eaa28e0892c5d0fcd9c700402a60fbf6d72"
+    CMAKE_ARGS
+        BUILD_SHARED=ON
+        BUILD_UTILS=OFF
+)

@@ -1,70 +1,54 @@
 #pragma once
 
+#include <mp4v2/mp4v2.h>
 #include <spdlog/logger.h>
+
 #include <cstdint>
 
-#include "span.hpp"
-
 #include "nlohmann/json.hpp"
+#include "span.hpp"
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/opencv.hpp>
 #endif
 
-#define DEPTHAI_RECORD_OPENCV 1
-
 namespace dai {
 namespace utility {
 
-// TODO(asahtik): Record frame metadata
 class VideoRecorder {
    public:
-    VideoRecorder() = default;
-    virtual ~VideoRecorder() = default;
-    virtual bool init(std::string filePath, int width, int height, int fps) = 0;
-    virtual bool write(span<const uint8_t>&) = 0;
-    virtual bool close() = 0;
+    enum class VideoCodec { H264, MJPEG, RAW };
+
+    ~VideoRecorder();
+    void init(const std::string& filePath, unsigned int width, unsigned int height, unsigned int fps, VideoCodec codec);
+    void write(span<const uint8_t>&);
+    void close();
     bool isInitialized() const {
         return initialized;
     }
 
    private:
     bool initialized = false;
-};
-
-// TODO(asahtik): Add mp4v2
-class VideoRecorderMp4v2 : public VideoRecorder {
-   public:
-    ~VideoRecorderMp4v2() override;
-    bool init(std::string filePath, int width, int height, int fps) override;
-    bool write(span<const uint8_t>&) override;
-    bool close() override;
-};
-
-#if DEPTHAI_RECORD_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
-class VideoRecorderOpenCV : public VideoRecorder {
-   public:
-    VideoRecorderOpenCV(const std::string& filename, int width, int height, int fps, int bitrate, int quality, bool lossless, int profile);
-    ~VideoRecorderOpenCV() override;
-    bool init(std::string filePath, int width, int heigh, int fps) override;
-    bool write(span<const uint8_t>&) override;
-    bool close() override;
-
-   private:
-    cv::VideoWriter writer;
-    std::string filePath;
-    int width, height, fps;
-};
+    bool mp4v2Initialized = false;
+    unsigned int fps = 0;
+    unsigned int width = 0;
+    unsigned int height = 0;
+    VideoCodec codec = VideoCodec::RAW;
+    MP4FileHandle mp4Writer = MP4_INVALID_FILE_HANDLE;
+    MP4TrackId mp4Track = MP4_INVALID_TRACK_ID;
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    std::unique_ptr<cv::VideoWriter> cvWriter;
+#else
+    std::unique_ptr<int> cvWriter;
 #endif
+};
 
-// TODO(asahtik): Replay frame metadata
 class VideoPlayer {
    public:
-    VideoPlayer() = default;
-    virtual ~VideoPlayer() = default;
-    virtual bool init(const std::string& filePath) = 0;
-    virtual std::vector<uint8_t> next() = 0;
-    virtual bool close() = 0;
+    ~VideoPlayer();
+    void init(const std::string& filePath);
+    std::vector<uint8_t> next();
+    void close();
     bool isInitialized() const {
         return initialized;
     }
@@ -72,37 +56,13 @@ class VideoPlayer {
    private:
     bool initialized = false;
 };
-
-class VideoPlayerMp4v2 : public VideoPlayer {
-   public:
-    ~VideoPlayerMp4v2() override;
-    bool init(const std::string& filePath) override;
-    std::vector<uint8_t> next() override;
-    bool close() override;
-};
-
-// #if DEPTHAI_RECORD_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
-// class VideoRecorderOpenCV : public VideoRecorder {
-//    public:
-//     VideoRecorderOpenCV(const std::string& filename, int width, int height, int fps, int bitrate, int quality, bool lossless, int profile);
-//     ~VideoRecorderOpenCV() override;
-//     bool init(std::string filePath, int width, int heigh, int fps) override;
-//     bool write(span<const uint8_t>&) override;
-//     bool close() override;
-//
-//    private:
-//     cv::VideoWriter writer;
-//     std::string filePath;
-//     int width, height, fps;
-// };
-// #endif
 
 struct NodeRecordParams {
     std::string name;
 };
 
 struct RecordConfig {
-    enum class RecordReplayState {RECORD, REPLAY, NONE};
+    enum class RecordReplayState { RECORD, REPLAY, NONE };
 
     // struct VideoEncoding {
     //     bool enabled = false;

@@ -22,6 +22,9 @@ class EncodedFrame : public Buffer {
     CameraSettings cam;
     uint32_t instanceNum = 0;  // Which source created this frame (color, mono, ...)
 
+    unsigned int width;   // width in pixels
+    unsigned int height;  // height in pixels
+
     uint32_t quality;
     uint32_t bitrate;
     Profile profile;
@@ -39,6 +42,17 @@ class EncodedFrame : public Buffer {
      * Retrieves instance number
      */
     unsigned int getInstanceNum() const;
+
+    /**
+     * Retrieves image width in pixels
+     */
+    unsigned int getWidth() const;
+
+    /**
+     * Retrieves image height in pixels
+     */
+    unsigned int getHeight() const;
+
     /**
      * Retrieves exposure time
      */
@@ -91,6 +105,35 @@ class EncodedFrame : public Buffer {
     EncodedFrame& setInstanceNum(unsigned int instance);
 
     /**
+     * Specifies frame width
+     *
+     * @param width frame width
+     */
+    EncodedFrame& setWidth(unsigned int width);
+
+    /**
+     * Specifies frame height
+     *
+     * @param height frame height
+     */
+    EncodedFrame& setHeight(unsigned int height);
+
+    /**
+     * Specifies frame size
+     *
+     * @param height frame height
+     * @param width frame width
+     */
+    EncodedFrame& setSize(unsigned int width, unsigned int height);
+
+    /**
+     * Specifies frame size
+     *
+     * @param size frame size
+     */
+    EncodedFrame& setSize(std::tuple<unsigned int, unsigned int> size);
+
+    /**
      * Specifies the encoding quality
      *
      * @param quality Encoding quality
@@ -126,7 +169,7 @@ class EncodedFrame : public Buffer {
     EncodedFrame& setProfile(Profile profile);
 
     DEPTHAI_SERIALIZE(
-        EncodedFrame, cam, instanceNum, quality, bitrate, profile, lossless, type, frameOffset, frameSize, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice);
+        EncodedFrame, cam, instanceNum, width, height, quality, bitrate, profile, lossless, type, frameOffset, frameSize, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice);
 
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);

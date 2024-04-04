@@ -18,6 +18,7 @@ else()
     hunter_add_package(spdlog)
     hunter_add_package(ZLIB)
     hunter_add_package(httplib)
+    hunter_add_package(mp4v2)
     if(DEPTHAI_ENABLE_BACKWARD)
         hunter_add_package(Backward)
     endif()
@@ -70,6 +71,9 @@ find_package(nlohmann_json 3.6.0 ${_QUIET} CONFIG REQUIRED)
 
 # libnop for serialization
 find_package(libnop ${_QUIET} CONFIG REQUIRED)
+
+# MP4V2 for video encoding
+find_package(mp4v2 ${_QUIET} CONFIG REQUIRED)
 
 # XLink
 if(DEPTHAI_XLINK_LOCAL AND (NOT CONFIG_MODE))

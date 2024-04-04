@@ -19,10 +19,10 @@ Buffer getMessage(std::vector<uint8_t>& frame) {
 }
 
 void Replay::start() {
-#if DEPTHAI_RECORD_OPENCV && defined(DEPTHAI_HAVE_OPENCV_SUPPORT)
-    videoPlayer = std::make_unique<utility::VideoPlayerOpenCV>();
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    videoPlayer = std::make_shared<VideoPlayer>();
 #else
-    videoPlayer = std::make_unique<utility::VideoPlayerMp4v2>();
+    throw std::runtime_error("Replay node requires OpenCV support");
 #endif
 }
 void Replay::run() {
@@ -31,13 +31,13 @@ void Replay::run() {
     }
     videoPlayer->init(replayFile);
     while(isRunning()) {
-        auto frame = videoPlayer->next();
-        if(frame.empty()) {
-            // TODO: error
-            break;
-        }
-        auto msg = std::make_shared<Buffer>(getMessage(frame));
-        out.send(msg);
+        // auto frame = videoPlayer->next();
+        // if(frame.empty()) {
+        //     // TODO: error
+        //     break;
+        // }
+        // auto msg = std::make_shared<Buffer>(getMessage(frame));
+        // out.send(msg);
     }
 }
 void Replay::stop() {
