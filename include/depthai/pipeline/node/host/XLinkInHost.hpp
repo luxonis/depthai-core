@@ -2,6 +2,7 @@
 
 #include "depthai/pipeline/HostNode.hpp"
 #include "depthai/pipeline/Node.hpp"
+#include "depthai/xlink/XLinkConnection.hpp"
 
 namespace dai {
 namespace node {

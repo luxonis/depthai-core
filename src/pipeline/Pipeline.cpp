@@ -201,7 +201,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
             for(const auto& input : inputs) {
                 NodeIoInfo io;
                 io.blocking = input.getBlocking();
-                io.queueSize = input.getMaxQueueSize();
+                io.queueSize = input.getMaxSize();
                 io.name = input.getName();
                 io.group = input.getGroup();
                 auto ioKey = std::make_tuple(io.group, io.name);

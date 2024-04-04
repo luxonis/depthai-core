@@ -43,7 +43,7 @@ class SyncedDisplay : public dai::NodeCRTP<dai::node::SyncedNode, SyncedDisplay>
 
 int main() {
     // Create pipeline
-    dai::Pipeline pipeline;
+    dai::Pipeline pipeline(false);
 
     auto camRgb = pipeline.create<dai::node::ColorCamera>(dai::CameraBoardSocket::CAM_A);
     camRgb->setVideoSize(640, 480);

@@ -12,7 +12,8 @@ namespace node {
 class SyncedNode : public dai::HostNode {
    private:
     Subnode<dai::node::Sync> sync{*this, "sync"};  // TODO(Morato) - this should optionally run on host OR device
-    Input input{*this, "in", Input::Type::SReceiver, {{DatatypeEnum::MessageGroup, true}}};
+    // Input input{*this, "in", Input::Type::SReceiver, true, 3, {{DatatypeEnum::MessageGroup, true}}};
+    Input input{*this, {.name = "in", .types = {{DatatypeEnum::MessageGroup, true}}}};
 
    protected:
     void buildStage1() override;

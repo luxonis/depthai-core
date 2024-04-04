@@ -30,3 +30,5 @@
 // #include "node/Warp.hpp"
 #include "node/XLinkIn.hpp"
 #include "node/XLinkOut.hpp"
+#include "node/host/HostCamera.hpp"
+#include "node/host/Display.hpp"

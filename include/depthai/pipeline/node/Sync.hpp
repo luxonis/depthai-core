@@ -23,7 +23,7 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties> {
     /**
      * A map of inputs
      */
-    InputMap inputs{*this, "inputs", Input(*this, "", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}}, false)};
+    InputMap inputs{*this, "inputs", InputDescription()};
 
     /**
      * Output message of type MessageGroup

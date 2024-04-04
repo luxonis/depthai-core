@@ -63,10 +63,18 @@ std::string Node::Output::toString() const {
 
 std::string Node::Input::toString() const {
     if(group == "") {
-        return fmt::format("{}", name);
+        return fmt::format("{}", getName());
     } else {
-        return fmt::format("{}[\"{}\"]", group, name);
+        return fmt::format("{}[\"{}\"]", group, getName());
     }
+}
+
+void Node::Input::setGroup(std::string newGroup) {
+    group = std::move(newGroup);
+}
+
+std::string Node::Input::getGroup() const {
+    return group;
 }
 
 std::vector<Node::ConnectionInternal> Node::Output::getConnections() {
@@ -141,7 +149,7 @@ void Node::Output::link(Input& in) {
     // Otherwise all is set to add a new connection
     parent.connections.insert(connection);
     // Add the shared_ptr to the input directly for host side
-    connectedInputs.push_back(in.queue);
+    connectedInputs.push_back(&in);
 }
 
 Node::ConnectionInternal::ConnectionInternal(Output& out, Input& in)
@@ -167,7 +175,7 @@ void Node::Output::unlink(Input& in) {
     parent.connections.erase(connection);
 
     // Remove the shared_ptr to the input directly for host side
-    connectedInputs.erase(std::remove(connectedInputs.begin(), connectedInputs.end(), in.queue), connectedInputs.end());
+    connectedInputs.erase(std::remove(connectedInputs.begin(), connectedInputs.end(), &in), connectedInputs.end());
 }
 
 void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
@@ -212,22 +220,6 @@ bool Node::Output::trySend(const std::shared_ptr<ADatatype>& msg) {
     }
 
     return success;
-}
-
-void Node::Input::setBlocking(bool newBlocking) {
-    queue->setBlocking(newBlocking);
-}
-
-bool Node::Input::getBlocking() const {
-    return queue->getBlocking();
-}
-
-void Node::Input::setQueueSize(int size) {
-    queue->setMaxSize(size);
-}
-
-int Node::Input::getQueueSize() const {
-    return queue->getMaxSize();
 }
 
 void Node::Input::setWaitForMessage(bool newWaitForMessage) {
@@ -297,18 +289,17 @@ Node::Output& Node::OutputMap::operator[](std::pair<std::string, std::string> gr
     // otherwise just return reference to existing
     return at(groupKey);
 }
-// Node::InputMap::InputMap(std::string name, Node::Input defaultInput) : defaultInput(defaultInput), name(std::move(name)) {}
-// Node::InputMap::InputMap(Node::Input defaultInput) : defaultInput(defaultInput) {}
-Node::InputMap::InputMap(Node& parent, std::string name, Node::Input defaultInput) : defaultInput(defaultInput), name(std::move(name)) {
+
+Node::InputMap::InputMap(Node& parent, std::string name, Node::InputDescription description) : parent(parent), defaultInput(std::move(description)), name(std::move(name)) {
     parent.setInputMapRefs(this);
 }
-Node::InputMap::InputMap(Node& parent, Node::Input defaultInput) : defaultInput(defaultInput) {
-    parent.setInputMapRefs(this);
-}
+
+Node::InputMap::InputMap(Node& parent, Node::InputDescription description) : InputMap(parent, "", std::move(description)){};
+
 Node::Input& Node::InputMap::operator[](const std::string& key) {
     if(count({name, key}) == 0) {
         // Create using default and rename with group and key
-        Input input(defaultInput);
+        Input input(parent, defaultInput, false);
         input.setGroup(name);
         input.setName(key);
         insert({{name, key}, input});
@@ -319,7 +310,7 @@ Node::Input& Node::InputMap::operator[](const std::string& key) {
 Node::Input& Node::InputMap::operator[](std::pair<std::string, std::string> groupKey) {
     if(count(groupKey) == 0) {
         // Create using default and rename with group and key
-        Input input(defaultInput);
+        Input input(parent, defaultInput, false);
 
         // Uses \t (tab) as a special character to parse out as subgroup name
         input.setGroup(fmt::format("{}\t{}", name, groupKey.first));
@@ -399,9 +390,9 @@ std::vector<Node::Input*> Node::getInputRefs() {
         tmpInputRefs.push_back(kv);
     }
     // Add inputs from Maps
-    for(auto& kvMap : inputMapRefs) {
+    for(auto* kvMap : inputMapRefs) {
         for(auto& kv : *kvMap) {
-            tmpInputRefs.push_back(kv.second.get());
+            tmpInputRefs.push_back(&kv.second);
         }
     }
     return tmpInputRefs;
@@ -419,7 +410,7 @@ std::vector<const Node::Input*> Node::getInputRefs() const {
     // Add inputs from Maps
     for(const auto& kvMap : inputMapRefs) {
         for(const auto& kv : *kvMap) {
-            tmpInputRefs.push_back(kv.second.get());
+            tmpInputRefs.push_back(&kv.second);
         }
     }
     return tmpInputRefs;

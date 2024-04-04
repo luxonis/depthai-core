@@ -35,13 +35,15 @@ class ImageManip : public DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipPrope
      * Input ImageManipConfig message with ability to modify parameters in runtime
      * Default queue is blocking with size 8
      */
-    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImageManipConfig, true}}};
+    // Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImageManipConfig, true}}};
+    Input inputConfig{*this, {.name = "inputConfig", .types = {{DatatypeEnum::ImageManipConfig, true}} , .waitForMessage = false}};
 
     /**
      * Input image to be modified
      * Default queue is blocking with size 8
      */
-    Input inputImage{*this, "inputImage", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::ImgFrame, true}}};
+    // Input inputImage{*this, "inputImage", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImgFrame, true}}, true};
+    Input inputImage{*this, {.name = "inputImage", .types = {{DatatypeEnum::ImgFrame, true}}}};
 
     /**
      * Outputs ImgFrame message that carries modified image.

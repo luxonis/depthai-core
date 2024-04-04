@@ -43,7 +43,7 @@ void ThreadedNode::stop() {
     running = false;
     // closes all the queueus, then waits for the thread to join
     for(auto& in : getInputRefs()) {
-        in->queue->close();
+        in->close();
     }
     // for(auto& rout : getOutputRefs()) {
     // }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <functional>
 #include <memory>
 #include <set>
 #include <string>
@@ -108,7 +109,7 @@ class Node : public std::enable_shared_from_this<Node> {
 
        private:
         Node& parent;
-        std::vector<std::shared_ptr<MessageQueue>> connectedInputs;
+        std::vector<MessageQueue*> connectedInputs;
         std::vector<QueueConnection> queueConnections;
 
        public:
@@ -194,12 +195,12 @@ class Node : public std::enable_shared_from_this<Node> {
         }
 
         void link(const std::shared_ptr<dai::MessageQueue>& queue) {
-            connectedInputs.push_back(queue);
+            connectedInputs.push_back(queue.get());
             queueConnections.push_back({this, queue});
         }
 
         void unlink(const std::shared_ptr<dai::MessageQueue>& queue) {
-            connectedInputs.erase(std::remove(connectedInputs.begin(), connectedInputs.end(), queue), connectedInputs.end());
+            connectedInputs.erase(std::remove(connectedInputs.begin(), connectedInputs.end(), queue.get()), connectedInputs.end());
             queueConnections.erase(std::remove(queueConnections.begin(), queueConnections.end(), QueueConnection{this, queue}), queueConnections.end());
         }
 
@@ -262,35 +263,37 @@ class Node : public std::enable_shared_from_this<Node> {
     };
 
     // Input extends the message queue with additional option that specifies whether to wait for message or not
+    struct InputDescription {
+        std::string name{};                                                    // Name of the input
+        std::string group{};                                                   // Group of the input
+        bool blocking{true};                                                 // Whether to block when input queue is full
+        int queueSize{3};                                                    // Size of the queue
+        std::vector<DatatypeHierarchy> types{{DatatypeEnum::Buffer, true}};  // Possible datatypes that can be received
+        bool waitForMessage{false};
+    };
+
     class Input : public MessageQueue {
        public:
         enum class Type { SReceiver, MReceiver };  // TODO(Morato) - refactor, make the MReceiver a separate class (shouldn't inherit from MessageQueue)
 
        private:
         std::reference_wrapper<Node> parent;
-        static constexpr bool defaultBlocking{true};
-        static constexpr int defaultMaxQueueSize{8};
-
         // Options - more information about the input
         bool waitForMessage{false};
         std::string group;
-        Type type;
+        Type type = Type::SReceiver;
 
        public:
-        Input(Node& par,
-              std::string name,
-              Type type = Type::SReceiver,
-              bool blocking = true,
-              int queueSize = 8,
-              bool waitForMessage = false,
-              std::vector<DatatypeHierarchy> types = {{DatatypeEnum::Buffer, true}})
-            : MessageQueue(std::move(name), queueSize, blocking),
-              parent(par),
-              waitForMessage(waitForMessage),
-              type(type),
-              possibleDatatypes(std::move(types)) {}
-
         std::vector<DatatypeHierarchy> possibleDatatypes;
+        explicit Input(Node& par, InputDescription desc, bool ref = true)
+            : MessageQueue(std::move(desc.name), desc.queueSize, desc.blocking),
+              parent(par),
+              waitForMessage(desc.waitForMessage),
+              possibleDatatypes(std::move(desc.types)) {
+            if(ref) {
+                par.setInputRefs(this);
+            }
+        }
 
         /**
          * Get the parent node
@@ -357,14 +360,15 @@ class Node : public std::enable_shared_from_this<Node> {
      * Extends std::unordered_map<std::string, dai::Node::Input>
      */
     class InputMap : public std::unordered_map<std::pair<std::string, std::string>, Input, PairHash> {
-        Input defaultInput;
+        std::reference_wrapper<Node> parent;
+        InputDescription defaultInput;
 
        public:
         std::string name;
         // InputMap(Input defaultInput);
         // InputMap(std::string name, Input defaultInput);
-        InputMap(Node& parent, Input defaultInput);
-        InputMap(Node& parent, std::string name, Input defaultInput);
+        InputMap(Node& parent, InputDescription defaultInput);
+        InputMap(Node& parent, std::string name, InputDescription defaultInput);
         /// Create or modify an input
         Input& operator[](const std::string& key);
         /// Create or modify an input with specified group

@@ -11,7 +11,7 @@ class Display : public dai::NodeCRTP<dai::HostNode, Display> {
 
    public:
     explicit Display(std::string name = "Display");
-    Input input{*this};
+    Input input{*this, {}};
     void run() override;
 };
 }  // namespace node

@@ -36,7 +36,8 @@ class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraPrope
      * Input for CameraControl message, which can modify camera parameters in runtime
      * Default queue is blocking with size 8
      */
-    Input inputControl{*this, "inputControl", Input::Type::SReceiver, true, 8, {{DatatypeEnum::CameraControl, false}}};
+    // Input inputControl{*this, "inputControl", Input::Type::SReceiver, true, 8, {{DatatypeEnum::CameraControl, false}}};
+    Input inputControl{*this, {.name = "inputControl", .types = {{DatatypeEnum::CameraControl, false}}}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 encoded (grayscale) frame data.
