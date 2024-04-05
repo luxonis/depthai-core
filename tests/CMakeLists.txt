@@ -29,7 +29,7 @@ function(dai_add_test test_name test_src)
 
     # check compiler for C++ standard
     if(NOT DAT_CXX_STANDARD)
-        set(DAT_CXX_STANDARD 14)
+        set(DAT_CXX_STANDARD 17)
     endif()
     if(NOT COMPILER_SUPPORTS_CXX${DAT_CXX_STANDARD})
         message(STATUS "Skipping test ${test_name} with c++${DAT_CXX_STANDARD}; no compiler support")
@@ -262,7 +262,7 @@ dai_add_test(image_transformations_test src/image_transformations_test.cpp)
 option(DEPTHAI_STABILITY_STRESS_TEST_DEBUG "Enable visualization for stability stress test" OFF)
 add_executable(stability_stress_test src/stability_stress_test.cpp)
 # Set compiler features (c++14), and disables extensions (g++14)
-set_property(TARGET stability_stress_test PROPERTY CXX_STANDARD 14)
+set_property(TARGET stability_stress_test PROPERTY CXX_STANDARD 17)
 set_property(TARGET stability_stress_test PROPERTY CXX_STANDARD_REQUIRED ON)
 set_property(TARGET stability_stress_test PROPERTY CXX_EXTENSIONS OFF)
 
