@@ -36,18 +36,17 @@ int main() {
         auto mjpeg = device.getOutputQueue("img")->get<dai::ImgFrame>();
         if(i == 0)
             start = mjpeg->getTimestampDevice();
-        else if(i == 9)
+        else if(i == 9) {
             end = mjpeg->getTimestampDevice();
-        else if(i == 10) {
             fps = 10e6f / (float)std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
             std::cout << "FPS: " << fps << std::endl;
             track = MP4AddVideoTrack(mp4, TIMESCALE, TIMESCALE / fps, 1920, 1080, MP4_JPEG_VIDEO_TYPE);
             assert(track != MP4_INVALID_TRACK_ID);
             MP4SetVideoProfileLevel(mp4, 0x7F);
         }
-        if(i > 9) {
+        if(i >= 9) {
             std::cout << "Write frame\n";
-            if (track == MP4_INVALID_TRACK_ID) continue;
+            if(track == MP4_INVALID_TRACK_ID) continue;
             assert(MP4WriteSample(mp4, track, mjpeg->getData().data(), mjpeg->getData().size()));
         }
     }

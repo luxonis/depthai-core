@@ -3,8 +3,8 @@
 #include <memory>
 
 #include "depthai/utility/RecordReplay.hpp"
-#include "pipeline/datatype/EncodedFrame.hpp"
-#include "pipeline/datatype/IMUData.hpp"
+#include "depthai/pipeline/datatype/EncodedFrame.hpp"
+#include "depthai/pipeline/datatype/IMUData.hpp"
 
 namespace dai {
 namespace node {
@@ -20,7 +20,7 @@ Buffer getMessage(std::vector<uint8_t>& frame) {
 
 void Replay::start() {
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    videoPlayer = std::make_shared<VideoPlayer>();
+    videoPlayer = std::make_shared<dai::utility::VideoPlayer>();
 #else
     throw std::runtime_error("Replay node requires OpenCV support");
 #endif

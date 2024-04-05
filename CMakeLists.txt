@@ -240,8 +240,6 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/Sync.cpp
     src/pipeline/node/test/MyProducer.cpp
     src/pipeline/node/test/MyConsumer.cpp
-    src/pipeline/node/Record.cpp
-    src/pipeline/node/Replay.cpp
     src/pipeline/node/UVC.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/node/PointCloud.cpp
@@ -275,9 +273,9 @@ add_library(${TARGET_CORE_NAME}
     src/utility/H26xParsers.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
-    src/utility/RecordReplay.cpp
     src/utility/Path.cpp
     src/utility/Platform.cpp
+    src/utility/RecordReplay.cpp
     src/utility/Environment.cpp
     src/utility/Compression.cpp
     src/utility/XLinkGlobalProfilingLogger.cpp
@@ -591,7 +589,12 @@ if(DEPTHAI_OPENCV_SUPPORT)
     if(OPENCV_SUPPORT_AVAILABLE)
 
         # Add depthai-core-opencv library and depthai::core::opencv alias
-        add_library(${TARGET_OPENCV_NAME} src/opencv/ImgFrame.cpp)
+        add_library(${TARGET_OPENCV_NAME} 
+            src/opencv/ImgFrame.cpp
+            src/pipeline/node/Record.cpp
+            src/pipeline/node/Replay.cpp
+            src/opencv/RecordReplay.cpp
+        )
         add_library("${PROJECT_NAME}::${TARGET_OPENCV_ALIAS}" ALIAS ${TARGET_OPENCV_NAME})
         # Specifies name of generated IMPORTED target (set to alias)
         set_target_properties(${TARGET_OPENCV_NAME} PROPERTIES EXPORT_NAME ${TARGET_OPENCV_ALIAS})

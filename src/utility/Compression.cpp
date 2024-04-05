@@ -7,12 +7,13 @@
 
 #include "archive.h"
 #include "archive_entry.h"
+#include "utility/span.hpp"
 #include "zlib.h"
 
 namespace dai {
 namespace utility {
 
-std::vector<uint8_t> deflate(uint8_t* data, size_t size, int compressionLevel) {
+std::vector<uint8_t> deflate(span<uint8_t>& data, int compressionLevel) {
     z_stream stream;
     stream.zalloc = Z_NULL;
     stream.zfree = Z_NULL;
@@ -21,11 +22,11 @@ std::vector<uint8_t> deflate(uint8_t* data, size_t size, int compressionLevel) {
     if(ret != Z_OK) {
         throw std::runtime_error("deflateInit failed with error code " + std::to_string(ret) + ".");
     }
-    std::vector<uint8_t> result(deflateBound(&stream, size));
+    std::vector<uint8_t> result(deflateBound(&stream, data.size()));
     stream.next_out = result.data();
     stream.avail_out = result.size();
-    stream.next_in = data;
-    stream.avail_in = size;
+    stream.next_in = data.data();
+    stream.avail_in = data.size();
     ret = deflate(&stream, Z_NO_FLUSH);
     if(ret != Z_OK) {
         throw std::runtime_error("deflate failed with error code " + std::to_string(ret) + ".");
@@ -38,7 +39,7 @@ std::vector<uint8_t> deflate(uint8_t* data, size_t size, int compressionLevel) {
     result.resize(stream.total_out);
     return result;
 }
-std::vector<uint8_t> inflate(uint8_t* data, size_t size) {
+std::vector<uint8_t> inflate(span<uint8_t>& data) {
     z_stream stream;
     stream.zalloc = Z_NULL;
     stream.zfree = Z_NULL;
@@ -50,8 +51,8 @@ std::vector<uint8_t> inflate(uint8_t* data, size_t size) {
     std::vector<uint8_t> result;
     stream.next_out = result.data();
     stream.avail_out = result.size();
-    stream.next_in = data;
-    stream.avail_in = size;
+    stream.next_in = data.data();
+    stream.avail_in = data.size();
     ret = inflate(&stream, Z_NO_FLUSH);
     if(ret != Z_OK) {
         throw std::runtime_error("inflate failed with error code " + std::to_string(ret) + ".");

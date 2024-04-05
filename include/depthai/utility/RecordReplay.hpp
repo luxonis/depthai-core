@@ -8,6 +8,8 @@
 #include "nlohmann/json.hpp"
 #include "span.hpp"
 
+#include <fstream>
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/opencv.hpp>
 #endif
@@ -21,7 +23,7 @@ class VideoRecorder {
 
     ~VideoRecorder();
     void init(const std::string& filePath, unsigned int width, unsigned int height, unsigned int fps, VideoCodec codec);
-    void write(span<const uint8_t>&);
+    void write(span<uint8_t>&);
     void close();
     bool isInitialized() const {
         return initialized;
@@ -41,6 +43,22 @@ class VideoRecorder {
 #else
     std::unique_ptr<int> cvWriter;
 #endif
+};
+
+class ByteRecorder {
+public:
+    ~ByteRecorder();
+    void init(const std::string& filePath, int compressionLevel);
+    void write(const std::string& );
+    void close();
+    bool isInitialized() const {
+        return initialized;
+    }
+
+private:
+    bool initialized = false;
+    int compressionLevel = 6;
+    std::ofstream file;
 };
 
 class VideoPlayer {

@@ -61,15 +61,15 @@ int main() {
     auto end = std::chrono::steady_clock::now();
     for(int i = 0; i < 310; i++) {
         auto h264 = device.getOutputQueue("h264")->get<dai::EncodedFrame>();
-        if(i == 0)
+        if(i == 0) {
             start = h264->getTimestampDevice();
-        else if(i == 9)
+            std::cout << "Got frame with size:" << h264->getWidth() << "x" << h264->getHeight() << std::endl;
+        } else if(i == 9) {
             end = h264->getTimestampDevice();
-        else if(i == 10) {
             fps = 10e6f / (float)std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
             std::cout << "FPS: " << fps << std::endl;
         }
-        if(i > 9) {
+        if(i >= 9) {
             H26xNals nals(h264->getData());
             auto nal = nals.next();
             while(!nal.empty()) {

@@ -10,6 +10,9 @@ unsigned int EncodedFrame::getInstanceNum() const {
 unsigned int EncodedFrame::getHeight() const {
     return height;
 }
+unsigned int EncodedFrame::getWidth() const {
+    return width;
+}
 std::chrono::microseconds EncodedFrame::getExposureTime() const {
     return std::chrono::microseconds(cam.exposureTimeUs);
 }

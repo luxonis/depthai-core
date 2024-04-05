@@ -1,8 +1,8 @@
 #include "depthai/device/Device.hpp"
 
 // std
-#include <iostream>
 #include <fstream>
+#include <iostream>
 
 // shared
 #include "depthai-bootloader-shared/Bootloader.hpp"
@@ -16,13 +16,16 @@
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "depthai/utility/Compression.hpp"
 #include "pipeline/Pipeline.hpp"
-#include "pipeline/node/Record.hpp"
-#include "pipeline/node/Replay.hpp"
 #include "utility/Environment.hpp"
 #include "utility/Initialization.hpp"
 #include "utility/Platform.hpp"
 #include "utility/RecordReplay.hpp"
 #include "utility/Resources.hpp"
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+#include "pipeline/node/Record.hpp"
+#include "pipeline/node/Replay.hpp"
+#endif
 
 namespace dai {
 
@@ -106,10 +109,12 @@ void Device::closeImpl() {
         std::remove(platform::joinPaths(recordConfig.outputDir, "record_config.json").c_str());
     }
 
-    spdlog::info("Record and Replay: Removing temporary files");
-    for(auto& kv : recordReplayFilenames) {
-        std::remove(kv.second.c_str());
-        if(kv.first != "record_config") std::remove((kv.second + ".meta").c_str());
+    if(recordConfig.state != utility::RecordConfig::RecordReplayState::NONE) {
+        spdlog::info("Record and Replay: Removing temporary files");
+        for(auto& kv : recordReplayFilenames) {
+            std::remove(kv.second.c_str());
+            if(kv.first != "record_config") std::remove((kv.second + ".meta").c_str());
+        }
     }
 }
 
@@ -293,6 +298,7 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
     } else if(!recordPath.empty()) {
         if(utility::checkRecordConfig(recordPath, recordConfig)) {
             if(platform::checkWritePermissions(recordPath)) {
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
                 recordConfig.state = utility::RecordConfig::RecordReplayState::RECORD;
                 auto sources = pipelineCopy.getSourceNodes();
                 std::string mxId = getMxId();
@@ -339,6 +345,9 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
                 } catch(const std::exception& e) {
                     spdlog::warn("Error while writing DEPTHAI_RECORD json file: {}", e.what());
                 }
+#else
+                throw std::runtime_error("Pipeline recording requires OpenCV");
+#endif
             } else {
                 spdlog::warn("DEPTHAI_RECORD path does not have write permissions. Record disabled.");
             }
@@ -346,6 +355,7 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
     } else if(!replayPath.empty()) {
         if(platform::checkPathExists(replayPath)) {
             if(platform::checkWritePermissions(replayPath)) {
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
                 std::string rootPath = platform::getDirFromPath(replayPath);
                 auto sources = pipelineCopy.getSourceNodes();
                 std::string mxId = getMxId();
@@ -428,6 +438,9 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
                 } catch(const std::exception& e) {
                     spdlog::warn("Replay disabled: {}", e.what());
                 }
+#else
+                throw std::runtime_error("Pipeline replay requires OpenCV");
+#endif
             } else {
                 spdlog::warn("DEPTHAI_REPLAY path does not have write permissions. Replay disabled.");
             }
