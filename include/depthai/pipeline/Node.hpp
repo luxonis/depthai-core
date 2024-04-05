@@ -103,6 +103,12 @@ class Node : public std::enable_shared_from_this<Node> {
         bool descendants;
     };
 
+    struct OutputDescription {
+        std::string name{};                                                  // Name of the output
+        std::string group{};                                                 // Group of the output
+        std::vector<DatatypeHierarchy> types{{DatatypeEnum::Buffer, true}};  // Possible datatypes that can be sent
+    };
+
     class Output {
        public:
         struct QueueConnection {
@@ -112,47 +118,20 @@ class Node : public std::enable_shared_from_this<Node> {
                 return output == rhs.output && queue == rhs.queue;
             }
         };
+        enum class Type { MSender, SSender };
 
        private:
-        Node& parent;
+        std::reference_wrapper<Node> parent;
         std::vector<MessageQueue*> connectedInputs;
         std::vector<QueueConnection> queueConnections;
+        Type type = Type::MSender; // Slave sender not supported yet
+        OutputDescription desc;
 
        public:
-        enum class Type { MSender, SSender };
-        std::string group = "";
-        std::string name;
-        Type type;
-        // Which types and do descendants count as well?
-        std::vector<DatatypeHierarchy> possibleDatatypes;
-
-        // std::vector<Capability> possibleCapabilities;
-
-        Output(Node& par, bool ref = true) : parent(par), type(Type::MSender), possibleDatatypes({{DatatypeEnum::Buffer, true}}) {
+        Output(Node& par, OutputDescription desc, bool ref = true) : parent(par), desc(std::move(desc)) {
             // Place oneself to the parents references
             if(ref) {
-                parent.setOutputRefs(this);
-            }
-        }
-
-        Output(Node& par, std::string name, bool ref = true)
-            : parent(par), name{std::move(name)}, type(Type::MSender), possibleDatatypes({{DatatypeEnum::Buffer, true}}) {
-            if(ref) {
-                parent.setOutputRefs(this);
-            }
-        }
-
-        Output(Node& par, std::string n, Type t, std::vector<DatatypeHierarchy> types, bool ref = true)
-            : parent(par), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {
-            if(ref) {
-                parent.setOutputRefs(this);
-            }
-        }
-
-        Output(Node& par, std::string group, std::string n, Type t, std::vector<DatatypeHierarchy> types, bool ref = true)
-            : parent(par), group(std::move(group)), name(std::move(n)), type(t), possibleDatatypes(std::move(types)) {
-            if(ref) {
-                parent.setOutputRefs(this);
+                par.setOutputRefs(this);
             }
         }
 
@@ -165,6 +144,48 @@ class Node : public std::enable_shared_from_this<Node> {
 
         /// Output to string representation
         std::string toString() const;
+
+        /**
+         * Get name of the output
+         */
+        std::string getName() const {
+            return desc.name;
+        }
+
+        /**
+         * Get group of the output
+         */
+        std::string getGroup() const {
+            return desc.group;
+        }
+
+        /**
+         * Set group name for this output
+         */
+        void setGroup(std::string group) {
+            desc.group = std::move(group);
+        }
+
+        /**
+         * Set name for this output
+         */
+        void setName(std::string name) {
+            desc.name = std::move(name);
+        }
+
+        /**
+         * Get type of the output
+         */
+        Type getType() const {
+            return type;
+        }
+
+        /**
+         * Get possible datatypes that can be sent
+         */
+        std::vector<DatatypeHierarchy> getPossibleDatatypes() const {
+            return desc.types;
+        }
 
         /**
          * Check if this output and given input are on the same pipeline.
@@ -254,14 +275,12 @@ class Node : public std::enable_shared_from_this<Node> {
      * Extends std::unordered_map<std::string, dai::Node::Output>
      */
     class OutputMap : public std::unordered_map<std::pair<std::string, std::string>, Output, PairHash> {
-        Output defaultOutput;
-
+        OutputDescription defaultOutput;
+        std::reference_wrapper<Node> parent;
        public:
         std::string name;
-        OutputMap(std::string name, Output defaultOutput);
-        explicit OutputMap(Output defaultOutput);
-        OutputMap(bool ref, Node& parent, std::string name, Output defaultOutput);
-        OutputMap(bool ref, Node& parent, Output defaultOutput);
+        OutputMap(Node& parent, std::string name, OutputDescription defaultOutput, bool ref=true);
+        OutputMap(Node& parent, OutputDescription defaultOutput, bool ref=true);
         /// Create or modify an output
         Output& operator[](const std::string& key);
         /// Create or modify an output with specified group
@@ -284,6 +303,7 @@ class Node : public std::enable_shared_from_this<Node> {
 
        private:
         std::reference_wrapper<Node> parent;
+        std::vector<Output*> connectedOutputs;
         // Options - more information about the input
         bool waitForMessage{false};
         std::string group;

@@ -48,7 +48,8 @@ class ImageManip : public DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipPrope
     /**
      * Outputs ImgFrame message that carries modified image.
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
+    // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
+    Output out{*this, {.name = "out", .types = {{DatatypeEnum::ImgFrame, true}}}};
 
     // Functions to set ImageManipConfig - deprecated
     [[deprecated("Use 'initialConfig.setCropRect()' instead")]] void setCropRect(float xmin, float ymin, float xmax, float ymax);

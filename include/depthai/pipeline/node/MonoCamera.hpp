@@ -44,14 +44,16 @@ class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraPrope
      *
      * Suitable for use StereoDepth node. Processed by ISP
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output out{*this, {.name = "out", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Outputs ImgFrame message that carries RAW10-packed (MIPI CSI-2 format) frame data.
      *
      * Captured directly from the camera sensor
      */
-    Output raw{*this, "raw", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    // Output raw{*this, "raw", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output raw{*this, {.name = "raw", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Outputs metadata-only ImgFrame message as an early indicator of an incoming frame.
@@ -61,7 +63,8 @@ class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraPrope
      * Could be used to synchronize various processes with camera capture.
      * Fields populated: camera id, sequence number, timestamp
      */
-    Output frameEvent{*this, "frameEvent", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    // Output frameEvent{*this, "frameEvent", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output frameEvent{*this, {.name = "frameEvent", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Specify which board socket to use

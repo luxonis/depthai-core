@@ -231,11 +231,11 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
             for(const auto& output : outputs) {
                 NodeIoInfo io;
                 io.blocking = false;
-                io.name = output.name;
-                io.group = output.group;
+                io.name = output.getName();
+                io.group = output.getGroup();
                 auto ioKey = std::make_tuple(io.group, io.name);
 
-                switch(output.type) {
+                switch(output.getType()) {
                     case Node::Output::Type::MSender:
                         io.type = NodeIoInfo::Type::MSender;
                         break;
@@ -455,11 +455,11 @@ bool PipelineImpl::canConnect(const Node::Output& out, const Node::Input& in) {
     }
 
     // Check that IoType match up
-    if(out.type == Node::Output::Type::MSender && in.getType() == Node::Input::Type::MReceiver) return false;
-    if(out.type == Node::Output::Type::SSender && in.getType() == Node::Input::Type::SReceiver) return false;
+    if(out.getType() == Node::Output::Type::MSender && in.getType() == Node::Input::Type::MReceiver) return false;
+    if(out.getType() == Node::Output::Type::SSender && in.getType() == Node::Input::Type::SReceiver) return false;
 
     // Check that datatypes match up
-    for(const auto& outHierarchy : out.possibleDatatypes) {
+    for(const auto& outHierarchy : out.getPossibleDatatypes()) {
         for(const auto& inHierarchy : in.possibleDatatypes) {
             // Check if datatypes match for current datatype
             if(outHierarchy.datatype == inHierarchy.datatype) return true;
@@ -694,7 +694,7 @@ void PipelineImpl::build() {
                         create<node::XLinkInHost>(shared_from_this()),
                     };
                     auto& xLinkBridge = bridgesOut[queueConnection.output];
-                    auto streamName = fmt::format("__x_{}_{}", node->id, output->name);
+                    auto streamName = fmt::format("__x_{}_{}", node->id, output->getName());
 
                     // Check if the stream name is unique
                     if(uniqueStreamNames.count(streamName) > 0) {

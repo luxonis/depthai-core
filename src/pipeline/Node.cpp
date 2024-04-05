@@ -27,8 +27,8 @@ Pipeline Node::getParentPipeline() {
 
 Node::Connection::Connection(Output out, Input in) {
     outputId = out.getParent().id;
-    outputName = out.name;
-    outputGroup = out.group;
+    outputName = out.getName();
+    outputGroup = out.getGroup();
     inputId = in.getParent().id;
     inputName = in.getName();
     inputGroup = in.getGroup();
@@ -54,10 +54,10 @@ bool Node::Connection::operator==(const Node::Connection& rhs) const {
 }
 
 std::string Node::Output::toString() const {
-    if(group == "") {
-        return fmt::format("{}", name);
+    if(getGroup() == "") {
+        return fmt::format("{}", getName());
     } else {
-        return fmt::format("{}[\"{}\"]", group, name);
+        return fmt::format("{}[\"{}\"]", getGroup(), getName());
     }
 }
 
@@ -79,8 +79,8 @@ std::string Node::Input::getGroup() const {
 
 std::vector<Node::ConnectionInternal> Node::Output::getConnections() {
     std::vector<Node::ConnectionInternal> myConnections;
-    for(const auto& conn : parent.connections) {
-        if(conn.outputName == name && conn.outputGroup == group) {
+    for(const auto& conn : parent.get().connections) {
+        if(conn.out == this) {
             myConnections.push_back(conn);
         }
     }
@@ -90,7 +90,7 @@ std::vector<Node::ConnectionInternal> Node::Output::getConnections() {
 bool Node::Output::isSamePipeline(const Input& in) {
     // Check whether current output and 'in' are on same pipeline.
     // By checking parent of node
-    auto outputPipeline = parent.parent.lock();
+    auto outputPipeline = parent.get().parent.lock();
     if(outputPipeline != nullptr) {
         auto inputPipeline = in.getParent().parent.lock();
         return (outputPipeline == inputPipeline);
@@ -100,7 +100,7 @@ bool Node::Output::isSamePipeline(const Input& in) {
 
 static bool isDatatypeMatch(const Node::Output& out, const Node::Input& in) {
     // Check that datatypes match up
-    for(const auto& outHierarchy : out.possibleDatatypes) {
+    for(const auto& outHierarchy : out.getPossibleDatatypes()) {
         for(const auto& inHierarchy : in.possibleDatatypes) {
             // Check if datatypes match for current datatype
             if(outHierarchy.datatype == inHierarchy.datatype) return true;
@@ -141,19 +141,19 @@ void Node::Output::link(Input& in) {
     Node::ConnectionInternal connection(*this, in);
 
     // Check if connection was already made - the following is possible as operator[] constructs the underlying set if it doesn't exist.
-    if(parent.connections.count(connection) > 0) {
+    if(parent.get().connections.count(connection) > 0) {
         // this means a connection was already made.
         throw std::logic_error(fmt::format("'{}.{}' already linked to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
     }
 
     // Otherwise all is set to add a new connection
-    parent.connections.insert(connection);
+    parent.get().connections.insert(connection);
     // Add the shared_ptr to the input directly for host side
     connectedInputs.push_back(&in);
 }
 
 Node::ConnectionInternal::ConnectionInternal(Output& out, Input& in)
-    : outputName{out.name}, outputGroup{out.group}, inputName{in.getName()}, inputGroup{in.getGroup()}, out{&out}, in{&in} {
+    : outputName{out.getName()}, outputGroup{out.getGroup()}, inputName{in.getName()}, inputGroup{in.getGroup()}, out{&out}, in{&in} {
     outputNode = out.getParent().shared_from_this();
     inputNode = in.getParent().shared_from_this();
 }
@@ -166,13 +166,13 @@ bool Node::ConnectionInternal::operator==(const Node::ConnectionInternal& rhs) c
 void Node::Output::unlink(Input& in) {
     // Create 'Connection' object between 'out' and 'in'
     Node::ConnectionInternal connection(*this, in);
-    if(parent.connections.count(connection) == 0) {
+    if(parent.get().connections.count(connection) == 0) {
         // this means a connection was not present already made.
         throw std::logic_error(fmt::format("'{}.{}' not linked to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
     }
 
     // Unlink
-    parent.connections.erase(connection);
+    parent.get().connections.erase(connection);
 
     // Remove the shared_ptr to the input directly for host side
     connectedInputs.erase(std::remove(connectedInputs.begin(), connectedInputs.end(), &in), connectedInputs.end());
@@ -251,26 +251,21 @@ std::vector<uint8_t> Node::loadResource(dai::Path uri) {
     return parent.lock()->loadResourceCwd(uri, cwd);
 }
 
-Node::OutputMap::OutputMap(std::string name, Node::Output defaultOutput) : defaultOutput(defaultOutput), name(std::move(name)) {}
-Node::OutputMap::OutputMap(Node::Output defaultOutput) : defaultOutput(defaultOutput) {}
-Node::OutputMap::OutputMap(bool ref, Node& parent, std::string name, Node::Output defaultOutput) : defaultOutput(defaultOutput), name(std::move(name)) {
-    // Place oneself to the parents references
+Node::OutputMap::OutputMap(Node& parent, std::string name, Node::OutputDescription defaultOutput, bool ref)
+    :defaultOutput(defaultOutput), parent(parent), name(std::move(name)) {
     if(ref) {
         parent.setOutputMapRefs(this);
     }
 }
-Node::OutputMap::OutputMap(bool ref, Node& parent, Node::Output defaultOutput) : defaultOutput(defaultOutput) {
-    // Place oneself to the parents references
-    if(ref) {
-        parent.setOutputMapRefs(this);
-    }
-}
+
+Node::OutputMap::OutputMap(Node& parent, Node::OutputDescription defaultOutput, bool ref) : OutputMap(parent, "", std::move(defaultOutput), ref){};
+
 Node::Output& Node::OutputMap::operator[](const std::string& key) {
     if(count({name, key}) == 0) {
         // Create using default and rename with group and key
-        Output output(defaultOutput);
-        output.group = name;
-        output.name = key;
+        Output output(parent, defaultOutput);
+        output.setGroup(name);
+        output.setName(key);
         insert({{name, key}, output});
     }
     // otherwise just return reference to existing
@@ -279,11 +274,11 @@ Node::Output& Node::OutputMap::operator[](const std::string& key) {
 Node::Output& Node::OutputMap::operator[](std::pair<std::string, std::string> groupKey) {
     if(count(groupKey) == 0) {
         // Create using default and rename with group and key
-        Output output(defaultOutput);
+        Output output(parent, defaultOutput);
 
         // Uses \t (tab) as a special character to parse out as subgroup name
-        output.group = fmt::format("{}\t{}", name, groupKey.first);
-        output.name = groupKey.second;
+        output.setGroup(fmt::format("{}\t{}", name, groupKey.first));
+        output.setName(groupKey.second);
         insert(std::make_pair(groupKey, output));
     }
     // otherwise just return reference to existing

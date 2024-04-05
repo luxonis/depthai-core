@@ -28,7 +28,8 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties> {
     /**
      * Output message of type MessageGroup
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::MessageGroup, false}}};
+    // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::MessageGroup, false}}};
+    Output out{*this, {.name = "out", .types = {{DatatypeEnum::MessageGroup, false}}}};
 
     /**
      * Set the maximal interval between messages in the group

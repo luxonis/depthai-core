@@ -7,7 +7,7 @@ namespace dai {
 namespace node {
 class HostCamera : public dai::NodeCRTP<dai::HostNode, HostCamera> {
    public:
-    Output out{*this};
+    Output out{*this, {}};
     void run() override;
 };
 }  // namespace node
