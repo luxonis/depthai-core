@@ -153,6 +153,41 @@ class VideoEncoder : public NodeCRTP<DeviceNode, VideoEncoder, VideoEncoderPrope
     /// Get lossless mode. Applies only when using [M]JPEG profile.
     bool getLossless() const;
     int getMaxOutputFrameSize() const;
+
+    /**
+     * Set a miscellaneous property. The properties set by this function get appended
+     * to a list, processed after the standard properties
+     * @param property Property name
+     * @param value Value as a string
+     */
+    void setMisc(std::string property, std::string value);
+
+    /**
+     * Set a miscellaneous property. The properties set by this function get appended
+     * to a list, processed after the standard properties
+     * @param property Property name
+     * @param value Value as an integer number
+     */
+    void setMisc(std::string property, int value);
+
+    /**
+     * Set a miscellaneous property. The properties set by this function get appended
+     * to a list, processed after the standard properties
+     * @param property Property name
+     * @param value Value as a floating point number
+     */
+    void setMisc(std::string property, float value);
+
+    /**
+     * Clear the list of miscellaneous properties set by `setMisc`
+     */
+    void clearMiscProperties();
+
+    /**
+     * Get the list of miscellaneous properties set by `setMisc`
+     * @returns A list of <key, value> pairs as strings
+     */
+    std::vector<std::pair<std::string, std::string>> getMiscProperties();
 };
 
 }  // namespace node

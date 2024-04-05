@@ -174,5 +174,25 @@ int VideoEncoder::getMaxOutputFrameSize() const {
     return properties.outputFrameSize;
 }
 
+void VideoEncoder::setMisc(std::string property, std::string value) {
+    properties.miscProps.push_back(std::make_pair(property, value));
+}
+
+void VideoEncoder::setMisc(std::string property, int value) {
+    setMisc(property, std::to_string(value));
+}
+
+void VideoEncoder::setMisc(std::string property, float value) {
+    setMisc(property, std::to_string(value));
+}
+
+void VideoEncoder::clearMiscProperties() {
+    properties.miscProps.clear();
+}
+
+std::vector<std::pair<std::string, std::string>> VideoEncoder::getMiscProperties() {
+    return properties.miscProps;
+}
+
 }  // namespace node
 }  // namespace dai
