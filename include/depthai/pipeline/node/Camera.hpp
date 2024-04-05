@@ -21,6 +21,16 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
    public:
     constexpr static const char* NAME = "Camera";
     using DeviceNodeCRTP::DeviceNodeCRTP;
+    [[nodiscard]] static std::shared_ptr<Camera> create() {
+        auto node = std::make_shared<Camera>();
+        node->build();
+        return node;
+    }
+    [[nodiscard]] static std::shared_ptr<Camera> create(std::shared_ptr<Device>& defaultDevice) {
+        auto node = std::make_shared<Camera>(defaultDevice);
+        node->build();
+        return node;
+    }
     void build();
 
    protected:
@@ -30,15 +40,16 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
     /**
      * Constructs Camera node.
      */
-    Camera() = default;
-    Camera(std::unique_ptr<Properties> props);
+    Camera();
+    explicit Camera(std::shared_ptr<Device>& defaultDevice);
+    explicit Camera(std::unique_ptr<Properties> props);
 
     /**
      * Computes the scaled size given numerator and denominator
      */
     static int getScaledSize(int input, int num, int denom);
 
-    Output* requestNewOutput(const ImgFrameCapability& capability, bool onHost = false);
+    std::shared_ptr<Output> requestNewOutput(const ImgFrameCapability& capability, bool onHost = false);
 
     /**
      * Initial control options to apply to sensor
@@ -64,14 +75,14 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
      *
      * Suitable for use with VideoEncoder node
      */
-    Output video{*this, "video", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output video{*this, "video", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}, false};
 
     /**
      * Outputs ImgFrame message that carries BGR/RGB planar/interleaved encoded frame data.
      *
      * Suitable for use with NeuralNetwork node
      */
-    Output preview{*this, "preview", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output preview{*this, "preview", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}, false};
 
     /**
      * Outputs ImgFrame message that carries NV12 encoded (YUV420, UV plane interleaved) frame data.
@@ -92,7 +103,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
      *
      * Captured directly from the camera sensor, and the source for the 'isp' output.
      */
-    Output raw{*this, "raw", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output raw{*this, "raw", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}, false};
 
     /**
      * Outputs metadata-only ImgFrame message as an early indicator of an incoming frame.

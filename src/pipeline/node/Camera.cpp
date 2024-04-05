@@ -1,6 +1,7 @@
 #include "depthai/pipeline/node/Camera.hpp"
 // std
 #include <fstream>
+#include <memory>
 #include <stdexcept>
 #include <variant>
 
@@ -18,6 +19,7 @@ class Camera::Impl {
     enum class OutputType { PREVIEW, VIDEO, RAW };
 
     struct OutputRequest {
+        std::shared_ptr<Output> output;
         ImgFrameCapability capability;
         bool onHost{};
     };
@@ -33,6 +35,10 @@ class Camera::Impl {
     };
 
     std::vector<OutputRequest> outputRequests;
+
+    Impl() {
+        std::cout << "Initializing Impl for camera called\n" << std::flush;
+    }
 
     static OutputType getOutputType(ImgFrame::Type format) {
         using E = ImgFrame::Type;
@@ -86,6 +92,20 @@ class Camera::Impl {
         }
     }
 
+    static std::vector<dai::CameraSensorConfig> getColorCameraConfigs(dai::Device& device) {
+        const auto& cameraFeatures = device.getConnectedCameraFeatures();
+        const auto& camera = std::find_if(
+            cameraFeatures.begin(), cameraFeatures.end(), [](const dai::CameraFeatures& itr) -> bool { return itr.socket == dai::CameraBoardSocket::CAM_A; });
+        if(camera == cameraFeatures.end()) {
+            throw std::runtime_error("Device doesn't support ColorCamera");
+        }
+        std::vector<dai::CameraSensorConfig> colorCameraModes;
+        std::copy_if(camera->configs.begin(), camera->configs.end(), std::back_inserter(colorCameraModes), [](const auto& itr) {
+            return itr.type == dai::CameraSensorType::COLOR;
+        });
+        return colorCameraModes;
+    }
+
     dai::CameraSensorConfig getClosestCameraConfig(const std::vector<dai::CameraSensorConfig>& colorCameraModes, int64_t width, int64_t height) {
         int64_t minAdditionalPixels = -1;
         ssize_t foundIndex = -1;
@@ -96,7 +116,7 @@ class Camera::Impl {
                                 notWorkingResolutions.end(),
                                 [&mode = std::as_const(mode)](const auto& itr) { return itr.width == mode.width && itr.height == mode.height; })
                    != notWorkingResolutions.end()) {
-                    std::cout << "Warning: ignoring possible best resolution " << mode.width << "x" << mode.height << " because of possible firmware bugs\n"
+                    std::cout << "Warning: ignoring possible best resolution " << mode.width << "x" << mode.height << "   because of possible firmware bugs\n"
                               << std::flush;
                 } else {
                     int64_t additionalPixels = (mode.width - width) * mode.height + (mode.height - height) * mode.width;
@@ -106,9 +126,11 @@ class Camera::Impl {
                     }
                 }
             }
+            ++index;
         }
-        ++index;
-        DAI_CHECK_IN(minAdditionalPixels != -1 && foundIndex != -1);
+        if(minAdditionalPixels == -1 || foundIndex == -1) {
+            throw std::runtime_error("This camera can't provide the wanted resolution " + std::to_string(width) + "x" + std::to_string(height));
+        }
         return colorCameraModes[foundIndex];
     }
 
@@ -139,7 +161,6 @@ class Camera::Impl {
         const auto foundScale = std::find_if(validScales.begin(), validScales.end(), [numerator, denominator](const auto& itr) {
             return std::get<1>(itr) == numerator && std::get<2>(itr) == denominator;
         });
-
         if(foundScale != validScales.end()) {
             return std::make_tuple(std::get<1>(*foundScale), std::get<2>(*foundScale));
         }
@@ -156,30 +177,36 @@ class Camera::Impl {
                 }
             }
         }
-        DAI_CHECK_IN(std::get<0>(bestScale) != -1);
+        if(std::get<0>(bestScale) == -1) {
+            throw std::runtime_error("Couldn't find correct scale");
+        }
         return bestScale;
     }
 
-    void requestNewOutput(const ImgFrameCapability& capability, bool onHost) {
-        outputRequests.push_back({capability, onHost});
-    }
-
-    void buildStage1(std::shared_ptr<Device> device, CameraProperties& properties, Output& preview, Output& video, Output& isp, Output& still) {
-        DAI_CHECK_V(preview.getConnections().empty() && video.getConnections().empty() && isp.getConnections().empty() && still.getConnections().empty(),
-                    "Can't use managed and unmanaged mode at the same time. Don't link() preview, video, isp, still outputs or don't use requestNewOutput().");
+    void setupDynamicOutputs(Camera& parent, const std::shared_ptr<Device>& device, CameraProperties& properties) {
         DAI_CHECK_IN(!outputRequests.empty());
-        const auto& capability = outputRequests[0].capability;
+        const auto& outputRequest = outputRequests[0];
+        const auto& capability = outputRequest.capability;
         const std::optional<ImgFrame::Type> encoding =
             (capability.encoding && *capability.encoding != ImgFrame::Type::NONE) ? capability.encoding : std::nullopt;
         if(encoding) {
             // TODO(jakgra) set fp16, colorOrder, interleaved, rawPacked ... from encoding and throw for unsupported encodings
         }
         // TODO(jakgra) check if video default output is ok for all cameras / sensors?
-        const auto outputType = encoding ? getOutputType(*encoding) : Impl::OutputType::VIDEO;
+        const auto outputType = encoding ? getOutputType(*encoding) : OutputType::VIDEO;
+        DAI_CHECK_IN(device);
+        // TODO(jakgra) support mono camera also. And limit by sensor or not...???
+        const auto& colorCameraConfigs = getColorCameraConfigs(*device);
         if(capability.size.value) {
-            const auto* size = std::get_if<std::tuple<uint32_t, uint32_t>>(&(*capability.size.value));
-            if(size != nullptr) {
-                using E = Impl::OutputType;
+            if(const auto* size = std::get_if<std::tuple<uint32_t, uint32_t>>(&(*capability.size.value))) {
+                const auto& mode = getClosestCameraConfig(colorCameraConfigs, std::get<0>(*size), std::get<1>(*size));
+                // TODO(jakgra) set this to the one the mode was gotten from
+                // setBoardSocket();
+                std::cout << "Setting sensor resolution to: " << mode.width << "x" << mode.height << "\n" << std::flush;
+                properties.resolutionWidth = mode.width;
+                properties.resolutionHeight = mode.height;
+                std::cout << "Setting preview/video/raw size to: " << std::get<0>(*size) << "x" << std::get<1>(*size) << "\n" << std::flush;
+                using E = OutputType;
                 switch(outputType) {
                     case E::PREVIEW:
                         std::cout << "Setting preview size\n" << std::flush;
@@ -206,28 +233,61 @@ class Camera::Impl {
         } else {
             // TODO(jakgra) set some default resolution that matches a sensor config here
             // should this be the same for all cameras (ex.: full HD) or camera specific (ex.: max resolution)
-            // if there are multiple outputs, should the above logic apply or should we take the same resolution as another output and just return that output?
+            // if there are multiple outputs, should the above logic apply or should we take the same resolution as another output and just return that
+            // output?
             std::cout << "NOT Setting preview size because value is NULL\n" << std::flush;
         }
         switch(outputType) {
-            using E = Impl::OutputType;
+            using E = OutputType;
             case E::PREVIEW:
-                // return &preview;
+                outputRequest.output->name = "preview";
                 break;
             case E::RAW:
-                // return &raw;
+                outputRequest.output->name = "raw";
                 break;
             case E::VIDEO:
-                // return &video;
+                outputRequest.output->name = "video";
                 break;
             default:
                 DAI_CHECK_IN(false);
                 break;
         }
+        DAI_CHECK_IN(outputRequest.output);
+        parent.setOutputRefs(outputRequest.output.get());
+    }
+
+    void buildStage1(Camera& parent,
+                     std::shared_ptr<Device>& device,
+                     CameraProperties& properties,
+                     Output& preview,  // NOLINT(bugprone-easily-swappable-parameters)
+                     Output& video,    // NOLINT(bugprone-easily-swappable-parameters)
+                     Output& raw       // NOLINT(bugprone-easily-swappable-parameters)
+    ) {
+        if(outputRequests.empty()) {
+            parent.setOutputRefs(&preview);
+            parent.setOutputRefs(&video);
+            parent.setOutputRefs(&raw);
+        } else {
+            DAI_CHECK_V(preview.getConnections().empty() && video.getConnections().empty(),
+                        "Can't use managed and unmanaged mode at the same time for outputs preview, video and raw. "
+                        "Don't link() preview, video, raw outputs or don't use requestNewOutput().");
+            setupDynamicOutputs(parent, device, properties);
+        }
+    }
+
+    std::shared_ptr<Camera::Output> requestNewOutput(Camera& parent, const ImgFrameCapability& capability, bool onHost) {
+        const auto output = std::make_shared<Output>(parent, false);
+        outputRequests.push_back({output, capability, onHost});
+        return output;
     }
 };
 
-Camera::Camera(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>(std::move(props)) {}
+Camera::Camera() : pimpl(spimpl::make_impl<Impl>()) {}
+
+Camera::Camera(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>(std::move(props)), pimpl(spimpl::make_impl<Impl>()) {}
+
+Camera::Camera(std::shared_ptr<Device>& defaultDevice)
+    : DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>(defaultDevice), pimpl(spimpl::make_impl<Impl>()) {}
 
 void Camera::build() {
     properties.boardSocket = CameraBoardSocket::AUTO;
@@ -493,14 +553,12 @@ void Camera::setRawOutputPacked(bool packed) {
     properties.rawPacked = packed;
 }
 
-Camera::Output* Camera::requestNewOutput(const ImgFrameCapability& capability, bool onHost) {
-    pimpl->requestNewOutput(capability, onHost);
-    // TODO(jakgra) return a reference to some dynamically allocated Output that we link to the correct one afterwards
-    return &preview;
+std::shared_ptr<Camera::Output> Camera::requestNewOutput(const ImgFrameCapability& capability, bool onHost) {
+    return pimpl->requestNewOutput(*this, capability, onHost);
 }
 
 void Camera::buildStage1() {
-    pimpl->buildStage1(device, properties, preview, video, isp, still);
+    pimpl->buildStage1(*this, device, properties, preview, video, raw);
 }
 
 }  // namespace node

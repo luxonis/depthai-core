@@ -84,9 +84,9 @@ void testResolution(std::optional<std::tuple<uint32_t, uint32_t>> wantedSize = s
 
     dai::ImgFrameCapability cap;
     cap.size.value = size;
-    // cap.encoding = dai::ImgFrame::Type::RGB888p;
-    cap.encoding = dai::ImgFrame::Type::RAW10;
-    auto* output = camRgb->requestNewOutput(cap);
+    cap.encoding = dai::ImgFrame::Type::RGB888p;
+    // cap.encoding = dai::ImgFrame::Type::RAW10;
+    auto output = camRgb->requestNewOutput(cap);
     const auto queueFrames = output->getQueue();
 
     const auto& qRgb = queueFrames;
