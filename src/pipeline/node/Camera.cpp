@@ -31,14 +31,10 @@ class Camera::Impl {
     };
 
     std::vector<Res> notWorkingResolutions = {
-        {.width = 1352, .height = 1012}  // dai::ColorCameraProperties::SensorResolution::THE_1352X1012
+        // {.width = 1352, .height = 1012}  // dai::ColorCameraProperties::SensorResolution::THE_1352X1012
     };
 
     std::vector<OutputRequest> outputRequests;
-
-    Impl() {
-        std::cout << "Initializing Impl for camera called\n" << std::flush;
-    }
 
     static OutputType getOutputType(ImgFrame::Type format) {
         using E = ImgFrame::Type;
@@ -205,6 +201,20 @@ class Camera::Impl {
                 std::cout << "Setting sensor resolution to: " << mode.width << "x" << mode.height << "\n" << std::flush;
                 properties.resolutionWidth = mode.width;
                 properties.resolutionHeight = mode.height;
+
+                /**
+                 * isp scale doesn't work correctly on rvc2 FW camera node and doesn't work on rvc4
+                 * so disabling for now, we can maybe reenable it for rvc2 sometime.
+
+                 const auto [num, denom] = findClosestIspScale(static_cast<int>(std::get<0>(*size)), static_cast<int>(std::get<1>(*size)), mode);
+                 std::cout << "USING ISP SCALE " << num << "/" << denom << "\n" << std::flush;
+                 properties.ispScale.horizNumerator = num;
+                 properties.ispScale.horizDenominator = denom;
+                 properties.ispScale.vertNumerator = num;
+                 properties.ispScale.vertDenominator = denom;
+
+                */
+
                 std::cout << "Setting preview/video/raw size to: " << std::get<0>(*size) << "x" << std::get<1>(*size) << "\n" << std::flush;
                 using E = OutputType;
                 switch(outputType) {
@@ -219,7 +229,10 @@ class Camera::Impl {
                         properties.videoHeight = std::get<1>(*size);
                         break;
                     case E::RAW:
-                        // TODO(jakgra) check if is an exact fit for some SensorConfig or throw otherwise
+                        DAI_CHECK_V(std::get<0>(*size) == static_cast<uint32_t>(mode.width) && std::get<1>(*size) == static_cast<uint32_t>(mode.height),
+                                    "Raw output has to be the exact same size as a supported sensor resolution. {}x{} is not a supported sensor resolution.",
+                                    std::get<0>(*size),
+                                    std::get<1>(*size));
                         std::cout << "Not setting size because is RAW output\n" << std::flush;
                         break;
                     default:

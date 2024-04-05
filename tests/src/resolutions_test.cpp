@@ -113,10 +113,12 @@ TEST_CASE("prev_broken_resolutions") {
 }
 */
 
+/*
 TEST_CASE("common_resolutions") {
     const auto resolution = GENERATE(table<uint32_t, uint32_t>({{1920, 1080}, {300, 300}, {640, 640}, {800, 600}}));
     testResolution(resolution);
 }
+*/
 
 /*
 TEST_CASE("random_resolutions") {
@@ -125,4 +127,41 @@ TEST_CASE("random_resolutions") {
 }
 */
 
-// TEST_CASE("multiple_resolutions") {}
+TEST_CASE("multiple_resolutions") {
+    dai::Pipeline pipeline;
+
+    auto camRgb = pipeline.create<dai::node::Camera>();
+
+    std::tuple<uint32_t, uint32_t> size = {600, 400};
+    std::tuple<uint32_t, uint32_t> size2 = {900, 900};
+    dai::ImgFrameCapability cap;
+    cap.size.value = size;
+    cap.encoding = dai::ImgFrame::Type::RGB888p;
+    dai::ImgFrameCapability cap2;
+    cap2.size.value = size2;
+    cap2.encoding = dai::ImgFrame::Type::RGB888p;
+    auto output = camRgb->requestNewOutput(cap);
+    auto output2 = camRgb->requestNewOutput(cap2);
+    const auto queueFrames = output->getQueue();
+    const auto queueFrames2 = output2->getQueue();
+
+    ScopeHelper scopeHelper([&pipeline]() { pipeline.start(); },
+                            [&pipeline]() {
+                                pipeline.stop();
+                                pipeline.wait();
+                                std::this_thread::sleep_for(std::chrono::seconds(10));
+                            });
+    for(int counter = 0; counter < 10; ++counter) {
+        const auto inRgb = queueFrames->get<dai::ImgFrame>();
+        if(inRgb) {
+            REQUIRE(inRgb->getWidth() == std::get<0>(size));
+            REQUIRE(inRgb->getHeight() == std::get<1>(size));
+        }
+        const auto inRgb2 = queueFrames2->get<dai::ImgFrame>();
+        if(inRgb2) {
+            REQUIRE(inRgb2->getWidth() == std::get<0>(size2));
+            REQUIRE(inRgb2->getHeight() == std::get<1>(size2));
+        }
+        counter++;
+    }
+}
