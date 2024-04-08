@@ -252,8 +252,7 @@ std::string Device::getQueueEvent(std::chrono::microseconds timeout) {
 }
 
 bool Device::startPipelineImpl(const Pipeline& pipeline) {
-    auto schema = pipeline.getPipelineSchema();
-    // TODO(Morato) - bring back queues on a pipeline level
+    // auto schema = pipeline.getPipelineSchema();
     // for(auto& kv : schema.nodes) {
     //     spdlog::trace("Inspecting node: {} for {} or {}", kv.second.name, std::string(node::XLinkIn::NAME), std::string(node::XLinkOut::NAME));
     //     if(kv.second.name == node::XLinkIn::NAME) {
