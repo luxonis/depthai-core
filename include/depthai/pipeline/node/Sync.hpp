@@ -16,6 +16,8 @@ namespace node {
  * @brief Sync node. Performs syncing between image frames
  */
 class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties> {
+   private:
+    bool runOnHostVar = false;
    public:
     constexpr static const char* NAME = "Sync";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -55,6 +57,19 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties> {
      * Gets the number of sync attempts
      */
     int getSyncAttempts() const;
+
+    /**
+     * Specify whether to run on host or device
+     * By default, the node will run on device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Check if the node is set to run on host
+     */
+    bool runOnHost() const override;
+
+    void run() override;
 };
 
 }  // namespace node

@@ -3,6 +3,12 @@
     namespace dai {
     namespace node {
     void SyncedNode::buildStage1() {
+        // If the user has been explicit about the sync node, set it
+        if(syncOnHost.has_value()) {
+            sync->setRunOnHost(syncOnHost.value());
+        } else {
+            sync->setRunOnHost(true);
+        }
         sync->out.link(input);
     }
 

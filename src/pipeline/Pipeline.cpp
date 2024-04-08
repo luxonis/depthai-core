@@ -569,15 +569,15 @@ void PipelineImpl::build() {
     isBuild = true;
 
     // Go through the build stages sequentially
-    for(const auto& node : nodes) {
+    for(const auto& node : getAllNodes()) {
         node->buildStage1();
     }
 
-    for(const auto& node : nodes) {
+    for(const auto& node : getAllNodes()) {
         node->buildStage2();
     }
 
-    for(const auto& node : nodes) {
+    for(const auto& node : getAllNodes()) {
         node->buildStage3();
     }
 
@@ -732,23 +732,29 @@ void PipelineImpl::start() {
     running = true;
 
     // Starts pipeline, go through all nodes and start them
-    for(const auto& node : nodes) {
-        node->start();
+    for(const auto& node : getAllNodes()) {
+        if(node->runOnHost()) {
+            node->start();
+        }
     }
 }
 
 void PipelineImpl::wait() {
     // Waits for all nodes to finish the execution
-    for(const auto& node : nodes) {
-        node->wait();
+    for(const auto& node : getAllNodes()) {
+        if(node->runOnHost()) {
+            node->wait();
+        }
     }
 }
 
 void PipelineImpl::stop() {
     std::lock_guard<std::mutex> lock(stateMtx);
     // Stops the pipeline execution
-    for(const auto& node : nodes) {
-        node->stop();
+    for(const auto& node : getAllNodes()) {
+        if(node->runOnHost()) {
+            node->stop();
+        }
     }
 
 
