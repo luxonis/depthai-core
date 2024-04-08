@@ -35,7 +35,10 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
         }
     }
     PipelineImpl(Pipeline& pipeline, std::shared_ptr<Device> device) : assetManager("/pipeline/"), parent(pipeline), defaultDevice{std::move(device)} {}
-    PipelineImpl(const PipelineImpl&) = default;
+    PipelineImpl(const PipelineImpl&) = delete;
+    PipelineImpl& operator=(const PipelineImpl&) = delete;
+    PipelineImpl(PipelineImpl&&) = delete;
+    PipelineImpl& operator=(PipelineImpl&&) = delete;
     ~PipelineImpl();
 
    private:
