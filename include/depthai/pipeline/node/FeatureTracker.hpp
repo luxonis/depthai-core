@@ -54,6 +54,11 @@ class FeatureTracker : public NodeCRTP<DeviceNode, FeatureTracker, FeatureTracke
     Output outputFeatures{true, *this, "outputFeatures", Output::Type::MSender, {{DatatypeEnum::TrackedFeatures, false}}};
 
     /**
+     * Outputs descriptor message that carries tracked features descriptors.
+     */
+    Output outputDescriptors{true, *this, "outputDescriptors", Output::Type::MSender, {{DatatypeEnum::Buffer, false}}};
+
+    /**
      * Passthrough message on which the calculation was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
