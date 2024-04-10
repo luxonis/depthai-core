@@ -54,7 +54,7 @@ set(SOURCE_LIST
     src/CalibrationHandlerBindings.cpp
     src/DeviceBootloaderBindings.cpp
     src/DatatypeBindings.cpp
-    src/DataQueueBindings.cpp
+    src/MessageQueueBindings.cpp
     src/pipeline/PipelineBindings.cpp
     src/pipeline/CommonBindings.cpp
     src/pipeline/AssetManagerBindings.cpp

@@ -166,6 +166,9 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      */
     template <class T>
     bool has() {
+        if(queue.isDestroyed()) {
+            throw QueueException(CLOSED_QUEUE_MESSAGE);
+        }
         std::shared_ptr<ADatatype> val = nullptr;
         return queue.front(val) && dynamic_cast<T*>(val.get());
     }
@@ -175,6 +178,9 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      * @returns True if queue isn't empty, false otherwise
      */
     bool has() {
+        if(queue.isDestroyed()) {
+            throw QueueException(CLOSED_QUEUE_MESSAGE);
+        }
         return !queue.empty();
     }
 
@@ -185,6 +191,9 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      */
     template <class T>
     std::shared_ptr<T> tryGet() {
+        if(queue.isDestroyed()) {
+            throw QueueException(CLOSED_QUEUE_MESSAGE);
+        }
         std::shared_ptr<ADatatype> val = nullptr;
         if(!queue.tryPop(val)) return nullptr;
         return std::dynamic_pointer_cast<T>(val);
@@ -229,6 +238,9 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      */
     template <class T>
     std::shared_ptr<T> front() {
+        if(queue.isDestroyed()) {
+            throw QueueException(CLOSED_QUEUE_MESSAGE);
+        }
         std::shared_ptr<ADatatype> val = nullptr;
         if(!queue.front(val)) return nullptr;
         return std::dynamic_pointer_cast<T>(val);
@@ -252,9 +264,16 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      */
     template <class T, typename Rep, typename Period>
     std::shared_ptr<T> get(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
+        if(queue.isDestroyed()) {
+            throw QueueException(CLOSED_QUEUE_MESSAGE);
+        }
         std::shared_ptr<ADatatype> val = nullptr;
         if(!queue.tryWaitAndPop(val, timeout)) {
             hasTimedout = true;
+            // Check again after the timeout
+            if(queue.isDestroyed()) {
+                throw QueueException(CLOSED_QUEUE_MESSAGE);
+            }
             return nullptr;
         }
         hasTimedout = false;
@@ -280,13 +299,15 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      */
     template <class T>
     std::vector<std::shared_ptr<T>> tryGetAll() {
+        if(queue.isDestroyed()) {
+            throw QueueException(CLOSED_QUEUE_MESSAGE);
+        }
         std::vector<std::shared_ptr<T>> messages;
         queue.consumeAll([&messages](std::shared_ptr<ADatatype>& msg) {
             // dynamic pointer cast may return nullptr
             // in which case that message in vector will be nullptr
             messages.push_back(std::dynamic_pointer_cast<T>(std::move(msg)));
         });
-
         return messages;
     }
 
@@ -308,12 +329,14 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
     template <class T>
     std::vector<std::shared_ptr<T>> getAll() {
         std::vector<std::shared_ptr<T>> messages;
-        queue.waitAndConsumeAll([&messages](std::shared_ptr<ADatatype>& msg) {
+        bool notDestructed = queue.waitAndConsumeAll([&messages](std::shared_ptr<ADatatype>& msg) {
             // dynamic pointer cast may return nullptr
             // in which case that message in vector will be nullptr
             messages.push_back(std::dynamic_pointer_cast<T>(std::move(msg)));
         });
-
+        if(!notDestructed) {
+            throw QueueException(CLOSED_QUEUE_MESSAGE);
+        }
         return messages;
     }
 
@@ -336,6 +359,9 @@ class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
      */
     template <class T, typename Rep, typename Period>
     std::vector<std::shared_ptr<T>> getAll(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
+        if(queue.isDestroyed()) {
+            throw QueueException(CLOSED_QUEUE_MESSAGE);
+        }
         std::vector<std::shared_ptr<T>> messages;
         hasTimedout = !queue.waitAndConsumeAll(
             [&messages](std::shared_ptr<ADatatype>& msg) {

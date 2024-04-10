@@ -24,7 +24,7 @@
 #include "CalibrationHandlerBindings.hpp"
 #include "DeviceBootloaderBindings.hpp"
 #include "DatatypeBindings.hpp"
-#include "DataQueueBindings.hpp"
+#include "MessageQueueBindings.hpp"
 #include "openvino/OpenVINOBindings.hpp"
 #include "log/LogBindings.hpp"
 #include "VersionBindings.hpp"
@@ -56,7 +56,7 @@ PYBIND11_MODULE(depthai, m)
     DatatypeBindings::addToCallstack(callstack);
     callstack.push_front(&LogBindings::bind);
     callstack.push_front(&VersionBindings::bind);
-    callstack.push_front(&DataQueueBindings::bind);
+    callstack.push_front(&MessageQueueBindings::bind);
     callstack.push_front(&OpenVINOBindings::bind);
     NodeBindings::addToCallstack(callstack);
     callstack.push_front(&AssetManagerBindings::bind);
