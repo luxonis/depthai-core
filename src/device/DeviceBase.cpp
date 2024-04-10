@@ -1221,6 +1221,10 @@ int DeviceBase::getXLinkChunkSize() {
     return pimpl->rpcClient->call("getXLinkChunkSize").as<int>();
 }
 
+void DeviceBase::setXLinkRateLimit(int maxRateBytesPerSecond, int burstSize, int waitUs) {
+    pimpl->rpcClient->call("setXLinkRateLimit", maxRateBytesPerSecond, burstSize, waitUs);
+}
+
 DeviceInfo DeviceBase::getDeviceInfo() const {
     return deviceInfo;
 }
