@@ -1,5 +1,15 @@
 cmake_minimum_required(VERSION 3.4) # For Hunter
 
+# Set policies
+# CMP0074 dictates that find_package searches environment variable "[packageName]_ROOT" along with regular variable [packageName]_ROOT
+if(POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW) # Only introduced in 3.12
+endif()
+
+if(POLICY CMP0028)
+  cmake_policy(SET CMP0028 NEW)
+endif()
+
 # Specify path separator
 set(SYS_PATH_SEPARATOR ";")
 if(UNIX)
