@@ -21,12 +21,9 @@ namespace node {
  * @brief Record node, used to record a source stream to a file
  */
 class Record : public NodeCRTP<ThreadedNode, Record> {
-   private:
-    std::shared_ptr<utility::VideoRecorder> videoRecorder;
-    std::string recordFile;
-    unsigned int fpsInitLength = 10;
-
    public:
+    using RecordCompressionLevel = dai::utility::ByteRecorder::CompressionLevel;
+
     constexpr static const char* NAME = "Record";
     void build();
 
@@ -40,6 +37,13 @@ class Record : public NodeCRTP<ThreadedNode, Record> {
     void run() override;
 
     Record& setRecordFile(const std::string& recordFile);
+
+    Record& setCompressionLevel(RecordCompressionLevel compressionLevel);
+
+   private:
+    std::string recordFile;
+    unsigned int fpsInitLength = 10;
+    RecordCompressionLevel compressionLevel = RecordCompressionLevel::DEFAULT;
 };
 
 }  // namespace node

@@ -1,42 +1,35 @@
-#include <cassert>
 #include <depthai/depthai.hpp>
-#include <fstream>
-#include <nlohmann/json.hpp>
-
+#include "depthai/pipeline/node/MonoCamera.hpp"
 #include "depthai/pipeline/node/Record.hpp"
+#include "depthai/properties/MonoCameraProperties.hpp"
 
 #ifndef DEPTHAI_HAVE_OPENCV_SUPPORT
-    #error This example needs OpenCV support, which is not available on your system
+	#error This example needs OpenCV support, which is not available on your system
 #endif
 
-#include "mcap/reader.hpp"
-
-constexpr auto RECORDING_PATH = "/home/work/workspaces/lib/depthai-python/depthai-core/recording_mjpeg";
+constexpr auto RECORDING_PATH = "/home/work/workspaces/lib/depthai-python/depthai-core/recording_imu";
 
 int main() {
-    {
-        dai::Pipeline pipeline;
-        auto cam = pipeline.create<dai::node::ColorCamera>();
-        auto videoEncoder = pipeline.create<dai::node::VideoEncoder>();
-        auto record = pipeline.create<dai::node::Record>();
+	{
+		dai::Pipeline pipeline;
+		auto imu = pipeline.create<dai::node::IMU>();
+		auto record = pipeline.create<dai::node::Record>();
 
-        record->setRecordFile(RECORDING_PATH);
+		record->setRecordFile(RECORDING_PATH);
 
-        cam->setBoardSocket(dai::CameraBoardSocket::CAM_A);
-        cam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
-        cam->setFps(30);
+		imu->enableIMUSensor(dai::IMUSensor::ACCELEROMETER_RAW, 500);
+		// enable GYROSCOPE_RAW at 400 hz rate
+		imu->enableIMUSensor(dai::IMUSensor::GYROSCOPE_RAW, 400);
 
-        videoEncoder->setProfile(dai::VideoEncoderProperties::Profile::MJPEG);
+		imu->out.link(record->in);
 
-        cam->video.link(videoEncoder->input);
-        videoEncoder->out.link(record->in);
+		pipeline.start();
 
-        pipeline.start();
+		std::this_thread::sleep_for(std::chrono::seconds(10));
 
-        std::this_thread::sleep_for(std::chrono::seconds(10));
+		pipeline.stop();
+	}
 
-        pipeline.stop();
-    }
     mcap::McapReader reader;
     {
         const auto res = reader.open(std::string(RECORDING_PATH) + ".mcap");

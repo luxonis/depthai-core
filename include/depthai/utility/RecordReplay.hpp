@@ -14,6 +14,13 @@
     #include <opencv2/opencv.hpp>
 #endif
 
+#ifndef MCAP_COMPRESSION_NO_ZSTD
+    #define MCAP_COMPRESSION_NO_ZSTD
+#endif
+#include "mcap/mcap.hpp"
+
+#include "RecordReplaySchema.hpp"
+
 namespace dai {
 namespace utility {
 
@@ -47,9 +54,28 @@ class VideoRecorder {
 
 class ByteRecorder {
 public:
+    enum class CompressionLevel { NONE, FASTEST, FAST, DEFAULT, SLOW, SLOWEST };
+    enum class RecordingType { VIDEO, IMU, OTHER };
+
     ~ByteRecorder();
-    void init(const std::string& filePath, int compressionLevel);
-    void write(const std::string& );
+    void init(const std::string& filePath, CompressionLevel compressionLevel, RecordingType recordingType);
+    template<typename T> void write(const T& data) {
+        mcap::Timestamp writeTime = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        nlohmann::json j = data;
+        std::string serialized = j.dump();
+        mcap::Message msg;
+        msg.channelId = channelId;
+        msg.logTime = writeTime;
+        msg.publishTime = writeTime;
+        msg.sequence = index++;
+        msg.data = reinterpret_cast<const std::byte*>(serialized.data());
+        msg.dataSize = serialized.size();
+        const auto res = writer.write(msg);
+        if(!res.ok()) {
+            writer.close();
+            throw std::runtime_error("Failed to write video frame metadata: " + res.message);
+        }
+    }
     void close();
     bool isInitialized() const {
         return initialized;
@@ -57,8 +83,11 @@ public:
 
 private:
     bool initialized = false;
-    int compressionLevel = 6;
     std::ofstream file;
+
+    uint64_t index = 0;
+    mcap::McapWriter writer;
+    mcap::ChannelId channelId;
 };
 
 class VideoPlayer {

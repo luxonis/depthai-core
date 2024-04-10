@@ -11,7 +11,7 @@ int main() {
 	auto videoEncoder = pipeline.create<dai::node::VideoEncoder>();
 	auto record = pipeline.create<dai::node::Record>();
 
-	record->setRecordFile("/home/work/workspaces/lib/depthai-python/depthai-core/recording_h264.mp4");
+	record->setRecordFile("/home/work/workspaces/lib/depthai-python/depthai-core/recording_h264");
 
 	cam->setBoardSocket(dai::CameraBoardSocket::CAM_A);
 	cam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);

@@ -2,6 +2,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include <chrono>
 #include <cstdint>
 #include <memory>
 
@@ -16,7 +17,7 @@
 namespace dai {
 namespace node {
 
-enum class StreamType { EncodedVideo, RawVideo, Byte, Unknown };
+enum class StreamType { EncodedVideo, RawVideo, Imu, Byte, Unknown };
 
 using VideoCodec = dai::utility::VideoRecorder::VideoCodec;
 
@@ -24,16 +25,39 @@ void Record::build() {
     hostNode = true;
 }
 
+std::tuple<float, float, float, float> eulerToQuaternion(float x, float y, float z) {
+    float cr = cos(x * 0.5);
+    float sr = sin(x * 0.5);
+    float cp = cos(y * 0.5);
+    float sp = sin(y * 0.5);
+    float cy = cos(z * 0.5);
+    float sy = sin(z * 0.5);
+
+    float qw = cr * cp * cy + sr * sp * sy;
+    float qx = sr * cp * cy - cr * sp * sy;
+    float qy = cr * sp * cy + sr * cp * sy;
+    float qz = cr * cp * sy - sr * sp * cy;
+
+    return {qw, qx, qy, qz};
+}
+
 void Record::run() {
+    std::unique_ptr<utility::VideoRecorder> videoRecorder;
+
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    videoRecorder = std::make_shared<dai::utility::VideoRecorder>();
+    videoRecorder = std::make_unique<dai::utility::VideoRecorder>();
 #else
     throw std::runtime_error("Record node requires OpenCV support");
 #endif
 
+    utility::ByteRecorder byteRecorder;
+
     if(recordFile.empty()) {
         throw std::runtime_error("Record recordFile must be set");
     }
+
+    std::string recordFileVideo = recordFile + ".mp4";
+    std::string recordFileBytes = recordFile + ".mcap";
 
     StreamType streamType = StreamType::Unknown;
     unsigned int width = 0;
@@ -42,7 +66,6 @@ void Record::run() {
     unsigned int i = 0;
     auto start = std::chrono::steady_clock::now();
     auto end = std::chrono::steady_clock::now();
-    // TODO(asahtik): Byte writer (Buffer, IMUData), metadata
     while(isRunning()) {
         auto msg = in.queue.get<dai::Buffer>();
         if(msg == nullptr) continue;
@@ -55,6 +78,7 @@ void Record::run() {
                 streamType = StreamType::RawVideo;
                 width = imgFrame->getWidth();
                 height = imgFrame->getHeight();
+                byteRecorder.init(recordFileBytes, compressionLevel, utility::ByteRecorder::RecordingType::VIDEO);
             } else if(std::dynamic_pointer_cast<EncodedFrame>(msg) != nullptr) {
                 auto encFrame = std::dynamic_pointer_cast<EncodedFrame>(msg);
                 if(encFrame->getProfile() == EncodedFrame::Profile::HEVC) {
@@ -64,9 +88,13 @@ void Record::run() {
                 width = encFrame->getWidth();
                 height = encFrame->getHeight();
                 spdlog::trace("Record node detected {}x{} resolution", width, height);
+                byteRecorder.init(recordFileBytes, compressionLevel, utility::ByteRecorder::RecordingType::VIDEO);
             } else if(std::dynamic_pointer_cast<IMUData>(msg) != nullptr) {
-                streamType = StreamType::Byte;
+                streamType = StreamType::Imu;
+                byteRecorder.init(recordFileBytes, compressionLevel, utility::ByteRecorder::RecordingType::IMU);
             } else {
+                streamType = StreamType::Byte;
+                byteRecorder.init(recordFileBytes, compressionLevel, utility::ByteRecorder::RecordingType::OTHER);
                 throw std::runtime_error("Record node does not support this type of message");
             }
             spdlog::trace("Record node detected stream type {}",
@@ -84,9 +112,9 @@ void Record::run() {
                 if(streamType == StreamType::EncodedVideo) {
                     auto encFrame = std::dynamic_pointer_cast<EncodedFrame>(msg);
                     videoRecorder->init(
-                        recordFile, width, height, fps, encFrame->getProfile() == EncodedFrame::Profile::JPEG ? VideoCodec::MJPEG : VideoCodec::H264);
+                        recordFileVideo, width, height, fps, encFrame->getProfile() == EncodedFrame::Profile::JPEG ? VideoCodec::MJPEG : VideoCodec::H264);
                 } else {
-                    videoRecorder->init(recordFile, width, height, fps, VideoCodec::RAW);
+                    videoRecorder->init(recordFileVideo, width, height, fps, VideoCodec::RAW);
                 }
             }
             if(i >= fpsInitLength - 1) {
@@ -102,12 +130,58 @@ void Record::run() {
                     }
                     span cvData(frame.data, frame.total() * frame.elemSize());
                     videoRecorder->write(cvData);
+                    utility::VideoRecordSchema record;
+                    record.timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(imgFrame->getTimestampDevice().time_since_epoch()).count();
+                    record.sequenceNumber = imgFrame->getSequenceNum();
+                    record.width = imgFrame->getWidth();
+                    record.height = imgFrame->getHeight();
+                    record.cameraSettings.exposure = imgFrame->cam.exposureTimeUs;
+                    record.cameraSettings.sensitivity = imgFrame->cam.sensitivityIso;
+                    record.cameraSettings.wbColorTemp = imgFrame->cam.wbColorTemp;
+                    record.cameraSettings.lensPosition = imgFrame->cam.lensPosition;
+                    record.cameraSettings.lensPositionRaw = imgFrame->cam.lensPositionRaw;
+                    byteRecorder.write(record);
 #else
                     throw std::runtime_error("Record node requires OpenCV support");
 #endif
-                } else videoRecorder->write(data);
+                } else {
+                    videoRecorder->write(data);
+                    auto encFrame = std::dynamic_pointer_cast<EncodedFrame>(msg);
+                    utility::VideoRecordSchema record;
+                    record.timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(encFrame->getTimestampDevice().time_since_epoch()).count();
+                    record.sequenceNumber = encFrame->getSequenceNum();
+                    record.width = encFrame->getWidth();
+                    record.height = encFrame->getHeight();
+                    record.cameraSettings.exposure = encFrame->cam.exposureTimeUs;
+                    record.cameraSettings.sensitivity = encFrame->cam.sensitivityIso;
+                    record.cameraSettings.wbColorTemp = encFrame->cam.wbColorTemp;
+                    record.cameraSettings.lensPosition = encFrame->cam.lensPosition;
+                    record.cameraSettings.lensPositionRaw = encFrame->cam.lensPositionRaw;
+                    byteRecorder.write(record);
+                }
             }
             if(i < fpsInitLength) ++i;
+        } else if(streamType == StreamType::Imu) {
+            auto imuData = std::dynamic_pointer_cast<IMUData>(msg);
+            utility::ImuRecordSchema record;
+            record.packets.reserve(imuData->packets.size());
+            for(const auto& packet : imuData->packets) {
+                utility::ImuPacketSchema packetSchema;
+                packetSchema.acceleration.timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(packet.acceleroMeter.getTimestampDevice().time_since_epoch()).count();
+                packetSchema.acceleration.sequenceNumber = packet.acceleroMeter.sequence;
+                packetSchema.acceleration.x = packet.acceleroMeter.x;
+                packetSchema.acceleration.y = packet.acceleroMeter.y;
+                packetSchema.acceleration.z = packet.acceleroMeter.z;
+                packetSchema.orientation.timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(packet.gyroscope.getTimestampDevice().time_since_epoch()).count();
+                packetSchema.orientation.sequenceNumber = packet.gyroscope.sequence;
+                const auto [qw, qx, qy, qz] = eulerToQuaternion(packet.gyroscope.x, packet.gyroscope.y, packet.gyroscope.z);
+                packetSchema.orientation.x = qx;
+                packetSchema.orientation.y = qy;
+                packetSchema.orientation.z = qz;
+                packetSchema.orientation.w = qw;
+                record.packets.push_back(packetSchema);
+            }
+            byteRecorder.write(record);
         } else {
             throw std::runtime_error("TODO: Implement byte writer");
         }
@@ -118,6 +192,11 @@ void Record::run() {
 
 Record& Record::setRecordFile(const std::string& recordFile) {
     this->recordFile = recordFile;
+    return *this;
+}
+
+Record& Record::setCompressionLevel(RecordCompressionLevel compressionLevel) {
+    this->compressionLevel = compressionLevel;
     return *this;
 }
 

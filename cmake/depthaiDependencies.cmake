@@ -18,6 +18,7 @@ else()
     hunter_add_package(libarchive-luxonis)
     hunter_add_package(spdlog)
     hunter_add_package(ZLIB)
+    hunter_add_package(lz4-luxonis)
     hunter_add_package(httplib)
     hunter_add_package(mp4v2)
     if(DEPTHAI_ENABLE_BACKWARD)
@@ -40,6 +41,7 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     find_package(lzma ${_QUIET} CONFIG REQUIRED)
     # ZLIB for compressing Apps
     find_package(ZLIB CONFIG REQUIRED)
+    find_package(lz4 CONFIG REQUIRED)
 
     # spdlog for library and device logging
     find_package(spdlog ${_QUIET} CONFIG REQUIRED)

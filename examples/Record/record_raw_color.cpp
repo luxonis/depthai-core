@@ -10,7 +10,7 @@ int main() {
 	auto cam = pipeline.create<dai::node::ColorCamera>();
 	auto record = pipeline.create<dai::node::Record>();
 
-	record->setRecordFile("/home/work/workspaces/lib/depthai-python/depthai-core/recording_raw_color.mp4");
+	record->setRecordFile("/home/work/workspaces/lib/depthai-python/depthai-core/recording_raw_color");
 
 	cam->setBoardSocket(dai::CameraBoardSocket::CAM_A);
 	cam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);

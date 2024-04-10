@@ -12,7 +12,7 @@ int main() {
 	auto cam = pipeline.create<dai::node::MonoCamera>();
 	auto record = pipeline.create<dai::node::Record>();
 
-	record->setRecordFile("/home/work/workspaces/lib/depthai-python/depthai-core/recording_raw_gray.mp4");
+	record->setRecordFile("/home/work/workspaces/lib/depthai-python/depthai-core/recording_raw_gray");
 
 	cam->setBoardSocket(dai::CameraBoardSocket::CAM_B);
 	cam->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);

@@ -276,6 +276,7 @@ add_library(${TARGET_CORE_NAME}
     src/utility/Path.cpp
     src/utility/Platform.cpp
     src/utility/RecordReplay.cpp
+    src/utility/McapImpl.cpp
     src/utility/Environment.cpp
     src/utility/Compression.cpp
     src/utility/XLinkGlobalProfilingLogger.cpp
@@ -495,6 +496,7 @@ target_link_libraries(${TARGET_CORE_NAME}
         FP16::fp16
         archive_static
         ZLIB::zlib
+        LZ4::lz4_shared
         httplib::httplib
         mp4v2::mp4v2
 )
