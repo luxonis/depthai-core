@@ -178,4 +178,101 @@ cv::Mat ImgFrame::getCvFrame() {
     return output;
 }
 
+ImgFrame& ImgFrame::setCvFrame(cv::Mat mat, Type type) {
+    cv::Mat output;
+    setType(type);
+    setSize(mat.cols, mat.rows);
+    switch(type) {
+        case Type::RGB888i:
+            cv::cvtColor(mat, output, cv::ColorConversionCodes::COLOR_BGR2RGB);
+            output.convertTo(output, CV_8UC3);
+            setFrame(output);
+            break;
+
+        case Type::BGR888i:
+            mat.convertTo(mat, CV_8UC3);
+            setFrame(mat);
+            break;
+
+        case Type::RGB888p: {
+            mat.convertTo(mat, CV_8UC3);
+            std::vector<uint8_t> dataVec;
+            std::vector<cv::Mat> channels;
+            cv::split(mat, channels);
+            dataVec.insert(dataVec.end(), channels[2].datastart, channels[2].dataend);
+            dataVec.insert(dataVec.end(), channels[1].datastart, channels[1].dataend);
+            dataVec.insert(dataVec.end(), channels[0].datastart, channels[0].dataend);
+            setData(dataVec);
+            size_t offset = channels[0].dataend - channels[0].datastart;
+            fb.p1Offset = 0;
+            fb.p2Offset = offset;
+            fb.p3Offset = offset * 2;
+        } break;
+
+        case Type::BGR888p: {
+            mat.convertTo(mat, CV_8UC3);
+            std::vector<uint8_t> dataVec;
+            std::vector<cv::Mat> channels;
+            cv::split(mat, channels);
+            dataVec.insert(dataVec.end(), channels[0].datastart, channels[0].dataend);
+            dataVec.insert(dataVec.end(), channels[1].datastart, channels[1].dataend);
+            dataVec.insert(dataVec.end(), channels[2].datastart, channels[2].dataend);
+            setData(dataVec);
+            size_t offset = channels[0].dataend - channels[0].datastart;
+            fb.p1Offset = 0;
+            fb.p2Offset = offset;
+            fb.p3Offset = offset * 2;
+        } break;
+
+        case Type::YUV420p:
+            cv::cvtColor(mat, output, cv::ColorConversionCodes::COLOR_BGR2YUV_IYUV);
+            setFrame(output);
+            break;
+
+        case Type::NV12:
+        case Type::NV21: {
+            cv::cvtColor(mat, output, cv::COLOR_BGR2YUV_I420);
+
+            std::vector<cv::Mat> planes;
+            cv::split(output, planes);
+
+            std::vector<uint8_t> dataVec;
+            dataVec.insert(dataVec.end(), planes[0].data, planes[0].data + static_cast<ptrdiff_t>(planes[0].cols * planes[0].rows));
+            int uvSize = planes[0].rows * planes[0].cols / 4;
+            if (type == Type::NV12) {
+                dataVec.insert(dataVec.end(), planes[1].data, planes[1].data + uvSize);
+                dataVec.insert(dataVec.end(), planes[2].data, planes[2].data + uvSize);
+            } else {
+                dataVec.insert(dataVec.end(), planes[2].data, planes[2].data + uvSize);
+                dataVec.insert(dataVec.end(), planes[1].data, planes[1].data + uvSize);
+            }
+            break;
+        }
+        // case Type::RAW8:
+        // case Type::RAW16:
+        // case Type::RAW14:
+        // case Type::RAW12:
+        // case Type::RAW10:
+        case Type::GRAY8:
+        case Type::GRAYF16:
+            if (mat.channels() == 3) {
+                cv::cvtColor(mat, output, cv::ColorConversionCodes::COLOR_BGR2GRAY);
+            } else {
+                output = mat;
+            }
+            if (type == Type::GRAY8) {
+                output.convertTo(output, CV_8UC1);
+            } else {
+                output.convertTo(output, CV_16FC1);
+            }
+            setFrame(output);
+            break;
+
+        default:
+            setFrame(mat);
+            break;
+    }
+    return *this;
+}
+
 }  // namespace dai

@@ -3,6 +3,7 @@
 #include <spdlog/spdlog.h>
 
 #include <fstream>
+#include <optional>
 #include <stdexcept>
 
 #include "../utility/Platform.hpp"
@@ -70,7 +71,6 @@ void VideoRecorder::init(const std::string& filePath, unsigned int width, unsign
             break;
         case VideoCodec::RAW:
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-            spdlog::error("Opening OpenCV writer");
             cvWriter = std::make_unique<cv::VideoWriter>();
             cvWriter->open(filePath, cv::VideoWriter::fourcc('H', '2', '6', '4'), fps, cv::Size(width, height));
             assert(cvWriter->isOpened());
@@ -164,15 +164,61 @@ void VideoRecorder::close() {
 #endif
 }
 
-VideoPlayer::~VideoPlayer() {}
-
-void VideoPlayer::init(const std::string& filePath) {}
-
-std::vector<uint8_t> VideoPlayer::next() {
-    return {};
+VideoPlayer::~VideoPlayer() {
+    close();
 }
 
-void VideoPlayer::close() {}
+void VideoPlayer::init(const std::string& filePath) {
+    if(initialized) {
+        throw std::runtime_error("VideoPlayer already initialized");
+    }
+    if(filePath.empty()) {
+        throw std::runtime_error("VideoPlayer file path is empty");
+    }
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    cvReader = std::make_unique<cv::VideoCapture>();
+    cvReader->open(filePath);
+    assert(cvReader->isOpened());
+#else
+    throw std::runtime_error("OpenCV support is required to read video");
+#endif
+    initialized = true;
+}
+
+std::optional<std::vector<uint8_t>> VideoPlayer::next() {
+    if(!initialized) {
+        throw std::runtime_error("VideoPlayer not initialized");
+    }
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    cv::Mat frame;
+    if(!cvReader->read(frame)) {
+        return std::nullopt;
+    }
+    height = frame.rows;
+    width = frame.cols;
+    assert(frame.isContinuous());
+    std::vector<uint8_t> data;
+    data.assign(frame.data, frame.data + frame.total() * frame.elemSize());
+    return data;
+#else
+    throw std::runtime_error("OpenCV support is required to read video");
+#endif
+}
+
+std::tuple<uint32_t, uint32_t> VideoPlayer::size() {
+    if(!initialized) {
+        throw std::runtime_error("VideoPlayer not initialized");
+    }
+    return {width, height};
+}
+
+void VideoPlayer::close() {
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    if(cvReader && cvReader->isOpened()) {
+        cvReader->release();
+    }
+#endif
+}
 
 }  // namespace utility
 }  // namespace dai

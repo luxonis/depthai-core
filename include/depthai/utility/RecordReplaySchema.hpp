@@ -1,3 +1,6 @@
+#pragma once
+
+#include <chrono>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
@@ -19,11 +22,27 @@ struct VersionSchema {
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(VersionSchema, major, minor, patch)
 
+struct TimestampSchema {
+    uint64_t seconds;
+    uint32_t nanoseconds;
+
+    void set(std::chrono::nanoseconds time) {
+        seconds = std::chrono::duration_cast<std::chrono::seconds>(time).count();
+        nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(time).count() % 1000000000;
+    }
+
+    std::chrono::nanoseconds get() const {
+        return std::chrono::seconds(seconds) + std::chrono::nanoseconds(nanoseconds);
+    }
+};
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(TimestampSchema, seconds, nanoseconds)
+
 // Make sure these structs are in sync with the JSON schema
 struct DefaultRecordSchema {
     VersionSchema version {0, 0, 1};
     RecordType type = RecordType::Other;
-    uint64_t timestamp;
+    TimestampSchema timestamp;
     uint64_t sequenceNumber;
     std::vector<uint8_t> data;
 };
@@ -31,7 +50,7 @@ struct DefaultRecordSchema {
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(DefaultRecordSchema, version, type, timestamp, sequenceNumber, data)
 
 struct ImuOrientationSchema {
-    uint64_t timestamp;
+    TimestampSchema timestamp;
     uint64_t sequenceNumber;
 
     float x;
@@ -43,7 +62,7 @@ struct ImuOrientationSchema {
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImuOrientationSchema, x, y, z, w)
 
 struct IMUAccelerationSchema {
-    uint64_t timestamp;
+    TimestampSchema timestamp;
     uint64_t sequenceNumber;
 
     float x;
@@ -81,15 +100,15 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(VideoCameraSettingsSchema, exposure, sensitiv
 struct VideoRecordSchema {
     VersionSchema version {0, 0, 1};
     RecordType type = RecordType::Video;
-    uint64_t timestamp;
+    TimestampSchema timestamp;
     uint64_t sequenceNumber;
-    uint64_t instanceNum;
+    uint64_t instanceNumber;
     uint32_t width;
     uint32_t height;
     VideoCameraSettingsSchema cameraSettings;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(VideoRecordSchema, version, type, timestamp, sequenceNumber, instanceNum, width, height, cameraSettings)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(VideoRecordSchema, version, type, timestamp, sequenceNumber, instanceNumber, width, height, cameraSettings)
 
 constexpr const char* DEFAULT_SHEMA = R"(
 {
@@ -133,8 +152,18 @@ constexpr const char* DEFAULT_SHEMA = R"(
             ]
         },
         "timestamp": {
-            "type": "integer",
-            "description": "Timestamp of the message in nanoseconds"
+            "type": "object",
+            "description": "Timestamp of the message",
+            "properties": {
+                "seconds": {
+                    "type": "integer",
+                    "description": "Seconds part of the timestamp"
+                },
+                "nanoseconds": {
+                    "type": "integer",
+                    "description": "Nanoseconds part of the timestamp"
+                }
+            }
         },
         "sequenceNumber": {
             "type": "integer",
@@ -202,8 +231,18 @@ constexpr const char* IMU_SHEMA = R"(
                         "description": "Accelerometer quaternion",
                         "properties": {
                             "timestamp": {
-                                "type": "integer",
-                                "description": "Timestamp of the message in nanoseconds"
+                                "type": "object",
+                                "description": "Timestamp of the message",
+                                "properties": {
+                                    "seconds": {
+                                        "type": "integer",
+                                        "description": "Seconds part of the timestamp"
+                                    },
+                                    "nanoseconds": {
+                                        "type": "integer",
+                                        "description": "Nanoseconds part of the timestamp"
+                                    }
+                                }
                             },
                             "sequenceNumber": {
                                 "type": "integer",
@@ -232,8 +271,18 @@ constexpr const char* IMU_SHEMA = R"(
                         "description": "Accelerometer acceleration",
                         "properties": {
                             "timestamp": {
-                                "type": "integer",
-                                "description": "Timestamp of the message in nanoseconds"
+                                "type": "object",
+                                "description": "Timestamp of the message",
+                                "properties": {
+                                    "seconds": {
+                                        "type": "integer",
+                                        "description": "Seconds part of the timestamp"
+                                    },
+                                    "nanoseconds": {
+                                        "type": "integer",
+                                        "description": "Nanoseconds part of the timestamp"
+                                    }
+                                }
                             },
                             "sequenceNumber": {
                                 "type": "integer",
@@ -302,14 +351,24 @@ constexpr const char* VIDEO_SHEMA = R"(
             ]
         },
         "timestamp": {
-            "type": "integer",
-            "description": "Timestamp of the message in nanoseconds"
+            "type": "object",
+            "description": "Timestamp of the message",
+            "properties": {
+                "seconds": {
+                    "type": "integer",
+                    "description": "Seconds part of the timestamp"
+                },
+                "nanoseconds": {
+                    "type": "integer",
+                    "description": "Nanoseconds part of the timestamp"
+                }
+            }
         },
         "sequenceNumber": {
             "type": "integer",
             "description": "Sequence number of the message"
         },
-        "instanceNum": {
+        "instanceNumber": {
             "type": "integer",
             "description": "Instance number of the source"
         },

@@ -384,6 +384,8 @@ class ImgFrame : public Buffer {
      */
     cv::Mat getCvFrame();
 
+    ImgFrame& setCvFrame(cv::Mat frame, Type type);
+
 #else
 
     template <typename... T>
@@ -401,6 +403,10 @@ class ImgFrame : public Buffer {
     }
     template <typename... T>
     void getCvFrame(T...) {
+        static_assert(dependent_false<T...>::value, "Library not configured with OpenCV support");
+    }
+    template <typename... T>
+    void setCvFrame(T...) {
         static_assert(dependent_false<T...>::value, "Library not configured with OpenCV support");
     }
 

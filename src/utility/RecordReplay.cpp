@@ -13,7 +13,7 @@ ByteRecorder::~ByteRecorder() {
     close();
 }
 
-void ByteRecorder::init(const std::string& filePath, CompressionLevel compressionLevel, RecordingType recordingType) {
+void ByteRecorder::init(const std::string& filePath, CompressionLevel compressionLevel, RecordType recordingType) {
     if(initialized) {
         throw std::runtime_error("ByteRecorder already initialized");
     }
@@ -55,15 +55,15 @@ void ByteRecorder::init(const std::string& filePath, CompressionLevel compressio
         const char* schemaText = DEFAULT_SHEMA;
         std::string channelName = "default";
         switch (recordingType) {
-            case RecordingType::VIDEO:
+            case RecordType::Video:
                 channelName = "video";
                 schemaText = VIDEO_SHEMA;
                 break;
-            case RecordingType::IMU:
+            case RecordType::Imu:
                 channelName = "imu";
                 schemaText = IMU_SHEMA;
                 break;
-            case RecordingType::OTHER:
+            case RecordType::Other:
                 channelName = "default";
                 schemaText = DEFAULT_SHEMA;
                 break;
@@ -83,6 +83,51 @@ void ByteRecorder::close() {
         throw std::runtime_error("ByteRecorder not initialized");
     }
     writer.close();
+    initialized = false;
+}
+
+BytePlayer::~BytePlayer() {
+    close();
+}
+
+void BytePlayer::init(const std::string& filePath) {
+    if(initialized) {
+        throw std::runtime_error("BytePlayer already initialized");
+    }
+    if(filePath.empty()) {
+        throw std::runtime_error("BytePlayer file path is empty");
+    }
+    {
+        const auto res = reader.open(filePath);
+        if(!res.ok()) {
+            throw std::runtime_error("Failed to open file for reading: " + res.message);
+        }
+    }
+    messageView = std::make_unique<mcap::LinearMessageView>(reader.readMessages());
+    it = std::make_unique<mcap::LinearMessageView::Iterator>(messageView->begin());
+    initialized = true;
+}
+
+std::optional<nlohmann::json> BytePlayer::next() {
+    if(!initialized) {
+        throw std::runtime_error("BytePlayer not initialized");
+    }
+    if(*it == messageView->end()) return std::nullopt;
+    if((*it)->channel->messageEncoding != "json") {
+        throw std::runtime_error("Unsupported message encoding: " + (*it)->channel->messageEncoding);
+    }
+    std::string_view asString(reinterpret_cast<const char*>((*it)->message.data), (*it)->message.dataSize);
+
+    ++(*it);
+
+    return nlohmann::json::parse(asString);
+}
+
+void BytePlayer::close() {
+    if(!initialized) {
+        throw std::runtime_error("BytePlayer not initialized");
+    }
+    reader.close();
     initialized = false;
 }
 

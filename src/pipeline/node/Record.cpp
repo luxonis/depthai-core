@@ -78,7 +78,7 @@ void Record::run() {
                 streamType = StreamType::RawVideo;
                 width = imgFrame->getWidth();
                 height = imgFrame->getHeight();
-                byteRecorder.init(recordFileBytes, compressionLevel, utility::ByteRecorder::RecordingType::VIDEO);
+                byteRecorder.init(recordFileBytes, compressionLevel, utility::RecordType::Video);
             } else if(std::dynamic_pointer_cast<EncodedFrame>(msg) != nullptr) {
                 auto encFrame = std::dynamic_pointer_cast<EncodedFrame>(msg);
                 if(encFrame->getProfile() == EncodedFrame::Profile::HEVC) {
@@ -88,13 +88,13 @@ void Record::run() {
                 width = encFrame->getWidth();
                 height = encFrame->getHeight();
                 spdlog::trace("Record node detected {}x{} resolution", width, height);
-                byteRecorder.init(recordFileBytes, compressionLevel, utility::ByteRecorder::RecordingType::VIDEO);
+                byteRecorder.init(recordFileBytes, compressionLevel, utility::RecordType::Video);
             } else if(std::dynamic_pointer_cast<IMUData>(msg) != nullptr) {
                 streamType = StreamType::Imu;
-                byteRecorder.init(recordFileBytes, compressionLevel, utility::ByteRecorder::RecordingType::IMU);
+                byteRecorder.init(recordFileBytes, compressionLevel, utility::RecordType::Imu);
             } else {
                 streamType = StreamType::Byte;
-                byteRecorder.init(recordFileBytes, compressionLevel, utility::ByteRecorder::RecordingType::OTHER);
+                byteRecorder.init(recordFileBytes, compressionLevel, utility::RecordType::Other);
                 throw std::runtime_error("Record node does not support this type of message");
             }
             spdlog::trace("Record node detected stream type {}",
@@ -128,11 +128,13 @@ void Record::run() {
                     if(isGrayscale) {
                         cv::cvtColor(frame, frame, cv::COLOR_GRAY2BGR);
                     }
+                    assert(frame.isContinuous());
                     span cvData(frame.data, frame.total() * frame.elemSize());
                     videoRecorder->write(cvData);
                     utility::VideoRecordSchema record;
-                    record.timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(imgFrame->getTimestampDevice().time_since_epoch()).count();
+                    record.timestamp.set(std::chrono::duration_cast<std::chrono::nanoseconds>(imgFrame->getTimestampDevice().time_since_epoch()));
                     record.sequenceNumber = imgFrame->getSequenceNum();
+                    record.instanceNumber = imgFrame->getInstanceNum();
                     record.width = imgFrame->getWidth();
                     record.height = imgFrame->getHeight();
                     record.cameraSettings.exposure = imgFrame->cam.exposureTimeUs;
@@ -148,8 +150,9 @@ void Record::run() {
                     videoRecorder->write(data);
                     auto encFrame = std::dynamic_pointer_cast<EncodedFrame>(msg);
                     utility::VideoRecordSchema record;
-                    record.timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(encFrame->getTimestampDevice().time_since_epoch()).count();
+                    record.timestamp.set(std::chrono::duration_cast<std::chrono::nanoseconds>(encFrame->getTimestampDevice().time_since_epoch()));
                     record.sequenceNumber = encFrame->getSequenceNum();
+                    record.instanceNumber = encFrame->getInstanceNum();
                     record.width = encFrame->getWidth();
                     record.height = encFrame->getHeight();
                     record.cameraSettings.exposure = encFrame->cam.exposureTimeUs;
@@ -167,12 +170,12 @@ void Record::run() {
             record.packets.reserve(imuData->packets.size());
             for(const auto& packet : imuData->packets) {
                 utility::ImuPacketSchema packetSchema;
-                packetSchema.acceleration.timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(packet.acceleroMeter.getTimestampDevice().time_since_epoch()).count();
+                packetSchema.acceleration.timestamp.set(std::chrono::duration_cast<std::chrono::nanoseconds>(packet.acceleroMeter.getTimestampDevice().time_since_epoch()));
                 packetSchema.acceleration.sequenceNumber = packet.acceleroMeter.sequence;
                 packetSchema.acceleration.x = packet.acceleroMeter.x;
                 packetSchema.acceleration.y = packet.acceleroMeter.y;
                 packetSchema.acceleration.z = packet.acceleroMeter.z;
-                packetSchema.orientation.timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>(packet.gyroscope.getTimestampDevice().time_since_epoch()).count();
+                packetSchema.orientation.timestamp.set(std::chrono::duration_cast<std::chrono::nanoseconds>(packet.gyroscope.getTimestampDevice().time_since_epoch()));
                 packetSchema.orientation.sequenceNumber = packet.gyroscope.sequence;
                 const auto [qw, qx, qy, qz] = eulerToQuaternion(packet.gyroscope.x, packet.gyroscope.y, packet.gyroscope.z);
                 packetSchema.orientation.x = qx;
@@ -183,7 +186,7 @@ void Record::run() {
             }
             byteRecorder.write(record);
         } else {
-            throw std::runtime_error("TODO: Implement byte writer");
+            throw std::runtime_error("You can only record IMU or Video data");
         }
     }
 

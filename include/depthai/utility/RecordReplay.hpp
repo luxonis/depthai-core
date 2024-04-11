@@ -55,10 +55,9 @@ class VideoRecorder {
 class ByteRecorder {
 public:
     enum class CompressionLevel { NONE, FASTEST, FAST, DEFAULT, SLOW, SLOWEST };
-    enum class RecordingType { VIDEO, IMU, OTHER };
 
     ~ByteRecorder();
-    void init(const std::string& filePath, CompressionLevel compressionLevel, RecordingType recordingType);
+    void init(const std::string& filePath, CompressionLevel compressionLevel, RecordType recordingType);
     template<typename T> void write(const T& data) {
         mcap::Timestamp writeTime = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
         nlohmann::json j = data;
@@ -94,13 +93,38 @@ class VideoPlayer {
    public:
     ~VideoPlayer();
     void init(const std::string& filePath);
-    std::vector<uint8_t> next();
+    std::optional<std::vector<uint8_t>> next();
+    std::tuple<uint32_t, uint32_t> size();
     void close();
     bool isInitialized() const {
         return initialized;
     }
 
    private:
+    uint32_t width = 0;
+    uint32_t height = 0;
+    bool initialized = false;
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+    std::unique_ptr<cv::VideoCapture> cvReader;
+#else
+    std::unique_ptr<int> cvReader;
+#endif
+};
+
+class BytePlayer {
+public:
+    ~BytePlayer();
+    void init(const std::string& filePath);
+    std::optional<nlohmann::json> next();
+    void close();
+    bool isInitialized() const {
+        return initialized;
+    }
+
+private:
+    mcap::McapReader reader;
+    std::unique_ptr<mcap::LinearMessageView> messageView;
+    std::unique_ptr<mcap::LinearMessageView::Iterator> it;
     bool initialized = false;
 };
 
