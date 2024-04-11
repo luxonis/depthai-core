@@ -91,7 +91,11 @@ if(DEPTHAI_OPENCV_SUPPORT)
     find_package(OpenCV 4 ${_QUIET} CONFIG REQUIRED)
 endif()
 
-find_package(jsoncpp QUIET)
+# TODO(Morato) - check if this is still needed
+# if(NOT TARGET JsonCpp::JsonCpp)
+#     find_package(jsoncpp QUIET)
+# endif()
+
 set(MODULE_TEMP ${CMAKE_MODULE_PATH})
 set(PREFIX_TEMP ${CMAKE_PREFIX_PATH})
 set(CMAKE_MODULE_PATH ${_DEPTHAI_MODULE_PATH_ORIGINAL})

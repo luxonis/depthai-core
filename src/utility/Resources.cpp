@@ -302,12 +302,11 @@ std::vector<std::uint8_t> Resources::getDeviceFwp(const std::string& fwPath, con
     // Return binary from file if any of above paths are present
     if(!finalFwpPath.empty()) {
         // Load binary file at path
-        std::ifstream stream(finalFwpPath, std::ios::binary); 
+        std::ifstream stream(finalFwpPath, std::ios::binary);
         if(!stream.is_open()) {
             // Throw an error
             // TODO(themarpe) - Unify exceptions into meaningful groups
-            throw std::runtime_error(
-                fmt::format("File at path {}{} doesn't exist.", finalFwpPath));
+            throw std::runtime_error(fmt::format("File at path {}{} doesn't exist.", finalFwpPath));
         }
         // Read the file and return its contents
         return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});

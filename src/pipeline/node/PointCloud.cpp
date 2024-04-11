@@ -1,4 +1,5 @@
 #include "depthai/pipeline/node/PointCloud.hpp"
+
 #include <mutex>
 
 #include "spdlog/fmt/fmt.h"

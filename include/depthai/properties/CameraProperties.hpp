@@ -63,7 +63,6 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
      */
     bool fp16 = false;
 
-
     static constexpr uint32_t DEFAULT_PREVIEW_HEIGHT = 300;
     static constexpr uint32_t DEFAULT_PREVIEW_WIDTH = 300;
 

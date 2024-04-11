@@ -52,9 +52,8 @@
 //     std::shared_ptr<const Node> getNode(Node::Id id) const;
 //     std::shared_ptr<Node> getNode(Node::Id id);
 
-//     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
-//     nlohmann::json serializeToJson() const;
-//     void remove(std::shared_ptr<Node> node);
+//     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type = DEFAULT_SERIALIZATION_TYPE)
+//     const; nlohmann::json serializeToJson() const; void remove(std::shared_ptr<Node> node);
 
 //     std::vector<Node::Connection> getConnections() const;
 //     void link(const Node::Output& out, const Node::Input& in);
