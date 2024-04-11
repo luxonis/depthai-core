@@ -635,6 +635,22 @@ class DeviceBase {
     std::unordered_map<CameraBoardSocket, std::string> getCameraSensorNames();
 
     /**
+     * Get stereo pairs based on the device type.
+     *
+     * @returns Vector of stereo pairs
+     */
+    std::vector<StereoPair> getStereoPairs();
+
+    /**
+     * Get stereo pairs taking into account the calibration and connected cameras.
+     *
+     * @note This method will always return a subset of `getStereoPairs`.
+     *
+     * @returns Vector of stereo pairs
+     */
+    std::vector<StereoPair> getAvailableStereoPairs();
+
+    /**
      * Get connected IMU type
      *
      * @returns IMU type

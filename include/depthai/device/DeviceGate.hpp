@@ -1,6 +1,7 @@
 #pragma once
 
 // std
+#include <XLink/XLinkPublicDefines.h>
 #include <cstdint>
 #include <string>
 #include <thread>
@@ -72,6 +73,8 @@ class DeviceGate {
     // state of the session
     std::atomic_bool sessionCreated{false};
 
+    XLinkPlatform_t platform;
+    std::string version;
     // pimpl
     class Impl;
     Pimpl<Impl> pimpl;
