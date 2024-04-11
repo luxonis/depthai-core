@@ -179,7 +179,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9, '3.10', '3.11']
+        python-version: [3.6, 3.7, 3.8, 3.9, '3.10', '3.11', '3.12']
         python-architecture: [x64, x86]
       fail-fast: false
     steps:
@@ -234,7 +234,7 @@ jobs:
     runs-on: macos-latest
     strategy:
       matrix:
-        python-version: [3.6, 3.7, 3.8, 3.9, '3.10', '3.11']
+        python-version: [3.6, 3.7, 3.8, 3.9, '3.10', '3.11', '3.12']
       fail-fast: false
     steps:
       - name: Cache .hunter folder
@@ -326,12 +326,11 @@ jobs:
       #     echo "DEPTHAI_INSTALLATION_DIR=$PWD/build_core/install/" >> $GITHUB_ENV
 
       - name: Build wheels
-        run: cd bindings/python && for PYBIN in {9..11}; do "python3.${PYBIN}" -m pip wheel . -w wheelhouse/ --verbose; done
+        run: cd bindings/python && for PYBIN in {9..12}; do "python3.${PYBIN}" -m pip wheel . -w wheelhouse/ --verbose; done
 
       - name: Auditing wheels
         run: |
           cd bindings/python
-          python -m pip install delocate
           delocate-wheel -v -w wheelhouse/audited wheelhouse/*.whl
 
       - name: Archive wheel artifacts
@@ -397,7 +396,7 @@ jobs:
           /opt/python/cp38-cp38/bin/python3.8 setup.py sdist --formats=gztar
           mv dist/* wheelhouse/audited/
       - name: Build wheels
-        run: cd bindings/python && for PYBIN in /opt/python/cp3{6..11}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
+        run: cd bindings/python && for PYBIN in /opt/python/cp3{6..12}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
       - name: Audit wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
       - name: Archive wheel artifacts
@@ -455,7 +454,7 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v') != true
         run: echo "BUILD_COMMIT_HASH=${{github.sha}}" >> $GITHUB_ENV
       - name: Building wheels
-        run: cd bindings/python && for PYBIN in /opt/python/cp3{6..11}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
+        run: cd bindings/python && for PYBIN in /opt/python/cp3{6..12}*/bin; do "${PYBIN}/pip" wheel . -w ./wheelhouse/ --verbose; done
       - name: Auditing wheels
         run: cd bindings/python && for whl in wheelhouse/*.whl; do auditwheel repair "$whl" --plat $PLAT -w wheelhouse/audited/; done
       - name: Archive wheel artifacts
