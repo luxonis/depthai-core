@@ -45,13 +45,13 @@ ArchiveUtil::ArchiveUtil(const std::vector<uint8_t>& data, NNArchiveEntry::Compr
     DAI_CHECK(res == ARCHIVE_OK, "Error when decompressing archive from memory.");
 }
 
-ArchiveUtil::ArchiveUtil(const std::string& filepath, NNArchiveEntry::Compression format) {
+ArchiveUtil::ArchiveUtil(const dai::Path& filepath, NNArchiveEntry::Compression format) {
     init(format);
-    const auto res = archive_read_open_filename(aPtr, filepath.c_str(), 10240);
+    const auto res = archive_read_open_filename(aPtr, filepath.string().c_str(), 10240);
     DAI_CHECK_V(res == ARCHIVE_OK, "Error when decompressing {}.", filepath);
 }
 
-int64_t ArchiveUtil::readCb(struct archive*, void* context, const void** buffer) {
+la_ssize_t ArchiveUtil::readCb(struct archive*, void* context, const void** buffer) {
     DAI_CHECK_IN(context);
     auto* cSelf = static_cast<ArchiveUtil*>(context);
     DAI_CHECK_IN(cSelf);
@@ -193,7 +193,7 @@ void ArchiveUtil::readEntry(struct archive_entry* entry, std::vector<uint8_t>& o
         int64_t size = archive_read_data(aPtr, &out[currentSize], readSize);
 
         // Check that no errors occurred
-        DAI_CHECK(size >= 0, "Errors occured when reading from archive using libarchive.");
+        DAI_CHECK(size >= 0, fmt::format("Errors occured when reading from archive using libarchive. Error - {}", size));
 
         // Append number of bytes actually read to finalSize
         finalSize += size;

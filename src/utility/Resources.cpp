@@ -257,14 +257,33 @@ std::vector<std::uint8_t> Resources::getBootloaderFirmware(dai::bootloader::Type
     }
 }
 
+#ifdef DEPTHAI_ENABLE_DEVICE_RVC3_FW
 constexpr static auto CMRC_DEPTHAI_DEVICE_KB_FWP_TAR_XZ = "depthai-device-kb-fwp-" DEPTHAI_DEVICE_RVC3_VERSION ".tar.xz";
-std::vector<std::uint8_t> Resources::getDeviceKbFwp() const {
+#endif
+
+#ifdef DEPTHAI_ENABLE_DEVICE_RVC4_FW
+constexpr static auto CMRC_DEPTHAI_DEVICE_RVC4_FWP_TAR_XZ = "depthai-device-rvc4-fwp-" DEPTHAI_DEVICE_RVC4_VERSION ".tar.xz";
+#endif
+
+std::vector<std::uint8_t> Resources::getDeviceRVC3Fwp() const {
 // First check if device bootloader fw is enabled
 #ifndef DEPTHAI_ENABLE_DEVICE_RVC3_FW
     throw std::invalid_argument("DepthAI compiled without support for RVC3 Device FW");
+#else
+    return getDeviceFwp(CMRC_DEPTHAI_DEVICE_KB_FWP_TAR_XZ, "DEPTHAI_DEVICE_KB_FWP");
 #endif
+}
 
-    // tmp
+std::vector<std::uint8_t> Resources::getDeviceRVC4Fwp() const {
+// First check if device bootloader fw is enabled
+#ifndef DEPTHAI_ENABLE_DEVICE_RVC4_FW
+    throw std::invalid_argument("DepthAI compiled without support for RVC3 Device FW");
+#else
+    return getDeviceFwp(CMRC_DEPTHAI_DEVICE_RVC4_FWP_TAR_XZ, "DEPTHAI_DEVICE_RVC4_FWP");
+#endif
+}
+
+std::vector<std::uint8_t> Resources::getDeviceFwp(const std::string& fwPath, const std::string& envPath) const {
     std::string pathToFwp;
 
     // Check if pathToMvcmd variable is set
@@ -274,28 +293,28 @@ std::vector<std::uint8_t> Resources::getDeviceKbFwp() const {
     }
 
     // Override if env variable DEPTHAI_DEVICE_KB_FWP is set
-    dai::Path fwpPathEnv = utility::getEnv("DEPTHAI_DEVICE_KB_FWP");
+    dai::Path fwpPathEnv = utility::getEnv(envPath);
     if(!fwpPathEnv.empty()) {
         finalFwpPath = fwpPathEnv;
-        spdlog::warn("Overriding depthai-device-kb fwp: {}", finalFwpPath);
+        spdlog::warn("Overriding device fwp: {}", finalFwpPath);
     }
 
     // Return binary from file if any of above paths are present
     if(!finalFwpPath.empty()) {
         // Load binary file at path
-        std::ifstream stream(finalFwpPath, std::ios::binary);
+        std::ifstream stream(finalFwpPath, std::ios::binary); 
         if(!stream.is_open()) {
             // Throw an error
             // TODO(themarpe) - Unify exceptions into meaningful groups
             throw std::runtime_error(
-                fmt::format("File at path {}{} doesn't exist.", finalFwpPath, !fwpPathEnv.empty() ? " pointed to by DEPTHAI_DEVICE_KB_FWP" : ""));
+                fmt::format("File at path {}{} doesn't exist.", finalFwpPath));
         }
         // Read the file and return its contents
         return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(stream), {});
     } else {
         // Load from resources
         auto fs = cmrc::depthai::get_filesystem();
-        auto tarXz = fs.open(CMRC_DEPTHAI_DEVICE_KB_FWP_TAR_XZ);
+        auto tarXz = fs.open(fwPath);
         return {tarXz.begin(), tarXz.end()};
     }
 }

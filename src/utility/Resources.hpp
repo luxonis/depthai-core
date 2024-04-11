@@ -31,6 +31,7 @@ class Resources {
     std::thread lazyThreadBootloader;
     bool readyBootloader;
     std::unordered_map<std::string, std::vector<std::uint8_t>> resourceMapBootloader;
+    std::vector<std::uint8_t> getDeviceFwp(const std::string& fwPath, const std::string& envPath) const;
 
 public:
     static Resources& getInstance();
@@ -41,7 +42,8 @@ public:
     std::vector<std::uint8_t> getDeviceFirmware(bool usb2Mode, OpenVINO::Version version = OpenVINO::VERSION_UNIVERSAL) const;
     std::vector<std::uint8_t> getDeviceFirmware(Device::Config config, dai::Path pathToMvcmd = {}) const;
     std::vector<std::uint8_t> getBootloaderFirmware(DeviceBootloader::Type type = DeviceBootloader::Type::USB) const;
-    std::vector<std::uint8_t> getDeviceKbFwp() const;
+    std::vector<std::uint8_t> getDeviceRVC3Fwp() const;
+    std::vector<std::uint8_t> getDeviceRVC4Fwp() const;
 
 };
 

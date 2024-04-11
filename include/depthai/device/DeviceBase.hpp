@@ -32,6 +32,7 @@
 #include "depthai/common/ConnectionInterface.hpp"
 #include "depthai/common/CpuUsage.hpp"
 #include "depthai/common/MemoryInfo.hpp"
+#include "depthai/common/StereoPair.hpp"
 #include "depthai/device/BoardConfig.hpp"
 #include "depthai/device/CrashDump.hpp"
 #include "depthai/log/LogLevel.hpp"
@@ -609,6 +610,22 @@ class DeviceBase {
      * @returns Vector of connected camera features
      */
     std::vector<CameraFeatures> getConnectedCameraFeatures();
+
+    /**
+     * Get stereo pairs based on the device type.
+     *
+     * @returns Vector of stereo pairs
+     */
+    std::vector<StereoPair> getStereoPairs();
+
+    /**
+     * Get stereo pairs taking into account the calibration and connected cameras.
+     *
+     * @note This method will always return a subset of `getStereoPairs`.
+     *
+     * @returns Vector of stereo pairs
+     */
+    std::vector<StereoPair> getAvailableStereoPairs();
 
     /**
      * Get sensor names for cameras that are connected to the device

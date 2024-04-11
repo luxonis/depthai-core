@@ -1,4 +1,5 @@
 #include "device/DeviceGate.hpp"
+#include <XLink/XLinkPublicDefines.h>
 
 // std
 #include <fstream>
@@ -51,7 +52,17 @@ DeviceGate::DeviceGate(const DeviceInfo& deviceInfo) : deviceInfo(deviceInfo) {
     if(deviceInfo.state != X_LINK_GATE) {
         throw std::invalid_argument("Device is not in Gate state");
     }
-
+    if(deviceInfo.platform != X_LINK_RVC3 && deviceInfo.platform != X_LINK_RVC4) {
+        throw std::invalid_argument("Gate only supports RVC3 and RVC4 platforms");
+    }
+    this->platform = deviceInfo.platform;
+    if(deviceInfo.platform == X_LINK_RVC3) {
+        version = DEPTHAI_DEVICE_RVC3_VERSION;
+    } else if(deviceInfo.platform == X_LINK_RVC4) {
+        version = DEPTHAI_DEVICE_RVC4_VERSION;
+    } else {
+        throw std::runtime_error("Unknown platform"); // Should never happen
+    }
     // Discover and connect
     pimpl->cli = std::make_unique<httplib::Client>(deviceInfo.name, DEFAULT_PORT);
     pimpl->cli->set_read_timeout(60);  // 60 seconds timeout to allow for compressing the crash dumps without async
@@ -90,7 +101,7 @@ DeviceGate::VersionInfo DeviceGate::getAllVersion() {
 bool DeviceGate::createSession(bool exclusive) {
     nlohmann::json createSessionBody = {{"name", "depthai_session"},
                                         // {"fwp_checksum", fwpChecksum},
-                                        {"fwp_version", DEPTHAI_DEVICE_RVC3_VERSION},
+                                        {"fwp_version", version},
                                         {"library_version", build::VERSION},
                                         {"protected", exclusive}};
 
@@ -117,7 +128,7 @@ bool DeviceGate::createSession(bool exclusive) {
                 if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash bootloader, binary at path: {} doesn't exist", path));
                 package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
             } else {
-                package = Resources::getInstance().getDeviceKbFwp();
+                package = platform == X_LINK_RVC3 ? Resources::getInstance().getDeviceRVC3Fwp() : Resources::getInstance().getDeviceRVC4Fwp();
             }
 
             // TODO(themarpe) - Inefficient
