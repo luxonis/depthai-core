@@ -58,7 +58,6 @@ class ToF : public DeviceNodeCRTP<DeviceNode, ToF, ToFProperties> {
     Output amplitude{true, *this, "amplitude", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
     Output intensity{true, *this, "intensity", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
     Output error{true, *this, "error", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
-    Output intensity{true, *this, "intensity", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
 };
 
 }  // namespace node
