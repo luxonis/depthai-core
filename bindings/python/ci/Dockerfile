@@ -8,11 +8,11 @@ RUN ./docker_dependencies.sh
 RUN pip install -U pip && pip install --extra-index-url https://www.piwheels.org/simple/ --prefer-binary opencv-python
 
 # Copy over the files
-COPY . /depthai-python
+COPY . /depthai-core
 
 # Install C++ library
-RUN cmake -S /depthai-python/depthai-core -B /build -D CMAKE_BUILD_TYPE=Release -D BUILD_SHARED_LIBS=ON -D CMAKE_INSTALL_PREFIX=/usr/local
+RUN cmake -S /depthai-core -B /build -D CMAKE_BUILD_TYPE=Release -D BUILD_SHARED_LIBS=ON -D CMAKE_INSTALL_PREFIX=/usr/local
 RUN cmake --build /build --parallel 4 --config Relase --target install
 
 # Install Python library
-RUN cd /depthai-python && python3 -m pip install .
+RUN cd /depthai-python/bindings/python && python3 -m pip install .
