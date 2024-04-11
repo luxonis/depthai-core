@@ -351,7 +351,7 @@ jobs:
     needs: build-docstrings
     runs-on: ubuntu-latest
     container:
-      image: quay.io/pypa/manylinux2014_x86_64:2022-10-30-402504a
+      image: quay.io/pypa/manylinux2014_x86_64:2024-01-08-eb135ed
       env:
         PLAT: manylinux2014_x86_64
     steps:
@@ -417,7 +417,7 @@ jobs:
     needs: build-docstrings
     runs-on: [self-hosted, linux, ARM64]
     container:
-      image: quay.io/pypa/manylinux2014_aarch64:2022-10-30-402504a
+      image: quay.io/pypa/manylinux2014_aarch64:2024-01-08-eb135ed
       env:
         PLAT: manylinux2014_aarch64
       # Mount local hunter cache directory, instead of transfering to Github and back
