@@ -12,7 +12,6 @@ on:
   push:
     branches:
     - v3_develop
-    - v3_develop_python_ci
     tags:
     - 'v*'
 
