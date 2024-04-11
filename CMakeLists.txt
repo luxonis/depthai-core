@@ -242,7 +242,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/host/XLinkOutHost.cpp
     src/pipeline/node/host/SyncedNode.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
-    src/pipeline/node/PointCloud.cpp
+    # src/pipeline/node/PointCloud.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/ImgTransformations.cpp

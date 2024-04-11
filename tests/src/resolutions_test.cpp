@@ -113,12 +113,10 @@ TEST_CASE("prev_broken_resolutions") {
 }
 */
 
-/*
 TEST_CASE("common_resolutions") {
     const auto resolution = GENERATE(table<uint32_t, uint32_t>({{1920, 1080}, {300, 300}, {640, 640}, {800, 600}}));
     testResolution(resolution);
 }
-*/
 
 /*
 TEST_CASE("random_resolutions") {
@@ -127,6 +125,7 @@ TEST_CASE("random_resolutions") {
 }
 */
 
+/*
 TEST_CASE("multiple_resolutions") {
     dai::Pipeline pipeline;
 
@@ -165,3 +164,4 @@ TEST_CASE("multiple_resolutions") {
         counter++;
     }
 }
+*/
