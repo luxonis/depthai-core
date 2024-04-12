@@ -32,3 +32,7 @@
 #include "node/Warp.hpp"
 #include "node/XLinkIn.hpp"
 #include "node/XLinkOut.hpp"
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+#include "node/Record.hpp"
+#include "node/Replay.hpp"
+#endif

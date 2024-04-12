@@ -10,6 +10,7 @@
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     #include <opencv2/imgproc.hpp>
+    #include <opencv2/videoio.hpp>
 #endif
 
 namespace dai {

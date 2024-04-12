@@ -99,13 +99,13 @@ void Replay::run() {
         videoPlayer.init(replayVideo);
     } catch(const std::exception& e) {
         hasVideo = false;
-        logger->warn("Video not replaying: {}", e.what());
+        if(logger) logger->warn("Video not replaying: {}", e.what());
     }
     try {
         bytePlayer.init(replayFile);
     } catch(const std::exception& e) {
         hasMetadata = false;
-        logger->warn("Metadata not replaying: {}", e.what());
+        if(logger) logger->warn("Metadata not replaying: {}", e.what());
     }
     utility::RecordType type = utility::RecordType::Other;
     if(hasVideo && !hasMetadata) {

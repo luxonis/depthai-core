@@ -330,7 +330,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
 
                 auto nodeTmp = std::make_shared<node::XLinkIn>();
                 nodeTmp->parent = parent.pimpl;
-                nodeTmp->id = xLinkBridgeId++;
+                nodeTmp->id = ++xLinkBridgeId;
                 xlinkConnection.node1Id = xLinkBridgeId;
                 xlinkConnection.node1Output = nodeTmp->out.name;
                 xlinkConnection.node1OutputGroup = nodeTmp->out.group;

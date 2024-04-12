@@ -1,7 +1,5 @@
 #include "depthai/pipeline/node/Record.hpp"
 
-#include <spdlog/spdlog.h>
-
 #include <chrono>
 #include <cstdint>
 #include <memory>
@@ -87,7 +85,7 @@ void Record::run() {
                 streamType = StreamType::EncodedVideo;
                 width = encFrame->getWidth();
                 height = encFrame->getHeight();
-                spdlog::trace("Record node detected {}x{} resolution", width, height);
+                if(logger) logger->trace("Record node detected {}x{} resolution", width, height);
                 byteRecorder.init(recordFileBytes, compressionLevel, utility::RecordType::Video);
             } else if(std::dynamic_pointer_cast<IMUData>(msg) != nullptr) {
                 streamType = StreamType::Imu;
@@ -97,7 +95,7 @@ void Record::run() {
                 byteRecorder.init(recordFileBytes, compressionLevel, utility::RecordType::Other);
                 throw std::runtime_error("Record node does not support this type of message");
             }
-            spdlog::trace("Record node detected stream type {}",
+            if(logger) logger->trace("Record node detected stream type {}",
                           streamType == StreamType::RawVideo       ? "RawVideo"
                           : streamType == StreamType::EncodedVideo ? "EncodedVideo"
                                                                    : "Byte");
@@ -108,7 +106,7 @@ void Record::run() {
             else if(i == fpsInitLength - 1) {
                 end = msg->getTimestampDevice();
                 fps = roundf((fpsInitLength * 1e6f) / (float)std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-                spdlog::trace("Record node detected {} fps", fps);
+                if(logger) logger->trace("Record node detected {} fps", fps);
                 if(streamType == StreamType::EncodedVideo) {
                     auto encFrame = std::dynamic_pointer_cast<EncodedFrame>(msg);
                     videoRecorder->init(
