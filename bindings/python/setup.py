@@ -185,10 +185,8 @@ class CMakeBuild(build_ext):
                 from distutils import util
                 if platform.machine() == 'arm64':
                     # Build ARM64 wheels explicitly instead of universal2
-                    env['MACOSX_DEPLOYMENT_TARGET'] = '11.0'
                     env['_PYTHON_HOST_PLATFORM'] = MACOS_ARM64_WHEEL_NAME_OVERRIDE
                 else:
-                    env['MACOSX_DEPLOYMENT_TARGET'] = '10.9'
                     env['_PYTHON_HOST_PLATFORM'] = re.sub(r'macosx-[0-9]+\.[0-9]+-(.+)', r'macosx-10.9-\1', util.get_platform())
 
             # Specify how many threads to use when building, depending on available memory

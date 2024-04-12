@@ -45,13 +45,13 @@ ArchiveUtil::ArchiveUtil(const std::vector<uint8_t>& data, NNArchiveEntry::Compr
     DAI_CHECK(res == ARCHIVE_OK, "Error when decompressing archive from memory.");
 }
 
-ArchiveUtil::ArchiveUtil(const std::string& filepath, NNArchiveEntry::Compression format) {
+ArchiveUtil::ArchiveUtil(const dai::Path& filepath, NNArchiveEntry::Compression format) {
     init(format);
-    const auto res = archive_read_open_filename(aPtr, filepath.c_str(), 10240);
+    const auto res = archive_read_open_filename(aPtr, filepath.string().c_str(), 10240);
     DAI_CHECK_V(res == ARCHIVE_OK, "Error when decompressing {}.", filepath);
 }
 
-int64_t ArchiveUtil::readCb(struct archive*, void* context, const void** buffer) {
+la_ssize_t ArchiveUtil::readCb(struct archive*, void* context, const void** buffer) {
     DAI_CHECK_IN(context);
     auto* cSelf = static_cast<ArchiveUtil*>(context);
     DAI_CHECK_IN(cSelf);
@@ -166,7 +166,8 @@ int64_t ArchiveUtil::archiveRead(const void** buffer) {
     userReadBuffer = (*userReadCallback)();
     DAI_CHECK(userReadBuffer, "Don't return nullptr from read callbacks.");
     *buffer = userReadBuffer->data();
-    DAI_CHECK(userReadBuffer->size() <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()), "You can return at most int64_t MAX data->size() from read callbacks.");
+    DAI_CHECK(userReadBuffer->size() <= static_cast<uint64_t>(std::numeric_limits<int64_t>::max()),
+              "You can return at most int64_t MAX data->size() from read callbacks.");
     return static_cast<int64_t>(userReadBuffer->size());
 }
 
