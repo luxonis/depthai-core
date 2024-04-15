@@ -111,12 +111,12 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
      */
     Output frameEvent{true, *this, "frameEvent", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
-    // /**
-    //  * Input for mocking 'isp' functionality.
-    //  *
-    //  * Default queue is non-blocking with size 8
-    //  */
-    // Input mockIsp{*this, "mockIsp", Input::Type::SReceiver, false, 8, {{DatatypeEnum::ImgFrame, false}}};
+    /**
+     * Input for mocking 'isp' functionality.
+     *
+     * Default queue is blocking with size 8
+     */
+    Input mockIsp{*this, "mockIsp", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Specify which board socket to use
