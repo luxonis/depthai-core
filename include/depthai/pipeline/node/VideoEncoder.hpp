@@ -18,20 +18,20 @@ class VideoEncoder : public DeviceNodeCRTP<DeviceNode, VideoEncoder, VideoEncode
 
     /**
      * Input for NV12 ImgFrame to be encoded
-     * Default queue is blocking with size set by 'setNumFramesPool' (4).
      */
-    Input input{true, *this, "in", Input::Type::SReceiver, true, 4, true, {{DatatypeEnum::ImgFrame, true}}};
+    Input input{*this, {.name = "in", .types = {{DatatypeEnum::ImgFrame, true}}}};
 
     /**
-     * Outputs ImgFrame message that carries BITSTREAM encoded (MJPEG, H264 or H265) frame data. Mutually exclusive with out.
+     * Outputs ImgFrame message that carries BITSTREAM encoded (MJPEG, H264 or H265) frame data.
+     * Mutually exclusive with out.
      */
-    Output bitstream{true, *this, "bitstream", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output bitstream{*this, {.name = "bitstream", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
-     * Outputs EncodedFrame message that carries encoded (MJPEG, H264 or H265) frame data. Mutually exclusive with bitstream.
+     * Outputs EncodedFrame message that carries encoded (MJPEG, H264 or H265) frame data.
+     * Mutually exclusive with bitstream.
      */
-    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::EncodedFrame, false}}};
-
+    Output out{*this, {.name = "out", .types = {{DatatypeEnum::EncodedFrame, false}}}};
     // Sets default options for a specified size and profile
     /**
      * Sets a default preset based on specified frame rate and profile
