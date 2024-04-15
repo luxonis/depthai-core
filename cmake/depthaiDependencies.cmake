@@ -22,7 +22,9 @@ else()
         hunter_add_package(Backward)
     endif()
     hunter_add_package(libnop)
-    hunter_add_package(jsoncpp)
+    if(DEPTHAI_PCL_SUPPORT)
+        hunter_add_package(jsoncpp)
+    endif()
 endif()
 
 # If library was build as static, find all dependencies
