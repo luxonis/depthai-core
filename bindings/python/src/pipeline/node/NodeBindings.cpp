@@ -316,6 +316,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack){
              DOC(dai, Node, Output, getParent))
         .def("isSamePipeline", &Node::Output::isSamePipeline, py::arg("input"), DOC(dai, Node, Output, isSamePipeline))
         .def("canConnect", &Node::Output::canConnect, py::arg("input"), DOC(dai, Node, Output, canConnect))
+        .def("getQueue", &Node::Output::getQueue, DOC(dai, Node, Output, getQueue))
         .def("link", static_cast<void (Node::Output::*)(Node::Input&)>(&Node::Output::link), py::arg("input"), DOC(dai, Node, Output, link))
         .def("unlink", static_cast<void (Node::Output::*)(Node::Input&)>(&Node::Output::unlink), py::arg("input"), DOC(dai, Node, Output, unlink))
         .def("send", &Node::Output::send, py::arg("msg"), DOC(dai, Node, Output, send))

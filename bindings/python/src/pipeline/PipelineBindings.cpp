@@ -86,9 +86,18 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
         ;
 
     // bind pipeline
-    pipeline
-        .def(py::init<bool>(), py::arg("createImplicitPipeline") = false, DOC(dai, Pipeline, Pipeline))
+    pipeline.def(py::init<bool>(), py::arg("createImplicitPipeline") = false, DOC(dai, Pipeline, Pipeline))
         .def(py::init<std::shared_ptr<Device>>(), py::arg("defaultDevice"), DOC(dai, Pipeline, Pipeline))
+        // Python only methods
+        .def("__enter__", [](Pipeline& d) -> Pipeline& { return d; })
+        .def("__exit__",
+             [](Pipeline& d, py::object type, py::object value, py::object traceback) {
+                 py::gil_scoped_release release;
+                 auto defaultDevice = d.getDefaultDevice();
+                 if(defaultDevice != nullptr) {
+                     defaultDevice->close();
+                 }
+             })
         //.def(py::init<const Pipeline&>())
         .def("getGlobalProperties", &Pipeline::getGlobalProperties, DOC(dai, Pipeline, getGlobalProperties))
         //.def("create", &Pipeline::create<node::XLinkIn>)
@@ -126,7 +135,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
         .def("setBoardConfig", &Pipeline::setBoardConfig, DOC(dai, Pipeline, setBoardConfig))
         .def("getBoardConfig", &Pipeline::getBoardConfig, DOC(dai, Pipeline, getBoardConfig))
         // 'Template' create function
-        .def("add", [](Pipeline& p, std::shared_ptr<Node> hostNode) { p.add(hostNode); }, py::keep_alive<1, 2>())
+        .def(
+            "add", [](Pipeline& p, std::shared_ptr<Node> hostNode) { p.add(hostNode); }, py::keep_alive<1, 2>())
         // 'Template' create function
         .def("create",
              [](dai::Pipeline& p, py::object class_, const py::args& args, const py::kwargs& kwargs) {
@@ -175,7 +185,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
                  py::gil_scoped_release release;
                  p.wait();
              })
-        .def("stop", &Pipeline::stop);
+        .def("stop", &Pipeline::stop)
+        .def("isRunning", &Pipeline::isRunning);
      ;
 
 
