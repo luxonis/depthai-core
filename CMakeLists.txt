@@ -326,7 +326,7 @@ option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be in
 option(DEPTHAI_BUILD_PYTHON "Build python bindings" OFF)
 option(DEPTHAI_BUILD_DOCS "Build documentation - requires doxygen to be installed" OFF)
 option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
-option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" ON)
+option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
 
 # Specify support for FW
 option(DEPTHAI_ENABLE_DEVICE_FW "Enable MyriadX Device FW" ON)
