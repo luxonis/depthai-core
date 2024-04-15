@@ -50,9 +50,11 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
         .def("run", &HostNode::run)
     ;
 
-    syncedNode
-        .def(py::init<>())
+    syncedNode.def(py::init<>())
         .def("runOnce", &SyncedNode::runOnce)
-        .def_property_readonly("inputs", [](SyncedNode &node){return &node.inputs;}, py::return_value_policy::reference_internal)
+        .def_property_readonly(
+            "inputs", [](SyncedNode& node) { return &node.inputs; }, py::return_value_policy::reference_internal)
+        .def("runSyncingOnHost", &SyncedNode::runSyncingOnHost, DOC(dai, node, SyncedNode, runSyncingOnHost))
+        .def("runSyncingOnDevice", &SyncedNode::runSyncingOnDevice, DOC(dai, node, SyncedNode, runSyncingOnDevice))
     ;
 }
