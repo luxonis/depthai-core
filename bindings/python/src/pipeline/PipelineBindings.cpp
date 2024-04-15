@@ -87,7 +87,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
 
     // bind pipeline
     pipeline
-        .def(py::init<>(), DOC(dai, Pipeline, Pipeline))
+        .def(py::init<bool>(), py::arg("createImplicitPipeline") = false, DOC(dai, Pipeline, Pipeline))
+        .def(py::init<std::shared_ptr<Device>>(), py::arg("defaultDevice"), DOC(dai, Pipeline, Pipeline))
         //.def(py::init<const Pipeline&>())
         .def("getGlobalProperties", &Pipeline::getGlobalProperties, DOC(dai, Pipeline, getGlobalProperties))
         //.def("create", &Pipeline::create<node::XLinkIn>)

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "depthai/pipeline/HostNode.hpp"
-#include "pipeline/Node.hpp"
+#include "depthai/pipeline/Node.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 namespace dai {
 namespace node {

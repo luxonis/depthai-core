@@ -110,6 +110,8 @@ class Node : public std::enable_shared_from_this<Node> {
     };
 
     class Output {
+        friend class PipelineImpl;
+
        public:
         struct QueueConnection {
             Output* output;
@@ -221,6 +223,7 @@ class Node : public std::enable_shared_from_this<Node> {
             return queue;
         }
 
+       private:
         void link(const std::shared_ptr<dai::MessageQueue>& queue) {
             connectedInputs.push_back(queue.get());
             queueConnections.push_back({this, queue});
@@ -231,6 +234,7 @@ class Node : public std::enable_shared_from_this<Node> {
             queueConnections.erase(std::remove(queueConnections.begin(), queueConnections.end(), QueueConnection{this, queue}), queueConnections.end());
         }
 
+       public:
         /**
          * Link current output to input.
          *
