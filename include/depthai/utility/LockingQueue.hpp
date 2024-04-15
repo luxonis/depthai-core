@@ -8,11 +8,39 @@
 
 namespace dai {
 
+// class Mutex : public std::mutex {
+//    public:
+//     using std::mutex::mutex;
+//     Mutex() = default;
+//     ~Mutex() = default;
+//     Mutex(const Mutex&) : Mutex() {}
+//     Mutex& operator=(const Mutex&) = delete;
+//     Mutex(Mutex&&) : Mutex() {}
+//     Mutex& operator=(Mutex&&) = delete;
+// };
+
 template <typename T>
 class LockingQueue {
    public:
     LockingQueue() = default;
-    explicit LockingQueue(unsigned maxSize, bool blocking = true) : maxSize(maxSize), blocking(blocking) {}
+    explicit LockingQueue(unsigned maxSize, bool blocking = true) {
+        this->maxSize = maxSize;
+        this->blocking = blocking;
+    }
+    LockingQueue(const LockingQueue& q) {
+        std::unique_lock<std::mutex> lock;
+        maxSize = q.maxSize;
+        blocking = q.blocking;
+        queue = q.queue;
+        destructed = q.destructed;
+    }
+    LockingQueue(LockingQueue&& q) {
+        std::unique_lock<std::mutex> lock;
+        maxSize = std::move(q.maxSize);
+        blocking = std::move(q.blocking);
+        queue = std::move(q.queue);
+        destructed = std::move(q.destructed);
+    }
 
     void setMaxSize(unsigned sz) {
         // Lock first
@@ -46,6 +74,11 @@ class LockingQueue {
             destructed = true;
         }
     }
+
+    bool isDestroyed() const {
+        return destructed;
+    }
+
     ~LockingQueue() = default;
 
     template <typename Rep, typename Period>
@@ -130,6 +163,33 @@ class LockingQueue {
         return true;
     }
 
+    bool push(T&& data) {
+        {
+            std::unique_lock<std::mutex> lock(guard);
+            if(maxSize == 0) {
+                // necessary if maxSize was changed
+                while(!queue.empty()) {
+                    queue.pop();
+                }
+                return true;
+            }
+            if(!blocking) {
+                // if non blocking, remove as many oldest elements as necessary, so next one will fit
+                // necessary if maxSize was changed
+                while(queue.size() >= maxSize) {
+                    queue.pop();
+                }
+            } else {
+                signalPop.wait(lock, [this]() { return queue.size() < maxSize || destructed; });
+                if(destructed) return false;
+            }
+
+            queue.push(std::move(data));
+        }
+        signalPush.notify_all();
+        return true;
+    }
+
     template <typename Rep, typename Period>
     bool tryWaitAndPush(T const& data, std::chrono::duration<Rep, Period> timeout) {
         {
@@ -155,6 +215,36 @@ class LockingQueue {
             }
 
             queue.push(data);
+        }
+        signalPush.notify_all();
+        return true;
+    }
+
+    template <typename Rep, typename Period>
+    bool tryWaitAndPush(T&& data, std::chrono::duration<Rep, Period> timeout) {
+        {
+            std::unique_lock<std::mutex> lock(guard);
+            if(maxSize == 0) {
+                // necessary if maxSize was changed
+                while(!queue.empty()) {
+                    queue.pop();
+                }
+                return true;
+            }
+            if(!blocking) {
+                // if non blocking, remove as many oldest elements as necessary, so next one will fit
+                // necessary if maxSize was changed
+                while(queue.size() >= maxSize) {
+                    queue.pop();
+                }
+            } else {
+                // First checks predicate, then waits
+                bool pred = signalPop.wait_for(lock, timeout, [this]() { return queue.size() < maxSize || destructed; });
+                if(!pred) return false;
+                if(destructed) return false;
+            }
+
+            queue.push(std::move(data));
         }
         signalPush.notify_all();
         return true;

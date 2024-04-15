@@ -1,9 +1,9 @@
 #pragma once
 
-#include <depthai/pipeline/Node.hpp>
+#include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
-#include <depthai-shared/properties/VideoEncoderProperties.hpp>
+#include <depthai/properties/VideoEncoderProperties.hpp>
 
 namespace dai {
 namespace node {
@@ -11,28 +11,26 @@ namespace node {
 /**
  * @brief VideoEncoder node. Encodes frames into MJPEG, H264 or H265.
  */
-class VideoEncoder : public NodeCRTP<Node, VideoEncoder, VideoEncoderProperties> {
+class VideoEncoder : public DeviceNodeCRTP<DeviceNode, VideoEncoder, VideoEncoderProperties> {
    public:
     constexpr static const char* NAME = "VideoEncoder";
-
-    VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    VideoEncoder(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
     /**
      * Input for NV12 ImgFrame to be encoded
      * Default queue is blocking with size set by 'setNumFramesPool' (4).
      */
-    Input input{*this, "in", Input::Type::SReceiver, true, 4, true, {{DatatypeEnum::ImgFrame, true}}};
+    Input input{true, *this, "in", Input::Type::SReceiver, true, 4, true, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
      * Outputs ImgFrame message that carries BITSTREAM encoded (MJPEG, H264 or H265) frame data. Mutually exclusive with out.
      */
-    Output bitstream{*this, "bitstream", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output bitstream{true, *this, "bitstream", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs EncodedFrame message that carries encoded (MJPEG, H264 or H265) frame data. Mutually exclusive with bitstream.
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::EncodedFrame, false}}};
+    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::EncodedFrame, false}}};
 
     // Sets default options for a specified size and profile
     /**

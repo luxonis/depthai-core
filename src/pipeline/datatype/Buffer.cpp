@@ -1,60 +1,70 @@
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
+#include "depthai/utility/VectorMemory.hpp"
+
 namespace dai {
-
-std::shared_ptr<dai::RawBuffer> Buffer::serialize() const {
-    return raw;
+Buffer::Buffer(size_t size) : Buffer() {
+    auto mem = std::make_shared<VectorMemory>();
+    mem->resize(size);
+    data = mem;
 }
 
-Buffer::Buffer() : ADatatype(std::make_shared<dai::RawBuffer>()) {}
-Buffer::Buffer(std::shared_ptr<dai::RawBuffer> ptr) : ADatatype(std::move(ptr)) {}
-
-// helpers
-std::vector<std::uint8_t>& Buffer::getData() const {
-    return raw->data;
+span<uint8_t> Buffer::getData() {
+    return data->getData();
 }
 
-void Buffer::setData(const std::vector<std::uint8_t>& data) {
-    raw->data = data;
+span<const uint8_t> Buffer::getData() const {
+    return data->getData();
 }
 
-void Buffer::setData(std::vector<std::uint8_t>&& data) {
-    raw->data = std::move(data);
+void Buffer::setData(const std::vector<std::uint8_t>& d) {
+    if(data->getMaxSize() >= d.size()) {
+        // TODO(themarpe) - has to set offset as well
+        memcpy(data->getData().data(), d.data(), d.size());
+    } else {
+        // allocate new holder
+        data = std::make_shared<VectorMemory>(std::move(d));
+    }
 }
 
-// getters
+void Buffer::setData(std::vector<std::uint8_t>&& d) {
+    // allocate new holder
+    data = std::make_shared<VectorMemory>(std::move(d));
+    // *mem = std::move(d);
+    // data = mem;
+}
+
 std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> Buffer::getTimestamp() const {
     using namespace std::chrono;
-    return time_point<steady_clock, steady_clock::duration>{seconds(raw->ts.sec) + nanoseconds(raw->ts.nsec)};
-}
-std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> Buffer::getTimestampDevice() const {
-    using namespace std::chrono;
-    return time_point<steady_clock, steady_clock::duration>{seconds(raw->tsDevice.sec) + nanoseconds(raw->tsDevice.nsec)};
-}
-int64_t Buffer::getSequenceNum() const {
-    return raw->sequenceNum;
+    return time_point<steady_clock, steady_clock::duration>{seconds(ts.sec) + nanoseconds(ts.nsec)};
 }
 
-// setters
-Buffer& Buffer::setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
+std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> Buffer::getTimestampDevice() const {
+    using namespace std::chrono;
+    return time_point<steady_clock, steady_clock::duration>{seconds(tsDevice.sec) + nanoseconds(tsDevice.nsec)};
+}
+
+void Buffer::setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
+    // Set timestamp from timepoint
+    using namespace std::chrono;
+    auto tsLocal = tp.time_since_epoch();
+    ts.sec = duration_cast<seconds>(tsLocal).count();
+    ts.nsec = duration_cast<nanoseconds>(tsLocal).count() % 1000000000;
+}
+void Buffer::setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
     // Set timestamp from timepoint
     using namespace std::chrono;
     auto ts = tp.time_since_epoch();
-    raw->ts.sec = duration_cast<seconds>(ts).count();
-    raw->ts.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
-    return *this;
+    tsDevice.sec = duration_cast<seconds>(ts).count();
+    tsDevice.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
 }
-Buffer& Buffer::setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp) {
-    // Set timestamp from timepoint
-    using namespace std::chrono;
-    auto ts = tp.time_since_epoch();
-    raw->tsDevice.sec = duration_cast<seconds>(ts).count();
-    raw->tsDevice.nsec = duration_cast<nanoseconds>(ts).count() % 1000000000;
-    return *this;
+
+int64_t Buffer::getSequenceNum() const {
+    return sequenceNum;
 }
-Buffer& Buffer::setSequenceNum(int64_t sequenceNum) {
-    raw->sequenceNum = sequenceNum;
-    return *this;
+
+void Buffer::setSequenceNum(int64_t sequenceNum) {
+    this->sequenceNum = sequenceNum;
 }
 
 }  // namespace dai

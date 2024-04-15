@@ -4,31 +4,34 @@
 #include <depthai/pipeline/datatype/Buffer.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
 #include <depthai/pipeline/datatype/MessageGroup.hpp>
-#include "depthai-shared/common/CameraBoardSocket.hpp"
+
+bool operator==(const dai::span<uint8_t>& lhs, const std::vector<unsigned char>& rhs) {
+    return std::equal(lhs.begin(), lhs.end(), rhs.begin(), rhs.end());
+}
 
 TEST_CASE("Set and get messages") {
     auto buf1Ts = std::chrono::steady_clock::now() + std::chrono::milliseconds(100);
     auto buf2Ts = std::chrono::steady_clock::now() + std::chrono::milliseconds(200);
     std::vector<unsigned char> buf1Data = {1, 2, 3};
     std::vector<unsigned char> buf2Data = {4, 5, 6};
-    dai::MessageGroup msgGrp;
-    dai::Buffer buf;
-    buf.setTimestamp(buf1Ts);
-    buf.setData(buf1Data);
-    msgGrp.add("buf1", buf);
+    auto msgGrp = std::make_shared<dai::MessageGroup>();
+    auto buf = std::make_shared<dai::Buffer>();
+    buf->setTimestamp(buf1Ts);
+    buf->setData(buf1Data);
+    msgGrp->add("buf1", buf);
 
-    dai::ImgFrame img;
-    img.setTimestamp(buf2Ts);
-    img.setData(buf2Data);
-    img.setSize({5, 6});
-    msgGrp.add("img1", img);
+    auto img = std::make_shared<dai::ImgFrame>();
+    img->setTimestamp(buf2Ts);
+    img->setData(buf2Data);
+    img->setSize({5, 6});
+    msgGrp->add("img1", img);
 
-    REQUIRE(msgGrp.get<dai::Buffer>("buf1")->getTimestamp() == buf1Ts);
-    REQUIRE(msgGrp.get<dai::ImgFrame>("img1")->getTimestamp() == buf2Ts);
-    REQUIRE(msgGrp.get<dai::Buffer>("buf1")->getData() == buf1Data);
-    REQUIRE(msgGrp.get<dai::ImgFrame>("img1")->getData() == buf2Data);
-    REQUIRE(msgGrp.get<dai::ImgFrame>("img1")->getWidth() == 5);
-    REQUIRE(msgGrp.get<dai::ImgFrame>("img1")->getHeight() == 6);
+    REQUIRE(msgGrp->get<dai::Buffer>("buf1")->getTimestamp() == buf1Ts);
+    REQUIRE(msgGrp->get<dai::ImgFrame>("img1")->getTimestamp() == buf2Ts);
+    REQUIRE((msgGrp->get<dai::Buffer>("buf1")->getData() == buf1Data));
+    REQUIRE((msgGrp->get<dai::ImgFrame>("img1")->getData() == buf2Data));
+    REQUIRE(msgGrp->get<dai::ImgFrame>("img1")->getWidth() == 5);
+    REQUIRE(msgGrp->get<dai::ImgFrame>("img1")->getHeight() == 6);
 }
 
 TEST_CASE("Send large messages") {
@@ -64,7 +67,6 @@ TEST_CASE("Send large messages") {
     bool hasTimedOut = false;
     auto msg = q->get(std::chrono::seconds(1), hasTimedOut);
     REQUIRE(!hasTimedOut);
-    
 }
 
 // TODO(asahtik): Bring back when the [issue](https://github.com/luxonis/depthai-core/issues/929) is fixed
@@ -142,18 +144,18 @@ TEST_CASE("MessageGroup ping-pong") {
     auto inQ = device.getInputQueue("in");
     auto outQ = device.getOutputQueue("out");
 
-    dai::Buffer buf1;
-    buf1.setData({1, 2, 3, 4, 5});
-    buf1.setTimestamp(buf1Ts);
+    auto buf1 = std::make_shared<dai::Buffer>();
+    buf1->setData({1, 2, 3, 4, 5});
+    buf1->setTimestamp(buf1Ts);
 
-    dai::ImgFrame img1;
-    img1.setData({6, 7, 8, 9, 10});
-    img1.setTimestamp(buf2Ts);
-    img1.setSize({5, 6});
+    auto img1 = std::make_shared<dai::ImgFrame>();
+    img1->setData({6, 7, 8, 9, 10});
+    img1->setTimestamp(buf2Ts);
+    img1->setSize({5, 6});
 
-    dai::MessageGroup msgGrp;
-    msgGrp.add("buf1", buf1);
-    msgGrp.add("img1", img1);
+    auto msgGrp = std::make_shared<dai::MessageGroup>();
+    msgGrp->add("buf1", buf1);
+    msgGrp->add("img1", img1);
 
     inQ->send(msgGrp);
 
@@ -161,8 +163,11 @@ TEST_CASE("MessageGroup ping-pong") {
 
     // REQUIRE(out->get<dai::Buffer>("buf1")->getTimestamp() == buf1Ts);
     // REQUIRE(out->get<dai::ImgFrame>("img1")->getTimestamp() == buf2Ts);
-    REQUIRE(out->get<dai::Buffer>("buf1")->getData() == std::vector<unsigned char>{1, 2, 3, 4, 5});
-    REQUIRE(out->get<dai::ImgFrame>("img1")->getData() == std::vector<unsigned char>{6, 7, 8, 9, 10});
+    REQUIRE(out != nullptr);
+    REQUIRE(out->get<dai::Buffer>("buf1") != nullptr);
+    REQUIRE(out->get<dai::ImgFrame>("img1") != nullptr);
+    REQUIRE((out->get<dai::Buffer>("buf1")->getData() == std::vector<unsigned char>{1, 2, 3, 4, 5}));
+    REQUIRE((out->get<dai::ImgFrame>("img1")->getData() == std::vector<unsigned char>{6, 7, 8, 9, 10}));
     REQUIRE(out->get<dai::ImgFrame>("img1")->getWidth() == 5);
     REQUIRE(out->get<dai::ImgFrame>("img1")->getHeight() == 6);
 }

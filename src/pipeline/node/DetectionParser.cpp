@@ -5,20 +5,31 @@
 namespace dai {
 namespace node {
 
-DetectionParser::DetectionParser(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : DetectionParser(par, nodeId, std::make_unique<DetectionParser::Properties>()) {}
-DetectionParser::DetectionParser(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, DetectionParser, DetectionParserProperties>(par, nodeId, std::move(props)), rawConfig(std::make_shared<RawEdgeDetectorConfig>()) {
-    setInputRefs({&input});
-    setOutputRefs({&out});
+void DetectionParser::setBlob(OpenVINO::Blob blob) {
+    properties.networkInputs = blob.networkInputs;
 }
 
-DetectionParser::Properties& DetectionParser::getProperties() {
-    return properties;
+void DetectionParser::setBlobPath(const dai::Path& path) {
+    setBlob(OpenVINO::Blob(path));
 }
 
-void DetectionParser::setBlob(const OpenVINO::Blob& blob) {
-    properties.networkInputs = blob.networkOutputs;
+void DetectionParser::setBlob(const dai::Path& path) {
+    setBlobPath(path);
+}
+
+void DetectionParser::setInputImageSize(std::tuple<int, int> size) {
+    setInputImageSize(std::get<0>(size), std::get<1>(size));
+}
+
+void DetectionParser::setInputImageSize(int width, int height) {
+    dai::TensorInfo tensorInfo{};
+    tensorInfo.dims = std::vector<unsigned int>{static_cast<unsigned int>(width), static_cast<unsigned int>(height)};
+    tensorInfo.numDimensions = 2;
+    if(properties.networkInputs.size() != 0) {
+        logger->error("setInputImageSize(...) can only be used if setBlob(...) is not in use. Otherwise input sizes are parsed from the blob.");
+        return;
+    }
+    properties.networkInputs.emplace("input", tensorInfo);
 }
 
 void DetectionParser::setNumFramesPool(int numFramesPool) {
@@ -59,6 +70,10 @@ void DetectionParser::setAnchors(std::vector<float> anchors) {
 
 void DetectionParser::setAnchorMasks(std::map<std::string, std::vector<int>> anchorMasks) {
     properties.parser.anchorMasks = anchorMasks;
+}
+
+void DetectionParser::setAnchors(const std::vector<std::vector<std::vector<float>>>& anchors) {
+    properties.parser.anchorsV2 = anchors;
 }
 
 void DetectionParser::setIouThreshold(float thresh) {

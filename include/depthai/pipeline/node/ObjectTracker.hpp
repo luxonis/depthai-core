@@ -1,6 +1,6 @@
 #pragma once
 
-#include <depthai/pipeline/Node.hpp>
+#include <depthai/pipeline/DeviceNode.hpp>
 
 #include "depthai/pipeline/datatype/Tracklets.hpp"
 
@@ -8,7 +8,7 @@
 #include <fstream>
 
 // shared
-#include <depthai-shared/properties/ObjectTrackerProperties.hpp>
+#include <depthai/properties/ObjectTrackerProperties.hpp>
 
 namespace dai {
 namespace node {
@@ -16,53 +16,50 @@ namespace node {
 /**
  * @brief ObjectTracker node. Performs object tracking using Kalman filter and hungarian algorithm.
  */
-class ObjectTracker : public NodeCRTP<Node, ObjectTracker, ObjectTrackerProperties> {
+class ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTrackerProperties> {
    public:
     constexpr static const char* NAME = "ObjectTracker";
-
-    ObjectTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    ObjectTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
-
+    using DeviceNodeCRTP::DeviceNodeCRTP;
     /**
      * Input ImgFrame message on which tracking will be performed. RGBp, BGRp, NV12, YUV420p types are supported.
      * Default queue is non-blocking with size 4.
      */
-    Input inputTrackerFrame{*this, "inputTrackerFrame", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputTrackerFrame{true, *this, "inputTrackerFrame", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Input ImgFrame message on which object detection was performed.
      * Default queue is non-blocking with size 4.
      */
-    Input inputDetectionFrame{*this, "inputDetectionFrame", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputDetectionFrame{true, *this, "inputDetectionFrame", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Input message with image detection from neural network.
      * Default queue is non-blocking with size 4.
      */
-    Input inputDetections{*this, "inputDetections", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgDetections, true}}};
+    Input inputDetections{true, *this, "inputDetections", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgDetections, true}}};
 
     /**
      * Outputs Tracklets message that carries object tracking results.
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Tracklets, false}}};
+    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::Tracklets, false}}};
 
     /**
      * Passthrough ImgFrame message on which tracking was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughTrackerFrame{*this, "passthroughTrackerFrame", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output passthroughTrackerFrame{true, *this, "passthroughTrackerFrame", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Passthrough ImgFrame message on which object detection was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughDetectionFrame{*this, "passthroughDetectionFrame", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output passthroughDetectionFrame{true, *this, "passthroughDetectionFrame", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Passthrough image detections message from neural network output.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughDetections{*this, "passthroughDetections", Output::Type::MSender, {{DatatypeEnum::ImgDetections, true}}};
+    Output passthroughDetections{true, *this, "passthroughDetections", Output::Type::MSender, {{DatatypeEnum::ImgDetections, true}}};
 
     /**
      * Specify tracker threshold.

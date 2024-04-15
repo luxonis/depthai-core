@@ -5,15 +5,10 @@
 namespace dai {
 namespace node {
 
-AprilTag::AprilTag(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : AprilTag(par, nodeId, std::make_unique<AprilTag::Properties>()) {}
-AprilTag::AprilTag(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, AprilTag, AprilTagProperties>(par, nodeId, std::move(props)), rawConfig(std::make_shared<RawAprilTagConfig>()), initialConfig(rawConfig) {
-    setInputRefs({&inputConfig, &inputImage});
-    setOutputRefs({&out, &passthroughInputImage});
-}
+AprilTag::AprilTag(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, AprilTag, AprilTagProperties>(std::move(props)) {}
 
 AprilTag::Properties& AprilTag::getProperties() {
-    properties.initialConfig = *rawConfig;
+    properties.initialConfig = initialConfig;
     return properties;
 }
 

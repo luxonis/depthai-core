@@ -5,18 +5,10 @@
 namespace dai {
 namespace node {
 
-EdgeDetector::EdgeDetector(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : EdgeDetector(par, nodeId, std::make_unique<EdgeDetector::Properties>()) {}
-EdgeDetector::EdgeDetector(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, EdgeDetector, EdgeDetectorProperties>(par, nodeId, std::move(props)),
-      rawConfig(std::make_shared<RawEdgeDetectorConfig>()),
-      initialConfig(rawConfig) {
-    setInputRefs({&inputConfig, &inputImage});
-    setOutputRefs({&outputImage, &passthroughInputImage});
-}
+EdgeDetector::EdgeDetector(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, EdgeDetector, EdgeDetectorProperties>(std::move(props)) {}
 
 EdgeDetector::Properties& EdgeDetector::getProperties() {
-    properties.initialConfig = *rawConfig;
+    properties.initialConfig = initialConfig;
     return properties;
 }
 

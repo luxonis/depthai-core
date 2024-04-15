@@ -2,18 +2,6 @@
 namespace dai {
 namespace node {
 
-Warp::Warp(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Warp(par, nodeId, std::make_unique<Warp::Properties>()) {}
-Warp::Warp(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, Warp, WarpProperties>(par, nodeId, std::move(props)) {
-    setInputRefs({&inputImage});
-    setOutputRefs({&out});
-}
-
-Warp::Properties& Warp::getProperties() {
-    // properties.initialConfig = *rawConfig;
-    return properties;
-}
-
 void Warp::setOutputSize(std::tuple<int, int> size) {
     properties.outputWidth = std::get<0>(size);
     properties.outputHeight = std::get<1>(size);

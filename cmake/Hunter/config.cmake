@@ -1,15 +1,19 @@
+# hunter_config(
+#     nlohmann_json
+#     VERSION "3.9.1"
+#     URL "https://github.com/nlohmann/json/archive/v3.9.1.tar.gz"
+#     SHA1 "f8a20a7e19227906d77de0ede97468fbcfea03e7"
+# )
 hunter_config(
     nlohmann_json
     VERSION "3.9.1"
-    URL "https://github.com/nlohmann/json/archive/v3.9.1.tar.gz"
-    SHA1 "f8a20a7e19227906d77de0ede97468fbcfea03e7"
 )
 
 hunter_config(
     XLink
-    VERSION "luxonis-2021.4.2-xlink-linkid-race-fix"
-    URL "https://github.com/luxonis/XLink/archive/e9eb1ef38030176ad70cddd3b545d5e6c509f1e1.tar.gz"
-    SHA1 "b1e4ded41cd7b9c37189468e2aaddbb10cbda9f6"
+    VERSION "luxonis-2021.4.3-develop"
+    URL "https://github.com/luxonis/XLink/archive/061709357b06a74510b5b9e3e2832d9d80efd3ff.tar.gz"
+    SHA1 "affa1bdd7487cf70c9caf40365844967ae761ea3"
     CMAKE_ARGS
         XLINK_ENABLE_LIBUSB=${DEPTHAI_ENABLE_LIBUSB}
 )
@@ -80,15 +84,17 @@ hunter_config(
         FP16_BUILD_TESTS=OFF
 )
 
-# Backward - Stacktrace printer
-hunter_config(
-    Backward
-    VERSION "1.6"
-    URL "https://github.com/bombela/backward-cpp/archive/refs/tags/v1.6.tar.gz"
-    SHA1 "4ecb711eabfd15bc88ff9dd9342907fc5da46b62"
-    CMAKE_ARGS
-        BACKWARD_TESTS=OFF
-)
+if(NOT EMSCRIPTEN)
+    # Backward - Stacktrace printer
+    hunter_config(
+      Backward
+      VERSION "1.6"
+      URL "https://github.com/bombela/backward-cpp/archive/refs/tags/v1.6.tar.gz"
+      SHA1 "4ecb711eabfd15bc88ff9dd9342907fc5da46b62"
+      CMAKE_ARGS
+          BACKWARD_TESTS=OFF
+    )
+endif()
 
 # libnop - Serialization
 hunter_config(
@@ -125,4 +131,23 @@ hunter_config(
         WITH_UDEV=OFF
         # Build shared libs by default to not cause licensing issues
         BUILD_SHARED_LIBS=ON
+)
+
+# cpp-httplib
+hunter_config(
+    httplib
+    VERSION "0.11.2"
+    URL "https://github.com/luxonis/cpp-httplib/archive/3ba99c06f655a52e701c9a7ae5dc48850582d95b.tar.gz"
+    SHA1 "84ddd5d58a210b6203c50760d2ebde75b0ff6376"
+    CMAKE_ARGS
+        HTTPLIB_USE_OPENSSL_IF_AVAILABLE=OFF
+        HTTPLIB_USE_BROTLI_IF_AVAILABLE=OFF
+)
+
+# Pybind11 2.9.2
+hunter_config(
+    pybind11
+    VERSION "2.9.2"
+    URL "https://github.com/pybind/pybind11/archive/refs/tags/v2.9.2.tar.gz"
+    SHA1 "5e05583a210282c3251281b6ee5677915f0cbf95"
 )

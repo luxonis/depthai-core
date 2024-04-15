@@ -3,6 +3,7 @@
 // standard
 #include <fstream>
 
+#include "pipeline/datatype/StereoDepthConfig.hpp"
 #include "spdlog/spdlog.h"
 #include "utility/Logging.hpp"
 #include "utility/spdlog-fmt.hpp"
@@ -10,32 +11,14 @@
 namespace dai {
 namespace node {
 
-StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : StereoDepth(par, nodeId, std::make_unique<StereoDepth::Properties>()) {}
-StereoDepth::StereoDepth(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, StereoDepth, StereoDepthProperties>(par, nodeId, std::move(props)),
-      rawConfig(std::make_shared<RawStereoDepthConfig>()),
-      initialConfig(rawConfig) {
-    // 'properties' defaults already set
-    setInputRefs({&inputConfig, &left, &right});
-    setOutputRefs({&depth,
-                   &disparity,
-                   &syncedLeft,
-                   &syncedRight,
-                   &rectifiedLeft,
-                   &rectifiedRight,
-                   &outConfig,
-                   &debugDispLrCheckIt1,
-                   &debugDispLrCheckIt2,
-                   &debugExtDispLrCheckIt1,
-                   &debugExtDispLrCheckIt2,
-                   &debugDispCostDump,
-                   &confidenceMap});
-
+void StereoDepth::build() {
     setDefaultProfilePreset(presetMode);
 }
 
+StereoDepth::StereoDepth(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties>(std::move(props)) {}
+
 StereoDepth::Properties& StereoDepth::getProperties() {
-    properties.initialConfig = *rawConfig;
+    properties.initialConfig = initialConfig;
     return properties;
 }
 
@@ -99,9 +82,9 @@ void StereoDepth::setOutputSize(int width, int height) {
 void StereoDepth::setOutputKeepAspectRatio(bool keep) {
     properties.outKeepAspectRatio = keep;
 }
-void StereoDepth::setMedianFilter(dai::MedianFilter median) {
+void StereoDepth::setMedianFilter(dai::StereoDepthConfig::MedianFilter median) {
     initialConfig.setMedianFilter(median);
-    properties.initialConfig = *rawConfig;
+    properties.initialConfig = initialConfig;
 }
 void StereoDepth::setDepthAlign(Properties::DepthAlign align) {
     initialConfig.setDepthAlign(align);
@@ -113,26 +96,26 @@ void StereoDepth::setDepthAlign(CameraBoardSocket camera) {
 }
 void StereoDepth::setConfidenceThreshold(int confThr) {
     initialConfig.setConfidenceThreshold(confThr);
-    properties.initialConfig = *rawConfig;
+    properties.initialConfig = initialConfig;
 }
 void StereoDepth::setRectification(bool enable) {
     properties.enableRectification = enable;
 }
 void StereoDepth::setLeftRightCheck(bool enable) {
     initialConfig.setLeftRightCheck(enable);
-    properties.initialConfig = *rawConfig;
+    properties.initialConfig = initialConfig;
 }
 void StereoDepth::setSubpixel(bool enable) {
     initialConfig.setSubpixel(enable);
-    properties.initialConfig = *rawConfig;
+    properties.initialConfig = initialConfig;
 }
 void StereoDepth::setSubpixelFractionalBits(int subpixelFractionalBits) {
     initialConfig.setSubpixelFractionalBits(subpixelFractionalBits);
-    properties.initialConfig = *rawConfig;
+    properties.initialConfig = initialConfig;
 }
 void StereoDepth::setExtendedDisparity(bool enable) {
     initialConfig.setExtendedDisparity(enable);
-    properties.initialConfig = *rawConfig;
+    properties.initialConfig = initialConfig;
 }
 void StereoDepth::setRectifyEdgeFillColor(int color) {
     properties.rectifyEdgeFillColor = color;
@@ -179,6 +162,14 @@ void StereoDepth::enableDistortionCorrection(bool enableDistortionCorrection) {
     useHomographyRectification(!enableDistortionCorrection);
 }
 
+void StereoDepth::setVerticalStereo(bool verticalStereo) {
+    properties.verticalStereo = verticalStereo;
+}
+
+void StereoDepth::setCustomPixelDescriptors(bool customPixelDescriptors) {
+    properties.customPixelDescriptors = customPixelDescriptors;
+}
+
 void StereoDepth::setBaseline(float baseline) {
     properties.baseline = baseline;
 }
@@ -217,6 +208,10 @@ void StereoDepth::setDefaultProfilePreset(PresetMode mode) {
             initialConfig.setLeftRightCheckThreshold(10);
         } break;
     }
+}
+
+void StereoDepth::setFrameSync(bool enableFrameSync) {
+    properties.enableFrameSync = enableFrameSync;
 }
 
 }  // namespace node

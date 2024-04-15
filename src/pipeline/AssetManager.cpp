@@ -12,6 +12,38 @@ std::string Asset::getRelativeUri() {
     return fmt::format("{}:{}", "asset", key);
 }
 
+AssetManager::AssetManager() {}
+AssetManager::AssetManager(std::string rootPath) : rootPath{rootPath} {}
+
+std::string AssetManager::getRootPath() {
+    return rootPath;
+}
+
+void AssetManager::setRootPath(const std::string& rootPath) {
+    this->rootPath = rootPath;
+}
+
+std::string AssetManager::getRelativeKey(std::string key) const {
+    // Check if asset key is absolute or relative
+    std::string relativeKey = "";
+    if(key.size() == 0) {
+        return relativeKey;
+    }
+
+    if(key[0] == '/') {                // Absolute path
+        if(key.find(rootPath) == 0) {  // Root path of the node is contained in the key
+            int rootPathLen = rootPath.size();
+            relativeKey = key.substr(rootPathLen);
+        } else {
+            return "";
+        }
+    } else {  // Relative path
+        relativeKey = key;
+    }
+
+    return relativeKey;
+}
+
 std::shared_ptr<dai::Asset> AssetManager::set(Asset asset) {
     std::string key = asset.key;
     assetMap[key] = std::make_shared<Asset>(std::move(asset));
@@ -62,17 +94,19 @@ std::shared_ptr<dai::Asset> AssetManager::set(const std::string& key, std::vecto
 }
 
 std::shared_ptr<const Asset> AssetManager::get(const std::string& key) const {
-    if(assetMap.count(key) == 0) {
+    std::string relativeKey = getRelativeKey(key);
+    if(assetMap.count(relativeKey) == 0) {
         return nullptr;
     }
-    return assetMap.at(key);
+    return assetMap.at(relativeKey);
 }
 
 std::shared_ptr<Asset> AssetManager::get(const std::string& key) {
-    if(assetMap.count(key) == 0) {
+    std::string relativeKey = getRelativeKey(key);
+    if(assetMap.count(relativeKey) == 0) {
         return nullptr;
     }
-    return assetMap.at(key);
+    return assetMap.at(relativeKey);
 }
 
 void AssetManager::addExisting(std::vector<std::shared_ptr<Asset>> assets) {
@@ -110,6 +144,10 @@ void AssetManager::remove(const std::string& key) {
 
 void AssetManager::serialize(AssetsMutable& mutableAssets, std::vector<std::uint8_t>& storage, std::string prefix) const {
     using namespace std;
+
+    if(prefix.empty()) {
+        prefix = rootPath;
+    }
 
     for(auto& kv : assetMap) {
         auto& a = *kv.second;

@@ -1,13 +1,14 @@
 #pragma once
 
+#include <depthai/pipeline/DeviceNode.hpp>
+
 #include "depthai/openvino/OpenVINO.hpp"
-#include "depthai/pipeline/Node.hpp"
 
 // standard
 #include <fstream>
 
 // shared
-#include <depthai-shared/properties/NeuralNetworkProperties.hpp>
+#include <depthai/properties/NeuralNetworkProperties.hpp>
 
 namespace dai {
 namespace node {
@@ -15,46 +16,44 @@ namespace node {
 /**
  * @brief NeuralNetwork node. Runs a neural inference on input data.
  */
-class NeuralNetwork : public NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperties> {
+class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNetworkProperties> {
    public:
     constexpr static const char* NAME = "NeuralNetwork";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
    protected:
-    tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion() override;
-    tl::optional<OpenVINO::Version> networkOpenvinoVersion;
+    std::optional<OpenVINO::Version> getRequiredOpenVINOVersion() override;
+    std::optional<OpenVINO::Version> networkOpenvinoVersion;
 
    public:
-    NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    NeuralNetwork(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
-
     /**
      * Input message with data to be inferred upon
      * Default queue is blocking with size 5
      */
-    Input input{*this, "in", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::Buffer, true}}};
+    Input input{true, *this, "in", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::Buffer, true}}};
 
     /**
      * Outputs NNData message that carries inference results
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::NNData, false}}};
+    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::NNData, false}}};
 
     /**
      * Passthrough message on which the inference was performed.
      *
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthrough{*this, "passthrough", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
+    Output passthrough{true, *this, "passthrough", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
 
     /**
      * Inputs mapped to network inputs. Useful for inferring from separate data sources
      * Default input is non-blocking with queue size 1 and waits for messages
      */
-    InputMap inputs;
+    InputMap inputs{true, *this, "inputs", Input(*this, "", Input::Type::SReceiver, false, 1, true, {{DatatypeEnum::Buffer, true}})};
 
     /**
      * Passthroughs which correspond to specified input
      */
-    OutputMap passthroughs;
+    OutputMap passthroughs{true, *this, "passthroughs", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}})};
 
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**
@@ -81,6 +80,15 @@ class NeuralNetwork : public NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperti
     void setBlob(const dai::Path& path);
 
     /**
+     * Load network xml and bin files into assets.
+     * @param xmlModelPath Path to the .xml model file.
+     * @param binModelPath Path to the .bin file of the model. If left empty, it is assumed that the
+     *                     name is the same as the xml model with a .bin extension.
+     * @note If this function is called, the device automatically loads the model from the XML and not the blob
+     */
+    void setXmlModelPath(const dai::Path& xmlModelPath, const dai::Path& binModelPath = "");
+
+    /**
      * Specifies how many frames will be available in the pool
      * @param numFrames How many frames will pool have
      */
@@ -97,6 +105,24 @@ class NeuralNetwork : public NodeCRTP<Node, NeuralNetwork, NeuralNetworkProperti
      * @param numNCEPerThread Number of NCE per thread
      */
     void setNumNCEPerInferenceThread(int numNCEPerThread);
+
+    /**
+     * How many Shaves should a single thread use for inference
+     * @param numShavesPerThread Number of shaves per thread
+     */
+    void setNumShavesPerInferenceThread(int numShavesPerThread);
+
+    /**
+     * Specifies backend to use
+     * @param backend String specifying backend to use
+     */
+    void setBackend(std::string backend);
+
+    /**
+     * Set backend properties
+     * @param backendProperties backend properties map
+     */
+    void setBackendProperties(std::map<std::string, std::string> properties);
 
     /**
      * How many inference threads will be used to run the network

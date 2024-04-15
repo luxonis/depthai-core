@@ -27,7 +27,7 @@ int main() {
 
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
-    stereo->initialConfig.setMedianFilter(dai::MedianFilter::KERNEL_7x7);
+    stereo->initialConfig.setMedianFilter(dai::StereoDepthConfig::MedianFilter::KERNEL_7x7);
     stereo->setLeftRightCheck(false);
     stereo->setExtendedDisparity(false);
     // Subpixel disparity is of UINT16 format, which is unsupported by VideoEncoder

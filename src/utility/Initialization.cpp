@@ -4,8 +4,8 @@
 #include <memory>
 
 // project
-#include "build/config.hpp"
 #include "build/version.hpp"
+#include "depthai/config/config.hpp"
 #include "utility/Environment.hpp"
 #include "utility/Logging.hpp"
 #include "utility/Resources.hpp"

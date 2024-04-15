@@ -2,10 +2,10 @@
 #include <string>
 #include <tuple>
 
-#include "depthai-shared/common/CameraBoardSocket.hpp"
-#include "depthai-shared/common/EepromData.hpp"
-#include "depthai-shared/common/Point2f.hpp"
-#include "depthai-shared/common/Size2f.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/EepromData.hpp"
+#include "depthai/common/Point2f.hpp"
+#include "depthai/common/Size2f.hpp"
 #include "depthai/utility/Path.hpp"
 
 namespace dai {
@@ -229,8 +229,23 @@ class CalibrationHandler {
     std::vector<float> getCameraTranslationVector(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera, bool useSpecTranslation = true) const;
 
     /**
-     * Get the baseline distance between two specified cameras. By default it will get the baseline between CameraBoardSocket.CAM_C
-     * and CameraBoardSocket.CAM_B.
+     * Get the Camera rotation matrix between two cameras from the calibration data.
+     *
+     * @param srcCamera Camera Id of the camera which will be considered as origin.
+     * @param dstCamera  Camera Id of the destination camera to which we are fetching the rotation vector from the SrcCamera
+     * @return a 3x3 rotation matrix
+     * Matrix representation of rotation matrix
+     * \f[ \text{Rotation Matrix} = \left [ \begin{matrix}
+     *                                             r_{00} & r_{01} & r_{02}\\
+     *                                             r_{10} & r_{11} & r_{12}\\
+     *                                             r_{20} & r_{21} & r_{22}\\
+     *                                            \end{matrix} \right ] \f]
+     */
+    std::vector<std::vector<float>> getCameraRotationMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera) const;
+
+    /**
+     * Get the baseline distance between two specified cameras. By default it will get the baseline between CameraBoardSocket.RIGHT
+     * and CameraBoardSocket.LEFT.
      *
      * @param cam1 First camera
      * @param cam2 Second camera

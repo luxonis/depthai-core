@@ -1,18 +1,19 @@
+#include <cassert>
 #include "depthai/device/CallbackHandler.hpp"
 
 // project
 #include "depthai/xlink/XLinkStream.hpp"
 #include "pipeline/datatype/StreamMessageParser.hpp"
-
+#include "depthai/xlink/XLinkConstants.hpp"
 namespace dai {
 
-void CallbackHandler::setCallback(std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb) {
+void CallbackHandler::setCallback(std::function<std::shared_ptr<ADatatype>(std::shared_ptr<ADatatype>)> cb) {
     callback = std::move(cb);
 }
 
 CallbackHandler::CallbackHandler(std::shared_ptr<XLinkConnection> conn,
                                  const std::string& streamName,
-                                 std::function<std::shared_ptr<RawBuffer>(std::shared_ptr<RawBuffer>)> cb)
+                                 std::function<std::shared_ptr<ADatatype>(std::shared_ptr<ADatatype>)> cb)
     : connection(std::move(conn)), callback(std::move(cb)) {
     // creates a thread which reads from queue and writes to xlink
     t = std::thread([this, streamName]() {

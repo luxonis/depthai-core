@@ -1,3 +1,4 @@
+#include <cstdint>
 #include <iostream>
 
 // Includes common necessary includes for development using depthai library
@@ -31,7 +32,8 @@ int main() {
     // Connect to device with pipeline
     dai::Device device(pipeline);
     auto msg = device.getOutputQueue("info")->get<dai::Buffer>();
-    auto data = nlohmann::json::parse(msg->getData());
+    std::vector<uint8_t> vecData(msg->getData().begin(), msg->getData().end());
+    auto data = nlohmann::json::parse(vecData);
     std::cout << data.dump(4) << std::endl;
 
     return 0;

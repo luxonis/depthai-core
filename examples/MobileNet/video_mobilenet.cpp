@@ -98,7 +98,9 @@ int main(int argc, char** argv) {
 
         auto img = std::make_shared<dai::ImgFrame>();
         frame = resizeKeepAspectRatio(frame, cv::Size(300, 300), cv::Scalar(0));
-        toPlanar(frame, img->getData());
+        std::vector<uint8_t> frameData;
+        toPlanar(frame, frameData);
+        img->setData(frameData);
         img->setTimestamp(steady_clock::now());
         img->setWidth(300);
         img->setHeight(300);

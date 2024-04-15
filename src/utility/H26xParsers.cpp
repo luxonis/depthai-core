@@ -3,6 +3,8 @@
 #include <cmath>
 #include <tuple>
 
+#include "depthai/utility/Memory.hpp"
+
 namespace dai {
 namespace utility {
 

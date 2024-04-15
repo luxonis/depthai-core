@@ -1,19 +1,22 @@
 #include "depthai/device/DeviceBase.hpp"
 
 // std
+#include <spdlog/fmt/ostr.h>
+
 #include <iostream>
+#include <optional>
 
 // shared
 #include "depthai-bootloader-shared/Bootloader.hpp"
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
-#include "depthai-shared/datatype/RawImgFrame.hpp"
-#include "depthai-shared/device/CrashDump.hpp"
-#include "depthai-shared/log/LogConstants.hpp"
-#include "depthai-shared/log/LogLevel.hpp"
-#include "depthai-shared/log/LogMessage.hpp"
-#include "depthai-shared/pipeline/Assets.hpp"
-#include "depthai-shared/utility/Serialization.hpp"
-#include "depthai-shared/xlink/XLinkConstants.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/device/CrashDump.hpp"
+#include "depthai/log/LogConstants.hpp"
+#include "depthai/log/LogLevel.hpp"
+#include "depthai/log/LogMessage.hpp"
+#include "depthai/pipeline/Assets.hpp"
+#include "depthai/utility/Serialization.hpp"
+#include "depthai/xlink/XLinkConstants.hpp"
 
 // project
 #include "DeviceLogger.hpp"
@@ -150,7 +153,7 @@ std::tuple<bool, DeviceInfo> DeviceBase::getAnyAvailableDevice(std::chrono::mill
     std::unordered_map<std::string, DeviceInfo> invalidDevices;
     do {
         auto devices = XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, false);
-        for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED}) {
+        for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED, X_LINK_GATE}) {
             for(const auto& device : devices) {
                 if(device.state == searchState) {
                     if(device.status == X_LINK_SUCCESS) {
@@ -212,7 +215,7 @@ std::tuple<bool, DeviceInfo> DeviceBase::getFirstAvailableDevice(bool skipInvali
     // Get all connected devices
     auto devices = XLinkConnection::getAllConnectedDevices(X_LINK_ANY_STATE, skipInvalidDevice);
     // Search order - first unbooted, then bootloader and last flash booted
-    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED}) {
+    for(auto searchState : {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_FLASH_BOOTED, X_LINK_GATE}) {
         for(const auto& device : devices) {
             if(device.state == searchState) {
                 return {true, device};
@@ -240,7 +243,7 @@ std::vector<DeviceInfo> DeviceBase::getAllConnectedDevices() {
 // First tries to find UNBOOTED device with mxId, then BOOTLOADER device with mxId
 std::tuple<bool, DeviceInfo> DeviceBase::getDeviceByMxId(std::string mxId) {
     std::vector<DeviceInfo> availableDevices;
-    auto states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER};
+    auto states = {X_LINK_UNBOOTED, X_LINK_BOOTLOADER, X_LINK_GATE};
     bool found;
     DeviceInfo dev;
     for(const auto& state : states) {
@@ -341,7 +344,7 @@ DeviceBase::DeviceBase(OpenVINO::Version version, const DeviceInfo& devInfo, con
     Config cfg;
     cfg.version = version;
 
-    init2(cfg, pathToCmd, {});
+    init2(cfg, pathToCmd, false);
 }
 
 DeviceBase::DeviceBase() : DeviceBase(OpenVINO::VERSION_UNIVERSAL) {}
@@ -402,7 +405,7 @@ DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsb
 }
 
 DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd, bool dumpOnly) : deviceInfo(devInfo), dumpOnly(dumpOnly) {
-    init2(config, pathToCmd, {});
+    init2(config, pathToCmd, false);
 }
 
 DeviceBase::DeviceBase(Config config, const dai::Path& pathToCmd) {
@@ -419,7 +422,7 @@ void DeviceBase::init(OpenVINO::Version version) {
     Config cfg;
     cfg.version = version;
 
-    init2(cfg, "", {});
+    init2(cfg, "", false);
 }
 
 void DeviceBase::init(OpenVINO::Version version, const dai::Path& pathToCmd) {
@@ -428,7 +431,7 @@ void DeviceBase::init(OpenVINO::Version version, const dai::Path& pathToCmd) {
     Config cfg;
     cfg.version = version;
 
-    init2(cfg, pathToCmd, {});
+    init2(cfg, pathToCmd, false);
 }
 
 void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed) {
@@ -441,7 +444,7 @@ void DeviceBase::init(const Pipeline& pipeline) {
 
     Config cfg = pipeline.getDeviceConfig();
 
-    init2(cfg, "", pipeline);
+    init2(cfg, "", true);
 }
 
 void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed) {
@@ -454,7 +457,7 @@ void DeviceBase::init(const Pipeline& pipeline, const dai::Path& pathToCmd) {
 
     Config cfg = pipeline.getDeviceConfig();
 
-    init2(cfg, pathToCmd, pipeline);
+    init2(cfg, pathToCmd, true);
 }
 
 void DeviceBase::init(const Pipeline& pipeline, const DeviceInfo& devInfo) {
@@ -462,7 +465,7 @@ void DeviceBase::init(const Pipeline& pipeline, const DeviceInfo& devInfo) {
 
     Config cfg = pipeline.getDeviceConfig();
 
-    init2(cfg, "", pipeline);
+    init2(cfg, "", true);
 }
 
 void DeviceBase::init(const Pipeline& pipeline, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) {
@@ -475,7 +478,7 @@ void DeviceBase::init(const Pipeline& pipeline, const DeviceInfo& devInfo, const
 
     Config cfg = pipeline.getDeviceConfig();
 
-    init2(cfg, pathToCmd, pipeline);
+    init2(cfg, pathToCmd, true);
 }
 
 void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed) {
@@ -485,7 +488,7 @@ void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed) {
 
 void DeviceBase::init(Config config, const dai::Path& pathToCmd) {
     tryGetDevice();
-    init2(config, pathToCmd, {});
+    init2(config, pathToCmd, false);
 }
 
 void DeviceBase::init(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbSpeed) {
@@ -495,16 +498,16 @@ void DeviceBase::init(Config config, const DeviceInfo& devInfo, UsbSpeed maxUsbS
 
 void DeviceBase::init(Config config, const DeviceInfo& devInfo, const dai::Path& pathToCmd) {
     deviceInfo = devInfo;
-    init2(config, pathToCmd, {});
+    init2(config, pathToCmd, false);
 }
 
 DeviceBase::DeviceBase(Config config) {
     tryGetDevice();
-    init2(config, {}, {});
+    init2(config, {}, false);
 }
 
 DeviceBase::DeviceBase(Config config, const DeviceInfo& devInfo) : deviceInfo(devInfo) {
-    init2(config, {}, {});
+    init2(config, {}, false);
 }
 
 void DeviceBase::close() {
@@ -527,7 +530,7 @@ unsigned int getCrashdumpTimeout(XLinkProtocol_t protocol) {
     return DEFAULT_CRASHDUMP_TIMEOUT + (protocol == X_LINK_TCP_IP ? device::XLINK_TCP_WATCHDOG_TIMEOUT.count() : device::XLINK_USB_WATCHDOG_TIMEOUT.count());
 }
 
-tl::optional<std::string> saveCrashDump(dai::CrashDump& dump, std::string mxId) {
+std::optional<std::string> saveCrashDump(dai::CrashDump& dump, std::string mxId) {
     std::vector<uint8_t> data;
     utility::serialize<SerializationType::JSON>(dump, data);
     auto crashDumpPathStr = utility::getEnv("DEPTHAI_CRASHDUMP");
@@ -538,7 +541,9 @@ void DeviceBase::closeImpl() {
     using namespace std::chrono;
     auto t1 = steady_clock::now();
     bool shouldGetCrashDump = false;
-    if(!dumpOnly) {
+    // Check if the device is RVC3 - in case it is, crash dump retrieval is done differently
+    bool isRvc2 = deviceInfo.platform == X_LINK_MYRIAD_X;
+    if(!dumpOnly && isRvc2) {
         pimpl->logger.debug("Device about to be closed...");
         try {
             if(hasCrashDump()) {
@@ -573,25 +578,28 @@ void DeviceBase::closeImpl() {
     // Stop watchdog first (this resets and waits for link to fall down)
     if(watchdogThread.joinable()) watchdogThread.join();
 
-    if(!dumpOnly) {
-        // Stop various threads
-        timesyncRunning = false;
-        loggingRunning = false;
-        profilingRunning = false;
+    // Stop various threads
+    timesyncRunning = false;
+    loggingRunning = false;
+    profilingRunning = false;
 
-        // Then stop timesync
-        if(timesyncThread.joinable()) timesyncThread.join();
-        // And at the end stop logging thread
-        if(loggingThread.joinable()) loggingThread.join();
-        // And at the end stop profiling thread
-        if(profilingThread.joinable()) profilingThread.join();
-        // At the end stop the monitor thread
-        if(monitorThread.joinable()) monitorThread.join();
-    }
+    // Then stop timesync
+    if(timesyncThread.joinable()) timesyncThread.join();
+    // And at the end stop logging thread
+    if(loggingThread.joinable()) loggingThread.join();
+    // And at the end stop profiling thread
+    if(profilingThread.joinable()) profilingThread.join();
+    // At the end stop the monitor thread
+    if(monitorThread.joinable()) monitorThread.join();
 
     // Close rpcStream
     pimpl->rpcStream = nullptr;
     pimpl->rpcClient = nullptr;
+
+    // If the device was operated throgh gate, wait for the session to end
+    if(gate) {
+        gate->waitForSessionEnd();
+    }
 
     if(!dumpOnly) {
         auto timeout = getCrashdumpTimeout(deviceInfo.protocol);
@@ -664,13 +672,13 @@ void DeviceBase::init(OpenVINO::Version version, UsbSpeed maxUsbSpeed, const dai
     cfg.board.usb.maxSpeed = maxUsbSpeed;
     // Specify the OpenVINO version
     cfg.version = version;
-    init2(cfg, pathToMvcmd, {});
+    init2(cfg, pathToMvcmd, false);
 }
 void DeviceBase::init(const Pipeline& pipeline, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd) {
     Config cfg = pipeline.getDeviceConfig();
     // Modify usb speed
     cfg.board.usb.maxSpeed = maxUsbSpeed;
-    init2(cfg, pathToMvcmd, pipeline);
+    init2(cfg, pathToMvcmd, true);
 }
 void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed, const dai::Path& pathToMvcmd) {
     Config cfg = config;
@@ -679,7 +687,7 @@ void DeviceBase::init(Config config, UsbSpeed maxUsbSpeed, const dai::Path& path
     init2(cfg, pathToMvcmd, {});
 }
 
-void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<const Pipeline&> pipeline) {
+void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipeline) {
     // Initalize depthai library if not already
     if(!dumpOnly) initialize();
 
@@ -715,7 +723,7 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         }
     }
 
-    if(pipeline) {
+    if(hasPipeline) {
         pimpl->logger.debug("Device - pipeline serialized, OpenVINO version: {}", OpenVINO::getVersionName(config.version));
     } else {
         pimpl->logger.debug("Device - OpenVINO version: {}", OpenVINO::getVersionName(config.version));
@@ -774,13 +782,14 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
         nlohmann::json jBoardConfig = config.board;
         pimpl->logger.debug("Device - BoardConfig: {} \nlibnop:{}", jBoardConfig.dump(), spdlog::to_hex(utility::serialize(config.board)));
     }
-    std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, pathToMvcmd);
 
     // Init device (if bootloader, handle correctly - issue USB boot command)
     if(deviceInfo.state == X_LINK_UNBOOTED) {
         // Unbooted device found, boot and connect with XLinkConnection constructor
+        std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, pathToMvcmd);
         connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
     } else if(deviceInfo.state == X_LINK_BOOTLOADER || deviceInfo.state == X_LINK_FLASH_BOOTED) {
+        std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, pathToMvcmd);
         // Scope so DeviceBootloader is disconnected
         {
             DeviceBootloader bl(deviceInfo);
@@ -815,7 +824,30 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
 
     } else if(deviceInfo.state == X_LINK_BOOTED) {
         // Connect without booting
-        connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig, expectedBootState);
+        std::vector<std::uint8_t> fwWithConfig = Resources::getInstance().getDeviceFirmware(config, pathToMvcmd);
+        connection = std::make_shared<XLinkConnection>(deviceInfo, fwWithConfig);
+    } else if(deviceInfo.state == X_LINK_GATE || deviceInfo.state == X_LINK_GATE_BOOTED) {
+        // Boot FW using DeviceGate then connect directly
+        gate = std::make_unique<DeviceGate>(deviceInfo);
+
+        // Get version for debug
+        if(spdlog::get_level() <= spdlog::level::debug) {
+            auto info = gate->getAllVersion();
+            spdlog::debug("OS version: {}, Gate version: {}", info.os, info.gate);
+        }
+
+        // Create and start session
+        // TODO Tie create and start session together. Split for now, since in some cases starting the session works, even if creating failed.
+        if(!gate->createSession()) {
+            spdlog::error("Could not create the session on gate!");
+        }
+
+        if(!gate->startSession()) {
+            spdlog::error("Could not start the session on gate!");
+        }
+
+        // Connect with XLinkConnection (skip checking if booted)
+        connection = std::make_shared<XLinkConnection>(deviceInfo, X_LINK_ANY_STATE);
     } else {
         throw std::runtime_error("Cannot find any device with given deviceInfo");
     }
@@ -871,8 +903,14 @@ void DeviceBase::init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<co
                         std::unique_lock<std::mutex> lock(lastWatchdogPingTimeMtx);
                         lastWatchdogPingTime = std::chrono::steady_clock::now();
                     }
-                    // Ping with a period half of that of the watchdog timeout
-                    std::this_thread::sleep_for(watchdogTimeout / 2);
+
+                    if(deviceInfo.protocol == X_LINK_TCP_IP) {
+                        // Ping with a quarter period the watchdog timeout
+                        std::this_thread::sleep_for(watchdogTimeout / 4);
+                    } else {
+                        // Ping with a period half of that of the watchdog timeout
+                        std::this_thread::sleep_for(watchdogTimeout / 2);
+                    }
                 }
             } catch(const std::exception& ex) {
                 // ignore
@@ -1049,6 +1087,71 @@ std::vector<CameraBoardSocket> DeviceBase::getConnectedCameras() {
     return pimpl->rpcClient->call("getConnectedCameras").as<std::vector<CameraBoardSocket>>();
 }
 
+std::vector<StereoPair> DeviceBase::getAvailableStereoPairs() {
+    std::vector<dai::StereoPair> stereoPairs;
+    dai::CalibrationHandler calibHandler;
+    try {
+        calibHandler = readCalibration2();
+        if(calibHandler.getEepromData().cameraData.empty()) {
+            throw std::runtime_error("No camera data found.");
+        }
+    } catch(const std::exception&) {
+        try {
+            calibHandler = readFactoryCalibration();
+        } catch(const std::exception&) {
+            pimpl->logger.info("No calibration found.");
+            return stereoPairs;
+        }
+    }
+    // Find links between cameras.
+    for(auto const& camIdAndInfo1 : calibHandler.getEepromData().cameraData) {
+        auto camId1 = camIdAndInfo1.first;
+        for(auto const& camIdAndInfo2 : calibHandler.getEepromData().cameraData) {
+            auto camId2 = camIdAndInfo2.first;
+            try {
+                auto translationVector = calibHandler.getCameraTranslationVector(camId1, camId2, false);
+                auto baseline = std::abs(translationVector[0]) > std::abs(translationVector[1]) ? translationVector[0] : translationVector[1];  // X or Y
+                auto leftSocket = baseline < 0 ? camId1 : camId2;
+                auto rightSocket = leftSocket == camId1 ? camId2 : camId1;
+                int baselineDiff = std::abs(static_cast<int>(translationVector[0]) - static_cast<int>(translationVector[1]));
+                if(baselineDiff == static_cast<int>(std::abs(baseline))) {
+                    if(std::find_if(stereoPairs.begin(),
+                                    stereoPairs.end(),
+                                    [&leftSocket, &rightSocket](const dai::StereoPair& pair) { return pair.left == leftSocket && pair.right == rightSocket; })
+                       == stereoPairs.end()) {
+                        stereoPairs.push_back(dai::StereoPair{leftSocket, rightSocket, std::abs(baseline), static_cast<int>(translationVector[0]) == 0});
+                    }
+                } else {
+                    pimpl->logger.debug("Skipping diagonal pair, left: {}, right: {}.", leftSocket, rightSocket);
+                }
+            } catch(const std::exception&) {
+                continue;
+            }
+        }
+    }
+    // Filter out undetected cameras and socket pairs which are not present in getStereoPairs
+    auto deviceStereoPairs = getStereoPairs();
+    auto connectedCameras = getConnectedCameras();
+    std::vector<dai::StereoPair> filteredStereoPairs;
+    std::copy_if(
+        stereoPairs.begin(), stereoPairs.end(), std::back_inserter(filteredStereoPairs), [this, connectedCameras, deviceStereoPairs](dai::StereoPair pair) {
+            if(std::find(connectedCameras.begin(), connectedCameras.end(), pair.left) == connectedCameras.end()) {
+                pimpl->logger.debug("Skipping calibrated stereo pair because, camera {} was not detected.", pair.left);
+                return false;
+            } else if(std::find(connectedCameras.begin(), connectedCameras.end(), pair.right) == connectedCameras.end()) {
+                pimpl->logger.debug("Skipping calibrated stereo pair because, camera {} was not detected.", pair.right);
+                return false;
+            }
+            return std::find_if(deviceStereoPairs.begin(),
+                                deviceStereoPairs.end(),
+                                [pair](dai::StereoPair devicePair) { return devicePair.left == pair.left && devicePair.right == pair.right; })
+                   != deviceStereoPairs.end();
+        });
+
+    std::sort(filteredStereoPairs.begin(), filteredStereoPairs.end(), [](dai::StereoPair a, dai::StereoPair b) { return a.baseline < b.baseline; });
+    return filteredStereoPairs;
+}
+
 std::vector<ConnectionInterface> DeviceBase::getConnectionInterfaces() {
     return pimpl->rpcClient->call("getConnectionInterfaces").as<std::vector<ConnectionInterface>>();
 }
@@ -1057,41 +1160,50 @@ std::vector<CameraFeatures> DeviceBase::getConnectedCameraFeatures() {
     return pimpl->rpcClient->call("getConnectedCameraFeatures").as<std::vector<CameraFeatures>>();
 }
 
+std::vector<StereoPair> DeviceBase::getStereoPairs() {
+    return pimpl->rpcClient->call("getStereoPairs").as<std::vector<StereoPair>>();
+}
+
 std::unordered_map<CameraBoardSocket, std::string> DeviceBase::getCameraSensorNames() {
     return pimpl->rpcClient->call("getCameraSensorNames").as<std::unordered_map<CameraBoardSocket, std::string>>();
 }
 
 std::string DeviceBase::getConnectedIMU() {
+    isClosed();
     return pimpl->rpcClient->call("getConnectedIMU").as<std::string>();
 }
 
 dai::Version DeviceBase::getIMUFirmwareVersion() {
+    isClosed();
     std::string versionStr = pimpl->rpcClient->call("getIMUFirmwareVersion").as<std::string>();
     try {
         dai::Version version = dai::Version(versionStr);
         return version;
-    } catch(const std::exception&) {
+    } catch(const std::exception& ex) {
         dai::Version version = dai::Version(0, 0, 0);
         return version;
     }
 }
 
 dai::Version DeviceBase::getEmbeddedIMUFirmwareVersion() {
+    isClosed();
     std::string versionStr = pimpl->rpcClient->call("getEmbeddedIMUFirmwareVersion").as<std::string>();
     try {
         dai::Version version = dai::Version(versionStr);
         return version;
-    } catch(const std::exception&) {
+    } catch(const std::exception& ex) {
         dai::Version version = dai::Version(0, 0, 0);
         return version;
     }
 }
 
 bool DeviceBase::startIMUFirmwareUpdate(bool forceUpdate) {
+    isClosed();
     return pimpl->rpcClient->call("startIMUFirmwareUpdate", forceUpdate).as<bool>();
 }
 
 std::tuple<bool, float> DeviceBase::getIMUFirmwareUpdateStatus() {
+    isClosed();
     return pimpl->rpcClient->call("getIMUFirmwareUpdateStatus").as<std::tuple<bool, float>>();
 }
 
@@ -1128,7 +1240,7 @@ UsbSpeed DeviceBase::getUsbSpeed() {
     return pimpl->rpcClient->call("getUsbSpeed").as<UsbSpeed>();
 }
 
-tl::optional<Version> DeviceBase::getBootloaderVersion() {
+std::optional<Version> DeviceBase::getBootloaderVersion() {
     return bootloaderVersion;
 }
 
@@ -1256,7 +1368,7 @@ void DeviceBase::setSystemInformationLoggingRate(float rateHz) {
 }
 
 float DeviceBase::getSystemInformationLoggingRate() {
-    return pimpl->rpcClient->call("getSystemInformationLoggingrate").as<float>();
+    return pimpl->rpcClient->call("getSystemInformationLoggingRate").as<float>();
 }
 
 bool DeviceBase::isEepromAvailable() {
@@ -1484,8 +1596,8 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
         t1.join();
     }
 
-    // print assets on device side for test
-    pimpl->rpcClient->call("printAssets");
+    // // print assets on device side for test
+    // pimpl->rpcClient->call("printAssets");
 
     // Build and start the pipeline
     bool success = false;

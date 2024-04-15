@@ -46,14 +46,15 @@ int main() {
     // edited a bit and sent back to the host
     nlohmann::json dict{{"one", 1}, {"foo", "bar"}};
     cout << "dict: " << dict << "\n";
-    auto buffer = dai::Buffer();
+    auto buffer = std::make_shared<dai::Buffer>();
     auto data = dict.dump();
-    buffer.setData({data.begin(), data.end()});
+    buffer->setData({data.begin(), data.end()});
     device.getInputQueue("in")->send(buffer);
 
     // Wait for the script to send the changed dictionary back
     auto jsonData = device.getOutputQueue("out")->get<dai::Buffer>();
-    auto changedDict = nlohmann::json::parse(jsonData->getData());
+    std::vector<uint8_t> vecData(jsonData->getData().begin(), jsonData->getData().end());
+    auto changedDict = nlohmann::json::parse(vecData);
     cout << "changedDict: " << changedDict << "\n";
     const nlohmann::json expectedDict{{"one", 2}, {"foo", "baz"}};
     if(expectedDict != changedDict) return 1;

@@ -11,7 +11,7 @@
 #include <utility>
 
 #include "BlobFormat.hpp"
-#include "depthai-shared/common/TensorInfo.hpp"
+#include "depthai/common/TensorInfo.hpp"
 
 namespace dai {
 

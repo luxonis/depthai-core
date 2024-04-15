@@ -94,10 +94,10 @@ int main() {
                 std::cout << "Enabling\n";
             }
             runNn = !runNn;
-            auto buf = dai::Buffer();
+            auto buf = std::make_shared<dai::Buffer>();
             std::vector<uint8_t> messageData;
             messageData.push_back(runNn);
-            buf.setData(messageData);
+            buf->setData(messageData);
             inQ->send(buf);
         }
     }

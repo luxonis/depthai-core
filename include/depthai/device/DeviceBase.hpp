@@ -19,6 +19,7 @@
 #include "depthai/common/CameraFeatures.hpp"
 #include "depthai/common/UsbSpeed.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
+#include "depthai/device/DeviceGate.hpp"
 #include "depthai/device/Version.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/utility/Pimpl.hpp"
@@ -27,15 +28,15 @@
 #include "depthai/xlink/XLinkStream.hpp"
 
 // shared
-#include "depthai-shared/common/ChipTemperature.hpp"
-#include "depthai-shared/common/ConnectionInterface.hpp"
-#include "depthai-shared/common/CpuUsage.hpp"
-#include "depthai-shared/common/MemoryInfo.hpp"
-#include "depthai-shared/datatype/RawIMUData.hpp"
-#include "depthai-shared/device/BoardConfig.hpp"
-#include "depthai-shared/device/CrashDump.hpp"
-#include "depthai-shared/log/LogLevel.hpp"
-#include "depthai-shared/log/LogMessage.hpp"
+#include "depthai/common/ChipTemperature.hpp"
+#include "depthai/common/ConnectionInterface.hpp"
+#include "depthai/common/CpuUsage.hpp"
+#include "depthai/common/MemoryInfo.hpp"
+#include "depthai/common/StereoPair.hpp"
+#include "depthai/device/BoardConfig.hpp"
+#include "depthai/device/CrashDump.hpp"
+#include "depthai/log/LogLevel.hpp"
+#include "depthai/log/LogMessage.hpp"
 
 namespace dai {
 
@@ -71,8 +72,8 @@ class DeviceBase {
         OpenVINO::Version version = OpenVINO::VERSION_UNIVERSAL;
         BoardConfig board;
         bool nonExclusiveMode = false;
-        tl::optional<LogLevel> outputLogLevel;
-        tl::optional<LogLevel> logLevel;
+        std::optional<LogLevel> outputLogLevel;
+        std::optional<LogLevel> logLevel;
     };
 
     // static API
@@ -391,7 +392,7 @@ class DeviceBase {
      *
      * @returns DeviceBootloader::Version if booted through Bootloader or none otherwise
      */
-    tl::optional<Version> getBootloaderVersion();
+    std::optional<Version> getBootloaderVersion();
 
     /**
      * Checks if devices pipeline is already running
@@ -609,6 +610,22 @@ class DeviceBase {
      * @returns Vector of connected camera features
      */
     std::vector<CameraFeatures> getConnectedCameraFeatures();
+
+    /**
+     * Get stereo pairs based on the device type.
+     *
+     * @returns Vector of stereo pairs
+     */
+    std::vector<StereoPair> getStereoPairs();
+
+    /**
+     * Get stereo pairs taking into account the calibration and connected cameras.
+     *
+     * @note This method will always return a subset of `getStereoPairs`.
+     *
+     * @returns Vector of stereo pairs
+     */
+    std::vector<StereoPair> getAvailableStereoPairs();
 
     /**
      * Get sensor names for cameras that are connected to the device
@@ -923,11 +940,11 @@ class DeviceBase {
 
    private:
     // private functions
-    void init2(Config cfg, const dai::Path& pathToMvcmd, tl::optional<const Pipeline&> pipeline);
+    void init2(Config cfg, const dai::Path& pathToMvcmd, bool hasPipeline);
     void tryGetDevice();
 
     DeviceInfo deviceInfo = {};
-    tl::optional<Version> bootloaderVersion;
+    std::optional<Version> bootloaderVersion;
 
     // Log callback
     int uniqueCallbackId = 0;
@@ -954,6 +971,12 @@ class DeviceBase {
     std::thread monitorThread;
     std::mutex lastWatchdogPingTimeMtx;
     std::chrono::steady_clock::time_point lastWatchdogPingTime;
+
+    // RPC stream
+    std::unique_ptr<XLinkStream> rpcStream;
+
+    // DeviceGate connection
+    std::unique_ptr<DeviceGate> gate;
 
     // closed
     mutable std::mutex closedMtx;

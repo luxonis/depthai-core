@@ -3,8 +3,8 @@
 #include <string>
 
 // Includes common necessary includes for development using depthai library
-#include "depthai-shared/common/CameraBoardSocket.hpp"
-#include "depthai-shared/common/EepromData.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/common/EepromData.hpp"
 #include "depthai/depthai.hpp"
 
 int main(int argc, char** argv) {

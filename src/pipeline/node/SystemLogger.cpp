@@ -3,13 +3,12 @@
 namespace dai {
 namespace node {
 
-SystemLogger::SystemLogger(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId)
-    : SystemLogger(par, nodeId, std::make_unique<SystemLogger::Properties>()) {}
-SystemLogger::SystemLogger(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, SystemLogger, SystemLoggerProperties>(par, nodeId, std::move(props)) {
+void SystemLogger::build() {
+    // Set some default properties
     properties.rateHz = 1.0f;
-
-    setOutputRefs(&out);
+    // Link pool to inputPool
+    // TODO(before mainline) - Add pools if ready
+    // pool->out.link(inputPool);
 }
 
 void SystemLogger::setRate(float hz) {

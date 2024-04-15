@@ -114,14 +114,15 @@ int main() {
         auto videoFrames = videoQueue->tryGetAll<dai::ImgFrame>();
         for(const auto& videoFrame : videoFrames) {
             // Decode JPEG
-            auto frame = cv::imdecode(videoFrame->getData(), cv::IMREAD_UNCHANGED);
+            std::vector<uint8_t> vecData(videoFrame->getData().begin(), videoFrame->getData().end());
+            auto frame = cv::imdecode(vecData, cv::IMREAD_UNCHANGED);
             // Display
             cv::imshow("video", frame);
 
             // Send new cfg to camera
             if(sendCamConfig) {
-                dai::ImageManipConfig cfg;
-                cfg.setCropRect(cropX, cropY, 0, 0);
+                auto cfg = std::make_shared<dai::ImageManipConfig>();
+                cfg->setCropRect(cropX, cropY, 0, 0);
                 configQueue->send(cfg);
                 printf("Sending new crop - x: %f, y: %f\n", cropX, cropY);
                 sendCamConfig = false;
@@ -131,7 +132,8 @@ int main() {
         auto stillFrames = stillQueue->tryGetAll<dai::ImgFrame>();
         for(const auto& stillFrame : stillFrames) {
             // Decode JPEG
-            auto frame = cv::imdecode(stillFrame->getData(), cv::IMREAD_UNCHANGED);
+            std::vector<uint8_t> vecData(stillFrame->getData().begin(), stillFrame->getData().end());
+            auto frame = cv::imdecode(vecData, cv::IMREAD_UNCHANGED);
             // Display
             cv::imshow("still", frame);
         }
@@ -141,37 +143,37 @@ int main() {
         if(key == 'q') {
             break;
         } else if(key == 'c') {
-            dai::CameraControl ctrl;
-            ctrl.setCaptureStill(true);
+            auto ctrl = std::make_shared<dai::CameraControl>();
+            ctrl->setCaptureStill(true);
             controlQueue->send(ctrl);
         } else if(key == 't') {
             printf("Autofocus trigger (and disable continuous)\n");
-            dai::CameraControl ctrl;
-            ctrl.setAutoFocusMode(dai::CameraControl::AutoFocusMode::AUTO);
-            ctrl.setAutoFocusTrigger();
+            auto ctrl = std::make_shared<dai::CameraControl>();
+            ctrl->setAutoFocusMode(dai::CameraControl::AutoFocusMode::AUTO);
+            ctrl->setAutoFocusTrigger();
             controlQueue->send(ctrl);
         } else if(key == 'f') {
             printf("Autofocus enable, continuous\n");
-            dai::CameraControl ctrl;
-            ctrl.setAutoFocusMode(dai::CameraControl::AutoFocusMode::CONTINUOUS_VIDEO);
+            auto ctrl = std::make_shared<dai::CameraControl>();
+            ctrl->setAutoFocusMode(dai::CameraControl::AutoFocusMode::CONTINUOUS_VIDEO);
             controlQueue->send(ctrl);
         } else if(key == 'e') {
             printf("Autoexposure enable\n");
-            dai::CameraControl ctrl;
-            ctrl.setAutoExposureEnable();
+            auto ctrl = std::make_shared<dai::CameraControl>();
+            ctrl->setAutoExposureEnable();
             controlQueue->send(ctrl);
         } else if(key == 'b') {
             printf("Auto white-balance enable\n");
-            dai::CameraControl ctrl;
-            ctrl.setAutoWhiteBalanceMode(dai::CameraControl::AutoWhiteBalanceMode::AUTO);
+            auto ctrl = std::make_shared<dai::CameraControl>();
+            ctrl->setAutoWhiteBalanceMode(dai::CameraControl::AutoWhiteBalanceMode::AUTO);
             controlQueue->send(ctrl);
         } else if(key == ',' || key == '.') {
             if(key == ',') lensPos -= LENS_STEP;
             if(key == '.') lensPos += LENS_STEP;
             lensPos = clamp(lensPos, lensMin, lensMax);
             printf("Setting manual focus, lens position: %d\n", lensPos);
-            dai::CameraControl ctrl;
-            ctrl.setManualFocus(lensPos);
+            auto ctrl = std::make_shared<dai::CameraControl>();
+            ctrl->setManualFocus(lensPos);
             controlQueue->send(ctrl);
         } else if(key == 'i' || key == 'o' || key == 'k' || key == 'l') {
             if(key == 'i') expTime -= EXP_STEP;
@@ -181,16 +183,16 @@ int main() {
             expTime = clamp(expTime, expMin, expMax);
             sensIso = clamp(sensIso, sensMin, sensMax);
             printf("Setting manual exposure, time: %d, iso: %d\n", expTime, sensIso);
-            dai::CameraControl ctrl;
-            ctrl.setManualExposure(expTime, sensIso);
+            auto ctrl = std::make_shared<dai::CameraControl>();
+            ctrl->setManualExposure(expTime, sensIso);
             controlQueue->send(ctrl);
         } else if(key == '[' || key == ']') {
             if(key == '[') wbManual -= WB_STEP;
             if(key == ']') wbManual += WB_STEP;
             wbManual = clamp(wbManual, wbMin, wbMax);
             printf("Setting manual white balance, temperature: %d K\n", wbManual);
-            dai::CameraControl ctrl;
-            ctrl.setManualWhiteBalance(wbManual);
+            auto ctrl = std::make_shared<dai::CameraControl>();
+            ctrl->setManualWhiteBalance(wbManual);
             controlQueue->send(ctrl);
         } else if(key == 'w' || key == 'a' || key == 's' || key == 'd') {
             if(key == 'a') {

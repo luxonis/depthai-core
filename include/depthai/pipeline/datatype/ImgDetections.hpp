@@ -1,43 +1,41 @@
 #pragma once
 
-#include <chrono>
-#include <unordered_map>
 #include <vector>
 
-#include "depthai-shared/datatype/RawImgDetections.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 namespace dai {
+
+struct ImgDetection {
+    uint32_t label = 0;
+    float confidence = 0.f;
+    float xmin = 0.f;
+    float ymin = 0.f;
+    float xmax = 0.f;
+    float ymax = 0.f;
+};
+
+DEPTHAI_SERIALIZE_EXT(ImgDetection, label, confidence, xmin, ymin, xmax, ymax);
 
 /**
  * ImgDetections message. Carries normalized detection results
  */
 class ImgDetections : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
-    RawImgDetections& dets;
-
    public:
-    /// Construct ImgDetections message
-    ImgDetections();
-    explicit ImgDetections(std::shared_ptr<RawImgDetections> ptr);
+    /**
+     * Construct ImgDetections message.
+     */
+    ImgDetections() = default;
     virtual ~ImgDetections() = default;
 
     /// Detections
-    std::vector<ImgDetection>& detections;
+    std::vector<ImgDetection> detections;
 
-    /**
-     * Sets image timestamp related to dai::Clock::now()
-     */
-    ImgDetections& setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
+        metadata = utility::serialize(*this);
+        datatype = DatatypeEnum::ImgDetections;
+    };
 
-    /**
-     * Sets image timestamp related to dai::Clock::now()
-     */
-    ImgDetections& setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
-
-    /**
-     * Retrieves image sequence number
-     */
-    ImgDetections& setSequenceNum(int64_t sequenceNum);
+    DEPTHAI_SERIALIZE(ImgDetections, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, detections);
 };
 
 }  // namespace dai

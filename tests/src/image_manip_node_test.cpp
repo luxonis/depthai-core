@@ -40,11 +40,11 @@ int main() {
     // Send 10 messages
     for(int i = 0; i < 10; i++) {
         // Create 'rgb interleaved' frame
-        dai::ImgFrame inFrame;
-        inFrame.getData().resize(originalWidth * originalHeight * 3);
-        inFrame.setWidth(originalWidth);
-        inFrame.setHeight(originalHeight);
-        inFrame.setType(dai::ImgFrame::Type::RGB888p);
+        auto inFrame = std::make_shared<dai::ImgFrame>();
+        inFrame->setData(std::vector<uint8_t>(originalWidth * originalHeight * 3));
+        inFrame->setWidth(originalWidth);
+        inFrame->setHeight(originalHeight);
+        inFrame->setType(dai::ImgFrame::Type::RGB888p);
 
         // Send the frame
         in->send(inFrame);

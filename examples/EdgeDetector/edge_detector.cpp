@@ -90,19 +90,19 @@ int main() {
 
             case '1': {
                 std::cout << "Switching sobel filter kernel." << std::endl;
-                dai::EdgeDetectorConfig cfg;
+                auto cfg = std::make_shared<dai::EdgeDetectorConfig>();
                 std::vector<std::vector<int>> sobelHorizontalKernel = {{1, 0, -1}, {2, 0, -2}, {1, 0, -1}};
                 std::vector<std::vector<int>> sobelVerticalKernel = {{1, 2, 1}, {0, 0, 0}, {-1, -2, -1}};
-                cfg.setSobelFilterKernels(sobelHorizontalKernel, sobelVerticalKernel);
+                cfg->setSobelFilterKernels(sobelHorizontalKernel, sobelVerticalKernel);
                 edgeCfgQueue->send(cfg);
             } break;
 
             case '2': {
                 std::cout << "Switching sobel filter kernel." << std::endl;
-                dai::EdgeDetectorConfig cfg;
+                auto cfg = std::make_shared<dai::EdgeDetectorConfig>();
                 std::vector<std::vector<int>> sobelHorizontalKernel = {{3, 0, -3}, {10, 0, -10}, {3, 0, -3}};
                 std::vector<std::vector<int>> sobelVerticalKernel = {{3, 10, 3}, {0, 0, 0}, {-3, -10, -3}};
-                cfg.setSobelFilterKernels(sobelHorizontalKernel, sobelVerticalKernel);
+                cfg->setSobelFilterKernels(sobelHorizontalKernel, sobelVerticalKernel);
                 edgeCfgQueue->send(cfg);
             } break;
 

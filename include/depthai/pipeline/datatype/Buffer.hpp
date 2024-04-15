@@ -4,27 +4,32 @@
 #include <unordered_map>
 #include <vector>
 
-#include "depthai-shared/datatype/RawBuffer.hpp"
+#include "depthai/common/Timestamp.hpp"
 #include "depthai/pipeline/datatype/ADatatype.hpp"
+#include "depthai/pipeline/datatype/DatatypeEnum.hpp"
+#include "depthai/utility/Serialization.hpp"
+#include "depthai/utility/span.hpp"
 
 namespace dai {
 
 /// Base message - buffer of binary data
 class Buffer : public ADatatype {
-    std::shared_ptr<dai::RawBuffer> serialize() const override;
-
    public:
-    /// Creates Buffer message
-    Buffer();
-    explicit Buffer(std::shared_ptr<dai::RawBuffer> ptr);
+    Buffer() = default;
+    Buffer(size_t size);
     virtual ~Buffer() = default;
 
-    // helpers
+    virtual void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const {
+        metadata = utility::serialize(*this);
+        datatype = DatatypeEnum::Buffer;
+    };
+
     /**
      * @brief Get non-owning reference to internal buffer
      * @returns Reference to internal buffer
      */
-    std::vector<std::uint8_t>& getData() const;
+    span<uint8_t> getData();
+    span<const uint8_t> getData() const;
 
     /**
      * @param data Copies data to internal buffer
@@ -48,24 +53,30 @@ class Buffer : public ADatatype {
     std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> getTimestampDevice() const;
 
     /**
-     * Retrieves sequence number
+     * Sets image timestamp related to dai::Clock::now()
+     */
+    void setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+
+    /**
+     * Sets image timestamp related to dai::Clock::now()
+     */
+    void setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+
+    /**
+     * Retrieves image sequence number
      */
     int64_t getSequenceNum() const;
 
     /**
-     * Sets timestamp related to dai::Clock::now()
+     * Sets image sequence number
      */
-    Buffer& setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
+    void setSequenceNum(int64_t sequenceNum);
 
-    /**
-     * Sets timestamp related to dai::Clock::now()
-     */
-    Buffer& setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
-
-    /**
-     * Retrieves sequence number
-     */
-    Buffer& setSequenceNum(int64_t sequenceNum);
+    // TODO(Morato) // Make this private
+    int64_t sequenceNum = 0;  // increments for each message
+    Timestamp ts = {};        // generation timestamp, synced to host time
+    Timestamp tsDevice = {};  // generation timestamp, direct device monotonic clock
+    DEPTHAI_SERIALIZE(Buffer, sequenceNum, ts, tsDevice);
 };
 
 }  // namespace dai

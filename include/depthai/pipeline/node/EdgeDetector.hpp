@@ -1,12 +1,12 @@
 #pragma once
 
-#include <depthai/pipeline/Node.hpp>
+#include <depthai/pipeline/DeviceNode.hpp>
 
 // standard
 #include <fstream>
 
 // shared
-#include <depthai-shared/properties/EdgeDetectorProperties.hpp>
+#include <depthai/properties/EdgeDetectorProperties.hpp>
 
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
 
@@ -16,19 +16,17 @@ namespace node {
 /**
  * @brief EdgeDetector node. Performs edge detection using 3x3 Sobel filter
  */
-class EdgeDetector : public NodeCRTP<Node, EdgeDetector, EdgeDetectorProperties> {
+class EdgeDetector : public DeviceNodeCRTP<DeviceNode, EdgeDetector, EdgeDetectorProperties> {
    public:
     constexpr static const char* NAME = "EdgeDetector";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
    protected:
     Properties& getProperties();
 
-   private:
-    std::shared_ptr<RawEdgeDetectorConfig> rawConfig;
-
    public:
-    EdgeDetector(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    EdgeDetector(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    EdgeDetector() = default;
+    EdgeDetector(std::unique_ptr<Properties> props);
 
     /**
      * Initial config to use for edge detection.
@@ -39,22 +37,22 @@ class EdgeDetector : public NodeCRTP<Node, EdgeDetector, EdgeDetectorProperties>
      * Input EdgeDetectorConfig message with ability to modify parameters in runtime.
      * Default queue is non-blocking with size 4.
      */
-    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::EdgeDetectorConfig, false}}};
+    Input inputConfig{true, *this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::EdgeDetectorConfig, false}}};
     /**
      * Input image on which edge detection is performed.
      * Default queue is non-blocking with size 4.
      */
-    Input inputImage{*this, "inputImage", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputImage{true, *this, "inputImage", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs image frame with detected edges
      */
-    Output outputImage{*this, "outputImage", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output outputImage{true, *this, "outputImage", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Passthrough message on which the calculation was performed.
      */
-    Output passthroughInputImage{*this, "passthroughInputImage", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output passthroughInputImage{true, *this, "passthroughInputImage", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     // Functions to set properties
     /**

@@ -5,12 +5,6 @@
 namespace dai {
 namespace node {
 
-IMU::IMU(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : IMU(par, nodeId, std::make_unique<IMU::Properties>()) {}
-IMU::IMU(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, IMU, IMUProperties>(par, nodeId, std::move(props)) {
-    setOutputRefs({&out});
-}
-
 void IMU::enableIMUSensor(IMUSensorConfig sensorConfig) {
     properties.imuSensors.push_back(sensorConfig);
 }

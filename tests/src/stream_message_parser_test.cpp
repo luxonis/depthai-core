@@ -8,21 +8,21 @@
 
 TEST_CASE("Correct message") {
     dai::ImgFrame frm;
-    auto ser = dai::StreamMessageParser::serializeMessage(frm);
+    auto ser = dai::StreamMessageParser::serializeMetadata(frm);
 
     streamPacketDesc_t packet;
     packet.data = ser.data();
     packet.length = ser.size();
 
-    auto des = dai::StreamMessageParser::parseMessageToADatatype(&packet);
-    auto ser2 = dai::StreamMessageParser::serializeMessage(des);
+    auto des = dai::StreamMessageParser::parseMessage(&packet);
+    auto ser2 = dai::StreamMessageParser::serializeMetadata(des);
 
     REQUIRE(ser == ser2);
 }
 
 TEST_CASE("Incorrect message bad size") {
     dai::ImgFrame frm;
-    auto ser = dai::StreamMessageParser::serializeMessage(frm);
+    auto ser = dai::StreamMessageParser::serializeMetadata(frm);
 
     // wreak havoc on serialized data
     ser[ser.size() - 1] = 100;
@@ -31,12 +31,12 @@ TEST_CASE("Incorrect message bad size") {
     packet.data = ser.data();
     packet.length = ser.size();
 
-    REQUIRE_THROWS(dai::StreamMessageParser::parseMessageToADatatype(&packet));
+    REQUIRE_THROWS(dai::StreamMessageParser::parseMessage(&packet));
 }
 
 TEST_CASE("Incorrect message negative size") {
     dai::ImgFrame frm;
-    auto ser = dai::StreamMessageParser::serializeMessage(frm);
+    auto ser = dai::StreamMessageParser::serializeMetadata(frm);
 
     // wreak havoc on serialized data
     ser[ser.size() - 1] = 200;
@@ -45,7 +45,7 @@ TEST_CASE("Incorrect message negative size") {
     packet.data = ser.data();
     packet.length = ser.size();
 
-    REQUIRE_THROWS(dai::StreamMessageParser::parseMessageToADatatype(&packet));
+    REQUIRE_THROWS(dai::StreamMessageParser::parseMessage(&packet));
 }
 
 TEST_CASE("Incorrect message too small size") {
@@ -55,7 +55,7 @@ TEST_CASE("Incorrect message too small size") {
     packet.data = ser.data();
     packet.length = ser.size();
 
-    REQUIRE_THROWS(dai::StreamMessageParser::parseMessageToADatatype(&packet));
+    REQUIRE_THROWS(dai::StreamMessageParser::parseMessage(&packet));
 }
 
 TEST_CASE("Incorrect message too small size 2") {
@@ -65,26 +65,26 @@ TEST_CASE("Incorrect message too small size 2") {
     packet.data = ser.data();
     packet.length = ser.size();
 
-    REQUIRE_THROWS(dai::StreamMessageParser::parseMessageToADatatype(&packet));
+    REQUIRE_THROWS(dai::StreamMessageParser::parseMessage(&packet));
 }
 
 TEST_CASE("Raw - Correct message") {
     dai::ImgFrame frm;
-    auto ser = dai::StreamMessageParser::serializeMessage(frm);
+    auto ser = dai::StreamMessageParser::serializeMetadata(frm);
 
     streamPacketDesc_t packet;
     packet.data = ser.data();
     packet.length = ser.size();
 
     auto des = dai::StreamMessageParser::parseMessage(&packet);
-    auto ser2 = dai::StreamMessageParser::serializeMessage(des);
+    auto ser2 = dai::StreamMessageParser::serializeMetadata(des);
 
     REQUIRE(ser == ser2);
 }
 
 TEST_CASE("Raw - Incorrect message bad size") {
     dai::ImgFrame frm;
-    auto ser = dai::StreamMessageParser::serializeMessage(frm);
+    auto ser = dai::StreamMessageParser::serializeMetadata(frm);
 
     // wreak havoc on serialized data
     ser[ser.size() - 1] = 100;
@@ -98,7 +98,7 @@ TEST_CASE("Raw - Incorrect message bad size") {
 
 TEST_CASE("Raw - Incorrect message negative size") {
     dai::ImgFrame frm;
-    auto ser = dai::StreamMessageParser::serializeMessage(frm);
+    auto ser = dai::StreamMessageParser::serializeMetadata(frm);
 
     // wreak havoc on serialized data
     ser[ser.size() - 1] = 200;

@@ -6,17 +6,11 @@
 namespace dai {
 namespace node {
 
-Script::Script(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Script(par, nodeId, std::make_unique<Script::Properties>()) {}
-Script::Script(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, Script, ScriptProperties>(par, nodeId, std::move(props)),
-      inputs("io", Input(*this, "", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}})),
-      outputs("io", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::Buffer, true}})) {
+void Script::build() {
+    // Set some default properties
     properties.scriptUri = "";
     properties.scriptName = "<script>";
     properties.processor = ProcessorType::LEON_MSS;
-
-    setInputMapRefs(&inputs);
-    setOutputMapRefs(&outputs);
 }
 
 void Script::setScriptPath(const dai::Path& path, const std::string& name) {

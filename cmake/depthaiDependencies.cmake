@@ -1,5 +1,6 @@
 if(CONFIG_MODE)
     set(_DEPTHAI_PREFIX_PATH_ORIGINAL ${CMAKE_PREFIX_PATH})
+    set(_DEPTHAI_MODULE_PATH_ORIGINAL ${CMAKE_MODULE_PATH})
     set(_DEPTHAI_FIND_ROOT_PATH_MODE_PACKAGE_ORIGINAL ${CMAKE_FIND_ROOT_PATH_MODE_PACKAGE})
     # Fixes Android NDK build, where prefix path is ignored as its not inside sysroot
     set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE "BOTH")
@@ -17,6 +18,7 @@ else()
     hunter_add_package(libarchive-luxonis)
     hunter_add_package(spdlog)
     hunter_add_package(ZLIB)
+    hunter_add_package(httplib)
     if(DEPTHAI_ENABLE_BACKWARD)
         hunter_add_package(Backward)
     endif()
@@ -41,6 +43,9 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     # spdlog for library and device logging
     find_package(spdlog ${_QUIET} CONFIG REQUIRED)
 
+    # httplib for Gate communication
+    find_package(httplib ${_QUIET} CONFIG REQUIRED)
+
     # Backward
     if(DEPTHAI_ENABLE_BACKWARD)
         # Disable automatic check for additional stack unwinding libraries
@@ -49,7 +54,13 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
         find_package(Backward ${_QUIET} CONFIG REQUIRED)
         unset(STACK_DETAILS_AUTO_DETECT)
     endif()
+endif()
 
+# Xtensor
+if(DEPTHAI_XTENSOR_SUPPORT)
+    get_filename_component(PARENT_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}/.. ABSOLUTE)
+    add_subdirectory("${PARENT_DIRECTORY}/3rdparty/xtl" xtl)
+    add_subdirectory("${PARENT_DIRECTORY}/3rdparty/xtensor" xtensor)
 endif()
 
 # Add threads (c++)
@@ -68,13 +79,30 @@ if(DEPTHAI_XLINK_LOCAL AND (NOT CONFIG_MODE))
     add_subdirectory("${DEPTHAI_XLINK_LOCAL}" ${CMAKE_CURRENT_BINARY_DIR}/XLink)
     set(BUILD_SHARED_LIBS "${_BUILD_SHARED_LIBS_SAVED}")
     unset(_BUILD_SHARED_LIBS_SAVED)
-    list(APPEND targets_to_export XLink)
+    list(APPEND targets_to_export XLink XLinkPublic)
 else()
+    # TODO(themarpe) - might be required
+    # elseif(NOT DEPTHAI_XLINK_LOCAL)
     find_package(XLink ${_QUIET} CONFIG REQUIRED HINTS "${CMAKE_CURRENT_LIST_DIR}/XLink" "${CMAKE_CURRENT_LIST_DIR}/../XLink")
 endif()
 
-# OpenCV 4 - (optional, quiet always)
-find_package(OpenCV 4 QUIET CONFIG)
+# OpenCV 4 - (optional)
+if(DEPTHAI_OPENCV_SUPPORT)
+    find_package(OpenCV 4 ${_QUIET} CONFIG REQUIRED)
+endif()
+
+# TODO(Morato) - check if this is still needed
+# if(NOT TARGET JsonCpp::JsonCpp)
+#     find_package(jsoncpp QUIET)
+# endif()
+
+set(MODULE_TEMP ${CMAKE_MODULE_PATH})
+set(PREFIX_TEMP ${CMAKE_PREFIX_PATH})
+set(CMAKE_MODULE_PATH ${_DEPTHAI_MODULE_PATH_ORIGINAL})
+set(CMAKE_PREFIX_PATH ${_DEPTHAI_PREFIX_PATH_ORIGINAL})
+find_package(PCL QUIET CONFIG COMPONENTS common visualization)
+set(CMAKE_MODULE_PATH ${MODULE_TEMP})
+set(CMAKE_PREFIX_PATH ${PREFIX_TEMP})
 
 # include optional dependency cmake
 if(DEPTHAI_DEPENDENCY_INCLUDE)

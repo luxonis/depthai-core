@@ -5,21 +5,16 @@
 namespace dai {
 namespace node {
 
-MonoCamera::MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : MonoCamera(par, nodeId, std::make_unique<MonoCamera::Properties>()) {}
-MonoCamera::MonoCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, MonoCamera, MonoCameraProperties>(par, nodeId, std::move(props)),
-      rawControl(std::make_shared<RawCameraControl>()),
-      initialControl(rawControl) {
+void MonoCamera::build() {
     properties.boardSocket = CameraBoardSocket::AUTO;
     properties.resolution = MonoCameraProperties::SensorResolution::THE_720_P;
     properties.fps = 30.0;
-
-    setInputRefs({&inputControl});
-    setOutputRefs({&out, &raw, &frameEvent});
 }
 
+MonoCamera::MonoCamera(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraProperties>(std::move(props)) {}
+
 MonoCamera::Properties& MonoCamera::getProperties() {
-    properties.initialControl = *rawControl;
+    properties.initialControl = initialControl;
     return properties;
 }
 
@@ -133,6 +128,14 @@ std::tuple<int, int> MonoCamera::getResolutionSize() const {
 
         case MonoCameraProperties::SensorResolution::THE_1200_P:
             return {1920, 1200};
+            break;
+
+        case MonoCameraProperties::SensorResolution::THE_4000X3000:
+            return {4000, 3000};
+            break;
+
+        case MonoCameraProperties::SensorResolution::THE_4224X3136:
+            return {4224, 3136};
             break;
     }
     return {1280, 720};

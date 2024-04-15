@@ -1,18 +1,15 @@
 #include "depthai/pipeline/node/Camera.hpp"
-
 // std
-#include <cmath>
 #include <fstream>
 
 // libraries
-#include "spdlog/fmt/fmt.h"
 
 namespace dai {
 namespace node {
 
-Camera::Camera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : Camera(par, nodeId, std::make_unique<Camera::Properties>()) {}
-Camera::Camera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, Camera, CameraProperties>(par, nodeId, std::move(props)), rawControl(std::make_shared<RawCameraControl>()), initialControl(rawControl) {
+Camera::Camera(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>(std::move(props)) {}
+
+void Camera::build() {
     properties.boardSocket = CameraBoardSocket::AUTO;
     properties.imageOrientation = CameraImageOrientation::AUTO;
     properties.colorOrder = CameraProperties::ColorOrder::BGR;
@@ -21,13 +18,10 @@ Camera::Camera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::un
     properties.previewWidth = 300;
     properties.fps = 30.0;
     properties.previewKeepAspectRatio = true;
-
-    setInputRefs({&inputConfig, &inputControl});
-    setOutputRefs({&video, &preview, &still, &isp, &raw, &frameEvent});
 }
 
 Camera::Properties& Camera::getProperties() {
-    properties.initialControl = *rawControl;
+    properties.initialControl = initialControl;
     return properties;
 }
 
@@ -271,7 +265,7 @@ void Camera::setCalibrationAlpha(float alpha) {
     properties.calibAlpha = alpha;
 }
 
-tl::optional<float> Camera::getCalibrationAlpha() const {
+std::optional<float> Camera::getCalibrationAlpha() const {
     return properties.calibAlpha;
 }
 

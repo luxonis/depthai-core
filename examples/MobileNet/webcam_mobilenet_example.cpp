@@ -57,7 +57,7 @@ int main(int argc, char** argv) {
 
     while(true) {
         // data to send further
-        auto tensor = std::make_shared<dai::RawBuffer>();
+        auto tensor = std::make_shared<dai::Buffer>();
 
         // Read frame from webcam
         webcam >> frame;
@@ -66,7 +66,9 @@ int main(int argc, char** argv) {
         frame = resizeKeepAspectRatio(frame, cv::Size(300, 300), cv::Scalar(0));
 
         // transform to BGR planar 300x300
-        toPlanar(frame, tensor->data);
+        std::vector<uint8_t> data;
+        toPlanar(frame, data);
+        tensor->setData(data);
 
         // tensor->data = std::vector<std::uint8_t>(frame.data, frame.data + frame.total());
         in->send(tensor);
@@ -83,7 +85,7 @@ int main(int argc, char** argv) {
         vector<Detection> dets;
 
         auto det = detections->get<dai::NNData>();
-        std::vector<float> detData = det->getFirstLayerFp16();
+        auto detData = det->getFirstTensor<float>();
         if(detData.size() > 0) {
             int i = 0;
             while(detData[i * 7] != -1.0f) {

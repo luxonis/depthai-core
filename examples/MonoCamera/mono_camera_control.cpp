@@ -11,6 +11,7 @@
 
 // Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
+#include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 
 // Step size ('W','A','S','D' controls)
 static constexpr float stepSize = 0.02f;
@@ -97,8 +98,8 @@ int main() {
             break;
         } else if(key == 'e') {
             printf("Autoexposure enable\n");
-            dai::CameraControl ctrl;
-            ctrl.setAutoExposureEnable();
+            auto ctrl = std::make_shared<dai::CameraControl>();
+            ctrl->setAutoExposureEnable();
             controlQueue->send(ctrl);
         } else if(key == 'i' || key == 'o' || key == 'k' || key == 'l') {
             if(key == 'i') exp_time -= EXP_STEP;
@@ -108,8 +109,8 @@ int main() {
             exp_time = clamp(exp_time, exp_min, exp_max);
             sens_iso = clamp(sens_iso, sens_min, sens_max);
             printf("Setting manual exposure, time: %d, iso: %d\n", exp_time, sens_iso);
-            dai::CameraControl ctrl;
-            ctrl.setManualExposure(exp_time, sens_iso);
+            auto ctrl = std::make_shared<dai::CameraControl>();
+            ctrl->setManualExposure(exp_time, sens_iso);
             controlQueue->send(ctrl);
         } else if(key == 'w') {
             if(topLeft.y - stepSize >= 0) {
@@ -139,8 +140,8 @@ int main() {
 
         // Send new config to camera
         if(sendCamConfig) {
-            dai::ImageManipConfig cfg;
-            cfg.setCropRect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
+            auto cfg = std::make_shared<dai::ImageManipConfig>();
+            cfg->setCropRect(topLeft.x, topLeft.y, bottomRight.x, bottomRight.y);
             configQueue->send(cfg);
             sendCamConfig = false;
         }

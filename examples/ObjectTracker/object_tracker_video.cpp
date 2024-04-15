@@ -133,7 +133,9 @@ int main(int argc, char** argv) {
 
         auto img = std::make_shared<dai::ImgFrame>();
         frame = resizeKeepAspectRatio(frame, cv::Size(1920, 1080), cv::Scalar(0));
-        toPlanar(frame, img->getData());
+        std::vector<uint8_t> frameData;
+        toPlanar(frame, frameData);
+        img->setData(frameData);
         img->setTimestamp(baseTs);
         baseTs += steady_clock::duration(static_cast<int64_t>((1000 * 1000 * 1000 / simulatedFps)));
         img->setWidth(1920);

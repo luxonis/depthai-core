@@ -2,8 +2,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <iostream>
 
-#include "depthai-shared/datatype/RawEncodedFrame.hpp"
-#include "depthai-shared/properties/VideoEncoderProperties.hpp"
 #include "depthai/device/Device.hpp"
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
@@ -11,6 +9,7 @@
 #include "depthai/pipeline/node/ColorCamera.hpp"
 #include "depthai/pipeline/node/VideoEncoder.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
+#include "depthai/properties/VideoEncoderProperties.hpp"
 
 dai::Pipeline getPipeline(dai::VideoEncoderProperties::Profile profile, unsigned int quality, bool lossless, unsigned int bitrate) {
     dai::Pipeline pipeline;

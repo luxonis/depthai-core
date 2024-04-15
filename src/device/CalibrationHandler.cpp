@@ -10,13 +10,13 @@
 #include <tuple>
 #include <unordered_set>
 
-#include "depthai-shared/common/CameraInfo.hpp"
-#include "depthai-shared/common/Extrinsics.hpp"
-#include "depthai-shared/common/Point3f.hpp"
+#include "depthai/common/CameraInfo.hpp"
+#include "depthai/common/Extrinsics.hpp"
+#include "depthai/common/Point3f.hpp"
+#include "depthai/utility/matrixOps.hpp"
 #include "nlohmann/json.hpp"
 #include "spdlog/spdlog.h"
 #include "utility/Logging.hpp"
-#include "utility/matrixOps.hpp"
 
 namespace dai {
 
@@ -397,6 +397,18 @@ std::vector<float> CalibrationHandler::getCameraTranslationVector(CameraBoardSoc
     return translationVector;
 }
 
+std::vector<std::vector<float>> CalibrationHandler::getCameraRotationMatrix(CameraBoardSocket srcCamera, CameraBoardSocket dstCamera) const {
+    std::vector<std::vector<float>> extrinsics = getCameraExtrinsics(srcCamera, dstCamera, false);
+
+    std::vector<std::vector<float>> rotationMatrix = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}};
+    for(auto i = 0; i < 3; i++) {
+        for(auto j = 0; j < 3; j++) {
+            rotationMatrix[i][j] = extrinsics[i][j];
+        }
+    }
+    return rotationMatrix;
+}
+
 float CalibrationHandler::getBaselineDistance(CameraBoardSocket cam1, CameraBoardSocket cam2, bool useSpecTranslation) const {
     std::vector<float> translationVector = getCameraTranslationVector(cam1, cam2, useSpecTranslation);
     float sum = 0;
@@ -620,7 +632,7 @@ void CalibrationHandler::setCameraIntrinsics(CameraBoardSocket cameraId, std::ve
         throw std::runtime_error("Intrinsic Matrix size should always be 3x3 ");
     }
 
-    if(intrinsics[0][1] != 0 || intrinsics[1][0] != 0 || intrinsics[2][0] != 0 || intrinsics[2][1] != 0) {
+    if(intrinsics[1][0] != 0 || intrinsics[2][0] != 0 || intrinsics[2][1] != 0) {
         throw std::runtime_error("Invalid Intrinsic Matrix entered!!");
     }
 

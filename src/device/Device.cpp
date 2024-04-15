@@ -6,8 +6,7 @@
 // shared
 #include "depthai-bootloader-shared/Bootloader.hpp"
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
-#include "depthai-shared/datatype/RawImgFrame.hpp"
-#include "depthai-shared/xlink/XLinkConstants.hpp"
+#include "depthai/xlink/XLinkConstants.hpp"
 
 // project
 #include "DeviceLogger.hpp"
@@ -253,37 +252,29 @@ std::string Device::getQueueEvent(std::chrono::microseconds timeout) {
 }
 
 bool Device::startPipelineImpl(const Pipeline& pipeline) {
-    // Open queues upfront, let queues know about data sizes (input queues)
-    // Go through Pipeline and check for 'XLinkIn' and 'XLinkOut' nodes
-    // and create corresponding default queues for them
-    for(const auto& kv : pipeline.getNodeMap()) {
-        const auto& node = kv.second;
-        const auto& xlinkIn = std::dynamic_pointer_cast<const node::XLinkIn>(node);
-        if(xlinkIn == nullptr) {
-            continue;
-        }
+    auto schema = pipeline.getPipelineSchema();
+    for(auto& kv : schema.nodes) {
+        spdlog::trace("Inspecting node: {} for {} or {}", kv.second.name, std::string(node::XLinkIn::NAME), std::string(node::XLinkOut::NAME));
+        if(kv.second.name == node::XLinkIn::NAME) {
+            // deserialize properties to check the stream name
+            node::XLinkIn::Properties props;
+            utility::deserialize(kv.second.properties, props);
+            auto streamName = props.streamName;
+            if(inputQueueMap.count(streamName) != 0) throw std::invalid_argument(fmt::format("Streams have duplicate name '{}'", streamName));
+            // Create DataInputQueue's
+            inputQueueMap[streamName] = std::make_shared<DataInputQueue>(connection, streamName, 16, true, props.maxDataSize);
+        } else if(kv.second.name == node::XLinkOut::NAME) {
+            // deserialize properties to check the stream name
+            node::XLinkOut::Properties props;
+            utility::deserialize(kv.second.properties, props);
+            auto streamName = props.streamName;
 
-        // Create DataInputQueue's
-        auto streamName = xlinkIn->getStreamName();
-        if(inputQueueMap.count(streamName) != 0) throw std::invalid_argument(fmt::format("Streams have duplicate name '{}'", streamName));
-        // set max data size, for more verbosity
-        inputQueueMap[std::move(streamName)] = std::make_shared<DataInputQueue>(connection, xlinkIn->getStreamName(), 16, true, xlinkIn->getMaxDataSize());
-    }
-    for(const auto& kv : pipeline.getNodeMap()) {
-        const auto& node = kv.second;
-        const auto& xlinkOut = std::dynamic_pointer_cast<const node::XLinkOut>(node);
-        if(xlinkOut == nullptr) {
-            continue;
-        }
-
-        // Create DataOutputQueue's
-        auto streamName = xlinkOut->getStreamName();
-        if(outputQueueMap.count(streamName) != 0) throw std::invalid_argument(fmt::format("Streams have duplicate name '{}'", streamName));
-        outputQueueMap[streamName] = std::make_shared<DataOutputQueue>(connection, streamName);
-
-        // Add callback for events
-        callbackIdMap[std::move(streamName)] =
-            outputQueueMap[xlinkOut->getStreamName()]->addCallback([this](std::string queueName, std::shared_ptr<ADatatype>) {
+            if(outputQueueMap.count(streamName) != 0) throw std::invalid_argument(fmt::format("Streams have duplcate name '{}'", streamName));
+            // Create DataOutputQueue's
+            outputQueueMap[streamName] = std::make_shared<DataOutputQueue>(connection, streamName);
+            spdlog::trace("Opened DataOutputQueue for {}", streamName);
+            // Add callback for events
+            callbackIdMap[streamName] = outputQueueMap[streamName]->addCallback([this](std::string queueName, std::shared_ptr<ADatatype>) {
                 {
                     // Lock first
                     std::unique_lock<std::mutex> lock(eventMtx);
@@ -301,7 +292,9 @@ bool Device::startPipelineImpl(const Pipeline& pipeline) {
                 // notify the rest
                 eventCv.notify_all();
             });
+        }
     }
+
     return DeviceBase::startPipelineImpl(pipeline);
 }
 

@@ -178,8 +178,8 @@ int main() {
         if(newConfig) {
             config.roi = dai::Rect(topLeft, bottomRight);
             config.calculationAlgorithm = calculationAlgorithm;
-            dai::SpatialLocationCalculatorConfig cfg;
-            cfg.addROI(config);
+            auto cfg = std::make_shared<dai::SpatialLocationCalculatorConfig>();
+            cfg->addROI(config);
             spatialCalcConfigInQueue->send(cfg);
             newConfig = false;
         }

@@ -3,12 +3,6 @@
 namespace dai {
 namespace node {
 
-XLinkIn::XLinkIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : XLinkIn(par, nodeId, std::make_unique<XLinkIn::Properties>()) {}
-XLinkIn::XLinkIn(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, XLinkIn, XLinkInProperties>(par, nodeId, std::move(props)) {
-    setOutputRefs(&out);
-}
-
 void XLinkIn::setStreamName(const std::string& name) {
     properties.streamName = name;
 }

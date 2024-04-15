@@ -1,9 +1,9 @@
 #pragma once
 
-#include <depthai/pipeline/Node.hpp>
+#include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
-#include <depthai-shared/properties/SPIOutProperties.hpp>
+#include <depthai/properties/SPIOutProperties.hpp>
 
 namespace dai {
 namespace node {
@@ -11,24 +11,20 @@ namespace node {
 /**
  * @brief SPIOut node. Sends messages over SPI.
  */
-class SPIOut : public NodeCRTP<Node, SPIOut, SPIOutProperties> {
+class SPIOut : public DeviceNodeCRTP<DeviceNode, SPIOut, SPIOutProperties> {
    public:
     constexpr static const char* NAME = "SPIOut";
-
-    SPIOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-        : NodeCRTP<Node, SPIOut, SPIOutProperties>(par, nodeId, std::move(props)) {
+    using DeviceNodeCRTP::DeviceNodeCRTP;
+    void build() {
         properties.busId = 0;
-
-        setInputRefs({&input});
     }
-    SPIOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : SPIOut(par, nodeId, std::make_unique<SPIOut::Properties>()) {}
 
     /**
      * Input for any type of messages to be transferred over SPI stream
      *
      * Default queue is blocking with size 8
      */
-    Input input{*this, "in", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::Buffer, true}}};
+    Input input{true, *this, "in", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::Buffer, true}}};
 
     /**
      * Specifies stream name over which the node will send data

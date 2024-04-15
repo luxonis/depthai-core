@@ -12,21 +12,23 @@
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/device/Device.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
+#include "depthai/utility/AtomicBool.hpp"
 
 // shared
-#include "depthai-shared/device/BoardConfig.hpp"
-#include "depthai-shared/pipeline/PipelineSchema.hpp"
-#include "depthai-shared/properties/GlobalProperties.hpp"
+#include "depthai/device/BoardConfig.hpp"
+#include "depthai/pipeline/PipelineSchema.hpp"
+#include "depthai/properties/GlobalProperties.hpp"
 
 namespace dai {
 
-class PipelineImpl {
+class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     friend class Pipeline;
     friend class Node;
 
    public:
-    PipelineImpl() = default;
+    PipelineImpl(Pipeline& pipeline) : assetManager("/pipeline/"), parent(pipeline) {}
     PipelineImpl(const PipelineImpl&) = default;
+    ~PipelineImpl();
 
    private:
     // static functions
@@ -36,21 +38,23 @@ class PipelineImpl {
     // Functions
     Node::Id getNextUniqueId();
     PipelineSchema getPipelineSchema(SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
-    tl::optional<OpenVINO::Version> getPipelineOpenVINOVersion() const;
+    std::optional<OpenVINO::Version> getPipelineOpenVINOVersion() const;
+    OpenVINO::Version getOpenVINOVersion() const;
+    std::optional<OpenVINO::Version> getRequiredOpenVINOVersion() const;
     bool isOpenVINOVersionCompatible(OpenVINO::Version version) const;
     Device::Config getDeviceConfig() const;
     void setCameraTuningBlobPath(const dai::Path& path);
     void setXLinkChunkSize(int sizeBytes);
+    GlobalProperties getGlobalProperties() const;
+    void setGlobalProperties(GlobalProperties globalProperties);
     void setSippBufferSize(int sizeBytes);
     void setSippDmaBufferSize(int sizeBytes);
     void setBoardConfig(BoardConfig board);
     BoardConfig getBoardConfig() const;
 
     // Access to nodes
-    std::vector<std::shared_ptr<const Node>> getAllNodes() const;
-    std::vector<std::shared_ptr<Node>> getAllNodes();
-    std::shared_ptr<const Node> getNode(Node::Id id) const;
-    std::shared_ptr<Node> getNode(Node::Id id);
+    std::vector<std::shared_ptr<Node>> getAllNodes() const;
+    std::shared_ptr<Node> getNode(Node::Id id) const;
 
     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
     nlohmann::json serializeToJson() const;
@@ -60,45 +64,86 @@ class PipelineImpl {
     void link(const Node::Output& out, const Node::Input& in);
     void unlink(const Node::Output& out, const Node::Input& in);
     void setCalibrationData(CalibrationHandler calibrationDataHandler);
+    bool isCalibrationDataAvailable() const;
     CalibrationHandler getCalibrationData() const;
+    void setEepromData(std::optional<EepromData> eepromData);
+    std::optional<EepromData> getEepromData() const;
+    bool isHostOnly() const;
+    bool isDeviceOnly() const;
 
     // Must be incremented and unique for each node
     Node::Id latestId = 0;
     // Pipeline asset manager
     AssetManager assetManager;
     // Optionally forced version
-    tl::optional<OpenVINO::Version> forceRequiredOpenVINOVersion;
+    std::optional<OpenVINO::Version> forceRequiredOpenVINOVersion;
     // Global pipeline properties
     GlobalProperties globalProperties;
-    // Optimized for adding, searching and removing connections
-    using NodeMap = std::unordered_map<Node::Id, std::shared_ptr<Node>>;
-    NodeMap nodeMap;
-    using NodeConnectionMap = std::unordered_map<Node::Id, std::unordered_set<Node::Connection>>;
-    // Connection map, NodeId represents id of node connected TO (input)
-    NodeConnectionMap nodeConnectionMap;
+    // // Optimized for adding, searching and removing connections
+    // using NodeMap = std::unordered_map<Node::Id, std::shared_ptr<Node>>;
+    // NodeMap nodeMap;
+    std::vector<std::shared_ptr<Node>> nodes;
+
+    // TODO(themarpe) - refactor, connections are now carried by nodes instead
+    using NodeConnectionMap = std::unordered_map<Node::Id, std::unordered_set<Node::ConnectionInternal, Node::ConnectionInternal::Hash>>;
+    // // Connection map, NodeId represents id of node connected TO (input)
+    // NodeConnectionMap nodeConnectionMap;
+    /// Get a reference to internal connection representation
+    NodeConnectionMap getConnectionMap() const;
+
     // Board configuration
     BoardConfig board;
+
+    // parent
+    Pipeline& parent;
+
+    // is pipeline running
+    AtomicBool running{false};
+
+    // was pipeline built
+    AtomicBool isBuild{false};
+
+    // TMP TMP - to be moved
+    // DeviceBase for hybrid pipelines
+    std::shared_ptr<Device> device;
 
     // Template create function
     template <class N>
     std::shared_ptr<N> create(const std::shared_ptr<PipelineImpl>& itself) {
+        (void)itself;
         // Check that passed type 'N' is subclass of Node
         static_assert(std::is_base_of<Node, N>::value, "Specified class is not a subclass of Node");
-        // Get unique id for this new node
-        auto id = getNextUniqueId();
         // Create and store the node in the map
-        auto node = std::make_shared<N>(itself, id);
-        nodeMap[id] = node;
+        auto node = N::create();
+        // Add
+        add(node);
         // Return shared pointer to this node
         return node;
     }
+
+    // Add a node to nodeMap
+    void add(std::shared_ptr<Node> node);
+
+    // Run only host side, if any device nodes are present, error out
+    bool isRunning() const;
+    void build();
+    void start();
+    void wait();
+    void stop();
+
+    // Resource
+    std::vector<uint8_t> loadResource(dai::Path uri);
+    std::vector<uint8_t> loadResourceCwd(dai::Path uri, dai::Path cwd);
 };
 
 /**
  * @brief Represents the pipeline, set of nodes and connections between them
  */
 class Pipeline {
+    friend class PipelineImpl;
     std::shared_ptr<PipelineImpl> pimpl;
+
+   public:
     PipelineImpl* impl() {
         return pimpl.get();
     }
@@ -106,12 +151,11 @@ class Pipeline {
         return pimpl.get();
     }
 
-   public:
     /**
      * Constructs a new pipeline
      */
     Pipeline();
-    explicit Pipeline(const std::shared_ptr<PipelineImpl>& pimpl);
+    explicit Pipeline(std::shared_ptr<PipelineImpl> pimpl);
 
     /// Clone the pipeline (Creates a copy)
     Pipeline clone() const;
@@ -119,7 +163,16 @@ class Pipeline {
     /**
      * @returns Global properties of current pipeline
      */
-    GlobalProperties getGlobalProperties() const;
+    GlobalProperties getGlobalProperties() const {
+        return impl()->getGlobalProperties();
+    }
+
+    /**
+     * Sets global properties of pipeline
+     */
+    void setGlobalProperties(GlobalProperties globalProperties) {
+        impl()->setGlobalProperties(globalProperties);
+    }
 
     /**
      * @returns Pipeline schema
@@ -137,7 +190,7 @@ class Pipeline {
     }
 
     /**
-     * Adds a node to pipeline.
+     * Creates and adds a node to the pipeline.
      *
      * Node is specified by template argument N
      */
@@ -146,17 +199,20 @@ class Pipeline {
         return impl()->create<N>(pimpl);
     }
 
+    /**
+     * Adds an existing node to the pipeline
+     */
+    void add(std::shared_ptr<Node> node) {
+        impl()->add(node);
+    }
+
     /// Removes a node from pipeline
     void remove(std::shared_ptr<Node> node) {
         impl()->remove(node);
     }
 
     /// Get a vector of all nodes
-    std::vector<std::shared_ptr<const Node>> getAllNodes() const {
-        return impl()->getAllNodes();
-    }
-    /// Get a vector of all nodes
-    std::vector<std::shared_ptr<Node>> getAllNodes() {
+    std::vector<std::shared_ptr<Node>> getAllNodes() const {
         return impl()->getAllNodes();
     }
 
@@ -175,39 +231,8 @@ class Pipeline {
     }
 
     using NodeConnectionMap = PipelineImpl::NodeConnectionMap;
-    /// Get a reference to internal connection representation
-    const NodeConnectionMap& getConnectionMap() const {
-        return impl()->nodeConnectionMap;
-    }
-
-    using NodeMap = PipelineImpl::NodeMap;
-    /// Get a reference to internal node map
-    const NodeMap& getNodeMap() const {
-        return impl()->nodeMap;
-    }
-
-    /**
-     * Link output to an input. Both nodes must be on the same pipeline
-     *
-     * Throws an error if they aren't or cannot be connected
-     *
-     * @param out Nodes output to connect from
-     * @param in Nodes input to connect to
-     */
-    void link(const Node::Output& out, const Node::Input& in) {
-        impl()->link(out, in);
-    }
-
-    /**
-     * Unlink output from an input.
-     *
-     * Throws an error if link doesn't exists
-     *
-     * @param out Nodes output to unlink from
-     * @param in Nodes input to unlink to
-     */
-    void unlink(const Node::Output& out, const Node::Input& in) {
-        impl()->unlink(out, in);
+    NodeConnectionMap getConnectionMap() const {
+        return impl()->getConnectionMap();
     }
 
     /// Get pipelines AssetManager as reference
@@ -243,14 +268,41 @@ class Pipeline {
         return impl()->getCalibrationData();
     }
 
+    /**
+     * check if calib data has been set or the default will be returned
+     * @return true - calib data has been set
+     * @return false - calib data has not been set - default will be returned
+     */
+    bool isCalibrationDataAvailable() const {
+        return impl()->isCalibrationDataAvailable();
+    }
+
+    /**
+     * gets the eeprom data from the pipeline
+     *
+     * @return eepromData from the the pipeline
+     */
+    std::optional<EepromData> getEepromData() const {
+        return impl()->getEepromData();
+    }
+
+    /**
+     * Sets the eeprom data in pipeline
+     *
+     * @param eepromData EepromData object that is loaded in the pipeline.
+     */
+    void setEepromData(std::optional<EepromData> eepromData) {
+        impl()->setEepromData(eepromData);
+    }
+
     /// Get possible OpenVINO version to run this pipeline
     OpenVINO::Version getOpenVINOVersion() const {
-        return impl()->getPipelineOpenVINOVersion().value_or(OpenVINO::DEFAULT_VERSION);
+        return impl()->getOpenVINOVersion();
     }
 
     /// Get required OpenVINO version to run this pipeline. Can be none
-    tl::optional<OpenVINO::Version> getRequiredOpenVINOVersion() const {
-        return impl()->getPipelineOpenVINOVersion();
+    std::optional<OpenVINO::Version> getRequiredOpenVINOVersion() const {
+        return impl()->getRequiredOpenVINOVersion();
     }
 
     /// Set a camera IQ (Image Quality) tuning blob, used for all cameras
@@ -307,6 +359,26 @@ class Pipeline {
     /// Get device configuration needed for this pipeline
     Device::Config getDeviceConfig() const {
         return impl()->getDeviceConfig();
+    }
+
+    bool isRunning() const {
+        return impl()->isRunning();
+    }
+    void build() {
+        impl()->build();
+    }
+    void start() {
+        impl()->start();
+    }
+    void wait() {
+        impl()->wait();
+    }
+    void stop() {
+        impl()->stop();
+    }
+
+    std::shared_ptr<Device> getDevice() {
+        return impl()->device;
     }
 };
 

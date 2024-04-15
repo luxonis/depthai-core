@@ -1,9 +1,9 @@
 #pragma once
 
-#include "depthai/pipeline/Node.hpp"
+#include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
-#include <depthai-shared/properties/IMUProperties.hpp>
+#include <depthai/properties/IMUProperties.hpp>
 
 namespace dai {
 namespace node {
@@ -11,20 +11,15 @@ namespace node {
 /**
  * @brief IMU node for BNO08X.
  */
-class IMU : public NodeCRTP<Node, IMU, IMUProperties> {
+class IMU : public DeviceNodeCRTP<DeviceNode, IMU, IMUProperties> {
    public:
     constexpr static const char* NAME = "IMU";
-
-    /**
-     * Constructs IMU node.
-     */
-    IMU(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    IMU(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
     /**
      * Outputs IMUData message that carries IMU packets.
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::IMUData, false}}};
+    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::IMUData, false}}};
 
     /**
      * Enable a new IMU sensor with explicit configuration

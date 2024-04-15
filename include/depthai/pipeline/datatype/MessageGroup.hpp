@@ -1,27 +1,21 @@
 #pragma once
 
-#include <chrono>
 #include <memory>
 #include <unordered_map>
 #include <vector>
 
-#include "depthai-shared/datatype/RawMessageGroup.hpp"
+#include "depthai/common/ADatatypeSharedPtrSerialization.hpp"
+#include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
-
+#include "depthai/utility/Serialization.hpp"
 namespace dai {
-
 /**
  * MessageGroup message. Carries multiple messages in one.
  */
 class MessageGroup : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
-    RawMessageGroup& rawGrp;
-    std::unordered_map<std::string, std::shared_ptr<ADatatype>> group;
-
    public:
-    /// Construct MessageGroup message
-    MessageGroup();
-    explicit MessageGroup(std::shared_ptr<RawMessageGroup> ptr);
+    std::map<std::string, std::shared_ptr<ADatatype>> group;
+
     virtual ~MessageGroup() = default;
 
     /// Group
@@ -30,17 +24,22 @@ class MessageGroup : public Buffer {
     std::shared_ptr<T> get(const std::string& name) {
         return std::dynamic_pointer_cast<T>(group[name]);
     }
-    void add(const std::string& name, const std::shared_ptr<ADatatype>& value);
-    template <typename T>
-    void add(const std::string& name, const T& value) {
-        static_assert(std::is_base_of<ADatatype, T>::value, "T must derive from ADatatype");
-        group[name] = std::make_shared<T>(value);
-        rawGrp.group[name] = {value.getRaw(), 0};
+
+    std::shared_ptr<ADatatype> get(const std::string& name) {
+        return group[name];
     }
 
+    // TODO(Morato) - this API is dangerous, when T is a base reference to a derived class
+    // template <typename T>
+    // void add(const std::string& name, const T& value) {
+    //     static_assert(std::is_base_of<ADatatype, T>::value, "T must derive from ADatatype");
+    //     group[name] = std::make_shared<T>(value);
+    // }
+    void add(const std::string& name, const std::shared_ptr<ADatatype>& value);
+
     // Iterators
-    std::unordered_map<std::string, std::shared_ptr<ADatatype>>::iterator begin();
-    std::unordered_map<std::string, std::shared_ptr<ADatatype>>::iterator end();
+    std::map<std::string, std::shared_ptr<ADatatype>>::iterator begin();
+    std::map<std::string, std::shared_ptr<ADatatype>>::iterator end();
 
     /**
      * True if all messages in the group are in the interval
@@ -60,20 +59,11 @@ class MessageGroup : public Buffer {
      */
     std::vector<std::string> getMessageNames() const;
 
-    /**
-     * Sets image timestamp related to dai::Clock::now()
-     */
-    MessageGroup& setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
-
-    /**
-     * Sets image timestamp related to dai::Clock::now()
-     */
-    MessageGroup& setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> timestamp);
-
-    /**
-     * Retrieves image sequence number
-     */
-    MessageGroup& setSequenceNum(int64_t sequenceNum);
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
+        metadata = utility::serialize(*this);
+        datatype = DatatypeEnum::MessageGroup;
+    };
+    DEPTHAI_SERIALIZE(MessageGroup, group, Buffer::ts, Buffer::tsDevice, Buffer::sequenceNum);
 };
 
 }  // namespace dai

@@ -1,0 +1,17 @@
+include README.md LICENSE CMakeLists.txt pyproject.toml
+include find_version.py
+include generate_stubs.py
+graft cmake
+graft generated
+graft ci
+graft external
+graft src
+graft depthai-core
+prune depthai-core/build*
+prune depthai-core/tests*
+prune depthai-core/examples*
+prune build
+prune wheelhouse
+prune dist
+prune tests
+prune examples

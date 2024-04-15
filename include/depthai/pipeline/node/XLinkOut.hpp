@@ -1,9 +1,9 @@
 #pragma once
 
-#include <depthai/pipeline/Node.hpp>
+#include <depthai/pipeline/DeviceNode.hpp>
 
 // shared
-#include <depthai-shared/properties/XLinkOutProperties.hpp>
+#include <depthai/properties/XLinkOutProperties.hpp>
 
 namespace dai {
 namespace node {
@@ -11,20 +11,19 @@ namespace node {
 /**
  * @brief XLinkOut node. Sends messages over XLink.
  */
-class XLinkOut : public NodeCRTP<Node, XLinkOut, XLinkOutProperties> {
+class XLinkOut : public DeviceNodeCRTP<DeviceNode, XLinkOut, XLinkOutProperties> {
    public:
     constexpr static const char* NAME = "XLinkOut";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
+    void build();
 
    public:
-    XLinkOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    XLinkOut(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
-
     /**
      * Input for any type of messages to be transferred over XLink stream
      *
      * Default queue is blocking with size 8
      */
-    Input input{*this, "in", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::Buffer, true}}};
+    Input input{true, *this, "in", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::Buffer, true}}};
 
     /**
      * Specifies XLink stream name to use.

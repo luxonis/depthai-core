@@ -1,4 +1,5 @@
 #include <iostream>
+#include <vector>
 
 // Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
@@ -45,7 +46,8 @@ int main() {
         auto t3 = steady_clock::now();
         auto mjpeg = mjpegQueue->get<dai::ImgFrame>();
         auto t4 = steady_clock::now();
-        cv::Mat decodedFrame = cv::imdecode(cv::Mat(mjpeg->getData()), cv::IMREAD_COLOR);
+        std::vector<uint8_t> vecData(mjpeg->getData().begin(), mjpeg->getData().end());
+        cv::Mat decodedFrame = cv::imdecode(cv::Mat(vecData), cv::IMREAD_COLOR);
         auto t5 = steady_clock::now();
         cv::imshow("mjpeg", decodedFrame);
 

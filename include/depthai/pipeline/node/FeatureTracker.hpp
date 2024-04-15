@@ -1,12 +1,12 @@
 #pragma once
 
-#include <depthai/pipeline/Node.hpp>
+#include <depthai/pipeline/DeviceNode.hpp>
 
 // standard
 #include <fstream>
 
 // shared
-#include <depthai-shared/properties/FeatureTrackerProperties.hpp>
+#include <depthai/properties/FeatureTrackerProperties.hpp>
 
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
 
@@ -17,19 +17,17 @@ namespace node {
  * @brief FeatureTracker node.
  * Performs feature tracking and reidentification using motion estimation between 2 consecutive frames.
  */
-class FeatureTracker : public NodeCRTP<Node, FeatureTracker, FeatureTrackerProperties> {
+class FeatureTracker : public DeviceNodeCRTP<DeviceNode, FeatureTracker, FeatureTrackerProperties> {
    public:
     constexpr static const char* NAME = "FeatureTracker";
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
    protected:
     Properties& getProperties();
 
-   private:
-    std::shared_ptr<RawFeatureTrackerConfig> rawConfig;
-
    public:
-    FeatureTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    FeatureTracker(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    FeatureTracker() = default;
+    FeatureTracker(std::unique_ptr<Properties> props);
 
     /**
      * Initial config to use for feature tracking.
@@ -40,23 +38,23 @@ class FeatureTracker : public NodeCRTP<Node, FeatureTracker, FeatureTrackerPrope
      * Input FeatureTrackerConfig message with ability to modify parameters in runtime.
      * Default queue is non-blocking with size 4.
      */
-    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::FeatureTrackerConfig, false}}};
+    Input inputConfig{true, *this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::FeatureTrackerConfig, false}}};
     /**
      * Input message with frame data on which feature tracking is performed.
      * Default queue is non-blocking with size 4.
      */
-    Input inputImage{*this, "inputImage", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputImage{true, *this, "inputImage", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
      * Outputs TrackedFeatures message that carries tracked features results.
      */
-    Output outputFeatures{*this, "outputFeatures", Output::Type::MSender, {{DatatypeEnum::TrackedFeatures, false}}};
+    Output outputFeatures{true, *this, "outputFeatures", Output::Type::MSender, {{DatatypeEnum::TrackedFeatures, false}}};
 
     /**
      * Passthrough message on which the calculation was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughInputImage{*this, "passthroughInputImage", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output passthroughInputImage{true, *this, "passthroughInputImage", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     // Functions to set properties
     /**

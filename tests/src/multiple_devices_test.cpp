@@ -57,11 +57,11 @@ int main() {
             device->getOutputQueue("rgb", 4, false);
 
             cout << "MXID: " << device->getMxId() << endl;
-            cout << "Connected cameras: ";
-            for(const auto& cam : device->getConnectedCameras()) {
-                cout << cam << " ";
-            }
-            cout << endl;
+            // cout << "Connected cameras: ";
+            // for(const auto& cam : device->getConnectedCameras()) {
+            //     cout << cam << " ";
+            // }
+            // cout << endl;
 
             unique_lock<std::mutex> l(mtx);
             devices.push_back({device, 0});

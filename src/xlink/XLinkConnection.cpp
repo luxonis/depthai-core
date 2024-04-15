@@ -105,6 +105,27 @@ static XLinkProtocol_t getDefaultProtocol() {
     return defaultProtocol;
 }
 
+static XLinkPlatform_t getDefaultPlatform() {
+    XLinkPlatform_t defaultPlatform = X_LINK_ANY_PLATFORM;
+
+    auto protocolStr = utility::getEnv("DEPTHAI_PLATFORM");
+
+    std::transform(protocolStr.begin(), protocolStr.end(), protocolStr.begin(), ::tolower);
+    if(protocolStr.empty() || protocolStr == "any") {
+        defaultPlatform = X_LINK_ANY_PLATFORM;
+    } else if(protocolStr == "rvc2" || protocolStr == "myriadx") {
+        defaultPlatform = X_LINK_MYRIAD_X;
+    } else if(protocolStr == "rvc3") {
+        defaultPlatform = X_LINK_RVC3;
+    } else if(protocolStr == "rvc4") {
+        defaultPlatform = X_LINK_RVC4;
+    } else {
+        spdlog::warn("Unsupported platform specified");
+    }
+
+    return defaultPlatform;
+}
+
 // STATIC
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_BOOTUP_TIMEOUT;
 constexpr std::chrono::milliseconds XLinkConnection::WAIT_FOR_CONNECT_TIMEOUT;
@@ -119,7 +140,7 @@ std::vector<DeviceInfo> XLinkConnection::getAllConnectedDevices(XLinkDeviceState
     std::array<deviceDesc_t, 64> deviceDescAll = {};
     deviceDesc_t suitableDevice = {};
     suitableDevice.protocol = getDefaultProtocol();
-    suitableDevice.platform = X_LINK_ANY_PLATFORM;
+    suitableDevice.platform = getDefaultPlatform();
     suitableDevice.state = state;
 
     auto allowedDeviceMxIds = utility::getEnv("DEPTHAI_DEVICE_MXID_LIST");
@@ -445,8 +466,8 @@ void XLinkConnection::initDevice(const DeviceInfo& deviceToInit, XLinkDeviceStat
         }
     }
 
-    // Search for booted device
-    {
+    // Search for booted device (if expected state is specified)
+    if(expectedState != X_LINK_ANY_STATE) {
         // Create description of device to look for
         DeviceInfo bootedDeviceInfo = lastDeviceInfo;
         // Has to match expected state

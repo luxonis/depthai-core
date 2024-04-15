@@ -36,7 +36,7 @@ int main() {
     aprilTag->inputImage.setQueueSize(1);
 
     // advanced settings, configurable at runtime
-    auto aprilTagConfig = aprilTag->initialConfig.get();
+    auto aprilTagConfig = aprilTag->initialConfig;
     aprilTagConfig.quadDecimate = 4;
     aprilTagConfig.quadSigma = 0;
     aprilTagConfig.refineEdges = true;
@@ -48,7 +48,7 @@ int main() {
     aprilTagConfig.quadThresholds.maxLineFitMse = 10;
     aprilTagConfig.quadThresholds.minWhiteBlackDiff = 5;
     aprilTagConfig.quadThresholds.deglitch = false;
-    aprilTag->initialConfig.set(aprilTagConfig);
+    aprilTag->initialConfig = aprilTagConfig;
 
     // Connect to device and start pipeline
     dai::Device device(pipeline);

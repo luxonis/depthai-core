@@ -1,6 +1,12 @@
-[submodule "shared/depthai-shared"]
-	path = shared/depthai-shared
-	url = ../depthai-shared.git
 [submodule "shared/depthai-bootloader-shared"]
 	path = shared/depthai-bootloader-shared
 	url = ../depthai-bootloader-shared.git
+[submodule "3rdparty/xtensor"]
+	path = 3rdparty/xtensor
+	url = https://github.com/xtensor-stack/xtensor
+[submodule "3rdparty/xtl"]
+	path = 3rdparty/xtl
+	url = https://github.com/xtensor-stack/xtl
+[submodule "bindings/python/external/xtensor-python"]
+	path = bindings/python/external/xtensor-python
+	url = https://github.com/xtensor-stack/xtensor-python.git

@@ -7,27 +7,22 @@
 namespace dai {
 namespace node {
 
-ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId) : ColorCamera(par, nodeId, std::make_unique<ColorCamera::Properties>()) {}
-ColorCamera::ColorCamera(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props)
-    : NodeCRTP<Node, ColorCamera, ColorCameraProperties>(par, nodeId, std::move(props)),
-      rawControl(std::make_shared<RawCameraControl>()),
-      initialControl(rawControl) {
+ColorCamera::ColorCamera(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(std::move(props)) {}
+
+void ColorCamera::build() {
+    // Set some default properties
     properties.boardSocket = CameraBoardSocket::AUTO;
     properties.imageOrientation = CameraImageOrientation::AUTO;
-    properties.colorOrder = ColorCameraProperties::ColorOrder::BGR;
-    properties.interleaved = true;
+    properties.previewType = ImgFrame::Type::BGR888i;
     properties.previewHeight = 300;
     properties.previewWidth = 300;
     properties.resolution = ColorCameraProperties::SensorResolution::THE_1080_P;
     properties.fps = 30.0;
     properties.previewKeepAspectRatio = true;
-
-    setInputRefs({&inputConfig, &inputControl});
-    setOutputRefs({&video, &preview, &still, &isp, &raw, &frameEvent});
 }
 
 ColorCamera::Properties& ColorCamera::getProperties() {
-    properties.initialControl = *rawControl;
+    properties.initialControl = initialControl;
     return properties;
 }
 
@@ -89,32 +84,132 @@ CameraImageOrientation ColorCamera::getImageOrientation() const {
 
 // setColorOrder - RGB or BGR
 void ColorCamera::setColorOrder(ColorCameraProperties::ColorOrder colorOrder) {
-    properties.colorOrder = colorOrder;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    bool isInterleaved = ImgFrame::isInterleaved(properties.previewType);
+    bool isFp16 = getFp16();
+#pragma GCC diagnostic pop
+    switch(colorOrder) {
+        case ColorCameraProperties::ColorOrder::BGR:
+            if(isInterleaved) {
+                if(isFp16) {
+                    properties.previewType = ImgFrame::Type::BGRF16F16F16i;
+                } else {
+                    properties.previewType = ImgFrame::Type::BGR888i;
+                }
+            } else {
+                if(isFp16) {
+                    properties.previewType = ImgFrame::Type::BGRF16F16F16p;
+                } else {
+                    properties.previewType = ImgFrame::Type::BGR888p;
+                }
+            }
+            break;
+        case ColorCameraProperties::ColorOrder::RGB:
+            if(isInterleaved) {
+                if(isFp16) {
+                    properties.previewType = ImgFrame::Type::RGBF16F16F16i;
+                } else {
+                    properties.previewType = ImgFrame::Type::RGB888i;
+                }
+            } else {
+                if(isFp16) {
+                    properties.previewType = ImgFrame::Type::RGBF16F16F16p;
+                } else {
+                    properties.previewType = ImgFrame::Type::RGB888p;
+                }
+            }
+            break;
+    }
 }
 
 // getColorOrder - returns color order
 ColorCameraProperties::ColorOrder ColorCamera::getColorOrder() const {
-    return properties.colorOrder;
+    if(properties.previewType == ImgFrame::Type::RGB888i || properties.previewType == ImgFrame::Type::RGB888p
+       || properties.previewType == ImgFrame::Type::RGBF16F16F16i || properties.previewType == ImgFrame::Type::RGBF16F16F16p) {
+        return ColorCameraProperties::ColorOrder::RGB;
+    } else if(properties.previewType == ImgFrame::Type::BGR888i || properties.previewType == ImgFrame::Type::BGR888p
+              || properties.previewType == ImgFrame::Type::BGRF16F16F16i || properties.previewType == ImgFrame::Type::BGRF16F16F16p) {
+        return ColorCameraProperties::ColorOrder::BGR;
+    } else {
+        throw std::runtime_error("Don't call getColorOrder() for wrong previewType");
+    }
 }
 
 // setInterleaved
 void ColorCamera::setInterleaved(bool interleaved) {
-    properties.interleaved = interleaved;
+    if(ImgFrame::isInterleaved(properties.previewType)) {
+        if(!interleaved) {
+            properties.previewType = ImgFrame::toPlanar(properties.previewType);
+        }
+    } else {
+        if(interleaved) {
+            properties.previewType = ImgFrame::toInterleaved(properties.previewType);
+        }
+    }
 }
 
 // getInterleaved
 bool ColorCamera::getInterleaved() const {
-    return properties.interleaved;
+    return ImgFrame::isInterleaved(properties.previewType);
+}
+
+/// Set type of preview output image
+void ColorCamera::setPreviewType(ImgFrame::Type type) {
+    properties.previewType = type;
+}
+
+/// Get the preview type
+ImgFrame::Type ColorCamera::getPreviewType() const {
+    return properties.previewType;
 }
 
 // setFp16
 void ColorCamera::setFp16(bool fp16) {
-    properties.fp16 = fp16;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+    auto order = getColorOrder();
+    auto interleaved = getInterleaved();
+#pragma GCC diagnostic pop
+    if(fp16) {
+        if(order == ColorCameraProperties::ColorOrder::BGR) {
+            if(interleaved) {
+                properties.previewType = ImgFrame::Type::BGRF16F16F16i;
+            } else {
+                properties.previewType = ImgFrame::Type::BGRF16F16F16p;
+            }
+        } else {
+            if(interleaved) {
+                properties.previewType = ImgFrame::Type::RGBF16F16F16i;
+            } else {
+                properties.previewType = ImgFrame::Type::RGBF16F16F16p;
+            }
+        }
+    } else {
+        if(order == ColorCameraProperties::ColorOrder::BGR) {
+            if(interleaved) {
+                properties.previewType = ImgFrame::Type::BGR888i;
+            } else {
+                properties.previewType = ImgFrame::Type::BGR888p;
+            }
+        } else {
+            if(interleaved) {
+                properties.previewType = ImgFrame::Type::RGB888i;
+            } else {
+                properties.previewType = ImgFrame::Type::RGB888p;
+            }
+        }
+    }
 }
 
 // getFp16
 bool ColorCamera::getFp16() const {
-    return properties.fp16;
+    if(properties.previewType == ImgFrame::Type::BGRF16F16F16i || properties.previewType == ImgFrame::Type::BGRF16F16F16p
+       || properties.previewType == ImgFrame::Type::RGBF16F16F16i || properties.previewType == ImgFrame::Type::RGBF16F16F16p) {
+        return true;
+    } else {
+        return false;
+    }
 }
 
 // set preview output size
@@ -410,6 +505,26 @@ std::tuple<int, int> ColorCamera::getResolutionSize() const {
             return {8000, 6000};
             break;
 
+        case ColorCameraProperties::SensorResolution::THE_240X180:
+            return {240, 180};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_1280X962:
+            return {1280, 962};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_2000X1500:
+            return {2000, 1500};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_2028X1520:
+            return {2028, 1520};
+            break;
+
+        case ColorCameraProperties::SensorResolution::THE_2104X1560:
+            return {2104, 1560};
+            break;
+
         case ColorCameraProperties::SensorResolution::THE_1440X1080:
             return {1440, 1080};
             break;
@@ -550,6 +665,62 @@ int ColorCamera::getRawNumFramesPool() {
 }
 int ColorCamera::getIspNumFramesPool() {
     return properties.numFramesPoolIsp;
+}
+
+void ColorCamera::setMeshSource(ColorCamera::Properties::WarpMeshSource source) {
+    properties.warpMeshSource = source;
+}
+ColorCamera::Properties::WarpMeshSource ColorCamera::getMeshSource() const {
+    return properties.warpMeshSource;
+}
+
+void ColorCamera::loadMeshData(const std::vector<std::uint8_t> data) {
+    if(data.size() <= 0) {
+        throw std::runtime_error("Camera | mesh data must not be empty");
+    }
+
+    Asset meshAsset;
+    std::string assetKey;
+    meshAsset.alignment = 64;
+
+    meshAsset.data = data;
+    assetKey = "warpMesh";
+    properties.warpMeshUri = assetManager.set(assetKey, meshAsset)->getRelativeUri();
+
+    setMeshSource(ColorCamera::Properties::WarpMeshSource::URI);
+}
+
+// void ColorCamera::loadMeshFile(const dai::Path& warpMesh) {
+//     std::ifstream streamMesh(warpMesh, std::ios::binary);
+//     if(!streamMesh.is_open()) {
+//         throw std::runtime_error(fmt::format("Camera | Cannot open mesh at path: {}", warpMesh.u8string()));
+//     }
+//     std::vector<std::uint8_t> data = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(streamMesh), {});
+
+//     loadMeshData(data);
+// }
+
+void ColorCamera::setMeshStep(int width, int height) {
+    properties.warpMeshStepWidth = width;
+    properties.warpMeshStepHeight = height;
+}
+void ColorCamera::setMeshSize(int width, int height) {
+    properties.warpMeshWidth = width;
+    properties.warpMeshHeight = height;
+}
+std::tuple<int, int> ColorCamera::getMeshStep() const {
+    return {properties.warpMeshStepWidth, properties.warpMeshStepHeight};
+}
+std::tuple<int, int> ColorCamera::getMeshSize() const {
+    return {properties.warpMeshWidth, properties.warpMeshHeight};
+}
+
+void ColorCamera::setCalibrationAlpha(float alpha) {
+    properties.calibAlpha = alpha;
+}
+
+float ColorCamera::getCalibrationAlpha() const {
+    return properties.calibAlpha;
 }
 
 void ColorCamera::setRawOutputPacked(bool packed) {

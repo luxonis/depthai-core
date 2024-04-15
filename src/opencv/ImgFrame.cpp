@@ -7,8 +7,9 @@
 namespace dai {
 
 ImgFrame& ImgFrame::setFrame(cv::Mat frame) {
-    img.data.clear();
-    img.data.insert(img.data.begin(), frame.datastart, frame.dataend);
+    std::vector<uint8_t> dataVec;
+    dataVec.insert(dataVec.begin(), frame.datastart, frame.dataend);
+    setData(dataVec);
     return *this;
 }
 
@@ -21,16 +22,18 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
     switch(getType()) {
         case Type::RGB888i:
         case Type::BGR888i:
-        case Type::BGR888p:
-        case Type::RGB888p:
             size = cv::Size(getWidth(), getHeight());
             type = CV_8UC3;
             break;
-
+        case Type::BGR888p:
+        case Type::RGB888p:
+            size = cv::Size(getWidth(), getHeight() * 3);
+            type = CV_8UC1;
+            break;
         case Type::YUV420p:
         case Type::NV12:
         case Type::NV21:
-            size = cv::Size(getWidth(), getHeight() * 3 / 2);
+            size = cv::Size(getWidth(), getPlaneHeight() * 3 / 2);
             type = CV_8UC1;
             break;
 
@@ -61,7 +64,7 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
             type = CV_16FC3;
             break;
 
-        case dai::RawImgFrame::Type::BITSTREAM:
+        case Type::BITSTREAM:
         default:
             size = cv::Size(static_cast<int>(getData().size()), 1);
             type = CV_8UC1;
@@ -70,7 +73,11 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
 
     // Check if enough data
     long requiredSize = CV_ELEM_SIZE(type) * size.area();
-    long actualSize = static_cast<long>(img.data.size());
+
+    // TMP TMP
+    // long actualSize = static_cast<long>(img.data.size());
+    long actualSize = static_cast<long>(data->getSize());
+
     if(actualSize < requiredSize) {
         throw std::runtime_error("ImgFrame doesn't have enough data to encode specified frame, required " + std::to_string(requiredSize) + ", actual "
                                  + std::to_string(actualSize) + ". Maybe metadataOnly transfer was made?");
@@ -86,10 +93,16 @@ cv::Mat ImgFrame::getFrame(bool deepCopy) {
     if(deepCopy) {
         // Create new image data
         mat.create(size, type);
+
+        // TMPTMP
         // Copy number of bytes that are available by Mat space or by img data size
-        std::memcpy(mat.data, img.data.data(), std::min((long)(img.data.size()), (long)(mat.dataend - mat.datastart)));
+        // std::memcpy(mat.data, img.data.data(), std::min((long)(img.data.size()), (long)(mat.dataend - mat.datastart)));
+        std::memcpy(mat.data, data->getData().data(), std::min((long)(data->getSize()), (long)(mat.dataend - mat.datastart)));
+        // TODO stride handling
     } else {
-        mat = cv::Mat(size, type, img.data.data());
+        // TMP TMP
+        // mat = cv::Mat(size, type, img.data.data());
+        mat = cv::Mat(size, type, data->getData().data(), getStride());
     }
 
     return mat;
@@ -112,9 +125,9 @@ cv::Mat ImgFrame::getCvFrame() {
             cv::Size s(getWidth(), getHeight());
             std::vector<cv::Mat> channels;
             // RGB
-            channels.push_back(cv::Mat(s, CV_8UC1, getData().data() + s.area() * 2));
-            channels.push_back(cv::Mat(s, CV_8UC1, getData().data() + s.area() * 1));
-            channels.push_back(cv::Mat(s, CV_8UC1, getData().data() + s.area() * 0));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + s.area() * 2));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + s.area() * 1));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + s.area() * 0));
             cv::merge(channels, output);
         } break;
 
@@ -122,9 +135,9 @@ cv::Mat ImgFrame::getCvFrame() {
             cv::Size s(getWidth(), getHeight());
             std::vector<cv::Mat> channels;
             // BGR
-            channels.push_back(cv::Mat(s, CV_8UC1, getData().data() + s.area() * 0));
-            channels.push_back(cv::Mat(s, CV_8UC1, getData().data() + s.area() * 1));
-            channels.push_back(cv::Mat(s, CV_8UC1, getData().data() + s.area() * 2));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + s.area() * 0));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + s.area() * 1));
+            channels.push_back(cv::Mat(s, CV_8UC1, (uint8_t*)getData().data() + s.area() * 2));
             cv::merge(channels, output);
         } break;
 
@@ -133,12 +146,19 @@ cv::Mat ImgFrame::getCvFrame() {
             break;
 
         case Type::NV12:
-            cv::cvtColor(frame, output, cv::ColorConversionCodes::COLOR_YUV2BGR_NV12);
-            break;
-
-        case Type::NV21:
-            cv::cvtColor(frame, output, cv::ColorConversionCodes::COLOR_YUV2BGR_NV21);
-            break;
+        case Type::NV21: {
+            int code = (getType() == Type::NV12) ? cv::ColorConversionCodes::COLOR_YUV2BGR_NV12 : cv::ColorConversionCodes::COLOR_YUV2BGR_NV21;
+            if(getPlaneHeight() <= getHeight()) {
+                cv::cvtColor(frame, output, code);
+            } else {
+                cv::Size s(getWidth(), getHeight());
+                int type = CV_8UC1;
+                int step = getStride();
+                cv::Mat frameY(s, type, getData().data(), step);
+                cv::Mat frameUV(s / 2, type, getData().data() + getPlaneStride(), step);
+                cv::cvtColorTwoPlane(frameY, frameUV, output, code);
+            }
+        } break;
 
         case Type::RAW8:
         case Type::RAW16:

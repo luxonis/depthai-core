@@ -56,7 +56,7 @@ endif()
 
 # STEP 3: Custom user variables
 
-if(NOT "@BUILD_SHARED_LIBS@" STREQUAL "")
+if(NOT "@BUILD_SHARED_LIBS@" STREQUAL "" OR NOT "@BUILD_PYTHON" STREQUAL "")
   # Simple PIC toolchain, which enables shared library building
   # This option is propagated to 3rdparty dependecies as well
   set(CMAKE_POSITION_INDEPENDENT_CODE ON)

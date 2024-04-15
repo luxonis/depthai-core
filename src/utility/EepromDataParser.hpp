@@ -1,6 +1,6 @@
 #pragma once
 
-#include "depthai-shared/common/EepromData.hpp"
+#include "depthai/common/EepromData.hpp"
 
 namespace dai
 {

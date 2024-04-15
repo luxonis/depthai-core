@@ -8,10 +8,9 @@
 #include "depthai-bootloader-shared/SBR.h"
 #include "depthai-bootloader-shared/Structure.hpp"
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
-#include "depthai-shared/datatype/RawImgFrame.hpp"
-#include "depthai-shared/pipeline/Assets.hpp"
-#include "depthai-shared/utility/Serialization.hpp"
-#include "depthai-shared/xlink/XLinkConstants.hpp"
+#include "depthai/pipeline/Assets.hpp"
+#include "depthai/utility/Serialization.hpp"
+#include "depthai/xlink/XLinkConstants.hpp"
 
 // project
 #include "device/Device.hpp"
@@ -26,12 +25,6 @@
 #include "spdlog/spdlog.h"
 #include "utility/Logging.hpp"
 #include "zlib.h"
-
-// Resource compiled assets (cmds)
-#ifdef DEPTHAI_RESOURCE_COMPILED_BINARIES
-    #include "cmrc/cmrc.hpp"
-CMRC_DECLARE(depthai);
-#endif
 
 namespace dai {
 
@@ -253,12 +246,12 @@ void DeviceBootloader::saveDepthaiApplicationPackage(
 }
 
 DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo) : deviceInfo(devInfo) {
-    init(true, {}, tl::nullopt, false);
+    init(true, {}, std::nullopt, false);
 }
 
 template <>
 DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, bool allowFlashingBootloader) : deviceInfo(devInfo) {
-    init(true, {}, tl::nullopt, allowFlashingBootloader);
+    init(true, {}, std::nullopt, allowFlashingBootloader);
 }
 
 DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, Type type, bool allowFlashingBootloader) : deviceInfo(devInfo) {
@@ -266,11 +259,11 @@ DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, Type type, bool al
 }
 
 DeviceBootloader::DeviceBootloader(const DeviceInfo& devInfo, const dai::Path& pathToBootloader, bool allowFlashingBootloader) : deviceInfo(devInfo) {
-    init(false, pathToBootloader, tl::nullopt, allowFlashingBootloader);
+    init(false, pathToBootloader, std::nullopt, allowFlashingBootloader);
 }
 
 DeviceBootloader::DeviceBootloader(std::string nameOrDeviceId, bool allowFlashingBootloader) : deviceInfo(std::move(nameOrDeviceId)) {
-    init(true, {}, tl::nullopt, allowFlashingBootloader);
+    init(true, {}, std::nullopt, allowFlashingBootloader);
 }
 
 void DeviceBootloader::createWatchdog() {
@@ -354,7 +347,7 @@ void DeviceBootloader::destroyWatchdog() {
     if(monitorThread.joinable()) monitorThread.join();
 }
 
-void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, tl::optional<bootloader::Type> type, bool allowBlFlash) {
+void DeviceBootloader::init(bool embeddedMvcmd, const dai::Path& pathToMvcmd, std::optional<bootloader::Type> type, bool allowBlFlash) {
     stream = nullptr;
     allowFlashingBootloader = allowBlFlash;
 
@@ -603,7 +596,7 @@ DeviceBootloader::Version DeviceBootloader::requestVersion() {
     if(blVersion >= Version(Request::GetBootloaderCommit::VERSION)) {
         // Send request to retrieve bootloader commit (skip version check)
         Request::GetBootloaderCommit request{};
-        stream->write((uint8_t*)&request, sizeof(request));
+        stream->write({(uint8_t*)&request, sizeof(request)});
 
         // Receive response
         Response::BootloaderCommit commit;
@@ -1383,7 +1376,7 @@ bool DeviceBootloader::sendRequest(const T& request) {
     }
 
     try {
-        stream->write((uint8_t*)&request, sizeof(T));
+        stream->write({(uint8_t*)&request, sizeof(T)});
     } catch(const std::exception&) {
         return false;
     }
@@ -1402,7 +1395,7 @@ void DeviceBootloader::sendRequestThrow(const T& request) {
     }
 
     try {
-        stream->write((uint8_t*)&request, sizeof(T));
+        stream->write({(uint8_t*)&request, sizeof(T)});
     } catch(const std::exception&) {
         throw std::runtime_error("Couldn't send " + std::string(T::NAME) + " request");
     }

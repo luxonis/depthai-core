@@ -4,31 +4,34 @@
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
-// shared
-#include "depthai-shared/datatype/RawEncodedFrame.hpp"
-
-// optional
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    #include <opencv2/opencv.hpp>
-#endif
-
 namespace dai {
 
 class EncodedFrame : public Buffer {
-    std::shared_ptr<RawBuffer> serialize() const override;
-    RawEncodedFrame& frame;
-
    public:
-    // Raw* mirror
-    using Profile = RawEncodedFrame::Profile;
-    using FrameType = RawEncodedFrame::FrameType;
+    enum class Profile : std::uint8_t { JPEG, AVC, HEVC };
+    enum class FrameType : std::uint8_t { I, P, B, Unknown };
+    struct CameraSettings {
+        int32_t exposureTimeUs;
+        int32_t sensitivityIso;
+        int32_t lensPosition;
+        int32_t wbColorTemp;
+        float lensPositionRaw;
+        DEPTHAI_SERIALIZE(CameraSettings, exposureTimeUs, sensitivityIso, lensPosition, wbColorTemp, lensPositionRaw);
+    };
 
-    /**
-     * Construct EncodedFrame message.
-     * Timestamp is set to now
-     */
-    EncodedFrame();
-    explicit EncodedFrame(std::shared_ptr<RawEncodedFrame> ptr);
+    CameraSettings cam;
+    uint32_t instanceNum = 0;  // Which source created this frame (color, mono, ...)
+
+    uint32_t quality;
+    uint32_t bitrate;
+    Profile profile;
+
+    bool lossless;   // jpeg
+    FrameType type;  // h264
+
+    uint32_t frameOffset = 0;
+    uint32_t frameSize = 0;
+
     virtual ~EncodedFrame() = default;
 
     // getters
@@ -55,6 +58,12 @@ class EncodedFrame : public Buffer {
      * Retrieves lens position, range 0..255. Returns -1 if not available
      */
     int getLensPosition() const;
+
+    /**
+     * Retrieves lens position, range 0.0f..1.0f. Returns -1 if not available
+     */
+    float getLensPositionRaw() const;
+
     /**
      * Retrieves the encoding quality
      */
@@ -73,30 +82,12 @@ class EncodedFrame : public Buffer {
     /**
      * Retrieves frame type (H26x only)
      */
-    FrameType getFrameType() const;
+    FrameType getFrameType();
 
     /**
      * Retrieves the encoding profile (JPEG, AVC or HEVC)
      */
     Profile getProfile() const;
-
-    // setters
-    /**
-     * Retrieves image timestamp related to dai::Clock::now()
-     */
-    EncodedFrame& setTimestamp(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp);
-
-    /**
-     * Sets image timestamp related to dai::Clock::now()
-     */
-    EncodedFrame& setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock, std::chrono::steady_clock::duration> tp);
-
-    /**
-     * Specifies sequence number
-     *
-     * @param seq Sequence number
-     */
-    EncodedFrame& setSequenceNum(int64_t seq);
 
     /**
      * Instance number relates to the origin of the frame (which camera)
@@ -139,6 +130,14 @@ class EncodedFrame : public Buffer {
      * @param profile Encoding profile
      */
     EncodedFrame& setProfile(Profile profile);
+
+    DEPTHAI_SERIALIZE(
+        EncodedFrame, cam, instanceNum, quality, bitrate, profile, lossless, type, frameOffset, frameSize, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice);
+
+    void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
+        metadata = utility::serialize(*this);
+        datatype = DatatypeEnum::EncodedFrame;
+    };
 };
 
 }  // namespace dai
