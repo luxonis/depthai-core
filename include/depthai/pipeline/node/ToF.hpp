@@ -38,25 +38,30 @@ class ToF : public DeviceNodeCRTP<DeviceNode, ToF, ToFProperties> {
      * Input ToFConfig message with ability to modify parameters in runtime.
      * Default queue is non-blocking with size 4.
      */
-    Input inputConfig{true, *this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ToFConfig, false}}};
+    Input inputConfig{*this, {.name = "inputConfig", .types = {{DatatypeEnum::ToFConfig, false}}}};
+
     /**
      * Input message with frame data on which feature tracking is performed.
      * Default queue is non-blocking with size 4.
      */
-    Input inputRaw{true, *this, "inputRaw", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputRaw{*this, {.name = "inputRaw", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
-    Output depth{true, *this, "depth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output depth{*this, {.name = "depth", .types = {{DatatypeEnum::ImgFrame, false}}}};
+
+    // Note on API limitation:
     // TODO(before mainline) - API not supported on RVC3
-    Input input{true, *this, "input", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImgFrame, true}}};
+    Input input{*this, {.name = "input", .types = {{DatatypeEnum::ImgFrame, true}}}};
 
     /**
      * Passthrough message on which the calculation was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughInputRaw{true, *this, "passthroughInputRaw", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output passthroughInputRaw{*this, {.name = "passthroughInputRaw", .types = {{DatatypeEnum::ImgFrame, false}}}};
+
+    // Note on API limitation:
     // TODO(before mainline) - API not supported on RVC3
-    Output amplitude{true, *this, "amplitude", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
-    Output error{true, *this, "error", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
+    Output amplitude{*this, {.name = "amplitude", .types = {{DatatypeEnum::ImgFrame, true}}}};
+    Output error{*this, {.name = "error", .types = {{DatatypeEnum::ImgFrame, true}}}};
 };
 
 }  // namespace node
