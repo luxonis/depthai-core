@@ -53,46 +53,49 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
      * Input message with depth data used to retrieve spatial information about detected object
      * Default queue is non-blocking with size 4
      */
-    Input inputDepth{true, *this, "inputDepth", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputDepth{*this, {.name = "inputDepth", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::ImgFrame, false}}, .waitForMessage = true}};
 
     /**
      * Input message with image data used to retrieve image transformation from detected object
      * Default queue is blocking with size 1
      */
-    Input inputImg{true, *this, "inputImg", Input::Type::SReceiver, true, 2, true, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputImg{*this, {.name = "inputImg", .blocking = true, .queueSize = 2, .types = {{DatatypeEnum::ImgFrame, false}}, .waitForMessage = true}};
 
     /**
      * Input message with input detections object
      * Default queue is blocking with size 1
      */
-    Input inputDetections{true, *this, "inputDetections", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::ImgDetections, false}}};
+    Input inputDetections{*this,
+                          {
+                              .name = "inputDetections",
+                              .blocking = true,
+                              .queueSize = 5,
+                              .types = {{DatatypeEnum::ImgDetections, false}},
+                              .waitForMessage = true,
+                          }};
 
     /**
      * Outputs ImgDetections message that carries parsed detection results.
      */
-    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::SpatialImgDetections, false}}};
+    Output out{*this, {.name = "out", .types = {{DatatypeEnum::SpatialImgDetections, false}}}};
 
     /**
      * Outputs mapping of detected bounding boxes relative to depth map
-     *
      * Suitable for when displaying remapped bounding boxes on depth frame
      */
-    Output boundingBoxMapping{true, *this, "boundingBoxMapping", Output::Type::MSender, {{DatatypeEnum::SpatialLocationCalculatorConfig, false}}};
+    Output boundingBoxMapping{*this, {.name = "boundingBoxMapping", .types = {{DatatypeEnum::SpatialLocationCalculatorConfig, false}}}};
 
     /**
      * Passthrough message for depth frame on which the spatial location calculation was performed.
-     *
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughDepth{true, *this, "passthroughDepth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output passthroughDepth{*this, {.name = "passthroughDepth", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Output of SpatialLocationCalculator node, which is used internally by SpatialDetectionNetwork.
      * Suitable when extra information is required from SpatialLocationCalculator node, e.g. minimum, maximum distance.
      */
-    Output spatialLocationCalculatorOutput{
-        true, *this, "spatialLocationCalculatorOutput", Output::Type::MSender, {{DatatypeEnum::SpatialLocationCalculatorData, false}}};
-
+    Output spatialLocationCalculatorOutput{*this, {.name = "spatialLocationCalculatorOutput", .types = {{DatatypeEnum::SpatialLocationCalculatorData, false}}}};
     /** Backwards compatibility interface **/
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**
@@ -225,6 +228,7 @@ class MobileNetSpatialDetectionNetwork : public SpatialDetectionNetwork {
         n->build();
         return n;
     }
+    bool runOnHost() const override { return false; };
 };
 
 /**
@@ -238,6 +242,8 @@ class YoloSpatialDetectionNetwork : public SpatialDetectionNetwork {
         n->build();
         return n;
     }
+
+    bool runOnHost() const override { return false; };
 
     /// Set num classes
     void setNumClasses(const int numClasses);

@@ -222,11 +222,11 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/ImageManip.cpp
     src/pipeline/node/Warp.cpp
     src/pipeline/node/VideoEncoder.cpp
-    # src/pipeline/node/DetectionNetwork.cpp
-    # src/pipeline/node/Script.cpp
-    # src/pipeline/node/Pool.cpp
-    # src/pipeline/node/Benchmark.cpp
-    # src/pipeline/node/SpatialDetectionNetwork.cpp
+    src/pipeline/node/DetectionNetwork.cpp
+    src/pipeline/node/Script.cpp
+    src/pipeline/node/Pool.cpp
+    src/pipeline/node/Benchmark.cpp
+    src/pipeline/node/SpatialDetectionNetwork.cpp
     # src/pipeline/node/SystemLogger.cpp
     # src/pipeline/node/SpatialLocationCalculator.cpp
     # src/pipeline/node/AprilTag.cpp
