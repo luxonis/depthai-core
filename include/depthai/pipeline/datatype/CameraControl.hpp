@@ -40,6 +40,8 @@ class CameraControl : public Buffer {
     using AutoWhiteBalanceMode = RawCameraControl::AutoWhiteBalanceMode;
     using SceneMode = RawCameraControl::SceneMode;
     using EffectMode = RawCameraControl::EffectMode;
+    using ControlMode = RawCameraControl::ControlMode;
+    using CaptureIntent = RawCameraControl::CaptureIntent;
     using FrameSyncMode = RawCameraControl::FrameSyncMode;
 
     /// Construct CameraControl message
@@ -131,6 +133,14 @@ class CameraControl : public Buffer {
      */
     CameraControl& setManualFocus(uint8_t lensPosition);
 
+    /**
+     * Set a command to specify manual focus position (more precise control).
+     *
+     * @param lensPositionRaw specify lens position 0.0f .. 1.0f
+     * @return CameraControl&
+     */
+    CameraControl& setManualFocusRaw(float lensPositionRaw);
+
     // Exposure
     /**
      * Set a command to enable auto exposure
@@ -160,6 +170,22 @@ class CameraControl : public Buffer {
     CameraControl& setAutoExposureCompensation(int compensation);
 
     /**
+     * Set a command to specify the maximum exposure time limit for auto-exposure. By default
+     * the AE algorithm prioritizes increasing exposure over ISO, up to around frame-time
+     * (subject to further limits imposed by anti-banding)
+     * @param maxExposureTimeUs Maximum exposure time in microseconds
+     */
+    CameraControl& setAutoExposureLimit(uint32_t maxExposureTimeUs);
+
+    /**
+     * Set a command to specify the maximum exposure time limit for auto-exposure. By default
+     * the AE algorithm prioritizes increasing exposure over ISO, up to around frame-time
+     * (subject to further limits imposed by anti-banding)
+     * @param maxExposureTime Maximum exposure time
+     */
+    CameraControl& setAutoExposureLimit(std::chrono::microseconds maxExposureTime);
+
+    /**
      * Set a command to specify anti-banding mode. Anti-banding / anti-flicker
      * works in auto-exposure mode, by controlling the exposure time to be applied
      * in multiples of half the mains period, for example in multiple of 10ms
@@ -184,7 +210,7 @@ class CameraControl : public Buffer {
      * @param exposureTime Exposure time
      * @param sensitivityIso Sensitivity as ISO value, usual range 100..1600
      */
-    void setManualExposure(std::chrono::microseconds exposureTime, uint32_t sensitivityIso);
+    CameraControl& setManualExposure(std::chrono::microseconds exposureTime, uint32_t sensitivityIso);
 
     // White Balance
     /**
@@ -254,6 +280,18 @@ class CameraControl : public Buffer {
      */
     CameraControl& setEffectMode(EffectMode mode);
 
+    /**
+     * Set a command to specify control mode
+     * @param mode Control mode
+     */
+    CameraControl& setControlMode(ControlMode mode);
+
+    /**
+     * Set a command to specify capture intent mode
+     * @param mode Capture intent mode
+     */
+    CameraControl& setCaptureIntent(CaptureIntent mode);
+
     // Functions to retrieve properties
     /**
      * Check whether command to capture a still is set
@@ -275,6 +313,11 @@ class CameraControl : public Buffer {
      * Retrieves lens position, range 0..255. Returns -1 if not available
      */
     int getLensPosition() const;
+
+    /**
+     * Retrieves lens position, range 0.0f..1.0f.
+     */
+    float getLensPositionRaw() const;
 
     /**
      * Set explicit configuration.
