@@ -49,7 +49,7 @@ class RerunStreamer : public dai::NodeCRTP<dai::ThreadedNode, RerunStreamer> {
             std::shared_ptr<dai::TransformData> transData = inputTrans.queue.get<dai::TransformData>();
             auto imgFrame = inputImg.queue.get<dai::ImgFrame>();
             if(transData != nullptr) {
-                float x, y, z, qx, qy, qz, qw;
+                double x, y, z, qx, qy, qz, qw;
                 transData->getTranslation(x, y, z);
                 transData->getQuaternion(qx, qy, qz, qw);
                 auto position = rerun::Vec3D(x, y, z);
@@ -78,8 +78,8 @@ int main() {
     int width = 640;
     int height = 400;
     // Define sources and outputs
-    auto left = pipeline.create<dai::node::ColorCamera>();
-    auto right = pipeline.create<dai::node::ColorCamera>();
+    auto left = pipeline.create<dai::node::MonoCamera>();
+    auto right = pipeline.create<dai::node::MonoCamera>();
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto imu = pipeline.create<dai::node::IMU>();
     auto featureTracker = pipeline.create<dai::node::FeatureTracker>();
@@ -90,7 +90,6 @@ int main() {
 
     odom->setParams(params);
     imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 100);
-    imu->enableIMUSensor({dai::IMUSensor::ROTATION_VECTOR}, 100);
     imu->setBatchReportThreshold(1);
     imu->setMaxBatchReports(10);
 
@@ -100,11 +99,11 @@ int main() {
     featureTracker->initialConfig.setMotionEstimator(false);
     featureTracker->initialConfig.featureMaintainer.minimumDistanceBetweenFeatures = 49.0;
     stereo->rectifiedLeft.link(featureTracker->inputImage);
-    stereo->setAlphaScaling(0.0);
-    left->setIspScale(9, 20);
+    // stereo->setAlphaScaling(0.0);
+    left->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     left->setCamera("left");
     left->setFps(fps);
-    right->setIspScale(9, 20);
+    right->setResolution(dai::MonoCameraProperties::SensorResolution::THE_400_P);
     right->setCamera("right");
     right->setFps(fps);
 	stereo->setExtendedDisparity(false);
@@ -121,8 +120,8 @@ int main() {
     // controlIn->setStreamName("control");
 
     // Linking
-    left->isp.link(stereo->left);
-    right->isp.link(stereo->right);
+    left->out.link(stereo->left);
+    right->out.link(stereo->right);
     featureTracker->passthroughInputImage.link(odom->inputRect);
     stereo->depth.link(odom->inputDepth);
     imu->out.link(odom->inputIMU);

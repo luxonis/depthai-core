@@ -163,7 +163,7 @@ hunter_config(
     rtbmap
     # VERSION "0.21.4"
     URL "https://github.com/introlab/rtabmap/archive/refs/heads/master.tar.gz"
-    SHA1 "9d3a45bc050669ab6782482638bad60b158fd975"
+    SHA1 "99c3b9c680e3d5d95a16f4422d60c03131d81730"
     CMAKE_ARGS
         CMAKE_BUILD_TYPE=RelWithDebInfo
         BUILD_APP=OFF
@@ -240,3 +240,16 @@ hunter_config(
 #         BASALT_INSTANTIATIONS_DOUBLE=off
 #         BUILD_TESTS=off
 # )
+
+hunter_config(
+    Sophus
+    URL "https://github.com/strasdat/Sophus/archive/936265f5815dee546a3583ceba58c234c2ecb271.zip"
+    SHA1 "7f54e06fb1680910c465e12ea85fc414ce7a9f9e" 
+    CMAKE_ARGS
+        CMAKE_BUILD_TYPE=RelWithDebInfo
+)
+hunter_config(
+    magic_enum
+    URL "https://github.com/Neargye/magic_enum/archive/3d1f6a5a2a3fbcba077e00ad0ccc2dd9fefc2ca7.zip"
+    SHA1 "c9a27f6ff8311f0c6b2adb959d0598f079fcc9f3"
+)

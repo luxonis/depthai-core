@@ -98,7 +98,8 @@ if(DEPTHAI_RTABMAP_SUPPORT)
     hunter_add_package(rtbmap COMPONENTS core utilite)
     find_package(RTABMap ${_QUIET} CONFIG REQUIRED COMPONENTS core utilite)
 endif()
-
+hunter_add_package(Sophus)
+find_package(Sophus ${_QUIET} CONFIG REQUIRED)
 # include optional dependency cmake
 if(DEPTHAI_DEPENDENCY_INCLUDE)
     include(${DEPTHAI_DEPENDENCY_INCLUDE} OPTIONAL)

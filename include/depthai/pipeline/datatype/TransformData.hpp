@@ -5,7 +5,7 @@
 #endif
 namespace dai {
 struct Transform {
-    std::vector<std::vector<float>> data;
+    std::vector<std::vector<double>> data;
 };
 
 DEPTHAI_SERIALIZE_EXT(Transform, data);
@@ -20,9 +20,9 @@ class TransformData : public Buffer {
      */
     TransformData();
     TransformData(const Transform& transform);
-    TransformData(const std::vector<std::vector<float>>& data);
-    TransformData(float x, float y, float z, float qx, float qy, float qz, float qw);
-    TransformData(float x, float y, float z, float roll, float pitch, float yaw);
+    TransformData(const std::vector<std::vector<double>>& data);
+    TransformData(double x, double y, double z, double qx, double qy, double qz, double qw);
+    TransformData(double x, double y, double z, double roll, double pitch, double yaw);
 
 #ifdef DEPTHAI_HAVE_RTABMAP_SUPPORT
     TransformData(const rtabmap::Transform& transformRTABMap);
@@ -38,9 +38,9 @@ class TransformData : public Buffer {
         datatype = DatatypeEnum::TransformData;
     };
 
-    void getTranslation(float& x, float& y, float& z) const;
-    void getRotationEuler(float& r, float& p, float& y) const;
-    void getQuaternion(float& qx, float& qy, float& qz, float& qw) const;
+    void getTranslation(double& x, double& y, double& z) const;
+    void getRotationEuler(double& r, double& p, double& y) const;
+    void getQuaternion(double& qx, double& qy, double& qz, double& qw) const;
 
     DEPTHAI_SERIALIZE(TransformData, Buffer::sequenceNum, Buffer::ts, Buffer::tsDevice, transform);
 };
