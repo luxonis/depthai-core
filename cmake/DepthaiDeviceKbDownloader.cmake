@@ -1,36 +1,39 @@
-# This script downloads depthai device side artifacts
-
-function(DepthaiDeviceKbDownload)
+# This script downloads depthai device side artifacts for different device types
+function(DepthaiDeviceDownloader)
 
     ### VARIABLES
     # Artifactory
     set(DOWNLOADER_BASE_URL "https://artifacts.luxonis.com/artifactory")
 
-    # Repositories
-    set(DOWNLOADER_REPO_SNAPSHOT "luxonis-keembay-snapshot-local")
-    set(DOWNLOADER_REPO_RELEASE "luxonis-keembay-release-local")
-
-    # Prefix
-    set(DOWNLOADER_ARTIFACT_PREFIX "depthai-device-kb")
-
+    
     # Errors and retry count
     set(DOWNLOADER_TIMEOUT_S 300)
     set(DOWNLOADER_INACTIVE_TIMEOUT_S 60)
     set(DOWNLOADER_RETRY_NUM 5)
     ### END VARIABLES
-
-
+    
+    
     # PARSE ARGUMENTS
-    set(_depthai_shared_commit ${ARGV0})
-    set(_enforce_depthai_shared_commit ${ARGV1})
-    set(folder "${ARGV2}")
-    set(output_list_var "${ARGV3}")
-    set(maturity "${ARGV4}")
-    set(commit_version_arg "${ARGV5}")
-
-    message(STATUS "Downloading depthai device-kb")
-
+    set(device_type ${ARGV0})
+    set(repo_snapshot ${ARGV1})
+    set(repo_release ${ARGV2})
+    set(_depthai_shared_commit ${ARGV3})
+    set(_enforce_depthai_shared_commit ${ARGV4})
+    set(folder "${ARGV5}")
+    set(output_list_var "${ARGV6}")
+    set(maturity "${ARGV7}")
+    set(commit_version_arg "${ARGV8}")
     # END PARSE ARGUMENTS
+    
+    message(STATUS "Downloading ${device_type}")
+
+    # Repositories (dynamic based on parameters)
+    set(DOWNLOADER_REPO_SNAPSHOT "${repo_snapshot}")
+    set(DOWNLOADER_REPO_RELEASE "${repo_release}")
+
+    # Prefix (dynamic based on device_type)
+    set(DOWNLOADER_ARTIFACT_PREFIX "${device_type}")
+
 
     #DEBUG
     message(STATUS "folder: ${folder}")
@@ -50,7 +53,7 @@ function(DepthaiDeviceKbDownload)
         # Create _version_commit_identifier
         set(_version_commit_identifier "${commit}")
 
-    elseif(${maturity_lower} STREQUAL "release")
+    elseif("${maturity_lower}" STREQUAL "release")
         set(_selected_repo "${DOWNLOADER_REPO_RELEASE}")
         set(version ${commit_version_arg})
 
@@ -61,7 +64,7 @@ function(DepthaiDeviceKbDownload)
         set(_version_commit_identifier "${version}")
     else()
         # Not a recognized maturity level
-        message(FATAL_ERROR "Cannot download depthai-device-kb binaries. Maturity level not recognized (${maturity_lower})")
+        message(FATAL_ERROR "Cannot download ${device_type} binaries. Maturity level not recognized (${maturity_lower})")
         return()
     endif()
 
@@ -143,10 +146,9 @@ function(DepthaiDeviceKbDownload)
 
     endfunction()
 
-
-    # Check if depthai-device-kb-shared matches
+    # Check if shared commit matches
     if(_depthai_shared_commit)
-        message(STATUS "device-kb shared commit: ${_depthai_shared_commit}")
+        message(STATUS "${device_type} shared commit: ${_depthai_shared_commit}")
         DownloadAndChecksum(
             "${_download_directory_url}/depthai-shared-commit-hash-${_version_commit_identifier}.txt" # File
             "${_download_directory_url}/depthai-shared-commit-hash-${_version_commit_identifier}.txt.sha256" # File checksum
@@ -175,31 +177,30 @@ function(DepthaiDeviceKbDownload)
 
             # If commits dont match
             if(NOT ${_is_same})
-                message(${_message_mode} "depthai-device-kb-shared codebases differ between device and host. Enforce (CI): ${_enforce_depthai_shared_commit} (device: ${_device_depthai_shared_commit_hash}, host: ${_depthai_shared_commit}")
+                message(${_message_mode} "${device_type}-shared codebases differ between device and host. Enforce (CI): ${_enforce_depthai_shared_commit} (device: ${_device_depthai_shared_commit_hash}, host: ${_depthai_shared_commit}")
             else()
-                message(STATUS "depthai-device-kb-shared between device and host MATCH!. (device: ${_device_depthai_shared_commit_hash}, host: ${_depthai_shared_commit}")
+                message(STATUS "${device_type}-shared between device and host MATCH!. (device: ${_device_depthai_shared_commit_hash}, host: ${_depthai_shared_commit}")
             endif()
 
         endif()
 
     endif()
 
-
-    # Download depthai-device-kb firmware package
-    message(STATUS "Downloading and checking depthai-device-kb-fwp.tar.xz")
+    # Download firmware package
+    message(STATUS "Downloading and checking ${device_type}-fwp.tar.xz")
     DownloadAndChecksum(
-        "${_download_directory_url}/depthai-device-kb-fwp-${_version_commit_identifier}.tar.xz" # File
-        "${_download_directory_url}/depthai-device-kb-fwp-${_version_commit_identifier}.tar.xz.sha256" # File checksum
-        "${folder}/depthai-device-kb-fwp-${_version_commit_identifier}.tar.xz"
+        "${_download_directory_url}/${device_type}-fwp-${_version_commit_identifier}.tar.xz" # File
+        "${_download_directory_url}/${device_type}-fwp-${_version_commit_identifier}.tar.xz.sha256" # File checksum
+        "${folder}/${device_type}-fwp-${_version_commit_identifier}.tar.xz"
         status
     )
     if(${status})
-        message(STATUS "\nCouldn't download depthai-device-kb-fwp.tar.xz\n")
+        message(STATUS "\nCouldn't download ${device_type}-fwp.tar.xz\n")
         PrintErrorMessage(${status})
         message(FATAL_ERROR "Aborting.\n")
     endif()
     # add depthai-device-kb-fwp.tar.xz to list
-    list(APPEND "${output_list_var}" "${folder}/depthai-device-kb-fwp-${_version_commit_identifier}.tar.xz")
+    list(APPEND "${output_list_var}" "${folder}/${device_type}-fwp-${_version_commit_identifier}.tar.xz")
 
 
     # Set list of files as output

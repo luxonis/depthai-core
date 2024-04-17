@@ -31,6 +31,8 @@ enum class DatatypeEnum : std::int32_t {
     MessageGroup,
     TransformData,
     RTABMapSensorData,
+    PointCloudConfig,
+    PointCloudData
 };
 bool isDatatypeSubclassOf(DatatypeEnum parent, DatatypeEnum children);
 

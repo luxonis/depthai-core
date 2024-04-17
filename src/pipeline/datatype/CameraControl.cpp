@@ -77,9 +77,16 @@ CameraControl& CameraControl::setAutoFocusRegion(uint16_t startX, uint16_t start
     afRegion.priority = 1;  // TODO
     return *this;
 }
+
 CameraControl& CameraControl::setManualFocus(uint8_t lensPosition) {
     setCommand(Command::MOVE_LENS);
-    lensPosition = lensPosition;
+    this->lensPosition = lensPosition;
+    return *this;
+}
+
+CameraControl& CameraControl::setManualFocusRaw(float lensPositionRaw) {
+    setCommand(Command::MOVE_LENS_RAW);
+    this->lensPositionRaw = lensPositionRaw;
     return *this;
 }
 
@@ -232,6 +239,10 @@ int CameraControl::getSensitivity() const {
 
 int CameraControl::getLensPosition() const {
     return lensPosition;
+}
+
+float CameraControl::getLensPositionRaw() const {
+    return lensPositionRaw;
 }
 
 }  // namespace dai

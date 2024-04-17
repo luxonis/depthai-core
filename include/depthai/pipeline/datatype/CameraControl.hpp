@@ -121,6 +121,7 @@ class CameraControl : public Buffer {
         FRAME_SYNC = 52,
         STROBE_CONFIG = 53,
         STROBE_TIMINGS = 54,
+        MOVE_LENS_RAW = 55, /* lens position: 0.0 - 1.0 */
     };
 
     enum class AutoFocusMode : uint8_t {
@@ -505,6 +506,14 @@ class CameraControl : public Buffer {
      */
     CameraControl& setManualFocus(uint8_t lensPosition);
 
+    /**
+     * Set a command to specify manual focus position (more precise control).
+     *
+     * @param lensPositionRaw specify lens position 0.0f .. 1.0f
+     * @return CameraControl&
+     */
+    CameraControl& setManualFocusRaw(float lensPositionRaw);
+
     // Exposure
     /**
      * Set a command to enable auto exposure
@@ -729,6 +738,8 @@ class CameraControl : public Buffer {
      * - lower values lead to out-of-focus (lens too close to the sensor array)
      */
     uint8_t lensPosition = 0;
+    float lensPositionRaw = 0;
+
     uint8_t lensPosAutoInfinity, lensPosAutoMacro;
 
     ManualExposureParams expManual;
@@ -781,6 +792,7 @@ class CameraControl : public Buffer {
                       cmdMask,
                       autoFocusMode,
                       lensPosition,
+                      lensPositionRaw,
                       lensPosAutoInfinity,
                       lensPosAutoMacro,
                       expManual,
@@ -809,6 +821,10 @@ class CameraControl : public Buffer {
                       lowPowerNumFramesBurst,
                       lowPowerNumFramesDiscard,
                       miscControls);
+    /**
+     * Retrieves lens position, range 0.0f..1.0f.
+     */
+    float getLensPositionRaw() const;
 };
 
 }  // namespace dai

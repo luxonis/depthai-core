@@ -218,6 +218,7 @@ std::vector<const char *> camCtrlAttr;
         .def("setAutoFocusLensRange", &CameraControl::setAutoFocusLensRange, py::arg("infinityPosition"), py::arg("macroPosition"), DOC(dai, CameraControl, setAutoFocusLensRange))
         .def("setAutoFocusRegion", &CameraControl::setAutoFocusRegion, py::arg("startX"), py::arg("startY"), py::arg("width"), py::arg("height"), DOC(dai, CameraControl, setAutoFocusRegion))
         .def("setManualFocus", &CameraControl::setManualFocus, py::arg("lensPosition"), DOC(dai, CameraControl, setManualFocus))
+        .def("setManualFocusRaw", &CameraControl::setManualFocusRaw, py::arg("lensPositionRaw"), DOC(dai, CameraControl, setManualFocusRaw))
         .def("setAutoExposureEnable", &CameraControl::setAutoExposureEnable, DOC(dai, CameraControl, setAutoExposureEnable))
         .def("setAutoExposureLock", &CameraControl::setAutoExposureLock, py::arg("lock"), DOC(dai, CameraControl, setAutoExposureLock))
         .def("setAutoExposureRegion", &CameraControl::setAutoExposureRegion, py::arg("startX"), py::arg("startY"), py::arg("width"), py::arg("height"), DOC(dai, CameraControl, setAutoExposureRegion))
@@ -251,6 +252,8 @@ std::vector<const char *> camCtrlAttr;
         .def("getExposureTime", &CameraControl::getExposureTime, DOC(dai, CameraControl, getExposureTime))
         .def("getSensitivity", &CameraControl::getSensitivity, DOC(dai, CameraControl, getSensitivity))
         .def("getLensPosition", &CameraControl::getLensPosition, DOC(dai, CameraControl, getLensPosition))
+        .def("getLensPositionRaw", &CameraControl::getLensPositionRaw, DOC(dai, CameraControl, getLensPositionRaw))
+
         // .def("get",         &CameraControl::get, DOC(dai, CameraControl, get))
         ;
     // Add also enum attributes from CameraControl

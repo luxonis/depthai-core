@@ -12,11 +12,21 @@ void ThreadedNode::start() {
         try {
             run();
         } catch(const MessageQueue::QueueException& ex) {
-            // catch anything and stop the node
-            logger->info("Node closing: {}", ex.what());
+            // catch the exception and stop the node
+            auto expStr = fmt::format("Node stopped with a queue exception: {}", ex.what());
+            if(logger) {
+                logger->info(expStr);
+            } else {
+                spdlog::info(expStr);
+            }
             running = false;
         } catch(const std::runtime_error& ex) {
-            logger->error("Node threw exception, stopping the node. Exception message: {}", ex.what());
+            auto expStr = fmt::format("Node threw exception, stopping the node. Exception message: {}", ex.what());
+            if(logger) {
+                logger->error(expStr);
+            } else {
+                spdlog::error(expStr);
+            }
             running = false;
         }
     });

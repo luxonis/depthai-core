@@ -22,6 +22,12 @@ depthai-cpp/build/
 #ci
 wheelhouse/
 calib*.json
+#depthai c++ core library
+depthai-core/.vscode/
+depthai-core/build/
+
+# builds
+_builds/
 #git
 *.orig
 *_REMOTE_*
