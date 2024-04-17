@@ -292,6 +292,11 @@ set_property(TARGET rtabmap_vio PROPERTY CXX_STANDARD 17)
 target_link_options(rtabmap_vio PRIVATE "-Wl,--disable-new-dtags")
 target_link_libraries(rtabmap_vio PRIVATE depthai::rtabmap rerun_sdk)
 
+dai_add_example(rtabmap_slam host_side/rtabmap_slam.cpp OFF)
+set_property(TARGET rtabmap_slam PROPERTY CXX_STANDARD 17)
+target_link_options(rtabmap_slam PRIVATE "-Wl,--disable-new-dtags")
+target_link_libraries(rtabmap_slam PRIVATE depthai::rtabmap rerun_sdk)
+
 
 find_package(basalt CONFIG REQUIRED)
 find_package(Eigen3 CONFIG REQUIRED)
@@ -300,11 +305,16 @@ hunter_add_package(magic_enum)
 find_package(magic_enum CONFIG REQUIRED)
 find_package(TBB CONFIG REQUIRED)
 dai_add_example(basalt_dai_vio host_side/basalt_dai_vio.cpp OFF)
-target_include_directories(basalt_dai_vio INTERFACE host_side/vit)
 set_property(TARGET basalt_dai_vio PROPERTY CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 target_link_options(basalt_dai_vio PRIVATE "-Wl,--disable-new-dtags")
 target_link_libraries(basalt_dai_vio PRIVATE basalt rerun_sdk TBB::tbb Eigen3::Eigen Sophus::Sophus magic_enum::magic_enum)
+
+dai_add_example(basalt_dai_vio_slam host_side/basalt_dai_vio_slam.cpp OFF)
+set_property(TARGET basalt_dai_vio_slam PROPERTY CXX_STANDARD 17)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
+target_link_options(basalt_dai_vio_slam PRIVATE "-Wl,--disable-new-dtags")
+target_link_libraries(basalt_dai_vio_slam PRIVATE basalt depthai::rtabmap rerun_sdk TBB::tbb Eigen3::Eigen Sophus::Sophus magic_enum::magic_enum)
 
 # ImageManip
 dai_add_example(image_manip ImageManip/image_manip_example.cpp ON)

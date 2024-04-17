@@ -11,6 +11,7 @@
 #include "basalt/vi_estimator/vio_estimator.h"
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
+#include "depthai/rtabmap/RTABMapSLAM.hpp"
 
 class BasaltVIO : public dai::NodeCRTP<dai::ThreadedNode, BasaltVIO> {
    public:
@@ -298,6 +299,7 @@ int main() {
     auto imu = pipeline.create<dai::node::IMU>();
     auto sync = pipeline.create<dai::node::Sync>();
     auto odom = pipeline.create<BasaltVIO>();
+    auto slam = pipeline.create<dai::node::RTABMapSLAM>();
     auto rerun = pipeline.create<RerunStreamer>();
     auto xoutDepth = pipeline.create<dai::node::XLinkOut>();
     xoutDepth->setStreamName("depth");
@@ -315,14 +317,15 @@ int main() {
     // Linking
     left->out.link(stereo->left);
     right->out.link(stereo->right);
-    stereo->rectifiedLeft.link(sync->inputs["left"]);
-    stereo->rectifiedRight.link(sync->inputs["right"]);
-    stereo->depth.link(xoutDepth->input);
+    stereo->syncedLeft.link(sync->inputs["left"]);
+    stereo->syncedRight.link(sync->inputs["right"]);
+    stereo->depth.link(slam->inputDepth);
     sync->out.link(odom->inputStereo);
     imu->out.link(odom->inputImu);
-    odom->transform.link(rerun->inputTrans);
-    odom->passthrough.link(rerun->inputImg);
-
+    odom->transform.link(slam->inputOdomPose);
+    odom->passthrough.link(slam->inputRect);
+    slam->transform.link(rerun->inputTrans);
+    slam->passthroughRect.link(rerun->inputImg);
     pipeline.start();
     pipeline.wait();
 }

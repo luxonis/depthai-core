@@ -34,6 +34,9 @@ class RTABMapVIO : public dai::NodeCRTP<dai::ThreadedNode, RTABMapVIO> {
 
     Output transform{true, *this, "transform", Output::Type::MSender, {{dai::DatatypeEnum::TransformData, true}}};
     Output passthroughRect{true, *this, "passthrough_rect", Output::Type::MSender, {{dai::DatatypeEnum::ImgFrame, true}}};
+    Output passthroughDepth{true, *this, "passthrough_depth", Output::Type::MSender, {{dai::DatatypeEnum::ImgFrame, true}}};
+    Output passthroughFeatures{true, *this, "passthrough_features", Output::Type::MSender, {{dai::DatatypeEnum::TrackedFeatures, true}}};
+    
     void run() override;
     void stop() override;
     void setParams(const rtabmap::ParametersMap& params);

@@ -634,7 +634,7 @@ if(DEPTHAI_RTABMAP_SUPPORT)
     if(RTABMAP_SUPPORT_AVAILABLE)
 
         # Add depthai-core-opencv library and depthai::core::opencv alias
-        add_library(${TARGET_RTABMAP_NAME} src/rtabmap/RTABMapVIO.cpp src/rtabmap/CalibrationHandler.cpp src/rtabmap/TransformData.cpp)
+        add_library(${TARGET_RTABMAP_NAME} src/rtabmap/CalibrationHandler.cpp src/rtabmap/TransformData.cpp  src/rtabmap/RTABMapVIO.cpp src/rtabmap/RTABMapSLAM.cpp )
         add_library("${PROJECT_NAME}::${TARGET_RTABMAP_ALIAS}" ALIAS ${TARGET_RTABMAP_NAME})
         # Specifies name of generated IMPORTED target (set to alias)
         set_target_properties(${TARGET_RTABMAP_NAME} PROPERTIES EXPORT_NAME ${TARGET_RTABMAP_ALIAS})
