@@ -34,29 +34,29 @@ class AprilTag : public DeviceNodeCRTP<DeviceNode, AprilTag, AprilTagProperties>
      * Input AprilTagConfig message with ability to modify parameters in runtime.
      * Default queue is non-blocking with size 4.
      */
-    Input inputConfig{true, *this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::AprilTagConfig, false}}};
+    Input inputConfig{*this, {.name = "inputConfig", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::AprilTagConfig, false}}}};
+
     /**
      * Input message with depth data used to retrieve spatial information about detected object.
      * Default queue is non-blocking with size 4.
      */
-    Input inputImage{true, *this, "inputImage", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputImage{*this, {.name = "inputImage", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Outputs AprilTags message that carries spatial location results.
      */
-    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::AprilTags, false}}};
+    Output out{*this, {.name = "out", .types = {{DatatypeEnum::AprilTags, false}}}};
 
     /**
      * Outputs AprilTagConfig message that contains current configuration.
      */
-    Output outConfig{true, *this, "outConfig", Output::Type::MSender, {{DatatypeEnum::AprilTagConfig, false}}};
+    Output outConfig{*this, {.name = "outConfig", .types = {{DatatypeEnum::AprilTagConfig, false}}}};
 
     /**
      * Passthrough message on which the calculation was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughInputImage{true, *this, "passthroughInputImage", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-
+    Output passthroughInputImage{*this, {.name = "passthroughInputImage", .types = {{DatatypeEnum::ImgFrame, false}}}};
     // Functions to set properties
     /**
      * Specify whether or not wait until configuration message arrives to inputConfig Input.

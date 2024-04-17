@@ -10,9 +10,6 @@ namespace dai {
 namespace node {
 namespace test {
 
-void MyProducer::build() {
-    hostNode = true;
-}
 
 void MyProducer::run() {
     std::cout << "Hello, I just woke up and I'm ready to do some work!\n";

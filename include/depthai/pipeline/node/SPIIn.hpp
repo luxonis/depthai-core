@@ -20,8 +20,7 @@ class SPIIn : public DeviceNodeCRTP<DeviceNode, SPIIn, SPIInProperties> {
     /**
      * Outputs message of same type as send from host.
      */
-    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
-
+    Output out{*this, {.name = "out", .types = {{DatatypeEnum::Buffer, true}}}};
     /**
      * Specifies stream name over which the node will receive data
      *

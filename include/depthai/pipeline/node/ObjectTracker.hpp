@@ -24,43 +24,45 @@ class ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTra
      * Input ImgFrame message on which tracking will be performed. RGBp, BGRp, NV12, YUV420p types are supported.
      * Default queue is non-blocking with size 4.
      */
-    Input inputTrackerFrame{true, *this, "inputTrackerFrame", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputTrackerFrame{
+        *this, {.name = "inputTrackerFrame", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::ImgFrame, false}}, .waitForMessage = true}};
 
     /**
      * Input ImgFrame message on which object detection was performed.
      * Default queue is non-blocking with size 4.
      */
-    Input inputDetectionFrame{true, *this, "inputDetectionFrame", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputDetectionFrame{
+        *this, {.name = "inputDetectionFrame", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::ImgFrame, false}}, .waitForMessage = true}};
 
     /**
      * Input message with image detection from neural network.
      * Default queue is non-blocking with size 4.
      */
-    Input inputDetections{true, *this, "inputDetections", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgDetections, true}}};
+    Input inputDetections{
+        *this, {.name = "inputDetections", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::ImgDetections, true}}, .waitForMessage = true}};
 
     /**
      * Outputs Tracklets message that carries object tracking results.
      */
-    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::Tracklets, false}}};
+    Output out{*this, {.name = "out", .types = {{DatatypeEnum::Tracklets, false}}}};
 
     /**
      * Passthrough ImgFrame message on which tracking was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughTrackerFrame{true, *this, "passthroughTrackerFrame", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output passthroughTrackerFrame{*this, {.name = "passthroughTrackerFrame", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Passthrough ImgFrame message on which object detection was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughDetectionFrame{true, *this, "passthroughDetectionFrame", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output passthroughDetectionFrame{*this, {.name = "passthroughDetectionFrame", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Passthrough image detections message from neural network output.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughDetections{true, *this, "passthroughDetections", Output::Type::MSender, {{DatatypeEnum::ImgDetections, true}}};
-
+    Output passthroughDetections{*this, {.name = "passthroughDetections", .types = {{DatatypeEnum::ImgDetections, true}}}};
     /**
      * Specify tracker threshold.
      * @param threshold Above this threshold the detected objects will be tracked. Default 0, all image detections are tracked.

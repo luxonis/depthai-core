@@ -227,19 +227,19 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/Pool.cpp
     src/pipeline/node/Benchmark.cpp
     src/pipeline/node/SpatialDetectionNetwork.cpp
-    # src/pipeline/node/SystemLogger.cpp
-    # src/pipeline/node/SpatialLocationCalculator.cpp
-    # src/pipeline/node/AprilTag.cpp
-    # src/pipeline/node/ObjectTracker.cpp
-    # src/pipeline/node/IMU.cpp
-    # src/pipeline/node/EdgeDetector.cpp
-    # src/pipeline/node/SPIIn.cpp
-    # src/pipeline/node/FeatureTracker.cpp
-    # src/pipeline/node/ToF.cpp
-    # src/pipeline/node/DetectionParser.cpp
-    # src/pipeline/node/test/MyProducer.cpp
-    # src/pipeline/node/test/MyConsumer.cpp
-    # src/pipeline/node/UVC.cpp
+    src/pipeline/node/SystemLogger.cpp
+    src/pipeline/node/SpatialLocationCalculator.cpp
+    src/pipeline/node/AprilTag.cpp
+    src/pipeline/node/ObjectTracker.cpp
+    src/pipeline/node/IMU.cpp
+    src/pipeline/node/EdgeDetector.cpp
+    src/pipeline/node/SPIIn.cpp
+    src/pipeline/node/FeatureTracker.cpp
+    src/pipeline/node/ToF.cpp
+    src/pipeline/node/DetectionParser.cpp
+    src/pipeline/node/test/MyProducer.cpp
+    src/pipeline/node/test/MyConsumer.cpp
+    src/pipeline/node/UVC.cpp
     src/pipeline/node/host/XLinkInHost.cpp
     src/pipeline/node/host/XLinkOutHost.cpp
     src/pipeline/node/host/SyncedNode.cpp
