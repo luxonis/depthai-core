@@ -93,6 +93,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
         .def("__exit__",
              [](Pipeline& d, py::object type, py::object value, py::object traceback) {
                  py::gil_scoped_release release;
+                 d.stop();
                  auto defaultDevice = d.getDefaultDevice();
                  if(defaultDevice != nullptr) {
                      defaultDevice->close();
@@ -187,7 +188,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
              })
         .def("stop", &Pipeline::stop)
         .def("isRunning", &Pipeline::isRunning);
-     ;
+    ;
 
 
 }
