@@ -87,6 +87,7 @@ else()
 endif()
 
 # OpenCV 4 - (optional)
+message("DEPTHAI_OPENCV_SUPPORT: ${DEPTHAI_OPENCV_SUPPORT}")
 if(DEPTHAI_OPENCV_SUPPORT)
     find_package(OpenCV 4 ${_QUIET} CONFIG REQUIRED)
 endif()
