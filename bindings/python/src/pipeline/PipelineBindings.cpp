@@ -141,10 +141,14 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
         // 'Template' create function
         .def("create",
              [](dai::Pipeline& p, py::object class_, const py::args& args, const py::kwargs& kwargs) {
-                 if(py::cast<std::string>(class_.attr("__base__").attr("__name__")) == "HostNode") {
-                     std::shared_ptr<Node> host_node = py::cast<std::shared_ptr<HostNode>>(class_(*args, **kwargs));
-                     p.add(host_node);
-                     return host_node;
+                 // Check if class_ is a subclass of HostNode
+                 py::object issubclass = py::module::import("builtins").attr("issubclass");
+                 py::object nodeClass = py::module::import("depthai").attr("HostNode");
+                 auto isSubclass = issubclass(class_, nodeClass).cast<bool>();
+                 if(isSubclass) {
+                     std::shared_ptr<Node> hostNode = py::cast<std::shared_ptr<HostNode>>(class_(*args, **kwargs));
+                     p.add(hostNode);
+                     return hostNode;
                  }
                  auto node = createNode(p, class_);
                  if(node == nullptr) {

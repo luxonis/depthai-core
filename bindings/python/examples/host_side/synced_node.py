@@ -16,12 +16,10 @@ class SyncedDisplay(dai.SyncedNode):
         if cv2.waitKey(1) == ord("q"): self.stopPipeline()
 
 
-
 p = dai.Pipeline(True)
 color_camera = p.create(dai.node.ColorCamera)
 mono_camera = p.create(dai.node.MonoCamera)
-display = SyncedDisplay()
-p.add(display)
+display = p.create(SyncedDisplay)
 color_camera.video.link(display.inputRgb)
 mono_camera.out.link(display.inputMono)
 p.start()
