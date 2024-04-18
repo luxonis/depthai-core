@@ -166,6 +166,9 @@ endif()
 
 # Specify optional dependencies
 option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" ON)
+option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
+option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
+
 # Include project dependencies
 set(DEPTHAI_DEPENDENCY_INCLUDE "" CACHE FILEPATH "Optional cmake file to append to dependency processing, e.g. additional find_package()")
 include(depthaiDependencies)
@@ -325,8 +328,6 @@ option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
 option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
 option(DEPTHAI_BUILD_PYTHON "Build python bindings" OFF)
 option(DEPTHAI_BUILD_DOCS "Build documentation - requires doxygen to be installed" OFF)
-option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
-option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
 
 # Specify support for FW
 option(DEPTHAI_ENABLE_DEVICE_FW "Enable MyriadX Device FW" ON)
