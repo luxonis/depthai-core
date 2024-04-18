@@ -144,19 +144,19 @@ hunter_config(
         HTTPLIB_USE_BROTLI_IF_AVAILABLE=OFF
 )
 
-# Pybind11 2.11.0-smart_holder
-hunter_config(
-    pybind11
-    VERSION "2.11.0-smart_holder"
-    URL "https://github.com/pybind/pybind11/archive/10283c2ef44a9100bc88d066a4972c4f51ded2b0.tar.gz"
-    SHA1 "0da09bdd6987a33feb800e4b7f129df5c9aa5aed"
-)
-
-# # Pybind11 2.9.2-smart_holder
+# # Pybind11 2.11.0-smart_holder
 # hunter_config(
 #     pybind11
-#     VERSION "2.9.2-smart_holder"
-#     URL "https://github.com/pybind/pybind11/archive/9fa714f524fdbaf8e81c1a1b1637c547fed4e18f.tar.gz"
-#     SHA1 "0cdb8fe12d33bac220b58aa85b219de02716f537"
+#     VERSION "2.11.0-smart_holder"
+#     URL "https://github.com/pybind/pybind11/archive/10283c2ef44a9100bc88d066a4972c4f51ded2b0.tar.gz"
+#     SHA1 "0da09bdd6987a33feb800e4b7f129df5c9aa5aed"
 # )
+
+# Pybind11 2.9.2-smart_holder
+hunter_config(
+    pybind11
+    VERSION "2.9.2-smart_holder"
+    URL "https://github.com/luxonis/pybind11/archive/9fa714f524fdbaf8e81c1a1b1637c547fed4e18f.tar.gz"
+    SHA1 "0cdb8fe12d33bac220b58aa85b219de02716f537"
+)
 
