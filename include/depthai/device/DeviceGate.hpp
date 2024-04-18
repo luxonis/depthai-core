@@ -1,16 +1,19 @@
 #pragma once
 
 // std
+#include <XLink/XLinkPublicDefines.h>
+
 #include <cstdint>
 #include <string>
 #include <thread>
 #include <type_traits>
 
 // project
+#include <optional>
+
 #include "depthai/device/Version.hpp"
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
-#include <optional>
 namespace dai {
 
 /**
@@ -72,6 +75,8 @@ class DeviceGate {
     // state of the session
     std::atomic_bool sessionCreated{false};
 
+    XLinkPlatform_t platform;
+    std::string version;
     // pimpl
     class Impl;
     Pimpl<Impl> pimpl;

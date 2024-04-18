@@ -1,5 +1,15 @@
 cmake_minimum_required(VERSION 3.4) # For Hunter
 
+# Set policies
+# CMP0074 dictates that find_package searches environment variable "[packageName]_ROOT" along with regular variable [packageName]_ROOT
+if(POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW) # Only introduced in 3.12
+endif()
+
+if(POLICY CMP0028)
+  cmake_policy(SET CMP0028 NEW)
+endif()
+
 # Specify path separator
 set(SYS_PATH_SEPARATOR ";")
 if(UNIX)
@@ -92,6 +102,7 @@ set(SOURCE_LIST
     src/pipeline/node/BenchmarkBindings.cpp
     src/pipeline/node/UVCBindings.cpp
     src/pipeline/node/ToFBindings.cpp
+    src/pipeline/node/PointCloudBindings.cpp
     src/pipeline/node/SyncBindings.cpp
     src/pipeline/node/MessageDemuxBindings.cpp
     src/pipeline/node/HostNodeBindings.cpp
@@ -119,6 +130,8 @@ set(SOURCE_LIST
     src/pipeline/datatype/TrackedFeaturesBindings.cpp
     src/pipeline/datatype/TrackletsBindings.cpp
     src/pipeline/datatype/BenchmarkReportBindings.cpp
+    src/pipeline/datatype/PointCloudConfigBindings.cpp
+    src/pipeline/datatype/PointCloudDataBindings.cpp
 )
 
 # Add files for python module

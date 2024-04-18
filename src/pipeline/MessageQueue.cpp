@@ -111,13 +111,12 @@ void MessageQueue::send(const std::shared_ptr<ADatatype>& msg) {
     callCallbacks(msg);
     auto queueNotClosed = queue.push(msg);
     if(!queueNotClosed) throw QueueException(CLOSED_QUEUE_MESSAGE);
-
 }
 
 bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::milliseconds timeout) {
     if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
     callCallbacks(msg);
-    if(queue.isDestroyed()){
+    if(queue.isDestroyed()) {
         throw QueueException(CLOSED_QUEUE_MESSAGE);
     }
     return queue.tryWaitAndPush(msg, timeout);
@@ -125,7 +124,7 @@ bool MessageQueue::send(const std::shared_ptr<ADatatype>& msg, std::chrono::mill
 
 bool MessageQueue::trySend(const std::shared_ptr<ADatatype>& msg) {
     if(!msg) throw std::invalid_argument("Message passed is not valid (nullptr)");
-    if(queue.isDestroyed()){
+    if(queue.isDestroyed()) {
         throw QueueException(CLOSED_QUEUE_MESSAGE);
     }
     return send(msg, std::chrono::milliseconds(0));

@@ -10,7 +10,7 @@ int main(int argc, char** argv) {
         dai::DeviceBootloader bl(info);
         std::cout << "Version: " << bl.getVersion().toString() << std::endl;
 
-        auto supportedMemTypes = {dai::DeviceBootloader::Memory::FLASH, dai::DeviceBootloader::Memory::EMMC};
+        std::list<dai::DeviceBootloader::Memory> supportedMemTypes = {dai::DeviceBootloader::Memory::FLASH, dai::DeviceBootloader::Memory::EMMC};
         if(bl.getType() == dai::DeviceBootloader::Type::USB) {
             std::cout << "USB Bootloader - supports only Flash memory" << std::endl;
             supportedMemTypes = {dai::DeviceBootloader::Memory::FLASH};

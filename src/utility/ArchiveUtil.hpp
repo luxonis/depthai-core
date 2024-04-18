@@ -18,7 +18,7 @@ namespace dai::utility {
 class ArchiveUtil {
    public:
     explicit ArchiveUtil(struct archive* archivePtr);
-    ArchiveUtil(const std::string& filepath, NNArchiveEntry::Compression format);
+    ArchiveUtil(const dai::Path& filepath, NNArchiveEntry::Compression format);
     ArchiveUtil(const std::vector<uint8_t>& data, NNArchiveEntry::Compression format);
     ArchiveUtil(const std::function<int()>& openCallback,
                 const std::function<std::shared_ptr<std::vector<uint8_t>>()>& readCallback,
@@ -54,7 +54,7 @@ class ArchiveUtil {
     void init(NNArchiveEntry::Compression format);
     static int openCb(struct archive*, void* context);
     int archiveOpen();
-    static int64_t readCb(struct archive*, void* context, const void** buffer);
+    static la_ssize_t readCb(struct archive*, void* context, const void** buffer);
     int64_t archiveRead(const void** buffer);
     static int64_t seekCb(struct archive*, void* context, int64_t offset, int whence);
     int64_t archiveSeek(int64_t offset, int whence);

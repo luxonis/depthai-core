@@ -62,6 +62,7 @@ class ToF : public DeviceNodeCRTP<DeviceNode, ToF, ToFProperties> {
     // TODO(before mainline) - API not supported on RVC3
     Output amplitude{*this, {.name = "amplitude", .types = {{DatatypeEnum::ImgFrame, true}}}};
     Output error{*this, {.name = "error", .types = {{DatatypeEnum::ImgFrame, true}}}};
+    Output intensity{*this, {.name = "intensity", .types = {{DatatypeEnum::ImgFrame, true}}}};
 };
 
 }  // namespace node
