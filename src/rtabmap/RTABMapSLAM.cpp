@@ -1,5 +1,9 @@
 #include "depthai/rtabmap/RTABMapSLAM.hpp"
 
+#include <pcl/point_cloud.h>
+
+#include "rtabmap/core/util3d.h"
+
 namespace dai {
 namespace node {
 void RTABMapSLAM::build() {
@@ -7,6 +11,7 @@ void RTABMapSLAM::build() {
     alphaScaling = -1.0;
     reuseFeatures = false;
     rtabmap.init();
+
     // inputRect.queue.setMaxSize(1);
     // inputDepth.queue.setMaxSize(1);
     // inputFeatures.queue.setMaxSize(1);
@@ -22,6 +27,8 @@ void RTABMapSLAM::stop() {
 
 void RTABMapSLAM::setParams(const rtabmap::ParametersMap& params) {
     rtabmap.init(params);
+    rtabParams = params;
+    
 }
 
 void RTABMapSLAM::run() {
@@ -39,8 +46,10 @@ void RTABMapSLAM::run() {
             if(!modelSet) {
                 auto pipeline = getParentPipeline();
                 getCalib(pipeline, imgFrame->getInstanceNum(), imgFrame->getWidth(), imgFrame->getHeight());
-                modelSet = true;
                 lastProcessTime = std::chrono::steady_clock::now();
+                grid = new rtabmap::OccupancyGrid(&localMaps_, rtabParams);
+
+                modelSet = true;
             } else {
                 double stamp = std::chrono::duration<double>(imgFrame->getTimestampDevice(dai::CameraExposureOffset::MIDDLE).time_since_epoch()).count();
 
@@ -66,22 +75,85 @@ void RTABMapSLAM::run() {
                     lastProcessTime = now;
                     if(rtabmap.process(data, pose)) {
                         stats = rtabmap.getStatistics();
-                        if(rtabmap.getLoopClosureId() > 0){
+                        if(rtabmap.getLoopClosureId() > 0) {
                             fmt::print("Loop closure detected! last loop closure id = {}\n", rtabmap.getLoopClosureId());
                         }
-                        odomCorrection= stats.mapCorrection();
-
+                        odomCorrection = stats.mapCorrection();
+                        std::map<int, rtabmap::Signature> nodes;
+                        std::map<int, rtabmap::Transform> optimizedPoses;
+                        std::multimap<int, rtabmap::Link> links;
+                        rtabmap.getGraph(optimizedPoses, links, true, true, &nodes, true, true, true, true);
+                        for(std::map<int, rtabmap::Transform>::iterator iter = optimizedPoses.begin(); iter != optimizedPoses.end(); ++iter) {
+                            rtabmap::Signature node = nodes.find(iter->first)->second;
+                            if(node.sensorData().gridCellSize() == 0.0f) {
+                                std::cout << "Grid cell size is 0, skipping node " << iter->first << std::endl;
+                                continue;
+                            }
+                            // uncompress grid data
+                            cv::Mat ground, obstacles, empty;
+                            node.sensorData().uncompressData(0, 0, 0, 0, &ground, &obstacles, &empty);
+                            localMaps_.add(iter->first, ground, obstacles, empty, node.sensorData().gridCellSize(), node.sensorData().gridViewPoint());
+                        }
+                        if(grid->addedNodes().size() || localMaps_.size() > 0) {
+                            grid->update(optimizedPoses);
+                        }
+                        float xMin, yMin;
+                        cv::Mat map = grid->getMap(xMin, yMin);
+                        if(!map.empty()) {
+                            cv::Mat map8U(map.rows, map.cols, CV_8U);
+                            // convert to gray scaled map
+                            for(int i = 0; i < map.rows; ++i) {
+                                for(int j = 0; j < map.cols; ++j) {
+                                    char v = map.at<char>(i, j);
+                                    unsigned char gray;
+                                    if(v == 0) {
+                                        gray = 178;
+                                    } else if(v == 100) {
+                                        gray = 0;
+                                    } else  // -1
+                                    {
+                                        gray = 89;
+                                    }
+                                    map8U.at<unsigned char>(i, j) = gray;
+                                }
+                            }
+                            auto gridMap = std::make_shared<dai::ImgFrame>();
+                            gridMap->setTimestamp(std::chrono::steady_clock::now());
+                            // convert cv mat data to std::vector<uint8_t>
+                            // std::cout << map8U << std::endl;
+                            cv::Mat flat = map8U.reshape(1, map8U.total()*map8U.channels());
+                            std::vector<uchar> vec = map8U.isContinuous()? flat : flat.clone();
+                            gridMap->setData(vec);
+                            gridMap->setType(dai::ImgFrame::Type::GRAY8);
+                            gridMap->setHeight(map8U.rows);
+                            gridMap->setWidth(map8U.cols);
+                            occupancyMap.send(gridMap);
+                        }
                     }
-                } 
-                auto out = std::make_shared<dai::TransformData>(odomCorrection*pose);
+                }
+                auto out = std::make_shared<dai::TransformData>(odomCorrection * pose);
                 transform.send(out);
                 passthroughRect.send(imgFrame);
+                pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromSensorData(data,
+                                                                                                 4,  // decimation
+                                                                                                 0.0f);
+                // pcl to dai PointCloudData
+                auto pclData = std::make_shared<dai::PointCloudData>();
 
+                int size = cloud->points.size();
+                pclData->points.resize(size * 3);
+                for(int i = 0; i < size; i++) {
+                    pclData->points[i].x = cloud->points[i].x;
+                    pclData->points[i].y = cloud->points[i].y;
+                    pclData->points[i].z = cloud->points[i].z;
+                }
+                pointCloud.send(pclData);
             }
         }
     }
     fmt::print("Display node stopped\n");
 }
+
 
 void RTABMapSLAM::getCalib(dai::Pipeline& pipeline, int instanceNum, int width, int height) {
     auto device = pipeline.getDevice();

@@ -26,6 +26,8 @@ class PointCloudData : public Buffer {
     bool sparse = false;
 
    public:
+    std::vector<Point3f> points;
+    std::vector<Point3f> colors;
     using Buffer::getSequenceNum;
     using Buffer::getTimestamp;
     using Buffer::getTimestampDevice;

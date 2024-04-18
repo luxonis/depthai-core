@@ -45,6 +45,7 @@ class RerunStreamer : public dai::NodeCRTP<dai::ThreadedNode, RerunStreamer> {
         const auto rec = rerun::RecordingStream("rerun");
         rec.spawn().exit_on_failure();
         rec.log_timeless("world", rerun::ViewCoordinates::RDF);
+        rec.log("world/ground", rerun::Boxes3D::from_half_sizes({{3.f, 3.f, 0.00001f}}));
 
         while(isRunning()) {
             std::shared_ptr<dai::TransformData> transData = inputTrans.queue.get<dai::TransformData>();

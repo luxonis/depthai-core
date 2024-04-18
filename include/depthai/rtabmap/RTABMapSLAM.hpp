@@ -9,10 +9,14 @@
 #include "depthai/pipeline/datatype/TransformData.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
+#include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "rtabmap/core/CameraModel.h"
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/SensorData.h"
 #include "rtabmap/core/Transform.h"
+#include "rtabmap/core/LocalGrid.h"
+#include "rtabmap/core/global_map/OccupancyGrid.h"
+
 namespace dai {
 namespace node {
 class RTABMapSLAM : public dai::NodeCRTP<dai::ThreadedNode, RTABMapSLAM> {
@@ -30,6 +34,8 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::ThreadedNode, RTABMapSLAM> {
     Input inputOdomPose{true, *this, "odom_pose", Input::Type::SReceiver, false, 8, false, {{dai::DatatypeEnum::TransformData, true}}};
     Output transform{true, *this, "transform", Output::Type::MSender, {{dai::DatatypeEnum::TransformData, true}}};
     Output passthroughRect{true, *this, "passthrough_rect", Output::Type::MSender, {{dai::DatatypeEnum::ImgFrame, true}}};
+    Output pointCloud{true, *this, "point_cloud", Output::Type::MSender, {{dai::DatatypeEnum::PointCloudData, true}}};
+    Output occupancyMap{true, *this, "map", Output::Type::MSender, {{dai::DatatypeEnum::ImgFrame, true}}};
     void run() override;
     void stop() override;
     void setParams(const rtabmap::ParametersMap& params);
@@ -45,8 +51,11 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::ThreadedNode, RTABMapSLAM> {
     std::map<double, cv::Vec3f> accBuffer_;
 	std::map<double, cv::Vec3f> gyroBuffer_;
     std::map<double, cv::Vec4f> rotBuffer_;
+    rtabmap::LocalGridCache localMaps_;
+    rtabmap::OccupancyGrid* grid;
     float alphaScaling;
     bool modelSet = false;
+    rtabmap::ParametersMap rtabParams;
 };
 }  // namespace node
 }  // namespace dai
