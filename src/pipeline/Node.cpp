@@ -423,31 +423,31 @@ std::vector<const Node::Input*> Node::getInputRefs() const {
     return tmpInputRefs;
 }
 
-// Node::Output* Node::getOutputRef(std::string name) {
-//     return getOutputRef("", name);
-// }
-// Node::Output* Node::getOutputRef(std::string group, std::string name) {
-//     auto refs = getOutputRefs();
-//     for(auto& out : refs) {
-//         if(out->group == group && out->name == name) {
-//             return out;
-//         }
-//     }
-//     return nullptr;
-// }
+Node::Output* Node::getOutputRef(std::string name) {
+    return getOutputRef("", name);
+}
+Node::Output* Node::getOutputRef(std::string group, std::string name) {
+    auto refs = getOutputRefs();
+    for(auto& out : refs) {
+        if(out->getGroup() == group && out->getName() == name) {
+            return out;
+        }
+    }
+    return nullptr;
+}
 
-// Node::Input* Node::getInputRef(std::string name) {
-//     return getInputRef("", name);
-// }
-// Node::Input* Node::getInputRef(std::string group, std::string name) {
-//     auto refs = getInputRefs();
-//     for(auto& input : refs) {
-//         if(input->getGroup() == group && input->getName() == name) {
-//             return input;
-//         }
-//     }
-//     return nullptr;
-// }
+Node::Input* Node::getInputRef(std::string name) {
+    return getInputRef("", name);
+}
+Node::Input* Node::getInputRef(std::string group, std::string name) {
+    auto refs = getInputRefs();
+    for(auto& input : refs) {
+        if(input->getGroup() == group && input->getName() == name) {
+            return input;
+        }
+    }
+    return nullptr;
+}
 
 std::vector<Node::InputMap*> Node::getInputMapRefs() {
     std::vector<Node::InputMap*> tmpInputMapRefs;
@@ -471,19 +471,23 @@ std::vector<Node::OutputMap*> Node::getOutputMapRefs() {
     return tmpOutputMapRefs;
 }
 
-// Node::InputMap* Node::getInputMapRef(std::string group) {
-//     if(inputMapRefs.count(group) == 0) {
-//         return nullptr;
-//     }
-//     return inputMapRefs[group];
-// }
+Node::InputMap* Node::getInputMapRef(std::string group) {
+    for(auto* inMapRef : inputMapRefs) {
+        if(inMapRef->name == group) {
+            return inMapRef;
+        }
+    }
+    return nullptr;
+}
 
-// Node::OutputMap* Node::getOutputMapRef(std::string group) {
-//     if(outputMapRefs.count(group) == 0) {
-//         return nullptr;
-//     }
-//     return outputMapRefs[group];
-// }
+Node::OutputMap* Node::getOutputMapRef(std::string group) {
+    for(auto* outMapRef : outputMapRefs) {
+        if(outMapRef->name == group) {
+            return outMapRef;
+        }
+    }
+    return nullptr;
+}
 
 void Node::setOutputRefs(std::initializer_list<Node::Output*> l) {
     for(auto& outRef : l) {

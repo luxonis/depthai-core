@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-#include "common/CameraBoardSocket.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "spdlog/fmt/fmt.h"
 
 namespace dai {
@@ -18,7 +18,7 @@ ColorCamera::ColorCamera(std::shared_ptr<Device> device, dai::CameraBoardSocket 
     } else {
         std::vector<dai::CameraBoardSocket> connected = device->getConnectedCameras();
         if(std::find(connected.begin(), connected.end(), socket) == connected.end()) {
-            throw std::invalid_argument(fmt::format("Camera | Board socket {} is not connected", socket));
+            throw std::invalid_argument(fmt::format("Camera on the specified board socket is not connected"));
         }
     }
     properties.boardSocket = socket;
