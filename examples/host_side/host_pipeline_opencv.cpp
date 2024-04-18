@@ -21,7 +21,7 @@ int main() {
     // camRgb->video.link(displayDevice->input);
 
     // Option 2:
-    auto queue = camRgb->video.getQueue();
+    auto queue = camRgb->video.createQueue();
 
     pipeline.start();
 

@@ -7,7 +7,7 @@ int main() {
     auto displayDevice = pipeline.create<dai::node::Display>(std::string{"Device Display"});
 
     camRgb->out.link(displayDevice->input);
-    auto queue = camRgb->out.getQueue();
+    auto queue = camRgb->out.createQueue();
     pipeline.start();
     while(pipeline.isRunning()) {
         auto img = queue->get<dai::ImgFrame>();

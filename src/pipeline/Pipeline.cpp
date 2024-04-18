@@ -567,6 +567,10 @@ bool PipelineImpl::isRunning() const {
     return running;
 }
 
+bool PipelineImpl::isBuilt() const {
+    return isBuild;
+}
+
 void PipelineImpl::build() {
     // TODO(themarpe) - add mutex and set running up ahead
     if(isBuild) return;

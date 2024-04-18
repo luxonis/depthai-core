@@ -1,5 +1,3 @@
-#include <iostream>
-
 // Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
@@ -15,9 +13,7 @@ int main() {
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     camRgb->setVideoSize(1920, 1080);
 
-
-    // Linking
-    auto outputQueue = camRgb->video.getQueue();
+    auto outputQueue = camRgb->video.createQueue();
 
     pipeline.start();
     while(pipeline.isRunning()) {

@@ -152,6 +152,18 @@ void Node::Output::link(Input& in) {
     connectedInputs.push_back(&in);
 }
 
+std::shared_ptr<dai::MessageQueue> Node::Output::createQueue(unsigned int maxSize, bool blocking)
+{
+    // Check if pipeline is already started - if so, throw an error
+    auto pipelinePtr = parent.get().getParentPipeline();
+    if(pipelinePtr.isBuilt()) {
+        throw std::runtime_error("Cannot create queue after pipeline is built");
+    }
+    auto queue = std::make_shared<MessageQueue>(maxSize, blocking);
+    link(queue);
+    return queue;
+}
+
 Node::ConnectionInternal::ConnectionInternal(Output& out, Input& in)
     : outputName{out.getName()}, outputGroup{out.getGroup()}, inputName{in.getName()}, inputGroup{in.getGroup()}, out{&out}, in{&in} {
     outputNode = out.getParent().shared_from_this();

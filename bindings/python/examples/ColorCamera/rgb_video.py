@@ -13,10 +13,9 @@ with dai.Pipeline(True) as pipeline:
     camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
     camRgb.setVideoSize(1920, 1080)
 
-    videoQueue = camRgb.video.getQueue()
+    videoQueue = camRgb.video.createQueue()
 
     # Connect to device and start pipeline
-
     pipeline.start()
     while pipeline.isRunning():
         videoIn : dai.ImgFrame = videoQueue.get()

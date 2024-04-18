@@ -217,11 +217,7 @@ class Node : public std::enable_shared_from_this<Node> {
             return queueConnections;
         }
 
-        std::shared_ptr<dai::MessageQueue> getQueue() {
-            auto queue = std::make_shared<MessageQueue>();
-            link(queue);
-            return queue;
-        }
+        std::shared_ptr<dai::MessageQueue> createQueue(unsigned int maxSize = 16, bool blocking = true);
 
        private:
         void link(const std::shared_ptr<dai::MessageQueue>& queue) {

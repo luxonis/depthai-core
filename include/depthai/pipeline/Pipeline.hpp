@@ -156,6 +156,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Run only host side, if any device nodes are present, error out
     bool isRunning() const;
+    bool isBuilt() const;
     void build();
     void start();
     void wait();
@@ -402,6 +403,11 @@ class Pipeline {
     bool isRunning() const {
         return impl()->isRunning();
     }
+
+    bool isBuilt() const {
+        return impl()->isBuilt();
+    }
+
     void build() {
         impl()->build();
     }
