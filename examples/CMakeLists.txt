@@ -290,6 +290,7 @@ dai_add_example(image_manip_rotate ImageManip/image_manip_rotate.cpp ON)
 dai_add_example(image_manip_tiling ImageManip/image_manip_tiling.cpp ON)
 dai_add_example(rgb_rotate_warp ImageManip/rgb_rotate_warp.cpp ON)
 dai_add_example(image_manip_warp_mesh ImageManip/image_manip_warp_mesh.cpp ON)
+dai_add_example(image_manip_many_instances ImageManip/image_manip_many_instances.cpp ON)
 
 # Warp
 dai_add_example(warp_mesh Warp/warp_mesh.cpp ON)
