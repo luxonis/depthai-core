@@ -19,18 +19,24 @@ namespace node {
  */
 class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
-    SpatialDetectionNetwork() : input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {};
+    explicit SpatialDetectionNetwork(const std::shared_ptr<Device>& device)
+        : DeviceNodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties>(device),
+          input{neuralNetwork->input},
+          outNetwork{neuralNetwork->out},
+          passthrough{neuralNetwork->passthrough} {};
     SpatialDetectionNetwork(std::unique_ptr<Properties> props)
         : DeviceNodeCRTP(std::move(props)), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {};
     SpatialDetectionNetwork(std::unique_ptr<Properties> props, bool confMode)
         : DeviceNodeCRTP(std::move(props), confMode), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {};
+    SpatialDetectionNetwork(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool confMode)
+        : DeviceNodeCRTP(device, std::move(props), confMode), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough}
+        {};
 
     constexpr static const char* NAME = "SpatialDetectionNetwork";
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
     void build();
 
-   public:
     /**
      * Input message with data to be inferred upon
      * Default queue is blocking with size 5
@@ -215,35 +221,28 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
      * @param stepSize Step size.
      */
     void setSpatialCalculationStepSize(int stepSize);
+
+   protected:
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 };
 
 /**
  * MobileNetSpatialDetectionNetwork node. Mobilenet-SSD based network with spatial location data.
  */
-class MobileNetSpatialDetectionNetwork : public SpatialDetectionNetwork {
+class MobileNetSpatialDetectionNetwork : public DeviceNodeCRTP<SpatialDetectionNetwork, MobileNetSpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
     void build();
-    [[nodiscard]] static std::shared_ptr<MobileNetSpatialDetectionNetwork> create() {
-        auto n = std::make_shared<MobileNetSpatialDetectionNetwork>();
-        n->build();
-        return n;
-    }
-    bool runOnHost() const override { return false; };
+
+   protected:
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 };
 
 /**
  * YoloSpatialDetectionNetwork node. Yolo-based network with spatial location data.
  */
-class YoloSpatialDetectionNetwork : public SpatialDetectionNetwork {
+class YoloSpatialDetectionNetwork : public DeviceNodeCRTP<SpatialDetectionNetwork, YoloSpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
     void build();
-    [[nodiscard]] static std::shared_ptr<YoloSpatialDetectionNetwork> create() {
-        auto n = std::make_shared<YoloSpatialDetectionNetwork>();
-        n->build();
-        return n;
-    }
-
-    bool runOnHost() const override { return false; };
 
     /// Set num classes
     void setNumClasses(const int numClasses);
@@ -266,6 +265,9 @@ class YoloSpatialDetectionNetwork : public SpatialDetectionNetwork {
     std::map<std::string, std::vector<int>> getAnchorMasks() const;
     /// Get Iou threshold
     float getIouThreshold() const;
+
+   protected:
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 };
 
 }  // namespace node

@@ -80,7 +80,8 @@ class DeviceNodeCRTP : public Base {
     DeviceNodeCRTP(std::unique_ptr<Properties> props) : Base(std::move(props), true), properties(static_cast<Properties&>(*DeviceNode::propertiesHolder)) {}
     DeviceNodeCRTP(std::unique_ptr<Properties> props, bool confMode)
         : Base(std::move(props), confMode), properties(static_cast<Properties&>(*DeviceNode::propertiesHolder)) {}
-
+    DeviceNodeCRTP(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool confMode)
+        : Base(device, std::move(props), confMode), properties(static_cast<Properties&>(*DeviceNode::propertiesHolder)) {}
     friend Derived;
     friend Base;
     friend PipelineImpl;
