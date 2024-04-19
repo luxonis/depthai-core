@@ -52,10 +52,10 @@ void RTABMapSLAM::run() {
                 double stamp = std::chrono::duration<double>(imgFrame->getTimestampDevice(dai::CameraExposureOffset::MIDDLE).time_since_epoch()).count();
 
                 data = rtabmap::SensorData(imgFrame->getCvFrame(), depthFrame->getCvFrame(), model.left(), imgFrame->getSequenceNum(), stamp);
-                cv::Vec3d acc, gyro;
-                cv::Vec4d rot;
-                data.setIMU(
-                    rtabmap::IMU(rot, cv::Mat::eye(3, 3, CV_64FC1), gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform));
+                // cv::Vec3d acc, gyro;
+                // cv::Vec4d rot;
+                // data.setIMU(
+                //     rtabmap::IMU(rot, cv::Mat::eye(3, 3, CV_64FC1), gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform));
                 std::vector<cv::KeyPoint> keypoints;
                 if(features != nullptr) {
                     for(auto& feature : features->trackedFeatures) {
@@ -68,9 +68,11 @@ void RTABMapSLAM::run() {
                 rtabmap::Transform p;
                 odomPose->getRTABMapTransform(p);
                 // std::cout <<"pose init: " << p << std::endl;
-                auto pose = localTransform * p * localTransform.inverse();
+                // auto pose = localTransform * p * localTransform.inverse();
                 // std::cout << "pose after transform: " << pose << std::endl;
-                // pose = pose.inverse();
+                rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
+
+                auto pose  =p*opticalTransform.inverse();
                 rtabmap::Statistics stats;
 
                 // process at 1 Hz
@@ -156,19 +158,20 @@ void RTABMapSLAM::run() {
                 pointCloud.send(pclData);
             }
         }
-        // after 30s save the database
-        if(std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count() > 30.0) {
-            rtabmap.close();
-            rtabmap.init(rtabParams, "/rtabmap.tmp.db");
-            std::cout << "Database saved" << std::endl;
-            startTime = std::chrono::steady_clock::now();
-        }
+        // after 2m save the database
+        // if(std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count() > 180.0) {
+        //     rtabmap.close();
+        //     rtabmap.init(rtabParams, "/rtabmap.tmp.db");
+        //     std::cout << "Database saved" << std::endl;
+        //     startTime = std::chrono::steady_clock::now();
+        // }
     }
     fmt::print("Display node stopped\n");
 }
 
 void RTABMapSLAM::getCalib(dai::Pipeline& pipeline, int instanceNum, int width, int height) {
     auto device = pipeline.getDevice();
+
     auto calibHandler = device->readCalibration2();
     auto cameraId = static_cast<dai::CameraBoardSocket>(instanceNum);
     calibHandler.getRTABMapCameraModel(model, cameraId, width, height, localTransform, alphaScaling);
@@ -186,11 +189,11 @@ void RTABMapSLAM::getCalib(dai::Pipeline& pipeline, int instanceNum, int width, 
         std::cout << "Unknown IMU local transform for " << eeprom.boardName << std::endl;
         stop();
     }
-    // rtabmap::Transform imuRot(
-	// 	0, 0,-1,0,
-	// 	-1, 0, 0,0,
-	// 	 0, 1, 0,0);
-    // auto poseToImu = imuRot*imuLocalTransform;
+    rtabmap::Transform imuRot(
+		0, 0,1,0,
+		-1, 0, 0,0,
+		 0, -1, 0,0);
+    // auto poseToImu = imuRot.inverse()*imuLocalTransform;
     imuLocalTransform = localTransform* imuLocalTransform;
 }
 }  // namespace node

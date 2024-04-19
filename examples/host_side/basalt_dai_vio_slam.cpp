@@ -115,8 +115,7 @@ class BasaltVIO : public dai::NodeCRTP<dai::ThreadedNode, BasaltVIO> {
 
             auto trans = final_pose.translation();
             auto rot = final_pose.unit_quaternion();
-            // pose frame is in camera optical frame, need to change it to ROS frame
-            auto out = std::make_shared<dai::TransformData>(-trans.z(), -trans.x(), trans.y(), -rot.z(), -rot.x(), rot.y(), rot.w());
+            auto out = std::make_shared<dai::TransformData>(trans.x(), trans.y(), trans.z(), rot.x(), rot.y(), rot.z(), rot.w());
 
             double x, y, z;
             double roll, pitch, yaw;
@@ -294,13 +293,26 @@ class RerunStreamer : public dai::NodeCRTP<dai::ThreadedNode, RerunStreamer> {
                 double x, y, z, qx, qy, qz, qw;
                 transData->getTranslation(x, y, z);
                 transData->getQuaternion(qx, qy, qz, qw);
+
+                // //write matrix data to file, one matrix per line, values separated by commas
+                // std::vector<std::vector<double>> data = transData->transform.data;
+                // std::ofstream file;
+                // file.open("/workspaces/depthai_core_ws/positions.csv", std::ios::app);
+                // for (int i = 0; i < data.size(); i++) {
+                //     for (int j = 0; j < data[i].size(); j++) {
+                //         file << data[i][j] << ",";
+                //     }
+                // }
+                // file << "\n";
+                
+
                 auto position = rerun::Vec3D(x, y, z);
 
                 rec.log("world/camera", rerun::Transform3D(position, rerun::datatypes::Quaternion::from_xyzw(qx, qy, qz, qw)));
                 positions.push_back(position);
                 rerun::LineStrip3D lineStrip(positions);
                 rec.log("world/trajectory", rerun::LineStrips3D(lineStrip));
-                rec.log("world/camera/image", rerun::Pinhole::from_focal_length_and_resolution({398.554f, 398.554f}, {640.0f, 400.0f}));
+                rec.log("world/camera/image", rerun::Pinhole::from_focal_length_and_resolution({398.554f, 398.554f}, {640.0f, 400.0f}).with_camera_xyz(rerun::components::ViewCoordinates::FLU));
                 rec.log("world/camera/image/rgb",
                         rerun::Image(tensor_shape(imgFrame->getCvFrame()), reinterpret_cast<const uint8_t*>(imgFrame->getCvFrame().data)));
                 if(pclData != nullptr) {
@@ -326,6 +338,7 @@ int main() {
 	// ULogger::setLevel(ULogger::kDebug);
     // Create pipeline
     dai::Pipeline pipeline;
+    auto device = pipeline.getDevice();
     int fps = 60;
     int width = 640;
     int height = 400;
@@ -339,7 +352,7 @@ int main() {
     auto slam = pipeline.create<dai::node::RTABMapSLAM>();
     auto params = rtabmap::ParametersMap();
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDCreateOccupancyGrid(), "true"));
-    params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kGridMaxGroundAngle(), "60"));
+    // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kGridMaxGroundAngle(), "60"));
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapSaveWMState(), "true"));
     slam->setParams(params);
     auto rerun = pipeline.create<RerunStreamer>();
