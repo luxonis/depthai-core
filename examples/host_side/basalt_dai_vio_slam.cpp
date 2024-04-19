@@ -111,10 +111,12 @@ class BasaltVIO : public dai::NodeCRTP<dai::ThreadedNode, BasaltVIO> {
             out_state_queue.pop(data);
 
             if(!data.get()) continue;
-            auto final_pose = (data->T_w_i * calib.T_i_c[0]);
+            basalt::PoseState<double>::SE3 final_pose = (data->T_w_i * calib.T_i_c[0]);
+
             auto trans = final_pose.translation();
             auto rot = final_pose.unit_quaternion();
-            auto out = std::make_shared<dai::TransformData>(trans.x(), trans.y(), trans.z(), rot.x(), rot.y(), rot.z(), rot.w());
+            // pose frame is in camera optical frame, need to change it to ROS frame
+            auto out = std::make_shared<dai::TransformData>(-trans.z(), -trans.x(), trans.y(), -rot.z(), -rot.x(), rot.y(), rot.w());
 
             double x, y, z;
             double roll, pitch, yaw;
@@ -280,7 +282,7 @@ class RerunStreamer : public dai::NodeCRTP<dai::ThreadedNode, RerunStreamer> {
     void run() override {
         const auto rec = rerun::RecordingStream("rerun");
         rec.spawn().exit_on_failure();
-        rec.log_timeless("world", rerun::ViewCoordinates::RDF);
+        rec.log_timeless("world", rerun::ViewCoordinates::FLU);
         rec.log("world/ground", rerun::Boxes3D::from_half_sizes({{3.f, 3.f, 0.00001f}}));
 
         while(isRunning()) {
@@ -320,7 +322,8 @@ class RerunStreamer : public dai::NodeCRTP<dai::ThreadedNode, RerunStreamer> {
 int main() {
     using namespace std;
     std::unique_ptr<tbb::global_control> tbb_global_control;
-
+    // ULogger::setType(ULogger::kTypeConsole);
+	// ULogger::setLevel(ULogger::kDebug);
     // Create pipeline
     dai::Pipeline pipeline;
     int fps = 60;
@@ -336,6 +339,8 @@ int main() {
     auto slam = pipeline.create<dai::node::RTABMapSLAM>();
     auto params = rtabmap::ParametersMap();
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDCreateOccupancyGrid(), "true"));
+    params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kGridMaxGroundAngle(), "60"));
+    params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapSaveWMState(), "true"));
     slam->setParams(params);
     auto rerun = pipeline.create<RerunStreamer>();
     auto xoutDepth = pipeline.create<dai::node::XLinkOut>();

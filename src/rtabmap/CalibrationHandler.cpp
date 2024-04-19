@@ -2,7 +2,7 @@
 #include "rtabmap/core/StereoCameraModel.h"
 
 namespace dai {
-void CalibrationHandler::getRTABMapCameraModel(rtabmap::StereoCameraModel& model, CameraBoardSocket cameraId, int width, int height, float alphaScaling) {
+void CalibrationHandler::getRTABMapCameraModel(rtabmap::StereoCameraModel& model, CameraBoardSocket cameraId, int width, int height,const rtabmap::Transform& localTransform, float alphaScaling) {
     cv::Mat cameraMatrix, distCoeffs, newCameraMatrix;
     std::vector<std::vector<float> > matrix = getCameraIntrinsics(cameraId, width, height);
     cameraMatrix = (cv::Mat_<double>(3, 3) << matrix[0][0],
@@ -30,18 +30,18 @@ void CalibrationHandler::getRTABMapCameraModel(rtabmap::StereoCameraModel& model
     std::cout << "width " << width << " height " << height << std::endl;
     std::cout << "fx " << fx << " fy " << fy << " cx " << cx << " cy " << cy << std::endl;
     double baseline = getBaselineDistance(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_B) / 100.0;
+    
+    rtabmap::Transform poseTocamera;
     if(cameraId == dai::CameraBoardSocket::CAM_A)
-        model = rtabmap::StereoCameraModel(eepromData.boardName, fx, fy, cx, cy, baseline, rtabmap::Transform::getIdentity(), cv::Size(width, height));
+        poseTocamera = rtabmap::Transform::getIdentity();
     else
-        model = rtabmap::StereoCameraModel(
-            eepromData.boardName,
-            fx,
-            fy,
-            cx,
-            cy,
-            baseline,
-            rtabmap::Transform::getIdentity() * rtabmap::Transform(-getBaselineDistance(dai::CameraBoardSocket::CAM_A) / 100.0, 0, 0),
-            cv::Size(width, height));
+        poseTocamera = rtabmap::Transform(-getBaselineDistance(dai::CameraBoardSocket::CAM_A) / 100.0, 0, 0);
 
+    rtabmap::Transform rot(
+		0, 0,-1,0,
+		-1, 0, 0,0,
+		 0, 1, 0,0);
+    poseTocamera = rot * poseTocamera;
+    model = rtabmap::StereoCameraModel(eepromData.boardName, fx, fy, cx, cy, baseline, localTransform*poseTocamera, cv::Size(width, height));
 }
 }  // namespace dai

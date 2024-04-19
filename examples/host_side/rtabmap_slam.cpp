@@ -36,11 +36,13 @@ class RerunStreamer : public dai::NodeCRTP<dai::ThreadedNode, RerunStreamer> {
     }
 
     /**
-     * Input for any ImgFrame messages 
+     * Input for any ImgFrame messages
      * Default queue is blocking with size 8
      */
     Input inputTrans{true, *this, "inTrans", Input::Type::SReceiver, false, 8, true, {{dai::DatatypeEnum::TransformData, true}}};
     Input inputImg{true, *this, "inImg", Input::Type::SReceiver, false, 8, true, {{dai::DatatypeEnum::ImgFrame, true}}};
+    Input inputPCL{true, *this, "inPCL", Input::Type::SReceiver, false, 8, true, {{dai::DatatypeEnum::PointCloudData, true}}};
+    Input inputMap{true, *this, "inMap", Input::Type::SReceiver, false, 8, true, {{dai::DatatypeEnum::ImgFrame, true}}};
     void run() override {
         const auto rec = rerun::RecordingStream("rerun");
         rec.spawn().exit_on_failure();
@@ -50,6 +52,8 @@ class RerunStreamer : public dai::NodeCRTP<dai::ThreadedNode, RerunStreamer> {
         while(isRunning()) {
             std::shared_ptr<dai::TransformData> transData = inputTrans.queue.get<dai::TransformData>();
             auto imgFrame = inputImg.queue.get<dai::ImgFrame>();
+            auto pclData = inputPCL.queue.tryGet<dai::PointCloudData>();
+            auto mapData = inputMap.queue.tryGet<dai::ImgFrame>();
             if(transData != nullptr) {
                 double x, y, z, qx, qy, qz, qw;
                 transData->getTranslation(x, y, z);
@@ -60,15 +64,24 @@ class RerunStreamer : public dai::NodeCRTP<dai::ThreadedNode, RerunStreamer> {
                 positions.push_back(position);
                 rerun::LineStrip3D lineStrip(positions);
                 rec.log("world/trajectory", rerun::LineStrips3D(lineStrip));
-                rec.log("world/camera/image", rerun::Pinhole::from_focal_length_and_resolution({256.06f, 256.06f}, {576.0f, 360.0f}));
+                rec.log("world/camera/image", rerun::Pinhole::from_focal_length_and_resolution({398.554f, 398.554f}, {640.0f, 400.0f}));
                 rec.log("world/camera/image/rgb",
                         rerun::Image(tensor_shape(imgFrame->getCvFrame()), reinterpret_cast<const uint8_t*>(imgFrame->getCvFrame().data)));
+                if(pclData != nullptr) {
+                    std::vector<rerun::Position3D> points;
+                    for(auto& point : pclData->points) {
+                        points.push_back(rerun::Position3D(point.x, point.y, point.z));
+                    }
+                    rec.log("world/camera/pointcloud", rerun::Points3D(points));
+                }
+                if(mapData != nullptr) {
+                    rec.log("map", rerun::Image(tensor_shape(mapData->getCvFrame()), reinterpret_cast<const uint8_t*>(mapData->getCvFrame().data)));
+                }
             }
         }
     }
     std::vector<rerun::Vec3D> positions;
 };
-
 
 int main() {
     using namespace std;
@@ -90,6 +103,9 @@ int main() {
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomResetCountdown(), "30"));
 
     odom->setParams(params);
+
+    params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDCreateOccupancyGrid(), "true"));
+    slam->setParams(params);
     imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 100);
     imu->setBatchReportThreshold(1);
     imu->setMaxBatchReports(10);
@@ -135,6 +151,8 @@ int main() {
     
     slam->transform.link(rerun->inputTrans);
     slam->passthroughRect.link(rerun->inputImg);
+    slam->occupancyMap.link(rerun->inputMap);
+
     pipeline.start();
     pipeline.wait();
 }

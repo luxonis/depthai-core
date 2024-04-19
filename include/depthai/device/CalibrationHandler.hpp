@@ -564,7 +564,7 @@ class CalibrationHandler {
      * @param width Width of the image for which intrinsics is requested
      * @param height Height of the image for which intrinsics is requested
      */
-    void getRTABMapCameraModel(rtabmap::StereoCameraModel& model, CameraBoardSocket cameraId, int width, int height, float alphaScaling = -1.0);
+    void getRTABMapCameraModel(rtabmap::StereoCameraModel& model, CameraBoardSocket cameraId, int width, int height, const rtabmap::Transform& localTransform=rtabmap::Transform::getIdentity(), float alphaScaling = -1.0);
 
 #else
     template <typename... T>

@@ -26,7 +26,6 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::ThreadedNode, RTABMapSLAM> {
    public:
     void build();
 
-
     Input inputRect{true, *this, "img_rect", Input::Type::SReceiver, false, 8, false, {{dai::DatatypeEnum::ImgFrame, true}}};
     Input inputDepth{true, *this, "depth", Input::Type::SReceiver, false, 8, false, {{dai::DatatypeEnum::ImgFrame, true}}};
     Input inputIMU{true, *this, "imu", Input::Type::SReceiver, false, 8, false, {{dai::DatatypeEnum::IMUData, true}}};
@@ -47,7 +46,9 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::ThreadedNode, RTABMapSLAM> {
     rtabmap::Transform odomCorrection;
     bool reuseFeatures;
     std::chrono::steady_clock::time_point lastProcessTime; 
+    std::chrono::steady_clock::time_point startTime;
     rtabmap::Transform imuLocalTransform;
+    rtabmap::Transform localTransform;
     std::map<double, cv::Vec3f> accBuffer_;
 	std::map<double, cv::Vec3f> gyroBuffer_;
     std::map<double, cv::Vec4f> rotBuffer_;

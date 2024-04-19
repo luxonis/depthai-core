@@ -10,25 +10,18 @@ void RTABMapSLAM::build() {
     hostNode = true;
     alphaScaling = -1.0;
     reuseFeatures = false;
+    localTransform = rtabmap::Transform::getIdentity();
     rtabmap.init();
 
-    // inputRect.queue.setMaxSize(1);
-    // inputDepth.queue.setMaxSize(1);
-    // inputFeatures.queue.setMaxSize(1);
-    // inputRect.queue.setBlocking(false);
-    // inputDepth.queue.setBlocking(false);
-    // inputFeatures.queue.setBlocking(false);
 }
 
 void RTABMapSLAM::stop() {
     dai::Node::stop();
-    // cv::destroyAllWindows();
 }
 
 void RTABMapSLAM::setParams(const rtabmap::ParametersMap& params) {
-    rtabmap.init(params);
+    rtabmap.init(params, "/rtabmap.tmp.db");
     rtabParams = params;
-    
 }
 
 void RTABMapSLAM::run() {
@@ -45,8 +38,13 @@ void RTABMapSLAM::run() {
         if(imgFrame != nullptr && depthFrame != nullptr) {
             if(!modelSet) {
                 auto pipeline = getParentPipeline();
+                rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
+                std::cout << "local transform: " << localTransform << std::endl;
+                localTransform = localTransform * opticalTransform.inverse();
+                std::cout << "local transform: " << localTransform << std::endl;
                 getCalib(pipeline, imgFrame->getInstanceNum(), imgFrame->getWidth(), imgFrame->getHeight());
                 lastProcessTime = std::chrono::steady_clock::now();
+                startTime = std::chrono::steady_clock::now();
                 grid = new rtabmap::OccupancyGrid(&localMaps_, rtabParams);
 
                 modelSet = true;
@@ -54,7 +52,10 @@ void RTABMapSLAM::run() {
                 double stamp = std::chrono::duration<double>(imgFrame->getTimestampDevice(dai::CameraExposureOffset::MIDDLE).time_since_epoch()).count();
 
                 data = rtabmap::SensorData(imgFrame->getCvFrame(), depthFrame->getCvFrame(), model.left(), imgFrame->getSequenceNum(), stamp);
-
+                cv::Vec3d acc, gyro;
+                cv::Vec4d rot;
+                data.setIMU(
+                    rtabmap::IMU(rot, cv::Mat::eye(3, 3, CV_64FC1), gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform));
                 std::vector<cv::KeyPoint> keypoints;
                 if(features != nullptr) {
                     for(auto& feature : features->trackedFeatures) {
@@ -64,9 +65,12 @@ void RTABMapSLAM::run() {
                 }
 
                 // convert odom pose to rtabmap pose
-                rtabmap::Transform pose;
-                odomPose->getRTABMapTransform(pose);
-
+                rtabmap::Transform p;
+                odomPose->getRTABMapTransform(p);
+                // std::cout <<"pose init: " << p << std::endl;
+                auto pose = localTransform * p * localTransform.inverse();
+                // std::cout << "pose after transform: " << pose << std::endl;
+                // pose = pose.inverse();
                 rtabmap::Statistics stats;
 
                 // process at 1 Hz
@@ -79,6 +83,7 @@ void RTABMapSLAM::run() {
                             fmt::print("Loop closure detected! last loop closure id = {}\n", rtabmap.getLoopClosureId());
                         }
                         odomCorrection = stats.mapCorrection();
+
                         std::map<int, rtabmap::Signature> nodes;
                         std::map<int, rtabmap::Transform> optimizedPoses;
                         std::multimap<int, rtabmap::Link> links;
@@ -121,8 +126,8 @@ void RTABMapSLAM::run() {
                             gridMap->setTimestamp(std::chrono::steady_clock::now());
                             // convert cv mat data to std::vector<uint8_t>
                             // std::cout << map8U << std::endl;
-                            cv::Mat flat = map8U.reshape(1, map8U.total()*map8U.channels());
-                            std::vector<uchar> vec = map8U.isContinuous()? flat : flat.clone();
+                            cv::Mat flat = map8U.reshape(1, map8U.total() * map8U.channels());
+                            std::vector<uchar> vec = map8U.isContinuous() ? flat : flat.clone();
                             gridMap->setData(vec);
                             gridMap->setType(dai::ImgFrame::Type::GRAY8);
                             gridMap->setHeight(map8U.rows);
@@ -131,6 +136,7 @@ void RTABMapSLAM::run() {
                         }
                     }
                 }
+
                 auto out = std::make_shared<dai::TransformData>(odomCorrection * pose);
                 transform.send(out);
                 passthroughRect.send(imgFrame);
@@ -150,18 +156,24 @@ void RTABMapSLAM::run() {
                 pointCloud.send(pclData);
             }
         }
+        // after 30s save the database
+        if(std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count() > 30.0) {
+            rtabmap.close();
+            rtabmap.init(rtabParams, "/rtabmap.tmp.db");
+            std::cout << "Database saved" << std::endl;
+            startTime = std::chrono::steady_clock::now();
+        }
     }
     fmt::print("Display node stopped\n");
 }
 
-
 void RTABMapSLAM::getCalib(dai::Pipeline& pipeline, int instanceNum, int width, int height) {
     auto device = pipeline.getDevice();
     auto calibHandler = device->readCalibration2();
-
     auto cameraId = static_cast<dai::CameraBoardSocket>(instanceNum);
-    calibHandler.getRTABMapCameraModel(model, cameraId, width, height, alphaScaling);
+    calibHandler.getRTABMapCameraModel(model, cameraId, width, height, localTransform, alphaScaling);
     auto eeprom = calibHandler.getEepromData();
+    std::cout << "Board name: " << eeprom.boardName << std::endl;
     if(eeprom.boardName == "OAK-D" || eeprom.boardName == "BW1098OBC") {
         imuLocalTransform = rtabmap::Transform(0, -1, 0, 0.0525, 1, 0, 0, 0.013662, 0, 0, 1, 0);
     } else if(eeprom.boardName == "DM9098") {
@@ -174,8 +186,12 @@ void RTABMapSLAM::getCalib(dai::Pipeline& pipeline, int instanceNum, int width, 
         std::cout << "Unknown IMU local transform for " << eeprom.boardName << std::endl;
         stop();
     }
-
-    imuLocalTransform = rtabmap::Transform::getIdentity() * imuLocalTransform;
+    // rtabmap::Transform imuRot(
+	// 	0, 0,-1,0,
+	// 	-1, 0, 0,0,
+	// 	 0, 1, 0,0);
+    // auto poseToImu = imuRot*imuLocalTransform;
+    imuLocalTransform = localTransform* imuLocalTransform;
 }
 }  // namespace node
 }  // namespace dai
