@@ -581,6 +581,24 @@ void Node::removeConnectionToNode(std::shared_ptr<Node> node) {
     }
 }
 
+bool Node::isSourceNode() const {
+    return false;
+}
+
+utility::NodeRecordParams Node::getNodeRecordParams() const {
+    utility::NodeRecordParams params;
+    params.name = getName();
+    return params;
+}
+
+Node::Output& Node::getRecordOutput() {
+    throw std::runtime_error("getRecordOutput is not implemented for non-source nodes.");
+}
+
+Node::Input& Node::getReplayInput() {
+    throw std::runtime_error("getReplayInput is not implemented for non-source nodes.");
+}
+
 // Recursive helpers for pipelines
 Node::ConnectionMap Node::getConnectionMap() {
     ConnectionMap map;

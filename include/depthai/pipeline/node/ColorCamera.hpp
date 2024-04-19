@@ -28,6 +28,11 @@ class ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraPr
     void build();
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
+    bool isSourceNode() const override;
+    utility::NodeRecordParams getNodeRecordParams() const override;
+    Output& getRecordOutput() override;
+    Input& getReplayInput() override;
+
    public:
     /**
      * Computes the scaled size given numerator and denominator

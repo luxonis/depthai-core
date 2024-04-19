@@ -277,7 +277,10 @@ add_library(${TARGET_CORE_NAME}
     src/utility/Resources.cpp
     src/utility/Path.cpp
     src/utility/Platform.cpp
+    src/utility/RecordReplay.cpp
+    src/utility/McapImpl.cpp
     src/utility/Environment.cpp
+    src/utility/Compression.cpp
     src/utility/XLinkGlobalProfilingLogger.cpp
     src/utility/Logging.cpp
     src/utility/Checksum.cpp
@@ -515,7 +518,9 @@ target_link_libraries(${TARGET_CORE_NAME}
         FP16::fp16
         archive_static
         ZLIB::zlib
+        LZ4::lz4_shared
         httplib::httplib
+        mp4v2::mp4v2
 )
 
 # Add compile & CMake definitions
@@ -617,6 +622,9 @@ if(DEPTHAI_OPENCV_SUPPORT)
             src/opencv/ImgFrame.cpp
             src/pipeline/node/host/Display.cpp
             src/pipeline/node/host/HostCamera.cpp
+            src/pipeline/node/host/Record.cpp
+            src/pipeline/node/host/Replay.cpp
+            src/opencv/RecordReplay.cpp
         )
         add_library("${PROJECT_NAME}::${TARGET_OPENCV_ALIAS}" ALIAS ${TARGET_OPENCV_NAME})
         # Specifies name of generated IMPORTED target (set to alias)

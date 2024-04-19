@@ -22,6 +22,10 @@ class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraPrope
 
    protected:
     Properties& getProperties();
+    bool isSourceNode() const override;
+    utility::NodeRecordParams getNodeRecordParams() const override;
+    Output& getRecordOutput() override;
+    Input& getReplayInput() override;
 
    public:
     MonoCamera() = default;

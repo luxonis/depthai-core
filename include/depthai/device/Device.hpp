@@ -12,6 +12,7 @@
 // project
 #include "DataQueue.hpp"
 #include "depthai/device/DeviceBase.hpp"
+#include "depthai/utility/RecordReplay.hpp"
 
 namespace dai {
 /**

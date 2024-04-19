@@ -2,7 +2,6 @@
 #include <catch2/catch_test_macros.hpp>
 #include <depthai/depthai.hpp>
 
-#include "depthai/properties/StereoDepthProperties.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 
 dai::Pipeline getPipeline(bool sparse) {

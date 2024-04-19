@@ -15,6 +15,8 @@
 #include "depthai/pipeline/MessageQueue.hpp"
 #include "depthai/utility/copyable_unique_ptr.hpp"
 
+#include "depthai/utility/RecordReplay.hpp"
+
 // depthai
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/properties/Properties.hpp"
@@ -33,6 +35,7 @@ class PipelineImpl;
 class Node : public std::enable_shared_from_this<Node> {
     friend class Pipeline;
     friend class PipelineImpl;
+    friend class Device;
 
    public:
     // Nodes must always be managed
@@ -70,6 +73,13 @@ class Node : public std::enable_shared_from_this<Node> {
     void setNodeRefs(std::initializer_list<std::pair<std::string, std::shared_ptr<Node>*>> l);
     void setNodeRefs(std::pair<std::string, std::shared_ptr<Node>*> nodeRef);
     void setNodeRefs(std::string alias, std::shared_ptr<Node>* nodeRef);
+
+    // For record and replay
+    virtual bool isSourceNode() const;
+    virtual utility::NodeRecordParams getNodeRecordParams() const;
+    virtual Output& getRecordOutput();
+    virtual Input& getReplayInput();
+
 
     template <typename T>
     class Subnode {

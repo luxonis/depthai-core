@@ -22,13 +22,15 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
     void build();
 
    protected:
-    Properties& getProperties();
-    /**
-     * Constructs Camera node.
-     */
-   protected:
     Camera() = default;
     Camera(std::unique_ptr<Properties> props);
+
+    Properties& getProperties();
+
+    bool isSourceNode() const override;
+    utility::NodeRecordParams getNodeRecordParams() const override;
+    Output& getRecordOutput() override;
+    Input& getReplayInput() override;
 
    public:
     /**
@@ -102,7 +104,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
      *
      * Default queue is blocking with size 8
      */
-    Input mockIsp{*this, {.name = "mockIsp", .queueSize=8,  .types={{DatatypeEnum::ImgFrame, false}}}};
+    Input mockIsp{*this, {.name = "mockIsp", .queueSize = 8, .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Specify which board socket to use

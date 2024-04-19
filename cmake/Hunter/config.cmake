@@ -120,6 +120,16 @@ hunter_config(
     SHA1 "fb8b6486183b13a86040f793a939b128f6d27095"
 )
 
+# LZ4 for mcap
+hunter_config(
+    lz4-luxonis
+    VERSION "1.9.4-p2"
+    URL "https://github.com/luxonis/lz4/archive/ba358ed311d125333d245e4c284464a72a168983.tar.gz"
+    SHA1 "43ae0d2343147e32cdd8b85cefb5a311c3ee5504"
+    CMAKE_ARGS
+        BUILD_SHARED_LIBS=ON
+)
+
 # TMP, could be read from XLink
 # libusb without udev
 hunter_config(
@@ -160,3 +170,12 @@ hunter_config(
     SHA1 "0cdb8fe12d33bac220b58aa85b219de02716f537"
 )
 
+hunter_config(
+    mp4v2
+    VERSION "2.1.3"
+    URL "https://github.com/asahtik/mp4v2/archive/f868f0b842e427e20032922f839988ea4615800e.tar.gz"
+    SHA1 "74820eaa28e0892c5d0fcd9c700402a60fbf6d72"
+    CMAKE_ARGS
+        BUILD_SHARED=ON
+        BUILD_UTILS=OFF
+)
