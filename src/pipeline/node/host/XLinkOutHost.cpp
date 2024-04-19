@@ -36,7 +36,6 @@ void XLinkOutHost::run() {
             using namespace std::chrono;
             // Blocking
             auto t1 = steady_clock::now();
-            std::cout << "Before write\n";
             auto outgoingDataSize = outgoing->data->getSize();
             if(outgoingDataSize > currentMaxSize - metadata.size()) {
                 logger::error("Data size {} exceeds the maximum buffer size {} - please increase the buffer size", outgoingDataSize, currentMaxSize);
@@ -47,7 +46,6 @@ void XLinkOutHost::run() {
             } else {
                 stream.write(metadata);
             }
-            std::cout << "After write\n";
             auto t2 = steady_clock::now();
             // Log
             if(spdlog::get_level() == spdlog::level::trace) {

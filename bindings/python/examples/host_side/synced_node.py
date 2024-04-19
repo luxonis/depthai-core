@@ -16,7 +16,7 @@ class SyncedDisplay(dai.SyncedNode):
         if cv2.waitKey(1) == ord("q"): self.stopPipeline()
 
 
-p = dai.Pipeline(True)
+p = dai.Pipeline(createImplicitPipeline=True)
 color_camera = p.create(dai.node.ColorCamera)
 mono_camera = p.create(dai.node.MonoCamera)
 display = p.create(SyncedDisplay)
