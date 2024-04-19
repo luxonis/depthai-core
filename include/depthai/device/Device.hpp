@@ -223,10 +223,6 @@ class Device : public DeviceBase {
     // std::condition_variable eventCv;
     // std::deque<std::string> eventQueue;
 
-    // Record and Replay
-    utility::RecordConfig recordConfig;
-    std::unordered_map<std::string, std::string> recordReplayFilenames;
-
     // bool startPipelineImpl(const Pipeline& pipeline) override;
     void closeImpl() override;
 };

@@ -106,6 +106,8 @@ set(SOURCE_LIST
     src/pipeline/node/SyncBindings.cpp
     src/pipeline/node/MessageDemuxBindings.cpp
     src/pipeline/node/HostNodeBindings.cpp
+    src/pipeline/node/RecordBindings.cpp
+    src/pipeline/node/ReplayBindings.cpp
 
     src/pipeline/datatype/ADatatypeBindings.cpp
     src/pipeline/datatype/AprilTagConfigBindings.cpp
@@ -214,7 +216,7 @@ if (DEPTHAI_PYTHON_BUILD_DOCSTRINGS)
     include(pybind11-mkdoc)
 
     # Check if pybind11_mkdoc available and create target
-    target_pybind11_mkdoc_setup(${docstring_output_path} depthai::core ${DEPTHAI_PYTHON_FORCE_DOCSTRINGS})
+    target_pybind11_mkdoc_setup(${docstring_output_path} depthai::opencv ${DEPTHAI_PYTHON_FORCE_DOCSTRINGS})
 
     if(TARGET pybind11_mkdoc)
         # Add dependency to mkdoc target (makes sure that mkdoc is executed, and docstrings available)
@@ -236,7 +238,7 @@ target_link_libraries(${TARGET_NAME}
     PUBLIC
         # pybind11
         pybind11::pybind11
-        depthai::core # Use non-opencv target as we use opencv-python in bindings
+        depthai::opencv # Use non-opencv target as we use opencv-python in bindings
         hedley
         pybind11_json
         xtensor-python

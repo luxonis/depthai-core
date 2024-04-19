@@ -19,13 +19,13 @@
 std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_)>>> pyNodeCreateMap;
 py::handle daiNodeModule;
 
-std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_)>>> NodeBindings::getNodeCreateMap(){
+std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_)>>> NodeBindings::getNodeCreateMap() {
     return pyNodeCreateMap;
 }
 
 // Bind map - without init method
 template <typename Map, typename holder_type = std::unique_ptr<Map>, typename... Args>
-py::class_<Map, holder_type> bindNodeMap(py::handle scope, const std::string &name, Args&&... args) {
+py::class_<Map, holder_type> bindNodeMap(py::handle scope, const std::string& name, Args&&... args) {
     using namespace py;
     using KeyType = typename Map::key_type;
     using MappedType = typename Map::mapped_type;
@@ -36,7 +36,7 @@ py::class_<Map, holder_type> bindNodeMap(py::handle scope, const std::string &na
     // module-local.
     auto tinfo = py::detail::get_type_info(typeid(MappedType));
     bool local = !tinfo || tinfo->module_local;
-    if (local) {
+    if(local) {
         tinfo = py::detail::get_type_info(typeid(KeyType));
         local = !tinfo || tinfo->module_local;
     }
@@ -46,81 +46,62 @@ py::class_<Map, holder_type> bindNodeMap(py::handle scope, const std::string &na
     // Register stream insertion operator (if possible)
     detail::map_if_insertion_operator<Map, Class_>(cl, name);
 
-    cl.def("__bool__",
-        [](const Map &m) -> bool { return !m.empty(); },
-        "Check whether the map is nonempty"
+    cl.def(
+        "__bool__", [](const Map& m) -> bool { return !m.empty(); }, "Check whether the map is nonempty");
+
+    cl.def(
+        "__iter__", [](Map& m) { return make_key_iterator(m.begin(), m.end()); }, keep_alive<0, 1>() /* Essential: keep list alive while iterator exists */
     );
 
-    cl.def("__iter__",
-           [](Map &m) { return make_key_iterator(m.begin(), m.end()); },
-           keep_alive<0, 1>() /* Essential: keep list alive while iterator exists */
-    );
-
-    cl.def("items",
-           [](Map &m) { return make_iterator(m.begin(), m.end()); },
-           keep_alive<0, 1>() /* Essential: keep list alive while iterator exists */
+    cl.def(
+        "items", [](Map& m) { return make_iterator(m.begin(), m.end()); }, keep_alive<0, 1>() /* Essential: keep list alive while iterator exists */
     );
 
     // Warning - overload order matters!
-   // Modified __getitem__. Uses operator[string] underneath
-    cl.def("__getitem__",
-        [](Map &m, const std::string &k) -> MappedType & {
-            return m[k];
-        },
-        return_value_policy::reference_internal // ref + keepalive
+    // Modified __getitem__. Uses operator[string] underneath
+    cl.def(
+        "__getitem__",
+        [](Map& m, const std::string& k) -> MappedType& { return m[k]; },
+        return_value_policy::reference_internal  // ref + keepalive
     );
     // Modified __getitem__. Uses operator[pair<string,string>] underneath
-    cl.def("__getitem__",
-        [](Map &m, const KeyType &k) -> MappedType & {
-            return m[k];
-        },
-        return_value_policy::reference_internal // ref + keepalive
+    cl.def(
+        "__getitem__",
+        [](Map& m, const KeyType& k) -> MappedType& { return m[k]; },
+        return_value_policy::reference_internal  // ref + keepalive
     );
 
     // Warning - overload order matters!
-    cl.def("__contains__",
-        [](Map &m, const std::string &k) -> bool {
-            auto it = m.find({m.name, k});
-            if (it == m.end())
-              return false;
-           return true;
-        }
-    );
-    cl.def("__contains__",
-        [](Map &m, const KeyType &k) -> bool {
-            auto it = m.find(k);
-            if (it == m.end())
-              return false;
-           return true;
-        }
-    );
+    cl.def("__contains__", [](Map& m, const std::string& k) -> bool {
+        auto it = m.find({m.name, k});
+        if(it == m.end()) return false;
+        return true;
+    });
+    cl.def("__contains__", [](Map& m, const KeyType& k) -> bool {
+        auto it = m.find(k);
+        if(it == m.end()) return false;
+        return true;
+    });
 
     // Assignment provided only if the type is copyable
     detail::map_assignment<Map, Class_>(cl);
 
     // Warning - overload order matters!
-    cl.def("__delitem__",
-           [](Map &m, const std::string &k) {
-               auto it = m.find({m.name, k});
-               if (it == m.end())
-                   throw key_error();
-               m.erase(it);
-           }
-    );
-    cl.def("__delitem__",
-           [](Map &m, const KeyType &k) {
-               auto it = m.find(k);
-               if (it == m.end())
-                   throw key_error();
-               m.erase(it);
-           }
-    );
+    cl.def("__delitem__", [](Map& m, const std::string& k) {
+        auto it = m.find({m.name, k});
+        if(it == m.end()) throw key_error();
+        m.erase(it);
+    });
+    cl.def("__delitem__", [](Map& m, const KeyType& k) {
+        auto it = m.find(k);
+        if(it == m.end()) throw key_error();
+        m.erase(it);
+    });
 
     cl.def("__len__", &Map::size);
 
     return cl;
 }
-
 
 void bind_xlinkin(pybind11::module& m, void* pCallstack);
 void bind_xlinkout(pybind11::module& m, void* pCallstack);
@@ -152,6 +133,8 @@ void bind_pointcloud(pybind11::module& m, void* pCallstack);
 void bind_sync(pybind11::module& m, void* pCallstack);
 void bind_messagedemux(pybind11::module& m, void* pCallstack);
 void bind_hostnode(pybind11::module& m, void* pCallstack);
+void bind_record(pybind11::module& m, void* pCallstack);
+void bind_replay(pybind11::module& m, void* pCallstack);
 
 void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     // Bind Node et al
@@ -188,9 +171,11 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_sync);
     callstack.push_front(bind_messagedemux);
     callstack.push_front(bind_hostnode);
+    callstack.push_front(bind_record);
+    callstack.push_front(bind_replay);
 }
 
-void NodeBindings::bind(pybind11::module& m, void* pCallstack){
+void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace std::chrono;
 
@@ -228,7 +213,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Call the rest of the type defines, then perform the actual bindings
-    Callstack* callstack = (Callstack*) pCallstack;
+    Callstack* callstack = (Callstack*)pCallstack;
     auto cb = callstack->top();
     callstack->pop();
     cb(m, pCallstack);
@@ -236,7 +221,6 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
-
 
     ////////////////////////////////////////////////////////////////////////////////////////
     ////////////////////////////////////////////////////////////////////////////////////////
@@ -246,17 +230,12 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack){
 
     // Base 'Node' class binding
 
-    nodeDatatypeHierarchy
-        .def(py::init<DatatypeEnum, bool>())
+    nodeDatatypeHierarchy.def(py::init<DatatypeEnum, bool>())
         .def_readwrite("datatype", &Node::DatatypeHierarchy::datatype)
-        .def_readwrite("descendants", &Node::DatatypeHierarchy::descendants)
-    ;
+        .def_readwrite("descendants", &Node::DatatypeHierarchy::descendants);
 
     // Node::Input bindings
-    nodeInputType
-        .value("SReceiver", Node::Input::Type::SReceiver)
-        .value("MReceiver", Node::Input::Type::MReceiver)
-    ;
+    nodeInputType.value("SReceiver", Node::Input::Type::SReceiver).value("MReceiver", Node::Input::Type::MReceiver);
 
     pyInput
         .def(
@@ -294,10 +273,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack){
         .def("getReusePreviousMessage", &Node::Input::getReusePreviousMessage, DOC(dai, Node, Input, getReusePreviousMessage));
 
     // Node::Output bindings
-    nodeOutputType
-        .value("MSender", Node::Output::Type::MSender)
-        .value("SSender", Node::Output::Type::SSender)
-    ;
+    nodeOutputType.value("MSender", Node::Output::Type::MSender).value("SSender", Node::Output::Type::SSender);
     pyOutput
         .def(py::init([](Node& parent, const std::string& name, const std::string& group, std::vector<Node::DatatypeHierarchy> types) {
                  return std::unique_ptr<Node::Output>(new Node::Output(parent, {.name = name, .group = group, .types = std::move(types)}));
@@ -318,20 +294,18 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack){
              DOC(dai, Node, Output, getParent))
         .def("isSamePipeline", &Node::Output::isSamePipeline, py::arg("input"), DOC(dai, Node, Output, isSamePipeline))
         .def("canConnect", &Node::Output::canConnect, py::arg("input"), DOC(dai, Node, Output, canConnect))
-        .def("createQueue", &Node::Output::createQueue, py::arg("maxSize")=16, py::arg("blocking")=true, DOC(dai, Node, Output, createQueue))
+        .def("createQueue", &Node::Output::createQueue, py::arg("maxSize") = 16, py::arg("blocking") = true, DOC(dai, Node, Output, createQueue))
         .def("link", static_cast<void (Node::Output::*)(Node::Input&)>(&Node::Output::link), py::arg("input"), DOC(dai, Node, Output, link))
         .def("unlink", static_cast<void (Node::Output::*)(Node::Input&)>(&Node::Output::unlink), py::arg("input"), DOC(dai, Node, Output, unlink))
         .def("send", &Node::Output::send, py::arg("msg"), DOC(dai, Node, Output, send))
         .def("trySend", &Node::Output::trySend, py::arg("msg"), DOC(dai, Node, Output, trySend));
 
-    nodeConnection
-        .def_readwrite("outputId", &Node::Connection::outputId, DOC(dai, Node, Connection, outputId))
+    nodeConnection.def_readwrite("outputId", &Node::Connection::outputId, DOC(dai, Node, Connection, outputId))
         .def_readwrite("outputName", &Node::Connection::outputName, DOC(dai, Node, Connection, outputName))
         .def_readwrite("outputGroup", &Node::Connection::outputGroup, DOC(dai, Node, Connection, outputGroup))
         .def_readwrite("inputId", &Node::Connection::inputId, DOC(dai, Node, Connection, inputId))
         .def_readwrite("inputName", &Node::Connection::inputName, DOC(dai, Node, Connection, inputName))
-        .def_readwrite("inputGroup", &Node::Connection::inputGroup, DOC(dai, Node, Connection, inputGroup))
-    ;
+        .def_readwrite("inputGroup", &Node::Connection::inputGroup, DOC(dai, Node, Connection, inputGroup));
 
     pyNode.def_readonly("id", &Node::id, DOC(dai, Node, id))
         .def("getName", &Node::getName, DOC(dai, Node, getName))
@@ -372,41 +346,27 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack){
              static_cast<AssetManager& (Node::*)()>(&Node::getAssetManager),
              py::return_value_policy::reference_internal,
              DOC(dai, Node, getAssetManager));
-        // .def_property_readonly(  // TODO - This casting of the inputs/outputs might be illegal / cause bad behavior
-        //     "io",
-        //     [](Node& n) -> py::object {
-        //         auto dict = py::dict();
-        //         for(auto& output : n.getOutputRefs()) {
-        //             // TODO - Revisit, pybind might try to release the output when refcount goes to zero
-        //             dict[py::str(output->name)] = output;
-        //         }
-        //         for(auto& input : n.getInputRefs()) {
-        //             // TODO - Revisit, pybind might try to release the input when refcount goes to zero
-        //             dict[py::str(input->getName())] = input;
-        //         }
-        //         return dict;
-        //     },
-        //     py::return_value_policy::reference_internal);
+    // .def_property_readonly(  // TODO - This casting of the inputs/outputs might be illegal / cause bad behavior
+    //     "io",
+    //     [](Node& n) -> py::object {
+    //         auto dict = py::dict();
+    //         for(auto& output : n.getOutputRefs()) {
+    //             // TODO - Revisit, pybind might try to release the output when refcount goes to zero
+    //             dict[py::str(output->name)] = output;
+    //         }
+    //         for(auto& input : n.getInputRefs()) {
+    //             // TODO - Revisit, pybind might try to release the input when refcount goes to zero
+    //             dict[py::str(input->getName())] = input;
+    //         }
+    //         return dict;
+    //     },
+    //     py::return_value_policy::reference_internal);
 
     // TODO(themarpe) - refactor, threaded node could be separate from Node
-    pyThreadedNode
-        .def("trace", [](dai::ThreadedNode& node, const std::string& msg) {
-            node.logger->trace(msg);
-        })
-        .def("debug", [](dai::ThreadedNode& node, const std::string& msg) {
-            node.logger->debug(msg);
-        })
-        .def("info", [](dai::ThreadedNode& node, const std::string& msg) {
-            node.logger->info(msg);
-        })
-        .def("warn", [](dai::ThreadedNode& node, const std::string& msg) {
-            node.logger->warn(msg);
-        })
-        .def("error", [](dai::ThreadedNode& node, const std::string& msg) {
-            node.logger->error(msg);
-        })
-        .def("critical", [](dai::ThreadedNode& node, const std::string& msg) {
-            node.logger->critical(msg);
-        });
+    pyThreadedNode.def("trace", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->trace(msg); })
+        .def("debug", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->debug(msg); })
+        .def("info", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->info(msg); })
+        .def("warn", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->warn(msg); })
+        .def("error", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->error(msg); })
+        .def("critical", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->critical(msg); });
 }
-

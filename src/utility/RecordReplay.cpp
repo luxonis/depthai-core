@@ -4,6 +4,7 @@
 
 #include <stdexcept>
 
+#include "build/version.hpp"
 #include "utility/Platform.hpp"
 
 namespace dai {
@@ -22,9 +23,7 @@ void ByteRecorder::init(const std::string& filePath, CompressionLevel compressio
     }
     {
         auto options = mcap::McapWriterOptions("");
-        options.library =
-            "depthai"
-            "3.0.0";  // TODO(asahtik): is there some global variable for this?
+        options.library = "depthai" + std::string(build::VERSION);  // TODO(asahtik): is there some global variable for this?
         switch(compressionLevel) {
             case CompressionLevel::NONE:
                 options.compression = mcap::Compression::None;

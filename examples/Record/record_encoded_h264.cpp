@@ -6,7 +6,7 @@
 #endif
 
 int main() {
-	dai::Pipeline pipeline;
+	dai::Pipeline pipeline(true);
 	auto cam = pipeline.create<dai::node::ColorCamera>();
 	auto videoEncoder = pipeline.create<dai::node::VideoEncoder>();
 	auto record = pipeline.create<dai::node::Record>();
