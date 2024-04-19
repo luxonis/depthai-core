@@ -54,7 +54,7 @@ void ByteRecorder::init(const std::string& filePath, CompressionLevel compressio
     {
         const char* schemaText = DEFAULT_SHEMA;
         std::string channelName = "default";
-        switch (recordingType) {
+        switch(recordingType) {
             case RecordType::Video:
                 channelName = "video";
                 schemaText = VIDEO_SHEMA;
@@ -79,11 +79,10 @@ void ByteRecorder::init(const std::string& filePath, CompressionLevel compressio
 }
 
 void ByteRecorder::close() {
-    if(!initialized) {
-        throw std::runtime_error("ByteRecorder not initialized");
+    if(initialized) {
+        writer.close();
+        initialized = false;
     }
-    writer.close();
-    initialized = false;
 }
 
 BytePlayer::~BytePlayer() {
@@ -124,11 +123,10 @@ std::optional<nlohmann::json> BytePlayer::next() {
 }
 
 void BytePlayer::close() {
-    if(!initialized) {
-        throw std::runtime_error("BytePlayer not initialized");
+    if(initialized) {
+        reader.close();
+        initialized = false;
     }
-    reader.close();
-    initialized = false;
 }
 
 bool checkRecordConfig(std::string& recordPath, utility::RecordConfig& config) {

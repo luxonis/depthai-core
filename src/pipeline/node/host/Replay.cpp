@@ -3,7 +3,6 @@
 #include <chrono>
 #include <memory>
 
-#include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/utility/RecordReplay.hpp"
@@ -84,26 +83,25 @@ std::shared_ptr<Buffer> Replay::getMessage(utility::RecordType type, const nlohm
 }
 
 void Replay::run() {
-    if(replayFile.empty()) {
-        throw std::runtime_error("Replay replayFile must be set");
+    if(replayVideo.empty() && replayFile.empty()) {
+        throw std::runtime_error("Replay node requires replayVideo or replayFile to be set");
     }
-
     utility::VideoPlayer videoPlayer;
     utility::BytePlayer bytePlayer;
-    bool hasVideo = true;
-    bool hasMetadata = true;
-    try {
-        videoPlayer.init(replayVideo);
-    } catch(const std::exception& e) {
-        hasVideo = false;
-        if(logger) logger->warn("Video not replaying: {}", e.what());
-    }
-    try {
-        bytePlayer.init(replayFile);
-    } catch(const std::exception& e) {
-        hasMetadata = false;
-        if(logger) logger->warn("Metadata not replaying: {}", e.what());
-    }
+    bool hasVideo = !replayVideo.empty();
+    bool hasMetadata = !replayFile.empty();
+    if(!replayVideo.empty()) try {
+            videoPlayer.init(replayVideo);
+        } catch(const std::exception& e) {
+            hasVideo = false;
+            if(logger) logger->warn("Video not replaying: {}", e.what());
+        }
+    if(!replayFile.empty()) try {
+            bytePlayer.init(replayFile);
+        } catch(const std::exception& e) {
+            hasMetadata = false;
+            if(logger) logger->warn("Metadata not replaying: {}", e.what());
+        }
     utility::RecordType type = utility::RecordType::Other;
     if(hasVideo && !hasMetadata) {
         type = utility::RecordType::Video;
