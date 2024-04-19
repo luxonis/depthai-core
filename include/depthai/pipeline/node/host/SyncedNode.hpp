@@ -1,9 +1,9 @@
 #pragma once
 
 #include <depthai/pipeline/HostNode.hpp>
-#include <depthai/pipeline/node/Sync.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
 #include <depthai/pipeline/datatype/MessageGroup.hpp>
+#include <depthai/pipeline/node/Sync.hpp>
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
@@ -19,6 +19,7 @@ class SyncedNode : public dai::HostNode {
    protected:
     void buildStage1() override;
     void run() override;
+
    public:
     InputMap& inputs = sync->inputs;
     // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};

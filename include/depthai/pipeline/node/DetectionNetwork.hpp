@@ -25,7 +25,9 @@ class DetectionNetwork : public NodeGroup {
         return n;
     }
     void build();
-    bool runOnHost() const override { return false; };
+    bool runOnHost() const override {
+        return false;
+    };
 
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
@@ -161,7 +163,9 @@ class MobileNetDetectionNetwork : public DetectionNetwork {
         n->build();
         return n;
     }
-    bool runOnHost() const override { return false; };
+    bool runOnHost() const override {
+        return false;
+    };
 
     void build();
 };
@@ -177,7 +181,9 @@ class YoloDetectionNetwork : public DetectionNetwork {
         n->build();
         return n;
     }
-    bool runOnHost() const override { return false; };
+    bool runOnHost() const override {
+        return false;
+    };
 
     /// Set num classes
     void setNumClasses(int numClasses);

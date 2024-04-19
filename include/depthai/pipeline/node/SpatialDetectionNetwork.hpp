@@ -29,8 +29,10 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
     SpatialDetectionNetwork(std::unique_ptr<Properties> props, bool confMode)
         : DeviceNodeCRTP(std::move(props), confMode), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {};
     SpatialDetectionNetwork(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool confMode)
-        : DeviceNodeCRTP(device, std::move(props), confMode), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough}
-        {};
+        : DeviceNodeCRTP(device, std::move(props), confMode),
+          input{neuralNetwork->input},
+          outNetwork{neuralNetwork->out},
+          passthrough{neuralNetwork->passthrough} {};
 
     constexpr static const char* NAME = "SpatialDetectionNetwork";
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};

@@ -9,6 +9,7 @@
 // project
 #include <depthai/pipeline/datatype/Buffer.hpp>
 #include <depthai/utility/RecordReplay.hpp>
+
 #include "depthai/pipeline/HostNode.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 

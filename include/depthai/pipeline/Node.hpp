@@ -13,9 +13,8 @@
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/pipeline/AssetManager.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
-#include "depthai/utility/copyable_unique_ptr.hpp"
-
 #include "depthai/utility/RecordReplay.hpp"
+#include "depthai/utility/copyable_unique_ptr.hpp"
 
 // depthai
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
@@ -80,7 +79,6 @@ class Node : public std::enable_shared_from_this<Node> {
     virtual Output& getRecordOutput();
     virtual Input& getReplayInput();
 
-
     template <typename T>
     class Subnode {
         std::shared_ptr<Node> node;
@@ -136,7 +134,7 @@ class Node : public std::enable_shared_from_this<Node> {
         std::reference_wrapper<Node> parent;
         std::vector<MessageQueue*> connectedInputs;
         std::vector<QueueConnection> queueConnections;
-        Type type = Type::MSender; // Slave sender not supported yet
+        Type type = Type::MSender;  // Slave sender not supported yet
         OutputDescription desc;
 
        public:
@@ -287,10 +285,11 @@ class Node : public std::enable_shared_from_this<Node> {
     class OutputMap : public std::unordered_map<std::pair<std::string, std::string>, Output, PairHash> {
         OutputDescription defaultOutput;
         std::reference_wrapper<Node> parent;
+
        public:
         std::string name;
-        OutputMap(Node& parent, std::string name, OutputDescription defaultOutput, bool ref=true);
-        OutputMap(Node& parent, OutputDescription defaultOutput, bool ref=true);
+        OutputMap(Node& parent, std::string name, OutputDescription defaultOutput, bool ref = true);
+        OutputMap(Node& parent, OutputDescription defaultOutput, bool ref = true);
         /// Create or modify an output
         Output& operator[](const std::string& key);
         /// Create or modify an output with specified group
@@ -299,8 +298,8 @@ class Node : public std::enable_shared_from_this<Node> {
 
     // Input extends the message queue with additional option that specifies whether to wait for message or not
     struct InputDescription {
-        std::string name{};                                                    // Name of the input
-        std::string group{};                                                   // Group of the input
+        std::string name{};                                                  // Name of the input
+        std::string group{};                                                 // Group of the input
         bool blocking{true};                                                 // Whether to block when input queue is full
         int queueSize{3};                                                    // Size of the queue
         std::vector<DatatypeHierarchy> types{{DatatypeEnum::Buffer, true}};  // Possible datatypes that can be received
@@ -346,7 +345,7 @@ class Node : public std::enable_shared_from_this<Node> {
 
         /**
          * Get type
-        */
+         */
         Type getType() const {
             return type;
         }

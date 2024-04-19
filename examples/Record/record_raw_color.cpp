@@ -17,7 +17,7 @@ int main() {
     cam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
     cam->setFps(30);
 
-    cam->video.link(record->in);
+    cam->video.link(record->input);
 
     pipeline.start();
 

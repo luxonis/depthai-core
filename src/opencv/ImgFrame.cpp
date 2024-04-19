@@ -293,12 +293,12 @@ ImgFrame& ImgFrame::setCvFrame(cv::Mat mat, Type type) {
             fb.width = mat.cols;
             fb.height = mat.rows;
             fb.stride = type == Type::GRAY8 ? mat.cols : mat.cols * 2;
-            if (mat.channels() == 3) {
+            if(mat.channels() == 3) {
                 cv::cvtColor(mat, output, cv::ColorConversionCodes::COLOR_BGR2GRAY);
             } else {
                 output = mat;
             }
-            if (type == Type::GRAY8) {
+            if(type == Type::GRAY8) {
                 output.convertTo(output, CV_8UC1);
             } else {
                 output.convertTo(output, CV_16FC1);

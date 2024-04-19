@@ -22,7 +22,7 @@ class Pool : public DeviceNodeCRTP<DeviceNode, Pool, PoolProperties> {
     /**
      *  Pool output in pull orientation
      */
-    Output out{*this, {.name = "out", .types = {{DatatypeEnum::Buffer, true}}}}; // TODO(Morato) - bring back slave senders
+    Output out{*this, {.name = "out", .types = {{DatatypeEnum::Buffer, true}}}};  // TODO(Morato) - bring back slave senders
 
     /**
      * Sets number of messages in pool

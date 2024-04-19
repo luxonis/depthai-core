@@ -152,8 +152,7 @@ void Node::Output::link(Input& in) {
     connectedInputs.push_back(&in);
 }
 
-std::shared_ptr<dai::MessageQueue> Node::Output::createQueue(unsigned int maxSize, bool blocking)
-{
+std::shared_ptr<dai::MessageQueue> Node::Output::createQueue(unsigned int maxSize, bool blocking) {
     // Check if pipeline is already started - if so, throw an error
     auto pipelinePtr = parent.get().getParentPipeline();
     if(pipelinePtr.isBuilt()) {
@@ -264,7 +263,7 @@ std::vector<uint8_t> Node::loadResource(dai::Path uri) {
 }
 
 Node::OutputMap::OutputMap(Node& parent, std::string name, Node::OutputDescription defaultOutput, bool ref)
-    :defaultOutput(defaultOutput), parent(parent), name(std::move(name)) {
+    : defaultOutput(defaultOutput), parent(parent), name(std::move(name)) {
     if(ref) {
         parent.setOutputMapRefs(this);
     }
@@ -297,7 +296,8 @@ Node::Output& Node::OutputMap::operator[](std::pair<std::string, std::string> gr
     return at(groupKey);
 }
 
-Node::InputMap::InputMap(Node& parent, std::string name, Node::InputDescription description) : parent(parent), defaultInput(std::move(description)), name(std::move(name)) {
+Node::InputMap::InputMap(Node& parent, std::string name, Node::InputDescription description)
+    : parent(parent), defaultInput(std::move(description)), name(std::move(name)) {
     parent.setInputMapRefs(this);
 }
 
@@ -328,7 +328,7 @@ Node::Input& Node::InputMap::operator[](std::pair<std::string, std::string> grou
     return at(groupKey);
 }
 
-bool Node::InputMap::has(const std::string& key) const{
+bool Node::InputMap::has(const std::string& key) const {
     return count({name, key}) > 0;
 }
 

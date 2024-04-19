@@ -97,7 +97,7 @@ void VideoRecorder::write(span<uint8_t>& data) {
                     case NALU::P:
                     case NALU::I: {
                         if(mp4Track == MP4_INVALID_TRACK_ID) {
-                            spdlog::warn("VideoRecorder track is invalid");
+                            // spdlog::warn("VideoRecorder track is invalid");
                             break;
                         };
                         std::vector<uint8_t> nalData(nal.data(), nal.data() + nal.size());

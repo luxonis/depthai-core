@@ -18,6 +18,7 @@ namespace node {
 class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties> {
    private:
     bool runOnHostVar = false;
+
    public:
     constexpr static const char* NAME = "Sync";
     using DeviceNodeCRTP::DeviceNodeCRTP;

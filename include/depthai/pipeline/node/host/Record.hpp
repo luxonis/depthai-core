@@ -1,7 +1,6 @@
 #pragma once
 
 #include <depthai/pipeline/ThreadedNode.hpp>
-#include <memory>
 
 // shared
 #include <depthai/properties/XLinkOutProperties.hpp>
@@ -9,6 +8,7 @@
 // project
 #include <depthai/pipeline/datatype/Buffer.hpp>
 #include <depthai/utility/RecordReplay.hpp>
+
 #include "depthai/pipeline/HostNode.hpp"
 
 #ifndef DEPTHAI_HAVE_OPENCV_SUPPORT
@@ -32,7 +32,7 @@ class Record : public NodeCRTP<HostNode, Record> {
      *
      * Default queue is blocking with size 8
      */
-    Input in{*this, {.name = "in", .queueSize = 15, .types = {{DatatypeEnum::Buffer, true}}}};
+    Input input{*this, {.name = "input", .queueSize = 15, .types = {{DatatypeEnum::Buffer, true}}}};
 
     void run() override;
 
