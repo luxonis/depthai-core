@@ -1,12 +1,12 @@
 #pragma once
 
-#include "depthai/pipeline/HostNode.hpp"
+#include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
 
 namespace dai {
 namespace node {
-class XLinkInHost : public NodeCRTP<HostNode, XLinkInHost> {
+class XLinkInHost : public NodeCRTP<ThreadedHostNode, XLinkInHost> {
    private:
     std::shared_ptr<XLinkConnection> conn;
     std::string streamName;

@@ -2,9 +2,10 @@ import depthai as dai
 import numpy as np
 import cv2
 
-class SyncedDisplay(dai.SyncedNode):
+
+class SyncedDisplay(dai.node.HostNode):
     def __init__(self):
-        dai.SyncedNode.__init__(self)
+        dai.node.HostNode.__init__(self) # Always needs to be called
         self.inputMono = self.inputs["mono"]
         self.inputRgb = self.inputs["rgb"]
 
@@ -16,7 +17,7 @@ class SyncedDisplay(dai.SyncedNode):
         if cv2.waitKey(1) == ord("q"): self.stopPipeline()
 
 
-p = dai.Pipeline(createImplicitPipeline=True)
+p = dai.Pipeline(createImplicitDevice=True)
 color_camera = p.create(dai.node.ColorCamera)
 mono_camera = p.create(dai.node.MonoCamera)
 display = p.create(SyncedDisplay)

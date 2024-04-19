@@ -242,7 +242,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/UVC.cpp
     src/pipeline/node/host/XLinkInHost.cpp
     src/pipeline/node/host/XLinkOutHost.cpp
-    src/pipeline/node/host/SyncedNode.cpp
+    src/pipeline/node/host/HostNode.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/node/PointCloud.cpp
     src/pipeline/datatype/Buffer.cpp

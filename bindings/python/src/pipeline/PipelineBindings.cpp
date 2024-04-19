@@ -5,7 +5,7 @@
 
 // depthai
 #include "depthai/pipeline/Pipeline.hpp"
-#include "depthai/pipeline/HostNode.hpp"
+#include "depthai/pipeline/ThreadedHostNode.hpp"
 
 // depthai - nodes
 #include "depthai/pipeline/node/XLinkIn.hpp"
@@ -137,16 +137,21 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
         .def("getBoardConfig", &Pipeline::getBoardConfig, DOC(dai, Pipeline, getBoardConfig))
         // 'Template' create function
         .def(
-            "add", [](Pipeline& p, std::shared_ptr<Node> hostNode) { p.add(hostNode); }, py::keep_alive<1, 2>())
+            "add",
+            [](Pipeline& p, std::shared_ptr<Node> hostNode) {
+                p.add(hostNode);
+                return hostNode;
+            },
+            py::keep_alive<1, 2>())
         // 'Template' create function
         .def("create",
              [](dai::Pipeline& p, py::object class_, const py::args& args, const py::kwargs& kwargs) {
                  // Check if class_ is a subclass of HostNode
                  py::object issubclass = py::module::import("builtins").attr("issubclass");
-                 py::object nodeClass = py::module::import("depthai").attr("HostNode");
+                 py::object nodeClass = py::module::import("depthai").attr("node").attr("ThreadedHostNode");
                  auto isSubclass = issubclass(class_, nodeClass).cast<bool>();
                  if(isSubclass) {
-                     std::shared_ptr<Node> hostNode = py::cast<std::shared_ptr<HostNode>>(class_(*args, **kwargs));
+                     std::shared_ptr<Node> hostNode = py::cast<std::shared_ptr<node::ThreadedHostNode>>(class_(*args, **kwargs));
                      p.add(hostNode);
                      return hostNode;
                  }

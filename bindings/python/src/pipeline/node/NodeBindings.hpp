@@ -7,7 +7,7 @@
 #include "pybind11_common.hpp"
 // depthai
 #include "depthai/pipeline/Node.hpp"
-#include "depthai/pipeline/HostNode.hpp"
+#include "depthai/pipeline/ThreadedHostNode.hpp"
 
 
 struct NodeBindings {

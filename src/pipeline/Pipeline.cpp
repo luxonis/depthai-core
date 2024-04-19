@@ -1,7 +1,7 @@
 #include "depthai/pipeline/Pipeline.hpp"
 
 #include "depthai/device/CalibrationHandler.hpp"
-#include "depthai/pipeline/HostNode.hpp"
+#include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "depthai/pipeline/node/host/XLinkInHost.hpp"

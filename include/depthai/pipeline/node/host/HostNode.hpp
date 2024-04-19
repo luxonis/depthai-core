@@ -1,15 +1,15 @@
 #pragma once
 
-#include <depthai/pipeline/HostNode.hpp>
-#include <depthai/pipeline/node/Sync.hpp>
+#include <depthai/pipeline/ThreadedHostNode.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
 #include <depthai/pipeline/datatype/MessageGroup.hpp>
+#include <depthai/pipeline/node/Sync.hpp>
 
 #include "depthai/pipeline/datatype/Buffer.hpp"
 
 namespace dai {
 namespace node {
-class SyncedNode : public dai::HostNode {
+class HostNode : public ThreadedHostNode {
    private:
     std::optional<bool> syncOnHost;
     Subnode<dai::node::Sync> sync{*this, "sync"};
