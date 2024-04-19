@@ -9,7 +9,7 @@
 // project
 #include <depthai/pipeline/datatype/Buffer.hpp>
 #include <depthai/utility/RecordReplay.hpp>
-#include "depthai/pipeline/HostNode.hpp"
+#include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 
 namespace dai {
@@ -18,7 +18,7 @@ namespace node {
 /**
  * @brief Replay node, used to replay a file to a source node
  */
-class Replay : public NodeCRTP<HostNode, Replay> {
+class Replay : public NodeCRTP<ThreadedHostNode, Replay> {
    private:
     std::string replayVideo;
     std::string replayFile;

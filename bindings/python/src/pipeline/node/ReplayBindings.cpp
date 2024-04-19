@@ -7,7 +7,7 @@ void bind_replay(pybind11::module& m, void* pCallstack){
     using namespace dai;
     using namespace node;
 
-    auto replay = ADD_NODE_DERIVED(Replay, HostNode);
+    auto replay = ADD_NODE_DERIVED(Replay, ThreadedHostNode);
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

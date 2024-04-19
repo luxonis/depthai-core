@@ -7,7 +7,7 @@ void bind_record(pybind11::module& m, void* pCallstack){
     using namespace dai;
     using namespace node;
 
-    auto record = ADD_NODE_DERIVED(Record, HostNode);
+    auto record = ADD_NODE_DERIVED(Record, ThreadedHostNode);
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -22,7 +22,7 @@ void bind_record(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
     // Node
-    record.def_readonly("in", &Record::in, DOC(dai, node, Record, in))
+    record.def_readonly("input", &Record::input, DOC(dai, node, Record, input))
         .def("setRecordFile", &Record::setRecordFile, py::arg("recordFile"), DOC(dai, node, Record, setRecordFile))
         .def("setCompressionLevel", &Record::setCompressionLevel, py::arg("compressionLevel"), DOC(dai, node, Record, setCompressionLevel));
 

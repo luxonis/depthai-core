@@ -216,7 +216,7 @@ if (DEPTHAI_PYTHON_BUILD_DOCSTRINGS)
     include(pybind11-mkdoc)
 
     # Check if pybind11_mkdoc available and create target
-    target_pybind11_mkdoc_setup(${docstring_output_path} depthai::opencv ${DEPTHAI_PYTHON_FORCE_DOCSTRINGS})
+    target_pybind11_mkdoc_setup(${docstring_output_path} depthai::core ${DEPTHAI_PYTHON_FORCE_DOCSTRINGS})
 
     if(TARGET pybind11_mkdoc)
         # Add dependency to mkdoc target (makes sure that mkdoc is executed, and docstrings available)

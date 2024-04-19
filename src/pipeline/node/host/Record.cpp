@@ -61,7 +61,7 @@ void Record::run() {
     auto start = std::chrono::steady_clock::now();
     auto end = std::chrono::steady_clock::now();
     while(isRunning()) {
-        auto msg = in.get<dai::Buffer>();
+        auto msg = input.get<dai::Buffer>();
         if(msg == nullptr) continue;
         if(streamType == StreamType::Unknown) {
             if(std::dynamic_pointer_cast<ImgFrame>(msg) != nullptr) {
