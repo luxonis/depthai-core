@@ -522,19 +522,19 @@ class Node : public std::enable_shared_from_this<Node> {
     /// Retrieves reference to node inputs
     std::vector<InputMap*> getInputMapRefs();
 
-    // /// Retrieves reference to specific output
-    // Output* getOutputRef(std::string name);
-    // Output* getOutputRef(std::string group, std::string name);
+    /// Retrieves reference to specific output
+    Output* getOutputRef(std::string name);
+    Output* getOutputRef(std::string group, std::string name);
 
-    // /// Retrieves reference to specific input
-    // Input* getInputRef(std::string name);
-    // Input* getInputRef(std::string group, std::string name);
+    /// Retrieves reference to specific input
+    Input* getInputRef(std::string name);
+    Input* getInputRef(std::string group, std::string name);
 
-    // /// Retrieves reference to specific output map
-    // OutputMap* getOutputMapRef(std::string group);
+    /// Retrieves reference to specific output map
+    OutputMap* getOutputMapRef(std::string group);
 
-    // /// Retrieves reference to specific input map
-    // InputMap* getInputMapRef(std::string group);
+    /// Retrieves reference to specific input map
+    InputMap* getInputMapRef(std::string group);
 
    protected:
     Node() = default;

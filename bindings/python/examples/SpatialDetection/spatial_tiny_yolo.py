@@ -75,8 +75,6 @@ stereo.setDepthAlign(dai.CameraBoardSocket.CAM_A)
 stereo.setOutputSize(monoLeft.getResolutionWidth(), monoLeft.getResolutionHeight())
 stereo.setSubpixel(False)
 
-sync.setRunOnHost(True) # TODO temporary
-
 spatialDetectionNetwork.setBlobPath(nnBlobPath)
 spatialDetectionNetwork.setConfidenceThreshold(0.5)
 spatialDetectionNetwork.input.setBlocking(False)
