@@ -26,10 +26,10 @@ class Display(dai.node.HostNode):
 
 
 with dai.Pipeline(createImplicitDevice=True) as p:
-    color_camera = p.create(dai.node.ColorCamera)
-    color_camera.setBoardSocket(dai.CameraBoardSocket.CAM_A)
-    mono_camera = p.create(dai.node.MonoCamera)
-    mono_camera.setBoardSocket(dai.CameraBoardSocket.CAM_B)
-    display = p.create(Display).build(color_camera.video, mono_camera.out)
+    colorCamera = p.create(dai.node.ColorCamera)
+    colorCamera.setBoardSocket(dai.CameraBoardSocket.CAM_A)
+    monoCamera = p.create(dai.node.MonoCamera)
+    monoCamera.setBoardSocket(dai.CameraBoardSocket.CAM_B)
+    display = p.create(Display).build(colorCamera.video, monoCamera.out)
     p.start()
     p.wait()

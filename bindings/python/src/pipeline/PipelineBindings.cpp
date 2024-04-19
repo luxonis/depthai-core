@@ -86,7 +86,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
         ;
 
     // bind pipeline
-    pipeline.def(py::init<bool>(), py::arg("createImplicitDevice") = false, DOC(dai, Pipeline, Pipeline))
+    pipeline.def(py::init<bool>(), py::arg("createImplicitDevice") = true, DOC(dai, Pipeline, Pipeline))
         .def(py::init<std::shared_ptr<Device>>(), py::arg("defaultDevice"), DOC(dai, Pipeline, Pipeline))
         // Python only methods
         .def("__enter__", [](Pipeline& d) -> Pipeline& { return d; })
