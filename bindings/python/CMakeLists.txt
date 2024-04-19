@@ -51,6 +51,9 @@ if(MINGW)
 endif()
 find_package(pybind11 CONFIG REQUIRED)
 
+# Print out the pybind11 version that was found
+message(STATUS "Found pybind11 v${pybind11_VERSION}")
+
 # Add external dependencies
 add_subdirectory(external)
 
@@ -61,7 +64,7 @@ set(SOURCE_LIST
     src/CalibrationHandlerBindings.cpp
     src/DeviceBootloaderBindings.cpp
     src/DatatypeBindings.cpp
-    src/DataQueueBindings.cpp
+    src/MessageQueueBindings.cpp
     src/pipeline/PipelineBindings.cpp
     src/pipeline/CommonBindings.cpp
     src/pipeline/AssetManagerBindings.cpp
@@ -102,6 +105,7 @@ set(SOURCE_LIST
     src/pipeline/node/PointCloudBindings.cpp
     src/pipeline/node/SyncBindings.cpp
     src/pipeline/node/MessageDemuxBindings.cpp
+    src/pipeline/node/HostNodeBindings.cpp
 
     src/pipeline/datatype/ADatatypeBindings.cpp
     src/pipeline/datatype/AprilTagConfigBindings.cpp

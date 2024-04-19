@@ -19,18 +19,24 @@ namespace node {
  */
 class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
-    SpatialDetectionNetwork() : input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {};
+    explicit SpatialDetectionNetwork(const std::shared_ptr<Device>& device)
+        : DeviceNodeCRTP<DeviceNode, SpatialDetectionNetwork, SpatialDetectionNetworkProperties>(device),
+          input{neuralNetwork->input},
+          outNetwork{neuralNetwork->out},
+          passthrough{neuralNetwork->passthrough} {};
     SpatialDetectionNetwork(std::unique_ptr<Properties> props)
         : DeviceNodeCRTP(std::move(props)), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {};
     SpatialDetectionNetwork(std::unique_ptr<Properties> props, bool confMode)
         : DeviceNodeCRTP(std::move(props), confMode), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough} {};
+    SpatialDetectionNetwork(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool confMode)
+        : DeviceNodeCRTP(device, std::move(props), confMode), input{neuralNetwork->input}, outNetwork{neuralNetwork->out}, passthrough{neuralNetwork->passthrough}
+        {};
 
     constexpr static const char* NAME = "SpatialDetectionNetwork";
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
     void build();
 
-   public:
     /**
      * Input message with data to be inferred upon
      * Default queue is blocking with size 5
@@ -53,46 +59,49 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
      * Input message with depth data used to retrieve spatial information about detected object
      * Default queue is non-blocking with size 4
      */
-    Input inputDepth{true, *this, "inputDepth", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputDepth{*this, {.name = "inputDepth", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::ImgFrame, false}}, .waitForMessage = true}};
 
     /**
      * Input message with image data used to retrieve image transformation from detected object
      * Default queue is blocking with size 1
      */
-    Input inputImg{true, *this, "inputImg", Input::Type::SReceiver, true, 2, true, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputImg{*this, {.name = "inputImg", .blocking = true, .queueSize = 2, .types = {{DatatypeEnum::ImgFrame, false}}, .waitForMessage = true}};
 
     /**
      * Input message with input detections object
      * Default queue is blocking with size 1
      */
-    Input inputDetections{true, *this, "inputDetections", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::ImgDetections, false}}};
+    Input inputDetections{*this,
+                          {
+                              .name = "inputDetections",
+                              .blocking = true,
+                              .queueSize = 5,
+                              .types = {{DatatypeEnum::ImgDetections, false}},
+                              .waitForMessage = true,
+                          }};
 
     /**
      * Outputs ImgDetections message that carries parsed detection results.
      */
-    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::SpatialImgDetections, false}}};
+    Output out{*this, {.name = "out", .types = {{DatatypeEnum::SpatialImgDetections, false}}}};
 
     /**
      * Outputs mapping of detected bounding boxes relative to depth map
-     *
      * Suitable for when displaying remapped bounding boxes on depth frame
      */
-    Output boundingBoxMapping{true, *this, "boundingBoxMapping", Output::Type::MSender, {{DatatypeEnum::SpatialLocationCalculatorConfig, false}}};
+    Output boundingBoxMapping{*this, {.name = "boundingBoxMapping", .types = {{DatatypeEnum::SpatialLocationCalculatorConfig, false}}}};
 
     /**
      * Passthrough message for depth frame on which the spatial location calculation was performed.
-     *
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughDepth{true, *this, "passthroughDepth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output passthroughDepth{*this, {.name = "passthroughDepth", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Output of SpatialLocationCalculator node, which is used internally by SpatialDetectionNetwork.
      * Suitable when extra information is required from SpatialLocationCalculator node, e.g. minimum, maximum distance.
      */
-    Output spatialLocationCalculatorOutput{
-        true, *this, "spatialLocationCalculatorOutput", Output::Type::MSender, {{DatatypeEnum::SpatialLocationCalculatorData, false}}};
-
+    Output spatialLocationCalculatorOutput{*this, {.name = "spatialLocationCalculatorOutput", .types = {{DatatypeEnum::SpatialLocationCalculatorData, false}}}};
     /** Backwards compatibility interface **/
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**
@@ -212,32 +221,28 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
      * @param stepSize Step size.
      */
     void setSpatialCalculationStepSize(int stepSize);
+
+   protected:
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 };
 
 /**
  * MobileNetSpatialDetectionNetwork node. Mobilenet-SSD based network with spatial location data.
  */
-class MobileNetSpatialDetectionNetwork : public SpatialDetectionNetwork {
+class MobileNetSpatialDetectionNetwork : public DeviceNodeCRTP<SpatialDetectionNetwork, MobileNetSpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
     void build();
-    [[nodiscard]] static std::shared_ptr<MobileNetSpatialDetectionNetwork> create() {
-        auto n = std::make_shared<MobileNetSpatialDetectionNetwork>();
-        n->build();
-        return n;
-    }
+
+   protected:
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 };
 
 /**
  * YoloSpatialDetectionNetwork node. Yolo-based network with spatial location data.
  */
-class YoloSpatialDetectionNetwork : public SpatialDetectionNetwork {
+class YoloSpatialDetectionNetwork : public DeviceNodeCRTP<SpatialDetectionNetwork, YoloSpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
     void build();
-    [[nodiscard]] static std::shared_ptr<YoloSpatialDetectionNetwork> create() {
-        auto n = std::make_shared<YoloSpatialDetectionNetwork>();
-        n->build();
-        return n;
-    }
 
     /// Set num classes
     void setNumClasses(const int numClasses);
@@ -260,6 +265,9 @@ class YoloSpatialDetectionNetwork : public SpatialDetectionNetwork {
     std::map<std::string, std::vector<int>> getAnchorMasks() const;
     /// Get Iou threshold
     float getIouThreshold() const;
+
+   protected:
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 };
 
 }  // namespace node

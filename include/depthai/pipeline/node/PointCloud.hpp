@@ -22,11 +22,10 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
     constexpr static const char* NAME = "PointCloud";
 
    protected:
-    Properties& getProperties();
+    Properties& getProperties() override;
+    using DeviceNodeCRTP::DeviceNodeCRTP;
 
    public:
-    PointCloud() = default;
-    PointCloud(std::unique_ptr<Properties> props);
     /**
      * Initial config to use when computing the point cloud.
      */
@@ -36,25 +35,24 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
      * Input PointCloudConfig message with ability to modify parameters in runtime.
      * Default queue is non-blocking with size 4.
      */
-    Input inputConfig{true, *this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::PointCloudConfig, false}}};
+    Input inputConfig{*this, {.name = "inputConfig", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::PointCloudConfig, false}}}};
 
     /**
      * Input message with depth data used to create the point cloud.
      * Default queue is non-blocking with size 4.
      */
-    Input inputDepth{true, *this, "inputDepth", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputDepth{*this, {.name = "inputDepth", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::ImgFrame, false}}, .waitForMessage = true}};
 
     /**
      * Outputs PointCloudData message
      */
-    Output outputPointCloud{true, *this, "outputPointCloud", Output::Type::MSender, {{DatatypeEnum::PointCloudData, false}}};
+    Output outputPointCloud{*this, {.name = "outputPointCloud", .types = {{DatatypeEnum::PointCloudData, false}}}};
 
     /**
      * Passthrough depth from which the point cloud was calculated.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughDepth{true, *this, "passthroughDepth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-
+    Output passthroughDepth{*this, {.name = "passthroughDepth", .types = {{DatatypeEnum::ImgFrame, false}}}};
     /**
      * Specify number of frames in pool.
      * @param numFramesPool How many frames should the pool have

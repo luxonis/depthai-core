@@ -166,6 +166,9 @@ endif()
 
 # Specify optional dependencies
 option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" ON)
+option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
+option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
+
 # Include project dependencies
 set(DEPTHAI_DEPENDENCY_INCLUDE "" CACHE FILEPATH "Optional cmake file to append to dependency processing, e.g. additional find_package()")
 include(depthaiDependencies)
@@ -234,10 +237,12 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/FeatureTracker.cpp
     src/pipeline/node/ToF.cpp
     src/pipeline/node/DetectionParser.cpp
-    src/pipeline/node/Sync.cpp
     src/pipeline/node/test/MyProducer.cpp
     src/pipeline/node/test/MyConsumer.cpp
     src/pipeline/node/UVC.cpp
+    src/pipeline/node/host/XLinkInHost.cpp
+    src/pipeline/node/host/XLinkOutHost.cpp
+    src/pipeline/node/host/SyncedNode.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/node/PointCloud.cpp
     src/pipeline/datatype/Buffer.cpp
@@ -328,8 +333,6 @@ option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
 option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
 option(DEPTHAI_BUILD_PYTHON "Build python bindings" OFF)
 option(DEPTHAI_BUILD_DOCS "Build documentation - requires doxygen to be installed" OFF)
-option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
-option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
 
 # Specify support for FW
 option(DEPTHAI_ENABLE_DEVICE_FW "Enable MyriadX Device FW" ON)
@@ -615,10 +618,12 @@ if(DEPTHAI_OPENCV_SUPPORT)
     if(OPENCV_SUPPORT_AVAILABLE)
 
         # Add depthai-core-opencv library and depthai::core::opencv alias
-        add_library(${TARGET_OPENCV_NAME} 
+        add_library(${TARGET_OPENCV_NAME}
             src/opencv/ImgFrame.cpp
-            src/pipeline/node/Record.cpp
-            src/pipeline/node/Replay.cpp
+            src/pipeline/node/host/Display.cpp
+            src/pipeline/node/host/HostCamera.cpp
+            src/pipeline/node/host/Record.cpp
+            src/pipeline/node/host/Replay.cpp
             src/opencv/RecordReplay.cpp
         )
         add_library("${PROJECT_NAME}::${TARGET_OPENCV_ALIAS}" ALIAS ${TARGET_OPENCV_NAME})

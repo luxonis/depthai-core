@@ -1,7 +1,9 @@
 #pragma once
 
-#if (_MSC_VER >= 1910) || !defined(_MSC_VER)
-    #define HAVE_SNPRINTF
+#if(_MSC_VER >= 1910) || !defined(_MSC_VER)
+    #ifndef HAVE_SNPRINTF
+        #define HAVE_SNPRINTF
+    #endif
 #endif
 
 #include <pybind11/pybind11.h>

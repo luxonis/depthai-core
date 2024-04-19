@@ -384,6 +384,13 @@ class ImgFrame : public Buffer {
      */
     cv::Mat getCvFrame();
 
+    /**
+     * @note This API only available if OpenCV support is enabled
+     *
+     * Copies cv::Mat data to the ImgFrame buffer and converts to a specific type.
+     *
+     * @param frame Input cv::Mat BGR frame from which to copy the data
+     */
     ImgFrame& setCvFrame(cv::Mat frame, Type type);
 
 #else
@@ -406,8 +413,9 @@ class ImgFrame : public Buffer {
         static_assert(dependent_false<T...>::value, "Library not configured with OpenCV support");
     }
     template <typename... T>
-    void setCvFrame(T...) {
+    ImgFrame& setCvFrame(T...) {
         static_assert(dependent_false<T...>::value, "Library not configured with OpenCV support");
+        return *this;
     }
 
 #endif

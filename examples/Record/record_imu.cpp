@@ -1,6 +1,6 @@
 #include <depthai/depthai.hpp>
 #include "depthai/pipeline/node/MonoCamera.hpp"
-#include "depthai/pipeline/node/Record.hpp"
+#include "depthai/pipeline/node/host/Record.hpp"
 #include "depthai/properties/MonoCameraProperties.hpp"
 
 #ifndef DEPTHAI_HAVE_OPENCV_SUPPORT

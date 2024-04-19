@@ -1,19 +1,16 @@
-#include "depthai/pipeline/node/Replay.hpp"
+#include "depthai/pipeline/node/host/Replay.hpp"
 
 #include <chrono>
 #include <memory>
 
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/utility/RecordReplay.hpp"
 #include "depthai/utility/RecordReplaySchema.hpp"
 
 namespace dai {
 namespace node {
-
-void Replay::build() {
-    hostNode = true;
-}
 
 std::tuple<float, float, float> quaternionToEuler(float w, float x, float y, float z) {
     // roll (x-axis rotation)
@@ -34,7 +31,7 @@ std::tuple<float, float, float> quaternionToEuler(float w, float x, float y, flo
     return {roll, pitch, yaw};
 }
 
-std::shared_ptr<Buffer> getMessage(utility::RecordType type, const nlohmann::json& metadata, std::vector<uint8_t>& frame) {
+std::shared_ptr<Buffer> Replay::getMessage(utility::RecordType type, const nlohmann::json& metadata, std::vector<uint8_t>& frame) {
     // TODO(asahtik): Handle versions
     switch(type) {
         case utility::RecordType::Other:
@@ -55,7 +52,7 @@ std::shared_ptr<Buffer> getMessage(utility::RecordType type, const nlohmann::jso
 
             assert(frame.size() == recordSchema.width * recordSchema.height * 3);
             cv::Mat img(recordSchema.height, recordSchema.width, CV_8UC3, frame.data());
-            imgFrame.setCvFrame(img, ImgFrame::Type::YUV420p);
+            imgFrame.setCvFrame(img, outFrameType);
             return std::dynamic_pointer_cast<Buffer>(std::make_shared<ImgFrame>(imgFrame));
         }
         case utility::RecordType::Imu: {
@@ -153,7 +150,7 @@ void Replay::run() {
 
         if(!hasMetadata && type == utility::RecordType::Video) {
             utility::VideoRecordSchema recordSchema;
-            auto time = start - std::chrono::steady_clock::now();
+            auto time = std::chrono::steady_clock::now() - start;
             const auto& [width, height] = videoPlayer.size();
             recordSchema.type = utility::RecordType::Video;
             recordSchema.timestamp.set(time);
@@ -178,6 +175,11 @@ Replay& Replay::setReplayFile(const std::string& replayFile) {
 
 Replay& Replay::setReplayVideo(const std::string& replayVideo) {
     this->replayVideo = replayVideo;
+    return *this;
+}
+
+Replay& Replay::setOutFrameType(ImgFrame::Type outFrameType) {
+    this->outFrameType = outFrameType;
     return *this;
 }
 

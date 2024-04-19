@@ -1,6 +1,6 @@
 #pragma once
 
-#include <depthai/pipeline/ThreadedNode.hpp>
+#include <depthai/pipeline/HostNode.hpp>
 
 // shared
 #include <depthai/properties/XLinkOutProperties.hpp>
@@ -12,16 +12,14 @@ namespace test {
 /**
  * @brief XLinkOut node. Sends messages over XLink.
  */
-class MyProducer : public NodeCRTP<ThreadedNode, MyProducer> {
+class MyProducer : public NodeCRTP<HostNode, MyProducer> {
    public:
     constexpr static const char* NAME = "MyProducer";
-    void build();
 
-   public:
     /**
-     * Outputs message of same type as send from host.
+     * Outputs message of same type as sent from host.
      */
-    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
+    Output out{*this, {.name = "out", .types = {{DatatypeEnum::Buffer, true}}}};
 
     void run() override;
 };

@@ -1,40 +1,43 @@
 
 #include "PipelineBindings.hpp"
+#include <pybind11/attr.h>
 #include "node/NodeBindings.hpp"
 
 // depthai
 #include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/pipeline/HostNode.hpp"
 
 // depthai - nodes
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
-#include "depthai/pipeline/node/BenchmarkOut.hpp"
-#include "depthai/pipeline/node/BenchmarkIn.hpp"
-#include "depthai/pipeline/node/NeuralNetwork.hpp"
+// #include "depthai/pipeline/node/BenchmarkOut.hpp"
+// #include "depthai/pipeline/node/BenchmarkIn.hpp"
+// #include "depthai/pipeline/node/NeuralNetwork.hpp"
 #include "depthai/pipeline/node/ColorCamera.hpp"
-#include "depthai/pipeline/node/Camera.hpp"
-#include "depthai/pipeline/node/VideoEncoder.hpp"
-#include "depthai/pipeline/node/SPIOut.hpp"
-#include "depthai/pipeline/node/SPIIn.hpp"
-#include "depthai/pipeline/node/ImageManip.hpp"
+// #include "depthai/pipeline/node/Camera.hpp"
+// #include "depthai/pipeline/node/VideoEncoder.hpp"
+// #include "depthai/pipeline/node/SPIOut.hpp"
+// #include "depthai/pipeline/node/SPIIn.hpp"
+// #include "depthai/pipeline/node/ImageManip.hpp"
 #include "depthai/pipeline/node/MonoCamera.hpp"
-#include "depthai/pipeline/node/StereoDepth.hpp"
-#include "depthai/pipeline/node/DetectionNetwork.hpp"
-#include "depthai/pipeline/node/Script.hpp"
-#include "depthai/pipeline/node/SystemLogger.hpp"
-#include "depthai/pipeline/node/SpatialLocationCalculator.hpp"
-#include "depthai/pipeline/node/SpatialDetectionNetwork.hpp"
-#include "depthai/pipeline/node/ObjectTracker.hpp"
-#include "depthai/pipeline/node/IMU.hpp"
-#include "depthai/pipeline/node/EdgeDetector.hpp"
-#include "depthai/pipeline/node/FeatureTracker.hpp"
-#include "depthai/pipeline/node/AprilTag.hpp"
-#include "depthai/pipeline/node/DetectionParser.hpp"
-#include "depthai/pipeline/node/UVC.hpp"
-#include "depthai/pipeline/node/Warp.hpp"
+// #include "depthai/pipeline/node/StereoDepth.hpp"
+// #include "depthai/pipeline/node/DetectionNetwork.hpp"
+// #include "depthai/pipeline/node/Script.hpp"
+// #include "depthai/pipeline/node/SystemLogger.hpp"
+// #include "depthai/pipeline/node/SpatialLocationCalculator.hpp"
+// #include "depthai/pipeline/node/SpatialDetectionNetwork.hpp"
+// #include "depthai/pipeline/node/ObjectTracker.hpp"
+// #include "depthai/pipeline/node/IMU.hpp"
+// #include "depthai/pipeline/node/EdgeDetector.hpp"
+// #include "depthai/pipeline/node/FeatureTracker.hpp"
+// #include "depthai/pipeline/node/AprilTag.hpp"
+// #include "depthai/pipeline/node/DetectionParser.hpp"
+// #include "depthai/pipeline/node/UVC.hpp"
+// #include "depthai/pipeline/node/Warp.hpp"
 
 // depthai/
 #include "depthai/properties/GlobalProperties.hpp"
+#include <memory>
 
 std::shared_ptr<dai::Node> createNode(dai::Pipeline& p, py::object class_){
     auto nodeCreateMap = NodeBindings::getNodeCreateMap();
@@ -83,24 +86,42 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
         ;
 
     // bind pipeline
-    pipeline
-        .def(py::init<>(), DOC(dai, Pipeline, Pipeline))
+    pipeline.def(py::init<bool>(), py::arg("createImplicitPipeline") = false, DOC(dai, Pipeline, Pipeline))
+        .def(py::init<std::shared_ptr<Device>>(), py::arg("defaultDevice"), DOC(dai, Pipeline, Pipeline))
+        // Python only methods
+        .def("__enter__", [](Pipeline& d) -> Pipeline& { return d; })
+        .def("__exit__",
+             [](Pipeline& d, py::object type, py::object value, py::object traceback) {
+                 py::gil_scoped_release release;
+                 d.stop();
+                 auto defaultDevice = d.getDefaultDevice();
+                 if(defaultDevice != nullptr) {
+                     defaultDevice->close();
+                 }
+             })
         //.def(py::init<const Pipeline&>())
         .def("getGlobalProperties", &Pipeline::getGlobalProperties, DOC(dai, Pipeline, getGlobalProperties))
         //.def("create", &Pipeline::create<node::XLinkIn>)
         .def("remove", &Pipeline::remove, py::arg("node"), DOC(dai, Pipeline, remove))
         .def("getAllNodes", static_cast<std::vector<std::shared_ptr<Node>> (Pipeline::*)() const>(&Pipeline::getAllNodes), DOC(dai, Pipeline, getAllNodes))
-        // .def("getAllNodes", static_cast<std::vector<std::shared_ptr< Node>> (Pipeline::*)()>(&Pipeline::getAllNodes), py::return_value_policy::reference_internal, DOC(dai, Pipeline, getAllNodes))
+        // .def("getAllNodes", static_cast<std::vector<std::shared_ptr< Node>> (Pipeline::*)()>(&Pipeline::getAllNodes),
+        // py::return_value_policy::reference_internal, DOC(dai, Pipeline, getAllNodes))
         .def("getNode", static_cast<std::shared_ptr<Node> (Pipeline::*)(Node::Id)>(&Pipeline::getNode), DOC(dai, Pipeline, getNode))
         // .def("getNode", static_cast<std::shared_ptr<Node> (Pipeline::*)(Node::Id) const>(&Pipeline::getNode), DOC(dai, Pipeline, getNode))
-        // .def("getNode", static_cast<std::shared_ptr<Node> (Pipeline::*)(Node::Id)>(&Pipeline::getNode), py::return_value_policy::reference_internal, DOC(dai, Pipeline, getNode))
-        // .def("getConnections", &Pipeline::getConnections, DOC(dai, Pipeline, getConnections), DOC(dai, Pipeline, getConnections))
-        // .def("getConnectionMap", &Pipeline::getConnectionMap, DOC(dai, Pipeline, getConnectionMap), py::return_value_policy::reference_internal, DOC(dai, Pipeline, getConnectionMap))
-        // .def("getNodeMap", &Pipeline::getNodeMap, DOC(dai, Pipeline, getNodeMap), py::return_value_policy::reference_internal, DOC(dai, Pipeline, getNodeMap))
-        // .def("link", &Pipeline::link, DOC(dai, Pipeline, link), DOC(dai, Pipeline, link))
-        // .def("unlink", &Pipeline::unlink, DOC(dai, Pipeline, unlink), DOC(dai, Pipeline, unlink))
-        .def("getAssetManager", static_cast<const AssetManager& (Pipeline::*)() const>(&Pipeline::getAssetManager), py::return_value_policy::reference_internal, DOC(dai, Pipeline, getAssetManager))
-        .def("getAssetManager", static_cast<AssetManager& (Pipeline::*)()>(&Pipeline::getAssetManager), py::return_value_policy::reference_internal, DOC(dai, Pipeline, getAssetManager))
+        // .def("getNode", static_cast<std::shared_ptr<Node> (Pipeline::*)(Node::Id)>(&Pipeline::getNode), py::return_value_policy::reference_internal, DOC(dai,
+        // Pipeline, getNode)) .def("getConnections", &Pipeline::getConnections, DOC(dai, Pipeline, getConnections), DOC(dai, Pipeline, getConnections))
+        // .def("getConnectionMap", &Pipeline::getConnectionMap, DOC(dai, Pipeline, getConnectionMap), py::return_value_policy::reference_internal, DOC(dai,
+        // Pipeline, getConnectionMap)) .def("getNodeMap", &Pipeline::getNodeMap, DOC(dai, Pipeline, getNodeMap), py::return_value_policy::reference_internal,
+        // DOC(dai, Pipeline, getNodeMap)) .def("link", &Pipeline::link, DOC(dai, Pipeline, link), DOC(dai, Pipeline, link)) .def("unlink", &Pipeline::unlink,
+        // DOC(dai, Pipeline, unlink), DOC(dai, Pipeline, unlink))
+        .def("getAssetManager",
+             static_cast<const AssetManager& (Pipeline::*)() const>(&Pipeline::getAssetManager),
+             py::return_value_policy::reference_internal,
+             DOC(dai, Pipeline, getAssetManager))
+        .def("getAssetManager",
+             static_cast<AssetManager& (Pipeline::*)()>(&Pipeline::getAssetManager),
+             py::return_value_policy::reference_internal,
+             DOC(dai, Pipeline, getAssetManager))
         .def("setOpenVINOVersion", &Pipeline::setOpenVINOVersion, py::arg("version"), DOC(dai, Pipeline, setOpenVINOVersion))
         .def("getOpenVINOVersion", &Pipeline::getOpenVINOVersion, DOC(dai, Pipeline, getOpenVINOVersion))
         .def("getRequiredOpenVINOVersion", &Pipeline::getRequiredOpenVINOVersion, DOC(dai, Pipeline, getRequiredOpenVINOVersion))
@@ -115,42 +136,63 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
         .def("setBoardConfig", &Pipeline::setBoardConfig, DOC(dai, Pipeline, setBoardConfig))
         .def("getBoardConfig", &Pipeline::getBoardConfig, DOC(dai, Pipeline, getBoardConfig))
         // 'Template' create function
-        .def("create", [](dai::Pipeline& p, py::object class_) {
-            auto node = createNode(p, class_);
-            if(node == nullptr){
-                throw std::invalid_argument(std::string(py::str(class_)) + " is not a subclass of depthai.node");
-            }
-            return node;
-        })
+        .def(
+            "add", [](Pipeline& p, std::shared_ptr<Node> hostNode) { p.add(hostNode); }, py::keep_alive<1, 2>())
+        // 'Template' create function
+        .def("create",
+             [](dai::Pipeline& p, py::object class_, const py::args& args, const py::kwargs& kwargs) {
+                 // Check if class_ is a subclass of HostNode
+                 py::object issubclass = py::module::import("builtins").attr("issubclass");
+                 py::object nodeClass = py::module::import("depthai").attr("HostNode");
+                 auto isSubclass = issubclass(class_, nodeClass).cast<bool>();
+                 if(isSubclass) {
+                     std::shared_ptr<Node> hostNode = py::cast<std::shared_ptr<HostNode>>(class_(*args, **kwargs));
+                     p.add(hostNode);
+                     return hostNode;
+                 }
+                 auto node = createNode(p, class_);
+                 if(node == nullptr) {
+                     throw std::invalid_argument(std::string(py::str(class_)) + " is not a subclass of depthai.node");
+                 }
+                 return node;
+             })
         // TODO(themarpe) DEPRECATE, use pipeline.create([class name])
         // templated create<NODE> function
         .def("createXLinkIn", &Pipeline::create<node::XLinkIn>)
         .def("createXLinkOut", &Pipeline::create<node::XLinkOut>)
-        .def("createNeuralNetwork", &Pipeline::create<node::NeuralNetwork>)
+        // .def("createNeuralNetwork", &Pipeline::create<node::NeuralNetwork>)
         .def("createColorCamera", &Pipeline::create<node::ColorCamera>)
-        .def("createVideoEncoder", &Pipeline::create<node::VideoEncoder>)
-        .def("createScript", &Pipeline::create<node::Script>)
-        .def("createSPIOut", &Pipeline::create<node::SPIOut>)
-        .def("createSPIIn", &Pipeline::create<node::SPIIn>)
-        .def("createImageManip", &Pipeline::create<node::ImageManip>)
+        // .def("createVideoEncoder", &Pipeline::create<node::VideoEncoder>)
+        // .def("createScript", &Pipeline::create<node::Script>)
+        // .def("createSPIOut", &Pipeline::create<node::SPIOut>)
+        // .def("createSPIIn", &Pipeline::create<node::SPIIn>)
+        // .def("createImageManip", &Pipeline::create<node::ImageManip>)
         .def("createMonoCamera", &Pipeline::create<node::MonoCamera>)
-        .def("createStereoDepth", &Pipeline::create<node::StereoDepth>)
-        .def("createMobileNetDetectionNetwork", &Pipeline::create<node::MobileNetDetectionNetwork>)
-        .def("createYoloDetectionNetwork", &Pipeline::create<node::YoloDetectionNetwork>)
-        .def("createSystemLogger", &Pipeline::create<node::SystemLogger>)
-        .def("createSpatialLocationCalculator", &Pipeline::create<node::SpatialLocationCalculator>)
-        .def("createMobileNetSpatialDetectionNetwork", &Pipeline::create<node::MobileNetSpatialDetectionNetwork>)
-        .def("createYoloSpatialDetectionNetwork", &Pipeline::create<node::YoloSpatialDetectionNetwork>)
-        .def("createObjectTracker", &Pipeline::create<node::ObjectTracker>)
-        .def("createIMU", &Pipeline::create<node::IMU>)
-        .def("createEdgeDetector", &Pipeline::create<node::EdgeDetector>)
-        .def("createFeatureTracker", &Pipeline::create<node::FeatureTracker>)
-        .def("createAprilTag", &Pipeline::create<node::AprilTag>)
-        .def("createDetectionParser", &Pipeline::create<node::DetectionParser>)
-        .def("createUVC", &Pipeline::create<node::UVC>)
-        .def("createCamera", &Pipeline::create<node::Camera>)
-        .def("createWarp", &Pipeline::create<node::Warp>)
-        ;
+        // .def("createStereoDepth", &Pipeline::create<node::StereoDepth>)
+        // .def("createMobileNetDetectionNetwork", &Pipeline::create<node::MobileNetDetectionNetwork>)
+        // .def("createYoloDetectionNetwork", &Pipeline::create<node::YoloDetectionNetwork>)
+        // .def("createSystemLogger", &Pipeline::create<node::SystemLogger>)
+        // .def("createSpatialLocationCalculator", &Pipeline::create<node::SpatialLocationCalculator>)
+        // .def("createMobileNetSpatialDetectionNetwork", &Pipeline::create<node::MobileNetSpatialDetectionNetwork>)
+        // .def("createYoloSpatialDetectionNetwork", &Pipeline::create<node::YoloSpatialDetectionNetwork>)
+        // .def("createObjectTracker", &Pipeline::create<node::ObjectTracker>)
+        // .def("createIMU", &Pipeline::create<node::IMU>)
+        // .def("createEdgeDetector", &Pipeline::create<node::EdgeDetector>)
+        // .def("createFeatureTracker", &Pipeline::create<node::FeatureTracker>)
+        // .def("createAprilTag", &Pipeline::create<node::AprilTag>)
+        // .def("createDetectionParser", &Pipeline::create<node::DetectionParser>)
+        // .def("createUVC", &Pipeline::create<node::UVC>)
+        // .def("createCamera", &Pipeline::create<node::Camera>)
+        // .def("createWarp", &Pipeline::create<node::Warp>)
+        .def("start", &Pipeline::start)
+        .def("wait",
+             [](Pipeline& p) {
+                 py::gil_scoped_release release;
+                 p.wait();
+             })
+        .def("stop", &Pipeline::stop)
+        .def("isRunning", &Pipeline::isRunning);
+    ;
 
 
 }

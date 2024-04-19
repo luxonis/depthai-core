@@ -35,13 +35,14 @@ void bind_sync(pybind11::module& m, void* pCallstack){
         ;
 
     // Node
-    sync
-        .def_readonly("out", &Sync::out, DOC(dai, node, Sync, out))
+    sync.def_readonly("out", &Sync::out, DOC(dai, node, Sync, out))
         .def_readonly("inputs", &Sync::inputs, DOC(dai, node, Sync, inputs))
         .def("setSyncThreshold", &Sync::setSyncThreshold, py::arg("syncThreshold"), DOC(dai, node, Sync, setSyncThreshold))
         .def("setSyncAttempts", &Sync::setSyncAttempts, py::arg("maxDataSize"), DOC(dai, node, Sync, setSyncAttempts))
         .def("getSyncThreshold", &Sync::getSyncThreshold, DOC(dai, node, Sync, getSyncThreshold))
         .def("getSyncAttempts", &Sync::getSyncAttempts, DOC(dai, node, Sync, getSyncAttempts))
+        .def("setRunOnHost", &Sync::setRunOnHost, py::arg("runOnHost"), DOC(dai, node, Sync, setRunOnHost))
+        .def("runOnHost", &Sync::runOnHost, DOC(dai, node, Sync, runOnHost))
         ;
     daiNodeModule.attr("Sync").attr("Properties") = syncProperties;
 

@@ -1,4 +1,4 @@
-#include "depthai/pipeline/node/Record.hpp"
+#include "depthai/pipeline/node/host/Record.hpp"
 
 #include <chrono>
 #include <cstdint>
@@ -18,10 +18,6 @@ namespace node {
 enum class StreamType { EncodedVideo, RawVideo, Imu, Byte, Unknown };
 
 using VideoCodec = dai::utility::VideoRecorder::VideoCodec;
-
-void Record::build() {
-    hostNode = true;
-}
 
 std::tuple<float, float, float, float> eulerToQuaternion(float x, float y, float z) {
     float cr = cos(x * 0.5);
@@ -65,7 +61,7 @@ void Record::run() {
     auto start = std::chrono::steady_clock::now();
     auto end = std::chrono::steady_clock::now();
     while(isRunning()) {
-        auto msg = in.queue.get<dai::Buffer>();
+        auto msg = in.get<dai::Buffer>();
         if(msg == nullptr) continue;
         if(streamType == StreamType::Unknown) {
             if(std::dynamic_pointer_cast<ImgFrame>(msg) != nullptr) {

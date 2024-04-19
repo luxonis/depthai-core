@@ -1,5 +1,5 @@
 #include <depthai/depthai.hpp>
-#include "depthai/pipeline/node/Record.hpp"
+#include "depthai/pipeline/node/host/Record.hpp"
 
 #ifndef DEPTHAI_HAVE_OPENCV_SUPPORT
 	#error This example needs OpenCV support, which is not available on your system

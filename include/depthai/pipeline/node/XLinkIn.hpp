@@ -22,7 +22,8 @@ class XLinkIn : public DeviceNodeCRTP<DeviceNode, XLinkIn, XLinkInProperties> {
     /**
      * Outputs message of same type as send from host.
      */
-    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
+    // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
+    Output out{*this, {.name = "out", .types = {{DatatypeEnum::Buffer, true}}}};
 
     /**
      * Specifies XLink stream name to use.
