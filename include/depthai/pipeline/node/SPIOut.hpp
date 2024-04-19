@@ -21,10 +21,9 @@ class SPIOut : public DeviceNodeCRTP<DeviceNode, SPIOut, SPIOutProperties> {
 
     /**
      * Input for any type of messages to be transferred over SPI stream
-     *
      * Default queue is blocking with size 8
      */
-    Input input{true, *this, "in", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::Buffer, true}}};
+    Input input{*this, {.name = "in", .blocking = true, .queueSize = 8, .types = {{DatatypeEnum::Buffer, true}}, .waitForMessage = true}};
 
     /**
      * Specifies stream name over which the node will send data

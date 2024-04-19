@@ -34,14 +34,14 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
 
    protected:
     Properties& getProperties();
+    StereoDepth() = default;
+    StereoDepth(std::unique_ptr<Properties> props);
 
    private:
     PresetMode presetMode = PresetMode::HIGH_DENSITY;
 
    public:
     using MedianFilter = dai::StereoDepthConfig::MedianFilter;
-    StereoDepth() = default;
-    StereoDepth(std::unique_ptr<Properties> props);
 
     /**
      * Initial config to use for StereoDepth.
@@ -50,46 +50,39 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
 
     /**
      * Input StereoDepthConfig message with ability to modify parameters in runtime.
-     * Default queue is non-blocking with size 4.
      */
-    Input inputConfig{true, *this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::StereoDepthConfig, false}}};
+    Input inputConfig{*this, {.name = "inputConfig", .types = {{DatatypeEnum::StereoDepthConfig, false}}}};
 
     /**
      * Input for left ImgFrame of left-right pair
-     *
-     * Default queue is non-blocking with size 8
      */
-    Input left{true, *this, "left", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
+    Input left{*this, {.name = "left", .types = {{DatatypeEnum::ImgFrame, true}}}};
 
     /**
      * Input for right ImgFrame of left-right pair
-     *
-     * Default queue is non-blocking with size 8
      */
-    Input right{true, *this, "right", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
+    Input right{*this, {.name = "right", .types = {{DatatypeEnum::ImgFrame, true}}}};
 
     // TODO(before mainline) - API not supported on RVC2
     /**
      * Input pixel descriptor for left ImgFrame.
      * Input type must be 4 bytes per pixel
-     * Default queue is non-blocking with size 8
      */
-    Input inputLeftPixelDescriptor{true, *this, "inputLeftPixelDescriptor", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
+    Input inputLeftPixelDescriptor{*this, {.name = "inputLeftPixelDescriptor", .types = {{DatatypeEnum::ImgFrame, true}}}};
 
     // TODO(before mainline) - API not supported on RVC2
     /**
      * Input pixel descriptor for right ImgFrame.
      * Input type must be 4 bytes per pixel
-     * Default queue is non-blocking with size 8
      */
-    Input inputRightPixelDescriptor{true, *this, "inputRightPixelDescriptor", Input::Type::SReceiver, false, 8, true, {{DatatypeEnum::ImgFrame, true}}};
+    Input inputRightPixelDescriptor{*this, {.name = "inputRightPixelDescriptor", .types = {{DatatypeEnum::ImgFrame, true}}}};
 
     /**
      * Outputs ImgFrame message that carries RAW16 encoded (0..65535) depth data in depth units (millimeter by default).
      *
      * Non-determined / invalid depth values are set to 0
      */
-    Output depth{true, *this, "depth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output depth{*this, {.name = "depth", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 / RAW16 encoded disparity data:
@@ -100,75 +93,75 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
      * - 0..1520 for 4 fractional bits
      * - 0..3040 for 5 fractional bits
      */
-    Output disparity{true, *this, "disparity", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output disparity{*this, {.name = "disparity", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Passthrough ImgFrame message from 'left' Input.
      */
-    Output syncedLeft{true, *this, "syncedLeft", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output syncedLeft{*this, {.name = "syncedLeft", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Passthrough ImgFrame message from 'right' Input.
      */
-    Output syncedRight{true, *this, "syncedRight", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output syncedRight{*this, {.name = "syncedRight", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 encoded (grayscale) rectified frame data.
      */
-    Output rectifiedLeft{true, *this, "rectifiedLeft", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output rectifiedLeft{*this, {.name = "rectifiedLeft", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 encoded (grayscale) rectified frame data.
      */
-    Output rectifiedRight{true, *this, "rectifiedRight", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output rectifiedRight{*this, {.name = "rectifiedRight", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Outputs StereoDepthConfig message that contains current stereo configuration.
      */
-    Output outConfig{true, *this, "outConfig", Output::Type::MSender, {{DatatypeEnum::StereoDepthConfig, false}}};
+    Output outConfig{*this, {.name = "outConfig", .types = {{DatatypeEnum::StereoDepthConfig, false}}}};
 
     /**
      * Outputs ImgFrame message that carries left-right check first iteration (before combining with second iteration) disparity map.
      * Useful for debugging/fine tuning.
      */
-    Output debugDispLrCheckIt1{true, *this, "debugDispLrCheckIt1", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output debugDispLrCheckIt1{*this, {.name = "debugDispLrCheckIt1", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Outputs ImgFrame message that carries left-right check second iteration (before combining with first iteration) disparity map.
      * Useful for debugging/fine tuning.
      */
-    Output debugDispLrCheckIt2{true, *this, "debugDispLrCheckIt2", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output debugDispLrCheckIt2{*this, {.name = "debugDispLrCheckIt2", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Outputs ImgFrame message that carries extended left-right check first iteration (downscaled frame, before combining with second iteration) disparity map.
      * Useful for debugging/fine tuning.
      */
-    Output debugExtDispLrCheckIt1{true, *this, "debugExtDispLrCheckIt1", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output debugExtDispLrCheckIt1{*this, {.name = "debugExtDispLrCheckIt1", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Outputs ImgFrame message that carries extended left-right check second iteration (downscaled frame, before combining with first iteration) disparity map.
      * Useful for debugging/fine tuning.
      */
-    Output debugExtDispLrCheckIt2{true, *this, "debugExtDispLrCheckIt2", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output debugExtDispLrCheckIt2{*this, {.name = "debugExtDispLrCheckIt2", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Outputs ImgFrame message that carries cost dump of disparity map.
      * Useful for debugging/fine tuning.
      */
-    Output debugDispCostDump{true, *this, "debugDispCostDump", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output debugDispCostDump{*this, {.name = "debugDispCostDump", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Outputs ImgFrame message that carries RAW8 confidence map.
-     * Lower values means higher confidence of the calculated disparity value.
-     * RGB alignment, left-right check or any postproccessing (e.g. median filter) is not performed on confidence map.
+     * Lower values mean higher confidence of the calculated disparity value.
+     * RGB alignment, left-right check or any postprocessing (e.g., median filter) is not performed on confidence map.
      */
-    Output confidenceMap{true, *this, "confidenceMap", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output confidenceMap{*this, {.name = "confidenceMap", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     // TODO(before mainline) - API not supported on RVC2
-    Output pixelDescriptorsLeft{true, *this, "pixelDescriptorsLeft", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output pixelDescriptorsLeft{*this, {.name = "pixelDescriptorsLeft", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     // TODO(before mainline) - API not supported on RVC2
-    Output pixelDescriptorsRight{true, *this, "pixelDescriptorsRight", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+    Output pixelDescriptorsRight{*this, {.name = "pixelDescriptorsRight", .types = {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Specify that a passthrough/dummy calibration should be used,

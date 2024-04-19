@@ -13,7 +13,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
     // Node and Properties declare upfront
     py::class_<SpatialDetectionNetworkProperties, std::shared_ptr<SpatialDetectionNetworkProperties>> spatialDetectionNetworkProperties(
         m, "SpatialDetectionNetworkProperties", DOC(dai, SpatialDetectionNetworkProperties));
-    auto spatialDetectionNetwork = ADD_NODE_ABSTRACT(SpatialDetectionNetwork);
+    auto spatialDetectionNetwork = ADD_NODE_DERIVED_ABSTRACT(SpatialDetectionNetwork, DeviceNode);
     auto mobileNetSpatialDetectionNetwork = ADD_NODE_DERIVED(MobileNetSpatialDetectionNetwork, SpatialDetectionNetwork);
     auto yoloSpatialDetectionNetwork = ADD_NODE_DERIVED(YoloSpatialDetectionNetwork, SpatialDetectionNetwork);
 
@@ -83,22 +83,22 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
 
         .def_property_readonly(
             "input",
-            [](const SpatialDetectionNetwork n) { return &n.neuralNetwork->input; },
+            [](const SpatialDetectionNetwork& n) { return &n.neuralNetwork->input; },
             py::return_value_policy::reference_internal,
             DOC(dai, node, NeuralNetwork, input))
         .def_property_readonly(
             "out",
-            [](const SpatialDetectionNetwork n) { return &n.detectionParser->out; },
+            [](const SpatialDetectionNetwork& n) { return &n.detectionParser->out; },
             py::return_value_policy::reference_internal,
             DOC(dai, node, SpatialDetectionNetwork, out))
         .def_property_readonly(
             "outNetwork",
-            [](const SpatialDetectionNetwork n) { return &n.neuralNetwork->out; },
+            [](const SpatialDetectionNetwork& n) { return &n.neuralNetwork->out; },
             py::return_value_policy::reference_internal,
             DOC(dai, node, SpatialDetectionNetwork, outNetwork))
         .def_property_readonly(
             "passthrough",
-            [](const SpatialDetectionNetwork n) { return &n.neuralNetwork->passthrough; },
+            [](const SpatialDetectionNetwork& n) { return &n.neuralNetwork->passthrough; },
             py::return_value_policy::reference_internal,
             DOC(dai, node, NeuralNetwork, passthrough))
 

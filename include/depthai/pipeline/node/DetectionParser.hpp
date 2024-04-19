@@ -24,17 +24,17 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      * Input NN results with detection data to parse
      * Default queue is blocking with size 5
      */
-    Input input{true, *this, "in", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::NNData, true}}};
+    Input input{*this, {.name = "in", .blocking = true, .queueSize = 5, .types = {{DatatypeEnum::NNData, true}}, .waitForMessage = true}};
 
     /**
      * Outputs image frame with detected edges
      */
-    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::ImgDetections, false}}};
+    Output out{*this, {.name = "out", .types = {{DatatypeEnum::ImgDetections, false}}}};
 
     /**
      * Input for image that produced the detection - image size can be taken from here
      */
-    Input imageIn{true, *this, "imageIn", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::ImgFrame, false}}};
+    Input imageIn{*this, {.name = "imageIn", .blocking = true, .queueSize = 5, .types = {{DatatypeEnum::ImgFrame, false}}, .waitForMessage = true}};
 
     /**
      * Specify number of frames in pool.

@@ -284,3 +284,6 @@ target_compile_definitions(stability_stress_test PRIVATE BLOB_PATH="${tiny_yolo_
 
 # StreamMessageParser tests
 dai_add_test(stream_message_parser_test src/stream_message_parser_test.cpp)
+
+# MessageQueue tests
+dai_add_test(message_queue_test src/message_queue_test.cpp)

@@ -4,9 +4,6 @@ namespace dai {
 namespace node {
 namespace test {
 
-void MyConsumer::build() {
-    hostNode = true;
-}
 
 }  // namespace test
 }  // namespace node

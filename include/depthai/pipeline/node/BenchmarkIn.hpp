@@ -17,17 +17,17 @@ class BenchmarkIn : public DeviceNodeCRTP<DeviceNode, BenchmarkIn, BenchmarkProp
     /**
      * Receive messages as fast as possible
      */
-    Input input{true, *this, "input", Input::Type::SReceiver, true, 4, {{DatatypeEnum::Buffer, true}}};
+    Input input{*this, {.name = "input", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::Buffer, true}}}};
 
     /**
      * Passthrough for input messages (so the node can be placed between other nodes)
      */
-    Output passthrough{true, *this, "passthrough", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
+    Output passthrough{*this, {.name = "passthrough", .types = {{DatatypeEnum::Buffer, true}}}};
 
     /**
      * Send a benchmark report when the set number of messages are received
      */
-    Output report{true, *this, "report", Output::Type::MSender, {{DatatypeEnum::BenchmarkReport, false}}};
+    Output report{*this, {.name = "report", .types = {{DatatypeEnum::BenchmarkReport, false}}}};
 
     /**
      * Set number of messages that the nodes retrieves before sending the report

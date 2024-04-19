@@ -3,11 +3,14 @@
 // standard
 #include <map>
 #include <memory>
+#include <type_traits>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 // project
 #include "AssetManager.hpp"
+#include "DeviceNode.hpp"
 #include "Node.hpp"
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/device/Device.hpp"
@@ -26,8 +29,16 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     friend class Node;
 
    public:
-    PipelineImpl(Pipeline& pipeline) : assetManager("/pipeline/"), parent(pipeline) {}
-    PipelineImpl(const PipelineImpl&) = default;
+    PipelineImpl(Pipeline& pipeline, bool createImplicitDevice = false) : assetManager("/pipeline/"), parent(pipeline) {
+        if(createImplicitDevice) {
+            defaultDevice = std::make_shared<Device>();
+        }
+    }
+    PipelineImpl(Pipeline& pipeline, std::shared_ptr<Device> device) : assetManager("/pipeline/"), parent(pipeline), defaultDevice{std::move(device)} {}
+    PipelineImpl(const PipelineImpl&) = delete;
+    PipelineImpl& operator=(const PipelineImpl&) = delete;
+    PipelineImpl(PipelineImpl&&) = delete;
+    PipelineImpl& operator=(PipelineImpl&&) = delete;
     ~PipelineImpl();
 
    private:
@@ -61,6 +72,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void remove(std::shared_ptr<Node> node);
 
     std::vector<Node::Connection> getConnections() const;
+    std::vector<Node::ConnectionInternal> getConnectionsInternal() const;
     void link(const Node::Output& out, const Node::Input& in);
     void unlink(const Node::Output& out, const Node::Input& in);
     void setCalibrationData(CalibrationHandler calibrationDataHandler);
@@ -103,19 +115,37 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // was pipeline built
     AtomicBool isBuild{false};
 
-    // TMP TMP - to be moved
+    // Add a mutex for any state change
+    std::mutex stateMtx;
+
     // DeviceBase for hybrid pipelines
-    std::shared_ptr<Device> device;
+    std::shared_ptr<Device> defaultDevice;
+
+    template <typename N, typename... Args>
+    std::enable_if_t<std::is_base_of<DeviceNode, N>::value, std::shared_ptr<N>> createNode(Args&&... args) {
+        // N is a subclass of DeviceNode
+        // return N::create();  // Specific create call for DeviceNode subclasses
+        if(defaultDevice == nullptr) {
+            throw std::runtime_error("Pipeline is host only, cannot create device node");
+        }
+        return N::create(defaultDevice, std::forward<Args>(args)...);  // Specific create call for DeviceNode subclasses
+    }
+
+    template <typename N, typename... Args>
+    std::enable_if_t<!std::is_base_of<DeviceNode, N>::value, std::shared_ptr<N>> createNode(Args&&... args) {
+        // N is not a subclass of DeviceNode
+        return N::create(std::forward<Args>(args)...);  // Generic create call
+    }
 
     // Template create function
-    template <class N>
-    std::shared_ptr<N> create(const std::shared_ptr<PipelineImpl>& itself) {
+    template <class N, typename... Args>
+    std::shared_ptr<N> create(const std::shared_ptr<PipelineImpl>& itself, Args&&... args) {
         (void)itself;
         // Check that passed type 'N' is subclass of Node
         static_assert(std::is_base_of<Node, N>::value, "Specified class is not a subclass of Node");
         // Create and store the node in the map
-        auto node = N::create();
-        // Add
+        auto node = createNode<N>(std::forward<Args>(args)...);
+        // std::shared_ptr<N> node = nullptr;
         add(node);
         // Return shared pointer to this node
         return node;
@@ -126,6 +156,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Run only host side, if any device nodes are present, error out
     bool isRunning() const;
+    bool isBuilt() const;
     void build();
     void start();
     void wait();
@@ -152,13 +183,21 @@ class Pipeline {
     }
 
     /**
-     * Constructs a new pipeline
+     * Creates a pipeline
+     * @param hostOnly If true, pipeline will run only be able to run host nodes and no device nodes can be added, otherwise pipeline implicitly creates a
+     * device
      */
-    Pipeline();
-    explicit Pipeline(std::shared_ptr<PipelineImpl> pimpl);
+    explicit Pipeline(bool createImplicitDevice = false);
 
-    /// Clone the pipeline (Creates a copy)
-    Pipeline clone() const;
+    /**
+     * Creates a pipeline with specified device
+     */
+    explicit Pipeline(std::shared_ptr<Device> device);
+
+    /**
+     * Creates a pipeline with specified device
+     */
+    explicit Pipeline(std::shared_ptr<PipelineImpl> pimpl);
 
     /**
      * @returns Global properties of current pipeline
@@ -194,9 +233,9 @@ class Pipeline {
      *
      * Node is specified by template argument N
      */
-    template <class N>
-    std::shared_ptr<N> create() {
-        return impl()->create<N>(pimpl);
+    template <class N, typename... Args>
+    std::shared_ptr<N> create(Args&&... args) {
+        return impl()->create<N>(pimpl, std::forward<Args>(args)...);
     }
 
     /**
@@ -364,6 +403,11 @@ class Pipeline {
     bool isRunning() const {
         return impl()->isRunning();
     }
+
+    bool isBuilt() const {
+        return impl()->isBuilt();
+    }
+
     void build() {
         impl()->build();
     }
@@ -377,8 +421,11 @@ class Pipeline {
         impl()->stop();
     }
 
-    std::shared_ptr<Device> getDevice() {
-        return impl()->device;
+    /*
+     * @note In case of a host only pipeline, this function returns a nullptr
+     */
+    std::shared_ptr<Device> getDefaultDevice() {
+        return impl()->defaultDevice;
     }
 };
 

@@ -1,11 +1,13 @@
 #include "NodeBindings.hpp"
-#include "Common.hpp"
 
-#include "depthai/pipeline/Pipeline.hpp"
-#include "depthai/pipeline/Node.hpp"
-#include "depthai/pipeline/ThreadedNode.hpp"
+#include <memory>
+
+#include "Common.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
+#include "depthai/pipeline/Node.hpp"
 #include "depthai/pipeline/NodeGroup.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/pipeline/ThreadedNode.hpp"
 
 // Libraries
 #include "hedley/hedley.h"
@@ -149,6 +151,7 @@ void bind_tof(pybind11::module& m, void* pCallstack);
 void bind_pointcloud(pybind11::module& m, void* pCallstack);
 void bind_sync(pybind11::module& m, void* pCallstack);
 void bind_messagedemux(pybind11::module& m, void* pCallstack);
+void bind_hostnode(pybind11::module& m, void* pCallstack);
 
 void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     // Bind Node et al
@@ -184,6 +187,7 @@ void NodeBindings::addToCallstack(std::deque<StackFunction>& callstack) {
     callstack.push_front(bind_pointcloud);
     callstack.push_front(bind_sync);
     callstack.push_front(bind_messagedemux);
+    callstack.push_front(bind_hostnode);
 }
 
 void NodeBindings::bind(pybind11::module& m, void* pCallstack){
@@ -196,7 +200,8 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack){
 
     // Properties
     py::class_<Node, std::shared_ptr<Node>> pyNode(m, "Node", DOC(dai, Node));
-    py::class_<Node::Input> pyInput(pyNode, "Input", DOC(dai, Node, Input));
+
+    py::class_<Node::Input, MessageQueue, std::shared_ptr<Node::Input>> pyInput(pyNode, "Input", DOC(dai, Node, Input));
     py::enum_<Node::Input::Type> nodeInputType(pyInput, "Type");
     py::class_<Node::Output> pyOutput(pyNode, "Output", DOC(dai, Node, Output));
     py::enum_<Node::Output::Type> nodeOutputType(pyOutput, "Type");
@@ -212,10 +217,10 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack){
     // Node::OutputMap bindings
     bindNodeMap<Node::OutputMap>(pyNode, "OutputMap");
 
-    // NodeGroup
+    //     // NodeGroup
     py::class_<NodeGroup, Node, std::shared_ptr<NodeGroup>> pyNodeGroup(m, "NodeGroup", DOC(dai, NodeGroup));
 
-    // Threaded & Device nodes
+    // // Threaded & Device nodes
     py::class_<ThreadedNode, Node, std::shared_ptr<ThreadedNode>> pyThreadedNode(m, "ThreadedNode", DOC(dai, ThreadedNode));
     py::class_<DeviceNode, ThreadedNode, std::shared_ptr<DeviceNode>> pyDeviceNode(m, "DeviceNode", DOC(dai, DeviceNode));
 
@@ -252,71 +257,41 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack){
         .value("SReceiver", Node::Input::Type::SReceiver)
         .value("MReceiver", Node::Input::Type::MReceiver)
     ;
+
     pyInput
-        .def_readwrite("group", &Node::Input::group, DOC(dai, Node, Input, group))
-        .def_readwrite("name", &Node::Input::name, DOC(dai, Node, Input, name))
-        .def_readwrite("type", &Node::Input::type, DOC(dai, Node, Input, type))
+        .def(
+            py::init([](Node& parent,
+                        const std::string& name,
+                        const std::string& group,
+                        bool blocking,
+                        int queueSize,
+                        std::vector<Node::DatatypeHierarchy> types,
+                        bool waitForMessage) {
+                return std::unique_ptr<Node::Input>(new Node::Input(
+                    parent,
+                    {.name = name, .group = group, .blocking = blocking, .queueSize = queueSize, .types = std::move(types), .waitForMessage = waitForMessage}));
+            }),
+            py::arg("parent"),
+            py::arg("name") = Node::InputDescription{}.name,
+            py::arg("group") = Node::InputDescription{}.group,
+            py::arg("blocking") = Node::InputDescription{}.blocking,
+            py::arg("queueSize") = Node::InputDescription{}.queueSize,
+            py::arg("types") = Node::InputDescription{}.types,
+            py::arg("waitForMessage") = Node::InputDescription{}.waitForMessage,
+            py::keep_alive<2, 1>())
         .def_readwrite("possibleDatatypes", &Node::Input::possibleDatatypes, DOC(dai, Node, Input, possibleDatatypes))
-        .def("getParent", static_cast<const Node& (Node::Input::*)() const>(&Node::Input::getParent), py::return_value_policy::reference_internal, DOC(dai, Node, Input, getParent))
-        .def("getParent", static_cast<Node& (Node::Input::*)()>(&Node::Input::getParent), py::return_value_policy::reference_internal, DOC(dai, Node, Input, getParent))
-        .def("setBlocking", &Node::Input::setBlocking, py::arg("blocking"), DOC(dai, Node, Input, setBlocking))
-        .def("getBlocking", &Node::Input::getBlocking, DOC(dai, Node, Input, getBlocking))
-        .def("setQueueSize", &Node::Input::setQueueSize, py::arg("size"), DOC(dai, Node, Input, setQueueSize))
-        .def("getQueueSize", &Node::Input::getQueueSize, DOC(dai, Node, Input, getQueueSize))
-        .def_readwrite("waitForMessage", &Node::Input::waitForMessage, DOC(dai, Node, Input, waitForMessage))
+        .def("getParent",
+             static_cast<const Node& (Node::Input::*)() const>(&Node::Input::getParent),
+             py::return_value_policy::reference_internal,
+             DOC(dai, Node, Input, getParent))
+        .def("getParent",
+             static_cast<Node& (Node::Input::*)()>(&Node::Input::getParent),
+             py::return_value_policy::reference_internal,
+             DOC(dai, Node, Input, getParent))
         .def("setWaitForMessage", &Node::Input::setWaitForMessage, py::arg("waitForMessage"), DOC(dai, Node, Input, setWaitForMessage))
         .def("getWaitForMessage", &Node::Input::getWaitForMessage, DOC(dai, Node, Input, getWaitForMessage))
         .def("setReusePreviousMessage", &Node::Input::setReusePreviousMessage, py::arg("reusePreviousMessage"), DOC(dai, Node, Input, setReusePreviousMessage))
-        .def("getReusePreviousMessage", &Node::Input::getReusePreviousMessage, DOC(dai, Node, Input, getReusePreviousMessage))
-
-
-        // TODO(themarpe) - refactor
-        .def("getAll", [](Node::Input& obj){
-            std::vector<std::shared_ptr<ADatatype>> messages;
-            bool timedout = true;
-            do {
-                {
-                    // releases python GIL
-                    py::gil_scoped_release release;
-
-                    // block for 100ms
-                    messages = obj.getAll(milliseconds(100), timedout);
-                }
-
-                // reacquires python GIL for PyErr_CheckSignals call
-
-                // check if interrupt triggered in between
-                if (PyErr_CheckSignals() != 0) throw py::error_already_set();
-
-            } while(timedout); // Keep reiterating until a message is received (not timedout)
-
-            return messages;
-        }, DOC(dai, Node, Input, getAll, 2))
-        .def("get", [](Node::Input& obj){
-            std::shared_ptr<ADatatype> d = nullptr;
-            bool timedout = true;
-            do {
-                {
-                    // releases python GIL
-                    py::gil_scoped_release release;
-
-                    // block for 100ms
-                    d = obj.get(milliseconds(100), timedout);
-                }
-
-                // reacquires python GIL for PyErr_CheckSignals call
-
-                // check if interrupt triggered in between
-                if (PyErr_CheckSignals() != 0) throw py::error_already_set();
-
-            } while(timedout);
-
-            return d;
-        }, DOC(dai, Node, Input, get, 2))
-        .def("has", static_cast<bool(Node::Input::*)()>(&Node::Input::has), DOC(dai, Node, Input, has, 2))
-        .def("tryGet", static_cast<std::shared_ptr<ADatatype>(Node::Input::*)()>(&Node::Input::tryGet), DOC(dai, Node, Input, tryGet, 2))
-        .def("tryGetAll", static_cast<std::vector<std::shared_ptr<ADatatype>>(Node::Input::*)()>(&Node::Input::tryGetAll), DOC(dai, Node, Input, tryGetAll, 2))
-    ;
+        .def("getReusePreviousMessage", &Node::Input::getReusePreviousMessage, DOC(dai, Node, Input, getReusePreviousMessage));
 
     // Node::Output bindings
     nodeOutputType
@@ -324,20 +299,30 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack){
         .value("SSender", Node::Output::Type::SSender)
     ;
     pyOutput
-        .def_readwrite("group", &Node::Output::group, DOC(dai, Node, Output, group))
-        .def_readwrite("name", &Node::Output::name, DOC(dai, Node, Output, name))
-        .def_readwrite("type", &Node::Output::type, DOC(dai, Node, Output, type))
-        .def_readwrite("possibleDatatypes", &Node::Output::possibleDatatypes, DOC(dai, Node, Output, possibleDatatypes))
-        .def("getParent", static_cast<const Node& (Node::Output::*)() const>(&Node::Output::getParent), py::return_value_policy::reference_internal, DOC(dai, Node, Output, getParent))
-        .def("getParent", static_cast<Node& (Node::Output::*)()>(&Node::Output::getParent), py::return_value_policy::reference_internal, DOC(dai, Node, Output, getParent))
+        .def(py::init([](Node& parent, const std::string& name, const std::string& group, std::vector<Node::DatatypeHierarchy> types) {
+                 return std::unique_ptr<Node::Output>(new Node::Output(parent, {.name = name, .group = group, .types = std::move(types)}));
+             }),
+             py::arg("parent"),
+             py::arg("name") = Node::OutputDescription{}.name,
+             py::arg("group") = Node::OutputDescription{}.group,
+             py::arg("possibleDatatypes") = Node::OutputDescription{}.types,
+             py::keep_alive<2, 1>())
+        .def("getPossibleDatatypes", &Node::Output::getPossibleDatatypes, DOC(dai, Node, Output, getPossibleDatatypes))
+        .def("getParent",
+             static_cast<const Node& (Node::Output::*)() const>(&Node::Output::getParent),
+             py::return_value_policy::reference_internal,
+             DOC(dai, Node, Output, getParent))
+        .def("getParent",
+             static_cast<Node& (Node::Output::*)()>(&Node::Output::getParent),
+             py::return_value_policy::reference_internal,
+             DOC(dai, Node, Output, getParent))
         .def("isSamePipeline", &Node::Output::isSamePipeline, py::arg("input"), DOC(dai, Node, Output, isSamePipeline))
         .def("canConnect", &Node::Output::canConnect, py::arg("input"), DOC(dai, Node, Output, canConnect))
-        .def("link", &Node::Output::link, py::arg("input"), DOC(dai, Node, Output, link))
-        .def("unlink", &Node::Output::unlink, py::arg("input"), DOC(dai, Node, Output, unlink))
-        // .def("getConnections", &Node::Output::getConnections, DOC(dai, Node, Output, getConnections))
+        .def("createQueue", &Node::Output::createQueue, py::arg("maxSize")=16, py::arg("blocking")=true, DOC(dai, Node, Output, createQueue))
+        .def("link", static_cast<void (Node::Output::*)(Node::Input&)>(&Node::Output::link), py::arg("input"), DOC(dai, Node, Output, link))
+        .def("unlink", static_cast<void (Node::Output::*)(Node::Input&)>(&Node::Output::unlink), py::arg("input"), DOC(dai, Node, Output, unlink))
         .def("send", &Node::Output::send, py::arg("msg"), DOC(dai, Node, Output, send))
-        .def("trySend", &Node::Output::trySend, py::arg("msg"), DOC(dai, Node, Output, trySend))
-    ;
+        .def("trySend", &Node::Output::trySend, py::arg("msg"), DOC(dai, Node, Output, trySend));
 
     nodeConnection
         .def_readwrite("outputId", &Node::Connection::outputId, DOC(dai, Node, Connection, outputId))
@@ -348,37 +333,60 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack){
         .def_readwrite("inputGroup", &Node::Connection::inputGroup, DOC(dai, Node, Connection, inputGroup))
     ;
 
-    pyNode
-        .def_readonly("id", &Node::id, DOC(dai, Node, id))
+    pyNode.def_readonly("id", &Node::id, DOC(dai, Node, id))
         .def("getName", &Node::getName, DOC(dai, Node, getName))
         .def("getOutputs", &Node::getOutputs, DOC(dai, Node, getOutputs))
         .def("getInputs", &Node::getInputs, DOC(dai, Node, getInputs))
-        .def("getOutputRefs", static_cast<std::vector< Node::Output*> (Node::*)()>(&Node::getOutputRefs), DOC(dai, Node, getOutputRefs), py::return_value_policy::reference_internal)
-        .def("getInputRefs", static_cast<std::vector<Node::Input*> (Node::*)()>(&Node::getInputRefs), DOC(dai, Node, getInputRefs), py::return_value_policy::reference_internal)
-        .def("getOutputRefs", static_cast<std::vector<const Node::Output*> (Node::*)() const>(&Node::getOutputRefs), DOC(dai, Node, getOutputRefs), py::return_value_policy::reference_internal)
-        .def("getInputRefs", static_cast<std::vector<const Node::Input*> (Node::*)() const>(&Node::getInputRefs), DOC(dai, Node, getInputRefs), py::return_value_policy::reference_internal)
-        .def("getInputMapRefs", static_cast<std::vector<Node::InputMap*> (Node::*)()>(&Node::getInputMapRefs), DOC(dai, Node, getInputMapRefs), py::return_value_policy::reference_internal)
-        .def("getOutputMapRefs", static_cast<std::vector<Node::OutputMap*> (Node::*)()>(&Node::getOutputMapRefs), DOC(dai, Node, getOutputMapRefs), py::return_value_policy::reference_internal)
+        .def("stopPipeline", &Node::stopPipeline, DOC(dai, Node, stopPipeline), py::call_guard<py::gil_scoped_release>())
+        .def("getOutputRefs",
+             static_cast<std::vector<Node::Output*> (Node::*)()>(&Node::getOutputRefs),
+             DOC(dai, Node, getOutputRefs),
+             py::return_value_policy::reference_internal)
+        .def("getInputRefs",
+             static_cast<std::vector<Node::Input*> (Node::*)()>(&Node::getInputRefs),
+             DOC(dai, Node, getInputRefs),
+             py::return_value_policy::reference_internal)
+        .def("getOutputRefs",
+             static_cast<std::vector<const Node::Output*> (Node::*)() const>(&Node::getOutputRefs),
+             DOC(dai, Node, getOutputRefs),
+             py::return_value_policy::reference_internal)
+        .def("getInputRefs",
+             static_cast<std::vector<const Node::Input*> (Node::*)() const>(&Node::getInputRefs),
+             DOC(dai, Node, getInputRefs),
+             py::return_value_policy::reference_internal)
+        .def("getInputMapRefs",
+             static_cast<std::vector<Node::InputMap*> (Node::*)()>(&Node::getInputMapRefs),
+             DOC(dai, Node, getInputMapRefs),
+             py::return_value_policy::reference_internal)
+        .def("getOutputMapRefs",
+             static_cast<std::vector<Node::OutputMap*> (Node::*)()>(&Node::getOutputMapRefs),
+             DOC(dai, Node, getOutputMapRefs),
+             py::return_value_policy::reference_internal)
         .def("getParentPipeline", py::overload_cast<>(&Node::getParentPipeline), DOC(dai, Node, getParentPipeline))
         .def("getParentPipeline", py::overload_cast<>(&Node::getParentPipeline, py::const_), DOC(dai, Node, getParentPipeline))
-        .def("getAssetManager", static_cast<const AssetManager& (Node::*)() const>(&Node::getAssetManager), py::return_value_policy::reference_internal, DOC(dai, Node, getAssetManager))
-        .def("getAssetManager", static_cast<AssetManager& (Node::*)()>(&Node::getAssetManager), py::return_value_policy::reference_internal, DOC(dai, Node, getAssetManager))
-        .def_property_readonly( // TODO - This casting of the inputs/outputs might be illegal / cause bad behavior
-            "io",
-            [](Node& n) -> py::object {
-                auto dict = py::dict();
-                for(auto& output : n.getOutputRefs()) {
-                    // TODO - Revisit, pybind might try to release the output when refcount goes to zero
-                    dict[py::str(output->name)] = output;
-                }
-                for(auto& input : n.getInputRefs()) {
-                    // TODO - Revisit, pybind might try to release the input when refcount goes to zero
-                    dict[py::str(input->name)] = input;
-                }
-                return dict;
-            },
-            py::return_value_policy::reference_internal)
-    ;
+        .def("getAssetManager",
+             static_cast<const AssetManager& (Node::*)() const>(&Node::getAssetManager),
+             py::return_value_policy::reference_internal,
+             DOC(dai, Node, getAssetManager))
+        .def("getAssetManager",
+             static_cast<AssetManager& (Node::*)()>(&Node::getAssetManager),
+             py::return_value_policy::reference_internal,
+             DOC(dai, Node, getAssetManager));
+        // .def_property_readonly(  // TODO - This casting of the inputs/outputs might be illegal / cause bad behavior
+        //     "io",
+        //     [](Node& n) -> py::object {
+        //         auto dict = py::dict();
+        //         for(auto& output : n.getOutputRefs()) {
+        //             // TODO - Revisit, pybind might try to release the output when refcount goes to zero
+        //             dict[py::str(output->name)] = output;
+        //         }
+        //         for(auto& input : n.getInputRefs()) {
+        //             // TODO - Revisit, pybind might try to release the input when refcount goes to zero
+        //             dict[py::str(input->getName())] = input;
+        //         }
+        //         return dict;
+        //     },
+        //     py::return_value_policy::reference_internal);
 
     // TODO(themarpe) - refactor, threaded node could be separate from Node
     pyThreadedNode

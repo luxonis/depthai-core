@@ -22,10 +22,10 @@ void SpatialDetectionNetwork::build() {
 
     // No "internal" buffering to keep interface similar to monolithic nodes
     detectionParser->input.setBlocking(true);
-    detectionParser->input.setQueueSize(1);
+    detectionParser->input.setMaxSize(1);
     detectionParser->imageIn.setBlocking(false);
-    detectionParser->imageIn.setQueueSize(1);
-    inputDetections.setQueueSize(1);
+    detectionParser->imageIn.setMaxSize(1);
+    inputDetections.setMaxSize(1);
     inputDetections.setBlocking(true);
 }
 
