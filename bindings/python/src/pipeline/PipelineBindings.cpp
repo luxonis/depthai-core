@@ -150,11 +150,16 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
                  py::object issubclass = py::module::import("builtins").attr("issubclass");
                  py::object nodeClass = py::module::import("depthai").attr("node").attr("ThreadedHostNode");
                  auto isSubclass = issubclass(class_, nodeClass).cast<bool>();
-                 if(isSubclass) {
+
+                 // Check if the class is directly from bindings (__module__ == "depthai.node"). If so, the node comes from bindings,
+                 // so we create in the same manner as device nodes.
+                 auto isFromBindings = class_.attr("__module__").cast<std::string>() == "depthai.node";
+                 if(isSubclass && !isFromBindings) {
                      std::shared_ptr<Node> hostNode = py::cast<std::shared_ptr<node::ThreadedHostNode>>(class_(*args, **kwargs));
                      p.add(hostNode);
                      return hostNode;
                  }
+                 // Otherwise create the node with `pipeline.create()` method
                  auto node = createNode(p, class_);
                  if(node == nullptr) {
                      throw std::invalid_argument(std::string(py::str(class_)) + " is not a subclass of depthai.node");
