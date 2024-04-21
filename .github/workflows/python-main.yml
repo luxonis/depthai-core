@@ -350,7 +350,7 @@ jobs:
     needs: build-docstrings
     runs-on: ubuntu-latest
     container:
-      image: quay.io/pypa/manylinux2014_x86_64:2024-01-08-eb135ed
+      image: mmorato/depthai-manylinux2014:0.1 # TODO(mmorato) temporary location, push to luxonis namespace
       env:
         PLAT: manylinux2014_x86_64
     steps:
