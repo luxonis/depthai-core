@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-    - v3_develop
+    - v3_develop*
     tags:
     - 'v*'
 
