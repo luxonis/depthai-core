@@ -109,8 +109,26 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Record and Replay
     utility::RecordConfig recordConfig;
     std::unordered_map<std::string, std::string> recordReplayFilenames;
+
+    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     bool setupHolisticRecord(std::string mxId);
     bool setupHolisticReplay(std::string replayPath, std::string mxId);
+    #else
+    template <typename... t>
+    struct dependent_false {
+        static constexpr bool value = false;
+    };
+    template <typename... T>
+    bool setupHolisticRecord(T...) {
+        static_assert(dependent_false<T...>::value, "Library not configured with OpenCV support");
+        return false;
+    }
+    template <typename... T>
+    bool setupHolisticReplay(T...) {
+        static_assert(dependent_false<T...>::value, "Library not configured with OpenCV support");
+        return false;
+    }
+    #endif
 
     // parent
     Pipeline& parent;

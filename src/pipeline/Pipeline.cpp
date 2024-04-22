@@ -871,15 +871,6 @@ std::vector<uint8_t> PipelineImpl::loadResource(dai::Path uri) {
     return loadResourceCwd(uri, "/pipeline");
 }
 
-// #ifndef DEPTHAI_HAVE_OPENCV_SUPPORT
-// bool PipelineImpl::setupHolisticRecord(std::string) {
-//     throw std::runtime_error("Pipeline recording requires OpenCV.");
-// }
-// bool PipelineImpl::setupHolisticReplay(std::string, std::string) {
-//     throw std::runtime_error("Pipeline replay requires OpenCV.");
-// }
-// #endif
-
 static dai::Path getAbsUri(dai::Path& uri, dai::Path& cwd) {
     int colonLocation = uri.string().find(":");
     std::string resourceType = uri.string().substr(0, colonLocation + 1);
