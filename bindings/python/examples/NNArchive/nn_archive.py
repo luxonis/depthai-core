@@ -38,8 +38,7 @@ with dai.Pipeline() as pipeline:
     camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
     camRgb.setFps(40)
 
-    nnArchive = dai.NNArchive(nnPath)
-    detectionNetwork.setNNArchive(nnArchive)
+    detectionNetwork.setNNArchive(dai.NNArchive(nnPath))
     detectionNetwork.setNumInferenceThreads(2)
 
     # Linking

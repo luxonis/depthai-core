@@ -6,6 +6,7 @@
 #include <fstream>
 
 // shared
+#include <depthai/nn_archive/NNArchive.hpp>
 #include <depthai/properties/DetectionParserProperties.hpp>
 
 namespace dai {
@@ -47,6 +48,8 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      *
      */
     int getNumFramesPool();
+
+    std::reference_wrapper<const OpenVINO::Blob> setNNArchive(const NNArchive& nnArchive);
 
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**
