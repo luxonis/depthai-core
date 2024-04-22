@@ -70,6 +70,7 @@ void DetectionNetwork::setNNArchive(const NNArchive& nnArchive) {
     if(head.family == "ObjectDetectionYOLO") {
         detectionParser->properties.parser.nnFamily = DetectionNetworkType::YOLO;
     }
+    detectionParser->setClasses(head.classes);
     detectionParser->setNumClasses(static_cast<int>(head.nClasses));
     if(head.iouThreshold) {
         detectionParser->properties.parser.iouThreshold = static_cast<float>(*head.iouThreshold);
@@ -195,6 +196,10 @@ void YoloDetectionNetwork::setIouThreshold(float thresh) {
 /// Get num classes
 int YoloDetectionNetwork::getNumClasses() const {
     return detectionParser->getNumClasses();
+}
+
+std::optional<std::vector<std::string>> YoloDetectionNetwork::getClasses() const {
+    return detectionParser->getClasses();
 }
 
 /// Get coordianate size

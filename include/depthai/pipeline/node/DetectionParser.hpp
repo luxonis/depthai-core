@@ -108,6 +108,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
 
     /// Set num classes
     void setNumClasses(int numClasses);
+    void setClasses(const std::vector<std::string>& classes);
     /// Set coordianate size
     void setCoordinateSize(int coordinates);
     /// Set anchors
@@ -121,6 +122,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
 
     /// Get num classes
     int getNumClasses() const;
+    std::optional<std::vector<std::string>> getClasses() const;
     /// Get coordianate size
     int getCoordinateSize() const;
     /// Get anchors
@@ -129,6 +131,9 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     std::map<std::string, std::vector<int>> getAnchorMasks() const;
     /// Get Iou threshold
     float getIouThreshold() const;
+
+   private:
+    std::optional<std::vector<std::string>> mClasses;
 };
 
 }  // namespace node

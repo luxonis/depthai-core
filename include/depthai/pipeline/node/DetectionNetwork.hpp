@@ -3,6 +3,8 @@
 #include <depthai/pipeline/NodeGroup.hpp>
 #include <depthai/pipeline/node/DetectionParser.hpp>
 #include <depthai/pipeline/node/NeuralNetwork.hpp>
+#include <optional>
+#include <vector>
 
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
@@ -25,7 +27,9 @@ class DetectionNetwork : public NodeGroup {
         return n;
     }
     void build();
-    bool runOnHost() const override { return false; };
+    bool runOnHost() const override {
+        return false;
+    };
 
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
@@ -161,7 +165,9 @@ class MobileNetDetectionNetwork : public DetectionNetwork {
         n->build();
         return n;
     }
-    bool runOnHost() const override { return false; };
+    bool runOnHost() const override {
+        return false;
+    };
 
     void build();
 };
@@ -177,7 +183,9 @@ class YoloDetectionNetwork : public DetectionNetwork {
         n->build();
         return n;
     }
-    bool runOnHost() const override { return false; };
+    bool runOnHost() const override {
+        return false;
+    };
 
     /// Set num classes
     void setNumClasses(int numClasses);
@@ -236,6 +244,12 @@ class YoloDetectionNetwork : public DetectionNetwork {
 
     /// Get num classes
     int getNumClasses() const;
+
+    /**
+     * Retrieves the classes array from NNArchive if set or std::nullopt otherwise
+     */
+    std::optional<std::vector<std::string>> getClasses() const;
+
     /// Get coordianate size
     int getCoordinateSize() const;
     /// Get anchors
