@@ -625,6 +625,7 @@ if(DEPTHAI_OPENCV_SUPPORT)
             src/pipeline/node/host/Record.cpp
             src/pipeline/node/host/Replay.cpp
             src/opencv/RecordReplay.cpp
+            src/opencv/HolisticRecordReplay.cpp
         )
         add_library("${PROJECT_NAME}::${TARGET_OPENCV_ALIAS}" ALIAS ${TARGET_OPENCV_NAME})
         # Specifies name of generated IMPORTED target (set to alias)

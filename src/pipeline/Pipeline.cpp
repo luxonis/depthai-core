@@ -1,5 +1,7 @@
 #include "depthai/pipeline/Pipeline.hpp"
 
+#include <cstring>
+
 #include "depthai/device/CalibrationHandler.hpp"
 #include "depthai/pipeline/HostNode.hpp"
 #include "depthai/pipeline/node/XLinkIn.hpp"
@@ -14,11 +16,6 @@
 #include "utility/Platform.hpp"
 #include "utility/RecordReplay.hpp"
 #include "utility/spdlog-fmt.hpp"
-
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    #include "pipeline/node/host/Record.hpp"
-    #include "pipeline/node/host/Replay.hpp"
-#endif
 
 // shared
 #include "depthai/pipeline/NodeConnectionSchema.hpp"
@@ -597,163 +594,46 @@ void PipelineImpl::build() {
     if(isBuild) return;
     isBuild = true;
 
-    std::string recordPath = utility::getEnv("DEPTHAI_RECORD");
-    std::string replayPath = utility::getEnv("DEPTHAI_REPLAY");
-
     if(defaultDevice) {
-        if(!recordPath.empty() && !replayPath.empty()) {
-            spdlog::warn("Both DEPTHAI_RECORD and DEPTHAI_REPLAY are set. Record and replay disabled.");
-        } else if(!recordPath.empty()) {
-            if(utility::checkRecordConfig(recordPath, recordConfig)) {
-                if(platform::checkWritePermissions(recordPath)) {
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-                    recordConfig.state = utility::RecordConfig::RecordReplayState::RECORD;
-                    auto sources = getSourceNodes();
-                    std::string mxId = defaultDevice->getMxId();
-                    try {
-                        for(auto& node : sources) {
-                            utility::NodeRecordParams nodeParams = node->getNodeRecordParams();
-                            std::string nodeName = nodeParams.name;
-                            auto recordNode = parent.create<dai::node::Record>();
-                            std::string filePath = platform::joinPaths(recordPath, mxId.append("_").append(nodeName)).append(".mp4");
-                            recordNode->setRecordFile(filePath);
-                            recordReplayFilenames[nodeName] = filePath;
-                            if(node->getName() == "Camera" || node->getName() == "ColorCamera" || node->getName() == "MonoCamera") {
-                                if(recordConfig.videoEncoding.enabled) {
-                                    auto imageManip = parent.create<dai::node::ImageManip>();
-                                    imageManip->initialConfig.setFrameType(ImgFrame::Type::NV12);
-                                    imageManip->setMaxOutputFrameSize(3110400);  // TODO(asahtik): set size depending on isp size
-                                    auto videnc = parent.create<dai::node::VideoEncoder>();
-                                    videnc->setProfile(recordConfig.videoEncoding.profile);
-                                    videnc->setLossless(recordConfig.videoEncoding.lossless);
-                                    videnc->setBitrate(recordConfig.videoEncoding.bitrate);
-                                    videnc->setQuality(recordConfig.videoEncoding.quality);
+        try {
+            std::string recordPath = utility::getEnv("DEPTHAI_RECORD");
+            std::string replayPath = utility::getEnv("DEPTHAI_REPLAY");
 
-                                    node->getRecordOutput().link(imageManip->inputImage);
-                                    imageManip->out.link(videnc->input);
-                                    videnc->out.link(recordNode->input);
-                                } else {
-                                    node->getRecordOutput().link(recordNode->input);
-                                }
-                            } else {
-                                node->getRecordOutput().link(recordNode->input);
-                            }
-                        }
-                        recordReplayFilenames["record_config"] = platform::joinPaths(recordPath, mxId.append("_record_config.json"));
-                    } catch(const std::runtime_error& e) {
-                        recordConfig.state = utility::RecordConfig::RecordReplayState::NONE;
-                        spdlog::warn("Record disabled: {}", e.what());
-                    }
-                    // Write config to output dir
-                    try {
-                        std::ofstream file(Path(platform::joinPaths(recordPath, mxId.append("_record_config.json"))));
-                        json j = recordConfig;
-                        file << j.dump(4);
-                    } catch(const std::exception& e) {
-                        spdlog::warn("Error while writing DEPTHAI_RECORD json file: {}", e.what());
-                    }
-#else
-                    throw std::runtime_error("Pipeline recording requires OpenCV");
-#endif
-                } else {
-                    spdlog::warn("DEPTHAI_RECORD path does not have write permissions. Record disabled.");
-                }
-            }
-        } else if(!replayPath.empty()) {
-            if(platform::checkPathExists(replayPath)) {
-                if(platform::checkWritePermissions(replayPath)) {
-#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-                    std::string rootPath = platform::getDirFromPath(replayPath);
-                    auto sources = parent.getSourceNodes();
-                    std::string mxId = defaultDevice->getMxId();
-                    try {
-                        auto tarFilenames = utility::filenamesInTar(replayPath);
-                        std::remove_if(tarFilenames.begin(), tarFilenames.end(), [](const std::string& filename) {
-                            return filename.size() < 4 || filename.substr(filename.size() - 4, filename.size()) == "meta";
-                        });
-                        std::vector<std::string> nodeNames;
-                        std::vector<std::string> pipelineFilenames;
-                        pipelineFilenames.reserve(sources.size());
-                        for(auto& node : sources) {
-                            utility::NodeRecordParams nodeParams = node->getNodeRecordParams();
-                            std::string nodeName = mxId.append("_").append(nodeParams.name).append(".rec");
-                            pipelineFilenames.push_back(nodeName);
-                            nodeNames.push_back(nodeParams.name);
-                        }
-                        std::vector<std::string> inFiles;
-                        std::vector<std::string> outFiles;
-                        inFiles.reserve(sources.size() + 1);
-                        outFiles.reserve(sources.size() + 1);
-                        if(utility::allMatch(tarFilenames, pipelineFilenames)) {
-                            for(auto& nodeName : nodeNames) {
-                                auto filename = mxId.append("_").append(nodeName).append(".mp4");
-                                inFiles.push_back(filename);
-                                inFiles.push_back(filename + ".meta");
-                                std::string filePath = platform::joinPaths(rootPath, filename);
-                                outFiles.push_back(filePath);
-                                outFiles.push_back(filePath.append(".meta"));
-                                recordReplayFilenames[nodeName] = filePath;
-                            }
-                            inFiles.emplace_back("record_config.json");
-                            std::string configPath = platform::joinPaths(rootPath, mxId.append("_record_config.json"));
-                            outFiles.push_back(configPath);
-                            recordReplayFilenames["record_config"] = configPath;
-                            utility::untarFiles(replayPath, inFiles, outFiles);
+            std::string mxId = defaultDevice->getMxId();
+
+            if(!recordPath.empty() && !replayPath.empty()) {
+                spdlog::warn("Both DEPTHAI_RECORD and DEPTHAI_REPLAY are set. Record and replay disabled.");
+            } else if(!recordPath.empty()) {
+                if(utility::checkRecordConfig(recordPath, recordConfig)) {
+                    if(platform::checkWritePermissions(recordPath)) {
+                        if(setupHolisticRecord(mxId)) {
+                            recordConfig.state = utility::RecordConfig::RecordReplayState::RECORD;
                         } else {
-                            std::vector<std::string> mxIds;
-                            mxIds.reserve(tarFilenames.size());
-                            for(auto& filename : tarFilenames) {
-                                mxIds.push_back(filename.substr(0, filename.find_first_of('_')));
-                            }
-                            // Get unique mxIds
-                            std::sort(mxIds.begin(), mxIds.end());
-                            mxIds.erase(std::unique(mxIds.begin(), mxIds.end()), mxIds.end());
-                            std::string mxIdRec = utility::matchTo(mxIds, tarFilenames, nodeNames);
-                            if(mxIdRec.empty()) {
-                                throw std::runtime_error("No recordings match the pipeline configuration.");
-                            }
-                            for(auto& nodeName : nodeNames) {
-                                auto inFilename = mxIdRec.append("_").append(nodeName).append(".rec");
-                                auto outFilename = mxId.append("_").append(nodeName).append(".rec");
-                                inFiles.push_back(inFilename);
-                                inFiles.push_back(inFilename + ".meta");
-                                std::string filePath = platform::joinPaths(rootPath, outFilename);
-                                outFiles.push_back(filePath);
-                                outFiles.push_back(filePath.append(".meta"));
-                                recordReplayFilenames[nodeName] = filePath;
-                            }
-                            inFiles.emplace_back("record_config.json");
-                            std::string configPath = platform::joinPaths(rootPath, mxId.append("_record_config.json"));
-                            outFiles.push_back(configPath);
-                            recordReplayFilenames["record_config"] = configPath;
-                            utility::untarFiles(replayPath, inFiles, outFiles);
+                            spdlog::warn("Could not set up holistic record. Record and replay disabled.");
                         }
-
-                        // FIXME(asahtik): If this fails, extracted files do not get removed
-                        std::ifstream file(recordPath);
-                        json j = json::parse(file);
-                        recordConfig = j.get<utility::RecordConfig>();
-                        recordConfig.state = utility::RecordConfig::RecordReplayState::REPLAY;
-
-                        for(auto& node : sources) {
-                            utility::NodeRecordParams nodeParams = node->getNodeRecordParams();
-                            std::string nodeName = nodeParams.name;
-                            auto replay = parent.create<dai::node::Replay>();
-                            replay->setReplayFile(platform::joinPaths(rootPath, mxId.append("_").append(nodeName).append(".mp4")));
-                            replay->out.link(node->getReplayInput());
-                        }
-                    } catch(const std::exception& e) {
-                        spdlog::warn("Replay disabled: {}", e.what());
+                    } else {
+                        spdlog::warn("DEPTHAI_RECORD path does not have write permissions. Record disabled.");
                     }
-#else
-                    throw std::runtime_error("Pipeline replay requires OpenCV");
-#endif
                 } else {
-                    spdlog::warn("DEPTHAI_REPLAY path does not have write permissions. Replay disabled.");
+                    spdlog::warn("Could not successfully parse DEPTHAI_RECORD. Record disabled.");
                 }
-            } else {
-                spdlog::warn("DEPTHAI_REPLAY path does not exist or is invalid. Replay disabled.");
+            } else if(!replayPath.empty()) {
+                if(platform::checkPathExists(replayPath)) {
+                    if(platform::checkWritePermissions(replayPath)) {
+                        if(setupHolisticReplay(replayPath, mxId)) {
+                            recordConfig.state = utility::RecordConfig::RecordReplayState::REPLAY;
+                        } else {
+                            spdlog::warn("Could not set up holistic replay. Record and replay disabled.");
+                        }
+                    } else {
+                        spdlog::warn("DEPTHAI_REPLAY path does not have write permissions. Replay disabled.");
+                    }
+                } else {
+                    spdlog::warn("DEPTHAI_REPLAY path does not exist or is invalid. Replay disabled.");
+                }
             }
+        } catch(std::runtime_error& e) {
+            spdlog::warn("Could not set up record / replay: {}", e.what());
         }
     }
 
@@ -959,7 +839,7 @@ PipelineImpl::~PipelineImpl() {
     wait();
     // TMP - might be more appropriate
     // stop();
-
+    //
     if(recordConfig.state == utility::RecordConfig::RecordReplayState::RECORD) {
         std::vector<std::string> filenames = {recordReplayFilenames["record_config"]};
         std::vector<std::string> outFiles = {"record_config.json"};
@@ -990,6 +870,15 @@ PipelineImpl::~PipelineImpl() {
 std::vector<uint8_t> PipelineImpl::loadResource(dai::Path uri) {
     return loadResourceCwd(uri, "/pipeline");
 }
+
+// #ifndef DEPTHAI_HAVE_OPENCV_SUPPORT
+// bool PipelineImpl::setupHolisticRecord(std::string) {
+//     throw std::runtime_error("Pipeline recording requires OpenCV.");
+// }
+// bool PipelineImpl::setupHolisticReplay(std::string, std::string) {
+//     throw std::runtime_error("Pipeline replay requires OpenCV.");
+// }
+// #endif
 
 static dai::Path getAbsUri(dai::Path& uri, dai::Path& cwd) {
     int colonLocation = uri.string().find(":");

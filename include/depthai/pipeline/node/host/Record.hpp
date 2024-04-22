@@ -23,7 +23,7 @@ namespace node {
  */
 class Record : public NodeCRTP<HostNode, Record> {
    public:
-    using RecordCompressionLevel = dai::utility::ByteRecorder::CompressionLevel;
+    using CompressionLevel = dai::utility::ByteRecorder::CompressionLevel;
 
     constexpr static const char* NAME = "Record";
 
@@ -38,12 +38,12 @@ class Record : public NodeCRTP<HostNode, Record> {
 
     Record& setRecordFile(const std::string& recordFile);
 
-    Record& setCompressionLevel(RecordCompressionLevel compressionLevel);
+    Record& setCompressionLevel(CompressionLevel compressionLevel);
 
    private:
     std::string recordFile;
     unsigned int fpsInitLength = 10;
-    RecordCompressionLevel compressionLevel = RecordCompressionLevel::DEFAULT;
+    CompressionLevel compressionLevel = CompressionLevel::DEFAULT;
 };
 
 }  // namespace node

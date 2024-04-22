@@ -23,6 +23,10 @@
 namespace dai {
 namespace utility {
 
+struct NodeRecordParams {
+    std::string name;
+};
+
 class VideoRecorder {
    public:
     enum class VideoCodec { H264, MJPEG, RAW };
@@ -53,7 +57,7 @@ class VideoRecorder {
 
 class ByteRecorder {
    public:
-    enum class CompressionLevel { NONE, FASTEST, FAST, DEFAULT, SLOW, SLOWEST };
+    enum class CompressionLevel : uint8_t { NONE, FASTEST, FAST, DEFAULT, SLOW, SLOWEST };
 
     ~ByteRecorder();
     void init(const std::string& filePath, CompressionLevel compressionLevel, RecordType recordingType);
@@ -128,31 +132,23 @@ class BytePlayer {
     bool initialized = false;
 };
 
-struct NodeRecordParams {
-    std::string name;
-};
-
 struct RecordConfig {
     using Profile = dai::VideoEncoderProperties::Profile;
     enum class RecordReplayState { RECORD, REPLAY, NONE };
 
     struct VideoEncoding {
-        bool enabled = false;
+        bool enabled = true;
         int bitrate = 0;
         Profile profile = Profile::H264_MAIN;
-        bool lossless = true;
+        bool lossless = false;
         int quality = 80;
-    };
-    struct ByteEncoding {
-        bool enabled = true;
-        int compressionLevel = 6;
     };
 
     RecordReplayState state = RecordReplayState::NONE;
 
     std::string outputDir;
     VideoEncoding videoEncoding;
-    ByteEncoding byteEncoding;
+    uint8_t compressionLevel = 5;
 };
 
 bool checkRecordConfig(std::string& recordPath, RecordConfig& config);
@@ -193,8 +189,7 @@ struct adl_serializer<dai::utility::RecordConfig> {
                            {"profile", profile},
                            {"lossless", p.videoEncoding.lossless},
                            {"quality", p.videoEncoding.quality}};
-        auto byteEnc = json{{{"enabled", p.byteEncoding.enabled}, {"compressionLevel", p.byteEncoding.compressionLevel}}};
-        j = json{{"outputDir", p.outputDir} /* , {"videoEncoding", vidEnc} */, {"byteEncoding", byteEnc}};
+        j = json{{"outputDir", p.outputDir}, {"videoEncoding", vidEnc}, {"compressionLevel", p.compressionLevel}};
     }
 
     static void from_json(const json& j, dai::utility::RecordConfig& p) {  // NOLINT this is a specialization, naming conventions don't apply
@@ -219,9 +214,8 @@ struct adl_serializer<dai::utility::RecordConfig> {
             p.videoEncoding.profile = dai::utility::RecordConfig::Profile::MJPEG;
         }
 
-        j.at("byteEncoding").at("enabled").get_to(p.byteEncoding.enabled);
-        j.at("byteEncoding").at("compressionLevel").get_to(p.byteEncoding.compressionLevel);
-        p.byteEncoding.compressionLevel = std::max(0, std::min(9, p.byteEncoding.compressionLevel));
+        j.at("compressionLevel").get_to(p.compressionLevel);
+        p.compressionLevel = std::max((uint8_t)0, std::min((uint8_t)5, p.compressionLevel));
 
         j.at("outputDir").get_to(p.outputDir);
     }

@@ -195,7 +195,7 @@ Record& Record::setRecordFile(const std::string& recordFile) {
     return *this;
 }
 
-Record& Record::setCompressionLevel(RecordCompressionLevel compressionLevel) {
+Record& Record::setCompressionLevel(CompressionLevel compressionLevel) {
     this->compressionLevel = compressionLevel;
     return *this;
 }

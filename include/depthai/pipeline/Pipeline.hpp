@@ -20,7 +20,6 @@
 #include "depthai/device/BoardConfig.hpp"
 #include "depthai/pipeline/PipelineSchema.hpp"
 #include "depthai/properties/GlobalProperties.hpp"
-#include "depthai/utility/RecordReplay.hpp"
 
 namespace dai {
 
@@ -110,6 +109,8 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Record and Replay
     utility::RecordConfig recordConfig;
     std::unordered_map<std::string, std::string> recordReplayFilenames;
+    bool setupHolisticRecord(std::string mxId);
+    bool setupHolisticReplay(std::string replayPath, std::string mxId);
 
     // parent
     Pipeline& parent;
