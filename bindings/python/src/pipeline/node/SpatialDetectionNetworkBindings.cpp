@@ -51,6 +51,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
              py::arg("numNCEPerThread"),
              DOC(dai, node, SpatialDetectionNetwork, setNumNCEPerInferenceThread))
         .def("getNumInferenceThreads", &SpatialDetectionNetwork::getNumInferenceThreads, DOC(dai, node, SpatialDetectionNetwork, getNumInferenceThreads))
+        .def("setNNArchive", &SpatialDetectionNetwork::setNNArchive, DOC(dai, node, SpatialDetectionNetwork, setNNArchive))
         .def("setBlob",
              py::overload_cast<dai::OpenVINO::Blob>(&SpatialDetectionNetwork::setBlob),
              py::arg("blob"),
@@ -139,6 +140,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
         .def("setAnchorMasks", &YoloSpatialDetectionNetwork::setAnchorMasks, py::arg("anchorMasks"), DOC(dai, node, YoloSpatialDetectionNetwork, setAnchorMasks))
         .def("setIouThreshold", &YoloSpatialDetectionNetwork::setIouThreshold, py::arg("thresh"), DOC(dai, node, YoloSpatialDetectionNetwork, setIouThreshold))
         .def("getNumClasses", &YoloSpatialDetectionNetwork::getNumClasses, DOC(dai, node, YoloSpatialDetectionNetwork, getNumClasses))
+        .def("getClasses", &YoloSpatialDetectionNetwork::getClasses, DOC(dai, node, YoloSpatialDetectionNetwork, getClasses))
         .def("getCoordinateSize", &YoloSpatialDetectionNetwork::getCoordinateSize, DOC(dai, node, YoloSpatialDetectionNetwork, getCoordinateSize))
         .def("getAnchors", &YoloSpatialDetectionNetwork::getAnchors, DOC(dai, node, YoloSpatialDetectionNetwork, getAnchors))
         .def("getAnchorMasks", &YoloSpatialDetectionNetwork::getAnchorMasks, DOC(dai, node, YoloSpatialDetectionNetwork, getAnchorMasks))

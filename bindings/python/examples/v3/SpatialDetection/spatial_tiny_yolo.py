@@ -13,39 +13,19 @@ Spatial Tiny-yolo example
   Can be used for tiny-yolo-v3 or tiny-yolo-v4 networks
 '''
 
-modelsPath = str((Path(__file__).parent / Path('../../models')).resolve().absolute())
-# Get argument first
-nnBlobPath = str(Path(modelsPath / Path('yolo-v4-tiny-tf_openvino_2021.4_6shave.blob')).resolve().absolute())
-if 1 < len(sys.argv):
-    arg = sys.argv[1]
-    if arg == "yolo3":
-        nnBlobPath = str((Path(__file__).parent / Path('../../models/yolo-v3-tiny-tf_openvino_2021.4_6shave.blob')).resolve().absolute())
-    elif arg == "yolo4":
-        nnBlobPath = str((Path(__file__).parent / Path('../../models/yolo-v4-tiny-tf_openvino_2021.4_6shave.blob')).resolve().absolute())
-    else:
-        nnBlobPath = arg
-else:
-    print("Using Tiny YoloV4 model. If you wish to use Tiny YOLOv3, call 'tiny_yolo.py yolo3'")
+nnPath = str(
+    (
+        Path(__file__).parent
+        / Path("../../models/yolo-v6-openvino_2022.1_6shave-rvc2.tar.xz")
+    )
+    .resolve()
+    .absolute()
+)
 
-if not Path(nnBlobPath).exists():
+if not Path(nnPath).exists():
     import sys
-    raise FileNotFoundError(f'Required file/s not found, please run "{sys.executable} install_requirements.py". Missing file: {nnBlobPath}')
+    raise FileNotFoundError(f'Required file/s not found, please run "{sys.executable} install_requirements.py". Missing file: {nnPath}')
 
-# Tiny yolo v3/4 label texts
-labelMap = [
-    "person",         "bicycle",    "car",           "motorbike",     "aeroplane",   "bus",           "train",
-    "truck",          "boat",       "traffic light", "fire hydrant",  "stop sign",   "parking meter", "bench",
-    "bird",           "cat",        "dog",           "horse",         "sheep",       "cow",           "elephant",
-    "bear",           "zebra",      "giraffe",       "backpack",      "umbrella",    "handbag",       "tie",
-    "suitcase",       "frisbee",    "skis",          "snowboard",     "sports ball", "kite",          "baseball bat",
-    "baseball glove", "skateboard", "surfboard",     "tennis racket", "bottle",      "wine glass",    "cup",
-    "fork",           "knife",      "spoon",         "bowl",          "banana",      "apple",         "sandwich",
-    "orange",         "broccoli",   "carrot",        "hot dog",       "pizza",       "donut",         "cake",
-    "chair",          "sofa",       "pottedplant",   "bed",           "diningtable", "toilet",        "tvmonitor",
-    "laptop",         "mouse",      "remote",        "keyboard",      "cell phone",  "microwave",     "oven",
-    "toaster",        "sink",       "refrigerator",  "book",          "clock",       "vase",          "scissors",
-    "teddy bear",     "hair drier", "toothbrush"
-]
 
 # Creates the pipeline and a default device implicitly
 with dai.Pipeline() as p:
@@ -58,7 +38,7 @@ with dai.Pipeline() as p:
     sync = p.create(dai.node.Sync)
 
     # Properties
-    camRgb.setPreviewSize(416, 416)
+    camRgb.setPreviewSize(640, 640)
     camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
     camRgb.setInterleaved(False)
     camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
@@ -75,19 +55,11 @@ with dai.Pipeline() as p:
     stereo.setOutputSize(monoLeft.getResolutionWidth(), monoLeft.getResolutionHeight())
     stereo.setSubpixel(False)
 
-    spatialDetectionNetwork.setBlobPath(nnBlobPath)
-    spatialDetectionNetwork.setConfidenceThreshold(0.5)
+    spatialDetectionNetwork.setNNArchive(dai.NNArchive(nnPath))
     spatialDetectionNetwork.input.setBlocking(False)
     spatialDetectionNetwork.setBoundingBoxScaleFactor(0.5)
     spatialDetectionNetwork.setDepthLowerThreshold(100)
     spatialDetectionNetwork.setDepthUpperThreshold(5000)
-
-    # Yolo specific parameters
-    spatialDetectionNetwork.setNumClasses(80)
-    spatialDetectionNetwork.setCoordinateSize(4)
-    spatialDetectionNetwork.setAnchors([10,14, 23,27, 37,58, 81,82, 135,169, 344,319])
-    spatialDetectionNetwork.setAnchorMasks({ "side26": [1,2,3], "side13": [3,4,5] })
-    spatialDetectionNetwork.setIouThreshold(0.5)
 
     # Linking
     monoLeft.out.link(stereo.left)
@@ -104,6 +76,7 @@ with dai.Pipeline() as p:
     syncedQueue = sync.out.createQueue()
 
     p.start()
+    labelMap = spatialDetectionNetwork.getClasses()
     startTime = time.monotonic()
     counter = 0
     fps = 0
