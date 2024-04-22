@@ -94,10 +94,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
              [](Pipeline& d, py::object type, py::object value, py::object traceback) {
                  py::gil_scoped_release release;
                  d.stop();
-                 auto defaultDevice = d.getDefaultDevice();
-                 if(defaultDevice != nullptr) {
-                     defaultDevice->close();
-                 }
+                 d.wait();
              })
         //.def(py::init<const Pipeline&>())
         .def("getGlobalProperties", &Pipeline::getGlobalProperties, DOC(dai, Pipeline, getGlobalProperties))
