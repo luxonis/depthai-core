@@ -953,9 +953,8 @@ void PipelineImpl::stop() {
 }
 
 PipelineImpl::~PipelineImpl() {
+    stop();
     wait();
-    // TMP - might be more appropriate
-    // stop();
 }
 
 std::vector<uint8_t> PipelineImpl::loadResource(dai::Path uri) {
