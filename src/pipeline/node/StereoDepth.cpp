@@ -3,6 +3,7 @@
 #include "depthai/pipeline/node/MonoCamera.hpp"
 // standard
 #include <fstream>
+#include <memory>
 
 #include "pipeline/datatype/StereoDepthConfig.hpp"
 #include "spdlog/spdlog.h"
@@ -16,9 +17,9 @@ void StereoDepth::build() {
     // setDefaultProfilePreset(presetMode);
 }
 
-void StereoDepth::build(bool autoCreateCameras, PresetMode presetMode) {
+std::shared_ptr<StereoDepth> StereoDepth::build(bool autoCreateCameras, PresetMode presetMode) {
     if(!autoCreateCameras) {
-        return;
+        return std::static_pointer_cast<StereoDepth>(shared_from_this());
     }
     // TODO(Morato) - push this further, consider if cameras have already been used etc.
     // First get the default stereo pairs
@@ -35,7 +36,7 @@ void StereoDepth::build(bool autoCreateCameras, PresetMode presetMode) {
     auto right = pipeline.create<dai::node::MonoCamera>();
     right->setBoardSocket(stereoPair.right);
 
-    build(left->out, right->out, presetMode);
+    return build(left->out, right->out, presetMode);
 }
 
 StereoDepth::StereoDepth(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties>(std::move(props)) {}

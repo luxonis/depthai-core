@@ -30,9 +30,9 @@ class StereoVisualizer(dai.node.HostNode):
 
 # Create pipeline
 with dai.Pipeline() as pipeline:
-    # Let stereo depth output autocreate
-    stereo = pipeline.create(dai.node.StereoDepth)
-    stereo.build(autoCreateCameras=True)
+    # Allow stereo inputs to be created automatically
+    # NOTE: This is a naive implementation, it will not handle correctly the case where cameras have already been created
+    stereo = pipeline.create(dai.node.StereoDepth).build(autoCreateCameras=True)
     visualizer = pipeline.create(StereoVisualizer).build(stereo.disparity)
     pipeline.start()
     while pipeline.isRunning():

@@ -71,13 +71,13 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack){
     // Node
     stereoDepth
         .def("build",
-             static_cast<void (StereoDepth::*)(Node::Output&, Node::Output&, StereoDepth::PresetMode)>(&StereoDepth::build),
+             static_cast<std::shared_ptr<StereoDepth> (StereoDepth::*)(Node::Output&, Node::Output&, StereoDepth::PresetMode)>(&StereoDepth::build),
              py::arg("left"),
              py::arg("right"),
              py::arg("presetMode") = StereoDepth::PresetMode::HIGH_DENSITY,
              DOC(dai, node, StereoDepth, build))
         .def("build",
-             static_cast<void (StereoDepth::*)(bool autoCreate, StereoDepth::PresetMode)>(&StereoDepth::build),
+             static_cast<std::shared_ptr<StereoDepth> (StereoDepth::*)(bool autoCreate, StereoDepth::PresetMode)>(&StereoDepth::build),
              py::arg("autoCreateCameras"),
              py::arg("presetMode") = StereoDepth::PresetMode::HIGH_DENSITY)
         .def_readonly("initialConfig", &StereoDepth::initialConfig, DOC(dai, node, StereoDepth, initialConfig))
