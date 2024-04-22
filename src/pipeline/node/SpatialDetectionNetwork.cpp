@@ -32,6 +32,12 @@ void SpatialDetectionNetwork::build() {
 // -------------------------------------------------------------------
 // Neural Network API
 // -------------------------------------------------------------------
+
+void SpatialDetectionNetwork::setNNArchive(const NNArchive& nnArchive) {
+    const auto blob = detectionParser->setNNArchive(nnArchive);
+    neuralNetwork->setBlob(blob);
+}
+
 void SpatialDetectionNetwork::setBlobPath(const dai::Path& path) {
     neuralNetwork->setBlobPath(path);
     detectionParser->setBlobPath(path);
@@ -146,6 +152,10 @@ void YoloSpatialDetectionNetwork::setIouThreshold(float thresh) {
 /// Get num classes
 int YoloSpatialDetectionNetwork::getNumClasses() const {
     return detectionParser->getNumClasses();
+}
+
+std::optional<std::vector<std::string>> YoloSpatialDetectionNetwork::getClasses() const {
+    return detectionParser->getClasses();
 }
 
 /// Get coordianate size
