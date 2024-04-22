@@ -25,6 +25,8 @@ void bind_replay(pybind11::module& m, void* pCallstack){
     replay.def_readonly("out", &Replay::out, DOC(dai, node, Replay, out))
         .def("setReplayFile", &Replay::setReplayFile, py::arg("replayFile"), DOC(dai, node, Replay, setReplayFile))
         .def("setReplayVideo", &Replay::setReplayVideo, py::arg("replayVideo"), DOC(dai, node, Replay, setReplayVideo))
-        .def("setOutFrameType", &Replay::setOutFrameType, py::arg("frameType"), DOC(dai, node, Replay, setOutFrameType));
-
+        .def("setOutFrameType", &Replay::setOutFrameType, py::arg("frameType"), DOC(dai, node, Replay, setOutFrameType))
+        .def("setSize", py::overload_cast<int, int>(&Replay::setSize), py::arg("width"), py::arg("height"), DOC(dai, node, Replay, setSize))
+        .def("setSize", py::overload_cast<std::tuple<int, int>>(&Replay::setSize), py::arg("size"), DOC(dai, node, Replay, setSize))
+        .def("setFps", &Replay::setFps, py::arg("fps"), DOC(dai, node, Replay, setFps));
 }
