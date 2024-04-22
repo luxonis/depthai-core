@@ -24,90 +24,6 @@ if not Path(nnPath).exists():
         f'Required file/s not found, please run "{sys.executable} install_requirements.py"'
     )
 
-# tiny yolo v4 label texts
-labelMap = [
-    "person",
-    "bicycle",
-    "car",
-    "motorbike",
-    "aeroplane",
-    "bus",
-    "train",
-    "truck",
-    "boat",
-    "traffic light",
-    "fire hydrant",
-    "stop sign",
-    "parking meter",
-    "bench",
-    "bird",
-    "cat",
-    "dog",
-    "horse",
-    "sheep",
-    "cow",
-    "elephant",
-    "bear",
-    "zebra",
-    "giraffe",
-    "backpack",
-    "umbrella",
-    "handbag",
-    "tie",
-    "suitcase",
-    "frisbee",
-    "skis",
-    "snowboard",
-    "sports ball",
-    "kite",
-    "baseball bat",
-    "baseball glove",
-    "skateboard",
-    "surfboard",
-    "tennis racket",
-    "bottle",
-    "wine glass",
-    "cup",
-    "fork",
-    "knife",
-    "spoon",
-    "bowl",
-    "banana",
-    "apple",
-    "sandwich",
-    "orange",
-    "broccoli",
-    "carrot",
-    "hot dog",
-    "pizza",
-    "donut",
-    "cake",
-    "chair",
-    "sofa",
-    "pottedplant",
-    "bed",
-    "diningtable",
-    "toilet",
-    "tvmonitor",
-    "laptop",
-    "mouse",
-    "remote",
-    "keyboard",
-    "cell phone",
-    "microwave",
-    "oven",
-    "toaster",
-    "sink",
-    "refrigerator",
-    "book",
-    "clock",
-    "vase",
-    "scissors",
-    "teddy bear",
-    "hair drier",
-    "toothbrush",
-]
-
 # Create pipeline
 with dai.Pipeline() as pipeline:
 
@@ -122,15 +38,9 @@ with dai.Pipeline() as pipeline:
     camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
     camRgb.setFps(40)
 
-    # Network specific settings
-    detectionNetwork.setConfidenceThreshold(0.5)
-    detectionNetwork.setNumClasses(80)
-    detectionNetwork.setCoordinateSize(4)
-    detectionNetwork.setIouThreshold(0.5)
     nnArchive = dai.NNArchive(nnPath)
     detectionNetwork.setNNArchive(nnArchive)
     detectionNetwork.setNumInferenceThreads(2)
-    detectionNetwork.input.setBlocking(False)
 
     # Linking
     camRgb.preview.link(detectionNetwork.input)
@@ -138,6 +48,8 @@ with dai.Pipeline() as pipeline:
     qDet = detectionNetwork.out.createQueue()
 
     pipeline.start()
+
+    labelMap = detectionNetwork.getClasses()
 
     frame = None
     detections = []

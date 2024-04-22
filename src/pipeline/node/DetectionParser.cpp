@@ -85,6 +85,14 @@ int DetectionParser::getNumClasses() const {
     return properties.parser.classes;
 }
 
+std::optional<std::vector<std::string>> DetectionParser::getClasses() const {
+    return mClasses;
+}
+
+void DetectionParser::setClasses(const std::vector<std::string>& classes) {
+    mClasses = classes;
+}
+
 /// Get coordianate size
 int DetectionParser::getCoordinateSize() const {
     return properties.parser.coordinates;
