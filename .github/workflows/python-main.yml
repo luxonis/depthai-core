@@ -198,6 +198,11 @@ jobs:
       - name: Specify docstring to use while building the wheel
         run: echo "DEPTHAI_PYTHON_DOCSTRINGS_INPUT=$PWD/bindings/python/docstrings/depthai_python_docstring.hpp" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
+      - name: Install dependanices
+        run: |
+        choco install opencv
+        echo "OpenCV_DIR=C:\tools\opencv\build" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
       - name: Select Windows SDK
         run: echo "CMAKE_ARGS=-DCMAKE_SYSTEM_VERSION=${{ env.CMAKE_WINDOWS_SDK_VERSION }}" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
 
@@ -268,6 +273,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           brew install libusb
+          brew install opencv
           python -m pip install delocate
       - name: Building wheels
         run: cd bindings/python && python -m pip wheel . -w ./wheelhouse/ --verbose
@@ -305,6 +311,10 @@ jobs:
       - uses: actions/checkout@v3
         with:
           submodules: 'recursive'
+
+      - name: Install dependencies
+        run: |
+        brew install opencv
 
       - uses: actions/download-artifact@v3
         with:
