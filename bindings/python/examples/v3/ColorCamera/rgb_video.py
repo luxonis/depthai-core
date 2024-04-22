@@ -26,4 +26,3 @@ with dai.Pipeline(True) as pipeline:
 
         if cv2.waitKey(1) == ord('q'):
             break
-    pipeline.stop()
