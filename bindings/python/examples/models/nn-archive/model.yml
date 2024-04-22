@@ -1,0 +1,12 @@
+description: >-
+  nn-archive
+task_type: object_attributes
+files:
+  - name: yolo-v6-openvino_2022.1_6shave-rvc2.tar.xz
+    size: 8522072
+    sha256: 5e6f280597d58ff669a827b41c12222e63fab10e58ddd8d9b402c19fd21d7130
+    source: https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo-v6-openvino_2022.1_6shave-rvc2.tar.xz
+
+
+framework: dldt
+license: https://raw.githubusercontent.com/openvinotoolkit/open_model_zoo/master/LICENSE
