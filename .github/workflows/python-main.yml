@@ -314,7 +314,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-        brew install opencv
+           brew install opencv
 
       - uses: actions/download-artifact@v3
         with:
