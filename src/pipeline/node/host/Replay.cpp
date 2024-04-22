@@ -181,5 +181,18 @@ Replay& Replay::setOutFrameType(ImgFrame::Type outFrameType) {
     return *this;
 }
 
+
+Replay& Replay::setSize(std::tuple<int, int> size) {
+    this->size = size;
+    return *this;
+}
+Replay& Replay::setSize(int width, int height) {
+    return setSize(std::make_tuple(width, height));
+}
+Replay& Replay::setFps(float fps) {
+    this->fps = fps;
+    return *this;
+}
+
 }  // namespace node
 }  // namespace dai

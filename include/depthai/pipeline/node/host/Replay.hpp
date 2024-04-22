@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <depthai/pipeline/ThreadedNode.hpp>
 #include <memory>
 
@@ -20,6 +21,8 @@ namespace node {
  */
 class Replay : public NodeCRTP<ThreadedHostNode, Replay> {
    private:
+    std::optional<std::tuple<int, int>> size;
+    std::optional<float> fps;
     std::string replayVideo;
     std::string replayFile;
     ImgFrame::Type outFrameType = ImgFrame::Type::YUV420p;
@@ -41,6 +44,9 @@ class Replay : public NodeCRTP<ThreadedHostNode, Replay> {
     Replay& setReplayFile(const std::string& replayFile);
     Replay& setReplayVideo(const std::string& replayVideo);
     Replay& setOutFrameType(ImgFrame::Type outFrameType);
+    Replay& setSize(std::tuple<int, int> size);
+    Replay& setSize(int width, int height);
+    Replay& setFps(float fps);
 };
 
 }  // namespace node
