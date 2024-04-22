@@ -4,6 +4,9 @@ import sys, os, subprocess
 import argparse
 import re
 import platform
+import urllib.request
+import shutil
+
 
 convert_default = "empty"
 parser = argparse.ArgumentParser()
@@ -178,6 +181,16 @@ if args.convert != convert_default:
             prettyPrint(cmd)
         else:
             subprocess.check_call(cmd)
+
+nn_archive_filename=f"{examples_dir}/models/yolo-v6-openvino_2022.1_6shave-rvc2.tar.xz"
+nn_archive_url="https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/nnarchive/yolo-v6-openvino_2022.1_6shave-rvc2.tar.xz"
+nn_archive_req = urllib.request.Request(
+    nn_archive_url, headers={"User-Agent": "Mozilla/5.0"}
+)
+with urllib.request.urlopen(nn_archive_req) as response, open(
+    nn_archive_filename, "wb"
+) as out_file:
+    shutil.copyfileobj(response, out_file)
 
 if requireOpenCv and thisPlatform == "aarch64":
     from os import environ
