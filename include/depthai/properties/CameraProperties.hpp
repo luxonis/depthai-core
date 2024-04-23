@@ -30,6 +30,17 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
      */
     enum class ColorOrder : int32_t { BGR, RGB };
 
+    struct OutputSpec {
+        std::string outputName;
+        int32_t width;
+        int32_t height;
+        int32_t fps;
+
+        DEPTHAI_SERIALIZE(OutputSpec, outputName, width, height, fps);
+    };
+
+    std::vector<OutputSpec> outputSpecs;
+
     /**
      * Initial controls applied to ColorCamera node
      */
@@ -62,7 +73,6 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
      * Are values FP16 type (0.0 - 255.0)
      */
     bool fp16 = false;
-
 
     static constexpr uint32_t DEFAULT_PREVIEW_HEIGHT = 300;
     static constexpr uint32_t DEFAULT_PREVIEW_WIDTH = 300;
@@ -213,6 +223,7 @@ DEPTHAI_SERIALIZE_EXT(CameraProperties,
                       calibAlpha,
                       warpMeshStepWidth,
                       warpMeshStepHeight,
-                      rawPacked);
+                      rawPacked,
+                      outputSpecs);
 
 }  // namespace dai

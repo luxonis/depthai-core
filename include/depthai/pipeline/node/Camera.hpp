@@ -49,7 +49,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
      */
     static int getScaledSize(int input, int num, int denom);
 
-    std::shared_ptr<Output> requestNewOutput(const ImgFrameCapability& capability, bool onHost = false);
+    Node::Output& requestNewOutput(const ImgFrameCapability& capability, bool onHost = false);
 
     /**
      * Initial control options to apply to sensor
@@ -114,6 +114,11 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
      * Fields populated: camera id, sequence number, timestamp
      */
     Output frameEvent{*this, "frameEvent", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
+
+    /**
+     * Dynamic outputs
+     */
+    OutputMap dynamicOutputs{true, *this, "dynamicOutputs", Output(*this, "", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}})};
 
     // /**
     //  * Input for mocking 'isp' functionality.
