@@ -4,6 +4,7 @@
 #include "node/AprilTag.hpp"
 #include "node/Camera.hpp"
 #include "node/ColorCamera.hpp"
+#include "node/DepthAlign.hpp"
 #include "node/DetectionNetwork.hpp"
 #include "node/DetectionParser.hpp"
 #include "node/EdgeDetector.hpp"

@@ -14,6 +14,7 @@
 #include "depthai/pipeline/datatype/AprilTags.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
+#include "depthai/pipeline/datatype/DepthAlignConfig.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
@@ -40,6 +41,7 @@
 #include "depthai-shared/datatype/RawAprilTags.hpp"
 #include "depthai-shared/datatype/RawBuffer.hpp"
 #include "depthai-shared/datatype/RawCameraControl.hpp"
+#include "depthai-shared/datatype/RawDepthAlignConfig.hpp"
 #include "depthai-shared/datatype/RawEdgeDetectorConfig.hpp"
 #include "depthai-shared/datatype/RawEncodedFrame.hpp"
 #include "depthai-shared/datatype/RawFeatureTrackerConfig.hpp"
@@ -210,6 +212,9 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::MessageGroup:
             return parseDatatype<RawMessageGroup>(metadataStart, serializedObjectSize, data);
             break;
+        case DatatypeEnum::DepthAlignConfig:
+            return parseDatatype<RawDepthAlignConfig>(metadataStart, serializedObjectSize, data);
+            break;
     }
 
     throw std::runtime_error("Bad packet, couldn't parse");
@@ -313,6 +318,9 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
             break;
         case DatatypeEnum::MessageGroup:
             return std::make_shared<MessageGroup>(parseDatatype<RawMessageGroup>(metadataStart, serializedObjectSize, data));
+            break;
+        case DatatypeEnum::DepthAlignConfig:
+            return std::make_shared<DepthAlignConfig>(parseDatatype<RawDepthAlignConfig>(metadataStart, serializedObjectSize, data));
             break;
     }
 
