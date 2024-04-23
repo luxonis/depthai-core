@@ -18,6 +18,11 @@ class DeviceNode : public ThreadedNode {
     // virtual 'run' method
     virtual void run() override;
 
+    bool runOnHost() const override {
+        // By default, don't allow running on host, but can be overridden
+        return false;
+    }
+
     copyable_unique_ptr<Properties> propertiesHolder;
 
     // Get properties
@@ -75,7 +80,8 @@ class DeviceNodeCRTP : public Base {
     DeviceNodeCRTP(std::unique_ptr<Properties> props) : Base(std::move(props), true), properties(static_cast<Properties&>(*DeviceNode::propertiesHolder)) {}
     DeviceNodeCRTP(std::unique_ptr<Properties> props, bool confMode)
         : Base(std::move(props), confMode), properties(static_cast<Properties&>(*DeviceNode::propertiesHolder)) {}
-
+    DeviceNodeCRTP(const std::shared_ptr<Device>& device, std::unique_ptr<Properties> props, bool confMode)
+        : Base(device, std::move(props), confMode), properties(static_cast<Properties&>(*DeviceNode::propertiesHolder)) {}
     friend Derived;
     friend Base;
     friend PipelineImpl;

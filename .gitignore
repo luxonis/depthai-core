@@ -39,3 +39,4 @@ _builds/
 .cache/
 
 *.swp
+/env

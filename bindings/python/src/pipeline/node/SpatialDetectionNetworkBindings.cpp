@@ -13,7 +13,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
     // Node and Properties declare upfront
     py::class_<SpatialDetectionNetworkProperties, std::shared_ptr<SpatialDetectionNetworkProperties>> spatialDetectionNetworkProperties(
         m, "SpatialDetectionNetworkProperties", DOC(dai, SpatialDetectionNetworkProperties));
-    auto spatialDetectionNetwork = ADD_NODE_ABSTRACT(SpatialDetectionNetwork);
+    auto spatialDetectionNetwork = ADD_NODE_DERIVED_ABSTRACT(SpatialDetectionNetwork, DeviceNode);
     auto mobileNetSpatialDetectionNetwork = ADD_NODE_DERIVED(MobileNetSpatialDetectionNetwork, SpatialDetectionNetwork);
     auto yoloSpatialDetectionNetwork = ADD_NODE_DERIVED(YoloSpatialDetectionNetwork, SpatialDetectionNetwork);
 
@@ -51,6 +51,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
              py::arg("numNCEPerThread"),
              DOC(dai, node, SpatialDetectionNetwork, setNumNCEPerInferenceThread))
         .def("getNumInferenceThreads", &SpatialDetectionNetwork::getNumInferenceThreads, DOC(dai, node, SpatialDetectionNetwork, getNumInferenceThreads))
+        .def("setNNArchive", &SpatialDetectionNetwork::setNNArchive, DOC(dai, node, SpatialDetectionNetwork, setNNArchive))
         .def("setBlob",
              py::overload_cast<dai::OpenVINO::Blob>(&SpatialDetectionNetwork::setBlob),
              py::arg("blob"),
@@ -83,22 +84,22 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
 
         .def_property_readonly(
             "input",
-            [](const SpatialDetectionNetwork n) { return &n.neuralNetwork->input; },
+            [](const SpatialDetectionNetwork& n) { return &n.neuralNetwork->input; },
             py::return_value_policy::reference_internal,
             DOC(dai, node, NeuralNetwork, input))
         .def_property_readonly(
             "out",
-            [](const SpatialDetectionNetwork n) { return &n.detectionParser->out; },
+            [](const SpatialDetectionNetwork& n) { return &n.detectionParser->out; },
             py::return_value_policy::reference_internal,
             DOC(dai, node, SpatialDetectionNetwork, out))
         .def_property_readonly(
             "outNetwork",
-            [](const SpatialDetectionNetwork n) { return &n.neuralNetwork->out; },
+            [](const SpatialDetectionNetwork& n) { return &n.neuralNetwork->out; },
             py::return_value_policy::reference_internal,
             DOC(dai, node, SpatialDetectionNetwork, outNetwork))
         .def_property_readonly(
             "passthrough",
-            [](const SpatialDetectionNetwork n) { return &n.neuralNetwork->passthrough; },
+            [](const SpatialDetectionNetwork& n) { return &n.neuralNetwork->passthrough; },
             py::return_value_policy::reference_internal,
             DOC(dai, node, NeuralNetwork, passthrough))
 
@@ -139,6 +140,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
         .def("setAnchorMasks", &YoloSpatialDetectionNetwork::setAnchorMasks, py::arg("anchorMasks"), DOC(dai, node, YoloSpatialDetectionNetwork, setAnchorMasks))
         .def("setIouThreshold", &YoloSpatialDetectionNetwork::setIouThreshold, py::arg("thresh"), DOC(dai, node, YoloSpatialDetectionNetwork, setIouThreshold))
         .def("getNumClasses", &YoloSpatialDetectionNetwork::getNumClasses, DOC(dai, node, YoloSpatialDetectionNetwork, getNumClasses))
+        .def("getClasses", &YoloSpatialDetectionNetwork::getClasses, DOC(dai, node, YoloSpatialDetectionNetwork, getClasses))
         .def("getCoordinateSize", &YoloSpatialDetectionNetwork::getCoordinateSize, DOC(dai, node, YoloSpatialDetectionNetwork, getCoordinateSize))
         .def("getAnchors", &YoloSpatialDetectionNetwork::getAnchors, DOC(dai, node, YoloSpatialDetectionNetwork, getAnchors))
         .def("getAnchorMasks", &YoloSpatialDetectionNetwork::getAnchorMasks, DOC(dai, node, YoloSpatialDetectionNetwork, getAnchorMasks))

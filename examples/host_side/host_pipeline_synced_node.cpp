@@ -8,12 +8,12 @@
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/ColorCamera.hpp"
 #include "depthai/pipeline/node/MonoCamera.hpp"
-#include "depthai/pipeline/node/host/SyncedNode.hpp"
+#include "depthai/pipeline/node/host/HostNode.hpp"
 
-class SyncedDisplay : public dai::NodeCRTP<dai::node::SyncedNode, SyncedDisplay> {
+class SyncedDisplay : public dai::NodeCRTP<dai::node::HostNode, SyncedDisplay> {
    public:
-    Input inputRgb = inputs["rgb"];
-    Input inputMono = inputs["mono"];
+    Input& inputRgb = inputs["rgb"];
+    Input& inputMono = inputs["mono"];
 
     std::shared_ptr<dai::Buffer> runOnce(std::shared_ptr<dai::MessageGroup> in) override {
         auto mono = in->get<dai::ImgFrame>("mono");
@@ -43,7 +43,7 @@ class SyncedDisplay : public dai::NodeCRTP<dai::node::SyncedNode, SyncedDisplay>
 
 int main() {
     // Create pipeline
-    dai::Pipeline pipeline;
+    dai::Pipeline pipeline(true);
 
     auto camRgb = pipeline.create<dai::node::ColorCamera>(dai::CameraBoardSocket::CAM_A);
     camRgb->setVideoSize(640, 480);

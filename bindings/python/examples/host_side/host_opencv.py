@@ -2,11 +2,11 @@ import depthai as dai
 import cv2
 import time
 
-p = dai.Pipeline()
+p = dai.Pipeline(True)
 
-class HostDisplay(dai.HostNode):
+class HostDisplay(dai.node.ThreadedHostNode):
     def __init__(self):
-        dai.HostNode.__init__(self)
+        dai.node.ThreadedHostNode.__init__(self)
         self.input = dai.Node.Input(self)
     def run(self):
         while True:
@@ -20,8 +20,7 @@ class HostDisplay(dai.HostNode):
 camera = p.create(dai.node.ColorCamera)
 camera.setBoardSocket(dai.CameraBoardSocket.CAM_A)
 
-myHostDisplay = HostDisplay()
-p.add(myHostDisplay)
+myHostDisplay = p.create(HostDisplay)
 camera.video.link(myHostDisplay.input)
 
 p.start()

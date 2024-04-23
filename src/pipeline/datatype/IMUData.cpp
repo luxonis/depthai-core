@@ -1,5 +1,7 @@
 #include "depthai/pipeline/datatype/IMUData.hpp"
 
 namespace dai {
-// TODO no impl needed
+span<const uint8_t> IMUData::getRecordData() const {
+    return {(uint8_t*)packets.data(), packets.size() * sizeof(IMUPacket)};
+}
 }  // namespace dai

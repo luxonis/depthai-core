@@ -1,4 +1,5 @@
 #include "device/DeviceGate.hpp"
+
 #include <XLink/XLinkPublicDefines.h>
 
 // std
@@ -61,7 +62,7 @@ DeviceGate::DeviceGate(const DeviceInfo& deviceInfo) : deviceInfo(deviceInfo) {
     } else if(deviceInfo.platform == X_LINK_RVC4) {
         version = DEPTHAI_DEVICE_RVC4_VERSION;
     } else {
-        throw std::runtime_error("Unknown platform"); // Should never happen
+        throw std::runtime_error("Unknown platform");  // Should never happen
     }
     // Discover and connect
     pimpl->cli = std::make_unique<httplib::Client>(deviceInfo.name, DEFAULT_PORT);

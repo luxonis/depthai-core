@@ -67,4 +67,8 @@ void Buffer::setSequenceNum(int64_t sequenceNum) {
     this->sequenceNum = sequenceNum;
 }
 
+span<const uint8_t> Buffer::getRecordData() const {
+    return data->getData();
+}
+
 }  // namespace dai

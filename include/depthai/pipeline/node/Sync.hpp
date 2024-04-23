@@ -16,6 +16,8 @@ namespace node {
  * @brief Sync node. Performs syncing between image frames
  */
 class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties> {
+   private:
+    bool runOnHostVar = false;
    public:
     constexpr static const char* NAME = "Sync";
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -23,12 +25,13 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties> {
     /**
      * A map of inputs
      */
-    InputMap inputs{*this, "inputs", Input(*this, "", Input::Type::SReceiver, {{DatatypeEnum::Buffer, true}}, false)};
+    InputMap inputs{*this, "inputs", InputDescription()};
 
     /**
      * Output message of type MessageGroup
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::MessageGroup, false}}};
+    // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::MessageGroup, false}}};
+    Output out{*this, {.name = "out", .types = {{DatatypeEnum::MessageGroup, false}}}};
 
     /**
      * Set the maximal interval between messages in the group
@@ -54,6 +57,19 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties> {
      * Gets the number of sync attempts
      */
     int getSyncAttempts() const;
+
+    /**
+     * Specify whether to run on host or device
+     * By default, the node will run on device.
+     */
+    void setRunOnHost(bool runOnHost);
+
+    /**
+     * Check if the node is set to run on host
+     */
+    bool runOnHost() const override;
+
+    void run() override;
 };
 
 }  // namespace node

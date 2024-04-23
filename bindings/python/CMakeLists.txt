@@ -1,5 +1,15 @@
 cmake_minimum_required(VERSION 3.4) # For Hunter
 
+# Set policies
+# CMP0074 dictates that find_package searches environment variable "[packageName]_ROOT" along with regular variable [packageName]_ROOT
+if(POLICY CMP0074)
+  cmake_policy(SET CMP0074 NEW) # Only introduced in 3.12
+endif()
+
+if(POLICY CMP0028)
+  cmake_policy(SET CMP0028 NEW)
+endif()
+
 # Specify path separator
 set(SYS_PATH_SEPARATOR ";")
 if(UNIX)
@@ -54,11 +64,12 @@ set(SOURCE_LIST
     src/CalibrationHandlerBindings.cpp
     src/DeviceBootloaderBindings.cpp
     src/DatatypeBindings.cpp
-    src/DataQueueBindings.cpp
+    src/MessageQueueBindings.cpp
     src/pipeline/PipelineBindings.cpp
     src/pipeline/CommonBindings.cpp
     src/pipeline/AssetManagerBindings.cpp
     src/openvino/OpenVINOBindings.cpp
+    src/nn_archive/NNArchiveBindings.cpp
     src/log/LogBindings.cpp
     src/VersionBindings.cpp
 
@@ -67,34 +78,37 @@ set(SOURCE_LIST
     src/pipeline/node/XLinkInBindings.cpp
     src/pipeline/node/XLinkOutBindings.cpp
     src/pipeline/node/ColorCameraBindings.cpp
-    # src/pipeline/node/CameraBindings.cpp
+    src/pipeline/node/CameraBindings.cpp
     src/pipeline/node/MonoCameraBindings.cpp
-    # src/pipeline/node/StereoDepthBindings.cpp
-    # src/pipeline/node/NeuralNetworkBindings.cpp
-    # src/pipeline/node/VideoEncoderBindings.cpp
-    # src/pipeline/node/ImageManipBindings.cpp
-    # src/pipeline/node/SPIOutBindings.cpp
-    # src/pipeline/node/SPIInBindings.cpp
-    # src/pipeline/node/DetectionNetworkBindings.cpp
-    # src/pipeline/node/SystemLoggerBindings.cpp
-    # src/pipeline/node/ScriptBindings.cpp
-    # src/pipeline/node/SpatialLocationCalculatorBindings.cpp
-    # src/pipeline/node/SpatialDetectionNetworkBindings.cpp
-    # src/pipeline/node/ObjectTrackerBindings.cpp
-    # src/pipeline/node/IMUBindings.cpp
-    # src/pipeline/node/EdgeDetectorBindings.cpp
-    # src/pipeline/node/FeatureTrackerBindings.cpp
-    # src/pipeline/node/ToFBindings.cpp
-    # src/pipeline/node/AprilTagBindings.cpp
-    # src/pipeline/node/DetectionParserBindings.cpp
-    # src/pipeline/node/WarpBindings.cpp
-    # src/pipeline/node/SyncBindings.cpp
-    # src/pipeline/node/BenchmarkBindings.cpp
-    # src/pipeline/node/UVCBindings.cpp
-    # src/pipeline/node/ToFBindings.cpp
-    # src/pipeline/node/SyncBindings.cpp
-    # src/pipeline/node/MessageDemuxBindings.cpp
+    src/pipeline/node/StereoDepthBindings.cpp
+    src/pipeline/node/NeuralNetworkBindings.cpp
+    src/pipeline/node/VideoEncoderBindings.cpp
+    src/pipeline/node/ImageManipBindings.cpp
+    src/pipeline/node/SPIOutBindings.cpp
+    src/pipeline/node/SPIInBindings.cpp
+    src/pipeline/node/DetectionNetworkBindings.cpp
+    src/pipeline/node/SystemLoggerBindings.cpp
+    src/pipeline/node/ScriptBindings.cpp
+    src/pipeline/node/SpatialLocationCalculatorBindings.cpp
+    src/pipeline/node/SpatialDetectionNetworkBindings.cpp
+    src/pipeline/node/ObjectTrackerBindings.cpp
+    src/pipeline/node/IMUBindings.cpp
+    src/pipeline/node/EdgeDetectorBindings.cpp
+    src/pipeline/node/FeatureTrackerBindings.cpp
+    src/pipeline/node/ToFBindings.cpp
+    src/pipeline/node/AprilTagBindings.cpp
+    src/pipeline/node/DetectionParserBindings.cpp
+    src/pipeline/node/WarpBindings.cpp
+    src/pipeline/node/SyncBindings.cpp
+    src/pipeline/node/BenchmarkBindings.cpp
+    src/pipeline/node/UVCBindings.cpp
+    src/pipeline/node/ToFBindings.cpp
+    src/pipeline/node/PointCloudBindings.cpp
+    src/pipeline/node/SyncBindings.cpp
+    src/pipeline/node/MessageDemuxBindings.cpp
     src/pipeline/node/HostNodeBindings.cpp
+    src/pipeline/node/RecordBindings.cpp
+    src/pipeline/node/ReplayBindings.cpp
 
     src/pipeline/datatype/ADatatypeBindings.cpp
     src/pipeline/datatype/AprilTagConfigBindings.cpp
@@ -119,6 +133,8 @@ set(SOURCE_LIST
     src/pipeline/datatype/TrackedFeaturesBindings.cpp
     src/pipeline/datatype/TrackletsBindings.cpp
     src/pipeline/datatype/BenchmarkReportBindings.cpp
+    src/pipeline/datatype/PointCloudConfigBindings.cpp
+    src/pipeline/datatype/PointCloudDataBindings.cpp
 )
 
 # Add files for python module
@@ -223,7 +239,7 @@ target_link_libraries(${TARGET_NAME}
     PUBLIC
         # pybind11
         pybind11::pybind11
-        depthai::core # Use non-opencv target as we use opencv-python in bindings
+        depthai::opencv # Use non-opencv target as we use opencv-python in bindings
         hedley
         pybind11_json
         xtensor-python

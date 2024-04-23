@@ -1,58 +1,39 @@
 #include <iostream>
 
-
-// Includes common necessary includes for development using depthai library
-#include "depthai/depthai.hpp"
-#include "depthai/pipeline/node/test/MyConsumer.hpp"
-#include "depthai/pipeline/node/test/MyProducer.hpp"
-
-// shared
-#include "depthai/properties/XLinkOutProperties.hpp"
-
 // project
-#include "depthai/pipeline/ThreadedNode.hpp"
-#include "depthai/pipeline/datatype/Buffer.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "depthai/pipeline/node/ColorCamera.hpp"
+#include "depthai/pipeline/node/host/Display.hpp"
 
-class Display : public dai::NodeCRTP<dai::ThreadedNode, Display> {
-   public:
-    constexpr static const char* NAME = "Display";
-
-   public:
-    void build() {
-        hostNode = true;
-    }
-
-    /**
-     * Input for any ImgFrame messages to be displayed
-     * Default queue is blocking with size 8
-     */
-    Input input{true, *this, "in", Input::Type::SReceiver, true, 8, true, {{dai::DatatypeEnum::Buffer, true}}};
-
-    void run() override {
-        while(isRunning()) {
-            std::shared_ptr<dai::ImgFrame> imgFrame = input.queue.get<dai::ImgFrame>();
-            if(imgFrame != nullptr) {
-                cv::imshow("MyConsumer", imgFrame->getCvFrame());
-                auto key = cv::waitKey(1);
-                if(key == 'q') {
-                    stop();
-                }            }
-        }
-        fmt::print("Display node stopped\n");
-    }
-};
 
 int main() {
-    using namespace std;
-
     // Create pipeline
-    dai::Pipeline pipeline;
-    auto camRgb = pipeline.create<dai::node::ColorCamera>();
-    auto display = pipeline.create<Display>();
-    camRgb->preview.link(display->input);
-    pipeline.start();
-    pipeline.wait();
+    dai::Pipeline pipeline(true);
+    auto camRgb = pipeline.create<dai::node::ColorCamera>(dai::CameraBoardSocket::CAM_A);
+    camRgb->setVideoSize(640, 480);
+    auto displayDevice = pipeline.create<dai::node::Display>(std::string{"Device Display"});
 
+    // camRgb->video.link(displayDevice->input);
+
+    // Option 2:
+    auto queue = camRgb->video.createQueue();
+
+    pipeline.start();
+
+    while(pipeline.isRunning()) {
+        auto message = queue->get<dai::ImgFrame>();
+        cv::imshow("QueueFrame", message->getCvFrame());
+        auto q = cv::waitKey(1);
+        if(q == 'q') {
+            pipeline.stop();
+            break;
+        }
+    }
+
+    pipeline.wait();
     return 0;
+} catch (const std::exception& ex) {
+    std::cout << "Exception: " << ex.what();
 }

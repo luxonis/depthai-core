@@ -1,6 +1,9 @@
 #pragma once
 
+#include <spdlog/async.h>
 #include <spdlog/async_logger.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
 
 #include "depthai/pipeline/Node.hpp"
 #include "depthai/utility/AtomicBool.hpp"
@@ -18,17 +21,17 @@ class ThreadedNode : public Node {
     virtual ~ThreadedNode() = default;
 
     // override the following methods
-    virtual void start() override;
-    virtual void wait() override;
-    virtual void stop() override;
+    void start() override;
+    void wait() override;
+    void stop() override;
 
     // virtual 'run' method
     virtual void run() = 0;
 
     // check if still running
     bool isRunning() const;
-
-    std::shared_ptr<spdlog::async_logger> logger;
+    std::shared_ptr<spdlog::async_logger> logger =
+        std::make_shared<spdlog::async_logger>("ThreadedNode", std::make_shared<spdlog::sinks::stdout_color_sink_mt>(), spdlog::thread_pool());
 };
 
 }  // namespace dai

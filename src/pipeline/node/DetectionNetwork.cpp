@@ -8,10 +8,7 @@
 #include "archive_entry.h"
 
 // internal
-#include "depthai/common/DetectionNetworkType.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
-#include "depthai/nn_archive/v1/Config.hpp"
-#include "nn_archive/v1/Generators.hpp"
 #include "utility/ArchiveUtil.hpp"
 #include "utility/ErrorMacros.hpp"
 #include "utility/PimplImpl.hpp"
@@ -48,52 +45,14 @@ void DetectionNetwork::build() {
 
     // No "internal" buffering to keep interface similar to monolithic nodes
     detectionParser->input.setBlocking(true);
-    detectionParser->input.setQueueSize(1);
+    detectionParser->input.setMaxSize(1);
     detectionParser->imageIn.setBlocking(false);
-    detectionParser->imageIn.setQueueSize(1);
+    detectionParser->imageIn.setMaxSize(1);
 }
 
 void DetectionNetwork::setNNArchive(const NNArchive& nnArchive) {
-    const auto configMaybe = nnArchive.getConfig().getConfigV1();
-    DAI_CHECK(configMaybe, "Unsupported NNArchive format / version. Check which depthai version you are running.");
-    const auto& config = *configMaybe;
-    const auto& blob = nnArchive.getBlob().getOpenVINOBlob();
-    DAI_CHECK_IN(blob);
-    setBlob(*blob);
-    const auto model = config.model;
-    // TODO(jakgra) is NN Archive valid without this? why is this optional?
-    DAI_CHECK(model.heads, "Heads array is not defined in the NN Archive config file.");
-    // TODO(jakgra) for now get info from heads[0] but in the future correctly support multiple outputs and mapped heads
-    DAI_CHECK_V(
-        (*model.heads).size() == 1, "There should be exactly one head per model in the NN Archive config file defined. Found {} heads.", (*model.heads).size());
-    const auto head = (*model.heads)[0];
-    if(head.family == "ObjectDetectionYOLO") {
-        detectionParser->properties.parser.nnFamily = DetectionNetworkType::YOLO;
-    }
-    detectionParser->setNumClasses(static_cast<int>(head.nClasses));
-    if(head.iouThreshold) {
-        detectionParser->properties.parser.iouThreshold = static_cast<float>(*head.iouThreshold);
-    }
-    if(head.confThreshold) {
-        setConfidenceThreshold(static_cast<float>(*head.confThreshold));
-    }
-    detectionParser->setCoordinateSize(4);
-    if(head.anchors) {
-        const auto anchorsIn = *head.anchors;
-        std::vector<std::vector<std::vector<float>>> anchorsOut(anchorsIn.size());
-        for(size_t layer = 0; layer < anchorsOut.size(); ++layer) {
-            std::vector<std::vector<float>> layerOut(anchorsIn[layer].size());
-            for(size_t anchor = 0; anchor < layerOut.size(); ++anchor) {
-                std::vector<float> anchorOut(anchorsIn[layer][anchor].size());
-                for(size_t dim = 0; dim < anchorOut.size(); ++dim) {
-                    anchorOut[dim] = static_cast<float>(anchorsIn[layer][anchor][dim]);
-                }
-                layerOut[anchor] = anchorOut;
-            }
-            anchorsOut[layer] = layerOut;
-        }
-        detectionParser->setAnchors(anchorsOut);
-    }
+    const auto blob = detectionParser->setNNArchive(nnArchive);
+    neuralNetwork->setBlob(blob);
 }
 
 void DetectionNetwork::setBlobPath(const dai::Path& path) {
@@ -195,6 +154,10 @@ void YoloDetectionNetwork::setIouThreshold(float thresh) {
 /// Get num classes
 int YoloDetectionNetwork::getNumClasses() const {
     return detectionParser->getNumClasses();
+}
+
+std::optional<std::vector<std::string>> YoloDetectionNetwork::getClasses() const {
+    return detectionParser->getClasses();
 }
 
 /// Get coordianate size

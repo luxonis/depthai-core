@@ -2,16 +2,18 @@
 
 // std
 #include <XLink/XLinkPublicDefines.h>
+
 #include <cstdint>
 #include <string>
 #include <thread>
 #include <type_traits>
 
 // project
+#include <optional>
+
 #include "depthai/device/Version.hpp"
 #include "depthai/utility/Pimpl.hpp"
 #include "depthai/xlink/XLinkConnection.hpp"
-#include <optional>
 namespace dai {
 
 /**

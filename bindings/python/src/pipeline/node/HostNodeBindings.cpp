@@ -1,36 +1,32 @@
-#include "NodeBindings.hpp"
 #include "Common.hpp"
-#include "depthai/pipeline/HostNode.hpp"
-#include "depthai/pipeline/node/host/SyncedNode.hpp"
+#include "NodeBindings.hpp"
+#include "depthai/pipeline/ThreadedHostNode.hpp"
+#include "depthai/pipeline/node/host/HostNode.hpp"
+
+extern py::handle daiNodeModule;
 
 using namespace dai;
 using namespace dai::node;
 
-class PyHostNode : public NodeCRTP<HostNode, PyHostNode> {
-public:
+class PyThreadedHostNode : public NodeCRTP<ThreadedHostNode, PyThreadedHostNode> {
+   public:
     void run() override {
-        PYBIND11_OVERRIDE_PURE(
-                void,
-                HostNode,
-                run);
+        PYBIND11_OVERRIDE_PURE(void, ThreadedHostNode, run);
     }
 };
 
-class PySyncedNode : public NodeCRTP<SyncedNode, PySyncedNode> {
-public:
+class PyHostNode : public NodeCRTP<HostNode, PyHostNode> {
+   public:
     std::shared_ptr<Buffer> runOnce(std::shared_ptr<dai::MessageGroup> in) override {
-        PYBIND11_OVERRIDE_PURE(
-                std::shared_ptr<Buffer>,
-                SyncedNode,
-                runOnce,
-                in);
+        PYBIND11_OVERRIDE_PURE(std::shared_ptr<Buffer>, HostNode, runOnce, in);
     }
 };
 
 void bind_hostnode(pybind11::module& m, void* pCallstack){
     // declare upfront
-    auto hostNode = py::class_<HostNode, PyHostNode, ThreadedNode, std::shared_ptr<HostNode>>(m, "HostNode", DOC(dai, HostNode));
-    auto syncedNode = py::class_<SyncedNode, PySyncedNode, HostNode, std::shared_ptr<SyncedNode>>(m, "SyncedNode", DOC(dai, node, SyncedNode));
+    auto threadedHostNode =
+        py::class_<ThreadedHostNode, PyThreadedHostNode, ThreadedNode, std::shared_ptr<ThreadedHostNode>>(daiNodeModule, "ThreadedHostNode", DOC(dai, node, ThreadedHostNode));
+    auto hostNode = py::class_<HostNode, PyHostNode, ThreadedHostNode, std::shared_ptr<HostNode>>(daiNodeModule, "HostNode", DOC(dai, node, HostNode));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
@@ -45,14 +41,12 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
-    hostNode
-        .def(py::init<>())
-        .def("run", &HostNode::run)
-    ;
+    threadedHostNode.def(py::init<>()).def("run", &ThreadedHostNode::run);
 
-    syncedNode
-        .def(py::init<>())
-        .def("runOnce", &SyncedNode::runOnce)
-        .def_property_readonly("inputs", [](SyncedNode &node){return &node.inputs;}, py::return_value_policy::reference_internal)
-    ;
+    hostNode.def(py::init<>())
+        .def("runOnce", &HostNode::runOnce)
+        .def_property_readonly(
+            "inputs", [](HostNode& node) { return &node.inputs; }, py::return_value_policy::reference_internal)
+        .def("runSyncingOnHost", &HostNode::runSyncingOnHost, DOC(dai, node, HostNode, runSyncingOnHost))
+        .def("runSyncingOnDevice", &HostNode::runSyncingOnDevice, DOC(dai, node, HostNode, runSyncingOnDevice));
 }

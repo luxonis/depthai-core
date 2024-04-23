@@ -224,6 +224,8 @@ class IMUData : public Buffer {
         datatype = DatatypeEnum::IMUData;
     };
 
+    span<const uint8_t> getRecordData() const override;
+
     DEPTHAI_SERIALIZE(IMUData, packets);
 };
 

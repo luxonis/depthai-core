@@ -23,10 +23,9 @@ class UVC : public DeviceNodeCRTP<DeviceNode, UVC, UVCProperties> {
 
     /**
      * Input for image frames to be streamed over UVC
-     *
      * Default queue is blocking with size 8
      */
-    Input input{true, *this, "in", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::Buffer, true}}};
+    Input input{*this, {.name = "in", .blocking = true, .queueSize = 8, .types = {{DatatypeEnum::Buffer, true}}, .waitForMessage = true}};
 
     /// Set GPIO list <gpio_number, value> for GPIOs to set (on/off) at init
     void setGpiosOnInit(std::unordered_map<int, int> list);

@@ -6,6 +6,7 @@
 #include <fstream>
 
 // shared
+#include <depthai/nn_archive/NNArchive.hpp>
 #include <depthai/properties/DetectionParserProperties.hpp>
 
 namespace dai {
@@ -24,17 +25,17 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      * Input NN results with detection data to parse
      * Default queue is blocking with size 5
      */
-    Input input{*this, "in", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::NNData, true}}};
+    Input input{*this, {.name = "in", .blocking = true, .queueSize = 5, .types = {{DatatypeEnum::NNData, true}}, .waitForMessage = true}};
 
     /**
      * Outputs image frame with detected edges
      */
-    Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgDetections, false}}};
+    Output out{*this, {.name = "out", .types = {{DatatypeEnum::ImgDetections, false}}}};
 
     /**
      * Input for image that produced the detection - image size can be taken from here
      */
-    Input imageIn{*this, "imageIn", Input::Type::SReceiver, true, 5, true, {{DatatypeEnum::ImgFrame, false}}};
+    Input imageIn{*this, {.name = "imageIn", .blocking = true, .queueSize = 5, .types = {{DatatypeEnum::ImgFrame, false}}, .waitForMessage = true}};
 
     /**
      * Specify number of frames in pool.
@@ -47,6 +48,8 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      *
      */
     int getNumFramesPool();
+
+    std::reference_wrapper<const OpenVINO::Blob> setNNArchive(const NNArchive& nnArchive);
 
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**
@@ -108,6 +111,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
 
     /// Set num classes
     void setNumClasses(int numClasses);
+    void setClasses(const std::vector<std::string>& classes);
     /// Set coordianate size
     void setCoordinateSize(int coordinates);
     /// Set anchors
@@ -121,6 +125,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
 
     /// Get num classes
     int getNumClasses() const;
+    std::optional<std::vector<std::string>> getClasses() const;
     /// Get coordianate size
     int getCoordinateSize() const;
     /// Get anchors
@@ -129,6 +134,9 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     std::map<std::string, std::vector<int>> getAnchorMasks() const;
     /// Get Iou threshold
     float getIouThreshold() const;
+
+   private:
+    std::optional<std::vector<std::string>> mClasses;
 };
 
 }  // namespace node

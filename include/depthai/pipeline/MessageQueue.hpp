@@ -1,14 +1,12 @@
 #pragma once
 
 // std
-#include <atomic>
 #include <memory>
 #include <vector>
 
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/utility/LockingQueue.hpp"
-#include "depthai/xlink/XLinkConnection.hpp"
 
 // shared
 namespace dai {
@@ -16,7 +14,7 @@ namespace dai {
 /**
  * Thread safe queue to send messages between nodes
  */
-class MessageQueue {
+class MessageQueue : public std::enable_shared_from_this<MessageQueue> {
    public:
     /// Alias for callback id
     using CallbackId = int;
@@ -27,27 +25,55 @@ class MessageQueue {
     };
 
    private:
+    static constexpr auto CLOSED_QUEUE_MESSAGE = "MessageQueue was closed";
     LockingQueue<std::shared_ptr<ADatatype>> queue;
-    const std::string name{""};
+    std::string name;
     std::mutex callbacksMtx;
     std::unordered_map<CallbackId, std::function<void(std::string, std::shared_ptr<ADatatype>)>> callbacks;
     CallbackId uniqueCallbackId{0};
-    const std::string exceptionMessage{"MessageQueue was closed"};
     void callCallbacks(std::shared_ptr<ADatatype> msg);
 
    public:
     // DataOutputQueue constructor
-    MessageQueue(unsigned int maxSize = 16, bool blocking = true);
-    MessageQueue(const std::string& name, unsigned int maxSize = 16, bool blocking = true);
-    MessageQueue(const MessageQueue& q) : name(q.name), exceptionMessage(q.exceptionMessage) {
-        callbacks = q.callbacks;
-        uniqueCallbackId = q.uniqueCallbackId;
+    explicit MessageQueue(unsigned int maxSize = 16, bool blocking = true);
+    explicit MessageQueue(std::string name, unsigned int maxSize = 16, bool blocking = true);
+
+    MessageQueue(const MessageQueue& c)
+        : enable_shared_from_this(c), queue(c.queue), name(c.name), callbacks(c.callbacks), uniqueCallbackId(c.uniqueCallbackId){};
+    MessageQueue(MessageQueue&& m) noexcept
+        : enable_shared_from_this(m),
+          queue(std::move(m.queue)),
+          name(std::move(m.name)),
+          callbacks(std::move(m.callbacks)),
+          uniqueCallbackId(m.uniqueCallbackId){};
+
+    MessageQueue& operator=(const MessageQueue& c) {
+        queue = c.queue;
+        name = c.name;
+        callbacks = c.callbacks;
+        uniqueCallbackId = c.uniqueCallbackId;
+        return *this;
     }
-    MessageQueue(MessageQueue&& q) : name(std::move(q.name)), exceptionMessage(std::move(q.exceptionMessage)) {
-        callbacks = std::move(q.callbacks);
-        uniqueCallbackId = std::move(q.uniqueCallbackId);
+
+    MessageQueue& operator=(MessageQueue&& m) noexcept {
+        queue = std::move(m.queue);
+        name = std::move(m.name);
+        callbacks = std::move(m.callbacks);
+        uniqueCallbackId = m.uniqueCallbackId;
+        return *this;
     }
-    ~MessageQueue();
+
+    virtual ~MessageQueue();
+
+    /**
+     * @brief Get name of the queue
+     */
+    std::string getName() const;
+
+    /**
+     * Set the name of the queue
+     */
+    void setName(std::string name);
 
     /**
      * Check whether queue is closed
@@ -103,13 +129,6 @@ class MessageQueue {
     unsigned int isFull() const;
 
     /**
-     * Gets queues name
-     *
-     * @returns Queue name
-     */
-    std::string getName() const;
-
-    /**
      * Adds a callback on message received
      *
      * @param callback Callback function with queue name and message pointer
@@ -123,7 +142,7 @@ class MessageQueue {
      * @param callback Callback function with message pointer
      * @returns Callback id
      */
-    CallbackId addCallback(std::function<void(std::shared_ptr<ADatatype>)>);
+    CallbackId addCallback(const std::function<void(std::shared_ptr<ADatatype>)>&);
 
     /**
      * Adds a callback on message received
@@ -131,7 +150,7 @@ class MessageQueue {
      * @param callback Callback function without any parameters
      * @returns Callback id
      */
-    CallbackId addCallback(std::function<void()> callback);
+    CallbackId addCallback(const std::function<void()>& callback);
 
     /**
      * Removes a callback
@@ -147,11 +166,11 @@ class MessageQueue {
      */
     template <class T>
     bool has() {
-        std::shared_ptr<ADatatype> val = nullptr;
-        if(queue.front(val) && dynamic_cast<T*>(val.get())) {
-            return true;
+        if(queue.isDestroyed()) {
+            throw QueueException(CLOSED_QUEUE_MESSAGE);
         }
-        return false;
+        std::shared_ptr<ADatatype> val = nullptr;
+        return queue.front(val) && dynamic_cast<T*>(val.get());
     }
 
     /**
@@ -159,6 +178,9 @@ class MessageQueue {
      * @returns True if queue isn't empty, false otherwise
      */
     bool has() {
+        if(queue.isDestroyed()) {
+            throw QueueException(CLOSED_QUEUE_MESSAGE);
+        }
         return !queue.empty();
     }
 
@@ -169,6 +191,9 @@ class MessageQueue {
      */
     template <class T>
     std::shared_ptr<T> tryGet() {
+        if(queue.isDestroyed()) {
+            throw QueueException(CLOSED_QUEUE_MESSAGE);
+        }
         std::shared_ptr<ADatatype> val = nullptr;
         if(!queue.tryPop(val)) return nullptr;
         return std::dynamic_pointer_cast<T>(val);
@@ -192,7 +217,7 @@ class MessageQueue {
     std::shared_ptr<T> get() {
         std::shared_ptr<ADatatype> val = nullptr;
         if(!queue.waitAndPop(val)) {
-            throw QueueException(exceptionMessage.c_str());
+            throw QueueException(CLOSED_QUEUE_MESSAGE);
         }
         return std::dynamic_pointer_cast<T>(val);
     }
@@ -213,6 +238,9 @@ class MessageQueue {
      */
     template <class T>
     std::shared_ptr<T> front() {
+        if(queue.isDestroyed()) {
+            throw QueueException(CLOSED_QUEUE_MESSAGE);
+        }
         std::shared_ptr<ADatatype> val = nullptr;
         if(!queue.front(val)) return nullptr;
         return std::dynamic_pointer_cast<T>(val);
@@ -236,9 +264,16 @@ class MessageQueue {
      */
     template <class T, typename Rep, typename Period>
     std::shared_ptr<T> get(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
+        if(queue.isDestroyed()) {
+            throw QueueException(CLOSED_QUEUE_MESSAGE);
+        }
         std::shared_ptr<ADatatype> val = nullptr;
         if(!queue.tryWaitAndPop(val, timeout)) {
             hasTimedout = true;
+            // Check again after the timeout
+            if(queue.isDestroyed()) {
+                throw QueueException(CLOSED_QUEUE_MESSAGE);
+            }
             return nullptr;
         }
         hasTimedout = false;
@@ -264,13 +299,15 @@ class MessageQueue {
      */
     template <class T>
     std::vector<std::shared_ptr<T>> tryGetAll() {
+        if(queue.isDestroyed()) {
+            throw QueueException(CLOSED_QUEUE_MESSAGE);
+        }
         std::vector<std::shared_ptr<T>> messages;
         queue.consumeAll([&messages](std::shared_ptr<ADatatype>& msg) {
             // dynamic pointer cast may return nullptr
             // in which case that message in vector will be nullptr
             messages.push_back(std::dynamic_pointer_cast<T>(std::move(msg)));
         });
-
         return messages;
     }
 
@@ -292,12 +329,14 @@ class MessageQueue {
     template <class T>
     std::vector<std::shared_ptr<T>> getAll() {
         std::vector<std::shared_ptr<T>> messages;
-        queue.waitAndConsumeAll([&messages](std::shared_ptr<ADatatype>& msg) {
+        bool notDestructed = queue.waitAndConsumeAll([&messages](std::shared_ptr<ADatatype>& msg) {
             // dynamic pointer cast may return nullptr
             // in which case that message in vector will be nullptr
             messages.push_back(std::dynamic_pointer_cast<T>(std::move(msg)));
         });
-
+        if(!notDestructed) {
+            throw QueueException(CLOSED_QUEUE_MESSAGE);
+        }
         return messages;
     }
 
@@ -320,6 +359,9 @@ class MessageQueue {
      */
     template <class T, typename Rep, typename Period>
     std::vector<std::shared_ptr<T>> getAll(std::chrono::duration<Rep, Period> timeout, bool& hasTimedout) {
+        if(queue.isDestroyed()) {
+            throw QueueException(CLOSED_QUEUE_MESSAGE);
+        }
         std::vector<std::shared_ptr<T>> messages;
         hasTimedout = !queue.waitAndConsumeAll(
             [&messages](std::shared_ptr<ADatatype>& msg) {
@@ -352,13 +394,6 @@ class MessageQueue {
     void send(const std::shared_ptr<ADatatype>& msg);
 
     /**
-     * Adds a message to the queue, which will be picked up and sent to the device.
-     * Can either block if 'blocking' behavior is true or overwrite oldest
-     * @param msg Message to add to the queue
-     */
-    // void send(const ADatatype& msg);
-
-    /**
      * Adds message to the queue, which will be picked up and sent to the device.
      * Can either block until timeout if 'blocking' behavior is true or overwrite oldest
      *
@@ -382,7 +417,6 @@ class MessageQueue {
      * @param msg message to send
      */
     bool trySend(const std::shared_ptr<ADatatype>& msg);
-    // bool trySend(const ADatatype& msg);
 };
 
 }  // namespace dai

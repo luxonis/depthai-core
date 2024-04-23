@@ -15,9 +15,9 @@ void ThreadedNode::start() {
             // catch the exception and stop the node
             auto expStr = fmt::format("Node stopped with a queue exception: {}", ex.what());
             if(logger) {
-                logger->info(expStr);
+                logger->trace(expStr);
             } else {
-                spdlog::info(expStr);
+                spdlog::trace(expStr);
             }
             running = false;
         } catch(const std::runtime_error& ex) {
@@ -43,7 +43,7 @@ void ThreadedNode::stop() {
     running = false;
     // closes all the queueus, then waits for the thread to join
     for(auto& in : getInputRefs()) {
-        in->queue->close();
+        in->close();
     }
     // for(auto& rout : getOutputRefs()) {
     // }

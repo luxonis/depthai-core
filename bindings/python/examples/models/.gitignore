@@ -3,3 +3,4 @@
 *.json
 *.calib
 dataset/
+*.tar.xz

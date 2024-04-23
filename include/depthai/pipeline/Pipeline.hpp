@@ -2,7 +2,6 @@
 #pragma once
 
 // standard
-#include <map>
 #include <memory>
 #include <type_traits>
 #include <unordered_set>
@@ -30,8 +29,16 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     friend class Node;
 
    public:
+    PipelineImpl(Pipeline& pipeline, bool createImplicitDevice = true) : assetManager("/pipeline/"), parent(pipeline) {
+        if(createImplicitDevice) {
+            defaultDevice = std::make_shared<Device>();
+        }
+    }
     PipelineImpl(Pipeline& pipeline, std::shared_ptr<Device> device) : assetManager("/pipeline/"), parent(pipeline), defaultDevice{std::move(device)} {}
-    PipelineImpl(const PipelineImpl&) = default;
+    PipelineImpl(const PipelineImpl&) = delete;
+    PipelineImpl& operator=(const PipelineImpl&) = delete;
+    PipelineImpl(PipelineImpl&&) = delete;
+    PipelineImpl& operator=(PipelineImpl&&) = delete;
     ~PipelineImpl();
 
    private:
@@ -59,6 +66,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Access to nodes
     std::vector<std::shared_ptr<Node>> getAllNodes() const;
     std::shared_ptr<Node> getNode(Node::Id id) const;
+    std::vector<std::shared_ptr<Node>> getSourceNodes();
 
     void serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type = DEFAULT_SERIALIZATION_TYPE) const;
     nlohmann::json serializeToJson() const;
@@ -118,6 +126,9 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     std::enable_if_t<std::is_base_of<DeviceNode, N>::value, std::shared_ptr<N>> createNode(Args&&... args) {
         // N is a subclass of DeviceNode
         // return N::create();  // Specific create call for DeviceNode subclasses
+        if(defaultDevice == nullptr) {
+            throw std::runtime_error("Pipeline is host only, cannot create device node");
+        }
         return N::create(defaultDevice, std::forward<Args>(args)...);  // Specific create call for DeviceNode subclasses
     }
 
@@ -146,6 +157,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Run only host side, if any device nodes are present, error out
     bool isRunning() const;
+    bool isBuilt() const;
     void build();
     void start();
     void wait();
@@ -161,7 +173,14 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
  */
 class Pipeline {
     friend class PipelineImpl;
+    friend class Device;
+
     std::shared_ptr<PipelineImpl> pimpl;
+
+   protected:
+    std::vector<std::shared_ptr<Node>> getSourceNodes() {
+        return impl()->getSourceNodes();
+    }
 
    public:
     PipelineImpl* impl() {
@@ -172,10 +191,20 @@ class Pipeline {
     }
 
     /**
-     * Constructs a new pipeline - creates the device implicitly
+     * Creates a pipeline
+     * @param hostOnly If true, pipeline will run only be able to run host nodes and no device nodes can be added, otherwise pipeline implicitly creates a
+     * device
      */
-    Pipeline();
+    explicit Pipeline(bool createImplicitDevice = true);
+
+    /**
+     * Creates a pipeline with specified device
+     */
     explicit Pipeline(std::shared_ptr<Device> device);
+
+    /**
+     * Creates a pipeline with specified device
+     */
     explicit Pipeline(std::shared_ptr<PipelineImpl> pimpl);
 
     /**
@@ -382,6 +411,11 @@ class Pipeline {
     bool isRunning() const {
         return impl()->isRunning();
     }
+
+    bool isBuilt() const {
+        return impl()->isBuilt();
+    }
+
     void build() {
         impl()->build();
     }
@@ -395,6 +429,9 @@ class Pipeline {
         impl()->stop();
     }
 
+    /*
+     * @note In case of a host only pipeline, this function returns a nullptr
+     */
     std::shared_ptr<Device> getDefaultDevice() {
         return impl()->defaultDevice;
     }

@@ -18,7 +18,9 @@ else()
     hunter_add_package(libarchive-luxonis)
     hunter_add_package(spdlog)
     hunter_add_package(ZLIB)
+    hunter_add_package(lz4-luxonis)
     hunter_add_package(httplib)
+    hunter_add_package(mp4v2)
     if(DEPTHAI_ENABLE_BACKWARD)
         hunter_add_package(Backward)
     endif()
@@ -39,6 +41,7 @@ if(NOT CONFIG_MODE OR (CONFIG_MODE AND NOT DEPTHAI_SHARED_LIBS))
     find_package(lzma ${_QUIET} CONFIG REQUIRED)
     # ZLIB for compressing Apps
     find_package(ZLIB CONFIG REQUIRED)
+    find_package(lz4 CONFIG REQUIRED)
 
     # spdlog for library and device logging
     find_package(spdlog ${_QUIET} CONFIG REQUIRED)
@@ -72,6 +75,9 @@ find_package(nlohmann_json 3.6.0 ${_QUIET} CONFIG REQUIRED)
 # libnop for serialization
 find_package(libnop ${_QUIET} CONFIG REQUIRED)
 
+# MP4V2 for video encoding
+find_package(mp4v2 ${_QUIET} CONFIG REQUIRED)
+
 # XLink
 if(DEPTHAI_XLINK_LOCAL AND (NOT CONFIG_MODE))
     set(_BUILD_SHARED_LIBS_SAVED "${BUILD_SHARED_LIBS}")
@@ -91,12 +97,16 @@ if(DEPTHAI_OPENCV_SUPPORT)
     find_package(OpenCV 4 ${_QUIET} CONFIG REQUIRED)
 endif()
 
-find_package(jsoncpp QUIET)
+if(DEPTHAI_PCL_SUPPORT AND NOT TARGET JsonCpp::JsonCpp)
+    find_package(jsoncpp)
+endif()
 set(MODULE_TEMP ${CMAKE_MODULE_PATH})
 set(PREFIX_TEMP ${CMAKE_PREFIX_PATH})
 set(CMAKE_MODULE_PATH ${_DEPTHAI_MODULE_PATH_ORIGINAL})
 set(CMAKE_PREFIX_PATH ${_DEPTHAI_PREFIX_PATH_ORIGINAL})
-find_package(PCL QUIET CONFIG COMPONENTS common visualization)
+if(DEPTHAI_PCL_SUPPORT)
+    find_package(PCL CONFIG COMPONENTS common visualization)
+endif()
 set(CMAKE_MODULE_PATH ${MODULE_TEMP})
 set(CMAKE_PREFIX_PATH ${PREFIX_TEMP})
 

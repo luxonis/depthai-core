@@ -22,16 +22,22 @@ void SpatialDetectionNetwork::build() {
 
     // No "internal" buffering to keep interface similar to monolithic nodes
     detectionParser->input.setBlocking(true);
-    detectionParser->input.setQueueSize(1);
+    detectionParser->input.setMaxSize(1);
     detectionParser->imageIn.setBlocking(false);
-    detectionParser->imageIn.setQueueSize(1);
-    inputDetections.setQueueSize(1);
+    detectionParser->imageIn.setMaxSize(1);
+    inputDetections.setMaxSize(1);
     inputDetections.setBlocking(true);
 }
 
 // -------------------------------------------------------------------
 // Neural Network API
 // -------------------------------------------------------------------
+
+void SpatialDetectionNetwork::setNNArchive(const NNArchive& nnArchive) {
+    const auto blob = detectionParser->setNNArchive(nnArchive);
+    neuralNetwork->setBlob(blob);
+}
+
 void SpatialDetectionNetwork::setBlobPath(const dai::Path& path) {
     neuralNetwork->setBlobPath(path);
     detectionParser->setBlobPath(path);
@@ -146,6 +152,10 @@ void YoloSpatialDetectionNetwork::setIouThreshold(float thresh) {
 /// Get num classes
 int YoloSpatialDetectionNetwork::getNumClasses() const {
     return detectionParser->getNumClasses();
+}
+
+std::optional<std::vector<std::string>> YoloSpatialDetectionNetwork::getClasses() const {
+    return detectionParser->getClasses();
 }
 
 /// Get coordianate size

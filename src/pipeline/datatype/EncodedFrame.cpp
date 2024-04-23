@@ -7,6 +7,12 @@ namespace dai {
 unsigned int EncodedFrame::getInstanceNum() const {
     return instanceNum;
 }
+unsigned int EncodedFrame::getHeight() const {
+    return height;
+}
+unsigned int EncodedFrame::getWidth() const {
+    return width;
+}
 std::chrono::microseconds EncodedFrame::getExposureTime() const {
     return std::chrono::microseconds(cam.exposureTimeUs);
 }
@@ -75,6 +81,23 @@ EncodedFrame::Profile EncodedFrame::getProfile() const {
 
 EncodedFrame& EncodedFrame::setInstanceNum(unsigned int instanceNum) {
     this->instanceNum = instanceNum;
+    return *this;
+}
+EncodedFrame& EncodedFrame::setWidth(unsigned int width) {
+    this->width = width;
+    return *this;
+}
+EncodedFrame& EncodedFrame::setHeight(unsigned int height) {
+    this->height = height;
+    return *this;
+}
+EncodedFrame& EncodedFrame::setSize(unsigned int width, unsigned int height) {
+    setWidth(width);
+    setHeight(height);
+    return *this;
+}
+EncodedFrame& EncodedFrame::setSize(std::tuple<unsigned int, unsigned int> size) {
+    setSize(std::get<0>(size), std::get<1>(size));
     return *this;
 }
 EncodedFrame& EncodedFrame::setQuality(unsigned int quality) {

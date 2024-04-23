@@ -1,7 +1,8 @@
 #pragma once
 
-#include "depthai/utility/Serialization.hpp"
 #include <optional>
+
+#include "depthai/utility/Serialization.hpp"
 
 // std::optional serialization for nlohmann json
 // partial specialization (full specialization works too)

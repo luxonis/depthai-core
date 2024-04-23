@@ -1,5 +1,4 @@
 #pragma once
-#include <atomic>
 #include <condition_variable>
 #include <functional>
 #include <limits>
@@ -27,19 +26,21 @@ class LockingQueue {
         this->maxSize = maxSize;
         this->blocking = blocking;
     }
-    LockingQueue(const LockingQueue& q) {
-        std::unique_lock<std::mutex> lock;
-        maxSize = q.maxSize;
-        blocking = q.blocking;
-        queue = q.queue;
-        destructed = q.destructed;
+    LockingQueue(const LockingQueue& obj) : maxSize(obj.maxSize), blocking(obj.blocking), queue(obj.queue), destructed(obj.destructed){};
+    LockingQueue(LockingQueue&& obj) noexcept : maxSize(obj.maxSize), blocking(obj.blocking), queue(std::move(obj.queue)), destructed(obj.destructed){};
+    LockingQueue& operator=(const LockingQueue& obj) {
+        maxSize = obj.maxSize;
+        blocking = obj.blocking;
+        queue = obj.queue;
+        destructed = obj.destructed;
+        return *this;
     }
-    LockingQueue(LockingQueue&& q) {
-        std::unique_lock<std::mutex> lock;
-        maxSize = std::move(q.maxSize);
-        blocking = std::move(q.blocking);
-        queue = std::move(q.queue);
-        destructed = std::move(q.destructed);
+    LockingQueue& operator=(LockingQueue&& obj) noexcept {
+        maxSize = obj.maxSize;
+        blocking = obj.blocking;
+        queue = std::move(obj.queue);
+        destructed = obj.destructed;
+        return *this;
     }
 
     void setMaxSize(unsigned sz) {

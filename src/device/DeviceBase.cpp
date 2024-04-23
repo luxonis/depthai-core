@@ -1,12 +1,15 @@
 #include "depthai/device/DeviceBase.hpp"
 
 // std
+#include <spdlog/fmt/ostr.h>
+
 #include <iostream>
 #include <optional>
 
 // shared
 #include "depthai-bootloader-shared/Bootloader.hpp"
 #include "depthai-bootloader-shared/XLinkConstants.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/device/CrashDump.hpp"
 #include "depthai/log/LogConstants.hpp"
 #include "depthai/log/LogLevel.hpp"
