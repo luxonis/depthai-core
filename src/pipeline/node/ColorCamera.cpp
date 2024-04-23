@@ -2,6 +2,7 @@
 
 #include <cmath>
 
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "spdlog/fmt/fmt.h"
 
 namespace dai {
@@ -9,9 +10,23 @@ namespace node {
 
 ColorCamera::ColorCamera(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(std::move(props)) {}
 
+ColorCamera::ColorCamera(std::shared_ptr<Device> device, dai::CameraBoardSocket socket)
+    : DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraProperties>(device) {
+    // Check if the board socket is valid
+    if(socket == CameraBoardSocket::AUTO) {
+        // TODO(Morato) - should we remove this as it disables the ability to check any resolutions, ...
+    } else {
+        std::vector<dai::CameraBoardSocket> connected = device->getConnectedCameras();
+        if(std::find(connected.begin(), connected.end(), socket) == connected.end()) {
+            throw std::invalid_argument(fmt::format("Camera on the specified board socket is not connected"));
+        }
+    }
+    properties.boardSocket = socket;
+}
+
 void ColorCamera::build() {
     // Set some default properties
-    properties.boardSocket = CameraBoardSocket::AUTO;
+    // properties.boardSocket = CameraBoardSocket::AUTO;
     properties.imageOrientation = CameraImageOrientation::AUTO;
     properties.previewType = ImgFrame::Type::BGR888i;
     properties.previewHeight = 300;
@@ -725,6 +740,26 @@ float ColorCamera::getCalibrationAlpha() const {
 
 void ColorCamera::setRawOutputPacked(bool packed) {
     properties.rawPacked = packed;
+}
+
+bool ColorCamera::isSourceNode() const {
+    return true;
+}
+
+utility::NodeRecordParams ColorCamera::getNodeRecordParams() const {
+    if(properties.boardSocket == CameraBoardSocket::AUTO) {
+        throw std::runtime_error("For record and replay functionality, board socket must be specified (Camera).");
+    }
+    utility::NodeRecordParams params;
+    params.name = "Camera" + toString(properties.boardSocket);
+    return params;
+}
+
+ColorCamera::Output& ColorCamera::getRecordOutput() {
+    return isp;
+}
+ColorCamera::Input& ColorCamera::getReplayInput() {
+    return mockIsp;
 }
 
 }  // namespace node

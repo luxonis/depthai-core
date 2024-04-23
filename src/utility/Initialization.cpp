@@ -1,4 +1,5 @@
 #include "utility/Initialization.hpp"
+#include <spdlog/async.h>
 
 // std
 #include <memory>
@@ -67,6 +68,8 @@ bool initialize(const char* additionalInfo, bool installSignalHandler, void* jav
     static const bool initialized = [&]() {
         // Initialize logging
         Logging::getInstance();
+
+        spdlog::init_thread_pool(8192, 1); // TODO(Morato) - what happens if someone else initializes the thread pool?
 
 #ifdef DEPTHAI_ENABLE_BACKWARD
         // install backward if specified

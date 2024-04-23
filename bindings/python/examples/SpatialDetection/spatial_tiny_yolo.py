@@ -46,10 +46,8 @@ labelMap = [
     "teddy bear",     "hair drier", "toothbrush"
 ]
 
-syncNN = True
-
 # Create pipeline
-pipeline = dai.Pipeline()
+pipeline = dai.Pipeline(True)
 
 # Define sources and outputs
 camRgb = pipeline.create(dai.node.ColorCamera)
@@ -57,16 +55,7 @@ spatialDetectionNetwork = pipeline.create(dai.node.YoloSpatialDetectionNetwork)
 monoLeft = pipeline.create(dai.node.MonoCamera)
 monoRight = pipeline.create(dai.node.MonoCamera)
 stereo = pipeline.create(dai.node.StereoDepth)
-nnNetworkOut = pipeline.create(dai.node.XLinkOut)
-
-xoutRgb = pipeline.create(dai.node.XLinkOut)
-xoutNN = pipeline.create(dai.node.XLinkOut)
-xoutDepth = pipeline.create(dai.node.XLinkOut)
-
-xoutRgb.setStreamName("rgb")
-xoutNN.setStreamName("detections")
-xoutDepth.setStreamName("depth")
-nnNetworkOut.setStreamName("nnNetwork")
+sync = pipeline.create(dai.node.Sync)
 
 # Properties
 camRgb.setPreviewSize(416, 416)
@@ -84,7 +73,7 @@ stereo.setDefaultProfilePreset(dai.node.StereoDepth.PresetMode.HIGH_DENSITY)
 # Align depth map to the perspective of RGB camera, on which inference is done
 stereo.setDepthAlign(dai.CameraBoardSocket.CAM_A)
 stereo.setOutputSize(monoLeft.getResolutionWidth(), monoLeft.getResolutionHeight())
-stereo.setSubpixel(True)
+stereo.setSubpixel(False)
 
 spatialDetectionNetwork.setBlobPath(nnBlobPath)
 spatialDetectionNetwork.setConfidenceThreshold(0.5)
@@ -103,39 +92,32 @@ spatialDetectionNetwork.setIouThreshold(0.5)
 # Linking
 monoLeft.out.link(stereo.left)
 monoRight.out.link(stereo.right)
-
-camRgb.preview.link(spatialDetectionNetwork.input)
-if syncNN:
-    spatialDetectionNetwork.passthrough.link(xoutRgb.input)
-else:
-    camRgb.preview.link(xoutRgb.input)
-
-spatialDetectionNetwork.out.link(xoutNN.input)
-
 stereo.depth.link(spatialDetectionNetwork.inputDepth)
-spatialDetectionNetwork.passthroughDepth.link(xoutDepth.input)
-spatialDetectionNetwork.outNetwork.link(nnNetworkOut.input)
+camRgb.preview.link(spatialDetectionNetwork.input)
+
+
+camRgb.preview.link(sync.inputs["rgb"])
+spatialDetectionNetwork.passthroughDepth.link(sync.inputs["depth"])
+spatialDetectionNetwork.outNetwork.link(sync.inputs["nn"])
+spatialDetectionNetwork.out.link(sync.inputs["detections"])
+
+syncedQueue = sync.out.createQueue()
 
 # Connect to device and start pipeline
-with dai.Device(pipeline) as device:
-
-    # Output queues will be used to get the rgb frames and nn data from the outputs defined above
-    previewQueue = device.getOutputQueue(name="rgb", maxSize=4, blocking=False)
-    detectionNNQueue = device.getOutputQueue(name="detections", maxSize=4, blocking=False)
-    depthQueue = device.getOutputQueue(name="depth", maxSize=4, blocking=False)
-    networkQueue = device.getOutputQueue(name="nnNetwork", maxSize=4, blocking=False)
-
+with pipeline:
+    pipeline.start()
     startTime = time.monotonic()
     counter = 0
     fps = 0
     color = (255, 255, 255)
     printOutputLayersOnce = True
 
-    while True:
-        inPreview = previewQueue.get()
-        inDet = detectionNNQueue.get()
-        depth = depthQueue.get()
-        inNN = networkQueue.get()
+    while pipeline.isRunning():
+        syncedMessage = syncedQueue.get()
+        inPreview : dai.ImgFrame = syncedMessage["rgb"]
+        inDet : dai.SpatialImgDetections = syncedMessage["detections"]
+        depth : dai.ImgFrame = syncedMessage["depth"]
+        inNN : dai.NNData = syncedMessage["nn"]
 
         if printOutputLayersOnce:
             toPrint = 'Output layer names:'

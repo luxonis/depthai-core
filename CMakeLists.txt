@@ -166,6 +166,11 @@ endif()
 
 # Specify optional dependencies
 option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" ON)
+option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
+option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
+option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" OFF)
+
+
 # Include project dependencies
 set(DEPTHAI_DEPENDENCY_INCLUDE "" CACHE FILEPATH "Optional cmake file to append to dependency processing, e.g. additional find_package()")
 include(depthaiDependencies)
@@ -234,10 +239,12 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/FeatureTracker.cpp
     src/pipeline/node/ToF.cpp
     src/pipeline/node/DetectionParser.cpp
-    src/pipeline/node/Sync.cpp
     src/pipeline/node/test/MyProducer.cpp
     src/pipeline/node/test/MyConsumer.cpp
     src/pipeline/node/UVC.cpp
+    src/pipeline/node/host/XLinkInHost.cpp
+    src/pipeline/node/host/XLinkOutHost.cpp
+    src/pipeline/node/host/HostNode.cpp
     src/pipeline/datatype/DatatypeEnum.cpp
     src/pipeline/node/PointCloud.cpp
     src/pipeline/datatype/Buffer.cpp
@@ -274,7 +281,10 @@ add_library(${TARGET_CORE_NAME}
     src/utility/Resources.cpp
     src/utility/Path.cpp
     src/utility/Platform.cpp
+    src/utility/RecordReplay.cpp
+    src/utility/McapImpl.cpp
     src/utility/Environment.cpp
+    src/utility/Compression.cpp
     src/utility/XLinkGlobalProfilingLogger.cpp
     src/utility/Logging.cpp
     src/utility/Checksum.cpp
@@ -327,9 +337,6 @@ option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
 option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
 option(DEPTHAI_BUILD_PYTHON "Build python bindings" OFF)
 option(DEPTHAI_BUILD_DOCS "Build documentation - requires doxygen to be installed" OFF)
-option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
-option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" ON)
-option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
 
 # Specify support for FW
 option(DEPTHAI_ENABLE_DEVICE_FW "Enable MyriadX Device FW" ON)
@@ -515,7 +522,9 @@ target_link_libraries(${TARGET_CORE_NAME}
         FP16::fp16
         archive_static
         ZLIB::zlib
+        LZ4::lz4_shared
         httplib::httplib
+        mp4v2::mp4v2
 )
 
 # Add compile & CMake definitions
@@ -602,7 +611,7 @@ set(TARGET_OPENCV_NAME ${PROJECT_NAME}-opencv)
 set(TARGET_OPENCV_ALIAS opencv)
 if(DEPTHAI_OPENCV_SUPPORT)
     # Check if required libraries are available
-    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc")
+    set(REQUIRED_OPENCV_LIBRARIES "opencv_core" "opencv_imgproc" "opencv_videoio")
     set(OPENCV_SUPPORT_AVAILABLE ${OpenCV_FOUND})
     foreach(lib ${REQUIRED_OPENCV_LIBRARIES})
         if(NOT (lib IN_LIST OpenCV_LIBS))
@@ -613,7 +622,14 @@ if(DEPTHAI_OPENCV_SUPPORT)
     if(OPENCV_SUPPORT_AVAILABLE)
 
         # Add depthai-core-opencv library and depthai::core::opencv alias
-        add_library(${TARGET_OPENCV_NAME} src/opencv/ImgFrame.cpp)
+        add_library(${TARGET_OPENCV_NAME}
+            src/opencv/ImgFrame.cpp
+            src/pipeline/node/host/Display.cpp
+            src/pipeline/node/host/HostCamera.cpp
+            src/pipeline/node/host/Record.cpp
+            src/pipeline/node/host/Replay.cpp
+            src/opencv/RecordReplay.cpp
+        )
         add_library("${PROJECT_NAME}::${TARGET_OPENCV_ALIAS}" ALIAS ${TARGET_OPENCV_NAME})
         # Specifies name of generated IMPORTED target (set to alias)
         set_target_properties(${TARGET_OPENCV_NAME} PROPERTIES EXPORT_NAME ${TARGET_OPENCV_ALIAS})

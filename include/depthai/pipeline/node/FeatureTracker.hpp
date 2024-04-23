@@ -38,24 +38,24 @@ class FeatureTracker : public DeviceNodeCRTP<DeviceNode, FeatureTracker, Feature
      * Input FeatureTrackerConfig message with ability to modify parameters in runtime.
      * Default queue is non-blocking with size 4.
      */
-    Input inputConfig{true, *this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::FeatureTrackerConfig, false}}};
+    Input inputConfig{*this, {.name = "inputConfig", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::FeatureTrackerConfig, false}}}};
+
     /**
      * Input message with frame data on which feature tracking is performed.
      * Default queue is non-blocking with size 4.
      */
-    Input inputImage{true, *this, "inputImage", Input::Type::SReceiver, false, 4, true, {{DatatypeEnum::ImgFrame, false}}};
+    Input inputImage{*this, {.name = "inputImage", .blocking = false, .queueSize = 4, .types = {{DatatypeEnum::ImgFrame, false}}, .waitForMessage = true}};
 
     /**
      * Outputs TrackedFeatures message that carries tracked features results.
      */
-    Output outputFeatures{true, *this, "outputFeatures", Output::Type::MSender, {{DatatypeEnum::TrackedFeatures, false}}};
+    Output outputFeatures{*this, {.name = "outputFeatures", .types = {{DatatypeEnum::TrackedFeatures, false}}}};
 
     /**
      * Passthrough message on which the calculation was performed.
      * Suitable for when input queue is set to non-blocking behavior.
      */
-    Output passthroughInputImage{true, *this, "passthroughInputImage", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
-
+    Output passthroughInputImage{*this, {.name = "passthroughInputImage", .types = {{DatatypeEnum::ImgFrame, false}}}};
     // Functions to set properties
     /**
      * Specify whether or not wait until configuration message arrives to inputConfig Input.

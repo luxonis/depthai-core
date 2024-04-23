@@ -37,12 +37,12 @@ class Warp : public DeviceNodeCRTP<DeviceNode, Warp, WarpProperties> {
      * Input image to be modified
      * Default queue is blocking with size 8
      */
-    Input inputImage{true, *this, "inputImage", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::ImgFrame, true}}};
+    Input inputImage{*this, {.name = "inputImage", .types = {{DatatypeEnum::ImgFrame, true}}}};
 
     /**
      * Outputs ImgFrame message that carries warped image.
      */
-    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
+    Output out{*this, {.name = "out", .types = {{DatatypeEnum::ImgFrame, true}}}};
 
     /**
      * Sets output frame size in pixels

@@ -10,22 +10,28 @@ std::optional<OpenVINO::Version> Node::getRequiredOpenVINOVersion() {
 }
 
 const Pipeline Node::getParentPipeline() const {
-    Pipeline pipeline(std::shared_ptr<PipelineImpl>{parent});
-    return pipeline;
+    auto impl = parent.lock();
+    if(impl == nullptr) {
+        throw std::runtime_error("Pipeline is null");
+    }
+    return Pipeline(impl);
 }
 
 Pipeline Node::getParentPipeline() {
-    Pipeline pipeline(std::shared_ptr<PipelineImpl>{parent});
-    return pipeline;
+    auto impl = parent.lock();
+    if(impl == nullptr) {
+        throw std::runtime_error("Pipeline is null");
+    }
+    return Pipeline(impl);
 }
 
 Node::Connection::Connection(Output out, Input in) {
     outputId = out.getParent().id;
-    outputName = out.name;
-    outputGroup = out.group;
+    outputName = out.getName();
+    outputGroup = out.getGroup();
     inputId = in.getParent().id;
-    inputName = in.name;
-    inputGroup = in.group;
+    inputName = in.getName();
+    inputGroup = in.getGroup();
 }
 
 Node::Connection::Connection(ConnectionInternal c) {
@@ -48,25 +54,33 @@ bool Node::Connection::operator==(const Node::Connection& rhs) const {
 }
 
 std::string Node::Output::toString() const {
-    if(group == "") {
-        return fmt::format("{}", name);
+    if(getGroup() == "") {
+        return fmt::format("{}", getName());
     } else {
-        return fmt::format("{}[\"{}\"]", group, name);
+        return fmt::format("{}[\"{}\"]", getGroup(), getName());
     }
 }
 
 std::string Node::Input::toString() const {
     if(group == "") {
-        return fmt::format("{}", name);
+        return fmt::format("{}", getName());
     } else {
-        return fmt::format("{}[\"{}\"]", group, name);
+        return fmt::format("{}[\"{}\"]", group, getName());
     }
+}
+
+void Node::Input::setGroup(std::string newGroup) {
+    group = std::move(newGroup);
+}
+
+std::string Node::Input::getGroup() const {
+    return group;
 }
 
 std::vector<Node::ConnectionInternal> Node::Output::getConnections() {
     std::vector<Node::ConnectionInternal> myConnections;
-    for(const auto& conn : parent.connections) {
-        if(conn.outputName == name && conn.outputGroup == group) {
+    for(const auto& conn : parent.get().connections) {
+        if(conn.out == this) {
             myConnections.push_back(conn);
         }
     }
@@ -76,16 +90,17 @@ std::vector<Node::ConnectionInternal> Node::Output::getConnections() {
 bool Node::Output::isSamePipeline(const Input& in) {
     // Check whether current output and 'in' are on same pipeline.
     // By checking parent of node
-    auto outputPipeline = parent.parent.lock();
+    auto outputPipeline = parent.get().parent.lock();
     if(outputPipeline != nullptr) {
-        return (outputPipeline == in.parent.parent.lock());
+        auto inputPipeline = in.getParent().parent.lock();
+        return (outputPipeline == inputPipeline);
     }
     return false;
 }
 
 static bool isDatatypeMatch(const Node::Output& out, const Node::Input& in) {
     // Check that datatypes match up
-    for(const auto& outHierarchy : out.possibleDatatypes) {
+    for(const auto& outHierarchy : out.getPossibleDatatypes()) {
         for(const auto& inHierarchy : in.possibleDatatypes) {
             // Check if datatypes match for current datatype
             if(outHierarchy.datatype == inHierarchy.datatype) return true;
@@ -103,8 +118,8 @@ static bool isDatatypeMatch(const Node::Output& out, const Node::Input& in) {
 
 bool Node::Output::canConnect(const Input& in) {
     // Check that IoType match up
-    if(type == Output::Type::MSender && in.type == Input::Type::MReceiver) return false;
-    if(type == Output::Type::SSender && in.type == Input::Type::SReceiver) return false;
+    if(type == Output::Type::MSender && in.getType() == Input::Type::MReceiver) return false;
+    if(type == Output::Type::SSender && in.getType() == Input::Type::SReceiver) return false;
 
     // Check that datatypes match up
     if(!isDatatypeMatch(*this, in)) {
@@ -121,26 +136,38 @@ void Node::Output::link(Input& in) {
         throw std::runtime_error(fmt::format("Cannot link '{}.{}' to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
     }
 
+    // Needed for serialization
     // Create 'Connection' object between 'out' and 'in'
     Node::ConnectionInternal connection(*this, in);
 
     // Check if connection was already made - the following is possible as operator[] constructs the underlying set if it doesn't exist.
-    if(parent.connections.count(connection) > 0) {
+    if(parent.get().connections.count(connection) > 0) {
         // this means a connection was already made.
         throw std::logic_error(fmt::format("'{}.{}' already linked to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
     }
 
     // Otherwise all is set to add a new connection
-    parent.connections.insert(connection);
+    parent.get().connections.insert(connection);
+    // Add the shared_ptr to the input directly for host side
+    connectedInputs.push_back(&in);
 }
 
-Node::ConnectionInternal::ConnectionInternal(Output& out, Input& in) {
+std::shared_ptr<dai::MessageQueue> Node::Output::createQueue(unsigned int maxSize, bool blocking)
+{
+    // Check if pipeline is already started - if so, throw an error
+    auto pipelinePtr = parent.get().getParentPipeline();
+    if(pipelinePtr.isBuilt()) {
+        throw std::runtime_error("Cannot create queue after pipeline is built");
+    }
+    auto queue = std::make_shared<MessageQueue>(maxSize, blocking);
+    link(queue);
+    return queue;
+}
+
+Node::ConnectionInternal::ConnectionInternal(Output& out, Input& in)
+    : outputName{out.getName()}, outputGroup{out.getGroup()}, inputName{in.getName()}, inputGroup{in.getGroup()}, out{&out}, in{&in} {
     outputNode = out.getParent().shared_from_this();
-    outputName = out.name;
-    outputGroup = out.group;
     inputNode = in.getParent().shared_from_this();
-    inputName = in.name;
-    inputGroup = in.group;
 }
 
 bool Node::ConnectionInternal::operator==(const Node::ConnectionInternal& rhs) const {
@@ -151,73 +178,60 @@ bool Node::ConnectionInternal::operator==(const Node::ConnectionInternal& rhs) c
 void Node::Output::unlink(Input& in) {
     // Create 'Connection' object between 'out' and 'in'
     Node::ConnectionInternal connection(*this, in);
-    if(parent.connections.count(connection) == 0) {
+    if(parent.get().connections.count(connection) == 0) {
         // this means a connection was not present already made.
         throw std::logic_error(fmt::format("'{}.{}' not linked to '{}.{}'", getParent().getName(), toString(), in.getParent().getName(), in.toString()));
     }
 
     // Unlink
-    parent.connections.erase(connection);
+    parent.get().connections.erase(connection);
+
+    // Remove the shared_ptr to the input directly for host side
+    connectedInputs.erase(std::remove(connectedInputs.begin(), connectedInputs.end(), &in), connectedInputs.end());
 }
 
 void Node::Output::send(const std::shared_ptr<ADatatype>& msg) {
-    for(auto& conn : getConnections()) {
-        // Get node AND hold a reference to it.
-        auto node = conn.inputNode.lock();
-        // Safe, as long as we also hold 'node' shared_ptr
-        auto inputs = node->getInputRefs();
-        // Find the corresponding inputs
-        for(auto& input : inputs) {
-            if(input->group == conn.inputGroup && input->name == conn.inputName) {
-                // Corresponding input to a given connection
-                // Send the message
-                input->queue.send(msg);
-            }
-        }
+    // for(auto& conn : getConnections()) {
+    //     // Get node AND hold a reference to it.
+    //     auto node = conn.inputNode.lock();
+    //     // Safe, as long as we also hold 'node' shared_ptr
+    //     auto inputs = node->getInputRefs();
+    //     // Find the corresponding inputs
+    //     for(auto& input : inputs) {
+    //         if(input->group == conn.inputGroup && input->name == conn.inputName) {
+    //             // Corresponding input to a given connection
+    //             // Send the message
+    //             input->queue.send(msg);
+    //         }
+    //     }
+    // }
+    for(auto& messageQueue : connectedInputs) {
+        messageQueue->send(msg);
     }
 }
 
 bool Node::Output::trySend(const std::shared_ptr<ADatatype>& msg) {
     bool success = true;
 
-    for(auto& conn : getConnections()) {
-        // Get node AND hold a reference to it.
-        auto node = conn.inputNode.lock();
-        // Safe, as long as we also hold 'node' shared_ptr
-        auto inputs = node->getInputRefs();
-        // Find the corresponding inputs
-        for(auto& input : inputs) {
-            if(input->group == conn.inputGroup && input->name == conn.inputName) {
-                // Corresponding input to a given connection
-                // Send the message
-                success &= input->queue.trySend(msg);
-            }
-        }
+    // for(auto& conn : getConnections()) {
+    //     // Get node AND hold a reference to it.
+    //     auto node = conn.inputNode.lock();
+    //     // Safe, as long as we also hold 'node' shared_ptr
+    //     auto inputs = node->getInputRefs();
+    //     // Find the corresponding inputs
+    //     for(auto& input : inputs) {
+    //         if(input->group == conn.inputGroup && input->name == conn.inputName) {
+    //             // Corresponding input to a given connection
+    //             // Send the message
+    //             success &= input->queue.trySend(msg);
+    //         }
+    //     }
+    // }
+    for(auto& messageQueue : connectedInputs) {
+        success &= messageQueue->trySend(msg);
     }
 
     return success;
-}
-
-void Node::Input::setBlocking(bool newBlocking) {
-    blocking = newBlocking;
-}
-
-bool Node::Input::getBlocking() const {
-    if(blocking) {
-        return *blocking;
-    }
-    return defaultBlocking;
-}
-
-void Node::Input::setQueueSize(int size) {
-    queueSize = size;
-}
-
-int Node::Input::getQueueSize() const {
-    if(queueSize) {
-        return *queueSize;
-    }
-    return defaultQueueSize;
 }
 
 void Node::Input::setWaitForMessage(bool newWaitForMessage) {
@@ -225,7 +239,7 @@ void Node::Input::setWaitForMessage(bool newWaitForMessage) {
 }
 
 bool Node::Input::getWaitForMessage() const {
-    return waitForMessage.value_or(defaultWaitForMessage);
+    return waitForMessage;
 }
 
 void Node::Input::setReusePreviousMessage(bool reusePreviousMessage) {
@@ -233,7 +247,7 @@ void Node::Input::setReusePreviousMessage(bool reusePreviousMessage) {
 }
 
 bool Node::Input::getReusePreviousMessage() const {
-    return !waitForMessage.value_or(defaultWaitForMessage);
+    return !waitForMessage;
 }
 
 const AssetManager& Node::getAssetManager() const {
@@ -249,26 +263,21 @@ std::vector<uint8_t> Node::loadResource(dai::Path uri) {
     return parent.lock()->loadResourceCwd(uri, cwd);
 }
 
-Node::OutputMap::OutputMap(std::string name, Node::Output defaultOutput) : defaultOutput(defaultOutput), name(std::move(name)) {}
-Node::OutputMap::OutputMap(Node::Output defaultOutput) : defaultOutput(defaultOutput) {}
-Node::OutputMap::OutputMap(bool ref, Node& parent, std::string name, Node::Output defaultOutput) : defaultOutput(defaultOutput), name(std::move(name)) {
-    // Place oneself to the parents references
+Node::OutputMap::OutputMap(Node& parent, std::string name, Node::OutputDescription defaultOutput, bool ref)
+    :defaultOutput(defaultOutput), parent(parent), name(std::move(name)) {
     if(ref) {
         parent.setOutputMapRefs(this);
     }
 }
-Node::OutputMap::OutputMap(bool ref, Node& parent, Node::Output defaultOutput) : defaultOutput(defaultOutput) {
-    // Place oneself to the parents references
-    if(ref) {
-        parent.setOutputMapRefs(this);
-    }
-}
+
+Node::OutputMap::OutputMap(Node& parent, Node::OutputDescription defaultOutput, bool ref) : OutputMap(parent, "", std::move(defaultOutput), ref){};
+
 Node::Output& Node::OutputMap::operator[](const std::string& key) {
     if(count({name, key}) == 0) {
         // Create using default and rename with group and key
-        Output output(defaultOutput);
-        output.group = name;
-        output.name = key;
+        Output output(parent, defaultOutput);
+        output.setGroup(name);
+        output.setName(key);
         insert({{name, key}, output});
     }
     // otherwise just return reference to existing
@@ -277,36 +286,29 @@ Node::Output& Node::OutputMap::operator[](const std::string& key) {
 Node::Output& Node::OutputMap::operator[](std::pair<std::string, std::string> groupKey) {
     if(count(groupKey) == 0) {
         // Create using default and rename with group and key
-        Output output(defaultOutput);
+        Output output(parent, defaultOutput);
 
         // Uses \t (tab) as a special character to parse out as subgroup name
-        output.group = fmt::format("{}\t{}", name, groupKey.first);
-        output.name = groupKey.second;
+        output.setGroup(fmt::format("{}\t{}", name, groupKey.first));
+        output.setName(groupKey.second);
         insert(std::make_pair(groupKey, output));
     }
     // otherwise just return reference to existing
     return at(groupKey);
 }
-Node::InputMap::InputMap(std::string name, Node::Input defaultInput) : defaultInput(defaultInput), name(std::move(name)) {}
-Node::InputMap::InputMap(Node::Input defaultInput) : defaultInput(defaultInput) {}
-Node::InputMap::InputMap(bool ref, Node& parent, std::string name, Node::Input defaultInput) : defaultInput(defaultInput), name(std::move(name)) {
-    // Place oneself to the parents references
-    if(ref) {
-        parent.setInputMapRefs(this);
-    }
+
+Node::InputMap::InputMap(Node& parent, std::string name, Node::InputDescription description) : parent(parent), defaultInput(std::move(description)), name(std::move(name)) {
+    parent.setInputMapRefs(this);
 }
-Node::InputMap::InputMap(bool ref, Node& parent, Node::Input defaultInput) : defaultInput(defaultInput) {
-    // Place oneself to the parents references
-    if(ref) {
-        parent.setInputMapRefs(this);
-    }
-}
+
+Node::InputMap::InputMap(Node& parent, Node::InputDescription description) : InputMap(parent, "", std::move(description)){};
+
 Node::Input& Node::InputMap::operator[](const std::string& key) {
     if(count({name, key}) == 0) {
         // Create using default and rename with group and key
-        Input input(defaultInput);
-        input.group = name;
-        input.name = key;
+        Input input(parent, defaultInput, false);
+        input.setGroup(name);
+        input.setName(key);
         insert({{name, key}, input});
     }
     // otherwise just return reference to existing
@@ -315,15 +317,19 @@ Node::Input& Node::InputMap::operator[](const std::string& key) {
 Node::Input& Node::InputMap::operator[](std::pair<std::string, std::string> groupKey) {
     if(count(groupKey) == 0) {
         // Create using default and rename with group and key
-        Input input(defaultInput);
+        Input input(parent, defaultInput, false);
 
         // Uses \t (tab) as a special character to parse out as subgroup name
-        input.group = fmt::format("{}\t{}", name, groupKey.first);
-        input.name = groupKey.second;
+        input.setGroup(fmt::format("{}\t{}", name, groupKey.first));
+        input.setName(groupKey.second);
         insert(std::make_pair(groupKey, input));
     }
     // otherwise just return reference to existing
     return at(groupKey);
+}
+
+bool Node::InputMap::has(const std::string& key) const{
+    return count({name, key}) > 0;
 }
 
 /// Retrieves all nodes outputs
@@ -353,12 +359,11 @@ std::vector<Node::Output*> Node::getOutputRefs() {
     tmpOutputRefs.reserve(outputRefs.size() + outputMapRefs.size() * 5);
     // Add outputRefs
     for(auto& kv : outputRefs) {
-        tmpOutputRefs.push_back(kv.second);
+        tmpOutputRefs.push_back(kv);
     }
     // Add outputs from Maps
     for(auto& kvMap : outputMapRefs) {
-        auto*& map = kvMap.second;
-        for(auto& kv : *map) {
+        for(auto& kv : *kvMap) {
             tmpOutputRefs.push_back(&kv.second);
         }
     }
@@ -372,12 +377,11 @@ std::vector<const Node::Output*> Node::getOutputRefs() const {
     tmpOutputRefs.reserve(outputRefs.size() + outputMapRefs.size() * 5);
     // Add outputRefs
     for(const auto& kv : outputRefs) {
-        tmpOutputRefs.push_back(kv.second);
+        tmpOutputRefs.push_back(kv);
     }
     // Add outputs from Maps
     for(const auto& kvMap : outputMapRefs) {
-        const auto* const& map = kvMap.second;
-        for(const auto& kv : *map) {
+        for(const auto& kv : *kvMap) {
             tmpOutputRefs.push_back(&kv.second);
         }
     }
@@ -390,12 +394,11 @@ std::vector<Node::Input*> Node::getInputRefs() {
     tmpInputRefs.reserve(inputRefs.size() + inputMapRefs.size() * 5);
     // Add inputRefs
     for(auto& kv : inputRefs) {
-        tmpInputRefs.push_back(kv.second);
+        tmpInputRefs.push_back(kv);
     }
     // Add inputs from Maps
-    for(auto& kvMap : inputMapRefs) {
-        auto*& map = kvMap.second;
-        for(auto& kv : *map) {
+    for(auto* kvMap : inputMapRefs) {
+        for(auto& kv : *kvMap) {
             tmpInputRefs.push_back(&kv.second);
         }
     }
@@ -409,12 +412,11 @@ std::vector<const Node::Input*> Node::getInputRefs() const {
     tmpInputRefs.reserve(inputRefs.size() + inputMapRefs.size() * 5);
     // Add inputRefs
     for(const auto& kv : inputRefs) {
-        tmpInputRefs.push_back(kv.second);
+        tmpInputRefs.push_back(kv);
     }
     // Add inputs from Maps
     for(const auto& kvMap : inputMapRefs) {
-        const auto* const& map = kvMap.second;
-        for(const auto& kv : *map) {
+        for(const auto& kv : *kvMap) {
             tmpInputRefs.push_back(&kv.second);
         }
     }
@@ -427,7 +429,7 @@ Node::Output* Node::getOutputRef(std::string name) {
 Node::Output* Node::getOutputRef(std::string group, std::string name) {
     auto refs = getOutputRefs();
     for(auto& out : refs) {
-        if(out->group == group && out->name == name) {
+        if(out->getGroup() == group && out->getName() == name) {
             return out;
         }
     }
@@ -440,7 +442,7 @@ Node::Input* Node::getInputRef(std::string name) {
 Node::Input* Node::getInputRef(std::string group, std::string name) {
     auto refs = getInputRefs();
     for(auto& input : refs) {
-        if(input->group == group && input->name == name) {
+        if(input->getGroup() == group && input->getName() == name) {
             return input;
         }
     }
@@ -453,7 +455,7 @@ std::vector<Node::InputMap*> Node::getInputMapRefs() {
     tmpInputMapRefs.reserve(inputMapRefs.size());
     // Add inputs from Maps
     for(const auto& kvMap : inputMapRefs) {
-        tmpInputMapRefs.push_back(kvMap.second);
+        tmpInputMapRefs.push_back(kvMap);
     }
     return tmpInputMapRefs;
 }
@@ -464,56 +466,60 @@ std::vector<Node::OutputMap*> Node::getOutputMapRefs() {
     tmpOutputMapRefs.reserve(outputMapRefs.size());
     // Add inputs from Maps
     for(const auto& kvMap : outputMapRefs) {
-        tmpOutputMapRefs.push_back(kvMap.second);
+        tmpOutputMapRefs.push_back(kvMap);
     }
     return tmpOutputMapRefs;
 }
 
 Node::InputMap* Node::getInputMapRef(std::string group) {
-    if(inputMapRefs.count(group) == 0) {
-        return nullptr;
+    for(auto* inMapRef : inputMapRefs) {
+        if(inMapRef->name == group) {
+            return inMapRef;
+        }
     }
-    return inputMapRefs[group];
+    return nullptr;
 }
 
 Node::OutputMap* Node::getOutputMapRef(std::string group) {
-    if(outputMapRefs.count(group) == 0) {
-        return nullptr;
+    for(auto* outMapRef : outputMapRefs) {
+        if(outMapRef->name == group) {
+            return outMapRef;
+        }
     }
-    return outputMapRefs[group];
+    return nullptr;
 }
 
 void Node::setOutputRefs(std::initializer_list<Node::Output*> l) {
     for(auto& outRef : l) {
-        outputRefs[outRef->name] = outRef;
+        outputRefs.push_back(outRef);
     }
 }
 void Node::setOutputRefs(Node::Output* outRef) {
-    outputRefs[outRef->name] = outRef;
+    outputRefs.push_back(outRef);
 }
 void Node::setInputRefs(std::initializer_list<Node::Input*> l) {
     for(auto& inRef : l) {
-        inputRefs[inRef->name] = inRef;
+        inputRefs.push_back(inRef);
     }
 }
 void Node::setInputRefs(Node::Input* inRef) {
-    inputRefs[inRef->name] = inRef;
+    inputRefs.push_back(inRef);
 }
 void Node::setOutputMapRefs(std::initializer_list<Node::OutputMap*> l) {
     for(auto& outMapRef : l) {
-        outputMapRefs[outMapRef->name] = outMapRef;
+        outputMapRefs.push_back(outMapRef);
     }
 }
 void Node::setOutputMapRefs(Node::OutputMap* outMapRef) {
-    outputMapRefs[outMapRef->name] = outMapRef;
+    outputMapRefs.push_back(outMapRef);
 }
 void Node::setInputMapRefs(std::initializer_list<Node::InputMap*> l) {
     for(auto& inMapRef : l) {
-        inputMapRefs[inMapRef->name] = inMapRef;
+        inputMapRefs.push_back(inMapRef);
     }
 }
 void Node::setInputMapRefs(Node::InputMap* inMapRef) {
-    inputMapRefs[inMapRef->name] = inMapRef;
+    inputMapRefs.push_back(inMapRef);
 }
 void Node::buildStage1() {
     return;
@@ -527,7 +533,7 @@ void Node::buildStage3() {
 
 void Node::setNodeRefs(std::initializer_list<std::pair<std::string, std::shared_ptr<Node>*>> l) {
     for(auto& nodeRef : l) {
-        nodeRefs[nodeRef.first] = nodeRef.second;
+        nodeRefs.push_back(nodeRef.second);
     }
 }
 void Node::setNodeRefs(std::pair<std::string, std::shared_ptr<Node>*> nodeRef) {
@@ -540,9 +546,6 @@ void Node::setNodeRefs(std::string alias, std::shared_ptr<Node>* nodeRef) {
 void Node::add(std::shared_ptr<Node> node) {
     // TODO(themarpe) - check if node is already added somewhere else, etc... (as in Pipeline)
     node->parentNode = shared_from_this();
-
-    // Add to the map (node holds its children itself)
-    // nodeMap[node->id] = node;
     nodeMap.push_back(node);
 }
 
@@ -576,6 +579,24 @@ void Node::removeConnectionToNode(std::shared_ptr<Node> node) {
     for(auto& n : nodeMap) {
         n->removeConnectionToNode(node);
     }
+}
+
+bool Node::isSourceNode() const {
+    return false;
+}
+
+utility::NodeRecordParams Node::getNodeRecordParams() const {
+    utility::NodeRecordParams params;
+    params.name = getName();
+    return params;
+}
+
+Node::Output& Node::getRecordOutput() {
+    throw std::runtime_error("getRecordOutput is not implemented for non-source nodes.");
+}
+
+Node::Input& Node::getReplayInput() {
+    throw std::runtime_error("getReplayInput is not implemented for non-source nodes.");
 }
 
 // Recursive helpers for pipelines
@@ -640,6 +661,11 @@ size_t Node::ConnectionInternal::Hash::operator()(const dai::Node::ConnectionInt
     seed ^= hId(obj.inputNode.lock()) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     seed ^= hStr(obj.outputName) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
     return seed;
+}
+
+void Node::stopPipeline() {
+    auto pipeline = getParentPipeline();
+    pipeline.stop();
 }
 
 }  // namespace dai

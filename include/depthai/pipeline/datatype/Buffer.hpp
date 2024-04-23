@@ -72,6 +72,8 @@ class Buffer : public ADatatype {
      */
     void setSequenceNum(int64_t sequenceNum);
 
+    virtual span<const uint8_t> getRecordData() const;
+
     // TODO(Morato) // Make this private
     int64_t sequenceNum = 0;  // increments for each message
     Timestamp ts = {};        // generation timestamp, synced to host time

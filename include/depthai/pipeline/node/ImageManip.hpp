@@ -35,18 +35,21 @@ class ImageManip : public DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipPrope
      * Input ImageManipConfig message with ability to modify parameters in runtime
      * Default queue is blocking with size 8
      */
-    Input inputConfig{true, *this, "inputConfig", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImageManipConfig, true}}};
+    // Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImageManipConfig, true}}};
+    Input inputConfig{*this, {.name = "inputConfig", .types = {{DatatypeEnum::ImageManipConfig, true}} , .waitForMessage = false}};
 
     /**
      * Input image to be modified
      * Default queue is blocking with size 8
      */
-    Input inputImage{true, *this, "inputImage", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::ImgFrame, true}}};
+    // Input inputImage{*this, "inputImage", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImgFrame, true}}, true};
+    Input inputImage{*this, {.name = "inputImage", .types = {{DatatypeEnum::ImgFrame, true}}}};
 
     /**
      * Outputs ImgFrame message that carries modified image.
      */
-    Output out{true, *this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
+    // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
+    Output out{*this, {.name = "out", .types = {{DatatypeEnum::ImgFrame, true}}}};
 
     // Functions to set ImageManipConfig - deprecated
     [[deprecated("Use 'initialConfig.setCropRect()' instead")]] void setCropRect(float xmin, float ymin, float xmax, float ymax);

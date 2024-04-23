@@ -18,18 +18,16 @@ namespace test {
 class MyConsumer : public NodeCRTP<ThreadedNode, MyConsumer> {
    public:
     constexpr static const char* NAME = "MyConsumer";
-    void build();
 
     /**
      * Input for any type of messages to be transferred over XLink stream
-     *
      * Default queue is blocking with size 8
      */
-    Input input{true, *this, "in", Input::Type::SReceiver, true, 8, true, {{DatatypeEnum::Buffer, true}}};
+    Input input{*this, {.name = "in", .blocking = true, .queueSize = 8, .types = {{DatatypeEnum::Buffer, true}}, .waitForMessage = true}};
 
     void run() override {
         while(isRunning()) {
-            auto msg = input.queue.get<dai::Buffer>();
+            auto msg = input.get<dai::Buffer>();
             std::cout << "got message (ptr: " << msg.get() << ", data (size: " << msg->data->getData().size() << "): ";
 
             for(int b : msg->getData()) {

@@ -51,6 +51,9 @@ if(MINGW)
 endif()
 find_package(pybind11 CONFIG REQUIRED)
 
+# Print out the pybind11 version that was found
+message(STATUS "Found pybind11 v${pybind11_VERSION}")
+
 # Add external dependencies
 add_subdirectory(external)
 
@@ -61,11 +64,12 @@ set(SOURCE_LIST
     src/CalibrationHandlerBindings.cpp
     src/DeviceBootloaderBindings.cpp
     src/DatatypeBindings.cpp
-    src/DataQueueBindings.cpp
+    src/MessageQueueBindings.cpp
     src/pipeline/PipelineBindings.cpp
     src/pipeline/CommonBindings.cpp
     src/pipeline/AssetManagerBindings.cpp
     src/openvino/OpenVINOBindings.cpp
+    src/nn_archive/NNArchiveBindings.cpp
     src/log/LogBindings.cpp
     src/VersionBindings.cpp
 
@@ -102,6 +106,9 @@ set(SOURCE_LIST
     src/pipeline/node/PointCloudBindings.cpp
     src/pipeline/node/SyncBindings.cpp
     src/pipeline/node/MessageDemuxBindings.cpp
+    src/pipeline/node/HostNodeBindings.cpp
+    src/pipeline/node/RecordBindings.cpp
+    src/pipeline/node/ReplayBindings.cpp
 
     src/pipeline/datatype/ADatatypeBindings.cpp
     src/pipeline/datatype/AprilTagConfigBindings.cpp
@@ -232,7 +239,7 @@ target_link_libraries(${TARGET_NAME}
     PUBLIC
         # pybind11
         pybind11::pybind11
-        depthai::core # Use non-opencv target as we use opencv-python in bindings
+        depthai::opencv # Use non-opencv target as we use opencv-python in bindings
         hedley
         pybind11_json
         xtensor-python

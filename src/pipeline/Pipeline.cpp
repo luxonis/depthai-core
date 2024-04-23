@@ -1,10 +1,20 @@
 #include "depthai/pipeline/Pipeline.hpp"
 
 #include "depthai/device/CalibrationHandler.hpp"
+#include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
+#include "depthai/pipeline/node/host/XLinkInHost.hpp"
+#include "depthai/pipeline/node/host/XLinkOutHost.hpp"
 #include "depthai/utility/Initialization.hpp"
+#include "utility/Platform.hpp"
+#include "utility/RecordReplay.hpp"
 #include "utility/spdlog-fmt.hpp"
+
+#ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+#include "pipeline/node/host/Record.hpp"
+#include "pipeline/node/host/Replay.hpp"
+#endif
 
 // shared
 #include "depthai/pipeline/NodeConnectionSchema.hpp"
@@ -12,6 +22,10 @@
 // std
 #include <cassert>
 #include <fstream>
+#include <memory>
+#include <mutex>
+#include <stdexcept>
+#include <unordered_set>
 
 // libraries
 #include "spdlog/fmt/fmt.h"
@@ -42,39 +56,11 @@ Node::Id PipelineImpl::getNextUniqueId() {
     return latestId++;
 }
 
-Pipeline::Pipeline() : pimpl(std::make_shared<PipelineImpl>(*this)) {
-    // // Initialize library
-    // initialize();
-}
+Pipeline::Pipeline(bool createImplicitDevice) : pimpl(std::make_shared<PipelineImpl>(*this, createImplicitDevice)) {}
 
-Pipeline Pipeline::clone() const {
-    // TODO(themarpe) - Copy assets
+Pipeline::Pipeline(std::shared_ptr<Device> device) : pimpl(std::make_shared<PipelineImpl>(*this, device)) {}
 
-    Pipeline clone;
-
-    // Make a copy of PipelineImpl
-    clone.pimpl = std::make_shared<PipelineImpl>(*impl());
-
-    // All IDs remain the same, just switch out the actual nodes with copies
-    // Copy all nodes
-    for(const auto& node : impl()->nodes) {
-        // const auto& id = kv.first;
-
-        // Swap out with a copy
-        auto nodeClone = node->clone();
-        // Set parent to be the new pipeline
-        nodeClone->parent = std::weak_ptr<PipelineImpl>(clone.pimpl);
-
-        // Add the new copy
-        clone.pimpl->nodes.push_back(node->clone());
-    }
-
-    return clone;
-}
-
-Pipeline::Pipeline(std::shared_ptr<PipelineImpl> pimpl) {
-    this->pimpl = pimpl;
-}
+Pipeline::Pipeline(std::shared_ptr<PipelineImpl> pimpl) : pimpl(std::move(pimpl)) {}
 
 PipelineSchema Pipeline::getPipelineSchema(SerializationType type) const {
     return pimpl->getPipelineSchema(type);
@@ -109,6 +95,16 @@ std::vector<std::shared_ptr<Node>> PipelineImpl::getAllNodes() const {
         allNodes.insert(allNodes.end(), n.begin(), n.end());
     }
     return allNodes;
+}
+
+std::vector<std::shared_ptr<Node>> PipelineImpl::getSourceNodes() {
+    std::vector<std::shared_ptr<Node>> sourceNodes;
+    for(auto& node : nodes) {
+        if(node->isSourceNode()) {
+            sourceNodes.push_back(node);
+        }
+    }
+    return sourceNodes;
 }
 
 void PipelineImpl::serialize(PipelineSchema& schema, Assets& assets, std::vector<std::uint8_t>& assetStorage, SerializationType type) const {
@@ -159,8 +155,8 @@ PipelineImpl::NodeConnectionMap PipelineImpl::getConnectionMap() const {
     return map;
 }
 
-std::vector<Node::Connection> PipelineImpl::getConnections() const {
-    std::vector<Node::Connection> conns;
+std::vector<Node::ConnectionInternal> PipelineImpl::getConnectionsInternal() const {
+    std::vector<Node::ConnectionInternal> conns;
     auto nodeConnectionMap = getConnectionMap();
     for(const auto& kv : nodeConnectionMap) {
         const auto& connections = kv.second;
@@ -171,10 +167,19 @@ std::vector<Node::Connection> PipelineImpl::getConnections() const {
     return conns;
 }
 
+std::vector<Node::Connection> PipelineImpl::getConnections() const {
+    auto connectionsInternal = getConnectionsInternal();
+    std::vector<Node::Connection> conns;
+    for(const auto& conn : connectionsInternal) {
+        conns.emplace_back(conn);
+    }
+    return conns;
+}
+
 PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
     PipelineSchema schema;
     schema.globalProperties = globalProperties;
-
+    int latestIoId = 0;
     // Loop over all nodes, and add them to schema
     for(const auto& node : getAllNodes()) {
         // const auto& node = kv.second;
@@ -182,7 +187,7 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
             continue;
         }
         // Check if its a host node or device node
-        if(node->hostNode) {
+        if(node->runOnHost()) {
             // host node, no need to serialize to a schema
             // TBD any additional changes
         } else {
@@ -212,14 +217,16 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
             // Add inputs
             for(const auto& input : inputs) {
                 NodeIoInfo io;
+                io.id = latestIoId;
+                latestIoId++;
                 io.blocking = input.getBlocking();
-                io.queueSize = input.getQueueSize();
-                io.name = input.name;
-                io.group = input.group;
+                io.queueSize = input.getMaxSize();
+                io.name = input.getName();
+                io.group = input.getGroup();
                 auto ioKey = std::make_tuple(io.group, io.name);
 
-                io.waitForMessage = input.waitForMessage.value_or(input.defaultWaitForMessage);
-                switch(input.type) {
+                io.waitForMessage = input.getWaitForMessage();
+                switch(input.getType()) {
                     case Node::Input::Type::MReceiver:
                         io.type = NodeIoInfo::Type::MReceiver;
                         break;
@@ -242,12 +249,14 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
             // Add outputs
             for(const auto& output : outputs) {
                 NodeIoInfo io;
+                io.id = latestIoId;
+                latestIoId++;
                 io.blocking = false;
-                io.name = output.name;
-                io.group = output.group;
+                io.name = output.getName();
+                io.group = output.getGroup();
                 auto ioKey = std::make_tuple(io.group, io.name);
 
-                switch(output.type) {
+                switch(output.getType()) {
                     case Node::Output::Type::MSender:
                         io.type = NodeIoInfo::Type::MSender;
                         break;
@@ -275,185 +284,49 @@ PipelineSchema PipelineImpl::getPipelineSchema(SerializationType type) const {
     // Create 'connections' info
     // Loop through connections (output -> input) and add them to schema
 
-    std::unordered_map<NodeConnectionSchema, bool> hostDeviceXLinkBridge;
-    std::unordered_map<NodeConnectionSchema, bool> deviceHostXLinkBridge;
+    // std::unordered_map<NodeConnectionSchema, bool> hostDeviceXLinkBridge;
+    // std::unordered_map<NodeConnectionSchema, bool> deviceHostXLinkBridge;
 
-    auto streamName = [](std::int64_t id, std::string group, std::string name) -> std::string {
-        if(group == "") {
-            return fmt::format("__x_{}_{}", id, name);
-        } else {
-            return fmt::format("__x_{}_{}[\"{}\"]", id, group, name);
+    // auto streamName = [](std::int64_t id, std::string group, std::string name) -> std::string {
+    //     if(group == "") {
+    //         return fmt::format("__x_{}_{}", id, name);
+    //     } else {
+    //         return fmt::format("__x_{}_{}[\"{}\"]", id, group, name);
+    //     }
+    // };
+    // Node::Id xLinkBridgeId = latestId;
+
+    for(const auto& conn : getConnectionsInternal()) {
+        NodeConnectionSchema c;
+        auto outNode = conn.outputNode.lock();
+        auto inNode = conn.inputNode.lock();
+        c.node1Id = outNode->id;
+        c.node1Output = conn.outputName;
+        c.node1OutputGroup = conn.outputGroup;
+        c.node2Id = inNode->id;
+        c.node2Input = conn.inputName;
+        c.node2InputGroup = conn.inputGroup;
+
+        bool outputHost = outNode->runOnHost();
+        bool inputHost = inNode->runOnHost();
+
+        if(outputHost && inputHost) {
+            // skip - connection between host nodes doesn't have to be represented to the device
+            continue;
         }
-    };
-    Node::Id xLinkBridgeId = latestId;
 
-    auto nodeConnectionMap = getConnectionMap();
-    for(const auto& kv : nodeConnectionMap) {
-        const auto& connections = kv.second;
-
-        for(const auto& conn : connections) {
-            NodeConnectionSchema c;
-            auto outNode = conn.outputNode.lock();
-            auto inNode = conn.inputNode.lock();
-            c.node1Id = outNode->id;
-            c.node1Output = conn.outputName;
-            c.node1OutputGroup = conn.outputGroup;
-            c.node2Id = inNode->id;
-            c.node2Input = conn.inputName;
-            c.node2InputGroup = conn.inputGroup;
-
-            bool outputHost = outNode->hostNode;
-            bool inputHost = inNode->hostNode;
-
-            std::shared_ptr<Node> node;
-
-            if(outputHost && inputHost) {
-                // skip - connection between host nodes doesn't have to be represented to the device
-                continue;
-            }
-
-            if(outputHost == true && inputHost != true) {
-                // host->device - create implicit XLinkIn node and connect it
-
-                // Create a map entry, only one bridge is required for multiple connections
-                auto xlinkConnection = c;
-
-                auto nodeTmp = std::make_shared<node::XLinkIn>();
-                nodeTmp->parent = parent.pimpl;
-                nodeTmp->id = xLinkBridgeId++;
-                xlinkConnection.node1Id = xLinkBridgeId;
-                xlinkConnection.node1Output = nodeTmp->out.name;
-                xlinkConnection.node1OutputGroup = nodeTmp->out.group;
-                nodeTmp->setStreamName(streamName(c.node1Id, c.node1OutputGroup, c.node1Output));
-
-                xlinkConnection.node2Id = 0;
-                xlinkConnection.node2Input = "";
-                xlinkConnection.node2InputGroup = "";
-
-                if(hostDeviceXLinkBridge.count(xlinkConnection) <= 0) {
-                    // create it
-                    hostDeviceXLinkBridge[xlinkConnection] = true;
-                    // and bump xlink bridge id
-                    xLinkBridgeId++;
-
-                    c.node1Id = xlinkConnection.node1Id;
-                    c.node1Output = xlinkConnection.node1Output;
-                    c.node1OutputGroup = xlinkConnection.node1OutputGroup;
-
-                    node = nodeTmp;
-                }
-
-            } else if(outputHost == false && inputHost == true) {
-                // device -> host
-
-                // Create a map entry, only one bridge is required for multiple connections
-                auto xlinkConnection = c;
-                xlinkConnection.node2Id = 0;
-                xlinkConnection.node2Input = "";
-                xlinkConnection.node2InputGroup = "";
-
-                if(deviceHostXLinkBridge.count(xlinkConnection) <= 0) {
-                    // create it
-                    deviceHostXLinkBridge[xlinkConnection] = true;
-                    auto nodeTmp = std::make_shared<node::XLinkOut>();
-                    nodeTmp->parent = parent.pimpl;
-                    nodeTmp->id = xLinkBridgeId++;
-                    nodeTmp->setStreamName(streamName(c.node1Id, c.node1OutputGroup, c.node1Output));
-
-                    c.node2Id = nodeTmp->id;
-                    c.node2Input = nodeTmp->input.name;
-                    c.node2InputGroup = nodeTmp->input.group;
-                    node = nodeTmp;
-                }
-
-            } else {
-                // device->device connection
-                // all set
-            }
-
-            // add the connection to the schema
-            schema.connections.push_back(c);
-
-            // Now add the created XLink bridge if necessary
-            if(node) {
-                // Create 'node' info
-                NodeObjInfo info;
-                info.id = node->id;
-                info.name = node->getName();
-                const auto& deviceNode = std::dynamic_pointer_cast<DeviceNode>(node);
-                if(!deviceNode) {
-                    throw std::invalid_argument(fmt::format("Node '{}' should subclass DeviceNode or have hostNode == true", info.name));
-                }
-                deviceNode->getProperties().serialize(info.properties, type);
-
-                // Create Io information
-                auto inputs = node->getInputs();
-                auto outputs = node->getOutputs();
-
-                info.ioInfo.reserve(inputs.size() + outputs.size());
-
-                // Add inputs
-                for(const auto& input : inputs) {
-                    NodeIoInfo io;
-                    io.blocking = input.getBlocking();
-                    io.queueSize = input.getQueueSize();
-                    io.name = input.name;
-                    io.group = input.group;
-                    auto ioKey = std::make_tuple(io.group, io.name);
-
-                    io.waitForMessage = input.waitForMessage.value_or(input.defaultWaitForMessage);
-                    switch(input.type) {
-                        case Node::Input::Type::MReceiver:
-                            io.type = NodeIoInfo::Type::MReceiver;
-                            break;
-                        case Node::Input::Type::SReceiver:
-                            io.type = NodeIoInfo::Type::SReceiver;
-                            break;
-                    }
-
-                    if(info.ioInfo.count(ioKey) > 0) {
-                        if(io.group == "") {
-                            throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
-                        } else {
-                            throw std::invalid_argument(
-                                fmt::format("'{}.{}[\"{}\"]' redefined. Inputs and outputs must have unique names", info.name, io.group, io.name));
-                        }
-                    }
-                    info.ioInfo[ioKey] = io;
-                }
-
-                // Add outputs
-                for(const auto& output : outputs) {
-                    NodeIoInfo io;
-                    io.blocking = false;
-                    io.name = output.name;
-                    io.group = output.group;
-                    auto ioKey = std::make_tuple(io.group, io.name);
-
-                    switch(output.type) {
-                        case Node::Output::Type::MSender:
-                            io.type = NodeIoInfo::Type::MSender;
-                            break;
-                        case Node::Output::Type::SSender:
-                            io.type = NodeIoInfo::Type::SSender;
-                            break;
-                    }
-
-                    if(info.ioInfo.count(ioKey) > 0) {
-                        if(io.group == "") {
-                            throw std::invalid_argument(fmt::format("'{}.{}' redefined. Inputs and outputs must have unique names", info.name, io.name));
-                        } else {
-                            throw std::invalid_argument(
-                                fmt::format("'{}.{}[\"{}\"]' redefined. Inputs and outputs must have unique names", info.name, io.group, io.name));
-                        }
-                    }
-                    info.ioInfo[ioKey] = io;
-                }
-
-                // At the end, add the constructed node information to the schema
-                schema.nodes[info.id] = info;
-            }
+        if(outputHost && !inputHost) {
+            throw std::invalid_argument(
+                fmt::format("Connection from host node '{}' to device node '{}' is not allowed during serialization.", outNode->getName(), inNode->getName()));
         }
+
+        if(!outputHost && inputHost) {
+            throw std::invalid_argument(
+                fmt::format("Connection from device node '{}' to host node '{}' is not allowed during serialization.", outNode->getName(), inNode->getName()));
+        }
+
+        // add the connection to the schema
+        schema.connections.push_back(c);
     }
 
     return schema;
@@ -603,11 +476,11 @@ bool PipelineImpl::canConnect(const Node::Output& out, const Node::Input& in) {
     }
 
     // Check that IoType match up
-    if(out.type == Node::Output::Type::MSender && in.type == Node::Input::Type::MReceiver) return false;
-    if(out.type == Node::Output::Type::SSender && in.type == Node::Input::Type::SReceiver) return false;
+    if(out.getType() == Node::Output::Type::MSender && in.getType() == Node::Input::Type::MReceiver) return false;
+    if(out.getType() == Node::Output::Type::SSender && in.getType() == Node::Input::Type::SReceiver) return false;
 
     // Check that datatypes match up
-    for(const auto& outHierarchy : out.possibleDatatypes) {
+    for(const auto& outHierarchy : out.getPossibleDatatypes()) {
         for(const auto& inHierarchy : in.possibleDatatypes) {
             // Check if datatypes match for current datatype
             if(outHierarchy.datatype == inHierarchy.datatype) return true;
@@ -652,10 +525,9 @@ std::optional<EepromData> PipelineImpl::getEepromData() const {
 }
 
 bool PipelineImpl::isHostOnly() const {
-    // Starts pipeline, go through all nodes and start them
     bool hostOnly = true;
     for(const auto& node : nodes) {
-        if(!node->hostNode) {
+        if(!node->runOnHost()) {
             hostOnly = false;
             break;
         }
@@ -664,10 +536,9 @@ bool PipelineImpl::isHostOnly() const {
 }
 
 bool PipelineImpl::isDeviceOnly() const {
-    // Starts pipeline, go through all nodes and start them
     bool deviceOnly = true;
     for(const auto& node : nodes) {
-        if(node->hostNode) {
+        if(node->runOnHost()) {
             deviceOnly = false;
             break;
         }
@@ -713,38 +584,330 @@ bool PipelineImpl::isRunning() const {
     return running;
 }
 
+bool PipelineImpl::isBuilt() const {
+    return isBuild;
+}
+
 void PipelineImpl::build() {
     // TODO(themarpe) - add mutex and set running up ahead
     if(isBuild) return;
     isBuild = true;
 
-    // Build
-    if(!isHostOnly()) {
-        // throw std::invalid_argument("Pipeline contains device nodes");
-        device = std::make_shared<Device>(Pipeline(shared_from_this()));
-        for(auto outQ : device->getOutputQueueNames()) {
-            device->getOutputQueue(outQ, 0, false);
-        }
-        for(auto inQ : device->getInputQueueNames()) {
-            device->getInputQueue(inQ, 0, false);
-        }
-    }
+//     std::string recordPath = utility::getEnv("DEPTHAI_RECORD");
+//     std::string replayPath = utility::getEnv("DEPTHAI_REPLAY");
+//
+//     Pipeline pipelineCopy = pipeline;
+//
+//     if(!recordPath.empty() && !replayPath.empty()) {
+//         spdlog::warn("Both DEPTHAI_RECORD and DEPTHAI_REPLAY are set. Record and replay disabled.");
+//     } else if(!recordPath.empty()) {
+//         if(utility::checkRecordConfig(recordPath, recordConfig)) {
+//             if(platform::checkWritePermissions(recordPath)) {
+// #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+//                 recordConfig.state = utility::RecordConfig::RecordReplayState::RECORD;
+//                 auto sources = pipelineCopy.getSourceNodes();
+//                 std::string mxId = getMxId();
+//                 try {
+//                     for(auto& node : sources) {
+//                         utility::NodeRecordParams nodeParams = node->getNodeRecordParams();
+//                         std::string nodeName = nodeParams.name;
+//                         auto recordNode = pipelineCopy.create<dai::node::Record>();
+//                         std::string filePath = platform::joinPaths(recordPath, mxId.append("_").append(nodeName)).append(".mp4");
+//                         recordNode->setRecordFile(filePath);
+//                         recordReplayFilenames[nodeName] = filePath;
+//                         if(node->getName() == "Camera" || node->getName() == "ColorCamera" || node->getName() == "MonoCamera") {
+//                             // TODO(asahtik): Enable video encoding support
+//                             // if(recordConfig.videoEncoding.enabled) {
+//                             //     auto imageManip = pipelineCopy.create<dai::node::ImageManip>();
+//                             //     imageManip->initialConfig.setFrameType(ImgFrame::Type::NV12);
+//                             //     imageManip->setMaxOutputFrameSize(3110400);  // TODO(asahtik): set size depending on isp size
+//                             //     auto videnc = pipelineCopy.create<dai::node::VideoEncoder>();
+//                             //     videnc->setProfile(recordConfig.videoEncoding.profile);
+//                             //     videnc->setLossless(recordConfig.videoEncoding.lossless);
+//                             //     videnc->setBitrate(recordConfig.videoEncoding.bitrate);
+//                             //     videnc->setQuality(recordConfig.videoEncoding.quality);
+//                             //
+//                             //     node->getRecordOutput().link(imageManip->inputImage);
+//                             //     imageManip->out.link(videnc->input);
+//                             //     videnc->out.link(xout->input);
+//                             // } else {
+//                             node->getRecordOutput().link(recordNode->in);
+//                             // }
+//                         } else {
+//                             node->getRecordOutput().link(recordNode->in);
+//                         }
+//                     }
+//                     recordReplayFilenames["record_config"] = platform::joinPaths(recordPath, mxId.append("_record_config.json"));
+//                 } catch(const std::runtime_error& e) {
+//                     recordConfig.state = utility::RecordConfig::RecordReplayState::NONE;
+//                     spdlog::warn("Record disabled: {}", e.what());
+//                 }
+//                 // Write config to output dir
+//                 try {
+//                     std::ofstream file(Path(platform::joinPaths(recordPath, mxId.append("_record_config.json"))));
+//                     json j = recordConfig;
+//                     file << j.dump(4);
+//                 } catch(const std::exception& e) {
+//                     spdlog::warn("Error while writing DEPTHAI_RECORD json file: {}", e.what());
+//                 }
+// #else
+//                 throw std::runtime_error("Pipeline recording requires OpenCV");
+// #endif
+//             } else {
+//                 spdlog::warn("DEPTHAI_RECORD path does not have write permissions. Record disabled.");
+//             }
+//         }
+//     } else if(!replayPath.empty()) {
+//         if(platform::checkPathExists(replayPath)) {
+//             if(platform::checkWritePermissions(replayPath)) {
+// #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
+//                 std::string rootPath = platform::getDirFromPath(replayPath);
+//                 auto sources = pipelineCopy.getSourceNodes();
+//                 std::string mxId = getMxId();
+//                 try {
+//                     auto tarFilenames = utility::filenamesInTar(replayPath);
+//                     std::remove_if(tarFilenames.begin(), tarFilenames.end(), [](const std::string& filename) {
+//                         return filename.size() < 4 || filename.substr(filename.size() - 4, filename.size()) == "meta";
+//                     });
+//                     std::vector<std::string> nodeNames;
+//                     std::vector<std::string> pipelineFilenames;
+//                     pipelineFilenames.reserve(sources.size());
+//                     for(auto& node : sources) {
+//                         utility::NodeRecordParams nodeParams = node->getNodeRecordParams();
+//                         std::string nodeName = mxId.append("_").append(nodeParams.name).append(".rec");
+//                         pipelineFilenames.push_back(nodeName);
+//                         nodeNames.push_back(nodeParams.name);
+//                     }
+//                     std::vector<std::string> inFiles;
+//                     std::vector<std::string> outFiles;
+//                     inFiles.reserve(sources.size() + 1);
+//                     outFiles.reserve(sources.size() + 1);
+//                     if(utility::allMatch(tarFilenames, pipelineFilenames)) {
+//                         for(auto& nodeName : nodeNames) {
+//                             auto filename = mxId.append("_").append(nodeName).append(".mp4");
+//                             inFiles.push_back(filename);
+//                             inFiles.push_back(filename + ".meta");
+//                             std::string filePath = platform::joinPaths(rootPath, filename);
+//                             outFiles.push_back(filePath);
+//                             outFiles.push_back(filePath.append(".meta"));
+//                             recordReplayFilenames[nodeName] = filePath;
+//                         }
+//                         inFiles.emplace_back("record_config.json");
+//                         std::string configPath = platform::joinPaths(rootPath, mxId.append("_record_config.json"));
+//                         outFiles.push_back(configPath);
+//                         recordReplayFilenames["record_config"] = configPath;
+//                         utility::untarFiles(replayPath, inFiles, outFiles);
+//                     } else {
+//                         std::vector<std::string> mxIds;
+//                         mxIds.reserve(tarFilenames.size());
+//                         for(auto& filename : tarFilenames) {
+//                             mxIds.push_back(filename.substr(0, filename.find_first_of('_')));
+//                         }
+//                         // Get unique mxIds
+//                         std::sort(mxIds.begin(), mxIds.end());
+//                         mxIds.erase(std::unique(mxIds.begin(), mxIds.end()), mxIds.end());
+//                         std::string mxIdRec = utility::matchTo(mxIds, tarFilenames, nodeNames);
+//                         if(mxIdRec.empty()) {
+//                             throw std::runtime_error("No recordings match the pipeline configuration.");
+//                         }
+//                         for(auto& nodeName : nodeNames) {
+//                             auto inFilename = mxIdRec.append("_").append(nodeName).append(".rec");
+//                             auto outFilename = mxId.append("_").append(nodeName).append(".rec");
+//                             inFiles.push_back(inFilename);
+//                             inFiles.push_back(inFilename + ".meta");
+//                             std::string filePath = platform::joinPaths(rootPath, outFilename);
+//                             outFiles.push_back(filePath);
+//                             outFiles.push_back(filePath.append(".meta"));
+//                             recordReplayFilenames[nodeName] = filePath;
+//                         }
+//                         inFiles.emplace_back("record_config.json");
+//                         std::string configPath = platform::joinPaths(rootPath, mxId.append("_record_config.json"));
+//                         outFiles.push_back(configPath);
+//                         recordReplayFilenames["record_config"] = configPath;
+//                         utility::untarFiles(replayPath, inFiles, outFiles);
+//                     }
+//
+//                     // FIXME(asahtik): If this fails, extracted files do not get removed
+//                     std::ifstream file(recordPath);
+//                     json j = json::parse(file);
+//                     recordConfig = j.get<utility::RecordConfig>();
+//                     recordConfig.state = utility::RecordConfig::RecordReplayState::REPLAY;
+//
+//                     for(auto& node : sources) {
+//                         utility::NodeRecordParams nodeParams = node->getNodeRecordParams();
+//                         std::string nodeName = nodeParams.name;
+//                         auto replay = pipelineCopy.create<dai::node::Replay>();
+//                         replay->setReplayFile(platform::joinPaths(rootPath, mxId.append("_").append(nodeName).append(".mp4")));
+//                         replay->out.link(node->getReplayInput());
+//                     }
+//                 } catch(const std::exception& e) {
+//                     spdlog::warn("Replay disabled: {}", e.what());
+//                 }
+// #else
+//                 throw std::runtime_error("Pipeline replay requires OpenCV");
+// #endif
+//             } else {
+//                 spdlog::warn("DEPTHAI_REPLAY path does not have write permissions. Replay disabled.");
+//             }
+//         } else {
+//             spdlog::warn("DEPTHAI_REPLAY path does not exist or is invalid. Replay disabled.");
+//         }
+//     }
 
     // Go through the build stages sequentially
-    for(const auto& node : nodes) {
+    for(const auto& node : getAllNodes()) {
         node->buildStage1();
     }
 
-    for(const auto& node : nodes) {
+    for(const auto& node : getAllNodes()) {
         node->buildStage2();
     }
 
-    for(const auto& node : nodes) {
+    for(const auto& node : getAllNodes()) {
         node->buildStage3();
+    }
+
+    // Go through all the connections and handle any
+    // Host -> Device connections
+    // Device -> Host connections
+    // Device -> Device where the devices are not the same
+
+    // Pseudo code
+    // for each connection
+    // if host -> device
+    //   create XlinkIn node
+    //   create xlinkOutHost node
+    //   connect them
+    // if device -> host
+    //   create XlinkOut node
+    //   create XlinkInHost node
+    //   connect them
+    // if device -> device
+    //   if devices are not the same
+    //     create XlinkOut node
+    //     create XlinkInHost node
+    //     create XlinkOutHost node
+    //     create XlinkIn node
+    //     connect them
+
+    // Create a map of already visited nodes to only create one xlink bridge
+    struct XLinkOutBridge {
+        std::shared_ptr<node::XLinkOut> xLinkOut;
+        std::shared_ptr<node::XLinkInHost> xLinkInHost;
+    };
+
+    struct XLinkInBridge {
+        std::shared_ptr<node::XLinkOutHost> xLinkOutHost;
+        std::shared_ptr<node::XLinkIn> xLinkIn;
+    };
+
+    std::unordered_map<dai::Node::Output*, XLinkOutBridge> bridgesOut;
+    std::unordered_map<dai::Node::Input*, XLinkInBridge> bridgesIn;
+    std::unordered_set<std::string> uniqueStreamNames;
+
+    for(auto& connection : getConnectionsInternal()) {
+        auto inNode = connection.inputNode.lock();
+        auto outNode = connection.outputNode.lock();
+        if(!inNode || !outNode) {
+            throw std::runtime_error(fmt::format(
+                "Input node in connection {}-{}_{}-{} is null", connection.inputName, connection.inputGroup, connection.outputName, connection.outputGroup));
+        }
+        if(!outNode->runOnHost() && inNode->runOnHost()) {
+            // Check if the bridge already exists
+            if(bridgesOut.count(connection.out) == 0) {  // If the bridge does not already exist, create one
+                // // Create a new bridge
+                bridgesOut[connection.out] = XLinkOutBridge{
+                    create<node::XLinkOut>(shared_from_this()),
+                    create<node::XLinkInHost>(shared_from_this()),
+                };
+                auto& xLinkBridge = bridgesOut[connection.out];
+                auto streamName = fmt::format("__x_{}_{}", outNode->id, connection.outputName);
+
+                // Check if the stream name is unique
+                if(uniqueStreamNames.count(streamName) > 0) {
+                    throw std::runtime_error(fmt::format("Stream name '{}' is not unique", streamName));
+                }
+                uniqueStreamNames.insert(streamName);
+                xLinkBridge.xLinkOut->setStreamName(streamName);
+                xLinkBridge.xLinkInHost->setStreamName(streamName);
+                xLinkBridge.xLinkInHost->setConnection(defaultDevice->getConnection());
+                connection.out->link(xLinkBridge.xLinkOut->input);
+            }
+            auto xLinkBridge = bridgesOut[connection.out];
+            connection.out->unlink(*connection.in);  // Unlink the connection
+            xLinkBridge.xLinkInHost->out.link(*connection.in);
+        } else if(!inNode->runOnHost() && outNode->runOnHost()) {
+            // Check if the bridge already exists
+            if(bridgesIn.count(connection.in) == 0) {  // If the bridge does not already exist, create one
+                // // Create a new bridge
+                bridgesIn[connection.in] = XLinkInBridge{
+                    create<node::XLinkOutHost>(shared_from_this()),
+                    create<node::XLinkIn>(shared_from_this()),
+                };
+                auto& xLinkBridge = bridgesIn[connection.in];
+                auto streamName = fmt::format("__x_{}_{}", inNode->id, connection.inputName);
+
+                // Check if the stream name is unique
+                if(uniqueStreamNames.count(streamName) > 0) {
+                    throw std::runtime_error(fmt::format("Stream name '{}' is not unique", streamName));
+                }
+                uniqueStreamNames.insert(streamName);
+                xLinkBridge.xLinkOutHost->setStreamName(streamName);
+                xLinkBridge.xLinkIn->setStreamName(streamName);
+                xLinkBridge.xLinkOutHost->setConnection(defaultDevice->getConnection());
+                xLinkBridge.xLinkIn->out.link(*connection.in);
+            }
+            auto xLinkBridge = bridgesIn[connection.in];
+            connection.out->unlink(*connection.in);  // Unlink the original connection
+            connection.out->link(xLinkBridge.xLinkOutHost->in);
+        }
+    }
+
+    // Create a vector of all nodes in the pipeline
+    std::vector<std::shared_ptr<Node>> allNodes = getAllNodes();
+    for(auto node : allNodes) {
+        if(node->runOnHost()) {
+            // Nothing special to do for host nodes
+            continue;
+        }
+        for(auto* output : node->getOutputRefs()) {
+            for(auto& queueConnection : output->getQueueConnections()) {
+                // For every queue connection, if it's connected to a device node, create a bridge, if it doesn't exist
+                if(bridgesOut.count(queueConnection.output) == 0) {
+                    // // Create a new bridge
+                    bridgesOut[queueConnection.output] = XLinkOutBridge{
+                        create<node::XLinkOut>(shared_from_this()),
+                        create<node::XLinkInHost>(shared_from_this()),
+                    };
+                    auto& xLinkBridge = bridgesOut[queueConnection.output];
+                    auto streamName = fmt::format("__x_{}_{}", node->id, output->getName());
+
+                    // Check if the stream name is unique
+                    if(uniqueStreamNames.count(streamName) > 0) {
+                        throw std::runtime_error(fmt::format("Stream name '{}' is not unique", streamName));
+                    }
+                    uniqueStreamNames.insert(streamName);
+                    xLinkBridge.xLinkOut->setStreamName(streamName);
+                    xLinkBridge.xLinkInHost->setStreamName(streamName);
+                    xLinkBridge.xLinkInHost->setConnection(defaultDevice->getConnection());
+                    queueConnection.output->link(xLinkBridge.xLinkOut->input);
+                }
+                auto xLinkBridge = bridgesOut[queueConnection.output];
+                queueConnection.output->unlink(queueConnection.queue);  // Unlink the original connection
+                xLinkBridge.xLinkInHost->out.link(queueConnection.queue);
+            }
+        }
+    }
+
+    // Build
+    if(!isHostOnly()) {
+        // TODO(Morato) - handle multiple devices correctly, start pipeline on all of them
+        defaultDevice->startPipeline(Pipeline(shared_from_this()));
     }
 }
 
 void PipelineImpl::start() {
+    std::lock_guard<std::mutex> lock(stateMtx);
     // TODO(themarpe) - add mutex and set running up ahead
 
     // Implicitly build (if not already)
@@ -754,22 +917,35 @@ void PipelineImpl::start() {
     running = true;
 
     // Starts pipeline, go through all nodes and start them
-    for(const auto& node : nodes) {
-        node->start();
+    for(const auto& node : getAllNodes()) {
+        if(node->runOnHost()) {
+            node->start();
+        }
     }
 }
 
 void PipelineImpl::wait() {
     // Waits for all nodes to finish the execution
-    for(const auto& node : nodes) {
-        node->wait();
+    for(const auto& node : getAllNodes()) {
+        if(node->runOnHost()) {
+            node->wait();
+        }
     }
 }
 
 void PipelineImpl::stop() {
+    std::lock_guard<std::mutex> lock(stateMtx);
     // Stops the pipeline execution
-    for(const auto& node : nodes) {
-        node->stop();
+    for(const auto& node : getAllNodes()) {
+        if(node->runOnHost()) {
+            node->stop();
+        }
+    }
+
+    // TODO(Morato) - handle multiple devices correctly, stop pipeline on all of them
+    // Close the devices
+    if(!isHostOnly()) {
+        defaultDevice->close();
     }
 
     // Indicate that pipeline is not runnin
@@ -777,9 +953,8 @@ void PipelineImpl::stop() {
 }
 
 PipelineImpl::~PipelineImpl() {
+    stop();
     wait();
-    // TMP - might be more appropriate
-    // stop();
 }
 
 std::vector<uint8_t> PipelineImpl::loadResource(dai::Path uri) {

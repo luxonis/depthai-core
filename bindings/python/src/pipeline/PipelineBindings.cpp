@@ -1,9 +1,11 @@
 
 #include "PipelineBindings.hpp"
+#include <pybind11/attr.h>
 #include "node/NodeBindings.hpp"
 
 // depthai
 #include "depthai/pipeline/Pipeline.hpp"
+#include "depthai/pipeline/ThreadedHostNode.hpp"
 
 // depthai - nodes
 #include "depthai/pipeline/node/XLinkIn.hpp"
@@ -35,6 +37,7 @@
 
 // depthai/
 #include "depthai/properties/GlobalProperties.hpp"
+#include <memory>
 
 std::shared_ptr<dai::Node> createNode(dai::Pipeline& p, py::object class_){
     auto nodeCreateMap = NodeBindings::getNodeCreateMap();
@@ -83,24 +86,39 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
         ;
 
     // bind pipeline
-    pipeline
-        .def(py::init<>(), DOC(dai, Pipeline, Pipeline))
+    pipeline.def(py::init<bool>(), py::arg("createImplicitDevice") = true, DOC(dai, Pipeline, Pipeline))
+        .def(py::init<std::shared_ptr<Device>>(), py::arg("defaultDevice"), DOC(dai, Pipeline, Pipeline))
+        // Python only methods
+        .def("__enter__", [](Pipeline& d) -> Pipeline& { return d; })
+        .def("__exit__",
+             [](Pipeline& d, py::object type, py::object value, py::object traceback) {
+                 py::gil_scoped_release release;
+                 d.stop();
+                 d.wait();
+             })
         //.def(py::init<const Pipeline&>())
         .def("getGlobalProperties", &Pipeline::getGlobalProperties, DOC(dai, Pipeline, getGlobalProperties))
         //.def("create", &Pipeline::create<node::XLinkIn>)
         .def("remove", &Pipeline::remove, py::arg("node"), DOC(dai, Pipeline, remove))
         .def("getAllNodes", static_cast<std::vector<std::shared_ptr<Node>> (Pipeline::*)() const>(&Pipeline::getAllNodes), DOC(dai, Pipeline, getAllNodes))
-        // .def("getAllNodes", static_cast<std::vector<std::shared_ptr< Node>> (Pipeline::*)()>(&Pipeline::getAllNodes), py::return_value_policy::reference_internal, DOC(dai, Pipeline, getAllNodes))
+        // .def("getAllNodes", static_cast<std::vector<std::shared_ptr< Node>> (Pipeline::*)()>(&Pipeline::getAllNodes),
+        // py::return_value_policy::reference_internal, DOC(dai, Pipeline, getAllNodes))
         .def("getNode", static_cast<std::shared_ptr<Node> (Pipeline::*)(Node::Id)>(&Pipeline::getNode), DOC(dai, Pipeline, getNode))
         // .def("getNode", static_cast<std::shared_ptr<Node> (Pipeline::*)(Node::Id) const>(&Pipeline::getNode), DOC(dai, Pipeline, getNode))
-        // .def("getNode", static_cast<std::shared_ptr<Node> (Pipeline::*)(Node::Id)>(&Pipeline::getNode), py::return_value_policy::reference_internal, DOC(dai, Pipeline, getNode))
-        // .def("getConnections", &Pipeline::getConnections, DOC(dai, Pipeline, getConnections), DOC(dai, Pipeline, getConnections))
-        // .def("getConnectionMap", &Pipeline::getConnectionMap, DOC(dai, Pipeline, getConnectionMap), py::return_value_policy::reference_internal, DOC(dai, Pipeline, getConnectionMap))
-        // .def("getNodeMap", &Pipeline::getNodeMap, DOC(dai, Pipeline, getNodeMap), py::return_value_policy::reference_internal, DOC(dai, Pipeline, getNodeMap))
-        // .def("link", &Pipeline::link, DOC(dai, Pipeline, link), DOC(dai, Pipeline, link))
-        // .def("unlink", &Pipeline::unlink, DOC(dai, Pipeline, unlink), DOC(dai, Pipeline, unlink))
-        .def("getAssetManager", static_cast<const AssetManager& (Pipeline::*)() const>(&Pipeline::getAssetManager), py::return_value_policy::reference_internal, DOC(dai, Pipeline, getAssetManager))
-        .def("getAssetManager", static_cast<AssetManager& (Pipeline::*)()>(&Pipeline::getAssetManager), py::return_value_policy::reference_internal, DOC(dai, Pipeline, getAssetManager))
+        // .def("getNode", static_cast<std::shared_ptr<Node> (Pipeline::*)(Node::Id)>(&Pipeline::getNode), py::return_value_policy::reference_internal, DOC(dai,
+        // Pipeline, getNode)) .def("getConnections", &Pipeline::getConnections, DOC(dai, Pipeline, getConnections), DOC(dai, Pipeline, getConnections))
+        // .def("getConnectionMap", &Pipeline::getConnectionMap, DOC(dai, Pipeline, getConnectionMap), py::return_value_policy::reference_internal, DOC(dai,
+        // Pipeline, getConnectionMap)) .def("getNodeMap", &Pipeline::getNodeMap, DOC(dai, Pipeline, getNodeMap), py::return_value_policy::reference_internal,
+        // DOC(dai, Pipeline, getNodeMap)) .def("link", &Pipeline::link, DOC(dai, Pipeline, link), DOC(dai, Pipeline, link)) .def("unlink", &Pipeline::unlink,
+        // DOC(dai, Pipeline, unlink), DOC(dai, Pipeline, unlink))
+        .def("getAssetManager",
+             static_cast<const AssetManager& (Pipeline::*)() const>(&Pipeline::getAssetManager),
+             py::return_value_policy::reference_internal,
+             DOC(dai, Pipeline, getAssetManager))
+        .def("getAssetManager",
+             static_cast<AssetManager& (Pipeline::*)()>(&Pipeline::getAssetManager),
+             py::return_value_policy::reference_internal,
+             DOC(dai, Pipeline, getAssetManager))
         .def("setOpenVINOVersion", &Pipeline::setOpenVINOVersion, py::arg("version"), DOC(dai, Pipeline, setOpenVINOVersion))
         .def("getOpenVINOVersion", &Pipeline::getOpenVINOVersion, DOC(dai, Pipeline, getOpenVINOVersion))
         .def("getRequiredOpenVINOVersion", &Pipeline::getRequiredOpenVINOVersion, DOC(dai, Pipeline, getRequiredOpenVINOVersion))
@@ -115,13 +133,36 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
         .def("setBoardConfig", &Pipeline::setBoardConfig, DOC(dai, Pipeline, setBoardConfig))
         .def("getBoardConfig", &Pipeline::getBoardConfig, DOC(dai, Pipeline, getBoardConfig))
         // 'Template' create function
-        .def("create", [](dai::Pipeline& p, py::object class_) {
-            auto node = createNode(p, class_);
-            if(node == nullptr){
-                throw std::invalid_argument(std::string(py::str(class_)) + " is not a subclass of depthai.node");
-            }
-            return node;
-        })
+        .def(
+            "add",
+            [](Pipeline& p, std::shared_ptr<Node> hostNode) {
+                p.add(hostNode);
+                return hostNode;
+            },
+            py::keep_alive<1, 2>())
+        // 'Template' create function
+        .def("create",
+             [](dai::Pipeline& p, py::object class_, const py::args& args, const py::kwargs& kwargs) {
+                 // Check if class_ is a subclass of HostNode
+                 py::object issubclass = py::module::import("builtins").attr("issubclass");
+                 py::object nodeClass = py::module::import("depthai").attr("node").attr("ThreadedHostNode");
+                 auto isSubclass = issubclass(class_, nodeClass).cast<bool>();
+
+                 // Check if the class is directly from bindings (__module__ == "depthai.node"). If so, the node comes from bindings,
+                 // so we create in the same manner as device nodes.
+                 auto isFromBindings = class_.attr("__module__").cast<std::string>() == "depthai.node";
+                 if(isSubclass && !isFromBindings) {
+                     std::shared_ptr<Node> hostNode = py::cast<std::shared_ptr<node::ThreadedHostNode>>(class_(*args, **kwargs));
+                     p.add(hostNode);
+                     return hostNode;
+                 }
+                 // Otherwise create the node with `pipeline.create()` method
+                 auto node = createNode(p, class_);
+                 if(node == nullptr) {
+                     throw std::invalid_argument(std::string(py::str(class_)) + " is not a subclass of depthai.node");
+                 }
+                 return node;
+             })
         // TODO(themarpe) DEPRECATE, use pipeline.create([class name])
         // templated create<NODE> function
         .def("createXLinkIn", &Pipeline::create<node::XLinkIn>)
@@ -150,7 +191,15 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
         .def("createUVC", &Pipeline::create<node::UVC>)
         .def("createCamera", &Pipeline::create<node::Camera>)
         .def("createWarp", &Pipeline::create<node::Warp>)
-        ;
+        .def("start", &Pipeline::start)
+        .def("wait",
+             [](Pipeline& p) {
+                 py::gil_scoped_release release;
+                 p.wait();
+             })
+        .def("stop", &Pipeline::stop)
+        .def("isRunning", &Pipeline::isRunning);
+    ;
 
 
 }
