@@ -21,16 +21,6 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
    public:
     constexpr static const char* NAME = "Camera";
     using DeviceNodeCRTP::DeviceNodeCRTP;
-    [[nodiscard]] static std::shared_ptr<Camera> create() {
-        auto node = std::make_shared<Camera>();
-        node->build();
-        return node;
-    }
-    [[nodiscard]] static std::shared_ptr<Camera> create(std::shared_ptr<Device>& defaultDevice) {
-        auto node = std::make_shared<Camera>(defaultDevice);
-        node->build();
-        return node;
-    }
     void build();
 
    protected:
@@ -116,7 +106,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
     /**
      * Dynamic outputs
      */
-    OutputMap dynamicOutputs{true, *this, "dynamicOutputs", Output(*this, "", Output::Type::MSender, {{ DatatypeEnum::ImgFrame, false }})};
+    OutputMap dynamicOutputs{*this, "dynamicOutputs", {"", "", {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Input for mocking 'isp' functionality.

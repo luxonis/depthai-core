@@ -322,7 +322,6 @@ class Camera::Impl {
     }
 
     Node::Output& requestNewOutput(Camera& parent, const ImgFrameCapability& capability, bool onHost) {
-        const auto output = std::make_shared<Output>(parent, false);
         const auto requestId = nextOutputRequestId;
         outputRequests.push_back({requestId, capability, onHost});
         ++nextOutputRequestId;
@@ -330,12 +329,14 @@ class Camera::Impl {
     }
 };
 
-Camera::Camera() : pimpl(spimpl::make_impl<Impl>()) {}
+// Camera::Camera() : pimpl(spimpl::make_impl<Impl>()) {}
 
 Camera::Camera(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>(std::move(props)), pimpl(spimpl::make_impl<Impl>()) {}
 
+/*
 Camera::Camera(std::shared_ptr<Device>& defaultDevice)
     : DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>(defaultDevice), pimpl(spimpl::make_impl<Impl>()) {}
+    */
 
 void Camera::build() {
     properties.boardSocket = CameraBoardSocket::AUTO;
