@@ -1,7 +1,7 @@
 #pragma once
 
 #include "depthai/pipeline/DeviceNode.hpp"
-#include "depthai/pipeline/ThreadedNode.hpp"
+#include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
@@ -15,7 +15,7 @@
 #include "rtabmap/core/Transform.h"
 namespace dai {
 namespace node {
-class RTABMapVIO : public dai::NodeCRTP<dai::ThreadedNode, RTABMapVIO> {
+class RTABMapVIO : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapVIO> {
    public:
     constexpr static const char* NAME = "RTABMapVIO";
 
@@ -26,16 +26,16 @@ class RTABMapVIO : public dai::NodeCRTP<dai::ThreadedNode, RTABMapVIO> {
      * Input for any ImgFrame messages to be displayed
      * Default queue is non-blocking with size 8
      */
-    Input inputRect{true, *this, "img_rect", Input::Type::SReceiver, false, 8, false, {{dai::DatatypeEnum::ImgFrame, true}}};
-    Input inputDepth{true, *this, "depth", Input::Type::SReceiver, false, 8, false, {{dai::DatatypeEnum::ImgFrame, true}}};
-    Input inputIMU{true, *this, "imu", Input::Type::SReceiver, false, 8, false, {{dai::DatatypeEnum::IMUData, true}}};
-    Input inputFeatures{true, *this, "features", Input::Type::SReceiver, false, 8, true, {{dai::DatatypeEnum::TrackedFeatures, true}}};
-    Input inputReset{true, *this, "reset", Input::Type::SReceiver, false, 8, false, {{dai::DatatypeEnum::CameraControl, true}}};
+    Input inputRect{*this, {.name="img_rect", .types={{dai::DatatypeEnum::ImgFrame, true}}}};
+    Input inputDepth{*this, {.name="depth", .types={{dai::DatatypeEnum::ImgFrame, true}}}};
+    Input inputIMU{*this, {.name="imu", .types={{dai::DatatypeEnum::IMUData, true}}}};
+    Input inputFeatures{*this, {.name="features", .types={{dai::DatatypeEnum::TrackedFeatures, true}}}};
+    Input inputReset{*this, {.name="reset", .types={{dai::DatatypeEnum::CameraControl, true}}}};
 
-    Output transform{true, *this, "transform", Output::Type::MSender, {{dai::DatatypeEnum::TransformData, true}}};
-    Output passthroughRect{true, *this, "passthrough_rect", Output::Type::MSender, {{dai::DatatypeEnum::ImgFrame, true}}};
-    Output passthroughDepth{true, *this, "passthrough_depth", Output::Type::MSender, {{dai::DatatypeEnum::ImgFrame, true}}};
-    Output passthroughFeatures{true, *this, "passthrough_features", Output::Type::MSender, {{dai::DatatypeEnum::TrackedFeatures, true}}};
+    Output transform{*this, {.name="transform", .types={{dai::DatatypeEnum::TransformData, true}}}};
+    Output passthroughRect{*this, {.name="passthrough_rect", .types={{dai::DatatypeEnum::ImgFrame, true}}}};
+    Output passthroughDepth{*this, {.name="passthrough_depth", .types={{dai::DatatypeEnum::ImgFrame, true}}}};
+    Output passthroughFeatures{*this, {.name="passthrough_features", .types={{dai::DatatypeEnum::TrackedFeatures, true}}}};
     
     void run() override;
     void stop() override;

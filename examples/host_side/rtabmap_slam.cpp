@@ -17,7 +17,7 @@
 // project
 #include <rerun.hpp>
 
-#include "depthai/pipeline/ThreadedNode.hpp"
+#include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
@@ -26,23 +26,23 @@
 rerun::Collection<rerun::TensorDimension> tensor_shape(const cv::Mat& img) {
     return {img.rows, img.cols, img.channels()};
 };
-class RerunStreamer : public dai::NodeCRTP<dai::ThreadedNode, RerunStreamer> {
+class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStreamer> {
    public:
     constexpr static const char* NAME = "RerunStreamer";
 
    public:
     void build() {
-        hostNode = true;
     }
 
     /**
      * Input for any ImgFrame messages
      * Default queue is blocking with size 8
      */
-    Input inputTrans{true, *this, "inTrans", Input::Type::SReceiver, false, 8, true, {{dai::DatatypeEnum::TransformData, true}}};
-    Input inputImg{true, *this, "inImg", Input::Type::SReceiver, false, 8, true, {{dai::DatatypeEnum::ImgFrame, true}}};
-    Input inputPCL{true, *this, "inPCL", Input::Type::SReceiver, false, 8, true, {{dai::DatatypeEnum::PointCloudData, true}}};
-    Input inputMap{true, *this, "inMap", Input::Type::SReceiver, false, 8, true, {{dai::DatatypeEnum::ImgFrame, true}}};
+    dai::Node::Input inputTrans{*this, {.name="inTrans",  .types={{dai::DatatypeEnum::TransformData, true}}}};
+    dai::Node::Input inputImg{*this, {.name="inImg",  .types={{dai::DatatypeEnum::ImgFrame, true}}}};
+    dai::Node::Input inputPCL{*this, {.name="inPCL",  .types={{dai::DatatypeEnum::PointCloudData, true}}}};
+    dai::Node::Input inputMap{*this, {.name="inMap",  .types={{dai::DatatypeEnum::ImgFrame, true}}}};
+
     void run() override {
         const auto rec = rerun::RecordingStream("rerun");
         rec.spawn().exit_on_failure();
@@ -50,10 +50,10 @@ class RerunStreamer : public dai::NodeCRTP<dai::ThreadedNode, RerunStreamer> {
         rec.log("world/ground", rerun::Boxes3D::from_half_sizes({{3.f, 3.f, 0.00001f}}));
 
         while(isRunning()) {
-            std::shared_ptr<dai::TransformData> transData = inputTrans.queue.get<dai::TransformData>();
-            auto imgFrame = inputImg.queue.get<dai::ImgFrame>();
-            auto pclData = inputPCL.queue.tryGet<dai::PointCloudData>();
-            auto mapData = inputMap.queue.tryGet<dai::ImgFrame>();
+            std::shared_ptr<dai::TransformData> transData = inputTrans.get<dai::TransformData>();
+            auto imgFrame = inputImg.get<dai::ImgFrame>();
+            auto pclData = inputPCL.tryGet<dai::PointCloudData>();
+            auto mapData = inputMap.tryGet<dai::ImgFrame>();
             if(transData != nullptr) {
                 double x, y, z, qx, qy, qz, qw;
                 transData->getTranslation(x, y, z);

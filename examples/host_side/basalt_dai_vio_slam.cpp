@@ -12,8 +12,9 @@
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
 #include "depthai/rtabmap/RTABMapSLAM.hpp"
+#include "depthai/pipeline/ThreadedHostNode.hpp"
 
-class BasaltVIO : public dai::NodeCRTP<dai::ThreadedNode, BasaltVIO> {
+class BasaltVIO : public dai::NodeCRTP<dai::node::ThreadedHostNode, BasaltVIO> {
    public:
     constexpr static const char* NAME = "BasaltVIO";
 
@@ -67,26 +68,25 @@ class BasaltVIO : public dai::NodeCRTP<dai::ThreadedNode, BasaltVIO> {
     };
 
     void build() {
-        hostNode = true;
-
         vio_config.load("/workspaces/depthai_core_ws/basalt/data/msdmi_config.json");
         std::cout << vio_config.optical_flow_type << std::endl;
-        inputImu.queue.setMaxSize(0);
-        inputStereo.queue.setMaxSize(0);
-        inputImu.queue.setBlocking(false);
-        inputStereo.queue.setBlocking(false);
-        inputImu.queue.addCallback(std::bind(&BasaltVIO::imuCB, this, std::placeholders::_1));
-        inputStereo.queue.addCallback(std::bind(&BasaltVIO::stereoCB, this, std::placeholders::_1));
+        inputImu.setMaxSize(0);
+        inputStereo.setMaxSize(0);
+        inputImu.setBlocking(false);
+        inputStereo.setBlocking(false);
+        inputImu.addCallback(std::bind(&BasaltVIO::imuCB, this, std::placeholders::_1));
+        inputStereo.addCallback(std::bind(&BasaltVIO::stereoCB, this, std::placeholders::_1));
     }
 
     /**
      * Input for any ImgFrame messages
      * Default queue is blocking with size 8
      */
-    Input inputStereo{true, *this, "inStereo", Input::Type::SReceiver, false, 8, true, {{dai::DatatypeEnum::MessageGroup, true}}};
-    Input inputImu{true, *this, "inIMU", Input::Type::SReceiver, false, 8, true, {{dai::DatatypeEnum::IMUData, true}}};
-    Output transform{true, *this, "transform", Output::Type::MSender, {{dai::DatatypeEnum::TransformData, true}}};
-    Output passthrough{true, *this, "imgPassthrough", Output::Type::MSender, {{dai::DatatypeEnum::ImgFrame, true}}};
+    dai::Node::Input inputStereo{*this, {.name="inStereo", .types={{dai::DatatypeEnum::MessageGroup, true}}}};
+    dai::Node::Input inputImu{*this, {.name="inIMU", .types={{dai::DatatypeEnum::IMUData, true}}}};
+    dai::Node::Output transform{*this, {.name="transform", .types={{dai::DatatypeEnum::TransformData, true}}}};
+    dai::Node::Output passthrough{*this, {.name="imgPassthrough", .types={{dai::DatatypeEnum::ImgFrame, true}}}};
+
 
     void run() override {
         if(!calibrated) {
@@ -144,7 +144,6 @@ class BasaltVIO : public dai::NodeCRTP<dai::ThreadedNode, BasaltVIO> {
 
     std::shared_ptr<basalt::Calibration<double>> exportCalibration() {
         auto pipeline = getParentPipeline();
-        auto device = pipeline.getDevice();
         using Scalar = double;
 
         // if(calibInt.get()) return calibInt;
@@ -153,7 +152,7 @@ class BasaltVIO : public dai::NodeCRTP<dai::ThreadedNode, BasaltVIO> {
         calibInt->imu_update_rate = 200;
 
         // get camera ex-/intrinsics
-        auto calibHandler = device->readCalibration2();
+        auto calibHandler = pipeline.getDefaultDevice()->readCalibration();
 
         // update after extrinsics are available
         // auto imuLeftExtrinsics = calibHandler.getCameraToImuExtrinsics(dai::CameraBoardSocket::LEFT);
@@ -261,23 +260,23 @@ class BasaltVIO : public dai::NodeCRTP<dai::ThreadedNode, BasaltVIO> {
 rerun::Collection<rerun::TensorDimension> tensor_shape(const cv::Mat& img) {
     return {img.rows, img.cols, img.channels()};
 };
-class RerunStreamer : public dai::NodeCRTP<dai::ThreadedNode, RerunStreamer> {
+class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStreamer> {
    public:
     constexpr static const char* NAME = "RerunStreamer";
 
    public:
     void build() {
-        hostNode = true;
     }
 
     /**
      * Input for any ImgFrame messages
      * Default queue is blocking with size 8
      */
-    Input inputTrans{true, *this, "inTrans", Input::Type::SReceiver, false, 8, true, {{dai::DatatypeEnum::TransformData, true}}};
-    Input inputImg{true, *this, "inImg", Input::Type::SReceiver, false, 8, true, {{dai::DatatypeEnum::ImgFrame, true}}};
-    Input inputPCL{true, *this, "inPCL", Input::Type::SReceiver, false, 8, true, {{dai::DatatypeEnum::PointCloudData, true}}};
-    Input inputMap{true, *this, "inMap", Input::Type::SReceiver, false, 8, true, {{dai::DatatypeEnum::ImgFrame, true}}};
+    Input inputTrans{*this, {.name="inTrans", .types={{dai::DatatypeEnum::TransformData, true}}}};
+    Input inputImg{*this, {.name="inImg", .types={{dai::DatatypeEnum::ImgFrame, true}}}};
+    Input inputPCL{*this, {.name="inPCL", .types={{dai::DatatypeEnum::PointCloudData, true}}}};
+    Input inputMap{*this, {.name="inMap", .types={{dai::DatatypeEnum::ImgFrame, true}}}};
+
     void run() override {
         const auto rec = rerun::RecordingStream("rerun");
         rec.spawn().exit_on_failure();
@@ -285,10 +284,10 @@ class RerunStreamer : public dai::NodeCRTP<dai::ThreadedNode, RerunStreamer> {
         rec.log("world/ground", rerun::Boxes3D::from_half_sizes({{3.f, 3.f, 0.00001f}}));
 
         while(isRunning()) {
-            std::shared_ptr<dai::TransformData> transData = inputTrans.queue.get<dai::TransformData>();
-            auto imgFrame = inputImg.queue.get<dai::ImgFrame>();
-            auto pclData = inputPCL.queue.tryGet<dai::PointCloudData>();
-            auto mapData = inputMap.queue.tryGet<dai::ImgFrame>();
+            std::shared_ptr<dai::TransformData> transData = inputTrans.get<dai::TransformData>();
+            auto imgFrame = inputImg.get<dai::ImgFrame>();
+            auto pclData = inputPCL.tryGet<dai::PointCloudData>();
+            auto mapData = inputMap.tryGet<dai::ImgFrame>();
             if(transData != nullptr) {
                 double x, y, z, qx, qy, qz, qw;
                 transData->getTranslation(x, y, z);
@@ -338,7 +337,6 @@ int main() {
 	// ULogger::setLevel(ULogger::kDebug);
     // Create pipeline
     dai::Pipeline pipeline;
-    auto device = pipeline.getDevice();
     int fps = 60;
     int width = 640;
     int height = 400;

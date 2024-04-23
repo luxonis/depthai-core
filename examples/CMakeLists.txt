@@ -494,12 +494,12 @@ FetchContent_MakeAvailable(rerun_sdk)
 dai_add_example(rtabmap_vio host_side/rtabmap_vio.cpp OFF OFF)
 set_property(TARGET rtabmap_vio PROPERTY CXX_STANDARD 17)
 target_link_options(rtabmap_vio PRIVATE "-Wl,--disable-new-dtags")
-target_link_libraries(rtabmap_vio PRIVATE depthai::rtabmap rerun_sdk)
+target_link_libraries(rtabmap_vio PRIVATE depthai::rtabmap mp4v2::mp4v2 rerun_sdk)
 
 dai_add_example(rtabmap_slam host_side/rtabmap_slam.cpp OFF ON)
 set_property(TARGET rtabmap_slam PROPERTY CXX_STANDARD 17)
 target_link_options(rtabmap_slam PRIVATE "-Wl,--disable-new-dtags")
-target_link_libraries(rtabmap_slam PRIVATE depthai::rtabmap rerun_sdk)
+target_link_libraries(rtabmap_slam PRIVATE depthai::rtabmap mp4v2::mp4v2 rerun_sdk)
 
 
 find_package(basalt CONFIG REQUIRED)
@@ -512,13 +512,13 @@ dai_add_example(basalt_dai_vio host_side/basalt_dai_vio.cpp OFF OFF)
 set_property(TARGET basalt_dai_vio PROPERTY CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 target_link_options(basalt_dai_vio PRIVATE "-Wl,--disable-new-dtags")
-target_link_libraries(basalt_dai_vio PRIVATE basalt rerun_sdk TBB::tbb Eigen3::Eigen Sophus::Sophus magic_enum::magic_enum)
+target_link_libraries(basalt_dai_vio PRIVATE basalt         mp4v2::mp4v2 rerun_sdk TBB::tbb Eigen3::Eigen Sophus::Sophus magic_enum::magic_enum)
 
 dai_add_example(basalt_dai_vio_slam host_side/basalt_dai_vio_slam.cpp OFF ON)
 set_property(TARGET basalt_dai_vio_slam PROPERTY CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 target_link_options(basalt_dai_vio_slam PRIVATE "-Wl,--disable-new-dtags")
-target_link_libraries(basalt_dai_vio_slam PRIVATE basalt depthai::rtabmap rerun_sdk TBB::tbb Eigen3::Eigen Sophus::Sophus magic_enum::magic_enum)
+target_link_libraries(basalt_dai_vio_slam PRIVATE basalt         mp4v2::mp4v2 depthai::rtabmap rerun_sdk TBB::tbb Eigen3::Eigen Sophus::Sophus magic_enum::magic_enum)
 
 # # ImageManip
 # dai_add_example(image_manip ImageManip/image_manip_example.cpp ON OFF)
@@ -679,6 +679,6 @@ target_link_libraries(basalt_dai_vio_slam PRIVATE basalt depthai::rtabmap rerun_
 # dai_add_example(depth_video_synced Sync/depth_video_synced.cpp ON OFF)
 # dai_add_example(imu_video_synced Sync/imu_video_synced.cpp ON OFF)
 
-if(DEPTHAI_HAVE_PCL_SUPPORT)
-    dai_add_example(visualize_pointcloud PointCloud/visualize_pointcloud.cpp ON ON)
-endif()
+# if(DEPTHAI_HAVE_PCL_SUPPORT)
+    # dai_add_example(visualize_pointcloud PointCloud/visualize_pointcloud.cpp ON ON)
+# endif()

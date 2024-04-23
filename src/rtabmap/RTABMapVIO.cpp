@@ -1,17 +1,17 @@
 #include "depthai/rtabmap/RTABMapVIO.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
 
 namespace dai {
 namespace node {
 void RTABMapVIO::build() {
-    hostNode = true;
     alphaScaling = -1.0;
     odom = rtabmap::Odometry::create();
-    inputIMU.queue.setMaxSize(0);
+    // inputIMU.queue.setMaxSize(0);
     // inputRect.queue.setMaxSize(0);
     // inputDepth.queue.setMaxSize(0);
     // inputFeatures.queue.setMaxSize(0);
 
-    inputIMU.queue.setBlocking(false);
+    // inputIMU.queue.setBlocking(false);
     // inputRect.queue.setBlocking(false);
     // inputDepth.queue.setBlocking(false);
     // inputFeatures.queue.setBlocking(false);
@@ -21,7 +21,7 @@ void RTABMapVIO::build() {
     // inputRect.queue.setBlocking(false);
     // inputDepth.queue.setBlocking(false);
     // inputFeatures.queue.setBlocking(false);
-    inputIMU.queue.addCallback(std::bind(&RTABMapVIO::imuCB, this, std::placeholders::_1));
+    inputIMU.addCallback(std::bind(&RTABMapVIO::imuCB, this, std::placeholders::_1));
 }
 void RTABMapVIO::imuCB(std::shared_ptr<dai::ADatatype> msg) {
     auto imuData = std::static_pointer_cast<dai::IMUData>(msg);
@@ -52,10 +52,10 @@ void RTABMapVIO::setParams(const rtabmap::ParametersMap& params) {
 
 void RTABMapVIO::run() {
     while(isRunning()) {
-        auto imgFrame = inputRect.queue.get<dai::ImgFrame>();
-        auto depthFrame = inputDepth.queue.get<dai::ImgFrame>();
-        auto features = inputFeatures.queue.get<dai::TrackedFeatures>();
-        auto reset = inputReset.queue.tryGet<dai::CameraControl>();
+        auto imgFrame = inputRect.get<dai::ImgFrame>();
+        auto depthFrame = inputDepth.get<dai::ImgFrame>();
+        auto features = inputFeatures.get<dai::TrackedFeatures>();
+        auto reset = inputReset.tryGet<dai::CameraControl>();
         rtabmap::SensorData data;
         if(reset != nullptr) {
             odom->reset();
@@ -150,8 +150,8 @@ void RTABMapVIO::run() {
 }
 
 void RTABMapVIO::getCalib(dai::Pipeline& pipeline, int instanceNum, int width, int height) {
-    auto device = pipeline.getDevice();
-    auto calibHandler = device->readCalibration2();
+
+    auto calibHandler = pipeline.getDefaultDevice()->readCalibration();
 
     auto cameraId = static_cast<dai::CameraBoardSocket>(instanceNum);
     calibHandler.getRTABMapCameraModel(model, cameraId, width, height,rtabmap::Transform::getIdentity(), alphaScaling);

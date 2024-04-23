@@ -1,5 +1,5 @@
 #include "depthai/rtabmap/RTABMapSLAM.hpp"
-
+#include "depthai/pipeline/Pipeline.hpp"
 #include <pcl/point_cloud.h>
 
 #include "rtabmap/core/util3d.h"
@@ -7,7 +7,6 @@
 namespace dai {
 namespace node {
 void RTABMapSLAM::build() {
-    hostNode = true;
     alphaScaling = -1.0;
     reuseFeatures = false;
     localTransform = rtabmap::Transform::getIdentity();
@@ -26,13 +25,13 @@ void RTABMapSLAM::setParams(const rtabmap::ParametersMap& params) {
 
 void RTABMapSLAM::run() {
     while(isRunning()) {
-        auto imgFrame = inputRect.queue.get<dai::ImgFrame>();
-        auto depthFrame = inputDepth.queue.get<dai::ImgFrame>();
+        auto imgFrame = inputRect.get<dai::ImgFrame>();
+        auto depthFrame = inputDepth.get<dai::ImgFrame>();
         std::shared_ptr<dai::TrackedFeatures> features = nullptr;
         if(reuseFeatures) {
-            features = inputFeatures.queue.get<dai::TrackedFeatures>();
+            features = inputFeatures.get<dai::TrackedFeatures>();
         }
-        auto odomPose = inputOdomPose.queue.get<dai::TransformData>();
+        auto odomPose = inputOdomPose.get<dai::TransformData>();
         rtabmap::SensorData data;
 
         if(imgFrame != nullptr && depthFrame != nullptr) {
@@ -170,9 +169,8 @@ void RTABMapSLAM::run() {
 }
 
 void RTABMapSLAM::getCalib(dai::Pipeline& pipeline, int instanceNum, int width, int height) {
-    auto device = pipeline.getDevice();
 
-    auto calibHandler = device->readCalibration2();
+    auto calibHandler = pipeline.getDefaultDevice()->readCalibration();
     auto cameraId = static_cast<dai::CameraBoardSocket>(instanceNum);
     calibHandler.getRTABMapCameraModel(model, cameraId, width, height, localTransform, alphaScaling);
     auto eeprom = calibHandler.getEepromData();

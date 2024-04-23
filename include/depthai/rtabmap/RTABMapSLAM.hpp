@@ -1,7 +1,7 @@
 #pragma once
 
 #include "depthai/pipeline/DeviceNode.hpp"
-#include "depthai/pipeline/ThreadedNode.hpp"
+#include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
@@ -19,22 +19,24 @@
 
 namespace dai {
 namespace node {
-class RTABMapSLAM : public dai::NodeCRTP<dai::ThreadedNode, RTABMapSLAM> {
+class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLAM> {
    public:
     constexpr static const char* NAME = "RTABMapSLAM";
 
    public:
     void build();
 
-    Input inputRect{true, *this, "img_rect", Input::Type::SReceiver, false, 8, false, {{dai::DatatypeEnum::ImgFrame, true}}};
-    Input inputDepth{true, *this, "depth", Input::Type::SReceiver, false, 8, false, {{dai::DatatypeEnum::ImgFrame, true}}};
-    Input inputIMU{true, *this, "imu", Input::Type::SReceiver, false, 8, false, {{dai::DatatypeEnum::IMUData, true}}};
-    Input inputFeatures{true, *this, "features", Input::Type::SReceiver, false, 8, true, {{dai::DatatypeEnum::TrackedFeatures, true}}};
-    Input inputOdomPose{true, *this, "odom_pose", Input::Type::SReceiver, false, 8, false, {{dai::DatatypeEnum::TransformData, true}}};
-    Output transform{true, *this, "transform", Output::Type::MSender, {{dai::DatatypeEnum::TransformData, true}}};
-    Output passthroughRect{true, *this, "passthrough_rect", Output::Type::MSender, {{dai::DatatypeEnum::ImgFrame, true}}};
-    Output pointCloud{true, *this, "point_cloud", Output::Type::MSender, {{dai::DatatypeEnum::PointCloudData, true}}};
-    Output occupancyMap{true, *this, "map", Output::Type::MSender, {{dai::DatatypeEnum::ImgFrame, true}}};
+    Input inputRect{*this, {.name="img_rect", .types={{dai::DatatypeEnum::ImgFrame, true}}}};
+    Input inputDepth{*this, {.name="depth", .types={{dai::DatatypeEnum::ImgFrame, true}}}};
+    Input inputIMU{*this, {.name="imu", .types={{dai::DatatypeEnum::IMUData, true}}}};
+    Input inputFeatures{*this, {.name="features", .types={{dai::DatatypeEnum::TrackedFeatures, true}}}};
+    Input inputOdomPose{*this, {.name="odom_pose", .types={{dai::DatatypeEnum::TransformData, true}}}};
+
+    Output transform{*this, {.name="transform", .types={{dai::DatatypeEnum::TransformData, true}}}};
+    Output passthroughRect{*this, {.name="passthrough_rect", .types={{dai::DatatypeEnum::ImgFrame, true}}}};
+    Output pointCloud{*this, {.name="point_cloud", .types={{dai::DatatypeEnum::PointCloudData, true}}}};
+    Output occupancyMap{*this, {.name="map", .types={{dai::DatatypeEnum::ImgFrame, true}}}};
+
     void run() override;
     void stop() override;
     void setParams(const rtabmap::ParametersMap& params);
