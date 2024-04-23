@@ -53,9 +53,8 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
         .def("runSyncingOnDevice", &HostNode::runSyncingOnDevice, DOC(dai, node, HostNode, runSyncingOnDevice));
 
     py::exec(R"(
-        import inspect
-        import typing
         def __init_subclass__(cls):
+            import inspect
             members = dict(inspect.getmembers(cls))
             assert "process" in members, "Subclass of HostNode must define method 'process'"
             sig = inspect.signature(members["process"])
@@ -67,7 +66,7 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
                 if name == "self": continue
                 annotation = param.annotation
                 if annotation == inspect.Parameter.empty:
-                    annotation = typing.Any
+                    annotation = None
                 cls.input_desc[name] = annotation
 
             cls.output_desc = sig.return_annotation
@@ -80,11 +79,23 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
             cls._process = _process
 
             def build(self, *args):
-                for name, arg in zip(cls.input_desc, args):
+                for (name, type), arg in zip(cls.input_desc.items(), args):
+                    if type is not None:
+                        assert type.__name__.isalpha(), "Security check failed"
+                        type_enum = eval(f"DatatypeEnum.{type.__name__}")
+                        for hierarchy in arg.getPossibleDatatypes():
+                            # I believe this check isn't sound nor complete
+                            # However, nether does the original in canConnect
+                            # I belive it would be more confusing to have two
+                            # different behaviours than one incorrect
+                            if type_enum == hierarchy.datatype: break
+                            if isDatatypeSubclassOf(type_enum, hierarchy.datatype): break
+                        else:
+                            raise TypeError(f"Input '{name}' cannot be linked due to incompatible message types. Input type: {type_enum} Output type: {hierarchy.datatype}")
                     arg.link(self.inputs[name])
                 return self
             cls.build = build
 
-        HostNode.__init_subclass__ = classmethod(__init_subclass__)
-    )", daiNodeModule.attr("__dict__"));
+        node.HostNode.__init_subclass__ = classmethod(__init_subclass__)
+    )", m.attr("__dict__"));
 }

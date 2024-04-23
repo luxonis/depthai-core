@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 
 class Display(dai.node.HostNode):
-    def process(self, rgb, mono):
+    def process(self, rgb: dai.ImgFrame, mono: dai.ImgFrame):
         frame = np.empty((640, 2*640, 3), dtype=np.uint8)
         frame[:, :640, :] = cv2.resize(mono.getCvFrame(), (640, 640)).reshape((640, 640, 1))
         frame[:, 640:, :] = cv2.resize(rgb.getCvFrame(), (640, 640))
