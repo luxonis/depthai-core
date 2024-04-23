@@ -253,8 +253,8 @@ hunter_config(
 hunter_config(
     mp4v2
     VERSION "2.1.3"
-    URL "https://github.com/asahtik/mp4v2/archive/f868f0b842e427e20032922f839988ea4615800e.tar.gz"
-    SHA1 "74820eaa28e0892c5d0fcd9c700402a60fbf6d72"
+    URL "https://github.com/luxonis/mp4v2/archive/1dc9f4d24645ea43405582e5c813dec3eaa8fd3e.tar.gz"
+    SHA1 "2ac9e4348c78d09a3b4fc6e147b9eeb356ba31f1"
     CMAKE_ARGS
         BUILD_SHARED=ON
         BUILD_UTILS=OFF
