@@ -8,14 +8,6 @@
 #include <optional>
 #include <stdexcept>
 
-#include "../utility/Platform.hpp"
-#include "depthai/pipeline/node/ImageManip.hpp"
-#include "depthai/pipeline/node/VideoEncoder.hpp"
-#include "depthai/pipeline/node/host/Record.hpp"
-#include "depthai/pipeline/node/host/Replay.hpp"
-#include "depthai/utility/Compression.hpp"
-#include "depthai/pipeline/Pipeline.hpp"
-
 namespace dai {
 namespace utility {
 

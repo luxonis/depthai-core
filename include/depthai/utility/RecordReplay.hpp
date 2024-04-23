@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <fstream>
+#include <functional>
 
 #include "depthai/properties/VideoEncoderProperties.hpp"
 #include "nlohmann/json.hpp"

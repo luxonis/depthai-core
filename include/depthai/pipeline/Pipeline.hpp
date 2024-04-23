@@ -20,6 +20,7 @@
 #include "depthai/device/BoardConfig.hpp"
 #include "depthai/pipeline/PipelineSchema.hpp"
 #include "depthai/properties/GlobalProperties.hpp"
+#include "depthai/utility/RecordReplay.hpp"
 
 namespace dai {
 
@@ -110,26 +111,6 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     utility::RecordConfig recordConfig;
     std::unordered_map<std::string, std::string> recordReplayFilenames;
 
-    #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
-    bool setupHolisticRecord(std::string mxId);
-    bool setupHolisticReplay(std::string replayPath, std::string mxId);
-    #else
-    template <typename... t>
-    struct dependent_false {
-        static constexpr bool value = false;
-    };
-    template <typename... T>
-    bool setupHolisticRecord(T...) {
-        static_assert(dependent_false<T...>::value, "Library not configured with OpenCV support");
-        return false;
-    }
-    template <typename... T>
-    bool setupHolisticReplay(T...) {
-        static_assert(dependent_false<T...>::value, "Library not configured with OpenCV support");
-        return false;
-    }
-    #endif
-
     // parent
     Pipeline& parent;
 
@@ -200,17 +181,16 @@ class Pipeline {
 
     std::shared_ptr<PipelineImpl> pimpl;
 
-   protected:
-    std::vector<std::shared_ptr<Node>> getSourceNodes() {
-        return impl()->getSourceNodes();
-    }
-
    public:
     PipelineImpl* impl() {
         return pimpl.get();
     }
     const PipelineImpl* impl() const {
         return pimpl.get();
+    }
+
+    std::vector<std::shared_ptr<Node>> getSourceNodes() {
+        return impl()->getSourceNodes();
     }
 
     /**

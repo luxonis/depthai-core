@@ -8,13 +8,11 @@
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "depthai/pipeline/node/host/XLinkInHost.hpp"
 #include "depthai/pipeline/node/host/XLinkOutHost.hpp"
+#include "depthai/utility/HolisticRecordReplay.hpp"
 #include "depthai/utility/Initialization.hpp"
-#include "pipeline/node/ImageManip.hpp"
-#include "pipeline/node/VideoEncoder.hpp"
 #include "utility/Compression.hpp"
 #include "utility/Environment.hpp"
 #include "utility/Platform.hpp"
-#include "utility/RecordReplay.hpp"
 #include "utility/spdlog-fmt.hpp"
 
 // shared
@@ -606,8 +604,9 @@ void PipelineImpl::build() {
             } else if(!recordPath.empty()) {
                 if(utility::checkRecordConfig(recordPath, recordConfig)) {
                     if(platform::checkWritePermissions(recordPath)) {
-                        if(setupHolisticRecord(mxId)) {
+                        if(setupHolisticRecord(parent, mxId, recordConfig, recordReplayFilenames)) {
                             recordConfig.state = utility::RecordConfig::RecordReplayState::RECORD;
+                            spdlog::info("Record enabled.");
                         } else {
                             spdlog::warn("Could not set up holistic record. Record and replay disabled.");
                         }
@@ -620,8 +619,9 @@ void PipelineImpl::build() {
             } else if(!replayPath.empty()) {
                 if(platform::checkPathExists(replayPath)) {
                     if(platform::checkWritePermissions(replayPath)) {
-                        if(setupHolisticReplay(replayPath, mxId)) {
+                        if(setupHolisticReplay(parent, replayPath, mxId, recordConfig, recordReplayFilenames)) {
                             recordConfig.state = utility::RecordConfig::RecordReplayState::REPLAY;
+                            spdlog::info("Replay enabled.");
                         } else {
                             spdlog::warn("Could not set up holistic replay. Record and replay disabled.");
                         }
