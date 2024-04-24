@@ -26,6 +26,7 @@
 #include "DatatypeBindings.hpp"
 #include "MessageQueueBindings.hpp"
 #include "openvino/OpenVINOBindings.hpp"
+#include "nn_archive/NNArchiveBindings.hpp"
 #include "log/LogBindings.hpp"
 #include "VersionBindings.hpp"
 
@@ -58,6 +59,7 @@ PYBIND11_MODULE(depthai, m)
     callstack.push_front(&VersionBindings::bind);
     callstack.push_front(&MessageQueueBindings::bind);
     callstack.push_front(&OpenVINOBindings::bind);
+    callstack.push_front(&NNArchiveBindings::bind);
     NodeBindings::addToCallstack(callstack);
     callstack.push_front(&AssetManagerBindings::bind);
     callstack.push_front(&PipelineBindings::bind);

@@ -1,8 +1,8 @@
-#include "depthai/pipeline/node/host/SyncedNode.hpp"
+#include "depthai/pipeline/node/host/HostNode.hpp"
 
 namespace dai {
 namespace node {
-void SyncedNode::buildStage1() {
+void HostNode::buildStage1() {
     // If the user has been explicit about the sync node, set it
     if(syncOnHost.has_value()) {
         sync->setRunOnHost(syncOnHost.value());
@@ -12,7 +12,7 @@ void SyncedNode::buildStage1() {
     sync->out.link(input);
 }
 
-void SyncedNode::run() {
+void HostNode::run() {
     while(isRunning()) {
         // Get input
         auto in = input.get<dai::MessageGroup>();

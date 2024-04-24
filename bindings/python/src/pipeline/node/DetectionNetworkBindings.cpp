@@ -37,6 +37,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
         .def("setNumInferenceThreads", &DetectionNetwork::setNumInferenceThreads, py::arg("numThreads"), DOC(dai, node, DetectionNetwork, setNumInferenceThreads))
         .def("setNumNCEPerInferenceThread", &DetectionNetwork::setNumNCEPerInferenceThread, py::arg("numNCEPerThread"), DOC(dai, node, DetectionNetwork, setNumNCEPerInferenceThread))
         .def("getNumInferenceThreads", &DetectionNetwork::getNumInferenceThreads, DOC(dai, node, DetectionNetwork, getNumInferenceThreads))
+        .def("setNNArchive", &DetectionNetwork::setNNArchive, DOC(dai, node, DetectionNetwork, setNNArchive))
         .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&DetectionNetwork::setBlob), py::arg("blob"), DOC(dai, node, DetectionNetwork, setBlob))
         .def("setBlob", py::overload_cast<const dai::Path&>(&DetectionNetwork::setBlob), py::arg("path"), DOC(dai, node, DetectionNetwork, setBlob, 2))
         .def("setXmlModelPath", &DetectionNetwork::setXmlModelPath, py::arg("xmlModelPath"), py::arg("binModelPath") = Path{""}, DOC(dai, node, DetectionNetwork, setXmlModelPath))
@@ -89,6 +90,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
         */
         .def("setAnchorMasks", &YoloDetectionNetwork::setAnchorMasks, py::arg("anchorMasks"), DOC(dai, node, YoloDetectionNetwork, setAnchorMasks))
         .def("setIouThreshold", &YoloDetectionNetwork::setIouThreshold, py::arg("thresh"), DOC(dai, node, YoloDetectionNetwork, setIouThreshold))
+        .def("getClasses", &YoloDetectionNetwork::getClasses, DOC(dai, node, YoloDetectionNetwork, getClasses))
         .def("getNumClasses", &YoloDetectionNetwork::getNumClasses, DOC(dai, node, YoloDetectionNetwork, getNumClasses))
         .def("getCoordinateSize", &YoloDetectionNetwork::getCoordinateSize, DOC(dai, node, YoloDetectionNetwork, getCoordinateSize))
         .def("getAnchors", &YoloDetectionNetwork::getAnchors, DOC(dai, node, YoloDetectionNetwork, getAnchors))

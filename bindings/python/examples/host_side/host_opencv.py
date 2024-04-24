@@ -4,9 +4,9 @@ import time
 
 p = dai.Pipeline(True)
 
-class HostDisplay(dai.HostNode):
+class HostDisplay(dai.node.ThreadedHostNode):
     def __init__(self):
-        dai.HostNode.__init__(self)
+        dai.node.ThreadedHostNode.__init__(self)
         self.input = dai.Node.Input(self)
     def run(self):
         while True:

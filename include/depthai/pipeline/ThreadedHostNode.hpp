@@ -5,8 +5,8 @@
 #include "depthai/pipeline/ThreadedNode.hpp"
 
 namespace dai {
-
-class HostNode : public ThreadedNode {
+namespace node {
+class ThreadedHostNode : public ThreadedNode {
    public:
     constexpr static const char* NAME = "HostNode";
     using ThreadedNode::ThreadedNode;
@@ -15,5 +15,5 @@ class HostNode : public ThreadedNode {
         return true;
     }
 };
-
+}  // namespace node
 }  // namespace dai

@@ -6,6 +6,7 @@
 #include <fstream>
 
 // shared
+#include <depthai/nn_archive/NNArchive.hpp>
 #include <depthai/properties/DetectionParserProperties.hpp>
 
 namespace dai {
@@ -47,6 +48,8 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
      *
      */
     int getNumFramesPool();
+
+    std::reference_wrapper<const OpenVINO::Blob> setNNArchive(const NNArchive& nnArchive);
 
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**
@@ -108,6 +111,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
 
     /// Set num classes
     void setNumClasses(int numClasses);
+    void setClasses(const std::vector<std::string>& classes);
     /// Set coordianate size
     void setCoordinateSize(int coordinates);
     /// Set anchors
@@ -121,6 +125,7 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
 
     /// Get num classes
     int getNumClasses() const;
+    std::optional<std::vector<std::string>> getClasses() const;
     /// Get coordianate size
     int getCoordinateSize() const;
     /// Get anchors
@@ -129,6 +134,9 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     std::map<std::string, std::vector<int>> getAnchorMasks() const;
     /// Get Iou threshold
     float getIouThreshold() const;
+
+   private:
+    std::optional<std::vector<std::string>> mClasses;
 };
 
 }  // namespace node

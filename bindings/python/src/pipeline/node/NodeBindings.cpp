@@ -368,5 +368,6 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("info", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->info(msg); })
         .def("warn", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->warn(msg); })
         .def("error", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->error(msg); })
-        .def("critical", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->critical(msg); });
+        .def("critical", [](dai::ThreadedNode& node, const std::string& msg) { node.logger->critical(msg); })
+        .def("isRunning", &ThreadedNode::isRunning, DOC(dai, ThreadedNode, isRunning));
 }

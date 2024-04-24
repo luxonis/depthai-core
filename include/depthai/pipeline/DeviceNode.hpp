@@ -9,7 +9,7 @@
 namespace dai {
 
 class DeviceNode : public ThreadedNode {
-   private:
+   protected:
     std::shared_ptr<Device> device;
 
    public:

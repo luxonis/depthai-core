@@ -1,9 +1,9 @@
 #include "depthai/depthai.hpp"
-#include "depthai/pipeline/HostNode.hpp"
+#include "depthai/pipeline/node/HostNode.hpp"
 #include "depthai/pipeline/node/host/Display.hpp"
 
 int main() {
-    dai::Pipeline pipeline(true);
+    dai::Pipeline pipeline();
 
     auto replay = pipeline.create<dai::node::Replay>();
     auto cam = pipeline.create<dai::node::Camera>();

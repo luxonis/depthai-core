@@ -1,6 +1,7 @@
 #pragma once
 
 #include <depthai/pipeline/DeviceNode.hpp>
+#include <memory>
 
 // shared
 #include "depthai/pipeline/datatype/StereoDepthConfig.hpp"
@@ -16,7 +17,8 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
    public:
     constexpr static const char* NAME = "StereoDepth";
     using DeviceNodeCRTP::DeviceNodeCRTP;
-    void build();
+    void build();  // TODO(Morato) - rename
+
 
     /**
      * Preset modes for stereo depth.
@@ -31,6 +33,14 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
          */
         HIGH_DENSITY
     };
+    std::shared_ptr<StereoDepth> build(Node::Output& left, Node::Output& right, PresetMode presetMode = PresetMode::HIGH_DENSITY) {
+        this->presetMode = presetMode;
+        left.link(this->left);
+        right.link(this->right);
+        return std::static_pointer_cast<StereoDepth>(shared_from_this());
+    }
+
+    std::shared_ptr<StereoDepth> build(bool autoCreateCameras, PresetMode presetMode = PresetMode::HIGH_DENSITY);
 
    protected:
     Properties& getProperties();

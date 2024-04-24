@@ -3,6 +3,8 @@
 #include <depthai/pipeline/NodeGroup.hpp>
 #include <depthai/pipeline/node/DetectionParser.hpp>
 #include <depthai/pipeline/node/NeuralNetwork.hpp>
+#include <optional>
+#include <vector>
 
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "depthai/openvino/OpenVINO.hpp"
@@ -242,6 +244,12 @@ class YoloDetectionNetwork : public DetectionNetwork {
 
     /// Get num classes
     int getNumClasses() const;
+
+    /**
+     * Retrieves the classes array from NNArchive if set or std::nullopt otherwise
+     */
+    std::optional<std::vector<std::string>> getClasses() const;
+
     /// Get coordianate size
     int getCoordinateSize() const;
     /// Get anchors

@@ -8,9 +8,9 @@
 #include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/node/ColorCamera.hpp"
 #include "depthai/pipeline/node/MonoCamera.hpp"
-#include "depthai/pipeline/node/host/SyncedNode.hpp"
+#include "depthai/pipeline/node/host/HostNode.hpp"
 
-class SyncedDisplay : public dai::NodeCRTP<dai::node::SyncedNode, SyncedDisplay> {
+class SyncedDisplay : public dai::NodeCRTP<dai::node::HostNode, SyncedDisplay> {
    public:
     Input& inputRgb = inputs["rgb"];
     Input& inputMono = inputs["mono"];
@@ -40,7 +40,6 @@ class SyncedDisplay : public dai::NodeCRTP<dai::node::SyncedNode, SyncedDisplay>
         return nullptr;
     }
 };
-
 
 int main() {
     // Create pipeline

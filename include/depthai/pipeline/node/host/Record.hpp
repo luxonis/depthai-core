@@ -8,8 +8,7 @@
 // project
 #include <depthai/pipeline/datatype/Buffer.hpp>
 #include <depthai/utility/RecordReplay.hpp>
-
-#include "depthai/pipeline/HostNode.hpp"
+#include "depthai/pipeline/ThreadedHostNode.hpp"
 
 #ifndef DEPTHAI_HAVE_OPENCV_SUPPORT
     #error Record node needs OpenCV support
@@ -21,7 +20,7 @@ namespace node {
 /**
  * @brief Record node, used to record a source stream to a file
  */
-class Record : public NodeCRTP<HostNode, Record> {
+class Record : public NodeCRTP<ThreadedHostNode, Record> {
    public:
     using CompressionLevel = dai::utility::ByteRecorder::CompressionLevel;
 

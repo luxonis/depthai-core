@@ -3,7 +3,7 @@
 #include <cstring>
 
 #include "depthai/device/CalibrationHandler.hpp"
-#include "depthai/pipeline/HostNode.hpp"
+#include "depthai/pipeline/ThreadedHostNode.hpp"
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
 #include "depthai/pipeline/node/host/XLinkInHost.hpp"
@@ -839,12 +839,9 @@ void PipelineImpl::stop() {
 }
 
 PipelineImpl::~PipelineImpl() {
-    spdlog::info("PipelineImpl destructor");
+    stop();
     wait();
-    spdlog::info("Finished waiting");
-    // TMP - might be more appropriate
-    // stop();
-    //
+
     if(recordConfig.state == utility::RecordConfig::RecordReplayState::RECORD) {
         spdlog::info("Starting compression: {} files", recordReplayFilenames.size());
         std::vector<std::string> filenames = {recordReplayFilenames["record_config"]};

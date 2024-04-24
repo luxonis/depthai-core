@@ -1,7 +1,9 @@
 #include "depthai/pipeline/node/StereoDepth.hpp"
 
+#include "depthai/pipeline/node/MonoCamera.hpp"
 // standard
 #include <fstream>
+#include <memory>
 
 #include "pipeline/datatype/StereoDepthConfig.hpp"
 #include "spdlog/spdlog.h"
@@ -12,7 +14,29 @@ namespace dai {
 namespace node {
 
 void StereoDepth::build() {
-    setDefaultProfilePreset(presetMode);
+    // setDefaultProfilePreset(presetMode);
+}
+
+std::shared_ptr<StereoDepth> StereoDepth::build(bool autoCreateCameras, PresetMode presetMode) {
+    if(!autoCreateCameras) {
+        return std::static_pointer_cast<StereoDepth>(shared_from_this());
+    }
+    // TODO(Morato) - push this further, consider if cameras have already been used etc.
+    // First get the default stereo pairs
+    auto stereoPairs = device->getAvailableStereoPairs();
+    if(stereoPairs.empty()) {
+        throw std::runtime_error("No stereo pairs available, can't auto-create StereoDepth node");
+    }
+    // Take the first stereo pair
+    auto stereoPair = stereoPairs[0];
+    // Create the two cameras
+    auto pipeline = getParentPipeline();
+    auto left = pipeline.create<dai::node::MonoCamera>();
+    left->setBoardSocket(stereoPair.left);
+    auto right = pipeline.create<dai::node::MonoCamera>();
+    right->setBoardSocket(stereoPair.right);
+
+    return build(left->out, right->out, presetMode);
 }
 
 StereoDepth::StereoDepth(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthProperties>(std::move(props)) {}

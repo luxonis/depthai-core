@@ -104,6 +104,9 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
      * Suitable when extra information is required from SpatialLocationCalculator node, e.g. minimum, maximum distance.
      */
     Output spatialLocationCalculatorOutput{*this, {.name = "spatialLocationCalculatorOutput", .types = {{DatatypeEnum::SpatialLocationCalculatorData, false}}}};
+
+    void setNNArchive(const NNArchive& nnArchive);
+
     /** Backwards compatibility interface **/
     // Specify local filesystem path to load the blob (which gets loaded at loadAssets)
     /**
@@ -259,6 +262,8 @@ class YoloSpatialDetectionNetwork : public DeviceNodeCRTP<SpatialDetectionNetwor
 
     /// Get num classes
     int getNumClasses() const;
+    /// Get classes labels
+    std::optional<std::vector<std::string>> getClasses() const;
     /// Get coordianate size
     int getCoordinateSize() const;
     /// Get anchors
