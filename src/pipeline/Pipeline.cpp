@@ -10,6 +10,7 @@
 #include "depthai/pipeline/node/host/XLinkOutHost.hpp"
 #include "depthai/utility/HolisticRecordReplay.hpp"
 #include "depthai/utility/Initialization.hpp"
+#include "pipeline/datatype/ImgFrame.hpp"
 #include "utility/Compression.hpp"
 #include "utility/Environment.hpp"
 #include "utility/Platform.hpp"
@@ -811,7 +812,9 @@ void PipelineImpl::wait() {
     // Waits for all nodes to finish the execution
     for(const auto& node : getAllNodes()) {
         if(node->runOnHost()) {
+            spdlog::info("Waiting for node {} / {}", node->getName(), getAllNodes().size());
             node->wait();
+            spdlog::info("Node {} / {} finished", node->getName(), getAllNodes().size());
         }
     }
 }
@@ -836,21 +839,26 @@ void PipelineImpl::stop() {
 }
 
 PipelineImpl::~PipelineImpl() {
+    spdlog::info("PipelineImpl destructor");
     wait();
+    spdlog::info("Finished waiting");
     // TMP - might be more appropriate
     // stop();
     //
     if(recordConfig.state == utility::RecordConfig::RecordReplayState::RECORD) {
+        spdlog::info("Starting compression: {} files", recordReplayFilenames.size());
         std::vector<std::string> filenames = {recordReplayFilenames["record_config"]};
         std::vector<std::string> outFiles = {"record_config.json"};
         filenames.reserve(recordReplayFilenames.size() * 2 + 1);
         outFiles.reserve(recordReplayFilenames.size() * 2 + 1);
         for(auto& rstr : recordReplayFilenames) {
             if(rstr.first != "record_config") {
-                filenames.push_back(rstr.second);
-                filenames.push_back(rstr.second + ".meta");
-                outFiles.push_back(rstr.first);
-                outFiles.push_back(rstr.first + ".meta");
+                std::string nodeName = rstr.first;
+                std::string filePath = rstr.second;
+                filenames.push_back(filePath.append(".mp4"));
+                filenames.push_back(filePath.append(".mcap"));
+                outFiles.push_back(nodeName.append(".mp4"));
+                outFiles.push_back(nodeName.append(".mcap"));
             }
         }
         spdlog::info("Record: Creating tar file with {} files", filenames.size());
@@ -861,8 +869,10 @@ PipelineImpl::~PipelineImpl() {
     if(recordConfig.state != utility::RecordConfig::RecordReplayState::NONE) {
         spdlog::info("Record and Replay: Removing temporary files");
         for(auto& kv : recordReplayFilenames) {
-            std::remove(kv.second.c_str());
-            if(kv.first != "record_config") std::remove((kv.second + ".meta").c_str());
+            if(kv.first != "record_config") {
+                std::remove(kv.second.append(".mp4").c_str());
+                std::remove(kv.second.append(".mcap").c_str());
+            } else std::remove(kv.second.c_str());
         }
     }
 }

@@ -21,7 +21,7 @@ bool setupHolisticRecord(Pipeline& pipeline,
             NodeRecordParams nodeParams = node->getNodeRecordParams();
             std::string nodeName = nodeParams.name;
             auto recordNode = pipeline.create<dai::node::Record>();
-            std::string filePath = platform::joinPaths(recordPath, mxId.append("_").append(nodeName)).append(".mp4");
+            std::string filePath = platform::joinPaths(recordPath, mxId.append("_").append(nodeName));
             recordNode->setRecordFile(filePath);
             recordNode->setCompressionLevel((dai::node::Record::CompressionLevel)recordConfig.compressionLevel);
             outFilenames[nodeName] = filePath;
@@ -92,12 +92,12 @@ bool setupHolisticReplay(Pipeline& pipeline,
         outFiles.reserve(sources.size() + 1);
         if(allMatch(tarFilenames, pipelineFilenames)) {
             for(auto& nodeName : nodeNames) {
-                auto filename = mxId.append("_").append(nodeName).append(".mp4");
-                inFiles.push_back(filename);
-                inFiles.push_back(filename + ".meta");
+                auto filename = mxId.append("_").append(nodeName);
+                inFiles.push_back(filename.append(".mp4"));
+                inFiles.push_back(filename.append(".mcap"));
                 std::string filePath = platform::joinPaths(rootPath, filename);
-                outFiles.push_back(filePath);
-                outFiles.push_back(filePath.append(".meta"));
+                outFiles.push_back(filePath.append(".mp4"));
+                outFiles.push_back(filePath.append(".mcap"));
                 outFilenames[nodeName] = filePath;
             }
             inFiles.emplace_back("record_config.json");
@@ -121,11 +121,11 @@ bool setupHolisticReplay(Pipeline& pipeline,
             for(auto& nodeName : nodeNames) {
                 auto inFilename = mxIdRec.append("_").append(nodeName).append(".rec");
                 auto outFilename = mxId.append("_").append(nodeName).append(".rec");
-                inFiles.push_back(inFilename);
-                inFiles.push_back(inFilename + ".meta");
+                inFiles.push_back(inFilename.append(".mp4"));
+                inFiles.push_back(inFilename.append(".mcap"));
                 std::string filePath = platform::joinPaths(rootPath, outFilename);
-                outFiles.push_back(filePath);
-                outFiles.push_back(filePath.append(".meta"));
+                outFiles.push_back(filePath.append(".mp4"));
+                outFiles.push_back(filePath.append(".mcap"));
                 outFilenames[nodeName] = filePath;
             }
             inFiles.emplace_back("record_config.json");
