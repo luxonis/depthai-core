@@ -93,6 +93,7 @@ class VideoPlayer {
    public:
     ~VideoPlayer();
     void init(const std::string& filePath);
+    void setSize(uint32_t width, uint32_t height);
     std::optional<std::vector<uint8_t>> next();
     std::tuple<uint32_t, uint32_t> size();
     void close();

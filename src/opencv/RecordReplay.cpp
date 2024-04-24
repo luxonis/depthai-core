@@ -186,6 +186,11 @@ void VideoPlayer::init(const std::string& filePath) {
     initialized = true;
 }
 
+void VideoPlayer::setSize(uint32_t width, uint32_t height) {
+    this->width = width;
+    this->height = height;
+}
+
 std::optional<std::vector<uint8_t>> VideoPlayer::next() {
     if(!initialized) {
         throw std::runtime_error("VideoPlayer not initialized");
@@ -195,8 +200,12 @@ std::optional<std::vector<uint8_t>> VideoPlayer::next() {
     if(!cvReader->read(frame)) {
         return std::nullopt;
     }
-    height = frame.rows;
-    width = frame.cols;
+    if(width > 0 && height > 0) {
+        cv::resize(frame, frame, cv::Size(width, height));
+    } else {
+        width = frame.cols;
+        height = frame.rows;
+    }
     assert(frame.isContinuous());
     std::vector<uint8_t> data;
     data.assign(frame.data, frame.data + frame.total() * frame.elemSize());

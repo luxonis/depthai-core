@@ -20,7 +20,7 @@ int main() {
 	videoEncoder->setProfile(dai::VideoEncoderProperties::Profile::H264_MAIN);
 
 	cam->video.link(videoEncoder->input);
-	videoEncoder->out.link(record->in);
+	videoEncoder->out.link(record->input);
 
 	pipeline.start();
 
