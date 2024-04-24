@@ -15,6 +15,14 @@
 // pybind11
 #include "pybind11/stl_bind.h"
 
+#include<thread>
+#include<unordered_map>
+
+std::unordered_map<std::thread::id, dai::Pipeline&> implicitPipelines;
+dai::Pipeline& getImplicitPipeline() {
+    return implicitPipelines.at(std::this_thread::get_id());
+}
+
 // Map of python node classes and call to pipeline to create it
 std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_)>>> pyNodeCreateMap;
 py::handle daiNodeModule;

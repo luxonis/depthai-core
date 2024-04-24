@@ -7,8 +7,11 @@
 #include "pybind11_common.hpp"
 // depthai
 #include "depthai/pipeline/Node.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
 #include "depthai/pipeline/ThreadedHostNode.hpp"
 
+
+dai::Pipeline& getImplicitPipeline();
 
 struct NodeBindings {
     static void addToCallstack(std::deque<StackFunction>& callstack);
