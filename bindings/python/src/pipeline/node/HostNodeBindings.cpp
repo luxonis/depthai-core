@@ -45,7 +45,11 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
 
     threadedHostNode.def(py::init<>()).def("run", &ThreadedHostNode::run);
 
-    hostNode.def(py::init<>())
+    hostNode.def(py::init([](){
+                auto node = std::make_shared<PyHostNode>();
+                getImplicitPipeline().add(node);
+                return node;
+        }))
         .def("_process", &HostNode::_process)
         .def_property_readonly(
             "inputs", [](HostNode& node) { return &node.inputs; }, py::return_value_policy::reference_internal)
@@ -78,7 +82,7 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
                     *(messageGroup[argname] for argname in cls.input_desc.keys()))
             cls._process = _process
 
-            def build(self, *args):
+            def link_args(self, *args):
                 for (name, type), arg in zip(cls.input_desc.items(), args):
                     if type is not None:
                         assert type.__name__.isalpha(), "Security check failed"
@@ -94,7 +98,12 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
                             raise TypeError(f"Input '{name}' cannot be linked due to incompatible message types. Input type: {type_enum} Output type: {hierarchy.datatype}")
                     arg.link(self.inputs[name])
                 return self
-            cls.build = build
+            cls.link_args = link_args
+
+            def __init__(self, *args):
+                node.HostNode.__init__(self)
+                self.link_args(*args)
+            cls.__init__ = __init__
 
         node.HostNode.__init_subclass__ = classmethod(__init_subclass__)
     )", m.attr("__dict__"));

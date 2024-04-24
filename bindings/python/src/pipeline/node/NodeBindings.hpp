@@ -12,6 +12,8 @@
 
 
 dai::Pipeline& getImplicitPipeline();
+void setImplicitPipeline(dai::Pipeline& pipeline);
+void delImplicitPipeline();
 
 struct NodeBindings {
     static void addToCallstack(std::deque<StackFunction>& callstack);

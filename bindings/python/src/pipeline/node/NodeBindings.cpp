@@ -20,7 +20,16 @@
 
 std::unordered_map<std::thread::id, dai::Pipeline&> implicitPipelines;
 dai::Pipeline& getImplicitPipeline() {
-    return implicitPipelines.at(std::this_thread::get_id());
+    auto rv = implicitPipelines.find(std::this_thread::get_id());
+    if (rv == implicitPipelines.end())
+        throw std::runtime_error("No implicit pipeline was found. Use `with Pipeline()` to use one");
+    return rv->second;
+}
+void setImplicitPipeline(dai::Pipeline& pipeline) {
+    implicitPipelines.emplace(std::this_thread::get_id(), pipeline);
+}
+void delImplicitPipeline() {
+    implicitPipelines.erase(implicitPipelines.find(std::this_thread::get_id()));
 }
 
 // Map of python node classes and call to pipeline to create it
