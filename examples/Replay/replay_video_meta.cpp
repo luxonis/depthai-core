@@ -1,9 +1,8 @@
 #include "depthai/depthai.hpp"
-#include "depthai/pipeline/node/HostNode.hpp"
 #include "depthai/pipeline/node/host/Display.hpp"
 
 int main() {
-    dai::Pipeline pipeline();
+    dai::Pipeline pipeline(true);
 
     auto replay = pipeline.create<dai::node::Replay>();
     auto cam = pipeline.create<dai::node::Camera>();
@@ -13,6 +12,7 @@ int main() {
 
     replay->setReplayVideo("video.mp4");
     replay->setReplayFile("video.mcap");
+    replay->setFps(1);
     replay->setOutFrameType(dai::ImgFrame::Type::YUV420p);
 
     replay->out.link(cam->mockIsp);
