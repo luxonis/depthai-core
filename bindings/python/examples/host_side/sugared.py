@@ -12,10 +12,10 @@ class Display(dai.node.HostNode):
             self.stopPipeline()
 
 with dai.Pipeline(createImplicitDevice=True) as p:
-    colorCamera = p.create(dai.node.ColorCamera)
+    colorCamera = dai.node.ColorCamera()
     colorCamera.setBoardSocket(dai.CameraBoardSocket.CAM_A)
     monoCamera = p.create(dai.node.MonoCamera)
     monoCamera.setBoardSocket(dai.CameraBoardSocket.CAM_B)
-    display = p.create(Display).build(colorCamera.video, monoCamera.out)
+    display = Display(colorCamera.video, monoCamera.out)
     p.start()
     p.wait()
