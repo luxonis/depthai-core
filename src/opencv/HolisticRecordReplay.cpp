@@ -10,18 +10,15 @@
 namespace dai {
 namespace utility {
 
-bool setupHolisticRecord(Pipeline& pipeline,
-                         std::string mxId,
-                         RecordConfig& recordConfig,
-                         std::unordered_map<std::string, std::string>& outFilenames) {
+bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConfig& recordConfig, std::unordered_map<std::string, std::string>& outFilenames) {
     auto sources = pipeline.getSourceNodes();
-    auto recordPath = recordConfig.outputDir;
+    const auto recordPath = recordConfig.outputDir;
     try {
         for(auto& node : sources) {
             NodeRecordParams nodeParams = node->getNodeRecordParams();
             std::string nodeName = nodeParams.name;
             auto recordNode = pipeline.create<dai::node::Record>();
-            std::string filePath = platform::joinPaths(recordPath, mxId.append("_").append(nodeName));
+            std::string filePath = platform::joinPaths(recordPath, (mxId + "_").append(nodeName));
             recordNode->setRecordFile(filePath);
             recordNode->setCompressionLevel((dai::node::Record::CompressionLevel)recordConfig.compressionLevel);
             outFilenames[nodeName] = filePath;
@@ -46,7 +43,7 @@ bool setupHolisticRecord(Pipeline& pipeline,
                 node->getRecordOutput().link(recordNode->input);
             }
         }
-        outFilenames["record_recordConfig"] = platform::joinPaths(recordPath, mxId.append("_record_config.json"));
+        outFilenames["record_config"] = platform::joinPaths(recordPath, mxId + "_record_config.json");
     } catch(const std::runtime_error& e) {
         recordConfig.state = RecordConfig::RecordReplayState::NONE;
         spdlog::warn("Record disabled: {}", e.what());
@@ -54,7 +51,7 @@ bool setupHolisticRecord(Pipeline& pipeline,
     }
     // Write recordConfig to output dir
     try {
-        std::ofstream file(Path(platform::joinPaths(recordPath, mxId.append("_record_config.json"))));
+        std::ofstream file(Path(platform::joinPaths(recordPath, mxId + "_record_config.json")));
         json j = recordConfig;
         file << j.dump(4);
     } catch(const std::exception& e) {
@@ -66,22 +63,31 @@ bool setupHolisticRecord(Pipeline& pipeline,
 
 bool setupHolisticReplay(Pipeline& pipeline,
                          std::string replayPath,
-                         std::string mxId,
+                         const std::string& mxId,
                          RecordConfig& recordConfig,
                          std::unordered_map<std::string, std::string>& outFilenames) {
-    std::string rootPath = platform::getDirFromPath(replayPath);
+    const std::string rootPath = platform::getDirFromPath(replayPath);
     auto sources = pipeline.getSourceNodes();
     try {
-        auto tarFilenames = filenamesInTar(replayPath);
-        std::remove_if(tarFilenames.begin(), tarFilenames.end(), [](const std::string& filename) {
-            return filename.size() < 4 || filename.substr(filename.size() - 4, filename.size()) == "meta";
-        });
+        auto tarNodenames = filenamesInTar(replayPath);
+        tarNodenames.erase(std::remove_if(tarNodenames.begin(),
+                                          tarNodenames.end(),
+                                          [](const std::string& filename) {
+                                              return filename.size() < 4 || filename.substr(filename.size() - 4, filename.size()) == "mcap"
+                                                     || filename == "record_config.json";
+                                          }),
+                           tarNodenames.end());
+
+        for(auto& filename : tarNodenames) filename = filename.substr(0, filename.find_last_of('.'));
+
         std::vector<std::string> nodeNames;
         std::vector<std::string> pipelineFilenames;
         pipelineFilenames.reserve(sources.size());
         for(auto& node : sources) {
             NodeRecordParams nodeParams = node->getNodeRecordParams();
-            std::string nodeName = mxId.append("_").append(nodeParams.name).append(".rec");
+            // Needed for muti-device recordings, not yet supported
+            // std::string nodeName = (mxId + "_").append(nodeParams.name);
+            std::string nodeName = nodeParams.name;
             pipelineFilenames.push_back(nodeName);
             nodeNames.push_back(nodeParams.name);
         }
@@ -90,49 +96,52 @@ bool setupHolisticReplay(Pipeline& pipeline,
         std::vector<std::string> outFiles;
         inFiles.reserve(sources.size() + 1);
         outFiles.reserve(sources.size() + 1);
-        if(allMatch(tarFilenames, pipelineFilenames)) {
+        if(allMatch(tarNodenames, pipelineFilenames)) {
             for(auto& nodeName : nodeNames) {
-                auto filename = mxId.append("_").append(nodeName);
-                inFiles.push_back(filename.append(".mp4"));
-                inFiles.push_back(filename.append(".mcap"));
+                // auto filename = (mxId + "_").append(nodeName);
+                auto filename = nodeName;
+                inFiles.push_back(filename + ".mp4");
+                inFiles.push_back(filename + ".mcap");
                 std::string filePath = platform::joinPaths(rootPath, filename);
-                outFiles.push_back(filePath.append(".mp4"));
-                outFiles.push_back(filePath.append(".mcap"));
+                outFiles.push_back(filePath + ".mp4");
+                outFiles.push_back(filePath + ".mcap");
                 outFilenames[nodeName] = filePath;
             }
             inFiles.emplace_back("record_config.json");
-            configPath = platform::joinPaths(rootPath, mxId.append("_record_config.json"));
+            configPath = platform::joinPaths(rootPath, "record_config.json");
             outFiles.push_back(configPath);
             outFilenames["record_config"] = configPath;
             untarFiles(replayPath, inFiles, outFiles);
         } else {
-            std::vector<std::string> mxIds;
-            mxIds.reserve(tarFilenames.size());
-            for(auto& filename : tarFilenames) {
-                mxIds.push_back(filename.substr(0, filename.find_first_of('_')));
-            }
-            // Get unique mxIds
-            std::sort(mxIds.begin(), mxIds.end());
-            mxIds.erase(std::unique(mxIds.begin(), mxIds.end()), mxIds.end());
-            std::string mxIdRec = matchTo(mxIds, tarFilenames, nodeNames);
-            if(mxIdRec.empty()) {
-                throw std::runtime_error("No recordings match the pipeline configuration.");
-            }
-            for(auto& nodeName : nodeNames) {
-                auto inFilename = mxIdRec.append("_").append(nodeName).append(".rec");
-                auto outFilename = mxId.append("_").append(nodeName).append(".rec");
-                inFiles.push_back(inFilename.append(".mp4"));
-                inFiles.push_back(inFilename.append(".mcap"));
-                std::string filePath = platform::joinPaths(rootPath, outFilename);
-                outFiles.push_back(filePath.append(".mp4"));
-                outFiles.push_back(filePath.append(".mcap"));
-                outFilenames[nodeName] = filePath;
-            }
-            inFiles.emplace_back("record_config.json");
-            configPath = platform::joinPaths(rootPath, mxId.append("_record_config.json"));
-            outFiles.push_back(configPath);
-            outFilenames["record_config"] = configPath;
-            untarFiles(replayPath, inFiles, outFiles);
+            throw std::runtime_error("Recording does not match the pipeline configuration.");
+            // For multi-device recordings, where devices are not the same
+            // std::vector<std::string> mxIds;
+            // mxIds.reserve(tarFilenames.size());
+            // for(auto& filename : tarFilenames) {
+            //     mxIds.push_back(filename.substr(0, filename.find_first_of('_')));
+            // }
+            // // Get unique mxIds
+            // std::sort(mxIds.begin(), mxIds.end());
+            // mxIds.erase(std::unique(mxIds.begin(), mxIds.end()), mxIds.end());
+            // std::string mxIdRec = matchTo(mxIds, tarFilenames, nodeNames);
+            // if(mxIdRec.empty()) {
+            //     throw std::runtime_error("No recordings match the pipeline configuration.");
+            // }
+            // for(auto& nodeName : nodeNames) {
+            //     auto inFilename = (mxIdRec + "_").append(nodeName).append(".rec");
+            //     auto outFilename = (mxId + "_").append(nodeName).append(".rec");
+            //     inFiles.push_back(inFilename + ".mp4");
+            //     inFiles.push_back(inFilename + ".mcap");
+            //     std::string filePath = platform::joinPaths(rootPath, outFilename);
+            //     outFiles.push_back(filePath + ".mp4");
+            //     outFiles.push_back(filePath + ".mcap");
+            //     outFilenames[nodeName] = filePath;
+            // }
+            // inFiles.emplace_back("record_config.json");
+            // configPath = platform::joinPaths(rootPath, mxId + "_record_config.json");
+            // outFiles.push_back(configPath);
+            // outFilenames["record_config"] = configPath;
+            // untarFiles(replayPath, inFiles, outFiles);
         }
 
         // FIXME(asahtik): If this fails, extracted files do not get removed
@@ -145,9 +154,11 @@ bool setupHolisticReplay(Pipeline& pipeline,
             NodeRecordParams nodeParams = node->getNodeRecordParams();
             std::string nodeName = nodeParams.name;
             auto replay = pipeline.create<dai::node::Replay>();
-            replay->setReplayFile(platform::joinPaths(rootPath, mxId.append("_").append(nodeName).append(".mcap")));
+            // replay->setReplayFile(platform::joinPaths(rootPath, (mxId + "_").append(nodeName).append(".mcap")));
+            replay->setReplayFile(platform::joinPaths(rootPath, nodeName + ".mcap"));
             if(strcmp(node->getName(), "Camera") == 0 || strcmp(node->getName(), "ColorCamera") == 0 || strcmp(node->getName(), "MonoCamera") == 0) {
-                replay->setReplayVideo(platform::joinPaths(rootPath, mxId.append("_").append(nodeName).append(".mp4")));
+                // replay->setReplayVideo(platform::joinPaths(rootPath, (mxId + "_").append(nodeName).append(".mp4")));
+                replay->setReplayVideo(platform::joinPaths(rootPath, nodeName + ".mp4"));
                 replay->setOutFrameType(ImgFrame::Type::YUV420p);
             }
             replay->out.link(node->getReplayInput());

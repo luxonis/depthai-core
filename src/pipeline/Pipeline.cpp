@@ -812,9 +812,7 @@ void PipelineImpl::wait() {
     // Waits for all nodes to finish the execution
     for(const auto& node : getAllNodes()) {
         if(node->runOnHost()) {
-            spdlog::info("Waiting for node {} / {}", node->getName(), getAllNodes().size());
             node->wait();
-            spdlog::info("Node {} / {} finished", node->getName(), getAllNodes().size());
         }
     }
 }
@@ -843,7 +841,6 @@ PipelineImpl::~PipelineImpl() {
     wait();
 
     if(recordConfig.state == utility::RecordConfig::RecordReplayState::RECORD) {
-        spdlog::info("Starting compression: {} files", recordReplayFilenames.size());
         std::vector<std::string> filenames = {recordReplayFilenames["record_config"]};
         std::vector<std::string> outFiles = {"record_config.json"};
         filenames.reserve(recordReplayFilenames.size() * 2 + 1);
@@ -852,10 +849,10 @@ PipelineImpl::~PipelineImpl() {
             if(rstr.first != "record_config") {
                 std::string nodeName = rstr.first;
                 std::string filePath = rstr.second;
-                filenames.push_back(filePath.append(".mp4"));
-                filenames.push_back(filePath.append(".mcap"));
-                outFiles.push_back(nodeName.append(".mp4"));
-                outFiles.push_back(nodeName.append(".mcap"));
+                filenames.push_back(filePath + ".mp4");
+                filenames.push_back(filePath + ".mcap");
+                outFiles.push_back(nodeName + ".mp4");
+                outFiles.push_back(nodeName + ".mcap");
             }
         }
         spdlog::info("Record: Creating tar file with {} files", filenames.size());
@@ -867,8 +864,8 @@ PipelineImpl::~PipelineImpl() {
         spdlog::info("Record and Replay: Removing temporary files");
         for(auto& kv : recordReplayFilenames) {
             if(kv.first != "record_config") {
-                std::remove(kv.second.append(".mp4").c_str());
-                std::remove(kv.second.append(".mcap").c_str());
+                std::remove((kv.second + ".mp4").c_str());
+                std::remove((kv.second + ".mcap").c_str());
             } else std::remove(kv.second.c_str());
         }
     }

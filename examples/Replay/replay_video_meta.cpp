@@ -1,4 +1,6 @@
 #include "depthai/depthai.hpp"
+
+#include "depthai/pipeline/node/host/Replay.hpp"
 #include "depthai/pipeline/node/host/Display.hpp"
 
 int main() {
