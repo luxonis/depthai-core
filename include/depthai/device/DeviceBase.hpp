@@ -38,6 +38,13 @@
 #include "depthai-shared/log/LogLevel.hpp"
 #include "depthai-shared/log/LogMessage.hpp"
 
+// bootloader
+#include "depthai-bootloader-shared/Bootloader.hpp"
+#include "depthai-bootloader-shared/Config.hpp"
+#include "depthai-bootloader-shared/SBR.h"
+#include "depthai-bootloader-shared/Structure.hpp"
+#include "depthai-bootloader-shared/XLinkConstants.hpp"
+
 namespace dai {
 
 // Forward declare Pipeline
@@ -48,6 +55,13 @@ class Pipeline;
  */
 class DeviceBase {
    public:
+    // Alias
+    using Type = dai::bootloader::Type;
+    using Memory = dai::bootloader::Memory;
+    using Section = dai::bootloader::Section;
+    using UsbConfig = dai::bootloader::UsbConfig;
+    using NetworkConfig = dai::bootloader::NetworkConfig;
+
     // constants
 
     /// Default search time for constructors which discover devices
@@ -797,6 +811,20 @@ class DeviceBase {
     void flashEepromClear();
 
     /**
+     * Get the size of the NOR flash memory in bytes.
+     * If NOR flash is not present or an error occurs while trying to get it's size, 0 is returned.
+     *
+     * @return uint64_t
+     */
+    uint64_t getFlashMemorySize();
+
+    /**
+     * Flash the bootloader configuration.
+     *
+     */
+    void flashBootloaderConfig(dai::bootloader::Config& config, dai::bootloader::Type type);
+
+    /**
      * Destructive action, deletes Factory area EEPROM contents
      * Requires FACTORY PROTECTED permissions
      *
@@ -915,6 +943,14 @@ class DeviceBase {
         return connection;
     }
 
+    int getEthernetLinkSpeed();
+    int getEthernetLinkDuplex();
+    int getBootMode();
+    int getBootModeCurrent();
+    void setBootGpioInput();
+
+    int64_t getEmmcMemorySize();
+
    protected:
     std::shared_ptr<XLinkConnection> connection;
 
@@ -1006,6 +1042,29 @@ class DeviceBase {
     // Device config
     Config config;
 
+    // Bootloader functionality
+   public:
+    // Bootloader functionality
+    void flashWrite(std::vector<std::uint8_t> data, uint64_t offset = 0);
+    std::vector<std::uint8_t> flashRead(uint32_t size, uint64_t offset = 0);
+    std::tuple<bool, std::string> flashBootloader(Memory memory, Type type, std::function<void(float)> progressCallback, const dai::Path& path = {});
+    std::tuple<bool, std::string> flashBootHeader();
+    std::tuple<bool, std::string> flashUsbRecoveryBootHeader();
+
+   private:
+    // // bootloader stream
+    // std::unique_ptr<XLinkStream> stream;
+    // template <typename T>
+    // bool sendRequest(const T& request);
+    // template <typename T>
+    // void sendRequestThrow(const T& request);
+    // bool receiveResponseData(std::vector<uint8_t>& data);
+    // template <typename T>
+    // bool parseResponse(const std::vector<uint8_t>& data, T& response);
+    // template <typename T>
+    // bool receiveResponse(T& response);
+    // template <typename T>
+    // void receiveResponseThrow(T& response);
     dai::Path firmwarePath;
     bool dumpOnly = false;
 };

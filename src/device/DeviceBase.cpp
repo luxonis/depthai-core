@@ -1,6 +1,7 @@
 #include "depthai/device/DeviceBase.hpp"
 
 // std
+#include <fstream>
 #include <iostream>
 
 // shared
@@ -17,6 +18,7 @@
 
 // project
 #include "DeviceLogger.hpp"
+#include "depthai/device/DeviceBootloader.hpp"
 #include "depthai/device/EepromError.hpp"
 #include "depthai/pipeline/node/XLinkIn.hpp"
 #include "depthai/pipeline/node/XLinkOut.hpp"
@@ -39,8 +41,13 @@
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
 #include "utility/Logging.hpp"
+#include "utility/spdlog-fmt.hpp"
 
 namespace dai {
+
+// Using
+namespace Request = bootloader::request;
+namespace Response = bootloader::response;
 
 const std::string MAGIC_PROTECTED_FLASHING_VALUE = "235539980";
 const std::string MAGIC_FACTORY_FLASHING_VALUE = "413424129";
@@ -1515,6 +1522,43 @@ void DeviceBase::flashFactoryEepromClear() {
     }
 }
 
+int DeviceBase::getEthernetLinkSpeed() {
+    return pimpl->rpcClient->call("getEthernetLinkSpeed").as<int>();
+}
+
+int DeviceBase::getEthernetLinkDuplex() {
+    return pimpl->rpcClient->call("getEthernetLinkDuplex").as<int>();
+}
+
+int DeviceBase::getBootMode() {
+    return pimpl->rpcClient->call("getBootMode").as<int>();
+}
+
+int DeviceBase::getBootModeCurrent() {
+    return pimpl->rpcClient->call("getBootModeCurrent").as<int>();
+}
+
+void DeviceBase::setBootGpioInput() {
+    pimpl->rpcClient->call("setBootGpioInput").as<int>();
+}
+
+int64_t DeviceBase::getEmmcMemorySize() {
+    return pimpl->rpcClient->call("getEmmcMemorySize").as<int64_t>();
+}
+
+uint64_t DeviceBase::getFlashMemorySize() {
+    return pimpl->rpcClient->call("getFlashMemorySize").as<uint64_t>();
+}
+
+void DeviceBase::flashBootloaderConfig(dai::bootloader::Config& config, dai::bootloader::Type type) {
+    std::vector<uint8_t> package = nlohmann::json::to_bson(nlohmann::json(config));
+    uint32_t checksum = sbr_compute_checksum(package.data(), package.size());
+    off_t offset = dai::bootloader::getStructure(type).offset.at(Section::BOOTLOADER_CONFIG);
+    DeviceBase::flashWrite(std::vector<uint8_t>((uint8_t*)&checksum, ((uint8_t*)(&checksum)) + 4), offset);
+    // The BL expects the size of the config at offset + 4, the size is included in the bson package.
+    DeviceBase::flashWrite(package, offset + sizeof(uint32_t));
+}
+
 bool DeviceBase::startPipeline() {
     // Deprecated
     return true;
@@ -1588,4 +1632,197 @@ bool DeviceBase::startPipelineImpl(const Pipeline& pipeline) {
 
     return true;
 }
+
+// Bootloader fucntionality
+
+void DeviceBase::flashWrite(std::vector<std::uint8_t> data, uint64_t offset) {
+    bool success;
+    std::string errorMsg;
+    std::tie(success, errorMsg) = pimpl->rpcClient->call("flashWrite", data, offset).as<std::tuple<bool, std::string>>();
+    if(!success) {
+        throw std::runtime_error(errorMsg);
+    }
+}
+
+std::vector<std::uint8_t> DeviceBase::flashRead(uint32_t size, uint64_t offset) {
+    bool success;
+    std::string errorMsg;
+    std::vector<uint8_t> data;
+    std::tie(success, errorMsg, data) = pimpl->rpcClient->call("flashRead", size, offset).as<std::tuple<bool, std::string, std::vector<uint8_t>>>();
+    if(!success) {
+        throw std::runtime_error(errorMsg);
+    }
+    return data;
+}
+
+std::tuple<bool, std::string> DeviceBase::flashBootloader(Memory memory, Type type, std::function<void(float)> progressCb, const dai::Path& path) {
+    // Set specific type if AUTO
+    if(type == Type::AUTO) {
+        throw std::invalid_argument("Type must not be AUTO");
+    }
+
+    // Only flash memory is supported for now
+    if(memory != Memory::FLASH) {
+        throw std::invalid_argument("Only FLASH memory is supported for now");
+    }
+
+    std::vector<uint8_t> package;
+    if(!path.empty()) {
+        std::ifstream fwStream(path, std::ios::binary);
+        if(!fwStream.is_open()) throw std::runtime_error(fmt::format("Cannot flash bootloader, binary at path: {} doesn't exist", path));
+        package = std::vector<std::uint8_t>(std::istreambuf_iterator<char>(fwStream), {});
+    } else {
+        package = DeviceBootloader::getEmbeddedBootloaderBinary(type);
+    }
+
+    // flash package
+    // mem alloc first
+    auto mem = pimpl->rpcClient->call("memAlloc", package.size()).as<std::uint32_t>();
+    if(mem == 0) {
+        return {false, "out of memory to flash bootloader"};
+    }
+
+    // Transfer the whole package in a separate thread
+    const std::string streamBootloader = "__stream_bootloader";
+
+    // Make sure to always join the thread.
+    auto t1Deleter = [&](std::thread* t) {
+        if(t == nullptr) {
+            return;
+        }
+        if(t->joinable()) {
+            t->join();
+        }
+    };
+    auto threadFunc = [this, &streamBootloader, &package]() {
+        XLinkStream stream(connection, streamBootloader, device::XLINK_USB_BUFFER_MAX_SIZE);
+        int64_t offset = 0;
+        do {
+            int64_t toTransfer = std::min(static_cast<int64_t>(device::XLINK_USB_BUFFER_MAX_SIZE), static_cast<int64_t>(package.size() - offset));
+            stream.write(&package[offset], toTransfer);
+            offset += toTransfer;
+        } while(offset < static_cast<int64_t>(package.size()));
+    };
+    std::thread* threadPtr = new std::thread(threadFunc);
+    std::unique_ptr<std::thread, decltype(t1Deleter)> t1(threadPtr, t1Deleter);
+
+    pimpl->rpcClient->call("readFromXLink", streamBootloader, mem, package.size());
+    if (t1 && t1->joinable()) {
+        t1->join();
+    }
+
+    // Start flashing
+    pimpl->rpcClient->call("flashWriteMemAsync", mem, package.size(), dai::bootloader::getStructure(type).offset.at(Section::BOOTLOADER));
+    // wait till device is flashed
+    while(true) {
+        auto res = pimpl->rpcClient->call("flashWriteMemGetStatus", mem).as<std::tuple<bool, float>>();
+        float progress = std::get<1>(res);
+        if(progress >= 1.0f) {
+            progressCb(1.0f);
+            break;
+        }
+        progressCb(progress);
+        using namespace std::chrono_literals;
+        std::this_thread::sleep_for(250ms);
+    }
+    // free memory
+    pimpl->rpcClient->call("memFree", mem);
+
+    // Return if flashing was successful
+    return {true, ""};
+}
+
+std::tuple<bool, std::string> DeviceBase::flashBootHeader() {
+    return pimpl->rpcClient->call("flashBootHeader").as<std::tuple<bool, std::string>>();
+}
+std::tuple<bool, std::string> DeviceBase::flashUsbRecoveryBootHeader() {
+    return pimpl->rpcClient->call("flashUsbRecoveryBootHeader").as<std::tuple<bool, std::string>>();
+}
+
+// template <typename T>
+// bool DeviceBootloader::sendRequest(const T& request) {
+//     if(stream == nullptr) return false;
+
+//     // Do a version check beforehand (compare just the semver)
+//     if(getVersion().getSemver() < Version(T::VERSION)) {
+//         throw std::runtime_error(
+//             fmt::format("Bootloader version {} required to send request '{}'. Current version {}", T::VERSION, T::NAME, getVersion().toString()));
+//     }
+
+//     try {
+//         stream->write((uint8_t*)&request, sizeof(T));
+//     } catch(const std::exception&) {
+//         return false;
+//     }
+
+//     return true;
+// }
+
+// template <typename T>
+// void DeviceBootloader::sendRequestThrow(const T& request) {
+//     if(stream == nullptr) throw std::runtime_error("Couldn't send request. Stream is null");
+
+//     // Do a version check beforehand (compare just the semver)
+//     if(getVersion().getSemver() < Version(T::VERSION)) {
+//         throw std::runtime_error(
+//             fmt::format("Bootloader version {} required to send request '{}'. Current version {}", T::VERSION, T::NAME, getVersion().toString()));
+//     }
+
+//     try {
+//         stream->write((uint8_t*)&request, sizeof(T));
+//     } catch(const std::exception&) {
+//         throw std::runtime_error("Couldn't send " + std::string(T::NAME) + " request");
+//     }
+// }
+
+// bool DeviceBootloader::receiveResponseData(std::vector<uint8_t>& data) {
+//     if(stream == nullptr) return false;
+
+//     data = stream->read();
+//     return true;
+// }
+
+// template <typename T>
+// bool DeviceBootloader::parseResponse(const std::vector<uint8_t>& data, T& response) {
+//     // Checks that 'data' is type T
+//     Response::Command command;
+//     if(data.size() < sizeof(command)) return false;
+//     memcpy(&command, data.data(), sizeof(command));
+//     if(response.cmd != command) return false;
+//     if(data.size() < sizeof(response)) return false;
+
+//     // If yes, memcpy to response
+//     memcpy(&response, data.data(), sizeof(response));
+//     return true;
+// }
+
+// template <typename T>
+// bool DeviceBootloader::receiveResponse(T& response) {
+//     if(stream == nullptr) return false;
+//     // Receive data first
+//     std::vector<uint8_t> data;
+//     if(!receiveResponseData(data)) return false;
+
+//     // Then try to parse
+//     if(!parseResponse(data, response)) return false;
+
+//     return true;
+// }
+
+// template <typename T>
+// void DeviceBootloader::receiveResponseThrow(T& response) {
+//     if(stream == nullptr) throw std::runtime_error("Couldn't receive response. Stream is null");
+
+//     // Receive data first
+//     std::vector<uint8_t> data;
+//     if(!receiveResponseData(data)) {
+//         throw std::runtime_error("Couldn't receive " + std::string(T::NAME) + " response");
+//     }
+
+//     // Then try to parse
+//     if(!parseResponse(data, response)) {
+//         throw std::runtime_error("Couldn't parse " + std::string(T::NAME) + " response");
+//     }
+// }
+
 }  // namespace dai
