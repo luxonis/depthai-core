@@ -274,7 +274,7 @@ Node::OutputMap::OutputMap(Node& parent, Node::OutputDescription defaultOutput, 
 Node::Output& Node::OutputMap::operator[](const std::string& key) {
     if(count({name, key}) == 0) {
         // Create using default and rename with group and key
-        Output output(parent, defaultOutput);
+        Output output(parent, defaultOutput, false);
         output.setGroup(name);
         output.setName(key);
         insert({{name, key}, output});
@@ -285,7 +285,7 @@ Node::Output& Node::OutputMap::operator[](const std::string& key) {
 Node::Output& Node::OutputMap::operator[](std::pair<std::string, std::string> groupKey) {
     if(count(groupKey) == 0) {
         // Create using default and rename with group and key
-        Output output(parent, defaultOutput);
+        Output output(parent, defaultOutput, false);
 
         // Uses \t (tab) as a special character to parse out as subgroup name
         output.setGroup(fmt::format("{}\t{}", name, groupKey.first));
