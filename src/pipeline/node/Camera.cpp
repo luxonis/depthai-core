@@ -3,7 +3,6 @@
 #include <fstream>
 #include <memory>
 #include <stdexcept>
-#include <variant>
 
 // libraries
 #include <spimpl.h>
@@ -19,7 +18,7 @@ class Camera::Impl {
     enum class OutputType { PREVIEW, VIDEO, RAW };
 
     struct OutputRequest {
-        int32_t id;
+        int32_t id{};
         ImgFrameCapability capability;
         bool onHost{false};
     };
@@ -306,9 +305,10 @@ class Camera::Impl {
                      Output& raw       // NOLINT(bugprone-easily-swappable-parameters)
     ) {
         if(outputRequests.empty()) {
-            parent.setOutputRefs(&preview);
-            parent.setOutputRefs(&video);
-            parent.setOutputRefs(&raw);
+            std::cout << "video setup brand new\n" << std::flush;
+            // parent.setOutputRefs(&preview);
+            // parent.setOutputRefs(&video);
+            // parent.setOutputRefs(&raw);
         } else {
             DAI_CHECK_V(preview.getConnections().empty() && video.getConnections().empty(),
                         "Can't use managed and unmanaged mode at the same time for outputs preview, video and raw. "
@@ -321,22 +321,29 @@ class Camera::Impl {
         }
     }
 
-    Node::Output& requestNewOutput(Camera& parent, const ImgFrameCapability& capability, bool onHost) {
-        const auto requestId = nextOutputRequestId;
+    Node::Output* requestNewOutput(Camera& parent, const ImgFrameCapability& capability, bool onHost) {
+        const int32_t requestId = nextOutputRequestId;
         outputRequests.push_back({requestId, capability, onHost});
         ++nextOutputRequestId;
-        return parent.dynamicOutputs[std::to_string(requestId)];
+        std::cout << "output request " << requestId << "\n" << std::flush;
+        CameraProperties::OutputSpec spec;
+        spec.width = 1920;
+        spec.height = 1080;
+        spec.fps = 30;
+        parent.properties.outputSpecs.push_back(spec);
+        // parent.setOutputRefs(&parent.video);
+        return &parent.dynamicOutputs[std::to_string(requestId)];
+        // return &parent.video;
+        // return &parent.dynamicOutputs[std::to_string(requestId)];
     }
 };
 
-// Camera::Camera() : pimpl(spimpl::make_impl<Impl>()) {}
+Camera::Camera() : pimpl(spimpl::make_impl<Impl>()) {}
 
 Camera::Camera(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>(std::move(props)), pimpl(spimpl::make_impl<Impl>()) {}
 
-/*
 Camera::Camera(std::shared_ptr<Device>& defaultDevice)
     : DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>(defaultDevice), pimpl(spimpl::make_impl<Impl>()) {}
-    */
 
 void Camera::build() {
     properties.boardSocket = CameraBoardSocket::AUTO;
@@ -602,7 +609,7 @@ void Camera::setRawOutputPacked(bool packed) {
     properties.rawPacked = packed;
 }
 
-Node::Output& Camera::requestNewOutput(const ImgFrameCapability& capability, bool onHost) {
+Node::Output* Camera::requestNewOutput(const ImgFrameCapability& capability, bool onHost) {
     return pimpl->requestNewOutput(*this, capability, onHost);
 }
 

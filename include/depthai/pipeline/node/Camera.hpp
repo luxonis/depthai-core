@@ -21,14 +21,20 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
    public:
     constexpr static const char* NAME = "Camera";
     using DeviceNodeCRTP::DeviceNodeCRTP;
+    [[nodiscard]] static std::shared_ptr<Camera> create() {
+        auto node = std::make_shared<Camera>();
+        node->build();
+        return node;
+    }
+    [[nodiscard]] static std::shared_ptr<Camera> create(std::shared_ptr<Device>& defaultDevice) {
+        auto node = std::make_shared<Camera>(defaultDevice);
+        node->build();
+        return node;
+    }
     void build();
 
    protected:
-    Camera() = default;
-    Camera(std::unique_ptr<Properties> props);
-
     Properties& getProperties();
-
     bool isSourceNode() const override;
     utility::NodeRecordParams getNodeRecordParams() const override;
     Output& getRecordOutput() override;
@@ -36,11 +42,17 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
 
    public:
     /**
+     * Constructs Camera node.
+     */
+    Camera();
+    explicit Camera(std::shared_ptr<Device>& defaultDevice);
+    explicit Camera(std::unique_ptr<Properties> props);
+    /**
      * Computes the scaled size given numerator and denominator
      */
     static int getScaledSize(int input, int num, int denom);
 
-    Node::Output& requestNewOutput(const ImgFrameCapability& capability, bool onHost = false);
+    Node::Output* requestNewOutput(const ImgFrameCapability& capability, bool onHost = false);
 
     /**
      * Initial control options to apply to sensor
