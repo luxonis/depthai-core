@@ -23,7 +23,7 @@ class HostNode : public ThreadedHostNode {
     InputMap& inputs = sync->inputs;
     // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
     Output out{*this, {.name = "out", .types = {{DatatypeEnum::Buffer, true}}}};
-    virtual std::shared_ptr<Buffer> _process(std::shared_ptr<dai::MessageGroup> in) = 0;
+    virtual std::shared_ptr<Buffer> processGroup(std::shared_ptr<dai::MessageGroup> in) = 0;
 
     void runSyncingOnHost() {
         syncOnHost = true;

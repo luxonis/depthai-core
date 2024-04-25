@@ -19,8 +19,8 @@ class PyThreadedHostNode : public NodeCRTP<ThreadedHostNode, PyThreadedHostNode>
 
 class PyHostNode : public NodeCRTP<HostNode, PyHostNode> {
    public:
-    std::shared_ptr<Buffer> _process(std::shared_ptr<dai::MessageGroup> in) override {
-        PYBIND11_OVERRIDE_PURE(std::shared_ptr<Buffer>, HostNode, _process, in);
+    std::shared_ptr<Buffer> processGroup(std::shared_ptr<dai::MessageGroup> in) override {
+        PYBIND11_OVERRIDE_PURE(std::shared_ptr<Buffer>, HostNode, processGroup, in);
     }
 };
 
@@ -50,7 +50,7 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
                 getImplicitPipeline().add(node);
                 return node;
         }))
-        .def("_process", &HostNode::_process)
+        .def("processGroup", &HostNode::processGroup)
         .def_property_readonly(
             "inputs", [](HostNode& node) { return &node.inputs; }, py::return_value_policy::reference_internal)
         .def("runSyncingOnHost", &HostNode::runSyncingOnHost, DOC(dai, node, HostNode, runSyncingOnHost))
@@ -77,10 +77,10 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
             if cls.output_desc == inspect.Signature.empty:
                 cls.output_desc = None
 
-            def _process(self, messageGroup):
+            def processGroup(self, messageGroup):
                 return members["process"](self, 
                     *(messageGroup[argname] for argname in cls.input_desc.keys()))
-            cls._process = _process
+            cls.processGroup = processGroup
 
             def link_args(self, *args):
                 for (name, type), arg in zip(cls.input_desc.items(), args):

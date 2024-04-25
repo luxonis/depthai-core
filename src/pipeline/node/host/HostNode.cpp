@@ -17,7 +17,7 @@ void HostNode::run() {
         // Get input
         auto in = input.get<dai::MessageGroup>();
         // Run the user defined function
-        auto out = _process(in);
+        auto out = processGroup(in);
         // Send the output
         if(out) {
             this->out.send(out);
