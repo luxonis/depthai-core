@@ -13,6 +13,6 @@ def createPipeline():
         X()
         assert sum(1 for node in pipeline.getAllNodes() if isinstance(node, dai.node.HostNode)) == 2
 
-for i in range(500):
-    thread = threading.Thread(target=createPipeline)
-    thread.start()
+threads = [threading.Thread(target=createPipeline) for _ in range(500)]
+for thread in threads: thread.start()
+for thread in threads: thread.join()
