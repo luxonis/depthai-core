@@ -20,12 +20,12 @@ enum class StreamType { EncodedVideo, RawVideo, Imu, Byte, Unknown };
 using VideoCodec = dai::utility::VideoRecorder::VideoCodec;
 
 std::tuple<float, float, float, float> eulerToQuaternion(float x, float y, float z) {
-    float cr = cos(x * 0.5);
-    float sr = sin(x * 0.5);
-    float cp = cos(y * 0.5);
-    float sp = sin(y * 0.5);
-    float cy = cos(z * 0.5);
-    float sy = sin(z * 0.5);
+    float cr = cos(x * 0.5f);
+    float sr = sin(x * 0.5f);
+    float cp = cos(y * 0.5f);
+    float sp = sin(y * 0.5f);
+    float cy = cos(z * 0.5f);
+    float sy = sin(z * 0.5f);
 
     float qw = cr * cp * cy + sr * sp * sy;
     float qx = sr * cp * cy - cr * sp * sy;

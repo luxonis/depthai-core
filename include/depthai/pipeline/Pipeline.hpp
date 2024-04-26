@@ -110,6 +110,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // Record and Replay
     utility::RecordConfig recordConfig;
     std::unordered_map<std::string, std::string> recordReplayFilenames;
+    std::string defaultDeviceMxId;
 
     // parent
     Pipeline& parent;

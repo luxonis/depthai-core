@@ -598,14 +598,14 @@ void PipelineImpl::build() {
             std::string recordPath = utility::getEnv("DEPTHAI_RECORD");
             std::string replayPath = utility::getEnv("DEPTHAI_REPLAY");
 
-            std::string mxId = defaultDevice->getMxId();
+            defaultDeviceMxId = defaultDevice->getMxId();
 
             if(!recordPath.empty() && !replayPath.empty()) {
                 spdlog::warn("Both DEPTHAI_RECORD and DEPTHAI_REPLAY are set. Record and replay disabled.");
             } else if(!recordPath.empty()) {
                 if(utility::checkRecordConfig(recordPath, recordConfig)) {
                     if(platform::checkWritePermissions(recordPath)) {
-                        if(setupHolisticRecord(parent, mxId, recordConfig, recordReplayFilenames)) {
+                        if(setupHolisticRecord(parent, defaultDeviceMxId, recordConfig, recordReplayFilenames)) {
                             recordConfig.state = utility::RecordConfig::RecordReplayState::RECORD;
                             spdlog::info("Record enabled.");
                         } else {
@@ -620,7 +620,7 @@ void PipelineImpl::build() {
             } else if(!replayPath.empty()) {
                 if(platform::checkPathExists(replayPath)) {
                     if(platform::checkWritePermissions(replayPath)) {
-                        if(setupHolisticReplay(parent, replayPath, mxId, recordConfig, recordReplayFilenames)) {
+                        if(setupHolisticReplay(parent, replayPath, defaultDeviceMxId, recordConfig, recordReplayFilenames)) {
                             recordConfig.state = utility::RecordConfig::RecordReplayState::REPLAY;
                             spdlog::info("Replay enabled.");
                         } else {
