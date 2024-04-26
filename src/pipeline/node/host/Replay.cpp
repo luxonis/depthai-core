@@ -167,7 +167,7 @@ void Replay::run() {
             recordSchema.height = std::get<1>(size.value());
             metadata = recordSchema;
         }
-        
+
         auto buffer = getMessage(type, metadata, frame);
 
         if(buffer) out.send(buffer);
@@ -180,6 +180,7 @@ void Replay::run() {
 
         first = false;
     }
+    stop();  // isRunning() should return false after replay has stopped
 }
 
 Replay& Replay::setReplayFile(const std::string& replayFile) {
