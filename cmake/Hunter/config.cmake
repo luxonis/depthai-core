@@ -258,7 +258,7 @@ hunter_config(
     basalt
     VERSION 0.1.0
     URL "https://github.com/Serafadam/basalt-mirror/archive/refs/heads/depthai_tests.zip"
-    SHA1 "042414cdf80a3821cb8ab931dc28cb9646c5e5bc"
+    SHA1 "e970b81c8440762d2af6db3c5bc64130d374076c"
     CMAKE_ARGS
         BASALT_SDK_ONLY=ON
         BUILD_SHARED_LIBS=ON
