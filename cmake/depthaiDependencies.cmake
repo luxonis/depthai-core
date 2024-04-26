@@ -120,6 +120,8 @@ if(DEPTHAI_RTABMAP_SUPPORT)
 endif()
 hunter_add_package(Sophus)
 find_package(Sophus ${_QUIET} CONFIG REQUIRED)
+hunter_add_package(basalt-headers)
+hunter_add_package(basalt)
 # include optional dependency cmake
 if(DEPTHAI_DEPENDENCY_INCLUDE)
     include(${DEPTHAI_DEPENDENCY_INCLUDE} OPTIONAL)

@@ -38,9 +38,7 @@ void RTABMapSLAM::run() {
             if(!modelSet) {
                 auto pipeline = getParentPipeline();
                 rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
-                std::cout << "local transform: " << localTransform << std::endl;
                 localTransform = localTransform * opticalTransform.inverse();
-                std::cout << "local transform: " << localTransform << std::endl;
                 getCalib(pipeline, imgFrame->getInstanceNum(), imgFrame->getWidth(), imgFrame->getHeight());
                 lastProcessTime = std::chrono::steady_clock::now();
                 startTime = std::chrono::steady_clock::now();
@@ -51,10 +49,6 @@ void RTABMapSLAM::run() {
                 double stamp = std::chrono::duration<double>(imgFrame->getTimestampDevice(dai::CameraExposureOffset::MIDDLE).time_since_epoch()).count();
 
                 data = rtabmap::SensorData(imgFrame->getCvFrame(), depthFrame->getCvFrame(), model.left(), imgFrame->getSequenceNum(), stamp);
-                // cv::Vec3d acc, gyro;
-                // cv::Vec4d rot;
-                // data.setIMU(
-                //     rtabmap::IMU(rot, cv::Mat::eye(3, 3, CV_64FC1), gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform));
                 std::vector<cv::KeyPoint> keypoints;
                 if(features != nullptr) {
                     for(auto& feature : features->trackedFeatures) {
@@ -66,9 +60,6 @@ void RTABMapSLAM::run() {
                 // convert odom pose to rtabmap pose
                 rtabmap::Transform p;
                 odomPose->getRTABMapTransform(p);
-                // std::cout <<"pose init: " << p << std::endl;
-                // auto pose = localTransform * p * localTransform.inverse();
-                // std::cout << "pose after transform: " << pose << std::endl;
                 rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
 
                 auto pose  =p*opticalTransform.inverse();

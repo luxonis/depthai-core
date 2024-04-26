@@ -37,12 +37,6 @@ void CalibrationHandler::getRTABMapCameraModel(rtabmap::StereoCameraModel& model
     else
         poseTocamera = rtabmap::Transform(-getBaselineDistance(dai::CameraBoardSocket::CAM_A) / 100.0, 0, 0);
 
-    rtabmap::Transform rot(
-		0, 0,1,0,
-		-1, 0, 0,0,
-		 0, -1, 0,0);
-    // poseTocamera = rot.inverse() * poseTocamera;
-    rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
 
     model = rtabmap::StereoCameraModel(eepromData.boardName, fx, fy, cx, cy, baseline, localTransform.inverse(), cv::Size(width, height));
 }

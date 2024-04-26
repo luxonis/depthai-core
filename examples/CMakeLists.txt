@@ -512,13 +512,13 @@ dai_add_example(basalt_dai_vio host_side/basalt_dai_vio.cpp OFF OFF)
 set_property(TARGET basalt_dai_vio PROPERTY CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 target_link_options(basalt_dai_vio PRIVATE "-Wl,--disable-new-dtags")
-target_link_libraries(basalt_dai_vio PRIVATE basalt         mp4v2::mp4v2 rerun_sdk TBB::tbb Eigen3::Eigen Sophus::Sophus magic_enum::magic_enum)
+target_link_libraries(basalt_dai_vio PRIVATE basalt_sdk mp4v2::mp4v2 rerun_sdk)
 
 dai_add_example(basalt_dai_vio_slam host_side/basalt_dai_vio_slam.cpp OFF ON)
 set_property(TARGET basalt_dai_vio_slam PROPERTY CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 target_link_options(basalt_dai_vio_slam PRIVATE "-Wl,--disable-new-dtags")
-target_link_libraries(basalt_dai_vio_slam PRIVATE basalt         mp4v2::mp4v2 depthai::rtabmap rerun_sdk TBB::tbb Eigen3::Eigen Sophus::Sophus magic_enum::magic_enum)
+target_link_libraries(basalt_dai_vio_slam PRIVATE basalt_sdk mp4v2::mp4v2 depthai::rtabmap rerun_sdk )
 
 # # ImageManip
 # dai_add_example(image_manip ImageManip/image_manip_example.cpp ON OFF)

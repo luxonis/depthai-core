@@ -154,19 +154,6 @@ hunter_config(
         HTTPLIB_USE_BROTLI_IF_AVAILABLE=OFF
 )
 
-# # g2o
-
-# hunter_config(
-#     g2o
-#     VERSION "20230806_git"
-#     URL "https://github.com/RainerKuemmerle/g2o/archive/refs/tags/20230806_git.tar.gz"
-#     SHA1 "d73df7d192a9f5d4f6c84f4b70d7cbd0564a0d53"
-#     CMAKE_ARGS
-#         BUILD_WITH_MARCH_NATIVE=OFF
-#         G2O_BUILD_APPS=OFF
-#         G2O_BUILD_EXAMPLES=OFF
-#         G2O_USE_OPENGL=OFF
-# )
 
 # RTABMap
 hunter_config(
@@ -260,15 +247,22 @@ hunter_config(
         BUILD_UTILS=OFF
 )
 
+hunter_config(
+    basalt-headers
+    VERSION 0.1.0
+    URL "https://github.com/Serafadam/basalt-headers-mirror/archive/refs/heads/hunter.zip"
+    SHA1 "765b95540814cdcad5a01c9a791d57ad8c7cf4ae"
+)
 
-# hunter_config(
-#     basalt
-#     URL "https://gitlab.freedesktop.org/mateosss/basalt/-/archive/release-673cc5c6/basalt-release-673cc5c6.tar.gz"
-#     SHA1 "60825d3e76f15896abc5011edaafffe4ff4b6c93"
-#     CMAKE_ARGS
-#         BASALT_INSTANTIATIONS_DOUBLE=off
-#         BUILD_TESTS=off
-# )
+hunter_config(
+    basalt
+    VERSION 0.1.0
+    URL "https://github.com/Serafadam/basalt-mirror/archive/refs/heads/depthai_tests.zip"
+    SHA1 "042414cdf80a3821cb8ab931dc28cb9646c5e5bc"
+    CMAKE_ARGS
+        BASALT_SDK_ONLY=ON
+        BUILD_SHARED_LIBS=ON
+)
 
 hunter_config(
     Sophus
