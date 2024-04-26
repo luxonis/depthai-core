@@ -80,6 +80,11 @@ void Camera::setSize(int width, int height) {
     properties.resolutionHeight = height;
 }
 
+void Camera::setMockIspSize(int width, int height) {
+    properties.mockIspWidth = width;
+    properties.mockIspHeight = height;
+}
+
 void Camera::setSize(std::tuple<int, int> size) {
     setSize(std::get<0>(size), std::get<1>(size));
 }

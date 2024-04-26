@@ -151,6 +151,8 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
     /// Set desired resolution. Sets sensor size to best fit
     void setSize(int width, int height);
 
+    void setMockIspSize(int width, int height);
+
     /// Set preview output size
     void setPreviewSize(int width, int height);
 
