@@ -180,6 +180,8 @@ void Replay::run() {
 
         first = false;
     }
+
+    stop();
 }
 
 Replay& Replay::setReplayFile(const std::string& replayFile) {
