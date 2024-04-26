@@ -33,7 +33,7 @@ class SpatialVisualizer(dai.node.HostNode):
         self.detectionsIn = self.inputs["detections"]
         self.rgbIn = self.inputs["rgb"]
 
-    def runOnce(self, messages: dai.MessageGroup):
+    def processGroup(self, messages: dai.MessageGroup):
         depthPreview = messages["depth"].getCvFrame()
         detections = messages["detections"]
         rgbPreview = messages["rgb"].getCvFrame()
