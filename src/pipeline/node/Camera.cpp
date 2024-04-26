@@ -329,6 +329,18 @@ class Camera::Impl {
         CameraProperties::OutputSpec spec;
         spec.width = 1920;
         spec.height = 1080;
+        if(capability.size.value) {
+            if(const auto* size = std::get_if<std::tuple<uint32_t, uint32_t>>(&(*capability.size.value))) {
+                spec.width = static_cast<int>(std::get<0>(*size));
+                spec.height = static_cast<int>(std::get<1>(*size));
+            } else {
+                // TODO(jakgra) add support for other logic here
+                DAI_CHECK_IN(false);
+            }
+        } else {
+            // TODO(jakgra) add support for other logic here
+            DAI_CHECK_IN(false);
+        }
         spec.fps = 30;
         parent.properties.outputSpecs.push_back(spec);
         // parent.setOutputRefs(&parent.video);

@@ -1,12 +1,21 @@
 // Includes common necessary includes for development using depthai library
+#include <stdexcept>
+
 #include "depthai/depthai.hpp"
 
-int main() {
+int main(int argc, char** argv) {
     dai::DeviceInfo info("10.12.110.28");
     info.protocol = X_LINK_TCP_IP;
     info.state = X_LINK_GATE;
     info.platform = X_LINK_RVC4;
     const auto device = std::make_shared<dai::Device>(info);
+    if(argc < 3 || (argc - 1) % 2 != 0) {
+        throw std::runtime_error("USAGE: ./camera_multiple_outputs 1920 1080 640 480");
+    }
+    std::vector<std::pair<uint32_t, uint32_t>> sizes;
+    for(int index = 1; index < argc - 1; index += 2) {
+        sizes.emplace_back(std::stoul(argv[index]), std::stoul(argv[index + 1]));
+    }
 
     dai::Pipeline pipeline(device);
 
@@ -14,12 +23,15 @@ int main() {
     auto camRgb = pipeline.create<dai::node::Camera>();
 
     camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_C);
-    camRgb->setSize(1920, 1080);
+    if(sizes.empty()) {
+        throw std::runtime_error("internal error to few sizes");
+    }
+    // camRgb->setSize(sizes[0]);
 
     std::vector<std::shared_ptr<dai::MessageQueue>> videos;
-    for(int index = 0; index < 1; ++index) {
+    for(const auto& size : sizes) {
         dai::ImgFrameCapability cap;
-        cap.size.value = std::pair(1920, 1080);
+        cap.size.value = size;
         auto* output = camRgb->requestNewOutput(cap);
         videos.push_back(output->createQueue());
     }
@@ -47,7 +59,11 @@ int main() {
 
             // Get BGR frame from NV12 encoded video frame to show with opencv
             // Visualizing the frame on slower hosts might have overhead
-            cv::imshow("video_" + std::to_string(videoIndex), videoIn->getCvFrame());
+            if(videoIn) {
+                cv::imshow("video_" + std::to_string(videoIndex), videoIn->getCvFrame());
+            } else {
+                std::cout << "Video frame on index " << videoIndex << " was null\n" << std::flush;
+            }
             ++videoIndex;
         }
 
