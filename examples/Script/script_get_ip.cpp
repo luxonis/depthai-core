@@ -29,14 +29,9 @@ int main() {
     node.warn(f'IP of the device: {ip}')
     node.io['end'].send(Buffer(32))
     )");
-
-    // XLinkOut
-    auto xout = pipeline.create<dai::node::XLinkOut>();
-    xout->setStreamName("end");
-    script->outputs["end"].link(xout->input);
-
-    // Connect to device with pipeline
-    dai::Device device(pipeline);
-    device.getOutputQueue("end")->get<dai::Buffer>();
+    auto output = script->outputs["end"].createQueue();
+    pipeline.start();
+    output->get<dai::Buffer>();
+    pipeline.stop();
     return 0;
 }

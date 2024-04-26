@@ -361,7 +361,7 @@ hunter_private_data(
 # # Script
 # dai_add_example(script_camera_control Script/script_camera_control.cpp ON OFF)
 # dai_add_example(script_forward_frames Script/script_forward_frames.cpp ON OFF)
-# dai_add_example(script_get_ip Script/script_get_ip.cpp OFF OFF)
+dai_add_example(script_get_ip Script/script_get_ip.cpp OFF OFF)
 # dai_add_example(script_http_client Script/script_http_client.cpp OFF OFF)
 # dai_add_example(script_http_server Script/script_http_server.cpp OFF OFF)
 # dai_add_example(script_mjpeg_server Script/script_mjpeg_server.cpp OFF OFF)
