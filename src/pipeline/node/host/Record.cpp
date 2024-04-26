@@ -160,28 +160,29 @@ void Record::run() {
             }
             if(i < fpsInitLength) ++i;
         } else if(streamType == StreamType::Imu) {
-            auto imuData = std::dynamic_pointer_cast<IMUData>(msg);
-            utility::ImuRecordSchema record;
-            record.packets.reserve(imuData->packets.size());
-            for(const auto& packet : imuData->packets) {
-                utility::ImuPacketSchema packetSchema;
-                packetSchema.acceleration.timestamp.set(
-                    std::chrono::duration_cast<std::chrono::nanoseconds>(packet.acceleroMeter.getTimestampDevice().time_since_epoch()));
-                packetSchema.acceleration.sequenceNumber = packet.acceleroMeter.sequence;
-                packetSchema.acceleration.x = packet.acceleroMeter.x;
-                packetSchema.acceleration.y = packet.acceleroMeter.y;
-                packetSchema.acceleration.z = packet.acceleroMeter.z;
-                packetSchema.orientation.timestamp.set(
-                    std::chrono::duration_cast<std::chrono::nanoseconds>(packet.gyroscope.getTimestampDevice().time_since_epoch()));
-                packetSchema.orientation.sequenceNumber = packet.gyroscope.sequence;
-                const auto [qw, qx, qy, qz] = eulerToQuaternion(packet.gyroscope.x, packet.gyroscope.y, packet.gyroscope.z);
-                packetSchema.orientation.x = qx;
-                packetSchema.orientation.y = qy;
-                packetSchema.orientation.z = qz;
-                packetSchema.orientation.w = qw;
-                record.packets.push_back(packetSchema);
-            }
-            byteRecorder.write(record);
+            throw std::runtime_error("IMU recording is not supported yet");
+            // auto imuData = std::dynamic_pointer_cast<IMUData>(msg);
+            // utility::ImuRecordSchema record;
+            // record.packets.reserve(imuData->packets.size());
+            // for(const auto& packet : imuData->packets) {
+            //     utility::ImuPacketSchema packetSchema;
+            //     packetSchema.acceleration.timestamp.set(
+            //         std::chrono::duration_cast<std::chrono::nanoseconds>(packet.acceleroMeter.getTimestampDevice().time_since_epoch()));
+            //     packetSchema.acceleration.sequenceNumber = packet.acceleroMeter.sequence;
+            //     packetSchema.acceleration.x = packet.acceleroMeter.x;
+            //     packetSchema.acceleration.y = packet.acceleroMeter.y;
+            //     packetSchema.acceleration.z = packet.acceleroMeter.z;
+            //     packetSchema.orientation.timestamp.set(
+            //         std::chrono::duration_cast<std::chrono::nanoseconds>(packet.gyroscope.getTimestampDevice().time_since_epoch()));
+            //     packetSchema.orientation.sequenceNumber = packet.gyroscope.sequence;
+            //     const auto [qw, qx, qy, qz] = eulerToQuaternion(packet.gyroscope.x, packet.gyroscope.y, packet.gyroscope.z);
+            //     packetSchema.orientation.x = qx;
+            //     packetSchema.orientation.y = qy;
+            //     packetSchema.orientation.z = qz;
+            //     packetSchema.orientation.w = qw;
+            //     record.packets.push_back(packetSchema);
+            // }
+            // byteRecorder.write(record);
         } else {
             throw std::runtime_error("You can only record IMU or Video data");
         }

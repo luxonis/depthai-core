@@ -866,7 +866,8 @@ PipelineImpl::~PipelineImpl() {
             if(kv.first != "record_config") {
                 std::remove((kv.second + ".mp4").c_str());
                 std::remove((kv.second + ".mcap").c_str());
-            } else std::remove(kv.second.c_str());
+            } else
+                std::remove(kv.second.c_str());
         }
     }
 }

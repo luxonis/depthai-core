@@ -1,7 +1,6 @@
 #include "depthai/depthai.hpp"
-
-#include "depthai/pipeline/node/host/Replay.hpp"
 #include "depthai/pipeline/node/host/Display.hpp"
+#include "depthai/pipeline/node/host/Replay.hpp"
 
 int main() {
     dai::Pipeline pipeline(true);

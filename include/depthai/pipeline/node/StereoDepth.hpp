@@ -19,7 +19,6 @@ class StereoDepth : public DeviceNodeCRTP<DeviceNode, StereoDepth, StereoDepthPr
     using DeviceNodeCRTP::DeviceNodeCRTP;
     void build();  // TODO(Morato) - rename
 
-
     /**
      * Preset modes for stereo depth.
      */

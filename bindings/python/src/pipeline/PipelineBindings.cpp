@@ -101,6 +101,11 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
                  d.wait();
              })
         //.def(py::init<const Pipeline&>())
+        .def("getDefaultDevice", [](Pipeline& p) -> py::object {
+            auto device = p.getDefaultDevice();
+            if(!device) return py::none();
+            return py::cast(device);
+        }, DOC(dai, Pipeline, getDefaultDevice))
         .def("getGlobalProperties", &Pipeline::getGlobalProperties, DOC(dai, Pipeline, getGlobalProperties))
         //.def("create", &Pipeline::create<node::XLinkIn>)
         .def("remove", &Pipeline::remove, py::arg("node"), DOC(dai, Pipeline, remove))

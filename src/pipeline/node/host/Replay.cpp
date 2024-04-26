@@ -40,7 +40,7 @@ std::shared_ptr<Buffer> Replay::getMessage(utility::RecordType type, const nlohm
             ImgFrame imgFrame;
             imgFrame.setWidth(recordSchema.width);
             imgFrame.setHeight(recordSchema.height);
-            imgFrame.setTimestamp(std::chrono::time_point<std::chrono::steady_clock>(recordSchema.timestamp.get()));
+            imgFrame.setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock>(recordSchema.timestamp.get()));
             imgFrame.setSequenceNum(recordSchema.sequenceNumber);
             imgFrame.setInstanceNum(recordSchema.instanceNumber);
             imgFrame.cam.wbColorTemp = recordSchema.cameraSettings.wbColorTemp;
@@ -167,7 +167,7 @@ void Replay::run() {
             recordSchema.height = std::get<1>(size.value());
             metadata = recordSchema;
         }
-        
+
         auto buffer = getMessage(type, metadata, frame);
 
         if(buffer) out.send(buffer);
