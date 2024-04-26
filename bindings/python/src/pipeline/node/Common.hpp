@@ -18,7 +18,7 @@ extern std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node
 extern py::handle daiNodeModule;
 
 template<typename T, typename DERIVED = dai::DeviceNode>
-py::class_<T> addNode(const char* name, const char* docstring = nullptr){
+py::class_<T, DERIVED, std::shared_ptr<T>> addNode(const char* name, const char* docstring = nullptr){
     auto node = py::class_<T, DERIVED, std::shared_ptr<T>>(daiNodeModule, name, docstring);
     pyNodeCreateMap.push_back(std::make_pair(node, [](dai::Pipeline& p, py::object class_){
         return p.create<T>();
@@ -27,7 +27,7 @@ py::class_<T> addNode(const char* name, const char* docstring = nullptr){
 }
 
 template<typename T, typename DERIVED = dai::DeviceNode>
-py::class_<T> addNodeAbstract(const char* name, const char* docstring = nullptr){
+py::class_<T, DERIVED, std::shared_ptr<T>> addNodeAbstract(const char* name, const char* docstring = nullptr){
     auto node = py::class_<T, DERIVED, std::shared_ptr<T>>(daiNodeModule, name, docstring);
     pyNodeCreateMap.push_back(std::make_pair(node, [](dai::Pipeline& p, py::object class_) -> std::shared_ptr<dai::Node> {
         throw std::invalid_argument(std::string(py::str(class_)) + " is an abstract node. Choose an appropriate derived node instead");

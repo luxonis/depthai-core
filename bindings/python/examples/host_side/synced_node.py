@@ -16,7 +16,7 @@ class Display(dai.node.HostNode):
         self.name = name
         return self
 
-    def runOnce(self, messages):
+    def process(self, messages):
         frame = np.empty((640, 2*640, 3), dtype=np.uint8)
         frame[:, :640, :] = cv2.resize(messages["mono"].getCvFrame(), (640, 640)).reshape((640, 640, 1))
         frame[:, 640:, :] = cv2.resize(messages["rgb"].getCvFrame(), (640, 640))

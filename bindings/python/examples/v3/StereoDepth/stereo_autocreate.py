@@ -13,7 +13,7 @@ class StereoVisualizer(dai.node.HostNode):
         output.link(self.inputDepth)
         return self
 
-    def runOnce(self, messages: dai.MessageGroup):
+    def processGroup(self, messages: dai.MessageGroup):
         inFrame : dai.ImgFrame = messages["disparity"]
         outFrame = inFrame.getFrame()
 

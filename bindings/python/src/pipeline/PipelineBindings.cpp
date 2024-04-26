@@ -89,10 +89,14 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
     pipeline.def(py::init<bool>(), py::arg("createImplicitDevice") = true, DOC(dai, Pipeline, Pipeline))
         .def(py::init<std::shared_ptr<Device>>(), py::arg("defaultDevice"), DOC(dai, Pipeline, Pipeline))
         // Python only methods
-        .def("__enter__", [](Pipeline& d) -> Pipeline& { return d; })
+        .def("__enter__", [](Pipeline& p) -> Pipeline& { 
+                setImplicitPipeline(p);
+                return p; 
+        })
         .def("__exit__",
              [](Pipeline& d, py::object type, py::object value, py::object traceback) {
                  py::gil_scoped_release release;
+                 delImplicitPipeline();
                  d.stop();
                  d.wait();
              })
