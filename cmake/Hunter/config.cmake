@@ -248,6 +248,13 @@ hunter_config(
 )
 
 hunter_config(
+    opengv
+    VERSION 1.0.0
+    URL "https://github.com/laurentkneip/opengv/archive/refs/heads/master.zip"
+    SHA1 "d046e9b94153a9d97638aaef719e0250ad660113"
+)
+
+hunter_config(
     basalt-headers
     VERSION 0.1.0
     URL "https://github.com/Serafadam/basalt-headers-mirror/archive/refs/heads/hunter.zip"
@@ -258,7 +265,7 @@ hunter_config(
     basalt
     VERSION 0.1.0
     URL "https://github.com/Serafadam/basalt-mirror/archive/refs/heads/depthai_tests.zip"
-    SHA1 "3cfa524c7bdd981168bce4ed79708311f3c7acdb"
+    SHA1 "018d837cf08bc0d5e65bb609a4f5820218371bf8"
     CMAKE_ARGS
         BASALT_SDK_ONLY=ON
         BUILD_SHARED_LIBS=ON
