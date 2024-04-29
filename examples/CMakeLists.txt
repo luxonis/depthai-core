@@ -502,7 +502,7 @@ target_link_options(rtabmap_slam PRIVATE "-Wl,--disable-new-dtags")
 target_link_libraries(rtabmap_slam PRIVATE depthai::rtabmap mp4v2::mp4v2 rerun_sdk)
 
 
-find_package(basalt CONFIG REQUIRED)
+find_package(basalt_sdk CONFIG REQUIRED)
 find_package(Eigen3 CONFIG REQUIRED)
 find_package(Sophus CONFIG REQUIRED)
 hunter_add_package(magic_enum)
