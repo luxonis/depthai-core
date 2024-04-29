@@ -68,7 +68,7 @@ class BasaltVIO : public dai::NodeCRTP<dai::node::ThreadedHostNode, BasaltVIO> {
     };
 
     void build() {
-        vio_config.load("/workspaces/depthai_core_ws/basalt/data/msdmi_config.json");
+        vio_config.load(CONFIG_PATH);
         std::cout << vio_config.optical_flow_type << std::endl;
         inputImu.setMaxSize(0);
         inputStereo.setMaxSize(0);
