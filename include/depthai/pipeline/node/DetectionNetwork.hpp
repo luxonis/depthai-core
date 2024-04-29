@@ -150,6 +150,8 @@ class DetectionNetwork : public NodeGroup {
      */
     float getConfidenceThreshold() const;
 
+    std::vector<std::pair<Input&, std::shared_ptr<Capability>>> getRequiredInputs() override;
+
    private:
     class Impl;
     Pimpl<Impl> pimpl;

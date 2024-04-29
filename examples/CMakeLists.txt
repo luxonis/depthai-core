@@ -299,6 +299,7 @@ dai_add_example(rgb_video ColorCamera/rgb_video.cpp ON OFF)
 # dai_add_example(image_manip_tiling ImageManip/image_manip_tiling.cpp ON OFF)
 # dai_add_example(rgb_rotate_warp ImageManip/rgb_rotate_warp.cpp ON OFF)
 # dai_add_example(image_manip_warp_mesh ImageManip/image_manip_warp_mesh.cpp ON OFF)
+dai_add_example(image_manip_many_instances ImageManip/image_manip_many_instances.cpp ON OFF)
 #
 # # Warp
 # dai_add_example(warp_mesh Warp/warp_mesh.cpp ON OFF)
@@ -465,6 +466,8 @@ dai_add_example(record_imu Record/record_imu.cpp ON OFF)
 dai_add_example(replay_video_meta Replay/replay_video_meta.cpp ON OFF)
 
 dai_add_example(camera_multiple_outputs Camera/camera_multiple_outputs.cpp ON OFF)
+dai_add_example(detection_2x AutoPipeline/detection_2x.cpp ON OFF)
+target_compile_definitions(detection_2x PRIVATE NN_ARCHIVE_PATH="${nn_archive_yolo_v6_tar_xz}" NN_ARCHIVE_PATH_2="${nn_archive_yolo_v6_tar_xz}")
 
 if(DEPTHAI_HAVE_PCL_SUPPORT)
     dai_add_example(visualize_pointcloud PointCloud/visualize_pointcloud.cpp ON ON)

@@ -321,32 +321,35 @@ class Camera::Impl {
         }
     }
 
-    Node::Output* requestNewOutput(Camera& parent, const ImgFrameCapability& capability, bool onHost) {
-        const int32_t requestId = nextOutputRequestId;
-        outputRequests.push_back({requestId, capability, onHost});
-        ++nextOutputRequestId;
-        std::cout << "output request " << requestId << "\n" << std::flush;
-        CameraProperties::OutputSpec spec;
-        spec.width = 1920;
-        spec.height = 1080;
-        if(capability.size.value) {
-            if(const auto* size = std::get_if<std::tuple<uint32_t, uint32_t>>(&(*capability.size.value))) {
-                spec.width = static_cast<int>(std::get<0>(*size));
-                spec.height = static_cast<int>(std::get<1>(*size));
+    Node::Output* requestNewOutput(Camera& parent, const Capability& genericCapability, bool onHost) {
+        if(const auto* capability = ImgFrameCapability::get(genericCapability)) {
+            static const int32_t requestId = nextOutputRequestId;
+            outputRequests.push_back({requestId, *capability, onHost});
+            ++nextOutputRequestId;
+            std::cout << "output request " << requestId << "\n" << std::flush;
+            CameraProperties::OutputSpec spec;
+            spec.width = 1920;
+            spec.height = 1080;
+            if(capability->size.value) {
+                if(const auto* size = std::get_if<std::tuple<uint32_t, uint32_t>>(&(*(*capability).size.value))) {
+                    spec.width = static_cast<int>(std::get<0>(*size));
+                    spec.height = static_cast<int>(std::get<1>(*size));
+                } else {
+                    // TODO(jakgra) add support for other logic here
+                    DAI_CHECK_IN(false);
+                }
             } else {
                 // TODO(jakgra) add support for other logic here
                 DAI_CHECK_IN(false);
             }
-        } else {
-            // TODO(jakgra) add support for other logic here
-            DAI_CHECK_IN(false);
+            spec.fps = 30;
+            parent.properties.outputSpecs.push_back(spec);
+            // parent.setOutputRefs(&parent.video);
+            return &parent.dynamicOutputs[std::to_string(requestId)];
+            // return &parent.video;
+            // return &parent.dynamicOutputs[std::to_string(requestId)];
         }
-        spec.fps = 30;
-        parent.properties.outputSpecs.push_back(spec);
-        // parent.setOutputRefs(&parent.video);
-        return &parent.dynamicOutputs[std::to_string(requestId)];
-        // return &parent.video;
-        // return &parent.dynamicOutputs[std::to_string(requestId)];
+        return nullptr;
     }
 };
 
@@ -621,7 +624,7 @@ void Camera::setRawOutputPacked(bool packed) {
     properties.rawPacked = packed;
 }
 
-Node::Output* Camera::requestNewOutput(const ImgFrameCapability& capability, bool onHost) {
+Node::Output* Camera::requestNewOutput(const Capability& capability, bool onHost) {
     return pimpl->requestNewOutput(*this, capability, onHost);
 }
 

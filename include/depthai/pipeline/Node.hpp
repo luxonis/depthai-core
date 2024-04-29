@@ -17,7 +17,7 @@
 #include "depthai/utility/copyable_unique_ptr.hpp"
 
 // depthai
-// #include "depthai/capabilities/Capability.hpp"
+#include "depthai/capabilities/Capability.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/properties/Properties.hpp"
 
@@ -130,6 +130,7 @@ class Node : public std::enable_shared_from_this<Node> {
             }
         };
         enum class Type { MSender, SSender };
+        virtual ~Output() = default;
 
        private:
         std::reference_wrapper<Node> parent;
@@ -251,6 +252,8 @@ class Node : public std::enable_shared_from_this<Node> {
          * @param in Input to link to
          */
         void link(Input& in);
+
+        virtual void link(std::shared_ptr<Node> in);
 
         /**
          * Unlink a previously linked connection
@@ -591,6 +594,10 @@ class Node : public std::enable_shared_from_this<Node> {
     void link(const Node::Output& out, const Node::Input& in);
     void unlink(const Node::Output& out, const Node::Input& in);
     /// Get a reference to internal node map
+
+    virtual void link(std::shared_ptr<Node> in);
+    virtual Node::Output* requestNewOutput(const Capability& capability, bool onHost);
+    virtual std::vector<std::pair<Input&, std::shared_ptr<Capability>>> getRequiredInputs();
 
     /**
      * @brief Returns true or false whether the node should be run on host or not

@@ -52,7 +52,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
      */
     static int getScaledSize(int input, int num, int denom);
 
-    Node::Output* requestNewOutput(const ImgFrameCapability& capability, bool onHost = false);
+    Node::Output* requestNewOutput(const Capability& capability, bool onHost) override;
 
     /**
      * Initial control options to apply to sensor

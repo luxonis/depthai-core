@@ -1,5 +1,4 @@
 // C++ std
-#include <optional>
 // #include <string>
 
 // libraries
@@ -12,14 +11,15 @@
 
 namespace dai {
 
-class ImgFrameCapability : Capability {
+class ImgFrameCapability : public CapabilityCRTP<Capability, ImgFrameCapability> {
    public:
-    // const std::string& getName() override;
+    constexpr static const char* NAME = "dai/img-frame";
     // Capability getIntersection(const Capability& other) override;
 
     CapabilityRange<std::tuple<uint32_t, uint32_t>> size;
     CapabilityRange<uint32_t> fps;
     std::optional<ImgFrame::Type> encoding;
+    // envelope / background around
     // TODO(jakgra) add optional CapabilityRange fov / max-min horiz. / vertical crop;
 
    private:
