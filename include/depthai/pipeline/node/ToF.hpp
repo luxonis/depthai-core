@@ -22,7 +22,6 @@ class ToF : public DeviceNodeCRTP<DeviceNode, ToF, ToFProperties> {
     constexpr static const char* NAME = "ToF";
     using DeviceNodeCRTP::DeviceNodeCRTP;
     std::shared_ptr<ToF> build() {
-        isBuild = true; 
         return std::static_pointer_cast<ToF>(shared_from_this());
     }
 

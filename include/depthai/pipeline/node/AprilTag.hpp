@@ -26,7 +26,6 @@ class AprilTag : public DeviceNodeCRTP<DeviceNode, AprilTag, AprilTagProperties>
     AprilTag(std::unique_ptr<Properties> props);
 
     std::shared_ptr<AprilTag> build() {
-        isBuild = true; 
         return std::static_pointer_cast<AprilTag>(shared_from_this());
     }
     /**

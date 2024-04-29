@@ -83,6 +83,10 @@ class Script : public DeviceNodeCRTP<DeviceNode, Script, ScriptProperties> {
      * @returns Processor type - Leon CSS or Leon MSS
      */
     ProcessorType getProcessor() const;
+
+   protected:
+    bool isBuild = false;
+    bool needsBuild() override { return !isBuild; }
 };
 
 }  // namespace node

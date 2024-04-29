@@ -15,7 +15,6 @@ class BenchmarkIn : public DeviceNodeCRTP<DeviceNode, BenchmarkIn, BenchmarkProp
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
     std::shared_ptr<BenchmarkIn> build() {
-        isBuild = true; 
         return std::static_pointer_cast<BenchmarkIn>(shared_from_this());
     }
     /**

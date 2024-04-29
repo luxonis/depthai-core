@@ -50,6 +50,10 @@ class SystemLogger : public DeviceNodeCRTP<DeviceNode, SystemLogger, SystemLogge
      * Gets logging rate, at which messages will be sent out
      */
     float getRate();
+
+   protected:
+    bool isBuild = false;
+    bool needsBuild() override { return !isBuild; }
 };
 
 }  // namespace node

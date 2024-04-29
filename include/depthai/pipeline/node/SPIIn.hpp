@@ -54,6 +54,10 @@ class SPIIn : public DeviceNodeCRTP<DeviceNode, SPIIn, SPIInProperties> {
     std::uint32_t getMaxDataSize() const;
     /// Get number of frames in pool
     std::uint32_t getNumFrames() const;
+
+   protected:
+    bool isBuild = false;
+    bool needsBuild() override { return !isBuild; }
 };
 
 }  // namespace node

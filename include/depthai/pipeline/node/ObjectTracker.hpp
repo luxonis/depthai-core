@@ -22,7 +22,6 @@ class ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTra
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
     std::shared_ptr<ObjectTracker> build() {
-        isBuild = true; 
         return std::static_pointer_cast<ObjectTracker>(shared_from_this());
     }
     /**

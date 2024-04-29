@@ -20,7 +20,6 @@ class Pool : public DeviceNodeCRTP<DeviceNode, Pool, PoolProperties> {
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
     std::shared_ptr<Pool> build() {
-        isBuild = true; 
         return std::static_pointer_cast<Pool>(shared_from_this());
     }
     /**

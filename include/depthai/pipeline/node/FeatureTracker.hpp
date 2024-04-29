@@ -30,7 +30,6 @@ class FeatureTracker : public DeviceNodeCRTP<DeviceNode, FeatureTracker, Feature
     FeatureTracker(std::unique_ptr<Properties> props);
 
     std::shared_ptr<FeatureTracker> build() {
-        isBuild = true; 
         return std::static_pointer_cast<FeatureTracker>(shared_from_this());
     }
     /**

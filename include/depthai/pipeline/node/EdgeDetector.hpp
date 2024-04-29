@@ -29,7 +29,6 @@ class EdgeDetector : public DeviceNodeCRTP<DeviceNode, EdgeDetector, EdgeDetecto
     EdgeDetector(std::unique_ptr<Properties> props);
 
     std::shared_ptr<EdgeDetector> build() {
-        isBuild = true; 
         return std::static_pointer_cast<EdgeDetector>(shared_from_this());
     }
     /**

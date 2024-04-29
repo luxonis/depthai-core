@@ -28,7 +28,6 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
    public:
 
     std::shared_ptr<NeuralNetwork> build() {
-        isBuild = true; 
         return std::static_pointer_cast<NeuralNetwork>(shared_from_this());
     }
     /**

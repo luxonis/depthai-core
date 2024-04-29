@@ -453,7 +453,7 @@ class Node : public std::enable_shared_from_this<Node> {
 
     // used to improve error messages
     // when pipeline starts all nodes are checked
-    bool isBuild = false;
+    virtual bool needsBuild() { return false; }
 
    public:
     // TODO(themarpe) - restrict access

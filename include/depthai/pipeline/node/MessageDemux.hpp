@@ -12,7 +12,6 @@ class MessageDemux : public DeviceNodeCRTP<DeviceNode, MessageDemux, MessageDemu
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
     std::shared_ptr<MessageDemux> build() {
-        isBuild = true; 
         return std::static_pointer_cast<MessageDemux>(shared_from_this());
     }
     /**

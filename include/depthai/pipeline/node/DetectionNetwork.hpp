@@ -151,8 +151,11 @@ class DetectionNetwork : public NodeGroup {
    private:
     class Impl;
     Pimpl<Impl> pimpl;
+
    protected:
     void build();
+    bool isBuild = false;
+    bool needsBuild() override { return !isBuild; }
 };
 
 /**

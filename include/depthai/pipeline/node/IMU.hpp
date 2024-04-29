@@ -23,7 +23,6 @@ class IMU : public DeviceNodeCRTP<DeviceNode, IMU, IMUProperties> {
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
     std::shared_ptr<IMU> build() {
-        isBuild = true; 
         return std::static_pointer_cast<IMU>(shared_from_this());
     }
     /**

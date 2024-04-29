@@ -33,6 +33,9 @@ class ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraPr
     Output& getRecordOutput() override;
     Input& getReplayInput() override;
 
+    bool isBuild = false;
+    bool needsBuild() override { return !isBuild; }
+
    public:
     /**
      * Computes the scaled size given numerator and denominator

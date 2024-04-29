@@ -18,7 +18,6 @@ class Warp : public DeviceNodeCRTP<DeviceNode, Warp, WarpProperties> {
     constexpr static const char* NAME = "Warp";
     using DeviceNodeCRTP::DeviceNodeCRTP;
     std::shared_ptr<Warp> build() {
-        isBuild = true; 
         return std::static_pointer_cast<Warp>(shared_from_this());
     }
 

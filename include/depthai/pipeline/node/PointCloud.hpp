@@ -28,7 +28,6 @@ class PointCloud : public DeviceNodeCRTP<DeviceNode, PointCloud, PointCloudPrope
    public:
 
     std::shared_ptr<PointCloud> build() {
-        isBuild = true; 
         return std::static_pointer_cast<PointCloud>(shared_from_this());
     }
 

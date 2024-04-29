@@ -159,6 +159,10 @@ class VideoEncoder : public DeviceNodeCRTP<DeviceNode, VideoEncoder, VideoEncode
     /// Get lossless mode. Applies only when using [M]JPEG profile.
     bool getLossless() const;
     int getMaxOutputFrameSize() const;
+
+   protected:
+    bool isBuild = false;
+    bool needsBuild() override { return !isBuild; }
 };
 
 }  // namespace node

@@ -16,7 +16,6 @@ class UVC : public DeviceNodeCRTP<DeviceNode, UVC, UVCProperties> {
     constexpr static const char* NAME = "UVC";
     using DeviceNodeCRTP::DeviceNodeCRTP;
     std::shared_ptr<UVC> build() {
-        isBuild = true; 
         return std::static_pointer_cast<UVC>(shared_from_this());
     }
 
