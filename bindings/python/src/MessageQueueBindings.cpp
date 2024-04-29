@@ -16,6 +16,7 @@ void MessageQueueBindings::bind(pybind11::module& m, void* pCallstack) {
 
     // Type definitions
     py::class_<MessageQueue, std::shared_ptr<MessageQueue>> messageQueue(m, "MessageQueue", DOC(dai, MessageQueue));
+    py::register_exception<dai::MessageQueue::QueueException>(messageQueue, "QueueException");
     // py::class_<DataInputQueue, std::shared_ptr<DataInputQueue>> dataInputQueue(m, "DataInputQueue", DOC(dai, DataInputQueue));
 
     ///////////////////////////////////////////////////////////////////////

@@ -99,6 +99,7 @@ void bind_colorcamera(pybind11::module& m, void* pCallstack){
 
     // ColorCamera node
     colorCamera
+        .def(py::init([](){ return getImplicitPipeline().create<ColorCamera>(); }))
         .def_readonly("inputConfig", &ColorCamera::inputConfig, DOC(dai, node, ColorCamera, inputConfig))
         .def_readonly("inputControl", &ColorCamera::inputControl, DOC(dai, node, ColorCamera, inputControl))
         .def_readonly("initialControl", &ColorCamera::initialControl, DOC(dai, node, ColorCamera, initialControl))

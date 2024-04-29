@@ -15,7 +15,7 @@ class SyncedDisplay : public dai::NodeCRTP<dai::node::HostNode, SyncedDisplay> {
     Input& inputRgb = inputs["rgb"];
     Input& inputMono = inputs["mono"];
 
-    std::shared_ptr<dai::Buffer> runOnce(std::shared_ptr<dai::MessageGroup> in) override {
+    std::shared_ptr<dai::Buffer> processGroup(std::shared_ptr<dai::MessageGroup> in) override {
         auto mono = in->get<dai::ImgFrame>("mono");
         auto rgb = in->get<dai::ImgFrame>("rgb");
         // Show the frames side by side

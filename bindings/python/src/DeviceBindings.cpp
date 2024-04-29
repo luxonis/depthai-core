@@ -322,8 +322,8 @@ void DeviceBindings::bind(pybind11::module& m, void* pCallstack){
     using namespace dai;
 
     // Type definitions
-    py::class_<DeviceBase> deviceBase(m, "DeviceBase", DOC(dai, DeviceBase));
-    py::class_<Device, DeviceBase> device(m, "Device", DOC(dai, Device));
+    py::class_<DeviceBase, std::shared_ptr<DeviceBase>> deviceBase(m, "DeviceBase", DOC(dai, DeviceBase));
+    py::class_<Device, DeviceBase, std::shared_ptr<Device>> device(m, "Device", DOC(dai, Device));
     py::class_<Device::Config> deviceConfig(device, "Config", DOC(dai, DeviceBase, Config));
     py::class_<CrashDump> crashDump(m, "CrashDump", DOC(dai, CrashDump));
     py::class_<CrashDump::CrashReport> crashReport(crashDump, "CrashReport", DOC(dai, CrashDump, CrashReport));
