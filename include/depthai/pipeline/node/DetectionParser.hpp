@@ -21,6 +21,10 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     constexpr static const char* NAME = "DetectionParser";
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
+    std::shared_ptr<DetectionParser> build() {
+        isBuild = true; 
+        return std::static_pointer_cast<DetectionParser>(shared_from_this());
+    }
     /**
      * Input NN results with detection data to parse
      * Default queue is blocking with size 5

@@ -16,7 +16,7 @@ class SystemLogger : public DeviceNodeCRTP<DeviceNode, SystemLogger, SystemLogge
    public:
     constexpr static const char* NAME = "SystemLogger";
     using DeviceNodeCRTP::DeviceNodeCRTP;
-    void build();
+    std::shared_ptr<SystemLogger> build();
 
     /**
      * Outputs SystemInformation[S3] message that carries various system information

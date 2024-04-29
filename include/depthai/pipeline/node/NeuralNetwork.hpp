@@ -26,6 +26,11 @@ class NeuralNetwork : public DeviceNodeCRTP<DeviceNode, NeuralNetwork, NeuralNet
     std::optional<OpenVINO::Version> networkOpenvinoVersion;
 
    public:
+
+    std::shared_ptr<NeuralNetwork> build() {
+        isBuild = true; 
+        return std::static_pointer_cast<NeuralNetwork>(shared_from_this());
+    }
     /**
      * Input message with data to be inferred upon
      */

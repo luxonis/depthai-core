@@ -21,6 +21,10 @@ class Sync : public DeviceNodeCRTP<DeviceNode, Sync, SyncProperties> {
    public:
     constexpr static const char* NAME = "Sync";
     using DeviceNodeCRTP::DeviceNodeCRTP;
+    std::shared_ptr<Sync> build() {
+        isBuild = true; 
+        return std::static_pointer_cast<Sync>(shared_from_this());
+    }
 
     /**
      * A map of inputs

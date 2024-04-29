@@ -22,11 +22,9 @@ class DetectionNetwork : public NodeGroup {
     ~DetectionNetwork() override;
 
     [[nodiscard]] static std::shared_ptr<DetectionNetwork> create() {
-        auto n = std::make_shared<DetectionNetwork>();
-        n->build();
-        return n;
+        return std::make_shared<DetectionNetwork>();
     }
-    void build();
+    std::shared_ptr<DetectionNetwork> build(Node::Output& input, const NNArchive& nnArchive);
     bool runOnHost() const override {
         return false;
     };
@@ -153,6 +151,8 @@ class DetectionNetwork : public NodeGroup {
    private:
     class Impl;
     Pimpl<Impl> pimpl;
+   protected:
+    void build();
 };
 
 /**
@@ -161,15 +161,13 @@ class DetectionNetwork : public NodeGroup {
 class MobileNetDetectionNetwork : public DetectionNetwork {
    public:
     [[nodiscard]] static std::shared_ptr<MobileNetDetectionNetwork> create() {
-        auto n = std::make_shared<MobileNetDetectionNetwork>();
-        n->build();
-        return n;
+        return std::make_shared<MobileNetDetectionNetwork>();
     }
     bool runOnHost() const override {
         return false;
     };
 
-    void build();
+    std::shared_ptr<MobileNetDetectionNetwork> build();
 };
 
 /**
@@ -177,11 +175,9 @@ class MobileNetDetectionNetwork : public DetectionNetwork {
  */
 class YoloDetectionNetwork : public DetectionNetwork {
    public:
-    void build();
+    std::shared_ptr<YoloDetectionNetwork> build();
     [[nodiscard]] static std::shared_ptr<YoloDetectionNetwork> create() {
-        auto n = std::make_shared<YoloDetectionNetwork>();
-        n->build();
-        return n;
+        return std::make_shared<YoloDetectionNetwork>();
     }
     bool runOnHost() const override {
         return false;

@@ -24,7 +24,7 @@ ColorCamera::ColorCamera(std::shared_ptr<Device> device, dai::CameraBoardSocket 
     properties.boardSocket = socket;
 }
 
-void ColorCamera::build() {
+std::shared_ptr<ColorCamera> ColorCamera::build() {
     // Set some default properties
     // properties.boardSocket = CameraBoardSocket::AUTO;
     properties.imageOrientation = CameraImageOrientation::AUTO;
@@ -34,6 +34,9 @@ void ColorCamera::build() {
     properties.resolution = ColorCameraProperties::SensorResolution::THE_1080_P;
     properties.fps = 30.0;
     properties.previewKeepAspectRatio = true;
+
+    isBuild = true;
+    return std::static_pointer_cast<ColorCamera>(shared_from_this());
 }
 
 ColorCamera::Properties& ColorCamera::getProperties() {

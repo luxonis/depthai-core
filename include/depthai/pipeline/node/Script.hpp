@@ -17,7 +17,7 @@ class Script : public DeviceNodeCRTP<DeviceNode, Script, ScriptProperties> {
    public:
     constexpr static const char* NAME = "Script";
     using DeviceNodeCRTP::DeviceNodeCRTP;
-    void build();
+    std::shared_ptr<Script> build();
 
    private:
     dai::Path scriptPath;

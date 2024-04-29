@@ -15,6 +15,7 @@ class VideoEncoder : public DeviceNodeCRTP<DeviceNode, VideoEncoder, VideoEncode
    public:
     constexpr static const char* NAME = "VideoEncoder";
     using DeviceNodeCRTP::DeviceNodeCRTP;
+    std::shared_ptr<VideoEncoder> build(Node::Output& input);
 
     /**
      * Input for NV12 ImgFrame to be encoded

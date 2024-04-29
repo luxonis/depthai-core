@@ -6,11 +6,14 @@
 namespace dai {
 namespace node {
 
-void Script::build() {
+std::shared_ptr<Script> Script::build() {
     // Set some default properties
     properties.scriptUri = "";
     properties.scriptName = "<script>";
     properties.processor = ProcessorType::LEON_MSS;
+
+    isBuild = true; 
+    return std::static_pointer_cast<Script>(shared_from_this());
 }
 
 void Script::setScriptPath(const dai::Path& path, const std::string& name) {

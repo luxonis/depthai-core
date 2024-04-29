@@ -19,6 +19,10 @@ class Pool : public DeviceNodeCRTP<DeviceNode, Pool, PoolProperties> {
     constexpr static const char* NAME = "Pool";
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
+    std::shared_ptr<Pool> build() {
+        isBuild = true; 
+        return std::static_pointer_cast<Pool>(shared_from_this());
+    }
     /**
      *  Pool output in pull orientation
      */

@@ -13,8 +13,10 @@ class BenchmarkOut : public DeviceNodeCRTP<DeviceNode, BenchmarkOut, BenchmarkPr
     constexpr static const char* NAME = "BenchmarkOut";
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
-    void build() {
+    std::shared_ptr<BenchmarkOut> build() {
         properties.numMessages = -1;  // By default send messages indefinitely
+        isBuild = true; 
+        return std::static_pointer_cast<BenchmarkOut>(shared_from_this());
     }
 
     /**

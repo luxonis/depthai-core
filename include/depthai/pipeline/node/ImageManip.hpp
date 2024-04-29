@@ -26,6 +26,10 @@ class ImageManip : public DeviceNodeCRTP<DeviceNode, ImageManip, ImageManipPrope
     ImageManip() = default;
     ImageManip(std::unique_ptr<Properties> props);
 
+    std::shared_ptr<ImageManip> build() {
+        isBuild = true; 
+        return std::static_pointer_cast<ImageManip>(shared_from_this());
+    }
     /**
      * Initial config to use when manipulating frames
      */

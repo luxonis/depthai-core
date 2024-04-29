@@ -15,7 +15,7 @@ class SPIIn : public DeviceNodeCRTP<DeviceNode, SPIIn, SPIInProperties> {
    public:
     constexpr static const char* NAME = "SPIIn";
     using DeviceNodeCRTP::DeviceNodeCRTP;
-    void build();
+    std::shared_ptr<SPIIn> build();
 
     /**
      * Outputs message of same type as send from host.

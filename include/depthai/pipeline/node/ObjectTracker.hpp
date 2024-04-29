@@ -20,6 +20,11 @@ class ObjectTracker : public DeviceNodeCRTP<DeviceNode, ObjectTracker, ObjectTra
    public:
     constexpr static const char* NAME = "ObjectTracker";
     using DeviceNodeCRTP::DeviceNodeCRTP;
+
+    std::shared_ptr<ObjectTracker> build() {
+        isBuild = true; 
+        return std::static_pointer_cast<ObjectTracker>(shared_from_this());
+    }
     /**
      * Input ImgFrame message on which tracking will be performed. RGBp, BGRp, NV12, YUV420p types are supported.
      * Default queue is non-blocking with size 4.

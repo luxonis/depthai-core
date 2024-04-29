@@ -15,6 +15,10 @@ class XLinkIn : public DeviceNodeCRTP<DeviceNode, XLinkIn, XLinkInProperties> {
    public:
     constexpr static const char* NAME = "XLinkIn";
     using DeviceNodeCRTP::DeviceNodeCRTP;
+    std::shared_ptr<XLinkIn> build() {
+        isBuild = true; 
+        return std::static_pointer_cast<XLinkIn>(shared_from_this());
+    }
 
    public:
     virtual ~XLinkIn() = default;

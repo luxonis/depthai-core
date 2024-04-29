@@ -10,6 +10,11 @@ class MessageDemux : public DeviceNodeCRTP<DeviceNode, MessageDemux, MessageDemu
    public:
     constexpr static const char* NAME = "MessageDemux";
     using DeviceNodeCRTP::DeviceNodeCRTP;
+
+    std::shared_ptr<MessageDemux> build() {
+        isBuild = true; 
+        return std::static_pointer_cast<MessageDemux>(shared_from_this());
+    }
     /**
      * Input message of type MessageGroup
      */

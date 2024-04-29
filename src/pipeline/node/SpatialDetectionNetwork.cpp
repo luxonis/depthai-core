@@ -12,7 +12,7 @@ namespace node {
 // Base Detection Network Class
 //--------------------------------------------------------------------
 
-void SpatialDetectionNetwork::build() {
+std::shared_ptr<SpatialDetectionNetwork> SpatialDetectionNetwork::build() {
     // Default confidence threshold
     detectionParser->properties.parser.confidenceThreshold = 0.5;
     neuralNetwork->out.link(detectionParser->input);
@@ -27,6 +27,10 @@ void SpatialDetectionNetwork::build() {
     detectionParser->imageIn.setMaxSize(1);
     inputDetections.setMaxSize(1);
     inputDetections.setBlocking(true);
+
+    isBuild = true;
+
+    return std::static_pointer_cast<SpatialDetectionNetwork>(shared_from_this());
 }
 
 // -------------------------------------------------------------------
@@ -116,17 +120,19 @@ void SpatialDetectionNetwork::setSpatialCalculationStepSize(int stepSize) {
 //--------------------------------------------------------------------
 // MobileNet
 //--------------------------------------------------------------------
-void MobileNetSpatialDetectionNetwork::build() {
+std::shared_ptr<MobileNetSpatialDetectionNetwork> MobileNetSpatialDetectionNetwork::build() {
     SpatialDetectionNetwork::build();
     detectionParser->setNNFamily(DetectionNetworkType::MOBILENET);
+    return std::static_pointer_cast<MobileNetSpatialDetectionNetwork>(shared_from_this());
 }
 
 //--------------------------------------------------------------------
 // YOLO
 //--------------------------------------------------------------------
-void YoloSpatialDetectionNetwork::build() {
+std::shared_ptr<YoloSpatialDetectionNetwork> YoloSpatialDetectionNetwork::build() {
     SpatialDetectionNetwork::build();
     detectionParser->setNNFamily(DetectionNetworkType::YOLO);
+    return std::static_pointer_cast<YoloSpatialDetectionNetwork>(shared_from_this());
 }
 
 void YoloSpatialDetectionNetwork::setNumClasses(const int numClasses) {

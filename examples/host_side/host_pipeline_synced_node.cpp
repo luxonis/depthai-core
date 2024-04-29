@@ -45,10 +45,11 @@ int main() {
     // Create pipeline
     dai::Pipeline pipeline(true);
 
-    auto camRgb = pipeline.create<dai::node::ColorCamera>(dai::CameraBoardSocket::CAM_A);
+    auto camRgb = pipeline.create<dai::node::ColorCamera>()->build();
+    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_A);
     camRgb->setVideoSize(640, 480);
 
-    auto camMono = pipeline.create<dai::node::MonoCamera>();
+    auto camMono = pipeline.create<dai::node::MonoCamera>()->build();
     camMono->setBoardSocket(dai::CameraBoardSocket::CAM_B);
 
     auto syncedDisplay = pipeline.create<SyncedDisplay>();
