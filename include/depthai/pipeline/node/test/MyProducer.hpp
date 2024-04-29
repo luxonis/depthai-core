@@ -2,9 +2,6 @@
 
 #include <depthai/pipeline/ThreadedHostNode.hpp>
 
-// shared
-#include <depthai/properties/XLinkOutProperties.hpp>
-
 namespace dai {
 namespace node {
 namespace test {

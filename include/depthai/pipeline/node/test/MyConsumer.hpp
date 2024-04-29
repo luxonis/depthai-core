@@ -1,12 +1,7 @@
 #pragma once
-
-#include <depthai/pipeline/ThreadedNode.hpp>
-
-// shared
-#include <depthai/properties/XLinkOutProperties.hpp>
-
 // project
 #include <depthai/pipeline/datatype/Buffer.hpp>
+#include <depthai/pipeline/ThreadedHostNode.hpp>
 
 namespace dai {
 namespace node {
@@ -15,7 +10,7 @@ namespace test {
 /**
  * @brief XLinkOut node. Sends messages over XLink.
  */
-class MyConsumer : public NodeCRTP<ThreadedNode, MyConsumer> {
+class MyConsumer : public NodeCRTP<ThreadedHostNode, MyConsumer> {
    public:
     constexpr static const char* NAME = "MyConsumer";
 
