@@ -15,6 +15,7 @@ class ThreadedNode : public Node {
    private:
     JoiningThread thread;
     AtomicBool running{false};
+    static inline std::shared_ptr<spdlog::details::thread_pool> threadPool = std::make_shared<spdlog::details::thread_pool>(8192, 1);
 
    public:
     using Node::Node;
@@ -31,7 +32,7 @@ class ThreadedNode : public Node {
     // check if still running
     bool isRunning() const;
     std::shared_ptr<spdlog::async_logger> logger =
-        std::make_shared<spdlog::async_logger>("ThreadedNode", std::make_shared<spdlog::sinks::stdout_color_sink_mt>(), spdlog::thread_pool());
+        std::make_shared<spdlog::async_logger>("ThreadedNode", std::make_shared<spdlog::sinks::stdout_color_sink_mt>(), threadPool);
 };
 
 }  // namespace dai
