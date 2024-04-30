@@ -323,7 +323,7 @@ class Camera::Impl {
 
     Node::Output* requestNewOutput(Camera& parent, const Capability& genericCapability, bool onHost) {
         if(const auto* capability = ImgFrameCapability::get(genericCapability)) {
-            static const int32_t requestId = nextOutputRequestId;
+            const auto requestId = nextOutputRequestId;
             outputRequests.push_back({requestId, *capability, onHost});
             ++nextOutputRequestId;
             std::cout << "output request " << requestId << "\n" << std::flush;

@@ -32,7 +32,7 @@ int main(int argc, char** argv) {
     for(const auto& size : sizes) {
         dai::ImgFrameCapability cap;
         cap.size.value = size;
-        auto* output = camRgb->requestNewOutput(cap);
+        auto* output = camRgb->requestNewOutput(cap, true);
         videos.push_back(output->createQueue());
     }
 
@@ -55,11 +55,12 @@ int main(int argc, char** argv) {
         for(const auto& video : videos) {
             std::cout << "Waiting for frame on index " << videoIndex << "\n" << std::flush;
             auto videoIn = videoIndex == 0 ? video->get<dai::ImgFrame>() : video->tryGet<dai::ImgFrame>();
-            std::cout << "Showing frame on index " << videoIndex << "\n" << std::flush;
-
             // Get BGR frame from NV12 encoded video frame to show with opencv
             // Visualizing the frame on slower hosts might have overhead
             if(videoIn) {
+                std::cout << "Showing frame on index " << videoIndex << " with size: " << videoIn->getWidth() << "x" << videoIn->getHeight()
+                          << " for queue name: " << video->getName() << "\n"
+                          << std::flush;
                 cv::imshow("video_" + std::to_string(videoIndex), videoIn->getCvFrame());
             } else {
                 std::cout << "Video frame on index " << videoIndex << " was null\n" << std::flush;

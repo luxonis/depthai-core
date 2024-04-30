@@ -17,7 +17,7 @@ int main() {
     auto camRgb = pipeline.create<dai::node::ColorCamera>();
 
     // Properties
-    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_B);
+    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_C);
     // camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_720_P);
     // camRgb->setVideoSize(1280, 720);
     camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
@@ -68,14 +68,10 @@ int main() {
     imageManip->out.link(imageManipCrop->inputImage);
     */
 
-    bool getQueue = true;
-
-    auto video = camRgb->video.getQueue();
+    auto video = camRgb->video.createQueue();
     std::vector<std::shared_ptr<dai::MessageQueue>> resizedOutputs;
-    if(getQueue) {
-        for(auto imageManip : resizeNodes) {
-            resizedOutputs.push_back(imageManip->out.getQueue());
-        }
+    for(auto imageManip : resizeNodes) {
+        resizedOutputs.push_back(imageManip->out.createQueue());
     }
 
     pipeline.start();
@@ -88,24 +84,13 @@ int main() {
         // Visualizing the frame on slower hosts might have overhead
         cv::imshow("video", videoIn->getCvFrame());
 
-        if(getQueue) {
-            int index = 0;
-            for(auto resized : resizedOutputs) {
-                auto resizedIn = resized->get<dai::ImgFrame>();
-                if(resizedIn) {
-                    cv::imshow("resized " + std::to_string(index), resizedIn->getCvFrame());
-                }
-                ++index;
+        int index = 0;
+        for(auto resized : resizedOutputs) {
+            auto resizedIn = resized->get<dai::ImgFrame>();
+            if(resizedIn) {
+                cv::imshow("resized " + std::to_string(index), resizedIn->getCvFrame());
             }
-        } else {
-            int index = 0;
-            for(auto imageManip : resizeNodes) {
-                auto resizedIn = imageManip->out.getQueue()->tryGet<dai::ImgFrame>();
-                if(resizedIn) {
-                    cv::imshow("resized " + std::to_string(index), resizedIn->getCvFrame());
-                }
-                ++index;
-            }
+            ++index;
         }
 
         int key = cv::waitKey(1);
