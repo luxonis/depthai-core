@@ -169,6 +169,7 @@ option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" ON)
 option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
 option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
 option(DEPTHAI_RTABMAP_SUPPORT "Enable optional RTABMap support" OFF)
+option(DEPTHAI_BASALT_SUPPORT "Enable optional Basalt support" OFF)
 
 
 # Include project dependencies
@@ -275,7 +276,6 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/PointCloudData.cpp
     src/pipeline/datatype/MessageGroup.cpp
     src/pipeline/datatype/TransformData.cpp
-    src/pipeline/datatype/RTABMapSensorData.cpp
     src/utility/H26xParsers.cpp
     src/utility/Initialization.cpp
     src/utility/Resources.cpp
@@ -784,6 +784,78 @@ if(DEPTHAI_RTABMAP_SUPPORT)
     endif()
 endif()
 
+
+########################
+# Basalt Support
+########################
+
+set(THIRDPARTY_BASALT_LIBRARIES "" CACHE STRING "Optional libraries to link Basalt support, e.g. TBB::tbb")
+set(TARGET_BASALT_NAME ${PROJECT_NAME}-basalt)
+set(TARGET_BASALT_ALIAS basalt)
+
+if(DEPTHAI_BASALT_SUPPORT)
+    # Check if required libraries are available
+    find_package(basalt_sdk CONFIG REQUIRED)
+    set(BASALT_SUPPORT_AVAILABLE ${basalt_sdk_FOUND})
+
+    if(BASALT_SUPPORT_AVAILABLE)
+        hunter_private_data(
+            URL "https://raw.githubusercontent.com/Serafadam/basalt-mirror/depthai_tests/data/msdmi_config.json"
+            SHA1 "161f557b1e39841b60be953a2bcd517373ae2c9b"
+            FILE "msdmi_config.json"
+            LOCATION msdmi_config
+        )
+    
+        # Add depthai-core-opencv library and depthai::core::opencv alias
+        add_library(${TARGET_BASALT_NAME} src/basalt/BasaltVIO.cpp )
+        add_library("${PROJECT_NAME}::${TARGET_BASALT_ALIAS}" ALIAS ${TARGET_BASALT_NAME})
+
+        # Specifies name of generated IMPORTED target (set to alias)
+        set_target_properties(${TARGET_BASALT_NAME} PROPERTIES EXPORT_NAME ${TARGET_BASALT_ALIAS})
+
+        # Add default flags
+        add_default_flags(${TARGET_BASALT_NAME})
+        add_flag(${TARGET_BASALT_NAME} -Wno-switch-enum)
+
+        # Link to Basalt (publically)
+        target_link_libraries(${TARGET_BASALT_NAME} PUBLIC basalt_sdk::basalt_sdk ${THIRDPARTY_BASALT_LIBRARIES})
+
+        # Add public compile definition indicating that Basalt support is available
+        set(DEPTHAI_HAVE_BASALT_SUPPORT ON)
+        if(NOT CXX_MARCH)
+            set(CXX_MARCH native)
+        endif()
+        
+        IF(NOT APPLE OR NOT CMAKE_SYSTEM_PROCESSOR STREQUAL "arm64")
+            set(BASALT_MARCH_FLAGS "-march=${CXX_MARCH}")
+        ELSE()
+            message(STATUS "Running on Apple ${CMAKE_SYSTEM_PROCESSOR}. Disabled -march flag.")
+        ENDIF()
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${BASALT_MARCH_FLAGS}")
+        # Specify that we are building target basalt
+        target_compile_definitions(${TARGET_BASALT_NAME} PUBLIC DEPTHAI_TARGET_BASALT)
+        target_compile_definitions(${TARGET_BASALT_NAME} PUBLIC DEPTHAI_HAVE_BASALT_SUPPORT)
+        
+        # target_link_options(${TARGET_BASALT_NAME} PRIVATE "-Wl,--disable-new-dtags")
+        target_compile_definitions(${TARGET_BASALT_NAME} PUBLIC VIO_CONFIG_PATH="${msdmi_config}")
+        # Add public dependency to depthai::core library
+        target_link_libraries(${TARGET_BASALT_NAME} PUBLIC ${TARGET_CORE_NAME})
+
+        # Add to clangformat target
+        if(COMMAND target_clangformat_setup)
+            target_clangformat_setup(${TARGET_BASALT_NAME} "")
+        endif()
+
+        # Add to list of targets to export and install
+        list(APPEND targets_to_export ${TARGET_BASALT_NAME})
+
+        message(STATUS "Basalt and required libraries (${REQUIRED_BASALT_LIBRARIES}) found. Basalt Support enabled")
+
+    else()
+        message(STATUS "Basalt or required libraries (${REQUIRED_BASALT_LIBRARIES}) not found. Basalt Support disabled")
+    endif()
+endif()
+
 ########################
 # Sanitizers
 ########################
@@ -797,6 +869,9 @@ if(DEPTHAI_SANITIZE)
     endif()
     if(DEPTHAI_HAVE_RTABMAP_SUPPORT)
         add_sanitizers(${TARGET_RTABMAP_NAME})
+    endif()
+    if(DEPTHAI_HAVE_BASALT_SUPPORT)
+        add_sanitizers(${TARGET_BASALT_NAME})
     endif()
     if(DEPTHAI_HAVE_PCL_SUPPORT)
         add_sanitizers(${TARGET_PCL_NAME})
@@ -961,6 +1036,14 @@ if(DEPTHAI_HAVE_RTABMAP_SUPPORT)
     set(tmp_definitions "$<TARGET_PROPERTY:${TARGET_RTABMAP_NAME},INTERFACE_COMPILE_DEFINITIONS>")
     set(tmp_includes "$<TARGET_PROPERTY:${TARGET_RTABMAP_NAME},INTERFACE_INCLUDE_DIRECTORIES>")
     file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/depthai-rtabmap-integration.txt" CONTENT
+        "$<$<BOOL:${tmp_definitions}>:\n-D\'$<JOIN:${tmp_definitions},\'\n-D\'>\'>\n
+        $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
+    )
+endif()
+if(DEPTHAI_HAVE_BASALT_SUPPORT)
+    set(tmp_definitions "$<TARGET_PROPERTY:${TARGET_BASALT_NAME},INTERFACE_COMPILE_DEFINITIONS>")
+    set(tmp_includes "$<TARGET_PROPERTY:${TARGET_BASALT_NAME},INTERFACE_INCLUDE_DIRECTORIES>")
+    file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/depthai-basalt-integration.txt" CONTENT
         "$<$<BOOL:${tmp_definitions}>:\n-D\'$<JOIN:${tmp_definitions},\'\n-D\'>\'>\n
         $<$<BOOL:${tmp_includes}>:\n-I\'$<JOIN:${tmp_includes},\'\n-I\'>\'>\n"
     )

@@ -244,12 +244,6 @@ hunter_private_data(
     LOCATION nn_archive_yolo_v6_tar_xz
 )
 
-hunter_private_data(
-    URL "https://raw.githubusercontent.com/Serafadam/basalt-mirror/depthai_tests/data/msdmi_config.json"
-    SHA1 "161f557b1e39841b60be953a2bcd517373ae2c9b"
-    FILE "msdmi_config.json"
-    LOCATION msdmi_config
-)
 
 ## message(STATUS "Location of test1.data: ${test1_data}")
 
@@ -525,8 +519,7 @@ dai_add_example(basalt_dai_vio_slam host_side/basalt_dai_vio_slam.cpp OFF ON)
 set_property(TARGET basalt_dai_vio_slam PROPERTY CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=native")
 target_link_options(basalt_dai_vio_slam PRIVATE "-Wl,--disable-new-dtags")
-target_compile_definitions(basalt_dai_vio_slam PRIVATE CONFIG_PATH="${msdmi_config}")
-target_link_libraries(basalt_dai_vio_slam PRIVATE basalt_sdk::basalt_sdk mp4v2::mp4v2 depthai::rtabmap rerun_sdk )
+target_link_libraries(basalt_dai_vio_slam PRIVATE depthai::basalt mp4v2::mp4v2 depthai::rtabmap rerun_sdk )
 
 # # ImageManip
 # dai_add_example(image_manip ImageManip/image_manip_example.cpp ON OFF)
