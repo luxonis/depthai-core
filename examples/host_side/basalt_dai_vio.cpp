@@ -54,7 +54,6 @@ class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStr
 
 int main() {
     using namespace std;
-    std::unique_ptr<tbb::global_control> tbb_global_control;
 
     // Create pipeline
     dai::Pipeline pipeline;
