@@ -103,7 +103,8 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
             def __init__(self, *args):
                 node.HostNode.__init__(self)
                 self.link_args(*args)
-            cls.__init__ = __init__
+            if not hasattr(cls, "__init__"):
+                cls.__init__ = __init__
 
         node.HostNode.__init_subclass__ = classmethod(__init_subclass__)
     )", m.attr("__dict__"));
