@@ -950,6 +950,8 @@ void PipelineImpl::stop() {
         }
     }
 
+    // Close the task queue
+    tasks.destruct();
     // TODO(Morato) - handle multiple devices correctly, stop pipeline on all of them
     // Close the devices
     if(!isHostOnly()) {
@@ -962,6 +964,14 @@ void PipelineImpl::stop() {
 
 PipelineImpl::~PipelineImpl() {
     stop();
+    wait();
+}
+
+void PipelineImpl::run() {
+    start();
+    while(isRunning()) {
+        processTasks(true);
+    }
     wait();
 }
 

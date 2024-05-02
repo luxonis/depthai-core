@@ -1,6 +1,9 @@
 
 #include "PipelineBindings.hpp"
+
 #include <pybind11/attr.h>
+#include <pybind11/gil.h>
+
 #include "node/NodeBindings.hpp"
 
 // depthai
@@ -216,7 +219,13 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
                  p.wait();
              })
         .def("stop", &Pipeline::stop)
-        .def("isRunning", &Pipeline::isRunning);
+        .def("run",
+             [](Pipeline& p) {
+                 py::gil_scoped_release release;
+                 p.run();
+             })
+        .def("isRunning", &Pipeline::isRunning)
+        .def("processTasks", &Pipeline::processTasks);
     ;
 
 

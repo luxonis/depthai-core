@@ -61,7 +61,8 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
         .def_property_readonly(
             "inputs", [](HostNode& node) { return &node.inputs; }, py::return_value_policy::reference_internal)
         .def("runSyncingOnHost", &HostNode::runSyncingOnHost, DOC(dai, node, HostNode, runSyncingOnHost))
-        .def("runSyncingOnDevice", &HostNode::runSyncingOnDevice, DOC(dai, node, HostNode, runSyncingOnDevice));
+        .def("runSyncingOnDevice", &HostNode::runSyncingOnDevice, DOC(dai, node, HostNode, runSyncingOnDevice))
+        .def("sendProcessingToPipeline", &HostNode::sendProcessingToPipeline, DOC(dai, node, HostNode, sendProcessingToPipeline));
 
     py::exec(R"(
         def __init_subclass__(cls):
