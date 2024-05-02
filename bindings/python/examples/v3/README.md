@@ -13,12 +13,27 @@ as well as the ability to create a custom node that can be used in the pipeline.
 with dai.Pipeline() as pipeline:
     # Allow stereo inputs to be created automatically
     stereo = pipeline.create(dai.node.StereoDepth).build(autoCreateCameras=True)
+    # This can be alternatively written as:
+    # stereo = dai.node.StereoDepth(autoCreateCameras=True)
     visualizer = pipeline.create(StereoVisualizer).build(stereo.disparity)
     pipeline.start()
     while pipeline.isRunning():
         time.sleep(0.1)
 ```
 
+## Different syntax
+
+In Python, currently, there exist two syntaxes for creating nodes. Before we decide, we first want to gather feedback from you.
+
+One syntax uses the `Pipeline.create(...)` and `Node.build(...)` methods like this `pipeline.create(dai.node.StereoDepth).build(autoCreateCameras=True)`.
+
+The other syntax uses the pipeline from the `with` statement and does all the work in the constructor -- e.g. `dai.node.StereoDepth(autoCreateCameras=True`.
+
+In Python, both syntaxes also accept keyword arguments that mirror setter methods -- e.g. `dai.node.Camera(previewSize=(300, 300))`. Currently, not all parameters are available.
+
+We'd love to hear your opinion which one you prefer. Currently, this syntax is now available only for `Camera`, `DetectionNetwork`, `StereoDepth` and `VideoEncoder`. Other nodes still have to be created with `pipeline.create`, parameters set with setter methods and inputs linked with `.link`.
+
+Examples of this can be found in the `VideoEncoder` example.
 
 ## Installation
 
