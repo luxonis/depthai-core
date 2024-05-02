@@ -125,8 +125,8 @@ void bind_camera(pybind11::module& m, void* pCallstack){
         py::arg("imageOrientation") = CameraImageOrientation::AUTO, \
         py::arg("colorOrder") = CameraProperties::ColorOrder::BGR, \
         py::arg("interleaved") = true, \
-        py::arg("previewSize") = (300, 300), \
-        py::arg("videoSize") = (-1, -1), \
+        py::arg("previewSize") = py::make_tuple(300, 300), \
+        py::arg("videoSize") = py::make_tuple(-1, -1), \
         py::arg("fps") = 30.0
         // TODO (Zimamazim) Automatically fetch default arguments to avoid duplicity
 #define CAMERA_CODE(OP) \
