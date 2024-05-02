@@ -552,8 +552,8 @@ void PipelineImpl::add(std::shared_ptr<Node> node) {
     }
 
     // First check if node has already been added
-    auto nodes = getAllNodes();
-    for(auto& n : nodes) {
+    auto localNodes = getAllNodes();
+    for(auto& n : localNodes) {
         if(node.get() == n.get()) {
             throw std::invalid_argument(fmt::format("Node with id '{}' has already been added to the pipeline", node->id));
         }
