@@ -1,5 +1,17 @@
 import depthai as dai
 
+# Capture Ctrl+C and set a flag to stop the loop
+import signal
+import sys
+import time
+
+stopped = False
+def signal_handler(sig, frame):
+    global stopped
+    print('You pressed Ctrl+C!, stopping video saving...')
+    stopped = True
+
+signal.signal(signal.SIGINT, signal_handler)
 class VideoSaver(dai.node.HostNode):
     def __init__(self, *args):
         dai.node.HostNode.__init__(self)
@@ -12,13 +24,18 @@ class VideoSaver(dai.node.HostNode):
 with dai.Pipeline() as pipeline:
     camRgb = dai.node.Camera(
             boardSocket = dai.CameraBoardSocket.CAM_A,
-            videoSize = (3840, 2160))
+            videoSize = (1920, 1080))
     encoded = dai.node.VideoEncoder(camRgb.video,
-            frameRate = 30, 
+            frameRate = 30,
             profile = dai.VideoEncoderProperties.Profile.H265_MAIN)
     saver = VideoSaver(encoded.out)
 
     pipeline.start()
+    print("Started to save video to video.h265")
+    print("Press Ctrl+C to stop")
+    while pipeline.isRunning() and not stopped:
+        time.sleep(0.1)
+    pipeline.stop()
     pipeline.wait()
     # TODO Close file handle
 
