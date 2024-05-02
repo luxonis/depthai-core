@@ -31,6 +31,39 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
 
     // DetectionNetwork Node
     detectionNetwork
+#define DETECTION_NETWORK_BUILD_ARGS \
+        Node::Output& input, \
+        NNArchive& nnArchive
+#define DETECTION_NETWORK_BUILD_PYARGS \
+        py::arg("input"), \
+        py::arg("nnArchive")
+#define DETECTION_NETWORK_ARGS \
+        float confidenceThreshold
+#define DETECTION_NETWORK_PYARGS \
+        py::arg("confidenceThreshold") = 0.5
+        // TODO (Zimamazim) Automatically fetch default arguments to avoid duplicity
+#define DETECTION_NETWORK_CODE(OP) \
+        self OP setConfidenceThreshold(confidenceThreshold);
+        .def("build", [](DetectionNetwork &self, 
+                    DETECTION_NETWORK_BUILD_ARGS,
+                    DETECTION_NETWORK_ARGS) {
+                self.build(input, nnArchive);
+                DETECTION_NETWORK_CODE(.)
+            },
+            DETECTION_NETWORK_BUILD_PYARGS,
+            py::kw_only(),
+            DETECTION_NETWORK_PYARGS
+            )
+        .def(py::init([](DETECTION_NETWORK_BUILD_ARGS, DETECTION_NETWORK_ARGS){ 
+                auto self = getImplicitPipeline().create<DetectionNetwork>();
+                self->build(input, nnArchive);
+                DETECTION_NETWORK_CODE(->)
+                return self;
+            }),
+            DETECTION_NETWORK_BUILD_PYARGS,
+            py::kw_only(),
+            DETECTION_NETWORK_PYARGS
+            )
         // Copied from NN node
         .def("setBlobPath", &DetectionNetwork::setBlobPath, py::arg("path"), DOC(dai, node, DetectionNetwork, setBlobPath))
         .def("setNumPoolFrames", &DetectionNetwork::setNumPoolFrames, py::arg("numFrames"), DOC(dai, node, DetectionNetwork, setNumPoolFrames))

@@ -57,6 +57,37 @@ void bind_videoencoder(pybind11::module& m, void* pCallstack){
 
     // Node
     videoEncoder
+#define VIDEO_ENCODER_BUILD_ARGS \
+        Node::Output& input
+#define VIDEO_ENCODER_BUILD_PYARGS \
+        py::arg("input")
+#define VIDEO_ENCODER_ARGS \
+        float bitrate
+#define VIDEO_ENCODER_PYARGS \
+        py::arg("bitrate") = 0
+        // TODO (Zimamazim) Automatically fetch default arguments to avoid duplicity
+#define VIDEO_ENCODER_CODE(OP) \
+        self OP setBitrate(bitrate);
+        .def("build", [](VideoEncoder &self, 
+                    VIDEO_ENCODER_BUILD_ARGS,
+                    VIDEO_ENCODER_ARGS) {
+                self.build(input);
+                VIDEO_ENCODER_CODE(.)
+            },
+            VIDEO_ENCODER_BUILD_PYARGS,
+            py::kw_only(),
+            VIDEO_ENCODER_PYARGS
+            )
+        .def(py::init([](VIDEO_ENCODER_BUILD_ARGS, VIDEO_ENCODER_ARGS){ 
+                auto self = getImplicitPipeline().create<VideoEncoder>();
+                self->build(input);
+                VIDEO_ENCODER_CODE(->)
+                return self;
+            }),
+            VIDEO_ENCODER_BUILD_PYARGS,
+            py::kw_only(),
+            VIDEO_ENCODER_PYARGS
+            )
         .def_readonly("input", &VideoEncoder::input, DOC(dai, node, VideoEncoder, input), DOC(dai, node, VideoEncoder, input))
         .def_readonly("bitstream", &VideoEncoder::bitstream, DOC(dai, node, VideoEncoder, bitstream), DOC(dai, node, VideoEncoder, bitstream))
         .def_readonly("out", &VideoEncoder::out, DOC(dai, node, VideoEncoder, out), DOC(dai, node, VideoEncoder, out))
