@@ -115,8 +115,9 @@ void bind_camera(pybind11::module& m, void* pCallstack){
         CameraBoardSocket boardSocket, \
         CameraImageOrientation imageOrientation
 #define CAMERA_PYARGS \
-        py::arg("boardSocket"), \
-        py::arg("imageOrientation")
+        py::arg("boardSocket") = CameraBoardSocket::AUTO, \
+        py::arg("imageOrientation") = CameraImageOrientation::AUTO
+        // TODO (Zimamazim) Automatically fetch default arguments to avoid duplicity
 #define CAMERA_CODE(OP) \
         self OP setBoardSocket(boardSocket); \
         self OP setImageOrientation(imageOrientation);
