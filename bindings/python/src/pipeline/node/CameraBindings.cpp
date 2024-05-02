@@ -111,16 +111,30 @@ void bind_camera(pybind11::module& m, void* pCallstack){
         .def_readonly("raw", &Camera::raw, DOC(dai, node, Camera, raw))
         .def_readonly("frameEvent",  &Camera::frameEvent, DOC(dai, node, Camera, frameEvent))
         // .def_readonly("mockIsp",  &Camera::mockIsp, DOC(dai, node, Camera, mockIsp))
+
 #define CAMERA_ARGS \
         CameraBoardSocket boardSocket, \
-        CameraImageOrientation imageOrientation
+        CameraImageOrientation imageOrientation, \
+        CameraProperties::ColorOrder colorOrder, \
+        bool interleaved, \
+        std::tuple<int, int> previewSize, \
+        std::tuple<int, int> videoSize, \
+        float fps
 #define CAMERA_PYARGS \
         py::arg("boardSocket") = CameraBoardSocket::AUTO, \
-        py::arg("imageOrientation") = CameraImageOrientation::AUTO
+        py::arg("imageOrientation") = CameraImageOrientation::AUTO, \
+        py::arg("colorOrder") = CameraProperties::ColorOrder::BGR, \
+        py::arg("interleaved") = true, \
+        py::arg("previewSize") = (300, 300), \
+        py::arg("videoSize") = (-1, -1), \
+        py::arg("fps") = 30.0
         // TODO (Zimamazim) Automatically fetch default arguments to avoid duplicity
 #define CAMERA_CODE(OP) \
         self OP setBoardSocket(boardSocket); \
-        self OP setImageOrientation(imageOrientation);
+        self OP setImageOrientation(imageOrientation); \
+        self OP setPreviewSize(previewSize); \
+        self OP setVideoSize(videoSize); \
+        self OP setFps(fps);
         .def("build", [](Camera &self, CAMERA_ARGS) {
                 self.build();
                 CAMERA_CODE(.)

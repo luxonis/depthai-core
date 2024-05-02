@@ -62,12 +62,27 @@ void bind_videoencoder(pybind11::module& m, void* pCallstack){
 #define VIDEO_ENCODER_BUILD_PYARGS \
         py::arg("input")
 #define VIDEO_ENCODER_ARGS \
-        float bitrate
+        float bitrate, \
+        float frameRate, \
+        VideoEncoderProperties::Profile profile, \
+        int keyframeFrequency, \
+        bool lossless, \
+        int quality
 #define VIDEO_ENCODER_PYARGS \
-        py::arg("bitrate") = 0
+        py::arg("bitrate") = VideoEncoderProperties().bitrate, \
+        py::arg("frameRate") = VideoEncoderProperties().frameRate, \
+        py::arg("profile") = VideoEncoderProperties().profile, \
+        py::arg("keyframeFrequency") = VideoEncoderProperties().keyframeFrequency, \
+        py::arg("lossless") = VideoEncoderProperties().lossless, \
+        py::arg("quality") = VideoEncoderProperties().quality
         // TODO (Zimamazim) Automatically fetch default arguments to avoid duplicity
 #define VIDEO_ENCODER_CODE(OP) \
-        self OP setBitrate(bitrate);
+        self OP setBitrate(bitrate);\
+        self OP setFrameRate(frameRate); \
+        self OP setProfile(profile); \
+        self OP setKeyframeFrequency(keyframeFrequency); \
+        self OP setLossless(lossless); \
+        self OP setQuality(quality);
         .def("build", [](VideoEncoder &self, 
                     VIDEO_ENCODER_BUILD_ARGS,
                     VIDEO_ENCODER_ARGS) {
