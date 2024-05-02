@@ -111,6 +111,31 @@ void bind_camera(pybind11::module& m, void* pCallstack){
         .def_readonly("raw", &Camera::raw, DOC(dai, node, Camera, raw))
         .def_readonly("frameEvent",  &Camera::frameEvent, DOC(dai, node, Camera, frameEvent))
         // .def_readonly("mockIsp",  &Camera::mockIsp, DOC(dai, node, Camera, mockIsp))
+#define CAMERA_ARGS \
+        CameraBoardSocket boardSocket, \
+        CameraImageOrientation imageOrientation
+#define CAMERA_PYARGS \
+        py::arg("boardSocket"), \
+        py::arg("imageOrientation")
+#define CAMERA_CODE(OP) \
+        self OP setBoardSocket(boardSocket); \
+        self OP setImageOrientation(imageOrientation);
+        .def("build", [](Camera &self, CAMERA_ARGS) {
+                self.build();
+                CAMERA_CODE(.)
+            },
+            py::kw_only(),
+            CAMERA_PYARGS
+            )
+        .def(py::init([](CAMERA_ARGS){ 
+                auto self = getImplicitPipeline().create<Camera>();
+                self->build();
+                CAMERA_CODE(->)
+                return self;
+            }),
+            py::kw_only(),
+            CAMERA_PYARGS
+            )
         .def("setBoardSocket", &Camera::setBoardSocket, py::arg("boardSocket"), DOC(dai, node, Camera, setBoardSocket))
         .def("getBoardSocket", &Camera::getBoardSocket, DOC(dai, node, Camera, getBoardSocket))
         .def("setImageOrientation", &Camera::setImageOrientation, py::arg("imageOrientation"), DOC(dai, node, Camera, setImageOrientation))
