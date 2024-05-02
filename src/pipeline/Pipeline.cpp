@@ -551,6 +551,14 @@ void PipelineImpl::add(std::shared_ptr<Node> node) {
         throw std::invalid_argument(fmt::format("Given node pointer is null"));
     }
 
+    // First check if node has already been added
+    auto nodes = getAllNodes();
+    for(auto& n : nodes) {
+        if(node.get() == n.get()) {
+            throw std::invalid_argument(fmt::format("Node with id '{}' has already been added to the pipeline", node->id));
+        }
+    }
+
     // Go through and modify nodes and its children
     // that they are now part of this pipeline
     std::weak_ptr<PipelineImpl> curParent;

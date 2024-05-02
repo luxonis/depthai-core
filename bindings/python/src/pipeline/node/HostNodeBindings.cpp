@@ -43,12 +43,19 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
-    threadedHostNode.def(py::init<>()).def("run", &ThreadedHostNode::run);
+    threadedHostNode
+        .def(py::init<>([]() {
+            auto node = std::make_shared<PyThreadedHostNode>();
+            getImplicitPipeline().add(node);
+            return node;
+        }))
+        .def("run", &ThreadedHostNode::run);
 
-    hostNode.def(py::init([](){
-                auto node = std::make_shared<PyHostNode>();
-                getImplicitPipeline().add(node);
-                return node;
+    hostNode
+        .def(py::init([]() {
+            auto node = std::make_shared<PyHostNode>();
+            getImplicitPipeline().add(node);
+            return node;
         }))
         .def("processGroup", &HostNode::processGroup)
         .def_property_readonly(

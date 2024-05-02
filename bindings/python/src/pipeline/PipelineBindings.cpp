@@ -89,10 +89,11 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
     pipeline.def(py::init<bool>(), py::arg("createImplicitDevice") = true, DOC(dai, Pipeline, Pipeline))
         .def(py::init<std::shared_ptr<Device>>(), py::arg("defaultDevice"), DOC(dai, Pipeline, Pipeline))
         // Python only methods
-        .def("__enter__", [](Pipeline& p) -> Pipeline& { 
-                setImplicitPipeline(p);
-                return p; 
-        })
+        .def("__enter__",
+             [](Pipeline& p) -> Pipeline& {
+                 setImplicitPipeline(p);
+                 return p;
+             })
         .def("__exit__",
              [](Pipeline& d, py::object type, py::object value, py::object traceback) {
                  py::gil_scoped_release release;
@@ -157,7 +158,20 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
                  auto isFromBindings = class_.attr("__module__").cast<std::string>() == "depthai.node";
                  if(isSubclass && !isFromBindings) {
                      std::shared_ptr<Node> hostNode = py::cast<std::shared_ptr<node::ThreadedHostNode>>(class_(*args, **kwargs));
-                     p.add(hostNode);
+                     // Node already adds itself to the pipeline in the constructor
+                     // To be sure - check if it is already added
+                     auto allNodes = p.getAllNodes();
+                     auto found = false;
+                     for(auto& n : allNodes) {
+                         if(n == hostNode) {
+                             found = true;
+                             break;
+                         }
+                     }
+                     if(!found) {
+                         throw std::runtime_error("Node was not added to the pipeline in the constructor");
+                     }
+                     //  p.add(hostNode);
                      return hostNode;
                  }
                  // Otherwise create the node with `pipeline.create()` method
