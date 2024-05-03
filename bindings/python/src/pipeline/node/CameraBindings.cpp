@@ -138,6 +138,7 @@ void bind_camera(pybind11::module& m, void* pCallstack){
         .def("build", [](Camera &self, CAMERA_ARGS) {
                 self.build();
                 CAMERA_CODE(.)
+                return std::static_pointer_cast<Camera>(self.shared_from_this());
             },
             py::kw_only(),
             CAMERA_PYARGS

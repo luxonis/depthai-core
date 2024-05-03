@@ -88,6 +88,7 @@ void bind_videoencoder(pybind11::module& m, void* pCallstack){
                     VIDEO_ENCODER_ARGS) {
                 self.build(input);
                 VIDEO_ENCODER_CODE(.)
+                return std::static_pointer_cast<VideoEncoder>(self.shared_from_this());
             },
             VIDEO_ENCODER_BUILD_PYARGS,
             py::kw_only(),
