@@ -189,6 +189,8 @@ class ColorCamera : public DeviceNodeCRTP<DeviceNode, ColorCamera, ColorCameraPr
     /// Set still output size, as a tuple <width, height>
     void setStillSize(std::tuple<int, int> size);
 
+    void setMockIspSize(int width, int height);
+
     /// Set number of frames in preview pool
     void setStillNumFramesPool(int num);
 

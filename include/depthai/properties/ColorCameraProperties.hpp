@@ -131,6 +131,16 @@ struct ColorCameraProperties : PropertiesSerializable<Properties, ColorCameraPro
     int32_t stillHeight = AUTO;
 
     /**
+     * Select the mock isp width. Overrides resolutionWidth/height if mockIsp is connected.
+     */
+    int32_t mockIspWidth = AUTO;
+
+    /**
+     * Select the mock isp height. Overrides resolutionWidth/height if mockIsp is connected.
+     */
+    int32_t mockIspHeight = AUTO;
+
+    /**
      * Select the camera sensor resolution
      */
     SensorResolution resolution = SensorResolution::THE_1080_P;
