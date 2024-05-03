@@ -43,7 +43,7 @@ To get the examples running, install the requirements with:
 python3 depthai-core/bindings/python/examples/install_requirements.py
 ```
 
-NOTE: Right now we only build Linux x86_64 wheels, so other wheels have to get installed manually.
+NOTE: Right now wheels for windows are missing, but wheels for MacOS and Linux, both x86_64 and arm64 are available.
 
 ## What's new in the V3 API
 * No more expliclit XLink nodes - the XLink "bridges" are created automatically
