@@ -120,9 +120,10 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
         .def("getConfidenceThreshold", &DetectionNetwork::getConfidenceThreshold, DOC(dai, node, DetectionNetwork, getConfidenceThreshold));
     // ALIAS
     // daiNodeModule.attr("DetectionNetwork").attr("Properties") = detectionNetworkProperties;
-
+    mobileNetDetectionNetwork.def("build", &MobileNetDetectionNetwork::build, DOC(dai, node, MobileNetDetectionNetwork, build));
     // YoloDetectionNetwork node
-    yoloDetectionNetwork.def("setNumClasses", &YoloDetectionNetwork::setNumClasses, py::arg("numClasses"), DOC(dai, node, YoloDetectionNetwork, setNumClasses))
+    yoloDetectionNetwork.def("build", &YoloDetectionNetwork::build, DOC(dai, node, YoloDetectionNetwork, build))
+        .def("setNumClasses", &YoloDetectionNetwork::setNumClasses, py::arg("numClasses"), DOC(dai, node, YoloDetectionNetwork, setNumClasses))
         .def("setCoordinateSize", &YoloDetectionNetwork::setCoordinateSize, py::arg("coordinates"), DOC(dai, node, YoloDetectionNetwork, setCoordinateSize))
         /*
         .def("setAnchors", py::overload_cast<const std::vector<std::vector<std::vector<float>>>&>(&YoloDetectionNetwork::setAnchors), py::arg("anchors"),
