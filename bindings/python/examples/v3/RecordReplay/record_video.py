@@ -16,7 +16,7 @@ with dai.Pipeline() as pipeline:
     signal.signal(signal.SIGINT, signal_handler)
 
     cam = pipeline.create(dai.node.ColorCamera)
-    cam.setBoardSocket(dai.CameraBoardSocket.RGB)
+    cam.setBoardSocket(dai.CameraBoardSocket.CAM_A)
     cam.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
     cam.setVideoSize(320, 320)
 
