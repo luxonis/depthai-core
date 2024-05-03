@@ -10,8 +10,8 @@ def signal_handler(sig, frame):
     global stopped
     print('You pressed Ctrl+C!, stopping video saving...')
     stopped = True
-
 signal.signal(signal.SIGINT, signal_handler)
+
 class VideoSaver(dai.node.HostNode):
     def __init__(self, *args):
         dai.node.HostNode.__init__(self)
@@ -37,7 +37,7 @@ with dai.Pipeline() as pipeline:
         time.sleep(0.1)
     pipeline.stop()
     pipeline.wait()
-    # TODO Close file handle
+    saver.file_handle.close()
 
 print("To view the encoded data, convert the stream file (.h265) into a video file (.mp4) using a command below:")
 print("ffmpeg -framerate 30 -i video.h265 -c copy video.mp4")
