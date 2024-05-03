@@ -11,25 +11,6 @@
 namespace dai {
 namespace node {
 
-std::tuple<float, float, float> quaternionToEuler(float w, float x, float y, float z) {
-    // roll (x-axis rotation)
-    double sinr_cosp = 2 * (w * x + y * z);
-    double cosr_cosp = 1 - 2 * (x * x + y * y);
-    float roll = std::atan2(sinr_cosp, cosr_cosp);
-
-    // pitch (y-axis rotation)
-    double sinp = std::sqrt(1 + 2 * (w * y - x * z));
-    double cosp = std::sqrt(1 - 2 * (w * y - x * z));
-    float pitch = 2 * std::atan2(sinp, cosp) - M_PI / 2;
-
-    // yaw (z-axis rotation)
-    double siny_cosp = 2 * (w * z + x * y);
-    double cosy_cosp = 1 - 2 * (y * y + z * z);
-    float yaw = std::atan2(siny_cosp, cosy_cosp);
-
-    return {roll, pitch, yaw};
-}
-
 std::shared_ptr<Buffer> Replay::getMessage(utility::RecordType type, const nlohmann::json& metadata, std::vector<uint8_t>& frame) {
     // TODO(asahtik): Handle versions
     switch(type) {
@@ -55,24 +36,44 @@ std::shared_ptr<Buffer> Replay::getMessage(utility::RecordType type, const nlohm
             return std::dynamic_pointer_cast<Buffer>(std::make_shared<ImgFrame>(imgFrame));
         }
         case utility::RecordType::Imu: {
-            utility::ImuRecordSchema recordSchema = metadata;
+            utility::IMURecordSchema recordSchema = metadata;
             IMUData imuData;
-            imuData.packets.resize(recordSchema.packets.size());
+            imuData.packets.reserve(recordSchema.packets.size());
             for(const auto& packet : recordSchema.packets) {
                 IMUPacket imuPacket;
-                imuPacket.acceleroMeter.timestamp.sec = packet.acceleration.timestamp.seconds;
-                imuPacket.acceleroMeter.timestamp.nsec = packet.acceleration.timestamp.nanoseconds;
+                imuPacket.acceleroMeter.tsDevice.sec = packet.acceleration.timestamp.seconds;
+                imuPacket.acceleroMeter.tsDevice.nsec = packet.acceleration.timestamp.nanoseconds;
                 imuPacket.acceleroMeter.sequence = packet.acceleration.sequenceNumber;
+                imuPacket.acceleroMeter.accuracy = (IMUReport::Accuracy)packet.acceleration.accuracy;
                 imuPacket.acceleroMeter.x = packet.acceleration.x;
                 imuPacket.acceleroMeter.y = packet.acceleration.y;
                 imuPacket.acceleroMeter.z = packet.acceleration.z;
-                const auto& [roll, pitch, yaw] = quaternionToEuler(packet.orientation.w, packet.orientation.x, packet.orientation.y, packet.orientation.z);
-                imuPacket.gyroscope.timestamp.sec = packet.orientation.timestamp.seconds;
-                imuPacket.gyroscope.timestamp.nsec = packet.orientation.timestamp.nanoseconds;
+
+                imuPacket.gyroscope.tsDevice.sec = packet.orientation.timestamp.seconds;
+                imuPacket.gyroscope.tsDevice.nsec = packet.orientation.timestamp.nanoseconds;
                 imuPacket.gyroscope.sequence = packet.orientation.sequenceNumber;
-                imuPacket.gyroscope.x = roll;
-                imuPacket.gyroscope.y = pitch;
-                imuPacket.gyroscope.z = yaw;
+                imuPacket.gyroscope.accuracy = (IMUReport::Accuracy)packet.orientation.accuracy;
+                imuPacket.gyroscope.x = packet.orientation.x;
+                imuPacket.gyroscope.y = packet.orientation.y;
+                imuPacket.gyroscope.z = packet.orientation.z;
+
+                imuPacket.magneticField.tsDevice.sec = packet.magneticField.timestamp.seconds;
+                imuPacket.magneticField.tsDevice.nsec = packet.magneticField.timestamp.nanoseconds;
+                imuPacket.magneticField.sequence = packet.magneticField.sequenceNumber;
+                imuPacket.magneticField.accuracy = (IMUReport::Accuracy)packet.magneticField.accuracy;
+                imuPacket.magneticField.x = packet.magneticField.x;
+                imuPacket.magneticField.y = packet.magneticField.y;
+                imuPacket.magneticField.z = packet.magneticField.z;
+
+                imuPacket.rotationVector.tsDevice.sec = packet.rotationVector.timestamp.seconds;
+                imuPacket.rotationVector.tsDevice.nsec = packet.rotationVector.timestamp.nanoseconds;
+                imuPacket.rotationVector.sequence = packet.rotationVector.sequenceNumber;
+                imuPacket.rotationVector.accuracy = (IMUReport::Accuracy)packet.rotationVector.accuracy;
+                imuPacket.rotationVector.i = packet.rotationVector.i;
+                imuPacket.rotationVector.j = packet.rotationVector.j;
+                imuPacket.rotationVector.k = packet.rotationVector.k;
+                imuPacket.rotationVector.real = packet.rotationVector.real;
+                imuPacket.rotationVector.rotationVectorAccuracy = packet.rotationVector.rotationAccuracy;
 
                 imuData.packets.push_back(imuPacket);
             }

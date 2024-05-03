@@ -45,43 +45,66 @@ struct DefaultRecordSchema {
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(DefaultRecordSchema, version, type, timestamp, sequenceNumber, data)
 
-struct ImuOrientationSchema {
+struct IMUReportSchema {
+    // TODO(asahtik): This does not seem like a lasting way
+    // of representing the accuracy
+    enum class Accuracy : std::uint8_t {
+        UNRELIABLE = 0,
+        LOW = 1,
+        MEDIUM = 2,
+        HIGH = 3,
+    };
+
     TimestampSchema timestamp;
     uint64_t sequenceNumber;
 
-    float x;
-    float y;
-    float z;
-    float w;
+    Accuracy accuracy;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImuOrientationSchema, x, y, z, w)
-
-struct IMUAccelerationSchema {
-    TimestampSchema timestamp;
-    uint64_t sequenceNumber;
-
+struct VectorSchema {
     float x;
     float y;
     float z;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(IMUAccelerationSchema, x, y, z)
-
-struct ImuPacketSchema {
-    ImuOrientationSchema orientation;
-    IMUAccelerationSchema acceleration;
+struct QuaternionSchema {
+    float i;
+    float j;
+    float k;
+    float real;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImuPacketSchema, orientation, acceleration)
+struct IMUVectorSchema : public IMUReportSchema, public VectorSchema {
+};
 
-struct ImuRecordSchema {
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(IMUVectorSchema, x, y, z, timestamp, sequenceNumber, accuracy)
+
+struct IMUQuaternionSchema : public IMUReportSchema, public QuaternionSchema {
+    float i;
+    float j;
+    float k;
+    float real;
+    float rotationAccuracy;
+};
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(IMUQuaternionSchema, i, j, k, real, rotationAccuracy, timestamp, sequenceNumber, accuracy)
+
+struct IMUPacketSchema {
+    IMUVectorSchema orientation;
+    IMUVectorSchema acceleration;
+    IMUVectorSchema magneticField;
+    IMUQuaternionSchema rotationVector;
+};
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(IMUPacketSchema, orientation, acceleration, magneticField, rotationVector)
+
+struct IMURecordSchema {
     VersionSchema version{0, 0, 1};
     RecordType type = RecordType::Imu;
-    std::vector<ImuPacketSchema> packets;
+    std::vector<IMUPacketSchema> packets;
 };
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(ImuRecordSchema, version, type, packets)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(IMURecordSchema, version, type, packets)
 
 struct VideoCameraSettingsSchema {
     int32_t exposure;
@@ -224,7 +247,7 @@ constexpr const char* IMU_SHEMA = R"(
                 "properties": {
                     "orientation": {
                         "type": "object",
-                        "description": "Accelerometer quaternion",
+                        "description": "Gyroscope orientation",
                         "properties": {
                             "timestamp": {
                                 "type": "object",
@@ -244,6 +267,27 @@ constexpr const char* IMU_SHEMA = R"(
                                 "type": "integer",
                                 "description": "Sequence number of the message"
                             },
+                            "accuracy": {
+                                "description": "Accuracy of the measurement",
+                                "oneOf": [
+                                    {
+                                        "title": "Unreliable",
+                                        "const": 0
+                                    },
+                                    {
+                                        "title": "Low",
+                                        "const": 1
+                                    },
+                                    {
+                                        "title": "Medium",
+                                        "const": 2
+                                    },
+                                    {
+                                        "title": "High",
+                                        "const": 3
+                                    }
+                                ]
+                            },
                             "x": {
                                 "type": "number",
                                 "description": "X axis value"
@@ -253,10 +297,6 @@ constexpr const char* IMU_SHEMA = R"(
                                 "description": "Y axis value"
                             },
                             "z": {
-                                "type": "number",
-                                "description": "Z axis value"
-                            },
-                            "w": {
                                 "type": "number",
                                 "description": "Z axis value"
                             }
@@ -264,7 +304,7 @@ constexpr const char* IMU_SHEMA = R"(
                     },
                     "acceleration": {
                         "type": "object",
-                        "description": "Accelerometer acceleration",
+                        "description": "Acceleration vector",
                         "properties": {
                             "timestamp": {
                                 "type": "object",
@@ -284,6 +324,27 @@ constexpr const char* IMU_SHEMA = R"(
                                 "type": "integer",
                                 "description": "Sequence number of the message"
                             },
+                            "accuracy": {
+                                "description": "Accuracy of the measurement",
+                                "oneOf": [
+                                    {
+                                        "title": "Unreliable",
+                                        "const": 0
+                                    },
+                                    {
+                                        "title": "Low",
+                                        "const": 1
+                                    },
+                                    {
+                                        "title": "Medium",
+                                        "const": 2
+                                    },
+                                    {
+                                        "title": "High",
+                                        "const": 3
+                                    }
+                                ]
+                            },
                             "x": {
                                 "type": "number",
                                 "description": "X axis value"
@@ -295,6 +356,128 @@ constexpr const char* IMU_SHEMA = R"(
                             "z": {
                                 "type": "number",
                                 "description": "Z axis value"
+                            }
+                        }
+                    },
+                    "magneticField": {
+                        "type": "object",
+                        "description": "Magnetic field orientation",
+                        "properties": {
+                            "timestamp": {
+                                "type": "object",
+                                "description": "Timestamp of the message",
+                                "properties": {
+                                    "seconds": {
+                                        "type": "integer",
+                                        "description": "Seconds part of the timestamp"
+                                    },
+                                    "nanoseconds": {
+                                        "type": "integer",
+                                        "description": "Nanoseconds part of the timestamp"
+                                    }
+                                }
+                            },
+                            "sequenceNumber": {
+                                "type": "integer",
+                                "description": "Sequence number of the message"
+                            },
+                            "accuracy": {
+                                "description": "Accuracy of the measurement",
+                                "oneOf": [
+                                    {
+                                        "title": "Unreliable",
+                                        "const": 0
+                                    },
+                                    {
+                                        "title": "Low",
+                                        "const": 1
+                                    },
+                                    {
+                                        "title": "Medium",
+                                        "const": 2
+                                    },
+                                    {
+                                        "title": "High",
+                                        "const": 3
+                                    }
+                                ]
+                            },
+                            "x": {
+                                "type": "number",
+                                "description": "X axis value"
+                            },
+                            "y": {
+                                "type": "number",
+                                "description": "Y axis value"
+                            },
+                            "z": {
+                                "type": "number",
+                                "description": "Z axis value"
+                            }
+                        }
+                    },
+                    "rotationVector": {
+                        "type": "object",
+                        "description": "Rotation vector with accuracy",
+                        "properties": {
+                            "timestamp": {
+                                "type": "object",
+                                "description": "Timestamp of the message",
+                                "properties": {
+                                    "seconds": {
+                                        "type": "integer",
+                                        "description": "Seconds part of the timestamp"
+                                    },
+                                    "nanoseconds": {
+                                        "type": "integer",
+                                        "description": "Nanoseconds part of the timestamp"
+                                    }
+                                }
+                            },
+                            "sequenceNumber": {
+                                "type": "integer",
+                                "description": "Sequence number of the message"
+                            },
+                            "accuracy": {
+                                "description": "Accuracy of the measurement",
+                                "oneOf": [
+                                    {
+                                        "title": "Unreliable",
+                                        "const": 0
+                                    },
+                                    {
+                                        "title": "Low",
+                                        "const": 1
+                                    },
+                                    {
+                                        "title": "Medium",
+                                        "const": 2
+                                    },
+                                    {
+                                        "title": "High",
+                                        "const": 3
+                                    }
+                                ]
+                            },
+                            "i": {
+                                "type": "number",
+                                "description": "i axis quaterion value"
+                            },
+                            "j": {
+                                "type": "number",
+                                "description": "j axis quaternion value"
+                            },
+                            "k": {
+                                "type": "number",
+                                "description": "k axis quaternion value"
+                            },
+                            "real": {
+                                "type": "number",
+                                "description": "Quaternion scale value"
+                            },
+                            "rotationAccuracy": {
+                                "type": "number",
+                                "description": "Accuracy of the rotation vector in radians"
                             }
                         }
                     }

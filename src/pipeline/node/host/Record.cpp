@@ -11,6 +11,7 @@
 #include "depthai/properties/VideoEncoderProperties.hpp"
 #include "depthai/utility/RecordReplay.hpp"
 #include "depthai/utility/span.hpp"
+#include "utility/RecordReplaySchema.hpp"
 
 namespace dai {
 namespace node {
@@ -18,22 +19,6 @@ namespace node {
 enum class StreamType { EncodedVideo, RawVideo, Imu, Byte, Unknown };
 
 using VideoCodec = dai::utility::VideoRecorder::VideoCodec;
-
-std::tuple<float, float, float, float> eulerToQuaternion(float x, float y, float z) {
-    float cr = cos(x * 0.5f);
-    float sr = sin(x * 0.5f);
-    float cp = cos(y * 0.5f);
-    float sp = sin(y * 0.5f);
-    float cy = cos(z * 0.5f);
-    float sy = sin(z * 0.5f);
-
-    float qw = cr * cp * cy + sr * sp * sy;
-    float qx = sr * cp * cy - cr * sp * sy;
-    float qy = cr * sp * cy + sr * cp * sy;
-    float qz = cr * cp * sy - sr * sp * cy;
-
-    return {qw, qx, qy, qz};
-}
 
 void Record::run() {
     std::unique_ptr<utility::VideoRecorder> videoRecorder;
@@ -160,29 +145,49 @@ void Record::run() {
             }
             if(i < fpsInitLength) ++i;
         } else if(streamType == StreamType::Imu) {
-            throw std::runtime_error("IMU recording is not supported yet");
-            // auto imuData = std::dynamic_pointer_cast<IMUData>(msg);
-            // utility::ImuRecordSchema record;
-            // record.packets.reserve(imuData->packets.size());
-            // for(const auto& packet : imuData->packets) {
-            //     utility::ImuPacketSchema packetSchema;
-            //     packetSchema.acceleration.timestamp.set(
-            //         std::chrono::duration_cast<std::chrono::nanoseconds>(packet.acceleroMeter.getTimestampDevice().time_since_epoch()));
-            //     packetSchema.acceleration.sequenceNumber = packet.acceleroMeter.sequence;
-            //     packetSchema.acceleration.x = packet.acceleroMeter.x;
-            //     packetSchema.acceleration.y = packet.acceleroMeter.y;
-            //     packetSchema.acceleration.z = packet.acceleroMeter.z;
-            //     packetSchema.orientation.timestamp.set(
-            //         std::chrono::duration_cast<std::chrono::nanoseconds>(packet.gyroscope.getTimestampDevice().time_since_epoch()));
-            //     packetSchema.orientation.sequenceNumber = packet.gyroscope.sequence;
-            //     const auto [qw, qx, qy, qz] = eulerToQuaternion(packet.gyroscope.x, packet.gyroscope.y, packet.gyroscope.z);
-            //     packetSchema.orientation.x = qx;
-            //     packetSchema.orientation.y = qy;
-            //     packetSchema.orientation.z = qz;
-            //     packetSchema.orientation.w = qw;
-            //     record.packets.push_back(packetSchema);
-            // }
-            // byteRecorder.write(record);
+            auto imuData = std::dynamic_pointer_cast<IMUData>(msg);
+            utility::IMURecordSchema record;
+            record.packets.reserve(imuData->packets.size());
+            for(const auto& packet : imuData->packets) {
+                utility::IMUPacketSchema packetSchema;
+                // Acceleration
+                packetSchema.acceleration.timestamp.set(
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(packet.acceleroMeter.getTimestampDevice().time_since_epoch()));
+                packetSchema.acceleration.sequenceNumber = packet.acceleroMeter.sequence;
+                packetSchema.acceleration.accuracy = (utility::IMUReportSchema::Accuracy)packet.gyroscope.accuracy;
+                packetSchema.acceleration.x = packet.acceleroMeter.x;
+                packetSchema.acceleration.y = packet.acceleroMeter.y;
+                packetSchema.acceleration.z = packet.acceleroMeter.z;
+                // Orientation
+                packetSchema.orientation.timestamp.set(
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(packet.gyroscope.getTimestampDevice().time_since_epoch()));
+                packetSchema.orientation.sequenceNumber = packet.gyroscope.sequence;
+                packetSchema.orientation.accuracy = (utility::IMUReportSchema::Accuracy)packet.gyroscope.accuracy;
+                packetSchema.orientation.x = packet.gyroscope.x;
+                packetSchema.orientation.y = packet.gyroscope.y;
+                packetSchema.orientation.z = packet.gyroscope.z;
+                // Magnetic field
+                packetSchema.magneticField.timestamp.set(
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(packet.magneticField.getTimestampDevice().time_since_epoch()));
+                packetSchema.magneticField.sequenceNumber = packet.magneticField.sequence;
+                packetSchema.magneticField.accuracy = (utility::IMUReportSchema::Accuracy)packet.magneticField.accuracy;
+                packetSchema.magneticField.x = packet.magneticField.x;
+                packetSchema.magneticField.y = packet.magneticField.y;
+                packetSchema.magneticField.z = packet.magneticField.z;
+                // Rotation with accuracy
+                packetSchema.rotationVector.timestamp.set(
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(packet.rotationVector.getTimestampDevice().time_since_epoch()));
+                packetSchema.rotationVector.sequenceNumber = packet.rotationVector.sequence;
+                packetSchema.rotationVector.accuracy = (utility::IMUReportSchema::Accuracy)packet.rotationVector.accuracy;
+                packetSchema.rotationVector.i = packet.rotationVector.i;
+                packetSchema.rotationVector.j = packet.rotationVector.j;
+                packetSchema.rotationVector.k = packet.rotationVector.k;
+                packetSchema.rotationVector.real = packet.rotationVector.real;
+                packetSchema.rotationVector.rotationAccuracy = packet.rotationVector.rotationVectorAccuracy;
+
+                record.packets.push_back(packetSchema);
+            }
+            byteRecorder.write(record);
         } else {
             throw std::runtime_error("You can only record IMU or Video data");
         }

@@ -51,5 +51,22 @@ void IMU::enableFirmwareUpdate(bool enable) {
     properties.enableFirmwareUpdate = enable;
 }
 
+bool IMU::isSourceNode() const {
+    return true;
+}
+
+utility::NodeRecordParams IMU::getNodeRecordParams() const {
+    utility::NodeRecordParams params;
+    params.name = "IMU";
+    return params;
+}
+
+IMU::Output& IMU::getRecordOutput() {
+    return out;
+}
+IMU::Input& IMU::getReplayInput() {
+    return mockIn;
+}
+
 }  // namespace node
 }  // namespace dai

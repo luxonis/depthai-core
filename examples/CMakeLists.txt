@@ -461,9 +461,11 @@ dai_add_example(record_encoded_h264 Record/record_encoded_h264.cpp ON OFF)
 dai_add_example(record_encoded_mjpeg Record/record_encoded_mjpeg.cpp ON OFF)
 dai_add_example(record_raw_color Record/record_raw_color.cpp ON OFF)
 dai_add_example(record_raw_gray Record/record_raw_gray.cpp ON OFF)
+dai_add_example(record_imu Record/record_imu.cpp ON OFF)
 
 # Replay
 dai_add_example(replay_video_meta Replay/replay_video_meta.cpp ON OFF)
+dai_add_example(replay_imu Replay/replay_imu.cpp ON OFF)
 
 if(DEPTHAI_HAVE_PCL_SUPPORT)
     dai_add_example(visualize_pointcloud PointCloud/visualize_pointcloud.cpp ON ON)

@@ -594,48 +594,57 @@ void PipelineImpl::build() {
     isBuild = true;
 
     if(defaultDevice) {
-        try {
-            std::string recordPath = utility::getEnv("DEPTHAI_RECORD");
-            std::string replayPath = utility::getEnv("DEPTHAI_REPLAY");
+#ifdef DEPTHAI_MERGED_TARGET
+        if(defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
+           || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X) {
+            try {
+                std::string recordPath = utility::getEnv("DEPTHAI_RECORD");
+                std::string replayPath = utility::getEnv("DEPTHAI_REPLAY");
 
-            defaultDeviceMxId = defaultDevice->getMxId();
+                defaultDeviceMxId = defaultDevice->getMxId();
 
-            if(!recordPath.empty() && !replayPath.empty()) {
-                spdlog::warn("Both DEPTHAI_RECORD and DEPTHAI_REPLAY are set. Record and replay disabled.");
-            } else if(!recordPath.empty()) {
-                if(utility::checkRecordConfig(recordPath, recordConfig)) {
-                    if(platform::checkWritePermissions(recordPath)) {
-                        if(setupHolisticRecord(parent, defaultDeviceMxId, recordConfig, recordReplayFilenames)) {
-                            recordConfig.state = utility::RecordConfig::RecordReplayState::RECORD;
-                            spdlog::info("Record enabled.");
+                if(!recordPath.empty() && !replayPath.empty()) {
+                    spdlog::warn("Both DEPTHAI_RECORD and DEPTHAI_REPLAY are set. Record and replay disabled.");
+                } else if(!recordPath.empty()) {
+                    if(utility::checkRecordConfig(recordPath, recordConfig)) {
+                        if(platform::checkWritePermissions(recordPath)) {
+                            if(setupHolisticRecord(parent, defaultDeviceMxId, recordConfig, recordReplayFilenames)) {
+                                recordConfig.state = utility::RecordConfig::RecordReplayState::RECORD;
+                                spdlog::info("Record enabled.");
+                            } else {
+                                spdlog::warn("Could not set up holistic record. Record and replay disabled.");
+                            }
                         } else {
-                            spdlog::warn("Could not set up holistic record. Record and replay disabled.");
+                            spdlog::warn("DEPTHAI_RECORD path does not have write permissions. Record disabled.");
                         }
                     } else {
-                        spdlog::warn("DEPTHAI_RECORD path does not have write permissions. Record disabled.");
+                        spdlog::warn("Could not successfully parse DEPTHAI_RECORD. Record disabled.");
                     }
-                } else {
-                    spdlog::warn("Could not successfully parse DEPTHAI_RECORD. Record disabled.");
-                }
-            } else if(!replayPath.empty()) {
-                if(platform::checkPathExists(replayPath)) {
-                    if(platform::checkWritePermissions(replayPath)) {
-                        if(setupHolisticReplay(parent, replayPath, defaultDeviceMxId, recordConfig, recordReplayFilenames)) {
-                            recordConfig.state = utility::RecordConfig::RecordReplayState::REPLAY;
-                            spdlog::info("Replay enabled.");
+                } else if(!replayPath.empty()) {
+                    if(platform::checkPathExists(replayPath)) {
+                        if(platform::checkWritePermissions(replayPath)) {
+                            if(setupHolisticReplay(parent, replayPath, defaultDeviceMxId, recordConfig, recordReplayFilenames)) {
+                                recordConfig.state = utility::RecordConfig::RecordReplayState::REPLAY;
+                                spdlog::info("Replay enabled.");
+                            } else {
+                                spdlog::warn("Could not set up holistic replay. Record and replay disabled.");
+                            }
                         } else {
-                            spdlog::warn("Could not set up holistic replay. Record and replay disabled.");
+                            spdlog::warn("DEPTHAI_REPLAY path does not have write permissions. Replay disabled.");
                         }
                     } else {
-                        spdlog::warn("DEPTHAI_REPLAY path does not have write permissions. Replay disabled.");
+                        spdlog::warn("DEPTHAI_REPLAY path does not exist or is invalid. Replay disabled.");
                     }
-                } else {
-                    spdlog::warn("DEPTHAI_REPLAY path does not exist or is invalid. Replay disabled.");
                 }
+            } catch(std::runtime_error& e) {
+                spdlog::warn("Could not set up record / replay: {}", e.what());
             }
-        } catch(std::runtime_error& e) {
-            spdlog::warn("Could not set up record / replay: {}", e.what());
+        } else {
+            throw std::runtime_error("Holistic record/replay is only supported on RVC2 devices for now.");
         }
+#else
+        throw std::runtime_error("Merged target is required to use holistic record/replay.");
+#endif
     }
 
     // Go through the build stages sequentially

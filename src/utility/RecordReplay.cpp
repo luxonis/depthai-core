@@ -119,9 +119,11 @@ std::optional<nlohmann::json> BytePlayer::next() {
     }
     std::string_view asString(reinterpret_cast<const char*>((*it)->message.data), (*it)->message.dataSize);
 
+    nlohmann::json j = nlohmann::json::parse(asString);
+
     ++(*it);
 
-    return nlohmann::json::parse(asString);
+    return j;
 }
 
 void BytePlayer::close() {
