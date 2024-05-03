@@ -117,6 +117,10 @@ void SpatialDetectionNetwork::setSpatialCalculationStepSize(int stepSize) {
     properties.stepSize = stepSize;
 }
 
+std::optional<std::vector<std::string>> SpatialDetectionNetwork::getClasses() const {
+    return detectionParser->getClasses();
+}
+
 //--------------------------------------------------------------------
 // MobileNet
 //--------------------------------------------------------------------
@@ -158,10 +162,6 @@ void YoloSpatialDetectionNetwork::setIouThreshold(float thresh) {
 /// Get num classes
 int YoloSpatialDetectionNetwork::getNumClasses() const {
     return detectionParser->getNumClasses();
-}
-
-std::optional<std::vector<std::string>> YoloSpatialDetectionNetwork::getClasses() const {
-    return detectionParser->getClasses();
 }
 
 /// Get coordianate size

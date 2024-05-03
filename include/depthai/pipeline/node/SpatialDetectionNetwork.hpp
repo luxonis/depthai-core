@@ -228,6 +228,9 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
      */
     void setSpatialCalculationStepSize(int stepSize);
 
+    /// Get classes labels
+    std::optional<std::vector<std::string>> getClasses() const;
+
    protected:
     using DeviceNodeCRTP::DeviceNodeCRTP;
 
@@ -266,8 +269,7 @@ class YoloSpatialDetectionNetwork : public DeviceNodeCRTP<SpatialDetectionNetwor
 
     /// Get num classes
     int getNumClasses() const;
-    /// Get classes labels
-    std::optional<std::vector<std::string>> getClasses() const;
+
     /// Get coordianate size
     int getCoordinateSize() const;
     /// Get anchors
