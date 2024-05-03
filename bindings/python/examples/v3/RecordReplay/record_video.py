@@ -18,6 +18,7 @@ with dai.Pipeline() as pipeline:
     cam = pipeline.create(dai.node.ColorCamera)
     cam.setBoardSocket(dai.CameraBoardSocket.RGB)
     cam.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
+    cam.setVideoSize(320, 320)
 
     videoEncoder = pipeline.create(dai.node.VideoEncoder)
     videoEncoder.setProfile(dai.VideoEncoderProperties.Profile.H264_MAIN)

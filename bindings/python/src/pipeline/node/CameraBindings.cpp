@@ -142,7 +142,7 @@ void bind_camera(pybind11::module& m, void* pCallstack){
             py::kw_only(),
             CAMERA_PYARGS
             )
-        .def(py::init([](CAMERA_ARGS){ 
+        .def(py::init([](CAMERA_ARGS){
                 auto self = getImplicitPipeline().create<Camera>();
                 self->build();
                 CAMERA_CODE(->)

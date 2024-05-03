@@ -919,7 +919,7 @@ void PipelineImpl::start() {
     // TODO(themarpe) - add mutex and set running up ahead
     for(const auto& node : getAllNodes()) {
         if (node->needsBuild()) {
-            throw std::runtime_error(fmt::format("Node '{}' was not build", node->getName()));
+            throw std::runtime_error(fmt::format("Node '{}' was not built", node->getName()));
         }
     }
 

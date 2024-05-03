@@ -139,10 +139,6 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
 
    private:
     std::optional<std::vector<std::string>> mClasses;
-
-   protected:
-    bool isBuild = false;
-    bool needsBuild() override { return !isBuild; }
 };
 
 }  // namespace node

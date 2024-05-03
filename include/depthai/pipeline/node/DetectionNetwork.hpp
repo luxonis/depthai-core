@@ -148,6 +148,8 @@ class DetectionNetwork : public NodeGroup {
      */
     float getConfidenceThreshold() const;
 
+    std::optional<std::vector<std::string>> getClasses() const;
+
    private:
     class Impl;
     Pimpl<Impl> pimpl;
@@ -243,11 +245,6 @@ class YoloDetectionNetwork : public DetectionNetwork {
 
     /// Get num classes
     int getNumClasses() const;
-
-    /**
-     * Retrieves the classes array from NNArchive if set or std::nullopt otherwise
-     */
-    std::optional<std::vector<std::string>> getClasses() const;
 
     /// Get coordianate size
     int getCoordinateSize() const;

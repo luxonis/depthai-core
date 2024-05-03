@@ -49,7 +49,7 @@ void DetectionNetwork::build() {
     detectionParser->imageIn.setBlocking(false);
     detectionParser->imageIn.setMaxSize(1);
 
-    isBuild = true; 
+    isBuild = true;
 }
 
 std::shared_ptr<DetectionNetwork> DetectionNetwork::build(Node::Output& input, const NNArchive& nnArchive) {
@@ -119,6 +119,10 @@ float DetectionNetwork::getConfidenceThreshold() const {
     return detectionParser->getConfidenceThreshold();
 }
 
+std::optional<std::vector<std::string>> DetectionNetwork::getClasses() const {
+    return detectionParser->getClasses();
+}
+
 //--------------------------------------------------------------------
 // MobileNet
 //--------------------------------------------------------------------
@@ -169,9 +173,6 @@ int YoloDetectionNetwork::getNumClasses() const {
     return detectionParser->getNumClasses();
 }
 
-std::optional<std::vector<std::string>> YoloDetectionNetwork::getClasses() const {
-    return detectionParser->getClasses();
-}
 
 /// Get coordianate size
 int YoloDetectionNetwork::getCoordinateSize() const {

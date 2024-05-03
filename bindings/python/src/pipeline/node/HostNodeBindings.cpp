@@ -86,7 +86,7 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
                 cls.output_desc = None
 
             def processGroup(self, messageGroup):
-                return members["process"](self, 
+                return members["process"](self,
                     *(messageGroup[argname] for argname in cls.input_desc.keys()))
             cls.processGroup = processGroup
 

@@ -183,7 +183,7 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
                      throw std::invalid_argument(std::string(py::str(class_)) + " is not a subclass of depthai.node");
                  }
                  return node;
-             })
+             }, py::keep_alive<1,0>())
         // TODO(themarpe) DEPRECATE, use pipeline.create([class name])
         // templated create<NODE> function
         .def("createXLinkIn", &Pipeline::create<node::XLinkIn>)

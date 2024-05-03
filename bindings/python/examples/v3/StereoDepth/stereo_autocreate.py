@@ -5,16 +5,7 @@ import numpy as np
 import time
 
 class StereoVisualizer(dai.node.HostNode):
-    def __init__(self):
-        dai.node.HostNode.__init__(self)
-        self.inputDepth = self.inputs["disparity"]
-
-    def build(self, output: dai.Node.Output):
-        output.link(self.inputDepth)
-        return self
-
-    def processGroup(self, messages: dai.MessageGroup):
-        inFrame : dai.ImgFrame = messages["disparity"]
+    def process(self, inFrame: dai.ImgFrame):
         outFrame = inFrame.getFrame()
 
         # Colorize the disparity map
@@ -33,8 +24,7 @@ with dai.Pipeline() as pipeline:
     # Allow stereo inputs to be created automatically
     # NOTE: This is a naive implementation, it will not handle correctly the case where cameras have already been created
     stereo = pipeline.create(dai.node.StereoDepth).build(autoCreateCameras=True)
-    visualizer = pipeline.create(StereoVisualizer).build(stereo.disparity)
+    visualizer = pipeline.create(StereoVisualizer)
+    visualizer.link_args(stereo.disparity)
 
-    pipeline.start()
-    while pipeline.isRunning():
-        time.sleep(0.1)
+    pipeline.run()

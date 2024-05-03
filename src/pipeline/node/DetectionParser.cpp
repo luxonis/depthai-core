@@ -163,7 +163,6 @@ float DetectionParser::getIouThreshold() const {
 }
 
 std::shared_ptr<DetectionParser> DetectionParser::build() {
-        isBuild = true; 
         return std::static_pointer_cast<DetectionParser>(shared_from_this());
     }
  

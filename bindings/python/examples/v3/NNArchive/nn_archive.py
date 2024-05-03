@@ -26,22 +26,17 @@ if not Path(nnPath).exists():
 with dai.Pipeline() as pipeline:
 
     # Define sources and outputs
-    camRgb = pipeline.create(dai.node.ColorCamera)
-    detectionNetwork = pipeline.create(dai.node.YoloDetectionNetwork)
-
+    camRgb = pipeline.create(dai.node.ColorCamera).build()
     # Properties
     camRgb.setPreviewSize(640, 640)
     camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
     camRgb.setInterleaved(False)
     camRgb.setColorOrder(dai.ColorCameraProperties.ColorOrder.BGR)
-    camRgb.setFps(30)
-
+    camRgb.setFps(15)
     nnArchive = dai.NNArchive(nnPath)
-    detectionNetwork.setNNArchive(nnArchive)
+    detectionNetwork = pipeline.create(dai.node.DetectionNetwork).build(camRgb.preview, nnArchive)
     detectionNetwork.setNumInferenceThreads(2)
 
-    # Linking
-    camRgb.preview.link(detectionNetwork.input)
 
     qRgb = detectionNetwork.passthrough.createQueue()
     qDet = detectionNetwork.out.createQueue()

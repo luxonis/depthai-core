@@ -29,14 +29,13 @@ if not Path(nnPath).exists():
 class SpatialVisualizer(dai.node.HostNode):
     def __init__(self):
         dai.node.HostNode.__init__(self)
-        self.depthIn = self.inputs["depth"]
-        self.detectionsIn = self.inputs["detections"]
-        self.rgbIn = self.inputs["rgb"]
+        self.sendProcessingToPipeline(True)
+    def build(self, depth:dai.Node.Output, detections: dai.Node.Output, rgb: dai.Node.Output):
+        self.link_args(depth, detections, rgb) # Must match the inputs to the process method
 
-    def processGroup(self, messages: dai.MessageGroup):
-        depthPreview = messages["depth"].getCvFrame()
-        detections = messages["detections"]
-        rgbPreview = messages["rgb"].getCvFrame()
+    def process(self, depthPreview: dai.ImgFrame, detections: dai.ImgDetections, rgbPreview: dai.ImgFrame):
+        depthPreview = depthPreview.getCvFrame()
+        rgbPreview = rgbPreview.getCvFrame()
         depthFrameColor = self.processDepthFrame(depthPreview)
         self.displayResults(rgbPreview, depthFrameColor, detections.detections)
 
@@ -90,7 +89,7 @@ class SpatialVisualizer(dai.node.HostNode):
 with dai.Pipeline() as p:
     # Define sources and outputs
     camRgb = p.create(dai.node.ColorCamera)
-    spatialDetectionNetwork = p.create(dai.node.YoloSpatialDetectionNetwork)
+    spatialDetectionNetwork = p.create(dai.node.YoloSpatialDetectionNetwork).build()
     monoLeft = p.create(dai.node.MonoCamera)
     monoRight = p.create(dai.node.MonoCamera)
     stereo = p.create(dai.node.StereoDepth)
@@ -127,12 +126,6 @@ with dai.Pipeline() as p:
     camRgb.preview.link(spatialDetectionNetwork.input)
     visualizer.labelMap = spatialDetectionNetwork.getClasses()
 
+    visualizer.build(stereo.depth, spatialDetectionNetwork.out, camRgb.preview)
 
-    camRgb.preview.link(visualizer.rgbIn)
-    spatialDetectionNetwork.passthroughDepth.link(visualizer.depthIn)
-    spatialDetectionNetwork.out.link(visualizer.detectionsIn)
-
-    p.start()
-
-    while p.isRunning():
-        time.sleep(0.1)
+    p.run()

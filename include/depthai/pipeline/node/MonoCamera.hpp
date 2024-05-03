@@ -27,9 +27,6 @@ class MonoCamera : public DeviceNodeCRTP<DeviceNode, MonoCamera, MonoCameraPrope
     Output& getRecordOutput() override;
     Input& getReplayInput() override;
 
-    bool isBuild = false;
-    bool needsBuild() override { return !isBuild; }
-
    public:
     MonoCamera() = default;
     MonoCamera(std::unique_ptr<Properties> props);
