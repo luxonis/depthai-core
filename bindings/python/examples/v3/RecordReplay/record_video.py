@@ -16,17 +16,16 @@ with dai.Pipeline() as pipeline:
     signal.signal(signal.SIGINT, signal_handler)
 
     cam = pipeline.create(dai.node.ColorCamera)
-    cam.setBoardSocket(dai.CameraBoardSocket.RGB)
+    cam.setBoardSocket(dai.CameraBoardSocket.CAM_A)
     cam.setResolution(dai.ColorCameraProperties.SensorResolution.THE_1080_P)
     cam.setVideoSize(320, 320)
 
-    videoEncoder = pipeline.create(dai.node.VideoEncoder)
+    videoEncoder = pipeline.create(dai.node.VideoEncoder).build(cam.video)
     videoEncoder.setProfile(dai.VideoEncoderProperties.Profile.H264_MAIN)
 
     record = pipeline.create(dai.node.Record)
     record.setRecordFile(args.output)
 
-    cam.video.link(videoEncoder.input)
     videoEncoder.out.link(record.input)
 
     pipeline.start()
