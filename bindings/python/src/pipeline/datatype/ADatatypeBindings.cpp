@@ -31,6 +31,7 @@ void bind_adatatype(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
+    adatatype.def(py::init<>(), DOC(dai, ADatatype, ADatatype));
     // Message
     // adatatype
         // .def("getRaw", &ADatatype::getRaw);
