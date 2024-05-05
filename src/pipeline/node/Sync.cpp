@@ -53,6 +53,10 @@ void Sync::run() {
         for(auto name : inputNames) {
             logger->trace("Receiving input: {}", name);
             inputFrames[name] = inputs[name].get<dai::Buffer>();
+            if(inputFrames[name] == nullptr) {
+                logger->error("Received nullptr from input {}, sync node only accepts messages inherited from Buffer on the inputs", name);
+                throw std::runtime_error("Received nullptr from input " + name);
+            }
         }
         // Print out the timestamps
         for(const auto& frame : inputFrames) {

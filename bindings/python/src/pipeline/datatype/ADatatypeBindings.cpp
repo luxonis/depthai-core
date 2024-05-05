@@ -16,7 +16,7 @@ void bind_adatatype(pybind11::module& m, void* pCallstack){
 
     using namespace dai;
 
-    py::class_<ADatatype, std::shared_ptr<ADatatype>> adatatype(m, "ADatatype", DOC(dai, ADatatype));
+    py::class_<ADatatype, Py<ADatatype>, std::shared_ptr<ADatatype>> adatatype(m, "ADatatype", DOC(dai, ADatatype));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

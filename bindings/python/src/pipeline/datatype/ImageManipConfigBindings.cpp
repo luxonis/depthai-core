@@ -17,7 +17,7 @@ void bind_imagemanipconfig(pybind11::module& m, void* pCallstack){
     using namespace dai;
 
     // py::class_<RawImageManipConfig, RawBuffer, std::shared_ptr<RawImageManipConfig>> rawImageManipConfig(m, "RawImageManipConfig", DOC(dai, RawImageManipConfig));
-    py::class_<ImageManipConfig, Buffer, std::shared_ptr<ImageManipConfig>> imageManipConfig(m, "ImageManipConfig", DOC(dai, ImageManipConfig));
+    py::class_<ImageManipConfig, Py<ImageManipConfig>, Buffer, std::shared_ptr<ImageManipConfig>> imageManipConfig(m, "ImageManipConfig", DOC(dai, ImageManipConfig));
     py::class_<ImageManipConfig::CropRect> imageManipConfigCropRect(imageManipConfig, "CropRect", DOC(dai, ImageManipConfig, CropRect));
     py::class_<ImageManipConfig::CropConfig> imageManipConfigCrop(imageManipConfig, "CropConfig", DOC(dai, ImageManipConfig, CropConfig));
     py::class_<ImageManipConfig::ResizeConfig>imageManipConfigResizeConfig(imageManipConfig, "ResizeConfig", DOC(dai, ImageManipConfig, ResizeConfig));
