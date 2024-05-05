@@ -314,7 +314,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("createQueue", &Node::Output::createQueue, py::arg("maxSize") = 16, py::arg("blocking") = true, DOC(dai, Node, Output, createQueue))
         .def("link", static_cast<void (Node::Output::*)(Node::Input&)>(&Node::Output::link), py::arg("input"), DOC(dai, Node, Output, link))
         .def("unlink", static_cast<void (Node::Output::*)(Node::Input&)>(&Node::Output::unlink), py::arg("input"), DOC(dai, Node, Output, unlink))
-        .def("send", &Node::Output::send, py::arg("msg"), DOC(dai, Node, Output, send))
+        .def("send", &Node::Output::send, py::arg("msg"), DOC(dai, Node, Output, send), py::call_guard<py::gil_scoped_release>())
         .def("trySend", &Node::Output::trySend, py::arg("msg"), DOC(dai, Node, Output, trySend));
 
     nodeConnection.def_readwrite("outputId", &Node::Connection::outputId, DOC(dai, Node, Connection, outputId))
