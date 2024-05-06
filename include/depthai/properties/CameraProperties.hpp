@@ -5,6 +5,7 @@
 #include "depthai/common/CameraImageOrientation.hpp"
 #include "depthai/common/CameraSensorType.hpp"
 #include "depthai/common/optional.hpp"
+#include "depthai/common/variant.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/properties/Properties.hpp"
 
@@ -39,7 +40,7 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
         DEPTHAI_SERIALIZE(OutputSpec, outputName, width, height, fps);
     };
 
-    std::vector<OutputSpec> outputSpecs;
+    std::vector<ImgFrameCapability> outputRequests;
 
     /**
      * Initial controls applied to ColorCamera node
@@ -224,6 +225,6 @@ DEPTHAI_SERIALIZE_EXT(CameraProperties,
                       warpMeshStepWidth,
                       warpMeshStepHeight,
                       rawPacked,
-                      outputSpecs);
+                      outputRequests);
 
 }  // namespace dai

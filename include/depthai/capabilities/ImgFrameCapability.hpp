@@ -1,4 +1,7 @@
 // C++ std
+#include <cstdint>
+#include <optional>
+#include <tuple>
 // #include <string>
 
 // libraries
@@ -7,7 +10,9 @@
 // depthai public
 #include <depthai/capabilities/Capability.hpp>
 #include <depthai/capabilities/CapabilityRange.hpp>
+#include <depthai/common/optional.hpp>
 #include <depthai/pipeline/datatype/ImgFrame.hpp>
+#include <depthai/utility/Serialization.hpp>
 
 namespace dai {
 
@@ -19,7 +24,7 @@ enum struct ImgResizeMode {
     FILL,
     /**
      * Keeps aspect ratio.
-     * Envelops the image with a background color to get the corect output aspect ratio.
+     * Envelop the image with a background color to get the corect output aspect ratio.
      */
     CONTAIN,
     /**
@@ -39,6 +44,8 @@ class ImgFrameCapability : public CapabilityCRTP<Capability, ImgFrameCapability>
     std::optional<ImgFrame::Type> encoding;
     ImgResizeMode resizeMode{ImgResizeMode::COVER};
     // TODO(jakgra) add optional CapabilityRange fov / max-min horiz. / vertical crop;
+
+    DEPTHAI_SERIALIZE(ImgFrameCapability, size, fps, encoding, resizeMode);
 
    private:
     class Impl;
