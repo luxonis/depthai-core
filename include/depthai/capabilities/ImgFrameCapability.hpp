@@ -20,6 +20,11 @@ namespace dai {
 
 enum struct ImgResizeMode {
     /**
+     * Keeps aspect ratio.
+     * Crops the image to get the correct output aspect ratio.
+     */
+    COVER,
+    /**
      * Doesn't keep aspect ratio.
      * Squishes or streches the image to fill the required pixel area.
      */
@@ -28,12 +33,7 @@ enum struct ImgResizeMode {
      * Keeps aspect ratio.
      * Envelop the image with a background color to get the corect output aspect ratio.
      */
-    CONTAIN,
-    /**
-     * Keeps aspect ratio.
-     * Crops the image to get the correct output aspect ratio.
-     */
-    COVER
+    CONTAIN
 };
 
 class ImgFrameCapability : public CapabilityCRTP<Capability, ImgFrameCapability> {
