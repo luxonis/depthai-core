@@ -36,8 +36,10 @@ class Record : public NodeCRTP<ThreadedHostNode, Record> {
 
     void run() override;
 
-    Record& setRecordFile(const std::string& recordFile);
+    std::string getRecordFile() const;
+    CompressionLevel getCompressionLevel() const;
 
+    Record& setRecordFile(const std::string& recordFile);
     Record& setCompressionLevel(CompressionLevel compressionLevel);
 
    private:

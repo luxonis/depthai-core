@@ -125,6 +125,7 @@ class BytePlayer {
     std::optional<nlohmann::json> next();
     void restart();
     void close();
+    static std::optional<std::tuple<uint32_t, uint32_t>> getVideoSize(const std::string& filePath);
     bool isInitialized() const {
         return initialized;
     }

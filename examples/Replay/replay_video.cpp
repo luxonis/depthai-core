@@ -1,4 +1,5 @@
 #include "depthai/depthai.hpp"
+#include "depthai/pipeline/node/ColorCamera.hpp"
 #include "depthai/pipeline/node/host/Display.hpp"
 #include "depthai/pipeline/node/host/Replay.hpp"
 
@@ -6,7 +7,7 @@ int main() {
     dai::Pipeline pipeline(true);
 
     auto replay = pipeline.create<dai::node::Replay>();
-    auto cam = pipeline.create<dai::node::Camera>()->build();
+    auto cam = pipeline.create<dai::node::ColorCamera>()->build();
     auto display = pipeline.create<dai::node::Display>();
 
     cam->setBoardSocket(dai::CameraBoardSocket::CAM_A);
@@ -21,7 +22,7 @@ int main() {
 
     pipeline.start();
 
-    std::this_thread::sleep_for(std::chrono::seconds(10));
+    std::this_thread::sleep_for(std::chrono::seconds(20));
 
     pipeline.stop();
 }

@@ -2,6 +2,7 @@
 
 #include <spdlog/spdlog.h>
 
+#include <optional>
 #include <stdexcept>
 
 #include "Environment.hpp"
@@ -138,6 +139,38 @@ void BytePlayer::close() {
         reader.close();
         initialized = false;
     }
+}
+
+std::optional<std::tuple<uint32_t, uint32_t>> BytePlayer::getVideoSize(const std::string& filePath) {
+    if(filePath.empty()) {
+        throw std::runtime_error("File path is empty in BytePlayer::getVideoSize");
+    }
+    mcap::McapReader reader;
+    {
+        const auto res = reader.open(filePath);
+        if(!res.ok()) {
+            throw std::runtime_error("Failed to open file for reading: " + res.message);
+        }
+    }
+    auto messageView = reader.readMessages();
+    if(messageView.begin() == messageView.end()) {
+        return std::nullopt;
+    } else {
+        auto msg = messageView.begin();
+        if(msg->channel->messageEncoding != "json") {
+            throw std::runtime_error("Unsupported message encoding: " + msg->channel->messageEncoding);
+        }
+        std::string_view asString(reinterpret_cast<const char*>(msg->message.data), msg->message.dataSize);
+        nlohmann::json j = nlohmann::json::parse(asString);
+
+        auto type = j["type"].get<utility::RecordType>();
+        if(type == utility::RecordType::Video) {
+            auto width = j["width"].get<uint32_t>();
+            auto height = j["height"].get<uint32_t>();
+            return std::make_tuple(width, height);
+        }
+    }
+    return std::nullopt;
 }
 
 bool checkRecordConfig(std::string& recordPath, utility::RecordConfig& config) {

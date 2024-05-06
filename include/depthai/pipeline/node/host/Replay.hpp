@@ -44,6 +44,13 @@ class Replay : public NodeCRTP<ThreadedHostNode, Replay> {
 
     void run() override;
 
+    std::string getReplayFile() const;
+    std::string getReplayVideo() const;
+    ImgFrame::Type getOutFrameType() const;
+    std::tuple<int, int> getSize() const;
+    float getFps() const;
+    bool getLoop() const;
+
     Replay& setReplayFile(const std::string& replayFile);
     Replay& setReplayVideo(const std::string& replayVideo);
     Replay& setOutFrameType(ImgFrame::Type outFrameType);

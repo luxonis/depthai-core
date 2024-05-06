@@ -24,5 +24,7 @@ void bind_record(pybind11::module& m, void* pCallstack){
     record.def_readonly("input", &Record::input, DOC(dai, node, Record, input))
         .def("setRecordFile", &Record::setRecordFile, py::arg("recordFile"), DOC(dai, node, Record, setRecordFile))
         .def("setCompressionLevel", &Record::setCompressionLevel, py::arg("compressionLevel"), DOC(dai, node, Record, setCompressionLevel));
+        .def("getRecordFile", &Record::getRecordFile, DOC(dai, node, Record, getRecordFile))
+        .def("getCompressionLevel", &Record::getCompressionLevel, DOC(dai, node, Record, getCompressionLevel));
 
 }

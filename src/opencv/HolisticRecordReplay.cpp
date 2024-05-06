@@ -6,6 +6,9 @@
 #include "depthai/pipeline/node/host/Replay.hpp"
 #include "depthai/utility/Compression.hpp"
 #include "depthai/utility/RecordReplay.hpp"
+#include "pipeline/node/Camera.hpp"
+#include "pipeline/node/ColorCamera.hpp"
+#include "pipeline/node/MonoCamera.hpp"
 
 namespace dai {
 namespace utility {
@@ -167,6 +170,21 @@ bool setupHolisticReplay(Pipeline& pipeline,
                 // replay->setReplayVideo(platform::joinPaths(rootPath, (mxId + "_").append(nodeName).append(".mp4")));
                 replay->setReplayVideo(platform::joinPaths(rootPath, nodeName + ".mp4"));
                 replay->setOutFrameType(ImgFrame::Type::YUV420p);
+
+                auto videoSize = BytePlayer::getVideoSize(replay->getReplayFile());
+                if (videoSize.has_value()) {
+                    auto [width, height] = videoSize.value();
+                    if(strcmp(node->getName(), "Camera") == 0) {
+                        auto cam = std::dynamic_pointer_cast<dai::node::Camera>(node);
+                        cam->setMockIspSize(width, height);
+                    } else if (strcmp(node->getName(), "ColorCamera") == 0) {
+                        auto cam = std::dynamic_pointer_cast<dai::node::ColorCamera>(node);
+                        cam->setMockIspSize(width, height);
+                    } else if (strcmp(node->getName(), "MonoCamera") == 0) {
+                        auto cam = std::dynamic_pointer_cast<dai::node::MonoCamera>(node);
+                        cam->setMockIspSize(width, height);
+                    }
+                }
             }
             replay->out.link(node->getReplayInput());
         }

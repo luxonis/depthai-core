@@ -196,6 +196,14 @@ void Record::run() {
     videoRecorder->close();
 }
 
+std::string Record::getRecordFile() const {
+    return recordFile;
+}
+
+Record::CompressionLevel Record::getCompressionLevel() const {
+    return compressionLevel;
+}
+
 Record& Record::setRecordFile(const std::string& recordFile) {
     this->recordFile = recordFile;
     return *this;

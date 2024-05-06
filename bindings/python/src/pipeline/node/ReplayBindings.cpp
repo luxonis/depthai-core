@@ -27,5 +27,12 @@ void bind_replay(pybind11::module& m, void* pCallstack){
         .def("setOutFrameType", &Replay::setOutFrameType, py::arg("frameType"), DOC(dai, node, Replay, setOutFrameType))
         .def("setSize", py::overload_cast<int, int>(&Replay::setSize), py::arg("width"), py::arg("height"), DOC(dai, node, Replay, setSize))
         .def("setSize", py::overload_cast<std::tuple<int, int>>(&Replay::setSize), py::arg("size"), DOC(dai, node, Replay, setSize))
-        .def("setFps", &Replay::setFps, py::arg("fps"), DOC(dai, node, Replay, setFps));
+        .def("setFps", &Replay::setFps, py::arg("fps"), DOC(dai, node, Replay, setFps))
+        .def("setLoop", &Replay::setLoop, py::arg("loop"), DOC(dai, node, Replay, setLoop))
+        .def("getReplayFile", &Replay::getReplayFile, DOC(dai, node, Replay, getReplayFile))
+        .def("getReplayVideo", &Replay::getReplayVideo, DOC(dai, node, Replay, getReplayVideo))
+        .def("getOutFrameType", &Replay::getOutFrameType, DOC(dai, node, Replay, getOutFrameType))
+        .def("getSize", &Replay::getSize, DOC(dai, node, Replay, getSize))
+        .def("getFps", &Replay::getFps, DOC(dai, node, Replay, getFps))
+        .def("getLoop", &Replay::getLoop, DOC(dai, node, Replay, getLoop));
 }

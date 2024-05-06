@@ -197,6 +197,30 @@ void Replay::run() {
     stop();
 }
 
+std::string Replay::getReplayFile() const {
+    return replayFile;
+}
+
+std::string Replay::getReplayVideo() const {
+    return replayVideo;
+}
+
+ImgFrame::Type Replay::getOutFrameType() const {
+    return outFrameType;
+}
+
+std::tuple<int, int> Replay::getSize() const {
+    return size.value_or(std::make_tuple(0, 0));
+}
+
+float Replay::getFps() const {
+    return fps.value_or(0.0f);
+}
+
+bool Replay::getLoop() const {
+    return loop;
+}
+
 Replay& Replay::setReplayFile(const std::string& replayFile) {
     this->replayFile = replayFile;
     return *this;
