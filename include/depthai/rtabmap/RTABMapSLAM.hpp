@@ -10,6 +10,7 @@
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
+#include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "rtabmap/core/CameraModel.h"
 #include "rtabmap/core/Rtabmap.h"
 #include "rtabmap/core/SensorData.h"
@@ -26,10 +27,7 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
    public:
     void build();
 
-    Input inputRect{*this, {.name="img_rect", .types={{dai::DatatypeEnum::ImgFrame, true}}}};
-    Input inputDepth{*this, {.name="depth", .types={{dai::DatatypeEnum::ImgFrame, true}}}};
-    Input inputIMU{*this, {.name="imu", .types={{dai::DatatypeEnum::IMUData, true}}}};
-    Input inputFeatures{*this, {.name="features", .types={{dai::DatatypeEnum::TrackedFeatures, true}}}};
+    Input inputSync{*this, {.name="sync", .types = {{dai::DatatypeEnum::MessageGroup,true}}}};
     Input inputOdomPose{*this, {.name="odom_pose", .types={{dai::DatatypeEnum::TransformData, true}}}};
 
     Output transform{*this, {.name="transform", .types={{dai::DatatypeEnum::TransformData, true}}}};
@@ -40,25 +38,29 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     void run() override;
     void stop() override;
     void setParams(const rtabmap::ParametersMap& params);
+    void syncCB(std::shared_ptr<dai::ADatatype> data);
+    void odomPoseCB(std::shared_ptr<dai::ADatatype> data);
    private:
     void imuCB(std::shared_ptr<dai::ADatatype> msg);
     void getCalib(dai::Pipeline& pipeline, int instanceNum, int width, int height);
     rtabmap::StereoCameraModel model;
     rtabmap::Rtabmap rtabmap;
-    rtabmap::Transform odomCorrection;
+    rtabmap::Transform currPose, odomCorrection;
     bool reuseFeatures;
     std::chrono::steady_clock::time_point lastProcessTime; 
     std::chrono::steady_clock::time_point startTime;
     rtabmap::Transform imuLocalTransform;
     rtabmap::Transform localTransform;
-    std::map<double, cv::Vec3f> accBuffer_;
-	std::map<double, cv::Vec3f> gyroBuffer_;
-    std::map<double, cv::Vec4f> rotBuffer_;
-    rtabmap::LocalGridCache localMaps_;
+    rtabmap::LocalGridCache localMaps;
     rtabmap::OccupancyGrid* grid;
     float alphaScaling;
     bool modelSet = false;
     rtabmap::ParametersMap rtabParams;
+    rtabmap::SensorData sensorData;
+    std::string databasePath="/rtabmap.tmp.db";
+    bool saveDatabase = false;
+    bool publishPCL = false;
+    float freq = 1.0f;
 };
 }  // namespace node
 }  // namespace dai

@@ -95,17 +95,16 @@ int main() {
     auto right = pipeline.create<dai::node::MonoCamera>();
     auto stereo = pipeline.create<dai::node::StereoDepth>();
     auto imu = pipeline.create<dai::node::IMU>();
-    auto sync = pipeline.create<dai::node::Sync>();
+    auto stereoSync = pipeline.create<dai::node::Sync>();
+    auto slamSync = pipeline.create<dai::node::Sync>();
     auto odom = pipeline.create<dai::node::BasaltVIO>();
     auto slam = pipeline.create<dai::node::RTABMapSLAM>();
     auto params = rtabmap::ParametersMap();
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDCreateOccupancyGrid(), "true"));
-    // params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kGridMaxGroundAngle(), "60"));
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapSaveWMState(), "true"));
     slam->setParams(params);
     auto rerun = pipeline.create<RerunStreamer>();
-    auto xoutDepth = pipeline.create<dai::node::XLinkOut>();
-    xoutDepth->setStreamName("depth");
+
     imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 200);
     imu->setBatchReportThreshold(1);
     imu->setMaxBatchReports(10);
@@ -129,13 +128,14 @@ int main() {
     // Linking
     left->out.link(stereo->left);
     right->out.link(stereo->right);
-    stereo->syncedLeft.link(sync->inputs["left"]);
-    stereo->syncedRight.link(sync->inputs["right"]);
-    stereo->depth.link(slam->inputDepth);
-    sync->out.link(odom->inputStereo);
+    stereo->syncedLeft.link(stereoSync->inputs["left"]);
+    stereo->syncedRight.link(stereoSync->inputs["right"]);
+    stereo->depth.link(slamSync->inputs["depth"]);
+    stereo->rectifiedLeft.link(slamSync->inputs["img_rect"]);
+    stereoSync->out.link(odom->inputStereo);
+    slamSync->out.link(slam->inputSync);
     imu->out.link(odom->inputImu);
     odom->transform.link(slam->inputOdomPose);
-    stereo->rectifiedLeft.link(slam->inputRect);
     slam->transform.link(rerun->inputTrans);
     slam->passthroughRect.link(rerun->inputImg);
     // slam->pointCloud.link(rerun->inputPCL);
