@@ -47,30 +47,20 @@ class DeviceNodeCRTP : public Base {
     // std::unique_ptr<Node> clone() const override {
     //     return std::make_unique<Derived>(static_cast<const Derived&>(*this));
     // };
-    void build() {}
 
     // No public constructor, only a factory function.
     template <typename... Args>
     [[nodiscard]] static std::shared_ptr<Derived> create(Args&&... args) {
-        auto n = std::make_shared<Derived>(std::forward(args)...);
-        n->build();
-        return n;
+        return std::make_shared<Derived>(std::forward(args)...);
     }
 
     // No public constructor, only a factory function.
     template <typename... Args>
     [[nodiscard]] static std::shared_ptr<Derived> create(std::shared_ptr<Device> device, Args&&... args) {
-        // auto n = std::make_shared<Derived>(device, std::forward<Args>(args)...);
-        auto n = std::shared_ptr<Derived>(new Derived(device, std::forward<Args>(args)...));
-        n->build();
-        return n;
+        return std::shared_ptr<Derived>(new Derived(device, std::forward<Args>(args)...));
     }
     [[nodiscard]] static std::shared_ptr<Derived> create(std::unique_ptr<Properties> props) {
-        // auto n = std::shared_ptr<Derived>(new Derived(props));
-        auto n = std::shared_ptr<Derived>(new Derived(props));
-        // Configure mode, don't build
-        // n->build();
-        return n;
+        return std::shared_ptr<Derived>(new Derived(props));
     }
 
    protected:

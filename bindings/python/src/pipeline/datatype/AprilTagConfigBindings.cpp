@@ -18,7 +18,7 @@ void bind_apriltagconfig(pybind11::module& m, void* pCallstack){
 
     // py::class_<AprilTagConfig, RawBuffer, std::shared_ptr<RawAprilTagConfig>>
     //     rawAprilTagConfig(m, "RawAprilTagConfig", DOC(dai, RawAprilTagConfig));
-    py::class_<AprilTagConfig, Buffer, std::shared_ptr<AprilTagConfig>> aprilTagConfig(m, "AprilTagConfig", DOC(dai, AprilTagConfig));
+    py::class_<AprilTagConfig, Py<AprilTagConfig>, Buffer, std::shared_ptr<AprilTagConfig>> aprilTagConfig(m, "AprilTagConfig", DOC(dai, AprilTagConfig));
     py::enum_<AprilTagConfig::Family> aprilTagFamily(aprilTagConfig, "Family", DOC(dai, AprilTagConfig, Family));
     py::class_<AprilTagConfig::QuadThresholds> quadThresholds(aprilTagConfig, "QuadThresholds", DOC(dai, AprilTagConfig, QuadThresholds));
 

@@ -9,7 +9,7 @@ namespace node {
 
 Camera::Camera(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>(std::move(props)) {}
 
-void Camera::build() {
+std::shared_ptr<Camera> Camera::build() {
     properties.boardSocket = CameraBoardSocket::AUTO;
     properties.imageOrientation = CameraImageOrientation::AUTO;
     properties.colorOrder = CameraProperties::ColorOrder::BGR;
@@ -18,6 +18,8 @@ void Camera::build() {
     properties.previewWidth = 300;
     properties.fps = 30.0;
     properties.previewKeepAspectRatio = true;
+    isBuild = true; 
+    return std::static_pointer_cast<Camera>(shared_from_this());
 }
 
 Camera::Properties& Camera::getProperties() {

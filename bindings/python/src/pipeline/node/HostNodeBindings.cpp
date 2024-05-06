@@ -43,18 +43,27 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////
 
-    threadedHostNode.def(py::init<>()).def("run", &ThreadedHostNode::run);
+    threadedHostNode
+        .def(py::init<>([]() {
+            auto node = std::make_shared<PyThreadedHostNode>();
+            getImplicitPipeline().add(node);
+            return node;
+        }))
+        .def("run", &ThreadedHostNode::run);
 
-    hostNode.def(py::init([](){
-                auto node = std::make_shared<PyHostNode>();
-                getImplicitPipeline().add(node);
-                return node;
+    hostNode
+        .def(py::init([]() {
+            auto node = std::make_shared<PyHostNode>();
+            getImplicitPipeline().add(node);
+            return node;
         }))
         .def("processGroup", &HostNode::processGroup)
         .def_property_readonly(
             "inputs", [](HostNode& node) { return &node.inputs; }, py::return_value_policy::reference_internal)
+        .def_readonly("out", &HostNode::out, DOC(dai, node, HostNode, out))
         .def("runSyncingOnHost", &HostNode::runSyncingOnHost, DOC(dai, node, HostNode, runSyncingOnHost))
-        .def("runSyncingOnDevice", &HostNode::runSyncingOnDevice, DOC(dai, node, HostNode, runSyncingOnDevice));
+        .def("runSyncingOnDevice", &HostNode::runSyncingOnDevice, DOC(dai, node, HostNode, runSyncingOnDevice))
+        .def("sendProcessingToPipeline", &HostNode::sendProcessingToPipeline, DOC(dai, node, HostNode, sendProcessingToPipeline));
 
     py::exec(R"(
         def __init_subclass__(cls):
@@ -78,7 +87,7 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
                 cls.output_desc = None
 
             def processGroup(self, messageGroup):
-                return members["process"](self, 
+                return members["process"](self,
                     *(messageGroup[argname] for argname in cls.input_desc.keys()))
             cls.processGroup = processGroup
 
@@ -103,7 +112,8 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
             def __init__(self, *args):
                 node.HostNode.__init__(self)
                 self.link_args(*args)
-            cls.__init__ = __init__
+            if not hasattr(cls, "__init__"):
+                cls.__init__ = __init__
 
         node.HostNode.__init_subclass__ = classmethod(__init_subclass__)
     )", m.attr("__dict__"));

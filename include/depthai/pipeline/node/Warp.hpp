@@ -17,6 +17,9 @@ class Warp : public DeviceNodeCRTP<DeviceNode, Warp, WarpProperties> {
    public:
     constexpr static const char* NAME = "Warp";
     using DeviceNodeCRTP::DeviceNodeCRTP;
+    std::shared_ptr<Warp> build() {
+        return std::static_pointer_cast<Warp>(shared_from_this());
+    }
 
    private:
     void setWarpMesh(const float* meshData, int numMeshPoints, int width, int height);

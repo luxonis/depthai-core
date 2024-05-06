@@ -17,7 +17,7 @@ void bind_tofconfig(pybind11::module& m, void* pCallstack){
     using namespace dai;
 
     // py::class_<RawToFConfig, RawBuffer, std::shared_ptr<RawToFConfig>> rawToFConfig(m, "RawToFConfig", DOC(dai, RawToFConfig));
-    py::class_<ToFConfig, Buffer, std::shared_ptr<ToFConfig>> toFConfig(m, "ToFConfig", DOC(dai, ToFConfig));
+    py::class_<ToFConfig, Py<ToFConfig>, Buffer, std::shared_ptr<ToFConfig>> toFConfig(m, "ToFConfig", DOC(dai, ToFConfig));
     py::class_<ToFConfig::DepthParams> depthParams(toFConfig, "DepthParams", DOC(dai, ToFConfig, DepthParams));
     py::enum_<ToFConfig::DepthParams::TypeFMod> depthParamsTypeFMod(depthParams, "TypeFMod", DOC(dai, ToFConfig, DepthParams, TypeFMod));
 

@@ -444,6 +444,10 @@ class Node : public std::enable_shared_from_this<Node> {
     std::weak_ptr<PipelineImpl> parent;
     std::weak_ptr<Node> parentNode;
 
+    // used to improve error messages
+    // when pipeline starts all nodes are checked
+    virtual bool needsBuild() { return false; }
+
    public:
     // TODO(themarpe) - restrict access
     /// Id of node. Assigned after being placed on the pipeline
@@ -548,7 +552,6 @@ class Node : public std::enable_shared_from_this<Node> {
    protected:
     Node() = default;
     Node(bool conf);
-    void build();
     void removeConnectionToNode(std::shared_ptr<Node> node);
 
    public:
@@ -611,20 +614,14 @@ class NodeCRTP : public Base {
     // std::unique_ptr<Node> clone() const override {
     //     return std::make_unique<Derived>(static_cast<const Derived&>(*this));
     // };
-    void build() {}
 
     // No public constructor, only a factory function.
     template <typename... Args>
     [[nodiscard]] static std::shared_ptr<Derived> create(Args&&... args) {
-        auto n = std::make_shared<Derived>(std::forward<Args>(args)...);
-        n->build();
-        return n;
+        return std::make_shared<Derived>(std::forward<Args>(args)...);
     }
     [[nodiscard]] static std::shared_ptr<Derived> create(std::unique_ptr<Properties> props) {
-        auto n = std::shared_ptr<Derived>(new Derived(props));
-        // Configure mode, don't build
-        // n->build();
-        return n;
+        return std::shared_ptr<Derived>(new Derived(props));
     }
 
     friend Derived;

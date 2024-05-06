@@ -99,7 +99,7 @@ struct ColorCameraProperties : PropertiesSerializable<Properties, ColorCameraPro
     /**
      * Frame type
      */
-    ImgFrame::Type previewType = ImgFrame::Type::BGR888p;
+    ImgFrame::Type previewType = ImgFrame::Type::BGR888i;
 
     /**
      * Preview frame output height

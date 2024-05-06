@@ -86,8 +86,15 @@ try:
 
         # Remove import depthai.*
         final_stubs = re.sub(r"import depthai\.\S*", "", stubs_import)
+        
+        for line in final_stubs.split('\n'):
+            final_lines.append(line)
+            if "class HostNode(ThreadedHostNode):" in line:
+                final_lines.append('    def link_args(self, *args) -> None: ...')
+                final_lines.append('    def __init__(self, *args) -> None: ...')
 
-        # Writeout changes
+        final_stubs = '\n'.join(final_lines)
+        # Writeout changes 
         file.seek(0)
         file.truncate(0)
         file.write(final_stubs)

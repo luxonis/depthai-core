@@ -37,7 +37,8 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
     constexpr static const char* NAME = "SpatialDetectionNetwork";
     Subnode<NeuralNetwork> neuralNetwork{*this, "neuralNetwork"};
     Subnode<DetectionParser> detectionParser{*this, "detectionParser"};
-    void build();
+
+    std::shared_ptr<SpatialDetectionNetwork> build();
 
     /**
      * Input message with data to be inferred upon
@@ -227,8 +228,14 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
      */
     void setSpatialCalculationStepSize(int stepSize);
 
+    /// Get classes labels
+    std::optional<std::vector<std::string>> getClasses() const;
+
    protected:
     using DeviceNodeCRTP::DeviceNodeCRTP;
+
+    bool isBuild = false;
+    bool needsBuild() override { return !isBuild; }
 };
 
 /**
@@ -236,7 +243,7 @@ class SpatialDetectionNetwork : public DeviceNodeCRTP<DeviceNode, SpatialDetecti
  */
 class MobileNetSpatialDetectionNetwork : public DeviceNodeCRTP<SpatialDetectionNetwork, MobileNetSpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
-    void build();
+    std::shared_ptr<MobileNetSpatialDetectionNetwork> build();
 
    protected:
     using DeviceNodeCRTP::DeviceNodeCRTP;
@@ -247,7 +254,7 @@ class MobileNetSpatialDetectionNetwork : public DeviceNodeCRTP<SpatialDetectionN
  */
 class YoloSpatialDetectionNetwork : public DeviceNodeCRTP<SpatialDetectionNetwork, YoloSpatialDetectionNetwork, SpatialDetectionNetworkProperties> {
    public:
-    void build();
+    std::shared_ptr<YoloSpatialDetectionNetwork> build();
 
     /// Set num classes
     void setNumClasses(const int numClasses);
@@ -262,8 +269,7 @@ class YoloSpatialDetectionNetwork : public DeviceNodeCRTP<SpatialDetectionNetwor
 
     /// Get num classes
     int getNumClasses() const;
-    /// Get classes labels
-    std::optional<std::vector<std::string>> getClasses() const;
+
     /// Get coordianate size
     int getCoordinateSize() const;
     /// Get anchors

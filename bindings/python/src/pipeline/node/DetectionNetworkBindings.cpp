@@ -1,3 +1,5 @@
+#include <memory>
+
 #include "Common.hpp"
 #include "NodeBindings.hpp"
 #include "depthai/pipeline/Node.hpp"
@@ -9,7 +11,7 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
     using namespace dai;
     using namespace dai::node;
 
-    auto detectionNetwork = ADD_NODE_DERIVED_ABSTRACT(DetectionNetwork, NodeGroup);
+    auto detectionNetwork = ADD_NODE_DERIVED(DetectionNetwork, NodeGroup);
     auto mobileNetDetectionNetwork = ADD_NODE_DERIVED(MobileNetDetectionNetwork, DetectionNetwork);
     auto yoloDetectionNetwork = ADD_NODE_DERIVED(YoloDetectionNetwork, DetectionNetwork);
 
@@ -31,17 +33,61 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
 
     // DetectionNetwork Node
     detectionNetwork
+#define DETECTION_NETWORK_BUILD_ARGS \
+        Node::Output& input, \
+        NNArchive& nnArchive
+#define DETECTION_NETWORK_BUILD_PYARGS \
+        py::arg("input"), \
+        py::arg("nnArchive")
+#define DETECTION_NETWORK_ARGS \
+        float confidenceThreshold
+#define DETECTION_NETWORK_PYARGS \
+        py::arg("confidenceThreshold") = 0.5
+        // TODO (Zimamazim) Automatically fetch default arguments to avoid duplicity
+#define DETECTION_NETWORK_CODE(OP) self OP setConfidenceThreshold(confidenceThreshold);
+        .def(
+            "build",
+            [](DetectionNetwork& self, DETECTION_NETWORK_BUILD_ARGS, DETECTION_NETWORK_ARGS) {
+                self.build(input, nnArchive);
+                DETECTION_NETWORK_CODE(.)
+                return std::static_pointer_cast<DetectionNetwork>(self.shared_from_this());
+            },
+            DETECTION_NETWORK_BUILD_PYARGS,
+            py::kw_only(),
+            DETECTION_NETWORK_PYARGS)
+        .def(py::init([](DETECTION_NETWORK_BUILD_ARGS, DETECTION_NETWORK_ARGS) {
+                 auto self = getImplicitPipeline().create<DetectionNetwork>();
+                 self->build(input, nnArchive);
+                 DETECTION_NETWORK_CODE(->)
+                 return self;
+             }),
+             DETECTION_NETWORK_BUILD_PYARGS,
+             py::kw_only(),
+             DETECTION_NETWORK_PYARGS)
         // Copied from NN node
         .def("setBlobPath", &DetectionNetwork::setBlobPath, py::arg("path"), DOC(dai, node, DetectionNetwork, setBlobPath))
         .def("setNumPoolFrames", &DetectionNetwork::setNumPoolFrames, py::arg("numFrames"), DOC(dai, node, DetectionNetwork, setNumPoolFrames))
-        .def("setNumInferenceThreads", &DetectionNetwork::setNumInferenceThreads, py::arg("numThreads"), DOC(dai, node, DetectionNetwork, setNumInferenceThreads))
-        .def("setNumNCEPerInferenceThread", &DetectionNetwork::setNumNCEPerInferenceThread, py::arg("numNCEPerThread"), DOC(dai, node, DetectionNetwork, setNumNCEPerInferenceThread))
+        .def("setNumInferenceThreads",
+             &DetectionNetwork::setNumInferenceThreads,
+             py::arg("numThreads"),
+             DOC(dai, node, DetectionNetwork, setNumInferenceThreads))
+        .def("setNumNCEPerInferenceThread",
+             &DetectionNetwork::setNumNCEPerInferenceThread,
+             py::arg("numNCEPerThread"),
+             DOC(dai, node, DetectionNetwork, setNumNCEPerInferenceThread))
         .def("getNumInferenceThreads", &DetectionNetwork::getNumInferenceThreads, DOC(dai, node, DetectionNetwork, getNumInferenceThreads))
         .def("setNNArchive", &DetectionNetwork::setNNArchive, DOC(dai, node, DetectionNetwork, setNNArchive))
         .def("setBlob", py::overload_cast<dai::OpenVINO::Blob>(&DetectionNetwork::setBlob), py::arg("blob"), DOC(dai, node, DetectionNetwork, setBlob))
         .def("setBlob", py::overload_cast<const dai::Path&>(&DetectionNetwork::setBlob), py::arg("path"), DOC(dai, node, DetectionNetwork, setBlob, 2))
-        .def("setXmlModelPath", &DetectionNetwork::setXmlModelPath, py::arg("xmlModelPath"), py::arg("binModelPath") = Path{""}, DOC(dai, node, DetectionNetwork, setXmlModelPath))
-        .def("setNumShavesPerInferenceThread", &DetectionNetwork::setNumShavesPerInferenceThread, py::arg("numShavesPerInferenceThread"), DOC(dai, node, DetectionNetwork, setNumShavesPerInferenceThread))
+        .def("setXmlModelPath",
+             &DetectionNetwork::setXmlModelPath,
+             py::arg("xmlModelPath"),
+             py::arg("binModelPath") = Path{""},
+             DOC(dai, node, DetectionNetwork, setXmlModelPath))
+        .def("setNumShavesPerInferenceThread",
+             &DetectionNetwork::setNumShavesPerInferenceThread,
+             py::arg("numShavesPerInferenceThread"),
+             DOC(dai, node, DetectionNetwork, setNumShavesPerInferenceThread))
         .def("setBackend", &DetectionNetwork::setBackend, py::arg("setBackend"), DOC(dai, node, DetectionNetwork, setBackend))
         .def("setBackendProperties",
              &DetectionNetwork::setBackendProperties,
@@ -69,28 +115,23 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
             [](const DetectionNetwork& n) { return &n.neuralNetwork->passthrough; },
             py::return_value_policy::reference_internal,
             DOC(dai, node, NeuralNetwork, passthrough))
-        .def("setConfidenceThreshold",
-             &DetectionNetwork::setConfidenceThreshold,
-             py::arg("thresh"),
-             DOC(dai, node, DetectionNetwork, setConfidenceThreshold))
+        .def("setConfidenceThreshold", &DetectionNetwork::setConfidenceThreshold, py::arg("thresh"), DOC(dai, node, DetectionNetwork, setConfidenceThreshold))
+        .def("getClasses", &DetectionNetwork::getClasses, DOC(dai, node, DetectionNetwork, getClasses))
         .def("getConfidenceThreshold", &DetectionNetwork::getConfidenceThreshold, DOC(dai, node, DetectionNetwork, getConfidenceThreshold));
     // ALIAS
     // daiNodeModule.attr("DetectionNetwork").attr("Properties") = detectionNetworkProperties;
-
+    mobileNetDetectionNetwork.def("build", &MobileNetDetectionNetwork::build, DOC(dai, node, MobileNetDetectionNetwork, build));
     // YoloDetectionNetwork node
-    yoloDetectionNetwork
+    yoloDetectionNetwork.def("build", &YoloDetectionNetwork::build, DOC(dai, node, YoloDetectionNetwork, build))
         .def("setNumClasses", &YoloDetectionNetwork::setNumClasses, py::arg("numClasses"), DOC(dai, node, YoloDetectionNetwork, setNumClasses))
-        .def("setCoordinateSize",
-             &YoloDetectionNetwork::setCoordinateSize,
-             py::arg("coordinates"),
-             DOC(dai, node, YoloDetectionNetwork, setCoordinateSize))
+        .def("setCoordinateSize", &YoloDetectionNetwork::setCoordinateSize, py::arg("coordinates"), DOC(dai, node, YoloDetectionNetwork, setCoordinateSize))
         /*
-        .def("setAnchors", py::overload_cast<const std::vector<std::vector<std::vector<float>>>&>(&YoloDetectionNetwork::setAnchors), py::arg("anchors"), DOC(dai, node, YoloDetectionNetwork, setAnchors))
-        .def("setAnchors", py::overload_cast<std::vector<float>>(&YoloDetectionNetwork::setAnchors), py::arg("anchors"), DOC(dai, node, YoloDetectionNetwork, setAnchors, 2))
+        .def("setAnchors", py::overload_cast<const std::vector<std::vector<std::vector<float>>>&>(&YoloDetectionNetwork::setAnchors), py::arg("anchors"),
+        DOC(dai, node, YoloDetectionNetwork, setAnchors)) .def("setAnchors", py::overload_cast<std::vector<float>>(&YoloDetectionNetwork::setAnchors),
+        py::arg("anchors"), DOC(dai, node, YoloDetectionNetwork, setAnchors, 2))
         */
         .def("setAnchorMasks", &YoloDetectionNetwork::setAnchorMasks, py::arg("anchorMasks"), DOC(dai, node, YoloDetectionNetwork, setAnchorMasks))
         .def("setIouThreshold", &YoloDetectionNetwork::setIouThreshold, py::arg("thresh"), DOC(dai, node, YoloDetectionNetwork, setIouThreshold))
-        .def("getClasses", &YoloDetectionNetwork::getClasses, DOC(dai, node, YoloDetectionNetwork, getClasses))
         .def("getNumClasses", &YoloDetectionNetwork::getNumClasses, DOC(dai, node, YoloDetectionNetwork, getNumClasses))
         .def("getCoordinateSize", &YoloDetectionNetwork::getCoordinateSize, DOC(dai, node, YoloDetectionNetwork, getCoordinateSize))
         .def("getAnchors", &YoloDetectionNetwork::getAnchors, DOC(dai, node, YoloDetectionNetwork, getAnchors))

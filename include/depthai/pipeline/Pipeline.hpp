@@ -127,6 +127,35 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     // DeviceBase for hybrid pipelines
     std::shared_ptr<Device> defaultDevice;
 
+    // Queue for tasks
+    LockingQueue<std::function<void()>> tasks;
+
+    void addTask(std::function<void()> task) {
+        tasks.push(std::move(task));
+    }
+
+    void processTasks(bool waitForTasks = false) {
+        if(waitForTasks) {
+            std::function<void()> task;
+            auto success = tasks.waitAndPop(task);
+            if(!success) {
+                return;
+            }
+            task();
+        }
+        // Regardless if we should wait or not, run all remaining tasks
+        while(!tasks.empty()) {
+            std::function<void()> task;
+            bool success = false;
+            success = tasks.tryPop(task);
+            if(!success) {
+                // No more tasks
+                break;
+            }
+            task();
+        }
+    }
+
     template <typename N, typename... Args>
     std::enable_if_t<std::is_base_of<DeviceNode, N>::value, std::shared_ptr<N>> createNode(Args&&... args) {
         // N is a subclass of DeviceNode
@@ -167,6 +196,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     void start();
     void wait();
     void stop();
+    void run();
 
     // Resource
     std::vector<uint8_t> loadResource(dai::Path uri);
@@ -433,11 +463,23 @@ class Pipeline {
         impl()->stop();
     }
 
+    void run() {
+        impl()->run();
+    }
+
     /*
      * @note In case of a host only pipeline, this function returns a nullptr
      */
     std::shared_ptr<Device> getDefaultDevice() {
         return impl()->defaultDevice;
+    }
+
+    void addTask(std::function<void()> task) {
+        impl()->addTask(std::move(task));
+    }
+
+    void processTasks() {
+        impl()->processTasks();
     }
 };
 

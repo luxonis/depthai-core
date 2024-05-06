@@ -12,6 +12,7 @@ namespace node {
 class HostNode : public ThreadedHostNode {
    private:
     std::optional<bool> syncOnHost;
+    bool sendProcessToPipeline = false;
     Subnode<dai::node::Sync> sync{*this, "sync"};
     // Input input{*this, "in", Input::Type::SReceiver, true, 3, {{DatatypeEnum::MessageGroup, true}}};
     Input input{*this, {.name = "in", .types = {{DatatypeEnum::MessageGroup, true}}}};
@@ -25,6 +26,10 @@ class HostNode : public ThreadedHostNode {
     // Output out{*this, "out", Output::Type::MSender, {{DatatypeEnum::Buffer, true}}};
     Output out{*this, {.name = "out", .types = {{DatatypeEnum::Buffer, true}}}};
     virtual std::shared_ptr<Buffer> processGroup(std::shared_ptr<dai::MessageGroup> in) = 0;
+
+    void sendProcessingToPipeline(bool send) {
+        sendProcessToPipeline = send;
+    }
 
     void runSyncingOnHost() {
         syncOnHost = true;

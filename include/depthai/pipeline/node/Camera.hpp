@@ -19,7 +19,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
    public:
     constexpr static const char* NAME = "Camera";
     using DeviceNodeCRTP::DeviceNodeCRTP;
-    void build();
+    std::shared_ptr<Camera> build();
 
    protected:
     Camera() = default;
@@ -31,6 +31,9 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
     utility::NodeRecordParams getNodeRecordParams() const override;
     Output& getRecordOutput() override;
     Input& getReplayInput() override;
+
+    bool isBuild = false;
+    bool needsBuild() override { return !isBuild; }
 
    public:
     /**

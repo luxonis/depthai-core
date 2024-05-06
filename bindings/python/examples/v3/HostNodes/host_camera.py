@@ -23,13 +23,13 @@ class HostCamera(dai.node.ThreadedHostNode):
             imgFrame.setData(frame)
             imgFrame.setWidth(frame.shape[1])
             imgFrame.setHeight(frame.shape[0])
-            imgFrame.setType(dai.ImgFrame.Type.RGB888i)
+            imgFrame.setType(dai.ImgFrame.Type.BGR888i)
             # Send the message
             self.output.send(imgFrame)
             # Wait for the next frame
             time.sleep(0.1)
 
-with dai.Pipeline() as p:
+with dai.Pipeline(createImplicitDevice=False) as p:
     hostCamera = p.create(HostCamera)
     camQueue = hostCamera.output.createQueue()
 

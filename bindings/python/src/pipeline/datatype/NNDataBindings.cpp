@@ -24,7 +24,7 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
     py::class_<TensorInfo> tensorInfo(m, "TensorInfo", DOC(dai, TensorInfo));
     py::enum_<TensorInfo::DataType>tensorInfoDataType(tensorInfo, "DataType");
     py::enum_<TensorInfo::StorageOrder>tensorInfoStorageOrder(tensorInfo, "StorageOrder");
-    py::class_<NNData, Buffer, std::shared_ptr<NNData>> nnData(m, "NNData", DOC(dai, NNData));
+    py::class_<NNData, Py<NNData>, Buffer, std::shared_ptr<NNData>> nnData(m, "NNData", DOC(dai, NNData));
 
 
     ///////////////////////////////////////////////////////////////////////

@@ -13,10 +13,6 @@
 namespace dai {
 namespace node {
 
-void StereoDepth::build() {
-    // setDefaultProfilePreset(presetMode);
-}
-
 std::shared_ptr<StereoDepth> StereoDepth::build(bool autoCreateCameras, PresetMode presetMode) {
     if(!autoCreateCameras) {
         return std::static_pointer_cast<StereoDepth>(shared_from_this());
