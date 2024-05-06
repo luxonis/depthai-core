@@ -28,6 +28,8 @@ class Replay : public NodeCRTP<ThreadedHostNode, Replay> {
     std::string replayFile;
     ImgFrame::Type outFrameType = ImgFrame::Type::YUV420p;
 
+    bool loop = true;
+
     std::shared_ptr<Buffer> getMessage(utility::RecordType type, const nlohmann::json& metadata, std::vector<uint8_t>& frame);
 
    public:
@@ -48,6 +50,7 @@ class Replay : public NodeCRTP<ThreadedHostNode, Replay> {
     Replay& setSize(std::tuple<int, int> size);
     Replay& setSize(int width, int height);
     Replay& setFps(float fps);
+    Replay& setLoop(bool loop);
 };
 
 }  // namespace node

@@ -101,6 +101,7 @@ class VideoPlayer {
     void setSize(uint32_t width, uint32_t height);
     std::optional<std::vector<uint8_t>> next();
     std::tuple<uint32_t, uint32_t> size();
+    void restart();
     void close();
     bool isInitialized() const {
         return initialized;
@@ -122,6 +123,7 @@ class BytePlayer {
     ~BytePlayer();
     void init(const std::string& filePath);
     std::optional<nlohmann::json> next();
+    void restart();
     void close();
     bool isInitialized() const {
         return initialized;

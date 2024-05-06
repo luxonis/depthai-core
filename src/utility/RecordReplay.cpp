@@ -126,6 +126,13 @@ std::optional<nlohmann::json> BytePlayer::next() {
     return j;
 }
 
+void BytePlayer::restart() {
+    if(!initialized) {
+        throw std::runtime_error("BytePlayer not initialized");
+    }
+    it = std::make_unique<mcap::LinearMessageView::Iterator>(messageView->begin());
+}
+
 void BytePlayer::close() {
     if(initialized) {
         reader.close();

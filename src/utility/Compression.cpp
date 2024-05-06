@@ -150,7 +150,7 @@ void untarFiles(const std::string& path, const std::vector<std::string>& files, 
                 const auto& outFile = outFiles[i];
                 int fd = open(outFile.c_str(), O_WRONLY | O_CREAT, archive_entry_perm(entry));
                 if(fd < 0) {
-                    throw std::runtime_error("Could not open file.");
+                    throw std::runtime_error("Could not open file " + outFile + " for writing.");
                 }
                 size_t size = archive_entry_size(entry);
                 std::vector<uint8_t> buff(size);

@@ -127,6 +127,13 @@ void Replay::run() {
                 }
             } else if(!first) {
                 // End of file
+                if(loop) {
+                    bytePlayer.restart();
+                    if(hasVideo && type == utility::RecordType::Video) {
+                        videoPlayer.restart();
+                    }
+                    continue;
+                }
                 break;
             } else {
                 hasMetadata = false;
@@ -138,6 +145,11 @@ void Replay::run() {
                 frame = msg.value();
             } else if(!first) {
                 // End of file
+                if(loop){
+                    bytePlayer.restart();
+                    videoPlayer.restart();
+                    continue;
+                }
                 break;
             } else {
                 hasVideo = false;
@@ -209,6 +221,10 @@ Replay& Replay::setSize(int width, int height) {
 }
 Replay& Replay::setFps(float fps) {
     this->fps = fps;
+    return *this;
+}
+Replay& Replay::setLoop(bool loop) {
+    this->loop = loop;
     return *this;
 }
 

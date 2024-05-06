@@ -199,6 +199,13 @@ std::tuple<uint32_t, uint32_t> VideoPlayer::size() {
     return {width, height};
 }
 
+void VideoPlayer::restart() {
+    if(!initialized) {
+        throw std::runtime_error("VideoPlayer not initialized");
+    }
+    cvReader->set(cv::CAP_PROP_POS_FRAMES, 0);
+}
+
 void VideoPlayer::close() {
     if(cvReader && cvReader->isOpened()) {
         cvReader->release();

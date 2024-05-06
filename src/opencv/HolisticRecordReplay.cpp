@@ -72,13 +72,20 @@ bool setupHolisticReplay(Pipeline& pipeline,
         auto tarNodenames = filenamesInTar(replayPath);
         tarNodenames.erase(std::remove_if(tarNodenames.begin(),
                                           tarNodenames.end(),
-                                          [](const std::string& filename) {
+                                          [](const std::string& path) {
+                                              auto pathDelim = path.find_last_of("/\\");
+                                              auto filename = pathDelim == std::string::npos ? path : path.substr(path.find_last_of("/\\") + 1);
                                               return filename.size() < 4 || filename.substr(filename.size() - 4, filename.size()) == "mcap"
                                                      || filename == "record_config.json";
                                           }),
                            tarNodenames.end());
 
-        for(auto& filename : tarNodenames) filename = filename.substr(0, filename.find_last_of('.'));
+        std::string tarRoot = tarNodenames.empty() ? "" : tarNodenames[0].substr(0, tarNodenames[0].find_first_of("/\\") + 1);
+        for(auto& path : tarNodenames) {
+            auto pathDelim = path.find_last_of("/\\");
+            path = pathDelim == std::string::npos ? path : path.substr(path.find_last_of("/\\") + 1);
+            path = path.substr(0, path.find_last_of('.'));
+        }
 
         std::vector<std::string> nodeNames;
         std::vector<std::string> pipelineFilenames;
@@ -100,14 +107,14 @@ bool setupHolisticReplay(Pipeline& pipeline,
             for(auto& nodeName : nodeNames) {
                 // auto filename = (mxId + "_").append(nodeName);
                 auto filename = nodeName;
-                inFiles.push_back(filename + ".mp4");
-                inFiles.push_back(filename + ".mcap");
+                inFiles.push_back(tarRoot + filename + ".mp4");
+                inFiles.push_back(tarRoot + filename + ".mcap");
                 std::string filePath = platform::joinPaths(rootPath, filename);
                 outFiles.push_back(filePath + ".mp4");
                 outFiles.push_back(filePath + ".mcap");
                 outFilenames[nodeName] = filePath;
             }
-            inFiles.emplace_back("record_config.json");
+            inFiles.emplace_back(tarRoot + "record_config.json");
             configPath = platform::joinPaths(rootPath, "record_config.json");
             outFiles.push_back(configPath);
             outFilenames["record_config"] = configPath;

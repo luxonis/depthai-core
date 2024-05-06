@@ -10,8 +10,9 @@ int main() {
 
     // Properties
     camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_A);
-    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
+    camRgb->setResolution(dai::ColorCameraProperties::SensorResolution::THE_720_P);
     camRgb->setVideoSize(1920, 1080);
+    // camRgb->setVideoSize(1280, 720);
 
     auto outputQueue = camRgb->video.createQueue();
 

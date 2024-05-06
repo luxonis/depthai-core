@@ -465,6 +465,7 @@ dai_add_example(record_imu Record/record_imu.cpp ON OFF)
 
 # Replay
 dai_add_example(replay_video_meta Replay/replay_video_meta.cpp ON OFF)
+dai_add_example(replay_video Replay/replay_video.cpp ON OFF)
 dai_add_example(replay_imu Replay/replay_imu.cpp ON OFF)
 
 if(DEPTHAI_HAVE_PCL_SUPPORT)
