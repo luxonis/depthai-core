@@ -6,7 +6,8 @@
 
 using json = nlohmann::json;
 
-namespace detail {
+namespace dai {
+namespace internal {
 template <std::size_t N>
 struct VariantSwitch {
     template <typename Variant>
@@ -29,7 +30,8 @@ struct VariantSwitch<0> {
         }
     }
 };
-}  // namespace detail
+}  // namespace internal
+}  // namespace dai
 
 namespace nlohmann {
 template <typename... Args>
@@ -45,10 +47,52 @@ struct adl_serializer<std::variant<Args...>> {
 
     static void from_json(json const& j, std::variant<Args...>& v) {  // NOLINT this is a specialization, naming conventi  ons don't apply
         auto const index = j.at("index").get<int>();
-        ::detail::VariantSwitch<sizeof...(Args) - 1>{}(index, j.at("value"), v);
+        ::dai::internal::VariantSwitch<sizeof...(Args) - 1>{}(index, j.at("value"), v);
     }
 };
 }  // namespace nlohmann
+
+namespace dai {
+namespace internal {
+template <std::size_t N>
+struct VariantReadNop {
+    template <typename Variant, typename Reader>
+    void operator()(int index, Reader* reader, Variant& v) const {
+        if(index == N) {
+            // using Element = typename std::decay<std::variant_alternative_t<N, Variant>>::type;
+            using Element = typename std::variant_alternative_t<N, Variant>;
+            Element element;
+            const auto status = nop::Encoding<Element>::Read(&element, reader);
+            if(!status) {
+                throw std::runtime_error("converting libnop object to variant failed: nop::Encoding::Read failed");
+            }
+            v = element;
+        } else {
+            VariantReadNop<N - 1>{}(index, reader, v);
+        }
+    }
+};
+
+template <>
+struct VariantReadNop<0> {
+    template <typename Variant, typename Reader>
+    void operator()(int index, Reader* reader, Variant& v) const {
+        if(index == 0) {
+            // using Element = typename std::decay<std::variant_alternative_t<0, Variant>>::type;
+            using Element = typename std::variant_alternative_t<0, Variant>;
+            Element element;
+            const auto status = nop::Encoding<Element>::Read(&element, reader);
+            if(!status) {
+                throw std::runtime_error("converting libnop object to variant failed: nop::Encoding::Read failed");
+            }
+            v = element;
+        } else {
+            throw std::runtime_error("converting libnop object to variant failed: invalid index");
+        }
+    }
+};
+}  // namespace internal
+}  // namespace dai
 
 // std::variant serialization for libnop
 namespace nop {
@@ -111,20 +155,15 @@ struct Encoding<std::variant<Ts...>> : EncodingIO<std::variant<Ts...>> {
 
     template <typename Reader>
     static constexpr Status<void> ReadPayload(EncodingByte /*prefix*/, Type* value, Reader* reader) {
-        std::int32_t type = 0;
-        auto status = Encoding<std::int32_t>::Read(&type, reader);
+        std::int32_t index = 0;
+        auto status = Encoding<std::int32_t>::Read(&index, reader);
         if(!status) {
             return status;
-        } else if(type < Type::kEmptyIndex || type >= static_cast<std::int32_t>(sizeof...(Ts))) {
+        } else if(index < 0 || index >= static_cast<std::int32_t>(sizeof...(Ts))) {
             return ErrorStatus::UnexpectedVariantType;
         }
-        value->Become(type);
-        return std::visit(
-            [reader](auto&& element) {
-                using Element = typename std::decay<decltype(element)>::type;
-                return Encoding<Element>::Read(&element, reader);
-            },
-            value);
+        ::dai::internal::VariantReadNop<sizeof...(Ts) - 1>{}(index, reader, *value);
+        return {};
     }
 };
 }  // namespace nop

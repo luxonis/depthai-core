@@ -1,6 +1,7 @@
 #pragma once
 #include <optional>
 
+#include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraImageOrientation.hpp"
 #include "depthai/common/CameraSensorType.hpp"
