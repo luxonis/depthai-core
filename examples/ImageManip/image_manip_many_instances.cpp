@@ -5,8 +5,7 @@
 #include "depthai/pipeline/node/ImageManip.hpp"
 
 int main() {
-    // dai::DeviceInfo info("127.0.0.1");
-    dai::DeviceInfo info("10.12.110.28");
+    dai::DeviceInfo info("127.0.0.1");
     info.protocol = X_LINK_TCP_IP;
     info.state = X_LINK_GATE;
     info.platform = X_LINK_RVC4;

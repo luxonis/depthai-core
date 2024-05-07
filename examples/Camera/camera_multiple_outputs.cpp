@@ -1,20 +1,21 @@
 // Includes common necessary includes for development using depthai library
 #include <stdexcept>
 
+#include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/depthai.hpp"
 
 int main(int argc, char** argv) {
-    dai::DeviceInfo info("10.12.110.28");
+    dai::DeviceInfo info("127.0.0.1");
     info.protocol = X_LINK_TCP_IP;
     info.state = X_LINK_GATE;
     info.platform = X_LINK_RVC4;
     const auto device = std::make_shared<dai::Device>(info);
-    if(argc < 3 || (argc - 1) % 2 != 0) {
-        throw std::runtime_error("USAGE: ./camera_multiple_outputs 1920 1080 640 480");
+    if(argc < 4 || (argc - 1) % 3 != 0) {
+        throw std::runtime_error("USAGE: ./camera_multiple_outputs 1920 1080 0 640 480 1\nWHERE 0 is resize mode: 0 == COVER, 1 == FILL, 2 == CONTAIN");
     }
-    std::vector<std::pair<uint32_t, uint32_t>> sizes;
-    for(int index = 1; index < argc - 1; index += 2) {
-        sizes.emplace_back(std::stoul(argv[index]), std::stoul(argv[index + 1]));
+    std::vector<std::tuple<uint32_t, uint32_t, uint32_t>> sizes;
+    for(int index = 1; index < argc - 1; index += 3) {
+        sizes.emplace_back(std::stoul(argv[index]), std::stoul(argv[index + 1]), std::stoul(argv[index + 2]));
     }
 
     dai::Pipeline pipeline(device);
@@ -22,7 +23,7 @@ int main(int argc, char** argv) {
     // Define source and output
     auto camRgb = pipeline.create<dai::node::Camera>();
 
-    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_C);
+    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_B);
     if(sizes.empty()) {
         throw std::runtime_error("internal error to few sizes");
     }
@@ -31,7 +32,20 @@ int main(int argc, char** argv) {
     std::vector<std::shared_ptr<dai::MessageQueue>> videos;
     for(const auto& size : sizes) {
         dai::ImgFrameCapability cap;
-        cap.size.value = size;
+        cap.size.value = std::pair{std::get<0>(size), std::get<1>(size)};
+        auto mode = std::get<2>(size);
+        switch(mode) {
+            case 0:
+                cap.resizeMode = dai::ImgResizeMode::COVER;
+                break;
+            case 1:
+                cap.resizeMode = dai::ImgResizeMode::FILL;
+                break;
+            case 2:
+                cap.resizeMode = dai::ImgResizeMode::CONTAIN;
+            default:
+                throw std::runtime_error("Resize mode argument (every 3rd) must be 0, 1 or 2");
+        }
         auto* output = camRgb->requestNewOutput(cap, true);
         videos.push_back(output->createQueue());
     }
@@ -54,7 +68,7 @@ int main(int argc, char** argv) {
         size_t videoIndex = 0;
         for(const auto& video : videos) {
             std::cout << "Waiting for frame on index " << videoIndex << "\n" << std::flush;
-            auto videoIn = videoIndex == 0 ? video->get<dai::ImgFrame>() : video->tryGet<dai::ImgFrame>();
+            auto videoIn = video->tryGet<dai::ImgFrame>();
             // Get BGR frame from NV12 encoded video frame to show with opencv
             // Visualizing the frame on slower hosts might have overhead
             if(videoIn) {
