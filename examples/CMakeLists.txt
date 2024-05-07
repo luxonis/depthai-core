@@ -418,10 +418,10 @@ dai_add_example(script_get_ip Script/script_get_ip.cpp OFF OFF)
 # target_compile_definitions(detection_parser PRIVATE BLOB_PATH="${mobilenet_blob}")
 #
 # # Host pipeline
-# dai_add_example(host_pipeline host_side/host_pipeline.cpp ON OFF)
-# dai_add_example(host_pipeline_opencv host_side/host_pipeline_opencv.cpp ON OFF)
-# dai_add_example(host_pipeline_synced_node host_side/host_pipeline_synced_node.cpp ON OFF)
-# dai_add_example(host_only_camera host_side/host_only_camera.cpp OFF OFF)
+dai_add_example(host_pipeline host_side/host_pipeline.cpp ON OFF)
+dai_add_example(host_pipeline_opencv host_side/host_pipeline_opencv.cpp ON OFF)
+dai_add_example(host_pipeline_synced_node host_side/host_pipeline_synced_node.cpp ON OFF)
+dai_add_example(host_only_camera host_side/host_only_camera.cpp OFF OFF)
 #
 # # TMP
 # dai_add_example(tmp_preview tmp/tmp_preview.cpp OFF OFF)

@@ -49,6 +49,15 @@ void DetectionNetwork::build() {
     detectionParser->input.setMaxSize(1);
     detectionParser->imageIn.setBlocking(false);
     detectionParser->imageIn.setMaxSize(1);
+
+    isBuild = true;
+}
+
+std::shared_ptr<DetectionNetwork> DetectionNetwork::build(Node::Output& input, const NNArchive& nnArchive) {
+    build();
+    setNNArchive(nnArchive);
+    input.link(this->input);
+    return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
 }
 
 void DetectionNetwork::setNNArchive(const NNArchive& nnArchive) {
@@ -124,21 +133,29 @@ std::vector<std::pair<Node::Input&, std::shared_ptr<Capability>>> DetectionNetwo
     return {{input, cap}};
 }
 
+std::optional<std::vector<std::string>> DetectionNetwork::getClasses() const {
+    return detectionParser->getClasses();
+}
+
 //--------------------------------------------------------------------
 // MobileNet
 //--------------------------------------------------------------------
-void MobileNetDetectionNetwork::build() {
+std::shared_ptr<MobileNetDetectionNetwork> MobileNetDetectionNetwork::build() {
     DetectionNetwork::build();
     detectionParser->properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
+
+    return std::static_pointer_cast<MobileNetDetectionNetwork>(shared_from_this());
 }
 
 //--------------------------------------------------------------------
 // YOLO
 //--------------------------------------------------------------------
-void YoloDetectionNetwork::build() {
+std::shared_ptr<YoloDetectionNetwork> YoloDetectionNetwork::build() {
     DetectionNetwork::build();
     detectionParser->properties.parser.nnFamily = DetectionNetworkType::YOLO;
     detectionParser->properties.parser.iouThreshold = 0.5f;
+
+    return std::static_pointer_cast<YoloDetectionNetwork>(shared_from_this());
 }
 
 void YoloDetectionNetwork::setNumClasses(const int numClasses) {
@@ -168,10 +185,6 @@ void YoloDetectionNetwork::setIouThreshold(float thresh) {
 /// Get num classes
 int YoloDetectionNetwork::getNumClasses() const {
     return detectionParser->getNumClasses();
-}
-
-std::optional<std::vector<std::string>> YoloDetectionNetwork::getClasses() const {
-    return detectionParser->getClasses();
 }
 
 /// Get coordianate size

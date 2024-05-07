@@ -17,7 +17,7 @@ void bind_stereodepthconfig(pybind11::module& m, void* pCallstack){
     using namespace dai;
 
     // py::class_<RawStereoDepthConfig, RawBuffer, std::shared_ptr<RawStereoDepthConfig>> rawStereoDepthConfig(m, "RawStereoDepthConfig", DOC(dai, RawStereoDepthConfig));
-    py::class_<StereoDepthConfig, Buffer, std::shared_ptr<StereoDepthConfig>> stereoDepthConfig(m, "StereoDepthConfig", DOC(dai, StereoDepthConfig));
+    py::class_<StereoDepthConfig, Py<StereoDepthConfig>, Buffer, std::shared_ptr<StereoDepthConfig>> stereoDepthConfig(m, "StereoDepthConfig", DOC(dai, StereoDepthConfig));
     py::enum_<StereoDepthConfig::MedianFilter> medianFilter(m, "MedianFilter", DOC(dai, MedianFilter));
     py::class_<StereoDepthConfig::AlgorithmControl> algorithmControl(stereoDepthConfig, "AlgorithmControl", DOC(dai, StereoDepthConfig, AlgorithmControl));
     py::enum_<StereoDepthConfig::AlgorithmControl::DepthAlign> depthAlign(algorithmControl, "DepthAlign", DOC(dai, StereoDepthConfig, AlgorithmControl, DepthAlign));

@@ -17,7 +17,7 @@ void bind_message_group(pybind11::module& m, void* pCallstack){
 
     using namespace dai;
 
-    py::class_<MessageGroup, Buffer, std::shared_ptr<MessageGroup>> messageGroup(m, "MessageGroup", DOC(dai, MessageGroup));
+    py::class_<MessageGroup, Py<MessageGroup>, Buffer, std::shared_ptr<MessageGroup>> messageGroup(m, "MessageGroup", DOC(dai, MessageGroup));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

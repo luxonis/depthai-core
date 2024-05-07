@@ -13,7 +13,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
     // Node and Properties declare upfront
     py::class_<SpatialDetectionNetworkProperties, std::shared_ptr<SpatialDetectionNetworkProperties>> spatialDetectionNetworkProperties(
         m, "SpatialDetectionNetworkProperties", DOC(dai, SpatialDetectionNetworkProperties));
-    auto spatialDetectionNetwork = ADD_NODE_DERIVED_ABSTRACT(SpatialDetectionNetwork, DeviceNode);
+    auto spatialDetectionNetwork = ADD_NODE_DERIVED(SpatialDetectionNetwork, DeviceNode);
     auto mobileNetSpatialDetectionNetwork = ADD_NODE_DERIVED(MobileNetSpatialDetectionNetwork, SpatialDetectionNetwork);
     auto yoloSpatialDetectionNetwork = ADD_NODE_DERIVED(YoloSpatialDetectionNetwork, SpatialDetectionNetwork);
 
@@ -40,6 +40,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
     // Node
     spatialDetectionNetwork
         // Copied from NN node
+        .def("build", &SpatialDetectionNetwork::build, DOC(dai, node, SpatialDetectionNetwork, build))
         .def("setBlobPath", &SpatialDetectionNetwork::setBlobPath, py::arg("path"), DOC(dai, node, SpatialDetectionNetwork, setBlobPath))
         .def("setNumPoolFrames", &SpatialDetectionNetwork::setNumPoolFrames, py::arg("numFrames"), DOC(dai, node, SpatialDetectionNetwork, setNumPoolFrames))
         .def("setNumInferenceThreads",
@@ -81,7 +82,7 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
              py::arg("thresh"),
              DOC(dai, node, SpatialDetectionNetwork, setConfidenceThreshold))
         .def("getConfidenceThreshold", &SpatialDetectionNetwork::getConfidenceThreshold, DOC(dai, node, SpatialDetectionNetwork, getConfidenceThreshold))
-
+        .def("getClasses", &SpatialDetectionNetwork::getClasses, DOC(dai, node, SpatialDetectionNetwork, getClasses))
         .def_property_readonly(
             "input",
             [](const SpatialDetectionNetwork& n) { return &n.neuralNetwork->input; },
@@ -131,20 +132,21 @@ void bind_spatialdetectionnetwork(pybind11::module& m, void* pCallstack){
     daiNodeModule.attr("SpatialDetectionNetwork").attr("Properties") = spatialDetectionNetworkProperties;
 
     // // MobileNetSpatialDetectionNetwork
-    // mobileNetSpatialDetectionNetwork;
+    mobileNetSpatialDetectionNetwork.def("build", &MobileNetSpatialDetectionNetwork::build, DOC(dai, node, MobileNetSpatialDetectionNetwork, build));
     // YoloSpatialDetectionNetwork
-    yoloSpatialDetectionNetwork
+    yoloSpatialDetectionNetwork.def("build", &YoloSpatialDetectionNetwork::build, DOC(dai, node, YoloSpatialDetectionNetwork, build))
         .def("setNumClasses", &YoloSpatialDetectionNetwork::setNumClasses, py::arg("numClasses"), DOC(dai, node, YoloSpatialDetectionNetwork, setNumClasses))
-        .def("setCoordinateSize", &YoloSpatialDetectionNetwork::setCoordinateSize, py::arg("coordinates"), DOC(dai, node, YoloSpatialDetectionNetwork, setCoordinateSize))
+        .def("setCoordinateSize",
+             &YoloSpatialDetectionNetwork::setCoordinateSize,
+             py::arg("coordinates"),
+             DOC(dai, node, YoloSpatialDetectionNetwork, setCoordinateSize))
         .def("setAnchors", &YoloSpatialDetectionNetwork::setAnchors, py::arg("anchors"), DOC(dai, node, YoloSpatialDetectionNetwork, setAnchors))
-        .def("setAnchorMasks", &YoloSpatialDetectionNetwork::setAnchorMasks, py::arg("anchorMasks"), DOC(dai, node, YoloSpatialDetectionNetwork, setAnchorMasks))
+        .def(
+            "setAnchorMasks", &YoloSpatialDetectionNetwork::setAnchorMasks, py::arg("anchorMasks"), DOC(dai, node, YoloSpatialDetectionNetwork, setAnchorMasks))
         .def("setIouThreshold", &YoloSpatialDetectionNetwork::setIouThreshold, py::arg("thresh"), DOC(dai, node, YoloSpatialDetectionNetwork, setIouThreshold))
         .def("getNumClasses", &YoloSpatialDetectionNetwork::getNumClasses, DOC(dai, node, YoloSpatialDetectionNetwork, getNumClasses))
-        .def("getClasses", &YoloSpatialDetectionNetwork::getClasses, DOC(dai, node, YoloSpatialDetectionNetwork, getClasses))
         .def("getCoordinateSize", &YoloSpatialDetectionNetwork::getCoordinateSize, DOC(dai, node, YoloSpatialDetectionNetwork, getCoordinateSize))
         .def("getAnchors", &YoloSpatialDetectionNetwork::getAnchors, DOC(dai, node, YoloSpatialDetectionNetwork, getAnchors))
         .def("getAnchorMasks", &YoloSpatialDetectionNetwork::getAnchorMasks, DOC(dai, node, YoloSpatialDetectionNetwork, getAnchorMasks))
-        .def("getIouThreshold", &YoloSpatialDetectionNetwork::getIouThreshold, DOC(dai, node, YoloSpatialDetectionNetwork, getIouThreshold))
-        ;
-
+        .def("getIouThreshold", &YoloSpatialDetectionNetwork::getIouThreshold, DOC(dai, node, YoloSpatialDetectionNetwork, getIouThreshold));
 }

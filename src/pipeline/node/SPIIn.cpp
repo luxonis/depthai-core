@@ -3,9 +3,11 @@
 namespace dai {
 namespace node {
 
-void SPIIn::build() {
+std::shared_ptr<SPIIn> SPIIn::build() {
     // set some default properties
     properties.busId = 0;
+    isBuild = true; 
+    return std::static_pointer_cast<SPIIn>(shared_from_this());
 }
 
 void SPIIn::setStreamName(const std::string& name) {

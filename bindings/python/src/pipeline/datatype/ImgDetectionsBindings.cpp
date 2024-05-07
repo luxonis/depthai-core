@@ -17,7 +17,7 @@ void bind_imgdetections(pybind11::module& m, void* pCallstack){
     using namespace dai;
 
     // py::class_<RawImgDetections, RawBuffer, std::shared_ptr<RawImgDetections>> rawImgDetections(m, "RawImgDetections", DOC(dai, RawImgDetections));
-    py::class_<ImgDetections, Buffer, std::shared_ptr<ImgDetections>> imgDetections(m, "ImgDetections", DOC(dai, ImgDetections));
+    py::class_<ImgDetections, Py<ImgDetections>, Buffer, std::shared_ptr<ImgDetections>> imgDetections(m, "ImgDetections", DOC(dai, ImgDetections));
     py::class_<ImgDetection> imgDetection(m, "ImgDetection", DOC(dai, ImgDetection));
 
     ///////////////////////////////////////////////////////////////////////

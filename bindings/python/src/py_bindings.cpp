@@ -119,6 +119,11 @@ PYBIND11_MODULE(depthai, m)
     // Read the uintptr_t value from the decimal string
     sscanf(javavmEnvStr.c_str(), "%" SCNuPTR, reinterpret_cast<uintptr_t*>(&javavm));
 
+    // Import threading module - TODO(Morato) explore why this is needed to avoid the exception
+    // Relevant issue: https://github.com/pybind/pybind11/issues/2197
+    // It should be harmless to import it here, as it is a built-in module
+    py::object threading = py::module_::import("threading");
+
     // Call dai::initialize on 'import depthai' to initialize asap with additional information to print
     try {
         dai::initialize(std::string("Python bindings - version: ") + DEPTHAI_PYTHON_VERSION + " from " + DEPTHAI_PYTHON_COMMIT_DATETIME + " build: " + DEPTHAI_PYTHON_BUILD_DATETIME, installSignalHandler, javavm);

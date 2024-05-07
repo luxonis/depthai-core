@@ -31,7 +31,7 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
         node->build();
         return node;
     }
-    void build();
+    std::shared_ptr<Camera> build();
 
    protected:
     Properties& getProperties();
@@ -39,6 +39,11 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
     utility::NodeRecordParams getNodeRecordParams() const override;
     Output& getRecordOutput() override;
     Input& getReplayInput() override;
+
+    bool isBuild = false;
+    bool needsBuild() override {
+        return !isBuild;
+    }
 
    public:
     /**
