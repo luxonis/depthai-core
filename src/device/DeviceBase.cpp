@@ -1707,7 +1707,7 @@ std::tuple<bool, std::string> DeviceBase::flashBootloader(Memory memory, Type ty
     std::unique_ptr<std::thread, decltype(t1Deleter)> t1(threadPtr, t1Deleter);
 
     pimpl->rpcClient->call("readFromXLink", streamBootloader, mem, package.size());
-    if (t1 && t1->joinable()) {
+    if(t1 && t1->joinable()) {
         t1->join();
     }
 
@@ -1739,6 +1739,18 @@ std::tuple<bool, std::string> DeviceBase::flashUsbRecoveryBootHeader() {
     return pimpl->rpcClient->call("flashUsbRecoveryBootHeader").as<std::tuple<bool, std::string>>();
 }
 
+std::tuple<bool, std::string> DeviceBase::tiny1cSetPropAutoShutter(Tiny1cPropAutoShutterParam shutterPropSwitch, uint16_t propValue) {
+    return pimpl->rpcClient->call("tiny1cSetPropAutoShutter", shutterPropSwitch, propValue).as<std::tuple<bool, std::string>>();
+}
+std::tuple<bool, std::string> DeviceBase::tiny1cOOCBUpdate(uint8_t updateType) {
+    return pimpl->rpcClient->call("tiny1cOOCBUpdate", updateType).as<std::tuple<bool, std::string>>();
+}
+std::tuple<bool, std::string> DeviceBase::tiny1cRmCoverStsSwitch(uint8_t mode) {
+    return pimpl->rpcClient->call("tiny1cRmCoverStsSwitch", mode).as<std::tuple<bool, std::string>>();
+}
+std::tuple<bool, std::string> DeviceBase::tiny1cRmCoverAutoCalc(uint8_t zoomStep) {
+    return pimpl->rpcClient->call("tiny1cRmCoverAutoCalc", zoomStep).as<std::tuple<bool, std::string>>();
+}
 // template <typename T>
 // bool DeviceBootloader::sendRequest(const T& request) {
 //     if(stream == nullptr) return false;

@@ -32,6 +32,7 @@
 #include "depthai-shared/common/CpuUsage.hpp"
 #include "depthai-shared/common/MemoryInfo.hpp"
 #include "depthai-shared/common/StereoPair.hpp"
+#include "depthai-shared/common/Tiny1c.hpp"
 #include "depthai-shared/datatype/RawIMUData.hpp"
 #include "depthai-shared/device/BoardConfig.hpp"
 #include "depthai-shared/device/CrashDump.hpp"
@@ -950,6 +951,42 @@ class DeviceBase {
     void setBootGpioInput();
 
     int64_t getEmmcMemorySize();
+
+    // !.................... Tiny1c specific ....................!
+    /**
+     * @brief Tiny1C specific RPC call to set the auto shutte.
+     *
+     * @param shutterPropSwitch
+     * @param propValue
+     * @return std::tuple<bool, std::string>
+     */
+    std::tuple<bool, std::string> tiny1cSetPropAutoShutter(Tiny1cPropAutoShutterParam shutterPropSwitch, uint16_t propValue);
+
+    /**
+     * @brief
+     *  @param updateType
+     * B_UPDATE = 0, OOC_UPDATE = 1, OOC_B_UPDATE = 2
+     *
+     * @return std::tuple<bool, std::string>
+     */
+    std::tuple<bool, std::string> tiny1cOOCBUpdate(uint8_t updateType);
+
+    /**
+     * @brief
+     *
+     * @param mode RMCOVER_DIS = 0, RMCOVER_EN = 1
+     * @return std::tuple<bool, std::string>
+     */
+    std::tuple<bool, std::string> tiny1cRmCoverStsSwitch(uint8_t mode);
+
+    /**
+     * @brief
+     *
+     * @param zoomScale ZOOM_STEP1 = 1 .. ZOOM_STEP4 = 4
+     * @return std::tuple<bool, std::string>
+     */
+    std::tuple<bool, std::string> tiny1cRmCoverAutoCalc(uint8_t zoomScale);
+    // !.................... Tiny1c specific ....................!
 
    protected:
     std::shared_ptr<XLinkConnection> connection;
