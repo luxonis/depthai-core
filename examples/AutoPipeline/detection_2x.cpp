@@ -58,7 +58,7 @@ int main(int argc, char** argv) {  // NOLINT
 
     dai::ImgFrameCapability cap;
     cap.size.value = std::pair(640, 480);
-    auto qRgb = camRgb->requestNewOutput(cap, true)->createQueue();
+    auto qRgb = camRgb->requestOutput(cap, true)->createQueue();
 
     // Linking
     camRgb->link(detectionNetwork);

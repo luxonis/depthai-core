@@ -688,14 +688,14 @@ void Node::link(std::shared_ptr<Node> in) {
     // TODO(jakgra) only call this at the build stage
     // call in correct order: from requested GUI outputs and similar to sensor outputs
     for(const auto& input : in->getRequiredInputs()) {
-        auto* output = requestNewOutput(*input.second, in->runOnHost());
+        auto* output = requestOutput(*input.second, in->runOnHost());
         if(output) {
             output->link(input.first);
         }
     }
 }
 
-Node::Output* Node::requestNewOutput(const Capability& capability, bool onHost) {
+Node::Output* Node::requestOutput(const Capability& capability, bool onHost) {
     (void)capability;
     (void)onHost;
     DAI_CHECK_V(false, "Node '{}' doesn't support node to node linking. Please link outputs <--> inputs manually.", getName());

@@ -458,7 +458,9 @@ class Node : public std::enable_shared_from_this<Node> {
 
     // used to improve error messages
     // when pipeline starts all nodes are checked
-    virtual bool needsBuild() { return false; }
+    virtual bool needsBuild() {
+        return false;
+    }
 
    public:
     // TODO(themarpe) - restrict access
@@ -599,7 +601,7 @@ class Node : public std::enable_shared_from_this<Node> {
     /// Get a reference to internal node map
 
     virtual void link(std::shared_ptr<Node> in);
-    virtual Node::Output* requestNewOutput(const Capability& capability, bool onHost);
+    virtual Node::Output* requestOutput(const Capability& capability, bool onHost);
     virtual std::vector<std::pair<Input&, std::shared_ptr<Capability>>> getRequiredInputs();
 
     /**

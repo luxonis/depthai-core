@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
             default:
                 throw std::runtime_error("Resize mode argument (every 3rd) must be 0, 1 or 2");
         }
-        auto* output = camRgb->requestNewOutput(cap, true);
+        auto* output = camRgb->requestOutput(cap, true);
         videos.push_back(output->createQueue());
     }
 
@@ -58,7 +58,7 @@ int main(int argc, char** argv) {
     /*
     dai::ImgFrameCapability cap;
     cap.size.value = std::pair(1920, 1080);
-    auto* output = camRgb->requestNewOutput(cap);
+    auto* output = camRgb->requestOutput(cap);
     auto video = output->createQueue();
     */
 

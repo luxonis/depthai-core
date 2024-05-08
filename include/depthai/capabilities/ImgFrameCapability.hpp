@@ -3,8 +3,6 @@
 // C++ std
 #include <cstdint>
 #include <optional>
-#include <tuple>
-// #include <string>
 
 // libraries
 #include <spimpl.h>
@@ -41,7 +39,7 @@ class ImgFrameCapability : public CapabilityCRTP<Capability, ImgFrameCapability>
     constexpr static const char* NAME = "dai/img-frame";
     // Capability getIntersection(const Capability& other) override;
 
-    CapabilityRange<std::tuple<uint32_t, uint32_t>> size;
+    CapabilityRange<std::pair<uint32_t, uint32_t>> size;
     CapabilityRange<uint32_t> fps;
     std::optional<ImgFrame::Type> encoding;
     ImgResizeMode resizeMode{ImgResizeMode::COVER};

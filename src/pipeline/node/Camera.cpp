@@ -312,7 +312,7 @@ class Camera::Impl {
         } else {
             DAI_CHECK_V(preview.getConnections().empty() && video.getConnections().empty(),
                         "Can't use managed and unmanaged mode at the same time for outputs preview, video and raw. "
-                        "Don't link() preview, video, raw outputs or don't use requestNewOutput().");
+                        "Don't link() preview, video, raw outputs or don't use requestOutput().");
             if(device->getDeviceInfo().platform == X_LINK_RVC4) {
                 setupDynamicOutputsRvc4(parent, device, properties);
             } else {
@@ -321,7 +321,7 @@ class Camera::Impl {
         }
     }
 
-    Node::Output* requestNewOutput(Camera& parent, const Capability& genericCapability, bool onHost) {
+    Node::Output* requestOutput(Camera& parent, const Capability& genericCapability, bool onHost) {
         if(const auto* capability = ImgFrameCapability::get(genericCapability)) {
             const auto requestId = nextOutputRequestId;
             outputRequests.push_back({requestId, *capability, onHost});
@@ -371,7 +371,7 @@ std::shared_ptr<Camera> Camera::build() {
     properties.previewWidth = 300;
     properties.fps = 30.0;
     properties.previewKeepAspectRatio = true;
-    isBuild = true; 
+    isBuild = true;
     return std::static_pointer_cast<Camera>(shared_from_this());
 }
 
@@ -628,8 +628,8 @@ void Camera::setRawOutputPacked(bool packed) {
     properties.rawPacked = packed;
 }
 
-Node::Output* Camera::requestNewOutput(const Capability& capability, bool onHost) {
-    return pimpl->requestNewOutput(*this, capability, onHost);
+Node::Output* Camera::requestOutput(const Capability& capability, bool onHost) {
+    return pimpl->requestOutput(*this, capability, onHost);
 }
 
 void Camera::buildStage1() {
