@@ -83,28 +83,31 @@ inline std::shared_ptr<T> parseDatatype(std::uint8_t* metadata, size_t size, std
 }
 
 static std::tuple<DatatypeEnum, size_t, size_t> parseHeader(streamPacketDesc_t* const packet) {
-    if(packet->length < 8) {
-        throw std::runtime_error("Bad packet, couldn't parse (not enough data)");
+    if(packet->length < 24) {
+        throw std::runtime_error(fmt::format("Bad packet, couldn't parse (not enough data), total size {}", packet->length));
     }
-    const int serializedObjectSize = readIntLE(packet->data + packet->length - 4);
-    const auto objectType = static_cast<DatatypeEnum>(readIntLE(packet->data + packet->length - 8));
+    const std::uint32_t packetLength = packet->length - 16;
+    const int serializedObjectSize = readIntLE(packet->data + packetLength - 4);
+    const auto objectType = static_cast<DatatypeEnum>(readIntLE(packet->data + packetLength - 8));
+
+    const auto info = fmt::format(", total size {}, type {}, metadata size {}", packet->length, objectType, serializedObjectSize);
 
     if(serializedObjectSize < 0) {
-        throw std::runtime_error("Bad packet, couldn't parse (metadata size negative)");
-    } else if(serializedObjectSize > static_cast<int>(packet->length)) {
-        throw std::runtime_error("Bad packet, couldn't parse (metadata size larger than packet length)");
+        throw std::runtime_error("Bad packet, couldn't parse (metadata size negative)" + info);
+    } else if(serializedObjectSize > static_cast<int>(packetLength)) {
+        throw std::runtime_error("Bad packet, couldn't parse (metadata size larger than packet length)" + info);
     }
-    if(static_cast<int>(packet->length) - 8 - serializedObjectSize < 0) {
-        throw std::runtime_error("Bad packet, couldn't parse (data too small)");
+    if(static_cast<int>(packetLength) - 8 - serializedObjectSize < 0) {
+        throw std::runtime_error("Bad packet, couldn't parse (data too small)" + info);
     }
-    const std::uint32_t bufferLength = packet->length - 8 - serializedObjectSize;
-    if(bufferLength > packet->length) {
-        throw std::runtime_error("Bad packet, couldn't parse (data too large)");
+    const std::uint32_t bufferLength = packetLength - 8 - serializedObjectSize;
+    if(bufferLength > packetLength) {
+        throw std::runtime_error("Bad packet, couldn't parse (data too large)" + info);
     }
     auto* const metadataStart = packet->data + bufferLength;
 
-    if(metadataStart < packet->data || metadataStart >= packet->data + packet->length) {
-        throw std::runtime_error("Bad packet, couldn't parse (metadata out of bounds)");
+    if(metadataStart < packet->data || metadataStart >= packet->data + packetLength) {
+        throw std::runtime_error("Bad packet, couldn't parse (metadata out of bounds)" + info);
     }
 
     return {objectType, serializedObjectSize, bufferLength};
@@ -212,7 +215,8 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
             break;
     }
 
-    throw std::runtime_error("Bad packet, couldn't parse");
+    throw std::runtime_error(
+        fmt::format("Bad packet, couldn't parse, total size {}, type {}, metadata size {}", packet->length, objectType, serializedObjectSize));
 }
 
 std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPacketDesc_t* const packet, DatatypeEnum& objectType) {
@@ -316,8 +320,10 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
             break;
     }
 
-    throw std::runtime_error("Bad packet, couldn't parse (invalid message type)");
+    throw std::runtime_error(fmt::format(
+        "Bad packet, couldn't parse (invalid message type), total size {}, type {}, metadata size {}", packet->length, objectType, serializedObjectSize));
 }
+
 std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPacketDesc_t* const packet) {
     DatatypeEnum objectType;
     return parseMessageToADatatype(packet, objectType);
