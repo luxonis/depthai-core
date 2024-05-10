@@ -10,18 +10,13 @@ DepthAlign::DepthAlign(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId,
     : NodeCRTP<Node, DepthAlign, DepthAlignProperties>(par, nodeId, std::move(props)),
       rawConfig(std::make_shared<RawDepthAlignConfig>()),
       initialConfig(rawConfig) {
-    setInputRefs({&inputConfig, &inputDepth});
-    setOutputRefs({&outputAlignedDepth, &passthroughDepth});
+    setInputRefs({&inputConfig, &input, &inputAlignTo});
+    setOutputRefs({&outputAligned, &passthroughInput});
 }
 
 DepthAlign::Properties& DepthAlign::getProperties() {
     properties.initialConfig = *rawConfig;
     return properties;
-}
-
-DepthAlign& DepthAlign::setAlignTo(CameraBoardSocket alignTo) {
-    properties.alignTo = alignTo;
-    return *this;
 }
 
 DepthAlign& DepthAlign::setOutputSize(int alignWidth, int alignHeight) {
