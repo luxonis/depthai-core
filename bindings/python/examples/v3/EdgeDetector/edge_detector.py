@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import queue
 
 import cv2
 import depthai as dai
@@ -18,6 +19,24 @@ def init_configs():
     return {'1': cfg1, '2': cfg2}
 
 CONFIGS = init_configs()
+
+
+class InputConfig(dai.node.ThreadedHostNode):
+
+    def __init__(self, input_config: dai.Node.Input):
+        dai.node.ThreadedHostNode.__init__(self)
+        self.input_config = input_config
+        self.output = dai.Node.Output(self)
+        self.output.link(input_config)
+        self.input_config_q = queue.Queue()
+
+    def run(self):
+        while self.isRunning():
+            try:
+                config = self.input_config_q.get(block=True, timeout=1)
+                self.output.send(config)
+            except queue.Empty:
+                pass
 
 
 with dai.Pipeline() as pipeline:
@@ -49,6 +68,9 @@ with dai.Pipeline() as pipeline:
     edgeRgbQueue = edgeDetectorRgb.outputImage.createQueue(blocking=False, maxSize=8)
     videoQueue = camRgb.video.createQueue(blocking=False, maxSize=8)
 
+    # TODO - replace this with edgeDetector.inputConfig.createQueue() when available
+    inputConfigNodes = [InputConfig(edgeDetector.inputConfig) for edgeDetector in edgeDetectors]
+
     pipeline.start()
     while pipeline.isRunning():
         edgeLeftFrame : dai.ImgFrame = edgeLeftQueue.get()
@@ -71,8 +93,8 @@ with dai.Pipeline() as pipeline:
             break
         elif key in CONFIGS:
             print(f'Switching Sobel filter to {key}...')
-            for edgeDetector in edgeDetectors:
-                edgeDetector.inputConfig.send(CONFIGS[key])
+            for inputConfigNode in inputConfigNodes:
+                inputConfigNode.input_config_q.put(CONFIGS[key])
 
     pipeline.stop()
     pipeline.wait()
