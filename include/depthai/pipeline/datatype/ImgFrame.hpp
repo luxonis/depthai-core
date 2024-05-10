@@ -391,7 +391,7 @@ class ImgFrame : public Buffer {
      *
      * @param frame Input cv::Mat BGR frame from which to copy the data
      */
-    ImgFrame& setCvFrame(cv::Mat frame, Type type);
+    ImgFrame& setCvFrame(const cv::Mat& frame, Type type);
 
 #else
 

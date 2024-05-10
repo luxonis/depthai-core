@@ -299,6 +299,7 @@ hunter_private_data(
 # dai_add_example(image_manip_tiling ImageManip/image_manip_tiling.cpp ON OFF)
 # dai_add_example(rgb_rotate_warp ImageManip/rgb_rotate_warp.cpp ON OFF)
 # dai_add_example(image_manip_warp_mesh ImageManip/image_manip_warp_mesh.cpp ON OFF)
+dai_add_example(image_manip_cc_test ImageManip/image_manip_cc_test.cpp ON OFF)
 #
 # # Warp
 # dai_add_example(warp_mesh Warp/warp_mesh.cpp ON OFF)

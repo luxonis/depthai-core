@@ -183,7 +183,7 @@ cv::Mat ImgFrame::getCvFrame() {
     return output;
 }
 
-ImgFrame& ImgFrame::setCvFrame(cv::Mat mat, Type type) {
+ImgFrame& ImgFrame::setCvFrame(const cv::Mat& mat, Type type) {
     cv::Mat output;
     setType(type);
     setSize(mat.cols, mat.rows);
