@@ -748,6 +748,14 @@ class DeviceBase {
     void flashCalibration2(CalibrationHandler calibrationDataHandler);
 
     /**
+     * Sets the Calibration at runtime. This is not persistent and will be lost after device reset.
+     *
+     * @param calibrationObj CalibrationHandler object which is loaded with calibration information.
+     *
+     */
+    void setCalibration(CalibrationHandler calibrationDataHandler);
+
+    /**
      * Fetches the EEPROM data from the device and loads it into CalibrationHandler object
      * If no calibration is flashed, it returns default
      *

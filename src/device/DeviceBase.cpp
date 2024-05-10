@@ -1359,6 +1359,10 @@ void DeviceBase::flashCalibration2(CalibrationHandler calibrationDataHandler) {
     }
 }
 
+void DeviceBase::setCalibration(CalibrationHandler calibrationDataHandler) {
+    pimpl->rpcClient->call("setCalibration", calibrationDataHandler.getEepromData());
+}
+
 CalibrationHandler DeviceBase::readCalibration() {
     dai::EepromData eepromData{};
     try {
