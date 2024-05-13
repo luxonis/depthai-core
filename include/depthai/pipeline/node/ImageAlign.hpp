@@ -6,40 +6,40 @@
 #include <fstream>
 
 // shared
-#include <depthai-shared/properties/DepthAlignProperties.hpp>
+#include <depthai-shared/properties/ImageAlignProperties.hpp>
 
-#include "depthai/pipeline/datatype/DepthAlignConfig.hpp"
+#include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
 
 namespace dai {
 namespace node {
 
 /**
- * @brief DepthAlign node. Calculates spatial location data on a set of ROIs on depth map.
+ * @brief ImageAlign node. Calculates spatial location data on a set of ROIs on depth map.
  */
-class DepthAlign : public NodeCRTP<Node, DepthAlign, DepthAlignProperties> {
+class ImageAlign : public NodeCRTP<Node, ImageAlign, ImageAlignProperties> {
    public:
-    constexpr static const char* NAME = "DepthAlign";
+    constexpr static const char* NAME = "ImageAlign";
 
    protected:
     Properties& getProperties();
 
    private:
-    std::shared_ptr<RawDepthAlignConfig> rawConfig;
+    std::shared_ptr<RawImageAlignConfig> rawConfig;
 
    public:
-    DepthAlign(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
-    DepthAlign(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
+    ImageAlign(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId);
+    ImageAlign(const std::shared_ptr<PipelineImpl>& par, int64_t nodeId, std::unique_ptr<Properties> props);
 
     /**
      * Initial config to use when calculating spatial location data.
      */
-    DepthAlignConfig initialConfig;
+    ImageAlignConfig initialConfig;
 
     /**
      * Input message with ability to modify parameters in runtime.
      * Default queue is non-blocking with size 4.
      */
-    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::DepthAlignConfig, false}}};
+    Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ImageAlignConfig, false}}};
 
     /**
      * Input message.
@@ -67,7 +67,7 @@ class DepthAlign : public NodeCRTP<Node, DepthAlign, DepthAlignProperties> {
     /**
      * Specify the output size of the aligned depth map
      */
-    DepthAlign& setOutputSize(int alignWidth, int alignHeight);
+    ImageAlign& setOutputSize(int alignWidth, int alignHeight);
 };
 
 }  // namespace node

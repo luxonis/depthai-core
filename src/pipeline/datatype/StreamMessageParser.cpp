@@ -14,11 +14,11 @@
 #include "depthai/pipeline/datatype/AprilTags.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
-#include "depthai/pipeline/datatype/DepthAlignConfig.hpp"
 #include "depthai/pipeline/datatype/EdgeDetectorConfig.hpp"
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
+#include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
@@ -41,11 +41,11 @@
 #include "depthai-shared/datatype/RawAprilTags.hpp"
 #include "depthai-shared/datatype/RawBuffer.hpp"
 #include "depthai-shared/datatype/RawCameraControl.hpp"
-#include "depthai-shared/datatype/RawDepthAlignConfig.hpp"
 #include "depthai-shared/datatype/RawEdgeDetectorConfig.hpp"
 #include "depthai-shared/datatype/RawEncodedFrame.hpp"
 #include "depthai-shared/datatype/RawFeatureTrackerConfig.hpp"
 #include "depthai-shared/datatype/RawIMUData.hpp"
+#include "depthai-shared/datatype/RawImageAlignConfig.hpp"
 #include "depthai-shared/datatype/RawImageManipConfig.hpp"
 #include "depthai-shared/datatype/RawImgDetections.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
@@ -212,8 +212,8 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::MessageGroup:
             return parseDatatype<RawMessageGroup>(metadataStart, serializedObjectSize, data);
             break;
-        case DatatypeEnum::DepthAlignConfig:
-            return parseDatatype<RawDepthAlignConfig>(metadataStart, serializedObjectSize, data);
+        case DatatypeEnum::ImageAlignConfig:
+            return parseDatatype<RawImageAlignConfig>(metadataStart, serializedObjectSize, data);
             break;
     }
 
@@ -319,8 +319,8 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
         case DatatypeEnum::MessageGroup:
             return std::make_shared<MessageGroup>(parseDatatype<RawMessageGroup>(metadataStart, serializedObjectSize, data));
             break;
-        case DatatypeEnum::DepthAlignConfig:
-            return std::make_shared<DepthAlignConfig>(parseDatatype<RawDepthAlignConfig>(metadataStart, serializedObjectSize, data));
+        case DatatypeEnum::ImageAlignConfig:
+            return std::make_shared<ImageAlignConfig>(parseDatatype<RawImageAlignConfig>(metadataStart, serializedObjectSize, data));
             break;
     }
 

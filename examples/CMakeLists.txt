@@ -244,7 +244,7 @@ dai_add_example(edge_detector EdgeDetector/edge_detector.cpp ON OFF)
 dai_add_example(feature_detector FeatureTracker/feature_detector.cpp ON OFF)
 dai_add_example(feature_tracker FeatureTracker/feature_tracker.cpp ON OFF)
 
-# dai_add_example(depth_align DepthAlign/rgb_depth_align.cpp ON)
+# dai_add_example(image_align ImageAlign/rgb_image_align.cpp ON)
 
 # host_side
 dai_add_example(device_queue_event host_side/device_queue_event.cpp ON OFF)
