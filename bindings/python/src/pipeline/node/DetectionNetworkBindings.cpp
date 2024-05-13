@@ -53,7 +53,6 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
                 return std::static_pointer_cast<DetectionNetwork>(self.shared_from_this());
             },
             DETECTION_NETWORK_BUILD_PYARGS,
-            py::kw_only(),
             DETECTION_NETWORK_PYARGS)
         .def(py::init([](DETECTION_NETWORK_BUILD_ARGS, DETECTION_NETWORK_ARGS) {
                  auto self = getImplicitPipeline().create<DetectionNetwork>();
@@ -62,7 +61,6 @@ void bind_detectionnetwork(pybind11::module& m, void* pCallstack) {
                  return self;
              }),
              DETECTION_NETWORK_BUILD_PYARGS,
-             py::kw_only(),
              DETECTION_NETWORK_PYARGS)
         // Copied from NN node
         .def("setBlobPath", &DetectionNetwork::setBlobPath, py::arg("path"), DOC(dai, node, DetectionNetwork, setBlobPath))

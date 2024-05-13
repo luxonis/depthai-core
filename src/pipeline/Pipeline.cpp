@@ -826,11 +826,13 @@ void PipelineImpl::build() {
 void PipelineImpl::start() {
     std::lock_guard<std::mutex> lock(stateMtx);
     // TODO(themarpe) - add mutex and set running up ahead
-    for(const auto& node : getAllNodes()) {
-        if(node->needsBuild()) {
-            throw std::runtime_error(fmt::format("Node '{}' was not built", node->getName()));
-        }
-    }
+
+    // TODO(Morato) - add back in when more nodes are tested
+    // for(const auto& node : getAllNodes()) {
+    //     if (node->needsBuild()) {
+    //         throw std::runtime_error(fmt::format("Node '{}' was not built", node->getName()));
+    //     }
+    // }
 
     // Implicitly build (if not already)
     build();
