@@ -667,7 +667,8 @@ void PipelineImpl::build() {
             throw std::runtime_error("Holistic record/replay is only supported on RVC2 devices for now.");
         }
 #else
-        throw std::runtime_error("Merged target is required to use holistic record/replay.");
+        recordConfig.state = utility::RecordConfig::RecordReplayState::NONE;
+        spdlog::warn("Merged target is required to use holistic record/replay.");
 #endif
     }
 
@@ -1000,7 +1001,7 @@ void Pipeline::enableHolisticRecord(const utility::RecordConfig& config) {
     if(this->isRunning()) {
         throw std::runtime_error("Cannot enable record while pipeline is running");
     }
-    if (!platform::checkPathExists(config.outputDir, true)) {
+    if(!platform::checkPathExists(config.outputDir, true)) {
         throw std::runtime_error("Record output directory does not exist or is invalid");
     }
     impl()->recordConfig = config;
@@ -1012,7 +1013,7 @@ void Pipeline::enableHolisticReplay(const std::string& pathToRecording) {
     if(this->isRunning()) {
         throw std::runtime_error("Cannot enable replay while pipeline is running");
     }
-    if (!platform::checkPathExists(pathToRecording, false)) {
+    if(!platform::checkPathExists(pathToRecording, false)) {
         throw std::runtime_error("Replay file does not exist or is invalid");
     }
     impl()->recordConfig.outputDir = pathToRecording;

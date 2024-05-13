@@ -11,7 +11,7 @@
 #include "depthai/properties/VideoEncoderProperties.hpp"
 #include "depthai/utility/RecordReplay.hpp"
 #include "depthai/utility/span.hpp"
-#include "utility/RecordReplaySchema.hpp"
+#include "depthai/utility/RecordReplaySchema.hpp"
 
 namespace dai {
 namespace node {

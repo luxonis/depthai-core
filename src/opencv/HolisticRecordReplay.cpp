@@ -6,9 +6,9 @@
 #include "depthai/pipeline/node/host/Replay.hpp"
 #include "depthai/utility/Compression.hpp"
 #include "depthai/utility/RecordReplay.hpp"
-#include "pipeline/node/Camera.hpp"
-#include "pipeline/node/ColorCamera.hpp"
-#include "pipeline/node/MonoCamera.hpp"
+#include "depthai/pipeline/node/Camera.hpp"
+#include "depthai/pipeline/node/ColorCamera.hpp"
+#include "depthai/pipeline/node/MonoCamera.hpp"
 
 namespace dai {
 namespace utility {
