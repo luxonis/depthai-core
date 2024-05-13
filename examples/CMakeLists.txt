@@ -471,3 +471,8 @@ dai_add_example(replay_imu Replay/replay_imu.cpp ON OFF)
 if(DEPTHAI_HAVE_PCL_SUPPORT)
     dai_add_example(visualize_pointcloud PointCloud/visualize_pointcloud.cpp ON ON)
 endif()
+
+if(DEPTHAI_MERGED_TARGET)
+    dai_add_example(holistic_record Record/holistic_record.cpp ON OFF)
+    dai_add_example(holistic_replay Replay/holistic_replay.cpp ON OFF)
+endif()

@@ -609,12 +609,28 @@ void PipelineImpl::build() {
                 std::string recordPath = utility::getEnv("DEPTHAI_RECORD");
                 std::string replayPath = utility::getEnv("DEPTHAI_REPLAY");
 
+                if(enableHolisticRecordReplay) {
+                    switch(recordConfig.state) {
+                        case utility::RecordConfig::RecordReplayState::RECORD:
+                            recordPath = recordConfig.outputDir;
+                            replayPath = "";
+                            break;
+                        case utility::RecordConfig::RecordReplayState::REPLAY:
+                            recordPath = "";
+                            replayPath = recordConfig.outputDir;
+                            break;
+                        case utility::RecordConfig::RecordReplayState::NONE:
+                            enableHolisticRecordReplay = false;
+                            break;
+                    }
+                }
+
                 defaultDeviceMxId = defaultDevice->getMxId();
 
                 if(!recordPath.empty() && !replayPath.empty()) {
                     spdlog::warn("Both DEPTHAI_RECORD and DEPTHAI_REPLAY are set. Record and replay disabled.");
                 } else if(!recordPath.empty()) {
-                    if(utility::checkRecordConfig(recordPath, recordConfig)) {
+                    if(enableHolisticRecordReplay || utility::checkRecordConfig(recordPath, recordConfig)) {
                         if(platform::checkWritePermissions(recordPath)) {
                             if(setupHolisticRecord(parent, defaultDeviceMxId, recordConfig, recordReplayFilenames)) {
                                 recordConfig.state = utility::RecordConfig::RecordReplayState::RECORD;
@@ -811,7 +827,7 @@ void PipelineImpl::start() {
     std::lock_guard<std::mutex> lock(stateMtx);
     // TODO(themarpe) - add mutex and set running up ahead
     for(const auto& node : getAllNodes()) {
-        if (node->needsBuild()) {
+        if(node->needsBuild()) {
             throw std::runtime_error(fmt::format("Node '{}' was not built", node->getName()));
         }
     }
@@ -975,6 +991,31 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd)
 
     // If no handler executed, then return nullptr
     throw std::invalid_argument(fmt::format("No handler specified for following ({}) URI", uri));
+}
+
+// Record and Replay
+void Pipeline::enableHolisticRecord(const utility::RecordConfig& config) {
+    if(this->isRunning()) {
+        throw std::runtime_error("Cannot enable record while pipeline is running");
+    }
+    if (!platform::checkPathExists(config.outputDir, true)) {
+        throw std::runtime_error("Record output directory does not exist or is invalid");
+    }
+    impl()->recordConfig = config;
+    impl()->recordConfig.state = utility::RecordConfig::RecordReplayState::RECORD;
+    impl()->enableHolisticRecordReplay = true;
+}
+
+void Pipeline::enableHolisticReplay(const std::string& pathToRecording) {
+    if(this->isRunning()) {
+        throw std::runtime_error("Cannot enable replay while pipeline is running");
+    }
+    if (!platform::checkPathExists(pathToRecording, false)) {
+        throw std::runtime_error("Replay file does not exist or is invalid");
+    }
+    impl()->recordConfig.outputDir = pathToRecording;
+    impl()->recordConfig.state = utility::RecordConfig::RecordReplayState::REPLAY;
+    impl()->enableHolisticRecordReplay = true;
 }
 
 }  // namespace dai

@@ -109,6 +109,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
 
     // Record and Replay
     utility::RecordConfig recordConfig;
+    bool enableHolisticRecordReplay = false;
     std::unordered_map<std::string, std::string> recordReplayFilenames;
     std::string defaultDeviceMxId;
 
@@ -481,6 +482,10 @@ class Pipeline {
     void processTasks() {
         impl()->processTasks();
     }
+
+    /// Record and Replay
+    void enableHolisticRecord(const utility::RecordConfig& config);
+    void enableHolisticReplay(const std::string& pathToRecording);
 };
 
 }  // namespace dai
