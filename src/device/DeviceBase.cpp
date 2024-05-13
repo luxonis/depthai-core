@@ -1751,6 +1751,12 @@ std::tuple<bool, std::string> DeviceBase::tiny1cRmCoverStsSwitch(uint8_t mode) {
 std::tuple<bool, std::string> DeviceBase::tiny1cRmCoverAutoCalc(uint8_t zoomStep) {
     return pimpl->rpcClient->call("tiny1cRmCoverAutoCalc", zoomStep).as<std::tuple<bool, std::string>>();
 }
+std::tuple<bool, std::string> DeviceBase::tiny1cTpdKtbtRecal2Point(uint8_t point_idx, uint16_t temp) {
+    return pimpl->rpcClient->call("tiny1cTpdKtbtRecal2Point", point_idx, temp).as<std::tuple<bool, std::string>>();
+}
+std::tuple<bool, std::string> DeviceBase::tiny1cTpdKtbtRecal1Point(uint8_t temp) {
+    return pimpl->rpcClient->call("tiny1cTpdKtbtRecal1Point", temp).as<std::tuple<bool, std::string>>();
+}
 // template <typename T>
 // bool DeviceBootloader::sendRequest(const T& request) {
 //     if(stream == nullptr) return false;

@@ -986,6 +986,22 @@ class DeviceBase {
      * @return std::tuple<bool, std::string>
      */
     std::tuple<bool, std::string> tiny1cRmCoverAutoCalc(uint8_t zoomScale);
+
+    /**
+     * @brief tiny1cTpdKtbtRecal2Point
+     *
+     * @param point_idx 0 or 1
+     * @param temp
+     * @return std::tuple<bool, std::string>
+     */
+    std::tuple<bool, std::string> tiny1cTpdKtbtRecal2Point(uint8_t point_idx, uint16_t temp);
+    /**
+     * @brief tiny1cTpdKtbtRecal1Point
+     *
+     * @param temp
+     * @return std::tuple<bool, std::string>
+     */
+    std::tuple<bool, std::string> tiny1cTpdKtbtRecal1Point(uint8_t temp);
     // !.................... Tiny1c specific ....................!
 
    protected:
