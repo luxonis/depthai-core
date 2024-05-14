@@ -7,6 +7,7 @@
 // libraries
 #include <XLink/XLinkPublicDefines.h>
 #include <spdlog/spdlog.h>
+#include "utility/Logging.hpp"
 
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
@@ -88,9 +89,20 @@ static std::tuple<DatatypeEnum, size_t, size_t> parseHeader(streamPacketDesc_t* 
     if(packet->length < 24) {
         throw std::runtime_error(fmt::format("Bad packet, couldn't parse (not enough data), total size {}", packet->length));
     }
-    const std::uint32_t packetLength = packet->length - 16;
+    const std::uint32_t markerLength = 16;
+    const std::uint32_t packetLength = packet->length - markerLength;
     const int serializedObjectSize = readIntLE(packet->data + packetLength - 4);
     const auto objectType = static_cast<DatatypeEnum>(readIntLE(packet->data + packetLength - 8));
+
+    static const uint8_t expectedMarker[] = {0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0};
+    uint8_t* marker = packet->data + packetLength;
+    if(memcmp(marker, expectedMarker, markerLength) != 0) {
+        std::string hex;
+        for(std::uint32_t i = 0; i < markerLength; i++) {
+            hex += fmt::format("{:02X}", marker[i]);
+        }
+        logger::warn("StreamMessageParser end-of-packet marker mismatch, got: " + hex);
+    }
 
     const auto info = fmt::format(", total size {}, type {}, metadata size {}", packet->length, objectType, serializedObjectSize);
 
