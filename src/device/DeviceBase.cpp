@@ -1757,6 +1757,9 @@ std::tuple<bool, std::string> DeviceBase::tiny1cTpdKtbtRecal2Point(uint8_t point
 std::tuple<bool, std::string> DeviceBase::tiny1cTpdKtbtRecal1Point(uint8_t temp) {
     return pimpl->rpcClient->call("tiny1cTpdKtbtRecal1Point", temp).as<std::tuple<bool, std::string>>();
 }
+std::tuple<bool, std::string> DeviceBase::tiny1cRestoreDefaultCfg(dai::Tiny1cPropDefaultCfg cfg) {
+    return pimpl->rpcClient->call("tiny1cRestoreDefaultCfg", cfg).as<std::tuple<bool, std::string>>();
+}
 // template <typename T>
 // bool DeviceBootloader::sendRequest(const T& request) {
 //     if(stream == nullptr) return false;

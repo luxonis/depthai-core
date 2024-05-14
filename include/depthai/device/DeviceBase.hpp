@@ -1002,6 +1002,13 @@ class DeviceBase {
      * @return std::tuple<bool, std::string>
      */
     std::tuple<bool, std::string> tiny1cTpdKtbtRecal1Point(uint8_t temp);
+    /**
+     * @brief tiny1cRestoreDefaultCfg
+     *
+     * @param cfg
+     * @return std::tuple<bool, std::string>
+     */
+    std::tuple<bool, std::string> tiny1cRestoreDefaultCfg(dai::Tiny1cPropDefaultCfg cfg);
     // !.................... Tiny1c specific ....................!
 
    protected:
