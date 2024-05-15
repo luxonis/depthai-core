@@ -470,8 +470,6 @@ dai_add_example(threaded_host_node_v3 v3/HostNodes/threaded_host_node.cpp ON OFF
 dai_add_example(replay_video_meta Replay/replay_video_meta.cpp ON OFF)
 
 dai_add_example(camera_multiple_outputs Camera/camera_multiple_outputs.cpp ON OFF)
-dai_add_example(detection_2x AutoPipeline/detection_2x.cpp ON OFF)
-target_compile_definitions(detection_2x PRIVATE NN_ARCHIVE_PATH="${nn_archive_yolo_v6_tar_xz}" NN_ARCHIVE_PATH_2="${nn_archive_yolo_v6_tar_xz}")
 
 if(DEPTHAI_HAVE_PCL_SUPPORT)
     dai_add_example(visualize_pointcloud PointCloud/visualize_pointcloud.cpp ON ON)
