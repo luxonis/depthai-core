@@ -8,6 +8,8 @@
 #include <XLink/XLinkPublicDefines.h>
 #include <spdlog/spdlog.h>
 
+#include "utility/Logging.hpp"
+
 // project
 #include "depthai/pipeline/datatype/ADatatype.hpp"
 #include "depthai/pipeline/datatype/AprilTagConfig.hpp"
@@ -18,6 +20,7 @@
 #include "depthai/pipeline/datatype/EncodedFrame.hpp"
 #include "depthai/pipeline/datatype/FeatureTrackerConfig.hpp"
 #include "depthai/pipeline/datatype/IMUData.hpp"
+#include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
 #include "depthai/pipeline/datatype/ImageManipConfig.hpp"
 #include "depthai/pipeline/datatype/ImgDetections.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
@@ -44,6 +47,7 @@
 #include "depthai-shared/datatype/RawEncodedFrame.hpp"
 #include "depthai-shared/datatype/RawFeatureTrackerConfig.hpp"
 #include "depthai-shared/datatype/RawIMUData.hpp"
+#include "depthai-shared/datatype/RawImageAlignConfig.hpp"
 #include "depthai-shared/datatype/RawImageManipConfig.hpp"
 #include "depthai-shared/datatype/RawImgDetections.hpp"
 #include "depthai-shared/datatype/RawImgFrame.hpp"
@@ -83,28 +87,42 @@ inline std::shared_ptr<T> parseDatatype(std::uint8_t* metadata, size_t size, std
 }
 
 static std::tuple<DatatypeEnum, size_t, size_t> parseHeader(streamPacketDesc_t* const packet) {
-    if(packet->length < 8) {
-        throw std::runtime_error("Bad packet, couldn't parse (not enough data)");
+    if(packet->length < 24) {
+        throw std::runtime_error(fmt::format("Bad packet, couldn't parse (not enough data), total size {}", packet->length));
     }
-    const int serializedObjectSize = readIntLE(packet->data + packet->length - 4);
-    const auto objectType = static_cast<DatatypeEnum>(readIntLE(packet->data + packet->length - 8));
+    const std::uint32_t markerLength = 16;
+    const std::uint32_t packetLength = packet->length - markerLength;
+    const int serializedObjectSize = readIntLE(packet->data + packetLength - 4);
+    const auto objectType = static_cast<DatatypeEnum>(readIntLE(packet->data + packetLength - 8));
+
+    static const uint8_t expectedMarker[] = {0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0};
+    uint8_t* marker = packet->data + packetLength;
+    if(memcmp(marker, expectedMarker, markerLength) != 0) {
+        std::string hex;
+        for(std::uint32_t i = 0; i < markerLength; i++) {
+            hex += fmt::format("{:02X}", marker[i]);
+        }
+        logger::warn("StreamMessageParser end-of-packet marker mismatch, got: " + hex);
+    }
+
+    const auto info = fmt::format(", total size {}, type {}, metadata size {}", packet->length, objectType, serializedObjectSize);
 
     if(serializedObjectSize < 0) {
-        throw std::runtime_error("Bad packet, couldn't parse (metadata size negative)");
-    } else if(serializedObjectSize > static_cast<int>(packet->length)) {
-        throw std::runtime_error("Bad packet, couldn't parse (metadata size larger than packet length)");
+        throw std::runtime_error("Bad packet, couldn't parse (metadata size negative)" + info);
+    } else if(serializedObjectSize > static_cast<int>(packetLength)) {
+        throw std::runtime_error("Bad packet, couldn't parse (metadata size larger than packet length)" + info);
     }
-    if(static_cast<int>(packet->length) - 8 - serializedObjectSize < 0) {
-        throw std::runtime_error("Bad packet, couldn't parse (data too small)");
+    if(static_cast<int>(packetLength) - 8 - serializedObjectSize < 0) {
+        throw std::runtime_error("Bad packet, couldn't parse (data too small)" + info);
     }
-    const std::uint32_t bufferLength = packet->length - 8 - serializedObjectSize;
-    if(bufferLength > packet->length) {
-        throw std::runtime_error("Bad packet, couldn't parse (data too large)");
+    const std::uint32_t bufferLength = packetLength - 8 - serializedObjectSize;
+    if(bufferLength > packetLength) {
+        throw std::runtime_error("Bad packet, couldn't parse (data too large)" + info);
     }
     auto* const metadataStart = packet->data + bufferLength;
 
-    if(metadataStart < packet->data || metadataStart >= packet->data + packet->length) {
-        throw std::runtime_error("Bad packet, couldn't parse (metadata out of bounds)");
+    if(metadataStart < packet->data || metadataStart >= packet->data + packetLength) {
+        throw std::runtime_error("Bad packet, couldn't parse (metadata out of bounds)" + info);
     }
 
     return {objectType, serializedObjectSize, bufferLength};
@@ -210,9 +228,13 @@ std::shared_ptr<RawBuffer> StreamMessageParser::parseMessage(streamPacketDesc_t*
         case DatatypeEnum::MessageGroup:
             return parseDatatype<RawMessageGroup>(metadataStart, serializedObjectSize, data);
             break;
+        case DatatypeEnum::ImageAlignConfig:
+            return parseDatatype<RawImageAlignConfig>(metadataStart, serializedObjectSize, data);
+            break;
     }
 
-    throw std::runtime_error("Bad packet, couldn't parse");
+    throw std::runtime_error(
+        fmt::format("Bad packet, couldn't parse, total size {}, type {}, metadata size {}", packet->length, objectType, serializedObjectSize));
 }
 
 std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPacketDesc_t* const packet, DatatypeEnum& objectType) {
@@ -314,10 +336,15 @@ std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPa
         case DatatypeEnum::MessageGroup:
             return std::make_shared<MessageGroup>(parseDatatype<RawMessageGroup>(metadataStart, serializedObjectSize, data));
             break;
+        case DatatypeEnum::ImageAlignConfig:
+            return std::make_shared<ImageAlignConfig>(parseDatatype<RawImageAlignConfig>(metadataStart, serializedObjectSize, data));
+            break;
     }
 
-    throw std::runtime_error("Bad packet, couldn't parse (invalid message type)");
+    throw std::runtime_error(fmt::format(
+        "Bad packet, couldn't parse (invalid message type), total size {}, type {}, metadata size {}", packet->length, objectType, serializedObjectSize));
 }
+
 std::shared_ptr<ADatatype> StreamMessageParser::parseMessageToADatatype(streamPacketDesc_t* const packet) {
     DatatypeEnum objectType;
     return parseMessageToADatatype(packet, objectType);
