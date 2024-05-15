@@ -7,6 +7,7 @@
 // libraries
 #include <XLink/XLinkPublicDefines.h>
 #include <spdlog/spdlog.h>
+
 #include "utility/Logging.hpp"
 
 // project
