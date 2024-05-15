@@ -137,8 +137,11 @@ class DetectionParser : public DeviceNodeCRTP<DeviceNode, DetectionParser, Detec
     /// Get Iou threshold
     float getIouThreshold() const;
 
+    const NNArchive* getNNArchive() const;
+
    private:
     std::optional<std::vector<std::string>> mClasses;
+    std::optional<NNArchive> mArchive;
 };
 
 }  // namespace node

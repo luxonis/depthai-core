@@ -153,7 +153,7 @@ cv::Mat ImgFrame::getCvFrame() {
         case Type::NV12:
         case Type::NV21: {
             int code = (getType() == Type::NV12) ? cv::ColorConversionCodes::COLOR_YUV2BGR_NV12 : cv::ColorConversionCodes::COLOR_YUV2BGR_NV21;
-            if(getPlaneHeight() <= getHeight()) {
+            if(getPlaneHeight() <= getHeight() && getStride() <= getWidth()) {
                 cv::cvtColor(frame, output, code);
             } else {
                 cv::Size s(getWidth(), getHeight());
@@ -293,12 +293,12 @@ ImgFrame& ImgFrame::setCvFrame(cv::Mat mat, Type type) {
             fb.width = mat.cols;
             fb.height = mat.rows;
             fb.stride = type == Type::GRAY8 ? mat.cols : mat.cols * 2;
-            if (mat.channels() == 3) {
+            if(mat.channels() == 3) {
                 cv::cvtColor(mat, output, cv::ColorConversionCodes::COLOR_BGR2GRAY);
             } else {
                 output = mat;
             }
-            if (type == Type::GRAY8) {
+            if(type == Type::GRAY8) {
                 output.convertTo(output, CV_8UC1);
             } else {
                 output.convertTo(output, CV_16FC1);

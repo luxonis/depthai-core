@@ -135,6 +135,10 @@ set(SOURCE_LIST
     src/pipeline/datatype/BenchmarkReportBindings.cpp
     src/pipeline/datatype/PointCloudConfigBindings.cpp
     src/pipeline/datatype/PointCloudDataBindings.cpp
+
+    src/capabilities/CapabilityBindings.cpp
+    src/capabilities/CapabilityRangeBindings.cpp
+    src/capabilities/ImgFrameCapabilityBindings.cpp
 )
 
 # Add files for python module

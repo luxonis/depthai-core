@@ -38,4 +38,5 @@ _builds/
 # clangd cache
 .cache/
 
+*.swp
 /env
