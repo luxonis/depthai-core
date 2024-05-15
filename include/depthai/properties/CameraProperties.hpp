@@ -32,15 +32,6 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
      */
     enum class ColorOrder : int32_t { BGR, RGB };
 
-    struct OutputSpec {
-        std::string outputName;
-        int32_t width;
-        int32_t height;
-        int32_t fps;
-
-        DEPTHAI_SERIALIZE(OutputSpec, outputName, width, height, fps);
-    };
-
     std::vector<ImgFrameCapability> outputRequests;
 
     /**
