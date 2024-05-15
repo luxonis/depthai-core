@@ -55,6 +55,12 @@ class Cast : public NodeCRTP<Node, Cast, CastProperties> {
      * @param scale Scale
      */
     Cast& setScale(float scale);
+
+    /**
+     * Set offset
+     * @param offset Offset
+     */
+    Cast& setOffset(float offset);
 };
 
 }  // namespace node

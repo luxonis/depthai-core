@@ -46,7 +46,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.25.0" LANGUAGES CXX C)
+project(depthai VERSION "2.25.1" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -219,6 +219,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/DetectionNetwork.cpp
     src/pipeline/node/Script.cpp
     src/pipeline/node/SpatialDetectionNetwork.cpp
+    src/pipeline/node/ImageAlign.cpp
     src/pipeline/node/SystemLogger.cpp
     src/pipeline/node/SpatialLocationCalculator.cpp
     src/pipeline/node/AprilTag.cpp
@@ -251,6 +252,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/EdgeDetectorConfig.cpp
     src/pipeline/datatype/TrackedFeatures.cpp
     src/pipeline/datatype/FeatureTrackerConfig.cpp
+    src/pipeline/datatype/ImageAlignConfig.cpp
     src/pipeline/datatype/ToFConfig.cpp
     src/pipeline/datatype/PointCloudConfig.cpp
     src/pipeline/datatype/PointCloudData.cpp
@@ -303,7 +305,7 @@ option(DEPTHAI_BUILD_TESTS "Build tests" OFF)
 option(DEPTHAI_BUILD_EXAMPLES "Build examples - Requires OpenCV library to be installed" OFF)
 option(DEPTHAI_BUILD_DOCS "Build documentation - requires doxygen to be installed" OFF)
 option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
-option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" ON)
+option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
 
 
 option(DEPTHAI_BINARIES_RESOURCE_COMPILE "Compile Depthai device side binaries into library" ON)

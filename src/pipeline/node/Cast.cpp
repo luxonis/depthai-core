@@ -27,5 +27,10 @@ Cast& Cast::setScale(float scale) {
     return *this;
 }
 
+Cast& Cast::setOffset(float offset) {
+    properties.offset = offset;
+    return *this;
+}
+
 }  // namespace node
 }  // namespace dai
