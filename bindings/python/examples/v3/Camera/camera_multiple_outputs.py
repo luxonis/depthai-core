@@ -12,7 +12,7 @@ def exit_usage():
     print(
         "WRONG USAGE! correct usage example:\n"
         "python camera_multiple_outputs.py 640 480 0 300 300 0 300 300 1\n"
-        "where 0 is resize mode: 0 == COVER, 1 == FILL, 2 == CONTAIN"
+        "where 0 is resize mode: 0 == CROP, 1 == STRETCH, 2 == LETTERBOX"
     )
     exit(1)
 
@@ -30,7 +30,7 @@ with dai.Device(info) as device:
         cam = pipeline.create(dai.node.Camera)
 
         # Properties
-        cam.setBoardSocket(dai.CameraBoardSocket.CAM_B)
+        cam.setBoardSocket(dai.CameraBoardSocket.CAM_A)
 
         queues = []
         for i in range(0, len(args), 3):
@@ -38,11 +38,11 @@ with dai.Device(info) as device:
             cap.size.fixed([int(args[i]), int(args[i + 1])])
             cropArg = int(args[i + 2])
             if cropArg == 0:
-                cap.resizeMode = dai.ImgResizeMode.COVER
+                cap.resizeMode = dai.ImgResizeMode.CROP
             elif cropArg == 1:
-                cap.resizeMode = dai.ImgResizeMode.FILL
+                cap.resizeMode = dai.ImgResizeMode.STRETCH
             elif cropArg == 2:
-                cap.resizeMode = dai.ImgResizeMode.CONTAIN
+                cap.resizeMode = dai.ImgResizeMode.LETTERBOX
             else:
                 exit_usage()
             queues.append(cam.requestOutput(cap, True).createQueue())

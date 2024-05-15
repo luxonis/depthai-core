@@ -20,18 +20,21 @@ enum struct ImgResizeMode {
     /**
      * Keeps aspect ratio.
      * Crops the image to get the correct output aspect ratio.
+     * Crops some FOV to match the required FOV, then scale. No potential NN accuracy decrease.
      */
-    COVER,
+    CROP,
     /**
      * Doesn't keep aspect ratio.
      * Squishes or streches the image to fill the required pixel area.
+     * Preserves full FOV, but frames are stretched to match the FOV, which might decrease NN accuracy.
      */
-    FILL,
+    STRETCH,
     /**
      * Keeps aspect ratio.
      * Envelop the image with a background color to get the corect output aspect ratio.
+     * Preserves full FOV by padding/letterboxing, but smaller frame means less features which might decrease NN accuracy.
      */
-    CONTAIN
+    LETTERBOX,
 };
 
 class ImgFrameCapability : public CapabilityCRTP<Capability, ImgFrameCapability> {
@@ -42,7 +45,7 @@ class ImgFrameCapability : public CapabilityCRTP<Capability, ImgFrameCapability>
     CapabilityRange<std::pair<uint32_t, uint32_t>> size;
     CapabilityRange<uint32_t> fps;
     std::optional<ImgFrame::Type> encoding;
-    ImgResizeMode resizeMode{ImgResizeMode::COVER};
+    ImgResizeMode resizeMode{ImgResizeMode::CROP};
     // TODO(jakgra) add optional CapabilityRange fov / max-min horiz. / vertical crop;
 
     DEPTHAI_SERIALIZE(ImgFrameCapability, size, fps, encoding, resizeMode);

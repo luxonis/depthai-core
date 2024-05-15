@@ -19,7 +19,7 @@ void ImgFrameCapabilityBindings::bind(pybind11::module& m, void* pCallstack) {
     // Actual bindings
 
     // ImgResizeMode
-    imgResizeMode.value("COVER", ImgResizeMode::COVER).value("FILL", ImgResizeMode::FILL).value("CONTAIN", ImgResizeMode::CONTAIN);
+    imgResizeMode.value("CROP", ImgResizeMode::CROP).value("STRETCH", ImgResizeMode::STRETCH).value("LETTERBOX", ImgResizeMode::LETTERBOX);
 
     // ImgFrameCapability
     imgFrameCapability.def(py::init<>())

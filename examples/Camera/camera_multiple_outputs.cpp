@@ -11,7 +11,7 @@ int main(int argc, char** argv) {
     info.platform = X_LINK_RVC4;
     const auto device = std::make_shared<dai::Device>(info);
     if(argc < 4 || (argc - 1) % 3 != 0) {
-        throw std::runtime_error("USAGE: ./camera_multiple_outputs 1920 1080 0 640 480 1\nWHERE 0 is resize mode: 0 == COVER, 1 == FILL, 2 == CONTAIN");
+        throw std::runtime_error("USAGE: ./camera_multiple_outputs 1920 1080 0 640 480 1\nWHERE 0 is resize mode: 0 == CROP, 1 == STRETCH, 2 == LETTERBOX");
     }
     std::vector<std::tuple<uint32_t, uint32_t, uint32_t>> sizes;
     for(int index = 1; index < argc - 1; index += 3) {
@@ -32,17 +32,20 @@ int main(int argc, char** argv) {
     std::vector<std::shared_ptr<dai::MessageQueue>> videos;
     for(const auto& size : sizes) {
         dai::ImgFrameCapability cap;
+        // cap.encoding = dai::ImgFrame::Type::RGB888i;
+        // cap.encoding = dai::ImgFrame::Type::NV12;
+        cap.encoding = dai::ImgFrame::Type::BGR888i;
         cap.size.value = std::pair{std::get<0>(size), std::get<1>(size)};
         auto mode = std::get<2>(size);
         switch(mode) {
             case 0:
-                cap.resizeMode = dai::ImgResizeMode::COVER;
+                cap.resizeMode = dai::ImgResizeMode::CROP;
                 break;
             case 1:
-                cap.resizeMode = dai::ImgResizeMode::FILL;
+                cap.resizeMode = dai::ImgResizeMode::STRETCH;
                 break;
             case 2:
-                cap.resizeMode = dai::ImgResizeMode::CONTAIN;
+                cap.resizeMode = dai::ImgResizeMode::LETTERBOX;
             default:
                 throw std::runtime_error("Resize mode argument (every 3rd) must be 0, 1 or 2");
         }
@@ -73,6 +76,7 @@ int main(int argc, char** argv) {
             // Visualizing the frame on slower hosts might have overhead
             if(videoIn) {
                 std::cout << "Showing frame on index " << videoIndex << " with size: " << videoIn->getWidth() << "x" << videoIn->getHeight()
+                          << " and stride: " << videoIn->getStride() << " and plane 2 offset: " << videoIn->fb.p2Offset
                           << " for queue name: " << video->getName() << "\n"
                           << std::flush;
                 cv::imshow("video_" + std::to_string(videoIndex), videoIn->getCvFrame());
