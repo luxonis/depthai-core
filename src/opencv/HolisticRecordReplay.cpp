@@ -163,15 +163,15 @@ bool setupHolisticReplay(Pipeline& pipeline,
         for(auto& node : sources) {
             NodeRecordParams nodeParams = node->getNodeRecordParams();
             std::string nodeName = nodeParams.name;
-            auto replay = pipeline.create<dai::node::Replay>();
-            // replay->setReplayFile(platform::joinPaths(rootPath, (mxId + "_").append(nodeName).append(".mcap")));
-            replay->setReplayFile(platform::joinPaths(rootPath, nodeName + ".mcap"));
             if(strcmp(node->getName(), "Camera") == 0 || strcmp(node->getName(), "ColorCamera") == 0 || strcmp(node->getName(), "MonoCamera") == 0) {
+                auto replay = pipeline.create<dai::node::ReplayVideo>();
+                // replay->setReplayFile(platform::joinPaths(rootPath, (mxId + "_").append(nodeName).append(".mcap")));
+                replay->setReplayMetadataFile(platform::joinPaths(rootPath, nodeName + ".mcap"));
                 // replay->setReplayVideo(platform::joinPaths(rootPath, (mxId + "_").append(nodeName).append(".mp4")));
                 replay->setReplayVideo(platform::joinPaths(rootPath, nodeName + ".mp4"));
                 replay->setOutFrameType(ImgFrame::Type::YUV420p);
 
-                auto videoSize = BytePlayer::getVideoSize(replay->getReplayFile());
+                auto videoSize = BytePlayer::getVideoSize(replay->getReplayMetadataFile());
                 if (videoSize.has_value()) {
                     auto [width, height] = videoSize.value();
                     if(strcmp(node->getName(), "Camera") == 0) {
@@ -185,8 +185,12 @@ bool setupHolisticReplay(Pipeline& pipeline,
                         cam->setMockIspSize(width, height);
                     }
                 }
+                replay->out.link(node->getReplayInput());
+            } else {
+                auto replay = pipeline.create<dai::node::ReplayMessage>();
+                replay->setReplayFile(platform::joinPaths(rootPath, nodeName + ".mcap"));
+                replay->out.link(node->getReplayInput());
             }
-            replay->out.link(node->getReplayInput());
         }
         return true;
     } catch(const std::exception& e) {

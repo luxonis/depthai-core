@@ -15,7 +15,7 @@ int main() {
         dai::Pipeline pipeline;
 
         // Define sources and outputs
-        auto replay = pipeline.create<dai::node::Replay>();
+        auto replay = pipeline.create<dai::node::ReplayMessage>();
         auto imu = pipeline.create<dai::node::IMU>();
         auto record = pipeline.create<dai::node::Record>();
 

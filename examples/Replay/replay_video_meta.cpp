@@ -5,14 +5,14 @@
 int main() {
     dai::Pipeline pipeline(true);
 
-    auto replay = pipeline.create<dai::node::Replay>();
+    auto replay = pipeline.create<dai::node::ReplayVideo>();
     auto cam = pipeline.create<dai::node::Camera>();
     auto display = pipeline.create<dai::node::Display>();
 
     cam->setBoardSocket(dai::CameraBoardSocket::CAM_A);
 
     replay->setReplayVideo("video.mp4");
-    replay->setReplayFile("video.mcap");
+    replay->setReplayMetadataFile("video.mcap");
     replay->setFps(1);
     replay->setOutFrameType(dai::ImgFrame::Type::YUV420p);
 

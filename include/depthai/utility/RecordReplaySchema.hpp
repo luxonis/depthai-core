@@ -5,6 +5,9 @@
 #include <string>
 #include <vector>
 
+#include "depthai/pipeline/datatype/IMUData.hpp"
+#include "depthai/pipeline/datatype/ImgFrame.hpp"
+
 namespace dai {
 namespace utility {
 
@@ -74,16 +77,11 @@ struct QuaternionSchema {
     float real;
 };
 
-struct IMUVectorSchema : public IMUReportSchema, public VectorSchema {
-};
+struct IMUVectorSchema : public IMUReportSchema, public VectorSchema {};
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(IMUVectorSchema, x, y, z, timestamp, sequenceNumber, accuracy)
 
 struct IMUQuaternionSchema : public IMUReportSchema, public QuaternionSchema {
-    float i;
-    float j;
-    float k;
-    float real;
     float rotationAccuracy;
 };
 
@@ -102,6 +100,50 @@ struct IMURecordSchema {
     VersionSchema version{0, 0, 1};
     RecordType type = RecordType::Imu;
     std::vector<IMUPacketSchema> packets;
+
+    dai::IMUData getMessage() {
+        IMUData imuData;
+        imuData.packets.reserve(packets.size());
+        for(const auto& packet : packets) {
+            IMUPacket imuPacket;
+            imuPacket.acceleroMeter.tsDevice.sec = packet.acceleration.timestamp.seconds;
+            imuPacket.acceleroMeter.tsDevice.nsec = packet.acceleration.timestamp.nanoseconds;
+            imuPacket.acceleroMeter.sequence = packet.acceleration.sequenceNumber;
+            imuPacket.acceleroMeter.accuracy = (IMUReport::Accuracy)packet.acceleration.accuracy;
+            imuPacket.acceleroMeter.x = packet.acceleration.x;
+            imuPacket.acceleroMeter.y = packet.acceleration.y;
+            imuPacket.acceleroMeter.z = packet.acceleration.z;
+
+            imuPacket.gyroscope.tsDevice.sec = packet.orientation.timestamp.seconds;
+            imuPacket.gyroscope.tsDevice.nsec = packet.orientation.timestamp.nanoseconds;
+            imuPacket.gyroscope.sequence = packet.orientation.sequenceNumber;
+            imuPacket.gyroscope.accuracy = (IMUReport::Accuracy)packet.orientation.accuracy;
+            imuPacket.gyroscope.x = packet.orientation.x;
+            imuPacket.gyroscope.y = packet.orientation.y;
+            imuPacket.gyroscope.z = packet.orientation.z;
+
+            imuPacket.magneticField.tsDevice.sec = packet.magneticField.timestamp.seconds;
+            imuPacket.magneticField.tsDevice.nsec = packet.magneticField.timestamp.nanoseconds;
+            imuPacket.magneticField.sequence = packet.magneticField.sequenceNumber;
+            imuPacket.magneticField.accuracy = (IMUReport::Accuracy)packet.magneticField.accuracy;
+            imuPacket.magneticField.x = packet.magneticField.x;
+            imuPacket.magneticField.y = packet.magneticField.y;
+            imuPacket.magneticField.z = packet.magneticField.z;
+
+            imuPacket.rotationVector.tsDevice.sec = packet.rotationVector.timestamp.seconds;
+            imuPacket.rotationVector.tsDevice.nsec = packet.rotationVector.timestamp.nanoseconds;
+            imuPacket.rotationVector.sequence = packet.rotationVector.sequenceNumber;
+            imuPacket.rotationVector.accuracy = (IMUReport::Accuracy)packet.rotationVector.accuracy;
+            imuPacket.rotationVector.i = packet.rotationVector.i;
+            imuPacket.rotationVector.j = packet.rotationVector.j;
+            imuPacket.rotationVector.k = packet.rotationVector.k;
+            imuPacket.rotationVector.real = packet.rotationVector.real;
+            imuPacket.rotationVector.rotationVectorAccuracy = packet.rotationVector.rotationAccuracy;
+
+            imuData.packets.push_back(imuPacket);
+        }
+        return imuData;
+    }
 };
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(IMURecordSchema, version, type, packets)
@@ -125,6 +167,21 @@ struct VideoRecordSchema {
     uint32_t width;
     uint32_t height;
     VideoCameraSettingsSchema cameraSettings;
+
+    dai::ImgFrame getMessage() {
+        ImgFrame imgFrame;
+        imgFrame.setWidth(width);
+        imgFrame.setHeight(height);
+        imgFrame.setTimestampDevice(std::chrono::time_point<std::chrono::steady_clock>(timestamp.get()));
+        imgFrame.setSequenceNum(sequenceNumber);
+        imgFrame.setInstanceNum(instanceNumber);
+        imgFrame.cam.wbColorTemp = cameraSettings.wbColorTemp;
+        imgFrame.cam.lensPosition = cameraSettings.lensPosition;
+        imgFrame.cam.lensPositionRaw = cameraSettings.lensPositionRaw;
+        imgFrame.cam.exposureTimeUs = cameraSettings.exposure;
+        imgFrame.cam.sensitivityIso = cameraSettings.sensitivity;
+        return imgFrame;
+    }
 };
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(VideoRecordSchema, version, type, timestamp, sequenceNumber, instanceNumber, width, height, cameraSettings)
