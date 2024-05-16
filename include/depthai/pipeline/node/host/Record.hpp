@@ -19,13 +19,46 @@ namespace dai {
 namespace node {
 
 /**
- * @brief Record node, used to record a source stream to a file
+ * @brief RecordVideo node, used to record a source stream to a file
  */
-class Record : public NodeCRTP<ThreadedHostNode, Record> {
+class RecordVideo : public NodeCRTP<ThreadedHostNode, RecordVideo> {
    public:
     using CompressionLevel = dai::utility::ByteRecorder::CompressionLevel;
 
-    constexpr static const char* NAME = "Record";
+    constexpr static const char* NAME = "RecordVideo";
+
+    /**
+     * Input for any type of messages to be transferred over XLink stream
+     *
+     * Default queue is blocking with size 8
+     */
+    Input input{*this, {.name = "input", .queueSize = 15, .types = {{DatatypeEnum::Buffer, true}}}};
+
+    void run() override;
+
+    std::string getRecordMetadataFile() const;
+    std::string getRecordVideoFile() const;
+    CompressionLevel getCompressionLevel() const;
+
+    RecordVideo& setRecordMetadataFile(const std::string& recordFile);
+    RecordVideo& setRecordVideoFile(const std::string& recordFile);
+    RecordVideo& setCompressionLevel(CompressionLevel compressionLevel);
+
+   private:
+    std::string recordMetadataFile;
+    std::string recordVideoFile;
+    unsigned int fpsInitLength = 10;
+    CompressionLevel compressionLevel = CompressionLevel::DEFAULT;
+};
+
+/**
+ * @brief RecordMessage node, used to record a source stream to a file
+ */
+class RecordMessage : public NodeCRTP<ThreadedHostNode, RecordMessage> {
+   public:
+    using CompressionLevel = dai::utility::ByteRecorder::CompressionLevel;
+
+    constexpr static const char* NAME = "RecordMessage";
 
     /**
      * Input for any type of messages to be transferred over XLink stream
@@ -39,12 +72,11 @@ class Record : public NodeCRTP<ThreadedHostNode, Record> {
     std::string getRecordFile() const;
     CompressionLevel getCompressionLevel() const;
 
-    Record& setRecordFile(const std::string& recordFile);
-    Record& setCompressionLevel(CompressionLevel compressionLevel);
+    RecordMessage& setRecordFile(const std::string& recordFile);
+    RecordMessage& setCompressionLevel(CompressionLevel compressionLevel);
 
    private:
     std::string recordFile;
-    unsigned int fpsInitLength = 10;
     CompressionLevel compressionLevel = CompressionLevel::DEFAULT;
 };
 

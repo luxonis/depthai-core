@@ -20,23 +20,21 @@ enum class StreamType { EncodedVideo, RawVideo, Imu, Byte, Unknown };
 
 using VideoCodec = dai::utility::VideoRecorder::VideoCodec;
 
-void Record::run() {
+void RecordVideo::run() {
     std::unique_ptr<utility::VideoRecorder> videoRecorder;
 
 #ifdef DEPTHAI_HAVE_OPENCV_SUPPORT
     videoRecorder = std::make_unique<dai::utility::VideoRecorder>();
 #else
-    throw std::runtime_error("Record node requires OpenCV support");
+    throw std::runtime_error("RecordVideo node requires OpenCV support");
 #endif
 
     utility::ByteRecorder byteRecorder;
 
-    if(recordFile.empty()) {
-        throw std::runtime_error("Record recordFile must be set");
+    if(recordVideoFile.empty()) {
+        throw std::runtime_error("RecordVideo recordVideoFile must be set");
     }
-
-    std::string recordFileVideo = recordFile + ".mp4";
-    std::string recordFileBytes = recordFile + ".mcap";
+    bool recordMetadata = !recordMetadataFile.empty();
 
     StreamType streamType = StreamType::Unknown;
     unsigned int width = 0;
@@ -53,31 +51,26 @@ void Record::run() {
                 auto imgFrame = std::dynamic_pointer_cast<ImgFrame>(msg);
                 if(imgFrame->getType() == dai::ImgFrame::Type::BITSTREAM)
                     throw std::runtime_error(
-                        "Record node does not support encoded ImgFrame messages. Use the `out` output of VideoEncoder to record encoded frames.");
+                        "RecordVideo node does not support encoded ImgFrame messages. Use the `out` output of VideoEncoder to record encoded frames.");
                 streamType = StreamType::RawVideo;
                 width = imgFrame->getWidth();
                 height = imgFrame->getHeight();
-                byteRecorder.init(recordFileBytes, compressionLevel, utility::RecordType::Video);
+                if (recordMetadata) byteRecorder.init(recordMetadataFile, compressionLevel, utility::RecordType::Video);
             } else if(std::dynamic_pointer_cast<EncodedFrame>(msg) != nullptr) {
                 auto encFrame = std::dynamic_pointer_cast<EncodedFrame>(msg);
                 if(encFrame->getProfile() == EncodedFrame::Profile::HEVC) {
-                    throw std::runtime_error("Record node does not support H265 encoding");
+                    throw std::runtime_error("RecordVideo node does not support H265 encoding");
                 }
                 streamType = StreamType::EncodedVideo;
                 width = encFrame->getWidth();
                 height = encFrame->getHeight();
-                if(logger) logger->trace("Record node detected {}x{} resolution", width, height);
-                byteRecorder.init(recordFileBytes, compressionLevel, utility::RecordType::Video);
-            } else if(std::dynamic_pointer_cast<IMUData>(msg) != nullptr) {
-                streamType = StreamType::Imu;
-                byteRecorder.init(recordFileBytes, compressionLevel, utility::RecordType::Imu);
+                if(logger) logger->trace("RecordVideo node detected {}x{} resolution", width, height);
+                if(recordMetadata) byteRecorder.init(recordMetadataFile, compressionLevel, utility::RecordType::Video);
             } else {
-                streamType = StreamType::Byte;
-                byteRecorder.init(recordFileBytes, compressionLevel, utility::RecordType::Other);
-                throw std::runtime_error("Record node does not support this type of message");
+                throw std::runtime_error("RecordVideo can only record video streams.");
             }
             if(logger)
-                logger->trace("Record node detected stream type {}",
+                logger->trace("RecordVideo node detected stream type {}",
                               streamType == StreamType::RawVideo       ? "RawVideo"
                               : streamType == StreamType::EncodedVideo ? "EncodedVideo"
                                                                        : "Byte");
@@ -88,13 +81,13 @@ void Record::run() {
             else if(i == fpsInitLength - 1) {
                 end = msg->getTimestampDevice();
                 fps = roundf((fpsInitLength * 1e6f) / (float)std::chrono::duration_cast<std::chrono::microseconds>(end - start).count());
-                if(logger) logger->trace("Record node detected {} fps", fps);
+                if(logger) logger->trace("RecordVideo node detected {} fps", fps);
                 if(streamType == StreamType::EncodedVideo) {
                     auto encFrame = std::dynamic_pointer_cast<EncodedFrame>(msg);
                     videoRecorder->init(
-                        recordFileVideo, width, height, fps, encFrame->getProfile() == EncodedFrame::Profile::JPEG ? VideoCodec::MJPEG : VideoCodec::H264);
+                        recordVideoFile, width, height, fps, encFrame->getProfile() == EncodedFrame::Profile::JPEG ? VideoCodec::MJPEG : VideoCodec::H264);
                 } else {
-                    videoRecorder->init(recordFileVideo, width, height, fps, VideoCodec::RAW);
+                    videoRecorder->init(recordVideoFile, width, height, fps, VideoCodec::RAW);
                 }
             }
             if(i >= fpsInitLength - 1) {
@@ -111,40 +104,72 @@ void Record::run() {
                     assert(frame.isContinuous());
                     span cvData(frame.data, frame.total() * frame.elemSize());
                     videoRecorder->write(cvData);
-                    utility::VideoRecordSchema record;
-                    record.timestamp.set(std::chrono::duration_cast<std::chrono::nanoseconds>(imgFrame->getTimestampDevice().time_since_epoch()));
-                    record.sequenceNumber = imgFrame->getSequenceNum();
-                    record.instanceNumber = imgFrame->getInstanceNum();
-                    record.width = imgFrame->getWidth();
-                    record.height = imgFrame->getHeight();
-                    record.cameraSettings.exposure = imgFrame->cam.exposureTimeUs;
-                    record.cameraSettings.sensitivity = imgFrame->cam.sensitivityIso;
-                    record.cameraSettings.wbColorTemp = imgFrame->cam.wbColorTemp;
-                    record.cameraSettings.lensPosition = imgFrame->cam.lensPosition;
-                    record.cameraSettings.lensPositionRaw = imgFrame->cam.lensPositionRaw;
-                    byteRecorder.write(record);
+                    if(recordMetadata) {
+                        utility::VideoRecordSchema record;
+                        record.timestamp.set(std::chrono::duration_cast<std::chrono::nanoseconds>(imgFrame->getTimestampDevice().time_since_epoch()));
+                        record.sequenceNumber = imgFrame->getSequenceNum();
+                        record.instanceNumber = imgFrame->getInstanceNum();
+                        record.width = imgFrame->getWidth();
+                        record.height = imgFrame->getHeight();
+                        record.cameraSettings.exposure = imgFrame->cam.exposureTimeUs;
+                        record.cameraSettings.sensitivity = imgFrame->cam.sensitivityIso;
+                        record.cameraSettings.wbColorTemp = imgFrame->cam.wbColorTemp;
+                        record.cameraSettings.lensPosition = imgFrame->cam.lensPosition;
+                        record.cameraSettings.lensPositionRaw = imgFrame->cam.lensPositionRaw;
+                        byteRecorder.write(record);
+                    }
 #else
-                    throw std::runtime_error("Record node requires OpenCV support");
+                    throw std::runtime_error("RecordVideo node requires OpenCV support");
 #endif
                 } else {
                     videoRecorder->write(data);
-                    auto encFrame = std::dynamic_pointer_cast<EncodedFrame>(msg);
-                    utility::VideoRecordSchema record;
-                    record.timestamp.set(std::chrono::duration_cast<std::chrono::nanoseconds>(encFrame->getTimestampDevice().time_since_epoch()));
-                    record.sequenceNumber = encFrame->getSequenceNum();
-                    record.instanceNumber = encFrame->getInstanceNum();
-                    record.width = encFrame->getWidth();
-                    record.height = encFrame->getHeight();
-                    record.cameraSettings.exposure = encFrame->cam.exposureTimeUs;
-                    record.cameraSettings.sensitivity = encFrame->cam.sensitivityIso;
-                    record.cameraSettings.wbColorTemp = encFrame->cam.wbColorTemp;
-                    record.cameraSettings.lensPosition = encFrame->cam.lensPosition;
-                    record.cameraSettings.lensPositionRaw = encFrame->cam.lensPositionRaw;
-                    byteRecorder.write(record);
+                    if(recordMetadata) {
+                        auto encFrame = std::dynamic_pointer_cast<EncodedFrame>(msg);
+                        utility::VideoRecordSchema record;
+                        record.timestamp.set(std::chrono::duration_cast<std::chrono::nanoseconds>(encFrame->getTimestampDevice().time_since_epoch()));
+                        record.sequenceNumber = encFrame->getSequenceNum();
+                        record.instanceNumber = encFrame->getInstanceNum();
+                        record.width = encFrame->getWidth();
+                        record.height = encFrame->getHeight();
+                        record.cameraSettings.exposure = encFrame->cam.exposureTimeUs;
+                        record.cameraSettings.sensitivity = encFrame->cam.sensitivityIso;
+                        record.cameraSettings.wbColorTemp = encFrame->cam.wbColorTemp;
+                        record.cameraSettings.lensPosition = encFrame->cam.lensPosition;
+                        record.cameraSettings.lensPositionRaw = encFrame->cam.lensPositionRaw;
+                        byteRecorder.write(record);
+                    }
                 }
             }
             if(i < fpsInitLength) ++i;
-        } else if(streamType == StreamType::Imu) {
+        } else {
+            throw std::runtime_error("RecordVideo can only record video streams.");
+        }
+    }
+
+    videoRecorder->close();
+}
+
+void RecordMessage::run() {
+    utility::ByteRecorder byteRecorder;
+
+    StreamType streamType = StreamType::Unknown;
+    while(isRunning()) {
+        auto msg = input.get<dai::Buffer>();
+        if(msg == nullptr) continue;
+        if(streamType == StreamType::Unknown) {
+            if(std::dynamic_pointer_cast<IMUData>(msg) != nullptr) {
+                streamType = StreamType::Imu;
+                byteRecorder.init(recordFile, compressionLevel, utility::RecordType::Imu);
+            } else {
+                throw std::runtime_error("RecordMessage node does not support this type of message");
+            }
+            if(logger)
+                logger->trace("RecordMessage node detected stream type {}",
+                              streamType == StreamType::RawVideo       ? "RawVideo"
+                              : streamType == StreamType::EncodedVideo ? "EncodedVideo"
+                                                                       : "Byte");
+        }
+        if(streamType == StreamType::Imu) {
             auto imuData = std::dynamic_pointer_cast<IMUData>(msg);
             utility::IMURecordSchema record;
             record.packets.reserve(imuData->packets.size());
@@ -189,27 +214,46 @@ void Record::run() {
             }
             byteRecorder.write(record);
         } else {
-            throw std::runtime_error("You can only record IMU or Video data");
+            throw std::runtime_error("RecordMessage unsupported message type");
         }
     }
-
-    videoRecorder->close();
 }
 
-std::string Record::getRecordFile() const {
-    return recordFile;
+std::string RecordVideo::getRecordMetadataFile() const {
+    return recordMetadataFile;
 }
-
-Record::CompressionLevel Record::getCompressionLevel() const {
+std::string RecordVideo::getRecordVideoFile() const {
+    return recordVideoFile;
+}
+RecordVideo::CompressionLevel RecordVideo::getCompressionLevel() const {
     return compressionLevel;
 }
 
-Record& Record::setRecordFile(const std::string& recordFile) {
-    this->recordFile = recordFile;
+RecordVideo& RecordVideo::setRecordMetadataFile(const std::string& recordFile) {
+    this->recordMetadataFile = recordFile;
+    return *this;
+}
+RecordVideo& RecordVideo::setRecordVideoFile(const std::string& recordFile) {
+    this->recordVideoFile = recordFile;
+    return *this;
+}
+RecordVideo& RecordVideo::setCompressionLevel(CompressionLevel compressionLevel) {
+    this->compressionLevel = compressionLevel;
     return *this;
 }
 
-Record& Record::setCompressionLevel(CompressionLevel compressionLevel) {
+std::string RecordMessage::getRecordFile() const {
+    return recordFile;
+}
+RecordMessage::CompressionLevel RecordMessage::getCompressionLevel() const {
+    return compressionLevel;
+}
+
+RecordMessage& RecordMessage::setRecordFile(const std::string& recordFile) {
+    this->recordFile = recordFile;
+    return *this;
+}
+RecordMessage& RecordMessage::setCompressionLevel(CompressionLevel compressionLevel) {
     this->compressionLevel = compressionLevel;
     return *this;
 }

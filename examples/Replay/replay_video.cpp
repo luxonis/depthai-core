@@ -13,7 +13,7 @@ int main() {
     cam->setBoardSocket(dai::CameraBoardSocket::CAM_A);
     cam->setMockIspSize(1280, 720);
 
-    replay->setReplayVideo("video2.mp4");
+    replay->setReplayVideoFile("video2.mp4");
     replay->setFps(30);
     replay->setOutFrameType(dai::ImgFrame::Type::YUV420p);
 

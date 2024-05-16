@@ -20,12 +20,13 @@ bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConf
         for(auto& node : sources) {
             NodeRecordParams nodeParams = node->getNodeRecordParams();
             std::string nodeName = nodeParams.name;
-            auto recordNode = pipeline.create<dai::node::Record>();
             std::string filePath = platform::joinPaths(recordPath, (mxId + "_").append(nodeName));
-            recordNode->setRecordFile(filePath);
-            recordNode->setCompressionLevel((dai::node::Record::CompressionLevel)recordConfig.compressionLevel);
             outFilenames[nodeName] = filePath;
             if(strcmp(node->getName(), "Camera") == 0 || strcmp(node->getName(), "ColorCamera") == 0 || strcmp(node->getName(), "MonoCamera") == 0) {
+                auto recordNode = pipeline.create<dai::node::RecordVideo>();
+                recordNode->setRecordMetadataFile(filePath + ".mcap");
+                recordNode->setRecordVideoFile(filePath + ".mp4");
+                recordNode->setCompressionLevel((dai::utility::ByteRecorder::CompressionLevel)recordConfig.compressionLevel);
                 if(recordConfig.videoEncoding.enabled) {
                     auto imageManip = pipeline.create<dai::node::ImageManip>();
                     imageManip->initialConfig.setFrameType(ImgFrame::Type::NV12);
@@ -43,6 +44,9 @@ bool setupHolisticRecord(Pipeline& pipeline, const std::string& mxId, RecordConf
                     node->getRecordOutput().link(recordNode->input);
                 }
             } else {
+                auto recordNode = pipeline.create<dai::node::RecordMessage>();
+                recordNode->setRecordFile(filePath + ".mcap");
+                recordNode->setCompressionLevel((dai::utility::ByteRecorder::CompressionLevel)recordConfig.compressionLevel);
                 node->getRecordOutput().link(recordNode->input);
             }
         }
@@ -168,7 +172,7 @@ bool setupHolisticReplay(Pipeline& pipeline,
                 // replay->setReplayFile(platform::joinPaths(rootPath, (mxId + "_").append(nodeName).append(".mcap")));
                 replay->setReplayMetadataFile(platform::joinPaths(rootPath, nodeName + ".mcap"));
                 // replay->setReplayVideo(platform::joinPaths(rootPath, (mxId + "_").append(nodeName).append(".mp4")));
-                replay->setReplayVideo(platform::joinPaths(rootPath, nodeName + ".mp4"));
+                replay->setReplayVideoFile(platform::joinPaths(rootPath, nodeName + ".mp4"));
                 replay->setOutFrameType(ImgFrame::Type::YUV420p);
 
                 auto videoSize = BytePlayer::getVideoSize(replay->getReplayMetadataFile());

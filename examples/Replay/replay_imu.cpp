@@ -17,7 +17,7 @@ int main() {
         // Define sources and outputs
         auto replay = pipeline.create<dai::node::ReplayMessage>();
         auto imu = pipeline.create<dai::node::IMU>();
-        auto record = pipeline.create<dai::node::Record>();
+        auto record = pipeline.create<dai::node::RecordMessage>();
 
         replay->setReplayFile("imu_recording.mcap");
 

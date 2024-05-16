@@ -11,16 +11,16 @@
 
 #include "mcap/reader.hpp"
 
-constexpr auto RECORDING_PATH = "/home/work/workspaces/lib/depthai-python/depthai-core/recording_mjpeg";
-
-int main() {
+int main(int argc, char** argv) {
+    std::string path = argc > 1 ? argv[1] : "recording_mjpeg";
     {
         dai::Pipeline pipeline(true);
         auto cam = pipeline.create<dai::node::ColorCamera>();
         auto videoEncoder = pipeline.create<dai::node::VideoEncoder>();
-        auto record = pipeline.create<dai::node::Record>();
+        auto record = pipeline.create<dai::node::RecordVideo>();
 
-        record->setRecordFile(RECORDING_PATH);
+        record->setRecordVideoFile(path + std::string(".mp4"));
+        record->setRecordMetadataFile(path + std::string(".mcap"));
 
         cam->setBoardSocket(dai::CameraBoardSocket::CAM_A);
         cam->setResolution(dai::ColorCameraProperties::SensorResolution::THE_1080_P);
@@ -39,9 +39,9 @@ int main() {
     }
     mcap::McapReader reader;
     {
-        const auto res = reader.open(std::string(RECORDING_PATH) + ".mcap");
+        const auto res = reader.open(path + ".mcap");
         if(!res.ok()) {
-            std::cerr << "Failed to open " << RECORDING_PATH << " for reading: " << res.message << std::endl;
+            std::cerr << "Failed to open " << path << " for reading: " << res.message << std::endl;
             return 1;
         }
     }
@@ -51,7 +51,7 @@ int main() {
     std::string_view asString(reinterpret_cast<const char*>(message.message.data), message.message.dataSize);
     std::cout << "Message: " << asString << std::endl;
     nlohmann::json j = nlohmann::json::parse(asString);
-    std::ofstream out(std::string(RECORDING_PATH) + ".json");
+    std::ofstream out(std::string(path) + ".json");
     out << j.dump(4) << std::endl;
 
     std::string_view asString2(reinterpret_cast<const char*>(message.schema->data.data()), message.schema->data.size());

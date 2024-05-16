@@ -66,6 +66,9 @@ void ReplayVideo::run() {
     if(hasVideo && !hasMetadata) {
         type = utility::RecordType::Video;
     }
+    if(!hasVideo) {
+        throw std::runtime_error("Video file not found or could not be opened");
+    }
     bool first = true;
     auto start = std::chrono::steady_clock::now();
     uint64_t index = 0;
@@ -79,6 +82,9 @@ void ReplayVideo::run() {
                 metadata = msg.value();
                 if(first) {
                     type = metadata["type"].get<utility::RecordType>();
+                    if(type != utility::RecordType::Video) {
+                        throw std::runtime_error("Invalid message type, expected a video stream");
+                    }
                 }
             } else if(!first) {
                 // End of file
@@ -207,7 +213,7 @@ std::string ReplayVideo::getReplayMetadataFile() const {
     return replayFile;
 }
 
-std::string ReplayVideo::getReplayVideo() const {
+std::string ReplayVideo::getReplayVideoFile() const {
     return replayVideo;
 }
 
@@ -232,7 +238,7 @@ ReplayVideo& ReplayVideo::setReplayMetadataFile(const std::string& replayFile) {
     return *this;
 }
 
-ReplayVideo& ReplayVideo::setReplayVideo(const std::string& replayVideo) {
+ReplayVideo& ReplayVideo::setReplayVideoFile(const std::string& replayVideo) {
     this->replayVideo = replayVideo;
     return *this;
 }

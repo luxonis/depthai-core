@@ -74,12 +74,6 @@ class Node : public std::enable_shared_from_this<Node> {
     void setNodeRefs(std::pair<std::string, std::shared_ptr<Node>*> nodeRef);
     void setNodeRefs(std::string alias, std::shared_ptr<Node>* nodeRef);
 
-    // For record and replay
-    virtual bool isSourceNode() const;
-    virtual utility::NodeRecordParams getNodeRecordParams() const;
-    virtual Output& getRecordOutput();
-    virtual Input& getReplayInput();
-
     template <typename T>
     class Subnode {
         std::shared_ptr<Node> node;
@@ -556,6 +550,12 @@ class Node : public std::enable_shared_from_this<Node> {
 
     /// Retrieves reference to specific input map
     InputMap* getInputMapRef(std::string group);
+
+    // For record and replay
+    virtual bool isSourceNode() const;
+    virtual utility::NodeRecordParams getNodeRecordParams() const;
+    virtual Output& getRecordOutput();
+    virtual Input& getReplayInput();
 
    protected:
     Node() = default;

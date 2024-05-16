@@ -8,7 +8,7 @@
 // Includes common necessary includes for development using depthai library
 #include "depthai/depthai.hpp"
 
-int main() {
+int main(int argc, char** argv) {
     using namespace std;
     using namespace std::chrono;
 
@@ -17,14 +17,15 @@ int main() {
 
     // Define sources and outputs
     auto imu = pipeline.create<dai::node::IMU>();
-    auto record = pipeline.create<dai::node::Record>();
+    auto record = pipeline.create<dai::node::RecordMessage>();
 
     // enable ACCELEROMETER_RAW at 500 hz rate
     imu->enableIMUSensor(dai::IMUSensor::ACCELEROMETER_RAW, 500);
     // enable GYROSCOPE_RAW at 400 hz rate
     imu->enableIMUSensor(dai::IMUSensor::GYROSCOPE_RAW, 400);
 
-    record->setRecordFile("imu_recording");
+    std::string recordFile = argc > 1 ? argv[1] : "imu_recording";
+    record->setRecordFile(recordFile + ".mcap");
 
     imu->out.link(record->input);
 

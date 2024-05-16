@@ -11,7 +11,7 @@ int main() {
 
     cam->setBoardSocket(dai::CameraBoardSocket::CAM_A);
 
-    replay->setReplayVideo("video.mp4");
+    replay->setReplayVideoFile("video.mp4");
     replay->setReplayMetadataFile("video.mcap");
     replay->setFps(1);
     replay->setOutFrameType(dai::ImgFrame::Type::YUV420p);
