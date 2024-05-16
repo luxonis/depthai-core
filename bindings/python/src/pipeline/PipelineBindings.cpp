@@ -40,7 +40,7 @@
 
 // depthai/
 #include "depthai/properties/GlobalProperties.hpp"
-#include "utility/RecordReplay.hpp"
+#include "depthai/utility/RecordReplay.hpp"
 #include <memory>
 
 std::shared_ptr<dai::Node> createNode(dai::Pipeline& p, py::object class_){
@@ -60,8 +60,8 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
 
     // Type definitions
     py::class_<GlobalProperties> globalProperties(m, "GlobalProperties", DOC(dai, GlobalProperties));
-    py::class_<utility::RecordConfig::VideoEncoding> recordVideoConfig(m, "VideoEncoding", DOC(dai, RecordConfig::VideoEncoding));
-    py::class_<utility::RecordConfig> recordConfig(m, "RecordConfig", DOC(dai, RecordConfig));
+    py::class_<RecordConfig::VideoEncoding> recordVideoConfig(m, "VideoEncoding", DOC(dai, RecordConfig, VideoEncoding));
+    py::class_<RecordConfig> recordConfig(m, "RecordConfig", DOC(dai, RecordConfig));
     py::class_<Pipeline> pipeline(m, "Pipeline", DOC(dai, Pipeline, 2));
 
     ///////////////////////////////////////////////////////////////////////
@@ -92,16 +92,16 @@ void PipelineBindings::bind(pybind11::module& m, void* pCallstack){
         ;
 
     recordVideoConfig
-        .def_readwrite("enabled", &utility::RecordConfig::VideoEncoding::enabled, DOC(dai, RecordConfig, VideoEncoding, enabled))
-        .def_readwrite("bitrate", &utility::RecordConfig::VideoEncoding::bitrate, DOC(dai, RecordConfig, VideoEncoding, bitrate))
-        .def_readwrite("profile", &utility::RecordConfig::VideoEncoding::profile, DOC(dai, RecordConfig, VideoEncoding, profile))
-        .def_readwrite("lossless", &utility::RecordConfig::VideoEncoding::lossless, DOC(dai, RecordConfig, VideoEncoding, lossless))
-        .def_readwrite("quality", &utility::RecordConfig::VideoEncoding::quality, DOC(dai, RecordConfig, VideoEncoding, quality));
+        .def_readwrite("enabled", &RecordConfig::VideoEncoding::enabled, DOC(dai, RecordConfig, VideoEncoding, enabled))
+        .def_readwrite("bitrate", &RecordConfig::VideoEncoding::bitrate, DOC(dai, RecordConfig, VideoEncoding, bitrate))
+        .def_readwrite("profile", &RecordConfig::VideoEncoding::profile, DOC(dai, RecordConfig, VideoEncoding, profile))
+        .def_readwrite("lossless", &RecordConfig::VideoEncoding::lossless, DOC(dai, RecordConfig, VideoEncoding, lossless))
+        .def_readwrite("quality", &RecordConfig::VideoEncoding::quality, DOC(dai, RecordConfig, VideoEncoding, quality));
 
     recordConfig
-        .def_readwrite("outputDir", &utility::RecordConfig::outputDir, DOC(dai, RecordConfig, outputDir))
-        .def_readwrite("videoEncoding", &utility::RecordConfig::videoEncoding, DOC(dai, RecordConfig, videoEncoding))
-        .def_readwrite("compressionLevel", &utility::RecordConfig::compressionLevel, DOC(dai, RecordConfig, compressionLevel));
+        .def_readwrite("outputDir", &RecordConfig::outputDir, DOC(dai, RecordConfig, outputDir))
+        .def_readwrite("videoEncoding", &RecordConfig::videoEncoding, DOC(dai, RecordConfig, videoEncoding))
+        .def_readwrite("compressionLevel", &RecordConfig::compressionLevel, DOC(dai, RecordConfig, compressionLevel));
 
     // bind pipeline
     pipeline.def(py::init<bool>(), py::arg("createImplicitDevice") = true, DOC(dai, Pipeline, Pipeline))

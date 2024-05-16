@@ -24,7 +24,7 @@ int main(int argc, char** argv) {
     cam->video.link(display->input);
     auto q = imu->out.createQueue();
 
-    dai::utility::RecordConfig config;
+    dai::RecordConfig config;
     config.outputDir = argc > 1 ? std::string(argv[1]) : ".";
     config.videoEncoding.enabled = true; // Use video encoding
     config.videoEncoding.bitrate = 0; // Automatic

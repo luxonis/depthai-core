@@ -109,7 +109,7 @@ class PipelineImpl : public std::enable_shared_from_this<PipelineImpl> {
     BoardConfig board;
 
     // Record and Replay
-    utility::RecordConfig recordConfig;
+    RecordConfig recordConfig;
     bool enableHolisticRecordReplay = false;
     std::unordered_map<std::string, std::string> recordReplayFilenames;
     std::string defaultDeviceMxId;
@@ -485,7 +485,7 @@ class Pipeline {
     }
 
     /// Record and Replay
-    void enableHolisticRecord(const utility::RecordConfig& config);
+    void enableHolisticRecord(const RecordConfig& config);
     void enableHolisticReplay(const std::string& pathToRecording);
 };
 

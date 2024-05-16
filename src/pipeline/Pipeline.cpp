@@ -611,15 +611,15 @@ void PipelineImpl::build() {
 
                 if(enableHolisticRecordReplay) {
                     switch(recordConfig.state) {
-                        case utility::RecordConfig::RecordReplayState::RECORD:
+                        case RecordConfig::RecordReplayState::RECORD:
                             recordPath = recordConfig.outputDir;
                             replayPath = "";
                             break;
-                        case utility::RecordConfig::RecordReplayState::REPLAY:
+                        case RecordConfig::RecordReplayState::REPLAY:
                             recordPath = "";
                             replayPath = recordConfig.outputDir;
                             break;
-                        case utility::RecordConfig::RecordReplayState::NONE:
+                        case RecordConfig::RecordReplayState::NONE:
                             enableHolisticRecordReplay = false;
                             break;
                     }
@@ -632,8 +632,8 @@ void PipelineImpl::build() {
                 } else if(!recordPath.empty()) {
                     if(enableHolisticRecordReplay || utility::checkRecordConfig(recordPath, recordConfig)) {
                         if(platform::checkWritePermissions(recordPath)) {
-                            if(setupHolisticRecord(parent, defaultDeviceMxId, recordConfig, recordReplayFilenames)) {
-                                recordConfig.state = utility::RecordConfig::RecordReplayState::RECORD;
+                            if(utility::setupHolisticRecord(parent, defaultDeviceMxId, recordConfig, recordReplayFilenames)) {
+                                recordConfig.state = RecordConfig::RecordReplayState::RECORD;
                                 spdlog::info("Record enabled.");
                             } else {
                                 spdlog::warn("Could not set up holistic record. Record and replay disabled.");
@@ -647,8 +647,8 @@ void PipelineImpl::build() {
                 } else if(!replayPath.empty()) {
                     if(platform::checkPathExists(replayPath)) {
                         if(platform::checkWritePermissions(replayPath)) {
-                            if(setupHolisticReplay(parent, replayPath, defaultDeviceMxId, recordConfig, recordReplayFilenames)) {
-                                recordConfig.state = utility::RecordConfig::RecordReplayState::REPLAY;
+                            if(utility::setupHolisticReplay(parent, replayPath, defaultDeviceMxId, recordConfig, recordReplayFilenames)) {
+                                recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
                                 spdlog::info("Replay enabled.");
                             } else {
                                 spdlog::warn("Could not set up holistic replay. Record and replay disabled.");
@@ -667,7 +667,7 @@ void PipelineImpl::build() {
             throw std::runtime_error("Holistic record/replay is only supported on RVC2 devices for now.");
         }
 #else
-        recordConfig.state = utility::RecordConfig::RecordReplayState::NONE;
+        recordConfig.state = RecordConfig::RecordReplayState::NONE;
         spdlog::warn("Merged target is required to use holistic record/replay.");
 #endif
     }
@@ -883,7 +883,7 @@ PipelineImpl::~PipelineImpl() {
     stop();
     wait();
 
-    if(recordConfig.state == utility::RecordConfig::RecordReplayState::RECORD) {
+    if(recordConfig.state == RecordConfig::RecordReplayState::RECORD) {
         std::vector<std::string> filenames = {recordReplayFilenames["record_config"]};
         std::vector<std::string> outFiles = {"record_config.json"};
         filenames.reserve(recordReplayFilenames.size() * 2 + 1);
@@ -903,7 +903,7 @@ PipelineImpl::~PipelineImpl() {
         std::remove(platform::joinPaths(recordConfig.outputDir, "record_config.json").c_str());
     }
 
-    if(recordConfig.state != utility::RecordConfig::RecordReplayState::NONE) {
+    if(recordConfig.state != RecordConfig::RecordReplayState::NONE) {
         spdlog::info("Record and Replay: Removing temporary files");
         for(auto& kv : recordReplayFilenames) {
             if(kv.first != "record_config") {
@@ -997,7 +997,7 @@ std::vector<uint8_t> PipelineImpl::loadResourceCwd(dai::Path uri, dai::Path cwd)
 }
 
 // Record and Replay
-void Pipeline::enableHolisticRecord(const utility::RecordConfig& config) {
+void Pipeline::enableHolisticRecord(const RecordConfig& config) {
     if(this->isRunning()) {
         throw std::runtime_error("Cannot enable record while pipeline is running");
     }
@@ -1005,7 +1005,7 @@ void Pipeline::enableHolisticRecord(const utility::RecordConfig& config) {
         throw std::runtime_error("Record output directory does not exist or is invalid");
     }
     impl()->recordConfig = config;
-    impl()->recordConfig.state = utility::RecordConfig::RecordReplayState::RECORD;
+    impl()->recordConfig.state = RecordConfig::RecordReplayState::RECORD;
     impl()->enableHolisticRecordReplay = true;
 }
 
@@ -1017,7 +1017,7 @@ void Pipeline::enableHolisticReplay(const std::string& pathToRecording) {
         throw std::runtime_error("Replay file does not exist or is invalid");
     }
     impl()->recordConfig.outputDir = pathToRecording;
-    impl()->recordConfig.state = utility::RecordConfig::RecordReplayState::REPLAY;
+    impl()->recordConfig.state = RecordConfig::RecordReplayState::REPLAY;
     impl()->enableHolisticRecordReplay = true;
 }
 
