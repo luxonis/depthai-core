@@ -1,10 +1,12 @@
 #pragma once
 #include <optional>
 
+#include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/common/CameraImageOrientation.hpp"
 #include "depthai/common/CameraSensorType.hpp"
 #include "depthai/common/optional.hpp"
+#include "depthai/common/variant.hpp"
 #include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/properties/Properties.hpp"
 
@@ -29,6 +31,8 @@ struct CameraProperties : PropertiesSerializable<Properties, CameraProperties> {
      * For 24 bit color these can be either RGB or BGR
      */
     enum class ColorOrder : int32_t { BGR, RGB };
+
+    std::vector<ImgFrameCapability> outputRequests;
 
     /**
      * Initial controls applied to ColorCamera node
@@ -224,6 +228,7 @@ DEPTHAI_SERIALIZE_EXT(CameraProperties,
                       calibAlpha,
                       warpMeshStepWidth,
                       warpMeshStepHeight,
-                      rawPacked);
+                      rawPacked,
+                      outputRequests);
 
 }  // namespace dai

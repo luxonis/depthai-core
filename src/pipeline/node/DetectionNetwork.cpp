@@ -8,6 +8,7 @@
 #include "archive_entry.h"
 
 // internal
+#include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "utility/ArchiveUtil.hpp"
 #include "utility/ErrorMacros.hpp"
@@ -119,6 +120,19 @@ float DetectionNetwork::getConfidenceThreshold() const {
     return detectionParser->getConfidenceThreshold();
 }
 
+std::vector<std::pair<Node::Input&, std::shared_ptr<Capability>>> DetectionNetwork::getRequiredInputs() {
+    const auto* archive = detectionParser->getNNArchive();
+    // TODO(jakgra) only call getRequiredInputs() in the build stage after all user code is supposed to be finished.
+    DAI_CHECK_V(archive, "Please call setNNArchive(), before the linking the DetectionNetwork node.");
+    auto cap = std::make_shared<ImgFrameCapability>();
+    const auto& config = archive->getConfig().getConfigV1();
+    DAI_CHECK_V(config, "Wrong NNArchive config version");
+    const auto width = (*config).model.inputs[0].shape[2];
+    const auto height = (*config).model.inputs[0].shape[3];
+    cap->size.value = std::pair(width, height);
+    return {{input, cap}};
+}
+
 std::optional<std::vector<std::string>> DetectionNetwork::getClasses() const {
     return detectionParser->getClasses();
 }
@@ -172,7 +186,6 @@ void YoloDetectionNetwork::setIouThreshold(float thresh) {
 int YoloDetectionNetwork::getNumClasses() const {
     return detectionParser->getNumClasses();
 }
-
 
 /// Get coordianate size
 int YoloDetectionNetwork::getCoordinateSize() const {

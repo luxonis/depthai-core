@@ -29,6 +29,9 @@
 #include "nn_archive/NNArchiveBindings.hpp"
 #include "log/LogBindings.hpp"
 #include "VersionBindings.hpp"
+#include "capabilities/CapabilityBindings.hpp"
+#include "capabilities/CapabilityRangeBindings.hpp"
+#include "capabilities/ImgFrameCapabilityBindings.hpp"
 
 #ifdef DEPTHAI_PYTHON_EMBEDDED_MODULE
 #include <pybind11/embed.h>
@@ -60,6 +63,9 @@ PYBIND11_MODULE(depthai, m)
     callstack.push_front(&MessageQueueBindings::bind);
     callstack.push_front(&OpenVINOBindings::bind);
     callstack.push_front(&NNArchiveBindings::bind);
+    callstack.push_front(&CapabilityBindings::bind);
+    callstack.push_front(&CapabilityRangeBindings::bind);
+    callstack.push_front(&ImgFrameCapabilityBindings::bind);
     NodeBindings::addToCallstack(callstack);
     callstack.push_front(&AssetManagerBindings::bind);
     callstack.push_front(&PipelineBindings::bind);

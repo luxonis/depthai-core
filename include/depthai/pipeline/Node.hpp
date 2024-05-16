@@ -17,6 +17,7 @@
 #include "depthai/utility/copyable_unique_ptr.hpp"
 
 // depthai
+#include "depthai/capabilities/Capability.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/properties/Properties.hpp"
 
@@ -73,6 +74,12 @@ class Node : public std::enable_shared_from_this<Node> {
     void setNodeRefs(std::pair<std::string, std::shared_ptr<Node>*> nodeRef);
     void setNodeRefs(std::string alias, std::shared_ptr<Node>* nodeRef);
 
+    // For record and replay
+    virtual bool isSourceNode() const;
+    virtual utility::NodeRecordParams getNodeRecordParams() const;
+    virtual Output& getRecordOutput();
+    virtual Input& getReplayInput();
+
     template <typename T>
     class Subnode {
         std::shared_ptr<Node> node;
@@ -123,6 +130,7 @@ class Node : public std::enable_shared_from_this<Node> {
             }
         };
         enum class Type { MSender, SSender };
+        virtual ~Output() = default;
 
        private:
         std::reference_wrapper<Node> parent;
@@ -132,6 +140,8 @@ class Node : public std::enable_shared_from_this<Node> {
         OutputDescription desc;
 
        public:
+        // std::vector<Capability> possibleCapabilities;
+
         Output(Node& par, OutputDescription desc, bool ref = true) : parent(par), desc(std::move(desc)) {
             // Place oneself to the parents references
             if(ref) {
@@ -242,6 +252,8 @@ class Node : public std::enable_shared_from_this<Node> {
          * @param in Input to link to
          */
         void link(Input& in);
+
+        virtual void link(std::shared_ptr<Node> in);
 
         /**
          * Unlink a previously linked connection
@@ -446,7 +458,9 @@ class Node : public std::enable_shared_from_this<Node> {
 
     // used to improve error messages
     // when pipeline starts all nodes are checked
-    virtual bool needsBuild() { return false; }
+    virtual bool needsBuild() {
+        return false;
+    }
 
    public:
     // TODO(themarpe) - restrict access
@@ -543,12 +557,6 @@ class Node : public std::enable_shared_from_this<Node> {
     /// Retrieves reference to specific input map
     InputMap* getInputMapRef(std::string group);
 
-    // Record and Replay
-    virtual bool isSourceNode() const;
-    virtual utility::NodeRecordParams getNodeRecordParams() const;
-    virtual Output& getRecordOutput();
-    virtual Input& getReplayInput();
-
    protected:
     Node() = default;
     Node(bool conf);
@@ -591,6 +599,10 @@ class Node : public std::enable_shared_from_this<Node> {
     void link(const Node::Output& out, const Node::Input& in);
     void unlink(const Node::Output& out, const Node::Input& in);
     /// Get a reference to internal node map
+
+    virtual void link(std::shared_ptr<Node> in);
+    virtual Node::Output* requestOutput(const Capability& capability, bool onHost);
+    virtual std::vector<std::pair<Input&, std::shared_ptr<Capability>>> getRequiredInputs();
 
     /**
      * @brief Returns true or false whether the node should be run on host or not

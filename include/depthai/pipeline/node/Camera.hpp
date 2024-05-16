@@ -1,12 +1,14 @@
 #pragma once
 
-#include <depthai/pipeline/datatype/CameraControl.hpp>
+// libraries
+#include <spimpl.h>
 
+// depthai
+#include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/pipeline/DeviceNode.hpp"
+#include "depthai/pipeline/datatype/CameraControl.hpp"
+#include "depthai/properties/CameraProperties.hpp"
 #include "depthai/utility/span.hpp"
-
-// shared
-#include <depthai/properties/CameraProperties.hpp>
 
 namespace dai {
 namespace node {
@@ -19,27 +21,43 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
    public:
     constexpr static const char* NAME = "Camera";
     using DeviceNodeCRTP::DeviceNodeCRTP;
+    [[nodiscard]] static std::shared_ptr<Camera> create() {
+        auto node = std::make_shared<Camera>();
+        node->build();
+        return node;
+    }
+    [[nodiscard]] static std::shared_ptr<Camera> create(std::shared_ptr<Device>& defaultDevice) {
+        auto node = std::make_shared<Camera>(defaultDevice);
+        node->build();
+        return node;
+    }
     std::shared_ptr<Camera> build();
 
    protected:
-    Camera() = default;
-    Camera(std::unique_ptr<Properties> props);
-
     Properties& getProperties();
-
     bool isSourceNode() const override;
     utility::NodeRecordParams getNodeRecordParams() const override;
     Output& getRecordOutput() override;
     Input& getReplayInput() override;
 
     bool isBuild = false;
-    bool needsBuild() override { return !isBuild; }
+    bool needsBuild() override {
+        return !isBuild;
+    }
 
    public:
+    /**
+     * Constructs Camera node.
+     */
+    Camera();
+    explicit Camera(std::shared_ptr<Device>& defaultDevice);
+    explicit Camera(std::unique_ptr<Properties> props);
     /**
      * Computes the scaled size given numerator and denominator
      */
     static int getScaledSize(int input, int num, int denom);
+
+    Node::Output* requestOutput(const Capability& capability, bool onHost) override;
 
     /**
      * Initial control options to apply to sensor
@@ -101,6 +119,11 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
      * Fields populated: camera id, sequence number, timestamp
      */
     Output frameEvent{*this, {.name = "frameEvent", .types = {{DatatypeEnum::ImgFrame, false}}}};
+
+    /**
+     * Dynamic outputs
+     */
+    OutputMap dynamicOutputs{*this, "dynamicOutputs", {"", "", {{DatatypeEnum::ImgFrame, false}}}};
 
     /**
      * Input for mocking 'isp' functionality.
@@ -348,6 +371,10 @@ class Camera : public DeviceNodeCRTP<DeviceNode, Camera, CameraProperties> {
      * with both packed/unpacked, but disabled for other cameras like ToF.
      */
     void setRawOutputPacked(bool packed);
+
+   private:
+    class Impl;
+    spimpl::impl_ptr<Impl> pimpl;
 };
 
 }  // namespace node

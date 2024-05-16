@@ -117,7 +117,6 @@ ImgFrame& ImgFrame::setCategory(unsigned int category) {
 
 ImgFrame& ImgFrame::setWidth(unsigned int width) {
     fb.width = width;
-    fb.stride = width;
     return *this;
 }
 ImgFrame& ImgFrame::setHeight(unsigned int height) {

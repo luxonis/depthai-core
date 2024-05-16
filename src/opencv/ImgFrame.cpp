@@ -153,7 +153,7 @@ cv::Mat ImgFrame::getCvFrame() {
         case Type::NV12:
         case Type::NV21: {
             int code = (getType() == Type::NV12) ? cv::ColorConversionCodes::COLOR_YUV2BGR_NV12 : cv::ColorConversionCodes::COLOR_YUV2BGR_NV21;
-            if(getPlaneHeight() <= getHeight()) {
+            if(getPlaneHeight() <= getHeight() && getStride() <= getWidth()) {
                 cv::cvtColor(frame, output, code);
             } else {
                 cv::Size s(getWidth(), getHeight());
