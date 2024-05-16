@@ -69,6 +69,8 @@
 
 namespace dai {
 
+static constexpr std::array<uint8_t, 16> endOfPacketMarker = {0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0};
+
 // Reads int from little endian format
 inline int readIntLE(uint8_t* data) {
     return data[0] + data[1] * 256 + data[2] * 256 * 256 + data[3] * 256 * 256 * 256;
@@ -90,16 +92,14 @@ static std::tuple<DatatypeEnum, size_t, size_t> parseHeader(streamPacketDesc_t* 
     if(packet->length < 24) {
         throw std::runtime_error(fmt::format("Bad packet, couldn't parse (not enough data), total size {}", packet->length));
     }
-    const std::uint32_t markerLength = 16;
-    const std::uint32_t packetLength = packet->length - markerLength;
+    const std::uint32_t packetLength = packet->length - endOfPacketMarker.size();
     const int serializedObjectSize = readIntLE(packet->data + packetLength - 4);
     const auto objectType = static_cast<DatatypeEnum>(readIntLE(packet->data + packetLength - 8));
 
-    static const uint8_t expectedMarker[] = {0xAB, 0xCD, 0xEF, 0x01, 0x23, 0x45, 0x67, 0x89, 0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0};
     uint8_t* marker = packet->data + packetLength;
-    if(memcmp(marker, expectedMarker, markerLength) != 0) {
+    if(memcmp(marker, endOfPacketMarker.data(), endOfPacketMarker.size()) != 0) {
         std::string hex;
-        for(std::uint32_t i = 0; i < markerLength; i++) {
+        for(std::uint32_t i = 0; i < endOfPacketMarker.size(); i++) {
             hex += fmt::format("{:02X}", marker[i]);
         }
         logger::warn("StreamMessageParser end-of-packet marker mismatch, got: " + hex);
@@ -356,6 +356,7 @@ std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer&
     // 2. serialize and append metadata
     // 3. append datatype enum (4B LE)
     // 4. append size (4B LE) of serialized metadata
+    // 5. append 16-byte marker/canary
 
     DatatypeEnum datatype;
     std::vector<std::uint8_t> metadata;
@@ -369,11 +370,12 @@ std::vector<std::uint8_t> StreamMessageParser::serializeMessage(const RawBuffer&
     for(int i = 0; i < 4; i++) leMetadataSize[i] = (metadataSize >> i * 8) & 0xFF;
 
     std::vector<std::uint8_t> ser;
-    ser.reserve(data.data.size() + metadata.size() + leDatatype.size() + leMetadataSize.size());
+    ser.reserve(data.data.size() + metadata.size() + leDatatype.size() + leMetadataSize.size() + endOfPacketMarker.size());
     ser.insert(ser.end(), data.data.begin(), data.data.end());
     ser.insert(ser.end(), metadata.begin(), metadata.end());
     ser.insert(ser.end(), leDatatype.begin(), leDatatype.end());
     ser.insert(ser.end(), leMetadataSize.begin(), leMetadataSize.end());
+    ser.insert(ser.end(), endOfPacketMarker.begin(), endOfPacketMarker.end());
 
     return ser;
 }
