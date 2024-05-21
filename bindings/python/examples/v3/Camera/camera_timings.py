@@ -9,17 +9,18 @@ import sys
 def exit_usage():
     print(
         "WRONG USAGE! correct usage example:\n"
-        "python timings.py 640 480 0\n"
-        "where 0 is resize mode: 0 == CROP, 1 == STRETCH, 2 == LETTERBOX"
-    )
+        "python timings.py 640 480 0 30\n"
+        "where 0 is resize mode: 0 == CROP, 1 == STRETCH, 2 == LETTERBOX\n"
+        "and 30 is FPS"
+        )
     exit(1)
 
 
 args = sys.argv[1:]
-if len(args) != 3:
+if len(args) != 4:
     exit_usage()
 
-info = dai.DeviceInfo("10.12.110.41")
+info = dai.DeviceInfo("10.12.110.219")
 info.protocol = dai.X_LINK_TCP_IP
 info.state = dai.X_LINK_GATE
 info.platform = dai.X_LINK_RVC3
@@ -47,6 +48,7 @@ with dai.Device(info) as device:
         else:
             exit_usage()
         cap.size.fixed([int(args[0]), int(args[1])])
+        cap.fps.fixed(int(args[3]))
         cameraNode.requestOutput(cap, False).link(script.inputs["frames"])
         out = script.outputs["out"].createQueue()
         pipeline.start()

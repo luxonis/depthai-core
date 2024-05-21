@@ -11,16 +11,17 @@ import depthai as dai
 def exit_usage():
     print(
         "WRONG USAGE! correct usage example:\n"
-        "python camera_multiple_outputs.py 640 480 0 300 300 0 300 300 1\n"
-        "where 0 is resize mode: 0 == CROP, 1 == STRETCH, 2 == LETTERBOX"
+        "python camera_multiple_outputs.py 640 480 0 30 300 300 0 30 300 300 1 30\n"
+        "where 0 is resize mode: 0 == CROP, 1 == STRETCH, 2 == LETTERBOX\n"
+        "and 30 is FPS"
     )
     exit(1)
 
 
 args = sys.argv[1:]
-if len(args) < 3 or len(args) % 3 != 0:
+if len(args) < 4 or len(args) % 4 != 0:
     exit_usage()
-info = dai.DeviceInfo("127.0.0.1")
+info = dai.DeviceInfo("10.12.110.219")
 info.protocol = dai.X_LINK_TCP_IP
 info.state = dai.X_LINK_GATE
 info.platform = dai.X_LINK_RVC3
@@ -33,9 +34,10 @@ with dai.Device(info) as device:
         cam.setBoardSocket(dai.CameraBoardSocket.CAM_A)
 
         queues = []
-        for i in range(0, len(args), 3):
+        for i in range(0, len(args), 4):
             cap = dai.ImgFrameCapability()
             cap.size.fixed([int(args[i]), int(args[i + 1])])
+            cap.fps.fixed(int(args[i + 3]))
             cropArg = int(args[i + 2])
             if cropArg == 0:
                 cap.resizeMode = dai.ImgResizeMode.CROP
