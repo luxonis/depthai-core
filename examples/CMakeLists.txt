@@ -261,9 +261,6 @@ dai_add_example(image_manip_warp_mesh ImageManip/image_manip_warp_mesh.cpp ON OF
 # Warp
 dai_add_example(warp_mesh Warp/warp_mesh.cpp ON OFF)
 
-# Warp
-dai_add_example(warp_mesh Warp/warp_mesh.cpp ON)
-
 # IMU
 dai_add_example(imu_gyroscope_accelerometer IMU/imu_gyroscope_accelerometer.cpp ON OFF)
 dai_add_example(imu_rotation_vector IMU/imu_rotation_vector.cpp ON OFF)

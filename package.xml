@@ -1,9 +1,9 @@
 <package format="3">
   <name>depthai</name>
-  <version>2.24.0</version>
+  <version>2.25.1</version>
   <description>DepthAI core is a C++ library which comes with firmware and an API to interact with OAK Platform</description>
 
-  <maintainer email="sachin@luxonis.com">Sachin Guruswamy</maintainer>
+  <maintainer email="adam.serafin@luxonis.com">Adam Serafin</maintainer>
   <author email="martin@luxonis.com">Martin Peterlin</author>
 
   <license>MIT</license>
@@ -14,6 +14,8 @@
 
   <depend>libusb-1.0-dev</depend>
   <depend>libopencv-dev</depend>
+  <depend>libpcl-dev</depend>
+
   <depend>nlohmann-json-dev</depend>
   <!-- The following tags are recommended by REP-136 -->
   <exec_depend condition="$ROS_VERSION == 1">catkin</exec_depend>

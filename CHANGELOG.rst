@@ -2,6 +2,27 @@
 Changelog for package depthai
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+2.25.1 (2024-05-21)
+-----------
+* PointCloud node along with the PointCloudData message
+* On device pointcloud generation
+* Native conversion to PCL message type - similar to getCvFrame()
+* Support for the OAK Thermal
+* New setManualFocusRaw() API with more granularity for setting manual focus position
+* New getStereoPairs() and getAvailableStereoPairs() API to allow more device agnostic programming
+* Add the intensity output to the ToF node
+* Add the crop sensor configs in getConnectedCameraFeatures() now contain how each of the resolutions is cropped from the native sensor resolution
+* Added DeviceBootloader::getFlashedVersion to retrieve the bootloader version that is flashed on device.
+* Bug fix for v2.24.0 regression with flashing the bootloader link
+* Bug fix in message groups for large resolution frames when going through XLinkOut node
+* Bug fix to apply AE limit during AF lens movement (before the fix, the AE limit wasn't applied during active AF movements)
+* Bug fix for grayscale VideoEncoder node with 2 inputs of different sizes
+* Fix timings for IMX214 4K resolution, which were slightly off
+* Fixed fsync on OAK-D-SR.
+* Fixed boot issue on OAK-D-SR-POE and OAK-T.
+* Fixed compilation in same cases, because of problems with jsoncpp. (#980)
+* Contributors: Alex Bougdan, Szabolcs Gergely, Martin Peterlin
+
 2.24.0 (2024-02-02)
 -----------
 * New nodes and messages:
