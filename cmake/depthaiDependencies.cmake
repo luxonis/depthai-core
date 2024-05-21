@@ -1,5 +1,6 @@
 if(CONFIG_MODE)
     set(_DEPTHAI_PREFIX_PATH_ORIGINAL ${CMAKE_PREFIX_PATH})
+    set(_DEPTHAI_MODULE_PATH_ORIGINAL ${CMAKE_MODULE_PATH})
     set(_DEPTHAI_FIND_ROOT_PATH_MODE_PACKAGE_ORIGINAL ${CMAKE_FIND_ROOT_PATH_MODE_PACKAGE})
     # Fixes Android NDK build, where prefix path is ignored as its not inside sysroot
     set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE "BOTH")
@@ -25,6 +26,9 @@ else()
         hunter_add_package(Backward)
     endif()
     hunter_add_package(libnop)
+    if(DEPTHAI_PCL_SUPPORT)
+        hunter_add_package(jsoncpp)
+    endif()
 endif()
 
 # If library was build as static, find all dependencies
@@ -79,6 +83,18 @@ endif()
 
 # OpenCV 4 - (optional, quiet always)
 find_package(OpenCV 4 QUIET CONFIG)
+if(DEPTHAI_PCL_SUPPORT AND NOT TARGET JsonCpp::JsonCpp)
+    find_package(jsoncpp)
+endif()
+set(MODULE_TEMP ${CMAKE_MODULE_PATH})
+set(PREFIX_TEMP ${CMAKE_PREFIX_PATH})
+set(CMAKE_MODULE_PATH ${_DEPTHAI_MODULE_PATH_ORIGINAL})
+set(CMAKE_PREFIX_PATH ${_DEPTHAI_PREFIX_PATH_ORIGINAL})
+if(DEPTHAI_PCL_SUPPORT)
+    find_package(PCL CONFIG COMPONENTS common visualization)
+endif()
+set(CMAKE_MODULE_PATH ${MODULE_TEMP})
+set(CMAKE_PREFIX_PATH ${PREFIX_TEMP})
 
 # include optional dependency cmake
 if(DEPTHAI_DEPENDENCY_INCLUDE)

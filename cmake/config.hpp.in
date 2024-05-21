@@ -6,6 +6,9 @@
 // This build supports OpenCV integration?
 #cmakedefine DEPTHAI_HAVE_OPENCV_SUPPORT
 
+// This build supports PCL integration?
+#cmakedefine DEPTHAI_HAVE_PCL_SUPPORT
+
 // This build supports libusb?
 #cmakedefine DEPTHAI_HAVE_LIBUSB_SUPPORT
 
@@ -13,6 +16,9 @@
 #ifdef DEPTHAI_TARGET_CORE
 #ifndef DEPTHAI_TARGET_OPENCV
 #undef DEPTHAI_HAVE_OPENCV_SUPPORT
+#endif
+#ifndef DEPTHAI_TARGET_PCL
+#undef DEPTHAI_HAVE_PCL_SUPPORT
 #endif
 #endif
 
@@ -25,6 +31,12 @@ namespace build
     constexpr static bool HAVE_OPENCV_SUPPORT = true;
 #else
     constexpr static bool HAVE_OPENCV_SUPPORT = false;
+#endif
+
+#ifdef DEPTHAI_HAVE_PCL_SUPPORT
+    constexpr static bool HAVE_PCL_SUPPORT = true;
+#else
+    constexpr static bool HAVE_PCL_SUPPORT = false;
 #endif
 
 #ifdef DEPTHAI_HAVE_LIBUSB_SUPPORT
