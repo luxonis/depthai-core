@@ -14,7 +14,6 @@
 
   <depend>libusb-1.0-dev</depend>
   <depend>libopencv-dev</depend>
-  <depend>libpcl-dev</depend>
 
   <depend>nlohmann-json-dev</depend>
   <!-- The following tags are recommended by REP-136 -->
