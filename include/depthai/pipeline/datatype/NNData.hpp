@@ -5,6 +5,7 @@
 #include <limits>
 #include <unordered_map>
 #include <vector>
+#include <optional>
 
 #include "Buffer.hpp"
 #include "depthai/common/TensorInfo.hpp"
