@@ -68,6 +68,26 @@ class ImageAlign : public NodeCRTP<Node, ImageAlign, ImageAlignProperties> {
      * Specify the output size of the aligned depth map
      */
     ImageAlign& setOutputSize(int alignWidth, int alignHeight);
+
+    /**
+     * Specify whether to keep aspect ratio when resizing
+     */
+    ImageAlign& setOutKeepAspectRatio(bool keep);
+
+    /**
+     * Specify interpolation method to use when resizing
+     */
+    ImageAlign& setInterpolation(Interpolation interp);
+
+    /**
+     * Specify number of shaves to use for this node
+     */
+    ImageAlign& setNumShaves(int numShaves);
+
+    /**
+     * Specify number of frames in the pool
+     */
+    ImageAlign& setNumFramesPool(int numFramesPool);
 };
 
 }  // namespace node
