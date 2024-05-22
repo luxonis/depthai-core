@@ -5,7 +5,7 @@
 #include "depthai/depthai.hpp"
 
 int main(int argc, char** argv) {
-    dai::DeviceInfo info("127.0.0.1");
+    dai::DeviceInfo info("10.12.110.219");
     info.protocol = X_LINK_TCP_IP;
     info.state = X_LINK_GATE;
     info.platform = X_LINK_RVC4;
@@ -23,7 +23,7 @@ int main(int argc, char** argv) {
     // Define source and output
     auto camRgb = pipeline.create<dai::node::Camera>();
 
-    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_B);
+    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_A);
     if(sizes.empty()) {
         throw std::runtime_error("internal error to few sizes");
     }
@@ -34,7 +34,8 @@ int main(int argc, char** argv) {
         dai::ImgFrameCapability cap;
         // cap.encoding = dai::ImgFrame::Type::RGB888i;
         // cap.encoding = dai::ImgFrame::Type::NV12;
-        cap.encoding = dai::ImgFrame::Type::BGR888i;
+        // cap.encoding = dai::ImgFrame::Type::BGR888i;
+        cap.encoding = dai::ImgFrame::Type::RGB888i;
         cap.size.value = std::pair{std::get<0>(size), std::get<1>(size)};
         auto mode = std::get<2>(size);
         switch(mode) {
