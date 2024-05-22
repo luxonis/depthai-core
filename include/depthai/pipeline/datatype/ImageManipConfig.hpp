@@ -1,14 +1,330 @@
 #pragma once
 
+#include <nlohmann/json.hpp>
 #include <unordered_map>
+#include <variant>
 #include <vector>
 
 #include "depthai/common/Colormap.hpp"
 #include "depthai/common/Interpolation.hpp"
+#include "depthai/common/Point2f.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
+#include "utility/Serialization.hpp"
 namespace dai {
+
+namespace ImageManipOperations {
+
+// Helper structs
+struct SizeVal {
+    enum class Type { ABSOLUTE = 0, RELATIVE, AUTO_FIT, AUTO_FILL };
+
+   private:
+    int valueAbs = 0;
+    float valueRel = 0.0;
+    Type type = Type::ABSOLUTE;
+
+   public:
+    static SizeVal absolute(int value) {
+        SizeVal sv;
+        sv.type = Type::ABSOLUTE;
+        sv.valueAbs = value;
+        return sv;
+    }
+    static SizeVal relative(float value) {
+        SizeVal sv;
+        sv.type = Type::RELATIVE;
+        sv.valueRel = value;
+        return sv;
+    }
+    static SizeVal fit() {
+        SizeVal sv;
+        sv.type = Type::AUTO_FIT;
+        return sv;
+    }
+    static SizeVal fill() {
+        SizeVal sv;
+        sv.type = Type::AUTO_FILL;
+        return sv;
+    }
+    int getAbsolute() const {
+        if(type == Type::ABSOLUTE) return valueAbs;
+        throw std::runtime_error("SizeVal is not absolute");
+    }
+    float getRelative() const {
+        if(type == Type::RELATIVE) return valueRel;
+        throw std::runtime_error("SizeVal is not relative");
+    }
+    Type getType() const {
+        return type;
+    }
+
+    DEPTHAI_SERIALIZE(SizeVal, type, valueAbs, valueRel);
+};
+struct OffsetVal {
+    enum class Type { ABSOLUTE = 0, RELATIVE };
+
+   private:
+    int valueAbs;
+    float valueRel;
+    Type type = Type::ABSOLUTE;
+
+   public:
+    static OffsetVal absolute(int value) {
+        OffsetVal sv;
+        sv.type = Type::ABSOLUTE;
+        sv.valueAbs = value;
+        return sv;
+    }
+    static OffsetVal relative(float value) {
+        OffsetVal sv;
+        sv.type = Type::RELATIVE;
+        sv.valueRel = value;
+        return sv;
+    }
+    int getAbsolute() const {
+        if(type == Type::ABSOLUTE) return valueAbs;
+        throw std::runtime_error("OffsetVal is not absolute");
+    }
+    float getRelative() const {
+        if(type == Type::RELATIVE) return valueRel;
+        throw std::runtime_error("OffsetVal is not relative");
+    }
+    Type getType() const {
+        return type;
+    }
+
+    DEPTHAI_SERIALIZE(OffsetVal, type, valueAbs, valueRel);
+};
+// Structs that define actions
+
+// Resize canvas
+struct CanvasResize {
+    enum class CanvasBackground { COLOR, REPLICATE, MIRROR };
+    enum class CanvasAnchor { TOP_LEFT, TOP_RIGHT, BOTTOM_LEFT, BOTTOM_RIGHT, CENTER };
+
+   private:
+    SizeVal width;
+    SizeVal height;
+
+    CanvasAnchor anchorType = CanvasAnchor::CENTER;
+
+    CanvasBackground background = CanvasBackground::COLOR;
+    uint8_t red = 0, green = 0, blue = 0;
+
+   public:
+    CanvasResize() = default;
+    CanvasResize(SizeVal width, SizeVal height, CanvasAnchor anchorType, CanvasBackground background, uint8_t red, uint8_t green, uint8_t blue)
+        : width(width), height(height), anchorType(anchorType), background(background), red(red), green(green), blue(blue) {}
+
+    DEPTHAI_SERIALIZE(CanvasResize, width, height, anchorType, background, red, green, blue);
+};
+
+struct ImageResize {
+   private:
+    SizeVal width;
+    SizeVal height;
+
+   public:
+    ImageResize() = default;
+    ImageResize(SizeVal width, SizeVal height) : width(width), height(height) {}
+
+    DEPTHAI_SERIALIZE(ImageResize, width, height);
+};
+
+struct ImageTransform2D {
+   private:
+    int rotation = 0;
+    OffsetVal offsetX;
+    OffsetVal offsetY;
+
+   public:
+    ImageTransform2D() = default;
+    ImageTransform2D(int rotation, OffsetVal offsetX, OffsetVal offsetY) : rotation(rotation), offsetX(offsetX), offsetY(offsetY) {}
+
+    DEPTHAI_SERIALIZE(ImageTransform2D, rotation, offsetX, offsetY);
+};
+
+struct ImageWarp {
+    enum class Type { FOUR_POINTS, MATRIX };
+
+   private:
+    std::array<dai::Point2f, 4> points;
+    std::array<float, 9> mat{1, 0, 0, 0, 1, 0, 0, 0, 1};
+
+    Type type = Type::MATRIX;
+
+   public:
+    static ImageWarp fourPoints(const std::array<dai::Point2f, 4>& points) {
+        ImageWarp iw;
+        iw.type = Type::FOUR_POINTS;
+        iw.points = points;
+        return iw;
+    }
+    static ImageWarp matrix(const std::array<float, 9>& mat) {
+        ImageWarp iw;
+        iw.type = Type::MATRIX;
+        iw.mat = mat;
+        return iw;
+    }
+    std::array<dai::Point2f, 4> getPoints() const {
+        if(type == Type::FOUR_POINTS) return points;
+        throw std::runtime_error("ImageWarp is not four points");
+    }
+    std::array<float, 9> getMatrix() const {
+        if(type == Type::MATRIX) return mat;
+        throw std::runtime_error("ImageWarp is not matrix");
+    }
+    Type getType() const {
+        return type;
+    }
+
+    DEPTHAI_SERIALIZE(ImageWarp, type, points, mat);
+};
+
+struct ImageFlip {
+    enum class Type { HORIZONTAL, VERTICAL };
+
+   private:
+    Type type = Type::HORIZONTAL;
+
+   public:
+    static ImageFlip horizontal() {
+        ImageFlip flip;
+        flip.type = Type::HORIZONTAL;
+        return flip;
+    }
+    static ImageFlip vertical() {
+        ImageFlip flip;
+        flip.type = Type::VERTICAL;
+        return flip;
+    }
+    Type getType() const {
+        return type;
+    }
+
+    DEPTHAI_SERIALIZE(ImageFlip, type);
+};
+
+struct ImageColormap {
+    Colormap type = Colormap::NONE;
+
+    ImageColormap() = default;
+    ImageColormap(Colormap type) : type(type) {}
+
+    DEPTHAI_SERIALIZE(ImageColormap, type);
+};
+
+struct ManipOp {
+    enum class Type { NONE, CANVAS_RESIZE, IMAGE_TRANSFORM_2D, IMAGE_WARP, IMAGE_RESIZE, IMAGE_FLIP, IMAGE_COLORMAP };
+
+   private:
+    Type type = Type::NONE;
+    union {
+        CanvasResize canvasResize;
+        ImageTransform2D imageTransform2D;
+        ImageWarp imageWarp;
+        ImageResize imageResize;
+        ImageFlip imageFlip;
+        ImageColormap imageColormap;
+    } op;
+
+public:
+    ManipOp() = default;
+    ManipOp(CanvasResize canvasResize) : type(Type::CANVAS_RESIZE), op({.canvasResize = canvasResize}) {}
+    ManipOp(ImageTransform2D imageTransform2D) : type(Type::IMAGE_TRANSFORM_2D), op({.imageTransform2D = imageTransform2D}) {}
+    ManipOp(ImageWarp imageWarp) : type(Type::IMAGE_WARP), op({.imageWarp = imageWarp}) {}
+    ManipOp(ImageResize imageResize) : type(Type::IMAGE_RESIZE), op({.imageResize = imageResize}) {}
+    ManipOp(ImageFlip imageFlip) : type(Type::IMAGE_FLIP), op({.imageFlip = imageFlip}) {}
+    ManipOp(ImageColormap imageColormap) : type(Type::IMAGE_COLORMAP), op({.imageColormap = imageColormap}) {}
+
+    Type getType() const {
+        return type;
+    }
+    CanvasResize getCanvasResize() const {
+        if(type == Type::CANVAS_RESIZE) return op.canvasResize;
+        throw std::runtime_error("ManipOp is not CanvasResize");
+    }
+    ImageTransform2D getImageTransform2D() const {
+        if(type == Type::IMAGE_TRANSFORM_2D) return op.imageTransform2D;
+        throw std::runtime_error("ManipOp is not ImageTransform2D");
+    }
+    ImageWarp getImageWarp() const {
+        if(type == Type::IMAGE_WARP) return op.imageWarp;
+        throw std::runtime_error("ManipOp is not ImageWarp");
+    }
+    ImageResize getImageResize() const {
+        if(type == Type::IMAGE_RESIZE) return op.imageResize;
+        throw std::runtime_error("ManipOp is not ImageResize");
+    }
+    ImageFlip getImageFlip() const {
+        if(type == Type::IMAGE_FLIP) return op.imageFlip;
+        throw std::runtime_error("ManipOp is not ImageFlip");
+    }
+    ImageColormap getImageColormap() const {
+        if(type == Type::IMAGE_COLORMAP) return op.imageColormap;
+        throw std::runtime_error("ManipOp is not ImageColormap");
+    }
+
+    NOP_STRUCTURE(ManipOp, type, op);
+};
+
+}  // namespace ImageManipOperations
+
+namespace ns {
+void to_json(nlohmann::json& j, const dai::ImageManipOperations::ManipOp& p) { // NOLINT
+    nlohmann::json opJson = nlohmann::json{};
+    switch(p.getType()) {
+        case dai::ImageManipOperations::ManipOp::Type::NONE:
+            break;
+        case dai::ImageManipOperations::ManipOp::Type::CANVAS_RESIZE:
+            opJson = p.getCanvasResize();
+            break;
+        case dai::ImageManipOperations::ManipOp::Type::IMAGE_TRANSFORM_2D:
+            opJson = p.getImageTransform2D();
+            break;
+        case dai::ImageManipOperations::ManipOp::Type::IMAGE_WARP:
+            opJson = p.getImageWarp();
+            break;
+        case dai::ImageManipOperations::ManipOp::Type::IMAGE_RESIZE:
+            opJson = p.getImageResize();
+            break;
+        case dai::ImageManipOperations::ManipOp::Type::IMAGE_FLIP:
+            opJson = p.getImageFlip();
+            break;
+        case dai::ImageManipOperations::ManipOp::Type::IMAGE_COLORMAP:
+            opJson = p.getImageColormap();
+            break;
+    }
+    j = nlohmann::json{{"type", p.getType()}, {"op", opJson}};
+}
+
+void from_json(const nlohmann::json& j, dai::ImageManipOperations::ManipOp& p) { // NOLINT
+    switch(j.at("type").get<dai::ImageManipOperations::ManipOp::Type>()) {
+        case dai::ImageManipOperations::ManipOp::Type::NONE:
+            break;
+        case dai::ImageManipOperations::ManipOp::Type::CANVAS_RESIZE:
+            p = j.at("op").get<dai::ImageManipOperations::CanvasResize>();
+            break;
+        case dai::ImageManipOperations::ManipOp::Type::IMAGE_TRANSFORM_2D:
+            p = j.at("op").get<dai::ImageManipOperations::ImageTransform2D>();
+            break;
+        case dai::ImageManipOperations::ManipOp::Type::IMAGE_WARP:
+            p = j.at("op").get<dai::ImageManipOperations::ImageWarp>();
+            break;
+        case ImageManipOperations::ManipOp::Type::IMAGE_RESIZE:
+            p = j.at("op").get<dai::ImageManipOperations::ImageResize>();
+            break;
+        case dai::ImageManipOperations::ManipOp::Type::IMAGE_FLIP:
+            p = j.at("op").get<dai::ImageManipOperations::ImageFlip>();
+            break;
+        case dai::ImageManipOperations::ManipOp::Type::IMAGE_COLORMAP:
+            p = j.at("op").get<dai::ImageManipOperations::ImageColormap>();
+            break;
+    }
+}
+}  // namespace ns
 
 /**
  * ImageManipConfig message. Specifies image manipulation options like:
@@ -25,6 +341,12 @@ class ImageManipConfig : public Buffer {
    public:
     ImageManipConfig() = default;
     virtual ~ImageManipConfig() = default;
+
+    // New config
+
+    std::vector<ImageManipOperations::ManipOp> operations;
+
+    // Old config
 
     struct CropRect {
         // Normalized range 0-1
@@ -344,8 +666,17 @@ class ImageManipConfig : public Buffer {
     bool reusePreviousImage = false;
     bool skipCurrentImage = false;
     Interpolation interpolation = Interpolation::AUTO;
-    DEPTHAI_SERIALIZE(
-        ImageManipConfig, cropConfig, resizeConfig, formatConfig, enableCrop, enableResize, enableFormat, reusePreviousImage, skipCurrentImage, interpolation);
+    DEPTHAI_SERIALIZE(ImageManipConfig,
+                      cropConfig,
+                      resizeConfig,
+                      formatConfig,
+                      enableCrop,
+                      enableResize,
+                      enableFormat,
+                      reusePreviousImage,
+                      skipCurrentImage,
+                      interpolation
+                      );
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ImageManipConfig;
