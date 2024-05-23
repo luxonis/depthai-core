@@ -106,11 +106,11 @@ int main() {
     auto rerun = pipeline.create<RerunStreamer>();
 
     imu->enableIMUSensor({dai::IMUSensor::ACCELEROMETER_RAW, dai::IMUSensor::GYROSCOPE_RAW}, 200);
+    odom->setImuUpdateRate(200);
     imu->setBatchReportThreshold(1);
     imu->setMaxBatchReports(10);
-
     stereo->setExtendedDisparity(false);
-    stereo->setSubpixel(true);
+    // stereo->setSubpixel(true);
     stereo->setDefaultProfilePreset(dai::node::StereoDepth::PresetMode::HIGH_DENSITY);
     stereo->setLeftRightCheck(true);
     stereo->setRectifyEdgeFillColor(0); // black, to better see the cutout
@@ -138,7 +138,6 @@ int main() {
     odom->transform.link(slam->inputOdomPose);
     slam->transform.link(rerun->inputTrans);
     slam->passthroughRect.link(rerun->inputImg);
-    // slam->pointCloud.link(rerun->inputPCL);
     slam->occupancyMap.link(rerun->inputMap);
     pipeline.start();
     pipeline.wait();

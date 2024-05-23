@@ -31,6 +31,7 @@ class BasaltVIO : public dai::NodeCRTP<dai::node::ThreadedHostNode, BasaltVIO> {
     dai::Node::Output passthrough{*this, {.name = "imgPassthrough", .types = {{dai::DatatypeEnum::ImgFrame, true}}}};
 
     basalt::VioConfig vioConfig;
+    void setImuUpdateRate(int rate) { imuUpdateRate = rate; }
 
    private:
     std::shared_ptr<basalt::Calibration<double>> calib;

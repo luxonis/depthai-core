@@ -91,56 +91,34 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<dai::ImgFrame>> frames) {
     calib.reset(new basalt::Calibration<Scalar>);
     calib->imu_update_rate = imuUpdateRate;
 
-    // get camera ex-/intrinsics
     auto calibHandler = pipeline.getDefaultDevice()->readCalibration();
 
-    // update after extrinsics are available
-    // auto imuLeftExtrinsics = calibHandler.getCameraToImuExtrinsics(dai::CameraBoardSocket::LEFT);
-    // auto imuRightExtrinsics = calibHandler.getCameraToImuExtrinsics(dai::CameraBoardSocket::RIGHT);
-    // std vector of std vectors to Eigen::Matrix
-
-    // Eigen::Matrix<Scalar, 4, 4> imuLeftExtrinsicsMatrix;
-    // Eigen::Matrix<Scalar, 4, 4> imuRightExtrinsicsMatrix;
-
-    // for (int i = 0; i < 4; i++) {
-    //   for (int j = 0; j < 4; j++) {
-    //     imuLeftExtrinsicsMatrix(i, j) = imuLeftExtrinsics[i][j];
-    //     imuRightExtrinsicsMatrix(i, j) = imuRightExtrinsics[i][j];
-    //   }
-    // }
-    // Eigen::Matrix3d rot = Eigen::Map<Eigen::Matrix3f>(ex.rotation);
-
-    // For OAK D-PRO
-    double roll = -3.1415;
-    double pitch = 0.0;
-    double yaw = -1.5708;
-    Eigen::AngleAxisd roll_angle(roll, Eigen::Vector3d::UnitX());
-    Eigen::AngleAxisd pitch_angle(pitch, Eigen::Vector3d::UnitY());
-    Eigen::AngleAxisd yaw_angle(yaw, Eigen::Vector3d::UnitZ());
-
-    Eigen::Quaterniond qL = roll_angle * pitch_angle * yaw_angle;
-
-    Eigen::Quaterniond qR = roll_angle * pitch_angle * yaw_angle;
-    // OAK D PRO
-    Eigen::Vector3d transL(0.0, -0.06635, -0.00565);  // y x z
-    Eigen::Vector3d transR(0.0, 0.00641, -0.00565);
-
-    // OAK D PRO W
-    // Eigen::Vector3d transL(0.0, -0.075448, -0.0048);  // y x z
-    // Eigen::Vector3d transR(0.0,0.0, -0.0048);
-
-    basalt::Calibration<Scalar>::SE3 T_i_c_left(qL, transL);
-    basalt::Calibration<Scalar>::SE3 T_i_c_right(qR, transR);
-
-    calib->T_i_c.push_back(T_i_c_left);
-    calib->T_i_c.push_back(T_i_c_right);
-
-    // get resolution
     for(const auto& frame : frames) {
         Eigen::Vector2i resolution;
         resolution << frame->getWidth(), frame->getHeight();
         calib->resolution.push_back(resolution);
         auto camID = static_cast<dai::CameraBoardSocket>(frame->getInstanceNum());
+        // imu extrinsics
+        std::vector<std::vector<float>> imuExtr = calibHandler.getImuToCameraExtrinsics(camID, true);
+
+        // print out extrinsics
+        for(auto& row : imuExtr) {
+            for(auto& val : row) {
+                std::cout << val << " ";
+            }
+            std::cout << std::endl;
+        }
+        Eigen::Matrix<Scalar, 3, 3> R;
+        R << imuExtr[0][0], imuExtr[0][1], imuExtr[0][2],
+        imuExtr[1][0], imuExtr[1][1], imuExtr[1][2],
+        imuExtr[2][0], imuExtr[2][1], imuExtr[2][2];
+        Eigen::Quaterniond q(R);
+
+        Eigen::Vector3d trans(imuExtr[0][3]*0.01, imuExtr[1][3]*0.01, imuExtr[2][3]*0.01); // y -x z
+        basalt::Calibration<Scalar>::SE3 T_i_c(q,trans);
+        calib->T_i_c.push_back(T_i_c);
+
+        // camera intrinsics
         auto intrinsics = calibHandler.getCameraIntrinsics(camID, frame->getWidth(), frame->getHeight());
         auto model = calibHandler.getDistortionModel(camID);
         auto distCoeffs = calibHandler.getDistortionCoefficients(camID);

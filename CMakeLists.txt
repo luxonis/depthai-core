@@ -789,7 +789,7 @@ endif()
 # Basalt Support
 ########################
 
-set(THIRDPARTY_BASALT_LIBRARIES "" CACHE STRING "Optional libraries to link Basalt support, e.g. TBB::tbb")
+set(THIRDPARTY_BASALT_LIBRARIES "TBB::tbb" CACHE STRING "Optional libraries to link Basalt support, e.g. TBB::tbb")
 set(TARGET_BASALT_NAME ${PROJECT_NAME}-basalt)
 set(TARGET_BASALT_ALIAS basalt)
 
