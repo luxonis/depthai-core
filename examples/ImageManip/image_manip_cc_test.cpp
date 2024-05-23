@@ -21,7 +21,7 @@ class ImgManipTestIn : public dai::NodeCRTP<dai::node::ThreadedHostNode, ImgMani
         if(img.empty()) {
             throw std::runtime_error("File not found: " + fpath);
         }
-        std::vector<Type> types = {Type::RGB888i, Type::RGB888p, Type::BGR888i, Type::BGR888p, Type::YUV420p, Type::NV12};
+        std::vector<Type> types = {Type::RGB888i, Type::RGB888p, Type::BGR888i, Type::BGR888p, Type::YUV420p, Type::NV12, Type::GRAY8};
         for(int i = 0; i < types.size(); ++i) {
             auto frame = std::make_shared<dai::ImgFrame>();
             frame->setCvFrame(img, types[i]);
@@ -48,7 +48,7 @@ class ImgManipTestOut : public dai::NodeCRTP<dai::node::ThreadedHostNode, ImgMan
         if(img.empty()) {
             throw std::runtime_error("File not found: " + fpath);
         }
-        std::vector<Type> types = {Type::RGB888i, Type::RGB888p, Type::BGR888i, Type::BGR888p, Type::YUV420p, Type::NV12};
+        std::vector<Type> types = {Type::RGB888i, Type::RGB888p, Type::BGR888i, Type::BGR888p, Type::YUV420p, Type::NV12, Type::GRAY8};
         for(int i = 0; i < types.size(); ++i) {
             for(int j = 0; j < types.size(); ++j) {
                 if (i == j) continue;
@@ -56,10 +56,12 @@ class ImgManipTestOut : public dai::NodeCRTP<dai::node::ThreadedHostNode, ImgMan
                 if(image->getType() != types[j]) {
                     image = inImg.get<dai::ImgFrame>();
                 }
-                assert(image->getType() == types[j]);
+                assert(image->getType() == types[j] || types[j] == Type::GRAY8);
                 cv::Mat imgCv = image->getCvFrame();
                 if(imgCv.empty()) {
                     throw std::runtime_error("Empty frame");
+                } else if(imgCv.channels() == 1) {
+                    cv::cvtColor(imgCv, imgCv, cv::COLOR_GRAY2BGR);
                 }
                 assert(img.cols == imgCv.cols);
                 assert(img.rows == imgCv.rows);
@@ -82,7 +84,8 @@ class ImgManipTestOut : public dai::NodeCRTP<dai::node::ThreadedHostNode, ImgMan
 };
 
 int main(int argc, char** argv) {
-    dai::Pipeline pipeline(true);
+    auto device = std::make_shared<dai::Device>("10.12.103.126");
+    dai::Pipeline pipeline(device);
 
     std::string fpath = argc > 1 ? argv[1] : "image.jpg";
 
