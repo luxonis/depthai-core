@@ -34,7 +34,7 @@ void BasaltVIO::stereoCB(std::shared_ptr<dai::ADatatype> images) {
     if(!calibrated) {
         std::vector<std::shared_ptr<dai::ImgFrame>> imgFrames;
         for(auto& msg : *group) {
-                imgFrames.emplace_back(std::dynamic_pointer_cast<dai::ImgFrame>(msg.second));
+            imgFrames.emplace_back(std::dynamic_pointer_cast<dai::ImgFrame>(msg.second));
         }
 
         initialize(imgFrames);
@@ -68,7 +68,6 @@ void BasaltVIO::stereoCB(std::shared_ptr<dai::ADatatype> images) {
     if(imageDataQueue) {
         imageDataQueue->push(data);
     }
-
 };
 
 void BasaltVIO::imuCB(std::shared_ptr<dai::ADatatype> imuData) {
@@ -87,9 +86,8 @@ void BasaltVIO::imuCB(std::shared_ptr<dai::ADatatype> imuData) {
     }
 };
 void BasaltVIO::initialize(std::vector<std::shared_ptr<dai::ImgFrame>> frames) {
-     if (threadNum > 0) {
-    tbb_global_control = std::make_unique<tbb::global_control>(
-        tbb::global_control::max_allowed_parallelism, threadNum);
+    if(threadNum > 0) {
+        tbb_global_control = std::make_unique<tbb::global_control>(tbb::global_control::max_allowed_parallelism, threadNum);
     }
 
     auto pipeline = getParentPipeline();
@@ -107,21 +105,12 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<dai::ImgFrame>> frames) {
         // imu extrinsics
         std::vector<std::vector<float>> imuExtr = calibHandler.getImuToCameraExtrinsics(camID, true);
 
-        // print out extrinsics
-        for(auto& row : imuExtr) {
-            for(auto& val : row) {
-                std::cout << val << " ";
-            }
-            std::cout << std::endl;
-        }
         Eigen::Matrix<Scalar, 3, 3> R;
-        R << imuExtr[0][0], imuExtr[0][1], imuExtr[0][2],
-        imuExtr[1][0], imuExtr[1][1], imuExtr[1][2],
-        imuExtr[2][0], imuExtr[2][1], imuExtr[2][2];
+        R << imuExtr[0][0], imuExtr[0][1], imuExtr[0][2], imuExtr[1][0], imuExtr[1][1], imuExtr[1][2], imuExtr[2][0], imuExtr[2][1], imuExtr[2][2];
         Eigen::Quaterniond q(R);
 
-        Eigen::Vector3d trans(imuExtr[0][3]*0.01, imuExtr[1][3]*0.01, imuExtr[2][3]*0.01); // y -x z
-        basalt::Calibration<Scalar>::SE3 T_i_c(q,trans);
+        Eigen::Vector3d trans(imuExtr[0][3] * 0.01, imuExtr[1][3] * 0.01, imuExtr[2][3] * 0.01);  // y -x z
+        basalt::Calibration<Scalar>::SE3 T_i_c(q, trans);
         calib->T_i_c.push_back(T_i_c);
 
         // camera intrinsics

@@ -52,7 +52,7 @@ class BasaltVIO : public dai::NodeCRTP<dai::node::ThreadedHostNode, BasaltVIO> {
     bool calibrated = false;
     std::string configPath = VIO_CONFIG_PATH;
     int imuUpdateRate = 200;
-    int threadNum = 8;
+    int threadNum = 1;
     std::unique_ptr<tbb::global_control> tbb_global_control;
 
 
