@@ -77,12 +77,12 @@ int main() {
     int width = 640;
     int height = 400;
     // Define sources and outputs
-    auto left = pipeline.create<dai::node::MonoCamera>();
-    auto right = pipeline.create<dai::node::MonoCamera>();
+    auto left = pipeline.create<dai::node::MonoCamera>()->build();
+    auto right = pipeline.create<dai::node::MonoCamera>()->build();
     auto stereo = pipeline.create<dai::node::StereoDepth>();
-    auto imu = pipeline.create<dai::node::IMU>();
-    auto featureTracker = pipeline.create<dai::node::FeatureTracker>();
-    auto odom = pipeline.create<dai::node::RTABMapVIO>();
+    auto imu = pipeline.create<dai::node::IMU>()->build();
+    auto featureTracker = pipeline.create<dai::node::FeatureTracker>()->build();
+    auto odom = pipeline.create<dai::node::RTABMapVIO>()->build();
     auto rerun = pipeline.create<RerunStreamer>();
     auto params = rtabmap::ParametersMap();
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomResetCountdown(), "30"));

@@ -1,9 +1,10 @@
 #include "depthai/rtabmap/RTABMapVIO.hpp"
+
 #include "depthai/pipeline/Pipeline.hpp"
 
 namespace dai {
 namespace node {
-void RTABMapVIO::build() {
+std::shared_ptr<RTABMapVIO> RTABMapVIO::build() {
     alphaScaling = -1.0;
     odom = rtabmap::Odometry::create();
     // inputIMU.queue.setMaxSize(0);
@@ -22,6 +23,7 @@ void RTABMapVIO::build() {
     // inputDepth.queue.setBlocking(false);
     // inputFeatures.queue.setBlocking(false);
     inputIMU.addCallback(std::bind(&RTABMapVIO::imuCB, this, std::placeholders::_1));
+    return std::static_pointer_cast<RTABMapVIO>(shared_from_this());
 }
 void RTABMapVIO::imuCB(std::shared_ptr<dai::ADatatype> msg) {
     auto imuData = std::static_pointer_cast<dai::IMUData>(msg);
@@ -122,8 +124,8 @@ void RTABMapVIO::run() {
                     }
                     rotBuffer_.erase(rotBuffer_.begin(), iterD);
 
-                    data.setIMU(
-                        rtabmap::IMU(rot, cv::Mat::eye(3, 3, CV_64FC1), gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform));
+                    data.setIMU(rtabmap::IMU(
+                        rot, cv::Mat::eye(3, 3, CV_64FC1), gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform));
                 }
                 auto pose = odom->process(data, &info);
                 cv::Mat final_img;
@@ -143,18 +145,16 @@ void RTABMapVIO::run() {
                 passthroughDepth.send(depthFrame);
                 passthroughFeatures.send(features);
             }
-
         }
     }
     fmt::print("Display node stopped\n");
 }
 
 void RTABMapVIO::getCalib(dai::Pipeline& pipeline, int instanceNum, int width, int height) {
-
     auto calibHandler = pipeline.getDefaultDevice()->readCalibration();
 
     auto cameraId = static_cast<dai::CameraBoardSocket>(instanceNum);
-    calibHandler.getRTABMapCameraModel(model, cameraId, width, height,rtabmap::Transform::getIdentity(), alphaScaling);
+    calibHandler.getRTABMapCameraModel(model, cameraId, width, height, rtabmap::Transform::getIdentity(), alphaScaling);
     auto eeprom = calibHandler.getEepromData();
     if(eeprom.boardName == "OAK-D" || eeprom.boardName == "BW1098OBC") {
         imuLocalTransform = rtabmap::Transform(0, -1, 0, 0.0525, 1, 0, 0, 0.013662, 0, 0, 1, 0);
