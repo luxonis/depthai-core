@@ -9,7 +9,7 @@ namespace dai {
 namespace node {
 void RTABMapSLAM::build() {
     alphaScaling = -1.0;
-    reuseFeatures = false;
+    useFeatures = false;
     localTransform = rtabmap::Transform::getIdentity();
     inputSync.setMaxSize(0);
     inputSync.setBlocking(false);
@@ -27,6 +27,15 @@ void RTABMapSLAM::stop() {
 void RTABMapSLAM::setParams(const rtabmap::ParametersMap& params) {
     rtabmap.init(params, databasePath);
     rtabParams = params;
+}
+
+void RTABMapSLAM::triggerNewMap() {
+    rtabmap.triggerNewMap();
+}
+
+void RTABMapSLAM::saveDatabase() {
+    rtabmap.close();
+    rtabmap.init(rtabParams, databasePath);
 }
 
 void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
@@ -62,7 +71,7 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
 
             sensorData = rtabmap::SensorData(imgFrame->getCvFrame(), depthFrame->getCvFrame(), model.left(), imgFrame->getSequenceNum(), stamp);
             std::vector<cv::KeyPoint> keypoints;
-            if(features != nullptr) {
+            if(useFeatures && features != nullptr) {
                 for(auto& feature : features->trackedFeatures) {
                     keypoints.emplace_back(cv::KeyPoint(feature.position.x, feature.position.y, 3));
                 }
@@ -92,9 +101,8 @@ void RTABMapSLAM::run() {
             continue;
         } else {
             rtabmap::Statistics stats;
-            // process at 1 Hz
             std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
-            if(now - lastProcessTime > std::chrono::milliseconds(1000)) {
+            if(now - lastProcessTime > std::chrono::milliseconds(int(1000.0f / freq))) {
                 lastProcessTime = now;
                 bool success = rtabmap.process(sensorData, currPose);
                 if(success) {
@@ -156,51 +164,37 @@ void RTABMapSLAM::run() {
                     }
                 }
             }
+            if(publishPCL) {
+                // convert sensor data to pcl
+                pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromSensorData(sensorData, 4, 0.0f);
+                // pcl to dai PointCloudData
+                auto pclData = std::make_shared<dai::PointCloudData>();
 
-            // pcl::PointCloud<pcl::PointXYZ>::Ptr cloud = rtabmap::util3d::cloudFromSensorData(sensorData,
-            //                                                                                  4,  // decimation
-            //                                                                                  0.0f);
-            // // pcl to dai PointCloudData
-            // auto pclData = std::make_shared<dai::PointCloudData>();
-
-            // int size = cloud->points.size();
-            // pclData->points.resize(size * 3);
-            // for(int i = 0; i < size; i++) {
-            //     pclData->points[i].x = cloud->points[i].x;
-            //     pclData->points[i].y = cloud->points[i].y;
-            //     pclData->points[i].z = cloud->points[i].z;
-            // }
-            // pointCloud.send(pclData);
+                int size = cloud->points.size();
+                pclData->points.resize(size * 3);
+                for(int i = 0; i < size; i++) {
+                    pclData->points[i].x = cloud->points[i].x;
+                    pclData->points[i].y = cloud->points[i].y;
+                    pclData->points[i].z = cloud->points[i].z;
+                }
+                pointCloud.send(pclData);
+            }
         }
     }
-    // after 2m save the database
-    // if(std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count() > 180.0) {
-    //     rtabmap.close();
-    //     rtabmap.init(rtabParams, "/rtabmap.tmp.db");
-    //     std::cout << "Database saved" << std::endl;
-    //     startTime = std::chrono::steady_clock::now();
-    // }
+    // save database periodically if set
+    if(std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count() > databaseSaveInterval) {
+        rtabmap.close();
+        rtabmap.init(rtabParams, databasePath);
+        std::cout << "Database saved" << std::endl;
+        startTime = std::chrono::steady_clock::now();
+    }
 }
 
 void RTABMapSLAM::getCalib(dai::Pipeline& pipeline, int instanceNum, int width, int height) {
     auto calibHandler = pipeline.getDefaultDevice()->readCalibration();
     auto cameraId = static_cast<dai::CameraBoardSocket>(instanceNum);
     calibHandler.getRTABMapCameraModel(model, cameraId, width, height, localTransform, alphaScaling);
-    auto eeprom = calibHandler.getEepromData();
-    std::cout << "Board name: " << eeprom.boardName << std::endl;
-    if(eeprom.boardName == "OAK-D" || eeprom.boardName == "BW1098OBC") {
-        imuLocalTransform = rtabmap::Transform(0, -1, 0, 0.0525, 1, 0, 0, 0.013662, 0, 0, 1, 0);
-    } else if(eeprom.boardName == "DM9098") {
-        imuLocalTransform = rtabmap::Transform(0, 1, 0, 0.037945, 1, 0, 0, 0.00079, 0, 0, -1, 0);
-    } else if(eeprom.boardName == "NG2094") {
-        imuLocalTransform = rtabmap::Transform(0, 1, 0, 0.0374, 1, 0, 0, 0.00176, 0, 0, -1, 0);
-    } else if(eeprom.boardName == "NG9097") {
-        imuLocalTransform = rtabmap::Transform(0, 1, 0, 0.04, 1, 0, 0, 0.020265, 0, 0, -1, 0);
-    } else {
-        std::cout << "Unknown IMU local transform for " << eeprom.boardName << std::endl;
-        stop();
-    }
-    imuLocalTransform = localTransform * imuLocalTransform;
+
 }
 }  // namespace node
 }  // namespace dai

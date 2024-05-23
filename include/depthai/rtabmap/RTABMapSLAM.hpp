@@ -7,7 +7,6 @@
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
 #include "depthai/pipeline/datatype/TransformData.hpp"
-#include "depthai/pipeline/datatype/CameraControl.hpp"
 #include "depthai/pipeline/datatype/TrackedFeatures.hpp"
 #include "depthai/pipeline/datatype/PointCloudData.hpp"
 #include "depthai/pipeline/datatype/MessageGroup.hpp"
@@ -40,26 +39,40 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     void setParams(const rtabmap::ParametersMap& params);
     void syncCB(std::shared_ptr<dai::ADatatype> data);
     void odomPoseCB(std::shared_ptr<dai::ADatatype> data);
+    void setDatabasePath(const std::string& path) { databasePath = path; }
+    void saveDatabase();
+    void setSaveDatabasePeriodically(bool save) { saveDatabasePeriodically = save; }
+    void setPublishPCL(bool publish) { publishPCL = publish; }
+    void setPublishGrid(bool publish) { publishGrid = publish; }
+    void setFreq(float f) { freq = f; }
+    void setAlphaScaling(float alpha) { alphaScaling = alpha; }
+    void setReuseFeatures(bool reuse) { useFeatures = reuse; }
+    void setLocalTransform(std::shared_ptr<TransformData> transform) { transform->getRTABMapTransform(localTransform); }
+    std::shared_ptr<TransformData> getLocalTransform() { return std::make_shared<TransformData>(localTransform); }
+    void triggerNewMap();
+
    private:
     void imuCB(std::shared_ptr<dai::ADatatype> msg);
     void getCalib(dai::Pipeline& pipeline, int instanceNum, int width, int height);
     rtabmap::StereoCameraModel model;
     rtabmap::Rtabmap rtabmap;
     rtabmap::Transform currPose, odomCorrection;
-    bool reuseFeatures;
     std::chrono::steady_clock::time_point lastProcessTime; 
     std::chrono::steady_clock::time_point startTime;
     rtabmap::Transform imuLocalTransform;
     rtabmap::Transform localTransform;
     rtabmap::LocalGridCache localMaps;
     rtabmap::OccupancyGrid* grid;
-    float alphaScaling;
+    float alphaScaling=-1.0;
+    bool useFeatures;
     bool modelSet = false;
     rtabmap::ParametersMap rtabParams;
     rtabmap::SensorData sensorData;
     std::string databasePath="/rtabmap.tmp.db";
-    bool saveDatabase = false;
+    float databaseSaveInterval = 5.0f;
+    bool saveDatabasePeriodically = false;
     bool publishPCL = false;
+    bool publishGrid = true;
     float freq = 1.0f;
 };
 }  // namespace node
