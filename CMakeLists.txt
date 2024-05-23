@@ -800,7 +800,7 @@ if(DEPTHAI_BASALT_SUPPORT)
 
     if(BASALT_SUPPORT_AVAILABLE)
         hunter_private_data(
-            URL "https://raw.githubusercontent.com/Serafadam/basalt-mirror/depthai_tests/data/msdmi_config.json"
+            URL "https://raw.githubusercontent.com/luxonis/basalt/depthai_tests/data/msdmi_config.json"
             SHA1 "161f557b1e39841b60be953a2bcd517373ae2c9b"
             FILE "msdmi_config.json"
             LOCATION msdmi_config

@@ -255,15 +255,15 @@ hunter_config(
 hunter_config(
     basalt-headers
     VERSION 0.1.0
-    URL "https://github.com/Serafadam/basalt-headers-mirror/archive/refs/heads/hunter.zip"
-    SHA1 "765b95540814cdcad5a01c9a791d57ad8c7cf4ae"
+    URL "https://github.com/luxonis/basalt-headers/archive/refs/heads/hunter.zip"
+    SHA1 "c41c0a7d0b1b759792a9979f5c1219677fd2a874"
 )
 
 hunter_config(
     basalt
     VERSION 0.1.0
-    URL "https://github.com/Serafadam/basalt-mirror/archive/refs/heads/depthai_tests.zip"
-    SHA1 "dae31466ddfbd24845c33e410753741e9ca8f217"
+    URL "https://github.com/luxonis/basalt/archive/refs/heads/depthai_tests.zip"
+    SHA1 "778aa026057b0da4ae414d9ebfb279d3c9d7431b"
     CMAKE_ARGS
         BASALT_SDK_ONLY=ON
         BUILD_SHARED_LIBS=ON
