@@ -3,7 +3,6 @@
 namespace dai {
 namespace node {
 void BasaltVIO::build() {
-    vioConfig.load(configPath);
     inputImu.setMaxSize(0);
     inputStereo.setMaxSize(0);
     inputImu.setBlocking(false);
@@ -68,6 +67,10 @@ void BasaltVIO::stereoCB(std::shared_ptr<dai::ADatatype> images) {
     if(imageDataQueue) {
         imageDataQueue->push(data);
     }
+
+    using Keypoint = Eigen::AffineCompact2f;
+    Keypoint k;
+    k.
 };
 
 void BasaltVIO::imuCB(std::shared_ptr<dai::ADatatype> imuData) {
@@ -86,6 +89,11 @@ void BasaltVIO::imuCB(std::shared_ptr<dai::ADatatype> imuData) {
     }
 };
 void BasaltVIO::initialize(std::vector<std::shared_ptr<dai::ImgFrame>> frames) {
+     if (threadNum > 0) {
+    tbb_global_control = std::make_unique<tbb::global_control>(
+        tbb::global_control::max_allowed_parallelism, threadNum);
+    }
+
     auto pipeline = getParentPipeline();
     using Scalar = double;
     calib.reset(new basalt::Calibration<Scalar>);
@@ -160,6 +168,7 @@ void BasaltVIO::initialize(std::vector<std::shared_ptr<dai::ImgFrame>> frames) {
         }
         calib->intrinsics.push_back(camera);
     }
+    vioConfig.load(configPath);
     optFlowPtr = basalt::OpticalFlowFactory::getOpticalFlow(vioConfig, *calib);
     optFlowPtr->start();
     imageDataQueue = &optFlowPtr->input_img_queue;

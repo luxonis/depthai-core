@@ -1,6 +1,7 @@
 #pragma once
 #define SOPHUS_USE_BASIC_LOGGING
 #include <tbb/concurrent_queue.h>
+#include <tbb/global_control.h>
 
 #include <Eigen/Core>
 
@@ -32,6 +33,7 @@ class BasaltVIO : public dai::NodeCRTP<dai::node::ThreadedHostNode, BasaltVIO> {
 
     basalt::VioConfig vioConfig;
     void setImuUpdateRate(int rate) { imuUpdateRate = rate; }
+    void setConfigPath(const std::string& path) { configPath = path; }
 
    private:
     std::shared_ptr<basalt::Calibration<double>> calib;
@@ -50,6 +52,9 @@ class BasaltVIO : public dai::NodeCRTP<dai::node::ThreadedHostNode, BasaltVIO> {
     bool calibrated = false;
     std::string configPath = VIO_CONFIG_PATH;
     int imuUpdateRate = 200;
+    int threadNum = 8;
+    std::unique_ptr<tbb::global_control> tbb_global_control;
+
 
     void initialize(std::vector<std::shared_ptr<dai::ImgFrame>> frames);
 };
