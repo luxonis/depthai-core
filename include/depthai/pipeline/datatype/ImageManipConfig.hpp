@@ -1,17 +1,18 @@
 #pragma once
 
+#include <nop/structure.h>
 #include <nlohmann/json.hpp>
 #include <unordered_map>
-#include <variant>
 #include <vector>
 
 #include "depthai/common/Colormap.hpp"
 #include "depthai/common/Interpolation.hpp"
 #include "depthai/common/Point2f.hpp"
+#include "depthai/common/optional.hpp"
 #include "depthai/common/RotatedRect.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 #include "depthai/pipeline/datatype/ImgFrame.hpp"
-#include "utility/Serialization.hpp"
+
 namespace dai {
 
 namespace ImageManipOperations {
@@ -221,110 +222,54 @@ struct ManipOp {
 
    private:
     Type type = Type::NONE;
-    union {
-        CanvasResize canvasResize;
-        ImageTransform2D imageTransform2D;
-        ImageWarp imageWarp;
-        ImageResize imageResize;
-        ImageFlip imageFlip;
-        ImageColormap imageColormap;
-    } op;
+    std::optional<CanvasResize> canvasResize;
+    std::optional<ImageTransform2D> imageTransform2D;
+    std::optional<ImageWarp> imageWarp;
+    std::optional<ImageResize> imageResize;
+    std::optional<ImageFlip> imageFlip;
+    std::optional<ImageColormap> imageColormap;
 
 public:
     ManipOp() = default;
-    ManipOp(CanvasResize canvasResize) : type(Type::CANVAS_RESIZE), op({.canvasResize = canvasResize}) {}
-    ManipOp(ImageTransform2D imageTransform2D) : type(Type::IMAGE_TRANSFORM_2D), op({.imageTransform2D = imageTransform2D}) {}
-    ManipOp(ImageWarp imageWarp) : type(Type::IMAGE_WARP), op({.imageWarp = imageWarp}) {}
-    ManipOp(ImageResize imageResize) : type(Type::IMAGE_RESIZE), op({.imageResize = imageResize}) {}
-    ManipOp(ImageFlip imageFlip) : type(Type::IMAGE_FLIP), op({.imageFlip = imageFlip}) {}
-    ManipOp(ImageColormap imageColormap) : type(Type::IMAGE_COLORMAP), op({.imageColormap = imageColormap}) {}
+    ManipOp(CanvasResize canvasResize) : type(Type::CANVAS_RESIZE), canvasResize(canvasResize) {}
+    ManipOp(ImageTransform2D imageTransform2D) : type(Type::IMAGE_TRANSFORM_2D), imageTransform2D(imageTransform2D) {}
+    ManipOp(ImageWarp imageWarp) : type(Type::IMAGE_WARP), imageWarp(imageWarp) {}
+    ManipOp(ImageResize imageResize) : type(Type::IMAGE_RESIZE), imageResize(imageResize) {}
+    ManipOp(ImageFlip imageFlip) : type(Type::IMAGE_FLIP), imageFlip(imageFlip) {}
+    ManipOp(ImageColormap imageColormap) : type(Type::IMAGE_COLORMAP), imageColormap(imageColormap) {}
 
     Type getType() const {
         return type;
     }
     CanvasResize getCanvasResize() const {
-        if(type == Type::CANVAS_RESIZE) return op.canvasResize;
+        if(type == Type::CANVAS_RESIZE && canvasResize) return *canvasResize;
         throw std::runtime_error("ManipOp is not CanvasResize");
     }
     ImageTransform2D getImageTransform2D() const {
-        if(type == Type::IMAGE_TRANSFORM_2D) return op.imageTransform2D;
+        if(type == Type::IMAGE_TRANSFORM_2D && imageTransform2D) return *imageTransform2D;
         throw std::runtime_error("ManipOp is not ImageTransform2D");
     }
     ImageWarp getImageWarp() const {
-        if(type == Type::IMAGE_WARP) return op.imageWarp;
+        if(type == Type::IMAGE_WARP && imageWarp) return *imageWarp;
         throw std::runtime_error("ManipOp is not ImageWarp");
     }
     ImageResize getImageResize() const {
-        if(type == Type::IMAGE_RESIZE) return op.imageResize;
+        if(type == Type::IMAGE_RESIZE && imageResize) return *imageResize;
         throw std::runtime_error("ManipOp is not ImageResize");
     }
     ImageFlip getImageFlip() const {
-        if(type == Type::IMAGE_FLIP) return op.imageFlip;
+        if(type == Type::IMAGE_FLIP && imageFlip) return *imageFlip;
         throw std::runtime_error("ManipOp is not ImageFlip");
     }
     ImageColormap getImageColormap() const {
-        if(type == Type::IMAGE_COLORMAP) return op.imageColormap;
+        if(type == Type::IMAGE_COLORMAP && imageColormap) return *imageColormap;
         throw std::runtime_error("ManipOp is not ImageColormap");
     }
 
-    NOP_STRUCTURE(ManipOp, type, op);
+    DEPTHAI_SERIALIZE(ManipOp, type, canvasResize, imageTransform2D, imageWarp, imageResize, imageFlip, imageColormap);
 };
 
 }  // namespace ImageManipOperations
-
-namespace ns {
-void to_json(nlohmann::json& j, const dai::ImageManipOperations::ManipOp& p) { // NOLINT
-    nlohmann::json opJson = nlohmann::json{};
-    switch(p.getType()) {
-        case dai::ImageManipOperations::ManipOp::Type::NONE:
-            break;
-        case dai::ImageManipOperations::ManipOp::Type::CANVAS_RESIZE:
-            opJson = p.getCanvasResize();
-            break;
-        case dai::ImageManipOperations::ManipOp::Type::IMAGE_TRANSFORM_2D:
-            opJson = p.getImageTransform2D();
-            break;
-        case dai::ImageManipOperations::ManipOp::Type::IMAGE_WARP:
-            opJson = p.getImageWarp();
-            break;
-        case dai::ImageManipOperations::ManipOp::Type::IMAGE_RESIZE:
-            opJson = p.getImageResize();
-            break;
-        case dai::ImageManipOperations::ManipOp::Type::IMAGE_FLIP:
-            opJson = p.getImageFlip();
-            break;
-        case dai::ImageManipOperations::ManipOp::Type::IMAGE_COLORMAP:
-            opJson = p.getImageColormap();
-            break;
-    }
-    j = nlohmann::json{{"type", p.getType()}, {"op", opJson}};
-}
-
-void from_json(const nlohmann::json& j, dai::ImageManipOperations::ManipOp& p) { // NOLINT
-    switch(j.at("type").get<dai::ImageManipOperations::ManipOp::Type>()) {
-        case dai::ImageManipOperations::ManipOp::Type::NONE:
-            break;
-        case dai::ImageManipOperations::ManipOp::Type::CANVAS_RESIZE:
-            p = j.at("op").get<dai::ImageManipOperations::CanvasResize>();
-            break;
-        case dai::ImageManipOperations::ManipOp::Type::IMAGE_TRANSFORM_2D:
-            p = j.at("op").get<dai::ImageManipOperations::ImageTransform2D>();
-            break;
-        case dai::ImageManipOperations::ManipOp::Type::IMAGE_WARP:
-            p = j.at("op").get<dai::ImageManipOperations::ImageWarp>();
-            break;
-        case ImageManipOperations::ManipOp::Type::IMAGE_RESIZE:
-            p = j.at("op").get<dai::ImageManipOperations::ImageResize>();
-            break;
-        case dai::ImageManipOperations::ManipOp::Type::IMAGE_FLIP:
-            p = j.at("op").get<dai::ImageManipOperations::ImageFlip>();
-            break;
-        case dai::ImageManipOperations::ManipOp::Type::IMAGE_COLORMAP:
-            p = j.at("op").get<dai::ImageManipOperations::ImageColormap>();
-            break;
-    }
-}
-}  // namespace ns
 
 /**
  * ImageManipConfig message. Specifies image manipulation options like:
@@ -675,8 +620,8 @@ class ImageManipConfig : public Buffer {
                       enableFormat,
                       reusePreviousImage,
                       skipCurrentImage,
-                      interpolation
-                      );
+                      interpolation,
+                      operations);
     void serialize(std::vector<std::uint8_t>& metadata, DatatypeEnum& datatype) const override {
         metadata = utility::serialize(*this);
         datatype = DatatypeEnum::ImageManipConfig;
