@@ -8,6 +8,7 @@
 #include "archive_entry.h"
 
 // internal
+#include "depthai/capabilities/ImgFrameCapability.hpp"
 #include "depthai/nn_archive/NNArchive.hpp"
 #include "utility/ArchiveUtil.hpp"
 #include "utility/ErrorMacros.hpp"
@@ -48,6 +49,15 @@ void DetectionNetwork::build() {
     detectionParser->input.setMaxSize(1);
     detectionParser->imageIn.setBlocking(false);
     detectionParser->imageIn.setMaxSize(1);
+
+    isBuild = true;
+}
+
+std::shared_ptr<DetectionNetwork> DetectionNetwork::build(Node::Output& input, const NNArchive& nnArchive) {
+    build();
+    setNNArchive(nnArchive);
+    input.link(this->input);
+    return std::static_pointer_cast<DetectionNetwork>(shared_from_this());
 }
 
 void DetectionNetwork::setNNArchive(const NNArchive& nnArchive) {
@@ -110,21 +120,42 @@ float DetectionNetwork::getConfidenceThreshold() const {
     return detectionParser->getConfidenceThreshold();
 }
 
+std::vector<std::pair<Node::Input&, std::shared_ptr<Capability>>> DetectionNetwork::getRequiredInputs() {
+    const auto* archive = detectionParser->getNNArchive();
+    // TODO(jakgra) only call getRequiredInputs() in the build stage after all user code is supposed to be finished.
+    DAI_CHECK_V(archive, "Please call setNNArchive(), before the linking the DetectionNetwork node.");
+    auto cap = std::make_shared<ImgFrameCapability>();
+    const auto& config = archive->getConfig().getConfigV1();
+    DAI_CHECK_V(config, "Wrong NNArchive config version");
+    const auto width = (*config).model.inputs[0].shape[2];
+    const auto height = (*config).model.inputs[0].shape[3];
+    cap->size.value = std::pair(width, height);
+    return {{input, cap}};
+}
+
+std::optional<std::vector<std::string>> DetectionNetwork::getClasses() const {
+    return detectionParser->getClasses();
+}
+
 //--------------------------------------------------------------------
 // MobileNet
 //--------------------------------------------------------------------
-void MobileNetDetectionNetwork::build() {
+std::shared_ptr<MobileNetDetectionNetwork> MobileNetDetectionNetwork::build() {
     DetectionNetwork::build();
     detectionParser->properties.parser.nnFamily = DetectionNetworkType::MOBILENET;
+
+    return std::static_pointer_cast<MobileNetDetectionNetwork>(shared_from_this());
 }
 
 //--------------------------------------------------------------------
 // YOLO
 //--------------------------------------------------------------------
-void YoloDetectionNetwork::build() {
+std::shared_ptr<YoloDetectionNetwork> YoloDetectionNetwork::build() {
     DetectionNetwork::build();
     detectionParser->properties.parser.nnFamily = DetectionNetworkType::YOLO;
     detectionParser->properties.parser.iouThreshold = 0.5f;
+
+    return std::static_pointer_cast<YoloDetectionNetwork>(shared_from_this());
 }
 
 void YoloDetectionNetwork::setNumClasses(const int numClasses) {
@@ -154,10 +185,6 @@ void YoloDetectionNetwork::setIouThreshold(float thresh) {
 /// Get num classes
 int YoloDetectionNetwork::getNumClasses() const {
     return detectionParser->getNumClasses();
-}
-
-std::optional<std::vector<std::string>> YoloDetectionNetwork::getClasses() const {
-    return detectionParser->getClasses();
 }
 
 /// Get coordianate size

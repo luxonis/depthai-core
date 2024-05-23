@@ -92,6 +92,10 @@ void Replay::run() {
     bool hasMetadata = !replayFile.empty();
     if(!replayVideo.empty()) try {
             videoPlayer.init(replayVideo);
+            if(size.has_value()) {
+                const auto& [width, height] = size.value();
+                videoPlayer.setSize(width, height);
+            }
         } catch(const std::exception& e) {
             hasVideo = false;
             if(logger) logger->warn("Video not replaying: {}", e.what());
@@ -109,6 +113,7 @@ void Replay::run() {
     bool first = true;
     auto start = std::chrono::steady_clock::now();
     uint64_t index = 0;
+    auto loopStart = std::chrono::steady_clock::now();
     while(isRunning()) {
         nlohmann::json metadata;
         std::vector<uint8_t> frame;
@@ -156,14 +161,26 @@ void Replay::run() {
             recordSchema.width = width;
             recordSchema.height = height;
             metadata = recordSchema;
+        } else if(type == utility::RecordType::Video && size.has_value()) {
+            utility::VideoRecordSchema recordSchema = metadata;
+            recordSchema.width = std::get<0>(size.value());
+            recordSchema.height = std::get<1>(size.value());
+            metadata = recordSchema;
         }
 
         auto buffer = getMessage(type, metadata, frame);
 
         if(buffer) out.send(buffer);
 
+        if(fps.has_value() && fps.value() > 0.1f) {
+            std::this_thread::sleep_until(loopStart + std::chrono::milliseconds((uint32_t)roundf(1000.f / fps.value())));
+        }
+
+        loopStart = std::chrono::steady_clock::now();
+
         first = false;
     }
+    stop();  // isRunning() should return false after replay has stopped
 }
 
 Replay& Replay::setReplayFile(const std::string& replayFile) {
@@ -180,7 +197,6 @@ Replay& Replay::setOutFrameType(ImgFrame::Type outFrameType) {
     this->outFrameType = outFrameType;
     return *this;
 }
-
 
 Replay& Replay::setSize(std::tuple<int, int> size) {
     this->size = size;

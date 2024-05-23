@@ -10,7 +10,7 @@ void bind_benchmarkreport(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
     // py::class_<RawBenchmarkReport, RawBuffer, std::shared_ptr<RawBenchmarkReport>> rawBenchmarkReport(m, "RawBenchmarkReport", DOC(dai, RawBenchmarkReport));
-    py::class_<BenchmarkReport, Buffer, std::shared_ptr<BenchmarkReport>> benchmarkReport(m, "BenchmarkReport", DOC(dai, BenchmarkReport));
+    py::class_<BenchmarkReport, Py<BenchmarkReport>, Buffer, std::shared_ptr<BenchmarkReport>> benchmarkReport(m, "BenchmarkReport", DOC(dai, BenchmarkReport));
 
     ///////////////////////////////////////////////////////////////////////
     ///////////////////////////////////////////////////////////////////////

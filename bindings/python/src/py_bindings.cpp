@@ -29,6 +29,9 @@
 #include "nn_archive/NNArchiveBindings.hpp"
 #include "log/LogBindings.hpp"
 #include "VersionBindings.hpp"
+#include "capabilities/CapabilityBindings.hpp"
+#include "capabilities/CapabilityRangeBindings.hpp"
+#include "capabilities/ImgFrameCapabilityBindings.hpp"
 
 #ifdef DEPTHAI_PYTHON_EMBEDDED_MODULE
 #include <pybind11/embed.h>
@@ -60,6 +63,9 @@ PYBIND11_MODULE(depthai, m)
     callstack.push_front(&MessageQueueBindings::bind);
     callstack.push_front(&OpenVINOBindings::bind);
     callstack.push_front(&NNArchiveBindings::bind);
+    callstack.push_front(&CapabilityBindings::bind);
+    callstack.push_front(&CapabilityRangeBindings::bind);
+    callstack.push_front(&ImgFrameCapabilityBindings::bind);
     NodeBindings::addToCallstack(callstack);
     callstack.push_front(&AssetManagerBindings::bind);
     callstack.push_front(&PipelineBindings::bind);
@@ -118,6 +124,11 @@ PYBIND11_MODULE(depthai, m)
     void* javavm = nullptr;
     // Read the uintptr_t value from the decimal string
     sscanf(javavmEnvStr.c_str(), "%" SCNuPTR, reinterpret_cast<uintptr_t*>(&javavm));
+
+    // Import threading module - TODO(Morato) explore why this is needed to avoid the exception
+    // Relevant issue: https://github.com/pybind/pybind11/issues/2197
+    // It should be harmless to import it here, as it is a built-in module
+    py::object threading = py::module_::import("threading");
 
     // Call dai::initialize on 'import depthai' to initialize asap with additional information to print
     try {

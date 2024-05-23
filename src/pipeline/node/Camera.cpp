@@ -1,15 +1,50 @@
 #include "depthai/pipeline/node/Camera.hpp"
 // std
 #include <fstream>
+#include <memory>
+#include <stdexcept>
 
 // libraries
+#include <spimpl.h>
+
+// depthai internal
+#include "utility/ErrorMacros.hpp"
 
 namespace dai {
 namespace node {
 
-Camera::Camera(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>(std::move(props)) {}
+class Camera::Impl {
+   public:
+    struct OutputRequest {
+        int32_t id{};
+        ImgFrameCapability capability;
+        bool onHost{false};
+    };
 
-void Camera::build() {
+    int32_t nextOutputRequestId = 0;
+
+    std::vector<OutputRequest> outputRequests;
+
+    Node::Output* requestOutput(Camera& parent, const Capability& genericCapability, bool onHost) {
+        if(const auto* capability = ImgFrameCapability::get(genericCapability)) {
+            const auto requestId = nextOutputRequestId;
+            outputRequests.push_back({requestId, *capability, onHost});
+            ++nextOutputRequestId;
+            parent.properties.outputRequests.push_back(*capability);
+            return &parent.dynamicOutputs[std::to_string(requestId)];
+        }
+        return nullptr;
+    }
+};
+
+Camera::Camera() : pimpl(spimpl::make_impl<Impl>()) {}
+
+Camera::Camera(std::unique_ptr<Properties> props) : DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>(std::move(props)), pimpl(spimpl::make_impl<Impl>()) {}
+
+Camera::Camera(std::shared_ptr<Device>& defaultDevice)
+    : DeviceNodeCRTP<DeviceNode, Camera, CameraProperties>(defaultDevice), pimpl(spimpl::make_impl<Impl>()) {}
+
+std::shared_ptr<Camera> Camera::build() {
     properties.boardSocket = CameraBoardSocket::AUTO;
     properties.imageOrientation = CameraImageOrientation::AUTO;
     properties.colorOrder = CameraProperties::ColorOrder::BGR;
@@ -18,6 +53,8 @@ void Camera::build() {
     properties.previewWidth = 300;
     properties.fps = 30.0;
     properties.previewKeepAspectRatio = true;
+    isBuild = true;
+    return std::static_pointer_cast<Camera>(shared_from_this());
 }
 
 Camera::Properties& Camera::getProperties() {
@@ -271,6 +308,10 @@ std::optional<float> Camera::getCalibrationAlpha() const {
 
 void Camera::setRawOutputPacked(bool packed) {
     properties.rawPacked = packed;
+}
+
+Node::Output* Camera::requestOutput(const Capability& capability, bool onHost) {
+    return pimpl->requestOutput(*this, capability, onHost);
 }
 
 bool Camera::isSourceNode() const {

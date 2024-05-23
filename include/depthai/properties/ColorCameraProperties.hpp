@@ -1,3 +1,4 @@
+// IWYU pragma: private, include "depthai/depthai.hpp"
 #pragma once
 
 #include <vector>
@@ -99,7 +100,7 @@ struct ColorCameraProperties : PropertiesSerializable<Properties, ColorCameraPro
     /**
      * Frame type
      */
-    ImgFrame::Type previewType = ImgFrame::Type::BGR888p;
+    ImgFrame::Type previewType = ImgFrame::Type::BGR888i;
 
     /**
      * Preview frame output height

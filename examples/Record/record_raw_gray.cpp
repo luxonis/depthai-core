@@ -19,7 +19,7 @@ int main() {
     cam->setResolution(dai::MonoCameraProperties::SensorResolution::THE_720_P);
     cam->setFps(30);
 
-    cam->out.link(record->in);
+    cam->out.link(record->input);
 
     pipeline.start();
 

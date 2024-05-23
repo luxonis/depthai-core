@@ -15,6 +15,23 @@
 // pybind11
 #include "pybind11/stl_bind.h"
 
+#include<thread>
+#include<unordered_map>
+
+std::unordered_map<std::thread::id, dai::Pipeline&> implicitPipelines;
+dai::Pipeline& getImplicitPipeline() {
+    auto rv = implicitPipelines.find(std::this_thread::get_id());
+    if (rv == implicitPipelines.end())
+        throw std::runtime_error("No implicit pipeline was found. Use `with Pipeline()` to use one");
+    return rv->second;
+}
+void setImplicitPipeline(dai::Pipeline& pipeline) {
+    implicitPipelines.emplace(std::this_thread::get_id(), pipeline);
+}
+void delImplicitPipeline() {
+    implicitPipelines.erase(implicitPipelines.find(std::this_thread::get_id()));
+}
+
 // Map of python node classes and call to pipeline to create it
 std::vector<std::pair<py::handle, std::function<std::shared_ptr<dai::Node>(dai::Pipeline&, py::object class_)>>> pyNodeCreateMap;
 py::handle daiNodeModule;
@@ -297,7 +314,7 @@ void NodeBindings::bind(pybind11::module& m, void* pCallstack) {
         .def("createQueue", &Node::Output::createQueue, py::arg("maxSize") = 16, py::arg("blocking") = true, DOC(dai, Node, Output, createQueue))
         .def("link", static_cast<void (Node::Output::*)(Node::Input&)>(&Node::Output::link), py::arg("input"), DOC(dai, Node, Output, link))
         .def("unlink", static_cast<void (Node::Output::*)(Node::Input&)>(&Node::Output::unlink), py::arg("input"), DOC(dai, Node, Output, unlink))
-        .def("send", &Node::Output::send, py::arg("msg"), DOC(dai, Node, Output, send))
+        .def("send", &Node::Output::send, py::arg("msg"), DOC(dai, Node, Output, send), py::call_guard<py::gil_scoped_release>())
         .def("trySend", &Node::Output::trySend, py::arg("msg"), DOC(dai, Node, Output, trySend));
 
     nodeConnection.def_readwrite("outputId", &Node::Connection::outputId, DOC(dai, Node, Connection, outputId))

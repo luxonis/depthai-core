@@ -3,9 +3,12 @@
 namespace dai {
 namespace node {
 
-void XLinkOut::build() {
+std::shared_ptr<XLinkOut> XLinkOut::build() {
     // set some default properties
     properties.maxFpsLimit = -1;
+
+    isBuild = true; 
+    return std::static_pointer_cast<XLinkOut>(shared_from_this());
 }
 
 void XLinkOut::setStreamName(const std::string& name) {

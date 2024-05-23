@@ -24,7 +24,7 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
     py::class_<TensorInfo> tensorInfo(m, "TensorInfo", DOC(dai, TensorInfo));
     py::enum_<TensorInfo::DataType>tensorInfoDataType(tensorInfo, "DataType");
     py::enum_<TensorInfo::StorageOrder>tensorInfoStorageOrder(tensorInfo, "StorageOrder");
-    py::class_<NNData, Buffer, std::shared_ptr<NNData>> nnData(m, "NNData", DOC(dai, NNData));
+    py::class_<NNData, Py<NNData>, Buffer, std::shared_ptr<NNData>> nnData(m, "NNData", DOC(dai, NNData));
 
 
     ///////////////////////////////////////////////////////////////////////
@@ -78,6 +78,9 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
         .def_readwrite("strides", &TensorInfo::strides)
         .def_readwrite("name", &TensorInfo::name)
         .def_readwrite("offset", &TensorInfo::offset)
+        .def_readwrite("quantization", &TensorInfo::quantization)
+        .def_readwrite("qpScale", &TensorInfo::qpScale)
+        .def_readwrite("qpZp", &TensorInfo::qpZp)
         ;
 
     tensorInfoDataType
@@ -196,6 +199,7 @@ void bind_nndata(pybind11::module& m, void* pCallstack){
         // .def("getTensor", static_cast<xt::xarray<float>(NNData::*)(const std::string&)>(&NNData::getTensor<float>), py::arg("name"), DOC(dai, NNData, getTensor, 2))
         // .def("getTensor", static_cast<xt::xarray<int>(NNData::*)(const std::string&)>(&NNData::getTensor<int>), py::arg("name"), DOC(dai, NNData, getTensor, 3))
         .def("getTensorDatatype", &NNData::getTensorDatatype, py::arg("name"), DOC(dai, NNData, getTensorDatatype))
+        .def("getTensorInfo", &NNData::getTensorInfo, py::arg("name"), DOC(dai, NNData, getTensorInfo))
         ;
 
 

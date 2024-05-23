@@ -24,7 +24,7 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     constexpr static const char* NAME = "RTABMapSLAM";
 
    public:
-    void build();
+    std::shared_ptr<RTABMapSLAM> build();
 
     Input inputSync{*this, {.name="sync", .types = {{dai::DatatypeEnum::MessageGroup,true}}}};
     Input inputOdomPose{*this, {.name="odom_pose", .types={{dai::DatatypeEnum::TransformData, true}}}};

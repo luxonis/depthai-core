@@ -126,8 +126,6 @@ hunter_config(
     VERSION "1.9.4-p2"
     URL "https://github.com/luxonis/lz4/archive/ba358ed311d125333d245e4c284464a72a168983.tar.gz"
     SHA1 "43ae0d2343147e32cdd8b85cefb5a311c3ee5504"
-    CMAKE_ARGS
-        BUILD_SHARED_LIBS=ON
 )
 
 # TMP, could be read from XLink
@@ -243,7 +241,7 @@ hunter_config(
     URL "https://github.com/luxonis/mp4v2/archive/1dc9f4d24645ea43405582e5c813dec3eaa8fd3e.tar.gz"
     SHA1 "2ac9e4348c78d09a3b4fc6e147b9eeb356ba31f1"
     CMAKE_ARGS
-        BUILD_SHARED=ON
+        BUILD_SHARED=OFF
         BUILD_UTILS=OFF
 )
 

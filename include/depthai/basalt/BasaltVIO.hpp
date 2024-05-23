@@ -23,7 +23,7 @@ class BasaltVIO : public dai::NodeCRTP<dai::node::ThreadedHostNode, BasaltVIO> {
 
     void imuCB(std::shared_ptr<dai::ADatatype> imuData);
 
-    void build();
+    std::shared_ptr<BasaltVIO> build();
     void run() override;
 
     dai::Node::Input inputStereo{*this, {.name = "inStereo", .types = {{dai::DatatypeEnum::MessageGroup, true}}}};

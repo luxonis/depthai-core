@@ -15,7 +15,7 @@
 void bind_encodedframe(pybind11::module& m, void* pCallstack) {
     using namespace dai;
 
-    py::class_<EncodedFrame, Buffer, std::shared_ptr<EncodedFrame>> encodedFrame(m, "EncodedFrame", DOC(dai, EncodedFrame));
+    py::class_<EncodedFrame, Py<EncodedFrame>, Buffer, std::shared_ptr<EncodedFrame>> encodedFrame(m, "EncodedFrame", DOC(dai, EncodedFrame));
     py::enum_<EncodedFrame::Profile> encodedFrameProfile(encodedFrame, "Profile");
     py::enum_<EncodedFrame::FrameType> encodedFrameType(encodedFrame, "FrameType", DOC(dai, EncodedFrame, FrameType));
 

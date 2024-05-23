@@ -1,5 +1,6 @@
 #include "depthai/pipeline/node/DetectionParser.hpp"
 
+#include "nn_archive/NNArchive.hpp"
 #include "spdlog/fmt/fmt.h"
 
 // internal headers
@@ -9,6 +10,7 @@ namespace dai {
 namespace node {
 
 std::reference_wrapper<const OpenVINO::Blob> DetectionParser::setNNArchive(const NNArchive& nnArchive) {
+    mArchive = nnArchive;
     const auto configMaybe = nnArchive.getConfig().getConfigV1();
     DAI_CHECK(configMaybe, "Unsupported NNArchive format / version. Check which depthai version you are running.");
     const auto& config = *configMaybe;
@@ -160,6 +162,14 @@ std::map<std::string, std::vector<int>> DetectionParser::getAnchorMasks() const 
 /// Get Iou threshold
 float DetectionParser::getIouThreshold() const {
     return properties.parser.iouThreshold;
+}
+
+const NNArchive* DetectionParser::getNNArchive() const {
+    return mArchive ? &(*mArchive) : nullptr;
+}
+
+std::shared_ptr<DetectionParser> DetectionParser::build() {
+    return std::static_pointer_cast<DetectionParser>(shared_from_this());
 }
 
 }  // namespace node

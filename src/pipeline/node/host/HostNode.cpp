@@ -1,4 +1,6 @@
 #include "depthai/pipeline/node/host/HostNode.hpp"
+#include "depthai/pipeline/Pipeline.hpp"
+#include <memory>
 
 namespace dai {
 namespace node {
@@ -16,11 +18,24 @@ void HostNode::run() {
     while(isRunning()) {
         // Get input
         auto in = input.get<dai::MessageGroup>();
-        // Run the user defined function
-        auto out = runOnce(in);
-        // Send the output
-        if(out) {
-            this->out.send(out);
+        // Create a lambda that captures the class as a shared pointer and the message
+        // TODO(Morato) - optimize this for performance
+        auto processAndSendGroup = [self = std::static_pointer_cast<HostNode>(shared_from_this()), in]() {
+            // Run the user-defined function to process the group
+            auto out = self->processGroup(in);
+
+            // Send the output, if there is any
+            if(out) {
+                self->out.send(out);
+            }
+        };
+
+        if(sendProcessToPipeline) {
+            // Send the processing to the pipeline
+            getParentPipeline().addTask(processAndSendGroup);
+        } else {
+            // Process and send the group
+            processAndSendGroup();
         }
     }
 }

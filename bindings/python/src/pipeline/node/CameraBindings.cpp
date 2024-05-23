@@ -111,6 +111,45 @@ void bind_camera(pybind11::module& m, void* pCallstack){
         .def_readonly("raw", &Camera::raw, DOC(dai, node, Camera, raw))
         .def_readonly("frameEvent",  &Camera::frameEvent, DOC(dai, node, Camera, frameEvent))
         // .def_readonly("mockIsp",  &Camera::mockIsp, DOC(dai, node, Camera, mockIsp))
+
+#define CAMERA_ARGS \
+        CameraBoardSocket boardSocket, \
+        CameraImageOrientation imageOrientation, \
+        CameraProperties::ColorOrder colorOrder, \
+        bool interleaved, \
+        std::tuple<int, int> previewSize, \
+        std::tuple<int, int> videoSize, \
+        float fps
+#define CAMERA_PYARGS \
+        py::arg("boardSocket") = CameraBoardSocket::AUTO, \
+        py::arg("imageOrientation") = CameraImageOrientation::AUTO, \
+        py::arg("colorOrder") = CameraProperties::ColorOrder::BGR, \
+        py::arg("interleaved") = true, \
+        py::arg("previewSize") = py::make_tuple(300, 300), \
+        py::arg("videoSize") = py::make_tuple(-1, -1), \
+        py::arg("fps") = 30.0
+        // TODO (Zimamazim) Automatically fetch default arguments to avoid duplicity
+#define CAMERA_CODE(OP) \
+        self OP setBoardSocket(boardSocket); \
+        self OP setImageOrientation(imageOrientation); \
+        self OP setPreviewSize(previewSize); \
+        self OP setVideoSize(videoSize); \
+        self OP setFps(fps);
+        .def("build", [](Camera &self, CAMERA_ARGS) {
+                self.build();
+                CAMERA_CODE(.)
+                return std::static_pointer_cast<Camera>(self.shared_from_this());
+            },
+            CAMERA_PYARGS
+            )
+        .def(py::init([](CAMERA_ARGS){
+                auto self = getImplicitPipeline().create<Camera>();
+                self->build();
+                CAMERA_CODE(->)
+                return self;
+            }),
+            CAMERA_PYARGS
+            )
         .def("setBoardSocket", &Camera::setBoardSocket, py::arg("boardSocket"), DOC(dai, node, Camera, setBoardSocket))
         .def("getBoardSocket", &Camera::getBoardSocket, DOC(dai, node, Camera, getBoardSocket))
         .def("setImageOrientation", &Camera::setImageOrientation, py::arg("imageOrientation"), DOC(dai, node, Camera, setImageOrientation))
@@ -166,6 +205,7 @@ void bind_camera(pybind11::module& m, void* pCallstack){
         .def("getCalibrationAlpha", &Camera::getCalibrationAlpha, DOC(dai, node, Camera, getCalibrationAlpha))
 
         .def("setRawOutputPacked", &Camera::setRawOutputPacked, py::arg("packed"), DOC(dai, node, Camera, setRawOutputPacked))
+        .def("requestOutput", &Camera::requestOutput, py::return_value_policy::reference_internal, DOC(dai, node, Camera, requestOutput))
         ;
     // ALIAS
     daiNodeModule.attr("Camera").attr("Properties") = cameraProperties;

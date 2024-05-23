@@ -91,14 +91,14 @@ int main() {
     int width = 640;
     int height = 400;
     // Define sources and outputs
-    auto left = pipeline.create<dai::node::MonoCamera>();
-    auto right = pipeline.create<dai::node::MonoCamera>();
+    auto left = pipeline.create<dai::node::MonoCamera>()->build();
+    auto right = pipeline.create<dai::node::MonoCamera>()->build();
     auto stereo = pipeline.create<dai::node::StereoDepth>();
-    auto imu = pipeline.create<dai::node::IMU>();
-    auto stereoSync = pipeline.create<dai::node::Sync>();
-    auto slamSync = pipeline.create<dai::node::Sync>();
-    auto odom = pipeline.create<dai::node::BasaltVIO>();
-    auto slam = pipeline.create<dai::node::RTABMapSLAM>();
+    auto imu = pipeline.create<dai::node::IMU>()->build();
+    auto stereoSync = pipeline.create<dai::node::Sync>()->build();
+    auto slamSync = pipeline.create<dai::node::Sync>()->build();
+    auto odom = pipeline.create<dai::node::BasaltVIO>()->build();
+    auto slam = pipeline.create<dai::node::RTABMapSLAM>()->build();
     auto params = rtabmap::ParametersMap();
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRGBDCreateOccupancyGrid(), "true"));
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kRtabmapSaveWMState(), "true"));

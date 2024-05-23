@@ -15,8 +15,10 @@ class SPIOut : public DeviceNodeCRTP<DeviceNode, SPIOut, SPIOutProperties> {
    public:
     constexpr static const char* NAME = "SPIOut";
     using DeviceNodeCRTP::DeviceNodeCRTP;
-    void build() {
+    std::shared_ptr<SPIOut> build() {
         properties.busId = 0;
+        isBuild = true; 
+        return std::static_pointer_cast<SPIOut>(shared_from_this());
     }
 
     /**
@@ -41,6 +43,10 @@ class SPIOut : public DeviceNodeCRTP<DeviceNode, SPIOut, SPIOutProperties> {
     void setBusId(int busId) {
         properties.busId = busId;
     }
+
+   protected:
+    bool isBuild = false;
+    bool needsBuild() override { return !isBuild; }
 };
 
 }  // namespace node

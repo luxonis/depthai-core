@@ -97,7 +97,7 @@ void VideoRecorder::write(span<uint8_t>& data) {
                     case NALU::P:
                     case NALU::I: {
                         if(mp4Track == MP4_INVALID_TRACK_ID) {
-                            spdlog::warn("VideoRecorder track is invalid");
+                            // spdlog::info("VideoRecorder track is invalid"); // TODO(asahtik) - check if this is OK or should be a warning
                             break;
                         };
                         std::vector<uint8_t> nalData(nal.data(), nal.data() + nal.size());
@@ -186,6 +186,11 @@ void VideoPlayer::init(const std::string& filePath) {
     initialized = true;
 }
 
+void VideoPlayer::setSize(uint32_t width, uint32_t height) {
+    this->width = width;
+    this->height = height;
+}
+
 std::optional<std::vector<uint8_t>> VideoPlayer::next() {
     if(!initialized) {
         throw std::runtime_error("VideoPlayer not initialized");
@@ -195,8 +200,12 @@ std::optional<std::vector<uint8_t>> VideoPlayer::next() {
     if(!cvReader->read(frame)) {
         return std::nullopt;
     }
-    height = frame.rows;
-    width = frame.cols;
+    if(width > 0 && height > 0) {
+        cv::resize(frame, frame, cv::Size(width, height));
+    } else {
+        width = frame.cols;
+        height = frame.rows;
+    }
     assert(frame.isContinuous());
     std::vector<uint8_t> data;
     data.assign(frame.data, frame.data + frame.total() * frame.elemSize());

@@ -13,11 +13,11 @@
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/pipeline/AssetManager.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
+#include "depthai/utility/RecordReplay.hpp"
 #include "depthai/utility/copyable_unique_ptr.hpp"
 
-#include "depthai/utility/RecordReplay.hpp"
-
 // depthai
+#include "depthai/capabilities/Capability.hpp"
 #include "depthai/pipeline/datatype/DatatypeEnum.hpp"
 #include "depthai/properties/Properties.hpp"
 
@@ -80,7 +80,6 @@ class Node : public std::enable_shared_from_this<Node> {
     virtual Output& getRecordOutput();
     virtual Input& getReplayInput();
 
-
     template <typename T>
     class Subnode {
         std::shared_ptr<Node> node;
@@ -131,15 +130,18 @@ class Node : public std::enable_shared_from_this<Node> {
             }
         };
         enum class Type { MSender, SSender };
+        virtual ~Output() = default;
 
        private:
         std::reference_wrapper<Node> parent;
         std::vector<MessageQueue*> connectedInputs;
         std::vector<QueueConnection> queueConnections;
-        Type type = Type::MSender; // Slave sender not supported yet
+        Type type = Type::MSender;  // Slave sender not supported yet
         OutputDescription desc;
 
        public:
+        // std::vector<Capability> possibleCapabilities;
+
         Output(Node& par, OutputDescription desc, bool ref = true) : parent(par), desc(std::move(desc)) {
             // Place oneself to the parents references
             if(ref) {
@@ -251,6 +253,8 @@ class Node : public std::enable_shared_from_this<Node> {
          */
         void link(Input& in);
 
+        virtual void link(std::shared_ptr<Node> in);
+
         /**
          * Unlink a previously linked connection
          *
@@ -287,10 +291,11 @@ class Node : public std::enable_shared_from_this<Node> {
     class OutputMap : public std::unordered_map<std::pair<std::string, std::string>, Output, PairHash> {
         OutputDescription defaultOutput;
         std::reference_wrapper<Node> parent;
+
        public:
         std::string name;
-        OutputMap(Node& parent, std::string name, OutputDescription defaultOutput, bool ref=true);
-        OutputMap(Node& parent, OutputDescription defaultOutput, bool ref=true);
+        OutputMap(Node& parent, std::string name, OutputDescription defaultOutput, bool ref = true);
+        OutputMap(Node& parent, OutputDescription defaultOutput, bool ref = true);
         /// Create or modify an output
         Output& operator[](const std::string& key);
         /// Create or modify an output with specified group
@@ -299,8 +304,8 @@ class Node : public std::enable_shared_from_this<Node> {
 
     // Input extends the message queue with additional option that specifies whether to wait for message or not
     struct InputDescription {
-        std::string name{};                                                    // Name of the input
-        std::string group{};                                                   // Group of the input
+        std::string name{};                                                  // Name of the input
+        std::string group{};                                                 // Group of the input
         bool blocking{true};                                                 // Whether to block when input queue is full
         int queueSize{3};                                                    // Size of the queue
         std::vector<DatatypeHierarchy> types{{DatatypeEnum::Buffer, true}};  // Possible datatypes that can be received
@@ -346,7 +351,7 @@ class Node : public std::enable_shared_from_this<Node> {
 
         /**
          * Get type
-        */
+         */
         Type getType() const {
             return type;
         }
@@ -451,6 +456,12 @@ class Node : public std::enable_shared_from_this<Node> {
     std::weak_ptr<PipelineImpl> parent;
     std::weak_ptr<Node> parentNode;
 
+    // used to improve error messages
+    // when pipeline starts all nodes are checked
+    virtual bool needsBuild() {
+        return false;
+    }
+
    public:
     // TODO(themarpe) - restrict access
     /// Id of node. Assigned after being placed on the pipeline
@@ -549,7 +560,6 @@ class Node : public std::enable_shared_from_this<Node> {
    protected:
     Node() = default;
     Node(bool conf);
-    void build();
     void removeConnectionToNode(std::shared_ptr<Node> node);
 
    public:
@@ -590,6 +600,10 @@ class Node : public std::enable_shared_from_this<Node> {
     void unlink(const Node::Output& out, const Node::Input& in);
     /// Get a reference to internal node map
 
+    virtual void link(std::shared_ptr<Node> in);
+    virtual Node::Output* requestOutput(const Capability& capability, bool onHost);
+    virtual std::vector<std::pair<Input&, std::shared_ptr<Capability>>> getRequiredInputs();
+
     /**
      * @brief Returns true or false whether the node should be run on host or not
      */
@@ -612,20 +626,14 @@ class NodeCRTP : public Base {
     // std::unique_ptr<Node> clone() const override {
     //     return std::make_unique<Derived>(static_cast<const Derived&>(*this));
     // };
-    void build() {}
 
     // No public constructor, only a factory function.
     template <typename... Args>
     [[nodiscard]] static std::shared_ptr<Derived> create(Args&&... args) {
-        auto n = std::make_shared<Derived>(std::forward<Args>(args)...);
-        n->build();
-        return n;
+        return std::make_shared<Derived>(std::forward<Args>(args)...);
     }
     [[nodiscard]] static std::shared_ptr<Derived> create(std::unique_ptr<Properties> props) {
-        auto n = std::shared_ptr<Derived>(new Derived(props));
-        // Configure mode, don't build
-        // n->build();
-        return n;
+        return std::shared_ptr<Derived>(new Derived(props));
     }
 
     friend Derived;

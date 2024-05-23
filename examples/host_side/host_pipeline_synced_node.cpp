@@ -15,7 +15,7 @@ class SyncedDisplay : public dai::NodeCRTP<dai::node::HostNode, SyncedDisplay> {
     Input& inputRgb = inputs["rgb"];
     Input& inputMono = inputs["mono"];
 
-    std::shared_ptr<dai::Buffer> runOnce(std::shared_ptr<dai::MessageGroup> in) override {
+    std::shared_ptr<dai::Buffer> processGroup(std::shared_ptr<dai::MessageGroup> in) override {
         auto mono = in->get<dai::ImgFrame>("mono");
         auto rgb = in->get<dai::ImgFrame>("rgb");
         // Show the frames side by side
@@ -45,10 +45,11 @@ int main() {
     // Create pipeline
     dai::Pipeline pipeline(true);
 
-    auto camRgb = pipeline.create<dai::node::ColorCamera>(dai::CameraBoardSocket::CAM_A);
+    auto camRgb = pipeline.create<dai::node::ColorCamera>()->build();
+    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_A);
     camRgb->setVideoSize(640, 480);
 
-    auto camMono = pipeline.create<dai::node::MonoCamera>();
+    auto camMono = pipeline.create<dai::node::MonoCamera>()->build();
     camMono->setBoardSocket(dai::CameraBoardSocket::CAM_B);
 
     auto syncedDisplay = pipeline.create<SyncedDisplay>();

@@ -2,13 +2,14 @@
 
 namespace dai {
 namespace node {
-void BasaltVIO::build() {
+std::shared_ptr<BasaltVIO> BasaltVIO::build() {
     inputImu.setMaxSize(0);
     inputStereo.setMaxSize(0);
     inputImu.setBlocking(false);
     inputStereo.setBlocking(false);
     inputImu.addCallback(std::bind(&BasaltVIO::imuCB, this, std::placeholders::_1));
     inputStereo.addCallback(std::bind(&BasaltVIO::stereoCB, this, std::placeholders::_1));
+    return std::static_pointer_cast<BasaltVIO>(shared_from_this());
 }
 
 void BasaltVIO::run() {
@@ -68,9 +69,6 @@ void BasaltVIO::stereoCB(std::shared_ptr<dai::ADatatype> images) {
         imageDataQueue->push(data);
     }
 
-    using Keypoint = Eigen::AffineCompact2f;
-    Keypoint k;
-    k.
 };
 
 void BasaltVIO::imuCB(std::shared_ptr<dai::ADatatype> imuData) {

@@ -22,7 +22,7 @@ int main() {
         // enable GYROSCOPE_RAW at 400 hz rate
         imu->enableIMUSensor(dai::IMUSensor::GYROSCOPE_RAW, 400);
 
-        imu->out.link(record->in);
+        imu->out.link(record->input);
 
         pipeline.start();
 

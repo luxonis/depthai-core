@@ -1,3 +1,4 @@
+// IWYU pragma: private, include "depthai/depthai.hpp"
 #pragma once
 #include <string>
 #include <tuple>

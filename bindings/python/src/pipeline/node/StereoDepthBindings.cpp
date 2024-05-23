@@ -1,4 +1,4 @@
-// #include "NodeBindings.hpp"
+#include "NodeBindings.hpp"
 #include "Common.hpp"
 
 #include "depthai/pipeline/Pipeline.hpp"
@@ -70,6 +70,23 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack){
 
     // Node
     stereoDepth
+        .def(py::init([](Node::Output& left, Node::Output& right, StereoDepth::PresetMode presetMode) {
+            auto self = getImplicitPipeline().create<StereoDepth>();
+            self->build(left, right, presetMode);
+            return self;
+                    }),
+             py::arg("left"),
+             py::arg("right"),
+             py::arg("presetMode") = StereoDepth::PresetMode::HIGH_DENSITY
+                    )
+        .def(py::init([](bool autoCreateCameras, StereoDepth::PresetMode presetMode) {
+            auto self = getImplicitPipeline().create<StereoDepth>();
+            self->build(autoCreateCameras, presetMode);
+            return self;
+                    }),
+             py::arg("autoCreateCameras"),
+             py::arg("presetMode") = StereoDepth::PresetMode::HIGH_DENSITY
+                    )
         .def("build",
              static_cast<std::shared_ptr<StereoDepth> (StereoDepth::*)(Node::Output&, Node::Output&, StereoDepth::PresetMode)>(&StereoDepth::build),
              py::arg("left"),

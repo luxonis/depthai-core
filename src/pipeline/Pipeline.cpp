@@ -551,6 +551,14 @@ void PipelineImpl::add(std::shared_ptr<Node> node) {
         throw std::invalid_argument(fmt::format("Given node pointer is null"));
     }
 
+    // First check if node has already been added
+    auto localNodes = getAllNodes();
+    for(auto& n : localNodes) {
+        if(node.get() == n.get()) {
+            throw std::invalid_argument(fmt::format("Node with id '{}' has already been added to the pipeline", node->id));
+        }
+    }
+
     // Go through and modify nodes and its children
     // that they are now part of this pipeline
     std::weak_ptr<PipelineImpl> curParent;
@@ -910,6 +918,13 @@ void PipelineImpl::start() {
     std::lock_guard<std::mutex> lock(stateMtx);
     // TODO(themarpe) - add mutex and set running up ahead
 
+    // TODO(Morato) - add back in when more nodes are tested
+    // for(const auto& node : getAllNodes()) {
+    //     if (node->needsBuild()) {
+    //         throw std::runtime_error(fmt::format("Node '{}' was not built", node->getName()));
+    //     }
+    // }
+
     // Implicitly build (if not already)
     build();
 
@@ -942,6 +957,8 @@ void PipelineImpl::stop() {
         }
     }
 
+    // Close the task queue
+    tasks.destruct();
     // TODO(Morato) - handle multiple devices correctly, stop pipeline on all of them
     // Close the devices
     if(!isHostOnly()) {
@@ -954,6 +971,14 @@ void PipelineImpl::stop() {
 
 PipelineImpl::~PipelineImpl() {
     stop();
+    wait();
+}
+
+void PipelineImpl::run() {
+    start();
+    while(isRunning()) {
+        processTasks(true);
+    }
     wait();
 }
 

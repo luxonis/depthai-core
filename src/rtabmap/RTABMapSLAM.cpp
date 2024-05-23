@@ -7,7 +7,7 @@
 
 namespace dai {
 namespace node {
-void RTABMapSLAM::build() {
+std::shared_ptr<RTABMapSLAM> RTABMapSLAM::build() {
     alphaScaling = -1.0;
     useFeatures = false;
     localTransform = rtabmap::Transform::getIdentity();
@@ -18,6 +18,7 @@ void RTABMapSLAM::build() {
     inputOdomPose.setBlocking(false);
     inputOdomPose.addCallback(std::bind(&RTABMapSLAM::odomPoseCB, this, std::placeholders::_1));
     rtabmap.init();
+    return std::static_pointer_cast<RTABMapSLAM>(shared_from_this());
 }
 
 void RTABMapSLAM::stop() {
