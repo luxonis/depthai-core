@@ -70,6 +70,7 @@ std::tuple<uint32_t, uint32_t> getRandomResolution(dai::Pipeline& pipeline) {
         maxWidth = (*maxMode).width;
         maxHeight = (*maxMode).height;
     }
+    std::srand(std::time(nullptr));
     int width = std::abs(std::rand()) % maxWidth;
     int height = std::abs(std::rand()) % maxHeight;
     width = width - width % 2;
