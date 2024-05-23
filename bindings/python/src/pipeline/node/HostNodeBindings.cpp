@@ -92,6 +92,7 @@ void bind_hostnode(pybind11::module& m, void* pCallstack){
             cls.processGroup = processGroup
 
             def link_args(self, *args):
+                assert len(args) == len(cls.input_desc), "Number of arguments doesn't match the `process` method" 
                 for (name, type), arg in zip(cls.input_desc.items(), args):
                     if type is not None:
                         assert type.__name__.isalpha(), "Security check failed"

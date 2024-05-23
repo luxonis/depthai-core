@@ -5,6 +5,7 @@
 #include <limits>
 #include <unordered_map>
 #include <vector>
+#include <optional>
 
 #include "Buffer.hpp"
 #include "depthai/common/TensorInfo.hpp"
@@ -112,6 +113,15 @@ class NNData : public Buffer {
      */
     std::vector<TensorInfo> getAllLayers() const;
 
+
+    /**
+     * Retrieve tensor information
+     * @param name Name of the tensor
+     * @returns Tensor information
+     */
+    std::optional<TensorInfo> getTensorInfo(const std::string& name) const;
+
+    // TODO(Morato) - deprecate this
     /**
      * Retrieve layers tensor information
      * @param name Name of the layer

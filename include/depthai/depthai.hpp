@@ -2,6 +2,8 @@
 
 // Includes common classes needed to start the development
 
+// IWYU pragma: begin_exports
+
 // Include initialization utility
 #include "utility/Initialization.hpp"
 
@@ -24,3 +26,5 @@
 // bool initializeForce = [](){initialize();};
 // } // namespace
 // }
+
+// IWYU pragma: end_exports

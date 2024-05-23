@@ -1,7 +1,9 @@
 #include <depthai/pipeline/DeviceNode.hpp>
+#include <memory>
 
 #include "depthai/pipeline/Pipeline.hpp"
 #include "spdlog/fmt/fmt.h"
+#include "utility/ErrorMacros.hpp"
 
 namespace dai {
 
@@ -152,8 +154,7 @@ void Node::Output::link(Input& in) {
     connectedInputs.push_back(&in);
 }
 
-std::shared_ptr<dai::MessageQueue> Node::Output::createQueue(unsigned int maxSize, bool blocking)
-{
+std::shared_ptr<dai::MessageQueue> Node::Output::createQueue(unsigned int maxSize, bool blocking) {
     // Check if pipeline is already started - if so, throw an error
     auto pipelinePtr = parent.get().getParentPipeline();
     if(pipelinePtr.isBuilt()) {
@@ -264,7 +265,7 @@ std::vector<uint8_t> Node::loadResource(dai::Path uri) {
 }
 
 Node::OutputMap::OutputMap(Node& parent, std::string name, Node::OutputDescription defaultOutput, bool ref)
-    :defaultOutput(defaultOutput), parent(parent), name(std::move(name)) {
+    : defaultOutput(defaultOutput), parent(parent), name(std::move(name)) {
     if(ref) {
         parent.setOutputMapRefs(this);
     }
@@ -297,7 +298,8 @@ Node::Output& Node::OutputMap::operator[](std::pair<std::string, std::string> gr
     return at(groupKey);
 }
 
-Node::InputMap::InputMap(Node& parent, std::string name, Node::InputDescription description) : parent(parent), defaultInput(std::move(description)), name(std::move(name)) {
+Node::InputMap::InputMap(Node& parent, std::string name, Node::InputDescription description)
+    : parent(parent), defaultInput(std::move(description)), name(std::move(name)) {
     parent.setInputMapRefs(this);
 }
 
@@ -328,7 +330,7 @@ Node::Input& Node::InputMap::operator[](std::pair<std::string, std::string> grou
     return at(groupKey);
 }
 
-bool Node::InputMap::has(const std::string& key) const{
+bool Node::InputMap::has(const std::string& key) const {
     return count({name, key}) > 0;
 }
 
@@ -666,6 +668,41 @@ size_t Node::ConnectionInternal::Hash::operator()(const dai::Node::ConnectionInt
 void Node::stopPipeline() {
     auto pipeline = getParentPipeline();
     pipeline.stop();
+}
+
+void Node::Output::link(std::shared_ptr<Node> in) {
+    std::cout << "Output to node linking\n" << std::flush;
+    DAI_CHECK_IN(in);
+    // TODO(jakgra) only call this at the build stage
+    // call in correct order: from requested GUI outputs and similar to sensor outputs
+    for(const auto& input : in->getRequiredInputs()) {
+        if(canConnect(input.first)) {
+            link(input.first);
+        }
+    }
+}
+
+void Node::link(std::shared_ptr<Node> in) {
+    std::cout << "Node to node linking\n" << std::flush;
+    DAI_CHECK_IN(in);
+    // TODO(jakgra) only call this at the build stage
+    // call in correct order: from requested GUI outputs and similar to sensor outputs
+    for(const auto& input : in->getRequiredInputs()) {
+        auto* output = requestOutput(*input.second, in->runOnHost());
+        if(output) {
+            output->link(input.first);
+        }
+    }
+}
+
+Node::Output* Node::requestOutput(const Capability& capability, bool onHost) {
+    (void)capability;
+    (void)onHost;
+    DAI_CHECK_V(false, "Node '{}' doesn't support node to node linking. Please link outputs <--> inputs manually.", getName());
+}
+
+std::vector<std::pair<Node::Input&, std::shared_ptr<Capability>>> Node::getRequiredInputs() {
+    DAI_CHECK_V(false, "Node '{}' doesn't support node to node linking. Please link outputs <--> inputs manually.", getName());
 }
 
 }  // namespace dai

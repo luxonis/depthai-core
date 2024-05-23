@@ -91,7 +91,6 @@ void bind_videoencoder(pybind11::module& m, void* pCallstack){
                 return std::static_pointer_cast<VideoEncoder>(self.shared_from_this());
             },
             VIDEO_ENCODER_BUILD_PYARGS,
-            py::kw_only(),
             VIDEO_ENCODER_PYARGS
             )
         .def(py::init([](VIDEO_ENCODER_BUILD_ARGS, VIDEO_ENCODER_ARGS){ 
@@ -101,7 +100,6 @@ void bind_videoencoder(pybind11::module& m, void* pCallstack){
                 return self;
             }),
             VIDEO_ENCODER_BUILD_PYARGS,
-            py::kw_only(),
             VIDEO_ENCODER_PYARGS
             )
         .def_readonly("input", &VideoEncoder::input, DOC(dai, node, VideoEncoder, input), DOC(dai, node, VideoEncoder, input))

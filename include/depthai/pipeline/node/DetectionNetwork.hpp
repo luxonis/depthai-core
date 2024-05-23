@@ -148,6 +148,8 @@ class DetectionNetwork : public NodeGroup {
      */
     float getConfidenceThreshold() const;
 
+    std::vector<std::pair<Input&, std::shared_ptr<Capability>>> getRequiredInputs() override;
+
     std::optional<std::vector<std::string>> getClasses() const;
 
    private:
@@ -157,7 +159,9 @@ class DetectionNetwork : public NodeGroup {
    protected:
     void build();
     bool isBuild = false;
-    bool needsBuild() override { return !isBuild; }
+    bool needsBuild() override {
+        return !isBuild;
+    }
 };
 
 /**

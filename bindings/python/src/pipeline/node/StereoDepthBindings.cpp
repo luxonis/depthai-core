@@ -77,7 +77,6 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack){
                     }),
              py::arg("left"),
              py::arg("right"),
-             py::kw_only(),
              py::arg("presetMode") = StereoDepth::PresetMode::HIGH_DENSITY
                     )
         .def(py::init([](bool autoCreateCameras, StereoDepth::PresetMode presetMode) {
@@ -86,7 +85,6 @@ void bind_stereodepth(pybind11::module& m, void* pCallstack){
             return self;
                     }),
              py::arg("autoCreateCameras"),
-             py::kw_only(),
              py::arg("presetMode") = StereoDepth::PresetMode::HIGH_DENSITY
                     )
         .def("build",

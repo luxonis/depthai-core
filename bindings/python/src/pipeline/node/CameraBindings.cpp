@@ -140,7 +140,6 @@ void bind_camera(pybind11::module& m, void* pCallstack){
                 CAMERA_CODE(.)
                 return std::static_pointer_cast<Camera>(self.shared_from_this());
             },
-            py::kw_only(),
             CAMERA_PYARGS
             )
         .def(py::init([](CAMERA_ARGS){
@@ -149,7 +148,6 @@ void bind_camera(pybind11::module& m, void* pCallstack){
                 CAMERA_CODE(->)
                 return self;
             }),
-            py::kw_only(),
             CAMERA_PYARGS
             )
         .def("setBoardSocket", &Camera::setBoardSocket, py::arg("boardSocket"), DOC(dai, node, Camera, setBoardSocket))
@@ -207,6 +205,7 @@ void bind_camera(pybind11::module& m, void* pCallstack){
         .def("getCalibrationAlpha", &Camera::getCalibrationAlpha, DOC(dai, node, Camera, getCalibrationAlpha))
 
         .def("setRawOutputPacked", &Camera::setRawOutputPacked, py::arg("packed"), DOC(dai, node, Camera, setRawOutputPacked))
+        .def("requestOutput", &Camera::requestOutput, py::return_value_policy::reference_internal, DOC(dai, node, Camera, requestOutput))
         ;
     // ALIAS
     daiNodeModule.attr("Camera").attr("Properties") = cameraProperties;

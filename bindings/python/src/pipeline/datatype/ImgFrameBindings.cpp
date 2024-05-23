@@ -310,7 +310,7 @@ void bind_imgframe(pybind11::module& m, void* pCallstack){
                 case ImgFrame::Type::NV12:
                 case ImgFrame::Type::NV21: {
                     auto code = (img.getType() == ImgFrame::Type::NV12) ? cv2.attr("COLOR_YUV2BGR_NV12") : cv2.attr("COLOR_YUV2BGR_NV21");
-                    if(img.getPlaneHeight() <= img.getHeight()) {
+                    if(img.getPlaneHeight() <= img.getHeight() && img.getStride() <= img.getWidth()) {
                         return cv2.attr("cvtColor")(frame, code);
                     } else {
                         py::dtype dtype = py::dtype::of<uint8_t>();
