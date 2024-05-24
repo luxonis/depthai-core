@@ -3,6 +3,7 @@
 // all the nodes
 #include "node/AprilTag.hpp"
 #include "node/Camera.hpp"
+#include "node/Cast.hpp"
 #include "node/ColorCamera.hpp"
 #include "node/DetectionNetwork.hpp"
 #include "node/DetectionParser.hpp"

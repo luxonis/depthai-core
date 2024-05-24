@@ -196,6 +196,22 @@ hunter_private_data(
     LOCATION concat_model
 )
 
+# blur model
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/blur_simplified_openvino_2021.4_6shave.blob"
+    SHA1 "14d543bbaceffa438071f83be58ad22a07ce33ee"
+    FILE "blur_simplified_openvino_2021.4_6shave.blob"
+    LOCATION blur_model
+)
+
+# diff model
+hunter_private_data(
+    URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/diff_openvino_2022.1_6shave.blob"
+    SHA1 "fe9600e617d222f986a699f18e77e80ce2485000"
+    FILE "diff_openvino_2022.1_6shave.blob"
+    LOCATION diff_model
+)
+
 # normalization model
 hunter_private_data(
     URL "https://artifacts.luxonis.com/artifactory/luxonis-depthai-data-local/network/normalize_openvino_2021.4_4shave.blob"
@@ -389,7 +405,16 @@ if(DEPTHAI_HAVE_PCL_SUPPORT)
     dai_add_example(visualize_pointcloud PointCloud/visualize_pointcloud.cpp ON ON)
 endif()
 
+# ImageAlign
 dai_add_example(tof_align ImageAlign/tof_align.cpp OFF OFF)
 dai_add_example(image_align ImageAlign/image_align.cpp ON OFF)
 dai_add_example(thermal_align ImageAlign/thermal_align.cpp OFF OFF)
 dai_add_example(depth_align ImageAlign/depth_align.cpp ON OFF)
+
+# Cast
+dai_add_example(blur Cast/blur.cpp ON OFF)
+target_compile_definitions(blur PRIVATE BLOB_PATH="${blur_model}")
+dai_add_example(concat Cast/concat.cpp ON OFF)
+target_compile_definitions(concat PRIVATE BLOB_PATH="${concat_model}")
+dai_add_example(diff Cast/diff.cpp ON OFF)
+target_compile_definitions(diff PRIVATE BLOB_PATH="${diff_model}")
