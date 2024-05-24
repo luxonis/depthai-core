@@ -388,3 +388,8 @@ dai_add_example(imu_video_synced Sync/imu_video_synced.cpp ON OFF)
 if(DEPTHAI_HAVE_PCL_SUPPORT)
     dai_add_example(visualize_pointcloud PointCloud/visualize_pointcloud.cpp ON ON)
 endif()
+
+dai_add_example(tof_align ImageAlign/tof_align.cpp OFF OFF)
+dai_add_example(image_align ImageAlign/image_align.cpp ON OFF)
+dai_add_example(thermal_align ImageAlign/thermal_align.cpp OFF OFF)
+dai_add_example(depth_align ImageAlign/depth_align.cpp ON OFF)
