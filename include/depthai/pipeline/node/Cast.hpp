@@ -2,11 +2,6 @@
 
 #include <depthai/pipeline/Node.hpp>
 
-#include "depthai/pipeline/datatype/Tracklets.hpp"
-
-// standard
-#include <fstream>
-
 // shared
 #include <depthai-shared/properties/CastProperties.hpp>
 

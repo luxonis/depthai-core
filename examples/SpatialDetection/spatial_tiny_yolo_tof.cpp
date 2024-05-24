@@ -4,7 +4,7 @@
 #include <depthai/depthai.hpp>
 #include <atomic>
 
-const int FPS = 15;
+constexpr auto FPS = 15;
 
 static const std::vector<std::string> labelMap = {
     "person", "bicycle", "car", "motorbike", "aeroplane", "bus", "train", "truck", "boat",

@@ -1,6 +1,5 @@
 #include <depthai/depthai.hpp>
 #include <opencv2/opencv.hpp>
-#include <filesystem>
 
 constexpr int SHAPE = 300;
 
@@ -21,7 +20,7 @@ int main() {
     rgbOut->setStreamName("rgb");
     castXout->setStreamName("cast");
 
-    cast->setOutputFrameType(dai::RawImgFrame::Type::BGR888p);
+    cast->setOutputFrameType(dai::ImgFrame::Type::BGR888p);
 
     // Linking
     camRgb->preview.link(nn->input);
