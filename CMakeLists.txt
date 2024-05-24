@@ -46,7 +46,7 @@ if(WIN32)
 endif()
 
 # Create depthai project
-project(depthai VERSION "2.25.0" LANGUAGES CXX C)
+project(depthai VERSION "2.25.1" LANGUAGES CXX C)
 get_directory_property(has_parent PARENT_DIRECTORY)
 if(has_parent)
     set(DEPTHAI_VERSION ${PROJECT_VERSION} PARENT_SCOPE)
@@ -219,6 +219,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/DetectionNetwork.cpp
     src/pipeline/node/Script.cpp
     src/pipeline/node/SpatialDetectionNetwork.cpp
+    src/pipeline/node/ImageAlign.cpp
     src/pipeline/node/SystemLogger.cpp
     src/pipeline/node/SpatialLocationCalculator.cpp
     src/pipeline/node/AprilTag.cpp
@@ -230,6 +231,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/node/DetectionParser.cpp
     src/pipeline/node/UVC.cpp
     src/pipeline/node/PointCloud.cpp
+    src/pipeline/node/Cast.cpp
     src/pipeline/datatype/Buffer.cpp
     src/pipeline/datatype/ImgFrame.cpp
     src/pipeline/datatype/EncodedFrame.cpp
@@ -250,6 +252,7 @@ add_library(${TARGET_CORE_NAME}
     src/pipeline/datatype/EdgeDetectorConfig.cpp
     src/pipeline/datatype/TrackedFeatures.cpp
     src/pipeline/datatype/FeatureTrackerConfig.cpp
+    src/pipeline/datatype/ImageAlignConfig.cpp
     src/pipeline/datatype/ToFConfig.cpp
     src/pipeline/datatype/PointCloudConfig.cpp
     src/pipeline/datatype/PointCloudData.cpp

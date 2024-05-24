@@ -462,6 +462,16 @@ class DeviceBase {
     int getXLinkChunkSize();
 
     /**
+     * Sets the maximum transmission rate for the XLink connection on device side,
+     * using a simple token bucket algorithm. Useful for bandwidth throttling
+     *
+     * @param maxRateBytesPerSecond Rate limit in Bytes/second
+     * @param burstSize Size in Bytes for how much to attempt to send once, 0 = auto
+     * @param waitUs Time in microseconds to wait for replenishing tokens, 0 = auto
+     */
+    void setXLinkRateLimit(int maxRateBytesPerSecond, int burstSize = 0, int waitUs = 0);
+
+    /**
      * Get the Device Info object o the device which is currently running
      *
      * @return DeviceInfo of the current device in execution
@@ -865,29 +875,6 @@ class DeviceBase {
      * @returns Binary dump of Factory area EEPROM data
      */
     std::vector<std::uint8_t> readFactoryCalibrationRaw();
-
-    /**
-     * Fetches the raw EEPROM data from the specified CCM (compact camera module).
-     * Note: only certain CCMs (e.g. ToF) do have an EEPROM chip on-module
-     *
-     * @param socket CameraBoardSocket where the CCM is placed
-     * @param size Size in bytes to read
-     * @param offset Absolute offset in EEPROM memory to read from
-     * @throws std::runtime_exception if any error occurred
-     * @returns Binary dump of EEPROM data
-     */
-    std::vector<std::uint8_t> readCcmEepromRaw(CameraBoardSocket socket, int size, int offset = 0);
-
-    /**
-     * Writes the raw EEPROM data from the specified CCM (compact camera module).
-     * Note: only certain CCMs (e.g. ToF) do have an EEPROM chip on-module
-     *
-     * @param socket CameraBoardSocket where the CCM is placed
-     * @param data Data buffer to write
-     * @param offset Absolute offset in EEPROM memory to read from
-     * @throws std::runtime_exception if any error occurred
-     */
-    void writeCcmEepromRaw(CameraBoardSocket socket, std::vector<uint8_t> data, int offset = 0);
 
     /**
      * Retrieves USB connection speed
