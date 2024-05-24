@@ -2,6 +2,7 @@
 #include <stdexcept>
 
 #include "depthai/capabilities/ImgFrameCapability.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
 
 int main(int argc, char** argv) {
@@ -10,25 +11,23 @@ int main(int argc, char** argv) {
     info.state = X_LINK_GATE;
     info.platform = X_LINK_RVC4;
     const auto device = std::make_shared<dai::Device>(info);
-    if(argc < 4 || (argc - 1) % 3 != 0) {
-        throw std::runtime_error("USAGE: ./camera_multiple_outputs 1920 1080 0 640 480 1\nWHERE 0 is resize mode: 0 == CROP, 1 == STRETCH, 2 == LETTERBOX");
+    if(argc < 4 || (argc - 1) % 4 != 0) {
+        throw std::runtime_error(
+            "USAGE: ./camera_multiple_outputs 1920 1080 0 0  640 480 1 1\n"
+            "WHERE first 0 is resize mode: 0 == CROP, 1 == STRETCH, 2 == LETTERBOX\n"
+            "AND second 0 is CAM_A, ...");
     }
-    std::vector<std::tuple<uint32_t, uint32_t, uint32_t>> sizes;
-    for(int index = 1; index < argc - 1; index += 3) {
-        sizes.emplace_back(std::stoul(argv[index]), std::stoul(argv[index + 1]), std::stoul(argv[index + 2]));
+    std::vector<std::tuple<uint32_t, uint32_t, uint32_t, int32_t>> sizes;
+    for(int index = 1; index < argc - 1; index += 4) {
+        sizes.emplace_back(std::stoul(argv[index]), std::stoul(argv[index + 1]), std::stoul(argv[index + 2]), std::stol(argv[index + 3]));
     }
 
     dai::Pipeline pipeline(device);
 
-    // Define source and output
-    auto camRgb = pipeline.create<dai::node::Camera>();
-
-    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_A);
     if(sizes.empty()) {
         throw std::runtime_error("internal error to few sizes");
     }
-    // camRgb->setSize(sizes[0]);
-
+    std::map<dai::CameraBoardSocket, std::shared_ptr<dai::node::Camera>> cameras;
     std::vector<std::shared_ptr<dai::MessageQueue>> videos;
     for(const auto& size : sizes) {
         dai::ImgFrameCapability cap;
@@ -50,21 +49,20 @@ int main(int argc, char** argv) {
             default:
                 throw std::runtime_error("Resize mode argument (every 3rd) must be 0, 1 or 2");
         }
-        auto* output = camRgb->requestOutput(cap, true);
+        if(std::get<3>(size) < static_cast<int32_t>(dai::CameraBoardSocket::CAM_A) || std::get<3>(size) > static_cast<int32_t>(dai::CameraBoardSocket::CAM_J)) {
+            throw std::runtime_error("Resize mode argument (every 4th) must be from CAM_A to CAM_J");
+        }
+        const auto camSocket = static_cast<dai::CameraBoardSocket>(std::get<3>(size));
+        std::shared_ptr<dai::node::Camera> camera;
+        if(const auto& it = cameras.find(camSocket); it != cameras.end()) {
+            camera = it->second;
+        } else {
+            camera = pipeline.create<dai::node::Camera>();
+            camera->setBoardSocket(camSocket);
+        }
+        auto* output = camera->requestOutput(cap, true);
         videos.push_back(output->createQueue());
     }
-
-    /*
-    camRgb->setSize(1920, 1080);
-    auto video = camRgb->video.createQueue();
-    */
-
-    /*
-    dai::ImgFrameCapability cap;
-    cap.size.value = std::pair(1920, 1080);
-    auto* output = camRgb->requestOutput(cap);
-    auto video = output->createQueue();
-    */
 
     pipeline.start();
 
