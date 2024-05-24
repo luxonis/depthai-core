@@ -1,6 +1,6 @@
 #include <depthai/depthai.hpp>
-#include <opencv2/opencv.hpp>
 #include <filesystem>
+#include <opencv2/opencv.hpp>
 
 constexpr int SHAPE = 720;
 
@@ -46,18 +46,18 @@ int main() {
     auto qCam = device.getOutputQueue("rgb", 4, false);
     auto qCast = device.getOutputQueue("cast", 4, false);
 
-    while (true) {
+    while(true) {
         auto colorFrame = qCam->get<dai::ImgFrame>();
-        if (colorFrame) {
+        if(colorFrame) {
             cv::imshow("Color", colorFrame->getCvFrame());
         }
 
         auto inCast = qCast->get<dai::ImgFrame>();
-        if (inCast) {
+        if(inCast) {
             cv::imshow("Diff", inCast->getCvFrame());
         }
 
-        if (cv::waitKey(1) == 'q') {
+        if(cv::waitKey(1) == 'q') {
             break;
         }
     }

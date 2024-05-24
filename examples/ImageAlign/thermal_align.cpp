@@ -1,6 +1,7 @@
 #include <chrono>
 #include <opencv2/opencv.hpp>
 #include <queue>
+
 #include "depthai/depthai.hpp"
 #include "depthai/pipeline/datatype/ImageAlignConfig.hpp"
 
@@ -9,22 +10,22 @@ constexpr auto RGB_SOCKET = dai::CameraBoardSocket::CAM_A;
 constexpr auto COLOR_RESOLUTION = dai::ColorCameraProperties::SensorResolution::THE_1080_P;
 
 class FPSCounter {
-public:
+   public:
     void tick() {
         auto now = std::chrono::steady_clock::now();
         frameTimes.push(now);
-        if (frameTimes.size() > 100) {
+        if(frameTimes.size() > 100) {
             frameTimes.pop();
         }
     }
 
     double getFps() {
-        if (frameTimes.size() <= 1) return 0;
+        if(frameTimes.size() <= 1) return 0;
         auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(frameTimes.back() - frameTimes.front()).count();
         return (frameTimes.size() - 1) * 1000.0 / duration;
     }
 
-private:
+   private:
     std::queue<std::chrono::steady_clock::time_point> frameTimes;
 };
 
@@ -43,9 +44,9 @@ void updateDepthPlane(int depth, void*) {
 
 cv::Mat createNaNMask(const cv::Mat& frame) {
     cv::Mat nanMask = cv::Mat::zeros(frame.size(), CV_8UC1);
-    for (int r = 0; r < frame.rows; ++r) {
-        for (int c = 0; c < frame.cols; ++c) {
-            if (std::isnan(frame.at<float>(r, c))) {
+    for(int r = 0; r < frame.rows; ++r) {
+        for(int c = 0; c < frame.cols; ++c) {
+            if(std::isnan(frame.at<float>(r, c))) {
                 nanMask.at<uchar>(r, c) = 255;
             }
         }
@@ -59,8 +60,8 @@ int main() {
     bool thermalFound = false;
     dai::CameraBoardSocket thermalSocket;
 
-    for (const auto& features : device.getConnectedCameraFeatures()) {
-        if (std::find(features.supportedTypes.begin(), features.supportedTypes.end(), dai::CameraSensorType::THERMAL) != features.supportedTypes.end()) {
+    for(const auto& features : device.getConnectedCameraFeatures()) {
+        if(std::find(features.supportedTypes.begin(), features.supportedTypes.end(), dai::CameraSensorType::THERMAL) != features.supportedTypes.end()) {
             thermalFound = true;
             thermalSocket = features.socket;
             thermalWidth = features.width;
@@ -69,7 +70,7 @@ int main() {
         }
     }
 
-    if (!thermalFound) {
+    if(!thermalFound) {
         throw std::runtime_error("No thermal camera found!");
     }
 
@@ -116,14 +117,14 @@ int main() {
     cv::createTrackbar("RGB Weight %", windowName, nullptr, 100, updateBlendWeights);
     cv::createTrackbar("Static Depth Plane [mm]", windowName, nullptr, 2000, updateDepthPlane);
 
-    while (true) {
+    while(true) {
         auto messageGroup = queue->get<dai::MessageGroup>();
         fpsCounter.tick();
 
         auto frameRgb = messageGroup->get<dai::ImgFrame>("rgb");
         auto thermalAligned = messageGroup->get<dai::ImgFrame>("aligned");
 
-        if (frameRgb && thermalAligned) {
+        if(frameRgb && thermalAligned) {
             auto frameRgbCv = frameRgb->getCvFrame();
             auto thermalFrame = thermalAligned->getFrame(true);
 
@@ -148,7 +149,7 @@ int main() {
         }
 
         int key = cv::waitKey(1);
-        if (key == 'q' || key == 'Q') {
+        if(key == 'q' || key == 'Q') {
             break;
         }
 

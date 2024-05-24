@@ -48,13 +48,13 @@ int main() {
     dai::Device device(p);
     auto qCast = device.getOutputQueue("cast", 4, false);
 
-    while (true) {
+    while(true) {
         auto inCast = qCast->get<dai::ImgFrame>();
-        if (inCast) {
+        if(inCast) {
             cv::imshow("Concated frames", inCast->getCvFrame());
         }
 
-        if (cv::waitKey(1) == 'q') {
+        if(cv::waitKey(1) == 'q') {
             break;
         }
     }

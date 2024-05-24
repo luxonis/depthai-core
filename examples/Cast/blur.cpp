@@ -32,16 +32,16 @@ int main() {
     auto qCam = device.getOutputQueue("rgb", 4, false);
     auto qCast = device.getOutputQueue("cast", 4, false);
 
-    while (true) {
+    while(true) {
         auto inCast = qCast->get<dai::ImgFrame>();
         auto inRgb = qCam->get<dai::ImgFrame>();
 
-        if (inCast && inRgb) {
+        if(inCast && inRgb) {
             cv::imshow("Blur", inCast->getCvFrame());
             cv::imshow("Original", inRgb->getCvFrame());
         }
 
-        if (cv::waitKey(1) == 'q') {
+        if(cv::waitKey(1) == 'q') {
             break;
         }
     }
