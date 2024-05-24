@@ -6,7 +6,7 @@
 #include "depthai/depthai.hpp"
 
 int main(int argc, char** argv) {
-    dai::DeviceInfo info("10.12.110.219");
+    dai::DeviceInfo info("10.12.110.52");
     info.protocol = X_LINK_TCP_IP;
     info.state = X_LINK_GATE;
     info.platform = X_LINK_RVC4;
@@ -55,10 +55,13 @@ int main(int argc, char** argv) {
         const auto camSocket = static_cast<dai::CameraBoardSocket>(std::get<3>(size));
         std::shared_ptr<dai::node::Camera> camera;
         if(const auto& it = cameras.find(camSocket); it != cameras.end()) {
+            std::cout << "FOUND camera using it\n" << std::flush;
             camera = it->second;
         } else {
+            std::cout << "DIDN't find camera, creating it\n" << std::flush;
             camera = pipeline.create<dai::node::Camera>();
             camera->setBoardSocket(camSocket);
+            cameras[camSocket] = camera;
         }
         auto* output = camera->requestOutput(cap, true);
         videos.push_back(output->createQueue());
@@ -69,7 +72,7 @@ int main(int argc, char** argv) {
     while(true) {
         size_t videoIndex = 0;
         for(const auto& video : videos) {
-            std::cout << "Waiting for frame on index " << videoIndex << "\n" << std::flush;
+            // std::cout << "Waiting for frame on index " << videoIndex << "\n" << std::flush;
             auto videoIn = video->tryGet<dai::ImgFrame>();
             // Get BGR frame from NV12 encoded video frame to show with opencv
             // Visualizing the frame on slower hosts might have overhead
@@ -80,7 +83,7 @@ int main(int argc, char** argv) {
                           << std::flush;
                 cv::imshow("video_" + std::to_string(videoIndex), videoIn->getCvFrame());
             } else {
-                std::cout << "Video frame on index " << videoIndex << " was null\n" << std::flush;
+                // std::cout << "Video frame on index " << videoIndex << " was null\n" << std::flush;
             }
             ++videoIndex;
         }

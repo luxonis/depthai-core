@@ -13,6 +13,7 @@
 
 // Includes common necessary includes for development using depthai library
 #include "depthai/capabilities/ImgFrameCapability.hpp"
+#include "depthai/common/CameraBoardSocket.hpp"
 #include "depthai/depthai.hpp"
 
 // Test helpers
@@ -92,7 +93,7 @@ std::tuple<uint32_t, uint32_t> getRandomResolution(dai::Pipeline& pipeline) {
 
 void testResolution(std::optional<std::tuple<uint32_t, uint32_t>> wantedSize = std::nullopt) {
     std::cout << "TESTING SOME RESOLUTION\n" << std::flush;
-    dai::DeviceInfo info("10.12.110.219");
+    dai::DeviceInfo info("10.12.110.52");
     info.protocol = X_LINK_TCP_IP;
     info.state = X_LINK_GATE;
     info.platform = X_LINK_RVC4;
@@ -104,6 +105,7 @@ void testResolution(std::optional<std::tuple<uint32_t, uint32_t>> wantedSize = s
 
     auto camRgb = pipeline.create<dai::node::Camera>();
     std::cout << "TESTING SOME RESOLUTION 4\n" << std::flush;
+    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_C);
 
     const auto size = wantedSize ? *wantedSize : getRandomResolution(pipeline);
     std::cout << "TESTING RESOLUTION: " << std::get<0>(size) << "x" << std::get<1>(size) << "\n" << std::flush;
@@ -148,7 +150,7 @@ void getImages(std::list<std::pair<std::shared_ptr<dai::ImgFrame>, std::shared_p
                std::tuple<uint32_t, uint32_t>& sizeOut,
                dai::ImgResizeMode resizeMode,
                std::optional<std::tuple<uint32_t, uint32_t>> wantedSize = std::nullopt) {
-    dai::DeviceInfo info("10.12.110.219");
+    dai::DeviceInfo info("10.12.110.52");
     info.protocol = X_LINK_TCP_IP;
     info.state = X_LINK_GATE;
     info.platform = X_LINK_RVC4;
@@ -157,6 +159,7 @@ void getImages(std::list<std::pair<std::shared_ptr<dai::ImgFrame>, std::shared_p
     dai::Pipeline pipeline(device);
 
     auto camRgb = pipeline.create<dai::node::Camera>();
+    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_C);
 
     const auto size = wantedSize ? *wantedSize : getRandomResolution(pipeline);
     sizeOut = size;
@@ -166,6 +169,7 @@ void getImages(std::list<std::pair<std::shared_ptr<dai::ImgFrame>, std::shared_p
     // int maxIspVideoHeight = std::min(height, 2160);
 
     dai::ImgFrameCapability capOrig;
+    // capOrig.size.value = std::make_pair(960, 720);  // TODO(jakgra) get this from device when supported on rvc4
     capOrig.size.value = std::make_pair(1920, 1440);  // TODO(jakgra) get this from device when supported on rvc4
     capOrig.encoding = dai::ImgFrame::Type::BGR888i;
     const auto queueFramesOrig = camRgb->requestOutput(capOrig, true)->createQueue();
@@ -173,14 +177,15 @@ void getImages(std::list<std::pair<std::shared_ptr<dai::ImgFrame>, std::shared_p
     dai::ImgFrameCapability cap;
     cap.size.value = std::make_pair(std::get<0>(size), std::get<1>(size));
     cap.encoding = dai::ImgFrame::Type::BGR888i;
-    cap.resizeMode = resizeMode;
+    // cap.resizeMode = resizeMode;
+    cap.resizeMode = dai::ImgResizeMode::CROP;
     auto* output = camRgb->requestOutput(cap, true);
     const auto queueFrames = camRgb->requestOutput(cap, true)->createQueue();
 
     ScopeHelper scopeHelper([&pipeline]() { pipeline.start(); },
                             [&pipeline]() {
                                 pipeline.stop();
-                                pipeline.wait();
+                                // pipeline.wait();
                                 std::this_thread::sleep_for(std::chrono::seconds(10));
                             });
     std::list<std::shared_ptr<dai::ImgFrame>> origFramesBuffer;
@@ -305,13 +310,15 @@ struct MultipleResHelper {
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
 void testMultipleResolutions(const std::vector<std::tuple<uint32_t, uint32_t>>& wantedSizes) {
-    dai::DeviceInfo info("10.12.110.219");
+    dai::DeviceInfo info("10.12.110.52");
     info.protocol = X_LINK_TCP_IP;
     info.state = X_LINK_GATE;
     info.platform = X_LINK_RVC4;
     const auto device = std::make_shared<dai::Device>(info);
     dai::Pipeline pipeline(device);
     auto camRgb = pipeline.create<dai::node::Camera>();
+    camRgb->setBoardSocket(dai::CameraBoardSocket::CAM_C);
+
     std::vector<MultipleResHelper> helpers;
     std::cout << "TESTING MULTIPLE RESOLUTIONS: ";
     for(const auto& wantedSize : wantedSizes) {
@@ -360,6 +367,7 @@ TEST_CASE("prev_broken_resolutions") {
     // TODO(jakgra) fix odd-sized resolutions
     // const auto resolution = GENERATE(table<uint32_t, uint32_t>({{3860, 2587}, {3951, 1576}, {909, 909}, {444, 888}}));
     const auto resolution = GENERATE(table<uint32_t, uint32_t>({{444, 888}}));
+    // const auto resolution = GENERATE(table<uint32_t, uint32_t>({{700, 700}}));
     testResolutionWithContent(false, dai::ImgResizeMode::STRETCH, resolution);
 }
 
