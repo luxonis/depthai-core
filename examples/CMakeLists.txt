@@ -418,3 +418,6 @@ dai_add_example(concat Cast/concat.cpp ON OFF)
 target_compile_definitions(concat PRIVATE BLOB_PATH="${concat_model}")
 dai_add_example(diff Cast/diff.cpp ON OFF)
 target_compile_definitions(diff PRIVATE BLOB_PATH="${diff_model}")
+
+# ToF
+dai_add_example(tof_depth ToF/tof_depth.cpp ON OFF)
