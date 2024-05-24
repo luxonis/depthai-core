@@ -420,4 +420,7 @@ dai_add_example(diff Cast/diff.cpp ON OFF)
 target_compile_definitions(diff PRIVATE BLOB_PATH="${diff_model}")
 
 # ToF
-dai_add_example(tof_depth ToF/tof_depth.cpp ON OFF)
+dai_add_example(spatial_tiny_yolo_tof_v3 SpatialDetection/spatial_tiny_yolo_tof.cpp OFF OFF)
+dai_add_example(spatial_tiny_yolo_tof_v4 SpatialDetection/spatial_tiny_yolo_tof.cpp OFF OFF)
+target_compile_definitions(spatial_tiny_yolo_tof_v3 PRIVATE BLOB_PATH="${tiny_yolo_v3_blob}")
+target_compile_definitions(spatial_tiny_yolo_tof_v4 PRIVATE BLOB_PATH="${tiny_yolo_v4_blob}")
