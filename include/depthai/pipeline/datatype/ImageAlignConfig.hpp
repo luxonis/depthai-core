@@ -1,8 +1,5 @@
 #pragma once
 
-#include <unordered_map>
-#include <vector>
-
 #include "depthai-shared/datatype/RawImageAlignConfig.hpp"
 #include "depthai/pipeline/datatype/Buffer.hpp"
 

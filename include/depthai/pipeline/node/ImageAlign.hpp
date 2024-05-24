@@ -2,9 +2,6 @@
 
 #include <depthai/pipeline/Node.hpp>
 
-// standard
-#include <fstream>
-
 // shared
 #include <depthai-shared/properties/ImageAlignProperties.hpp>
 
@@ -65,7 +62,7 @@ class ImageAlign : public NodeCRTP<Node, ImageAlign, ImageAlignProperties> {
     Output passthroughInput{*this, "passthroughInput", Output::Type::MSender, {{DatatypeEnum::ImgFrame, false}}};
 
     /**
-     * Specify the output size of the aligned depth map
+     * Specify the output size of the aligned image
      */
     ImageAlign& setOutputSize(int alignWidth, int alignHeight);
 
