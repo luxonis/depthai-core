@@ -41,15 +41,39 @@ class ToF : public NodeCRTP<Node, ToF, ToFProperties> {
      */
     Input inputConfig{*this, "inputConfig", Input::Type::SReceiver, false, 4, {{DatatypeEnum::ToFConfig, false}}};
 
+    /**
+     * Input raw ToF data.
+     * Default queue is blocking with size 8.
+     */
     Input input{*this, "input", Input::Type::SReceiver, true, 8, {{DatatypeEnum::ImgFrame, true}}};
 
     /**
-     * Outputs ImgFrame message that carries modified image.
+     * Outputs ImgFrame message that carries decoded depth image.
      */
     Output depth{*this, "depth", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
+    /**
+     * Outputs ImgFrame message that carries amplitude image.
+     */
     Output amplitude{*this, "amplitude", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
+    /**
+     * Outputs ImgFrame message that carries intensity image.
+     */
     Output intensity{*this, "intensity", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
-    Output error{*this, "error", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
+    /**
+     * Outputs ImgFrame message that carries phase image, useful for debugging. float32 type.
+     */
+    Output phase{*this, "phase", Output::Type::MSender, {{DatatypeEnum::ImgFrame, true}}};
+
+    /**
+     * Specify number of shaves reserved for ToF decoding.
+     */
+    ToF& setNumShaves(int numShaves);
+
+    /**
+     * Specify number of frames in output pool
+     * @param numFramesPool Number of frames in output pool
+     */
+    ToF& setNumFramesPool(int numFramesPool);
 };
 
 }  // namespace node
