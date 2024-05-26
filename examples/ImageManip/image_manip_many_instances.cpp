@@ -67,10 +67,10 @@ int main() {
     imageManip->out.link(imageManipCrop->inputImage);
     */
 
-    auto video = camRgb->video.createQueue();
+    auto video = camRgb->video.createOutputQueue();
     std::vector<std::shared_ptr<dai::MessageQueue>> resizedOutputs;
     for(auto imageManip : resizeNodes) {
-        resizedOutputs.push_back(imageManip->out.createQueue());
+        resizedOutputs.push_back(imageManip->out.createOutputQueue());
     }
 
     pipeline.start();

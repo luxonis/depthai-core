@@ -155,6 +155,10 @@ void Node::Output::link(Input& in) {
 }
 
 std::shared_ptr<dai::MessageQueue> Node::Output::createQueue(unsigned int maxSize, bool blocking) {
+    return createOutputQueue(maxSize, blocking);
+}
+
+std::shared_ptr<dai::MessageQueue> Node::Output::createOutputQueue(unsigned int maxSize, bool blocking) {
     // Check if pipeline is already started - if so, throw an error
     auto pipelinePtr = parent.get().getParentPipeline();
     if(pipelinePtr.isBuilt()) {
@@ -163,6 +167,18 @@ std::shared_ptr<dai::MessageQueue> Node::Output::createQueue(unsigned int maxSiz
     auto queue = std::make_shared<MessageQueue>(maxSize, blocking);
     link(queue);
     return queue;
+}
+
+std::shared_ptr<InputQueue> Node::Input::createInputQueue(unsigned int maxSize, bool blocking) {
+    auto pipelinePtr = parent.get().getParentPipeline();
+    if(pipelinePtr.isBuilt()) {
+        throw std::runtime_error("Cannot create input queue after pipeline is built");
+    }
+    auto inputQueuePtr = std::make_shared<InputQueue>(maxSize, blocking);
+    pipelinePtr.add(inputQueuePtr);
+    inputQueuePtr->output.link(*this);
+    connectedQueues.push_back(std::move(inputQueuePtr));
+    return connectedQueues.back();
 }
 
 Node::ConnectionInternal::ConnectionInternal(Output& out, Input& in)
@@ -249,6 +265,77 @@ void Node::Input::setReusePreviousMessage(bool reusePreviousMessage) {
 
 bool Node::Input::getReusePreviousMessage() const {
     return !waitForMessage;
+}
+
+InputQueue::InputQueue(unsigned int maxSize, bool blocking) : Node() {
+    queuePtr_ = std::make_unique<MessageQueue>(maxSize, blocking);
+}
+
+void InputQueue::start() {
+    stopThreadFlag_ = false;
+    inputQueueThread_ = std::thread(&InputQueue::run, this);
+}
+
+void InputQueue::stop() {
+    std::unique_lock<std::mutex> lock(guard_);
+    stopThreadFlag_ = true;
+    sendThreadCv_.notify_all();
+}
+
+void InputQueue::wait() {
+    if(inputQueueThread_.joinable()) inputQueueThread_.join();
+}
+
+void InputQueue::run() {
+    try {
+        while(true) {
+            {
+                std::unique_lock<std::mutex> lock(guard_);
+                // Wait if there are no messages in the queue
+                if(queuePtr_->getSize() == 0 && !stopThreadFlag_) {
+                    sendThreadCv_.wait(lock);
+                }
+            }
+
+            if(stopThreadFlag_) break;
+
+            // Send all messages in the queue
+            while(queuePtr_->getSize() > 0 && !stopThreadFlag_) {
+                output.send(queuePtr_->get());
+            }
+
+            inputQueueEmptiedCv_.notify_all();
+        }
+    } catch(const MessageQueue::QueueException& ex) {
+        stopThreadFlag_ = true;
+    } catch(const std::runtime_error& ex) {
+        std::cout << "Node threw exception, stopping the node. Exception message: " << ex.what() << std::endl;
+    }
+}
+
+void InputQueue::send(const std::shared_ptr<ADatatype>& msg) {
+    std::unique_lock<std::mutex> lock(guard_);
+
+    // If blocking, make sure the queue is not full
+    // If it is full, wait until the other thread empties it
+    if(queuePtr_->getBlocking() && queuePtr_->isFull()) {
+        sendThreadCv_.notify_all();
+        inputQueueEmptiedCv_.wait(lock);
+    }
+
+    // If queue is non-blocking and full, send will overwrite the oldest message
+    queuePtr_->send(msg);
+
+    // Let other threads know that there is a new message
+    sendThreadCv_.notify_all();
+}
+
+bool InputQueue::runOnHost() const {
+    return true;
+}
+
+const char* InputQueue::getName() const {
+    return "InputQueue";
 }
 
 const AssetManager& Node::getAssetManager() const {

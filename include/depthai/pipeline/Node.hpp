@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm>
+#include <condition_variable>
 #include <functional>
 #include <memory>
 #include <set>
@@ -13,6 +14,7 @@
 #include "depthai/openvino/OpenVINO.hpp"
 #include "depthai/pipeline/AssetManager.hpp"
 #include "depthai/pipeline/MessageQueue.hpp"
+#include "depthai/utility/JoiningThread.hpp"
 #include "depthai/utility/RecordReplay.hpp"
 #include "depthai/utility/copyable_unique_ptr.hpp"
 
@@ -28,6 +30,9 @@ namespace dai {
 // fwd declare Pipeline
 class Pipeline;
 class PipelineImpl;
+
+// fwd declare input queue class
+class InputQueue;
 
 /**
  * @brief Abstract Node
@@ -229,7 +234,17 @@ class Node : public std::enable_shared_from_this<Node> {
             return queueConnections;
         }
 
-        std::shared_ptr<dai::MessageQueue> createQueue(unsigned int maxSize = 16, bool blocking = true);
+        [[deprecated("Use 'createOutputQueue()' instead")]] std::shared_ptr<MessageQueue> createQueue(unsigned int maxSize = 16, bool blocking = true);
+
+        /**
+         * @brief Construct and return a shared pointer to an output message queue
+         *
+         * @param maxSize: Maximum size of the output queue
+         * @param blocking: Whether the output queue should block when full
+         *
+         * @return std::shared_ptr<dai::MessageQueue>: shared pointer to an output queue
+         */
+        std::shared_ptr<dai::MessageQueue> createOutputQueue(unsigned int maxSize = 16, bool blocking = true);
 
        private:
         void link(const std::shared_ptr<dai::MessageQueue>& queue) {
@@ -323,6 +338,7 @@ class Node : public std::enable_shared_from_this<Node> {
         bool waitForMessage{false};
         std::string group;
         Type type = Type::SReceiver;
+        std::vector<std::shared_ptr<InputQueue>> connectedQueues;
 
        public:
         std::vector<DatatypeHierarchy> possibleDatatypes;
@@ -394,6 +410,16 @@ class Node : public std::enable_shared_from_this<Node> {
          * Get group name for this input
          */
         std::string getGroup() const;
+
+        /**
+         * @brief Create an shared pointer to an input queue that can be used to send messages to this input from onhost
+         *
+         * @param maxSize: Maximum size of the input queue
+         * @param blocking: Whether the input queue should block when full
+         *
+         * @return std::shared_ptr<InputQueue>: shared pointer to an input queue
+         */
+        std::shared_ptr<InputQueue> createInputQueue(unsigned int maxSize = 16, bool blocking = false);
     };
 
     /**
@@ -612,6 +638,46 @@ class Node : public std::enable_shared_from_this<Node> {
     const NodeMap& getNodeMap() const {
         return nodeMap;
     }
+};
+
+class InputQueue : public Node {
+   public:
+    /**
+     * @brief Construct a new Input Queue object
+     *
+     * @param maxSize: Maximum size of the input queue
+     * @param blocking: Whether the input queue should block when full
+     */
+    InputQueue(unsigned int maxSize = 16, bool blocking = false);
+
+    void start() override;
+    void stop() override;
+    void wait() override;
+    bool runOnHost() const override;
+    const char* getName() const override;
+
+    /**
+     * @brief Send a message to the connected input
+     *
+     * @param msg Message to send
+     */
+    void send(const std::shared_ptr<ADatatype>& msg);
+
+    Output output{*this, {.name = "output", .types = {{DatatypeEnum::Buffer, true}}}};
+
+   private:
+    /**
+     * @brief InputQueue's main thread function that takes care of sending messages from onhost to the connected ondevice input
+     */
+    void run();
+
+    JoiningThread inputQueueThread_;
+    std::unique_ptr<MessageQueue> queuePtr_;
+    std::atomic_bool stopThreadFlag_;
+
+    mutable std::mutex guard_;
+    std::condition_variable sendThreadCv_;
+    std::condition_variable inputQueueEmptiedCv_;
 };
 
 // Node CRTP class
