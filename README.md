@@ -243,12 +243,6 @@ After that specify CMake define `-D'DEPTHAI_BUILD_DOCS=ON`' and build the target
 Debugging can be done using **Visual Studio Code** and either **GDB** or **LLDB** (extension 'CodeLLDB').
 LLDB in some cases was much faster to step with and resolved more `incomplete_type` variables than GDB. Your mileage may vary though.
 
-
-If there is a need to step into **Hunter** libraries, that can be achieved by removing previous built artifacts
-```
-rm -r ~/.hunter
-```
-
 And configuring the project with the following CMake option set to `ON`
 ```
 cmake . -D'HUNTER_KEEP_PACKAGE_SOURCES=ON'
@@ -278,17 +272,3 @@ If you are stuck with error message which mentions external libraries (subdirect
 /usr/bin/ld: /home/[user]/.hunter/_Base/062a19a/ccfed35/a84a713/Install/lib/liblzma.a(stream_flags_decoder.c.o): warning: relocation against `lzma_footer_magic' in read-only section `.text'
 ```
 
-Try erasing the **Hunter** cache folder.
-
-Linux/MacOS:
-```
-rm -r ~/.hunter
-```
-Windows:
-```
-del C:/.hunter
-```
-or
-```
-del C:/[user]/.hunter
-```
