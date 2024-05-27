@@ -67,6 +67,8 @@ jobs:
         exclude:
           - os: windows-latest
             cmake: '3.10.x'
+          - os: macos-latest # Skip the old cmake on latest macos - doesn't handle ARM64 aarch correctly
+            cmake: '3.10.x'
 
     steps:
     - name: Cache .hunter folder
