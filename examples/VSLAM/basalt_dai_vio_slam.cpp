@@ -43,7 +43,6 @@ class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStr
                 double x, y, z, qx, qy, qz, qw;
                 transData->getTranslation(x, y, z);
                 transData->getQuaternion(qx, qy, qz, qw);
-
                 // //write matrix data to file, one matrix per line, values separated by commas
                 // std::vector<std::vector<double>> data = transData->transform.data;
                 // std::ofstream file;

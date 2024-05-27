@@ -34,6 +34,7 @@ class BasaltVIO : public dai::NodeCRTP<dai::node::ThreadedHostNode, BasaltVIO> {
     basalt::VioConfig vioConfig;
     void setImuUpdateRate(int rate) { imuUpdateRate = rate; }
     void setConfigPath(const std::string& path) { configPath = path; }
+    void setUseSpecTranslation(bool use) { useSpecTranslation = use; }
 
    private:
     std::shared_ptr<basalt::Calibration<double>> calib;
@@ -54,6 +55,7 @@ class BasaltVIO : public dai::NodeCRTP<dai::node::ThreadedHostNode, BasaltVIO> {
     int imuUpdateRate = 200;
     int threadNum = 1;
     std::unique_ptr<tbb::global_control> tbb_global_control;
+    bool useSpecTranslation = true;
 
 
     void initialize(std::vector<std::shared_ptr<dai::ImgFrame>> frames);

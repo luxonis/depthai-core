@@ -29,13 +29,13 @@ void CalibrationHandler::getRTABMapCameraModel(rtabmap::StereoCameraModel& model
     double cy = newCameraMatrix.at<double>(1, 2);
     double baseline = getBaselineDistance(dai::CameraBoardSocket::CAM_C, dai::CameraBoardSocket::CAM_B) / 100.0;
     
-    rtabmap::Transform poseTocamera;
+    rtabmap::Transform poseToCamera;
     if(cameraId == dai::CameraBoardSocket::CAM_A)
-        poseTocamera = rtabmap::Transform::getIdentity();
+        poseToCamera = localTransform;
     else
-        poseTocamera = rtabmap::Transform(-getBaselineDistance(dai::CameraBoardSocket::CAM_A) / 100.0, 0, 0);
+        poseToCamera = localTransform * rtabmap::Transform(-getBaselineDistance(dai::CameraBoardSocket::CAM_A) / 100.0, 0, 0);
 
 
-    model = rtabmap::StereoCameraModel(eepromData.boardName, fx, fy, cx, cy, baseline, localTransform.inverse(), cv::Size(width, height));
+    model = rtabmap::StereoCameraModel(eepromData.boardName, fx, fy, cx, cy, baseline, poseToCamera, cv::Size(width, height));
 }
 }  // namespace dai

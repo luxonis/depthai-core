@@ -22,6 +22,9 @@ std::shared_ptr<RTABMapVIO> RTABMapVIO::build() {
     // inputRect.queue.setBlocking(false);
     // inputDepth.queue.setBlocking(false);
     // inputFeatures.queue.setBlocking(false);
+    localTransform = rtabmap::Transform::getIdentity();
+    rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
+    localTransform = localTransform * opticalTransform.inverse();
     inputIMU.addCallback(std::bind(&RTABMapVIO::imuCB, this, std::placeholders::_1));
     return std::static_pointer_cast<RTABMapVIO>(shared_from_this());
 }
@@ -57,11 +60,7 @@ void RTABMapVIO::run() {
         auto imgFrame = inputRect.get<dai::ImgFrame>();
         auto depthFrame = inputDepth.get<dai::ImgFrame>();
         auto features = inputFeatures.get<dai::TrackedFeatures>();
-        auto reset = inputReset.tryGet<dai::CameraControl>();
         rtabmap::SensorData data;
-        if(reset != nullptr) {
-            odom->reset();
-        }
 
         if(imgFrame != nullptr && depthFrame != nullptr) {
             if(!modelSet) {
@@ -127,16 +126,17 @@ void RTABMapVIO::run() {
                     data.setIMU(rtabmap::IMU(
                         rot, cv::Mat::eye(3, 3, CV_64FC1), gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform));
                 }
-                auto pose = odom->process(data, &info);
+                auto newPose = odom->process(data, &info);
                 cv::Mat final_img;
 
                 for(auto word : info.words) {
                     keypoints.push_back(word.second);
                 }
                 cv::drawKeypoints(imgFrame->getCvFrame(), keypoints, final_img);
+                //  rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
 
+                rtabmap::Transform pose = localTransform * newPose * localTransform.inverse();
                 // add pose information to frame
-
                 float x, y, z, roll, pitch, yaw;
                 pose.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
                 auto out = std::make_shared<dai::TransformData>(pose);
@@ -147,29 +147,31 @@ void RTABMapVIO::run() {
             }
         }
     }
-    fmt::print("Display node stopped\n");
 }
 
 void RTABMapVIO::getCalib(dai::Pipeline& pipeline, int instanceNum, int width, int height) {
     auto calibHandler = pipeline.getDefaultDevice()->readCalibration();
 
     auto cameraId = static_cast<dai::CameraBoardSocket>(instanceNum);
-    calibHandler.getRTABMapCameraModel(model, cameraId, width, height, rtabmap::Transform::getIdentity(), alphaScaling);
+    calibHandler.getRTABMapCameraModel(model, cameraId, width, height, localTransform, alphaScaling);
     auto eeprom = calibHandler.getEepromData();
-    if(eeprom.boardName == "OAK-D" || eeprom.boardName == "BW1098OBC") {
-        imuLocalTransform = rtabmap::Transform(0, -1, 0, 0.0525, 1, 0, 0, 0.013662, 0, 0, 1, 0);
-    } else if(eeprom.boardName == "DM9098") {
-        imuLocalTransform = rtabmap::Transform(0, 1, 0, 0.037945, 1, 0, 0, 0.00079, 0, 0, -1, 0);
-    } else if(eeprom.boardName == "NG2094") {
-        imuLocalTransform = rtabmap::Transform(0, 1, 0, 0.0374, 1, 0, 0, 0.00176, 0, 0, -1, 0);
-    } else if(eeprom.boardName == "NG9097") {
-        imuLocalTransform = rtabmap::Transform(0, 1, 0, 0.04, 1, 0, 0, 0.020265, 0, 0, -1, 0);
-    } else {
-        std::cout << "Unknown IMU local transform for " << eeprom.boardName << std::endl;
-        stop();
-    }
 
-    imuLocalTransform = rtabmap::Transform::getIdentity() * imuLocalTransform;
+    std::vector<std::vector<float>> imuExtr = calibHandler.getImuToCameraExtrinsics(cameraId, true);
+
+    imuLocalTransform = rtabmap::Transform(imuExtr[0][0],
+                                           imuExtr[0][1],
+                                           imuExtr[0][2],
+                                           imuExtr[0][3] * 0.01,
+                                           imuExtr[1][0],
+                                           imuExtr[1][1],
+                                           imuExtr[1][2],
+                                           imuExtr[1][3] * 0.01,
+                                           imuExtr[2][0],
+                                           imuExtr[2][1],
+                                           imuExtr[2][2],
+                                           imuExtr[2][3] * 0.01);
+
+    imuLocalTransform = localTransform * imuLocalTransform;
 }
 }  // namespace node
 }  // namespace dai

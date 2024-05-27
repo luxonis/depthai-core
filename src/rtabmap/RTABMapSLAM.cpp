@@ -11,6 +11,8 @@ std::shared_ptr<RTABMapSLAM> RTABMapSLAM::build() {
     alphaScaling = -1.0;
     useFeatures = false;
     localTransform = rtabmap::Transform::getIdentity();
+    rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0); 
+    localTransform = localTransform * opticalTransform;
     inputSync.setMaxSize(0);
     inputSync.setBlocking(false);
     inputSync.addCallback(std::bind(&RTABMapSLAM::syncCB, this, std::placeholders::_1));
@@ -59,8 +61,8 @@ void RTABMapSLAM::syncCB(std::shared_ptr<dai::ADatatype> data) {
     if(imgFrame != nullptr && depthFrame != nullptr) {
         if(!modelSet) {
             auto pipeline = getParentPipeline();
-            rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
-            localTransform = localTransform * opticalTransform.inverse();
+            // rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
+            // localTransform = localTransform * opticalTransform.inverse();
             getCalib(pipeline, imgFrame->getInstanceNum(), imgFrame->getWidth(), imgFrame->getHeight());
             lastProcessTime = std::chrono::steady_clock::now();
             startTime = std::chrono::steady_clock::now();
@@ -88,9 +90,7 @@ void RTABMapSLAM::odomPoseCB(std::shared_ptr<dai::ADatatype> data) {
     // convert odom pose to rtabmap pose
     rtabmap::Transform p;
     odomPose->getRTABMapTransform(p);
-    rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
-
-    currPose = p * opticalTransform.inverse();
+    currPose = p;
 
     auto out = std::make_shared<dai::TransformData>(odomCorrection * currPose);
     transform.send(out);
@@ -128,7 +128,7 @@ void RTABMapSLAM::run() {
                         node.sensorData().uncompressData(0, 0, 0, 0, &ground, &obstacles, &empty);
                         localMaps.add(iter->first, ground, obstacles, empty, node.sensorData().gridCellSize(), node.sensorData().gridViewPoint());
                     }
-                    if(grid->addedNodes().size() ||localMaps.size() > 0) {
+                    if(grid->addedNodes().size() || localMaps.size() > 0) {
                         grid->update(optimizedPoses);
                     }
                     float xMin, yMin;
@@ -152,7 +152,7 @@ void RTABMapSLAM::run() {
                             }
                         }
                         cv::flip(map8U, map8U, 0);
-                        
+
                         auto gridMap = std::make_shared<dai::ImgFrame>();
                         gridMap->setTimestamp(std::chrono::steady_clock::now());
                         cv::Mat flat = map8U.reshape(1, map8U.total() * map8U.channels());
@@ -181,13 +181,13 @@ void RTABMapSLAM::run() {
                 pointCloud.send(pclData);
             }
         }
-    }
-    // save database periodically if set
-    if(std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count() > databaseSaveInterval) {
-        rtabmap.close();
-        rtabmap.init(rtabParams, databasePath);
-        std::cout << "Database saved" << std::endl;
-        startTime = std::chrono::steady_clock::now();
+        // save database periodically if set
+        if(std::chrono::duration<double>(std::chrono::steady_clock::now() - startTime).count() > 30.0) {
+            rtabmap.close();
+            rtabmap.init(rtabParams, databasePath);
+            std::cout << "Database saved" << std::endl;
+            startTime = std::chrono::steady_clock::now();
+        }
     }
 }
 
@@ -195,7 +195,6 @@ void RTABMapSLAM::getCalib(dai::Pipeline& pipeline, int instanceNum, int width, 
     auto calibHandler = pipeline.getDefaultDevice()->readCalibration();
     auto cameraId = static_cast<dai::CameraBoardSocket>(instanceNum);
     calibHandler.getRTABMapCameraModel(model, cameraId, width, height, localTransform, alphaScaling);
-
 }
 }  // namespace node
 }  // namespace dai

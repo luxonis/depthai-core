@@ -47,6 +47,7 @@ class RTABMapVIO : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapVIO>
     rtabmap::StereoCameraModel model;
     rtabmap::Odometry* odom;
     rtabmap::OdometryInfo info;
+    rtabmap::Transform localTransform;
     rtabmap::Transform imuLocalTransform;
     std::map<double, cv::Vec3f> accBuffer_;
     std::map<double, cv::Vec3f> gyroBuffer_;

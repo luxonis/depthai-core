@@ -38,15 +38,15 @@ class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStr
      * Input for any ImgFrame messages
      * Default queue is blocking with size 8
      */
-    dai::Node::Input inputTrans{*this, {.name="inTrans",  .types={{dai::DatatypeEnum::TransformData, true}}}};
-    dai::Node::Input inputImg{*this, {.name="inImg",  .types={{dai::DatatypeEnum::ImgFrame, true}}}};
-    dai::Node::Input inputPCL{*this, {.name="inPCL",  .types={{dai::DatatypeEnum::PointCloudData, true}}}};
-    dai::Node::Input inputMap{*this, {.name="inMap",  .types={{dai::DatatypeEnum::ImgFrame, true}}}};
+    Input inputTrans{*this, {.name="inTrans", .types={{dai::DatatypeEnum::TransformData, true}}}};
+    Input inputImg{*this, {.name="inImg", .types={{dai::DatatypeEnum::ImgFrame, true}}}};
+    Input inputPCL{*this, {.name="inPCL", .types={{dai::DatatypeEnum::PointCloudData, true}}}};
+    Input inputMap{*this, {.name="inMap", .types={{dai::DatatypeEnum::ImgFrame, true}}}};
 
     void run() override {
         const auto rec = rerun::RecordingStream("rerun");
         rec.spawn().exit_on_failure();
-        rec.log_timeless("world", rerun::ViewCoordinates::RDF);
+        rec.log_timeless("world", rerun::ViewCoordinates::FLU);
         rec.log("world/ground", rerun::Boxes3D::from_half_sizes({{3.f, 3.f, 0.00001f}}));
 
         while(isRunning()) {
@@ -58,13 +58,25 @@ class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStr
                 double x, y, z, qx, qy, qz, qw;
                 transData->getTranslation(x, y, z);
                 transData->getQuaternion(qx, qy, qz, qw);
+
+                // //write matrix data to file, one matrix per line, values separated by commas
+                // std::vector<std::vector<double>> data = transData->transform.data;
+                // std::ofstream file;
+                // file.open("/workspaces/depthai_core_ws/positions.csv", std::ios::app);
+                // for (int i = 0; i < data.size(); i++) {
+                //     for (int j = 0; j < data[i].size(); j++) {
+                //         file << data[i][j] << ",";
+                //     }
+                // }
+                // file << "\n";
+                
                 auto position = rerun::Vec3D(x, y, z);
 
                 rec.log("world/camera", rerun::Transform3D(position, rerun::datatypes::Quaternion::from_xyzw(qx, qy, qz, qw)));
                 positions.push_back(position);
                 rerun::LineStrip3D lineStrip(positions);
                 rec.log("world/trajectory", rerun::LineStrips3D(lineStrip));
-                rec.log("world/camera/image", rerun::Pinhole::from_focal_length_and_resolution({398.554f, 398.554f}, {640.0f, 400.0f}));
+                rec.log("world/camera/image", rerun::Pinhole::from_focal_length_and_resolution({398.554f, 398.554f}, {640.0f, 400.0f}).with_camera_xyz(rerun::components::ViewCoordinates::FLU));
                 rec.log("world/camera/image/rgb",
                         rerun::Image(tensor_shape(imgFrame->getCvFrame()), reinterpret_cast<const uint8_t*>(imgFrame->getCvFrame().data)));
                 if(pclData != nullptr) {
@@ -91,13 +103,14 @@ int main() {
     int width = 640;
     int height = 400;
     // Define sources and outputs
-    auto left = pipeline.create<dai::node::MonoCamera>();
-    auto right = pipeline.create<dai::node::MonoCamera>();
+    auto left = pipeline.create<dai::node::MonoCamera>()->build();
+    auto right = pipeline.create<dai::node::MonoCamera>()->build();
     auto stereo = pipeline.create<dai::node::StereoDepth>();
-    auto imu = pipeline.create<dai::node::IMU>();
-    auto featureTracker = pipeline.create<dai::node::FeatureTracker>();
-    auto odom = pipeline.create<dai::node::RTABMapVIO>();
-    auto slam = pipeline.create<dai::node::RTABMapSLAM>();
+    auto imu = pipeline.create<dai::node::IMU>()->build();
+    auto featureTracker = pipeline.create<dai::node::FeatureTracker>()->build();
+    auto slamSync = pipeline.create<dai::node::Sync>()->build();
+    auto odom = pipeline.create<dai::node::RTABMapVIO>()->build();
+    auto slam = pipeline.create<dai::node::RTABMapSLAM>()->build();
     auto rerun = pipeline.create<RerunStreamer>();
     auto params = rtabmap::ParametersMap();
     params.insert(rtabmap::ParametersPair(rtabmap::Parameters::kOdomResetCountdown(), "30"));
@@ -132,10 +145,6 @@ int main() {
     stereo->initialConfig.setLeftRightCheckThreshold(10);
     stereo->setDepthAlign(dai::StereoDepthProperties::DepthAlign::RECTIFIED_LEFT);
 
-
-    // auto controlIn = pipeline.create<dai::node::XLinkIn>();
-    // controlIn->setStreamName("control");
-
     // Linking
     left->out.link(stereo->left);
     right->out.link(stereo->right);
@@ -145,10 +154,11 @@ int main() {
     featureTracker->outputFeatures.link(odom->inputFeatures);
 
     odom->transform.link(slam->inputOdomPose);
-    odom->passthroughRect.link(slam->inputRect);
-    odom->passthroughDepth.link(slam->inputDepth);
+    odom->passthroughRect.link(slamSync->inputs["img_rect"]);
+    odom->passthroughDepth.link(slamSync->inputs["depth"]);
     //odom->passthroughFeatures.link(slam->inputFeatures);
-    
+    slamSync->out.link(slam->inputSync);
+
     slam->transform.link(rerun->inputTrans);
     slam->passthroughRect.link(rerun->inputImg);
     slam->occupancyMap.link(rerun->inputMap);

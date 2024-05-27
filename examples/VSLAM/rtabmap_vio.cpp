@@ -42,7 +42,8 @@ class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStr
     void run() override {
         const auto rec = rerun::RecordingStream("rerun");
         rec.spawn().exit_on_failure();
-        rec.log_timeless("world", rerun::ViewCoordinates::RDF);
+        rec.log_timeless("world", rerun::ViewCoordinates::FLU);
+        rec.log("world/ground", rerun::Boxes3D::from_half_sizes({{3.f, 3.f, 0.00001f}}));
 
         while(isRunning()) {
             std::shared_ptr<dai::TransformData> transData = inputTrans.get<dai::TransformData>();
@@ -52,12 +53,11 @@ class RerunStreamer : public dai::NodeCRTP<dai::node::ThreadedHostNode, RerunStr
                 transData->getTranslation(x, y, z);
                 transData->getQuaternion(qx, qy, qz, qw);
                 auto position = rerun::Vec3D(x, y, z);
-
                 rec.log("world/camera", rerun::Transform3D(position, rerun::datatypes::Quaternion::from_xyzw(qx, qy, qz, qw)));
                 positions.push_back(position);
                 rerun::LineStrip3D lineStrip(positions);
                 rec.log("world/trajectory", rerun::LineStrips3D(lineStrip));
-                rec.log("world/camera/image", rerun::Pinhole::from_focal_length_and_resolution({256.06f, 256.06f}, {576.0f, 360.0f}));
+                rec.log("world/camera/image", rerun::Pinhole::from_focal_length_and_resolution({256.06f, 256.06f}, {576.0f, 360.0f}).with_camera_xyz(rerun::components::ViewCoordinates::FLU));
                 rec.log("world/camera/image/rgb",
                         rerun::Image(tensor_shape(imgFrame->getCvFrame()), reinterpret_cast<const uint8_t*>(imgFrame->getCvFrame().data)));
             }
@@ -113,10 +113,6 @@ int main() {
 	stereo->enableDistortionCorrection(true);
     stereo->initialConfig.setLeftRightCheckThreshold(10);
     stereo->setDepthAlign(dai::StereoDepthProperties::DepthAlign::RECTIFIED_LEFT);
-
-
-    // auto controlIn = pipeline.create<dai::node::XLinkIn>();
-    // controlIn->setStreamName("control");
 
     // Linking
     left->out.link(stereo->left);
