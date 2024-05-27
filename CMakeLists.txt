@@ -168,7 +168,7 @@ endif()
 option(DEPTHAI_XTENSOR_SUPPORT "Enable optional xtensor support" ON)
 option(DEPTHAI_OPENCV_SUPPORT "Enable optional OpenCV support" ON)
 option(DEPTHAI_PCL_SUPPORT "Enable optional PCL support" OFF)
-option(DEPTHAI_MERGED_TARGET "Enable merged target build" OFF)
+option(DEPTHAI_MERGED_TARGET "Enable merged target build" ON)
 
 # Include project dependencies
 set(DEPTHAI_DEPENDENCY_INCLUDE "" CACHE FILEPATH "Optional cmake file to append to dependency processing, e.g. additional find_package()")

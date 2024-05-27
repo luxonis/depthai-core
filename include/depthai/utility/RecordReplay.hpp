@@ -87,7 +87,7 @@ class ByteRecorder {
     void init(const std::string& filePath, CompressionLevel compressionLevel, RecordType recordingType);
     template <typename T>
     void write(const T& data) {
-        mcap::Timestamp writeTime = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+        mcap::Timestamp writeTime = std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
         nlohmann::json j = data;
         std::string serialized = j.dump();
         mcap::Message msg;

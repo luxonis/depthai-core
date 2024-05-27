@@ -27,7 +27,7 @@ void ByteRecorder::init(const std::string& filePath, CompressionLevel compressio
     }
     {
         auto options = mcap::McapWriterOptions("");
-        options.library = "depthai" + std::string(build::VERSION);  // TODO(asahtik): is there some global variable for this?
+        options.library = "depthai" + std::string(build::VERSION);
         switch(compressionLevel) {
             case CompressionLevel::NONE:
                 options.compression = mcap::Compression::None;

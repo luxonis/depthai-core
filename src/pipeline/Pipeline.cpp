@@ -602,13 +602,13 @@ void PipelineImpl::build() {
     isBuild = true;
 
     if(defaultDevice) {
-#ifdef DEPTHAI_MERGED_TARGET
         if(defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_2
            || defaultDevice->getDeviceInfo().platform == XLinkPlatform_t::X_LINK_MYRIAD_X) {
             try {
                 std::string recordPath = utility::getEnv("DEPTHAI_RECORD");
                 std::string replayPath = utility::getEnv("DEPTHAI_REPLAY");
 
+#ifdef DEPTHAI_MERGED_TARGET
                 if(enableHolisticRecordReplay) {
                     switch(recordConfig.state) {
                         case RecordConfig::RecordReplayState::RECORD:
@@ -660,16 +660,18 @@ void PipelineImpl::build() {
                         spdlog::warn("DEPTHAI_REPLAY path does not exist or is invalid. Replay disabled.");
                     }
                 }
+#else
+                recordConfig.state = RecordConfig::RecordReplayState::NONE;
+                if(!recordPath.empty() || !replayPath.empty()) {
+                    spdlog::warn("Merged target is required to use holistic record/replay.");
+                }
+#endif
             } catch(std::runtime_error& e) {
                 spdlog::warn("Could not set up record / replay: {}", e.what());
             }
         } else {
             throw std::runtime_error("Holistic record/replay is only supported on RVC2 devices for now.");
         }
-#else
-        recordConfig.state = RecordConfig::RecordReplayState::NONE;
-        spdlog::warn("Merged target is required to use holistic record/replay.");
-#endif
     }
 
     // Go through the build stages sequentially
