@@ -2,7 +2,7 @@
 #include "rtabmap/core/StereoCameraModel.h"
 
 namespace dai {
-void CalibrationHandler::getRTABMapCameraModel(rtabmap::StereoCameraModel& model, CameraBoardSocket cameraId, int width, int height,const rtabmap::Transform& localTransform, float alphaScaling) {
+rtabmap::StereoCameraModel CalibrationHandler::getRTABMapCameraModel(CameraBoardSocket cameraId, int width, int height,const rtabmap::Transform& localTransform, float alphaScaling) {
     cv::Mat cameraMatrix, distCoeffs, newCameraMatrix;
     std::vector<std::vector<float> > matrix = getCameraIntrinsics(cameraId, width, height);
     cameraMatrix = (cv::Mat_<double>(3, 3) << matrix[0][0],
@@ -36,6 +36,6 @@ void CalibrationHandler::getRTABMapCameraModel(rtabmap::StereoCameraModel& model
         poseToCamera = localTransform * rtabmap::Transform(-getBaselineDistance(dai::CameraBoardSocket::CAM_A) / 100.0, 0, 0);
 
 
-    model = rtabmap::StereoCameraModel(eepromData.boardName, fx, fy, cx, cy, baseline, poseToCamera, cv::Size(width, height));
+    return rtabmap::StereoCameraModel(eepromData.boardName, fx, fy, cx, cy, baseline, poseToCamera, cv::Size(width, height));
 }
 }  // namespace dai
