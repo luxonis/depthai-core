@@ -68,7 +68,7 @@ class RTABMapSLAM : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapSLA
     bool modelSet = false;
     rtabmap::ParametersMap rtabParams;
     rtabmap::SensorData sensorData;
-    std::string databasePath="/rtabmap.tmp.db";
+    std::string databasePath="/tmp/rtabmap.tmp.db";
     float databaseSaveInterval = 5.0f;
     bool saveDatabasePeriodically = false;
     bool publishPCL = false;

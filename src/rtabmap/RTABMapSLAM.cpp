@@ -194,7 +194,7 @@ void RTABMapSLAM::run() {
 void RTABMapSLAM::getCalib(dai::Pipeline& pipeline, int instanceNum, int width, int height) {
     auto calibHandler = pipeline.getDefaultDevice()->readCalibration();
     auto cameraId = static_cast<dai::CameraBoardSocket>(instanceNum);
-    calibHandler.getRTABMapCameraModel(model, cameraId, width, height, localTransform, alphaScaling);
+    model = calibHandler.getRTABMapCameraModel(cameraId, width, height, localTransform, alphaScaling);
 }
 }  // namespace node
 }  // namespace dai
