@@ -45,7 +45,7 @@ class RTABMapVIO : public dai::NodeCRTP<dai::node::ThreadedHostNode, RTABMapVIO>
     void imuCB(std::shared_ptr<dai::ADatatype> msg);
     void getCalib(dai::Pipeline& pipeline, int instanceNum, int width, int height);
     rtabmap::StereoCameraModel model;
-    rtabmap::Odometry* odom;
+    std::unique_ptr<rtabmap::Odometry> odom;
     rtabmap::OdometryInfo info;
     rtabmap::Transform localTransform;
     rtabmap::Transform imuLocalTransform;

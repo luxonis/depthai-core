@@ -6,7 +6,7 @@ namespace dai {
 namespace node {
 std::shared_ptr<RTABMapVIO> RTABMapVIO::build() {
     alphaScaling = -1.0;
-    odom = rtabmap::Odometry::create();
+    odom.reset(rtabmap::Odometry::create());
     // inputIMU.queue.setMaxSize(0);
     // inputRect.queue.setMaxSize(0);
     // inputDepth.queue.setMaxSize(0);
@@ -45,14 +45,11 @@ void RTABMapVIO::imuCB(std::shared_ptr<dai::ADatatype> msg) {
 
 void RTABMapVIO::stop() {
     dai::Node::stop();
-    // cv::destroyAllWindows();
-    if(odom != nullptr) {
-        delete odom;
-    }
+
 }
 
 void RTABMapVIO::setParams(const rtabmap::ParametersMap& params) {
-    odom = rtabmap::Odometry::create(params);
+    odom.reset(rtabmap::Odometry::create(params));
 }
 
 void RTABMapVIO::run() {
@@ -127,18 +124,12 @@ void RTABMapVIO::run() {
                         rot, cv::Mat::eye(3, 3, CV_64FC1), gyro, cv::Mat::eye(3, 3, CV_64FC1), acc, cv::Mat::eye(3, 3, CV_64FC1), imuLocalTransform));
                 }
                 auto newPose = odom->process(data, &info);
-                cv::Mat final_img;
 
                 for(auto word : info.words) {
                     keypoints.push_back(word.second);
                 }
-                cv::drawKeypoints(imgFrame->getCvFrame(), keypoints, final_img);
-                //  rtabmap::Transform opticalTransform(0, 0, 1, 0, -1, 0, 0, 0, 0, -1, 0, 0);
 
                 rtabmap::Transform pose = localTransform * newPose * localTransform.inverse();
-                // add pose information to frame
-                float x, y, z, roll, pitch, yaw;
-                pose.getTranslationAndEulerAngles(x, y, z, roll, pitch, yaw);
                 auto out = std::make_shared<dai::TransformData>(pose);
                 transform.send(out);
                 passthroughRect.send(imgFrame);
@@ -153,8 +144,7 @@ void RTABMapVIO::getCalib(dai::Pipeline& pipeline, int instanceNum, int width, i
     auto calibHandler = pipeline.getDefaultDevice()->readCalibration();
 
     auto cameraId = static_cast<dai::CameraBoardSocket>(instanceNum);
-    calibHandler.getRTABMapCameraModel(model, cameraId, width, height, localTransform, alphaScaling);
-    auto eeprom = calibHandler.getEepromData();
+    model = calibHandler.getRTABMapCameraModel(cameraId, width, height, localTransform, alphaScaling);
 
     std::vector<std::vector<float>> imuExtr = calibHandler.getImuToCameraExtrinsics(cameraId, true);
 
