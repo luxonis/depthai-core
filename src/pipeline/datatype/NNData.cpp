@@ -189,6 +189,15 @@ std::vector<TensorInfo> NNData::getAllLayers() const {
     return tensors;
 }
 
+std::optional<TensorInfo> NNData::getTensorInfo(const std::string& name) const {
+    for(const auto& t : tensors) {
+        if(t.name == name) {
+            return t;
+        }
+    }
+    return std::nullopt;
+}
+
 bool NNData::getLayer(const std::string& name, TensorInfo& tensor) const {
     for(const auto& t : tensors) {
         if(t.name == name) {
